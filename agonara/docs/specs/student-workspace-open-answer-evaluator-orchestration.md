@@ -3,7 +3,7 @@ date: 2026-06-02
 model: gpt-5
 description: "Spec: Agonara Student Workspace open-answer evaluator orchestration contract."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -14,6 +14,21 @@ type: spec
 Define the Agonara v0.0.1 Student Workspace domain contract for scheduling, claiming, retrying, cancelling, timing out, and completing open-answer evaluator work.
 
 This spec operationalizes [ADR-014](../adr/adr-014-student-workspace-open-answer-evaluator-orchestration.md), extends [Student Workspace Open-Answer Evaluation Status and Evidence](student-workspace-open-answer-evaluation-status-and-evidence.md), and preserves STU-13 and INT-05 from [Product Intent](../intent/intent_learning_program_app.md). It does not add public HTTP evaluation mutation routes, queue technology, LLM provider calls, prompt construction, human review queues, UI, mastery, weak-area, progress, next-step, grading, analytics, or deployment topology.
+
+## Implementation status
+
+Implemented by [Student Workspace Open-Answer Evaluator Orchestration Implementation Plan](../plans/implemented/student-workspace-open-answer-evaluator-orchestration.md).
+
+### Implementation Evidence
+
+- Student Workspace orchestration commands and queries: [student-workspace.js](../../src/student-workspace.js)
+- Evaluator job persistence, claimable reads, backup, and restore validation: [storage.js](../../src/storage.js)
+- Student Workspace domain coverage: [student-workspace.test.js](../../tests/student-workspace.test.js)
+- Storage coverage: [storage.test.js](../../tests/storage.test.js)
+- Backup/restore coverage: [backup-restore.test.js](../../tests/backup-restore.test.js)
+- Executable acceptance coverage: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+
+The implemented orchestration slice supports scheduling evaluator jobs, claim and renewal leases, leased evidence recording, leased completion, retry/failure behavior, cancellation, timeout recovery, claimable-job reads, backup/restore preservation, redaction, and duplicate-safe final evaluation. It does not implement public evaluator mutation routes, queue technology, provider calls, prompt construction, human-review queues, UI, mastery/progress surfaces, deployment topology, or infrastructure ports.
 
 ## Public interface
 
@@ -34,6 +49,7 @@ type StudentWorkspaceEvaluatorOrchestrationRejectionReason =
   | "evaluator_job_not_found"
   | "evaluator_job_conflict"
   | "evaluator_job_not_claimed"
+  | "evaluator_job_lease_active"
   | "evaluator_job_lease_mismatch"
   | "evaluator_job_lease_expired"
   | "evaluator_budget_exceeded"
@@ -282,7 +298,7 @@ These commands and queries are internal Student Workspace domain operations. Ord
 50. `cancelOpenAnswerEvaluatorJob` changes the job to `cancelled`, clears any lease, changes the evaluator run to `cancelled`, and restores the attempt to `submitted` or `evaluation_failed` according to the pre-run failure state.
 51. `cancelOpenAnswerEvaluatorJob` must make later completion, evidence, failure, renewal, or timeout calls for the cancelled job reject.
 52. `timeOutOpenAnswerEvaluatorJob` accepts only `leased` jobs whose lease `expiresAt` is less than or equal to `now`.
-53. `timeOutOpenAnswerEvaluatorJob` rejects unexpired leases with `evaluator_job_conflict`.
+53. `timeOutOpenAnswerEvaluatorJob` rejects unexpired leases with `evaluator_job_lease_active`.
 54. `timeOutOpenAnswerEvaluatorJob` rejects terminal jobs with `evaluator_job_conflict`.
 55. `timeOutOpenAnswerEvaluatorJob` changes the job to `timed_out`, clears the lease, changes the evaluator run to `failed`, changes the attempt status to `evaluation_failed`, and records an active timeout failure.
 56. `timeOutOpenAnswerEvaluatorJob` must preserve submitted answer and accepted revision references.
@@ -303,7 +319,7 @@ These commands and queries are internal Student Workspace domain operations. Ord
 
 ## Tests (required)
 
-Scheduling:
+### Scheduling
 
 1. `scheduleOpenAnswerEvaluatorJob` accepts a submitted attempt, creates a waiting job linked to one evaluator run, snapshots accepted revision references, and changes the attempt to `evaluating`.
 2. `scheduleOpenAnswerEvaluatorJob` accepts an `evaluation_failed` attempt and preserves prior failure state for cancellation restoration.
@@ -311,7 +327,7 @@ Scheduling:
 4. `scheduleOpenAnswerEvaluatorJob` rejects malformed evaluator path, policy, requester, reviewer, retry policy, and budget policy inputs.
 5. `scheduleOpenAnswerEvaluatorJob` does not duplicate attempts or mutate accepted corpus, Program Membership, Identity, session, or CSRF state.
 
-Claiming and leases:
+### Claiming and Leases
 
 6. `claimOpenAnswerEvaluatorJob` claims a waiting job, records a lease, and changes the job to `leased`.
 7. `claimOpenAnswerEvaluatorJob` claims a due retry job and rejects a retry job whose `nextRetryAt` is still in the future.
@@ -319,7 +335,7 @@ Claiming and leases:
 9. `claimOpenAnswerEvaluatorJob` rejects leased and terminal jobs with the specified reasons.
 10. `renewOpenAnswerEvaluatorJobLease` extends a valid lease and rejects unknown, unclaimed, mismatched, and expired leases.
 
-Evidence and completion:
+### Evidence and Completion
 
 11. `recordOpenAnswerEvaluatorJobEvidence` records redacted internal evidence only when the job has a valid lease.
 12. `recordOpenAnswerEvaluatorJobEvidence` rejects unknown, unclaimed, mismatched, expired, and terminal jobs.
@@ -331,7 +347,7 @@ Evidence and completion:
 18. `completeOpenAnswerEvaluatorJob` does not create duplicate final evaluations.
 19. `completeOpenAnswerEvaluatorJob` rejects cancelled, failed, timed-out, superseded, mismatched-lease, and expired-lease cases.
 
-Failure, retry, cancellation, and timeout:
+### Failure, Retry, Cancellation, and Timeout
 
 20. `failOpenAnswerEvaluatorJob` schedules a retry when retry is requested and attempts remain.
 21. `failOpenAnswerEvaluatorJob` records a final evaluation failure when retry is not requested.
@@ -339,10 +355,10 @@ Failure, retry, cancellation, and timeout:
 23. `cancelOpenAnswerEvaluatorJob` cancels waiting, retry-waiting, and leased jobs and restores the attempt according to pre-run failure state.
 24. `cancelOpenAnswerEvaluatorJob` makes later completion, evidence, failure, renewal, and timeout calls reject.
 25. `timeOutOpenAnswerEvaluatorJob` times out an expired leased job and records an active timeout failure.
-26. `timeOutOpenAnswerEvaluatorJob` rejects unexpired and terminal jobs.
+26. `timeOutOpenAnswerEvaluatorJob` rejects unexpired jobs with `evaluator_job_lease_active` and terminal jobs with `evaluator_job_conflict`.
 27. Failure, retry, cancellation, and timeout preserve submitted answers and accepted revision references.
 
-Queries and boundaries:
+### Queries and Boundaries
 
 28. `getOpenAnswerEvaluatorJob` returns job state without raw evaluator artifacts.
 29. `listClaimableOpenAnswerEvaluatorJobs` returns only waiting and due retry jobs with bounded pagination.

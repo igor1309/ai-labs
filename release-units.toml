@@ -3,6 +3,13 @@
 
 
 [[units]]
+basename = "agonara"
+path = "agonara"
+metadata = "package.json"
+version = "0.1.0"
+docker = true
+
+[[units]]
 basename = "clipdeck"
 path = "clipdeck"
 metadata = "package.json"

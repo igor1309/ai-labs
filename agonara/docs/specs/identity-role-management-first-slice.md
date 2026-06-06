@@ -3,7 +3,7 @@ date: 2026-05-27
 model: gpt-5.5-thinking
 description: "Implementation spec for Agonara Identity & Role Management v0.0.1."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -14,6 +14,22 @@ type: spec
 Implement the Agonara Identity & Role Management v0.0.1 backend contract that bootstraps a private instance, authenticates a local password credential into an internal Identity, manages Admin authority, and enforces the first operational invariants.
 
 The HTTP API, operator CLI, and executable acceptance scenarios are specified in [Identity & Role Management API and CLI](identity-role-management-api-cli.md).
+
+## Implementation status
+
+Implemented by [Identity and Operations First-Slice Implementation Plan](../plans/implemented/identity-and-operations-first-slice.md) and completed for the minimum Admin UI surface by [Admin Operations UI Board Implementation Plan](../plans/implemented/admin-operations-ui-board.md).
+
+### Implementation Evidence
+
+- Identity command/query boundary for bootstrap, local-password login, session resolution/logout, Admin authority, audit reads, and operational access: [identity.js](../../src/identity.js)
+- Durable Identity, local-password credential, session, Admin authority, audit, and backup/restore state: [storage.js](../../src/storage.js)
+- Focused domain and invariant coverage: [identity.test.js](../../tests/identity.test.js)
+- Persistence invariant coverage: [storage.test.js](../../tests/storage.test.js)
+- Backup/restore coverage for Identity, credentials, Admin authority, audit state, no-session restore, and last-Admin restore rejection: [backup-restore.test.js](../../tests/backup-restore.test.js)
+- HTTP, CLI, and end-to-end acceptance coverage: [http-api.test.js](../../tests/http-api.test.js), [cli.test.js](../../tests/cli.test.js), and [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+- Minimum Admin UI surface implementation and route/render coverage: [admin-ui.js](../../src/admin-ui.js), [server.js](../../src/server.js), [http-api.test.js](../../tests/http-api.test.js), and [admin-operations-ui-board.md](../plans/implemented/admin-operations-ui-board.md)
+
+The implemented slice supports first-Admin bootstrap, local-password authentication, opaque server-managed sessions, Admin-only identity and credential operations, last-effective-Admin protection, auditability, operational access inspection, backup/restore of identity state without active-session restoration, and the required private Admin UI board. It preserves the v0.0.1 boundary by leaving MFA, passkeys, OIDC, SSO, self-service recovery, multi-tenant authorization, Program resource permissions, Student authority, and Program Curator authority outside Identity & Role Management.
 
 ## Public interface
 
@@ -114,7 +130,7 @@ revokeAdmin(input: {
 }) -> RevokeAdminResult
 ```
 
-Each command result is either:
+### Command Result Envelope
 
 - `{ status: "accepted"; value: ... }`
 - `{ status: "rejected"; reason: RejectionReason }`
@@ -164,7 +180,7 @@ type RejectionReason =
 
 ### Minimum admin UI surface
 
-The first UI may be thin, but it must expose these flows:
+The first UI may be thin, but it must expose these flows.
 
 - first-Admin bootstrap;
 - login and logout;
@@ -216,7 +232,7 @@ The first UI may be thin, but it must expose these flows:
 
 ## Tests (required)
 
-Bootstrap:
+### Bootstrap
 
 1. `bootstrapFirstAdmin` accepts with a valid bootstrap secret when no effective Admin exists.
 2. `bootstrapFirstAdmin` creates Identity, local password credential, Admin authority, session, and accepted audit event.
@@ -224,7 +240,7 @@ Bootstrap:
 4. `bootstrapFirstAdmin` rejects with `bootstrap_already_completed` after an effective Admin exists.
 5. Bootstrap secret is not persisted as an Identity, credential, session, role, or audit actor.
 
-Login and session:
+### Login and Session
 
 6. `login` accepts valid credentials for an active Identity and returns an opaque session.
 7. `login` rejects invalid credentials with `invalid_credentials`.
@@ -237,7 +253,7 @@ Login and session:
 14. No refresh-token or silent session-extension path is exposed.
 15. `logout` revokes the session.
 
-Admin authorization:
+### Admin Authorization
 
 16. Admin-only commands reject without a valid session.
 17. Admin-only commands reject for a valid session whose Identity lacks Admin authority.
@@ -252,7 +268,7 @@ Admin authorization:
 26. `disableIdentity` revokes or invalidates active sessions for the target Identity.
 27. Disabled Identities remain inspectable.
 
-Audit:
+### Audit
 
 28. Accepted identity creation creates an audit event with actor and target Identity.
 29. Accepted credential binding creates an audit event with actor, target Identity, and target credential.
@@ -261,14 +277,14 @@ Audit:
 32. Rejected last-Admin disable creates a rejected audit event.
 33. Audit queries require Admin authority.
 
-Deferrals:
+### Deferrals
 
 34. No API or UI path grants Student or Program Curator authority from Identity & Role Management.
 35. No resource-level Program permission is represented in Identity & Role Management v0.0.1.
 36. No organization, team, tenant, or multi-tenant authority model is represented in Identity & Role Management v0.0.1.
 37. No MFA, passkey, OIDC, SSO, recovery-code, or self-service credential recovery path is exposed in v0.0.1.
 
-Backup and restore:
+### Backup and Restore
 
 38. Backup export includes Identity, local password credential, Admin authority, and audit state.
 39. Backup export does not restore active sessions as login state.

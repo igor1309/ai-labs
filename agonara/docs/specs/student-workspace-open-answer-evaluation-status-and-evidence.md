@@ -3,7 +3,7 @@ date: 2026-06-02
 model: gpt-5
 description: "Spec: Agonara Student Workspace open-answer evaluation status and internal evidence contract."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -14,6 +14,21 @@ type: spec
 Define the Agonara v0.0.1 Student Workspace contract for explicit open-answer evaluation status and internal evaluator evidence while keeping final feedback Student Workspace-owned.
 
 This spec operationalizes [ADR-013](../adr/adr-013-student-workspace-open-answer-evaluation-governance.md), extends the internal evaluation lifecycle from [Student Workspace Open-Answer Attempt First Slice](student-workspace-open-answer-attempt-first-slice.md), and preserves STU-13 and INT-05 from [Product Intent](../intent/intent_learning_program_app.md). It does not add public HTTP evaluation mutation routes, LLM provider calls, human review workflow, UI, mastery, weak-area, progress, next-step, grading, or analytics behavior.
+
+## Implementation status
+
+Implemented by [Student Workspace Open-Answer Evaluation Status and Evidence Implementation Plan](../plans/implemented/student-workspace-open-answer-evaluation-status-and-evidence.md).
+
+### Implementation Evidence
+
+- Student Workspace evaluator-run commands and owner-only queries: [student-workspace.js](../../src/student-workspace.js)
+- Evaluator-run and internal-evidence persistence plus backup/restore validation: [storage.js](../../src/storage.js)
+- Student Workspace domain coverage: [student-workspace.test.js](../../tests/student-workspace.test.js)
+- Storage coverage: [storage.test.js](../../tests/storage.test.js)
+- Backup/restore coverage: [backup-restore.test.js](../../tests/backup-restore.test.js)
+- Executable acceptance coverage: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+
+The implemented status/evidence slice supports explicit evaluator runs, internal redacted evidence metadata, terminal evaluation transitions, owner-only status/evidence reads, backup/restore preservation, redaction, human-review attribution validation, and preservation of accepted revision references. It does not implement public evaluation mutation routes, provider calls, human-review workflow, UI, mastery/progress surfaces, grading, analytics, or transport adapters.
 
 ## Public interface
 
@@ -245,7 +260,7 @@ Status and evidence queries require the owning Student Identity. Program Curator
 
 ## Tests (required)
 
-Status lifecycle:
+### Status Lifecycle
 
 1. `beginOpenAnswerEvaluatorRun` accepts a submitted attempt, changes the attempt to `evaluating`, and records a running evaluator run with accepted revision references.
 2. `beginOpenAnswerEvaluatorRun` accepts an `evaluation_failed` attempt and preserves the previous failure for cancellation restoration.
@@ -254,14 +269,14 @@ Status lifecycle:
 5. `beginOpenAnswerEvaluatorRun` requires reviewer Identity and reviewer capability for `human_reviewed` runs.
 6. `beginOpenAnswerEvaluatorRun` rejects reviewer attribution on non-human evaluator runs.
 
-Evidence:
+### Evidence
 
 7. `recordOpenAnswerEvaluatorEvidence` records internal evidence metadata on a running evaluator run.
 8. `recordOpenAnswerEvaluatorEvidence` accepts omitted redacted summaries and rejects malformed evidence kinds or malformed redacted summaries.
 9. `recordOpenAnswerEvaluatorEvidence` rejects unknown or non-running evaluator runs with the specified reasons.
 10. Evidence records and responses do not expose raw prompts, raw model responses, model metadata payloads, evaluator diagnostics, reviewer notes, secrets, session identifiers, CSRF tokens, SQL text, stack traces, filesystem paths, database URLs, or infrastructure details.
 
-Completion and failure:
+### Completion and Failure
 
 11. `completeOpenAnswerEvaluatorRun` accepts a running evaluator run, records final evaluation feedback, changes the run to `succeeded`, and changes the attempt to `evaluated`.
 12. `completeOpenAnswerEvaluatorRun` rejects unknown or non-running evaluator runs with the specified reasons.
@@ -273,7 +288,7 @@ Completion and failure:
 18. `cancelOpenAnswerEvaluatorRun` cancels a running evaluator run and restores the attempt to `evaluation_failed` when a prior failure existed.
 19. `cancelOpenAnswerEvaluatorRun` rejects unknown, non-running, and malformed cancellation cases with the specified reasons.
 
-Queries and boundaries:
+### Queries and Boundaries
 
 20. `getOpenAnswerEvaluationStatus` returns the owning Student's attempt, active run, evidence metadata, evaluation, and failure state.
 21. `getOpenAnswerEvaluationStatus` rejects inactive identities, unknown attempts, non-owning Students, Program Curators, Admins, and other callers with the specified reasons.

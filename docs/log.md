@@ -2,6 +2,39 @@
 
 ## 2026-06-06
 
+- Release units: harden Agonara container readiness against stage, healthcheck, and entrypoint overrides.
+- Release units: enforce Agonara's non-root, runtime-owned container boundary and Node-native healthcheck before the first release tag.
+- Release units: harden Agonara Compose isolation readiness against comment and alternate-port bypasses, and require database state on the isolated data volume.
+- Release units: enforce Agonara staging/production Compose isolation and required runtime configuration in first-release readiness.
+- Release units: tighten Agonara deploy image lifecycle readiness to require post-replacement health gates, staging git-SHA tags, and production rollback retention.
+- Release units: enforce Agonara deploy image lifecycle ordering, immutable version/SHA tags, and production rollback retention in first-release readiness.
+- Release units: enforce Agonara staging backup/restore archive integrity and destructive ordering so the restore rehearsal exercises the same guarantees as production.
+- Release units: require Agonara production backups to contain the restore-critical SQLite database before transfer or reported success, and enforce it in first-release readiness.
+- Release units: harden Agonara production restore against corrupt archives before destructive mutation and enforce the validated restore lifecycle in first-release readiness.
+- Release units: extend the Agonara first-release readiness check to enforce fail-closed production backup, off-host transfer, service recovery, and local retention pruning.
+- Release units: extend the Agonara first-release readiness check to enforce deterministic, version-independent production rollback with a post-restore availability gate.
+- Release units: extend the Agonara first-release readiness check to verify deploy jobs are scoped to Agonara tags and production depends on staging.
+- Release units: extend the Agonara first-release readiness check to verify GitHub Release creation depends on successful staging/prod deploy jobs for Agonara tags.
+- Release units: extend the Agonara first-release readiness check to verify failure notifications trigger on staging/prod deploy failures and report both deploy results.
+- Release units: extend the Agonara first-release readiness check to verify staging failure cleanup and production rollback run before final upload cleanup.
+- Release units: extend the Agonara first-release readiness check to verify workflow real evaluator smokes clean `/tmp/agonara-smoke.json` and assert the expected health version.
+- Release units: extend the Agonara first-release readiness check to verify workflow version checks reject non-2xx `/operations/health` responses before parsing JSON.
+- Release units: harden Agonara workflow staging and production version checks to reject non-2xx `/operations/health` responses before parsing JSON.
+- Release units: extend the Agonara first-release readiness check to verify deploy scripts require HTTP success, structured health JSON, `status: ok`, and the expected version.
+- Agonara: harden staging and production deploy health gates to require HTTP success, parse `/operations/health` JSON, and require both `status: ok` and the expected version.
+- Release units: extend the Agonara first-release readiness check to verify the release workflow cleans `/tmp/agonara-deploy` before copying source.
+- Release units: clean `/tmp/agonara-deploy` before copying Agonara release source so stale upload files cannot satisfy current deploy-script preflight.
+- Release units: extend the Agonara first-release readiness check to verify staging/prod deploy scripts preflight required uploaded files before mutating the deploy root.
+- Release units: extend the Agonara first-release readiness check to verify the locked release install wiring: package lock, Dockerfile `npm ci`, release upload, and CI dispatcher path.
+- CI path filtering: include `agonara/package-lock.json` in the root dispatcher allowlist so lockfile-only changes run the Agonara core workflow.
+- Release units: add a package-local Agonara lockfile and switch the release Docker build to `npm ci --omit=dev`, with the lockfile uploaded and required by staging/prod deploy scripts.
+- Release units: harden Agonara staging/prod deploy scripts to fail on incomplete uploaded source payloads before mutating the deploy root.
+- Release units: extend the Agonara first-release readiness check to optionally verify required GitHub deploy secret names with `gh` before the explicit release tag is pushed, without reading secret values.
+- Release units: clean Agonara release source uploads on staging failure and after every prod deploy outcome, with rollback still running before final cleanup.
+- Release units: harden Agonara release smoke cleanup so transient evaluator-smoke JSON files are removed inside the container on both success and failure.
+- Release units: add `scripts/release/check-agonara-release-readiness.js` to verify Agonara first-release tag, trunk, manifest/package sync, Docker-unit status, and release workflow fan-in before pushing `agonara_v0.1.0`.
+- Release units: add a fail-fast Agonara deploy secret preflight in `release-unit.yml`, validating the required GitHub secret names before source upload without printing secret values.
+- Release units: register Agonara as the `agonara_v0.1.0` Docker-producing unit, wire tag-driven staging and internal-prod deploy jobs into `release-unit.yml`, require both Agonara deploys before GitHub Release, add Agonara to release-validation path filtering, and keep first release execution gated on explicit tag push plus GitHub deploy SSH secrets.
 - Agonara/product landings: clarified the API-first stance as shared backend contracts for browser UIs, operator commands, and future Agonara agent skills, without making UI or agent surfaces separate owners of workflow or state.
 
 - Products page: linked the `AI Labs` header back to the parent internal landing index.

@@ -1,0 +1,1316 @@
+import assert from 'node:assert/strict';
+import { execFileSync, execSync } from 'node:child_process';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, it } from 'node:test';
+import { stringify } from '../lib/toml.js';
+
+const GIT_ENV = {
+  GIT_AUTHOR_NAME: 'test',
+  GIT_AUTHOR_EMAIL: 'test@test',
+  GIT_COMMITTER_NAME: 'test',
+  GIT_COMMITTER_EMAIL: 'test@test',
+  GIT_CONFIG_NOSYSTEM: '1',
+  HOME: '/dev/null',
+};
+
+let scratchDirs;
+
+describe('check-agonara-release-readiness', () => {
+  let tmp;
+
+  beforeEach(() => {
+    tmp = mkdtempSync(join(tmpdir(), 'agonara-readiness-test-'));
+    scratchDirs = [];
+  });
+
+  afterEach(() => {
+    rmSync(tmp, { recursive: true, force: true });
+    for (const scratchDir of scratchDirs) {
+      rmSync(scratchDir, { recursive: true, force: true });
+    }
+  });
+
+  it('passes when the first Agonara release tag is ready', () => {
+    writeAgonaraReleaseRepo(tmp);
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 0, result.stderr);
+    assert.ok(result.stdout.includes('OK locked release install'));
+    assert.ok(result.stdout.includes('OK container runtime boundary'));
+    assert.ok(result.stdout.includes('OK deploy upload preflight'));
+    assert.ok(result.stdout.includes('OK deploy health gate'));
+    assert.ok(result.stdout.includes('OK deploy image lifecycle'));
+    assert.ok(result.stdout.includes('OK deploy tier isolation'));
+    assert.ok(result.stdout.includes('OK rollback health gate'));
+    assert.ok(result.stdout.includes('OK production backup'));
+    assert.ok(result.stdout.includes('OK production restore'));
+    assert.ok(result.stdout.includes('OK staging backup and restore'));
+    assert.ok(result.stdout.includes('Agonara release readiness passed for agonara_v0.1.0.'));
+  });
+
+  it('fails when run away from trunk', () => {
+    writeAgonaraReleaseRepo(tmp);
+    git(tmp, 'checkout -b release-check');
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('releases are only allowed from trunk'));
+  });
+
+  it('fails when the release tag already exists', () => {
+    writeAgonaraReleaseRepo(tmp);
+    git(tmp, 'tag agonara_v0.1.0');
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release tag already exists: agonara_v0.1.0'));
+  });
+
+  it('fails when the working tree is dirty', () => {
+    writeAgonaraReleaseRepo(tmp);
+    writeFileSync(join(tmp, 'agonara/uncommitted.js'), 'uncommitted\n');
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('working tree must be clean'));
+  });
+
+  it('fails when the workflow does not require Agonara deploy success', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: [
+        'jobs:',
+        '  deploy-agonara-staging:',
+        '  deploy-agonara-prod:',
+        '      - name: Verify Agonara deploy secrets',
+        '        run: true',
+      ].join('\n'),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes("release-unit.yml missing needs.deploy-agonara-staging.result == 'success'"));
+  });
+
+  it('fails when the locked release install wiring is incomplete', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      dockerfile: [
+        'FROM node:22',
+        'COPY --chown=agonara:agonara package.json ./',
+        'RUN npm install --omit=dev',
+      ].join('\n'),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara Dockerfile must copy package-lock.json and use npm ci --omit=dev'));
+  });
+
+  it('fails when the container does not switch to the runtime user', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      dockerfile: validDockerfile().replace('USER agonara\n', ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara Dockerfile must run as agonara with owned app/data files and a Node-native healthcheck'));
+  });
+
+  it('fails when the runtime user does not own the data directory', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      dockerfile: validDockerfile()
+        .replace(' && chown agonara:agonara /data', ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara Dockerfile must run as agonara with owned app/data files and a Node-native healthcheck'));
+  });
+
+  it('fails when the container healthcheck does not use runtime Node', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      dockerfile: validDockerfile()
+        .replace(
+          'CMD node -e \'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))\'',
+          'CMD wget -q --spider http://127.0.0.1:8080/operations/health',
+        ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara Dockerfile must run as agonara with owned app/data files and a Node-native healthcheck'));
+  });
+
+  it('fails when a later container stage resets the runtime user', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      dockerfile: [
+        validDockerfile(),
+        'FROM node:22-bookworm-slim',
+        'CMD ["node", "src/server.js"]',
+      ].join('\n'),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara Dockerfile must run as agonara with owned app/data files and a Node-native healthcheck'));
+  });
+
+  it('fails when a later instruction disables the container healthcheck', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      dockerfile: validDockerfile()
+        .replace('CMD ["node", "src/server.js"]', 'HEALTHCHECK NONE\nCMD ["node", "src/server.js"]'),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara Dockerfile must run as agonara with owned app/data files and a Node-native healthcheck'));
+  });
+
+  it('fails when a later command overrides the server entrypoint', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      dockerfile: `${validDockerfile()}\nCMD ["node", "src/other.js"]`,
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara Dockerfile must run as agonara with owned app/data files and a Node-native healthcheck'));
+  });
+
+  it('fails when the release workflow does not upload the Agonara package lock', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        '        source: "agonara/package-lock.json"',
+        '        source: "agonara/package.json"',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml must upload agonara/package-lock.json'));
+  });
+
+  it('fails when the release workflow does not clean the Agonara upload before copying source', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        '      - name: Prepare clean Agonara deploy upload\n        script: rm -rf /tmp/agonara-deploy\n',
+        '',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml must clean /tmp/agonara-deploy before copying Agonara source'));
+  });
+
+  it('fails when upload cleanup is outside the Agonara staging deploy job', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        '      - name: Prepare clean Agonara deploy upload\n        script: rm -rf /tmp/agonara-deploy\n',
+        '',
+      ).replace(
+        '  deploy-agonara-prod:',
+        [
+          '  cleanup-agonara-upload:',
+          '      - name: Prepare clean Agonara deploy upload',
+          '        script: rm -rf /tmp/agonara-deploy',
+          '      - name: Copy source files to VPS',
+          '  deploy-agonara-prod:',
+        ].join('\n'),
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml must clean /tmp/agonara-deploy before copying Agonara source'));
+  });
+
+  it('fails when workflow version checks parse health JSON without HTTP success', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        workflowHealthGate('agonara'),
+        'docker exec -e EXPECTED_VERSION="${EXPECTED_VERSION}" agonara node -e \'fetch("http://127.0.0.1:8080/operations/health").then(response => response.json()).then(health => { if (health.status !== "ok" || health.version !== process.env.EXPECTED_VERSION) process.exit(1); }).catch(() => process.exit(1))\'',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml must health-gate Agonara workflow version checks on HTTP success before parsing JSON'));
+  });
+
+  it('fails when workflow real evaluator smoke does not clean artifacts on failure', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        workflowSmokeGate('agonara'),
+        workflowSmokeGate('agonara').replace("trap 'rm -f /tmp/agonara-smoke.json' EXIT; ", ''),
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml must run Agonara real evaluator smoke with cleanup and expected version checks'));
+  });
+
+  it('fails when workflow cleans upload before production rollback can run', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        workflowProdCleanupLifecycle(),
+        [
+          '      - name: Clean deploy upload',
+          '        if: always()',
+          '        script: rm -rf /tmp/agonara-deploy || true',
+          '      - name: Rollback production on failure',
+          '        if: failure()',
+          '        script: bash /opt/agonara/scripts/rollback-prod.sh',
+        ].join('\n'),
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml must cleanup staging failures and run production rollback before final upload cleanup'));
+  });
+
+  it('fails when workflow cleanup lifecycle tokens appear outside the cleanup steps', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        workflowStagingCleanup(),
+        [
+          '      - name: Clean deploy upload after staging failure',
+          '        if: always()',
+          '      - name: Unrelated staging failure step',
+          '        if: failure()',
+          '        script: rm -rf /tmp/agonara-deploy || true',
+        ].join('\n'),
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml must cleanup staging failures and run production rollback before final upload cleanup'));
+  });
+
+  it('fails when workflow notifications do not trigger on Agonara deploy failures', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        "      || needs.deploy-agonara-prod.result == 'failure'",
+        '',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml notify job must include Agonara deploy failures and report their results'));
+  });
+
+  it('fails when workflow notifications do not depend on Agonara deploy jobs', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        workflowNotifyFanIn(),
+        workflowNotifyFanIn().replace('    needs: [deploy-agonara-staging, deploy-agonara-prod]', '    needs: [deploy-agonara-staging]'),
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml notify job must include Agonara deploy failures and report their results'));
+  });
+
+  it('fails when GitHub release does not depend on Agonara deploy jobs', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        workflowGithubReleaseFanIn(),
+        workflowGithubReleaseFanIn().replace('    needs: [deploy-agonara-staging, deploy-agonara-prod]', '    needs: [deploy-agonara-staging]'),
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml github-release job must require successful Agonara deploys before release creation'));
+  });
+
+  it('fails when GitHub release does not require successful Agonara production deploy', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        "      && (needs.verify.outputs.basename != 'agonara' || needs.deploy-agonara-prod.result == 'success')",
+        '',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml github-release job must require successful Agonara deploys before release creation'));
+  });
+
+  it('fails when production deploy does not depend on staging deploy', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        '    needs: [deploy-agonara-staging, verify]',
+        '    needs: [verify]',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml Agonara deploy jobs must be scoped to Agonara tags and promote staging before production'));
+  });
+
+  it('fails when staging deploy is not scoped to Agonara tags', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        "    if: ${{ needs.verify.outputs.basename == 'agonara' }}",
+        '',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml Agonara deploy jobs must be scoped to Agonara tags and promote staging before production'));
+  });
+
+  it('fails when the CI dispatcher does not route Agonara package lock changes', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      ciWorkflow: validCiWorkflow().replace(
+        '    - "agonara/package-lock.json"',
+        '    - "agonara/package.json"',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('ci.yml must route agonara/package-lock.json changes to Agonara core'));
+  });
+
+  it('fails when deploy scripts can mutate the deploy root before upload preflight', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      deployProd: [
+        '#!/usr/bin/env bash',
+        'set -euo pipefail',
+        'cd "${DEPLOY_ROOT}"',
+        'cp "${UPLOAD_ROOT}/Dockerfile" .',
+      ].join('\n'),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/deploy-prod.sh must preflight required upload files before cd "${DEPLOY_ROOT}"'));
+  });
+
+  it('fails when deploy scripts define but do not invoke the upload preflight before mutation', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      deployProd: [
+        '#!/usr/bin/env bash',
+        'set -euo pipefail',
+        'require_upload_payload() {',
+        '  require_upload_file "${UPLOAD_ROOT}/Dockerfile"',
+        '  require_upload_file "${UPLOAD_ROOT}/package.json"',
+        '  require_upload_file "${UPLOAD_ROOT}/package-lock.json"',
+        '  require_upload_file "${UPLOAD_ROOT}/compose.prod.yml"',
+        '  require_upload_directory "${UPLOAD_ROOT}/src"',
+        '  require_upload_directory "${UPLOAD_ROOT}/scripts"',
+        '}',
+        'cd "${DEPLOY_ROOT}"',
+      ].join('\n'),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/deploy-prod.sh must invoke require_upload_payload before cd "${DEPLOY_ROOT}"'));
+  });
+
+  it('fails when deploy scripts health gate by substring instead of structured JSON', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      deployProd: validDeployScript('compose.prod.yml').replace(
+        deployHealthGate(),
+        'fetch("http://127.0.0.1:8080/operations/health").then(response => response.text()).then(body => { if (!body.includes(`"version":"${process.env.EXPECTED_VERSION}"`)) process.exit(1); })',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/deploy-prod.sh must health-gate HTTP success, status ok, and expected version from JSON'));
+  });
+
+  it('fails when deploy scripts only mention structured health gate tokens outside the gate', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      deployProd: validDeployScript('compose.prod.yml').replace(
+        deployHealthGate(),
+        [
+          '# operations/health',
+          '# !response.ok',
+          '# response.json()',
+          '# health.status !== "ok"',
+          '# health.version !== process.env.EXPECTED_VERSION',
+        ].join('\n'),
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/deploy-prod.sh must health-gate HTTP success, status ok, and expected version from JSON'));
+  });
+
+  it('fails when production deploy stops service before building the image', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      deployProd: validDeployScript('compose.prod.yml').replace(
+        [
+          '"${COMPOSE[@]}" build',
+          'docker tag agonara:latest "agonara:${DEPLOY_VERSION}"',
+          'docker tag agonara:latest "agonara:${DEPLOY_GIT_SHA}"',
+          '"${COMPOSE[@]}" down',
+        ].join('\n'),
+        [
+          '"${COMPOSE[@]}" down',
+          '"${COMPOSE[@]}" build',
+          'docker tag agonara:latest "agonara:${DEPLOY_VERSION}"',
+          'docker tag agonara:latest "agonara:${DEPLOY_GIT_SHA}"',
+        ].join('\n'),
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara deploy scripts must build before downtime, tag version and git sha, and retain the prior production image'));
+  });
+
+  it('fails when production deploy health-checks before replacing the container', () => {
+    const healthGate = deployScriptHealthGate(false);
+    writeAgonaraReleaseRepo(tmp, {
+      deployProd: validDeployScript('compose.prod.yml')
+        .replace(`${healthGate}\n`, '')
+        .replace('"${COMPOSE[@]}" down', `${healthGate}\n"\${COMPOSE[@]}" down`),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara deploy scripts must build before downtime, tag version and git sha, and retain the prior production image'));
+  });
+
+  it('fails when staging deploy does not retain the git sha image tag', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      deployStaging: validDeployScript('compose.staging.yml')
+        .replace('docker tag agonara:staging "agonara:${DEPLOY_GIT_SHA}"\n', ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara deploy scripts must build before downtime, tag version and git sha, and retain the prior production image'));
+  });
+
+  it('fails when production deploy does not retain the rollback image', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      deployProd: validDeployScript('compose.prod.yml')
+        .replace('docker tag agonara:latest agonara:rollback || true\n', ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara deploy scripts must build before downtime, tag version and git sha, and retain the prior production image'));
+  });
+
+  it('fails when production compose exposes a non-loopback host port', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      prodCompose: validCompose({ staging: false })
+        .replace('"127.0.0.1:18080:8080"', '"18080:8080"'),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging and production compose files must isolate container names, loopback ports, env files, and data volumes'));
+  });
+
+  it('fails when staging compose shares the production data volume', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      stagingCompose: validCompose({ staging: true })
+        .replaceAll('agonara-staging-data', 'agonara-data'),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging and production compose files must isolate container names, loopback ports, env files, and data volumes'));
+  });
+
+  it('fails when staging compose uses the production env file', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      stagingCompose: validCompose({ staging: true })
+        .replace('env_file: .env.staging', 'env_file: .env.prod'),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging and production compose files must isolate container names, loopback ports, env files, and data volumes'));
+  });
+
+  it('fails when the required loopback port only appears in a comment', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      prodCompose: validCompose({ staging: false })
+        .replace(
+          '      - "127.0.0.1:18080:8080"',
+          [
+            '      # - "127.0.0.1:18080:8080"',
+            '      - "18080:8080"',
+          ].join('\n'),
+        ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging and production compose files must isolate container names, loopback ports, env files, and data volumes'));
+  });
+
+  it('fails when production compose adds a long-syntax public port', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      prodCompose: validCompose({ staging: false })
+        .replace(
+          '      - "127.0.0.1:18080:8080"',
+          [
+            '      - "127.0.0.1:18080:8080"',
+            '      - target: 8080',
+            '        published: "18082"',
+            '        host_ip: 0.0.0.0',
+          ].join('\n'),
+        ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging and production compose files must isolate container names, loopback ports, env files, and data volumes'));
+  });
+
+  it('fails when production database state is outside the isolated data volume', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      prodCompose: validCompose({ staging: false })
+        .replace('      AGONARA_DB_PATH: /data/agonara.sqlite\n', ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging and production compose files must isolate container names, loopback ports, env files, and data volumes'));
+  });
+
+  it('fails when rollback does not health-gate restored service availability', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      rollbackProd: validRollbackScript().replace(rollbackHealthGate(), ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/rollback-prod.sh must restore the rollback image without rebuild and health-gate service availability'));
+  });
+
+  it('fails when rollback commands only appear in comments', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      rollbackProd: validRollbackScript()
+        .split('\n')
+        .map(line => line.includes('docker ') || line.includes('"${COMPOSE[@]}"') ? `# ${line.trim()}` : line)
+        .join('\n'),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/rollback-prod.sh must restore the rollback image without rebuild and health-gate service availability'));
+  });
+
+  it('fails when rollback rebuilds the restored image', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      rollbackProd: validRollbackScript().replace(
+        '"${COMPOSE[@]}" up -d --no-build --wait',
+        '"${COMPOSE[@]}" up -d --build --wait',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/rollback-prod.sh must restore the rollback image without rebuild and health-gate service availability'));
+  });
+
+  it('fails when rollback depends on the failed deploy target version', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      rollbackProd: `${validRollbackScript()}\nEXPECTED_VERSION=0.1.0`,
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/rollback-prod.sh must restore the rollback image without rebuild and health-gate service availability'));
+  });
+
+  it('fails when production backup does not copy the archive off-host', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      backupProd: validBackupScript().replace(
+        '"${RSYNC[@]}" "${BACKUP_DIR}/${BACKUP_FILE}" "${BACKUP_REMOTE}/"',
+        '',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/backup-prod.sh must create a non-empty production data archive, recover service, copy off-host, and prune local retention'));
+  });
+
+  it('fails when production backup does not initialize its off-host destination', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      backupProd: validBackupScript().replace('BACKUP_REMOTE="${AGONARA_BACKUP_REMOTE:-}"\n', ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/backup-prod.sh must create a non-empty production data archive, recover service, copy off-host, and prune local retention'));
+  });
+
+  it('fails when production backup cannot recover service after archive failure', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      backupProd: validBackupScript().replace('trap restart_prod EXIT\n', ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/backup-prod.sh must create a non-empty production data archive, recover service, copy off-host, and prune local retention'));
+  });
+
+  it('fails when production backup accepts an empty archive', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      backupProd: validBackupScript().replace('test -s "${BACKUP_DIR}/${BACKUP_FILE}"\n', ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/backup-prod.sh must create a non-empty production data archive, recover service, copy off-host, and prune local retention'));
+  });
+
+  it('fails when production backup does not verify the archived database', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      backupProd: validBackupScript().replace(`${backupArchiveValidation()}\n`, ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/backup-prod.sh must create a non-empty production data archive, recover service, copy off-host, and prune local retention'));
+  });
+
+  it('fails when production backup verifies the archive after off-host transfer', () => {
+    const offHostTransfer = '"${RSYNC[@]}" "${BACKUP_DIR}/${BACKUP_FILE}" "${BACKUP_REMOTE}/"';
+    writeAgonaraReleaseRepo(tmp, {
+      backupProd: validBackupScript()
+        .replace(`${backupArchiveValidation()}\n`, '')
+        .replace(offHostTransfer, `${offHostTransfer}\n${backupArchiveValidation()}`),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/backup-prod.sh must create a non-empty production data archive, recover service, copy off-host, and prune local retention'));
+  });
+
+  it('fails when production backup does not prune local retention', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      backupProd: validBackupScript().replace(
+        'find "${BACKUP_DIR}" -type f -name "agonara-data-*.tar.gz" -mtime "+${BACKUP_RETENTION_DAYS}" -delete\n',
+        '',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/backup-prod.sh must create a non-empty production data archive, recover service, copy off-host, and prune local retention'));
+  });
+
+  it('fails when production restore does not validate the archive before mutation', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      restoreProd: validRestoreScript().replace(
+        'docker run --rm -v "$(dirname "${BACKUP_FILE}"):/restore:ro" alpine:3.20 sh -c \'tar -tzf "/restore/$1" | grep -Fx "./agonara.sqlite"\' sh "${BACKUP_BASENAME}" >/dev/null\n',
+        '',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/restore-prod.sh must validate the backup before replacing production data, restart without rebuild, and health-gate availability'));
+  });
+
+  it('fails when production restore rebuilds the deployed image', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      restoreProd: validRestoreScript().replace(
+        '"${COMPOSE[@]}" up -d --no-build --wait',
+        '"${COMPOSE[@]}" up -d --build --wait',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/restore-prod.sh must validate the backup before replacing production data, restart without rebuild, and health-gate availability'));
+  });
+
+  it('fails when production restore does not health-gate availability', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      restoreProd: validRestoreScript().replace(`${rollbackHealthGate()}\n`, ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/restore-prod.sh must validate the backup before replacing production data, restart without rebuild, and health-gate availability'));
+  });
+
+  it('fails when staging restore does not validate the database archive before mutation', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      restoreStaging: validRestoreScript({ staging: true }).replace(`${restoreArchiveValidation()}\n`, ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging backup and restore scripts must validate the database archive before transfer or data replacement'));
+  });
+
+  it('fails when staging restore does not reject a missing backup path', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      restoreStaging: validRestoreScript({ staging: true }).replace(
+        [
+          'if [[ -z "${BACKUP_FILE}" ]]; then',
+          '  echo "backup file path is required" >&2',
+          '  exit 1',
+          'fi',
+        ].join('\n') + '\n',
+        '',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging backup and restore scripts must validate the database archive before transfer or data replacement'));
+  });
+
+  it('fails when staging backup does not initialize its off-host destination', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      backupStaging: validBackupScript({ staging: true }).replace('BACKUP_REMOTE="${AGONARA_BACKUP_REMOTE:-}"\n', ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging backup and restore scripts must validate the database archive before transfer or data replacement'));
+  });
+
+  it('fails when staging backup validates the archive after off-host transfer', () => {
+    const offHostTransfer = '"${RSYNC[@]}" "${BACKUP_DIR}/${BACKUP_FILE}" "${BACKUP_REMOTE}/"';
+    writeAgonaraReleaseRepo(tmp, {
+      backupStaging: validBackupScript({ staging: true })
+        .replace(`${backupArchiveValidation()}\n`, '')
+        .replace(offHostTransfer, `${offHostTransfer}\n${backupArchiveValidation()}`),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging backup and restore scripts must validate the database archive before transfer or data replacement'));
+  });
+
+  it('fails when staging restore rebuilds the deployed image', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      restoreStaging: validRestoreScript({ staging: true }).replace(
+        '"${COMPOSE[@]}" up -d --no-build --wait',
+        '"${COMPOSE[@]}" up -d --build --wait',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging backup and restore scripts must validate the database archive before transfer or data replacement'));
+  });
+
+  it('fails when staging restore does not health-gate availability', () => {
+    const healthGate = 'docker exec agonara-staging node -e \'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))\'';
+    writeAgonaraReleaseRepo(tmp, {
+      restoreStaging: validRestoreScript({ staging: true }).replace(`${healthGate}\n`, ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging backup and restore scripts must validate the database archive before transfer or data replacement'));
+  });
+
+  it('passes the GitHub secret check when required deploy secret names exist', () => {
+    writeAgonaraReleaseRepo(tmp);
+    const fakeGhBin = writeFakeGhSecretList([
+      'AGONARA_VPS_HOST',
+      'AGONARA_VPS_USER',
+      'AGONARA_VPS_SSH_KEY',
+    ]);
+
+    const result = runReadiness(tmp, {
+      args: ['--check-github-secrets'],
+      env: { PATH: `${fakeGhBin}:${process.env.PATH}` },
+    });
+
+    assert.equal(result.exitCode, 0, result.stderr);
+    assert.ok(result.stdout.includes('OK github deploy secret names'));
+  });
+
+  it('fails the GitHub secret check when a required deploy secret name is missing', () => {
+    writeAgonaraReleaseRepo(tmp);
+    const fakeGhBin = writeFakeGhSecretList([
+      'AGONARA_VPS_HOST',
+      'AGONARA_VPS_USER',
+    ]);
+
+    const result = runReadiness(tmp, {
+      args: ['--check-github-secrets'],
+      env: { PATH: `${fakeGhBin}:${process.env.PATH}` },
+    });
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('missing GitHub deploy secret names: AGONARA_VPS_SSH_KEY'));
+  });
+
+  it('fails the GitHub secret check when gh cannot list secrets', () => {
+    writeAgonaraReleaseRepo(tmp);
+    const fakeGhBin = writeFakeGhError();
+
+    const result = runReadiness(tmp, {
+      args: ['--check-github-secrets'],
+      env: { PATH: `${fakeGhBin}:${process.env.PATH}` },
+    });
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('unable to list GitHub secret names with gh: gh auth failed'));
+  });
+});
+
+function writeAgonaraReleaseRepo(dir, {
+  dockerfile = validDockerfile(),
+  workflow = validReleaseWorkflow(),
+  ciWorkflow = validCiWorkflow(),
+  stagingCompose = validCompose({ staging: true }),
+  prodCompose = validCompose({ staging: false }),
+  deployStaging = validDeployScript('compose.staging.yml'),
+  deployProd = validDeployScript('compose.prod.yml'),
+  rollbackProd = validRollbackScript(),
+  backupProd = validBackupScript(),
+  restoreProd = validRestoreScript(),
+  backupStaging = validBackupScript({ staging: true }),
+  restoreStaging = validRestoreScript({ staging: true }),
+} = {}) {
+  git(dir, 'init -b trunk');
+  git(dir, 'config commit.gpgSign false');
+  git(dir, 'commit --allow-empty -m "initial"');
+  mkdirSync(join(dir, 'agonara'), { recursive: true });
+  writeFileSync(join(dir, 'agonara/package.json'), JSON.stringify({ name: 'agonara', version: '0.1.0' }));
+  writeFileSync(join(dir, 'agonara/package-lock.json'), JSON.stringify({
+    name: 'agonara',
+    version: '0.1.0',
+    lockfileVersion: 3,
+    packages: { '': { name: 'agonara', version: '0.1.0' } },
+  }));
+  writeFileSync(join(dir, 'agonara/Dockerfile'), dockerfile);
+  writeFileSync(join(dir, 'agonara/compose.staging.yml'), stagingCompose);
+  writeFileSync(join(dir, 'agonara/compose.prod.yml'), prodCompose);
+  mkdirSync(join(dir, 'agonara/scripts'), { recursive: true });
+  writeFileSync(join(dir, 'agonara/scripts/deploy-staging.sh'), deployStaging);
+  writeFileSync(join(dir, 'agonara/scripts/deploy-prod.sh'), deployProd);
+  writeFileSync(join(dir, 'agonara/scripts/rollback-prod.sh'), rollbackProd);
+  writeFileSync(join(dir, 'agonara/scripts/backup-prod.sh'), backupProd);
+  writeFileSync(join(dir, 'agonara/scripts/restore-prod.sh'), restoreProd);
+  writeFileSync(join(dir, 'agonara/scripts/backup-staging.sh'), backupStaging);
+  writeFileSync(join(dir, 'agonara/scripts/restore-staging.sh'), restoreStaging);
+  writeFileSync(join(dir, 'release-units.config.toml'), 'paths = ["agonara"]\n');
+  writeFileSync(
+    join(dir, 'release-units.toml'),
+    stringify({
+      units: [{ basename: 'agonara', path: 'agonara', metadata: 'package.json', version: '0.1.0', docker: true }],
+    }),
+  );
+  mkdirSync(join(dir, '.github/workflows'), { recursive: true });
+  writeFileSync(join(dir, '.github/workflows/release-unit.yml'), workflow);
+  writeFileSync(join(dir, '.github/workflows/ci.yml'), ciWorkflow);
+  git(dir, 'add -A');
+  git(dir, 'commit -m "add agonara release wiring"');
+}
+
+function validDockerfile() {
+  return [
+    'FROM node:22-bookworm-slim',
+    'RUN groupadd --system agonara && useradd --system --gid agonara --home-dir /app agonara',
+    'WORKDIR /app',
+    'COPY --chown=agonara:agonara package.json package-lock.json ./',
+    'RUN npm ci --omit=dev',
+    'COPY --chown=agonara:agonara src/ src/',
+    'COPY --chown=agonara:agonara scripts/ scripts/',
+    'RUN chown -R agonara:agonara /app && mkdir -p /data && chown agonara:agonara /data',
+    'USER agonara',
+    'ENV AGONARA_DB_PATH=/data/agonara.sqlite',
+    'ENV HOST=0.0.0.0',
+    'ENV PORT=8080',
+    'EXPOSE 8080',
+    'HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \\',
+    'CMD node -e \'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))\'',
+    'CMD ["node", "src/server.js"]',
+  ].join('\n');
+}
+
+function validCompose({ staging }) {
+  const tier = staging ? 'staging' : 'prod';
+  const containerName = staging ? 'agonara-staging' : 'agonara';
+  const image = staging ? 'agonara:staging' : 'agonara:latest';
+  const hostPort = staging ? '18081' : '18080';
+  const volume = staging ? 'agonara-staging-data' : 'agonara-data';
+  return [
+    `name: agonara-${tier}`,
+    'services:',
+    '  agonara:',
+    `    image: ${image}`,
+    `    container_name: ${containerName}`,
+    `    env_file: .env.${tier}`,
+    '    environment:',
+    '      AGONARA_DB_PATH: /data/agonara.sqlite',
+    '      AGONARA_BOOTSTRAP_SECRET: ${AGONARA_BOOTSTRAP_SECRET:?Set AGONARA_BOOTSTRAP_SECRET}',
+    '      AGONARA_NOMOS_API_KEY: ${AGONARA_NOMOS_API_KEY:-}',
+    '      AGONARA_NOMOS_BASE_URL: ${AGONARA_NOMOS_BASE_URL:-}',
+    '      AGONARA_NOMOS_MODEL: ${AGONARA_NOMOS_MODEL:-}',
+    '      AGONARA_OPEN_ANSWER_EVALUATOR_TRIGGER_TOKEN: ${AGONARA_OPEN_ANSWER_EVALUATOR_TRIGGER_TOKEN:-}',
+    '    ports:',
+    `      - "127.0.0.1:${hostPort}:8080"`,
+    '    volumes:',
+    `      - ${volume}:/data`,
+    'volumes:',
+    `  ${volume}:`,
+  ].join('\n');
+}
+
+function validDeployScript(composeFile) {
+  const staging = composeFile === 'compose.staging.yml';
+  const imageTag = staging ? 'agonara:staging' : 'agonara:latest';
+  return [
+    '#!/usr/bin/env bash',
+    'set -euo pipefail',
+    'require_upload_file "${UPLOAD_ROOT}/Dockerfile"',
+    'require_upload_file "${UPLOAD_ROOT}/package.json"',
+    'require_upload_file "${UPLOAD_ROOT}/package-lock.json"',
+    `require_upload_file "\${UPLOAD_ROOT}/${composeFile}"`,
+    'require_upload_directory "${UPLOAD_ROOT}/src"',
+    'require_upload_directory "${UPLOAD_ROOT}/scripts"',
+    '',
+    'require_upload_payload',
+    'cd "${DEPLOY_ROOT}"',
+    'DEPLOY_VERSION="$(read_package_version package.json)"',
+    'if [[ -z "${DEPLOY_VERSION}" ]]; then',
+    '  exit 1',
+    'fi',
+    ...(staging ? [] : ['docker tag agonara:latest agonara:rollback || true']),
+    '"${COMPOSE[@]}" build',
+    `docker tag ${imageTag} "agonara:\${DEPLOY_VERSION}"`,
+    `docker tag ${imageTag} "agonara:\${DEPLOY_GIT_SHA}"`,
+    '"${COMPOSE[@]}" down',
+    '"${COMPOSE[@]}" up -d --no-build --wait',
+    deployScriptHealthGate(staging),
+    `echo "${staging ? 'Staging' : 'Production'} deploy successful"`,
+  ].join('\n');
+}
+
+function deployScriptHealthGate(staging) {
+  const containerName = staging ? 'agonara-staging' : 'agonara';
+  return `docker exec -e EXPECTED_VERSION="\${DEPLOY_VERSION}" ${containerName} node -e '${deployHealthGate()}.catch(() => process.exit(1))'`;
+}
+
+function deployHealthGate() {
+  return 'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); return response.json(); }).then(health => { if (health.status !== "ok" || health.version !== process.env.EXPECTED_VERSION) process.exit(1); })';
+}
+
+function validRollbackScript() {
+  return [
+    '#!/usr/bin/env bash',
+    'set -euo pipefail',
+    'if docker image inspect agonara:rollback >/dev/null 2>&1; then',
+    '  docker tag agonara:rollback agonara:latest',
+    '  "${COMPOSE[@]}" down',
+    '  "${COMPOSE[@]}" up -d --no-build --wait',
+    `  ${rollbackHealthGate()}`,
+    'fi',
+  ].join('\n');
+}
+
+function rollbackHealthGate() {
+  return 'docker exec agonara node -e \'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))\'';
+}
+
+function validBackupScript({ staging = false } = {}) {
+  const backupDir = staging ? '${DEPLOY_ROOT}/backups/staging' : '${DEPLOY_ROOT}/backups';
+  const dataVolume = staging ? 'agonara-staging_agonara-staging-data' : 'agonara-prod_agonara-data';
+  const backupFile = staging ? 'agonara-staging-data-${TIMESTAMP}.tar.gz' : 'agonara-data-${TIMESTAMP}.tar.gz';
+  const envFile = staging ? '.env.staging' : '.env.prod';
+  const retentionPattern = staging ? 'agonara-staging-data-*.tar.gz' : 'agonara-data-*.tar.gz';
+  const successLabel = staging ? 'Staging' : 'Production';
+  const restartFunction = staging ? 'restart_staging' : 'restart_prod';
+  return [
+    '#!/usr/bin/env bash',
+    'set -euo pipefail',
+    'DEPLOY_ROOT="${AGONARA_DEPLOY_ROOT:-/opt/agonara}"',
+    `BACKUP_DIR="\${AGONARA_BACKUP_DIR:-${backupDir}}"`,
+    'BACKUP_REMOTE="${AGONARA_BACKUP_REMOTE:-}"',
+    'BACKUP_SSH_KEY="${AGONARA_BACKUP_SSH_KEY:-}"',
+    'BACKUP_RETENTION_DAYS="${AGONARA_BACKUP_RETENTION_DAYS:-14}"',
+    `DATA_VOLUME="\${AGONARA_DATA_VOLUME:-${dataVolume}}"`,
+    'TIMESTAMP="${AGONARA_BACKUP_TIMESTAMP:-$(date -u +%Y%m%dT%H%M%SZ)}"',
+    `BACKUP_FILE="${backupFile}"`,
+    `COMPOSE=(docker compose --env-file ${envFile} -f compose.${staging ? 'staging' : 'prod'}.yml)`,
+    'if [[ -z "${BACKUP_REMOTE}" ]]; then',
+    '  echo "AGONARA_BACKUP_REMOTE is required for off-host backup storage" >&2',
+    '  exit 1',
+    'fi',
+    'cd "${DEPLOY_ROOT}"',
+    'mkdir -p "${BACKUP_DIR}"',
+    'RSYNC=(rsync -a)',
+    'if [[ -n "${BACKUP_SSH_KEY}" ]]; then',
+    '  RSYNC+=( -e "ssh -i ${BACKUP_SSH_KEY} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" )',
+    'fi',
+    `${restartFunction}() {`,
+    '  "${COMPOSE[@]}" start agonara >/dev/null 2>&1 || true',
+    '}',
+    `trap ${restartFunction} EXIT`,
+    '"${COMPOSE[@]}" stop agonara',
+    'docker run --rm -v "${DATA_VOLUME}:/data:ro" -v "${BACKUP_DIR}:/backup" alpine:3.20 tar -czf "/backup/${BACKUP_FILE}" -C /data .',
+    'test -s "${BACKUP_DIR}/${BACKUP_FILE}"',
+    backupArchiveValidation(),
+    '"${COMPOSE[@]}" start agonara',
+    'trap - EXIT',
+    '"${RSYNC[@]}" "${BACKUP_DIR}/${BACKUP_FILE}" "${BACKUP_REMOTE}/"',
+    `find "\${BACKUP_DIR}" -type f -name "${retentionPattern}" -mtime "+\${BACKUP_RETENTION_DAYS}" -delete`,
+    `echo "${successLabel} backup successful: \${BACKUP_FILE}"`,
+  ].join('\n');
+}
+
+function backupArchiveValidation() {
+  return 'docker run --rm -v "${BACKUP_DIR}:/backup:ro" alpine:3.20 sh -c \'tar -tzf "/backup/$1" | grep -Fx "./agonara.sqlite"\' sh "${BACKUP_FILE}" >/dev/null';
+}
+
+function validRestoreScript({ staging = false } = {}) {
+  const dataVolume = staging ? 'agonara-staging_agonara-staging-data' : 'agonara-prod_agonara-data';
+  const envFile = staging ? '.env.staging' : '.env.prod';
+  const containerName = staging ? 'agonara-staging' : 'agonara';
+  const successLabel = staging ? 'Staging' : 'Production';
+  return [
+    '#!/usr/bin/env bash',
+    'set -euo pipefail',
+    'DEPLOY_ROOT="${AGONARA_DEPLOY_ROOT:-/opt/agonara}"',
+    `DATA_VOLUME="\${AGONARA_DATA_VOLUME:-${dataVolume}}"`,
+    'BACKUP_FILE="${1:-}"',
+    `COMPOSE=(docker compose --env-file ${envFile} -f compose.${staging ? 'staging' : 'prod'}.yml)`,
+    'if [[ -z "${BACKUP_FILE}" ]]; then',
+    '  echo "backup file path is required" >&2',
+    '  exit 1',
+    'fi',
+    'if [[ ! -f "${BACKUP_FILE}" ]]; then',
+    '  echo "backup file not found: ${BACKUP_FILE}" >&2',
+    '  exit 1',
+    'fi',
+    'test -s "${BACKUP_FILE}"',
+    'BACKUP_BASENAME="$(basename "${BACKUP_FILE}")"',
+    restoreArchiveValidation(),
+    'cd "${DEPLOY_ROOT}"',
+    '"${COMPOSE[@]}" down',
+    'docker run --rm -v "${DATA_VOLUME}:/data" -v "$(dirname "${BACKUP_FILE}"):/restore:ro" alpine:3.20 sh -c \'find /data -mindepth 1 -exec rm -rf {} + && tar -xzf "/restore/$1" -C /data\' sh "${BACKUP_BASENAME}"',
+    '"${COMPOSE[@]}" up -d --no-build --wait',
+    `docker exec ${containerName} node -e 'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))'`,
+    `echo "${successLabel} restore successful"`,
+  ].join('\n');
+}
+
+function restoreArchiveValidation() {
+  return 'docker run --rm -v "$(dirname "${BACKUP_FILE}"):/restore:ro" alpine:3.20 sh -c \'tar -tzf "/restore/$1" | grep -Fx "./agonara.sqlite"\' sh "${BACKUP_BASENAME}" >/dev/null';
+}
+
+function validReleaseWorkflow() {
+  return [
+    'jobs:',
+    '  deploy-agonara-staging:',
+    "    if: ${{ needs.verify.outputs.basename == 'agonara' }}",
+    '    needs: [core, verify]',
+    '      - name: Verify Agonara deploy secrets',
+    '        run: true',
+    '      - name: Prepare clean Agonara deploy upload',
+    '        script: rm -rf /tmp/agonara-deploy',
+    '      - name: Copy source files to VPS',
+    '        source: "agonara/package-lock.json"',
+    workflowHealthGate('agonara-staging'),
+    workflowSmokeGate('agonara-staging'),
+    workflowStagingCleanup(),
+    '  deploy-agonara-prod:',
+    "    if: ${{ needs.verify.outputs.basename == 'agonara' }}",
+    '    needs: [deploy-agonara-staging, verify]',
+    "      && needs.deploy-agonara-staging.result == 'success'",
+    "      && needs.deploy-agonara-prod.result == 'success'",
+    '        deploy-agonara-staging=${{ needs.deploy-agonara-staging.result }}',
+    '        deploy-agonara-prod=${{ needs.deploy-agonara-prod.result }}',
+    workflowHealthGate('agonara'),
+    workflowSmokeGate('agonara'),
+    workflowProdCleanupLifecycle(),
+    workflowGithubReleaseFanIn(),
+    workflowNotifyFanIn(),
+  ].join('\n');
+}
+
+function workflowGithubReleaseFanIn() {
+  return [
+    '  github-release:',
+    '    needs: [deploy-agonara-staging, deploy-agonara-prod]',
+    "      && (needs.verify.outputs.basename != 'agonara' || needs.deploy-agonara-staging.result == 'success')",
+    "      && (needs.verify.outputs.basename != 'agonara' || needs.deploy-agonara-prod.result == 'success')",
+  ].join('\n');
+}
+
+function workflowNotifyFanIn() {
+  return [
+    '  notify:',
+    '    needs: [deploy-agonara-staging, deploy-agonara-prod]',
+    "      || needs.deploy-agonara-staging.result == 'failure'",
+    "      || needs.deploy-agonara-prod.result == 'failure'",
+    '        deploy-agonara-staging=${{ needs.deploy-agonara-staging.result }}',
+    '        deploy-agonara-prod=${{ needs.deploy-agonara-prod.result }}',
+  ].join('\n');
+}
+
+function workflowHealthGate(containerName) {
+  return `docker exec -e EXPECTED_VERSION="\${EXPECTED_VERSION}" ${containerName} node -e 'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); return response.json(); }).then(health => { if (health.status !== "ok" || health.version !== process.env.EXPECTED_VERSION) process.exit(1); }).catch(() => process.exit(1))'`;
+}
+
+function workflowSmokeGate(containerName) {
+  return `docker exec -e AGONARA_SMOKE_BASE_URL=http://127.0.0.1:8080 -e EXPECTED_VERSION="\${EXPECTED_VERSION}" ${containerName} sh -lc "trap 'rm -f /tmp/agonara-smoke.json' EXIT; node scripts/smoke-open-answer-evaluator.mjs > /tmp/agonara-smoke.json && node -e 'const fs = require(\\"node:fs\\"); const result = JSON.parse(fs.readFileSync(\\"/tmp/agonara-smoke.json\\", \\"utf8\\")); if (!result.evaluationId || result.healthVersion !== process.env.EXPECTED_VERSION) process.exit(1);'"`;
+}
+
+function workflowStagingCleanup() {
+  return [
+    '      - name: Clean deploy upload after staging failure',
+    '        if: failure()',
+    '        script: rm -rf /tmp/agonara-deploy || true',
+  ].join('\n');
+}
+
+function workflowProdCleanupLifecycle() {
+  return [
+    '      - name: Rollback production on failure',
+    '        if: failure()',
+    '        script: bash /opt/agonara/scripts/rollback-prod.sh',
+    '      - name: Clean deploy upload',
+    '        if: always()',
+    '        script: rm -rf /tmp/agonara-deploy || true',
+  ].join('\n');
+}
+
+function validCiWorkflow() {
+  return [
+    'filters:',
+    '  agonara:',
+    '    - "agonara/package-lock.json"',
+    '  agonara-ci:',
+    '    - ".github/workflows/agonara-core.yml"',
+  ].join('\n');
+}
+
+function runReadiness(dir, {
+  args = [],
+  env = {},
+} = {}) {
+  const script = join(import.meta.dirname, '..', 'check-agonara-release-readiness.js');
+  try {
+    const stdout = execFileSync(process.execPath, [script, '--root', dir, ...args], {
+      cwd: dir,
+      encoding: 'utf8',
+      env: { ...process.env, ...GIT_ENV, ...env },
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    return { exitCode: 0, stdout, stderr: '' };
+  } catch (error) {
+    return {
+      exitCode: error.status ?? 1,
+      stdout: error.stdout || '',
+      stderr: error.stderr || '',
+    };
+  }
+}
+
+function writeFakeGhSecretList(secretNames) {
+  const fakeGhBin = mkdtempSync(join(tmpdir(), 'agonara-gh-bin-'));
+  scratchDirs.push(fakeGhBin);
+  const payload = JSON.stringify(secretNames.map($0 => ({ name: $0 })));
+  writeFileSync(join(fakeGhBin, 'gh'), [
+    '#!/bin/sh',
+    `printf '%s\\n' '${payload}'`,
+  ].join('\n'));
+  chmodSync(join(fakeGhBin, 'gh'), 0o755);
+  return fakeGhBin;
+}
+
+function writeFakeGhError() {
+  const fakeGhBin = mkdtempSync(join(tmpdir(), 'agonara-gh-bin-'));
+  scratchDirs.push(fakeGhBin);
+  writeFileSync(join(fakeGhBin, 'gh'), [
+    '#!/bin/sh',
+    "printf '%s\\n' 'gh auth failed' >&2",
+    'exit 7',
+  ].join('\n'));
+  chmodSync(join(fakeGhBin, 'gh'), 0o755);
+  return fakeGhBin;
+}
+
+function git(dir, cmd) {
+  return execSync(`git ${cmd}`, {
+    cwd: dir,
+    encoding: 'utf8',
+    env: { ...process.env, ...GIT_ENV },
+    stdio: ['pipe', 'pipe', 'pipe'],
+  }).trim();
+}

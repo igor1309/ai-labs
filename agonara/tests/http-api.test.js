@@ -9595,6 +9595,100 @@ test("identityAdminEndpoints_shouldCreateIdentityAndListAudit_onAdminSession", a
   }
 });
 
+test("identityAuditEvents_shouldPaginate_onValidLimitAndCursor", async () => {
+  const { baseUrl, close } = await listenWithIdentity({
+    ids: ["identity-1", "credential-1", "session-1", "audit-1", "identity-2", "audit-2"],
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    await fetch(`${baseUrl}/identity/identities`, {
+      body: JSON.stringify({ displayName: "Second Identity" }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+        "x-agonara-csrf": bootstrap.csrfToken,
+      },
+      method: "POST",
+    });
+    const firstPage = await fetch(`${baseUrl}/identity/audit-events?limit=1`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+    const firstPageBody = await firstPage.json();
+    const secondPage = await fetch(
+      `${baseUrl}/identity/audit-events?limit=1&cursor=${firstPageBody.value.nextCursor}`,
+      { headers: { cookie: bootstrap.cookie } },
+    );
+
+    assert.deepEqual(
+      {
+        firstPage: {
+          eventIds: firstPageBody.value.auditEvents.map($0 => $0.id),
+          hasNextCursor: typeof firstPageBody.value.nextCursor === "string",
+          statusCode: firstPage.status,
+        },
+        secondPage: {
+          body: await secondPage.json(),
+          statusCode: secondPage.status,
+        },
+      },
+      {
+        firstPage: {
+          eventIds: ["audit-1"],
+          hasNextCursor: true,
+          statusCode: 200,
+        },
+        secondPage: {
+          body: {
+            status: "accepted",
+            value: {
+              auditEvents: [
+                {
+                  id: "audit-2",
+                  eventType: "identity_created",
+                  actorIdentityId: "identity-1",
+                  targetIdentityId: "identity-2",
+                  targetCredentialId: null,
+                  occurredAt: "2026-05-27T10:00:00.000Z",
+                  outcome: "accepted",
+                  reason: null,
+                },
+              ],
+            },
+          },
+          statusCode: 200,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("identityAuditEvents_shouldRejectInvalidPaginationInputs", async () => {
+  const { baseUrl, close } = await listenWithIdentity();
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const invalidRequests = [];
+    for (const query of ["limit=0", "limit=101", "limit=two", "cursor=not-a-cursor"]) {
+      const response = await fetch(`${baseUrl}/identity/audit-events?${query}`, {
+        headers: { cookie: bootstrap.cookie },
+      });
+      invalidRequests.push({ body: await response.json(), statusCode: response.status });
+    }
+
+    assert.deepEqual(invalidRequests, [
+      { body: { status: "rejected", reason: "validation_failed" }, statusCode: 400 },
+      { body: { status: "rejected", reason: "validation_failed" }, statusCode: 400 },
+      { body: { status: "rejected", reason: "validation_failed" }, statusCode: 400 },
+      { body: { status: "rejected", reason: "validation_failed" }, statusCode: 400 },
+    ]);
+  } finally {
+    await close();
+  }
+});
+
 test("startServer_shouldExposeStudentWorkspaceOpenAnswerRoutes_onProductionComposition", async () => {
   const databaseDirectory = mkdtempSync(join(tmpdir(), "agonara-production-composition-"));
   const databasePath = join(databaseDirectory, "agonara.sqlite");
@@ -10642,6 +10736,63 @@ test("httpApiRoutes_shouldEmitCompletionLogs_onRejectedRequests", async () => {
         requestId: $0.requestId,
         severity: "warning",
       })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("identityMutationRoutes_shouldIncludeAuditEventId_inCompletionLogs", async () => {
+  const logEvents = [];
+  const { baseUrl, close } = await listenWithIdentity({
+    ids: ["identity-1", "credential-1", "session-1", "audit-1", "identity-2", "audit-2", "audit-3"],
+    log: $0 => logEvents.push($0),
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    await fetch(`${baseUrl}/identity/identities`, {
+      body: JSON.stringify({ displayName: "Second Identity" }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+        "x-agonara-csrf": bootstrap.csrfToken,
+        "x-request-id": "identity-audit-created-log",
+      },
+      method: "POST",
+    });
+    await fetch(`${baseUrl}/identity/identities/${bootstrap.body.value.identity.id}/admin`, {
+      headers: {
+        cookie: bootstrap.cookie,
+        "x-agonara-csrf": bootstrap.csrfToken,
+        "x-request-id": "identity-audit-rejected-log",
+      },
+      method: "DELETE",
+    });
+
+    assert.deepEqual(
+      logEvents
+        .filter($0 => $0.requestId?.startsWith("identity-audit-"))
+        .map($0 => ({
+          auditEventId: $0.auditEventId,
+          outcome: $0.outcome,
+          reason: $0.reason,
+          requestId: $0.requestId,
+        })),
+      [
+        {
+          auditEventId: "audit-2",
+          outcome: "accepted",
+          reason: undefined,
+          requestId: "identity-audit-created-log",
+        },
+        {
+          auditEventId: "audit-3",
+          outcome: "rejected",
+          reason: "last_admin_removal",
+          requestId: "identity-audit-rejected-log",
+        },
+      ],
     );
   } finally {
     await close();

@@ -17,22 +17,22 @@ differs. Decisions confirmed with the owner:
 
 - **Topology:** staging + prod, both tiers on agonara-vps.
 - **Image delivery:** build-on-VPS (the nomos pattern). Confirmed.
-- **HTTPS / domain:** in scope for v1 (not deferred).
+- **HTTPS / domain:** staging is live at
+  `https://staging.agonara.enoa.ai`; prod is deployed internally on loopback
+  and prod hostname/public TLS remain undecided.
 - **LLM provider:** wire a real provider for staging/prod by pointing Agonara's
   evaluator/curation provider adapter (ADR-015) at the repo's **Nomos** gateway,
   with Agonara's **own Nomos project + API key** (per the CLAUDE.md "Nomos API
-  Keys" rule), and a real-LLM deploy smoke following the nomos pattern. That
-  adapter does **not exist yet** and must be built — see
-  [§6b](#6b-real-llm-provider-for-the-evaluatorcuration-path-gated-by-g2).
+  Keys" rule), and a real-LLM deploy smoke following the nomos pattern. The
+  open-answer evaluator adapter exists and is deployed for both tiers; curator
+  suggestions remain out of scope.
 - **Note location:** here, under `agonara/docs/`.
 
-> **This handoff is not "ops only."** Most of the work is deployment wiring
-> (new config, scripts, CI jobs, VPS data + keys — [§7](#7-opsworkflow-checklist-deployment-wiring)),
-> but two threads require **net-new Agonara application code**
-> ([§6](#6-application-development-required-pre-deploy)), and one of those is
-> blocked on ADR/spec decisions that do not yet exist
-> ([§5](#5-blocking-prerequisites-adrspec-gates)). The first-release runbook
-> ([§9](#9-first-release-runbook)) is **not executable** until §5 and §6 close.
+> **This handoff is not "ops only."** The application code gates in
+> [§6](#6-application-development-required-pre-deploy) are closed, the VPS-side
+> staging/prod scaffolding is live, and the release-unit/CI deployment machinery
+> is wired. The first-release runbook ([§9](#9-first-release-runbook)) remains
+> gated on the GitHub deploy SSH secrets and an explicit `agonara_v0.1.0` tag.
 >
 > Open decisions are listed in [§10 Open questions](#10-open-questions).
 
@@ -45,33 +45,37 @@ The missing My Way artifacts this handoff implied have been produced on
   (also folds in **G3** backup/restore minimums). `deployment-target.md` now points to it.
 - **G2** closed by [ADR-018 — Open-Answer Evaluator Real-Provider Runtime](adr/adr-018-open-answer-evaluator-real-provider-runtime.md)
   (amends ADR-015), with the implementable contract in
-  [Open-Answer Evaluator Real-Provider Runtime](specs/open-answer-evaluator-real-provider-runtime.md) (spec, draft).
+  [Open-Answer Evaluator Real-Provider Runtime](specs/open-answer-evaluator-real-provider-runtime.md) (implemented).
 - **§6a** version surfacing is **implemented** (health now returns `version`,
   sourced from `package.json`; covered by tests and the container smoke) under
   [Operations Health Version](specs/operations-health-version.md).
-- **§6b / §7** sequenced by the [Agonara Deployment Wiring](plans/agonara-deployment-wiring.md)
+- **§6b** open-answer evaluator real-provider runtime is **implemented**:
+  Nomos adapter, LLM evaluator policy, async-compatible worker execution,
+  single-flight operational trigger, and env-only composition-root wiring.
+- **§7** deployment work remains sequenced by the [Agonara Deployment Wiring](plans/agonara-deployment-wiring.md)
   implementation plan (release-unit registration → VPS scaffolding → CI deploy jobs → gated real-LLM smoke).
 
-The remaining work is execution of that plan plus human-owned inputs (VPS host,
-secrets, DNS/TLS, dedicated Nomos project/key) and the still-open operational
-questions in [§10](#10-open-questions).
+The release-unit and CI deploy wiring now exists. The remaining work is the
+first explicit release tag plus human-owned public-prod inputs (prod hostname /
+TLS route and GitHub deploy secrets) and the still-open operational questions in
+[§10](#10-open-questions).
 
 ## 1. Current state
 
 | Aspect | Status |
 | --- | --- |
 | Code | `agonara/` Node workspace, `type: module`, `engines.node >= 22`, dep `better-sqlite3` |
-| Version | `agonara/package.json` → `0.0.0` (**not yet a real release version**) |
-| Release unit | **Not registered.** Absent from `release-units.config.toml` and `release-units.toml` |
+| Version | `agonara/package.json` → `0.1.0`; live staging/prod containers remain on `0.0.0` until the explicit first release tag deploys |
+| Release unit | Registered in `release-units.config.toml` / `release-units.toml` as Node metadata + Docker-producing unit |
 | CI (core) | `.github/workflows/agonara-core.yml` exists — tests + `docker build` + container smoke (`/operations/health`, bootstrap, admin UI) |
 | Container | `agonara/Dockerfile` (node:22-slim, non-root, `/data` sqlite volume, `HEALTHCHECK` on `/operations/health`, `EXPOSE 8080`) |
-| Compose | `agonara/compose.yaml` — single service, binds `127.0.0.1:18080:8080`, named volume `agonara-data`, requires `AGONARA_BOOTSTRAP_SECRET` |
-| Deploy job | **None.** No agonara branch in `release-unit.yml` |
-| Deploy scripts | **None.** No `agonara/scripts/` (cf. `nomos/scripts/deploy-staging.sh|deploy-prod.sh|rollback-prod.sh`) |
-| Staging/prod compose | **None.** Only the dev `compose.yaml` (cf. `nomos/docker-compose.staging.yml`) |
+| Compose | `agonara/compose.yaml` for local/dev plus `compose.staging.yml` / `compose.prod.yml` for VPS staging/prod; staging binds `127.0.0.1:18081:8080`, prod binds `127.0.0.1:18080:8080`, each with distinct named volumes and host-side env files |
+| Deploy job | `release-unit.yml` has `deploy-agonara-staging` and `deploy-agonara-prod`; `github-release` requires both to succeed for `agonara` tags, Agonara deploy secrets fail fast before source upload, and deploy failures fan into the shared Telegram failure workflow |
+| Deploy scripts | `agonara/scripts/deploy-staging.sh`, `deploy-prod.sh`, `rollback-prod.sh`, `backup-staging.sh`, `restore-staging.sh`, `backup-prod.sh`, `restore-prod.sh` exist and are wired for CI source upload |
+| Staging/prod compose | Present. Staging is live on `root@172.245.246.108`: `agonara-staging` healthy on loopback `127.0.0.1:18081`, health returns version `0.0.0`, Caddy serves `https://staging.agonara.enoa.ai/operations/health`, a real open-answer evaluator smoke passed through the operations trigger and dedicated Nomos staging project, and staging `/data` backup/restore has been rehearsed from off-host storage. Prod is deployed internally as `agonara`, loopback-bound on `127.0.0.1:18080`, with distinct prod env secrets, a dedicated Nomos prod project/key, real evaluator smoke, daily off-host backup cron, and a restore drill from the downloaded off-host artifact. No prod public hostname/TLS route yet |
 | Health/version | `/operations/health` returns `{status, version, checkedAt, requestId}` — version sourced from `package.json` (§6a, implemented) |
-| LLM evaluation (runtime) | **Stub-only / not wired.** No real provider adapter exists in `src/`; the server injects **no** `providerAdapters` into the evaluator (`src/server.js:2583`) and **runs no evaluator worker** (no route, no loop). The only composition-root adapter is `makeDefaultLlmSuggestionProviderAdapter()` — a hardcoded deterministic stub for the *curator-suggestion* path (`src/server.js:2636`). See [§6](#6-application-development-required-pre-deploy). |
-| VPS secrets | **None provisioned** (`AGONARA_VPS_HOST/USER/SSH_KEY`, `AGONARA_BOOTSTRAP_SECRET`, Nomos key, smoke token) |
+| LLM evaluation (runtime) | Open-answer evaluator real-provider runtime exists (§6b implemented). Staging has `AGONARA_NOMOS_BASE_URL=https://staging.nomos.enoa.ai`, model `openai/gpt-5-nano`, and a dedicated Nomos staging project/key. Prod has `AGONARA_NOMOS_BASE_URL=https://nomos.enoa.ai`, model `openai/gpt-5-nano`, and a dedicated Nomos prod project/key. The smoke script `scripts/smoke-open-answer-evaluator.mjs` schedules one exact evaluator job, triggers `/operations/open-answer-evaluator/tick`, and verifies the attempt detail contains an evaluation. Curator-suggestion real-provider migration remains out of scope. |
+| VPS secrets | Staging and prod bootstrap, operations trigger, Nomos base URL/model/key, smoke-admin credentials, and backup SSH keys are provisioned host-side with restrictive file modes; Agonara-specific GitHub deploy SSH secrets are not provisioned yet |
 
 ## 2. How the repo's tag-release approach works (recap)
 
@@ -100,11 +104,11 @@ Mandatory invariants live in the `release-process` skill and
 7. **Docker units** are expected to carry two image tags: `<version>` and
    `<git-sha>`.
 
-The deployment-wiring work in this handoff is steps 1–3 (register + version)
-plus adding the Agonara deploy job and its VPS-side scaffolding (the parts that
-don't exist) — see [§7](#7-opsworkflow-checklist-deployment-wiring). It also
-requires the application work in [§6](#6-application-development-required-pre-deploy),
-which the deploy verify/smoke steps depend on.
+The deployment-wiring work in this handoff was steps 1–3 (register + version)
+plus adding the Agonara deploy jobs and VPS-side scaffolding — see
+[§7](#7-opsworkflow-checklist-deployment-wiring). The first release still
+requires the human-owned GitHub deploy SSH secrets and an explicit
+`agonara_v0.1.0` tag.
 
 ## 3. Target topology — agonara-vps
 
@@ -208,34 +212,25 @@ config — it is feature work in `src/`, with tests, behind the §5 gates where 
 - [x] Extend `agonara-core.yml` smoke + unit tests to cover the version field.
 - **Size:** small, self-contained. **Not gated** by §5. **Implemented.**
 
-### 6b. Real LLM provider for the evaluator/curation path (G2 now closed — unblocked, not yet built)
+### 6b. Real LLM provider for the evaluator path (done)
 G2 is closed by [ADR-018](adr/adr-018-open-answer-evaluator-real-provider-runtime.md)
 and the [real-provider runtime spec](specs/open-answer-evaluator-real-provider-runtime.md),
-which now define the contract for the items below; the code is **not yet built**
-(Phase 4 of the [deployment-wiring plan](plans/agonara-deployment-wiring.md)).
-The handoff's "point the adapter at Nomos" is **not** mere configuration — the
-runtime evaluation path does not exist yet. Building it requires:
-- [ ] **A real provider adapter** (OpenAI-compatible HTTP client to the Nomos
-      gateway). None exists in `src/` today — there is no `fetch`/HTTP LLM call
-      anywhere in the backend. The adapter must honour ADR-015: side-effect
-      limited, no domain-state mutation, no credentials in records/logs/backups.
-- [ ] **An evaluator policy** referencing that adapter's `providerAdapterId`,
-      plus the **output validation** ADR-015 mandates for untrusted model output.
-- [ ] **Worker runtime wiring** — something in the deployed server must actually
-      run `runOpenAnswerEvaluatorWorkerOnce` (a background loop / scheduler /
-      internal route). Today the server injects no `providerAdapters`
-      (`src/server.js:2583`, defaults to `[]`) and never invokes the worker.
-      The runtime shape is the decision in **G2**.
-- [ ] **Composition-root wiring** to inject the adapter + Nomos base URL/model +
-      `AGONARA_NOMOS_API_KEY` from runtime env (mirroring how
-      `makeDefaultLlmSuggestionProviderAdapter()` is injected today, but reading
-      real config and never committing it).
+which define the contract now implemented in `src/open-answer-evaluator-runtime.js`,
+`src/student-workspace.js`, and `src/server.js`:
+- [x] **A real provider adapter** (OpenAI-compatible HTTP client to the Nomos
+      gateway) with injected `fetch` tests and credential-free returned values.
+- [x] **An evaluator policy** referencing that adapter's `providerAdapterId`,
+      plus output validation for untrusted model output.
+- [x] **Worker runtime wiring** — async-compatible `runOpenAnswerEvaluatorWorkerOnce`
+      execution and an authenticated, single-flight operational trigger.
+- [x] **Composition-root wiring** to inject the adapter + Nomos base URL/model +
+      `AGONARA_NOMOS_API_KEY` from runtime env only when all provider config is present.
 - [ ] (If the same real provider is also wanted for the **curator-suggestion**
       path, note that path is likewise stub-only today —
       `docs/specs/llm-assisted-curation-suggestions.md`: "uses deterministic
       provider fakes … before any real provider configuration exists.")
-- **Size:** substantial. **Gated by G2** (runtime topology, output schema,
-  artifact policy).
+- **Deployment note:** the deploy smoke can now drive the operational trigger once
+  a dedicated Nomos project/key/model and VPS secrets are provisioned.
 
 ## 7. Ops/workflow checklist (deployment wiring)
 
@@ -244,48 +239,53 @@ application code, modeled on nomos. Independent of §6 except where the deploy
 job invokes the §6 features (version verify, real-LLM smoke).
 
 ### 7a. Register Agonara as a release unit
-- [ ] Add `"agonara"` to `paths` in `release-units.config.toml`.
-- [ ] Regenerate `release-units.toml` (`node scripts/release/generate-manifest.js`)
+- [x] Add `"agonara"` to `paths` in `release-units.config.toml`.
+- [x] Regenerate `release-units.toml` (`node scripts/release/generate-manifest.js`)
       — expect a new `agonara` entry with `docker = true`.
-- [ ] Set an initial real version in `agonara/package.json` (e.g. `0.1.0`;
+- [x] Set an initial real version in `agonara/package.json` (e.g. `0.1.0`;
       `0.0.0` is a placeholder). Keep `private: true` — fine, nomos is `private`
       too; release uses tags, not `npm publish`.
 
 ### 7b. VPS-side scaffolding (model on nomos)
-- [ ] `agonara/compose.staging.yml` and `agonara/compose.prod.yml` (or one
+- [x] `agonara/compose.staging.yml` and `agonara/compose.prod.yml` (or one
       parameterized compose) — distinct container names + ports, named volumes
       `agonara-staging-data` / `agonara-data`, `AGONARA_BOOTSTRAP_SECRET` and the
       Nomos adapter env from env, healthcheck retained.
-- [ ] `agonara/scripts/deploy-staging.sh`, `deploy-prod.sh`, `rollback-prod.sh`
+- [x] `agonara/scripts/deploy-staging.sh`, `deploy-prod.sh`, `rollback-prod.sh`
       mirroring `nomos/scripts/*` (build, up, snapshot prior image as
       `…:rollback`, health-gate). Apply the `<version>`+`<git-sha>` local tags here.
-- [ ] One-time agonara-vps prep: install Docker + compose, create `/opt/agonara`,
-      provision the reverse proxy + TLS + domain, and store
+- [x] One-time staging agonara-vps prep: install Docker + compose, create
+      `/opt/agonara`, provision Caddy + TLS for
+      `https://staging.agonara.enoa.ai`, and store
       `AGONARA_BOOTSTRAP_SECRET` securely on the host (never in the repo).
+      Prod hostname/TLS remains a prod closeout item.
+- [x] `agonara/scripts/backup-prod.sh` and `restore-prod.sh` scaffold the
+      off-host production `/data` backup and restore-drill mechanics; the prod
+      backup remote, daily cron, and restore drill are provisioned and verified.
 
 ### 7c. CI deploy job in `release-unit.yml`
-- [ ] Add `deploy-agonara-staging` (needs `[core, verify]`,
+- [x] Add `deploy-agonara-staging` (needs `[core, verify]`,
       `if: basename == 'agonara'`): `scp` source to agonara-vps, run
       `deploy-staging.sh`, verify version via health (**needs §6a**), run staging
-      smoke (incl. the real-LLM evaluation smoke once **§6b** lands).
-- [ ] Add `deploy-agonara-prod` (needs `[deploy-agonara-staging, verify]`):
-      run `deploy-prod.sh`, verify version, prod smoke, Telegram notify on
-      success, rollback on `failure()`.
-- [ ] Wire both jobs into the `github-release` `needs`/`if` guards and the
+      smoke including the real-LLM evaluation smoke.
+- [x] Add `deploy-agonara-prod` (needs `[deploy-agonara-staging, verify]`):
+      run `deploy-prod.sh`, verify version, prod smoke, and rollback on
+      `failure()`.
+- [x] Wire both jobs into the `github-release` `needs`/`if` guards and the
       `notify` job's `needs` + `job_results` (so a deploy failure both blocks the
       GitHub release and pages Telegram).
-- [ ] **Nomos provider runtime config (data + key, not code).** The §6b adapter
+- [x] **Nomos provider runtime config (data + key, not code).** The §6b adapter
       reads its config from runtime env: Nomos base URL, model, and
       `AGONARA_NOMOS_API_KEY`. Per the CLAUDE.md "Nomos API Keys" rule, provision
       Agonara's **own Nomos project + API key** — do not reuse another project's
       key. Deliver this to agonara-vps as runtime env, never committed. The
       staging/prod smoke should exercise a real evaluation path that routes
       through Nomos (mirroring the nomos real-LLM smoke), in addition to
-      health + version — **once §6b exists and G2 is settled**.
-- [ ] Add repo secrets: `AGONARA_VPS_HOST`, `AGONARA_VPS_USER`,
-      `AGONARA_VPS_SSH_KEY`, `AGONARA_NOMOS_API_KEY` (Agonara's dedicated Nomos
-      key), and an evaluation smoke token for the authed route. (`CI_BOT_TOKEN` /
-      `CI_CHAT_ID` already exist.)
+      health + version.
+- [ ] Add repo secrets: `AGONARA_VPS_HOST`, `AGONARA_VPS_USER`, and
+      `AGONARA_VPS_SSH_KEY`. Provider/smoke secrets stay host-side in the tier
+      env files. The staging deploy job validates these secret names before
+      uploading source. (`CI_BOT_TOKEN` / `CI_CHAT_ID` already exist.)
 
 ### 7d. Docs / governance
 - [ ] Promote `agonara/docs/deployment-target.md` into the **ADR** described in
@@ -313,20 +313,24 @@ Per `.agents/process-gates.md` and the release skill, from trunk:
   first release includes the real-LLM path; G3 backup/restore before prod).
 - §6 application code merged on trunk (6a version surfacing always; 6b real
   provider **if** the first release includes the real-LLM path).
-- §7 wiring (release unit, scaffolding, CI deploy job, secrets) in place.
+- §7 wiring (release unit, scaffolding, CI deploy job) and GitHub deploy SSH
+  secrets in place.
 
 Then, from **trunk**:
 
-1. Bump `agonara/package.json` → `0.1.0`, add one `agonara/docs/log.md` release
-   entry, regenerate manifest.
-2. Run the §8 gates.
-3. Push trunk, then push the tag `agonara_v0.1.0` (only that tag — no `--tags`).
-4. `release-unit.yml`: `verify` → `core` → `deploy-agonara-staging` →
+1. Confirm `agonara/package.json` is `0.1.0`, the release-scope log entry exists,
+   and `release-units.toml` is in sync.
+2. Run `node scripts/release/check-agonara-release-readiness.js --check-github-secrets`
+   from trunk. This verifies the local release wiring and the required GitHub
+   deploy secret names without reading secret values.
+3. Run the §8 gates.
+4. Push trunk, then push the tag `agonara_v0.1.0` (only that tag — no `--tags`).
+5. `release-unit.yml`: `verify` → `core` → `deploy-agonara-staging` →
    `deploy-agonara-prod` → `github-release`.
-5. Post-push: confirm all jobs green and the GitHub release `agonara v0.1.0` exists.
+6. Post-push: confirm all jobs green and the GitHub release `agonara v0.1.0` exists.
 
-> If G2/6b are deferred, a **staging-only** v0.1.0 without the real-LLM smoke
-> is the reduced-scope path; prod and the Nomos smoke follow once those close.
+The first release includes staging and internal-prod deploys with the real
+open-answer evaluator smoke. Public prod routing remains separate.
 
 ## 10. Open questions
 
@@ -335,25 +339,14 @@ agonara-vps), image delivery (build-on-VPS), HTTPS + domain in scope for v1, and
 a real LLM provider via the Nomos gateway (Agonara's own Nomos project + key).
 Still open:
 
-1. **Version surfacing** — confirm health is the right place to expose version
-   (vs a dedicated `/version`), matching the deploy verify step (§6a).
-2. **Domain / DNS / TLS ownership** — HTTPS is in scope; which exact hostnames
-   for staging vs prod, who owns the DNS zone, and Caddy auto-TLS vs managed cert?
-3. **Bootstrap secret lifecycle** — how is `AGONARA_BOOTSTRAP_SECRET` generated,
+1. **Prod domain / DNS / TLS ownership** — staging is
+   `https://staging.agonara.enoa.ai` through Caddy auto-TLS on the Agonara VPS;
+   the prod hostname, DNS ownership path, and cert approach remain open.
+2. **Bootstrap secret lifecycle** — how is `AGONARA_BOOTSTRAP_SECRET` generated,
    stored, and rotated on agonara-vps? Same secret per tier or distinct?
-4. **Backup / restore** — minimum viable backup of the `/data` sqlite volume
-   (and restore drill) before prod is declared real (deployment-target open
-   question; gate G3). Cadence + storage location?
-5. **Evaluator runtime topology (G2)** — does the first real-LLM release run
-   the worker in-process, as a separate process, on a schedule, or via a queue?
-   This is an undecided ADR-015 non-goal, not a config knob.
-6. **Nomos project + model specifics** — which Nomos project/base URL backs
-   Agonara's evaluator, and which model? The dedicated-key requirement is settled
-   by the CLAUDE.md "Nomos API Keys" rule; the project/model choice is not.
-7. **Smoke scope** — beyond health + version + a real evaluation call, anything
-   else the staging/prod smoke must assert (bootstrap status, admin UI)?
-8. **Container registry image-tag invariant** — under build-on-VPS, confirm the
-   `<version>`/`<git-sha>` tags are applied locally by the deploy script (vs the
-   skill's registry-oriented wording).
-</content>
-</invoke>
+3. **Production public exposure** — prod is deployed internally on loopback and
+   has a passed backup/restore drill, but no public hostname/TLS route yet.
+   Decide the prod hostname, Caddy route, and whether prod exposure waits for CI
+   release jobs or can be manually promoted.
+4. **Smoke scope extension** — beyond health + version + a real evaluation call,
+   should release smoke also assert bootstrap status or the private Admin UI?

@@ -26,12 +26,12 @@ Do not use framework roles as the source of Agonara ownership.
 
 ## Boundary Sketch
 
-Auth Provider / Framework:
+### Auth Provider / Framework
 
 - verifies the first local password credential;
 - returns an authenticated credential result.
 
-Identity & Role Management:
+### Identity & Role Management
 
 - maps credential/principal to internal Identity;
 - manages the first local password credential binding;
@@ -40,25 +40,25 @@ Identity & Role Management:
 - manages Admin authority and operational access primitives;
 - manages admin operations.
 
-Program Membership:
+### Program Membership
 
 - manages Student and Program Curator participation grants;
 - answers effective participation decisions for an internal Identity, Program, and participation kind;
 - hides membership policy details.
 
-Identity & Roles:
+### Identity & Roles
 
 - defines Identity;
 - defines Student / Program Curator / Admin;
 - defines ownership rules.
 
-Application modules:
+### Application Modules
 
 - ask Program Membership for the effective participation decision before participation-sensitive Student or Program Curator behavior.
 
 ## Step 1 Substrate Verification
 
-The first implementation slice uses the repo-standard Node workspace model:
+The first implementation slice uses the repo-standard Node workspace model.
 
 - runtime: Node `v22.21.1`, matching `.node-version`;
 - package manager: npm `10.9.4` under Node 22;
@@ -72,7 +72,7 @@ Step 1 adds no third-party runtime dependencies. Storage, migration, password ha
 
 ## Step 3 Storage Verification
 
-The Identity persistence slice uses the repo-existing SQLite binding:
+The Identity persistence slice uses the repo-existing SQLite binding.
 
 - runtime: Node `v22.21.1`;
 - dependency: `better-sqlite3` `11.10.0`, resolved from the root lockfile;
@@ -84,7 +84,7 @@ The first storage boundary creates tables for Identity, local password credentia
 
 ## Step 4 Identity Core Verification
 
-The Identity command slice uses Node's built-in crypto APIs for local-password handling:
+The Identity command slice uses Node's built-in crypto APIs for local-password handling.
 
 - runtime: Node `v22.21.1`;
 - APIs verified before implementation use: `node:crypto` `scrypt`, `randomBytes`, `timingSafeEqual`, `createHash`, and `randomUUID`;
@@ -95,7 +95,7 @@ The command boundary implements first-Admin bootstrap, login, session resolution
 
 ## Step 5 Admin Command Verification
 
-The Admin command slice adds protected Identity and Admin authority operations on top of session resolution:
+The Admin command slice adds protected Identity and Admin authority operations on top of session resolution.
 
 - protected commands first resolve the acting session and then require effective Admin authority from server-side storage;
 - Identity creation, credential binding, Identity disablement, Admin grant, and Admin revoke append accepted or rejected audit events;
@@ -103,11 +103,11 @@ The Admin command slice adds protected Identity and Admin authority operations o
 - disabling an Identity revokes its active sessions;
 - last-effective-Admin removal remains guarded at the storage boundary and is audited when rejected.
 
-Admin inspection queries expose Identity summaries, effective Admin state, and audit events for the first internal command layer. HTTP-specific response redaction and pagination are deferred to the HTTP API step.
+Admin inspection queries expose Identity summaries, effective Admin state, and audit events for the first internal command layer. The HTTP API now redacts `targetSessionId` from audit-event responses and supports bounded audit-event pagination with opaque cursors.
 
 ## Step 6 HTTP API Verification
 
-The HTTP boundary adds the first Identity API routes on top of the command layer:
+The HTTP boundary adds the first Identity API routes on top of the command layer.
 
 - accepted bootstrap and login set `agonara_session` with `HttpOnly`, `SameSite=Lax`, `Path=/`, and `Secure` when the request is HTTPS or forwarded as HTTPS;
 - JSON session responses include Identity summary, expiry, and CSRF token, but not the opaque session identifier;
@@ -131,7 +131,7 @@ The CLI uses the same `AGONARA_DB_PATH` and `AGONARA_BOOTSTRAP_SECRET` runtime i
 
 ## Step 8 Backup and Restore Verification
 
-The minimum Identity backup/restore path stays inside the command and storage boundaries:
+The minimum Identity backup/restore path stays inside the command and storage boundaries.
 
 - exported backups include Identity, local password credential, Admin authority, and audit records;
 - active sessions are intentionally excluded from backups and are cleared on restore;
@@ -141,7 +141,7 @@ The minimum Identity backup/restore path stays inside the command and storage bo
 
 ## Step 9 Executable Acceptance Verification
 
-Executable acceptance now exercises the first slice across real process/runtime boundaries:
+Executable acceptance now exercises the first slice across real process/runtime boundaries.
 
 - CLI first-Admin bootstrap persists to the configured SQLite database and HTTP login/session/logout works against the same instance state;
 - HTTP bootstrap prevents a later CLI bootstrap from creating a second first Admin;
@@ -151,7 +151,7 @@ Executable acceptance now exercises the first slice across real process/runtime 
 
 ## Current Runtime State
 
-The original Identity and Operations first slice has been extended by later backend/domain slices:
+The original Identity and Operations first slice has been extended by later backend/domain slices.
 
 - Program Shell and Membership owns Program creation, Student self-join/leave/rejoin, Student invitation lifecycle, participant listing, Student removal, curator leave, Admin exceptional recovery/revocation, effective participation checks, Program event reads, and Program Membership event reads.
 - Corpus owns Program sources, Corpus candidates, acceptance/rejection, accepted revisions, scoped Corpus event reads, and backup/restore graph validation.
@@ -169,7 +169,7 @@ The production server entrypoint now composes Identity, Program, Corpus, and Stu
 
 ## Deferred Runtime State
 
-Current backend, domain, and first-slice UI support does not imply a complete product UI:
+Current backend, domain, and first-slice UI support does not imply a complete product UI.
 
 - Recommendation ranking and persisted mastery models still need separate downstream artifacts.
 - The Admin board is implemented for operational Identity/Admin work and exceptional Program Membership recovery/revocation. `/learn` is implemented for Quick Check, topic/concept/material navigation, learner-state interpretation, readiness, membership Student/Curator product slices, Curator-only coverage-gap inspection, and Curator-only LLM suggestion review. Broader Student and Curator product screens remain outside the current runtime.

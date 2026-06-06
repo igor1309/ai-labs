@@ -3,7 +3,7 @@ date: 2026-05-28
 model: gpt-5
 description: "Spec: Agonara Corpus Storage and Curator Acceptance HTTP API v0.0.1."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -15,11 +15,24 @@ Define the public HTTP API and executable acceptance scenarios for Agonara Corpu
 
 This spec operationalizes [Corpus Storage and Curator Acceptance First Slice](corpus-storage-and-curator-acceptance-first-slice.md) and [ADR-010](../adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md) through the existing session, CSRF, envelope, and redaction conventions from [Identity & Role Management API and CLI](identity-role-management-api-cli.md) and [Program Shell and Membership API](program-shell-and-membership-api.md). It defines HTTP behavior only; it does not add UI, CLI, material storage, LLM execution, assessment, Student Workspace state, or new Corpus domain rules.
 
+## Implementation status
+
+Implemented by [Corpus Storage and Curator Acceptance HTTP API Implementation Plan](../plans/implemented/corpus-storage-and-curator-acceptance-api.md).
+
+### Implementation Evidence
+
+- HTTP route adapters, session/CSRF handling, pagination, response shaping, and status mapping: [server.js](../../src/server.js)
+- Delegated Corpus command/query boundary: [corpus.js](../../src/corpus.js)
+- Focused HTTP route, session, CSRF, pagination, redaction, and out-of-scope coverage: [http-api.test.js](../../tests/http-api.test.js)
+- End-to-end executable acceptance coverage: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+
+The implemented API exposes Program source routes, Corpus candidate list/create routes, candidate acceptance/rejection routes, accepted corpus current and historical revision reads, and Corpus event reads over the existing Identity session, CSRF, envelope, pagination, and redaction conventions. It delegates policy to the implemented Corpus command/query boundary and preserves the slice boundary by excluding UI, CLI, material storage, LLM execution, assessment, Student Workspace state, and new Corpus domain rules.
+
 ## Public interface
 
 ### Shared result envelope
 
-Successful HTTP operations return:
+#### Successful HTTP Operations
 
 ```ts
 type AcceptedResult<T> = {
@@ -28,7 +41,7 @@ type AcceptedResult<T> = {
 };
 ```
 
-Rejected HTTP operations return:
+#### Rejected HTTP Operations
 
 ```ts
 type RejectedResult = {
@@ -37,7 +50,7 @@ type RejectedResult = {
 };
 ```
 
-HTTP `5xx` responses return:
+#### Fault HTTP Operations
 
 ```ts
 type FaultResult = {
@@ -207,7 +220,7 @@ The Corpus API never returns the session identifier or CSRF token. Clients obtai
 | `GET` | `/accepted-corpus-revisions/{revisionId}` | Student, Program Curator, or Admin session | `AcceptedResult<{ acceptedCorpus: AcceptedCorpusSummary }>` | `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 participation_required`, `404 revision_not_found`, `404 program_not_found` |
 | `GET` | `/programs/{programId}/corpus-events?limit={limit}&cursor={cursor}` | Program Curator session | `AcceptedResult<CorpusEventList>` | `400 validation_failed`, `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 admin_or_curator_required`, `404 program_not_found` |
 
-Request bodies:
+### Request Bodies
 
 ```ts
 type RecordProgramSourceRequest = {
@@ -338,7 +351,7 @@ type CorpusEventQuery = {
 
 ## Tests (required)
 
-HTTP session and CSRF:
+### HTTP Session and CSRF
 
 1. `GET /programs/{programId}/sources` rejects a missing session with `401 session_not_found`.
 2. `GET /programs/{programId}/accepted-corpus` rejects a disabled session Identity with `403 identity_disabled`.
@@ -346,7 +359,7 @@ HTTP session and CSRF:
 4. `POST /programs/{programId}/corpus-candidates` rejects an invalid CSRF token with `403 csrf_invalid`.
 5. Corpus API responses do not include session identifiers or CSRF tokens.
 
-Source routes:
+### Source Routes
 
 6. `GET /programs/{programId}/sources` accepts an effective Program Curator and returns only sources for the requested Program.
 7. `GET /programs/{programId}/sources` rejects a non-curator caller with `403 admin_or_curator_required`.
@@ -357,7 +370,7 @@ Source routes:
 12. `POST /programs/{programId}/sources` rejects malformed JSON, non-object JSON, and missing bodies with `400 validation_failed`.
 13. `POST /programs/{programId}/sources` rejects unsupported source kinds, missing titles, empty titles, malformed locators, and malformed citations with `400 validation_failed`.
 
-Candidate routes:
+### Candidate Routes
 
 14. `GET /programs/{programId}/corpus-candidates` accepts an effective Program Curator and returns only candidates for the requested Program.
 15. `GET /programs/{programId}/corpus-candidates` applies `draft`, `accepted`, and `rejected` status filters.
@@ -371,7 +384,7 @@ Candidate routes:
 23. Candidate creation rejects unknown source ids with `409 source_not_found`.
 24. Candidate creation rejects cross-Program source ids with `409 source_program_mismatch`.
 
-Candidate acceptance and rejection routes:
+### Candidate Acceptance and Rejection Routes
 
 25. `POST /corpus-candidates/{candidateId}/acceptance` accepts a Program Curator for the candidate Program and returns `AcceptedCorpusSummary`.
 26. Acceptance without `targetEntityId` creates one accepted entity and one accepted revision.
@@ -394,7 +407,7 @@ Candidate acceptance and rejection routes:
 43. Accepted candidate rejection creates one accepted `corpus_candidate_rejected` Corpus event.
 44. Rejected candidate rejection creates a rejected `corpus_candidate_rejected` Corpus event when the acting Identity and Program resolve.
 
-Accepted corpus routes:
+### Accepted Corpus Routes
 
 45. `GET /programs/{programId}/accepted-corpus` accepts an effective Student for the requested Program.
 46. `GET /programs/{programId}/accepted-corpus` accepts an effective Program Curator for the requested Program.
@@ -409,7 +422,7 @@ Accepted corpus routes:
 55. `GET /accepted-corpus-revisions/{revisionId}` rejects unknown revision ids with `404 revision_not_found`.
 56. `GET /accepted-corpus-revisions/{revisionId}` rejects unauthorized callers with `403 participation_required`.
 
-Corpus event routes:
+### Corpus Event Routes
 
 57. `GET /programs/{programId}/corpus-events` rejects non-curator callers with `403 admin_or_curator_required`.
 58. `GET /programs/{programId}/corpus-events` accepts active Program Curator callers for their Programs.
@@ -420,7 +433,7 @@ Corpus event routes:
 63. Corpus event routes reject `limit` values below `1`, above `100`, non-numeric values, and malformed cursors with `400 validation_failed`.
 64. Corpus event route responses and cursors do not expose password hashes, plaintext passwords, bootstrap secrets, session identifiers, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, filesystem paths, database URLs, or infrastructure details.
 
-Executable acceptance flow:
+### Executable Acceptance Flow
 
 65. A logged-in Program Curator creates a Program through the existing Program API, records a source, creates a candidate topic, accepts it into accepted corpus, lists accepted corpus as a Student, replaces the current revision with a later accepted candidate, fetches the historical revision, rejects a separate draft candidate, confirms draft/rejected candidates are absent from accepted corpus, and inspects scoped Corpus events with CSRF enforced on all state-changing requests.
 66. The Corpus API does not expose Admin UI, Curator UI, Student UI, CLI commands, material file storage, source ingestion jobs, LLM execution, assessment, Student Workspace state, accepted checks, accepted criteria, Program archival, Program deletion, Program ownership transfer, curator leave/removal, collaborative editing, branching, merging, or conflict-resolution behavior.

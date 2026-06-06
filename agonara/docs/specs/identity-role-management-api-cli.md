@@ -3,7 +3,7 @@ date: 2026-05-27
 model: gpt-5.5-thinking
 description: "API, CLI, and executable acceptance spec for Agonara Identity & Role Management v0.0.1."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -15,11 +15,26 @@ Define the public HTTP API, operator CLI, and executable acceptance scenarios fo
 
 Request correlation, operational logging, health, diagnostics, and shared redaction behavior are specified in [Operational Cross-Cutting First Slice](operational-cross-cutting-first-slice.md).
 
+## Implementation status
+
+Implemented by [Identity and Operations First-Slice Implementation Plan](../plans/implemented/identity-and-operations-first-slice.md).
+
+### Implementation Evidence
+
+- HTTP route adapters, session-cookie handling, CSRF handling, rate limiting, status mapping, pagination, and redaction: [server.js](../../src/server.js)
+- Operator CLI bootstrap/status commands, stdin JSON handling, envelopes, and exit-code behavior: [cli.js](../../src/cli.js)
+- Delegated Identity command/query boundary: [identity.js](../../src/identity.js)
+- Focused HTTP API coverage for bootstrap, login, sessions, Admin routes, audit events, rate limiting, CSRF, cookies, and redaction: [http-api.test.js](../../tests/http-api.test.js)
+- Focused CLI coverage for bootstrap status, bootstrap admin, stdin JSON, rejected output, usage errors, and secret-free arguments: [cli.test.js](../../tests/cli.test.js)
+- End-to-end executable acceptance coverage across CLI bootstrap, HTTP login/session/logout, Admin operations, CSRF, audit reads, last-Admin protection, rate limiting, and redaction: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+
+The implemented API/CLI surface exposes Identity bootstrap status, first-Admin bootstrap, login/session/logout, Admin-only identity and credential operations, Admin authority mutation, operational-access inspection, and paginated audit reads using the shared accepted/rejected/fault envelope. It preserves the transport boundary by keeping session identifiers out of JSON responses, requiring CSRF on session-backed mutations, reading bootstrap secrets/passwords through stdin for CLI bootstrap, and leaving operational health/diagnostics details to [Operational Cross-Cutting First Slice](operational-cross-cutting-first-slice.md).
+
 ## Public interface
 
 ### Shared result envelope
 
-Successful HTTP and CLI operations return:
+#### Successful HTTP and CLI Operations
 
 ```ts
 type AcceptedResult<T> = {
@@ -28,7 +43,7 @@ type AcceptedResult<T> = {
 };
 ```
 
-Rejected HTTP and CLI operations return:
+#### Rejected HTTP and CLI Operations
 
 ```ts
 type RejectedResult = {
@@ -46,7 +61,7 @@ type ApiOnlyRejectionReason =
   | "rate_limited";
 ```
 
-HTTP `5xx` responses return:
+#### Fault HTTP Operations
 
 ```ts
 type FaultResult = {
@@ -100,7 +115,7 @@ type AuditEventList = {
 
 The HTTP API authenticates browser clients with a server-managed session cookie named `agonara_session`.
 
-Cookie requirements:
+### Cookie Requirements
 
 - the cookie is `HttpOnly`;
 - the cookie is `SameSite=Lax`;
@@ -128,7 +143,7 @@ State-changing HTTP requests that use an existing session require `X-Agonara-CSR
 | `GET` | `/identity/identities/{identityId}/operational-access` | Admin session | `AcceptedResult<{ identity: IdentitySummary; effectiveAdmin: boolean }>` | `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 admin_required`, `404 identity_not_found` |
 | `GET` | `/identity/audit-events?limit={limit}&cursor={cursor}` | Admin session | `AcceptedResult<AuditEventList>` | `400 validation_failed`, `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 admin_required` |
 
-Request bodies:
+### Request Bodies
 
 ```ts
 type BootstrapAdminRequest = {
@@ -174,7 +189,7 @@ All commands support `--json`. JSON output uses the shared result envelope on st
 | `agonara identity bootstrap-status --json` | none | `AcceptedResult<BootstrapStatus>` | n/a |
 | `agonara identity bootstrap-admin --display-name <name> --login <login> --stdin-json --json` | `BootstrapAdminStdin` from stdin | `AcceptedResult<SessionSummary>` | `RejectedResult` |
 
-CLI exit codes:
+### CLI Exit Codes
 
 - `0` for accepted operations;
 - `2` for rejected domain or API rules;
@@ -209,7 +224,7 @@ The CLI never accepts bootstrap secrets or passwords as command-line argument va
 
 ## Tests (required)
 
-HTTP bootstrap and login:
+### HTTP Bootstrap and Login
 
 1. `GET /identity/bootstrap/status` returns `available: true` before first Admin exists.
 2. `POST /identity/bootstrap/admin` accepts a valid bootstrap secret and returns `SessionSummary`.
@@ -225,7 +240,7 @@ HTTP bootstrap and login:
 12. `POST /identity/sessions` rejects disabled-Identity credentials with `401 invalid_credentials`.
 13. Repeated failed bootstrap and login attempts reject with `429 rate_limited`.
 
-HTTP session and CSRF:
+### HTTP Session and CSRF
 
 14. `GET /identity/session` accepts a valid session cookie and returns `SessionSummary`.
 15. `GET /identity/session` rejects missing, unknown, expired, revoked, and disabled-Identity sessions with the mapped status and reason.
@@ -233,7 +248,7 @@ HTTP session and CSRF:
 17. `DELETE /identity/session` accepts a valid session cookie and matching CSRF header, then clears the session cookie.
 18. A logged-out session cannot resolve through `GET /identity/session`.
 
-HTTP Admin operations:
+### HTTP Admin Operations
 
 19. Admin endpoints reject a valid non-Admin session with `403 admin_required`.
 20. `POST /identity/identities` accepts an Admin session with matching CSRF header.
@@ -250,7 +265,7 @@ HTTP Admin operations:
 31. `GET /identity/audit-events` rejects invalid limits and limits greater than `100` with `400 validation_failed`.
 32. Audit event responses do not include session identifiers or `targetSessionId`.
 
-CLI:
+### CLI
 
 33. `agonara identity bootstrap-status --json` returns `AcceptedResult<BootstrapStatus>` and exits `0`.
 34. `agonara identity bootstrap-admin --display-name <name> --login <login> --stdin-json --json` accepts valid `BootstrapAdminStdin`, returns `SessionSummary`, and exits `0`.
@@ -258,7 +273,7 @@ CLI:
 36. CLI bootstrap without required stdin input writes usage diagnostics to stderr and exits `1`.
 37. CLI help and process arguments do not require bootstrap secrets or passwords as argument values.
 
-Executable acceptance:
+### Executable Acceptance
 
 38. A clean instance can be bootstrapped through the CLI, logged into through HTTP, and inspected through `GET /identity/session`.
 39. A clean instance can be bootstrapped through HTTP, then rejects a second CLI bootstrap attempt.

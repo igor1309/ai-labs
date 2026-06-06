@@ -73,6 +73,7 @@ jobs:
               - "release-units.config.toml"
               - "release-units.toml"
               - "scripts/release/**"
+              - "agonara/**"
               - "clipdeck/**"
               - "loki/**"
               - "nomos/**"
@@ -126,9 +127,12 @@ jobs:
               - "agonara/src/**"
               - "agonara/tests/**"
               - "agonara/package.json"
+              - "agonara/package-lock.json"
               - "agonara/playwright.config.js"
               - "agonara/Dockerfile"
               - "agonara/compose.yaml"
+              - "agonara/compose*.yml"
+              - "agonara/scripts/**"
             agonara-ci:
               - ".github/workflows/agonara-core.yml"
 

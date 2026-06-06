@@ -3705,6 +3705,18 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldBuildRedactedProviderRequest_fromCl
             checkRevisionId: "check-revision-a",
             criterionRevisionIds: ["criterion-revision-a"],
             submittedAnswer: "Student answer explaining the accepted theorem with no operational artifacts.",
+            acceptedCheckRevision: {
+              revisionId: "check-revision-a",
+              title: "Accepted check check-revision-a",
+              prompt: "Accepted prompt check-revision-a",
+            },
+            acceptedCriterionRevisions: [
+              {
+                revisionId: "criterion-revision-a",
+                title: "Accepted criterion criterion-revision-a",
+                body: "Accepted criterion body criterion-revision-a",
+              },
+            ],
             evaluatorPolicyId: "policy-a",
             outputValidatorPolicyId: "validator-a",
           },
@@ -3948,6 +3960,52 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldRecordEvidenceAndCompleteEvaluation
             criterionFeedback: [makeCriterionFeedback()],
           }),
         ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("runOpenAnswerEvaluatorWorkerOnce_shouldRecordEvidenceAndCompleteEvaluation_onAsyncProviderOutput", async () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "lease-1", "evaluation-1"],
+    evaluatorPolicies: [makeEvaluatorPolicy({ evaluatorPathKind: "llm_assisted" })],
+    providerAdapters: [
+      makeProviderAdapter({
+        evaluatorPathKind: "llm_assisted",
+        evaluate: async () => makeProviderResult(),
+      }),
+    ],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "llm_assisted",
+      evaluatorPolicyId: "policy-a",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+    });
+
+    const result = await commands.runOpenAnswerEvaluatorWorkerOnce({
+      workerId: "worker-a",
+      mode: "single_job",
+      evaluatorJobId: "evaluator-run-1",
+      leaseDurationSeconds: 300,
+    });
+
+    assert.deepEqual(
+      {
+        resultStatus: result.status,
+        completed: result.value?.summary.completed,
+        evaluationIds: listOpenAnswerEvaluationRecords(database).map($0 => $0.id),
+      },
+      {
+        resultStatus: "accepted",
+        completed: true,
+        evaluationIds: ["evaluation-1"],
       },
     );
   } finally {
@@ -4261,6 +4319,18 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldPreserveAdjacentDomainsAndExcludeOu
               checkRevisionId: "check-revision-a",
               criterionRevisionIds: ["criterion-revision-a"],
               submittedAnswer: "Answer",
+              acceptedCheckRevision: {
+                revisionId: "check-revision-a",
+                title: "Accepted check check-revision-a",
+                prompt: "Accepted prompt check-revision-a",
+              },
+              acceptedCriterionRevisions: [
+                {
+                  revisionId: "criterion-revision-a",
+                  title: "Accepted criterion criterion-revision-a",
+                  body: "Accepted criterion body criterion-revision-a",
+                },
+              ],
               evaluatorPolicyId: "policy-a",
               outputValidatorPolicyId: "validator-a",
             },
@@ -4279,7 +4349,6 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldPreserveAdjacentDomainsAndExcludeOu
 test("containsAnyOutOfScopeEvaluatorWorkerSurface_shouldDetectForbiddenSurface_onWorkerExpansion", () => {
   assert.deepEqual(
     [
-      { serverSource: "runOpenAnswerEvaluatorWorkerOnce" },
       { cliSource: "providerAdapters" },
       { adminUiSource: "evaluatorPolicies" },
       { workspaceSource: "fetch(" },
@@ -4307,7 +4376,7 @@ test("containsAnyOutOfScopeEvaluatorWorkerSurface_shouldDetectForbiddenSurface_o
         ...source,
       }),
     ),
-    Array.from({ length: 19 }, () => true),
+    Array.from({ length: 18 }, () => true),
   );
 });
 
@@ -9131,6 +9200,18 @@ test("studentWorkspaceEvaluatorWorkerExecutableAcceptance_shouldCoverFullWorkerF
             checkRevisionId: "check-revision-a",
             criterionRevisionIds: ["criterion-revision-a"],
             submittedAnswer: "Initial answer",
+            acceptedCheckRevision: {
+              revisionId: "check-revision-a",
+              title: "Accepted check check-revision-a",
+              prompt: "Accepted prompt check-revision-a",
+            },
+            acceptedCriterionRevisions: [
+              {
+                revisionId: "criterion-revision-a",
+                title: "Accepted criterion criterion-revision-a",
+                body: "Accepted criterion body criterion-revision-a",
+              },
+            ],
             evaluatorPolicyId: "policy-a",
             outputValidatorPolicyId: "validator-a",
           },
@@ -10925,10 +11006,9 @@ function containsInternalQuickCheckResolverSurface({
 function containsAnyOutOfScopeEvaluatorWorkerSurface({
   adminUiSource,
   cliSource,
-  serverSource,
   workspaceSource,
 }) {
-  const publicSources = [adminUiSource, cliSource, serverSource].join("\n");
+  const publicSources = [adminUiSource, cliSource].join("\n");
   const normalizedWorkspace = workspaceSource.toLowerCase();
   return (
     ["runOpenAnswerEvaluatorWorkerOnce", "providerAdapters", "evaluatorPolicies"].some($0 =>

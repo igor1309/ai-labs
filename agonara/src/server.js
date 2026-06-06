@@ -7,6 +7,11 @@ import { createCorpusCommands } from "./corpus.js";
 import { createCuratorWorkspaceCommands } from "./curator-workspace.js";
 import { createIdentityCommands } from "./identity.js";
 import { learnUiHtml } from "./learn-ui.js";
+import {
+  createNomosOpenAnswerEvaluatorProviderAdapter,
+  createSingleFlightOpenAnswerEvaluatorWorkerTick,
+  makeLlmOpenAnswerEvaluatorPolicy,
+} from "./open-answer-evaluator-runtime.js";
 import { createProgramCommands } from "./program.js";
 import { initializeIdentityStorage, openIdentityDatabase } from "./storage.js";
 import { createStudentWorkspaceCommands } from "./student-workspace.js";
@@ -19,6 +24,8 @@ export function createServer({
   identityCommands = null,
   log = logToStdout,
   now = () => new Date(),
+  openAnswerEvaluatorWorkerTick = null,
+  operationsTriggerToken,
   programCommands = null,
   studentWorkspaceCommands = null,
   version = "0.0.0",
@@ -58,6 +65,7 @@ export function createServer({
           failedAuthAttempts,
           generateToken,
           identityCommands,
+          listCursors,
           pathname,
           request,
           response,
@@ -129,6 +137,32 @@ export function createServer({
         }
       }
 
+      if (
+        request.method === "POST" &&
+        pathname === "/operations/open-answer-evaluator/tick" &&
+        openAnswerEvaluatorWorkerTick
+      ) {
+        const triggerAccess = getOperationsTriggerAccess({
+          identityCommands,
+          operationsTriggerToken,
+          request,
+        });
+        if (triggerAccess.status === "rejected") {
+          sendJson(response, httpStatusFor(triggerAccess.reason), triggerAccess);
+          return;
+        }
+
+        const tickBody = await readOptionalEvaluatorTickBody(request);
+        if (tickBody.status === "rejected") {
+          sendJson(response, httpStatusFor(tickBody.reason), tickBody);
+          return;
+        }
+
+        const result = await openAnswerEvaluatorWorkerTick(tickBody.value);
+        sendJson(response, statusForResult(result), result);
+        return;
+      }
+
       if (request.method === "GET" && pathname === "/operations/health") {
         const status = healthCheck();
         sendJson(response, 200, {
@@ -173,11 +207,60 @@ export function createServer({
   });
 }
 
+function getOperationsTriggerAccess({ identityCommands, operationsTriggerToken, request }) {
+  if (isValidOperationsTriggerToken(request, operationsTriggerToken)) {
+    return { status: "accepted" };
+  }
+  if (!identityCommands) {
+    return { status: "rejected", reason: "session_not_found" };
+  }
+
+  const sessionId = getSessionCookie(request);
+  return identityCommands.listIdentities({ actingSessionId: sessionId });
+}
+
+function isValidOperationsTriggerToken(request, operationsTriggerToken) {
+  if (!operationsTriggerToken) {
+    return false;
+  }
+
+  return request.headers.authorization === `Bearer ${operationsTriggerToken}`;
+}
+
+async function readOptionalEvaluatorTickBody(request) {
+  const body = await readJsonBody(request);
+  if (body.status === "rejected") {
+    return body;
+  }
+  if (body.value.kind === "missing") {
+    return accepted({});
+  }
+  if (body.value.kind !== "object") {
+    return rejected("validation_failed");
+  }
+
+  const keys = Object.keys(body.value.body);
+  if (keys.length === 0) {
+    return accepted({});
+  }
+  if (
+    keys.length === 1 &&
+    keys[0] === "evaluatorJobId" &&
+    typeof body.value.body.evaluatorJobId === "string" &&
+    body.value.body.evaluatorJobId.trim() !== ""
+  ) {
+    return accepted({ evaluatorJobId: body.value.body.evaluatorJobId.trim() });
+  }
+
+  return rejected("validation_failed");
+}
+
 async function handleIdentityApi({
   csrfTokens,
   failedAuthAttempts,
   generateToken,
   identityCommands,
+  listCursors,
   pathname,
   request,
   response,
@@ -200,7 +283,7 @@ async function handleIdentityApi({
     const csrfToken = createCsrfToken(csrfTokens, generateToken, result.value.session.id);
     sendJson(response, 200, accepted(sessionSummary(result.value, csrfToken, identityCommands)), {
       "set-cookie": sessionCookie(result.value.session.id, request),
-    });
+    }, auditCompletionLog(identityCommands, result.value.session.id));
     return true;
   }
 
@@ -280,7 +363,13 @@ async function handleIdentityApi({
       actingSessionId: csrf.sessionId,
       displayName: body?.displayName,
     });
-    sendJson(response, statusForResult(result), mapIdentityResult(result, identityCommands, csrf.sessionId));
+    sendJson(
+      response,
+      statusForResult(result),
+      mapIdentityResult(result, identityCommands, csrf.sessionId),
+      {},
+      auditCompletionLog(identityCommands, csrf.sessionId),
+    );
     return true;
   }
 
@@ -299,7 +388,13 @@ async function handleIdentityApi({
       login: body?.login,
       password: body?.password,
     });
-    sendJson(response, statusForResult(result), result);
+    sendJson(
+      response,
+      statusForResult(result),
+      result,
+      {},
+      auditCompletionLog(identityCommands, csrf.sessionId),
+    );
     return true;
   }
 
@@ -315,7 +410,13 @@ async function handleIdentityApi({
       actingSessionId: csrf.sessionId,
       identityId: disableMatch[1],
     });
-    sendJson(response, statusForResult(result), mapIdentityResult(result, identityCommands, csrf.sessionId));
+    sendJson(
+      response,
+      statusForResult(result),
+      mapIdentityResult(result, identityCommands, csrf.sessionId),
+      {},
+      auditCompletionLog(identityCommands, csrf.sessionId),
+    );
     return true;
   }
 
@@ -332,7 +433,13 @@ async function handleIdentityApi({
       actingSessionId: csrf.sessionId,
       identityId: adminMatch[1],
     });
-    sendJson(response, statusForResult(result), mapIdentityResult(result, identityCommands, csrf.sessionId));
+    sendJson(
+      response,
+      statusForResult(result),
+      mapIdentityResult(result, identityCommands, csrf.sessionId),
+      {},
+      auditCompletionLog(identityCommands, csrf.sessionId),
+    );
     return true;
   }
 
@@ -347,8 +454,25 @@ async function handleIdentityApi({
   }
 
   if (request.method === "GET" && pathname === "/identity/audit-events") {
+    const routeKey = "identity:audit-events";
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
     const result = identityCommands.listAuditEvents({ actingSessionId: getSessionCookie(request) });
-    sendJson(response, statusForResult(result), mapAuditEventsResult(result));
+    sendJson(
+      response,
+      statusForResult(result),
+      mapAuditEventsResult({
+        generateToken,
+        listCursors,
+        query: query.value,
+        result,
+        routeKey,
+      }),
+    );
     return true;
   }
 
@@ -2577,6 +2701,10 @@ export function startServer({
   databasePath = process.env.AGONARA_DB_PATH ?? ":memory:",
   host = process.env.HOST ?? "0.0.0.0",
   log = logToStdout,
+  nomosApiKey = process.env.AGONARA_NOMOS_API_KEY,
+  nomosBaseUrl = process.env.AGONARA_NOMOS_BASE_URL,
+  nomosModel = process.env.AGONARA_NOMOS_MODEL,
+  openAnswerEvaluatorTriggerToken = process.env.AGONARA_OPEN_ANSWER_EVALUATOR_TRIGGER_TOKEN,
   port = process.env.PORT ?? "8080",
   version = readPackageVersion(),
 } = {}) {
@@ -2590,9 +2718,16 @@ export function startServer({
   const programCommands = createProgramCommands({
     database,
   });
+  const openAnswerEvaluatorRuntime = makeOpenAnswerEvaluatorRuntime({
+    nomosApiKey,
+    nomosBaseUrl,
+    nomosModel,
+  });
   const studentWorkspaceCommands = createStudentWorkspaceCommands({
     database,
+    evaluatorPolicies: openAnswerEvaluatorRuntime.evaluatorPolicies,
     getEffectiveParticipation: programCommands.getEffectiveParticipation,
+    providerAdapters: openAnswerEvaluatorRuntime.providerAdapters,
   });
   const corpusCommands = createCorpusCommands({
     database,
@@ -2616,6 +2751,14 @@ export function startServer({
     programCommands,
     studentWorkspaceCommands,
     log,
+    openAnswerEvaluatorWorkerTick: openAnswerEvaluatorRuntime.enabled
+      ? createSingleFlightOpenAnswerEvaluatorWorkerTick({
+          runOpenAnswerEvaluatorWorkerOnce: studentWorkspaceCommands.runOpenAnswerEvaluatorWorkerOnce,
+          workerId: "open-answer-evaluator",
+          leaseDurationSeconds: 300,
+        })
+      : null,
+    operationsTriggerToken: openAnswerEvaluatorTriggerToken,
     version,
   });
   server.on("close", () => {
@@ -2623,6 +2766,37 @@ export function startServer({
   });
   server.listen(Number(port), host);
   return server;
+}
+
+function makeOpenAnswerEvaluatorRuntime({ nomosApiKey, nomosBaseUrl, nomosModel }) {
+  if (!nomosApiKey || !nomosBaseUrl || !nomosModel) {
+    return { enabled: false, evaluatorPolicies: [], providerAdapters: [] };
+  }
+
+  const providerAdapterId = "nomos-open-answer-evaluator";
+  const outputValidatorPolicyId = "nomos-open-answer-output-validator";
+  return {
+    enabled: true,
+    evaluatorPolicies: [
+      makeLlmOpenAnswerEvaluatorPolicy({
+        evaluatorPolicyId: "nomos-open-answer-evaluator-policy",
+        providerAdapterId,
+        outputValidatorPolicyId,
+        redactionPolicyId: "nomos-open-answer-redaction",
+        retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+        budgetPolicy: { maxProviderCalls: 1, maxInputTokens: 4000, maxOutputTokens: 1000 },
+      }),
+    ],
+    providerAdapters: [
+      createNomosOpenAnswerEvaluatorProviderAdapter({
+        providerAdapterId,
+        baseUrl: nomosBaseUrl,
+        model: nomosModel,
+        apiKey: nomosApiKey,
+        outputValidatorPolicyId,
+      }),
+    ],
+  };
 }
 
 function makeDefaultLlmSuggestionPolicy() {
@@ -2702,8 +2876,11 @@ function isValidRequestId(requestId) {
   return requestId.length >= 1 && requestId.length <= 128 && /^[A-Za-z0-9._:-]+$/.test(requestId);
 }
 
-function sendJson(response, statusCode, body, headers = {}) {
-  response.agonaraCompletionLog = completionLogForBody(statusCode, body);
+function sendJson(response, statusCode, body, headers = {}, completionLog = {}) {
+  response.agonaraCompletionLog = {
+    ...completionLogForBody(statusCode, body),
+    ...completionLog,
+  };
   response.writeHead(statusCode, { "content-type": "application/json", ...headers });
   response.end(JSON.stringify(body));
 }
@@ -2733,6 +2910,16 @@ function completionLogForBody(statusCode, body) {
     severity: "info",
     outcome: "accepted",
   };
+}
+
+function auditCompletionLog(identityCommands, actingSessionId) {
+  const result = identityCommands.listAuditEvents({ actingSessionId });
+  if (result.status === "rejected") {
+    return {};
+  }
+
+  const auditEvent = result.value.auditEvents.at(-1);
+  return auditEvent ? { auditEventId: auditEvent.id } : {};
 }
 
 function logCompletion(log, now, event) {
@@ -2918,13 +3105,26 @@ function mapIdentityResult(result, identityCommands, actingSessionId) {
   });
 }
 
-function mapAuditEventsResult(result) {
+function mapAuditEventsResult({ generateToken, listCursors, query, result, routeKey }) {
   if (result.status === "rejected") {
     return result;
   }
 
+  const page = paginateList({
+    generateToken,
+    items: result.value.auditEvents,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
   return accepted({
-    auditEvents: result.value.auditEvents.map(({ targetSessionId, ...auditEvent }) => auditEvent),
+    auditEvents: page.value.items.map(({ targetSessionId, ...auditEvent }) => auditEvent),
+    nextCursor: page.value.nextCursor,
   });
 }
 
@@ -4331,6 +4531,7 @@ function httpStatusFor(reason) {
     case "suggestion_materialization_rejected":
     case "suggestion_rejection_failed":
     case "target_identity_disabled":
+    case "worker_already_running":
       return 409;
     case "rate_limited":
       return 429;

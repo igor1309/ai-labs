@@ -4,12 +4,13 @@ RUN groupadd --system agonara && useradd --system --gid agonara --home-dir /app 
 
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install --omit=dev
+COPY --chown=agonara:agonara package.json package-lock.json ./
+RUN npm ci --omit=dev
 
-COPY src/ src/
+COPY --chown=agonara:agonara src/ src/
+COPY --chown=agonara:agonara scripts/ scripts/
 
-RUN mkdir -p /data && chown agonara:agonara /data
+RUN chown -R agonara:agonara /app && mkdir -p /data && chown agonara:agonara /data
 
 USER agonara
 
@@ -20,6 +21,6 @@ ENV PORT=8080
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:8080/operations/health || exit 1
+  CMD node -e 'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))'
 
 CMD ["node", "src/server.js"]

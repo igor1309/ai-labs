@@ -143,31 +143,36 @@ test("exportAndRestoreBackup_shouldEmitAcceptedOperationalLogs_onSuccessfulBacku
     assert.deepEqual(
       logEvents.map($0 => ({
         component: $0.component,
+        hasRequestId: typeof $0.requestId === "string",
         operation: $0.operation,
         outcome: $0.outcome,
         severity: $0.severity,
       })),
       [
         {
-          component: "identity",
+          component: "identity-role-management",
+          hasRequestId: true,
           operation: "identity.backup.export",
           outcome: "started",
           severity: "info",
         },
         {
-          component: "identity",
+          component: "identity-role-management",
+          hasRequestId: true,
           operation: "identity.backup.export",
           outcome: "accepted",
           severity: "info",
         },
         {
-          component: "identity",
+          component: "identity-role-management",
+          hasRequestId: true,
           operation: "identity.backup.restore",
           outcome: "started",
           severity: "info",
         },
         {
-          component: "identity",
+          component: "identity-role-management",
+          hasRequestId: true,
           operation: "identity.backup.restore",
           outcome: "accepted",
           severity: "info",
