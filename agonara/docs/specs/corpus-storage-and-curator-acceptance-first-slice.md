@@ -3,7 +3,7 @@ date: 2026-05-28
 model: gpt-5
 description: "Spec: Agonara Corpus Storage and Curator Acceptance first-slice contract."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -14,6 +14,21 @@ type: spec
 Define the Agonara v0.0.1 backend contract for Program-scoped source records, curator candidate topic/concept records, explicit acceptance into stable accepted corpus revisions, and read-only accepted corpus queries owned by Corpus Storage and Curator Workspace.
 
 This spec operationalizes [ADR-010](../adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md) through the Program scope and effective `Program Curator` participation contract accepted by [ADR-009](../adr/adr-009-program-shell-and-initial-curator-participation.md) and [ADR-007](../adr/adr-007-effective-participation-authorization-contract.md).
+
+## Implementation status
+
+Implemented by [Corpus Storage and Curator Acceptance First Slice Implementation Plan](../plans/implemented/corpus-storage-and-curator-acceptance-first-slice.md).
+
+### Implementation Evidence
+
+- Corpus domain command/query boundary and event behavior: [corpus.js](../../src/corpus.js)
+- Corpus persistence, graph validation, backup, and restore support: [storage.js](../../src/storage.js)
+- Corpus command/query coverage: [corpus.test.js](../../tests/corpus.test.js)
+- Storage persistence and graph-invariant coverage: [storage.test.js](../../tests/storage.test.js)
+- Backup/restore coverage: [backup-restore.test.js](../../tests/backup-restore.test.js)
+- Executable acceptance coverage: [corpus-executable-acceptance.test.js](../../tests/corpus-executable-acceptance.test.js)
+
+The implemented domain slice supports Program source recording, topic/concept candidate draft/reject/accept lifecycle, current and historical accepted corpus revisions, accepted-read authorization for Student/Curator/Admin callers, Corpus event reads, redaction, backup/restore preservation, and malformed graph rejection. This domain-slice implementation did not introduce material file storage, accepted checks, accepted assessment criteria, LLM prompt execution, source reliability scoring, student attempts, assessment feedback, progress state, UI, HTTP routes, or CLI commands; the later public HTTP surface is specified separately by [Corpus Storage and Curator Acceptance API](corpus-storage-and-curator-acceptance-api.md).
 
 ## Public interface
 
@@ -136,7 +151,7 @@ rejectCorpusCandidate(input: {
 }) -> RejectCorpusCandidateResult
 ```
 
-Each command result is either:
+### Command Result Envelope
 
 - `{ status: "accepted"; value: ... }`
 - `{ status: "rejected"; reason: CorpusRejectionReason }`
