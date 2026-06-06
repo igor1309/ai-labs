@@ -31,11 +31,11 @@ This ADR decides ownership and reference boundaries only. It does not decide che
 
 [ADR-010](adr-010-corpus-storage-and-curator-acceptance-boundary.md) establishes Corpus Storage ownership of accepted Program corpus and Student Workspace ownership of learner state. It explicitly leaves open whether assessment remains embedded in Student Workspace or becomes a separate module.
 
-The [Product Intent](../intent_learning_program_app.md) separates shared Program corpus from a student's personal learning state. It says materials, concepts, checks, and criteria belong to the Program, while answers, attempts, results, gaps, and progress belong to the student.
+The [Product Intent](../intent/intent_learning_program_app.md) separates shared Program corpus from a student's personal learning state. It says materials, concepts, checks, and criteria belong to the Program, while answers, attempts, results, gaps, and progress belong to the student.
 
-The [Curator User Stories](../curator_user_stories.md) require curators to add checks and define assessment criteria as accepted Program corpus.
+The [Curator User Stories](../intent/curator_user_stories.md) require curators to add checks and define assessment criteria as accepted Program corpus.
 
-The [Student User Stories](../student_user_stories.md) require students to answer checks, submit open answers, receive feedback, inspect check results, and see progress evidence as personal learning state.
+The [Student User Stories](../intent/student_user_stories.md) require students to answer checks, submit open answers, receive feedback, inspect check results, and see progress evidence as personal learning state.
 
 The architectural tension is that assessment depends on both shared Program content and personal student evidence. If accepted checks and criteria live in Student Workspace, each student can drift against a private copy of the Program. If attempts and feedback live in Corpus Storage, accepted Program corpus becomes polluted with personal state. If a standalone Assessment module is introduced before the first assessment behavior exists, the system gains a coordination boundary without proven need.
 

@@ -338,7 +338,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 - Verify accepted corpus is readable by an authorized Student and excludes draft/rejected candidates.
 - Verify scoped Corpus event inspection.
 - Update `agonara/docs/log.md`.
-- Update [Product Intent](../../intent_learning_program_app.md) downstream traceability from active implementation plan to implemented plan and HTTP code/tests.
+- Update [Product Intent](../../intent/intent_learning_program_app.md) downstream traceability from active implementation plan to implemented plan and HTTP code/tests.
 - Move this plan to `agonara/docs/plans/implemented/corpus-storage-and-curator-acceptance-api.md` with `git mv`.
 
 **TDD sequence**:
