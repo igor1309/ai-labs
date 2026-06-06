@@ -7,6 +7,11 @@ version: 0.2.0
 
 # Agonara Deployment Target
 
+> **Status: promoted.** The provisional emerging direction below was accepted and
+> committed by [ADR-017 — Private-Instance Deployment Operational Boundary](adr/adr-017-private-instance-deployment-operational-boundary.md),
+> which also settles backup/restore minimums and admin responsibilities. This
+> document is retained as the Pre-ADR exploration; ADR-017 governs.
+
 ## Context
 
 Agonara is currently scoped as a structured learning program environment for private use by a small group or individual. The deployment shape matters early because it constrains identity setup, admin recovery, storage choices, browser access, backup/restore expectations, and how much operational burden the first implementation may assume.

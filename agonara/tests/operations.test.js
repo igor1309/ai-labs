@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
+import { once } from "node:events";
 import test from "node:test";
-import { createServer } from "../src/server.js";
+import { createServer, readPackageVersion, startServer } from "../src/server.js";
 
 test("operationsHealth_shouldReturnRequestId_onMissingRequestIdHeader", async () => {
   const server = createTestServer();
@@ -24,6 +25,55 @@ test("operationsHealth_shouldReturnRequestId_onMissingRequestIdHeader", async ()
         bodyRequestId: body.requestId,
       },
     );
+  } finally {
+    await close(server);
+  }
+});
+
+test("operationsHealth_shouldReportConfiguredVersion", async () => {
+  const server = createServer({ log: () => {}, version: "1.2.3" });
+  const baseUrl = await listen(server);
+
+  try {
+    const response = await fetch(`${baseUrl}/operations/health`);
+    const body = await response.json();
+
+    assert.equal(body.version, "1.2.3");
+  } finally {
+    await close(server);
+  }
+});
+
+test("operationsHealth_shouldDefaultVersion_whenNotConfigured", async () => {
+  const server = createTestServer();
+  const baseUrl = await listen(server);
+
+  try {
+    const response = await fetch(`${baseUrl}/operations/health`);
+    const body = await response.json();
+
+    assert.equal(body.version, "0.0.0");
+  } finally {
+    await close(server);
+  }
+});
+
+test("startServer_shouldSurfacePackageVersion_throughHealth", async () => {
+  const server = startServer({
+    bootstrapSecret: "operations-version-secret",
+    databasePath: ":memory:",
+    host: "127.0.0.1",
+    port: 0,
+    log: () => {},
+  });
+
+  try {
+    await once(server, "listening");
+    const { port } = server.address();
+    const response = await fetch(`http://127.0.0.1:${port}/operations/health`);
+    const body = await response.json();
+
+    assert.equal(body.version, readPackageVersion());
   } finally {
     await close(server);
   }
