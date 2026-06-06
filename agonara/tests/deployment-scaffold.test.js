@@ -11,6 +11,8 @@ const files = {
   rollbackProd: readText("../scripts/rollback-prod.sh"),
   backupProd: readText("../scripts/backup-prod.sh"),
   restoreProd: readText("../scripts/restore-prod.sh"),
+  backupStaging: readText("../scripts/backup-staging.sh"),
+  restoreStaging: readText("../scripts/restore-staging.sh"),
 };
 
 test("deploymentImage_shouldMakeAppFilesReadableByRuntimeUser", () => {
@@ -203,11 +205,24 @@ test("backupRestoreScripts_shouldRequireOffHostBackupAndRestoreThroughProdCompos
     {
       backupRequiresRemote: files.backupProd.includes("AGONARA_BACKUP_REMOTE is required"),
       backupStopsContainer: files.backupProd.includes('"${COMPOSE[@]}" stop agonara'),
-      backupArchivesDataVolume: files.backupProd.includes("-v agonara-data:/data:ro"),
-      backupCopiesOffHost: files.backupProd.includes('rsync -a "${BACKUP_DIR}/${BACKUP_FILE}" "${BACKUP_REMOTE}/"'),
+      backupArchivesComposeDataVolume: containsAll(files.backupProd, [
+        'DATA_VOLUME="${AGONARA_DATA_VOLUME:-agonara-prod_agonara-data}"',
+        '-v "${DATA_VOLUME}:/data:ro"',
+      ]),
+      backupSupportsDedicatedSshKey: containsAll(files.backupProd, [
+        "AGONARA_BACKUP_SSH_KEY",
+        "IdentitiesOnly=yes",
+      ]),
+      backupRejectsEmptyArchive: files.backupProd.includes('test -s "${BACKUP_DIR}/${BACKUP_FILE}"'),
+      backupPrunesLocalRetention: containsAll(files.backupProd, [
+        "AGONARA_BACKUP_RETENTION_DAYS",
+        'find "${BACKUP_DIR}" -type f -name "agonara-data-*.tar.gz"',
+      ]),
+      backupCopiesOffHost: files.backupProd.includes('"${RSYNC[@]}" "${BACKUP_DIR}/${BACKUP_FILE}" "${BACKUP_REMOTE}/"'),
       restoreRequiresBackupFile: files.restoreProd.includes("backup file path is required"),
-      restoreReplacesDataVolume: containsAll(files.restoreProd, [
-        "-v agonara-data:/data",
+      restoreReplacesComposeDataVolume: containsAll(files.restoreProd, [
+        'DATA_VOLUME="${AGONARA_DATA_VOLUME:-agonara-prod_agonara-data}"',
+        '-v "${DATA_VOLUME}:/data"',
         "find /data -mindepth 1",
         "tar -xzf",
       ]),
@@ -220,12 +235,66 @@ test("backupRestoreScripts_shouldRequireOffHostBackupAndRestoreThroughProdCompos
     {
       backupRequiresRemote: true,
       backupStopsContainer: true,
-      backupArchivesDataVolume: true,
+      backupArchivesComposeDataVolume: true,
+      backupSupportsDedicatedSshKey: true,
+      backupRejectsEmptyArchive: true,
+      backupPrunesLocalRetention: true,
       backupCopiesOffHost: true,
       restoreRequiresBackupFile: true,
-      restoreReplacesDataVolume: true,
+      restoreReplacesComposeDataVolume: true,
       restorePassesBackupBasenameAsArgument: true,
       restoreHealthGates: true,
+    },
+  );
+});
+
+test("stagingBackupRestoreScripts_shouldRehearseOffHostBackupAgainstStagingVolume", () => {
+  assert.deepEqual(
+    {
+      backupRequiresRemote: files.backupStaging.includes("AGONARA_BACKUP_REMOTE is required"),
+      backupUsesStagingCompose: files.backupStaging.includes(
+        "COMPOSE=(docker compose --env-file .env.staging -f compose.staging.yml)",
+      ),
+      backupArchivesStagingComposeVolume: containsAll(files.backupStaging, [
+        'DATA_VOLUME="${AGONARA_DATA_VOLUME:-agonara-staging_agonara-staging-data}"',
+        '-v "${DATA_VOLUME}:/data:ro"',
+      ]),
+      backupSupportsDedicatedSshKey: containsAll(files.backupStaging, [
+        "AGONARA_BACKUP_SSH_KEY",
+        "IdentitiesOnly=yes",
+      ]),
+      backupRejectsEmptyArchive: files.backupStaging.includes('test -s "${BACKUP_DIR}/${BACKUP_FILE}"'),
+      backupPrunesLocalRetention: containsAll(files.backupStaging, [
+        "AGONARA_BACKUP_RETENTION_DAYS",
+        'find "${BACKUP_DIR}" -type f -name "agonara-staging-data-*.tar.gz"',
+      ]),
+      backupCopiesOffHost: files.backupStaging.includes('"${RSYNC[@]}" "${BACKUP_DIR}/${BACKUP_FILE}" "${BACKUP_REMOTE}/"'),
+      restoreUsesStagingCompose: files.restoreStaging.includes(
+        "COMPOSE=(docker compose --env-file .env.staging -f compose.staging.yml)",
+      ),
+      restoreReplacesStagingComposeVolume: containsAll(files.restoreStaging, [
+        'DATA_VOLUME="${AGONARA_DATA_VOLUME:-agonara-staging_agonara-staging-data}"',
+        '-v "${DATA_VOLUME}:/data"',
+        "find /data -mindepth 1",
+        "tar -xzf",
+      ]),
+      restoreHealthGatesStaging: containsAll(files.restoreStaging, [
+        "docker exec agonara-staging",
+        "operations/health",
+        "response.ok",
+      ]),
+    },
+    {
+      backupRequiresRemote: true,
+      backupUsesStagingCompose: true,
+      backupArchivesStagingComposeVolume: true,
+      backupSupportsDedicatedSshKey: true,
+      backupRejectsEmptyArchive: true,
+      backupPrunesLocalRetention: true,
+      backupCopiesOffHost: true,
+      restoreUsesStagingCompose: true,
+      restoreReplacesStagingComposeVolume: true,
+      restoreHealthGatesStaging: true,
     },
   );
 });
