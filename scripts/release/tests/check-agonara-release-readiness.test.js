@@ -409,6 +409,45 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('agonara/scripts/rollback-prod.sh must restore the rollback image without rebuild and health-gate service availability'));
   });
 
+  it('fails when rollback commands only appear in comments', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      rollbackProd: validRollbackScript()
+        .split('\n')
+        .map(line => line.includes('docker ') || line.includes('"${COMPOSE[@]}"') ? `# ${line.trim()}` : line)
+        .join('\n'),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/rollback-prod.sh must restore the rollback image without rebuild and health-gate service availability'));
+  });
+
+  it('fails when rollback rebuilds the restored image', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      rollbackProd: validRollbackScript().replace(
+        '"${COMPOSE[@]}" up -d --no-build --wait',
+        '"${COMPOSE[@]}" up -d --build --wait',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/rollback-prod.sh must restore the rollback image without rebuild and health-gate service availability'));
+  });
+
+  it('fails when rollback depends on the failed deploy target version', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      rollbackProd: `${validRollbackScript()}\nEXPECTED_VERSION=0.1.0`,
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/rollback-prod.sh must restore the rollback image without rebuild and health-gate service availability'));
+  });
+
   it('passes the GitHub secret check when required deploy secret names exist', () => {
     writeAgonaraReleaseRepo(tmp);
     const fakeGhBin = writeFakeGhSecretList([

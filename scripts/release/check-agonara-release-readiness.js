@@ -249,14 +249,18 @@ function checkRollbackHealthGate() {
     throw new Error(`${scriptPath} is missing`);
   }
   const script = readFileSync(fullPath, 'utf8');
+  const executableLines = script
+    .split('\n')
+    .map($0 => $0.trim())
+    .filter($0 => $0 !== '' && !$0.startsWith('#'));
   const requiredSequence = [
-    'docker image inspect agonara:rollback',
+    'if docker image inspect agonara:rollback >/dev/null 2>&1; then',
     'docker tag agonara:rollback agonara:latest',
     '"${COMPOSE[@]}" down',
     '"${COMPOSE[@]}" up -d --no-build --wait',
     'docker exec agonara node -e \'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))\'',
   ];
-  if (!appearsInOrder(script, requiredSequence) || script.includes('EXPECTED_VERSION')) {
+  if (!linesAppearInOrder(executableLines, requiredSequence) || script.includes('EXPECTED_VERSION')) {
     throw new Error(`${scriptPath} must restore the rollback image without rebuild and health-gate service availability`);
   }
 }
@@ -338,6 +342,18 @@ function appearsInOrder(text, needles) {
   let cursor = -1;
   for (const needle of needles) {
     const index = text.indexOf(needle, cursor + 1);
+    if (index === -1) {
+      return false;
+    }
+    cursor = index;
+  }
+  return true;
+}
+
+function linesAppearInOrder(lines, requiredLines) {
+  let cursor = -1;
+  for (const requiredLine of requiredLines) {
+    const index = lines.indexOf(requiredLine, cursor + 1);
     if (index === -1) {
       return false;
     }
