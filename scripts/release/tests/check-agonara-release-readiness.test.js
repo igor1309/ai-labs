@@ -171,6 +171,20 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('release-unit.yml must health-gate Agonara workflow version checks on HTTP success before parsing JSON'));
   });
 
+  it('fails when workflow real evaluator smoke does not clean artifacts on failure', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        workflowSmokeGate('agonara'),
+        workflowSmokeGate('agonara').replace("trap 'rm -f /tmp/agonara-smoke.json' EXIT; ", ''),
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml must run Agonara real evaluator smoke with cleanup and expected version checks'));
+  });
+
   it('fails when the CI dispatcher does not route Agonara package lock changes', () => {
     writeAgonaraReleaseRepo(tmp, {
       ciWorkflow: validCiWorkflow().replace(
@@ -381,17 +395,23 @@ function validReleaseWorkflow() {
     '      - name: Copy source files to VPS',
     '        source: "agonara/package-lock.json"',
     workflowHealthGate('agonara-staging'),
+    workflowSmokeGate('agonara-staging'),
     '  deploy-agonara-prod:',
     "      && needs.deploy-agonara-staging.result == 'success'",
     "      && needs.deploy-agonara-prod.result == 'success'",
     '        deploy-agonara-staging=${{ needs.deploy-agonara-staging.result }}',
     '        deploy-agonara-prod=${{ needs.deploy-agonara-prod.result }}',
     workflowHealthGate('agonara'),
+    workflowSmokeGate('agonara'),
   ].join('\n');
 }
 
 function workflowHealthGate(containerName) {
   return `docker exec -e EXPECTED_VERSION="\${EXPECTED_VERSION}" ${containerName} node -e 'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); return response.json(); }).then(health => { if (health.status !== "ok" || health.version !== process.env.EXPECTED_VERSION) process.exit(1); }).catch(() => process.exit(1))'`;
+}
+
+function workflowSmokeGate(containerName) {
+  return `docker exec -e AGONARA_SMOKE_BASE_URL=http://127.0.0.1:8080 -e EXPECTED_VERSION="\${EXPECTED_VERSION}" ${containerName} sh -lc "trap 'rm -f /tmp/agonara-smoke.json' EXIT; node scripts/smoke-open-answer-evaluator.mjs > /tmp/agonara-smoke.json && node -e 'const fs = require(\\"node:fs\\"); const result = JSON.parse(fs.readFileSync(\\"/tmp/agonara-smoke.json\\", \\"utf8\\")); if (!result.evaluationId || result.healthVersion !== process.env.EXPECTED_VERSION) process.exit(1);'"`;
 }
 
 function validCiWorkflow() {

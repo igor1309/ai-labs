@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Release units: extend the Agonara first-release readiness check to verify workflow real evaluator smokes clean `/tmp/agonara-smoke.json` and assert the expected health version.
 - Release units: extend the Agonara first-release readiness check to verify workflow version checks reject non-2xx `/operations/health` responses before parsing JSON.
 - Release units: harden Agonara workflow staging and production version checks to reject non-2xx `/operations/health` responses before parsing JSON.
 - Release units: extend the Agonara first-release readiness check to verify deploy scripts require HTTP success, structured health JSON, `status: ok`, and the expected version.
