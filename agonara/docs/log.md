@@ -3,6 +3,7 @@
 ## 2026-06-07
 
 - Make Agonara Learn dark by default with a top-right persisted dark/light switcher and focused UI contract coverage.
+- Add a project-local `agonara-api` skill under `agonara/skills/` so agents working on Agonara API routes can ground themselves in the current specs, ownership boundaries, session/CSRF/idempotency rules, response envelopes, redaction constraints, and verification commands without publishing the skill through Dev Skills.
 
 ## 2026-06-06
 
