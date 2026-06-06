@@ -3,7 +3,7 @@ date: 2026-05-27
 model: gpt-5
 description: "Spec: Agonara Program shell and membership HTTP API v0.0.1."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -15,11 +15,24 @@ Define the public HTTP API and executable acceptance scenarios for Agonara Progr
 
 This spec operationalizes [Program Shell and Membership First Slice](program-shell-and-membership-first-slice.md) and [ADR-009](../adr/adr-009-program-shell-and-initial-curator-participation.md) through the existing session, CSRF, envelope, and redaction conventions from [Identity & Role Management API and CLI](identity-role-management-api-cli.md). It defines HTTP behavior only; it does not add UI, CLI, invitation, corpus editing, curator workspace, or student workspace behavior.
 
+## Implementation status
+
+Implemented by [Program Shell and Membership HTTP API Implementation Plan](../plans/implemented/program-shell-and-membership-api.md).
+
+### Implementation Evidence
+
+- HTTP route adapters, session/CSRF handling, pagination, response shaping, and status mapping: [server.js](../../src/server.js)
+- Delegated Program shell and membership command/query boundary: [program.js](../../src/program.js)
+- Focused HTTP route, session, CSRF, pagination, redaction, and out-of-scope coverage: [http-api.test.js](../../tests/http-api.test.js)
+- End-to-end executable acceptance coverage: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+
+The implemented API exposes Program shell list/create/detail routes, Student membership self-join/leave/rejoin routes, current-session membership reads, effective-participation reads, and scoped Program/Program Membership event reads over the existing Identity session, CSRF, envelope, pagination, and redaction conventions. It delegates policy to the implemented Program command/query boundary and preserves the slice boundary by excluding UI, CLI, invitation workflows, corpus editing, Curator Workspace behavior, and Student Workspace behavior.
+
 ## Public interface
 
 ### Shared result envelope
 
-Successful HTTP operations return:
+#### Successful HTTP Operations
 
 ```ts
 type AcceptedResult<T> = {
@@ -28,7 +41,7 @@ type AcceptedResult<T> = {
 };
 ```
 
-Rejected HTTP operations return:
+#### Rejected HTTP Operations
 
 ```ts
 type RejectedResult = {
@@ -37,7 +50,7 @@ type RejectedResult = {
 };
 ```
 
-HTTP `5xx` responses return:
+#### Fault HTTP Operations
 
 ```ts
 type FaultResult = {
@@ -180,7 +193,7 @@ The Program API never returns the session identifier or CSRF token. Clients obta
 | `GET` | `/programs/{programId}/events?limit={limit}&cursor={cursor}` | Admin or Program Curator session | `AcceptedResult<ProgramEventList>` | `400 validation_failed`, `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 admin_or_curator_required`, `404 program_not_found` |
 | `GET` | `/programs/{programId}/membership-events?limit={limit}&cursor={cursor}` | Admin or Program Curator session | `AcceptedResult<ProgramMembershipEventList>` | `400 validation_failed`, `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 admin_or_curator_required`, `404 program_not_found` |
 
-Request bodies:
+### Request Bodies
 
 ```ts
 type CreateProgramRequest = {
@@ -257,7 +270,7 @@ type ProgramEventQuery = {
 
 ## Tests (required)
 
-HTTP session and CSRF:
+### HTTP Session and CSRF
 
 1. `GET /programs` rejects a missing session with `401 session_not_found`.
 2. `GET /programs` rejects a disabled session Identity with `403 identity_disabled`.
@@ -265,7 +278,7 @@ HTTP session and CSRF:
 4. `POST /programs/{programId}/student-membership` rejects an invalid CSRF token with `403 csrf_invalid`.
 5. Program API responses do not include session identifiers or CSRF tokens.
 
-Program shell routes:
+### Program Shell Routes
 
 6. `GET /programs` accepts a valid active session and returns `ProgramShellSummary` records.
 7. `POST /programs` accepts a valid active session with CSRF and returns `ProgramCreated`.
@@ -277,7 +290,7 @@ Program shell routes:
 13. `GET /programs/{programId}` returns the requested Program shell for a known Program.
 14. `GET /programs/{programId}` rejects an unknown Program with `404 program_not_found`.
 
-Student membership routes:
+### Student Membership Routes
 
 15. `GET /program-memberships/me` returns only memberships for the session Identity.
 16. `POST /programs/{programId}/student-membership` creates an active Student membership for first join.
@@ -289,7 +302,7 @@ Student membership routes:
 22. Joining a removed Student membership rejects with `409 membership_removed`.
 23. Student membership routes reject unknown Programs with `404 program_not_found`.
 
-Effective participation routes:
+### Effective Participation Routes
 
 24. `GET /programs/{programId}/participation/student` checks Student participation for the session Identity when `identityId` is absent.
 25. `GET /programs/{programId}/participation/program_curator` checks Program Curator participation for the session Identity when `identityId` is absent.
@@ -302,7 +315,7 @@ Effective participation routes:
 32. Effective participation checks reject unknown Programs with `404 program_not_found`.
 33. Effective participation checks are read-only and do not create, reactivate, leave, remove, or recover membership state.
 
-Event routes:
+### Event Routes
 
 34. Event routes reject non-Admin, non-curator callers with `403 admin_or_curator_required`.
 35. Event routes accept Admin callers for known Programs.
@@ -315,7 +328,7 @@ Event routes:
 42. Event route responses and cursors do not expose password hashes, plaintext passwords, bootstrap secrets, session identifiers, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, or infrastructure details.
 43. Unscoped Program event and Program Membership event HTTP routes are not exposed in this slice.
 
-Executable acceptance flow:
+### Executable Acceptance Flow
 
 44. A logged-in Identity creates a Program, receives initial Program Curator membership, lists Programs, joins as Student, lists its memberships, leaves Student membership, rejoins Student membership, checks effective Student and Program Curator participation, and inspects scoped Program and Program Membership events with CSRF enforced on state-changing requests.
 

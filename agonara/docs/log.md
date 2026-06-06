@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Mark the Program Shell and Membership API spec implemented with evidence links to route adapters, delegated Program commands, focused HTTP coverage, and executable acceptance.
 - Mark the Program Shell and Membership first-slice spec implemented with evidence links to the domain boundary, persistence, backup/restore coverage, effective participation, and membership events.
 - Mark the Corpus Storage and Curator Acceptance API spec implemented with evidence links to route adapters, delegated Corpus commands, focused HTTP coverage, and executable acceptance.
 - Mark the Corpus Storage and Curator Acceptance first-slice spec implemented with evidence links to the domain boundary, persistence, backup/restore coverage, Corpus events, and executable acceptance.
