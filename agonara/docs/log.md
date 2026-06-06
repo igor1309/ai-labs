@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Clarify the accepted checks and assessment criteria first-slice status note so the no-HTTP boundary applies to the domain slice, with the later HTTP surface linked separately.
 - Mark the accepted checks and assessment criteria first-slice spec implemented with evidence links to Corpus command/query behavior, persistence, backup/restore coverage, and executable acceptance.
 - Link the implemented Quick-Check Assessment first-slice status note to the later Quick Check API and Learner-State Interpretation specs so the domain-slice scope boundary is concrete.
 - Mark the Quick-Check Assessment first-slice spec implemented with evidence links to Corpus command/query behavior, Student Workspace attempts, persistence, backup/restore coverage, and executable acceptance.
