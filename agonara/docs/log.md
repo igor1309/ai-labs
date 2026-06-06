@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Mark the Student Workspace open-answer evaluator worker spec implemented with evidence links to the archived plan, worker command, backup/restore coverage, executable acceptance, and ADR-018 runtime extension.
 - Harden container-boundary readiness against later-stage privilege reset, healthcheck disablement, and entrypoint override by requiring one stage, one healthcheck, and the server command last.
 - Enforce the release container runtime boundary before tagging: pinned slim base, locked install, runtime-owned app/data files, final non-root user, `/data` database path, and Node-native healthcheck.
 - Harden deployment-tier isolation readiness against commented requirements and alternate public port syntax, and require SQLite state to remain on the isolated `/data` volume.

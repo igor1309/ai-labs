@@ -3,7 +3,7 @@ date: 2026-06-02
 model: gpt-5
 description: "Spec: Agonara Student Workspace open-answer evaluator worker contract."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -14,6 +14,21 @@ type: spec
 Define the Agonara v0.0.1 contract for an in-process Student Workspace open-answer evaluator worker that claims evaluator jobs, executes a governed evaluator policy, and submits candidate results back through Student Workspace.
 
 This spec operationalizes [ADR-015](../adr/adr-015-open-answer-evaluator-worker-provider-boundary.md), depends on [Student Workspace Open-Answer Evaluator Orchestration](student-workspace-open-answer-evaluator-orchestration.md), and preserves STU-13 and INT-05 from [Product Intent](../intent/intent_learning_program_app.md). It does not add public HTTP evaluator mutation routes, durable queue technology, external LLM calls, raw artifact persistence, raw artifact backup/export, human-review queues, UI, mastery, weak-area, progress, next-step, grading, analytics, or deployment topology.
+
+## Implementation status
+
+Implemented by [Student Workspace Open-Answer Evaluator Worker Implementation Plan](../plans/implemented/student-workspace-open-answer-evaluator-worker.md).
+
+Implementation evidence:
+
+- Worker command and policy/provider boundary: [student-workspace.js](../../src/student-workspace.js)
+- Provider runtime extension that reuses this worker boundary: [open-answer-evaluator-runtime.js](../../src/open-answer-evaluator-runtime.js)
+- Worker and Student Workspace domain coverage: [student-workspace.test.js](../../tests/student-workspace.test.js)
+- Backup/restore raw-artifact coverage: [backup-restore.test.js](../../tests/backup-restore.test.js)
+- Executable acceptance coverage: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+- Real-provider runtime coverage for the later ADR-018 extension: [open-answer-evaluator-runtime.test.js](../../tests/open-answer-evaluator-runtime.test.js)
+
+The implemented worker supports single-job and claim-next execution, Student Workspace-owned job claiming, policy and provider-adapter resolution, provider request redaction, output validation, budget checks, redacted evidence recording, leased completion/failure, retry and terminal failure handling, duplicate-safe final evaluation, and raw-artifact exclusion from summaries, logs, backup, and restore. It does not implement public evaluator mutation routes, durable queues, external provider calls by itself, raw artifact persistence, human-review queues, UI, mastery/progress surfaces, deployment topology, or infrastructure ports.
 
 ## Public interface
 
