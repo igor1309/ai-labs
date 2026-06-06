@@ -1,7 +1,7 @@
 ---
 name: agonara-api
 author: Igor Malyarov
-version: "0.1.0"
+version: "0.1.1"
 description: Work with Agonara API contracts, HTTP routes, client calls, contract tests, and API-first agent automation. Use when implementing, changing, consuming, debugging, or reviewing Agonara endpoints, session/CSRF behavior, accepted/rejected/fault envelopes, role authorization, student-safe projections, curator/admin routes, or API-backed agent workflows in the `agonara/` project.
 ---
 

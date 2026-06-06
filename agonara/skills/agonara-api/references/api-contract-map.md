@@ -1,5 +1,5 @@
 ---
-date: 2026-06-06
+date: 2026-06-07
 model: gpt-5
 description: "Agonara API contract map for route families, ownership, auth, and response rules"
 ---

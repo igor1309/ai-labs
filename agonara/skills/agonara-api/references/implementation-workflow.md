@@ -1,5 +1,5 @@
 ---
-date: 2026-06-06
+date: 2026-06-07
 model: gpt-5
 description: "Workflow for implementing, changing, testing, and debugging Agonara HTTP API routes"
 ---
