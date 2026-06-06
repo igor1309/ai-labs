@@ -67,7 +67,7 @@ runOpenAnswerEvaluatorWorkerTick(input: {
 }>
 ```
 
-An authenticated internal operational request invokes the tick (`claim_next` mode) exactly once per invocation. Exposed only when provider configuration is present. "Operational authorization" means the caller passes the same operations-access check the existing `GET /operations/diagnostics` route uses (an authenticated session with operations access), or presents a configured operational trigger token supplied as runtime env (the deploy smoke's authed-route token, `deployment-handoff.md` §7c). The concrete route name and payload are an ADR-018 non-goal; this spec fixes only the authorization and single-flight behavior.
+An authenticated internal operational request invokes one tick per invocation: `claim_next` by default, or `single_job` when the request includes one explicit evaluator job id for a deterministic operator smoke run. Exposed only when provider configuration is present. "Operational authorization" means the caller passes the same operations-access check the existing `GET /operations/diagnostics` route uses (an authenticated session with operations access), or presents a configured operational trigger token supplied as runtime env (the deploy smoke's authed-route token, `deployment-handoff.md` §7c). The concrete route name and payload shape are ADR-018 non-goals beyond preserving operational authorization and single-flight behavior.
 
 ### Composition-root wiring
 
@@ -85,7 +85,7 @@ An authenticated internal operational request invokes the tick (`claim_next` mod
 8. `evaluate` discards raw prompts, raw model responses, and raw provider request/response payloads after validation and normalization; it MUST NOT return, persist, log, or surface them.
 9. A non-2xx Nomos response, a network failure, or a malformed/unparseable model response causes `evaluate` to throw (so the worker fails the claimed job retryably per the worker spec), without leaking response bodies, credentials, or infrastructure details in the error.
 10. `makeLlmOpenAnswerEvaluatorPolicy` returns a policy with `evaluatorPathKind: "llm_assisted"`, `rawArtifactPolicy: "none"`, the given provider adapter id, output validator id, redaction id, retry policy, and optional budget policy, and a prompt input policy that includes the submitted answer, accepted check revision, and accepted criterion revisions.
-11. `runOpenAnswerEvaluatorWorkerTick` runs `runOpenAnswerEvaluatorWorkerOnce` in `claim_next` mode and returns its result.
+11. `runOpenAnswerEvaluatorWorkerTick` runs `runOpenAnswerEvaluatorWorkerOnce` in `claim_next` mode by default, runs `single_job` when given an explicit evaluator job id, and returns its result.
 12. The tick is single-flight: while one tick is in progress, a concurrent invocation does not start a second overlapping worker run.
 13. The internal operational trigger requires operational authorization — an authenticated session with operations access (as `GET /operations/diagnostics` requires) or a configured operational trigger token — and rejects unauthenticated, wrong-token, or ordinary-product (Student, Program Curator, Admin without operations access) callers without running a worker tick or authoring feedback.
 14. When provider configuration env is incomplete, `startServer` registers no real adapter, no LLM policy, and no trigger, and the evaluator boundary receives `providerAdapters: []` (unchanged from today).
@@ -112,7 +112,7 @@ Provider adapter:
 Policy and trigger:
 
 9. `makeLlmOpenAnswerEvaluatorPolicy` produces an `llm_assisted`, `rawArtifactPolicy: "none"` policy referencing the adapter, validator, redaction, retry, and budget inputs and the required prompt inputs.
-10. `runOpenAnswerEvaluatorWorkerTick` claims and runs the next claimable job via `claim_next` and returns the worker result.
+10. `runOpenAnswerEvaluatorWorkerTick` claims and runs the next claimable job via `claim_next` by default, can run one explicit evaluator job via `single_job`, and returns the worker result.
 11. The tick is single-flight under overlapping invocations (no two overlapping worker runs).
 12. The internal trigger rejects unauthenticated, wrong-token, and ordinary-product callers without running a tick or authoring feedback.
 
@@ -129,7 +129,7 @@ Executable acceptance:
 
 - A Nomos-backed `OpenAnswerEvaluatorProviderAdapter` exists, built at the composition root from runtime env, satisfying every ADR-015 provider-adapter invariant.
 - An LLM evaluator policy references the adapter and mandates output validation with `rawArtifactPolicy: "none"`.
-- An authenticated, single-flight in-process trigger runs `runOpenAnswerEvaluatorWorkerOnce` in `claim_next` mode.
+- An authenticated, single-flight in-process trigger runs `runOpenAnswerEvaluatorWorkerOnce` in `claim_next` mode by default and can target one explicit evaluator job for operator smoke runs.
 - Provider base URL, model, and `AGONARA_NOMOS_API_KEY` are read only from runtime env and never persisted, logged, surfaced, or committed.
 - Real model output is validated before final acceptance; invalid output fails the job retryably.
 - Raw prompts, raw responses, and raw provider payloads are never persisted, exported, restored, logged, or surfaced; only normalized non-secret usage summaries persist.

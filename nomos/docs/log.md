@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-06
+
+Provision `agonara-staging` as a dedicated live-scope project in the Nomos staging database, with a 50k-token daily budget and a host-side Agonara staging API key. Verified the key can call `https://staging.nomos.enoa.ai/v1/chat/completions` through the live OpenRouter-backed path and support Agonara's real open-answer evaluator smoke.
+
 ## 2026-04-27
 
 Drop the inert `nomos-shared` declaration from the repo prod compose and remove the orphan `docker build -t nomos:latest .` from `deploy-staging.sh`. CI does not copy `docker-compose.yml` to the VPS, so the repo declaration was a false promise of network membership the deploy pipeline never delivered. The `nomos:latest` image was likewise built and never used now that scripts operate on `nomos-nomos:latest`. The on-VPS prod compose retains its operator-managed `nomos-shared` attachment unchanged.

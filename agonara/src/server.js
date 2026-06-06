@@ -151,7 +151,13 @@ export function createServer({
           return;
         }
 
-        const result = await openAnswerEvaluatorWorkerTick();
+        const tickBody = await readOptionalEvaluatorTickBody(request);
+        if (tickBody.status === "rejected") {
+          sendJson(response, httpStatusFor(tickBody.reason), tickBody);
+          return;
+        }
+
+        const result = await openAnswerEvaluatorWorkerTick(tickBody.value);
         sendJson(response, statusForResult(result), result);
         return;
       }
@@ -218,6 +224,34 @@ function isValidOperationsTriggerToken(request, operationsTriggerToken) {
   }
 
   return request.headers.authorization === `Bearer ${operationsTriggerToken}`;
+}
+
+async function readOptionalEvaluatorTickBody(request) {
+  const body = await readJsonBody(request);
+  if (body.status === "rejected") {
+    return body;
+  }
+  if (body.value.kind === "missing") {
+    return accepted({});
+  }
+  if (body.value.kind !== "object") {
+    return rejected("validation_failed");
+  }
+
+  const keys = Object.keys(body.value.body);
+  if (keys.length === 0) {
+    return accepted({});
+  }
+  if (
+    keys.length === 1 &&
+    keys[0] === "evaluatorJobId" &&
+    typeof body.value.body.evaluatorJobId === "string" &&
+    body.value.body.evaluatorJobId.trim() !== ""
+  ) {
+    return accepted({ evaluatorJobId: body.value.body.evaluatorJobId.trim() });
+  }
+
+  return rejected("validation_failed");
 }
 
 async function handleIdentityApi({

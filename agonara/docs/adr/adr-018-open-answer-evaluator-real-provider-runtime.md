@@ -41,7 +41,7 @@ Rejected alternatives: a durable queue or external runner for v1 (adds infrastru
 
 The Agonara open-answer evaluator worker MUST run in-process within the deployed Agonara server for v1. Execution MUST be single-flight: at most one evaluator worker run proceeds at a time within a server instance.
 
-Worker execution MUST be driven by an explicit trigger — an authenticated internal operational request that runs `runOpenAnswerEvaluatorWorkerOnce` in `claim_next` mode. An optional bounded interval MAY also drive single-flight runs, but the authenticated trigger MUST exist so a deploy smoke can deterministically drive exactly one evaluation. The trigger MUST require operational authorization and MUST NOT grant ordinary Student, Program Curator, or Admin product authority over feedback authoring.
+Worker execution MUST be driven by an explicit trigger — an authenticated internal operational request that runs `runOpenAnswerEvaluatorWorkerOnce` in `claim_next` mode by default and MAY target one explicit evaluator job for deterministic operator smoke runs. An optional bounded interval MAY also drive single-flight runs, but the authenticated trigger MUST exist so a deploy smoke can deterministically drive exactly one evaluation. The trigger MUST require operational authorization and MUST NOT grant ordinary Student, Program Curator, or Admin product authority over feedback authoring.
 
 A real LLM evaluator path MUST execute through a provider adapter that calls the Nomos gateway over HTTP. The adapter MUST honour all ADR-015 provider-adapter invariants: side-effect-limited, returning bounded execution results, mutating no Student Workspace, Corpus Storage, Program Membership, Identity, session, CSRF, credential, or backup state.
 
@@ -55,7 +55,7 @@ Provider configuration — Nomos base URL, model identifier, and API key — MUS
 
 - The evaluator worker MUST run in-process in the deployed server for v1; no durable queue, broker, or external runner is introduced.
 - Evaluator worker execution MUST be single-flight within a server instance.
-- An authenticated internal operational trigger MUST exist that runs `runOpenAnswerEvaluatorWorkerOnce` in `claim_next` mode exactly once per invocation.
+- An authenticated internal operational trigger MUST exist that runs `runOpenAnswerEvaluatorWorkerOnce` once per invocation: `claim_next` by default, or `single_job` when an operator supplies one explicit evaluator job id.
 - The trigger MUST require operational authorization and MUST NOT confer Student, Program Curator, or Admin feedback-authoring authority.
 - The real provider adapter MUST call the Nomos gateway over HTTP and MUST satisfy every ADR-015 provider-adapter side-effect and ownership invariant.
 - Real LLM output MUST pass an explicit, policy-referenced output validation (`passed: true`) before final acceptance.

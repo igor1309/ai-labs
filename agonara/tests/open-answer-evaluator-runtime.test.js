@@ -81,7 +81,14 @@ test("evaluate_shouldCallNomosAndReturnValidatedFeedback_onWellFormedOutput", as
         url: "https://nomos.example.test/v1/chat/completions",
         authorization: "Bearer nomos-key-secret",
         model: "model-a",
+        responseFormat: {
+          criterionRevisionIdEnum: ["criterion-a"],
+          strict: true,
+          type: "json_schema",
+        },
+        systemContentMentionsArray: true,
         userPayload: {
+          requiredCriterionRevisionIds: ["criterion-a"],
           submittedAnswer: "Student answer about the accepted invariant.",
           acceptedCheckRevision: {
             revisionId: "check-a",
@@ -241,6 +248,35 @@ test("runOpenAnswerEvaluatorWorkerTick_shouldRejectOverlappingInvocation_onInFli
   );
 });
 
+test("runOpenAnswerEvaluatorWorkerTick_shouldRunSingleJob_onEvaluatorJobId", () => {
+  const calls = [];
+  const runOpenAnswerEvaluatorWorkerTick = createSingleFlightOpenAnswerEvaluatorWorkerTick({
+    runOpenAnswerEvaluatorWorkerOnce: input => {
+      calls.push(input);
+      return { status: "accepted", value: { summary: { mode: input.mode } } };
+    },
+    workerId: "worker-a",
+    leaseDurationSeconds: 300,
+  });
+
+  const result = runOpenAnswerEvaluatorWorkerTick({ evaluatorJobId: "evaluator-run-a" });
+
+  assert.deepEqual(
+    { calls, result },
+    {
+      calls: [
+        {
+          evaluatorJobId: "evaluator-run-a",
+          leaseDurationSeconds: 300,
+          mode: "single_job",
+          workerId: "worker-a",
+        },
+      ],
+      result: { status: "accepted", value: { summary: { mode: "single_job" } } },
+    },
+  );
+});
+
 function makeProviderRequest({
   criterionRevisionIds = ["criterion-a"],
   submittedAnswer = "Student answer about the accepted invariant.",
@@ -286,6 +322,15 @@ function projectNomosRequest(request) {
     url: request.url,
     authorization: request.init.headers.Authorization,
     model: body.model,
+    responseFormat: {
+      criterionRevisionIdEnum:
+        body.response_format.json_schema.schema.properties.criterionFeedback.items.properties.criterionRevisionId.enum,
+      strict: body.response_format.json_schema.strict,
+      type: body.response_format.type,
+    },
+    systemContentMentionsArray: body.messages
+      .find($0 => $0.role === "system")
+      .content.includes("criterionFeedback must be an array"),
     userPayload: JSON.parse(userMessage.content),
     mentionsSecret: request.init.body.includes("nomos-key-secret"),
   };

@@ -18,6 +18,7 @@ test("deploymentImage_shouldMakeAppFilesReadableByRuntimeUser", () => {
     {
       packageOwnedByRuntimeUser: files.dockerfile.includes("COPY --chown=agonara:agonara package.json ./"),
       sourceOwnedByRuntimeUser: files.dockerfile.includes("COPY --chown=agonara:agonara src/ src/"),
+      scriptsOwnedByRuntimeUser: files.dockerfile.includes("COPY --chown=agonara:agonara scripts/ scripts/"),
       healthcheckUsesRuntimeNode: files.dockerfile.includes("CMD node -e 'fetch("),
       appTreeChownedBeforeRuntimeUser: appearsInOrder(files.dockerfile, [
         "RUN chown -R agonara:agonara /app",
@@ -27,6 +28,7 @@ test("deploymentImage_shouldMakeAppFilesReadableByRuntimeUser", () => {
     {
       packageOwnedByRuntimeUser: true,
       sourceOwnedByRuntimeUser: true,
+      scriptsOwnedByRuntimeUser: true,
       healthcheckUsesRuntimeNode: true,
       appTreeChownedBeforeRuntimeUser: true,
     },

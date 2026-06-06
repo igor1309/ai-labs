@@ -8,6 +8,7 @@ COPY --chown=agonara:agonara package.json ./
 RUN npm install --omit=dev
 
 COPY --chown=agonara:agonara src/ src/
+COPY --chown=agonara:agonara scripts/ scripts/
 
 RUN chown -R agonara:agonara /app && mkdir -p /data && chown agonara:agonara /data
 

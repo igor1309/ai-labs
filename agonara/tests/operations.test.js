@@ -370,6 +370,94 @@ test("operationsOpenAnswerEvaluatorTick_shouldRunWorkerTick_onValidTriggerToken"
   }
 });
 
+test("operationsOpenAnswerEvaluatorTick_shouldPassEvaluatorJobId_onValidTriggerTokenBody", async () => {
+  const tickInputs = [];
+  const server = createServer({
+    log: () => {},
+    operationsTriggerToken: "trigger-token-secret",
+    openAnswerEvaluatorWorkerTick: input => {
+      tickInputs.push(input);
+      return {
+        status: "accepted",
+        value: {
+          summary: {
+            mode: input.evaluatorJobId ? "single_job" : "claim_next",
+            evaluatorJobId: input.evaluatorJobId,
+            workerId: "worker-a",
+            claimed: true,
+          },
+        },
+      };
+    },
+  });
+  const baseUrl = await listen(server);
+
+  try {
+    const response = await fetch(`${baseUrl}/operations/open-answer-evaluator/tick`, {
+      method: "POST",
+      headers: {
+        authorization: "Bearer trigger-token-secret",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ evaluatorJobId: "evaluator-run-a" }),
+    });
+    const body = await response.json();
+
+    assert.deepEqual(
+      { statusCode: response.status, body, tickInputs },
+      {
+        statusCode: 200,
+        body: {
+          status: "accepted",
+          value: {
+            summary: {
+              mode: "single_job",
+              evaluatorJobId: "evaluator-run-a",
+              workerId: "worker-a",
+              claimed: true,
+            },
+          },
+        },
+        tickInputs: [{ evaluatorJobId: "evaluator-run-a" }],
+      },
+    );
+  } finally {
+    await close(server);
+  }
+});
+
+test("operationsOpenAnswerEvaluatorTick_shouldRejectMalformedBody_onValidTriggerToken", async () => {
+  let tickCalls = 0;
+  const server = createServer({
+    log: () => {},
+    operationsTriggerToken: "trigger-token-secret",
+    openAnswerEvaluatorWorkerTick: () => {
+      tickCalls += 1;
+      return { status: "accepted", value: { summary: { claimed: false } } };
+    },
+  });
+  const baseUrl = await listen(server);
+
+  try {
+    const response = await fetch(`${baseUrl}/operations/open-answer-evaluator/tick`, {
+      method: "POST",
+      headers: {
+        authorization: "Bearer trigger-token-secret",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ evaluatorJobId: "" }),
+    });
+    const body = await response.json();
+
+    assert.deepEqual(
+      { statusCode: response.status, body, tickCalls },
+      { statusCode: 400, body: { status: "rejected", reason: "validation_failed" }, tickCalls: 0 },
+    );
+  } finally {
+    await close(server);
+  }
+});
+
 test("operationsOpenAnswerEvaluatorTick_shouldRunWorkerTick_onOperationsAccessSession", async () => {
   const tickCalls = [];
   const identityAccessCalls = [];

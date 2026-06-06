@@ -46,12 +46,18 @@ export function createNomosOpenAnswerEvaluatorProviderAdapter({
           messages: [
             {
               role: "system",
-              content:
-                "Return strict JSON with summaryFeedback and criterionFeedback. Do not include operational details.",
+              content: [
+                "Return only the JSON object requested by the response schema.",
+                "criterionFeedback must be an array with exactly one item for each required criterion revision id.",
+                "Use exact criterionRevisionId values from requiredCriterionRevisionIds.",
+                "Allowed outcomes are met, partially_met, missing, and unclear.",
+                "Do not include operational details.",
+              ].join(" "),
             },
             {
               role: "user",
               content: JSON.stringify({
+                requiredCriterionRevisionIds: request.criterionRevisionIds,
                 submittedAnswer: request.submittedAnswer,
                 acceptedCheckRevision:
                   request.acceptedCheckRevision ?? { revisionId: request.checkRevisionId },
@@ -61,7 +67,7 @@ export function createNomosOpenAnswerEvaluatorProviderAdapter({
               }),
             },
           ],
-          response_format: { type: "json_object" },
+          response_format: openAnswerEvaluationResponseFormat(request.criterionRevisionIds),
         }),
       });
       if (!response?.ok) {
@@ -98,13 +104,49 @@ export function createNomosOpenAnswerEvaluatorProviderAdapter({
   };
 }
 
+function openAnswerEvaluationResponseFormat(criterionRevisionIds) {
+  return {
+    type: "json_schema",
+    json_schema: {
+      name: "open_answer_evaluation",
+      strict: true,
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["summaryFeedback", "criterionFeedback"],
+        properties: {
+          summaryFeedback: { type: "string" },
+          criterionFeedback: {
+            type: "array",
+            minItems: criterionRevisionIds.length,
+            maxItems: criterionRevisionIds.length,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["criterionRevisionId", "outcome", "feedback"],
+              properties: {
+                criterionRevisionId: { type: "string", enum: criterionRevisionIds },
+                outcome: {
+                  type: "string",
+                  enum: [...supportedEvaluationOutcomes],
+                },
+                feedback: { type: "string" },
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+}
+
 export function createSingleFlightOpenAnswerEvaluatorWorkerTick({
   runOpenAnswerEvaluatorWorkerOnce,
   workerId,
   leaseDurationSeconds,
 }) {
   let inFlight = false;
-  return () => {
+  return ({ evaluatorJobId } = {}) => {
     if (inFlight) {
       return { status: "rejected", reason: "worker_already_running" };
     }
@@ -114,7 +156,8 @@ export function createSingleFlightOpenAnswerEvaluatorWorkerTick({
     try {
       result = runOpenAnswerEvaluatorWorkerOnce({
         workerId,
-        mode: "claim_next",
+        mode: evaluatorJobId ? "single_job" : "claim_next",
+        ...(evaluatorJobId ? { evaluatorJobId } : {}),
         leaseDurationSeconds,
       });
     } catch (error) {
