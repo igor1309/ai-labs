@@ -15,13 +15,13 @@ This audit checks whether Agonara can move from implemented-spec closeout into f
 - Product implementation and deferred-scope snapshot in `agonara/README.md:21`.
 - Remaining backlog storage and product questions in `agonara/docs/backlog.md:10`.
 - Deployment handoff status, first-release prerequisites, runbook, and open questions in `agonara/docs/deployment-handoff.md:15`.
-- Spec status markers from `agonara/docs/specs/*.md`.
+- Spec status markers from `agonara/docs/specs/*.md`; `rg -n "status: (draft|planned|accepted|implemented)" agonara/docs/specs/*.md` returned only `status: implemented` markers.
 - First-release readiness script in `scripts/release/check-agonara-release-readiness.js:1`.
 - Agonara log history in `agonara/docs/log.md:1`.
 
 ## Verdict
 
-Agonara is ready for a first-release readiness preflight, not for an immediate release tag from this branch.
+Agonara should move into first-release readiness preflight. Immediate tagging from this branch is blocked.
 
 All current Agonara specs are marked implemented, and the deployment handoff records the major ADR/spec gates as closed. The remaining release risk is operational: the documented first-release path still requires trunk, GitHub deploy SSH secrets, and an explicit `agonara_v0.1.0` tag. Public production exposure remains a separate decision from the internal-prod deployment described by the runbook.
 
@@ -31,18 +31,18 @@ All current Agonara specs are marked implemented, and the deployment handoff rec
 
 - **Verdict:** pass.
 - **Why:** The current specs under `agonara/docs/specs/` all have `status: implemented`. The README also lists implemented backend, domain, and product surfaces across Identity, Operations, Program Membership, Corpus, navigation, accepted checks, Student Workspace open answers, Quick Check, learner state, readiness, coverage gaps, LLM-assisted curation suggestions, and the Admin board (`agonara/README.md:23`).
-- **Evidence:** `agonara/README.md:23`, `agonara/README.md:25`, `agonara/README.md:36`; `agonara/docs/specs/*.md` status scan.
-- **Fix:** Treat the next release-related step as operational preflight, not more Product Intent gap discovery.
+- **Evidence:** `agonara/README.md:23`, `agonara/README.md:25`, `agonara/README.md:36`; `rg -n "status: (draft|planned|accepted|implemented)" agonara/docs/specs/*.md` returned only implemented status markers.
+- **Fix:** Treat the next release-related step as operational preflight. Keep further Product Intent discovery behind separate backlog triggers.
 - **Test impact:** No new tests needed for this audit finding. The release preflight still needs the documented gates before tagging.
 
 ### Finding 2: Immediate release is blocked by documented first-release prerequisites
 
 - **Verdict:** fail.
-- **Why:** The deployment handoff says the first-release runbook remains gated on GitHub deploy SSH secrets and an explicit `agonara_v0.1.0` tag (`agonara/docs/deployment-handoff.md:31`). It later records the repo secrets as still unchecked (`agonara/docs/deployment-handoff.md:285`) and requires the readiness script to run from trunk with `--check-github-secrets` before pushing the tag (`agonara/docs/deployment-handoff.md:311`). The script enforces trunk and a clean worktree before release (`scripts/release/check-agonara-release-readiness.js:51`) and checks the required deploy secret names when requested (`scripts/release/check-agonara-release-readiness.js:24`, `scripts/release/check-agonara-release-readiness.js:149`, `scripts/release/check-agonara-release-readiness.js:709`).
+- **Why:** The deployment handoff says the first-release runbook remains gated on GitHub deploy SSH secrets and an explicit `agonara_v0.1.0` tag (`agonara/docs/deployment-handoff.md:34`). It later records the repo secrets as still unchecked (`agonara/docs/deployment-handoff.md:285`) and requires the readiness script to run from trunk with `--check-github-secrets` before pushing the tag (`agonara/docs/deployment-handoff.md:311`). The script enforces trunk and a clean worktree before release (`scripts/release/check-agonara-release-readiness.js:51`) and checks the required deploy secret names when requested (`scripts/release/check-agonara-release-readiness.js:24`, `scripts/release/check-agonara-release-readiness.js:149`, `scripts/release/check-agonara-release-readiness.js:734`).
 - **Fix:** After this branch lands on trunk, add or confirm `AGONARA_VPS_HOST`, `AGONARA_VPS_USER`, and `AGONARA_VPS_SSH_KEY` in GitHub repo secrets, then run `node scripts/release/check-agonara-release-readiness.js --check-github-secrets` from trunk before any tag push.
 - **Test impact:** The readiness script is the targeted verification gate. If it fails, fix the named release wiring or secret-name issue before tagging.
 
-### Finding 3: First release must be described as private internal-prod deployment, not full public launch
+### Finding 3: First release scope must be private internal-prod deployment
 
 - **Verdict:** warning.
 - **Why:** The handoff says staging is publicly routed, prod is deployed internally on loopback, and prod hostname/public TLS remain undecided (`agonara/docs/deployment-handoff.md:20`, `agonara/docs/deployment-handoff.md:75`). The runbook states the first release includes staging and internal-prod deploys while public prod routing remains separate (`agonara/docs/deployment-handoff.md:332`). Open questions still include prod domain/DNS/TLS ownership and production public exposure (`agonara/docs/deployment-handoff.md:342`, `agonara/docs/deployment-handoff.md:347`).
@@ -67,6 +67,6 @@ Industry best practice is to separate deploy readiness from public launch readin
 
 ## Recommended Next Candidate
 
-Run the first-release preflight on trunk after this audit lands: provision or confirm the three GitHub deploy SSH secrets, run `node scripts/release/check-agonara-release-readiness.js --check-github-secrets`, then close any readiness failures before creating `agonara_v0.1.0`.
+Run the first-release preflight after this branch lands on trunk: provision or confirm the three GitHub deploy SSH secrets, run `node scripts/release/check-agonara-release-readiness.js --check-github-secrets`, then close any readiness failures before creating `agonara_v0.1.0`.
 
 If the owner wants public prod exposure as part of the same release, first record a short release decision that pins prod hostname, DNS ownership, Caddy route, and TLS ownership. Otherwise, proceed with the internal-prod release path and keep public routing out of the tag gate.
