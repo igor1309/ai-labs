@@ -18,12 +18,13 @@ differs. Decisions confirmed with the owner:
 - **Topology:** staging + prod, both tiers on agonara-vps.
 - **Image delivery:** build-on-VPS (the nomos pattern). Confirmed.
 - **HTTPS / domain:** in scope for v1 (not deferred).
-- **LLM provider:** wire a real provider in staging/prod, following the nomos
-  approach (OpenRouter via repo secrets, real-LLM deploy smoke).
+- **LLM provider:** wire a real provider for staging/prod by pointing Agonara's
+  evaluator/curation provider adapter (ADR-015) at the repo's **Nomos** gateway,
+  with Agonara's **own Nomos project + API key** (per the CLAUDE.md "Nomos API
+  Keys" rule), and a real-LLM deploy smoke following the nomos pattern.
 - **Note location:** here, under `agonara/docs/`.
 
-> Open questions are flagged inline with **⚠️ OPEN** and collected in
-> [§8 Open questions](#8-open-questions).
+> Open decisions are listed in [§8 Open questions](#8-open-questions).
 
 ## 1. Current state
 
@@ -93,8 +94,8 @@ if a concrete trigger appears later.
 
 **Why build-on-VPS for the first release**
 - It is the established, working repo pattern (nomos and notio-backend both
-  build on the VPS via `docker compose up -d --build` after an `scp` of source).
-  No new infrastructure, no registry account, no extra credentials to manage.
+  build on the VPS after an `scp` of source; nomos uses `docker compose up -d
+  --build`). No new infrastructure, no registry account, no extra credentials.
 - Agonara's image is tiny and cheap to build (node:22-slim + `npm install
   --omit=dev` over one runtime dep), so on-VPS build cost is negligible.
 - Keeps the private-instance ownership story clean — nothing leaves agonara-vps.
@@ -152,17 +153,20 @@ immutable image provenance. At that point CI builds + pushes `<version>` and
 - [ ] Wire both jobs into the `github-release` `needs`/`if` guards and the
       `notify` job's `needs` + `job_results` (so a deploy failure both blocks the
       GitHub release and pages Telegram).
-- [ ] **Real LLM provider (nomos approach).** Wire the open-answer evaluator
-      worker (ADR-015) to a real provider in staging/prod via OpenRouter, reusing
-      the nomos convention: `secrets.OPENROUTER_API_KEY` +
-      `vars.OPENROUTER_CI_MODEL`, with the key delivered to agonara-vps as
-      runtime env (not in the repo). The staging/prod smoke should exercise a
-      real evaluation path (a real LLM call), mirroring the nomos staging/prod
-      smoke, in addition to health + version.
+- [ ] **Real LLM provider via Nomos.** The open-answer evaluator worker
+      (ADR-015) executes behind an injected provider adapter that does **not**
+      own credentials. For staging/prod, supply a real adapter pointing at the
+      repo's **Nomos** gateway (OpenAI-compatible). Per the CLAUDE.md "Nomos API
+      Keys" rule, provision Agonara's **own Nomos project + API key** — do not
+      reuse another project's key. The adapter config (Nomos base URL, model,
+      `AGONARA_NOMOS_API_KEY`) is delivered to agonara-vps as runtime env, never
+      committed. The staging/prod smoke should exercise a real evaluation path
+      that routes through Nomos, mirroring the nomos real-LLM smoke, in addition
+      to health + version.
 - [ ] Add repo secrets: `AGONARA_VPS_HOST`, `AGONARA_VPS_USER`,
-      `AGONARA_VPS_SSH_KEY`, an evaluation smoke token for the authed route, and
-      `AGONARA_OPENROUTER_API_KEY` (or reuse `OPENROUTER_API_KEY`). (`CI_BOT_TOKEN`
-      / `CI_CHAT_ID`, `OPENROUTER_CI_MODEL` already exist.)
+      `AGONARA_VPS_SSH_KEY`, `AGONARA_NOMOS_API_KEY` (Agonara's dedicated Nomos
+      key), and an evaluation smoke token for the authed route. (`CI_BOT_TOKEN` /
+      `CI_CHAT_ID` already exist.)
 
 ### 5e. Docs / governance
 - [ ] Promote the provisional direction in `agonara/docs/deployment-target.md`
@@ -199,7 +203,8 @@ Per `.agents/process-gates.md` and the release skill, from trunk:
 
 Decided by the owner (recorded in the intro): topology (staging + prod on
 agonara-vps), image delivery (build-on-VPS), HTTPS + domain in scope for v1, and
-a real LLM provider via the nomos OpenRouter approach. Still open:
+a real LLM provider via the Nomos gateway (Agonara's own Nomos project + key).
+Still open:
 
 1. **Version surfacing** — confirm health is the right place to expose version
    (vs a dedicated `/version`), matching the deploy verify step.
@@ -210,10 +215,9 @@ a real LLM provider via the nomos OpenRouter approach. Still open:
 4. **Backup / restore** — minimum viable backup of the `/data` sqlite volume
    (and restore drill) before prod is declared real (deployment-target open
    question). Cadence + storage location?
-5. **Provider key scoping** — reuse the existing `OPENROUTER_API_KEY` /
-   `OPENROUTER_CI_MODEL` or provision Agonara-specific keys, and which production
-   model? (Nomos API-key isolation guidance in `CLAUDE.md` leans toward a
-   dedicated key.)
+5. **Nomos project + model specifics** — which Nomos project/base URL backs
+   Agonara's evaluator, and which model? The dedicated-key requirement is settled
+   by the CLAUDE.md "Nomos API Keys" rule; the project/model choice is not.
 6. **Smoke scope** — beyond health + version + a real evaluation call, anything
    else the staging/prod smoke must assert (bootstrap status, admin UI)?
 7. **Container registry image-tag invariant** — under build-on-VPS, confirm the
