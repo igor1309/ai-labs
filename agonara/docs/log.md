@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Refresh the Identity implementation notes so HTTP audit-event redaction and pagination are no longer described as deferred.
 - Mark the Operational Cross-Cutting first-slice spec implemented with evidence links to request correlation, operational logs, health, diagnostics, redaction, backup/restore logging, and executable acceptance.
 - Align Identity backup/restore operational log components with the operational component-name contract.
 - Implement Identity audit-event HTTP pagination and invalid cursor/limit rejection after adversarial review of the API/CLI spec closeout.
