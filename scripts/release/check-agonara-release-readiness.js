@@ -105,6 +105,13 @@ function runReadinessChecks() {
   assertWorkflowContains(workflow, "needs.deploy-agonara-prod.result == 'success'");
   assertWorkflowContains(workflow, 'deploy-agonara-staging=${{ needs.deploy-agonara-staging.result }}');
   assertWorkflowContains(workflow, 'deploy-agonara-prod=${{ needs.deploy-agonara-prod.result }}');
+  if (!appearsInOrder(workflow, [
+    'Prepare clean Agonara deploy upload',
+    'rm -rf /tmp/agonara-deploy',
+    'Copy source files to VPS',
+  ])) {
+    throw new Error('release-unit.yml must clean /tmp/agonara-deploy before copying Agonara source');
+  }
   checks.push('release workflow');
 
   checkLockedReleaseInstall(version, workflow);
