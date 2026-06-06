@@ -1,5 +1,11 @@
 # Log
 
+## 2026-06-07
+
+- Agonara: add `agonara/docs/api/TODO.md` for OpenAPI automation and API-skill alignment, and surface the OpenAPI contract plus implemented API skill on the project landing.
+- Agonara: harden the new OpenAPI contract after adversarial review by fixing bootstrap, evaluator tick, metadata, and public no-auth route response warnings.
+- Agonara: add the canonical route-level OpenAPI 3.1 contract under `agonara/docs/api/openapi.yml` and link it from the project README.
+
 ## 2026-06-06
 
 - LOC dashboard: refreshed `docs/loc-dashboard.html` from `scripts/loc-dashboard.sh --sort=name` so the summary cards, table totals, data array, and update date match the current repo snapshot (total 220,762→230,345).

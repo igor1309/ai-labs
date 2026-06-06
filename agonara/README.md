@@ -20,6 +20,10 @@ Agonara is API-first: browser surfaces and operator commands are clients of back
 - [`architecture.html`](architecture.html) — architecture deep dive (progressive disclosure from the landing): module responsibility map, ownership rules, runtime, deployment, and ADR index.
 - [`docs/intent/user-stories.html`](docs/intent/user-stories.html) — user stories driving the product.
 
+## API Contract
+
+- [`docs/api/openapi.yml`](docs/api/openapi.yml) — canonical route-level OpenAPI 3.1 contract for implemented HTTP surfaces, shared envelopes, session cookie auth, CSRF, idempotency, and common rejection reasons.
+
 ## Current Implementation Snapshot
 
 Implemented backend, domain, and product surfaces:
