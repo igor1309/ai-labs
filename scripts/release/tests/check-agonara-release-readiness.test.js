@@ -39,6 +39,7 @@ describe('check-agonara-release-readiness', () => {
 
     assert.equal(result.exitCode, 0, result.stderr);
     assert.ok(result.stdout.includes('OK locked release install'));
+    assert.ok(result.stdout.includes('OK container runtime boundary'));
     assert.ok(result.stdout.includes('OK deploy upload preflight'));
     assert.ok(result.stdout.includes('OK deploy health gate'));
     assert.ok(result.stdout.includes('OK deploy image lifecycle'));
@@ -110,6 +111,44 @@ describe('check-agonara-release-readiness', () => {
 
     assert.equal(result.exitCode, 1);
     assert.ok(result.stderr.includes('Agonara Dockerfile must copy package-lock.json and use npm ci --omit=dev'));
+  });
+
+  it('fails when the container does not switch to the runtime user', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      dockerfile: validDockerfile().replace('USER agonara\n', ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara Dockerfile must run as agonara with owned app/data files and a Node-native healthcheck'));
+  });
+
+  it('fails when the runtime user does not own the data directory', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      dockerfile: validDockerfile()
+        .replace(' && chown agonara:agonara /data', ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara Dockerfile must run as agonara with owned app/data files and a Node-native healthcheck'));
+  });
+
+  it('fails when the container healthcheck does not use runtime Node', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      dockerfile: validDockerfile()
+        .replace(
+          'CMD node -e \'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))\'',
+          'CMD wget -q --spider http://127.0.0.1:8080/operations/health',
+        ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara Dockerfile must run as agonara with owned app/data files and a Node-native healthcheck'));
   });
 
   it('fails when the release workflow does not upload the Agonara package lock', () => {
@@ -906,9 +945,22 @@ function writeAgonaraReleaseRepo(dir, {
 
 function validDockerfile() {
   return [
-    'FROM node:22',
+    'FROM node:22-bookworm-slim',
+    'RUN groupadd --system agonara && useradd --system --gid agonara --home-dir /app agonara',
+    'WORKDIR /app',
     'COPY --chown=agonara:agonara package.json package-lock.json ./',
     'RUN npm ci --omit=dev',
+    'COPY --chown=agonara:agonara src/ src/',
+    'COPY --chown=agonara:agonara scripts/ scripts/',
+    'RUN chown -R agonara:agonara /app && mkdir -p /data && chown agonara:agonara /data',
+    'USER agonara',
+    'ENV AGONARA_DB_PATH=/data/agonara.sqlite',
+    'ENV HOST=0.0.0.0',
+    'ENV PORT=8080',
+    'EXPOSE 8080',
+    'HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \\',
+    'CMD node -e \'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))\'',
+    'CMD ["node", "src/server.js"]',
   ].join('\n');
 }
 
