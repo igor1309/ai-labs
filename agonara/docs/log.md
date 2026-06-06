@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Bring Agonara staging onto public HTTPS: create the DNS-only Cloudflare A record `staging.agonara.enoa.ai -> 172.245.246.108`, install Caddy on the RackNerd Agonara VPS, terminate TLS at Caddy, keep `agonara-staging` bound to loopback `127.0.0.1:18081`, and verify `https://staging.agonara.enoa.ai/operations/health` returns `status: ok` with version `0.0.0`.
 - Complete the first staging dry run on the RackNerd Agonara VPS: deploy `agonara-staging` through the build-on-VPS script, health-gate `/operations/health` on `127.0.0.1:18081`, confirm local image tags for version and git sha, keep staging env secrets host-side at `0600`, and harden the image/scripts for Docker-only hosts (runtime-readable package metadata, Node-native health probes, no host-Node dependency, normalized non-secret source file modes).
 - Add ADR-017 VPS-side deployment scaffolding for Agonara: staging/prod compose files with isolated loopback ports and data volumes, build-on-VPS deploy scripts with version/git-sha tags and rollback image retention, off-host backup and restore scripts, CI path coverage for deploy assets, and contract tests for the deployment invariants.
 - Harden the ADR-018 runtime after adversarial review by sending accepted check prompt and criterion body snapshots to the Nomos adapter, covering missing adapter configuration, failed/malformed provider responses, and operations-session trigger authorization.

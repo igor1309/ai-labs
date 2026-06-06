@@ -17,7 +17,8 @@ differs. Decisions confirmed with the owner:
 
 - **Topology:** staging + prod, both tiers on agonara-vps.
 - **Image delivery:** build-on-VPS (the nomos pattern). Confirmed.
-- **HTTPS / domain:** in scope for v1 (not deferred).
+- **HTTPS / domain:** staging is live at
+  `https://staging.agonara.enoa.ai`; prod hostname remains undecided.
 - **LLM provider:** wire a real provider for staging/prod by pointing Agonara's
   evaluator/curation provider adapter (ADR-015) at the repo's **Nomos** gateway,
   with Agonara's **own Nomos project + API key** (per the CLAUDE.md "Nomos API
@@ -55,9 +56,9 @@ The missing My Way artifacts this handoff implied have been produced on
 - **§7** deployment work remains sequenced by the [Agonara Deployment Wiring](plans/agonara-deployment-wiring.md)
   implementation plan (release-unit registration → VPS scaffolding → CI deploy jobs → gated real-LLM smoke).
 
-The remaining work is deployment execution plus human-owned inputs (VPS host,
-secrets, DNS/TLS, dedicated Nomos project/key/model selection) and the still-open
-operational questions in [§10](#10-open-questions).
+The remaining work is deployment execution plus human-owned inputs (prod
+hostname, secrets, dedicated Nomos project/key/model selection) and the
+still-open operational questions in [§10](#10-open-questions).
 
 ## 1. Current state
 
@@ -71,7 +72,7 @@ operational questions in [§10](#10-open-questions).
 | Compose | `agonara/compose.yaml` for local/dev plus `compose.staging.yml` / `compose.prod.yml` for VPS staging/prod; staging binds `127.0.0.1:18081:8080`, prod binds `127.0.0.1:18080:8080`, each with distinct named volumes and host-side env files |
 | Deploy job | **None.** No agonara branch in `release-unit.yml` |
 | Deploy scripts | `agonara/scripts/deploy-staging.sh`, `deploy-prod.sh`, `rollback-prod.sh`, `backup-prod.sh`, `restore-prod.sh` exist; CI release jobs are not wired yet |
-| Staging/prod compose | Present. First staging dry run passed on `root@172.245.246.108`: `agonara-staging` healthy on loopback `127.0.0.1:18081`, health returns version `0.0.0`; no reverse proxy/TLS, Nomos env, prod deploy, backup artifact, or restore drill yet |
+| Staging/prod compose | Present. First staging dry run passed on `root@172.245.246.108`: `agonara-staging` healthy on loopback `127.0.0.1:18081`, health returns version `0.0.0`, and Caddy serves `https://staging.agonara.enoa.ai/operations/health`; no Nomos env, prod deploy, backup artifact, or restore drill yet |
 | Health/version | `/operations/health` returns `{status, version, checkedAt, requestId}` — version sourced from `package.json` (§6a, implemented) |
 | LLM evaluation (runtime) | Open-answer evaluator real-provider runtime exists (§6b implemented), but the staging dry run omitted Nomos config, so the operational trigger route is not enabled on the VPS yet. Curator-suggestion real-provider migration remains out of scope. |
 | VPS secrets | Staging bootstrap and trigger secrets are provisioned host-side in `/opt/agonara/.env.staging` with `0600`; Agonara-specific GitHub deploy secrets, Nomos key/model/base URL, prod env, backup remote, and smoke token are not provisioned yet |
@@ -253,9 +254,11 @@ job invokes the §6 features (version verify, real-LLM smoke).
 - [x] `agonara/scripts/deploy-staging.sh`, `deploy-prod.sh`, `rollback-prod.sh`
       mirroring `nomos/scripts/*` (build, up, snapshot prior image as
       `…:rollback`, health-gate). Apply the `<version>`+`<git-sha>` local tags here.
-- [ ] One-time agonara-vps prep: install Docker + compose, create `/opt/agonara`,
-      provision the reverse proxy + TLS + domain, and store
+- [x] One-time staging agonara-vps prep: install Docker + compose, create
+      `/opt/agonara`, provision Caddy + TLS for
+      `https://staging.agonara.enoa.ai`, and store
       `AGONARA_BOOTSTRAP_SECRET` securely on the host (never in the repo).
+      Prod hostname/TLS remains a prod closeout item.
 - [x] `agonara/scripts/backup-prod.sh` and `restore-prod.sh` scaffold the
       off-host production `/data` backup and restore-drill mechanics; the actual
       `AGONARA_BACKUP_REMOTE` target and a successful drill remain human/VPS
@@ -333,8 +336,9 @@ agonara-vps), image delivery (build-on-VPS), HTTPS + domain in scope for v1, and
 a real LLM provider via the Nomos gateway (Agonara's own Nomos project + key).
 Still open:
 
-1. **Domain / DNS / TLS ownership** — HTTPS is in scope; which exact hostnames
-   for staging vs prod, who owns the DNS zone, and Caddy auto-TLS vs managed cert?
+1. **Prod domain / DNS / TLS ownership** — staging is
+   `https://staging.agonara.enoa.ai` through Caddy auto-TLS on the Agonara VPS;
+   the prod hostname, DNS ownership path, and cert approach remain open.
 2. **Bootstrap secret lifecycle** — how is `AGONARA_BOOTSTRAP_SECRET` generated,
    stored, and rotated on agonara-vps? Same secret per tier or distinct?
 3. **Backup / restore implementation** — which concrete backup tool, exact
