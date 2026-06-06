@@ -587,6 +587,76 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('Agonara staging backup and restore scripts must validate the database archive before transfer or data replacement'));
   });
 
+  it('fails when staging restore does not reject a missing backup path', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      restoreStaging: validRestoreScript({ staging: true }).replace(
+        [
+          'if [[ -z "${BACKUP_FILE}" ]]; then',
+          '  echo "backup file path is required" >&2',
+          '  exit 1',
+          'fi',
+        ].join('\n') + '\n',
+        '',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging backup and restore scripts must validate the database archive before transfer or data replacement'));
+  });
+
+  it('fails when staging backup does not initialize its off-host destination', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      backupStaging: validBackupScript({ staging: true }).replace('BACKUP_REMOTE="${AGONARA_BACKUP_REMOTE:-}"\n', ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging backup and restore scripts must validate the database archive before transfer or data replacement'));
+  });
+
+  it('fails when staging backup validates the archive after off-host transfer', () => {
+    const offHostTransfer = '"${RSYNC[@]}" "${BACKUP_DIR}/${BACKUP_FILE}" "${BACKUP_REMOTE}/"';
+    writeAgonaraReleaseRepo(tmp, {
+      backupStaging: validBackupScript({ staging: true })
+        .replace(`${backupArchiveValidation()}\n`, '')
+        .replace(offHostTransfer, `${offHostTransfer}\n${backupArchiveValidation()}`),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging backup and restore scripts must validate the database archive before transfer or data replacement'));
+  });
+
+  it('fails when staging restore rebuilds the deployed image', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      restoreStaging: validRestoreScript({ staging: true }).replace(
+        '"${COMPOSE[@]}" up -d --no-build --wait',
+        '"${COMPOSE[@]}" up -d --build --wait',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging backup and restore scripts must validate the database archive before transfer or data replacement'));
+  });
+
+  it('fails when staging restore does not health-gate availability', () => {
+    const healthGate = 'docker exec agonara-staging node -e \'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))\'';
+    writeAgonaraReleaseRepo(tmp, {
+      restoreStaging: validRestoreScript({ staging: true }).replace(`${healthGate}\n`, ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara staging backup and restore scripts must validate the database archive before transfer or data replacement'));
+  });
+
   it('passes the GitHub secret check when required deploy secret names exist', () => {
     writeAgonaraReleaseRepo(tmp);
     const fakeGhBin = writeFakeGhSecretList([
