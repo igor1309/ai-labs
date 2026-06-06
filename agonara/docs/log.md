@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Implement Identity audit-event HTTP pagination and invalid cursor/limit rejection after adversarial review of the API/CLI spec closeout.
 - Mark the Identity & Role Management API/CLI spec implemented with evidence links to HTTP adapters, CLI commands, focused route/CLI tests, and executable acceptance.
 - Mark the Identity & Role Management first-slice spec implemented with evidence links to the identity command boundary, persistence, backup/restore coverage, HTTP/CLI acceptance, and the Admin UI board.
 - Clarify the Program Shell and Membership API status note so the base slice boundary does not overclaim absence of later invitation and recovery routes.

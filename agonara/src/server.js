@@ -65,6 +65,7 @@ export function createServer({
           failedAuthAttempts,
           generateToken,
           identityCommands,
+          listCursors,
           pathname,
           request,
           response,
@@ -259,6 +260,7 @@ async function handleIdentityApi({
   failedAuthAttempts,
   generateToken,
   identityCommands,
+  listCursors,
   pathname,
   request,
   response,
@@ -428,8 +430,25 @@ async function handleIdentityApi({
   }
 
   if (request.method === "GET" && pathname === "/identity/audit-events") {
+    const routeKey = "identity:audit-events";
+    const query = parseListQuery({ listCursors, request, routeKey });
+    if (query.status === "rejected") {
+      sendJson(response, 400, query);
+      return true;
+    }
+
     const result = identityCommands.listAuditEvents({ actingSessionId: getSessionCookie(request) });
-    sendJson(response, statusForResult(result), mapAuditEventsResult(result));
+    sendJson(
+      response,
+      statusForResult(result),
+      mapAuditEventsResult({
+        generateToken,
+        listCursors,
+        query: query.value,
+        result,
+        routeKey,
+      }),
+    );
     return true;
   }
 
@@ -3049,13 +3068,26 @@ function mapIdentityResult(result, identityCommands, actingSessionId) {
   });
 }
 
-function mapAuditEventsResult(result) {
+function mapAuditEventsResult({ generateToken, listCursors, query, result, routeKey }) {
   if (result.status === "rejected") {
     return result;
   }
 
+  const page = paginateList({
+    generateToken,
+    items: result.value.auditEvents,
+    limit: query.limit,
+    listCursors,
+    offset: query.offset,
+    routeKey,
+  });
+  if (page.status === "rejected") {
+    return page;
+  }
+
   return accepted({
-    auditEvents: result.value.auditEvents.map(({ targetSessionId, ...auditEvent }) => auditEvent),
+    auditEvents: page.value.items.map(({ targetSessionId, ...auditEvent }) => auditEvent),
+    nextCursor: page.value.nextCursor,
   });
 }
 
