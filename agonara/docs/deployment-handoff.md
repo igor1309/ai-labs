@@ -68,13 +68,13 @@ operational questions in [§10](#10-open-questions).
 | Release unit | **Not registered.** Absent from `release-units.config.toml` and `release-units.toml` |
 | CI (core) | `.github/workflows/agonara-core.yml` exists — tests + `docker build` + container smoke (`/operations/health`, bootstrap, admin UI) |
 | Container | `agonara/Dockerfile` (node:22-slim, non-root, `/data` sqlite volume, `HEALTHCHECK` on `/operations/health`, `EXPOSE 8080`) |
-| Compose | `agonara/compose.yaml` — single service, binds `127.0.0.1:18080:8080`, named volume `agonara-data`, requires `AGONARA_BOOTSTRAP_SECRET` |
+| Compose | `agonara/compose.yaml` for local/dev plus `compose.staging.yml` / `compose.prod.yml` for VPS staging/prod; staging binds `127.0.0.1:18081:8080`, prod binds `127.0.0.1:18080:8080`, each with distinct named volumes and host-side env files |
 | Deploy job | **None.** No agonara branch in `release-unit.yml` |
-| Deploy scripts | **None.** No `agonara/scripts/` (cf. `nomos/scripts/deploy-staging.sh|deploy-prod.sh|rollback-prod.sh`) |
-| Staging/prod compose | **None.** Only the dev `compose.yaml` (cf. `nomos/docker-compose.staging.yml`) |
+| Deploy scripts | `agonara/scripts/deploy-staging.sh`, `deploy-prod.sh`, `rollback-prod.sh`, `backup-prod.sh`, `restore-prod.sh` exist; CI release jobs are not wired yet |
+| Staging/prod compose | Present. First staging dry run passed on `root@172.245.246.108`: `agonara-staging` healthy on loopback `127.0.0.1:18081`, health returns version `0.0.0`; no reverse proxy/TLS, Nomos env, prod deploy, backup artifact, or restore drill yet |
 | Health/version | `/operations/health` returns `{status, version, checkedAt, requestId}` — version sourced from `package.json` (§6a, implemented) |
-| LLM evaluation (runtime) | **Stub-only / not wired.** No real provider adapter exists in `src/`; the server injects **no** `providerAdapters` into the evaluator (`src/server.js:2583`) and **runs no evaluator worker** (no route, no loop). The only composition-root adapter is `makeDefaultLlmSuggestionProviderAdapter()` — a hardcoded deterministic stub for the *curator-suggestion* path (`src/server.js:2636`). See [§6](#6-application-development-required-pre-deploy). |
-| VPS secrets | **None provisioned** (`AGONARA_VPS_HOST/USER/SSH_KEY`, `AGONARA_BOOTSTRAP_SECRET`, Nomos key, smoke token) |
+| LLM evaluation (runtime) | Open-answer evaluator real-provider runtime exists (§6b implemented), but the staging dry run omitted Nomos config, so the operational trigger route is not enabled on the VPS yet. Curator-suggestion real-provider migration remains out of scope. |
+| VPS secrets | Staging bootstrap and trigger secrets are provisioned host-side in `/opt/agonara/.env.staging` with `0600`; Agonara-specific GitHub deploy secrets, Nomos key/model/base URL, prod env, backup remote, and smoke token are not provisioned yet |
 
 ## 2. How the repo's tag-release approach works (recap)
 

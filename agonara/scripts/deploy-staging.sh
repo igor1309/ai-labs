@@ -4,6 +4,8 @@ set -euo pipefail
 # Deploy staging from files uploaded to /tmp/agonara-deploy.
 # Called by release-unit.yml via SSH on agonara-vps.
 
+umask 022
+
 DEPLOY_ROOT="${AGONARA_DEPLOY_ROOT:-/opt/agonara}"
 UPLOAD_ROOT="${AGONARA_UPLOAD_ROOT:-/tmp/agonara-deploy}"
 DEPLOY_VERSION="${AGONARA_DEPLOY_VERSION:-}"
@@ -11,7 +13,7 @@ DEPLOY_GIT_SHA="${AGONARA_GIT_SHA:-${GITHUB_SHA:-}}"
 COMPOSE=(docker compose --env-file .env.staging -f compose.staging.yml)
 
 read_package_version() {
-  node -e 'const fs = require("fs"); console.log(JSON.parse(fs.readFileSync(process.argv[1], "utf8")).version);' "$1"
+  sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$1" | head -n 1
 }
 
 if [[ -z "${DEPLOY_GIT_SHA}" ]]; then
@@ -30,6 +32,7 @@ rm -rf src
 cp -r "${UPLOAD_ROOT}/src" .
 rm -rf scripts
 cp -r "${UPLOAD_ROOT}/scripts" .
+chmod -R u=rwX,go=rX Dockerfile package.json compose.staging.yml src scripts
 
 if [[ -z "${DEPLOY_VERSION}" ]]; then
   DEPLOY_VERSION="$(read_package_version package.json)"
@@ -40,6 +43,6 @@ docker tag agonara:staging "agonara:${DEPLOY_VERSION}"
 docker tag agonara:staging "agonara:${DEPLOY_GIT_SHA}"
 "${COMPOSE[@]}" down
 "${COMPOSE[@]}" up -d --no-build --wait
-docker exec agonara-staging wget -qO- http://127.0.0.1:8080/operations/health | grep -q "\"version\":\"${DEPLOY_VERSION}\""
+docker exec -e EXPECTED_VERSION="${DEPLOY_VERSION}" agonara-staging node -e 'fetch("http://127.0.0.1:8080/operations/health").then(response => response.text()).then(body => { if (!body.includes(`"version":"${process.env.EXPECTED_VERSION}"`)) process.exit(1); }).catch(() => process.exit(1))'
 
 echo "Staging deploy successful"

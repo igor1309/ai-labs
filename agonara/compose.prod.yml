@@ -22,7 +22,7 @@ services:
     volumes:
       - agonara-data:/data
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/operations/health || exit 1"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/operations/health').then(response => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))"]
       interval: 30s
       timeout: 5s
       start_period: 5s

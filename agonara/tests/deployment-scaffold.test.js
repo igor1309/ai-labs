@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const files = {
+  dockerfile: readText("../Dockerfile"),
   stagingCompose: readText("../compose.staging.yml"),
   prodCompose: readText("../compose.prod.yml"),
   deployStaging: readText("../scripts/deploy-staging.sh"),
@@ -11,6 +12,26 @@ const files = {
   backupProd: readText("../scripts/backup-prod.sh"),
   restoreProd: readText("../scripts/restore-prod.sh"),
 };
+
+test("deploymentImage_shouldMakeAppFilesReadableByRuntimeUser", () => {
+  assert.deepEqual(
+    {
+      packageOwnedByRuntimeUser: files.dockerfile.includes("COPY --chown=agonara:agonara package.json ./"),
+      sourceOwnedByRuntimeUser: files.dockerfile.includes("COPY --chown=agonara:agonara src/ src/"),
+      healthcheckUsesRuntimeNode: files.dockerfile.includes("CMD node -e 'fetch("),
+      appTreeChownedBeforeRuntimeUser: appearsInOrder(files.dockerfile, [
+        "RUN chown -R agonara:agonara /app",
+        "USER agonara",
+      ]),
+    },
+    {
+      packageOwnedByRuntimeUser: true,
+      sourceOwnedByRuntimeUser: true,
+      healthcheckUsesRuntimeNode: true,
+      appTreeChownedBeforeRuntimeUser: true,
+    },
+  );
+});
 
 test("deploymentCompose_shouldIsolateStagingAndProd_onDistinctLoopbackPortsAndVolumes", () => {
   assert.deepEqual(
@@ -41,6 +62,9 @@ test("deploymentCompose_shouldIsolateStagingAndProd_onDistinctLoopbackPortsAndVo
         "AGONARA_NOMOS_MODEL",
         "AGONARA_OPEN_ANSWER_EVALUATOR_TRIGGER_TOKEN",
       ]),
+      stagingHealthcheckUsesRuntimeNode: files.stagingCompose.includes('test: ["CMD", "node", "-e", "fetch('),
+      prodHealthcheckUsesRuntimeNode: files.prodCompose.includes('test: ["CMD", "node", "-e", "fetch('),
+      composeDoesNotRequireWget: !`${files.stagingCompose}\n${files.prodCompose}`.includes("wget"),
       exposesNonLoopbackPort: /-\s*"(?!127\.0\.0\.1:)\d+:\d+"/.test(
         `${files.stagingCompose}\n${files.prodCompose}`,
       ),
@@ -58,6 +82,9 @@ test("deploymentCompose_shouldIsolateStagingAndProd_onDistinctLoopbackPortsAndVo
       prodRequiresBootstrapSecret: true,
       stagingPassesProviderEnv: true,
       prodPassesProviderEnv: true,
+      stagingHealthcheckUsesRuntimeNode: true,
+      prodHealthcheckUsesRuntimeNode: true,
+      composeDoesNotRequireWget: true,
       exposesNonLoopbackPort: false,
     },
   );
@@ -92,6 +119,14 @@ test("deploymentScripts_shouldBuildOnVpsTagImagesAndHealthGate_onExpectedVersion
       prodUsesEnvFileForInterpolation: files.deployProd.includes(
         "COMPOSE=(docker compose --env-file .env.prod -f compose.prod.yml)",
       ),
+      stagingResetsSourceFileUmask: appearsInOrder(files.deployStaging, ["set -euo pipefail", "umask 022"]),
+      prodResetsSourceFileUmask: appearsInOrder(files.deployProd, ["set -euo pipefail", "umask 022"]),
+      stagingNormalizesSourceFileModes: files.deployStaging.includes(
+        "chmod -R u=rwX,go=rX Dockerfile package.json compose.staging.yml src scripts",
+      ),
+      prodNormalizesSourceFileModes: files.deployProd.includes(
+        "chmod -R u=rwX,go=rX Dockerfile package.json compose.prod.yml src scripts",
+      ),
       stagingReadsVersionAfterCopy: appearsInOrder(files.deployStaging, [
         'cp "${UPLOAD_ROOT}/package.json" .',
         'DEPLOY_VERSION="$(read_package_version package.json)"',
@@ -100,6 +135,7 @@ test("deploymentScripts_shouldBuildOnVpsTagImagesAndHealthGate_onExpectedVersion
         'cp "${UPLOAD_ROOT}/package.json" .',
         'DEPLOY_VERSION="$(read_package_version package.json)"',
       ]),
+      deployScriptsDoNotRequireHostNode: !`${files.deployStaging}\n${files.deployProd}`.includes("node -e 'const fs"),
       stagingBuildsBeforeDown: appearsInOrder(files.deployStaging, [
         '"${COMPOSE[@]}" build',
         '"${COMPOSE[@]}" down',
@@ -123,6 +159,9 @@ test("deploymentScripts_shouldBuildOnVpsTagImagesAndHealthGate_onExpectedVersion
       ]),
       stagingHealthGatesVersion: containsAll(files.deployStaging, ["operations/health", "version", "DEPLOY_VERSION"]),
       prodHealthGatesVersion: containsAll(files.deployProd, ["operations/health", "version", "DEPLOY_VERSION"]),
+      deployScriptsDoNotRequireWget: !`${files.deployStaging}\n${files.deployProd}\n${files.rollbackProd}`.includes(
+        "wget",
+      ),
     },
     {
       stagingCopiesUploadedSource: true,
@@ -133,8 +172,13 @@ test("deploymentScripts_shouldBuildOnVpsTagImagesAndHealthGate_onExpectedVersion
       prodBuildsOnHost: true,
       stagingUsesEnvFileForInterpolation: true,
       prodUsesEnvFileForInterpolation: true,
+      stagingResetsSourceFileUmask: true,
+      prodResetsSourceFileUmask: true,
+      stagingNormalizesSourceFileModes: true,
+      prodNormalizesSourceFileModes: true,
       stagingReadsVersionAfterCopy: true,
       prodReadsVersionAfterCopy: true,
+      deployScriptsDoNotRequireHostNode: true,
       stagingBuildsBeforeDown: true,
       prodBuildsBeforeDown: true,
       stagingTagsVersionAndSha: true,
@@ -143,6 +187,7 @@ test("deploymentScripts_shouldBuildOnVpsTagImagesAndHealthGate_onExpectedVersion
       rollbackUsesSnapshot: true,
       stagingHealthGatesVersion: true,
       prodHealthGatesVersion: true,
+      deployScriptsDoNotRequireWget: true,
     },
   );
 });
@@ -164,7 +209,7 @@ test("backupRestoreScripts_shouldRequireOffHostBackupAndRestoreThroughProdCompos
         'BACKUP_BASENAME="$(basename "${BACKUP_FILE}")"',
         'sh "${BACKUP_BASENAME}"',
       ]),
-      restoreHealthGates: files.restoreProd.includes('"status":"ok"'),
+      restoreHealthGates: containsAll(files.restoreProd, ["operations/health", "response.ok"]),
     },
     {
       backupRequiresRemote: true,
