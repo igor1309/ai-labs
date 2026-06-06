@@ -105,7 +105,8 @@ function runReadinessChecks() {
   assertWorkflowContains(workflow, "needs.deploy-agonara-prod.result == 'success'");
   assertWorkflowContains(workflow, 'deploy-agonara-staging=${{ needs.deploy-agonara-staging.result }}');
   assertWorkflowContains(workflow, 'deploy-agonara-prod=${{ needs.deploy-agonara-prod.result }}');
-  if (!appearsInOrder(workflow, [
+  const stagingJob = getWorkflowJob(workflow, 'deploy-agonara-staging');
+  if (!appearsInOrder(stagingJob, [
     'Prepare clean Agonara deploy upload',
     'rm -rf /tmp/agonara-deploy',
     'Copy source files to VPS',
@@ -225,6 +226,14 @@ function appearsInOrder(text, needles) {
     cursor = index;
   }
   return true;
+}
+
+function getWorkflowJob(workflow, jobName) {
+  const match = workflow.match(new RegExp(`(^|\\n)  ${jobName}:\\n([\\s\\S]*?)(?=\\n  [A-Za-z0-9_-]+:|$)`));
+  if (!match) {
+    throw new Error(`release-unit.yml missing ${jobName}:`);
+  }
+  return match[2];
 }
 
 function checkGithubDeploySecretNames() {

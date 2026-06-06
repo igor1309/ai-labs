@@ -133,6 +133,29 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('release-unit.yml must clean /tmp/agonara-deploy before copying Agonara source'));
   });
 
+  it('fails when upload cleanup is outside the Agonara staging deploy job', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        '      - name: Prepare clean Agonara deploy upload\n        script: rm -rf /tmp/agonara-deploy\n',
+        '',
+      ).replace(
+        '  deploy-agonara-prod:',
+        [
+          '  cleanup-agonara-upload:',
+          '      - name: Prepare clean Agonara deploy upload',
+          '        script: rm -rf /tmp/agonara-deploy',
+          '      - name: Copy source files to VPS',
+          '  deploy-agonara-prod:',
+        ].join('\n'),
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml must clean /tmp/agonara-deploy before copying Agonara source'));
+  });
+
   it('fails when the CI dispatcher does not route Agonara package lock changes', () => {
     writeAgonaraReleaseRepo(tmp, {
       ciWorkflow: validCiWorkflow().replace(
