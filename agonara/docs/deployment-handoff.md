@@ -18,7 +18,8 @@ differs. Decisions confirmed with the owner:
 - **Topology:** staging + prod, both tiers on agonara-vps.
 - **Image delivery:** build-on-VPS (the nomos pattern). Confirmed.
 - **HTTPS / domain:** staging is live at
-  `https://staging.agonara.enoa.ai`; prod hostname remains undecided.
+  `https://staging.agonara.enoa.ai`; prod is deployed internally on loopback
+  and prod hostname/public TLS remain undecided.
 - **LLM provider:** wire a real provider for staging/prod by pointing Agonara's
   evaluator/curation provider adapter (ADR-015) at the repo's **Nomos** gateway,
   with Agonara's **own Nomos project + API key** (per the CLAUDE.md "Nomos API
@@ -72,10 +73,10 @@ still-open operational questions in [§10](#10-open-questions).
 | Compose | `agonara/compose.yaml` for local/dev plus `compose.staging.yml` / `compose.prod.yml` for VPS staging/prod; staging binds `127.0.0.1:18081:8080`, prod binds `127.0.0.1:18080:8080`, each with distinct named volumes and host-side env files |
 | Deploy job | **None.** No agonara branch in `release-unit.yml` |
 | Deploy scripts | `agonara/scripts/deploy-staging.sh`, `deploy-prod.sh`, `rollback-prod.sh`, `backup-staging.sh`, `restore-staging.sh`, `backup-prod.sh`, `restore-prod.sh` exist; CI release jobs are not wired yet |
-| Staging/prod compose | Present. Staging is live on `root@172.245.246.108`: `agonara-staging` healthy on loopback `127.0.0.1:18081`, health returns version `0.0.0`, Caddy serves `https://staging.agonara.enoa.ai/operations/health`, a real open-answer evaluator smoke passed through the operations trigger and dedicated Nomos staging project, and staging `/data` backup/restore has been rehearsed from off-host storage. No prod deploy, prod backup artifact, or prod restore drill yet |
+| Staging/prod compose | Present. Staging is live on `root@172.245.246.108`: `agonara-staging` healthy on loopback `127.0.0.1:18081`, health returns version `0.0.0`, Caddy serves `https://staging.agonara.enoa.ai/operations/health`, a real open-answer evaluator smoke passed through the operations trigger and dedicated Nomos staging project, and staging `/data` backup/restore has been rehearsed from off-host storage. Prod is deployed internally as `agonara`, loopback-bound on `127.0.0.1:18080`, with distinct prod env secrets, a dedicated Nomos prod project/key, real evaluator smoke, daily off-host backup cron, and a restore drill from the downloaded off-host artifact. No prod public hostname/TLS route or CI release job yet |
 | Health/version | `/operations/health` returns `{status, version, checkedAt, requestId}` — version sourced from `package.json` (§6a, implemented) |
-| LLM evaluation (runtime) | Open-answer evaluator real-provider runtime exists (§6b implemented). Staging has `AGONARA_NOMOS_BASE_URL=https://staging.nomos.enoa.ai`, model `openai/gpt-5-nano`, and a dedicated Nomos project/key; the smoke script `scripts/smoke-open-answer-evaluator.mjs` schedules one exact evaluator job, triggers `/operations/open-answer-evaluator/tick`, and verifies the attempt detail contains an evaluation. Curator-suggestion real-provider migration remains out of scope. |
-| VPS secrets | Staging bootstrap, operations trigger, Nomos base URL/model/key, smoke-admin credentials, and staging backup SSH key are provisioned host-side with restrictive file modes; Agonara-specific GitHub deploy secrets, prod env, prod backup remote/key, and prod smoke token are not provisioned yet |
+| LLM evaluation (runtime) | Open-answer evaluator real-provider runtime exists (§6b implemented). Staging has `AGONARA_NOMOS_BASE_URL=https://staging.nomos.enoa.ai`, model `openai/gpt-5-nano`, and a dedicated Nomos staging project/key. Prod has `AGONARA_NOMOS_BASE_URL=https://nomos.enoa.ai`, model `openai/gpt-5-nano`, and a dedicated Nomos prod project/key. The smoke script `scripts/smoke-open-answer-evaluator.mjs` schedules one exact evaluator job, triggers `/operations/open-answer-evaluator/tick`, and verifies the attempt detail contains an evaluation. Curator-suggestion real-provider migration remains out of scope. |
+| VPS secrets | Staging and prod bootstrap, operations trigger, Nomos base URL/model/key, smoke-admin credentials, and backup SSH keys are provisioned host-side with restrictive file modes; Agonara-specific GitHub deploy secrets and public-prod smoke token are not provisioned yet |
 
 ## 2. How the repo's tag-release approach works (recap)
 
@@ -341,11 +342,10 @@ Still open:
    the prod hostname, DNS ownership path, and cert approach remain open.
 2. **Bootstrap secret lifecycle** — how is `AGONARA_BOOTSTRAP_SECRET` generated,
    stored, and rotated on agonara-vps? Same secret per tier or distinct?
-3. **Production backup / restore implementation** — staging uses tar-over-volume
-   with `rsync` to the Qwins off-host backup user, daily 02:17 UTC, 14-day local
-   retention, and a restore drill from the downloaded off-host artifact. Prod
-   still needs its own remote/key, cadence confirmation, retention policy, and
-   restore drill before it is real.
+3. **Production public exposure** — prod is deployed internally on loopback and
+   has a passed backup/restore drill, but no public hostname/TLS route yet.
+   Decide the prod hostname, Caddy route, and whether prod exposure waits for CI
+   release jobs or can be manually promoted.
 4. **Nomos project + model specifics** — which Nomos project/base URL backs
    Agonara's evaluator, and which model? The dedicated-key requirement is settled
    by the CLAUDE.md "Nomos API Keys" rule; the project/model choice is not.

@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+Provision `agonara-prod` as a dedicated live-scope project in the Nomos production database, with a 50k-token daily budget and a host-side Agonara prod API key. Verified the key supports Agonara's real open-answer evaluator smoke through `https://nomos.enoa.ai/v1/chat/completions`.
 Provision `agonara-staging` as a dedicated live-scope project in the Nomos staging database, with a 50k-token daily budget and a host-side Agonara staging API key. Verified the key can call `https://staging.nomos.enoa.ai/v1/chat/completions` through the live OpenRouter-backed path and support Agonara's real open-answer evaluator smoke.
 
 ## 2026-04-27
