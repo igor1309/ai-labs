@@ -23,7 +23,7 @@ description: "Agonara API contract map for route families, ownership, auth, and 
 Use this command to find every documented HTTP contract table:
 
 ```bash
-rg -n '^\\| `(GET|POST|DELETE|PUT|PATCH)`' agonara/docs/specs/*.md
+rg -n '^\| `(GET|POST|DELETE|PUT|PATCH)`' agonara/docs/specs/*.md
 ```
 
 ## Transport Invariants
