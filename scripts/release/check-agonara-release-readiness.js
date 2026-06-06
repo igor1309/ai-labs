@@ -107,6 +107,8 @@ function runReadinessChecks() {
   assertWorkflowContains(workflow, 'deploy-agonara-prod=${{ needs.deploy-agonara-prod.result }}');
   checks.push('release workflow');
 
+  checkLockedReleaseInstall(version, workflow);
+
   if (checkGithubSecrets) {
     checkGithubDeploySecretNames();
   }
@@ -146,6 +148,39 @@ function assertWorkflowContains(workflow, expected) {
   if (!workflow.includes(expected)) {
     throw new Error(`release-unit.yml missing ${expected}`);
   }
+}
+
+function checkLockedReleaseInstall(version, workflow) {
+  const lockfilePath = join(repoRoot, 'agonara/package-lock.json');
+  if (!existsSync(lockfilePath)) {
+    throw new Error('agonara/package-lock.json is missing');
+  }
+  const lockfile = JSON.parse(readFileSync(lockfilePath, 'utf8'));
+  const lockfileVersion = lockfile.packages?.['']?.version ?? lockfile.version;
+  if (lockfileVersion !== version) {
+    throw new Error(`agonara/package-lock.json version ${lockfileVersion} does not match tag version ${version}`);
+  }
+
+  const dockerfile = readFileSync(join(repoRoot, 'agonara/Dockerfile'), 'utf8');
+  if (
+    !dockerfile.includes('COPY --chown=agonara:agonara package.json package-lock.json ./')
+    || !dockerfile.includes('RUN npm ci --omit=dev')
+  ) {
+    throw new Error('Agonara Dockerfile must copy package-lock.json and use npm ci --omit=dev');
+  }
+  if (!workflow.includes('agonara/package-lock.json')) {
+    throw new Error('release-unit.yml must upload agonara/package-lock.json');
+  }
+
+  const ciWorkflowPath = join(repoRoot, '.github/workflows/ci.yml');
+  if (!existsSync(ciWorkflowPath)) {
+    throw new Error('ci.yml is missing');
+  }
+  const ciWorkflow = readFileSync(ciWorkflowPath, 'utf8');
+  if (!ciWorkflow.includes('"agonara/package-lock.json"')) {
+    throw new Error('ci.yml must route agonara/package-lock.json changes to Agonara core');
+  }
+  checks.push('locked release install');
 }
 
 function checkGithubDeploySecretNames() {

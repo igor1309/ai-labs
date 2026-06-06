@@ -38,6 +38,7 @@ describe('check-agonara-release-readiness', () => {
     const result = runReadiness(tmp);
 
     assert.equal(result.exitCode, 0, result.stderr);
+    assert.ok(result.stdout.includes('OK locked release install'));
     assert.ok(result.stdout.includes('Agonara release readiness passed for agonara_v0.1.0.'));
   });
 
@@ -88,6 +89,21 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes("release-unit.yml missing needs.deploy-agonara-staging.result == 'success'"));
   });
 
+  it('fails when the locked release install wiring is incomplete', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      dockerfile: [
+        'FROM node:22',
+        'COPY --chown=agonara:agonara package.json ./',
+        'RUN npm install --omit=dev',
+      ].join('\n'),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara Dockerfile must copy package-lock.json and use npm ci --omit=dev'));
+  });
+
   it('passes the GitHub secret check when required deploy secret names exist', () => {
     writeAgonaraReleaseRepo(tmp);
     const fakeGhBin = writeFakeGhSecretList([
@@ -136,14 +152,22 @@ describe('check-agonara-release-readiness', () => {
 });
 
 function writeAgonaraReleaseRepo(dir, {
+  dockerfile = validDockerfile(),
   workflow = validReleaseWorkflow(),
+  ciWorkflow = validCiWorkflow(),
 } = {}) {
   git(dir, 'init -b trunk');
   git(dir, 'config commit.gpgSign false');
   git(dir, 'commit --allow-empty -m "initial"');
   mkdirSync(join(dir, 'agonara'), { recursive: true });
   writeFileSync(join(dir, 'agonara/package.json'), JSON.stringify({ name: 'agonara', version: '0.1.0' }));
-  writeFileSync(join(dir, 'agonara/Dockerfile'), 'FROM node:22\n');
+  writeFileSync(join(dir, 'agonara/package-lock.json'), JSON.stringify({
+    name: 'agonara',
+    version: '0.1.0',
+    lockfileVersion: 3,
+    packages: { '': { name: 'agonara', version: '0.1.0' } },
+  }));
+  writeFileSync(join(dir, 'agonara/Dockerfile'), dockerfile);
   writeFileSync(join(dir, 'release-units.config.toml'), 'paths = ["agonara"]\n');
   writeFileSync(
     join(dir, 'release-units.toml'),
@@ -153,8 +177,17 @@ function writeAgonaraReleaseRepo(dir, {
   );
   mkdirSync(join(dir, '.github/workflows'), { recursive: true });
   writeFileSync(join(dir, '.github/workflows/release-unit.yml'), workflow);
+  writeFileSync(join(dir, '.github/workflows/ci.yml'), ciWorkflow);
   git(dir, 'add -A');
   git(dir, 'commit -m "add agonara release wiring"');
+}
+
+function validDockerfile() {
+  return [
+    'FROM node:22',
+    'COPY --chown=agonara:agonara package.json package-lock.json ./',
+    'RUN npm ci --omit=dev',
+  ].join('\n');
 }
 
 function validReleaseWorkflow() {
@@ -163,11 +196,22 @@ function validReleaseWorkflow() {
     '  deploy-agonara-staging:',
     '      - name: Verify Agonara deploy secrets',
     '        run: true',
+    '        source: "agonara/package-lock.json"',
     '  deploy-agonara-prod:',
     "      && needs.deploy-agonara-staging.result == 'success'",
     "      && needs.deploy-agonara-prod.result == 'success'",
     '        deploy-agonara-staging=${{ needs.deploy-agonara-staging.result }}',
     '        deploy-agonara-prod=${{ needs.deploy-agonara-prod.result }}',
+  ].join('\n');
+}
+
+function validCiWorkflow() {
+  return [
+    'filters:',
+    '  agonara:',
+    '    - "agonara/package-lock.json"',
+    '  agonara-ci:',
+    '    - ".github/workflows/agonara-core.yml"',
   ].join('\n');
 }
 
