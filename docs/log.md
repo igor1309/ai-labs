@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-06
+
+- My Way research: added `docs/my-way/research/intent-debt-osmani.md` — a summary of Addy Osmani's *intent debt* essay (definition, Triple Debt Model, why specs alone can't capture intent, intent-first/ADR/BDD remedies) plus a gap analysis of My Way against it. Finding: My Way is already largely an intent-debt-prevention method (intent-first chain, externalized+committed rationale, living loop), so the borrowable gaps are the people-facing ones — a human-comprehension/cognitive-debt gate, active capture of implicit implementation decisions, framing traceability review as scheduled intent-debt paydown, injecting intent artifacts into the agent's generation-time context, a minimal "why" floor on lite paths, and adopting "intent debt" as first-class vocabulary. Origin was unreachable (allowlist + origin 403); summary is a flagged second-hand reconstruction from search excerpts.
+
 ## 2026-06-04
 
 - My Way landing (`docs/my-way/landing.html`): added a **Traceability** section and a traceability annotation band under the loop diagram, importing ideas from the `traceability-review` skill — the invariant (no loss, no contradiction; siblings don't diverge), forward/downward allocation completeness, backward/upward orphan (scope-creep) check, and complete enumeration as the method, with suggest-only + umbrella-ledger noted as mechanics.
