@@ -36,6 +36,26 @@ differs. Decisions confirmed with the owner:
 >
 > Open decisions are listed in [§10 Open questions](#10-open-questions).
 
+## 0. Resolution status (2026-06-06)
+
+The missing My Way artifacts this handoff implied have been produced on
+`claude/agonara-handoff-gaps-tndEi`:
+
+- **G1** closed by [ADR-017 — Private-Instance Deployment Operational Boundary](adr/adr-017-private-instance-deployment-operational-boundary.md)
+  (also folds in **G3** backup/restore minimums). `deployment-target.md` now points to it.
+- **G2** closed by [ADR-018 — Open-Answer Evaluator Real-Provider Runtime](adr/adr-018-open-answer-evaluator-real-provider-runtime.md)
+  (amends ADR-015), with the implementable contract in
+  [Open-Answer Evaluator Real-Provider Runtime](specs/open-answer-evaluator-real-provider-runtime.md) (spec, draft).
+- **§6a** version surfacing is **implemented** (health now returns `version`,
+  sourced from `package.json`; covered by tests and the container smoke) under
+  [Operations Health Version](specs/operations-health-version.md).
+- **§6b / §7** sequenced by the [Agonara Deployment Wiring](plans/agonara-deployment-wiring.md)
+  implementation plan (release-unit registration → VPS scaffolding → CI deploy jobs → gated real-LLM smoke).
+
+The remaining work is execution of that plan plus human-owned inputs (VPS host,
+secrets, DNS/TLS, dedicated Nomos project/key) and the still-open operational
+questions in [§10](#10-open-questions).
+
 ## 1. Current state
 
 | Aspect | Status |
@@ -49,7 +69,7 @@ differs. Decisions confirmed with the owner:
 | Deploy job | **None.** No agonara branch in `release-unit.yml` |
 | Deploy scripts | **None.** No `agonara/scripts/` (cf. `nomos/scripts/deploy-staging.sh|deploy-prod.sh|rollback-prod.sh`) |
 | Staging/prod compose | **None.** Only the dev `compose.yaml` (cf. `nomos/docker-compose.staging.yml`) |
-| Health/version | `/operations/health` returns `{status, checkedAt, requestId}` (`src/server.js:130`) — **no version field** (nomos verifies deploy via `"version"` in health) |
+| Health/version | `/operations/health` returns `{status, version, checkedAt, requestId}` — version sourced from `package.json` (§6a, implemented) |
 | LLM evaluation (runtime) | **Stub-only / not wired.** No real provider adapter exists in `src/`; the server injects **no** `providerAdapters` into the evaluator (`src/server.js:2583`) and **runs no evaluator worker** (no route, no loop). The only composition-root adapter is `makeDefaultLlmSuggestionProviderAdapter()` — a hardcoded deterministic stub for the *curator-suggestion* path (`src/server.js:2636`). See [§6](#6-application-development-required-pre-deploy). |
 | VPS secrets | **None provisioned** (`AGONARA_VPS_HOST/USER/SSH_KEY`, `AGONARA_BOOTSTRAP_SECRET`, Nomos key, smoke token) |
 
@@ -134,15 +154,18 @@ These are **decisions, not tasks** — they must be ratified before the §6
 application work is built and before the §9 runbook is executable. They are
 ADR/spec-level because the existing accepted ADRs/specs explicitly defer them.
 
-- [ ] **G1 Deployment ADR (deployment-target → accepted).**
+- [x] **G1 Deployment ADR (deployment-target → accepted).** Closed by
+      [ADR-017](adr/adr-017-private-instance-deployment-operational-boundary.md).
       `agonara/docs/deployment-target.md` is provisional: it "becomes a
       commitment only after an ADR accepts the operational boundary,
       backup/restore expectations, and minimum admin responsibilities." No such
       ADR exists. Promote it before declaring a prod release real. **Gates:**
       HTTPS/domain ownership, backup/restore minimums, admin operational
       responsibility.
-- [ ] **G2 Evaluator worker execution + real-provider spec (amends/extends
-      ADR-015 scope).** ADR-015 and `docs/specs/student-workspace-open-answer-evaluator-worker.md`
+- [x] **G2 Evaluator worker execution + real-provider spec (amends/extends
+      ADR-015 scope).** Closed by [ADR-018](adr/adr-018-open-answer-evaluator-real-provider-runtime.md)
+      (amends ADR-015) and the [real-provider runtime spec](specs/open-answer-evaluator-real-provider-runtime.md).
+      ADR-015 and `docs/specs/student-workspace-open-answer-evaluator-worker.md`
       define an **in-process, single-run** worker that receives **deterministic
       adapter output** and explicitly list *external provider calls, deployment
       topology, and worker topology assumptions* as non-goals. A real Nomos
@@ -159,7 +182,9 @@ ADR/spec-level because the existing accepted ADRs/specs explicitly defer them.
         persisted…"; a real-LLM smoke produces real transcripts that touch this.
       - **Provider credential mechanism** at the composition root (env-only,
         never in domain records — already constrained by ADR-015).
-- [ ] **G3 Backup/restore of the `/data` SQLite volume.** deployment-target
+- [x] **G3 Backup/restore of the `/data` SQLite volume.** Decided in
+      [ADR-017](adr/adr-017-private-instance-deployment-operational-boundary.md)
+      (≥ daily off-host backup + rehearsed restore drill before prod is real). deployment-target
       gates this "before prod is declared real." Decide minimum viable
       backup + a restore drill, cadence, and storage location (see
       [§10](#10-open-questions) Q4). ADR/operational-boundary level.
@@ -173,16 +198,21 @@ ADR/spec-level because the existing accepted ADRs/specs explicitly defer them.
 Net-new Agonara **code** the deploy verify/smoke steps depend on. This is *not*
 config — it is feature work in `src/`, with tests, behind the §5 gates where noted.
 
-### 6a. Expose deployed version (prerequisite for the deploy verify step)
-- [ ] Add the running version to `/operations/health` (or a `/version`
-      endpoint) so the deploy job can assert the live version like nomos does
-      (`grep '"version":"<expected>"'`). Today health returns `{status,
-      checkedAt, requestId}` with no version (`src/server.js:130`). Source the
-      value from `package.json` at build/runtime.
-- [ ] Extend `agonara-core.yml` smoke + a unit test to cover the version field.
-- **Size:** small, self-contained. **Not gated** by §5.
+### 6a. Expose deployed version (prerequisite for the deploy verify step) — **done**
+- [x] Add the running version to `/operations/health` so the deploy job can
+      assert the live version like nomos does (`grep '"version":"<expected>"'`).
+      Health now returns `{status, version, checkedAt, requestId}`; the version is
+      sourced from `package.json` at runtime via the composition root
+      (`startServer` → `createServer`). See
+      [Operations Health Version](specs/operations-health-version.md).
+- [x] Extend `agonara-core.yml` smoke + unit tests to cover the version field.
+- **Size:** small, self-contained. **Not gated** by §5. **Implemented.**
 
-### 6b. Real LLM provider for the evaluator/curation path (gated by G2)
+### 6b. Real LLM provider for the evaluator/curation path (G2 now closed — unblocked, not yet built)
+G2 is closed by [ADR-018](adr/adr-018-open-answer-evaluator-real-provider-runtime.md)
+and the [real-provider runtime spec](specs/open-answer-evaluator-real-provider-runtime.md),
+which now define the contract for the items below; the code is **not yet built**
+(Phase 4 of the [deployment-wiring plan](plans/agonara-deployment-wiring.md)).
 The handoff's "point the adapter at Nomos" is **not** mere configuration — the
 runtime evaluation path does not exist yet. Building it requires:
 - [ ] **A real provider adapter** (OpenAI-compatible HTTP client to the Nomos
