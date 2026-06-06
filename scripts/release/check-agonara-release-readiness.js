@@ -252,20 +252,17 @@ function checkWorkflowSmokeGate(workflowJob, containerName) {
 }
 
 function checkWorkflowCleanupLifecycle(stagingJob, prodJob) {
-  const stagingCleanup = [
-    'Clean deploy upload after staging failure',
-    'if: failure()',
-    'script: rm -rf /tmp/agonara-deploy || true',
-  ];
-  const prodCleanup = [
-    'Rollback production on failure',
-    'if: failure()',
-    'script: bash /opt/agonara/scripts/rollback-prod.sh',
-    'Clean deploy upload',
-    'if: always()',
-    'script: rm -rf /tmp/agonara-deploy || true',
-  ];
-  if (!appearsInOrder(stagingJob, stagingCleanup) || !appearsInOrder(prodJob, prodCleanup)) {
+  const stagingCleanup = getWorkflowStep(stagingJob, 'Clean deploy upload after staging failure');
+  const rollback = getWorkflowStep(prodJob, 'Rollback production on failure');
+  const finalCleanup = getWorkflowStep(prodJob, 'Clean deploy upload');
+  const validLifecycle = stagingCleanup.includes('if: failure()')
+    && stagingCleanup.includes('script: rm -rf /tmp/agonara-deploy || true')
+    && rollback.includes('if: failure()')
+    && rollback.includes('script: bash /opt/agonara/scripts/rollback-prod.sh')
+    && finalCleanup.includes('if: always()')
+    && finalCleanup.includes('script: rm -rf /tmp/agonara-deploy || true')
+    && prodJob.indexOf(rollback) < prodJob.indexOf(finalCleanup);
+  if (!validLifecycle) {
     throw new Error('release-unit.yml must cleanup staging failures and run production rollback before final upload cleanup');
   }
 }
@@ -288,6 +285,12 @@ function getWorkflowJob(workflow, jobName) {
     throw new Error(`release-unit.yml missing ${jobName}:`);
   }
   return match[2];
+}
+
+function getWorkflowStep(workflowJob, stepName) {
+  const escapedStepName = stepName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = workflowJob.match(new RegExp(`(^|\\n)\\s+- name: ${escapedStepName}\\n([\\s\\S]*?)(?=\\n\\s+- name:|$)`));
+  return match?.[0] ?? '';
 }
 
 function checkGithubDeploySecretNames() {

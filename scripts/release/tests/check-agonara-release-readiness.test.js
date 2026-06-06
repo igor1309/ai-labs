@@ -206,6 +206,26 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('release-unit.yml must cleanup staging failures and run production rollback before final upload cleanup'));
   });
 
+  it('fails when workflow cleanup lifecycle tokens appear outside the cleanup steps', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        workflowStagingCleanup(),
+        [
+          '      - name: Clean deploy upload after staging failure',
+          '        if: always()',
+          '      - name: Unrelated staging failure step',
+          '        if: failure()',
+          '        script: rm -rf /tmp/agonara-deploy || true',
+        ].join('\n'),
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml must cleanup staging failures and run production rollback before final upload cleanup'));
+  });
+
   it('fails when the CI dispatcher does not route Agonara package lock changes', () => {
     writeAgonaraReleaseRepo(tmp, {
       ciWorkflow: validCiWorkflow().replace(
