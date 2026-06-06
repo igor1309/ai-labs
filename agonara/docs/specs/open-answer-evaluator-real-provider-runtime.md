@@ -3,7 +3,7 @@ date: 2026-06-06
 model: claude
 description: "Spec: Agonara real Nomos LLM open-answer evaluator provider adapter, policy, in-process worker trigger, and composition-root wiring."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -11,9 +11,9 @@ type: spec
 
 ## Goal
 
-Define the Agonara contract for a real LLM open-answer evaluation path: a Nomos-backed provider adapter, an LLM evaluator policy, the in-process single-flight worker trigger that runs it, and the composition-root wiring that supplies provider configuration from runtime environment. Owned by the operational server surface (`src/server.js`) and a new provider adapter module; the Student Workspace evaluator job boundary remains the owner of jobs, evidence, and final feedback.
+Define the Agonara contract for a real LLM open-answer evaluation path: a Nomos-backed provider adapter, an LLM evaluator policy, the in-process single-flight worker trigger that runs it, and the composition-root wiring that supplies provider configuration from runtime environment. Owned by the operational server surface (`src/server.js`) and the provider runtime module (`src/open-answer-evaluator-runtime.js`); the Student Workspace evaluator job boundary remains the owner of jobs, evidence, and final feedback.
 
-This operationalizes [ADR-018](../adr/adr-018-open-answer-evaluator-real-provider-runtime.md) (which amends [ADR-015](../adr/adr-015-open-answer-evaluator-worker-provider-boundary.md)) and reuses the worker contract from [Student Workspace Open-Answer Evaluator Worker](student-workspace-open-answer-evaluator-worker.md). It closes `deployment-handoff.md` §6b. It does not add a durable queue, a separate worker process, raw-artifact persistence, prompt-template governance beyond the policy's declared inputs, model-routing, the curator-suggestion real path, or any UI.
+This operationalizes [ADR-018](../adr/adr-018-open-answer-evaluator-real-provider-runtime.md) (which amends [ADR-015](../adr/adr-015-open-answer-evaluator-worker-provider-boundary.md)) and reuses the worker contract from [Student Workspace Open-Answer Evaluator Worker](student-workspace-open-answer-evaluator-worker.md). It closes `deployment-handoff.md` §6b for the open-answer evaluator path. It does not add a durable queue, a separate worker process, raw-artifact persistence, prompt-template governance beyond the policy's declared inputs, model-routing, the curator-suggestion real path, or any UI.
 
 ## Public interface
 

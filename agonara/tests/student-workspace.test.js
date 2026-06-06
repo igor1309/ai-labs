@@ -3955,6 +3955,52 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldRecordEvidenceAndCompleteEvaluation
   }
 });
 
+test("runOpenAnswerEvaluatorWorkerOnce_shouldRecordEvidenceAndCompleteEvaluation_onAsyncProviderOutput", async () => {
+  const { commands, database } = makeSUT({
+    ids: ["attempt-1", "evaluator-run-1", "lease-1", "evaluation-1"],
+    evaluatorPolicies: [makeEvaluatorPolicy({ evaluatorPathKind: "llm_assisted" })],
+    providerAdapters: [
+      makeProviderAdapter({
+        evaluatorPathKind: "llm_assisted",
+        evaluate: async () => makeProviderResult(),
+      }),
+    ],
+  });
+
+  try {
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    submitAttempt(commands);
+    commands.scheduleOpenAnswerEvaluatorJob({
+      attemptId: "attempt-1",
+      evaluatorPathKind: "llm_assisted",
+      evaluatorPolicyId: "policy-a",
+      retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+    });
+
+    const result = await commands.runOpenAnswerEvaluatorWorkerOnce({
+      workerId: "worker-a",
+      mode: "single_job",
+      evaluatorJobId: "evaluator-run-1",
+      leaseDurationSeconds: 300,
+    });
+
+    assert.deepEqual(
+      {
+        resultStatus: result.status,
+        completed: result.value?.summary.completed,
+        evaluationIds: listOpenAnswerEvaluationRecords(database).map($0 => $0.id),
+      },
+      {
+        resultStatus: "accepted",
+        completed: true,
+        evaluationIds: ["evaluation-1"],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("runOpenAnswerEvaluatorWorkerOnce_shouldRejectTerminalRerunWithoutDuplicateEvaluation_onSucceededJob", () => {
   const { commands, database } = makeSUT({
     ids: ["attempt-1", "evaluator-run-1", "lease-1", "evaluation-1"],
@@ -4279,7 +4325,6 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldPreserveAdjacentDomainsAndExcludeOu
 test("containsAnyOutOfScopeEvaluatorWorkerSurface_shouldDetectForbiddenSurface_onWorkerExpansion", () => {
   assert.deepEqual(
     [
-      { serverSource: "runOpenAnswerEvaluatorWorkerOnce" },
       { cliSource: "providerAdapters" },
       { adminUiSource: "evaluatorPolicies" },
       { workspaceSource: "fetch(" },
@@ -4307,7 +4352,7 @@ test("containsAnyOutOfScopeEvaluatorWorkerSurface_shouldDetectForbiddenSurface_o
         ...source,
       }),
     ),
-    Array.from({ length: 19 }, () => true),
+    Array.from({ length: 18 }, () => true),
   );
 });
 
@@ -10925,10 +10970,9 @@ function containsInternalQuickCheckResolverSurface({
 function containsAnyOutOfScopeEvaluatorWorkerSurface({
   adminUiSource,
   cliSource,
-  serverSource,
   workspaceSource,
 }) {
-  const publicSources = [adminUiSource, cliSource, serverSource].join("\n");
+  const publicSources = [adminUiSource, cliSource].join("\n");
   const normalizedWorkspace = workspaceSource.toLowerCase();
   return (
     ["runOpenAnswerEvaluatorWorkerOnce", "providerAdapters", "evaluatorPolicies"].some($0 =>

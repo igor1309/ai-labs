@@ -7,6 +7,11 @@ import { createCorpusCommands } from "./corpus.js";
 import { createCuratorWorkspaceCommands } from "./curator-workspace.js";
 import { createIdentityCommands } from "./identity.js";
 import { learnUiHtml } from "./learn-ui.js";
+import {
+  createNomosOpenAnswerEvaluatorProviderAdapter,
+  createSingleFlightOpenAnswerEvaluatorWorkerTick,
+  makeLlmOpenAnswerEvaluatorPolicy,
+} from "./open-answer-evaluator-runtime.js";
 import { createProgramCommands } from "./program.js";
 import { initializeIdentityStorage, openIdentityDatabase } from "./storage.js";
 import { createStudentWorkspaceCommands } from "./student-workspace.js";
@@ -19,6 +24,8 @@ export function createServer({
   identityCommands = null,
   log = logToStdout,
   now = () => new Date(),
+  openAnswerEvaluatorWorkerTick = null,
+  operationsTriggerToken,
   programCommands = null,
   studentWorkspaceCommands = null,
   version = "0.0.0",
@@ -129,6 +136,26 @@ export function createServer({
         }
       }
 
+      if (
+        request.method === "POST" &&
+        pathname === "/operations/open-answer-evaluator/tick" &&
+        openAnswerEvaluatorWorkerTick
+      ) {
+        const triggerAccess = getOperationsTriggerAccess({
+          identityCommands,
+          operationsTriggerToken,
+          request,
+        });
+        if (triggerAccess.status === "rejected") {
+          sendJson(response, httpStatusFor(triggerAccess.reason), triggerAccess);
+          return;
+        }
+
+        const result = await openAnswerEvaluatorWorkerTick();
+        sendJson(response, statusForResult(result), result);
+        return;
+      }
+
       if (request.method === "GET" && pathname === "/operations/health") {
         const status = healthCheck();
         sendJson(response, 200, {
@@ -171,6 +198,26 @@ export function createServer({
       sendJson(response, 500, { status: "fault", reason: "internal_error" });
     }
   });
+}
+
+function getOperationsTriggerAccess({ identityCommands, operationsTriggerToken, request }) {
+  if (isValidOperationsTriggerToken(request, operationsTriggerToken)) {
+    return { status: "accepted" };
+  }
+  if (!identityCommands) {
+    return { status: "rejected", reason: "session_not_found" };
+  }
+
+  const sessionId = getSessionCookie(request);
+  return identityCommands.listIdentities({ actingSessionId: sessionId });
+}
+
+function isValidOperationsTriggerToken(request, operationsTriggerToken) {
+  if (!operationsTriggerToken) {
+    return false;
+  }
+
+  return request.headers.authorization === `Bearer ${operationsTriggerToken}`;
 }
 
 async function handleIdentityApi({
@@ -2577,6 +2624,10 @@ export function startServer({
   databasePath = process.env.AGONARA_DB_PATH ?? ":memory:",
   host = process.env.HOST ?? "0.0.0.0",
   log = logToStdout,
+  nomosApiKey = process.env.AGONARA_NOMOS_API_KEY,
+  nomosBaseUrl = process.env.AGONARA_NOMOS_BASE_URL,
+  nomosModel = process.env.AGONARA_NOMOS_MODEL,
+  openAnswerEvaluatorTriggerToken = process.env.AGONARA_OPEN_ANSWER_EVALUATOR_TRIGGER_TOKEN,
   port = process.env.PORT ?? "8080",
   version = readPackageVersion(),
 } = {}) {
@@ -2590,9 +2641,16 @@ export function startServer({
   const programCommands = createProgramCommands({
     database,
   });
+  const openAnswerEvaluatorRuntime = makeOpenAnswerEvaluatorRuntime({
+    nomosApiKey,
+    nomosBaseUrl,
+    nomosModel,
+  });
   const studentWorkspaceCommands = createStudentWorkspaceCommands({
     database,
+    evaluatorPolicies: openAnswerEvaluatorRuntime.evaluatorPolicies,
     getEffectiveParticipation: programCommands.getEffectiveParticipation,
+    providerAdapters: openAnswerEvaluatorRuntime.providerAdapters,
   });
   const corpusCommands = createCorpusCommands({
     database,
@@ -2616,6 +2674,14 @@ export function startServer({
     programCommands,
     studentWorkspaceCommands,
     log,
+    openAnswerEvaluatorWorkerTick: openAnswerEvaluatorRuntime.enabled
+      ? createSingleFlightOpenAnswerEvaluatorWorkerTick({
+          runOpenAnswerEvaluatorWorkerOnce: studentWorkspaceCommands.runOpenAnswerEvaluatorWorkerOnce,
+          workerId: "open-answer-evaluator",
+          leaseDurationSeconds: 300,
+        })
+      : null,
+    operationsTriggerToken: openAnswerEvaluatorTriggerToken,
     version,
   });
   server.on("close", () => {
@@ -2623,6 +2689,37 @@ export function startServer({
   });
   server.listen(Number(port), host);
   return server;
+}
+
+function makeOpenAnswerEvaluatorRuntime({ nomosApiKey, nomosBaseUrl, nomosModel }) {
+  if (!nomosApiKey || !nomosBaseUrl || !nomosModel) {
+    return { enabled: false, evaluatorPolicies: [], providerAdapters: [] };
+  }
+
+  const providerAdapterId = "nomos-open-answer-evaluator";
+  const outputValidatorPolicyId = "nomos-open-answer-output-validator";
+  return {
+    enabled: true,
+    evaluatorPolicies: [
+      makeLlmOpenAnswerEvaluatorPolicy({
+        evaluatorPolicyId: "nomos-open-answer-evaluator-policy",
+        providerAdapterId,
+        outputValidatorPolicyId,
+        redactionPolicyId: "nomos-open-answer-redaction",
+        retryPolicy: { maxAttempts: 2, backoffSeconds: [60] },
+        budgetPolicy: { maxProviderCalls: 1, maxInputTokens: 4000, maxOutputTokens: 1000 },
+      }),
+    ],
+    providerAdapters: [
+      createNomosOpenAnswerEvaluatorProviderAdapter({
+        providerAdapterId,
+        baseUrl: nomosBaseUrl,
+        model: nomosModel,
+        apiKey: nomosApiKey,
+        outputValidatorPolicyId,
+      }),
+    ],
+  };
 }
 
 function makeDefaultLlmSuggestionPolicy() {
@@ -4331,6 +4428,7 @@ function httpStatusFor(reason) {
     case "suggestion_materialization_rejected":
     case "suggestion_rejection_failed":
     case "target_identity_disabled":
+    case "worker_already_running":
       return 409;
     case "rate_limited":
       return 429;

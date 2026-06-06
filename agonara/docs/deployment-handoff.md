@@ -45,16 +45,19 @@ The missing My Way artifacts this handoff implied have been produced on
   (also folds in **G3** backup/restore minimums). `deployment-target.md` now points to it.
 - **G2** closed by [ADR-018 — Open-Answer Evaluator Real-Provider Runtime](adr/adr-018-open-answer-evaluator-real-provider-runtime.md)
   (amends ADR-015), with the implementable contract in
-  [Open-Answer Evaluator Real-Provider Runtime](specs/open-answer-evaluator-real-provider-runtime.md) (spec, draft).
+  [Open-Answer Evaluator Real-Provider Runtime](specs/open-answer-evaluator-real-provider-runtime.md) (implemented).
 - **§6a** version surfacing is **implemented** (health now returns `version`,
   sourced from `package.json`; covered by tests and the container smoke) under
   [Operations Health Version](specs/operations-health-version.md).
-- **§6b / §7** sequenced by the [Agonara Deployment Wiring](plans/agonara-deployment-wiring.md)
+- **§6b** open-answer evaluator real-provider runtime is **implemented**:
+  Nomos adapter, LLM evaluator policy, async-compatible worker execution,
+  single-flight operational trigger, and env-only composition-root wiring.
+- **§7** deployment work remains sequenced by the [Agonara Deployment Wiring](plans/agonara-deployment-wiring.md)
   implementation plan (release-unit registration → VPS scaffolding → CI deploy jobs → gated real-LLM smoke).
 
-The remaining work is execution of that plan plus human-owned inputs (VPS host,
-secrets, DNS/TLS, dedicated Nomos project/key) and the still-open operational
-questions in [§10](#10-open-questions).
+The remaining work is deployment execution plus human-owned inputs (VPS host,
+secrets, DNS/TLS, dedicated Nomos project/key/model selection) and the still-open
+operational questions in [§10](#10-open-questions).
 
 ## 1. Current state
 
@@ -208,34 +211,25 @@ config — it is feature work in `src/`, with tests, behind the §5 gates where 
 - [x] Extend `agonara-core.yml` smoke + unit tests to cover the version field.
 - **Size:** small, self-contained. **Not gated** by §5. **Implemented.**
 
-### 6b. Real LLM provider for the evaluator/curation path (G2 now closed — unblocked, not yet built)
+### 6b. Real LLM provider for the evaluator path (done)
 G2 is closed by [ADR-018](adr/adr-018-open-answer-evaluator-real-provider-runtime.md)
 and the [real-provider runtime spec](specs/open-answer-evaluator-real-provider-runtime.md),
-which now define the contract for the items below; the code is **not yet built**
-(Phase 4 of the [deployment-wiring plan](plans/agonara-deployment-wiring.md)).
-The handoff's "point the adapter at Nomos" is **not** mere configuration — the
-runtime evaluation path does not exist yet. Building it requires:
-- [ ] **A real provider adapter** (OpenAI-compatible HTTP client to the Nomos
-      gateway). None exists in `src/` today — there is no `fetch`/HTTP LLM call
-      anywhere in the backend. The adapter must honour ADR-015: side-effect
-      limited, no domain-state mutation, no credentials in records/logs/backups.
-- [ ] **An evaluator policy** referencing that adapter's `providerAdapterId`,
-      plus the **output validation** ADR-015 mandates for untrusted model output.
-- [ ] **Worker runtime wiring** — something in the deployed server must actually
-      run `runOpenAnswerEvaluatorWorkerOnce` (a background loop / scheduler /
-      internal route). Today the server injects no `providerAdapters`
-      (`src/server.js:2583`, defaults to `[]`) and never invokes the worker.
-      The runtime shape is the decision in **G2**.
-- [ ] **Composition-root wiring** to inject the adapter + Nomos base URL/model +
-      `AGONARA_NOMOS_API_KEY` from runtime env (mirroring how
-      `makeDefaultLlmSuggestionProviderAdapter()` is injected today, but reading
-      real config and never committing it).
+which define the contract now implemented in `src/open-answer-evaluator-runtime.js`,
+`src/student-workspace.js`, and `src/server.js`:
+- [x] **A real provider adapter** (OpenAI-compatible HTTP client to the Nomos
+      gateway) with injected `fetch` tests and credential-free returned values.
+- [x] **An evaluator policy** referencing that adapter's `providerAdapterId`,
+      plus output validation for untrusted model output.
+- [x] **Worker runtime wiring** — async-compatible `runOpenAnswerEvaluatorWorkerOnce`
+      execution and an authenticated, single-flight operational trigger.
+- [x] **Composition-root wiring** to inject the adapter + Nomos base URL/model +
+      `AGONARA_NOMOS_API_KEY` from runtime env only when all provider config is present.
 - [ ] (If the same real provider is also wanted for the **curator-suggestion**
       path, note that path is likewise stub-only today —
       `docs/specs/llm-assisted-curation-suggestions.md`: "uses deterministic
       provider fakes … before any real provider configuration exists.")
-- **Size:** substantial. **Gated by G2** (runtime topology, output schema,
-  artifact policy).
+- **Deployment note:** the deploy smoke can now drive the operational trigger once
+  a dedicated Nomos project/key/model and VPS secrets are provisioned.
 
 ## 7. Ops/workflow checklist (deployment wiring)
 
@@ -335,25 +329,18 @@ agonara-vps), image delivery (build-on-VPS), HTTPS + domain in scope for v1, and
 a real LLM provider via the Nomos gateway (Agonara's own Nomos project + key).
 Still open:
 
-1. **Version surfacing** — confirm health is the right place to expose version
-   (vs a dedicated `/version`), matching the deploy verify step (§6a).
-2. **Domain / DNS / TLS ownership** — HTTPS is in scope; which exact hostnames
+1. **Domain / DNS / TLS ownership** — HTTPS is in scope; which exact hostnames
    for staging vs prod, who owns the DNS zone, and Caddy auto-TLS vs managed cert?
-3. **Bootstrap secret lifecycle** — how is `AGONARA_BOOTSTRAP_SECRET` generated,
+2. **Bootstrap secret lifecycle** — how is `AGONARA_BOOTSTRAP_SECRET` generated,
    stored, and rotated on agonara-vps? Same secret per tier or distinct?
-4. **Backup / restore** — minimum viable backup of the `/data` sqlite volume
-   (and restore drill) before prod is declared real (deployment-target open
-   question; gate G3). Cadence + storage location?
-5. **Evaluator runtime topology (G2)** — does the first real-LLM release run
-   the worker in-process, as a separate process, on a schedule, or via a queue?
-   This is an undecided ADR-015 non-goal, not a config knob.
-6. **Nomos project + model specifics** — which Nomos project/base URL backs
+3. **Backup / restore implementation** — which concrete backup tool, exact
+   cadence beyond ADR-017's daily minimum, retention window, storage location,
+   and restore-drill procedure?
+4. **Nomos project + model specifics** — which Nomos project/base URL backs
    Agonara's evaluator, and which model? The dedicated-key requirement is settled
    by the CLAUDE.md "Nomos API Keys" rule; the project/model choice is not.
-7. **Smoke scope** — beyond health + version + a real evaluation call, anything
+5. **Smoke scope** — beyond health + version + a real evaluation call, anything
    else the staging/prod smoke must assert (bootstrap status, admin UI)?
-8. **Container registry image-tag invariant** — under build-on-VPS, confirm the
+6. **Container registry image-tag invariant** — under build-on-VPS, confirm the
    `<version>`/`<git-sha>` tags are applied locally by the deploy script (vs the
    skill's registry-oriented wording).
-</content>
-</invoke>
