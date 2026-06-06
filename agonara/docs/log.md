@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Audit Agonara release readiness against Product Intent closeout, deployment handoff gates, first-release prerequisites, public-prod open questions, and the readiness script before release execution.
 - Refresh the Identity implementation notes so HTTP audit-event redaction and pagination are no longer described as deferred.
 - Mark the Operational Cross-Cutting first-slice spec implemented with evidence links to request correlation, operational logs, health, diagnostics, redaction, backup/restore logging, and executable acceptance.
 - Align Identity backup/restore operational log components with the operational component-name contract.
