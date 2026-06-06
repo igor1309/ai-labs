@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Harden release workflow staging and production version checks to reject non-2xx `/operations/health` responses before parsing JSON.
 - Extend the Agonara first-release readiness check to verify staging and production deploy scripts require HTTP success, structured health JSON, `status: ok`, and the expected version.
 - Harden staging and production deploy health gates to require HTTP success, parse `/operations/health` JSON, and require both `status: ok` and the expected version.
 - Extend the Agonara first-release readiness check to verify the release workflow cleans `/tmp/agonara-deploy` before copying source.

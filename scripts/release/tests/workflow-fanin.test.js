@@ -77,6 +77,14 @@ describe('release-unit workflow fan-in', () => {
     assert.ok(stagingDeploy.indexOf('Prepare clean Agonara deploy upload') < stagingDeploy.indexOf('Copy source files to VPS'));
   });
 
+  it('health gates Agonara workflow version checks on HTTP success before parsing JSON', () => {
+    const stagingDeploy = jobSection('deploy-agonara-staging');
+    const prodDeploy = jobSection('deploy-agonara-prod');
+
+    assert.ok(stagingDeploy.includes('if (!response.ok) process.exit(1); return response.json();'));
+    assert.ok(prodDeploy.includes('if (!response.ok) process.exit(1); return response.json();'));
+  });
+
   it('reports split Notio jobs in failure notifications', () => {
     const notify = jobSection('notify');
 
