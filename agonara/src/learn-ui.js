@@ -1,15 +1,34 @@
 export const learnUiHtml = `<!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Agonara Learn</title>
   <style>
     :root {
+      color-scheme: dark;
+      --bg: #101413;
+      --surface: #171d1b;
+      --surface-muted: #202926;
+      --field: #0d1110;
+      --border: #34423e;
+      --text: #f1f6f3;
+      --text-muted: #a8b6b0;
+      --accent: #56c5a7;
+      --accent-strong: #8de6cf;
+      --danger: #ff8c8c;
+      --warn: #f0bd5e;
+      --shadow: 0 16px 36px rgba(0, 0, 0, 0.34);
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+    }
+
+    :root[data-theme="light"] {
       color-scheme: light;
       --bg: #f7f5ef;
       --surface: #ffffff;
       --surface-muted: #eef3f6;
+      --field: #ffffff;
       --border: #d6d9dd;
       --text: #1c2329;
       --text-muted: #5e6a72;
@@ -18,8 +37,6 @@ export const learnUiHtml = `<!doctype html>
       --danger: #a33737;
       --warn: #93640c;
       --shadow: 0 10px 24px rgba(28, 35, 41, 0.08);
-      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-      --sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
     }
 
     * {
@@ -81,11 +98,17 @@ export const learnUiHtml = `<!doctype html>
 
     header {
       display: flex;
-      align-items: end;
+      align-items: start;
       justify-content: space-between;
       gap: 18px;
       padding: 34px 0 22px;
       border-bottom: 1px solid var(--border);
+    }
+
+    .header-tools {
+      display: grid;
+      gap: 12px;
+      justify-items: end;
     }
 
     h1,
@@ -133,7 +156,7 @@ export const learnUiHtml = `<!doctype html>
       width: 100%;
       border: 1px solid var(--border);
       border-radius: 6px;
-      background: #ffffff;
+      background: var(--field);
       color: var(--text);
       padding: 9px 11px;
     }
@@ -203,13 +226,23 @@ export const learnUiHtml = `<!doctype html>
       padding: 3px;
     }
 
-    .mode-tabs button {
+    .theme-switcher {
+      display: inline-flex;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: var(--surface-muted);
+      padding: 3px;
+    }
+
+    .mode-tabs button,
+    .theme-switcher button {
       min-height: 34px;
       background: transparent;
       color: var(--text-muted);
     }
 
-    .mode-tabs button[aria-selected="true"] {
+    .mode-tabs button[aria-selected="true"],
+    .theme-switcher button[aria-pressed="true"] {
       background: var(--surface);
       color: var(--accent-strong);
       box-shadow: 0 1px 4px rgba(28, 35, 41, 0.1);
@@ -315,13 +348,18 @@ export const learnUiHtml = `<!doctype html>
         <h1>Agonara Learn</h1>
         <p>Quick Check workspace</p>
       </div>
-      <section id="session-panel" class="stack" aria-label="Session">
-        <p id="session-summary" class="status">Signed out</p>
-        <div class="actions">
-          <button id="refresh-session-button" class="secondary" type="button">Refresh</button>
-          <button id="logout-button" class="secondary" type="button">Logout</button>
+      <div class="header-tools">
+        <div class="theme-switcher" role="group" aria-label="Theme">
+          <button id="theme-toggle-button" class="secondary" type="button" aria-pressed="true" aria-label="Switch to light theme">Dark</button>
         </div>
-      </section>
+        <section id="session-panel" class="stack" aria-label="Session">
+          <p id="session-summary" class="status">Signed out</p>
+          <div class="actions">
+            <button id="refresh-session-button" class="secondary" type="button">Refresh</button>
+            <button id="logout-button" class="secondary" type="button">Logout</button>
+          </div>
+        </section>
+      </div>
     </header>
 
     <main>
@@ -1138,12 +1176,18 @@ export const learnUiHtml = `<!doctype html>
         signinStatus: document.querySelector("#signin-status"),
         studentModeTab: document.querySelector("#student-mode-tab"),
         submitStatus: document.querySelector("#quick-check-submit-status"),
+        themeToggleButton: document.querySelector("#theme-toggle-button"),
         ungroupedConceptList: document.querySelector("#navigation-ungrouped-concept-list"),
         ungroupedMaterialList: document.querySelector("#navigation-ungrouped-material-list"),
         topicList: document.querySelector("#navigation-topic-list"),
       };
 
       elements.quickCheckActions.push(elements.refreshCandidatesButton);
+      setTheme(storedTheme());
+
+      elements.themeToggleButton.addEventListener("click", () => {
+        setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+      });
 
       elements.signinForm.addEventListener("submit", async event => {
         event.preventDefault();
@@ -1943,6 +1987,31 @@ export const learnUiHtml = `<!doctype html>
           : "Signed out";
         for (const action of elements.quickCheckActions) {
           action.disabled = !signedIn;
+        }
+      }
+
+      function storedTheme() {
+        try {
+          const theme = localStorage.getItem("agonara-learn-theme");
+          return theme === "light" || theme === "dark" ? theme : "dark";
+        } catch {
+          return "dark";
+        }
+      }
+
+      function setTheme(theme) {
+        const selectedTheme = theme === "light" ? "light" : "dark";
+        document.documentElement.dataset.theme = selectedTheme;
+        elements.themeToggleButton.setAttribute("aria-pressed", selectedTheme === "dark" ? "true" : "false");
+        elements.themeToggleButton.setAttribute(
+          "aria-label",
+          selectedTheme === "dark" ? "Switch to light theme" : "Switch to dark theme",
+        );
+        elements.themeToggleButton.textContent = selectedTheme === "dark" ? "Dark" : "Light";
+        try {
+          localStorage.setItem("agonara-learn-theme", selectedTheme);
+        } catch {
+          // Browsers can disable storage; the in-page theme still changes.
         }
       }
 
