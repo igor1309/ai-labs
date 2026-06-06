@@ -240,6 +240,20 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('release-unit.yml notify job must include Agonara deploy failures and report their results'));
   });
 
+  it('fails when workflow notifications do not depend on Agonara deploy jobs', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        '    needs: [deploy-agonara-staging, deploy-agonara-prod]',
+        '    needs: [deploy-agonara-staging]',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml notify job must include Agonara deploy failures and report their results'));
+  });
+
   it('fails when the CI dispatcher does not route Agonara package lock changes', () => {
     writeAgonaraReleaseRepo(tmp, {
       ciWorkflow: validCiWorkflow().replace(
@@ -461,6 +475,7 @@ function validReleaseWorkflow() {
     workflowSmokeGate('agonara'),
     workflowProdCleanupLifecycle(),
     '  notify:',
+    '    needs: [deploy-agonara-staging, deploy-agonara-prod]',
     "      || needs.deploy-agonara-staging.result == 'failure'",
     "      || needs.deploy-agonara-prod.result == 'failure'",
     '        deploy-agonara-staging=${{ needs.deploy-agonara-staging.result }}',

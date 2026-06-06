@@ -270,13 +270,15 @@ function checkWorkflowCleanupLifecycle(stagingJob, prodJob) {
 
 function checkWorkflowNotifyFanIn(workflow) {
   const notifyJob = getWorkflowJob(workflow, 'notify');
+  const notifyNeeds = workflowJobNeeds(notifyJob);
   const requiredNeedles = [
     "needs.deploy-agonara-staging.result == 'failure'",
     "needs.deploy-agonara-prod.result == 'failure'",
     'deploy-agonara-staging=${{ needs.deploy-agonara-staging.result }}',
     'deploy-agonara-prod=${{ needs.deploy-agonara-prod.result }}',
   ];
-  if (!requiredNeedles.every($0 => notifyJob.includes($0))) {
+  const dependsOnAgonaraDeploys = notifyNeeds.has('deploy-agonara-staging') && notifyNeeds.has('deploy-agonara-prod');
+  if (!dependsOnAgonaraDeploys || !requiredNeedles.every($0 => notifyJob.includes($0))) {
     throw new Error('release-unit.yml notify job must include Agonara deploy failures and report their results');
   }
 }
@@ -305,6 +307,14 @@ function getWorkflowStep(workflowJob, stepName) {
   const escapedStepName = stepName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = workflowJob.match(new RegExp(`(^|\\n)\\s+- name: ${escapedStepName}\\n([\\s\\S]*?)(?=\\n\\s+- name:|$)`));
   return match?.[0] ?? '';
+}
+
+function workflowJobNeeds(workflowJob) {
+  const match = workflowJob.match(/(^|\n)\s+needs:\s*\[([^\]]+)\]/);
+  if (!match) {
+    return new Set();
+  }
+  return new Set(match[2].split(',').map($0 => $0.trim()).filter(Boolean));
 }
 
 function checkGithubDeploySecretNames() {
