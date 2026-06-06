@@ -104,6 +104,34 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('Agonara Dockerfile must copy package-lock.json and use npm ci --omit=dev'));
   });
 
+  it('fails when the release workflow does not upload the Agonara package lock', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        '        source: "agonara/package-lock.json"',
+        '        source: "agonara/package.json"',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml must upload agonara/package-lock.json'));
+  });
+
+  it('fails when the CI dispatcher does not route Agonara package lock changes', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      ciWorkflow: validCiWorkflow().replace(
+        '    - "agonara/package-lock.json"',
+        '    - "agonara/package.json"',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('ci.yml must route agonara/package-lock.json changes to Agonara core'));
+  });
+
   it('passes the GitHub secret check when required deploy secret names exist', () => {
     writeAgonaraReleaseRepo(tmp);
     const fakeGhBin = writeFakeGhSecretList([
