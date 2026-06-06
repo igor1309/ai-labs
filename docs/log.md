@@ -2,6 +2,8 @@
 
 ## 2026-06-06
 
+- Products page: linked the Clipdeck card title to the deployed `clipdeck.enoa.ai` app and covered it with the existing static products-page regression test suite.
+
 - Internal landings: added `nomos/index.html` as the Nomos project landing and linked it from the root landing. Updated `docs/products.html` so product cards with existing local static pages open their landing surfaces (Agonara, Oracle, Dev Skills, Reinix, Nomos, Notio), with a regression test that verifies the links and targets.
 
 - agents: narrowed the OpenClaw tasks/TaskFlow ledger TODO to the ai-labs consequence only. The live VPS diagnosis, storage-path migration, and recheck schedule are inventory-owned; this repo now records only that cron-based agent observability must keep using wrapper-level fail-closed signals until inventory confirms the ledger is usable.

@@ -95,6 +95,15 @@ it('links product cards to existing local landing pages', () => {
   );
 });
 
+it('links the Clipdeck product card to the deployed app', () => {
+  const productsHtml = readFileSync('docs/products.html', 'utf8');
+
+  assert.match(
+    productsHtml,
+    /<span class="product-name"><a href="https:\/\/clipdeck\.enoa\.ai">Clipdeck<\/a><\/span>/
+  );
+});
+
 it('emits no drift warnings on a clean trunk', () => {
   const output = execFileSync('bash', ['scripts/loc-dashboard.sh'], {
     cwd: process.cwd(),
