@@ -33,6 +33,7 @@ Constraints:
 - The production deploy smoke must exercise one real evaluation through Nomos, which requires a way to drive exactly one evaluation deterministically.
 - ADR-015 requires that provider output be validated and that raw artifacts not leak through feedback, logs, or backups; a real model produces real transcripts that pressure-test this.
 - Per the repo "Nomos API Keys" rule, Agonara must use its own Nomos project and key, supplied as runtime configuration.
+- The Nomos gateway already exists in this repo as a unified OpenAI-compatible LLM proxy exposing `POST /v1/chat/completions` with per-project `Authorization: Bearer` tokens (`nomos/src/app.js`, `nomos/src/auth.js`), so the real provider call is a known-feasible HTTP integration rather than an aspirational one.
 
 Rejected alternatives: a durable queue or external runner for v1 (adds infrastructure ADR-017 does not have, and ADR-015 allows starting in-process); a continuously-running background loop with no explicit trigger (makes the deploy smoke nondeterministic and complicates single-flight guarantees); persisting raw transcripts for debugging (ADR-015 blocks this until a dedicated artifact policy exists, and none is justified yet); and reading credentials from anything other than runtime env (would violate ADR-015's credential exclusion).
 

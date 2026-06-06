@@ -208,7 +208,11 @@ config — it is feature work in `src/`, with tests, behind the §5 gates where 
 - [x] Extend `agonara-core.yml` smoke + unit tests to cover the version field.
 - **Size:** small, self-contained. **Not gated** by §5. **Implemented.**
 
-### 6b. Real LLM provider for the evaluator/curation path (gated by G2)
+### 6b. Real LLM provider for the evaluator/curation path (G2 now closed — unblocked, not yet built)
+G2 is closed by [ADR-018](adr/adr-018-open-answer-evaluator-real-provider-runtime.md)
+and the [real-provider runtime spec](specs/open-answer-evaluator-real-provider-runtime.md),
+which now define the contract for the items below; the code is **not yet built**
+(Phase 4 of the [deployment-wiring plan](plans/agonara-deployment-wiring.md)).
 The handoff's "point the adapter at Nomos" is **not** mere configuration — the
 runtime evaluation path does not exist yet. Building it requires:
 - [ ] **A real provider adapter** (OpenAI-compatible HTTP client to the Nomos

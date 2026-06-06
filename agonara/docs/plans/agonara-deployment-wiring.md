@@ -25,7 +25,7 @@ Deployment wiring provisions real infrastructure and secrets and triggers irreve
 
 ```
 Worktree mode: none
-Expected worktree: /home/user/ai-labs
+Expected worktree: repository root (no separate worktree)
 Expected branch: claude/agonara-deploy-wiring-* (a dedicated branch off trunk)
 Preflight check: [ ] done
 ```
@@ -64,9 +64,9 @@ Out of scope for this plan (per ADR-017 and ADR-018 non-goals):
 - **Objective**: Agonara is a declared Node + Docker release unit with a real initial version and an in-sync manifest.
 - **Key work items**: add `"agonara"` to `paths` in `release-units.config.toml`; regenerate `release-units.toml` via `scripts/release/generate-manifest.js` (expect a new `agonara` entry, `metadata = package.json`, `docker = true`); set `agonara/package.json` version to the first real release (`0.1.0`), keeping `private: true`.
 - **Dependencies**: none.
-- **Risks**: manifest drift if regeneration is skipped (CI fails on drift); basename collision (mitigated — `agonara` is globally unique, no underscores).
-- **Validation**: `node scripts/release/generate-manifest.js` produces no further diff; manifest validation (`validate-manifest.js` / pre-commit hook) passes; root `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit` green.
-- **Completion signal**: `agonara` appears in `release-units.toml` with `docker = true`, version `0.1.0`, and manifest validation passes in CI.
+- **Risks**: manifest drift if regeneration is skipped (CI fails on drift); basename collision (mitigated — `agonara` is globally unique, no underscores); **premature release** — once the unit is registered and the version differs from the last `agonara_v*` tag, pushing an `agonara_v*` tag fires `release-unit.yml`. The version bump is committed here, but the tag MUST NOT be pushed until Phase 3's deploy jobs are merged (per the §9 runbook); otherwise a release fires with no deploy step. Registration and the version bump alone (no tag) do not trigger a deploy.
+- **Validation**: `node scripts/release/generate-manifest.js` produces no further diff; manifest validation (`validate-manifest.js` / pre-commit hook) passes; root `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit` green; no `agonara_v*` tag is pushed in this phase.
+- **Completion signal**: `agonara` appears in `release-units.toml` with `docker = true`, version `0.1.0`, manifest validation passes in CI, and no release has fired.
 
 ## Phase 2 — VPS-side scaffolding
 
@@ -74,7 +74,7 @@ Out of scope for this plan (per ADR-017 and ADR-018 non-goals):
 - **Key work items**: add `agonara/compose.staging.yml` and `agonara/compose.prod.yml` (or one parameterized compose) with distinct container names, distinct loopback ports, named volumes `agonara-staging-data` / `agonara-data`, `AGONARA_BOOTSTRAP_SECRET` and provider env from the environment, and the healthcheck retained; add `agonara/scripts/deploy-staging.sh`, `deploy-prod.sh`, `rollback-prod.sh` that build on host, tag the image `<version>` and `<git-sha>`, snapshot the prior prod image as `:rollback`, and health-gate on `/operations/health`; one-time host prep — Docker + compose, `/opt/agonara`, reverse proxy + TLS + domain, an automated ≥ daily off-host `/data` backup, and secure host-side `AGONARA_BOOTSTRAP_SECRET`.
 - **Dependencies**: Phase 1; ADR-017; **human-provided** VPS host access, SSH key, DNS/TLS ownership, and backup storage location.
 - **Risks**: loopback/proxy misconfiguration exposing a tier directly; image-tag invariant missed locally (no registry to enforce it); backup that silently includes secrets or omits restorable state; staging/prod sharing a volume by mistake.
-- **Validation**: local Docker verification per ADR-017 / `deployment-target.md` §8 (`docker build`, container start, `/operations/health` incl. version, structured-log check, no worktree-only bind mounts); a manual restore drill from an off-host backup succeeds; staging and prod use distinct volumes and ports.
+- **Validation**: local Docker verification per ADR-017 and `deployment-handoff.md` §8 (the docker-verification list also given in `deployment-target.md`'s "Implementation handoff" section): `docker build`, container start, `/operations/health` incl. version, structured-log check, no worktree-only bind mounts; a manual restore drill from an off-host backup succeeds; staging and prod use distinct volumes and ports.
 - **Completion signal**: a staging deploy script run on agonara-vps brings up the container, health returns `status: ok` with the expected version over HTTPS through the proxy, a backup artifact exists off-host, and a restore drill reproduces state.
 
 ## Phase 3 — CI deploy jobs in `release-unit.yml`

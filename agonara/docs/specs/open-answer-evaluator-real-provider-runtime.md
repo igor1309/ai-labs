@@ -21,6 +21,8 @@ This operationalizes [ADR-018](../adr/adr-018-open-answer-evaluator-real-provide
 
 A real provider adapter satisfying the `OpenAnswerEvaluatorProviderAdapter` shape from the worker spec, constructed at the composition root from runtime configuration:
 
+The adapter calls Nomos, the repo's existing OpenAI-compatible LLM proxy, at `POST <baseUrl>/v1/chat/completions` with an `Authorization: Bearer <apiKey>` header and the configured `model` (`nomos/src/app.js`, `nomos/src/auth.js`).
+
 ```ts
 type NomosOpenAnswerEvaluatorProviderConfig = {
   providerAdapterId: string;
@@ -65,7 +67,7 @@ runOpenAnswerEvaluatorWorkerTick(input: {
 }>
 ```
 
-An authenticated internal operational request invokes the tick (`claim_next` mode) exactly once per invocation. Exposed only when provider configuration is present.
+An authenticated internal operational request invokes the tick (`claim_next` mode) exactly once per invocation. Exposed only when provider configuration is present. "Operational authorization" means the caller passes the same operations-access check the existing `GET /operations/diagnostics` route uses (an authenticated session with operations access), or presents a configured operational trigger token supplied as runtime env (the deploy smoke's authed-route token, `deployment-handoff.md` §7c). The concrete route name and payload are an ADR-018 non-goal; this spec fixes only the authorization and single-flight behavior.
 
 ### Composition-root wiring
 
@@ -75,7 +77,7 @@ An authenticated internal operational request invokes the tick (`claim_next` mod
 
 1. `createNomosOpenAnswerEvaluatorProviderAdapter` rejects construction (throws) when `providerAdapterId`, `baseUrl`, `model`, `apiKey`, or `outputValidatorPolicyId` is missing, empty, whitespace-only, or non-string.
 2. The returned adapter exposes `providerAdapterId` and `evaluatorPathKind: "llm_assisted"`.
-3. `evaluate` issues exactly one HTTP request per provider call to the configured Nomos `baseUrl`, using the configured `model` and an `Authorization: Bearer <apiKey>` header.
+3. `evaluate` issues exactly one HTTP request per provider call to `POST <baseUrl>/v1/chat/completions`, using the configured `model` and an `Authorization: Bearer <apiKey>` header.
 4. `evaluate` builds the model prompt only from the request's submitted answer, accepted check revision, and accepted criterion revisions; it MUST NOT include credentials, authorization headers, session/CSRF identifiers, SQL text, stack traces, filesystem paths, database URLs, or other infrastructure details in the prompt.
 5. `evaluate` maps model output to one `criterionFeedback` entry per accepted criterion revision id on the request, with no unknown and no extra criterion ids, and a non-empty `summaryFeedback`.
 6. `evaluate` returns `outputValidation` with the policy's `outputValidatorPolicyId` and `passed: true` only when the model output has exactly the required criterion feedback, a safe non-empty summary, and no forbidden operational detail; otherwise it returns `passed: false`.
@@ -85,7 +87,7 @@ An authenticated internal operational request invokes the tick (`claim_next` mod
 10. `makeLlmOpenAnswerEvaluatorPolicy` returns a policy with `evaluatorPathKind: "llm_assisted"`, `rawArtifactPolicy: "none"`, the given provider adapter id, output validator id, redaction id, retry policy, and optional budget policy, and a prompt input policy that includes the submitted answer, accepted check revision, and accepted criterion revisions.
 11. `runOpenAnswerEvaluatorWorkerTick` runs `runOpenAnswerEvaluatorWorkerOnce` in `claim_next` mode and returns its result.
 12. The tick is single-flight: while one tick is in progress, a concurrent invocation does not start a second overlapping worker run.
-13. The internal operational trigger requires operational authorization and rejects unauthenticated or ordinary-product (Student, Program Curator, Admin) callers without running a worker tick or authoring feedback.
+13. The internal operational trigger requires operational authorization — an authenticated session with operations access (as `GET /operations/diagnostics` requires) or a configured operational trigger token — and rejects unauthenticated, wrong-token, or ordinary-product (Student, Program Curator, Admin without operations access) callers without running a worker tick or authoring feedback.
 14. When provider configuration env is incomplete, `startServer` registers no real adapter, no LLM policy, and no trigger, and the evaluator boundary receives `providerAdapters: []` (unchanged from today).
 15. When provider configuration env is complete, `startServer` injects the Nomos adapter and LLM policy and registers the trigger, and the credential/base URL/model values appear only in the adapter closure — never in domain records, evaluator policies persisted as data, logs, backups, the health response, or run summaries.
 16. The real path preserves all worker-spec behavior: lease validation, provider side-effect isolation, output validation before acceptance, budget enforcement, idempotent completion, raw-artifact exclusion, credential exclusion, log redaction, and backup/restore rejection of forbidden artifacts.
@@ -112,7 +114,7 @@ Policy and trigger:
 9. `makeLlmOpenAnswerEvaluatorPolicy` produces an `llm_assisted`, `rawArtifactPolicy: "none"` policy referencing the adapter, validator, redaction, retry, and budget inputs and the required prompt inputs.
 10. `runOpenAnswerEvaluatorWorkerTick` claims and runs the next claimable job via `claim_next` and returns the worker result.
 11. The tick is single-flight under overlapping invocations (no two overlapping worker runs).
-12. The internal trigger rejects unauthenticated and ordinary-product callers without running a tick or authoring feedback.
+12. The internal trigger rejects unauthenticated, wrong-token, and ordinary-product callers without running a tick or authoring feedback.
 
 Composition root:
 
