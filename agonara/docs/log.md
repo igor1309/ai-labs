@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Extend the Agonara first-release readiness check to verify staging failure cleanup and production rollback run before final upload cleanup.
 - Extend the Agonara first-release readiness check to verify release workflow real evaluator smokes clean `/tmp/agonara-smoke.json` and assert the expected health version.
 - Extend the Agonara first-release readiness check to verify release workflow version checks reject non-2xx `/operations/health` responses before parsing JSON.
 - Harden release workflow staging and production version checks to reject non-2xx `/operations/health` responses before parsing JSON.

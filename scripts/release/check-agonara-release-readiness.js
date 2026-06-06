@@ -118,6 +118,7 @@ function runReadinessChecks() {
   checkWorkflowHealthGate(prodJob, 'agonara');
   checkWorkflowSmokeGate(stagingJob, 'agonara-staging');
   checkWorkflowSmokeGate(prodJob, 'agonara');
+  checkWorkflowCleanupLifecycle(stagingJob, prodJob);
   checks.push('release workflow');
 
   checkLockedReleaseInstall(version, workflow);
@@ -247,6 +248,25 @@ function checkWorkflowSmokeGate(workflowJob, containerName) {
   const smokeGate = `docker exec -e AGONARA_SMOKE_BASE_URL=http://127.0.0.1:8080 -e EXPECTED_VERSION="\${EXPECTED_VERSION}" ${containerName} sh -lc "trap 'rm -f /tmp/agonara-smoke.json' EXIT; node scripts/smoke-open-answer-evaluator.mjs > /tmp/agonara-smoke.json && node -e 'const fs = require(\\"node:fs\\"); const result = JSON.parse(fs.readFileSync(\\"/tmp/agonara-smoke.json\\", \\"utf8\\")); if (!result.evaluationId || result.healthVersion !== process.env.EXPECTED_VERSION) process.exit(1);'"`;
   if (!workflowJob.includes(smokeGate)) {
     throw new Error('release-unit.yml must run Agonara real evaluator smoke with cleanup and expected version checks');
+  }
+}
+
+function checkWorkflowCleanupLifecycle(stagingJob, prodJob) {
+  const stagingCleanup = [
+    'Clean deploy upload after staging failure',
+    'if: failure()',
+    'script: rm -rf /tmp/agonara-deploy || true',
+  ];
+  const prodCleanup = [
+    'Rollback production on failure',
+    'if: failure()',
+    'script: bash /opt/agonara/scripts/rollback-prod.sh',
+    'Clean deploy upload',
+    'if: always()',
+    'script: rm -rf /tmp/agonara-deploy || true',
+  ];
+  if (!appearsInOrder(stagingJob, stagingCleanup) || !appearsInOrder(prodJob, prodCleanup)) {
+    throw new Error('release-unit.yml must cleanup staging failures and run production rollback before final upload cleanup');
   }
 }
 

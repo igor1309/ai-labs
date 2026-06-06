@@ -185,6 +185,27 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('release-unit.yml must run Agonara real evaluator smoke with cleanup and expected version checks'));
   });
 
+  it('fails when workflow cleans upload before production rollback can run', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        workflowProdCleanupLifecycle(),
+        [
+          '      - name: Clean deploy upload',
+          '        if: always()',
+          '        script: rm -rf /tmp/agonara-deploy || true',
+          '      - name: Rollback production on failure',
+          '        if: failure()',
+          '        script: bash /opt/agonara/scripts/rollback-prod.sh',
+        ].join('\n'),
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml must cleanup staging failures and run production rollback before final upload cleanup'));
+  });
+
   it('fails when the CI dispatcher does not route Agonara package lock changes', () => {
     writeAgonaraReleaseRepo(tmp, {
       ciWorkflow: validCiWorkflow().replace(
@@ -396,6 +417,7 @@ function validReleaseWorkflow() {
     '        source: "agonara/package-lock.json"',
     workflowHealthGate('agonara-staging'),
     workflowSmokeGate('agonara-staging'),
+    workflowStagingCleanup(),
     '  deploy-agonara-prod:',
     "      && needs.deploy-agonara-staging.result == 'success'",
     "      && needs.deploy-agonara-prod.result == 'success'",
@@ -403,6 +425,7 @@ function validReleaseWorkflow() {
     '        deploy-agonara-prod=${{ needs.deploy-agonara-prod.result }}',
     workflowHealthGate('agonara'),
     workflowSmokeGate('agonara'),
+    workflowProdCleanupLifecycle(),
   ].join('\n');
 }
 
@@ -412,6 +435,25 @@ function workflowHealthGate(containerName) {
 
 function workflowSmokeGate(containerName) {
   return `docker exec -e AGONARA_SMOKE_BASE_URL=http://127.0.0.1:8080 -e EXPECTED_VERSION="\${EXPECTED_VERSION}" ${containerName} sh -lc "trap 'rm -f /tmp/agonara-smoke.json' EXIT; node scripts/smoke-open-answer-evaluator.mjs > /tmp/agonara-smoke.json && node -e 'const fs = require(\\"node:fs\\"); const result = JSON.parse(fs.readFileSync(\\"/tmp/agonara-smoke.json\\", \\"utf8\\")); if (!result.evaluationId || result.healthVersion !== process.env.EXPECTED_VERSION) process.exit(1);'"`;
+}
+
+function workflowStagingCleanup() {
+  return [
+    '      - name: Clean deploy upload after staging failure',
+    '        if: failure()',
+    '        script: rm -rf /tmp/agonara-deploy || true',
+  ].join('\n');
+}
+
+function workflowProdCleanupLifecycle() {
+  return [
+    '      - name: Rollback production on failure',
+    '        if: failure()',
+    '        script: bash /opt/agonara/scripts/rollback-prod.sh',
+    '      - name: Clean deploy upload',
+    '        if: always()',
+    '        script: rm -rf /tmp/agonara-deploy || true',
+  ].join('\n');
 }
 
 function validCiWorkflow() {
