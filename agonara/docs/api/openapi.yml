@@ -11,6 +11,7 @@ info:
     operation names.
   license:
     name: Private
+    identifier: LicenseRef-Private
 servers:
   - url: http://127.0.0.1:8080
     description: Local container or development server
@@ -48,6 +49,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthResult"
+        "404":
+          $ref: "#/components/responses/Rejected"
         "500":
           $ref: "#/components/responses/Fault"
 
@@ -75,7 +78,7 @@ paths:
         - sessionCookie: []
         - operationsTriggerToken: []
       requestBody:
-        $ref: "#/components/requestBodies/OptionalObject"
+        $ref: "#/components/requestBodies/EvaluatorTick"
       responses:
         "200":
           $ref: "#/components/responses/Accepted"
@@ -99,6 +102,8 @@ paths:
       responses:
         "200":
           $ref: "#/components/responses/Html"
+        "404":
+          $ref: "#/components/responses/Rejected"
 
   /learn:
     get:
@@ -109,6 +114,8 @@ paths:
       responses:
         "200":
           $ref: "#/components/responses/Html"
+        "404":
+          $ref: "#/components/responses/Rejected"
 
   /identity/bootstrap/status:
     get:
@@ -119,6 +126,8 @@ paths:
       responses:
         "200":
           $ref: "#/components/responses/Accepted"
+        "404":
+          $ref: "#/components/responses/Rejected"
         "500":
           $ref: "#/components/responses/Fault"
 
@@ -141,6 +150,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/AcceptedObjectResult"
         "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
           $ref: "#/components/responses/Rejected"
         "409":
           $ref: "#/components/responses/Rejected"
@@ -2579,6 +2590,17 @@ components:
           schema:
             type: object
             additionalProperties: true
+    EvaluatorTick:
+      required: false
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              evaluatorJobId:
+                type: string
+                minLength: 1
+            additionalProperties: false
     IdentityBootstrap:
       required: true
       content:

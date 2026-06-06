@@ -2,6 +2,7 @@
 
 ## 2026-06-07
 
+- Harden the OpenAPI contract after adversarial review by documenting bootstrap `401` rejections, tightening the evaluator tick request body, completing private license metadata, and making public no-auth route `not_found` responses explicit.
 - Add the canonical route-level OpenAPI 3.1 contract at `docs/api/openapi.yml`, covering implemented Agonara HTTP surfaces, shared envelopes, session-cookie auth, CSRF, idempotency, and common rejection reasons.
 - Make Agonara Learn dark by default with a top-right persisted dark/light switcher and focused UI contract coverage.
 - Add a project-local `agonara-api` skill under `agonara/skills/` so agents working on Agonara API routes can ground themselves in the current specs, ownership boundaries, session/CSRF/idempotency rules, response envelopes, redaction constraints, and verification commands without publishing the skill through Dev Skills.

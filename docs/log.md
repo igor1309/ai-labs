@@ -2,6 +2,7 @@
 
 ## 2026-06-07
 
+- Agonara: harden the new OpenAPI contract after adversarial review by fixing bootstrap, evaluator tick, metadata, and public no-auth route response warnings.
 - Agonara: add the canonical route-level OpenAPI 3.1 contract under `agonara/docs/api/openapi.yml` and link it from the project README.
 
 ## 2026-06-06
