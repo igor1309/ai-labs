@@ -263,6 +263,7 @@ function checkDeployImageLifecycle() {
     'docker tag agonara:staging "agonara:${DEPLOY_GIT_SHA}"',
     '"${COMPOSE[@]}" down',
     '"${COMPOSE[@]}" up -d --no-build --wait',
+    deployHealthGateLine('agonara-staging'),
     'echo "Staging deploy successful"',
   ];
   const prodSequence = [
@@ -274,11 +275,16 @@ function checkDeployImageLifecycle() {
     'docker tag agonara:latest "agonara:${DEPLOY_GIT_SHA}"',
     '"${COMPOSE[@]}" down',
     '"${COMPOSE[@]}" up -d --no-build --wait',
+    deployHealthGateLine('agonara'),
     'echo "Production deploy successful"',
   ];
   if (!linesAppearInOrder(stagingLines, stagingSequence) || !linesAppearInOrder(prodLines, prodSequence)) {
     throw new Error('Agonara deploy scripts must build before downtime, tag version and git sha, and retain the prior production image');
   }
+}
+
+function deployHealthGateLine(containerName) {
+  return `docker exec -e EXPECTED_VERSION="\${DEPLOY_VERSION}" ${containerName} node -e 'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); return response.json(); }).then(health => { if (health.status !== "ok" || health.version !== process.env.EXPECTED_VERSION) process.exit(1); }).catch(() => process.exit(1))'`;
 }
 
 function checkRollbackHealthGate() {

@@ -426,6 +426,44 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('Agonara deploy scripts must build before downtime, tag version and git sha, and retain the prior production image'));
   });
 
+  it('fails when production deploy health-checks before replacing the container', () => {
+    const healthGate = deployScriptHealthGate(false);
+    writeAgonaraReleaseRepo(tmp, {
+      deployProd: validDeployScript('compose.prod.yml')
+        .replace(`${healthGate}\n`, '')
+        .replace('"${COMPOSE[@]}" down', `${healthGate}\n"\${COMPOSE[@]}" down`),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara deploy scripts must build before downtime, tag version and git sha, and retain the prior production image'));
+  });
+
+  it('fails when staging deploy does not retain the git sha image tag', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      deployStaging: validDeployScript('compose.staging.yml')
+        .replace('docker tag agonara:staging "agonara:${DEPLOY_GIT_SHA}"\n', ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara deploy scripts must build before downtime, tag version and git sha, and retain the prior production image'));
+  });
+
+  it('fails when production deploy does not retain the rollback image', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      deployProd: validDeployScript('compose.prod.yml')
+        .replace('docker tag agonara:latest agonara:rollback || true\n', ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara deploy scripts must build before downtime, tag version and git sha, and retain the prior production image'));
+  });
+
   it('fails when rollback does not health-gate restored service availability', () => {
     writeAgonaraReleaseRepo(tmp, {
       rollbackProd: validRollbackScript().replace(rollbackHealthGate(), ''),
@@ -808,9 +846,14 @@ function validDeployScript(composeFile) {
     `docker tag ${imageTag} "agonara:\${DEPLOY_GIT_SHA}"`,
     '"${COMPOSE[@]}" down',
     '"${COMPOSE[@]}" up -d --no-build --wait',
-    deployHealthGate(),
+    deployScriptHealthGate(staging),
     `echo "${staging ? 'Staging' : 'Production'} deploy successful"`,
   ].join('\n');
+}
+
+function deployScriptHealthGate(staging) {
+  const containerName = staging ? 'agonara-staging' : 'agonara';
+  return `docker exec -e EXPECTED_VERSION="\${DEPLOY_VERSION}" ${containerName} node -e '${deployHealthGate()}.catch(() => process.exit(1))'`;
 }
 
 function deployHealthGate() {

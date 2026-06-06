@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Release units: tighten Agonara deploy image lifecycle readiness to require post-replacement health gates, staging git-SHA tags, and production rollback retention.
 - Release units: enforce Agonara deploy image lifecycle ordering, immutable version/SHA tags, and production rollback retention in first-release readiness.
 - Release units: enforce Agonara staging backup/restore archive integrity and destructive ordering so the restore rehearsal exercises the same guarantees as production.
 - Release units: require Agonara production backups to contain the restore-critical SQLite database before transfer or reported success, and enforce it in first-release readiness.
