@@ -39,6 +39,10 @@ chmod -R u=rwX,go=rX Dockerfile package.json compose.prod.yml src scripts
 if [[ -z "${DEPLOY_VERSION}" ]]; then
   DEPLOY_VERSION="$(read_package_version package.json)"
 fi
+if [[ -z "${DEPLOY_VERSION}" ]]; then
+  echo "Unable to determine Agonara package version" >&2
+  exit 1
+fi
 
 docker tag agonara:latest agonara:rollback || true
 "${COMPOSE[@]}" build

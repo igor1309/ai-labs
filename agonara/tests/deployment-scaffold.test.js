@@ -130,10 +130,12 @@ test("deploymentScripts_shouldBuildOnVpsTagImagesAndHealthGate_onExpectedVersion
       stagingReadsVersionAfterCopy: appearsInOrder(files.deployStaging, [
         'cp "${UPLOAD_ROOT}/package.json" .',
         'DEPLOY_VERSION="$(read_package_version package.json)"',
+        'if [[ -z "${DEPLOY_VERSION}" ]]; then',
       ]),
       prodReadsVersionAfterCopy: appearsInOrder(files.deployProd, [
         'cp "${UPLOAD_ROOT}/package.json" .',
         'DEPLOY_VERSION="$(read_package_version package.json)"',
+        'if [[ -z "${DEPLOY_VERSION}" ]]; then',
       ]),
       deployScriptsDoNotRequireHostNode: !`${files.deployStaging}\n${files.deployProd}`.includes("node -e 'const fs"),
       stagingBuildsBeforeDown: appearsInOrder(files.deployStaging, [
@@ -157,6 +159,7 @@ test("deploymentScripts_shouldBuildOnVpsTagImagesAndHealthGate_onExpectedVersion
         "docker image inspect agonara:rollback",
         "docker tag agonara:rollback agonara:latest",
       ]),
+      rollbackDoesNotRequireCurrentVersion: !files.rollbackProd.includes("EXPECTED_VERSION"),
       stagingHealthGatesVersion: containsAll(files.deployStaging, ["operations/health", "version", "DEPLOY_VERSION"]),
       prodHealthGatesVersion: containsAll(files.deployProd, ["operations/health", "version", "DEPLOY_VERSION"]),
       deployScriptsDoNotRequireWget: !`${files.deployStaging}\n${files.deployProd}\n${files.rollbackProd}`.includes(
@@ -185,6 +188,7 @@ test("deploymentScripts_shouldBuildOnVpsTagImagesAndHealthGate_onExpectedVersion
       prodTagsVersionAndSha: true,
       prodSnapshotsRollback: true,
       rollbackUsesSnapshot: true,
+      rollbackDoesNotRequireCurrentVersion: true,
       stagingHealthGatesVersion: true,
       prodHealthGatesVersion: true,
       deployScriptsDoNotRequireWget: true,

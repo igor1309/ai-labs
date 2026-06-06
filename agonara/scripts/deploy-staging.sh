@@ -37,6 +37,10 @@ chmod -R u=rwX,go=rX Dockerfile package.json compose.staging.yml src scripts
 if [[ -z "${DEPLOY_VERSION}" ]]; then
   DEPLOY_VERSION="$(read_package_version package.json)"
 fi
+if [[ -z "${DEPLOY_VERSION}" ]]; then
+  echo "Unable to determine Agonara package version" >&2
+  exit 1
+fi
 
 "${COMPOSE[@]}" build
 docker tag agonara:staging "agonara:${DEPLOY_VERSION}"
