@@ -392,6 +392,7 @@
 <nav class="toc">
   <a href="#idea">Core idea</a>
   <a href="#controls">Controls</a>
+  <a href="#faq">FAQ</a>
   <a href="#flow">Request flow</a>
   <a href="#stack">Stack</a>
   <a href="#docs">Docs</a>
@@ -456,6 +457,33 @@
     </div>
   </section>
 
+  <section id="faq">
+    <p class="eyebrow">FAQ</p>
+    <h2 class="section-title">Client choice is intentionally narrow.</h2>
+    <p class="lede">
+      The current V0 contract is explicit: clients call Nomos with a project token and a
+      concrete model name, while vendor credentials, runner selection, pricing policy, and
+      fallback behavior remain Nomos-owned.
+    </p>
+    <div class="grid">
+      <article class="card control">
+        <span class="kicker">Model</span>
+        <h3>Clients choose concrete model strings</h3>
+        <p>Every chat-completion request includes <code>model</code>; Nomos forwards that value and records usage against it.</p>
+      </article>
+      <article class="card runtime">
+        <span class="kicker">Routing</span>
+        <h3>Provider and vendor routing stay in service configuration</h3>
+        <p><code>/v1/*</code> uses the live runner, <code>/stub/v1/*</code> uses the stub runner when enabled, and live vendor settings come from Nomos environment variables.</p>
+      </article>
+      <article class="card cost">
+        <span class="kicker">Budgets</span>
+        <h3>No fallback chain on budget exhaustion</h3>
+        <p>Exhausted project budgets return <code>429 budget_exceeded</code>; Nomos does not swap models or reserve backup routes.</p>
+      </article>
+    </div>
+  </section>
+
   <section id="flow">
     <p class="eyebrow">Request flow</p>
     <h2 class="section-title">The path is short and inspectable.</h2>
@@ -509,11 +537,12 @@
     <div class="callout">
       <div class="copy">
         <h2>Operational docs are part of the product.</h2>
-        <p>Architecture records, deployment guidance, local e2e notes, and the project log live beside the service code.</p>
+        <p>Architecture records, deployment guidance, the V0 client/provider FAQ, local e2e notes, and the project log live beside the service code.</p>
       </div>
       <a class="btn" href="README.md">Open README</a>
     </div>
     <div class="links" style="margin-top: 18px;">
+      <a class="doc-link" href="docs/faq.md">FAQ <code>client/model boundaries</code></a>
       <a class="doc-link" href="docs/nomos.md">Product note <code>docs/nomos.md</code></a>
       <a class="doc-link" href="docs/adr-0001.md">ADR 0001 <code>deployment shape</code></a>
       <a class="doc-link" href="docs/vps-deployment-guide.md">Deploy guide <code>VPS</code></a>
