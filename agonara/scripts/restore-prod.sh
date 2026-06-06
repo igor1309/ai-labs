@@ -19,8 +19,9 @@ if [[ ! -f "${BACKUP_FILE}" ]]; then
 fi
 
 cd "${DEPLOY_ROOT}"
+BACKUP_BASENAME="$(basename "${BACKUP_FILE}")"
 "${COMPOSE[@]}" down
-docker run --rm -v agonara-data:/data -v "$(dirname "${BACKUP_FILE}"):/restore:ro" alpine:3.20 sh -c "rm -rf /data/* && tar -xzf /restore/$(basename "${BACKUP_FILE}") -C /data"
+docker run --rm -v agonara-data:/data -v "$(dirname "${BACKUP_FILE}"):/restore:ro" alpine:3.20 sh -c 'find /data -mindepth 1 -exec rm -rf {} + && tar -xzf "/restore/$1" -C /data' sh "${BACKUP_BASENAME}"
 "${COMPOSE[@]}" up -d --no-build --wait
 docker exec agonara wget -qO- http://127.0.0.1:8080/operations/health | grep -q '"status":"ok"'
 

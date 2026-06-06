@@ -92,6 +92,22 @@ test("deploymentScripts_shouldBuildOnVpsTagImagesAndHealthGate_onExpectedVersion
       prodUsesEnvFileForInterpolation: files.deployProd.includes(
         "COMPOSE=(docker compose --env-file .env.prod -f compose.prod.yml)",
       ),
+      stagingReadsVersionAfterCopy: appearsInOrder(files.deployStaging, [
+        'cp "${UPLOAD_ROOT}/package.json" .',
+        'DEPLOY_VERSION="$(read_package_version package.json)"',
+      ]),
+      prodReadsVersionAfterCopy: appearsInOrder(files.deployProd, [
+        'cp "${UPLOAD_ROOT}/package.json" .',
+        'DEPLOY_VERSION="$(read_package_version package.json)"',
+      ]),
+      stagingBuildsBeforeDown: appearsInOrder(files.deployStaging, [
+        '"${COMPOSE[@]}" build',
+        '"${COMPOSE[@]}" down',
+      ]),
+      prodBuildsBeforeDown: appearsInOrder(files.deployProd, [
+        '"${COMPOSE[@]}" build',
+        '"${COMPOSE[@]}" down',
+      ]),
       stagingTagsVersionAndSha: containsAll(files.deployStaging, [
         'docker tag agonara:staging "agonara:${DEPLOY_VERSION}"',
         'docker tag agonara:staging "agonara:${DEPLOY_GIT_SHA}"',
@@ -117,6 +133,10 @@ test("deploymentScripts_shouldBuildOnVpsTagImagesAndHealthGate_onExpectedVersion
       prodBuildsOnHost: true,
       stagingUsesEnvFileForInterpolation: true,
       prodUsesEnvFileForInterpolation: true,
+      stagingReadsVersionAfterCopy: true,
+      prodReadsVersionAfterCopy: true,
+      stagingBuildsBeforeDown: true,
+      prodBuildsBeforeDown: true,
       stagingTagsVersionAndSha: true,
       prodTagsVersionAndSha: true,
       prodSnapshotsRollback: true,
@@ -137,8 +157,12 @@ test("backupRestoreScripts_shouldRequireOffHostBackupAndRestoreThroughProdCompos
       restoreRequiresBackupFile: files.restoreProd.includes("backup file path is required"),
       restoreReplacesDataVolume: containsAll(files.restoreProd, [
         "-v agonara-data:/data",
-        "rm -rf /data/*",
+        "find /data -mindepth 1",
         "tar -xzf",
+      ]),
+      restorePassesBackupBasenameAsArgument: containsAll(files.restoreProd, [
+        'BACKUP_BASENAME="$(basename "${BACKUP_FILE}")"',
+        'sh "${BACKUP_BASENAME}"',
       ]),
       restoreHealthGates: files.restoreProd.includes('"status":"ok"'),
     },
@@ -149,6 +173,7 @@ test("backupRestoreScripts_shouldRequireOffHostBackupAndRestoreThroughProdCompos
       backupCopiesOffHost: true,
       restoreRequiresBackupFile: true,
       restoreReplacesDataVolume: true,
+      restorePassesBackupBasenameAsArgument: true,
       restoreHealthGates: true,
     },
   );
@@ -160,4 +185,16 @@ function readText(path) {
 
 function containsAll(text, needles) {
   return needles.every($0 => text.includes($0));
+}
+
+function appearsInOrder(text, needles) {
+  let cursor = -1;
+  for (const needle of needles) {
+    const index = text.indexOf(needle, cursor + 1);
+    if (index === -1) {
+      return false;
+    }
+    cursor = index;
+  }
+  return true;
 }
