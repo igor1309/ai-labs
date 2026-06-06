@@ -4,8 +4,8 @@ RUN groupadd --system agonara && useradd --system --gid agonara --home-dir /app 
 
 WORKDIR /app
 
-COPY --chown=agonara:agonara package.json ./
-RUN npm install --omit=dev
+COPY --chown=agonara:agonara package.json package-lock.json ./
+RUN npm ci --omit=dev
 
 COPY --chown=agonara:agonara src/ src/
 COPY --chown=agonara:agonara scripts/ scripts/

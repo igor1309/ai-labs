@@ -33,6 +33,7 @@ require_upload_directory() {
 require_upload_payload() {
   require_upload_file "${UPLOAD_ROOT}/Dockerfile"
   require_upload_file "${UPLOAD_ROOT}/package.json"
+  require_upload_file "${UPLOAD_ROOT}/package-lock.json"
   require_upload_file "${UPLOAD_ROOT}/compose.staging.yml"
   require_upload_directory "${UPLOAD_ROOT}/src"
   require_upload_directory "${UPLOAD_ROOT}/scripts"
@@ -52,16 +53,13 @@ if [[ -f "${UPLOAD_ROOT}/.dockerignore" ]]; then
 fi
 cp "${UPLOAD_ROOT}/Dockerfile" .
 cp "${UPLOAD_ROOT}/package.json" .
-rm -f package-lock.json
-if [[ -f "${UPLOAD_ROOT}/package-lock.json" ]]; then
-  cp "${UPLOAD_ROOT}/package-lock.json" .
-fi
+cp "${UPLOAD_ROOT}/package-lock.json" .
 cp "${UPLOAD_ROOT}/compose.staging.yml" .
 rm -rf src
 cp -r "${UPLOAD_ROOT}/src" .
 rm -rf scripts
 cp -r "${UPLOAD_ROOT}/scripts" .
-chmod -R u=rwX,go=rX Dockerfile package.json compose.staging.yml src scripts
+chmod -R u=rwX,go=rX Dockerfile package.json package-lock.json compose.staging.yml src scripts
 if [[ -f .dockerignore ]]; then
   chmod u=rw,go=r .dockerignore
 fi

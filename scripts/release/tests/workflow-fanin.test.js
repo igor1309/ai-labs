@@ -63,6 +63,12 @@ describe('release-unit workflow fan-in', () => {
     assert.ok(stagingDeploy.includes('::error::${name} is required for Agonara release deploy'));
   });
 
+  it('uploads Agonara package lock for reproducible VPS image builds', () => {
+    const stagingDeploy = jobSection('deploy-agonara-staging');
+
+    assert.ok(stagingDeploy.includes('agonara/package-lock.json'));
+  });
+
   it('reports split Notio jobs in failure notifications', () => {
     const notify = jobSection('notify');
 

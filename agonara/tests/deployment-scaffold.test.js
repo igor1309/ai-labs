@@ -18,7 +18,13 @@ const files = {
 test("deploymentImage_shouldMakeAppFilesReadableByRuntimeUser", () => {
   assert.deepEqual(
     {
-      packageOwnedByRuntimeUser: files.dockerfile.includes("COPY --chown=agonara:agonara package.json ./"),
+      packageOwnedByRuntimeUser: files.dockerfile.includes(
+        "COPY --chown=agonara:agonara package.json package-lock.json ./",
+      ),
+      lockfileOwnedByRuntimeUser: files.dockerfile.includes(
+        "COPY --chown=agonara:agonara package.json package-lock.json ./",
+      ),
+      usesLockedProductionInstall: files.dockerfile.includes("RUN npm ci --omit=dev"),
       sourceOwnedByRuntimeUser: files.dockerfile.includes("COPY --chown=agonara:agonara src/ src/"),
       scriptsOwnedByRuntimeUser: files.dockerfile.includes("COPY --chown=agonara:agonara scripts/ scripts/"),
       healthcheckUsesRuntimeNode: files.dockerfile.includes("CMD node -e 'fetch("),
@@ -29,6 +35,8 @@ test("deploymentImage_shouldMakeAppFilesReadableByRuntimeUser", () => {
     },
     {
       packageOwnedByRuntimeUser: true,
+      lockfileOwnedByRuntimeUser: true,
+      usesLockedProductionInstall: true,
       sourceOwnedByRuntimeUser: true,
       scriptsOwnedByRuntimeUser: true,
       healthcheckUsesRuntimeNode: true,
@@ -100,16 +108,19 @@ test("deploymentScripts_shouldBuildOnVpsTagImagesAndHealthGate_onExpectedVersion
       stagingCopiesUploadedSource: containsAll(files.deployStaging, [
         "${UPLOAD_ROOT}/Dockerfile",
         "${UPLOAD_ROOT}/package.json",
+        "${UPLOAD_ROOT}/package-lock.json",
         "${UPLOAD_ROOT}/src",
       ]),
       prodCopiesUploadedSource: containsAll(files.deployProd, [
         "${UPLOAD_ROOT}/Dockerfile",
         "${UPLOAD_ROOT}/package.json",
+        "${UPLOAD_ROOT}/package-lock.json",
         "${UPLOAD_ROOT}/src",
       ]),
       stagingPreflightsRequiredUploadBeforeDeployRootMutation: appearsInOrder(files.deployStaging, [
         'require_upload_file "${UPLOAD_ROOT}/Dockerfile"',
         'require_upload_file "${UPLOAD_ROOT}/package.json"',
+        'require_upload_file "${UPLOAD_ROOT}/package-lock.json"',
         'require_upload_file "${UPLOAD_ROOT}/compose.staging.yml"',
         'require_upload_directory "${UPLOAD_ROOT}/src"',
         'require_upload_directory "${UPLOAD_ROOT}/scripts"',
@@ -119,17 +130,18 @@ test("deploymentScripts_shouldBuildOnVpsTagImagesAndHealthGate_onExpectedVersion
       prodPreflightsRequiredUploadBeforeDeployRootMutation: appearsInOrder(files.deployProd, [
         'require_upload_file "${UPLOAD_ROOT}/Dockerfile"',
         'require_upload_file "${UPLOAD_ROOT}/package.json"',
+        'require_upload_file "${UPLOAD_ROOT}/package-lock.json"',
         'require_upload_file "${UPLOAD_ROOT}/compose.prod.yml"',
         'require_upload_directory "${UPLOAD_ROOT}/src"',
         'require_upload_directory "${UPLOAD_ROOT}/scripts"',
         "require_upload_payload",
         'cd "${DEPLOY_ROOT}"',
       ]),
-      stagingHandlesOptionalPackageLock: containsAll(files.deployStaging, [
+      stagingRequiresPackageLock: containsAll(files.deployStaging, [
         '${UPLOAD_ROOT}/package-lock.json',
         "cp",
       ]),
-      prodHandlesOptionalPackageLock: containsAll(files.deployProd, [
+      prodRequiresPackageLock: containsAll(files.deployProd, [
         '${UPLOAD_ROOT}/package-lock.json',
         "cp",
       ]),
@@ -144,10 +156,10 @@ test("deploymentScripts_shouldBuildOnVpsTagImagesAndHealthGate_onExpectedVersion
       stagingResetsSourceFileUmask: appearsInOrder(files.deployStaging, ["set -euo pipefail", "umask 022"]),
       prodResetsSourceFileUmask: appearsInOrder(files.deployProd, ["set -euo pipefail", "umask 022"]),
       stagingNormalizesSourceFileModes: files.deployStaging.includes(
-        "chmod -R u=rwX,go=rX Dockerfile package.json compose.staging.yml src scripts",
+        "chmod -R u=rwX,go=rX Dockerfile package.json package-lock.json compose.staging.yml src scripts",
       ),
       prodNormalizesSourceFileModes: files.deployProd.includes(
-        "chmod -R u=rwX,go=rX Dockerfile package.json compose.prod.yml src scripts",
+        "chmod -R u=rwX,go=rX Dockerfile package.json package-lock.json compose.prod.yml src scripts",
       ),
       stagingReadsVersionAfterCopy: appearsInOrder(files.deployStaging, [
         'cp "${UPLOAD_ROOT}/package.json" .',
@@ -193,8 +205,8 @@ test("deploymentScripts_shouldBuildOnVpsTagImagesAndHealthGate_onExpectedVersion
       prodCopiesUploadedSource: true,
       stagingPreflightsRequiredUploadBeforeDeployRootMutation: true,
       prodPreflightsRequiredUploadBeforeDeployRootMutation: true,
-      stagingHandlesOptionalPackageLock: true,
-      prodHandlesOptionalPackageLock: true,
+      stagingRequiresPackageLock: true,
+      prodRequiresPackageLock: true,
       stagingBuildsOnHost: true,
       prodBuildsOnHost: true,
       stagingUsesEnvFileForInterpolation: true,

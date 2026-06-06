@@ -293,7 +293,7 @@ jobs:
           host: ${{ secrets.AGONARA_VPS_HOST }}
           username: ${{ secrets.AGONARA_VPS_USER }}
           key: ${{ secrets.AGONARA_VPS_SSH_KEY }}
-          source: "agonara/.dockerignore,agonara/Dockerfile,agonara/package.json,agonara/src,agonara/compose.staging.yml,agonara/compose.prod.yml,agonara/scripts"
+          source: "agonara/.dockerignore,agonara/Dockerfile,agonara/package.json,agonara/package-lock.json,agonara/src,agonara/compose.staging.yml,agonara/compose.prod.yml,agonara/scripts"
           target: /tmp/agonara-deploy
           strip_components: 1
 
