@@ -10742,6 +10742,63 @@ test("httpApiRoutes_shouldEmitCompletionLogs_onRejectedRequests", async () => {
   }
 });
 
+test("identityMutationRoutes_shouldIncludeAuditEventId_inCompletionLogs", async () => {
+  const logEvents = [];
+  const { baseUrl, close } = await listenWithIdentity({
+    ids: ["identity-1", "credential-1", "session-1", "audit-1", "identity-2", "audit-2", "audit-3"],
+    log: $0 => logEvents.push($0),
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    await fetch(`${baseUrl}/identity/identities`, {
+      body: JSON.stringify({ displayName: "Second Identity" }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+        "x-agonara-csrf": bootstrap.csrfToken,
+        "x-request-id": "identity-audit-created-log",
+      },
+      method: "POST",
+    });
+    await fetch(`${baseUrl}/identity/identities/${bootstrap.body.value.identity.id}/admin`, {
+      headers: {
+        cookie: bootstrap.cookie,
+        "x-agonara-csrf": bootstrap.csrfToken,
+        "x-request-id": "identity-audit-rejected-log",
+      },
+      method: "DELETE",
+    });
+
+    assert.deepEqual(
+      logEvents
+        .filter($0 => $0.requestId?.startsWith("identity-audit-"))
+        .map($0 => ({
+          auditEventId: $0.auditEventId,
+          outcome: $0.outcome,
+          reason: $0.reason,
+          requestId: $0.requestId,
+        })),
+      [
+        {
+          auditEventId: "audit-2",
+          outcome: "accepted",
+          reason: undefined,
+          requestId: "identity-audit-created-log",
+        },
+        {
+          auditEventId: "audit-3",
+          outcome: "rejected",
+          reason: "last_admin_removal",
+          requestId: "identity-audit-rejected-log",
+        },
+      ],
+    );
+  } finally {
+    await close();
+  }
+});
+
 function projectCompletionLogs(logEvents, requests) {
   const requestIds = new Set(requests.map($0 => $0.requestId));
   return logEvents

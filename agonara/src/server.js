@@ -283,7 +283,7 @@ async function handleIdentityApi({
     const csrfToken = createCsrfToken(csrfTokens, generateToken, result.value.session.id);
     sendJson(response, 200, accepted(sessionSummary(result.value, csrfToken, identityCommands)), {
       "set-cookie": sessionCookie(result.value.session.id, request),
-    });
+    }, auditCompletionLog(identityCommands, result.value.session.id));
     return true;
   }
 
@@ -363,7 +363,13 @@ async function handleIdentityApi({
       actingSessionId: csrf.sessionId,
       displayName: body?.displayName,
     });
-    sendJson(response, statusForResult(result), mapIdentityResult(result, identityCommands, csrf.sessionId));
+    sendJson(
+      response,
+      statusForResult(result),
+      mapIdentityResult(result, identityCommands, csrf.sessionId),
+      {},
+      auditCompletionLog(identityCommands, csrf.sessionId),
+    );
     return true;
   }
 
@@ -382,7 +388,13 @@ async function handleIdentityApi({
       login: body?.login,
       password: body?.password,
     });
-    sendJson(response, statusForResult(result), result);
+    sendJson(
+      response,
+      statusForResult(result),
+      result,
+      {},
+      auditCompletionLog(identityCommands, csrf.sessionId),
+    );
     return true;
   }
 
@@ -398,7 +410,13 @@ async function handleIdentityApi({
       actingSessionId: csrf.sessionId,
       identityId: disableMatch[1],
     });
-    sendJson(response, statusForResult(result), mapIdentityResult(result, identityCommands, csrf.sessionId));
+    sendJson(
+      response,
+      statusForResult(result),
+      mapIdentityResult(result, identityCommands, csrf.sessionId),
+      {},
+      auditCompletionLog(identityCommands, csrf.sessionId),
+    );
     return true;
   }
 
@@ -415,7 +433,13 @@ async function handleIdentityApi({
       actingSessionId: csrf.sessionId,
       identityId: adminMatch[1],
     });
-    sendJson(response, statusForResult(result), mapIdentityResult(result, identityCommands, csrf.sessionId));
+    sendJson(
+      response,
+      statusForResult(result),
+      mapIdentityResult(result, identityCommands, csrf.sessionId),
+      {},
+      auditCompletionLog(identityCommands, csrf.sessionId),
+    );
     return true;
   }
 
@@ -2852,8 +2876,11 @@ function isValidRequestId(requestId) {
   return requestId.length >= 1 && requestId.length <= 128 && /^[A-Za-z0-9._:-]+$/.test(requestId);
 }
 
-function sendJson(response, statusCode, body, headers = {}) {
-  response.agonaraCompletionLog = completionLogForBody(statusCode, body);
+function sendJson(response, statusCode, body, headers = {}, completionLog = {}) {
+  response.agonaraCompletionLog = {
+    ...completionLogForBody(statusCode, body),
+    ...completionLog,
+  };
   response.writeHead(statusCode, { "content-type": "application/json", ...headers });
   response.end(JSON.stringify(body));
 }
@@ -2883,6 +2910,16 @@ function completionLogForBody(statusCode, body) {
     severity: "info",
     outcome: "accepted",
   };
+}
+
+function auditCompletionLog(identityCommands, actingSessionId) {
+  const result = identityCommands.listAuditEvents({ actingSessionId });
+  if (result.status === "rejected") {
+    return {};
+  }
+
+  const auditEvent = result.value.auditEvents.at(-1);
+  return auditEvent ? { auditEventId: auditEvent.id } : {};
 }
 
 function logCompletion(log, now, event) {

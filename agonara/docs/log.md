@@ -2,6 +2,8 @@
 
 ## 2026-06-06
 
+- Mark the Operational Cross-Cutting first-slice spec implemented with evidence links to request correlation, operational logs, health, diagnostics, redaction, backup/restore logging, and executable acceptance.
+- Align Identity backup/restore operational log components with the operational component-name contract.
 - Implement Identity audit-event HTTP pagination and invalid cursor/limit rejection after adversarial review of the API/CLI spec closeout.
 - Mark the Identity & Role Management API/CLI spec implemented with evidence links to HTTP adapters, CLI commands, focused route/CLI tests, and executable acceptance.
 - Mark the Identity & Role Management first-slice spec implemented with evidence links to the identity command boundary, persistence, backup/restore coverage, HTTP/CLI acceptance, and the Admin UI board.
