@@ -29,7 +29,7 @@ The implemented first slice supports accepted topic/period readiness definitions
 
 ## Public interface
 
-This spec operationalizes INT-06 and STU-14 from [Product Intent](../intent_learning_program_app.md) through [ADR-010](../adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md), [ADR-011](../adr/adr-011-accepted-checks-and-student-assessment-boundary.md), [ADR-016](../adr/adr-016-quick-check-assessment-boundary.md), [Topic, Concept, and Material Navigation](topic-concept-material-navigation.md), and [Learner-State Interpretation](learner-state-interpretation.md).
+This spec operationalizes INT-06 and STU-14 from [Product Intent](../intent/intent_learning_program_app.md) through [ADR-010](../adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md), [ADR-011](../adr/adr-011-accepted-checks-and-student-assessment-boundary.md), [ADR-016](../adr/adr-016-quick-check-assessment-boundary.md), [Topic, Concept, and Material Navigation](topic-concept-material-navigation.md), and [Learner-State Interpretation](learner-state-interpretation.md).
 
 Readiness checks are explicit aggregate assessment boundaries. Existing Quick Check, open-answer, criterion, and learner-state evidence may contribute to a readiness result only when a Program Curator has accepted a readiness check definition and an owning Student explicitly submits a readiness attempt.
 

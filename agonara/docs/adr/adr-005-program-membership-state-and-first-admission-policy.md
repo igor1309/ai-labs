@@ -27,13 +27,13 @@ This ADR decides first membership states, first invitation states, and first adm
 
 The [Module Responsibility Map](../module_responsibility_map.md) identifies Program Membership ownership and records this ADR as the first membership state and admission policy decision.
 
-The [Program Membership Pre-ADR](../program_membership_pre_adr.md) identified membership status, Student participation policy, Program Curator participation policy, invitation behavior, audit events, and exceptional Admin recovery as open questions before this ADR.
+The [Program Membership Pre-ADR](../pre-adr/program_membership_pre_adr.md) identified membership status, Student participation policy, Program Curator participation policy, invitation behavior, audit events, and exceptional Admin recovery as open questions before this ADR.
 
-The [Student stories](../student_user_stories.md) require joining, leaving, rejoining after leave, inspecting membership state, and handling invitations.
+The [Student stories](../intent/student_user_stories.md) require joining, leaving, rejoining after leave, inspecting membership state, and handling invitations.
 
-The [Curator stories](../curator_user_stories.md) require student invitation, participant visibility, student removal, and stopping curator participation.
+The [Curator stories](../intent/curator_user_stories.md) require student invitation, participant visibility, student removal, and stopping curator participation.
 
-The [Admin stories](../admin_user_stories.md) require membership inspection, exceptional recovery, exceptional revocation, and audit.
+The [Admin stories](../intent/admin_user_stories.md) require membership inspection, exceptional recovery, exceptional revocation, and audit.
 
 The rejected alternatives are making Admin the normal membership operator, placing membership state in Student or Curator Workspace, and allowing all curator self-join before Program ownership rules exist.
 

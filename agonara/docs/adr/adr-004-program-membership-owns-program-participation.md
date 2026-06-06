@@ -29,7 +29,7 @@ This ADR does not decide concrete membership policies, membership status schema,
 
 [ADR-003](adr-003-admin-recovery-invariant.md) establishes recoverable `Admin` control and attributable sensitive identity-management operations.
 
-The [Program Membership Pre-ADR](../program_membership_pre_adr.md) evaluates whether membership belongs in a separate module, in Student and Curator workspaces, or in Identity & Role Management.
+The [Program Membership Pre-ADR](../pre-adr/program_membership_pre_adr.md) evaluates whether membership belongs in a separate module, in Student and Curator workspaces, or in Identity & Role Management.
 
 The [Module Responsibility Map](../module_responsibility_map.md) identifies Program Membership as the owner of membership lifecycle, invitation lifecycle, membership policy, membership status, participant visibility, and exceptional recovery hooks.
 

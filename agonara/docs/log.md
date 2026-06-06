@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-06
+
+- Consolidate loose `docs/` files into purpose-named subfolders: move the Product Intent set (`intent_learning_program_app.md`, curator/student/admin user stories, `user-stories.html`) under `docs/intent/` and the Program Membership Pre-ADR under `docs/pre-adr/`, then repoint every cross-referencing link in the intent doc, Pre-ADR, ADRs, specs, the identity first-slice note, and archived implementation plans.
+
 ## 2026-06-04
 
 - Close LLM-assisted curation suggestion traceability with implemented spec status, Product Intent evidence links, README/backlog/runtime status updates, parent-plan closeout/archive placement, implemented child-plan references, and LOC dashboard refresh.

@@ -10,7 +10,7 @@ description: "Implementation plan: Agonara Student Workspace open-answer attempt
 
 Deliver the Agonara v0.0.1 HTTP API for Student Workspace-owned open-answer attempt submission and owner-only attempt reads through the existing session, CSRF, envelope, pagination, idempotency, and redaction conventions.
 
-This plan implements [Student Workspace Open-Answer Attempt API](../../specs/student-workspace-open-answer-attempt-api.md), [Student Workspace Open-Answer Attempt First Slice](../../specs/student-workspace-open-answer-attempt-first-slice.md), and [ADR-012](../../adr/adr-012-student-workspace-open-answer-attempt-lifecycle.md). It preserves STU-12, STU-13, and INT-05 from [Product Intent](../../intent_learning_program_app.md) by exposing submitted open-answer attempts and student-facing feedback reads without moving personal Student Workspace state into accepted Program corpus.
+This plan implements [Student Workspace Open-Answer Attempt API](../../specs/student-workspace-open-answer-attempt-api.md), [Student Workspace Open-Answer Attempt First Slice](../../specs/student-workspace-open-answer-attempt-first-slice.md), and [ADR-012](../../adr/adr-012-student-workspace-open-answer-attempt-lifecycle.md). It preserves STU-12, STU-13, and INT-05 from [Product Intent](../../intent/intent_learning_program_app.md) by exposing submitted open-answer attempts and student-facing feedback reads without moving personal Student Workspace state into accepted Program corpus.
 
 ## Execution mode
 

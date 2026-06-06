@@ -17,7 +17,7 @@ description: "Implementation plan: Agonara Quick Check assessment HTTP API."
 
 Deliver the Agonara v0.0.1 HTTP API for deterministic single-select Quick Check curation, student-safe delivery, and Student Workspace-owned attempts.
 
-This plan implements [Quick Check Assessment API](../../specs/quick-check-assessment-api.md), [Quick-Check Assessment First Slice](../../specs/quick-check-assessment-first-slice.md), and [ADR-016](../../adr/adr-016-quick-check-assessment-boundary.md). It preserves INT-04 from [Product Intent](../../intent_learning_program_app.md) by exposing checks during study without exposing protected answer keys or adding learner-state interpretation.
+This plan implements [Quick Check Assessment API](../../specs/quick-check-assessment-api.md), [Quick-Check Assessment First Slice](../../specs/quick-check-assessment-first-slice.md), and [ADR-016](../../adr/adr-016-quick-check-assessment-boundary.md). It preserves INT-04 from [Product Intent](../../intent/intent_learning_program_app.md) by exposing checks during study without exposing protected answer keys or adding learner-state interpretation.
 
 ## Execution mode
 
