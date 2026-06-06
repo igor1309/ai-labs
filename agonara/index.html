@@ -540,8 +540,11 @@
   <h2 class="section-title">How humans and agents reach it</h2>
   <p class="lede">
     Agonara exposes product behavior through backend contracts first. Browser UIs,
-    operator commands, and future Agonara agent skills can work through the same
+    operator commands, and the Agonara API skill work through the same
     program, corpus, membership, assessment, and learner-state APIs.
+    The implemented route-level contract is published as
+    <a href="docs/api/openapi.yml">OpenAPI 3.1</a>, with automation and skill-alignment follow-up tracked in
+    <a href="docs/api/TODO.md">docs/api/TODO.md</a>.
   </p>
   <div class="surfaces">
     <div class="surface-card">
@@ -560,14 +563,19 @@
       <p>Server-side sessions, CSRF protection, request correlation, health, diagnostics, and audit responses across all domain slices.</p>
     </div>
     <div class="surface-card">
+      <div class="route">docs/api/openapi.yml</div>
+      <h3>OpenAPI Contract</h3>
+      <p>Route-level OpenAPI 3.1 contract for implemented HTTP surfaces, shared envelopes, session-cookie auth, CSRF, idempotency, and rejection reasons.</p>
+    </div>
+    <div class="surface-card">
       <div class="route">$ agonara</div>
       <h3>Operator CLI</h3>
       <p>Bootstrap status and first-Admin bootstrap for standing up a fresh private instance.</p>
     </div>
     <div class="surface-card">
-      <div class="route">planned client</div>
-      <h3>Future Agent Skill Set</h3>
-      <p>Agent clients should be able to curate draft material, inspect coverage gaps, prepare checks, and navigate learner evidence through the same backend contracts.</p>
+      <div class="route">skills/agonara-api/SKILL.md</div>
+      <h3>Agonara API Skill</h3>
+      <p>Implemented agent-client workflow for route discovery, session-aware requests, and safe operations over the same OpenAPI-backed backend contracts.</p>
     </div>
   </div>
 </section>
@@ -612,6 +620,8 @@
     <a class="doc-link" href="architecture.html">Architecture <code>architecture.html</code></a>
     <a class="doc-link" href="docs/intent/user-stories.html">User Stories <code>docs/intent/user-stories.html</code></a>
     <a class="doc-link" href="README.md">Overview <code>README.md</code></a>
+    <a class="doc-link" href="docs/api/openapi.yml">OpenAPI Contract <code>docs/api/openapi.yml</code></a>
+    <a class="doc-link" href="docs/api/TODO.md">API TODO <code>docs/api/TODO.md</code></a>
     <a class="doc-link" href="docs/demos.md">Demos <code>docs/demos.md</code></a>
     <a class="doc-link" href="docs/module_responsibility_map.md">Responsibility Map <code>docs/module_responsibility_map.md</code></a>
     <a class="doc-link" href="docs/adr/">ADRs <code>docs/adr/</code></a>
