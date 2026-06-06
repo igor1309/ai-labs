@@ -23,18 +23,18 @@ differs. Decisions confirmed with the owner:
 - **LLM provider:** wire a real provider for staging/prod by pointing Agonara's
   evaluator/curation provider adapter (ADR-015) at the repo's **Nomos** gateway,
   with Agonara's **own Nomos project + API key** (per the CLAUDE.md "Nomos API
-  Keys" rule), and a real-LLM deploy smoke following the nomos pattern. That
-  adapter does **not exist yet** and must be built — see
-  [§6b](#6b-real-llm-provider-for-the-evaluatorcuration-path-gated-by-g2).
+  Keys" rule), and a real-LLM deploy smoke following the nomos pattern. The
+  open-answer evaluator adapter exists and is deployed for both tiers; curator
+  suggestions remain out of scope.
 - **Note location:** here, under `agonara/docs/`.
 
-> **This handoff is not "ops only."** Most of the work is deployment wiring
-> (new config, scripts, CI jobs, VPS data + keys — [§7](#7-opsworkflow-checklist-deployment-wiring)),
-> but two threads require **net-new Agonara application code**
-> ([§6](#6-application-development-required-pre-deploy)), and one of those is
-> blocked on ADR/spec decisions that do not yet exist
-> ([§5](#5-blocking-prerequisites-adrspec-gates)). The first-release runbook
-> ([§9](#9-first-release-runbook)) is **not executable** until §5 and §6 close.
+> **This handoff is not "ops only."** Most of the remaining work is deployment
+> wiring (release-unit registration, CI deploy jobs, public prod routing, GitHub
+> secrets — [§7](#7-opsworkflow-checklist-deployment-wiring)). The application
+> code gates in [§6](#6-application-development-required-pre-deploy) are closed,
+> and the VPS-side staging/prod scaffolding is live, but the first-release
+> runbook ([§9](#9-first-release-runbook)) is **not executable** until the
+> release-unit and CI deployment machinery land.
 >
 > Open decisions are listed in [§10 Open questions](#10-open-questions).
 
@@ -57,9 +57,9 @@ The missing My Way artifacts this handoff implied have been produced on
 - **§7** deployment work remains sequenced by the [Agonara Deployment Wiring](plans/agonara-deployment-wiring.md)
   implementation plan (release-unit registration → VPS scaffolding → CI deploy jobs → gated real-LLM smoke).
 
-The remaining work is deployment execution plus human-owned inputs (prod
-hostname, secrets, dedicated Nomos project/key/model selection) and the
-still-open operational questions in [§10](#10-open-questions).
+The remaining work is release-unit/CI wiring plus human-owned public-prod inputs
+(prod hostname/TLS route and GitHub deploy secrets) and the still-open
+operational questions in [§10](#10-open-questions).
 
 ## 1. Current state
 
@@ -346,11 +346,8 @@ Still open:
    has a passed backup/restore drill, but no public hostname/TLS route yet.
    Decide the prod hostname, Caddy route, and whether prod exposure waits for CI
    release jobs or can be manually promoted.
-4. **Nomos project + model specifics** — which Nomos project/base URL backs
-   Agonara's evaluator, and which model? The dedicated-key requirement is settled
-   by the CLAUDE.md "Nomos API Keys" rule; the project/model choice is not.
-5. **Smoke scope** — beyond health + version + a real evaluation call, anything
+4. **Smoke scope** — beyond health + version + a real evaluation call, anything
    else the staging/prod smoke must assert (bootstrap status, admin UI)?
-6. **Container registry image-tag invariant** — under build-on-VPS, confirm the
+5. **Container registry image-tag invariant** — under build-on-VPS, confirm the
    `<version>`/`<git-sha>` tags are applied locally by the deploy script (vs the
    skill's registry-oriented wording).
