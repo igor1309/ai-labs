@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Agonara — Architecture</title>
+<style>
+  :root {
+    --bg:       #141413;
+    --bg-2:     #1e1d1b;
+    --surface:  #232220;
+    --surface-2:#2b2925;
+    --rule:     #3a3732;
+    --rule-2:   #4a463f;
+    --text:     #f4f2ed;
+    --text-2:   #d6d0c4;
+    --text-3:   #a39c90;
+    --accent:   #d97757;
+    --accent-2: #e89479;
+    --student:  #6fb89a;
+    --curator:  #b994e0;
+    --admin:    #d97757;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Inter",
+                 "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Breadcrumb */
+  .crumb {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 20px 24px 0;
+    font-size: 13px;
+    color: var(--text-3);
+  }
+  .crumb a { color: var(--text-3); }
+  .crumb a:hover { color: var(--text-2); }
+
+  /* Hero */
+  header.hero {
+    padding: 56px 24px 56px;
+    max-width: 1080px;
+    margin: 0 auto;
+    border-bottom: 1px solid var(--rule);
+  }
+  .mark {
+    display: inline-block;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-size: 11px;
+    color: var(--text-3);
+    margin-bottom: 16px;
+  }
+  h1.title {
+    font-size: clamp(36px, 6vw, 64px);
+    margin: 0 0 16px;
+    letter-spacing: -0.025em;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .anchor { max-width: 760px; font-size: clamp(16px, 2vw, 19px); color: var(--text-2); }
+
+  /* Nav */
+  nav.toc {
+    display: flex;
+    gap: 8px;
+    padding: 14px 24px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--rule);
+    background: rgba(20, 20, 19, 0.85);
+    position: sticky;
+    top: 0;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 10;
+    justify-content: center;
+  }
+  nav.toc a {
+    padding: 7px 13px;
+    color: var(--text-2);
+    border: 1px solid var(--rule-2);
+    border-radius: 999px;
+    font-size: 12.5px;
+    background: var(--surface);
+    transition: border-color .15s ease, color .15s ease, background .15s ease;
+  }
+  nav.toc a:hover { color: var(--text); border-color: var(--text-3); background: var(--surface-2); text-decoration: none; }
+
+  main { max-width: 1080px; margin: 0 auto; padding: 24px; }
+  section { padding: 56px 0; border-bottom: 1px solid var(--rule); scroll-margin-top: 72px; }
+  section:last-of-type { border-bottom: none; }
+  .eyebrow {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em;
+    color: var(--accent); margin: 0 0 12px; font-weight: 600;
+  }
+  h2.section-title {
+    font-size: clamp(24px, 3.5vw, 34px); margin: 0 0 14px;
+    font-weight: 600; letter-spacing: -0.02em; color: var(--text);
+  }
+  .lede { max-width: 780px; color: var(--text-2); font-size: 15.5px; margin: 0 0 32px; }
+  p.note { max-width: 780px; color: var(--text-3); font-size: 13.5px; }
+  code { font-family: var(--mono); font-size: 0.92em; color: var(--accent-2); }
+
+  /* Module table */
+  .module-block {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--rule-2);
+    border-radius: 10px;
+    padding: 22px 24px;
+    margin-bottom: 14px;
+  }
+  .module-block.corpus     { border-left-color: var(--accent); }
+  .module-block.membership { border-left-color: var(--curator); }
+  .module-block.curator    { border-left-color: var(--curator); }
+  .module-block.student    { border-left-color: var(--student); }
+  .module-block.identity   { border-left-color: var(--admin); }
+  .module-block .name {
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .module-block h3 { margin: 0; font-size: 19px; color: var(--text); font-weight: 600; letter-spacing: -0.01em; }
+  .module-block .files { font-family: var(--mono); font-size: 11.5px; color: var(--text-3); }
+  .module-block .resp { margin: 0 0 16px; color: var(--text-2); font-size: 14px; }
+  .ownership { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 680px) { .ownership { grid-template-columns: 1fr; } }
+  .ownership .col h4 {
+    margin: 0 0 8px; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.12em; font-weight: 600;
+  }
+  .ownership .owns h4 { color: var(--student); }
+  .ownership .nots h4 { color: var(--accent); }
+  .ownership ul { margin: 0; padding-left: 18px; color: var(--text-2); font-size: 13.5px; line-height: 1.55; }
+  .ownership li::marker { color: var(--text-3); }
+  .boundary {
+    margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--rule-2);
+    font-size: 13px; color: var(--text-3);
+  }
+  .boundary b { color: var(--text-2); font-weight: 600; }
+
+  /* Flow / pipeline */
+  .pipeline {
+    background: var(--bg-2); border: 1px solid var(--rule);
+    border-radius: 12px; padding: 28px 26px; overflow-x: auto;
+  }
+  .flow { display: flex; align-items: stretch; gap: 10px; min-width: 680px; }
+  .step {
+    flex: 1; min-width: 120px; background: var(--surface); border: 1px solid var(--rule);
+    border-radius: 8px; padding: 14px 14px; text-align: center;
+  }
+  .step .n { font-family: var(--mono); font-size: 10px; color: var(--text-3); letter-spacing: 0.1em; text-transform: uppercase; }
+  .step .t { font-weight: 600; font-size: 14px; margin: 5px 0 4px; color: var(--text); }
+  .step .d { font-size: 11.5px; color: var(--text-3); line-height: 1.4; }
+  .arrow { align-self: center; color: var(--text-3); font-family: var(--mono); }
+
+  /* Generic two/three col cards */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .card .kicker {
+    font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: 0.12em; color: var(--accent); margin-bottom: 6px;
+  }
+  .card h3 { margin: 0 0 6px; font-size: 15px; color: var(--text); font-weight: 600; }
+  .card p { margin: 0; color: var(--text-2); font-size: 13.5px; line-height: 1.55; }
+  .card ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font-size: 13.5px; }
+
+  /* Rule list */
+  .rules { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  .rules li {
+    padding: 14px 18px 14px 44px; position: relative;
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 9px;
+    color: var(--text-2); font-size: 14px;
+  }
+  .rules li::before {
+    content: "§"; position: absolute; left: 16px; top: 14px;
+    font-family: var(--mono); color: var(--accent);
+  }
+  .rules li b { color: var(--text); font-weight: 600; }
+
+  /* Source map table */
+  table.src { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.src th, table.src td {
+    text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  table.src th { color: var(--text-3); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; }
+  table.src td.file { font-family: var(--mono); font-size: 12.5px; color: var(--accent-2); white-space: nowrap; }
+  table.src td.mod { color: var(--text); }
+  table.src td.desc { color: var(--text-2); }
+
+  /* ADR list */
+  .adrs { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 8px; }
+  .adr {
+    display: flex; gap: 12px; align-items: baseline;
+    padding: 11px 14px; background: var(--surface); border: 1px solid var(--rule);
+    border-radius: 8px; font-size: 13px;
+  }
+  .adr .id { font-family: var(--mono); font-size: 11px; color: var(--accent); flex: 0 0 auto; }
+  .adr .t { color: var(--text-2); }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--rule); padding: 32px 24px 64px;
+    text-align: center; color: var(--text-3); font-size: 12.5px;
+  }
+  footer .sep { margin: 0 8px; color: var(--rule-2); }
+  .backlink {
+    display: inline-flex; align-items: center; gap: 8px; margin-top: 12px;
+    padding: 9px 16px; border: 1px solid var(--rule-2); border-radius: 8px;
+    color: var(--text-2); background: var(--surface);
+  }
+  .backlink:hover { color: var(--text); border-color: var(--text-3); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="crumb"><a href="index.html">← Agonara</a> &nbsp;/&nbsp; Architecture</div>
+
+<header class="hero">
+  <div class="mark">Architecture · Module Boundaries</div>
+  <h1 class="title">How Agonara is put together</h1>
+  <p class="anchor">
+    A five-module domain split with explicit ownership, a private self-hosted runtime,
+    and ADR-backed boundaries. This is the deep companion to the
+    <a href="index.html">project landing</a> — boundaries here mirror the
+    <a href="docs/module_responsibility_map.md">Module Responsibility Map</a> and the accepted ADRs.
+  </p>
+</header>
+
+<nav class="toc">
+  <a href="#modules">Modules</a>
+  <a href="#separations">Ownership rules</a>
+  <a href="#roles">Roles &amp; membership</a>
+  <a href="#evaluation">Evaluation flow</a>
+  <a href="#source">Source layout</a>
+  <a href="#runtime">Runtime &amp; storage</a>
+  <a href="#crosscutting">Cross-cutting</a>
+  <a href="#deployment">Deployment</a>
+  <a href="#adrs">ADRs</a>
+</nav>
+
+<main>
+
+<!-- MODULES -->
+<section id="modules">
+  <p class="eyebrow">Domain decomposition</p>
+  <h2 class="section-title">Five modules, explicit ownership</h2>
+  <p class="lede">
+    The learning domain is split so accepted corpus, curator drafts, student attempts,
+    program membership, and identity/role state can each evolve independently. Every module
+    lists what it <em>owns</em> and what it explicitly <em>does not</em>.
+  </p>
+
+  <div class="module-block corpus">
+    <div class="name"><h3>Corpus Storage</h3><span class="files">corpus.js · storage.js</span></div>
+    <p class="resp">Stores the accepted program corpus and the source materials programs are built from.</p>
+    <div class="ownership">
+      <div class="col owns"><h4>Owns</h4>
+        <ul><li>Programs, topics, concepts, definitions, principles</li><li>Accepted assessment items &amp; criteria</li><li>Material references &amp; source metadata</li><li>Accepted corpus revisions</li></ul></div>
+      <div class="col nots"><h4>Does not own</h4>
+        <ul><li>Curator drafts &amp; LLM suggestions before acceptance</li><li>Student attempts &amp; progress</li><li>Membership state</li></ul></div>
+    </div>
+    <p class="boundary"><b>Key boundary:</b> only accepted content lives here. Candidate material enters Corpus Storage only after explicit curator acceptance.</p>
+  </div>
+
+  <div class="module-block membership">
+    <div class="name"><h3>Program Membership</h3><span class="files">program.js</span></div>
+    <p class="resp">Manages participation of identities in programs.</p>
+    <div class="ownership">
+      <div class="col owns"><h4>Owns</h4>
+        <ul><li>Join / leave / rejoin behavior</li><li>Invitation lifecycle &amp; admission policy</li><li>Participant visibility rules</li><li>Effective-participation decisions</li><li>Exceptional membership recovery hooks</li></ul></div>
+      <div class="col nots"><h4>Does not own</h4>
+        <ul><li>Identity lifecycle &amp; credential bindings</li><li>Accepted corpus &amp; curator decisions</li><li>Student answers, feedback, mastery</li></ul></div>
+    </div>
+    <p class="boundary"><b>Key boundary:</b> membership is product participation. Other modules ask for an <em>effective participation</em> decision instead of reading policy internals.</p>
+  </div>
+
+  <div class="module-block curator">
+    <div class="name"><h3>Curator Workspace</h3><span class="files">curator-workspace.js</span></div>
+    <p class="resp">Supports researching, assembling, refining, and accepting program content.</p>
+    <div class="ownership">
+      <div class="col owns"><h4>Owns</h4>
+        <ul><li>Research sources &amp; candidate topics/concepts/materials/checks</li><li>Draft criteria &amp; curator decisions</li><li>LLM-assisted suggestions (draft)</li><li>Coverage-gap diagnostics over accepted corpus</li></ul></div>
+      <div class="col nots"><h4>Does not own</h4>
+        <ul><li>Student learning history &amp; progress</li><li>Identity lifecycle &amp; membership policy</li><li>Accepted corpus (until acceptance)</li></ul></div>
+    </div>
+    <p class="boundary"><b>Key boundary:</b> curator work prepares corpus changes but is not accepted corpus until accepted. Curator participation is established through Program Membership.</p>
+  </div>
+
+  <div class="module-block student">
+    <div class="name"><h3>Student Workspace</h3><span class="files">student-workspace.js</span></div>
+    <p class="resp">Supports personal learning state inside joined programs, with assessment execution and progress interpretation embedded.</p>
+    <div class="ownership">
+      <div class="col owns"><h4>Owns</h4>
+        <ul><li>Learning position, sessions, answers, attempts</li><li>Assessment feedback &amp; evidence</li><li>Mastery, weak areas, review needs</li><li>Learner-state interpretation</li></ul></div>
+      <div class="col nots"><h4>Does not own</h4>
+        <ul><li>Accepted corpus &amp; curator drafts</li><li>Membership lifecycle &amp; policy</li><li>Material storage ownership</li></ul></div>
+    </div>
+    <p class="boundary"><b>Key boundary:</b> student activity reads accepted corpus after membership allows participation, but never mutates the corpus or owns membership lifecycle.</p>
+  </div>
+
+  <div class="module-block identity">
+    <div class="name"><h3>Identity &amp; Role Management</h3><span class="files">identity.js · cli.js</span></div>
+    <p class="resp">Defines and manages identities, credentials, operational roles, and access primitives.</p>
+    <div class="ownership">
+      <div class="col owns"><h4>Owns</h4>
+        <ul><li>Internal identities &amp; credential bindings</li><li>Admin role, role vocabulary &amp; invariants</li><li>Role-management operations &amp; access recovery</li></ul></div>
+      <div class="col nots"><h4>Does not own</h4>
+        <ul><li>Program membership lifecycle</li><li>Program content &amp; curator acceptance</li><li>Learner state &amp; assessment logic</li></ul></div>
+    </div>
+    <p class="boundary"><b>Key boundary:</b> defines the internal subject and operational authority; it does not own program participation or workspace domain state.</p>
+  </div>
+</section>
+
+<!-- OWNERSHIP RULES -->
+<section id="separations">
+  <p class="eyebrow">Invariants</p>
+  <h2 class="section-title">Separation rules that hold across modules</h2>
+  <ul class="rules">
+    <li><b>Accepted corpus and personal student state stay separate.</b> Corpus changes never erase or overwrite existing attempts, progress, or history.</li>
+    <li><b>Program membership stays separate from identity, curator decisions, and learning state.</b> Participation is neither learning state nor content work.</li>
+    <li><b>LLM output is draft material until a responsible module applies its acceptance rules.</b> It never becomes accepted corpus or final progress state on its own.</li>
+    <li><b>Identity is the stable subject of ownership and attribution.</b> Credentials and external accounts are bindings to an internal Identity, not the source of ownership.</li>
+    <li><b>Admin authority is instance-scoped and operational.</b> It does not replace Program Curator ownership of accepted content.</li>
+  </ul>
+</section>
+
+<!-- ROLES -->
+<section id="roles">
+  <p class="eyebrow">Authority model</p>
+  <h2 class="section-title">Roles &amp; membership</h2>
+  <p class="lede">Agonara separates identity, program-scoped product roles, the operational role, and credentials.</p>
+  <div class="grid">
+    <div class="card">
+      <div class="kicker" style="color:var(--student)">Product role</div>
+      <h3>Student</h3>
+      <p>Participates in a program and owns learner state within that program.</p>
+    </div>
+    <div class="card">
+      <div class="kicker" style="color:var(--curator)">Product role</div>
+      <h3>Program Curator</h3>
+      <p>Curates a program and owns curator decisions within that program.</p>
+    </div>
+    <div class="card">
+      <div class="kicker">Operational role</div>
+      <h3>Admin</h3>
+      <p>Instance-scoped authority over identities, credential bindings, settings, and recovery-level operations. Not a learning role.</p>
+    </div>
+    <div class="card">
+      <div class="kicker">Narrative actor</div>
+      <h3>Program Membership Manager</h3>
+      <p>A policy actor for the Program Membership module — not a grantable role or authorization subject.</p>
+    </div>
+  </div>
+  <p class="note" style="margin-top:20px;">
+    Product roles are program-scoped: <a href="docs/adr/adr-004-program-membership-owns-program-participation.md">ADR-004</a> assigns
+    participation lifecycle and policy to Program Membership, <a href="docs/adr/adr-005-program-membership-state-and-first-admission-policy.md">ADR-005</a>
+    accepts the first status and admission policy, and <a href="docs/adr/adr-007-effective-participation-authorization-contract.md">ADR-007</a>
+    accepts the effective-participation decision contract.
+  </p>
+</section>
+
+<!-- EVALUATION FLOW -->
+<section id="evaluation">
+  <p class="eyebrow">Embedded behavior</p>
+  <h2 class="section-title">Open-answer evaluation flow</h2>
+  <p class="lede">
+    Assessment execution lives inside Student Workspace. An open-answer attempt is recorded,
+    orchestrated for evaluation, executed by a worker against accepted check and criterion
+    revisions, and read back owner-only — the LLM never owns the resulting state.
+  </p>
+  <div class="pipeline">
+    <div class="flow">
+      <div class="step"><div class="n">Step 1</div><div class="t">Submit</div><div class="d">Student submits an open answer; the attempt is recorded idempotently against the accepted check.</div></div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="n">Step 2</div><div class="t">Orchestrate</div><div class="d">Evaluator orchestration queues the attempt and tracks evaluation status.</div></div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="n">Step 3</div><div class="t">Worker</div><div class="d">A worker executes evaluation against accepted criterion revisions behind a provider boundary.</div></div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="n">Step 4</div><div class="t">Evidence</div><div class="d">Status and evidence are persisted as owner-only student state, never as corpus.</div></div>
+    </div>
+  </div>
+  <p class="note" style="margin-top:18px;">
+    Governed by <a href="docs/adr/adr-012-student-workspace-open-answer-attempt-lifecycle.md">ADR-012</a> (attempt lifecycle),
+    <a href="docs/adr/adr-013-student-workspace-open-answer-evaluation-governance.md">ADR-013</a> (evaluation governance),
+    <a href="docs/adr/adr-014-student-workspace-open-answer-evaluator-orchestration.md">ADR-014</a> (orchestration), and
+    <a href="docs/adr/adr-015-open-answer-evaluator-worker-provider-boundary.md">ADR-015</a> (worker/provider boundary).
+  </p>
+</section>
+
+<!-- SOURCE MAP -->
+<section id="source">
+  <p class="eyebrow">Code layout</p>
+  <h2 class="section-title">Source files &rarr; modules</h2>
+  <p class="lede">The <code>agonara/src/</code> tree maps onto the module map plus the HTTP composition, storage, and UI surfaces.</p>
+  <table class="src">
+    <thead><tr><th>File</th><th>Module / surface</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td class="file">server.js</td><td class="mod">HTTP composition</td><td class="desc">Routes every domain slice; owns sessions, CSRF, correlation, health, diagnostics; serves <code>/learn</code> and <code>/admin</code>.</td></tr>
+      <tr><td class="file">storage.js</td><td class="mod">Persistence</td><td class="desc">SQLite access via <code>better-sqlite3</code>; backup/restore of all module state.</td></tr>
+      <tr><td class="file">identity.js</td><td class="mod">Identity &amp; Role Mgmt</td><td class="desc">Identities, credential bindings, Admin authority, audit, recovery.</td></tr>
+      <tr><td class="file">program.js</td><td class="mod">Program Membership</td><td class="desc">Program shell, membership lifecycle, invitations, effective participation.</td></tr>
+      <tr><td class="file">corpus.js</td><td class="mod">Corpus Storage</td><td class="desc">Accepted programs, topics, concepts, materials, checks, criteria, revisions.</td></tr>
+      <tr><td class="file">curator-workspace.js</td><td class="mod">Curator Workspace</td><td class="desc">Drafts, acceptance, coverage gaps, LLM-assisted suggestions.</td></tr>
+      <tr><td class="file">student-workspace.js</td><td class="mod">Student Workspace</td><td class="desc">Attempts, evaluation, learner-state, readiness, Quick Check student state.</td></tr>
+      <tr><td class="file">learn-ui.js</td><td class="mod"><code>/learn</code> UI</td><td class="desc">Student &amp; Curator browser surface across shipped slices.</td></tr>
+      <tr><td class="file">admin-ui.js</td><td class="mod"><code>/admin</code> UI</td><td class="desc">Admin operations board.</td></tr>
+      <tr><td class="file">cli.js</td><td class="mod">Operator CLI</td><td class="desc">Bootstrap status and first-Admin bootstrap.</td></tr>
+    </tbody>
+  </table>
+  <p class="note" style="margin-top:16px;">Module names are responsibility boundaries, not a strict one-file-per-module rule — storage and the HTTP composition serve every module.</p>
+</section>
+
+<!-- RUNTIME -->
+<section id="runtime">
+  <p class="eyebrow">Runtime &amp; storage</p>
+  <h2 class="section-title">A small, recoverable backend</h2>
+  <div class="grid">
+    <div class="card">
+      <div class="kicker">HTTP</div>
+      <h3>Session-backed API</h3>
+      <p>Node.js 22 HTTP API with server-side sessions, CSRF protection, and per-request correlation. Sessions are checked before CSRF on mutations.</p>
+    </div>
+    <div class="card">
+      <div class="kicker">Persistence</div>
+      <h3>SQLite via better-sqlite3</h3>
+      <p>Synchronous embedded SQLite holds all module state. No external database service is required for a private instance.</p>
+    </div>
+    <div class="card">
+      <div class="kicker">Operability</div>
+      <h3>Health &amp; diagnostics</h3>
+      <p><code>/operations/health</code> and <code>/operations/diagnostics</code> expose service and execution state; completion logs and audit reads support diagnosis.</p>
+    </div>
+    <div class="card">
+      <div class="kicker">Recovery</div>
+      <h3>Backup &amp; restore</h3>
+      <p>Every slice contributes to backup export and restore validation, covering corpus, membership, workspaces, identity, and operational config.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CROSS-CUTTING -->
+<section id="crosscutting">
+  <p class="eyebrow">Cross-cutting concerns</p>
+  <h2 class="section-title">Concerns that span modules</h2>
+  <p class="lede">These cut across modules and are designed without owning the product state of those modules.</p>
+  <div class="grid">
+    <div class="card"><div class="kicker">Logging</div><h3>Operational &amp; domain events</h3><p>Identity changes, membership changes, curator decisions, assessment attempts, LLM operations, backup/restore. Not product analytics or progress interpretation.</p></div>
+    <div class="card"><div class="kicker">Observability</div><h3>Health &amp; execution state</h3><p>Service health, failed jobs, LLM calls, evaluation, storage access, backup status. Not domain ownership or permissions.</p></div>
+    <div class="card"><div class="kicker">Backup / Restore</div><h3>Recoverability</h3><p>All five modules plus material storage and operational config. Not curation or assessment logic.</p></div>
+    <div class="card"><div class="kicker">Correlation</div><h3>Request tracing</h3><p>Per-request correlation threads through routes for diagnosis without leaking domain authority.</p></div>
+  </div>
+  <p class="note" style="margin-top:18px;">The v0.0.1 minimum operational contract is specified in <a href="docs/specs/operational-cross-cutting-first-slice.md">Operational Cross-Cutting First Slice</a>.</p>
+</section>
+
+<!-- DEPLOYMENT -->
+<section id="deployment">
+  <p class="eyebrow">Deployment</p>
+  <h2 class="section-title">Private self-hosted instance</h2>
+  <p class="lede">
+    Agonara targets a dockerized private self-hosted instance — normally a VPS or home
+    server, with the same container running locally for development. It is API-first with a
+    network web UI as the primary human interface; the default tenancy is a small private group.
+  </p>
+  <div class="grid">
+    <div class="card"><div class="kicker">Container</div><h3>Docker image</h3><p><code>agonara/Dockerfile</code> builds the backend + UI image for self-hosted operation.</p></div>
+    <div class="card"><div class="kicker">Compose</div><h3>Persistent service</h3><p><code>compose.yaml</code> runs the service with persistent SQLite state.</p></div>
+    <div class="card"><div class="kicker">Bootstrap</div><h3>First Admin via CLI</h3><p>A fresh instance becomes operational only after the first-Admin bootstrap establishes an active Admin identity.</p></div>
+  </div>
+  <p class="note" style="margin-top:16px;">
+    The deployment shape is provisional and becomes a commitment only via ADR —
+    see <a href="docs/deployment-target.md">Deployment Target</a>.
+  </p>
+</section>
+
+<!-- ADRS -->
+<section id="adrs">
+  <p class="eyebrow">Decision record</p>
+  <h2 class="section-title">Architecture Decision Records</h2>
+  <p class="lede">Accepted boundaries trace to ADRs under <code>docs/adr/</code>.</p>
+  <div class="adrs">
+    <a class="adr" href="docs/adr/adr-001-internal-identity-as-agonara-ownership-subject.md"><span class="id">ADR-001</span><span class="t">Internal identity as ownership subject</span></a>
+    <a class="adr" href="docs/adr/adr-002-role-authority-scope-model.md"><span class="id">ADR-002</span><span class="t">Role authority &amp; scope model</span></a>
+    <a class="adr" href="docs/adr/adr-003-admin-recovery-invariant.md"><span class="id">ADR-003</span><span class="t">Admin recovery invariant</span></a>
+    <a class="adr" href="docs/adr/adr-004-program-membership-owns-program-participation.md"><span class="id">ADR-004</span><span class="t">Program Membership owns participation</span></a>
+    <a class="adr" href="docs/adr/adr-005-program-membership-state-and-first-admission-policy.md"><span class="id">ADR-005</span><span class="t">Membership state &amp; first admission policy</span></a>
+    <a class="adr" href="docs/adr/adr-006-program-membership-policy-actor.md"><span class="id">ADR-006</span><span class="t">Program Membership policy actor</span></a>
+    <a class="adr" href="docs/adr/adr-007-effective-participation-authorization-contract.md"><span class="id">ADR-007</span><span class="t">Effective participation contract</span></a>
+    <a class="adr" href="docs/adr/adr-008-first-slice-authentication-session-and-credential-boundary.md"><span class="id">ADR-008</span><span class="t">Auth, session &amp; credential boundary</span></a>
+    <a class="adr" href="docs/adr/adr-009-program-shell-and-initial-curator-participation.md"><span class="id">ADR-009</span><span class="t">Program shell &amp; initial curator</span></a>
+    <a class="adr" href="docs/adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md"><span class="id">ADR-010</span><span class="t">Corpus storage &amp; acceptance boundary</span></a>
+    <a class="adr" href="docs/adr/adr-011-accepted-checks-and-student-assessment-boundary.md"><span class="id">ADR-011</span><span class="t">Accepted checks &amp; assessment boundary</span></a>
+    <a class="adr" href="docs/adr/adr-012-student-workspace-open-answer-attempt-lifecycle.md"><span class="id">ADR-012</span><span class="t">Open-answer attempt lifecycle</span></a>
+    <a class="adr" href="docs/adr/adr-013-student-workspace-open-answer-evaluation-governance.md"><span class="id">ADR-013</span><span class="t">Open-answer evaluation governance</span></a>
+    <a class="adr" href="docs/adr/adr-014-student-workspace-open-answer-evaluator-orchestration.md"><span class="id">ADR-014</span><span class="t">Evaluator orchestration</span></a>
+    <a class="adr" href="docs/adr/adr-015-open-answer-evaluator-worker-provider-boundary.md"><span class="id">ADR-015</span><span class="t">Evaluator worker / provider boundary</span></a>
+    <a class="adr" href="docs/adr/adr-016-quick-check-assessment-boundary.md"><span class="id">ADR-016</span><span class="t">Quick Check assessment boundary</span></a>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <span>Agonara · Architecture</span>
+  <span class="sep">·</span>
+  <span>Mirrors <code>docs/module_responsibility_map.md</code> &amp; accepted ADRs</span>
+  <span class="sep">·</span>
+  <span>2026-06-06</span>
+  <div><a class="backlink" href="index.html">← Back to the Agonara landing</a></div>
+</footer>
+
+</body>
+</html>

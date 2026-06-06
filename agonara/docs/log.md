@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-06
+
+- Add `index.html` project landing reflecting the current implementation snapshot (five-module split, shipped slices, product surfaces, stack) in the established Agonara brand style, with a progressive-disclosure link to a new `architecture.html` covering the module responsibility map, ownership rules, open-answer evaluation flow, source layout, runtime/storage, cross-cutting concerns, deployment, and the ADR index; surface both from the workspace landing index and the project README.
+
 ## 2026-06-04
 
 - Close LLM-assisted curation suggestion traceability with implemented spec status, Product Intent evidence links, README/backlog/runtime status updates, parent-plan closeout/archive placement, implemented child-plan references, and LOC dashboard refresh.
