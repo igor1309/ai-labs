@@ -3,7 +3,7 @@ date: 2026-05-28
 model: gpt-5
 description: "Spec: Agonara accepted checks and assessment criteria first-slice contract."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -12,6 +12,21 @@ type: spec
 ## Goal
 
 Define the Agonara v0.0.1 backend contract for Program-scoped accepted open-answer checks and assessment criteria owned by Corpus Storage, with curator candidate state owned by Curator Workspace.
+
+## Implementation status
+
+Implemented by [Accepted Checks and Assessment Criteria First Slice Implementation Plan](../plans/implemented/accepted-checks-and-assessment-criteria-first-slice.md).
+
+### Implementation Evidence
+
+- Corpus assessment criterion and open-answer check candidate lifecycle commands and accepted revision queries: [corpus.js](../../src/corpus.js)
+- Accepted assessment criterion and open-answer check persistence, graph validation, backup, and restore support: [storage.js](../../src/storage.js)
+- Corpus command/query coverage: [corpus.test.js](../../tests/corpus.test.js)
+- Storage persistence and graph-invariant coverage: [storage.test.js](../../tests/storage.test.js)
+- Backup/restore coverage: [backup-restore.test.js](../../tests/backup-restore.test.js)
+- Executable acceptance coverage: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+
+The implemented first slice supports the Program Curator draft/reject/accept lifecycle for assessment criteria and open-answer checks, current and historical accepted revisions, criterion-revision snapshotting on accepted check revisions, accepted-read authorization for Student/Curator/Admin callers, redaction, Student Workspace non-mutation, backup/restore preservation, and malformed graph rejection. This first-slice implementation did not introduce Student Workspace attempts, evaluation results, scoring, feedback generation, mastery/weak-area/progress interpretation, LLM execution, human review, UI, HTTP routes, or CLI commands; later public HTTP behavior is specified separately by [Accepted Checks and Assessment Criteria API](accepted-checks-and-assessment-criteria-api.md).
 
 ## Public interface
 
@@ -140,7 +155,7 @@ rejectOpenAnswerCheckCandidate(input: {
 }) -> RejectOpenAnswerCheckCandidateResult
 ```
 
-Each command result is either:
+### Command Result Envelope
 
 - `{ status: "accepted"; value: ... }`
 - `{ status: "rejected"; reason: AcceptedAssessmentRejectionReason }`
