@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Link the implemented Quick-Check Assessment first-slice status note to the later Quick Check API and Learner-State Interpretation specs so the domain-slice scope boundary is concrete.
 - Mark the Quick-Check Assessment first-slice spec implemented with evidence links to Corpus command/query behavior, Student Workspace attempts, persistence, backup/restore coverage, and executable acceptance.
 - Mark the Student Workspace open-answer attempt first-slice spec implemented with evidence links to the archived plan, Student Workspace domain commands, persistence, backup/restore coverage, and executable acceptance.
 - Align the implemented open-answer attempt API spec with shipped response envelopes: submission returns an attempt summary, and detail reads return the full attempt detail.
