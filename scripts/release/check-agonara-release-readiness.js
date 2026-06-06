@@ -131,6 +131,8 @@ function runReadinessChecks() {
   checkDeployHealthGate('agonara/scripts/deploy-staging.sh');
   checkDeployHealthGate('agonara/scripts/deploy-prod.sh');
   checks.push('deploy health gate');
+  checkDeployImageLifecycle();
+  checks.push('deploy image lifecycle');
   checkRollbackHealthGate();
   checks.push('rollback health gate');
   checkProductionBackup();
@@ -245,6 +247,37 @@ function checkDeployHealthGate(scriptPath) {
   const healthGatePattern = /fetch\("http:\/\/127\.0\.0\.1:8080\/operations\/health"\)\.then\(response => \{ if \(!response\.ok\) process\.exit\(1\); return response\.json\(\); \}\)\.then\(health => \{ if \(health\.status !== "ok" \|\| health\.version !== process\.env\.EXPECTED_VERSION\) process\.exit\(1\); \}\)/;
   if (!healthGatePattern.test(script)) {
     throw new Error(`${scriptPath} must health-gate HTTP success, status ok, and expected version from JSON`);
+  }
+}
+
+function checkDeployImageLifecycle() {
+  const stagingPath = 'agonara/scripts/deploy-staging.sh';
+  const prodPath = 'agonara/scripts/deploy-prod.sh';
+  const stagingLines = shellExecutableLines(readFileSync(join(repoRoot, stagingPath), 'utf8'));
+  const prodLines = shellExecutableLines(readFileSync(join(repoRoot, prodPath), 'utf8'));
+  const stagingSequence = [
+    'DEPLOY_VERSION="$(read_package_version package.json)"',
+    'if [[ -z "${DEPLOY_VERSION}" ]]; then',
+    '"${COMPOSE[@]}" build',
+    'docker tag agonara:staging "agonara:${DEPLOY_VERSION}"',
+    'docker tag agonara:staging "agonara:${DEPLOY_GIT_SHA}"',
+    '"${COMPOSE[@]}" down',
+    '"${COMPOSE[@]}" up -d --no-build --wait',
+    'echo "Staging deploy successful"',
+  ];
+  const prodSequence = [
+    'DEPLOY_VERSION="$(read_package_version package.json)"',
+    'if [[ -z "${DEPLOY_VERSION}" ]]; then',
+    'docker tag agonara:latest agonara:rollback || true',
+    '"${COMPOSE[@]}" build',
+    'docker tag agonara:latest "agonara:${DEPLOY_VERSION}"',
+    'docker tag agonara:latest "agonara:${DEPLOY_GIT_SHA}"',
+    '"${COMPOSE[@]}" down',
+    '"${COMPOSE[@]}" up -d --no-build --wait',
+    'echo "Production deploy successful"',
+  ];
+  if (!linesAppearInOrder(stagingLines, stagingSequence) || !linesAppearInOrder(prodLines, prodSequence)) {
+    throw new Error('Agonara deploy scripts must build before downtime, tag version and git sha, and retain the prior production image');
   }
 }
 

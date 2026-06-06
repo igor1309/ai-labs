@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Extend first-release readiness to enforce build-before-downtime deploy ordering, version and git-SHA image tags, no-rebuild startup, and prior-production rollback retention.
 - Bring staging backup/restore rehearsal to production integrity parity by requiring `agonara.sqlite` before transfer or destructive restore, and enforce the staging lifecycle in first-release readiness.
 - Require production backup archives to contain `agonara.sqlite` before service restart, off-host transfer, retention pruning, or reported success, with first-release readiness coverage.
 - Preflight production restore archives for non-empty, readable tar content before shutting down or replacing data, and enforce the destructive ordering, no-rebuild restart, and health gate in first-release readiness.

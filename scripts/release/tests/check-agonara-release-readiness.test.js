@@ -41,6 +41,7 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stdout.includes('OK locked release install'));
     assert.ok(result.stdout.includes('OK deploy upload preflight'));
     assert.ok(result.stdout.includes('OK deploy health gate'));
+    assert.ok(result.stdout.includes('OK deploy image lifecycle'));
     assert.ok(result.stdout.includes('OK rollback health gate'));
     assert.ok(result.stdout.includes('OK production backup'));
     assert.ok(result.stdout.includes('OK production restore'));
@@ -401,6 +402,30 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('agonara/scripts/deploy-prod.sh must health-gate HTTP success, status ok, and expected version from JSON'));
   });
 
+  it('fails when production deploy stops service before building the image', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      deployProd: validDeployScript('compose.prod.yml').replace(
+        [
+          '"${COMPOSE[@]}" build',
+          'docker tag agonara:latest "agonara:${DEPLOY_VERSION}"',
+          'docker tag agonara:latest "agonara:${DEPLOY_GIT_SHA}"',
+          '"${COMPOSE[@]}" down',
+        ].join('\n'),
+        [
+          '"${COMPOSE[@]}" down',
+          '"${COMPOSE[@]}" build',
+          'docker tag agonara:latest "agonara:${DEPLOY_VERSION}"',
+          'docker tag agonara:latest "agonara:${DEPLOY_GIT_SHA}"',
+        ].join('\n'),
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara deploy scripts must build before downtime, tag version and git sha, and retain the prior production image'));
+  });
+
   it('fails when rollback does not health-gate restored service availability', () => {
     writeAgonaraReleaseRepo(tmp, {
       rollbackProd: validRollbackScript().replace(rollbackHealthGate(), ''),
@@ -759,6 +784,8 @@ function validDockerfile() {
 }
 
 function validDeployScript(composeFile) {
+  const staging = composeFile === 'compose.staging.yml';
+  const imageTag = staging ? 'agonara:staging' : 'agonara:latest';
   return [
     '#!/usr/bin/env bash',
     'set -euo pipefail',
@@ -771,7 +798,18 @@ function validDeployScript(composeFile) {
     '',
     'require_upload_payload',
     'cd "${DEPLOY_ROOT}"',
+    'DEPLOY_VERSION="$(read_package_version package.json)"',
+    'if [[ -z "${DEPLOY_VERSION}" ]]; then',
+    '  exit 1',
+    'fi',
+    ...(staging ? [] : ['docker tag agonara:latest agonara:rollback || true']),
+    '"${COMPOSE[@]}" build',
+    `docker tag ${imageTag} "agonara:\${DEPLOY_VERSION}"`,
+    `docker tag ${imageTag} "agonara:\${DEPLOY_GIT_SHA}"`,
+    '"${COMPOSE[@]}" down',
+    '"${COMPOSE[@]}" up -d --no-build --wait',
     deployHealthGate(),
+    `echo "${staging ? 'Staging' : 'Production'} deploy successful"`,
   ].join('\n');
 }
 
