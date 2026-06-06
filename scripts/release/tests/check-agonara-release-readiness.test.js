@@ -268,6 +268,20 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('release-unit.yml github-release job must require successful Agonara deploys before release creation'));
   });
 
+  it('fails when GitHub release does not require successful Agonara production deploy', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        "      && (needs.verify.outputs.basename != 'agonara' || needs.deploy-agonara-prod.result == 'success')",
+        '',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml github-release job must require successful Agonara deploys before release creation'));
+  });
+
   it('fails when the CI dispatcher does not route Agonara package lock changes', () => {
     writeAgonaraReleaseRepo(tmp, {
       ciWorkflow: validCiWorkflow().replace(
