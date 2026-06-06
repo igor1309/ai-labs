@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Include `agonara/package-lock.json` in the root CI dispatcher allowlist so lockfile-only changes run the Agonara core workflow.
 - Add a package-local Agonara lockfile and switch the release Docker build to `npm ci --omit=dev`, with the lockfile uploaded and required by staging/prod deploy scripts.
 - Harden Agonara staging/prod deploy scripts to fail on incomplete uploaded source payloads before mutating the deploy root.
 - Extend the Agonara first-release readiness check to optionally verify the required GitHub deploy secret names with `gh` before the explicit release tag is pushed, without reading secret values.

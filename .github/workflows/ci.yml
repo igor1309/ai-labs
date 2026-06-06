@@ -127,6 +127,7 @@ jobs:
               - "agonara/src/**"
               - "agonara/tests/**"
               - "agonara/package.json"
+              - "agonara/package-lock.json"
               - "agonara/playwright.config.js"
               - "agonara/Dockerfile"
               - "agonara/compose.yaml"

@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- CI path filtering: include `agonara/package-lock.json` in the root dispatcher allowlist so lockfile-only changes run the Agonara core workflow.
 - Release units: add a package-local Agonara lockfile and switch the release Docker build to `npm ci --omit=dev`, with the lockfile uploaded and required by staging/prod deploy scripts.
 - Release units: harden Agonara staging/prod deploy scripts to fail on incomplete uploaded source payloads before mutating the deploy root.
 - Release units: extend the Agonara first-release readiness check to optionally verify required GitHub deploy secret names with `gh` before the explicit release tag is pushed, without reading secret values.
