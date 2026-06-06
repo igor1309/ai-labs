@@ -119,6 +119,11 @@
     flex-direction: column;
   }
 
+  a.product {
+    color: inherit;
+    text-decoration: none;
+  }
+
   .product::before {
     content: '';
     position: absolute;
@@ -136,6 +141,11 @@
   }
 
   .product:hover::before { opacity: 1; }
+
+  .product:focus-visible {
+    outline: 2px solid var(--accent-light);
+    outline-offset: 3px;
+  }
 
   .reveal {
     opacity: 0;
@@ -232,14 +242,14 @@
 
     <h3 class="group-title">Web Apps</h3>
     <div class="product-grid">
-      <div class="product reveal">
+      <a class="product reveal" href="../agonara/index.html">
         <div class="product-header">
           <span class="product-name">Agonara</span>
         </div>
         <p class="product-desc">
           <strong>Structured learning program environment with curated programs, learner progression, and evidence of mastery.</strong> Helps curators assemble and maintain learning programs from trusted sources, while learners progress through them with clear sequence, checkpoints, and evidence of mastery. AI assists program construction and learning support but does not own the curriculum.
         </p>
-      </div>
+      </a>
       <div class="product reveal">
         <div class="product-header">
           <span class="product-name">Clipdeck</span>
@@ -268,7 +278,7 @@
           <span class="tag">Wasm</span>
         </div>
       </div>
-      <div class="product reveal">
+      <a class="product reveal" href="../oracle/apps/am-i-done-web/src/landing.html">
         <div class="product-header">
           <span class="product-name">Oracle — Am I Done?</span>
         </div>
@@ -283,20 +293,20 @@
           <span class="tag">D1</span>
           <span class="tag">KV Cache</span>
         </div>
-      </div>
+      </a>
     </div>
 
     <h3 class="group-title">CLI &amp; Tooling</h3>
     <div class="product-grid">
-      <div class="product reveal">
+      <a class="product reveal" href="../dev-skills/index.html">
         <div class="product-header">
           <span class="product-name">Dev Skills</span>
         </div>
         <p class="product-desc">
           <strong>Claude Code skills marketplace.</strong>
         </p>
-      </div>
-      <div class="product reveal">
+      </a>
+      <a class="product reveal" href="../reinix/docs/landing.html">
         <div class="product-header">
           <span class="product-name">Reinix</span>
         </div>
@@ -309,7 +319,7 @@
           <span class="tag">CLI</span>
           <span class="tag">Multi-Agent</span>
         </div>
-      </div>
+      </a>
       <div class="product reveal">
         <div class="product-header">
           <span class="product-name">Session Digest</span>
@@ -395,7 +405,7 @@
           <span class="tag">Cloudflare Tunnel</span>
         </div>
       </div>
-      <div class="product reveal">
+      <a class="product reveal" href="../nomos/index.html">
         <div class="product-header">
           <span class="product-name">Nomos</span>
         </div>
@@ -410,8 +420,8 @@
           <span class="tag">Caddy</span>
           <span class="tag">VPS</span>
         </div>
-      </div>
-      <div class="product reveal">
+      </a>
+      <a class="product reveal" href="../notio/frontend/index.html">
         <div class="product-header">
           <span class="product-name">Notio</span>
         </div>
@@ -426,7 +436,7 @@
           <span class="tag">Cloudflare Tunnel</span>
           <span class="tag">Telegram Bot</span>
         </div>
-      </div>
+      </a>
     </div>
 
     <h3 class="group-title">Frameworks &amp; Concepts</h3>

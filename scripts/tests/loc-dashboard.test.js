@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { it } from 'node:test';
@@ -72,6 +72,27 @@ it('omits redundant product-type chips from grouped product cards', () => {
   const productsHtml = readFileSync('docs/products.html', 'utf8');
 
   assert.equal(productsHtml.includes('class="product-type"'), false);
+});
+
+it('links product cards to existing local landing pages', () => {
+  const productsHtml = readFileSync('docs/products.html', 'utf8');
+  const landingLinks = [
+    '../agonara/index.html',
+    '../oracle/apps/am-i-done-web/src/landing.html',
+    '../dev-skills/index.html',
+    '../reinix/docs/landing.html',
+    '../nomos/index.html',
+    '../notio/frontend/index.html',
+  ];
+
+  assert.deepEqual(
+    landingLinks.map((href) => ({
+      href,
+      linked: productsHtml.includes(`href="${href}"`),
+      exists: existsSync(join('docs', href)),
+    })),
+    landingLinks.map((href) => ({ href, linked: true, exists: true }))
+  );
 });
 
 it('emits no drift warnings on a clean trunk', () => {
