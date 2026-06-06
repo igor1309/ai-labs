@@ -463,6 +463,53 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('agonara/scripts/backup-prod.sh must create a non-empty production data archive, recover service, copy off-host, and prune local retention'));
   });
 
+  it('fails when production backup does not initialize its off-host destination', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      backupProd: validBackupScript().replace('BACKUP_REMOTE="${AGONARA_BACKUP_REMOTE:-}"\n', ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/backup-prod.sh must create a non-empty production data archive, recover service, copy off-host, and prune local retention'));
+  });
+
+  it('fails when production backup cannot recover service after archive failure', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      backupProd: validBackupScript().replace('trap restart_prod EXIT\n', ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/backup-prod.sh must create a non-empty production data archive, recover service, copy off-host, and prune local retention'));
+  });
+
+  it('fails when production backup accepts an empty archive', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      backupProd: validBackupScript().replace('test -s "${BACKUP_DIR}/${BACKUP_FILE}"\n', ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/backup-prod.sh must create a non-empty production data archive, recover service, copy off-host, and prune local retention'));
+  });
+
+  it('fails when production backup does not prune local retention', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      backupProd: validBackupScript().replace(
+        'find "${BACKUP_DIR}" -type f -name "agonara-data-*.tar.gz" -mtime "+${BACKUP_RETENTION_DAYS}" -delete\n',
+        '',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/backup-prod.sh must create a non-empty production data archive, recover service, copy off-host, and prune local retention'));
+  });
+
   it('passes the GitHub secret check when required deploy secret names exist', () => {
     writeAgonaraReleaseRepo(tmp);
     const fakeGhBin = writeFakeGhSecretList([
@@ -600,9 +647,24 @@ function validBackupScript() {
   return [
     '#!/usr/bin/env bash',
     'set -euo pipefail',
+    'DEPLOY_ROOT="${AGONARA_DEPLOY_ROOT:-/opt/agonara}"',
+    'BACKUP_DIR="${AGONARA_BACKUP_DIR:-${DEPLOY_ROOT}/backups}"',
+    'BACKUP_REMOTE="${AGONARA_BACKUP_REMOTE:-}"',
+    'BACKUP_SSH_KEY="${AGONARA_BACKUP_SSH_KEY:-}"',
+    'BACKUP_RETENTION_DAYS="${AGONARA_BACKUP_RETENTION_DAYS:-14}"',
+    'DATA_VOLUME="${AGONARA_DATA_VOLUME:-agonara-prod_agonara-data}"',
+    'TIMESTAMP="${AGONARA_BACKUP_TIMESTAMP:-$(date -u +%Y%m%dT%H%M%SZ)}"',
+    'BACKUP_FILE="agonara-data-${TIMESTAMP}.tar.gz"',
+    'COMPOSE=(docker compose --env-file .env.prod -f compose.prod.yml)',
     'if [[ -z "${BACKUP_REMOTE}" ]]; then',
     '  echo "AGONARA_BACKUP_REMOTE is required for off-host backup storage" >&2',
     '  exit 1',
+    'fi',
+    'cd "${DEPLOY_ROOT}"',
+    'mkdir -p "${BACKUP_DIR}"',
+    'RSYNC=(rsync -a)',
+    'if [[ -n "${BACKUP_SSH_KEY}" ]]; then',
+    '  RSYNC+=( -e "ssh -i ${BACKUP_SSH_KEY} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" )',
     'fi',
     'restart_prod() {',
     '  "${COMPOSE[@]}" start agonara >/dev/null 2>&1 || true',
