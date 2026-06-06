@@ -349,8 +349,8 @@
   <div class="mark">Agon · Contest · Discipline · Mastery</div>
   <h1 class="title">Agonara</h1>
   <p class="anchor">
-    A structured learning program environment built around curated programs,
-    progression, and evidence of mastery.
+    An API-first structured learning program environment built around curated programs,
+    progression, evidence of mastery, and agent-ready backend contracts.
   </p>
   <p class="agon">
     From the ancient Greek <em>agon</em> — exercise, trial, disciplined striving.
@@ -361,7 +361,7 @@
   <div class="hero-meta">
     <span class="pill"><span class="dot"></span>Private self-hosted instance <span style="color:var(--text-3)">· target</span></span>
     <span class="pill"><span class="dot"></span>Node.js 22 · SQLite</span>
-    <span class="pill"><span class="dot"></span>API-first + <code>/learn</code> &amp; <code>/admin</code> UI</span>
+    <span class="pill"><span class="dot"></span>API-first · human UI · agent-ready</span>
   </div>
 </header>
 
@@ -537,8 +537,12 @@
 <!-- SURFACES -->
 <section id="surfaces">
   <p class="eyebrow">Product surfaces</p>
-  <h2 class="section-title">How you reach it</h2>
-  <p class="lede">An API-first backend with two browser surfaces and an operator CLI.</p>
+  <h2 class="section-title">How humans and agents reach it</h2>
+  <p class="lede">
+    Agonara exposes product behavior through backend contracts first. Browser UIs,
+    operator commands, and future Agonara agent skills can work through the same
+    program, corpus, membership, assessment, and learner-state APIs.
+  </p>
   <div class="surfaces">
     <div class="surface-card">
       <div class="route">GET /learn</div>
@@ -560,6 +564,11 @@
       <h3>Operator CLI</h3>
       <p>Bootstrap status and first-Admin bootstrap for standing up a fresh private instance.</p>
     </div>
+    <div class="surface-card">
+      <div class="route">planned client</div>
+      <h3>Future Agent Skill Set</h3>
+      <p>Agent clients should be able to curate draft material, inspect coverage gaps, prepare checks, and navigate learner evidence through the same backend contracts.</p>
+    </div>
   </div>
 </section>
 
@@ -571,7 +580,7 @@
   <div class="chips">
     <span class="chip">Node.js <span>22</span></span>
     <span class="chip">better-sqlite3 <span>^11.8</span></span>
-    <span class="chip">HTTP API <span>+ server-side sessions</span></span>
+    <span class="chip">API-first HTTP <span>backend</span></span>
     <span class="chip">CSRF <span>protection</span></span>
     <span class="chip">Request <span>correlation</span></span>
     <span class="chip">Operator <span>CLI</span></span>

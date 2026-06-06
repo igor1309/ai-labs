@@ -2,6 +2,8 @@
 
 ## 2026-06-06
 
+- Agonara/product landings: clarified the API-first stance as shared backend contracts for browser UIs, operator commands, and future Agonara agent skills, without making UI or agent surfaces separate owners of workflow or state.
+
 - Products page: linked the `AI Labs` header back to the parent internal landing index.
 
 - Claude Insights: added a local landing at `claude-insights/index.html`, linked the products-page card to it, and extended the static products-page link regression.
