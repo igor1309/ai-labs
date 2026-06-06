@@ -119,6 +119,7 @@ function runReadinessChecks() {
   checkWorkflowSmokeGate(stagingJob, 'agonara-staging');
   checkWorkflowSmokeGate(prodJob, 'agonara');
   checkWorkflowCleanupLifecycle(stagingJob, prodJob);
+  checkWorkflowNotifyFanIn(workflow);
   checks.push('release workflow');
 
   checkLockedReleaseInstall(version, workflow);
@@ -264,6 +265,19 @@ function checkWorkflowCleanupLifecycle(stagingJob, prodJob) {
     && prodJob.indexOf(rollback) < prodJob.indexOf(finalCleanup);
   if (!validLifecycle) {
     throw new Error('release-unit.yml must cleanup staging failures and run production rollback before final upload cleanup');
+  }
+}
+
+function checkWorkflowNotifyFanIn(workflow) {
+  const notifyJob = getWorkflowJob(workflow, 'notify');
+  const requiredNeedles = [
+    "needs.deploy-agonara-staging.result == 'failure'",
+    "needs.deploy-agonara-prod.result == 'failure'",
+    'deploy-agonara-staging=${{ needs.deploy-agonara-staging.result }}',
+    'deploy-agonara-prod=${{ needs.deploy-agonara-prod.result }}',
+  ];
+  if (!requiredNeedles.every($0 => notifyJob.includes($0))) {
+    throw new Error('release-unit.yml notify job must include Agonara deploy failures and report their results');
   }
 }
 
