@@ -80,9 +80,10 @@ describe('release-unit workflow fan-in', () => {
   it('health gates Agonara workflow version checks on HTTP success before parsing JSON', () => {
     const stagingDeploy = jobSection('deploy-agonara-staging');
     const prodDeploy = jobSection('deploy-agonara-prod');
+    const healthGate = 'node -e \'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); return response.json(); }).then(health => { if (health.status !== "ok" || health.version !== process.env.EXPECTED_VERSION) process.exit(1); }).catch(() => process.exit(1))\'';
 
-    assert.ok(stagingDeploy.includes('if (!response.ok) process.exit(1); return response.json();'));
-    assert.ok(prodDeploy.includes('if (!response.ok) process.exit(1); return response.json();'));
+    assert.ok(stagingDeploy.includes(`docker exec -e EXPECTED_VERSION="\${EXPECTED_VERSION}" agonara-staging ${healthGate}`));
+    assert.ok(prodDeploy.includes(`docker exec -e EXPECTED_VERSION="\${EXPECTED_VERSION}" agonara ${healthGate}`));
   });
 
   it('reports split Notio jobs in failure notifications', () => {
