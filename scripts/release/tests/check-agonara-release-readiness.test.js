@@ -514,9 +514,34 @@ describe('check-agonara-release-readiness', () => {
   it('fails when production restore does not validate the archive before mutation', () => {
     writeAgonaraReleaseRepo(tmp, {
       restoreProd: validRestoreScript().replace(
-        'docker run --rm -v "$(dirname "${BACKUP_FILE}"):/restore:ro" alpine:3.20 tar -tzf "/restore/${BACKUP_BASENAME}" >/dev/null\n',
+        'docker run --rm -v "$(dirname "${BACKUP_FILE}"):/restore:ro" alpine:3.20 sh -c \'tar -tzf "/restore/$1" | grep -Fx "./agonara.sqlite"\' sh "${BACKUP_BASENAME}" >/dev/null\n',
         '',
       ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/restore-prod.sh must validate the backup before replacing production data, restart without rebuild, and health-gate availability'));
+  });
+
+  it('fails when production restore rebuilds the deployed image', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      restoreProd: validRestoreScript().replace(
+        '"${COMPOSE[@]}" up -d --no-build --wait',
+        '"${COMPOSE[@]}" up -d --build --wait',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/restore-prod.sh must validate the backup before replacing production data, restart without rebuild, and health-gate availability'));
+  });
+
+  it('fails when production restore does not health-gate availability', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      restoreProd: validRestoreScript().replace(`${rollbackHealthGate()}\n`, ''),
     });
 
     const result = runReadiness(tmp);
@@ -716,7 +741,7 @@ function validRestoreScript() {
     'fi',
     'test -s "${BACKUP_FILE}"',
     'BACKUP_BASENAME="$(basename "${BACKUP_FILE}")"',
-    'docker run --rm -v "$(dirname "${BACKUP_FILE}"):/restore:ro" alpine:3.20 tar -tzf "/restore/${BACKUP_BASENAME}" >/dev/null',
+    'docker run --rm -v "$(dirname "${BACKUP_FILE}"):/restore:ro" alpine:3.20 sh -c \'tar -tzf "/restore/$1" | grep -Fx "./agonara.sqlite"\' sh "${BACKUP_BASENAME}" >/dev/null',
     'cd "${DEPLOY_ROOT}"',
     '"${COMPOSE[@]}" down',
     'docker run --rm -v "${DATA_VOLUME}:/data" -v "$(dirname "${BACKUP_FILE}"):/restore:ro" alpine:3.20 sh -c \'find /data -mindepth 1 -exec rm -rf {} + && tar -xzf "/restore/$1" -C /data\' sh "${BACKUP_BASENAME}"',

@@ -302,11 +302,18 @@ test("productionRestore_shouldValidateArchiveBeforeMutatingData", () => {
   assert.equal(
     appearsInOrder(files.restoreProd, [
       'test -s "${BACKUP_FILE}"',
-      'docker run --rm -v "$(dirname "${BACKUP_FILE}"):/restore:ro" alpine:3.20 tar -tzf "/restore/${BACKUP_BASENAME}"',
+      'tar -tzf "/restore/$1" | grep -Fx "./agonara.sqlite"',
       '"${COMPOSE[@]}" down',
       "find /data -mindepth 1",
       "tar -xzf",
     ]),
+    true,
+  );
+});
+
+test("productionRestore_shouldRequireAgonaraDatabaseInArchive", () => {
+  assert.equal(
+    files.restoreProd.includes('tar -tzf "/restore/$1" | grep -Fx "./agonara.sqlite"'),
     true,
   );
 });
