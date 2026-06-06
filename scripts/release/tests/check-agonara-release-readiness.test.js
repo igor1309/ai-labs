@@ -40,6 +40,7 @@ describe('check-agonara-release-readiness', () => {
     assert.equal(result.exitCode, 0, result.stderr);
     assert.ok(result.stdout.includes('OK locked release install'));
     assert.ok(result.stdout.includes('OK deploy upload preflight'));
+    assert.ok(result.stdout.includes('OK deploy health gate'));
     assert.ok(result.stdout.includes('Agonara release readiness passed for agonara_v0.1.0.'));
   });
 
@@ -214,6 +215,26 @@ describe('check-agonara-release-readiness', () => {
       deployProd: validDeployScript('compose.prod.yml').replace(
         deployHealthGate(),
         'fetch("http://127.0.0.1:8080/operations/health").then(response => response.text()).then(body => { if (!body.includes(`"version":"${process.env.EXPECTED_VERSION}"`)) process.exit(1); })',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/deploy-prod.sh must health-gate HTTP success, status ok, and expected version from JSON'));
+  });
+
+  it('fails when deploy scripts only mention structured health gate tokens outside the gate', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      deployProd: validDeployScript('compose.prod.yml').replace(
+        deployHealthGate(),
+        [
+          '# operations/health',
+          '# !response.ok',
+          '# response.json()',
+          '# health.status !== "ok"',
+          '# health.version !== process.env.EXPECTED_VERSION',
+        ].join('\n'),
       ),
     });
 

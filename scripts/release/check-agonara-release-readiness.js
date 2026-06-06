@@ -225,14 +225,8 @@ function checkDeployHealthGate(scriptPath) {
     throw new Error(`${scriptPath} is missing`);
   }
   const script = readFileSync(fullPath, 'utf8');
-  const requiredNeedles = [
-    'operations/health',
-    '!response.ok',
-    'response.json()',
-    'health.status !== "ok"',
-    'health.version !== process.env.EXPECTED_VERSION',
-  ];
-  if (!requiredNeedles.every($0 => script.includes($0))) {
+  const healthGatePattern = /fetch\("http:\/\/127\.0\.0\.1:8080\/operations\/health"\)\.then\(response => \{ if \(!response\.ok\) process\.exit\(1\); return response\.json\(\); \}\)\.then\(health => \{ if \(health\.status !== "ok" \|\| health\.version !== process\.env\.EXPECTED_VERSION\) process\.exit\(1\); \}\)/;
+  if (!healthGatePattern.test(script)) {
     throw new Error(`${scriptPath} must health-gate HTTP success, status ok, and expected version from JSON`);
   }
 }
