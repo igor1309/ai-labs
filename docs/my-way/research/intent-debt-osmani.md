@@ -47,8 +47,3 @@ bolt-on comprehension gate would reintroduce exactly that.
 
 **Honest borrow: vocabulary, not mechanism.** "Intent debt — the one debt an agent
 can't repay" is a sharp one-line case for why the pre-coding phase exists.
-
-## Open question
-
-Where does a load-bearing but *sub-ADR* why (the `300ms` debounce) live in the
-chain — a spec note, Log/Artifact, or code comment — and is that home reliable?
