@@ -47,7 +47,8 @@ jobs:
         with:
           filters: |
             shared:
-              - ".github/workflows/**"
+              - ".github/workflows/*.yml"
+              - ".github/workflows/*.yaml"
               - ".node-version"
               - "package-lock.json"
               - "package.json"
@@ -55,9 +56,19 @@ jobs:
               - "tsconfig.json"
               - "vendor/**"
             nomos:
-              - "nomos/**"
+              - "nomos/src/**"
+              - "nomos/tests/**"
+              - "nomos/scripts/**"
+              - "nomos/package.json"
+              - "nomos/package-lock.json"
+              - "nomos/Dockerfile"
+              - "nomos/Caddyfile"
+              - "nomos/docker-compose*.yml"
             oracle:
-              - "oracle/**"
+              - "oracle/apps/**"
+              - "oracle/packages/**"
+              - "oracle/prompts/**"
+              - "oracle/copy/**"
             release:
               - "release-units.config.toml"
               - "release-units.toml"
@@ -69,9 +80,19 @@ jobs:
               - "oracle/**"
               - "reinix/**"
             web-scout:
-              - "web-scout/**"
+              - "web-scout/src/**"
+              - "web-scout/tests/**"
+              - "web-scout/package.json"
+              - "web-scout/package-lock.json"
+              - "web-scout/requirements.txt"
+              - "web-scout/conftest.py"
+              - "web-scout/smoke.py"
             corpus-scout:
-              - "corpus-scout/**"
+              - "corpus-scout/src/**"
+              - "corpus-scout/tests/**"
+              - "corpus-scout/scripts/**"
+              - "corpus-scout/tools/**"
+              - "corpus-scout/package.json"
             notio:
               - "notio/backend/**"
             notio-ci:
@@ -82,7 +103,10 @@ jobs:
               - ".github/workflows/notio-frontend-core.yml"
               - ".github/workflows/notio-frontend-deploy.yml"
             reinix:
-              - "reinix/**"
+              - "reinix/src/**"
+              - "reinix/tests/**"
+              - "reinix/examples/**"
+              - "reinix/package.json"
             reinix-ci:
               - ".github/workflows/reinix-core.yml"
             clipdeck:
@@ -99,7 +123,12 @@ jobs:
             dev-skills:
               - "dev-skills/public/**"
             agonara:
-              - "agonara/**"
+              - "agonara/src/**"
+              - "agonara/tests/**"
+              - "agonara/package.json"
+              - "agonara/playwright.config.js"
+              - "agonara/Dockerfile"
+              - "agonara/compose.yaml"
             agonara-ci:
               - ".github/workflows/agonara-core.yml"
 
