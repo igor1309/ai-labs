@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agonara API"
+  short_description: "Work with Agonara API contracts"
+  default_prompt: "Use $agonara-api to implement or consume an Agonara API route."
