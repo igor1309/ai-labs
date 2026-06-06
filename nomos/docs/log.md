@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+Add `nomos/docs/faq.md` to pin the current Nomos V0 client/provider/model selection boundary: clients choose concrete model strings, while provider/vendor routing, fallback, subscriptions, and model-tier policy remain service-side future candidates rather than implemented client controls.
 Add `nomos/index.html` as the local Nomos landing page and wire it into the internal landing indexes. The page summarizes Nomos as the workspace AI sovereignty layer, links to the operational docs, and gives the products page a local static target.
 
 ## 2026-04-27
