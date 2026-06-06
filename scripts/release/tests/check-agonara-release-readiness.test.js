@@ -149,6 +149,29 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('agonara/scripts/deploy-prod.sh must preflight required upload files before cd "${DEPLOY_ROOT}"'));
   });
 
+  it('fails when deploy scripts define but do not invoke the upload preflight before mutation', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      deployProd: [
+        '#!/usr/bin/env bash',
+        'set -euo pipefail',
+        'require_upload_payload() {',
+        '  require_upload_file "${UPLOAD_ROOT}/Dockerfile"',
+        '  require_upload_file "${UPLOAD_ROOT}/package.json"',
+        '  require_upload_file "${UPLOAD_ROOT}/package-lock.json"',
+        '  require_upload_file "${UPLOAD_ROOT}/compose.prod.yml"',
+        '  require_upload_directory "${UPLOAD_ROOT}/src"',
+        '  require_upload_directory "${UPLOAD_ROOT}/scripts"',
+        '}',
+        'cd "${DEPLOY_ROOT}"',
+      ].join('\n'),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/deploy-prod.sh must invoke require_upload_payload before cd "${DEPLOY_ROOT}"'));
+  });
+
   it('passes the GitHub secret check when required deploy secret names exist', () => {
     writeAgonaraReleaseRepo(tmp);
     const fakeGhBin = writeFakeGhSecretList([
@@ -250,6 +273,7 @@ function validDeployScript(composeFile) {
     `require_upload_file "\${UPLOAD_ROOT}/${composeFile}"`,
     'require_upload_directory "${UPLOAD_ROOT}/src"',
     'require_upload_directory "${UPLOAD_ROOT}/scripts"',
+    '',
     'require_upload_payload',
     'cd "${DEPLOY_ROOT}"',
   ].join('\n');

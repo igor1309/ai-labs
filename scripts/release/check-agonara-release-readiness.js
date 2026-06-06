@@ -199,11 +199,12 @@ function checkDeployUploadPreflight(scriptPath, composeFile) {
     `require_upload_file "\${UPLOAD_ROOT}/${composeFile}"`,
     'require_upload_directory "${UPLOAD_ROOT}/src"',
     'require_upload_directory "${UPLOAD_ROOT}/scripts"',
-    'require_upload_payload',
-    'cd "${DEPLOY_ROOT}"',
   ];
   if (!appearsInOrder(script, requiredNeedles)) {
     throw new Error(`${scriptPath} must preflight required upload files before cd "\${DEPLOY_ROOT}"`);
+  }
+  if (!/(^|\n)require_upload_payload\n\n?cd "\$\{DEPLOY_ROOT\}"/.test(script)) {
+    throw new Error(`${scriptPath} must invoke require_upload_payload before cd "\${DEPLOY_ROOT}"`);
   }
 }
 
