@@ -27,7 +27,7 @@ Deployment wiring provisions real infrastructure and secrets and triggers irreve
 Worktree mode: none
 Expected worktree: repository root (no separate worktree)
 Expected branch: claude/agonara-deploy-wiring-* (a dedicated branch off trunk)
-Preflight check: [ ] done
+Preflight check: [x] done — user approved continuing in `/Users/igormalyarov/.codex/worktrees/a321/ai-labs` on `codex/agonara-adr018-runtime` after the declared lock failed.
 ```
 
 ## Scope guardrails

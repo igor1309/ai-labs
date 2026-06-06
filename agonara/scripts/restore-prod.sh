@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Restore production /data from a backup tarball.
+# Usage: agonara/scripts/restore-prod.sh /path/to/agonara-data-YYYYMMDDTHHMMSSZ.tar.gz
+
+DEPLOY_ROOT="${AGONARA_DEPLOY_ROOT:-/opt/agonara}"
+BACKUP_FILE="${1:-}"
+COMPOSE=(docker compose --env-file .env.prod -f compose.prod.yml)
+
+if [[ -z "${BACKUP_FILE}" ]]; then
+  echo "backup file path is required" >&2
+  exit 1
+fi
+
+if [[ ! -f "${BACKUP_FILE}" ]]; then
+  echo "backup file not found: ${BACKUP_FILE}" >&2
+  exit 1
+fi
+
+cd "${DEPLOY_ROOT}"
+"${COMPOSE[@]}" down
+docker run --rm -v agonara-data:/data -v "$(dirname "${BACKUP_FILE}"):/restore:ro" alpine:3.20 sh -c "rm -rf /data/* && tar -xzf /restore/$(basename "${BACKUP_FILE}") -C /data"
+"${COMPOSE[@]}" up -d --no-build --wait
+docker exec agonara wget -qO- http://127.0.0.1:8080/operations/health | grep -q '"status":"ok"'
+
+echo "Production restore successful"

@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Add ADR-017 VPS-side deployment scaffolding for Agonara: staging/prod compose files with isolated loopback ports and data volumes, build-on-VPS deploy scripts with version/git-sha tags and rollback image retention, off-host backup and restore scripts, CI path coverage for deploy assets, and contract tests for the deployment invariants.
 - Harden the ADR-018 runtime after adversarial review by sending accepted check prompt and criterion body snapshots to the Nomos adapter, covering missing adapter configuration, failed/malformed provider responses, and operations-session trigger authorization.
 - Implement ADR-018 real-provider runtime for the open-answer evaluator: add the Nomos HTTP provider adapter with output validation and secret-free usage summaries, an LLM evaluator policy helper, async-compatible Student Workspace worker execution, a single-flight operational tick, and `startServer` composition wiring gated on complete `AGONARA_NOMOS_*` runtime config plus an authenticated operations trigger. Mark the real-provider runtime spec implemented, update the deployment handoff, and keep release/deployment wiring pending.
 - Add project-local agent instructions declaring that Agonara aims to follow the My Way approach, with `CLAUDE.md` symlinked to `AGENTS.md` for tool compatibility.

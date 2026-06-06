@@ -246,16 +246,20 @@ job invokes the §6 features (version verify, real-LLM smoke).
       too; release uses tags, not `npm publish`.
 
 ### 7b. VPS-side scaffolding (model on nomos)
-- [ ] `agonara/compose.staging.yml` and `agonara/compose.prod.yml` (or one
+- [x] `agonara/compose.staging.yml` and `agonara/compose.prod.yml` (or one
       parameterized compose) — distinct container names + ports, named volumes
       `agonara-staging-data` / `agonara-data`, `AGONARA_BOOTSTRAP_SECRET` and the
       Nomos adapter env from env, healthcheck retained.
-- [ ] `agonara/scripts/deploy-staging.sh`, `deploy-prod.sh`, `rollback-prod.sh`
+- [x] `agonara/scripts/deploy-staging.sh`, `deploy-prod.sh`, `rollback-prod.sh`
       mirroring `nomos/scripts/*` (build, up, snapshot prior image as
       `…:rollback`, health-gate). Apply the `<version>`+`<git-sha>` local tags here.
 - [ ] One-time agonara-vps prep: install Docker + compose, create `/opt/agonara`,
       provision the reverse proxy + TLS + domain, and store
       `AGONARA_BOOTSTRAP_SECRET` securely on the host (never in the repo).
+- [x] `agonara/scripts/backup-prod.sh` and `restore-prod.sh` scaffold the
+      off-host production `/data` backup and restore-drill mechanics; the actual
+      `AGONARA_BACKUP_REMOTE` target and a successful drill remain human/VPS
+      closeout work before prod is declared real.
 
 ### 7c. CI deploy job in `release-unit.yml`
 - [ ] Add `deploy-agonara-staging` (needs `[core, verify]`,
