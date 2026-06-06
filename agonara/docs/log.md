@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Harden Agonara staging/prod deploy scripts to fail on incomplete uploaded source payloads before mutating the deploy root.
 - Extend the Agonara first-release readiness check to optionally verify the required GitHub deploy secret names with `gh` before the explicit release tag is pushed, without reading secret values.
 - Clean Agonara release source uploads on staging failure and after every prod deploy outcome, while preserving rollback ordering before final cleanup.
 - Harden Agonara release smoke cleanup so staging/prod evaluator-smoke JSON files are removed inside the container even when smoke execution or validation fails.

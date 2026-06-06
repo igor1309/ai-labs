@@ -18,10 +18,34 @@ read_package_version() {
   sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$1" | head -n 1
 }
 
+require_upload_file() {
+  if [[ ! -f "$1" ]]; then
+    echo "Required Agonara deploy upload file is missing: $1" >&2
+    exit 1
+  fi
+}
+
+require_upload_directory() {
+  if [[ ! -d "$1" ]]; then
+    echo "Required Agonara deploy upload directory is missing: $1" >&2
+    exit 1
+  fi
+}
+
+require_upload_payload() {
+  require_upload_file "${UPLOAD_ROOT}/Dockerfile"
+  require_upload_file "${UPLOAD_ROOT}/package.json"
+  require_upload_file "${UPLOAD_ROOT}/compose.prod.yml"
+  require_upload_directory "${UPLOAD_ROOT}/src"
+  require_upload_directory "${UPLOAD_ROOT}/scripts"
+}
+
 if [[ -z "${DEPLOY_GIT_SHA}" ]]; then
   echo "AGONARA_GIT_SHA or GITHUB_SHA is required" >&2
   exit 1
 fi
+
+require_upload_payload
 
 cd "${DEPLOY_ROOT}"
 rm -f .dockerignore

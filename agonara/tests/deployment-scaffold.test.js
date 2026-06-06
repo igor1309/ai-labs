@@ -107,6 +107,24 @@ test("deploymentScripts_shouldBuildOnVpsTagImagesAndHealthGate_onExpectedVersion
         "${UPLOAD_ROOT}/package.json",
         "${UPLOAD_ROOT}/src",
       ]),
+      stagingPreflightsRequiredUploadBeforeDeployRootMutation: appearsInOrder(files.deployStaging, [
+        'require_upload_file "${UPLOAD_ROOT}/Dockerfile"',
+        'require_upload_file "${UPLOAD_ROOT}/package.json"',
+        'require_upload_file "${UPLOAD_ROOT}/compose.staging.yml"',
+        'require_upload_directory "${UPLOAD_ROOT}/src"',
+        'require_upload_directory "${UPLOAD_ROOT}/scripts"',
+        "require_upload_payload",
+        'cd "${DEPLOY_ROOT}"',
+      ]),
+      prodPreflightsRequiredUploadBeforeDeployRootMutation: appearsInOrder(files.deployProd, [
+        'require_upload_file "${UPLOAD_ROOT}/Dockerfile"',
+        'require_upload_file "${UPLOAD_ROOT}/package.json"',
+        'require_upload_file "${UPLOAD_ROOT}/compose.prod.yml"',
+        'require_upload_directory "${UPLOAD_ROOT}/src"',
+        'require_upload_directory "${UPLOAD_ROOT}/scripts"',
+        "require_upload_payload",
+        'cd "${DEPLOY_ROOT}"',
+      ]),
       stagingHandlesOptionalPackageLock: containsAll(files.deployStaging, [
         '${UPLOAD_ROOT}/package-lock.json',
         "cp",
@@ -173,6 +191,8 @@ test("deploymentScripts_shouldBuildOnVpsTagImagesAndHealthGate_onExpectedVersion
     {
       stagingCopiesUploadedSource: true,
       prodCopiesUploadedSource: true,
+      stagingPreflightsRequiredUploadBeforeDeployRootMutation: true,
+      prodPreflightsRequiredUploadBeforeDeployRootMutation: true,
       stagingHandlesOptionalPackageLock: true,
       prodHandlesOptionalPackageLock: true,
       stagingBuildsOnHost: true,
