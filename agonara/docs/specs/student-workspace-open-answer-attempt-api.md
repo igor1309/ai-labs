@@ -159,8 +159,8 @@ The API never returns the session identifier, CSRF token, idempotency key, or co
 
 | Method | Path | Auth | Accepted response | Rejected status mapping |
 |---|---|---|---|---|
-| `POST` | `/programs/{programId}/open-answer-attempts` | Student session, CSRF header, and idempotency header | `AcceptedResult<{ attempt: OpenAnswerAttemptDetail }>` | `400 validation_failed`, `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 identity_not_active`, `403 csrf_required`, `403 csrf_invalid`, `403 participation_required`, `404 program_not_found`, `404 check_revision_not_found`, `409 check_revision_program_mismatch`, `409 idempotency_conflict` |
-| `GET` | `/open-answer-attempts/{attemptId}` | owning Student session | `AcceptedResult<{ attempt: OpenAnswerAttemptDetail }>` | `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 identity_not_active`, `404 attempt_not_found` |
+| `POST` | `/programs/{programId}/open-answer-attempts` | Student session, CSRF header, and idempotency header | `AcceptedResult<{ attempt: OpenAnswerAttemptSummary }>` | `400 validation_failed`, `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 identity_not_active`, `403 csrf_required`, `403 csrf_invalid`, `403 participation_required`, `404 program_not_found`, `404 check_revision_not_found`, `409 check_revision_program_mismatch`, `409 idempotency_conflict` |
+| `GET` | `/open-answer-attempts/{attemptId}` | owning Student session | `AcceptedResult<OpenAnswerAttemptDetail>` | `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 identity_not_active`, `404 attempt_not_found` |
 | `GET` | `/programs/{programId}/open-answer-attempts?status={status}&checkRevisionId={checkRevisionId}&limit={limit}&cursor={cursor}` | owning Student session | `AcceptedResult<OpenAnswerAttemptList>` | `400 validation_failed`, `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 identity_not_active`, `403 participation_required`, `404 program_not_found` |
 
 ### Request Bodies
@@ -200,9 +200,9 @@ type OpenAnswerAttemptListQuery = {
 15. Attempt submission stores the submitted answer with surrounding whitespace trimmed.
 16. Attempt submission rejects a missing, empty, whitespace-only, non-string, or overlong `X-Agonara-Idempotency-Key` with `400 validation_failed`.
 17. Attempt submission scopes idempotency to the resolved session Identity, requested Program, accepted check revision id, and idempotency key.
-18. Equivalent retries with the same scoped idempotency key return the original accepted attempt detail without creating another attempt.
+18. Equivalent retries with the same scoped idempotency key return the original accepted attempt summary without creating another attempt.
 19. Reusing the same scoped idempotency key with a different submitted answer rejects with `409 idempotency_conflict` without creating or changing an attempt.
-20. Accepted submission returns the created or idempotently resolved attempt detail in `submitted`, `evaluating`, `evaluated`, or `evaluation_failed` status.
+20. Accepted submission returns the created or idempotently resolved attempt summary in `submitted`, `evaluating`, `evaluated`, or `evaluation_failed` status.
 21. Accepted submission snapshots criterion revision ids from the accepted check revision used at submission time.
 22. Later accepted check or accepted criterion revisions must not rewrite any existing attempt response.
 23. Attempt submission must not create, update, reject, or delete accepted checks, accepted criteria, accepted revisions, source records, curator candidates, membership records, sessions, mastery state, weak-area state, progress evidence, or review-scheduling state.
@@ -244,7 +244,7 @@ type OpenAnswerAttemptListQuery = {
 
 ### Submission Route
 
-7. `POST /programs/{programId}/open-answer-attempts` accepts an effective Student with a valid body, CSRF token, and idempotency header, returning a `submitted` attempt detail.
+7. `POST /programs/{programId}/open-answer-attempts` accepts an effective Student with a valid body, CSRF token, and idempotency header, returning a `submitted` attempt summary.
 8. Accepted submission snapshots the accepted check revision id and accepted criterion revision ids.
 9. Accepted submission trims the submitted answer before returning and persisting it.
 10. Submission rejects malformed JSON, non-object JSON, missing bodies, unsupported fields, malformed `checkRevisionId`, and malformed `submittedAnswer` with `400 validation_failed`.
