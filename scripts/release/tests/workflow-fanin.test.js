@@ -28,12 +28,44 @@ describe('release-unit workflow fan-in', () => {
     }
   });
 
+  it('includes Agonara deploy jobs in release and notification fan-in', () => {
+    const requiredJobs = [
+      'deploy-agonara-staging',
+      'deploy-agonara-prod',
+    ];
+    const fanInSections = [
+      jobSection('github-release'),
+      jobSection('notify'),
+    ];
+
+    for (const section of fanInSections) {
+      for (const job of requiredJobs) {
+        assert.ok(section.includes(job), `${sectionName(section)} missing ${job}`);
+      }
+    }
+  });
+
+  it('requires successful Agonara deploy jobs before GitHub release', () => {
+    const githubRelease = jobSection('github-release');
+
+    assert.ok(githubRelease.includes("needs.verify.outputs.basename != 'agonara'"));
+    assert.ok(githubRelease.includes("needs.deploy-agonara-staging.result == 'success'"));
+    assert.ok(githubRelease.includes("needs.deploy-agonara-prod.result == 'success'"));
+  });
+
   it('reports split Notio jobs in failure notifications', () => {
     const notify = jobSection('notify');
 
     assert.ok(notify.includes('test-notio-backend=${{ needs.test-notio-backend.result }}'));
     assert.ok(notify.includes('deploy-notio-backend=${{ needs.deploy-notio-backend.result }}'));
     assert.ok(notify.includes('deploy-notio-frontend=${{ needs.deploy-notio-frontend.result }}'));
+  });
+
+  it('reports Agonara deploy jobs in failure notifications', () => {
+    const notify = jobSection('notify');
+
+    assert.ok(notify.includes('deploy-agonara-staging=${{ needs.deploy-agonara-staging.result }}'));
+    assert.ok(notify.includes('deploy-agonara-prod=${{ needs.deploy-agonara-prod.result }}'));
   });
 });
 

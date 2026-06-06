@@ -22,8 +22,13 @@ if [[ -z "${DEPLOY_GIT_SHA}" ]]; then
 fi
 
 cd "${DEPLOY_ROOT}"
+rm -f .dockerignore
+if [[ -f "${UPLOAD_ROOT}/.dockerignore" ]]; then
+  cp "${UPLOAD_ROOT}/.dockerignore" .
+fi
 cp "${UPLOAD_ROOT}/Dockerfile" .
 cp "${UPLOAD_ROOT}/package.json" .
+rm -f package-lock.json
 if [[ -f "${UPLOAD_ROOT}/package-lock.json" ]]; then
   cp "${UPLOAD_ROOT}/package-lock.json" .
 fi
@@ -33,6 +38,9 @@ cp -r "${UPLOAD_ROOT}/src" .
 rm -rf scripts
 cp -r "${UPLOAD_ROOT}/scripts" .
 chmod -R u=rwX,go=rX Dockerfile package.json compose.staging.yml src scripts
+if [[ -f .dockerignore ]]; then
+  chmod u=rw,go=r .dockerignore
+fi
 
 if [[ -z "${DEPLOY_VERSION}" ]]; then
   DEPLOY_VERSION="$(read_package_version package.json)"

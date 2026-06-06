@@ -73,6 +73,7 @@ jobs:
               - "release-units.config.toml"
               - "release-units.toml"
               - "scripts/release/**"
+              - "agonara/**"
               - "clipdeck/**"
               - "loki/**"
               - "nomos/**"
