@@ -320,7 +320,9 @@ Then, from **trunk**:
 
 1. Confirm `agonara/package.json` is `0.1.0`, the release-scope log entry exists,
    and `release-units.toml` is in sync.
-2. Run `node scripts/release/check-agonara-release-readiness.js` from trunk.
+2. Run `node scripts/release/check-agonara-release-readiness.js --check-github-secrets`
+   from trunk. This verifies the local release wiring and the required GitHub
+   deploy secret names without reading secret values.
 3. Run the §8 gates.
 4. Push trunk, then push the tag `agonara_v0.1.0` (only that tag — no `--tags`).
 5. `release-unit.yml`: `verify` → `core` → `deploy-agonara-staging` →

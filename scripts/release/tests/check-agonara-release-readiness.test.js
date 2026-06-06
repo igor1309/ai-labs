@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
-import { execSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync, execSync } from 'node:child_process';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, it, beforeEach, afterEach } from 'node:test';
+import { afterEach, beforeEach, describe, it } from 'node:test';
 import { stringify } from '../lib/toml.js';
 
 const GIT_ENV = {
@@ -15,15 +15,21 @@ const GIT_ENV = {
   HOME: '/dev/null',
 };
 
+let scratchDirs;
+
 describe('check-agonara-release-readiness', () => {
   let tmp;
 
   beforeEach(() => {
     tmp = mkdtempSync(join(tmpdir(), 'agonara-readiness-test-'));
+    scratchDirs = [];
   });
 
   afterEach(() => {
     rmSync(tmp, { recursive: true, force: true });
+    for (const scratchDir of scratchDirs) {
+      rmSync(scratchDir, { recursive: true, force: true });
+    }
   });
 
   it('passes when the first Agonara release tag is ready', () => {
@@ -81,6 +87,52 @@ describe('check-agonara-release-readiness', () => {
     assert.equal(result.exitCode, 1);
     assert.ok(result.stderr.includes("release-unit.yml missing needs.deploy-agonara-staging.result == 'success'"));
   });
+
+  it('passes the GitHub secret check when required deploy secret names exist', () => {
+    writeAgonaraReleaseRepo(tmp);
+    const fakeGhBin = writeFakeGhSecretList([
+      'AGONARA_VPS_HOST',
+      'AGONARA_VPS_USER',
+      'AGONARA_VPS_SSH_KEY',
+    ]);
+
+    const result = runReadiness(tmp, {
+      args: ['--check-github-secrets'],
+      env: { PATH: `${fakeGhBin}:${process.env.PATH}` },
+    });
+
+    assert.equal(result.exitCode, 0, result.stderr);
+    assert.ok(result.stdout.includes('OK github deploy secret names'));
+  });
+
+  it('fails the GitHub secret check when a required deploy secret name is missing', () => {
+    writeAgonaraReleaseRepo(tmp);
+    const fakeGhBin = writeFakeGhSecretList([
+      'AGONARA_VPS_HOST',
+      'AGONARA_VPS_USER',
+    ]);
+
+    const result = runReadiness(tmp, {
+      args: ['--check-github-secrets'],
+      env: { PATH: `${fakeGhBin}:${process.env.PATH}` },
+    });
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('missing GitHub deploy secret names: AGONARA_VPS_SSH_KEY'));
+  });
+
+  it('fails the GitHub secret check when gh cannot list secrets', () => {
+    writeAgonaraReleaseRepo(tmp);
+    const fakeGhBin = writeFakeGhError();
+
+    const result = runReadiness(tmp, {
+      args: ['--check-github-secrets'],
+      env: { PATH: `${fakeGhBin}:${process.env.PATH}` },
+    });
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('unable to list GitHub secret names with gh: gh auth failed'));
+  });
 });
 
 function writeAgonaraReleaseRepo(dir, {
@@ -119,19 +171,50 @@ function validReleaseWorkflow() {
   ].join('\n');
 }
 
-function runReadiness(dir) {
+function runReadiness(dir, {
+  args = [],
+  env = {},
+} = {}) {
   const script = join(import.meta.dirname, '..', 'check-agonara-release-readiness.js');
   try {
-    const stdout = execSync(`node ${script} --root ${dir}`, {
+    const stdout = execFileSync(process.execPath, [script, '--root', dir, ...args], {
       cwd: dir,
       encoding: 'utf8',
-      env: { ...process.env, ...GIT_ENV },
+      env: { ...process.env, ...GIT_ENV, ...env },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     return { exitCode: 0, stdout, stderr: '' };
   } catch (error) {
-    return { exitCode: error.status, stdout: error.stdout || '', stderr: error.stderr || '' };
+    return {
+      exitCode: error.status ?? 1,
+      stdout: error.stdout || '',
+      stderr: error.stderr || '',
+    };
   }
+}
+
+function writeFakeGhSecretList(secretNames) {
+  const fakeGhBin = mkdtempSync(join(tmpdir(), 'agonara-gh-bin-'));
+  scratchDirs.push(fakeGhBin);
+  const payload = JSON.stringify(secretNames.map($0 => ({ name: $0 })));
+  writeFileSync(join(fakeGhBin, 'gh'), [
+    '#!/bin/sh',
+    `printf '%s\\n' '${payload}'`,
+  ].join('\n'));
+  chmodSync(join(fakeGhBin, 'gh'), 0o755);
+  return fakeGhBin;
+}
+
+function writeFakeGhError() {
+  const fakeGhBin = mkdtempSync(join(tmpdir(), 'agonara-gh-bin-'));
+  scratchDirs.push(fakeGhBin);
+  writeFileSync(join(fakeGhBin, 'gh'), [
+    '#!/bin/sh',
+    "printf '%s\\n' 'gh auth failed' >&2",
+    'exit 7',
+  ].join('\n'));
+  chmodSync(join(fakeGhBin, 'gh'), 0o755);
+  return fakeGhBin;
 }
 
 function git(dir, cmd) {

@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Release units: extend the Agonara first-release readiness check to optionally verify required GitHub deploy secret names with `gh` before the explicit release tag is pushed, without reading secret values.
 - Release units: clean Agonara release source uploads on staging failure and after every prod deploy outcome, with rollback still running before final cleanup.
 - Release units: harden Agonara release smoke cleanup so transient evaluator-smoke JSON files are removed inside the container on both success and failure.
 - Release units: add `scripts/release/check-agonara-release-readiness.js` to verify Agonara first-release tag, trunk, manifest/package sync, Docker-unit status, and release workflow fan-in before pushing `agonara_v0.1.0`.

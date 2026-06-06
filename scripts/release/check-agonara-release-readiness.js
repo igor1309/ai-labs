@@ -7,6 +7,7 @@
  *   node scripts/release/check-agonara-release-readiness.js
  *   node scripts/release/check-agonara-release-readiness.js --tag agonara_v0.1.0
  *   node scripts/release/check-agonara-release-readiness.js --root <dir>
+ *   node scripts/release/check-agonara-release-readiness.js --check-github-secrets
  */
 
 import { execFileSync } from 'node:child_process';
@@ -20,6 +21,12 @@ const repoRoot = rootIdx !== -1
   : resolve(import.meta.dirname, '..', '..');
 const tagIdx = process.argv.indexOf('--tag');
 const releaseTag = tagIdx !== -1 ? process.argv[tagIdx + 1] : 'agonara_v0.1.0';
+const checkGithubSecrets = process.argv.includes('--check-github-secrets');
+const requiredGithubDeploySecretNames = [
+  'AGONARA_VPS_HOST',
+  'AGONARA_VPS_USER',
+  'AGONARA_VPS_SSH_KEY',
+];
 
 const checks = [];
 
@@ -99,6 +106,10 @@ function runReadinessChecks() {
   assertWorkflowContains(workflow, 'deploy-agonara-staging=${{ needs.deploy-agonara-staging.result }}');
   assertWorkflowContains(workflow, 'deploy-agonara-prod=${{ needs.deploy-agonara-prod.result }}');
   checks.push('release workflow');
+
+  if (checkGithubSecrets) {
+    checkGithubDeploySecretNames();
+  }
 }
 
 function parseReleaseTag(tag) {
@@ -135,4 +146,43 @@ function assertWorkflowContains(workflow, expected) {
   if (!workflow.includes(expected)) {
     throw new Error(`release-unit.yml missing ${expected}`);
   }
+}
+
+function checkGithubDeploySecretNames() {
+  let stdout;
+  try {
+    stdout = execFileSync('gh', ['secret', 'list', '--json', 'name'], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+  } catch (error) {
+    throw new Error(`unable to list GitHub secret names with gh: ${formatCommandError(error)}`);
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(stdout);
+  } catch {
+    throw new Error('gh secret list returned invalid JSON');
+  }
+  if (!Array.isArray(parsed)) {
+    throw new Error('gh secret list returned an unexpected payload');
+  }
+
+  const presentSecretNames = new Set(parsed
+    .map($0 => $0?.name)
+    .filter($0 => typeof $0 === 'string'));
+  const missingSecretNames = requiredGithubDeploySecretNames
+    .filter($0 => !presentSecretNames.has($0));
+  if (missingSecretNames.length > 0) {
+    throw new Error(`missing GitHub deploy secret names: ${missingSecretNames.join(', ')}`);
+  }
+  checks.push('github deploy secret names');
+}
+
+function formatCommandError(error) {
+  const stderr = error.stderr?.toString().trim();
+  const message = stderr || error.message || 'unknown error';
+  return message.split('\n')[0];
 }

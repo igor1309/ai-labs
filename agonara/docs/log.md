@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Extend the Agonara first-release readiness check to optionally verify the required GitHub deploy secret names with `gh` before the explicit release tag is pushed, without reading secret values.
 - Clean Agonara release source uploads on staging failure and after every prod deploy outcome, while preserving rollback ordering before final cleanup.
 - Harden Agonara release smoke cleanup so staging/prod evaluator-smoke JSON files are removed inside the container even when smoke execution or validation fails.
 - Add an Agonara first-release readiness script that verifies the `agonara_v0.1.0` tag, trunk branch, tag absence, package/manifest sync, Docker-unit status, and release workflow deploy/failure fan-in before the first tag is pushed.
