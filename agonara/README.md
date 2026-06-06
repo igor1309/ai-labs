@@ -6,11 +6,13 @@ description: "Agonara backend and product docs for a structured learning program
 
 # Agonara
 
-Structured learning program environment with backend/domain slices for Identity, Operations, Program Membership, Corpus curation, accepted topic/concept/material navigation, accepted checks, open-answer Student Workspace attempts and evaluation, and Quick Check assessment.
+API-first structured learning program environment with backend/domain slices for Identity, Operations, Program Membership, Corpus curation, accepted topic/concept/material navigation, accepted checks, open-answer Student Workspace attempts and evaluation, and Quick Check assessment.
 
 ## Description
 
 Helps curators assemble and maintain learning programs from trusted sources, while learners progress through them with clear sequence, checkpoints, and evidence of mastery. AI assists program construction and learning support but does not own the curriculum.
+
+Agonara is API-first: browser surfaces and operator commands are clients of backend contracts, and future Agonara agent skills should use those same contracts. This keeps program, corpus, membership, assessment, and learner-state behavior automatable without coupling it to one UI.
 
 ## Landing Pages
 
@@ -53,7 +55,7 @@ Still deferred or outside current product UI:
 
 - Node.js 22 backend workspace
 - SQLite persistence through `better-sqlite3`
-- HTTP API with server-side sessions, CSRF protection, request correlation, health, diagnostics, and audit responses
+- API-first HTTP backend with server-side sessions, CSRF protection, request correlation, health, diagnostics, and audit responses
 - Operator CLI for bootstrap status and first-Admin bootstrap
 - Docker image and Compose service for private self-hosted operation
 

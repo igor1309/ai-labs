@@ -35,6 +35,15 @@
 - Release units: add `scripts/release/check-agonara-release-readiness.js` to verify Agonara first-release tag, trunk, manifest/package sync, Docker-unit status, and release workflow fan-in before pushing `agonara_v0.1.0`.
 - Release units: add a fail-fast Agonara deploy secret preflight in `release-unit.yml`, validating the required GitHub secret names before source upload without printing secret values.
 - Release units: register Agonara as the `agonara_v0.1.0` Docker-producing unit, wire tag-driven staging and internal-prod deploy jobs into `release-unit.yml`, require both Agonara deploys before GitHub Release, add Agonara to release-validation path filtering, and keep first release execution gated on explicit tag push plus GitHub deploy SSH secrets.
+- Agonara/product landings: clarified the API-first stance as shared backend contracts for browser UIs, operator commands, and future Agonara agent skills, without making UI or agent surfaces separate owners of workflow or state.
+
+- Products page: linked the `AI Labs` header back to the parent internal landing index.
+
+- Claude Insights: added a local landing at `claude-insights/index.html`, linked the products-page card to it, and extended the static products-page link regression.
+
+- Products page: linked the full Clipdeck card to the deployed `clipdeck.enoa.ai` app and covered it with the existing static products-page regression test suite.
+
+- Internal landings: added `nomos/index.html` as the Nomos project landing and linked it from the root landing. Updated `docs/products.html` so product cards with existing local static pages open their landing surfaces (Agonara, Oracle, Dev Skills, Reinix, Nomos, Notio), with a regression test that verifies the links and targets.
 
 - agents: narrowed the OpenClaw tasks/TaskFlow ledger TODO to the ai-labs consequence only. The live VPS diagnosis, storage-path migration, and recheck schedule are inventory-owned; this repo now records only that cron-based agent observability must keep using wrapper-level fail-closed signals until inventory confirms the ledger is usable.
 
