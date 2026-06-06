@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-06
+
+- Products page card now links directly to the deployed Clipdeck app (`clipdeck.enoa.ai`), with a regression test covering the static card markup.
+
 ## 2026-05-10
 
 - v0.1.15 releases the skeleton loading spacing fix: loading placeholders now span the sections grid and keep the same card gap as real ClipDeck items.

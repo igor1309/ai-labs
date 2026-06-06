@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-06
+
+Add `nomos/index.html` as the local Nomos landing page and wire it into the internal landing indexes. The page summarizes Nomos as the workspace AI sovereignty layer, links to the operational docs, and gives the products page a local static target.
+
 ## 2026-04-27
 
 Drop the inert `nomos-shared` declaration from the repo prod compose and remove the orphan `docker build -t nomos:latest .` from `deploy-staging.sh`. CI does not copy `docker-compose.yml` to the VPS, so the repo declaration was a false promise of network membership the deploy pipeline never delivered. The `nomos:latest` image was likewise built and never used now that scripts operate on `nomos-nomos:latest`. The on-VPS prod compose retains its operator-managed `nomos-shared` attachment unchanged.

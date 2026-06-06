@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Nomos &mdash; AI Sovereignty Layer</title>
+<style>
+  :root {
+    --bg: #0d1114;
+    --bg-2: #12191d;
+    --surface: #172125;
+    --surface-2: #1d2a2f;
+    --rule: #2d3b40;
+    --rule-2: #3c5057;
+    --text: #eef4f2;
+    --text-2: #c8d6d2;
+    --text-3: #8da19d;
+    --accent: #4ecf8f;
+    --accent-2: #f6b35b;
+    --accent-3: #58a6ff;
+    --danger: #f2788f;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header.hero {
+    padding: 112px 24px 72px;
+    text-align: center;
+    background:
+      radial-gradient(760px 360px at 50% -120px, rgba(78, 207, 143, 0.16) 0%, transparent 64%),
+      linear-gradient(180deg, rgba(88, 166, 255, 0.08), transparent 54%),
+      var(--bg);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .mark {
+    display: inline-block;
+    margin-bottom: 24px;
+    color: var(--text-3);
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  h1.title {
+    margin: 0 0 16px;
+    color: var(--text);
+    font-size: clamp(48px, 7vw, 96px);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+  }
+
+  .anchor {
+    max-width: 760px;
+    margin: 0 auto;
+    color: var(--text-2);
+    font-size: clamp(17px, 2vw, 20px);
+    line-height: 1.55;
+  }
+
+  .thesis {
+    max-width: 660px;
+    margin: 40px auto 0;
+    color: var(--text-3);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .thesis strong { color: var(--text-2); font-weight: 600; }
+  .thesis em { color: var(--accent-2); font-style: normal; }
+
+  .hero-meta {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 32px;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 14px;
+    border: 1px solid var(--rule-2);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text-2);
+    font-family: var(--mono);
+    font-size: 12.5px;
+  }
+
+  .pill .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  nav.toc {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 16px;
+    border-bottom: 1px solid var(--rule);
+    background: rgba(13, 17, 20, 0.86);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  nav.toc a {
+    padding: 8px 14px;
+    border: 1px solid var(--rule-2);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text-2);
+    font-size: 13px;
+  }
+
+  nav.toc a:hover {
+    border-color: var(--text-3);
+    background: var(--surface-2);
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  section {
+    padding: 64px 0;
+    border-bottom: 1px solid var(--rule);
+    scroll-margin-top: 80px;
+  }
+
+  section:last-of-type { border-bottom: none; }
+
+  .eyebrow {
+    margin: 0 0 12px;
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  h2.section-title {
+    margin: 0 0 14px;
+    color: var(--text);
+    font-size: clamp(26px, 4vw, 38px);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .lede {
+    max-width: 760px;
+    margin: 0 0 36px;
+    color: var(--text-2);
+    font-size: 16px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 20px 22px;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    background: var(--surface);
+    transition: border-color .15s ease, background .15s ease, transform .15s ease;
+  }
+
+  .card:hover {
+    border-color: var(--rule-2);
+    background: var(--bg-2);
+    transform: translateY(-2px);
+  }
+
+  .card .kicker {
+    color: var(--text-3);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .card h3 {
+    margin: 0;
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .card p {
+    margin: 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .card.control { border-left: 2px solid var(--accent); }
+  .card.cost { border-left: 2px solid var(--accent-2); }
+  .card.safety { border-left: 2px solid var(--danger); }
+  .card.runtime { border-left: 2px solid var(--accent-3); }
+
+  .flow {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .flow-step {
+    min-height: 136px;
+    padding: 18px;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    background: var(--surface);
+  }
+
+  .flow-step .number {
+    color: var(--accent-2);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .flow-step h3 {
+    margin: 8px 0 6px;
+    color: var(--text);
+    font-size: 15px;
+  }
+
+  .flow-step p {
+    margin: 0;
+    color: var(--text-3);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 900px) {
+    .flow { grid-template-columns: 1fr; }
+    .flow-step { min-height: auto; }
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .chip {
+    padding: 9px 14px;
+    border: 1px solid var(--rule-2);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text-2);
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+
+  .chip span { color: var(--text-3); }
+
+  .callout {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 24px;
+    padding: 32px 34px;
+    border: 1px solid var(--rule-2);
+    border-radius: 14px;
+    background:
+      radial-gradient(600px 220px at 100% 0%, rgba(246, 179, 91, 0.12) 0%, transparent 72%),
+      var(--bg-2);
+  }
+
+  .callout .copy { max-width: 620px; }
+  .callout h2 { margin: 0 0 8px; color: var(--text); font-size: 24px; letter-spacing: -0.01em; }
+  .callout p { margin: 0; color: var(--text-2); font-size: 15px; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 22px;
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    background: var(--accent);
+    color: #07100d;
+    font-size: 15px;
+    font-weight: 700;
+    white-space: nowrap;
+    transition: background .15s ease, transform .15s ease;
+  }
+
+  .btn:hover {
+    background: #75e2ad;
+    transform: translateY(-1px);
+    text-decoration: none;
+  }
+
+  .links { display: flex; flex-wrap: wrap; gap: 12px; }
+
+  .doc-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: 1px solid var(--rule-2);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text-2);
+    font-size: 14px;
+  }
+
+  .doc-link:hover {
+    border-color: var(--text-3);
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .doc-link code { color: var(--text-3); font-family: var(--mono); font-size: 12px; }
+
+  footer {
+    padding: 32px 24px 64px;
+    border-top: 1px solid var(--rule);
+    color: var(--text-3);
+    text-align: center;
+    font-size: 12.5px;
+  }
+
+  footer .sep { margin: 0 8px; color: var(--rule-2); }
+
+  @media (max-width: 640px) {
+    header.hero { padding: 88px 18px 56px; }
+    main { padding: 18px; }
+    section { padding: 48px 0; }
+    .callout { padding: 24px; }
+    .btn { width: 100%; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="mark">Policy &middot; Budgets &middot; Routing &middot; Audit</div>
+  <h1 class="title">Nomos</h1>
+  <p class="anchor">
+    A unified LLM proxy that gives projects one controlled path to model providers.
+  </p>
+  <p class="thesis">
+    Nomos sits between internal products and external AI vendors. It owns project identity,
+    budget limits, token usage logging, provider routing, and basic prompt-injection safeguards.
+    <strong>Projects integrate once; policy stays centralized.</strong>
+  </p>
+  <div class="hero-meta">
+    <span class="pill"><span class="dot"></span>OpenAI-compatible <code>/v1/chat/completions</code></span>
+    <span class="pill"><span class="dot"></span>SQLite usage ledger</span>
+    <span class="pill"><span class="dot"></span>Docker + Caddy on VPS</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#idea">Core idea</a>
+  <a href="#controls">Controls</a>
+  <a href="#flow">Request flow</a>
+  <a href="#stack">Stack</a>
+  <a href="#docs">Docs</a>
+</nav>
+
+<main>
+  <section id="idea">
+    <p class="eyebrow">Core idea</p>
+    <h2 class="section-title">One service between apps and models.</h2>
+    <p class="lede">
+      Nomos is the AI sovereignty layer for the workspace: one Docker service that exposes an
+      OpenAI-compatible API while keeping provider choice, project authorization, spending limits,
+      and usage audit outside individual product code.
+    </p>
+    <div class="grid">
+      <article class="card control">
+        <span class="kicker">Boundary</span>
+        <h3>Provider abstraction</h3>
+        <p>Projects call Nomos instead of binding directly to vendor-specific base URLs, headers, and model routing rules.</p>
+      </article>
+      <article class="card cost">
+        <span class="kicker">Governance</span>
+        <h3>Per-project budgets</h3>
+        <p>Daily and monthly budget checks happen before requests, with token usage recorded after completions and streams.</p>
+      </article>
+      <article class="card safety">
+        <span class="kicker">Safeguards</span>
+        <h3>Prompt hygiene</h3>
+        <p>Requests pass through a lightweight sanitization and suspicious-pattern layer before reaching a live runner.</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="controls">
+    <p class="eyebrow">Controls</p>
+    <h2 class="section-title">Small control plane, explicit behavior.</h2>
+    <p class="lede">
+      The service is deliberately narrow: authenticate a project, validate the request, route it,
+      preserve streaming semantics, record usage, and fail closed when policy says no.
+    </p>
+    <div class="grid">
+      <article class="card runtime">
+        <span class="kicker">Identity</span>
+        <h3>Bearer-token projects</h3>
+        <p>Tokens map to active projects and scopes, separating live provider calls from stubbed local routes.</p>
+      </article>
+      <article class="card control">
+        <span class="kicker">API</span>
+        <h3>OpenAI-compatible surface</h3>
+        <p>Clients use the familiar chat-completions shape while Nomos owns validation, routing, and runner dispatch.</p>
+      </article>
+      <article class="card cost">
+        <span class="kicker">Audit</span>
+        <h3>Usage reporting</h3>
+        <p>A usage endpoint summarizes project spend signals by period and model from the local SQLite ledger.</p>
+      </article>
+      <article class="card safety">
+        <span class="kicker">Failure mode</span>
+        <h3>Clear local rejections</h3>
+        <p>Oversized JSON, invalid auth, scope mismatches, and budget limits return local errors before provider calls.</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="flow">
+    <p class="eyebrow">Request flow</p>
+    <h2 class="section-title">The path is short and inspectable.</h2>
+    <div class="flow">
+      <article class="flow-step">
+        <span class="number">01</span>
+        <h3>Client request</h3>
+        <p>Internal app sends an OpenAI-shaped chat completion request with a project token.</p>
+      </article>
+      <article class="flow-step">
+        <span class="number">02</span>
+        <h3>Auth + scope</h3>
+        <p>Nomos checks token hash, active project state, and whether the requested route is allowed.</p>
+      </article>
+      <article class="flow-step">
+        <span class="number">03</span>
+        <h3>Budget gate</h3>
+        <p>Daily and monthly limits are evaluated before model traffic leaves the service.</p>
+      </article>
+      <article class="flow-step">
+        <span class="number">04</span>
+        <h3>Runner dispatch</h3>
+        <p>Live requests go to the configured vendor endpoint; stub routes use deterministic fixtures.</p>
+      </article>
+      <article class="flow-step">
+        <span class="number">05</span>
+        <h3>Usage ledger</h3>
+        <p>Completion usage is recorded after non-streaming responses and after streaming finishes.</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="stack">
+    <p class="eyebrow">Stack</p>
+    <h2 class="section-title">Plain runtime pieces.</h2>
+    <p class="lede">
+      Nomos is implemented as a compact Node service with persistent local state and Docker-first deployment.
+    </p>
+    <div class="chips">
+      <span class="chip">Node.js <span>runtime</span></span>
+      <span class="chip">Express <span>HTTP API</span></span>
+      <span class="chip">SQLite <span>projects + usage</span></span>
+      <span class="chip">Docker <span>service packaging</span></span>
+      <span class="chip">Caddy <span>TLS edge</span></span>
+      <span class="chip">VPS <span>deployment target</span></span>
+    </div>
+  </section>
+
+  <section id="docs">
+    <p class="eyebrow">Docs</p>
+    <div class="callout">
+      <div class="copy">
+        <h2>Operational docs are part of the product.</h2>
+        <p>Architecture records, deployment guidance, local e2e notes, and the project log live beside the service code.</p>
+      </div>
+      <a class="btn" href="README.md">Open README</a>
+    </div>
+    <div class="links" style="margin-top: 18px;">
+      <a class="doc-link" href="docs/nomos.md">Product note <code>docs/nomos.md</code></a>
+      <a class="doc-link" href="docs/adr-0001.md">ADR 0001 <code>deployment shape</code></a>
+      <a class="doc-link" href="docs/vps-deployment-guide.md">Deploy guide <code>VPS</code></a>
+      <a class="doc-link" href="docs/log.md">Project log <code>docs/log.md</code></a>
+      <a class="doc-link" href="../docs/products.html">Products index <code>docs/products.html</code></a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Nomos <span class="sep">/</span> AI sovereignty layer <span class="sep">/</span> <a href="../index.html">Internal Landings</a>
+</footer>
+
+</body>
+</html>

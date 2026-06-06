@@ -2,6 +2,14 @@
 
 ## 2026-06-06
 
+- Products page: linked the `AI Labs` header back to the parent internal landing index.
+
+- Claude Insights: added a local landing at `claude-insights/index.html`, linked the products-page card to it, and extended the static products-page link regression.
+
+- Products page: linked the full Clipdeck card to the deployed `clipdeck.enoa.ai` app and covered it with the existing static products-page regression test suite.
+
+- Internal landings: added `nomos/index.html` as the Nomos project landing and linked it from the root landing. Updated `docs/products.html` so product cards with existing local static pages open their landing surfaces (Agonara, Oracle, Dev Skills, Reinix, Nomos, Notio), with a regression test that verifies the links and targets.
+
 - agents: narrowed the OpenClaw tasks/TaskFlow ledger TODO to the ai-labs consequence only. The live VPS diagnosis, storage-path migration, and recheck schedule are inventory-owned; this repo now records only that cron-based agent observability must keep using wrapper-level fail-closed signals until inventory confirms the ledger is usable.
 
 - CI path filtering (`.github/workflows/ci.yml`): scoped the `changes`-job filters so **docs-only edits skip the expensive per-project core jobs** while the required `report` check still runs. Replaced the blanket `<project>/**` globs for the six broad-glob projects (`nomos`, `oracle`, `web-scout`, `corpus-scout`, `reinix`, `agonara`) with explicit allowlists of build/test inputs — source, tests, manifests/lockfiles, and build/deploy descriptors (`Dockerfile`/`compose`/`Caddyfile`) — excluding `docs/`, READMEs, `TODO.md`, landing `*.html`, and reinix `research/`. Verified against each core job's actual `tsc`/`node --test` inputs (e.g. kept `reinix/examples/**` because `local-demo.test.js` asserts the demo README/settings, and `oracle/prompts`+`copy` as runtime inputs). Adversarial pass also narrowed the `shared` filter from `.github/workflows/**` to `*.yml`/`*.yaml` so editing the workflow docs (`README.md`/`CLAUDE.md`/`AGENTS.md`) no longer triggers the entire CI matrix. Documented the allowlist convention in `.github/workflows/README.md`. (Out of scope, noted not fixed: the `release` filter still uses whole-unit globs, so docs changes still run the cheap 5-min `release-validation`.)
