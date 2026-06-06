@@ -198,6 +198,8 @@ test("deploymentScripts_shouldBuildOnVpsTagImagesAndHealthGate_onExpectedVersion
       prodHealthGatesVersion: containsAll(files.deployProd, ["operations/health", "version", "DEPLOY_VERSION"]),
       stagingHealthGateParsesJson: files.deployStaging.includes("response.json()"),
       prodHealthGateParsesJson: files.deployProd.includes("response.json()"),
+      stagingHealthGateRequiresHttpOk: files.deployStaging.includes("!response.ok"),
+      prodHealthGateRequiresHttpOk: files.deployProd.includes("!response.ok"),
       stagingHealthGateChecksStatusAndVersion: containsAll(files.deployStaging, [
         'health.status !== "ok"',
         "health.version !== process.env.EXPECTED_VERSION",
@@ -239,6 +241,8 @@ test("deploymentScripts_shouldBuildOnVpsTagImagesAndHealthGate_onExpectedVersion
       prodHealthGatesVersion: true,
       stagingHealthGateParsesJson: true,
       prodHealthGateParsesJson: true,
+      stagingHealthGateRequiresHttpOk: true,
+      prodHealthGateRequiresHttpOk: true,
       stagingHealthGateChecksStatusAndVersion: true,
       prodHealthGateChecksStatusAndVersion: true,
       deployScriptsDoNotRequireWget: true,
