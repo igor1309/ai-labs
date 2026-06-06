@@ -3705,6 +3705,18 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldBuildRedactedProviderRequest_fromCl
             checkRevisionId: "check-revision-a",
             criterionRevisionIds: ["criterion-revision-a"],
             submittedAnswer: "Student answer explaining the accepted theorem with no operational artifacts.",
+            acceptedCheckRevision: {
+              revisionId: "check-revision-a",
+              title: "Accepted check check-revision-a",
+              prompt: "Accepted prompt check-revision-a",
+            },
+            acceptedCriterionRevisions: [
+              {
+                revisionId: "criterion-revision-a",
+                title: "Accepted criterion criterion-revision-a",
+                body: "Accepted criterion body criterion-revision-a",
+              },
+            ],
             evaluatorPolicyId: "policy-a",
             outputValidatorPolicyId: "validator-a",
           },
@@ -4307,6 +4319,18 @@ test("runOpenAnswerEvaluatorWorkerOnce_shouldPreserveAdjacentDomainsAndExcludeOu
               checkRevisionId: "check-revision-a",
               criterionRevisionIds: ["criterion-revision-a"],
               submittedAnswer: "Answer",
+              acceptedCheckRevision: {
+                revisionId: "check-revision-a",
+                title: "Accepted check check-revision-a",
+                prompt: "Accepted prompt check-revision-a",
+              },
+              acceptedCriterionRevisions: [
+                {
+                  revisionId: "criterion-revision-a",
+                  title: "Accepted criterion criterion-revision-a",
+                  body: "Accepted criterion body criterion-revision-a",
+                },
+              ],
               evaluatorPolicyId: "policy-a",
               outputValidatorPolicyId: "validator-a",
             },
@@ -9176,6 +9200,18 @@ test("studentWorkspaceEvaluatorWorkerExecutableAcceptance_shouldCoverFullWorkerF
             checkRevisionId: "check-revision-a",
             criterionRevisionIds: ["criterion-revision-a"],
             submittedAnswer: "Initial answer",
+            acceptedCheckRevision: {
+              revisionId: "check-revision-a",
+              title: "Accepted check check-revision-a",
+              prompt: "Accepted prompt check-revision-a",
+            },
+            acceptedCriterionRevisions: [
+              {
+                revisionId: "criterion-revision-a",
+                title: "Accepted criterion criterion-revision-a",
+                body: "Accepted criterion body criterion-revision-a",
+              },
+            ],
             evaluatorPolicyId: "policy-a",
             outputValidatorPolicyId: "validator-a",
           },

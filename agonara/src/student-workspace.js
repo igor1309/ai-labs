@@ -471,6 +471,7 @@ function runOpenAnswerEvaluatorWorkerOnce({
     providerResult = adapter.value.adapter.evaluate(
       buildOpenAnswerEvaluatorProviderRequest({
         attempt,
+        database,
         evaluatorJob: claim.value.evaluatorJob,
         policy: policy.value.policy,
       }),
@@ -776,7 +777,7 @@ function resolveOpenAnswerEvaluatorProviderAdapter(providerAdapters, policy) {
   return accepted({ adapter });
 }
 
-function buildOpenAnswerEvaluatorProviderRequest({ attempt, evaluatorJob, policy }) {
+function buildOpenAnswerEvaluatorProviderRequest({ attempt, database, evaluatorJob, policy }) {
   return {
     evaluatorJobId: evaluatorJob.evaluatorJobId,
     attemptId: evaluatorJob.attemptId,
@@ -785,8 +786,36 @@ function buildOpenAnswerEvaluatorProviderRequest({ attempt, evaluatorJob, policy
     checkRevisionId: evaluatorJob.checkRevisionId,
     criterionRevisionIds: [...evaluatorJob.criterionRevisionIds],
     submittedAnswer: attempt.submittedAnswer,
+    acceptedCheckRevision: projectOpenAnswerCheckRevisionForProvider(
+      getAcceptedOpenAnswerCheckRevisionRecord(database, evaluatorJob.checkRevisionId),
+    ),
+    acceptedCriterionRevisions: evaluatorJob.criterionRevisionIds.map($0 =>
+      projectAssessmentCriterionRevisionForProvider(getAcceptedAssessmentCriterionRevisionRecord(database, $0)),
+    ),
     evaluatorPolicyId: evaluatorJob.evaluatorPolicyId,
     outputValidatorPolicyId: policy.outputValidatorPolicyId,
+  };
+}
+
+function projectOpenAnswerCheckRevisionForProvider(revision) {
+  if (!revision) {
+    return null;
+  }
+  return {
+    revisionId: revision.id,
+    title: revision.title,
+    prompt: revision.prompt,
+  };
+}
+
+function projectAssessmentCriterionRevisionForProvider(revision) {
+  if (!revision) {
+    return null;
+  }
+  return {
+    revisionId: revision.id,
+    title: revision.title,
+    body: revision.body,
   };
 }
 

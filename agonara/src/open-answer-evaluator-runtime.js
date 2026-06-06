@@ -53,8 +53,11 @@ export function createNomosOpenAnswerEvaluatorProviderAdapter({
               role: "user",
               content: JSON.stringify({
                 submittedAnswer: request.submittedAnswer,
-                acceptedCheckRevision: { revisionId: request.checkRevisionId },
-                acceptedCriterionRevisions: request.criterionRevisionIds.map($0 => ({ revisionId: $0 })),
+                acceptedCheckRevision:
+                  request.acceptedCheckRevision ?? { revisionId: request.checkRevisionId },
+                acceptedCriterionRevisions:
+                  request.acceptedCriterionRevisions ??
+                  request.criterionRevisionIds.map($0 => ({ revisionId: $0 })),
               }),
             },
           ],

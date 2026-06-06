@@ -370,6 +370,53 @@ test("operationsOpenAnswerEvaluatorTick_shouldRunWorkerTick_onValidTriggerToken"
   }
 });
 
+test("operationsOpenAnswerEvaluatorTick_shouldRunWorkerTick_onOperationsAccessSession", async () => {
+  const tickCalls = [];
+  const identityAccessCalls = [];
+  const server = createServer({
+    identityCommands: {
+      listIdentities: input => {
+        identityAccessCalls.push(input);
+        return input.actingSessionId === "session-operations"
+          ? { status: "accepted", value: { identities: [] } }
+          : { status: "rejected", reason: "session_not_found" };
+      },
+    },
+    log: () => {},
+    openAnswerEvaluatorWorkerTick: () => {
+      tickCalls.push("tick");
+      return {
+        status: "accepted",
+        value: { summary: { mode: "claim_next", workerId: "worker-a", claimed: false } },
+      };
+    },
+  });
+  const baseUrl = await listen(server);
+
+  try {
+    const response = await fetch(`${baseUrl}/operations/open-answer-evaluator/tick`, {
+      method: "POST",
+      headers: { cookie: "agonara_session=session-operations" },
+    });
+    const body = await response.json();
+
+    assert.deepEqual(
+      { statusCode: response.status, body, identityAccessCalls, tickCalls },
+      {
+        statusCode: 200,
+        body: {
+          status: "accepted",
+          value: { summary: { mode: "claim_next", workerId: "worker-a", claimed: false } },
+        },
+        identityAccessCalls: [{ actingSessionId: "session-operations" }],
+        tickCalls: ["tick"],
+      },
+    );
+  } finally {
+    await close(server);
+  }
+});
+
 test("operationsOpenAnswerEvaluatorTick_shouldReturnConflict_onOverlappingWorkerTick", async () => {
   const server = createServer({
     log: () => {},

@@ -81,6 +81,21 @@ test("evaluate_shouldCallNomosAndReturnValidatedFeedback_onWellFormedOutput", as
         url: "https://nomos.example.test/v1/chat/completions",
         authorization: "Bearer nomos-key-secret",
         model: "model-a",
+        userPayload: {
+          submittedAnswer: "Student answer about the accepted invariant.",
+          acceptedCheckRevision: {
+            revisionId: "check-a",
+            title: "Accepted check",
+            prompt: "Explain the accepted invariant.",
+          },
+          acceptedCriterionRevisions: [
+            {
+              revisionId: "criterion-a",
+              title: "Accepted criterion",
+              body: "Names the invariant and explains why it holds.",
+            },
+          ],
+        },
         mentionsSecret: false,
       },
       result: {
@@ -137,6 +152,66 @@ test("evaluate_shouldReturnFailedOutputValidation_onUnsafeOrMismatchedModelOutpu
   assert.deepEqual(result.outputValidation, { validatorPolicyId: "validator-a", passed: false });
 });
 
+test("createNomosOpenAnswerEvaluatorProviderAdapter_shouldRejectConstruction_onMissingRequiredFields", () => {
+  const defaults = {
+    providerAdapterId: "adapter-a",
+    baseUrl: "https://nomos.example.test",
+    model: "model-a",
+    apiKey: "nomos-key-secret",
+    outputValidatorPolicyId: "validator-a",
+    fetch: async () => makeNomosResponse({}),
+  };
+
+  const errors = [
+    { providerAdapterId: "" },
+    { baseUrl: "" },
+    { model: "" },
+    { apiKey: "" },
+    { outputValidatorPolicyId: "" },
+    { fetch: null },
+  ].map(input => captureErrorMessage(() =>
+    createNomosOpenAnswerEvaluatorProviderAdapter({ ...defaults, ...input }),
+  ));
+
+  assert.deepEqual(errors, [
+    "providerAdapterId_required",
+    "baseUrl_required",
+    "model_required",
+    "apiKey_required",
+    "outputValidatorPolicyId_required",
+    "fetch_required",
+  ]);
+});
+
+test("evaluate_shouldReject_onNomosFailure", async () => {
+  const adapter = createNomosOpenAnswerEvaluatorProviderAdapter({
+    providerAdapterId: "adapter-a",
+    baseUrl: "https://nomos.example.test",
+    model: "model-a",
+    apiKey: "nomos-key-secret",
+    outputValidatorPolicyId: "validator-a",
+    fetch: async () => makeNomosResponse({ error: "provider-secret-detail" }, { ok: false, status: 502 }),
+  });
+
+  await assert.rejects(adapter.evaluate(makeProviderRequest()), { message: "nomos_request_failed" });
+});
+
+test("evaluate_shouldReject_onMalformedNomosOutput", async () => {
+  const adapter = createNomosOpenAnswerEvaluatorProviderAdapter({
+    providerAdapterId: "adapter-a",
+    baseUrl: "https://nomos.example.test",
+    model: "model-a",
+    apiKey: "nomos-key-secret",
+    outputValidatorPolicyId: "validator-a",
+    fetch: async () =>
+      makeNomosResponse({
+        choices: [{ message: { content: "not-json" } }],
+      }),
+  });
+
+  await assert.rejects(adapter.evaluate(makeProviderRequest()), { message: "nomos_output_malformed" });
+});
+
 test("runOpenAnswerEvaluatorWorkerTick_shouldRejectOverlappingInvocation_onInFlightRun", async () => {
   let resolveRun;
   let calls = 0;
@@ -178,6 +253,18 @@ function makeProviderRequest({
     checkRevisionId: "check-a",
     criterionRevisionIds,
     submittedAnswer,
+    acceptedCheckRevision: {
+      revisionId: "check-a",
+      title: "Accepted check",
+      prompt: "Explain the accepted invariant.",
+    },
+    acceptedCriterionRevisions: [
+      {
+        revisionId: "criterion-a",
+        title: "Accepted criterion",
+        body: "Names the invariant and explains why it holds.",
+      },
+    ],
     evaluatorPolicyId: "policy-a",
     outputValidatorPolicyId: "validator-a",
   };
@@ -194,10 +281,21 @@ function makeNomosResponse(body, { ok = true, status = 200 } = {}) {
 
 function projectNomosRequest(request) {
   const body = JSON.parse(request.init.body);
+  const userMessage = body.messages.find($0 => $0.role === "user");
   return {
     url: request.url,
     authorization: request.init.headers.Authorization,
     model: body.model,
+    userPayload: JSON.parse(userMessage.content),
     mentionsSecret: request.init.body.includes("nomos-key-secret"),
   };
+}
+
+function captureErrorMessage(run) {
+  try {
+    run();
+  } catch (error) {
+    return error.message;
+  }
+  return "no_error";
 }
