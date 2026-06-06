@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Add an Agonara first-release readiness script that verifies the `agonara_v0.1.0` tag, trunk branch, tag absence, package/manifest sync, Docker-unit status, and release workflow deploy/failure fan-in before the first tag is pushed.
 - Add a fail-fast Agonara release deploy secret preflight in `release-unit.yml` so a missing `AGONARA_VPS_HOST`, `AGONARA_VPS_USER`, or `AGONARA_VPS_SSH_KEY` stops before source upload and reports the missing secret name without printing secret values.
 - Register Agonara as a `0.1.0` Node + Docker release unit, add tag-driven staging and internal-prod deploy jobs to `release-unit.yml`, run real evaluator smokes inside the containers, require both Agonara deploys before GitHub Release, and keep the first release gated on explicit tag push plus GitHub deploy SSH secrets.
 - Deploy the Agonara prod tier internally on the RackNerd VPS as loopback-only `agonara` on `127.0.0.1:18080`, with distinct prod env secrets, a dedicated `agonara-prod` Nomos project/key on `https://nomos.enoa.ai`, a real open-answer evaluator smoke, daily prod off-host backups to the Qwins host, and a prod restore drill from the downloaded off-host artifact.

@@ -320,11 +320,12 @@ Then, from **trunk**:
 
 1. Confirm `agonara/package.json` is `0.1.0`, the release-scope log entry exists,
    and `release-units.toml` is in sync.
-2. Run the §8 gates.
-3. Push trunk, then push the tag `agonara_v0.1.0` (only that tag — no `--tags`).
-4. `release-unit.yml`: `verify` → `core` → `deploy-agonara-staging` →
+2. Run `node scripts/release/check-agonara-release-readiness.js` from trunk.
+3. Run the §8 gates.
+4. Push trunk, then push the tag `agonara_v0.1.0` (only that tag — no `--tags`).
+5. `release-unit.yml`: `verify` → `core` → `deploy-agonara-staging` →
    `deploy-agonara-prod` → `github-release`.
-5. Post-push: confirm all jobs green and the GitHub release `agonara v0.1.0` exists.
+6. Post-push: confirm all jobs green and the GitHub release `agonara v0.1.0` exists.
 
 The first release includes staging and internal-prod deploys with the real
 open-answer evaluator smoke. Public prod routing remains separate.

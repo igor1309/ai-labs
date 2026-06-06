@@ -1,0 +1,132 @@
+#!/usr/bin/env node
+
+/**
+ * Verify the repo is ready for the first Agonara release tag.
+ *
+ * Usage:
+ *   node scripts/release/check-agonara-release-readiness.js
+ *   node scripts/release/check-agonara-release-readiness.js --tag agonara_v0.1.0
+ *   node scripts/release/check-agonara-release-readiness.js --root <dir>
+ */
+
+import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { discoverUnits, loadConfig, loadManifest } from './lib/manifest.js';
+
+const rootIdx = process.argv.indexOf('--root');
+const repoRoot = rootIdx !== -1
+  ? resolve(process.argv[rootIdx + 1])
+  : resolve(import.meta.dirname, '..', '..');
+const tagIdx = process.argv.indexOf('--tag');
+const releaseTag = tagIdx !== -1 ? process.argv[tagIdx + 1] : 'agonara_v0.1.0';
+
+const checks = [];
+
+try {
+  runReadinessChecks();
+  for (const check of checks) {
+    process.stdout.write(`OK ${check}\n`);
+  }
+  process.stdout.write(`Agonara release readiness passed for ${releaseTag}.\n`);
+} catch (error) {
+  process.stderr.write(`ERROR: ${error.message}\n`);
+  process.exit(1);
+}
+
+function runReadinessChecks() {
+  const { basename, version } = parseReleaseTag(releaseTag);
+  if (basename !== 'agonara') {
+    throw new Error(`expected agonara release tag, got ${releaseTag}`);
+  }
+  checks.push('tag format');
+
+  const currentBranch = git(['rev-parse', '--abbrev-ref', 'HEAD']);
+  if (currentBranch !== 'trunk') {
+    throw new Error(`releases are only allowed from trunk (current branch: ${currentBranch})`);
+  }
+  checks.push('trunk branch');
+
+  if (tagExists(releaseTag)) {
+    throw new Error(`release tag already exists: ${releaseTag}`);
+  }
+  checks.push('release tag absent');
+
+  const manifestUnit = loadManifest(repoRoot).units.find($0 => $0.basename === 'agonara');
+  if (!manifestUnit) {
+    throw new Error('agonara missing from release-units.toml');
+  }
+  if (manifestUnit.version !== version) {
+    throw new Error(`manifest version ${manifestUnit.version} does not match tag version ${version}`);
+  }
+  if (manifestUnit.path !== 'agonara' || manifestUnit.metadata !== 'package.json' || manifestUnit.docker !== true) {
+    throw new Error('agonara manifest entry must be path=agonara, metadata=package.json, docker=true');
+  }
+  checks.push('manifest entry');
+
+  const packageVersion = JSON.parse(readFileSync(join(repoRoot, 'agonara/package.json'), 'utf8')).version;
+  if (packageVersion !== version) {
+    throw new Error(`agonara/package.json version ${packageVersion} does not match tag version ${version}`);
+  }
+  checks.push('package version');
+
+  const discoveredUnit = discoverUnits(repoRoot, loadConfig(repoRoot).paths)
+    .find($0 => $0.basename === 'agonara');
+  if (!discoveredUnit) {
+    throw new Error('agonara missing from release-units.config.toml discovery');
+  }
+  if (JSON.stringify(discoveredUnit) !== JSON.stringify(manifestUnit)) {
+    throw new Error('release-units.toml is out of sync for agonara');
+  }
+  checks.push('manifest sync');
+
+  const workflowPath = join(repoRoot, '.github/workflows/release-unit.yml');
+  if (!existsSync(workflowPath)) {
+    throw new Error('release-unit.yml is missing');
+  }
+  const workflow = readFileSync(workflowPath, 'utf8');
+  assertWorkflowContains(workflow, 'deploy-agonara-staging:');
+  assertWorkflowContains(workflow, 'deploy-agonara-prod:');
+  assertWorkflowContains(workflow, 'Verify Agonara deploy secrets');
+  assertWorkflowContains(workflow, "needs.deploy-agonara-staging.result == 'success'");
+  assertWorkflowContains(workflow, "needs.deploy-agonara-prod.result == 'success'");
+  assertWorkflowContains(workflow, 'deploy-agonara-staging=${{ needs.deploy-agonara-staging.result }}');
+  assertWorkflowContains(workflow, 'deploy-agonara-prod=${{ needs.deploy-agonara-prod.result }}');
+  checks.push('release workflow');
+}
+
+function parseReleaseTag(tag) {
+  const separatorIndex = tag.lastIndexOf('_v');
+  if (separatorIndex === -1) {
+    throw new Error(`invalid tag format (expected <basename>_v<version>): ${tag}`);
+  }
+  const basename = tag.slice(0, separatorIndex);
+  const version = tag.slice(separatorIndex + 2);
+  if (!/^\d+\.\d+\.\d+(-[\w.]+)?(\+[\w.]+)?$/.test(version)) {
+    throw new Error(`invalid semver in tag: ${tag}`);
+  }
+  return { basename, version };
+}
+
+function tagExists(tag) {
+  try {
+    git(['rev-parse', '--verify', `refs/tags/${tag}`]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function git(args) {
+  return execFileSync('git', args, {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+  }).trim();
+}
+
+function assertWorkflowContains(workflow, expected) {
+  if (!workflow.includes(expected)) {
+    throw new Error(`release-unit.yml missing ${expected}`);
+  }
+}
