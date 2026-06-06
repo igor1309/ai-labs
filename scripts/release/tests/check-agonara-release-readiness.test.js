@@ -499,10 +499,21 @@ describe('check-agonara-release-readiness', () => {
 
   it('fails when production backup does not verify the archived database', () => {
     writeAgonaraReleaseRepo(tmp, {
-      backupProd: validBackupScript().replace(
-        'docker run --rm -v "${BACKUP_DIR}:/backup:ro" alpine:3.20 sh -c \'tar -tzf "/backup/$1" | grep -Fx "./agonara.sqlite"\' sh "${BACKUP_FILE}" >/dev/null\n',
-        '',
-      ),
+      backupProd: validBackupScript().replace(`${backupArchiveValidation()}\n`, ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/backup-prod.sh must create a non-empty production data archive, recover service, copy off-host, and prune local retention'));
+  });
+
+  it('fails when production backup verifies the archive after off-host transfer', () => {
+    const offHostTransfer = '"${RSYNC[@]}" "${BACKUP_DIR}/${BACKUP_FILE}" "${BACKUP_REMOTE}/"';
+    writeAgonaraReleaseRepo(tmp, {
+      backupProd: validBackupScript()
+        .replace(`${backupArchiveValidation()}\n`, '')
+        .replace(offHostTransfer, `${offHostTransfer}\n${backupArchiveValidation()}`),
     });
 
     const result = runReadiness(tmp);
@@ -729,13 +740,17 @@ function validBackupScript() {
     '"${COMPOSE[@]}" stop agonara',
     'docker run --rm -v "${DATA_VOLUME}:/data:ro" -v "${BACKUP_DIR}:/backup" alpine:3.20 tar -czf "/backup/${BACKUP_FILE}" -C /data .',
     'test -s "${BACKUP_DIR}/${BACKUP_FILE}"',
-    'docker run --rm -v "${BACKUP_DIR}:/backup:ro" alpine:3.20 sh -c \'tar -tzf "/backup/$1" | grep -Fx "./agonara.sqlite"\' sh "${BACKUP_FILE}" >/dev/null',
+    backupArchiveValidation(),
     '"${COMPOSE[@]}" start agonara',
     'trap - EXIT',
     '"${RSYNC[@]}" "${BACKUP_DIR}/${BACKUP_FILE}" "${BACKUP_REMOTE}/"',
     'find "${BACKUP_DIR}" -type f -name "agonara-data-*.tar.gz" -mtime "+${BACKUP_RETENTION_DAYS}" -delete',
     'echo "Production backup successful: ${BACKUP_FILE}"',
   ].join('\n');
+}
+
+function backupArchiveValidation() {
+  return 'docker run --rm -v "${BACKUP_DIR}:/backup:ro" alpine:3.20 sh -c \'tar -tzf "/backup/$1" | grep -Fx "./agonara.sqlite"\' sh "${BACKUP_FILE}" >/dev/null';
 }
 
 function validRestoreScript() {
