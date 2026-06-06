@@ -106,6 +106,8 @@ function runReadinessChecks() {
   assertWorkflowContains(workflow, 'deploy-agonara-staging=${{ needs.deploy-agonara-staging.result }}');
   assertWorkflowContains(workflow, 'deploy-agonara-prod=${{ needs.deploy-agonara-prod.result }}');
   const stagingJob = getWorkflowJob(workflow, 'deploy-agonara-staging');
+  const prodJob = getWorkflowJob(workflow, 'deploy-agonara-prod');
+  checkWorkflowDeployJobGates(stagingJob, prodJob);
   if (!appearsInOrder(stagingJob, [
     'Prepare clean Agonara deploy upload',
     'rm -rf /tmp/agonara-deploy',
@@ -113,7 +115,6 @@ function runReadinessChecks() {
   ])) {
     throw new Error('release-unit.yml must clean /tmp/agonara-deploy before copying Agonara source');
   }
-  const prodJob = getWorkflowJob(workflow, 'deploy-agonara-prod');
   checkWorkflowHealthGate(stagingJob, 'agonara-staging');
   checkWorkflowHealthGate(prodJob, 'agonara');
   checkWorkflowSmokeGate(stagingJob, 'agonara-staging');
@@ -250,6 +251,21 @@ function checkWorkflowSmokeGate(workflowJob, containerName) {
   const smokeGate = `docker exec -e AGONARA_SMOKE_BASE_URL=http://127.0.0.1:8080 -e EXPECTED_VERSION="\${EXPECTED_VERSION}" ${containerName} sh -lc "trap 'rm -f /tmp/agonara-smoke.json' EXIT; node scripts/smoke-open-answer-evaluator.mjs > /tmp/agonara-smoke.json && node -e 'const fs = require(\\"node:fs\\"); const result = JSON.parse(fs.readFileSync(\\"/tmp/agonara-smoke.json\\", \\"utf8\\")); if (!result.evaluationId || result.healthVersion !== process.env.EXPECTED_VERSION) process.exit(1);'"`;
   if (!workflowJob.includes(smokeGate)) {
     throw new Error('release-unit.yml must run Agonara real evaluator smoke with cleanup and expected version checks');
+  }
+}
+
+function checkWorkflowDeployJobGates(stagingJob, prodJob) {
+  const stagingNeeds = workflowJobNeeds(stagingJob);
+  const prodNeeds = workflowJobNeeds(prodJob);
+  const basenameGate = "if: ${{ needs.verify.outputs.basename == 'agonara' }}";
+  const validGates = stagingJob.includes(basenameGate)
+    && prodJob.includes(basenameGate)
+    && stagingNeeds.has('core')
+    && stagingNeeds.has('verify')
+    && prodNeeds.has('deploy-agonara-staging')
+    && prodNeeds.has('verify');
+  if (!validGates) {
+    throw new Error('release-unit.yml Agonara deploy jobs must be scoped to Agonara tags and promote staging before production');
   }
 }
 

@@ -282,6 +282,20 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('release-unit.yml github-release job must require successful Agonara deploys before release creation'));
   });
 
+  it('fails when production deploy does not depend on staging deploy', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        '    needs: [deploy-agonara-staging, verify]',
+        '    needs: [verify]',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml Agonara deploy jobs must be scoped to Agonara tags and promote staging before production'));
+  });
+
   it('fails when the CI dispatcher does not route Agonara package lock changes', () => {
     writeAgonaraReleaseRepo(tmp, {
       ciWorkflow: validCiWorkflow().replace(
@@ -485,6 +499,8 @@ function validReleaseWorkflow() {
   return [
     'jobs:',
     '  deploy-agonara-staging:',
+    "    if: ${{ needs.verify.outputs.basename == 'agonara' }}",
+    '    needs: [core, verify]',
     '      - name: Verify Agonara deploy secrets',
     '        run: true',
     '      - name: Prepare clean Agonara deploy upload',
@@ -495,6 +511,8 @@ function validReleaseWorkflow() {
     workflowSmokeGate('agonara-staging'),
     workflowStagingCleanup(),
     '  deploy-agonara-prod:',
+    "    if: ${{ needs.verify.outputs.basename == 'agonara' }}",
+    '    needs: [deploy-agonara-staging, verify]',
     "      && needs.deploy-agonara-staging.result == 'success'",
     "      && needs.deploy-agonara-prod.result == 'success'",
     '        deploy-agonara-staging=${{ needs.deploy-agonara-staging.result }}',
