@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Clean `/tmp/agonara-deploy` before copying Agonara release source so stale upload files cannot satisfy current deploy-script preflight.
 - Extend the Agonara first-release readiness check to verify staging/prod deploy scripts preflight required uploaded files before mutating the deploy root.
 - Extend the Agonara first-release readiness check to verify the locked release install wiring: package lock, Dockerfile `npm ci`, release upload, and CI dispatcher path.
 - Include `agonara/package-lock.json` in the root CI dispatcher allowlist so lockfile-only changes run the Agonara core workflow.

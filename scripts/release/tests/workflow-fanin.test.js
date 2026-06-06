@@ -69,6 +69,14 @@ describe('release-unit workflow fan-in', () => {
     assert.ok(stagingDeploy.includes('agonara/package-lock.json'));
   });
 
+  it('cleans Agonara deploy upload before copying source', () => {
+    const stagingDeploy = jobSection('deploy-agonara-staging');
+
+    assert.ok(stagingDeploy.includes('Prepare clean Agonara deploy upload'));
+    assert.ok(stagingDeploy.includes('rm -rf /tmp/agonara-deploy'));
+    assert.ok(stagingDeploy.indexOf('Prepare clean Agonara deploy upload') < stagingDeploy.indexOf('Copy source files to VPS'));
+  });
+
   it('reports split Notio jobs in failure notifications', () => {
     const notify = jobSection('notify');
 
