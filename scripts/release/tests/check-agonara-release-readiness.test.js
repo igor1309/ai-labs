@@ -55,6 +55,16 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('release tag already exists: agonara_v0.1.0'));
   });
 
+  it('fails when the working tree is dirty', () => {
+    writeAgonaraReleaseRepo(tmp);
+    writeFileSync(join(tmp, 'agonara/uncommitted.js'), 'uncommitted\n');
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('working tree must be clean'));
+  });
+
   it('fails when the workflow does not require Agonara deploy success', () => {
     writeAgonaraReleaseRepo(tmp, {
       workflow: [

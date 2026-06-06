@@ -52,6 +52,12 @@ function runReadinessChecks() {
   }
   checks.push('release tag absent');
 
+  const workingTreeStatus = git(['status', '--short']);
+  if (workingTreeStatus !== '') {
+    throw new Error('working tree must be clean before pushing the Agonara release tag');
+  }
+  checks.push('clean worktree');
+
   const manifestUnit = loadManifest(repoRoot).units.find($0 => $0.basename === 'agonara');
   if (!manifestUnit) {
     throw new Error('agonara missing from release-units.toml');
