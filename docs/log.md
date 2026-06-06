@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Release units: harden Agonara container readiness against stage, healthcheck, and entrypoint overrides.
 - Release units: enforce Agonara's non-root, runtime-owned container boundary and Node-native healthcheck before the first release tag.
 - Release units: harden Agonara Compose isolation readiness against comment and alternate-port bypasses, and require database state on the isolated data volume.
 - Release units: enforce Agonara staging/production Compose isolation and required runtime configuration in first-release readiness.

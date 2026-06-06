@@ -151,6 +151,44 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('Agonara Dockerfile must run as agonara with owned app/data files and a Node-native healthcheck'));
   });
 
+  it('fails when a later container stage resets the runtime user', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      dockerfile: [
+        validDockerfile(),
+        'FROM node:22-bookworm-slim',
+        'CMD ["node", "src/server.js"]',
+      ].join('\n'),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara Dockerfile must run as agonara with owned app/data files and a Node-native healthcheck'));
+  });
+
+  it('fails when a later instruction disables the container healthcheck', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      dockerfile: validDockerfile()
+        .replace('CMD ["node", "src/server.js"]', 'HEALTHCHECK NONE\nCMD ["node", "src/server.js"]'),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara Dockerfile must run as agonara with owned app/data files and a Node-native healthcheck'));
+  });
+
+  it('fails when a later command overrides the server entrypoint', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      dockerfile: `${validDockerfile()}\nCMD ["node", "src/other.js"]`,
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('Agonara Dockerfile must run as agonara with owned app/data files and a Node-native healthcheck'));
+  });
+
   it('fails when the release workflow does not upload the Agonara package lock', () => {
     writeAgonaraReleaseRepo(tmp, {
       workflow: validReleaseWorkflow().replace(

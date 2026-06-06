@@ -241,8 +241,16 @@ function checkContainerRuntimeBoundary() {
     'CMD node -e \'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))\'',
     'CMD ["node", "src/server.js"]',
   ];
+  const stages = lines.filter($0 => $0.startsWith('FROM '));
+  const healthchecks = lines.filter($0 => $0.startsWith('HEALTHCHECK '));
   const users = lines.filter($0 => $0.startsWith('USER '));
-  if (!linesAppearInOrder(lines, requiredSequence) || users.at(-1) !== 'USER agonara') {
+  if (
+    !linesAppearInOrder(lines, requiredSequence)
+    || stages.length !== 1
+    || healthchecks.length !== 1
+    || users.at(-1) !== 'USER agonara'
+    || lines.at(-1) !== 'CMD ["node", "src/server.js"]'
+  ) {
     throw new Error('Agonara Dockerfile must run as agonara with owned app/data files and a Node-native healthcheck');
   }
 }
