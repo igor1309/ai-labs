@@ -131,6 +131,8 @@ function runReadinessChecks() {
   checkDeployHealthGate('agonara/scripts/deploy-staging.sh');
   checkDeployHealthGate('agonara/scripts/deploy-prod.sh');
   checks.push('deploy health gate');
+  checkRollbackHealthGate();
+  checks.push('rollback health gate');
 
   if (checkGithubSecrets) {
     checkGithubDeploySecretNames();
@@ -237,6 +239,25 @@ function checkDeployHealthGate(scriptPath) {
   const healthGatePattern = /fetch\("http:\/\/127\.0\.0\.1:8080\/operations\/health"\)\.then\(response => \{ if \(!response\.ok\) process\.exit\(1\); return response\.json\(\); \}\)\.then\(health => \{ if \(health\.status !== "ok" \|\| health\.version !== process\.env\.EXPECTED_VERSION\) process\.exit\(1\); \}\)/;
   if (!healthGatePattern.test(script)) {
     throw new Error(`${scriptPath} must health-gate HTTP success, status ok, and expected version from JSON`);
+  }
+}
+
+function checkRollbackHealthGate() {
+  const scriptPath = 'agonara/scripts/rollback-prod.sh';
+  const fullPath = join(repoRoot, scriptPath);
+  if (!existsSync(fullPath)) {
+    throw new Error(`${scriptPath} is missing`);
+  }
+  const script = readFileSync(fullPath, 'utf8');
+  const requiredSequence = [
+    'docker image inspect agonara:rollback',
+    'docker tag agonara:rollback agonara:latest',
+    '"${COMPOSE[@]}" down',
+    '"${COMPOSE[@]}" up -d --no-build --wait',
+    'docker exec agonara node -e \'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))\'',
+  ];
+  if (!appearsInOrder(script, requiredSequence) || script.includes('EXPECTED_VERSION')) {
+    throw new Error(`${scriptPath} must restore the rollback image without rebuild and health-gate service availability`);
   }
 }
 

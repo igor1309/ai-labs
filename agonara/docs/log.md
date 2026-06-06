@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Extend the Agonara first-release readiness check to verify production rollback restores the retained image without rebuilding and health-gates service availability independently of the failed target version.
 - Extend the Agonara first-release readiness check to verify deploy jobs are scoped to Agonara tags and production depends on staging.
 - Extend the Agonara first-release readiness check to verify GitHub Release creation depends on successful staging/prod deploy jobs for Agonara tags.
 - Extend the Agonara first-release readiness check to verify release failure notifications trigger on staging/prod deploy failures and report both deploy results.

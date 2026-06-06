@@ -41,6 +41,7 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stdout.includes('OK locked release install'));
     assert.ok(result.stdout.includes('OK deploy upload preflight'));
     assert.ok(result.stdout.includes('OK deploy health gate'));
+    assert.ok(result.stdout.includes('OK rollback health gate'));
     assert.ok(result.stdout.includes('Agonara release readiness passed for agonara_v0.1.0.'));
   });
 
@@ -397,6 +398,17 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('agonara/scripts/deploy-prod.sh must health-gate HTTP success, status ok, and expected version from JSON'));
   });
 
+  it('fails when rollback does not health-gate restored service availability', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      rollbackProd: validRollbackScript().replace(rollbackHealthGate(), ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/rollback-prod.sh must restore the rollback image without rebuild and health-gate service availability'));
+  });
+
   it('passes the GitHub secret check when required deploy secret names exist', () => {
     writeAgonaraReleaseRepo(tmp);
     const fakeGhBin = writeFakeGhSecretList([
@@ -450,6 +462,7 @@ function writeAgonaraReleaseRepo(dir, {
   ciWorkflow = validCiWorkflow(),
   deployStaging = validDeployScript('compose.staging.yml'),
   deployProd = validDeployScript('compose.prod.yml'),
+  rollbackProd = validRollbackScript(),
 } = {}) {
   git(dir, 'init -b trunk');
   git(dir, 'config commit.gpgSign false');
@@ -466,6 +479,7 @@ function writeAgonaraReleaseRepo(dir, {
   mkdirSync(join(dir, 'agonara/scripts'), { recursive: true });
   writeFileSync(join(dir, 'agonara/scripts/deploy-staging.sh'), deployStaging);
   writeFileSync(join(dir, 'agonara/scripts/deploy-prod.sh'), deployProd);
+  writeFileSync(join(dir, 'agonara/scripts/rollback-prod.sh'), rollbackProd);
   writeFileSync(join(dir, 'release-units.config.toml'), 'paths = ["agonara"]\n');
   writeFileSync(
     join(dir, 'release-units.toml'),
@@ -507,6 +521,23 @@ function validDeployScript(composeFile) {
 
 function deployHealthGate() {
   return 'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); return response.json(); }).then(health => { if (health.status !== "ok" || health.version !== process.env.EXPECTED_VERSION) process.exit(1); })';
+}
+
+function validRollbackScript() {
+  return [
+    '#!/usr/bin/env bash',
+    'set -euo pipefail',
+    'if docker image inspect agonara:rollback >/dev/null 2>&1; then',
+    '  docker tag agonara:rollback agonara:latest',
+    '  "${COMPOSE[@]}" down',
+    '  "${COMPOSE[@]}" up -d --no-build --wait',
+    `  ${rollbackHealthGate()}`,
+    'fi',
+  ].join('\n');
+}
+
+function rollbackHealthGate() {
+  return 'docker exec agonara node -e \'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))\'';
 }
 
 function validReleaseWorkflow() {
