@@ -155,87 +155,82 @@ the three your agents can't pay back for you." Write down the why.
 
 ## Implications for My Way
 
-In the essay's vocabulary, My Way is **largely an intent-debt-management method**:
-intent-first chain, rationale externalized into committed artifacts, a loop that
-keeps intent living. The useful question is where it still leaks.
+Read correctly, the essay is not a checklist to bolt onto My Way. It is a
+description of the failure mode My Way is built to prevent, and an argument for
+the exact stance the traceability work already takes. The naive reading — treat
+Osmani's four remedies as missing gates and add them — misreads both the essay
+and the method.
+
+### The "independent debts" state is the *unmanaged* state
+
+Osmani's sharpest claim, that the three debts are independent — "not the same
+bill" — describes a codebase where intent floats free of code and comprehension.
+That independence is the disease, not a law of nature. My Way's traceability chain
+(`intent → ADR → spec → test names`) is precisely the mechanism that *re-couples*
+the domains: the invariant — no loss, no contradiction, siblings don't diverge —
+carries the why forward node by node instead of letting it evaporate into "the
+artifacts you never wrote." Where Osmani's own remedies leave four loose practices
+you *hope* stay in sync, My Way binds them into one progressively-disclosed chain.
+That binding *is* the intent-debt paydown; My Way is a stronger answer than the
+essay's prescriptions because it connects what Osmani can only list.
+
+### Trust is banked at construction, not recovered by review
+
+An earlier version of this analysis proposed review-shaped gates — a comprehension
+check, a late learnings pass, re-loading context to re-verify intent. That fights
+the method's grain and is withdrawn. The traceability stance is explicit: at
+production scale a late review "could but would be flaky" because the context is
+too large to re-examine reliably; trust is therefore banked *at construction time* —
+progressive disclosure, TDD, review-before-merge on small diffs — so a later pass
+never has to re-open the code. A bolt-on late gate reintroduces exactly the
+large-context review the method exists to avoid. Consequently:
+
+- A **cognitive-debt / "explain it back" gate** is misapplied. Human understanding
+  is preserved incrementally as each small, reviewed step is built — not audited
+  wholesale afterward. The method trusts the *process*, not a heroic final read.
+- The **"tests encode behavior, not intent"** caution is already answered. In My
+  Way test names are the *compressed interface* to the chain, not the carrier of
+  intent. The why lives upstream (`Product Intent → ADR → spec`) and is kept from
+  diverging by the traceability invariant — so green tests are never asked to
+  stand in for intent; the linked chain is.
 
 ### Where My Way already pays it down
 
-- **Intent-first by construction.** The chain starts at Product Intent (the
-  user-facing *why*), not technical uncertainty.
-- **Rationale is externalized and committed.** ADRs record "why this over the
-  alternatives," consequences, and non-goals; every artifact is version-
-  controlled "inspectable, reviewable, and traceable — not buried in chat logs."
-  This is exactly the four remedies' shared move — "somewhere an agent can read."
-- **Decision logs already exist** (remedy 3). The coding-phase Log and Artifact
-  stages are intent-debt paydown by another name.
-- **AGENTS.md-as-ledger is partly in place** (remedy 2). The progressive-
-  disclosure CLAUDE.md + `.agents/` rationale notes already lean toward "what the
-  team means," not auto-generated config.
-- **Intent stays living.** The loop feeds implementation reality back up to
-  spec / ADR / Product Intent, resisting the *erosion* half of intent debt.
+- **Intent-first by construction** — the chain starts at the user-facing *why*.
+- **Rationale externalized and committed** — ADRs hold "why this over the
+  alternatives," version-controlled, "not buried in chat logs": exactly Osmani's
+  shared move, "somewhere an agent can read."
+- **Decision logs and AGENTS.md-as-ledger** (remedies 2–3) are already present —
+  the progressive-disclosure CLAUDE.md + `.agents/` rationale notes, plus
+  coding-phase Log/Artifact.
+- **Intent stays living** — the loop feeds implementation reality back up, fighting
+  the *erosion* half of intent debt.
 
-### Gaps worth closing
+### What genuinely survives, framed inside the method
 
-1. **Cognitive debt (human comprehension) is a separate bill My Way doesn't
-   charge.** The essay's independence claim is the sharp one: externalizing intent
-   into artifacts (which My Way does well) does *not* discharge cognitive debt.
-   My Way has no gate that checks a *human still understands* the (often
-   AI-generated) code — no "explain it back," no onboarding-readiness check.
-   Borrow: a lightweight human-comprehension gate, distinct from artifact-
-   conformance review.
+One narrow thing in Osmani is worth holding, as a question about the existing
+chain rather than a new gate: the *load-bearing but sub-architectural* why — his
+`300ms` debounce. A decision too small for an ADR yet too consequential to lose.
+My Way reliably carries architectural intent (ADR) and behavioral intent
+(spec/tests); the open question is whether such sub-ADR rationale has a dependable
+home *within the chain already* (a spec note, the Log/Artifact stage, a code
+comment) or can still slip through. This is a "where in the chain," not an
+"add a gate."
 
-2. **The learnings-loop / implicit-decision capture is passive.** Remedy 4 (a
-   session-end learnings file that records "we tried X, it failed because Y") and
-   the essay's "capture the load-bearing implicit decisions" map onto My Way's
-   Artifact stage — but that stage is opportunistic ("when the knowledge is
-   durable"). Borrow: make it *active* — at the end of a TDD slice, explicitly
-   prompt "what did you decide that the spec didn't say, and why?" and route the
-   answer to spec / ADR / learnings.
+### Net
 
-3. **Tests encode behavior, not intent.** Osmani's refactor symptom — "the tests
-   never encoded the intent, only the previous behavior" — is a direct caution to
-   My Way's *test-names-as-definition-of-done*. Test names pin behavior; they do
-   not carry the *why*. The ADR/spec must hold the rationale, and the chain must
-   not let green tests stand in for preserved intent. Borrow: make this explicit
-   in the spec/test-naming guidance.
-
-4. **Lite paths are where intent debt silently accrues.** The essay stresses the
-   load-bearing *why* on small changes is exactly what evaporates. My Way's
-   minor-feature and bug-fix paths collapse intent capture into a change note.
-   Borrow: a minimal "why" floor even on lite paths, so the escape hatches don't
-   become the leak.
-
-5. **Intent isn't provably *loaded into the agent's context* at work time.** The
-   essay's economics — you pay the un-written cost every session, per agent —
-   implies the relevant intent artifact must actually reach the cold-starting
-   agent, not merely exist in the repo. Borrow: wire the relevant ADR/spec/intent
-   into the agent's working context, not just the filesystem.
-
-6. **Vocabulary.** "Intent debt" and "cognitive debt" name the two adversaries My
-   Way already fights. Borrow rhetorically: the elevator pitch / framing notes can
-   state plainly that the method exists to keep intent debt and cognitive debt
-   low — and that, of the three, intent debt is the one an agent can't repay.
-
-### What not to borrow uncritically
-
-Osmani's four remedies are well-aligned with My Way but lighter than what it
-already runs (progressive commitment, separation of exploratory vs committed
-documents, Product Intent as an explicit traceability anchor). Adopt the
-**vocabulary** and the **people-facing gaps** (cognitive-debt gate, active
-learnings capture, the tests-≠-intent caution), not the baseline prescriptions
-My Way already exceeds.
+Osmani validates My Way more than he challenges it. The essay is, at bottom, an
+argument for trusting an intent-externalizing *process* over carrying intent in
+your head — which is the traceability thesis itself. The honest borrow is
+**vocabulary, not mechanism**: "intent debt" names what the chain pays down, and
+"the one debt an agent can't repay" is a sharp one-line case for why the
+pre-coding phase exists at all.
 
 ## Open questions
 
-- Should My Way add an explicit **cognitive-debt / human-comprehension gate**,
-  distinct from artifact-conformance review?
-- Should the **Artifact/Log stage become an active session-end learnings step**
-  (remedy 4), rather than opportunistic?
-- Should the spec / test-naming guidance state plainly that **test names encode
-  behavior, not intent**, so green tests never stand in for preserved rationale?
-- Do the **lite paths need a minimal "why" floor** to stop being the silent leak?
-- Should intent artifacts be **provably loaded into the agent's context** at work
-  time, not merely committed?
-- Is "intent debt" worth adopting as **first-class My Way vocabulary** in the
-  elevator pitch and framing notes?
+- Where in the existing chain does the **load-bearing but sub-ADR why** live (the
+  `300ms`-debounce case) — a spec note, Log/Artifact, or code comment — and is
+  that home dependable or still leaky?
+- Is "intent debt" / "the one debt an agent can't repay" worth adopting as
+  **framing vocabulary** in the elevator pitch and pre-coding rationale, *without*
+  implying any new process step?
