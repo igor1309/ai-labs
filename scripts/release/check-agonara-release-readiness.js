@@ -133,6 +133,8 @@ function runReadinessChecks() {
   checks.push('deploy health gate');
   checkRollbackHealthGate();
   checks.push('rollback health gate');
+  checkProductionBackup();
+  checks.push('production backup');
 
   if (checkGithubSecrets) {
     checkGithubDeploySecretNames();
@@ -249,10 +251,7 @@ function checkRollbackHealthGate() {
     throw new Error(`${scriptPath} is missing`);
   }
   const script = readFileSync(fullPath, 'utf8');
-  const executableLines = script
-    .split('\n')
-    .map($0 => $0.trim())
-    .filter($0 => $0 !== '' && !$0.startsWith('#'));
+  const executableLines = shellExecutableLines(script);
   const requiredSequence = [
     'if docker image inspect agonara:rollback >/dev/null 2>&1; then',
     'docker tag agonara:rollback agonara:latest',
@@ -262,6 +261,36 @@ function checkRollbackHealthGate() {
   ];
   if (!linesAppearInOrder(executableLines, requiredSequence) || script.includes('EXPECTED_VERSION')) {
     throw new Error(`${scriptPath} must restore the rollback image without rebuild and health-gate service availability`);
+  }
+}
+
+function checkProductionBackup() {
+  const scriptPath = 'agonara/scripts/backup-prod.sh';
+  const fullPath = join(repoRoot, scriptPath);
+  if (!existsSync(fullPath)) {
+    throw new Error(`${scriptPath} is missing`);
+  }
+  const executableLines = shellExecutableLines(readFileSync(fullPath, 'utf8'));
+  const requiredSequence = [
+    'if [[ -z "${BACKUP_REMOTE}" ]]; then',
+    'echo "AGONARA_BACKUP_REMOTE is required for off-host backup storage" >&2',
+    'exit 1',
+    'fi',
+    'restart_prod() {',
+    '"${COMPOSE[@]}" start agonara >/dev/null 2>&1 || true',
+    '}',
+    'trap restart_prod EXIT',
+    '"${COMPOSE[@]}" stop agonara',
+    'docker run --rm -v "${DATA_VOLUME}:/data:ro" -v "${BACKUP_DIR}:/backup" alpine:3.20 tar -czf "/backup/${BACKUP_FILE}" -C /data .',
+    'test -s "${BACKUP_DIR}/${BACKUP_FILE}"',
+    '"${COMPOSE[@]}" start agonara',
+    'trap - EXIT',
+    '"${RSYNC[@]}" "${BACKUP_DIR}/${BACKUP_FILE}" "${BACKUP_REMOTE}/"',
+    'find "${BACKUP_DIR}" -type f -name "agonara-data-*.tar.gz" -mtime "+${BACKUP_RETENTION_DAYS}" -delete',
+    'echo "Production backup successful: ${BACKUP_FILE}"',
+  ];
+  if (!linesAppearInOrder(executableLines, requiredSequence)) {
+    throw new Error(`${scriptPath} must create a non-empty production data archive, recover service, copy off-host, and prune local retention`);
   }
 }
 
@@ -360,6 +389,13 @@ function linesAppearInOrder(lines, requiredLines) {
     cursor = index;
   }
   return true;
+}
+
+function shellExecutableLines(script) {
+  return script
+    .split('\n')
+    .map($0 => $0.trim())
+    .filter($0 => $0 !== '' && !$0.startsWith('#'));
 }
 
 function getWorkflowJob(workflow, jobName) {

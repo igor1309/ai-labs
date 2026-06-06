@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Release units: extend the Agonara first-release readiness check to enforce fail-closed production backup, off-host transfer, service recovery, and local retention pruning.
 - Release units: extend the Agonara first-release readiness check to enforce deterministic, version-independent production rollback with a post-restore availability gate.
 - Release units: extend the Agonara first-release readiness check to verify deploy jobs are scoped to Agonara tags and production depends on staging.
 - Release units: extend the Agonara first-release readiness check to verify GitHub Release creation depends on successful staging/prod deploy jobs for Agonara tags.
