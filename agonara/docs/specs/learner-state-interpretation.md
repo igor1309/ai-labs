@@ -15,7 +15,7 @@ Define the Student Workspace-owned contract for deriving personal progress, weak
 
 ## Public interface
 
-This spec operationalizes STU-15, STU-16, STU-17, and INT-07 from [Product Intent](../intent_learning_program_app.md) through [ADR-011](../adr/adr-011-accepted-checks-and-student-assessment-boundary.md), [ADR-012](../adr/adr-012-student-workspace-open-answer-attempt-lifecycle.md), [ADR-016](../adr/adr-016-quick-check-assessment-boundary.md), and [Topic, Concept, and Material Navigation](topic-concept-material-navigation.md).
+This spec operationalizes STU-15, STU-16, STU-17, and INT-07 from [Product Intent](../intent/intent_learning_program_app.md) through [ADR-011](../adr/adr-011-accepted-checks-and-student-assessment-boundary.md), [ADR-012](../adr/adr-012-student-workspace-open-answer-attempt-lifecycle.md), [ADR-016](../adr/adr-016-quick-check-assessment-boundary.md), and [Topic, Concept, and Material Navigation](topic-concept-material-navigation.md).
 
 Learner-state interpretation is a read contract. The first slice derives summaries at read time from immutable Student Workspace attempts, accepted check revisions, accepted criterion revisions, accepted navigation entities, and redacted evaluator evidence.
 

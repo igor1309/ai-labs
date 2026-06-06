@@ -372,7 +372,7 @@ Each phase has its own local commit. Do not bundle unrelated phase work into one
 - Verify accepted criteria and checks are readable by an authorized Student while draft and rejected candidates remain excluded.
 - Verify no Student Workspace, scoring, feedback, LLM, human review, UI, or CLI surface is introduced.
 - Update `agonara/docs/log.md`.
-- Update [Product Intent](../../intent_learning_program_app.md) downstream traceability from active implementation plan to implemented plan and HTTP code/tests.
+- Update [Product Intent](../../intent/intent_learning_program_app.md) downstream traceability from active implementation plan to implemented plan and HTTP code/tests.
 - Move this plan to `agonara/docs/plans/implemented/accepted-checks-and-assessment-criteria-api.md` with `git mv`.
 - Rewrite this plan's relative Markdown links for the `plans/implemented/` depth and verify every local link target after the move.
 

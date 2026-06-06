@@ -29,7 +29,7 @@ Evaluation may be synchronous, queued, deterministic, LLM-assisted, or human-rev
 
 The accepted checks and assessment criteria first slice now gives Student Workspace stable accepted open-answer check revision identifiers and criterion revision identifiers to reference when recording attempts.
 
-The [Student User Stories](../student_user_stories.md) require students to submit open answers and receive feedback. The [Product Intent](../intent_learning_program_app.md) requires personal attempts and feedback to remain separate from accepted Program corpus.
+The [Student User Stories](../intent/student_user_stories.md) require students to submit open answers and receive feedback. The [Product Intent](../intent/intent_learning_program_app.md) requires personal attempts and feedback to remain separate from accepted Program corpus.
 
 The architectural tension is that open-answer evaluation depends on accepted Program content but produces personal student evidence. If attempts embed mutable check or criterion content, attempts can drift away from accepted revisions. If evaluation outcomes live in Corpus Storage, accepted corpus is polluted with personal state. If the first slice introduces full mastery, weak-area calculation, LLM orchestration, or human review workflow, it decides too many assessment policies before the attempt boundary is proven.
 

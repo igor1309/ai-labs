@@ -16,23 +16,23 @@ It uses the membership stories in the student, curator, and admin catalogs to cl
 
 This document is not a data model, schema, API design, UI specification, permission-framework design, or implementation plan.
 
-It is not an accepted ADR. Its candidate direction is accepted by [ADR-004](adr/adr-004-program-membership-owns-program-participation.md), which makes the Program Membership / Identity & Role Management contract explicit. First membership state and policy are accepted by [ADR-005](adr/adr-005-program-membership-state-and-first-admission-policy.md). The Program Membership Manager narrative actor is accepted by [ADR-006](adr/adr-006-program-membership-policy-actor.md). The effective participation authorization contract is accepted by [ADR-007](adr/adr-007-effective-participation-authorization-contract.md).
+It is not an accepted ADR. Its candidate direction is accepted by [ADR-004](../adr/adr-004-program-membership-owns-program-participation.md), which makes the Program Membership / Identity & Role Management contract explicit. First membership state and policy are accepted by [ADR-005](../adr/adr-005-program-membership-state-and-first-admission-policy.md). The Program Membership Manager narrative actor is accepted by [ADR-006](../adr/adr-006-program-membership-policy-actor.md). The effective participation authorization contract is accepted by [ADR-007](../adr/adr-007-effective-participation-authorization-contract.md).
 
 ## Context
 
-[ADR-001](adr/adr-001-internal-identity-as-agonara-ownership-subject.md) establishes internal Identity as the subject of ownership, action, attribution, and authorization context.
+[ADR-001](../adr/adr-001-internal-identity-as-agonara-ownership-subject.md) establishes internal Identity as the subject of ownership, action, attribution, and authorization context.
 
-[ADR-002](adr/adr-002-role-authority-scope-model.md) establishes Student and Program Curator as Program-scoped product roles, and Admin as instance-scoped operational authority.
+[ADR-002](../adr/adr-002-role-authority-scope-model.md) establishes Student and Program Curator as Program-scoped product roles, and Admin as instance-scoped operational authority.
 
-[ADR-003](adr/adr-003-admin-recovery-invariant.md) establishes recoverable Admin control and attributable sensitive identity-management operations.
+[ADR-003](../adr/adr-003-admin-recovery-invariant.md) establishes recoverable Admin control and attributable sensitive identity-management operations.
 
-The [Module Responsibility Map](module_responsibility_map.md) introduces Program Membership as the candidate module that owns program participation lifecycle, invitation lifecycle, membership policy, membership status, participant visibility, effective participation decisions, and exceptional membership recovery hooks.
+The [Module Responsibility Map](../module_responsibility_map.md) introduces Program Membership as the candidate module that owns program participation lifecycle, invitation lifecycle, membership policy, membership status, participant visibility, effective participation decisions, and exceptional membership recovery hooks.
 
 The story catalogs now include membership stories:
 
-- [Student User Stories](student_user_stories.md): STU-18 through STU-23.
-- [Curator User Stories](curator_user_stories.md): CUR-14 through CUR-18.
-- [Admin User Stories](admin_user_stories.md): ADM-12 through ADM-15.
+- [Student User Stories](../intent/student_user_stories.md): STU-18 through STU-23.
+- [Curator User Stories](../intent/curator_user_stories.md): CUR-14 through CUR-18.
+- [Admin User Stories](../intent/admin_user_stories.md): ADM-12 through ADM-15.
 
 The missing architectural question was not whether Agonara has identities or Program-scoped roles. Those are already accepted. ADR-004 accepts which module owns the product lifecycle of participation in a Program, and ADR-005 accepts the first membership state and admission policy.
 

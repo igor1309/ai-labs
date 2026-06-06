@@ -12,6 +12,12 @@ Structured learning program environment with backend/domain slices for Identity,
 
 Helps curators assemble and maintain learning programs from trusted sources, while learners progress through them with clear sequence, checkpoints, and evidence of mastery. AI assists program construction and learning support but does not own the curriculum.
 
+## Landing Pages
+
+- [`index.html`](index.html) — project landing: implementation snapshot, modules, and product surfaces.
+- [`architecture.html`](architecture.html) — architecture deep dive (progressive disclosure from the landing): module responsibility map, ownership rules, runtime, deployment, and ADR index.
+- [`docs/intent/user-stories.html`](docs/intent/user-stories.html) — user stories driving the product.
+
 ## Current Implementation Snapshot
 
 Implemented backend, domain, and product surfaces:

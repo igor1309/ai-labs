@@ -31,9 +31,9 @@ This ADR decides the Corpus Storage / Curator Workspace boundary and minimum acc
 
 [ADR-009](adr-009-program-shell-and-initial-curator-participation.md) establishes the accepted `Program` shell as the stable Program scope owned by Corpus Storage and initial `Program Curator` participation through Program Membership.
 
-The [Product Intent](../intent_learning_program_app.md) requires Agonara to keep shared Program content separate from each student's personal learning state. It also says LLM suggestions are assistance for a curator and are not accepted content until the curator accepts them.
+The [Product Intent](../intent/intent_learning_program_app.md) requires Agonara to keep shared Program content separate from each student's personal learning state. It also says LLM suggestions are assistance for a curator and are not accepted content until the curator accepts them.
 
-The [Curator User Stories](../curator_user_stories.md) require curators to add topics, concepts, materials, checks, criteria, sources, extracted candidates, coverage gaps, and LLM suggestions while keeping accepted content separate from drafts.
+The [Curator User Stories](../intent/curator_user_stories.md) require curators to add topics, concepts, materials, checks, criteria, sources, extracted candidates, coverage gaps, and LLM suggestions while keeping accepted content separate from drafts.
 
 The [Module Responsibility Map](../module_responsibility_map.md) identifies Corpus Storage as the owner of accepted corpus and Curator Workspace as the owner of draft/research work. This ADR accepts the boundary for how candidate curation state crosses into accepted corpus.
 

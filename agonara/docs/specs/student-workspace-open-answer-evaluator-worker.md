@@ -13,7 +13,7 @@ type: spec
 
 Define the Agonara v0.0.1 contract for an in-process Student Workspace open-answer evaluator worker that claims evaluator jobs, executes a governed evaluator policy, and submits candidate results back through Student Workspace.
 
-This spec operationalizes [ADR-015](../adr/adr-015-open-answer-evaluator-worker-provider-boundary.md), depends on [Student Workspace Open-Answer Evaluator Orchestration](student-workspace-open-answer-evaluator-orchestration.md), and preserves STU-13 and INT-05 from [Product Intent](../intent_learning_program_app.md). It does not add public HTTP evaluator mutation routes, durable queue technology, external LLM calls, raw artifact persistence, raw artifact backup/export, human-review queues, UI, mastery, weak-area, progress, next-step, grading, analytics, or deployment topology.
+This spec operationalizes [ADR-015](../adr/adr-015-open-answer-evaluator-worker-provider-boundary.md), depends on [Student Workspace Open-Answer Evaluator Orchestration](student-workspace-open-answer-evaluator-orchestration.md), and preserves STU-13 and INT-05 from [Product Intent](../intent/intent_learning_program_app.md). It does not add public HTTP evaluator mutation routes, durable queue technology, external LLM calls, raw artifact persistence, raw artifact backup/export, human-review queues, UI, mastery, weak-area, progress, next-step, grading, analytics, or deployment topology.
 
 ## Public interface
 

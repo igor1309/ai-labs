@@ -96,7 +96,7 @@ The slice should prove that Agonara has an internal subject of ownership and act
 
 This slice supports the Product Intent by making curator and student actions attributable to internal Identities. It primarily protects INT-01 through authorization-gated curator acceptance and INT-02 through INT-07 by keeping student actions tied to stable learner state.
 
-The admin-facing stories that drive this slice live in [admin_user_stories.md](admin_user_stories.md), especially ADM-01 through ADM-11.
+The admin-facing stories that drive this slice live in [admin_user_stories.md](intent/admin_user_stories.md), especially ADM-01 through ADM-11.
 
 The remaining implementation handoff should treat accepted ADRs as source of truth over provisional candidate wording in this Pre-ADR.
 
