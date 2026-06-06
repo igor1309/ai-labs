@@ -296,6 +296,20 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('release-unit.yml Agonara deploy jobs must be scoped to Agonara tags and promote staging before production'));
   });
 
+  it('fails when staging deploy is not scoped to Agonara tags', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(
+        "    if: ${{ needs.verify.outputs.basename == 'agonara' }}",
+        '',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml Agonara deploy jobs must be scoped to Agonara tags and promote staging before production'));
+  });
+
   it('fails when the CI dispatcher does not route Agonara package lock changes', () => {
     writeAgonaraReleaseRepo(tmp, {
       ciWorkflow: validCiWorkflow().replace(
