@@ -2,7 +2,11 @@
 
 ## 2026-06-06
 
-- Products page: linked the Clipdeck card title to the deployed `clipdeck.enoa.ai` app and covered it with the existing static products-page regression test suite.
+- Products page: linked the `AI Labs` header back to the parent internal landing index.
+
+- Claude Insights: added a local landing at `claude-insights/index.html`, linked the products-page card to it, and extended the static products-page link regression.
+
+- Products page: linked the full Clipdeck card to the deployed `clipdeck.enoa.ai` app and covered it with the existing static products-page regression test suite.
 
 - Internal landings: added `nomos/index.html` as the Nomos project landing and linked it from the root landing. Updated `docs/products.html` so product cards with existing local static pages open their landing surfaces (Agonara, Oracle, Dev Skills, Reinix, Nomos, Notio), with a regression test that verifies the links and targets.
 

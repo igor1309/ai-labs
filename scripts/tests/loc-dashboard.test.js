@@ -81,6 +81,7 @@ it('links product cards to existing local landing pages', () => {
     '../oracle/apps/am-i-done-web/src/landing.html',
     '../dev-skills/index.html',
     '../reinix/docs/landing.html',
+    '../claude-insights/index.html',
     '../nomos/index.html',
     '../notio/frontend/index.html',
   ];
@@ -100,7 +101,7 @@ it('links the Clipdeck product card to the deployed app', () => {
 
   assert.match(
     productsHtml,
-    /<span class="product-name"><a href="https:\/\/clipdeck\.enoa\.ai">Clipdeck<\/a><\/span>/
+    /<a class="product reveal" href="https:\/\/clipdeck\.enoa\.ai">\s*<div class="product-header">\s*<span class="product-name">Clipdeck<\/span>/
   );
 });
 
