@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Mark the Identity & Role Management first-slice spec implemented with evidence links to the identity command boundary, persistence, backup/restore coverage, HTTP/CLI acceptance, and the Admin UI board.
 - Clarify the Program Shell and Membership API status note so the base slice boundary does not overclaim absence of later invitation and recovery routes.
 - Mark the Program Shell and Membership API spec implemented with evidence links to route adapters, delegated Program commands, focused HTTP coverage, and executable acceptance.
 - Mark the Program Shell and Membership first-slice spec implemented with evidence links to the domain boundary, persistence, backup/restore coverage, effective participation, and membership events.
