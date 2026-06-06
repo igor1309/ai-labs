@@ -77,6 +77,16 @@ describe('release-unit workflow fan-in', () => {
     assert.ok(notify.includes('deploy-agonara-staging=${{ needs.deploy-agonara-staging.result }}'));
     assert.ok(notify.includes('deploy-agonara-prod=${{ needs.deploy-agonara-prod.result }}'));
   });
+
+  it('cleans Agonara smoke artifacts when smoke execution fails', () => {
+    const stagingDeploy = jobSection('deploy-agonara-staging');
+    const prodDeploy = jobSection('deploy-agonara-prod');
+
+    assert.ok(stagingDeploy.includes("trap 'rm -f /tmp/agonara-smoke.json' EXIT"));
+    assert.ok(prodDeploy.includes("trap 'rm -f /tmp/agonara-smoke.json' EXIT"));
+    assert.ok(!stagingDeploy.includes("&& rm -f /tmp/agonara-smoke.json"));
+    assert.ok(!prodDeploy.includes("&& rm -f /tmp/agonara-smoke.json"));
+  });
 });
 
 function jobSection(jobName) {

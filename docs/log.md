@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Release units: harden Agonara release smoke cleanup so transient evaluator-smoke JSON files are removed inside the container on both success and failure.
 - Release units: add `scripts/release/check-agonara-release-readiness.js` to verify Agonara first-release tag, trunk, manifest/package sync, Docker-unit status, and release workflow fan-in before pushing `agonara_v0.1.0`.
 - Release units: add a fail-fast Agonara deploy secret preflight in `release-unit.yml`, validating the required GitHub secret names before source upload without printing secret values.
 - Release units: register Agonara as the `agonara_v0.1.0` Docker-producing unit, wire tag-driven staging and internal-prod deploy jobs into `release-unit.yml`, require both Agonara deploys before GitHub Release, add Agonara to release-validation path filtering, and keep first release execution gated on explicit tag push plus GitHub deploy SSH secrets.
