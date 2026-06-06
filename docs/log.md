@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-06
+
+- My Way research: added `docs/my-way/research/intent-debt-osmani.md` — a tight summary of Addy Osmani's *The Intent Debt* (June 5, 2026) and what it means for My Way. Osmani's "three independent debts" is the *unmanaged* failure state; My Way's traceability chain (`intent → ADR → spec → test names`) re-couples those domains and banks trust at construction time, so it is a stronger answer than the essay's loose remedies — not a target for bolt-on review gates. Honest borrow: vocabulary, not mechanism ("intent debt — the one debt an agent can't repay"). Open question: where a load-bearing-but-sub-ADR rationale (the 300ms-debounce case) lives in the chain.
+
 ## 2026-06-04
 
 - My Way landing (`docs/my-way/landing.html`): added a **Traceability** section and a traceability annotation band under the loop diagram, importing ideas from the `traceability-review` skill — the invariant (no loss, no contradiction; siblings don't diverge), forward/downward allocation completeness, backward/upward orphan (scope-creep) check, and complete enumeration as the method, with suggest-only + umbrella-ledger noted as mechanics.
