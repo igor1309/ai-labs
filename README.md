@@ -45,6 +45,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 
 | Component | Type | Description |
 |-----------|------|-------------|
+| .agents | Agent docs | Progressive-disclosure repository-specific agent docs referenced from `CLAUDE.md` / `AGENTS.md` |
 | agents | Agent definitions | OpenClaw agent-fleet operational docs and nested specialized agent definitions |
 | agonara | Product | API-first structured learning program environment with curated programs, learner progression, and evidence of mastery |
 | nexum | Product | Private repo memory system |
