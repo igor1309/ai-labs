@@ -108,6 +108,9 @@ function runReadinessChecks() {
   checks.push('release workflow');
 
   checkLockedReleaseInstall(version, workflow);
+  checkDeployUploadPreflight('agonara/scripts/deploy-staging.sh', 'compose.staging.yml');
+  checkDeployUploadPreflight('agonara/scripts/deploy-prod.sh', 'compose.prod.yml');
+  checks.push('deploy upload preflight');
 
   if (checkGithubSecrets) {
     checkGithubDeploySecretNames();
@@ -181,6 +184,39 @@ function checkLockedReleaseInstall(version, workflow) {
     throw new Error('ci.yml must route agonara/package-lock.json changes to Agonara core');
   }
   checks.push('locked release install');
+}
+
+function checkDeployUploadPreflight(scriptPath, composeFile) {
+  const fullPath = join(repoRoot, scriptPath);
+  if (!existsSync(fullPath)) {
+    throw new Error(`${scriptPath} is missing`);
+  }
+  const script = readFileSync(fullPath, 'utf8');
+  const requiredNeedles = [
+    'require_upload_file "${UPLOAD_ROOT}/Dockerfile"',
+    'require_upload_file "${UPLOAD_ROOT}/package.json"',
+    'require_upload_file "${UPLOAD_ROOT}/package-lock.json"',
+    `require_upload_file "\${UPLOAD_ROOT}/${composeFile}"`,
+    'require_upload_directory "${UPLOAD_ROOT}/src"',
+    'require_upload_directory "${UPLOAD_ROOT}/scripts"',
+    'require_upload_payload',
+    'cd "${DEPLOY_ROOT}"',
+  ];
+  if (!appearsInOrder(script, requiredNeedles)) {
+    throw new Error(`${scriptPath} must preflight required upload files before cd "\${DEPLOY_ROOT}"`);
+  }
+}
+
+function appearsInOrder(text, needles) {
+  let cursor = -1;
+  for (const needle of needles) {
+    const index = text.indexOf(needle, cursor + 1);
+    if (index === -1) {
+      return false;
+    }
+    cursor = index;
+  }
+  return true;
 }
 
 function checkGithubDeploySecretNames() {

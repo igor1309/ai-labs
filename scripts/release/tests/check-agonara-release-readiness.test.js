@@ -39,6 +39,7 @@ describe('check-agonara-release-readiness', () => {
 
     assert.equal(result.exitCode, 0, result.stderr);
     assert.ok(result.stdout.includes('OK locked release install'));
+    assert.ok(result.stdout.includes('OK deploy upload preflight'));
     assert.ok(result.stdout.includes('Agonara release readiness passed for agonara_v0.1.0.'));
   });
 
@@ -132,6 +133,22 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('ci.yml must route agonara/package-lock.json changes to Agonara core'));
   });
 
+  it('fails when deploy scripts can mutate the deploy root before upload preflight', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      deployProd: [
+        '#!/usr/bin/env bash',
+        'set -euo pipefail',
+        'cd "${DEPLOY_ROOT}"',
+        'cp "${UPLOAD_ROOT}/Dockerfile" .',
+      ].join('\n'),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/deploy-prod.sh must preflight required upload files before cd "${DEPLOY_ROOT}"'));
+  });
+
   it('passes the GitHub secret check when required deploy secret names exist', () => {
     writeAgonaraReleaseRepo(tmp);
     const fakeGhBin = writeFakeGhSecretList([
@@ -183,6 +200,8 @@ function writeAgonaraReleaseRepo(dir, {
   dockerfile = validDockerfile(),
   workflow = validReleaseWorkflow(),
   ciWorkflow = validCiWorkflow(),
+  deployStaging = validDeployScript('compose.staging.yml'),
+  deployProd = validDeployScript('compose.prod.yml'),
 } = {}) {
   git(dir, 'init -b trunk');
   git(dir, 'config commit.gpgSign false');
@@ -196,6 +215,9 @@ function writeAgonaraReleaseRepo(dir, {
     packages: { '': { name: 'agonara', version: '0.1.0' } },
   }));
   writeFileSync(join(dir, 'agonara/Dockerfile'), dockerfile);
+  mkdirSync(join(dir, 'agonara/scripts'), { recursive: true });
+  writeFileSync(join(dir, 'agonara/scripts/deploy-staging.sh'), deployStaging);
+  writeFileSync(join(dir, 'agonara/scripts/deploy-prod.sh'), deployProd);
   writeFileSync(join(dir, 'release-units.config.toml'), 'paths = ["agonara"]\n');
   writeFileSync(
     join(dir, 'release-units.toml'),
@@ -215,6 +237,21 @@ function validDockerfile() {
     'FROM node:22',
     'COPY --chown=agonara:agonara package.json package-lock.json ./',
     'RUN npm ci --omit=dev',
+  ].join('\n');
+}
+
+function validDeployScript(composeFile) {
+  return [
+    '#!/usr/bin/env bash',
+    'set -euo pipefail',
+    'require_upload_file "${UPLOAD_ROOT}/Dockerfile"',
+    'require_upload_file "${UPLOAD_ROOT}/package.json"',
+    'require_upload_file "${UPLOAD_ROOT}/package-lock.json"',
+    `require_upload_file "\${UPLOAD_ROOT}/${composeFile}"`,
+    'require_upload_directory "${UPLOAD_ROOT}/src"',
+    'require_upload_directory "${UPLOAD_ROOT}/scripts"',
+    'require_upload_payload',
+    'cd "${DEPLOY_ROOT}"',
   ].join('\n');
 }
 
