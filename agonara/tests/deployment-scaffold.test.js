@@ -298,6 +298,19 @@ test("backupRestoreScripts_shouldRequireOffHostBackupAndRestoreThroughProdCompos
   );
 });
 
+test("productionRestore_shouldValidateArchiveBeforeMutatingData", () => {
+  assert.equal(
+    appearsInOrder(files.restoreProd, [
+      'test -s "${BACKUP_FILE}"',
+      'docker run --rm -v "$(dirname "${BACKUP_FILE}"):/restore:ro" alpine:3.20 tar -tzf "/restore/${BACKUP_BASENAME}"',
+      '"${COMPOSE[@]}" down',
+      "find /data -mindepth 1",
+      "tar -xzf",
+    ]),
+    true,
+  );
+});
+
 test("stagingBackupRestoreScripts_shouldRehearseOffHostBackupAgainstStagingVolume", () => {
   assert.deepEqual(
     {

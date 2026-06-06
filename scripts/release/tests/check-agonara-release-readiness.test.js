@@ -43,6 +43,7 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stdout.includes('OK deploy health gate'));
     assert.ok(result.stdout.includes('OK rollback health gate'));
     assert.ok(result.stdout.includes('OK production backup'));
+    assert.ok(result.stdout.includes('OK production restore'));
     assert.ok(result.stdout.includes('Agonara release readiness passed for agonara_v0.1.0.'));
   });
 
@@ -510,6 +511,20 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('agonara/scripts/backup-prod.sh must create a non-empty production data archive, recover service, copy off-host, and prune local retention'));
   });
 
+  it('fails when production restore does not validate the archive before mutation', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      restoreProd: validRestoreScript().replace(
+        'docker run --rm -v "$(dirname "${BACKUP_FILE}"):/restore:ro" alpine:3.20 tar -tzf "/restore/${BACKUP_BASENAME}" >/dev/null\n',
+        '',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/restore-prod.sh must validate the backup before replacing production data, restart without rebuild, and health-gate availability'));
+  });
+
   it('passes the GitHub secret check when required deploy secret names exist', () => {
     writeAgonaraReleaseRepo(tmp);
     const fakeGhBin = writeFakeGhSecretList([
@@ -565,6 +580,7 @@ function writeAgonaraReleaseRepo(dir, {
   deployProd = validDeployScript('compose.prod.yml'),
   rollbackProd = validRollbackScript(),
   backupProd = validBackupScript(),
+  restoreProd = validRestoreScript(),
 } = {}) {
   git(dir, 'init -b trunk');
   git(dir, 'config commit.gpgSign false');
@@ -583,6 +599,7 @@ function writeAgonaraReleaseRepo(dir, {
   writeFileSync(join(dir, 'agonara/scripts/deploy-prod.sh'), deployProd);
   writeFileSync(join(dir, 'agonara/scripts/rollback-prod.sh'), rollbackProd);
   writeFileSync(join(dir, 'agonara/scripts/backup-prod.sh'), backupProd);
+  writeFileSync(join(dir, 'agonara/scripts/restore-prod.sh'), restoreProd);
   writeFileSync(join(dir, 'release-units.config.toml'), 'paths = ["agonara"]\n');
   writeFileSync(
     join(dir, 'release-units.toml'),
@@ -678,6 +695,34 @@ function validBackupScript() {
     '"${RSYNC[@]}" "${BACKUP_DIR}/${BACKUP_FILE}" "${BACKUP_REMOTE}/"',
     'find "${BACKUP_DIR}" -type f -name "agonara-data-*.tar.gz" -mtime "+${BACKUP_RETENTION_DAYS}" -delete',
     'echo "Production backup successful: ${BACKUP_FILE}"',
+  ].join('\n');
+}
+
+function validRestoreScript() {
+  return [
+    '#!/usr/bin/env bash',
+    'set -euo pipefail',
+    'DEPLOY_ROOT="${AGONARA_DEPLOY_ROOT:-/opt/agonara}"',
+    'DATA_VOLUME="${AGONARA_DATA_VOLUME:-agonara-prod_agonara-data}"',
+    'BACKUP_FILE="${1:-}"',
+    'COMPOSE=(docker compose --env-file .env.prod -f compose.prod.yml)',
+    'if [[ -z "${BACKUP_FILE}" ]]; then',
+    '  echo "backup file path is required" >&2',
+    '  exit 1',
+    'fi',
+    'if [[ ! -f "${BACKUP_FILE}" ]]; then',
+    '  echo "backup file not found: ${BACKUP_FILE}" >&2',
+    '  exit 1',
+    'fi',
+    'test -s "${BACKUP_FILE}"',
+    'BACKUP_BASENAME="$(basename "${BACKUP_FILE}")"',
+    'docker run --rm -v "$(dirname "${BACKUP_FILE}"):/restore:ro" alpine:3.20 tar -tzf "/restore/${BACKUP_BASENAME}" >/dev/null',
+    'cd "${DEPLOY_ROOT}"',
+    '"${COMPOSE[@]}" down',
+    'docker run --rm -v "${DATA_VOLUME}:/data" -v "$(dirname "${BACKUP_FILE}"):/restore:ro" alpine:3.20 sh -c \'find /data -mindepth 1 -exec rm -rf {} + && tar -xzf "/restore/$1" -C /data\' sh "${BACKUP_BASENAME}"',
+    '"${COMPOSE[@]}" up -d --no-build --wait',
+    rollbackHealthGate(),
+    'echo "Production restore successful"',
   ].join('\n');
 }
 

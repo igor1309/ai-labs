@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Preflight production restore archives for non-empty, readable tar content before shutting down or replacing data, and enforce the destructive ordering, no-rebuild restart, and health gate in first-release readiness.
 - Extend the Agonara first-release readiness check to verify production backup requires off-host storage, recovers service on archive failure, rejects empty archives, transfers successfully, and prunes local retention.
 - Extend the Agonara first-release readiness check to verify production rollback restores the retained image without rebuilding and health-gates service availability independently of the failed target version.
 - Extend the Agonara first-release readiness check to verify deploy jobs are scoped to Agonara tags and production depends on staging.
