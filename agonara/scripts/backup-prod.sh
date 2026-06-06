@@ -34,6 +34,7 @@ trap restart_prod EXIT
 "${COMPOSE[@]}" stop agonara
 docker run --rm -v "${DATA_VOLUME}:/data:ro" -v "${BACKUP_DIR}:/backup" alpine:3.20 tar -czf "/backup/${BACKUP_FILE}" -C /data .
 test -s "${BACKUP_DIR}/${BACKUP_FILE}"
+docker run --rm -v "${BACKUP_DIR}:/backup:ro" alpine:3.20 sh -c 'tar -tzf "/backup/$1" | grep -Fx "./agonara.sqlite"' sh "${BACKUP_FILE}" >/dev/null
 "${COMPOSE[@]}" start agonara
 trap - EXIT
 "${RSYNC[@]}" "${BACKUP_DIR}/${BACKUP_FILE}" "${BACKUP_REMOTE}/"

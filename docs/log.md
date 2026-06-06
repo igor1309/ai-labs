@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Release units: require Agonara production backups to contain the restore-critical SQLite database before transfer or reported success, and enforce it in first-release readiness.
 - Release units: harden Agonara production restore against corrupt archives before destructive mutation and enforce the validated restore lifecycle in first-release readiness.
 - Release units: extend the Agonara first-release readiness check to enforce fail-closed production backup, off-host transfer, service recovery, and local retention pruning.
 - Release units: extend the Agonara first-release readiness check to enforce deterministic, version-independent production rollback with a post-restore availability gate.

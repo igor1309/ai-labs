@@ -318,6 +318,18 @@ test("productionRestore_shouldRequireAgonaraDatabaseInArchive", () => {
   );
 });
 
+test("productionBackup_shouldRequireAgonaraDatabaseInArchiveBeforeTransfer", () => {
+  assert.equal(
+    appearsInOrder(files.backupProd, [
+      'test -s "${BACKUP_DIR}/${BACKUP_FILE}"',
+      'tar -tzf "/backup/$1" | grep -Fx "./agonara.sqlite"',
+      '"${COMPOSE[@]}" start agonara',
+      '"${RSYNC[@]}" "${BACKUP_DIR}/${BACKUP_FILE}" "${BACKUP_REMOTE}/"',
+    ]),
+    true,
+  );
+});
+
 test("stagingBackupRestoreScripts_shouldRehearseOffHostBackupAgainstStagingVolume", () => {
   assert.deepEqual(
     {
