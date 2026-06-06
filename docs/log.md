@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- LOC dashboard: refreshed `docs/loc-dashboard.html` from `scripts/loc-dashboard.sh --sort=name` so the summary cards, table totals, data array, and update date match the current repo snapshot (total 220,762→230,345).
 - Release units: harden Agonara container readiness against stage, healthcheck, and entrypoint overrides.
 - Release units: enforce Agonara's non-root, runtime-owned container boundary and Node-native healthcheck before the first release tag.
 - Release units: harden Agonara Compose isolation readiness against comment and alternate-port bypasses, and require database state on the isolated data volume.
