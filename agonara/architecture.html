@@ -20,6 +20,8 @@
     --student:  #6fb89a;
     --curator:  #b994e0;
     --admin:    #d97757;
+    --corpus:   #d9a657;
+    --membership:#7aa2c2;
     --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
   }
   * { box-sizing: border-box; }
@@ -121,8 +123,8 @@
     padding: 22px 24px;
     margin-bottom: 14px;
   }
-  .module-block.corpus     { border-left-color: var(--accent); }
-  .module-block.membership { border-left-color: var(--curator); }
+  .module-block.corpus     { border-left-color: var(--corpus); }
+  .module-block.membership { border-left-color: var(--membership); }
   .module-block.curator    { border-left-color: var(--curator); }
   .module-block.student    { border-left-color: var(--student); }
   .module-block.identity   { border-left-color: var(--admin); }
@@ -314,7 +316,7 @@
   </div>
 
   <div class="module-block identity">
-    <div class="name"><h3>Identity &amp; Role Management</h3><span class="files">identity.js · cli.js</span></div>
+    <div class="name"><h3>Identity &amp; Role Management</h3><span class="files">identity.js</span></div>
     <p class="resp">Defines and manages identities, credentials, operational roles, and access primitives.</p>
     <div class="ownership">
       <div class="col owns"><h4>Owns</h4>

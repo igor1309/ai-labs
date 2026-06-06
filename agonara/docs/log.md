@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Harden the new landing/architecture pages after adversarial review: hedge the landing's deployment language to mark the dockerized self-hosted shape as a provisional target (matching `deployment-target.md`), give each of the five modules a distinct accent so colour uniquely identifies a module, and scope the Identity module block to `identity.js` so `cli.js` is attributed once as the Operator CLI surface.
 - Add `index.html` project landing reflecting the current implementation snapshot (five-module split, shipped slices, product surfaces, stack) in the established Agonara brand style, with a progressive-disclosure link to a new `architecture.html` covering the module responsibility map, ownership rules, open-answer evaluation flow, source layout, runtime/storage, cross-cutting concerns, deployment, and the ADR index; surface both from the workspace landing index and the project README.
 
 ## 2026-06-04

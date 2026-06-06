@@ -20,6 +20,8 @@
     --student:  #6fb89a;
     --curator:  #b994e0;
     --admin:    #d97757;
+    --corpus:   #d9a657;
+    --membership:#7aa2c2;
     --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
   }
   * { box-sizing: border-box; }
@@ -184,16 +186,16 @@
 
   /* Module cards with role colors */
   .module { border-left: 2px solid var(--rule-2); }
-  .module.corpus     { border-left-color: var(--accent); }
-  .module.membership { border-left-color: var(--curator); }
+  .module.corpus     { border-left-color: var(--corpus); }
+  .module.membership { border-left-color: var(--membership); }
   .module.curator    { border-left-color: var(--curator); }
   .module.student    { border-left-color: var(--student); }
   .module.identity   { border-left-color: var(--admin); }
-  .module .kicker.corpus,
-  .module .kicker.identity { color: var(--accent-2); }
-  .module .kicker.membership,
-  .module .kicker.curator { color: var(--curator); }
-  .module .kicker.student { color: var(--student); }
+  .module .kicker.corpus     { color: var(--corpus); }
+  .module .kicker.membership { color: var(--membership); }
+  .module .kicker.curator    { color: var(--curator); }
+  .module .kicker.student    { color: var(--student); }
+  .module .kicker.identity   { color: var(--accent-2); }
   .owns {
     margin-top: 4px;
     font-size: 12.5px;
@@ -357,7 +359,7 @@
     <strong>AI assists, but does not own the curriculum.</strong>
   </p>
   <div class="hero-meta">
-    <span class="pill"><span class="dot"></span>Private self-hosted instance</span>
+    <span class="pill"><span class="dot"></span>Private self-hosted instance <span style="color:var(--text-3)">· target</span></span>
     <span class="pill"><span class="dot"></span>Node.js 22 · SQLite</span>
     <span class="pill"><span class="dot"></span>API-first + <code>/learn</code> &amp; <code>/admin</code> UI</span>
   </div>
@@ -565,7 +567,7 @@
 <section id="stack">
   <p class="eyebrow">Stack</p>
   <h2 class="section-title">Built for a private instance</h2>
-  <p class="lede">Small, self-hostable, and recoverable — runs the same in a container or locally for development.</p>
+  <p class="lede">Small, self-hostable, and recoverable — runs the same in a container or locally for development. The dockerized private self-hosted shape is the current <em>target</em>, provisional until an ADR accepts the operational boundary (see <a href="architecture.html#deployment">Architecture → Deployment</a>).</p>
   <div class="chips">
     <span class="chip">Node.js <span>22</span></span>
     <span class="chip">better-sqlite3 <span>^11.8</span></span>
