@@ -196,6 +196,16 @@ test("deploymentScripts_shouldBuildOnVpsTagImagesAndHealthGate_onExpectedVersion
       rollbackDoesNotRequireCurrentVersion: !files.rollbackProd.includes("EXPECTED_VERSION"),
       stagingHealthGatesVersion: containsAll(files.deployStaging, ["operations/health", "version", "DEPLOY_VERSION"]),
       prodHealthGatesVersion: containsAll(files.deployProd, ["operations/health", "version", "DEPLOY_VERSION"]),
+      stagingHealthGateParsesJson: files.deployStaging.includes("response.json()"),
+      prodHealthGateParsesJson: files.deployProd.includes("response.json()"),
+      stagingHealthGateChecksStatusAndVersion: containsAll(files.deployStaging, [
+        'health.status !== "ok"',
+        "health.version !== process.env.EXPECTED_VERSION",
+      ]),
+      prodHealthGateChecksStatusAndVersion: containsAll(files.deployProd, [
+        'health.status !== "ok"',
+        "health.version !== process.env.EXPECTED_VERSION",
+      ]),
       deployScriptsDoNotRequireWget: !`${files.deployStaging}\n${files.deployProd}\n${files.rollbackProd}`.includes(
         "wget",
       ),
@@ -227,6 +237,10 @@ test("deploymentScripts_shouldBuildOnVpsTagImagesAndHealthGate_onExpectedVersion
       rollbackDoesNotRequireCurrentVersion: true,
       stagingHealthGatesVersion: true,
       prodHealthGatesVersion: true,
+      stagingHealthGateParsesJson: true,
+      prodHealthGateParsesJson: true,
+      stagingHealthGateChecksStatusAndVersion: true,
+      prodHealthGateChecksStatusAndVersion: true,
       deployScriptsDoNotRequireWget: true,
     },
   );

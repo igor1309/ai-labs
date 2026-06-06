@@ -77,6 +77,6 @@ docker tag agonara:staging "agonara:${DEPLOY_VERSION}"
 docker tag agonara:staging "agonara:${DEPLOY_GIT_SHA}"
 "${COMPOSE[@]}" down
 "${COMPOSE[@]}" up -d --no-build --wait
-docker exec -e EXPECTED_VERSION="${DEPLOY_VERSION}" agonara-staging node -e 'fetch("http://127.0.0.1:8080/operations/health").then(response => response.text()).then(body => { if (!body.includes(`"version":"${process.env.EXPECTED_VERSION}"`)) process.exit(1); }).catch(() => process.exit(1))'
+docker exec -e EXPECTED_VERSION="${DEPLOY_VERSION}" agonara-staging node -e 'fetch("http://127.0.0.1:8080/operations/health").then(response => response.json()).then(health => { if (health.status !== "ok" || health.version !== process.env.EXPECTED_VERSION) process.exit(1); }).catch(() => process.exit(1))'
 
 echo "Staging deploy successful"

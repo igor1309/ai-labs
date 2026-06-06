@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Harden staging and production deploy health gates to parse `/operations/health` JSON and require both `status: ok` and the expected version.
 - Extend the Agonara first-release readiness check to verify the release workflow cleans `/tmp/agonara-deploy` before copying source.
 - Clean `/tmp/agonara-deploy` before copying Agonara release source so stale upload files cannot satisfy current deploy-script preflight.
 - Extend the Agonara first-release readiness check to verify staging/prod deploy scripts preflight required uploaded files before mutating the deploy root.
