@@ -70,7 +70,7 @@ TLS route and GitHub deploy secrets) and the still-open operational questions in
 | CI (core) | `.github/workflows/agonara-core.yml` exists — tests + `docker build` + container smoke (`/operations/health`, bootstrap, admin UI) |
 | Container | `agonara/Dockerfile` (node:22-slim, non-root, `/data` sqlite volume, `HEALTHCHECK` on `/operations/health`, `EXPOSE 8080`) |
 | Compose | `agonara/compose.yaml` for local/dev plus `compose.staging.yml` / `compose.prod.yml` for VPS staging/prod; staging binds `127.0.0.1:18081:8080`, prod binds `127.0.0.1:18080:8080`, each with distinct named volumes and host-side env files |
-| Deploy job | `release-unit.yml` has `deploy-agonara-staging` and `deploy-agonara-prod`; `github-release` requires both to succeed for `agonara` tags, and deploy failures fan into the shared Telegram failure workflow |
+| Deploy job | `release-unit.yml` has `deploy-agonara-staging` and `deploy-agonara-prod`; `github-release` requires both to succeed for `agonara` tags, Agonara deploy secrets fail fast before source upload, and deploy failures fan into the shared Telegram failure workflow |
 | Deploy scripts | `agonara/scripts/deploy-staging.sh`, `deploy-prod.sh`, `rollback-prod.sh`, `backup-staging.sh`, `restore-staging.sh`, `backup-prod.sh`, `restore-prod.sh` exist and are wired for CI source upload |
 | Staging/prod compose | Present. Staging is live on `root@172.245.246.108`: `agonara-staging` healthy on loopback `127.0.0.1:18081`, health returns version `0.0.0`, Caddy serves `https://staging.agonara.enoa.ai/operations/health`, a real open-answer evaluator smoke passed through the operations trigger and dedicated Nomos staging project, and staging `/data` backup/restore has been rehearsed from off-host storage. Prod is deployed internally as `agonara`, loopback-bound on `127.0.0.1:18080`, with distinct prod env secrets, a dedicated Nomos prod project/key, real evaluator smoke, daily off-host backup cron, and a restore drill from the downloaded off-host artifact. No prod public hostname/TLS route yet |
 | Health/version | `/operations/health` returns `{status, version, checkedAt, requestId}` — version sourced from `package.json` (§6a, implemented) |
@@ -284,7 +284,8 @@ job invokes the §6 features (version verify, real-LLM smoke).
       health + version.
 - [ ] Add repo secrets: `AGONARA_VPS_HOST`, `AGONARA_VPS_USER`, and
       `AGONARA_VPS_SSH_KEY`. Provider/smoke secrets stay host-side in the tier
-      env files. (`CI_BOT_TOKEN` / `CI_CHAT_ID` already exist.)
+      env files. The staging deploy job validates these secret names before
+      uploading source. (`CI_BOT_TOKEN` / `CI_CHAT_ID` already exist.)
 
 ### 7d. Docs / governance
 - [ ] Promote `agonara/docs/deployment-target.md` into the **ADR** described in

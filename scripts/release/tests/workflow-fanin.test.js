@@ -53,6 +53,16 @@ describe('release-unit workflow fan-in', () => {
     assert.ok(githubRelease.includes("needs.deploy-agonara-prod.result == 'success'"));
   });
 
+  it('fails fast when Agonara deploy secrets are missing', () => {
+    const stagingDeploy = jobSection('deploy-agonara-staging');
+
+    assert.ok(stagingDeploy.includes('Verify Agonara deploy secrets'));
+    assert.ok(stagingDeploy.includes('AGONARA_VPS_HOST: ${{ secrets.AGONARA_VPS_HOST }}'));
+    assert.ok(stagingDeploy.includes('AGONARA_VPS_USER: ${{ secrets.AGONARA_VPS_USER }}'));
+    assert.ok(stagingDeploy.includes('AGONARA_VPS_SSH_KEY: ${{ secrets.AGONARA_VPS_SSH_KEY }}'));
+    assert.ok(stagingDeploy.includes('::error::${name} is required for Agonara release deploy'));
+  });
+
   it('reports split Notio jobs in failure notifications', () => {
     const notify = jobSection('notify');
 

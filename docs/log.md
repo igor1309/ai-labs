@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Release units: add a fail-fast Agonara deploy secret preflight in `release-unit.yml`, validating the required GitHub secret names before source upload without printing secret values.
 - Release units: register Agonara as the `agonara_v0.1.0` Docker-producing unit, wire tag-driven staging and internal-prod deploy jobs into `release-unit.yml`, require both Agonara deploys before GitHub Release, add Agonara to release-validation path filtering, and keep first release execution gated on explicit tag push plus GitHub deploy SSH secrets.
 
 - agents: narrowed the OpenClaw tasks/TaskFlow ledger TODO to the ai-labs consequence only. The live VPS diagnosis, storage-path migration, and recheck schedule are inventory-owned; this repo now records only that cron-based agent observability must keep using wrapper-level fail-closed signals until inventory confirms the ledger is usable.

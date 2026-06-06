@@ -271,6 +271,22 @@ jobs:
         with:
           ref: ${{ github.ref_name }}
 
+      - name: Verify Agonara deploy secrets
+        env:
+          AGONARA_VPS_HOST: ${{ secrets.AGONARA_VPS_HOST }}
+          AGONARA_VPS_USER: ${{ secrets.AGONARA_VPS_USER }}
+          AGONARA_VPS_SSH_KEY: ${{ secrets.AGONARA_VPS_SSH_KEY }}
+        run: |
+          set -e
+          missing=0
+          for name in AGONARA_VPS_HOST AGONARA_VPS_USER AGONARA_VPS_SSH_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::${name} is required for Agonara release deploy"
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ]
+
       - name: Copy source files to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
