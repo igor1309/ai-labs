@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import http from "node:http";
 import { pathToFileURL } from "node:url";
 import { adminBoardHtml } from "./admin-ui.js";
@@ -20,6 +21,7 @@ export function createServer({
   now = () => new Date(),
   programCommands = null,
   studentWorkspaceCommands = null,
+  version = "0.0.0",
 } = {}) {
   const csrfTokens = new Map();
   const eventCursors = new Map();
@@ -131,6 +133,7 @@ export function createServer({
         const status = healthCheck();
         sendJson(response, 200, {
           status,
+          version,
           checkedAt: now().toISOString(),
           requestId,
         });
@@ -2563,12 +2566,19 @@ async function handleCorpusApi({
   return false;
 }
 
+export function readPackageVersion() {
+  const packageJsonUrl = new URL("../package.json", import.meta.url);
+  const packageJson = JSON.parse(readFileSync(packageJsonUrl, "utf8"));
+  return packageJson.version;
+}
+
 export function startServer({
   bootstrapSecret = process.env.AGONARA_BOOTSTRAP_SECRET,
   databasePath = process.env.AGONARA_DB_PATH ?? ":memory:",
   host = process.env.HOST ?? "0.0.0.0",
   log = logToStdout,
   port = process.env.PORT ?? "8080",
+  version = readPackageVersion(),
 } = {}) {
   if (!bootstrapSecret) {
     throw new Error("AGONARA_BOOTSTRAP_SECRET is required");
@@ -2606,6 +2616,7 @@ export function startServer({
     programCommands,
     studentWorkspaceCommands,
     log,
+    version,
   });
   server.on("close", () => {
     database.close();

@@ -1,5 +1,24 @@
 # Log
 
+## 2026-06-06
+
+- Agonara/product landings: clarified the API-first stance as shared backend contracts for browser UIs, operator commands, and future Agonara agent skills, without making UI or agent surfaces separate owners of workflow or state.
+
+- Products page: linked the `AI Labs` header back to the parent internal landing index.
+
+- Claude Insights: added a local landing at `claude-insights/index.html`, linked the products-page card to it, and extended the static products-page link regression.
+
+- Products page: linked the full Clipdeck card to the deployed `clipdeck.enoa.ai` app and covered it with the existing static products-page regression test suite.
+
+- Internal landings: added `nomos/index.html` as the Nomos project landing and linked it from the root landing. Updated `docs/products.html` so product cards with existing local static pages open their landing surfaces (Agonara, Oracle, Dev Skills, Reinix, Nomos, Notio), with a regression test that verifies the links and targets.
+
+- agents: narrowed the OpenClaw tasks/TaskFlow ledger TODO to the ai-labs consequence only. The live VPS diagnosis, storage-path migration, and recheck schedule are inventory-owned; this repo now records only that cron-based agent observability must keep using wrapper-level fail-closed signals until inventory confirms the ledger is usable.
+
+- CI path filtering (`.github/workflows/ci.yml`): scoped the `changes`-job filters so **docs-only edits skip the expensive per-project core jobs** while the required `report` check still runs. Replaced the blanket `<project>/**` globs for the six broad-glob projects (`nomos`, `oracle`, `web-scout`, `corpus-scout`, `reinix`, `agonara`) with explicit allowlists of build/test inputs — source, tests, manifests/lockfiles, and build/deploy descriptors (`Dockerfile`/`compose`/`Caddyfile`) — excluding `docs/`, READMEs, `TODO.md`, landing `*.html`, and reinix `research/`. Verified against each core job's actual `tsc`/`node --test` inputs (e.g. kept `reinix/examples/**` because `local-demo.test.js` asserts the demo README/settings, and `oracle/prompts`+`copy` as runtime inputs). Adversarial pass also narrowed the `shared` filter from `.github/workflows/**` to `*.yml`/`*.yaml` so editing the workflow docs (`README.md`/`CLAUDE.md`/`AGENTS.md`) no longer triggers the entire CI matrix. Documented the allowlist convention in `.github/workflows/README.md`. (Out of scope, noted not fixed: the `release` filter still uses whole-unit globs, so docs changes still run the cheap 5-min `release-validation`.)
+
+- Research: added `research/dokku-vs-current-deployment.md` — an evaluation note answering "is Dokku a better tool for the repo's dockerized deployments than the current pipeline?" Conclusion: no clear win for this repo. Caddy auto-TLS + the tag-driven GitHub-Actions→SSH→`docker compose up -d --build` pipeline already cover Dokku's headline features (TLS, zero-downtime, rollback snapshot); Dokku's `git push`-to-deploy model conflicts with the per-unit tag-driven semver release model; it touches only the minority VPS tier (Cloudflare/Supabase are untouched); Compose-multi-stack and the `notio` Cloudflare Tunnel blunt its value; and a new daemon contradicts the low-overhead goal in `nomos/docs/adr-0001`. Recommendation: keep the current model; for incremental gains, consolidate per-service `deploy-*.sh` into a shared tested helper. Filed as a research note (not an ADR) — it's an evaluation, not a standing decision.
+- My Way research: added `docs/my-way/research/intent-debt-osmani.md` — a tight summary of Addy Osmani's *The Intent Debt* (June 5, 2026) and what it means for My Way. Osmani's "three independent debts" is the *unmanaged* failure state; My Way's traceability chain (`intent → ADR → spec → test names`) re-couples those domains and banks trust at construction time, so it is a stronger answer than the essay's loose remedies — not a target for bolt-on review gates. Honest borrow: vocabulary, not mechanism ("intent debt — the one debt an agent can't repay"). Open question: where a load-bearing-but-sub-ADR rationale (the 300ms-debounce case) lives in the chain.
+
 ## 2026-06-04
 
 - My Way landing (`docs/my-way/landing.html`): added a **Traceability** section and a traceability annotation band under the loop diagram, importing ideas from the `traceability-review` skill — the invariant (no loss, no contradiction; siblings don't diverge), forward/downward allocation completeness, backward/upward orphan (scope-creep) check, and complete enumeration as the method, with suggest-only + umbrella-ledger noted as mechanics.

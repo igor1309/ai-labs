@@ -7,6 +7,12 @@ status: accepted
 
 # ADR-015 - Open-Answer Evaluator Worker and Provider Boundary
 
+> **Amended by [ADR-018](adr-018-open-answer-evaluator-real-provider-runtime.md).**
+> ADR-018 decides the non-goals this ADR deferred — worker runtime topology,
+> the requirement for a concrete validated output schema, the real-path
+> raw-artifact policy, and the provider credential mechanism — without
+> altering any invariant below.
+
 ## Executive Summary
 
 Agonara treats evaluator workers and provider adapters as execution agents behind the Student Workspace evaluator job boundary.

@@ -102,8 +102,10 @@ Recommended practice inside a flow:
 > stale while a 10-minute cron succeeded; `tasks maintenance` is all-zeros;
 > `doctor` finds no fault; no config gate. The orchestrator (ADR-001 §7) therefore
 > relies on its `/etc/cron.d` wrapper's fail-closed Telegram + log + per-scope state
-> for observability, not this ledger. Full diagnosis:
-> `phase4-substrate-spike-findings.md` §4. Watch + recheck 2026-06-16: `agents/TODO.md` §4.
+> for observability, not this ledger. Full historical ai-labs diagnosis:
+> `phase4-substrate-spike-findings.md` §4. Live OpenClaw diagnosis, versions,
+> storage paths, and recheck schedule are owned by the inventory repo
+> (`vps/OpenClaw/log.md` and `vps/OpenClaw/CLAUDE.md`).
 
 ## Live State on the VPS (2026-06-02)
 
