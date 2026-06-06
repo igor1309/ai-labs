@@ -2,6 +2,7 @@
 
 ## 2026-06-06
 
+- Release units: extend the Agonara first-release readiness check to verify deploy scripts require HTTP success, structured health JSON, `status: ok`, and the expected version.
 - Agonara: harden staging and production deploy health gates to require HTTP success, parse `/operations/health` JSON, and require both `status: ok` and the expected version.
 - Release units: extend the Agonara first-release readiness check to verify the release workflow cleans `/tmp/agonara-deploy` before copying source.
 - Release units: clean `/tmp/agonara-deploy` before copying Agonara release source so stale upload files cannot satisfy current deploy-script preflight.

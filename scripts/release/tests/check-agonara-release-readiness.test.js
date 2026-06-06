@@ -209,6 +209,20 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('agonara/scripts/deploy-prod.sh must invoke require_upload_payload before cd "${DEPLOY_ROOT}"'));
   });
 
+  it('fails when deploy scripts health gate by substring instead of structured JSON', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      deployProd: validDeployScript('compose.prod.yml').replace(
+        deployHealthGate(),
+        'fetch("http://127.0.0.1:8080/operations/health").then(response => response.text()).then(body => { if (!body.includes(`"version":"${process.env.EXPECTED_VERSION}"`)) process.exit(1); })',
+      ),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('agonara/scripts/deploy-prod.sh must health-gate HTTP success, status ok, and expected version from JSON'));
+  });
+
   it('passes the GitHub secret check when required deploy secret names exist', () => {
     writeAgonaraReleaseRepo(tmp);
     const fakeGhBin = writeFakeGhSecretList([
@@ -313,7 +327,12 @@ function validDeployScript(composeFile) {
     '',
     'require_upload_payload',
     'cd "${DEPLOY_ROOT}"',
+    deployHealthGate(),
   ].join('\n');
+}
+
+function deployHealthGate() {
+  return 'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); return response.json(); }).then(health => { if (health.status !== "ok" || health.version !== process.env.EXPECTED_VERSION) process.exit(1); })';
 }
 
 function validReleaseWorkflow() {

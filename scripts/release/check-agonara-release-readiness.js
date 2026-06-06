@@ -119,6 +119,9 @@ function runReadinessChecks() {
   checkDeployUploadPreflight('agonara/scripts/deploy-staging.sh', 'compose.staging.yml');
   checkDeployUploadPreflight('agonara/scripts/deploy-prod.sh', 'compose.prod.yml');
   checks.push('deploy upload preflight');
+  checkDeployHealthGate('agonara/scripts/deploy-staging.sh');
+  checkDeployHealthGate('agonara/scripts/deploy-prod.sh');
+  checks.push('deploy health gate');
 
   if (checkGithubSecrets) {
     checkGithubDeploySecretNames();
@@ -213,6 +216,24 @@ function checkDeployUploadPreflight(scriptPath, composeFile) {
   }
   if (!/(^|\n)require_upload_payload\n\n?cd "\$\{DEPLOY_ROOT\}"/.test(script)) {
     throw new Error(`${scriptPath} must invoke require_upload_payload before cd "\${DEPLOY_ROOT}"`);
+  }
+}
+
+function checkDeployHealthGate(scriptPath) {
+  const fullPath = join(repoRoot, scriptPath);
+  if (!existsSync(fullPath)) {
+    throw new Error(`${scriptPath} is missing`);
+  }
+  const script = readFileSync(fullPath, 'utf8');
+  const requiredNeedles = [
+    'operations/health',
+    '!response.ok',
+    'response.json()',
+    'health.status !== "ok"',
+    'health.version !== process.env.EXPECTED_VERSION',
+  ];
+  if (!requiredNeedles.every($0 => script.includes($0))) {
+    throw new Error(`${scriptPath} must health-gate HTTP success, status ok, and expected version from JSON`);
   }
 }
 
