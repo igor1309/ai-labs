@@ -2854,12 +2854,12 @@ components:
         application/json:
           schema:
             type: object
-            required: [checkRevisionId, answerText]
+            required: [checkRevisionId, submittedAnswer]
             properties:
               checkRevisionId:
                 type: string
                 minLength: 1
-              answerText:
+              submittedAnswer:
                 type: string
                 minLength: 1
             additionalProperties: false
