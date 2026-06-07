@@ -2,6 +2,9 @@
 
 ## 2026-06-07
 
+- Harden the OpenAPI Redocly lint guard by disabling Redocly telemetry in the
+  project config and the test subprocess environment, keeping the contract gate
+  deterministic and CI-safe.
 - Add the first OpenAPI automation guardrail: Agonara tests now run the
   hand-edited `docs/api/openapi.yml` through a pinned Redocly CLI dependency,
   keeping contract lint in the existing workspace test gate while the local

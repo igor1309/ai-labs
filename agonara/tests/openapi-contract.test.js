@@ -17,6 +17,11 @@ test("openApi_shouldPassRedoclyLint_onCanonicalContract", () => {
     {
       cwd: workspaceRoot,
       encoding: "utf8",
+      env: {
+        ...process.env,
+        REDOCLY_SUPPRESS_UPDATE_NOTICE: "true",
+        REDOCLY_TELEMETRY: "off",
+      },
     },
   );
 
