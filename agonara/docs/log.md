@@ -2,6 +2,9 @@
 
 ## 2026-06-07
 
+- Add Redocly lint to the Agonara test gate for the hand-edited OpenAPI
+  contract: `npm test --workspace agonara` now runs `redocly lint
+  docs/api/openapi.yml` after the node test suite.
 - Add an OpenAPI rejection-reason drift guard while the API contract remains
   hand-edited: `openapi-contract.test.js` now compares every
   `httpStatusFor(...)` case with `components.schemas.ApiRejectionReason`, and

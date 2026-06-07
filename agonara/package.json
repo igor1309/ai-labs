@@ -7,8 +7,9 @@
     "agonara": "src/cli.js"
   },
   "scripts": {
+    "openapi:lint": "redocly lint docs/api/openapi.yml",
     "start": "node src/server.js",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js && npm run openapi:lint"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1"
@@ -17,6 +18,7 @@
     "node": ">=22"
   },
   "devDependencies": {
+    "@redocly/cli": "^2.31.6",
     "yaml": "^2.9.0"
   }
 }
