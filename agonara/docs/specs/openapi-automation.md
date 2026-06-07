@@ -109,6 +109,7 @@ type OpenApiContractMetadata = {
   security?: Record<string, string[]>[];
   components: {
     securitySchemes: Record<string, JsonSchema>;
+    parameters: Record<string, JsonSchema>;
     schemas: Record<string, JsonSchema>;
     requestBodies: Record<string, JsonSchema>;
     responses: Record<string, JsonSchema>;
@@ -216,9 +217,10 @@ OpenAPI generation:
 Server and drift guards:
 
 18. `serverRouting_shouldUseRouteContractsForImplementedRoutes` covers rules 1, 2, 5, and 22.
-19. Existing focused HTTP API tests continue to pass for Identity, Program, Corpus, Curator Workspace, Student Workspace, Operations, and UI routes, covering rule 24.
-20. `agonaraTestGate_shouldRunOpenApiGenerationCheck` covers rule 21.
-21. Operator skill contract tests continue to read only the published OpenAPI contract and not server source, covering rule 23.
+19. `serverRouting_shouldCoverEveryHandlerKeyPrefix` covers rule 5.
+20. Existing focused HTTP API tests continue to pass for Identity, Program, Corpus, Curator Workspace, Student Workspace, Operations, and UI routes, covering rules 1, 2, and 24.
+21. `agonaraTestGate_shouldRunOpenApiGenerationCheck` covers rule 21.
+22. Operator skill contract tests continue to read only the published OpenAPI contract and not server source, covering rule 23.
 
 ## Done criteria
 

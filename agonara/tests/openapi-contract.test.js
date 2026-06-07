@@ -213,6 +213,15 @@ test("serverRouting_shouldRejectMethodMismatches", () => {
   assert.equal(matched.contract.operationId, "listPrograms");
 });
 
+test("serverRouting_shouldCoverEveryHandlerKeyPrefix", () => {
+  const handlerKeyPrefixes = collectServerHandlerKeyPrefixes(readFileSync(serverPath, "utf8"));
+  const unhandledHandlerKeys = routeContracts
+    .filter(route => !handlerKeyPrefixes.some(prefix => route.handlerKey.startsWith(prefix)))
+    .map($0 => $0.handlerKey);
+
+  assert.deepEqual(unhandledHandlerKeys, []);
+});
+
 test("agonaraTestGate_shouldRunOpenApiGenerationCheck", () => {
   const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 
@@ -230,6 +239,12 @@ function collectHttpStatusReasons(serverSource) {
   assert.notEqual(httpStatusFunction, undefined);
 
   return [...httpStatusFunction.matchAll(/case "([^"]+)":/g)]
+    .map($0 => $0[1])
+    .sort();
+}
+
+function collectServerHandlerKeyPrefixes(serverSource) {
+  return [...serverSource.matchAll(/hasHandlerKey\(routeMatch, "([^"]+)"\)/g)]
     .map($0 => $0[1])
     .sort();
 }

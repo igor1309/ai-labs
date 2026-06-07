@@ -1,4 +1,4 @@
-// Generated from docs/api/openapi.yml during OpenAPI automation implementation.
+// Seeded from the pre-automation OpenAPI contract during implementation.
 // Keep this file as the source for route-level OpenAPI generation and routing inventory.
 
 export const openApiContractMetadata = {
