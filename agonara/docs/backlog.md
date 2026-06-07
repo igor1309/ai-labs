@@ -1,7 +1,7 @@
 ---
 date: 2026-05-27
 model: gpt-5.5-thinking
-description: "Deferred design decisions for Agonara."
+description: "Deferred design decisions and forward tasks for Agonara."
 version: 0.0.5
 ---
 

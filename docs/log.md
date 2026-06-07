@@ -2,6 +2,9 @@
 
 ## 2026-06-07
 
+- Agonara: close GitHub issue #514 by moving the `agonara/docs/api/TODO.md`
+  OpenAPI automation follow-up into `agonara/docs/backlog.md`, deleting the
+  TODO file, and updating landing links to point at the project backlog.
 - Split implementation-plan authoring guidance out of `process-gates`: add the
   `implementation-plan` skill for task/phase/step vocabulary, declaration
   fields, and acceptance checks; narrow `process-gates` to execution gates; and
