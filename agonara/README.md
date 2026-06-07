@@ -16,7 +16,7 @@ Agonara is API-first: browser surfaces and operator commands are clients of back
 
 ## Landing Pages
 
-- [`index.html`](index.html) — project landing: implementation snapshot, modules, and product surfaces.
+- [`index.html`](index.html) — project landing: how to use it, running a private instance, the implementation snapshot, and product surfaces.
 - [`architecture.html`](architecture.html) — architecture deep dive (progressive disclosure from the landing): module responsibility map, ownership rules, runtime, deployment, and ADR index.
 - [`docs/intent/user-stories.html`](docs/intent/user-stories.html) — user stories driving the product.
 
