@@ -2,9 +2,9 @@
 
 ## 2026-06-07
 
-- Add an explicit route-path inventory guard for the hand-edited OpenAPI
-  contract: `openapi-contract.test.js` now fails when `docs/api/openapi.yml`
-  gains or loses a path without updating the reviewed inventory.
+- Add an explicit route inventory guard for the hand-edited OpenAPI contract:
+  `openapi-contract.test.js` now fails when `docs/api/openapi.yml` gains or
+  loses a method+path route without updating the reviewed inventory.
 - Add Redocly lint to the Agonara test gate for the hand-edited OpenAPI
   contract: `npm test --workspace agonara` now runs `redocly lint
   docs/api/openapi.yml` after the node test suite.
