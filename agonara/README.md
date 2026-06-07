@@ -46,7 +46,7 @@ Implemented backend, domain, and product surfaces:
 Still deferred or outside current product UI:
 
 - Recommendation ranking still needs a separate spec or plan; no invalidated learner-state cache records are planned beyond the implemented read-time derivation.
-- No additional membership-policy variants are planned beyond Student self-join and invitation-only access; cohort, organization, payment, approval, or invitation-expiry policies need a separate spec.
+- No additional membership-policy variants are planned beyond Student self-join and invitation-only access; cohort, organization, payment, approval, or invitation-expiry policies need a separate ADR-backed spec when they amend policy or role vocabulary.
 - Student-facing and curator-facing product UI beyond the `/learn` Quick Check, navigation, learner-state, readiness, membership, coverage-gap, and LLM suggestion first slices is not implemented.
 
 ## Key Separations

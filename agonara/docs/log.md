@@ -5,7 +5,8 @@
 - Resolve the membership-policy variants product-state question: no additional
   variants are planned beyond Student self-join and invitation-only access;
   cohort, organization, payment, approval, or invitation-expiry policy requires
-  a separate spec and must preserve the Admin-vs-Program-role boundary.
+  an ADR-backed spec when it amends policy or role vocabulary and must preserve
+  the Admin-vs-Program-role boundary.
 - Resolve the learner-state cache product-state question: no invalidated
   learner-state cache records are planned beyond implemented read-time
   derivation; future caches must keep source evidence authoritative and specify
