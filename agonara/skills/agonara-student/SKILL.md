@@ -97,14 +97,15 @@ accepted structure (requires an active membership).
   (STU-07). Both are student-safe accepted reads.
 - **Mark concepts needing deeper work** — concepts you have not mastered surface
   in your personal learner-state, not in the corpus:
-  `GET /learner-state/targets/concept/{targetId}` reads a concept's state for you
-  (STU-08). This separates "needs work" from the accepted corpus, which it never
-  changes.
+  `GET /learner-state/targets/{targetKind}/{targetId}` with `targetKind=concept`
+  reads a concept's state for you (STU-08). This separates "needs work" from the
+  accepted corpus, which it never changes.
 - **Reach materials and return** — materials are reachable from the topic or
   concept they support and link back, through the same navigation entities
   (`GET /navigation/entities/{entityId}`, and
-  `GET /learner-state/targets/material/{targetId}` for your state on one), so
-  reading stays connected to program structure rather than a flat link list
+  `GET /learner-state/targets/{targetKind}/{targetId}` with
+  `targetKind=material` for your state on one), so reading stays connected to
+  program structure rather than a flat link list
   (STU-09, STU-10).
 
 ## Check and assess

@@ -2,10 +2,40 @@
 
 ## 2026-06-07
 
+- Harden the OpenAPI Redocly lint guard by disabling Redocly telemetry in the
+  project config and lint script environment, keeping the contract gate
+  deterministic and CI-safe.
 - Move the OpenAPI automation follow-up out of `docs/api/TODO.md` and into the
   project backlog, preserving the forward tasks while removing the TODO file
   that GitHub issue #514 flagged. Update the landing page to link to the
   backlog instead of the deleted API TODO.
+- Harden the `/learn` presentation-state closeout by preserving the README's
+  broader Student/Curator product-UI deferral and updating the release-readiness
+  audit to point at the current implementation-notes record instead of removed
+  backlog questions.
+- Resolve the `/learn` presentation-state product-state question: no additional
+  persisted learner-facing presentation state is planned; current selections
+  reload from backend contracts, theme persistence remains UI chrome, and
+  broader Student/Curator UI needs separate specs if it introduces persisted
+  product state.
+- Resolve the membership-policy variants product-state question: no additional
+  variants are planned beyond Student self-join and invitation-only access;
+  cohort, organization, payment, approval, or invitation-expiry policy requires
+  an ADR-backed spec when it amends policy or role vocabulary and must preserve
+  the Admin-vs-Program-role boundary.
+- Resolve the learner-state cache product-state question: no invalidated
+  learner-state cache records are planned beyond implemented read-time
+  derivation; future caches must keep source evidence authoritative and specify
+  invalidation by source evidence or target-link changes.
+- Resolve the learning-path sequencing product-state question: the accepted
+  topic/concept/material navigation graph remains the shared sequencing state,
+  recommendation ranking stays a future downstream artifact, and any personal
+  recommendation state must be specified through Student Workspace ownership.
+- Close the stale standalone Storage ownership backlog framing: Agonara storage
+  now follows implemented module responsibilities and canonical runtime-state
+  docs, while unresolved recommendation, learner-state cache, membership-policy,
+  and `/learn` presentation persistence questions remain tracked as future
+  product-state decisions.
 - Establish the Agonara positioning baseline around turning scattered study into
   structured progress: add `docs/positioning.md`, update the README opening,
   and revise the landing hero/how-it-works/BYOA/private-instance copy to lead

@@ -52,8 +52,18 @@ All current Agonara specs are marked implemented, and the deployment handoff rec
 ### Finding 4: Product messaging must preserve intentional deferrals
 
 - **Verdict:** warning.
-- **Why:** The README explicitly defers recommendation ranking, persisted mastery models, and broader Student/Curator UI beyond the implemented `/learn` slices (`agonara/README.md:38`). The backlog keeps future storage questions open for learning-path sequencing, recommendation records, invalidated learner-state cache records, future membership-policy variants, and future `/learn` presentation state (`agonara/docs/backlog.md:16`).
-- **Fix:** First-release notes should name the implemented slices and keep recommendation ranking, persisted mastery, and broader UI as future specs or plans. Do not market the release as a complete learning-platform launch.
+- **Why:** The README explicitly defers recommendation ranking and broader
+  Student/Curator UI beyond the implemented `/learn` slices, while recording
+  that no invalidated learner-state cache records, additional membership-policy
+  variants, or persisted learner-facing `/learn` presentation state are planned
+  (`agonara/README.md:48`). The current deferred-runtime-state record keeps
+  those resolved product-state decisions in implementation notes, and the
+  backlog no longer carries open future product-state questions
+  (`agonara/docs/implementation-notes.md:174`, `agonara/docs/backlog.md:10`).
+- **Fix:** First-release notes should name the implemented slices and keep
+  recommendation ranking, broader UI, and any new persisted product state as
+  future specs or plans. Do not market the release as a complete
+  learning-platform launch.
 - **Test impact:** No automated test. The check is release-note and README wording review.
 
 ## Release Guidance
