@@ -2,6 +2,10 @@
 
 ## 2026-06-07
 
+- Record OpenAPI automation process follow-ups in the Agonara backlog so future
+  agents can improve implementation review, process gates, traceability of
+  negative guarantees, OpenAPI migration workflow, and Node toolchain preflight;
+  add the active Agonara Node 22 command rule to project instructions.
 - Implement Agonara OpenAPI automation: route contracts now generate
   `docs/api/openapi.yml`, `npm test --workspace agonara` checks generated
   output before Redocly lint, and server dispatch uses registry route matches

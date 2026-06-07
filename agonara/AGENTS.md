@@ -24,6 +24,14 @@ implemented set and the design and rationale in
 The earlier developer-facing `agonara-api` skill was removed as built for the
 wrong consumer.
 
+## Node Commands
+
+Agonara Node commands must run under Node 22, matching `.node-version`.
+Use `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH"` before direct
+`node`, `npm`, `npx`, and `./scripts/run_silent.sh ... npm/npx` commands when
+the shell's default Node is different. This avoids native module ABI failures
+for dependencies such as `better-sqlite3`.
+
 ## Deployment Discipline
 
 For Agonara deployment work, read `docs/deployment-discipline.md`.
