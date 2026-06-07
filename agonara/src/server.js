@@ -4457,6 +4457,7 @@ function httpStatusFor(reason) {
     case "navigation_entity_not_found":
     case "navigation_revision_not_found":
     case "invitation_not_found":
+    case "not_found":
     case "program_not_found":
     case "quick_check_candidate_not_found":
     case "quick_check_entity_not_found":
