@@ -49,21 +49,46 @@ Drive the full student arc through the API (the SKILL.md is the script), and
 record request/response envelopes for each step:
 
 1. **Discover & join** — `GET /programs`; preview one program state-free
-   (`GET /programs/{id}/accepted-corpus`, `GET /programs/{id}/navigation`) and
-   confirm no student state was created; `POST /programs/{id}/student-membership`
-   to join; `GET /program-memberships/me` shows it `active`.
+   (`GET /programs/{id}/accepted-corpus`, `GET /programs/{id}/navigation`); then
+   **prove the preview created no state** — before joining, `GET
+   /program-memberships/me` omits the program and `GET /programs/{id}/learner-state`
+   is absent/empty (capture the reason). Join with `POST
+   /programs/{id}/student-membership`; `GET /program-memberships/me` shows it
+   `active`.
 2. **Learn & next step** — `GET /programs/{id}/learner-state` for position/next
    step; `GET /programs/{id}/navigation` and `GET /navigation/entities/{id}` to
-   study a concept and reach a material.
+   study a concept, see a confusable-concept distinction (STU-07), and reach a
+   material and return (STU-09, STU-10).
 3. **Check & assess** — find a quick check (`GET /programs/{id}/quick-checks`,
    `GET /quick-checks/revisions/{id}`) and answer it
    (`POST /programs/{id}/quick-check-attempts` with `X-Agonara-CSRF` +
    `X-Agonara-Idempotency-Key`); submit an open answer
    (`POST /programs/{id}/open-answer-attempts`) and read feedback
-   (`GET /open-answer-attempts/{id}`).
+   (`GET /open-answer-attempts/{id}`); take a readiness check
+   (`GET /programs/{id}/readiness-checks` →
+   `POST /programs/{id}/readiness-check-attempts` →
+   `GET /readiness-check-attempts/{id}`, STU-14). **Replay one submission with
+   the same idempotency key and confirm no duplicate attempt is created** — the
+   point of the key.
 4. **Results & progress** — `GET /programs/{id}/learner-state` for results/weak
-   areas; `GET /learner-state/targets/{targetKind}/{id}` to drill into the
-   evidence behind a label.
+   areas linked back to structure (STU-16);
+   `GET /learner-state/targets/{targetKind}/{id}` to drill into the evidence
+   behind a label (STU-17).
+5. **Membership lifecycle** — `DELETE /programs/{id}/student-membership` (leave,
+   STU-19); confirm `GET /program-memberships/me` shows `left` and historical
+   evidence survives; then `POST /programs/{id}/student-membership` (rejoin) and
+   **confirm prior attempts/learner-state are reused, not duplicated** (STU-20).
+   Where the program is invitation-only, exercise accept/decline
+   (`POST /program-invitations/{id}/acceptance` and `/decline`, STU-22, STU-23).
+
+### STU coverage
+
+The transcript above exercises the core arc. For closeout, record an explicit
+**STU-01…23 coverage table** marking each story as *live-verified* in the
+transcript or, where the test instance lacks the data to trigger it (e.g. no
+pending invitation), *contract-reasoned* with the route that would serve it — so
+the done-criterion "STU-01…23 are each reachable" is auditable rather than
+assumed.
 
 ## Ownership-safety spot-checks (G4 against live data)
 
@@ -78,8 +103,11 @@ paper:
 
 ## Done criteria
 
-- A captured transcript shows steps 1–4 completing through the API with a
-  Student session.
+- A captured transcript shows steps 1–5 completing through the API with a
+  Student session, including the preview-creates-no-state, idempotency-replay,
+  and rejoin-reuses-state assertions.
+- An STU-01…23 coverage table marks each story live-verified or
+  contract-reasoned (with the serving route).
 - The ownership-safety spot-checks pass (curator-only routes rejected; no
   key/correctness/provider-internal leakage; no cross-student reads).
 - `docs/log.md` records G5 as satisfied for the student skill, and this plan is
