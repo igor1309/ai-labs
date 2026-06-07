@@ -164,7 +164,7 @@ Documents to adapt (handoff §3). Each is a reposition, not a mechanical rewrite
 - [x] Phase 1 — Product Intent keystone edit + backward-traceability check
 - [x] Phase 2 — User-stories pass
 - [x] Phase 3 — README (project + repo-root row)
-- [ ] Phase 4 — Landing (`index.html`)
+- [x] Phase 4 — Landing (`index.html`)
 - [ ] Phase 5 — Architecture (`architecture.html`)
 - [ ] Phase 6 — Brand briefs (EN + RU) + traceability review
 - [ ] Phase 7 — Logs, gates, dashboard, archive
@@ -241,6 +241,17 @@ implementation snapshot is untouched and accurate; no UI is presented as deferre
 or demoted. Updated the repo-root `README.md` `agonara` Components row (per
 `.agents/doc-maintenance.md`) to the repositioned one-liner, kept consistent with
 the project README lead.
+
+### Phase 4 — Landing (`index.html`)
+
+Reframed the hero anchor toward BYOA ("operate it with your own agent through the
+API and per-role operator skills, with the `/learn` and `/admin` UIs as
+first-class clients"). Repositioned the `#surfaces` lede to lead with BYOA and
+added a "Bring your own agent" card as the first surface card; kept the `/learn`,
+`/admin`, HTTP API, OpenAPI, and operator-CLI cards intact as first-class clients.
+Operator skills are framed as the operating surface without claiming they ship
+today (none are implemented yet per `byoa-operator-skills.md`). Confirmed the dead
+`agonara-api` skill card is already absent — no cleanup needed.
 
 Update tracker checkboxes only after a phase's required verification passes and
 its commit is created; commit the tracker-only status update before starting the
