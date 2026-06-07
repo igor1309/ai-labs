@@ -47,9 +47,10 @@ Still deferred or outside current product UI:
 
 - Recommendation ranking still needs a separate spec or plan; no invalidated learner-state cache records are planned beyond the implemented read-time derivation.
 - No additional membership-policy variants are planned beyond Student self-join and invitation-only access; cohort, organization, payment, approval, or invitation-expiry policies need a separate ADR-backed spec when they amend policy or role vocabulary.
-- No additional persisted learner-facing `/learn` presentation state is planned;
-  broader Student/Curator product UI beyond the shipped `/learn` slices needs
-  separate specs if it introduces persisted product state.
+- Broader Student/Curator product UI beyond the shipped `/learn` slices remains
+  outside current product UI. No additional persisted learner-facing `/learn`
+  presentation state is planned; new persisted product state needs a separate
+  spec.
 
 ## Key Separations
 

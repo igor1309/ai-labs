@@ -2,6 +2,10 @@
 
 ## 2026-06-07
 
+- Harden the `/learn` presentation-state closeout by preserving the README's
+  broader Student/Curator product-UI deferral and updating the release-readiness
+  audit to point at the current implementation-notes record instead of removed
+  backlog questions.
 - Resolve the `/learn` presentation-state product-state question: no additional
   persisted learner-facing presentation state is planned; current selections
   reload from backend contracts, theme persistence remains UI chrome, and
