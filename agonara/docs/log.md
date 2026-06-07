@@ -2,6 +2,24 @@
 
 ## 2026-06-07
 
+- Add a forward backlog item to resolve the OpenAPI automation traceability
+  review's remaining BYOA source-file absence question, including the expected
+  test-title or audit paths.
+- Record OpenAPI automation process follow-ups in the Agonara backlog so future
+  agents can improve implementation review, process gates, traceability of
+  negative guarantees, OpenAPI migration workflow, and Node toolchain preflight;
+  add the active Agonara Node 22 command rule to project instructions.
+- Implement Agonara OpenAPI automation: route contracts now generate
+  `docs/api/openapi.yml`, `npm test --workspace agonara` checks generated
+  output before Redocly lint, and server dispatch uses registry route matches
+  while preserving existing HTTP behavior.
+- Plan the Agonara OpenAPI automation implementation path, including registry
+  validation, generated-contract checks, registry-backed routing, and closeout
+  documentation gates.
+- Specify OpenAPI automation for Agonara: add a route contract registry and
+  generation-check spec that keeps server routing, route contract tests, and
+  `docs/api/openapi.yml` aligned while preserving the published BYOA skill
+  substrate.
 - Convert the Agonara deployment handoff from a stale-prone release narrative
   into a short deployment index with explicit front-matter rules prohibiting use
   as a log, runbook, release note, live-state inventory, or implementation

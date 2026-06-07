@@ -1,116 +1,29 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 import { parseDocument } from "yaml";
+import {
+  extractPathParameterNames,
+  openApiContractMetadata,
+  routeContracts,
+  matchRoute,
+} from "../src/http-contract.js";
+import {
+  generateOpenApiDocument,
+  generateOpenApiYaml,
+} from "../src/openapi-generator.js";
 
 const openApiPath = fileURLToPath(new URL("../docs/api/openapi.yml", import.meta.url));
 const serverPath = fileURLToPath(new URL("../src/server.js", import.meta.url));
+const generatorPath = fileURLToPath(new URL("../scripts/generate-agonara-openapi.mjs", import.meta.url));
 const openApiRouteMethods = Object.freeze(["delete", "get", "patch", "post"]);
-const expectedOpenApiRoutes = Object.freeze([
-  "DELETE /identity/identities/{identityId}/admin",
-  "DELETE /identity/session",
-  "DELETE /learner-state-target-links/{targetLinkId}",
-  "DELETE /programs/{programId}/curator-membership",
-  "DELETE /programs/{programId}/participants/student/{identityId}",
-  "DELETE /programs/{programId}/student-membership",
-  "GET /accepted-corpus-revisions/{revisionId}",
-  "GET /admin",
-  "GET /assessment-criteria/revisions/{revisionId}",
-  "GET /identity/audit-events",
-  "GET /identity/bootstrap/status",
-  "GET /identity/identities",
-  "GET /identity/identities/{identityId}/operational-access",
-  "GET /identity/session",
-  "GET /learn",
-  "GET /learner-state/targets/{targetKind}/{targetId}",
-  "GET /llm-curation-suggestions/{suggestionId}",
-  "GET /navigation/entities/{entityId}",
-  "GET /navigation/revisions/{revisionId}",
-  "GET /open-answer-attempts/{attemptId}",
-  "GET /open-answer-checks/revisions/{revisionId}",
-  "GET /operations/diagnostics",
-  "GET /operations/health",
-  "GET /program-invitations/me",
-  "GET /program-memberships/me",
-  "GET /programs",
-  "GET /programs/{programId}",
-  "GET /programs/{programId}/accepted-corpus",
-  "GET /programs/{programId}/assessment-criteria",
-  "GET /programs/{programId}/assessment-criteria/candidates",
-  "GET /programs/{programId}/corpus-candidates",
-  "GET /programs/{programId}/corpus-events",
-  "GET /programs/{programId}/coverage-gaps",
-  "GET /programs/{programId}/events",
-  "GET /programs/{programId}/invitations",
-  "GET /programs/{programId}/learner-state",
-  "GET /programs/{programId}/learner-state-target-links",
-  "GET /programs/{programId}/llm-curation-suggestions",
-  "GET /programs/{programId}/membership-events",
-  "GET /programs/{programId}/navigation",
-  "GET /programs/{programId}/navigation-candidates",
-  "GET /programs/{programId}/open-answer-attempts",
-  "GET /programs/{programId}/open-answer-checks",
-  "GET /programs/{programId}/open-answer-checks/candidates",
-  "GET /programs/{programId}/participants",
-  "GET /programs/{programId}/participation/{participationKind}",
-  "GET /programs/{programId}/quick-check-attempts",
-  "GET /programs/{programId}/quick-checks",
-  "GET /programs/{programId}/quick-checks/candidates",
-  "GET /programs/{programId}/readiness-check-attempts",
-  "GET /programs/{programId}/readiness-checks",
-  "GET /programs/{programId}/readiness-checks/candidates",
-  "GET /programs/{programId}/sources",
-  "GET /quick-check-attempts/{attemptId}",
-  "GET /quick-checks/revisions/{revisionId}",
-  "GET /quick-checks/revisions/{revisionId}/curation",
-  "GET /readiness-check-attempts/{attemptId}",
-  "GET /readiness-checks/revisions/{revisionId}/curation",
-  "PATCH /programs/{programId}/admission-policy",
-  "POST /admin/program-memberships/recovery",
-  "POST /admin/program-memberships/revocation",
-  "POST /assessment-criteria/candidates/{candidateId}/acceptance",
-  "POST /assessment-criteria/candidates/{candidateId}/rejection",
-  "POST /corpus-candidates/{candidateId}/acceptance",
-  "POST /corpus-candidates/{candidateId}/rejection",
-  "POST /identity/bootstrap/admin",
-  "POST /identity/identities",
-  "POST /identity/identities/{identityId}/admin",
-  "POST /identity/identities/{identityId}/disable",
-  "POST /identity/identities/{identityId}/local-password",
-  "POST /identity/sessions",
-  "POST /llm-curation-suggestions/{suggestionId}/acceptance",
-  "POST /llm-curation-suggestions/{suggestionId}/rejection",
-  "POST /navigation-candidates/{candidateId}/acceptance",
-  "POST /navigation-candidates/{candidateId}/rejection",
-  "POST /open-answer-checks/candidates/{candidateId}/acceptance",
-  "POST /open-answer-checks/candidates/{candidateId}/rejection",
-  "POST /operations/open-answer-evaluator/tick",
-  "POST /program-invitations/{invitationId}/acceptance",
-  "POST /program-invitations/{invitationId}/decline",
-  "POST /program-invitations/{invitationId}/revocation",
-  "POST /programs",
-  "POST /programs/{programId}/assessment-criteria/candidates",
-  "POST /programs/{programId}/corpus-candidates",
-  "POST /programs/{programId}/invitations",
-  "POST /programs/{programId}/learner-state-target-links",
-  "POST /programs/{programId}/llm-curation-suggestions",
-  "POST /programs/{programId}/navigation-candidates",
-  "POST /programs/{programId}/open-answer-attempts",
-  "POST /programs/{programId}/open-answer-checks/candidates",
-  "POST /programs/{programId}/quick-check-attempts",
-  "POST /programs/{programId}/quick-checks/candidates",
-  "POST /programs/{programId}/readiness-check-attempts",
-  "POST /programs/{programId}/readiness-checks/candidates",
-  "POST /programs/{programId}/sources",
-  "POST /programs/{programId}/student-membership",
-  "POST /quick-checks/candidates/{candidateId}/acceptance",
-  "POST /quick-checks/candidates/{candidateId}/rejection",
-  "POST /readiness-checks/candidates/{candidateId}/acceptance",
-  "POST /readiness-checks/candidates/{candidateId}/rejection",
-]);
+const knownTags = new Set(openApiContractMetadata.tags.map(($0) => $0.name));
 
-test("openApiContract_shouldResolveLocalRefs_onHandEditedContract", () => {
+test("openApiContract_shouldResolveLocalRefs_onGeneratedContract", () => {
   const document = parseDocument(readFileSync(openApiPath, "utf8"), { prettyErrors: false });
   const parseErrors = document.errors.map($0 => $0.message);
   const contract = parseErrors.length === 0 ? document.toJS() : {};
@@ -127,7 +40,7 @@ test("openApiContract_shouldResolveLocalRefs_onHandEditedContract", () => {
   );
 });
 
-test("openApiContract_shouldMatchHttpStatusRejectionReasons_onHandEditedContract", () => {
+test("openApiContract_shouldMatchHttpStatusRejectionReasons_onGeneratedContract", () => {
   const contract = readOpenApiContract();
   const apiRejectionReasons = contract.components.schemas.ApiRejectionReason.enum;
   const httpStatusReasons = collectHttpStatusReasons(readFileSync(serverPath, "utf8"));
@@ -144,11 +57,175 @@ test("openApiContract_shouldMatchHttpStatusRejectionReasons_onHandEditedContract
   );
 });
 
-test("openApiContract_shouldMatchExplicitRouteInventory_onHandEditedContract", () => {
-  const contract = readOpenApiContract();
-  const openApiRoutes = collectOpenApiRoutes(contract.paths);
+test("routeContracts_shouldHaveUniqueMethodPathPairs", () => {
+  const methodPathPairs = routeContracts.map(formatRouteContract);
+  const uniqueMethodPathPairs = [...new Set(methodPathPairs)];
 
-  assert.deepEqual(openApiRoutes, expectedOpenApiRoutes);
+  assert.deepEqual(methodPathPairs, uniqueMethodPathPairs);
+});
+
+test("routeContracts_shouldHaveUniqueOperationIds", () => {
+  const operationIds = routeContracts.map($0 => $0.operationId);
+  const uniqueOperationIds = [...new Set(operationIds)];
+
+  assert.deepEqual(operationIds, uniqueOperationIds);
+});
+
+test("routeContracts_shouldHaveUniqueHandlerKeys", () => {
+  const handlerKeys = routeContracts.map($0 => $0.handlerKey);
+  const uniqueHandlerKeys = [...new Set(handlerKeys)];
+
+  assert.deepEqual(handlerKeys, uniqueHandlerKeys);
+});
+
+test("routeContracts_shouldMatchPathParameterDeclarations", () => {
+  const mismatches = routeContracts
+    .map((route) => ({
+      declared: (route.pathParameters ?? []).map($0 => $0.name).sort(),
+      expected: extractPathParameterNames(route.path).sort(),
+      route: formatRouteContract(route),
+    }))
+    .filter(({ declared, expected }) => JSON.stringify(declared) !== JSON.stringify(expected));
+
+  assert.deepEqual(mismatches, []);
+});
+
+test("routeContracts_shouldUseKnownTags", () => {
+  const unknownTags = routeContracts
+    .filter($0 => !knownTags.has($0.tag))
+    .map(formatRouteContract);
+
+  assert.deepEqual(unknownTags, []);
+});
+
+test("routeContracts_shouldDeclareAuthForEveryRoute", () => {
+  const missingAuth = routeContracts
+    .filter($0 => !$0.auth?.kind)
+    .map(formatRouteContract);
+
+  assert.deepEqual(missingAuth, []);
+});
+
+test("routeContracts_shouldRequireCsrfForSessionMutations", () => {
+  const missingCsrf = routeContracts
+    .filter($0 => $0.method !== "GET")
+    .filter($0 => $0.auth.kind === "session")
+    .filter($0 => $0.auth.csrf !== true)
+    .map(formatRouteContract);
+
+  assert.deepEqual(missingCsrf, []);
+});
+
+test("routeContracts_shouldDeclareRequestBodiesForJsonMutations", () => {
+  const invalidRequestBodies = routeContracts
+    .filter($0 => $0.requestBody)
+    .filter($0 => $0.requestBody.contentType !== "application/json" || !$0.requestBody.schema)
+    .map(formatRouteContract);
+
+  assert.deepEqual(invalidRequestBodies, []);
+});
+
+test("routeContracts_shouldDeclareResponsesForEveryPublicStatus", () => {
+  const missingResponses = routeContracts
+    .filter($0 => $0.responses.length === 0 || $0.responses.some(response => !response.status || !response.envelope))
+    .map(formatRouteContract);
+
+  assert.deepEqual(missingResponses, []);
+});
+
+test("routeContracts_shouldUseSharedRejectionReasonSchema", () => {
+  const routeLocalRejections = routeContracts
+    .flatMap((route) => route.responses
+      .filter(response => response.envelope === "rejected")
+      .filter(response => response.schema?.ref !== "#/components/responses/Rejected")
+      .map(() => formatRouteContract(route)));
+
+  assert.deepEqual(routeLocalRejections, []);
+});
+
+test("openApiMetadata_shouldResolveLocalComponentRefs", () => {
+  const refs = collectRefs(openApiContractMetadata);
+  const unresolvedRefs = refs
+    .filter($0 => $0.ref.startsWith("#/"))
+    .filter($0 => !hasLocalRef(generateOpenApiDocument(), $0.ref))
+    .map(formatRefFailure);
+
+  assert.deepEqual(unresolvedRefs, []);
+});
+
+test("generateOpenApi_shouldBeDeterministic", () => {
+  assert.equal(generateOpenApiYaml(), generateOpenApiYaml());
+});
+
+test("generateOpenApi_shouldMatchRouteContracts", () => {
+  const generatedRoutes = collectOpenApiRoutes(generateOpenApiDocument().paths);
+  const registryRoutes = routeContracts.map(formatRouteContract).sort();
+
+  assert.deepEqual(generatedRoutes, registryRoutes);
+});
+
+test("generateOpenApi_shouldOmitServerOnlyFields", () => {
+  const generated = generateOpenApiYaml();
+
+  assert.equal(generated.includes("handlerKey"), false);
+});
+
+test("generateOpenApiCheck_shouldPass_whenCommittedContractMatchesGeneratedOutput", () => {
+  const tempPath = writeTempOpenApi(generateOpenApiYaml());
+  const result = runGeneratorCheck(tempPath);
+
+  assert.deepEqual(
+    { status: result.status, stderr: result.stderr },
+    { status: 0, stderr: "" },
+  );
+});
+
+test("generateOpenApiCheck_shouldFail_whenCommittedContractDiffersFromGeneratedOutput", () => {
+  const tempPath = writeTempOpenApi("openapi: 3.1.0\n");
+  const result = runGeneratorCheck(tempPath);
+
+  assert.deepEqual(
+    {
+      status: result.status,
+      unchanged: readFileSync(tempPath, "utf8"),
+      stderrIncludesCommand: result.stderr.includes("node scripts/generate-agonara-openapi.mjs"),
+    },
+    {
+      status: 1,
+      unchanged: "openapi: 3.1.0\n",
+      stderrIncludesCommand: true,
+    },
+  );
+});
+
+test("serverRouting_shouldUseRouteContractsForImplementedRoutes", () => {
+  const unmatchedRoutes = routeContracts
+    .filter((route) => matchRoute({ method: route.method, pathname: examplePath(route.path) }).status !== "matched")
+    .map(formatRouteContract);
+
+  assert.deepEqual(unmatchedRoutes, []);
+});
+
+test("serverRouting_shouldRejectMethodMismatches", () => {
+  const route = routeContracts.find($0 => $0.method === "POST" && $0.path === "/programs");
+  const matched = matchRoute({ method: "GET", pathname: route.path });
+
+  assert.equal(matched.contract.operationId, "listPrograms");
+});
+
+test("serverRouting_shouldCoverEveryHandlerKeyPrefix", () => {
+  const handlerKeyPrefixes = collectServerHandlerKeyPrefixes(readFileSync(serverPath, "utf8"));
+  const unhandledHandlerKeys = routeContracts
+    .filter(route => !handlerKeyPrefixes.some(prefix => route.handlerKey.startsWith(prefix)))
+    .map($0 => $0.handlerKey);
+
+  assert.deepEqual(unhandledHandlerKeys, []);
+});
+
+test("agonaraTestGate_shouldRunOpenApiGenerationCheck", () => {
+  const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+
+  assert.equal(packageJson.scripts.test.includes("npm run openapi:check"), true);
 });
 
 function readOpenApiContract() {
@@ -162,6 +239,12 @@ function collectHttpStatusReasons(serverSource) {
   assert.notEqual(httpStatusFunction, undefined);
 
   return [...httpStatusFunction.matchAll(/case "([^"]+)":/g)]
+    .map($0 => $0[1])
+    .sort();
+}
+
+function collectServerHandlerKeyPrefixes(serverSource) {
+  return [...serverSource.matchAll(/hasHandlerKey\(routeMatch, "([^"]+)"\)/g)]
     .map($0 => $0[1])
     .sort();
 }
@@ -230,4 +313,34 @@ function decodePointerSegment(segment) {
 
 function isRecord(value) {
   return typeof value === "object" && value !== null;
+}
+
+function formatRouteContract(route) {
+  return `${route.method} ${route.path}`;
+}
+
+function examplePath(path) {
+  return path.replaceAll(/\{[^}]+\}/g, "example-id");
+}
+
+function writeTempOpenApi(content) {
+  const directory = mkdtempSync(join(tmpdir(), "agonara-openapi-"));
+  const path = join(directory, "openapi.yml");
+  writeFileSync(path, content);
+  return path;
+}
+
+function runGeneratorCheck(tempPath) {
+  return spawnSync(
+    process.execPath,
+    [generatorPath, "--check"],
+    {
+      cwd: fileURLToPath(new URL("..", import.meta.url)),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        AGONARA_OPENAPI_PATH: pathToFileURL(tempPath).href,
+      },
+    },
+  );
 }
