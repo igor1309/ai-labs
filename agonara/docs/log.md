@@ -6,6 +6,10 @@
   Follow-Up index: a host-agnostic operator self-host paved path (routing to a
   new gap-closing plan) and an optional public demo-instance exception to
   ADR-017's private-not-multitenant boundary (routing to a sketch).
+- Fix stale landing copy in `index.html`: the dockerized private self-hosted
+  shape is no longer "provisional until an ADR accepts the operational
+  boundary" — ADR-017 accepted it (2026-06-06). Reworded to the committed
+  operational boundary with a direct ADR-017 link.
 - Clarify the Agonara landing hero by separating the structured-progress outcome
   from one concise product-value summary and reserving bring-your-own-agent
   explanation for the dedicated BYOA section.
