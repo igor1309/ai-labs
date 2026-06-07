@@ -7,15 +7,16 @@ description: "Follow-up plan: execute the deferred G5 live-instance verification
 # BYOA Student Skill — Live-Instance Verification (G5)
 
 Follow-up to the implemented
-[`implemented/byoa-skills-student.md`](implemented/byoa-skills-student.md). That
-skill (`agonara/skills/agonara-student/SKILL.md`) shipped with gates **G1–G4, G6,
-G7 satisfied**. **G5 (live-instance verification) was deferred** because the
+[`byoa-skills-student.md`](byoa-skills-student.md). That skill
+(`../../skills/agonara-student/SKILL.md`) shipped with gates **G1–G4, G6, G7
+satisfied**. **G5 (live-instance verification) was deferred** because the
 authoring environment had no running Agonara instance or Student credentials.
 This plan exists so that gap is tracked, not lost — the skill is not *fully*
 done against its own done-criteria until this runs.
 
-Grounded in the same substrate: [`../api/openapi.yml`](../api/openapi.yml) and
-[`../intent/student_user_stories.md`](../intent/student_user_stories.md).
+Grounded in the same substrate: [`../../api/openapi.yml`](../../api/openapi.yml)
+and
+[`../../intent/student_user_stories.md`](../../intent/student_user_stories.md).
 
 ## Goal
 
