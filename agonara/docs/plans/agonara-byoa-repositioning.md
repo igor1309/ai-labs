@@ -165,7 +165,7 @@ Documents to adapt (handoff §3). Each is a reposition, not a mechanical rewrite
 - [x] Phase 2 — User-stories pass
 - [x] Phase 3 — README (project + repo-root row)
 - [x] Phase 4 — Landing (`index.html`)
-- [ ] Phase 5 — Architecture (`architecture.html`)
+- [x] Phase 5 — Architecture (`architecture.html`)
 - [ ] Phase 6 — Brand briefs (EN + RU) + traceability review
 - [ ] Phase 7 — Logs, gates, dashboard, archive
 
@@ -252,6 +252,17 @@ added a "Bring your own agent" card as the first surface card; kept the `/learn`
 Operator skills are framed as the operating surface without claiming they ship
 today (none are implemented yet per `byoa-operator-skills.md`). Confirmed the dead
 `agonara-api` skill card is already absent — no cleanup needed.
+
+### Phase 5 — Architecture (`architecture.html`)
+
+Repositioned the deployment lede: replaced "the network web UI remains the
+primary human interface" with "API-first and bring-your-own-agent: an operator
+drives it with their own agent through the contract, while `/learn`, `/admin`,
+the operator CLI, and per-role operator skills stay first-class clients of the
+same backend contracts." Updated the `server.js` source-tree row's "future agent
+clients" → "bring-your-own-agent clients" for consistency. Verified no other
+"primary interface" claim remains and the five-module ownership map and
+ADR-backed boundaries are untouched (builder's view, unchanged).
 
 Update tracker checkboxes only after a phase's required verification passes and
 its commit is created; commit the tracker-only status update before starting the
