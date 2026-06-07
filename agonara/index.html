@@ -150,12 +150,18 @@
     margin: 0 0 12px;
     font-weight: 600;
   }
-  h2.section-title {
+  h2.section-title,
+  h3.section-title {
     font-size: clamp(26px, 4vw, 38px);
     margin: 0 0 14px;
     font-weight: 600;
     letter-spacing: -0.02em;
     color: var(--text);
+  }
+  .section-subblock {
+    margin-top: 48px;
+    padding-top: 48px;
+    border-top: 1px solid var(--rule);
   }
   .lede {
     max-width: 760px;
@@ -410,8 +416,6 @@
   <a href="#use">How it works</a>
   <a href="#run">Run it</a>
   <a href="#implemented">Implemented</a>
-  <a href="#surfaces">Surfaces</a>
-  <a href="#stack">Stack</a>
   <a href="#architecture">Architecture</a>
   <a href="#docs">Docs</a>
 </nav>
@@ -447,6 +451,54 @@
       <span class="kicker student">Step 4 · Mastery</span>
       <h3>See evidence of mastery</h3>
       <p>Learner-state interpretation turns attempts into owner-only progress and weak-area summaries with supporting evidence — readable only by the learner who owns them.</p>
+    </div>
+  </div>
+
+  <div id="surfaces" class="section-subblock">
+    <p class="eyebrow">Product surfaces</p>
+    <h3 class="section-title">How humans and agents reach it</h3>
+    <p class="lede">
+      Agonara is <strong>bring-your-own-agent</strong>: you point the agent you already
+      work in at your instance and operate the product through its contract, loading a
+      per-role operator skill for the job at hand — the primary way to use Agonara.
+      The <code>/learn</code> and <code>/admin</code> browser UIs and the operator CLI are
+      first-class clients of the same program, corpus, membership, assessment, and
+      learner-state APIs.
+      The implemented route-level contract is published as
+      <a href="docs/api/openapi.yml">OpenAPI 3.1</a>, with automation follow-up tracked in
+      <a href="docs/api/TODO.md">docs/api/TODO.md</a>.
+    </p>
+    <div class="surfaces">
+      <div class="surface-card">
+        <div class="route">your agent → OpenAPI</div>
+        <h3>Bring your own agent</h3>
+        <p>Point your own agent at your instance and operate Agonara through the published contract; per-role operator skills are the operating surface for each role. The primary way to use Agonara.</p>
+      </div>
+      <div class="surface-card">
+        <div class="route">GET /learn</div>
+        <h3>Learner &amp; Curator UI</h3>
+        <p>Navigation, Quick Check, learner-state, readiness, membership, coverage-gap, and LLM-suggestion workflows for Students and Program Curators.</p>
+      </div>
+      <div class="surface-card">
+        <div class="route">GET /admin</div>
+        <h3>Admin Board</h3>
+        <p>Operations board for bootstrap, sign in/out, identity management, access &amp; audit inspection, and exceptional membership recovery.</p>
+      </div>
+      <div class="surface-card">
+        <div class="route">/identity · /programs · …</div>
+        <h3>HTTP API</h3>
+        <p>Server-side sessions, CSRF protection, request correlation, health, diagnostics, and audit responses across all domain slices.</p>
+      </div>
+      <div class="surface-card">
+        <div class="route">docs/api/openapi.yml</div>
+        <h3>OpenAPI Contract</h3>
+        <p>Route-level OpenAPI 3.1 contract for implemented HTTP surfaces, shared envelopes, session-cookie auth, CSRF, idempotency, and rejection reasons.</p>
+      </div>
+      <div class="surface-card">
+        <div class="route">$ agonara</div>
+        <h3>Operator CLI</h3>
+        <p>Bootstrap status and first-Admin bootstrap for standing up a fresh private instance.</p>
+      </div>
     </div>
   </div>
 </section>
@@ -496,6 +548,22 @@ http://127.0.0.1:18080/learn</code>
         <h3>Create a program &amp; invite people</h3>
         <p>Create a program, accept corpus from trusted sources, and invite Students. From there the product loop above takes over — learners progress and accrue evidence of mastery.</p>
       </div>
+    </div>
+  </div>
+
+  <div id="stack" class="section-subblock">
+    <p class="eyebrow">Stack</p>
+    <h3 class="section-title">Built for a private instance</h3>
+    <p class="lede">Small, self-hostable, and recoverable — runs the same in a container or locally for development. The dockerized private self-hosted shape is the current <em>target</em>, provisional until an ADR accepts the operational boundary (see <a href="architecture.html#deployment">Architecture → Deployment</a>).</p>
+    <div class="chips">
+      <span class="chip">Node.js <span>22</span></span>
+      <span class="chip">better-sqlite3 <span>^11.8</span></span>
+      <span class="chip">API-first HTTP <span>backend</span></span>
+      <span class="chip">CSRF <span>protection</span></span>
+      <span class="chip">Request <span>correlation</span></span>
+      <span class="chip">Operator <span>CLI</span></span>
+      <span class="chip">Docker <span>+ Compose</span></span>
+      <span class="chip">Backup <span>/ restore</span></span>
     </div>
   </div>
 </section>
@@ -562,72 +630,6 @@ http://127.0.0.1:18080/learn</code>
     <strong style="color:var(--text-2)">Deferred:</strong> recommendation ranking and persisted mastery models still
     need separate specs; student- and curator-facing product UI beyond the shipped <code>/learn</code> slices is not yet implemented.
   </p>
-</section>
-
-<!-- SURFACES -->
-<section id="surfaces">
-  <p class="eyebrow">Product surfaces</p>
-  <h2 class="section-title">How humans and agents reach it</h2>
-  <p class="lede">
-    Agonara is <strong>bring-your-own-agent</strong>: you point the agent you already
-    work in at your instance and operate the product through its contract, loading a
-    per-role operator skill for the job at hand — the primary way to use Agonara.
-    The <code>/learn</code> and <code>/admin</code> browser UIs and the operator CLI are
-    first-class clients of the same program, corpus, membership, assessment, and
-    learner-state APIs.
-    The implemented route-level contract is published as
-    <a href="docs/api/openapi.yml">OpenAPI 3.1</a>, with automation follow-up tracked in
-    <a href="docs/api/TODO.md">docs/api/TODO.md</a>.
-  </p>
-  <div class="surfaces">
-    <div class="surface-card">
-      <div class="route">your agent → OpenAPI</div>
-      <h3>Bring your own agent</h3>
-      <p>Point your own agent at your instance and operate Agonara through the published contract; per-role operator skills are the operating surface for each role. The primary way to use Agonara.</p>
-    </div>
-    <div class="surface-card">
-      <div class="route">GET /learn</div>
-      <h3>Learner &amp; Curator UI</h3>
-      <p>Navigation, Quick Check, learner-state, readiness, membership, coverage-gap, and LLM-suggestion workflows for Students and Program Curators.</p>
-    </div>
-    <div class="surface-card">
-      <div class="route">GET /admin</div>
-      <h3>Admin Board</h3>
-      <p>Operations board for bootstrap, sign in/out, identity management, access &amp; audit inspection, and exceptional membership recovery.</p>
-    </div>
-    <div class="surface-card">
-      <div class="route">/identity · /programs · …</div>
-      <h3>HTTP API</h3>
-      <p>Server-side sessions, CSRF protection, request correlation, health, diagnostics, and audit responses across all domain slices.</p>
-    </div>
-    <div class="surface-card">
-      <div class="route">docs/api/openapi.yml</div>
-      <h3>OpenAPI Contract</h3>
-      <p>Route-level OpenAPI 3.1 contract for implemented HTTP surfaces, shared envelopes, session-cookie auth, CSRF, idempotency, and rejection reasons.</p>
-    </div>
-    <div class="surface-card">
-      <div class="route">$ agonara</div>
-      <h3>Operator CLI</h3>
-      <p>Bootstrap status and first-Admin bootstrap for standing up a fresh private instance.</p>
-    </div>
-  </div>
-</section>
-
-<!-- STACK -->
-<section id="stack">
-  <p class="eyebrow">Stack</p>
-  <h2 class="section-title">Built for a private instance</h2>
-  <p class="lede">Small, self-hostable, and recoverable — runs the same in a container or locally for development. The dockerized private self-hosted shape is the current <em>target</em>, provisional until an ADR accepts the operational boundary (see <a href="architecture.html#deployment">Architecture → Deployment</a>).</p>
-  <div class="chips">
-    <span class="chip">Node.js <span>22</span></span>
-    <span class="chip">better-sqlite3 <span>^11.8</span></span>
-    <span class="chip">API-first HTTP <span>backend</span></span>
-    <span class="chip">CSRF <span>protection</span></span>
-    <span class="chip">Request <span>correlation</span></span>
-    <span class="chip">Operator <span>CLI</span></span>
-    <span class="chip">Docker <span>+ Compose</span></span>
-    <span class="chip">Backup <span>/ restore</span></span>
-  </div>
 </section>
 
 <!-- ARCHITECTURE CALLOUT (progressive disclosure) -->
