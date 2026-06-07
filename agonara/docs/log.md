@@ -2,6 +2,11 @@
 
 ## 2026-06-07
 
+- Establish the Agonara positioning baseline around turning scattered study into
+  structured progress: add `docs/positioning.md`, update the README opening,
+  and revise the landing hero/how-it-works/BYOA/private-instance copy to lead
+  with serious self-directed learners, program curators, human acceptance, and
+  learner-owned evidence.
 - Surface the implemented BYOA operator-skill set on the Agonara landing page:
   tighten the product-surface wording, add a grouped Operator Skills section
   for foundations / curator work / role operations, update the getting-started
