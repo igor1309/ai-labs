@@ -2,6 +2,10 @@
 
 ## 2026-06-07
 
+- LOC dashboard: refreshed `docs/loc-dashboard.html` from
+  `scripts/loc-dashboard.sh --sort=name` so the summary cards, table totals,
+  data array, and update date match the current repo snapshot (total
+  233,162→243,664).
 - Agonara: close GitHub issue #514 by moving the `agonara/docs/api/TODO.md`
   OpenAPI automation follow-up into `agonara/docs/backlog.md`, deleting the
   TODO file, and updating landing links to point at the project backlog.
