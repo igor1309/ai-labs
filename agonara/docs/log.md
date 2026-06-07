@@ -2,6 +2,9 @@
 
 ## 2026-06-07
 
+- Plan the Agonara OpenAPI automation implementation path, including registry
+  validation, generated-contract checks, registry-backed routing, and closeout
+  documentation gates.
 - Specify OpenAPI automation for Agonara: add a route contract registry and
   generation-check spec that keeps server routing, route contract tests, and
   `docs/api/openapi.yml` aligned while preserving the published BYOA skill
