@@ -57,7 +57,7 @@
   }
   h1.title {
     font-size: clamp(48px, 7vw, 96px);
-    margin: 0 0 16px;
+    margin: 0 0 10px;
     letter-spacing: -0.025em;
     font-weight: 600;
     color: var(--text);
@@ -70,7 +70,7 @@
     line-height: 1.55;
   }
   .agon {
-    margin: 40px auto 0;
+    margin: 0 auto 34px;
     max-width: 640px;
     font-size: 14px;
     color: var(--text-3);
@@ -85,59 +85,6 @@
     gap: 12px;
     flex-wrap: wrap;
   }
-  .hero-meta {
-    margin-top: 32px;
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    padding: 6px 14px;
-    border: 1px solid var(--rule-2);
-    border-radius: 999px;
-    font-size: 12.5px;
-    color: var(--text-2);
-    background: var(--surface);
-    font-family: var(--mono);
-  }
-  .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
-
-  /* Nav */
-  nav.toc {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    padding: 16px;
-    flex-wrap: wrap;
-    border-bottom: 1px solid var(--rule);
-    background: rgba(20, 20, 19, 0.85);
-    position: sticky;
-    top: 0;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    z-index: 10;
-  }
-  nav.toc a {
-    padding: 8px 14px;
-    text-decoration: none;
-    color: var(--text-2);
-    border: 1px solid var(--rule-2);
-    border-radius: 999px;
-    font-size: 13px;
-    background: var(--surface);
-    transition: border-color .15s ease, color .15s ease, background .15s ease;
-  }
-  nav.toc a:hover {
-    color: var(--text);
-    border-color: var(--text-3);
-    background: var(--surface-2);
-    text-decoration: none;
-  }
-
   /* Layout */
   main { max-width: 1080px; margin: 0 auto; padding: 24px; }
   section { padding: 64px 0; border-bottom: 1px solid var(--rule); scroll-margin-top: 80px; }
@@ -174,7 +121,7 @@
   /* Generic card grid */
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
     gap: 14px;
   }
   .card {
@@ -256,7 +203,7 @@
   .cap code { font-size: 0.88em; }
 
   /* Surfaces */
-  .surfaces { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+  .surfaces { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
   .surface-card {
     background: var(--bg-2);
     border: 1px solid var(--rule);
@@ -274,6 +221,7 @@
 
   /* Stack chips */
   .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  #stack { margin-bottom: 28px; }
   .chip {
     font-family: var(--mono);
     font-size: 13px;
@@ -390,46 +338,29 @@
 <header class="hero">
   <div class="mark">Agon · Contest · Discipline · Mastery</div>
   <h1 class="title">Agonara</h1>
-  <p class="anchor">
-    A <strong>bring-your-own-agent (BYOA)</strong> structured learning program environment you run as your own private instance —
-    operate it with your own agent through the API and per-role operator skills, with the
-    <code>/learn</code> and <code>/admin</code> UIs as first-class clients. Curated programs, progression, evidence of mastery.
-  </p>
   <p class="agon">
     From the ancient Greek <em>agon</em> — exercise, trial, disciplined striving.
-    Curators assemble programs from trusted sources; learners move through them with
-    clear sequence, checkpoints, and evidence of understanding.
-    <strong>AI assists, but does not own the curriculum.</strong>
+  </p>
+  <p class="anchor">
+    A private learning environment where curators build trusted paths and learners
+    progress through checks, feedback, and evidence of learning.
   </p>
   <div class="hero-cta">
-    <a class="btn" href="#run">Run a private instance →</a>
+    <a class="btn ghost" href="#run">Run a private instance →</a>
     <a class="btn ghost" href="#use">See how it works</a>
   </div>
-  <div class="hero-meta">
-    <span class="pill"><span class="dot"></span>Private self-hosted instance <span style="color:var(--text-3)">· target</span></span>
-    <span class="pill"><span class="dot"></span>Node.js 22 · SQLite</span>
-    <span class="pill"><span class="dot"></span>Docker + Compose</span>
-  </div>
 </header>
-
-<nav class="toc">
-  <a href="#use">How it works</a>
-  <a href="#run">Run it</a>
-  <a href="#implemented">Implemented</a>
-  <a href="#architecture">Architecture</a>
-  <a href="#docs">Docs</a>
-</nav>
 
 <main>
 
 <!-- HOW IT WORKS -->
 <section id="use">
   <p class="eyebrow">What you do with it</p>
-  <h2 class="section-title">Curate programs, learn, prove mastery</h2>
+  <h2 class="section-title">Curate programs, learn, track progress</h2>
   <p class="lede">
-    Agonara is a working product loop, not a framework. Curators build a trusted program,
-    learners progress through it, and assessment produces owner-only evidence of mastery —
-    with AI assisting curation and evaluation without ever owning the curriculum.
+    Curators build a trusted program, learners progress through it, and assessment produces
+    owner-only evidence of progress — with AI assisting curation and evaluation without ever
+    owning the curriculum.
   </p>
   <div class="grid">
     <div class="card curator">
@@ -449,7 +380,7 @@
     </div>
     <div class="card student">
       <span class="kicker student">Step 4 · Mastery</span>
-      <h3>See evidence of mastery</h3>
+      <h3>See evidence of progress</h3>
       <p>Learner-state interpretation turns attempts into owner-only progress and weak-area summaries with supporting evidence — readable only by the learner who owns them.</p>
     </div>
   </div>
@@ -470,9 +401,14 @@
     </p>
     <div class="surfaces">
       <div class="surface-card">
-        <div class="route">your agent → OpenAPI</div>
-        <h3>Bring your own agent</h3>
-        <p>Point your own agent at your instance and operate Agonara through the published contract; per-role operator skills are the operating surface for each role. The primary way to use Agonara.</p>
+        <div class="route">skills/agonara-*</div>
+        <h3>Role skills</h3>
+        <p>Load the skill for the role and job at hand, then operate your instance from the agent you already use.</p>
+      </div>
+      <div class="surface-card">
+        <div class="route">docs/api/openapi.yml</div>
+        <h3>OpenAPI contract</h3>
+        <p>Published OpenAPI 3.1 contract for the implemented routes, envelopes, auth, CSRF, idempotency, and rejection reasons.</p>
       </div>
       <div class="surface-card">
         <div class="route">GET /learn</div>
@@ -490,11 +426,6 @@
         <p>Server-side sessions, CSRF protection, request correlation, health, diagnostics, and audit responses across all domain slices.</p>
       </div>
       <div class="surface-card">
-        <div class="route">docs/api/openapi.yml</div>
-        <h3>OpenAPI Contract</h3>
-        <p>Route-level OpenAPI 3.1 contract for implemented HTTP surfaces, shared envelopes, session-cookie auth, CSRF, idempotency, and rejection reasons.</p>
-      </div>
-      <div class="surface-card">
         <div class="route">$ agonara</div>
         <h3>Operator CLI</h3>
         <p>Bootstrap status and first-Admin bootstrap for standing up a fresh private instance.</p>
@@ -509,10 +440,22 @@
   <h2 class="section-title">Run your own private instance</h2>
   <p class="lede">
     Agonara is built to be self-hosted: a small, recoverable backend that runs the same in a
-    container on a VPS or home server as it does locally for development. A fresh instance is
-    inert until you bootstrap the first Admin. (See full walkthroughs in
+    container on a VPS or home server as it does locally for development. The dockerized
+    private self-hosted shape is the current <em>target</em>, provisional until an ADR accepts
+    the operational boundary (see <a href="architecture.html#deployment">Architecture → Deployment</a>).
+    A fresh instance is inert until you bootstrap the first Admin. (See full walkthroughs in
     <a href="docs/demos.md">docs/demos.md</a>.)
   </p>
+  <div id="stack" class="chips" aria-label="Runtime stack">
+    <span class="chip">Node.js <span>22</span></span>
+    <span class="chip">better-sqlite3 <span>^11.8</span></span>
+    <span class="chip">API-first HTTP <span>backend</span></span>
+    <span class="chip">CSRF <span>protection</span></span>
+    <span class="chip">Request <span>correlation</span></span>
+    <span class="chip">Operator <span>CLI</span></span>
+    <span class="chip">Docker <span>+ Compose</span></span>
+    <span class="chip">Backup <span>/ restore</span></span>
+  </div>
   <div class="run-steps">
     <div class="run-step">
       <span class="num">1</span>
@@ -546,26 +489,11 @@ http://127.0.0.1:18080/learn</code>
       <span class="num">4</span>
       <div>
         <h3>Create a program &amp; invite people</h3>
-        <p>Create a program, accept corpus from trusted sources, and invite Students. From there the product loop above takes over — learners progress and accrue evidence of mastery.</p>
+        <p>Create a program, accept corpus from trusted sources, and invite Students. From there the product loop above takes over — learners progress and accrue evidence of learning.</p>
       </div>
     </div>
   </div>
 
-  <div id="stack" class="section-subblock">
-    <p class="eyebrow">Stack</p>
-    <h3 class="section-title">Built for a private instance</h3>
-    <p class="lede">Small, self-hostable, and recoverable — runs the same in a container or locally for development. The dockerized private self-hosted shape is the current <em>target</em>, provisional until an ADR accepts the operational boundary (see <a href="architecture.html#deployment">Architecture → Deployment</a>).</p>
-    <div class="chips">
-      <span class="chip">Node.js <span>22</span></span>
-      <span class="chip">better-sqlite3 <span>^11.8</span></span>
-      <span class="chip">API-first HTTP <span>backend</span></span>
-      <span class="chip">CSRF <span>protection</span></span>
-      <span class="chip">Request <span>correlation</span></span>
-      <span class="chip">Operator <span>CLI</span></span>
-      <span class="chip">Docker <span>+ Compose</span></span>
-      <span class="chip">Backup <span>/ restore</span></span>
-    </div>
-  </div>
 </section>
 
 <!-- IMPLEMENTED -->
@@ -694,7 +622,7 @@ http://127.0.0.1:18080/learn</code>
 <footer>
   <span>Agonara · Structured learning program environment</span>
   <span class="sep">·</span>
-  <span>Curated programs · progression · evidence of mastery</span>
+  <span>Curated programs · progression · evidence of learning</span>
   <span class="sep">·</span>
   <span>2026-06-07</span>
 </footer>
