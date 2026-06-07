@@ -1,9 +1,9 @@
 ---
 title: Agonara Implementation Notes
-date: 2026-05-27
+date: 2026-06-07
 description: "Research notes on mapping external authentication to Agonara internal identity and authority."
-model: gpt-5.5-thinking
-version: 0.2.5
+model: gpt-5
+version: 0.2.6
 ---
 
 # Agonara Implementation Notes
@@ -171,7 +171,11 @@ The production server entrypoint now composes Identity, Program, Corpus, and Stu
 
 Current backend, domain, and first-slice UI support does not imply a complete product UI.
 
-- Recommendation ranking and persisted mastery models still need separate downstream artifacts.
+- Recommendation ranking still needs a separate downstream artifact. No future
+  learning-path sequencing record is currently needed beyond the accepted
+  topic/concept/material navigation graph; any future personal recommendation
+  state must be specified through Student Workspace ownership rather than shared
+  Program corpus.
 - The Admin board is implemented for operational Identity/Admin work and exceptional Program Membership recovery/revocation. `/learn` is implemented for Quick Check, topic/concept/material navigation, learner-state interpretation, readiness, membership Student/Curator product slices, Curator-only coverage-gap inspection, and Curator-only LLM suggestion review. Broader Student and Curator product screens remain outside the current runtime.
 
 ## Open questions

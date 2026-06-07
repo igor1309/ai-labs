@@ -2,7 +2,7 @@
 date: 2026-06-07
 model: gpt-5
 description: "Deferred design decisions for Agonara."
-version: 0.0.7
+version: 0.0.8
 ---
 
 # Backlog
@@ -20,9 +20,6 @@ responsibility map and in the relevant spec or implementation-plan review gate.
 
 Open questions:
 
-- Which future learning-path sequencing or recommendation records are needed
-  beyond the implemented accepted topic/concept/material graph, and how do they
-  stay separate from personal Student state?
 - Which invalidated learner-state cache records, if any, are worth adding beyond
   the implemented read-time progress and weak-area derivation?
 - Which future membership-policy variants, if any, are needed beyond implemented
