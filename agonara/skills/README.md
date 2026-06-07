@@ -11,9 +11,23 @@ surface; the [OpenAPI contract](../docs/api/openapi.yml) is the substrate.
 Planned shape (per-role skills over shared foundations) and rationale:
 [`../docs/plans/byoa-operator-skills.md`](../docs/plans/byoa-operator-skills.md).
 
-No skills are implemented here yet. The previous developer-facing `agonara-api`
-skill was removed — it served an agent *building* Agonara's codebase, not an
-operator *using* the product, which is the wrong consumer for this directory.
+## Implemented skills
+
+Shared foundations every role skill builds on:
+
+- [`agonara-api-access/`](agonara-api-access/SKILL.md) — connect, authenticate
+  (the `agonara_session` cookie), send CSRF-protected and idempotent mutations,
+  and read the `accepted`/`rejected`/`fault` envelope.
+- [`agonara-membership/`](agonara-membership/SKILL.md) — the role-neutral program
+  participation model: read your memberships and invitations, act on invitations,
+  inspect effective participation and membership history.
+
+Per-role skills (curator, student, admin) build on these foundations and are
+planned next — see the [build sequence](../docs/plans/byoa-operator-skills.md).
+
+The previous developer-facing `agonara-api` skill was removed — it served an
+agent *building* Agonara's codebase, not an operator *using* the product, which
+is the wrong consumer for this directory.
 
 Skill discovery and publishing are deliberately out of scope for now and will be
 addressed later.
