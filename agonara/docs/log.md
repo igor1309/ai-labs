@@ -2,6 +2,61 @@
 
 ## 2026-06-07
 
+- Add two BYOA-instance follow-ups to the top of the deployment handoff Active
+  Follow-Up index: a host-agnostic operator self-host paved path (routing to a
+  new gap-closing plan) and an optional public demo-instance exception to
+  ADR-017's private-not-multitenant boundary (routing to a sketch).
+- Fix stale landing copy in `index.html`: the dockerized private self-hosted
+  shape is no longer "provisional until an ADR accepts the operational
+  boundary" — ADR-017 accepted it (2026-06-06). Reworded to the committed
+  operational boundary with a direct ADR-017 link.
+- Draft `docs/plans/byoa-self-host-paved-path.md`: a gap-closing plan to turn the
+  author-only `agonara-vps` CI deployment into a host-agnostic, operator-facing,
+  non-author-verified self-host paved path, so the BYOA "point your agent at your
+  instance" claim is backed by a real route to *having* an instance — without
+  changing ADR-017's boundary. Phases cover a self-host runbook, a backup/restore
+  drill runbook (ADR-017 G3), positioning links, and a non-author verification
+  acceptance gate.
+- Adversarially review the self-host paved-path plan
+  (`docs/reviews/byoa-self-host-paved-path-plan-adversarial-review.md`): fixed
+  two warnings — an "hardcodes /opt/agonara" overclaim (it is an env-overridable
+  default) and an unacknowledged overlap with the existing demos.md Docker Demo
+  (Phase 2 now extends and cross-links it). Declaration block and ADR-017
+  fidelity passed.
+- Sketch `docs/demo-instance-exception.md`: a public, ephemeral demo instance as
+  a deliberate, scoped exception to ADR-017's private-not-multitenant boundary,
+  to give an evaluator's agent a target before they self-host. Framed as a
+  not-accepted proposal pending its own ADR, with proposed shape (single seeded
+  auto-reset instance, sandboxed identities, bounded LLM exposure, full
+  isolation), explicit non-goals (not SaaS, not a self-host replacement), and the
+  guardrails the exception ADR must pin.
+- Adversarially review the demo-instance sketch
+  (`docs/reviews/demo-instance-exception-adversarial-review.md`): fixed one
+  warning — the sketch listed `/admin` as a demo surface, conflicting with the
+  standing public `/admin` block in the deployment handoff; the sketch now
+  conditions `/admin` exposure on the admin-access decision and adds a guardrail
+  requiring the exception ADR to revisit the block rather than override it
+  silently. ADR-017 fidelity and framing passed.
+- Capture the second half of the BYOA claim — how agents people actually use
+  reach an instance — as forward tasks in a discovery-prefixed
+  `docs/backlog-agent-connectivity.md`: token (bearer) auth as an alternative to
+  the cookie+CSRF flow (ADR-008 decision), an optional MCP connector over the
+  OpenAPI contract, the remote-admin access decision (the `/admin`-blocked
+  follow-up viewed from connectivity), and operator guidance that sandboxed
+  agents (Claude Code on web/app) must allowlist the instance domain. Linked it
+  from the central `backlog.md` for discovery.
+- Restructure the backlog into an `agonara/backlog/` folder for discovery:
+  `docs/backlog.md` → `backlog/README.md` (now a topic index), extract the
+  `Agent Process and Skill Improvements` section into `backlog/dev-skills.md`,
+  and move `docs/backlog-agent-connectivity.md` → `backlog/agent-connectivity.md`
+  (dropping the now-redundant prefix). Update the live landing links in
+  `index.html`; historical `docs/backlog.md` references in implemented plans,
+  archives, and the OpenAPI spec are left as closeout records.
+- Make the bearer-token item in `backlog/agent-connectivity.md` explicit as an
+  *addition, not a replacement* — one authorization core with two authentication
+  adapters (cookie + CSRF for browsers, bearer for agents) — and record the
+  rationale (client-kind fit, CSRF applicability, front-door-not-behavior change,
+  non-breaking) plus the token-lifecycle cost that warrants its own ADR-008 spec.
 - Clarify the Agonara landing hero by separating the structured-progress outcome
   from one concise product-value summary and reserving bring-your-own-agent
   explanation for the dedicated BYOA section.
