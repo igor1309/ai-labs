@@ -233,3 +233,11 @@ Archive plan: move to agonara/docs/plans/implemented/byoa-skills-curator.md
 Commit archive move: yes
 Push/PR: push at closeout; PR per repo conventions only if requested
 ```
+
+## Post-Merge Verification
+
+PR #523 merged before G5 and the formal G7 review were complete. The dated
+follow-up in
+[`../../reviews/byoa-curator-skills-follow-up.md`](../../reviews/byoa-curator-skills-follow-up.md)
+records the live-instance transcript, isolated Agonara suite result, formal
+section-by-section skill review, defects found, and corrective changes.

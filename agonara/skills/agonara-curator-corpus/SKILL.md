@@ -2,7 +2,7 @@
 name: agonara-curator-corpus
 author: Igor Malyarov
 version: "1.0.0"
-description: Operate as an Agonara program curator to assemble program structure — create a program, propose topics/concepts/materials as corpus candidates, keep drafts separate from accepted corpus, explicitly accept or reject candidates, read accepted corpus and revisions, manage navigation candidates and accepted navigation, and read corpus events. Use when a curator agent is building or refining the accepted structure of a program. The substrate the other curator skills (assessment, research) attach to.
+description: Operate as an Agonara program curator to assemble program structure — create a program, propose topics and concepts as corpus candidates, add material references and relationships through navigation candidates, keep drafts separate from accepted corpus, explicitly accept or reject candidates, read accepted corpus and revisions, and read corpus events. Use when a curator agent is building or refining the accepted structure of a program. The substrate the other curator skills (assessment, research) attach to.
 trigger: when a curator agent needs to create a program or move topic/concept/material/navigation content between draft and accepted corpus
 ---
 
@@ -41,12 +41,12 @@ Never present a `draft` (or `rejected`) candidate as accepted program content.
 - **List** — `GET /programs` (programs visible to your session).
 - **Read one** — `GET /programs/{programId}`.
 
-## Topics, concepts, materials — corpus candidates
+## Topics and concepts — corpus candidates
 
 - **Propose** — `POST /programs/{programId}/corpus-candidates` with
   `{ "candidateKind", "title", "body"?, "sourceIds"?, "rationale"? }`.
-  `candidateKind` names the kind of content (e.g. a topic, concept, or
-  material). Ground a candidate by listing the ids of sources you recorded via
+  `candidateKind` is exactly `topic` or `concept`. Ground a candidate by listing
+  the ids of sources you recorded via
   [`agonara-curator-research`](../agonara-curator-research/SKILL.md) in
   `sourceIds`, and record why it belongs in `rationale` (CUR-01…03).
 - **List** — `GET /programs/{programId}/corpus-candidates`, optionally filtered
@@ -76,7 +76,22 @@ Navigation is how accepted materials attach to topics and concepts so a student
 knows why each material is included (CUR-03). It follows the same candidate
 lifecycle:
 
-- **Propose** — `POST /programs/{programId}/navigation-candidates`.
+- **Propose a topic or concept** —
+  `POST /programs/{programId}/navigation-candidates` with
+  `{ "candidateKind": "topic" | "concept", "title", "body"?, "sourceIds"?, "rationale"? }`.
+- **Propose a material reference** — use the same route with
+  `{ "candidateKind": "material_reference", "title", "materialReferenceKind", "body"?, "locator"?, "citation"?, "sourceIds"?, "rationale"? }`.
+  `materialReferenceKind` is one of `article`, `book`, `course`, `lecture`,
+  `note`, `problem_set`, `standard`, `video`, or `other`; provide at least one
+  of `body`, `locator`, or `citation`.
+- **Propose a definition or principle** — use `candidateKind` `definition` or
+  `principle` and provide a non-empty `body`.
+- **Propose relationship changes** — use `candidateKind:
+  "relationship_update"` and a non-empty `relationshipDrafts` array. Each
+  draft names a `relationshipKind` and exactly one source and destination
+  selector (`fromEntityId`/`fromCandidateRef: "self"` and
+  `toEntityId`/`toCandidateRef: "self"`); optional fields are `label`,
+  `rationale`, and `sourceIds`.
 - **List candidates** — `GET /programs/{programId}/navigation-candidates`
   (filter by `status`).
 - **Accept / reject** — `POST /navigation-candidates/{candidateId}/acceptance`,
