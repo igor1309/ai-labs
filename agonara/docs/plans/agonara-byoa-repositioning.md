@@ -161,7 +161,7 @@ Documents to adapt (handoff §3). Each is a reposition, not a mechanical rewrite
 ## Phase tracker
 
 - [x] Phase 0 — Positioning / ADR decision
-- [ ] Phase 1 — Product Intent keystone edit + backward-traceability check
+- [x] Phase 1 — Product Intent keystone edit + backward-traceability check
 - [ ] Phase 2 — User-stories pass
 - [ ] Phase 3 — README (project + repo-root row)
 - [ ] Phase 4 — Landing (`index.html`)
@@ -185,6 +185,34 @@ decision (resolved)" and is being stated directly in Product Intent. Recording a
 separate ADR for a pure intent refinement that changes no boundary would be
 over-recording. Decision recorded here and in `agonara/docs/log.md`; intent
 editing proceeds.
+
+### Phase 1 — Product Intent keystone edit + backward-traceability check
+
+Added an "Operating model — bring-your-own-agent (BYOA)" section to
+`intent_learning_program_app.md` (the product is the API + per-role operator
+skills, driven by the operator's own agent, `/learn` + `/admin` retained as
+first-class clients), kept all INT-01…07 stories, actors, problem, boundaries,
+ownership, and the corpus/student-state separation intact, kept curation
+human-owned and the LLM/agent as assistant-not-author, and pushed mechanics to
+the contract and architecture docs. Bumped `version` 0.3.0 → 0.4.0 and recorded
+the operating-model edit class in the doc's Change review.
+
+**Backward-traceability check (re-derived at execution time).** Grepping
+`agonara/docs/adr/` for `intent`, `user stor`, `INT-0`, `CUR-`, `STU-`, `ADM-`,
+and actor names returned 13 ADRs: adr-001, 002, 003, 005, 006, 009, 010, 011,
+012, 013, 014, 015, 016. Checked each against the BYOA framing:
+
+- **No contradiction in any of the 13.** Every one explicitly lists UI as a
+  non-goal ("does not decide … UI") — the BYOA framing only sharpens the
+  operator-facing *surface narrative*, which sits below every ADR's decision
+  scope.
+- The two ADRs that mention a web UI at all describe it as a client of an
+  API-first backend: adr-008 ("dockerized private self-hosted instance with a
+  network web UI, API-first backend") and adr-017 ("The backend is API-first
+  with a network web UI"). Both are consistent with "BYOA primary, UIs
+  first-class" — neither claims the UI is the primary or only surface.
+- Module ownership (five-module split, ADR-004…018) is unaffected; no ADR
+  edited.
 
 Update tracker checkboxes only after a phase's required verification passes and
 its commit is created; commit the tracker-only status update before starting the
