@@ -202,6 +202,54 @@
   .cap p { margin: 0; font-size: 13px; color: var(--text-3); line-height: 1.5; }
   .cap code { font-size: 0.88em; }
 
+  /* Operator skills */
+  .skill-groups {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+    gap: 14px;
+  }
+  .skill-group {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 20px 22px;
+  }
+  .skill-group h4 {
+    margin: 0 0 6px;
+    font-size: 16px;
+    color: var(--text);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .skill-group > p {
+    margin: 0 0 16px;
+    font-size: 13px;
+    color: var(--text-3);
+    line-height: 1.5;
+  }
+  .skill-items {
+    display: grid;
+    gap: 14px;
+    margin: 0;
+  }
+  .skill-items div {
+    display: grid;
+    gap: 4px;
+    padding-top: 14px;
+    border-top: 1px solid var(--rule);
+  }
+  .skill-items dt {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent-2);
+  }
+  .skill-items dd {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-2);
+    line-height: 1.45;
+  }
+
   /* Surfaces */
   .surfaces { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
   .surface-card {
@@ -300,7 +348,7 @@
   footer .sep { margin: 0 8px; color: var(--rule-2); }
 
   /* Animated cards — scroll reveal + hover lift */
-  .card, .cap, .surface-card, .run-step {
+  .card, .cap, .surface-card, .run-step, .skill-group {
     transition:
       opacity .55s cubic-bezier(.2, .6, .2, 1),
       transform .35s cubic-bezier(.2, .6, .2, 1),
@@ -308,22 +356,22 @@
       background .18s ease,
       box-shadow .25s ease;
   }
-  .card:hover, .cap:hover, .surface-card:hover, .run-step:hover {
+  .card:hover, .cap:hover, .surface-card:hover, .run-step:hover, .skill-group:hover {
     transform: translateY(-3px);
     border-color: var(--rule-2);
     box-shadow: 0 12px 30px -18px rgba(0, 0, 0, 0.7);
   }
-  .js .card, .js .cap, .js .surface-card, .js .run-step {
+  .js .card, .js .cap, .js .surface-card, .js .run-step, .js .skill-group {
     opacity: 0;
     transform: translateY(18px);
   }
-  .js .card.in-view, .js .cap.in-view, .js .surface-card.in-view, .js .run-step.in-view {
+  .js .card.in-view, .js .cap.in-view, .js .surface-card.in-view, .js .run-step.in-view, .js .skill-group.in-view {
     opacity: 1;
     transform: none;
   }
   @media (prefers-reduced-motion: reduce) {
-    .card, .cap, .surface-card, .run-step,
-    .js .card, .js .cap, .js .surface-card, .js .run-step {
+    .card, .cap, .surface-card, .run-step, .skill-group,
+    .js .card, .js .cap, .js .surface-card, .js .run-step, .js .skill-group {
       opacity: 1 !important;
       transform: none !important;
       transition: border-color .18s ease, background .18s ease !important;
@@ -440,38 +488,58 @@
         instance through the published API contract. Shared foundations handle connection and
         participation; role skills keep curator, student, and admin jobs separate.
       </p>
-      <div class="caps">
-        <div class="cap">
-          <h4>API Access Foundation</h4>
-          <p><code>agonara-api-access</code> covers health, password login, the <code>agonara_session</code> cookie, CSRF, idempotency keys, and response envelopes.</p>
+      <div class="skill-groups">
+        <div class="skill-group">
+          <h4>Foundations</h4>
+          <p>Loaded by every role before the agent performs a job against an instance.</p>
+          <dl class="skill-items">
+            <div>
+              <dt>agonara-api-access</dt>
+              <dd>Health, password login, the <code>agonara_session</code> cookie, CSRF, idempotency keys, and response envelopes.</dd>
+            </div>
+            <div>
+              <dt>agonara-membership</dt>
+              <dd>Role-neutral participation, invitations, effective participation, and membership history.</dd>
+            </div>
+          </dl>
         </div>
-        <div class="cap">
-          <h4>Membership Foundation</h4>
-          <p><code>agonara-membership</code> covers role-neutral participation, invitations, effective participation, and membership history.</p>
+
+        <div class="skill-group">
+          <h4>Curator Work</h4>
+          <p>A job bucket for building, grounding, assessing, and operating program participation.</p>
+          <dl class="skill-items">
+            <div>
+              <dt>agonara-curator-corpus</dt>
+              <dd>Create programs and move topics, concepts, materials, and navigation from draft candidates to accepted corpus.</dd>
+            </div>
+            <div>
+              <dt>agonara-curator-assessment</dt>
+              <dd>Author open-answer, quick, and readiness checks while keeping answer keys curator-only.</dd>
+            </div>
+            <div>
+              <dt>agonara-curator-research</dt>
+              <dd>Record sources, read coverage gaps, and review LLM-assisted suggestions as draft material.</dd>
+            </div>
+            <div>
+              <dt>agonara-curator-participation</dt>
+              <dd>Manage admission policy, invitations, participants, student removal, and curator leave.</dd>
+            </div>
+          </dl>
         </div>
-        <div class="cap">
-          <h4>Curator Corpus</h4>
-          <p><code>agonara-curator-corpus</code> creates programs and moves topics, concepts, materials, and navigation from draft candidates to accepted corpus.</p>
-        </div>
-        <div class="cap">
-          <h4>Curator Assessment</h4>
-          <p><code>agonara-curator-assessment</code> authors open-answer, quick, and readiness checks while keeping answer keys curator-only.</p>
-        </div>
-        <div class="cap">
-          <h4>Curator Research</h4>
-          <p><code>agonara-curator-research</code> records sources, reads coverage gaps, and reviews LLM-assisted suggestions as draft material.</p>
-        </div>
-        <div class="cap">
-          <h4>Curator Participation</h4>
-          <p><code>agonara-curator-participation</code> manages admission policy, invitations, participants, student removal, and curator leave.</p>
-        </div>
-        <div class="cap">
-          <h4>Student Operation</h4>
-          <p><code>agonara-student</code> discovers, joins, studies, answers checks, and reads feedback using only accepted corpus and the student's own state.</p>
-        </div>
-        <div class="cap">
-          <h4>Admin Operation</h4>
-          <p><code>agonara-admin</code> bootstraps and operates a private instance: identities, credentials, Admin authority, audit, access, and exceptional recovery.</p>
+
+        <div class="skill-group">
+          <h4>Role Operations</h4>
+          <p>Single-role operating surfaces for learning and private-instance administration.</p>
+          <dl class="skill-items">
+            <div>
+              <dt>agonara-student</dt>
+              <dd>Discover, join, study, answer checks, and read feedback using only accepted corpus and the student's own state.</dd>
+            </div>
+            <div>
+              <dt>agonara-admin</dt>
+              <dd>Bootstrap and operate a private instance: identities, credentials, Admin authority, audit, access, and exceptional recovery.</dd>
+            </div>
+          </dl>
         </div>
       </div>
     </div>
@@ -645,7 +713,7 @@ http://127.0.0.1:18080/learn</code>
 
 <script>
 (function () {
-  var selector = '.card, .cap, .surface-card, .run-step';
+  var selector = '.card, .cap, .surface-card, .run-step, .skill-group';
   var cards = document.querySelectorAll(selector);
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reduce || !('IntersectionObserver' in window)) {
