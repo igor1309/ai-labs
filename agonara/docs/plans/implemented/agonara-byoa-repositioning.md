@@ -7,7 +7,7 @@ description: "Implementation plan: reposition Agonara as bring-your-own-agent (B
 # Agonara BYOA Repositioning Implementation Plan
 
 Implements the handoff in
-[`agonara-byoa-repositioning-handoff.md`](agonara-byoa-repositioning-handoff.md).
+[`agonara-byoa-repositioning-handoff.md`](../agonara-byoa-repositioning-handoff.md).
 This is a **Product Intent refinement** that makes Agonara's intended operating
 model explicit — **bring-your-own-agent (BYOA)**: the product is the API plus a
 set of per-role operator skills, driven by an operator's own agent, with the
@@ -15,7 +15,7 @@ existing `/learn` and `/admin` UIs retained as first-class clients of the same
 contract. The product itself does not change; only how its intent is stated.
 
 The sibling skills-structure job is already done
-([`byoa-operator-skills.md`](byoa-operator-skills.md)); this plan covers the
+([`byoa-operator-skills.md`](../byoa-operator-skills.md)); this plan covers the
 **product and docs** consequence.
 
 ## Goal
@@ -167,7 +167,7 @@ Documents to adapt (handoff §3). Each is a reposition, not a mechanical rewrite
 - [x] Phase 4 — Landing (`index.html`)
 - [x] Phase 5 — Architecture (`architecture.html`)
 - [x] Phase 6 — Brand briefs (EN + RU) + traceability review
-- [ ] Phase 7 — Logs, gates, dashboard, archive
+- [x] Phase 7 — Logs, gates, dashboard, archive
 
 ## Execution log
 
@@ -180,7 +180,7 @@ architectural boundary or invariant**. The five-module ownership split and
 ADR-004…018 are unchanged; the operator-facing surface narrative is sharpened,
 not the builder's decision structure. The load-bearing positioning decision
 ("BYOA primary, `/learn` + `/admin` retained as first-class clients") is already
-recorded in [`byoa-operator-skills.md`](byoa-operator-skills.md) §"Positioning
+recorded in [`byoa-operator-skills.md`](../byoa-operator-skills.md) §"Positioning
 decision (resolved)" and is being stated directly in Product Intent. Recording a
 separate ADR for a pure intent refinement that changes no boundary would be
 over-recording. Decision recorded here and in `agonara/docs/log.md`; intent
@@ -282,6 +282,30 @@ re-derivation would therefore reproduce the pre-existing link set. The substanti
 divergence check — does the BYOA framing contradict any decision — was run in
 Phase 1 over all 13 intent/story-citing ADRs and is clean (every ADR places UI
 outside its decision scope; module ownership unaffected). No drift to reconcile.
+
+### Phase 7 — Logs, gates, dashboard, archive
+
+Added a closeout entry to `agonara/docs/log.md` and a one-line repo-wide entry to
+the repo-root `docs/log.md` (for the Components-row edit). **Gates:** the change
+set touches only docs/HTML/markdown (9 files: intent, user-story verification,
+both READMEs, landing, architecture, both brand briefs, logs, this plan) — **no
+Node/TS/config/CI/generated artifact**, so the Node test/build suite is not
+required per the repo gate. `git diff --check` is clean on the change set.
+**Dashboard:** documentation movement is a single in-project archive move (no net
+LOC change for the project) — not substantial, so `docs/loc-dashboard.html` is not
+refreshed. Archived this plan to
+`agonara/docs/plans/implemented/agonara-byoa-repositioning.md` (`git mv`) in the
+same change as the implementation.
+
+## Done
+
+All seven phases complete and reviewed. Product Intent states the BYOA operating
+model explicitly and reads as a refinement; README (project + repo-root row),
+landing, and architecture present BYOA as primary with `/learn`/`/admin` retained
+first-class; user stories carry no UI-only assumptions; intent/README/brand stay
+about intent; the five-module ownership story and all accepted ADRs are unchanged
+and uncontradicted; EN/RU brand parity preserved; no ADR created (refinement
+only). Push at closeout per push policy; no PR unless explicitly requested.
 
 Update tracker checkboxes only after a phase's required verification passes and
 its commit is created; commit the tracker-only status update before starting the
