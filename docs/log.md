@@ -2,6 +2,10 @@
 
 ## 2026-06-07
 
+- Split implementation-plan authoring guidance out of `process-gates`: add the
+  `implementation-plan` skill for task/phase/step vocabulary, declaration
+  fields, and acceptance checks; narrow `process-gates` to execution gates; and
+  update repo discovery docs so plan files trigger the authoring skill first.
 - Release units: close the Agonara deployment wiring plan after post-release
   verification. `agonara_v0.1.0` exists, release-unit run `27073521933`
   completed successfully through verify/core/staging/prod deploy/GitHub Release,

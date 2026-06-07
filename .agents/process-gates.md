@@ -6,7 +6,10 @@ description: "Repo-specific process gates for plan authoring, archiving, and PR 
 
 # Process Gates
 
-Repo-specific addenda to the `process-gates` skill, for plan authoring, implementation, and PR work. Read when planning, implementing, or opening a PR. (Always-on verification commands stay in the root `CLAUDE.md`.)
+Repo-specific addenda to the `implementation-plan` and `process-gates` skills,
+for plan authoring, implementation, and PR work. Read when planning,
+implementing, or opening a PR. (Always-on verification commands stay in the
+root `AGENTS.md`.)
 
 - Log locations: `docs/log.md` (repo-level), `<project>/docs/log.md` (project-level).
 - Plans directory: `docs/plans/` → `docs/plans/implemented/` (or `<project>/docs/plans/` → `<project>/docs/plans/implemented/`).
@@ -14,6 +17,8 @@ Repo-specific addenda to the `process-gates` skill, for plan authoring, implemen
 - Implementation plans must follow `docs/my-way/05-implementation-plan/structure.md`. Required sections are `Goal`, `Execution mode`, `Execution lock`, `Scope guardrails`, phases/tasks, `Done criteria`, and `Final closeout`.
 - Missing required implementation-plan sections are a fail, not a style warning. Do not substitute scattered equivalent bullets for required headings.
 - Implementation plans must declare execution mode, human-review behavior, worktree mode, push policy, and final archive behavior.
+- Plan declaration values must pass the `implementation-plan` acceptance
+  checklist before Step 1. Do not invent worktree modes or push policies.
 - Default preferred execution mode is `auto-continue` unless the plan explicitly says `human-review-gated`.
 - Completed plans move to the relevant `implemented/` directory as the final closeout step. The move (`git mv docs/plans/<name>.md docs/plans/implemented/<name>.md`) ships in the **same PR as the implementation**, not as a follow-up PR — the merge is the moment the plan becomes implemented, so trunk never sees a state where the implementation is in but the plan still sits in `docs/plans/` as "to do".
 - Before committing or opening a PR for implementation-plan changes, run adversarial review against the implementation-plan review skill and mandatory structure. Fix fail/warn findings before committing or opening the PR.
