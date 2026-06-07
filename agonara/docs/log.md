@@ -2,6 +2,9 @@
 
 ## 2026-06-07
 
+- Clarify the Agonara landing hero by separating the structured-progress outcome
+  from one concise product-value summary and reserving bring-your-own-agent
+  explanation for the dedicated BYOA section.
 - Add a forward backlog item to resolve the OpenAPI automation traceability
   review's remaining BYOA source-file absence question, including the expected
   test-title or audit paths.

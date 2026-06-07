@@ -69,6 +69,18 @@
     color: var(--text-2);
     line-height: 1.55;
   }
+  .anchor + .anchor { margin-top: 18px; }
+  .anchor.outcome {
+    max-width: 680px;
+    font-size: clamp(24px, 3.5vw, 36px);
+    line-height: 1.28;
+    color: var(--text);
+    letter-spacing: -0.015em;
+  }
+  .anchor.summary {
+    max-width: 760px;
+    color: var(--text-2);
+  }
   .agon {
     margin: 0 auto 34px;
     max-width: 640px;
@@ -389,14 +401,13 @@
   <p class="agon">
     From the ancient Greek <em>agon</em> — exercise, trial, disciplined striving.
   </p>
-  <p class="anchor">
+  <p class="anchor outcome">
     Turn scattered study into structured progress.
-    Agonara is a BYOA learning program environment for serious self-directed
-    learners and program curators.
   </p>
-  <p class="anchor" style="margin-top:18px;">
-    Bring your own agent to shape sources into curated programs, connect materials
-    and concepts, run checks, and keep progress grounded in evidence.
+  <p class="anchor summary">
+    Agonara helps serious self-directed learners and program curators shape sources
+    into curated programs, connect concepts and materials, run checks, and ground
+    progress in evidence.
   </p>
   <div class="hero-cta">
     <a class="btn ghost" href="#run">Run a private instance →</a>
