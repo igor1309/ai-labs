@@ -2,6 +2,10 @@
 
 ## 2026-06-07
 
+- Clean up the Agonara deployment handoff after release closeout by removing
+  completed checklist items, stale pre-tag gates, and outdated plan links while
+  keeping only the remaining bootstrap-secret and future Admin access decisions
+  visible.
 - Harden the OpenAPI Redocly lint guard by disabling Redocly telemetry in the
   project config and lint script environment, keeping the contract gate
   deterministic and CI-safe.
