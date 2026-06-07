@@ -2,6 +2,16 @@
 
 ## 2026-06-07
 
+- Convert the Agonara deployment handoff from a stale-prone release narrative
+  into a short deployment index with explicit front-matter rules prohibiting use
+  as a log, runbook, release note, live-state inventory, or implementation
+  checklist. Keep only source-of-truth links and the future Admin access-layer
+  follow-up.
+- Decide the Agonara bootstrap-secret lifecycle: staging and production use
+  distinct high-entropy host-side secrets, stored only in tier env files and the
+  operator secret store, with rotation and verification rules documented. Clarify
+  the deployment handoff so only Admin access-layer choice and release-smoke
+  maintenance remain as operational follow-ups.
 - Clean up the Agonara deployment handoff after release closeout by removing
   completed checklist items, stale pre-tag gates, and outdated plan links while
   keeping only the remaining bootstrap-secret and future Admin access decisions
