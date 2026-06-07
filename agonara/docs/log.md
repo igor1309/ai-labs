@@ -2,6 +2,13 @@
 
 ## 2026-06-07
 
+- Sharpen the MCP-connector item in `backlog/agent-connectivity.md` from a peer
+  task to a *conditional* one, gated on a concrete target runtime that can mount
+  MCP but cannot execute arbitrary HTTP. Rationale: for code-capable agents the
+  operator skills over the OpenAPI contract already are the one-step mount, so an
+  MCP server is duplicated client surface; it only closes a gap a skill can't for
+  constrained chat-hosted agents. Recorded the dependency on the bearer-token
+  item (an MCP server wants a clean bearer credential, not cookie + CSRF).
 - Add two BYOA-instance follow-ups to the top of the deployment handoff Active
   Follow-Up index: a host-agnostic operator self-host paved path (routing to a
   new gap-closing plan) and an optional public demo-instance exception to
