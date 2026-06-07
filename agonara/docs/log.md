@@ -2,6 +2,10 @@
 
 ## 2026-06-07
 
+- Move the OpenAPI automation follow-up out of `docs/api/TODO.md` and into the
+  project backlog, preserving the forward tasks while removing the TODO file
+  that GitHub issue #514 flagged. Update the landing page to link to the
+  backlog instead of the deleted API TODO.
 - Establish the Agonara positioning baseline around turning scattered study into
   structured progress: add `docs/positioning.md`, update the README opening,
   and revise the landing hero/how-it-works/BYOA/private-instance copy to lead
