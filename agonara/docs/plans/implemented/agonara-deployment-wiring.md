@@ -6,9 +6,17 @@ description: "Implementation plan: register Agonara as a release unit and wire i
 
 # Agonara Deployment Wiring
 
+> **Closeout status (2026-06-07).** Deployment wiring was implemented and the
+> first Agonara release completed before this archive move. Evidence is captured
+> in
+> [`../../reviews/agonara-deployment-wiring-closeout.md`](../../reviews/agonara-deployment-wiring-closeout.md):
+> `agonara_v0.1.0` exists, the release-unit workflow run completed with
+> `verify`, `core`, `deploy-agonara-staging`, `deploy-agonara-prod`, and
+> `github-release` all successful, and the GitHub Release was published.
+
 ## Goal
 
-Stand up Agonara's per-unit tag-release deployment to agonara-vps — release-unit registration, staging/prod VPS scaffolding, CI deploy jobs, secrets, and the (gated) real-LLM smoke — implementing [ADR-017](../adr/adr-017-private-instance-deployment-operational-boundary.md) and consuming the [Operations Health Version](../specs/operations-health-version.md) and [Open-Answer Evaluator Real-Provider Runtime](../specs/open-answer-evaluator-real-provider-runtime.md) specs. This plan covers `deployment-handoff.md` §7 wiring plus the deploy-job dependencies on §6.
+Stand up Agonara's per-unit tag-release deployment to agonara-vps — release-unit registration, staging/prod VPS scaffolding, CI deploy jobs, secrets, and the (gated) real-LLM smoke — implementing [ADR-017](../../adr/adr-017-private-instance-deployment-operational-boundary.md) and consuming the [Operations Health Version](../../specs/operations-health-version.md) and [Open-Answer Evaluator Real-Provider Runtime](../../specs/open-answer-evaluator-real-provider-runtime.md) specs. This plan covers `deployment-handoff.md` §7 wiring plus the deploy-job dependencies on §6.
 
 ## Execution mode
 
@@ -89,8 +97,8 @@ Out of scope for this plan (per ADR-017 and ADR-018 non-goals):
 ## Phase 4 — Real-LLM deploy smoke (gated)
 
 - **Objective**: the staging/prod smoke exercises one real Nomos evaluation, in addition to health + version.
-- **Key work items**: build the real provider runtime per the [Open-Answer Evaluator Real-Provider Runtime](../specs/open-answer-evaluator-real-provider-runtime.md) spec (Nomos adapter, LLM evaluator policy, single-flight authenticated trigger, composition-root env wiring); provision Agonara's **own** Nomos project + key as host-side runtime env (`AGONARA_NOMOS_BASE_URL`, `AGONARA_NOMOS_MODEL`, `AGONARA_NOMOS_API_KEY`); extend the staging/prod smoke to drive one authenticated evaluator tick and assert a validated evaluation without leaking credentials or raw artifacts.
-- **Dependencies**: **gated by [ADR-018](../adr/adr-018-open-answer-evaluator-real-provider-runtime.md)** and the real-provider spec being implemented and merged; Agonara's dedicated Nomos project/key (repo "Nomos API Keys" rule).
+- **Key work items**: build the real provider runtime per the [Open-Answer Evaluator Real-Provider Runtime](../../specs/open-answer-evaluator-real-provider-runtime.md) spec (Nomos adapter, LLM evaluator policy, single-flight authenticated trigger, composition-root env wiring); provision Agonara's **own** Nomos project + key as host-side runtime env (`AGONARA_NOMOS_BASE_URL`, `AGONARA_NOMOS_MODEL`, `AGONARA_NOMOS_API_KEY`); extend the staging/prod smoke to drive one authenticated evaluator tick and assert a validated evaluation without leaking credentials or raw artifacts.
+- **Dependencies**: **gated by [ADR-018](../../adr/adr-018-open-answer-evaluator-real-provider-runtime.md)** and the real-provider spec being implemented and merged; Agonara's dedicated Nomos project/key (repo "Nomos API Keys" rule).
 - **Risks**: smoke flakiness from real model latency; credential or raw-transcript leakage in smoke logs; smoke authoring feedback through a non-operational path.
 - **Validation**: full suite green including the real-provider spec's executable acceptance (with an injected `fetch` fake); a staging smoke drives one real evaluation through Nomos and asserts redaction; credentials/raw artifacts absent from logs and health.
 - **Completion signal**: staging and prod smokes assert a validated real evaluation routed through Nomos, with no credential or raw-artifact leakage.
