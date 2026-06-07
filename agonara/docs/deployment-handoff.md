@@ -29,6 +29,20 @@ ownership and follow-up routing.
 
 ## Active Follow-Up
 
+**BYOA self-host paved path.** ADR-017 commits Agonara to operator-self-hosted
+private instances, yet the only existing deployment path is the author's
+CI-driven release to agonara-vps; there is no host-agnostic, operator-facing
+"stand up your own instance" route. Until one exists and a non-author has run it
+end to end, the BYOA "point your agent at your instance" claim has no backing
+path to *having* an instance. Plan:
+[`plans/byoa-self-host-paved-path.md`](plans/byoa-self-host-paved-path.md).
+
+**Demo/trial instance exception (optional on-ramp).** A public, ephemeral demo
+instance would give an evaluator's agent a target before they commit to
+self-hosting. This is a deliberate, scoped exception to ADR-017's
+private-not-multitenant boundary and needs its own decision. Sketch:
+[`demo-instance-exception.md`](demo-instance-exception.md).
+
 **Future Admin access layer.** Public `/admin` is blocked at Caddy for now.
 Operators use private loopback/SSH access.
 

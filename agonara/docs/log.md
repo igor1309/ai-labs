@@ -2,6 +2,10 @@
 
 ## 2026-06-07
 
+- Add two BYOA-instance follow-ups to the top of the deployment handoff Active
+  Follow-Up index: a host-agnostic operator self-host paved path (routing to a
+  new gap-closing plan) and an optional public demo-instance exception to
+  ADR-017's private-not-multitenant boundary (routing to a sketch).
 - Clarify the Agonara landing hero by separating the structured-progress outcome
   from one concise product-value summary and reserving bring-your-own-agent
   explanation for the dedicated BYOA section.
