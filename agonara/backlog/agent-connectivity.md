@@ -8,7 +8,7 @@ description: "Forward tasks for making an Agonara instance reachable by the agen
 
 Forward tasks only. These cover the second half of the BYOA claim: once an
 operator *has* an instance (see
-[`plans/byoa-self-host-paved-path.md`](plans/byoa-self-host-paved-path.md)), how
+[`../docs/plans/byoa-self-host-paved-path.md`](../docs/plans/byoa-self-host-paved-path.md)), how
 do the agents people actually use reach it over the network?
 
 Today the reverse proxy exposes the API and `/learn` over public HTTPS, and an
@@ -20,12 +20,35 @@ session; it is awkward for other runtimes. The items below close that gap.
 
 Add an API-token / personal-access-token scheme so an agent can authenticate by
 presenting a bearer credential on each request, instead of driving the
-browser-style password + session-cookie + CSRF flow.
+browser-style password + session-cookie + CSRF flow. This is the biggest single
+enabler for "any agent, anywhere."
 
-- This is the biggest single enabler for "any agent, anywhere."
-- It touches the authentication/credential boundary (ADR-008), so it needs its
-  own spec and ADR decision before implementation — not a drive-by change.
-- Must keep the existing session/CSRF path intact for the browser UIs.
+**This is an addition, not a replacement.** Ship bearer-token auth *alongside*
+the existing cookie + CSRF session path; do not remove the session path. The
+right shape is the BYOA framing itself — one API, one authorization core, two
+authentication adapters: cookie + CSRF for browsers, bearer token for agents.
+
+Rationale:
+
+- **Different client kinds need different schemes.** Browsers (`/learn`,
+  `/admin`, kept first-class) need cookies + CSRF — the correct defense against a
+  browser's ambient-credential / cross-site risk. Agents are non-browser clients
+  with no cookie jar and no CSRF threat model; a bearer token fits them. Dropping
+  cookies/CSRF would break the UIs.
+- **CSRF is meaningless for tokens but essential for cookies.** CSRF exists
+  because browsers send cookies automatically; a token is sent explicitly, so the
+  token path is not CSRF-exposed — but that only covers the token path, so the
+  two schemes coexist by design rather than competing.
+- **It is a front-door change, not a behavior change.** Identities, roles,
+  membership, effective participation, and sessions underneath are unchanged; the
+  token path is a second authentication adapter mapping to the same authorization
+  core.
+- **Non-breaking and reversible.** Replacing would break a shipped auth path with
+  live UIs; adding ships beside it, and each client uses what fits.
+
+The real cost — and why this still needs its own spec and ADR-008 decision — is
+**token lifecycle**: issue, scope, expire, revoke, and store hashed. That is
+genuine new surface, but it is *additive* surface.
 
 ## MCP connector for the Agonara API
 
@@ -46,8 +69,9 @@ blocked at the reverse proxy (loopback/SSH only). Decide and document the outer
 access layer before any remote admin-agent workflow is promised.
 
 - This is already tracked as a standing follow-up in
-  [`deployment-handoff.md`](deployment-handoff.md) (Active Follow-Up — Future
-  Admin access layer); this item is the agent-connectivity view of it.
+  [`../docs/deployment-handoff.md`](../docs/deployment-handoff.md) (Active
+  Follow-Up — Future Admin access layer); this item is the agent-connectivity
+  view of it.
 - Candidate shapes named there: Cloudflare Access, VPN, or a narrow allowlist.
   Agonara's own admin session and CSRF controls must remain behind any outer
   gate.

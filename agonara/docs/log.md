@@ -45,6 +45,18 @@
   follow-up viewed from connectivity), and operator guidance that sandboxed
   agents (Claude Code on web/app) must allowlist the instance domain. Linked it
   from the central `backlog.md` for discovery.
+- Restructure the backlog into an `agonara/backlog/` folder for discovery:
+  `docs/backlog.md` → `backlog/README.md` (now a topic index), extract the
+  `Agent Process and Skill Improvements` section into `backlog/dev-skills.md`,
+  and move `docs/backlog-agent-connectivity.md` → `backlog/agent-connectivity.md`
+  (dropping the now-redundant prefix). Update the live landing links in
+  `index.html`; historical `docs/backlog.md` references in implemented plans,
+  archives, and the OpenAPI spec are left as closeout records.
+- Make the bearer-token item in `backlog/agent-connectivity.md` explicit as an
+  *addition, not a replacement* — one authorization core with two authentication
+  adapters (cookie + CSRF for browsers, bearer for agents) — and record the
+  rationale (client-kind fit, CSRF applicability, front-door-not-behavior change,
+  non-breaking) plus the token-lifecycle cost that warrants its own ADR-008 spec.
 - Clarify the Agonara landing hero by separating the structured-progress outcome
   from one concise product-value summary and reserving bring-your-own-agent
   explanation for the dedicated BYOA section.

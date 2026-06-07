@@ -1,18 +1,12 @@
 ---
 date: 2026-06-07
 model: gpt-5
-description: "Deferred design decisions and forward tasks for Agonara."
-version: 0.0.15
+description: "Forward tasks for Agonara's agent process, skill, and toolchain improvements."
 ---
 
-# Backlog
+# Backlog — Agent Process & Skill Improvements
 
-> **Related backlog files:** [`backlog-agent-connectivity.md`](backlog-agent-connectivity.md)
-> — making an instance reachable by Telegram, Claude Code, and other agents.
-
-## Agent Process and Skill Improvements
-
-### Implementation adversarial review skill
+## Implementation adversarial review skill
 
 Create a focused skill for post-implementation adversarial review. The skill
 should check implemented changes against the accepted spec, plan, tests, and
@@ -33,7 +27,7 @@ dispatch. A reusable skill should make those checks mechanical:
 - produce fail/warning findings with exact file/line evidence and concrete
   fixes.
 
-### Process-gates skill hardening
+## Process-gates skill hardening
 
 Tighten the process-gates and implementation-plan workflow so every plan phase
 derives its validation commands from active repo instructions before writing the
@@ -52,7 +46,7 @@ block that records:
 - a per-phase validation list copied from that extraction rather than rewritten
   from memory.
 
-### Traceability-review negative-guarantee handling
+## Traceability-review negative-guarantee handling
 
 Extend the traceability-review skill's `spec ↔ tests` pass for clauses that
 state negative guarantees, such as "operator skills must not read source files".
@@ -69,7 +63,7 @@ modules. The skill should instruct reviewers to:
 - otherwise route the item to a body-level audit or doc-drift audit instead of
   leaving the next agent to infer the limitation.
 
-### Review OpenAPI automation traceability open question
+## Review OpenAPI automation traceability open question
 
 Review
 `docs/traceability-reviews/2026-06-07T1825Z-spec-tests-openapi-automation.md`
@@ -93,7 +87,7 @@ Expected resolution:
 - update or supersede the traceability review so the open question no longer
   remains as an unresolved forward task.
 
-### OpenAPI automation migration skill
+## OpenAPI automation migration skill
 
 Create a reusable migration skill for converting a hand-edited OpenAPI contract
 into a generated contract without changing runtime behavior.
@@ -111,7 +105,7 @@ while moving the source of truth into route declarations. The skill should cover
 - proving server dispatch is driven by registry matches and handler keys;
 - running traceability from spec rules to test names.
 
-### Environment preflight instructions for Node toolchains
+## Environment preflight instructions for Node toolchains
 
 Add a repeatable environment preflight step to relevant skills and plans:
 inspect `.node-version`, package/toolchain files, and active shell versions
@@ -123,11 +117,3 @@ newer Node than Agonara's `.node-version`, while native dependencies such as
 exact prefix for validation commands, for example
 `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH"`, and use it consistently
 with `node`, `npm`, `npx`, and `./scripts/run_silent.sh` invocations.
-
-## Under consideration
-
-Documents parked in an `under-consideration/` folder need an owning decision before downstream docs are revised. Do not let that folder go stale.
-
-No active under-consideration documents.
-
-When a parked document is resolved, move it out of `under-consideration/` (into `agonara/docs/` for accepted direction, or `archive/` if rejected) and log the decision in `agonara/docs/log.md`.
