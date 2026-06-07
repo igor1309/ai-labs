@@ -248,11 +248,14 @@
     border-color: var(--rule-2);
     box-shadow: 0 14px 34px -20px rgba(0, 0, 0, 0.75);
   }
-  .js .module-block, .js .card, .js .step, .js .adr, .js .rules li {
+  /* Pipeline .step is excluded from the scroll-reveal: it lives in a
+     horizontally-scrollable container that can clip it out of the viewport,
+     so the observer would never reveal off-screen steps. It keeps hover only. */
+  .js .module-block, .js .card, .js .adr, .js .rules li {
     opacity: 0;
     transform: translateY(18px);
   }
-  .js .module-block.in-view, .js .card.in-view, .js .step.in-view,
+  .js .module-block.in-view, .js .card.in-view,
   .js .adr.in-view, .js .rules li.in-view {
     opacity: 1;
     transform: none;
@@ -563,7 +566,7 @@
 
 <script>
 (function () {
-  var selector = '.module-block, .card, .step, .adr, .rules li';
+  var selector = '.module-block, .card, .adr, .rules li';
   var cards = document.querySelectorAll(selector);
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reduce || !('IntersectionObserver' in window)) {
