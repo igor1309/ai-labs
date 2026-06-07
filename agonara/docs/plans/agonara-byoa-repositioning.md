@@ -160,7 +160,7 @@ Documents to adapt (handoff §3). Each is a reposition, not a mechanical rewrite
 
 ## Phase tracker
 
-- [ ] Phase 0 — Positioning / ADR decision
+- [x] Phase 0 — Positioning / ADR decision
 - [ ] Phase 1 — Product Intent keystone edit + backward-traceability check
 - [ ] Phase 2 — User-stories pass
 - [ ] Phase 3 — README (project + repo-root row)
@@ -168,6 +168,23 @@ Documents to adapt (handoff §3). Each is a reposition, not a mechanical rewrite
 - [ ] Phase 5 — Architecture (`architecture.html`)
 - [ ] Phase 6 — Brand briefs (EN + RU) + traceability review
 - [ ] Phase 7 — Logs, gates, dashboard, archive
+
+## Execution log
+
+### Phase 0 — Positioning / ADR decision
+
+**Decision: no ADR — refinement only.** Judged against the `adr-governance`
+criteria (Intent Integrity, Boundary Clarity, Cross-ADR Consistency, Decision
+Stability, Mechanism Feasibility): the BYOA repositioning introduces **no new
+architectural boundary or invariant**. The five-module ownership split and
+ADR-004…018 are unchanged; the operator-facing surface narrative is sharpened,
+not the builder's decision structure. The load-bearing positioning decision
+("BYOA primary, `/learn` + `/admin` retained as first-class clients") is already
+recorded in [`byoa-operator-skills.md`](byoa-operator-skills.md) §"Positioning
+decision (resolved)" and is being stated directly in Product Intent. Recording a
+separate ADR for a pure intent refinement that changes no boundary would be
+over-recording. Decision recorded here and in `agonara/docs/log.md`; intent
+editing proceeds.
 
 Update tracker checkboxes only after a phase's required verification passes and
 its commit is created; commit the tracker-only status update before starting the
