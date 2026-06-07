@@ -2,6 +2,9 @@
 
 ## 2026-06-07
 
+- Add an OpenAPI contract guard for the hand-edited API spec: Agonara tests now
+  parse `docs/api/openapi.yml` and fail on external or unresolved local `$ref`
+  entries before drift can reach operator skills or clients.
 - Surface the implemented BYOA operator-skill set on the Agonara landing page:
   tighten the product-surface wording, add a grouped Operator Skills section
   for foundations / curator work / role operations, update the getting-started
