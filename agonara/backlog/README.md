@@ -15,6 +15,8 @@ Backlogs are split by topic so each concern stays discoverable on its own:
 
 - [`dev-skills.md`](dev-skills.md) — agent process, skill, and toolchain
   improvements.
+- [`skills.md`](skills.md) — the BYOA operator-skill product: distribution,
+  versioning, and discovery of the per-role operator skills.
 - [`agent-connectivity.md`](agent-connectivity.md) — making an instance reachable
   by the agents people actually use (Telegram bots, Claude Code on web/app, other
   MCP or HTTP agents).
