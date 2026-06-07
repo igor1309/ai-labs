@@ -6,6 +6,90 @@ import { parseDocument } from "yaml";
 
 const openApiPath = fileURLToPath(new URL("../docs/api/openapi.yml", import.meta.url));
 const serverPath = fileURLToPath(new URL("../src/server.js", import.meta.url));
+const expectedOpenApiPaths = Object.freeze([
+  "/accepted-corpus-revisions/{revisionId}",
+  "/admin",
+  "/admin/program-memberships/recovery",
+  "/admin/program-memberships/revocation",
+  "/assessment-criteria/candidates/{candidateId}/acceptance",
+  "/assessment-criteria/candidates/{candidateId}/rejection",
+  "/assessment-criteria/revisions/{revisionId}",
+  "/corpus-candidates/{candidateId}/acceptance",
+  "/corpus-candidates/{candidateId}/rejection",
+  "/identity/audit-events",
+  "/identity/bootstrap/admin",
+  "/identity/bootstrap/status",
+  "/identity/identities",
+  "/identity/identities/{identityId}/admin",
+  "/identity/identities/{identityId}/disable",
+  "/identity/identities/{identityId}/local-password",
+  "/identity/identities/{identityId}/operational-access",
+  "/identity/session",
+  "/identity/sessions",
+  "/learn",
+  "/learner-state-target-links/{targetLinkId}",
+  "/learner-state/targets/{targetKind}/{targetId}",
+  "/llm-curation-suggestions/{suggestionId}",
+  "/llm-curation-suggestions/{suggestionId}/acceptance",
+  "/llm-curation-suggestions/{suggestionId}/rejection",
+  "/navigation-candidates/{candidateId}/acceptance",
+  "/navigation-candidates/{candidateId}/rejection",
+  "/navigation/entities/{entityId}",
+  "/navigation/revisions/{revisionId}",
+  "/open-answer-attempts/{attemptId}",
+  "/open-answer-checks/candidates/{candidateId}/acceptance",
+  "/open-answer-checks/candidates/{candidateId}/rejection",
+  "/open-answer-checks/revisions/{revisionId}",
+  "/operations/diagnostics",
+  "/operations/health",
+  "/operations/open-answer-evaluator/tick",
+  "/program-invitations/me",
+  "/program-invitations/{invitationId}/acceptance",
+  "/program-invitations/{invitationId}/decline",
+  "/program-invitations/{invitationId}/revocation",
+  "/program-memberships/me",
+  "/programs",
+  "/programs/{programId}",
+  "/programs/{programId}/accepted-corpus",
+  "/programs/{programId}/admission-policy",
+  "/programs/{programId}/assessment-criteria",
+  "/programs/{programId}/assessment-criteria/candidates",
+  "/programs/{programId}/corpus-candidates",
+  "/programs/{programId}/corpus-events",
+  "/programs/{programId}/coverage-gaps",
+  "/programs/{programId}/curator-membership",
+  "/programs/{programId}/events",
+  "/programs/{programId}/invitations",
+  "/programs/{programId}/learner-state",
+  "/programs/{programId}/learner-state-target-links",
+  "/programs/{programId}/llm-curation-suggestions",
+  "/programs/{programId}/membership-events",
+  "/programs/{programId}/navigation",
+  "/programs/{programId}/navigation-candidates",
+  "/programs/{programId}/open-answer-attempts",
+  "/programs/{programId}/open-answer-checks",
+  "/programs/{programId}/open-answer-checks/candidates",
+  "/programs/{programId}/participants",
+  "/programs/{programId}/participants/student/{identityId}",
+  "/programs/{programId}/participation/{participationKind}",
+  "/programs/{programId}/quick-check-attempts",
+  "/programs/{programId}/quick-checks",
+  "/programs/{programId}/quick-checks/candidates",
+  "/programs/{programId}/readiness-check-attempts",
+  "/programs/{programId}/readiness-checks",
+  "/programs/{programId}/readiness-checks/candidates",
+  "/programs/{programId}/sources",
+  "/programs/{programId}/student-membership",
+  "/quick-check-attempts/{attemptId}",
+  "/quick-checks/candidates/{candidateId}/acceptance",
+  "/quick-checks/candidates/{candidateId}/rejection",
+  "/quick-checks/revisions/{revisionId}",
+  "/quick-checks/revisions/{revisionId}/curation",
+  "/readiness-check-attempts/{attemptId}",
+  "/readiness-checks/candidates/{candidateId}/acceptance",
+  "/readiness-checks/candidates/{candidateId}/rejection",
+  "/readiness-checks/revisions/{revisionId}/curation",
+]);
 
 test("openApiContract_shouldResolveLocalRefs_onHandEditedContract", () => {
   const document = parseDocument(readFileSync(openApiPath, "utf8"), { prettyErrors: false });
@@ -39,6 +123,13 @@ test("openApiContract_shouldMatchHttpStatusRejectionReasons_onHandEditedContract
       unmappedApiRejectionReasons: [],
     },
   );
+});
+
+test("openApiContract_shouldMatchExplicitRoutePathInventory_onHandEditedContract", () => {
+  const contract = readOpenApiContract();
+  const openApiPaths = Object.keys(contract.paths).sort();
+
+  assert.deepEqual(openApiPaths, expectedOpenApiPaths);
 });
 
 function readOpenApiContract() {
