@@ -39,7 +39,10 @@ and a curator does not read private student learning state.
 
 ## Open-answer checks
 
-- **Propose** — `POST /programs/{programId}/open-answer-checks/candidates`.
+- **Propose** — `POST /programs/{programId}/open-answer-checks/candidates` with
+  `{ "checkKind": "open_answer", "title", "prompt", "criterionEntityIds", "sourceIds"?, "rationale"? }`.
+  `criterionEntityIds` must contain at least one accepted assessment-criterion
+  entity id.
 - **List candidates** — `GET /programs/{programId}/open-answer-checks/candidates`
   (filter by `status`).
 - **Accept / reject** —
@@ -51,8 +54,12 @@ and a curator does not read private student learning state.
 
 ## Quick checks
 
-- **Propose / list** — `POST` and
-  `GET /programs/{programId}/quick-checks/candidates` (filter by `status`).
+- **Propose** — `POST /programs/{programId}/quick-checks/candidates` with
+  `{ "checkKind": "single_select_quick_check", "title", "prompt", "options", "answerKeyOptionIndex", "sourceIds"?, "rationale"? }`.
+  Provide at least two non-empty options; `answerKeyOptionIndex` is the
+  zero-based index of the correct option.
+- **List** — `GET /programs/{programId}/quick-checks/candidates` (filter by
+  `status`).
 - **Accept / reject** —
   `POST /quick-checks/candidates/{candidateId}/acceptance`,
   `POST /quick-checks/candidates/{candidateId}/rejection`.
@@ -65,8 +72,16 @@ and a curator does not read private student learning state.
 
 ## Readiness checks
 
-- **Propose / list** — `POST` and
-  `GET /programs/{programId}/readiness-checks/candidates` (filter by `status`).
+- **Propose** — `POST /programs/{programId}/readiness-checks/candidates` with
+  `{ "title", "scope", "requirements", "sourceIds"?, "rationale"? }`.
+  A topic scope is
+  `{ "scopeKind": "topic", "topicEntityId" }`; a period scope is
+  `{ "scopeKind": "period", "title", "topicEntityIds" }`. Each requirement is
+  `{ "targetKind", "targetId", "requiredLevel": "developing" | "on_track" }`,
+  where `targetKind` is `assessment_criterion`, `concept`,
+  `material_reference`, `open_answer_check`, `quick_check`, or `topic`.
+- **List** — `GET /programs/{programId}/readiness-checks/candidates` (filter by
+  `status`).
 - **Accept / reject** —
   `POST /readiness-checks/candidates/{candidateId}/acceptance`,
   `POST /readiness-checks/candidates/{candidateId}/rejection`.
@@ -83,7 +98,8 @@ program's accepted corpus.
 Criteria let evaluation be tied to the program rather than improvised per attempt
 (CUR-05). Same lifecycle:
 
-- **Propose** — `POST /programs/{programId}/assessment-criteria/candidates`.
+- **Propose** — `POST /programs/{programId}/assessment-criteria/candidates`
+  with `{ "title", "body", "sourceIds"?, "rationale"? }`.
 - **List candidates** — `GET /programs/{programId}/assessment-criteria/candidates`
   (filter by `status`).
 - **Accept / reject** —
@@ -102,6 +118,11 @@ learner-state target (which topic/concept/check the attempt is evidence *for*):
 
 - **List** — `GET /programs/{programId}/learner-state-target-links`.
 - **Create** — `POST /programs/{programId}/learner-state-target-links`.
+  Send `{ "evidenceOwnerKind", "evidenceOwnerEntityId", "targetKind",
+  "targetId" }`. Evidence-owner kinds are
+  `accepted_assessment_criterion`, `accepted_open_answer_check`, or
+  `accepted_quick_check`; target kinds are `topic`, `concept`, or
+  `material_reference`.
 - **Delete** — `DELETE /learner-state-target-links/{targetLinkId}`.
 
 Expect `rejected` reasons like `learner_state_target_not_found` or

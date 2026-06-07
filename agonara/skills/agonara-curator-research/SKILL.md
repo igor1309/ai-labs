@@ -51,8 +51,20 @@ gaps faster — and stay draft until you explicitly act (CUR-11…13):
 
 - **Generate** — `POST /programs/{programId}/llm-curation-suggestions`. Output is
   captured as draft suggestions; nothing is added to the program by generating.
+  Send `{ "suggestionPolicyId", "idempotencyKey", "maxSuggestions",
+  "curatorInstruction"?, "coverageGapIds"?, "contextEntityIds"?,
+  "allowedSuggestionKinds"? }`. At least one of `curatorInstruction`,
+  `coverageGapIds`, or `contextEntityIds` must provide generation context.
+  `maxSuggestions` is an integer from 1 through 20. If supplied,
+  `allowedSuggestionKinds` contains one or more of `navigation_candidate`,
+  `quick_check_candidate`, `assessment_criterion_candidate`,
+  `open_answer_check_candidate`, or `readiness_check_candidate`.
+  The built-in policy is `default-deterministic-policy`; use an
+  operator-provided policy id when the target instance is configured
+  differently.
 - **List** — `GET /programs/{programId}/llm-curation-suggestions`, filtered by
-  `status` (`draft` / `materialized` / `rejected`) and `suggestionKind`.
+  `status` (`draft_suggestion` / `materialized` / `rejected`) and
+  `suggestionKind` (one of the kinds above).
 - **Trace origin before deciding** — `GET /llm-curation-suggestions/{suggestionId}`
   exposes a suggestion's source, prompt context, or supporting evidence. Read
   this and judge whether it belongs before accepting (CUR-13).

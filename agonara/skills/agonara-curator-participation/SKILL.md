@@ -30,8 +30,9 @@ one only adds the curator's operations.
 ## Invitations
 
 - **Invite a student** — `POST /programs/{programId}/invitations` with
-  `{ "targetIdentityId", "note"? }` (CUR-14). The invitation is membership state;
-  it does **not** by itself create any student learning state.
+  `{ "participationKind": "student", "targetIdentityId" }` (CUR-14). The
+  invitation is membership state; it does **not** by itself create any student
+  learning state.
 - **List** — `GET /programs/{programId}/invitations`, optionally filtered by
   `status` — see pending and accepted invitations to understand who can
   participate (CUR-15).
