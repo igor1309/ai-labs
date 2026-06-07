@@ -162,7 +162,7 @@ Documents to adapt (handoff §3). Each is a reposition, not a mechanical rewrite
 
 - [x] Phase 0 — Positioning / ADR decision
 - [x] Phase 1 — Product Intent keystone edit + backward-traceability check
-- [ ] Phase 2 — User-stories pass
+- [x] Phase 2 — User-stories pass
 - [ ] Phase 3 — README (project + repo-root row)
 - [ ] Phase 4 — Landing (`index.html`)
 - [ ] Phase 5 — Architecture (`architecture.html`)
@@ -213,6 +213,23 @@ and actor names returned 13 ADRs: adr-001, 002, 003, 005, 006, 009, 010, 011,
   first-class" — neither claims the UI is the primary or only surface.
 - Module ownership (five-module split, ADR-004…018) is unaffected; no ADR
   edited.
+
+### Phase 2 — User-stories pass
+
+Reviewed `curator_user_stories.md`, `student_user_stories.md`, and
+`admin_user_stories.md` for "UI is the only access path" assumptions. **None
+found** — every story is role/job framed and outcome-based (a grep for
+`UI|screen|browser|/learn|/admin|click|button` returned only false positives such
+as "started programs" and "easy to confuse"). The "membership governed outside my
+workspace" framing is present in each catalog's Terms table and is preserved.
+
+**No new stories added.** BYOA is a new *access path* to the existing role jobs
+(CUR-01…18, STU-01…23, ADM-01…15), not a new job; the operating-model statement
+now lives at the Product Intent level and applies across all roles. Adding
+per-role "drive X from my own agent" stories would duplicate the access-path
+agnostic framing and trigger speculative scope creep the plan guards against, so
+the catalogs are verified and preserved unchanged. No story added/removed, so the
+intent "Change review" story-catalog trigger does not fire.
 
 Update tracker checkboxes only after a phase's required verification passes and
 its commit is created; commit the tracker-only status update before starting the
