@@ -2,6 +2,11 @@
 
 ## 2026-06-07
 
+- Close the stale standalone Storage ownership backlog framing: Agonara storage
+  now follows implemented module responsibilities, while unresolved
+  recommendation, learner-state cache, membership-policy, and `/learn`
+  presentation persistence questions remain tracked as future product-state
+  decisions.
 - Surface the implemented BYOA operator-skill set on the Agonara landing page:
   tighten the product-surface wording, add a grouped Operator Skills section
   for foundations / curator work / role operations, update the getting-started
