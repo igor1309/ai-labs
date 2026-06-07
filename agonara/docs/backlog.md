@@ -7,6 +7,9 @@ version: 0.0.15
 
 # Backlog
 
+> **Related backlog files:** [`backlog-agent-connectivity.md`](backlog-agent-connectivity.md)
+> — making an instance reachable by Telegram, Claude Code, and other agents.
+
 ## Agent Process and Skill Improvements
 
 ### Implementation adversarial review skill

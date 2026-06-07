@@ -37,6 +37,14 @@
   conditions `/admin` exposure on the admin-access decision and adds a guardrail
   requiring the exception ADR to revisit the block rather than override it
   silently. ADR-017 fidelity and framing passed.
+- Capture the second half of the BYOA claim — how agents people actually use
+  reach an instance — as forward tasks in a discovery-prefixed
+  `docs/backlog-agent-connectivity.md`: token (bearer) auth as an alternative to
+  the cookie+CSRF flow (ADR-008 decision), an optional MCP connector over the
+  OpenAPI contract, the remote-admin access decision (the `/admin`-blocked
+  follow-up viewed from connectivity), and operator guidance that sandboxed
+  agents (Claude Code on web/app) must allowlist the instance domain. Linked it
+  from the central `backlog.md` for discovery.
 - Clarify the Agonara landing hero by separating the structured-progress outcome
   from one concise product-value summary and reserving bring-your-own-agent
   explanation for the dedicated BYOA section.
