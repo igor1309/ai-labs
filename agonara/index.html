@@ -392,18 +392,18 @@
       Agonara is <strong>bring-your-own-agent</strong>: you point the agent you already
       work in at your instance and operate the product through its contract, loading a
       per-role operator skill for the job at hand — the primary way to use Agonara.
-      The <code>/learn</code> and <code>/admin</code> browser UIs and the operator CLI are
-      first-class clients of the same program, corpus, membership, assessment, and
-      learner-state APIs.
+      The <code>/learn</code> and <code>/admin</code> browser UIs are first-class clients of
+      the same program, corpus, membership, assessment, and learner-state APIs;
+      the operator CLI covers private-instance bootstrap operations.
       The implemented route-level contract is published as
       <a href="docs/api/openapi.yml">OpenAPI 3.1</a>, with automation follow-up tracked in
       <a href="docs/api/TODO.md">docs/api/TODO.md</a>.
     </p>
     <div class="surfaces">
       <div class="surface-card">
-        <div class="route">skills/agonara-*</div>
+        <div class="route">skills/README.md</div>
         <h3>Role skills</h3>
-        <p>Load the skill for the role and job at hand, then operate your instance from the agent you already use.</p>
+        <p>Portable BYOA operator skills for API access, membership, curator work, student learning, and private-instance administration.</p>
       </div>
       <div class="surface-card">
         <div class="route">docs/api/openapi.yml</div>
@@ -431,8 +431,51 @@
         <p>Bootstrap status and first-Admin bootstrap for standing up a fresh private instance.</p>
       </div>
     </div>
-  </div>
-</section>
+
+    <div id="operator-skills" class="section-subblock">
+      <p class="eyebrow">Operator skills</p>
+      <h3 class="section-title">Bring your own agent, load the job skill</h3>
+      <p class="lede">
+        The implemented skills are role-scoped operating manuals for agents using an Agonara
+        instance through the published API contract. Shared foundations handle connection and
+        participation; role skills keep curator, student, and admin jobs separate.
+      </p>
+      <div class="caps">
+        <div class="cap">
+          <h4>API Access Foundation</h4>
+          <p><code>agonara-api-access</code> covers health, password login, the <code>agonara_session</code> cookie, CSRF, idempotency keys, and response envelopes.</p>
+        </div>
+        <div class="cap">
+          <h4>Membership Foundation</h4>
+          <p><code>agonara-membership</code> covers role-neutral participation, invitations, effective participation, and membership history.</p>
+        </div>
+        <div class="cap">
+          <h4>Curator Corpus</h4>
+          <p><code>agonara-curator-corpus</code> creates programs and moves topics, concepts, materials, and navigation from draft candidates to accepted corpus.</p>
+        </div>
+        <div class="cap">
+          <h4>Curator Assessment</h4>
+          <p><code>agonara-curator-assessment</code> authors open-answer, quick, and readiness checks while keeping answer keys curator-only.</p>
+        </div>
+        <div class="cap">
+          <h4>Curator Research</h4>
+          <p><code>agonara-curator-research</code> records sources, reads coverage gaps, and reviews LLM-assisted suggestions as draft material.</p>
+        </div>
+        <div class="cap">
+          <h4>Curator Participation</h4>
+          <p><code>agonara-curator-participation</code> manages admission policy, invitations, participants, student removal, and curator leave.</p>
+        </div>
+        <div class="cap">
+          <h4>Student Operation</h4>
+          <p><code>agonara-student</code> discovers, joins, studies, answers checks, and reads feedback using only accepted corpus and the student's own state.</p>
+        </div>
+        <div class="cap">
+          <h4>Admin Operation</h4>
+          <p><code>agonara-admin</code> bootstraps and operates a private instance: identities, credentials, Admin authority, audit, access, and exceptional recovery.</p>
+        </div>
+      </div>
+    </div>
+  </section>
 
 <!-- RUN IT -->
 <section id="run">
@@ -479,8 +522,8 @@
     <div class="run-step">
       <span class="num">3</span>
       <div>
-        <h3>Open the boards</h3>
-        <p>Sign in as Admin to run operations, then hand Curators and Students the <code>/learn</code> product UI. Both surfaces are clients of the same backend contracts.</p>
+        <h3>Open the boards or load a skill</h3>
+        <p>Use BYOA by loading the role skill for the job and pointing your agent at the instance URL. The <code>/admin</code> and <code>/learn</code> boards remain available browser clients of the same contracts.</p>
         <code class="cmd">http://127.0.0.1:18080/admin
 http://127.0.0.1:18080/learn</code>
       </div>
@@ -489,7 +532,7 @@ http://127.0.0.1:18080/learn</code>
       <span class="num">4</span>
       <div>
         <h3>Create a program &amp; invite people</h3>
-        <p>Create a program, accept corpus from trusted sources, and invite Students. From there the product loop above takes over — learners progress and accrue evidence of learning.</p>
+        <p>Use the curator skills or <code>/learn</code> to create a program, accept corpus from trusted sources, and invite Students. From there learners progress and accrue evidence of learning.</p>
       </div>
     </div>
   </div>
@@ -505,6 +548,10 @@ http://127.0.0.1:18080/learn</code>
     storage, domain commands, session-backed HTTP routes, backup/restore, and — where noted — a <code>/learn</code> product UI.
   </p>
   <div class="caps">
+    <div class="cap">
+      <h4>BYOA Operator Skills</h4>
+      <p>Shared API-access and membership foundations, four curator job skills, student operation, and admin operation skills grounded in the OpenAPI contract.</p>
+    </div>
     <div class="cap">
       <h4>Identity &amp; Operations</h4>
       <p>First-Admin bootstrap, local-password login, server-side sessions, Admin identity ops, audit reads, health, diagnostics, request correlation, completion logs, backup &amp; restore.</p>
@@ -584,8 +631,10 @@ http://127.0.0.1:18080/learn</code>
     <a class="doc-link" href="architecture.html">Architecture <code>architecture.html</code></a>
     <a class="doc-link" href="docs/intent/user-stories.html">User Stories <code>docs/intent/user-stories.html</code></a>
     <a class="doc-link" href="README.md">Overview <code>README.md</code></a>
+    <a class="doc-link" href="skills/README.md">Operator Skills <code>skills/README.md</code></a>
     <a class="doc-link" href="docs/demos.md">Demos <code>docs/demos.md</code></a>
     <a class="doc-link" href="docs/api/openapi.yml">OpenAPI Contract <code>docs/api/openapi.yml</code></a>
+    <a class="doc-link" href="docs/plans/implemented/byoa-operator-skills.md">BYOA Skills Brief <code>docs/plans/implemented/byoa-operator-skills.md</code></a>
     <a class="doc-link" href="docs/api/TODO.md">API TODO <code>docs/api/TODO.md</code></a>
     <a class="doc-link" href="docs/module_responsibility_map.md">Responsibility Map <code>docs/module_responsibility_map.md</code></a>
     <a class="doc-link" href="docs/adr/">ADRs <code>docs/adr/</code></a>
