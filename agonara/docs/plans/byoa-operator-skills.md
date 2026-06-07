@@ -34,6 +34,11 @@ The skill **is** the product's operating surface for that role. It must survive
 across agent runtimes. The consumer is "an agent (or a human driven by one)
 operating Agonara through its API to do a role's job."
 
+This is a **refinement** of Agonara's existing API-first intent — which already
+anticipated agent clients of its contracts — not a new product. Curated
+programs, learner progression, and human-owned curriculum are unchanged. BYOA is
+the primary operating model; the `/learn` and `/admin` UIs stay alongside it.
+
 This is a different audience from the removed skill, with a different substrate:
 
 | | Removed `agonara-api` skill | BYOA operator skills |
@@ -105,8 +110,9 @@ file count.
 
 ## Decisions taken (this branch)
 
-- Removed the developer-facing `agonara-api` skill and all its in-repo
-  references (AGENTS pointer, API TODO section, landing surface card).
+- Removed the developer-facing `agonara-api` skill and its in-repo references
+  (AGENTS pointer, API TODO section). The landing's skill reference was already
+  dropped by trunk's landing redesign.
 - Established `agonara/skills/` as the parent for operator-skill subfolders
   (seeded with a README stating intent).
 - Captured this design as the source of truth for the build step.
@@ -115,7 +121,8 @@ file count.
 
 - Skill discovery and publishing (marketplace, install flow, versioning surface)
   — to be addressed later.
-- Building the operator skills themselves.
+- Building the operator skills themselves — planned in *Build sequence* below;
+  not done on this branch.
 - The product/docs **repositioning** that this implies — that is a separate,
   significant job with its own branch and handoff:
   `agonara-byoa-repositioning-handoff.md`.

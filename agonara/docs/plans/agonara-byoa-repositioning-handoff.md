@@ -7,14 +7,27 @@ description: "Handoff: reposition Agonara as a bring-your-own-agent (BYOA) produ
 # Handoff — Agonara BYOA Repositioning
 
 > Do this on a **dedicated branch**, separate from the skills-structure work.
-> This job changes Agonara's positioning at the **Product Intent** level, so it
-> ripples downstream through My Way artifacts. Treat it as an intent change, not
-> a copy edit.
+>
+> **This is a Product Intent _refinement_, not a rewrite or a pivot.** Agonara's
+> intent is unchanged: curated learning programs, learner progression,
+> human-owned curriculum, AI as assistant not author. What is refined is the
+> _operating model_ — how people reach the product — made explicit as BYOA, with
+> the existing UIs alongside. Agonara was already API-first and already
+> anticipated agent clients of its contracts; this sharpens that latent intent
+> into a stated one. It still ripples through My Way artifacts, so treat it as an
+> intent edit — but a refining one, not a new direction.
+>
+> **Guiding principle for the edits:** lead with intent. For intelligent readers
+> — humans and agents alike — being explicit about _what Agonara is for and how
+> it is operated_ matters far more than loading implementation detail. Keep the
+> intent docs about intent; push mechanics to the contract (`docs/api/openapi.yml`)
+> and architecture docs.
 
 ## 1. Why
 
-Agonara's surfaces are currently presented as "API-first, with browser UIs and
-an operator CLI as clients." The new positioning is sharper:
+Agonara is already API-first, with browser UIs and an operator CLI as clients of
+the same contracts. The refinement makes the intended _operating model_
+explicit:
 
 > **Agonara is bring-your-own-agent (BYOA).** Instead of building a UI and
 > plugging an agent into it via some chat/UX, the product is the **API plus a
@@ -28,9 +41,12 @@ The skills-structure branch has already acted on the *skills* consequence
 `byoa-operator-skills.md`). This handoff covers the **product and docs**
 consequence, which is larger and was deliberately deferred.
 
-## 2. Positioning shift (from → to)
+## 2. What the refinement makes explicit
 
-| Aspect | From (current) | To (BYOA) |
+This is a change of emphasis and articulation, not of product. Each row is
+already true today; the right column is what becomes _stated intent_.
+
+| Aspect | Left implicit today | Made explicit |
 |---|---|---|
 | Primary surface | Browser UIs (`/learn`, `/admin`) + API | Agent + role skill, over the API (primary, not exclusive) |
 | Role of UI | The way you use the product | Stays first-class alongside BYOA (see §5 — resolved) |
@@ -90,11 +106,10 @@ rewrite — reposition.
   intent, check **backward traceability**: which ADRs and specs reference the
   text you are changing, and does the BYOA framing contradict any accepted
   decision? (It should not — module ownership is unaffected — but verify.)
-- The positioning change itself ("the product is API + skills, not a bundled
-  UI") is plausibly an **architecture-significant decision** deserving its own
-  pre-ADR → ADR, especially because it bears on the status of the existing
-  `/learn` and `/admin` UIs (§5). Decide early whether an ADR is warranted;
-  consult `../docs/my-way/` and the `adr-governance` skill.
+- Even as a refinement, making the BYOA operating model explicit may be worth
+  recording as an **ADR** (operating-model intent, with UIs retained per §5).
+  It is a refinement, not a reversal, so an ADR is optional rather than forced —
+  decide early; consult `../docs/my-way/` and the `adr-governance` skill.
 - After intent changes, run a **traceability pass** (the `traceability-review`
   skill) over intent → ADR → spec to catch divergence introduced by the reframe.
 
@@ -128,19 +143,28 @@ mere examples.
 - **Keep curation human-owned and AI-as-assistant** intact — BYOA must not read
   as "the agent owns the curriculum." It owns the *operating*, not the content
   decisions.
+- **Refinement, not pivot.** Do not rewrite the product. Sharpen how its intent
+  is stated; the product itself does not change. If an edit reads as a new
+  direction, it has overreached.
+- **Intent over implementation.** Lead every intent doc with what Agonara is for
+  and how it is operated. Resist importing route lists, schemas, and mechanics —
+  those live in the contract and architecture docs.
 - **EN/RU parity** for brand docs.
-- **Honest scope:** this is a positioning rewrite across the doc set; expect
+- **Honest scope:** an intent refinement propagated across the doc set — expect
   several artifacts and a traceability pass, not a one-file diff.
 
 ## 8. Acceptance
 
-- Product Intent states the BYOA operating model explicitly and consistently.
+- Product Intent states the BYOA operating model explicitly and consistently,
+  and reads as a refinement — the product's purpose is recognizably unchanged.
 - README (project + repo-root row), landing, and architecture present BYOA as the
-  primary way to operate Agonara, with the UIs positioned per the §5 decision.
+  primary way to operate Agonara, with the UIs retained as first-class (§5).
 - User stories contain no "UI is the only access path" assumptions.
+- Intent docs stay about intent — no implementation detail imported that belongs
+  in the contract or architecture docs.
 - intent ↔ ADR ↔ spec traceability is clean (review run, drift reconciled).
-- An ADR exists for the positioning decision **iff** §4/§5 concluded one is
-  warranted.
+- An ADR for the operating-model refinement exists **iff** §4 concluded one is
+  warranted (it is optional, not required).
 - `docs/log.md` updated.
 
 ## 9. References
