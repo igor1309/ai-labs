@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Agonara — Structured Learning Program Environment</title>
+<title>Agonara — BYOA Learning Program Environment</title>
 <style>
   :root {
     --bg:       #141413;
@@ -390,8 +390,13 @@
     From the ancient Greek <em>agon</em> — exercise, trial, disciplined striving.
   </p>
   <p class="anchor">
-    A private learning environment where curators build trusted paths and learners
-    progress through checks, feedback, and evidence of learning.
+    Turn scattered study into structured progress.
+    Agonara is a BYOA learning program environment for serious self-directed
+    learners and program curators.
+  </p>
+  <p class="anchor" style="margin-top:18px;">
+    Bring your own agent to shape sources into curated programs, connect materials
+    and concepts, run checks, and keep progress grounded in evidence.
   </p>
   <div class="hero-cta">
     <a class="btn ghost" href="#run">Run a private instance →</a>
@@ -404,49 +409,59 @@
 <!-- HOW IT WORKS -->
 <section id="use">
   <p class="eyebrow">What you do with it</p>
-  <h2 class="section-title">Curate programs, learn, track progress</h2>
+  <h2 class="section-title">Turn scattered study into a path you can follow</h2>
   <p class="lede">
-    Curators build a trusted program, learners progress through it, and assessment produces
-    owner-only evidence of progress — with AI assisting curation and evaluation without ever
-    owning the curriculum.
+    Serious learning breaks down when materials, concepts, and proof of understanding
+    live in separate piles. Agonara gives you a program-shaped workspace for turning
+    that scatter into a path you can follow, revise, and verify.
   </p>
   <div class="grid">
     <div class="card curator">
-      <span class="kicker curator">Step 1 · Curator</span>
-      <h3>Assemble a program</h3>
-      <p>Research trusted sources, draft topics, concepts, materials, and checks, then explicitly accept them into the program corpus. LLM suggestions and coverage-gap diagnostics assist, but stay draft until accepted.</p>
+      <span class="kicker curator">Curate</span>
+      <h3>Build from selected sources</h3>
+      <p>Shape sources into a program, connect concepts to materials, define checks, and accept what belongs.</p>
     </div>
     <div class="card student">
-      <span class="kicker student">Step 2 · Student</span>
-      <h3>Join and progress</h3>
-      <p>Learners join a program and move through accepted topics, concepts, and materials in clear sequence inside the <code>/learn</code> UI — never mutating the corpus they study.</p>
+      <span class="kicker student">Follow</span>
+      <h3>Learn through a program</h3>
+      <p>Follow selected materials, concepts, checks, and feedback without losing the thread.</p>
     </div>
     <div class="card student">
-      <span class="kicker student">Step 3 · Assessment</span>
-      <h3>Check understanding</h3>
-      <p>Quick Checks, open-answer attempts, and readiness checks run against accepted criteria. Open answers are evaluated by a worker behind a provider boundary; results are recorded as evidence.</p>
+      <span class="kicker student">Verify</span>
+      <h3>Turn answers into feedback</h3>
+      <p>Move through checks and feedback so progress stays grounded in evidence that belongs to the learner.</p>
     </div>
     <div class="card student">
-      <span class="kicker student">Step 4 · Progress</span>
-      <h3>See evidence of progress</h3>
-      <p>Learner-state interpretation turns attempts into owner-only progress and weak-area summaries with supporting evidence — readable only by the learner who owns them.</p>
+      <span class="kicker student">Structure</span>
+      <h3>Keep progress durable</h3>
+      <p>Sources are shaped into a program, concepts connect to materials, checks turn answers into feedback, and progress stays grounded in learner-owned evidence.</p>
     </div>
   </div>
 
   <div id="surfaces" class="section-subblock">
-    <p class="eyebrow">Product surfaces</p>
-    <h3 class="section-title">How humans and agents reach it</h3>
+    <p class="eyebrow">BYOA</p>
+    <h3 class="section-title">Bring the agent you already use</h3>
     <p class="lede">
-      Agonara is <strong>bring-your-own-agent</strong>: you point the agent you already
-      work in at your instance and operate the product through its contract, loading a
-      per-role operator skill for the job at hand — the primary way to use Agonara.
-      The <code>/learn</code> and <code>/admin</code> browser UIs are first-class clients of
-      the same program, corpus, membership, assessment, and learner-state APIs;
-      the operator CLI covers private-instance bootstrap operations.
-      The implemented route-level contract is published as
-      <a href="docs/api/openapi.yml">OpenAPI 3.1</a>, with automation follow-up tracked in
-      <a href="docs/api/TODO.md">docs/api/TODO.md</a>.
+      Point it at your Agonara instance and follow role-specific guidance for curating
+      programs, learning through them, and managing the private instance. The agent helps
+      with the workflow. You remain responsible for accepted program content and how
+      learning evidence is used.
     </p>
+    <p class="lede">
+      Agents can help draft, evaluate, and carry out the workflow, but accepted program
+      content remains a human decision.
+    </p>
+    <div class="section-subblock">
+      <p class="eyebrow">Product surfaces</p>
+      <h3 class="section-title">How people reach it</h3>
+      <p class="lede">
+        The <code>/learn</code> and <code>/admin</code> browser UIs are first-class clients of
+        the same program, corpus, membership, assessment, and learner-state APIs;
+        the operator CLI covers private-instance bootstrap operations. The implemented
+        route-level contract is published as <a href="docs/api/openapi.yml">OpenAPI 3.1</a>,
+        with automation follow-up tracked in <a href="docs/api/TODO.md">docs/api/TODO.md</a>.
+      </p>
+    </div>
     <div class="surfaces">
       <div class="surface-card">
         <div class="route">skills/README.md</div>
@@ -482,7 +497,7 @@
 
     <div id="operator-skills" class="section-subblock">
       <p class="eyebrow">Operator skills</p>
-      <h3 class="section-title">Bring your own agent, load the job skill</h3>
+      <h3 class="section-title">Role-specific guidance</h3>
       <p class="lede">
         The implemented skills are role-scoped operating manuals for agents using an Agonara
         instance through the published API contract. Shared foundations handle connection and
@@ -543,19 +558,21 @@
         </div>
       </div>
     </div>
+  </div>
   </section>
 
 <!-- RUN IT -->
 <section id="run">
   <p class="eyebrow">Getting started</p>
-  <h2 class="section-title">Run your own private instance</h2>
+  <h2 class="section-title">Operate a private instance</h2>
   <p class="lede">
-    Agonara is built to be self-hosted: a small, recoverable backend that runs the same in a
-    container on a VPS or home server as it does locally for development. The dockerized
-    private self-hosted shape is the current <em>target</em>, provisional until an ADR accepts
-    the operational boundary (see <a href="architecture.html#deployment">Architecture → Deployment</a>).
-    A fresh instance is inert until you bootstrap the first Admin. (See full walkthroughs in
-    <a href="docs/demos.md">docs/demos.md</a>.)
+    Agonara is built for private, recoverable operation. Bootstrap an instance, manage
+    identities and access, inspect audit events, and preserve program and learner state
+    through backup and restore. The dockerized private self-hosted shape is the current
+    <em>target</em>, provisional until an ADR accepts the operational boundary (see
+    <a href="architecture.html#deployment">Architecture → Deployment</a>).
+    A fresh instance is inert until you bootstrap the first Admin. (See full walkthroughs
+    in <a href="docs/demos.md">docs/demos.md</a>.)
   </p>
   <div id="stack" class="chips" aria-label="Runtime stack">
     <span class="chip">Node.js <span>22</span></span>
@@ -697,6 +714,7 @@ http://127.0.0.1:18080/learn</code>
   <h2 class="section-title">Explore further</h2>
   <div class="links">
     <a class="doc-link" href="architecture.html">Architecture <code>architecture.html</code></a>
+    <a class="doc-link" href="docs/positioning.md">Positioning <code>docs/positioning.md</code></a>
     <a class="doc-link" href="docs/intent/user-stories.html">User Stories <code>docs/intent/user-stories.html</code></a>
     <a class="doc-link" href="README.md">Overview <code>README.md</code></a>
     <a class="doc-link" href="skills/README.md">Operator Skills <code>skills/README.md</code></a>

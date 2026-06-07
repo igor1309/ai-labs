@@ -2,6 +2,11 @@
 
 ## 2026-06-07
 
+- Establish the Agonara positioning baseline around turning scattered study into
+  structured progress: add `docs/positioning.md`, update the README opening,
+  and revise the landing hero/how-it-works/BYOA/private-instance copy to lead
+  with serious self-directed learners, program curators, human acceptance, and
+  learner-owned evidence.
 - Add an OpenAPI contract guard for the hand-edited API spec: Agonara tests now
   parse `docs/api/openapi.yml` and fail on external or unresolved local `$ref`
   entries before drift can reach operator skills or clients.
