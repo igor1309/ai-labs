@@ -10,6 +10,13 @@
   shape is no longer "provisional until an ADR accepts the operational
   boundary" — ADR-017 accepted it (2026-06-06). Reworded to the committed
   operational boundary with a direct ADR-017 link.
+- Draft `docs/plans/byoa-self-host-paved-path.md`: a gap-closing plan to turn the
+  author-only `agonara-vps` CI deployment into a host-agnostic, operator-facing,
+  non-author-verified self-host paved path, so the BYOA "point your agent at your
+  instance" claim is backed by a real route to *having* an instance — without
+  changing ADR-017's boundary. Phases cover a self-host runbook, a backup/restore
+  drill runbook (ADR-017 G3), positioning links, and a non-author verification
+  acceptance gate.
 - Clarify the Agonara landing hero by separating the structured-progress outcome
   from one concise product-value summary and reserving bring-your-own-agent
   explanation for the dedicated BYOA section.
