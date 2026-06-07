@@ -1,9 +1,9 @@
 ---
 title: Agonara Implementation Notes
-date: 2026-05-27
-description: "Research notes on mapping external authentication to Agonara internal identity and authority."
-model: gpt-5.5-thinking
-version: 0.2.5
+date: 2026-06-07
+description: "Implementation notes for Agonara identity boundaries, runtime state, and deferred product-state decisions."
+model: gpt-5
+version: 0.2.9
 ---
 
 # Agonara Implementation Notes
@@ -171,8 +171,33 @@ The production server entrypoint now composes Identity, Program, Corpus, and Stu
 
 Current backend, domain, and first-slice UI support does not imply a complete product UI.
 
-- Recommendation ranking and persisted mastery models still need separate downstream artifacts.
-- The Admin board is implemented for operational Identity/Admin work and exceptional Program Membership recovery/revocation. `/learn` is implemented for Quick Check, topic/concept/material navigation, learner-state interpretation, readiness, membership Student/Curator product slices, Curator-only coverage-gap inspection, and Curator-only LLM suggestion review. Broader Student and Curator product screens remain outside the current runtime.
+- Recommendation ranking still needs a separate downstream artifact. No future
+  learning-path sequencing record is currently needed beyond the accepted
+  topic/concept/material navigation graph; any future personal recommendation
+  state must be specified through Student Workspace ownership rather than shared
+  Program corpus.
+- No invalidated learner-state cache records are currently worth adding beyond
+  read-time derivation. The implemented learner-state slice derives progress and
+  weak-area labels from source evidence; any future cache must keep the
+  underlying evidence authoritative and specify invalidation by source evidence
+  or target-link changes.
+- No additional membership-policy variants are currently needed beyond Student
+  `self_join` and `invitation_only` access. Future variants such as cohort,
+  organization, payment, approval, or invitation-expiry policy require an
+  ADR-backed spec when they amend policy or role vocabulary, and must preserve
+  Program Membership ownership of participation without turning Admin authority
+  into a normal Program role.
+- No additional persisted learner-facing `/learn` presentation state is
+  currently needed. Implemented `/learn` selections are reloadable from backend
+  contracts, and the browser-stored theme preference is UI chrome rather than
+  learner state.
+- The Admin board is implemented for operational Identity/Admin work and
+  exceptional Program Membership recovery/revocation. `/learn` is implemented
+  for Quick Check, topic/concept/material navigation, learner-state
+  interpretation, readiness, membership Student/Curator product slices,
+  Curator-only coverage-gap inspection, and Curator-only LLM suggestion review.
+  Broader Student and Curator product screens remain outside the current
+  runtime and need separate specs if they introduce persisted product state.
 
 ## Open questions
 
