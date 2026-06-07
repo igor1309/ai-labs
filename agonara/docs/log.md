@@ -2,6 +2,11 @@
 
 ## 2026-06-07
 
+- Resolve the `/learn` presentation-state product-state question: no additional
+  persisted learner-facing presentation state is planned; current selections
+  reload from backend contracts, theme persistence remains UI chrome, and
+  broader Student/Curator UI needs separate specs if it introduces persisted
+  product state.
 - Resolve the membership-policy variants product-state question: no additional
   variants are planned beyond Student self-join and invitation-only access;
   cohort, organization, payment, approval, or invitation-expiry policy requires

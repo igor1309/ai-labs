@@ -3,7 +3,7 @@ title: Agonara Implementation Notes
 date: 2026-06-07
 description: "Implementation notes for Agonara identity boundaries, runtime state, and deferred product-state decisions."
 model: gpt-5
-version: 0.2.8
+version: 0.2.9
 ---
 
 # Agonara Implementation Notes
@@ -187,7 +187,17 @@ Current backend, domain, and first-slice UI support does not imply a complete pr
   ADR-backed spec when they amend policy or role vocabulary, and must preserve
   Program Membership ownership of participation without turning Admin authority
   into a normal Program role.
-- The Admin board is implemented for operational Identity/Admin work and exceptional Program Membership recovery/revocation. `/learn` is implemented for Quick Check, topic/concept/material navigation, learner-state interpretation, readiness, membership Student/Curator product slices, Curator-only coverage-gap inspection, and Curator-only LLM suggestion review. Broader Student and Curator product screens remain outside the current runtime.
+- No additional persisted learner-facing `/learn` presentation state is
+  currently needed. Implemented `/learn` selections are reloadable from backend
+  contracts, and the browser-stored theme preference is UI chrome rather than
+  learner state.
+- The Admin board is implemented for operational Identity/Admin work and
+  exceptional Program Membership recovery/revocation. `/learn` is implemented
+  for Quick Check, topic/concept/material navigation, learner-state
+  interpretation, readiness, membership Student/Curator product slices,
+  Curator-only coverage-gap inspection, and Curator-only LLM suggestion review.
+  Broader Student and Curator product screens remain outside the current
+  runtime and need separate specs if they introduce persisted product state.
 
 ## Open questions
 
