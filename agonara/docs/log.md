@@ -2,6 +2,10 @@
 
 ## 2026-06-07
 
+- Specify OpenAPI automation for Agonara: add a route contract registry and
+  generation-check spec that keeps server routing, route contract tests, and
+  `docs/api/openapi.yml` aligned while preserving the published BYOA skill
+  substrate.
 - Convert the Agonara deployment handoff from a stale-prone release narrative
   into a short deployment index with explicit front-matter rules prohibiting use
   as a log, runbook, release note, live-state inventory, or implementation
