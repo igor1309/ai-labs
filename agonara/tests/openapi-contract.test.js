@@ -45,9 +45,10 @@ function collectRefs(value, path = []) {
 
 function hasLocalRef(contract, ref) {
   let current = contract;
-  const segments = decodeURIComponent(ref.slice(2))
+  const segments = ref
+    .slice(2)
     .split("/")
-    .map($0 => $0.replaceAll("~1", "/").replaceAll("~0", "~"));
+    .map(decodePointerSegment);
 
   for (const segment of segments) {
     if (!isRecord(current) && !Array.isArray(current)) {
@@ -70,6 +71,10 @@ function formatRefFailure({ path, ref }) {
 
 function escapePointerSegment(segment) {
   return segment.replaceAll("~", "~0").replaceAll("/", "~1");
+}
+
+function decodePointerSegment(segment) {
+  return decodeURIComponent(segment).replaceAll("~1", "/").replaceAll("~0", "~");
 }
 
 function isRecord(value) {
