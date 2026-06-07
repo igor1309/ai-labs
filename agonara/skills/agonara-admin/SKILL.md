@@ -108,11 +108,16 @@ confers Student or Program Curator authority.**
   Admin first, confirm it, then revoke the old** — never the reverse.
 - **Inspect operational access** —
   `GET /identity/identities/{identityId}/operational-access` reads an identity's
-  effective access: its Admin authority and its program participation grants and
-  scope. Use it to diagnose whether an identity has effective Student or Program
-  Curator authority in a program, and to trace how access was lost or restored —
-  **without creating or changing membership** (ADM-06, ADM-07). This is a
-  read-only diagnosis; it never recreates revoked access.
+  effective access as a current snapshot: use it to diagnose whether an identity
+  has effective Student or Program Curator authority in a program, **without
+  creating or changing membership** (ADM-06). It is a read-only diagnosis; it
+  never recreates revoked access.
+- **Trace authority changes over time** — to diagnose how access was *lost or
+  restored* (ADM-07), follow the historical records, not the snapshot: a
+  program's `GET /programs/{programId}/membership-events` for membership and
+  recovery records, and `GET /identity/audit-events` (below) for admin-authority
+  and exceptional-recovery operations. The trace points back to those records
+  without recreating revoked access.
 - **Read audit events** — `GET /identity/audit-events` (paged via `limit` /
   `cursor`) lists the attributable, redacted record of identity, credential-
   binding, Admin-authority, and exceptional-recovery operations — each carrying
