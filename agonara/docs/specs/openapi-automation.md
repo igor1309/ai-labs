@@ -3,7 +3,7 @@ date: 2026-06-07
 model: gpt-5
 description: "Spec: Agonara route contract registry and generated OpenAPI contract."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -14,6 +14,22 @@ type: spec
 Define the Agonara route contract automation surface that makes route declarations the shared source for server routing, route-level contract tests, and `docs/api/openapi.yml` generation. Owned by the Agonara HTTP server boundary (`src/server.js`) and route contract module.
 
 This spec operationalizes the `OpenAPI automation` backlog item in `docs/backlog.md`. It does not add, remove, rename, or redefine any public HTTP route, auth rule, request body, response envelope, rejection reason, or domain field meaning. Existing route behavior remains governed by the implemented HTTP/domain specs and ADRs; this spec defines how the route-level OpenAPI contract is produced and checked.
+
+## Implementation status
+
+Implemented by [OpenAPI Automation Implementation Plan](../plans/implemented/openapi-automation.md).
+
+### Implementation Evidence
+
+- Route contract registry and route matcher: [http-contract.js](../../src/http-contract.js)
+- Deterministic OpenAPI document generation: [openapi-generator.js](../../src/openapi-generator.js)
+- Generator CLI and `--check` mode: [generate-agonara-openapi.mjs](../../scripts/generate-agonara-openapi.mjs)
+- Generated OpenAPI contract: [openapi.yml](../api/openapi.yml)
+- Server dispatch through registry route matches: [server.js](../../src/server.js)
+- Registry, generator, check-mode, route matching, and test-gate coverage: [openapi-contract.test.js](../../tests/openapi-contract.test.js)
+- Workspace test gate wiring: [package.json](../../package.json)
+
+The implemented automation keeps `docs/api/openapi.yml` as the published BYOA operator-skill substrate while making `routeContracts` and `openApiContractMetadata` the source for generated route-level OpenAPI output. The server uses registry matches for top-level method/path dispatch and preserves existing module-specific handler behavior.
 
 ## Public interface
 

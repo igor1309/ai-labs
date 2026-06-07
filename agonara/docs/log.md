@@ -2,6 +2,10 @@
 
 ## 2026-06-07
 
+- Implement Agonara OpenAPI automation: route contracts now generate
+  `docs/api/openapi.yml`, `npm test --workspace agonara` checks generated
+  output before Redocly lint, and server dispatch uses registry route matches
+  while preserving existing HTTP behavior.
 - Plan the Agonara OpenAPI automation implementation path, including registry
   validation, generated-contract checks, registry-backed routing, and closeout
   documentation gates.

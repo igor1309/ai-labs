@@ -18,7 +18,7 @@ Fix applied: Phase 1, Phase 2, and Phase 3 now include the root test and build w
 
 ## Goal
 
-Implement [OpenAPI Automation](../specs/openapi-automation.md) so Agonara route declarations are the shared source for server routing, route-level contract tests, and generated `docs/api/openapi.yml`, without changing the behavior of any existing public HTTP route.
+Implement [OpenAPI Automation](../../specs/openapi-automation.md) so Agonara route declarations are the shared source for server routing, route-level contract tests, and generated `docs/api/openapi.yml`, without changing the behavior of any existing public HTTP route.
 
 ## Execution mode
 

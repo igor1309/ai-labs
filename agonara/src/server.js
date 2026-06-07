@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { adminBoardHtml } from "./admin-ui.js";
 import { createCorpusCommands } from "./corpus.js";
 import { createCuratorWorkspaceCommands } from "./curator-workspace.js";
+import { matchRoute } from "./http-contract.js";
 import { createIdentityCommands } from "./identity.js";
 import { learnUiHtml } from "./learn-ui.js";
 import {
@@ -39,6 +40,7 @@ export function createServer({
     const requestId = getRequestId(request);
     const pathname = getPathname(request);
     const operation = `${request.method} ${pathname}`;
+    const routeMatch = matchRoute({ method: request.method, pathname });
     response.setHeader("x-request-id", requestId);
     response.once("finish", () => {
       logCompletion(log, now, {
@@ -49,17 +51,17 @@ export function createServer({
     });
 
     try {
-      if (request.method === "GET" && pathname === "/admin") {
+      if (hasHandlerKey(routeMatch, "ui.admin.")) {
         sendHtml(response, 200, adminBoardHtml);
         return;
       }
 
-      if (request.method === "GET" && pathname === "/learn") {
+      if (hasHandlerKey(routeMatch, "ui.learn.")) {
         sendHtml(response, 200, learnUiHtml);
         return;
       }
 
-      if (identityCommands) {
+      if (identityCommands && hasHandlerKey(routeMatch, "identity.")) {
         const handled = await handleIdentityApi({
           csrfTokens,
           failedAuthAttempts,
@@ -75,7 +77,7 @@ export function createServer({
         }
       }
 
-      if (identityCommands && programCommands) {
+      if (identityCommands && programCommands && hasHandlerKey(routeMatch, "program.")) {
         const handled = await handleProgramApi({
           csrfTokens,
           eventCursors,
@@ -91,7 +93,7 @@ export function createServer({
         }
       }
 
-      if (identityCommands && corpusCommands) {
+      if (identityCommands && corpusCommands && hasHandlerKey(routeMatch, "corpus.")) {
         const handled = await handleCorpusApi({
           corpusCommands,
           csrfTokens,
@@ -107,7 +109,7 @@ export function createServer({
         }
       }
 
-      if (identityCommands && curatorWorkspaceCommands) {
+      if (identityCommands && curatorWorkspaceCommands && hasHandlerKey(routeMatch, "curatorWorkspace.")) {
         const handled = await handleCuratorWorkspaceApi({
           csrfTokens,
           curatorWorkspaceCommands,
@@ -121,7 +123,7 @@ export function createServer({
         }
       }
 
-      if (identityCommands && studentWorkspaceCommands) {
+      if (identityCommands && studentWorkspaceCommands && hasHandlerKey(routeMatch, "studentWorkspace.")) {
         const handled = await handleStudentWorkspaceApi({
           csrfTokens,
           generateToken,
@@ -138,8 +140,7 @@ export function createServer({
       }
 
       if (
-        request.method === "POST" &&
-        pathname === "/operations/open-answer-evaluator/tick" &&
+        hasHandlerKey(routeMatch, "operations.openAnswerEvaluatorTick.") &&
         openAnswerEvaluatorWorkerTick
       ) {
         const triggerAccess = getOperationsTriggerAccess({
@@ -163,7 +164,7 @@ export function createServer({
         return;
       }
 
-      if (request.method === "GET" && pathname === "/operations/health") {
+      if (hasHandlerKey(routeMatch, "operations.health.")) {
         const status = healthCheck();
         sendJson(response, 200, {
           status,
@@ -174,7 +175,7 @@ export function createServer({
         return;
       }
 
-      if (request.method === "GET" && pathname === "/operations/diagnostics") {
+      if (hasHandlerKey(routeMatch, "operations.diagnostics.")) {
         if (identityCommands) {
           const sessionId = getSessionCookie(request);
           const diagnosticsAccess = identityCommands.listIdentities({ actingSessionId: sessionId });
@@ -225,6 +226,10 @@ function isValidOperationsTriggerToken(request, operationsTriggerToken) {
   }
 
   return request.headers.authorization === `Bearer ${operationsTriggerToken}`;
+}
+
+function hasHandlerKey(routeMatch, prefix) {
+  return routeMatch.status === "matched" && routeMatch.contract.handlerKey.startsWith(prefix);
 }
 
 async function readOptionalEvaluatorTickBody(request) {
