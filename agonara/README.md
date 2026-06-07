@@ -6,13 +6,15 @@ description: "Agonara backend and product docs for a structured learning program
 
 # Agonara
 
-API-first structured learning program environment with backend/domain slices for Identity, Operations, Program Membership, Corpus curation, accepted topic/concept/material navigation, accepted checks, open-answer Student Workspace attempts and evaluation, and Quick Check assessment.
+**Bring-your-own-agent (BYOA)** structured learning program environment: the product is an API-first backend plus per-role operator skills you drive with your own agent, with the `/learn` and `/admin` browser UIs as first-class clients of the same contracts.
+
+Backend/domain slices cover Identity, Operations, Program Membership, Corpus curation, accepted topic/concept/material navigation, accepted checks, open-answer Student Workspace attempts and evaluation, and Quick Check assessment.
 
 ## Description
 
 Helps curators assemble and maintain learning programs from trusted sources, while learners progress through them with clear sequence, checkpoints, and evidence of mastery. AI assists program construction and learning support but does not own the curriculum.
 
-Agonara is API-first: browser surfaces and operator commands are clients of backend contracts, and future Agonara agent skills should use those same contracts. This keeps program, corpus, membership, assessment, and learner-state behavior automatable without coupling it to one UI.
+Agonara is **bring-your-own-agent (BYOA)**: the product is the API plus a set of per-role operator skills. An operator points the agent they already work in at their Agonara instance, loads the skill for the job, and operates the product through the contract — the primary way to use Agonara. The `/learn` and `/admin` browser UIs and the operator CLI remain first-class clients of the same backend contracts. This keeps program, corpus, membership, assessment, and learner-state behavior automatable without coupling it to one UI. BYOA refines the existing API-first intent; it does not change the product — curation stays human-owned, and AI assists rather than owns the curriculum.
 
 ## Landing Pages
 

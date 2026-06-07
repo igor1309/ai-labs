@@ -385,8 +385,9 @@
   <div class="mark">Agon · Contest · Discipline · Mastery</div>
   <h1 class="title">Agonara</h1>
   <p class="anchor">
-    An API-first structured learning program environment you run as your own private instance —
-    curated programs, progression, evidence of mastery, and agent-ready backend contracts.
+    A <strong>bring-your-own-agent (BYOA)</strong> structured learning program environment you run as your own private instance —
+    operate it with your own agent through the API and per-role operator skills, with the
+    <code>/learn</code> and <code>/admin</code> UIs as first-class clients. Curated programs, progression, evidence of mastery.
   </p>
   <p class="agon">
     From the ancient Greek <em>agon</em> — exercise, trial, disciplined striving.
@@ -568,14 +569,22 @@ http://127.0.0.1:18080/learn</code>
   <p class="eyebrow">Product surfaces</p>
   <h2 class="section-title">How humans and agents reach it</h2>
   <p class="lede">
-    Agonara exposes product behavior through backend contracts first. Browser UIs
-    and operator commands work through the same program, corpus, membership,
-    assessment, and learner-state APIs.
+    Agonara is <strong>bring-your-own-agent</strong>: you point the agent you already
+    work in at your instance and operate the product through its contract, loading a
+    per-role operator skill for the job at hand — the primary way to use Agonara.
+    The <code>/learn</code> and <code>/admin</code> browser UIs and the operator CLI are
+    first-class clients of the same program, corpus, membership, assessment, and
+    learner-state APIs.
     The implemented route-level contract is published as
     <a href="docs/api/openapi.yml">OpenAPI 3.1</a>, with automation follow-up tracked in
     <a href="docs/api/TODO.md">docs/api/TODO.md</a>.
   </p>
   <div class="surfaces">
+    <div class="surface-card">
+      <div class="route">your agent → OpenAPI</div>
+      <h3>Bring your own agent</h3>
+      <p>Point your own agent at your instance and operate Agonara through the published contract; per-role operator skills are the operating surface for each role. The primary way to use Agonara.</p>
+    </div>
     <div class="surface-card">
       <div class="route">GET /learn</div>
       <h3>Learner &amp; Curator UI</h3>

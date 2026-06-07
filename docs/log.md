@@ -2,6 +2,7 @@
 
 ## 2026-06-07
 
+- Agonara: update the repo-root `README.md` Components row for the BYOA repositioning — `agonara` is now described as a bring-your-own-agent (BYOA) structured learning program environment (API + per-role operator skills, `/learn`/`/admin` UIs as first-class clients). Aligned with the repositioned project README; the full refinement is logged in `agonara/docs/log.md`.
 - LOC dashboard: refreshed `docs/loc-dashboard.html` from `scripts/loc-dashboard.sh --sort=name` so the summary cards, table totals, data array, and update date match the current repo snapshot (total 230,345→230,740).
 - Agonara: add `agonara/docs/api/TODO.md` for OpenAPI automation and API-skill alignment, and surface the OpenAPI contract plus implemented API skill on the project landing.
 - Agonara: harden the new OpenAPI contract after adversarial review by fixing bootstrap, evaluator tick, metadata, and public no-auth route response warnings.

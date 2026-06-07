@@ -3,7 +3,7 @@ title: Product Intent: Приложение для программы освое
 date: 2026-05-27
 description: Intent-документ для персонального приложения обучения с разделением программы, корпуса и состояния студента.
 model: gpt-5.5-thinking
-version: 0.3.0
+version: 0.4.0
 ---
 
 # Product Intent: Приложение для программы освоения
@@ -13,6 +13,16 @@ version: 0.3.0
 Пользователь получает управляемую программу освоения темы, где ясно видно, что нужно изучить, как проверить понимание и где остаются пробелы.
 
 Agonara должна сохранять разделение между общим корпусом программы и личным состоянием конкретного студента, чтобы программа могла развиваться без потери истории обучения.
+
+## Operating model — bring-your-own-agent (BYOA)
+
+Agonara управляется по модели **bring-your-own-agent (BYOA)**: продукт — это API плюс набор операторских скиллов по ролям. Оператор приводит того агента, в котором уже работает, направляет его на свой экземпляр Agonara, загружает скилл под нужную роль и работает с продуктом через контракт. Скилл — это операционная поверхность роли.
+
+BYOA — основной способ работы с продуктом, но не единственный. Браузерные интерфейсы `/learn` и `/admin` остаются полноценными клиентами того же контракта; они не объявляются устаревшими и не понижаются до примеров.
+
+Это уточнение существующего API-first замысла, а не смена продукта. *Что* осваивается — курируемые программы и прогресс студента — не меняется; уточняется только то, *как* продуктом управляют. Курация остаётся ответственностью человека: агент управляет операциями, а не содержанием программы и не становится владельцем учебного материала.
+
+Механика контракта (маршруты, схемы, форматы запросов и ответов) живёт в [`docs/api/openapi.yml`](../api/openapi.yml) и в `architecture.html`, а не в этом intent-документе.
 
 ## Problem
 
@@ -194,6 +204,7 @@ LLM-предложения являются вспомогательным ма�
 | Change | Impact review |
 |---|---|
 | Editorial wording that preserves actor, capability, outcome, acceptance signal, and boundary | No downstream review required. |
+| Stating the operating model (e.g. the BYOA refinement) without changing the *what* | Verify no accepted ADR is contradicted (backward-traceability check); propagate the framing to README, landing, architecture, and brand docs. Performed for the BYOA refinement (v0.4.0): the ADRs that cite intent/stories all place UI outside their decision scope, so module ownership and boundaries are unaffected. |
 | Adding or removing an accepted story | Review story catalogs, module responsibility map, and any affected Pre-ADR/spec artifacts. |
 | Changing corpus/student-state separation | Review module responsibility map, identity first slice, and future storage design before implementation. |
 

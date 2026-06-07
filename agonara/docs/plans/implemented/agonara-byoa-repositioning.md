@@ -7,7 +7,7 @@ description: "Implementation plan: reposition Agonara as bring-your-own-agent (B
 # Agonara BYOA Repositioning Implementation Plan
 
 Implements the handoff in
-[`agonara-byoa-repositioning-handoff.md`](agonara-byoa-repositioning-handoff.md).
+[`agonara-byoa-repositioning-handoff.md`](../agonara-byoa-repositioning-handoff.md).
 This is a **Product Intent refinement** that makes Agonara's intended operating
 model explicit — **bring-your-own-agent (BYOA)**: the product is the API plus a
 set of per-role operator skills, driven by an operator's own agent, with the
@@ -15,7 +15,7 @@ existing `/learn` and `/admin` UIs retained as first-class clients of the same
 contract. The product itself does not change; only how its intent is stated.
 
 The sibling skills-structure job is already done
-([`byoa-operator-skills.md`](byoa-operator-skills.md)); this plan covers the
+([`byoa-operator-skills.md`](../byoa-operator-skills.md)); this plan covers the
 **product and docs** consequence.
 
 ## Goal
@@ -160,14 +160,152 @@ Documents to adapt (handoff §3). Each is a reposition, not a mechanical rewrite
 
 ## Phase tracker
 
-- [ ] Phase 0 — Positioning / ADR decision
-- [ ] Phase 1 — Product Intent keystone edit + backward-traceability check
-- [ ] Phase 2 — User-stories pass
-- [ ] Phase 3 — README (project + repo-root row)
-- [ ] Phase 4 — Landing (`index.html`)
-- [ ] Phase 5 — Architecture (`architecture.html`)
-- [ ] Phase 6 — Brand briefs (EN + RU) + traceability review
-- [ ] Phase 7 — Logs, gates, dashboard, archive
+- [x] Phase 0 — Positioning / ADR decision
+- [x] Phase 1 — Product Intent keystone edit + backward-traceability check
+- [x] Phase 2 — User-stories pass
+- [x] Phase 3 — README (project + repo-root row)
+- [x] Phase 4 — Landing (`index.html`)
+- [x] Phase 5 — Architecture (`architecture.html`)
+- [x] Phase 6 — Brand briefs (EN + RU) + traceability review
+- [x] Phase 7 — Logs, gates, dashboard, archive
+
+## Execution log
+
+### Phase 0 — Positioning / ADR decision
+
+**Decision: no ADR — refinement only.** Judged against the `adr-governance`
+criteria (Intent Integrity, Boundary Clarity, Cross-ADR Consistency, Decision
+Stability, Mechanism Feasibility): the BYOA repositioning introduces **no new
+architectural boundary or invariant**. The five-module ownership split and
+ADR-004…018 are unchanged; the operator-facing surface narrative is sharpened,
+not the builder's decision structure. The load-bearing positioning decision
+("BYOA primary, `/learn` + `/admin` retained as first-class clients") is already
+recorded in [`byoa-operator-skills.md`](../byoa-operator-skills.md) §"Positioning
+decision (resolved)" and is being stated directly in Product Intent. Recording a
+separate ADR for a pure intent refinement that changes no boundary would be
+over-recording. Decision recorded here and in `agonara/docs/log.md`; intent
+editing proceeds.
+
+### Phase 1 — Product Intent keystone edit + backward-traceability check
+
+Added an "Operating model — bring-your-own-agent (BYOA)" section to
+`intent_learning_program_app.md` (the product is the API + per-role operator
+skills, driven by the operator's own agent, `/learn` + `/admin` retained as
+first-class clients), kept all INT-01…07 stories, actors, problem, boundaries,
+ownership, and the corpus/student-state separation intact, kept curation
+human-owned and the LLM/agent as assistant-not-author, and pushed mechanics to
+the contract and architecture docs. Bumped `version` 0.3.0 → 0.4.0 and recorded
+the operating-model edit class in the doc's Change review.
+
+**Backward-traceability check (re-derived at execution time).** Grepping
+`agonara/docs/adr/` for `intent`, `user stor`, `INT-0`, `CUR-`, `STU-`, `ADM-`,
+and actor names returned 13 ADRs: adr-001, 002, 003, 005, 006, 009, 010, 011,
+012, 013, 014, 015, 016. Checked each against the BYOA framing:
+
+- **No contradiction in any of the 13.** Every one explicitly lists UI as a
+  non-goal ("does not decide … UI") — the BYOA framing only sharpens the
+  operator-facing *surface narrative*, which sits below every ADR's decision
+  scope.
+- The two ADRs that mention a web UI at all describe it as a client of an
+  API-first backend: adr-008 ("dockerized private self-hosted instance with a
+  network web UI, API-first backend") and adr-017 ("The backend is API-first
+  with a network web UI"). Both are consistent with "BYOA primary, UIs
+  first-class" — neither claims the UI is the primary or only surface.
+- Module ownership (five-module split, ADR-004…018) is unaffected; no ADR
+  edited.
+
+### Phase 2 — User-stories pass
+
+Reviewed `curator_user_stories.md`, `student_user_stories.md`, and
+`admin_user_stories.md` for "UI is the only access path" assumptions. **None
+found** — every story is role/job framed and outcome-based (a grep for
+`UI|screen|browser|/learn|/admin|click|button` returned only false positives such
+as "started programs" and "easy to confuse"). The "membership governed outside my
+workspace" framing is present in each catalog's Terms table and is preserved.
+
+**No new stories added.** BYOA is a new *access path* to the existing role jobs
+(CUR-01…18, STU-01…23, ADM-01…15), not a new job; the operating-model statement
+now lives at the Product Intent level and applies across all roles. Adding
+per-role "drive X from my own agent" stories would duplicate the access-path
+agnostic framing and trigger speculative scope creep the plan guards against, so
+the catalogs are verified and preserved unchanged. No story added/removed, so the
+intent "Change review" story-catalog trigger does not fire.
+
+### Phase 3 — README (project + repo-root row)
+
+Reframed `agonara/README.md`: the lead one-liner and the "Product surfaces"
+paragraph now state BYOA as the primary operating model (API + per-role operator
+skills driven by the operator's own agent), with `/learn`, `/admin`, and the
+operator CLI retained as first-class clients of the same contracts. The
+implementation snapshot is untouched and accurate; no UI is presented as deferred
+or demoted. Updated the repo-root `README.md` `agonara` Components row (per
+`.agents/doc-maintenance.md`) to the repositioned one-liner, kept consistent with
+the project README lead.
+
+### Phase 4 — Landing (`index.html`)
+
+Reframed the hero anchor toward BYOA ("operate it with your own agent through the
+API and per-role operator skills, with the `/learn` and `/admin` UIs as
+first-class clients"). Repositioned the `#surfaces` lede to lead with BYOA and
+added a "Bring your own agent" card as the first surface card; kept the `/learn`,
+`/admin`, HTTP API, OpenAPI, and operator-CLI cards intact as first-class clients.
+Operator skills are framed as the operating surface without claiming they ship
+today (none are implemented yet per `byoa-operator-skills.md`). Confirmed the dead
+`agonara-api` skill card is already absent — no cleanup needed.
+
+### Phase 5 — Architecture (`architecture.html`)
+
+Repositioned the deployment lede: replaced "the network web UI remains the
+primary human interface" with "API-first and bring-your-own-agent: an operator
+drives it with their own agent through the contract, while `/learn`, `/admin`,
+the operator CLI, and per-role operator skills stay first-class clients of the
+same backend contracts." Updated the `server.js` source-tree row's "future agent
+clients" → "bring-your-own-agent clients" for consistency. Verified no other
+"primary interface" claim remains and the five-module ownership map and
+ADR-backed boundaries are untouched (builder's view, unchanged).
+
+### Phase 6 — Brand briefs (EN + RU) + traceability review
+
+Added a light positioning touch to the "Positioning" section of `brand_brief.md`
+and `brand_brief_ru.md`: BYOA stated as the operating model that *strengthens* the
+"AI as assistant, not author" + "human-owned curriculum" story ("the agent
+operates the product, not the curriculum"). Kept it positioning, not mechanics.
+Bumped both briefs 0.1.0 → 0.2.0 and updated the cross-reference intro lines in
+both languages. EN/RU parity verified — the new paragraph sits at the same
+position (line 47) in both files.
+
+**Traceability review (intent → ADR → spec).** The reframe is purely additive
+operator-facing narrative: no accepted story was added or removed, the Product
+Intent Downstream-traceability matrix and every story ID (INT-01…07 and the
+role-catalog IDs) are unchanged, and no ADR or spec link was touched. A full
+re-derivation would therefore reproduce the pre-existing link set. The substantive
+divergence check — does the BYOA framing contradict any decision — was run in
+Phase 1 over all 13 intent/story-citing ADRs and is clean (every ADR places UI
+outside its decision scope; module ownership unaffected). No drift to reconcile.
+
+### Phase 7 — Logs, gates, dashboard, archive
+
+Added a closeout entry to `agonara/docs/log.md` and a one-line repo-wide entry to
+the repo-root `docs/log.md` (for the Components-row edit). **Gates:** the change
+set touches only docs/HTML/markdown (9 files: intent, user-story verification,
+both READMEs, landing, architecture, both brand briefs, logs, this plan) — **no
+Node/TS/config/CI/generated artifact**, so the Node test/build suite is not
+required per the repo gate. `git diff --check` is clean on the change set.
+**Dashboard:** documentation movement is a single in-project archive move (no net
+LOC change for the project) — not substantial, so `docs/loc-dashboard.html` is not
+refreshed. Archived this plan to
+`agonara/docs/plans/implemented/agonara-byoa-repositioning.md` (`git mv`) in the
+same change as the implementation.
+
+## Done
+
+All seven phases complete and reviewed. Product Intent states the BYOA operating
+model explicitly and reads as a refinement; README (project + repo-root row),
+landing, and architecture present BYOA as primary with `/learn`/`/admin` retained
+first-class; user stories carry no UI-only assumptions; intent/README/brand stay
+about intent; the five-module ownership story and all accepted ADRs are unchanged
+and uncontradicted; EN/RU brand parity preserved; no ADR created (refinement
+only). Push at closeout per push policy; no PR unless explicitly requested.
 
 Update tracker checkboxes only after a phase's required verification passes and
 its commit is created; commit the tracker-only status update before starting the
