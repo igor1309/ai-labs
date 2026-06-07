@@ -14,6 +14,7 @@
   "version": "0.2.0",
   "devDependencies": {
     "@playwright/test": "^1.58.2",
+    "@redocly/cli": "^2.31.6",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "wrangler": "4.67.0"
@@ -27,5 +28,8 @@
     "web:dev": "node oracle/apps/am-i-done-web/scripts/generate_web_strings.mjs && WRANGLER_LOG_PATH=.wrangler/logs wrangler pages dev src --cwd oracle/apps/am-i-done-web --binding API_BASE_URL=${API_BASE_URL:-http://localhost:8787}",
     "worker:dev": "WRANGLER_LOG_PATH=.wrangler/logs wrangler dev --cwd oracle/apps/am-i-done-api",
     "worker:deploy": "WRANGLER_LOG_PATH=.wrangler/logs wrangler deploy --cwd oracle/apps/am-i-done-api"
+  },
+  "overrides": {
+    "fast-uri": "3.1.2"
   }
 }

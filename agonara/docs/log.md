@@ -2,6 +2,10 @@
 
 ## 2026-06-07
 
+- Add the first OpenAPI automation guardrail: Agonara tests now run the
+  hand-edited `docs/api/openapi.yml` through a pinned Redocly CLI dependency,
+  keeping contract lint in the existing workspace test gate while the local
+  `$ref` and drift checks remain forward tasks.
 - Harden the `/learn` presentation-state closeout by preserving the README's
   broader Student/Curator product-UI deferral and updating the release-readiness
   audit to point at the current implementation-notes record instead of removed
