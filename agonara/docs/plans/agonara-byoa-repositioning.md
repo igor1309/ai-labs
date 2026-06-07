@@ -86,6 +86,13 @@ the operator-facing surface narrative only; it must **not** contradict any
 accepted decision (module ownership is unaffected). State the check result
 flatly per ADR; do not edit ADRs unless an actual contradiction is found.
 
+The table below is a **survey snapshot** taken while authoring this plan, not an
+authoritative list. At execution time (Phase 1), re-derive the set by grepping
+`agonara/docs/adr/` for citations of Product Intent and the user-story catalogs
+(e.g. `intent`, `user stor`, `INT-0`, `CUR-`, `STU-`, `ADM-`, actor names), since
+ADRs may have been added since this snapshot; check every ADR the grep returns,
+not only the rows below.
+
 | ADR | Cites |
 |---|---|
 | adr-001-internal-identity-as-agonara-ownership-subject | admin user stories |
@@ -165,6 +172,15 @@ Documents to adapt (handoff §3). Each is a reposition, not a mechanical rewrite
 Update tracker checkboxes only after a phase's required verification passes and
 its commit is created; commit the tracker-only status update before starting the
 next phase. Phase 7 archives the plan instead of leaving an active tracker copy.
+
+**Per-phase review discipline (applies to every phase).** Each phase's
+Validation includes a self-review against the handoff (§2, §3, §5, §7, §8) and
+the My Way "lead with intent / intent docs stay about intent" rules, followed by
+a post-implementation **adversarial review** against the relevant skill
+(`doc-drift-audit` for factual drift, `traceability-review` for intent↔ADR↔spec
+links, `arch-doc-review` for the architecture/landing narrative, `adr-governance`
+if Phase 0 produces an ADR). Fix every fail or warn and rerun the affected checks
+before the phase commit; commit only on a clean review.
 
 ## Phase 0 — Positioning / ADR decision
 
