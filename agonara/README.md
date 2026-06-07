@@ -6,7 +6,11 @@ description: "Agonara backend and product docs for a BYOA learning program envir
 
 # Agonara
 
-**Bring-your-own-agent (BYOA)** learning program environment for turning scattered study into structured progress: serious self-directed learners and program curators bring their own agent to shape sources into curated programs, connect materials and concepts, run checks, and keep progress grounded in evidence.
+**Bring-your-own-agent (BYOA)** learning program environment for turning
+scattered study into structured progress: serious self-directed learners and
+program curators bring their own agent to shape sources into curated programs,
+connect materials and concepts, run checks, and keep progress grounded in
+evidence.
 
 Backend/domain slices cover Identity, Operations, Program Membership, Corpus curation, accepted topic/concept/material navigation, accepted checks, open-answer Student Workspace attempts and evaluation, and Quick Check assessment.
 

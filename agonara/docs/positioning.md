@@ -10,7 +10,7 @@ description: "Agonara positioning baseline for scattered study, BYOA operation, 
 
 Turn scattered study into structured progress.
 
-Agonara is a BYOA learning program environment for serious self-directed learners and program curators.
+Agonara is a bring-your-own-agent (BYOA) learning program environment for serious self-directed learners and program curators.
 
 Bring your own agent to shape sources into curated programs, connect materials and concepts, run checks, and keep progress grounded in evidence.
 
