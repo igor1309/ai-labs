@@ -3,12 +3,8 @@
 ## 2026-06-07
 
 - Harden the OpenAPI Redocly lint guard by disabling Redocly telemetry in the
-  project config and the test subprocess environment, keeping the contract gate
+  project config and lint script environment, keeping the contract gate
   deterministic and CI-safe.
-- Add the first OpenAPI automation guardrail: Agonara tests now run the
-  hand-edited `docs/api/openapi.yml` through a pinned Redocly CLI dependency,
-  keeping contract lint in the existing workspace test gate while the local
-  `$ref` and drift checks remain forward tasks.
 - Harden the `/learn` presentation-state closeout by preserving the README's
   broader Student/Curator product-UI deferral and updating the release-readiness
   audit to point at the current implementation-notes record instead of removed
@@ -31,15 +27,29 @@
   topic/concept/material navigation graph remains the shared sequencing state,
   recommendation ranking stays a future downstream artifact, and any personal
   recommendation state must be specified through Student Workspace ownership.
-- Add the BYOA operator-skill contract drift guard: tests now extract
-  `METHOD /path` citations from `skills/*/SKILL.md`, compare them against
-  `docs/api/openapi.yml`, and caught two stale Student learner-state examples,
-  which now use the canonical target-kind route.
 - Close the stale standalone Storage ownership backlog framing: Agonara storage
   now follows implemented module responsibilities and canonical runtime-state
   docs, while unresolved recommendation, learner-state cache, membership-policy,
   and `/learn` presentation persistence questions remain tracked as future
   product-state decisions.
+- Establish the Agonara positioning baseline around turning scattered study into
+  structured progress: add `docs/positioning.md`, update the README opening,
+  and revise the landing hero/how-it-works/BYOA/private-instance copy to lead
+  with serious self-directed learners, program curators, human acceptance, and
+  learner-owned evidence.
+- Add an explicit route inventory guard for the hand-edited OpenAPI contract:
+  `openapi-contract.test.js` now fails when `docs/api/openapi.yml` gains or
+  loses a method+path route without updating the reviewed inventory.
+- Add Redocly lint to the Agonara test gate for the hand-edited OpenAPI
+  contract: `npm test --workspace agonara` now runs `redocly lint
+  docs/api/openapi.yml` after the node test suite.
+- Add an OpenAPI rejection-reason drift guard while the API contract remains
+  hand-edited: `openapi-contract.test.js` now compares every
+  `httpStatusFor(...)` case with `components.schemas.ApiRejectionReason`, and
+  the public `not_found` API rejection is explicitly mapped to HTTP 404.
+- Add an OpenAPI contract guard for the hand-edited API spec: Agonara tests now
+  parse `docs/api/openapi.yml` and fail on external or unresolved local `$ref`
+  entries before drift can reach operator skills or clients.
 - Surface the implemented BYOA operator-skill set on the Agonara landing page:
   tighten the product-surface wording, add a grouped Operator Skills section
   for foundations / curator work / role operations, update the getting-started

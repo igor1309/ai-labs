@@ -7,13 +7,18 @@
     "agonara": "src/cli.js"
   },
   "scripts": {
+    "openapi:lint": "REDOCLY_SUPPRESS_UPDATE_NOTICE=true REDOCLY_TELEMETRY=off redocly lint docs/api/openapi.yml --config docs/api/redocly.yaml",
     "start": "node src/server.js",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js && npm run openapi:lint"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1"
   },
   "engines": {
     "node": ">=22"
+  },
+  "devDependencies": {
+    "@redocly/cli": "^2.31.6",
+    "yaml": "^2.9.0"
   }
 }

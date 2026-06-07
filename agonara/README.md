@@ -1,25 +1,32 @@
 ---
 date: 2026-06-07
 model: gpt-5
-description: "Agonara backend and product docs for a structured learning program environment"
+description: "Agonara backend and product docs for a BYOA learning program environment"
 ---
 
 # Agonara
 
-**Bring-your-own-agent (BYOA)** structured learning program environment: the product is an API-first backend plus per-role operator skills you drive with your own agent, with the `/learn` and `/admin` browser UIs as first-class clients of the same contracts.
+**Bring-your-own-agent (BYOA)** learning program environment for turning
+scattered study into structured progress: serious self-directed learners and
+program curators bring their own agent to shape sources into curated programs,
+connect materials and concepts, run checks, and keep progress grounded in
+evidence.
 
 Backend/domain slices cover Identity, Operations, Program Membership, Corpus curation, accepted topic/concept/material navigation, accepted checks, open-answer Student Workspace attempts and evaluation, and Quick Check assessment.
 
 ## Description
 
-Helps curators assemble and maintain learning programs from trusted sources, while learners progress through them with clear sequence, checkpoints, and evidence of mastery. AI assists program construction and learning support but does not own the curriculum.
+Serious learning breaks down when materials, concepts, and proof of understanding live in separate piles. Agonara gives people a program-shaped workspace for turning that scatter into a path they can follow, revise, and verify.
 
-Agonara is **bring-your-own-agent (BYOA)**: the product is the API plus a set of per-role operator skills. An operator points the agent they already work in at their Agonara instance, loads the skill for the job, and operates the product through the contract — the primary way to use Agonara. The `/learn` and `/admin` browser UIs and the operator CLI remain first-class clients of the same backend contracts. This keeps program, corpus, membership, assessment, and learner-state behavior automatable without coupling it to one UI. BYOA refines the existing API-first intent; it does not change the product — curation stays human-owned, and AI assists rather than owns the curriculum.
+Agonara is **bring-your-own-agent (BYOA)**: point the agent you already use at your Agonara instance and follow role-specific guidance for curating programs, learning through them, and managing the private instance. The agent helps with the workflow, while accepted program content and use of learning evidence remain human responsibilities.
+
+The `/learn` and `/admin` browser UIs and the operator CLI remain first-class clients of the same backend contracts. This keeps program, corpus, membership, assessment, and learner-state behavior automatable without coupling it to one UI. BYOA refines the existing API-first intent; it does not change the product — agents can help draft, evaluate, and carry out the workflow, but accepted program content remains a human decision.
 
 ## Landing Pages
 
 - [`index.html`](index.html) — project landing: how to use it, running a private instance, the implementation snapshot, and product surfaces.
 - [`architecture.html`](architecture.html) — architecture deep dive (progressive disclosure from the landing): module responsibility map, ownership rules, runtime, deployment, and ADR index.
+- [`docs/positioning.md`](docs/positioning.md) — positioning baseline for scattered study, structured progress, BYOA operation, and human-owned curation.
 - [`docs/intent/user-stories.html`](docs/intent/user-stories.html) — user stories driving the product.
 
 ## API Contract

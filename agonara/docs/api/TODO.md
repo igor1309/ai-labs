@@ -8,10 +8,6 @@ description: "Forward tasks for Agonara OpenAPI automation and API skill alignme
 
 ## OpenAPI Automation
 
-- Add near-term contract guardrails while `openapi.yml` remains hand-edited:
-  - YAML parsing and local `$ref` validation.
-  - Drift test comparing an explicit route inventory to OpenAPI paths.
-  - Drift test comparing `httpStatusFor(...)` rejection reasons to `ApiRejectionReason`.
 - Introduce a small route contract registry, for example `agonara/src/http-contract.js`, where every route declares:
   - method and path;
   - operation id and tag;
