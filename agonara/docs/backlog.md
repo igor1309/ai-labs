@@ -2,26 +2,10 @@
 date: 2026-06-07
 model: gpt-5
 description: "Deferred design decisions for Agonara."
-version: 0.0.6
+version: 0.0.7
 ---
 
 # Backlog
-
-## Skill–contract drift guard
-
-The BYOA operator skills under `skills/` are pure documentation: they cite
-concrete `docs/api/openapi.yml` paths, headers, and request fields, but nothing
-in CI fails when a contract change renames or removes a path a skill still
-teaches. Today this is caught only by manual G1 spot-checks at authoring time,
-so a later contract edit can silently leave a skill teaching a dead route —
-across `agonara-api-access`, `agonara-membership`, `agonara-student`, and every
-future role skill.
-
-Open question: what is the lightest guard worth its maintenance cost — a
-path-existence test that extracts the `/...` routes a SKILL.md cites and asserts
-each resolves in `openapi.yml`, a scheduled `doc-drift-audit` pass over
-`skills/`, or accepting manual review? A test must tolerate prose that mentions
-paths illustratively without over-fitting to phrasing.
 
 ## Future product-state decisions
 

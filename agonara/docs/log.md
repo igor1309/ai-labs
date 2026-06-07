@@ -2,6 +2,10 @@
 
 ## 2026-06-07
 
+- Add the BYOA operator-skill contract drift guard: tests now extract
+  `METHOD /path` citations from `skills/*/SKILL.md`, compare them against
+  `docs/api/openapi.yml`, and caught two stale Student learner-state examples,
+  which now use the canonical target-kind route.
 - Close the stale standalone Storage ownership backlog framing: Agonara storage
   now follows implemented module responsibilities and canonical runtime-state
   docs, while unresolved recommendation, learner-state cache, membership-policy,
