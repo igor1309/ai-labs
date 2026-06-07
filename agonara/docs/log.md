@@ -7,6 +7,16 @@
   and revise the landing hero/how-it-works/BYOA/private-instance copy to lead
   with serious self-directed learners, program curators, human acceptance, and
   learner-owned evidence.
+- Add an explicit route inventory guard for the hand-edited OpenAPI contract:
+  `openapi-contract.test.js` now fails when `docs/api/openapi.yml` gains or
+  loses a method+path route without updating the reviewed inventory.
+- Add Redocly lint to the Agonara test gate for the hand-edited OpenAPI
+  contract: `npm test --workspace agonara` now runs `redocly lint
+  docs/api/openapi.yml` after the node test suite.
+- Add an OpenAPI rejection-reason drift guard while the API contract remains
+  hand-edited: `openapi-contract.test.js` now compares every
+  `httpStatusFor(...)` case with `components.schemas.ApiRejectionReason`, and
+  the public `not_found` API rejection is explicitly mapped to HTTP 404.
 - Add an OpenAPI contract guard for the hand-edited API spec: Agonara tests now
   parse `docs/api/openapi.yml` and fail on external or unresolved local `$ref`
   entries before drift can reach operator skills or clients.
