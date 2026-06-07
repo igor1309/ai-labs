@@ -22,8 +22,17 @@ Shared foundations every role skill builds on:
   participation model: read your memberships and invitations, act on invitations,
   inspect effective participation and membership history.
 
-Per-role skills (curator, student, admin) build on these foundations and are
-planned next — see the [build sequence](../docs/plans/byoa-operator-skills.md).
+Per-role skills build on these foundations:
+
+- [`agonara-student/`](agonara-student/SKILL.md) — operate as a learner:
+  discover and preview programs without creating state, self-join/leave/rejoin
+  and act on invitations, resume learning and follow the next step, study
+  accepted concepts and materials, take quick/open/readiness checks, and read
+  feedback, results, and the evidence behind progress — seeing only accepted
+  corpus and the student's own state.
+
+The remaining per-role skills (curator, admin) build on these foundations and
+are planned next — see the [build sequence](../docs/plans/byoa-operator-skills.md).
 
 The previous developer-facing `agonara-api` skill was removed — it served an
 agent *building* Agonara's codebase, not an operator *using* the product, which
