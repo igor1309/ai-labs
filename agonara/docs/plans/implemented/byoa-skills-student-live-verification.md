@@ -1,21 +1,22 @@
 ---
 date: 2026-06-07
-model: claude
+model: gpt-5
 description: "Follow-up plan: execute the deferred G5 live-instance verification for the BYOA Student skill — the only gate not satisfiable when the skill was authored (no running instance + Student credentials)."
 ---
 
 # BYOA Student Skill — Live-Instance Verification (G5)
 
 Follow-up to the implemented
-[`implemented/byoa-skills-student.md`](implemented/byoa-skills-student.md). That
-skill (`agonara/skills/agonara-student/SKILL.md`) shipped with gates **G1–G4, G6,
-G7 satisfied**. **G5 (live-instance verification) was deferred** because the
+[`byoa-skills-student.md`](byoa-skills-student.md). That skill
+(`../../skills/agonara-student/SKILL.md`) shipped with gates **G1–G4, G6, G7
+satisfied**. **G5 (live-instance verification) was deferred** because the
 authoring environment had no running Agonara instance or Student credentials.
 This plan exists so that gap is tracked, not lost — the skill is not *fully*
 done against its own done-criteria until this runs.
 
-Grounded in the same substrate: [`../api/openapi.yml`](../api/openapi.yml) and
-[`../intent/student_user_stories.md`](../intent/student_user_stories.md).
+Grounded in the same substrate: [`../../api/openapi.yml`](../../api/openapi.yml)
+and
+[`../../intent/student_user_stories.md`](../../intent/student_user_stories.md).
 
 ## Goal
 
@@ -33,6 +34,27 @@ Stop conditions: failed gate, no reachable instance, missing Student credentials
 Push policy: push at closeout
 ```
 
+## Execution lock
+
+```
+Worktree mode: reuse existing
+Expected worktree: /Users/igormalyarov/.codex/worktrees/e5b1/ai-labs
+Expected branch: codex/byoa-skills-student-live-verification
+Preflight check: [x] done
+```
+
+## Scope guardrails
+
+- Use the public staging instance only; do not exercise the internal production
+  instance.
+- Create only disposable verification identities, programs, corpus, checks,
+  attempts, and invitations needed for G5.
+- Do not change VPS software, services, deployment configuration, or secrets.
+- Capture redacted API evidence only; never record passwords, session cookies,
+  CSRF tokens, idempotency keys, provider credentials, or evaluator internals.
+- Do not change application code or the Student skill unless live verification
+  exposes a concrete defect.
+
 ## Prerequisites
 
 - A reachable Agonara instance (project compose stands one up locally).
@@ -43,7 +65,17 @@ Push policy: push at closeout
 
 If any prerequisite is missing, stop and report — do not fabricate a transcript.
 
-## G5 — the journey to verify
+## Task 1 — G5 live journey
+
+**Objective**: execute the Student journey and ownership-safety checks against
+the public staging instance, then capture auditable evidence.
+
+**Dependencies**: reachable staging, retained smoke-admin credentials, and a
+disposable Student fixture with accepted navigation plus quick, open-answer,
+and readiness checks.
+
+**Risks**: secret leakage in evidence, accidental production use, incomplete
+fixture data, or a live contract defect.
 
 Drive the full student arc through the API (the SKILL.md is the script), and
 record request/response envelopes for each step:
@@ -101,6 +133,12 @@ paper:
   evaluator/provider internals.
 - A Student cannot read another identity's attempts or learner-state.
 
+**Validation**: all journey assertions and ownership-safety spot-checks pass in
+one live run; the transcript contains only redacted request/response evidence.
+
+**Completion signal**: the transcript and STU-01…23 coverage table satisfy every
+done criterion below.
+
 ## Done criteria
 
 - A captured transcript shows steps 1–5 completing through the API with a
@@ -113,7 +151,7 @@ paper:
 - `docs/log.md` records G5 as satisfied for the student skill, and this plan is
   moved to `docs/plans/implemented/byoa-skills-student-live-verification.md`.
 
-## Closeout
+## Final closeout
 
 ```
 Final gate: G5 (live-instance transcript + ownership-safety spot-checks)

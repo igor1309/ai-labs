@@ -909,7 +909,7 @@ test("acceptCorpusCandidate_shouldRejectInvalidCandidateStatesAndTargets", async
   }
 });
 
-test("listAcceptedCorpus_shouldAuthorizeStudentCuratorAndAdminOnly", async () => {
+test("listAcceptedCorpus_shouldAllowSignedInPreviewWithoutMembership", async () => {
   const { commands, database } = await makeSUT();
 
   try {
@@ -958,7 +958,7 @@ test("listAcceptedCorpus_shouldAuthorizeStudentCuratorAndAdminOnly", async () =>
         other: commands.listAcceptedCorpus({
           actingIdentityId: "identity-other",
           programId: "program-a",
-        }),
+        }).status,
         missingRevision: commands.getAcceptedCorpusRevision({
           actingIdentityId: "identity-curator",
           revisionId: "revision-missing",
@@ -968,7 +968,7 @@ test("listAcceptedCorpus_shouldAuthorizeStudentCuratorAndAdminOnly", async () =>
         student: "accepted",
         curator: "accepted",
         admin: "accepted",
-        other: { status: "rejected", reason: "participation_required" },
+        other: "accepted",
         missingRevision: { status: "rejected", reason: "revision_not_found" },
       },
     );
@@ -1459,7 +1459,7 @@ test("listProgramNavigation_shouldReturnStudentSafeGraphWithoutStudentStateMutat
   }
 });
 
-test("listProgramNavigation_shouldAuthorizeStudentCuratorAndAdminOnly_onAcceptedNavigation", async () => {
+test("listProgramNavigation_shouldAllowSignedInPreviewWithoutMembership_onAcceptedNavigation", async () => {
   const { commands, database } = await makeSUT();
 
   try {
@@ -1510,7 +1510,7 @@ test("listProgramNavigation_shouldAuthorizeStudentCuratorAndAdminOnly_onAccepted
         other: commands.listProgramNavigation({
           actingIdentityId: "identity-other",
           programId: "program-a",
-        }),
+        }).status,
         missingEntity: commands.getNavigationEntity({
           actingIdentityId: "identity-curator",
           entityId: "entity-missing",
@@ -1536,7 +1536,7 @@ test("listProgramNavigation_shouldAuthorizeStudentCuratorAndAdminOnly_onAccepted
             },
           },
         },
-        other: { status: "rejected", reason: "participation_required" },
+        other: "accepted",
         missingEntity: { status: "rejected", reason: "navigation_entity_not_found" },
         missingRevision: { status: "rejected", reason: "navigation_revision_not_found" },
       },

@@ -6044,7 +6044,7 @@ test("corpusCandidateRejection_shouldMapStateAndAuthorizationRejections", async 
   }
 });
 
-test("acceptedCorpusList_shouldAuthorizeStudentCuratorAndAdminOnly", async () => {
+test("acceptedCorpusList_shouldAllowSignedInPreviewWithoutMembership", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
     ids: manyIds(80),
   });
@@ -6081,7 +6081,7 @@ test("acceptedCorpusList_shouldAuthorizeStudentCuratorAndAdminOnly", async () =>
     const adminResponse = await fetch(`${baseUrl}/programs/${programId}/accepted-corpus`, {
       headers: { cookie: bootstrap.cookie },
     });
-    const outsiderResponse = await fetch(`${baseUrl}/programs/${programId}/accepted-corpus`, {
+    const previewResponse = await fetch(`${baseUrl}/programs/${programId}/accepted-corpus`, {
       headers: { cookie: outsider.cookie },
     });
 
@@ -6090,16 +6090,13 @@ test("acceptedCorpusList_shouldAuthorizeStudentCuratorAndAdminOnly", async () =>
         student: acceptedCorpusListProjection(await studentResponse.json(), studentResponse.status),
         curator: acceptedCorpusListProjection(await curatorResponse.json(), curatorResponse.status),
         admin: acceptedCorpusListProjection(await adminResponse.json(), adminResponse.status),
-        outsider: { body: await outsiderResponse.json(), statusCode: outsiderResponse.status },
+        preview: acceptedCorpusListProjection(await previewResponse.json(), previewResponse.status),
       },
       {
         student: { statusCode: 200, titles: ["Accepted topic"] },
         curator: { statusCode: 200, titles: ["Accepted topic"] },
         admin: { statusCode: 200, titles: ["Accepted topic"] },
-        outsider: {
-          body: { status: "rejected", reason: "participation_required" },
-          statusCode: 403,
-        },
+        preview: { statusCode: 200, titles: ["Accepted topic"] },
       },
     );
   } finally {
@@ -6575,7 +6572,7 @@ test("navigationReadsHttp_shouldReturnStudentSafeGraphAndHistoricalRevision_onAc
   }
 });
 
-test("navigationHttpRoutes_shouldEnforceSessionCsrfAndParticipation", async () => {
+test("navigationHttpRoutes_shouldEnforceSessionCsrfAndAllowPreviewReads", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
     ids: manyIds(100),
   });
@@ -6631,7 +6628,7 @@ test("navigationHttpRoutes_shouldEnforceSessionCsrfAndParticipation", async () =
       ],
       title: "Malformed relationship draft",
     });
-    const outsiderRead = await fetch(`${baseUrl}/programs/${programId}/navigation`, {
+    const previewRead = await fetch(`${baseUrl}/programs/${programId}/navigation`, {
       headers: { cookie: outsider.cookie },
     });
     const missingEntity = await fetch(`${baseUrl}/navigation/entities/entity-missing`, {
@@ -6648,7 +6645,7 @@ test("navigationHttpRoutes_shouldEnforceSessionCsrfAndParticipation", async () =
         missingCsrf: { body: await missingCsrf.json(), statusCode: missingCsrf.status },
         missingEntity: { body: await missingEntity.json(), statusCode: missingEntity.status },
         missingSession: { body: await missingSession.json(), statusCode: missingSession.status },
-        outsiderRead: { body: await outsiderRead.json(), statusCode: outsiderRead.status },
+        previewRead: navigationSummaryProjection(await previewRead.json(), previewRead.status),
         studentMutation: { body: await studentMutation.json(), statusCode: studentMutation.status },
       },
       {
@@ -6657,7 +6654,7 @@ test("navigationHttpRoutes_shouldEnforceSessionCsrfAndParticipation", async () =
         missingCsrf: { body: { status: "rejected", reason: "csrf_required" }, statusCode: 403 },
         missingEntity: { body: { status: "rejected", reason: "navigation_entity_not_found" }, statusCode: 404 },
         missingSession: { body: { status: "rejected", reason: "session_not_found" }, statusCode: 401 },
-        outsiderRead: { body: { status: "rejected", reason: "participation_required" }, statusCode: 403 },
+        previewRead: { statusCode: 200, topics: ["Vector spaces"], ungroupedConcepts: [], ungroupedMaterials: [] },
         studentMutation: { body: { status: "rejected", reason: "admin_or_curator_required" }, statusCode: 403 },
       },
     );

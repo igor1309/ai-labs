@@ -15,13 +15,11 @@ Grounded in [`../../api/openapi.yml`](../../api/openapi.yml) and
 **Depends on `byoa-skills-foundations.md` (api-access + membership).**
 
 > **Closeout status (2026-06-07).** Skill delivered at
-> `agonara/skills/agonara-student/SKILL.md` with gates **G1–G4, G6, G7
-> satisfied**. **G5 (live-instance verification) is NOT yet executed** — the
-> authoring environment had no running instance or Student credentials, so the
-> "live-instance transcript" in the done-criteria below is still outstanding.
-> The deferred G5 work is tracked in
-> [`../byoa-skills-student-live-verification.md`](../byoa-skills-student-live-verification.md);
-> the skill is not *fully* done against its own done-criteria until that runs.
+> `agonara/skills/agonara-student/SKILL.md`. Gates **G1–G7 are satisfied** after
+> the public-staging G5 live-instance verification captured in
+> [`../../reviews/byoa-skills-student-live-verification.md`](../../reviews/byoa-skills-student-live-verification.md)
+> and archived in
+> [`byoa-skills-student-live-verification.md`](byoa-skills-student-live-verification.md).
 
 ## Goal
 

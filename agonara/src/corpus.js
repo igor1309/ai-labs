@@ -944,9 +944,8 @@ function listQuickCheckDeliveries({ database, getEffectiveParticipation, input }
 }
 
 function listAcceptedCorpus({ database, getEffectiveParticipation, input }) {
-  const authorization = resolveAcceptedReadAuthorization({
+  const authorization = resolveAcceptedPreviewAuthorization({
     database,
-    getEffectiveParticipation,
     input,
   });
   if (authorization.status === "rejected") {
@@ -1062,9 +1061,8 @@ function listLearnerEvidenceTargetLinks({ database, getEffectiveParticipation, i
 }
 
 function listProgramNavigation({ database, getEffectiveParticipation, input }) {
-  const authorization = resolveAcceptedReadAuthorization({
+  const authorization = resolveAcceptedPreviewAuthorization({
     database,
-    getEffectiveParticipation,
     input,
   });
   if (authorization.status === "rejected") {
@@ -2240,6 +2238,23 @@ function resolveCuratorAuthorization({ database, getEffectiveParticipation, inpu
   });
   if (!participation.allowed) {
     return { status: "rejected", reason: "admin_or_curator_required", identity, program };
+  }
+
+  return { status: "accepted", identity, program };
+}
+
+function resolveAcceptedPreviewAuthorization({ database, input }) {
+  const identity = getIdentity(database, input?.actingIdentityId);
+  if (!identity) {
+    return { status: "rejected", reason: "identity_not_found" };
+  }
+  if (identity.state !== "active") {
+    return { status: "rejected", reason: "identity_disabled" };
+  }
+
+  const program = getProgramShellRecord(database, input?.programId);
+  if (!program) {
+    return { status: "rejected", reason: "program_not_found" };
   }
 
   return { status: "accepted", identity, program };

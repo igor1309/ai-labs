@@ -127,7 +127,7 @@ see the api-access foundation).
   `GET /programs/{programId}/open-answer-checks` and
   `GET /open-answer-checks/revisions/{revisionId}`. Submit with
   `POST /programs/{programId}/open-answer-attempts`, body
-  `{ "checkRevisionId", "answerText" }`. Read feedback with
+  `{ "checkRevisionId", "submittedAnswer" }`. Read feedback with
   `GET /open-answer-attempts/{attemptId}` (or list via
   `GET /programs/{programId}/open-answer-attempts`). The feedback is expressed
   relative to the accepted criteria — strengths, missing points, weak or
