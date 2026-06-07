@@ -50,17 +50,35 @@ The real cost — and why this still needs its own spec and ADR-008 decision —
 **token lifecycle**: issue, scope, expire, revoke, and store hashed. That is
 genuine new surface, but it is *additive* surface.
 
-## MCP connector for the Agonara API
+## MCP connector for the Agonara API (conditional — gated on a non-HTTP consumer)
 
 Provide an MCP server that wraps the published API contract, so any MCP-capable
 agent (and many chat-hosted agents) can mount Agonara in one step rather than
 hand-rolling HTTP calls.
 
-- Agonara currently ships operator *skills*, not an MCP server; this is a
-  deliberate added surface, not a default — weigh it against the skills approach
-  before committing.
-- Should consume the OpenAPI contract as source of truth, not duplicate route
-  knowledge.
+**Do not build this speculatively.** For the agents Agonara targets first —
+coding agents that can execute arbitrary HTTP (Claude Code, etc.) — the operator
+*skills* over the OpenAPI contract already *are* the one-step mount: the skill is
+the portable operating surface, the contract is the substrate (see
+[`../skills/README.md`](../skills/README.md)). An MCP server adds no capability
+for those agents; it is itself a *client* of the same API, re-encoding the
+contract as tool schemas, plus a deployable, securable, version-tracked process
+to maintain. Built now it is duplicated surface.
+
+MCP earns its place only when a **concrete target runtime** is on the table that
+**can mount an MCP server but cannot execute arbitrary HTTP** (the constrained
+chat-hosted agents named above) — that is the gap a skill cannot close, because a
+skill assumes the agent can make HTTP calls. Until such a consumer is actually
+named and real, skills + bearer token dominate on portability and maintenance
+cost.
+
+Gate and shape, when the gate opens:
+
+- **Depends on bearer-token auth above.** An MCP server wants a clean bearer
+  credential, not a browser-style cookie + CSRF flow; ship that item first.
+- Consume the OpenAPI contract as source of truth (generate from it), not
+  duplicate route knowledge — even generated, the server remains a deployable
+  artifact to host and secure.
 
 ## Remote admin access decision
 
