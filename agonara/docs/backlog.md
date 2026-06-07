@@ -26,18 +26,13 @@ paths illustratively without over-fitting to phrasing.
 ## Future product-state decisions
 
 Storage ownership is no longer deferred as a standalone decision axis. The
-implemented SQLite substrate persists Identity, Admin authority, sessions, audit
-events, Program shells, Program Memberships, Program invitations, Program
-membership events, Corpus sources and accepted revisions, accepted
-topic/concept/material navigation graphs, accepted assessment criteria, accepted
-open-answer checks, Student Workspace open-answer attempts/evaluation state,
-evaluator orchestration records, Quick Check accepted revisions, protected
-answer keys, Quick Check attempts, accepted readiness definitions, explicit
-readiness attempts, redacted LLM curation suggestion records, and backup/restore
-graphs.
+current persisted runtime state is tracked in
+[`implementation-notes.md`](implementation-notes.md#current-runtime-state) and
+the [`README.md`](../README.md#current-implementation-snapshot).
 
 Future persisted state must be introduced only through the owning module's
-responsibility, spec, and acceptance rules.
+responsibility, spec, and acceptance rules. Verify that ownership in the module
+responsibility map and in the relevant spec or implementation-plan review gate.
 
 Open questions:
 
