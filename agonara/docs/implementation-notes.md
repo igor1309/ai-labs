@@ -3,7 +3,7 @@ title: Agonara Implementation Notes
 date: 2026-06-07
 description: "Implementation notes for Agonara identity boundaries, runtime state, and deferred product-state decisions."
 model: gpt-5
-version: 0.2.7
+version: 0.2.8
 ---
 
 # Agonara Implementation Notes
@@ -181,6 +181,11 @@ Current backend, domain, and first-slice UI support does not imply a complete pr
   weak-area labels from source evidence; any future cache must keep the
   underlying evidence authoritative and specify invalidation by source evidence
   or target-link changes.
+- No additional membership-policy variants are currently needed beyond Student
+  `self_join` and `invitation_only` access. Future variants such as cohort,
+  organization, payment, approval, or invitation-expiry policy require a separate
+  spec and must preserve Program Membership ownership of participation without
+  turning Admin authority into a normal Program role.
 - The Admin board is implemented for operational Identity/Admin work and exceptional Program Membership recovery/revocation. `/learn` is implemented for Quick Check, topic/concept/material navigation, learner-state interpretation, readiness, membership Student/Curator product slices, Curator-only coverage-gap inspection, and Curator-only LLM suggestion review. Broader Student and Curator product screens remain outside the current runtime.
 
 ## Open questions

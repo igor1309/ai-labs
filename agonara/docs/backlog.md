@@ -2,7 +2,7 @@
 date: 2026-06-07
 model: gpt-5
 description: "Deferred design decisions for Agonara."
-version: 0.0.9
+version: 0.0.10
 ---
 
 # Backlog
@@ -20,9 +20,6 @@ responsibility map and in the relevant spec or implementation-plan review gate.
 
 Open questions:
 
-- Which future membership-policy variants, if any, are needed beyond implemented
-  Student self-join and invitation-only access without turning Admin authority
-  into a Program role?
 - Which future `/learn` UI artifacts, if any, need persisted learner-facing
   presentation state beyond the implemented Quick Check, navigation,
   learner-state, readiness, membership, Curator coverage-gap, and Curator LLM
