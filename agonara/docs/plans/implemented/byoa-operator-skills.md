@@ -6,8 +6,10 @@ description: "Design brief: BYOA operator-facing skills for Agonara — consumer
 
 # BYOA Operator Skills — Design Brief
 
-> Status: design brief (intake output). No operator skills implemented yet.
-> Discovery and publishing are deliberately out of scope here.
+> Status: archived design brief. The build sequence was expanded into the four
+> execution plans below, and the shared foundations, curator bucket, student
+> skill, and admin skill are implemented under `agonara/skills/`.
+> Discovery and publishing remain deliberately out of scope here.
 
 ## Why this exists
 
@@ -117,12 +119,12 @@ file count.
   (seeded with a README stating intent).
 - Captured this design as the source of truth for the build step.
 
-## Out of scope (for now)
+## Out of scope (for the original intake branch)
 
 - Skill discovery and publishing (marketplace, install flow, versioning surface)
   — to be addressed later.
-- Building the operator skills themselves — planned in *Build sequence* below;
-  not done on this branch.
+- Building the operator skills themselves — completed later through the
+  execution plans named in *Build sequence* below.
 - The product/docs **repositioning** that this implies — that is a separate,
   significant job with its own branch and handoff:
   `agonara-byoa-repositioning-handoff.md`.
@@ -145,7 +147,8 @@ branch; it depends on the design above, not on the docs repositioning.
 > membership), [`byoa-skills-curator.md`](byoa-skills-curator.md),
 > [`byoa-skills-student.md`](byoa-skills-student.md), and
 > [`byoa-skills-admin.md`](byoa-skills-admin.md). The steps below are the shared
-> rationale those plans inherit.
+> rationale those plans inherit; all four execution plans are now archived as
+> implemented.
 
 1. **Foundations first.** Build the shared **API-access** skill (auth, session,
    `X-Agonara-CSRF`, idempotency keys, the `accepted`/`rejected`/`fault`

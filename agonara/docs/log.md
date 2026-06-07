@@ -2,6 +2,32 @@
 
 ## 2026-06-07
 
+- Archive the remaining BYOA planning handoffs after the downstream work landed:
+  move the operator-skills design brief and repositioning handoff into
+  `docs/plans/implemented/`, update skill/discoverability references to the
+  implemented design brief, and correct the project-local AGENTS note now that
+  `agonara-admin` is implemented.
+- Implement the BYOA **admin** operator skill at `skills/agonara-admin/SKILL.md`
+  (third role of the build sequence): bootstrap the first Admin; create,
+  inspect, disable, and credential-bind identities; grant/revoke Admin authority
+  while preserving the last-admin invariant; inspect operational access and
+  audit events; and perform exceptional membership recovery/revocation with
+  attribution. The skill builds on `agonara-api-access` and
+  `agonara-membership`, stays contract-grounded in `docs/api/openapi.yml`,
+  remains portable and role-scoped, and explicitly excludes curation, learning,
+  normal participant management, and host-side backup/restore execution. Align
+  the Admin membership recovery/revocation OpenAPI request bodies with the
+  implemented runtime fields (`targetIdentityId`,
+  `recoveryReason`/`revocationReason`). Update `skills/README.md` and archive
+  the plan to `docs/plans/implemented/byoa-skills-admin.md`, with verification
+  evidence in `docs/reviews/byoa-skills-admin-verification.md`.
+- Close the Agonara deployment wiring plan after verifying the first release
+  already completed: `agonara_v0.1.0` exists, release-unit run `27073521933`
+  succeeded through `verify`, `core`, `deploy-agonara-staging`,
+  `deploy-agonara-prod`, and `github-release`, and the GitHub Release is
+  published. Capture closeout evidence in
+  `docs/reviews/agonara-deployment-wiring-closeout.md` and archive the plan to
+  `docs/plans/implemented/agonara-deployment-wiring.md`.
 - Close the post-merge verification gaps for the BYOA curator bucket: pass the isolated Agonara suite plus the full root test/build gates after a clean lockfile install, execute all four curator job loops against a real local HTTP instance, and record the redacted transcript plus formal section-by-section skill review. Correct material guidance to use `material_reference` navigation candidates, align invitation guidance and OpenAPI with the runtime-required `{ participationKind: "student", targetIdentityId }` body, add the concrete assessment and LLM-generation request shapes that the permissive contract schemas did not teach, and harden the reviewed guidance with the runtime's `draft_suggestion` status and finite relationship, readiness-target, and LLM-suggestion enums.
 - Satisfy BYOA Student skill **G5 live-instance verification** against public staging with disposable Student data: preview accepted corpus/navigation without creating membership state, join, navigate topic/concept/material, submit quick/open/readiness attempts with idempotency replay, run the open-answer evaluator, read feedback and learner-state evidence, prove ownership denials for another Student, leave/rejoin with prior attempts and learner state preserved, and accept/decline invitation-only program invitations. Capture sanitized evidence in `docs/reviews/byoa-skills-student-live-verification.md`, update the Student skill/OpenAPI open-answer body field to `submittedAnswer`, allow signed-in state-free preview for accepted corpus and navigation, and archive the follow-up plan.
 - Simplify the landing hero copy around the product promise and move the name note directly under the title, make both hero CTAs use the same neutral treatment, replace external-facing mastery-proof phrasing with progress/evidence-of-learning language, remove filler from the product-loop lede, remove duplicated hero runtime/product metadata and the interrupting sticky navigation block, fold the product-surface access paths into the product-loop section, cap the product-loop grid at two columns, make role skills explicit as their own surface card, cap the surface grid at three columns, and combine private-instance runtime details directly into the run section with spacing before the setup steps; remove the stale project TODO for a redundant Markdown documentation index.

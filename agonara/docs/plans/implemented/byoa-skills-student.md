@@ -7,7 +7,7 @@ description: "Implementation plan: the Student BYOA operator skill for Agonara â
 # BYOA Operator Skills â€” Student
 
 Implements the **second role** of the build sequence in
-[`byoa-operator-skills.md`](../byoa-operator-skills.md). Student is plausibly a
+[`byoa-operator-skills.md`](byoa-operator-skills.md). Student is plausibly a
 single skill initially (the brief), built in dependency-ordered phases.
 Grounded in [`../../api/openapi.yml`](../../api/openapi.yml) and
 [`../../intent/student_user_stories.md`](../../intent/student_user_stories.md).

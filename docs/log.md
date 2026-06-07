@@ -2,6 +2,16 @@
 
 ## 2026-06-07
 
+- Split implementation-plan authoring guidance out of `process-gates`: add the
+  `implementation-plan` skill for task/phase/step vocabulary, declaration
+  fields, and acceptance checks; narrow `process-gates` to execution gates; and
+  update repo discovery docs so plan files trigger the authoring skill first.
+- Release units: close the Agonara deployment wiring plan after post-release
+  verification. `agonara_v0.1.0` exists, release-unit run `27073521933`
+  completed successfully through verify/core/staging/prod deploy/GitHub Release,
+  and the published release is `agonara v0.1.0`. Archived the plan under
+  `agonara/docs/plans/implemented/` with closeout evidence in
+  `agonara/docs/reviews/agonara-deployment-wiring-closeout.md`.
 - Agonara: update the repo-root `README.md` Components row for the BYOA repositioning — `agonara` is now described as a bring-your-own-agent (BYOA) structured learning program environment (API + per-role operator skills, `/learn`/`/admin` UIs as first-class clients). Aligned with the repositioned project README; the full refinement is logged in `agonara/docs/log.md`.
 - LOC dashboard: refreshed `docs/loc-dashboard.html` from `scripts/loc-dashboard.sh --sort=name` so the summary cards, table totals, data array, and update date match the current repo snapshot (total 230,345→230,740).
 - Agonara: add `agonara/docs/api/TODO.md` for OpenAPI automation and API-skill alignment, and surface the OpenAPI contract plus implemented API skill on the project landing.

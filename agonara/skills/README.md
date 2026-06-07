@@ -8,8 +8,8 @@ chat, an operator points the agent they already use at an Agonara instance and
 loads the skill for the job they are doing. The skill is the portable operating
 surface; the [OpenAPI contract](../docs/api/openapi.yml) is the substrate.
 
-Planned shape (per-role skills over shared foundations) and rationale:
-[`../docs/plans/byoa-operator-skills.md`](../docs/plans/byoa-operator-skills.md).
+Implemented shape (per-role skills over shared foundations) and rationale:
+[`../docs/plans/implemented/byoa-operator-skills.md`](../docs/plans/implemented/byoa-operator-skills.md).
 
 ## Implemented skills
 
@@ -47,8 +47,13 @@ The **student** skill:
   feedback, results, and the evidence behind progress — seeing only accepted
   corpus and the student's own state.
 
-The admin role skill builds on the same foundations and is planned next — see
-the [build sequence](../docs/plans/byoa-operator-skills.md).
+The **admin** skill:
+
+- [`agonara-admin/`](agonara-admin/SKILL.md) — operate a private instance:
+  bootstrap the first Admin, administer identities and local-password
+  credentials, grant/revoke Admin authority while preserving the last-admin
+  invariant, inspect access and audit events, and perform exceptional membership
+  recovery/revocation without becoming the normal participation operator.
 
 The previous developer-facing `agonara-api` skill was removed — it served an
 agent *building* Agonara's codebase, not an operator *using* the product, which

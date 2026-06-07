@@ -9,10 +9,16 @@ description: "Implementation plan: the Admin BYOA operator skill for Agonara —
 Implements the **third role** of the build sequence in
 [`byoa-operator-skills.md`](byoa-operator-skills.md). Admin is plausibly a single
 skill initially (the brief), built in dependency-ordered phases. Grounded in
-[`../api/openapi.yml`](../api/openapi.yml) and
-[`../intent/admin_user_stories.md`](../intent/admin_user_stories.md).
+[`../api/openapi.yml`](../../api/openapi.yml) and
+[`../intent/admin_user_stories.md`](../../intent/admin_user_stories.md).
 
 **Depends on `byoa-skills-foundations.md` (api-access + membership).**
+
+> **Closeout status (2026-06-07).** Skill delivered at
+> `agonara/skills/agonara-admin/SKILL.md`. Gates **G1-G7 are satisfied** after
+> the focused local HTTP G5 live-instance verification and skill-review evidence
+> captured in
+> [`../../reviews/byoa-skills-admin-verification.md`](../../reviews/byoa-skills-admin-verification.md).
 
 ## Goal
 
@@ -38,7 +44,7 @@ Push policy: push at closeout
 Worktree mode: create new
 Expected worktree: worktrees/byoa-skills-admin
 Expected branch: <author>/byoa-skills-admin
-Preflight check: [ ] done
+Preflight check: [x] done
 ```
 
 Preflight: confirm worktree/branch before each phase.
