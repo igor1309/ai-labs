@@ -139,6 +139,14 @@ file count.
 This is the actionable plan for building the operator skills. Do it on its own
 branch; it depends on the design above, not on the docs repositioning.
 
+> This build sequence is now expanded into four execution plans, one per
+> bucket/role (each on its own branch, foundations first):
+> [`byoa-skills-foundations.md`](byoa-skills-foundations.md) (api-access +
+> membership), [`byoa-skills-curator.md`](byoa-skills-curator.md),
+> [`byoa-skills-student.md`](byoa-skills-student.md), and
+> [`byoa-skills-admin.md`](byoa-skills-admin.md). The steps below are the shared
+> rationale those plans inherit.
+
 1. **Foundations first.** Build the shared **API-access** skill (auth, session,
    `X-Agonara-CSRF`, idempotency keys, the `accepted`/`rejected`/`fault`
    envelope) — every role skill leans on it. Then the shared **membership**
