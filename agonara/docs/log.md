@@ -30,6 +30,13 @@
   auto-reset instance, sandboxed identities, bounded LLM exposure, full
   isolation), explicit non-goals (not SaaS, not a self-host replacement), and the
   guardrails the exception ADR must pin.
+- Adversarially review the demo-instance sketch
+  (`docs/reviews/demo-instance-exception-adversarial-review.md`): fixed one
+  warning — the sketch listed `/admin` as a demo surface, conflicting with the
+  standing public `/admin` block in the deployment handoff; the sketch now
+  conditions `/admin` exposure on the admin-access decision and adds a guardrail
+  requiring the exception ADR to revisit the block rather than override it
+  silently. ADR-017 fidelity and framing passed.
 - Clarify the Agonara landing hero by separating the structured-progress outcome
   from one concise product-value summary and reserving bring-your-own-agent
   explanation for the dedicated BYOA section.

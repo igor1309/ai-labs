@@ -66,8 +66,9 @@ the exception is void.
 - **Fully isolated.** Separate host/container, separate throwaway secrets,
   separate data volume — no shared failure domain or secret material with any
   private instance, including the author's.
-- **Clearly labeled.** Every surface (landing link, `/learn`, `/admin`) marks it
-  as an ephemeral public demo that resets and is not for real data.
+- **Clearly labeled.** Every exposed surface (landing link, `/learn`, and — only
+  if the admin-access decision below permits — `/admin`) marks it as an ephemeral
+  public demo that resets and is not for real data.
 
 ## Explicit non-goals
 
@@ -85,6 +86,12 @@ the exception is void.
 - Abuse posture for a publicly writable, LLM-backed app (what a visitor can and
   cannot trigger).
 - Isolation from all private instances (host, secrets, volumes).
+- Public `/admin` exposure: the deployment handoff's standing decision blocks
+  public `/admin` at the reverse proxy
+  ([`deployment-handoff.md`](deployment-handoff.md) Active Follow-Up). The demo
+  must either keep `/admin` unexposed (demo runs `/learn` only) or have its ADR
+  explicitly revisit that block for the isolated demo host — it cannot silently
+  override a standing operational decision.
 - Operational ownership: who runs, resets, and retires the demo, and the cost
   budget it lives within.
 - A retirement/off-switch criterion, so a demo that is not earning its keep can
