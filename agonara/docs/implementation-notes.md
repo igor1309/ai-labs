@@ -3,7 +3,7 @@ title: Agonara Implementation Notes
 date: 2026-06-07
 description: "Implementation notes for Agonara identity boundaries, runtime state, and deferred product-state decisions."
 model: gpt-5
-version: 0.2.6
+version: 0.2.7
 ---
 
 # Agonara Implementation Notes
@@ -176,9 +176,11 @@ Current backend, domain, and first-slice UI support does not imply a complete pr
   topic/concept/material navigation graph; any future personal recommendation
   state must be specified through Student Workspace ownership rather than shared
   Program corpus.
-- Persisted learner-state caches or mastery-model records remain unresolved
-  product-state questions. The implemented learner-state slice derives progress
-  and weak-area labels at read time from source evidence.
+- No invalidated learner-state cache records are currently worth adding beyond
+  read-time derivation. The implemented learner-state slice derives progress and
+  weak-area labels from source evidence; any future cache must keep the
+  underlying evidence authoritative and specify invalidation by source evidence
+  or target-link changes.
 - The Admin board is implemented for operational Identity/Admin work and exceptional Program Membership recovery/revocation. `/learn` is implemented for Quick Check, topic/concept/material navigation, learner-state interpretation, readiness, membership Student/Curator product slices, Curator-only coverage-gap inspection, and Curator-only LLM suggestion review. Broader Student and Curator product screens remain outside the current runtime.
 
 ## Open questions

@@ -2,6 +2,10 @@
 
 ## 2026-06-07
 
+- Resolve the learner-state cache product-state question: no invalidated
+  learner-state cache records are planned beyond implemented read-time
+  derivation; future caches must keep source evidence authoritative and specify
+  invalidation by source evidence or target-link changes.
 - Resolve the learning-path sequencing product-state question: the accepted
   topic/concept/material navigation graph remains the shared sequencing state,
   recommendation ranking stays a future downstream artifact, and any personal

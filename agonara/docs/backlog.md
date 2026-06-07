@@ -2,7 +2,7 @@
 date: 2026-06-07
 model: gpt-5
 description: "Deferred design decisions for Agonara."
-version: 0.0.8
+version: 0.0.9
 ---
 
 # Backlog
@@ -20,8 +20,6 @@ responsibility map and in the relevant spec or implementation-plan review gate.
 
 Open questions:
 
-- Which invalidated learner-state cache records, if any, are worth adding beyond
-  the implemented read-time progress and weak-area derivation?
 - Which future membership-policy variants, if any, are needed beyond implemented
   Student self-join and invitation-only access without turning Admin authority
   into a Program role?

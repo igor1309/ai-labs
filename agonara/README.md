@@ -1,5 +1,5 @@
 ---
-date: 2026-06-03
+date: 2026-06-07
 model: gpt-5
 description: "Agonara backend and product docs for a structured learning program environment"
 ---
@@ -45,7 +45,7 @@ Implemented backend, domain, and product surfaces:
 
 Still deferred or outside current product UI:
 
-- Recommendation ranking and persisted mastery models still need separate specs or plans.
+- Recommendation ranking still needs a separate spec or plan; no invalidated learner-state cache records are planned beyond the implemented read-time derivation.
 - Student-facing and curator-facing product UI beyond the `/learn` Quick Check, navigation, learner-state, readiness, membership, coverage-gap, and LLM suggestion first slices is not implemented.
 
 ## Key Separations
