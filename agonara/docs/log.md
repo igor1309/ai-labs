@@ -2,6 +2,7 @@
 
 ## 2026-06-07
 
+- Refocus the project landing (`index.html`) on production and how to use it: a product-loop "How it works" section, a "Run your own private instance" getting-started walkthrough with real Docker/CLI commands, and a hero CTA — moving the duplicated ownership and module-boundary detail entirely to `architecture.html`, and flattening the "What is implemented today" cards to vertical titles without the redundant category tags.
 - Add an API TODO for OpenAPI automation and Agonara API skill alignment, and surface both the OpenAPI contract and implemented API skill on the project landing.
 - Harden the OpenAPI contract after adversarial review by documenting bootstrap `401` rejections, tightening the evaluator tick request body, completing private license metadata, and making public no-auth route `not_found` responses explicit.
 - Add the canonical route-level OpenAPI 3.1 contract at `docs/api/openapi.yml`, covering implemented Agonara HTTP surfaces, shared envelopes, session-cookie auth, CSRF, idempotency, and common rejection reasons.
