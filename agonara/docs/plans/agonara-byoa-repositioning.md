@@ -166,7 +166,7 @@ Documents to adapt (handoff §3). Each is a reposition, not a mechanical rewrite
 - [x] Phase 3 — README (project + repo-root row)
 - [x] Phase 4 — Landing (`index.html`)
 - [x] Phase 5 — Architecture (`architecture.html`)
-- [ ] Phase 6 — Brand briefs (EN + RU) + traceability review
+- [x] Phase 6 — Brand briefs (EN + RU) + traceability review
 - [ ] Phase 7 — Logs, gates, dashboard, archive
 
 ## Execution log
@@ -263,6 +263,25 @@ same backend contracts." Updated the `server.js` source-tree row's "future agent
 clients" → "bring-your-own-agent clients" for consistency. Verified no other
 "primary interface" claim remains and the five-module ownership map and
 ADR-backed boundaries are untouched (builder's view, unchanged).
+
+### Phase 6 — Brand briefs (EN + RU) + traceability review
+
+Added a light positioning touch to the "Positioning" section of `brand_brief.md`
+and `brand_brief_ru.md`: BYOA stated as the operating model that *strengthens* the
+"AI as assistant, not author" + "human-owned curriculum" story ("the agent
+operates the product, not the curriculum"). Kept it positioning, not mechanics.
+Bumped both briefs 0.1.0 → 0.2.0 and updated the cross-reference intro lines in
+both languages. EN/RU parity verified — the new paragraph sits at the same
+position (line 47) in both files.
+
+**Traceability review (intent → ADR → spec).** The reframe is purely additive
+operator-facing narrative: no accepted story was added or removed, the Product
+Intent Downstream-traceability matrix and every story ID (INT-01…07 and the
+role-catalog IDs) are unchanged, and no ADR or spec link was touched. A full
+re-derivation would therefore reproduce the pre-existing link set. The substantive
+divergence check — does the BYOA framing contradict any decision — was run in
+Phase 1 over all 13 intent/story-citing ADRs and is clean (every ADR places UI
+outside its decision scope; module ownership unaffected). No drift to reconcile.
 
 Update tracker checkboxes only after a phase's required verification passes and
 its commit is created; commit the tracker-only status update before starting the
