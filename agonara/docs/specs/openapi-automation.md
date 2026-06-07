@@ -22,7 +22,11 @@ This spec operationalizes the `OpenAPI automation` backlog item in `docs/backlog
 The route contract registry is exported from `src/http-contract.js`.
 
 ```ts
+type JsonSchema = Record<string, unknown>;
+
 type HttpMethod = "DELETE" | "GET" | "PATCH" | "POST";
+
+type OpenApiRef = { ref: string };
 
 type RouteAuth =
   | { kind: "none" }
@@ -44,21 +48,22 @@ type RouteQueryParameter = {
 
 type RouteRequestBody = {
   contentType: "application/json";
-  schema: JsonSchema | { ref: string };
+  schema: JsonSchema | OpenApiRef;
   required: boolean;
 };
 
 type RouteResponse = {
   status: number;
   envelope: "accepted" | "rejected" | "fault" | "html" | "health";
-  schema?: JsonSchema | { ref: string };
-  headers?: Record<string, { ref: string } | JsonSchema>;
+  schema?: JsonSchema | OpenApiRef;
+  headers?: Record<string, OpenApiRef | JsonSchema>;
 };
 
 type RouteContract = {
   method: HttpMethod;
   path: string;                 // OpenAPI path template, e.g. "/programs/{programId}"
   operationId: string;
+  handlerKey: string;           // server-only dispatch key, omitted from generated OpenAPI
   tag: "operations" | "identity" | "programs" | "corpus" | "student-workspace" | "curator-workspace" | "ui";
   summary: string;
   auth: RouteAuth;
@@ -71,11 +76,38 @@ type RouteContract = {
 export const routeContracts: readonly RouteContract[];
 ```
 
-The registry may also export helper data used by the generator, such as reusable schemas, request bodies, responses, headers, security schemes, and tags, provided `routeContracts` remains the complete route inventory.
+The registry also exports the shared OpenAPI metadata and reusable components that are not route-specific:
+
+```ts
+type OpenApiContractMetadata = {
+  openapi: "3.1.0";
+  info: {
+    title: string;
+    version: string;
+    summary?: string;
+    description?: string;
+    license?: Record<string, string>;
+  };
+  servers: { url: string; description?: string }[];
+  tags: { name: RouteContract["tag"]; description?: string }[];
+  security?: Record<string, string[]>[];
+  components: {
+    securitySchemes: Record<string, JsonSchema>;
+    schemas: Record<string, JsonSchema>;
+    requestBodies: Record<string, JsonSchema>;
+    responses: Record<string, JsonSchema>;
+    headers: Record<string, JsonSchema>;
+  };
+};
+
+export const openApiContractMetadata: OpenApiContractMetadata;
+```
+
+`routeContracts` remains the complete route inventory. `openApiContractMetadata` supplies only document metadata and reusable component definitions; it must not add path operations.
 
 ### Server routing integration
 
-The HTTP server consumes `routeContracts` for route recognition. Server handlers may continue to delegate to existing module-specific handler functions, but the method/path inventory used for dispatch comes from the registry instead of a separate list, regex-only extraction, or the generated OpenAPI file.
+The HTTP server consumes `routeContracts` for route recognition. Server handlers may continue to delegate to existing module-specific handler functions, but the method/path inventory and server dispatch key come from the registry instead of a separate list, regex-only extraction, or the generated OpenAPI file.
 
 The server-facing matcher accepts a request method and pathname and returns either the matching route contract with decoded path parameters or an explicit no-match result.
 
@@ -114,23 +146,27 @@ The generated OpenAPI document remains OpenAPI 3.1 and preserves the existing hi
 1. `routeContracts` contains exactly one entry for every implemented public HTTP method/path pair that Agonara serves.
 2. `routeContracts` contains no unimplemented public HTTP method/path pair.
 3. Every route contract has a unique `operationId`.
-4. Every route contract path uses OpenAPI `{parameterName}` template syntax, and every templated path parameter has a matching required `pathParameters` entry.
-5. Every `pathParameters` entry appears in the route path template.
-6. Every route contract has exactly one tag from the documented Agonara tag set.
-7. Every route contract declares auth requirements explicitly, including no-auth HTML/health/bootstrap routes, session routes, session+CSRF mutation routes, and the operations trigger token alternative.
-8. Every state-changing session route declares CSRF requirements unless the governing HTTP spec explicitly keeps that route CSRF-free.
-9. Every route with a JSON request body declares a request body schema or reusable request-body reference.
-10. Every route declares all possible public HTTP statuses the server can return for that route, including accepted, rejected, and fault responses where applicable.
-11. Route response declarations use the existing Agonara envelope vocabulary: `accepted`, `rejected`, `fault`, `html`, or `health`.
-12. Rejected responses continue to reference the shared `ApiRejectionReason` schema; the route registry must not introduce route-local hidden rejection vocabularies.
-13. The OpenAPI generator produces deterministic YAML for the same registry input: repeated generation without source changes yields byte-identical output.
-14. Generated `docs/api/openapi.yml` contains exactly the method/path operations declared in `routeContracts`, with matching `operationId`, tag, summary, security, parameters, request body, and response statuses.
-15. `--check` exits `0` when committed `docs/api/openapi.yml` matches generated output.
-16. `--check` exits non-zero and prints a concise diff-oriented failure message when committed `docs/api/openapi.yml` differs from generated output.
-17. `npm test --workspace agonara` fails when `--check` fails.
-18. Route-level contract tests read from `routeContracts` for inventory expectations, so adding/removing a route requires changing the registry and generated OpenAPI contract together.
-19. The OpenAPI contract remains the external substrate for BYOA operator skills; automation must not require operator skills to read source files, tests, route handlers, or private runtime modules.
-20. The automation does not change existing runtime behavior: request matching, status mapping, response bodies, headers, logging, CSRF/session handling, idempotency handling, and fault redaction remain behaviorally equivalent for all existing routes.
+4. Every route contract has a unique `handlerKey`.
+5. Server dispatch selects the handler from the matched route contract's `handlerKey`; it must not maintain a second method/path-to-handler inventory.
+6. Every route contract path uses OpenAPI `{parameterName}` template syntax, and every templated path parameter has a matching required `pathParameters` entry.
+7. Every `pathParameters` entry appears in the route path template.
+8. Every route contract has exactly one tag from the documented Agonara tag set.
+9. Every route contract declares auth requirements explicitly, including no-auth HTML/health/bootstrap routes, session routes, session+CSRF mutation routes, and the operations trigger token alternative.
+10. Every state-changing session route declares CSRF requirements unless the governing HTTP spec explicitly keeps that route CSRF-free.
+11. Every route with a JSON request body declares a request body schema or reusable request-body reference.
+12. Every route declares all possible public HTTP statuses the server can return for that route, including accepted, rejected, and fault responses where applicable.
+13. Route response declarations use the existing Agonara envelope vocabulary: `accepted`, `rejected`, `fault`, `html`, or `health`.
+14. Rejected responses continue to reference the shared `ApiRejectionReason` schema; the route registry must not introduce route-local hidden rejection vocabularies.
+15. `openApiContractMetadata` supplies document-level metadata and reusable components, and generated local `$ref` values resolve inside the generated document.
+16. The OpenAPI generator produces deterministic YAML for the same registry input: repeated generation without source changes yields byte-identical output.
+17. Generated `docs/api/openapi.yml` contains exactly the method/path operations declared in `routeContracts`, with matching `operationId`, tag, summary, security, parameters, request body, and response statuses.
+18. Generated `docs/api/openapi.yml` omits server-only fields, including `handlerKey`.
+19. `--check` exits `0` when committed `docs/api/openapi.yml` matches generated output.
+20. `--check` exits non-zero and prints a concise diff-oriented failure message when committed `docs/api/openapi.yml` differs from generated output.
+21. `npm test --workspace agonara` fails when `--check` fails.
+22. Route-level contract tests read from `routeContracts` for inventory expectations, so adding/removing a route requires changing the registry and generated OpenAPI contract together.
+23. The OpenAPI contract remains the external substrate for BYOA operator skills; automation must not require operator skills to read source files, tests, route handlers, or private runtime modules.
+24. The automation does not change existing runtime behavior: request matching, status mapping, response bodies, headers, logging, CSRF/session handling, idempotency handling, and fault redaction remain behaviorally equivalent for all existing routes.
 
 ## Product intent traceability
 
@@ -142,37 +178,41 @@ Route contract registry:
 
 1. `routeContracts_shouldHaveUniqueMethodPathPairs` covers rules 1 and 2.
 2. `routeContracts_shouldHaveUniqueOperationIds` covers rule 3.
-3. `routeContracts_shouldMatchPathParameterDeclarations` covers rules 4 and 5.
-4. `routeContracts_shouldUseKnownTags` covers rule 6.
-5. `routeContracts_shouldDeclareAuthForEveryRoute` covers rule 7.
-6. `routeContracts_shouldRequireCsrfForSessionMutations` covers rule 8.
-7. `routeContracts_shouldDeclareRequestBodiesForJsonMutations` covers rule 9.
-8. `routeContracts_shouldDeclareResponsesForEveryPublicStatus` covers rules 10 and 11.
-9. `routeContracts_shouldUseSharedRejectionReasonSchema` covers rule 12.
+3. `routeContracts_shouldHaveUniqueHandlerKeys` covers rule 4.
+4. `routeContracts_shouldMatchPathParameterDeclarations` covers rules 6 and 7.
+5. `routeContracts_shouldUseKnownTags` covers rule 8.
+6. `routeContracts_shouldDeclareAuthForEveryRoute` covers rule 9.
+7. `routeContracts_shouldRequireCsrfForSessionMutations` covers rule 10.
+8. `routeContracts_shouldDeclareRequestBodiesForJsonMutations` covers rule 11.
+9. `routeContracts_shouldDeclareResponsesForEveryPublicStatus` covers rules 12 and 13.
+10. `routeContracts_shouldUseSharedRejectionReasonSchema` covers rule 14.
+11. `openApiMetadata_shouldResolveLocalComponentRefs` covers rule 15.
 
 OpenAPI generation:
 
-10. `generateOpenApi_shouldBeDeterministic` covers rule 13.
-11. `generateOpenApi_shouldMatchRouteContracts` covers rule 14.
-12. `generateOpenApiCheck_shouldPass_whenCommittedContractMatchesGeneratedOutput` covers rule 15.
-13. `generateOpenApiCheck_shouldFail_whenCommittedContractDiffersFromGeneratedOutput` covers rule 16.
-14. Existing OpenAPI parse/ref/lint tests continue to pass against generated output.
+12. `generateOpenApi_shouldBeDeterministic` covers rule 16.
+13. `generateOpenApi_shouldMatchRouteContracts` covers rule 17.
+14. `generateOpenApi_shouldOmitServerOnlyFields` covers rule 18.
+15. `generateOpenApiCheck_shouldPass_whenCommittedContractMatchesGeneratedOutput` covers rule 19.
+16. `generateOpenApiCheck_shouldFail_whenCommittedContractDiffersFromGeneratedOutput` covers rule 20.
+17. Existing OpenAPI parse/ref/lint tests continue to pass against generated output.
 
 Server and drift guards:
 
-15. `serverRouting_shouldUseRouteContractsForImplementedRoutes` covers rules 1, 2, and 18.
-16. Existing focused HTTP API tests continue to pass for Identity, Program, Corpus, Curator Workspace, Student Workspace, Operations, and UI routes, covering rule 20.
-17. `agonaraTestGate_shouldRunOpenApiGenerationCheck` covers rule 17.
-18. Operator skill contract tests continue to read only the published OpenAPI contract and not server source, covering rule 19.
+18. `serverRouting_shouldUseRouteContractsForImplementedRoutes` covers rules 1, 2, 5, and 22.
+19. Existing focused HTTP API tests continue to pass for Identity, Program, Corpus, Curator Workspace, Student Workspace, Operations, and UI routes, covering rule 24.
+20. `agonaraTestGate_shouldRunOpenApiGenerationCheck` covers rule 21.
+21. Operator skill contract tests continue to read only the published OpenAPI contract and not server source, covering rule 23.
 
 ## Done criteria
 
 - `src/http-contract.js` exports a complete route contract registry for all implemented Agonara public HTTP method/path pairs.
-- Server route recognition uses the route contract registry for method/path inventory.
+- Server route recognition uses the route contract registry for method/path inventory and handler dispatch keys.
 - `scripts/generate-agonara-openapi.mjs` writes deterministic OpenAPI 3.1 YAML from the registry.
 - `scripts/generate-agonara-openapi.mjs --check` fails on committed-contract drift.
 - `npm test --workspace agonara` runs the generation check, and Agonara CI reaches that check through the existing workspace test command.
 - Route-level contract tests no longer depend on hard-coded route inventories or regex extraction from `server.js`.
+- Generated OpenAPI output omits server-only registry fields and still resolves all local `$ref` values.
 - Existing HTTP behavior remains unchanged and covered by the current HTTP/API acceptance tests.
 - BYOA operator skills continue to consume `docs/api/openapi.yml` as their only route substrate.
 - Every behavior rule is covered by a listed test or by existing HTTP/API acceptance coverage.
