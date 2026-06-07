@@ -2,6 +2,11 @@
 
 ## 2026-06-07
 
+- Establish the Agonara positioning baseline around turning scattered study into
+  structured progress: add `docs/positioning.md`, update the README opening,
+  and revise the landing hero/how-it-works/BYOA/private-instance copy to lead
+  with serious self-directed learners, program curators, human acceptance, and
+  learner-owned evidence.
 - Add an explicit route inventory guard for the hand-edited OpenAPI contract:
   `openapi-contract.test.js` now fails when `docs/api/openapi.yml` gains or
   loses a method+path route without updating the reviewed inventory.
