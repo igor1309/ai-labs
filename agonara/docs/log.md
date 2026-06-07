@@ -23,6 +23,13 @@
   default) and an unacknowledged overlap with the existing demos.md Docker Demo
   (Phase 2 now extends and cross-links it). Declaration block and ADR-017
   fidelity passed.
+- Sketch `docs/demo-instance-exception.md`: a public, ephemeral demo instance as
+  a deliberate, scoped exception to ADR-017's private-not-multitenant boundary,
+  to give an evaluator's agent a target before they self-host. Framed as a
+  not-accepted proposal pending its own ADR, with proposed shape (single seeded
+  auto-reset instance, sandboxed identities, bounded LLM exposure, full
+  isolation), explicit non-goals (not SaaS, not a self-host replacement), and the
+  guardrails the exception ADR must pin.
 - Clarify the Agonara landing hero by separating the structured-progress outcome
   from one concise product-value summary and reserving bring-your-own-agent
   explanation for the dedicated BYOA section.
