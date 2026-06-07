@@ -14,8 +14,10 @@ spec, implementation-plan, or review work is in scope.
 
 ## Project-Local Skills
 
-For Agonara API route, contract, client, or API-backed agent automation work,
-use `skills/agonara-api/SKILL.md`.
+Operator-facing BYOA skills (per-role, plus shared API-access and membership
+foundations) will live under `skills/` in subfolders. None are implemented yet —
+see the design and rationale in `docs/plans/byoa-operator-skills.md`. The earlier
+developer-facing `agonara-api` skill was removed as built for the wrong consumer.
 
 ## Deployment Discipline
 

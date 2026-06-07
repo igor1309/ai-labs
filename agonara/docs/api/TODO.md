@@ -24,9 +24,9 @@ description: "Forward tasks for Agonara OpenAPI automation and API skill alignme
 - Add `scripts/generate-agonara-openapi.mjs --check` so CI fails when generated output differs from the committed contract.
 - Use the route contract registry as the source of truth for server routing and route-level contract tests, so automation does not depend on brittle regex extraction from `server.js`.
 
-## API Skill Alignment
+## Operator Skills (BYOA)
 
-- Keep the implemented Agonara API skill at `agonara/skills/agonara-api/SKILL.md` aligned with the published OpenAPI-backed HTTP contract.
-- Update `agonara/skills/agonara-api/references/api-contract-map.md` when routes, envelopes, auth requirements, or status mappings change.
-- Keep the skill outside ownership of Program corpus, Student state, Program Membership, Identity, and operational authority; it acts only as a client.
-- Add smoke coverage proving the skill uses the published OpenAPI route contract rather than duplicating hidden route knowledge.
+- Operator-facing BYOA skills live under `agonara/skills/`. They consume the
+  published OpenAPI contract as their substrate — keep the contract authoritative
+  so those skills never duplicate hidden route knowledge. Design and rationale:
+  `agonara/docs/plans/byoa-operator-skills.md`.
