@@ -12,7 +12,8 @@ description: "Implementation plan: the Admin BYOA operator skill for Agonara —
 > had no running Agonara instance or Admin credentials, so the live arc
 > (bootstrap → create identity → bind credential → inspect; grant/revoke admin +
 > observe the `last_admin_removal` rejection; inspect membership → recover → read
-> audit) was not run. Track that gap before treating every done-criterion as met,
+> audit) was not run. The gap is tracked as the unimplemented follow-up
+> [`../byoa-skills-admin-live-verification.md`](../byoa-skills-admin-live-verification.md),
 > mirroring `byoa-skills-student-live-verification.md`.
 
 Implements the **third role** of the build sequence in
