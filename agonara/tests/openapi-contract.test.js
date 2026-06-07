@@ -5,6 +5,7 @@ import test from "node:test";
 import { parseDocument } from "yaml";
 
 const openApiPath = fileURLToPath(new URL("../docs/api/openapi.yml", import.meta.url));
+const serverPath = fileURLToPath(new URL("../src/server.js", import.meta.url));
 
 test("openApiContract_shouldResolveLocalRefs_onHandEditedContract", () => {
   const document = parseDocument(readFileSync(openApiPath, "utf8"), { prettyErrors: false });
@@ -22,6 +23,38 @@ test("openApiContract_shouldResolveLocalRefs_onHandEditedContract", () => {
     { externalRefs: [], parseErrors: [], unresolvedRefs: [] },
   );
 });
+
+test("openApiContract_shouldMatchHttpStatusRejectionReasons_onHandEditedContract", () => {
+  const contract = readOpenApiContract();
+  const apiRejectionReasons = contract.components.schemas.ApiRejectionReason.enum;
+  const httpStatusReasons = collectHttpStatusReasons(readFileSync(serverPath, "utf8"));
+
+  assert.deepEqual(
+    {
+      undocumentedHttpStatusReasons: httpStatusReasons.filter($0 => !apiRejectionReasons.includes($0)),
+      unmappedApiRejectionReasons: apiRejectionReasons.filter($0 => !httpStatusReasons.includes($0)),
+    },
+    {
+      undocumentedHttpStatusReasons: [],
+      unmappedApiRejectionReasons: [],
+    },
+  );
+});
+
+function readOpenApiContract() {
+  const document = parseDocument(readFileSync(openApiPath, "utf8"), { prettyErrors: false });
+  return document.toJS();
+}
+
+function collectHttpStatusReasons(serverSource) {
+  const httpStatusFunction = serverSource.match(/function httpStatusFor\(reason\) \{(?<body>[\s\S]*?)\n\}/)?.groups.body;
+
+  assert.notEqual(httpStatusFunction, undefined);
+
+  return [...httpStatusFunction.matchAll(/case "([^"]+)":/g)]
+    .map($0 => $0[1])
+    .sort();
+}
 
 function collectRefs(value, path = []) {
   if (Array.isArray(value)) {

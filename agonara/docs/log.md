@@ -2,6 +2,10 @@
 
 ## 2026-06-07
 
+- Add an OpenAPI rejection-reason drift guard while the API contract remains
+  hand-edited: `openapi-contract.test.js` now compares every
+  `httpStatusFor(...)` case with `components.schemas.ApiRejectionReason`, and
+  the public `not_found` API rejection is explicitly mapped to HTTP 404.
 - Add an OpenAPI contract guard for the hand-edited API spec: Agonara tests now
   parse `docs/api/openapi.yml` and fail on external or unresolved local `$ref`
   entries before drift can reach operator skills or clients.
