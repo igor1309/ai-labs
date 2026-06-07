@@ -18,10 +18,11 @@ Operator-facing BYOA skills (per-role, plus shared API-access and membership
 foundations) live under `skills/` in subfolders — see `skills/README.md` for the
 implemented set and the design and rationale in
 `docs/plans/byoa-operator-skills.md`. The shared foundations
-(`agonara-api-access`, `agonara-membership`) and the curator bucket
-(`agonara-curator-corpus`/`-assessment`/`-research`/`-participation`) are
-implemented; the student and admin role skills are planned next. The earlier
-developer-facing `agonara-api` skill was removed as built for the wrong consumer.
+(`agonara-api-access`, `agonara-membership`), the curator bucket
+(`agonara-curator-corpus`/`-assessment`/`-research`/`-participation`), and the
+`agonara-student` skill are implemented; the admin role skill is planned next.
+The earlier developer-facing `agonara-api` skill was removed as built for the
+wrong consumer.
 
 ## Deployment Discipline
 
