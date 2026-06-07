@@ -2,6 +2,11 @@
 
 ## 2026-06-07
 
+- Surface the implemented BYOA operator-skill set on the Agonara landing page:
+  tighten the product-surface wording, add a grouped Operator Skills section
+  for foundations / curator work / role operations, update the getting-started
+  path to include skill-driven operation, and link the skill index plus design
+  brief from the docs section.
 - Archive the remaining BYOA planning handoffs after the downstream work landed:
   move the operator-skills design brief and repositioning handoff into
   `docs/plans/implemented/`, update skill/discoverability references to the
