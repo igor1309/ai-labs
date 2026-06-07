@@ -32,8 +32,8 @@ consequence, which is larger and was deliberately deferred.
 
 | Aspect | From (current) | To (BYOA) |
 |---|---|---|
-| Primary surface | Browser UIs (`/learn`, `/admin`) + API | Agent + role skill, over the API |
-| Role of UI | The way you use the product | At most a reference/fallback client (see §5 open decision) |
+| Primary surface | Browser UIs (`/learn`, `/admin`) + API | Agent + role skill, over the API (primary, not exclusive) |
+| Role of UI | The way you use the product | Stays first-class alongside BYOA (see §5 — resolved) |
 | Role of skills | A dev aid for building routes | The product's operating surface for each role |
 | Mental model | "An app with an API" | "An operable contract you drive with your own agent" |
 | Substrate for users | UI screens | OpenAPI contract + per-role skills |
@@ -98,24 +98,20 @@ rewrite — reposition.
 - After intent changes, run a **traceability pass** (the `traceability-review`
   skill) over intent → ADR → spec to catch divergence introduced by the reframe.
 
-## 5. Key open decision — fate of `/learn` and `/admin`
+## 5. Decision — fate of `/learn` and `/admin` (resolved)
 
-Agonara already *ships* working product UIs: `/learn` (Student/Curator) and
-`/admin` (operations board). BYOA-first positioning raises a real question this
-handoff cannot pre-decide:
-
-- **Keep** them as first-class alongside BYOA?
-- **Demote** them to reference clients / examples of operating the contract?
-- **Deprecate** them in favor of agent-driven operation?
-
-This is a positioning + product decision (and likely the crux of any ADR). Get
-an explicit answer before rewriting the surfaces narrative, because every doc in
-§3 describes these UIs.
+**The `/learn` and `/admin` UIs stay, as first-class surfaces.** BYOA is the
+**primary** way to operate Agonara but **not the only** one. Reposition the
+surfaces narrative as "BYOA-first, UIs alongside" — present the agent + skill
+path as the lead, and keep the UIs as fully supported clients of the same
+contract. Do **not** write any doc as if the UIs are deprecated or demoted to
+mere examples.
 
 ## 6. Suggested sequence
 
 1. Branch from trunk (dedicated repositioning branch).
-2. Settle §5 (UI fate) with the owner; capture as ADR if warranted (§4).
+2. §5 (UI fate) is settled — UIs stay, BYOA primary not exclusive. Decide only
+   whether the positioning still warrants an ADR (§4).
 3. Edit Product Intent first (keystone); then user stories.
 4. Propagate to README (project + repo-root row), landing, architecture, brand.
 5. Run `traceability-review`; reconcile any intent↔ADR↔spec drift.

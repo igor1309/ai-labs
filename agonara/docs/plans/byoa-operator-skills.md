@@ -120,7 +120,37 @@ file count.
   significant job with its own branch and handoff:
   `agonara-byoa-repositioning-handoff.md`.
 
-## Open questions to resolve before building skills
+## Positioning decision (resolved)
+
+- **BYOA is the primary way to operate Agonara, but not the only one.** The
+  existing `/learn` and `/admin` UIs **stay** as first-class clients of the same
+  contract. Operator skills target BYOA operators; they do not replace the UIs
+  and must not assume the UIs are gone.
+
+## Build sequence (handoff for the skill work)
+
+This is the actionable plan for building the operator skills. Do it on its own
+branch; it depends on the design above, not on the docs repositioning.
+
+1. **Foundations first.** Build the shared **API-access** skill (auth, session,
+   `X-Agonara-CSRF`, idempotency keys, the `accepted`/`rejected`/`fault`
+   envelope) — every role skill leans on it. Then the shared **membership**
+   skill.
+2. **First role: Curator.** It has the most distinct jobs (CUR-01…07) and will
+   likely fan into a bucket; building it first proves the bucket pattern. Then
+   Student, then Admin.
+3. **Each skill targets the OpenAPI contract** (`docs/api/openapi.yml`) as its
+   substrate — never `src/`, tests, or this repo's tooling.
+4. **Verify against a running instance**, not the codebase: stand up an instance,
+   point an agent at it with the skill loaded, and confirm the role's jobs
+   complete through the API.
+
+**Per-skill definition of done:** portable (no repo/`src`/test/runtime
+assumptions); contract-grounded (no duplicated hidden route knowledge);
+role-scoped (no other role's jobs in scope); ownership-safe (honors the API's
+projection rules). Lives under `agonara/skills/<skill>/`.
+
+## Still-open questions (resolve when building)
 
 1. **Packaging/home of operator skills.** Shipped *with the product* (served by
    the instance, versioned with the API) vs. published as standalone installables
@@ -128,7 +158,3 @@ file count.
    shapes where skills assume they run.)
 2. **Skill granularity.** One skill per role vs. curator-as-bucket; how finely to
    split jobs. Resolve against real job volume when building.
-3. **Relationship to the existing `/learn` and `/admin` UIs.** Do those become
-   reference clients, get demoted, or get deprecated under BYOA-first? (Tracked
-   in the repositioning handoff — it is a positioning decision, not a skill
-   decision.)
