@@ -7,12 +7,21 @@ description: "Implementation plan: the Student BYOA operator skill for Agonara �
 # BYOA Operator Skills — Student
 
 Implements the **second role** of the build sequence in
-[`byoa-operator-skills.md`](byoa-operator-skills.md). Student is plausibly a
+[`byoa-operator-skills.md`](../byoa-operator-skills.md). Student is plausibly a
 single skill initially (the brief), built in dependency-ordered phases.
-Grounded in [`../api/openapi.yml`](../api/openapi.yml) and
-[`../intent/student_user_stories.md`](../intent/student_user_stories.md).
+Grounded in [`../../api/openapi.yml`](../../api/openapi.yml) and
+[`../../intent/student_user_stories.md`](../../intent/student_user_stories.md).
 
 **Depends on `byoa-skills-foundations.md` (api-access + membership).**
+
+> **Closeout status (2026-06-07).** Skill delivered at
+> `agonara/skills/agonara-student/SKILL.md` with gates **G1–G4, G6, G7
+> satisfied**. **G5 (live-instance verification) is NOT yet executed** — the
+> authoring environment had no running instance or Student credentials, so the
+> "live-instance transcript" in the done-criteria below is still outstanding.
+> The deferred G5 work is tracked in
+> [`../byoa-skills-student-live-verification.md`](../byoa-skills-student-live-verification.md);
+> the skill is not *fully* done against its own done-criteria until that runs.
 
 ## Goal
 
