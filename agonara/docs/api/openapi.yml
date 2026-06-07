@@ -2716,18 +2716,18 @@ components:
         application/json:
           schema:
             type: object
-            required: [programId, identityId, participationKind, reason]
+            required: [programId, targetIdentityId, participationKind, recoveryReason]
             properties:
               programId:
                 type: string
                 minLength: 1
-              identityId:
+              targetIdentityId:
                 type: string
                 minLength: 1
               participationKind:
                 type: string
                 enum: [student, program_curator]
-              reason:
+              recoveryReason:
                 type: string
                 minLength: 1
             additionalProperties: false
@@ -2737,18 +2737,18 @@ components:
         application/json:
           schema:
             type: object
-            required: [programId, identityId, participationKind, reason]
+            required: [programId, targetIdentityId, participationKind, revocationReason]
             properties:
               programId:
                 type: string
                 minLength: 1
-              identityId:
+              targetIdentityId:
                 type: string
                 minLength: 1
               participationKind:
                 type: string
                 enum: [student, program_curator]
-              reason:
+              revocationReason:
                 type: string
                 minLength: 1
             additionalProperties: false

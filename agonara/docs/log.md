@@ -2,6 +2,20 @@
 
 ## 2026-06-07
 
+- Implement the BYOA **admin** operator skill at `skills/agonara-admin/SKILL.md`
+  (third role of the build sequence): bootstrap the first Admin; create,
+  inspect, disable, and credential-bind identities; grant/revoke Admin authority
+  while preserving the last-admin invariant; inspect operational access and
+  audit events; and perform exceptional membership recovery/revocation with
+  attribution. The skill builds on `agonara-api-access` and
+  `agonara-membership`, stays contract-grounded in `docs/api/openapi.yml`,
+  remains portable and role-scoped, and explicitly excludes curation, learning,
+  normal participant management, and host-side backup/restore execution. Align
+  the Admin membership recovery/revocation OpenAPI request bodies with the
+  implemented runtime fields (`targetIdentityId`,
+  `recoveryReason`/`revocationReason`). Update `skills/README.md` and archive
+  the plan to `docs/plans/implemented/byoa-skills-admin.md`, with verification
+  evidence in `docs/reviews/byoa-skills-admin-verification.md`.
 - Close the Agonara deployment wiring plan after verifying the first release
   already completed: `agonara_v0.1.0` exists, release-unit run `27073521933`
   succeeded through `verify`, `core`, `deploy-agonara-staging`,
