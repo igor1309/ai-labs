@@ -2,6 +2,12 @@
 
 ## 2026-06-07
 
+- Add a backlog task (`backlog/skills.md`) to guard skill-stated request bodies
+  against contract drift: the operator skills hand-restate field rules for bodies
+  the OpenAPI deliberately leaves as `additionalProperties: true`, with no
+  automated tie-back to the domain-spec source of truth. Sequenced before the
+  discovery/packaging item.
+
 - Add two BYOA-instance follow-ups to the top of the deployment handoff Active
   Follow-Up index: a host-agnostic operator self-host paved path (routing to a
   new gap-closing plan) and an optional public demo-instance exception to
