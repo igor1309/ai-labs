@@ -163,7 +163,7 @@ Documents to adapt (handoff §3). Each is a reposition, not a mechanical rewrite
 - [x] Phase 0 — Positioning / ADR decision
 - [x] Phase 1 — Product Intent keystone edit + backward-traceability check
 - [x] Phase 2 — User-stories pass
-- [ ] Phase 3 — README (project + repo-root row)
+- [x] Phase 3 — README (project + repo-root row)
 - [ ] Phase 4 — Landing (`index.html`)
 - [ ] Phase 5 — Architecture (`architecture.html`)
 - [ ] Phase 6 — Brand briefs (EN + RU) + traceability review
@@ -230,6 +230,17 @@ per-role "drive X from my own agent" stories would duplicate the access-path
 agnostic framing and trigger speculative scope creep the plan guards against, so
 the catalogs are verified and preserved unchanged. No story added/removed, so the
 intent "Change review" story-catalog trigger does not fire.
+
+### Phase 3 — README (project + repo-root row)
+
+Reframed `agonara/README.md`: the lead one-liner and the "Product surfaces"
+paragraph now state BYOA as the primary operating model (API + per-role operator
+skills driven by the operator's own agent), with `/learn`, `/admin`, and the
+operator CLI retained as first-class clients of the same contracts. The
+implementation snapshot is untouched and accurate; no UI is presented as deferred
+or demoted. Updated the repo-root `README.md` `agonara` Components row (per
+`.agents/doc-maintenance.md`) to the repositioned one-liner, kept consistent with
+the project README lead.
 
 Update tracker checkboxes only after a phase's required verification passes and
 its commit is created; commit the tracker-only status update before starting the
