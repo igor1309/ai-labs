@@ -77,7 +77,9 @@ and a curator does not read private student learning state.
   A topic scope is
   `{ "scopeKind": "topic", "topicEntityId" }`; a period scope is
   `{ "scopeKind": "period", "title", "topicEntityIds" }`. Each requirement is
-  `{ "targetKind", "targetId", "requiredLevel": "developing" | "on_track" }`.
+  `{ "targetKind", "targetId", "requiredLevel": "developing" | "on_track" }`,
+  where `targetKind` is `assessment_criterion`, `concept`,
+  `material_reference`, `open_answer_check`, `quick_check`, or `topic`.
 - **List** — `GET /programs/{programId}/readiness-checks/candidates` (filter by
   `status`).
 - **Accept / reject** —

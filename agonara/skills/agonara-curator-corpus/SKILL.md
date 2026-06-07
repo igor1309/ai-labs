@@ -88,8 +88,11 @@ lifecycle:
   `principle` and provide a non-empty `body`.
 - **Propose relationship changes** — use `candidateKind:
   "relationship_update"` and a non-empty `relationshipDrafts` array. Each
-  draft names a `relationshipKind` and exactly one source and destination
-  selector (`fromEntityId`/`fromCandidateRef: "self"` and
+  draft names a `relationshipKind` (`topic_includes_concept`,
+  `topic_uses_material`, `concept_uses_material`, `concept_has_definition`,
+  `concept_has_principle`, `concept_prerequisite`, `concept_related`, or
+  `concept_distinguishes_from`) and exactly one source and destination selector
+  (`fromEntityId`/`fromCandidateRef: "self"` and
   `toEntityId`/`toCandidateRef: "self"`); optional fields are `label`,
   `rationale`, and `sourceIds`.
 - **List candidates** — `GET /programs/{programId}/navigation-candidates`

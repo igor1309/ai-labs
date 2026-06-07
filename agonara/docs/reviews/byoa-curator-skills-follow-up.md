@@ -36,8 +36,9 @@ lockfile-installed dependency state.
 
 ## Live-Instance Transcript
 
-The harness loaded the shared API-access behavior plus each curator skill,
-bootstrapped a curator session, and used only HTTP operations.
+The executing agent read the shared API-access behavior and each curator skill,
+then drove a harness that bootstrapped a curator session and used only HTTP
+operations.
 
 | Skill | Job step | HTTP | Result |
 |---|---|---:|---|
@@ -126,6 +127,11 @@ The following is the post-fix G7 review using the `skill-review` axes.
 - **[signal] Boundaries:** Keeps Student Workspace state outside curator
   capability and routes adjacent jobs to their owning skills.
 
+**Strengths:**
+
+- Makes the topic/concept versus material-reference route split explicit.
+- Preserves the human-owned draft-to-accepted boundary at every mutation.
+
 ### `agonara-curator-assessment`
 
 **Verdict:** Keep as-is.
@@ -147,6 +153,11 @@ The following is the post-fix G7 review using the `skill-review` axes.
 - **[signal] Boundaries:** Keeps attempts, progress, and corpus composition in
   their owning skills.
 
+**Strengths:**
+
+- Separates protected curation detail from student-safe delivery.
+- Includes the non-obvious request shapes and finite target enums.
+
 ### `agonara-curator-research`
 
 **Verdict:** Keep as-is.
@@ -160,6 +171,11 @@ The following is the post-fix G7 review using the `skill-review` axes.
   provenance read, terminal actions, provider failures, and the two-gate
   materialization boundary.
 - **[signal] Boundaries:** Prevents auto-acceptance and Student-state access.
+
+**Strengths:**
+
+- Makes suggestion provenance and two-stage materialization explicit.
+- Distinguishes diagnostic gaps and generated drafts from accepted corpus.
 
 ### `agonara-curator-participation`
 
@@ -177,6 +193,27 @@ The following is the post-fix G7 review using the `skill-review` axes.
 - **[signal] Membership history:** Keeps the audit read discoverable.
 - **[signal] Boundaries:** Prevents role bleed into Student learning state and
   Admin recovery.
+
+**Strengths:**
+
+- Reuses the shared membership model without duplicating it.
+- States the privacy and historical-evidence invariants beside the mutations.
+
+## Adversarial Review
+
+The post-commit adversarial pass reviewed `origin/trunk..HEAD` against the
+runtime validators, OpenAPI contract, `skill-review`, and `rest-contract-review`.
+
+- **Fail:** the research skill and OpenAPI listed suggestion status `draft`,
+  while runtime stores and filters `draft_suggestion`. Corrected both artifacts.
+- **Warning:** navigation relationships, readiness requirements, and LLM
+  generation omitted finite enums required by runtime validation. Added the
+  supported values to the skills and the LLM query enum to OpenAPI.
+- **Warning:** the formal G7 record omitted the required per-skill `Strengths`
+  block. Added one for every curator skill.
+- **Warning:** the transcript attributed skill loading to the harness. Corrected
+  it to state that the executing agent read the skills and drove the HTTP
+  harness.
 
 ## Closeout
 

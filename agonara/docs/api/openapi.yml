@@ -2573,14 +2573,19 @@ components:
       required: false
       schema:
         type: string
-        enum: [draft, materialized, rejected]
+        enum: [draft_suggestion, materialized, rejected]
     LlmSuggestionKind:
       name: suggestionKind
       in: query
       required: false
       schema:
         type: string
-        minLength: 1
+        enum:
+          - navigation_candidate
+          - quick_check_candidate
+          - assessment_criterion_candidate
+          - open_answer_check_candidate
+          - readiness_check_candidate
 
   requestBodies:
     OptionalObject:
