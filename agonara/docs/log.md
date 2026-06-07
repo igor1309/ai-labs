@@ -5,6 +5,10 @@
 - Harden the OpenAPI Redocly lint guard by disabling Redocly telemetry in the
   project config and lint script environment, keeping the contract gate
   deterministic and CI-safe.
+- Move the OpenAPI automation follow-up out of `docs/api/TODO.md` and into the
+  project backlog, preserving the forward tasks while removing the TODO file
+  that GitHub issue #514 flagged. Update the landing page to link to the
+  backlog instead of the deleted API TODO.
 - Harden the `/learn` presentation-state closeout by preserving the README's
   broader Student/Curator product-UI deferral and updating the release-readiness
   audit to point at the current implementation-notes record instead of removed
