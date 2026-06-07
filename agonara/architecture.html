@@ -456,7 +456,7 @@
   <table class="src">
     <thead><tr><th>File</th><th>Module / surface</th><th>Responsibility</th></tr></thead>
     <tbody>
-      <tr><td class="file">server.js</td><td class="mod">HTTP composition</td><td class="desc">Routes every domain slice; owns sessions, CSRF, correlation, health, diagnostics; serves <code>/learn</code> and <code>/admin</code>; keeps browser, CLI, and future agent clients on shared backend contracts.</td></tr>
+      <tr><td class="file">server.js</td><td class="mod">HTTP composition</td><td class="desc">Routes every domain slice; owns sessions, CSRF, correlation, health, diagnostics; serves <code>/learn</code> and <code>/admin</code>; keeps browser, CLI, and bring-your-own-agent clients on shared backend contracts.</td></tr>
       <tr><td class="file">storage.js</td><td class="mod">Persistence</td><td class="desc">SQLite access via <code>better-sqlite3</code>; backup/restore of all module state.</td></tr>
       <tr><td class="file">identity.js</td><td class="mod">Identity &amp; Role Mgmt</td><td class="desc">Identities, credential bindings, Admin authority, audit, recovery.</td></tr>
       <tr><td class="file">program.js</td><td class="mod">Program Membership</td><td class="desc">Program shell, membership lifecycle, invitations, effective participation.</td></tr>
@@ -519,10 +519,11 @@
   <h2 class="section-title">Private self-hosted instance</h2>
   <p class="lede">
     Agonara targets a dockerized private self-hosted instance — normally a VPS or home
-    server, with the same container running locally for development. It is API-first so
-    <code>/learn</code>, <code>/admin</code>, the operator CLI, and future Agonara agent skills do
-    not invent separate workflows or state; the network web UI remains the primary human
-    interface, and the default tenancy is a small private group.
+    server, with the same container running locally for development. It is API-first and
+    bring-your-own-agent: an operator drives it with their own agent through the contract,
+    while <code>/learn</code>, <code>/admin</code>, the operator CLI, and per-role operator
+    skills stay first-class clients of the same backend contracts — none invent separate
+    workflows or state. The default tenancy is a small private group.
   </p>
   <div class="grid">
     <div class="card"><div class="kicker">Container</div><h3>Docker image</h3><p><code>agonara/Dockerfile</code> builds the backend + UI image for self-hosted operation.</p></div>
