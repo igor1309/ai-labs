@@ -2,7 +2,7 @@
 date: 2026-06-07
 model: gpt-5
 description: "Deferred design decisions and forward tasks for Agonara."
-version: 0.0.14
+version: 0.0.15
 ---
 
 # Backlog
@@ -65,6 +65,30 @@ modules. The skill should instruct reviewers to:
   expected;
 - otherwise route the item to a body-level audit or doc-drift audit instead of
   leaving the next agent to infer the limitation.
+
+### Review OpenAPI automation traceability open question
+
+Review
+`docs/traceability-reviews/2026-06-07T1825Z-spec-tests-openapi-automation.md`
+and resolve OQ-1.
+
+Context: the traceability review found no spec-to-test findings for OpenAPI
+automation, but it recorded one names-only limitation for BR-23. The test
+`operatorSkills_shouldOnlyCiteRoutesPresentInOpenApi_onSkillRouteReferences`
+traces the positive requirement that operator skills cite published OpenAPI
+routes, but the test title does not prove the negative guarantee that BYOA
+operator skills do not depend on source files, tests, route handlers, or private
+runtime modules.
+
+Expected resolution:
+
+- decide whether names-only traceability is required for this guarantee;
+- if yes, rename or add a test whose title explicitly states that operator
+  skills consume only the published OpenAPI contract;
+- if no, run the appropriate body-level audit or doc-drift audit and record why
+  the existing names-only limitation is acceptable;
+- update or supersede the traceability review so the open question no longer
+  remains as an unresolved forward task.
 
 ### OpenAPI automation migration skill
 

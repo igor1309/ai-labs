@@ -2,6 +2,9 @@
 
 ## 2026-06-07
 
+- Add a forward backlog item to resolve the OpenAPI automation traceability
+  review's remaining BYOA source-file absence question, including the expected
+  test-title or audit paths.
 - Record OpenAPI automation process follow-ups in the Agonara backlog so future
   agents can improve implementation review, process gates, traceability of
   negative guarantees, OpenAPI migration workflow, and Node toolchain preflight;
