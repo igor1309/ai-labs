@@ -17,9 +17,9 @@ instance's admin.
 
 The gap: the *only* deployment path that exists is the author's CI-driven
 release to `agonara-vps`. `scripts/deploy-prod.sh` is invoked by
-`release-unit.yml` over SSH, hardcodes `/opt/agonara`, and assumes the author's
-host and secrets; `compose.prod.yml`, `backup-prod.sh`, and `restore-prod.sh`
-are the same shape. None of this is a route a non-author operator can follow to
+`release-unit.yml` over SSH, defaults its deploy root to `/opt/agonara`, and
+assumes the author's host, env files, and secrets; `compose.prod.yml`,
+`backup-prod.sh`, and `restore-prod.sh` are the same shape. None of this is a route a non-author operator can follow to
 stand up *their own* instance. The reverse-proxy + TLS step ADR-017 requires is
 host-managed and undocumented for a third party, and no backup/restore drill has
 been rehearsed by anyone but the author.
@@ -106,6 +106,9 @@ not narrowings of ADR-017:
   HTTPS.
 - End with the BYOA close: load a role skill and point the agent at the
   operator's HTTPS instance URL.
+- Extend and cross-link the existing `docs/demos.md` Docker Demo rather than
+  duplicate it: demos.md covers the local loopback path; this runbook adds the
+  reverse-proxy + TLS + own-domain production shape on top.
 - **DoD:** the runbook is followable end to end without reading `agonara-vps` CI
   scripts; every command is host-agnostic; secrets stay host-side per ADR-017.
 

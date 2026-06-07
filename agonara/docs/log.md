@@ -17,6 +17,12 @@
   changing ADR-017's boundary. Phases cover a self-host runbook, a backup/restore
   drill runbook (ADR-017 G3), positioning links, and a non-author verification
   acceptance gate.
+- Adversarially review the self-host paved-path plan
+  (`docs/reviews/byoa-self-host-paved-path-plan-adversarial-review.md`): fixed
+  two warnings — an "hardcodes /opt/agonara" overclaim (it is an env-overridable
+  default) and an unacknowledged overlap with the existing demos.md Docker Demo
+  (Phase 2 now extends and cross-links it). Declaration block and ADR-017
+  fidelity passed.
 - Clarify the Agonara landing hero by separating the structured-progress outcome
   from one concise product-value summary and reserving bring-your-own-agent
   explanation for the dedicated BYOA section.
