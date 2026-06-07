@@ -47,8 +47,15 @@ The **student** skill:
   feedback, results, and the evidence behind progress — seeing only accepted
   corpus and the student's own state.
 
-The admin role skill builds on the same foundations and is planned next — see
-the [build sequence](../docs/plans/byoa-operator-skills.md).
+The **admin** skill:
+
+- [`agonara-admin/`](agonara-admin/SKILL.md) — operate the private instance:
+  bootstrap it and its first admin, administer internal identities and credential
+  bindings, assign/revoke instance-scoped Admin authority within the last-admin
+  invariant, inspect operational access and audit events read-only, and perform
+  exceptional, attributable membership recovery/revocation — instance-scoped
+  operational control only, never curation, normal learning participation, or
+  Student/Program Curator authority.
 
 The previous developer-facing `agonara-api` skill was removed — it served an
 agent *building* Agonara's codebase, not an operator *using* the product, which

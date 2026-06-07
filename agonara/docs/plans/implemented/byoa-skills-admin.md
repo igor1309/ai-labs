@@ -6,11 +6,20 @@ description: "Implementation plan: the Admin BYOA operator skill for Agonara —
 
 # BYOA Operator Skills — Admin
 
+> **Closeout status (2026-06-07):** implemented as
+> `skills/agonara-admin/SKILL.md` with gates **G1–G4, G6, G7 satisfied**.
+> **G5 (live-instance verification) is deferred** — the authoring environment
+> had no running Agonara instance or Admin credentials, so the live arc
+> (bootstrap → create identity → bind credential → inspect; grant/revoke admin +
+> observe the `last_admin_removal` rejection; inspect membership → recover → read
+> audit) was not run. Track that gap before treating every done-criterion as met,
+> mirroring `byoa-skills-student-live-verification.md`.
+
 Implements the **third role** of the build sequence in
-[`byoa-operator-skills.md`](byoa-operator-skills.md). Admin is plausibly a single
-skill initially (the brief), built in dependency-ordered phases. Grounded in
-[`../api/openapi.yml`](../api/openapi.yml) and
-[`../intent/admin_user_stories.md`](../intent/admin_user_stories.md).
+[`../byoa-operator-skills.md`](../byoa-operator-skills.md). Admin is plausibly a
+single skill initially (the brief), built in dependency-ordered phases. Grounded
+in [`../../api/openapi.yml`](../../api/openapi.yml) and
+[`../../intent/admin_user_stories.md`](../../intent/admin_user_stories.md).
 
 **Depends on `byoa-skills-foundations.md` (api-access + membership).**
 
