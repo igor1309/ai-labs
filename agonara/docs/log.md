@@ -2,6 +2,11 @@
 
 ## 2026-06-07
 
+- Add a backlog task (`backlog/skills.md`) to guard skill-stated request bodies
+  against contract drift: the operator skills hand-restate field rules for bodies
+  the OpenAPI deliberately leaves as `additionalProperties: true`, with no
+  automated tie-back to the domain-spec source of truth. Sequenced before the
+  discovery/packaging item.
 - Sharpen the MCP-connector item in `backlog/agent-connectivity.md` from a peer
   task to a *conditional* one, gated on a concrete target runtime that can mount
   MCP but cannot execute arbitrary HTTP. Rationale: for code-capable agents the
