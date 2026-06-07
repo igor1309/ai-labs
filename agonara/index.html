@@ -345,7 +345,40 @@
     font-size: 12.5px;
   }
   footer .sep { margin: 0 8px; color: var(--rule-2); }
+
+  /* Animated cards — scroll reveal + hover lift */
+  .card, .cap, .surface-card, .run-step {
+    transition:
+      opacity .55s cubic-bezier(.2, .6, .2, 1),
+      transform .35s cubic-bezier(.2, .6, .2, 1),
+      border-color .18s ease,
+      background .18s ease,
+      box-shadow .25s ease;
+  }
+  .card:hover, .cap:hover, .surface-card:hover, .run-step:hover {
+    transform: translateY(-3px);
+    border-color: var(--rule-2);
+    box-shadow: 0 12px 30px -18px rgba(0, 0, 0, 0.7);
+  }
+  .js .card, .js .cap, .js .surface-card, .js .run-step {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  .js .card.in-view, .js .cap.in-view, .js .surface-card.in-view, .js .run-step.in-view {
+    opacity: 1;
+    transform: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card, .cap, .surface-card, .run-step,
+    .js .card, .js .cap, .js .surface-card, .js .run-step {
+      opacity: 1 !important;
+      transform: none !important;
+      transition: border-color .18s ease, background .18s ease !important;
+    }
+  }
 </style>
+<script>document.documentElement.classList.add('js');</script>
+
 </head>
 <body>
 
@@ -627,6 +660,31 @@ http://127.0.0.1:18080/learn</code>
 </section>
 
 </main>
+
+<script>
+(function () {
+  var selector = '.card, .cap, .surface-card, .run-step';
+  var cards = document.querySelectorAll(selector);
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce || !('IntersectionObserver' in window)) {
+    for (var i = 0; i < cards.length; i++) cards[i].classList.add('in-view');
+    return;
+  }
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (!entry.isIntersecting) return;
+      var el = entry.target;
+      var siblings = Array.prototype.slice.call(el.parentElement.children);
+      var delay = Math.min(siblings.indexOf(el), 6) * 55;
+      el.style.transitionDelay = delay + 'ms';
+      el.classList.add('in-view');
+      window.setTimeout(function () { el.style.transitionDelay = ''; }, delay + 700);
+      observer.unobserve(el);
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+  for (var j = 0; j < cards.length; j++) observer.observe(cards[j]);
+})();
+</script>
 
 <footer>
   <span>Agonara · Structured learning program environment</span>
