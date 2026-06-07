@@ -22,8 +22,23 @@ Shared foundations every role skill builds on:
   participation model: read your memberships and invitations, act on invitations,
   inspect effective participation and membership history.
 
-Per-role skills (curator, student, admin) build on these foundations and are
-planned next — see the [build sequence](../docs/plans/byoa-operator-skills.md).
+The **curator bucket** — per-role skills for the program curator, built on the
+foundations above:
+
+- [`agonara-curator-corpus/`](agonara-curator-corpus/SKILL.md) — create a program
+  and control the draft↔accepted boundary for topics, concepts, materials, and
+  navigation.
+- [`agonara-curator-assessment/`](agonara-curator-assessment/SKILL.md) — author
+  open-answer, quick, and readiness checks plus assessment criteria, keeping
+  answer keys curator-only.
+- [`agonara-curator-research/`](agonara-curator-research/SKILL.md) — record
+  external sources, read coverage gaps, and review LLM-assisted curation
+  suggestions as drafts.
+- [`agonara-curator-participation/`](agonara-curator-participation/SKILL.md) —
+  manage admission policy, invitations, and participants for a curated program.
+
+The student and admin role skills build on the same foundations and are planned
+next — see the [build sequence](../docs/plans/byoa-operator-skills.md).
 
 The previous developer-facing `agonara-api` skill was removed — it served an
 agent *building* Agonara's codebase, not an operator *using* the product, which
