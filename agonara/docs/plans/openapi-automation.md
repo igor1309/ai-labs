@@ -6,6 +6,16 @@ description: "Implementation plan: implement Agonara route contract registry and
 
 # OpenAPI Automation Implementation Plan
 
+## Adversarial review findings
+
+### Finding 1 - code and generated-artifact phases omitted full gates
+
+Verdict: fail
+
+Why: Repo process gates require both `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit` for Node/TypeScript code, config, dependency, CI, release, or generated-artifact changes. Phase 1 and Phase 2 initially listed targeted or workspace checks only, even though they add Node modules, generator behavior, package scripts, and generated-artifact checks.
+
+Fix applied: Phase 1, Phase 2, and Phase 3 now include the root test and build wrappers in validation. The final closeout already required both gates.
+
 ## Goal
 
 Implement [OpenAPI Automation](../specs/openapi-automation.md) so Agonara route declarations are the shared source for server routing, route-level contract tests, and generated `docs/api/openapi.yml`, without changing the behavior of any existing public HTTP route.
@@ -60,6 +70,8 @@ Technical contract automation; no accepted user story changes. The plan preserve
 **Validation**:
 
 - Targeted command: `node --test agonara/tests/openapi-contract.test.js`
+- Full test command: `./scripts/run_silent.sh "tests" npm test`
+- Build command: `./scripts/run_silent.sh "build" npx tsc --noEmit`
 - Diff check: `git diff --check`
 
 **Completion signal**: Generator helpers can produce the committed OpenAPI contract from registry data, and registry validation tests cover the spec's structural rules.
@@ -83,6 +95,8 @@ Technical contract automation; no accepted user story changes. The plan preserve
 
 - Targeted command: `node --test agonara/tests/openapi-contract.test.js`
 - Workspace command: `./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`
+- Full test command: `./scripts/run_silent.sh "tests" npm test`
+- Build command: `./scripts/run_silent.sh "build" npx tsc --noEmit`
 - Diff check: `git diff --check`
 
 **Completion signal**: The Agonara workspace test command fails on OpenAPI generation drift and still passes when the generated contract matches.
@@ -107,6 +121,7 @@ Technical contract automation; no accepted user story changes. The plan preserve
 
 - Targeted command: `node --test agonara/tests/openapi-contract.test.js`
 - Behavior command: `./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`
+- Full test command: `./scripts/run_silent.sh "tests" npm test`
 - Build command: `./scripts/run_silent.sh "build" npx tsc --noEmit`
 - Diff check: `git diff --check`
 
