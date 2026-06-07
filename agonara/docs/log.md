@@ -2,6 +2,7 @@
 
 ## 2026-06-07
 
+- Expose Agonara production publicly at `https://agonara.enoa.ai` with a Cloudflare DNS-only A record and Caddy auto-TLS route to the loopback prod container, keep `/admin` operator-gated with a public `403`, add release smoke for public `/learn`, `/admin` gate, and health/version, and update the deployment handoff with verification evidence.
 - Move the OpenAPI automation follow-up out of `docs/api/TODO.md` and into the
   project backlog, preserving the forward tasks while removing the TODO file
   that GitHub issue #514 flagged. Update the landing page to link to the

@@ -268,6 +268,17 @@ describe('check-agonara-release-readiness', () => {
     assert.ok(result.stderr.includes('release-unit.yml must run Agonara real evaluator smoke with cleanup and expected version checks'));
   });
 
+  it('fails when workflow does not verify public production Learn and Admin gate routes', () => {
+    writeAgonaraReleaseRepo(tmp, {
+      workflow: validReleaseWorkflow().replace(workflowPublicProdSmokeGate(), ''),
+    });
+
+    const result = runReadiness(tmp);
+
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.stderr.includes('release-unit.yml must verify Agonara public production Learn, Admin gate, and health routes'));
+  });
+
   it('fails when workflow cleans upload before production rollback can run', () => {
     writeAgonaraReleaseRepo(tmp, {
       workflow: validReleaseWorkflow().replace(
@@ -1197,6 +1208,7 @@ function validReleaseWorkflow() {
     '        deploy-agonara-prod=${{ needs.deploy-agonara-prod.result }}',
     workflowHealthGate('agonara'),
     workflowSmokeGate('agonara'),
+    workflowPublicProdSmokeGate(),
     workflowProdCleanupLifecycle(),
     workflowGithubReleaseFanIn(),
     workflowNotifyFanIn(),
@@ -1229,6 +1241,10 @@ function workflowHealthGate(containerName) {
 
 function workflowSmokeGate(containerName) {
   return `docker exec -e AGONARA_SMOKE_BASE_URL=http://127.0.0.1:8080 -e EXPECTED_VERSION="\${EXPECTED_VERSION}" ${containerName} sh -lc "trap 'rm -f /tmp/agonara-smoke.json' EXIT; node scripts/smoke-open-answer-evaluator.mjs > /tmp/agonara-smoke.json && node -e 'const fs = require(\\"node:fs\\"); const result = JSON.parse(fs.readFileSync(\\"/tmp/agonara-smoke.json\\", \\"utf8\\")); if (!result.evaluationId || result.healthVersion !== process.env.EXPECTED_VERSION) process.exit(1);'"`;
+}
+
+function workflowPublicProdSmokeGate() {
+  return 'docker exec -e AGONARA_PUBLIC_SMOKE_BASE_URL=https://agonara.enoa.ai -e EXPECTED_VERSION="${EXPECTED_VERSION}" agonara node scripts/smoke-public-prod-routes.mjs';
 }
 
 function workflowStagingCleanup() {

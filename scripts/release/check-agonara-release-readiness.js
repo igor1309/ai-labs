@@ -119,6 +119,7 @@ function runReadinessChecks() {
   checkWorkflowHealthGate(prodJob, 'agonara');
   checkWorkflowSmokeGate(stagingJob, 'agonara-staging');
   checkWorkflowSmokeGate(prodJob, 'agonara');
+  checkWorkflowPublicProdSmokeGate(prodJob);
   checkWorkflowCleanupLifecycle(stagingJob, prodJob);
   checkWorkflowGithubReleaseFanIn(workflow);
   checkWorkflowNotifyFanIn(workflow);
@@ -591,6 +592,13 @@ function checkWorkflowSmokeGate(workflowJob, containerName) {
   const smokeGate = `docker exec -e AGONARA_SMOKE_BASE_URL=http://127.0.0.1:8080 -e EXPECTED_VERSION="\${EXPECTED_VERSION}" ${containerName} sh -lc "trap 'rm -f /tmp/agonara-smoke.json' EXIT; node scripts/smoke-open-answer-evaluator.mjs > /tmp/agonara-smoke.json && node -e 'const fs = require(\\"node:fs\\"); const result = JSON.parse(fs.readFileSync(\\"/tmp/agonara-smoke.json\\", \\"utf8\\")); if (!result.evaluationId || result.healthVersion !== process.env.EXPECTED_VERSION) process.exit(1);'"`;
   if (!workflowJob.includes(smokeGate)) {
     throw new Error('release-unit.yml must run Agonara real evaluator smoke with cleanup and expected version checks');
+  }
+}
+
+function checkWorkflowPublicProdSmokeGate(workflowJob) {
+  const smokeGate = 'docker exec -e AGONARA_PUBLIC_SMOKE_BASE_URL=https://agonara.enoa.ai -e EXPECTED_VERSION="${EXPECTED_VERSION}" agonara node scripts/smoke-public-prod-routes.mjs';
+  if (!workflowJob.includes(smokeGate)) {
+    throw new Error('release-unit.yml must verify Agonara public production Learn, Admin gate, and health routes');
   }
 }
 

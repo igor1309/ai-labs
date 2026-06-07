@@ -407,6 +407,21 @@ jobs:
             docker exec -e AGONARA_SMOKE_BASE_URL=http://127.0.0.1:8080 -e EXPECTED_VERSION="${EXPECTED_VERSION}" agonara sh -lc "trap 'rm -f /tmp/agonara-smoke.json' EXIT; node scripts/smoke-open-answer-evaluator.mjs > /tmp/agonara-smoke.json && node -e 'const fs = require(\"node:fs\"); const result = JSON.parse(fs.readFileSync(\"/tmp/agonara-smoke.json\", \"utf8\")); if (!result.evaluationId || result.healthVersion !== process.env.EXPECTED_VERSION) process.exit(1);'"
             echo "Production real evaluator smoke passed"
 
+      - name: Production public route smoke
+        uses: appleboy/ssh-action@v1
+        env:
+          EXPECTED_VERSION: ${{ needs.verify.outputs.version }}
+        with:
+          host: ${{ secrets.AGONARA_VPS_HOST }}
+          username: ${{ secrets.AGONARA_VPS_USER }}
+          key: ${{ secrets.AGONARA_VPS_SSH_KEY }}
+          command_timeout: 2m
+          envs: EXPECTED_VERSION
+          script: |
+            set -e
+            docker exec -e AGONARA_PUBLIC_SMOKE_BASE_URL=https://agonara.enoa.ai -e EXPECTED_VERSION="${EXPECTED_VERSION}" agonara node scripts/smoke-public-prod-routes.mjs
+            echo "Production public route smoke passed"
+
       - name: Rollback production on failure
         if: failure()
         uses: appleboy/ssh-action@v1
