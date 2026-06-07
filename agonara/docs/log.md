@@ -2,6 +2,11 @@
 
 ## 2026-06-07
 
+- Archive the remaining BYOA planning handoffs after the downstream work landed:
+  move the operator-skills design brief and repositioning handoff into
+  `docs/plans/implemented/`, update skill/discoverability references to the
+  implemented design brief, and correct the project-local AGENTS note now that
+  `agonara-admin` is implemented.
 - Implement the BYOA **admin** operator skill at `skills/agonara-admin/SKILL.md`
   (third role of the build sequence): bootstrap the first Admin; create,
   inspect, disable, and credential-bind identities; grant/revoke Admin authority

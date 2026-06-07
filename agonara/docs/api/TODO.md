@@ -29,4 +29,4 @@ description: "Forward tasks for Agonara OpenAPI automation and API skill alignme
 - Operator-facing BYOA skills live under `agonara/skills/`. They consume the
   published OpenAPI contract as their substrate — keep the contract authoritative
   so those skills never duplicate hidden route knowledge. Design and rationale:
-  `agonara/docs/plans/byoa-operator-skills.md`.
+  `agonara/docs/plans/implemented/byoa-operator-skills.md`.

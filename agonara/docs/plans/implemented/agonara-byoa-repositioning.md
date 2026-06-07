@@ -7,7 +7,7 @@ description: "Implementation plan: reposition Agonara as bring-your-own-agent (B
 # Agonara BYOA Repositioning Implementation Plan
 
 Implements the handoff in
-[`agonara-byoa-repositioning-handoff.md`](../agonara-byoa-repositioning-handoff.md).
+[`agonara-byoa-repositioning-handoff.md`](agonara-byoa-repositioning-handoff.md).
 This is a **Product Intent refinement** that makes Agonara's intended operating
 model explicit — **bring-your-own-agent (BYOA)**: the product is the API plus a
 set of per-role operator skills, driven by an operator's own agent, with the
@@ -15,7 +15,7 @@ existing `/learn` and `/admin` UIs retained as first-class clients of the same
 contract. The product itself does not change; only how its intent is stated.
 
 The sibling skills-structure job is already done
-([`byoa-operator-skills.md`](../byoa-operator-skills.md)); this plan covers the
+([`byoa-operator-skills.md`](byoa-operator-skills.md)); this plan covers the
 **product and docs** consequence.
 
 ## Goal
@@ -180,7 +180,7 @@ architectural boundary or invariant**. The five-module ownership split and
 ADR-004…018 are unchanged; the operator-facing surface narrative is sharpened,
 not the builder's decision structure. The load-bearing positioning decision
 ("BYOA primary, `/learn` + `/admin` retained as first-class clients") is already
-recorded in [`byoa-operator-skills.md`](../byoa-operator-skills.md) §"Positioning
+recorded in [`byoa-operator-skills.md`](byoa-operator-skills.md) §"Positioning
 decision (resolved)" and is being stated directly in Product Intent. Recording a
 separate ADR for a pure intent refinement that changes no boundary would be
 over-recording. Decision recorded here and in `agonara/docs/log.md`; intent
@@ -250,7 +250,7 @@ first-class clients"). Repositioned the `#surfaces` lede to lead with BYOA and
 added a "Bring your own agent" card as the first surface card; kept the `/learn`,
 `/admin`, HTTP API, OpenAPI, and operator-CLI cards intact as first-class clients.
 Operator skills are framed as the operating surface without claiming they ship
-today (none are implemented yet per `byoa-operator-skills.md`). Confirmed the dead
+in that repositioning slice. Confirmed the dead
 `agonara-api` skill card is already absent — no cleanup needed.
 
 ### Phase 5 — Architecture (`architecture.html`)

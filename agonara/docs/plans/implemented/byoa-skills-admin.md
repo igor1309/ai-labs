@@ -7,7 +7,7 @@ description: "Implementation plan: the Admin BYOA operator skill for Agonara —
 # BYOA Operator Skills — Admin
 
 Implements the **third role** of the build sequence in
-[`byoa-operator-skills.md`](../byoa-operator-skills.md). Admin is plausibly a single
+[`byoa-operator-skills.md`](byoa-operator-skills.md). Admin is plausibly a single
 skill initially (the brief), built in dependency-ordered phases. Grounded in
 [`../api/openapi.yml`](../../api/openapi.yml) and
 [`../intent/admin_user_stories.md`](../../intent/admin_user_stories.md).

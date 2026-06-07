@@ -6,6 +6,9 @@ description: "Handoff: reposition Agonara as a bring-your-own-agent (BYOA) produ
 
 # Handoff — Agonara BYOA Repositioning
 
+> Status: archived handoff. Implemented by
+> [`agonara-byoa-repositioning.md`](agonara-byoa-repositioning.md).
+
 > Do this on a **dedicated branch**, separate from the skills-structure work.
 >
 > **This is a Product Intent _refinement_, not a rewrite or a pivot.** Agonara's

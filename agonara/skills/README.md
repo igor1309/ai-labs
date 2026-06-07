@@ -8,8 +8,8 @@ chat, an operator points the agent they already use at an Agonara instance and
 loads the skill for the job they are doing. The skill is the portable operating
 surface; the [OpenAPI contract](../docs/api/openapi.yml) is the substrate.
 
-Planned shape (per-role skills over shared foundations) and rationale:
-[`../docs/plans/byoa-operator-skills.md`](../docs/plans/byoa-operator-skills.md).
+Implemented shape (per-role skills over shared foundations) and rationale:
+[`../docs/plans/implemented/byoa-operator-skills.md`](../docs/plans/implemented/byoa-operator-skills.md).
 
 ## Implemented skills
 
