@@ -15,9 +15,14 @@ spec, implementation-plan, or review work is in scope.
 ## Project-Local Skills
 
 Operator-facing BYOA skills (per-role, plus shared API-access and membership
-foundations) will live under `skills/` in subfolders. None are implemented yet —
-see the design and rationale in `docs/plans/byoa-operator-skills.md`. The earlier
-developer-facing `agonara-api` skill was removed as built for the wrong consumer.
+foundations) live under `skills/` in subfolders — see `skills/README.md` for the
+implemented set and the design and rationale in
+`docs/plans/byoa-operator-skills.md`. The shared foundations
+(`agonara-api-access`, `agonara-membership`), the curator bucket
+(`agonara-curator-corpus`/`-assessment`/`-research`/`-participation`), and the
+`agonara-student` skill are implemented; the admin role skill is planned next.
+The earlier developer-facing `agonara-api` skill was removed as built for the
+wrong consumer.
 
 ## Deployment Discipline
 
