@@ -59,5 +59,19 @@ The previous developer-facing `agonara-api` skill was removed — it served an
 agent *building* Agonara's codebase, not an operator *using* the product, which
 is the wrong consumer for this directory.
 
-Skill discovery and publishing are deliberately out of scope for now and will be
-addressed later.
+## Packaging & distribution design
+
+Skill discovery and publishing were deliberately out of scope while the skills
+were built. The packaging *shape* is now explored here:
+
+- [`operator-skill-packaging_pre_adr.md`](operator-skill-packaging_pre_adr.md) —
+  pre-ADR: role-scoped plugins (`agonara-curator`/`-student`/`-admin`) over a
+  shared `agonara-core`, with the `agonara-` prefix carried by the plugin name
+  so skill folders drop it. **Verified for Claude Code only**; cross-runtime
+  portability is an open question.
+- [`claude-code-plugin-system.md`](claude-code-plugin-system.md) — the verified
+  Claude Code plugin/skill mechanics (plugin dependencies, namespacing, the
+  visibility matrix, symlink dedup) the pre-ADR rests on, with doc URLs.
+
+The distribution model (instance-shipped vs. standalone marketplace) and the
+remaining open questions are tracked in the pre-ADR.

@@ -170,9 +170,11 @@ projection rules). Lives under `agonara/skills/<skill>/`.
 
 ## Still-open questions (resolve when building)
 
-1. **Packaging/home of operator skills.** Shipped *with the product* (served by
-   the instance, versioned with the API) vs. published as standalone installables
-   an operator pulls in. (Parked under "discovery/publishing — later," but it
-   shapes where skills assume they run.)
+1. **Packaging/home of operator skills.** The *shape* of packaging is now
+   explored in
+   [`../../../skills/operator-skill-packaging_pre_adr.md`](../../../skills/operator-skill-packaging_pre_adr.md):
+   role-scoped plugins over a shared `agonara-core`, verified for Claude Code.
+   The distribution-model fork (shipped *with the product*, versioned with the
+   API, vs. standalone installables) remains open and is carried forward there.
 2. **Skill granularity.** One skill per role vs. curator-as-bucket; how finely to
    split jobs. Resolve against real job volume when building.
