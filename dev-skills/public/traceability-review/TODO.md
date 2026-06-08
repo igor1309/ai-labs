@@ -1,5 +1,5 @@
 ---
-date: 2026-06-04
+date: 2026-06-08
 model: claude-opus-4-8
 description: "Open task backlog and parked decisions for the traceability-review skill"
 ---
@@ -23,17 +23,54 @@ description: "Open task backlog and parked decisions for the traceability-review
 
 ## Workflow machinery
 The skill runs as a dynamic workflow — `.claude/workflows/traceability-review.js` (+ `README.md`);
-invoke `/traceability-review <project> [on "<Module>"]`. Open work:
-- Calibrate the spec↔tests pass: route negative/"does-not" guarantees to open questions, not
-  findings; reconcile its internal covered/untested counts.
+invoke `/traceability-review <project> [on "<Module>"]`. Pipeline: Scope → gate → Slice →
+Passes (adr-spec / spec-tests / orphan) → Umbrella.
+
+### Verification runs owed
+Each is an experiment — evaluate the run, fold any wobble back into the workflow/skill.
+- **Full-pipeline run of the calibrated `spec-tests` pass** (the focused run exercised the pass
+  in isolation, skipping scope/gate/umbrella). Run a whole module end-to-end and confirm the new
+  `indeterminate` open-questions flow into the **umbrella ledger** under `resolvingLayer: tests`
+  without swamping it — a single module produced 12 indeterminate open-questions (Identity), so
+  the ledger may need a per-layer summary count rather than a one-row-each dump.
+- **Precondition short-circuit** (`ee2dcb2a`) against a project with **no ADRs/specs** — still
+  never run. Confirm it bails ~30k with `status: precondition-not-met` and fabricates no modules.
+- **Re-run a module that previously schema-flaked** (`subagent completed without calling
+  StructuredOutput`) to characterise the flake — PM failed ~186–280k, Curator succeeded at 321k,
+  so size alone does not explain it. Capture the slice size + row count of each run.
+- **A second module's `spec-tests` run with dense positive gaps** to guard against the inverse
+  over-correction: confirm a genuine *positive* coverage gap is not mislabelled `indeterminate`
+  to dodge a finding. (On Identity FS:189 password-length correctly stayed a finding.)
+
+### Calibration tweaks to watch
+- **Move reconciliation from prompt to code.** The pass currently self-reports the tally; add a
+  deterministic post-check in the workflow JS after the `spec-tests` agent returns — assert
+  `covered+covered-shared+untested+indeterminate == rows.length`, `findings.length == untested`,
+  `openQuestions ⊇ indeterminate ids` — and re-ask / flag on mismatch instead of trusting prose.
+- **`indeterminate` is names-only-specific.** It means "absence not confirmable from titles," not
+  "untestable." If the skill ever reads test bodies, this verdict collapses back into covered/
+  untested — keep it scoped to the names-only pass.
+- Watch the boundary between `indeterminate` (negative/absence guarantee) and a true `untested`
+  positive clause; the residual judgement is whether a clause asserts a presence or an absence.
+
+### Structural fixes
 - Stabilise module identity across scope runs (scope re-segments and renames each run) — return
-  stable ids, or stop keying the gate on agent-named module names.
+  stable ids, or stop keying the gate on agent-named module names. Passing a module name is a
+  gamble until this is fixed.
 - Make scope's per-module row estimate trustworthy or stop relying on it (it returned 0 for a
   ~99-row module).
-- Settle schema vs markdown for pass output: large matrices have flaked StructuredOutput while a
-  larger run did not — diagnose before choosing.
-- Verify the precondition short-circuit against a project with no ADRs/specs.
+- Settle schema vs markdown for pass output once the flake above is characterised.
 - Decide whether to freeze `evals/traceability-reviews/` outputs as `evals.json` regression fixtures.
+
+### Process for these runs
+- Prefer a **focused one-off workflow** (slice + the single pass under test) over the full
+  pipeline when verifying one pass — the spec-tests calibration was confirmed for ~160k / 2
+  agents this way vs ~200–320k for a whole module. Pattern: copy `RESOLVE`, the slice instruction,
+  the schema, and the pass instruction verbatim from `traceability-review.js` so the test is
+  faithful, hardcode project + module, run only the stage under test.
+- Verify the run's invariants **against the emitted arrays**, not the agent's summary prose.
+- Workflow-script changes do **not** touch `SKILL.md`/`references/` → no version bump, no publish.
+  Only the published skill surface triggers the `dev-skills/.claude/CLAUDE.md` publishing flow.
 
 ## Candidates
 - **Spec-level upward orphan check** — the active skill-development thread. Pass 7

@@ -20,6 +20,8 @@ Backlogs are split by topic so each concern stays discoverable on its own:
 - [`agent-connectivity.md`](agent-connectivity.md) — making an instance reachable
   by the agents people actually use (Telegram bots, Claude Code on web/app, other
   MCP or HTTP agents).
+- [`workflow-calibration-gaps.md`](workflow-calibration-gaps.md) — calibrating the
+  `traceability-review` dynamic workflow, using Agonara as the eval corpus.
 
 Promote a topic to its own `backlog/<topic>.md` file when it is a distinct
 concern that has reached roughly three or more items or is clearly going to grow;
