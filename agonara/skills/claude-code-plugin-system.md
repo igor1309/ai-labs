@@ -35,10 +35,18 @@ constraints:
 
 Behavior:
 
-- Installing a plugin **auto-resolves and installs** its declared dependencies.
-- Enabling a plugin **enables its dependencies transitively** at the same scope.
-- Disabling a dependency is **refused** while another enabled plugin still
-  depends on it.
+- Installing a plugin **auto-resolves and installs** its declared dependencies —
+  *provided the dependency's marketplace is already in the user's configured
+  marketplaces*. "Dependencies from a marketplace you have not added are left
+  unresolved."
+- A dependency's `name` **resolves within the same marketplace** as the
+  declaring plugin by default. A cross-marketplace dependency is **blocked**
+  unless the root marketplace allowlists the target in
+  `allowCrossMarketplaceDependenciesOn`.
+- Enabling a plugin **enables its dependencies transitively** at the same scope;
+  disabling a dependency is **refused** while another enabled plugin still
+  depends on it. (These two behaviors require Claude Code ≥ v2.1.143; version
+  constraints require ≥ v2.1.110.)
 
 There is no general "shared library" primitive; reuse is expressed as a
 dependency on a separately-published plugin. Source:
@@ -81,24 +89,36 @@ only by another skill" — skills cannot invoke one another at all (see below).
 | `disable-model-invocation: true` | yes | no | **description NOT in context**; full skill loads only when you invoke |
 | `user-invocable: false` | **no** | yes | description always in context; full skill loads when invoked |
 
-Consequence for packaging: `user-invocable: false` keeps a foundation skill out
-of the `/` menu while the model still auto-applies it — but it does **not**
-remove the skill's description from context, and the model can still invoke it.
-`disable-model-invocation: true` is the only flag that removes a skill from
-context, but it also stops the model from auto-applying the skill. Therefore **no
-single-plugin frontmatter combination** gives an operator a context free of
-other-role surface while keeping foundations auto-loading. Source:
-<https://code.claude.com/docs/en/skills.md>.
+The two flags are independent and address different surfaces:
+`disable-model-invocation: true` "removes the skill from Claude's context
+entirely" (and blocks Skill-tool invocation) but leaves it user-invocable in the
+`/` menu; `user-invocable: false` "only controls menu visibility, not Skill tool
+access" — the description stays in context and the model can still auto-apply it.
+Setting both makes a skill inert (out of context **and** out of the menu) but
+still installed.
+
+Consequence for packaging — the decisive one: **frontmatter is static per skill
+and ships identically to everyone who installs the plugin.** It cannot project
+surface per audience. A single plugin holding all roles therefore either exposes
+curator/admin skills to *everyone* (including students) or hides them from
+*everyone* (including the curators who need them) — there is no per-installer
+frontmatter. The per-user settings escape hatch (`skillOverrides`, which can
+hide a skill from both context and menu) **does not apply to plugin skills**
+("Plugin skills are not affected by `skillOverrides`. Manage those through
+`/plugin` instead."), so an operator cannot locally re-hide a mega-plugin's
+other-role surface either. Role-scoped *installation* is the only mechanism that
+projects surface per role. Source: <https://code.claude.com/docs/en/skills.md>.
 
 ## Skills cannot invoke skills
 
-There is **no** documented mechanism for one skill to call, invoke, or auto-load
-another skill. Skills are independent prompts the model orchestrates. They can
-reference *supporting files* in their own directory via markdown links
+There is **no** documented skill-to-skill *invocation* primitive — one skill
+cannot call another. Skills are independent prompts the model orchestrates. They
+can reference *supporting files* in their own directory via markdown links
 (progressive disclosure), and can inject dynamic context via `` !`command` ``,
-but neither is skill-to-skill invocation. (Subagents are a separate mechanism:
-an agent's frontmatter `skills` field can preload skills into that subagent.)
-Source: <https://code.claude.com/docs/en/skills.md>.
+but neither invokes another skill. (Loading another skill is possible only
+indirectly via subagents: an agent's frontmatter `skills` field preloads skills
+into that subagent — a separate mechanism, not skill-to-skill calling.) Source:
+<https://code.claude.com/docs/en/skills.md>.
 
 ## Open questions
 

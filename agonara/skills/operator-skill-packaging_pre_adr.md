@@ -70,17 +70,19 @@ reference nor precedent for a product with established roles.
   `/agonara:student`, `/agonara:admin`, etc. Shared foundations are just more
   skills in the same plugin; non-relevant surface is suppressed with the
   visibility frontmatter.
-- **Tradeoffs**: One install, no dependency wiring. But it cannot give an
-  operator a clean context: per the verified visibility matrix,
-  `user-invocable: false` still leaves a skill's description in context and
-  model-invocable, and `disable-model-invocation: true` removes it from context
-  but also stops the model auto-applying it. **No frontmatter combination** lets
-  a student carry a context free of curator/admin surface while keeping
-  foundations auto-loading.
+- **Tradeoffs**: One install, no dependency wiring. But **frontmatter visibility
+  is static and audience-blind** — every installer of the one plugin gets the
+  same `SKILL.md` flags, so the plugin cannot show curator skills to curators
+  while hiding them from students. It can hide other-role skills from *everyone*
+  (`disable-model-invocation: true` + `user-invocable: false` makes a skill inert
+  but installed) or expose them to *everyone*, but it cannot project per role.
+  The per-user `skillOverrides` escape that could hide a skill locally **does not
+  apply to plugin skills**, so operators cannot fix it from their own settings
+  either.
 - **Product intent fit**: Weak. Projects the whole product onto every operator's
-  hand regardless of role.
-- **Risks**: Cross-role surface leaks into every operator's model context;
-  listings show every role's skills to everyone.
+  hand regardless of role; no per-role surface is achievable in one plugin.
+- **Risks**: Either students carry curator/admin surface, or curators lose their
+  own skills — a single plugin cannot serve both audiences from one frontmatter.
 
 ### Option C — Flat per-skill, no plugin packaging
 
@@ -98,11 +100,15 @@ reference nor precedent for a product with established roles.
 **Option A — role-scoped plugins over a shared `agonara-core` — is the current
 best candidate, for Claude Code.**
 
-The decisive reason is **install-scope isolation**: role plugins keep
-other-role surface out of an operator's context because the other plugins are
-simply not installed — an isolation Option B cannot achieve with any visibility
-flag. Role-scoped packaging also matches the product's actual ontology and makes
-the `agonara-` prefix drop out of skill names naturally via plugin namespacing.
+The decisive reason is **install-scope isolation as the only per-role
+projection**: plugin frontmatter is static and ships identically to every
+installer, so a single plugin cannot present role-specific surface (and
+`skillOverrides` cannot rescue it — it does not apply to plugin skills). Which
+plugin an operator installs is therefore the only mechanism that projects
+surface per role: a student never installs curator or admin skills, so they are
+absent from both context and menu with no per-skill bookkeeping. Role-scoped
+packaging also matches the product's actual ontology and makes the `agonara-`
+prefix drop out of skill names naturally via plugin namespacing.
 
 "Shared" is resolved at the **packaging** layer, not by any single-plugin
 compromise: `agonara-core` carries `api-access` + membership, and each role
@@ -118,6 +124,11 @@ count, to the role names, or to the cross-runtime story.
 - **Packages (provisional)**: `agonara-core` (foundations), `agonara-curator`
   (bucket), `agonara-student`, `agonara-admin`. Each role package depends on
   `agonara-core`.
+- **Co-location constraint**: for the transitive auto-install to work,
+  `agonara-core` and the role packages must ship in the **same marketplace** —
+  Claude Code resolves a dependency's `name` within the declaring plugin's
+  marketplace by default, and blocks cross-marketplace dependencies unless the
+  root marketplace allowlists the target (`allowCrossMarketplaceDependenciesOn`).
 - **Naming carrier**: the `agonara-` prefix lives in the *plugin* name; skill
   *folders* lose it (`corpus/`, not `agonara-curator-corpus/`).
 - **Unstable**: the exact role-package names (e.g. `curator` vs `creator`),

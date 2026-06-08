@@ -6,12 +6,19 @@
   (`skills/operator-skill-packaging_pre_adr.md`): role-scoped plugins
   (`agonara-curator`/`-student`/`-admin`) over a shared `agonara-core`, with the
   `agonara-` prefix carried by the plugin name so skill folders drop it. The
-  decisive reason is install-scope isolation — a role plugin keeps other-role
-  surface out of an operator's context because the other plugins aren't
-  installed, which no single-plugin visibility flag can achieve. Explicitly
-  **verified for Claude Code only**; Codex/Cursor portability, role naming,
-  membership placement, intra-role granularity, and the distribution model are
-  carried as open questions.
+  decisive reason is that plugin frontmatter is static and audience-blind — one
+  plugin ships the same `SKILL.md` flags to every installer, so it cannot project
+  per-role surface; which plugin an operator installs is the only per-role
+  projection (and `skillOverrides` cannot rescue a single plugin — it does not
+  apply to plugin skills). Explicitly **verified for Claude Code only**;
+  Codex/Cursor portability, role naming, membership placement, intra-role
+  granularity, and the distribution model are carried as open questions.
+- Adversarial review pass (verified against live `code.claude.com` docs)
+  corrected an overstated claim — a single plugin *can* keep other-role skills
+  out of model context via `disable-model-invocation: true`, so the real
+  limitation is the audience-blind frontmatter above, not an impossible context
+  state — and added the same-marketplace co-location constraint for the
+  `agonara-core` transitive dependency, plus dependency version floors.
 - Record the supporting Claude Code plugin/skill mechanics as a findings note
   (`skills/claude-code-plugin-system.md`) with doc URLs: plugin-to-plugin
   dependencies, `/<plugin>:<skill>` namespacing, the model/user visibility
