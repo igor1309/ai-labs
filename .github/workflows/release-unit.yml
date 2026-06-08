@@ -34,7 +34,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
 
@@ -71,7 +71,7 @@ jobs:
           ref: ${{ github.ref_name }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
           cache: npm
@@ -260,6 +260,187 @@ jobs:
           key: ${{ secrets.NOMOS_VPS_SSH_KEY }}
           script: bash /opt/nomos/scripts/rollback-prod.sh
 
+  deploy-agonara-staging:
+    if: ${{ needs.verify.outputs.basename == 'agonara' }}
+    needs: [core, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Verify Agonara deploy secrets
+        env:
+          AGONARA_VPS_HOST: ${{ secrets.AGONARA_VPS_HOST }}
+          AGONARA_VPS_USER: ${{ secrets.AGONARA_VPS_USER }}
+          AGONARA_VPS_SSH_KEY: ${{ secrets.AGONARA_VPS_SSH_KEY }}
+        run: |
+          set -e
+          missing=0
+          for name in AGONARA_VPS_HOST AGONARA_VPS_USER AGONARA_VPS_SSH_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::${name} is required for Agonara release deploy"
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ]
+
+      - name: Prepare clean Agonara deploy upload
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.AGONARA_VPS_HOST }}
+          username: ${{ secrets.AGONARA_VPS_USER }}
+          key: ${{ secrets.AGONARA_VPS_SSH_KEY }}
+          script: |
+            set -e
+            rm -rf /tmp/agonara-deploy
+            mkdir -p /tmp/agonara-deploy
+
+      - name: Copy source files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.AGONARA_VPS_HOST }}
+          username: ${{ secrets.AGONARA_VPS_USER }}
+          key: ${{ secrets.AGONARA_VPS_SSH_KEY }}
+          source: "agonara/.dockerignore,agonara/Dockerfile,agonara/package.json,agonara/package-lock.json,agonara/src,agonara/compose.staging.yml,agonara/compose.prod.yml,agonara/scripts"
+          target: /tmp/agonara-deploy
+          strip_components: 1
+
+      - name: Deploy staging on VPS
+        uses: appleboy/ssh-action@v1
+        env:
+          AGONARA_DEPLOY_VERSION: ${{ needs.verify.outputs.version }}
+          AGONARA_GIT_SHA: ${{ github.sha }}
+        with:
+          host: ${{ secrets.AGONARA_VPS_HOST }}
+          username: ${{ secrets.AGONARA_VPS_USER }}
+          key: ${{ secrets.AGONARA_VPS_SSH_KEY }}
+          command_timeout: 20m
+          envs: AGONARA_DEPLOY_VERSION,AGONARA_GIT_SHA
+          script: bash /tmp/agonara-deploy/scripts/deploy-staging.sh
+
+      - name: Verify staging version
+        uses: appleboy/ssh-action@v1
+        env:
+          EXPECTED_VERSION: ${{ needs.verify.outputs.version }}
+        with:
+          host: ${{ secrets.AGONARA_VPS_HOST }}
+          username: ${{ secrets.AGONARA_VPS_USER }}
+          key: ${{ secrets.AGONARA_VPS_SSH_KEY }}
+          envs: EXPECTED_VERSION
+          script: |
+            set -e
+            docker exec -e EXPECTED_VERSION="${EXPECTED_VERSION}" agonara-staging node -e 'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); return response.json(); }).then(health => { if (health.status !== "ok" || health.version !== process.env.EXPECTED_VERSION) process.exit(1); }).catch(() => process.exit(1))'
+            echo "Staging version verified: ${EXPECTED_VERSION}"
+
+      - name: Staging real evaluator smoke
+        uses: appleboy/ssh-action@v1
+        env:
+          EXPECTED_VERSION: ${{ needs.verify.outputs.version }}
+        with:
+          host: ${{ secrets.AGONARA_VPS_HOST }}
+          username: ${{ secrets.AGONARA_VPS_USER }}
+          key: ${{ secrets.AGONARA_VPS_SSH_KEY }}
+          command_timeout: 5m
+          envs: EXPECTED_VERSION
+          script: |
+            set -e
+            docker exec -e AGONARA_SMOKE_BASE_URL=http://127.0.0.1:8080 -e EXPECTED_VERSION="${EXPECTED_VERSION}" agonara-staging sh -lc "trap 'rm -f /tmp/agonara-smoke.json' EXIT; node scripts/smoke-open-answer-evaluator.mjs > /tmp/agonara-smoke.json && node -e 'const fs = require(\"node:fs\"); const result = JSON.parse(fs.readFileSync(\"/tmp/agonara-smoke.json\", \"utf8\")); if (!result.evaluationId || result.healthVersion !== process.env.EXPECTED_VERSION) process.exit(1);'"
+            echo "Staging real evaluator smoke passed"
+
+      - name: Clean deploy upload after staging failure
+        if: failure()
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.AGONARA_VPS_HOST }}
+          username: ${{ secrets.AGONARA_VPS_USER }}
+          key: ${{ secrets.AGONARA_VPS_SSH_KEY }}
+          script: rm -rf /tmp/agonara-deploy || true
+
+  deploy-agonara-prod:
+    if: ${{ needs.verify.outputs.basename == 'agonara' }}
+    needs: [deploy-agonara-staging, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Deploy production on VPS
+        uses: appleboy/ssh-action@v1
+        env:
+          AGONARA_DEPLOY_VERSION: ${{ needs.verify.outputs.version }}
+          AGONARA_GIT_SHA: ${{ github.sha }}
+        with:
+          host: ${{ secrets.AGONARA_VPS_HOST }}
+          username: ${{ secrets.AGONARA_VPS_USER }}
+          key: ${{ secrets.AGONARA_VPS_SSH_KEY }}
+          command_timeout: 20m
+          envs: AGONARA_DEPLOY_VERSION,AGONARA_GIT_SHA
+          script: bash /tmp/agonara-deploy/scripts/deploy-prod.sh
+
+      - name: Verify production version
+        uses: appleboy/ssh-action@v1
+        env:
+          EXPECTED_VERSION: ${{ needs.verify.outputs.version }}
+        with:
+          host: ${{ secrets.AGONARA_VPS_HOST }}
+          username: ${{ secrets.AGONARA_VPS_USER }}
+          key: ${{ secrets.AGONARA_VPS_SSH_KEY }}
+          envs: EXPECTED_VERSION
+          script: |
+            set -e
+            docker exec -e EXPECTED_VERSION="${EXPECTED_VERSION}" agonara node -e 'fetch("http://127.0.0.1:8080/operations/health").then(response => { if (!response.ok) process.exit(1); return response.json(); }).then(health => { if (health.status !== "ok" || health.version !== process.env.EXPECTED_VERSION) process.exit(1); }).catch(() => process.exit(1))'
+            echo "Production version verified: ${EXPECTED_VERSION}"
+
+      - name: Production real evaluator smoke
+        uses: appleboy/ssh-action@v1
+        env:
+          EXPECTED_VERSION: ${{ needs.verify.outputs.version }}
+        with:
+          host: ${{ secrets.AGONARA_VPS_HOST }}
+          username: ${{ secrets.AGONARA_VPS_USER }}
+          key: ${{ secrets.AGONARA_VPS_SSH_KEY }}
+          command_timeout: 5m
+          envs: EXPECTED_VERSION
+          script: |
+            set -e
+            docker exec -e AGONARA_SMOKE_BASE_URL=http://127.0.0.1:8080 -e EXPECTED_VERSION="${EXPECTED_VERSION}" agonara sh -lc "trap 'rm -f /tmp/agonara-smoke.json' EXIT; node scripts/smoke-open-answer-evaluator.mjs > /tmp/agonara-smoke.json && node -e 'const fs = require(\"node:fs\"); const result = JSON.parse(fs.readFileSync(\"/tmp/agonara-smoke.json\", \"utf8\")); if (!result.evaluationId || result.healthVersion !== process.env.EXPECTED_VERSION) process.exit(1);'"
+            echo "Production real evaluator smoke passed"
+
+      - name: Production public route smoke
+        uses: appleboy/ssh-action@v1
+        env:
+          EXPECTED_VERSION: ${{ needs.verify.outputs.version }}
+        with:
+          host: ${{ secrets.AGONARA_VPS_HOST }}
+          username: ${{ secrets.AGONARA_VPS_USER }}
+          key: ${{ secrets.AGONARA_VPS_SSH_KEY }}
+          command_timeout: 2m
+          envs: EXPECTED_VERSION
+          script: |
+            set -e
+            docker exec -e AGONARA_PUBLIC_SMOKE_BASE_URL=https://agonara.enoa.ai -e EXPECTED_VERSION="${EXPECTED_VERSION}" agonara node scripts/smoke-public-prod-routes.mjs
+            echo "Production public route smoke passed"
+
+      - name: Rollback production on failure
+        if: failure()
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.AGONARA_VPS_HOST }}
+          username: ${{ secrets.AGONARA_VPS_USER }}
+          key: ${{ secrets.AGONARA_VPS_SSH_KEY }}
+          command_timeout: 10m
+          script: bash /opt/agonara/scripts/rollback-prod.sh
+
+      - name: Clean deploy upload
+        if: always()
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.AGONARA_VPS_HOST }}
+          username: ${{ secrets.AGONARA_VPS_USER }}
+          key: ${{ secrets.AGONARA_VPS_SSH_KEY }}
+          script: rm -rf /tmp/agonara-deploy || true
+
   deploy-notio-backend:
     if: ${{ needs.verify.outputs.basename == 'notio-backend' }}
     needs: [test-notio-backend, verify]
@@ -354,7 +535,7 @@ jobs:
     secrets: inherit
 
   github-release:
-    needs: [core, verify, test-notio-backend, deploy-nomos-staging, deploy-nomos-prod, deploy-notio-backend, deploy-notio-frontend, deploy-clipdeck]
+    needs: [core, verify, test-notio-backend, deploy-nomos-staging, deploy-nomos-prod, deploy-agonara-staging, deploy-agonara-prod, deploy-notio-backend, deploy-notio-frontend, deploy-clipdeck]
     if: >-
       ${{ always() && !cancelled()
       && needs.verify.result == 'success'
@@ -362,6 +543,10 @@ jobs:
       && (needs.test-notio-backend.result == 'success' || needs.test-notio-backend.result == 'skipped')
       && needs.deploy-nomos-staging.result != 'failure'
       && needs.deploy-nomos-prod.result != 'failure'
+      && (needs.verify.outputs.basename != 'agonara' || needs.deploy-agonara-staging.result == 'success')
+      && (needs.verify.outputs.basename != 'agonara' || needs.deploy-agonara-prod.result == 'success')
+      && (needs.deploy-agonara-staging.result == 'success' || needs.deploy-agonara-staging.result == 'skipped')
+      && (needs.deploy-agonara-prod.result == 'success' || needs.deploy-agonara-prod.result == 'skipped')
       && (needs.deploy-notio-backend.result == 'success' || needs.deploy-notio-backend.result == 'skipped')
       && (needs.deploy-notio-frontend.result == 'success' || needs.deploy-notio-frontend.result == 'skipped')
       && (needs.deploy-clipdeck.result == 'success' || needs.deploy-clipdeck.result == 'skipped')
@@ -393,12 +578,14 @@ jobs:
       || needs.test-notio-backend.result == 'failure'
       || needs.deploy-nomos-staging.result == 'failure'
       || needs.deploy-nomos-prod.result == 'failure'
+      || needs.deploy-agonara-staging.result == 'failure'
+      || needs.deploy-agonara-prod.result == 'failure'
       || needs.deploy-notio-backend.result == 'failure'
       || needs.deploy-notio-frontend.result == 'failure'
       || needs.deploy-clipdeck.result == 'failure'
       || needs.github-release.result == 'failure')
       }}
-    needs: [verify, core, test-notio-backend, deploy-nomos-staging, deploy-nomos-prod, deploy-notio-backend, deploy-notio-frontend, deploy-clipdeck, github-release]
+    needs: [verify, core, test-notio-backend, deploy-nomos-staging, deploy-nomos-prod, deploy-agonara-staging, deploy-agonara-prod, deploy-notio-backend, deploy-notio-frontend, deploy-clipdeck, github-release]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "Release Unit"
@@ -410,6 +597,8 @@ jobs:
         test-notio-backend=${{ needs.test-notio-backend.result }}
         deploy-nomos-staging=${{ needs.deploy-nomos-staging.result }}
         deploy-nomos-prod=${{ needs.deploy-nomos-prod.result }}
+        deploy-agonara-staging=${{ needs.deploy-agonara-staging.result }}
+        deploy-agonara-prod=${{ needs.deploy-agonara-prod.result }}
         deploy-notio-backend=${{ needs.deploy-notio-backend.result }}
         deploy-notio-frontend=${{ needs.deploy-notio-frontend.result }}
         deploy-clipdeck=${{ needs.deploy-clipdeck.result }}

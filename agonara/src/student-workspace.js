@@ -471,6 +471,7 @@ function runOpenAnswerEvaluatorWorkerOnce({
     providerResult = adapter.value.adapter.evaluate(
       buildOpenAnswerEvaluatorProviderRequest({
         attempt,
+        database,
         evaluatorJob: claim.value.evaluatorJob,
         policy: policy.value.policy,
       }),
@@ -486,15 +487,64 @@ function runOpenAnswerEvaluatorWorkerOnce({
       workerId: workerInput.workerId,
     });
   }
+  if (isPromiseLike(providerResult)) {
+    return providerResult
+      .then($0 =>
+        completeOpenAnswerEvaluatorWorkerRunFromProviderResult({
+          claim,
+          database,
+          generateId,
+          mode: workerInput.mode,
+          now,
+          policy: policy.value.policy,
+          providerResult: $0,
+          workerId: workerInput.workerId,
+        }),
+      )
+      .catch(() =>
+        failOpenAnswerEvaluatorWorkerRun({
+          database,
+          evaluatorJob: claim.value.evaluatorJob,
+          failureReason: "provider_execution_failed",
+          lease: claim.value.lease,
+          mode: workerInput.mode,
+          now,
+          workerId: workerInput.workerId,
+        }),
+      );
+  }
+
+  return completeOpenAnswerEvaluatorWorkerRunFromProviderResult({
+    claim,
+    database,
+    generateId,
+    mode: workerInput.mode,
+    now,
+    policy: policy.value.policy,
+    providerResult,
+    workerId: workerInput.workerId,
+  });
+}
+
+function completeOpenAnswerEvaluatorWorkerRunFromProviderResult({
+  claim,
+  database,
+  generateId,
+  mode,
+  now,
+  policy,
+  providerResult,
+  workerId,
+}) {
   if (!isValidOpenAnswerEvaluatorProviderResult(providerResult)) {
     return failOpenAnswerEvaluatorWorkerRun({
       database,
       evaluatorJob: claim.value.evaluatorJob,
       failureReason: "provider_execution_failed",
       lease: claim.value.lease,
-      mode: workerInput.mode,
+      mode,
       now,
-      workerId: workerInput.workerId,
+      workerId,
     });
   }
   if (exceedsEvaluatorBudget(providerResult.providerUsage, claim.value.evaluatorJob.budgetPolicy)) {
@@ -503,20 +553,20 @@ function runOpenAnswerEvaluatorWorkerOnce({
       evaluatorJob: claim.value.evaluatorJob,
       failureReason: "provider_budget_exceeded",
       lease: claim.value.lease,
-      mode: workerInput.mode,
+      mode,
       now,
-      workerId: workerInput.workerId,
+      workerId,
     });
   }
-  if (!isAcceptedOpenAnswerEvaluatorProviderResult(providerResult, claim.value.evaluatorJob, policy.value.policy)) {
+  if (!isAcceptedOpenAnswerEvaluatorProviderResult(providerResult, claim.value.evaluatorJob, policy)) {
     return failOpenAnswerEvaluatorWorkerRun({
       database,
       evaluatorJob: claim.value.evaluatorJob,
       failureReason: "provider_output_rejected",
       lease: claim.value.lease,
-      mode: workerInput.mode,
+      mode,
       now,
-      workerId: workerInput.workerId,
+      workerId,
     });
   }
   if (providerResult.redactedEvidenceSummary !== undefined) {
@@ -526,7 +576,7 @@ function runOpenAnswerEvaluatorWorkerOnce({
       input: {
         evaluatorJobId: claim.value.evaluatorJob.evaluatorJobId,
         leaseId: claim.value.lease.leaseId,
-        workerId: workerInput.workerId,
+        workerId,
         evidenceKind: "criterion_match",
         redactedSummary: providerResult.redactedEvidenceSummary,
       },
@@ -540,12 +590,12 @@ function runOpenAnswerEvaluatorWorkerOnce({
     database,
     generateId,
     input: {
-      evaluatorJobId: claim.value.evaluatorJob.evaluatorJobId,
-      leaseId: claim.value.lease.leaseId,
-      workerId: workerInput.workerId,
-      summaryFeedback: providerResult.summaryFeedback,
-      criterionFeedback: providerResult.criterionFeedback,
-      providerUsage: providerResult.providerUsage,
+        evaluatorJobId: claim.value.evaluatorJob.evaluatorJobId,
+        leaseId: claim.value.lease.leaseId,
+        workerId,
+        summaryFeedback: providerResult.summaryFeedback,
+        criterionFeedback: providerResult.criterionFeedback,
+        providerUsage: providerResult.providerUsage,
       outputValidation: providerResult.outputValidation,
     },
     now,
@@ -556,8 +606,8 @@ function runOpenAnswerEvaluatorWorkerOnce({
 
   return accepted({
     summary: summarizeEvaluatorWorkerRun({
-      mode: workerInput.mode,
-      workerId: workerInput.workerId,
+      mode,
+      workerId,
       evaluatorJobId: claim.value.evaluatorJob.evaluatorJobId,
       claimed: true,
       completed: true,
@@ -565,6 +615,10 @@ function runOpenAnswerEvaluatorWorkerOnce({
     evaluatorJob: completion.value.evaluatorJob,
     evaluation: completion.value.evaluation,
   });
+}
+
+function isPromiseLike(value) {
+  return value !== null && typeof value === "object" && typeof value.then === "function";
 }
 
 function isValidOpenAnswerEvaluatorProviderResult(providerResult) {
@@ -723,7 +777,7 @@ function resolveOpenAnswerEvaluatorProviderAdapter(providerAdapters, policy) {
   return accepted({ adapter });
 }
 
-function buildOpenAnswerEvaluatorProviderRequest({ attempt, evaluatorJob, policy }) {
+function buildOpenAnswerEvaluatorProviderRequest({ attempt, database, evaluatorJob, policy }) {
   return {
     evaluatorJobId: evaluatorJob.evaluatorJobId,
     attemptId: evaluatorJob.attemptId,
@@ -732,8 +786,36 @@ function buildOpenAnswerEvaluatorProviderRequest({ attempt, evaluatorJob, policy
     checkRevisionId: evaluatorJob.checkRevisionId,
     criterionRevisionIds: [...evaluatorJob.criterionRevisionIds],
     submittedAnswer: attempt.submittedAnswer,
+    acceptedCheckRevision: projectOpenAnswerCheckRevisionForProvider(
+      getAcceptedOpenAnswerCheckRevisionRecord(database, evaluatorJob.checkRevisionId),
+    ),
+    acceptedCriterionRevisions: evaluatorJob.criterionRevisionIds.map($0 =>
+      projectAssessmentCriterionRevisionForProvider(getAcceptedAssessmentCriterionRevisionRecord(database, $0)),
+    ),
     evaluatorPolicyId: evaluatorJob.evaluatorPolicyId,
     outputValidatorPolicyId: policy.outputValidatorPolicyId,
+  };
+}
+
+function projectOpenAnswerCheckRevisionForProvider(revision) {
+  if (!revision) {
+    return null;
+  }
+  return {
+    revisionId: revision.id,
+    title: revision.title,
+    prompt: revision.prompt,
+  };
+}
+
+function projectAssessmentCriterionRevisionForProvider(revision) {
+  if (!revision) {
+    return null;
+  }
+  return {
+    revisionId: revision.id,
+    title: revision.title,
+    body: revision.body,
   };
 }
 

@@ -3,7 +3,7 @@ date: 2026-05-30
 model: gpt-5
 description: "Spec: Agonara accepted checks and assessment criteria HTTP API."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -15,11 +15,24 @@ Define the public HTTP API for Agonara Program-scoped accepted assessment criter
 
 This spec operationalizes [Accepted Checks and Assessment Criteria First Slice](accepted-checks-and-assessment-criteria-first-slice.md) and [ADR-011](../adr/adr-011-accepted-checks-and-student-assessment-boundary.md) through the existing session, CSRF, envelope, pagination, and redaction conventions from [Corpus Storage and Curator Acceptance API](corpus-storage-and-curator-acceptance-api.md). It defines HTTP behavior only; it does not add Admin UI, Curator UI, Student UI, CLI commands, Student Workspace attempts, submitted answers, selected answers, scoring, generated feedback, mastery, weak areas, progress evidence, LLM execution, or human review workflow.
 
+## Implementation status
+
+Implemented by [Accepted Checks and Assessment Criteria HTTP API Implementation Plan](../plans/implemented/accepted-checks-and-assessment-criteria-api.md).
+
+### Implementation Evidence
+
+- HTTP route adapters and status mapping: [server.js](../../src/server.js)
+- Delegated assessment corpus command/query boundary: [corpus.js](../../src/corpus.js)
+- Focused HTTP route, session, CSRF, pagination, redaction, and out-of-scope coverage: [http-api.test.js](../../tests/http-api.test.js)
+- End-to-end executable acceptance coverage: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+
+The implemented API exposes the assessment criterion and open-answer check candidate lifecycle, acceptance/rejection commands, current accepted reads, and historical revision reads over the existing session, CSRF, envelope, pagination, and redaction conventions. It delegates policy to the implemented Corpus command/query boundary and preserves the slice boundary by excluding Admin UI, Curator UI, Student UI, CLI commands, Student Workspace attempts, scoring, feedback, LLM execution, and human review workflow.
+
 ## Public interface
 
 ### Shared result envelope
 
-Successful HTTP operations return:
+#### Successful HTTP Operations
 
 ```ts
 type AcceptedResult<T> = {
@@ -28,7 +41,7 @@ type AcceptedResult<T> = {
 };
 ```
 
-Rejected HTTP operations return:
+#### Rejected HTTP Operations
 
 ```ts
 type RejectedResult = {
@@ -37,7 +50,7 @@ type RejectedResult = {
 };
 ```
 
-HTTP `5xx` responses return:
+#### Fault HTTP Operations
 
 ```ts
 type FaultResult = {
@@ -189,7 +202,7 @@ The API never returns the session identifier or CSRF token. Clients obtain CSRF 
 | `GET` | `/programs/{programId}/open-answer-checks?limit={limit}&cursor={cursor}` | Student, Program Curator, or Admin session | `AcceptedResult<AcceptedOpenAnswerCheckList>` | `400 validation_failed`, `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 participation_required`, `404 program_not_found` |
 | `GET` | `/open-answer-checks/revisions/{revisionId}` | Student, Program Curator, or Admin session | `AcceptedResult<{ acceptedOpenAnswerCheck: AcceptedOpenAnswerCheckSummary }>` | `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 participation_required`, `404 check_revision_not_found`, `404 program_not_found` |
 
-Request bodies:
+### Request Bodies
 
 ```ts
 type CreateAssessmentCriterionCandidateRequest = {
@@ -315,7 +328,7 @@ Acceptance routes accept a missing body, an empty JSON object, or an object cont
 
 ## Tests (required)
 
-HTTP session and CSRF:
+### HTTP Session and CSRF
 
 1. `GET /programs/{programId}/assessment-criteria` rejects a missing session with `401 session_not_found`.
 2. `GET /programs/{programId}/open-answer-checks` rejects an inactive session Identity with `403 identity_disabled`.
@@ -323,7 +336,7 @@ HTTP session and CSRF:
 4. `POST /programs/{programId}/open-answer-checks/candidates` rejects an invalid CSRF token with `403 csrf_invalid`.
 5. Responses do not include session identifiers or CSRF tokens.
 
-Criterion candidate routes:
+### Criterion Candidate Routes
 
 6. `GET /programs/{programId}/assessment-criteria/candidates` accepts an effective Program Curator and returns only criterion candidates for the requested Program.
 7. `GET /programs/{programId}/assessment-criteria/candidates` applies `draft`, `accepted`, and `rejected` status filters.
@@ -335,7 +348,7 @@ Criterion candidate routes:
 13. Criterion candidate creation rejects unknown source ids with `409 source_not_found`.
 14. Criterion candidate creation rejects cross-Program source ids with `409 source_program_mismatch`.
 
-Criterion acceptance and rejection routes:
+### Criterion Acceptance and Rejection Routes
 
 15. `POST /assessment-criteria/candidates/{candidateId}/acceptance` accepts a Program Curator for the candidate Program and returns `AcceptedAssessmentCriterionSummary`.
 16. Criterion acceptance without `targetEntityId` creates one accepted entity and one accepted revision.
@@ -355,7 +368,7 @@ Criterion acceptance and rejection routes:
 30. Criterion rejection rejects non-curator callers with `403 admin_or_curator_required`.
 31. Criterion rejection does not delete accepted criterion revisions.
 
-Accepted criterion routes:
+### Accepted Criterion Routes
 
 32. `GET /programs/{programId}/assessment-criteria` accepts an effective Student for the requested Program.
 33. `GET /programs/{programId}/assessment-criteria` accepts an effective Program Curator for the requested Program.
@@ -368,7 +381,7 @@ Accepted criterion routes:
 40. `GET /assessment-criteria/revisions/{revisionId}` rejects unknown revision ids with `404 criterion_revision_not_found`.
 41. `GET /assessment-criteria/revisions/{revisionId}` rejects unauthorized callers with `403 participation_required`.
 
-Open-answer check candidate routes:
+### Open-Answer Check Candidate Routes
 
 42. `GET /programs/{programId}/open-answer-checks/candidates` accepts an effective Program Curator and returns only check candidates for the requested Program.
 43. `GET /programs/{programId}/open-answer-checks/candidates` applies `draft`, `accepted`, and `rejected` status filters.
@@ -382,7 +395,7 @@ Open-answer check candidate routes:
 51. Check candidate creation rejects unknown criterion entities with `404 criterion_entity_not_found`.
 52. Check candidate creation rejects cross-Program criterion entities with `409 criterion_entity_program_mismatch`.
 
-Open-answer check acceptance and rejection routes:
+### Open-Answer Check Acceptance and Rejection Routes
 
 53. `POST /open-answer-checks/candidates/{candidateId}/acceptance` accepts a Program Curator for the candidate Program and returns `AcceptedOpenAnswerCheckSummary`.
 54. Check acceptance without `targetEntityId` creates one accepted entity and one accepted revision.
@@ -403,7 +416,7 @@ Open-answer check acceptance and rejection routes:
 69. Check rejection rejects non-curator callers with `403 admin_or_curator_required`.
 70. Check rejection does not delete accepted check revisions or criterion revision references.
 
-Accepted open-answer check routes:
+### Accepted Open-Answer Check Routes
 
 71. `GET /programs/{programId}/open-answer-checks` accepts an effective Student for the requested Program.
 72. `GET /programs/{programId}/open-answer-checks` accepts an effective Program Curator for the requested Program.
@@ -417,14 +430,14 @@ Accepted open-answer check routes:
 80. `GET /open-answer-checks/revisions/{revisionId}` rejects unauthorized callers with `403 participation_required`.
 81. A check revision remains linked to the original criterion revision after the accepted criterion is revised.
 
-Redaction and out-of-scope routes:
+### Redaction and Out-of-Scope Routes
 
 82. Candidate, accepted-list, historical-revision, acceptance, and rejection responses do not expose password hashes, plaintext passwords, bootstrap secrets, session identifiers, CSRF tokens, cookie headers, authorization headers, SQL text, stack traces, filesystem paths, database URLs, or infrastructure details.
 83. Candidate and accepted-list cursors do not expose secrets, SQL text, filesystem paths, stack traces, session identifiers, CSRF tokens, cookie headers, or authorization headers.
 84. Fault responses map unexpected errors to `500 internal_error` without leaking implementation details.
 85. The API does not expose Admin UI, Curator UI, Student UI, CLI commands, Student Workspace attempts, submitted answers, selected answers, evaluation results, scoring, generated feedback, mastery calculation, weak-area calculation, progress evidence, LLM execution, or human review workflow.
 
-Executable acceptance flow:
+### Executable Acceptance Flow
 
 86. A logged-in Program Curator creates a Program through the existing Program API, records a source, creates and accepts a criterion, creates and accepts an open-answer check linked to that criterion, revises the criterion, verifies the accepted check revision still points at the original criterion revision, lists accepted checks and criteria as a Student, fetches historical criterion and check revisions, rejects separate draft criterion and check candidates, confirms draft/rejected candidates are absent from accepted reads, and verifies no Student Workspace state, scoring, feedback, LLM, human review, UI, or CLI surface is introduced.
 

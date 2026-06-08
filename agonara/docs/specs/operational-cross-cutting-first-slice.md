@@ -3,7 +3,7 @@ date: 2026-05-27
 model: gpt-5.5-thinking
 description: "Operational cross-cutting spec for Agonara v0.0.1."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -12,6 +12,21 @@ type: spec
 ## Goal
 
 Define the minimum operational logging, request correlation, health, diagnostics, redaction, and audit-boundary contract for Agonara v0.0.1, owned by the application platform boundary.
+
+## Implementation status
+
+Implemented by [Identity and Operations First-Slice Implementation Plan](../plans/implemented/identity-and-operations-first-slice.md), with deployed-version health response extension specified by [Operations Health Version](operations-health-version.md).
+
+### Implementation Evidence
+
+- HTTP request correlation, health, diagnostics, fault response, completion logging, and redaction boundary: [server.js](../../src/server.js)
+- Backend-initiated backup/restore operational logging: [identity.js](../../src/identity.js)
+- Focused HTTP operational coverage for request IDs, health, diagnostics, fault redaction, completion logs, rejected logs, and sensitive-value redaction: [http-api.test.js](../../tests/http-api.test.js)
+- Backup/restore operational log coverage: [backup-restore.test.js](../../tests/backup-restore.test.js)
+- CLI diagnostic redaction and usage-error coverage: [cli.test.js](../../tests/cli.test.js)
+- End-to-end acceptance coverage for Admin-only diagnostics and request correlation: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+
+The implemented operational slice provides request ID generation/propagation, structured completion logs for accepted/rejected/faulted HTTP requests, generic redacted fault responses, unauthenticated health, Admin-only diagnostics, and backup/restore operational log events. The shipped health response also includes a `version` field from the later accepted health-version extension, while preserving the operational boundary against secrets, dependency topology, authorization state, product analytics, learner progress, and curator decisions.
 
 ## Public interface
 
@@ -31,6 +46,7 @@ HTTP clients may send `X-Request-ID`. Every HTTP response returns `X-Request-ID`
 ```ts
 type OperationalHealth = {
   status: "ok" | "degraded" | "unavailable";
+  version: string;
   checkedAt: string;
   requestId: string;
 };
@@ -54,7 +70,7 @@ type OperationalCheck = {
 
 ### Operational log event
 
-Operational logs are structured events:
+Operational logs use this structured event shape.
 
 ```ts
 type ComponentName =
@@ -86,7 +102,7 @@ Operational logs are diagnostic records. They are not product state, audit recor
 
 ### Redacted fields
 
-The following values must not appear in operational logs, health responses, diagnostics responses, HTTP fault responses, or CLI diagnostics:
+These values must not appear in operational logs, health responses, diagnostics responses, HTTP fault responses, or CLI diagnostics.
 
 - plaintext passwords;
 - password hashes;
@@ -114,7 +130,7 @@ The following values must not appear in operational logs, health responses, diag
 12. Operational log events may include internal Identity identifiers needed for diagnosis, but must not grant or imply authority.
 13. Operational logs must not be used as the source of authorization, role, membership, learner-progress, or curator-decision state.
 14. Audit events remain the queryable security and domain-change record; operational logs remain the diagnostic record.
-15. `/operations/health` does not require authentication and returns only aggregate status, timestamp, and request ID.
+15. `/operations/health` does not require authentication and returns only aggregate status, deployed version, timestamp, and request ID.
 16. `/operations/health` must not disclose dependency names, deployment topology, configured secrets, or database details.
 17. `/operations/diagnostics` requires an active Admin session.
 18. `/operations/diagnostics` returns only coarse check names, statuses, timestamps, and coarse `reason` values from `OperationalCheck`.
@@ -126,7 +142,7 @@ The following values must not appear in operational logs, health responses, diag
 
 ## Tests (required)
 
-Request correlation:
+### Request Correlation
 
 1. An HTTP request without `X-Request-ID` receives an `X-Request-ID` response header.
 2. An HTTP request with a valid `X-Request-ID` receives the same value in the response header.
@@ -136,7 +152,7 @@ Request correlation:
 6. Backend-initiated work emits operational log events with a generated request ID.
 7. Fault responses and fault log events share the same request ID.
 
-Redaction:
+### Redaction
 
 8. Authentication, bootstrap, and credential-binding logs do not include plaintext passwords.
 9. Authentication, bootstrap, and credential-binding logs do not include password hashes.
@@ -144,7 +160,7 @@ Redaction:
 11. HTTP logs, diagnostics, and fault responses do not include session identifiers, CSRF tokens, cookie headers, authorization headers, database URLs, API keys, SQL text, stack traces, or raw sensitive request bodies.
 12. CLI diagnostics for backend-backed commands do not include bootstrap secrets, passwords, session identifiers, CSRF tokens, or raw sensitive stdin.
 
-Logging:
+### Logging
 
 13. Accepted Identity & Role Management HTTP operations emit completion log events.
 14. Rejected Identity & Role Management HTTP operations emit completion log events with rejection reason.
@@ -152,18 +168,18 @@ Logging:
 16. Operations that create audit events include `auditEventId` in the corresponding completion log event.
 17. Rejected authentication, authorization, CSRF, validation, and rate-limit decisions log the reason without submitted secrets.
 18. Backup and restore start, accepted completion, rejected completion, and faulted completion emit operational log events.
-19. Operational log events reject component names outside `ComponentName`.
+19. Operational log events use component names from `ComponentName`.
 
-Health and diagnostics:
+### Health and Diagnostics
 
-20. `GET /operations/health` succeeds without authentication and returns only `status`, `checkedAt`, and `requestId`.
+20. `GET /operations/health` succeeds without authentication and returns only `status`, `version`, `checkedAt`, and `requestId`.
 21. `GET /operations/health` does not disclose dependency names or deployment topology.
 22. `GET /operations/diagnostics` rejects unauthenticated and non-Admin sessions with the mapped status and reason.
 23. `GET /operations/diagnostics` accepts an Admin session and returns `OperationalDiagnostics`.
 24. `GET /operations/diagnostics` returns only `OperationalCheck.reason` values from the allowed coarse reason union.
 25. `GET /operations/diagnostics` redacts secrets, raw exception messages, SQL text, stack traces, provider API keys, and secret-bearing filesystem paths.
 
-Boundary:
+### Boundary
 
 26. Operational logs are not read as authorization, role, membership, learner-progress, or curator-decision state.
 27. Product analytics events are not emitted from v0.0.1 operational logging.

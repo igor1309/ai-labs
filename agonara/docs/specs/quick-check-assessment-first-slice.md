@@ -3,7 +3,7 @@ date: 2026-06-02
 model: gpt-5
 description: "Spec: Agonara deterministic single-select quick-check assessment first-slice contract."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -12,6 +12,23 @@ type: spec
 ## Goal
 
 Define the Agonara v0.0.1 backend contract for Corpus Storage-owned accepted deterministic single-select quick checks and Student Workspace-owned immutable quick-check attempts, results, and personal evidence.
+
+## Implementation status
+
+Implemented by [Quick-Check Assessment First Slice Implementation Plan](../plans/implemented/quick-check-assessment-first-slice.md).
+
+### Implementation Evidence
+
+- Corpus quick-check candidate, accepted-revision, delivery, and curator-read commands: [corpus.js](../../src/corpus.js)
+- Student Workspace quick-check submission and owner-only attempt reads: [student-workspace.js](../../src/student-workspace.js)
+- Quick-check candidate, accepted-revision, answer-key, attempt, and backup/restore persistence: [storage.js](../../src/storage.js)
+- Corpus command/query coverage: [corpus.test.js](../../tests/corpus.test.js)
+- Student Workspace attempt coverage: [student-workspace.test.js](../../tests/student-workspace.test.js)
+- Storage coverage: [storage.test.js](../../tests/storage.test.js)
+- Backup/restore coverage: [backup-restore.test.js](../../tests/backup-restore.test.js)
+- Executable acceptance coverage: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+
+The implemented first slice supports Program Curator quick-check candidate lifecycle, accepted single-select quick-check revisions with protected answer keys, student-safe delivery projections, internal answer-key resolution after Student authorization, immutable Student Workspace attempts, scoped idempotency, owner-only attempt reads, answer-key redaction, adjacent-domain non-mutation checks, backup/restore preservation, and malformed graph rejection. This first-slice implementation did not introduce HTTP routes, UI, CLI commands, option randomization, multi-select checks, learner-state interpretation, grading, analytics, provider calls, evaluator workers, queues, or human review behavior; later HTTP and learner-state surfaces are specified separately by [Quick Check Assessment API](quick-check-assessment-api.md) and [Learner-State Interpretation](learner-state-interpretation.md).
 
 ## Public interface
 
@@ -137,7 +154,7 @@ Candidate commands require effective `Program Curator` participation for the Pro
 
 `submitQuickCheckAttempt` requires effective `Student` participation for the Program.
 
-Each command result is either:
+### Command Result Envelope
 
 - `{ status: "accepted"; value: ... }`
 - `{ status: "rejected"; reason: QuickCheckAssessmentRejectionReason }`

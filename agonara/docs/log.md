@@ -1,5 +1,294 @@
 # Log
 
+## 2026-06-07
+
+- Add a backlog task (`backlog/skills.md`) to guard skill-stated request bodies
+  against contract drift: the operator skills hand-restate field rules for bodies
+  the OpenAPI deliberately leaves as `additionalProperties: true`, with no
+  automated tie-back to the domain-spec source of truth. Sequenced before the
+  discovery/packaging item.
+- Sharpen the MCP-connector item in `backlog/agent-connectivity.md` from a peer
+  task to a *conditional* one, gated on a concrete target runtime that can mount
+  MCP but cannot execute arbitrary HTTP. Rationale: for code-capable agents the
+  operator skills over the OpenAPI contract already are the one-step mount, so an
+  MCP server is duplicated client surface; it only closes a gap a skill can't for
+  constrained chat-hosted agents. Recorded the dependency on the bearer-token
+  item (an MCP server wants a clean bearer credential, not cookie + CSRF).
+- Add two BYOA-instance follow-ups to the top of the deployment handoff Active
+  Follow-Up index: a host-agnostic operator self-host paved path (routing to a
+  new gap-closing plan) and an optional public demo-instance exception to
+  ADR-017's private-not-multitenant boundary (routing to a sketch).
+- Fix stale landing copy in `index.html`: the dockerized private self-hosted
+  shape is no longer "provisional until an ADR accepts the operational
+  boundary" — ADR-017 accepted it (2026-06-06). Reworded to the committed
+  operational boundary with a direct ADR-017 link.
+- Draft `docs/plans/byoa-self-host-paved-path.md`: a gap-closing plan to turn the
+  author-only `agonara-vps` CI deployment into a host-agnostic, operator-facing,
+  non-author-verified self-host paved path, so the BYOA "point your agent at your
+  instance" claim is backed by a real route to *having* an instance — without
+  changing ADR-017's boundary. Phases cover a self-host runbook, a backup/restore
+  drill runbook (ADR-017 G3), positioning links, and a non-author verification
+  acceptance gate.
+- Adversarially review the self-host paved-path plan
+  (`docs/reviews/byoa-self-host-paved-path-plan-adversarial-review.md`): fixed
+  two warnings — an "hardcodes /opt/agonara" overclaim (it is an env-overridable
+  default) and an unacknowledged overlap with the existing demos.md Docker Demo
+  (Phase 2 now extends and cross-links it). Declaration block and ADR-017
+  fidelity passed.
+- Sketch `docs/demo-instance-exception.md`: a public, ephemeral demo instance as
+  a deliberate, scoped exception to ADR-017's private-not-multitenant boundary,
+  to give an evaluator's agent a target before they self-host. Framed as a
+  not-accepted proposal pending its own ADR, with proposed shape (single seeded
+  auto-reset instance, sandboxed identities, bounded LLM exposure, full
+  isolation), explicit non-goals (not SaaS, not a self-host replacement), and the
+  guardrails the exception ADR must pin.
+- Adversarially review the demo-instance sketch
+  (`docs/reviews/demo-instance-exception-adversarial-review.md`): fixed one
+  warning — the sketch listed `/admin` as a demo surface, conflicting with the
+  standing public `/admin` block in the deployment handoff; the sketch now
+  conditions `/admin` exposure on the admin-access decision and adds a guardrail
+  requiring the exception ADR to revisit the block rather than override it
+  silently. ADR-017 fidelity and framing passed.
+- Capture the second half of the BYOA claim — how agents people actually use
+  reach an instance — as forward tasks in a discovery-prefixed
+  `docs/backlog-agent-connectivity.md`: token (bearer) auth as an alternative to
+  the cookie+CSRF flow (ADR-008 decision), an optional MCP connector over the
+  OpenAPI contract, the remote-admin access decision (the `/admin`-blocked
+  follow-up viewed from connectivity), and operator guidance that sandboxed
+  agents (Claude Code on web/app) must allowlist the instance domain. Linked it
+  from the central `backlog.md` for discovery.
+- Restructure the backlog into an `agonara/backlog/` folder for discovery:
+  `docs/backlog.md` → `backlog/README.md` (now a topic index), extract the
+  `Agent Process and Skill Improvements` section into `backlog/dev-skills.md`,
+  and move `docs/backlog-agent-connectivity.md` → `backlog/agent-connectivity.md`
+  (dropping the now-redundant prefix). Update the live landing links in
+  `index.html`; historical `docs/backlog.md` references in implemented plans,
+  archives, and the OpenAPI spec are left as closeout records.
+- Make the bearer-token item in `backlog/agent-connectivity.md` explicit as an
+  *addition, not a replacement* — one authorization core with two authentication
+  adapters (cookie + CSRF for browsers, bearer for agents) — and record the
+  rationale (client-kind fit, CSRF applicability, front-door-not-behavior change,
+  non-breaking) plus the token-lifecycle cost that warrants its own ADR-008 spec.
+- Clarify the Agonara landing hero by separating the structured-progress outcome
+  from one concise product-value summary and reserving bring-your-own-agent
+  explanation for the dedicated BYOA section.
+- Add a forward backlog item to resolve the OpenAPI automation traceability
+  review's remaining BYOA source-file absence question, including the expected
+  test-title or audit paths.
+- Record OpenAPI automation process follow-ups in the Agonara backlog so future
+  agents can improve implementation review, process gates, traceability of
+  negative guarantees, OpenAPI migration workflow, and Node toolchain preflight;
+  add the active Agonara Node 22 command rule to project instructions.
+- Implement Agonara OpenAPI automation: route contracts now generate
+  `docs/api/openapi.yml`, `npm test --workspace agonara` checks generated
+  output before Redocly lint, and server dispatch uses registry route matches
+  while preserving existing HTTP behavior.
+- Plan the Agonara OpenAPI automation implementation path, including registry
+  validation, generated-contract checks, registry-backed routing, and closeout
+  documentation gates.
+- Specify OpenAPI automation for Agonara: add a route contract registry and
+  generation-check spec that keeps server routing, route contract tests, and
+  `docs/api/openapi.yml` aligned while preserving the published BYOA skill
+  substrate.
+- Convert the Agonara deployment handoff from a stale-prone release narrative
+  into a short deployment index with explicit front-matter rules prohibiting use
+  as a log, runbook, release note, live-state inventory, or implementation
+  checklist. Keep only source-of-truth links and the future Admin access-layer
+  follow-up.
+- Decide the Agonara bootstrap-secret lifecycle: staging and production use
+  distinct high-entropy host-side secrets, stored only in tier env files and the
+  operator secret store, with rotation and verification rules documented. Clarify
+  the deployment handoff so only Admin access-layer choice and release-smoke
+  maintenance remain as operational follow-ups.
+- Clean up the Agonara deployment handoff after release closeout by removing
+  completed checklist items, stale pre-tag gates, and outdated plan links while
+  keeping only the remaining bootstrap-secret and future Admin access decisions
+  visible.
+- Harden the OpenAPI Redocly lint guard by disabling Redocly telemetry in the
+  project config and lint script environment, keeping the contract gate
+  deterministic and CI-safe.
+- Expose Agonara production publicly at `https://agonara.enoa.ai` with a Cloudflare DNS-only A record and Caddy auto-TLS route to the loopback prod container, keep `/admin` operator-gated with a public `403`, add release smoke for public `/learn`, `/admin` gate, and health/version, and update the deployment handoff with verification evidence.
+- Move the OpenAPI automation follow-up out of `docs/api/TODO.md` and into the
+  project backlog, preserving the forward tasks while removing the TODO file
+  that GitHub issue #514 flagged. Update the landing page to link to the
+  backlog instead of the deleted API TODO.
+- Harden the `/learn` presentation-state closeout by preserving the README's
+  broader Student/Curator product-UI deferral and updating the release-readiness
+  audit to point at the current implementation-notes record instead of removed
+  backlog questions.
+- Resolve the `/learn` presentation-state product-state question: no additional
+  persisted learner-facing presentation state is planned; current selections
+  reload from backend contracts, theme persistence remains UI chrome, and
+  broader Student/Curator UI needs separate specs if it introduces persisted
+  product state.
+- Resolve the membership-policy variants product-state question: no additional
+  variants are planned beyond Student self-join and invitation-only access;
+  cohort, organization, payment, approval, or invitation-expiry policy requires
+  an ADR-backed spec when it amends policy or role vocabulary and must preserve
+  the Admin-vs-Program-role boundary.
+- Resolve the learner-state cache product-state question: no invalidated
+  learner-state cache records are planned beyond implemented read-time
+  derivation; future caches must keep source evidence authoritative and specify
+  invalidation by source evidence or target-link changes.
+- Resolve the learning-path sequencing product-state question: the accepted
+  topic/concept/material navigation graph remains the shared sequencing state,
+  recommendation ranking stays a future downstream artifact, and any personal
+  recommendation state must be specified through Student Workspace ownership.
+- Close the stale standalone Storage ownership backlog framing: Agonara storage
+  now follows implemented module responsibilities and canonical runtime-state
+  docs, while unresolved recommendation, learner-state cache, membership-policy,
+  and `/learn` presentation persistence questions remain tracked as future
+  product-state decisions.
+- Establish the Agonara positioning baseline around turning scattered study into
+  structured progress: add `docs/positioning.md`, update the README opening,
+  and revise the landing hero/how-it-works/BYOA/private-instance copy to lead
+  with serious self-directed learners, program curators, human acceptance, and
+  learner-owned evidence.
+- Add an explicit route inventory guard for the hand-edited OpenAPI contract:
+  `openapi-contract.test.js` now fails when `docs/api/openapi.yml` gains or
+  loses a method+path route without updating the reviewed inventory.
+- Add Redocly lint to the Agonara test gate for the hand-edited OpenAPI
+  contract: `npm test --workspace agonara` now runs `redocly lint
+  docs/api/openapi.yml` after the node test suite.
+- Add an OpenAPI rejection-reason drift guard while the API contract remains
+  hand-edited: `openapi-contract.test.js` now compares every
+  `httpStatusFor(...)` case with `components.schemas.ApiRejectionReason`, and
+  the public `not_found` API rejection is explicitly mapped to HTTP 404.
+- Add an OpenAPI contract guard for the hand-edited API spec: Agonara tests now
+  parse `docs/api/openapi.yml` and fail on external or unresolved local `$ref`
+  entries before drift can reach operator skills or clients.
+- Surface the implemented BYOA operator-skill set on the Agonara landing page:
+  tighten the product-surface wording, add a grouped Operator Skills section
+  for foundations / curator work / role operations, update the getting-started
+  path to include skill-driven operation, and link the skill index plus design
+  brief from the docs section.
+- Archive the remaining BYOA planning handoffs after the downstream work landed:
+  move the operator-skills design brief and repositioning handoff into
+  `docs/plans/implemented/`, update skill/discoverability references to the
+  implemented design brief, and correct the project-local AGENTS note now that
+  `agonara-admin` is implemented.
+- Implement the BYOA **admin** operator skill at `skills/agonara-admin/SKILL.md`
+  (third role of the build sequence): bootstrap the first Admin; create,
+  inspect, disable, and credential-bind identities; grant/revoke Admin authority
+  while preserving the last-admin invariant; inspect operational access and
+  audit events; and perform exceptional membership recovery/revocation with
+  attribution. The skill builds on `agonara-api-access` and
+  `agonara-membership`, stays contract-grounded in `docs/api/openapi.yml`,
+  remains portable and role-scoped, and explicitly excludes curation, learning,
+  normal participant management, and host-side backup/restore execution. Align
+  the Admin membership recovery/revocation OpenAPI request bodies with the
+  implemented runtime fields (`targetIdentityId`,
+  `recoveryReason`/`revocationReason`). Update `skills/README.md` and archive
+  the plan to `docs/plans/implemented/byoa-skills-admin.md`, with verification
+  evidence in `docs/reviews/byoa-skills-admin-verification.md`.
+- Close the Agonara deployment wiring plan after verifying the first release
+  already completed: `agonara_v0.1.0` exists, release-unit run `27073521933`
+  succeeded through `verify`, `core`, `deploy-agonara-staging`,
+  `deploy-agonara-prod`, and `github-release`, and the GitHub Release is
+  published. Capture closeout evidence in
+  `docs/reviews/agonara-deployment-wiring-closeout.md` and archive the plan to
+  `docs/plans/implemented/agonara-deployment-wiring.md`.
+- Close the post-merge verification gaps for the BYOA curator bucket: pass the isolated Agonara suite plus the full root test/build gates after a clean lockfile install, execute all four curator job loops against a real local HTTP instance, and record the redacted transcript plus formal section-by-section skill review. Correct material guidance to use `material_reference` navigation candidates, align invitation guidance and OpenAPI with the runtime-required `{ participationKind: "student", targetIdentityId }` body, add the concrete assessment and LLM-generation request shapes that the permissive contract schemas did not teach, and harden the reviewed guidance with the runtime's `draft_suggestion` status and finite relationship, readiness-target, and LLM-suggestion enums.
+- Satisfy BYOA Student skill **G5 live-instance verification** against public staging with disposable Student data: preview accepted corpus/navigation without creating membership state, join, navigate topic/concept/material, submit quick/open/readiness attempts with idempotency replay, run the open-answer evaluator, read feedback and learner-state evidence, prove ownership denials for another Student, leave/rejoin with prior attempts and learner state preserved, and accept/decline invitation-only program invitations. Capture sanitized evidence in `docs/reviews/byoa-skills-student-live-verification.md`, update the Student skill/OpenAPI open-answer body field to `submittedAnswer`, allow signed-in state-free preview for accepted corpus and navigation, and archive the follow-up plan.
+- Simplify the landing hero copy around the product promise and move the name note directly under the title, make both hero CTAs use the same neutral treatment, replace external-facing mastery-proof phrasing with progress/evidence-of-learning language, remove filler from the product-loop lede, remove duplicated hero runtime/product metadata and the interrupting sticky navigation block, fold the product-surface access paths into the product-loop section, cap the product-loop grid at two columns, make role skills explicit as their own surface card, cap the surface grid at three columns, and combine private-instance runtime details directly into the run section with spacing before the setup steps; remove the stale project TODO for a redundant Markdown documentation index.
+- Implement the BYOA **student** operator skill at `skills/agonara-student/SKILL.md` (the second role of the build sequence), a single skill covering all four phases: discover & join (`GET /programs`, `GET /programs/{id}`, state-free preview via `accepted-corpus` + student-safe `navigation`, self-join/leave/rejoin via `student-membership`, own membership via `/program-memberships/me`, accept/decline leaning on `agonara-membership`), learn & navigate (`learner-state` resume/next-step, `navigation`/`navigation/entities/{id}` concept & material study, `learner-state/targets/concept|material/{id}` personal state), check & assess (student-safe `quick-checks`/`open-answer-checks`/`readiness-checks` deliveries + their revision reads, then `quick-check-attempts`/`open-answer-attempts`/`readiness-check-attempts` submissions with CSRF + idempotency key and feedback reads), and results & progress (`learner-state` summary/weak areas, `learner-state/targets/{targetKind}/{id}` evidence drill-down). Covers STU-01…23. Contract-grounded in `docs/api/openapi.yml` (every cited path/param/body verified), portable (instance URL + credentials + contract only), role-scoped (student ops + the two foundations), and ownership-safe — the load-bearing student boundary (only accepted corpus + own state; preview creates no state; never curator drafts/candidates, answer keys, correctness metadata, acceptance rationale, evaluator/provider internals, or other students' data) is stated up front and enforced via student-safe delivery reads instead of curator candidate routes. Update `skills/README.md` (per-role section), archive the plan to `docs/plans/implemented/byoa-skills-student.md`. **G5 (live-instance verification) is deferred** — the authoring environment had no running instance or Student credentials — and tracked as the unimplemented follow-up `docs/plans/byoa-skills-student-live-verification.md`; a closeout-status note in the archived plan records the outstanding gate so a reader is not misled that every gate passed. Also fixed the archived plan's relative links (`../api`→`../../api`, `byoa-operator-skills.md`→`../…`) broken by the move into `implemented/`. Record a `docs/backlog.md` open question (v0.0.5) for a **skill–contract drift guard**: skills cite concrete `openapi.yml` paths but nothing in CI fails when a contract change orphans a cited route — capture the options (path-existence test vs scheduled `doc-drift-audit` vs manual review) rather than decide now.
+- Implement the BYOA operator-skill **curator bucket** under `skills/` (first role of the build sequence, proving the bucket pattern), built on the api-access + membership foundations: `agonara-curator-corpus` (create a program; propose topics/concepts/materials and navigation as candidates; control the draft↔accepted boundary with explicit accept/reject; read accepted corpus, revisions, and corpus events — CUR-01…03,06,08,10), `agonara-curator-assessment` (open-answer/quick/readiness checks and assessment criteria via candidate→acceptance→revision; learner-state target links; answer keys read only through the `/curation` views and never student-facing — CUR-04,05), `agonara-curator-research` (record external sources, read coverage-gap diagnostics, generate/trace/accept/reject LLM curation suggestions as drafts — accepting a suggestion only *materializes a draft candidate*, not accepted corpus — CUR-07,09,11,12,13), and `agonara-curator-participation` (admission policy, invitations, participants, stop-curating, membership events; leans on `agonara-membership` — CUR-14…18). Each is contract-grounded in `docs/api/openapi.yml` (all 50 cited paths verified present), portable (instance URL + credentials + contract only — no `src/`/tests/tooling/runtime), role-scoped (curator-only ops; no student attempt/progress or admin identity flows), and ownership-safe (drafts/keys curator-only; no reads of private student learning state; accepted changes preserve student state per CUR-10). Update `skills/README.md`, refresh `docs/loc-dashboard.html`, fix the stale "none implemented yet" note in `AGENTS.md`, and archive the plan to `docs/plans/implemented/byoa-skills-curator.md`.
+- Implement the BYOA operator-skill **foundations** under `skills/`: `agonara-api-access` (connect/health, password login + `agonara_session` cookie, whoami/CSRF token, `X-Agonara-CSRF` and `X-Agonara-Idempotency-Key` mutation contract, and the `accepted`/`rejected`/`fault` envelope with retry-vs-stop reasoning) and `agonara-membership` (role-neutral participation model: own memberships/invitations, accept/decline, effective participation, membership history — with explicit carve-outs for curator/student/admin ops). Both are portable (instance URL + credentials + contract only), contract-grounded in `docs/api/openapi.yml`, role-scoped, and ownership-safe. Verified live against a local instance (health bare-doc vs envelope, login→whoami→CSRF-less mutation rejected `csrf_required`→CSRF+idempotent mutation accepted, membership/invitation reads). Update `skills/README.md`, archive the plan to `docs/plans/implemented/byoa-skills-foundations.md`.
+- Reposition Agonara as **bring-your-own-agent (BYOA)** across the product docs — a Product Intent *refinement* (the product is unchanged; the operating model is made explicit). Added a BYOA operating-model section to `docs/intent/intent_learning_program_app.md` (the product is the API + per-role operator skills driven by the operator's own agent, with `/learn`/`/admin` retained as first-class clients), bumped intent to v0.4.0, and ran a backward-traceability check over the 13 intent/story-citing ADRs — all clean (every ADR places UI outside its decision scope; module ownership and ADR-004…018 unaffected). Verified the user-story catalogs are already access-path agnostic (no edits, no new stories). Led with BYOA in `README.md` (project) and the repo-root Components row, repositioned the `index.html` hero + `#surfaces` section and the `architecture.html` deployment narrative to BYOA-primary with UIs/CLI first-class, and added a BYOA positioning touch to the EN/RU brand briefs (v0.2.0, parity preserved). Docs-only; no Node/config/CI/generated artifact touched. Plan archived under `docs/plans/implemented/agonara-byoa-repositioning.md`.
+- Record the Phase 0 positioning decision for the BYOA repositioning: **no ADR — refinement only**. The repositioning introduces no new architectural boundary or invariant (module ownership and ADR-004…018 unchanged); the BYOA-primary/UIs-retained positioning is already recorded in `docs/plans/byoa-operator-skills.md` and is stated directly in Product Intent, so a separate ADR would be over-recording per the `adr-governance` criteria.
+- Expand the BYOA operator-skills build sequence into four My-Way implementation plans under `docs/plans/`, one per bucket/role: `byoa-skills-foundations.md` (shared api-access + membership), `byoa-skills-curator.md` (corpus/assessment/research/participation bucket), `byoa-skills-student.md`, and `byoa-skills-admin.md`. Each is contract-grounded in `docs/api/openapi.yml` and intent-grounded in the role user stories, declares its execution contract (auto-continue, own worktree/branch, push at closeout), and gates every phase on contract-grounding, portability, role-scoping, ownership/invariant-safety, live-instance verification, skill review, and docs. Foundations is the hard dependency for all three role plans. Cross-link the plans from `byoa-operator-skills.md`.
+- Author the implementation plan for the BYOA repositioning (`docs/plans/agonara-byoa-repositioning.md`) from the handoff: a docs-only Product Intent refinement propagated across intent, user stories, README (project + repo-root row), landing, architecture, and brand briefs, with a Phase 0 ADR decision gate, a backward-traceability check against the ADRs that cite intent/stories, and a closing `traceability-review` pass. Follows the My Way mandatory plan structure; module ownership and the `/learn`/`/admin` UIs are explicit guardrails (UIs stay first-class, BYOA primary not exclusive).
+
+- Animate the cards on both `index.html` and `architecture.html`: an IntersectionObserver-driven scroll-reveal (staggered fade/slide-up) plus a consistent hover lift with shadow, gated behind a `js` class so no-JS users see static cards and short-circuited under `prefers-reduced-motion`. Exclude the architecture evaluation-flow `.step` cards from the reveal (hover only): they live in a horizontally-scrollable container that can clip them out of the viewport, where the observer would otherwise leave them permanently hidden on narrow screens. Drop a dead `.cap` transition declaration superseded by the shared rule.
+- Refocus the project landing (`index.html`) on production and how to use it: a product-loop "How it works" section, a "Run your own private instance" getting-started walkthrough with real Docker/CLI commands, and a hero CTA — moving the duplicated ownership and module-boundary detail entirely to `architecture.html`, and flattening the "What is implemented today" cards to vertical titles without the redundant category tags.
+- Remove the developer-facing `agonara-api` skill (built for the wrong consumer — an agent editing the codebase rather than an operator using the product) and clean its references in `AGENTS.md` and `docs/api/TODO.md`. Retain `agonara/skills/` as the parent for future bring-your-own-agent (BYOA) operator skills (seeded README). Capture the operator-skill design in `docs/plans/byoa-operator-skills.md` and a handoff for the separate product/docs repositioning job in `docs/plans/agonara-byoa-repositioning-handoff.md`.
+- Record the BYOA positioning decision in both plan docs: `/learn` and `/admin` UIs stay first-class, BYOA is primary but not exclusive. Add a build sequence and per-skill definition of done to `byoa-operator-skills.md` so it serves as the handoff for the skill-building job.
+- Frame the BYOA work explicitly as a Product Intent **refinement, not a rewrite or pivot** (product purpose unchanged; operating model made explicit), and add a guiding principle for the repositioning edits — lead with intent, keep intent docs about intent rather than loading implementation detail. Fix stale claims surfaced by adversarial review (the landing skill reference was dropped by trunk's redesign, not this branch).
+- Add an API TODO for OpenAPI automation and Agonara API skill alignment, and surface both the OpenAPI contract and implemented API skill on the project landing.
+- Harden the OpenAPI contract after adversarial review by documenting bootstrap `401` rejections, tightening the evaluator tick request body, completing private license metadata, and making public no-auth route `not_found` responses explicit.
+- Add the canonical route-level OpenAPI 3.1 contract at `docs/api/openapi.yml`, covering implemented Agonara HTTP surfaces, shared envelopes, session-cookie auth, CSRF, idempotency, and common rejection reasons.
+- Make Agonara Learn dark by default with a top-right persisted dark/light switcher and focused UI contract coverage.
+- Add a project-local `agonara-api` skill under `agonara/skills/` so agents working on Agonara API routes can ground themselves in the current specs, ownership boundaries, session/CSRF/idempotency rules, response envelopes, redaction constraints, and verification commands without publishing the skill through Dev Skills.
+
+## 2026-06-06
+
+- Provision Agonara GitHub deploy secrets from the inventory-backed RackNerd VPS target: `AGONARA_VPS_HOST=172.245.246.108`, `AGONARA_VPS_USER=root`, and the verified local agent SSH key, leaving trunk-only readiness as the remaining preflight blocker on this branch.
+- Run the Agonara first-release preflight from the current branch, confirming the trunk guard blocks readiness execution, the first release tag is still absent, and the required Agonara GitHub deploy SSH secret names are missing.
+- Audit Agonara release readiness against Product Intent closeout, deployment handoff gates, first-release prerequisites, public-prod open questions, and the readiness script before release execution.
+- Refresh the Identity implementation notes so HTTP audit-event redaction and pagination are no longer described as deferred.
+- Mark the Operational Cross-Cutting first-slice spec implemented with evidence links to request correlation, operational logs, health, diagnostics, redaction, backup/restore logging, and executable acceptance.
+- Align Identity backup/restore operational log components with the operational component-name contract.
+- Implement Identity audit-event HTTP pagination and invalid cursor/limit rejection after adversarial review of the API/CLI spec closeout.
+- Mark the Identity & Role Management API/CLI spec implemented with evidence links to HTTP adapters, CLI commands, focused route/CLI tests, and executable acceptance.
+- Mark the Identity & Role Management first-slice spec implemented with evidence links to the identity command boundary, persistence, backup/restore coverage, HTTP/CLI acceptance, and the Admin UI board.
+- Clarify the Program Shell and Membership API status note so the base slice boundary does not overclaim absence of later invitation and recovery routes.
+- Mark the Program Shell and Membership API spec implemented with evidence links to route adapters, delegated Program commands, focused HTTP coverage, and executable acceptance.
+- Mark the Program Shell and Membership first-slice spec implemented with evidence links to the domain boundary, persistence, backup/restore coverage, effective participation, and membership events.
+- Mark the Corpus Storage and Curator Acceptance API spec implemented with evidence links to route adapters, delegated Corpus commands, focused HTTP coverage, and executable acceptance.
+- Mark the Corpus Storage and Curator Acceptance first-slice spec implemented with evidence links to the domain boundary, persistence, backup/restore coverage, Corpus events, and executable acceptance.
+- Mark the accepted checks and assessment criteria API spec implemented with evidence links to route adapters, delegated Corpus commands, focused HTTP coverage, and executable acceptance.
+- Clarify the accepted checks and assessment criteria first-slice status note so the no-HTTP boundary applies to the domain slice, with the later HTTP surface linked separately.
+- Mark the accepted checks and assessment criteria first-slice spec implemented with evidence links to Corpus command/query behavior, persistence, backup/restore coverage, and executable acceptance.
+- Link the implemented Quick-Check Assessment first-slice status note to the later Quick Check API and Learner-State Interpretation specs so the domain-slice scope boundary is concrete.
+- Mark the Quick-Check Assessment first-slice spec implemented with evidence links to Corpus command/query behavior, Student Workspace attempts, persistence, backup/restore coverage, and executable acceptance.
+- Mark the Student Workspace open-answer attempt first-slice spec implemented with evidence links to the archived plan, Student Workspace domain commands, persistence, backup/restore coverage, and executable acceptance.
+- Align the implemented open-answer attempt API spec with shipped response envelopes: submission returns an attempt summary, and detail reads return the full attempt detail.
+- Mark the Student Workspace open-answer attempt API spec implemented with evidence links to the archived plan, HTTP adapters, domain commands, HTTP route coverage, and executable acceptance.
+- Mark the Student Workspace open-answer evaluation status/evidence spec implemented with evidence links to the archived plan, evaluator-run commands, owner-only reads, persistence, backup/restore coverage, and executable acceptance.
+- Align the implemented evaluator orchestration spec with timeout behavior by documenting `evaluator_job_lease_active` for unexpired leases.
+- Mark the Student Workspace open-answer evaluator orchestration spec implemented with evidence links to the archived plan, command/query surface, persistence, backup/restore coverage, and executable acceptance.
+- Mark the Student Workspace open-answer evaluator worker spec implemented with evidence links to the archived plan, worker command, backup/restore coverage, executable acceptance, and ADR-018 runtime extension.
+- Harden container-boundary readiness against later-stage privilege reset, healthcheck disablement, and entrypoint override by requiring one stage, one healthcheck, and the server command last.
+- Enforce the release container runtime boundary before tagging: pinned slim base, locked install, runtime-owned app/data files, final non-root user, `/data` database path, and Node-native healthcheck.
+- Harden deployment-tier isolation readiness against commented requirements and alternate public port syntax, and require SQLite state to remain on the isolated `/data` volume.
+- Enforce ADR-017 deployment-tier isolation in first-release readiness: distinct Compose project/container identities, loopback ports, env files, data volumes, and required host-side runtime configuration.
+- Tighten deploy image lifecycle readiness to require the staging and production health gates after no-build container replacement, with focused coverage for staging git-SHA tags and production rollback retention.
+- Extend first-release readiness to enforce build-before-downtime deploy ordering, version and git-SHA image tags, no-rebuild startup, and prior-production rollback retention.
+- Bring staging backup/restore rehearsal to production integrity parity by requiring `agonara.sqlite` before transfer or destructive restore, and enforce the staging lifecycle in first-release readiness.
+- Require production backup archives to contain `agonara.sqlite` before service restart, off-host transfer, retention pruning, or reported success, with first-release readiness coverage.
+- Preflight production restore archives for non-empty, readable tar content before shutting down or replacing data, and enforce the destructive ordering, no-rebuild restart, and health gate in first-release readiness.
+- Extend the Agonara first-release readiness check to verify production backup requires off-host storage, recovers service on archive failure, rejects empty archives, transfers successfully, and prunes local retention.
+- Extend the Agonara first-release readiness check to verify production rollback restores the retained image without rebuilding and health-gates service availability independently of the failed target version.
+- Extend the Agonara first-release readiness check to verify deploy jobs are scoped to Agonara tags and production depends on staging.
+- Extend the Agonara first-release readiness check to verify GitHub Release creation depends on successful staging/prod deploy jobs for Agonara tags.
+- Extend the Agonara first-release readiness check to verify release failure notifications trigger on staging/prod deploy failures and report both deploy results.
+- Extend the Agonara first-release readiness check to verify staging failure cleanup and production rollback run before final upload cleanup.
+- Extend the Agonara first-release readiness check to verify release workflow real evaluator smokes clean `/tmp/agonara-smoke.json` and assert the expected health version.
+- Extend the Agonara first-release readiness check to verify release workflow version checks reject non-2xx `/operations/health` responses before parsing JSON.
+- Harden release workflow staging and production version checks to reject non-2xx `/operations/health` responses before parsing JSON.
+- Extend the Agonara first-release readiness check to verify staging and production deploy scripts require HTTP success, structured health JSON, `status: ok`, and the expected version.
+- Harden staging and production deploy health gates to require HTTP success, parse `/operations/health` JSON, and require both `status: ok` and the expected version.
+- Extend the Agonara first-release readiness check to verify the release workflow cleans `/tmp/agonara-deploy` before copying source.
+- Clean `/tmp/agonara-deploy` before copying Agonara release source so stale upload files cannot satisfy current deploy-script preflight.
+- Extend the Agonara first-release readiness check to verify staging/prod deploy scripts preflight required uploaded files before mutating the deploy root.
+- Extend the Agonara first-release readiness check to verify the locked release install wiring: package lock, Dockerfile `npm ci`, release upload, and CI dispatcher path.
+- Include `agonara/package-lock.json` in the root CI dispatcher allowlist so lockfile-only changes run the Agonara core workflow.
+- Add a package-local Agonara lockfile and switch the release Docker build to `npm ci --omit=dev`, with the lockfile uploaded and required by staging/prod deploy scripts.
+- Harden Agonara staging/prod deploy scripts to fail on incomplete uploaded source payloads before mutating the deploy root.
+- Extend the Agonara first-release readiness check to optionally verify the required GitHub deploy secret names with `gh` before the explicit release tag is pushed, without reading secret values.
+- Clean Agonara release source uploads on staging failure and after every prod deploy outcome, while preserving rollback ordering before final cleanup.
+- Harden Agonara release smoke cleanup so staging/prod evaluator-smoke JSON files are removed inside the container even when smoke execution or validation fails.
+- Add an Agonara first-release readiness script that verifies the `agonara_v0.1.0` tag, trunk branch, tag absence, package/manifest sync, Docker-unit status, and release workflow deploy/failure fan-in before the first tag is pushed.
+- Add a fail-fast Agonara release deploy secret preflight in `release-unit.yml` so a missing `AGONARA_VPS_HOST`, `AGONARA_VPS_USER`, or `AGONARA_VPS_SSH_KEY` stops before source upload and reports the missing secret name without printing secret values.
+- Register Agonara as a `0.1.0` Node + Docker release unit, add tag-driven staging and internal-prod deploy jobs to `release-unit.yml`, run real evaluator smokes inside the containers, require both Agonara deploys before GitHub Release, and keep the first release gated on explicit tag push plus GitHub deploy SSH secrets.
+- Deploy the Agonara prod tier internally on the RackNerd VPS as loopback-only `agonara` on `127.0.0.1:18080`, with distinct prod env secrets, a dedicated `agonara-prod` Nomos project/key on `https://nomos.enoa.ai`, a real open-answer evaluator smoke, daily prod off-host backups to the Qwins host, and a prod restore drill from the downloaded off-host artifact.
+- Fix Agonara backup/restore scripts to target the actual Compose-created volume names, add staging backup/restore rehearsal scripts, support a dedicated backup SSH key, reject empty archives, prune local old archives, provision daily staging off-host backups to the Qwins host, and verify a restore drill from the downloaded off-host artifact preserves staging data and health.
+- Provision Agonara staging with a dedicated Nomos staging project/key and smoke-admin credentials, harden the real-provider adapter to request strict JSON-schema output, add an operator smoke script that schedules an exact open-answer evaluator job through the database and triggers it through `/operations/open-answer-evaluator/tick`, copy scripts into the runtime image, and verify a real staging smoke persisted an evaluation through `https://staging.agonara.enoa.ai`.
+- Bring Agonara staging onto public HTTPS: create the DNS-only Cloudflare A record `staging.agonara.enoa.ai -> 172.245.246.108`, install Caddy on the RackNerd Agonara VPS, terminate TLS at Caddy, keep `agonara-staging` bound to loopback `127.0.0.1:18081`, and verify `https://staging.agonara.enoa.ai/operations/health` returns `status: ok` with version `0.0.0`.
+- Complete the first staging dry run on the RackNerd Agonara VPS: deploy `agonara-staging` through the build-on-VPS script, health-gate `/operations/health` on `127.0.0.1:18081`, confirm local image tags for version and git sha, keep staging env secrets host-side at `0600`, and harden the image/scripts for Docker-only hosts (runtime-readable package metadata, Node-native health probes, no host-Node dependency, normalized non-secret source file modes).
+- Add ADR-017 VPS-side deployment scaffolding for Agonara: staging/prod compose files with isolated loopback ports and data volumes, build-on-VPS deploy scripts with version/git-sha tags and rollback image retention, off-host backup and restore scripts, CI path coverage for deploy assets, and contract tests for the deployment invariants.
+- Harden the ADR-018 runtime after adversarial review by sending accepted check prompt and criterion body snapshots to the Nomos adapter, covering missing adapter configuration, failed/malformed provider responses, and operations-session trigger authorization.
+- Implement ADR-018 real-provider runtime for the open-answer evaluator: add the Nomos HTTP provider adapter with output validation and secret-free usage summaries, an LLM evaluator policy helper, async-compatible Student Workspace worker execution, a single-flight operational tick, and `startServer` composition wiring gated on complete `AGONARA_NOMOS_*` runtime config plus an authenticated operations trigger. Mark the real-provider runtime spec implemented, update the deployment handoff, and keep release/deployment wiring pending.
+- Clarify the API-first Agonara stance across the README, landing, architecture, deployment-target note, and workspace products landing: backend contracts own program, corpus, membership, assessment, and learner-state behavior, while `/learn`, `/admin`, the operator CLI, and future Agonara agent skills use or target those contracts rather than becoming separate owners of workflows or state.
+- Add project-local agent instructions declaring that Agonara aims to follow the My Way approach, with `CLAUDE.md` symlinked to `AGENTS.md` for tool compatibility.
+- Adversarial review of the deployment-handoff artifacts (ADR review standard + My Way spec/plan review): back-link ADR-015 to its ADR-018 amendment (cross-ADR consistency); cite the concrete nomos deploy/rollback scripts, loopback compose, and `/operations/health` HEALTHCHECK as build-on-VPS feasibility evidence in ADR-017 (Dimension V); ground the real-provider spec on Nomos's verified `POST /v1/chat/completions` + `Authorization: Bearer` API and make the worker-trigger authorization concrete (operations-access session or configured token); and fix a plan sequencing risk (no `agonara_v*` tag until the deploy jobs land), a machine-specific worktree path, and a doc cross-reference.
+- Close the deployment-handoff gaps with the missing My Way artifacts: accept `docs/adr/adr-017-private-instance-deployment-operational-boundary.md` (G1 + G3 — dockerized staging/prod on agonara-vps, build-on-VPS, loopback + reverse-proxy TLS, ≥ daily off-host `/data` backup with a rehearsed restore drill before prod is real) and promote `docs/deployment-target.md` to point at it; accept `docs/adr/adr-018-open-answer-evaluator-real-provider-runtime.md` (G2 — amends ADR-015 to decide in-process single-flight worker topology, mandatory real-output validation, non-persistent raw artifacts, and env-only Nomos credentials) with the implementable contract in `docs/specs/open-answer-evaluator-real-provider-runtime.md`; add the `docs/plans/agonara-deployment-wiring.md` implementation plan sequencing release-unit registration, VPS scaffolding, CI deploy jobs, and the gated real-LLM smoke; record the resolution in `docs/deployment-handoff.md`; and add ADR-017/018 to the `architecture.html` ADR index.
+- Implement §6a deployed-version surfacing: `GET /operations/health` now returns a `version` field sourced from `package.json` at runtime through the composition root (`startServer` → `createServer`), with unit coverage and a container-smoke version assertion in `agonara-core.yml`, specified by `docs/specs/operations-health-version.md`.
+- Restructure `docs/deployment-handoff.md` after adversarial review to separate the pure deployment-wiring work (release-unit registration, staging/prod compose, deploy scripts, CI deploy job, VPS data + keys) from the net-new Agonara application code it presumed: a new §6 "Application development required" (health version surfacing; a real Nomos provider adapter + evaluator policy + output validation + worker runtime wiring, none of which exist in `src/` today) and a new §5 "Blocking prerequisites (ADR/spec gates)" (deployment ADR, an ADR-015 evaluator-execution/output-schema/artifact-policy spec, backup/restore) promoted ahead of the first-release runbook, which is now marked non-executable until those gates close.
+- Harden the new landing/architecture pages after adversarial review: hedge the landing's deployment language to mark the dockerized self-hosted shape as a provisional target (matching `deployment-target.md`), give each of the five modules a distinct accent so colour uniquely identifies a module, and scope the Identity module block to `identity.js` so `cli.js` is attributed once as the Operator CLI surface.
+- Add `index.html` project landing reflecting the current implementation snapshot (five-module split, shipped slices, product surfaces, stack) in the established Agonara brand style, with a progressive-disclosure link to a new `architecture.html` covering the module responsibility map, ownership rules, open-answer evaluation flow, source layout, runtime/storage, cross-cutting concerns, deployment, and the ADR index; surface both from the workspace landing index and the project README. Point landing/architecture/README/workspace-index links at the consolidated `docs/intent/user-stories.html` path.
+- Consolidate loose `docs/` files into purpose-named subfolders: move the Product Intent set (`intent_learning_program_app.md`, curator/student/admin user stories, `user-stories.html`) under `docs/intent/` and the Program Membership Pre-ADR under `docs/pre-adr/`, then repoint every cross-referencing link in the intent doc, Pre-ADR, ADRs, specs, the identity first-slice note, and archived implementation plans.
+
 ## 2026-06-04
 
 - Close LLM-assisted curation suggestion traceability with implemented spec status, Product Intent evidence links, README/backlog/runtime status updates, parent-plan closeout/archive placement, implemented child-plan references, and LOC dashboard refresh.

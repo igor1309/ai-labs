@@ -1,12 +1,15 @@
 ---
 name: process-gates
 author: Igor Malyarov
-version: "1.1.0"
-description: Pre-commit, step closeout, pre-push, preflight, hard gates, and plan creation locks for implementation work
-trigger: when implementing, committing, pushing code, or creating implementation plans
+version: "1.2.0"
+description: Use during implementation execution for preflight, pre-commit scope checks, step closeout, pre-push/pre-PR gates, hard process gates, and completion verification. For authoring or editing implementation plans, use implementation-plan first.
+trigger: when implementing, running preflight, committing, pushing, opening PRs, closing out steps, or verifying completion
 ---
 
 # Process Gates
+
+For implementation plan authoring and declaration validation, use
+`implementation-plan` first. This skill governs execution after a plan exists.
 
 ## Pre-Commit Scope Check
 
@@ -75,31 +78,6 @@ Before any implementation action (editing files, running implementation tests, o
 - Do not claim completion ("done", "in full", "completed") unless all mandatory gates have passed.
 - If blocked by environment (tooling, network, permissions), report blocked status and list exact unmet gates.
 - If the agent detects it already violated a lock, report that violation immediately before any further action.
-
-## Plan Creation Lock
-
-When creating implementation plans (especially from review findings), the plan must include an explicit execution lock:
-
-1. Include explicit preflight fields:
-   - `Execution mode: auto-continue | human-review-gated`
-   - `Human review between tasks: yes/no`
-   - `Worktree mode: create new | reuse existing | none`
-   - `Expected worktree: <path or pattern>`
-   - `Expected branch: <name or pattern>`
-   - `Push policy: no push | push after task | push at closeout`
-   - `Preflight check: [ ] done`
-2. Start from a new separate git worktree only when the plan declares `Worktree mode: create new`. Reuse the named worktree when the plan declares `Worktree mode: reuse existing`.
-3. Require preflight verification before Step 1; if preflight fails, halt immediately.
-4. Execute one step at a time with a green gate per step.
-5. For each step, run the required targeted verification for the changed unit.
-6. Proceed only if green; if tests fail, fix first and re-run until green.
-7. Commit step changes only after green.
-8. Self-review immediately after each step commit; fix any fail/warning findings immediately, re-test, and commit fixes.
-9. Mark implemented step status in the plan and commit the plan status update.
-10. Continue to the next step automatically when the plan declares `auto-continue`; stop for human review when the plan declares `human-review-gated`.
-11. At completion, run the final gates required by the changed scope.
-12. Move completed plan to the implemented plans directory and commit the move.
-13. Create a PR only when the plan or user asks for one.
 
 ## Plan Structure Gate (Blocking)
 

@@ -1,0 +1,32 @@
+name: agonara-staging
+
+services:
+  agonara:
+    build:
+      context: .
+    image: agonara:staging
+    container_name: agonara-staging
+    restart: unless-stopped
+    env_file: .env.staging
+    environment:
+      AGONARA_DB_PATH: /data/agonara.sqlite
+      AGONARA_BOOTSTRAP_SECRET: ${AGONARA_BOOTSTRAP_SECRET:?Set AGONARA_BOOTSTRAP_SECRET}
+      AGONARA_NOMOS_API_KEY: ${AGONARA_NOMOS_API_KEY:-}
+      AGONARA_NOMOS_BASE_URL: ${AGONARA_NOMOS_BASE_URL:-}
+      AGONARA_NOMOS_MODEL: ${AGONARA_NOMOS_MODEL:-}
+      AGONARA_OPEN_ANSWER_EVALUATOR_TRIGGER_TOKEN: ${AGONARA_OPEN_ANSWER_EVALUATOR_TRIGGER_TOKEN:-}
+      HOST: 0.0.0.0
+      PORT: 8080
+    ports:
+      - "127.0.0.1:18081:8080"
+    volumes:
+      - agonara-staging-data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/operations/health').then(response => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+
+volumes:
+  agonara-staging-data:

@@ -1,0 +1,778 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Agonara — BYOA Learning Program Environment</title>
+<style>
+  :root {
+    --bg:       #141413;
+    --bg-2:     #1e1d1b;
+    --surface:  #232220;
+    --surface-2:#2b2925;
+    --rule:     #3a3732;
+    --rule-2:   #4a463f;
+    --text:     #f4f2ed;
+    --text-2:   #d6d0c4;
+    --text-3:   #a39c90;
+    --accent:   #d97757;
+    --accent-2: #e89479;
+    --student:  #6fb89a;
+    --curator:  #b994e0;
+    --admin:    #d97757;
+    --corpus:   #d9a657;
+    --membership:#7aa2c2;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Inter",
+                 "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Hero */
+  header.hero {
+    padding: 112px 24px 72px;
+    text-align: center;
+    background:
+      radial-gradient(900px 380px at 50% -120px, rgba(217, 119, 87, 0.18) 0%, transparent 65%),
+      var(--bg);
+    border-bottom: 1px solid var(--rule);
+  }
+  .mark {
+    display: inline-block;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-size: 12px;
+    color: var(--text-3);
+    margin-bottom: 24px;
+  }
+  h1.title {
+    font-size: clamp(48px, 7vw, 96px);
+    margin: 0 0 10px;
+    letter-spacing: -0.025em;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .anchor {
+    max-width: 720px;
+    margin: 0 auto;
+    font-size: clamp(17px, 2vw, 20px);
+    color: var(--text-2);
+    line-height: 1.55;
+  }
+  .anchor + .anchor { margin-top: 18px; }
+  .anchor.outcome {
+    max-width: 680px;
+    font-size: clamp(24px, 3.5vw, 36px);
+    line-height: 1.28;
+    color: var(--text);
+    letter-spacing: -0.015em;
+  }
+  .anchor.summary {
+    max-width: 760px;
+    color: var(--text-2);
+  }
+  .agon {
+    margin: 0 auto 34px;
+    max-width: 640px;
+    font-size: 14px;
+    color: var(--text-3);
+    line-height: 1.7;
+  }
+  .agon strong { color: var(--text-2); font-weight: 600; }
+  .agon em { color: var(--accent-2); font-style: normal; }
+  .hero-cta {
+    margin-top: 36px;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  /* Layout */
+  main { max-width: 1080px; margin: 0 auto; padding: 24px; }
+  section { padding: 64px 0; border-bottom: 1px solid var(--rule); scroll-margin-top: 80px; }
+  section:last-of-type { border-bottom: none; }
+  .eyebrow {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    margin: 0 0 12px;
+    font-weight: 600;
+  }
+  h2.section-title,
+  h3.section-title {
+    font-size: clamp(26px, 4vw, 38px);
+    margin: 0 0 14px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .section-subblock {
+    margin-top: 48px;
+    padding-top: 48px;
+    border-top: 1px solid var(--rule);
+  }
+  .lede {
+    max-width: 760px;
+    color: var(--text-2);
+    font-size: 16px;
+    margin: 0 0 36px;
+  }
+  code { font-family: var(--mono); font-size: 0.92em; color: var(--accent-2); }
+
+  /* Generic card grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+    gap: 14px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: border-color .15s ease, background .15s ease, transform .15s ease;
+  }
+  .card:hover { border-color: var(--rule-2); background: var(--bg-2); transform: translateY(-2px); }
+  .card .kicker {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+  }
+  .card.student  .kicker { color: var(--student); }
+  .card.curator  .kicker { color: var(--curator); }
+  .card.admin    .kicker { color: var(--accent-2); }
+  .card h3 { font-size: 16px; margin: 0; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+  .card p { margin: 0; color: var(--text-2); font-size: 14px; line-height: 1.55; }
+
+  /* Getting-started steps */
+  .run-steps { display: grid; gap: 12px; }
+  .run-step {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 18px;
+    align-items: start;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 20px 22px;
+  }
+  .run-step .num {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--accent);
+    border: 1px solid var(--rule-2);
+    border-radius: 8px;
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+  }
+  .run-step h3 { margin: 0 0 6px; font-size: 16px; color: var(--text); font-weight: 600; letter-spacing: -0.01em; }
+  .run-step p { margin: 0; color: var(--text-2); font-size: 14px; line-height: 1.55; }
+  .run-step .cmd {
+    display: block;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--accent-2);
+    background: var(--bg);
+    border: 1px solid var(--rule);
+    border-radius: 7px;
+    padding: 10px 13px;
+    overflow-x: auto;
+    white-space: pre;
+    margin: 12px 0 0;
+  }
+
+  /* Implemented cards — vertical, compact */
+  .caps { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .cap {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .cap:hover { background: var(--bg-2); }
+  .cap h4 { margin: 0 0 6px; font-size: 15px; color: var(--text); font-weight: 600; letter-spacing: -0.01em; }
+  .cap p { margin: 0; font-size: 13px; color: var(--text-3); line-height: 1.5; }
+  .cap code { font-size: 0.88em; }
+
+  /* Operator skills */
+  .skill-groups {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+    gap: 14px;
+  }
+  .skill-group {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 20px 22px;
+  }
+  .skill-group h4 {
+    margin: 0 0 6px;
+    font-size: 16px;
+    color: var(--text);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .skill-group > p {
+    margin: 0 0 16px;
+    font-size: 13px;
+    color: var(--text-3);
+    line-height: 1.5;
+  }
+  .skill-items {
+    display: grid;
+    gap: 14px;
+    margin: 0;
+  }
+  .skill-items div {
+    display: grid;
+    gap: 4px;
+    padding-top: 14px;
+    border-top: 1px solid var(--rule);
+  }
+  .skill-items dt {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent-2);
+  }
+  .skill-items dd {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-2);
+    line-height: 1.45;
+  }
+
+  /* Surfaces */
+  .surfaces { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  .surface-card {
+    background: var(--bg-2);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .surface-card .route {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent-2);
+    margin-bottom: 8px;
+  }
+  .surface-card h3 { margin: 0 0 6px; font-size: 15px; color: var(--text); }
+  .surface-card p { margin: 0; font-size: 13px; color: var(--text-3); line-height: 1.5; }
+
+  /* Stack chips */
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  #stack { margin-bottom: 28px; }
+  .chip {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-2);
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    border-radius: 8px;
+    padding: 9px 14px;
+  }
+  .chip span { color: var(--text-3); }
+
+  /* Deep-dive callout */
+  .callout {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+    background:
+      radial-gradient(600px 200px at 100% 0%, rgba(217, 119, 87, 0.12) 0%, transparent 70%),
+      var(--bg-2);
+    border: 1px solid var(--rule-2);
+    border-radius: 14px;
+    padding: 32px 34px;
+  }
+  .callout .copy { max-width: 620px; }
+  .callout h2 { margin: 0 0 8px; font-size: 24px; color: var(--text); letter-spacing: -0.01em; }
+  .callout p { margin: 0; color: var(--text-2); font-size: 15px; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 22px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #1a120e;
+    font-weight: 600;
+    font-size: 15px;
+    border: 1px solid var(--accent);
+    white-space: nowrap;
+    transition: background .15s ease, transform .15s ease;
+  }
+  .btn:hover { background: var(--accent-2); transform: translateY(-1px); text-decoration: none; }
+  .btn.ghost {
+    background: var(--surface);
+    color: var(--text-2);
+    border-color: var(--rule-2);
+  }
+  .btn.ghost:hover { background: var(--surface-2); color: var(--text); }
+
+  /* Doc links */
+  .links { display: flex; flex-wrap: wrap; gap: 12px; }
+  .doc-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: 1px solid var(--rule-2);
+    border-radius: 8px;
+    color: var(--text-2);
+    font-size: 14px;
+    background: var(--surface);
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .doc-link:hover { color: var(--text); border-color: var(--text-3); text-decoration: none; }
+  .doc-link code { font-family: var(--mono); font-size: 12px; color: var(--text-3); }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--rule);
+    padding: 32px 24px 64px;
+    text-align: center;
+    color: var(--text-3);
+    font-size: 12.5px;
+  }
+  footer .sep { margin: 0 8px; color: var(--rule-2); }
+
+  /* Animated cards — scroll reveal + hover lift */
+  .card, .cap, .surface-card, .run-step, .skill-group {
+    transition:
+      opacity .55s cubic-bezier(.2, .6, .2, 1),
+      transform .35s cubic-bezier(.2, .6, .2, 1),
+      border-color .18s ease,
+      background .18s ease,
+      box-shadow .25s ease;
+  }
+  .card:hover, .cap:hover, .surface-card:hover, .run-step:hover, .skill-group:hover {
+    transform: translateY(-3px);
+    border-color: var(--rule-2);
+    box-shadow: 0 12px 30px -18px rgba(0, 0, 0, 0.7);
+  }
+  .js .card, .js .cap, .js .surface-card, .js .run-step, .js .skill-group {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  .js .card.in-view, .js .cap.in-view, .js .surface-card.in-view, .js .run-step.in-view, .js .skill-group.in-view {
+    opacity: 1;
+    transform: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card, .cap, .surface-card, .run-step, .skill-group,
+    .js .card, .js .cap, .js .surface-card, .js .run-step, .js .skill-group {
+      opacity: 1 !important;
+      transform: none !important;
+      transition: border-color .18s ease, background .18s ease !important;
+    }
+  }
+</style>
+<script>document.documentElement.classList.add('js');</script>
+
+</head>
+<body>
+
+<header class="hero">
+  <div class="mark">Agon · Contest · Discipline · Mastery</div>
+  <h1 class="title">Agonara</h1>
+  <p class="agon">
+    From the ancient Greek <em>agon</em> — exercise, trial, disciplined striving.
+  </p>
+  <p class="anchor outcome">
+    Turn scattered study into structured progress.
+  </p>
+  <p class="anchor summary">
+    Agonara helps serious self-directed learners and program curators shape sources
+    into curated programs, connect concepts and materials, run checks, and ground
+    progress in evidence.
+  </p>
+  <div class="hero-cta">
+    <a class="btn ghost" href="#run">Run a private instance →</a>
+    <a class="btn ghost" href="#use">See how it works</a>
+  </div>
+</header>
+
+<main>
+
+<!-- HOW IT WORKS -->
+<section id="use">
+  <p class="eyebrow">What you do with it</p>
+  <h2 class="section-title">Turn scattered study into a path you can follow</h2>
+  <p class="lede">
+    Serious learning breaks down when materials, concepts, and proof of understanding
+    live in separate piles. Agonara gives you a program-shaped workspace for turning
+    that scatter into a path you can follow, revise, and verify.
+  </p>
+  <div class="grid">
+    <div class="card curator">
+      <span class="kicker curator">Curate</span>
+      <h3>Build from selected sources</h3>
+      <p>Shape sources into a program, connect concepts to materials, define checks, and accept what belongs.</p>
+    </div>
+    <div class="card student">
+      <span class="kicker student">Follow</span>
+      <h3>Learn through a program</h3>
+      <p>Follow selected materials, concepts, checks, and feedback without losing the thread.</p>
+    </div>
+    <div class="card student">
+      <span class="kicker student">Verify</span>
+      <h3>Turn answers into feedback</h3>
+      <p>Move through checks and feedback so progress stays grounded in evidence that belongs to the learner.</p>
+    </div>
+    <div class="card student">
+      <span class="kicker student">Structure</span>
+      <h3>Keep progress durable</h3>
+      <p>Sources are shaped into a program, concepts connect to materials, checks turn answers into feedback, and progress stays grounded in learner-owned evidence.</p>
+    </div>
+  </div>
+
+  <div id="surfaces" class="section-subblock">
+    <p class="eyebrow">BYOA</p>
+    <h3 class="section-title">Bring the agent you already use</h3>
+    <p class="lede">
+      Point it at your Agonara instance and follow role-specific guidance for curating
+      programs, learning through them, and managing the private instance. The agent helps
+      with the workflow. You remain responsible for accepted program content and how
+      learning evidence is used.
+    </p>
+    <p class="lede">
+      Agents can help draft, evaluate, and carry out the workflow, but accepted program
+      content remains a human decision.
+    </p>
+    <div class="section-subblock">
+      <p class="eyebrow">Product surfaces</p>
+      <h3 class="section-title">How people reach it</h3>
+      <p class="lede">
+        The <code>/learn</code> and <code>/admin</code> browser UIs are first-class clients of
+        the same program, corpus, membership, assessment, and learner-state APIs;
+        the operator CLI covers private-instance bootstrap operations. The implemented
+        route-level contract is published as <a href="docs/api/openapi.yml">OpenAPI 3.1</a>,
+        with automation follow-up tracked in <a href="backlog/dev-skills.md">the project backlog</a>.
+      </p>
+    </div>
+    <div class="surfaces">
+      <div class="surface-card">
+        <div class="route">skills/README.md</div>
+        <h3>Role skills</h3>
+        <p>Portable BYOA operator skills for API access, membership, curator work, student learning, and private-instance administration.</p>
+      </div>
+      <div class="surface-card">
+        <div class="route">docs/api/openapi.yml</div>
+        <h3>OpenAPI contract</h3>
+        <p>Published OpenAPI 3.1 contract for the implemented routes, envelopes, auth, CSRF, idempotency, and rejection reasons.</p>
+      </div>
+      <div class="surface-card">
+        <div class="route">GET /learn</div>
+        <h3>Learner &amp; Curator UI</h3>
+        <p>Navigation, Quick Check, learner-state, readiness, membership, coverage-gap, and LLM-suggestion workflows for Students and Program Curators.</p>
+      </div>
+      <div class="surface-card">
+        <div class="route">GET /admin</div>
+        <h3>Admin Board</h3>
+        <p>Operations board for bootstrap, sign in/out, identity management, access &amp; audit inspection, and exceptional membership recovery.</p>
+      </div>
+      <div class="surface-card">
+        <div class="route">/identity · /programs · …</div>
+        <h3>HTTP API</h3>
+        <p>Server-side sessions, CSRF protection, request correlation, health, diagnostics, and audit responses across all domain slices.</p>
+      </div>
+      <div class="surface-card">
+        <div class="route">$ agonara</div>
+        <h3>Operator CLI</h3>
+        <p>Bootstrap status and first-Admin bootstrap for standing up a fresh private instance.</p>
+      </div>
+    </div>
+
+    <div id="operator-skills" class="section-subblock">
+      <p class="eyebrow">Operator skills</p>
+      <h3 class="section-title">Role-specific guidance</h3>
+      <p class="lede">
+        The implemented skills are role-scoped operating manuals for agents using an Agonara
+        instance through the published API contract. Shared foundations handle connection and
+        participation; role skills keep curator, student, and admin jobs separate.
+      </p>
+      <div class="skill-groups">
+        <div class="skill-group">
+          <h4>Foundations</h4>
+          <p>Loaded by every role before the agent performs a job against an instance.</p>
+          <dl class="skill-items">
+            <div>
+              <dt>agonara-api-access</dt>
+              <dd>Health, password login, the <code>agonara_session</code> cookie, CSRF, idempotency keys, and response envelopes.</dd>
+            </div>
+            <div>
+              <dt>agonara-membership</dt>
+              <dd>Role-neutral participation, invitations, effective participation, and membership history.</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div class="skill-group">
+          <h4>Curator Work</h4>
+          <p>A job bucket for building, grounding, assessing, and operating program participation.</p>
+          <dl class="skill-items">
+            <div>
+              <dt>agonara-curator-corpus</dt>
+              <dd>Create programs and move topics, concepts, materials, and navigation from draft candidates to accepted corpus.</dd>
+            </div>
+            <div>
+              <dt>agonara-curator-assessment</dt>
+              <dd>Author open-answer, quick, and readiness checks while keeping answer keys curator-only.</dd>
+            </div>
+            <div>
+              <dt>agonara-curator-research</dt>
+              <dd>Record sources, read coverage gaps, and review LLM-assisted suggestions as draft material.</dd>
+            </div>
+            <div>
+              <dt>agonara-curator-participation</dt>
+              <dd>Manage admission policy, invitations, participants, student removal, and curator leave.</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div class="skill-group">
+          <h4>Role Operations</h4>
+          <p>Single-role operating surfaces for learning and private-instance administration.</p>
+          <dl class="skill-items">
+            <div>
+              <dt>agonara-student</dt>
+              <dd>Discover, join, study, answer checks, and read feedback using only accepted corpus and the student's own state.</dd>
+            </div>
+            <div>
+              <dt>agonara-admin</dt>
+              <dd>Bootstrap and operate a private instance: identities, credentials, Admin authority, audit, access, and exceptional recovery.</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </div>
+  </section>
+
+<!-- RUN IT -->
+<section id="run">
+  <p class="eyebrow">Getting started</p>
+  <h2 class="section-title">Operate a private instance</h2>
+  <p class="lede">
+    Agonara is built for private, recoverable operation. Bootstrap an instance, manage
+    identities and access, inspect audit events, and preserve program and learner state
+    through backup and restore. The dockerized private self-hosted shape is the committed
+    operational boundary, accepted in
+    <a href="docs/adr/adr-017-private-instance-deployment-operational-boundary.md">ADR-017</a>
+    (see <a href="architecture.html#deployment">Architecture → Deployment</a>).
+    A fresh instance is inert until you bootstrap the first Admin. (See full walkthroughs
+    in <a href="docs/demos.md">docs/demos.md</a>.)
+  </p>
+  <div id="stack" class="chips" aria-label="Runtime stack">
+    <span class="chip">Node.js <span>22</span></span>
+    <span class="chip">better-sqlite3 <span>^11.8</span></span>
+    <span class="chip">API-first HTTP <span>backend</span></span>
+    <span class="chip">CSRF <span>protection</span></span>
+    <span class="chip">Request <span>correlation</span></span>
+    <span class="chip">Operator <span>CLI</span></span>
+    <span class="chip">Docker <span>+ Compose</span></span>
+    <span class="chip">Backup <span>/ restore</span></span>
+  </div>
+  <div class="run-steps">
+    <div class="run-step">
+      <span class="num">1</span>
+      <div>
+        <h3>Build &amp; run the container</h3>
+        <p>Docker Compose builds the backend + UI image and runs it with persistent SQLite state. The container refuses to start without an operator bootstrap secret.</p>
+        <code class="cmd">AGONARA_BOOTSTRAP_SECRET=operator-secret \
+  docker compose -f agonara/compose.yaml up --build</code>
+      </div>
+    </div>
+    <div class="run-step">
+      <span class="num">2</span>
+      <div>
+        <h3>Bootstrap the first Admin</h3>
+        <p>The instance becomes operational only after the first-Admin bootstrap establishes an active Admin identity. Secrets are read from JSON stdin, never from CLI arguments.</p>
+        <code class="cmd">printf '%s' '{"bootstrapSecret":"operator-secret","password":"…"}' \
+  | node agonara/src/cli.js identity bootstrap-admin \
+      --login admin@example.test --stdin-json --json</code>
+      </div>
+    </div>
+    <div class="run-step">
+      <span class="num">3</span>
+      <div>
+        <h3>Open the boards or load a skill</h3>
+        <p>Use BYOA by loading the role skill for the job and pointing your agent at the instance URL. The <code>/admin</code> and <code>/learn</code> boards remain available browser clients of the same contracts.</p>
+        <code class="cmd">http://127.0.0.1:18080/admin
+http://127.0.0.1:18080/learn</code>
+      </div>
+    </div>
+    <div class="run-step">
+      <span class="num">4</span>
+      <div>
+        <h3>Create a program &amp; invite people</h3>
+        <p>Use the curator skills or <code>/learn</code> to create a program, accept corpus from trusted sources, and invite Students. From there learners progress and accrue evidence of learning.</p>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- IMPLEMENTED -->
+<section id="implemented">
+  <p class="eyebrow">Current implementation snapshot</p>
+  <h2 class="section-title">What is implemented today</h2>
+  <p class="lede">
+    Backend, domain, and product surfaces shipped as vertical slices. Each slice carries
+    storage, domain commands, session-backed HTTP routes, backup/restore, and — where noted — a <code>/learn</code> product UI.
+  </p>
+  <div class="caps">
+    <div class="cap">
+      <h4>BYOA Operator Skills</h4>
+      <p>Shared API-access and membership foundations, four curator job skills, student operation, and admin operation skills grounded in the OpenAPI contract.</p>
+    </div>
+    <div class="cap">
+      <h4>Identity &amp; Operations</h4>
+      <p>First-Admin bootstrap, local-password login, server-side sessions, Admin identity ops, audit reads, health, diagnostics, request correlation, completion logs, backup &amp; restore.</p>
+    </div>
+    <div class="cap">
+      <h4>Program Shell &amp; Membership</h4>
+      <p>Program creation, Student self-join/leave/rejoin, invitation lifecycle, participant listing, Student removal, curator leave, Admin exceptional recovery/revocation, effective-participation checks, event reads.</p>
+    </div>
+    <div class="cap">
+      <h4>Corpus Curation</h4>
+      <p>Program sources, corpus candidates, acceptance/rejection, accepted corpus revisions, corpus event reads, and backup/restore support.</p>
+    </div>
+    <div class="cap">
+      <h4>Topic / Concept / Material Navigation</h4>
+      <p>Accepted topics, concepts, definitions, principles, material references, relationships, historical revisions, curator candidate routes, student-safe traversal, and a <code>/learn</code> navigation UI.</p>
+    </div>
+    <div class="cap">
+      <h4>Accepted Checks &amp; Criteria</h4>
+      <p>Assessment criteria, open-answer checks, accepted revisions, and curator / student / admin read separation.</p>
+    </div>
+    <div class="cap">
+      <h4>Open-Answer Workspace</h4>
+      <p>Student submission, idempotency, owner-only attempt detail/list reads, evaluation status/evidence reads, evaluator orchestration, worker execution, and backup/restore support.</p>
+    </div>
+    <div class="cap">
+      <h4>Quick Check</h4>
+      <p>Session-backed routes, candidates, accepted revisions, protected answer keys, student-safe delivery projections, immutable attempts, matched evidence, and a <code>/learn</code> Curator/Student UI.</p>
+    </div>
+    <div class="cap">
+      <h4>Learner-State Interpretation</h4>
+      <p>Explicit target-link curation metadata, read-time owner-only progress and weak-area summaries, supporting-evidence target detail, and a <code>/learn</code> learner-state UI.</p>
+    </div>
+    <div class="cap">
+      <h4>Readiness Checks</h4>
+      <p>Topic- or named-period readiness definitions, evidence-backed explicit Student readiness attempts, idempotent retry, owner-only attempt reads, and a <code>/learn</code> readiness UI.</p>
+    </div>
+    <div class="cap">
+      <h4>Coverage Gaps</h4>
+      <p>Read-only Curator Workspace diagnostics over accepted corpus, deterministic <code>draft_guidance</code> reports, protected redaction, and a <code>/learn</code> filtering / drill-down UI.</p>
+    </div>
+    <div class="cap">
+      <h4>LLM-Assisted Suggestions</h4>
+      <p>Curator Workspace-owned deterministic-provider slice for redacted draft suggestions, origin inspection, accept/reject review, draft materialization without accepted-corpus promotion, and a <code>/learn</code> review UI.</p>
+    </div>
+    <div class="cap">
+      <h4>Admin Board</h4>
+      <p>A local operations board for bootstrap, sign in/out, Identity management, operational access inspection, audit inspection, and exceptional membership recovery/revocation.</p>
+    </div>
+  </div>
+  <p class="lede" style="margin-top:32px;">
+    <strong style="color:var(--text-2)">Deferred:</strong> recommendation ranking and persisted mastery models still
+    need separate specs; student- and curator-facing product UI beyond the shipped <code>/learn</code> slices is not yet implemented.
+  </p>
+</section>
+
+<!-- ARCHITECTURE CALLOUT (progressive disclosure) -->
+<section id="architecture">
+  <div class="callout">
+    <div class="copy">
+      <p class="eyebrow" style="margin-bottom:10px;">Go deeper</p>
+      <h2>Architecture &amp; module boundaries</h2>
+      <p>
+        The five-module domain split, ownership rules, roles &amp; membership, source layout,
+        runtime &amp; storage, deployment shape, and the ADR index all live in the architecture
+        companion — one click deeper.
+      </p>
+    </div>
+    <a class="btn" href="architecture.html">Read the architecture →</a>
+  </div>
+</section>
+
+<!-- DOCS -->
+<section id="docs">
+  <p class="eyebrow">Documentation</p>
+  <h2 class="section-title">Explore further</h2>
+  <div class="links">
+    <a class="doc-link" href="architecture.html">Architecture <code>architecture.html</code></a>
+    <a class="doc-link" href="docs/positioning.md">Positioning <code>docs/positioning.md</code></a>
+    <a class="doc-link" href="docs/intent/user-stories.html">User Stories <code>docs/intent/user-stories.html</code></a>
+    <a class="doc-link" href="README.md">Overview <code>README.md</code></a>
+    <a class="doc-link" href="skills/README.md">Operator Skills <code>skills/README.md</code></a>
+    <a class="doc-link" href="docs/demos.md">Demos <code>docs/demos.md</code></a>
+    <a class="doc-link" href="docs/api/openapi.yml">OpenAPI Contract <code>docs/api/openapi.yml</code></a>
+    <a class="doc-link" href="docs/plans/implemented/byoa-operator-skills.md">BYOA Skills Brief <code>docs/plans/implemented/byoa-operator-skills.md</code></a>
+    <a class="doc-link" href="backlog/">Project Backlog <code>backlog/</code></a>
+    <a class="doc-link" href="docs/module_responsibility_map.md">Responsibility Map <code>docs/module_responsibility_map.md</code></a>
+    <a class="doc-link" href="docs/adr/">ADRs <code>docs/adr/</code></a>
+  </div>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var selector = '.card, .cap, .surface-card, .run-step, .skill-group';
+  var cards = document.querySelectorAll(selector);
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce || !('IntersectionObserver' in window)) {
+    for (var i = 0; i < cards.length; i++) cards[i].classList.add('in-view');
+    return;
+  }
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (!entry.isIntersecting) return;
+      var el = entry.target;
+      var siblings = Array.prototype.slice.call(el.parentElement.children);
+      var delay = Math.min(siblings.indexOf(el), 6) * 55;
+      el.style.transitionDelay = delay + 'ms';
+      el.classList.add('in-view');
+      window.setTimeout(function () { el.style.transitionDelay = ''; }, delay + 700);
+      observer.unobserve(el);
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+  for (var j = 0; j < cards.length; j++) observer.observe(cards[j]);
+})();
+</script>
+
+<footer>
+  <span>Agonara · Structured learning program environment</span>
+  <span class="sep">·</span>
+  <span>Curated programs · progression · evidence of learning</span>
+  <span class="sep">·</span>
+  <span>2026-06-07</span>
+</footer>
+
+</body>
+</html>

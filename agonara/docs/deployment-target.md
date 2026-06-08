@@ -7,6 +7,11 @@ version: 0.2.0
 
 # Agonara Deployment Target
 
+> **Status: promoted.** The provisional emerging direction below was accepted and
+> committed by [ADR-017 — Private-Instance Deployment Operational Boundary](adr/adr-017-private-instance-deployment-operational-boundary.md),
+> which also settles backup/restore minimums and admin responsibilities. This
+> document is retained as the Pre-ADR exploration; ADR-017 governs.
+
 ## Context
 
 Agonara is currently scoped as a structured learning program environment for private use by a small group or individual. The deployment shape matters early because it constrains identity setup, admin recovery, storage choices, browser access, backup/restore expectations, and how much operational burden the first implementation may assume.
@@ -14,7 +19,7 @@ Agonara is currently scoped as a structured learning program environment for pri
 Known constraints:
 
 - The target user may run a private Agonara instance rather than use a public SaaS service.
-- The app needs a human web interface and an API-first backend.
+- The app needs a human web interface and an API-first backend that can support browser, operator, and future agent clients.
 - Curator and student state must be recoverable and protected by admin-owned operational controls.
 - The first implementation should avoid requiring a complex platform team to operate it.
 
@@ -54,7 +59,7 @@ Agonara should start with a dockerized private self-hosted deployment.
 
 This is provisional. It becomes a commitment only after an ADR accepts the operational boundary, backup/restore expectations, and minimum admin responsibilities.
 
-The application runtime is a private Agonara backend instance, normally running on a VPS, home server, or similar controlled server environment. The same containerized deployment may run locally for development. Agonara exposes an API-first backend and a network web UI as the primary human interface. The default tenancy model is a small private group.
+The application runtime is a private Agonara backend instance, normally running on a VPS, home server, or similar controlled server environment. The same containerized deployment may run locally for development. Agonara exposes an API-first backend so browser UIs and operator commands act as clients of backend contracts, and future Agonara agent skills can use those same contracts. A network web UI is the primary human interface. The default tenancy model is a small private group.
 
 Agonara may use external managed storage for structured state, material storage, or supporting infrastructure if that does not erase private-instance ownership or recovery expectations.
 
@@ -63,7 +68,8 @@ Operational responsibility belongs to the Agonara admin of the private instance.
 ## Provisional boundaries
 
 - Agonara targets network web access rather than desktop-only local access.
-- The backend remains API-first so future UI surfaces do not own core application behavior.
+- The backend remains API-first so future UI and agent surfaces do not own core application behavior.
+- New browser, CLI, or agent surfaces must be specified against existing or new backend contracts before they add surface-specific workflow state.
 - The deployment target assumes one private instance with a small private group, not public SaaS tenancy.
 - Managed storage may be used only if backup, restore, and admin ownership remain explicit.
 - Admin operations, identity lifecycle, and backup/restore requirements are part of the deployment boundary.
@@ -72,7 +78,7 @@ Operational responsibility belongs to the Agonara admin of the private instance.
 
 Dockerized private self-hosting keeps the production target clear while allowing the same runtime shape to be used during development.
 
-An API-first backend prevents the core application from being coupled to a single UI surface.
+An API-first backend prevents the core application from being coupled to a single UI or agent surface.
 
 A network web UI fits the small private group model better than desktop-local software.
 

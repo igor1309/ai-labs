@@ -3,7 +3,7 @@ date: 2026-06-02
 model: gpt-5
 description: "Spec: Agonara Student Workspace open-answer attempt HTTP API."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -15,11 +15,25 @@ Define the public HTTP API for Agonara Student Workspace-owned open-answer attem
 
 This spec operationalizes [Student Workspace Open-Answer Attempt First Slice](student-workspace-open-answer-attempt-first-slice.md) and [ADR-012](../adr/adr-012-student-workspace-open-answer-attempt-lifecycle.md) through the existing session, CSRF, envelope, pagination, and redaction conventions from [Accepted Checks and Assessment Criteria API](accepted-checks-and-assessment-criteria-api.md). It defines HTTP behavior only; it does not add Student UI, Admin UI, Curator UI, CLI commands, HTTP evaluation mutation routes, LLM provider calls, human review workflow, mastery, weak areas, progress interpretation, quick-check attempts, topic-level attempts, period-level attempts, or institutional grading behavior.
 
+## Implementation status
+
+Implemented by [Student Workspace Open-Answer Attempt HTTP API Implementation Plan](../plans/implemented/student-workspace-open-answer-attempt-api.md).
+
+### Implementation Evidence
+
+- HTTP route adapters and status mapping: [server.js](../../src/server.js)
+- Student Workspace submit/detail/list commands: [student-workspace.js](../../src/student-workspace.js)
+- HTTP route coverage: [http-api.test.js](../../tests/http-api.test.js)
+- Student Workspace domain coverage: [student-workspace.test.js](../../tests/student-workspace.test.js)
+- Executable acceptance coverage: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+
+The implemented attempt API supports session-backed submission with CSRF and idempotency headers, owner-only detail reads, Program-scoped owner-only listing, status/check filters, bounded opaque cursors, rejection/status mapping, production composition wiring, executable acceptance, and redaction of sessions, CSRF tokens, idempotency keys, raw evaluator artifacts, diagnostics, and infrastructure details. It does not implement Student UI, Admin UI, Curator UI, CLI commands, HTTP evaluation mutation routes, provider calls, human review, mastery, weak-area, progress, quick-check, topic-level, period-level, or institutional grading behavior.
+
 ## Public interface
 
 ### Shared result envelope
 
-Successful HTTP operations return:
+#### Successful HTTP Operations
 
 ```ts
 type AcceptedResult<T> = {
@@ -28,7 +42,7 @@ type AcceptedResult<T> = {
 };
 ```
 
-Rejected HTTP operations return:
+#### Rejected HTTP Operations
 
 ```ts
 type RejectedResult = {
@@ -145,11 +159,11 @@ The API never returns the session identifier, CSRF token, idempotency key, or co
 
 | Method | Path | Auth | Accepted response | Rejected status mapping |
 |---|---|---|---|---|
-| `POST` | `/programs/{programId}/open-answer-attempts` | Student session, CSRF header, and idempotency header | `AcceptedResult<{ attempt: OpenAnswerAttemptDetail }>` | `400 validation_failed`, `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 identity_not_active`, `403 csrf_required`, `403 csrf_invalid`, `403 participation_required`, `404 program_not_found`, `404 check_revision_not_found`, `409 check_revision_program_mismatch`, `409 idempotency_conflict` |
-| `GET` | `/open-answer-attempts/{attemptId}` | owning Student session | `AcceptedResult<{ attempt: OpenAnswerAttemptDetail }>` | `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 identity_not_active`, `404 attempt_not_found` |
+| `POST` | `/programs/{programId}/open-answer-attempts` | Student session, CSRF header, and idempotency header | `AcceptedResult<{ attempt: OpenAnswerAttemptSummary }>` | `400 validation_failed`, `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 identity_not_active`, `403 csrf_required`, `403 csrf_invalid`, `403 participation_required`, `404 program_not_found`, `404 check_revision_not_found`, `409 check_revision_program_mismatch`, `409 idempotency_conflict` |
+| `GET` | `/open-answer-attempts/{attemptId}` | owning Student session | `AcceptedResult<OpenAnswerAttemptDetail>` | `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 identity_not_active`, `404 attempt_not_found` |
 | `GET` | `/programs/{programId}/open-answer-attempts?status={status}&checkRevisionId={checkRevisionId}&limit={limit}&cursor={cursor}` | owning Student session | `AcceptedResult<OpenAnswerAttemptList>` | `400 validation_failed`, `401 session_not_found`, `401 session_expired`, `401 session_revoked`, `403 identity_disabled`, `403 identity_not_active`, `403 participation_required`, `404 program_not_found` |
 
-Request bodies:
+### Request Bodies
 
 ```ts
 type SubmitOpenAnswerAttemptRequest = {
@@ -186,9 +200,9 @@ type OpenAnswerAttemptListQuery = {
 15. Attempt submission stores the submitted answer with surrounding whitespace trimmed.
 16. Attempt submission rejects a missing, empty, whitespace-only, non-string, or overlong `X-Agonara-Idempotency-Key` with `400 validation_failed`.
 17. Attempt submission scopes idempotency to the resolved session Identity, requested Program, accepted check revision id, and idempotency key.
-18. Equivalent retries with the same scoped idempotency key return the original accepted attempt detail without creating another attempt.
+18. Equivalent retries with the same scoped idempotency key return the original accepted attempt summary without creating another attempt.
 19. Reusing the same scoped idempotency key with a different submitted answer rejects with `409 idempotency_conflict` without creating or changing an attempt.
-20. Accepted submission returns the created or idempotently resolved attempt detail in `submitted`, `evaluating`, `evaluated`, or `evaluation_failed` status.
+20. Accepted submission returns the created or idempotently resolved attempt summary in `submitted`, `evaluating`, `evaluated`, or `evaluation_failed` status.
 21. Accepted submission snapshots criterion revision ids from the accepted check revision used at submission time.
 22. Later accepted check or accepted criterion revisions must not rewrite any existing attempt response.
 23. Attempt submission must not create, update, reject, or delete accepted checks, accepted criteria, accepted revisions, source records, curator candidates, membership records, sessions, mastery state, weak-area state, progress evidence, or review-scheduling state.
@@ -219,7 +233,7 @@ type OpenAnswerAttemptListQuery = {
 
 ## Tests (required)
 
-HTTP session, CSRF, and idempotency:
+### HTTP Session, CSRF, and Idempotency
 
 1. `POST /programs/{programId}/open-answer-attempts` rejects a missing session with `401 session_not_found`.
 2. `GET /open-answer-attempts/{attemptId}` rejects a disabled session Identity with `403 identity_disabled`.
@@ -228,9 +242,9 @@ HTTP session, CSRF, and idempotency:
 5. `POST /programs/{programId}/open-answer-attempts` rejects a missing or malformed idempotency header with `400 validation_failed`.
 6. Attempt API responses do not include session identifiers, CSRF tokens, cookie headers, or idempotency keys.
 
-Submission route:
+### Submission Route
 
-7. `POST /programs/{programId}/open-answer-attempts` accepts an effective Student with a valid body, CSRF token, and idempotency header, returning a `submitted` attempt detail.
+7. `POST /programs/{programId}/open-answer-attempts` accepts an effective Student with a valid body, CSRF token, and idempotency header, returning a `submitted` attempt summary.
 8. Accepted submission snapshots the accepted check revision id and accepted criterion revision ids.
 9. Accepted submission trims the submitted answer before returning and persisting it.
 10. Submission rejects malformed JSON, non-object JSON, missing bodies, unsupported fields, malformed `checkRevisionId`, and malformed `submittedAnswer` with `400 validation_failed`.
@@ -242,7 +256,7 @@ Submission route:
 16. Conflicting reuse of the same scoped idempotency key rejects with `409 idempotency_conflict`.
 17. Submission does not mutate accepted checks, accepted criteria, accepted revisions, source records, curator candidates, membership records, sessions, mastery state, weak-area state, progress evidence, or review-scheduling state.
 
-Attempt detail route:
+### Attempt Detail Route
 
 18. `GET /open-answer-attempts/{attemptId}` returns the owning Student's attempt detail.
 19. Attempt detail includes evaluation detail when the attempt has a recorded evaluation.
@@ -251,7 +265,7 @@ Attempt detail route:
 22. Attempt detail rejects another Student's attempt with `404 attempt_not_found`.
 23. Attempt detail rejects Program Curator, Admin, and other non-owning callers with `404 attempt_not_found`.
 
-Attempt listing route:
+### Attempt Listing Route
 
 24. `GET /programs/{programId}/open-answer-attempts` returns only attempts owned by the session Student in the requested Program.
 25. Attempt listing rejects callers without effective Student participation with `403 participation_required`.
@@ -261,7 +275,7 @@ Attempt listing route:
 29. Attempt listing rejects invalid limits and malformed, unknown, route-mismatched, status-filter-mismatched, or check-filter-mismatched cursors with `400 validation_failed`.
 30. Attempt listing responses and cursors do not expose secrets, submitted answers inside cursors, idempotency keys, SQL text, stack traces, filesystem paths, database URLs, session identifiers, CSRF tokens, raw LLM prompts, raw model responses, or evaluator diagnostics.
 
-Executable acceptance flow:
+### Executable Acceptance Flow
 
 31. A logged-in Student joins a Program, reads an accepted open-answer check revision, submits an open answer with CSRF and an idempotency header, retries the same submission without duplicating the attempt, receives evaluation detail after Student Workspace records evaluation internally, lists only its own attempts for the Program, fails to read another Student's attempt, and verifies the API exposes no evaluation mutation, UI, CLI, curator attempt-read, admin attempt-read, LLM, human-review, mastery, weak-area, or progress routes.
 

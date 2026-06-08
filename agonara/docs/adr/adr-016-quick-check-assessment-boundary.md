@@ -29,7 +29,7 @@ This ADR decides the next check priority and ownership boundary. It does not dec
 
 [ADR-012](adr-012-student-workspace-open-answer-attempt-lifecycle.md) through [ADR-015](adr-015-open-answer-evaluator-worker-provider-boundary.md) establish the open-answer lifecycle, evaluation governance, orchestration, and worker boundaries. Open-answer evaluation now gives Agonara one governed source of personal assessment evidence.
 
-The [Product Intent](../intent_learning_program_app.md) requires a student to answer checks during study and see whether the result confirms or challenges current understanding. The [Student User Stories](../student_user_stories.md) require quick-check results to become part of the student's personal evidence.
+The [Product Intent](../intent/intent_learning_program_app.md) requires a student to answer checks during study and see whether the result confirms or challenges current understanding. The [Student User Stories](../intent/student_user_stories.md) require quick-check results to become part of the student's personal evidence.
 
 The remaining architectural tension is which accepted check type should follow open answers. Topic-level and period-level checks require readiness interpretation, aggregation, and progression policy. Quick checks can prove a second assessment shape with deterministic feedback while preserving the accepted-corpus / student-state boundary.
 

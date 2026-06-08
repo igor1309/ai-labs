@@ -406,9 +406,11 @@ function listAuditEvents({ database, input, now }) {
 }
 
 function exportBackup({ database, now, operationLog }) {
+  const requestId = randomUUID();
   logBackupOperation(operationLog, now, {
     operation: "identity.backup.export",
     outcome: "started",
+    requestId,
   });
 
   try {
@@ -416,6 +418,7 @@ function exportBackup({ database, now, operationLog }) {
     logBackupOperation(operationLog, now, {
       operation: "identity.backup.export",
       outcome: "accepted",
+      requestId,
     });
     return accepted({ backup });
   } catch {
@@ -423,15 +426,18 @@ function exportBackup({ database, now, operationLog }) {
       operation: "identity.backup.export",
       outcome: "fault",
       errorKind: "unexpected",
+      requestId,
     });
     throw new Error("backup_export_failed");
   }
 }
 
 function restoreBackup({ database, input, now, operationLog }) {
+  const requestId = randomUUID();
   logBackupOperation(operationLog, now, {
     operation: "identity.backup.restore",
     outcome: "started",
+    requestId,
   });
 
   try {
@@ -439,6 +445,7 @@ function restoreBackup({ database, input, now, operationLog }) {
     logBackupOperation(operationLog, now, {
       operation: "identity.backup.restore",
       outcome: "accepted",
+      requestId,
     });
     return accepted({ restored: true });
   } catch (error) {
@@ -447,6 +454,7 @@ function restoreBackup({ database, input, now, operationLog }) {
         operation: "identity.backup.restore",
         outcome: "rejected",
         reason: error.reason,
+        requestId,
       });
       return rejected(error.reason);
     }
@@ -455,6 +463,7 @@ function restoreBackup({ database, input, now, operationLog }) {
       operation: "identity.backup.restore",
       outcome: "fault",
       errorKind: "unexpected",
+      requestId,
     });
     throw new Error("backup_restore_failed");
   }
@@ -598,7 +607,7 @@ function storageReason(error) {
 function logBackupOperation(operationLog, now, event) {
   operationLog({
     occurredAt: now().toISOString(),
-    component: "identity",
+    component: "identity-role-management",
     severity: severityForBackupOutcome(event.outcome),
     ...event,
   });

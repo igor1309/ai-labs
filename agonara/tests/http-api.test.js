@@ -6044,7 +6044,7 @@ test("corpusCandidateRejection_shouldMapStateAndAuthorizationRejections", async 
   }
 });
 
-test("acceptedCorpusList_shouldAuthorizeStudentCuratorAndAdminOnly", async () => {
+test("acceptedCorpusList_shouldAllowSignedInPreviewWithoutMembership", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
     ids: manyIds(80),
   });
@@ -6081,7 +6081,7 @@ test("acceptedCorpusList_shouldAuthorizeStudentCuratorAndAdminOnly", async () =>
     const adminResponse = await fetch(`${baseUrl}/programs/${programId}/accepted-corpus`, {
       headers: { cookie: bootstrap.cookie },
     });
-    const outsiderResponse = await fetch(`${baseUrl}/programs/${programId}/accepted-corpus`, {
+    const previewResponse = await fetch(`${baseUrl}/programs/${programId}/accepted-corpus`, {
       headers: { cookie: outsider.cookie },
     });
 
@@ -6090,16 +6090,13 @@ test("acceptedCorpusList_shouldAuthorizeStudentCuratorAndAdminOnly", async () =>
         student: acceptedCorpusListProjection(await studentResponse.json(), studentResponse.status),
         curator: acceptedCorpusListProjection(await curatorResponse.json(), curatorResponse.status),
         admin: acceptedCorpusListProjection(await adminResponse.json(), adminResponse.status),
-        outsider: { body: await outsiderResponse.json(), statusCode: outsiderResponse.status },
+        preview: acceptedCorpusListProjection(await previewResponse.json(), previewResponse.status),
       },
       {
         student: { statusCode: 200, titles: ["Accepted topic"] },
         curator: { statusCode: 200, titles: ["Accepted topic"] },
         admin: { statusCode: 200, titles: ["Accepted topic"] },
-        outsider: {
-          body: { status: "rejected", reason: "participation_required" },
-          statusCode: 403,
-        },
+        preview: { statusCode: 200, titles: ["Accepted topic"] },
       },
     );
   } finally {
@@ -6575,7 +6572,7 @@ test("navigationReadsHttp_shouldReturnStudentSafeGraphAndHistoricalRevision_onAc
   }
 });
 
-test("navigationHttpRoutes_shouldEnforceSessionCsrfAndParticipation", async () => {
+test("navigationHttpRoutes_shouldEnforceSessionCsrfAndAllowPreviewReads", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
     ids: manyIds(100),
   });
@@ -6631,7 +6628,7 @@ test("navigationHttpRoutes_shouldEnforceSessionCsrfAndParticipation", async () =
       ],
       title: "Malformed relationship draft",
     });
-    const outsiderRead = await fetch(`${baseUrl}/programs/${programId}/navigation`, {
+    const previewRead = await fetch(`${baseUrl}/programs/${programId}/navigation`, {
       headers: { cookie: outsider.cookie },
     });
     const missingEntity = await fetch(`${baseUrl}/navigation/entities/entity-missing`, {
@@ -6648,7 +6645,7 @@ test("navigationHttpRoutes_shouldEnforceSessionCsrfAndParticipation", async () =
         missingCsrf: { body: await missingCsrf.json(), statusCode: missingCsrf.status },
         missingEntity: { body: await missingEntity.json(), statusCode: missingEntity.status },
         missingSession: { body: await missingSession.json(), statusCode: missingSession.status },
-        outsiderRead: { body: await outsiderRead.json(), statusCode: outsiderRead.status },
+        previewRead: navigationSummaryProjection(await previewRead.json(), previewRead.status),
         studentMutation: { body: await studentMutation.json(), statusCode: studentMutation.status },
       },
       {
@@ -6657,7 +6654,7 @@ test("navigationHttpRoutes_shouldEnforceSessionCsrfAndParticipation", async () =
         missingCsrf: { body: { status: "rejected", reason: "csrf_required" }, statusCode: 403 },
         missingEntity: { body: { status: "rejected", reason: "navigation_entity_not_found" }, statusCode: 404 },
         missingSession: { body: { status: "rejected", reason: "session_not_found" }, statusCode: 401 },
-        outsiderRead: { body: { status: "rejected", reason: "participation_required" }, statusCode: 403 },
+        previewRead: { statusCode: 200, topics: ["Vector spaces"], ungroupedConcepts: [], ungroupedMaterials: [] },
         studentMutation: { body: { status: "rejected", reason: "admin_or_curator_required" }, statusCode: 403 },
       },
     );
@@ -9595,6 +9592,100 @@ test("identityAdminEndpoints_shouldCreateIdentityAndListAudit_onAdminSession", a
   }
 });
 
+test("identityAuditEvents_shouldPaginate_onValidLimitAndCursor", async () => {
+  const { baseUrl, close } = await listenWithIdentity({
+    ids: ["identity-1", "credential-1", "session-1", "audit-1", "identity-2", "audit-2"],
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    await fetch(`${baseUrl}/identity/identities`, {
+      body: JSON.stringify({ displayName: "Second Identity" }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+        "x-agonara-csrf": bootstrap.csrfToken,
+      },
+      method: "POST",
+    });
+    const firstPage = await fetch(`${baseUrl}/identity/audit-events?limit=1`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+    const firstPageBody = await firstPage.json();
+    const secondPage = await fetch(
+      `${baseUrl}/identity/audit-events?limit=1&cursor=${firstPageBody.value.nextCursor}`,
+      { headers: { cookie: bootstrap.cookie } },
+    );
+
+    assert.deepEqual(
+      {
+        firstPage: {
+          eventIds: firstPageBody.value.auditEvents.map($0 => $0.id),
+          hasNextCursor: typeof firstPageBody.value.nextCursor === "string",
+          statusCode: firstPage.status,
+        },
+        secondPage: {
+          body: await secondPage.json(),
+          statusCode: secondPage.status,
+        },
+      },
+      {
+        firstPage: {
+          eventIds: ["audit-1"],
+          hasNextCursor: true,
+          statusCode: 200,
+        },
+        secondPage: {
+          body: {
+            status: "accepted",
+            value: {
+              auditEvents: [
+                {
+                  id: "audit-2",
+                  eventType: "identity_created",
+                  actorIdentityId: "identity-1",
+                  targetIdentityId: "identity-2",
+                  targetCredentialId: null,
+                  occurredAt: "2026-05-27T10:00:00.000Z",
+                  outcome: "accepted",
+                  reason: null,
+                },
+              ],
+            },
+          },
+          statusCode: 200,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("identityAuditEvents_shouldRejectInvalidPaginationInputs", async () => {
+  const { baseUrl, close } = await listenWithIdentity();
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const invalidRequests = [];
+    for (const query of ["limit=0", "limit=101", "limit=two", "cursor=not-a-cursor"]) {
+      const response = await fetch(`${baseUrl}/identity/audit-events?${query}`, {
+        headers: { cookie: bootstrap.cookie },
+      });
+      invalidRequests.push({ body: await response.json(), statusCode: response.status });
+    }
+
+    assert.deepEqual(invalidRequests, [
+      { body: { status: "rejected", reason: "validation_failed" }, statusCode: 400 },
+      { body: { status: "rejected", reason: "validation_failed" }, statusCode: 400 },
+      { body: { status: "rejected", reason: "validation_failed" }, statusCode: 400 },
+      { body: { status: "rejected", reason: "validation_failed" }, statusCode: 400 },
+    ]);
+  } finally {
+    await close();
+  }
+});
+
 test("startServer_shouldExposeStudentWorkspaceOpenAnswerRoutes_onProductionComposition", async () => {
   const databaseDirectory = mkdtempSync(join(tmpdir(), "agonara-production-composition-"));
   const databasePath = join(databaseDirectory, "agonara.sqlite");
@@ -10642,6 +10733,63 @@ test("httpApiRoutes_shouldEmitCompletionLogs_onRejectedRequests", async () => {
         requestId: $0.requestId,
         severity: "warning",
       })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("identityMutationRoutes_shouldIncludeAuditEventId_inCompletionLogs", async () => {
+  const logEvents = [];
+  const { baseUrl, close } = await listenWithIdentity({
+    ids: ["identity-1", "credential-1", "session-1", "audit-1", "identity-2", "audit-2", "audit-3"],
+    log: $0 => logEvents.push($0),
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    await fetch(`${baseUrl}/identity/identities`, {
+      body: JSON.stringify({ displayName: "Second Identity" }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+        "x-agonara-csrf": bootstrap.csrfToken,
+        "x-request-id": "identity-audit-created-log",
+      },
+      method: "POST",
+    });
+    await fetch(`${baseUrl}/identity/identities/${bootstrap.body.value.identity.id}/admin`, {
+      headers: {
+        cookie: bootstrap.cookie,
+        "x-agonara-csrf": bootstrap.csrfToken,
+        "x-request-id": "identity-audit-rejected-log",
+      },
+      method: "DELETE",
+    });
+
+    assert.deepEqual(
+      logEvents
+        .filter($0 => $0.requestId?.startsWith("identity-audit-"))
+        .map($0 => ({
+          auditEventId: $0.auditEventId,
+          outcome: $0.outcome,
+          reason: $0.reason,
+          requestId: $0.requestId,
+        })),
+      [
+        {
+          auditEventId: "audit-2",
+          outcome: "accepted",
+          reason: undefined,
+          requestId: "identity-audit-created-log",
+        },
+        {
+          auditEventId: "audit-3",
+          outcome: "rejected",
+          reason: "last_admin_removal",
+          requestId: "identity-audit-rejected-log",
+        },
+      ],
     );
   } finally {
     await close();

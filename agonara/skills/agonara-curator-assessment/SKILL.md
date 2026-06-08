@@ -1,0 +1,142 @@
+---
+name: agonara-curator-assessment
+author: Igor Malyarov
+version: "1.0.0"
+description: Operate as an Agonara program curator to author assessment — open-answer checks, quick checks, and readiness checks via the candidate→acceptance→revision flow, define program-owned assessment criteria, link checks to learner-state targets, and keep answer keys and correctness curator-only (never student-facing). Use when a curator agent is adding or accepting checks or criteria on a program. Builds on the corpus skill; checks attach to accepted corpus entities.
+trigger: when a curator agent needs to author or accept a check (open-answer, quick, readiness), define assessment criteria, or manage learner-state target links
+---
+
+# Agonara curator — assessment
+
+Author the ways a program verifies understanding: **checks** (open-answer, quick,
+readiness), **assessment criteria** that evaluation is tied to, and the
+**learner-state target links** that say which checks produce learner-state
+evidence.
+
+Assumes [`agonara-api-access`](../agonara-api-access/SKILL.md) for auth, the
+`X-Agonara-CSRF` header on mutations, and the envelope. Checks and criteria
+attach to accepted corpus entities, so this skill builds on
+[`agonara-curator-corpus`](../agonara-curator-corpus/SKILL.md) and reuses its
+draft↔accepted (candidate→acceptance→revision) lifecycle — propose a candidate,
+review it, then explicitly accept (never auto-accept).
+
+## The boundary that governs everything here
+
+Answer keys, correct options, correctness metadata, and grading rationale are
+**curator-only**. The contract gives each check two faces:
+
+- a **protected curation view** an accepted revision exposes to curators —
+  `GET /quick-checks/revisions/{revisionId}/curation` and
+  `GET /readiness-checks/revisions/{revisionId}/curation`; and
+- a **student-safe delivery view** — `GET /programs/{programId}/quick-checks`
+  and `GET /quick-checks/revisions/{revisionId}` — which is the redacted form a
+  student receives.
+
+Read keys through the `/curation` views only, and never present `/curation`
+detail as something a student sees. Authoring keys is a curator job; reading
+student attempts, results, or progress is **not** — those belong to the student,
+and a curator does not read private student learning state.
+
+## Open-answer checks
+
+- **Propose** — `POST /programs/{programId}/open-answer-checks/candidates` with
+  `{ "checkKind": "open_answer", "title", "prompt", "criterionEntityIds", "sourceIds"?, "rationale"? }`.
+  `criterionEntityIds` must contain at least one accepted assessment-criterion
+  entity id.
+- **List candidates** — `GET /programs/{programId}/open-answer-checks/candidates`
+  (filter by `status`).
+- **Accept / reject** —
+  `POST /open-answer-checks/candidates/{candidateId}/acceptance` (optionally
+  `{ "targetEntityId" }` to revise an accepted check),
+  `POST /open-answer-checks/candidates/{candidateId}/rejection`.
+- **Read accepted** — `GET /programs/{programId}/open-answer-checks`;
+  `GET /open-answer-checks/revisions/{revisionId}` for revision detail.
+
+## Quick checks
+
+- **Propose** — `POST /programs/{programId}/quick-checks/candidates` with
+  `{ "checkKind": "single_select_quick_check", "title", "prompt", "options", "answerKeyOptionIndex", "sourceIds"?, "rationale"? }`.
+  Provide at least two non-empty options; `answerKeyOptionIndex` is the
+  zero-based index of the correct option.
+- **List** — `GET /programs/{programId}/quick-checks/candidates` (filter by
+  `status`).
+- **Accept / reject** —
+  `POST /quick-checks/candidates/{candidateId}/acceptance`,
+  `POST /quick-checks/candidates/{candidateId}/rejection`.
+- **Curator curation detail** (keys/correct option) —
+  `GET /quick-checks/revisions/{revisionId}/curation`.
+- **Student-safe delivery** (redacted) —
+  `GET /programs/{programId}/quick-checks`,
+  `GET /quick-checks/revisions/{revisionId}`. Use this to confirm what a student
+  would actually see.
+
+## Readiness checks
+
+- **Propose** — `POST /programs/{programId}/readiness-checks/candidates` with
+  `{ "title", "scope", "requirements", "sourceIds"?, "rationale"? }`.
+  A topic scope is
+  `{ "scopeKind": "topic", "topicEntityId" }`; a period scope is
+  `{ "scopeKind": "period", "title", "topicEntityIds" }`. Each requirement is
+  `{ "targetKind", "targetId", "requiredLevel": "developing" | "on_track" }`,
+  where `targetKind` is `assessment_criterion`, `concept`,
+  `material_reference`, `open_answer_check`, `quick_check`, or `topic`.
+- **List** — `GET /programs/{programId}/readiness-checks/candidates` (filter by
+  `status`).
+- **Accept / reject** —
+  `POST /readiness-checks/candidates/{candidateId}/acceptance`,
+  `POST /readiness-checks/candidates/{candidateId}/rejection`.
+- **Curator curation detail** —
+  `GET /readiness-checks/revisions/{revisionId}/curation`.
+
+A readiness check gates progression on its requirements; expect `rejected`
+reasons such as `readiness_requirement_target_not_found` or
+`readiness_requirement_program_mismatch` when a requirement points outside the
+program's accepted corpus.
+
+## Assessment criteria
+
+Criteria let evaluation be tied to the program rather than improvised per attempt
+(CUR-05). Same lifecycle:
+
+- **Propose** — `POST /programs/{programId}/assessment-criteria/candidates`
+  with `{ "title", "body", "sourceIds"?, "rationale"? }`.
+- **List candidates** — `GET /programs/{programId}/assessment-criteria/candidates`
+  (filter by `status`).
+- **Accept / reject** —
+  `POST /assessment-criteria/candidates/{candidateId}/acceptance`,
+  `POST /assessment-criteria/candidates/{candidateId}/rejection`.
+- **Read accepted** — `GET /programs/{programId}/assessment-criteria`;
+  `GET /assessment-criteria/revisions/{revisionId}` for detail.
+
+Accepted criteria are owned by the program corpus; an open-answer prompt or check
+references them rather than carrying improvised, per-attempt rules.
+
+## Learner-state target links
+
+A learner-state target link declares that a check's evidence updates a specific
+learner-state target (which topic/concept/check the attempt is evidence *for*):
+
+- **List** — `GET /programs/{programId}/learner-state-target-links`.
+- **Create** — `POST /programs/{programId}/learner-state-target-links`.
+  Send `{ "evidenceOwnerKind", "evidenceOwnerEntityId", "targetKind",
+  "targetId" }`. Evidence-owner kinds are
+  `accepted_assessment_criterion`, `accepted_open_answer_check`, or
+  `accepted_quick_check`; target kinds are `topic`, `concept`, or
+  `material_reference`.
+- **Delete** — `DELETE /learner-state-target-links/{targetLinkId}`.
+
+Expect `rejected` reasons like `learner_state_target_not_found` or
+`learner_state_target_program_mismatch` when a link points outside the program.
+The link defines the *mapping*; it does not read or expose any individual
+student's learner state.
+
+## Boundaries this skill keeps
+
+- **Keys stay curator-only.** Never surface `/curation` detail (answer keys,
+  correct options, correctness) toward students.
+- **No student attempt or progress flows.** Submitting attempts, reading
+  results, weak areas, or learner state for a student is the student's job, not
+  the curator's — stay out of it.
+- **Corpus structure is elsewhere.** Topics/concepts/materials/navigation live
+  in [`agonara-curator-corpus`](../agonara-curator-corpus/SKILL.md); this skill
+  attaches checks and criteria to that accepted structure.

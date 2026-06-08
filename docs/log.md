@@ -1,5 +1,84 @@
 # Log
 
+## 2026-06-07
+
+- LOC dashboard: refreshed `docs/loc-dashboard.html` from
+  `scripts/loc-dashboard.sh --sort=name` so the summary cards, table totals,
+  data array, and update date match the current repo snapshot (total
+  233,162→243,664).
+- Agonara: close GitHub issue #514 by moving the `agonara/docs/api/TODO.md`
+  OpenAPI automation follow-up into `agonara/docs/backlog.md`, deleting the
+  TODO file, and updating landing links to point at the project backlog.
+- Split implementation-plan authoring guidance out of `process-gates`: add the
+  `implementation-plan` skill for task/phase/step vocabulary, declaration
+  fields, and acceptance checks; narrow `process-gates` to execution gates; and
+  update repo discovery docs so plan files trigger the authoring skill first.
+- Release units: close the Agonara deployment wiring plan after post-release
+  verification. `agonara_v0.1.0` exists, release-unit run `27073521933`
+  completed successfully through verify/core/staging/prod deploy/GitHub Release,
+  and the published release is `agonara v0.1.0`. Archived the plan under
+  `agonara/docs/plans/implemented/` with closeout evidence in
+  `agonara/docs/reviews/agonara-deployment-wiring-closeout.md`.
+- Agonara: update the repo-root `README.md` Components row for the BYOA repositioning — `agonara` is now described as a bring-your-own-agent (BYOA) structured learning program environment (API + per-role operator skills, `/learn`/`/admin` UIs as first-class clients). Aligned with the repositioned project README; the full refinement is logged in `agonara/docs/log.md`.
+- LOC dashboard: refreshed `docs/loc-dashboard.html` from `scripts/loc-dashboard.sh --sort=name` so the summary cards, table totals, data array, and update date match the current repo snapshot (total 230,345→230,740).
+- Agonara: add `agonara/docs/api/TODO.md` for OpenAPI automation and API-skill alignment, and surface the OpenAPI contract plus implemented API skill on the project landing.
+- Agonara: harden the new OpenAPI contract after adversarial review by fixing bootstrap, evaluator tick, metadata, and public no-auth route response warnings.
+- Agonara: add the canonical route-level OpenAPI 3.1 contract under `agonara/docs/api/openapi.yml` and link it from the project README.
+
+## 2026-06-06
+
+- LOC dashboard: refreshed `docs/loc-dashboard.html` from `scripts/loc-dashboard.sh --sort=name` so the summary cards, table totals, data array, and update date match the current repo snapshot (total 220,762→230,345).
+- CI maintenance: upgraded all `actions/setup-node` workflow pins from v4 to v6 after verifying the current major ahead of GitHub's Node 24 runner default migration window.
+- Release units: harden Agonara container readiness against stage, healthcheck, and entrypoint overrides.
+- Release units: enforce Agonara's non-root, runtime-owned container boundary and Node-native healthcheck before the first release tag.
+- Release units: harden Agonara Compose isolation readiness against comment and alternate-port bypasses, and require database state on the isolated data volume.
+- Release units: enforce Agonara staging/production Compose isolation and required runtime configuration in first-release readiness.
+- Release units: tighten Agonara deploy image lifecycle readiness to require post-replacement health gates, staging git-SHA tags, and production rollback retention.
+- Release units: enforce Agonara deploy image lifecycle ordering, immutable version/SHA tags, and production rollback retention in first-release readiness.
+- Release units: enforce Agonara staging backup/restore archive integrity and destructive ordering so the restore rehearsal exercises the same guarantees as production.
+- Release units: require Agonara production backups to contain the restore-critical SQLite database before transfer or reported success, and enforce it in first-release readiness.
+- Release units: harden Agonara production restore against corrupt archives before destructive mutation and enforce the validated restore lifecycle in first-release readiness.
+- Release units: extend the Agonara first-release readiness check to enforce fail-closed production backup, off-host transfer, service recovery, and local retention pruning.
+- Release units: extend the Agonara first-release readiness check to enforce deterministic, version-independent production rollback with a post-restore availability gate.
+- Release units: extend the Agonara first-release readiness check to verify deploy jobs are scoped to Agonara tags and production depends on staging.
+- Release units: extend the Agonara first-release readiness check to verify GitHub Release creation depends on successful staging/prod deploy jobs for Agonara tags.
+- Release units: extend the Agonara first-release readiness check to verify failure notifications trigger on staging/prod deploy failures and report both deploy results.
+- Release units: extend the Agonara first-release readiness check to verify staging failure cleanup and production rollback run before final upload cleanup.
+- Release units: extend the Agonara first-release readiness check to verify workflow real evaluator smokes clean `/tmp/agonara-smoke.json` and assert the expected health version.
+- Release units: extend the Agonara first-release readiness check to verify workflow version checks reject non-2xx `/operations/health` responses before parsing JSON.
+- Release units: harden Agonara workflow staging and production version checks to reject non-2xx `/operations/health` responses before parsing JSON.
+- Release units: extend the Agonara first-release readiness check to verify deploy scripts require HTTP success, structured health JSON, `status: ok`, and the expected version.
+- Agonara: harden staging and production deploy health gates to require HTTP success, parse `/operations/health` JSON, and require both `status: ok` and the expected version.
+- Release units: extend the Agonara first-release readiness check to verify the release workflow cleans `/tmp/agonara-deploy` before copying source.
+- Release units: clean `/tmp/agonara-deploy` before copying Agonara release source so stale upload files cannot satisfy current deploy-script preflight.
+- Release units: extend the Agonara first-release readiness check to verify staging/prod deploy scripts preflight required uploaded files before mutating the deploy root.
+- Release units: extend the Agonara first-release readiness check to verify the locked release install wiring: package lock, Dockerfile `npm ci`, release upload, and CI dispatcher path.
+- CI path filtering: include `agonara/package-lock.json` in the root dispatcher allowlist so lockfile-only changes run the Agonara core workflow.
+- Release units: add a package-local Agonara lockfile and switch the release Docker build to `npm ci --omit=dev`, with the lockfile uploaded and required by staging/prod deploy scripts.
+- Release units: harden Agonara staging/prod deploy scripts to fail on incomplete uploaded source payloads before mutating the deploy root.
+- Release units: extend the Agonara first-release readiness check to optionally verify required GitHub deploy secret names with `gh` before the explicit release tag is pushed, without reading secret values.
+- Release units: clean Agonara release source uploads on staging failure and after every prod deploy outcome, with rollback still running before final cleanup.
+- Release units: harden Agonara release smoke cleanup so transient evaluator-smoke JSON files are removed inside the container on both success and failure.
+- Release units: add `scripts/release/check-agonara-release-readiness.js` to verify Agonara first-release tag, trunk, manifest/package sync, Docker-unit status, and release workflow fan-in before pushing `agonara_v0.1.0`.
+- Release units: add a fail-fast Agonara deploy secret preflight in `release-unit.yml`, validating the required GitHub secret names before source upload without printing secret values.
+- Release units: register Agonara as the `agonara_v0.1.0` Docker-producing unit, wire tag-driven staging and internal-prod deploy jobs into `release-unit.yml`, require both Agonara deploys before GitHub Release, add Agonara to release-validation path filtering, and keep first release execution gated on explicit tag push plus GitHub deploy SSH secrets.
+- Agonara/product landings: clarified the API-first stance as shared backend contracts for browser UIs, operator commands, and future Agonara agent skills, without making UI or agent surfaces separate owners of workflow or state.
+
+- Products page: linked the `AI Labs` header back to the parent internal landing index.
+
+- Claude Insights: added a local landing at `claude-insights/index.html`, linked the products-page card to it, and extended the static products-page link regression.
+
+- Products page: linked the full Clipdeck card to the deployed `clipdeck.enoa.ai` app and covered it with the existing static products-page regression test suite.
+
+- Internal landings: added `nomos/index.html` as the Nomos project landing and linked it from the root landing. Updated `docs/products.html` so product cards with existing local static pages open their landing surfaces (Agonara, Oracle, Dev Skills, Reinix, Nomos, Notio), with a regression test that verifies the links and targets.
+
+- agents: narrowed the OpenClaw tasks/TaskFlow ledger TODO to the ai-labs consequence only. The live VPS diagnosis, storage-path migration, and recheck schedule are inventory-owned; this repo now records only that cron-based agent observability must keep using wrapper-level fail-closed signals until inventory confirms the ledger is usable.
+
+- CI path filtering (`.github/workflows/ci.yml`): scoped the `changes`-job filters so **docs-only edits skip the expensive per-project core jobs** while the required `report` check still runs. Replaced the blanket `<project>/**` globs for the six broad-glob projects (`nomos`, `oracle`, `web-scout`, `corpus-scout`, `reinix`, `agonara`) with explicit allowlists of build/test inputs — source, tests, manifests/lockfiles, and build/deploy descriptors (`Dockerfile`/`compose`/`Caddyfile`) — excluding `docs/`, READMEs, `TODO.md`, landing `*.html`, and reinix `research/`. Verified against each core job's actual `tsc`/`node --test` inputs (e.g. kept `reinix/examples/**` because `local-demo.test.js` asserts the demo README/settings, and `oracle/prompts`+`copy` as runtime inputs). Adversarial pass also narrowed the `shared` filter from `.github/workflows/**` to `*.yml`/`*.yaml` so editing the workflow docs (`README.md`/`CLAUDE.md`/`AGENTS.md`) no longer triggers the entire CI matrix. Documented the allowlist convention in `.github/workflows/README.md`. (Out of scope, noted not fixed: the `release` filter still uses whole-unit globs, so docs changes still run the cheap 5-min `release-validation`.)
+
+- Research: added `research/dokku-vs-current-deployment.md` — an evaluation note answering "is Dokku a better tool for the repo's dockerized deployments than the current pipeline?" Conclusion: no clear win for this repo. Caddy auto-TLS + the tag-driven GitHub-Actions→SSH→`docker compose up -d --build` pipeline already cover Dokku's headline features (TLS, zero-downtime, rollback snapshot); Dokku's `git push`-to-deploy model conflicts with the per-unit tag-driven semver release model; it touches only the minority VPS tier (Cloudflare/Supabase are untouched); Compose-multi-stack and the `notio` Cloudflare Tunnel blunt its value; and a new daemon contradicts the low-overhead goal in `nomos/docs/adr-0001`. Recommendation: keep the current model; for incremental gains, consolidate per-service `deploy-*.sh` into a shared tested helper. Filed as a research note (not an ADR) — it's an evaluation, not a standing decision.
+- My Way research: added `docs/my-way/research/intent-debt-osmani.md` — a tight summary of Addy Osmani's *The Intent Debt* (June 5, 2026) and what it means for My Way. Osmani's "three independent debts" is the *unmanaged* failure state; My Way's traceability chain (`intent → ADR → spec → test names`) re-couples those domains and banks trust at construction time, so it is a stronger answer than the essay's loose remedies — not a target for bolt-on review gates. Honest borrow: vocabulary, not mechanism ("intent debt — the one debt an agent can't repay"). Open question: where a load-bearing-but-sub-ADR rationale (the 300ms-debounce case) lives in the chain.
+
 ## 2026-06-04
 
 - My Way landing (`docs/my-way/landing.html`): added a **Traceability** section and a traceability annotation band under the loop diagram, importing ideas from the `traceability-review` skill — the invariant (no loss, no contradiction; siblings don't diverge), forward/downward allocation completeness, backward/upward orphan (scope-creep) check, and complete enumeration as the method, with suggest-only + umbrella-ledger noted as mechanics.

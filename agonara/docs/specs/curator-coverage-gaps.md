@@ -15,7 +15,7 @@ Define the Curator Workspace-owned read contract for diagnosing missing accepted
 
 ## Public interface
 
-This spec operationalizes curator-side gap discovery for INT-01 from [Product Intent](../intent_learning_program_app.md) while preserving the boundaries in [Module Responsibility Map](../module_responsibility_map.md), [ADR-010](../adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md), [ADR-011](../adr/adr-011-accepted-checks-and-student-assessment-boundary.md), [Topic, Concept, and Material Navigation](topic-concept-material-navigation.md), [Learner-State Interpretation](learner-state-interpretation.md), and [Topic and Period Readiness Checks](topic-period-readiness-checks.md).
+This spec operationalizes curator-side gap discovery for INT-01 from [Product Intent](../intent/intent_learning_program_app.md) while preserving the boundaries in [Module Responsibility Map](../module_responsibility_map.md), [ADR-010](../adr/adr-010-corpus-storage-and-curator-acceptance-boundary.md), [ADR-011](../adr/adr-011-accepted-checks-and-student-assessment-boundary.md), [Topic, Concept, and Material Navigation](topic-concept-material-navigation.md), [Learner-State Interpretation](learner-state-interpretation.md), and [Topic and Period Readiness Checks](topic-period-readiness-checks.md).
 
 Coverage-gap inspection is a read-only Curator Workspace diagnostic. It consumes accepted Program corpus metadata, accepted checks, accepted readiness checks, and active learner-evidence target links. It does not create draft candidates, call an LLM provider, accept content into Corpus Storage, or read Student attempts, progress, weak areas, readiness attempts, sessions, feedback, or evaluator evidence.
 

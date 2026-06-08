@@ -1,0 +1,3520 @@
+openapi: 3.1.0
+info:
+  title: Agonara API
+  version: 0.1.0
+  summary: API-first structured learning program environment.
+  description: |
+    Canonical route-level OpenAPI contract for implemented Agonara HTTP surfaces. Detailed domain field semantics remain governed by the linked Agonara Markdown specs; this contract locks routes, transport security, shared envelopes, request headers, status families, and client-facing operation names.
+  license:
+    name: Private
+    identifier: LicenseRef-Private
+servers:
+  - url: http://127.0.0.1:8080
+    description: Local container or development server
+  - url: https://staging.agonara.enoa.ai
+    description: Private staging instance
+tags:
+  - name: operations
+    description: Health, diagnostics, and operator-triggered runtime work.
+  - name: identity
+    description: Bootstrap, sessions, identities, Admin authority, and audit inspection.
+  - name: programs
+    description: Program shell, participation, invitations, participants, and membership recovery.
+  - name: corpus
+    description: Sources, candidates, accepted corpus, navigation, checks, and target links.
+  - name: student-workspace
+    description: Student-owned attempts, learner state, readiness, and evidence reads.
+  - name: curator-workspace
+    description: Curator-only diagnostics and LLM-assisted draft suggestions.
+  - name: ui
+    description: HTML shells that consume the API.
+security:
+  - sessionCookie: []
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: agonara_session
+      description: Server-managed opaque session cookie.
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-Agonara-CSRF
+      description: Required for state-changing session-backed requests.
+    idempotencyKey:
+      type: apiKey
+      in: header
+      name: X-Agonara-Idempotency-Key
+      description: Required for Student attempt submissions; never returned by the API.
+    operationsTriggerToken:
+      type: http
+      scheme: bearer
+      description: Optional host-configured operations trigger token.
+  headers:
+    SessionCookie:
+      description: Server-managed `agonara_session` cookie.
+      schema:
+        type: string
+  parameters:
+    ProgramId:
+      name: programId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    IdentityId:
+      name: identityId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    IdentityIdQuery:
+      name: identityId
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 1
+    CandidateId:
+      name: candidateId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    RevisionId:
+      name: revisionId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    EntityId:
+      name: entityId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    AttemptId:
+      name: attemptId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    InvitationId:
+      name: invitationId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    SuggestionId:
+      name: suggestionId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    TargetLinkId:
+      name: targetLinkId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    TargetKind:
+      name: targetKind
+      in: path
+      required: true
+      schema:
+        type: string
+        enum:
+          - topic
+          - concept
+          - material
+          - check
+          - readiness_check
+    TargetId:
+      name: targetId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    ParticipationKind:
+      name: participationKind
+      in: path
+      required: true
+      schema:
+        type: string
+        enum:
+          - student
+          - program_curator
+    ParticipationKindQuery:
+      name: participationKind
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+          - student
+          - program_curator
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 1
+    CandidateStatus:
+      name: status
+      in: query
+      required: false
+      schema:
+        $ref: "#/components/schemas/CandidateStatus"
+    InvitationStatus:
+      name: status
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+          - pending
+          - accepted
+          - declined
+          - revoked
+    MembershipStatus:
+      name: status
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+          - active
+          - left
+          - removed
+    AcceptedKind:
+      name: acceptedKind
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+          - topic
+          - concept
+    CheckRevisionId:
+      name: checkRevisionId
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 1
+    ReadinessCheckRevisionId:
+      name: readinessCheckRevisionId
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 1
+    CoverageGapScopeKind:
+      name: scopeKind
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+          - program
+          - topic
+          - period
+    CoverageGapScopeId:
+      name: scopeId
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 1
+    CoverageGapMinimumSeverity:
+      name: minimumSeverity
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+          - info
+          - warning
+          - critical
+    CoverageGapKind:
+      name: gapKind
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 1
+    LlmSuggestionStatus:
+      name: status
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+          - draft_suggestion
+          - materialized
+          - rejected
+    LlmSuggestionKind:
+      name: suggestionKind
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+          - navigation_candidate
+          - quick_check_candidate
+          - assessment_criterion_candidate
+          - open_answer_check_candidate
+          - readiness_check_candidate
+  requestBodies:
+    OptionalObject:
+      required: false
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+    EvaluatorTick:
+      required: false
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              evaluatorJobId:
+                type: string
+                minLength: 1
+            additionalProperties: false
+    IdentityBootstrap:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - bootstrapSecret
+              - displayName
+              - login
+              - password
+            properties:
+              bootstrapSecret:
+                type: string
+                minLength: 1
+              displayName:
+                type: string
+                minLength: 1
+              login:
+                type: string
+                minLength: 1
+              password:
+                type: string
+                minLength: 1
+            additionalProperties: false
+    Login:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - login
+              - password
+            properties:
+              login:
+                type: string
+                minLength: 1
+              password:
+                type: string
+                minLength: 1
+            additionalProperties: false
+    DisplayName:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - displayName
+            properties:
+              displayName:
+                type: string
+                minLength: 1
+            additionalProperties: false
+    LocalPassword:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - login
+              - password
+            properties:
+              login:
+                type: string
+                minLength: 1
+              password:
+                type: string
+                minLength: 1
+            additionalProperties: false
+    CreateProgram:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - title
+            properties:
+              title:
+                type: string
+                minLength: 1
+              description:
+                type: string
+            additionalProperties: false
+    AdmissionPolicy:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - admissionPolicy
+            properties:
+              admissionPolicy:
+                type: string
+                enum:
+                  - self_join
+                  - invitation_only
+            additionalProperties: false
+    CreateInvitation:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - participationKind
+              - targetIdentityId
+            properties:
+              participationKind:
+                type: string
+                const: student
+              targetIdentityId:
+                type: string
+                minLength: 1
+            additionalProperties: false
+    MembershipRecovery:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - programId
+              - targetIdentityId
+              - participationKind
+              - recoveryReason
+            properties:
+              programId:
+                type: string
+                minLength: 1
+              targetIdentityId:
+                type: string
+                minLength: 1
+              participationKind:
+                type: string
+                enum:
+                  - student
+                  - program_curator
+              recoveryReason:
+                type: string
+                minLength: 1
+            additionalProperties: false
+    MembershipRevocation:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - programId
+              - targetIdentityId
+              - participationKind
+              - revocationReason
+            properties:
+              programId:
+                type: string
+                minLength: 1
+              targetIdentityId:
+                type: string
+                minLength: 1
+              participationKind:
+                type: string
+                enum:
+                  - student
+                  - program_curator
+              revocationReason:
+                type: string
+                minLength: 1
+            additionalProperties: false
+    ProgramSource:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - sourceKind
+              - title
+            properties:
+              sourceKind:
+                type: string
+                minLength: 1
+              title:
+                type: string
+                minLength: 1
+              locator:
+                type: string
+              citation:
+                type: string
+            additionalProperties: false
+    CorpusCandidate:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - candidateKind
+              - title
+            properties:
+              candidateKind:
+                type: string
+                minLength: 1
+              title:
+                type: string
+                minLength: 1
+              body:
+                type: string
+              sourceIds:
+                type: array
+                items:
+                  type: string
+                  minLength: 1
+              rationale:
+                type: string
+            additionalProperties: false
+    TargetEntity:
+      required: false
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              targetEntityId:
+                type: string
+                minLength: 1
+            additionalProperties: false
+    NavigationCandidate:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+    AssessmentCriterionCandidate:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+    OpenAnswerCheckCandidate:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+    QuickCheckCandidate:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+    ReadinessCheckCandidate:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+    LearnerStateTargetLink:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+    OpenAnswerAttempt:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - checkRevisionId
+              - submittedAnswer
+            properties:
+              checkRevisionId:
+                type: string
+                minLength: 1
+              submittedAnswer:
+                type: string
+                minLength: 1
+            additionalProperties: false
+    QuickCheckAttempt:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - checkRevisionId
+              - selectedOptionId
+            properties:
+              checkRevisionId:
+                type: string
+                minLength: 1
+              selectedOptionId:
+                type: string
+                minLength: 1
+            additionalProperties: false
+    ReadinessCheckAttempt:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - readinessCheckRevisionId
+            properties:
+              readinessCheckRevisionId:
+                type: string
+                minLength: 1
+            additionalProperties: false
+    LlmCurationSuggestionGeneration:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+  responses:
+    Accepted:
+      description: Operation accepted.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AcceptedObjectResult"
+    Rejected:
+      description: Operation rejected by validation, session, authorization, or domain policy.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/RejectedResult"
+    Fault:
+      description: Unexpected fault; details are redacted.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/FaultResult"
+    Html:
+      description: HTML shell.
+      content:
+        text/html:
+          schema:
+            type: string
+  schemas:
+    AcceptedObjectResult:
+      type: object
+      required:
+        - status
+        - value
+      properties:
+        status:
+          type: string
+          const: accepted
+        value:
+          type: object
+          additionalProperties: true
+      additionalProperties: false
+    RejectedResult:
+      type: object
+      required:
+        - status
+        - reason
+      properties:
+        status:
+          type: string
+          const: rejected
+        reason:
+          $ref: "#/components/schemas/ApiRejectionReason"
+      additionalProperties: false
+    FaultResult:
+      type: object
+      required:
+        - status
+        - reason
+      properties:
+        status:
+          type: string
+          const: fault
+        reason:
+          type: string
+          const: internal_error
+      additionalProperties: false
+    HealthResult:
+      type: object
+      required:
+        - status
+        - checkedAt
+        - requestId
+        - version
+      properties:
+        status:
+          type: string
+          const: ok
+        checkedAt:
+          type: string
+          format: date-time
+        requestId:
+          type: string
+        version:
+          type: string
+      additionalProperties: false
+    CandidateStatus:
+      type: string
+      enum:
+        - draft
+        - accepted
+        - rejected
+    ApiRejectionReason:
+      type: string
+      enum:
+        - accepted_entity_not_found
+        - accepted_entity_program_mismatch
+        - accepted_kind_mismatch
+        - admin_or_curator_required
+        - admin_required
+        - attempt_not_found
+        - bootstrap_already_completed
+        - candidate_already_accepted
+        - candidate_already_rejected
+        - candidate_not_found
+        - check_candidate_already_accepted
+        - check_candidate_already_rejected
+        - check_candidate_not_found
+        - check_entity_not_found
+        - check_entity_program_mismatch
+        - check_revision_not_found
+        - check_revision_program_mismatch
+        - coverage_gap_not_found
+        - coverage_gap_scope_not_found
+        - coverage_gap_scope_program_mismatch
+        - criterion_candidate_already_accepted
+        - criterion_candidate_already_rejected
+        - criterion_candidate_not_found
+        - criterion_entity_not_found
+        - criterion_entity_program_mismatch
+        - criterion_revision_not_found
+        - csrf_invalid
+        - csrf_required
+        - idempotency_conflict
+        - identity_already_has_credential
+        - identity_disabled
+        - identity_not_active
+        - identity_not_found
+        - invalid_bootstrap_secret
+        - invalid_credentials
+        - invitation_conflict
+        - invitation_not_found
+        - invitation_not_pending
+        - last_admin_removal
+        - last_curator_required
+        - learner_state_evidence_owner_not_found
+        - learner_state_evidence_owner_program_mismatch
+        - learner_state_target_link_not_found
+        - learner_state_target_not_found
+        - learner_state_target_program_mismatch
+        - llm_curation_suggestion_already_materialized
+        - llm_curation_suggestion_already_rejected
+        - llm_curation_suggestion_not_found
+        - login_already_bound
+        - membership_already_active
+        - membership_left
+        - membership_missing
+        - membership_removed
+        - navigation_entity_not_found
+        - navigation_prerequisite_cycle
+        - navigation_relationship_endpoint_kind_mismatch
+        - navigation_relationship_program_mismatch
+        - navigation_relationship_self_reference
+        - navigation_revision_not_found
+        - not_found
+        - participation_required
+        - policy_not_satisfied
+        - program_creation_incomplete
+        - program_curator_required
+        - program_not_found
+        - provider_adapter_not_found
+        - provider_budget_exceeded
+        - provider_execution_failed
+        - provider_output_rejected
+        - quick_check_candidate_already_accepted
+        - quick_check_candidate_already_rejected
+        - quick_check_candidate_not_found
+        - quick_check_entity_not_found
+        - quick_check_entity_program_mismatch
+        - quick_check_revision_not_found
+        - quick_check_revision_program_mismatch
+        - rate_limited
+        - readiness_candidate_already_accepted
+        - readiness_candidate_already_rejected
+        - readiness_candidate_not_found
+        - readiness_entity_not_found
+        - readiness_entity_program_mismatch
+        - readiness_requirement_id_conflict
+        - readiness_requirement_program_mismatch
+        - readiness_requirement_target_not_found
+        - readiness_revision_not_found
+        - readiness_revision_program_mismatch
+        - readiness_scope_not_found
+        - readiness_scope_program_mismatch
+        - revision_not_found
+        - selected_option_not_found
+        - session_expired
+        - session_not_found
+        - session_revoked
+        - source_not_found
+        - source_program_mismatch
+        - suggestion_materialization_rejected
+        - suggestion_policy_not_found
+        - suggestion_rejection_failed
+        - target_identity_disabled
+        - target_identity_not_found
+        - unsupported_participation_kind
+        - validation_failed
+        - worker_already_running
+paths:
+  /operations/health:
+    get:
+      tags:
+        - operations
+      operationId: getOperationsHealth
+      summary: Read service health and deployed version.
+      security: []
+      responses:
+        "200":
+          description: Health status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResult"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /operations/diagnostics:
+    get:
+      tags:
+        - operations
+      operationId: getOperationsDiagnostics
+      summary: Read Admin-only operational diagnostics.
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /operations/open-answer-evaluator/tick:
+    post:
+      tags:
+        - operations
+      operationId: tickOpenAnswerEvaluator
+      summary: Trigger one open-answer evaluator worker tick.
+      security:
+        - sessionCookie: []
+        - operationsTriggerToken: []
+      requestBody:
+        $ref: "#/components/requestBodies/EvaluatorTick"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /admin:
+    get:
+      tags:
+        - ui
+      operationId: getAdminBoard
+      summary: Serve the private Admin operations board HTML shell.
+      security: []
+      responses:
+        "200":
+          $ref: "#/components/responses/Html"
+        "404":
+          $ref: "#/components/responses/Rejected"
+  /learn:
+    get:
+      tags:
+        - ui
+      operationId: getLearnShell
+      summary: Serve the learner and curator product HTML shell.
+      security: []
+      responses:
+        "200":
+          $ref: "#/components/responses/Html"
+        "404":
+          $ref: "#/components/responses/Rejected"
+  /identity/bootstrap/status:
+    get:
+      tags:
+        - identity
+      operationId: getIdentityBootstrapStatus
+      summary: Read whether first-Admin bootstrap remains available.
+      security: []
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /identity/bootstrap/admin:
+    post:
+      tags:
+        - identity
+      operationId: bootstrapFirstAdmin
+      summary: Bootstrap the first Admin while no effective Admin exists.
+      security: []
+      requestBody:
+        $ref: "#/components/requestBodies/IdentityBootstrap"
+      responses:
+        "200":
+          description: Operation accepted.
+          headers:
+            Set-Cookie:
+              $ref: "#/components/headers/SessionCookie"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcceptedObjectResult"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "429":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /identity/sessions:
+    post:
+      tags:
+        - identity
+      operationId: createIdentitySession
+      summary: Sign in with a local password credential.
+      security: []
+      requestBody:
+        $ref: "#/components/requestBodies/Login"
+      responses:
+        "200":
+          description: Operation accepted.
+          headers:
+            Set-Cookie:
+              $ref: "#/components/headers/SessionCookie"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcceptedObjectResult"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "429":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /identity/session:
+    delete:
+      tags:
+        - identity
+      operationId: deleteIdentitySession
+      summary: Sign out the current session.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      responses:
+        "200":
+          description: Operation accepted.
+          headers:
+            Set-Cookie:
+              $ref: "#/components/headers/SessionCookie"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcceptedObjectResult"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+    get:
+      tags:
+        - identity
+      operationId: getIdentitySession
+      summary: Resolve the current session and return a CSRF token.
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /identity/identities:
+    get:
+      tags:
+        - identity
+      operationId: listIdentities
+      summary: List identities for an Admin session.
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+    post:
+      tags:
+        - identity
+      operationId: createIdentity
+      summary: Create an identity as an Admin.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        $ref: "#/components/requestBodies/DisplayName"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /identity/identities/{identityId}/local-password:
+    post:
+      tags:
+        - identity
+      operationId: bindLocalPasswordCredential
+      summary: Bind a local password credential to an identity.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/LocalPassword"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /identity/identities/{identityId}/disable:
+    post:
+      tags:
+        - identity
+      operationId: disableIdentity
+      summary: Disable an identity as an Admin.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/OptionalObject"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /identity/identities/{identityId}/admin:
+    delete:
+      tags:
+        - identity
+      operationId: revokeAdmin
+      summary: Revoke Admin authority.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+    post:
+      tags:
+        - identity
+      operationId: grantAdmin
+      summary: Grant Admin authority.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /identity/identities/{identityId}/operational-access:
+    get:
+      tags:
+        - identity
+      operationId: getOperationalAccess
+      summary: Inspect an identity's operational access.
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /identity/audit-events:
+    get:
+      tags:
+        - identity
+      operationId: listAuditEvents
+      summary: List redacted identity and operations audit events.
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs:
+    get:
+      tags:
+        - programs
+      operationId: listPrograms
+      summary: List Program shells visible to the current session.
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+    post:
+      tags:
+        - programs
+      operationId: createProgram
+      summary: Create a Program shell and initial curator membership.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        $ref: "#/components/requestBodies/CreateProgram"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}:
+    get:
+      tags:
+        - programs
+      operationId: getProgram
+      summary: Read a Program shell.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/participation/{participationKind}:
+    get:
+      tags:
+        - programs
+      operationId: getEffectiveParticipation
+      summary: Read effective participation for the current or target identity.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+        - name: participationKind
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /program-memberships/me:
+    get:
+      tags:
+        - programs
+      operationId: listMyProgramMemberships
+      summary: List memberships owned by the current identity.
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/student-membership:
+    delete:
+      tags:
+        - programs
+      operationId: leaveProgramAsStudent
+      summary: Leave a Program as a Student.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+    post:
+      tags:
+        - programs
+      operationId: joinProgramAsStudent
+      summary: Join or rejoin a self-join Program as a Student.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/events:
+    get:
+      tags:
+        - programs
+      operationId: listProgramEvents
+      summary: List Program events for an Admin or Program Curator.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/membership-events:
+    get:
+      tags:
+        - programs
+      operationId: listProgramMembershipEvents
+      summary: List Program Membership events for an Admin or Program Curator.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/admission-policy:
+    patch:
+      tags:
+        - programs
+      operationId: updateProgramAdmissionPolicy
+      summary: Update Program admission policy.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/AdmissionPolicy"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/invitations:
+    get:
+      tags:
+        - programs
+      operationId: listProgramInvitations
+      summary: List Program invitations for a Program Curator.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+    post:
+      tags:
+        - programs
+      operationId: createProgramInvitation
+      summary: Create a Student-targeted Program invitation.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/CreateInvitation"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /program-invitations/me:
+    get:
+      tags:
+        - programs
+      operationId: listMyProgramInvitations
+      summary: List invitations addressed to the current Student identity.
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /program-invitations/{invitationId}/acceptance:
+    post:
+      tags:
+        - programs
+      operationId: acceptProgramInvitation
+      summary: Accept a Program invitation addressed to the current Student.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: invitationId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/OptionalObject"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /program-invitations/{invitationId}/decline:
+    post:
+      tags:
+        - programs
+      operationId: declineProgramInvitation
+      summary: Decline a Program invitation addressed to the current Student.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: invitationId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/OptionalObject"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /program-invitations/{invitationId}/revocation:
+    post:
+      tags:
+        - programs
+      operationId: revokeProgramInvitation
+      summary: Revoke a pending Program invitation.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: invitationId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/OptionalObject"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/participants:
+    get:
+      tags:
+        - programs
+      operationId: listProgramParticipants
+      summary: List Program participants for a Program Curator or Admin.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/participants/student/{identityId}:
+    delete:
+      tags:
+        - programs
+      operationId: removeProgramStudent
+      summary: Remove a Student participant from a Program.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/curator-membership:
+    delete:
+      tags:
+        - programs
+      operationId: leaveProgramAsCurator
+      summary: Leave a Program as a Program Curator.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /admin/program-memberships/recovery:
+    post:
+      tags:
+        - programs
+      operationId: recoverProgramMembership
+      summary: Admin-only exceptional Program Membership recovery.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        $ref: "#/components/requestBodies/MembershipRecovery"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /admin/program-memberships/revocation:
+    post:
+      tags:
+        - programs
+      operationId: revokeProgramMembership
+      summary: Admin-only exceptional Program Membership revocation.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        $ref: "#/components/requestBodies/MembershipRevocation"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/sources:
+    get:
+      tags:
+        - corpus
+      operationId: listProgramSources
+      summary: List Program sources.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+    post:
+      tags:
+        - corpus
+      operationId: recordProgramSource
+      summary: Record a Program source for curator review.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/ProgramSource"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/corpus-candidates:
+    get:
+      tags:
+        - corpus
+      operationId: listCorpusCandidates
+      summary: List Corpus candidates.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+    post:
+      tags:
+        - corpus
+      operationId: createCorpusCandidate
+      summary: Create a Corpus candidate.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/CorpusCandidate"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /corpus-candidates/{candidateId}/acceptance:
+    post:
+      tags:
+        - corpus
+      operationId: acceptCorpusCandidate
+      summary: Accept a Corpus candidate into accepted Program corpus.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: candidateId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/TargetEntity"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /corpus-candidates/{candidateId}/rejection:
+    post:
+      tags:
+        - corpus
+      operationId: rejectCorpusCandidate
+      summary: Reject a Corpus candidate.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: candidateId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/OptionalObject"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/accepted-corpus:
+    get:
+      tags:
+        - corpus
+      operationId: listAcceptedCorpus
+      summary: List accepted Program corpus.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /accepted-corpus-revisions/{revisionId}:
+    get:
+      tags:
+        - corpus
+      operationId: getAcceptedCorpusRevision
+      summary: Read an accepted Corpus revision.
+      parameters:
+        - name: revisionId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/corpus-events:
+    get:
+      tags:
+        - corpus
+      operationId: listCorpusEvents
+      summary: List Corpus events for a Program Curator.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/navigation-candidates:
+    get:
+      tags:
+        - corpus
+      operationId: listNavigationCandidates
+      summary: List navigation candidates.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+    post:
+      tags:
+        - corpus
+      operationId: createNavigationCandidate
+      summary: Create a navigation candidate.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/NavigationCandidate"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /navigation-candidates/{candidateId}/acceptance:
+    post:
+      tags:
+        - corpus
+      operationId: acceptNavigationCandidate
+      summary: Accept a navigation candidate.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: candidateId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/OptionalObject"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /navigation-candidates/{candidateId}/rejection:
+    post:
+      tags:
+        - corpus
+      operationId: rejectNavigationCandidate
+      summary: Reject a navigation candidate.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: candidateId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/OptionalObject"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/navigation:
+    get:
+      tags:
+        - corpus
+      operationId: getProgramNavigation
+      summary: Read student-safe accepted Program navigation.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /navigation/entities/{entityId}:
+    get:
+      tags:
+        - corpus
+      operationId: getNavigationEntity
+      summary: Read student-safe navigation entity detail.
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /navigation/revisions/{revisionId}:
+    get:
+      tags:
+        - corpus
+      operationId: getNavigationRevision
+      summary: Read student-safe navigation revision detail.
+      parameters:
+        - name: revisionId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/assessment-criteria/candidates:
+    get:
+      tags:
+        - corpus
+      operationId: listAssessmentCriterionCandidates
+      summary: List assessment criterion candidates.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+    post:
+      tags:
+        - corpus
+      operationId: createAssessmentCriterionCandidate
+      summary: Create an assessment criterion candidate.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/AssessmentCriterionCandidate"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /assessment-criteria/candidates/{candidateId}/acceptance:
+    post:
+      tags:
+        - corpus
+      operationId: acceptAssessmentCriterionCandidate
+      summary: Accept an assessment criterion candidate.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: candidateId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/TargetEntity"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /assessment-criteria/candidates/{candidateId}/rejection:
+    post:
+      tags:
+        - corpus
+      operationId: rejectAssessmentCriterionCandidate
+      summary: Reject an assessment criterion candidate.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: candidateId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/OptionalObject"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/assessment-criteria:
+    get:
+      tags:
+        - corpus
+      operationId: listAcceptedAssessmentCriteria
+      summary: List accepted assessment criteria.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /assessment-criteria/revisions/{revisionId}:
+    get:
+      tags:
+        - corpus
+      operationId: getAssessmentCriterionRevision
+      summary: Read accepted assessment criterion revision detail.
+      parameters:
+        - name: revisionId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/open-answer-checks/candidates:
+    get:
+      tags:
+        - corpus
+      operationId: listOpenAnswerCheckCandidates
+      summary: List open-answer check candidates.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+    post:
+      tags:
+        - corpus
+      operationId: createOpenAnswerCheckCandidate
+      summary: Create an open-answer check candidate.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/OpenAnswerCheckCandidate"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /open-answer-checks/candidates/{candidateId}/acceptance:
+    post:
+      tags:
+        - corpus
+      operationId: acceptOpenAnswerCheckCandidate
+      summary: Accept an open-answer check candidate.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: candidateId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/TargetEntity"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /open-answer-checks/candidates/{candidateId}/rejection:
+    post:
+      tags:
+        - corpus
+      operationId: rejectOpenAnswerCheckCandidate
+      summary: Reject an open-answer check candidate.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: candidateId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/OptionalObject"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/open-answer-checks:
+    get:
+      tags:
+        - corpus
+      operationId: listAcceptedOpenAnswerChecks
+      summary: List accepted open-answer checks.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /open-answer-checks/revisions/{revisionId}:
+    get:
+      tags:
+        - corpus
+      operationId: getOpenAnswerCheckRevision
+      summary: Read accepted open-answer check revision detail.
+      parameters:
+        - name: revisionId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/quick-checks/candidates:
+    get:
+      tags:
+        - corpus
+      operationId: listQuickCheckCandidates
+      summary: List Quick Check candidates.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+    post:
+      tags:
+        - corpus
+      operationId: createQuickCheckCandidate
+      summary: Create a Quick Check candidate.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/QuickCheckCandidate"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /quick-checks/candidates/{candidateId}/acceptance:
+    post:
+      tags:
+        - corpus
+      operationId: acceptQuickCheckCandidate
+      summary: Accept a Quick Check candidate.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: candidateId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/TargetEntity"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /quick-checks/candidates/{candidateId}/rejection:
+    post:
+      tags:
+        - corpus
+      operationId: rejectQuickCheckCandidate
+      summary: Reject a Quick Check candidate.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: candidateId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/OptionalObject"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /quick-checks/revisions/{revisionId}/curation:
+    get:
+      tags:
+        - corpus
+      operationId: getQuickCheckRevisionForCuration
+      summary: Read protected Quick Check curation detail.
+      parameters:
+        - name: revisionId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/quick-checks:
+    get:
+      tags:
+        - corpus
+      operationId: listQuickCheckDeliveries
+      summary: List student-safe Quick Check deliveries.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /quick-checks/revisions/{revisionId}:
+    get:
+      tags:
+        - corpus
+      operationId: getQuickCheckDelivery
+      summary: Read student-safe Quick Check delivery detail.
+      parameters:
+        - name: revisionId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/readiness-checks/candidates:
+    get:
+      tags:
+        - corpus
+      operationId: listReadinessCheckCandidates
+      summary: List readiness check candidates.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+    post:
+      tags:
+        - corpus
+      operationId: createReadinessCheckCandidate
+      summary: Create a readiness check candidate.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/ReadinessCheckCandidate"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /readiness-checks/candidates/{candidateId}/acceptance:
+    post:
+      tags:
+        - corpus
+      operationId: acceptReadinessCheckCandidate
+      summary: Accept a readiness check candidate.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: candidateId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/TargetEntity"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /readiness-checks/candidates/{candidateId}/rejection:
+    post:
+      tags:
+        - corpus
+      operationId: rejectReadinessCheckCandidate
+      summary: Reject a readiness check candidate.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: candidateId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/OptionalObject"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /readiness-checks/revisions/{revisionId}/curation:
+    get:
+      tags:
+        - corpus
+      operationId: getReadinessCheckRevisionForCuration
+      summary: Read protected readiness check curation detail.
+      parameters:
+        - name: revisionId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/learner-state-target-links:
+    get:
+      tags:
+        - corpus
+      operationId: listLearnerStateTargetLinks
+      summary: List active learner-state evidence target links.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+    post:
+      tags:
+        - corpus
+      operationId: createLearnerStateTargetLink
+      summary: Create an active learner-state evidence target link.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/LearnerStateTargetLink"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /learner-state-target-links/{targetLinkId}:
+    delete:
+      tags:
+        - corpus
+      operationId: deleteLearnerStateTargetLink
+      summary: Delete an active learner-state evidence target link.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: targetLinkId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/open-answer-attempts:
+    get:
+      tags:
+        - student-workspace
+      operationId: listOpenAnswerAttempts
+      summary: List Student-owned open-answer attempts.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+    post:
+      tags:
+        - student-workspace
+      operationId: submitOpenAnswerAttempt
+      summary: Submit a Student-owned open-answer attempt.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/OpenAnswerAttempt"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /open-answer-attempts/{attemptId}:
+    get:
+      tags:
+        - student-workspace
+      operationId: getOpenAnswerAttempt
+      summary: Read Student-owned open-answer attempt detail.
+      parameters:
+        - name: attemptId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/quick-check-attempts:
+    get:
+      tags:
+        - student-workspace
+      operationId: listQuickCheckAttempts
+      summary: List Student-owned Quick Check attempts.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+    post:
+      tags:
+        - student-workspace
+      operationId: submitQuickCheckAttempt
+      summary: Submit a Student-owned Quick Check attempt.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/QuickCheckAttempt"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /quick-check-attempts/{attemptId}:
+    get:
+      tags:
+        - student-workspace
+      operationId: getQuickCheckAttempt
+      summary: Read Student-owned Quick Check attempt detail.
+      parameters:
+        - name: attemptId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/readiness-checks:
+    get:
+      tags:
+        - student-workspace
+      operationId: listReadinessCheckDeliveries
+      summary: List student-safe readiness check deliveries.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/readiness-check-attempts:
+    get:
+      tags:
+        - student-workspace
+      operationId: listReadinessCheckAttempts
+      summary: List Student-owned readiness check attempts.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+    post:
+      tags:
+        - student-workspace
+      operationId: submitReadinessCheckAttempt
+      summary: Submit a Student-owned readiness check attempt.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/ReadinessCheckAttempt"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /readiness-check-attempts/{attemptId}:
+    get:
+      tags:
+        - student-workspace
+      operationId: getReadinessCheckAttempt
+      summary: Read Student-owned readiness check attempt detail.
+      parameters:
+        - name: attemptId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/learner-state:
+    get:
+      tags:
+        - student-workspace
+      operationId: getLearnerState
+      summary: Read owner-only learner-state summary for a Program.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /learner-state/targets/{targetKind}/{targetId}:
+    get:
+      tags:
+        - student-workspace
+      operationId: getLearnerStateTarget
+      summary: Read owner-only learner-state target detail.
+      parameters:
+        - name: targetKind
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+        - name: targetId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/coverage-gaps:
+    get:
+      tags:
+        - curator-workspace
+      operationId: listCoverageGaps
+      summary: List Curator Workspace coverage-gap diagnostics.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/llm-curation-suggestions:
+    get:
+      tags:
+        - curator-workspace
+      operationId: listLlmCurationSuggestions
+      summary: List LLM-assisted curation suggestions.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+    post:
+      tags:
+        - curator-workspace
+      operationId: generateLlmCurationSuggestions
+      summary: Generate deterministic-provider-backed draft curation suggestions.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/LlmCurationSuggestionGeneration"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /llm-curation-suggestions/{suggestionId}:
+    get:
+      tags:
+        - curator-workspace
+      operationId: getLlmCurationSuggestion
+      summary: Read LLM-assisted curation suggestion detail.
+      parameters:
+        - name: suggestionId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /llm-curation-suggestions/{suggestionId}/acceptance:
+    post:
+      tags:
+        - curator-workspace
+      operationId: acceptLlmCurationSuggestion
+      summary: Materialize a draft candidate from an LLM curation suggestion.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: suggestionId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/OptionalObject"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /llm-curation-suggestions/{suggestionId}/rejection:
+    post:
+      tags:
+        - curator-workspace
+      operationId: rejectLlmCurationSuggestion
+      summary: Reject an LLM curation suggestion.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: suggestionId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/OptionalObject"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"

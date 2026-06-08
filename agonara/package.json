@@ -1,19 +1,26 @@
 {
   "name": "agonara",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "bin": {
     "agonara": "src/cli.js"
   },
   "scripts": {
+    "openapi:check": "node scripts/generate-agonara-openapi.mjs --check",
+    "openapi:generate": "node scripts/generate-agonara-openapi.mjs",
+    "openapi:lint": "REDOCLY_SUPPRESS_UPDATE_NOTICE=true REDOCLY_TELEMETRY=off redocly lint docs/api/openapi.yml --config docs/api/redocly.yaml",
     "start": "node src/server.js",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js && npm run openapi:check && npm run openapi:lint"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1"
   },
   "engines": {
     "node": ">=22"
+  },
+  "devDependencies": {
+    "@redocly/cli": "^2.31.6",
+    "yaml": "^2.9.0"
   }
 }

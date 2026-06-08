@@ -3,13 +3,13 @@ title: Agonara Brand Brief
 description: Brand brief for a learning program application centered on curated programs, learner progression, and structured mastery.
 date: 2026-05-26
 model: gpt-5.5-thinking
-version: 0.1.0
+version: 0.2.0
 status: draft
 ---
 
 # Agonara Brand Brief
 
-This is the English version of the v0.1.0 brand brief. The parallel Russian version is [brand_brief_ru.md](brand_brief_ru.md).
+This is the English version of the v0.2.0 brand brief. The parallel Russian version is [brand_brief_ru.md](brand_brief_ru.md).
 
 ## Name
 
@@ -43,6 +43,8 @@ The name works best if the product emphasizes:
 Agonara is a learning program environment for people who want structured progress instead of scattered study.
 
 It helps curators assemble programs and helps learners move through them with clarity, checkpoints, and continuity.
+
+Agonara is bring-your-own-agent: operators run it with their own agent through its API, while curation stays human-owned and AI assists rather than authors — the agent operates the product, not the curriculum.
 
 ## Brand Meaning
 

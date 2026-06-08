@@ -29,7 +29,7 @@ For reviewing design or implementation against architectural intent. Applies on 
 For investigating broken behavior. Applies on a bug report, a stack trace, or the need to trace execution before changing code.
 
 ### Planning ladder
-For aligning before code is written. Applies on a new task with unclear scope, an exploration request, a review finding that needs an implementation plan, or a gate before commit/push.
+For aligning before code is written. Applies on a new task with unclear scope, an exploration request, a review finding that needs an implementation plan, an implementation plan being authored or edited, or a gate before commit/push. Use `implementation-plan` for plan authoring/declaration checks and `process-gates` for execution gates.
 
 ### Release / CI ladder
 For shipping work. Applies on ADRs, per-unit releases, PR CI monitoring, or docker compose / deploy changes.

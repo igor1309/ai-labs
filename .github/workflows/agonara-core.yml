@@ -22,7 +22,7 @@ jobs:
           ref: ${{ inputs.ref || github.sha }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
           cache: npm
@@ -50,6 +50,8 @@ jobs:
             sleep 1
           done
           grep '"status":"ok"' /tmp/agonara-health.json
+          expected_version=$(node -p "require('./agonara/package.json').version")
+          grep "\"version\":\"$expected_version\"" /tmp/agonara-health.json
           curl -fsS -X POST http://127.0.0.1:18080/identity/bootstrap/admin -H 'content-type: application/json' --data '{"bootstrapSecret":"ci-bootstrap-secret","displayName":"CI Admin","login":"ci-admin@example.test","password":"correct horse battery staple"}' > /tmp/agonara-bootstrap.json
           grep '"status":"accepted"' /tmp/agonara-bootstrap.json
           grep '"isAdmin":true' /tmp/agonara-bootstrap.json

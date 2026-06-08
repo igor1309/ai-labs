@@ -3,7 +3,7 @@ date: 2026-05-27
 model: gpt-5
 description: "Spec: Agonara Program shell creation and Program Membership v0.0.1 contract."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -14,6 +14,20 @@ type: spec
 Define the Agonara v0.0.1 backend contract for creating minimal Program shells, establishing initial Program Curator participation, allowing Student self-join participation, and answering effective participation decisions.
 
 This spec operationalizes [ADR-009](../adr/adr-009-program-shell-and-initial-curator-participation.md) and the Program Membership decisions in [ADR-004](../adr/adr-004-program-membership-owns-program-participation.md) through [ADR-007](../adr/adr-007-effective-participation-authorization-contract.md).
+
+## Implementation status
+
+Implemented by [Program Shell and Membership First-Slice Implementation Plan](../plans/implemented/program-shell-and-membership-first-slice.md).
+
+### Implementation Evidence
+
+- Program shell, membership, event, and effective-participation command/query boundary: [program.js](../../src/program.js)
+- Program shell, membership, event, backup, and restore persistence support: [storage.js](../../src/storage.js)
+- Program command/query coverage: [program.test.js](../../tests/program.test.js)
+- Storage persistence coverage: [storage.test.js](../../tests/storage.test.js)
+- Backup/restore coverage: [backup-restore.test.js](../../tests/backup-restore.test.js)
+
+The implemented domain slice supports Program shell creation with atomic initial Program Curator membership, Student self-join/leave/rejoin membership, read-only effective participation, scoped Program and Program Membership event reads, redaction, backup/restore preservation, and orphan Program-shell restore rejection. This domain-slice implementation did not introduce invitation workflows, Program archival/deletion/ownership transfer, controlled admission, curator leave/removal, Admin recovery mutations, accepted corpus editing, Student Workspace state, UI, or HTTP routes; the later public HTTP surface is specified separately by [Program Shell and Membership API](program-shell-and-membership-api.md).
 
 ## Public interface
 
@@ -95,7 +109,7 @@ leaveStudentProgram(input: {
 }) -> LeaveStudentProgramResult
 ```
 
-Each command result is either:
+### Command Result Envelope
 
 - `{ status: "accepted"; value: ... }`
 - `{ status: "rejected"; reason: ProgramRejectionReason }`
@@ -260,7 +274,7 @@ type ProgramRejectionReason =
 
 ## Tests (required)
 
-Program shell creation:
+### Program Shell Creation
 
 1. `createProgramShell` accepts for an active Identity and returns a Program shell with `admissionPolicy: "self_join"`.
 2. Accepted Program creation creates active `program_curator` membership for the creator.
@@ -273,7 +287,7 @@ Program shell creation:
 9. Program creation failure during initial curator membership leaves no visible orphan Program shell.
 10. Rejected Program creation with a known acting Identity creates a rejected Program event.
 
-Program discovery:
+### Program Discovery
 
 11. `listProgramShells` returns Program shells visible to an active Identity.
 12. `listProgramShells` rejects unknown acting Identity with `identity_not_found`.
@@ -283,7 +297,7 @@ Program discovery:
 16. `listMyProgramMemberships` returns only memberships for the acting Identity.
 17. `listMyProgramMemberships` includes active, left, and removed memberships for the acting Identity.
 
-Student membership:
+### Student Membership
 
 18. `joinSelfJoinProgram` accepts for an active Identity and self-join Program with no prior Student membership.
 19. Accepted first join creates active Student membership and a `student_membership_joined` event.
@@ -303,7 +317,7 @@ Student membership:
 33. Rejected leave with a known acting Identity and Program emits a rejected Program Membership event.
 34. Leaving Student membership does not delete Program shell, Program Curator membership, learner-state placeholders, or historical events.
 
-Effective participation:
+### Effective Participation
 
 35. `getEffectiveParticipation` returns allowed for active Student membership.
 36. `getEffectiveParticipation` returns allowed for active Program Curator membership.
@@ -315,7 +329,7 @@ Effective participation:
 42. `getEffectiveParticipation` returns `unsupported_participation_kind` for unsupported participation kind.
 43. `getEffectiveParticipation` does not mutate membership state.
 
-Events, boundaries, and recovery:
+### Events, Boundaries, and Recovery
 
 44. Program and Program Membership event queries require Admin authority or effective Program Curator participation for each returned Program.
 45. Event queries reject non-Admin callers for Programs where they lack effective Program Curator participation.

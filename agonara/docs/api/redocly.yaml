@@ -1,0 +1,4 @@
+telemetry: off
+
+extends:
+  - recommended

@@ -1,16 +1,37 @@
 ---
-date: 2026-06-03
+date: 2026-06-07
 model: gpt-5
-description: "Agonara backend and product docs for a structured learning program environment"
+description: "Agonara backend and product docs for a BYOA learning program environment"
 ---
 
 # Agonara
 
-Structured learning program environment with backend/domain slices for Identity, Operations, Program Membership, Corpus curation, accepted topic/concept/material navigation, accepted checks, open-answer Student Workspace attempts and evaluation, and Quick Check assessment.
+**Bring-your-own-agent (BYOA)** learning program environment for turning
+scattered study into structured progress: serious self-directed learners and
+program curators bring their own agent to shape sources into curated programs,
+connect materials and concepts, run checks, and keep progress grounded in
+evidence.
+
+Backend/domain slices cover Identity, Operations, Program Membership, Corpus curation, accepted topic/concept/material navigation, accepted checks, open-answer Student Workspace attempts and evaluation, and Quick Check assessment.
 
 ## Description
 
-Helps curators assemble and maintain learning programs from trusted sources, while learners progress through them with clear sequence, checkpoints, and evidence of mastery. AI assists program construction and learning support but does not own the curriculum.
+Serious learning breaks down when materials, concepts, and proof of understanding live in separate piles. Agonara gives people a program-shaped workspace for turning that scatter into a path they can follow, revise, and verify.
+
+Agonara is **bring-your-own-agent (BYOA)**: point the agent you already use at your Agonara instance and follow role-specific guidance for curating programs, learning through them, and managing the private instance. The agent helps with the workflow, while accepted program content and use of learning evidence remain human responsibilities.
+
+The `/learn` and `/admin` browser UIs and the operator CLI remain first-class clients of the same backend contracts. This keeps program, corpus, membership, assessment, and learner-state behavior automatable without coupling it to one UI. BYOA refines the existing API-first intent; it does not change the product — agents can help draft, evaluate, and carry out the workflow, but accepted program content remains a human decision.
+
+## Landing Pages
+
+- [`index.html`](index.html) — project landing: how to use it, running a private instance, the implementation snapshot, and product surfaces.
+- [`architecture.html`](architecture.html) — architecture deep dive (progressive disclosure from the landing): module responsibility map, ownership rules, runtime, deployment, and ADR index.
+- [`docs/positioning.md`](docs/positioning.md) — positioning baseline for scattered study, structured progress, BYOA operation, and human-owned curation.
+- [`docs/intent/user-stories.html`](docs/intent/user-stories.html) — user stories driving the product.
+
+## API Contract
+
+- [`docs/api/openapi.yml`](docs/api/openapi.yml) — canonical route-level OpenAPI 3.1 contract for implemented HTTP surfaces, shared envelopes, session cookie auth, CSRF, idempotency, and common rejection reasons.
 
 ## Current Implementation Snapshot
 
@@ -31,8 +52,12 @@ Implemented backend, domain, and product surfaces:
 
 Still deferred or outside current product UI:
 
-- Recommendation ranking and persisted mastery models still need separate specs or plans.
-- Student-facing and curator-facing product UI beyond the `/learn` Quick Check, navigation, learner-state, readiness, membership, coverage-gap, and LLM suggestion first slices is not implemented.
+- Recommendation ranking still needs a separate spec or plan; no invalidated learner-state cache records are planned beyond the implemented read-time derivation.
+- No additional membership-policy variants are planned beyond Student self-join and invitation-only access; cohort, organization, payment, approval, or invitation-expiry policies need a separate ADR-backed spec when they amend policy or role vocabulary.
+- Broader Student/Curator product UI beyond the shipped `/learn` slices remains
+  outside current product UI. No additional persisted learner-facing `/learn`
+  presentation state is planned; new persisted product state needs a separate
+  spec.
 
 ## Key Separations
 
@@ -47,7 +72,7 @@ Still deferred or outside current product UI:
 
 - Node.js 22 backend workspace
 - SQLite persistence through `better-sqlite3`
-- HTTP API with server-side sessions, CSRF protection, request correlation, health, diagnostics, and audit responses
+- API-first HTTP backend with server-side sessions, CSRF protection, request correlation, health, diagnostics, and audit responses
 - Operator CLI for bootstrap status and first-Admin bootstrap
 - Docker image and Compose service for private self-hosted operation
 

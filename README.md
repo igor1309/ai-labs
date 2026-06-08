@@ -45,8 +45,9 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 
 | Component | Type | Description |
 |-----------|------|-------------|
+| .agents | Agent docs | Progressive-disclosure repository-specific agent docs referenced from `CLAUDE.md` / `AGENTS.md` |
 | agents | Agent definitions | OpenClaw agent-fleet operational docs and nested specialized agent definitions |
-| agonara | Product | Structured learning program environment with curated programs, learner progression, and evidence of mastery |
+| agonara | Product | Bring-your-own-agent (BYOA) structured learning program environment — API plus per-role operator skills, with `/learn`/`/admin` UIs as first-class clients; curated programs, learner progression, evidence of mastery |
 | nexum | Product | Private repo memory system |
 | notio | Service | Personal capture service |
 | notio-backend | Release unit | Swift/Hummingbird Telegram capture service, Supabase schema/migrations owner, Docker-producing VPS deployable |

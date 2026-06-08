@@ -15,7 +15,7 @@ Source artifacts:
 - [Identity & Role Management First Slice](../../specs/identity-role-management-first-slice.md);
 - [Identity & Role Management API and CLI](../../specs/identity-role-management-api-cli.md);
 - [Operational Cross-Cutting First Slice](../../specs/operational-cross-cutting-first-slice.md);
-- [Agonara Admin User Stories](../../admin_user_stories.md), especially ADM-01 through ADM-05, ADM-08 through ADM-11;
+- [Agonara Admin User Stories](../../intent/admin_user_stories.md), especially ADM-01 through ADM-05, ADM-08 through ADM-11;
 - [ADR-001](../../adr/adr-001-internal-identity-as-agonara-ownership-subject.md), [ADR-002](../../adr/adr-002-role-authority-scope-model.md), [ADR-003](../../adr/adr-003-admin-recovery-invariant.md), and [ADR-008](../../adr/adr-008-first-slice-authentication-session-and-credential-boundary.md).
 
 ## Execution mode

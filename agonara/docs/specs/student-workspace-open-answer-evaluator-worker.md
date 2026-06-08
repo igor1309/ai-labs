@@ -3,7 +3,7 @@ date: 2026-06-02
 model: gpt-5
 description: "Spec: Agonara Student Workspace open-answer evaluator worker contract."
 version: 0.0.1
-status: draft
+status: implemented
 type: spec
 ---
 
@@ -13,7 +13,24 @@ type: spec
 
 Define the Agonara v0.0.1 contract for an in-process Student Workspace open-answer evaluator worker that claims evaluator jobs, executes a governed evaluator policy, and submits candidate results back through Student Workspace.
 
-This spec operationalizes [ADR-015](../adr/adr-015-open-answer-evaluator-worker-provider-boundary.md), depends on [Student Workspace Open-Answer Evaluator Orchestration](student-workspace-open-answer-evaluator-orchestration.md), and preserves STU-13 and INT-05 from [Product Intent](../intent_learning_program_app.md). It does not add public HTTP evaluator mutation routes, durable queue technology, external LLM calls, raw artifact persistence, raw artifact backup/export, human-review queues, UI, mastery, weak-area, progress, next-step, grading, analytics, or deployment topology.
+This spec operationalizes [ADR-015](../adr/adr-015-open-answer-evaluator-worker-provider-boundary.md), depends on [Student Workspace Open-Answer Evaluator Orchestration](student-workspace-open-answer-evaluator-orchestration.md), and preserves STU-13 and INT-05 from [Product Intent](../intent/intent_learning_program_app.md). It does not add public HTTP evaluator mutation routes, durable queue technology, external LLM calls, raw artifact persistence, raw artifact backup/export, human-review queues, UI, mastery, weak-area, progress, next-step, grading, analytics, or deployment topology.
+
+## Implementation status
+
+Implemented by [Student Workspace Open-Answer Evaluator Worker Implementation Plan](../plans/implemented/student-workspace-open-answer-evaluator-worker.md).
+
+### Implementation Evidence
+
+- Worker command and policy/provider boundary: [student-workspace.js](../../src/student-workspace.js)
+- Worker and Student Workspace domain coverage: [student-workspace.test.js](../../tests/student-workspace.test.js)
+- Backup/restore raw-artifact coverage: [backup-restore.test.js](../../tests/backup-restore.test.js)
+- Executable acceptance coverage: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+
+The implemented worker supports single-job and claim-next execution, Student Workspace-owned job claiming, policy and provider-adapter resolution, provider request redaction, output validation, budget checks, redacted evidence recording, leased completion/failure, retry and terminal failure handling, duplicate-safe final evaluation, and raw-artifact exclusion from summaries, logs, backup, and restore. It does not implement public evaluator mutation routes, durable queues, external provider calls by itself, raw artifact persistence, human-review queues, UI, mastery/progress surfaces, deployment topology, or infrastructure ports.
+
+### Related Extension
+
+The later [Open-Answer Evaluator Real-Provider Runtime](open-answer-evaluator-real-provider-runtime.md) spec reuses this worker boundary and is covered separately by [open-answer-evaluator-runtime.js](../../src/open-answer-evaluator-runtime.js) and [open-answer-evaluator-runtime.test.js](../../tests/open-answer-evaluator-runtime.test.js).
 
 ## Public interface
 
@@ -181,7 +198,7 @@ runOpenAnswerEvaluatorWorkerOnce(input: OpenAnswerEvaluatorWorkerInput) -> OpenA
 
 ## Tests (required)
 
-Validation and claiming:
+### Validation and Claiming
 
 1. `runOpenAnswerEvaluatorWorkerOnce` rejects malformed `workerId`, `leaseDurationSeconds`, `mode`, and `single_job` `evaluatorJobId` inputs.
 2. `single_job` mode claims only the requested waiting job.
@@ -191,14 +208,14 @@ Validation and claiming:
 6. The worker rejects unknown, leased, terminal, and not-yet-due retry jobs with the specified reasons.
 7. The worker does not read prompt inputs or call the provider adapter when the claim is rejected.
 
-Policy and adapter resolution:
+### Policy and Adapter Resolution
 
 8. The worker resolves the claimed job's evaluator policy and rejects missing policies.
 9. The worker rejects policies with mismatched evaluator path kind, mismatched retry policy, malformed provider adapter id, malformed output validator policy id, malformed redaction policy id, malformed prompt input policy, or non-`none` raw artifact policy.
 10. The worker resolves the policy's provider adapter and rejects missing adapters.
 11. The worker rejects provider adapters whose evaluator path kind does not match the policy.
 
-Provider request and output:
+### Provider Request and Output
 
 12. Provider requests include job, attempt, Program, Student Identity, accepted check revision, accepted criterion revision, submitted answer, evaluator policy, and output validator policy identifiers.
 13. Provider requests omit credentials, authorization headers, cookies, CSRF tokens, session identifiers, raw prompt transcripts, raw model responses, SQL text, stack traces, filesystem paths, database URLs, hidden policy instructions, and infrastructure details.
@@ -211,7 +228,7 @@ Provider request and output:
 20. Missing, duplicate, unknown, or extra criterion feedback fails the claimed job with `failureReason: "provider_output_rejected"`.
 21. Unsafe summary feedback, unsafe criterion feedback, and unsafe redacted evidence summaries fail the claimed job with `failureReason: "provider_output_rejected"`.
 
-Evidence, completion, and failure:
+### Evidence, Completion, and Failure
 
 22. The worker records redacted evidence through `recordOpenAnswerEvaluatorJobEvidence` using the active lease when `redactedEvidenceSummary` is present.
 23. The worker completes valid provider output through `completeOpenAnswerEvaluatorJob` using the active lease.
@@ -223,7 +240,7 @@ Evidence, completion, and failure:
 29. Exhausted worker failure records an active evaluation failure and preserves accepted revision references.
 30. Stale lease, mismatched lease, cancelled job, timed-out job, and terminal job cases reject through Student Workspace commands rather than storage writes.
 
-Boundary and executable acceptance:
+### Boundary and Executable Acceptance
 
 31. Worker execution does not mutate accepted checks, accepted criteria, accepted revisions, source records, curator candidates, Program Membership state, Identity state, sessions, credentials, Admin authority, or CSRF state.
 32. Worker execution does not create public HTTP evaluator mutation routes, CLI commands, durable queue state, external provider calls, raw artifact persistence, raw artifact backup/export, human-review queues, UI, mastery, weak-area, progress, next-step, grading, analytics, reporting, deployment targets, infrastructure ports, or worker topology assumptions.

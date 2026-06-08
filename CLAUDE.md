@@ -56,6 +56,9 @@ Use the `strict-tdd` skill. See `dev-skills/public/strict-tdd/SKILL.md`.
 ## Process Gates
 
 Use the `process-gates` skill. See `dev-skills/public/process-gates/SKILL.md`.
+When authoring or editing any file under `**/docs/plans/**.md`, use the
+`implementation-plan` skill before writing or changing the declarations block.
+See `dev-skills/public/implementation-plan/SKILL.md`.
 
 Verification commands (always-on):
 - Pre-commit/pre-push verification for Node/TypeScript code, config, dependency, CI, release, or generated-artifact changes: `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit`.

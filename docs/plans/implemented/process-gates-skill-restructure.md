@@ -6,6 +6,12 @@ description: "Restructure process-gates skill: split plan-authoring from executi
 
 # Process-Gates Skill Restructure Plan
 
+> Status: implemented on 2026-06-07. Added
+> `dev-skills/public/implementation-plan/SKILL.md`, narrowed
+> `dev-skills/public/process-gates/SKILL.md` to execution gates, updated
+> discovery in `AGENTS.md`, `.agents/process-gates.md`, and
+> `dev-skills/public/using-dev-skills/SKILL.md`, and archived this plan.
+
 ## Source incident
 
 The clipdeck MVP implementation plan (`clipdeck/docs/plans/clipdeck-mvp.md:62-70`) declared:
