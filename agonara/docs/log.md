@@ -1,5 +1,29 @@
 # Log
 
+## 2026-06-08
+
+- Lock the *shape* of operator-skill packaging as a pre-ADR
+  (`skills/operator-skill-packaging_pre_adr.md`): role-scoped plugins
+  (`agonara-curator`/`-student`/`-admin`) over a shared `agonara-core`, with the
+  `agonara-` prefix carried by the plugin name so skill folders drop it. The
+  decisive reason is install-scope isolation — a role plugin keeps other-role
+  surface out of an operator's context because the other plugins aren't
+  installed, which no single-plugin visibility flag can achieve. Explicitly
+  **verified for Claude Code only**; Codex/Cursor portability, role naming,
+  membership placement, intra-role granularity, and the distribution model are
+  carried as open questions.
+- Record the supporting Claude Code plugin/skill mechanics as a findings note
+  (`skills/claude-code-plugin-system.md`) with doc URLs: plugin-to-plugin
+  dependencies, `/<plugin>:<skill>` namespacing, the model/user visibility
+  matrix, and marketplace symlink dedup. Banner states the Claude-Code-only
+  verification scope.
+- Both docs live under `agonara/skills/` (beside the skills) rather than the My
+  Way `docs/pre-adr/` and research dirs — deliberate owner choice to keep the
+  packaging design next to the packaged artifacts.
+- Replace the parked "Packaging/home of operator skills" open question in
+  `docs/plans/implemented/byoa-operator-skills.md` with a pointer to the
+  pre-ADR; the distribution-model fork stays open there.
+
 ## 2026-06-07
 
 - Add a backlog task (`backlog/skills.md`) to guard skill-stated request bodies
