@@ -24,8 +24,11 @@ description: "Open task backlog and parked decisions for the traceability-review
 ## Workflow machinery
 The skill runs as a dynamic workflow — `.claude/workflows/traceability-review.js` (+ `README.md`);
 invoke `/traceability-review <project> [on "<Module>"]`. Open work:
-- Calibrate the spec↔tests pass: route negative/"does-not" guarantees to open questions, not
-  findings; reconcile its internal covered/untested counts.
+- Verify the spec↔tests calibration on a module with negative/"does-not" guarantees: the
+  workflow now adds an `indeterminate` verdict (negative/absence clauses → openQuestion, not a
+  finding) and requires the pass to reconcile its per-verdict tally against the rows
+  (`covered+covered-shared+untested+indeterminate == rows`, `findings == untested`). Confirm an
+  agent actually obeys the reconciliation and stops over-flagging.
 - Stabilise module identity across scope runs (scope re-segments and renames each run) — return
   stable ids, or stop keying the gate on agent-named module names.
 - Make scope's per-module row estimate trustworthy or stop relying on it (it returned 0 for a
