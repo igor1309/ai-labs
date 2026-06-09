@@ -60,7 +60,6 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | loki | Service (on hold) | Centralized logging stack |
 | claude-insights | Service | Weekly Claude Code usage reports |
 | session-digest | CLI | Claude Code session postmortems |
-| docker/langfuse | Observability | Shared Langfuse v3 instance for tracing and cost tracking |
 | dragoman | Editorial channel | "The Dragoman" Telegram channel |
 | clipdeck | Product | iPhone copy library for private prompts and skills |
 | dashboard-sync-agent | Agent definition | Dashboard and loc-script sync |
