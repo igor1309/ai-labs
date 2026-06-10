@@ -1,14 +1,14 @@
 ---
 date: 2026-06-09
 model: claude
-description: "Captured external reference: the AgenticOps homelab platform series (parts 1–3). External source material kept for Agonara design thinking; see ../agenticops-affordances.md for the ideas drawn from it."
+description: "Captured external reference: the AgenticOps homelab platform series (parts 1–3). External source material kept for Agonara design thinking; see ../backlog/agenticops-affordances.md for the ideas drawn from it."
 ---
 
 > **Captured reference, not an Agonara artifact.** This is external source
 > material (a homelab AgenticOps write-up) preserved verbatim so the
 > design thinking it seeded — see
-> [`../agenticops-affordances.md`](../agenticops-affordances.md) — stays
-> traceable to its origin. Nothing here describes Agonara itself.
+> [`../backlog/agenticops-affordances.md`](../backlog/agenticops-affordances.md) —
+> stays traceable to its origin. Nothing here describes Agonara itself.
 
 ---
 date: 2026-06-09

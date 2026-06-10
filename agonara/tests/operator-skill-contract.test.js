@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
@@ -57,9 +57,7 @@ function readOpenApiRoutes(path) {
 function readSkillRouteCitations(directory) {
   return readdirSync(directory, { withFileTypes: true })
     .filter($0 => $0.isDirectory())
-    .map($0 => join(directory, $0.name, "SKILL.md"))
-    .filter($0 => existsSync($0))
-    .flatMap($0 => readSkillFileRouteCitations($0));
+    .flatMap($0 => readSkillFileRouteCitations(join(directory, $0.name, "SKILL.md")));
 }
 
 function readSkillFileRouteCitations(path) {

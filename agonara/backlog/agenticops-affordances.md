@@ -8,9 +8,9 @@ description: "Future-thinking design notes: which AgenticOps platform ideas are 
 
 > Status: exploratory design notes, not an accepted direction. Captures the
 > net-new ideas drawn from the AgenticOps homelab platform series
-> ([`research/agenticops.md`](research/agenticops.md)) and where they could land
+> ([`../research/agenticops.md`](../research/agenticops.md)) and where they could land
 > in Agonara. The concrete forward tasks live in
-> [`../backlog/skills.md`](../backlog/skills.md); this doc is the reasoning
+> [`skills.md`](skills.md); this doc is the reasoning
 > behind them.
 
 ## Starting point: Agonara already is an AgenticOps-shaped platform
@@ -31,7 +31,7 @@ CLI.
 | Per-agent tool scoping for security | Per-role skills (curator bucket / student / admin), enforced server-side by role |
 | Typed, compiled, tested → determinism | OpenAPI generated from route declarations as the source of truth, with contract tests |
 | Orchestration scenarios: deploy/verify/diagnose | `scripts/deploy-*`, `backup`/`restore`/`rollback`, `smoke-*`; `docs/deployment-discipline.md` |
-| Stable external API as the front door | Bearer-token auth + the gated MCP connector, already in [`../backlog/agent-connectivity.md`](../backlog/agent-connectivity.md) |
+| Stable external API as the front door | Bearer-token auth + the gated MCP connector, already in [`agent-connectivity.md`](agent-connectivity.md) |
 
 So most of the post is **validation** of choices Agonara already made, and its
 specific front-door proposals (bearer token, MCP wrapper, two auth adapters) are
@@ -49,7 +49,7 @@ else to try."
 never tells an agent, at runtime, *given your role and current state*, what it
 can do next. The agent re-derives the next step from the skill text every time.
 This overlaps the open "Skill discovery, publishing, and packaging" item in
-[`../backlog/skills.md`](../backlog/skills.md), but pushes further: the affordance
+[`skills.md`](skills.md), but pushes further: the affordance
 can live **in the envelope itself**, not only in packaging.
 
 **Shape worth exploring.** An optional, additive field on `accepted` responses —
@@ -134,4 +134,4 @@ without rewriting agent instructions. Agonara does this implicitly; stating it a
 an explicit design principle (in the BYOA design brief,
 `docs/plans/implemented/byoa-operator-skills.md`) would guide future decisions
 about what belongs in the API/platform versus in a skill. Tracked as a forward
-task in [`../backlog/skills.md`](../backlog/skills.md).
+task in [`skills.md`](skills.md).

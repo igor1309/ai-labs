@@ -67,7 +67,7 @@ which operations are available and meaningful next — so an agent does not
 re-derive the next step from static skill prose every time. The AgenticOps idea
 of CLI command discovery + "follow-up commands" adapted to Agonara's HTTP
 substrate; reasoning and open questions in
-[`../skills/agenticops-affordances.md`](../skills/agenticops-affordances.md)
+[`agenticops-affordances.md`](agenticops-affordances.md)
 (Idea 1).
 
 - Decide where the affordance lives: an additive `next`/`links` field on
@@ -91,7 +91,7 @@ follows implicitly: repeatable multi-step processes belong in the API/platform s
 the agent takes fewer steps and **does not pollute its context with topology
 details**, and so topology/component changes happen platform-side without
 rewriting agent instructions. Drawn from the AgenticOps platform write-up; see
-[`../skills/agenticops-affordances.md`](../skills/agenticops-affordances.md)
+[`agenticops-affordances.md`](agenticops-affordances.md)
 ("Cross-cutting principle worth formalizing"). The forward task is to write the
 principle into the brief so it guides future "API/platform vs. skill" boundary
 decisions.
