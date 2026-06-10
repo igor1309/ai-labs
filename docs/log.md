@@ -1,5 +1,12 @@
 # Log
 
+## 2026-06-10
+
+- docker/langfuse: add `docker/langfuse/README.md` documenting the shared
+  Langfuse v3 stack (services, ports, compose usage, configuration). Closes the
+  README-coverage gap that PR #547 had proposed to "fix" by deleting the
+  accurate Components row for a component that still exists in the repo.
+
 ## 2026-06-07
 
 - LOC dashboard: refreshed `docs/loc-dashboard.html` from
