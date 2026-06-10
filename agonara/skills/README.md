@@ -75,3 +75,15 @@ were built. The packaging *shape* is now explored here:
 
 The distribution model (instance-shipped vs. standalone marketplace) and the
 remaining open questions are tracked in the pre-ADR.
+
+## Future-thinking design notes
+
+- [`agenticops-affordances.md`](agenticops-affordances.md) — which ideas from the
+  AgenticOps platform write-up are worth adopting for Agonara's BYOA model: two
+  net-new affordances (a self-describing API with runtime discovery + follow-up
+  hints, and an agent-facing `diagnose`), plus what Agonara deliberately does not
+  adopt and one cross-cutting principle worth formalizing. Forward tasks are in
+  [`../backlog/skills.md`](../backlog/skills.md).
+- [`research/`](research/) — captured external source material kept for design
+  thinking (e.g. [`research/agenticops.md`](research/agenticops.md)); not Agonara
+  artifacts.
