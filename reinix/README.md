@@ -6,6 +6,8 @@ description: "Reinix usage, configuration, and orchestration overview"
 
 # Reinix
 
+Landing page: docs/landing.html
+
 Reinix is an MVP workflow runner for governed coding-agent loops. It coordinates provider CLI agents through a Producer, Reviewer, injected review policy, and optional Remediator loop.
 
 The core idea is simple: Reinix does not decide whether a result is good enough by itself. It runs agents, validates their structured outputs, records run progress, and delegates the post-review routing decision to a `ReviewFixPolicy`.

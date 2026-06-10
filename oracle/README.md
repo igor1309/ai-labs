@@ -6,6 +6,8 @@ description: "Deploy runbook for Am I done frontend (Pages) and backend (Workers
 
 # Oracle deploy guide (Cloudflare Pages + Workers)
 
+Landing page: apps/am-i-done-web/src/landing.html
+
 ## What runs where
 - Frontend: `oracle/apps/am-i-done-web/src` on Cloudflare Pages.
 - Backend: `oracle/apps/am-i-done-api` on Cloudflare Workers (`am-i-done-api`).

@@ -6,6 +6,8 @@ description: "Notio project overview and release architecture references"
 
 # Notio
 
+Landing page: frontend/index.html
+
 Notio is a personal capture service: send a link or a short note from Telegram, and it lands in a persistent inbox through a storage adapter. Telegram is only an ingress — the core is independent of Telegram, GitHub, Markdown, and any specific backend.
 
 ## Goals

@@ -1,5 +1,7 @@
 # claude-insights
 
+Landing page: index.html
+
 Aggregates Claude Code usage data (`~/.claude/usage-data/`) into a weekly JSON summary, pushes to Supabase, and notifies via Telegram.
 
 ## Architecture

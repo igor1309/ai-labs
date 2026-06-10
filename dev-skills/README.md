@@ -1,5 +1,7 @@
 # Dev Skills - Development Repository
 
+Landing page: index.html
+
 Development workspace for reusable agent skills inside `ai-labs`.
 
 Skills are developed here and published to the public [igor1309/skills](https://github.com/igor1309/skills) repository via GitHub Actions.
