@@ -59,3 +59,39 @@ Design work, not a content skill. Sequence it **after** the `dev-skills.md`
 hardening items (the traceability/drift guards, the adversarial-review skill, and
 process-gates): packaging decisions are easier to make against a skill set known
 correct and drift-guarded.
+
+## Self-describing API — runtime discovery and follow-up hints
+
+Make the instance surface, at runtime and scoped to the caller's role and state,
+which operations are available and meaningful next — so an agent does not
+re-derive the next step from static skill prose every time. The AgenticOps idea
+of CLI command discovery + "follow-up commands" adapted to Agonara's HTTP
+substrate; reasoning and open questions in
+[`agenticops-affordances.md`](agenticops-affordances.md)
+(Idea 1).
+
+- Decide where the affordance lives: an additive `next`/`links` field on
+  `accepted` responses (state-aware), typed link relations in the OpenAPI
+  contract, or a single discovery endpoint the skill calls once.
+- Keep it generated from the route declarations (source of truth), not
+  hand-maintained, so it cannot drift the way the untyped request bodies can.
+- Honor the same role/visibility boundary the rest of the API enforces — exposing
+  "what's next" must not leak state the caller should not see.
+
+Separable from the CLI-vs-HTTP packaging choice (Agonara deliberately chose
+skill-over-HTTP); this affordance can be adopted without reversing that. Relates
+to "Skill discovery, publishing, and packaging" above, but is an envelope/contract
+change rather than a distribution one.
+
+## Formalize "platform owns repeatable processes" as a design principle
+
+State explicitly, in the BYOA design brief
+(`docs/plans/implemented/byoa-operator-skills.md`), the principle Agonara already
+follows implicitly: repeatable multi-step processes belong in the API/platform so
+the agent takes fewer steps and **does not pollute its context with topology
+details**, and so topology/component changes happen platform-side without
+rewriting agent instructions. Drawn from the AgenticOps platform write-up; see
+[`agenticops-affordances.md`](agenticops-affordances.md)
+("Cross-cutting principle worth formalizing"). The forward task is to write the
+principle into the brief so it guides future "API/platform vs. skill" boundary
+decisions.

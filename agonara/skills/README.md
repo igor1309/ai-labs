@@ -75,3 +75,7 @@ were built. The packaging *shape* is now explored here:
 
 The distribution model (instance-shipped vs. standalone marketplace) and the
 remaining open questions are tracked in the pre-ADR.
+
+Forward-looking design exploration of the operator-skill surface (e.g. a
+self-describing API with runtime discovery and follow-up hints) lives with the
+backlog it informs: [`../backlog/agenticops-affordances.md`](../backlog/agenticops-affordances.md).

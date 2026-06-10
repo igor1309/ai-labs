@@ -1,5 +1,28 @@
 # Log
 
+## 2026-06-09
+
+- Review the AgenticOps homelab platform write-up against Agonara and capture the
+  net-new ideas worth adopting. Finding: Agonara already implements most of the
+  AgenticOps platform pattern (CLI + SKILL.md → skill over OpenAPI; adapters →
+  `agonara-api-access`; stable statuses/trajectories → the envelope +
+  `ApiRejectionReason`; per-agent scoping → per-role skills; determinism →
+  generated contract), and its front-door proposals (bearer token, MCP wrapper)
+  are already in `backlog/agent-connectivity.md`.
+- Capture the source verbatim under a new `research/agenticops.md` (new
+  `research/` folder for external reference material, with a provenance banner
+  stating it is not an Agonara artifact).
+- Add `backlog/agenticops-affordances.md` (future-thinking design notes): the two
+  net-new affordances — a self-describing API (runtime discovery + follow-up hints
+  on the `accepted` envelope) and an agent-facing `diagnose` keyed on the existing
+  `requestId` (sink: the on-hold `loki` stack) — what Agonara deliberately does
+  not adopt (CLI surface, app descriptor, base infra), and the "platform owns
+  repeatable processes" principle. It is the reasoning behind the `backlog/skills.md`
+  forward tasks.
+- Add two forward tasks to `backlog/skills.md`: the self-describing-API discovery
+  affordance, and formalizing "platform owns repeatable processes" as an explicit
+  design principle in the BYOA brief.
+
 ## 2026-06-08
 
 - Lock the *shape* of operator-skill packaging as a pre-ADR

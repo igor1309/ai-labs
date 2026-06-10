@@ -27,6 +27,16 @@ Promote a topic to its own `backlog/<topic>.md` file when it is a distinct
 concern that has reached roughly three or more items or is clearly going to grow;
 keep small or uncategorized items in this index until then.
 
+## Design-reasoning companions
+
+Not task lists, so exempt from the forward-tasks-only rule above: longer-form
+design exploration that explains *why* a backlog's tasks exist. Kept beside the
+backlog they inform.
+
+- [`agenticops-affordances.md`](agenticops-affordances.md) — which AgenticOps
+  platform ideas are worth adopting for Agonara; the reasoning behind the
+  self-describing-API and platform-owns-process tasks in [`skills.md`](skills.md).
+
 ## Under consideration
 
 Documents parked in an `under-consideration/` folder need an owning decision before downstream docs are revised. Do not let that folder go stale.
