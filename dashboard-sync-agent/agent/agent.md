@@ -1,5 +1,5 @@
 ---
-date: 2026-06-01
+date: 2026-06-10
 model: claude-opus-4-8
 description: "System prompt and instructions for the dashboard-sync-agent: a specialized OpenClaw agent that keeps scripts/loc-dashboard.sh, docs/products.html, and the docs/loc-dashboard.html data array in sync with repo state on a daily 01:30 UTC cron"
 ---
@@ -49,7 +49,7 @@ On every run, in order:
 
 1. **Read the registry.** Apply `project-registry.md` against the current `README.md` to compute the canonical tracked project set, the untracked-candidates list, and the removed-directory list. If `## Components` or `## Structure` is missing or empty, record a hard error for that registry and continue with the surviving one.
 
-2. **Inspect per-project READMEs as needed.** For each registry entry contributing a `docs/products.html` card, read `<key>/README.md` (where present) for enrichment fields per `synthesis-spec.md` (Stack section, Deployment line / `## Deployment` section). Do not read READMEs for surfaces (1) or (3); they have no per-project README inputs.
+2. **Inspect per-project READMEs as needed.** For each registry entry contributing a `docs/products.html` card, read `<key>/README.md` (where present) for enrichment fields per `synthesis-spec.md` (Stack section, Deployment line / `## Deployment` section, and the `Landing page:` card-link line that sets the card's outer `<a href>` wrapper). Do not read READMEs for surfaces (1) or (3); they have no per-project README inputs.
 
 3. **Compute drift per surface, independently.** For each of the three surfaces, **read the actual file content from `/home/openclaw/ai-labs/<path>` using your file-read tool** before computing drift. Do not rely on memory of prior runs, prior conversations, or assumptions about repo state. Render the target content per `synthesis-spec.md`, compare to the actually-read current content, and record:
    - `clean` if rendered content equals the just-read current content.

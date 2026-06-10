@@ -6,6 +6,8 @@ description: "clipdeck project README — overview and local preview workflow"
 
 # clipdeck
 
+Landing page: https://clipdeck.enoa.ai
+
 iPhone-friendly private webpage that copies prompts and skills from `igor1309/ai-labs` with one tap. The backend strips YAML front matter server-side; the client never sees raw GitHub responses.
 
 ## Local preview

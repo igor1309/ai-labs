@@ -6,6 +6,8 @@ description: "Nomos — AI sovereignty layer; unified LLM proxy with vendor abst
 
 # nomos
 
+Landing page: index.html
+
 LLM access control proxy.
 
 ## Description

@@ -1,5 +1,5 @@
 ---
-date: 2026-06-01
+date: 2026-06-10
 model: claude-opus-4-8
 description: "Synthesis spec for dashboard-sync-agent: how the project registry and per-project READMEs map to scripts/loc-dashboard.sh, docs/products.html, and the docs/loc-dashboard.html data array"
 ---
@@ -75,6 +75,23 @@ For each registry entry whose `Component` row is in `## Components`, the agent e
 
 **Intent on type display.** Each card shows name, description, and (optional) stack tags — that is all that lives inside a card. The project's type is communicated by which `<h3 class="group-title">` section the card sits under, not by per-card metadata. Don't emit a `<span class="product-type">` (or any equivalent type-chip) inside the card. The current `docs/products.html` already follows this — PR #345 removed those chips intentionally — so the absence of type chips in the file is **expected**, not a structural mismatch.
 
+### Card link wrapper
+
+A card is wrapped in a link to the project's landing page when, and only when, the project declares one. The link target comes from a single line in `<key>/README.md` of the exact form:
+
+```
+Landing page: <value>
+```
+
+`Landing page:` is a literal, case-sensitive marker followed by one space and `<value>` (trimmed of surrounding whitespace) running to end of line. The first such line in the README wins; a README without one yields an **unlinked** card. `<value>` resolves to the card's `href` deterministically:
+
+- If `<value>` matches `^https?://`, it is an absolute URL and becomes the `href` **verbatim** (e.g. clipdeck's `https://clipdeck.enoa.ai`).
+- Otherwise `<value>` is a path **relative to the project root `<key>/`**. Because `docs/products.html` sits one directory below the repo root, the `href` is `../<key>/<value>` (e.g. notio declares `frontend/index.html` → `../notio/frontend/index.html`; agonara declares `index.html` → `../agonara/index.html`).
+
+The agent does **not** stat the target — the declared value is authoritative. (`scripts/tests/loc-dashboard.test.js` "links product cards to existing local landing pages" and "links the Clipdeck product card to the deployed app" guard that the declared local targets exist and that each declared card is linked; a stale declaration fails those tests rather than silently emitting a dead link.) `Landing page:` is distinct from the `Deployed at:` / `## Deployment` "Deployed URL inline" rule above: the former sets the card's outer link wrapper, the latter appends a deployment sentence to the description body. A project may declare both, one, or neither.
+
+When a link exists, the card's outer element is `<a class="product reveal" href="<href>">…</a>`; when absent, it is `<div class="product reveal">…</div>` (the default shown in "Card whitespace" below). The inner structure (header, description, optional stack) and indentation are identical either way.
+
 ### Category placement
 
 Categories are derived from `Type` via the following authoritative mapping. Types not in the mapping cause the agent to surface the entry in the PR description's "unmapped types" section and place the card under `Research` provisionally.
@@ -114,6 +131,8 @@ Each card uses 6-space indentation (matching the surrounding `<div class="produc
 ```
 
 The `<div class="product-stack">…</div>` block is omitted entirely when the project has no Stack section in its README (per the rule above) — the closing `</div>` for `product` follows directly after the closing `</p>`.
+
+When the project declares a landing page (see "Card link wrapper"), the outer `<div class="product reveal">` … `</div>` pair is instead `<a class="product reveal" href="<href>">` … `</a>`. The 6-space indentation and all inner content are unchanged.
 
 Within categories, cards are sorted ASCII-ascending by registry key (the Components cell), not by display name.
 
