@@ -17,16 +17,19 @@ set -euo pipefail
 #   (continues processing remaining entries).
 # - Skips git metadata entries at the shared-config root (e.g. .git*).
 #
-# Hardcoded conventions / expectations:
-# - Worktrees live under:  /X/<repo>.worktrees/<worktree-name>
-# - Shared config lives:   /X/<repo>.config
+# Shared-config resolution (in precedence order):
+# 1. explicit second argument, if given
+# 2. convention layout:  /X/<repo>.worktrees/<name>  ->  /X/<repo>.config
+# 3. git fallback: derive from the repo's main worktree (handles non-convention
+#    layouts such as codex worktrees at /X/.codex/worktrees/<id>/<repo>)
 #
 # Usage:
-#   ./ensure-shared-config-links.sh <worktree-path>
+#   ./ensure-shared-config-links.sh <worktree-path> [shared-config-dir]
 
 WT_ROOT="${1:-}"
+SHARED_ARG="${2:-}"   # optional: explicit shared-config dir (overrides derivation)
 if [ -z "${WT_ROOT}" ]; then
-  echo "usage: $0 <worktree-path>" >&2
+  echo "usage: $0 <worktree-path> [shared-config-dir]" >&2
   exit 64
 fi
 
@@ -45,18 +48,25 @@ if ! git -C "${WT_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   exit 2
 fi
 
-WT_BASE="$(cd "${WT_ROOT}/.." && pwd)"           # .../<repo>.worktrees
-WORKTREES_DIR="$(basename "${WT_BASE}")"         # <repo>.worktrees
-
-# Enforce the hardcoded convention
-if [[ "${WORKTREES_DIR}" != *.worktrees ]]; then
-  echo "Refusing: parent dir is not '<repo>.worktrees': ${WT_BASE}" >&2
-  exit 2
+# Resolve the shared-config dir. Precedence:
+#   1. explicit argument (normalized to absolute)
+#   2. convention layout: .../<repo>.worktrees/<name> -> .../<repo>.config
+#   3. fallback: derive from git's main worktree (handles non-convention layouts,
+#      e.g. codex worktrees at .../.codex/worktrees/<id>/<repo>)
+if [ -n "${SHARED_ARG}" ]; then
+  SHARED="$(cd "${SHARED_ARG}" && pwd)"
+else
+  WT_BASE="$(cd "${WT_ROOT}/.." && pwd)"
+  WORKTREES_DIR="$(basename "${WT_BASE}")"
+  if [[ "${WORKTREES_DIR}" == *.worktrees ]]; then
+    REPO_ID="${WORKTREES_DIR%.worktrees}"          # <repo>
+    REPO_BASE="$(cd "${WT_BASE}/.." && pwd)"       # .../X
+    SHARED="${REPO_BASE}/${REPO_ID}.config"        # .../X/<repo>.config
+  else
+    MAIN_WT="$(cd "${WT_ROOT}" && cd "$(git rev-parse --git-common-dir)/.." && pwd)"  # .../<repo>
+    SHARED="${MAIN_WT}.config"                     # .../<repo>.config
+  fi
 fi
-
-REPO_ID="${WORKTREES_DIR%.worktrees}"            # <repo>
-REPO_BASE="$(cd "${WT_BASE}/.." && pwd)"         # .../X
-SHARED="${REPO_BASE}/${REPO_ID}.config"          # .../X/<repo>.config
 
 # Extra safety invariant:
 # Refuse if SHARED resolves inside WT_ROOT (prevents self-referential / recursive layouts).
