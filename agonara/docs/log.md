@@ -1,5 +1,17 @@
 # Log
 
+## 2026-06-11
+
+- Capture a Habr write-up of a Telegram deep-link one-time-token login flow
+  verbatim under `research/telegram-deep-link-token-auth.md`, with an analysis
+  against the bearer-token item in `backlog/agent-connectivity.md`. Finding: it
+  validates the item's framing (Telegram-shaped clients reject the cookie+CSRF
+  flow for runtime fit, not security) and the handshake pattern (a homemade
+  device-code flow, compatible with ADR-008's later credential providers), while
+  its durable `aa_uid` raw-id cookie is the anti-pattern that ADR-008's
+  invariants and the backlog's token-lifecycle cost paragraph exist to forbid.
+  No change to backlog direction or priority.
+
 ## 2026-06-09
 
 - Review the AgenticOps homelab platform write-up against Agonara and capture the
