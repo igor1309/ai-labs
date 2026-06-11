@@ -4,10 +4,10 @@
 # Options: --sort=name (default) | --sort=total
 #
 # ROW PROJECTS (update the loop in main when adding a new project):
-#   agents, agonara, claude-insights, clipdeck, corpus-scout,
-#   dashboard-sync-agent, debates, dev-skills, dragoman,
-#   gemini, insights, loki, neris, nexum, niora, nomos, notio, oracle, prompts,
-#   reading, reinix, sandbox, session-digest, tools, web-scout
+#   .agents, agents, agonara, claude-insights, clipdeck, corpus-scout,
+#   dashboard-sync-agent, debates, dev-skills, dragoman, gemini, insights,
+#   loki, neris, nexum, niora, nomos, notio, oracle, prompts, reading, reinix,
+#   sandbox, session-digest, tools, web-scout
 
 set -euo pipefail
 
@@ -188,7 +188,7 @@ printf "╚%s╝\n" "$(printf '%0.s═' $(seq 1 $inner))"
 printf "  Generated: %s   sort: %s\n" "$(date '+%Y-%m-%d %H:%M')" "$SORT_BY"
 
 # per-project rows
-for proj in agents agonara claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills dragoman gemini insights loki neris nexum niora nomos notio oracle prompts reading reinix sandbox session-digest tools web-scout; do
+for proj in .agents agents agonara claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills dragoman gemini insights loki neris nexum niora nomos notio oracle prompts reading reinix sandbox session-digest tools web-scout; do
   [[ -d "$proj" ]] || continue
   read c t x < <(count_project "$proj")
   emit_row "$proj" "$c" "$t" "$x"
