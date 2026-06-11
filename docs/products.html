@@ -245,15 +245,21 @@
           <span class="product-name">Agonara</span>
         </div>
         <p class="product-desc">
-          <strong>API-first structured learning program environment with curated programs, learner progression, and evidence of mastery.</strong> Helps curators assemble and maintain learning programs from trusted sources, while learners progress through them with clear sequence, checkpoints, and evidence of mastery. Browser surfaces and operator commands use shared backend contracts that future Agonara agent skills can also target; AI assists program construction and learning support but does not own the curriculum.
+          <strong>Bring-your-own-agent (BYOA) structured learning program environment — API plus per-role operator skills, with <code>/learn</code>/<code>/admin</code> UIs as first-class clients; curated programs, learner progression, evidence of mastery</strong> Serious learning breaks down when materials, concepts, and proof of understanding live in separate piles. Agonara gives people a program-shaped workspace for turning that scatter into a path they can follow, revise, and verify.
         </p>
+        <div class="product-stack">
+          <span class="tag">Node.js 22 backend workspace</span>
+          <span class="tag">API-first HTTP backend with server-side sessions, CSRF protection, request correlation, health, diagnostics, and audit responses</span>
+          <span class="tag">Operator CLI for bootstrap status and first-Admin bootstrap</span>
+          <span class="tag">Docker image and Compose service for private self-hosted operation</span>
+        </div>
       </a>
       <a class="product reveal" href="https://clipdeck.enoa.ai">
         <div class="product-header">
           <span class="product-name">Clipdeck</span>
         </div>
         <p class="product-desc">
-          <strong>iPhone copy library for private prompts and skills.</strong> A minimal webpage backed by a serverless endpoint that reads a private GitHub repo and returns sanitized, normalized items — <em>one tap copies the body without YAML front matter</em>. Deployed at <code>clipdeck.enoa.ai</code> behind Cloudflare Access; supports plain-text and Markdown prompts.
+          <strong>iPhone copy library for private prompts and skills</strong> A minimal webpage backed by a serverless endpoint that reads a private GitHub repo and returns sanitized, normalized items — <em>one tap copies the body without YAML front matter</em>. Deployed at <code>clipdeck.enoa.ai</code> behind Cloudflare Access; supports plain-text and Markdown prompts.
         </p>
         <div class="product-stack">
           <span class="tag">TypeScript</span>
@@ -267,7 +273,7 @@
           <span class="product-name">Nexum</span>
         </div>
         <p class="product-desc">
-          <strong>Private repo memory system.</strong> Save GitHub repos with personal notes, search and sort the collection, keep metadata current. <em>Full Swift stack</em> — Hummingbird backend, Swift-to-Wasm web UI via JavaScriptKit.
+          <strong>Private repo memory system</strong> Save GitHub repos with personal notes, search and sort the collection, keep metadata current. <em>Full Swift stack</em> — Hummingbird backend, Swift-to-Wasm web UI via JavaScriptKit.
         </p>
         <div class="product-stack">
           <span class="tag">Swift 6.1</span>
@@ -281,7 +287,7 @@
           <span class="product-name">Oracle — Am I Done?</span>
         </div>
         <p class="product-desc">
-          <strong>&quot;Oracle — Am I Done?&quot; One-shot career outlook tool.</strong> Enter a profession and get a structured AI-generated assessment: risk timeline, key threats, recommended next steps, and a confidence rating. <em>No chat, no accounts</em> — just a single question and a clear answer.
+          <strong>"Oracle — Am I Done?" One-shot career outlook tool</strong> Enter a profession and get a structured AI-generated assessment: risk timeline, key threats, recommended next steps, and a confidence rating. <em>No chat, no accounts</em> — just a single question and a clear answer.
         </p>
         <div class="product-stack">
           <span class="tag">Cloudflare Workers</span>
@@ -301,7 +307,7 @@
           <span class="product-name">Dev Skills</span>
         </div>
         <p class="product-desc">
-          <strong>Claude Code skills marketplace.</strong>
+          <strong>Claude Code skills marketplace</strong>
         </p>
       </a>
       <a class="product reveal" href="../reinix/docs/landing.html">
@@ -309,7 +315,7 @@
           <span class="product-name">Reinix</span>
         </div>
         <p class="product-desc">
-          <strong>Workflow runner for governed coding-agent loops.</strong> Coordinates provider CLI agents — Producer, Reviewer, and optional Remediator — through a loop with pluggable review policy. Every input is a <em>verifiable task with done criteria</em>; settings live in <code>.reinix/</code> YAML files.
+          <strong>Workflow runner for governed coding-agent loops</strong> Coordinates provider CLI agents — Producer, Reviewer, and optional Remediator — through a loop with pluggable review policy. Every input is a <em>verifiable task with done criteria</em>; settings live in <code>.reinix/</code> YAML files.
         </p>
         <div class="product-stack">
           <span class="tag">Node.js</span>
@@ -323,15 +329,19 @@
           <span class="product-name">Session Digest</span>
         </div>
         <p class="product-desc">
-          <strong>Claude Code session postmortems.</strong> A CLI prototype that turns one Claude Code JSONL session into a Markdown digest under <code>~/.session-digests/</code> — powered by configurable OpenAI-compatible model providers (Nomos, OpenRouter, or legacy NVIDIA NIM). Early-stage design.
+          <strong>Claude Code session postmortems</strong> A CLI prototype that turns one Claude Code JSONL session into a Markdown digest under <code>~/.session-digests/</code> — powered by configurable OpenAI-compatible model providers (Nomos, OpenRouter, or legacy NVIDIA NIM). Early-stage design.
         </p>
+        <div class="product-stack">
+          <span class="tag">TypeScript</span>
+          <span class="tag">LangChain</span>
+        </div>
       </div>
       <div class="product reveal">
         <div class="product-header">
           <span class="product-name">Tools</span>
         </div>
         <p class="product-desc">
-          <strong>Developer workflow helpers.</strong> Git worktree manager, Claude account switcher with usage-limit reporting, Codex CLI profile manager with usage-limit reporting, shared config symlinker for worktrees — <em>small shell scripts</em> that smooth out daily friction.
+          <strong>Developer workflow helpers</strong> Git worktree manager, Claude account switcher with usage-limit reporting, Codex CLI profile manager with usage-limit reporting, shared config symlinker for worktrees — <em>small shell scripts</em> that smooth out daily friction.
         </p>
         <div class="product-stack">
           <span class="tag">Bash</span>
@@ -347,7 +357,7 @@
           <span class="product-name">Corpus Scout</span>
         </div>
         <p class="product-desc">
-          <strong>Lexical search over a local text corpus.</strong> A read-only MCP server with two tools — pattern search and section reading over Markdown files. Powered by ripgrep, <em>deterministic and stateless</em>: no embeddings, no indexing, no mutation.
+          <strong>Lexical search over a local text corpus</strong> A read-only MCP server with two tools — pattern search and section reading over Markdown files. Powered by ripgrep, <em>deterministic and stateless</em>: no embeddings, no indexing, no mutation.
         </p>
         <div class="product-stack">
           <span class="tag">Node.js</span>
@@ -360,7 +370,7 @@
           <span class="product-name">Web Scout</span>
         </div>
         <p class="product-desc">
-          <strong>SearXNG search for Claude Code.</strong> An MCP stdio server that exposes web search as a tool — runs locally, connects to a self-hosted SearXNG instance, and returns <em>structured JSON results</em> with per-call logging.
+          <strong>SearXNG search for Claude Code</strong> An MCP stdio server that exposes web search as a tool — runs locally, connects to a self-hosted SearXNG instance, and returns <em>structured JSON results</em> with per-call logging.
         </p>
         <div class="product-stack">
           <span class="tag">Node.js</span>
@@ -378,7 +388,7 @@
           <span class="product-name">Claude Insights</span>
         </div>
         <p class="product-desc">
-          <strong>Weekly Claude Code usage reports.</strong> Aggregates local session data into metrics — sessions, code churn, tool usage, goals, friction points — then pushes to Supabase and <em>notifies via Telegram</em>.
+          <strong>Weekly Claude Code usage reports</strong> Aggregates local session data into metrics — sessions, code churn, tool usage, goals, friction points — then pushes to Supabase and <em>notifies via Telegram</em>.
         </p>
         <div class="product-stack">
           <span class="tag">Python</span>
@@ -393,7 +403,7 @@
           <span class="product-name">Loki</span>
         </div>
         <p class="product-desc">
-          <strong>Centralized logging stack.</strong> Grafana + Loki + Alloy on a VPS — collects Docker container logs and journald units, with <em>label-bounded cardinality</em> enforced by allowlists and CI checks.
+          <strong>Centralized logging stack</strong> Grafana + Loki + Alloy on a VPS — collects Docker container logs and journald units, with <em>label-bounded cardinality</em> enforced by allowlists and CI checks.
         </p>
         <div class="product-stack">
           <span class="tag">Grafana</span>
@@ -408,7 +418,7 @@
           <span class="product-name">Nomos</span>
         </div>
         <p class="product-desc">
-          <strong>AI sovereignty layer.</strong> A unified proxy between projects and LLM providers — vendor abstraction, per-project budget limits, token usage logging, and basic prompt injection safeguards. <em>No cloud vendor lock-in</em>, just a single Docker service with SQLite.
+          <strong>AI sovereignty layer</strong> A unified proxy between projects and LLM providers — vendor abstraction, per-project budget limits, token usage logging, and basic prompt injection safeguards. <em>No cloud vendor lock-in</em>, just a single Docker service with SQLite.
         </p>
         <div class="product-stack">
           <span class="tag">Node.js</span>
@@ -424,7 +434,7 @@
           <span class="product-name">Notio</span>
         </div>
         <p class="product-desc">
-          <strong>Personal capture service.</strong> Send a link or a note from Telegram and it lands in a persistent inbox. The core is <em>ingress- and storage-agnostic</em> — Telegram is just one input, Supabase just one backend. Links get lightweight, non-AI enrichment (titles, GitHub repo metadata) before persistence.
+          <strong>Personal capture service</strong> Send a link or a note from Telegram and it lands in a persistent inbox. The core is <em>ingress- and storage-agnostic</em> — Telegram is just one input, Supabase just one backend. Links get lightweight, non-AI enrichment (titles, GitHub repo metadata) before persistence.
         </p>
         <div class="product-stack">
           <span class="tag">Swift 6.1</span>
@@ -444,7 +454,7 @@
           <span class="product-name">Neris</span>
         </div>
         <p class="product-desc">
-          <strong>Agentic execution layer in Swift.</strong> Decides who does what across tools, skills, and sub-agents. Provider-agnostic core with pluggable LLM backends — <em>lightweight and adaptive</em>, not infrastructural.
+          <strong>Agentic execution layer in Swift</strong> Decides who does what across tools, skills, and sub-agents. Provider-agnostic core with pluggable LLM backends — <em>lightweight and adaptive</em>, not infrastructural.
         </p>
         <div class="product-stack">
           <span class="tag">Swift 6.1</span>
@@ -457,7 +467,7 @@
           <span class="product-name">Niora</span>
         </div>
         <p class="product-desc">
-          <strong>Contextual field of emergence.</strong> The ambient environment where agents operate, adapt, and evolve. <em>Not what makes things happen — where things happen.</em> Early-stage design.
+          <strong>Contextual field of emergence</strong> The ambient environment where agents operate, adapt, and evolve. <em>Not what makes things happen — where things happen.</em> Early-stage design.
         </p>
         <div class="product-stack">
           <span class="tag">Design</span>
@@ -472,7 +482,7 @@
           <span class="product-name">Dashboard Sync Agent</span>
         </div>
         <p class="product-desc">
-          <strong>Dashboard and loc-script sync.</strong> Sibling OpenClaw agent that keeps <em>scripts/loc-dashboard.sh</em>, <em>docs/products.html</em>, and the <em>docs/loc-dashboard.html</em> data array in sync with repo state on a daily 01:30 UTC cron. The root README's Components and Structure tables are the authoritative project registries; manual edits to products.html are not preserved across runs. Auto-merge is never used.
+          <strong>Dashboard and loc-script sync</strong> Sibling OpenClaw agent that keeps <em>scripts/loc-dashboard.sh</em>, <em>docs/products.html</em>, and the <em>docs/loc-dashboard.html</em> data array in sync with repo state on a daily 01:30 UTC cron. The root README's Components and Structure tables are the authoritative project registries; manual edits to products.html are not preserved across runs. Auto-merge is never used.
         </p>
         <div class="product-stack">
           <span class="tag">OpenClaw</span>
@@ -487,7 +497,7 @@
           <span class="product-name">The Dragoman</span>
         </div>
         <p class="product-desc">
-          <strong>&quot;The Dragoman&quot; Telegram channel.</strong> Brand brief, channel vision, and a three-stage post pipeline (architecture → voice → image) — each post ships as a self-contained <em>posts/&lt;NNNN-slug&gt;/</em> bundle with copy and imagery.
+          <strong>"The Dragoman" Telegram channel</strong> Brand brief, channel vision, and a three-stage post pipeline (architecture → voice → image) — each post ships as a self-contained <em>posts/&lt;NNNN-slug&gt;/</em> bundle with copy and imagery.
         </p>
         <div class="product-stack">
           <span class="tag">Editorial</span>
@@ -502,10 +512,26 @@
     <div class="product-grid">
       <div class="product reveal">
         <div class="product-header">
+          <span class="product-name">.agents</span>
+        </div>
+        <p class="product-desc">
+          <strong>Progressive-disclosure repository-specific agent docs referenced from <code>CLAUDE.md</code> / <code>AGENTS.md</code></strong>
+        </p>
+      </div>
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Agents</span>
+        </div>
+        <p class="product-desc">
+          <strong>OpenClaw agent-fleet operational docs and nested specialized agent definitions</strong>
+        </p>
+      </div>
+      <div class="product reveal">
+        <div class="product-header">
           <span class="product-name">Sandbox</span>
         </div>
         <p class="product-desc">
-          <strong>Experiments and prototypes.</strong> A scratch space for exploring ideas — AI-assisted development patterns, multi-agent architectures, code review prompts, and <em>early-stage tool prototypes</em> before they graduate into their own projects.
+          <strong>Experiments and prototypes</strong> A scratch space for exploring ideas — AI-assisted development patterns, multi-agent architectures, code review prompts, and <em>early-stage tool prototypes</em> before they graduate into their own projects.
         </p>
         <div class="product-stack">
           <span class="tag">Mixed</span>
@@ -513,6 +539,7 @@
         </div>
       </div>
     </div>
+
   </section>
 
   <footer>
