@@ -1,5 +1,16 @@
 # Log
 
+## 2026-06-12
+
+- My Way: acknowledge Extreme Programming as the formative and ongoing
+  influence behind the method. New lineage note
+  `docs/my-way/prior-art/xp-roots.md` maps what carries over directly (user
+  stories, test-first, commit on green, feedback loops, courage, spikes), what
+  is transformed for agentic development (pairing, on-site customer, oral
+  communication), and where the method deliberately diverges (weight of the
+  pre-coding phase). Linked from `pre-coding-phase.md`, `coding-phase.md`, and
+  `informal-brief.md`.
+
 ## 2026-06-10
 
 - docker/langfuse: add `docker/langfuse/README.md` documenting the shared

@@ -4,7 +4,7 @@ date: 2026-05-02
 model: claude-opus-4-7
 description: "Personal note describing the coding phase as the execution-and-knowledge-preservation half of the method, complementary to the pre-coding phase."
 author: Igor Malyarov
-version: 0.0.1
+version: 0.0.2
 format: note
 ---
 
@@ -13,6 +13,8 @@ format: note
 This note describes the coding phase of the method. It is the execution-and-knowledge-preservation half, complementary to [pre-coding-phase.md](pre-coding-phase.md). Where the pre-coding phase reduces ambiguity before implementation begins, the coding phase keeps execution honest against intent and turns the work into durable knowledge as it progresses.
 
 The core premise is symmetric to the pre-coding one. Coding is execution, but it is also feedback: test outcomes, log entries, and artifacts are not afterthoughts — they are the channels through which implementation reality re-enters earlier layers.
+
+The execution discipline of this phase — test-first, minimum change to green, refactor, commit on green — is inherited from Extreme Programming. See [prior-art/xp-roots.md](prior-art/xp-roots.md) for the lineage.
 
 ## Core idea
 
