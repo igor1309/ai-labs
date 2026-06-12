@@ -2,6 +2,10 @@
 
 ## 2026-06-12
 
+- Prompts: add `define-dod.md` 0.0.1 — reusable closure snippet that makes an
+  agent define a structured, verifiable, provable Definition of Done for the
+  enclosing task (numbered criteria, each with a binary check and expected
+  result, evidence reported per criterion).
 - My Way: acknowledge Extreme Programming as the formative and ongoing
   influence behind the method. New lineage note
   `docs/my-way/prior-art/xp-roots.md` maps what carries over directly (user
