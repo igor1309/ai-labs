@@ -2,6 +2,15 @@
 
 ## 2026-06-12
 
+- Prompts: `define-dod.md` 0.2.0→0.3.0 — condense the payload (~30→~20 lines)
+  with all six hard guarantees intact, confirmed by a third adversarial review
+  round comparing revisions guarantee-by-guarantee. The round caught three
+  compression regressions, fixed before commit: DoD must be stated "in your
+  response" (not a silently rewritable file), "change it only by noted
+  additions" (extend-only quantifies over all edits, blocking in-place
+  weakening), and the vague-qualifier ban hoisted to cover criteria and
+  checks, not just `Expect`. Also restored the verifier-access clause and
+  made coverage span explicit *and implied* requirements.
 - Prompts: add `define-dod.md` 0.2.0 — reusable closure snippet that makes an
   agent state a structured, verifiable, provable Definition of Done before
   starting the enclosing task and use it as the completion gate: numbered
