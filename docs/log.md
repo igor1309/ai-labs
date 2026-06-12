@@ -10,6 +10,11 @@
   communication), and where the method deliberately diverges (weight of the
   pre-coding phase). Linked from `pre-coding-phase.md`, `coding-phase.md`, and
   `informal-brief.md`.
+- Prompts: `google-sheets-tickets.md` 0.0.1→0.0.2 — identity-less rows now get
+  a row-derived `Ticket` identity (`<sheet>!row N`, merged ranges
+  `<sheet>!rows 17–19`) instead of `not specified`, per the ticket-control
+  digest pre-ADR ruling (2026-06-12). `Source` provenance and the `inferred`
+  marking for `Summary` are unchanged.
 
 ## 2026-06-10
 
