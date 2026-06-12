@@ -2,6 +2,7 @@
 
 ## 2026-06-12
 
+- v0.1.16 releases the iOS Safari focus-zoom fix: the library filter input now uses a 16px font size so focusing the search field no longer zooms the page on iPhone.
 - Library filter input font size raised from 0.9rem to 1rem so iOS Safari no longer auto-zooms the page when the search field gains focus (Safari zooms any focused text field with a computed font size below 16px).
 
 ## 2026-06-06
