@@ -2,26 +2,37 @@
 date: 2026-06-12
 author: Igor Malyarov
 name: Define DoD
-version: 0.0.1
+version: 0.1.0
 type: prompt-snippet
+usage: >
+  Closure — paste the body below the front matter verbatim at the end of any
+  task prompt; it binds to "the task above". No placeholders to fill.
 ---
 
-# Define DoD (snippet)
+## Definition of Done (completion gate)
 
-Append to any task prompt. It binds to "the task above" — no placeholders to fill.
+Before starting work on the task above, define its Definition of Done, then
+use it as the completion gate.
 
----
+Define:
 
-Before starting work, define the Definition of Done for the task above:
+- Numbered criteria covering every requirement of the task — functional
+  outcomes, quality constraints, edge cases / failure modes, delivered
+  artifacts. Declare non-goals explicitly; omission excludes nothing.
+- Each criterion is one observable outcome. No vague qualifiers ("works",
+  "clean", "proper") anywhere — not in criteria, checks, or pass conditions.
+- Each criterion has:
+  - Check: an exact command, or an inspection of a named file or artifact,
+    runnable by someone else with access to the repo and produced artifacts.
+  - Expect: a specific observable value, output, or diff — never a judgment.
+- If a requirement cannot be given such a check, do not drop it: list it
+  under `Unverifiable`, with the reason.
 
-- List each done criterion as a numbered item:
-  `N. <criterion> — Check: <command or inspection> — Expect: <result>`.
-- A criterion is a single observable outcome — no "and", no vague qualifiers
-  ("works", "clean", "proper").
-- A check is binary (pass/fail) and runnable by someone else using only the
-  produced artifacts.
-- If a criterion has no such check, rewrite it until it does or drop it.
+Verify before claiming completion:
 
-The task is done only when every check passes. Report evidence per criterion:
-the command output, diff, or artifact path that proves it. Anything not on the
-list is out of scope.
+- Run every check. Mark each criterion PASS or FAIL — no partial states.
+- Report evidence per criterion: command output, diff, or artifact path.
+- Fix FAILs and re-verify. If a criterion still cannot pass, state the
+  limitation explicitly instead of looping.
+- Claim completion only when every criterion is PASS with evidence; report
+  any remaining FAIL or `Unverifiable` items as open limitations.
