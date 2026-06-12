@@ -4,7 +4,7 @@ date: 2026-05-27
 model: gpt-5.5-thinking
 description: "Personal note describing the pre-coding phase as a judgment-driven, iterative part of software development."
 author: Igor Malyarov
-version: 0.0.6
+version: 0.0.7
 format: note
 ---
 
@@ -229,6 +229,10 @@ Movement across these layers is not strictly linear and not one-way. Work may mo
 Revisiting an earlier layer is not a sign that the process has failed. It is part of keeping the work honest against reality. If implementation reveals that a design decision is still unstable, the work may return to ADR-level thinking. If the design still holds but expected behavior is unclear, the work may return to the spec. If the decision and behavior remain sound but execution detail is missing, the work may return to the implementation plan.
 
 The same judgment applies when choosing where to return. The first re-entry point may turn out not to be the right one, and that is acceptable. A revisit that confirms an earlier artifact still holds is still useful because it narrows the problem and protects lower-level work from compensating for the wrong cause.
+
+Forward movement does not have to carry the entire upstream scope. A Product Intent with ten accepted stories does not obligate the next artifact to address all ten; an ADR, spec, or plan may take a single story — or a slice of one — and run it downstream first. This is the XP instinct at work: the early slice exists to educate. Working one story through decision, spec, and implementation usually teaches more about the remaining nine than any amount of upfront coverage would. Downstream artifacts must preserve the upstream intent — not contradict it, not quietly redefine it — but preserving is not the same as covering. Partial coverage is the normal shape of progress, not a gap to apologize for.
+
+The movement back can change more than the artifact it returns to. Accepted intent is never locked. What a downstream slice teaches may flow back and change the intent itself — at any layer, at any time. When that happens, the change lands in the intent artifact first, and the cascade follows: downstream artifacts that depended on the old intent get reviewed and reworked. That cascade is not a cost to route around; it is the method working. An intent sharpened by contact with reality is worth the rework it triggers.
 
 ## Scope variants
 

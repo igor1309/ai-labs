@@ -10,6 +10,8 @@ description: "Note defining Product Intent as the story-centered parent layer fo
 
 Product Intent is the user-facing parent layer above the existing My Way engineering stack. It defines the accepted product intent that research, pre-ADRs, ADRs, specs, implementation plans, code, and tests must preserve.
 
+Preserve means not contradicting or quietly redefining the accepted intent. It does not mean covering all of it: a downstream artifact may carry any slice of the accepted scope — ten accepted stories may flow downstream one at a time, and the first slice often exists to educate the rest.
+
 The core correction is that the workflow should not start with technical uncertainty. It should start with the user capability and outcome the work is meant to create or protect.
 
 ## What it is / what it is not
@@ -78,6 +80,8 @@ The grouping should clarify intent, not become a separate story-mapping ceremony
 
 ## Relationship to downstream artifacts
 
+Each relationship below may engage the full accepted scope or a single slice of it. Taking one story downstream while the rest wait is the normal case, not an exception.
+
 ### Research
 
 Research may reference Product Intent when the investigation exists to clarify, protect, or unblock a user outcome. Research remains exploratory and should not convert product intent into technical commitment.
@@ -104,7 +108,9 @@ Code and tests are the executable result. They prove what was built, but they ar
 
 ## Change propagation
 
-Accepted user stories are living artifacts. Meaningful changes to user capability, actor, outcome, acceptance signal, or boundary can invalidate downstream assumptions and should trigger impact review.
+Accepted user stories are living artifacts, and accepted intent is never locked. Meaningful changes to user capability, actor, outcome, acceptance signal, or boundary can invalidate downstream assumptions and should trigger impact review.
+
+Change flows in both directions. Downstream work — a spec slice, an implementation, a failed assumption — may teach something that changes the accepted intent itself. When it does, the rework that follows is welcome: a cascade caused by a sharper intent is the method working, not a planning failure. The directionality stays fixed — downstream artifacts never silently redefine the intent; the change lands in the intent artifact first and propagates down.
 
 Not every wording edit needs ceremony. Editorial cleanup that preserves meaning should be recorded only when it helps readers. Review should be impact-based rather than automatic.
 
