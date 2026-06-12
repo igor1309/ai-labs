@@ -45,6 +45,10 @@ The Product Intent layer says: **the user promise that downstream artifacts must
 
 This is the whole reason intent gets a parent layer above ADR. Without the rule, downstream artifacts quietly redefine the product, and nobody notices until the user-facing thing does not match what was promised.
 
+## Where this comes from
+
+XP. Lots of the thinking and experience behind My Way was shaped by Extreme Programming, and still is. User stories at the front, test-first at the back, small green steps in between, courage to step back when reality pushes — that is all XP. The big visible difference — the heavy pre-coding funnel — is XP recalibrated for agents: when the implementer codes at machine speed, "just start coding and learn" stops being cheap. See [prior-art/xp-roots.md](prior-art/xp-roots.md) for the full lineage.
+
 ## What the formal docs add
 
 The formal docs add the layers between intent and execution (research → pre-ADR → ADR → spec → plan), the loop discipline (revisit upward when reality pushes back), and the back half (executable spec → TDD → log → artifact). All of that is real and load-bearing.

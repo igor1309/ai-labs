@@ -2,6 +2,14 @@
 
 ## 2026-06-12
 
+- My Way: acknowledge Extreme Programming as the formative and ongoing
+  influence behind the method. New lineage note
+  `docs/my-way/prior-art/xp-roots.md` maps what carries over directly (user
+  stories, test-first, commit on green, feedback loops, courage, spikes), what
+  is transformed for agentic development (pairing, on-site customer, oral
+  communication), and where the method deliberately diverges (weight of the
+  pre-coding phase). Linked from `pre-coding-phase.md`, `coding-phase.md`, and
+  `informal-brief.md`.
 - Prompts: `google-sheets-tickets.md` 0.0.1→0.0.2 — identity-less rows now get
   a row-derived `Ticket` identity (`<sheet>!row N`, merged ranges
   `<sheet>!rows 17–19`) instead of `not specified`, per the ticket-control
