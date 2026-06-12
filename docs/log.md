@@ -2,12 +2,15 @@
 
 ## 2026-06-12
 
-- Prompts: add `define-dod.md` 0.1.0 — reusable closure snippet that makes an
-  agent define a structured, verifiable, provable Definition of Done for the
-  enclosing task and use it as the completion gate: numbered criteria covering
-  every requirement, binary PASS/FAIL checks (exact command or named-artifact
-  inspection, observable expected result), evidence per criterion, explicit
-  non-goals, and an `Unverifiable` list instead of silent drops.
+- Prompts: add `define-dod.md` 0.2.0 — reusable closure snippet that makes an
+  agent state a structured, verifiable, provable Definition of Done before
+  starting the enclosing task and use it as the completion gate: numbered
+  criteria covering every requirement (uncovered requirement = FAIL), binary
+  PASS/FAIL checks (exact command or named-artifact inspection, observable
+  expected result), evidence per criterion, validity-bounded non-goals, an
+  in-principle-only `Unverifiable` list instead of silent drops, and separated
+  terminal states (completion requires all-PASS; remaining FAILs mean
+  incomplete/blocked). Hardened over two adversarial review rounds.
 - My Way: acknowledge Extreme Programming as the formative and ongoing
   influence behind the method. New lineage note
   `docs/my-way/prior-art/xp-roots.md` maps what carries over directly (user
