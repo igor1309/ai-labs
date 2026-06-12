@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-12
+
+- Library filter input font size raised from 0.9rem to 1rem so iOS Safari no longer auto-zooms the page when the search field gains focus (Safari zooms any focused text field with a computed font size below 16px).
+
 ## 2026-06-06
 
 - Products page card now links directly to the deployed Clipdeck app (`clipdeck.enoa.ai`), with a regression test covering the static card markup.
