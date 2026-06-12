@@ -2,6 +2,15 @@
 
 ## 2026-06-12
 
+- Prompts: add `define-dod.md` 0.2.0 — reusable closure snippet that makes an
+  agent state a structured, verifiable, provable Definition of Done before
+  starting the enclosing task and use it as the completion gate: numbered
+  criteria covering every requirement (uncovered requirement = FAIL), binary
+  PASS/FAIL checks (exact command or named-artifact inspection, observable
+  expected result), evidence per criterion, validity-bounded non-goals, an
+  in-principle-only `Unverifiable` list instead of silent drops, and separated
+  terminal states (completion requires all-PASS; remaining FAILs mean
+  incomplete/blocked). Hardened over two adversarial review rounds.
 - My Way: clarify that downstream movement may carry a partial slice of the
   upstream scope, that accepted intent is never locked, and that the cascading
   rework a changed intent triggers is welcome, not prohibited.
