@@ -11,6 +11,15 @@
   in-principle-only `Unverifiable` list instead of silent drops, and separated
   terminal states (completion requires all-PASS; remaining FAILs mean
   incomplete/blocked). Hardened over two adversarial review rounds.
+- My Way: clarify that downstream movement may carry a partial slice of the
+  upstream scope, that accepted intent is never locked, and that the cascading
+  rework a changed intent triggers is welcome, not prohibited.
+  `pre-coding-phase.md` 0.0.6→0.0.7 extends §Iteration (preserve ≠ cover;
+  the early slice exists to educate); `00-product-intent/note.md` sharpens
+  "must preserve", notes that each downstream relationship may take a single
+  slice, and reframes Change propagation as two-way with fixed directionality
+  (changes land in the intent artifact first, then propagate down). Intake
+  brief at `docs/my-way/plans/scope-creep-clarification-intake.md`.
 - My Way: acknowledge Extreme Programming as the formative and ongoing
   influence behind the method. New lineage note
   `docs/my-way/prior-art/xp-roots.md` maps what carries over directly (user
