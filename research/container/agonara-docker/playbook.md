@@ -114,7 +114,8 @@ need it.
 ## Teardown
 
 ```bash
-exit                              # container is removed (--rm)
+exit                              # from inside the container; it is removed (--rm)
+docker stop agonara-dev           # from the host; same effect (container is removed)
 docker volume rm agonara-home     # only if you want to discard the clone + auth
 ```
 
