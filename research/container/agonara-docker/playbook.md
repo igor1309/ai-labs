@@ -26,7 +26,17 @@ safety analysis.
   enter the sandbox.
 - **Run as non-root** (the image already does) and keep resource limits on.
 
-## One-time setup
+## Quick start
+
+```bash
+./run.sh            # builds the image if missing, then opens a shell
+./run.sh --build    # force a rebuild first
+```
+
+`run.sh` handles the build, the named volume, and the run flags below. The manual
+equivalents follow for reference.
+
+## One-time setup (manual)
 
 ```bash
 # From this directory. Build the image.
@@ -36,7 +46,7 @@ docker build -t agonara-dev:latest .
 docker volume create agonara-home
 ```
 
-## Start a session
+## Start a session (manual)
 
 ```bash
 docker run -it --rm \

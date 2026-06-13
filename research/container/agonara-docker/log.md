@@ -2,11 +2,21 @@
 
 ## 2026-06-13
 
+- **Agent-in-sandbox proven.** `codex` (0.139.0) authenticated in-container; driven via
+  `codex exec --dangerously-bypass-approvals-and-sandbox` (correct flag for an
+  externally-sandboxed env) it authored a trivial test, ran the suite, reported green;
+  independently verified 728/728 pass. Throwaway file removed, `package-lock.json`
+  restored — clean tree. This closes the last unknown: a coding agent runs and edits +
+  tests inside the sandbox.
+- **Push + PR leg proven.** Empty-commit branch `throwaway/pr-proof` pushed → PR #569
+  opened → closed with `--delete-branch`. No merge, repo left clean.
 - **End-to-end loop verified** in container `agonara-dev:latest` (via OrbStack): `gh auth
   login` → `gh repo clone igor1309/ai-labs` (private, on `trunk` @ 1fb2b284) → `npm
   install` (515 pkgs, 33s, `better-sqlite3` prebuilt — no compile) → `npm test
-  --workspace agonara` exit 0, 727/727 tests pass. Confirmed the playbook flow works
-  inside the sandbox. (Push + `gh pr create` not exercised — needs real work on a branch.)
+  --workspace agonara` exit 0, 727/727 tests pass.
+- **State persistence:** `/home/node` is the named volume `agonara-home`; container runs
+  `--rm`, so exiting drops the container but keeps the clone, `node_modules`, and gh/codex
+  auth in the volume.
 - Authored `Dockerfile` (node:22-bookworm + git/gh/build-deps + `claude`/`codex` CLIs,
   non-root) and `playbook.md` (build → run → clone → work → test → PR) for an isolated
   agonara dev container. Scope: agonara only; Swift backends deferred.
