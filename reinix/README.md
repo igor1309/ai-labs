@@ -210,6 +210,6 @@ Coordinates provider CLI agents — Producer, Reviewer, and optional Remediator 
 ## Stack
 
 - Node.js
-- TypeScript
+- JavaScript
 - CLI
 - Multi-Agent
