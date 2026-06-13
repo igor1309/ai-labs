@@ -96,4 +96,6 @@ A CLI prototype that turns one Claude Code JSONL session into a Markdown digest 
 
 - TypeScript
 - LangChain
-- OpenAI-compatible model providers (Nomos, OpenRouter, legacy NVIDIA NIM)
+- Nomos
+- OpenRouter
+- NVIDIA NIM
