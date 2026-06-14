@@ -51,8 +51,13 @@ export function formatInsights(row: Record<string, unknown>): string {
     lines.push(countTable("## 🎯 Top goals", "Goal", goals, 5));
   }
 
-  const narrative = row.narrative_summary as string | null;
+  let narrative = row.narrative_summary as string | null;
   if (narrative && narrative.length > 0) {
+    const RICH_MESSAGE_LIMIT = 32768;
+    const budget = RICH_MESSAGE_LIMIT - lines.join("\n").length - 512;
+    if (narrative.length > budget) {
+      narrative = narrative.slice(0, Math.max(0, budget)) + "…";
+    }
     const sectionMap: [RegExp, string][] = [
       [/^What's working:/, "## ✅ What's working"],
       [/^What's hindering[^:]*:/, "## ⚠️ What's hindering"],

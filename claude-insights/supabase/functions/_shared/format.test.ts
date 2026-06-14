@@ -65,6 +65,11 @@ Deno.test("formatInsights renders narrative sections as headings + collapsible d
   assertEquals((out.match(/<details open>/g) || []).length, 1);
 });
 
+Deno.test("formatInsights caps output at 32768 characters", () => {
+  const out = formatInsights(makeRow({ narrative_summary: "x".repeat(40000) }));
+  assertEquals(out.length <= 32768, true);
+});
+
 Deno.test("formatInsights renders stats as a Markdown table", () => {
   const out = formatInsights(makeRow());
   assertStringIncludes(out, "| Metric | Value |");
