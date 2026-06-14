@@ -14,8 +14,8 @@ Branch: feat/claude-insights-rich-messages
 | Step | Description | State |
 |:-----|:------------|:------|
 | 1 | Test scaffold + sample row helper | done |
-| 2 | Header as Markdown heading | in progress |
-| 3 | Stats as Markdown table | not started |
+| 2 | Header as Markdown heading | done |
+| 3 | Stats as Markdown table | in progress |
 | 4 | Friction/satisfaction/goals as tables | not started |
 | 5 | Narrative as headings + collapsible details | not started |
 | 6 | Enforce 32768-char limit | not started |

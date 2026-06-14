@@ -14,7 +14,7 @@ export function formatInsights(row: Record<string, unknown>): string {
   const goals = row.goals as Record<string, number> | null;
 
   const lines: string[] = [
-    `📊 <b>Claude Insights — Week of ${week}</b>`,
+    `# 📊 Claude Insights — Week of ${week}`,
     `${sessions} sessions · ${hours}h · ${messages} messages`,
     `${commits} commits · +${added}/-${removed} lines`,
   ];

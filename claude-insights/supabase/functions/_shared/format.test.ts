@@ -1,4 +1,4 @@
-import { assertStringIncludes } from "jsr:@std/assert";
+import { assertEquals, assertStringIncludes } from "jsr:@std/assert";
 import { formatInsights } from "./format.ts";
 
 function makeRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
@@ -20,4 +20,9 @@ function makeRow(overrides: Record<string, unknown> = {}): Record<string, unknow
 
 Deno.test("formatInsights includes the week", () => {
   assertStringIncludes(formatInsights(makeRow()), "2026-W23");
+});
+
+Deno.test("formatInsights renders the header as a Markdown heading", () => {
+  const lines = formatInsights(makeRow()).split("\n");
+  assertEquals(lines.some((l) => /^# /.test(l)), true);
 });
