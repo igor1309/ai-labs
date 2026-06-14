@@ -2,6 +2,7 @@
 
 ## 2026-06-14
 
+- Added thousands-separator number formatting (`22454` -> `22,454`) and right-aligned (`---:`) all transposed table columns so values align to the trailing edge.
 - Tweaked the rich-message digest layout after reviewing the live render: transposed all four tables (stats, friction, satisfaction, goals) so labels are column headers and values sit in a single row — far more compact than the tall vertical tables. Replaced the expandable `<details>` narrative blocks with plain Markdown blockquotes (the collapsibles added friction without value).
 - Upgraded the weekly digest to Telegram's new Rich Messages API. `_shared/format.ts` now emits Markdown (heading, stats table, friction/satisfaction/goals tables, narrative as collapsible `<details>` blocks, capped at the 32768-char rich-message limit) and sends it via `sendRichMessage` (`rich_message: { markdown }`) instead of `sendMessage` + `parse_mode: HTML`. Added the first `deno test` suite for `_shared` (`format.test.ts`, 9 tests). Callers unchanged (sender signature preserved). See plan `docs/plans/0002-rich-message-formatting.md`.
 

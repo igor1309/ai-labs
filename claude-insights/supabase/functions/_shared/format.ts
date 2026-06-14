@@ -1,5 +1,8 @@
+/** Format an integer with thousands separators (e.g. 22454 -> "22,454"). */
+const formatNumber = (n: number): string => n.toLocaleString("en-US");
+
 /** Render a count map as a Markdown section: `## heading` + a transposed table
- * (keys as column headers, counts in a single row), sorted by count desc. */
+ * (keys as column headers, counts right-aligned in a single row), sorted by count desc. */
 function countTable(
   heading: string,
   map: Record<string, number>,
@@ -9,8 +12,8 @@ function countTable(
     .sort(([, a], [, b]) => b - a)
     .slice(0, cap);
   const header = `| ${entries.map(([k]) => k.replace(/_/g, " ")).join(" | ")} |`;
-  const separator = `|${entries.map(() => "---").join("|")}|`;
-  const values = `| ${entries.map(([, v]) => v).join(" | ")} |`;
+  const separator = `|${entries.map(() => "---:").join("|")}|`;
+  const values = `| ${entries.map(([, v]) => formatNumber(v)).join(" | ")} |`;
   return `\n${heading}\n${header}\n${separator}\n${values}`;
 }
 
@@ -32,8 +35,8 @@ export function formatInsights(row: Record<string, unknown>): string {
   const lines: string[] = [
     `# 📊 Claude Insights — Week of ${week}`,
     "| Sessions | Duration | Messages | Commits | Lines |",
-    "|---|---|---|---|---|",
-    `| ${sessions} | ${hours}h | ${messages} | ${commits} | +${added} / -${removed} |`,
+    "|---:|---:|---:|---:|---:|",
+    `| ${formatNumber(sessions)} | ${formatNumber(hours)}h | ${formatNumber(messages)} | ${formatNumber(commits)} | +${formatNumber(added)} / -${formatNumber(removed)} |`,
   ];
 
   if (friction && Object.keys(friction).length > 0) {
