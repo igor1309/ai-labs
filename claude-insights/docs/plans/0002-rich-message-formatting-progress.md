@@ -19,8 +19,8 @@ Branch: feat/claude-insights-rich-messages
 | 4 | Friction/satisfaction/goals as tables | done |
 | 5 | Narrative as headings + collapsible details | done |
 | 6 | Enforce 32768-char limit | done |
-| 7 | Rewire sender to sendRichMessage (markdown) | in progress |
-| 8 | Update callers + typecheck | not started |
+| 7 | Rewire sender to sendRichMessage (markdown) | done |
+| 8 | Update callers + typecheck | in progress |
 | 9 | PR | not started |
 
 ## Log

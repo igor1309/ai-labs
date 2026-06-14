@@ -1,5 +1,5 @@
 import { assertEquals, assertStringIncludes } from "jsr:@std/assert";
-import { formatInsights } from "./format.ts";
+import { formatInsights, sendTelegram } from "./format.ts";
 
 function makeRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -63,6 +63,28 @@ Deno.test("formatInsights renders narrative sections as headings + collapsible d
   assertStringIncludes(out, "## ⚠️ What's hindering");
   assertStringIncludes(out, "</details>");
   assertEquals((out.match(/<details open>/g) || []).length, 1);
+});
+
+Deno.test("sendTelegram posts a markdown rich message to sendRichMessage", async () => {
+  const calls: { url: string; body: Record<string, unknown> }[] = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = ((url: string | URL | Request, init?: RequestInit) => {
+    calls.push({ url: String(url), body: JSON.parse(String(init?.body)) });
+    return Promise.resolve(new Response("ok", { status: 200 }));
+  }) as typeof fetch;
+  try {
+    await sendTelegram("TOKEN", "123", "# Hello");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  assertEquals(calls.length, 1);
+  assertEquals(calls[0].url.endsWith("/sendRichMessage"), true);
+  assertEquals("text" in calls[0].body, false);
+  assertEquals("parse_mode" in calls[0].body, false);
+  assertEquals(
+    (calls[0].body.rich_message as Record<string, unknown>).markdown,
+    "# Hello",
+  );
 });
 
 Deno.test("formatInsights caps output at 32768 characters", () => {

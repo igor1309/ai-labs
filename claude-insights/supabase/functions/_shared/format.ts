@@ -79,20 +79,19 @@ export function formatInsights(row: Record<string, unknown>): string {
   return lines.join("\n");
 }
 
-/** Send a message via Telegram Bot API. */
+/** Send a Markdown rich message via the Telegram Bot API. */
 export async function sendTelegram(
   botToken: string,
   chatId: string,
-  text: string,
+  markdown: string,
 ): Promise<void> {
-  const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+  const url = `https://api.telegram.org/bot${botToken}/sendRichMessage`;
   const resp = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       chat_id: chatId,
-      text,
-      parse_mode: "HTML",
+      rich_message: { markdown },
     }),
   });
   if (!resp.ok) {
