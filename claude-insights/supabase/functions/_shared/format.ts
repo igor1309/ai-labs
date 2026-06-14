@@ -15,8 +15,13 @@ export function formatInsights(row: Record<string, unknown>): string {
 
   const lines: string[] = [
     `# 📊 Claude Insights — Week of ${week}`,
-    `${sessions} sessions · ${hours}h · ${messages} messages`,
-    `${commits} commits · +${added}/-${removed} lines`,
+    "| Metric | Value |",
+    "|:-------|------:|",
+    `| Sessions | ${sessions} |`,
+    `| Duration | ${hours}h |`,
+    `| Messages | ${messages} |`,
+    `| Commits | ${commits} |`,
+    `| Lines | +${added} / -${removed} |`,
   ];
 
   if (friction && Object.keys(friction).length > 0) {

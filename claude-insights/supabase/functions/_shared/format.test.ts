@@ -26,3 +26,13 @@ Deno.test("formatInsights renders the header as a Markdown heading", () => {
   const lines = formatInsights(makeRow()).split("\n");
   assertEquals(lines.some((l) => /^# /.test(l)), true);
 });
+
+Deno.test("formatInsights renders stats as a Markdown table", () => {
+  const out = formatInsights(makeRow());
+  assertStringIncludes(out, "| Metric | Value |");
+  assertStringIncludes(out, "| Sessions | 42 |");
+  assertStringIncludes(out, "| Duration | 12h |");
+  assertStringIncludes(out, "| Messages | 318 |");
+  assertStringIncludes(out, "| Commits | 27 |");
+  assertStringIncludes(out, "| Lines | +1234 / -567 |");
+});

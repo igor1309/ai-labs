@@ -15,8 +15,8 @@ Branch: feat/claude-insights-rich-messages
 |:-----|:------------|:------|
 | 1 | Test scaffold + sample row helper | done |
 | 2 | Header as Markdown heading | done |
-| 3 | Stats as Markdown table | in progress |
-| 4 | Friction/satisfaction/goals as tables | not started |
+| 3 | Stats as Markdown table | done |
+| 4 | Friction/satisfaction/goals as tables | in progress |
 | 5 | Narrative as headings + collapsible details | not started |
 | 6 | Enforce 32768-char limit | not started |
 | 7 | Rewire sender to sendRichMessage (markdown) | not started |
