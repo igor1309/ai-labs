@@ -1,16 +1,17 @@
-/** Render a count map as a Markdown section: `## heading` + a two-column table. */
+/** Render a count map as a Markdown section: `## heading` + a transposed table
+ * (keys as column headers, counts in a single row), sorted by count desc. */
 function countTable(
   heading: string,
-  label: string,
   map: Record<string, number>,
   cap?: number,
 ): string {
-  const rows = Object.entries(map)
+  const entries = Object.entries(map)
     .sort(([, a], [, b]) => b - a)
-    .slice(0, cap)
-    .map(([k, v]) => `| ${k.replace(/_/g, " ")} | ${v} |`)
-    .join("\n");
-  return `\n${heading}\n| ${label} | Count |\n|:------|------:|\n${rows}`;
+    .slice(0, cap);
+  const header = `| ${entries.map(([k]) => k.replace(/_/g, " ")).join(" | ")} |`;
+  const separator = `|${entries.map(() => "---").join("|")}|`;
+  const values = `| ${entries.map(([, v]) => v).join(" | ")} |`;
+  return `\n${heading}\n${header}\n${separator}\n${values}`;
 }
 
 /** Format a claude_insights row into a Telegram message (Markdown rich message). */
@@ -30,25 +31,21 @@ export function formatInsights(row: Record<string, unknown>): string {
 
   const lines: string[] = [
     `# 📊 Claude Insights — Week of ${week}`,
-    "| Metric | Value |",
-    "|:-------|------:|",
-    `| Sessions | ${sessions} |`,
-    `| Duration | ${hours}h |`,
-    `| Messages | ${messages} |`,
-    `| Commits | ${commits} |`,
-    `| Lines | +${added} / -${removed} |`,
+    "| Sessions | Duration | Messages | Commits | Lines |",
+    "|---|---|---|---|---|",
+    `| ${sessions} | ${hours}h | ${messages} | ${commits} | +${added} / -${removed} |`,
   ];
 
   if (friction && Object.keys(friction).length > 0) {
-    lines.push(countTable("## 🔴 Friction", "Issue", friction, 3));
+    lines.push(countTable("## 🔴 Friction", friction, 3));
   }
 
   if (satisfaction && Object.keys(satisfaction).length > 0) {
-    lines.push(countTable("## 😊 Satisfaction", "Signal", satisfaction));
+    lines.push(countTable("## 😊 Satisfaction", satisfaction));
   }
 
   if (goals && Object.keys(goals).length > 0) {
-    lines.push(countTable("## 🎯 Top goals", "Goal", goals, 5));
+    lines.push(countTable("## 🎯 Top goals", goals, 5));
   }
 
   let narrative = row.narrative_summary as string | null;
@@ -65,14 +62,12 @@ export function formatInsights(row: Record<string, unknown>): string {
       [/^Ambitious workflows:/, "## 🚀 Ambitious workflows"],
     ];
     const paragraphs = narrative.split("\n\n").filter((p) => p.trim());
-    let first = true;
     for (const p of paragraphs) {
       const match = sectionMap.find(([re]) => re.test(p));
       const heading = match ? match[1] : "## 📝 Notes";
       const body = match ? p.replace(match[0], "").trim() : p.trim();
-      const open = first ? " open" : "";
-      lines.push(`\n${heading}\n<details${open}><summary>Details</summary>\n${body}\n</details>`);
-      first = false;
+      const quote = body.split("\n").map((l) => `> ${l}`).join("\n");
+      lines.push(`\n${heading}\n${quote}`);
     }
   }
 

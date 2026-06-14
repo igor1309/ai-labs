@@ -27,42 +27,42 @@ Deno.test("formatInsights renders the header as a Markdown heading", () => {
   assertEquals(lines.some((l) => /^# /.test(l)), true);
 });
 
-Deno.test("formatInsights renders friction as a table, top 3 by count", () => {
+Deno.test("formatInsights renders friction as a transposed table, top 3 by count", () => {
   const out = formatInsights(makeRow({
     friction: { rate_limits: 5, slow_tools: 3, context_loss: 2, minor_nit: 1 },
   }));
   assertStringIncludes(out, "## 🔴 Friction");
-  assertStringIncludes(out, "| Issue | Count |");
-  assertStringIncludes(out, "| rate limits | 5 |");
-  assertEquals(out.includes("| minor nit | 1 |"), false);
+  assertStringIncludes(out, "| rate limits | slow tools | context loss |");
+  assertStringIncludes(out, "| 5 | 3 | 2 |");
+  assertEquals(out.includes("minor nit"), false);
 });
 
-Deno.test("formatInsights renders satisfaction as a table, all entries", () => {
+Deno.test("formatInsights renders satisfaction as a transposed table, all entries", () => {
   const out = formatInsights(makeRow({ satisfaction: { fast: 9, accurate: 7 } }));
   assertStringIncludes(out, "## 😊 Satisfaction");
-  assertStringIncludes(out, "| fast | 9 |");
-  assertStringIncludes(out, "| accurate | 7 |");
+  assertStringIncludes(out, "| fast | accurate |");
+  assertStringIncludes(out, "| 9 | 7 |");
 });
 
-Deno.test("formatInsights renders goals as a table, top 5 by count", () => {
+Deno.test("formatInsights renders goals as a transposed table, top 5 by count", () => {
   const out = formatInsights(makeRow({
     goals: { g1: 6, g2: 5, g3: 4, g4: 3, g5: 2, g6: 1 },
   }));
   assertStringIncludes(out, "## 🎯 Top goals");
-  assertStringIncludes(out, "| g1 | 6 |");
-  assertEquals(out.includes("| g6 | 1 |"), false);
+  assertStringIncludes(out, "| g1 | g2 | g3 | g4 | g5 |");
+  assertStringIncludes(out, "| 6 | 5 | 4 | 3 | 2 |");
+  assertEquals(out.includes("g6"), false);
 });
 
-Deno.test("formatInsights renders narrative sections as headings + collapsible details", () => {
+Deno.test("formatInsights renders narrative sections as headings + blockquotes, no details", () => {
   const out = formatInsights(makeRow({
     narrative_summary:
       "What's working: Great velocity.\n\nWhat's hindering progress: Rate limits.",
   }));
   assertStringIncludes(out, "## ✅ What's working");
-  assertStringIncludes(out, "Great velocity.");
+  assertStringIncludes(out, "> Great velocity.");
   assertStringIncludes(out, "## ⚠️ What's hindering");
-  assertStringIncludes(out, "</details>");
-  assertEquals((out.match(/<details open>/g) || []).length, 1);
+  assertEquals(out.includes("<details"), false);
 });
 
 Deno.test("sendTelegram posts a markdown rich message to sendRichMessage", async () => {
@@ -92,12 +92,8 @@ Deno.test("formatInsights caps output at 32768 characters", () => {
   assertEquals(out.length <= 32768, true);
 });
 
-Deno.test("formatInsights renders stats as a Markdown table", () => {
+Deno.test("formatInsights renders stats as a transposed Markdown table", () => {
   const out = formatInsights(makeRow());
-  assertStringIncludes(out, "| Metric | Value |");
-  assertStringIncludes(out, "| Sessions | 42 |");
-  assertStringIncludes(out, "| Duration | 12h |");
-  assertStringIncludes(out, "| Messages | 318 |");
-  assertStringIncludes(out, "| Commits | 27 |");
-  assertStringIncludes(out, "| Lines | +1234 / -567 |");
+  assertStringIncludes(out, "| Sessions | Duration | Messages | Commits | Lines |");
+  assertStringIncludes(out, "| 42 | 12h | 318 | 27 | +1234 / -567 |");
 });
