@@ -1,4 +1,19 @@
-/** Format a claude_insights row into a Telegram message (HTML parse mode). */
+/** Render a count map as a Markdown section: `## heading` + a two-column table. */
+function countTable(
+  heading: string,
+  label: string,
+  map: Record<string, number>,
+  cap?: number,
+): string {
+  const rows = Object.entries(map)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, cap)
+    .map(([k, v]) => `| ${k.replace(/_/g, " ")} | ${v} |`)
+    .join("\n");
+  return `\n${heading}\n| ${label} | Count |\n|:------|------:|\n${rows}`;
+}
+
+/** Format a claude_insights row into a Telegram message (Markdown rich message). */
 export function formatInsights(row: Record<string, unknown>): string {
   const week = row.week as string;
   const sessions = row.total_sessions as number;
@@ -25,29 +40,15 @@ export function formatInsights(row: Record<string, unknown>): string {
   ];
 
   if (friction && Object.keys(friction).length > 0) {
-    const top = Object.entries(friction)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 3)
-      .map(([k, v]) => `${k.replace(/_/g, " ")} (${v})`)
-      .join(", ");
-    lines.push(`\n🔴 <b>Friction:</b> ${top}`);
+    lines.push(countTable("## 🔴 Friction", "Issue", friction, 3));
   }
 
   if (satisfaction && Object.keys(satisfaction).length > 0) {
-    const parts = Object.entries(satisfaction)
-      .sort(([, a], [, b]) => b - a)
-      .map(([k, v]) => `${k.replace(/_/g, " ")} ${v}`)
-      .join(" · ");
-    lines.push(`\n😊 <b>Satisfaction:</b> ${parts}`);
+    lines.push(countTable("## 😊 Satisfaction", "Signal", satisfaction));
   }
 
   if (goals && Object.keys(goals).length > 0) {
-    const top = Object.entries(goals)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 5)
-      .map(([k, v]) => `${k.replace(/_/g, " ")} (${v})`)
-      .join(", ");
-    lines.push(`\n🎯 <b>Top goals:</b> ${top}`);
+    lines.push(countTable("## 🎯 Top goals", "Goal", goals, 5));
   }
 
   const narrative = row.narrative_summary as string | null;

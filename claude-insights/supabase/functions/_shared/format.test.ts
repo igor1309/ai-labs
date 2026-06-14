@@ -27,6 +27,32 @@ Deno.test("formatInsights renders the header as a Markdown heading", () => {
   assertEquals(lines.some((l) => /^# /.test(l)), true);
 });
 
+Deno.test("formatInsights renders friction as a table, top 3 by count", () => {
+  const out = formatInsights(makeRow({
+    friction: { rate_limits: 5, slow_tools: 3, context_loss: 2, minor_nit: 1 },
+  }));
+  assertStringIncludes(out, "## 🔴 Friction");
+  assertStringIncludes(out, "| Issue | Count |");
+  assertStringIncludes(out, "| rate limits | 5 |");
+  assertEquals(out.includes("| minor nit | 1 |"), false);
+});
+
+Deno.test("formatInsights renders satisfaction as a table, all entries", () => {
+  const out = formatInsights(makeRow({ satisfaction: { fast: 9, accurate: 7 } }));
+  assertStringIncludes(out, "## 😊 Satisfaction");
+  assertStringIncludes(out, "| fast | 9 |");
+  assertStringIncludes(out, "| accurate | 7 |");
+});
+
+Deno.test("formatInsights renders goals as a table, top 5 by count", () => {
+  const out = formatInsights(makeRow({
+    goals: { g1: 6, g2: 5, g3: 4, g4: 3, g5: 2, g6: 1 },
+  }));
+  assertStringIncludes(out, "## 🎯 Top goals");
+  assertStringIncludes(out, "| g1 | 6 |");
+  assertEquals(out.includes("| g6 | 1 |"), false);
+});
+
 Deno.test("formatInsights renders stats as a Markdown table", () => {
   const out = formatInsights(makeRow());
   assertStringIncludes(out, "| Metric | Value |");
