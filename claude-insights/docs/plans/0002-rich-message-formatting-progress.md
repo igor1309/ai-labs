@@ -17,8 +17,8 @@ Branch: feat/claude-insights-rich-messages
 | 2 | Header as Markdown heading | done |
 | 3 | Stats as Markdown table | done |
 | 4 | Friction/satisfaction/goals as tables | done |
-| 5 | Narrative as headings + collapsible details | in progress |
-| 6 | Enforce 32768-char limit | not started |
+| 5 | Narrative as headings + collapsible details | done |
+| 6 | Enforce 32768-char limit | in progress |
 | 7 | Rewire sender to sendRichMessage (markdown) | not started |
 | 8 | Update callers + typecheck | not started |
 | 9 | PR | not started |

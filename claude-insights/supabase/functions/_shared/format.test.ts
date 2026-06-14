@@ -53,6 +53,18 @@ Deno.test("formatInsights renders goals as a table, top 5 by count", () => {
   assertEquals(out.includes("| g6 | 1 |"), false);
 });
 
+Deno.test("formatInsights renders narrative sections as headings + collapsible details", () => {
+  const out = formatInsights(makeRow({
+    narrative_summary:
+      "What's working: Great velocity.\n\nWhat's hindering progress: Rate limits.",
+  }));
+  assertStringIncludes(out, "## ✅ What's working");
+  assertStringIncludes(out, "Great velocity.");
+  assertStringIncludes(out, "## ⚠️ What's hindering");
+  assertStringIncludes(out, "</details>");
+  assertEquals((out.match(/<details open>/g) || []).length, 1);
+});
+
 Deno.test("formatInsights renders stats as a Markdown table", () => {
   const out = formatInsights(makeRow());
   assertStringIncludes(out, "| Metric | Value |");

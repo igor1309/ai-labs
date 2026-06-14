@@ -54,20 +54,20 @@ export function formatInsights(row: Record<string, unknown>): string {
   const narrative = row.narrative_summary as string | null;
   if (narrative && narrative.length > 0) {
     const sectionMap: [RegExp, string][] = [
-      [/^What's working:/, "✅ <b>What's working:</b>"],
-      [/^What's hindering[^:]*:/, "⚠️ <b>What's hindering:</b>"],
-      [/^Quick wins to try:/, "💡 <b>Quick wins:</b>"],
-      [/^Ambitious workflows:/, "🚀 <b>Ambitious workflows:</b>"],
+      [/^What's working:/, "## ✅ What's working"],
+      [/^What's hindering[^:]*:/, "## ⚠️ What's hindering"],
+      [/^Quick wins to try:/, "## 💡 Quick wins"],
+      [/^Ambitious workflows:/, "## 🚀 Ambitious workflows"],
     ];
     const paragraphs = narrative.split("\n\n").filter((p) => p.trim());
+    let first = true;
     for (const p of paragraphs) {
       const match = sectionMap.find(([re]) => re.test(p));
-      if (match) {
-        const body = p.replace(match[0], "").trim();
-        lines.push(`\n${match[1]}\n<blockquote>${body}</blockquote>`);
-      } else {
-        lines.push(`\n<blockquote>${p}</blockquote>`);
-      }
+      const heading = match ? match[1] : "## 📝 Notes";
+      const body = match ? p.replace(match[0], "").trim() : p.trim();
+      const open = first ? " open" : "";
+      lines.push(`\n${heading}\n<details${open}><summary>Details</summary>\n${body}\n</details>`);
+      first = false;
     }
   }
 
