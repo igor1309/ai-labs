@@ -1,5 +1,9 @@
 # claude-insights log
 
+## 2026-06-14
+
+- Upgraded the weekly digest to Telegram's new Rich Messages API. `_shared/format.ts` now emits Markdown (heading, stats table, friction/satisfaction/goals tables, narrative as collapsible `<details>` blocks, capped at the 32768-char rich-message limit) and sends it via `sendRichMessage` (`rich_message: { markdown }`) instead of `sendMessage` + `parse_mode: HTML`. Added the first `deno test` suite for `_shared` (`format.test.ts`, 9 tests). Callers unchanged (sender signature preserved). See plan `docs/plans/0002-rich-message-formatting.md`.
+
 ## 2026-06-06
 
 - Added `claude-insights/index.html` as the local Claude Insights landing page and linked the products-page card to it.
