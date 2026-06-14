@@ -1,7 +1,6 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(swift test:*)"
-    ]
+    "allow": ["Bash(swift test:*)"],
+    "additionalDirectories": ["~/Developer/my-apps/ci-shared"]
   }
 }
