@@ -16,3 +16,6 @@ corpus-scout/tools/evals/report.json
 *.build/
 *.swiftpm/
 **/supabase/.temp/
+
+# Deno lockfiles — generated locally; functions deploy via the Supabase CLI, not deno
+deno.lock
