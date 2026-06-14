@@ -92,8 +92,15 @@ Deno.test("formatInsights caps output at 32768 characters", () => {
   assertEquals(out.length <= 32768, true);
 });
 
-Deno.test("formatInsights renders stats as a transposed Markdown table", () => {
-  const out = formatInsights(makeRow());
+Deno.test("formatInsights renders stats as a right-aligned transposed table with grouped numbers", () => {
+  const out = formatInsights(makeRow({ total_user_messages: 1111, lines_added: 22454, lines_removed: 2503 }));
   assertStringIncludes(out, "| Sessions | Duration | Messages | Commits | Lines |");
-  assertStringIncludes(out, "| 42 | 12h | 318 | 27 | +1234 / -567 |");
+  assertStringIncludes(out, "|---:|---:|---:|---:|---:|");
+  assertStringIncludes(out, "| 42 | 12h | 1,111 | 27 | +22,454 / -2,503 |");
+});
+
+Deno.test("formatInsights right-aligns count tables and groups large counts", () => {
+  const out = formatInsights(makeRow({ goals: { big_goal: 12345 } }));
+  assertStringIncludes(out, "|---:|");
+  assertStringIncludes(out, "| 12,345 |");
 });
