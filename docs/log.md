@@ -1,5 +1,15 @@
 # Log
 
+## 2026-06-15
+
+- AST tooling research: added `docs/research/ast-code-search-tools.md` comparing
+  `defendend/ast-index` (agent-native code index over SQLite/tree-sitter, MCP +
+  plugin) against `ast-grep/ast-grep` (structural search/lint/rewrite, no index,
+  no built-in Claude integration). Conclusion: not a head-to-head — ast-index for
+  navigation, ast-grep for transformation; lead with ast-index for the Claude Code
+  workflow. Captured forward tasks (time-boxed ast-index trial, adoption shape,
+  ast-grep-for-codemods) in new `backlog/ast.md`.
+
 ## 2026-06-12
 
 - Prompts: `define-dod.md` 0.2.0→0.3.0 — condense the payload (~30→~20 lines)
