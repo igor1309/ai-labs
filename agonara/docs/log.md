@@ -1,5 +1,20 @@
 # Log
 
+## 2026-06-15
+
+- Capture AgenticOps part №4 (agents and scenarios) verbatim in
+  `research/agenticops.md`, extending the captured series to parts 1–4. The post
+  covers role-scoped agents (app-developer, platform-operator,
+  platform-developer, deployer, monitor) and a break-glass path.
+- Fold the design-relevant material into `backlog/agenticops-affordances.md`:
+  part №4 sharpens Idea 1 into a two-layer rule (role as external param filters
+  the discovery surface *and* gates execution from one source of truth) and
+  reframes Idea 2 to lead with a diagnostic *bundle* (reusing
+  `/operations/health` + correlated faults, no Loki/Tempo needed). Records the
+  multi-role taxonomy, scheduled monitor agent, and break-glass path as
+  deliberately deferred (ops-side, not BYOA substrate). No change to forward-task
+  priority.
+
 ## 2026-06-11
 
 - Capture a Habr write-up of a Telegram deep-link one-time-token login flow

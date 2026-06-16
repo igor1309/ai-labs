@@ -1,7 +1,7 @@
 ---
-date: 2026-06-09
+date: 2026-06-15
 model: claude
-description: "Future-thinking design notes: which AgenticOps platform ideas are worth adopting for Agonara's BYOA model. Two net-new affordances — a self-describing API (runtime discovery + follow-up hints) and an agent-facing diagnose — plus what Agonara deliberately does not adopt."
+description: "Future-thinking design notes: which AgenticOps platform ideas are worth adopting for Agonara's BYOA model. Two net-new affordances — a self-describing API (runtime discovery + follow-up hints) and an agent-facing diagnose — sharpened by the part №4 role/scenario material, plus what Agonara deliberately does not adopt."
 ---
 
 # AgenticOps affordances — future thinking
@@ -66,6 +66,17 @@ skill-over-HTTP rather than a CLI (see the MCP-connector reasoning in
 follow-up hints — is **independent** of that packaging choice and can be adopted
 without reversing it.
 
+**Part №4 sharpens this into a two-layer rule.** In AgenticOps the agent's
+**role arrives as an external parameter** (config/env), and that role does two
+things: it *filters which commands the agent sees at discovery time*, **and** the
+platform *re-validates the access on every call*. Agonara already does the second
+layer (role enforced server-side per operation); the first layer — the agent only
+ever discovers the operations its role can meaningfully call — is the missing
+half, and it is the **same filter** as Idea 1's `next`/`links`. The unification
+worth adopting: one role/state filter, two consumers — it both *generates the
+discovery surface* and *gates execution*, from a single source of truth, so the
+two can never drift.
+
 **Open questions.**
 
 - Does the affordance belong on the envelope (`next`/`links`), in the OpenAPI
@@ -83,7 +94,9 @@ without reversing it.
 **The AgenticOps move.** Observability exists "for debugging by agents": an agent
 asks the platform for logs/traces with filters, the platform knows where the
 logs live, collects and cleans them across sources, and returns them paged with
-source attribution and the correlated chain of events.
+source attribution and the correlated chain of events. Part №4 names the
+agent-developer's entry point for this concretely: *"a quick health slice of the
+whole system via a **diagnostic-bundle** request."*
 
 **The gap in Agonara.** There are deploy and `smoke-*` scripts but no
 agent-facing **diagnose** capability. Agonara already threads a `requestId`
@@ -92,12 +105,14 @@ through both the envelope and the `/operations/health` document — the seam for
 there. This connects to the on-hold `loki` logging stack (root repo) as the
 eventual sink.
 
-**Shape worth exploring.** A diagnose-by-`requestId` operation (or operator
-capability) that takes the `requestId` an agent already holds from a `fault` or
-unexpected `rejected`, and returns the correlated server-side log/trace slice —
-paged, redacted (no secret values, per `deployment-discipline.md`), with source
-attribution. Start with structured request logging keyed on `requestId`; the
-Loki/trace correlation is a later layer.
+**Shape worth exploring — lead with the bundle.** The cheapest valuable v1 is the
+Part №4 framing, not the per-`requestId` slice: a **diagnostic bundle** that
+composes the existing `/operations/health` document with the recent correlated
+faults (the `requestId`s an agent already holds), redacted (no secret values, per
+`deployment-discipline.md`), paged, with source attribution. This needs no
+Loki/Tempo stack — it reuses what Agonara already exposes. The per-`requestId`
+log/trace slice is the natural *next* layer once structured `requestId`-keyed
+logging and a read path exist; the full trace correlation is later still.
 
 **Open questions.**
 
@@ -123,6 +138,26 @@ Loki/trace correlation is a later layer.
 - **The base-infra layer** (Incus / k3s / Argo CD / Loki / Prometheus, etc.).
   Homelab platform engineering, orthogonal to Agonara the product — except where
   `loki` becomes the diagnose sink above.
+- **The multi-role agent taxonomy** (operator / platform-developer / deployer,
+  part №4). It maps to a multi-service homelab with separate infra ownership.
+  Agonara is a single Node app; minting four agent roles would invent structure
+  the product does not have. The *mechanism* — role-scoped command discovery —
+  transfers (Idea 1); the *specific roles* do not.
+
+## Net-new in part №4, deliberately deferred (ops-side, not BYOA substrate)
+
+Part №4 adds two genuinely new concepts. Both are operational, not part of the
+agent-facing API, so they are recorded here rather than promoted to forward tasks.
+
+- **A scheduled monitor agent** (24/7: auto-fix small things via PRs, file richer
+  bugs with span/log links). Presupposes the alerting/telemetry stack Agonara has
+  deferred (`loki` on hold). Revisit only after the diagnose bundle and a
+  logging sink exist.
+- **A break-glass path** — separate, on-demand instructions for direct server
+  access during a disaster. Real operational hygiene, but it belongs with
+  deployment discipline behind the loopback-only admin boundary
+  (`agent-connectivity.md`), not in the BYOA API surface. Tracked here so the
+  reasoning is recorded, not silently dropped.
 
 ## Cross-cutting principle worth formalizing
 
