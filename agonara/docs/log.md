@@ -9,7 +9,14 @@
   CLI-or-contract + SKILL.md pattern already analysed in
   `backlog/agenticops-affordances.md`: Agonara made the same bet with the
   OpenAPI contract substituting for a generated CLI as the flat command surface.
-  No change to backlog direction or priority.
+- Fold the analysis into `backlog/agenticops-affordances.md` as a "Second
+  corroboration" subsection and a cross-link from the CLI "does not adopt"
+  bullet. Finding: the CLI argument is stronger for Agonara's
+  CSRF/idempotency handshake than for the post's bearer-token case, yet a
+  *mandatory* CLI binary still loses against the runtime-free BYOA assumption;
+  the post reinforces two existing items — bearer-token auth
+  (`agent-connectivity.md`) and runtime command discovery (Idea 1) — not a new
+  direction. No change to backlog direction or priority.
 
 ## 2026-06-15
 
