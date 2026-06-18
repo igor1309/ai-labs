@@ -38,6 +38,41 @@ specific front-door proposals (bearer token, MCP wrapper, two auth adapters) are
 already captured with sharper reasoning in the agent-connectivity backlog. Two
 ideas are genuinely net-new and worth exploring.
 
+### Second corroboration: the Twenty CRM "CLI + thin SKILL.md" post
+
+A separate, unrelated write-up
+([`../research/cli/twenty-crm-cli-skill.md`](../research/cli/twenty-crm-cli-skill.md))
+reaches the same pattern from the consumer side: *given a REST API with an
+OpenAPI/Swagger spec, generate a thin CLI wrapper and put a thin `SKILL.md` over
+it* — explicitly rejecting both a hand-coded wrapper and the
+"have the agent write its own CLI" approach (hardcoded, needs a rebuild when the
+schema shifts). Its two load-bearing claims — *nothing to support* and *the skill
+auto-adapts to custom fields/collections because the schema lives server-side* —
+are exactly the properties Agonara gets from skill-over-contract, with the
+contract (not a generated CLI) as the command surface. Agonara already avoided
+the anti-pattern the post warns against when it removed the developer-facing
+`agonara-api` skill as built for the wrong consumer.
+
+It does **not** move Agonara toward a CLI, but it sharpens the existing
+CLI-vs-contract tradeoff two ways:
+
+- **The CLI argument is stronger here than in the post's own case, yet still
+  loses.** The post's auth is a single bearer token from a profile; Agonara's is
+  cookie + CSRF (`X-Agonara-CSRF` from `GET /identity/session`) + idempotency
+  keys + envelope branching, all carried as *prose* the agent must execute
+  correctly each time (`agonara-api-access`). A generated CLI would bake that
+  fiddly handshake into a tool. The reason to still decline a *mandatory* CLI is
+  the BYOA premise the api-access skill states as an assumption — "no repository,
+  no build or test tooling, no particular agent runtime" — which a required CLI
+  binary reintroduces. The auto-adapt benefit the post credits to the CLI,
+  Agonara already gets from the contract.
+- **It reinforces two existing items rather than a new one.** Bearer-token auth
+  (`agent-connectivity.md`) removes the part of the handshake that makes raw HTTP
+  error-prone, independent of any CLI; and runtime command **discovery** (Idea 1)
+  is the half a Swagger-derived CLI gives for free that Agonara's static skills
+  do not. The post is one more data point that the discovery affordance — not a
+  CLI — is the thing worth adopting.
+
 ## Idea 1 — A self-describing API: runtime discovery + follow-up hints
 
 **The AgenticOps move.** The platform's CLI does *discovery* of which commands
@@ -130,7 +165,12 @@ logging and a read path exist; the full trace correlation is later still.
 - **A CLI as the operating surface.** A considered tradeoff, not a gap — for
   agents that can execute HTTP, the skill is the one-step mount and a CLI/MCP
   wrapper is duplicated surface until a constrained (no-HTTP) runtime needs it
-  (`agent-connectivity.md`).
+  (`agent-connectivity.md`). The Twenty CRM post
+  ([`../research/cli/twenty-crm-cli-skill.md`](../research/cli/twenty-crm-cli-skill.md))
+  is a worked example of the CLI variant; the corroboration note above explains
+  why its argument, though stronger for Agonara's CSRF/idempotency handshake than
+  for the post's own bearer-token case, still does not justify a *mandatory* CLI
+  binary against the runtime-free BYOA assumption.
 - **A machine-readable application *descriptor* / resource-topology map.**
   Targets a multi-service homelab. Agonara is a single Node app whose topology is
   already encapsulated behind its own API, and live inventory is intentionally
