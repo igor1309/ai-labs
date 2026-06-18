@@ -1,5 +1,16 @@
 # Log
 
+## 2026-06-18
+
+- Capture the nobilix Twenty CRM "CLI wrapper + thin SKILL.md over an
+  OpenAPI/Swagger REST API" write-up verbatim under
+  `research/cli/twenty-crm-cli-skill.md` (new `research/cli/` folder), with the
+  source link in its frontmatter. It is third-party validation of the
+  CLI-or-contract + SKILL.md pattern already analysed in
+  `backlog/agenticops-affordances.md`: Agonara made the same bet with the
+  OpenAPI contract substituting for a generated CLI as the flat command surface.
+  No change to backlog direction or priority.
+
 ## 2026-06-15
 
 - Capture AgenticOps part №4 (agents and scenarios) verbatim in
