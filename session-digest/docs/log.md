@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-19
+
+- Captured Claudescope prior-art research note (local multi-agent session viewer/search/analytics) and how it relates to session-digest and claude-insights.
+
 ## 2026-04-27
 
 - Implemented ADR-004 settings support: `settings.env` can set the model-context byte budget, and `SESSION_DIGEST_MODEL_CONTEXT_MAX_BYTES` can override it for one run.
