@@ -6,8 +6,8 @@
 # ROW PROJECTS (update the loop in main when adding a new project):
 #   .agents, agents, agonara, claude-insights, clipdeck, corpus-scout,
 #   dashboard-sync-agent, debates, dev-skills, dragoman, gemini, insights,
-#   loki, neris, nexum, niora, nomos, notio, oracle, prompts, reading, reinix,
-#   sandbox, session-digest, tools, web-scout
+#   loki, neris, nexum, niora, nomos, notio, oracle, prompts, reading,
+#   reinix, sandbox, session-digest, tools, web-scout
 
 set -euo pipefail
 
