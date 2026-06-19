@@ -148,7 +148,7 @@ reviewPolicy:
 
 `ReviewFixPolicy` is the routing seam between review output and workflow control. It owns budget, escalation, severity mapping, convergence checks, and any state it wants to carry across rounds.
 
-Production composition uses `ConfigBasedReviewFixPolicy` by default. It treats `verdict: "accepted"` as success, treats any other non-empty verdict string as failure, and remediates failed reviews until `maxRemediationAttempts` is exhausted.
+Production composition uses `ConfigBasedReviewFixPolicy` by default. It treats `verdict: "accepted"` with `verification.ran: true` as success. Missing or false `verification.ran` fails immediately; any other verified non-empty verdict is remediated until `maxRemediationAttempts` is exhausted.
 
 The policy interface is intentionally small:
 
