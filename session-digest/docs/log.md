@@ -3,6 +3,7 @@
 ## 2026-06-19
 
 - Captured Claudescope prior-art research note (local multi-agent session viewer/search/analytics) and how it relates to session-digest and claude-insights.
+- Opened `docs/TODO.md` with a repo-aware session-grouping item so worktrees of one repo are not treated as separate projects.
 
 ## 2026-04-27
 
