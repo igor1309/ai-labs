@@ -35,3 +35,12 @@ over raw sessions, session-digest is the distilled writeup.
   not have — a reference for how those on-disk session formats differ.
 - Their resource/usage analytics overlaps with `claude-insights`; compare
   metrics and surface choices.
+
+## Feedback / limitations
+
+- **Project = folder.** Grouping is keyed on the directory path, so multiple
+  git worktrees of the *same* repo show up as separate projects. Inconvenient
+  for a worktree-heavy workflow — sessions for one logical project end up
+  scattered. A repo-aware grouping (e.g. by git remote / common repo root)
+  would fix this. Worth keeping in mind for session-digest too, which faces the
+  same "what is a project" identity question when grouping sessions.
