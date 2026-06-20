@@ -20,6 +20,12 @@
   stray closing tags at EOF, broken deliverables numbering, a self-contradiction
   about product surfaces being a "source of record," and a roles-vs-modules
   mislabel of the five domain colors.
+- Add `docs/byoa-student-agent-connect.md`: a host-agnostic procedure for
+  connecting an external BYOA agent to a deployed instance as a student
+  (provision identity → place creds → install the api-access/membership/student
+  skills → verify). Captures the first realized agent-connectivity path
+  (cookie + CSRF, no bearer token yet); host-specific wiring stays in inventory
+  per deployment-discipline.
 
 ## 2026-06-18
 
