@@ -1,18 +1,15 @@
 ---
 title: Agonara Brief
-description: Product description and name origin for Agonara, for handoff to visual identity designers. Contains no visual guidance — all design decisions belong to the designer.
+description: Plain product description and name origin for Agonara.
 date: 2026-06-20
-version: 0.2.0
+version: 0.3.0
 status: draft
 audience: visual identity designers
 ---
 
 # Agonara Brief
 
-This brief gives the visual identity designer two things: what Agonara is, and
-where its name comes from. It deliberately contains **no visual direction** — no
-palette, type, mark concepts, references, or examples. Those decisions are the
-designer's.
+This brief states what Agonara is and where its name comes from.
 
 ## The Product
 
@@ -46,6 +43,3 @@ disciplined passage through challenge.
 
 The name is not self-explanatory: without supporting copy it can read as a
 fantasy place name or an abstract brand.
-
-(Source: [Agonara Brand Brief](brand_brief.md); Russian parallel:
-[brand_brief_ru.md](brand_brief_ru.md).)
