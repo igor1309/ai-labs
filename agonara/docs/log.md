@@ -6,7 +6,8 @@
   the product and quote the name origin, nothing else. Removed all visual
   guidance (palette, type, mark concepts, applications, deliverables, must/avoid
   lists) — those decisions belong to the visual identity designer, not the
-  brief.
+  brief. Also removed the source-link references and the visual-noun enumeration
+  in the intro, leaving plain product description plus name origin.
 - Add `docs/brand/visual-identity-brief.md`: a designer-facing handoff brief
   that carries the brand brief's naming rationale (agon root, brand-meaning
   layers, serious/formative tone) into a visual direction, with audience, what
