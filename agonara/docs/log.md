@@ -1,5 +1,20 @@
 # Log
 
+## 2026-06-20
+
+- Add `docs/brand/visual-identity-brief.md`: a designer-facing handoff brief
+  that carries the brand brief's naming rationale (agon root, brand-meaning
+  layers, serious/formative tone) into a visual direction, with audience, what
+  the identity must/must not express, mark/type/color starting points,
+  applications, deliverables, and open questions. Establishes there is **no**
+  visual reference yet — the shipped HTML/web surfaces are placeholder
+  scaffolding, not a baseline — while preserving the one functional carry-over:
+  five mutually distinct, accessible domain colors (student, curator, admin,
+  corpus, membership). Ran adversarial review and fixed the defects found:
+  stray closing tags at EOF, broken deliverables numbering, a self-contradiction
+  about product surfaces being a "source of record," and a roles-vs-modules
+  mislabel of the five domain colors.
+
 ## 2026-06-18
 
 - Capture the nobilix Twenty CRM "CLI wrapper + thin SKILL.md over an
