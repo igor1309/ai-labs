@@ -2,6 +2,13 @@
 
 ## 2026-06-20
 
+- Add `research/telegram-bot-native-polls.md`: grounded research verifying a
+  Telegram agent's ("Hermes") claim that it cannot create native Telegram polls.
+  Confirms `sendPoll` is a real, separate Bot API method bots can call (so the
+  gap is tooling, not the platform), and surfaces the caveat the agent omitted —
+  bots cannot send polls in private 1-on-1 chats. Cross-linked to the
+  Telegram-bot runtime in `backlog/agent-connectivity.md` as a capability
+  reference.
 - Rewrite `docs/brand/visual-identity-brief.md` down to its purpose: describe
   the product and quote the name origin, nothing else. Removed all visual
   guidance (palette, type, mark concepts, applications, deliverables, must/avoid
