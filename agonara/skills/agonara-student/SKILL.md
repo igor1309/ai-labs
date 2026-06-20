@@ -1,8 +1,8 @@
 ---
 name: agonara-student
 author: Igor Malyarov
-version: "1.0.0"
-description: Operate an Agonara instance as a Student through its HTTP API — discover and preview programs without creating state, self-join/leave/rejoin and act on invitations, resume learning and follow the next step, study accepted concepts and materials with navigation intact, answer quick checks and submit open and readiness answers, and read feedback, results, and the evidence behind progress. The student sees only accepted corpus and its own state — never curator drafts, answer keys, correctness metadata, or evaluator internals. Use when an agent acts as a learner against an Agonara instance.
+version: "1.1.0"
+description: Operate an Agonara instance as a Student through its HTTP API — discover and preview programs without creating state, self-join/leave/rejoin and act on invitations, resume learning and follow the next step, study accepted concepts and materials with navigation intact, present checks and relay the student's own quick, open, and readiness answers, and read feedback, results, and the evidence behind progress. The agent coaches learning but never produces the student's assessment evidence. The student sees only accepted corpus and its own state — never curator drafts, answer keys, correctness metadata, or evaluator internals. Use when an agent acts as a learner against an Agonara instance.
 trigger: when an agent works as a Student against an Agonara instance — discovering or joining programs, learning, taking checks, or reading its own progress
 ---
 
@@ -108,9 +108,38 @@ accepted structure (requires an active membership).
   program structure rather than a flat link list
   (STU-09, STU-10).
 
+## The assessment boundary: coach, never test-taker
+
+A second load-bearing rule, distinct from visibility above: an agent may help a
+student *learn*, but must never *produce the student's assessment evidence.* The
+program's value is that progress is grounded in the student's own attempts; an
+agent that answers checks fabricates that evidence (and for open answers an LLM
+would be grading an LLM). The instance **cannot** enforce this — your attempts
+arrive as an authenticated student session, indistinguishable from the human's —
+so the boundary lives here, in how you behave.
+
+- **Coach, not test-taker.** While studying (concepts, materials) tutor freely:
+  explain, give analogies, practise on *other* problems, interpret returned
+  feedback, surface weak areas. Once a check is the active task, do not produce,
+  choose, or reveal its answer.
+- **Scribe, not author.** Submit only an answer the student has stated themselves
+  in the exchange. Relay their `selectedOptionId` / `submittedAnswer`; never
+  originate it, and never auto-submit an attempt the student did not give you.
+- **No derivation or leak while a check is live.** Beyond never reading the key
+  (visibility rule above): do not work out and reveal the correct option, do not
+  draft the open answer, and do not hint toward the answer during the attempt.
+  Hints belong to study, aimed at the concept — not the live check.
+- **Present faithfully and legibly.** Show the check exactly as delivered — the
+  full question and *every* option, enumerated and clearly labelled, nothing
+  added, dropped, reordered to mislead, or annotated with a hint — and let the
+  student pick. If the student is stuck, offer to return to studying the
+  underlying concept, not to supply the answer.
+
 ## Check and assess
 
-Verify understanding through quick checks, open answers, and readiness checks.
+Honor the assessment boundary above: present the check, let the student answer,
+and submit only what the student gives you. Verify understanding through quick
+checks, open answers, and readiness checks.
 Every submission is a mutation that requires the session cookie, `X-Agonara-CSRF`,
 **and** an `X-Agonara-Idempotency-Key` (the contract marks the idempotency key
 required for student attempt submissions — generate a fresh key per submission;
