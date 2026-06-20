@@ -1,5 +1,5 @@
 ---
-date: 2026-06-07
+date: 2026-06-20
 model: gpt-5
 description: "Index of Agonara's forward-task backlogs, split by topic under backlog/."
 version: 0.1.0
@@ -26,6 +26,20 @@ Backlogs are split by topic so each concern stays discoverable on its own:
 Promote a topic to its own `backlog/<topic>.md` file when it is a distinct
 concern that has reached roughly three or more items or is clearly going to grow;
 keep small or uncategorized items in this index until then.
+
+## Uncategorized items
+
+Single items not yet promoted to a topic file.
+
+- **Authorized deletion of corpus sources (and program lifecycle).** Source
+  records are append-only: no role has a delete via the API, and Program
+  archival/deletion/ownership transfer are explicitly not exposed
+  (`docs/specs/corpus-storage-and-curator-acceptance-api.md` #65/#66;
+  `corpus-storage-and-curator-acceptance-first-slice.md` #37/#44). Decide, via an
+  ADR, whether to add a **curator-authorized** source-removal (and/or program
+  archival) operation with audit-preserving semantics. Until then, stray or test
+  sources can only be removed by host-level DB surgery, which overrides the
+  append-only design.
 
 ## Design-reasoning companions
 
