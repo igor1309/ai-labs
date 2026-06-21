@@ -38,7 +38,24 @@ python3 claude-insights/claude-insights.py --days 7 --push
 
 # refresh cache first (runs `claude --print /insights`), then push
 python3 claude-insights/claude-insights.py --days 7 --push --refresh
+
+# push a metrics-only row even when the narrative is empty (bypasses the guard)
+python3 claude-insights/claude-insights.py --days 7 --push --allow-empty-narrative
 ```
+
+### Narrative protection on push
+
+The model-generated narrative ("At a Glance") can be missing from `report.html`
+when `claude /insights` is rate-limited or interrupted (the chart data is still
+written, but the narrative is not). To avoid broadcasting a thin digest, `--push`:
+
+- never overwrites an existing non-empty `narrative_summary`/`raw_html` with an empty one;
+- **skips the push entirely** (exit 1, loud warning) when the narrative is empty and no
+  existing narrative exists for that week — so the DB webhook never fires a degraded
+  Telegram message;
+- logs loudly whenever the narrative is empty.
+
+Use `--allow-empty-narrative` to force a metrics-only push.
 
 ## Output
 
