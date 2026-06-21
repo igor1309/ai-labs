@@ -200,8 +200,60 @@ def ping_supabase() -> None:
         print(f"Supabase keep-alive ping failed: {e.reason}", file=sys.stderr)
 
 
-def push_to_supabase(summary: dict) -> None:
-    """Upsert summary into Supabase claude_insights table."""
+def resolve_push_row(
+    new_row: dict, existing_row: dict | None, allow_empty: bool = False
+) -> dict | None:
+    """Decide the row to upsert, protecting the narrative.
+
+    - new narrative present -> push new_row as-is
+    - new narrative empty but existing has one -> preserve existing narrative + raw_html
+    - new narrative empty, no existing narrative, not allowed -> None (skip degraded push)
+    - allow_empty -> push new_row even with empty narrative
+    Metric fields always come from new_row; only narrative_summary/raw_html are preserved.
+    """
+    if (new_row.get("narrative_summary") or "").strip():
+        return dict(new_row)
+
+    existing = existing_row or {}
+    if (existing.get("narrative_summary") or "").strip():
+        merged = dict(new_row)
+        merged["narrative_summary"] = existing["narrative_summary"]
+        if existing.get("raw_html"):
+            merged["raw_html"] = existing["raw_html"]
+        return merged
+
+    if allow_empty:
+        return dict(new_row)
+
+    return None
+
+
+def fetch_existing_row(url: str, key: str, week: str) -> dict | None:
+    """Fetch the existing claude_insights row for a week, or None."""
+    endpoint = (
+        f"{url}/rest/v1/claude_insights"
+        f"?week=eq.{week}&select=narrative_summary,raw_html&limit=1"
+    )
+    req = urllib.request.Request(
+        endpoint,
+        method="GET",
+        headers={"apikey": key, "Authorization": f"Bearer {key}"},
+    )
+    try:
+        with urllib.request.urlopen(req) as resp:
+            rows = json.loads(resp.read())
+        return rows[0] if rows else None
+    except (urllib.error.HTTPError, urllib.error.URLError, json.JSONDecodeError):
+        return None
+
+
+def push_to_supabase(summary: dict, allow_empty: bool = False) -> None:
+    """Upsert summary into Supabase claude_insights table.
+
+    Protects the narrative: an empty narrative never overwrites an existing one,
+    and a degraded row (empty narrative, no existing narrative) is skipped unless
+    allow_empty is set, so the Telegram webhook never fires a thin digest.
+    """
     url = os.environ.get("SUPABASE_URL")
     key = os.environ.get("SUPABASE_KEY")
     if not url or not key:
@@ -228,6 +280,22 @@ def push_to_supabase(summary: dict) -> None:
         "narrative_summary": summary.get("narrative_summary", ""),
         "raw_html": summary.get("raw_html", ""),
     }
+
+    if not (row["narrative_summary"] or "").strip():
+        print(f"Warning: narrative_summary is empty for week={row['week']}", file=sys.stderr)
+
+    existing = fetch_existing_row(url, key, row["week"])
+    resolved = resolve_push_row(row, existing, allow_empty=allow_empty)
+    if resolved is None:
+        print(
+            f"Skipping push for week={row['week']}: empty narrative and no existing "
+            "narrative to preserve (use --allow-empty-narrative to override)",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if resolved["narrative_summary"] != row["narrative_summary"]:
+        print(f"Preserved existing narrative for week={row['week']}", file=sys.stderr)
+    row = resolved
 
     endpoint = f"{url}/rest/v1/claude_insights"
     data = json.dumps(row).encode()
@@ -260,12 +328,15 @@ def main():
     parser.add_argument("--output", "-o", type=str, help="Write JSON to file instead of stdout")
     parser.add_argument("--push", action="store_true", help="Push summary to Supabase")
     parser.add_argument("--refresh", action="store_true", help="Run claude /insights to refresh cache before collecting")
+    parser.add_argument("--allow-empty-narrative", action="store_true", help="Push even when the narrative is empty (overrides the degraded-push guard)")
     args = parser.parse_args()
 
     load_env()
 
+    refresh_failed = False
     if args.refresh:
         if not refresh_insights():
+            refresh_failed = True
             print("Warning: refresh failed, continuing with existing cache", file=sys.stderr)
 
     now = datetime.now(timezone.utc)
@@ -308,7 +379,9 @@ def main():
         print(output)
 
     if args.push:
-        push_to_supabase(summary)
+        if refresh_failed and not (narrative or "").strip():
+            print("Note: refresh failed and narrative is empty — push guard will protect existing data", file=sys.stderr)
+        push_to_supabase(summary, allow_empty=args.allow_empty_narrative)
 
 
 if __name__ == "__main__":
