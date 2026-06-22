@@ -2723,6 +2723,54 @@ paths:
           $ref: "#/components/responses/Rejected"
         "500":
           $ref: "#/components/responses/Fault"
+  /programs/{programId}/quick-checks/curation:
+    get:
+      tags:
+        - corpus
+      operationId: listAcceptedQuickChecksForCuration
+      summary: List accepted Quick Checks for curation, including answer keys.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /programs/{programId}/readiness-checks/curation:
+    get:
+      tags:
+        - corpus
+      operationId: listAcceptedReadinessChecksForCuration
+      summary: List accepted Readiness Checks for curation.
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
   /programs/{programId}/quick-checks:
     get:
       tags:

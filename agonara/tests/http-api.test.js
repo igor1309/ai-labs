@@ -2547,6 +2547,53 @@ test("quickCheckAcceptanceAndRejection_shouldExposeCuratorRevisionAndRejectedCan
   }
 });
 
+test("listAcceptedQuickChecksForCuration_shouldExposeCuratorListWithEntityRevisionAndAnswerKey", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(50) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const candidate = await createQuickCheckCandidate(baseUrl, bootstrap, programId, {
+      answerKeyOptionIndex: 0,
+      checkKind: "single_select_quick_check",
+      options: ["Closure under addition", "Finite dimension"],
+      prompt: "Which property is required for a vector space?",
+      title: "Closure check",
+    });
+    const candidateId = (await candidate.json()).value.quickCheckCandidate.candidateId;
+    const accepted = await acceptQuickCheckCandidate(baseUrl, bootstrap, candidateId, {});
+    const acceptedQuickCheck = (await accepted.json()).value.acceptedQuickCheck;
+
+    const listResponse = await fetch(`${baseUrl}/programs/${programId}/quick-checks/curation`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+    const listBody = await listResponse.json();
+    const item = listBody.value?.acceptedQuickChecks?.[0];
+
+    assert.deepEqual(
+      {
+        statusCode: listResponse.status,
+        entityId: item?.entityId,
+        revisionId: item?.revisionId,
+        answerKeyOptionId: item?.answerKeyOptionId,
+        programId: item?.programId,
+        title: item?.title,
+      },
+      {
+        statusCode: 200,
+        entityId: acceptedQuickCheck.entityId,
+        revisionId: acceptedQuickCheck.revisionId,
+        answerKeyOptionId: acceptedQuickCheck.answerKeyOptionId,
+        programId,
+        title: "Closure check",
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("quickCheckCuratorRoutes_shouldRejectInvalidBodiesAndUnauthorizedCallers", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(50) });
 
@@ -3067,6 +3114,53 @@ test("quickCheckAttempts_shouldRejectInvalidReadsAndListQueries", async () => {
             statusCode: 400,
           },
         ],
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("listAcceptedReadinessChecksForCuration_shouldExposeCuratorListWithEntityAndRevision", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(180),
+  });
+
+  try {
+    const scenario = await createReadinessHttpScenario(baseUrl);
+    const created = await createReadinessCheckCandidate(baseUrl, scenario.curator, scenario.programId, {
+      requirements: [{
+        requiredLevel: "on_track",
+        targetId: scenario.topic.entityId,
+        targetKind: "topic",
+      }],
+      scope: { scopeKind: "topic", topicEntityId: scenario.topic.entityId },
+      title: "Topic readiness",
+    });
+    const candidateId = (await created.json()).value.readinessCheckCandidate.candidateId;
+    const accepted = await acceptReadinessCheckCandidate(baseUrl, scenario.curator, candidateId, {});
+    const acceptedReadiness = (await accepted.json()).value.acceptedReadinessCheck;
+
+    const listResponse = await fetch(`${baseUrl}/programs/${scenario.programId}/readiness-checks/curation`, {
+      headers: { cookie: scenario.curator.cookie },
+    });
+    const listBody = await listResponse.json();
+    const item = listBody.value?.acceptedReadinessChecks?.[0];
+
+    assert.deepEqual(
+      {
+        statusCode: listResponse.status,
+        entityId: item?.entityId,
+        revisionId: item?.revisionId,
+        programId: item?.programId,
+        title: item?.title,
+      },
+      {
+        statusCode: 200,
+        entityId: acceptedReadiness.entityId,
+        revisionId: acceptedReadiness.revisionId,
+        programId: scenario.programId,
+        title: "Topic readiness",
       },
     );
   } finally {

@@ -1,5 +1,79 @@
 # Log
 
+## 2026-06-22
+
+- Add ADR-020 (`adr-020-curator-accepted-readiness-check-read-surface.md`,
+  status: accepted), amending ADR-011 to add a curator-only read surface over
+  accepted readiness checks — the readiness analogue of ADR-019. Readiness was
+  the last accepted assessment artifact whose entity id a curator could not
+  rediscover after acceptance (its only accepted list is the student-gated
+  delivery view), so in-place `targetEntityId` re-acceptance was unreachable.
+- Implement ADR-020 (strict TDD, RED→GREEN): new corpus command
+  `listAcceptedReadinessChecksForCuration` (mirrors the quick-check curation list;
+  `resolveAssessmentCuratorAuthorization`, curator-only — student and
+  admin-without-curator rejected) returning `summarizeAcceptedReadinessCheck` per
+  accepted readiness check. Wired `GET /programs/{programId}/readiness-checks/curation`
+  in `src/http-contract.js` + `src/server.js`, regenerated `docs/api/openapi.yml`.
+  Domain + HTTP tests in `tests/corpus.test.js` and `tests/http-api.test.js`.
+  Documented `targetEntityId` re-acceptance and the new list in the readiness
+  section of `skills/agonara-curator-assessment` (v1.1.2 → v1.2.0). This
+  completes `targetEntityId` discovery documentation across all curator
+  acceptance surfaces (open-answer, quick check, assessment criteria, corpus,
+  readiness).
+- Implement ADR-019 (strict TDD): add curator-only accepted quick-check read
+  surface `GET /programs/{programId}/quick-checks/curation`. New corpus command
+  `listAcceptedQuickChecksForCuration` reuses `resolveAssessmentCuratorAuthorization`
+  (curator-only; admin-without-curator and student-alone rejected, mirroring the
+  curation detail) and returns the full `summarizeAcceptedQuickCheck` projection
+  (entity id, current revision id, answer key) per accepted quick check. Wired
+  the HTTP route in `src/http-contract.js` + `src/server.js`, regenerated
+  `docs/api/openapi.yml`. Domain + HTTP tests in `tests/corpus.test.js` and
+  `tests/http-api.test.js`. Updated `skills/agonara-curator-assessment` (v1.0.0
+  → v1.1.0) to cite the new list and remove the circular instruction that told
+  curators to find an entity id via the curation detail (which itself needs a
+  revision id they had no way to obtain). Completes the in-place re-acceptance
+  (`targetEntityId`) workflow for already-accepted quick checks.
+  - Also fix a pre-existing failure in `tests/operator-skill-contract.test.js`
+    (red on trunk, unrelated to ADR-019): a prose example `` `GET /programs/...` ``
+    in `agonara-api-access` (v1.0.0 → v1.0.1) was parsed as a route citation;
+    reworded so it no longer looks like a real route. Full suite now green.
+  - ADR-019 consistency pass on the curator skills: the in-place re-acceptance
+    (`targetEntityId`) instructions for open-answer checks
+    (`agonara-curator-assessment` v1.1.0 → v1.1.1) and corpus
+    (`agonara-curator-corpus` v1.0.0 → v1.0.1) said to pass `targetEntityId`
+    without naming a discovery surface — the same circularity ADR-019 closed for
+    quick checks. Both accepted-read lists already expose `entityId` (verified in
+    `summarizeAcceptedOpenAnswerCheck`/`summarizeAcceptedCorpus`), so no new
+    endpoint was needed; the skills now point curators at those lists to find the
+    entity id. `assessment-criteria` and readiness also support `targetEntityId`
+    in the contract but their skills do not mention re-acceptance, so they were
+    left unchanged (documenting it there is feature work, not a consistency fix).
+  - Follow-up: document `targetEntityId` re-acceptance for assessment criteria
+    (`agonara-curator-assessment` v1.1.1 → v1.1.2). The accepted-criteria list
+    `GET /programs/{programId}/assessment-criteria` is curator-accessible
+    (`resolveAssessmentAcceptedReadAuthorization` allows `program_curator`) and
+    exposes `entityId`, so the discovery surface already exists. Readiness checks
+    were NOT documented: their only accepted list
+    (`GET /programs/{programId}/readiness-checks`) is the student-safe delivery
+    view gated on `participationKind: "student"`, so a pure curator cannot reach
+    it — documenting `targetEntityId` there would recreate the circularity
+    ADR-019 fixed for quick checks. Closing that needs a curator-facing accepted
+    readiness list (code, ADR-019-style), tracked separately.
+- Add `docs/adr/adr-019-curator-accepted-quick-check-read-surface.md` (status:
+  accepted): amends ADR-016 to decide a curator-only read surface over accepted
+  quick checks. ADR-016 sanctions re-accepting a corrected quick check onto an
+  existing accepted entity but decided only the student delivery projection, so
+  a curator has no route to discover the stable entity id that in-place
+  re-acceptance requires — the candidate list exposes only candidate ids, and
+  the only enumeration of accepted quick checks (the delivery list) is gated to
+  Student participation and omits the answer key. The ADR makes Corpus Storage
+  expose a curator-authorized enumeration carrying the accepted entity id and
+  current revision id (the missing sibling of the criteria/open-answer accepted
+  lists), keeping answer keys curator-only. Passed five-dimension ADR review
+  including code-cited feasibility (`listAcceptedQuickCheckEntityRecords`,
+  `summarizeAcceptedQuickCheck`, `resolveAssessmentCuratorAuthorization`).
+  Indexed in `architecture.html`.
+
 ## 2026-06-20
 
 - Add `research/telegram-bot-native-polls.md`: grounded research verifying a

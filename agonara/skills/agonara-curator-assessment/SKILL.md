@@ -1,7 +1,7 @@
 ---
 name: agonara-curator-assessment
 author: Igor Malyarov
-version: "1.0.0"
+version: "1.2.0"
 description: Operate as an Agonara program curator to author assessment — open-answer checks, quick checks, and readiness checks via the candidate→acceptance→revision flow, define program-owned assessment criteria, link checks to learner-state targets, and keep answer keys and correctness curator-only (never student-facing). Use when a curator agent is adding or accepting checks or criteria on a program. Builds on the corpus skill; checks attach to accepted corpus entities.
 trigger: when a curator agent needs to author or accept a check (open-answer, quick, readiness), define assessment criteria, or manage learner-state target links
 ---
@@ -49,8 +49,11 @@ and a curator does not read private student learning state.
   `POST /open-answer-checks/candidates/{candidateId}/acceptance` (optionally
   `{ "targetEntityId" }` to revise an accepted check),
   `POST /open-answer-checks/candidates/{candidateId}/rejection`.
-- **Read accepted** — `GET /programs/{programId}/open-answer-checks`;
-  `GET /open-answer-checks/revisions/{revisionId}` for revision detail.
+- **Read accepted** — `GET /programs/{programId}/open-answer-checks` lists the
+  program's accepted open-answer checks, each carrying its accepted entity id and
+  current revision id; this is how you discover the entity id to pass as
+  `targetEntityId` when revising one in place.
+  `GET /open-answer-checks/revisions/{revisionId}` gives one revision's detail.
 
 ## Quick checks
 
@@ -64,6 +67,11 @@ and a curator does not read private student learning state.
   `POST /quick-checks/candidates/{candidateId}/acceptance` (optionally
   `{ "targetEntityId" }` to revise an accepted quick check in place),
   `POST /quick-checks/candidates/{candidateId}/rejection`.
+- **Read accepted** (curator list, includes keys) —
+  `GET /programs/{programId}/quick-checks/curation` enumerates the program's
+  accepted quick checks with each one's accepted-quick-check entity id, current
+  revision id, and answer key. This is how you discover the entity id to revise
+  an already-accepted check.
 - **Curator curation detail** (keys/correct option) —
   `GET /quick-checks/revisions/{revisionId}/curation`.
 - **Student-safe delivery** (redacted) —
@@ -111,8 +119,8 @@ question and you cannot edit a revision in place. Author a corrected candidate
 existing entity by passing its accepted-quick-check entity id as `targetEntityId`.
 That writes a new current revision under the same entity: students immediately see
 the corrected version, the weak revision stops being delivered, and past attempts
-that referenced it stay intact. Use the curation detail
-(`GET /quick-checks/revisions/{revisionId}/curation`) to find the entity id of the
+that referenced it stay intact. Use the curator accepted-quick-check list
+(`GET /programs/{programId}/quick-checks/curation`) to find the entity id of the
 check you are replacing.
 
 ## Readiness checks
@@ -128,8 +136,16 @@ check you are replacing.
 - **List** — `GET /programs/{programId}/readiness-checks/candidates` (filter by
   `status`).
 - **Accept / reject** —
-  `POST /readiness-checks/candidates/{candidateId}/acceptance`,
+  `POST /readiness-checks/candidates/{candidateId}/acceptance` (optionally
+  `{ "targetEntityId" }` to revise an accepted readiness check in place),
   `POST /readiness-checks/candidates/{candidateId}/rejection`.
+- **Read accepted** (curator list) —
+  `GET /programs/{programId}/readiness-checks/curation` enumerates the program's
+  accepted readiness checks, each with its accepted entity id and current
+  revision id; this is how you discover the entity id to pass as `targetEntityId`
+  when revising one in place. (The student-safe delivery list
+  `GET /programs/{programId}/readiness-checks` is gated to student participation
+  and is not a curator discovery surface.)
 - **Curator curation detail** —
   `GET /readiness-checks/revisions/{revisionId}/curation`.
 
@@ -148,10 +164,14 @@ Criteria let evaluation be tied to the program rather than improvised per attemp
 - **List candidates** — `GET /programs/{programId}/assessment-criteria/candidates`
   (filter by `status`).
 - **Accept / reject** —
-  `POST /assessment-criteria/candidates/{candidateId}/acceptance`,
+  `POST /assessment-criteria/candidates/{candidateId}/acceptance` (optionally
+  `{ "targetEntityId" }` to revise an accepted criterion in place),
   `POST /assessment-criteria/candidates/{candidateId}/rejection`.
-- **Read accepted** — `GET /programs/{programId}/assessment-criteria`;
-  `GET /assessment-criteria/revisions/{revisionId}` for detail.
+- **Read accepted** — `GET /programs/{programId}/assessment-criteria` lists the
+  program's accepted criteria, each with its accepted entity id and current
+  revision id; this is how you discover the entity id to pass as `targetEntityId`
+  when revising one in place.
+  `GET /assessment-criteria/revisions/{revisionId}` gives one revision's detail.
 
 Accepted criteria are owned by the program corpus; an open-answer prompt or check
 references them rather than carrying improvised, per-attempt rules.

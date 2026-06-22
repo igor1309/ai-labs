@@ -1,7 +1,7 @@
 ---
 name: agonara-curator-corpus
 author: Igor Malyarov
-version: "1.0.0"
+version: "1.0.1"
 description: Operate as an Agonara program curator to assemble program structure — create a program, propose topics and concepts as corpus candidates, add material references and relationships through navigation candidates, keep drafts separate from accepted corpus, explicitly accept or reject candidates, read accepted corpus and revisions, and read corpus events. Use when a curator agent is building or refining the accepted structure of a program. The substrate the other curator skills (assessment, research) attach to.
 trigger: when a curator agent needs to create a program or move topic/concept/material/navigation content between draft and accepted corpus
 ---
@@ -54,7 +54,8 @@ Never present a `draft` (or `rejected`) candidate as accepted program content.
   acceptance.
 - **Accept** — `POST /corpus-candidates/{candidateId}/acceptance`. Optionally
   send `{ "targetEntityId" }` to revise an existing accepted entity rather than
-  create a new one. This is the only path a candidate becomes accepted corpus.
+  create a new one — discover that entity id from the accepted-corpus list below.
+  This is the only path a candidate becomes accepted corpus.
 - **Reject** — `POST /corpus-candidates/{candidateId}/rejection`.
 
 Acceptance and rejection act only on a `draft` candidate; re-acting on one
@@ -64,7 +65,9 @@ or `candidate_already_rejected` (or `candidate_not_found`).
 ## Read accepted corpus
 
 - **List accepted** — `GET /programs/{programId}/accepted-corpus`, optionally
-  filtered by `acceptedKind` (`topic` / `concept`).
+  filtered by `acceptedKind` (`topic` / `concept`); each entry carries its
+  accepted entity id, the value you pass as `targetEntityId` to revise it in
+  place.
 - **Read a revision** — `GET /accepted-corpus-revisions/{revisionId}` for the
   full detail of one accepted revision.
 - **Audit trail** — `GET /programs/{programId}/corpus-events` (paged via
