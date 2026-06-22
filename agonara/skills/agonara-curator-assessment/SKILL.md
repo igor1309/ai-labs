@@ -1,7 +1,7 @@
 ---
 name: agonara-curator-assessment
 author: Igor Malyarov
-version: "1.2.0"
+version: "1.2.1"
 description: Operate as an Agonara program curator to author assessment — open-answer checks, quick checks, and readiness checks via the candidate→acceptance→revision flow, define program-owned assessment criteria, link checks to learner-state targets, and keep answer keys and correctness curator-only (never student-facing). Use when a curator agent is adding or accepting checks or criteria on a program. Builds on the corpus skill; checks attach to accepted corpus entities.
 trigger: when a curator agent needs to author or accept a check (open-answer, quick, readiness), define assessment criteria, or manage learner-state target links
 ---
@@ -36,6 +36,16 @@ Read keys through the `/curation` views only, and never present `/curation`
 detail as something a student sees. Authoring keys is a curator job; reading
 student attempts, results, or progress is **not** — those belong to the student,
 and a curator does not read private student learning state.
+
+**You author the assessment; you do not perform it.** A curator's entire role in
+assessment is to author and revise the checks and criteria. Grading an answer is
+not a curator operation: quick checks are scored deterministically at submission,
+and open answers are evaluated by the student-side evaluator against your accepted
+criteria — both happen in the student's own session, not yours. The API enforces
+this (a curator session reading attempts gets `participation_required`), so if you
+are ever asked to "assess the students' answers," that request is mis-routed:
+point it back to the student-side flow, and confine your part to making the checks
+and criteria good enough that the automatic evaluation is fair.
 
 ## Open-answer checks
 

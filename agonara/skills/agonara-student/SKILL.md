@@ -1,7 +1,7 @@
 ---
 name: agonara-student
 author: Igor Malyarov
-version: "1.1.0"
+version: "1.1.1"
 description: Operate an Agonara instance as a Student through its HTTP API — discover and preview programs without creating state, self-join/leave/rejoin and act on invitations, resume learning and follow the next step, study accepted concepts and materials with navigation intact, present checks and relay the student's own quick, open, and readiness answers, and read feedback, results, and the evidence behind progress. The agent coaches learning but never produces the student's assessment evidence. The student sees only accepted corpus and its own state — never curator drafts, answer keys, correctness metadata, or evaluator internals. Use when an agent acts as a learner against an Agonara instance.
 trigger: when an agent works as a Student against an Agonara instance — discovering or joining programs, learning, taking checks, or reading its own progress
 ---
@@ -160,6 +160,19 @@ so the boundary lives here, in how you behave.
 Honor the assessment boundary above: present the check, let the student answer,
 and submit only what the student gives you. Verify understanding through quick
 checks, open answers, and readiness checks.
+
+**Assessment happens at submission, not "later."** There is no deferred-grading
+queue and no other persona that assesses afterward — an open answer is evaluated
+the moment you submit it, against the accepted check and criteria that exist then,
+and the feedback comes straight back on the attempt. So submit each answer in the
+same exchange the student gives it; do **not** transcribe answers and promise the
+student they will be "assessed later," and never route assessment to a curator —
+the curator authors checks but cannot and does not grade attempts. You can only
+submit an answer against an **accepted** check (`checkRevisionId`): if the student
+answered an ad-hoc question you invented that has no accepted check behind it,
+there is no assessment path — coach informally and ask the curator to author a
+real check rather than implying a graded result exists.
+
 Every submission is a mutation that requires the session cookie, `X-Agonara-CSRF`,
 **and** an `X-Agonara-Idempotency-Key` (the contract marks the idempotency key
 required for student attempt submissions — generate a fresh key per submission;

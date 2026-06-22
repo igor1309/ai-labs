@@ -2,6 +2,21 @@
 
 ## 2026-06-22
 
+- Clarify the assessment persona boundary in the operator skills and capture two
+  follow-up architecture questions as pre-ADR notes. `agonara-curator-assessment`
+  (v1.2.0 → v1.2.1) now states curators author/revise checks but never grade
+  attempts (grading is deterministic-at-submission or student-side evaluator;
+  a curator session reading attempts gets `participation_required`).
+  `agonara-student` (v1.1.0 → v1.1.1) now states assessment happens at submission
+  — no deferred-grading queue, submit each answer in-exchange, never promise
+  "assessed later" or route to a curator, and only an accepted check
+  (`checkRevisionId`) is assessable. Added `docs/pre-adr/accepted-entity-withdrawal_pre_adr.md`
+  (entity-level lifecycle/withdrawal vs. append-only, modeled on the
+  `learner_evidence_target_links` soft-delete precedent) and
+  `docs/pre-adr/curator-facing-assessment-results_pre_adr.md` (separating
+  aggregate/anonymized reporting from privacy-crossing per-student attempt
+  visibility). Skill-content + docs only; deployed to the live Hermes bots.
+
 - Add ADR-020 (`adr-020-curator-accepted-readiness-check-read-surface.md`,
   status: accepted), amending ADR-011 to add a curator-only read surface over
   accepted readiness checks — the readiness analogue of ADR-019. Readiness was
