@@ -2,7 +2,7 @@
 date: 2026-06-22
 model: claude
 description: "Amends ADR-016 to decide a curator-only read surface over accepted quick checks that enumerates accepted entities and current revisions, so a Program Curator can target an accepted entity for in-place re-acceptance without rewriting history."
-status: proposed
+status: accepted
 ---
 
 # ADR-019 - Curator Accepted Quick-Check Read Surface
