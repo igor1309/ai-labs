@@ -59,6 +59,16 @@ The previous developer-facing `agonara-api` skill was removed — it served an
 agent *building* Agonara's codebase, not an operator *using* the product, which
 is the wrong consumer for this directory.
 
+## Deploying an edit to the live bots
+
+These skills run live on the Hermes Telegram bots (`agonara-curator` /
+`agonara-student` profiles), which carry their own deployed copies. After editing
+a skill here and committing, push it to the host with the deploy script in the
+**inventory** repo — `vps/Hermes/scripts/deploy-agonara-skills.sh` — and see
+`vps/Hermes/agonara-skills-deploy.md` for the procedure (host details live in
+inventory, not in this repo). Skill content hot-discovers on the host, so no
+gateway restart is needed; the bots pick up the change on their next turn.
+
 ## Packaging & distribution design
 
 Skill discovery and publishing were deliberately out of scope while the skills
