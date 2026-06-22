@@ -1,7 +1,7 @@
 ---
 name: agonara-curator-assessment
 author: Igor Malyarov
-version: "1.1.1"
+version: "1.1.2"
 description: Operate as an Agonara program curator to author assessment — open-answer checks, quick checks, and readiness checks via the candidate→acceptance→revision flow, define program-owned assessment criteria, link checks to learner-state targets, and keep answer keys and correctness curator-only (never student-facing). Use when a curator agent is adding or accepting checks or criteria on a program. Builds on the corpus skill; checks attach to accepted corpus entities.
 trigger: when a curator agent needs to author or accept a check (open-answer, quick, readiness), define assessment criteria, or manage learner-state target links
 ---
@@ -156,10 +156,14 @@ Criteria let evaluation be tied to the program rather than improvised per attemp
 - **List candidates** — `GET /programs/{programId}/assessment-criteria/candidates`
   (filter by `status`).
 - **Accept / reject** —
-  `POST /assessment-criteria/candidates/{candidateId}/acceptance`,
+  `POST /assessment-criteria/candidates/{candidateId}/acceptance` (optionally
+  `{ "targetEntityId" }` to revise an accepted criterion in place),
   `POST /assessment-criteria/candidates/{candidateId}/rejection`.
-- **Read accepted** — `GET /programs/{programId}/assessment-criteria`;
-  `GET /assessment-criteria/revisions/{revisionId}` for detail.
+- **Read accepted** — `GET /programs/{programId}/assessment-criteria` lists the
+  program's accepted criteria, each with its accepted entity id and current
+  revision id; this is how you discover the entity id to pass as `targetEntityId`
+  when revising one in place.
+  `GET /assessment-criteria/revisions/{revisionId}` gives one revision's detail.
 
 Accepted criteria are owned by the program corpus; an open-answer prompt or check
 references them rather than carrying improvised, per-attempt rules.

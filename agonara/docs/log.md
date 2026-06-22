@@ -30,6 +30,17 @@
     entity id. `assessment-criteria` and readiness also support `targetEntityId`
     in the contract but their skills do not mention re-acceptance, so they were
     left unchanged (documenting it there is feature work, not a consistency fix).
+  - Follow-up: document `targetEntityId` re-acceptance for assessment criteria
+    (`agonara-curator-assessment` v1.1.1 → v1.1.2). The accepted-criteria list
+    `GET /programs/{programId}/assessment-criteria` is curator-accessible
+    (`resolveAssessmentAcceptedReadAuthorization` allows `program_curator`) and
+    exposes `entityId`, so the discovery surface already exists. Readiness checks
+    were NOT documented: their only accepted list
+    (`GET /programs/{programId}/readiness-checks`) is the student-safe delivery
+    view gated on `participationKind: "student"`, so a pure curator cannot reach
+    it — documenting `targetEntityId` there would recreate the circularity
+    ADR-019 fixed for quick checks. Closing that needs a curator-facing accepted
+    readiness list (code, ADR-019-style), tracked separately.
 - Add `docs/adr/adr-019-curator-accepted-quick-check-read-surface.md` (status:
   accepted): amends ADR-016 to decide a curator-only read surface over accepted
   quick checks. ADR-016 sanctions re-accepting a corrected quick check onto an
