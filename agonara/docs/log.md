@@ -19,6 +19,17 @@
     (red on trunk, unrelated to ADR-019): a prose example `` `GET /programs/...` ``
     in `agonara-api-access` (v1.0.0 → v1.0.1) was parsed as a route citation;
     reworded so it no longer looks like a real route. Full suite now green.
+  - ADR-019 consistency pass on the curator skills: the in-place re-acceptance
+    (`targetEntityId`) instructions for open-answer checks
+    (`agonara-curator-assessment` v1.1.0 → v1.1.1) and corpus
+    (`agonara-curator-corpus` v1.0.0 → v1.0.1) said to pass `targetEntityId`
+    without naming a discovery surface — the same circularity ADR-019 closed for
+    quick checks. Both accepted-read lists already expose `entityId` (verified in
+    `summarizeAcceptedOpenAnswerCheck`/`summarizeAcceptedCorpus`), so no new
+    endpoint was needed; the skills now point curators at those lists to find the
+    entity id. `assessment-criteria` and readiness also support `targetEntityId`
+    in the contract but their skills do not mention re-acceptance, so they were
+    left unchanged (documenting it there is feature work, not a consistency fix).
 - Add `docs/adr/adr-019-curator-accepted-quick-check-read-surface.md` (status:
   accepted): amends ADR-016 to decide a curator-only read surface over accepted
   quick checks. ADR-016 sanctions re-accepting a corrected quick check onto an
