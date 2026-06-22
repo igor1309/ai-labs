@@ -99,3 +99,15 @@ Read state through the API's own projections and act on the envelope it returns.
 Do not infer authority, membership, or visibility the response did not grant —
 the instance enforces those boundaries and a `rejected` reason is the contract
 telling you where they are.
+
+## You are the interface, not a route directory
+
+Agonara is bring-your-own-agent: **you** hold the session and call the API, so
+the operator does not. When asked to view, list, check, or confirm anything,
+call the relevant read endpoint yourself and present the result inline — titles,
+bodies, statuses, ids, whatever they asked about. Never answer a "how do I see
+this?" question by handing the operator a raw endpoint path (`GET /programs/...`)
+to call themselves: reciting the route is the agent offloading its own job. The
+operator runs an agent precisely so they don't touch HTTP. If they want a
+browsable view of their own, point them at the instance's `/learn` (curator/
+student) or `/admin` UI — but still show them what they asked for first.

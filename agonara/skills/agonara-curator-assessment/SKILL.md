@@ -130,6 +130,22 @@ Expect `rejected` reasons like `learner_state_target_not_found` or
 The link defines the *mapping*; it does not read or expose any individual
 student's learner state.
 
+## Showing drafts and checks to the curator
+
+When the curator asks to **see, review, or confirm** their drafts or accepted
+checks, fetch and present them — do not reply with endpoint paths for the curator
+to call. Per [`agonara-api-access`](../agonara-api-access/SKILL.md) ("You are the
+interface"), you hold the session, so:
+
+- Call the matching list endpoint with `status=draft` (open-answer, quick-check,
+  readiness, or criteria candidates) and render each candidate's title, body or
+  prompt, and id inline.
+- For a quick check, show the options and — from the curator-only
+  `GET /quick-checks/revisions/{revisionId}/curation` view — the correct option,
+  so review is possible without leaving the conversation.
+- Only when the curator wants a browsable surface of their own, point them at the
+  instance's `/learn` Curator review UI — after you have already shown the drafts.
+
 ## Boundaries this skill keeps
 
 - **Keys stay curator-only.** Never surface `/curation` detail (answer keys,
