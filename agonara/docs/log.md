@@ -1,5 +1,22 @@
 # Log
 
+## 2026-06-22
+
+- Add `docs/adr/adr-019-curator-accepted-quick-check-read-surface.md` (status:
+  proposed): amends ADR-016 to decide a curator-only read surface over accepted
+  quick checks. ADR-016 sanctions re-accepting a corrected quick check onto an
+  existing accepted entity but decided only the student delivery projection, so
+  a curator has no route to discover the stable entity id that in-place
+  re-acceptance requires — the candidate list exposes only candidate ids, and
+  the only enumeration of accepted quick checks (the delivery list) is gated to
+  Student participation and omits the answer key. The ADR makes Corpus Storage
+  expose a curator-authorized enumeration carrying the accepted entity id and
+  current revision id (the missing sibling of the criteria/open-answer accepted
+  lists), keeping answer keys curator-only. Passed five-dimension ADR review
+  including code-cited feasibility (`listAcceptedQuickCheckEntityRecords`,
+  `summarizeAcceptedQuickCheck`, `resolveAssessmentCuratorAuthorization`).
+  Indexed in `architecture.html`.
+
 ## 2026-06-20
 
 - Add `research/telegram-bot-native-polls.md`: grounded research verifying a
