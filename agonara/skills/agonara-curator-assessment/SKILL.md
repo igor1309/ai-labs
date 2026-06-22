@@ -61,7 +61,8 @@ and a curator does not read private student learning state.
 - **List** — `GET /programs/{programId}/quick-checks/candidates` (filter by
   `status`).
 - **Accept / reject** —
-  `POST /quick-checks/candidates/{candidateId}/acceptance`,
+  `POST /quick-checks/candidates/{candidateId}/acceptance` (optionally
+  `{ "targetEntityId" }` to revise an accepted quick check in place),
   `POST /quick-checks/candidates/{candidateId}/rejection`.
 - **Curator curation detail** (keys/correct option) —
   `GET /quick-checks/revisions/{revisionId}/curation`.
@@ -103,6 +104,16 @@ instead of the *material*. Every distractor must earn its place:
 A practical bar: read the four options cold, with the prompt but without knowing
 the key. If you can pick the answer from wording, plausibility, or process of
 elimination alone, the distractors are too weak — revise before proposing.
+
+**Fixing a weak check that is already accepted.** You do not create a second
+question and you cannot edit a revision in place. Author a corrected candidate
+(stronger distractors, key not parked in the first option) and accept it onto the
+existing entity by passing its accepted-quick-check entity id as `targetEntityId`.
+That writes a new current revision under the same entity: students immediately see
+the corrected version, the weak revision stops being delivered, and past attempts
+that referenced it stay intact. Use the curation detail
+(`GET /quick-checks/revisions/{revisionId}/curation`) to find the entity id of the
+check you are replacing.
 
 ## Readiness checks
 
