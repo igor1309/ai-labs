@@ -5832,6 +5832,64 @@ export const routeContracts = [
   },
   {
     "method": "GET",
+    "path": "/programs/{programId}/readiness-checks/curation",
+    "operationId": "listAcceptedReadinessChecksForCuration",
+    "handlerKey": "corpus.listAcceptedReadinessChecksForCuration",
+    "tag": "corpus",
+    "summary": "List accepted Readiness Checks for curation.",
+    "auth": {
+      "kind": "session"
+    },
+    "responses": [
+      {
+        "status": 200,
+        "envelope": "accepted",
+        "schema": {
+          "ref": "#/components/responses/Accepted"
+        }
+      },
+      {
+        "status": 401,
+        "envelope": "rejected",
+        "schema": {
+          "ref": "#/components/responses/Rejected"
+        }
+      },
+      {
+        "status": 403,
+        "envelope": "rejected",
+        "schema": {
+          "ref": "#/components/responses/Rejected"
+        }
+      },
+      {
+        "status": 404,
+        "envelope": "rejected",
+        "schema": {
+          "ref": "#/components/responses/Rejected"
+        }
+      },
+      {
+        "status": 500,
+        "envelope": "fault",
+        "schema": {
+          "ref": "#/components/responses/Fault"
+        }
+      }
+    ],
+    "pathParameters": [
+      {
+        "name": "programId",
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "required": true
+      }
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/programs/{programId}/quick-checks",
     "operationId": "listQuickCheckDeliveries",
     "handlerKey": "corpus.listQuickCheckDeliveries",

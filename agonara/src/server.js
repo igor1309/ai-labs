@@ -1517,6 +1517,9 @@ async function handleCorpusApi({
   const acceptedReadinessCheckCurationRevisionMatch = pathname.match(
     /^\/readiness-checks\/revisions\/([^/]+)\/curation$/,
   );
+  const readinessCheckCurationListMatch = pathname.match(
+    /^\/programs\/([^/]+)\/readiness-checks\/curation$/,
+  );
   const learnerStateTargetLinksMatch = pathname.match(/^\/programs\/([^/]+)\/learner-state-target-links$/);
   const learnerStateTargetLinkMatch = pathname.match(/^\/learner-state-target-links\/([^/]+)$/);
   if (request.method === "GET" && learnerStateTargetLinksMatch) {
@@ -1796,6 +1799,21 @@ async function handleCorpusApi({
     const result = corpusCommands.listAcceptedQuickChecksForCuration({
       actingIdentityId: session.value.identity.id,
       programId: decodeURIComponent(quickCheckCurationListMatch[1]),
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
+  if (request.method === "GET" && readinessCheckCurationListMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = corpusCommands.listAcceptedReadinessChecksForCuration({
+      actingIdentityId: session.value.identity.id,
+      programId: decodeURIComponent(readinessCheckCurationListMatch[1]),
     });
     sendJson(response, statusForResult(result), result);
     return true;

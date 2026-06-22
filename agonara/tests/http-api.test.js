@@ -3121,6 +3121,53 @@ test("quickCheckAttempts_shouldRejectInvalidReadsAndListQueries", async () => {
   }
 });
 
+test("listAcceptedReadinessChecksForCuration_shouldExposeCuratorListWithEntityAndRevision", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(180),
+  });
+
+  try {
+    const scenario = await createReadinessHttpScenario(baseUrl);
+    const created = await createReadinessCheckCandidate(baseUrl, scenario.curator, scenario.programId, {
+      requirements: [{
+        requiredLevel: "on_track",
+        targetId: scenario.topic.entityId,
+        targetKind: "topic",
+      }],
+      scope: { scopeKind: "topic", topicEntityId: scenario.topic.entityId },
+      title: "Topic readiness",
+    });
+    const candidateId = (await created.json()).value.readinessCheckCandidate.candidateId;
+    const accepted = await acceptReadinessCheckCandidate(baseUrl, scenario.curator, candidateId, {});
+    const acceptedReadiness = (await accepted.json()).value.acceptedReadinessCheck;
+
+    const listResponse = await fetch(`${baseUrl}/programs/${scenario.programId}/readiness-checks/curation`, {
+      headers: { cookie: scenario.curator.cookie },
+    });
+    const listBody = await listResponse.json();
+    const item = listBody.value?.acceptedReadinessChecks?.[0];
+
+    assert.deepEqual(
+      {
+        statusCode: listResponse.status,
+        entityId: item?.entityId,
+        revisionId: item?.revisionId,
+        programId: item?.programId,
+        title: item?.title,
+      },
+      {
+        statusCode: 200,
+        entityId: acceptedReadiness.entityId,
+        revisionId: acceptedReadiness.revisionId,
+        programId: scenario.programId,
+        title: "Topic readiness",
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("readinessHttpAcceptance_shouldCurateDeliverSubmitRetryReadListAndRedact", async () => {
   const { baseUrl, close, database } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
     ids: manyIds(180),

@@ -4325,6 +4325,98 @@ test("listAcceptedQuickChecksForCuration_shouldEnumerateAcceptedQuickChecksWithA
   }
 });
 
+test("listAcceptedReadinessChecksForCuration_shouldEnumerateAcceptedReadinessChecksForCuratorOnly", async () => {
+  const { commands, database } = await makeSUT({ ids: generatedIds("readiness-curation-list", 120) });
+
+  try {
+    createIdentity(database, makeIdentity({ id: "identity-student" }));
+    createIdentity(database, makeIdentity({ id: "identity-admin" }));
+    createIdentity(database, makeIdentity({ id: "identity-disabled", state: "disabled" }));
+    grantAdminAuthority(database, {
+      identityId: "identity-admin",
+      grantedAt: "2026-05-28T10:01:00.000Z",
+    });
+    seedCuratorProgram(database, { programId: "program-a" });
+    createProgramMembershipRecord(database, {
+      id: "membership-student",
+      programId: "program-a",
+      identityId: "identity-student",
+      participationKind: "student",
+      status: "active",
+      createdAt: "2026-05-28T10:47:00.000Z",
+      updatedAt: "2026-05-28T10:47:00.000Z",
+    });
+    const topic = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Readiness topic",
+    });
+    const created = commands.createReadinessCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: "Topic readiness",
+      scope: { scopeKind: "topic", topicEntityId: topic.entityId },
+      requirements: [
+        { targetKind: "topic", targetId: topic.entityId, requiredLevel: "on_track" },
+      ],
+    });
+    const acceptedReadiness = commands.acceptReadinessCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: created.value.readinessCheckCandidate.candidateId,
+    }).value.acceptedReadinessCheck;
+
+    const curator = commands.listAcceptedReadinessChecksForCuration?.({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+    });
+
+    assert.deepEqual(
+      {
+        curatorStatus: curator?.status,
+        items: curator?.value?.acceptedReadinessChecks?.map($0 => ({
+          entityId: $0.entityId,
+          revisionId: $0.revisionId,
+          programId: $0.programId,
+          title: $0.title,
+        })),
+        student: commands.listAcceptedReadinessChecksForCuration?.({
+          actingIdentityId: "identity-student",
+          programId: "program-a",
+        }),
+        adminWithoutCurator: commands.listAcceptedReadinessChecksForCuration?.({
+          actingIdentityId: "identity-admin",
+          programId: "program-a",
+        }),
+        inactive: commands.listAcceptedReadinessChecksForCuration?.({
+          actingIdentityId: "identity-disabled",
+          programId: "program-a",
+        }),
+        unknownProgram: commands.listAcceptedReadinessChecksForCuration?.({
+          actingIdentityId: "identity-curator",
+          programId: "program-missing",
+        }),
+      },
+      {
+        curatorStatus: "accepted",
+        items: [
+          {
+            entityId: acceptedReadiness.entityId,
+            revisionId: acceptedReadiness.revisionId,
+            programId: "program-a",
+            title: "Topic readiness",
+          },
+        ],
+        student: { status: "rejected", reason: "admin_or_curator_required" },
+        adminWithoutCurator: { status: "rejected", reason: "admin_or_curator_required" },
+        inactive: { status: "rejected", reason: "identity_not_active" },
+        unknownProgram: { status: "rejected", reason: "program_not_found" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("listQuickCheckDeliveries_shouldReturnOnlyCurrentStudentSafeRevisionsForStudentProgram", async () => {
   const { commands, database } = await makeSUT();
 

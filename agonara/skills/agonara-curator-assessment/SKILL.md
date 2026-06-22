@@ -1,7 +1,7 @@
 ---
 name: agonara-curator-assessment
 author: Igor Malyarov
-version: "1.1.2"
+version: "1.2.0"
 description: Operate as an Agonara program curator to author assessment — open-answer checks, quick checks, and readiness checks via the candidate→acceptance→revision flow, define program-owned assessment criteria, link checks to learner-state targets, and keep answer keys and correctness curator-only (never student-facing). Use when a curator agent is adding or accepting checks or criteria on a program. Builds on the corpus skill; checks attach to accepted corpus entities.
 trigger: when a curator agent needs to author or accept a check (open-answer, quick, readiness), define assessment criteria, or manage learner-state target links
 ---
@@ -136,8 +136,16 @@ check you are replacing.
 - **List** — `GET /programs/{programId}/readiness-checks/candidates` (filter by
   `status`).
 - **Accept / reject** —
-  `POST /readiness-checks/candidates/{candidateId}/acceptance`,
+  `POST /readiness-checks/candidates/{candidateId}/acceptance` (optionally
+  `{ "targetEntityId" }` to revise an accepted readiness check in place),
   `POST /readiness-checks/candidates/{candidateId}/rejection`.
+- **Read accepted** (curator list) —
+  `GET /programs/{programId}/readiness-checks/curation` enumerates the program's
+  accepted readiness checks, each with its accepted entity id and current
+  revision id; this is how you discover the entity id to pass as `targetEntityId`
+  when revising one in place. (The student-safe delivery list
+  `GET /programs/{programId}/readiness-checks` is gated to student participation
+  and is not a curator discovery surface.)
 - **Curator curation detail** —
   `GET /readiness-checks/revisions/{revisionId}/curation`.
 
