@@ -1491,6 +1491,7 @@ async function handleCorpusApi({
     /^\/open-answer-checks\/revisions\/([^/]+)$/,
   );
   const quickCheckDeliveriesMatch = pathname.match(/^\/programs\/([^/]+)\/quick-checks$/);
+  const quickCheckCurationListMatch = pathname.match(/^\/programs\/([^/]+)\/quick-checks\/curation$/);
   const quickCheckDeliveryRevisionMatch = pathname.match(/^\/quick-checks\/revisions\/([^/]+)$/);
   const quickCheckCandidatesMatch = pathname.match(
     /^\/programs\/([^/]+)\/quick-checks\/candidates$/,
@@ -1782,6 +1783,21 @@ async function handleCorpusApi({
       revisionId: decodeURIComponent(acceptedQuickCheckCurationRevisionMatch[1]),
     });
     sendJson(response, statusForResult(result), mapAcceptedQuickCheckResult(result));
+    return true;
+  }
+
+  if (request.method === "GET" && quickCheckCurationListMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+
+    const result = corpusCommands.listAcceptedQuickChecksForCuration({
+      actingIdentityId: session.value.identity.id,
+      programId: decodeURIComponent(quickCheckCurationListMatch[1]),
+    });
+    sendJson(response, statusForResult(result), result);
     return true;
   }
 

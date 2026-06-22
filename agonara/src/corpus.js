@@ -167,6 +167,8 @@ export function createCorpusCommands({
       getAcceptedOpenAnswerCheckRevision({ database, getEffectiveParticipation, input }),
     getAcceptedQuickCheckRevisionForCuration: input =>
       getAcceptedQuickCheckRevisionForCuration({ database, getEffectiveParticipation, input }),
+    listAcceptedQuickChecksForCuration: input =>
+      listAcceptedQuickChecksForCuration({ database, getEffectiveParticipation, input }),
     getQuickCheckDelivery: input =>
       getQuickCheckDelivery({ database, getEffectiveParticipation, input }),
     getAcceptedReadinessCheckRevisionForCuration: input =>
@@ -1202,6 +1204,27 @@ function getAcceptedQuickCheckRevisionForCuration({ database, getEffectivePartic
   }
 
   return accepted({ acceptedQuickCheck: summarizeAcceptedQuickCheck(revision) });
+}
+
+function listAcceptedQuickChecksForCuration({ database, getEffectiveParticipation, input }) {
+  const authorization = resolveAssessmentCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input,
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  const entities = listAcceptedQuickCheckEntityRecords(database, {
+    programId: authorization.program.id,
+  });
+
+  return accepted({
+    acceptedQuickChecks: entities.map($0 =>
+      summarizeAcceptedQuickCheck(getAcceptedQuickCheckRevisionRecord(database, $0.currentRevisionId)),
+    ),
+  });
 }
 
 function getAcceptedReadinessCheckRevisionForCuration({ database, getEffectiveParticipation, input }) {

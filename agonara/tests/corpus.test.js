@@ -4231,6 +4231,100 @@ test("getAcceptedQuickCheckRevisionForCuration_shouldReturnHistoricalAnswerKeyOn
   }
 });
 
+test("listAcceptedQuickChecksForCuration_shouldEnumerateAcceptedQuickChecksWithAnswerKeyForCuratorOnly", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    createIdentity(database, makeIdentity({ id: "identity-student" }));
+    createIdentity(database, makeIdentity({ id: "identity-admin" }));
+    createIdentity(database, makeIdentity({ id: "identity-disabled", state: "disabled" }));
+    grantAdminAuthority(database, {
+      identityId: "identity-admin",
+      grantedAt: "2026-05-28T10:01:00.000Z",
+    });
+    seedCuratorProgram(database, { programId: "program-a" });
+    createProgramMembershipRecord(database, {
+      id: "membership-student",
+      programId: "program-a",
+      identityId: "identity-student",
+      participationKind: "student",
+      status: "active",
+      createdAt: "2026-05-28T10:47:00.000Z",
+      updatedAt: "2026-05-28T10:47:00.000Z",
+    });
+    commands.createQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      checkKind: "single_select_quick_check",
+      title: "Curation quick check",
+      prompt: "Curation prompt",
+      options: ["A", "B"],
+      answerKeyIndex: 1,
+    });
+    commands.acceptQuickCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: "source-1",
+    });
+
+    assert.deepEqual(
+      {
+        curator: commands.listAcceptedQuickChecksForCuration?.({
+          actingIdentityId: "identity-curator",
+          programId: "program-a",
+        }),
+        student: commands.listAcceptedQuickChecksForCuration?.({
+          actingIdentityId: "identity-student",
+          programId: "program-a",
+        }),
+        adminWithoutCurator: commands.listAcceptedQuickChecksForCuration?.({
+          actingIdentityId: "identity-admin",
+          programId: "program-a",
+        }),
+        inactive: commands.listAcceptedQuickChecksForCuration?.({
+          actingIdentityId: "identity-disabled",
+          programId: "program-a",
+        }),
+        unknownProgram: commands.listAcceptedQuickChecksForCuration?.({
+          actingIdentityId: "identity-curator",
+          programId: "program-missing",
+        }),
+      },
+      {
+        curator: {
+          status: "accepted",
+          value: {
+            acceptedQuickChecks: [
+              {
+                entityId: "corpus-event-2",
+                revisionId: "source-3",
+                programId: "program-a",
+                checkKind: "single_select_quick_check",
+                title: "Curation quick check",
+                prompt: "Curation prompt",
+                options: [
+                  { optionId: "corpus-event-3", text: "A" },
+                  { optionId: "source-4", text: "B" },
+                ],
+                answerKeyOptionId: "source-4",
+                acceptedFromCandidateId: "source-1",
+                sourceIds: [],
+                acceptedByIdentityId: "identity-curator",
+                acceptedAt: "2026-05-28T11:00:00.001Z",
+              },
+            ],
+          },
+        },
+        student: { status: "rejected", reason: "admin_or_curator_required" },
+        adminWithoutCurator: { status: "rejected", reason: "admin_or_curator_required" },
+        inactive: { status: "rejected", reason: "identity_not_active" },
+        unknownProgram: { status: "rejected", reason: "program_not_found" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("listQuickCheckDeliveries_shouldReturnOnlyCurrentStudentSafeRevisionsForStudentProgram", async () => {
   const { commands, database } = await makeSUT();
 

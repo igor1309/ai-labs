@@ -1,7 +1,7 @@
 ---
 name: agonara-curator-assessment
 author: Igor Malyarov
-version: "1.0.0"
+version: "1.1.0"
 description: Operate as an Agonara program curator to author assessment — open-answer checks, quick checks, and readiness checks via the candidate→acceptance→revision flow, define program-owned assessment criteria, link checks to learner-state targets, and keep answer keys and correctness curator-only (never student-facing). Use when a curator agent is adding or accepting checks or criteria on a program. Builds on the corpus skill; checks attach to accepted corpus entities.
 trigger: when a curator agent needs to author or accept a check (open-answer, quick, readiness), define assessment criteria, or manage learner-state target links
 ---
@@ -64,6 +64,11 @@ and a curator does not read private student learning state.
   `POST /quick-checks/candidates/{candidateId}/acceptance` (optionally
   `{ "targetEntityId" }` to revise an accepted quick check in place),
   `POST /quick-checks/candidates/{candidateId}/rejection`.
+- **Read accepted** (curator list, includes keys) —
+  `GET /programs/{programId}/quick-checks/curation` enumerates the program's
+  accepted quick checks with each one's accepted-quick-check entity id, current
+  revision id, and answer key. This is how you discover the entity id to revise
+  an already-accepted check.
 - **Curator curation detail** (keys/correct option) —
   `GET /quick-checks/revisions/{revisionId}/curation`.
 - **Student-safe delivery** (redacted) —
@@ -111,8 +116,8 @@ question and you cannot edit a revision in place. Author a corrected candidate
 existing entity by passing its accepted-quick-check entity id as `targetEntityId`.
 That writes a new current revision under the same entity: students immediately see
 the corrected version, the weak revision stops being delivered, and past attempts
-that referenced it stay intact. Use the curation detail
-(`GET /quick-checks/revisions/{revisionId}/curation`) to find the entity id of the
+that referenced it stay intact. Use the curator accepted-quick-check list
+(`GET /programs/{programId}/quick-checks/curation`) to find the entity id of the
 check you are replacing.
 
 ## Readiness checks

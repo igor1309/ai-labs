@@ -2,8 +2,24 @@
 
 ## 2026-06-22
 
+- Implement ADR-019 (strict TDD): add curator-only accepted quick-check read
+  surface `GET /programs/{programId}/quick-checks/curation`. New corpus command
+  `listAcceptedQuickChecksForCuration` reuses `resolveAssessmentCuratorAuthorization`
+  (curator-only; admin-without-curator and student-alone rejected, mirroring the
+  curation detail) and returns the full `summarizeAcceptedQuickCheck` projection
+  (entity id, current revision id, answer key) per accepted quick check. Wired
+  the HTTP route in `src/http-contract.js` + `src/server.js`, regenerated
+  `docs/api/openapi.yml`. Domain + HTTP tests in `tests/corpus.test.js` and
+  `tests/http-api.test.js`. Updated `skills/agonara-curator-assessment` (v1.0.0
+  → v1.1.0) to cite the new list and remove the circular instruction that told
+  curators to find an entity id via the curation detail (which itself needs a
+  revision id they had no way to obtain). Completes the in-place re-acceptance
+  (`targetEntityId`) workflow for already-accepted quick checks.
+  - Note: `tests/operator-skill-contract.test.js` has a pre-existing failure on
+    trunk (a prose example `` `GET /programs/...` `` in `agonara-api-access`
+    parsed as a route citation); unrelated to this change and not addressed here.
 - Add `docs/adr/adr-019-curator-accepted-quick-check-read-surface.md` (status:
-  proposed): amends ADR-016 to decide a curator-only read surface over accepted
+  accepted): amends ADR-016 to decide a curator-only read surface over accepted
   quick checks. ADR-016 sanctions re-accepting a corrected quick check onto an
   existing accepted entity but decided only the student delivery projection, so
   a curator has no route to discover the stable entity id that in-place

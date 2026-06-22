@@ -2547,6 +2547,53 @@ test("quickCheckAcceptanceAndRejection_shouldExposeCuratorRevisionAndRejectedCan
   }
 });
 
+test("listAcceptedQuickChecksForCuration_shouldExposeCuratorListWithEntityRevisionAndAnswerKey", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(50) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const candidate = await createQuickCheckCandidate(baseUrl, bootstrap, programId, {
+      answerKeyOptionIndex: 0,
+      checkKind: "single_select_quick_check",
+      options: ["Closure under addition", "Finite dimension"],
+      prompt: "Which property is required for a vector space?",
+      title: "Closure check",
+    });
+    const candidateId = (await candidate.json()).value.quickCheckCandidate.candidateId;
+    const accepted = await acceptQuickCheckCandidate(baseUrl, bootstrap, candidateId, {});
+    const acceptedQuickCheck = (await accepted.json()).value.acceptedQuickCheck;
+
+    const listResponse = await fetch(`${baseUrl}/programs/${programId}/quick-checks/curation`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+    const listBody = await listResponse.json();
+    const item = listBody.value?.acceptedQuickChecks?.[0];
+
+    assert.deepEqual(
+      {
+        statusCode: listResponse.status,
+        entityId: item?.entityId,
+        revisionId: item?.revisionId,
+        answerKeyOptionId: item?.answerKeyOptionId,
+        programId: item?.programId,
+        title: item?.title,
+      },
+      {
+        statusCode: 200,
+        entityId: acceptedQuickCheck.entityId,
+        revisionId: acceptedQuickCheck.revisionId,
+        answerKeyOptionId: acceptedQuickCheck.answerKeyOptionId,
+        programId,
+        title: "Closure check",
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("quickCheckCuratorRoutes_shouldRejectInvalidBodiesAndUnauthorizedCallers", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(50) });
 
