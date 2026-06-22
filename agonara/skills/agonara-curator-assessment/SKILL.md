@@ -70,6 +70,37 @@ and a curator does not read private student learning state.
   `GET /quick-checks/revisions/{revisionId}`. Use this to confirm what a student
   would actually see.
 
+### Distractor quality (the options carry the difficulty)
+
+A single-select check is only as good as its wrong options. Satisfying the
+contract — two non-empty options, one key index — does **not** make a usable
+check. The default failure mode is distractors a learner can eliminate without
+understanding the concept, which lets them score by reasoning about the *options*
+instead of the *material*. Every distractor must earn its place:
+
+- **Each wrong option encodes a real, nameable mistake.** A distractor should be
+  what a learner believes if they hold a specific misconception, did a partial or
+  half-remembered version of the reasoning, or confused two related ideas from the
+  accepted corpus. If you cannot state *which* error or confusion an option
+  represents, it is filler — replace it.
+- **No throwaways, jokes, or off-topic options.** Reject options that are absurd,
+  unrelated to the prompt, obviously false on sight, or true-but-irrelevant — no
+  informed *or* uninformed learner would seriously pick them, so they add no
+  signal.
+- **Make options homogeneous with the key.** Match length, grammar, specificity,
+  and register across all options. A key that is longer, more hedged, more
+  precise, or more technical than its distractors is guessable by form alone.
+- **Exactly one defensibly-correct option.** Distractors must be unambiguously
+  wrong against the linked assessment criterion — but wrong *for a reason*, not by
+  being nonsense. Avoid near-duplicate options and avoid "all/none of the above".
+- **Anchor wrongness to the concept under test.** Tie each distractor to the
+  concept or material the check covers (and to its `criterionEntityIds` where the
+  check links one), so the distractors probe the same understanding the key does.
+
+A practical bar: read the four options cold, with the prompt but without knowing
+the key. If you can pick the answer from wording, plausibility, or process of
+elimination alone, the distractors are too weak — revise before proposing.
+
 ## Readiness checks
 
 - **Propose** — `POST /programs/{programId}/readiness-checks/candidates` with
@@ -142,7 +173,10 @@ interface"), you hold the session, so:
   prompt, and id inline.
 - For a quick check, show the options and — from the curator-only
   `GET /quick-checks/revisions/{revisionId}/curation` view — the correct option,
-  so review is possible without leaving the conversation.
+  so review is possible without leaving the conversation. Apply the
+  distractor-quality bar above as part of this review: name the mistake each
+  distractor encodes, and flag any throwaway or guessable-by-form option for
+  revision before acceptance instead of accepting a contract-valid but weak check.
 - Only when the curator wants a browsable surface of their own, point them at the
   instance's `/learn` Curator review UI — after you have already shown the drafts.
 
