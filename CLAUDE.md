@@ -37,8 +37,10 @@ Keep the `## Components` table in `README.md` current — see
 
 ## New Project Checklist
 
-When a top-level project directory is added, renamed, or removed, follow the checklist in
-[`.agents/new-project-checklist.md`](.agents/new-project-checklist.md).
+When **any** top-level directory is added, renamed, or removed — including non-project dirs
+(e.g. `backlog/`, a docs or research dir) — follow the checklist in
+[`.agents/new-project-checklist.md`](.agents/new-project-checklist.md). A non-project dir needs
+at minimum the `loc-dashboard.sh` `known`-list classification; a full project needs every item.
 
 ## Log
 
