@@ -33,3 +33,26 @@ See [`using-superpowers/SKILL.md`](https://github.com/obra/superpowers/blob/main
 - announce
 
 Consider "Here's my copy of programming book. Please read the book and pull out reusable skills that weren't obvious to you before you started reading".
+
+## process-gates: verify the real execution path, not just the config artifact
+
+**Why:** an integration affordance was marked "done" once configured, without the
+actual path ever being exercised (a Telegram menu entry set via `setMyCommands`
+that the bot then rejected as an unknown command — "configured" ≠ "works"). The
+gate that would have caught it: require a live end-to-end invocation for
+user-facing affordances on external/integration surfaces.
+
+**Proposed addition** to `public/process-gates/SKILL.md`:
+
+- Completion Verification checklist item:
+  > - [ ] For a user-facing affordance built on an external/integration surface
+  >   (bot, plugin, third-party API/tool), the real end-to-end path was exercised
+  >   live — the command/feature actually ran and produced the intended result —
+  >   not merely configured. "Configured" ≠ "works."
+- Step Closeout step 3 companion line:
+  > For integration work, "required verification" includes invoking the actual
+  > path, not just confirming the config artifact exists.
+
+**Cost:** published marketplace skill — needs the dev-skills release flow
+(dedicated branch, SKILL.md PATCH bump 1.2.0 → 1.2.1, `docs/log.md`, PR +
+auto-merge, post-merge CI/skills-repo verify). Deferred until that flow is run.
