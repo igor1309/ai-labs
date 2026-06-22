@@ -148,7 +148,7 @@ print_rows() {
 # ---------- drift detection ----------
 
 check_project_drift() {
-  local known=".agents .claude .codex .git .github .lazyweb .wrangler agents agonara claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills docker docs dragoman gemini img insights loki migrate-to-skills neris nexum niora node_modules nomos notio oracle prompts reading reinix research sandbox scripts session-digest tests tools vendor web-scout worktrees _inbox"
+  local known=".agents .claude .codex .git .github .lazyweb .wrangler agents agonara backlog claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills docker docs dragoman gemini img insights loki migrate-to-skills neris nexum niora node_modules nomos notio oracle prompts reading reinix research sandbox scripts session-digest tests tools vendor web-scout worktrees _inbox"
   # Entries in `known` that may legitimately be absent (fresh clone, worktree, no active state, etc.).
   # Dotfile entries are tooling/config and skipped wholesale; the rest are explicit.
   local optional="node_modules vendor worktrees _inbox"
