@@ -15,9 +15,10 @@
   curators to find an entity id via the curation detail (which itself needs a
   revision id they had no way to obtain). Completes the in-place re-acceptance
   (`targetEntityId`) workflow for already-accepted quick checks.
-  - Note: `tests/operator-skill-contract.test.js` has a pre-existing failure on
-    trunk (a prose example `` `GET /programs/...` `` in `agonara-api-access`
-    parsed as a route citation); unrelated to this change and not addressed here.
+  - Also fix a pre-existing failure in `tests/operator-skill-contract.test.js`
+    (red on trunk, unrelated to ADR-019): a prose example `` `GET /programs/...` ``
+    in `agonara-api-access` (v1.0.0 → v1.0.1) was parsed as a route citation;
+    reworded so it no longer looks like a real route. Full suite now green.
 - Add `docs/adr/adr-019-curator-accepted-quick-check-read-surface.md` (status:
   accepted): amends ADR-016 to decide a curator-only read surface over accepted
   quick checks. ADR-016 sanctions re-accepting a corrected quick check onto an

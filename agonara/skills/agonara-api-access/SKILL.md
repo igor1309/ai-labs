@@ -1,7 +1,7 @@
 ---
 name: agonara-api-access
 author: Igor Malyarov
-version: "1.0.0"
+version: "1.0.1"
 description: Connect any agent to an Agonara instance over its HTTP API — health check, password login and the agonara_session cookie, whoami, the X-Agonara-CSRF token and idempotency keys for safe mutations, and reading the accepted/rejected/fault envelope. Use when an agent needs to authenticate to Agonara, hold a session, send a state-changing request, or interpret an Agonara API response. The shared foundation every Agonara role skill builds on.
 trigger: before any agent talks to an Agonara instance — authenticating, holding a session, mutating, or interpreting a response
 ---
@@ -106,7 +106,8 @@ Agonara is bring-your-own-agent: **you** hold the session and call the API, so
 the operator does not. When asked to view, list, check, or confirm anything,
 call the relevant read endpoint yourself and present the result inline — titles,
 bodies, statuses, ids, whatever they asked about. Never answer a "how do I see
-this?" question by handing the operator a raw endpoint path (`GET /programs/...`)
+this?" question by handing the operator a raw endpoint path (a `GET` on some
+`/programs/...` route)
 to call themselves: reciting the route is the agent offloading its own job. The
 operator runs an agent precisely so they don't touch HTTP. If they want a
 browsable view of their own, point them at the instance's `/learn` (curator/
