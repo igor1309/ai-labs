@@ -90,6 +90,9 @@ instead of the *material*. Every distractor must earn its place:
 - **Make options homogeneous with the key.** Match length, grammar, specificity,
   and register across all options. A key that is longer, more hedged, more
   precise, or more technical than its distractors is guessable by form alone.
+  This includes formatting: do not bold, expand, qualify, or otherwise mark up
+  the correct option differently — any readability change must be applied
+  uniformly to every option, never just the key.
 - **Exactly one defensibly-correct option.** Distractors must be unambiguously
   wrong against the linked assessment criterion — but wrong *for a reason*, not by
   being nonsense. Avoid near-duplicate options and avoid "all/none of the above".
