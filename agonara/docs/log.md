@@ -2,6 +2,19 @@
 
 ## 2026-06-22
 
+- Release `agonara_v0.2.0` (minor; `0.1.0 → 0.2.0`). First release since the
+  initial production cut at `agonara_v0.1.0`; ships the assessment surfaces
+  accumulated on trunk — quick-check assessment boundary (ADR-016) with in-place
+  re-acceptance, the curator-only accepted quick-check read surface (ADR-019,
+  `GET /programs/{programId}/quick-checks/curation` +
+  `GET /quick-checks/revisions/{revisionId}/curation`) and the readiness analogue
+  (ADR-020), assessment-criteria/open-answer-check curation reads, LLM-assisted
+  curation suggestions, and the real-provider open-answer evaluator runtime
+  (ADR-018). Schema unchanged from the deployed `0.1.0` (`src/storage.js`
+  identical), so existing data on the prod volume carries forward; deploy is
+  code-only via the CI release-unit pipeline (staging → prod, health + smoke
+  gated, auto-rollback).
+
 - Clarify the assessment persona boundary in the operator skills and capture two
   follow-up architecture questions as pre-ADR notes. `agonara-curator-assessment`
   (v1.2.0 → v1.2.1) now states curators author/revise checks but never grade
