@@ -59,6 +59,33 @@ The previous developer-facing `agonara-api` skill was removed — it served an
 agent *building* Agonara's codebase, not an operator *using* the product, which
 is the wrong consumer for this directory.
 
+## Authoring constraints
+
+Each skill is **deployed independently** to its own Hermes profile (see the
+deploy section below and the packaging model in
+[`operator-skill-packaging_pre_adr.md`](operator-skill-packaging_pre_adr.md)).
+Only the skill *folder* ships to the host — `research/`, `docs/`, `backlog/`, and
+sibling buckets in another role plugin are **not** present at runtime. So author
+every skill to stand on its own:
+
+- **No links a deployed bot can't resolve.** Do not reference `../../research/…`,
+  `../../docs/…`, or another *role's* skill from inside `SKILL.md` — those paths
+  dangle on the bot. A `agonara-curator-*` skill linking `agonara-student` (or
+  vice versa) is the canonical mistake: the two never co-install. Keep design
+  rationale and citations in `research/`/`docs/` (repo-only); the skill states the
+  rule plainly without linking out.
+- **Links that *do* resolve are fine.** The shared foundations
+  (`agonara-api-access`, `agonara-membership`) arrive via `agonara-core`, and
+  skills in the *same* role bucket (e.g. `agonara-curator-corpus` ↔
+  `agonara-curator-assessment`) co-deploy — so foundation and same-bucket links
+  are safe.
+- **Duplicate shared cross-boundary content verbatim, then guard it.** When two
+  skills in *different* buckets must enforce the same rule (e.g. the MCQ
+  item-quality bar in `agonara-curator-assessment` and `agonara-student`), copy it
+  byte-for-byte rather than linking, and add a parity test so the copies can't
+  silently diverge — see
+  [`../tests/operator-skill-contract.test.js`](../tests/operator-skill-contract.test.js).
+
 ## Deploying an edit to the live bots
 
 These skills run live on the Hermes Telegram bots (`agonara-curator` /
