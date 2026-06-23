@@ -1,5 +1,9 @@
 # Log
 
+## 2026-06-23
+
+- Cairana: land the future product (AI assistant for psychologists, working name/research stage). Added `cairana/README.md`, `cairana/docs/log.md`, and a simple `cairana/index.html` landing page; classified the dir in `scripts/loc-dashboard.sh` (known list + row), the `docs/loc-dashboard.html` data array, the README Components table, and the `index.html` / `docs/products.html` landing pages. No release unit or CI workflow — docs/research only.
+
 ## 2026-06-15
 
 - AST tooling research: added `docs/research/ast-code-search-tools.md` comparing

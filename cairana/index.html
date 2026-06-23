@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cairana — AI assistant for psychologists</title>
+<style>
+  :root {
+    --bg: #0e1213;
+    --surface: #151b1c;
+    --border: #26302f;
+    --text: #e8eeec;
+    --muted: #9aa8a4;
+    --accent: #6fb6a6;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.55;
+  }
+
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 5rem 1.5rem 4rem;
+  }
+
+  .eyebrow {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+    margin-bottom: 1.25rem;
+  }
+
+  h1 {
+    font-size: clamp(2rem, 5vw, 2.75rem);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 1rem;
+  }
+
+  .hero {
+    font-size: 1.15rem;
+    color: var(--muted);
+    max-width: 36em;
+    margin-bottom: 2.75rem;
+  }
+
+  .pillars {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-bottom: 2.75rem;
+  }
+
+  @media (min-width: 620px) {
+    .pillars { grid-template-columns: 1fr 1fr; }
+  }
+
+  .pillar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.4rem;
+  }
+
+  .pillar h2 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+  }
+
+  .pillar p {
+    font-size: 0.875rem;
+    color: var(--muted);
+  }
+
+  .note {
+    font-size: 0.85rem;
+    color: var(--muted);
+    border-left: 2px solid var(--border);
+    padding-left: 1rem;
+    margin-bottom: 2.5rem;
+  }
+
+  footer {
+    font-size: 0.75rem;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    padding-top: 1.25rem;
+  }
+
+  footer a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  footer a:hover { color: var(--text); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <p class="eyebrow">Working name · Research stage</p>
+    <h1>Cairana</h1>
+    <p class="hero">
+      Cairana helps psychologists turn sessions into structured notes, working context, and next steps. A professional assistant — not an autonomous therapist, diagnostic system, or clinical decision-maker.
+    </p>
+
+    <div class="pillars">
+      <div class="pillar">
+        <h2>Notes</h2>
+        <p>Session material becomes structured drafts for review and editing.</p>
+      </div>
+      <div class="pillar">
+        <h2>Context</h2>
+        <p>Working case history stays accessible without reconstructing it from scattered notes.</p>
+      </div>
+      <div class="pillar">
+        <h2>Continuity</h2>
+        <p>Previous sessions, current themes, treatment goals, and next steps stay connected.</p>
+      </div>
+      <div class="pillar">
+        <h2>Professional control</h2>
+        <p>Cairana assists. The psychologist reviews, edits, signs, and remains responsible for the record.</p>
+      </div>
+    </div>
+
+    <p class="note">
+      Early-stage design. The name is a working candidate pending trademark, domain, and reputation checks — see the name brief.
+    </p>
+
+    <footer>
+      <a href="docs/cairana-name-brief.md">Name brief</a> · <a href="../index.html">Internal landings</a>
+    </footer>
+  </div>
+</body>
+</html>
