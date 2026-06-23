@@ -1,7 +1,7 @@
 ---
 name: agonara-curator-assessment
 author: Igor Malyarov
-version: "1.2.1"
+version: "1.3.0"
 description: Operate as an Agonara program curator to author assessment — open-answer checks, quick checks, and readiness checks via the candidate→acceptance→revision flow, define program-owned assessment criteria, link checks to learner-state targets, and keep answer keys and correctness curator-only (never student-facing). Use when a curator agent is adding or accepting checks or criteria on a program. Builds on the corpus skill; checks attach to accepted corpus entities.
 trigger: when a curator agent needs to author or accept a check (open-answer, quick, readiness), define assessment criteria, or manage learner-state target links
 ---
@@ -89,39 +89,100 @@ and criteria good enough that the automatic evaluation is fair.
   `GET /quick-checks/revisions/{revisionId}`. Use this to confirm what a student
   would actually see.
 
-### Distractor quality (the options carry the difficulty)
+### Item quality (the options carry the difficulty)
 
 A single-select check is only as good as its wrong options. Satisfying the
 contract — two non-empty options, one key index — does **not** make a usable
-check. The default failure mode is distractors a learner can eliminate without
-understanding the concept, which lets them score by reasoning about the *options*
-instead of the *material*. Every distractor must earn its place:
+check. The default failure mode is a question a learner can answer without
+understanding the concept, by reasoning about the *options* instead of the
+*material*.
 
-- **Each wrong option encodes a real, nameable mistake.** A distractor should be
-  what a learner believes if they hold a specific misconception, did a partial or
-  half-remembered version of the reasoning, or confused two related ideas from the
-  accepted corpus. If you cannot state *which* error or confusion an option
-  represents, it is filler — replace it.
+The item-quality requirements that follow are the established evidence-based
+item-writing guidelines (Haladyna/Downing/Rodriguez; the NBME item-writing guide;
+Rodriguez's option-count meta-analysis; the answer-position research).
+
+#### The stem
+
+- **Pass the cover-the-options test.** A learner who knows the material should be
+  able to read the prompt alone and form the answer *before* seeing the options.
+  If the prompt only makes sense once the options are visible, it is testing
+  option-comparison, not knowledge — rewrite it.
+- **Test application, not bare recognition.** Low-level recall prompts are the
+  single biggest source of distractors nobody picks: when the prompt is trivial,
+  every wrong option is obviously wrong. Ask the learner to apply, distinguish, or
+  reason so the distractors can carry real misconceptions.
+- **Avoid negative stems.** Don't phrase the prompt as "which is NOT / EXCEPT" —
+  it inverts the task and trips careful learners. If a negation is unavoidable,
+  make it visually unmissable (caps: `NOT`).
+
+#### Every distractor encodes a real mistake
+
+- **Nameable mistake only.** A distractor should be what a learner believes if
+  they hold a specific misconception, did a partial or half-remembered version of
+  the reasoning, or confused two related ideas under study. If you cannot state
+  *which* error an option represents, it is filler — replace it.
 - **No throwaways, jokes, or off-topic options.** Reject options that are absurd,
-  unrelated to the prompt, obviously false on sight, or true-but-irrelevant — no
-  informed *or* uninformed learner would seriously pick them, so they add no
-  signal.
-- **Make options homogeneous with the key.** Match length, grammar, specificity,
-  and register across all options. A key that is longer, more hedged, more
-  precise, or more technical than its distractors is guessable by form alone.
-  This includes formatting: do not bold, expand, qualify, or otherwise mark up
-  the correct option differently — any readability change must be applied
-  uniformly to every option, never just the key.
-- **Exactly one defensibly-correct option.** Distractors must be unambiguously
-  wrong against the linked assessment criterion — but wrong *for a reason*, not by
-  being nonsense. Avoid near-duplicate options and avoid "all/none of the above".
-- **Anchor wrongness to the concept under test.** Tie each distractor to the
-  concept or material the check covers (and to its `criterionEntityIds` where the
-  check links one), so the distractors probe the same understanding the key does.
+  unrelated, obviously false on sight, or true-but-irrelevant — no informed *or*
+  uninformed learner would seriously pick them, so they add no signal.
+- **Anchor wrongness to the concept under test**, so the distractors probe the
+  same understanding the key does.
 
-A practical bar: read the four options cold, with the prompt but without knowing
-the key. If you can pick the answer from wording, plausibility, or process of
-elimination alone, the distractors are too weak — revise before proposing.
+#### Kill the cues that leak the key
+
+A test-wise learner exploits these to score without knowing the material; every
+one is a known item-writing flaw. Make options **homogeneous** so none of these
+single the key out:
+
+- **Length is the #1 leak.** The correct option is most often the longest, most
+  qualified, most complete one — because the writer adds care to it. Keep all
+  options in a tight length band; flag any item where the key runs markedly longer
+  (~30%+) than the mean distractor and rebalance.
+- **Grammar.** Every option must complete the stem grammatically. A distractor
+  that doesn't agree (article, number, tense) gets eliminated for free.
+- **Absolutes and determiners.** "always / never / only / all / none" read as
+  giveaway-wrong; don't park them in distractors or you hand out eliminations, and
+  don't let the key be the lone hedged "expert-sounding" option.
+- **Vague frequency words.** Avoid "often / usually / rarely" in options — even
+  experts don't define them consistently, so they add construct-irrelevant noise.
+- **Word repetition / clang.** Don't echo a distinctive stem word in the key
+  alone; the verbal match cues it.
+- **Convergence.** Don't let the key be the option that shares the most elements
+  with the others — test-wise learners pick the "most-overlapping" option.
+- **Formatting.** Do not bold, quote, bracket, expand, qualify, or otherwise mark
+  up the correct option differently — any readability change applies uniformly to
+  every option, never just the key.
+- **Position.** The correct answer must not be predictable by position. Don't let
+  the key cluster on one slot across the set; place each key by content, not
+  habit. If the correct option is systematically in the same position (commonly
+  the first, or a middle slot), the set is guessable by position and the offending
+  items need reworking, not just a single fix.
+
+#### Structure
+
+- **Exactly one defensibly-correct option.** Distractors must be unambiguously
+  wrong against the concept under test — but wrong *for a reason*, not by being
+  nonsense.
+- **3–4 options, varied across the set.** Three to four functioning options is the
+  sweet spot — fewer wastes a question, more invites filler. Don't fix every
+  question at the same count; varying it keeps the count itself from being a tell.
+  Keep an option only if it is a real distractor by the rules above.
+- **No near-duplicates and no "all / none of the above."** Overlapping options
+  enable logical elimination; "all of the above" lets partial knowledge pass and
+  "none of the above" tests only that distractors are wrong.
+- **Order numeric or chronological options logically** (ascending/descending), not
+  randomly — illogical order is itself a needless cue.
+- **Items must not cue each other.** Don't let one question reveal the answer to
+  another across the set.
+
+A practical bar: read the options cold, with the prompt but without knowing
+the key. If you can pick the answer from wording, length, plausibility, position,
+or process of elimination alone, the item is too weak — revise.
+
+**Applying this as a curator.** "Position" is `answerKeyOptionIndex`; check its
+spread across the program with the curator list
+(`GET /programs/{programId}/quick-checks/curation`, which exposes every key), and
+rework checks whose keys cluster. Where a check links assessment criteria, anchor
+each distractor to its `criterionEntityIds` as well as the concept.
 
 **Fixing a weak check that is already accepted.** You do not create a second
 question and you cannot edit a revision in place. Author a corrected candidate
@@ -218,9 +279,10 @@ interface"), you hold the session, so:
 - For a quick check, show the options and — from the curator-only
   `GET /quick-checks/revisions/{revisionId}/curation` view — the correct option,
   so review is possible without leaving the conversation. Apply the
-  distractor-quality bar above as part of this review: name the mistake each
-  distractor encodes, and flag any throwaway or guessable-by-form option for
-  revision before acceptance instead of accepting a contract-valid but weak check.
+  item-quality bar above as part of this review: name the mistake each distractor
+  encodes, and flag any throwaway, guessable-by-form, or predictably-positioned
+  option for revision before acceptance instead of accepting a contract-valid but
+  weak check.
 - Only when the curator wants a browsable surface of their own, point them at the
   instance's `/learn` Curator review UI — after you have already shown the drafts.
 
