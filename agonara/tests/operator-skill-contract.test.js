@@ -31,6 +31,47 @@ test("operatorSkills_shouldOnlyCiteRoutesPresentInOpenApi_onSkillRouteReferences
   );
 });
 
+test("operatorSkills_shouldKeepItemQualityBlockByteIdentical_acrossCuratorAndStudentSkills", () => {
+  const sharedBlockSkills = ["agonara-curator-assessment", "agonara-student"];
+  const blocks = sharedBlockSkills.map($0 => ({
+    skill: $0,
+    block: extractItemQualityBlock(join(skillsDirectory, $0, "SKILL.md")),
+  }));
+
+  const missingBlocks = blocks.filter($0 => $0.block === null).map($0 => $0.skill);
+  const [curator, student] = blocks;
+
+  assert.deepEqual(
+    {
+      missingBlocks,
+      blocksMatch: curator.block !== null && curator.block === student.block,
+    },
+    {
+      missingBlocks: [],
+      blocksMatch: true,
+    },
+  );
+});
+
+function extractItemQualityBlock(path) {
+  const lines = readFileSync(path, "utf8").split("\n");
+  const start = lines.findIndex($0 => $0 === "#### The stem");
+
+  if (start === -1) {
+    return null;
+  }
+
+  const end = lines.findIndex(
+    ($0, index) => index >= start && $0.endsWith("the item is too weak — revise."),
+  );
+
+  if (end === -1) {
+    return null;
+  }
+
+  return lines.slice(start, end + 1).join("\n");
+}
+
 function readOpenApiRoutes(path) {
   const routes = new Set();
   const lines = readFileSync(path, "utf8").split("\n");

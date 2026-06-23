@@ -1,7 +1,7 @@
 ---
 name: agonara-student
 author: Igor Malyarov
-version: "1.1.1"
+version: "1.2.1"
 description: Operate an Agonara instance as a Student through its HTTP API — discover and preview programs without creating state, self-join/leave/rejoin and act on invitations, resume learning and follow the next step, study accepted concepts and materials with navigation intact, present checks and relay the student's own quick, open, and readiness answers, and read feedback, results, and the evidence behind progress. The agent coaches learning but never produces the student's assessment evidence. The student sees only accepted corpus and its own state — never curator drafts, answer keys, correctness metadata, or evaluator internals. Use when an agent acts as a learner against an Agonara instance.
 trigger: when an agent works as a Student against an Agonara instance — discovering or joining programs, learning, taking checks, or reading its own progress
 ---
@@ -126,15 +126,8 @@ so the boundary lives here, in how you behave.
   often build the quiz yourself — when no prepared check exists, you may compose
   quick checks, quizzes, or practice tests from the accepted materials so the
   student can self-assess (in the conversation, to coach with — not persisted as
-  program check candidates; that is curation). Every option you write meets the
-  same bar a good curator check meets: each distractor encodes a real, nameable
-  mistake — a specific misconception, a partial or half-remembered reasoning
-  step, or a confusion between related concepts under study. No throwaway, joke,
-  off-topic, obviously-false, or true-but-irrelevant options. Keep all options
-  homogeneous in length, grammar, and specificity, with exactly one
-  defensibly-correct option, each distractor anchored to the concept. If the
-  answer is pickable by elimination alone, the question measures nothing — revise
-  it.
+  program check candidates; that is curation). Hold every question you write to
+  the **MCQ item-quality bar below**.
 - **Never let formatting betray the answer.** Improving a question's readability
   is welcome, but apply it uniformly to the whole question. Do not bold, expand,
   qualify, hedge, add detail to, or structure the correct option differently from
@@ -154,6 +147,90 @@ so the boundary lives here, in how you behave.
   added, dropped, reordered to mislead, or annotated with a hint — and let the
   student pick. If the student is stuck, offer to return to studying the
   underlying concept, not to supply the answer.
+
+### MCQ item quality
+
+The item-quality requirements below are the established evidence-based
+item-writing guidelines (Haladyna/Downing/Rodriguez; the NBME item-writing guide;
+Rodriguez's option-count meta-analysis; the answer-position research). Apply them
+to every question you compose for the student.
+
+#### The stem
+
+- **Pass the cover-the-options test.** A learner who knows the material should be
+  able to read the prompt alone and form the answer *before* seeing the options.
+  If the prompt only makes sense once the options are visible, it is testing
+  option-comparison, not knowledge — rewrite it.
+- **Test application, not bare recognition.** Low-level recall prompts are the
+  single biggest source of distractors nobody picks: when the prompt is trivial,
+  every wrong option is obviously wrong. Ask the learner to apply, distinguish, or
+  reason so the distractors can carry real misconceptions.
+- **Avoid negative stems.** Don't phrase the prompt as "which is NOT / EXCEPT" —
+  it inverts the task and trips careful learners. If a negation is unavoidable,
+  make it visually unmissable (caps: `NOT`).
+
+#### Every distractor encodes a real mistake
+
+- **Nameable mistake only.** A distractor should be what a learner believes if
+  they hold a specific misconception, did a partial or half-remembered version of
+  the reasoning, or confused two related ideas under study. If you cannot state
+  *which* error an option represents, it is filler — replace it.
+- **No throwaways, jokes, or off-topic options.** Reject options that are absurd,
+  unrelated, obviously false on sight, or true-but-irrelevant — no informed *or*
+  uninformed learner would seriously pick them, so they add no signal.
+- **Anchor wrongness to the concept under test**, so the distractors probe the
+  same understanding the key does.
+
+#### Kill the cues that leak the key
+
+A test-wise learner exploits these to score without knowing the material; every
+one is a known item-writing flaw. Make options **homogeneous** so none of these
+single the key out:
+
+- **Length is the #1 leak.** The correct option is most often the longest, most
+  qualified, most complete one — because the writer adds care to it. Keep all
+  options in a tight length band; flag any item where the key runs markedly longer
+  (~30%+) than the mean distractor and rebalance.
+- **Grammar.** Every option must complete the stem grammatically. A distractor
+  that doesn't agree (article, number, tense) gets eliminated for free.
+- **Absolutes and determiners.** "always / never / only / all / none" read as
+  giveaway-wrong; don't park them in distractors or you hand out eliminations, and
+  don't let the key be the lone hedged "expert-sounding" option.
+- **Vague frequency words.** Avoid "often / usually / rarely" in options — even
+  experts don't define them consistently, so they add construct-irrelevant noise.
+- **Word repetition / clang.** Don't echo a distinctive stem word in the key
+  alone; the verbal match cues it.
+- **Convergence.** Don't let the key be the option that shares the most elements
+  with the others — test-wise learners pick the "most-overlapping" option.
+- **Formatting.** Do not bold, quote, bracket, expand, qualify, or otherwise mark
+  up the correct option differently — any readability change applies uniformly to
+  every option, never just the key.
+- **Position.** The correct answer must not be predictable by position. Don't let
+  the key cluster on one slot across the set; place each key by content, not
+  habit. If the correct option is systematically in the same position (commonly
+  the first, or a middle slot), the set is guessable by position and the offending
+  items need reworking, not just a single fix.
+
+#### Structure
+
+- **Exactly one defensibly-correct option.** Distractors must be unambiguously
+  wrong against the concept under test — but wrong *for a reason*, not by being
+  nonsense.
+- **3–4 options, varied across the set.** Three to four functioning options is the
+  sweet spot — fewer wastes a question, more invites filler. Don't fix every
+  question at the same count; varying it keeps the count itself from being a tell.
+  Keep an option only if it is a real distractor by the rules above.
+- **No near-duplicates and no "all / none of the above."** Overlapping options
+  enable logical elimination; "all of the above" lets partial knowledge pass and
+  "none of the above" tests only that distractors are wrong.
+- **Order numeric or chronological options logically** (ascending/descending), not
+  randomly — illogical order is itself a needless cue.
+- **Items must not cue each other.** Don't let one question reveal the answer to
+  another across the set.
+
+A practical bar: read the options cold, with the prompt but without knowing
+the key. If you can pick the answer from wording, length, plausibility, position,
+or process of elimination alone, the item is too weak — revise.
 
 ## Check and assess
 
