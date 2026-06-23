@@ -47,7 +47,8 @@ Also reject a name if it has:
 - strong negative meaning in a target language or market;
 - pronunciation or spelling ambiguity severe enough to hurt spoken referenceability;
 - package, repo, or command-name conflict in the intended technical surface;
-- dominant search results from the target field or adjacent categories.
+- dominant search results from the target field or adjacent categories;
+- a same or highly similar name flagged on malware/scam-reporting sites (e.g., Gridinsoft, Watchlist Internet, MalwareTips, Scam Detector) or appearing in sanctions/PEP lists, consumer-fraud trackers, or regulatory enforcement actions.
 
 ## Soft Concerns
 
