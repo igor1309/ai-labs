@@ -1,7 +1,7 @@
 ---
 name: worktree
 author: Igor Malyarov
-version: "0.1.1"
+version: "0.1.2"
 description: >
   Create a new git worktree, sync shared config into it via the bundled sync
   script (never replicate config by hand or hand-author symlinks), and clear
@@ -24,16 +24,20 @@ when the skill loads. Run the commands from **inside the target git repository**
 
 ### 1. Create the worktree
 
-Use the global `gitwt` command if installed (see the install section below);
-otherwise call the bundled creator by its path. It creates a **new** branch in
-its own worktree at `<parent>/<repo>.worktrees/<safe-branch>` — create-only (never
-checks out an existing branch), local refs only, base defaults to `HEAD`.
+Always call the bundled creator by its path — it works regardless of `PATH` and
+needs nothing installed. It creates a **new** branch in its own worktree at
+`<parent>/<repo>.worktrees/<safe-branch>` — create-only (never checks out an
+existing branch), local refs only, base defaults to `HEAD`.
 
 ```bash
-gitwt <branch> [<base-branch>]                          # if gitwt is installed
-"<skill-dir>/scripts/git-worktree-create" <branch> [<base-branch>]   # otherwise
-# e.g. gitwt feature/new-api origin/trunk
+"<skill-dir>/scripts/git-worktree-create" <branch> [<base-branch>]
+# e.g. "<skill-dir>/scripts/git-worktree-create" feature/new-api origin/trunk
 ```
+
+Do **not** branch on whether `gitwt` is installed: the `gitwt` global is only on
+`PATH` in interactive shells, so that check is unreliable from an agent or a
+non-interactive shell. `gitwt` is a human convenience for typing in a terminal
+(see the install section); the bundled path is the canonical invocation here.
 
 It prints the target directory and a `cd` line. Capture the target dir for step 2.
 

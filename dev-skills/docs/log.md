@@ -6,6 +6,7 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-06-24
 
+- **worktree v0.1.2** (marketplace v1.52.2): harden step 1 — always invoke the bundled creator by its `<skill-dir>/scripts/git-worktree-create` path instead of branching on whether `gitwt` is installed. `gitwt` lives on `PATH` only in interactive shells, so the "if installed" check was unreliable from an agent/non-interactive shell and caused a needless fallback even when `gitwt` was correctly installed. `gitwt` is now framed purely as a human terminal convenience.
 - **worktree v0.1.1** (marketplace v1.52.1): fix SKILL.md invocation wording — dropped the non-existent `$SKILL` env var (skills are *told* their base dir at load, there is no such variable) in favour of a `<skill-dir>` placeholder, clarified that the creator must run from inside the target repo, and surfaced the global `gitwt` as the primary invocation.
 - New **worktree v0.1.0** skill (marketplace v1.52.0): create a git worktree, sync its shared config, and clear leftover build artifacts. Self-contained — bundles the worktree creator (`git-worktree-create`, relocated from the `igor1309/dev-tools` repo) and the shared-config symlinker (`ensure-shared-config-links.sh`, relocated from `ai-labs/tools/`) under `scripts/`, so it works with no pre-installed tooling. The skill is now the single source of truth for both scripts; the global `gitwt` command becomes a symlink into the stable marketplace checkout (not the SHA-versioned cache). `tools/wt` is deprecated in favour of it.
 
