@@ -132,6 +132,18 @@ global worktree guidance to point at the skill.
 **Target:** host config — `~/bin`, `~/.claude/rules/`, `~/.codex/AGENTS.md`. No
 repo commit (host artifacts). **Push policy:** n/a.
 
+> Note (symlink target): `gitwt` is an **external shell command**, invoked by the
+> user's shell — not by Claude's skill loader. It needs only a stable on-disk path
+> that holds the script and auto-updates. That is the marketplace **checkout**
+> (`~/.claude/plugins/marketplaces/dev-skills/`, fixed path, `autoUpdate: true`),
+> which is distinct from the SHA-versioned cache the runtime resolves skills from
+> (`…/cache/dev-skills/dev-skills/<sha>/`, rotates per publish — never a symlink
+> target).
+
+- **Gate (F1):** confirm the target exists and is executable before linking:
+  `test -x ~/.claude/plugins/marketplaces/dev-skills/worktree/scripts/git-worktree-create`.
+  If absent, `git -C ~/.claude/plugins/marketplaces/dev-skills pull` and re-check;
+  do not create the symlink against a missing target.
 - `mkdir -p ~/bin`; `ln -s ~/.claude/plugins/marketplaces/dev-skills/worktree/scripts/git-worktree-create ~/bin/gitwt`.
 - Ensure `~/bin` precedes `dev-tools/bin` on PATH (add to `~/.zshrc` if absent);
   re-source and verify `command -v gitwt` resolves to `~/bin/gitwt`.
@@ -156,6 +168,11 @@ worktrees section. **Completion signal:** `gitwt` runs from the marketplace skil
 **Worktree mode:** none (operate on the repo's main checkout, dedicated branch).
 **Push policy:** push after task (user: "commit, push on complete").
 
+- **Pre-retirement consumer audit (F4):** before removing anything, confirm no
+  other caller still sources the dev-tools copy:
+  `grep -rn 'git-worktree-create\|dev-tools/bin/gitwt' ~/Developer ~/.zshrc ~/.zprofile ~/.bashrc ~/.bash_profile 2>/dev/null`.
+  Gate removal on zero remaining consumers (the `~/bin/gitwt` symlink from Task 2
+  does not count). If a consumer is found, repoint or remove it first.
 - In dev-tools: `git rm bin/git-worktree-create bin/gitwt`; commit
   (`retire worktree creator; moved to dev-skills worktree skill`); push.
 - Verify `gitwt` still resolves (to `~/bin/gitwt`) after dev-tools removal.
@@ -166,6 +183,27 @@ worktrees section. **Completion signal:** `gitwt` runs from the marketplace skil
 **Validation:** `git -C dev-tools status` clean + pushed; `gitwt` smoke test
 passes post-removal. **Completion signal:** dev-tools no longer ships the creator;
 `gitwt` works globally.
+**Rollback (F4):** if a consumer surfaces after retirement, `git revert` the
+dev-tools deletion commit and push to restore `bin/git-worktree-create` +
+`bin/gitwt`; the skill copy is unaffected.
+
+## Interruption & recovery
+
+The migration spans three repos; each task is re-entrant. If interrupted:
+
+- **During Task 1 (pre-merge):** nothing is published; the worktree branch holds
+  the work. Safe to resume by re-running the remaining phases. Idempotent.
+- **Task 1 merged, not yet synced/pulled:** skill is live in `igor1309/skills` but
+  may not be in the local marketplace checkout. Recovery: `git -C
+  ~/.claude/plugins/marketplaces/dev-skills pull`. No symlink exists yet, so no
+  dangling state.
+- **During Task 2 (symlink):** the Task-2 gate prevents linking against a missing
+  target, so a half-done Task 2 leaves at most a correct symlink + an un-updated
+  PATH. Re-running is idempotent (`ln -sf`, PATH check is additive).
+- **During Task 3 (dev-tools), pre-push:** local `git rm` not pushed — `git
+  restore --staged` / `git checkout` to undo. Post-push: use the Rollback above.
+- **Invariant:** never start Task 3 until Task 2's `command -v gitwt` →
+  `~/bin/gitwt` check passes, so `gitwt` is never absent from PATH between tasks.
 
 ## Done criteria
 
