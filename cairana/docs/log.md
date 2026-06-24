@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-06-24
+- Reframe the landing-page cards as a research-stage pain map so the exploration directions read as hypotheses from solo-practitioner pains.
 - Consolidate solo-practitioner pain synthesis into one progressive research document.
 - Research and document the AI mental-health product landscape and solo-practitioner pains under `research/`.
 
