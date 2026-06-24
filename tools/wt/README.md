@@ -8,6 +8,13 @@ todo: fix Installation
 
 # 🧩 `wt` — Multi-Worktree Branch Helper
 
+> **Deprecated.** Use `gitwt` (the `worktree` dev-skill) instead. `wt` uses a
+> different layout (`<repo>-worktrees/wt-<prefix>-<name>`, hyphen) that does **not**
+> match the `<repo>.worktrees/<name>` → `<repo>.config` convention the shared-config
+> sync script expects; `gitwt`'s dot-`.worktrees` scheme does. The worktree creator
+> now lives in `dev-skills/public/worktree/scripts/git-worktree-create`. `wt` is kept
+> for reference only and is no longer the recommended path.
+
 A lightweight CLI to create and manage **Git worktrees** for feature, fix, chore, or release branches.  
 Simplifies your workflow: one command = new branch + new worktree folder.
 

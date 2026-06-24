@@ -1,7 +1,7 @@
 ---
 date: 2026-06-24
 model: claude-opus-4-7
-description: "Tools — developer workflow helpers (git worktree manager, Claude account switcher, Codex profile manager, shared config symlinker)"
+description: "Tools — developer workflow helpers (git worktree manager, Claude account switcher, Codex profile manager)"
 ---
 
 # tools
@@ -10,7 +10,7 @@ Small shell utilities and local workflow helpers.
 
 ## Description
 
-Git worktree manager, Claude account switcher with usage-limit reporting, Codex CLI profile manager with usage-limit reporting, shared config symlinker for worktrees — *small shell scripts* that smooth out daily friction.
+Git worktree manager, Claude account switcher with usage-limit reporting, Codex CLI profile manager with usage-limit reporting — *small shell scripts* that smooth out daily friction. (The worktree shared-config symlinker moved into the `worktree` dev-skill under `dev-skills/public/worktree/scripts/`.)
 
 ## Components
 
@@ -19,7 +19,6 @@ Git worktree manager, Claude account switcher with usage-limit reporting, Codex 
 | `ccswitch-limits` | CLI | Reports Anthropic usage limits for every `ccswitch`-managed Claude account |
 | `claude-account-switch` | Research | Exploration notes for an Alfred-based Claude Code account switcher |
 | `codex-mgr` | CLI | Codex CLI auth-profile manager — save/load/switch profiles and report per-profile usage limits |
-| `ensure-shared-config-links` | CLI | Symlinks each git worktree to a shared config directory |
 | `mac-health` | Scheduled checks | launchd-driven macOS health checks (memory, disk, leftovers) with a JSONL log and threshold notifications |
 | `wt` | CLI | Git worktree manager — one command creates a branch and its worktree folder |
 
