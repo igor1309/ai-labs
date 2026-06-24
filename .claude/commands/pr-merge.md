@@ -1,5 +1,10 @@
 ---
 description: Create PR with auto-merge, watch CI, then FF local trunk and clean up the merged worktree and branch
+model: claude-haiku-4-5-20251001
+allowed-tools:
+  - Bash(gh:*)
+  - Bash(git:*)
+  - Bash(./scripts/watch-pr.sh:*)
 ---
 
 Take the current branch through merge end-to-end:
