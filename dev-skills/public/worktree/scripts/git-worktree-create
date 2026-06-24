@@ -1,0 +1,177 @@
+#!/usr/bin/env bash
+#
+# git-worktree-create
+# Create a git worktree outside the repo in the pattern:
+#   <target-root>/<repo>.worktrees/<safe-branch>
+#
+# Usage:
+#   git-worktree-create <branch> [<base-branch>] [-C|--dir <target-root>]
+#     <branch>       - new branch name to create
+#     <base-branch>  - optional branch/commit to create from (defaults to HEAD)
+#     -C, --dir      - optional directory to place worktree root (defaults to parent of repo)
+#
+# Examples:
+#   git-worktree-create feature/new-api
+#   git-worktree-create hotfix/urgent trunk
+#   git-worktree-create feature/new-api -C ~/Worktrees
+#   git-worktree-create feature/new-api trunk --dir ~/Worktrees
+#   git-worktree-create review/pr-123 origin/pr-123
+#
+# Safety:
+#   - Fails if target directory already exists (no overwrites)
+#   - Fails if branch already exists (creates new branches only, never checks out)
+#   - Fails if branch already checked out elsewhere
+#   - Validates all git references before creating
+#
+set -euo pipefail
+
+die() { echo "Error: $*" >&2; exit 1; }
+
+# 1) Parse arguments
+branch="${1-}"
+if [[ -z "$branch" ]]; then
+  cat >&2 <<USAGE
+Usage:
+  $(basename "$0") <branch> [<base-branch>] [-C|--dir <target-root>]
+
+Examples:
+  $(basename "$0") feature/new-api
+  $(basename "$0") hotfix/urgent trunk
+  $(basename "$0") feature/new-api -C ~/Worktrees
+  $(basename "$0") feature/new-api trunk --dir ~/Worktrees
+  $(basename "$0") review/pr-123 origin/pr-123
+USAGE
+  exit 2
+fi
+shift
+
+# Parse -C/--dir flag and collect remaining positional args
+target_root=""
+positional_args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -C|--dir)
+      if [[ -z "${2-}" ]]; then
+        die "option $1 requires an argument"
+      fi
+      target_root="$2"
+      shift 2
+      ;;
+    -*)
+      die "unknown option: $1"
+      ;;
+    *)
+      positional_args+=("$1")
+      shift
+      ;;
+  esac
+done
+
+# Extract base-branch from remaining positional args
+base_branch=""
+if [[ ${#positional_args[@]} -gt 0 ]]; then
+  base_branch="${positional_args[0]}"
+fi
+
+if [[ ${#positional_args[@]} -gt 1 ]]; then
+  die "too many arguments: expected <branch> [<base-branch>] [-C|--dir <target-root>]"
+fi
+
+# 2) Ensure we're inside a Git repository
+if ! git rev-parse --show-toplevel >/dev/null 2>&1; then
+  die "not inside a Git repository"
+fi
+
+# 3) Move to repo root for predictable paths
+#    Use --git-common-dir to find the main repo even when run from a worktree
+git_common_dir="$(git rev-parse --git-common-dir)"
+repo_root="$(cd "$git_common_dir/.." && pwd)"
+cd "$repo_root" || die "failed to cd to repo root: $repo_root"
+
+# 4) Validate base-branch if provided (LOCAL-ONLY: no remote fallback)
+#     This tool intentionally works with local refs only. We do not
+#     auto-resolve or fetch remote branches here by design.
+if [[ -n "$base_branch" ]]; then
+  if ! git rev-parse --verify "$base_branch" >/dev/null 2>&1; then
+    die "base-branch '${base_branch}' is not a valid git reference"
+  fi
+fi
+
+# 5) Target root (default: parent of repo root)
+if [[ -z "$target_root" ]]; then
+  target_root="$(cd "$repo_root/.." && pwd)"
+else
+  # Normalize to absolute path if possible
+  if [[ "$target_root" != /* ]]; then
+    target_root="$(cd "$target_root" 2>/dev/null && pwd)" || die "cannot resolve target-root: $target_root"
+  fi
+fi
+
+# 6) Compute safe folder name from branch (do NOT alter branch used by git)
+#    - replace slashes with dashes
+#    - replace spaces with underscores
+#    - collapse illegal chars to a single dash
+#    - trim leading/trailing dashes
+safe_branch="$branch"
+safe_branch="${safe_branch//\//-}"
+safe_branch="${safe_branch// /_}"
+# shellcheck disable=SC2001 (sed used for complex character class replacement)
+safe_branch="$(printf '%s' "$safe_branch" | sed -E 's/[^A-Za-z0-9._-]+/-/g; s/^-+|-+$//g')"
+
+if [[ -z "$safe_branch" ]]; then
+  die "branch name '${branch}' contains no valid characters for a directory name"
+fi
+
+repo_name="$(basename "$repo_root")"
+target_dir="${target_root}/${repo_name}.worktrees/${safe_branch}"
+
+# 7) Check if branch already exists
+branch_exists=false
+if git rev-parse --verify "refs/heads/${branch}" >/dev/null 2>&1; then
+  branch_exists=true
+fi
+
+# 8) Refuse if branch already exists (we only CREATE, never checkout)
+if [[ "$branch_exists" == true ]]; then
+  die "branch '${branch}' already exists (this tool creates new branches only)"
+fi
+
+# 9) Safety: refuse if this branch already has a worktree (anywhere)
+path_for_branch="$(git worktree list --porcelain | awk -v b="refs/heads/${branch}" '
+  $1=="worktree"{p=$2}
+  $1=="branch" && $2==b{print p; exit}
+')"
+if [[ -n "$path_for_branch" ]]; then
+  die "branch '${branch}' is already checked out at: ${path_for_branch}"
+fi
+
+# 10) Safety: refuse if target directory already exists (collision or prior run)
+if [[ -e "$target_dir" ]]; then
+  die "target directory already exists: $target_dir (sanitized from branch '${branch}')"
+fi
+
+# 11) Ensure parent directory exists
+parent_dir="$(dirname "$target_dir")"
+mkdir -p "$parent_dir" || die "failed to create parent directory: $parent_dir"
+
+# 12) Create the worktree with new branch
+if [[ -n "$base_branch" ]]; then
+  # Create new branch from base-branch
+  git worktree add -b "$branch" "$target_dir" "$base_branch"
+else
+  # Create new branch from current HEAD
+  git worktree add -b "$branch" "$target_dir" HEAD
+fi
+
+echo "✅ Worktree created:"
+echo "   branch:      $branch"
+if [[ -n "$base_branch" ]]; then
+  echo "   from:        $base_branch"
+fi
+echo "   repo root:   $repo_root"
+echo "   target dir:  $target_dir"
+echo
+
+# Compute relative path from current directory for easier copy-paste
+relative_path="$(realpath --relative-to=. "$target_dir" 2>/dev/null || echo "$target_dir")"
+echo "👉 cd '$relative_path'"

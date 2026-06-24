@@ -4,6 +4,10 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-06-24
+
+- New **worktree v0.1.0** skill (marketplace v1.52.0): create a git worktree, sync its shared config, and clear leftover build artifacts. Self-contained — bundles the worktree creator (`git-worktree-create`, relocated from the `igor1309/dev-tools` repo) and the shared-config symlinker (`ensure-shared-config-links.sh`, relocated from `ai-labs/tools/`) under `scripts/`, so it works with no pre-installed tooling. The skill is now the single source of truth for both scripts; the global `gitwt` command becomes a symlink into the stable marketplace checkout (not the SHA-versioned cache). `tools/wt` is deprecated in favour of it.
+
 ## 2026-06-21
 
 - New `dev-skills/research/` folder with `disable-model-invocation-applicability.md`: assessed Matt Pocock's skills-changelog-v1 `disable-model-invocation` flag (the "63% token reduction" lever) against this collection. Finding: the flag assumes a "user types the orchestrator" architecture, but dev-skills is router-driven (`using-dev-skills` + `CLAUDE.md` "Use the X skill" directives auto-invoke ~a dozen skills), and disabled skills are unreachable by the model and by subagents (#43809). Net — the safe disable-set is ~5 user-typed utility/orchestrator skills (`job-search-strategy`, `best-free-openrouter-llm`, `traceability-review`, `skill-review`, `handoff`), and that win is not worth a coordinated refactor. Decision recorded: do not adopt broadly. No skills changed.
