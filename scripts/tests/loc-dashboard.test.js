@@ -78,6 +78,7 @@ it('links product cards to existing local landing pages', () => {
   const productsHtml = readFileSync('docs/products.html', 'utf8');
   const landingLinks = [
     '../agonara/index.html',
+    '../cairana/index.html',
     '../oracle/apps/am-i-done-web/src/landing.html',
     '../dev-skills/index.html',
     '../reinix/docs/landing.html',

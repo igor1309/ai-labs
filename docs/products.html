@@ -238,35 +238,51 @@
   <section class="products">
     <h2 class="section-title">Products</h2>
 
-    <h3 class="group-title">Web Apps</h3>
+    <h3 class="group-title">Editorial</h3>
+    <div class="product-grid">
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">The Dragoman</span>
+        </div>
+        <p class="product-desc">
+          <strong>"The Dragoman" Telegram channel</strong> Brand brief, channel vision, and a three-stage post pipeline (architecture → voice → image) — each post ships as a self-contained <em>posts/&lt;NNNN-slug&gt;/</em> bundle with copy and imagery.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Editorial</span>
+          <span class="tag">Posts</span>
+          <span class="tag">Imagery</span>
+          <span class="tag">Telegram</span>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="group-title">Applications</h3>
     <div class="product-grid">
       <a class="product reveal" href="../agonara/index.html">
         <div class="product-header">
           <span class="product-name">Agonara</span>
         </div>
         <p class="product-desc">
-          <strong>Bring-your-own-agent (BYOA) structured learning program environment — API plus per-role operator skills, with <code>/learn</code>/<code>/admin</code> UIs as first-class clients; curated programs, learner progression, evidence of mastery</strong> Serious learning breaks down when materials, concepts, and proof of understanding live in separate piles. Agonara gives people a program-shaped workspace for turning that scatter into a path they can follow, revise, and verify.
+          <strong>Bring-your-own-agent (BYOA) structured learning program environment.</strong> Serious learning breaks down when materials, concepts, and proof of understanding live in separate piles. Agonara gives people a program-shaped workspace for turning that scatter into a path they can follow, revise, and verify.
         </p>
         <div class="product-stack">
-          <span class="tag">Node.js 22 backend workspace</span>
-          <span class="tag">SQLite persistence through <code>better-sqlite3</code></span>
-          <span class="tag">API-first HTTP backend with server-side sessions, CSRF protection, request correlation, health, diagnostics, and audit responses</span>
-          <span class="tag">Operator CLI for bootstrap status and first-Admin bootstrap</span>
-          <span class="tag">Docker image and Compose service for private self-hosted operation</span>
+          <span class="tag">Node.js 22</span>
+          <span class="tag">better-sqlite3</span>
+          <span class="tag">REST API</span>
+          <span class="tag">Operator CLI</span>
+          <span class="tag">Docker</span>
         </div>
       </a>
-      <a class="product reveal" href="https://clipdeck.enoa.ai">
+      <a class="product reveal" href="../cairana/index.html">
         <div class="product-header">
-          <span class="product-name">Clipdeck</span>
+          <span class="product-name">Cairana</span>
         </div>
         <p class="product-desc">
-          <strong>iPhone copy library for private prompts and skills</strong> A minimal webpage backed by a serverless endpoint that reads a private GitHub repo and returns sanitized, normalized items — <em>one tap copies the body without YAML front matter</em>. Deployed at <code>clipdeck.enoa.ai</code> behind Cloudflare Access; supports plain-text and Markdown prompts.
+          <strong>AI assistant for psychologists.</strong> Cairana helps psychologists turn sessions into structured notes, working context, and next steps. It is positioned as a professional assistant — <em>not</em> an autonomous therapist, diagnostic system, or clinical decision-maker. The psychologist reviews, edits, and stays responsible for the clinical record. Working name; currently in the research and naming-validation stage.
         </p>
         <div class="product-stack">
-          <span class="tag">TypeScript</span>
-          <span class="tag">Cloudflare Worker</span>
-          <span class="tag">Cloudflare Access</span>
-          <span class="tag">Vitest</span>
+          <span class="tag">Research</span>
+          <span class="tag">Naming</span>
         </div>
       </a>
       <div class="product reveal">
@@ -283,6 +299,24 @@
           <span class="tag">Wasm</span>
         </div>
       </div>
+    </div>
+
+    <h3 class="group-title">Web Apps</h3>
+    <div class="product-grid">
+      <a class="product reveal" href="https://clipdeck.enoa.ai">
+        <div class="product-header">
+          <span class="product-name">Clipdeck</span>
+        </div>
+        <p class="product-desc">
+          <strong>iPhone copy library for private prompts and skills</strong> A minimal webpage backed by a serverless endpoint that reads a private GitHub repo and returns sanitized, normalized items — <em>one tap copies the body without YAML front matter</em>. Deployed at <code>clipdeck.enoa.ai</code> behind Cloudflare Access; supports plain-text and Markdown prompts.
+        </p>
+        <div class="product-stack">
+          <span class="tag">TypeScript</span>
+          <span class="tag">Cloudflare Worker</span>
+          <span class="tag">Cloudflare Access</span>
+          <span class="tag">Vitest</span>
+        </div>
+      </a>
       <a class="product reveal" href="../oracle/apps/am-i-done-web/src/landing.html">
         <div class="product-header">
           <span class="product-name">Oracle — Am I Done?</span>
@@ -301,8 +335,74 @@
       </a>
     </div>
 
+    <h3 class="group-title">Services</h3>
+    <div class="product-grid">
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Loki</span>
+        </div>
+        <p class="product-desc">
+          <strong>Centralized logging stack</strong> Grafana + Loki + Alloy on a VPS — collects Docker container logs and journald units, with <em>label-bounded cardinality</em> enforced by allowlists and CI checks.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Grafana</span>
+          <span class="tag">Loki</span>
+          <span class="tag">Alloy</span>
+          <span class="tag">Docker Compose</span>
+          <span class="tag">Cloudflare Tunnel</span>
+        </div>
+      </div>
+      <a class="product reveal" href="../nomos/index.html">
+        <div class="product-header">
+          <span class="product-name">Nomos</span>
+        </div>
+        <p class="product-desc">
+          <strong>AI sovereignty layer</strong> A unified proxy between projects and LLM providers — vendor abstraction, per-project budget limits, token usage logging, and basic prompt injection safeguards. <em>No cloud vendor lock-in</em>, just a single Docker service with SQLite.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Node.js</span>
+          <span class="tag">Express</span>
+          <span class="tag">SQLite</span>
+          <span class="tag">Docker</span>
+          <span class="tag">Caddy</span>
+          <span class="tag">VPS</span>
+        </div>
+      </a>
+      <a class="product reveal" href="../notio/frontend/index.html">
+        <div class="product-header">
+          <span class="product-name">Notio</span>
+        </div>
+        <p class="product-desc">
+          <strong>Personal capture service</strong> Send a link or a note from Telegram and it lands in a persistent inbox. The core is <em>ingress- and storage-agnostic</em> — Telegram is just one input, Supabase just one backend. Links get lightweight, non-AI enrichment (titles, GitHub repo metadata) before persistence.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Swift 6.1</span>
+          <span class="tag">Hummingbird 2</span>
+          <span class="tag">Supabase</span>
+          <span class="tag">Docker</span>
+          <span class="tag">Cloudflare Tunnel</span>
+          <span class="tag">Telegram Bot</span>
+        </div>
+      </a>
+    </div>
+
     <h3 class="group-title">CLI &amp; Tooling</h3>
     <div class="product-grid">
+      <a class="product reveal" href="../claude-insights/index.html">
+        <div class="product-header">
+          <span class="product-name">Claude Insights</span>
+        </div>
+        <p class="product-desc">
+          <strong>Weekly Claude Code usage reports</strong> Aggregates local session data into metrics — sessions, code churn, tool usage, goals, friction points — then pushes to Supabase and <em>notifies via Telegram</em>.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Python</span>
+          <span class="tag">Supabase</span>
+          <span class="tag">Edge Functions</span>
+          <span class="tag">Telegram Bot</span>
+          <span class="tag">Nomos</span>
+        </div>
+      </a>
       <a class="product reveal" href="../dev-skills/index.html">
         <div class="product-header">
           <span class="product-name">Dev Skills</span>
@@ -385,73 +485,7 @@
       </div>
     </div>
 
-    <h3 class="group-title">Services</h3>
-    <div class="product-grid">
-      <a class="product reveal" href="../claude-insights/index.html">
-        <div class="product-header">
-          <span class="product-name">Claude Insights</span>
-        </div>
-        <p class="product-desc">
-          <strong>Weekly Claude Code usage reports</strong> Aggregates local session data into metrics — sessions, code churn, tool usage, goals, friction points — then pushes to Supabase and <em>notifies via Telegram</em>.
-        </p>
-        <div class="product-stack">
-          <span class="tag">Python</span>
-          <span class="tag">Supabase</span>
-          <span class="tag">Edge Functions</span>
-          <span class="tag">Telegram Bot</span>
-          <span class="tag">Nomos</span>
-        </div>
-      </a>
-      <div class="product reveal">
-        <div class="product-header">
-          <span class="product-name">Loki</span>
-        </div>
-        <p class="product-desc">
-          <strong>Centralized logging stack</strong> Grafana + Loki + Alloy on a VPS — collects Docker container logs and journald units, with <em>label-bounded cardinality</em> enforced by allowlists and CI checks.
-        </p>
-        <div class="product-stack">
-          <span class="tag">Grafana</span>
-          <span class="tag">Loki</span>
-          <span class="tag">Alloy</span>
-          <span class="tag">Docker Compose</span>
-          <span class="tag">Cloudflare Tunnel</span>
-        </div>
-      </div>
-      <a class="product reveal" href="../nomos/index.html">
-        <div class="product-header">
-          <span class="product-name">Nomos</span>
-        </div>
-        <p class="product-desc">
-          <strong>AI sovereignty layer</strong> A unified proxy between projects and LLM providers — vendor abstraction, per-project budget limits, token usage logging, and basic prompt injection safeguards. <em>No cloud vendor lock-in</em>, just a single Docker service with SQLite.
-        </p>
-        <div class="product-stack">
-          <span class="tag">Node.js</span>
-          <span class="tag">Express</span>
-          <span class="tag">SQLite</span>
-          <span class="tag">Docker</span>
-          <span class="tag">Caddy</span>
-          <span class="tag">VPS</span>
-        </div>
-      </a>
-      <a class="product reveal" href="../notio/frontend/index.html">
-        <div class="product-header">
-          <span class="product-name">Notio</span>
-        </div>
-        <p class="product-desc">
-          <strong>Personal capture service</strong> Send a link or a note from Telegram and it lands in a persistent inbox. The core is <em>ingress- and storage-agnostic</em> — Telegram is just one input, Supabase just one backend. Links get lightweight, non-AI enrichment (titles, GitHub repo metadata) before persistence.
-        </p>
-        <div class="product-stack">
-          <span class="tag">Swift 6.1</span>
-          <span class="tag">Hummingbird 2</span>
-          <span class="tag">Supabase</span>
-          <span class="tag">Docker</span>
-          <span class="tag">Cloudflare Tunnel</span>
-          <span class="tag">Telegram Bot</span>
-        </div>
-      </a>
-    </div>
-
-    <h3 class="group-title">Frameworks &amp; Concepts</h3>
+    <h3 class="group-title">Foundations</h3>
     <div class="product-grid">
       <div class="product reveal">
         <div class="product-header">
@@ -466,6 +500,10 @@
           <span class="tag">OpenAI API</span>
         </div>
       </div>
+    </div>
+
+    <h3 class="group-title">Concepts</h3>
+    <div class="product-grid">
       <div class="product reveal">
         <div class="product-header">
           <span class="product-name">Niora</span>
@@ -477,22 +515,18 @@
           <span class="tag">Design</span>
         </div>
       </div>
-      <a class="product reveal" href="../cairana/index.html">
-        <div class="product-header">
-          <span class="product-name">Cairana</span>
-        </div>
-        <p class="product-desc">
-          <strong>AI assistant for psychologists</strong> Turns sessions into structured notes, working context, and next steps — a professional assistant, <em>not an autonomous therapist or diagnostic system</em>. Working name in the naming-validation stage.
-        </p>
-        <div class="product-stack">
-          <span class="tag">Research</span>
-          <span class="tag">Naming</span>
-        </div>
-      </a>
     </div>
 
-    <h3 class="group-title">Editorial &amp; Agents</h3>
+    <h3 class="group-title">Agents</h3>
     <div class="product-grid">
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Agents</span>
+        </div>
+        <p class="product-desc">
+          <strong>OpenClaw agent-fleet operational docs and nested specialized agent definitions</strong>
+        </p>
+      </div>
       <div class="product reveal">
         <div class="product-header">
           <span class="product-name">Dashboard Sync Agent</span>
@@ -508,20 +542,6 @@
           <span class="tag">Telegram</span>
         </div>
       </div>
-      <div class="product reveal">
-        <div class="product-header">
-          <span class="product-name">The Dragoman</span>
-        </div>
-        <p class="product-desc">
-          <strong>"The Dragoman" Telegram channel</strong> Brand brief, channel vision, and a three-stage post pipeline (architecture → voice → image) — each post ships as a self-contained <em>posts/&lt;NNNN-slug&gt;/</em> bundle with copy and imagery.
-        </p>
-        <div class="product-stack">
-          <span class="tag">Editorial</span>
-          <span class="tag">Posts</span>
-          <span class="tag">Imagery</span>
-          <span class="tag">Telegram</span>
-        </div>
-      </div>
     </div>
 
     <h3 class="group-title">Research</h3>
@@ -532,14 +552,6 @@
         </div>
         <p class="product-desc">
           <strong>Progressive-disclosure repository-specific agent docs referenced from <code>CLAUDE.md</code> / <code>AGENTS.md</code></strong>
-        </p>
-      </div>
-      <div class="product reveal">
-        <div class="product-header">
-          <span class="product-name">Agents</span>
-        </div>
-        <p class="product-desc">
-          <strong>OpenClaw agent-fleet operational docs and nested specialized agent definitions</strong>
         </p>
       </div>
       <div class="product reveal">

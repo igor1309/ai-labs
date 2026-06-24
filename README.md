@@ -47,22 +47,22 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 |-----------|------|-------------|
 | .agents | Agent docs | Progressive-disclosure repository-specific agent docs referenced from `CLAUDE.md` / `AGENTS.md` |
 | agents | Agent definitions | OpenClaw agent-fleet operational docs and nested specialized agent definitions |
-| agonara | Product | Bring-your-own-agent (BYOA) structured learning program environment — API plus per-role operator skills, with `/learn`/`/admin` UIs as first-class clients; curated programs, learner progression, evidence of mastery |
-| nexum | Product | Private repo memory system |
+| agonara | Application | Bring-your-own-agent (BYOA) structured learning program environment. API-first backend with `/learn`/`/admin` UIs and an operator CLI as first-class clients; curated programs, learner progression, evidence of mastery |
+| nexum | Application | Private repo memory system |
 | notio | Service | Personal capture service |
 | notio-backend | Release unit | Swift/Hummingbird Telegram capture service, Supabase schema/migrations owner, Docker-producing VPS deployable |
 | notio-frontend | Release unit | Svelte/Vite Supabase browse client, Cloudflare Pages deployable |
-| oracle | Product | "Oracle — Am I Done?" One-shot career outlook tool |
+| oracle | Web App | "Oracle — Am I Done?" One-shot career outlook tool |
 | reinix | CLI release unit | Workflow runner for governed coding-agent loops |
 | nomos | Service | AI sovereignty layer |
 | corpus-scout | MCP tool | Lexical search over a local text corpus |
 | web-scout | MCP tool | SearXNG search for Claude Code |
 | loki | Service (on hold) | Centralized logging stack |
-| claude-insights | Service | Weekly Claude Code usage reports |
+| claude-insights | Tooling | Weekly Claude Code usage reports |
 | session-digest | CLI | Claude Code session postmortems |
 | docker/langfuse | Observability | Shared Langfuse v3 instance for tracing and cost tracking |
 | dragoman | Editorial channel | "The Dragoman" Telegram channel |
-| clipdeck | Product | iPhone copy library for private prompts and skills |
+| clipdeck | Web App | iPhone copy library for private prompts and skills |
 | dashboard-sync-agent | Agent definition | Dashboard and loc-script sync |
 | neris | Framework | Agentic execution layer in Swift |
 | niora | Concept | Contextual field of emergence |

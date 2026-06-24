@@ -72,11 +72,11 @@ Still deferred or outside current product UI:
 
 ## Stack
 
-- Node.js 22 backend workspace
-- SQLite persistence through `better-sqlite3`
-- API-first HTTP backend with server-side sessions, CSRF protection, request correlation, health, diagnostics, and audit responses
-- Operator CLI for bootstrap status and first-Admin bootstrap
-- Docker image and Compose service for private self-hosted operation
+- Node.js 22
+- better-sqlite3
+- REST API
+- Operator CLI
+- Docker
 
 ## Demos
 
