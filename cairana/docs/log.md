@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-06-24
+- Consolidate solo-practitioner pain synthesis into one progressive research document.
 - Research and document the AI mental-health product landscape and solo-practitioner pains under `research/`.
 
 ## 2026-06-23
