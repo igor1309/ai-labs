@@ -3,9 +3,9 @@ title: "Solo Practitioner Pains & Mitigations — Aligned View"
 date: "2026-06-24"
 status: "synthesis"
 sources:
-  - cairana/docs/solo_practitioner_ai_product_pains.md   # 7 pain cohorts + products attacking them
-  - cairana/research/pains-deep-research-report.md        # independent severity / cost / whitespace evidence
-  - cairana/research/deep-research-report.md              # product landscape, startup/landscape maps
+  - cairana/research/solo_practitioner_ai_product_pains.md   # 7 pain cohorts + products attacking them
+  - cairana/research/raw/pains-deep-research-report.md       # independent severity / cost / whitespace evidence
+  - cairana/research/raw/deep-research-report.md             # product landscape, startup/landscape maps
 ---
 
 # Solo Practitioner Pains & Mitigations — Aligned View

@@ -26,7 +26,7 @@ version: 0.0.1
 
 Важно
 
-Seed list ниже — это 7 pain cohorts из cairana/docs/solo_practitioner_ai_product_pains.md. Это не закрытый список; если найдёшь evidence на новый sub-pain, который не укладывается ни в один cohort, выдели его отдельно.
+Seed list ниже — это 7 pain cohorts из cairana/research/solo_practitioner_ai_product_pains.md. Это не закрытый список; если найдёшь evidence на новый sub-pain, который не укладывается ни в один cohort, выдели его отдельно.
 
 Seed list (pain cohorts):
 
