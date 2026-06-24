@@ -134,6 +134,6 @@ When a spec pins a dependency with a floor version (`>=X.0.0`), the implementati
 
 Use the `arch-doc-review` skill. See `dev-skills/public/arch-doc-review/SKILL.md`.
 
-## Review Discipline: Verify Before Hedging
+## Verify Before Hedging
 
-When reviewing changes, verify state on disk before writing conditional findings. Do not produce review bullets of the form "if X still exists…", "may cause Y…", or "worth confirming Z" when a single `ls`, `grep`, `git log`, or `gh` call would resolve the conditional. Run the check inline and state the finding flatly. Reserve hedges for things that genuinely cannot be verified from current state (intent, future plans, runtime behavior on unreachable infra).
+Any time you are about to state a claim about checkable system state — during design, planning, or review — run the check first. Do not write conditional claims of the form "if X still exists…", "may cause Y…", "likely blocks Z…", or "worth confirming W" when a single `ls`, `grep`, `git log`, or `gh` call would resolve it. Run the check inline and state the finding flatly. Reserve hedges for things that genuinely cannot be verified from current state (intent, future plans, runtime behavior on unreachable infra).
