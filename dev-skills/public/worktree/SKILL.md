@@ -1,7 +1,7 @@
 ---
 name: worktree
 author: Igor Malyarov
-version: "0.1.0"
+version: "0.1.2"
 description: >
   Create a new git worktree, sync shared config into it via the bundled sync
   script (never replicate config by hand or hand-author symlinks), and clear
@@ -16,31 +16,39 @@ Create a feature worktree, sync its shared config from the bundled sync script,
 and deal with leftover build artifacts. The scripts this skill needs are bundled
 under its own `scripts/` directory, so it works without any pre-installed tooling.
 
-`$SKILL` below is this skill's base directory (the path reported when the skill
-loads).
+Below, `<skill-dir>` is this skill's base directory — the absolute path announced
+when the skill loads. Run the commands from **inside the target git repository**
+(the creator resolves the repo from the current directory).
 
 ## Steps
 
 ### 1. Create the worktree
 
-Run the bundled creator. It creates a **new** branch in its own worktree at
+Always call the bundled creator by its path — it works regardless of `PATH` and
+needs nothing installed. It creates a **new** branch in its own worktree at
 `<parent>/<repo>.worktrees/<safe-branch>` — create-only (never checks out an
 existing branch), local refs only, base defaults to `HEAD`.
 
 ```bash
-"$SKILL/scripts/git-worktree-create" <branch> [<base-branch>]
-# e.g. "$SKILL/scripts/git-worktree-create" feature/new-api origin/trunk
+"<skill-dir>/scripts/git-worktree-create" <branch> [<base-branch>]
+# e.g. "<skill-dir>/scripts/git-worktree-create" feature/new-api origin/trunk
 ```
+
+Do **not** branch on whether `gitwt` is installed: the `gitwt` global is only on
+`PATH` in interactive shells, so that check is unreliable from an agent or a
+non-interactive shell. `gitwt` is a human convenience for typing in a terminal
+(see the install section); the bundled path is the canonical invocation here.
 
 It prints the target directory and a `cd` line. Capture the target dir for step 2.
 
 ### 2. Sync shared config — never by hand
 
-Run the bundled sync script against the new worktree path. **Do not replicate
-config by hand or hand-author symlinks** — the script owns that and is idempotent.
+Run the bundled sync script against the new worktree path (this one works from any
+directory). **Do not replicate config by hand or hand-author symlinks** — the
+script owns that and is idempotent.
 
 ```bash
-"$SKILL/scripts/ensure-shared-config-links.sh" "<worktree-path>"
+"<skill-dir>/scripts/ensure-shared-config-links.sh" "<worktree-path>"
 ```
 
 It links every direct child of the sibling `<repo>.config` directory into the
