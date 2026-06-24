@@ -6,6 +6,8 @@ description: "Cairana — AI assistant for psychologists; structured notes, case
 
 # cairana
 
+Landing page: index.html
+
 AI assistant for psychologists.
 
 ## Description

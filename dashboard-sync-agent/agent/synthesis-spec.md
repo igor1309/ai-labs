@@ -105,7 +105,7 @@ Categories are derived from `Type` via the following authoritative mapping. Type
 | `Framework`, `Concept` | `Frameworks & Concepts` |
 | `Observability`, `Automation` | `Observability & Automation` |
 | `Agent definition`, `Agent Definition`, `Editorial channel`, `Editorial Channel` | `Editorial & Agents` |
-| `Research` | `Research` |
+| `Research`, `Product (research)` | `Research` |
 
 The category headers appear in the order listed above. A category with zero cards is omitted (no empty `<h3>` block).
 
