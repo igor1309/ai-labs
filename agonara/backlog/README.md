@@ -41,6 +41,26 @@ Single items not yet promoted to a topic file.
   sources can only be removed by host-level DB surgery, which overrides the
   append-only design.
 
+- **Drive the open-answer evaluator (nothing fires it).** The whole evaluation
+  pipeline is implemented and wired — Nomos LLM provider adapter, evaluator
+  policy/validation/redaction, the `runOpenAnswerEvaluatorWorkerOnce` worker, and
+  the `POST /operations/open-answer-evaluator/tick` ops endpoint — but it is
+  dormant: submitting an open answer records the attempt at `status:"submitted"`
+  (`src/student-workspace.js` `submitOpenAnswerAttempt`) and never kicks
+  evaluation, and the worker advances exactly one attempt per external tick. No
+  scheduler, cron, or compose service calls the tick (deploy scripts don't; only
+  `scripts/smoke-open-answer-evaluator.mjs` does manually), so a submitted attempt
+  stays unevaluated indefinitely. Two gates, both empty by default: (1) provider
+  is `enabled:false` unless `AGONARA_NOMOS_API_KEY`/`_BASE_URL`/`_MODEL` are set,
+  and the tick needs `AGONARA_OPEN_ANSWER_EVALUATOR_TRIGGER_TOKEN` —
+  `compose.prod.yml`/`compose.staging.yml` pass all four through but default each
+  to empty; (2) no recurring driver of the tick exists. ADR-018 deliberately
+  chose in-process single-flight driven by an external trigger, so the fix is a
+  recurring driver (compose sidecar loop, host cron/systemd timer, or scheduled CI
+  job POSTing with the trigger token) plus provisioned Nomos env — not new
+  in-process machinery. Until both are in place the "verified later" the student
+  flow implies never arrives.
+
 ## Design-reasoning companions
 
 Not task lists, so exempt from the forward-tasks-only rule above: longer-form
