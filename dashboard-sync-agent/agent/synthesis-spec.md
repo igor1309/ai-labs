@@ -98,18 +98,21 @@ Categories are derived from `Type` via the following authoritative mapping. Type
 
 | Components `Type` | Category header |
 |-------------------|-----------------|
-| `Web App`, `Product`, `Product family` | `Web Apps` |
+| `Editorial channel`, `Editorial Channel` | `Editorial` |
+| `Application`, `Product (research)` | `Applications` |
+| `Web App` | `Web Apps` |
+| `Service`, `Service (on hold)` | `Services` |
 | `CLI`, `CLI Utilities`, `CLI release unit`, `Tooling` | `CLI & Tooling` |
 | `MCP Server`, `MCP tool` | `MCP Servers` |
-| `Service`, `Service (on hold)` | `Services` |
-| `Framework`, `Concept` | `Frameworks & Concepts` |
+| `Framework` | `Foundations` |
+| `Concept` | `Concepts` |
 | `Observability`, `Automation` | `Observability & Automation` |
-| `Agent definition`, `Agent Definition`, `Editorial channel`, `Editorial Channel` | `Editorial & Agents` |
+| `Agent definition`, `Agent Definition`, `Agent definitions` | `Agents` |
 | `Research` | `Research` |
 
 The category headers appear in the order listed above. A category with zero cards is omitted (no empty `<h3>` block).
 
-The current `Dev Skills` placement under `Editorial & Agents` (regardless of its Components `Type`) will move to `CLI & Tooling` under this mapping if `Type: Tooling`. This is intentional drift the agent's first run surfaces; the maintainer reconciles by either accepting the move or changing the Components `Type` to one that maps to `Editorial & Agents`.
+`Application` is for full operate-it-yourself products (backend plus first-class UIs you run); `Web App` is for hosted, single-purpose web tools. Deployment model (hosted vs self-hosted) and maturity (research/naming stage) are **stack tags, not categories** — that is why `Product (research)` also maps to `Applications` (a future application), with its stage shown by `Research`/`Naming` tags. Nested agent definitions under `agents/` (e.g. `agents/doc-drift-agent`, `agents/maestro-flow-review-agent`) are not yet emitted as individual cards — see the backlog item on surfacing nested agents.
 
 ### Card whitespace
 
