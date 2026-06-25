@@ -11,7 +11,7 @@ product thinking and the competitive landscape.
 
 Sources:
 
-- Cairana product thinking: [`../docs/personal-practice-workbench-product-recap.md`](../docs/personal-practice-workbench-product-recap.md)
+- Cairana product thinking: [`../docs/cairana-product-recap.md`](../docs/cairana-product-recap.md)
   ("Personal Practice Workbench" was the generic placeholder used in discussion
   before the cairana name existed; it refers to cairana).
 - Market landscape: [`feature-landscape.md`](feature-landscape.md), synthesized

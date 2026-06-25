@@ -1,5 +1,5 @@
 ---
-title: "Personal Practice Workbench - Product Thinking Recap"
+title: "Cairana — Product Thinking Recap"
 type: "product-recap"
 model: gpt-5.5-high
 status: "draft"
@@ -11,11 +11,16 @@ product_stage: "private XP exploration"
 capability_stories_section: 9
 ---
 
-# Personal Practice Workbench - Product Thinking Recap
+# Cairana — Product Thinking Recap
+
+> "Personal Practice Workbench" was the generic placeholder used in discussion
+> before the cairana name existed; throughout this recap it refers to cairana.
+> The phrase "personal practice workbench" is retained below as a *descriptor*
+> of what cairana is, not as a name.
 
 ## 1. Product Intent
 
-A private system for the practitioner's own use, built in an XP style: small slices, fast feedback, disposable experiments, no premature market constraints.
+Cairana is a private system for the practitioner's own use, built in an XP style: small slices, fast feedback, disposable experiments, no premature market constraints.
 
 Core intent:
 
@@ -578,6 +583,7 @@ Resolved decisions:
 - Practice Projection is cross-case analysis.
 - Toolbox Evaluation is a key Practice Projection.
 - Agonara remains the primary continuous-learning system; this product may feed it with practice-derived prompts later.
+- Product named cairana; "personal practice workbench" retained as a descriptor, not a name.
 
 ## 12. Open Questions
 
