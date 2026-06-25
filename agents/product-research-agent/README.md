@@ -26,13 +26,16 @@ into this directory.
 
 ## Status
 
-**Draft (2026-06-25).** Definition + CI sync workflow authored; **not yet wired on
-the VPS**. Remaining deploy-time steps (require SSH authorization, mirrored to the
-`inventory` repo) are tracked in [`TODO.md`](TODO.md): register the agent in
-`openclaw.json` `agents.list`, create a new `#product-research` topic in the ai-labs
-supergroup (`-1003954520541`) on `@igor1309_ai_labs_bot` and bind it inbound, confirm
-the `web_search` provider (Codex Hosted Search), and finalize the `sendDocument`
-delivery plumbing. Born out of the intake brief in [`docs/intake.md`](docs/intake.md).
+**Live (2026-06-25).** Deployed on the OpenClaw VPS: registered in `openclaw.json`
+`agents.list`, bound inbound to the **`#product-research` topic (threadId 117)** in the
+ai-labs supergroup (`-1003954520541`) on `@igor1309_ai_labs_bot` with **`requireMention:
+false`** (type a request directly, no `@`-mention), workspace synced by CI. Web search via
+the key-free **Codex Hosted Search**; reports delivered as a Telegram file via the agent's
+`exec`→Bot API `sendDocument`. **Verified end-to-end** — a live "Research …" request
+returned a report as a file attachment. (Required upgrading the gateway 2026.6.8→2026.6.10
+so forum-topic replies render plainly: rich messages default off since 6.9 / PR #94048 —
+see `inventory` `vps/OpenClaw/log.md` 2026-06-25.) Born out of the intake brief in
+[`docs/intake.md`](docs/intake.md).
 
 ## Layout
 
