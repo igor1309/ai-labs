@@ -1,4 +1,11 @@
-Research Prompt: Existing Company Product
+---
+name: Research Prompt – Existing Company Product
+description: Evidence-only research prompt for the current public state of an existing company's product — capabilities, workflow map, technical surface, and recent changes, with sources cited.
+date: 2026-06-25
+version: 0.0.1
+---
+
+# Research Prompt: Existing Company Product
 
 Input
 
