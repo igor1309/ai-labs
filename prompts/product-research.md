@@ -1,7 +1,9 @@
 ---
 name: Research Prompt – Existing Company Product
 description: Evidence-only research prompt for the current public state of an existing company's product — capabilities, workflow map, technical surface, and recent changes, with sources cited.
+author: Igor Malyarov
 date: 2026-06-25
+model: gpt-5.5-thinking
 version: 0.0.1
 ---
 
