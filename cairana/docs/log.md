@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-06-25
+- Rebuild the index page as an internal orientation surface sourced from the product recap and the cairana-vs-landscape comparison (thesis, layer model, two spines, non-goals, market position, open questions, doc hub), keeping the existing visual design; reference it as such from the README.
 - Adopt cairana as the product name in the product-thinking recap; retain "personal practice workbench" as a descriptor, not a name (recap renamed to `cairana-product-recap.md`).
 - Compare cairana's product thinking against the market feature landscape through an organizing-artifact lens (note-as-transaction vs maintained understanding); record the practitioner self-observation spine as uncontested whitespace and a by-choice client-outcome blind spot.
 - Synthesize a neutral cross-product feature landscape from the six reports: coverage matrix, per-product unique features, table-stakes vs differentiators, and whitespace (notably near-absent programmatic interoperability).

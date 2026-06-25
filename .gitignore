@@ -19,3 +19,6 @@ corpus-scout/tools/evals/report.json
 
 # Deno lockfiles — generated locally; functions deploy via the Supabase CLI, not deno
 deno.lock
+
+# Lazyweb design-research artifacts (local, transient)
+.lazyweb/
