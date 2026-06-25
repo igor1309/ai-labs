@@ -6,15 +6,16 @@
   },
   "metadata": {
     "description": "Development workflows and career advancement tools for software engineers",
-    "version": "1.52.2"
+    "version": "1.53.0"
   },
   "plugins": [
     {
       "name": "dev-skills",
-      "description": "Development workflows: collaborative discussion, task intake, TDD, strict TDD, architecture review, component architecture review, architecture doc review, ADR governance, composition root wiring, process gates, protocol ownership, release process, spec writing, executable specification scaffolding, feature spec protocol, documentation auditing, domain availability checking, cold-start checkpoint, Docker discipline, session postmortem, PR CI monitoring, Swift packaging, simulator settings, skill review, synopsis generation, job search strategy, jobs-to-be-done, architecture sketch review, bug analysis, tactical action planning, debug print logging, iOS simulator install, REST contract review, state machine implementation and executable-spec DoD checklists, test runner, testing schedulers, best free OpenRouter LLM selection, session handoff, requirements-traceability review, using-dev-skills entry map, and worktree creation with bundled config-sync",
+      "description": "Development workflows: collaborative discussion, task intake, TDD, strict TDD, architecture review, component architecture review, architecture doc review, ADR governance, composition root wiring, process gates, protocol ownership, release process, spec writing, executable specification scaffolding, feature spec protocol, documentation auditing, domain availability checking, cold-start checkpoint, Docker discipline, session postmortem, PR CI monitoring, Swift packaging, simulator settings, skill review, synopsis generation, job search strategy, jobs-to-be-done, architecture sketch review, bug analysis, tactical action planning, debug print logging, iOS simulator install, REST contract review, state machine implementation and executable-spec DoD checklists, test runner, testing schedulers, best free OpenRouter LLM selection, session handoff, requirements-traceability review, using-dev-skills entry map, OpenClaw agent creation, and worktree creation with bundled config-sync",
       "source": "./",
       "strict": false,
       "skills": [
+        "./add-openclaw-agent",
         "./adr-governance",
         "./arch-doc-review",
         "./arch-reviewer",

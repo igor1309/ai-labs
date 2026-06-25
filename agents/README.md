@@ -6,16 +6,17 @@ description: "agents/ — specialized OpenClaw agents whose definitions live her
 
 # agents/
 
-Specialized OpenClaw agents whose definitions live here and whose runtime is the OpenClaw VPS. Each agent owns a subdirectory: `agent/` (system prompt + specs, synced to the VPS workspace), `runtime/` (cron wrapper + entry), `docs/`, and a `README.md`.
+Specialized OpenClaw agents whose definitions live here and whose runtime is the OpenClaw VPS. Each agent owns a subdirectory: `agent/` (system prompt + specs, synced to the VPS workspace), `runtime/` (cron wrapper + entry, for scheduled agents only), `docs/`, and a `README.md`.
 
 `dashboard-sync-agent` predates this directory and still lives at the repo top level; consolidating it under `agents/` is tracked in issue #434.
 
 ## Agents
 
-| Agent | Reviews |
+| Agent | Purpose |
 |-------|---------|
-| `doc-drift-agent` | `igor1309/ai-labs` documentation scopes (opens fix PRs) |
-| `maestro-flow-review-agent` | `igor1309/ios.config` Maestro flow YAML (opens fix PRs) |
+| `doc-drift-agent` | Reviews `igor1309/ai-labs` documentation scopes (opens fix PRs) |
+| `maestro-flow-review-agent` | Reviews `igor1309/ios.config` Maestro flow YAML (opens fix PRs) |
+| `product-research-agent` | On-demand evidence-only research on a named product; returns a report as a Telegram file (no schedule, no PRs) |
 
 ## Conventions
 

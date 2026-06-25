@@ -78,3 +78,17 @@ fail-closed Telegram/log/check-in signals for observability (ties to §1).
 Historical ai-labs design evidence: `agents/research/phase4-substrate-spike-findings.md`
 §4. Live OpenClaw diagnosis, versions, storage paths, and recheck schedule are
 owned by the inventory repo (`vps/OpenClaw/log.md` and `vps/OpenClaw/CLAUDE.md`).
+
+## 5. Reusable "add an OpenClaw agent" skill
+
+Draft authored: `dev-skills/public/add-openclaw-agent/SKILL.md` (v0.1.0) — born out of
+the `product-research-agent` intake (`product-research-agent/docs/intake.md`).
+Reference-based and ID-free (the public skills repo sync requires no host/bot/chat IDs);
+encodes the trigger fork, the `agent/**`→`AGENTS.md` CI-sync layout, the one-bot/
+one-topic routing, and the two verified constraints (forum-topic `sendDocument`-via-
+`exec`; `web_fetch` free / `web_search` needs a provider → Codex Hosted Search).
+
+Remaining:
+- [ ] Validate the skill against the real `product-research-agent` build; correct any
+      step that didn't survive contact.
+- [ ] Publish if desired (marketplace.json entry + the dev-skills publish PR flow).
