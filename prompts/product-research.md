@@ -22,6 +22,8 @@ Research the current public state of [Product] by [Company].
 
 If [Product family] is provided, include only that explicitly named family. Keep scope limited to the named product and explicitly provided family.
 
+Do not expand into adjacent products, inferred modules, competitors, alternatives, or ecosystem guesses.
+
 ## Research focus
 
 Cover:
@@ -86,6 +88,8 @@ Stay evidence-only:
 When a claim is unsupported, mark it as evidence missing.
 
 When a source appears outdated or deprecated, mark it as stale evidence.
+
+Do not offer product judgment, strategy, interpretation, or business analysis. Report what the evidence shows; do not evaluate it.
 
 ## Ignore these topics
 
