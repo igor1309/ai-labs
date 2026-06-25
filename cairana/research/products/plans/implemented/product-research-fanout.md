@@ -37,11 +37,11 @@ The 6 strongest evidence-backed specialist vendors from
 | # | Company | Product | File | Done |
 |---|---|---|---|---|
 | 1 | Upheal | Upheal | `cairana/research/products/upheal.md` | ☑ (pilot) |
-| 2 | Mentalyc Inc. | Mentalyc | `cairana/research/products/mentalyc.md` | ☐ |
-| 3 | Blueprint | Blueprint | `cairana/research/products/blueprint.md` | ☐ |
-| 4 | Eleos Health | Eleos | `cairana/research/products/eleos.md` | ☐ |
-| 5 | SmartScribe Corp. | JotPsych | `cairana/research/products/jotpsych.md` | ☐ |
-| 6 | Oasys Health, Inc. | Oasys | `cairana/research/products/oasys.md` | ☐ |
+| 2 | Mentalyc Inc. | Mentalyc | `cairana/research/products/mentalyc.md` | ☑ |
+| 3 | Blueprint | Blueprint | `cairana/research/products/blueprint.md` | ☑ |
+| 4 | Eleos Health | Eleos | `cairana/research/products/eleos.md` | ☑ |
+| 5 | SmartScribe Corp. | JotPsych | `cairana/research/products/jotpsych.md` | ☑ |
+| 6 | Oasys Health, Inc. | Oasys | `cairana/research/products/oasys.md` | ☑ |
 
 ## Out of scope
 
