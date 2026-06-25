@@ -4,6 +4,10 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-06-25
+
+- New **add-openclaw-agent v0.1.0** skill (marketplace v1.53.0): a decision-ordered guide for adding a specialized agent to an OpenClaw gateway, so the runtime no longer has to be re-explored per agent. Encodes the trigger fork (inbound / scheduled / both), the `agent/**`→`AGENTS.md` CI-sync layout (and that `runtime/**` is hand-deployed), the one-bot/one-topic Telegram routing + `threadId` discovery, and two non-obvious **verified** runtime constraints: forum-topic file delivery (the agent message tool is auto-disabled in topics per OpenClaw #31368 → write the file and shell out to the Bot API `sendDocument` with `message_thread_id`), and web research (`web_fetch` is key-free; `web_search` needs a provider — prefer the key-free Codex Hosted Search on a Codex-harness deployment). Deliberately reference-based and ID-free (host/bot/chat/topic IDs stay in the deployment's own docs) so the public sync leaks no infra. Authored out of the `product-research-agent` intake; to be hardened against that agent's real build.
+
 ## 2026-06-24
 
 - **worktree v0.1.2** (marketplace v1.52.2): harden step 1 — always invoke the bundled creator by its `<skill-dir>/scripts/git-worktree-create` path instead of branching on whether `gitwt` is installed. `gitwt` lives on `PATH` only in interactive shells, so the "if installed" check was unreliable from an agent/non-interactive shell and caused a needless fallback even when `gitwt` was correctly installed. `gitwt` is now framed purely as a human terminal convenience.
