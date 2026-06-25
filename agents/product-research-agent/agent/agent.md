@@ -145,12 +145,13 @@ definition. Mirroring the sibling agents (`doc-drift-agent`, `maestro-flow-revie
   truth, no vendored copy in this directory.
 - **Web search:** the gateway's configured provider — **Codex Hosted Search**
   (key-free on this Codex-harness deployment).
-- **Trigger:** inbound only — an `@`-mention in the agent's Telegram topic. No cron,
-  no per-agent state, no suppression gate.
+- **Trigger:** inbound only — a message in the agent's Telegram topic
+  (`#product-research`, threadId 117, `requireMention: false`, so no `@`-mention is
+  needed). No cron, no per-agent state, no suppression gate.
 - **Delivery:** agent-driven `sendDocument` to the originating topic (see Delivery).
 
-> **Draft.** Not yet wired on the VPS. Registration in `openclaw.json` `agents.list`,
-> the inbound topic binding (a new topic in the ai-labs supergroup on
-> `@igor1309_ai_labs_bot`), and confirming the `web_search` provider are deploy-time
-> steps (require SSH authorization) and must be mirrored to `inventory/vps/OpenClaw/*`
-> in the same change.
+> **Live (2026-06-25).** Wired on the VPS: `agents.list` entry + inbound binding to topic
+> 117 (`#product-research`, `requireMention:false`) on `@igor1309_ai_labs_bot`; web search
+> via the key-free Codex Hosted Search. Gateway runs OpenClaw 2026.6.10 (rich messages off
+> by default, so forum-topic replies render plainly). Live state mirrored in
+> `inventory/vps/OpenClaw/*` (README + migration + log).
