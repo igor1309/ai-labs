@@ -9,20 +9,20 @@ version: 0.0.1
 
 # Research Prompt: Existing Company Product
 
-Input
+## Input
 
-Company: [Company]
-Product: [Product]
-Product family: [Product family, optional]
-Use case / workflow: [Use case / workflow, optional]
+* **Company:** [Company]
+* **Product:** [Product]
+* **Product family:** [Product family, optional]
+* **Use case / workflow:** [Use case / workflow, optional]
 
-Task
+## Task
 
 Research the current public state of [Product] by [Company].
 
 If [Product family] is provided, include only that explicitly named family. Keep scope limited to the named product and explicitly provided family.
 
-Research focus
+## Research focus
 
 Cover:
 
@@ -56,7 +56,7 @@ Cover:
     * meaningful product changes from the last 6–12 months;
     * fresh docs, changelog entries, product updates, release notes, help-center updates, or customer-use signals.
 
-Sources to use
+## Sources to use
 
 Use public evidence from:
 
@@ -73,7 +73,7 @@ Use public evidence from:
 
 Cite sources for factual claims.
 
-Evidence handling
+## Evidence handling
 
 Stay evidence-only:
 
@@ -87,7 +87,7 @@ When a claim is unsupported, mark it as evidence missing.
 
 When a source appears outdated or deprecated, mark it as stale evidence.
 
-Ignore these topics
+## Ignore these topics
 
 * pricing;
 * positioning;
@@ -102,7 +102,7 @@ Ignore these topics
 * editorial commentary;
 * generic AI discussion.
 
-Output format
+## Output format
 
 Produce a concise structured report:
 
