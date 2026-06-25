@@ -1,172 +1,388 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cairana — AI assistant for psychologists</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cairana — orientation surface</title>
 <style>
   :root {
-    --bg: #0e1213;
-    --surface: #151b1c;
-    --border: #26302f;
-    --text: #e8eeec;
-    --muted: #9aa8a4;
-    --accent: #6fb6a6;
+    --bg:       #0e1213;
+    --bg-2:     #141a1b;
+    --surface:  #182121;
+    --surface-2:#1f2a29;
+    --rule:     #26302f;
+    --rule-2:   #35423f;
+    --text:     #e8eeec;
+    --text-2:   #c4d2cd;
+    --text-3:   #8f9f9a;
+    --accent:   #6fb6a6;
+    --accent-2: #8fd0c1;
+    --sky:      #93c5fd;
+    --continuity: #6fb6a6;
+    --selfobs:    #93c5fd;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
   }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
   body {
-    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Inter",
+                 "Segoe UI", "Helvetica Neue", Arial, sans-serif;
     background: var(--bg);
     color: var(--text);
-    min-height: 100vh;
-    line-height: 1.55;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
 
-  .wrap {
-    max-width: 720px;
-    margin: 0 auto;
-    padding: 5rem 1.5rem 4rem;
+  /* Hero */
+  header.hero {
+    padding: 112px 24px 72px;
+    text-align: center;
+    background:
+      radial-gradient(900px 380px at 50% -120px, rgba(111, 182, 166, 0.16) 0%, transparent 65%),
+      var(--bg);
+    border-bottom: 1px solid var(--rule);
   }
-
-  .eyebrow {
-    font-size: 0.75rem;
+  .mark {
+    display: inline-block;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
-    letter-spacing: 0.14em;
-    color: var(--accent);
-    margin-bottom: 1.25rem;
+    font-size: 12px;
+    color: var(--text-3);
+    margin-bottom: 24px;
   }
+  h1.title {
+    font-size: clamp(48px, 7vw, 96px);
+    margin: 0 0 10px;
+    letter-spacing: -0.025em;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .anchor { max-width: 720px; margin: 0 auto; font-size: clamp(17px, 2vw, 20px); color: var(--text-2); line-height: 1.55; }
+  .anchor + .anchor { margin-top: 18px; }
+  .anchor.outcome {
+    max-width: 680px;
+    font-size: clamp(24px, 3.5vw, 36px);
+    line-height: 1.28;
+    color: var(--text);
+    letter-spacing: -0.015em;
+  }
+  .anchor.summary { max-width: 760px; color: var(--text-2); }
+  .anchor.summary strong { color: var(--text); font-weight: 600; }
+  .hero-cta { margin-top: 36px; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
 
-  h1 {
-    font-size: clamp(2rem, 5vw, 2.75rem);
+  /* Layout */
+  main { max-width: 1080px; margin: 0 auto; padding: 24px; }
+  section { padding: 64px 0; border-bottom: 1px solid var(--rule); scroll-margin-top: 80px; }
+  section:last-of-type { border-bottom: none; }
+  .eyebrow {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    margin: 0 0 12px;
+    font-weight: 600;
+  }
+  h2.section-title {
+    font-size: clamp(26px, 4vw, 38px);
+    margin: 0 0 14px;
     font-weight: 600;
     letter-spacing: -0.02em;
-    margin-bottom: 1rem;
+    color: var(--text);
   }
+  .section-subblock { margin-top: 48px; padding-top: 48px; border-top: 1px solid var(--rule); }
+  .lede { max-width: 760px; color: var(--text-2); font-size: 16px; margin: 0 0 36px; }
+  code { font-family: var(--mono); font-size: 0.92em; color: var(--accent-2); }
 
-  .hero {
-    font-size: 1.15rem;
-    color: var(--muted);
-    max-width: 36em;
-    margin-bottom: 2.75rem;
-  }
-
-  .section-eyebrow {
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    color: var(--accent);
-    margin-bottom: 0.65rem;
-  }
-
-  .section-title {
-    font-size: 1.2rem;
-    font-weight: 600;
-    margin-bottom: 0.55rem;
-  }
-
-  .section-intro {
-    font-size: 0.92rem;
-    color: var(--muted);
-    max-width: 42em;
-    margin-bottom: 1.25rem;
-  }
-
-  .pillars {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1rem;
-    margin-bottom: 2.75rem;
-  }
-
-  @media (min-width: 620px) {
-    .pillars { grid-template-columns: 1fr 1fr; }
-  }
-
-  .pillar {
+  /* Pipeline (layer model) */
+  .pipeline { display: flex; flex-wrap: wrap; align-items: stretch; gap: 12px; }
+  .stage {
+    flex: 1 1 200px;
     background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 1.25rem 1.4rem;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .stage .kicker { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); }
+  .stage h3 { margin: 6px 0 4px; font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+  .stage p { margin: 0; font-size: 13px; color: var(--text-3); line-height: 1.5; }
+  .arrow { align-self: center; color: var(--accent); font-size: 1.1rem; }
+  @media (max-width: 720px) { .arrow { transform: rotate(90deg); } }
+
+  /* Card grid */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .card .kicker { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); }
+  .card.continuity .kicker { color: var(--continuity); }
+  .card.selfobs .kicker { color: var(--selfobs); }
+  .card h3 { font-size: 16px; margin: 0; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+  .card p { margin: 0; color: var(--text-2); font-size: 14px; line-height: 1.55; }
+
+  /* Question cards */
+  .caps { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .cap { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 18px 20px; }
+  .cap p { margin: 0; font-size: 14px; color: var(--text-2); line-height: 1.5; }
+
+  /* Chips (non-goals) */
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-2);
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    border-radius: 8px;
+    padding: 9px 14px;
   }
 
-  .pillar h2 {
-    font-size: 0.95rem;
-    font-weight: 600;
-    margin-bottom: 0.4rem;
+  /* Doc links */
+  .links { display: flex; flex-wrap: wrap; gap: 12px; }
+  .doc-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: 1px solid var(--rule-2);
+    border-radius: 8px;
+    color: var(--text-2);
+    font-size: 14px;
+    background: var(--surface);
+    transition: border-color .15s ease, color .15s ease;
   }
+  .doc-link:hover { color: var(--text); border-color: var(--text-3); text-decoration: none; }
+  .doc-link code { font-family: var(--mono); font-size: 12px; color: var(--text-3); }
 
-  .pillar p {
-    font-size: 0.875rem;
-    color: var(--muted);
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 12px 20px; border-radius: 10px;
+    background: var(--surface); color: var(--text-2);
+    border: 1px solid var(--rule-2); font-size: 15px;
+    transition: border-color .15s ease, color .15s ease, transform .15s ease;
   }
+  .btn:hover { color: var(--text); border-color: var(--text-3); transform: translateY(-1px); text-decoration: none; }
 
-  .note {
-    font-size: 0.85rem;
-    color: var(--muted);
-    border-left: 2px solid var(--border);
-    padding-left: 1rem;
-    margin-bottom: 2.5rem;
+  /* Footer */
+  footer { border-top: 1px solid var(--rule); padding: 32px 24px 64px; text-align: center; color: var(--text-3); font-size: 12.5px; }
+  footer .sep { margin: 0 8px; color: var(--rule-2); }
+
+  /* Scroll reveal + hover lift */
+  .card, .cap, .stage {
+    transition:
+      opacity .55s cubic-bezier(.2, .6, .2, 1),
+      transform .35s cubic-bezier(.2, .6, .2, 1),
+      border-color .18s ease,
+      background .18s ease,
+      box-shadow .25s ease;
   }
-
-  footer {
-    font-size: 0.75rem;
-    color: var(--muted);
-    border-top: 1px solid var(--border);
-    padding-top: 1.25rem;
+  .card:hover, .cap:hover, .stage:hover {
+    transform: translateY(-3px);
+    border-color: var(--rule-2);
+    box-shadow: 0 12px 30px -18px rgba(0, 0, 0, 0.7);
   }
-
-  footer a {
-    color: var(--accent);
-    text-decoration: none;
+  .js .card, .js .cap, .js .stage { opacity: 0; transform: translateY(18px); }
+  .js .card.in-view, .js .cap.in-view, .js .stage.in-view { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .card, .cap, .stage, .js .card, .js .cap, .js .stage {
+      opacity: 1 !important; transform: none !important;
+      transition: border-color .18s ease, background .18s ease !important;
+    }
   }
-
-  footer a:hover { color: var(--text); }
 </style>
+<script>document.documentElement.classList.add('js');</script>
 </head>
 <body>
-  <div class="wrap">
-    <p class="eyebrow">Working name · Research stage</p>
-    <h1>Cairana</h1>
-    <p class="hero">
-      Cairana helps psychologists turn sessions into structured notes, working context, and next steps. A professional assistant — not an autonomous therapist, diagnostic system, or clinical decision-maker.
-    </p>
 
-    <section class="research-directions" aria-labelledby="research-directions-title">
-      <p class="section-eyebrow">Research-stage pain map</p>
-      <h2 class="section-title" id="research-directions-title">Visible pains in solo practice</h2>
-      <p class="section-intro">
-        These cards are exploration directions from pains visible in solo-practitioner work: post-session documentation, scattered case memory, treatment-thread drift, and data/accountability burden.
-      </p>
-
-      <div class="pillars">
-        <div class="pillar">
-          <h2>Notes</h2>
-          <p>Session material becomes structured drafts for review and editing.</p>
-        </div>
-        <div class="pillar">
-          <h2>Context</h2>
-          <p>Working case history stays accessible without reconstructing it from scattered notes.</p>
-        </div>
-        <div class="pillar">
-          <h2>Continuity</h2>
-          <p>Previous sessions, current themes, treatment goals, and next steps stay connected.</p>
-        </div>
-        <div class="pillar">
-          <h2>Professional control</h2>
-          <p>Cairana assists. The psychologist reviews, edits, signs, and remains responsible for the record.</p>
-        </div>
-      </div>
-    </section>
-
-    <p class="note">
-      Early-stage research page. Cairana is a working name, and these directions are still being validated against practitioner interviews, evidence strength, and naming checks.
-    </p>
-
-    <footer>
-      <a href="docs/cairana-name-brief.md">Name brief</a> · <a href="../index.html">Internal landings</a>
-    </footer>
+<header class="hero">
+  <div class="mark">Private XP exploration · Orientation surface</div>
+  <h1 class="title">Cairana</h1>
+  <p class="anchor outcome">Keep the session inside your own clinical thinking.</p>
+  <p class="anchor summary">
+    A private practice workbench. It turns session residue into durable <strong>Session Records</strong>,
+    maintains <strong>Case Memories</strong>, and projects across your <strong>Practice</strong> — instead of
+    exporting each session as a note to bill.
+  </p>
+  <div class="hero-cta">
+    <a class="btn" href="#model">The layer model →</a>
+    <a class="btn" href="#docs">Go deeper</a>
   </div>
+</header>
+
+<main>
+
+<!-- LAYER MODEL -->
+<section id="model">
+  <p class="eyebrow">The layer model</p>
+  <h2 class="section-title">From session residue to self-knowledge</h2>
+  <p class="lede">The raw transcript stays in cold archive. These are the working artifacts, and they move down one chain.</p>
+  <div class="pipeline">
+    <div class="stage"><span class="kicker">01</span><h3>Session Record</h3><p>A committed, compact record of one session — the working artifact, not the transcript.</p></div>
+    <div class="arrow">→</div>
+    <div class="stage"><span class="kicker">02</span><h3>Case Memory</h3><p>A maintained current case view plus a journal of how understanding changed.</p></div>
+    <div class="arrow">→</div>
+    <div class="stage"><span class="kicker">03</span><h3>Practice</h3><p>The whole corpus of cases — your real work.</p></div>
+    <div class="arrow">→</div>
+    <div class="stage"><span class="kicker">04</span><h3>Practice Projection</h3><p>Recalculable cross-case views for self-observation.</p></div>
+  </div>
+</section>
+
+<!-- SPINES -->
+<section id="spines">
+  <p class="eyebrow">Two spines</p>
+  <h2 class="section-title">Client continuity and practitioner self-observation</h2>
+  <p class="lede">Cairana is built on two backbones: holding the thread across a client's sessions, and turning your whole caseload into a mirror on your own practice.</p>
+
+  <div class="grid">
+    <div class="card continuity">
+      <span class="kicker">Continuity</span>
+      <h3>Session Record</h3>
+      <p>Each session committed as a structured record — reviewed and trusted, not a raw transcript to reprocess.</p>
+    </div>
+    <div class="card continuity">
+      <span class="kicker">Continuity</span>
+      <h3>Case Memory</h3>
+      <p>A maintained current view of the case, plus a journal of meaningful changes over time.</p>
+    </div>
+    <div class="card continuity">
+      <span class="kicker">Continuity</span>
+      <h3>Client Brief</h3>
+      <p>A pre-session brief drawn from Case Memory, so you re-enter the case fast and oriented.</p>
+    </div>
+  </div>
+
+  <div class="section-subblock">
+    <p class="eyebrow">The second spine</p>
+    <h2 class="section-title">See yourself in your own caseload</h2>
+    <div class="grid">
+      <div class="card selfobs">
+        <span class="kicker">Self-observation</span>
+        <h3>Toolbox Evaluation</h3>
+        <p>Which techniques you use, avoid, or overuse — read across real cases, not from memory.</p>
+      </div>
+      <div class="card selfobs">
+        <span class="kicker">Self-observation</span>
+        <h3>Stuckness</h3>
+        <p>Cases with no movement, vague goals, or repeating loops surfaced for reflection.</p>
+      </div>
+      <div class="card selfobs">
+        <span class="kicker">Self-observation</span>
+        <h3>Development</h3>
+        <p>Weak points and learning prompts derived from actual practice — feeding Agonara later.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DELIBERATELY NOT -->
+<section id="not">
+  <p class="eyebrow">Deliberately not</p>
+  <h2 class="section-title">What cairana refuses to be</h2>
+  <p class="lede">The scope is held tight on purpose. These are non-goals, not a roadmap.</p>
+  <div class="chips">
+    <span class="chip">not an EHR</span>
+    <span class="chip">not a clinic platform</span>
+    <span class="chip">not a generic AI scribe</span>
+    <span class="chip">not an autonomous therapist</span>
+    <span class="chip">not insurance / audit tooling</span>
+    <span class="chip">not an in-session dashboard</span>
+  </div>
+</section>
+
+<!-- WHERE IT SITS -->
+<section id="landscape">
+  <p class="eyebrow">Where it sits</p>
+  <h2 class="section-title">Against the market</h2>
+  <div class="grid">
+    <div class="card">
+      <span class="kicker">The market</span>
+      <h3>The note as a transaction</h3>
+      <p>Upheal, Mentalyc, Blueprint, Eleos, JotPsych, Oasys optimize capture → code → claim → audit. The note is an artifact that exits to a payer.</p>
+    </div>
+    <div class="card">
+      <span class="kicker">Cairana</span>
+      <h3>Cognition that stays</h3>
+      <p>The session stays inside the practitioner's thinking as maintained Case Memory and cross-case self-observation.</p>
+    </div>
+    <div class="card">
+      <span class="kicker">Whitespace</span>
+      <h3>Largely uncontested</h3>
+      <p>Across all six: practitioner self-observation, and programmatic interoperability.</p>
+    </div>
+  </div>
+</section>
+
+<!-- OPEN -->
+<section id="open">
+  <p class="eyebrow">Open · unresolved</p>
+  <h2 class="section-title">Live questions to brainstorm against</h2>
+  <div class="caps">
+    <div class="cap"><p>What is the minimum useful Session Record shape?</p></div>
+    <div class="cap"><p>What belongs in the Current Case View vs the Case Journal?</p></div>
+    <div class="cap"><p>Is the first Case Memory update manual, assisted, or a proposed diff?</p></div>
+    <div class="cap"><p>Do we serve a client-outcome spine at all, or stay practitioner-side?</p></div>
+    <div class="cap"><p>What is the smallest useful Toolbox Evaluation?</p></div>
+  </div>
+</section>
+
+<!-- DOCS -->
+<section id="docs">
+  <p class="eyebrow">Go deeper</p>
+  <h2 class="section-title">Source documents</h2>
+  <div class="links">
+    <a class="doc-link" href="docs/cairana-product-recap.md">Product thinking recap <code>docs/cairana-product-recap.md</code></a>
+    <a class="doc-link" href="research/cairana-vs-landscape.md">Cairana vs. landscape <code>research/cairana-vs-landscape.md</code></a>
+    <a class="doc-link" href="research/feature-landscape.md">Feature landscape <code>research/feature-landscape.md</code></a>
+    <a class="doc-link" href="research/market-landscape.md">Market landscape <code>research/market-landscape.md</code></a>
+    <a class="doc-link" href="research/products/">Product research <code>research/products/</code></a>
+    <a class="doc-link" href="docs/cairana-name-brief.md">Name brief <code>docs/cairana-name-brief.md</code></a>
+    <a class="doc-link" href="../index.html">Internal landings <code>../index.html</code></a>
+  </div>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var selector = '.card, .cap, .stage';
+  var cards = document.querySelectorAll(selector);
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce || !('IntersectionObserver' in window)) {
+    for (var i = 0; i < cards.length; i++) cards[i].classList.add('in-view');
+    return;
+  }
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (!entry.isIntersecting) return;
+      var el = entry.target;
+      var siblings = Array.prototype.slice.call(el.parentElement.children);
+      var delay = Math.min(siblings.indexOf(el), 6) * 55;
+      el.style.transitionDelay = delay + 'ms';
+      el.classList.add('in-view');
+      window.setTimeout(function () { el.style.transitionDelay = ''; }, delay + 700);
+      observer.unobserve(el);
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+  for (var j = 0; j < cards.length; j++) observer.observe(cards[j]);
+})();
+</script>
+
+<footer>
+  <span>Cairana · a personal practice workbench</span>
+  <span class="sep">·</span>
+  <span>orientation surface · private XP exploration</span>
+  <span class="sep">·</span>
+  <span>working name</span>
+</footer>
+
 </body>
 </html>

@@ -6,7 +6,7 @@ description: "Cairana — AI assistant for psychologists; structured notes, case
 
 # cairana
 
-Landing page: index.html
+Orientation surface: [index.html](index.html) — a single internal page that reloads the current state of cairana (thesis, layer model, the two spines, non-goals, market position, open questions, and a doc hub).
 
 AI assistant for psychologists.
 
