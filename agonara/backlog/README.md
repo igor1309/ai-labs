@@ -22,6 +22,8 @@ Backlogs are split by topic so each concern stays discoverable on its own:
   MCP or HTTP agents).
 - [`workflow-calibration-gaps.md`](workflow-calibration-gaps.md) — calibrating the
   `traceability-review` dynamic workflow, using Agonara as the eval corpus.
+- [`material-content.md`](material-content.md) — storing material text and serving it
+  role-gated (ADR-021 + spec): deletion decision, implementation, product docs, skills.
 
 Promote a topic to its own `backlog/<topic>.md` file when it is a distinct
 concern that has reached roughly three or more items or is clearly going to grow;
@@ -66,24 +68,6 @@ Single items not yet promoted to a topic file.
   in-process machinery. Until both are in place the "verified later" the student
   flow implies never arrives.
 
-- **Make material content readable in-product (curator: full; student: read).**
-  Decided and specified — `Program Curator` reads/writes/deletes everything they
-  load, `Student` reads accepted content; licensing is the curator's
-  responsibility; accepted content is a self-contained immutable copy. See
-  `docs/adr/adr-021-material-content-storage-and-role-gated-reading.md` and the
-  spec `docs/specs/material-content-storage.md`. Forward tasks:
-  - **Deletion decision (source + accepted).** The one open design question: hard
-    delete vs. withdrawal for the source *record* (joint with the source-deletion
-    item above) and for evidenced accepted content (joint with
-    `docs/pre-adr/accepted-entity-withdrawal_pre_adr.md`). The spec covers
-    raw-blob hard delete only and defers both of these.
-  - **Implementation plan** for the spec.
-  - **Implement + tests** against the spec's required tests (storage, content
-    routes, `hasContent` signal, backup/restore).
-  - **Product docs**: add the new curator/student stories, the STU-09/CUR-03
-    "linked or hosted" amendment, and the navigation spec #28 amendment.
-  - **Skills update**: teach `agonara-student` (read material content) and the
-    curator corpus skill (load/read/delete content) the new capability.
 
 ## Design-reasoning companions
 
