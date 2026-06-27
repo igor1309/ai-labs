@@ -2,6 +2,11 @@
 
 ## 2026-06-27
 
+- Drafted the **material content storage implementation plan**
+  (`docs/plans/material-content-storage.md`) for the spec under ADR-021: five TDD phases
+  (storage, domain, HTTP, `/learn` UI, docs/intent/closeout), declaration block, ADR
+  traceability matrix, and scope guardrails excluding ADR-022 withdrawal/source-record
+  deletion (separate spec).
 - **ADR-021 — Material Content Storage and Role-Gated Reading** (accepted) and its draft
   spec `docs/specs/material-content-storage.md`: Agonara stores material text and serves it
   role-gated (curator read/write/delete over everything loaded, student read over accepted);

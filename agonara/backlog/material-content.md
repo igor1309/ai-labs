@@ -21,9 +21,9 @@ copy. Reasoning and contract live in
   deletion; evidenced accepted content retired by withdrawal). Needs its own spec +
   implementation (tracked with the withdrawal work, below); the material-content spec
   covers raw-blob hard delete only.
-- **Implementation plan** for the material-content spec.
-- **Implement + tests** against the spec's required tests (storage, content routes,
-  `hasContent` navigation signal, backup/restore).
+- **Implement + tests** following the drafted plan
+  `docs/plans/material-content-storage.md` (storage → domain → HTTP → `/learn` UI →
+  docs/closeout), against the spec's required tests.
 - **Withdrawal/source-deletion spec + implementation** for ADR-022 (entity `status`,
   withdraw/reactivate routes, two-tier source deletion, delivery/coverage filtering,
   backup/restore) — shared with the index source-deletion item.
