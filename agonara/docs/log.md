@@ -2,6 +2,26 @@
 
 ## 2026-06-27
 
+- Promoted the material-content pre-ADR to **ADR-021 — Material Content Storage and
+  Role-Gated Reading** (`status: accepted`; added to the `architecture.html` ADR index;
+  pre-ADR marked promoted). Decides boundary/ownership/access/integrity invariants only:
+  Agonara stores material text and serves it role-gated (curator R/W/D over everything
+  loaded, student read over accepted), licensing is the curator's responsibility, two
+  content homes (source raw = curator, accepted = self-contained student-served copy),
+  content rides the accepted-revision model, dedicated content read surface, text-only with
+  a soft size ceiling. `arch-doc-review` pass fixed a Decision-vs-Rules delete consistency
+  warn and added the downstream spec's tests as the named verification mechanism.
+
+- Wrote the downstream spec **`docs/specs/material-content-storage.md`** (`status: draft`)
+  pinning what ADR-021 deferred: two content tables (`SourceContent` keyed by `sourceId`,
+  `AcceptedMaterialContent` keyed by `revisionId`), `content_format` DB `check`
+  (`markdown`/`plain_text`), 1 MiB soft cap with `content_too_large`, content-capture write
+  shapes, role-gated content read routes with character-based `limit`/opaque `cursor`
+  pagination, `hasContent` navigation signal, backup/restore rules, new rejection reasons,
+  the navigation spec #28 amendment, and the required Product Intent story changes. Caught
+  and fixed a contract bug while drafting (reusing the list `Limit` max-100 schema for
+  character pagination); content `limit` is now a character count capped at the size ceiling.
+
 - Capture "make material content readable in-product" as a forward decision in
   `backlog/README.md` (Uncategorized items). A live curator session confirmed the
   gap is structural, not transient: a `material_reference`'s `locator` is a

@@ -115,8 +115,14 @@ Single items not yet promoted to a topic file.
   cap with `content_too_large` and the existing `limit`/`cursor` pagination;
   **additive** intent (new curator/student stories + STU-09/CUR-03 "linked or
   hosted" amendment); `content_format` as a DB `check` seeded `markdown` +
-  `plain_text`. Pre-ADR (v0.3.0) is decision-complete and ready to promote to an
-  ADR; only spec-level detail remains. Next: write the ADR.
+  `plain_text`. Promoted to **ADR-021** (accepted) and specified in
+  **`docs/specs/material-content-storage.md`** (draft). Next: implementation
+  plan + implement the spec (storage tables + `content_format` `check` migration,
+  content-capture writes, role-gated content read routes, `hasContent` navigation
+  signal, backup/restore, the navigation spec #28 amendment, and the Product
+  Intent story changes). The source-record-deletion half stays with the
+  source-deletion item above; evidenced accepted-content withdrawal stays with the
+  accepted-entity withdrawal pre-ADR.
 
 ## Design-reasoning companions
 
