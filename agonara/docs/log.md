@@ -2,6 +2,14 @@
 
 ## 2026-06-27
 
+- Implemented **Phase 1** of the material content storage plan: `source_contents`
+  (keyed by `source_id`) and `accepted_material_contents` (keyed by `revision_id`) tables
+  with a `content_format` `check`, derived `byte_size`, and optional provenance; storage
+  accessors (source content overwritable, accepted content immutable per revision and
+  material-only); a `MAX_MATERIAL_CONTENT_BYTES` (1 MiB) guard; backup export of both
+  tables; and restore delete/reinsert plus before-mutation validation (missing
+  source/revision, non-`material_reference` revision, invalid format, byte-size mismatch,
+  oversized). Storage and backup/restore tests green; full Agonara suite and build pass.
 - Ran the **material content storage implementation plan adversarial review**
   (`docs/reviews/material-content-storage-plan-adversarial-review.md`) and fixed the
   plan's final-closeout declaration so it follows the mandatory implementation-plan structure.

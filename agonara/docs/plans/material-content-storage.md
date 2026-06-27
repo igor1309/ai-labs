@@ -29,7 +29,7 @@ Push policy: push at closeout
 Worktree mode: none
 Expected worktree: not applicable (`Worktree mode: none`; work in the primary checkout at `/home/user/ai-labs`)
 Expected branch: `claude/agonara-material-content-impl-plan`
-Preflight check: [ ] not started (authoring only)
+Preflight check: [x] done — branch `claude/agonara-material-content-impl-plan`, clean tree, deps installed, baseline Agonara suite + build green
 
 ## Scope guardrails
 
@@ -129,7 +129,7 @@ Targeted commands:
 
 ## Phase tracker
 
-- [ ] Phase 1 — Content Storage Substrate and Restore Validation
+- [x] Phase 1 — Content Storage Substrate and Restore Validation
 - [ ] Phase 2 — Corpus Domain Content Capture, Reads, and Deletion
 - [ ] Phase 3 — HTTP Content API and Navigation Signal
 - [ ] Phase 4 — Product UI Content Load and Read

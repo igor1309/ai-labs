@@ -6634,3 +6634,226 @@ function seedAcceptedReadinessCheck(database, { programId }) {
     }),
   );
 }
+
+const CONTENT_TS = "2026-05-27T10:00:00.000Z";
+
+function makeMaterialContentFixture() {
+  const database = openIdentityDatabase();
+  initializeIdentityStorage(database);
+  storage.createIdentity(database, { id: "identity-1", displayName: "Curator", createdAt: CONTENT_TS });
+  storage.createProgramShellRecord(database, {
+    id: "program-1",
+    title: "Program",
+    admissionPolicy: "self_join",
+    createdByIdentityId: "identity-1",
+    createdAt: CONTENT_TS,
+  });
+  storage.createProgramSourceRecord(database, {
+    id: "source-1",
+    programId: "program-1",
+    sourceKind: "lecture",
+    title: "Source",
+    recordedByIdentityId: "identity-1",
+    recordedAt: CONTENT_TS,
+  });
+  storage.createCorpusCandidateRecord(database, {
+    id: "candidate-1",
+    programId: "program-1",
+    candidateKind: "material_reference",
+    title: "Material",
+    materialReferenceKind: "lecture",
+    locator: "loc",
+    sourceIds: ["source-1"],
+    status: "accepted",
+    createdByIdentityId: "identity-1",
+    createdAt: CONTENT_TS,
+    updatedAt: CONTENT_TS,
+  });
+  storage.createAcceptedCorpusEntityRecord(database, {
+    id: "entity-1",
+    programId: "program-1",
+    acceptedKind: "material_reference",
+    currentRevisionId: "revision-1",
+  });
+  for (const id of ["revision-1", "revision-2"]) {
+    storage.createAcceptedCorpusRevisionRecord(database, {
+      id,
+      entityId: "entity-1",
+      programId: "program-1",
+      acceptedKind: "material_reference",
+      title: "Material",
+      materialReferenceKind: "lecture",
+      locator: "loc",
+      acceptedFromCandidateId: "candidate-1",
+      sourceIds: ["source-1"],
+      acceptedByIdentityId: "identity-1",
+      acceptedAt: CONTENT_TS,
+    });
+  }
+  // A non-material_reference revision, to prove accepted content is material-only.
+  storage.createCorpusCandidateRecord(database, {
+    id: "topic-candidate-1",
+    programId: "program-1",
+    candidateKind: "topic",
+    title: "Topic",
+    sourceIds: ["source-1"],
+    status: "accepted",
+    createdByIdentityId: "identity-1",
+    createdAt: CONTENT_TS,
+    updatedAt: CONTENT_TS,
+  });
+  storage.createAcceptedCorpusEntityRecord(database, {
+    id: "topic-entity-1",
+    programId: "program-1",
+    acceptedKind: "topic",
+    currentRevisionId: "topic-revision-1",
+  });
+  storage.createAcceptedCorpusRevisionRecord(database, {
+    id: "topic-revision-1",
+    entityId: "topic-entity-1",
+    programId: "program-1",
+    acceptedKind: "topic",
+    title: "Topic",
+    acceptedFromCandidateId: "topic-candidate-1",
+    sourceIds: ["source-1"],
+    acceptedByIdentityId: "identity-1",
+    acceptedAt: CONTENT_TS,
+  });
+  return database;
+}
+
+test("setSourceContentRecord_shouldStoreAndOverwriteContent_onSourceContent", () => {
+  const database = makeMaterialContentFixture();
+
+  try {
+    storage.setSourceContentRecord(database, {
+      sourceId: "source-1",
+      content: "# Hello",
+      contentFormat: "markdown",
+      recordedByIdentityId: "identity-1",
+      recordedAt: CONTENT_TS,
+    });
+
+    assert.deepEqual(storage.getSourceContentRecord(database, "source-1"), {
+      sourceId: "source-1",
+      content: "# Hello",
+      contentFormat: "markdown",
+      byteSize: Buffer.byteLength("# Hello", "utf8"),
+      recordedByIdentityId: "identity-1",
+      recordedAt: CONTENT_TS,
+    });
+
+    storage.setSourceContentRecord(database, {
+      sourceId: "source-1",
+      content: "plain",
+      contentFormat: "plain_text",
+      recordedByIdentityId: "identity-1",
+      recordedAt: "2026-05-27T11:00:00.000Z",
+    });
+
+    const after = storage.getSourceContentRecord(database, "source-1");
+    assert.equal(after.content, "plain");
+    assert.equal(after.contentFormat, "plain_text");
+    assert.equal(after.byteSize, Buffer.byteLength("plain", "utf8"));
+  } finally {
+    database.close();
+  }
+});
+
+test("deleteSourceContentRecord_shouldRemoveContentIdempotently_onSourceContent", () => {
+  const database = makeMaterialContentFixture();
+
+  try {
+    storage.setSourceContentRecord(database, {
+      sourceId: "source-1",
+      content: "x",
+      contentFormat: "markdown",
+      recordedByIdentityId: "identity-1",
+      recordedAt: CONTENT_TS,
+    });
+
+    storage.deleteSourceContentRecord(database, "source-1");
+    assert.equal(storage.getSourceContentRecord(database, "source-1"), null);
+
+    storage.deleteSourceContentRecord(database, "source-1");
+    assert.equal(storage.getSourceContentRecord(database, "source-1"), null);
+  } finally {
+    database.close();
+  }
+});
+
+test("setSourceContentRecord_shouldRejectUnknownFormatAndOversizedContent_onSourceContent", () => {
+  const database = makeMaterialContentFixture();
+
+  try {
+    assert.throws(
+      () =>
+        storage.setSourceContentRecord(database, {
+          sourceId: "source-1",
+          content: "x",
+          contentFormat: "html",
+          recordedByIdentityId: "identity-1",
+          recordedAt: CONTENT_TS,
+        }),
+      storage.StorageInvariantError,
+    );
+
+    assert.throws(
+      () =>
+        storage.setSourceContentRecord(database, {
+          sourceId: "source-1",
+          content: "a".repeat(storage.MAX_MATERIAL_CONTENT_BYTES + 1),
+          contentFormat: "markdown",
+          recordedByIdentityId: "identity-1",
+          recordedAt: CONTENT_TS,
+        }),
+      storage.StorageInvariantError,
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("setAcceptedMaterialContentRecord_shouldKeepContentImmutablePerRevision_onMaterialContent", () => {
+  const database = makeMaterialContentFixture();
+
+  try {
+    storage.setAcceptedMaterialContentRecord(database, {
+      revisionId: "revision-1",
+      content: "v1",
+      contentFormat: "markdown",
+    });
+    storage.setAcceptedMaterialContentRecord(database, {
+      revisionId: "revision-2",
+      content: "v2",
+      contentFormat: "markdown",
+      sourceContentProvenance: { sourceId: "source-1", range: { start: 0, end: 2 } },
+    });
+
+    assert.equal(storage.getAcceptedMaterialContentRecord(database, "revision-1").content, "v1");
+    const second = storage.getAcceptedMaterialContentRecord(database, "revision-2");
+    assert.equal(second.content, "v2");
+    assert.equal(second.byteSize, Buffer.byteLength("v2", "utf8"));
+    assert.deepEqual(second.sourceContentProvenance, { sourceId: "source-1", range: { start: 0, end: 2 } });
+  } finally {
+    database.close();
+  }
+});
+
+test("setAcceptedMaterialContentRecord_shouldRejectNonMaterialRevision_onMaterialContent", () => {
+  const database = makeMaterialContentFixture();
+
+  try {
+    assert.throws(
+      () =>
+        storage.setAcceptedMaterialContentRecord(database, {
+          revisionId: "topic-revision-1",
+          content: "x",
+          contentFormat: "markdown",
+        }),
+      storage.StorageInvariantError,
+    );
+  } finally {
+    database.close();
+  }
+});

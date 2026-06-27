@@ -65,6 +65,10 @@ const evaluatorArtifactTextKeys = new Set([
   "timeoutreason",
 ]);
 
+export const MAX_MATERIAL_CONTENT_BYTES = 1048576;
+
+const CONTENT_FORMATS = new Set(["markdown", "plain_text"]);
+
 export function openIdentityDatabase(path = ":memory:") {
   const database = new Database(path);
   database.pragma("foreign_keys = ON");
@@ -704,6 +708,23 @@ export function initializeIdentityStorage(database) {
       outcome text not null check (outcome in ('accepted', 'rejected')),
       reason text
     );
+
+    create table if not exists source_contents (
+      source_id text primary key references program_sources(id),
+      content text not null,
+      content_format text not null check (content_format in ('markdown', 'plain_text')),
+      byte_size integer not null,
+      recorded_by_identity_id text not null references identities(id),
+      recorded_at text not null
+    );
+
+    create table if not exists accepted_material_contents (
+      revision_id text primary key references accepted_corpus_revisions(id),
+      content text not null,
+      content_format text not null check (content_format in ('markdown', 'plain_text')),
+      byte_size integer not null,
+      source_content_provenance_json text
+    );
   `);
 }
 
@@ -1108,6 +1129,140 @@ export function listProgramSourceRecords(database, { programId = null } = {}) {
        order by recorded_at, id`,
     )
     .all(programId);
+}
+
+function computeWritableContentByteSize({ content, contentFormat }) {
+  if (typeof content !== "string" || content.trim().length === 0) {
+    throw new StorageInvariantError("content_required");
+  }
+  if (!CONTENT_FORMATS.has(contentFormat)) {
+    throw new StorageInvariantError("content_format_invalid");
+  }
+  const byteSize = Buffer.byteLength(content, "utf8");
+  if (byteSize > MAX_MATERIAL_CONTENT_BYTES) {
+    throw new StorageInvariantError("content_too_large");
+  }
+  return byteSize;
+}
+
+export function setSourceContentRecord(
+  database,
+  { sourceId, content, contentFormat, recordedByIdentityId, recordedAt },
+) {
+  if (!getProgramSourceRecord(database, sourceId)) {
+    throw new StorageInvariantError("source_content_source_not_found");
+  }
+  assertIdentityExists(database, recordedByIdentityId);
+  const byteSize = computeWritableContentByteSize({ content, contentFormat });
+
+  database
+    .prepare(
+      `insert into source_contents (
+         source_id, content, content_format, byte_size, recorded_by_identity_id, recorded_at
+       ) values (?, ?, ?, ?, ?, ?)
+       on conflict(source_id) do update set
+         content = excluded.content,
+         content_format = excluded.content_format,
+         byte_size = excluded.byte_size,
+         recorded_by_identity_id = excluded.recorded_by_identity_id,
+         recorded_at = excluded.recorded_at`,
+    )
+    .run(sourceId, content, contentFormat, byteSize, recordedByIdentityId, recordedAt);
+
+  return getSourceContentRecord(database, sourceId);
+}
+
+export function getSourceContentRecord(database, sourceId) {
+  const row = database
+    .prepare(
+      `select source_id as sourceId, content, content_format as contentFormat, byte_size as byteSize,
+              recorded_by_identity_id as recordedByIdentityId, recorded_at as recordedAt
+       from source_contents
+       where source_id = ?`,
+    )
+    .get(sourceId);
+
+  return row ?? null;
+}
+
+export function listSourceContentRecords(database) {
+  return database
+    .prepare(
+      `select source_id as sourceId, content, content_format as contentFormat, byte_size as byteSize,
+              recorded_by_identity_id as recordedByIdentityId, recorded_at as recordedAt
+       from source_contents
+       order by source_id`,
+    )
+    .all();
+}
+
+export function deleteSourceContentRecord(database, sourceId) {
+  database.prepare("delete from source_contents where source_id = ?").run(sourceId);
+}
+
+export function setAcceptedMaterialContentRecord(
+  database,
+  { revisionId, content, contentFormat, sourceContentProvenance = null },
+) {
+  const revision = database
+    .prepare("select accepted_kind as acceptedKind from accepted_corpus_revisions where id = ?")
+    .get(revisionId);
+  if (!revision) {
+    throw new StorageInvariantError("accepted_material_content_revision_not_found");
+  }
+  if (revision.acceptedKind !== "material_reference") {
+    throw new StorageInvariantError("accepted_material_content_revision_kind_mismatch");
+  }
+  const byteSize = computeWritableContentByteSize({ content, contentFormat });
+
+  database
+    .prepare(
+      `insert into accepted_material_contents (
+         revision_id, content, content_format, byte_size, source_content_provenance_json
+       ) values (?, ?, ?, ?, ?)`,
+    )
+    .run(
+      revisionId,
+      content,
+      contentFormat,
+      byteSize,
+      sourceContentProvenance === null ? null : JSON.stringify(sourceContentProvenance),
+    );
+
+  return getAcceptedMaterialContentRecord(database, revisionId);
+}
+
+export function getAcceptedMaterialContentRecord(database, revisionId) {
+  const row = database
+    .prepare(
+      `select revision_id as revisionId, content, content_format as contentFormat, byte_size as byteSize,
+              source_content_provenance_json as sourceContentProvenanceJson
+       from accepted_material_contents
+       where revision_id = ?`,
+    )
+    .get(revisionId);
+
+  return row ? mapAcceptedMaterialContentRecord(row) : null;
+}
+
+export function listAcceptedMaterialContentRecords(database) {
+  return database
+    .prepare(
+      `select revision_id as revisionId, content, content_format as contentFormat, byte_size as byteSize,
+              source_content_provenance_json as sourceContentProvenanceJson
+       from accepted_material_contents
+       order by revision_id`,
+    )
+    .all()
+    .map(mapAcceptedMaterialContentRecord);
+}
+
+function mapAcceptedMaterialContentRecord({ sourceContentProvenanceJson, ...rest }) {
+  return {
+    ...rest,
+    sourceContentProvenance:
+      sourceContentProvenanceJson === null ? null : JSON.parse(sourceContentProvenanceJson),
+  };
 }
 
 export function createCorpusCandidateRecord(
@@ -5589,6 +5744,8 @@ export function exportIdentityBackup(database) {
     corpusCandidates: listCorpusCandidateRecords(database),
     acceptedCorpusEntities: listAcceptedCorpusEntityRecords(database),
     acceptedCorpusRevisions: listAcceptedCorpusRevisionRecords(database),
+    sourceContents: listSourceContentRecords(database),
+    acceptedMaterialContents: listAcceptedMaterialContentRecords(database),
     acceptedNavigationRelationships: listAcceptedNavigationRelationshipRecords(database),
     acceptedNavigationRelationshipRevisions: listAcceptedNavigationRelationshipRevisionRecords(database),
     learnerEvidenceTargetLinks: listLearnerEvidenceTargetLinkRecords(database, { includeDeleted: true }),
@@ -5631,6 +5788,7 @@ export function restoreIdentityBackup(database, backup) {
   }
 
   assertValidCorpusGraphInBackup(backup);
+  assertValidContentGraphInBackup(backup);
   assertValidNavigationGraphInBackup(backup);
   assertValidAssessmentGraphInBackup(backup);
   assertValidQuickCheckGraphInBackup(backup);
@@ -5642,6 +5800,8 @@ export function restoreIdentityBackup(database, backup) {
 
   database.transaction(() => {
     database.prepare("delete from sessions").run();
+    database.prepare("delete from source_contents").run();
+    database.prepare("delete from accepted_material_contents").run();
     database.prepare("delete from corpus_events").run();
     database.prepare("delete from open_answer_evaluator_evidence").run();
     database.prepare("delete from open_answer_evaluator_runs").run();
@@ -6285,6 +6445,37 @@ export function restoreIdentityBackup(database, backup) {
         revision.rationale ?? null,
         revision.acceptedByIdentityId,
         revision.acceptedAt,
+      );
+    }
+
+    const insertSourceContent = database.prepare(
+      `insert into source_contents (
+         source_id, content, content_format, byte_size, recorded_by_identity_id, recorded_at
+       ) values (?, ?, ?, ?, ?, ?)`,
+    );
+    for (const record of backup.sourceContents ?? []) {
+      insertSourceContent.run(
+        record.sourceId,
+        record.content,
+        record.contentFormat,
+        record.byteSize,
+        record.recordedByIdentityId,
+        record.recordedAt,
+      );
+    }
+
+    const insertAcceptedMaterialContent = database.prepare(
+      `insert into accepted_material_contents (
+         revision_id, content, content_format, byte_size, source_content_provenance_json
+       ) values (?, ?, ?, ?, ?)`,
+    );
+    for (const record of backup.acceptedMaterialContents ?? []) {
+      insertAcceptedMaterialContent.run(
+        record.revisionId,
+        record.content,
+        record.contentFormat,
+        record.byteSize,
+        record.sourceContentProvenance == null ? null : JSON.stringify(record.sourceContentProvenance),
       );
     }
 
@@ -7378,6 +7569,41 @@ function assertValidProgramMembershipGraphInBackup(backup) {
     if (!policyPaths.has(event.policyPath) || !invitationStatuses.has(event.invitationStatus)) {
       throw new StorageInvariantError("validation_failed");
     }
+  }
+}
+
+function assertBackupContentShape(record) {
+  if (!CONTENT_FORMATS.has(record.contentFormat)) {
+    throw new StorageInvariantError("content_format_invalid");
+  }
+  if (typeof record.content !== "string" || Buffer.byteLength(record.content, "utf8") !== record.byteSize) {
+    throw new StorageInvariantError("content_byte_size_mismatch");
+  }
+  if (record.byteSize > MAX_MATERIAL_CONTENT_BYTES) {
+    throw new StorageInvariantError("content_too_large");
+  }
+}
+
+function assertValidContentGraphInBackup(backup) {
+  const sourceIds = new Set((backup.programSources ?? []).map($0 => $0.id));
+  const revisionsById = new Map((backup.acceptedCorpusRevisions ?? []).map($0 => [$0.id, $0]));
+
+  for (const record of backup.sourceContents ?? []) {
+    if (!sourceIds.has(record.sourceId)) {
+      throw new StorageInvariantError("source_content_source_not_found");
+    }
+    assertBackupContentShape(record);
+  }
+
+  for (const record of backup.acceptedMaterialContents ?? []) {
+    const revision = revisionsById.get(record.revisionId);
+    if (!revision) {
+      throw new StorageInvariantError("accepted_material_content_revision_not_found");
+    }
+    if (revision.acceptedKind !== "material_reference") {
+      throw new StorageInvariantError("accepted_material_content_revision_kind_mismatch");
+    }
+    assertBackupContentShape(record);
   }
 }
 
