@@ -1463,6 +1463,9 @@ async function handleCorpusApi({
   const navigationCandidateRejectionMatch = pathname.match(/^\/navigation-candidates\/([^/]+)\/rejection$/);
   const navigationEntityMatch = pathname.match(/^\/navigation\/entities\/([^/]+)$/);
   const navigationRevisionMatch = pathname.match(/^\/navigation\/revisions\/([^/]+)$/);
+  const sourceContentMatch = pathname.match(/^\/sources\/([^/]+)\/content$/);
+  const materialRevisionContentMatch = pathname.match(/^\/materials\/revisions\/([^/]+)\/content$/);
+  const materialContentMatch = pathname.match(/^\/materials\/([^/]+)\/content$/);
   const acceptedCorpusRevisionMatch = pathname.match(/^\/accepted-corpus-revisions\/([^/]+)$/);
   const acceptedAssessmentCriteriaMatch = pathname.match(/^\/programs\/([^/]+)\/assessment-criteria$/);
   const assessmentCriterionCandidatesMatch = pathname.match(
@@ -2253,6 +2256,110 @@ async function handleCorpusApi({
       revisionId: decodeURIComponent(navigationRevisionMatch[1]),
     });
     sendJson(response, statusForResult(result), mapNavigationRevisionResult(result));
+    return true;
+  }
+
+  if ((request.method === "PUT" || request.method === "DELETE") && sourceContentMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+    const sourceId = decodeURIComponent(sourceContentMatch[1]);
+    let result;
+    if (request.method === "DELETE") {
+      result = corpusCommands.deleteSourceContent({ actingIdentityId: session.value.identity.id, sourceId });
+    } else {
+      const body = await readRequiredJsonObject(request);
+      if (body.status === "rejected") {
+        sendJson(response, 400, body);
+        return true;
+      }
+      result = corpusCommands.setSourceContent({
+        actingIdentityId: session.value.identity.id,
+        sourceId,
+        content: body.value.content,
+        contentFormat: body.value.contentFormat,
+      });
+    }
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
+  if (request.method === "GET" && sourceContentMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+    const result = corpusCommands.readSourceContent({
+      actingIdentityId: session.value.identity.id,
+      sourceId: decodeURIComponent(sourceContentMatch[1]),
+      ...parseContentQuery(request),
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
+  if (request.method === "PUT" && materialRevisionContentMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+    const result = corpusCommands.setAcceptedMaterialContent({
+      actingIdentityId: session.value.identity.id,
+      revisionId: decodeURIComponent(materialRevisionContentMatch[1]),
+      content: body.value.content,
+      contentFormat: body.value.contentFormat,
+      sourceContentProvenance: body.value.sourceContentProvenance,
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
+  if (request.method === "GET" && materialRevisionContentMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+    const result = corpusCommands.readMaterialRevisionContent({
+      actingIdentityId: session.value.identity.id,
+      revisionId: decodeURIComponent(materialRevisionContentMatch[1]),
+      ...parseContentQuery(request),
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
+  if (request.method === "GET" && materialContentMatch) {
+    const session = resolveHttpSession({ identityCommands, request });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+    const result = corpusCommands.readMaterialContent({
+      actingIdentityId: session.value.identity.id,
+      entityId: decodeURIComponent(materialContentMatch[1]),
+      ...parseContentQuery(request),
+    });
+    sendJson(response, statusForResult(result), result);
     return true;
   }
 
@@ -4463,10 +4570,20 @@ function statusForResult(result) {
   return result.status === "accepted" ? 200 : httpStatusFor(result.reason);
 }
 
+function parseContentQuery(request) {
+  const url = new URL(request.url ?? "/", "http://localhost");
+  const limitRaw = url.searchParams.get("limit");
+  return {
+    limit: limitRaw === null ? undefined : Number(limitRaw),
+    cursor: url.searchParams.get("cursor") ?? undefined,
+  };
+}
+
 function httpStatusFor(reason) {
   switch (reason) {
     case "validation_failed":
     case "unsupported_participation_kind":
+    case "content_too_large":
       return 400;
     case "invalid_bootstrap_secret":
     case "invalid_credentials":
@@ -4495,6 +4612,8 @@ function httpStatusFor(reason) {
     case "criterion_revision_not_found":
     case "navigation_entity_not_found":
     case "navigation_revision_not_found":
+    case "content_not_found":
+    case "accepted_revision_not_found":
     case "invitation_not_found":
     case "not_found":
     case "program_not_found":
@@ -4521,6 +4640,7 @@ function httpStatusFor(reason) {
     case "accepted_entity_program_mismatch":
     case "accepted_kind_mismatch":
     case "bootstrap_already_completed":
+    case "material_content_already_set":
     case "candidate_already_accepted":
     case "candidate_already_rejected":
     case "check_candidate_already_accepted":

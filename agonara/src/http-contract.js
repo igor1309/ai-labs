@@ -1039,6 +1039,7 @@ export const openApiContractMetadata = {
           "accepted_entity_not_found",
           "accepted_entity_program_mismatch",
           "accepted_kind_mismatch",
+          "accepted_revision_not_found",
           "admin_or_curator_required",
           "admin_required",
           "attempt_not_found",
@@ -1053,6 +1054,8 @@ export const openApiContractMetadata = {
           "check_entity_program_mismatch",
           "check_revision_not_found",
           "check_revision_program_mismatch",
+          "content_not_found",
+          "content_too_large",
           "coverage_gap_not_found",
           "coverage_gap_scope_not_found",
           "coverage_gap_scope_program_mismatch",
@@ -1085,6 +1088,7 @@ export const openApiContractMetadata = {
           "llm_curation_suggestion_already_rejected",
           "llm_curation_suggestion_not_found",
           "login_already_bound",
+          "material_content_already_set",
           "membership_already_active",
           "membership_left",
           "membership_missing",
@@ -3442,6 +3446,127 @@ export const routeContracts = [
       },
       "required": false
     }
+  },
+  {
+    "method": "PUT",
+    "path": "/sources/{sourceId}/content",
+    "operationId": "setSourceContent",
+    "handlerKey": "corpus.setSourceContent",
+    "tag": "corpus",
+    "summary": "Set or replace a Program source's stored content.",
+    "auth": { "kind": "session", "csrf": true },
+    "responses": [
+      { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
+      { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 401, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 403, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 404, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 500, "envelope": "fault", "schema": { "ref": "#/components/responses/Fault" } }
+    ],
+    "pathParameters": [
+      { "name": "sourceId", "schema": { "type": "string", "minLength": 1 }, "required": true }
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/sources/{sourceId}/content",
+    "operationId": "readSourceContent",
+    "handlerKey": "corpus.readSourceContent",
+    "tag": "corpus",
+    "summary": "Read a Program source's stored content (curator only).",
+    "auth": { "kind": "session" },
+    "responses": [
+      { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
+      { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 401, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 403, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 404, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 500, "envelope": "fault", "schema": { "ref": "#/components/responses/Fault" } }
+    ],
+    "pathParameters": [
+      { "name": "sourceId", "schema": { "type": "string", "minLength": 1 }, "required": true }
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/sources/{sourceId}/content",
+    "operationId": "deleteSourceContent",
+    "handlerKey": "corpus.deleteSourceContent",
+    "tag": "corpus",
+    "summary": "Hard-delete a Program source's stored content (curator only).",
+    "auth": { "kind": "session", "csrf": true },
+    "responses": [
+      { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
+      { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 401, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 403, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 404, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 500, "envelope": "fault", "schema": { "ref": "#/components/responses/Fault" } }
+    ],
+    "pathParameters": [
+      { "name": "sourceId", "schema": { "type": "string", "minLength": 1 }, "required": true }
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/materials/revisions/{revisionId}/content",
+    "operationId": "setAcceptedMaterialContent",
+    "handlerKey": "corpus.setAcceptedMaterialContent",
+    "tag": "corpus",
+    "summary": "Set accepted material content on a material reference revision (curator only).",
+    "auth": { "kind": "session", "csrf": true },
+    "responses": [
+      { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
+      { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 401, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 403, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 404, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 409, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 500, "envelope": "fault", "schema": { "ref": "#/components/responses/Fault" } }
+    ],
+    "pathParameters": [
+      { "name": "revisionId", "schema": { "type": "string", "minLength": 1 }, "required": true }
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/materials/{entityId}/content",
+    "operationId": "readMaterialContent",
+    "handlerKey": "corpus.readMaterialContent",
+    "tag": "corpus",
+    "summary": "Read accepted material content for a material entity's current revision.",
+    "auth": { "kind": "session" },
+    "responses": [
+      { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
+      { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 401, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 403, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 404, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 500, "envelope": "fault", "schema": { "ref": "#/components/responses/Fault" } }
+    ],
+    "pathParameters": [
+      { "name": "entityId", "schema": { "type": "string", "minLength": 1 }, "required": true }
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/materials/revisions/{revisionId}/content",
+    "operationId": "readMaterialRevisionContent",
+    "handlerKey": "corpus.readMaterialRevisionContent",
+    "tag": "corpus",
+    "summary": "Read accepted material content for a specific material reference revision.",
+    "auth": { "kind": "session" },
+    "responses": [
+      { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
+      { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 401, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 403, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 404, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 500, "envelope": "fault", "schema": { "ref": "#/components/responses/Fault" } }
+    ],
+    "pathParameters": [
+      { "name": "revisionId", "schema": { "type": "string", "minLength": 1 }, "required": true }
+    ]
   },
   {
     "method": "GET",

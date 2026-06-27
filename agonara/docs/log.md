@@ -2,6 +2,20 @@
 
 ## 2026-06-27
 
+- Implemented **Phase 3** (HTTP) of material content storage: declared the content routes
+  in `http-contract.js` (`PUT`/`GET`/`DELETE /sources/{sourceId}/content`,
+  `PUT`/`GET /materials/revisions/{revisionId}/content`, `GET /materials/{entityId}/content`)
+  with `content_not_found` / `content_too_large` / `material_content_already_set` /
+  `accepted_revision_not_found` added to the `ApiRejectionReason` enum and `httpStatusFor`
+  mapping (404/400/409/404); wired the handlers in `server.js` (session/CSRF, `limit`/`cursor`
+  query parsing, redacted passthrough); and taught the OpenAPI generator and contract test the
+  `put` method so the routes generate and validate. Reconciled the spec to the dedicated
+  `PUT …/content` set-content design (replacing acceptance-carried content) and the
+  `admin_or_curator_required` source-read reason. Added stub-based HTTP route tests (pagination
+  parsing, read status mapping, curator-gate + CSRF-required on writes). Full Agonara suite
+  (incl. `openapi:check` + `openapi:lint`) and build pass. Deferred: a real-session HTTP
+  executable-acceptance scenario (the command-level executable acceptance already covers the
+  full content flow; Phase 4 UI exercises real sessions).
 - Implemented the **Phase 2** domain content commands for material content storage:
   `setSourceContent` / `deleteSourceContent` / `readSourceContent` (curator-only),
   `setAcceptedMaterialContent` (curator; material-only, immutable per revision via a

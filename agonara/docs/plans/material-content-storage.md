@@ -131,7 +131,7 @@ Targeted commands:
 
 - [x] Phase 1 — Content Storage Substrate and Restore Validation
 - [x] Phase 2 — Corpus Domain Content Capture, Reads, and Deletion
-- [ ] Phase 3 — HTTP Content API and Navigation Signal
+- [x] Phase 3 — HTTP Content API and Navigation Signal
 - [ ] Phase 4 — Product UI Content Load and Read
 - [ ] Phase 5 — Docs, Product Intent, Traceability, Dashboard, Archive
 

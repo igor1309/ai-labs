@@ -4,7 +4,7 @@ import {
   routeContracts,
 } from "./http-contract.js";
 
-const httpMethods = Object.freeze(["delete", "get", "patch", "post"]);
+const httpMethods = Object.freeze(["delete", "get", "patch", "post", "put"]);
 
 export function generateOpenApiDocument({
   metadata = openApiContractMetadata,

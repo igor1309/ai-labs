@@ -20,7 +20,7 @@ import {
 const openApiPath = fileURLToPath(new URL("../docs/api/openapi.yml", import.meta.url));
 const serverPath = fileURLToPath(new URL("../src/server.js", import.meta.url));
 const generatorPath = fileURLToPath(new URL("../scripts/generate-agonara-openapi.mjs", import.meta.url));
-const openApiRouteMethods = Object.freeze(["delete", "get", "patch", "post"]);
+const openApiRouteMethods = Object.freeze(["delete", "get", "patch", "post", "put"]);
 const knownTags = new Set(openApiContractMetadata.tags.map(($0) => $0.name));
 
 test("openApiContract_shouldResolveLocalRefs_onGeneratedContract", () => {
