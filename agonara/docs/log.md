@@ -2,6 +2,10 @@
 
 ## 2026-06-27
 
+- Saved the adversarial review for the student-api-program-materials branch in
+  `docs/reviews/student-api-program-materials-adversarial-review.md`, capturing five
+  doc-contract findings against ADR/spec/review/doc-maintenance requirements before push.
+
 - Promoted the accepted-entity withdrawal pre-ADR to **ADR-022 — Accepted Entity
   Withdrawal and Source Deletion** (`status: accepted`; added to the `architecture.html`
   index; pre-ADR marked promoted). Adopts the entity-level `active → withdrawn` lifecycle
