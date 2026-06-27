@@ -16,14 +16,17 @@ copy. Reasoning and contract live in
 
 ## Forward tasks
 
-- **Deletion decision (source + accepted).** The one open design question: hard delete vs.
-  withdrawal for the source *record* (joint with "Authorized deletion of corpus sources" in
-  the index) and for evidenced accepted content (joint with
-  `docs/pre-adr/accepted-entity-withdrawal_pre_adr.md`). The spec covers raw-blob hard
-  delete only and defers both.
-- **Implementation plan** for the spec.
+- **Deletion** — decided in
+  `docs/adr/adr-022-accepted-entity-withdrawal-and-source-deletion.md` (two-tier source
+  deletion; evidenced accepted content retired by withdrawal). Needs its own spec +
+  implementation (tracked with the withdrawal work, below); the material-content spec
+  covers raw-blob hard delete only.
+- **Implementation plan** for the material-content spec.
 - **Implement + tests** against the spec's required tests (storage, content routes,
   `hasContent` navigation signal, backup/restore).
+- **Withdrawal/source-deletion spec + implementation** for ADR-022 (entity `status`,
+  withdraw/reactivate routes, two-tier source deletion, delivery/coverage filtering,
+  backup/restore) — shared with the index source-deletion item.
 - **Product docs**: new curator/student stories, the STU-09/CUR-03 "linked or hosted"
   amendment, and the navigation spec #28 amendment.
 - **Skills update**: teach `agonara-student` (read material content) and the curator corpus

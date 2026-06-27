@@ -33,20 +33,14 @@ keep small or uncategorized items in this index until then.
 
 Single items not yet promoted to a topic file.
 
-- **Authorized deletion of corpus sources (and program lifecycle).** Source
-  records are append-only: no role has a delete via the API, and Program
-  archival/deletion/ownership transfer are explicitly not exposed
-  (`docs/specs/corpus-storage-and-curator-acceptance-api.md` #65/#66;
-  `corpus-storage-and-curator-acceptance-first-slice.md` #37/#44). Decide, via an
-  ADR, whether to add a **curator-authorized** source-removal (and/or program
-  archival) operation with audit-preserving semantics. Until then, stray or test
-  sources can only be removed by host-level DB surgery, which overrides the
-  append-only design. The material-content pre-ADR
-  (`docs/pre-adr/material-content-access_pre_adr.md`) now proposes a two-tier
-  resolution for the source half of this: the **source raw content blob** is a
-  free hard delete (non-load-bearing once accepted content is a self-contained
-  copy), while the **source record** (metadata + `source_ids_json` edges) follows
-  withdrawal/tombstone — settle the two together.
+- **Program lifecycle: archival / deletion / ownership transfer.** Still not
+  exposed (`docs/specs/corpus-storage-and-curator-acceptance-api.md` #65/#66;
+  `corpus-storage-and-curator-acceptance-first-slice.md` #37/#44); needs its own
+  ADR for audit-preserving semantics. (The **source-deletion** half of the former
+  item is now decided in
+  `docs/adr/adr-022-accepted-entity-withdrawal-and-source-deletion.md` — two-tier
+  hard-delete-unreferenced / withdraw-referenced, raw blob per ADR-021 — and its
+  implementation is tracked in [`material-content.md`](material-content.md).)
 
 - **Drive the open-answer evaluator (nothing fires it).** The whole evaluation
   pipeline is implemented and wired — Nomos LLM provider adapter, evaluator

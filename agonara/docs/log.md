@@ -2,6 +2,20 @@
 
 ## 2026-06-27
 
+- Promoted the accepted-entity withdrawal pre-ADR to **ADR-022 — Accepted Entity
+  Withdrawal and Source Deletion** (`status: accepted`; added to the `architecture.html`
+  index; pre-ADR marked promoted). Adopts the entity-level `active → withdrawn` lifecycle
+  status (reversible, history-preserving, curator-authorized, withdrawn entities excluded
+  from delivery/coverage), generalizes it to Program source records, and adds two-tier
+  source deletion (hard-delete unreferenced, withdraw referenced). Completes ADR-021's
+  deletion tiers (evidenced accepted content retired by withdrawal). Resolved the pre-ADR's
+  open questions: entity-level granularity, block-on-active-reference (no cascade),
+  reactivate restores the current revision, backup/restore preserves status. `arch-doc-review`
+  pass fixed a consistency fail (source records were withdrawn in §5 but never granted a
+  status in §1/Rules). Backlog updated: the source-deletion item's source half is resolved
+  (program archival/ownership transfer remains open); the withdrawal spec+implementation is
+  tracked in `backlog/material-content.md`.
+
 - Promoted the material-content pre-ADR to **ADR-021 — Material Content Storage and
   Role-Gated Reading** (`status: accepted`; added to the `architecture.html` ADR index;
   pre-ADR marked promoted). Decides boundary/ownership/access/integrity invariants only:

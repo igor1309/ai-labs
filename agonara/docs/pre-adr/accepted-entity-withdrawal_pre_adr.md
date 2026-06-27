@@ -108,6 +108,13 @@ into the delivery/projection path. Option B keeps the two concepts separate.
 
 ## Candidate direction
 
+> **Promoted to [ADR-022 — Accepted Entity Withdrawal and Source Deletion](../adr/adr-022-accepted-entity-withdrawal-and-source-deletion.md)**,
+> which adopts Option B (entity-level `active → withdrawn` status), generalizes it to
+> Program source records with two-tier deletion (hard-delete unreferenced, withdraw
+> referenced), and resolves the open questions below (entity-level granularity;
+> block-on-active-reference, no cascade; reactivate restores the current revision;
+> backup/restore preserves status).
+
 A small ADR ("Accepted Entity Lifecycle and Withdrawal") deciding:
 
 - Accepted entities gain a lifecycle status `active → withdrawn` (and a `withdrawn →
