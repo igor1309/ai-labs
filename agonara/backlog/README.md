@@ -61,6 +61,27 @@ Single items not yet promoted to a topic file.
   in-process machinery. Until both are in place the "verified later" the student
   flow implies never arrives.
 
+- **Decide whether students can read full material content (not just a
+  reference).** Today the learner-facing surface is the accepted navigation
+  graph: a `material_reference` carries `title`, `materialReferenceKind`, a
+  `locator`/`citation`, and an optional **concise** `body`, plus its topic/concept
+  relationships (`src/corpus.js` `summarizeStudentNavigationRevision`; student
+  reads at `/programs/{programId}/navigation`, `/navigation/entities/{entityId}`,
+  `/navigation/revisions/{revisionId}`). This is a deliberate boundary, not a
+  curation gap: `docs/specs/topic-concept-material-navigation.md` #28 states
+  navigation "does not fetch, scrape, copy, upload, transform, or summarize
+  external material content. A material reference is an accepted locator,
+  citation, or concise body stored in Corpus Storage," and raw Program sources
+  are curator-only with no stored full text (`listProgramSources` is
+  curator-gated; `summarizeProgramSource` exposes only metadata + locator/
+  citation). So a student (or their agent) sees a material's card and links but
+  has no API to open the original document as readable text. Decide, via an ADR,
+  whether to add a student-facing "read full material" capability — and if so,
+  whether the program even holds the content (it currently does not) or only ever
+  resolves the `locator`/`citation` to an external source — versus affirming the
+  reference-only boundary as intended and documenting it as the answer for
+  learners who expect to read the source in-product.
+
 ## Design-reasoning companions
 
 Not task lists, so exempt from the forward-tasks-only rule above: longer-form
