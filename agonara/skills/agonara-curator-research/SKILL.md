@@ -1,16 +1,20 @@
 ---
 name: agonara-curator-research
 author: Igor Malyarov
-version: "1.0.0"
-description: Operate as an Agonara program curator to ground and expand a program — record external sources with justifying metadata, read coverage-gap diagnostics as draft guidance, and generate, trace, and explicitly accept or reject LLM-assisted curation suggestions. Use when a curator agent is researching a program: adding sources, finding gaps, or reviewing generated suggestions. Suggestions and gaps are draft material until accepted; accepting a suggestion only materializes a draft candidate, never accepted corpus.
-trigger: when a curator agent needs to record an external source, read coverage gaps, or generate/review LLM curation suggestions
+version: "1.1.0"
+description: Assist a human Agonara Program Curator to ground and expand a program — record external sources with justifying metadata, read coverage-gap diagnostics as draft guidance, and generate, trace, and explicitly accept or reject LLM-assisted curation suggestions. Use when a curator's assistant agent is researching a program: adding sources, finding gaps, or reviewing generated suggestions. Suggestions and gaps are draft material until accepted; accepting a suggestion only materializes a draft candidate, never accepted corpus.
+trigger: when a curator's assistant agent needs to record an external source, read coverage gaps, or generate/review LLM curation suggestions
 ---
 
-# Agonara curator — research
+# Agonara curator assistant — research
 
 Ground a program in external sources and expand it deliberately using coverage
 gaps and LLM-assisted suggestions — all as **reviewable drafts**, never as
 content that becomes part of the program on its own.
+
+**You are the curator's assistant, not the curator.** A human Program Curator
+owns the program and its decisions; you do the API work on their behalf and
+confirm choices with them — you don't decide for them.
 
 Assumes [`agonara-api-access`](../agonara-api-access/SKILL.md) for auth, the
 `X-Agonara-CSRF` header on mutations, and the envelope. This skill produces

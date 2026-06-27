@@ -1,17 +1,21 @@
 ---
 name: agonara-curator-assessment
 author: Igor Malyarov
-version: "1.3.0"
-description: Operate as an Agonara program curator to author assessment — open-answer checks, quick checks, and readiness checks via the candidate→acceptance→revision flow, define program-owned assessment criteria, link checks to learner-state targets, and keep answer keys and correctness curator-only (never student-facing). Use when a curator agent is adding or accepting checks or criteria on a program. Builds on the corpus skill; checks attach to accepted corpus entities.
-trigger: when a curator agent needs to author or accept a check (open-answer, quick, readiness), define assessment criteria, or manage learner-state target links
+version: "1.4.0"
+description: Assist a human Agonara Program Curator to author assessment — open-answer checks, quick checks, and readiness checks via the candidate→acceptance→revision flow, define program-owned assessment criteria, link checks to learner-state targets, and keep answer keys and correctness curator-only (never student-facing). Use when a curator's assistant agent is adding or accepting checks or criteria on a program. Builds on the corpus skill; checks attach to accepted corpus entities.
+trigger: when a curator's assistant agent needs to author or accept a check (open-answer, quick, readiness), define assessment criteria, or manage learner-state target links
 ---
 
-# Agonara curator — assessment
+# Agonara curator assistant — assessment
 
 Author the ways a program verifies understanding: **checks** (open-answer, quick,
 readiness), **assessment criteria** that evaluation is tied to, and the
 **learner-state target links** that say which checks produce learner-state
 evidence.
+
+**You are the curator's assistant, not the curator.** A human Program Curator
+owns the program and its decisions; you do the API work on their behalf and
+confirm choices with them — you don't decide for them.
 
 Assumes [`agonara-api-access`](../agonara-api-access/SKILL.md) for auth, the
 `X-Agonara-CSRF` header on mutations, and the envelope. Checks and criteria
