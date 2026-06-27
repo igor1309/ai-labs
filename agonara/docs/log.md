@@ -9,10 +9,11 @@
   `GET /materials/{entityId}/content`, with character-cursor "Load more" pagination —
   serving both students and curators with no provenance leak. Verified by a new student
   Playwright test (material → "Read full material" → content renders) plus the existing
-  navigation browser tests (unchanged). Still owed before the phase closes: the curator
-  source-content load/delete form UI (`#material-content-curator-panel` / `#source-content-form`)
-  and its browser test — curators can load content via the Phase 3 API today. Full Agonara
-  suite and build pass.
+  navigation browser tests (unchanged). Added the curator source-content load/delete form UI
+  (`#material-content-curator-panel` / `#source-content-form`) wired to the
+  `PUT`/`DELETE /sources/{sourceId}/content` routes, with a curator browser test
+  (save → status, delete → status). **Phase 4 complete.** Five Playwright tests pass; full
+  Agonara suite and build pass.
 - Implemented **Phase 3** (HTTP) of material content storage: declared the content routes
   in `http-contract.js` (`PUT`/`GET`/`DELETE /sources/{sourceId}/content`,
   `PUT`/`GET /materials/revisions/{revisionId}/content`, `GET /materials/{entityId}/content`)

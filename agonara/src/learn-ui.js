@@ -634,6 +634,32 @@ export const learnUiHtml = `<!doctype html>
               <p id="navigation-candidate-action-status" class="status" aria-live="polite"></p>
             </section>
 
+            <section id="material-content-curator-panel" class="stack" aria-label="Curator Material Content">
+              <h3>Curator material content</h3>
+              <form id="source-content-form" class="stack">
+                <label>
+                  Source id
+                  <input id="source-content-id-input" name="sourceId" type="text" />
+                </label>
+                <label>
+                  Content format
+                  <select id="source-content-format-input" name="contentFormat">
+                    <option value="markdown">Markdown</option>
+                    <option value="plain_text">Plain text</option>
+                  </select>
+                </label>
+                <label>
+                  Content
+                  <textarea id="source-content-input" name="content"></textarea>
+                </label>
+                <div class="actions">
+                  <button data-action="save-source-content" data-requires-session type="submit">Save source content</button>
+                  <button data-action="delete-source-content" data-requires-session class="danger" type="button">Delete source content</button>
+                </div>
+              </form>
+              <p id="source-content-status" class="status" aria-live="polite"></p>
+            </section>
+
             <section id="navigation-student-panel" class="stack" aria-label="Student Navigation">
               <h3>Student navigation</h3>
               <button id="refresh-navigation-button" data-requires-session class="secondary" type="button">Refresh navigation</button>
@@ -1126,6 +1152,11 @@ export const learnUiHtml = `<!doctype html>
         materialContentBody: document.querySelector("#material-content-body"),
         materialContentStatus: document.querySelector("#material-content-status"),
         materialContentView: document.querySelector("#material-content-view"),
+        sourceContentForm: document.querySelector("#source-content-form"),
+        sourceContentFormatInput: document.querySelector("#source-content-format-input"),
+        sourceContentIdInput: document.querySelector("#source-content-id-input"),
+        sourceContentInput: document.querySelector("#source-content-input"),
+        sourceContentStatus: document.querySelector("#source-content-status"),
         navigationMaterialKindInput: document.querySelector("#navigation-material-kind-input"),
         navigationNodeDetail: document.querySelector("#navigation-node-detail"),
         navigationRationaleInput: document.querySelector("#navigation-rationale-input"),
@@ -1250,6 +1281,17 @@ export const learnUiHtml = `<!doctype html>
       elements.coverageGapFilterForm.addEventListener("submit", async event => {
         event.preventDefault();
         await refreshCoverageGaps();
+      });
+
+      elements.sourceContentForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        await saveSourceContent();
+      });
+
+      elements.sourceContentForm.addEventListener("click", event => {
+        if (event.target.closest("[data-action='delete-source-content']")) {
+          void deleteSourceContent();
+        }
       });
 
       elements.llmSuggestionGenerationForm.addEventListener("submit", async event => {
@@ -3181,6 +3223,42 @@ export const learnUiHtml = `<!doctype html>
           more.textContent = "Load more";
           elements.materialContentStatus.append(more);
         }
+      }
+
+      async function saveSourceContent() {
+        const sourceId = elements.sourceContentIdInput.value.trim();
+        if (!sourceId) {
+          elements.sourceContentStatus.textContent = "Enter a source id.";
+          return;
+        }
+        const result = await requestJson("/sources/" + encodeURIComponent(sourceId) + "/content", {
+          body: {
+            content: elements.sourceContentInput.value,
+            contentFormat: elements.sourceContentFormatInput.value,
+          },
+          csrf: true,
+          method: "PUT",
+        });
+        elements.sourceContentStatus.textContent =
+          result.status === "accepted"
+            ? "Saved content for " + sourceId + " (" + result.value.sourceContent.byteSize + " bytes)."
+            : "Save rejected: " + result.reason;
+      }
+
+      async function deleteSourceContent() {
+        const sourceId = elements.sourceContentIdInput.value.trim();
+        if (!sourceId) {
+          elements.sourceContentStatus.textContent = "Enter a source id.";
+          return;
+        }
+        const result = await requestJson("/sources/" + encodeURIComponent(sourceId) + "/content", {
+          csrf: true,
+          method: "DELETE",
+        });
+        elements.sourceContentStatus.textContent =
+          result.status === "accepted"
+            ? "Deleted content for " + sourceId + "."
+            : "Delete rejected: " + result.reason;
       }
 
       function navigationRelationshipSection(title, relationships, direction) {

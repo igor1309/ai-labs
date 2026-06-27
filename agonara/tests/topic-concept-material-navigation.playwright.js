@@ -450,6 +450,24 @@ test("materialContentReader_shouldRenderAcceptedContentForStudent_onStudentPanel
   }
 });
 
+test("materialContentCurator_shouldSaveAndDeleteSourceContent_onCuratorPanel", async ({ page }) => {
+  const harness = await startContentHarness();
+
+  try {
+    await signIn(page, harness.baseUrl);
+    await page.locator("#source-content-id-input").fill(harness.sourceId);
+    await page.locator("#source-content-format-input").selectOption("markdown");
+    await page.locator("#source-content-input").fill("# Raw lecture notes");
+    await page.locator("[data-action='save-source-content']").click();
+    await expect(page.locator("#source-content-status")).toContainText("Saved content for " + harness.sourceId);
+
+    await page.locator("[data-action='delete-source-content']").click();
+    await expect(page.locator("#source-content-status")).toContainText("Deleted content for " + harness.sourceId);
+  } finally {
+    await harness.close();
+  }
+});
+
 async function startContentHarness() {
   const database = openIdentityDatabase();
   initializeIdentityStorage(database);
@@ -487,6 +505,16 @@ async function startContentHarness() {
   const baseUrl = await listen(server);
   const bootstrap = await bootstrapIdentity(baseUrl);
   const programId = await createProgram(baseUrl, bootstrap, "Linear Algebra");
+  const sourceResponse = await fetch(`${baseUrl}/programs/${programId}/sources`, {
+    body: JSON.stringify({ sourceKind: "lecture", title: "Lecture source" }),
+    headers: {
+      cookie: bootstrap.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": bootstrap.csrfToken,
+    },
+    method: "POST",
+  });
+  const sourceId = (await sourceResponse.json()).value.programSource.sourceId;
   const accepted = await createAcceptedNavigationCandidate(baseUrl, bootstrap, programId, {
     candidateKind: "material_reference",
     locator: "https://example.test/basis",
@@ -518,6 +546,7 @@ async function startContentHarness() {
       database.close();
     },
     programId,
+    sourceId,
     student,
   };
 }
