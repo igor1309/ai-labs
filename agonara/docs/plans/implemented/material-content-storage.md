@@ -241,7 +241,7 @@ rejection reasons, and the `hasContent` signal on material navigation reads.
   `agonara/src/http-contract.js`; regenerate OpenAPI.
 - Add RED HTTP tests: `PUT`/`DELETE /sources/{sourceId}/content` require Program Curator
   participation + CSRF; `PUT` returns a `SourceContentSummary` with no content bytes;
-  `GET /sources/{sourceId}/content` rejects Student with `participation_required`.
+  `GET /sources/{sourceId}/content` rejects Student with `admin_or_curator_required`.
 - Add RED HTTP tests: `GET /materials/{entityId}/content` and `.../revisions/{revisionId}/content`
   readable by Student and Curator only, `content_not_found` when absent.
 - Add RED HTTP tests: pagination behavior; content projections expose only `content`,

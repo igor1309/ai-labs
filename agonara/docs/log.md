@@ -2,6 +2,10 @@
 
 ## 2026-06-27
 
+- Closed the material-content Phase 5 review gaps: content read HTTP responses are now
+  allowlisted to the spec fields, the `/learn` curator content panel can read source content
+  back after save, browser coverage proves hosted-content back-links and content controls, and
+  closeout tests now pin Product Intent traceability plus the refreshed LOC dashboard.
 - Addressed material-content review-gap PRs (#645/#647) against the branch: `hasContent`/
   `contentBytes`/`contentFormat` now also ride the navigation **coverage lists**
   (`listProgramNavigation` topics/ungrouped concepts/ungrouped materials), not just the

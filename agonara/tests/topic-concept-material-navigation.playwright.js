@@ -100,8 +100,17 @@ test("topicConceptMaterialNavigationLayout_shouldKeepControlsNamedAndNonOverlapp
       await expect(page.getByLabel("Navigation kind")).toBeVisible();
       await expect(page.getByLabel("Navigation title")).toBeVisible();
       await expect(page.getByLabel("Navigation relationships JSON")).toBeVisible();
+      const contentPanel = page.locator("#material-content-curator-panel");
+      await expect(contentPanel.getByLabel("Source id", { exact: true })).toBeVisible();
+      await expect(contentPanel.getByLabel("Content format")).toBeVisible();
+      await expect(contentPanel.getByLabel("Content", { exact: true })).toBeVisible();
+      await expect(contentPanel.getByRole("button", { name: "Save source content" })).toBeVisible();
+      await expect(contentPanel.getByRole("button", { name: "Read source content" })).toBeVisible();
+      await expect(contentPanel.getByRole("button", { name: "Delete source content" })).toBeVisible();
+      await expect(page.locator("#material-content-view")).toBeVisible();
       await expect(page.locator("#navigation-status")).toHaveAttribute("aria-live", "polite");
       await expect(page.locator("#navigation-candidate-action-status")).toHaveAttribute("aria-live", "polite");
+      await expect(page.locator("#source-content-status")).toHaveAttribute("aria-live", "polite");
       expect(await visibleControlOverlaps(page)).toEqual([]);
     }
   } finally {
@@ -435,13 +444,16 @@ test("materialContentReader_shouldRenderAcceptedContentForStudent_onStudentPanel
     await page.locator("#student-mode-tab").click();
     await page.locator("#refresh-navigation-button").click();
 
-    await expect(page.locator("#navigation-ungrouped-material-list")).toContainText("Basis reading");
+    await page.getByRole("button", { name: "Vector spaces topic" }).click();
+    await page.locator("#navigation-node-detail").getByRole("button", { name: "Basis concept" }).click();
     await page.getByRole("button", { name: "Basis reading material_reference" }).click();
     await expect(page.locator("#material-content-status")).toContainText("Material content available");
 
     await page.locator("[data-action='open-material-content']").click();
     await expect(page.locator("#material-content-body")).toContainText("Full basis text");
     await expect(page.locator("#material-content-status")).toContainText("markdown");
+    await expect(page.locator("#navigation-material-backlinks")).toContainText("Basis");
+    await expect(page.locator("#navigation-material-backlinks")).toContainText("Vector spaces");
 
     const forbiddenText = await navigationForbiddenText(page);
     expect(forbiddenText).toEqual([]);
@@ -460,6 +472,9 @@ test("materialContentCurator_shouldSaveAndDeleteSourceContent_onCuratorPanel", a
     await page.locator("#source-content-input").fill("# Raw lecture notes");
     await page.locator("[data-action='save-source-content']").click();
     await expect(page.locator("#source-content-status")).toContainText("Saved content for " + harness.sourceId);
+    await page.locator("#source-content-input").fill("");
+    await page.locator("[data-action='read-source-content']").click();
+    await expect(page.locator("#source-content-input")).toHaveValue("# Raw lecture notes");
 
     await page.locator("[data-action='delete-source-content']").click();
     await expect(page.locator("#source-content-status")).toContainText("Deleted content for " + harness.sourceId);
@@ -515,10 +530,32 @@ async function startContentHarness() {
     method: "POST",
   });
   const sourceId = (await sourceResponse.json()).value.programSource.sourceId;
+  const topic = await createAcceptedNavigationCandidate(baseUrl, bootstrap, programId, {
+    candidateKind: "topic",
+    title: "Vector spaces",
+  });
+  const concept = await createAcceptedNavigationCandidate(baseUrl, bootstrap, programId, {
+    candidateKind: "concept",
+    relationshipDrafts: [
+      {
+        fromEntityId: topic.entityId,
+        relationshipKind: "topic_includes_concept",
+        toCandidateRef: "self",
+      },
+    ],
+    title: "Basis",
+  });
   const accepted = await createAcceptedNavigationCandidate(baseUrl, bootstrap, programId, {
     candidateKind: "material_reference",
     locator: "https://example.test/basis",
     materialReferenceKind: "article",
+    relationshipDrafts: [
+      {
+        fromEntityId: concept.entityId,
+        relationshipKind: "concept_uses_material",
+        toCandidateRef: "self",
+      },
+    ],
     title: "Basis reading",
   });
   const entries = Array.isArray(accepted) ? accepted : [accepted];
