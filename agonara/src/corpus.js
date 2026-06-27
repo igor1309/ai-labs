@@ -1170,6 +1170,7 @@ function getNavigationRevision({ database, getEffectiveParticipation, input }) {
     navigationRevision: summarizeStudentNavigationRevision(revision, {
       includeCurrentRevision: true,
       isCurrentRevision: entity?.currentRevisionId === revision.id,
+      contentSignal: materialContentSignal(database, revision),
     }),
   });
 }
@@ -3021,9 +3022,22 @@ function summarizeAcceptedNavigationRelationship(revision) {
   return summary;
 }
 
+function materialContentSignal(database, revision) {
+  if (revision.acceptedKind !== "material_reference") {
+    return {};
+  }
+  const record = getAcceptedMaterialContentRecord(database, revision.id);
+  if (!record) {
+    return { hasContent: false };
+  }
+  return { hasContent: true, contentBytes: record.byteSize, contentFormat: record.contentFormat };
+}
+
 function summarizeStudentNavigationNode(database, revision, currentRelationshipRevisions) {
   return {
-    ...summarizeStudentNavigationRevision(revision),
+    ...summarizeStudentNavigationRevision(revision, {
+      contentSignal: materialContentSignal(database, revision),
+    }),
     relationships: {
       outgoing: currentRelationshipRevisions
         .filter($0 => $0.fromEntityId === revision.entityId)
@@ -3035,7 +3049,10 @@ function summarizeStudentNavigationNode(database, revision, currentRelationshipR
   };
 }
 
-function summarizeStudentNavigationRevision(revision, { includeCurrentRevision = false, isCurrentRevision = false } = {}) {
+function summarizeStudentNavigationRevision(
+  revision,
+  { includeCurrentRevision = false, isCurrentRevision = false, contentSignal = {} } = {},
+) {
   const summary = {
     entityId: revision.entityId,
     revisionId: revision.id,
@@ -3055,6 +3072,15 @@ function summarizeStudentNavigationRevision(revision, { includeCurrentRevision =
   }
   if (revision.citation !== undefined) {
     summary.citation = revision.citation;
+  }
+  if (contentSignal.hasContent !== undefined) {
+    summary.hasContent = contentSignal.hasContent;
+    if (contentSignal.contentBytes !== undefined) {
+      summary.contentBytes = contentSignal.contentBytes;
+    }
+    if (contentSignal.contentFormat !== undefined) {
+      summary.contentFormat = contentSignal.contentFormat;
+    }
   }
   if (includeCurrentRevision) {
     summary.isCurrentRevision = isCurrentRevision;

@@ -11,10 +11,11 @@
   content bytes), oversized writes return `content_too_large`, and licensing is not gated.
   Per owner decision, accepted content is written by the dedicated `setAcceptedMaterialContent`
   command rather than threaded into the acceptance transaction; the spec's route/shape
-  wording will be aligned when HTTP lands (Phase 3). Still owed before the phase closes:
-  the `hasContent` navigation-projection signal (touches existing navigation assertions),
-  executable-acceptance coverage, and an explicit no-Student-state boundary test. 7 domain
-  tests green; full Agonara suite and build pass.
+  wording will be aligned when HTTP lands (Phase 3). Closed the phase with the `hasContent`/
+  `contentBytes`/`contentFormat` signal on material navigation projections (material-only;
+  traversal stays content-free), a material-content executable-acceptance scenario, and a
+  no-Student-state boundary test. **Phase 2 complete.** Domain + executable-acceptance tests
+  green; full Agonara suite and build pass.
 - Implemented **Phase 1** of the material content storage plan: `source_contents`
   (keyed by `source_id`) and `accepted_material_contents` (keyed by `revision_id`) tables
   with a `content_format` `check`, derived `byte_size`, and optional provenance; storage

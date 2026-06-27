@@ -6856,3 +6856,43 @@ test("readMaterialContent_shouldPaginateByCharacterCursor_onMaterialContent", as
     database.close();
   }
 });
+
+test("getNavigationEntity_shouldCarryHasContentSignalForMaterialsOnly_onMaterialContent", async () => {
+  const { commands, database } = await makeMaterialContentSUT();
+
+  try {
+    const before = commands.getNavigationEntity({ actingIdentityId: "identity-student", entityId: "entity-a" });
+    assert.equal(before.value.navigationNode.hasContent, false);
+    assert.equal(before.value.navigationNode.contentBytes, undefined);
+
+    setAcceptedMaterialContentRecord(database, { revisionId: "revision-a", content: "# Body", contentFormat: "markdown" });
+    const after = commands.getNavigationEntity({ actingIdentityId: "identity-student", entityId: "entity-a" });
+    assert.equal(after.value.navigationNode.hasContent, true);
+    assert.equal(after.value.navigationNode.contentBytes, Buffer.byteLength("# Body", "utf8"));
+    assert.equal(after.value.navigationNode.contentFormat, "markdown");
+    assert.equal(after.value.navigationNode.content, undefined);
+
+    const topic = commands.getNavigationEntity({ actingIdentityId: "identity-student", entityId: "topic-entity-a" });
+    assert.equal("hasContent" in topic.value.navigationNode, false);
+  } finally {
+    database.close();
+  }
+});
+
+test("readMaterialContent_shouldNotMutateProgramOrStudentState_onMaterialContent", async () => {
+  const { commands, database } = await makeMaterialContentSUT();
+
+  try {
+    setAcceptedMaterialContentRecord(database, { revisionId: "revision-a", content: "body", contentFormat: "markdown" });
+    commands.setSourceContent({ actingIdentityId: "identity-curator", sourceId: "source-a", content: "src", contentFormat: "markdown" });
+    const eventsBefore = listCorpusEventRecords(database, { programId: "program-a" }).length;
+
+    commands.readMaterialContent({ actingIdentityId: "identity-student", entityId: "entity-a" });
+    commands.readMaterialRevisionContent({ actingIdentityId: "identity-student", revisionId: "revision-a" });
+    commands.readSourceContent({ actingIdentityId: "identity-curator", sourceId: "source-a" });
+
+    assert.equal(listCorpusEventRecords(database, { programId: "program-a" }).length, eventsBefore);
+  } finally {
+    database.close();
+  }
+});
