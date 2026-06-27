@@ -2,6 +2,17 @@
 
 ## 2026-06-27
 
+- Implemented the **Phase 4** `/learn` content reader for material content storage: the
+  student navigation material detail now shows a "Read full material" affordance when a
+  material has stored content, and a `#material-content-view` (`#material-content-status` +
+  `#material-content-body`) renders the accepted content fetched from
+  `GET /materials/{entityId}/content`, with character-cursor "Load more" pagination —
+  serving both students and curators with no provenance leak. Verified by a new student
+  Playwright test (material → "Read full material" → content renders) plus the existing
+  navigation browser tests (unchanged). Still owed before the phase closes: the curator
+  source-content load/delete form UI (`#material-content-curator-panel` / `#source-content-form`)
+  and its browser test — curators can load content via the Phase 3 API today. Full Agonara
+  suite and build pass.
 - Implemented **Phase 3** (HTTP) of material content storage: declared the content routes
   in `http-contract.js` (`PUT`/`GET`/`DELETE /sources/{sourceId}/content`,
   `PUT`/`GET /materials/revisions/{revisionId}/content`, `GET /materials/{entityId}/content`)

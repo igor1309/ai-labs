@@ -660,6 +660,11 @@ export const learnUiHtml = `<!doctype html>
               <div id="navigation-material-backlinks" class="list">
                 <p class="empty">No material back links loaded.</p>
               </div>
+              <div id="material-content-view" class="detail-section" aria-label="Material content">
+                <h3>Material content</h3>
+                <div id="material-content-status" class="empty">No material content loaded.</div>
+                <pre id="material-content-body" class="list"></pre>
+              </div>
             </section>
           </div>
         </section>
@@ -1118,6 +1123,9 @@ export const learnUiHtml = `<!doctype html>
         navigationKindInput: document.querySelector("#navigation-kind-input"),
         navigationLocatorInput: document.querySelector("#navigation-locator-input"),
         navigationMaterialBacklinks: document.querySelector("#navigation-material-backlinks"),
+        materialContentBody: document.querySelector("#material-content-body"),
+        materialContentStatus: document.querySelector("#material-content-status"),
+        materialContentView: document.querySelector("#material-content-view"),
         navigationMaterialKindInput: document.querySelector("#navigation-material-kind-input"),
         navigationNodeDetail: document.querySelector("#navigation-node-detail"),
         navigationRationaleInput: document.querySelector("#navigation-rationale-input"),
@@ -1888,6 +1896,16 @@ export const learnUiHtml = `<!doctype html>
         const revisionButton = event.target.closest("button[data-action='open-navigation-revision']");
         if (revisionButton) {
           void openNavigationRevision(revisionButton.dataset.revisionId);
+          return;
+        }
+        const contentButton = event.target.closest("button[data-action='open-material-content']");
+        if (contentButton) {
+          void openMaterialContent(contentButton.dataset.entityId);
+          return;
+        }
+        const moreButton = event.target.closest("button[data-action='load-more-material-content']");
+        if (moreButton) {
+          void loadMaterialContentPage();
         }
       });
 
@@ -3091,8 +3109,77 @@ export const learnUiHtml = `<!doctype html>
         elements.navigationNodeDetail.append(outgoing, incoming);
         if (node.acceptedKind === "material_reference") {
           await renderMaterialBacklinks(node);
+          renderMaterialContentAffordance(node);
         } else {
           elements.navigationMaterialBacklinks.innerHTML = '<p class="empty">No material back links loaded.</p>';
+          resetMaterialContentView("No material content loaded.");
+        }
+      }
+
+      function resetMaterialContentView(message) {
+        state.materialContentEntityId = null;
+        state.materialContentCursor = null;
+        elements.materialContentBody.textContent = "";
+        elements.materialContentStatus.textContent = message;
+      }
+
+      function renderMaterialContentAffordance(node) {
+        resetMaterialContentView(
+          node.hasContent ? "Material content available." : "No full text stored for this material.",
+        );
+        if (!node.hasContent) {
+          return;
+        }
+        const openButton = document.createElement("button");
+        openButton.type = "button";
+        openButton.className = "secondary";
+        openButton.dataset.action = "open-material-content";
+        openButton.dataset.entityId = node.entityId;
+        openButton.textContent = "Read full material";
+        elements.navigationNodeDetail.append(openButton);
+      }
+
+      async function openMaterialContent(entityId) {
+        if (!entityId) {
+          return;
+        }
+        state.materialContentEntityId = entityId;
+        state.materialContentCursor = null;
+        elements.materialContentBody.textContent = "";
+        await loadMaterialContentPage();
+      }
+
+      async function loadMaterialContentPage() {
+        const entityId = state.materialContentEntityId;
+        if (!entityId) {
+          return;
+        }
+        let path = "/materials/" + encodeURIComponent(entityId) + "/content?limit=2000";
+        if (state.materialContentCursor) {
+          path += "&cursor=" + encodeURIComponent(state.materialContentCursor);
+        }
+        const result = await requestJson(path);
+        if (result.status !== "accepted") {
+          elements.materialContentStatus.textContent = "Material content unavailable.";
+          return;
+        }
+        elements.materialContentBody.textContent += result.value.content;
+        state.materialContentCursor = result.value.nextCursor ?? null;
+        renderMaterialContentStatus(result.value);
+      }
+
+      function renderMaterialContentStatus(page) {
+        elements.materialContentStatus.innerHTML = "";
+        const label = document.createElement("span");
+        label.textContent = page.contentFormat + " · " + page.byteSize + " bytes";
+        elements.materialContentStatus.append(label);
+        if (state.materialContentCursor) {
+          const more = document.createElement("button");
+          more.type = "button";
+          more.className = "secondary";
+          more.dataset.action = "load-more-material-content";
+          more.textContent = "Load more";
+          elements.materialContentStatus.append(more);
         }
       }
 

@@ -425,3 +425,99 @@ function close(server) {
     });
   });
 }
+
+test("materialContentReader_shouldRenderAcceptedContentForStudent_onStudentPanel", async ({ page }) => {
+  const harness = await startContentHarness();
+
+  try {
+    await signIn(page, harness.baseUrl, harness.student.login, harness.student.password);
+    await page.locator("#program-id-input").fill(harness.programId);
+    await page.locator("#student-mode-tab").click();
+    await page.locator("#refresh-navigation-button").click();
+
+    await expect(page.locator("#navigation-ungrouped-material-list")).toContainText("Basis reading");
+    await page.getByRole("button", { name: "Basis reading material_reference" }).click();
+    await expect(page.locator("#material-content-status")).toContainText("Material content available");
+
+    await page.locator("[data-action='open-material-content']").click();
+    await expect(page.locator("#material-content-body")).toContainText("Full basis text");
+    await expect(page.locator("#material-content-status")).toContainText("markdown");
+
+    const forbiddenText = await navigationForbiddenText(page);
+    expect(forbiddenText).toEqual([]);
+  } finally {
+    await harness.close();
+  }
+});
+
+async function startContentHarness() {
+  const database = openIdentityDatabase();
+  initializeIdentityStorage(database);
+  const now = () => new Date("2026-06-03T10:00:00.000Z");
+  const generateId = makeIdGenerator([
+    "identity-1",
+    "credential-1",
+    "bootstrap-session-secret",
+    "audit-1",
+    "program-1",
+    "membership-1",
+    "program-event-1",
+    "membership-event-1",
+    "login-session-secret",
+    "audit-2",
+    ...Array.from({ length: 160 }, (_, index) => `id-${index + 1}`),
+  ]);
+  const programCommands = createProgramCommands({ database, generateId, now });
+  const server = createServer({
+    identityCommands: createIdentityCommands({
+      bootstrapSecret: "operator-secret",
+      database,
+      generateId,
+      now,
+    }),
+    programCommands,
+    corpusCommands: createCorpusCommands({
+      database,
+      generateId,
+      getEffectiveParticipation: programCommands.getEffectiveParticipation,
+      now,
+    }),
+    log: () => {},
+  });
+  const baseUrl = await listen(server);
+  const bootstrap = await bootstrapIdentity(baseUrl);
+  const programId = await createProgram(baseUrl, bootstrap, "Linear Algebra");
+  const accepted = await createAcceptedNavigationCandidate(baseUrl, bootstrap, programId, {
+    candidateKind: "material_reference",
+    locator: "https://example.test/basis",
+    materialReferenceKind: "article",
+    title: "Basis reading",
+  });
+  const entries = Array.isArray(accepted) ? accepted : [accepted];
+  const material = entries.find($0 => $0.acceptedKind === "material_reference") ?? entries[0];
+  await fetch(`${baseUrl}/materials/revisions/${material.revisionId}/content`, {
+    body: JSON.stringify({ content: "# Full basis text\\nDetailed reading.", contentFormat: "markdown" }),
+    headers: {
+      cookie: bootstrap.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": bootstrap.csrfToken,
+    },
+    method: "PUT",
+  });
+  const student = await createIdentitySession(baseUrl, bootstrap, {
+    displayName: "Learning Student",
+    login: "student@example.test",
+    password: "student password",
+  });
+  await joinStudentProgram(baseUrl, student, programId);
+
+  return {
+    baseUrl,
+    close: async () => {
+      await close(server);
+      database.close();
+    },
+    programId,
+    student,
+  };
+}
