@@ -1887,8 +1887,8 @@ test("materialContentRoute_shouldParsePaginationAndMapReadStatuses", async () =>
     });
 
     assert.deepEqual(
-      { okStatus: ok.status, echo: okBody.value.echo, content: okBody.value.content, missingStatus: missing.status },
-      { okStatus: 200, echo: { limit: 2, cursor: "1" }, content: "ab", missingStatus: 404 },
+      { okStatus: ok.status, valueKeys: Object.keys(okBody.value).sort(), content: okBody.value.content, missingStatus: missing.status },
+      { okStatus: 200, valueKeys: ["byteSize", "content", "contentFormat", "nextCursor"], content: "ab", missingStatus: 404 },
     );
   } finally {
     await close(server);
@@ -1915,6 +1915,7 @@ test("sourceContentRoute_shouldMapCuratorRejectionAndRequireCsrfOnWrite", async 
     const studentRead = await fetch(`${baseUrl}/sources/s/content`, {
       headers: { cookie: "agonara_session=s" },
     });
+    const studentReadBody = await studentRead.json();
     const writeWithoutCsrf = await fetch(`${baseUrl}/sources/s/content`, {
       method: "PUT",
       headers: { cookie: "agonara_session=s", "content-type": "application/json" },
@@ -1922,8 +1923,18 @@ test("sourceContentRoute_shouldMapCuratorRejectionAndRequireCsrfOnWrite", async 
     });
 
     assert.deepEqual(
-      { studentReadStatus: studentRead.status, writeStatus: writeWithoutCsrf.status, writeReason: (await writeWithoutCsrf.json()).reason },
-      { studentReadStatus: 403, writeStatus: 403, writeReason: "csrf_required" },
+      {
+        studentReadStatus: studentRead.status,
+        studentReadReason: studentReadBody.reason,
+        writeStatus: writeWithoutCsrf.status,
+        writeReason: (await writeWithoutCsrf.json()).reason,
+      },
+      {
+        studentReadStatus: 403,
+        studentReadReason: "admin_or_curator_required",
+        writeStatus: 403,
+        writeReason: "csrf_required",
+      },
     );
   } finally {
     await close(server);

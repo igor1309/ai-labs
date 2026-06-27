@@ -252,7 +252,7 @@ here — it counts list items, not characters.)
 6. HTTP test verifies `PUT`/`DELETE /sources/{sourceId}/content` require effective Program
    Curator participation and CSRF, that `PUT` returns a `SourceContentSummary` carrying no
    content bytes, and that `GET /sources/{sourceId}/content` rejects Student participation
-   with `participation_required`.
+   with `admin_or_curator_required`.
 7. HTTP test verifies `DELETE /sources/{sourceId}/content` hard-deletes the raw blob, is
    idempotent when absent, and does not affect accepted material content.
 8. HTTP test verifies `GET /materials/{entityId}/content` and

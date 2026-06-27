@@ -2,6 +2,10 @@
 
 ## 2026-06-27
 
+- Closed the material-content Phase 5 review gaps: content read HTTP responses are now
+  allowlisted to the spec fields, the `/learn` curator content panel can read source content
+  back after save, browser coverage proves hosted-content back-links and content controls, and
+  closeout tests now pin Product Intent traceability plus the refreshed LOC dashboard.
 - Closed out **Phase 5** of material content storage: amended navigation spec #28/#29 (content
   served off a dedicated route with a `hasContent` signal, not navigation traversal; content
   storage/serving and curator-owned licensing owned by the material-content spec/ADR-021);

@@ -2302,7 +2302,7 @@ async function handleCorpusApi({
       sourceId: decodeURIComponent(sourceContentMatch[1]),
       ...parseContentQuery(request),
     });
-    sendJson(response, statusForResult(result), result);
+    sendJson(response, statusForResult(result), mapContentReadResult(result));
     return true;
   }
 
@@ -2344,7 +2344,7 @@ async function handleCorpusApi({
       revisionId: decodeURIComponent(materialRevisionContentMatch[1]),
       ...parseContentQuery(request),
     });
-    sendJson(response, statusForResult(result), result);
+    sendJson(response, statusForResult(result), mapContentReadResult(result));
     return true;
   }
 
@@ -2359,7 +2359,7 @@ async function handleCorpusApi({
       entityId: decodeURIComponent(materialContentMatch[1]),
       ...parseContentQuery(request),
     });
-    sendJson(response, statusForResult(result), result);
+    sendJson(response, statusForResult(result), mapContentReadResult(result));
     return true;
   }
 
@@ -3298,6 +3298,19 @@ function mapProgramCreatedResult(result) {
   return accepted({
     initialCuratorMembership: result.value.initialCuratorMembership,
     program: result.value.programShell,
+  });
+}
+
+function mapContentReadResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+
+  return accepted({
+    content: result.value.content,
+    contentFormat: result.value.contentFormat,
+    byteSize: result.value.byteSize,
+    ...(result.value.nextCursor ? { nextCursor: result.value.nextCursor } : {}),
   });
 }
 
