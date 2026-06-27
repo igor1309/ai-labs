@@ -9,6 +9,10 @@
   `{content, contentFormat, byteSize, nextCursor}` via `mapContentPageResult` instead of
   passing the raw command value through. Kept the owner's dedicated `setAcceptedMaterialContent`
   design (content is not threaded into acceptance). Full Agonara suite and build pass.
+- Strengthened Phase 1 material-content tests after review: storage tests now assert exact
+  rejection reasons and unchanged rows for invalid format, oversized writes, and accepted
+  revision overwrite attempts; backup/restore rejection tests now prove malformed content
+  backups leave an existing target untouched.
 - Closed out **Phase 5** of material content storage: amended navigation spec #28/#29 (content
   served off a dedicated route with a `hasContent` signal, not navigation traversal; content
   storage/serving and curator-owned licensing owned by the material-content spec/ADR-021);
