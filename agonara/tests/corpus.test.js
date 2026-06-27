@@ -6857,6 +6857,70 @@ test("readMaterialContent_shouldPaginateByCharacterCursor_onMaterialContent", as
   }
 });
 
+test("acceptNavigationCandidate_shouldStoreMaterialContentPerAcceptedRevision_onMaterialContent", async () => {
+  const { commands, database } = await makeMaterialContentSUT();
+
+  try {
+    const replacementCandidate = commands.createNavigationCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      candidateKind: "material_reference",
+      title: "Replacement material",
+      materialReferenceKind: "lecture",
+      locator: "replacement-loc",
+      sourceIds: ["source-a"],
+      content: "# Replacement content",
+      contentFormat: "markdown",
+      sourceContentProvenance: { sourceId: "source-a" },
+    });
+    const replacement = commands.acceptNavigationCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: replacementCandidate.value.navigationCandidate.candidateId,
+      targetEntityId: "entity-a",
+    });
+    commands.setSourceContent({
+      actingIdentityId: "identity-curator",
+      sourceId: "source-a",
+      content: "# Edited source",
+      contentFormat: "markdown",
+    });
+    commands.deleteSourceContent({ actingIdentityId: "identity-curator", sourceId: "source-a" });
+
+    assert.deepEqual(
+      {
+        replacementContent: commands.readMaterialRevisionContent({
+          actingIdentityId: "identity-student",
+          revisionId: replacement.value.navigationChange.acceptedCorpus.revisionId,
+        }),
+        currentContent: commands.readMaterialContent({
+          actingIdentityId: "identity-student",
+          entityId: "entity-a",
+        }),
+      },
+      {
+        replacementContent: {
+          status: "accepted",
+          value: {
+            content: "# Replacement content",
+            contentFormat: "markdown",
+            byteSize: Buffer.byteLength("# Replacement content", "utf8"),
+          },
+        },
+        currentContent: {
+          status: "accepted",
+          value: {
+            content: "# Replacement content",
+            contentFormat: "markdown",
+            byteSize: Buffer.byteLength("# Replacement content", "utf8"),
+          },
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("getNavigationEntity_shouldCarryHasContentSignalForMaterialsOnly_onMaterialContent", async () => {
   const { commands, database } = await makeMaterialContentSUT();
 
@@ -6879,20 +6943,60 @@ test("getNavigationEntity_shouldCarryHasContentSignalForMaterialsOnly_onMaterial
   }
 });
 
+test("listProgramNavigation_shouldCarryHasContentSignalForUngroupedMaterials_onMaterialContent", async () => {
+  const { commands, database } = await makeMaterialContentSUT();
+
+  try {
+    setAcceptedMaterialContentRecord(database, { revisionId: "revision-a", content: "# Body", contentFormat: "markdown" });
+
+    assert.deepEqual(
+      commands.listProgramNavigation({ actingIdentityId: "identity-student", programId: "program-a" }).value.navigation.ungroupedMaterials,
+      [
+        {
+          entityId: "entity-a",
+          revisionId: "revision-a",
+          acceptedKind: "material_reference",
+          title: "Material",
+          hasContent: true,
+          contentBytes: Buffer.byteLength("# Body", "utf8"),
+          contentFormat: "markdown",
+        },
+      ],
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("readMaterialContent_shouldNotMutateProgramOrStudentState_onMaterialContent", async () => {
   const { commands, database } = await makeMaterialContentSUT();
 
   try {
     setAcceptedMaterialContentRecord(database, { revisionId: "revision-a", content: "body", contentFormat: "markdown" });
     commands.setSourceContent({ actingIdentityId: "identity-curator", sourceId: "source-a", content: "src", contentFormat: "markdown" });
-    const eventsBefore = listCorpusEventRecords(database, { programId: "program-a" }).length;
+    const before = snapshotMaterialContentReadBoundary(database);
 
     commands.readMaterialContent({ actingIdentityId: "identity-student", entityId: "entity-a" });
     commands.readMaterialRevisionContent({ actingIdentityId: "identity-student", revisionId: "revision-a" });
     commands.readSourceContent({ actingIdentityId: "identity-curator", sourceId: "source-a" });
 
-    assert.equal(listCorpusEventRecords(database, { programId: "program-a" }).length, eventsBefore);
+    assert.deepEqual(snapshotMaterialContentReadBoundary(database), before);
   } finally {
     database.close();
   }
 });
+
+function snapshotMaterialContentReadBoundary(database) {
+  return {
+    corpusEventCount: listCorpusEventRecords(database, { programId: "program-a" }).length,
+    learnerEvidenceTargetLinkCount: countRows(database, "learner_evidence_target_links"),
+    openAnswerAttemptCount: countRows(database, "open_answer_attempts"),
+    openAnswerEvaluationCount: countRows(database, "open_answer_evaluations"),
+    openAnswerEvaluationFailureCount: countRows(database, "open_answer_evaluation_failures"),
+    openAnswerEvaluatorEvidenceCount: countRows(database, "open_answer_evaluator_evidence"),
+    openAnswerEvaluatorRunCount: countRows(database, "open_answer_evaluator_runs"),
+    quickCheckAttemptCount: countRows(database, "quick_check_attempts"),
+    readinessCheckAttemptCount: countRows(database, "readiness_check_attempts"),
+    sessionCount: countRows(database, "sessions"),
+  };
+}
