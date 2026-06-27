@@ -2,107 +2,24 @@
 
 ## 2026-06-27
 
-- Saved the adversarial review for the student-api-program-materials branch in
-  `docs/reviews/student-api-program-materials-adversarial-review.md`, capturing five
-  doc-contract findings against ADR/spec/review/doc-maintenance requirements before push.
-
-- Promoted the accepted-entity withdrawal pre-ADR to **ADR-022 — Accepted Entity
-  Withdrawal and Source Deletion** (`status: accepted`; added to the `architecture.html`
-  index; pre-ADR marked promoted). Adopts the entity-level `active → withdrawn` lifecycle
-  status (reversible, history-preserving, curator-authorized, withdrawn entities excluded
-  from delivery/coverage), generalizes it to Program source records, and adds two-tier
-  source deletion (hard-delete unreferenced, withdraw referenced). Completes ADR-021's
-  deletion tiers (evidenced accepted content retired by withdrawal). Resolved the pre-ADR's
-  open questions: entity-level granularity, block-on-active-reference (no cascade),
-  reactivate restores the current revision, backup/restore preserves status. `arch-doc-review`
-  pass fixed a consistency fail (source records were withdrawn in §5 but never granted a
-  status in §1/Rules). Backlog updated: the source-deletion item's source half is resolved
-  (program archival/ownership transfer remains open); the withdrawal spec+implementation is
-  tracked in `backlog/material-content.md`.
-
-- Promoted the material-content pre-ADR to **ADR-021 — Material Content Storage and
-  Role-Gated Reading** (`status: accepted`; added to the `architecture.html` ADR index;
-  pre-ADR marked promoted). Decides boundary/ownership/access/integrity invariants only:
-  Agonara stores material text and serves it role-gated (curator R/W/D over everything
-  loaded, student read over accepted), licensing is the curator's responsibility, two
-  content homes (source raw = curator, accepted = self-contained student-served copy),
-  content rides the accepted-revision model, dedicated content read surface, text-only with
-  a soft size ceiling. `arch-doc-review` pass fixed a Decision-vs-Rules delete consistency
-  warn and added the downstream spec's tests as the named verification mechanism.
-
-- Wrote the downstream spec **`docs/specs/material-content-storage.md`** (`status: draft`)
-  pinning what ADR-021 deferred: two content tables (`SourceContent` keyed by `sourceId`,
-  `AcceptedMaterialContent` keyed by `revisionId`), `content_format` DB `check`
-  (`markdown`/`plain_text`), 1 MiB soft cap with `content_too_large`, content-capture write
-  shapes, role-gated content read routes with character-based `limit`/opaque `cursor`
-  pagination, `hasContent` navigation signal, backup/restore rules, new rejection reasons,
-  the navigation spec #28 amendment, and the required Product Intent story changes. Caught
-  and fixed a contract bug while drafting (reusing the list `Limit` max-100 schema for
-  character pagination); content `limit` is now a character count capped at the size ceiling.
-
-- Capture "make material content readable in-product" as a forward decision in
-  `backlog/README.md` (Uncategorized items). A live curator session confirmed the
-  gap is structural, not transient: a `material_reference`'s `locator` is a
-  free-form string Agonara stores verbatim and never resolves or serves
-  (`src/corpus.js` `recordProgramSource` / `summarizeProgramSource`), and curator
-  agents write their own ephemeral `/root/.hermes/cache/...` path into it; the
-  `body` is an annotation-length concise summary, not the source text. When the
-  agent container recycles, the only copy of the extracted markdown is gone, so
-  neither curator nor student can read the text. Owner-stated direction: curator
-  full read, student read access — which overturns ADR-010 (corpus stores
-  metadata, not content) and navigation spec #28, so it needs a pre-ADR → ADR.
-  Backlog records the content-model fork (Agonara stores content / resolves a
-  durable locator / fix the BYOA ingestion contract) with the store-content
-  option recommended.
-
-- Owner picked the store-content direction. Added
-  `docs/pre-adr/material-content-access_pre_adr.md` (My Way pre-ADR) for letting
-  Agonara store extracted material text and serve it through role-gated reads
-  (curator full, student read). Corrected the earlier framing after reading
-  ADR-010 fully: this **extends** ADR-010 into space its Non-Goals explicitly
-  defer ("material file storage, copying, scraping"; "content licensing policy")
-  and preserves its ownership/acceptance invariants, rather than overturning it;
-  it revises navigation spec #28 and shifts Product Intent (materials today are
-  external-source links, STU-09/CUR-01/07, not hosted text). Pre-ADR's emerging
-  direction is Option A.
-
-- Set two owner-fixed (non-negotiable) boundaries in the material-content pre-ADR
-  and ran an `arch-doc-review` pass (Consistency fail + two warns fixed): (1)
-  content licensing/copyright is the **curator's** responsibility — Agonara
-  stores/serves what the curator loads and does not adjudicate or assume
-  liability (so it is no longer an open ADR question); (2) access model — curator
-  read/write/delete over everything loaded, student read over accepted only, with
-  curator delete of evidenced accepted content resolving to withdrawal (soft
-  delete via `accepted-entity-withdrawal_pre_adr.md`), not erasure. Boundaries
-  written with MUST/MUST NOT wording and marked ADR-binding.
-
-- Folded owner-approved sub-decisions into the material-content pre-ADR (v0.1.0 →
-  v0.2.0): sibling content table in the same SQLite DB keyed by `revision_id`
-  (and `source_id` for raw source content); capture at source intake + promote at
-  acceptance, giving two content homes (source raw = curator-full, accepted =
-  student-read); content rides the existing accepted-revision model (immutable per
-  revision); hybrid read surface (content-free navigation with a `hasContent`
-  signal + a dedicated role-gated content route, preserving spec #28's
-  no-content-in-traversal rule rather than loading content into navigation);
-  additive Product Intent; markdown/text only with `content_format` + soft size
-  cap. Open questions trimmed to source↔accepted de-duplication, source
-  raw-content deletion (joint with the source-deletion backlog item), soft cap +
-  pagination, intent wording, and `content_format` vocabulary.
-
-- Closed the material-content pre-ADR's five remaining questions (v0.2.0 →
-  v0.3.0), making it decision-complete: accepted content is a self-contained copy
-  with a source-range provenance pointer (not a live reference, so evidenced
-  revisions stay addressable through source edits/deletion); two-tier source
-  deletion (free hard-delete of the raw content blob — non-load-bearing once
-  content is copied — with withdrawal/tombstone for the source record, settled
-  jointly with the "Authorized deletion of corpus sources" backlog item); ~1 MB
-  soft per-material cap with `content_too_large` and the existing `limit`/`cursor`
-  pagination on the content route; additive Product Intent (new curator/student
-  stories + STU-09/CUR-03 "linked or hosted" amendment, CUR-01/07 unchanged);
-  `content_format` as a DB `check` seeded with `markdown` + `plain_text`. Open
-  questions section now records only spec-level detail; the pre-ADR is ready to
-  promote to an ADR. Cross-linked the source-deletion backlog item to the two-tier
-  resolution.
+- **ADR-021 — Material Content Storage and Role-Gated Reading** (accepted) and its draft
+  spec `docs/specs/material-content-storage.md`: Agonara stores material text and serves it
+  role-gated (curator read/write/delete over everything loaded, student read over accepted);
+  licensing is the curator's responsibility; source raw content and accepted-revision content
+  (a self-contained immutable copy) on the existing provenance chain. Promoted from
+  `docs/pre-adr/material-content-access_pre_adr.md`.
+- **ADR-022 — Accepted Entity Withdrawal and Source Deletion** (accepted), promoting the
+  accepted-entity withdrawal pre-ADR: entity-level `active → withdrawn` status generalized to
+  source records, two-tier source deletion (hard-delete unreferenced, withdraw referenced),
+  evidenced accepted content retired by withdrawal. The source-deletion backlog item's source
+  half is resolved; program archival/ownership transfer remains open.
+- Promoted the material-content backlog to its own `backlog/material-content.md` topic file.
+- Addressed the branch adversarial review
+  (`docs/reviews/student-api-program-materials-adversarial-review.md`): defined the spec's
+  `SourceContentSummary`, scoped material-content reads to Student/Curator participation
+  (Admin is not effective participation per ADR-002/007), marked the withdrawal pre-ADR's
+  questions resolved, aligned ADR section headings to the governance template, and collapsed
+  these log entries to outcomes.
 
 ## 2026-06-22
 

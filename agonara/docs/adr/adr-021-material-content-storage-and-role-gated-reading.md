@@ -7,7 +7,7 @@ description: "Decision for storing program material content in Agonara and servi
 
 # ADR-021 — Material Content Storage and Role-Gated Reading
 
-## Executive summary
+## Executive Summary
 
 Agonara MUST be able to store the **text content** of a program material and serve it
 through **role-gated reads**, instead of holding only a `locator`/`citation`/concise
@@ -95,7 +95,7 @@ serving it through role-gated reads. The decision has these parts:
 7. **Format and size.** Stored content is text (markdown or plain text) with a declared
    format and a soft per-material size ceiling; binary content is out of scope.
 
-## Rules / invariants
+## Rules / Invariants
 
 - Corpus Storage MUST own stored material content. Stored content MUST live behind the
   ADR-010 acceptance boundary and MUST NOT be owned by Curator Workspace draft state or by
@@ -165,7 +165,7 @@ serving it through role-gated reads. The decision has these parts:
   ownership, access, copy/immutability, deletion-tier, and licensing invariants. This ADR
   is the boundary; the spec is its enforcement mechanism.
 
-## Non-goals
+## Non-Goals
 
 This ADR does not decide:
 

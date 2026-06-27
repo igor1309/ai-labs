@@ -91,6 +91,16 @@ type MaterialContentPage = {
   nextCursor?: string;      // present only when more content remains
 };
 
+// Redacted confirmation returned by writes that set source content; carries no
+// content bytes.
+type SourceContentSummary = {
+  sourceId: string;
+  contentFormat: ContentFormat;
+  byteSize: number;
+  recordedByIdentityId: string;
+  recordedAt: string;       // ISO-8601
+};
+
 // Added to existing student-safe and curator material projections.
 type MaterialContentSignal = {
   hasContent: boolean;
@@ -106,8 +116,8 @@ type MaterialContentSignal = {
 | `PUT` | `/sources/{sourceId}/content` | Program Curator session and CSRF header | `AcceptedResult<{ sourceContent: SourceContentSummary }>` |
 | `GET` | `/sources/{sourceId}/content?limit={limit}&cursor={cursor}` | Program Curator session | `AcceptedResult<MaterialContentPage>` |
 | `DELETE` | `/sources/{sourceId}/content` | Program Curator session and CSRF header | `AcceptedResult<{ sourceId: string }>` |
-| `GET` | `/materials/{entityId}/content?limit={limit}&cursor={cursor}` | Student, Program Curator, or Admin session | `AcceptedResult<MaterialContentPage>` |
-| `GET` | `/materials/revisions/{revisionId}/content?limit={limit}&cursor={cursor}` | Student, Program Curator, or Admin session | `AcceptedResult<MaterialContentPage>` |
+| `GET` | `/materials/{entityId}/content?limit={limit}&cursor={cursor}` | Student or Program Curator session | `AcceptedResult<MaterialContentPage>` |
+| `GET` | `/materials/revisions/{revisionId}/content?limit={limit}&cursor={cursor}` | Student or Program Curator session | `AcceptedResult<MaterialContentPage>` |
 
 `POST /programs/{programId}/sources` accepts optional `content` and `contentFormat`
 (`SetSourceContentInput`) at intake. `POST /navigation-candidates/{candidateId}/acceptance`
@@ -162,9 +172,9 @@ here — it counts list items, not characters.)
     addressed content, or a non-positive `limit`, is rejected with `validation_failed`.
 13. `GET /materials/{entityId}/content` serves the content of the entity's current accepted
     revision; `GET /materials/revisions/{revisionId}/content` serves the content of the named
-    revision. Both require effective Student, Program Curator, or Admin participation for the
-    Program and do not require CSRF. A request for a material with no stored content is
-    rejected with `content_not_found`.
+    revision. Both require effective Student or Program Curator participation for the Program
+    and do not require CSRF. A request for a material with no stored content is rejected with
+    `content_not_found`.
 14. Content reads must not create, update, or delete Student Workspace state (viewing
     history, last position, progress, mastery, weak areas, attempts, answers, evidence).
 15. Content read projections expose only `content`, `contentFormat`, `byteSize`, and
@@ -217,14 +227,15 @@ here — it counts list items, not characters.)
 5. Domain test stores accepted content as a self-contained copy and proves a later edit or
    delete of the originating source raw content leaves accepted content unchanged.
 6. HTTP test verifies `PUT`/`DELETE /sources/{sourceId}/content` require effective Program
-   Curator participation and CSRF, and that `GET /sources/{sourceId}/content` rejects Student
-   participation with `participation_required`.
+   Curator participation and CSRF, that `PUT` returns a `SourceContentSummary` carrying no
+   content bytes, and that `GET /sources/{sourceId}/content` rejects Student participation
+   with `participation_required`.
 7. HTTP test verifies `DELETE /sources/{sourceId}/content` hard-deletes the raw blob, is
    idempotent when absent, and does not affect accepted material content.
 8. HTTP test verifies `GET /materials/{entityId}/content` and
-   `/materials/revisions/{revisionId}/content` are readable by Student, Curator, and Admin
-   only under effective participation, and return `content_not_found` for a material with no
-   stored content.
+   `/materials/revisions/{revisionId}/content` are readable by Student and Curator only under
+   effective participation (and rejected otherwise), and return `content_not_found` for a
+   material with no stored content.
 9. HTTP test verifies pagination: full content with no `limit`; a chunk plus `nextCursor`
    with `limit`; `byteSize` always reporting full size; and `validation_failed` for an
    unresolvable cursor.

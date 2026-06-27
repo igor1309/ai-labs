@@ -7,7 +7,7 @@ description: "Decision for curator-authorized withdrawal of accepted entities an
 
 # ADR-022 — Accepted Entity Withdrawal and Source Deletion
 
-## Executive summary
+## Executive Summary
 
 Agonara MUST give a `Program Curator` an ordinary path to **retire** content they accepted
 or loaded, without erasing the history that student evidence depends on. Accepted entities
@@ -81,7 +81,7 @@ the delivery path). Entity-level status keeps content and lifecycle separate.
    actions, attributable to the acting `Identity` and scoped to the `Program` — the same
    authority boundary as acceptance. `Admin` authority is not the ordinary path.
 
-## Rules / invariants
+## Rules / Invariants
 
 - Each accepted entity family and each Program source record MUST carry a `status`
   constrained to `active` or `withdrawn`, defaulting to `active`. Status MUST be
@@ -131,7 +131,7 @@ the delivery path). Entity-level status keeps content and lifecycle separate.
   spec's acceptance criteria and tests (domain, HTTP, and backup/restore). This ADR is the
   boundary; the spec is its enforcement mechanism.
 
-## Non-goals
+## Non-Goals
 
 This ADR does not decide:
 
