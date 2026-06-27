@@ -273,8 +273,8 @@ owner-fixed boundary, not an Agonara decision.
 ## Open questions
 
 None blocking. The architectural decision space is closed: Option A with the
-owner-approved sub-decisions and the owner-fixed boundaries above. This pre-ADR is ready
-to promote to an ADR.
+owner-approved sub-decisions and the owner-fixed boundaries above. **Promoted to
+[ADR-021](../adr/adr-021-material-content-storage-and-role-gated-reading.md).**
 
 What remains is **specification-level detail**, owned by the ADR's downstream spec(s), not
 by this pre-ADR:
