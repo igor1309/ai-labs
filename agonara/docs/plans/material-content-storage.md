@@ -27,7 +27,7 @@ Push policy: push at closeout
 ## Execution lock
 
 Worktree mode: none
-Expected worktree: none — primary checkout at repo root `/home/user/ai-labs`
+Expected worktree: not applicable (`Worktree mode: none`; work in the primary checkout at `/home/user/ai-labs`)
 Expected branch: `claude/agonara-material-content-impl-plan`
 Preflight check: [ ] not started (authoring only)
 
@@ -37,7 +37,9 @@ Preflight check: [ ] not started (authoring only)
   source-record deletion, or `active → withdrawn` status — those need their own spec and plan.
 - Do not change existing `/corpus-candidates`, `/accepted-corpus`, navigation, Quick Check,
   open-answer, readiness, Program Membership, Identity, Operations, or Admin contracts except
-  where tests prove existing behavior is preserved.
+  where tests prove existing behavior is preserved. The only navigation change is the
+  additive `hasContent`/`contentBytes`/`contentFormat` signal on material projections, with
+  tests proving existing traversal behavior is preserved.
 - Accepted material content MUST be a self-contained copy on the accepted revision, never a
   live reference into source raw content; editing accepted content goes through a new accepted
   revision and never overwrites an existing one.
@@ -146,7 +148,7 @@ Update tracker checkboxes only after the phase's required verification passes an
 | ADR-021: Agonara does not gate or record licensing. | Phase 2 |
 | ADR-021: dedicated content read surface; navigation content-free with a `hasContent` signal. | Phase 3, Phase 4 |
 | ADR-021: text-only content with `content_format` vocabulary and a soft size ceiling. | Phase 1, Phase 2 |
-| ADR-022: source raw content blob hard-deletes freely, not affecting accepted content or evidence. | Phase 2, Phase 3 |
+| ADR-021: a curator hard-deletes source raw content; deletion does not affect accepted content or evidence. | Phase 2, Phase 3 |
 | ADR-010: acceptance remains the explicit, attributable, provenance-preserving boundary. | Phase 2, Phase 3 |
 | Spec #28 amendment: content served off a dedicated route, not navigation traversal. | Phase 3, Phase 5 |
 
