@@ -1114,12 +1114,14 @@ function listProgramNavigation({ database, getEffectiveParticipation, input }) {
   return accepted({
     navigation: {
       programId: authorization.program.id,
-      topics: currentNavigationNodeSummaries(currentRevisions, $0 => $0.acceptedKind === "topic"),
+      topics: currentNavigationNodeSummaries(database, currentRevisions, $0 => $0.acceptedKind === "topic"),
       ungroupedConcepts: currentNavigationNodeSummaries(
+        database,
         currentRevisions,
         $0 => $0.acceptedKind === "concept" && !groupedConceptIds.has($0.entityId),
       ),
       ungroupedMaterials: currentNavigationNodeSummaries(
+        database,
         currentRevisions,
         $0 => $0.acceptedKind === "material_reference" && !groupedMaterialIds.has($0.entityId),
       ),
@@ -3113,7 +3115,7 @@ function summarizeStudentNavigationRelationship(database, revision) {
   return summary;
 }
 
-function currentNavigationNodeSummaries(currentRevisions, matches) {
+function currentNavigationNodeSummaries(database, currentRevisions, matches) {
   return [...currentRevisions.values()]
     .filter(matches)
     .map($0 => ({
@@ -3121,6 +3123,7 @@ function currentNavigationNodeSummaries(currentRevisions, matches) {
       revisionId: $0.id,
       acceptedKind: $0.acceptedKind,
       title: $0.title,
+      ...materialContentSignal(database, $0),
     }));
 }
 

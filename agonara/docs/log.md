@@ -2,6 +2,13 @@
 
 ## 2026-06-27
 
+- Addressed material-content review-gap PRs (#645/#647) against the branch: `hasContent`/
+  `contentBytes`/`contentFormat` now also ride the navigation **coverage lists**
+  (`listProgramNavigation` topics/ungrouped concepts/ungrouped materials), not just the
+  detail projections; and the HTTP content **read** handlers now **whitelist** the response to
+  `{content, contentFormat, byteSize, nextCursor}` via `mapContentPageResult` instead of
+  passing the raw command value through. Kept the owner's dedicated `setAcceptedMaterialContent`
+  design (content is not threaded into acceptance). Full Agonara suite and build pass.
 - Closed out **Phase 5** of material content storage: amended navigation spec #28/#29 (content
   served off a dedicated route with a `hasContent` signal, not navigation traversal; content
   storage/serving and curator-owned licensing owned by the material-content spec/ADR-021);

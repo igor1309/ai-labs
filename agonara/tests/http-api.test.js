@@ -1870,7 +1870,15 @@ test("materialContentRoute_shouldParsePaginationAndMapReadStatuses", async () =>
           ? { status: "rejected", reason: "content_not_found" }
           : {
               status: "accepted",
-              value: { content: "ab", contentFormat: "markdown", byteSize: 6, nextCursor: "2", echo: { limit, cursor } },
+              // Encode the parsed pagination into a whitelisted field plus a leaky field that
+              // must be stripped by the response whitelist.
+              value: {
+                content: `limit=${limit} cursor=${cursor}`,
+                contentFormat: "markdown",
+                byteSize: 6,
+                nextCursor: "2",
+                acceptedByIdentityId: "identity-secret",
+              },
             },
     },
     log: () => {},
@@ -1887,8 +1895,12 @@ test("materialContentRoute_shouldParsePaginationAndMapReadStatuses", async () =>
     });
 
     assert.deepEqual(
-      { okStatus: ok.status, echo: okBody.value.echo, content: okBody.value.content, missingStatus: missing.status },
-      { okStatus: 200, echo: { limit: 2, cursor: "1" }, content: "ab", missingStatus: 404 },
+      { okStatus: ok.status, value: okBody.value, missingStatus: missing.status },
+      {
+        okStatus: 200,
+        value: { content: "limit=2 cursor=1", contentFormat: "markdown", byteSize: 6, nextCursor: "2" },
+        missingStatus: 404,
+      },
     );
   } finally {
     await close(server);
