@@ -26,8 +26,17 @@
   and preserves its ownership/acceptance invariants, rather than overturning it;
   it revises navigation spec #28 and shifts Product Intent (materials today are
   external-source links, STU-09/CUR-01/07, not hosted text). Pre-ADR's emerging
-  direction is Option A with content licensing flagged as the first open question
-  the ADR must resolve.
+  direction is Option A.
+
+- Set two owner-fixed (non-negotiable) boundaries in the material-content pre-ADR
+  and ran an `arch-doc-review` pass (Consistency fail + two warns fixed): (1)
+  content licensing/copyright is the **curator's** responsibility — Agonara
+  stores/serves what the curator loads and does not adjudicate or assume
+  liability (so it is no longer an open ADR question); (2) access model — curator
+  read/write/delete over everything loaded, student read over accepted only, with
+  curator delete of evidenced accepted content resolving to withdrawal (soft
+  delete via `accepted-entity-withdrawal_pre_adr.md`), not erasure. Boundaries
+  written with MUST/MUST NOT wording and marked ADR-binding.
 
 ## 2026-06-22
 

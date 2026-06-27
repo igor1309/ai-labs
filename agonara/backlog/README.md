@@ -86,12 +86,20 @@ Single items not yet promoted to a topic file.
   **Product Intent**: today's stories frame materials as links to external sources
   the learner studies from (STU-09, CUR-01/07), not text the program hosts. Owner
   chose option (a): **Agonara stores the extracted content and serves it via
-  role-gated reads** (curator full, student read). Pre-ADR drafted at
-  `docs/pre-adr/material-content-access_pre_adr.md`; options (b) resolve a durable
-  locator and (c) fix only the BYOA ingestion contract are recorded there as
-  fallback/rejected. Next: ADR resolving the pre-ADR's open questions — content
-  licensing first, then inline-vs-reference storage, content-capture contract,
-  content revisions, and the read surface.
+  role-gated reads.** Two owner-fixed (non-negotiable) boundaries: (1) content
+  licensing/copyright is the **curator's** responsibility, not Agonara's — Agonara
+  stores/serves what the curator loads and does not adjudicate or assume liability;
+  (2) access model — curator has **read/write/delete** over everything loaded
+  (sources, candidates, accepted content), student has **read** over accepted
+  content only, and curator delete of evidenced accepted content resolves to
+  withdrawal (soft delete) not erasure, per the
+  `accepted-entity-withdrawal_pre_adr.md` mechanism. Pre-ADR drafted at
+  `docs/pre-adr/material-content-access_pre_adr.md` (arch-doc-review clean);
+  options (b) resolve a durable locator and (c) fix only the BYOA ingestion
+  contract are recorded there as fallback/rejected. Next: ADR resolving the
+  pre-ADR's open questions — inline-vs-reference storage, content-capture
+  contract, content revisions, read surface, and the Product Intent amendment
+  (licensing is settled, not an open question).
 
 ## Design-reasoning companions
 

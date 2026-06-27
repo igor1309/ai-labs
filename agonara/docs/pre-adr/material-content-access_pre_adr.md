@@ -76,10 +76,25 @@ studies from**, not text the program hosts:
 
 Hosting material text in-product is therefore not only a spec change — it shifts the
 product model from "a material is a reference to something you read elsewhere" to "the
-program can hold and serve the material itself." That shift carries a content
-licensing/copyright surface ADR-010 deliberately deferred. The owner has stated the
-required direction regardless: a curator must have full read access to everything they
-provided or derived, and a student must have read access.
+program can hold and serve the material itself."
+
+### Owner-fixed boundaries (non-negotiable)
+
+Two boundaries are set by the owner. They are non-negotiable inputs to this decision, not
+open questions, and the ADR MUST encode them verbatim in intent:
+
+- **Content licensing/copyright MUST be the curator's responsibility, not Agonara's.** By
+  loading content into a Program, the curator warrants they hold the rights to store and
+  share it within that Program. Agonara MUST store and serve what the curator loads and
+  MUST NOT adjudicate, gate, or assume liability for licensing. ADR-010 listed "content
+  licensing policy" as a Non-Goal; this fixes the policy as *out of Agonara's
+  responsibility* rather than leaving it open.
+- **Access model.** A `Program Curator` MUST have read, write, and delete over everything
+  loaded into their Program (sources, candidates, accepted content). A `Student` MUST have
+  read over accepted content and MUST NOT write or delete. "Delete" of accepted content
+  that student evidence already references resolves to withdrawal (soft delete preserving
+  the evidenced revision), not hard erasure — see Provisional boundaries below; deletion
+  of unevidenced or draft/source content is unconstrained by that invariant.
 
 ## Options considered
 
@@ -94,16 +109,19 @@ provided or derived, and a student must have read access.
 - **Tradeoffs**: the only option that makes content durable and role-gated **independent
   of any agent's cache or external host** — it directly removes the failure mode that
   triggered this note. Cost: Corpus Storage becomes a content store (larger rows/blobs,
-  revisioned content, backup/restore weight), and Agonara takes on a content
-  licensing/copyright surface it has so far deferred.
-- **Product intent fit**: satisfies the owner's stated curator-full / student-read
-  requirement directly. Requires amending Product Intent from "materials are external
-  sources" to "materials may carry hosted, accepted content," and revising navigation
-  spec #28. Preserves ADR-010 (content lives in Corpus Storage, behind the acceptance
-  boundary, with provenance, read-only for students).
-- **Risks**: content licensing/ownership for third-party source text; storage growth and
-  backup/restore cost; defining the acceptance-time content-capture contract so the BYOA
-  agent uploads text rather than a path; deciding revision semantics for content edits.
+  revisioned content, backup/restore weight). Licensing is not a cost Agonara carries —
+  it is the curator's responsibility (owner-fixed boundary).
+- **Product intent fit**: satisfies the curator-full-CRUD / student-read requirement
+  directly. Requires amending Product Intent from "materials are external sources" to
+  "materials may carry hosted, accepted content," and revising navigation spec #28.
+  Preserves ADR-010 (content lives in Corpus Storage, behind the acceptance boundary,
+  with provenance, read-only for students).
+- **Risks**: storage growth and backup/restore cost; defining the acceptance-time
+  content-capture contract so the BYOA agent uploads text rather than a path; reconciling
+  curator **delete** of accepted content with ADR-010's invariant that revisions
+  referenced by student evidence stay addressable (ties to the
+  [accepted-entity withdrawal pre-ADR](accepted-entity-withdrawal_pre_adr.md)); deciding
+  revision semantics for content edits.
 
 ### Option B — Agonara resolves a durable locator and serves the bytes
 
@@ -116,9 +134,9 @@ provided or derived, and a student must have read access.
   now owns/operates a content store anyway (or a trusted integration to one), plus a
   resolution/validation layer; provenance and "what exactly was accepted" get fuzzier
   than inlined content if the durable blob can change under the reference.
-- **Product intent fit**: same curator-full / student-read outcome as A; preserves more
-  of the "material is a reference" framing while still guaranteeing an Agonara-served
-  read. Still revises navigation spec #28 and needs the same licensing decision.
+- **Product intent fit**: same curator-full-CRUD / student-read outcome as A; preserves
+  more of the "material is a reference" framing while still guaranteeing an Agonara-served
+  read. Still revises navigation spec #28.
 - **Risks**: content drift if the referenced blob is mutable; operational ownership of
   the durable store; validating that a locator is genuinely durable at acceptance time.
 
@@ -146,12 +164,13 @@ provided or derived, and a student must have read access.
 content durable and role-gated **inside Agonara**, independent of any agent cache or
 external host — which is exactly the failure that triggered this note. It fits ADR-010 by
 filling in deferred material-storage space while preserving its ownership, acceptance,
-provenance, and student-read-only invariants. Option B is the fallback if storage cost or
-licensing pushes Agonara away from inlining content; Option C is recorded for
+provenance, and student-read-only invariants. Option B is the fallback if storage or
+backup/restore cost pushes Agonara away from inlining content; Option C is recorded for
 completeness but does not meet the requirement (no Agonara-guaranteed read).
 
 This is provisional and not a commitment. The ADR must still resolve the open questions
-below — most importantly content licensing, which ADR-010 deferred on purpose.
+below. Content licensing is **not** among them — it is the curator's responsibility by
+owner-fixed boundary, not an Agonara decision.
 
 ## Provisional boundaries
 
@@ -162,9 +181,14 @@ below — most importantly content licensing, which ADR-010 deferred on purpose.
   explicit, attributable to the acting `Identity`, scoped to the `Program`, authorized by
   effective `Program Curator` participation, provenance-preserving. *(unchanged from
   ADR-010)*
-- **Read authorization**: `Program Curator` reads full content for their Program's
-  materials (provided and derived); `Student` with effective participation reads accepted
-  material content; students never mutate it. *(role split per ADR-002 / ADR-007)*
+- **Access model (owner-fixed)**: per the owner-fixed boundary above — `Program Curator`
+  read/write/delete over everything loaded; `Student` read over accepted content only,
+  no write/delete; curator delete of evidenced accepted content is withdrawal, not
+  erasure. *(role split per ADR-002 / ADR-007; CRUD per owner-fixed boundary)*
+- **Content licensing (owner-fixed)**: the curator warrants rights to content they load;
+  Agonara stores/serves it and does not adjudicate or assume licensing liability. ADR-010
+  listed content licensing as a Non-Goal — this fixes it as *out of Agonara's
+  responsibility*. *(stable)*
 - **`locator` / `citation`** remain provenance metadata, no longer the load-bearing read
   path. *(stable)*
 - **Content capture contract** (BYOA agent uploads extracted text at intake/acceptance
@@ -172,14 +196,13 @@ below — most importantly content licensing, which ADR-010 deferred on purpose.
 - **Navigation spec #28** is superseded for the content-bearing read path; whether
   content is served through the navigation read endpoints or a separate material-content
   read surface: deferred. *(unstable)*
-- **Content licensing/copyright policy**: deferred to the ADR / a dedicated decision —
-  ADR-010 deferred it and it is now load-bearing. *(unresolved)*
+- **Curator delete of accepted content** reconciles with ADR-010's "revisions referenced
+  by student evidence stay addressable" invariant via the withdrawal mechanism in the
+  [accepted-entity withdrawal pre-ADR](accepted-entity-withdrawal_pre_adr.md), not hard
+  erasure of evidenced revisions. *(unstable)*
 
 ## Open questions
 
-- **Licensing/copyright**: under what terms may Agonara host third-party source text, and
-  does that gate which `materialReferenceKind`s may carry stored content versus reference
-  only?
 - **Inline content vs. durable reference (A vs. B)**: does Agonara store the bytes itself,
   or store a content-addressed reference to a durable store it operates? What is the
   storage/backup-restore budget that decides this?
