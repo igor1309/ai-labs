@@ -2,6 +2,17 @@
 
 ## 2026-06-27
 
+- Closed out **Phase 5** of material content storage: amended navigation spec #28/#29 (content
+  served off a dedicated route with a `hasContent` signal, not navigation traversal; content
+  storage/serving and curator-owned licensing owned by the material-content spec/ADR-021);
+  added Product Intent stories STU-24 (read hosted material content) and CUR-19 (host readable
+  material content) plus the STU-09/CUR-03 "linked or hosted" amendment; marked the
+  material-content spec `implemented` with implementation/verification links; added a README
+  implementation-snapshot bullet; narrowed `backlog/material-content.md` to the remaining
+  withdrawal/source-deletion (ADR-022) spec+impl and the skills update; and archived the plan
+  to `docs/plans/implemented/material-content-storage.md`. **Material content storage (ADR-021)
+  is complete** — all five plan phases done; full Agonara suite, build, and the five Playwright
+  tests pass.
 - Implemented the **Phase 4** `/learn` content reader for material content storage: the
   student navigation material detail now shows a "Read full material" affordance when a
   material has stored content, and a `#material-content-view` (`#material-content-status` +
