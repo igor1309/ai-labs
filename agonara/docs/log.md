@@ -6,6 +6,28 @@
   panel now loads saved source text back into the form before deletion, student hosted-content
   reading proves material back-links remain usable, the browser layout check covers the new
   source-content controls, and the plan's browser gate points at the actual Playwright file.
+- Addressed material-content review-gap PRs (#645/#647) against the branch: `hasContent`/
+  `contentBytes`/`contentFormat` now also ride the navigation **coverage lists**
+  (`listProgramNavigation` topics/ungrouped concepts/ungrouped materials), not just the
+  detail projections; and the HTTP content **read** handlers now **whitelist** the response to
+  `{content, contentFormat, byteSize, nextCursor}` via `mapContentPageResult` instead of
+  passing the raw command value through. Kept the owner's dedicated `setAcceptedMaterialContent`
+  design (content is not threaded into acceptance). Full Agonara suite and build pass.
+- Strengthened Phase 1 material-content tests after review: storage tests now assert exact
+  rejection reasons and unchanged rows for invalid format, oversized writes, and accepted
+  revision overwrite attempts; backup/restore rejection tests now prove malformed content
+  backups leave an existing target untouched.
+- Closed out **Phase 5** of material content storage: amended navigation spec #28/#29 (content
+  served off a dedicated route with a `hasContent` signal, not navigation traversal; content
+  storage/serving and curator-owned licensing owned by the material-content spec/ADR-021);
+  added Product Intent stories STU-24 (read hosted material content) and CUR-19 (host readable
+  material content) plus the STU-09/CUR-03 "linked or hosted" amendment; marked the
+  material-content spec `implemented` with implementation/verification links; added a README
+  implementation-snapshot bullet; narrowed `backlog/material-content.md` to the remaining
+  withdrawal/source-deletion (ADR-022) spec+impl and the skills update; and archived the plan
+  to `docs/plans/implemented/material-content-storage.md`. **Material content storage (ADR-021)
+  is complete** — all five plan phases done; full Agonara suite, build, and the five Playwright
+  tests pass.
 - Implemented the **Phase 4** `/learn` content reader for material content storage: the
   student navigation material detail now shows a "Read full material" affordance when a
   material has stored content, and a `#material-content-view` (`#material-content-status` +

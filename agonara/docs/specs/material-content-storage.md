@@ -2,8 +2,8 @@
 date: 2026-06-27
 model: claude-opus-4-8
 description: "Spec: Agonara material content storage and role-gated reading."
-version: 0.0.1
-status: draft
+version: 0.0.2
+status: implemented
 type: spec
 ---
 
@@ -19,11 +19,29 @@ in Agonara instead of an external or agent-local file. Governed by
 
 ## Implementation status
 
-Planned; not yet implemented. This spec pins the spec-level detail
-[ADR-021](../adr/adr-021-material-content-storage-and-role-gated-reading.md) deferred. It
-extends the corpus model of
-[Topic, Concept, and Material Navigation](topic-concept-material-navigation.md) and amends
-its Behavior rule #28.
+Implemented per [`docs/plans/implemented/material-content-storage.md`](../plans/implemented/material-content-storage.md),
+pinning the spec-level detail [ADR-021](../adr/adr-021-material-content-storage-and-role-gated-reading.md)
+deferred. Extends the corpus model of
+[Topic, Concept, and Material Navigation](topic-concept-material-navigation.md) and amends its
+Behavior rule #28.
+
+Primary implementation and verification:
+
+- [Storage and backup/restore](../../src/storage.js) (`source_contents`, `accepted_material_contents`,
+  `MAX_MATERIAL_CONTENT_BYTES`, content-graph restore validation), with coverage in
+  [storage tests](../../tests/storage.test.js) and [backup/restore tests](../../tests/backup-restore.test.js).
+- [Corpus domain commands](../../src/corpus.js) (`setSourceContent`/`deleteSourceContent`/`readSourceContent`,
+  `setAcceptedMaterialContent`, `readMaterialContent`/`readMaterialRevisionContent`, `hasContent`
+  projection signal), with coverage in [Corpus tests](../../tests/corpus.test.js) and
+  [executable acceptance](../../tests/corpus-executable-acceptance.test.js).
+- [HTTP routes](../../src/server.js) and [contract](../../src/http-contract.js), with coverage in
+  [HTTP API tests](../../tests/http-api.test.js) and [OpenAPI contract tests](../../tests/openapi-contract.test.js).
+- [`/learn` reader and curator content UI](../../src/learn-ui.js), with browser coverage in
+  [navigation Playwright tests](../../tests/topic-concept-material-navigation.playwright.js).
+
+Accepted-content withdrawal and source-record deletion (ADR-022) are tracked separately in
+[`backlog/material-content.md`](../../backlog/material-content.md); the material-content spec
+covers raw-blob hard delete only.
 
 ## Public interface
 

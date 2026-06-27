@@ -389,6 +389,39 @@ export const openApiContractMetadata = {
       }
     },
     "requestBodies": {
+      "SetSourceContent": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": ["content", "contentFormat"],
+              "properties": {
+                "content": { "type": "string", "minLength": 1 },
+                "contentFormat": { "type": "string", "enum": ["markdown", "plain_text"] }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      },
+      "SetAcceptedMaterialContent": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": ["content", "contentFormat"],
+              "properties": {
+                "content": { "type": "string", "minLength": 1 },
+                "contentFormat": { "type": "string", "enum": ["markdown", "plain_text"] },
+                "sourceContentProvenance": { "type": "object", "additionalProperties": true }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      },
       "OptionalObject": {
         "required": false,
         "content": {
@@ -3455,6 +3488,7 @@ export const routeContracts = [
     "tag": "corpus",
     "summary": "Set or replace a Program source's stored content.",
     "auth": { "kind": "session", "csrf": true },
+    "requestBody": { "contentType": "application/json", "required": true, "schema": { "ref": "#/components/requestBodies/SetSourceContent" } },
     "responses": [
       { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
       { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
@@ -3475,6 +3509,10 @@ export const routeContracts = [
     "tag": "corpus",
     "summary": "Read a Program source's stored content (curator only).",
     "auth": { "kind": "session" },
+    "queryParameters": [
+      { "name": "limit", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 1048576 } },
+      { "name": "cursor", "required": false, "schema": { "type": "string", "minLength": 1 } }
+    ],
     "responses": [
       { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
       { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
@@ -3515,6 +3553,7 @@ export const routeContracts = [
     "tag": "corpus",
     "summary": "Set accepted material content on a material reference revision (curator only).",
     "auth": { "kind": "session", "csrf": true },
+    "requestBody": { "contentType": "application/json", "required": true, "schema": { "ref": "#/components/requestBodies/SetAcceptedMaterialContent" } },
     "responses": [
       { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
       { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
@@ -3536,6 +3575,10 @@ export const routeContracts = [
     "tag": "corpus",
     "summary": "Read accepted material content for a material entity's current revision.",
     "auth": { "kind": "session" },
+    "queryParameters": [
+      { "name": "limit", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 1048576 } },
+      { "name": "cursor", "required": false, "schema": { "type": "string", "minLength": 1 } }
+    ],
     "responses": [
       { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
       { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
@@ -3556,6 +3599,10 @@ export const routeContracts = [
     "tag": "corpus",
     "summary": "Read accepted material content for a specific material reference revision.",
     "auth": { "kind": "session" },
+    "queryParameters": [
+      { "name": "limit", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 1048576 } },
+      { "name": "cursor", "required": false, "schema": { "type": "string", "minLength": 1 } }
+    ],
     "responses": [
       { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
       { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },

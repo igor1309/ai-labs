@@ -6879,20 +6879,60 @@ test("getNavigationEntity_shouldCarryHasContentSignalForMaterialsOnly_onMaterial
   }
 });
 
+test("listProgramNavigation_shouldCarryHasContentSignalForUngroupedMaterials_onMaterialContent", async () => {
+  const { commands, database } = await makeMaterialContentSUT();
+
+  try {
+    setAcceptedMaterialContentRecord(database, { revisionId: "revision-a", content: "# Body", contentFormat: "markdown" });
+
+    assert.deepEqual(
+      commands.listProgramNavigation({ actingIdentityId: "identity-student", programId: "program-a" }).value.navigation.ungroupedMaterials,
+      [
+        {
+          entityId: "entity-a",
+          revisionId: "revision-a",
+          acceptedKind: "material_reference",
+          title: "Material",
+          hasContent: true,
+          contentBytes: Buffer.byteLength("# Body", "utf8"),
+          contentFormat: "markdown",
+        },
+      ],
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("readMaterialContent_shouldNotMutateProgramOrStudentState_onMaterialContent", async () => {
   const { commands, database } = await makeMaterialContentSUT();
 
   try {
     setAcceptedMaterialContentRecord(database, { revisionId: "revision-a", content: "body", contentFormat: "markdown" });
     commands.setSourceContent({ actingIdentityId: "identity-curator", sourceId: "source-a", content: "src", contentFormat: "markdown" });
-    const eventsBefore = listCorpusEventRecords(database, { programId: "program-a" }).length;
+    const before = snapshotMaterialContentReadBoundary(database);
 
     commands.readMaterialContent({ actingIdentityId: "identity-student", entityId: "entity-a" });
     commands.readMaterialRevisionContent({ actingIdentityId: "identity-student", revisionId: "revision-a" });
     commands.readSourceContent({ actingIdentityId: "identity-curator", sourceId: "source-a" });
 
-    assert.equal(listCorpusEventRecords(database, { programId: "program-a" }).length, eventsBefore);
+    assert.deepEqual(snapshotMaterialContentReadBoundary(database), before);
   } finally {
     database.close();
   }
 });
+
+function snapshotMaterialContentReadBoundary(database) {
+  return {
+    corpusEventCount: listCorpusEventRecords(database, { programId: "program-a" }).length,
+    learnerEvidenceTargetLinkCount: countRows(database, "learner_evidence_target_links"),
+    openAnswerAttemptCount: countRows(database, "open_answer_attempts"),
+    openAnswerEvaluationCount: countRows(database, "open_answer_evaluations"),
+    openAnswerEvaluationFailureCount: countRows(database, "open_answer_evaluation_failures"),
+    openAnswerEvaluatorEvidenceCount: countRows(database, "open_answer_evaluator_evidence"),
+    openAnswerEvaluatorRunCount: countRows(database, "open_answer_evaluator_runs"),
+    quickCheckAttemptCount: countRows(database, "quick_check_attempts"),
+    readinessCheckAttemptCount: countRows(database, "readiness_check_attempts"),
+    sessionCount: countRows(database, "sessions"),
+  };
+}

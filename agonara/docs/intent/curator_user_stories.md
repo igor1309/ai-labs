@@ -38,7 +38,7 @@ Acceptance signal: the program corpus shows accepted topics and concepts separat
 
 ### CUR-03 — Link materials to topics and concepts
 
-As a program curator, I want to link materials to topics and concepts so that students know why each material is included.
+As a program curator, I want to link materials to topics and concepts — each material either a reference to an external source or content hosted in the program — so that students know why each material is included.
 
 Status: accepted
 
@@ -169,6 +169,14 @@ As a program curator, I want to stop curating a program so that I am no longer r
 Status: accepted
 
 Acceptance signal: stopping curator participation changes program membership state without mutating accepted corpus content.
+
+### CUR-19 — Host readable material content
+
+As a program curator, I want to load or derive the readable content of a material into the program — warranting that I hold the rights to store and share it — so that students and I can read the material in-product instead of depending on an external or agent-local copy.
+
+Status: accepted
+
+Acceptance signal: a curator can store, read, and delete a source's content and set the accepted content of a material reference, and that content is served to students through the program; Agonara does not gate the content on licensing.
 
 ## Boundaries
 
