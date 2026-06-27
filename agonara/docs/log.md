@@ -14,8 +14,7 @@
   evidenced accepted content retired by withdrawal. The source-deletion backlog item's source
   half is resolved; program archival/ownership transfer remains open.
 - Promoted the material-content backlog to its own `backlog/material-content.md` topic file.
-- Addressed the branch adversarial review
-  (`docs/reviews/student-api-program-materials-adversarial-review.md`): defined the spec's
+- Addressed the branch adversarial review (kept in git history): defined the spec's
   `SourceContentSummary`, scoped material-content reads to Student/Curator participation
   (Admin is not effective participation per ADR-002/007), marked the withdrawal pre-ADR's
   questions resolved, aligned ADR section headings to the governance template, and collapsed
