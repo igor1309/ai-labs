@@ -15,7 +15,19 @@
   metadata, not content) and navigation spec #28, so it needs a pre-ADR → ADR.
   Backlog records the content-model fork (Agonara stores content / resolves a
   durable locator / fix the BYOA ingestion contract) with the store-content
-  option recommended; direction pending owner confirmation.
+  option recommended.
+
+- Owner picked the store-content direction. Added
+  `docs/pre-adr/material-content-access_pre_adr.md` (My Way pre-ADR) for letting
+  Agonara store extracted material text and serve it through role-gated reads
+  (curator full, student read). Corrected the earlier framing after reading
+  ADR-010 fully: this **extends** ADR-010 into space its Non-Goals explicitly
+  defer ("material file storage, copying, scraping"; "content licensing policy")
+  and preserves its ownership/acceptance invariants, rather than overturning it;
+  it revises navigation spec #28 and shifts Product Intent (materials today are
+  external-source links, STU-09/CUR-01/07, not hosted text). Pre-ADR's emerging
+  direction is Option A with content licensing flagged as the first open question
+  the ADR must resolve.
 
 ## 2026-06-22
 

@@ -77,20 +77,21 @@ Single items not yet promoted to a topic file.
   gone and **neither curator nor student** can read the text; re-uploading fixes
   one document until the next recycle. Owner-stated required direction: a curator
   has full read access to everything they provided or derived, and a student has
-  read access. This **overturns ADR-010** (corpus stores curated metadata, not
-  content) and **navigation spec #28** ("a material reference is an accepted
-  locator, citation, or concise body … navigation does not fetch, copy, upload,
-  transform, or summarize external material content"), so it needs a pre-ADR →
-  ADR, not a patch. Open fork for that ADR — where the durable copy lives:
-  (a) **Agonara stores the extracted content** and serves it via role-gated reads
-  [recommended: the only option that makes access durable and role-gated
-  independent of any agent cache; cost: corpus becomes a content store and
-  Agonara takes on a copyright/licensing surface]; (b) Agonara stays
-  metadata-first but **resolves a durable locator** (object store / content
-  handle) and serves the bytes on read; (c) keep Agonara metadata-only and **fix
-  the BYOA ingestion contract** so locators must point at a durable,
-  agent-independent location both roles' agents re-read themselves — lightest, but
-  student read access is then not an Agonara API guarantee.
+  read access. This **extends ADR-010** into space it explicitly deferred
+  (Non-Goals: "material file storage, copying, scraping" and "content licensing
+  policy") rather than overturning it — ADR-010's ownership/acceptance invariants
+  still hold — and **revises navigation spec #28** ("a material reference is an
+  accepted locator, citation, or concise body … navigation does not fetch, copy,
+  upload, transform, or summarize external material content"). It also shifts
+  **Product Intent**: today's stories frame materials as links to external sources
+  the learner studies from (STU-09, CUR-01/07), not text the program hosts. Owner
+  chose option (a): **Agonara stores the extracted content and serves it via
+  role-gated reads** (curator full, student read). Pre-ADR drafted at
+  `docs/pre-adr/material-content-access_pre_adr.md`; options (b) resolve a durable
+  locator and (c) fix only the BYOA ingestion contract are recorded there as
+  fallback/rejected. Next: ADR resolving the pre-ADR's open questions — content
+  licensing first, then inline-vs-reference storage, content-capture contract,
+  content revisions, and the read surface.
 
 ## Design-reasoning companions
 
