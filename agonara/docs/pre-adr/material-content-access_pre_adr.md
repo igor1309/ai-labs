@@ -3,7 +3,7 @@ title: Agonara In-Product Material Content Storage and Role-Gated Reading Pre-AD
 date: 2026-06-27
 description: Pre-ADR pressure-testing whether Agonara should store the extracted text of a program material and serve it through role-gated reads, so a curator has full access to everything they provided or derived and a student has read access — instead of holding only a locator/citation/concise body that points at an external or agent-local file.
 model: claude-opus-4-8
-version: 0.1.0
+version: 0.2.0
 ---
 
 # Agonara In-Product Material Content Storage and Role-Gated Reading Pre-ADR
@@ -58,8 +58,8 @@ structural, not a transient mount failure.
   policy" to a later ADR. So in-product material content is **unowned deferred space**,
   not a settled boundary — a content-storage ADR fills it in and must preserve ADR-010's
   invariants.
-- **Navigation spec #28** is the concrete constraint that a content-bearing path
-  revises: "navigation does not fetch, scrape, copy, upload, transform, or summarize
+- **Navigation spec #28** is the concrete constraint a content-bearing path must
+  address: "navigation does not fetch, scrape, copy, upload, transform, or summarize
   external material content. A material reference is an accepted locator, citation, or
   concise body stored in Corpus Storage."
 
@@ -113,7 +113,7 @@ open questions, and the ADR MUST encode them verbatim in intent:
   it is the curator's responsibility (owner-fixed boundary).
 - **Product intent fit**: satisfies the curator-full-CRUD / student-read requirement
   directly. Requires amending Product Intent from "materials are external sources" to
-  "materials may carry hosted, accepted content," and revising navigation spec #28.
+  "materials may carry hosted, accepted content," and addressing navigation spec #28.
   Preserves ADR-010 (content lives in Corpus Storage, behind the acceptance boundary,
   with provenance, read-only for students).
 - **Risks**: storage growth and backup/restore cost; defining the acceptance-time
@@ -136,7 +136,7 @@ open questions, and the ADR MUST encode them verbatim in intent:
   than inlined content if the durable blob can change under the reference.
 - **Product intent fit**: same curator-full-CRUD / student-read outcome as A; preserves
   more of the "material is a reference" framing while still guaranteeing an Agonara-served
-  read. Still revises navigation spec #28.
+  read. Still must address navigation spec #28.
 - **Risks**: content drift if the referenced blob is mutable; operational ownership of
   the durable store; validating that a locator is genuinely durable at acceptance time.
 
@@ -168,8 +168,36 @@ provenance, and student-read-only invariants. Option B is the fallback if storag
 backup/restore cost pushes Agonara away from inlining content; Option C is recorded for
 completeness but does not meet the requirement (no Agonara-guaranteed read).
 
-This is provisional and not a commitment. The ADR must still resolve the open questions
-below. Content licensing is **not** among them — it is the curator's responsibility by
+### Resolved sub-decisions (owner-approved)
+
+Within Option A, the owner approved the following directions. They are recorded here as
+the emerging shape the ADR should inherit; they remain provisional until the ADR commits.
+
+- **Storage mechanism** — a **sibling content table in the same SQLite DB**, 1:1 by
+  `revision_id` (and by `source_id` for raw source content), not inlined on the corpus
+  revision row and not an external blob store. Keeps card/navigation reads lean; rides the
+  existing single-file backup/restore; leaves a seam to move just the content table to a
+  blob store later if non-text materials ever appear.
+- **Capture point** — content is captured **at source intake** (raw) and **promoted at
+  acceptance** (student-readable), giving two content homes (see table below). This is the
+  pick that actually closes the root cause: text enters Agonara when the curator first
+  loads the source, never living only in an agent's ephemeral cache.
+- **Revisioning** — content **rides the existing accepted-revision model**: editing
+  content creates a new accepted revision, historical revisions keep their content,
+  content is immutable per revision. No in-place mutation, no independent content-version
+  timeline.
+- **Read surface** — **hybrid**: navigation reads stay lean but expose a cheap signal
+  (`hasContent` / `contentBytes` / `contentFormat`); the bytes are fetched through a
+  dedicated, role-gated, paginable material-content route. Navigation itself still carries
+  no content (preserves spec #28's spirit).
+- **Product Intent** — **additive**: a material may be a pure reference (today's model) or
+  carry hosted content; both first-class. The external-source stories survive unchanged
+  and remain the licensing escape hatch (no rights to host ⇒ provide a reference).
+- **Size / format** — **markdown / plain-text only**, with a declared `content_format` and
+  a soft per-material size cap; binaries are out of scope until a separate blob-store
+  decision.
+
+Content licensing is **not** an open question — it is the curator's responsibility by
 owner-fixed boundary, not an Agonara decision.
 
 ## Provisional boundaries
@@ -189,34 +217,47 @@ owner-fixed boundary, not an Agonara decision.
   Agonara stores/serves it and does not adjudicate or assume licensing liability. ADR-010
   listed content licensing as a Non-Goal — this fixes it as *out of Agonara's
   responsibility*. *(stable)*
+- **Two content homes** riding the existing source → candidate → accepted provenance
+  chain:
+
+  | Home | Keyed by | Captured | Access | Mutability |
+  |---|---|---|---|---|
+  | Source raw content | `source_id` | at source intake | curator (full) | per source |
+  | Accepted material content | `revision_id` | promoted at acceptance | student (read) + curator | immutable per revision |
+
+  Both stored as text in sibling tables in the same SQLite DB. *(emerging)*
 - **`locator` / `citation`** remain provenance metadata, no longer the load-bearing read
   path. *(stable)*
-- **Content capture contract** (BYOA agent uploads extracted text at intake/acceptance
-  rather than a path): owned by a later spec. *(unstable)*
-- **Navigation spec #28** is superseded for the content-bearing read path; whether
-  content is served through the navigation read endpoints or a separate material-content
-  read surface: deferred. *(unstable)*
+- **Content capture contract**: the BYOA agent uploads extracted **text** at source intake
+  (replacing "write a local path into `locator`"); exact agent-facing shape owned by a
+  later spec. *(emerging)*
+- **Read surface**: a dedicated role-gated material-content route (`…/content`) serves the
+  bytes; navigation reads stay content-free and carry a `hasContent` signal. Navigation
+  spec #28 keeps its no-content rule for traversal; the content route is the sanctioned
+  exception. *(emerging)*
 - **Curator delete of accepted content** reconciles with ADR-010's "revisions referenced
   by student evidence stay addressable" invariant via the withdrawal mechanism in the
   [accepted-entity withdrawal pre-ADR](accepted-entity-withdrawal_pre_adr.md), not hard
-  erasure of evidenced revisions. *(unstable)*
+  erasure of evidenced revisions. **Curator delete of source raw content** is the same
+  decision as the open *"Authorized deletion of corpus sources"* backlog item (sources are
+  append-only today) and must be settled with it. *(unstable)*
 
 ## Open questions
 
-- **Inline content vs. durable reference (A vs. B)**: does Agonara store the bytes itself,
-  or store a content-addressed reference to a durable store it operates? What is the
-  storage/backup-restore budget that decides this?
-- **Content capture point**: is content captured at source intake, at candidate
-  extraction, or only at acceptance — and what is the agent-facing contract that replaces
-  "write a local path into `locator`"?
-- **Content revisions**: do content edits create new accepted revisions (like other
-  corpus), and must historical content remain addressable when student evidence
-  references the material at a past revision?
-- **Read surface**: is stored content delivered through the existing navigation read
-  endpoints (revising spec #28) or through a distinct material-content read route with
-  its own projection and size/pagination handling?
-- **Product Intent amendment**: which student/curator stories change to encode "materials
-  may carry hosted, accepted content," and does the "external source" framing survive
-  alongside it?
-- **Size and format**: any limits on stored content size/format, and how large materials
-  are paginated for agent reads.
+The storage mechanism, capture point, revisioning, read surface, intent additivity, and
+format are resolved above (owner-approved). What the ADR still must pin precisely:
+
+- **Source ↔ accepted content de-duplication**: when an accepted material's content is the
+  whole source text, does the accepted-revision content **duplicate** the source raw text
+  or **reference into** it? (Affects storage size and what "edit accepted content" means
+  relative to the source.)
+- **Source raw-content deletion**: the concrete delete/withdrawal semantics for source raw
+  content, settled jointly with the *"Authorized deletion of corpus sources"* backlog item
+  (sources are append-only today).
+- **Soft cap value & pagination scheme**: the actual per-material size ceiling and the
+  read-route pagination contract (offset/limit vs. range) for large materials.
+- **Product Intent wording**: which student/curator stories are added/edited to encode
+  "materials may carry hosted, accepted content" alongside the surviving external-source
+  stories (STU-09/10, CUR-01/03/07).
+- **`content_format` vocabulary**: the initial allowed set (`markdown` only at first) and
+  whether it is constrained by a DB `check` like `material_reference_kind` is today.

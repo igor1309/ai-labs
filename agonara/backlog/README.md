@@ -93,13 +93,19 @@ Single items not yet promoted to a topic file.
   (sources, candidates, accepted content), student has **read** over accepted
   content only, and curator delete of evidenced accepted content resolves to
   withdrawal (soft delete) not erasure, per the
-  `accepted-entity-withdrawal_pre_adr.md` mechanism. Pre-ADR drafted at
-  `docs/pre-adr/material-content-access_pre_adr.md` (arch-doc-review clean);
-  options (b) resolve a durable locator and (c) fix only the BYOA ingestion
-  contract are recorded there as fallback/rejected. Next: ADR resolving the
-  pre-ADR's open questions — inline-vs-reference storage, content-capture
-  contract, content revisions, read surface, and the Product Intent amendment
-  (licensing is settled, not an open question).
+  `accepted-entity-withdrawal_pre_adr.md` mechanism. Pre-ADR at
+  `docs/pre-adr/material-content-access_pre_adr.md` (arch-doc-review clean).
+  Owner-approved sub-decisions folded in: sibling content table in the same
+  SQLite DB (1:1 by `revision_id`, and by `source_id` for raw source content),
+  capture at source intake + promote at acceptance (two content homes — source
+  raw = curator-full, accepted = student-read), content rides the accepted-
+  revision model (immutable per revision), hybrid read surface (lean navigation
+  with a `hasContent` signal + a dedicated role-gated content route, so spec #28
+  keeps its no-content-in-traversal rule), additive Product Intent (reference and
+  content-bearing materials coexist), markdown/text only with a `content_format`
+  and soft size cap. Still open for the ADR: source↔accepted de-duplication,
+  source raw-content deletion (settle with the source-deletion item above), soft
+  cap value + pagination, intent wording, and the `content_format` vocabulary.
 
 ## Design-reasoning companions
 

@@ -38,6 +38,19 @@
   delete via `accepted-entity-withdrawal_pre_adr.md`), not erasure. Boundaries
   written with MUST/MUST NOT wording and marked ADR-binding.
 
+- Folded owner-approved sub-decisions into the material-content pre-ADR (v0.1.0 →
+  v0.2.0): sibling content table in the same SQLite DB keyed by `revision_id`
+  (and `source_id` for raw source content); capture at source intake + promote at
+  acceptance, giving two content homes (source raw = curator-full, accepted =
+  student-read); content rides the existing accepted-revision model (immutable per
+  revision); hybrid read surface (content-free navigation with a `hasContent`
+  signal + a dedicated role-gated content route, preserving spec #28's
+  no-content-in-traversal rule rather than loading content into navigation);
+  additive Product Intent; markdown/text only with `content_format` + soft size
+  cap. Open questions trimmed to source↔accepted de-duplication, source
+  raw-content deletion (joint with the source-deletion backlog item), soft cap +
+  pagination, intent wording, and `content_format` vocabulary.
+
 ## 2026-06-22
 
 - Release `agonara_v0.2.0` (minor; `0.1.0 → 0.2.0`). First release since the
