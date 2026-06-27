@@ -3,7 +3,7 @@ title: Agonara In-Product Material Content Storage and Role-Gated Reading Pre-AD
 date: 2026-06-27
 description: Pre-ADR pressure-testing whether Agonara should store the extracted text of a program material and serve it through role-gated reads, so a curator has full access to everything they provided or derived and a student has read access — instead of holding only a locator/citation/concise body that points at an external or agent-local file.
 model: claude-opus-4-8
-version: 0.2.0
+version: 0.3.0
 ---
 
 # Agonara In-Product Material Content Storage and Role-Gated Reading Pre-ADR
@@ -196,6 +196,25 @@ the emerging shape the ADR should inherit; they remain provisional until the ADR
 - **Size / format** — **markdown / plain-text only**, with a declared `content_format` and
   a soft per-material size cap; binaries are out of scope until a separate blob-store
   decision.
+- **Source ↔ accepted de-duplication** — accepted-revision content is a **self-contained
+  copy** (not a reference into the source), with an **optional provenance pointer** to the
+  source range it was derived from. A self-contained copy is what keeps an evidenced
+  revision addressable regardless of later source edits/withdrawal/deletion; the pointer
+  preserves traceability and re-derivation.
+- **Source raw-content deletion** — **two-tier**: the curator may **hard-delete the source
+  raw content blob** at will (the copy decision makes it non-load-bearing for students and
+  evidence), while the **source record** (metadata + `source_ids_json` provenance edges)
+  follows withdrawal/tombstone. Settles jointly with the *"Authorized deletion of corpus
+  sources"* backlog item.
+- **Size cap & pagination** — soft cap **~1 MB per material content** (reject above with a
+  `content_too_large` rejection), reusing the existing **`limit` + opaque `cursor`**
+  pagination idiom on the content route; small materials return whole in one page.
+- **Product Intent shape** — **add new stories** (curator loads/derives readable content;
+  student reads accepted content in-product) **and lightly amend** STU-09 / CUR-03 to read
+  "linked **or** hosted"; CUR-01 / CUR-07 (external sources) stay as-is.
+- **`content_format` vocabulary** — a **DB `check` constraint** (mirroring
+  `material_reference_kind`), seeded with `markdown` and `plain_text`; further formats are
+  additive `check` migrations.
 
 Content licensing is **not** an open question — it is the curator's responsibility by
 owner-fixed boundary, not an Agonara decision.
@@ -225,39 +244,46 @@ owner-fixed boundary, not an Agonara decision.
   | Source raw content | `source_id` | at source intake | curator (full) | per source |
   | Accepted material content | `revision_id` | promoted at acceptance | student (read) + curator | immutable per revision |
 
-  Both stored as text in sibling tables in the same SQLite DB. *(emerging)*
+  Both stored as text in sibling tables in the same SQLite DB. Accepted content is a
+  **self-contained copy** with an optional provenance pointer to the source range it came
+  from — never a live reference into the source. *(emerging)*
 - **`locator` / `citation`** remain provenance metadata, no longer the load-bearing read
   path. *(stable)*
 - **Content capture contract**: the BYOA agent uploads extracted **text** at source intake
   (replacing "write a local path into `locator`"); exact agent-facing shape owned by a
   later spec. *(emerging)*
 - **Read surface**: a dedicated role-gated material-content route (`…/content`) serves the
-  bytes; navigation reads stay content-free and carry a `hasContent` signal. Navigation
-  spec #28 keeps its no-content rule for traversal; the content route is the sanctioned
-  exception. *(emerging)*
-- **Curator delete of accepted content** reconciles with ADR-010's "revisions referenced
-  by student evidence stay addressable" invariant via the withdrawal mechanism in the
+  bytes, paginated with the existing `limit` + opaque `cursor` idiom (whole content in one
+  page when small); navigation reads stay content-free and carry a `hasContent` signal.
+  Navigation spec #28 keeps its no-content rule for traversal; the content route is the
+  sanctioned exception. *(emerging)*
+- **Size / format**: soft cap ~1 MB per material content (`content_too_large` above it);
+  `content_format` constrained by a DB `check` seeded with `markdown` + `plain_text`.
+  *(emerging)*
+- **Deletion model** *(resolved two-tier)*: **curator delete of source raw content** is a
+  free hard delete — the self-contained-copy decision makes the raw blob non-load-bearing
+  for students and evidence; the **source record** (metadata + `source_ids_json` edges)
+  follows withdrawal/tombstone to keep provenance intact, settled jointly with the
+  *"Authorized deletion of corpus sources"* backlog item. **Curator delete of accepted
+  content** reconciles with ADR-010's "evidenced revisions stay addressable" invariant via
+  the withdrawal mechanism in the
   [accepted-entity withdrawal pre-ADR](accepted-entity-withdrawal_pre_adr.md), not hard
-  erasure of evidenced revisions. **Curator delete of source raw content** is the same
-  decision as the open *"Authorized deletion of corpus sources"* backlog item (sources are
-  append-only today) and must be settled with it. *(unstable)*
+  erasure of evidenced revisions. *(emerging)*
 
 ## Open questions
 
-The storage mechanism, capture point, revisioning, read surface, intent additivity, and
-format are resolved above (owner-approved). What the ADR still must pin precisely:
+None blocking. The architectural decision space is closed: Option A with the
+owner-approved sub-decisions and the owner-fixed boundaries above. This pre-ADR is ready
+to promote to an ADR.
 
-- **Source ↔ accepted content de-duplication**: when an accepted material's content is the
-  whole source text, does the accepted-revision content **duplicate** the source raw text
-  or **reference into** it? (Affects storage size and what "edit accepted content" means
-  relative to the source.)
-- **Source raw-content deletion**: the concrete delete/withdrawal semantics for source raw
-  content, settled jointly with the *"Authorized deletion of corpus sources"* backlog item
-  (sources are append-only today).
-- **Soft cap value & pagination scheme**: the actual per-material size ceiling and the
-  read-route pagination contract (offset/limit vs. range) for large materials.
-- **Product Intent wording**: which student/curator stories are added/edited to encode
-  "materials may carry hosted, accepted content" alongside the surviving external-source
-  stories (STU-09/10, CUR-01/03/07).
-- **`content_format` vocabulary**: the initial allowed set (`markdown` only at first) and
-  whether it is constrained by a DB `check` like `material_reference_kind` is today.
+What remains is **specification-level detail**, owned by the ADR's downstream spec(s), not
+by this pre-ADR:
+
+- exact table columns, the `content_format` `check` definition, and the migration that
+  adds the content tables;
+- the agent-facing content-capture request shape (replacing "write a local path into
+  `locator`") and the content-route request/response envelopes;
+- the precise `limit`/`cursor` chunking contract and the `content_too_large` threshold
+  constant;
+- the exact Product Intent story text (new curator/student stories + the STU-09 / CUR-03
+  "linked or hosted" amendment) and the navigation spec #28 amendment note.

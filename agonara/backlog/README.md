@@ -39,7 +39,12 @@ Single items not yet promoted to a topic file.
   ADR, whether to add a **curator-authorized** source-removal (and/or program
   archival) operation with audit-preserving semantics. Until then, stray or test
   sources can only be removed by host-level DB surgery, which overrides the
-  append-only design.
+  append-only design. The material-content pre-ADR
+  (`docs/pre-adr/material-content-access_pre_adr.md`) now proposes a two-tier
+  resolution for the source half of this: the **source raw content blob** is a
+  free hard delete (non-load-bearing once accepted content is a self-contained
+  copy), while the **source record** (metadata + `source_ids_json` edges) follows
+  withdrawal/tombstone — settle the two together.
 
 - **Drive the open-answer evaluator (nothing fires it).** The whole evaluation
   pipeline is implemented and wired — Nomos LLM provider adapter, evaluator
@@ -103,9 +108,15 @@ Single items not yet promoted to a topic file.
   with a `hasContent` signal + a dedicated role-gated content route, so spec #28
   keeps its no-content-in-traversal rule), additive Product Intent (reference and
   content-bearing materials coexist), markdown/text only with a `content_format`
-  and soft size cap. Still open for the ADR: source↔accepted de-duplication,
-  source raw-content deletion (settle with the source-deletion item above), soft
-  cap value + pagination, intent wording, and the `content_format` vocabulary.
+  and soft size cap. Remaining five questions now closed too: accepted content is
+  a **self-contained copy** (with a provenance pointer), not a live reference;
+  **two-tier source deletion** (free hard-delete of the raw blob, withdrawal for
+  the source record — joint with the source-deletion item above); **~1 MB** soft
+  cap with `content_too_large` and the existing `limit`/`cursor` pagination;
+  **additive** intent (new curator/student stories + STU-09/CUR-03 "linked or
+  hosted" amendment); `content_format` as a DB `check` seeded `markdown` +
+  `plain_text`. Pre-ADR (v0.3.0) is decision-complete and ready to promote to an
+  ADR; only spec-level detail remains. Next: write the ADR.
 
 ## Design-reasoning companions
 

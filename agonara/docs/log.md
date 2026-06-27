@@ -51,6 +51,21 @@
   raw-content deletion (joint with the source-deletion backlog item), soft cap +
   pagination, intent wording, and `content_format` vocabulary.
 
+- Closed the material-content pre-ADR's five remaining questions (v0.2.0 →
+  v0.3.0), making it decision-complete: accepted content is a self-contained copy
+  with a source-range provenance pointer (not a live reference, so evidenced
+  revisions stay addressable through source edits/deletion); two-tier source
+  deletion (free hard-delete of the raw content blob — non-load-bearing once
+  content is copied — with withdrawal/tombstone for the source record, settled
+  jointly with the "Authorized deletion of corpus sources" backlog item); ~1 MB
+  soft per-material cap with `content_too_large` and the existing `limit`/`cursor`
+  pagination on the content route; additive Product Intent (new curator/student
+  stories + STU-09/CUR-03 "linked or hosted" amendment, CUR-01/07 unchanged);
+  `content_format` as a DB `check` seeded with `markdown` + `plain_text`. Open
+  questions section now records only spec-level detail; the pre-ADR is ready to
+  promote to an ADR. Cross-linked the source-deletion backlog item to the two-tier
+  resolution.
+
 ## 2026-06-22
 
 - Release `agonara_v0.2.0` (minor; `0.1.0 → 0.2.0`). First release since the
