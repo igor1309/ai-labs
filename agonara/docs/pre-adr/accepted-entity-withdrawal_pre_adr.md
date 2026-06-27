@@ -108,6 +108,13 @@ into the delivery/projection path. Option B keeps the two concepts separate.
 
 ## Candidate direction
 
+> **Promoted to [ADR-022 — Accepted Entity Withdrawal and Source Deletion](../adr/adr-022-accepted-entity-withdrawal-and-source-deletion.md)**,
+> which adopts Option B (entity-level `active → withdrawn` status), generalizes it to
+> Program source records with two-tier deletion (hard-delete unreferenced, withdraw
+> referenced), and resolves the open questions below (entity-level granularity;
+> block-on-active-reference, no cascade; reactivate restores the current revision;
+> backup/restore preserves status).
+
 A small ADR ("Accepted Entity Lifecycle and Withdrawal") deciding:
 
 - Accepted entities gain a lifecycle status `active → withdrawn` (and a `withdrawn →
@@ -120,16 +127,19 @@ A small ADR ("Accepted Entity Lifecycle and Withdrawal") deciding:
 - Applies uniformly across the accepted entity families (quick-check, open-answer-check,
   criterion, corpus topic/concept/material, readiness check, navigation relationship).
 
-## Open questions
+## Resolved questions
 
-- Granularity: status on the entity only, or also a per-revision marker?
-- Referential effects: what happens to a readiness-check requirement, learner-evidence
-  target link, or open-answer check that references a now-withdrawn criterion/check —
-  block withdrawal, cascade, or warn?
-- Reactivation: does reactivating restore the prior `current_revision_id` as-is, and can
-  a curator reactivate after later structural changes?
-- Backup/restore: how does a withdrawn entity round-trip through the protected backup
-  contract (cf. ADR-016 restore-graph validation rules)?
+Settled by [ADR-022](../adr/adr-022-accepted-entity-withdrawal-and-source-deletion.md):
+
+- Granularity: status is **entity-level only** (and source-record-level), not per-revision.
+- Referential effects: withdrawal of an entity referenced by an **active** entity is
+  **rejected** — the curator withdraws or repoints active dependents first; withdrawal does
+  **not** cascade.
+- Reactivation: `withdrawn → active` **restores the existing `current_revision_id`
+  unchanged**; later structural changes go through normal replacement after reactivation.
+- Backup/restore: backup **preserves `status`**; restore accepts `active`/`withdrawn`, still
+  resolves a withdrawn entity's revisions and references, and rejects an out-of-vocabulary
+  status before mutation.
 
 ## Non-goals
 

@@ -1,5 +1,25 @@
 # Log
 
+## 2026-06-27
+
+- **ADR-021 — Material Content Storage and Role-Gated Reading** (accepted) and its draft
+  spec `docs/specs/material-content-storage.md`: Agonara stores material text and serves it
+  role-gated (curator read/write/delete over everything loaded, student read over accepted);
+  licensing is the curator's responsibility; source raw content and accepted-revision content
+  (a self-contained immutable copy) on the existing provenance chain. Promoted from
+  `docs/pre-adr/material-content-access_pre_adr.md`.
+- **ADR-022 — Accepted Entity Withdrawal and Source Deletion** (accepted), promoting the
+  accepted-entity withdrawal pre-ADR: entity-level `active → withdrawn` status generalized to
+  source records, two-tier source deletion (hard-delete unreferenced, withdraw referenced),
+  evidenced accepted content retired by withdrawal. The source-deletion backlog item's source
+  half is resolved; program archival/ownership transfer remains open.
+- Promoted the material-content backlog to its own `backlog/material-content.md` topic file.
+- Addressed the branch adversarial review (kept in git history): defined the spec's
+  `SourceContentSummary`, scoped material-content reads to Student/Curator participation
+  (Admin is not effective participation per ADR-002/007), marked the withdrawal pre-ADR's
+  questions resolved, aligned ADR section headings to the governance template, and collapsed
+  these log entries to outcomes.
+
 ## 2026-06-22
 
 - Release `agonara_v0.2.0` (minor; `0.1.0 → 0.2.0`). First release since the
