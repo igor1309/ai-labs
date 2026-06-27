@@ -6786,28 +6786,96 @@ test("setSourceContentRecord_shouldRejectUnknownFormatAndOversizedContent_onSour
   const database = makeMaterialContentFixture();
 
   try {
-    assert.throws(
-      () =>
-        storage.setSourceContentRecord(database, {
-          sourceId: "source-1",
-          content: "x",
-          contentFormat: "html",
-          recordedByIdentityId: "identity-1",
-          recordedAt: CONTENT_TS,
-        }),
-      storage.StorageInvariantError,
+    assert.deepEqual(
+      [
+        captureStorageInvariantReason(() =>
+          storage.setSourceContentRecord(database, {
+            sourceId: "source-1",
+            content: "x",
+            contentFormat: "html",
+            recordedByIdentityId: "identity-1",
+            recordedAt: CONTENT_TS,
+          }),
+        ),
+        captureStorageInvariantReason(() =>
+          storage.setSourceContentRecord(database, {
+            sourceId: "source-1",
+            content: "a".repeat(storage.MAX_MATERIAL_CONTENT_BYTES + 1),
+            contentFormat: "markdown",
+            recordedByIdentityId: "identity-1",
+            recordedAt: CONTENT_TS,
+          }),
+        ),
+        storage.getSourceContentRecord(database, "source-1"),
+      ],
+      ["content_format_invalid", "content_too_large", null],
     );
+  } finally {
+    database.close();
+  }
+});
 
-    assert.throws(
-      () =>
-        storage.setSourceContentRecord(database, {
-          sourceId: "source-1",
-          content: "a".repeat(storage.MAX_MATERIAL_CONTENT_BYTES + 1),
+test("setAcceptedMaterialContentRecord_shouldRejectUnknownFormatAndOversizedContent_onMaterialContent", () => {
+  const database = makeMaterialContentFixture();
+
+  try {
+    assert.deepEqual(
+      [
+        captureStorageInvariantReason(() =>
+          storage.setAcceptedMaterialContentRecord(database, {
+            revisionId: "revision-1",
+            content: "x",
+            contentFormat: "html",
+          }),
+        ),
+        captureStorageInvariantReason(() =>
+          storage.setAcceptedMaterialContentRecord(database, {
+            revisionId: "revision-1",
+            content: "a".repeat(storage.MAX_MATERIAL_CONTENT_BYTES + 1),
+            contentFormat: "markdown",
+          }),
+        ),
+        storage.getAcceptedMaterialContentRecord(database, "revision-1"),
+      ],
+      ["content_format_invalid", "content_too_large", null],
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("setAcceptedMaterialContentRecord_shouldRejectOverwriteAndKeepContentUnchanged_onMaterialContent", () => {
+  const database = makeMaterialContentFixture();
+
+  try {
+    storage.setAcceptedMaterialContentRecord(database, {
+      revisionId: "revision-1",
+      content: "v1",
+      contentFormat: "markdown",
+      sourceContentProvenance: { sourceId: "source-1", range: { start: 0, end: 2 } },
+    });
+
+    assert.deepEqual(
+      {
+        overwriteCode: captureSqliteConstraintCode(() =>
+          storage.setAcceptedMaterialContentRecord(database, {
+            revisionId: "revision-1",
+            content: "rewritten",
+            contentFormat: "plain_text",
+          }),
+        ),
+        record: storage.getAcceptedMaterialContentRecord(database, "revision-1"),
+      },
+      {
+        overwriteCode: "SQLITE_CONSTRAINT_PRIMARYKEY",
+        record: {
+          revisionId: "revision-1",
+          content: "v1",
           contentFormat: "markdown",
-          recordedByIdentityId: "identity-1",
-          recordedAt: CONTENT_TS,
-        }),
-      storage.StorageInvariantError,
+          byteSize: Buffer.byteLength("v1", "utf8"),
+          sourceContentProvenance: { sourceId: "source-1", range: { start: 0, end: 2 } },
+        },
+      },
     );
   } finally {
     database.close();

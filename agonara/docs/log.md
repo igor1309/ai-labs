@@ -2,6 +2,10 @@
 
 ## 2026-06-27
 
+- Strengthened Phase 1 material-content tests after review: storage tests now assert exact
+  rejection reasons and unchanged rows for invalid format, oversized writes, and accepted
+  revision overwrite attempts; backup/restore rejection tests now prove malformed content
+  backups leave an existing target untouched.
 - Implemented **Phase 1** of the material content storage plan: `source_contents`
   (keyed by `source_id`) and `accepted_material_contents` (keyed by `revision_id`) tables
   with a `content_format` `check`, derived `byte_size`, and optional provenance; storage
