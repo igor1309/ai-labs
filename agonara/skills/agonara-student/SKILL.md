@@ -1,17 +1,22 @@
 ---
 name: agonara-student
 author: Igor Malyarov
-version: "1.3.0"
-description: Operate an Agonara instance as a Student through its HTTP API — discover and preview programs without creating state, self-join/leave/rejoin and act on invitations, resume learning and follow the next step, study accepted concepts and materials with navigation intact and read hosted material content where present, present checks and relay the student's own quick, open, and readiness answers, and read feedback, results, and the evidence behind progress. The agent coaches learning but never produces the student's assessment evidence. The student sees only accepted corpus and its own state — never curator drafts, answer keys, correctness metadata, or evaluator internals. Use when an agent acts as a learner against an Agonara instance.
-trigger: when an agent works as a Student against an Agonara instance — discovering or joining programs, learning, taking checks, or reading its own progress
+version: "1.4.0"
+description: Assist a human Agonara Student through the instance's HTTP API — discover and preview programs without creating state, self-join/leave/rejoin and act on invitations, resume learning and follow the next step, study accepted concepts and materials with navigation intact and read hosted material content where present, present checks and relay the student's own quick, open, and readiness answers, and read feedback, results, and the evidence behind progress. The agent coaches learning but never produces the student's assessment evidence. The student sees only accepted corpus and its own state — never curator drafts, answer keys, correctness metadata, or evaluator internals. Use when an agent acts as a student's assistant against an Agonara instance.
+trigger: when an agent assists a human Student against an Agonara instance — discovering or joining programs, learning, taking checks, or reading its own progress
 ---
 
-# Agonara student
+# Agonara student assistant
 
-Teaches an agent to do a learner's jobs against an Agonara instance: find and
-preview programs, manage its own membership, learn within a program's accepted
-structure, take checks, and read evidence-backed progress — all through the
-contract.
+Teaches an agent to assist a human learner against an Agonara instance: find and
+preview programs, manage the student's membership, learn within a program's
+accepted structure, take checks, and read evidence-backed progress — all through
+the contract.
+
+**You are the student's assistant, not the student.** A human learner owns their
+learning and their answers; you do the API work on their behalf — you coach,
+relay the student's own answers, and never stand in for them or produce their
+assessment evidence.
 
 Builds on the two foundations and does not repeat their mechanics:
 

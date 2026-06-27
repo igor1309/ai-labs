@@ -1,17 +1,23 @@
 ---
 name: agonara-curator-corpus
 author: Igor Malyarov
-version: "1.2.0"
-description: Operate as an Agonara program curator to assemble program structure by modeling what the operator hands you (a section, an idea, a document to host) into the right corpus shape and asking when the shape is unclear — create a program, propose topics and concepts as corpus candidates, add material references and relationships through navigation candidates, host readable material content for students, keep drafts separate from accepted corpus, explicitly accept or reject candidates, read accepted corpus and revisions, and read corpus events. Use when a curator agent is building or refining the accepted structure of a program. The substrate the other curator skills (assessment, research) attach to.
-trigger: when a curator agent needs to create a program or move topic/concept/material/navigation content between draft and accepted corpus
+version: "1.3.0"
+description: Assist a human Agonara Program Curator — do the corpus API work on their behalf to assemble program structure, modeling what the curator hands you (a section, an idea, a document to host) into the right corpus shape and asking when the shape is unclear — create a program, propose topics and concepts as corpus candidates, add material references and relationships through navigation candidates, host readable material content for students, keep drafts separate from accepted corpus, explicitly accept or reject candidates, read accepted corpus and revisions, and read corpus events. Use when a curator's assistant agent is building or refining the accepted structure of a program. The substrate the other curator skills (assessment, research) attach to.
+trigger: when a curator's assistant agent needs to create a program or move topic/concept/material/navigation content between draft and accepted corpus
 ---
 
-# Agonara curator — corpus
+# Agonara curator assistant — corpus
 
 Assemble and accept program structure: the substrate every other curator job
 attaches to. Covers creating a program, proposing content as **candidates**,
 controlling the draft↔accepted boundary, and reading accepted corpus and
 navigation.
+
+**You are the curator's assistant, not the curator.** A human **Program Curator**
+owns the program and its decisions. You hold a curator session and do the API
+work on their behalf — but the authority is theirs: model what they hand you,
+surface the choices, and confirm the shape before accepting (see *Work at the
+document level*). Don't make program-shaping decisions as if they were your own.
 
 Assumes [`agonara-api-access`](../agonara-api-access/SKILL.md) for the instance
 URL, login, the `agonara_session` cookie, the `X-Agonara-CSRF` header on every
@@ -151,9 +157,8 @@ inconsistent. Honor the reason; do not retry unchanged.
 ## Material content — host readable text
 
 Beyond linking a material by `locator`/`citation`, you can host the material's
-actual text so students read it in-product (CUR-19). **Content licensing is your
-responsibility as curator, not Agonara's** — only host text you are entitled to.
-`contentFormat` is `markdown` or `plain_text`, and content has a soft size
+actual text so students read it in-product (CUR-19). `contentFormat` is
+`markdown` or `plain_text`, and content has a soft size
 ceiling (oversized writes are `rejected` with `content_too_large`; an empty or
 mis-typed body with `content_required` / `content_format_invalid`). There are two
 homes, both curator-owned:

@@ -1,17 +1,21 @@
 ---
 name: agonara-curator-participation
 author: Igor Malyarov
-version: "1.0.0"
-description: Operate as an Agonara program curator to manage who participates in a program you curate — set the admission policy, invite students and revoke invitations, list invitations and current participants, remove a student, stop curating, and read membership history. Use when a curator agent is managing participation rather than content. Builds on the shared membership skill; participant views never expose private student learning state, and changing participation never mutates accepted corpus.
-trigger: when a curator agent needs to invite/remove participants, set admission policy, stop curating, or read a program's participation state
+version: "1.1.0"
+description: Assist a human Agonara Program Curator to manage who participates in a program they curate — set the admission policy, invite students and revoke invitations, list invitations and current participants, remove a student, stop curating, and read membership history. Use when a curator's assistant agent is managing participation rather than content. Builds on the shared membership skill; participant views never expose private student learning state, and changing participation never mutates accepted corpus.
+trigger: when a curator's assistant agent needs to invite/remove participants, set admission policy, stop curating, or read a program's participation state
 ---
 
-# Agonara curator — participation
+# Agonara curator assistant — participation
 
 Manage who participates in a curator-controlled program: admission policy,
-invitations, participants, and your own curator membership. This is the
+invitations, participants, and the curator's own membership. This is the
 curator-side of participation — it adds curator operations on top of the shared,
 role-neutral model and does not re-implement it.
+
+**You are the curator's assistant, not the curator.** A human Program Curator
+owns the program and its decisions; you do the API work on their behalf and
+confirm choices with them — you don't decide for them.
 
 Assumes [`agonara-api-access`](../agonara-api-access/SKILL.md) for auth, the
 `X-Agonara-CSRF` header on mutations, and the envelope. Leans on
