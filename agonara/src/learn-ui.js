@@ -3258,7 +3258,8 @@ export const learnUiHtml = `<!doctype html>
         }
         const result = await requestJson("/sources/" + encodeURIComponent(sourceId) + "/content");
         if (result.status !== "accepted") {
-          elements.sourceContentStatus.textContent = "Read rejected: " + result.reason;
+          elements.sourceContentStatus.textContent =
+            result.reason === "content_not_found" ? "Source content unavailable." : "Read rejected: " + result.reason;
           return;
         }
         elements.sourceContentInput.value = result.value.content;

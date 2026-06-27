@@ -454,6 +454,8 @@ test("materialContentReader_shouldRenderAcceptedContentForStudent_onStudentPanel
     await expect(page.locator("#material-content-status")).toContainText("markdown");
     await expect(page.locator("#navigation-material-backlinks")).toContainText("Basis");
     await expect(page.locator("#navigation-material-backlinks")).toContainText("Vector spaces");
+    await page.locator("#navigation-material-backlinks").getByRole("button", { name: "Basis concept" }).click();
+    await expect(page.locator("#navigation-node-detail")).toContainText("Basis");
 
     const forbiddenText = await navigationForbiddenText(page);
     expect(forbiddenText).toEqual([]);
@@ -478,6 +480,9 @@ test("materialContentCurator_shouldSaveAndDeleteSourceContent_onCuratorPanel", a
 
     await page.locator("[data-action='delete-source-content']").click();
     await expect(page.locator("#source-content-status")).toContainText("Deleted content for " + harness.sourceId);
+
+    await page.locator("[data-action='read-source-content']").click();
+    await expect(page.locator("#source-content-status")).toContainText("Source content unavailable.");
   } finally {
     await harness.close();
   }

@@ -2,6 +2,16 @@
 
 ## 2026-06-27
 
+- Integrated the two overlapping material-content closeout PRs (they conflicted with each other
+  on `learn-ui.js`, the navigation Playwright suite, and the log): merged
+  `material-content-phase5-test-gaps` as the base (curator content read-back button, hierarchy/
+  back-link browser coverage, Product Intent traceability closeout test, LOC dashboard refresh,
+  and the spec correction `participation_required` → `admin_or_curator_required` for source
+  content reads), then folded in `phase4-content-ui-test-gaps`'s polish on top: the friendlier
+  `content_not_found` → "Source content unavailable." copy in the curator read affordance, a
+  back-link click→detail navigation assertion in the student reader test, and a post-delete
+  "unavailable" idempotency assertion in the curator test. `phase4-content-ui-test-gaps` is
+  superseded. Full Agonara suite, build, and the five Playwright tests pass.
 - Closed the material-content Phase 5 review gaps: content read HTTP responses are now
   allowlisted to the spec fields, the `/learn` curator content panel can read source content
   back after save, browser coverage proves hosted-content back-links and content controls, and
