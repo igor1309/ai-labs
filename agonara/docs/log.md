@@ -2,6 +2,14 @@
 
 ## 2026-06-27
 
+- Released **agonara v0.3.0** (`agonara_v0.2.0..` delta). Minor, backward-compatible feature
+  release: in-product material content storage with role-gated reading (ADR-021), entity
+  withdrawal and source deletion (ADR-022), the content HTTP API
+  (`PUT`/`GET`/`DELETE /sources/{sourceId}/content`,
+  `PUT`/`GET /materials/revisions/{revisionId}/content`,
+  `GET /materials/{entityId}/content`), the curator content form and student reader UI, the
+  `hasContent`/`contentBytes`/`contentFormat` navigation signals, landing-page surfacing, and the
+  operator-skill updates teaching the capability. No breaking API changes.
 - Taught the operator skills the material-content capability (closing the backlog skills task):
   `agonara-student` (v1.3.0) now documents reading hosted accepted material content via the
   `hasContent` signal and `GET /materials/{entityId}/content` /
