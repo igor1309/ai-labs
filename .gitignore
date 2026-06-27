@@ -22,3 +22,7 @@ deno.lock
 
 # Lazyweb design-research artifacts (local, transient)
 .lazyweb/
+
+# Playwright transient output
+test-results/
+playwright-report/

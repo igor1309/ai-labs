@@ -634,6 +634,32 @@ export const learnUiHtml = `<!doctype html>
               <p id="navigation-candidate-action-status" class="status" aria-live="polite"></p>
             </section>
 
+            <section id="material-content-curator-panel" class="stack" aria-label="Curator Material Content">
+              <h3>Curator material content</h3>
+              <form id="source-content-form" class="stack">
+                <label>
+                  Source id
+                  <input id="source-content-id-input" name="sourceId" type="text" />
+                </label>
+                <label>
+                  Content format
+                  <select id="source-content-format-input" name="contentFormat">
+                    <option value="markdown">Markdown</option>
+                    <option value="plain_text">Plain text</option>
+                  </select>
+                </label>
+                <label>
+                  Content
+                  <textarea id="source-content-input" name="content"></textarea>
+                </label>
+                <div class="actions">
+                  <button data-action="save-source-content" data-requires-session type="submit">Save source content</button>
+                  <button data-action="delete-source-content" data-requires-session class="danger" type="button">Delete source content</button>
+                </div>
+              </form>
+              <p id="source-content-status" class="status" aria-live="polite"></p>
+            </section>
+
             <section id="navigation-student-panel" class="stack" aria-label="Student Navigation">
               <h3>Student navigation</h3>
               <button id="refresh-navigation-button" data-requires-session class="secondary" type="button">Refresh navigation</button>
@@ -659,6 +685,11 @@ export const learnUiHtml = `<!doctype html>
               <div id="navigation-node-detail" class="empty"></div>
               <div id="navigation-material-backlinks" class="list">
                 <p class="empty">No material back links loaded.</p>
+              </div>
+              <div id="material-content-view" class="detail-section" aria-label="Material content">
+                <h3>Material content</h3>
+                <div id="material-content-status" class="empty">No material content loaded.</div>
+                <pre id="material-content-body" class="list"></pre>
               </div>
             </section>
           </div>
@@ -1118,6 +1149,14 @@ export const learnUiHtml = `<!doctype html>
         navigationKindInput: document.querySelector("#navigation-kind-input"),
         navigationLocatorInput: document.querySelector("#navigation-locator-input"),
         navigationMaterialBacklinks: document.querySelector("#navigation-material-backlinks"),
+        materialContentBody: document.querySelector("#material-content-body"),
+        materialContentStatus: document.querySelector("#material-content-status"),
+        materialContentView: document.querySelector("#material-content-view"),
+        sourceContentForm: document.querySelector("#source-content-form"),
+        sourceContentFormatInput: document.querySelector("#source-content-format-input"),
+        sourceContentIdInput: document.querySelector("#source-content-id-input"),
+        sourceContentInput: document.querySelector("#source-content-input"),
+        sourceContentStatus: document.querySelector("#source-content-status"),
         navigationMaterialKindInput: document.querySelector("#navigation-material-kind-input"),
         navigationNodeDetail: document.querySelector("#navigation-node-detail"),
         navigationRationaleInput: document.querySelector("#navigation-rationale-input"),
@@ -1242,6 +1281,17 @@ export const learnUiHtml = `<!doctype html>
       elements.coverageGapFilterForm.addEventListener("submit", async event => {
         event.preventDefault();
         await refreshCoverageGaps();
+      });
+
+      elements.sourceContentForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        await saveSourceContent();
+      });
+
+      elements.sourceContentForm.addEventListener("click", event => {
+        if (event.target.closest("[data-action='delete-source-content']")) {
+          void deleteSourceContent();
+        }
       });
 
       elements.llmSuggestionGenerationForm.addEventListener("submit", async event => {
@@ -1888,6 +1938,16 @@ export const learnUiHtml = `<!doctype html>
         const revisionButton = event.target.closest("button[data-action='open-navigation-revision']");
         if (revisionButton) {
           void openNavigationRevision(revisionButton.dataset.revisionId);
+          return;
+        }
+        const contentButton = event.target.closest("button[data-action='open-material-content']");
+        if (contentButton) {
+          void openMaterialContent(contentButton.dataset.entityId);
+          return;
+        }
+        const moreButton = event.target.closest("button[data-action='load-more-material-content']");
+        if (moreButton) {
+          void loadMaterialContentPage();
         }
       });
 
@@ -3091,9 +3151,114 @@ export const learnUiHtml = `<!doctype html>
         elements.navigationNodeDetail.append(outgoing, incoming);
         if (node.acceptedKind === "material_reference") {
           await renderMaterialBacklinks(node);
+          renderMaterialContentAffordance(node);
         } else {
           elements.navigationMaterialBacklinks.innerHTML = '<p class="empty">No material back links loaded.</p>';
+          resetMaterialContentView("No material content loaded.");
         }
+      }
+
+      function resetMaterialContentView(message) {
+        state.materialContentEntityId = null;
+        state.materialContentCursor = null;
+        elements.materialContentBody.textContent = "";
+        elements.materialContentStatus.textContent = message;
+      }
+
+      function renderMaterialContentAffordance(node) {
+        resetMaterialContentView(
+          node.hasContent ? "Material content available." : "No full text stored for this material.",
+        );
+        if (!node.hasContent) {
+          return;
+        }
+        const openButton = document.createElement("button");
+        openButton.type = "button";
+        openButton.className = "secondary";
+        openButton.dataset.action = "open-material-content";
+        openButton.dataset.entityId = node.entityId;
+        openButton.textContent = "Read full material";
+        elements.navigationNodeDetail.append(openButton);
+      }
+
+      async function openMaterialContent(entityId) {
+        if (!entityId) {
+          return;
+        }
+        state.materialContentEntityId = entityId;
+        state.materialContentCursor = null;
+        elements.materialContentBody.textContent = "";
+        await loadMaterialContentPage();
+      }
+
+      async function loadMaterialContentPage() {
+        const entityId = state.materialContentEntityId;
+        if (!entityId) {
+          return;
+        }
+        let path = "/materials/" + encodeURIComponent(entityId) + "/content?limit=2000";
+        if (state.materialContentCursor) {
+          path += "&cursor=" + encodeURIComponent(state.materialContentCursor);
+        }
+        const result = await requestJson(path);
+        if (result.status !== "accepted") {
+          elements.materialContentStatus.textContent = "Material content unavailable.";
+          return;
+        }
+        elements.materialContentBody.textContent += result.value.content;
+        state.materialContentCursor = result.value.nextCursor ?? null;
+        renderMaterialContentStatus(result.value);
+      }
+
+      function renderMaterialContentStatus(page) {
+        elements.materialContentStatus.innerHTML = "";
+        const label = document.createElement("span");
+        label.textContent = page.contentFormat + " · " + page.byteSize + " bytes";
+        elements.materialContentStatus.append(label);
+        if (state.materialContentCursor) {
+          const more = document.createElement("button");
+          more.type = "button";
+          more.className = "secondary";
+          more.dataset.action = "load-more-material-content";
+          more.textContent = "Load more";
+          elements.materialContentStatus.append(more);
+        }
+      }
+
+      async function saveSourceContent() {
+        const sourceId = elements.sourceContentIdInput.value.trim();
+        if (!sourceId) {
+          elements.sourceContentStatus.textContent = "Enter a source id.";
+          return;
+        }
+        const result = await requestJson("/sources/" + encodeURIComponent(sourceId) + "/content", {
+          body: {
+            content: elements.sourceContentInput.value,
+            contentFormat: elements.sourceContentFormatInput.value,
+          },
+          csrf: true,
+          method: "PUT",
+        });
+        elements.sourceContentStatus.textContent =
+          result.status === "accepted"
+            ? "Saved content for " + sourceId + " (" + result.value.sourceContent.byteSize + " bytes)."
+            : "Save rejected: " + result.reason;
+      }
+
+      async function deleteSourceContent() {
+        const sourceId = elements.sourceContentIdInput.value.trim();
+        if (!sourceId) {
+          elements.sourceContentStatus.textContent = "Enter a source id.";
+          return;
+        }
+        const result = await requestJson("/sources/" + encodeURIComponent(sourceId) + "/content", {
+          csrf: true,
+          method: "DELETE",
+        });
+        elements.sourceContentStatus.textContent =
+          result.status === "accepted"
+            ? "Deleted content for " + sourceId + "."
+            : "Delete rejected: " + result.reason;
       }
 
       function navigationRelationshipSection(title, relationships, direction) {

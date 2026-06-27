@@ -1856,6 +1856,80 @@ test("openAnswerAttemptsList_shouldReturnOpaqueCursorAndRejectCursorScopeMismatc
   }
 });
 
+test("materialContentRoute_shouldParsePaginationAndMapReadStatuses", async () => {
+  const server = createServer({
+    identityCommands: {
+      resolveSession: ({ sessionId }) => ({
+        status: "accepted",
+        value: { identity: { id: "id", state: "active" }, session: { id: sessionId } },
+      }),
+    },
+    corpusCommands: {
+      readMaterialContent: ({ entityId, limit, cursor }) =>
+        entityId === "missing"
+          ? { status: "rejected", reason: "content_not_found" }
+          : {
+              status: "accepted",
+              value: { content: "ab", contentFormat: "markdown", byteSize: 6, nextCursor: "2", echo: { limit, cursor } },
+            },
+    },
+    log: () => {},
+  });
+  const baseUrl = await listen(server);
+
+  try {
+    const ok = await fetch(`${baseUrl}/materials/entity-a/content?limit=2&cursor=1`, {
+      headers: { cookie: "agonara_session=s" },
+    });
+    const okBody = await ok.json();
+    const missing = await fetch(`${baseUrl}/materials/missing/content`, {
+      headers: { cookie: "agonara_session=s" },
+    });
+
+    assert.deepEqual(
+      { okStatus: ok.status, echo: okBody.value.echo, content: okBody.value.content, missingStatus: missing.status },
+      { okStatus: 200, echo: { limit: 2, cursor: "1" }, content: "ab", missingStatus: 404 },
+    );
+  } finally {
+    await close(server);
+  }
+});
+
+test("sourceContentRoute_shouldMapCuratorRejectionAndRequireCsrfOnWrite", async () => {
+  const server = createServer({
+    identityCommands: {
+      resolveSession: ({ sessionId }) => ({
+        status: "accepted",
+        value: { identity: { id: "id", state: "active" }, session: { id: sessionId } },
+      }),
+    },
+    corpusCommands: {
+      readSourceContent: () => ({ status: "rejected", reason: "admin_or_curator_required" }),
+      setSourceContent: () => ({ status: "accepted", value: { sourceContent: { sourceId: "s" } } }),
+    },
+    log: () => {},
+  });
+  const baseUrl = await listen(server);
+
+  try {
+    const studentRead = await fetch(`${baseUrl}/sources/s/content`, {
+      headers: { cookie: "agonara_session=s" },
+    });
+    const writeWithoutCsrf = await fetch(`${baseUrl}/sources/s/content`, {
+      method: "PUT",
+      headers: { cookie: "agonara_session=s", "content-type": "application/json" },
+      body: JSON.stringify({ content: "x", contentFormat: "markdown" }),
+    });
+
+    assert.deepEqual(
+      { studentReadStatus: studentRead.status, writeStatus: writeWithoutCsrf.status, writeReason: (await writeWithoutCsrf.json()).reason },
+      { studentReadStatus: 403, writeStatus: 403, writeReason: "csrf_required" },
+    );
+  } finally {
+    await close(server);
+  }
+});
+
 test("openAnswerAttemptsList_shouldRejectCursorRouteKeyDelimiterCollisions", async () => {
   const generateToken = makeIdGenerator(["cursor-1", "cursor-2"]);
   const server = createServer({

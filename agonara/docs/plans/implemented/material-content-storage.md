@@ -2,7 +2,7 @@
 date: 2026-06-27
 model: claude-opus-4-8
 description: "Implementation plan for material content storage and role-gated reading (ADR-021, spec material-content-storage)."
-status: draft
+status: implemented
 type: implementation-plan
 ---
 
@@ -130,10 +130,10 @@ Targeted commands:
 ## Phase tracker
 
 - [x] Phase 1 — Content Storage Substrate and Restore Validation
-- [ ] Phase 2 — Corpus Domain Content Capture, Reads, and Deletion
-- [ ] Phase 3 — HTTP Content API and Navigation Signal
-- [ ] Phase 4 — Product UI Content Load and Read
-- [ ] Phase 5 — Docs, Product Intent, Traceability, Dashboard, Archive
+- [x] Phase 2 — Corpus Domain Content Capture, Reads, and Deletion
+- [x] Phase 3 — HTTP Content API and Navigation Signal
+- [x] Phase 4 — Product UI Content Load and Read
+- [x] Phase 5 — Docs, Product Intent, Traceability, Dashboard, Archive
 
 Update tracker checkboxes only after the phase's required verification passes and the phase commit is created.
 

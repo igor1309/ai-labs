@@ -2,8 +2,8 @@
 date: 2026-06-27
 model: claude-opus-4-8
 description: "Spec: Agonara material content storage and role-gated reading."
-version: 0.0.1
-status: draft
+version: 0.0.2
+status: implemented
 type: spec
 ---
 
@@ -19,11 +19,29 @@ in Agonara instead of an external or agent-local file. Governed by
 
 ## Implementation status
 
-Planned; not yet implemented. This spec pins the spec-level detail
-[ADR-021](../adr/adr-021-material-content-storage-and-role-gated-reading.md) deferred. It
-extends the corpus model of
-[Topic, Concept, and Material Navigation](topic-concept-material-navigation.md) and amends
-its Behavior rule #28.
+Implemented per [`docs/plans/implemented/material-content-storage.md`](../plans/implemented/material-content-storage.md),
+pinning the spec-level detail [ADR-021](../adr/adr-021-material-content-storage-and-role-gated-reading.md)
+deferred. Extends the corpus model of
+[Topic, Concept, and Material Navigation](topic-concept-material-navigation.md) and amends its
+Behavior rule #28.
+
+Primary implementation and verification:
+
+- [Storage and backup/restore](../../src/storage.js) (`source_contents`, `accepted_material_contents`,
+  `MAX_MATERIAL_CONTENT_BYTES`, content-graph restore validation), with coverage in
+  [storage tests](../../tests/storage.test.js) and [backup/restore tests](../../tests/backup-restore.test.js).
+- [Corpus domain commands](../../src/corpus.js) (`setSourceContent`/`deleteSourceContent`/`readSourceContent`,
+  `setAcceptedMaterialContent`, `readMaterialContent`/`readMaterialRevisionContent`, `hasContent`
+  projection signal), with coverage in [Corpus tests](../../tests/corpus.test.js) and
+  [executable acceptance](../../tests/corpus-executable-acceptance.test.js).
+- [HTTP routes](../../src/server.js) and [contract](../../src/http-contract.js), with coverage in
+  [HTTP API tests](../../tests/http-api.test.js) and [OpenAPI contract tests](../../tests/openapi-contract.test.js).
+- [`/learn` reader and curator content UI](../../src/learn-ui.js), with browser coverage in
+  [navigation Playwright tests](../../tests/topic-concept-material-navigation.playwright.js).
+
+Accepted-content withdrawal and source-record deletion (ADR-022) are tracked separately in
+[`backlog/material-content.md`](../../backlog/material-content.md); the material-content spec
+covers raw-blob hard delete only.
 
 ## Public interface
 
@@ -73,8 +91,9 @@ type SetSourceContentInput = {
   contentFormat: ContentFormat;
 };
 
-// Promotion: a material_reference acceptance MAY carry content for the new revision.
-type AcceptMaterialContentInput = {
+// Promotion: accepted material content is set on a material_reference revision by a
+// dedicated curator command, not threaded into the acceptance call.
+type SetAcceptedMaterialContentInput = {
   content: string;
   contentFormat: ContentFormat;
   sourceContentProvenance?: AcceptedMaterialContent["sourceContentProvenance"];
@@ -116,13 +135,15 @@ type MaterialContentSignal = {
 | `PUT` | `/sources/{sourceId}/content` | Program Curator session and CSRF header | `AcceptedResult<{ sourceContent: SourceContentSummary }>` |
 | `GET` | `/sources/{sourceId}/content?limit={limit}&cursor={cursor}` | Program Curator session | `AcceptedResult<MaterialContentPage>` |
 | `DELETE` | `/sources/{sourceId}/content` | Program Curator session and CSRF header | `AcceptedResult<{ sourceId: string }>` |
+| `PUT` | `/materials/revisions/{revisionId}/content` | Program Curator session and CSRF header | `AcceptedResult<{ materialContent: { revisionId; contentFormat; byteSize } }>` |
 | `GET` | `/materials/{entityId}/content?limit={limit}&cursor={cursor}` | Student or Program Curator session | `AcceptedResult<MaterialContentPage>` |
 | `GET` | `/materials/revisions/{revisionId}/content?limit={limit}&cursor={cursor}` | Student or Program Curator session | `AcceptedResult<MaterialContentPage>` |
 
-`POST /programs/{programId}/sources` accepts optional `content` and `contentFormat`
-(`SetSourceContentInput`) at intake. `POST /navigation-candidates/{candidateId}/acceptance`
-accepts optional `content`, `contentFormat`, and `sourceContentProvenance`
-(`AcceptMaterialContentInput`) for `material_reference` candidates. `limit` is a positive
+`PUT /materials/revisions/{revisionId}/content` (`SetAcceptedMaterialContentInput`) sets the
+self-contained accepted content on an accepted `material_reference` revision; it is rejected
+with `material_content_already_set` if that revision already has content. Source content may
+also be supplied at intake via optional `content`/`contentFormat` on
+`POST /programs/{programId}/sources` (`SetSourceContentInput`). `limit` is a positive
 integer **character** count (omitted ⇒ whole content; capped at
 `MAX_MATERIAL_CONTENT_BYTES`); `cursor` follows the existing opaque `Cursor` schema and
 encodes the next character offset. (The shared list `Limit` schema, max 100, is not reused
@@ -146,7 +167,9 @@ here — it counts list items, not characters.)
    session for an effective Program Curator of the source's Program and a valid
    `X-Agonara-CSRF` header.
 6. `GET /sources/{sourceId}/content` requires effective Program Curator participation for
-   the source's Program. Student participation is rejected with `participation_required`.
+   the source's Program. Non-curator participation is rejected with
+   `admin_or_curator_required` (the existing curator-gate reason); a missing source is
+   rejected with `source_not_found`.
 7. `DELETE /sources/{sourceId}/content` hard-deletes the source raw content row. It must not
    modify, delete, or invalidate any accepted material content, accepted revision, or
    student-referenced record. Deleting absent source content is idempotent and accepted.
