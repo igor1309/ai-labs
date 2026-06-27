@@ -2,6 +2,10 @@
 
 ## 2026-06-27
 
+- Added RED coverage for the material content **Phase 3** HTTP review gaps: real-session
+  role-gating/CSRF/navigation-signal assertions, content-read response whitelisting, and
+  OpenAPI body/query declarations for content routes. The targeted test run fails on the
+  reviewed Phase 3 commit, documenting the gaps to close.
 - Implemented **Phase 3** (HTTP) of material content storage: declared the content routes
   in `http-contract.js` (`PUT`/`GET`/`DELETE /sources/{sourceId}/content`,
   `PUT`/`GET /materials/revisions/{revisionId}/content`, `GET /materials/{entityId}/content`)
