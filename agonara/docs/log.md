@@ -2,6 +2,9 @@
 
 ## 2026-06-27
 
+- Ran the **material content storage implementation plan adversarial review**
+  (`docs/reviews/material-content-storage-plan-adversarial-review.md`) and fixed the
+  plan's final-closeout declaration so it follows the mandatory implementation-plan structure.
 - Drafted the **material content storage implementation plan**
   (`docs/plans/material-content-storage.md`) for the spec under ADR-021: five TDD phases
   (storage, domain, HTTP, `/learn` UI, docs/intent/closeout), declaration block, ADR

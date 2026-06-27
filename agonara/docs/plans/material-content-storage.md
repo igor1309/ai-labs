@@ -341,7 +341,10 @@ implemented material-content capability.
 
 ## Final closeout
 
-- All phase tracker boxes checked with their phase commits.
-- Spec marked implemented; intent traceability updated; backlog narrowed; dashboard refreshed;
-  plan archived under `docs/plans/implemented/`.
-- Open a single PR for the task per the push policy.
+Final gates: all phase tracker boxes checked with their phase commits; spec marked
+implemented; intent traceability updated; backlog narrowed; dashboard refreshed;
+full Agonara tests, root build, docs link/front-matter/single-H1 checks, and
+`git diff --check` pass; final self + adversarial review of the doc set is clean.
+Archive plan: move to `agonara/docs/plans/implemented/material-content-storage.md`.
+Commit archive move: yes.
+Push/PR: follow push policy; open a single PR for the task.
