@@ -7,6 +7,11 @@ services:
     image: agonara:staging
     container_name: agonara-staging
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     env_file: .env.staging
     environment:
       AGONARA_DB_PATH: /data/agonara.sqlite
