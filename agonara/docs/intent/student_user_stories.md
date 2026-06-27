@@ -91,7 +91,7 @@ Acceptance signal: weak or unresolved concepts appear in the student’s persona
 
 ### STU-09 — See linked materials
 
-As a student, I want to see materials linked to a topic or concept so that I can study from relevant sources instead of a flat list of links.
+As a student, I want to see materials linked to a topic or concept — whether the material is a link to an external source or content hosted in the program — so that I can study from relevant sources instead of a flat list of links.
 
 Status: accepted
 
@@ -214,6 +214,14 @@ As a student, I want to decline an invitation to a program so that I am not adde
 Status: accepted
 
 Acceptance signal: declining an invitation does not create student membership or student learning state.
+
+### STU-24 — Read hosted material content
+
+As a student, I want to read the full text of an accepted material directly in the program when the curator has hosted it, so that I am not blocked when the material is not reachable elsewhere.
+
+Status: accepted
+
+Acceptance signal: a student can open an accepted material that has stored content and read its full text in-product, with the links back to the topics and concepts it supports preserved.
 
 ## Boundaries
 

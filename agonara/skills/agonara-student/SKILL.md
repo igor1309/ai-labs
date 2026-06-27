@@ -1,8 +1,8 @@
 ---
 name: agonara-student
 author: Igor Malyarov
-version: "1.2.1"
-description: Operate an Agonara instance as a Student through its HTTP API — discover and preview programs without creating state, self-join/leave/rejoin and act on invitations, resume learning and follow the next step, study accepted concepts and materials with navigation intact, present checks and relay the student's own quick, open, and readiness answers, and read feedback, results, and the evidence behind progress. The agent coaches learning but never produces the student's assessment evidence. The student sees only accepted corpus and its own state — never curator drafts, answer keys, correctness metadata, or evaluator internals. Use when an agent acts as a learner against an Agonara instance.
+version: "1.3.0"
+description: Operate an Agonara instance as a Student through its HTTP API — discover and preview programs without creating state, self-join/leave/rejoin and act on invitations, resume learning and follow the next step, study accepted concepts and materials with navigation intact and read hosted material content where present, present checks and relay the student's own quick, open, and readiness answers, and read feedback, results, and the evidence behind progress. The agent coaches learning but never produces the student's assessment evidence. The student sees only accepted corpus and its own state — never curator drafts, answer keys, correctness metadata, or evaluator internals. Use when an agent acts as a learner against an Agonara instance.
 trigger: when an agent works as a Student against an Agonara instance — discovering or joining programs, learning, taking checks, or reading its own progress
 ---
 
@@ -107,6 +107,16 @@ accepted structure (requires an active membership).
   `targetKind=material` for your state on one), so reading stays connected to
   program structure rather than a flat link list
   (STU-09, STU-10).
+- **Read hosted material content** — some materials carry their text in-product,
+  not just a link. The navigation entity signals this with `hasContent`
+  (alongside `contentBytes` and `contentFormat`); when it is set, read the full
+  accepted copy with `GET /materials/{entityId}/content` — or a specific revision
+  with `GET /materials/revisions/{revisionId}/content` — paged by character with
+  `limit`/`cursor` and continued through the returned `nextCursor` (STU-24). This
+  is the accepted, self-contained material copy: student-safe like the rest of
+  the accepted corpus, and never the curator's raw source content. A material
+  without hosted content simply omits the signal — fall back to its
+  `locator`/`citation` link as before.
 
 ## The assessment boundary: coach, never test-taker
 

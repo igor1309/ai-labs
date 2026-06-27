@@ -286,6 +286,47 @@ components:
           - open_answer_check_candidate
           - readiness_check_candidate
   requestBodies:
+    SetSourceContent:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - content
+              - contentFormat
+            properties:
+              content:
+                type: string
+                minLength: 1
+              contentFormat:
+                type: string
+                enum:
+                  - markdown
+                  - plain_text
+            additionalProperties: false
+    SetAcceptedMaterialContent:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - content
+              - contentFormat
+            properties:
+              content:
+                type: string
+                minLength: 1
+              contentFormat:
+                type: string
+                enum:
+                  - markdown
+                  - plain_text
+              sourceContentProvenance:
+                type: object
+                additionalProperties: true
+            additionalProperties: false
     OptionalObject:
       required: false
       content:
@@ -726,6 +767,7 @@ components:
         - accepted_entity_not_found
         - accepted_entity_program_mismatch
         - accepted_kind_mismatch
+        - accepted_revision_not_found
         - admin_or_curator_required
         - admin_required
         - attempt_not_found
@@ -740,6 +782,8 @@ components:
         - check_entity_program_mismatch
         - check_revision_not_found
         - check_revision_program_mismatch
+        - content_not_found
+        - content_too_large
         - coverage_gap_not_found
         - coverage_gap_scope_not_found
         - coverage_gap_scope_program_mismatch
@@ -772,6 +816,7 @@ components:
         - llm_curation_suggestion_already_rejected
         - llm_curation_suggestion_not_found
         - login_already_bound
+        - material_content_already_set
         - membership_already_active
         - membership_left
         - membership_missing
@@ -1772,6 +1817,213 @@ paths:
         "404":
           $ref: "#/components/responses/Rejected"
         "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /sources/{sourceId}/content:
+    delete:
+      tags:
+        - corpus
+      operationId: deleteSourceContent
+      summary: Hard-delete a Program source's stored content (curator only).
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: sourceId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+    get:
+      tags:
+        - corpus
+      operationId: readSourceContent
+      summary: Read a Program source's stored content (curator only).
+      parameters:
+        - name: sourceId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1048576
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+    put:
+      tags:
+        - corpus
+      operationId: setSourceContent
+      summary: Set or replace a Program source's stored content.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: sourceId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/SetSourceContent"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /materials/revisions/{revisionId}/content:
+    get:
+      tags:
+        - corpus
+      operationId: readMaterialRevisionContent
+      summary: Read accepted material content for a specific material reference revision.
+      parameters:
+        - name: revisionId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1048576
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+    put:
+      tags:
+        - corpus
+      operationId: setAcceptedMaterialContent
+      summary: Set accepted material content on a material reference revision (curator only).
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: revisionId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/SetAcceptedMaterialContent"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /materials/{entityId}/content:
+    get:
+      tags:
+        - corpus
+      operationId: readMaterialContent
+      summary: Read accepted material content for a material entity's current revision.
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1048576
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
           $ref: "#/components/responses/Rejected"
         "500":
           $ref: "#/components/responses/Fault"

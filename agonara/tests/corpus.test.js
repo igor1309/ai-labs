@@ -6,8 +6,17 @@ import {
   createIdentity,
   createLocalPasswordCredential,
   createProgramMembershipRecord,
+  MAX_MATERIAL_CONTENT_BYTES,
+  createAcceptedCorpusEntityRecord,
+  createAcceptedCorpusRevisionRecord,
+  createCorpusCandidateRecord,
   createProgramShellRecord,
+  createProgramSourceRecord,
   createSession,
+  getAcceptedMaterialContentRecord,
+  getSourceContentRecord,
+  setAcceptedMaterialContentRecord,
+  setSourceContentRecord,
   getAcceptedAssessmentCriterionRevisionRecord,
   getAcceptedCorpusRevisionRecord,
   getAcceptedNavigationRelationshipRevisionRecord,
@@ -6617,4 +6626,313 @@ function seedStudentMembership(database, { id, programId, identityId }) {
     createdAt: "2026-05-28T10:47:00.000Z",
     updatedAt: "2026-05-28T10:47:00.000Z",
   });
+}
+
+async function makeMaterialContentSUT() {
+  const sut = await makeSUT();
+  const { database } = sut;
+  seedCuratorProgram(database, { programId: "program-a" });
+  createIdentity(database, makeIdentity({ id: "identity-student" }));
+  seedStudentMembership(database, {
+    id: "membership-student",
+    programId: "program-a",
+    identityId: "identity-student",
+  });
+  createIdentity(database, makeIdentity({ id: "identity-outsider" }));
+  createProgramSourceRecord(database, {
+    id: "source-a",
+    programId: "program-a",
+    sourceKind: "lecture",
+    title: "Source",
+    recordedByIdentityId: "identity-curator",
+    recordedAt: "2026-05-28T10:48:00.000Z",
+  });
+  for (const [candidateId, entityId, revisionId, kind] of [
+    ["candidate-a", "entity-a", "revision-a", "material_reference"],
+    ["topic-candidate-a", "topic-entity-a", "topic-revision-a", "topic"],
+  ]) {
+    createCorpusCandidateRecord(database, {
+      id: candidateId,
+      programId: "program-a",
+      candidateKind: kind,
+      title: "Material",
+      materialReferenceKind: kind === "material_reference" ? "lecture" : null,
+      locator: kind === "material_reference" ? "loc" : null,
+      sourceIds: ["source-a"],
+      status: "accepted",
+      createdByIdentityId: "identity-curator",
+      createdAt: "2026-05-28T10:48:00.000Z",
+      updatedAt: "2026-05-28T10:48:00.000Z",
+    });
+    createAcceptedCorpusEntityRecord(database, {
+      id: entityId,
+      programId: "program-a",
+      acceptedKind: kind,
+      currentRevisionId: revisionId,
+    });
+    createAcceptedCorpusRevisionRecord(database, {
+      id: revisionId,
+      entityId,
+      programId: "program-a",
+      acceptedKind: kind,
+      title: "Material",
+      materialReferenceKind: kind === "material_reference" ? "lecture" : null,
+      locator: kind === "material_reference" ? "loc" : null,
+      acceptedFromCandidateId: candidateId,
+      sourceIds: ["source-a"],
+      acceptedByIdentityId: "identity-curator",
+      acceptedAt: "2026-05-28T10:49:00.000Z",
+    });
+  }
+  return sut;
+}
+
+test("setSourceContent_shouldStoreAndRedactedSummarize_onCuratorContent", async () => {
+  const { commands, database } = await makeMaterialContentSUT();
+
+  try {
+    const result = commands.setSourceContent({
+      actingIdentityId: "identity-curator",
+      sourceId: "source-a",
+      content: "# Source body",
+      contentFormat: "markdown",
+    });
+
+    assert.equal(result.status, "accepted");
+    assert.equal(result.value.sourceContent.content, undefined);
+    assert.equal(result.value.sourceContent.byteSize, Buffer.byteLength("# Source body", "utf8"));
+    assert.equal(getSourceContentRecord(database, "source-a").content, "# Source body");
+  } finally {
+    database.close();
+  }
+});
+
+test("setSourceContent_shouldRejectNonCuratorAndInvalidContent_onSourceContent", async () => {
+  const { commands, database } = await makeMaterialContentSUT();
+
+  try {
+    assert.deepEqual(
+      commands.setSourceContent({
+        actingIdentityId: "identity-student",
+        sourceId: "source-a",
+        content: "x",
+        contentFormat: "markdown",
+      }),
+      { status: "rejected", reason: "admin_or_curator_required" },
+    );
+    assert.deepEqual(
+      commands.setSourceContent({
+        actingIdentityId: "identity-curator",
+        sourceId: "source-a",
+        content: "x",
+        contentFormat: "html",
+      }),
+      { status: "rejected", reason: "validation_failed" },
+    );
+    assert.deepEqual(
+      commands.setSourceContent({
+        actingIdentityId: "identity-curator",
+        sourceId: "source-a",
+        content: "a".repeat(MAX_MATERIAL_CONTENT_BYTES + 1),
+        contentFormat: "markdown",
+      }),
+      { status: "rejected", reason: "content_too_large" },
+    );
+    assert.deepEqual(commands.setSourceContent({ actingIdentityId: "identity-curator", sourceId: "missing", content: "x", contentFormat: "markdown" }), {
+      status: "rejected",
+      reason: "source_not_found",
+    });
+  } finally {
+    database.close();
+  }
+});
+
+test("readSourceContent_shouldBeCuratorOnlyAndReportMissing_onSourceContent", async () => {
+  const { commands, database } = await makeMaterialContentSUT();
+
+  try {
+    assert.deepEqual(commands.readSourceContent({ actingIdentityId: "identity-curator", sourceId: "source-a" }), {
+      status: "rejected",
+      reason: "content_not_found",
+    });
+    commands.setSourceContent({ actingIdentityId: "identity-curator", sourceId: "source-a", content: "body", contentFormat: "markdown" });
+    assert.equal(commands.readSourceContent({ actingIdentityId: "identity-curator", sourceId: "source-a" }).value.content, "body");
+    assert.deepEqual(commands.readSourceContent({ actingIdentityId: "identity-student", sourceId: "source-a" }), {
+      status: "rejected",
+      reason: "admin_or_curator_required",
+    });
+  } finally {
+    database.close();
+  }
+});
+
+test("deleteSourceContent_shouldRemoveCuratorContent_onSourceContent", async () => {
+  const { commands, database } = await makeMaterialContentSUT();
+
+  try {
+    commands.setSourceContent({ actingIdentityId: "identity-curator", sourceId: "source-a", content: "body", contentFormat: "markdown" });
+    assert.deepEqual(commands.deleteSourceContent({ actingIdentityId: "identity-curator", sourceId: "source-a" }), {
+      status: "accepted",
+      value: { sourceId: "source-a" },
+    });
+    assert.equal(getSourceContentRecord(database, "source-a"), null);
+  } finally {
+    database.close();
+  }
+});
+
+test("setAcceptedMaterialContent_shouldRejectNonMaterialAndDuplicate_onMaterialContent", async () => {
+  const { commands, database } = await makeMaterialContentSUT();
+
+  try {
+    assert.deepEqual(
+      commands.setAcceptedMaterialContent({ actingIdentityId: "identity-curator", revisionId: "topic-revision-a", content: "x", contentFormat: "markdown" }),
+      { status: "rejected", reason: "validation_failed" },
+    );
+
+    const first = commands.setAcceptedMaterialContent({
+      actingIdentityId: "identity-curator",
+      revisionId: "revision-a",
+      content: "# Accepted",
+      contentFormat: "markdown",
+      sourceContentProvenance: { sourceId: "source-a" },
+    });
+    assert.equal(first.status, "accepted");
+    assert.deepEqual(getAcceptedMaterialContentRecord(database, "revision-a").sourceContentProvenance, { sourceId: "source-a" });
+
+    assert.deepEqual(
+      commands.setAcceptedMaterialContent({ actingIdentityId: "identity-curator", revisionId: "revision-a", content: "# Other", contentFormat: "markdown" }),
+      { status: "rejected", reason: "material_content_already_set" },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("readMaterialContent_shouldServeStudentAndCuratorButNotOutsider_onMaterialContent", async () => {
+  const { commands, database } = await makeMaterialContentSUT();
+
+  try {
+    setAcceptedMaterialContentRecord(database, { revisionId: "revision-a", content: "# Accepted body", contentFormat: "markdown" });
+
+    assert.equal(commands.readMaterialContent({ actingIdentityId: "identity-student", entityId: "entity-a" }).value.content, "# Accepted body");
+    assert.equal(commands.readMaterialContent({ actingIdentityId: "identity-curator", entityId: "entity-a" }).value.content, "# Accepted body");
+    assert.deepEqual(commands.readMaterialContent({ actingIdentityId: "identity-outsider", entityId: "entity-a" }), {
+      status: "rejected",
+      reason: "participation_required",
+    });
+    assert.equal(
+      commands.readMaterialRevisionContent({ actingIdentityId: "identity-student", revisionId: "revision-a" }).value.content,
+      "# Accepted body",
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("readMaterialContent_shouldPaginateByCharacterCursor_onMaterialContent", async () => {
+  const { commands, database } = await makeMaterialContentSUT();
+
+  try {
+    setAcceptedMaterialContentRecord(database, { revisionId: "revision-a", content: "abcdef", contentFormat: "markdown" });
+
+    const firstPage = commands.readMaterialContent({ actingIdentityId: "identity-student", entityId: "entity-a", limit: 4 });
+    assert.deepEqual(firstPage, {
+      status: "accepted",
+      value: { content: "abcd", contentFormat: "markdown", byteSize: 6, nextCursor: "4" },
+    });
+
+    const secondPage = commands.readMaterialContent({ actingIdentityId: "identity-student", entityId: "entity-a", limit: 4, cursor: "4" });
+    assert.deepEqual(secondPage, {
+      status: "accepted",
+      value: { content: "ef", contentFormat: "markdown", byteSize: 6 },
+    });
+
+    assert.deepEqual(
+      commands.readMaterialContent({ actingIdentityId: "identity-student", entityId: "entity-a", limit: 4, cursor: "99" }),
+      { status: "rejected", reason: "validation_failed" },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("getNavigationEntity_shouldCarryHasContentSignalForMaterialsOnly_onMaterialContent", async () => {
+  const { commands, database } = await makeMaterialContentSUT();
+
+  try {
+    const before = commands.getNavigationEntity({ actingIdentityId: "identity-student", entityId: "entity-a" });
+    assert.equal(before.value.navigationNode.hasContent, false);
+    assert.equal(before.value.navigationNode.contentBytes, undefined);
+
+    setAcceptedMaterialContentRecord(database, { revisionId: "revision-a", content: "# Body", contentFormat: "markdown" });
+    const after = commands.getNavigationEntity({ actingIdentityId: "identity-student", entityId: "entity-a" });
+    assert.equal(after.value.navigationNode.hasContent, true);
+    assert.equal(after.value.navigationNode.contentBytes, Buffer.byteLength("# Body", "utf8"));
+    assert.equal(after.value.navigationNode.contentFormat, "markdown");
+    assert.equal(after.value.navigationNode.content, undefined);
+
+    const topic = commands.getNavigationEntity({ actingIdentityId: "identity-student", entityId: "topic-entity-a" });
+    assert.equal("hasContent" in topic.value.navigationNode, false);
+  } finally {
+    database.close();
+  }
+});
+
+test("listProgramNavigation_shouldCarryHasContentSignalForUngroupedMaterials_onMaterialContent", async () => {
+  const { commands, database } = await makeMaterialContentSUT();
+
+  try {
+    setAcceptedMaterialContentRecord(database, { revisionId: "revision-a", content: "# Body", contentFormat: "markdown" });
+
+    assert.deepEqual(
+      commands.listProgramNavigation({ actingIdentityId: "identity-student", programId: "program-a" }).value.navigation.ungroupedMaterials,
+      [
+        {
+          entityId: "entity-a",
+          revisionId: "revision-a",
+          acceptedKind: "material_reference",
+          title: "Material",
+          hasContent: true,
+          contentBytes: Buffer.byteLength("# Body", "utf8"),
+          contentFormat: "markdown",
+        },
+      ],
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("readMaterialContent_shouldNotMutateProgramOrStudentState_onMaterialContent", async () => {
+  const { commands, database } = await makeMaterialContentSUT();
+
+  try {
+    setAcceptedMaterialContentRecord(database, { revisionId: "revision-a", content: "body", contentFormat: "markdown" });
+    commands.setSourceContent({ actingIdentityId: "identity-curator", sourceId: "source-a", content: "src", contentFormat: "markdown" });
+    const before = snapshotMaterialContentReadBoundary(database);
+
+    commands.readMaterialContent({ actingIdentityId: "identity-student", entityId: "entity-a" });
+    commands.readMaterialRevisionContent({ actingIdentityId: "identity-student", revisionId: "revision-a" });
+    commands.readSourceContent({ actingIdentityId: "identity-curator", sourceId: "source-a" });
+
+    assert.deepEqual(snapshotMaterialContentReadBoundary(database), before);
+  } finally {
+    database.close();
+  }
+});
+
+function snapshotMaterialContentReadBoundary(database) {
+  return {
+    corpusEventCount: listCorpusEventRecords(database, { programId: "program-a" }).length,
+    learnerEvidenceTargetLinkCount: countRows(database, "learner_evidence_target_links"),
+    openAnswerAttemptCount: countRows(database, "open_answer_attempts"),
+    openAnswerEvaluationCount: countRows(database, "open_answer_evaluations"),
+    openAnswerEvaluationFailureCount: countRows(database, "open_answer_evaluation_failures"),
+    openAnswerEvaluatorEvidenceCount: countRows(database, "open_answer_evaluator_evidence"),
+    openAnswerEvaluatorRunCount: countRows(database, "open_answer_evaluator_runs"),
+    quickCheckAttemptCount: countRows(database, "quick_check_attempts"),
+    readinessCheckAttemptCount: countRows(database, "readiness_check_attempts"),
+    sessionCount: countRows(database, "sessions"),
+  };
 }

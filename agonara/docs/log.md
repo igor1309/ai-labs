@@ -2,6 +2,110 @@
 
 ## 2026-06-27
 
+- Taught the operator skills the material-content capability (closing the backlog skills task):
+  `agonara-student` (v1.3.0) now documents reading hosted accepted material content via the
+  `hasContent` signal and `GET /materials/{entityId}/content` /
+  `GET /materials/revisions/{revisionId}/content` with character pagination; `agonara-curator-corpus`
+  (v1.1.0) gains a "Material content" section covering curator-only source raw content
+  (`PUT`/`GET`/`DELETE /sources/{sourceId}/content`) and the student-readable accepted material copy
+  (`PUT`/`GET /materials/revisions/{revisionId}/content`, set-once per revision, curator-owned
+  licensing). All cited routes verified against the OpenAPI contract by the operator-skill-contract
+  test.
+- Surfaced material content on the public landing page (`agonara/index.html`): added a "Material
+  Content" card to the "What is implemented today" grid, mirroring the README implementation
+  snapshot. Refreshed the repo LOC dashboard (`docs/loc-dashboard.html`) to current counts.
+- Integrated the two overlapping material-content closeout PRs (they conflicted with each other
+  on `learn-ui.js`, the navigation Playwright suite, and the log): merged
+  `material-content-phase5-test-gaps` as the base (curator content read-back button, hierarchy/
+  back-link browser coverage, Product Intent traceability closeout test, LOC dashboard refresh,
+  and the spec correction `participation_required` → `admin_or_curator_required` for source
+  content reads), then folded in `phase4-content-ui-test-gaps`'s polish on top: the friendlier
+  `content_not_found` → "Source content unavailable." copy in the curator read affordance, a
+  back-link click→detail navigation assertion in the student reader test, and a post-delete
+  "unavailable" idempotency assertion in the curator test. `phase4-content-ui-test-gaps` is
+  superseded. Full Agonara suite, build, and the five Playwright tests pass.
+- Closed the material-content Phase 5 review gaps: content read HTTP responses are now
+  allowlisted to the spec fields, the `/learn` curator content panel can read source content
+  back after save, browser coverage proves hosted-content back-links and content controls, and
+  closeout tests now pin Product Intent traceability plus the refreshed LOC dashboard.
+- Addressed material-content review-gap PRs (#645/#647) against the branch: `hasContent`/
+  `contentBytes`/`contentFormat` now also ride the navigation **coverage lists**
+  (`listProgramNavigation` topics/ungrouped concepts/ungrouped materials), not just the
+  detail projections; and the HTTP content **read** handlers now **whitelist** the response to
+  `{content, contentFormat, byteSize, nextCursor}` via `mapContentPageResult` instead of
+  passing the raw command value through. Kept the owner's dedicated `setAcceptedMaterialContent`
+  design (content is not threaded into acceptance). Full Agonara suite and build pass.
+- Strengthened Phase 1 material-content tests after review: storage tests now assert exact
+  rejection reasons and unchanged rows for invalid format, oversized writes, and accepted
+  revision overwrite attempts; backup/restore rejection tests now prove malformed content
+  backups leave an existing target untouched.
+- Closed out **Phase 5** of material content storage: amended navigation spec #28/#29 (content
+  served off a dedicated route with a `hasContent` signal, not navigation traversal; content
+  storage/serving and curator-owned licensing owned by the material-content spec/ADR-021);
+  added Product Intent stories STU-24 (read hosted material content) and CUR-19 (host readable
+  material content) plus the STU-09/CUR-03 "linked or hosted" amendment; marked the
+  material-content spec `implemented` with implementation/verification links; added a README
+  implementation-snapshot bullet; narrowed `backlog/material-content.md` to the remaining
+  withdrawal/source-deletion (ADR-022) spec+impl and the skills update; and archived the plan
+  to `docs/plans/implemented/material-content-storage.md`. **Material content storage (ADR-021)
+  is complete** — all five plan phases done; full Agonara suite, build, and the five Playwright
+  tests pass.
+- Implemented the **Phase 4** `/learn` content reader for material content storage: the
+  student navigation material detail now shows a "Read full material" affordance when a
+  material has stored content, and a `#material-content-view` (`#material-content-status` +
+  `#material-content-body`) renders the accepted content fetched from
+  `GET /materials/{entityId}/content`, with character-cursor "Load more" pagination —
+  serving both students and curators with no provenance leak. Verified by a new student
+  Playwright test (material → "Read full material" → content renders) plus the existing
+  navigation browser tests (unchanged). Added the curator source-content load/delete form UI
+  (`#material-content-curator-panel` / `#source-content-form`) wired to the
+  `PUT`/`DELETE /sources/{sourceId}/content` routes, with a curator browser test
+  (save → status, delete → status). **Phase 4 complete.** Five Playwright tests pass; full
+  Agonara suite and build pass.
+- Implemented **Phase 3** (HTTP) of material content storage: declared the content routes
+  in `http-contract.js` (`PUT`/`GET`/`DELETE /sources/{sourceId}/content`,
+  `PUT`/`GET /materials/revisions/{revisionId}/content`, `GET /materials/{entityId}/content`)
+  with `content_not_found` / `content_too_large` / `material_content_already_set` /
+  `accepted_revision_not_found` added to the `ApiRejectionReason` enum and `httpStatusFor`
+  mapping (404/400/409/404); wired the handlers in `server.js` (session/CSRF, `limit`/`cursor`
+  query parsing, redacted passthrough); and taught the OpenAPI generator and contract test the
+  `put` method so the routes generate and validate. Reconciled the spec to the dedicated
+  `PUT …/content` set-content design (replacing acceptance-carried content) and the
+  `admin_or_curator_required` source-read reason. Added stub-based HTTP route tests (pagination
+  parsing, read status mapping, curator-gate + CSRF-required on writes). Full Agonara suite
+  (incl. `openapi:check` + `openapi:lint`) and build pass. Deferred: a real-session HTTP
+  executable-acceptance scenario (the command-level executable acceptance already covers the
+  full content flow; Phase 4 UI exercises real sessions).
+- Implemented the **Phase 2** domain content commands for material content storage:
+  `setSourceContent` / `deleteSourceContent` / `readSourceContent` (curator-only),
+  `setAcceptedMaterialContent` (curator; material-only, immutable per revision via a
+  `material_content_already_set` guard), and `readMaterialContent` /
+  `readMaterialRevisionContent` (effective Student or Program Curator, **not** Admin).
+  Reads are character-paginated (`limit`/opaque `cursor`), summaries are redacted (no
+  content bytes), oversized writes return `content_too_large`, and licensing is not gated.
+  Per owner decision, accepted content is written by the dedicated `setAcceptedMaterialContent`
+  command rather than threaded into the acceptance transaction; the spec's route/shape
+  wording will be aligned when HTTP lands (Phase 3). Closed the phase with the `hasContent`/
+  `contentBytes`/`contentFormat` signal on material navigation projections (material-only;
+  traversal stays content-free), a material-content executable-acceptance scenario, and a
+  no-Student-state boundary test. **Phase 2 complete.** Domain + executable-acceptance tests
+  green; full Agonara suite and build pass.
+- Implemented **Phase 1** of the material content storage plan: `source_contents`
+  (keyed by `source_id`) and `accepted_material_contents` (keyed by `revision_id`) tables
+  with a `content_format` `check`, derived `byte_size`, and optional provenance; storage
+  accessors (source content overwritable, accepted content immutable per revision and
+  material-only); a `MAX_MATERIAL_CONTENT_BYTES` (1 MiB) guard; backup export of both
+  tables; and restore delete/reinsert plus before-mutation validation (missing
+  source/revision, non-`material_reference` revision, invalid format, byte-size mismatch,
+  oversized). Storage and backup/restore tests green; full Agonara suite and build pass.
+- Ran the **material content storage implementation plan adversarial review**
+  (`docs/reviews/material-content-storage-plan-adversarial-review.md`) and fixed the
+  plan's final-closeout declaration so it follows the mandatory implementation-plan structure.
+- Drafted the **material content storage implementation plan**
+  (`docs/plans/material-content-storage.md`) for the spec under ADR-021: five TDD phases
+  (storage, domain, HTTP, `/learn` UI, docs/intent/closeout), declaration block, ADR
+  traceability matrix, and scope guardrails excluding ADR-022 withdrawal/source-record
+  deletion (separate spec).
 - **ADR-021 — Material Content Storage and Role-Gated Reading** (accepted) and its draft
   spec `docs/specs/material-content-storage.md`: Agonara stores material text and serves it
   role-gated (curator read/write/delete over everything loaded, student read over accepted);

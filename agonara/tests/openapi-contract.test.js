@@ -20,7 +20,7 @@ import {
 const openApiPath = fileURLToPath(new URL("../docs/api/openapi.yml", import.meta.url));
 const serverPath = fileURLToPath(new URL("../src/server.js", import.meta.url));
 const generatorPath = fileURLToPath(new URL("../scripts/generate-agonara-openapi.mjs", import.meta.url));
-const openApiRouteMethods = Object.freeze(["delete", "get", "patch", "post"]);
+const openApiRouteMethods = Object.freeze(["delete", "get", "patch", "post", "put"]);
 const knownTags = new Set(openApiContractMetadata.tags.map(($0) => $0.name));
 
 test("openApiContract_shouldResolveLocalRefs_onGeneratedContract", () => {
@@ -123,6 +123,42 @@ test("routeContracts_shouldDeclareRequestBodiesForJsonMutations", () => {
     .map(formatRouteContract);
 
   assert.deepEqual(invalidRequestBodies, []);
+});
+
+test("routeContracts_shouldDeclareMaterialContentBodiesAndPaginationQueries", () => {
+  assert.deepEqual(
+    {
+      readMaterialContent: contentQueryProjection(routeContract("GET", "/materials/{entityId}/content")),
+      readMaterialRevisionContent: contentQueryProjection(routeContract("GET", "/materials/revisions/{revisionId}/content")),
+      readSourceContent: contentQueryProjection(routeContract("GET", "/sources/{sourceId}/content")),
+      setAcceptedMaterialContent: requestBodyProjection(routeContract("PUT", "/materials/revisions/{revisionId}/content")),
+      setSourceContent: requestBodyProjection(routeContract("PUT", "/sources/{sourceId}/content")),
+    },
+    {
+      readMaterialContent: {
+        cursor: { minLength: 1, type: "string" },
+        limit: { maximum: 1048576, minimum: 1, type: "integer" },
+      },
+      readMaterialRevisionContent: {
+        cursor: { minLength: 1, type: "string" },
+        limit: { maximum: 1048576, minimum: 1, type: "integer" },
+      },
+      readSourceContent: {
+        cursor: { minLength: 1, type: "string" },
+        limit: { maximum: 1048576, minimum: 1, type: "integer" },
+      },
+      setAcceptedMaterialContent: {
+        contentType: "application/json",
+        required: true,
+        schemaRef: "#/components/requestBodies/SetAcceptedMaterialContent",
+      },
+      setSourceContent: {
+        contentType: "application/json",
+        required: true,
+        schemaRef: "#/components/requestBodies/SetSourceContent",
+      },
+    },
+  );
 });
 
 test("routeContracts_shouldDeclareResponsesForEveryPublicStatus", () => {
@@ -317,6 +353,24 @@ function isRecord(value) {
 
 function formatRouteContract(route) {
   return `${route.method} ${route.path}`;
+}
+
+function routeContract(method, path) {
+  return routeContracts.find($0 => $0.method === method && $0.path === path);
+}
+
+function requestBodyProjection(route) {
+  return {
+    contentType: route.requestBody?.contentType,
+    required: route.requestBody?.required,
+    schemaRef: route.requestBody?.schema?.ref,
+  };
+}
+
+function contentQueryProjection(route) {
+  return Object.fromEntries((route.queryParameters ?? [])
+    .map($0 => [$0.name, $0.schema])
+    .sort(([left], [right]) => left.localeCompare(right)));
 }
 
 function examplePath(path) {

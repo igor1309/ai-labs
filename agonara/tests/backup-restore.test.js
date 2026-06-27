@@ -4212,3 +4212,227 @@ function captureThrownMessage(action) {
     return error.message;
   }
 }
+
+async function makeExportedContentBackup() {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+
+    storage.createCorpusCandidateRecord(source.database, {
+      id: "content-candidate-1",
+      programId: "program-1",
+      candidateKind: "material_reference",
+      title: "Material",
+      materialReferenceKind: "lecture",
+      locator: "loc",
+      sourceIds: ["source-1"],
+      status: "accepted",
+      createdByIdentityId: "identity-1",
+      createdAt: "2026-05-27T10:06:00.000Z",
+      updatedAt: "2026-05-27T10:06:00.000Z",
+    });
+    storage.createAcceptedCorpusEntityRecord(source.database, {
+      id: "content-entity-1",
+      programId: "program-1",
+      acceptedKind: "material_reference",
+      currentRevisionId: "content-revision-1",
+    });
+    storage.createAcceptedCorpusRevisionRecord(source.database, {
+      id: "content-revision-1",
+      entityId: "content-entity-1",
+      programId: "program-1",
+      acceptedKind: "material_reference",
+      title: "Material",
+      materialReferenceKind: "lecture",
+      locator: "loc",
+      acceptedFromCandidateId: "content-candidate-1",
+      sourceIds: ["source-1"],
+      acceptedByIdentityId: "identity-1",
+      acceptedAt: "2026-05-27T10:07:00.000Z",
+    });
+    storage.setSourceContentRecord(source.database, {
+      sourceId: "source-1",
+      content: "# Source text",
+      contentFormat: "markdown",
+      recordedByIdentityId: "identity-1",
+      recordedAt: "2026-05-27T10:08:00.000Z",
+    });
+    storage.setAcceptedMaterialContentRecord(source.database, {
+      revisionId: "content-revision-1",
+      content: "# Accepted text",
+      contentFormat: "markdown",
+      sourceContentProvenance: { sourceId: "source-1" },
+    });
+
+    return source.commands.exportBackup().value.backup;
+  } finally {
+    source.database.close();
+  }
+}
+
+function makeExistingContentBackup(backup) {
+  const existing = structuredClone(backup);
+  existing.sourceContents[0] = {
+    ...existing.sourceContents[0],
+    content: "# Existing source text",
+    byteSize: Buffer.byteLength("# Existing source text", "utf8"),
+    recordedAt: "2026-05-27T11:08:00.000Z",
+  };
+  existing.acceptedMaterialContents[0] = {
+    ...existing.acceptedMaterialContents[0],
+    content: "# Existing accepted text",
+    byteSize: Buffer.byteLength("# Existing accepted text", "utf8"),
+    sourceContentProvenance: { sourceId: "source-1", range: { start: 0, end: 9 } },
+  };
+  return existing;
+}
+
+async function assertContentRestoreRejectionPreservesTarget({ mutateBackup, expectedReason }) {
+  const backup = await makeExportedContentBackup();
+  const target = makeSUT();
+
+  try {
+    const seedResult = target.commands.restoreBackup(makeExistingContentBackup(backup));
+    mutateBackup(backup);
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(
+      {
+        seedStatus: seedResult.status,
+        result,
+        existingCredentialLogin: getLocalPasswordCredentialByLogin(target.database, "admin@example.test")?.login,
+        sourceContent: storage.getSourceContentRecord(target.database, "source-1"),
+        acceptedContent: storage.getAcceptedMaterialContentRecord(target.database, "content-revision-1"),
+      },
+      {
+        seedStatus: "accepted",
+        result: {
+          status: "rejected",
+          reason: expectedReason,
+        },
+        existingCredentialLogin: "admin@example.test",
+        sourceContent: {
+          sourceId: "source-1",
+          content: "# Existing source text",
+          contentFormat: "markdown",
+          byteSize: Buffer.byteLength("# Existing source text", "utf8"),
+          recordedByIdentityId: "identity-1",
+          recordedAt: "2026-05-27T11:08:00.000Z",
+        },
+        acceptedContent: {
+          revisionId: "content-revision-1",
+          content: "# Existing accepted text",
+          contentFormat: "markdown",
+          byteSize: Buffer.byteLength("# Existing accepted text", "utf8"),
+          sourceContentProvenance: { sourceId: "source-1", range: { start: 0, end: 9 } },
+        },
+      },
+    );
+  } finally {
+    target.database.close();
+  }
+}
+
+test("restoreBackup_shouldRoundTripMaterialContent_onContentBackup", async () => {
+  const backup = await makeExportedContentBackup();
+  const target = makeSUT();
+
+  try {
+    const result = target.commands.restoreBackup(backup);
+
+    assert.equal(result.status, "accepted");
+    assert.deepEqual(storage.getSourceContentRecord(target.database, "source-1"), {
+      sourceId: "source-1",
+      content: "# Source text",
+      contentFormat: "markdown",
+      byteSize: Buffer.byteLength("# Source text", "utf8"),
+      recordedByIdentityId: "identity-1",
+      recordedAt: "2026-05-27T10:08:00.000Z",
+    });
+    const accepted = storage.getAcceptedMaterialContentRecord(target.database, "content-revision-1");
+    assert.equal(accepted.content, "# Accepted text");
+    assert.deepEqual(accepted.sourceContentProvenance, { sourceId: "source-1" });
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectSourceContentWithMissingSource_onContentBackup", async () => {
+  await assertContentRestoreRejectionPreservesTarget({
+    mutateBackup: backup => {
+      backup.sourceContents[0] = { ...backup.sourceContents[0], sourceId: "missing-source" };
+    },
+    expectedReason: "source_content_source_not_found",
+  });
+});
+
+test("restoreBackup_shouldRejectMaterialContentWithMissingRevision_onContentBackup", async () => {
+  await assertContentRestoreRejectionPreservesTarget({
+    mutateBackup: backup => {
+      backup.acceptedMaterialContents[0] = {
+        ...backup.acceptedMaterialContents[0],
+        revisionId: "missing-revision",
+      };
+    },
+    expectedReason: "accepted_material_content_revision_not_found",
+  });
+});
+
+test("restoreBackup_shouldRejectMaterialContentOnNonMaterialRevision_onContentBackup", async () => {
+  await assertContentRestoreRejectionPreservesTarget({
+    mutateBackup: backup => {
+      // revision-1 is the seeded topic revision.
+      backup.acceptedMaterialContents[0] = {
+        ...backup.acceptedMaterialContents[0],
+        revisionId: "revision-1",
+      };
+    },
+    expectedReason: "accepted_material_content_revision_kind_mismatch",
+  });
+});
+
+test("restoreBackup_shouldRejectContentWithInvalidFormat_onContentBackup", async () => {
+  await assertContentRestoreRejectionPreservesTarget({
+    mutateBackup: backup => {
+      backup.sourceContents[0] = { ...backup.sourceContents[0], contentFormat: "html" };
+    },
+    expectedReason: "content_format_invalid",
+  });
+});
+
+test("restoreBackup_shouldRejectContentWithByteSizeMismatch_onContentBackup", async () => {
+  await assertContentRestoreRejectionPreservesTarget({
+    mutateBackup: backup => {
+      backup.sourceContents[0] = { ...backup.sourceContents[0], byteSize: 99999 };
+    },
+    expectedReason: "content_byte_size_mismatch",
+  });
+});
+
+test("restoreBackup_shouldRejectOversizedContent_onContentBackup", async () => {
+  await assertContentRestoreRejectionPreservesTarget({
+    mutateBackup: backup => {
+      const oversized = "a".repeat(storage.MAX_MATERIAL_CONTENT_BYTES + 1);
+      backup.sourceContents[0] = {
+        ...backup.sourceContents[0],
+        content: oversized,
+        byteSize: Buffer.byteLength(oversized, "utf8"),
+      };
+    },
+    expectedReason: "content_too_large",
+  });
+});

@@ -100,8 +100,17 @@ test("topicConceptMaterialNavigationLayout_shouldKeepControlsNamedAndNonOverlapp
       await expect(page.getByLabel("Navigation kind")).toBeVisible();
       await expect(page.getByLabel("Navigation title")).toBeVisible();
       await expect(page.getByLabel("Navigation relationships JSON")).toBeVisible();
+      const contentPanel = page.locator("#material-content-curator-panel");
+      await expect(contentPanel.getByLabel("Source id", { exact: true })).toBeVisible();
+      await expect(contentPanel.getByLabel("Content format")).toBeVisible();
+      await expect(contentPanel.getByLabel("Content", { exact: true })).toBeVisible();
+      await expect(contentPanel.getByRole("button", { name: "Save source content" })).toBeVisible();
+      await expect(contentPanel.getByRole("button", { name: "Read source content" })).toBeVisible();
+      await expect(contentPanel.getByRole("button", { name: "Delete source content" })).toBeVisible();
+      await expect(page.locator("#material-content-view")).toBeVisible();
       await expect(page.locator("#navigation-status")).toHaveAttribute("aria-live", "polite");
       await expect(page.locator("#navigation-candidate-action-status")).toHaveAttribute("aria-live", "polite");
+      await expect(page.locator("#source-content-status")).toHaveAttribute("aria-live", "polite");
       expect(await visibleControlOverlaps(page)).toEqual([]);
     }
   } finally {
@@ -424,4 +433,162 @@ function close(server) {
       resolve();
     });
   });
+}
+
+test("materialContentReader_shouldRenderAcceptedContentForStudent_onStudentPanel", async ({ page }) => {
+  const harness = await startContentHarness();
+
+  try {
+    await signIn(page, harness.baseUrl, harness.student.login, harness.student.password);
+    await page.locator("#program-id-input").fill(harness.programId);
+    await page.locator("#student-mode-tab").click();
+    await page.locator("#refresh-navigation-button").click();
+
+    await page.getByRole("button", { name: "Vector spaces topic" }).click();
+    await page.locator("#navigation-node-detail").getByRole("button", { name: "Basis concept" }).click();
+    await page.getByRole("button", { name: "Basis reading material_reference" }).click();
+    await expect(page.locator("#material-content-status")).toContainText("Material content available");
+
+    await page.locator("[data-action='open-material-content']").click();
+    await expect(page.locator("#material-content-body")).toContainText("Full basis text");
+    await expect(page.locator("#material-content-status")).toContainText("markdown");
+    await expect(page.locator("#navigation-material-backlinks")).toContainText("Basis");
+    await expect(page.locator("#navigation-material-backlinks")).toContainText("Vector spaces");
+    await page.locator("#navigation-material-backlinks").getByRole("button", { name: "Basis concept" }).click();
+    await expect(page.locator("#navigation-node-detail")).toContainText("Basis");
+
+    const forbiddenText = await navigationForbiddenText(page);
+    expect(forbiddenText).toEqual([]);
+  } finally {
+    await harness.close();
+  }
+});
+
+test("materialContentCurator_shouldSaveAndDeleteSourceContent_onCuratorPanel", async ({ page }) => {
+  const harness = await startContentHarness();
+
+  try {
+    await signIn(page, harness.baseUrl);
+    await page.locator("#source-content-id-input").fill(harness.sourceId);
+    await page.locator("#source-content-format-input").selectOption("markdown");
+    await page.locator("#source-content-input").fill("# Raw lecture notes");
+    await page.locator("[data-action='save-source-content']").click();
+    await expect(page.locator("#source-content-status")).toContainText("Saved content for " + harness.sourceId);
+    await page.locator("#source-content-input").fill("");
+    await page.locator("[data-action='read-source-content']").click();
+    await expect(page.locator("#source-content-input")).toHaveValue("# Raw lecture notes");
+
+    await page.locator("[data-action='delete-source-content']").click();
+    await expect(page.locator("#source-content-status")).toContainText("Deleted content for " + harness.sourceId);
+
+    await page.locator("[data-action='read-source-content']").click();
+    await expect(page.locator("#source-content-status")).toContainText("Source content unavailable.");
+  } finally {
+    await harness.close();
+  }
+});
+
+async function startContentHarness() {
+  const database = openIdentityDatabase();
+  initializeIdentityStorage(database);
+  const now = () => new Date("2026-06-03T10:00:00.000Z");
+  const generateId = makeIdGenerator([
+    "identity-1",
+    "credential-1",
+    "bootstrap-session-secret",
+    "audit-1",
+    "program-1",
+    "membership-1",
+    "program-event-1",
+    "membership-event-1",
+    "login-session-secret",
+    "audit-2",
+    ...Array.from({ length: 160 }, (_, index) => `id-${index + 1}`),
+  ]);
+  const programCommands = createProgramCommands({ database, generateId, now });
+  const server = createServer({
+    identityCommands: createIdentityCommands({
+      bootstrapSecret: "operator-secret",
+      database,
+      generateId,
+      now,
+    }),
+    programCommands,
+    corpusCommands: createCorpusCommands({
+      database,
+      generateId,
+      getEffectiveParticipation: programCommands.getEffectiveParticipation,
+      now,
+    }),
+    log: () => {},
+  });
+  const baseUrl = await listen(server);
+  const bootstrap = await bootstrapIdentity(baseUrl);
+  const programId = await createProgram(baseUrl, bootstrap, "Linear Algebra");
+  const sourceResponse = await fetch(`${baseUrl}/programs/${programId}/sources`, {
+    body: JSON.stringify({ sourceKind: "lecture", title: "Lecture source" }),
+    headers: {
+      cookie: bootstrap.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": bootstrap.csrfToken,
+    },
+    method: "POST",
+  });
+  const sourceId = (await sourceResponse.json()).value.programSource.sourceId;
+  const topic = await createAcceptedNavigationCandidate(baseUrl, bootstrap, programId, {
+    candidateKind: "topic",
+    title: "Vector spaces",
+  });
+  const concept = await createAcceptedNavigationCandidate(baseUrl, bootstrap, programId, {
+    candidateKind: "concept",
+    relationshipDrafts: [
+      {
+        fromEntityId: topic.entityId,
+        relationshipKind: "topic_includes_concept",
+        toCandidateRef: "self",
+      },
+    ],
+    title: "Basis",
+  });
+  const accepted = await createAcceptedNavigationCandidate(baseUrl, bootstrap, programId, {
+    candidateKind: "material_reference",
+    locator: "https://example.test/basis",
+    materialReferenceKind: "article",
+    relationshipDrafts: [
+      {
+        fromEntityId: concept.entityId,
+        relationshipKind: "concept_uses_material",
+        toCandidateRef: "self",
+      },
+    ],
+    title: "Basis reading",
+  });
+  const entries = Array.isArray(accepted) ? accepted : [accepted];
+  const material = entries.find($0 => $0.acceptedKind === "material_reference") ?? entries[0];
+  await fetch(`${baseUrl}/materials/revisions/${material.revisionId}/content`, {
+    body: JSON.stringify({ content: "# Full basis text\\nDetailed reading.", contentFormat: "markdown" }),
+    headers: {
+      cookie: bootstrap.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": bootstrap.csrfToken,
+    },
+    method: "PUT",
+  });
+  const student = await createIdentitySession(baseUrl, bootstrap, {
+    displayName: "Learning Student",
+    login: "student@example.test",
+    password: "student password",
+  });
+  await joinStudentProgram(baseUrl, student, programId);
+
+  return {
+    baseUrl,
+    close: async () => {
+      await close(server);
+      database.close();
+    },
+    programId,
+    sourceId,
+    student,
+  };
 }

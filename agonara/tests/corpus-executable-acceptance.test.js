@@ -729,6 +729,94 @@ test("assessmentAcceptance_shouldKeepDraftRejectedStudentWorkspaceAndOutOfScopeS
   }
 });
 
+test("materialContent_shouldCaptureCopyAndServeRoleGatedContentWithSignal", () => {
+  const { corpusCommands, database, programCommands } = makeSUT();
+
+  try {
+    const program = programCommands.createProgramShell({
+      actingIdentityId: "identity-curator",
+      title: "Cell Biology",
+      description: "Introductory cell biology",
+    }).value.programShell;
+    programCommands.joinSelfJoinProgram({
+      actingIdentityId: "identity-student",
+      programId: program.programId,
+    });
+    const source = corpusCommands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      sourceKind: "lecture",
+      title: "Lecture",
+    }).value.programSource;
+    const candidate = corpusCommands.createNavigationCandidate({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      candidateKind: "material_reference",
+      title: "Membranes",
+      materialReferenceKind: "lecture",
+      locator: "loc",
+      sourceIds: [source.sourceId],
+    }).value.navigationCandidate;
+    corpusCommands.acceptNavigationCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: candidate.candidateId,
+    });
+    const material = corpusCommands
+      .listAcceptedCorpus({ actingIdentityId: "identity-curator", programId: program.programId })
+      .value.acceptedCorpus.find($0 => $0.acceptedKind === "material_reference");
+
+    corpusCommands.setSourceContent({
+      actingIdentityId: "identity-curator",
+      sourceId: source.sourceId,
+      content: "# raw",
+      contentFormat: "markdown",
+    });
+    corpusCommands.setAcceptedMaterialContent({
+      actingIdentityId: "identity-curator",
+      revisionId: material.revisionId,
+      content: "# accepted",
+      contentFormat: "markdown",
+      sourceContentProvenance: { sourceId: source.sourceId },
+    });
+
+    assert.deepEqual(
+      {
+        studentRead: corpusCommands.readMaterialContent({
+          actingIdentityId: "identity-student",
+          entityId: material.entityId,
+        }),
+        studentSourceRead: corpusCommands.readSourceContent({
+          actingIdentityId: "identity-student",
+          sourceId: source.sourceId,
+        }),
+        curatorSourceRead: corpusCommands.readSourceContent({
+          actingIdentityId: "identity-curator",
+          sourceId: source.sourceId,
+        }).value.content,
+        hasContent: corpusCommands.getNavigationEntity({
+          actingIdentityId: "identity-student",
+          entityId: material.entityId,
+        }).value.navigationNode.hasContent,
+      },
+      {
+        studentRead: {
+          status: "accepted",
+          value: {
+            content: "# accepted",
+            contentFormat: "markdown",
+            byteSize: Buffer.byteLength("# accepted", "utf8"),
+          },
+        },
+        studentSourceRead: { status: "rejected", reason: "admin_or_curator_required" },
+        curatorSourceRead: "# raw",
+        hasContent: true,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 function makeSUT() {
   const database = openIdentityDatabase();
   initializeIdentityStorage(database);
