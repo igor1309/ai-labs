@@ -2,6 +2,15 @@
 
 ## 2026-06-27
 
+- Taught the operator skills the material-content capability (closing the backlog skills task):
+  `agonara-student` (v1.3.0) now documents reading hosted accepted material content via the
+  `hasContent` signal and `GET /materials/{entityId}/content` /
+  `GET /materials/revisions/{revisionId}/content` with character pagination; `agonara-curator-corpus`
+  (v1.1.0) gains a "Material content" section covering curator-only source raw content
+  (`PUT`/`GET`/`DELETE /sources/{sourceId}/content`) and the student-readable accepted material copy
+  (`PUT`/`GET /materials/revisions/{revisionId}/content`, set-once per revision, curator-owned
+  licensing). All cited routes verified against the OpenAPI contract by the operator-skill-contract
+  test.
 - Surfaced material content on the public landing page (`agonara/index.html`): added a "Material
   Content" card to the "What is implemented today" grid, mirroring the README implementation
   snapshot. Refreshed the repo LOC dashboard (`docs/loc-dashboard.html`) to current counts.

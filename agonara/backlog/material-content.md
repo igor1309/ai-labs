@@ -18,5 +18,3 @@ implemented (`docs/specs/material-content-storage.md`) and the plan archived
   withdraw/reactivate routes, two-tier source deletion, delivery/coverage filtering,
   backup/restore) — shared with the index source-deletion item. The material-content
   implementation covers raw-blob hard delete only.
-- **Skills update**: teach `agonara-student` (read material content) and the curator corpus
-  skill (load/read/delete content) the new capability.

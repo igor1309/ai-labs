@@ -1,8 +1,8 @@
 ---
 name: agonara-curator-corpus
 author: Igor Malyarov
-version: "1.0.1"
-description: Operate as an Agonara program curator to assemble program structure — create a program, propose topics and concepts as corpus candidates, add material references and relationships through navigation candidates, keep drafts separate from accepted corpus, explicitly accept or reject candidates, read accepted corpus and revisions, and read corpus events. Use when a curator agent is building or refining the accepted structure of a program. The substrate the other curator skills (assessment, research) attach to.
+version: "1.1.0"
+description: Operate as an Agonara program curator to assemble program structure — create a program, propose topics and concepts as corpus candidates, add material references and relationships through navigation candidates, host readable material content for students, keep drafts separate from accepted corpus, explicitly accept or reject candidates, read accepted corpus and revisions, and read corpus events. Use when a curator agent is building or refining the accepted structure of a program. The substrate the other curator skills (assessment, research) attach to.
 trigger: when a curator agent needs to create a program or move topic/concept/material/navigation content between draft and accepted corpus
 ---
 
@@ -110,6 +110,44 @@ Navigation guards relationship integrity: expect `rejected` reasons like
 `navigation_prerequisite_cycle`, `navigation_relationship_self_reference`, or
 `navigation_relationship_endpoint_kind_mismatch` when a proposed link is
 inconsistent. Honor the reason; do not retry unchanged.
+
+## Material content — host readable text
+
+Beyond linking a material by `locator`/`citation`, you can host the material's
+actual text so students read it in-product (CUR-19). **Content licensing is your
+responsibility as curator, not Agonara's** — only host text you are entitled to.
+`contentFormat` is `markdown` or `plain_text`, and content has a soft size
+ceiling (oversized writes are `rejected` with `content_too_large`; an empty or
+mis-typed body with `content_required` / `content_format_invalid`). There are two
+homes, both curator-owned:
+
+- **Source raw content** — your private working copy keyed by source id:
+  - set or replace — `PUT /sources/{sourceId}/content` with
+    `{ "content", "contentFormat" }`,
+  - read — `GET /sources/{sourceId}/content` (paged by character with
+    `limit`/`cursor`),
+  - delete — `DELETE /sources/{sourceId}/content` hard-deletes the raw blob and
+    is idempotent when absent.
+
+  Source content is curator-only — a non-curator read is rejected with
+  `admin_or_curator_required`, and students never see it.
+- **Accepted material content** — the self-contained, immutable copy a **student**
+  reads, keyed by the accepted material's revision id:
+  - set — `PUT /materials/revisions/{revisionId}/content` with
+    `{ "content", "contentFormat", "sourceContentProvenance"? }`. It is set **once
+    per revision**; re-setting the same revision is rejected with
+    `material_content_already_set`. To publish a correction, accept a new material
+    revision (the navigation candidate flow above) and set content on that fresh
+    revision.
+  - read — `GET /materials/revisions/{revisionId}/content`, or
+    `GET /materials/{entityId}/content` for the material's current accepted
+    revision (both paged with `limit`/`cursor`); students read these too.
+
+The accepted copy is **decoupled from the source**: editing or deleting source
+content never changes already-accepted material content, and a material exposes a
+`hasContent` signal in navigation so students know a hosted copy exists. Honor
+`rejected` reasons (`content_not_found`, `accepted_revision_not_found`,
+`source_not_found`) instead of retrying unchanged.
 
 ## Boundaries this skill keeps
 
