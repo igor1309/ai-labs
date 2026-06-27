@@ -1,8 +1,8 @@
 ---
 name: agonara-curator-corpus
 author: Igor Malyarov
-version: "1.1.0"
-description: Operate as an Agonara program curator to assemble program structure — create a program, propose topics and concepts as corpus candidates, add material references and relationships through navigation candidates, host readable material content for students, keep drafts separate from accepted corpus, explicitly accept or reject candidates, read accepted corpus and revisions, and read corpus events. Use when a curator agent is building or refining the accepted structure of a program. The substrate the other curator skills (assessment, research) attach to.
+version: "1.2.0"
+description: Operate as an Agonara program curator to assemble program structure by modeling what the operator hands you (a section, an idea, a document to host) into the right corpus shape and asking when the shape is unclear — create a program, propose topics and concepts as corpus candidates, add material references and relationships through navigation candidates, host readable material content for students, keep drafts separate from accepted corpus, explicitly accept or reject candidates, read accepted corpus and revisions, and read corpus events. Use when a curator agent is building or refining the accepted structure of a program. The substrate the other curator skills (assessment, research) attach to.
 trigger: when a curator agent needs to create a program or move topic/concept/material/navigation content between draft and accepted corpus
 ---
 
@@ -19,6 +19,41 @@ mutation, and the `accepted`/`rejected`/`fault` envelope. This skill does not
 repeat those mechanics. Program **membership** (who curates, who participates)
 lives in [`agonara-membership`](../agonara-membership/SKILL.md) and the
 [participation skill](../agonara-curator-participation/SKILL.md).
+
+## Work at the document level — model intent, don't presume
+
+You operate at the level the operator thinks in — programs, modules, topics,
+concepts, and **documents** — not at the level of raw endpoints. The OpenAPI
+contract already lists the primitives; your job is to translate what the
+operator hands you into the right corpus **shape**, put it in the right place,
+and accept it. Two habits make that reliable:
+
+- **Don't presume the shape — confirm it.** When it isn't obvious whether
+  something is a topic, a concept, or a document to host, state your reading and
+  ask before accepting (e.g. "I'll add each of these 9 files as a hosted reading
+  material under its own topic — confirm?"). A wrong guess becomes an accepted
+  revision you then have to correct, so a clarifying question is cheaper than a
+  rebuild (CUR-06).
+- **Report from the live API, not from memory.** When asked what a program
+  contains or to confirm a result, call the read endpoints and answer from the
+  response. Reading is the only way to tell a real `material_reference` carrying
+  hosted content from a topic that merely has text in its `body` — never
+  describe structure you "remember" building.
+
+### Choosing the right shape
+
+| The operator gives you… | Model it as… |
+|---|---|
+| a section / module / unit of organization | a **topic** |
+| a teachable idea (optionally with a definition or principle) | a **concept** |
+| a document, reading, lecture, or article a **student should read** | a **`material_reference` with hosted accepted content**, linked under its topic via `topic_uses_material` (recipe below) |
+
+**The `body` rule.** A topic's or concept's `body` is a **short overview** — a
+few sentences on what the unit covers. It is *not* a home for a document's full
+text. A document's full readable text belongs in **hosted material content** (it
+sets the `hasContent` signal), never in a `body`. If you are about to paste a
+whole document into a topic `body`, you have picked the wrong shape — make it a
+hosted material instead.
 
 ## The draft↔accepted model
 
@@ -86,7 +121,9 @@ lifecycle:
   `{ "candidateKind": "material_reference", "title", "materialReferenceKind", "body"?, "locator"?, "citation"?, "sourceIds"?, "rationale"? }`.
   `materialReferenceKind` is one of `article`, `book`, `course`, `lecture`,
   `note`, `problem_set`, `standard`, `video`, or `other`; provide at least one
-  of `body`, `locator`, or `citation`.
+  of `body`, `locator`, or `citation`. Here `body` is a short note or abstract —
+  a document's **full** readable text goes in hosted content (below), which sets
+  `hasContent`, not in `body`.
 - **Propose a definition or principle** — use `candidateKind` `definition` or
   `principle` and provide a non-empty `body`.
 - **Propose relationship changes** — use `candidateKind:
@@ -148,6 +185,30 @@ content never changes already-accepted material content, and a material exposes 
 `hasContent` signal in navigation so students know a hosted copy exists. Honor
 `rejected` reasons (`content_not_found`, `accepted_revision_not_found`,
 `source_not_found`) instead of retrying unchanged.
+
+### Recipe — host a document as a student-readable material
+
+When the operator hands you a document to make a student read it, run this per
+document — call the API at each step and keep the ids the envelope returns:
+
+1. **Record a source** (provenance, recommended) — see
+   [`agonara-curator-research`](../agonara-curator-research/SKILL.md); keep the
+   `sourceId`. Optionally store your private raw copy with
+   `PUT /sources/{sourceId}/content`.
+2. **Propose the material** — a `material_reference` navigation candidate (above)
+   with the title, a `materialReferenceKind`, and `sourceIds` if you recorded one.
+3. **Accept it** — `POST /navigation-candidates/{candidateId}/acceptance`; keep
+   the accepted **entity id** and **revision id**.
+4. **Host the text** — `PUT /materials/revisions/{revisionId}/content` with the
+   full document text (`contentFormat: "markdown"`). Set-once per revision.
+5. **Link it under its topic** — a `relationship_update` candidate carrying a
+   `topic_uses_material` draft (from the topic entity, to the material entity),
+   then accept it.
+6. **Keep the topic body a short overview** — the full text now lives only in the
+   material's hosted content, not duplicated in the topic `body`.
+
+Verify by reading, not from memory: `GET /programs/{programId}/navigation` should
+show the material under its topic with `hasContent` true.
 
 ## Boundaries this skill keeps
 
