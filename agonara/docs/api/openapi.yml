@@ -286,6 +286,47 @@ components:
           - open_answer_check_candidate
           - readiness_check_candidate
   requestBodies:
+    SetSourceContent:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - content
+              - contentFormat
+            properties:
+              content:
+                type: string
+                minLength: 1
+              contentFormat:
+                type: string
+                enum:
+                  - markdown
+                  - plain_text
+            additionalProperties: false
+    SetAcceptedMaterialContent:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - content
+              - contentFormat
+            properties:
+              content:
+                type: string
+                minLength: 1
+              contentFormat:
+                type: string
+                enum:
+                  - markdown
+                  - plain_text
+              sourceContentProvenance:
+                type: object
+                additionalProperties: true
+            additionalProperties: false
     OptionalObject:
       required: false
       content:
@@ -1820,6 +1861,19 @@ paths:
           schema:
             type: string
             minLength: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1048576
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            minLength: 1
       responses:
         "200":
           $ref: "#/components/responses/Accepted"
@@ -1848,6 +1902,8 @@ paths:
           schema:
             type: string
             minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/SetSourceContent"
       responses:
         "200":
           $ref: "#/components/responses/Accepted"
@@ -1871,6 +1927,19 @@ paths:
         - name: revisionId
           in: path
           required: true
+          schema:
+            type: string
+            minLength: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1048576
+        - name: cursor
+          in: query
+          required: false
           schema:
             type: string
             minLength: 1
@@ -1902,6 +1971,8 @@ paths:
           schema:
             type: string
             minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/SetAcceptedMaterialContent"
       responses:
         "200":
           $ref: "#/components/responses/Accepted"
@@ -1927,6 +1998,19 @@ paths:
         - name: entityId
           in: path
           required: true
+          schema:
+            type: string
+            minLength: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1048576
+        - name: cursor
+          in: query
+          required: false
           schema:
             type: string
             minLength: 1
