@@ -2,6 +2,9 @@
 
 ## 2026-06-27
 
+- Surfaced material content on the public landing page (`agonara/index.html`): added a "Material
+  Content" card to the "What is implemented today" grid, mirroring the README implementation
+  snapshot. Refreshed the repo LOC dashboard (`docs/loc-dashboard.html`) to current counts.
 - Integrated the two overlapping material-content closeout PRs (they conflicted with each other
   on `learn-ui.js`, the navigation Playwright suite, and the log): merged
   `material-content-phase5-test-gaps` as the base (curator content read-back button, hierarchy/
