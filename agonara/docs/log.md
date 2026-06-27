@@ -2,6 +2,10 @@
 
 ## 2026-06-27
 
+- Tightened **Phase 4** material-content UI coverage after review: the curator source-content
+  panel now loads saved source text back into the form before deletion, student hosted-content
+  reading proves material back-links remain usable, the browser layout check covers the new
+  source-content controls, and the plan's browser gate points at the actual Playwright file.
 - Implemented the **Phase 4** `/learn` content reader for material content storage: the
   student navigation material detail now shows a "Read full material" affordance when a
   material has stored content, and a `#material-content-view` (`#material-content-status` +

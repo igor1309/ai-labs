@@ -100,6 +100,11 @@ test("topicConceptMaterialNavigationLayout_shouldKeepControlsNamedAndNonOverlapp
       await expect(page.getByLabel("Navigation kind")).toBeVisible();
       await expect(page.getByLabel("Navigation title")).toBeVisible();
       await expect(page.getByLabel("Navigation relationships JSON")).toBeVisible();
+      await expect(page.locator("#material-content-curator-panel")).toBeVisible();
+      await expect(page.getByLabel("Source id", { exact: true })).toBeVisible();
+      await expect(page.getByLabel("Content format")).toBeVisible();
+      await expect(page.getByLabel("Content", { exact: true })).toBeVisible();
+      await expect(page.locator("#source-content-status")).toHaveAttribute("aria-live", "polite");
       await expect(page.locator("#navigation-status")).toHaveAttribute("aria-live", "polite");
       await expect(page.locator("#navigation-candidate-action-status")).toHaveAttribute("aria-live", "polite");
       expect(await visibleControlOverlaps(page)).toEqual([]);
@@ -435,13 +440,19 @@ test("materialContentReader_shouldRenderAcceptedContentForStudent_onStudentPanel
     await page.locator("#student-mode-tab").click();
     await page.locator("#refresh-navigation-button").click();
 
-    await expect(page.locator("#navigation-ungrouped-material-list")).toContainText("Basis reading");
+    await expect(page.locator("#navigation-topic-list")).toContainText("Vector spaces");
+    await page.getByRole("button", { name: "Vector spaces topic" }).click();
+    await page.locator("#navigation-node-detail").getByRole("button", { name: "Basis concept" }).click();
     await page.getByRole("button", { name: "Basis reading material_reference" }).click();
     await expect(page.locator("#material-content-status")).toContainText("Material content available");
 
     await page.locator("[data-action='open-material-content']").click();
     await expect(page.locator("#material-content-body")).toContainText("Full basis text");
     await expect(page.locator("#material-content-status")).toContainText("markdown");
+    await expect(page.locator("#navigation-material-backlinks")).toContainText("Basis");
+    await expect(page.locator("#navigation-material-backlinks")).toContainText("Vector spaces");
+    await page.locator("#navigation-material-backlinks").getByRole("button", { name: "Basis concept" }).click();
+    await expect(page.locator("#navigation-node-detail")).toContainText("Basis");
 
     const forbiddenText = await navigationForbiddenText(page);
     expect(forbiddenText).toEqual([]);
@@ -461,8 +472,18 @@ test("materialContentCurator_shouldSaveAndDeleteSourceContent_onCuratorPanel", a
     await page.locator("[data-action='save-source-content']").click();
     await expect(page.locator("#source-content-status")).toContainText("Saved content for " + harness.sourceId);
 
+    await page.locator("#source-content-format-input").selectOption("plain_text");
+    await page.locator("#source-content-input").fill("");
+    await page.locator("[data-action='read-source-content']").click();
+    await expect(page.locator("#source-content-status")).toContainText("Loaded content for " + harness.sourceId);
+    await expect(page.locator("#source-content-format-input")).toHaveValue("markdown");
+    await expect(page.locator("#source-content-input")).toHaveValue("# Raw lecture notes");
+
     await page.locator("[data-action='delete-source-content']").click();
     await expect(page.locator("#source-content-status")).toContainText("Deleted content for " + harness.sourceId);
+
+    await page.locator("[data-action='read-source-content']").click();
+    await expect(page.locator("#source-content-status")).toContainText("Source content unavailable.");
   } finally {
     await harness.close();
   }
@@ -505,6 +526,22 @@ async function startContentHarness() {
   const baseUrl = await listen(server);
   const bootstrap = await bootstrapIdentity(baseUrl);
   const programId = await createProgram(baseUrl, bootstrap, "Linear Algebra");
+  const topic = await createAcceptedNavigationCandidate(baseUrl, bootstrap, programId, {
+    candidateKind: "topic",
+    title: "Vector spaces",
+  });
+  const concept = await createAcceptedNavigationCandidate(baseUrl, bootstrap, programId, {
+    body: "A basis is a linearly independent spanning set.",
+    candidateKind: "concept",
+    relationshipDrafts: [
+      {
+        fromEntityId: topic.entityId,
+        relationshipKind: "topic_includes_concept",
+        toCandidateRef: "self",
+      },
+    ],
+    title: "Basis",
+  });
   const sourceResponse = await fetch(`${baseUrl}/programs/${programId}/sources`, {
     body: JSON.stringify({ sourceKind: "lecture", title: "Lecture source" }),
     headers: {
@@ -519,6 +556,13 @@ async function startContentHarness() {
     candidateKind: "material_reference",
     locator: "https://example.test/basis",
     materialReferenceKind: "article",
+    relationshipDrafts: [
+      {
+        fromEntityId: concept.entityId,
+        relationshipKind: "concept_uses_material",
+        toCandidateRef: "self",
+      },
+    ],
     title: "Basis reading",
   });
   const entries = Array.isArray(accepted) ? accepted : [accepted];

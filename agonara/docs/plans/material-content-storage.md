@@ -80,7 +80,7 @@ Expected files:
   route contracts, auth/CSRF gates, pagination, redaction, and `hasContent` projection tests.
 - `agonara/tests/backup-restore.test.js` — content round-trip and malformed/oversized
   rejection tests.
-- `agonara/tests/material-content-storage.playwright.js` — browser curator-load and
+- `agonara/tests/topic-concept-material-navigation.playwright.js` — browser curator-load and
   student-read workflows.
 - `agonara/playwright.config.js` — reuse existing config unless a strictly additive project
   setting is required.
@@ -122,7 +122,7 @@ Targeted commands:
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "content domain" node --test --test-name-pattern "content|Content" agonara/tests/corpus.test.js agonara/tests/corpus-executable-acceptance.test.js`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "content http" node --test --test-name-pattern "content|Content" agonara/tests/http-api.test.js agonara/tests/executable-acceptance.test.js`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "content backup restore" node --test --test-name-pattern "content|Content" agonara/tests/backup-restore.test.js`
-- `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "content browser" npx playwright test agonara/tests/material-content-storage.playwright.js --config agonara/playwright.config.js`
+- `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "content browser" npx playwright test agonara/tests/topic-concept-material-navigation.playwright.js --config agonara/playwright.config.js`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "build" npx tsc --noEmit`
 - `git diff --check`

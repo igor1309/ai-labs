@@ -653,6 +653,7 @@ export const learnUiHtml = `<!doctype html>
                   <textarea id="source-content-input" name="content"></textarea>
                 </label>
                 <div class="actions">
+                  <button data-action="read-source-content" data-requires-session class="secondary" type="button">Load source content</button>
                   <button data-action="save-source-content" data-requires-session type="submit">Save source content</button>
                   <button data-action="delete-source-content" data-requires-session class="danger" type="button">Delete source content</button>
                 </div>
@@ -1289,6 +1290,9 @@ export const learnUiHtml = `<!doctype html>
       });
 
       elements.sourceContentForm.addEventListener("click", event => {
+        if (event.target.closest("[data-action='read-source-content']")) {
+          void readSourceContent();
+        }
         if (event.target.closest("[data-action='delete-source-content']")) {
           void deleteSourceContent();
         }
@@ -3243,6 +3247,24 @@ export const learnUiHtml = `<!doctype html>
           result.status === "accepted"
             ? "Saved content for " + sourceId + " (" + result.value.sourceContent.byteSize + " bytes)."
             : "Save rejected: " + result.reason;
+      }
+
+      async function readSourceContent() {
+        const sourceId = elements.sourceContentIdInput.value.trim();
+        if (!sourceId) {
+          elements.sourceContentStatus.textContent = "Enter a source id.";
+          return;
+        }
+        const result = await requestJson("/sources/" + encodeURIComponent(sourceId) + "/content");
+        if (result.status !== "accepted") {
+          elements.sourceContentStatus.textContent =
+            result.reason === "content_not_found" ? "Source content unavailable." : "Load rejected: " + result.reason;
+          return;
+        }
+        elements.sourceContentFormatInput.value = result.value.contentFormat;
+        elements.sourceContentInput.value = result.value.content;
+        elements.sourceContentStatus.textContent =
+          "Loaded content for " + sourceId + " (" + result.value.byteSize + " bytes).";
       }
 
       async function deleteSourceContent() {
