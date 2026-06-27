@@ -2302,7 +2302,7 @@ async function handleCorpusApi({
       sourceId: decodeURIComponent(sourceContentMatch[1]),
       ...parseContentQuery(request),
     });
-    sendJson(response, statusForResult(result), mapContentReadResult(result));
+    sendJson(response, statusForResult(result), mapContentPageResult(result));
     return true;
   }
 
@@ -2344,7 +2344,7 @@ async function handleCorpusApi({
       revisionId: decodeURIComponent(materialRevisionContentMatch[1]),
       ...parseContentQuery(request),
     });
-    sendJson(response, statusForResult(result), mapContentReadResult(result));
+    sendJson(response, statusForResult(result), mapContentPageResult(result));
     return true;
   }
 
@@ -2359,7 +2359,7 @@ async function handleCorpusApi({
       entityId: decodeURIComponent(materialContentMatch[1]),
       ...parseContentQuery(request),
     });
-    sendJson(response, statusForResult(result), mapContentReadResult(result));
+    sendJson(response, statusForResult(result), mapContentPageResult(result));
     return true;
   }
 
@@ -3298,19 +3298,6 @@ function mapProgramCreatedResult(result) {
   return accepted({
     initialCuratorMembership: result.value.initialCuratorMembership,
     program: result.value.programShell,
-  });
-}
-
-function mapContentReadResult(result) {
-  if (result.status === "rejected") {
-    return result;
-  }
-
-  return accepted({
-    content: result.value.content,
-    contentFormat: result.value.contentFormat,
-    byteSize: result.value.byteSize,
-    ...(result.value.nextCursor ? { nextCursor: result.value.nextCursor } : {}),
   });
 }
 
@@ -4590,6 +4577,18 @@ function parseContentQuery(request) {
     limit: limitRaw === null ? undefined : Number(limitRaw),
     cursor: url.searchParams.get("cursor") ?? undefined,
   };
+}
+
+function mapContentPageResult(result) {
+  if (result.status === "rejected") {
+    return result;
+  }
+  const { content, contentFormat, byteSize, nextCursor } = result.value;
+  const page = { content, contentFormat, byteSize };
+  if (nextCursor !== undefined) {
+    page.nextCursor = nextCursor;
+  }
+  return accepted(page);
 }
 
 function httpStatusFor(reason) {

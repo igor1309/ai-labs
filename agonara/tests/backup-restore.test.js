@@ -4284,6 +4284,69 @@ async function makeExportedContentBackup() {
   }
 }
 
+function makeExistingContentBackup(backup) {
+  const existing = structuredClone(backup);
+  existing.sourceContents[0] = {
+    ...existing.sourceContents[0],
+    content: "# Existing source text",
+    byteSize: Buffer.byteLength("# Existing source text", "utf8"),
+    recordedAt: "2026-05-27T11:08:00.000Z",
+  };
+  existing.acceptedMaterialContents[0] = {
+    ...existing.acceptedMaterialContents[0],
+    content: "# Existing accepted text",
+    byteSize: Buffer.byteLength("# Existing accepted text", "utf8"),
+    sourceContentProvenance: { sourceId: "source-1", range: { start: 0, end: 9 } },
+  };
+  return existing;
+}
+
+async function assertContentRestoreRejectionPreservesTarget({ mutateBackup, expectedReason }) {
+  const backup = await makeExportedContentBackup();
+  const target = makeSUT();
+
+  try {
+    const seedResult = target.commands.restoreBackup(makeExistingContentBackup(backup));
+    mutateBackup(backup);
+    const result = target.commands.restoreBackup(backup);
+
+    assert.deepEqual(
+      {
+        seedStatus: seedResult.status,
+        result,
+        existingCredentialLogin: getLocalPasswordCredentialByLogin(target.database, "admin@example.test")?.login,
+        sourceContent: storage.getSourceContentRecord(target.database, "source-1"),
+        acceptedContent: storage.getAcceptedMaterialContentRecord(target.database, "content-revision-1"),
+      },
+      {
+        seedStatus: "accepted",
+        result: {
+          status: "rejected",
+          reason: expectedReason,
+        },
+        existingCredentialLogin: "admin@example.test",
+        sourceContent: {
+          sourceId: "source-1",
+          content: "# Existing source text",
+          contentFormat: "markdown",
+          byteSize: Buffer.byteLength("# Existing source text", "utf8"),
+          recordedByIdentityId: "identity-1",
+          recordedAt: "2026-05-27T11:08:00.000Z",
+        },
+        acceptedContent: {
+          revisionId: "content-revision-1",
+          content: "# Existing accepted text",
+          contentFormat: "markdown",
+          byteSize: Buffer.byteLength("# Existing accepted text", "utf8"),
+          sourceContentProvenance: { sourceId: "source-1", range: { start: 0, end: 9 } },
+        },
+      },
+    );
+  } finally {
+    target.database.close();
+  }
+}
+
 test("restoreBackup_shouldRoundTripMaterialContent_onContentBackup", async () => {
   const backup = await makeExportedContentBackup();
   const target = makeSUT();
@@ -4309,109 +4372,67 @@ test("restoreBackup_shouldRoundTripMaterialContent_onContentBackup", async () =>
 });
 
 test("restoreBackup_shouldRejectSourceContentWithMissingSource_onContentBackup", async () => {
-  const backup = await makeExportedContentBackup();
-  const target = makeSUT();
-
-  try {
-    backup.sourceContents[0] = { ...backup.sourceContents[0], sourceId: "missing-source" };
-
-    assert.deepEqual(target.commands.restoreBackup(backup), {
-      status: "rejected",
-      reason: "source_content_source_not_found",
-    });
-  } finally {
-    target.database.close();
-  }
+  await assertContentRestoreRejectionPreservesTarget({
+    mutateBackup: backup => {
+      backup.sourceContents[0] = { ...backup.sourceContents[0], sourceId: "missing-source" };
+    },
+    expectedReason: "source_content_source_not_found",
+  });
 });
 
 test("restoreBackup_shouldRejectMaterialContentWithMissingRevision_onContentBackup", async () => {
-  const backup = await makeExportedContentBackup();
-  const target = makeSUT();
-
-  try {
-    backup.acceptedMaterialContents[0] = {
-      ...backup.acceptedMaterialContents[0],
-      revisionId: "missing-revision",
-    };
-
-    assert.deepEqual(target.commands.restoreBackup(backup), {
-      status: "rejected",
-      reason: "accepted_material_content_revision_not_found",
-    });
-  } finally {
-    target.database.close();
-  }
+  await assertContentRestoreRejectionPreservesTarget({
+    mutateBackup: backup => {
+      backup.acceptedMaterialContents[0] = {
+        ...backup.acceptedMaterialContents[0],
+        revisionId: "missing-revision",
+      };
+    },
+    expectedReason: "accepted_material_content_revision_not_found",
+  });
 });
 
 test("restoreBackup_shouldRejectMaterialContentOnNonMaterialRevision_onContentBackup", async () => {
-  const backup = await makeExportedContentBackup();
-  const target = makeSUT();
-
-  try {
-    // revision-1 is the seeded topic revision.
-    backup.acceptedMaterialContents[0] = {
-      ...backup.acceptedMaterialContents[0],
-      revisionId: "revision-1",
-    };
-
-    assert.deepEqual(target.commands.restoreBackup(backup), {
-      status: "rejected",
-      reason: "accepted_material_content_revision_kind_mismatch",
-    });
-  } finally {
-    target.database.close();
-  }
+  await assertContentRestoreRejectionPreservesTarget({
+    mutateBackup: backup => {
+      // revision-1 is the seeded topic revision.
+      backup.acceptedMaterialContents[0] = {
+        ...backup.acceptedMaterialContents[0],
+        revisionId: "revision-1",
+      };
+    },
+    expectedReason: "accepted_material_content_revision_kind_mismatch",
+  });
 });
 
 test("restoreBackup_shouldRejectContentWithInvalidFormat_onContentBackup", async () => {
-  const backup = await makeExportedContentBackup();
-  const target = makeSUT();
-
-  try {
-    backup.sourceContents[0] = { ...backup.sourceContents[0], contentFormat: "html" };
-
-    assert.deepEqual(target.commands.restoreBackup(backup), {
-      status: "rejected",
-      reason: "content_format_invalid",
-    });
-  } finally {
-    target.database.close();
-  }
+  await assertContentRestoreRejectionPreservesTarget({
+    mutateBackup: backup => {
+      backup.sourceContents[0] = { ...backup.sourceContents[0], contentFormat: "html" };
+    },
+    expectedReason: "content_format_invalid",
+  });
 });
 
 test("restoreBackup_shouldRejectContentWithByteSizeMismatch_onContentBackup", async () => {
-  const backup = await makeExportedContentBackup();
-  const target = makeSUT();
-
-  try {
-    backup.sourceContents[0] = { ...backup.sourceContents[0], byteSize: 99999 };
-
-    assert.deepEqual(target.commands.restoreBackup(backup), {
-      status: "rejected",
-      reason: "content_byte_size_mismatch",
-    });
-  } finally {
-    target.database.close();
-  }
+  await assertContentRestoreRejectionPreservesTarget({
+    mutateBackup: backup => {
+      backup.sourceContents[0] = { ...backup.sourceContents[0], byteSize: 99999 };
+    },
+    expectedReason: "content_byte_size_mismatch",
+  });
 });
 
 test("restoreBackup_shouldRejectOversizedContent_onContentBackup", async () => {
-  const backup = await makeExportedContentBackup();
-  const target = makeSUT();
-
-  try {
-    const oversized = "a".repeat(storage.MAX_MATERIAL_CONTENT_BYTES + 1);
-    backup.sourceContents[0] = {
-      ...backup.sourceContents[0],
-      content: oversized,
-      byteSize: Buffer.byteLength(oversized, "utf8"),
-    };
-
-    assert.deepEqual(target.commands.restoreBackup(backup), {
-      status: "rejected",
-      reason: "content_too_large",
-    });
-  } finally {
-    target.database.close();
-  }
+  await assertContentRestoreRejectionPreservesTarget({
+    mutateBackup: backup => {
+      const oversized = "a".repeat(storage.MAX_MATERIAL_CONTENT_BYTES + 1);
+      backup.sourceContents[0] = {
+        ...backup.sourceContents[0],
+        content: oversized,
+        byteSize: Buffer.byteLength(oversized, "utf8"),
+      };
+    },
+    expectedReason: "content_too_large",
+  });
 });
