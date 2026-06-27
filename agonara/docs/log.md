@@ -2,6 +2,19 @@
 
 ## 2026-06-27
 
+- Implemented the **Phase 2** domain content commands for material content storage:
+  `setSourceContent` / `deleteSourceContent` / `readSourceContent` (curator-only),
+  `setAcceptedMaterialContent` (curator; material-only, immutable per revision via a
+  `material_content_already_set` guard), and `readMaterialContent` /
+  `readMaterialRevisionContent` (effective Student or Program Curator, **not** Admin).
+  Reads are character-paginated (`limit`/opaque `cursor`), summaries are redacted (no
+  content bytes), oversized writes return `content_too_large`, and licensing is not gated.
+  Per owner decision, accepted content is written by the dedicated `setAcceptedMaterialContent`
+  command rather than threaded into the acceptance transaction; the spec's route/shape
+  wording will be aligned when HTTP lands (Phase 3). Still owed before the phase closes:
+  the `hasContent` navigation-projection signal (touches existing navigation assertions),
+  executable-acceptance coverage, and an explicit no-Student-state boundary test. 7 domain
+  tests green; full Agonara suite and build pass.
 - Implemented **Phase 1** of the material content storage plan: `source_contents`
   (keyed by `source_id`) and `accepted_material_contents` (keyed by `revision_id`) tables
   with a `content_format` `check`, derived `byte_size`, and optional provenance; storage

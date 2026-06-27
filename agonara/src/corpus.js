@@ -24,8 +24,15 @@ import {
   deleteLearnerEvidenceTargetLinkRecord,
   getAcceptedAssessmentCriterionEntityRecord,
   getAcceptedAssessmentCriterionRevisionRecord,
+  MAX_MATERIAL_CONTENT_BYTES,
   getAcceptedCorpusEntityRecord,
   getAcceptedCorpusRevisionRecord,
+  getAcceptedMaterialContentRecord,
+  getProgramSourceRecord,
+  getSourceContentRecord,
+  setAcceptedMaterialContentRecord,
+  setSourceContentRecord,
+  deleteSourceContentRecord,
   getAcceptedNavigationRelationshipRevisionRecord,
   getAcceptedOpenAnswerCheckEntityRecord,
   getAcceptedOpenAnswerCheckRevisionRecord,
@@ -214,6 +221,18 @@ export function createCorpusCommands({
       listQuickCheckCandidates({ database, getEffectiveParticipation, input }),
     recordProgramSource: input =>
       recordProgramSource({ database, generateId, getEffectiveParticipation, input, now }),
+    setSourceContent: input =>
+      setSourceContent({ database, getEffectiveParticipation, input, now }),
+    deleteSourceContent: input =>
+      deleteSourceContent({ database, getEffectiveParticipation, input }),
+    readSourceContent: input =>
+      readSourceContent({ database, getEffectiveParticipation, input }),
+    setAcceptedMaterialContent: input =>
+      setAcceptedMaterialContent({ database, getEffectiveParticipation, input }),
+    readMaterialContent: input =>
+      readMaterialContent({ database, getEffectiveParticipation, input }),
+    readMaterialRevisionContent: input =>
+      readMaterialRevisionContent({ database, getEffectiveParticipation, input }),
     rejectAssessmentCriterionCandidate: input =>
       rejectAssessmentCriterionCandidate({ database, getEffectiveParticipation, input, now }),
     rejectOpenAnswerCheckCandidate: input =>
@@ -1628,6 +1647,229 @@ function createNavigationCandidate({ database, generateId, getEffectiveParticipa
     }
     throw error;
   }
+}
+
+const supportedContentFormats = new Set(["markdown", "plain_text"]);
+
+function validateWritableContent(input) {
+  if (!isNonEmptyText(input?.content) || !supportedContentFormats.has(input?.contentFormat)) {
+    return { ok: false, reason: "validation_failed" };
+  }
+  if (Buffer.byteLength(input.content, "utf8") > MAX_MATERIAL_CONTENT_BYTES) {
+    return { ok: false, reason: "content_too_large" };
+  }
+  return { ok: true };
+}
+
+function resolveContentReadAuthorization({ database, getEffectiveParticipation, input }) {
+  const identity = getIdentity(database, input?.actingIdentityId);
+  if (!identity) {
+    return { status: "rejected", reason: "identity_not_found" };
+  }
+  if (identity.state !== "active") {
+    return { status: "rejected", reason: "identity_disabled" };
+  }
+  const program = getProgramShellRecord(database, input?.programId);
+  if (!program) {
+    return { status: "rejected", reason: "program_not_found" };
+  }
+  const studentParticipation = getEffectiveParticipation({
+    identityId: identity.id,
+    programId: program.id,
+    participationKind: "student",
+  });
+  const curatorParticipation = getEffectiveParticipation({
+    identityId: identity.id,
+    programId: program.id,
+    participationKind: "program_curator",
+  });
+  if (studentParticipation.allowed || curatorParticipation.allowed) {
+    return { status: "accepted", identity, program };
+  }
+  return { status: "rejected", reason: "participation_required" };
+}
+
+function paginateContentRecord(record, input) {
+  if (input?.limit === undefined) {
+    return accepted({
+      content: record.content,
+      contentFormat: record.contentFormat,
+      byteSize: record.byteSize,
+    });
+  }
+  if (!Number.isInteger(input.limit) || input.limit <= 0) {
+    return rejected("validation_failed");
+  }
+  let offset = 0;
+  if (input.cursor !== undefined) {
+    offset = Number(input.cursor);
+    if (!Number.isInteger(offset) || offset < 0 || offset > record.content.length) {
+      return rejected("validation_failed");
+    }
+  }
+  const end = offset + input.limit;
+  const chunk = record.content.slice(offset, end);
+  const page = {
+    content: chunk,
+    contentFormat: record.contentFormat,
+    byteSize: record.byteSize,
+  };
+  if (end < record.content.length) {
+    page.nextCursor = String(end);
+  }
+  return accepted(page);
+}
+
+function summarizeSourceContent(record) {
+  return {
+    sourceId: record.sourceId,
+    contentFormat: record.contentFormat,
+    byteSize: record.byteSize,
+    recordedByIdentityId: record.recordedByIdentityId,
+    recordedAt: record.recordedAt,
+  };
+}
+
+function setSourceContent({ database, getEffectiveParticipation, input, now }) {
+  const source = getProgramSourceRecord(database, input?.sourceId);
+  if (!source) {
+    return rejected("source_not_found");
+  }
+  const authorization = resolveCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: source.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+  const validation = validateWritableContent(input);
+  if (!validation.ok) {
+    return rejected(validation.reason);
+  }
+  const record = setSourceContentRecord(database, {
+    sourceId: source.id,
+    content: input.content,
+    contentFormat: input.contentFormat,
+    recordedByIdentityId: authorization.identity.id,
+    recordedAt: now().toISOString(),
+  });
+  return accepted({ sourceContent: summarizeSourceContent(record) });
+}
+
+function deleteSourceContent({ database, getEffectiveParticipation, input }) {
+  const source = getProgramSourceRecord(database, input?.sourceId);
+  if (!source) {
+    return rejected("source_not_found");
+  }
+  const authorization = resolveCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: source.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+  deleteSourceContentRecord(database, source.id);
+  return accepted({ sourceId: source.id });
+}
+
+function readSourceContent({ database, getEffectiveParticipation, input }) {
+  const source = getProgramSourceRecord(database, input?.sourceId);
+  if (!source) {
+    return rejected("source_not_found");
+  }
+  const authorization = resolveCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: source.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+  const record = getSourceContentRecord(database, source.id);
+  if (!record) {
+    return rejected("content_not_found");
+  }
+  return paginateContentRecord(record, input);
+}
+
+function setAcceptedMaterialContent({ database, getEffectiveParticipation, input }) {
+  const revision = getAcceptedCorpusRevisionRecord(database, input?.revisionId);
+  if (!revision) {
+    return rejected("accepted_revision_not_found");
+  }
+  const authorization = resolveCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: revision.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+  if (revision.acceptedKind !== "material_reference") {
+    return rejected("validation_failed");
+  }
+  if (getAcceptedMaterialContentRecord(database, revision.id)) {
+    return rejected("material_content_already_set");
+  }
+  const validation = validateWritableContent(input);
+  if (!validation.ok) {
+    return rejected(validation.reason);
+  }
+  const record = setAcceptedMaterialContentRecord(database, {
+    revisionId: revision.id,
+    content: input.content,
+    contentFormat: input.contentFormat,
+    sourceContentProvenance: input?.sourceContentProvenance ?? null,
+  });
+  return accepted({
+    materialContent: {
+      revisionId: record.revisionId,
+      contentFormat: record.contentFormat,
+      byteSize: record.byteSize,
+    },
+  });
+}
+
+function readMaterialContent({ database, getEffectiveParticipation, input }) {
+  const entity = getAcceptedCorpusEntityRecord(database, input?.entityId);
+  if (!entity) {
+    return rejected("navigation_entity_not_found");
+  }
+  const authorization = resolveContentReadAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: entity.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+  const record = getAcceptedMaterialContentRecord(database, entity.currentRevisionId);
+  if (!record) {
+    return rejected("content_not_found");
+  }
+  return paginateContentRecord(record, input);
+}
+
+function readMaterialRevisionContent({ database, getEffectiveParticipation, input }) {
+  const revision = getAcceptedCorpusRevisionRecord(database, input?.revisionId);
+  if (!revision) {
+    return rejected("navigation_revision_not_found");
+  }
+  const authorization = resolveContentReadAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: revision.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+  const record = getAcceptedMaterialContentRecord(database, revision.id);
+  if (!record) {
+    return rejected("content_not_found");
+  }
+  return paginateContentRecord(record, input);
 }
 
 function recordProgramSource({ database, generateId, getEffectiveParticipation, input, now }) {
