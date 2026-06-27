@@ -1,5 +1,17 @@
 # Log
 
+## 2026-06-28
+
+- Reframed the curator and student role skills so the agent is the human role-holder's
+  **assistant**, not the role itself: `agonara-curator-corpus` (v1.3.0),
+  `agonara-curator-assessment`, `agonara-curator-participation`, `agonara-curator-research`,
+  and `agonara-student` (v1.4.0) now state the agent holds the session and does the API work
+  on a human Program Curator's / Student's behalf while the human owns the program, decisions,
+  learning, and answers. Dropped the curator-corpus skill line that told the *agent* it bore
+  content-licensing responsibility — licensing is the human curator's; the curator agent/bot and
+  Agonara do not adjudicate or assume it (consistent with ADR-021). Updated `skills/README.md`
+  to describe the curator bucket and student skill in the assistant framing.
+
 ## 2026-06-27
 
 - Released **agonara v0.3.0** (`agonara_v0.2.0..` delta). Minor, backward-compatible feature

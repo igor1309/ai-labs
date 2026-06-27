@@ -24,7 +24,9 @@ Shared foundations every role skill builds on:
 
 Per-role skills build on the foundations above.
 
-The **curator bucket** — per-role skills for the program curator:
+The **curator bucket** — per-role skills for a Program Curator's assistant (the
+agent does the API work on the human curator's behalf; the curator owns the
+program and its decisions):
 
 - [`agonara-curator-corpus/`](agonara-curator-corpus/SKILL.md) — create a program
   and control the draft↔accepted boundary for topics, concepts, materials, and
@@ -40,8 +42,10 @@ The **curator bucket** — per-role skills for the program curator:
 
 The **student** skill:
 
-- [`agonara-student/`](agonara-student/SKILL.md) — operate as a learner:
-  discover and preview programs without creating state, self-join/leave/rejoin
+- [`agonara-student/`](agonara-student/SKILL.md) — assist a human Student (the
+  agent works on the learner's behalf; the student owns their learning and
+  answers): discover and preview programs without creating state,
+  self-join/leave/rejoin
   and act on invitations, resume learning and follow the next step, study
   accepted concepts and materials, take quick/open/readiness checks, and read
   feedback, results, and the evidence behind progress — seeing only accepted
