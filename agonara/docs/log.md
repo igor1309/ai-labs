@@ -2,16 +2,20 @@
 
 ## 2026-06-27
 
-- Capture the "students can't read full material content" question as a forward
-  decision in `backlog/README.md` (Uncategorized items). Confirmed it is a
-  deliberate boundary, not a bug: the student navigation surface exposes a
-  `material_reference`'s title/kind/locator/citation/concise `body` and its
-  relationships only (`src/corpus.js` `summarizeStudentNavigationRevision`), raw
-  Program sources are curator-only with no stored full text (`listProgramSources`
-  / `summarizeProgramSource`), and `docs/specs/topic-concept-material-navigation.md`
-  #28 forbids navigation from fetching/copying/transforming external material
-  content. Backlog item asks for an ADR to either add a student "read full
-  material" capability or affirm and document the reference-only boundary.
+- Capture "make material content readable in-product" as a forward decision in
+  `backlog/README.md` (Uncategorized items). A live curator session confirmed the
+  gap is structural, not transient: a `material_reference`'s `locator` is a
+  free-form string Agonara stores verbatim and never resolves or serves
+  (`src/corpus.js` `recordProgramSource` / `summarizeProgramSource`), and curator
+  agents write their own ephemeral `/root/.hermes/cache/...` path into it; the
+  `body` is an annotation-length concise summary, not the source text. When the
+  agent container recycles, the only copy of the extracted markdown is gone, so
+  neither curator nor student can read the text. Owner-stated direction: curator
+  full read, student read access — which overturns ADR-010 (corpus stores
+  metadata, not content) and navigation spec #28, so it needs a pre-ADR → ADR.
+  Backlog records the content-model fork (Agonara stores content / resolves a
+  durable locator / fix the BYOA ingestion contract) with the store-content
+  option recommended; direction pending owner confirmation.
 
 ## 2026-06-22
 

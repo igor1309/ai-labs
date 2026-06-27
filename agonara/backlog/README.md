@@ -61,26 +61,36 @@ Single items not yet promoted to a topic file.
   in-process machinery. Until both are in place the "verified later" the student
   flow implies never arrives.
 
-- **Decide whether students can read full material content (not just a
-  reference).** Today the learner-facing surface is the accepted navigation
-  graph: a `material_reference` carries `title`, `materialReferenceKind`, a
-  `locator`/`citation`, and an optional **concise** `body`, plus its topic/concept
-  relationships (`src/corpus.js` `summarizeStudentNavigationRevision`; student
-  reads at `/programs/{programId}/navigation`, `/navigation/entities/{entityId}`,
-  `/navigation/revisions/{revisionId}`). This is a deliberate boundary, not a
-  curation gap: `docs/specs/topic-concept-material-navigation.md` #28 states
-  navigation "does not fetch, scrape, copy, upload, transform, or summarize
-  external material content. A material reference is an accepted locator,
-  citation, or concise body stored in Corpus Storage," and raw Program sources
-  are curator-only with no stored full text (`listProgramSources` is
-  curator-gated; `summarizeProgramSource` exposes only metadata + locator/
-  citation). So a student (or their agent) sees a material's card and links but
-  has no API to open the original document as readable text. Decide, via an ADR,
-  whether to add a student-facing "read full material" capability — and if so,
-  whether the program even holds the content (it currently does not) or only ever
-  resolves the `locator`/`citation` to an external source — versus affirming the
-  reference-only boundary as intended and documenting it as the answer for
-  learners who expect to read the source in-product.
+- **Make material content readable in-product (curator: full; student: read).**
+  Confirmed real gap, not a transient mount issue. A `material_reference`'s
+  `locator` is a free-form string Agonara stores verbatim and never resolves or
+  serves (`src/corpus.js` `recordProgramSource`; `summarizeProgramSource` exposes
+  only metadata + locator/citation), and in practice curator agents write their
+  own **ephemeral** cache path into it — observed in a live curator session:
+  `/root/.hermes/cache/documents/doc_…_tema_5_…psihologa.md`. Agonara stores no
+  content: a `material_reference`'s `body` is an annotation-length **concise**
+  body by spec (observed value was a one-sentence summary), not the source text,
+  and the student surface returns only that card + relationships
+  (`summarizeStudentNavigationRevision`; `/programs/{programId}/navigation`,
+  `/navigation/entities/{entityId}`, `/navigation/revisions/{revisionId}`). So
+  once the agent container recycles, the only copy of the extracted markdown is
+  gone and **neither curator nor student** can read the text; re-uploading fixes
+  one document until the next recycle. Owner-stated required direction: a curator
+  has full read access to everything they provided or derived, and a student has
+  read access. This **overturns ADR-010** (corpus stores curated metadata, not
+  content) and **navigation spec #28** ("a material reference is an accepted
+  locator, citation, or concise body … navigation does not fetch, copy, upload,
+  transform, or summarize external material content"), so it needs a pre-ADR →
+  ADR, not a patch. Open fork for that ADR — where the durable copy lives:
+  (a) **Agonara stores the extracted content** and serves it via role-gated reads
+  [recommended: the only option that makes access durable and role-gated
+  independent of any agent cache; cost: corpus becomes a content store and
+  Agonara takes on a copyright/licensing surface]; (b) Agonara stays
+  metadata-first but **resolves a durable locator** (object store / content
+  handle) and serves the bytes on read; (c) keep Agonara metadata-only and **fix
+  the BYOA ingestion contract** so locators must point at a durable,
+  agent-independent location both roles' agents re-read themselves — lightest, but
+  student read access is then not an Agonara API guarantee.
 
 ## Design-reasoning companions
 
