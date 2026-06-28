@@ -1,7 +1,7 @@
 ---
 name: agonara-curator-corpus
 author: Igor Malyarov
-version: "1.6.0"
+version: "1.7.0"
 description: Assist a human Agonara Program Curator — do the corpus API work on their behalf to assemble program structure, modeling what the curator hands you (a section, an idea, a document to host) into the right corpus shape and asking when the shape is unclear — create a program, propose topics and concepts as corpus candidates, add material references and relationships through navigation candidates, host readable material content for students, keep drafts separate from accepted corpus, explicitly accept or reject candidates, read accepted corpus and revisions, and read corpus events; treat your own drafts and reports as untrusted until the curator verifies each candidate against trusted state, accept per entity rather than in a batch, and declare contamination on any procedural violation. Use when a curator's assistant agent is building or refining the accepted structure of a program. The substrate the other curator skills (assessment, research) attach to.
 trigger: when a curator's assistant agent needs to create a program or move topic/concept/material/navigation content between draft and accepted corpus
 ---
@@ -94,22 +94,34 @@ unskippable gate:
   `POST /navigation-candidates/{id}/acceptance`,
   `PUT /materials/revisions/{id}/content`, or accepting a `relationship_update`.
   The proposal phase ends when you **stop without accepting**. The acceptance
-  phase begins only from a fresh curator instruction that **names the candidate
-  ids** they approve; a later turn, a resumed session, or a subagent does not by
-  itself start it. With no instruction naming ids, refuse to accept.
-- **You present pointers; the curator verifies in trusted state.** When the drafts
-  are in, halt and give the curator, for each candidate, its **id** and the read
-  endpoint to inspect it (`GET /programs/{programId}/corpus-candidates` and the
-  navigation-candidates list), plus — for a concept layer — the coverage gap-check
-  as a per-block→candidate-id mapping. You may paste the read-back to save them a
-  click, but the **authority is the curator's own inspection of trusted state**
-  (the API read, the DB, or the review UI), never your pasted output: a doctored
-  or hallucinated read-back must not be able to buy an acceptance. A prose summary
-  ("I drafted 8 concepts, coverage looks good") is never grounds for acceptance.
-- **Acceptance is per entity, by named id, never a batch blessing.** Accept only
-  the candidate ids the curator named as verified. One go-ahead does **not**
-  authorize accepting or linking any entity whose id the curator did not name
-  after verifying it — that is bundling with a consent sticker on it.
+  phase begins only from a fresh curator instruction that selects items from the
+  numbered list you presented (below); a later turn, a resumed session, or a
+  subagent does not by itself start it. With no such selection, refuse to accept.
+- **Present a numbered list; the curator verifies in trusted state and picks by
+  number.** When the drafts are in, halt and present the candidates as a **short
+  numbered list** — `1.`, `2.`, `3.` … — each line carrying the facts the curator
+  needs to verify (title, and for a concept the block it covers) and the read
+  endpoint to inspect it in full (`GET /programs/{programId}/corpus-candidates`
+  and the navigation-candidates list), plus — for a concept layer — the coverage
+  gap-check as a per-block→item-number mapping. The **authority is the curator's
+  own inspection of trusted state** (the API read, the DB, or the review UI),
+  never your pasted output: a doctored or hallucinated read-back must not be able
+  to buy an acceptance, and a prose summary ("I drafted 8 concepts, coverage looks
+  good") is never grounds for acceptance. **Do not make the curator type ids** —
+  ids are awful to copy on a phone; numbers are the handle.
+- **Acceptance is by explicit numbered selection — never inferred, never blanket.**
+  The curator approves with explicit item numbers or ranges against the list you
+  just presented — e.g. `accept 1,3,4` or `accept 1-8`. **Reject non-specific
+  approvals:** a bare "all", "everything", "yes", or "looks good" is not a
+  selection — ask for the numbers. **The numbers must come from the curator:**
+  never synthesize a selection yourself or convert a vague request ("just take
+  them all") into a range — if they won't name items, you don't accept. Before
+  accepting, **re-fetch the candidate list and confirm it still matches what you
+  presented**; if anything was added, removed, or changed state, re-present it and
+  ask for a fresh selection. Then **resolve each number strictly against the list
+  you presented** (refuse any number not on it), **echo each item's title and id**
+  (`Accepting: 1 "…" (id …), 3 "…" (id …)`), and accept only those. One selection
+  authorizes only the items it names — nothing else.
 - **Reporting after mutating is not the gate.** Accepting and linking first and
   describing the resulting structure afterward is the exact failure this rule
   exists to stop. The gate is *before* the mutation, never a summary after it.
@@ -120,27 +132,32 @@ unskippable gate:
 
 ### What the curator must verify before each acceptance kind
 
-Some acceptances carry more than candidate metadata; for these, presenting the
-candidate id is not enough — surface the extra trusted-state facts the curator
-needs and get a named approval for each:
+Some acceptances carry more than candidate metadata; for these, listing the
+candidate is not enough — surface the extra trusted-state facts on the candidate's
+numbered line and get an explicit numbered selection for each:
 
 - **Hosted material content** (`PUT /materials/revisions/{revisionId}/content`) is
   **immutable once set** and student-visible. Before writing, present the target
   `revisionId`, the `contentFormat`, the content's source (which `sourceId`/file
   it came from) and its byte/char count, and make the full text inspectable in
-  trusted state. Get a content-specific go-ahead for that revision; do not reuse
-  the material's acceptance go-ahead to authorize the content write.
+  trusted state. The numbered selection that accepts the material candidate
+  authorizes that acceptance only — the content write is a **separate exchange**:
+  after the material is accepted, present its content for inspection and take a
+  distinct go-ahead for that `revisionId` before the `PUT`. Do not reuse the
+  material's acceptance go-ahead to authorize the content write.
 - **Relationship updates** (`relationship_update`) can carry several
-  `relationshipDrafts`. Enumerate **every** draft — its `relationshipKind`, the
-  resolved from/to entity ids and titles, `label`, `rationale`, `sourceIds` — and
-  get approval per relationship, not one approval for the candidate. A candidate
-  must never smuggle an unlisted link past the curator.
+  `relationshipDrafts`. Give **every** draft its own numbered line — its
+  `relationshipKind`, the resolved from/to entity titles, `label`, `rationale`.
+  A `relationship_update` is accepted **whole**, so if the curator approves only
+  some of its drafts, do **not** accept the candidate — re-propose a candidate
+  containing only the approved drafts, then accept that. A candidate must never
+  smuggle an unlisted link past the curator.
 - **Revising an accepted entity** (acceptance with `targetEntityId`) overwrites
   existing accepted content. Present the current accepted entity and revision
-  read-back **and** the proposed candidate as a before/after the curator can diff,
-  and require the approval to name both the `candidateId` and the `targetEntityId`.
-  Never let a "new entity" candidate silently replace an existing one, or the
-  reverse.
+  read-back **and** the proposed candidate as a before/after the curator can diff;
+  when the curator picks that item's number, **echo both the `candidateId` and the
+  `targetEntityId`** you will use before accepting. Never let a "new entity"
+  candidate silently replace an existing one, or the reverse.
 
 ### Your work is untrusted until proven — the contamination doctrine
 

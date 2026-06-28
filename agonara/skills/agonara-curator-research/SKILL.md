@@ -1,8 +1,8 @@
 ---
 name: agonara-curator-research
 author: Igor Malyarov
-version: "1.2.0"
-description: Assist a human Agonara Program Curator to ground and expand a program — record external sources with justifying metadata, read coverage-gap diagnostics as draft guidance, and generate, trace, and explicitly accept or reject LLM-assisted curation suggestions. Report sources, gaps, and suggestions only from live API reads, never from memory; accept only the suggestion ids the curator names after verifying origin. Use when a curator's assistant agent is researching a program: adding sources, finding gaps, or reviewing generated suggestions. Suggestions and gaps are draft material until accepted; accepting a suggestion only materializes a draft candidate, never accepted corpus.
+version: "1.3.0"
+description: Assist a human Agonara Program Curator to ground and expand a program — record external sources with justifying metadata, read coverage-gap diagnostics as draft guidance, and generate, trace, and explicitly accept or reject LLM-assisted curation suggestions. Report sources, gaps, and suggestions only from live API reads, never from memory; present suggestions as a numbered list and act only on the item numbers the curator picks after verifying origin. Use when a curator's assistant agent is researching a program: adding sources, finding gaps, or reviewing generated suggestions. Suggestions and gaps are draft material until accepted; accepting a suggestion only materializes a draft candidate, never accepted corpus.
 trigger: when a curator's assistant agent needs to record an external source, read coverage gaps, or generate/review LLM curation suggestions
 ---
 
@@ -39,9 +39,11 @@ governs how you report and how you accept suggestions.** Two rules apply:
   only *materializes a draft candidate* — it is not corpus acceptance — and
   rejecting one (`POST /llm-curation-suggestions/{suggestionId}/rejection`) discards
   generated material the curator may have wanted. For either, trace origin first
-  (`GET /llm-curation-suggestions/{suggestionId}`), present it, and accept or reject
-  only the suggestion ids the curator names. Do not silently discard suggestions.
-  A materialized candidate then faces the full corpus/assessment acceptance gate
+  (`GET /llm-curation-suggestions/{suggestionId}`) and present the suggestions as a
+  **numbered list**; the curator approves by explicit item number or range (never a
+  bare "all"), you echo the resolved suggestion ids, and you accept or reject only
+  those. Do not make them type ids and do not silently discard suggestions. A
+  materialized candidate then faces the full corpus/assessment acceptance gate
   downstream, where its content is verified against trusted state.
 
 ## External sources
