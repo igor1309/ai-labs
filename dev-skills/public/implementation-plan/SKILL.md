@@ -1,7 +1,7 @@
 ---
 name: implementation-plan
 author: Igor Malyarov
-version: "1.0.0"
+version: "1.1.0"
 description: Use when authoring, editing, or validating implementation plans under any docs/plans path; defines task/phase/step vocabulary, required execution declarations, and the acceptance checklist that catches invalid worktree, branch, and push-policy declarations before execution starts.
 trigger: when creating or modifying implementation plans, especially files under **/docs/plans/**.md
 ---

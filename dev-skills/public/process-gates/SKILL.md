@@ -1,7 +1,7 @@
 ---
 name: process-gates
 author: Igor Malyarov
-version: "1.2.0"
+version: "1.3.0"
 description: Use during implementation execution for preflight, pre-commit scope checks, step closeout, pre-push/pre-PR gates, hard process gates, and completion verification. For authoring or editing implementation plans, use implementation-plan first.
 trigger: when implementing, running preflight, committing, pushing, opening PRs, closing out steps, or verifying completion
 ---
