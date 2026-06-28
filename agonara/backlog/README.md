@@ -36,6 +36,32 @@ Single items not yet promoted to a topic file.
   `corpus-storage-and-curator-acceptance-first-slice.md` #37/#44); needs its own
   ADR for audit-preserving semantics.
 
+- **Module → topic navigation hierarchy (no topic-grouping layer exists).** A
+  curator reported (program 1840) that a `relationship_update` with
+  `relationshipKind: topic_includes_topic` to nest accepted numbered topics
+  (Тема 1–9) under an accepted module-topic is `rejected` /`validation_failed`.
+  This is **working as designed, not a bug**: navigation is deliberately two-level.
+  `topic_includes_topic` is not in `supportedNavigationRelationshipKinds`
+  (`src/corpus.js`), and `isValidNavigationRelationshipEndpointPair` (`src/storage.js`)
+  has no topic→topic pair — the only topic-rooted edges are `topic_includes_concept`
+  and `topic_uses_material` (navigation spec
+  `docs/specs/topic-concept-material-navigation.md` rule 13). There is no `module`
+  corpus kind either; a "module" today is just another top-level `topic` node. So
+  accepted topic nodes cannot be placed under a module in navigation, and
+  module-level student traversal exists only indirectly via `topic_uses_material`.
+  The semantic/topic layer is complete; only the **structural** Module → Topic
+  hierarchy is missing. This needs a **pre-ADR/ADR decision** (extends the ADR-010
+  acceptance boundary and changes the navigation contract — not a config tweak)
+  choosing among: (a) add a self-referential `topic_includes_topic` kind with
+  acyclicity guards mirroring `concept_prerequisite`, plus student-read projection
+  and "ungrouped topic" semantics; (b) introduce a distinct `module` corpus kind
+  with a `module_includes_topic` kind; or (c) surface the existing period-readiness
+  scopes (named sets of topics, `docs/specs/topic-period-readiness-checks.md`) as a
+  navigation grouping rather than readiness-only metadata. Each ripples into
+  `ProgramNavigationSummary` grouping, ungrouped-node rules (spec rule 22), backup/
+  restore graph validation (rule 27), and the ADR-023 uniqueness tuple. Pick the
+  direction before any build.
+
 - **Navigation-relationship acceptance uniqueness — implementation** of
   `docs/adr/adr-023-navigation-relationship-acceptance-uniqueness.md`. Spec
   (`docs/specs/navigation-relationship-acceptance-uniqueness.md`) and implementation plan
