@@ -1141,6 +1141,73 @@ test("setAcceptedCorpusLifecycleStatus_shouldRejectWithdrawal_onActiveNavigation
   }
 });
 
+test("setAcceptedCorpusLifecycleStatus_shouldRejectWithdrawal_onActiveReadinessRequirement_status", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    const topic = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Readiness topic",
+    });
+    const concept = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "concept",
+      title: "Readiness concept",
+    });
+    const readinessCandidate = commands.createReadinessCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: "Topic readiness",
+      scope: { scopeKind: "topic", topicEntityId: topic.entityId },
+      requirements: [
+        {
+          targetKind: "concept",
+          targetId: concept.entityId,
+          requiredLevel: "developing",
+        },
+      ],
+    }).value.readinessCheckCandidate;
+    const readiness = commands.acceptReadinessCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      candidateId: readinessCandidate.candidateId,
+    }).value.acceptedReadinessCheck;
+
+    const result = commands.setAcceptedCorpusLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: concept.entityId,
+      status: "withdrawn",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        activeCorpusIds: commands
+          .listAcceptedCorpus({
+            actingIdentityId: "identity-curator",
+            programId: "program-a",
+          })
+          .value.acceptedCorpus.map($0 => $0.entityId),
+        readinessEntities: listAcceptedReadinessCheckEntityRecords(database, {
+          programId: "program-a",
+          status: "active",
+        }).map($0 => [$0.id, $0.currentRevisionId]),
+      },
+      {
+        result: {
+          status: "rejected",
+          reason: "entity_withdrawal_blocked",
+        },
+        activeCorpusIds: [concept.entityId, topic.entityId],
+        readinessEntities: [[readiness.entityId, readiness.revisionId]],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("listProgramNavigation_shouldOmitWithdrawnCurrentEntityAndKeepRevisionReadable_status", async () => {
   const { commands, database } = await makeSUT();
 

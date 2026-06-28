@@ -992,7 +992,8 @@ function setAcceptedCorpusLifecycleStatus({ database, getEffectiveParticipation,
   }
   if (
     input.status === "withdrawn" &&
-    hasActiveNavigationRelationshipDependent(database, {
+    hasActiveCorpusEntityDependent(database, {
+      acceptedKind: entity.acceptedKind,
       entityId: entity.id,
       programId: entity.programId,
     })
@@ -1014,6 +1015,32 @@ function setAcceptedCorpusLifecycleStatus({ database, getEffectiveParticipation,
       updatedByIdentityId: updated.updatedByIdentityId,
       updatedAt: updated.updatedAt,
     },
+  });
+}
+
+function hasActiveCorpusEntityDependent(database, { acceptedKind, entityId, programId }) {
+  return (
+    hasActiveReadinessRequirementDependent(database, {
+      acceptedKind,
+      entityId,
+      programId,
+    }) ||
+    hasActiveNavigationRelationshipDependent(database, {
+      entityId,
+      programId,
+    })
+  );
+}
+
+function hasActiveReadinessRequirementDependent(database, { acceptedKind, entityId, programId }) {
+  return listAcceptedReadinessCheckEntityRecords(database, {
+    programId,
+    status: "active",
+  }).some($0 => {
+    const revision = getAcceptedReadinessCheckRevisionRecord(database, $0.currentRevisionId);
+    return revision?.requirements.some(
+      $1 => $1.targetKind === acceptedKind && $1.targetId === entityId,
+    );
   });
 }
 

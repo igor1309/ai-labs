@@ -2,6 +2,11 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 2 sub-slice: withdrawal of an accepted corpus entity is now
+  blocked with `entity_withdrawal_blocked` when an active readiness check's current revision
+  has a requirement targeting that entity, preserving both the corpus entity and readiness
+  dependent without cascade mutation.
+
 - ADR-022 implementation Phase 2 review fix: navigation forward reads now apply lifecycle
   filtering consistently. Withdrawn corpus entities leave the student navigation listing and
   current navigation detail reads, active navigation relationships are limited to active
