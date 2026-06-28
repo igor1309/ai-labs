@@ -107,10 +107,19 @@ test("topicConceptMaterialNavigationLayout_shouldKeepControlsNamedAndNonOverlapp
       await expect(contentPanel.getByRole("button", { name: "Save source content" })).toBeVisible();
       await expect(contentPanel.getByRole("button", { name: "Read source content" })).toBeVisible();
       await expect(contentPanel.getByRole("button", { name: "Delete source content" })).toBeVisible();
+      await expect(contentPanel.getByRole("button", { exact: true, name: "Delete source" })).toBeVisible();
+      const lifecyclePanel = page.locator("#entity-lifecycle-panel");
+      await expect(lifecyclePanel).toBeVisible();
+      await expect(lifecyclePanel.getByLabel("Accepted item family")).toBeVisible();
+      await expect(lifecyclePanel.getByLabel("Entity or source id")).toBeVisible();
+      await expect(lifecyclePanel.getByRole("button", { name: "Withdraw" })).toBeVisible();
+      await expect(lifecyclePanel.getByRole("button", { name: "Reactivate" })).toBeVisible();
+      await expect(page.locator("#withdrawn-items-view")).toBeVisible();
       await expect(page.locator("#material-content-view")).toBeVisible();
       await expect(page.locator("#navigation-status")).toHaveAttribute("aria-live", "polite");
       await expect(page.locator("#navigation-candidate-action-status")).toHaveAttribute("aria-live", "polite");
       await expect(page.locator("#source-content-status")).toHaveAttribute("aria-live", "polite");
+      await expect(page.locator("#entity-lifecycle-status")).toHaveAttribute("aria-live", "polite");
       expect(await visibleControlOverlaps(page)).toEqual([]);
     }
   } finally {

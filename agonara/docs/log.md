@@ -2,6 +2,10 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 5 sub-slice: extended browser layout coverage for the `/learn`
+  lifecycle and source-delete controls across desktop and mobile widths, including named controls,
+  live status regions, and overlap checks.
+
 - ADR-022 implementation Phase 5 sub-slice: added a `/learn` withdrawn-items session view.
   Successful lifecycle withdrawals are listed with per-item reactivation controls that call the
   active status route and remove reactivated items from the view.
