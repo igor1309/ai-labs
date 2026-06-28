@@ -18,9 +18,10 @@ on two things:
    contemplate a plan that is authored, committed/merged, and executed later in a different
    session and branch.
 
-Consequence (observed): the skill *requires* a concrete `Expected branch` and warns "Do not
-invent declaration values," which pushes an author to pin the only concrete branch available —
-the authoring branch. When that plan is merged before execution, the pin goes dead. A later
+Consequence: the skill permits `Expected branch` to be "a concrete branch name or single
+resolvable pattern" and warns "Do not invent declaration values," but gives no rule steering an
+author toward the pattern form for a plan executed later — so the author pins the only concrete
+branch available, the authoring branch. When that plan is merged before execution, the pin goes dead. A later
 implementer that honors `process-gates` reads `Preflight: [ ]` against a now-deleted
 `Expected branch` and stalls: a guard meant to protect execution becomes a blocker to it. The
 `Acceptance Checklist` passes the plan because it validates form, not whether the pinned branch
@@ -50,18 +51,24 @@ Land IP-1 → IP-2 → IP-3 together (they are the fix); IP-4/IP-5 add lifecycle
     `Expected branch`, `Preflight check`.
   - State: an author may pre-fill the execution lock **only** when authoring and execution are
     the same session and worktree.
+  - Keep this consistent with the existing rule that every field is "declared before Step 1":
+    the executor populates the lock *at execution start, which precedes Step 1* — the split
+    assigns ownership and timing, it does not relax the before-Step-1 requirement.
 - **DoD:** the two groups and the ownership sentence exist in the skill; the `Acceptance
   Checklist` references the split.
 
-### IP-2 — Allow a deferred placeholder for `Expected worktree` / `Expected branch` (P0)
+### IP-2 — Add a `set at execution` literal and require the deferred form for later execution (P0)
 
-- **Change:** explicitly permit the literal value `set at execution` (or a resolvable pattern,
-  e.g. `claude/<feature>-impl-*`) for these two fields when the plan is authored for
-  separate/later execution. Clarify that a concrete live branch is required only when authoring
-  == execution. Reconcile with "Do not invent declaration values" so the placeholder/pattern is
-  not read as an invented value.
-- **DoD:** the allowed placeholder is enumerated beside the field definitions and is not
-  flagged by the `Acceptance Checklist`.
+- **Note:** the skill already allows `Expected worktree`/`Expected branch` to be "a concrete
+  branch name or single resolvable pattern," so a pattern (e.g. `claude/<feature>-impl-*`) is
+  permitted today. The gaps are narrower.
+- **Change:** (a) add the literal `set at execution` to the allowed values for these two fields
+  and whitelist it against "Do not invent declaration values" so it is not flagged; (b) state
+  that a concrete live branch is required only when authoring == execution, and that a plan
+  authored for separate/later execution MUST use the pattern or `set at execution` form, not a
+  pinned authoring branch.
+- **DoD:** `set at execution` is enumerated beside the field definitions, is not flagged by the
+  `Acceptance Checklist`, and the authoring==execution-vs-later rule is stated.
 
 ### IP-3 — Add `Acceptance Checklist` guards against a stale/foreign pinned branch (P0)
 
