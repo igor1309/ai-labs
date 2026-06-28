@@ -34,11 +34,13 @@ import {
   setAcceptedMaterialContentRecord,
   setSourceContentRecord,
   setAcceptedCorpusEntityLifecycleStatusRecord,
+  setAcceptedQuickCheckEntityLifecycleStatusRecord,
   deleteSourceContentRecord,
   getAcceptedNavigationRelationshipRevisionRecord,
   getAcceptedOpenAnswerCheckEntityRecord,
   getAcceptedOpenAnswerCheckRevisionRecord,
   getAcceptedQuickCheckEntityRecord,
+  getAcceptedQuickCheckEntityLifecycleStatusRecord,
   getAcceptedQuickCheckRevisionRecord,
   getAcceptedReadinessCheckEntityRecord,
   getAcceptedReadinessCheckRevisionRecord,
@@ -237,6 +239,8 @@ export function createCorpusCommands({
       readMaterialRevisionContent({ database, getEffectiveParticipation, input }),
     setAcceptedCorpusLifecycleStatus: input =>
       setAcceptedCorpusLifecycleStatus({ database, getEffectiveParticipation, input, now }),
+    setAcceptedQuickCheckLifecycleStatus: input =>
+      setAcceptedQuickCheckLifecycleStatus({ database, getEffectiveParticipation, input, now }),
     rejectAssessmentCriterionCandidate: input =>
       rejectAssessmentCriterionCandidate({ database, getEffectiveParticipation, input, now }),
     rejectOpenAnswerCheckCandidate: input =>
@@ -1018,6 +1022,50 @@ function setAcceptedCorpusLifecycleStatus({ database, getEffectiveParticipation,
   });
 }
 
+function setAcceptedQuickCheckLifecycleStatus({ database, getEffectiveParticipation, input, now }) {
+  if (!new Set(["active", "withdrawn"]).has(input?.status)) {
+    return rejected("validation_failed");
+  }
+  const entity = getAcceptedQuickCheckEntityLifecycleStatusRecord(database, input?.entityId);
+  if (!entity) {
+    return rejected("accepted_entity_not_found");
+  }
+  const authorization = resolveAssessmentCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: entity.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+  if (
+    input.status === "withdrawn" &&
+    hasActiveLearnerEvidenceOwnerDependent(database, {
+      evidenceOwnerKind: "accepted_quick_check",
+      entityId: entity.id,
+      programId: entity.programId,
+    })
+  ) {
+    return rejected("entity_withdrawal_blocked");
+  }
+
+  const updated = setAcceptedQuickCheckEntityLifecycleStatusRecord(database, {
+    entityId: entity.id,
+    status: input.status,
+    updatedByIdentityId: authorization.identity.id,
+    updatedAt: now().toISOString(),
+  });
+
+  return accepted({
+    entity: {
+      id: updated.id,
+      status: updated.status,
+      updatedByIdentityId: updated.updatedByIdentityId,
+      updatedAt: updated.updatedAt,
+    },
+  });
+}
+
 function hasActiveCorpusEntityDependent(database, { acceptedKind, entityId, programId }) {
   return (
     hasActiveReadinessRequirementDependent(database, {
@@ -1042,6 +1090,12 @@ function hasActiveReadinessRequirementDependent(database, { acceptedKind, entity
       $1 => $1.targetKind === acceptedKind && $1.targetId === entityId,
     );
   });
+}
+
+function hasActiveLearnerEvidenceOwnerDependent(database, { evidenceOwnerKind, entityId, programId }) {
+  return listLearnerEvidenceTargetLinkRecords(database, { programId }).some(
+    $0 => $0.evidenceOwnerKind === evidenceOwnerKind && $0.evidenceOwnerEntityId === entityId,
+  );
 }
 
 function hasActiveNavigationRelationshipDependent(database, { entityId, programId }) {

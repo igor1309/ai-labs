@@ -33,6 +33,7 @@ import {
   listAcceptedCorpusEntityRecords,
   listAcceptedNavigationRelationshipRecords,
   listAcceptedOpenAnswerCheckEntityRecords,
+  listAcceptedQuickCheckEntityRecords,
   listAcceptedReadinessCheckEntityRecords,
   listAssessmentCriterionCandidateRecords,
   listCorpusCandidateRecords,
@@ -1201,6 +1202,93 @@ test("setAcceptedCorpusLifecycleStatus_shouldRejectWithdrawal_onActiveReadinessR
         },
         activeCorpusIds: [concept.entityId, topic.entityId],
         readinessEntities: [[readiness.entityId, readiness.revisionId]],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("setAcceptedQuickCheckLifecycleStatus_shouldRejectWithdrawal_onActiveLearnerEvidenceTargetLink_status", async () => {
+  const { commands, database } = await makeSUT({ ids: generatedIds("quick-lifecycle", 80) });
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    const target = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Evidence target",
+    });
+    const quickCheck = createAcceptedQuickCheckOwner(commands, { programId: "program-a" });
+    const link = commands.createLearnerEvidenceTargetLink({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      targetKind: "topic",
+      targetId: target.entityId,
+      evidenceOwnerKind: "accepted_quick_check",
+      evidenceOwnerEntityId: quickCheck.entityId,
+    }).value.learnerEvidenceTargetLink;
+
+    const blockedResult = commands.setAcceptedQuickCheckLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: quickCheck.entityId,
+      status: "withdrawn",
+    });
+    const activeQuickChecksAfterBlock = listAcceptedQuickCheckEntityRecords(database, {
+      programId: "program-a",
+      status: "active",
+    }).map($0 => [$0.id, $0.currentRevisionId]);
+    const activeLinksAfterBlock = listLearnerEvidenceTargetLinkRecords(database, {
+      programId: "program-a",
+    }).map($0 => [$0.id, $0.evidenceOwnerKind, $0.evidenceOwnerEntityId, $0.status]);
+    const deletedLink = commands.deleteLearnerEvidenceTargetLink({
+      actingIdentityId: "identity-curator",
+      linkId: link.linkId,
+    });
+    const withdrawnResult = commands.setAcceptedQuickCheckLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: quickCheck.entityId,
+      status: "withdrawn",
+    });
+
+    assert.deepEqual(
+      {
+        blockedResult,
+        activeQuickChecksAfterBlock,
+        activeLinksAfterBlock,
+        deletedLinkStatus: deletedLink.status,
+        withdrawnResult: {
+          status: withdrawnResult.status,
+          entity: withdrawnResult.value.entity,
+        },
+        activeQuickChecksAfterDelete: listAcceptedQuickCheckEntityRecords(database, {
+          programId: "program-a",
+          status: "active",
+        }).map($0 => [$0.id, $0.currentRevisionId]),
+        storedLinks: listLearnerEvidenceTargetLinkRecords(database, {
+          programId: "program-a",
+          includeDeleted: true,
+        }).map($0 => [$0.id, $0.evidenceOwnerKind, $0.evidenceOwnerEntityId, $0.status]),
+      },
+      {
+        blockedResult: {
+          status: "rejected",
+          reason: "entity_withdrawal_blocked",
+        },
+        activeQuickChecksAfterBlock: [[quickCheck.entityId, quickCheck.revisionId]],
+        activeLinksAfterBlock: [[link.linkId, "accepted_quick_check", quickCheck.entityId, "active"]],
+        deletedLinkStatus: "accepted",
+        withdrawnResult: {
+          status: "accepted",
+          entity: {
+            id: quickCheck.entityId,
+            status: "withdrawn",
+            updatedByIdentityId: "identity-curator",
+            updatedAt: "2026-05-28T11:00:00.008Z",
+          },
+        },
+        activeQuickChecksAfterDelete: [],
+        storedLinks: [[link.linkId, "accepted_quick_check", quickCheck.entityId, "deleted"]],
       },
     );
   } finally {

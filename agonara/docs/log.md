@@ -2,6 +2,11 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 2 sub-slice: added curator-authorized quick-check lifecycle
+  withdrawal with active learner-evidence target links as `entity_withdrawal_blocked`
+  dependents. Deleted learner-evidence links no longer block withdrawal, and no cascade mutation
+  is introduced.
+
 - ADR-022 implementation Phase 2 sub-slice: withdrawal of an accepted corpus entity is now
   blocked with `entity_withdrawal_blocked` when an active readiness check's current revision
   has a requirement targeting that entity, preserving both the corpus entity and readiness

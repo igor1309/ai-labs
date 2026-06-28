@@ -2041,6 +2041,44 @@ export function listAcceptedQuickCheckEntityRecords(database, { programId = null
   });
 }
 
+export function setAcceptedQuickCheckEntityLifecycleStatusRecord(
+  database,
+  { entityId, status, updatedByIdentityId, updatedAt },
+) {
+  if (!lifecycleStatuses.has(status)) {
+    throw new StorageInvariantError("lifecycle_status_invalid");
+  }
+  assertIdentityExists(database, updatedByIdentityId);
+  database
+    .prepare(
+      `update accepted_quick_check_entities
+       set status = ?,
+           status_updated_by_identity_id = ?,
+           status_updated_at = ?
+       where id = ?`,
+    )
+    .run(status, updatedByIdentityId, updatedAt, entityId);
+
+  return getAcceptedQuickCheckEntityLifecycleStatusRecord(database, entityId);
+}
+
+export function getAcceptedQuickCheckEntityLifecycleStatusRecord(database, entityId) {
+  const row = database
+    .prepare(
+      `select id,
+              program_id as programId,
+              current_revision_id as currentRevisionId,
+              status,
+              status_updated_by_identity_id as updatedByIdentityId,
+              status_updated_at as updatedAt
+       from accepted_quick_check_entities
+       where id = ?`,
+    )
+    .get(entityId);
+
+  return row ?? null;
+}
+
 export function updateAcceptedQuickCheckEntityCurrentRevision(database, { entityId, currentRevisionId }) {
   const revision = getAcceptedQuickCheckRevisionRecord(database, currentRevisionId);
   if (!revision) {
