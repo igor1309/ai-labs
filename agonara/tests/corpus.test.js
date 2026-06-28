@@ -6036,6 +6036,103 @@ test("readinessCheckCuration_shouldCreateListAcceptReplaceAndRejectCandidatesFor
   }
 });
 
+test("setAcceptedReadinessCheckLifecycleStatus_shouldWithdrawAndReactivateEntity_withoutLosingHistoricalRevision_status", async () => {
+  const { commands, database } = await makeSUT({ ids: generatedIds("readiness-lifecycle", 120) });
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    const topic = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Readiness lifecycle topic",
+    });
+    const readinessCandidate = commands.createReadinessCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: "Lifecycle readiness",
+      scope: { scopeKind: "topic", topicEntityId: topic.entityId },
+      requirements: [
+        {
+          targetKind: "topic",
+          targetId: topic.entityId,
+          requiredLevel: "developing",
+        },
+      ],
+    }).value.readinessCheckCandidate;
+    const readiness = commands.acceptReadinessCheckCandidate?.({
+      actingIdentityId: "identity-curator",
+      candidateId: readinessCandidate.candidateId,
+    }).value.acceptedReadinessCheck;
+
+    const withdrawn = commands.setAcceptedReadinessCheckLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: readiness.entityId,
+      status: "withdrawn",
+    });
+    const listAfterWithdraw = commands.listAcceptedReadinessChecksForCuration?.({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+    }).value.acceptedReadinessChecks.map($0 => $0.entityId);
+    const historicalRead = commands.getAcceptedReadinessCheckRevisionForCuration?.({
+      actingIdentityId: "identity-curator",
+      revisionId: readiness.revisionId,
+    }).value.acceptedReadinessCheck;
+    const reactivated = commands.setAcceptedReadinessCheckLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: readiness.entityId,
+      status: "active",
+    });
+
+    assert.deepEqual(
+      {
+        withdrawn,
+        listAfterWithdraw,
+        historicalRead,
+        reactivated,
+        listAfterReactivate: commands
+          .listAcceptedReadinessChecksForCuration?.({
+            actingIdentityId: "identity-curator",
+            programId: "program-a",
+          })
+          .value.acceptedReadinessChecks.map($0 => $0.entityId),
+        storedEntity: listAcceptedReadinessCheckEntityRecords(database, {
+          programId: "program-a",
+        }).map($0 => [$0.id, $0.currentRevisionId]),
+      },
+      {
+        withdrawn: {
+          status: "accepted",
+          value: {
+            entity: {
+              id: readiness.entityId,
+              status: "withdrawn",
+              updatedByIdentityId: "identity-curator",
+              updatedAt: "2026-05-28T11:00:00.006Z",
+            },
+          },
+        },
+        listAfterWithdraw: [],
+        historicalRead: readiness,
+        reactivated: {
+          status: "accepted",
+          value: {
+            entity: {
+              id: readiness.entityId,
+              status: "active",
+              updatedByIdentityId: "identity-curator",
+              updatedAt: "2026-05-28T11:00:00.007Z",
+            },
+          },
+        },
+        listAfterReactivate: [readiness.entityId],
+        storedEntity: [[readiness.entityId, readiness.revisionId]],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("readinessCheckCuration_shouldRequireActiveProgramCuratorForCommands", async () => {
   const { commands, database } = await makeSUT({ ids: generatedIds("readiness-auth", 80) });
 

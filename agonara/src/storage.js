@@ -2810,6 +2810,44 @@ export function listAcceptedReadinessCheckEntityRecords(database, { programId = 
   });
 }
 
+export function setAcceptedReadinessCheckEntityLifecycleStatusRecord(
+  database,
+  { entityId, status, updatedByIdentityId, updatedAt },
+) {
+  if (!lifecycleStatuses.has(status)) {
+    throw new StorageInvariantError("lifecycle_status_invalid");
+  }
+  assertIdentityExists(database, updatedByIdentityId);
+  database
+    .prepare(
+      `update accepted_readiness_check_entities
+       set status = ?,
+           status_updated_by_identity_id = ?,
+           status_updated_at = ?
+       where id = ?`,
+    )
+    .run(status, updatedByIdentityId, updatedAt, entityId);
+
+  return getAcceptedReadinessCheckEntityLifecycleStatusRecord(database, entityId);
+}
+
+export function getAcceptedReadinessCheckEntityLifecycleStatusRecord(database, entityId) {
+  const row = database
+    .prepare(
+      `select id,
+              program_id as programId,
+              current_revision_id as currentRevisionId,
+              status,
+              status_updated_by_identity_id as updatedByIdentityId,
+              status_updated_at as updatedAt
+       from accepted_readiness_check_entities
+       where id = ?`,
+    )
+    .get(entityId);
+
+  return row ?? null;
+}
+
 export function updateAcceptedReadinessCheckEntityCurrentRevision(database, { entityId, currentRevisionId }) {
   const revision = getAcceptedReadinessCheckRevisionRecord(database, currentRevisionId);
   if (!revision) {

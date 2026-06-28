@@ -2,6 +2,10 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 2 sub-slice: added curator-authorized readiness-check
+  lifecycle withdrawal/reactivation. Withdrawn readiness checks leave active curation listings,
+  reactivation restores them, and addressed historical readiness revisions continue to resolve.
+
 - ADR-022 implementation Phase 2 sub-slice: added curator-authorized open-answer-check
   lifecycle withdrawal. Active learner-evidence target links owned by the open-answer check now
   block withdrawal with `entity_withdrawal_blocked`, while deleted links no longer block and no

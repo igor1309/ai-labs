@@ -38,6 +38,7 @@ import {
   setAcceptedCorpusEntityLifecycleStatusRecord,
   setAcceptedOpenAnswerCheckEntityLifecycleStatusRecord,
   setAcceptedQuickCheckEntityLifecycleStatusRecord,
+  setAcceptedReadinessCheckEntityLifecycleStatusRecord,
   deleteSourceContentRecord,
   getAcceptedNavigationRelationshipRevisionRecord,
   getAcceptedOpenAnswerCheckEntityRecord,
@@ -47,6 +48,7 @@ import {
   getAcceptedQuickCheckEntityLifecycleStatusRecord,
   getAcceptedQuickCheckRevisionRecord,
   getAcceptedReadinessCheckEntityRecord,
+  getAcceptedReadinessCheckEntityLifecycleStatusRecord,
   getAcceptedReadinessCheckRevisionRecord,
   getAssessmentCriterionCandidateRecord,
   getCorpusCandidateRecord,
@@ -249,6 +251,8 @@ export function createCorpusCommands({
       setAcceptedOpenAnswerCheckLifecycleStatus({ database, getEffectiveParticipation, input, now }),
     setAcceptedQuickCheckLifecycleStatus: input =>
       setAcceptedQuickCheckLifecycleStatus({ database, getEffectiveParticipation, input, now }),
+    setAcceptedReadinessCheckLifecycleStatus: input =>
+      setAcceptedReadinessCheckLifecycleStatus({ database, getEffectiveParticipation, input, now }),
     rejectAssessmentCriterionCandidate: input =>
       rejectAssessmentCriterionCandidate({ database, getEffectiveParticipation, input, now }),
     rejectOpenAnswerCheckCandidate: input =>
@@ -1145,6 +1149,40 @@ function setAcceptedOpenAnswerCheckLifecycleStatus({ database, getEffectiveParti
   }
 
   const updated = setAcceptedOpenAnswerCheckEntityLifecycleStatusRecord(database, {
+    entityId: entity.id,
+    status: input.status,
+    updatedByIdentityId: authorization.identity.id,
+    updatedAt: now().toISOString(),
+  });
+
+  return accepted({
+    entity: {
+      id: updated.id,
+      status: updated.status,
+      updatedByIdentityId: updated.updatedByIdentityId,
+      updatedAt: updated.updatedAt,
+    },
+  });
+}
+
+function setAcceptedReadinessCheckLifecycleStatus({ database, getEffectiveParticipation, input, now }) {
+  if (!new Set(["active", "withdrawn"]).has(input?.status)) {
+    return rejected("validation_failed");
+  }
+  const entity = getAcceptedReadinessCheckEntityLifecycleStatusRecord(database, input?.entityId);
+  if (!entity) {
+    return rejected("accepted_entity_not_found");
+  }
+  const authorization = resolveCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: entity.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  const updated = setAcceptedReadinessCheckEntityLifecycleStatusRecord(database, {
     entityId: entity.id,
     status: input.status,
     updatedByIdentityId: authorization.identity.id,
