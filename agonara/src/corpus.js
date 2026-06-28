@@ -31,9 +31,11 @@ import {
   getAcceptedCorpusRevisionRecord,
   getAcceptedMaterialContentRecord,
   getProgramSourceRecord,
+  getProgramSourceLifecycleStatusRecord,
   getSourceContentRecord,
   setAcceptedMaterialContentRecord,
   setSourceContentRecord,
+  setProgramSourceLifecycleStatusRecord,
   setAcceptedAssessmentCriterionEntityLifecycleStatusRecord,
   setAcceptedCorpusEntityLifecycleStatusRecord,
   setAcceptedOpenAnswerCheckEntityLifecycleStatusRecord,
@@ -233,6 +235,8 @@ export function createCorpusCommands({
       listQuickCheckCandidates({ database, getEffectiveParticipation, input }),
     recordProgramSource: input =>
       recordProgramSource({ database, generateId, getEffectiveParticipation, input, now }),
+    setProgramSourceLifecycleStatus: input =>
+      setProgramSourceLifecycleStatus({ database, getEffectiveParticipation, input, now }),
     setSourceContent: input =>
       setSourceContent({ database, getEffectiveParticipation, input, now }),
     deleteSourceContent: input =>
@@ -2309,6 +2313,40 @@ function recordProgramSource({ database, generateId, getEffectiveParticipation, 
   return accepted({ programSource: summarizeProgramSource(source) });
 }
 
+function setProgramSourceLifecycleStatus({ database, getEffectiveParticipation, input, now }) {
+  if (!new Set(["active", "withdrawn"]).has(input?.status)) {
+    return rejected("validation_failed");
+  }
+  const source = getProgramSourceLifecycleStatusRecord(database, input?.sourceId);
+  if (!source) {
+    return rejected("source_not_found");
+  }
+  const authorization = resolveCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: source.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  const updated = setProgramSourceLifecycleStatusRecord(database, {
+    sourceId: source.id,
+    status: input.status,
+    updatedByIdentityId: authorization.identity.id,
+    updatedAt: now().toISOString(),
+  });
+
+  return accepted({
+    source: {
+      id: updated.id,
+      status: updated.status,
+      updatedByIdentityId: updated.updatedByIdentityId,
+      updatedAt: updated.updatedAt,
+    },
+  });
+}
+
 function listProgramSources({ database, getEffectiveParticipation, input }) {
   const authorization = resolveCuratorAuthorization({ database, getEffectiveParticipation, input });
   if (authorization.status === "rejected") {
@@ -2318,6 +2356,7 @@ function listProgramSources({ database, getEffectiveParticipation, input }) {
   return accepted({
     programSources: listProgramSourceRecords(database, {
       programId: authorization.program.id,
+      status: "active",
     }).map(summarizeProgramSource),
   });
 }

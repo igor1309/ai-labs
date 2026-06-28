@@ -295,6 +295,99 @@ test("listProgramSources_shouldReturnOnlySourcesForRequestedProgram", async () =
   }
 });
 
+test("setProgramSourceLifecycleStatus_shouldWithdrawAndReactivateSource_withoutLosingCorpusProvenance_status", async () => {
+  const { commands, database } = await makeSUT({
+    now: makeAdvancingClock("2026-06-28T12:00:00.000Z"),
+  });
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    const source = commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      sourceKind: "article",
+      title: "Referenced source",
+    }).value.programSource;
+    const candidate = commands.createCorpusCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Topic from source",
+      body: "Topic body",
+      sourceIds: [source.sourceId],
+    }).value.corpusCandidate;
+    const acceptedCorpus = commands.acceptCorpusCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: candidate.candidateId,
+    }).value.acceptedCorpus;
+
+    const withdrawn = commands.setProgramSourceLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      sourceId: source.sourceId,
+      status: "withdrawn",
+    });
+    const activeSourceIdsAfterWithdraw = commands
+      .listProgramSources({
+        actingIdentityId: "identity-curator",
+        programId: "program-a",
+      })
+      .value.programSources.map($0 => $0.sourceId);
+    const provenanceAfterWithdraw = commands.getAcceptedCorpusRevision({
+      actingIdentityId: "identity-curator",
+      revisionId: acceptedCorpus.revisionId,
+    }).value.acceptedCorpus.sourceIds;
+    const reactivated = commands.setProgramSourceLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      sourceId: source.sourceId,
+      status: "active",
+    });
+
+    assert.deepEqual(
+      {
+        withdrawn,
+        activeSourceIdsAfterWithdraw,
+        provenanceAfterWithdraw,
+        reactivated,
+        activeSourceIdsAfterReactivate: commands
+          .listProgramSources({
+            actingIdentityId: "identity-curator",
+            programId: "program-a",
+          })
+          .value.programSources.map($0 => $0.sourceId),
+      },
+      {
+        withdrawn: {
+          status: "accepted",
+          value: {
+            source: {
+              id: source.sourceId,
+              status: "withdrawn",
+              updatedByIdentityId: "identity-curator",
+              updatedAt: "2026-06-28T12:00:00.006Z",
+            },
+          },
+        },
+        activeSourceIdsAfterWithdraw: [],
+        provenanceAfterWithdraw: [source.sourceId],
+        reactivated: {
+          status: "accepted",
+          value: {
+            source: {
+              id: source.sourceId,
+              status: "active",
+              updatedByIdentityId: "identity-curator",
+              updatedAt: "2026-06-28T12:00:00.007Z",
+            },
+          },
+        },
+        activeSourceIdsAfterReactivate: [source.sourceId],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("createCorpusCandidate_shouldRejectNonCurator", async () => {
   const { commands, database } = await makeSUT();
 

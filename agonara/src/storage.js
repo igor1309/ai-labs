@@ -1166,27 +1166,64 @@ export function getProgramSourceRecord(database, id) {
   return row ?? null;
 }
 
-export function listProgramSourceRecords(database, { programId = null } = {}) {
-  if (programId === null) {
-    return database
-      .prepare(
-        `select id, program_id as programId, source_kind as sourceKind, title, locator, citation,
-                recorded_by_identity_id as recordedByIdentityId, recorded_at as recordedAt
-         from program_sources
-         order by recorded_at, id`,
-      )
-      .all();
+export function listProgramSourceRecords(database, { programId = null, status = null } = {}) {
+  const conditions = [];
+  const values = [];
+  if (programId !== null) {
+    conditions.push("program_id = ?");
+    values.push(programId);
   }
-
+  if (status !== null) {
+    conditions.push("status = ?");
+    values.push(status);
+  }
+  const whereClause = conditions.length === 0 ? "" : `where ${conditions.join(" and ")}`;
   return database
     .prepare(
       `select id, program_id as programId, source_kind as sourceKind, title, locator, citation,
               recorded_by_identity_id as recordedByIdentityId, recorded_at as recordedAt
        from program_sources
-       where program_id = ?
+       ${whereClause}
        order by recorded_at, id`,
     )
-    .all(programId);
+    .all(...values);
+}
+
+export function setProgramSourceLifecycleStatusRecord(
+  database,
+  { sourceId, status, updatedByIdentityId, updatedAt },
+) {
+  if (!lifecycleStatuses.has(status)) {
+    throw new StorageInvariantError("lifecycle_status_invalid");
+  }
+  assertIdentityExists(database, updatedByIdentityId);
+  database
+    .prepare(
+      `update program_sources
+       set status = ?,
+           status_updated_by_identity_id = ?,
+           status_updated_at = ?
+       where id = ?`,
+    )
+    .run(status, updatedByIdentityId, updatedAt, sourceId);
+
+  return getProgramSourceLifecycleStatusRecord(database, sourceId);
+}
+
+export function getProgramSourceLifecycleStatusRecord(database, sourceId) {
+  const row = database
+    .prepare(
+      `select id,
+              program_id as programId,
+              status,
+              status_updated_by_identity_id as updatedByIdentityId,
+              status_updated_at as updatedAt
+       from program_sources
+       where id = ?`,
+    )
+    .get(sourceId);
+
+  return row ?? null;
 }
 
 function computeWritableContentByteSize({ content, contentFormat }) {
