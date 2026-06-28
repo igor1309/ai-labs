@@ -39,19 +39,10 @@ before Step 1.
 
 ## Forward tasks
 
-IP-5 adds the `process-gates` execution-start boundary; IP-6/IP-7 reinforce; IP-8 is the
-release wrapper that gates shipping. These build on the declaration-block split, the
-`set at execution` deferral marker, the stale-pin acceptance guards, and the `Plan Lifecycle`
-section (same-session vs deferred modes) already present in `implementation-plan`.
-
-### IP-5 — Execution-start re-validation of the lock — boundary with `process-gates` (P1)
-
-- **Change:** one-line pointer in `implementation-plan`; the actual gate lands in
-  `public/process-gates/SKILL.md` (its DoD owner): "Before Step 1, the executor establishes /
-  realigns the execution lock to the current session's real worktree and branch and checks
-  preflight; a pinned-but-dead branch is replaced, not honored as a blocker."
-- **DoD:** cross-ref in `implementation-plan`; concrete gate added to `process-gates`.
-- **Note:** spans two skills — both need version bumps (see IP-8).
+IP-6/IP-7 reinforce; IP-8 is the release wrapper that gates shipping. These build on the
+declaration-block split, the `set at execution` deferral marker, the stale-pin acceptance
+guards, the `Plan Lifecycle` section (same-session vs deferred modes) in `implementation-plan`,
+and the execution-lock realignment step in the `process-gates` Implementation Preflight Gate.
 
 ### IP-6 — Worked example of a deferred-lock plan (P2)
 
@@ -65,22 +56,16 @@ section (same-session vs deferred modes) already present in `implementation-plan
 ### IP-7 — Reconcile `## Existing Plan Migration` with the new lifecycle rules (P2)
 
 - **Change:** add a clause: when executing a previously-merged plan, treat its execution lock as
-  intent and re-establish it (per the `Plan Lifecycle` deferred mode and IP-5's `process-gates`
-  gate) rather than honoring a dead pin.
-- **DoD:** clause present and consistent with the `Plan Lifecycle` section and IP-5.
+  intent and re-establish it (per the `Plan Lifecycle` deferred mode and the `process-gates`
+  execution-lock realignment step) rather than honoring a dead pin.
+- **DoD:** clause present and consistent with the `Plan Lifecycle` section and the `process-gates`
+  realignment step.
 
 ### IP-8 — Release hygiene for the change set (P0 to complete)
 
 - **Change:** per `dev-skills/.claude/CLAUDE.md`, MINOR-bump `implementation-plan` (new
-  section/behavior) and `process-gates` (IP-5) — version bumps for this change set are
-  deliberately deferred to here, not done per-commit. Sync `public/.claude-plugin/marketplace.json`
+  section/behavior) and `process-gates` (execution-lock realignment step) — version bumps for
+  this change set are deliberately deferred to here, not done per-commit. Sync `public/.claude-plugin/marketplace.json`
   and `public/.codex-plugin/plugin.json` versions; update `dev-skills/docs/log.md`; PR into
   `trunk` with auto-merge; post-merge, verify CI and the public skills repo.
 - **DoD:** versions bumped/synced, logs updated, single PR merged, post-merge checks pass.
-
-## Open question
-
-IP-5 deliberately puts the execution-time re-validation in `process-gates`, not
-`implementation-plan`, to keep the authoring-skill vs execution-skill responsibilities clean —
-the same author/executor split this backlog is closing. If the preference is to keep authoring
-and execution guidance in one skill, IP-5's home changes accordingly.
