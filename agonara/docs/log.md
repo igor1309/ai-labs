@@ -2,6 +2,11 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 4 sub-slice: exposed accepted navigation-relationship lifecycle
+  status over HTTP at `PUT /navigation-relationships/{entityId}/status`. Withdrawn
+  relationships leave active student navigation grouping/detail reads, and OpenAPI includes the
+  lifecycle route.
+
 - ADR-022 implementation Phase 4 sub-slice: exposed accepted readiness-check lifecycle status
   over HTTP at `PUT /readiness-checks/{entityId}/status`. Withdrawn readiness checks leave
   active curation listings while addressed historical curation revisions remain readable, and

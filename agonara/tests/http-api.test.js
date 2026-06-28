@@ -7474,6 +7474,119 @@ test("navigationReadsHttp_shouldReturnStudentSafeGraphAndHistoricalRevision_onAc
   }
 });
 
+test("navigationRelationshipStatus_shouldRequireCsrfCuratorAndLeaveActiveGraphReads", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
+    ids: manyIds(120),
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const ordinary = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Ordinary Identity",
+      login: "ordinary-navigation-relationship-status@example.test",
+    });
+    const student = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Student",
+      login: "navigation-relationship-status-student@example.test",
+    });
+    const program = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await program.json()).value.program.programId;
+    await joinStudentProgram(baseUrl, student, programId);
+    const topic = await createAcceptedNavigationCandidate(baseUrl, bootstrap, programId, {
+      candidateKind: "topic",
+      title: "Vector spaces",
+    });
+    const conceptCandidate = await createNavigationCandidate(baseUrl, bootstrap, programId, {
+      candidateKind: "concept",
+      relationshipDrafts: [
+        {
+          relationshipKind: "topic_includes_concept",
+          fromEntityId: topic.entityId,
+          toCandidateRef: "self",
+        },
+      ],
+      title: "Basis",
+    });
+    const conceptCandidateId = (await conceptCandidate.json()).value.navigationCandidate.candidateId;
+    const acceptedConcept = await acceptNavigationCandidate(baseUrl, bootstrap, conceptCandidateId, {});
+    const navigationChange = (await acceptedConcept.json()).value.navigationChange;
+    const concept = navigationChange.acceptedCorpus;
+    const relationship = navigationChange.acceptedRelationships[0];
+    const missingCsrf = await fetch(`${baseUrl}/navigation-relationships/${relationship.relationshipId}/status`, {
+      body: JSON.stringify({ status: "withdrawn" }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+      },
+      method: "PUT",
+    });
+    const nonCurator = await updateNavigationRelationshipStatus(baseUrl, ordinary, relationship.relationshipId, {
+      status: "withdrawn",
+    });
+    const invalid = await updateNavigationRelationshipStatus(baseUrl, bootstrap, relationship.relationshipId, {
+      status: "retired",
+    });
+    const withdrawn = await updateNavigationRelationshipStatus(baseUrl, bootstrap, relationship.relationshipId, {
+      status: "withdrawn",
+    });
+    const navigation = await getHttpResponse(baseUrl, `/programs/${programId}/navigation`, student);
+    const detail = await getHttpResponse(baseUrl, `/navigation/entities/${concept.entityId}`, student);
+
+    assert.deepEqual(
+      {
+        missingCsrf: { body: await missingCsrf.json(), statusCode: missingCsrf.status },
+        nonCurator: { body: await nonCurator.json(), statusCode: nonCurator.status },
+        invalid: { body: await invalid.json(), statusCode: invalid.status },
+        withdrawn: { body: await withdrawn.json(), statusCode: withdrawn.status },
+        navigation: navigationSummaryProjection(navigation.body, navigation.statusCode),
+        detail: navigationNodeProjection(detail.body, detail.statusCode),
+      },
+      {
+        missingCsrf: {
+          body: { status: "rejected", reason: "csrf_required" },
+          statusCode: 403,
+        },
+        nonCurator: {
+          body: { status: "rejected", reason: "admin_or_curator_required" },
+          statusCode: 403,
+        },
+        invalid: {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
+        withdrawn: {
+          body: {
+            status: "accepted",
+            value: {
+              entity: {
+                id: relationship.relationshipId,
+                status: "withdrawn",
+                updatedByIdentityId: "id-1",
+                updatedAt: "2026-05-27T10:00:00.000Z",
+              },
+            },
+          },
+          statusCode: 200,
+        },
+        navigation: {
+          statusCode: 200,
+          topics: ["Vector spaces"],
+          ungroupedConcepts: ["Basis"],
+          ungroupedMaterials: [],
+        },
+        detail: {
+          incomingKinds: [],
+          outgoingKinds: [],
+          statusCode: 200,
+          title: "Basis",
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("navigationHttpRoutes_shouldEnforceSessionCsrfAndAllowPreviewReads", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
     ids: manyIds(100),
@@ -11833,6 +11946,18 @@ async function deleteProgramSource(baseUrl, session, sourceId) {
 
 async function updateAcceptedCorpusStatus(baseUrl, session, entityId, body) {
   return fetch(`${baseUrl}/corpus/${entityId}/status`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "PUT",
+  });
+}
+
+async function updateNavigationRelationshipStatus(baseUrl, session, relationshipId, body) {
+  return fetch(`${baseUrl}/navigation-relationships/${relationshipId}/status`, {
     body: JSON.stringify(body),
     headers: {
       cookie: session.cookie,
