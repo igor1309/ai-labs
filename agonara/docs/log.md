@@ -2,6 +2,10 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 5 sub-slice: added browser workflow coverage for withdrawing an
+  accepted Quick Check from `/learn`, listing it in the withdrawn-items view, and reactivating it
+  back to active from that view.
+
 - ADR-022 implementation Phase 5 sub-slice: extended browser layout coverage for the `/learn`
   lifecycle and source-delete controls across desktop and mobile widths, including named controls,
   live status regions, and overlap checks.
