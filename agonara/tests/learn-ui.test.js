@@ -63,7 +63,10 @@ test("learnUiLifecyclePanel_shouldExposeWithdrawReactivateControlsAndRoutes", ()
 
 test("learnUiSourceDelete_shouldExposeDeleteControlAndBlockedMessage", () => {
   const sourceDeleteContract = {
-    deleteAction: learnUiHtml.includes('data-action="delete-source"'),
+    deleteAction: learnUiHtml.includes('data-action="delete-source-record"'),
+    withdrawAction: learnUiHtml.includes('data-action="withdraw-source"'),
+    reactivateAction: learnUiHtml.includes('data-action="reactivate-source"'),
+    lifecycleStatus: learnUiHtml.includes('id="source-lifecycle-status"'),
     deleteRoute: learnUiHtml.includes('requestJson("/sources/" + encodeURIComponent(sourceId), {'),
     deleteMethod: learnUiHtml.includes('method: "DELETE"'),
     csrf: learnUiHtml.includes("csrf: true"),
@@ -74,6 +77,9 @@ test("learnUiSourceDelete_shouldExposeDeleteControlAndBlockedMessage", () => {
 
   assert.deepEqual(sourceDeleteContract, {
     deleteAction: true,
+    withdrawAction: true,
+    reactivateAction: true,
+    lifecycleStatus: true,
     deleteRoute: true,
     deleteMethod: true,
     csrf: true,
@@ -86,12 +92,16 @@ test("learnUiSourceDelete_shouldExposeDeleteControlAndBlockedMessage", () => {
 test("learnUiWithdrawnItemsView_shouldRecordAndReactivateWithdrawnItems", () => {
   const withdrawnViewContract = {
     view: learnUiHtml.includes('id="withdrawn-items-view"'),
+    openAction: learnUiHtml.includes('data-action="open-withdrawn-items"'),
     state: learnUiHtml.includes("withdrawnLifecycleItems: []"),
     recordsWithdrawal: learnUiHtml.includes("updateWithdrawnLifecycleItems({"),
     reactivationAction: learnUiHtml.includes('data-action=\'reactivate-withdrawn-item\'') ||
       learnUiHtml.includes('data-action="reactivate-withdrawn-item"') ||
       learnUiHtml.includes('button.dataset.action = "reactivate-withdrawn-item"'),
     activeReactivationBody: learnUiHtml.includes('body: { status: "active" }'),
+    blockedDependentMessage: learnUiHtml.includes(
+      "Remove active relationships, readiness requirements, open-answer check references, or learner-evidence target links before retrying.",
+    ),
     removesReactivated: learnUiHtml.includes('status === "withdrawn"'),
     domSafeRendering: learnUiHtml.includes("document.createElement(\"strong\")") &&
       learnUiHtml.includes("button.dataset.entityId = item.entityId"),
@@ -99,10 +109,12 @@ test("learnUiWithdrawnItemsView_shouldRecordAndReactivateWithdrawnItems", () => 
 
   assert.deepEqual(withdrawnViewContract, {
     view: true,
+    openAction: true,
     state: true,
     recordsWithdrawal: true,
     reactivationAction: true,
     activeReactivationBody: true,
+    blockedDependentMessage: true,
     removesReactivated: true,
     domSafeRendering: true,
   });

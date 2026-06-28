@@ -107,18 +107,22 @@ test("topicConceptMaterialNavigationLayout_shouldKeepControlsNamedAndNonOverlapp
       await expect(contentPanel.getByRole("button", { name: "Save source content" })).toBeVisible();
       await expect(contentPanel.getByRole("button", { name: "Read source content" })).toBeVisible();
       await expect(contentPanel.getByRole("button", { name: "Delete source content" })).toBeVisible();
+      await expect(contentPanel.getByRole("button", { name: "Withdraw source" })).toBeVisible();
+      await expect(contentPanel.getByRole("button", { name: "Reactivate source" })).toBeVisible();
       await expect(contentPanel.getByRole("button", { exact: true, name: "Delete source" })).toBeVisible();
       const lifecyclePanel = page.locator("#entity-lifecycle-panel");
       await expect(lifecyclePanel).toBeVisible();
       await expect(lifecyclePanel.getByLabel("Accepted item family")).toBeVisible();
       await expect(lifecyclePanel.getByLabel("Entity or source id")).toBeVisible();
-      await expect(lifecyclePanel.getByRole("button", { name: "Withdraw" })).toBeVisible();
+      await expect(lifecyclePanel.getByRole("button", { exact: true, name: "Withdraw" })).toBeVisible();
       await expect(lifecyclePanel.getByRole("button", { name: "Reactivate" })).toBeVisible();
+      await expect(lifecyclePanel.getByRole("button", { name: "Withdrawn items" })).toBeVisible();
       await expect(page.locator("#withdrawn-items-view")).toBeVisible();
       await expect(page.locator("#material-content-view")).toBeVisible();
       await expect(page.locator("#navigation-status")).toHaveAttribute("aria-live", "polite");
       await expect(page.locator("#navigation-candidate-action-status")).toHaveAttribute("aria-live", "polite");
       await expect(page.locator("#source-content-status")).toHaveAttribute("aria-live", "polite");
+      await expect(page.locator("#source-lifecycle-status")).toHaveAttribute("aria-live", "polite");
       await expect(page.locator("#entity-lifecycle-status")).toHaveAttribute("aria-live", "polite");
       expect(await visibleControlOverlaps(page)).toEqual([]);
     }
@@ -308,6 +312,7 @@ async function startNavigationHarness() {
       openAnswerAttempts: listOpenAnswerAttemptRecords(database).length,
       quickCheckAttempts: listQuickCheckAttemptRecords(database).length,
     }),
+    topic,
   };
 }
 
@@ -503,12 +508,41 @@ test("sourceDeleteCurator_shouldDeleteUnreferencedAndBlockReferencedSource_onCur
   try {
     await signIn(page, harness.baseUrl);
     await page.locator("#source-content-id-input").fill(harness.sourceId);
-    await page.locator("[data-action='delete-source']").click();
+    await page.locator("[data-action='delete-source-record']").click();
     await expect(page.locator("#source-content-status")).toContainText("Deleted source " + harness.sourceId);
 
     await page.locator("#source-content-id-input").fill(harness.referencedSourceId);
-    await page.locator("[data-action='delete-source']").click();
+    await page.locator("[data-action='delete-source-record']").click();
     await expect(page.locator("#source-content-status")).toContainText("Source is referenced; withdraw it instead.");
+
+    await page.locator("[data-action='withdraw-source']").click();
+    await expect(page.locator("#source-lifecycle-status")).toContainText(
+      "Lifecycle status is withdrawn for " + harness.referencedSourceId,
+    );
+    await expect(page.locator("#withdrawn-items-view")).toContainText(harness.referencedSourceId);
+    await page.locator("[data-action='reactivate-source']").click();
+    await expect(page.locator("#source-lifecycle-status")).toContainText(
+      "Lifecycle status is active for " + harness.referencedSourceId,
+    );
+  } finally {
+    await harness.close();
+  }
+});
+
+test("entityLifecycleCurator_shouldExplainBlockedWithdrawalDependents_onActiveRelationship", async ({ page }) => {
+  const harness = await startNavigationHarness();
+
+  try {
+    await signIn(page, harness.baseUrl);
+    await page.locator("#entity-lifecycle-family-input").selectOption("corpus");
+    await page.locator("#entity-lifecycle-id-input").fill(harness.topic.entityId);
+    await page.locator("[data-action='withdraw-entity']").click();
+
+    await expect(page.locator("#entity-lifecycle-status")).toContainText("Withdrawal blocked by active dependents.");
+    await expect(page.locator("#entity-lifecycle-status")).toContainText("active relationships");
+    await expect(page.locator("#entity-lifecycle-status")).toContainText("readiness requirements");
+    await expect(page.locator("#entity-lifecycle-status")).toContainText("open-answer check references");
+    await expect(page.locator("#entity-lifecycle-status")).toContainText("learner-evidence target links");
   } finally {
     await harness.close();
   }

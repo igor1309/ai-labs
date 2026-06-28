@@ -2,6 +2,10 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 5 now exposes the plan-declared source lifecycle controls and
+  withdrawn-items action in `/learn`, handles source lifecycle response envelopes correctly,
+  and gives curators actionable guidance for every blocked-dependent class.
+
 - ADR-022 implementation Phase 5 sub-slice: added browser workflow coverage for `/learn` source
   hard-delete. Curators can delete unreferenced sources and see a withdraw-instead block message
   for referenced sources.

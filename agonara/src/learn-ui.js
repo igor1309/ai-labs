@@ -656,10 +656,13 @@ export const learnUiHtml = `<!doctype html>
                   <button data-action="save-source-content" data-requires-session type="submit">Save source content</button>
                   <button data-action="read-source-content" data-requires-session class="secondary" type="button">Read source content</button>
                   <button data-action="delete-source-content" data-requires-session class="danger" type="button">Delete source content</button>
-                  <button data-action="delete-source" data-requires-session class="danger" type="button">Delete source</button>
+                  <button data-action="withdraw-source" data-requires-session class="danger" type="button">Withdraw source</button>
+                  <button data-action="reactivate-source" data-requires-session class="secondary" type="button">Reactivate source</button>
+                  <button data-action="delete-source-record" data-requires-session class="danger" type="button">Delete source</button>
                 </div>
               </form>
               <p id="source-content-status" class="status" aria-live="polite"></p>
+              <p id="source-lifecycle-status" class="status" aria-live="polite"></p>
               <section id="entity-lifecycle-panel" class="stack" aria-label="Entity Lifecycle">
                 <h3>Lifecycle</h3>
                 <label>
@@ -683,6 +686,7 @@ export const learnUiHtml = `<!doctype html>
                   <button data-action="reactivate-entity" data-requires-session class="secondary" type="button">Reactivate</button>
                 </div>
                 <p id="entity-lifecycle-status" class="status" aria-live="polite"></p>
+                <button data-action="open-withdrawn-items" data-requires-session class="secondary" type="button">Withdrawn items</button>
                 <div id="withdrawn-items-view" class="list">
                   <p class="empty">No withdrawn items in this session.</p>
                 </div>
@@ -1192,6 +1196,7 @@ export const learnUiHtml = `<!doctype html>
         sourceContentIdInput: document.querySelector("#source-content-id-input"),
         sourceContentInput: document.querySelector("#source-content-input"),
         sourceContentStatus: document.querySelector("#source-content-status"),
+        sourceLifecycleStatus: document.querySelector("#source-lifecycle-status"),
         navigationMaterialKindInput: document.querySelector("#navigation-material-kind-input"),
         navigationNodeDetail: document.querySelector("#navigation-node-detail"),
         navigationRationaleInput: document.querySelector("#navigation-rationale-input"),
@@ -1332,7 +1337,15 @@ export const learnUiHtml = `<!doctype html>
           void deleteSourceContent();
           return;
         }
-        if (event.target.closest("[data-action='delete-source']")) {
+        if (event.target.closest("[data-action='withdraw-source']")) {
+          void setSourceLifecycleStatus("withdrawn");
+          return;
+        }
+        if (event.target.closest("[data-action='reactivate-source']")) {
+          void setSourceLifecycleStatus("active");
+          return;
+        }
+        if (event.target.closest("[data-action='delete-source-record']")) {
           void deleteSourceRecord();
         }
       });
@@ -1344,6 +1357,10 @@ export const learnUiHtml = `<!doctype html>
         }
         if (event.target.closest("[data-action='reactivate-entity']")) {
           void setEntityLifecycleStatus("active");
+          return;
+        }
+        if (event.target.closest("[data-action='open-withdrawn-items']")) {
+          elements.withdrawnItemsView.scrollIntoView({ block: "nearest" });
           return;
         }
         const reactivateButton = event.target.closest("[data-action='reactivate-withdrawn-item']");
@@ -2177,13 +2194,14 @@ export const learnUiHtml = `<!doctype html>
           method: "PUT",
         });
         if (result.status === "accepted") {
+          const lifecycleEntity = result.value.entity ?? result.value.source;
           updateWithdrawnLifecycleItems({
-            entityId: result.value.entity.id,
+            entityId: lifecycleEntity.id,
             family: elements.entityLifecycleFamilyInput.value,
-            status: result.value.entity.status,
+            status: lifecycleEntity.status,
           });
           elements.entityLifecycleStatus.textContent =
-            "Lifecycle status is " + result.value.entity.status + " for " + result.value.entity.id + ".";
+            "Lifecycle status is " + lifecycleEntity.status + " for " + lifecycleEntity.id + ".";
           return;
         }
         elements.entityLifecycleStatus.textContent = lifecycleStatusFailureMessage(result.reason);
@@ -2254,13 +2272,14 @@ export const learnUiHtml = `<!doctype html>
           method: "PUT",
         });
         if (result.status === "accepted") {
+          const lifecycleEntity = result.value.entity ?? result.value.source;
           updateWithdrawnLifecycleItems({
-            entityId: result.value.entity.id,
+            entityId: lifecycleEntity.id,
             family,
-            status: result.value.entity.status,
+            status: lifecycleEntity.status,
           });
           elements.entityLifecycleStatus.textContent =
-            "Lifecycle status is " + result.value.entity.status + " for " + result.value.entity.id + ".";
+            "Lifecycle status is " + lifecycleEntity.status + " for " + lifecycleEntity.id + ".";
           return;
         }
         elements.entityLifecycleStatus.textContent = lifecycleStatusFailureMessage(result.reason);
@@ -2281,7 +2300,7 @@ export const learnUiHtml = `<!doctype html>
 
       function lifecycleStatusFailureMessage(reason) {
         if (reason === "entity_withdrawal_blocked") {
-          return "Withdrawal blocked by active dependents.";
+          return "Withdrawal blocked by active dependents. Remove active relationships, readiness requirements, open-answer check references, or learner-evidence target links before retrying.";
         }
         if (reason === "accepted_entity_not_found" || reason === "source_not_found") {
           return "Item not found.";
@@ -2290,6 +2309,36 @@ export const learnUiHtml = `<!doctype html>
           return "Lifecycle status is invalid.";
         }
         return "Lifecycle update failed.";
+      }
+
+      async function setSourceLifecycleStatus(status) {
+        if (!state.identity) {
+          elements.sourceLifecycleStatus.textContent = "Sign in first.";
+          return;
+        }
+        const sourceId = elements.sourceContentIdInput.value.trim();
+        if (!sourceId) {
+          elements.sourceLifecycleStatus.textContent = "Enter a source id.";
+          return;
+        }
+
+        const result = await requestJson("/sources/" + encodeURIComponent(sourceId) + "/status", {
+          body: { status },
+          csrf: true,
+          method: "PUT",
+        });
+        if (result.status === "accepted") {
+          const lifecycleEntity = result.value.source;
+          updateWithdrawnLifecycleItems({
+            entityId: lifecycleEntity.id,
+            family: "source",
+            status: lifecycleEntity.status,
+          });
+          elements.sourceLifecycleStatus.textContent =
+            "Lifecycle status is " + lifecycleEntity.status + " for " + lifecycleEntity.id + ".";
+          return;
+        }
+        elements.sourceLifecycleStatus.textContent = lifecycleStatusFailureMessage(result.reason);
       }
 
       async function deleteSourceRecord() {

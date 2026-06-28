@@ -174,10 +174,10 @@ Targeted commands:
 ## Phase tracker
 
 - [x] Phase 1 — Lifecycle Status Substrate, Migration, and Restore Validation
-- [ ] Phase 2 — Accepted-Entity Withdraw/Reactivate, Active-Dependent Block, and Read Filtering
-- [ ] Phase 3 — Source Withdrawal and Two-Tier Deletion
-- [ ] Phase 4 — HTTP Lifecycle API and OpenAPI
-- [ ] Phase 5 — Product UI Withdraw/Reactivate and Source Delete
+- [x] Phase 2 — Accepted-Entity Withdraw/Reactivate, Active-Dependent Block, and Read Filtering
+- [x] Phase 3 — Source Withdrawal and Two-Tier Deletion
+- [x] Phase 4 — HTTP Lifecycle API and OpenAPI
+- [x] Phase 5 — Product UI Withdraw/Reactivate and Source Delete
 - [ ] Phase 6 — Docs, Product Intent, Traceability, Dashboard, Archive
 
 Update tracker checkboxes only after the phase's required verification passes and the phase commit is created.
