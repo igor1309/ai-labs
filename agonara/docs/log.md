@@ -2,6 +2,10 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 4 review fix: added HTTP lifecycle edge-case coverage for
+  missing accepted entities, same-status accepted no-ops, `entity_withdrawal_blocked` conflict
+  surfacing, lifecycle response redaction, and dependent graph preservation.
+
 - ADR-022 implementation Phase 4 sub-slice: exposed accepted navigation-relationship lifecycle
   status over HTTP at `PUT /navigation-relationships/{entityId}/status`. Withdrawn
   relationships leave active student navigation grouping/detail reads, and OpenAPI includes the
