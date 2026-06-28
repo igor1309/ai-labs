@@ -18,6 +18,15 @@
   warns (a non-existent `quick_check_not_found` reason example; murky no-op `updatedAt`
   semantics); remaining findings pass.
 
+- Authored the **accepted-entity withdrawal and source deletion** implementation plan
+  (`docs/plans/accepted-entity-withdrawal-and-source-deletion.md`) for the ADR-022 spec,
+  following the My Way plan structure: single task, six phases (status substrate + migration;
+  withdraw/reactivate + active-dependent block + read filtering; source two-tier deletion;
+  HTTP lifecycle API + OpenAPI; product UI; docs/closeout), with execution declarations
+  (`auto-continue`, `Worktree mode: none`, branch `claude/agonara-adr-22-spec-2zp737`,
+  `push at closeout`, preflight unchecked), scope guardrails, an exact file/route inventory,
+  and ADR/product-intent traceability matrices. Status `planned`.
+
 - Add a `concept-extraction.md` reference doc to `agonara-curator-corpus` (v1.4.0)
   and link it from `SKILL.md`'s topics-and-concepts section. It captures a reusable
   draft-concept-extraction procedure: read and segment the whole topic into semantic
