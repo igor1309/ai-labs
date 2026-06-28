@@ -482,7 +482,7 @@ test("deleteProgramSource_shouldLeaveMaterialContentRevisionAndLearnerEvidence_o
       programId: "program-a",
       targetKind: "material_reference",
       targetId: "entity-a",
-      evidenceOwnerKind: "quick_check",
+      evidenceOwnerKind: "accepted_quick_check",
       evidenceOwnerEntityId: quickCheck.entityId,
     });
     setAcceptedMaterialContentRecord(database, {
@@ -7870,6 +7870,150 @@ test("setAcceptedMaterialContent_shouldRejectNonMaterialAndDuplicate_onMaterialC
     );
   } finally {
     database.close();
+  }
+});
+
+test("deleteAcceptedMaterialContent_shouldHardDeleteUnevidencedAndWithdrawEvidencedMaterial", async () => {
+  const unevidenced = await makeMaterialContentSUT();
+  const evidenced = await makeMaterialContentSUT();
+  const blocked = await makeMaterialContentSUT();
+
+  try {
+    setAcceptedMaterialContentRecord(unevidenced.database, {
+      revisionId: "revision-a",
+      content: "# Unevidenced body",
+      contentFormat: "markdown",
+    });
+    setAcceptedMaterialContentRecord(evidenced.database, {
+      revisionId: "revision-a",
+      content: "# Evidenced body",
+      contentFormat: "markdown",
+    });
+    const quickCheck = createAcceptedQuickCheckOwner(evidenced.commands, { programId: "program-a" });
+    evidenced.commands.createLearnerEvidenceTargetLink({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      targetKind: "material_reference",
+      targetId: "entity-a",
+      evidenceOwnerKind: "accepted_quick_check",
+      evidenceOwnerEntityId: quickCheck.entityId,
+    });
+    setAcceptedMaterialContentRecord(blocked.database, {
+      revisionId: "revision-a",
+      content: "# Blocked body",
+      contentFormat: "markdown",
+    });
+    const blockedQuickCheck = createAcceptedQuickCheckOwner(blocked.commands, { programId: "program-a" });
+    blocked.commands.createLearnerEvidenceTargetLink({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      targetKind: "material_reference",
+      targetId: "entity-a",
+      evidenceOwnerKind: "accepted_quick_check",
+      evidenceOwnerEntityId: blockedQuickCheck.entityId,
+    });
+    acceptNavigationCandidate(blocked.commands, {
+      programId: "program-a",
+      candidateKind: "relationship_update",
+      title: "Topic uses material",
+      body: "Topic uses material",
+      relationshipDrafts: [
+        {
+          relationshipKind: "topic_uses_material",
+          fromEntityId: "topic-entity-a",
+          toEntityId: "entity-a",
+        },
+      ],
+    });
+
+    const hardDeleted = unevidenced.commands.deleteAcceptedMaterialContent({
+      actingIdentityId: "identity-curator",
+      revisionId: "revision-a",
+    });
+    const withdrawn = evidenced.commands.deleteAcceptedMaterialContent({
+      actingIdentityId: "identity-curator",
+      revisionId: "revision-a",
+    });
+    const blockedDelete = blocked.commands.deleteAcceptedMaterialContent({
+      actingIdentityId: "identity-curator",
+      revisionId: "revision-a",
+    });
+
+    assert.deepEqual(
+      {
+        hardDeleted,
+        unevidencedContent: getAcceptedMaterialContentRecord(unevidenced.database, "revision-a"),
+        withdrawn,
+        evidencedRead: evidenced.commands.readMaterialRevisionContent({
+          actingIdentityId: "identity-student",
+          revisionId: "revision-a",
+        }),
+        withdrawnEntityIds: listAcceptedCorpusEntityRecords(evidenced.database, {
+          programId: "program-a",
+          status: "withdrawn",
+        }).map($0 => $0.id),
+        blockedDelete,
+        blockedRead: blocked.commands.readMaterialRevisionContent({
+          actingIdentityId: "identity-student",
+          revisionId: "revision-a",
+        }),
+        blockedActiveEntityIds: listAcceptedCorpusEntityRecords(blocked.database, {
+          programId: "program-a",
+          status: "active",
+        }).map($0 => $0.id),
+      },
+      {
+        hardDeleted: {
+          status: "accepted",
+          value: {
+            materialContent: {
+              revisionId: "revision-a",
+              deletionMode: "hard_deleted",
+            },
+          },
+        },
+        unevidencedContent: null,
+        withdrawn: {
+          status: "accepted",
+          value: {
+            materialContent: {
+              revisionId: "revision-a",
+              deletionMode: "withdrawn",
+              entityId: "entity-a",
+              status: "withdrawn",
+              updatedByIdentityId: "identity-curator",
+              updatedAt: "2026-05-28T11:00:00.003Z",
+            },
+          },
+        },
+        evidencedRead: {
+          status: "accepted",
+          value: {
+            content: "# Evidenced body",
+            contentFormat: "markdown",
+            byteSize: 16,
+          },
+        },
+        withdrawnEntityIds: ["entity-a"],
+        blockedDelete: {
+          status: "rejected",
+          reason: "entity_withdrawal_blocked",
+        },
+        blockedRead: {
+          status: "accepted",
+          value: {
+            content: "# Blocked body",
+            contentFormat: "markdown",
+            byteSize: 14,
+          },
+        },
+        blockedActiveEntityIds: ["entity-a", "topic-entity-a"],
+      },
+    );
+  } finally {
+    unevidenced.database.close();
+    evidenced.database.close();
+    blocked.database.close();
   }
 });
 

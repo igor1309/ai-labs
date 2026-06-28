@@ -22,6 +22,7 @@ import {
   createProgramSourceRecord,
   createQuickCheckCandidateRecord,
   createReadinessCheckCandidateRecord,
+  deleteAcceptedMaterialContentRecord,
   deleteLearnerEvidenceTargetLinkRecord,
   deleteProgramSourceRecord,
   deleteSourceContentRecord,
@@ -249,6 +250,8 @@ export function createCorpusCommands({
       readSourceContent({ database, getEffectiveParticipation, input }),
     setAcceptedMaterialContent: input =>
       setAcceptedMaterialContent({ database, getEffectiveParticipation, input }),
+    deleteAcceptedMaterialContent: input =>
+      deleteAcceptedMaterialContent({ database, getEffectiveParticipation, input, now }),
     readMaterialContent: input =>
       readMaterialContent({ database, getEffectiveParticipation, input }),
     readMaterialRevisionContent: input =>
@@ -2188,6 +2191,63 @@ function setAcceptedMaterialContent({ database, getEffectiveParticipation, input
   });
 }
 
+function deleteAcceptedMaterialContent({ database, getEffectiveParticipation, input, now }) {
+  const revision = getAcceptedCorpusRevisionRecord(database, input?.revisionId);
+  if (!revision) {
+    return rejected("accepted_revision_not_found");
+  }
+  const authorization = resolveCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: revision.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+  if (revision.acceptedKind !== "material_reference") {
+    return rejected("validation_failed");
+  }
+  if (!getAcceptedMaterialContentRecord(database, revision.id)) {
+    return rejected("content_not_found");
+  }
+  if (hasActiveMaterialEvidenceTarget(database, revision)) {
+    if (
+      hasActiveCorpusEntityDependent(database, {
+        acceptedKind: revision.acceptedKind,
+        entityId: revision.entityId,
+        programId: revision.programId,
+      })
+    ) {
+      return rejected("entity_withdrawal_blocked");
+    }
+
+    const updated = setAcceptedCorpusEntityLifecycleStatusRecord(database, {
+      entityId: revision.entityId,
+      status: "withdrawn",
+      updatedByIdentityId: authorization.identity.id,
+      updatedAt: now().toISOString(),
+    });
+    return accepted({
+      materialContent: {
+        revisionId: revision.id,
+        deletionMode: "withdrawn",
+        entityId: updated.id,
+        status: updated.status,
+        updatedByIdentityId: updated.updatedByIdentityId,
+        updatedAt: updated.updatedAt,
+      },
+    });
+  }
+
+  deleteAcceptedMaterialContentRecord(database, revision.id);
+  return accepted({
+    materialContent: {
+      revisionId: revision.id,
+      deletionMode: "hard_deleted",
+    },
+  });
+}
+
 function readMaterialContent({ database, getEffectiveParticipation, input }) {
   const entity = getAcceptedCorpusEntityRecord(database, input?.entityId);
   if (!entity) {
@@ -3761,6 +3821,12 @@ function validateProgramSourceIds(database, { programId, sourceIds }) {
 
 function isProgramSourceReferencedByAcceptedCorpus(database, sourceId) {
   return listAcceptedCorpusRevisionRecords(database).some($0 => $0.sourceIds.includes(sourceId));
+}
+
+function hasActiveMaterialEvidenceTarget(database, revision) {
+  return listLearnerEvidenceTargetLinkRecords(database, { programId: revision.programId }).some(
+    $0 => $0.targetKind === "material_reference" && $0.targetId === revision.entityId,
+  );
 }
 
 function summarizeNavigationRelationshipDrafts(relationshipDrafts) {

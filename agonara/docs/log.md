@@ -2,6 +2,11 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 3 sub-slice: completed accepted material-content deletion
+  tiers in the corpus domain. Unevidenced material content hard-deletes; evidenced material
+  content preserves historical bytes and retires through entity withdrawal, while active
+  dependents still block the withdrawal path.
+
 - ADR-022 implementation Phase 3 sub-slice: added domain coverage proving unreferenced
   source-record hard deletion does not mutate accepted material content, accepted corpus
   revisions, learner-evidence target links, or historical material reads.

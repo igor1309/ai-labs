@@ -1344,6 +1344,10 @@ export function getAcceptedMaterialContentRecord(database, revisionId) {
   return row ? mapAcceptedMaterialContentRecord(row) : null;
 }
 
+export function deleteAcceptedMaterialContentRecord(database, revisionId) {
+  database.prepare(`delete from accepted_material_contents where revision_id = ?`).run(revisionId);
+}
+
 export function listAcceptedMaterialContentRecords(database) {
   return database
     .prepare(
