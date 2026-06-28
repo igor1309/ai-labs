@@ -181,6 +181,10 @@ test("routeContracts_shouldDeclareLifecycleAndDeletionRoutes", () => {
         ...mutationRouteProjection(routeContract("PUT", "/open-answer-checks/{entityId}/status")),
         requestBody: requestBodyProjection(routeContract("PUT", "/open-answer-checks/{entityId}/status")),
       },
+      readinessStatus: {
+        ...mutationRouteProjection(routeContract("PUT", "/readiness-checks/{entityId}/status")),
+        requestBody: requestBodyProjection(routeContract("PUT", "/readiness-checks/{entityId}/status")),
+      },
       setSourceStatus: {
         ...mutationRouteProjection(routeContract("PUT", "/sources/{sourceId}/status")),
         requestBody: requestBodyProjection(routeContract("PUT", "/sources/{sourceId}/status")),
@@ -226,6 +230,16 @@ test("routeContracts_shouldDeclareLifecycleAndDeletionRoutes", () => {
         csrf: true,
         handlerKey: "corpus.setAcceptedOpenAnswerCheckLifecycleStatus",
         operationId: "setAcceptedOpenAnswerCheckLifecycleStatus",
+        requestBody: {
+          contentType: "application/json",
+          required: true,
+          schemaRef: "#/components/requestBodies/LifecycleStatus",
+        },
+      },
+      readinessStatus: {
+        csrf: true,
+        handlerKey: "corpus.setAcceptedReadinessCheckLifecycleStatus",
+        operationId: "setAcceptedReadinessCheckLifecycleStatus",
         requestBody: {
           contentType: "application/json",
           required: true,

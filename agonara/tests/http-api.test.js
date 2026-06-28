@@ -3470,6 +3470,97 @@ test("listAcceptedReadinessChecksForCuration_shouldExposeCuratorListWithEntityAn
   }
 });
 
+test("readinessCheckStatus_shouldRequireCsrfCuratorAndKeepHistoricalRevisionReadable", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(180),
+  });
+
+  try {
+    const scenario = await createReadinessHttpScenario(baseUrl);
+    const ordinary = await createIdentitySession(baseUrl, scenario.bootstrap, {
+      displayName: "Ordinary Identity",
+      login: "ordinary-readiness-status@example.test",
+    });
+    const readinessCheck = await createAcceptedReadinessCheck(
+      baseUrl,
+      scenario.curator,
+      scenario.programId,
+      scenario.topic.entityId,
+      { title: "Withdrawn readiness" },
+    );
+    const missingCsrf = await fetch(`${baseUrl}/readiness-checks/${readinessCheck.entityId}/status`, {
+      body: JSON.stringify({ status: "withdrawn" }),
+      headers: {
+        cookie: scenario.curator.cookie,
+        "content-type": "application/json",
+      },
+      method: "PUT",
+    });
+    const nonCurator = await updateReadinessCheckStatus(baseUrl, ordinary, readinessCheck.entityId, {
+      status: "withdrawn",
+    });
+    const invalid = await updateReadinessCheckStatus(baseUrl, scenario.curator, readinessCheck.entityId, {
+      status: "retired",
+    });
+    const withdrawn = await updateReadinessCheckStatus(baseUrl, scenario.curator, readinessCheck.entityId, {
+      status: "withdrawn",
+    });
+    const list = await fetch(`${baseUrl}/programs/${scenario.programId}/readiness-checks/curation`, {
+      headers: { cookie: scenario.curator.cookie },
+    });
+    const detail = await fetch(`${baseUrl}/readiness-checks/revisions/${readinessCheck.revisionId}/curation`, {
+      headers: { cookie: scenario.curator.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        missingCsrf: { body: await missingCsrf.json(), statusCode: missingCsrf.status },
+        nonCurator: { body: await nonCurator.json(), statusCode: nonCurator.status },
+        invalid: { body: await invalid.json(), statusCode: invalid.status },
+        withdrawn: { body: await withdrawn.json(), statusCode: withdrawn.status },
+        list: readinessCurationListProjection(await list.json(), list.status),
+        detail: readinessCurationProjection(await detail.json(), detail.status),
+      },
+      {
+        missingCsrf: {
+          body: { status: "rejected", reason: "csrf_required" },
+          statusCode: 403,
+        },
+        nonCurator: {
+          body: { status: "rejected", reason: "admin_or_curator_required" },
+          statusCode: 403,
+        },
+        invalid: {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
+        withdrawn: {
+          body: {
+            status: "accepted",
+            value: {
+              entity: {
+                id: readinessCheck.entityId,
+                status: "withdrawn",
+                updatedByIdentityId: scenario.curator.identityId,
+                updatedAt: "2026-05-27T10:00:00.000Z",
+              },
+            },
+          },
+          statusCode: 200,
+        },
+        list: { statusCode: 200, titles: [] },
+        detail: {
+          requirementTargets: [["topic", scenario.topic.entityId, "on_track"]],
+          statusCode: 200,
+          title: "Withdrawn readiness",
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("readinessHttpAcceptance_shouldCurateDeliverSubmitRetryReadListAndRedact", async () => {
   const { baseUrl, close, database } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
     ids: manyIds(180),
@@ -11788,6 +11879,18 @@ async function updateOpenAnswerCheckStatus(baseUrl, session, entityId, body) {
   });
 }
 
+async function updateReadinessCheckStatus(baseUrl, session, entityId, body) {
+  return fetch(`${baseUrl}/readiness-checks/${entityId}/status`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "PUT",
+  });
+}
+
 async function createCorpusCandidate(baseUrl, session, programId, body) {
   return fetch(`${baseUrl}/programs/${programId}/corpus-candidates`, {
     body: JSON.stringify(body),
@@ -11954,6 +12057,27 @@ async function rejectReadinessCheckCandidate(baseUrl, session, candidateId, body
     },
     method: "POST",
   });
+}
+
+async function createAcceptedReadinessCheck(
+  baseUrl,
+  session,
+  programId,
+  topicEntityId,
+  { title = "Topic readiness" } = {},
+) {
+  const created = await createReadinessCheckCandidate(baseUrl, session, programId, {
+    requirements: [{
+      requiredLevel: "on_track",
+      targetId: topicEntityId,
+      targetKind: "topic",
+    }],
+    scope: { scopeKind: "topic", topicEntityId },
+    title,
+  });
+  const candidateId = (await created.json()).value.readinessCheckCandidate.candidateId;
+  const accepted = await acceptReadinessCheckCandidate(baseUrl, session, candidateId, {});
+  return (await accepted.json()).value.acceptedReadinessCheck;
 }
 
 async function createAcceptedCandidate(baseUrl, session, programId, body) {
@@ -12553,6 +12677,13 @@ function readinessCurationProjection(body, statusCode) {
     ]),
     statusCode,
     title: readinessCheck?.title,
+  };
+}
+
+function readinessCurationListProjection(body, statusCode) {
+  return {
+    statusCode,
+    titles: body.value?.acceptedReadinessChecks?.map($0 => $0.title) ?? [],
   };
 }
 

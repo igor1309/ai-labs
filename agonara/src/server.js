@@ -1526,6 +1526,7 @@ async function handleCorpusApi({
   const acceptedReadinessCheckCurationRevisionMatch = pathname.match(
     /^\/readiness-checks\/revisions\/([^/]+)\/curation$/,
   );
+  const readinessCheckStatusMatch = pathname.match(/^\/readiness-checks\/([^/]+)\/status$/);
   const readinessCheckCurationListMatch = pathname.match(
     /^\/programs\/([^/]+)\/readiness-checks\/curation$/,
   );
@@ -1865,6 +1866,31 @@ async function handleCorpusApi({
       revisionId: decodeURIComponent(acceptedReadinessCheckCurationRevisionMatch[1]),
     });
     sendJson(response, statusForResult(result), mapAcceptedReadinessCheckResult(result));
+    return true;
+  }
+
+  if (request.method === "PUT" && readinessCheckStatusMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+    const result = corpusCommands.setAcceptedReadinessCheckLifecycleStatus({
+      actingIdentityId: session.value.identity.id,
+      entityId: decodeURIComponent(readinessCheckStatusMatch[1]),
+      status: body.value.status,
+    });
+    sendJson(response, statusForResult(result), result);
     return true;
   }
 

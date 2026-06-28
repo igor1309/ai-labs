@@ -6695,6 +6695,28 @@ export const routeContracts = [
     ]
   },
   {
+    "method": "PUT",
+    "path": "/readiness-checks/{entityId}/status",
+    "operationId": "setAcceptedReadinessCheckLifecycleStatus",
+    "handlerKey": "corpus.setAcceptedReadinessCheckLifecycleStatus",
+    "tag": "corpus",
+    "summary": "Withdraw or reactivate an accepted readiness check entity.",
+    "auth": { "kind": "session", "csrf": true },
+    "requestBody": { "contentType": "application/json", "required": true, "schema": { "ref": "#/components/requestBodies/LifecycleStatus" } },
+    "responses": [
+      { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
+      { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 401, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 403, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 404, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 409, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 500, "envelope": "fault", "schema": { "ref": "#/components/responses/Fault" } }
+    ],
+    "pathParameters": [
+      { "name": "entityId", "schema": { "type": "string", "minLength": 1 }, "required": true }
+    ]
+  },
+  {
     "method": "GET",
     "path": "/programs/{programId}/learner-state-target-links",
     "operationId": "listLearnerStateTargetLinks",

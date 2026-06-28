@@ -3434,6 +3434,39 @@ paths:
           $ref: "#/components/responses/Rejected"
         "500":
           $ref: "#/components/responses/Fault"
+  /readiness-checks/{entityId}/status:
+    put:
+      tags:
+        - corpus
+      operationId: setAcceptedReadinessCheckLifecycleStatus
+      summary: Withdraw or reactivate an accepted readiness check entity.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/LifecycleStatus"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
   /programs/{programId}/learner-state-target-links:
     get:
       tags:
