@@ -2308,7 +2308,7 @@ export const learnUiHtml = `<!doctype html>
           method: "DELETE",
         });
         if (result.status === "accepted") {
-          elements.sourceContentStatus.textContent = "Deleted source " + result.value.sourceId + ".";
+          elements.sourceContentStatus.textContent = "Deleted source " + result.value.source.id + ".";
           return;
         }
         if (result.reason === "source_hard_delete_blocked") {

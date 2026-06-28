@@ -67,7 +67,7 @@ test("learnUiSourceDelete_shouldExposeDeleteControlAndBlockedMessage", () => {
     deleteRoute: learnUiHtml.includes('requestJson("/sources/" + encodeURIComponent(sourceId), {'),
     deleteMethod: learnUiHtml.includes('method: "DELETE"'),
     csrf: learnUiHtml.includes("csrf: true"),
-    successMessage: learnUiHtml.includes('"Deleted source " + result.value.sourceId + "."'),
+    successMessage: learnUiHtml.includes('"Deleted source " + result.value.source.id + "."'),
     blockedMessage: learnUiHtml.includes('"Source is referenced; withdraw it instead."'),
     notFoundMessage: learnUiHtml.includes('"Source not found."'),
   };

@@ -497,6 +497,23 @@ test("materialContentCurator_shouldSaveAndDeleteSourceContent_onCuratorPanel", a
   }
 });
 
+test("sourceDeleteCurator_shouldDeleteUnreferencedAndBlockReferencedSource_onCuratorPanel", async ({ page }) => {
+  const harness = await startContentHarness();
+
+  try {
+    await signIn(page, harness.baseUrl);
+    await page.locator("#source-content-id-input").fill(harness.sourceId);
+    await page.locator("[data-action='delete-source']").click();
+    await expect(page.locator("#source-content-status")).toContainText("Deleted source " + harness.sourceId);
+
+    await page.locator("#source-content-id-input").fill(harness.referencedSourceId);
+    await page.locator("[data-action='delete-source']").click();
+    await expect(page.locator("#source-content-status")).toContainText("Source is referenced; withdraw it instead.");
+  } finally {
+    await harness.close();
+  }
+});
+
 async function startContentHarness() {
   const database = openIdentityDatabase();
   initializeIdentityStorage(database);
@@ -544,6 +561,16 @@ async function startContentHarness() {
     method: "POST",
   });
   const sourceId = (await sourceResponse.json()).value.programSource.sourceId;
+  const referencedSourceResponse = await fetch(`${baseUrl}/programs/${programId}/sources`, {
+    body: JSON.stringify({ sourceKind: "lecture", title: "Referenced lecture source" }),
+    headers: {
+      cookie: bootstrap.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": bootstrap.csrfToken,
+    },
+    method: "POST",
+  });
+  const referencedSourceId = (await referencedSourceResponse.json()).value.programSource.sourceId;
   const topic = await createAcceptedNavigationCandidate(baseUrl, bootstrap, programId, {
     candidateKind: "topic",
     title: "Vector spaces",
@@ -570,6 +597,7 @@ async function startContentHarness() {
         toCandidateRef: "self",
       },
     ],
+    sourceIds: [referencedSourceId],
     title: "Basis reading",
   });
   const entries = Array.isArray(accepted) ? accepted : [accepted];
@@ -597,6 +625,7 @@ async function startContentHarness() {
       database.close();
     },
     programId,
+    referencedSourceId,
     sourceId,
     student,
   };
