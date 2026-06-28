@@ -2,6 +2,10 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 2 sub-slice: student learner-state target definitions now filter
+  accepted corpus targets, quick checks, open-answer checks, and assessment criteria on
+  `status = active`, so withdrawn entities leave forward learner-state summary/detail reads.
+
 - ADR-022 implementation Phase 2 sub-slice: added curator-authorized navigation-relationship
   lifecycle withdrawal/reactivation. Withdrawn relationships leave forward navigation grouping,
   reactivation restores grouping, and stored relationship revisions remain addressable.

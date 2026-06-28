@@ -2157,6 +2157,56 @@ test("learnerStateReads_shouldRejectUnauthorizedActorsAndPreserveStorageState", 
   }
 });
 
+test("learnerStateReads_shouldOmitWithdrawnForwardTargets_status", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    seedStudentProgramWithAcceptedQuickCheck(database, { programId: "program-a" });
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    seedLearnerStateNavigationGraph(database, { programId: "program-a" });
+    database
+      .prepare("update accepted_corpus_entities set status = 'withdrawn' where id in (?, ?)")
+      .run("concept-entity-unused", "material-entity-a");
+    database
+      .prepare("update accepted_quick_check_entities set status = 'withdrawn' where id = ?")
+      .run("quick-check-entity-a");
+    database
+      .prepare("update accepted_open_answer_check_entities set status = 'withdrawn' where id = ?")
+      .run("check-entity-a");
+    database
+      .prepare("update accepted_assessment_criterion_entities set status = 'withdrawn' where id = ?")
+      .run("criterion-entity-a");
+
+    const summary = projectLearnerStateSummary(commands.getLearnerStateProgramSummary({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+    }));
+
+    assert.deepEqual(
+      {
+        concepts: summary.concepts.map($0 => $0[0]),
+        materialReferences: summary.materialReferences.map($0 => $0[0]),
+        checks: summary.checks.map($0 => [$0[0], $0[1]]),
+        criteria: summary.criteria.map($0 => $0[0]),
+        withdrawnDetail: commands.getLearnerStateTargetDetail({
+          actingIdentityId: "identity-student",
+          targetKind: "material_reference",
+          targetId: "material-entity-a",
+        }),
+      },
+      {
+        concepts: ["concept-entity-a"],
+        materialReferences: [],
+        checks: [],
+        criteria: [],
+        withdrawnDetail: { status: "rejected", reason: "learner_state_target_not_found" },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("readinessAttempts_shouldDeriveResultSnapshotAndPreserveHistory_onExplicitSubmission", () => {
   const { commands, database } = makeSUT({
     ids: [

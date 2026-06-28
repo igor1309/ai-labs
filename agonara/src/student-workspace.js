@@ -2353,7 +2353,7 @@ function buildLearnerStateModel({ database, programId, studentIdentityId }) {
 }
 
 function getLearnerStateTargetDefinitions(database, programId) {
-  const corpusTargets = listAcceptedCorpusEntityRecords(database, { programId })
+  const corpusTargets = listAcceptedCorpusEntityRecords(database, { programId, status: "active" })
     .map(entity => {
       const revision = getAcceptedCorpusRevisionRecord(database, entity.currentRevisionId);
       if (!revision || !["topic", "concept", "material_reference"].includes(entity.acceptedKind)) {
@@ -2367,7 +2367,7 @@ function getLearnerStateTargetDefinitions(database, programId) {
       });
     })
     .filter(Boolean);
-  const quickChecks = listAcceptedQuickCheckEntityRecords(database, { programId }).map(entity => {
+  const quickChecks = listAcceptedQuickCheckEntityRecords(database, { programId, status: "active" }).map(entity => {
     const revision = getAcceptedQuickCheckRevisionRecord(database, entity.currentRevisionId);
     return makeLearnerStateTargetDefinition({
       programId,
@@ -2376,7 +2376,7 @@ function getLearnerStateTargetDefinitions(database, programId) {
       title: revision?.title ?? entity.id,
     });
   });
-  const openAnswerChecks = listAcceptedOpenAnswerCheckEntityRecords(database, { programId }).map(entity => {
+  const openAnswerChecks = listAcceptedOpenAnswerCheckEntityRecords(database, { programId, status: "active" }).map(entity => {
     const revision = getAcceptedOpenAnswerCheckRevisionRecord(database, entity.currentRevisionId);
     return makeLearnerStateTargetDefinition({
       programId,
@@ -2385,7 +2385,7 @@ function getLearnerStateTargetDefinitions(database, programId) {
       title: revision?.title ?? entity.id,
     });
   });
-  const criteria = listAcceptedAssessmentCriterionEntityRecords(database, { programId }).map(entity => {
+  const criteria = listAcceptedAssessmentCriterionEntityRecords(database, { programId, status: "active" }).map(entity => {
     const revision = getAcceptedAssessmentCriterionRevisionRecord(database, entity.currentRevisionId);
     return makeLearnerStateTargetDefinition({
       programId,
