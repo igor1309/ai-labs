@@ -40,8 +40,10 @@ split into two groups by who owns them and when they are set.
 **Execution lock — executor-set at execution start:**
 
 - `Worktree mode`: `create new`, `reuse existing`, or `none`
-- `Expected worktree`: a concrete path or single resolvable pattern
-- `Expected branch`: a concrete branch name or single resolvable pattern
+- `Expected worktree`: a concrete path, a single resolvable pattern, or
+  `set at execution`
+- `Expected branch`: a concrete branch name, a single resolvable pattern, or
+  `set at execution`
 - `Preflight check`: unchecked while authoring; checked only after verified
   execution preflight evidence exists
 
@@ -54,9 +56,19 @@ This does not relax the rule that every field is declared before Step 1: the
 executor populates the lock *at execution start, which precedes Step 1*. The
 split assigns ownership and timing; it does not move any field past Step 1.
 
+A concrete live branch (or worktree path) is required for `Expected branch` and
+`Expected worktree` only when authoring and execution are the same session. A
+plan authored for separate or later execution MUST use the pattern form (e.g.
+`claude/<feature>-impl-*`) or the literal `set at execution`, never a pinned
+authoring branch — that branch goes dead once the plan is committed or merged,
+and a later executor that honors it stalls against a guard meant to protect
+execution.
+
 Do not invent declaration values. Values like `standard`, `normal`, `phase
 branch`, or `push at the end of each phase as one PR` fail the declaration
-check.
+check. The literal `set at execution` is the one allowed deferral marker for
+`Expected worktree` and `Expected branch`; it is not an invented value and does
+not fail the check.
 
 ## Acceptance Checklist
 
