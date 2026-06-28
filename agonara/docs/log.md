@@ -25,7 +25,13 @@
   HTTP lifecycle API + OpenAPI; product UI; docs/closeout), with execution declarations
   (`auto-continue`, `Worktree mode: none`, branch `claude/agonara-adr-22-spec-2zp737`,
   `push at closeout`, preflight unchecked), scope guardrails, an exact file/route inventory,
-  and ADR/product-intent traceability matrices. Status `planned`.
+  and ADR/product-intent traceability matrices. Status `planned`. Ran an adversarial plan
+  review (`docs/reviews/accepted-entity-withdrawal-and-source-deletion-plan-adversarial-review.md`):
+  fixed one fail (the plan referenced a non-existent migration framework — Agonara's schema is
+  `create table if not exists` only, so adding a `status` column to existing tables now uses an
+  idempotent `pragma table_info` + `alter table add column ... default 'active'` startup step
+  that backfills) and one warn (parallel-phase ambiguity in Phase 3 dependencies); declaration
+  block, scope, traceability, and closeout pass.
 
 - Add a `concept-extraction.md` reference doc to `agonara-curator-corpus` (v1.4.0)
   and link it from `SKILL.md`'s topics-and-concepts section. It captures a reusable

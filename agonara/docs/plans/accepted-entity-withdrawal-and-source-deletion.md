@@ -69,12 +69,19 @@ Preflight check: [ ] done
 Expected files:
 
 - `agonara/src/storage.js` — add an `active`/`withdrawn` `status` `check` column (default
-  `active`) plus status attribution (`status_updated_by_identity_id`, `status_updated_at`) to
-  the six accepted-entity tables (`accepted_quick_check_entities`,
-  `accepted_open_answer_check_entities`, `accepted_assessment_criterion_entities`,
-  `accepted_readiness_check_entities`, `accepted_corpus_entities`,
-  `accepted_navigation_relationships`) and `program_sources`; a migration that backfills
-  existing rows to `active`; source-record hard-delete helper; backup export of `status` and
+  `active`) plus **nullable** status attribution (`status_updated_by_identity_id`,
+  `status_updated_at`, populated on each status write) to the six accepted-entity tables
+  (`accepted_quick_check_entities`, `accepted_open_answer_check_entities`,
+  `accepted_assessment_criterion_entities`, `accepted_readiness_check_entities`,
+  `accepted_corpus_entities`, `accepted_navigation_relationships`) and `program_sources`. Agonara
+  has **no migration framework** (schema is `create table if not exists` only), so add the new
+  columns two ways that converge: include them in the `create table` DDL for fresh databases,
+  and add an **idempotent startup schema-upgrade step** that, per target table, reads
+  `pragma table_info(<table>)` and runs `alter table <table> add column status text not null
+  default 'active' check (status in ('active','withdrawn'))` (plus the nullable attribution
+  columns) only when absent. SQLite `ADD COLUMN` with `NOT NULL DEFAULT 'active'` backfills every
+  existing row to `active`, satisfying the backward-compatibility requirement without a separate
+  backfill pass. Also: source-record hard-delete helper; backup export of `status` and
   attribution; restore graph validation (status vocabulary + withdrawn revision/provenance
   resolution before mutation).
 - `agonara/src/curator-workspace.js` — withdraw/reactivate domain commands for quick-check,
@@ -200,14 +207,17 @@ Update tracker checkboxes only after the phase's required verification passes an
 ## Phase 1 — Lifecycle Status Substrate, Migration, and Restore Validation
 
 **Objective**: persist an entity-level `active`/`withdrawn` status with attribution on the six
-accepted-entity tables and `program_sources`, backfill existing rows, and validate status and
+accepted-entity tables and `program_sources`, ensure existing databases gain the column and
+backfill to `active` despite the absence of a migration framework, and validate status and
 withdrawn graphs at restore time.
 
 **Key work items**:
 
 - Add RED storage tests asserting each of the seven tables gains a `status` column constrained
-  to `{active, withdrawn}` defaulting to `active`, with attribution columns, and that the
-  migration backfills existing rows to `active`.
+  to `{active, withdrawn}` defaulting to `active`, with nullable attribution columns, on both a
+  fresh database (column present from the `create table` DDL) and a database created from the
+  prior schema and reopened (the idempotent `pragma table_info` + `alter table add column` step
+  adds the column and backfills existing rows to `active`).
 - Add RED storage tests rejecting an out-of-vocabulary `status` via the `check` constraint on an
   entity table and on `program_sources`.
 - Add RED backup/restore tests round-tripping status (including withdrawn items) and rejecting,
@@ -219,9 +229,10 @@ withdrawn graphs at restore time.
 
 **Dependencies**: this plan is committed and reviewed clean.
 
-**Risks**: migration leaves existing rows with NULL/invalid status; restore accepts an
-unresolvable withdrawn graph and corrupts recovery; attribution columns omitted, blocking the
-`LifecycleStatusResult` contract.
+**Risks**: the idempotent add-column step is skipped or misordered on an existing database,
+leaving rows without a `status` column or with a NULL status; the `ADD COLUMN` default fails to
+backfill existing rows; restore accepts an unresolvable withdrawn graph and corrupts recovery;
+attribution columns omitted, blocking the `LifecycleStatusResult` contract.
 
 **Validation**: targeted lifecycle-storage and backup/restore commands; full Agonara tests; root
 build; `git diff --check`; post-implementation self + adversarial review against the status
@@ -297,8 +308,9 @@ unreferenced, withdraw-only referenced), and complete ADR-021's material-content
 - Implement source withdraw/reactivate, the reference check, and the hard-delete path in
   `agonara/src/corpus.js`, reusing the storage hard-delete helper from Phase 1.
 
-**Dependencies**: Phase 1 complete (Phase 2 may proceed in parallel; this phase reuses the
-shared reference resolver if available, else introduces the source-side check).
+**Dependencies**: Phase 2 complete. The source reference check (over accepted-corpus
+`source_ids_json`) is distinct from the entity active-dependent resolver built in Phase 2; this
+phase adds it on the source side.
 
 **Risks**: a referenced source hard-deleted, breaking corpus provenance; deletion touching
 accepted content/revisions/evidence; reference check missing withdrawn-corpus references.
