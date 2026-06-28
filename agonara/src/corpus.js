@@ -23,6 +23,7 @@ import {
   createReadinessCheckCandidateRecord,
   deleteLearnerEvidenceTargetLinkRecord,
   getAcceptedAssessmentCriterionEntityRecord,
+  getAcceptedAssessmentCriterionEntityLifecycleStatusRecord,
   getAcceptedAssessmentCriterionRevisionRecord,
   MAX_MATERIAL_CONTENT_BYTES,
   getAcceptedCorpusEntityRecord,
@@ -33,6 +34,7 @@ import {
   getSourceContentRecord,
   setAcceptedMaterialContentRecord,
   setSourceContentRecord,
+  setAcceptedAssessmentCriterionEntityLifecycleStatusRecord,
   setAcceptedCorpusEntityLifecycleStatusRecord,
   setAcceptedQuickCheckEntityLifecycleStatusRecord,
   deleteSourceContentRecord,
@@ -237,6 +239,8 @@ export function createCorpusCommands({
       readMaterialContent({ database, getEffectiveParticipation, input }),
     readMaterialRevisionContent: input =>
       readMaterialRevisionContent({ database, getEffectiveParticipation, input }),
+    setAcceptedAssessmentCriterionLifecycleStatus: input =>
+      setAcceptedAssessmentCriterionLifecycleStatus({ database, getEffectiveParticipation, input, now }),
     setAcceptedCorpusLifecycleStatus: input =>
       setAcceptedCorpusLifecycleStatus({ database, getEffectiveParticipation, input, now }),
     setAcceptedQuickCheckLifecycleStatus: input =>
@@ -1022,6 +1026,49 @@ function setAcceptedCorpusLifecycleStatus({ database, getEffectiveParticipation,
   });
 }
 
+function setAcceptedAssessmentCriterionLifecycleStatus({ database, getEffectiveParticipation, input, now }) {
+  if (!new Set(["active", "withdrawn"]).has(input?.status)) {
+    return rejected("validation_failed");
+  }
+  const entity = getAcceptedAssessmentCriterionEntityLifecycleStatusRecord(database, input?.entityId);
+  if (!entity) {
+    return rejected("accepted_entity_not_found");
+  }
+  const authorization = resolveAssessmentCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: entity.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+  if (
+    input.status === "withdrawn" &&
+    hasActiveAssessmentCriterionDependent(database, {
+      entityId: entity.id,
+      programId: entity.programId,
+    })
+  ) {
+    return rejected("entity_withdrawal_blocked");
+  }
+
+  const updated = setAcceptedAssessmentCriterionEntityLifecycleStatusRecord(database, {
+    entityId: entity.id,
+    status: input.status,
+    updatedByIdentityId: authorization.identity.id,
+    updatedAt: now().toISOString(),
+  });
+
+  return accepted({
+    entity: {
+      id: updated.id,
+      status: updated.status,
+      updatedByIdentityId: updated.updatedByIdentityId,
+      updatedAt: updated.updatedAt,
+    },
+  });
+}
+
 function setAcceptedQuickCheckLifecycleStatus({ database, getEffectiveParticipation, input, now }) {
   if (!new Set(["active", "withdrawn"]).has(input?.status)) {
     return rejected("validation_failed");
@@ -1063,6 +1110,29 @@ function setAcceptedQuickCheckLifecycleStatus({ database, getEffectiveParticipat
       updatedByIdentityId: updated.updatedByIdentityId,
       updatedAt: updated.updatedAt,
     },
+  });
+}
+
+function hasActiveAssessmentCriterionDependent(database, { entityId, programId }) {
+  return (
+    hasActiveOpenAnswerCriterionDependent(database, { entityId, programId }) ||
+    hasActiveLearnerEvidenceOwnerDependent(database, {
+      evidenceOwnerKind: "accepted_assessment_criterion",
+      entityId,
+      programId,
+    })
+  );
+}
+
+function hasActiveOpenAnswerCriterionDependent(database, { entityId, programId }) {
+  return listAcceptedOpenAnswerCheckEntityRecords(database, {
+    programId,
+    status: "active",
+  }).some($0 => {
+    const revision = getAcceptedOpenAnswerCheckRevisionRecord(database, $0.currentRevisionId);
+    return revision?.criterionRevisionIds.some(
+      $1 => getAcceptedAssessmentCriterionRevisionRecord(database, $1)?.entityId === entityId,
+    );
   });
 }
 

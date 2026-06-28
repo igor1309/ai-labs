@@ -2369,6 +2369,136 @@ test("acceptAssessmentCriterionCandidate_shouldReplaceCurrentRevisionAndKeepHist
   }
 });
 
+test("setAcceptedAssessmentCriterionLifecycleStatus_shouldRejectWithdrawal_onActiveOpenAnswerCheck_status", async () => {
+  const { commands, database } = await makeSUT({ ids: generatedIds("criterion-lifecycle", 80) });
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    const criterion = createAcceptedAssessmentCriterionOwner(commands, { programId: "program-a" });
+    const openAnswer = createAcceptedOpenAnswerOwner(commands, {
+      programId: "program-a",
+      criterionEntityIds: [criterion.entityId],
+    });
+
+    const result = commands.setAcceptedAssessmentCriterionLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: criterion.entityId,
+      status: "withdrawn",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        activeCriteria: listAcceptedAssessmentCriterionEntityRecords(database, {
+          programId: "program-a",
+          status: "active",
+        }).map($0 => [$0.id, $0.currentRevisionId]),
+        activeOpenAnswerChecks: listAcceptedOpenAnswerCheckEntityRecords(database, {
+          programId: "program-a",
+          status: "active",
+        }).map($0 => [$0.id, $0.currentRevisionId]),
+      },
+      {
+        result: {
+          status: "rejected",
+          reason: "entity_withdrawal_blocked",
+        },
+        activeCriteria: [[criterion.entityId, criterion.revisionId]],
+        activeOpenAnswerChecks: [[openAnswer.entityId, openAnswer.revisionId]],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("setAcceptedAssessmentCriterionLifecycleStatus_shouldRejectWithdrawal_onActiveLearnerEvidenceTargetLink_status", async () => {
+  const { commands, database } = await makeSUT({ ids: generatedIds("criterion-link-lifecycle", 80) });
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    const target = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Criterion evidence target",
+    });
+    const criterion = createAcceptedAssessmentCriterionOwner(commands, { programId: "program-a" });
+    const link = commands.createLearnerEvidenceTargetLink({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      targetKind: "topic",
+      targetId: target.entityId,
+      evidenceOwnerKind: "accepted_assessment_criterion",
+      evidenceOwnerEntityId: criterion.entityId,
+    }).value.learnerEvidenceTargetLink;
+
+    const blockedResult = commands.setAcceptedAssessmentCriterionLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: criterion.entityId,
+      status: "withdrawn",
+    });
+    const activeCriteriaAfterBlock = listAcceptedAssessmentCriterionEntityRecords(database, {
+      programId: "program-a",
+      status: "active",
+    }).map($0 => [$0.id, $0.currentRevisionId]);
+    const activeLinksAfterBlock = listLearnerEvidenceTargetLinkRecords(database, {
+      programId: "program-a",
+    }).map($0 => [$0.id, $0.evidenceOwnerKind, $0.evidenceOwnerEntityId, $0.status]);
+    const deletedLink = commands.deleteLearnerEvidenceTargetLink({
+      actingIdentityId: "identity-curator",
+      linkId: link.linkId,
+    });
+    const withdrawnResult = commands.setAcceptedAssessmentCriterionLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: criterion.entityId,
+      status: "withdrawn",
+    });
+
+    assert.deepEqual(
+      {
+        blockedResult,
+        activeCriteriaAfterBlock,
+        activeLinksAfterBlock,
+        deletedLinkStatus: deletedLink.status,
+        withdrawnResult: {
+          status: withdrawnResult.status,
+          entity: withdrawnResult.value.entity,
+        },
+        activeCriteriaAfterDelete: listAcceptedAssessmentCriterionEntityRecords(database, {
+          programId: "program-a",
+          status: "active",
+        }).map($0 => [$0.id, $0.currentRevisionId]),
+        storedLinks: listLearnerEvidenceTargetLinkRecords(database, {
+          programId: "program-a",
+          includeDeleted: true,
+        }).map($0 => [$0.id, $0.evidenceOwnerKind, $0.evidenceOwnerEntityId, $0.status]),
+      },
+      {
+        blockedResult: {
+          status: "rejected",
+          reason: "entity_withdrawal_blocked",
+        },
+        activeCriteriaAfterBlock: [[criterion.entityId, criterion.revisionId]],
+        activeLinksAfterBlock: [[link.linkId, "accepted_assessment_criterion", criterion.entityId, "active"]],
+        deletedLinkStatus: "accepted",
+        withdrawnResult: {
+          status: "accepted",
+          entity: {
+            id: criterion.entityId,
+            status: "withdrawn",
+            updatedByIdentityId: "identity-curator",
+            updatedAt: "2026-05-28T11:00:00.008Z",
+          },
+        },
+        activeCriteriaAfterDelete: [],
+        storedLinks: [[link.linkId, "accepted_assessment_criterion", criterion.entityId, "deleted"]],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("acceptAssessmentCriterionCandidate_shouldRejectInvalidCandidateStatesAndTargets", async () => {
   const { commands, database } = await makeSUT();
 

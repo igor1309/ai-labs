@@ -1621,6 +1621,44 @@ export function listAcceptedAssessmentCriterionEntityRecords(database, { program
   });
 }
 
+export function setAcceptedAssessmentCriterionEntityLifecycleStatusRecord(
+  database,
+  { entityId, status, updatedByIdentityId, updatedAt },
+) {
+  if (!lifecycleStatuses.has(status)) {
+    throw new StorageInvariantError("lifecycle_status_invalid");
+  }
+  assertIdentityExists(database, updatedByIdentityId);
+  database
+    .prepare(
+      `update accepted_assessment_criterion_entities
+       set status = ?,
+           status_updated_by_identity_id = ?,
+           status_updated_at = ?
+       where id = ?`,
+    )
+    .run(status, updatedByIdentityId, updatedAt, entityId);
+
+  return getAcceptedAssessmentCriterionEntityLifecycleStatusRecord(database, entityId);
+}
+
+export function getAcceptedAssessmentCriterionEntityLifecycleStatusRecord(database, entityId) {
+  const row = database
+    .prepare(
+      `select id,
+              program_id as programId,
+              current_revision_id as currentRevisionId,
+              status,
+              status_updated_by_identity_id as updatedByIdentityId,
+              status_updated_at as updatedAt
+       from accepted_assessment_criterion_entities
+       where id = ?`,
+    )
+    .get(entityId);
+
+  return row ?? null;
+}
+
 function listAcceptedCurrentRevisionEntityRecords(database, { programId, status, tableName }) {
   const conditions = [];
   const values = [];

@@ -2,6 +2,11 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 2 sub-slice: added curator-authorized assessment-criterion
+  lifecycle withdrawal. Active open-answer checks that pin any revision of the criterion entity,
+  and active learner-evidence target links owned by the criterion, now block withdrawal without
+  cascade mutation; deleted learner-evidence links no longer block withdrawal.
+
 - ADR-022 implementation Phase 2 sub-slice: added curator-authorized quick-check lifecycle
   withdrawal with active learner-evidence target links as `entity_withdrawal_blocked`
   dependents. Deleted learner-evidence links no longer block withdrawal, and no cascade mutation
