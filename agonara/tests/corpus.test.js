@@ -2499,6 +2499,97 @@ test("setAcceptedAssessmentCriterionLifecycleStatus_shouldRejectWithdrawal_onAct
   }
 });
 
+test("setAcceptedOpenAnswerCheckLifecycleStatus_shouldRejectWithdrawal_onActiveLearnerEvidenceTargetLink_status", async () => {
+  const { commands, database } = await makeSUT({ ids: generatedIds("open-answer-lifecycle", 80) });
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    const target = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Open answer evidence target",
+    });
+    const criterion = createAcceptedAssessmentCriterionOwner(commands, { programId: "program-a" });
+    const openAnswer = createAcceptedOpenAnswerOwner(commands, {
+      programId: "program-a",
+      criterionEntityIds: [criterion.entityId],
+    });
+    const link = commands.createLearnerEvidenceTargetLink({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      targetKind: "topic",
+      targetId: target.entityId,
+      evidenceOwnerKind: "accepted_open_answer_check",
+      evidenceOwnerEntityId: openAnswer.entityId,
+    }).value.learnerEvidenceTargetLink;
+
+    const blockedResult = commands.setAcceptedOpenAnswerCheckLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: openAnswer.entityId,
+      status: "withdrawn",
+    });
+    const activeOpenAnswerChecksAfterBlock = listAcceptedOpenAnswerCheckEntityRecords(database, {
+      programId: "program-a",
+      status: "active",
+    }).map($0 => [$0.id, $0.currentRevisionId]);
+    const activeLinksAfterBlock = listLearnerEvidenceTargetLinkRecords(database, {
+      programId: "program-a",
+    }).map($0 => [$0.id, $0.evidenceOwnerKind, $0.evidenceOwnerEntityId, $0.status]);
+    const deletedLink = commands.deleteLearnerEvidenceTargetLink({
+      actingIdentityId: "identity-curator",
+      linkId: link.linkId,
+    });
+    const withdrawnResult = commands.setAcceptedOpenAnswerCheckLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: openAnswer.entityId,
+      status: "withdrawn",
+    });
+
+    assert.deepEqual(
+      {
+        blockedResult,
+        activeOpenAnswerChecksAfterBlock,
+        activeLinksAfterBlock,
+        deletedLinkStatus: deletedLink.status,
+        withdrawnResult: {
+          status: withdrawnResult.status,
+          entity: withdrawnResult.value.entity,
+        },
+        activeOpenAnswerChecksAfterDelete: listAcceptedOpenAnswerCheckEntityRecords(database, {
+          programId: "program-a",
+          status: "active",
+        }).map($0 => [$0.id, $0.currentRevisionId]),
+        storedLinks: listLearnerEvidenceTargetLinkRecords(database, {
+          programId: "program-a",
+          includeDeleted: true,
+        }).map($0 => [$0.id, $0.evidenceOwnerKind, $0.evidenceOwnerEntityId, $0.status]),
+      },
+      {
+        blockedResult: {
+          status: "rejected",
+          reason: "entity_withdrawal_blocked",
+        },
+        activeOpenAnswerChecksAfterBlock: [[openAnswer.entityId, openAnswer.revisionId]],
+        activeLinksAfterBlock: [[link.linkId, "accepted_open_answer_check", openAnswer.entityId, "active"]],
+        deletedLinkStatus: "accepted",
+        withdrawnResult: {
+          status: "accepted",
+          entity: {
+            id: openAnswer.entityId,
+            status: "withdrawn",
+            updatedByIdentityId: "identity-curator",
+            updatedAt: "2026-05-28T11:00:00.010Z",
+          },
+        },
+        activeOpenAnswerChecksAfterDelete: [],
+        storedLinks: [[link.linkId, "accepted_open_answer_check", openAnswer.entityId, "deleted"]],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("acceptAssessmentCriterionCandidate_shouldRejectInvalidCandidateStatesAndTargets", async () => {
   const { commands, database } = await makeSUT();
 

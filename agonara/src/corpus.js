@@ -36,10 +36,12 @@ import {
   setSourceContentRecord,
   setAcceptedAssessmentCriterionEntityLifecycleStatusRecord,
   setAcceptedCorpusEntityLifecycleStatusRecord,
+  setAcceptedOpenAnswerCheckEntityLifecycleStatusRecord,
   setAcceptedQuickCheckEntityLifecycleStatusRecord,
   deleteSourceContentRecord,
   getAcceptedNavigationRelationshipRevisionRecord,
   getAcceptedOpenAnswerCheckEntityRecord,
+  getAcceptedOpenAnswerCheckEntityLifecycleStatusRecord,
   getAcceptedOpenAnswerCheckRevisionRecord,
   getAcceptedQuickCheckEntityRecord,
   getAcceptedQuickCheckEntityLifecycleStatusRecord,
@@ -243,6 +245,8 @@ export function createCorpusCommands({
       setAcceptedAssessmentCriterionLifecycleStatus({ database, getEffectiveParticipation, input, now }),
     setAcceptedCorpusLifecycleStatus: input =>
       setAcceptedCorpusLifecycleStatus({ database, getEffectiveParticipation, input, now }),
+    setAcceptedOpenAnswerCheckLifecycleStatus: input =>
+      setAcceptedOpenAnswerCheckLifecycleStatus({ database, getEffectiveParticipation, input, now }),
     setAcceptedQuickCheckLifecycleStatus: input =>
       setAcceptedQuickCheckLifecycleStatus({ database, getEffectiveParticipation, input, now }),
     rejectAssessmentCriterionCandidate: input =>
@@ -1097,6 +1101,50 @@ function setAcceptedQuickCheckLifecycleStatus({ database, getEffectiveParticipat
   }
 
   const updated = setAcceptedQuickCheckEntityLifecycleStatusRecord(database, {
+    entityId: entity.id,
+    status: input.status,
+    updatedByIdentityId: authorization.identity.id,
+    updatedAt: now().toISOString(),
+  });
+
+  return accepted({
+    entity: {
+      id: updated.id,
+      status: updated.status,
+      updatedByIdentityId: updated.updatedByIdentityId,
+      updatedAt: updated.updatedAt,
+    },
+  });
+}
+
+function setAcceptedOpenAnswerCheckLifecycleStatus({ database, getEffectiveParticipation, input, now }) {
+  if (!new Set(["active", "withdrawn"]).has(input?.status)) {
+    return rejected("validation_failed");
+  }
+  const entity = getAcceptedOpenAnswerCheckEntityLifecycleStatusRecord(database, input?.entityId);
+  if (!entity) {
+    return rejected("accepted_entity_not_found");
+  }
+  const authorization = resolveAssessmentCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: entity.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+  if (
+    input.status === "withdrawn" &&
+    hasActiveLearnerEvidenceOwnerDependent(database, {
+      evidenceOwnerKind: "accepted_open_answer_check",
+      entityId: entity.id,
+      programId: entity.programId,
+    })
+  ) {
+    return rejected("entity_withdrawal_blocked");
+  }
+
+  const updated = setAcceptedOpenAnswerCheckEntityLifecycleStatusRecord(database, {
     entityId: entity.id,
     status: input.status,
     updatedByIdentityId: authorization.identity.id,
