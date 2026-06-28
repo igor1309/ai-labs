@@ -123,9 +123,10 @@ hard-delete independently through `DELETE /sources/{sourceId}/content`
 
 ### Withdraw and reactivate
 
-5. A status write to a value equal to the item's current status is an accepted no-op that
-   returns the current `LifecycleStatusResult`; it does not change `updatedAt` semantics beyond
-   recording the request, and never errors on "already in state."
+5. A status write to a value equal to the item's current status is an accepted no-op: it
+   returns the item's current `LifecycleStatusResult` and never errors on "already in state."
+   A no-op records the request as an attributable action (actor and timestamp), so the returned
+   `updatedByIdentityId`/`updatedAt` reflect the most recent write.
 6. Withdrawing (`active → withdrawn`) MUST NOT delete, rewrite, or make unaddressable any
    accepted revision, student attempt, evaluation, feedback, evidence, mastery state, weak-area
    summary, or learning history. All revisions of a withdrawn entity remain addressable.
@@ -134,21 +135,27 @@ hard-delete independently through `DELETE /sources/{sourceId}/content`
    revision; later structural change goes through normal replacement acceptance after
    reactivation.
 8. An addressed entity or source that does not exist is rejected with the family's existing
-   not-found reason (e.g. `quick_check_not_found`, `source_not_found`); a malformed body or a
-   `status` outside `{active, withdrawn}` is rejected with `validation_failed`.
+   not-found reason (e.g. `quick_check_entity_not_found`, `criterion_entity_not_found`,
+   `navigation_entity_not_found`, `source_not_found`); a malformed body or a `status` outside
+   `{active, withdrawn}` is rejected with `validation_failed`.
 
 ### Active-dependent block (no cascade)
 
 9. Withdrawing an entity that is referenced by an **active** dependent MUST be rejected with
    `entity_withdrawal_blocked`; the curator must withdraw or repoint the active dependents
-   first. Withdrawal MUST NOT cascade to dependents. Active dependents are:
-   - an `active` accepted readiness check whose current revision lists the entity as a member
-     check or criterion;
-   - an `active` accepted open-answer check whose current revision references the criterion;
+   first. Withdrawal MUST NOT cascade to dependents. A reference is resolved at the entity
+   level: a dependent that pins a specific revision is treated as referencing that revision's
+   owning entity. Active dependents are:
+   - an `active` accepted readiness check whose current revision's requirements target the
+     entity — readiness requirements may target accepted topic, concept, material-reference,
+     quick-check, open-answer-check, or assessment-criterion entities
+     ([readiness spec](topic-period-readiness-checks.md) rule 7);
+   - an `active` accepted open-answer check whose current revision lists, in
+     `criterion_revision_ids`, a revision of the criterion entity being withdrawn;
    - an `active` `learner_evidence_target_links` row whose `evidence_owner_entity_id` is the
      entity;
    - an `active` accepted navigation relationship whose `from_entity_id` or `to_entity_id` is
-     the corpus entity.
+     the corpus entity being withdrawn.
 10. A `withdrawn` dependent does not block withdrawal. Reactivation has no dependent
     precondition — an entity may be reactivated regardless of its dependents' statuses.
 
@@ -239,10 +246,13 @@ hard-delete independently through `DELETE /sources/{sourceId}/content`
    and the entity returns to active listings.
 5. Domain test proves a status write equal to the current status is an accepted no-op (both
    `active→active` and `withdrawn→withdrawn`) and never errors.
-6. Domain test rejects withdrawal of an entity referenced by an active readiness check, an
-   active open-answer check, an active learner-evidence target link, and an active navigation
-   relationship with `entity_withdrawal_blocked`, and proves no dependent was mutated (no
-   cascade); then proves withdrawal succeeds once each dependent is withdrawn or repointed.
+6. Domain test rejects withdrawal with `entity_withdrawal_blocked` for each active-dependent
+   case in rule 9: a corpus entity targeted by an active readiness requirement; a criterion
+   entity withdrawn while an active open-answer check pins one of its criterion revisions
+   (proving revision→owning-entity resolution); a check/criterion entity referenced by an
+   active learner-evidence target link; and a corpus entity referenced by an active navigation
+   relationship. Each case proves no dependent was mutated (no cascade), then proves withdrawal
+   succeeds once the dependent is withdrawn or repointed.
 7. Domain test proves a withdrawn dependent does not block withdrawal and that reactivation has
    no dependent precondition.
 8. Domain test hard-deletes an unreferenced source record and rejects hard deletion of a

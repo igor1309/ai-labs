@@ -11,7 +11,12 @@
   derivation, two-tier source deletion (hard-delete unreferenced, withdraw-only referenced),
   completion of ADR-021's material-content deletion tiers, and backup/restore of status. Adds
   `entity_withdrawal_blocked` and `source_hard_delete_blocked` to the rejection vocabulary.
-  Status `draft`; implementation tracked in `backlog/material-content.md`.
+  Status `draft`; implementation tracked in `backlog/material-content.md`. Ran an adversarial
+  spec review (`docs/reviews/accepted-entity-withdrawal-and-source-deletion-spec-adversarial-review.md`):
+  fixed one fail (active-dependent block understated readiness targets and mis-described the
+  open-answer→criterion reference as entity-direct when it pins criterion revisions) and two
+  warns (a non-existent `quick_check_not_found` reason example; murky no-op `updatedAt`
+  semantics); remaining findings pass.
 
 - Add a `concept-extraction.md` reference doc to `agonara-curator-corpus` (v1.4.0)
   and link it from `SKILL.md`'s topics-and-concepts section. It captures a reusable
