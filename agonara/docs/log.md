@@ -2,6 +2,17 @@
 
 ## 2026-06-28
 
+- Drafted the **accepted-entity withdrawal and source deletion** spec
+  (`docs/specs/accepted-entity-withdrawal-and-source-deletion.md`) operationalizing
+  [ADR-022](docs/adr/adr-022-accepted-entity-withdrawal-and-source-deletion.md): an
+  entity-level `active ↔ withdrawn` lifecycle status across the six accepted-entity
+  families and `program_sources`, curator-authorized withdraw/reactivate, the
+  active-dependent block (no cascade), read-path filtering for delivery/listings/coverage-gap
+  derivation, two-tier source deletion (hard-delete unreferenced, withdraw-only referenced),
+  completion of ADR-021's material-content deletion tiers, and backup/restore of status. Adds
+  `entity_withdrawal_blocked` and `source_hard_delete_blocked` to the rejection vocabulary.
+  Status `draft`; implementation tracked in `backlog/material-content.md`.
+
 - Add a `concept-extraction.md` reference doc to `agonara-curator-corpus` (v1.4.0)
   and link it from `SKILL.md`'s topics-and-concepts section. It captures a reusable
   draft-concept-extraction procedure: read and segment the whole topic into semantic
