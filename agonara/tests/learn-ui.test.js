@@ -22,3 +22,41 @@ test("learnUiTheme_shouldDefaultDarkAndExposeSwitcher_onLearnPage", () => {
     switcherStartsDark: true,
   });
 });
+
+test("learnUiLifecyclePanel_shouldExposeWithdrawReactivateControlsAndRoutes", () => {
+  const lifecycleContract = {
+    panel: learnUiHtml.includes('id="entity-lifecycle-panel"'),
+    familyInput: learnUiHtml.includes('id="entity-lifecycle-family-input"'),
+    entityIdInput: learnUiHtml.includes('id="entity-lifecycle-id-input"'),
+    status: learnUiHtml.includes('id="entity-lifecycle-status"'),
+    withdrawAction: learnUiHtml.includes('data-action="withdraw-entity"'),
+    reactivateAction: learnUiHtml.includes('data-action="reactivate-entity"'),
+    corpusRoute: learnUiHtml.includes('corpus: "/corpus/" + encodedId + "/status"'),
+    quickCheckRoute: learnUiHtml.includes('quick_check: "/quick-checks/" + encodedId + "/status"'),
+    openAnswerRoute: learnUiHtml.includes('open_answer_check: "/open-answer-checks/" + encodedId + "/status"'),
+    criterionRoute: learnUiHtml.includes('assessment_criterion: "/assessment-criteria/" + encodedId + "/status"'),
+    readinessRoute: learnUiHtml.includes('readiness_check: "/readiness-checks/" + encodedId + "/status"'),
+    navigationRelationshipRoute: learnUiHtml.includes(
+      'navigation_relationship: "/navigation-relationships/" + encodedId + "/status"',
+    ),
+    sourceRoute: learnUiHtml.includes('source: "/sources/" + encodedId + "/status"'),
+    csrfMutation: learnUiHtml.includes("csrf: true") && learnUiHtml.includes('method: "PUT"'),
+  };
+
+  assert.deepEqual(lifecycleContract, {
+    panel: true,
+    familyInput: true,
+    entityIdInput: true,
+    status: true,
+    withdrawAction: true,
+    reactivateAction: true,
+    corpusRoute: true,
+    quickCheckRoute: true,
+    openAnswerRoute: true,
+    criterionRoute: true,
+    readinessRoute: true,
+    navigationRelationshipRoute: true,
+    sourceRoute: true,
+    csrfMutation: true,
+  });
+});

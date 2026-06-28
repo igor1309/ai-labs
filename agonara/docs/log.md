@@ -2,6 +2,10 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 5 sub-slice: added the `/learn` curator lifecycle panel with
+  stable `#entity-lifecycle-panel`, withdraw/reactivate actions, redacted status messaging, and
+  route wiring for accepted entities and source withdrawal/reactivation.
+
 - ADR-022 implementation Phase 4 review fix: added HTTP lifecycle edge-case coverage for
   missing accepted entities, same-status accepted no-ops, `entity_withdrawal_blocked` conflict
   surfacing, lifecycle response redaction, and dependent graph preservation.

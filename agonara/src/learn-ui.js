@@ -659,6 +659,30 @@ export const learnUiHtml = `<!doctype html>
                 </div>
               </form>
               <p id="source-content-status" class="status" aria-live="polite"></p>
+              <section id="entity-lifecycle-panel" class="stack" aria-label="Entity Lifecycle">
+                <h3>Lifecycle</h3>
+                <label>
+                  Accepted item family
+                  <select id="entity-lifecycle-family-input">
+                    <option value="corpus">Corpus topic, concept, or material</option>
+                    <option value="quick_check">Quick Check</option>
+                    <option value="open_answer_check">Open-answer check</option>
+                    <option value="assessment_criterion">Assessment criterion</option>
+                    <option value="readiness_check">Readiness check</option>
+                    <option value="navigation_relationship">Navigation relationship</option>
+                    <option value="source">Program source</option>
+                  </select>
+                </label>
+                <label>
+                  Entity or source id
+                  <input id="entity-lifecycle-id-input" autocomplete="off">
+                </label>
+                <div class="actions">
+                  <button data-action="withdraw-entity" data-requires-session class="danger" type="button">Withdraw</button>
+                  <button data-action="reactivate-entity" data-requires-session class="secondary" type="button">Reactivate</button>
+                </div>
+                <p id="entity-lifecycle-status" class="status" aria-live="polite"></p>
+              </section>
             </section>
 
             <section id="navigation-student-panel" class="stack" aria-label="Student Navigation">
@@ -1082,6 +1106,10 @@ export const learnUiHtml = `<!doctype html>
         curationDetail: document.querySelector("#quick-check-curation-detail"),
         deliveryDetail: document.querySelector("#quick-check-delivery-detail"),
         deliveryList: document.querySelector("#quick-check-delivery-list"),
+        entityLifecycleFamilyInput: document.querySelector("#entity-lifecycle-family-input"),
+        entityLifecycleIdInput: document.querySelector("#entity-lifecycle-id-input"),
+        entityLifecyclePanel: document.querySelector("#entity-lifecycle-panel"),
+        entityLifecycleStatus: document.querySelector("#entity-lifecycle-status"),
         logoutButton: document.querySelector("#logout-button"),
         membershipAdmissionPolicyForm: document.querySelector("#program-admission-policy-form"),
         membershipAdmissionPolicyInput: document.querySelector("#program-admission-policy-input"),
@@ -1296,6 +1324,16 @@ export const learnUiHtml = `<!doctype html>
         }
         if (event.target.closest("[data-action='delete-source-content']")) {
           void deleteSourceContent();
+        }
+      });
+
+      elements.entityLifecyclePanel.addEventListener("click", event => {
+        if (event.target.closest("[data-action='withdraw-entity']")) {
+          void setEntityLifecycleStatus("withdrawn");
+          return;
+        }
+        if (event.target.closest("[data-action='reactivate-entity']")) {
+          void setEntityLifecycleStatus("active");
         }
       });
 
@@ -2097,6 +2135,63 @@ export const learnUiHtml = `<!doctype html>
         state.candidates = [];
         renderCandidateList();
         renderCurationStatus("Refresh failed");
+      }
+
+      async function setEntityLifecycleStatus(status) {
+        if (!state.identity) {
+          elements.entityLifecycleStatus.textContent = "Sign in first.";
+          return;
+        }
+        const entityId = elements.entityLifecycleIdInput.value.trim();
+        if (!entityId) {
+          elements.entityLifecycleStatus.textContent = "Enter an entity or source id.";
+          return;
+        }
+
+        const route = lifecycleStatusRoute(elements.entityLifecycleFamilyInput.value, entityId);
+        if (!route) {
+          elements.entityLifecycleStatus.textContent = "Choose an accepted item family.";
+          return;
+        }
+
+        const result = await requestJson(route, {
+          body: { status },
+          csrf: true,
+          method: "PUT",
+        });
+        if (result.status === "accepted") {
+          elements.entityLifecycleStatus.textContent =
+            "Lifecycle status is " + result.value.entity.status + " for " + result.value.entity.id + ".";
+          return;
+        }
+        elements.entityLifecycleStatus.textContent = lifecycleStatusFailureMessage(result.reason);
+      }
+
+      function lifecycleStatusRoute(family, entityId) {
+        const encodedId = encodeURIComponent(entityId);
+        const routes = {
+          assessment_criterion: "/assessment-criteria/" + encodedId + "/status",
+          corpus: "/corpus/" + encodedId + "/status",
+          navigation_relationship: "/navigation-relationships/" + encodedId + "/status",
+          open_answer_check: "/open-answer-checks/" + encodedId + "/status",
+          quick_check: "/quick-checks/" + encodedId + "/status",
+          readiness_check: "/readiness-checks/" + encodedId + "/status",
+          source: "/sources/" + encodedId + "/status",
+        };
+        return routes[family];
+      }
+
+      function lifecycleStatusFailureMessage(reason) {
+        if (reason === "entity_withdrawal_blocked") {
+          return "Withdrawal blocked by active dependents.";
+        }
+        if (reason === "accepted_entity_not_found" || reason === "source_not_found") {
+          return "Item not found.";
+        }
+        if (reason === "validation_failed") {
+          return "Lifecycle status is invalid.";
+        }
+        return "Lifecycle update failed.";
       }
 
       function renderCandidateList() {
