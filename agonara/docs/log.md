@@ -2,6 +2,22 @@
 
 ## 2026-06-28
 
+- Added a **zero-trust acceptance gate and contamination doctrine** to the curator
+  skills. `agonara-curator-corpus` (v1.6.0) now defines the gate as the source of
+  truth: proposal and acceptance are separate phases, the assistant may propose
+  freely but must not accept in the same run, the acceptance phase begins only from
+  a fresh curator instruction naming the candidate ids, the curator's own inspection
+  of trusted state — not a pasted read-back — is the authority, acceptance is per
+  entity (never a batch blessing), and any accepted/linked/hosted entity lacking a
+  curator named-id verification record is contaminated by default. It also spells out
+  the extra trusted-state facts to surface per acceptance kind (immutable hosted
+  material content, multi-draft `relationship_update`s, `targetEntityId` revisions).
+  `agonara-curator-assessment` (v1.5.0) and `agonara-curator-research` (v1.2.0) defer
+  to that gate and add their path-specific rules (verify the draft candidate and its
+  answer key before accepting, gate learner-state target-link mutations, report
+  sources/gaps/suggestions only from live API reads). `concept-extraction.md` now
+  stops at the gate instead of "confirm before acceptance."
+
 - Drafted the **accepted-entity withdrawal and source deletion** spec
   (`docs/specs/accepted-entity-withdrawal-and-source-deletion.md`) operationalizing
   [ADR-022](docs/adr/adr-022-accepted-entity-withdrawal-and-source-deletion.md): an
