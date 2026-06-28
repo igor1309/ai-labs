@@ -42,6 +42,25 @@ Single items not yet promoted to a topic file.
   hard-delete-unreferenced / withdraw-referenced, raw blob per ADR-021 — and its
   implementation is tracked in [`material-content.md`](material-content.md).)
 
+- **Idempotent duplicate protection on navigation-relationship acceptance.**
+  Accepting a navigation relationship enforces self-reference, endpoint-kind, and
+  prerequisite-cycle invariants (`src/storage.js`
+  `assertNavigationRelationshipEndpoints` / `isValidNavigationRelationshipEndpointPair`
+  / `assertNavigationRelationshipDoesNotCreateCycle`), but nothing prevents two
+  accepted relationships with the same `(program_id, relationship_kind,
+  from_entity_id, to_entity_id)` — `accepted_navigation_relationships` has no unique
+  index on that tuple. A curator who accepts a duplicate (e.g. a second accepted
+  `topic_includes_concept` for one topic/concept pair) ends up with redundant edges in
+  accepted navigation. Add acceptance-time duplicate protection — either reject the
+  second acceptance (`validation_failed`) or make it idempotent against the existing
+  edge — plus the matching partial-unique index (scoped to `status = active` once
+  ADR-022 lands, so a withdrawn-then-reaccepted edge is allowed). This is the
+  *prevention* half; the *cleanup* half a curator needs to repair already-accepted
+  duplicates (remove / retire / demote an accepted relationship) is the
+  `active → withdrawn` path ADR-022 already decides for navigation relationships,
+  tracked as the "Withdrawal/source-deletion spec + implementation" forward task in
+  [`material-content.md`](material-content.md).
+
 - **Drive the open-answer evaluator (nothing fires it).** The whole evaluation
   pipeline is implemented and wired — Nomos LLM provider adapter, evaluator
   policy/validation/redaction, the `runOpenAnswerEvaluatorWorkerOnce` worker, and
