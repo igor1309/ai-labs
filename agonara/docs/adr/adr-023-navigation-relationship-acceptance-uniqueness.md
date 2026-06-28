@@ -17,7 +17,8 @@ duplicate is **rejected** (`navigation_relationship_already_accepted`), not sile
 invariant is enforced at the storage layer so it holds uniformly across every acceptance path
 (new-entity acceptance and `relationship_update`) and across backup restore. Uniqueness is scoped
 to `status = active`, so an edge withdrawn under
-[ADR-022](adr-022-accepted-entity-withdrawal-and-source-deletion.md) may be re-accepted. This is
+[ADR-022](adr-022-accepted-entity-withdrawal-and-source-deletion.md) may be re-accepted while
+ADR-022 reactivation is held to the same guard. This is
 the **prevention** half of the duplicate-navigation problem; the **cleanup** of edges already
 accepted in error is the `active → withdrawn` path ADR-022 decides. This ADR extends the
 acceptance boundary of [ADR-010](adr-010-corpus-storage-and-curator-acceptance-boundary.md) and
@@ -60,19 +61,28 @@ restore path and any future writer unguarded — the invariant belongs at the da
    **active** relationship with an existing tuple MUST be rejected with the rejection reason
    `navigation_relationship_already_accepted`. The first relationship and the candidate are left
    unchanged; no partial accepted corpus is written (acceptance is transactional).
-3. **Enforced at the storage layer.** The invariant MUST be enforced by
-   `createAcceptedNavigationRelationshipRecord` and a partial-unique index on
-   `accepted_navigation_relationships` scoped to `status = active`, so it holds uniformly for
-   first-time acceptance, the `relationship_update` candidate kind, and any future writer — not
-   only the `corpus.js` validation path.
+3. **Enforced at the storage layer.** The invariant MUST be enforced by a partial-unique index on
+   `accepted_navigation_relationships` scoped to `status = active` — the database-level guard that
+   binds *every* writer, including backup restore (which inserts through its own statement, not
+   `createAcceptedNavigationRelationshipRecord`) — backed by an explicit pre-insert check on the
+   acceptance path that maps to a graceful rejection rather than a raw constraint error. The pattern
+   is already proven on the target system: `one_active_learner_evidence_target_link`
+   (`src/storage.js`) is an existing SQLite partial-unique index `where status = 'active'`. This
+   placement covers first-time acceptance, the `relationship_update` candidate kind, restore, and
+   any future writer — not only the `corpus.js` validation path.
 4. **Directed tuple only.** Uniqueness is over the tuple exactly as stored. Reverse-direction
    collapse for semantically symmetric kinds is out of scope (Non-Goals).
-5. **Scoped to active; re-acceptance allowed.** Because uniqueness is partial on `status = active`,
-   a relationship withdrawn under ADR-022 does NOT block re-accepting the same tuple; the prior
-   withdrawn edge remains addressable. This makes the index dependent on ADR-022's `status` column.
+5. **Scoped to active; re-acceptance allowed, reactivation guarded.** Because uniqueness is partial
+   on `status = active`, a relationship withdrawn under ADR-022 does NOT block re-accepting the same
+   tuple; the prior withdrawn edge remains addressable. The same scoping means the invariant also
+   binds ADR-022 **reactivation** (`withdrawn → active`): reactivating a withdrawn relationship MUST
+   be rejected when an active relationship with the same tuple already exists, so reactivation can
+   never resurrect a second active duplicate. This makes the index dependent on ADR-022's `status`
+   column and extends ADR-022's reactivation semantics with this uniqueness guard.
 6. **Sequenced after duplicate cleanup.** The constraint MUST NOT be enabled while duplicate active
-   rows exist. Pre-existing accepted duplicates are resolved by withdrawing the redundant edge via
-   the ADR-022 withdrawal path before the partial-unique index is introduced.
+   rows exist. Pre-existing accepted duplicates are resolved by withdrawing all but one of the
+   identical active edges via the ADR-022 withdrawal path before the partial-unique index is
+   introduced.
 7. **Restore rejects duplicates.** Backup restore MUST reject, before mutation, a backup that
    contains two active navigation relationships with the same tuple in a Program — consistent with
    ADR-022's pre-mutation restore validation.
@@ -83,9 +93,14 @@ restore path and any future writer unguarded — the invariant belongs at the da
 ## Rules / Invariants
 
 - `accepted_navigation_relationships` (`src/storage.js`) MUST carry a partial unique index on
-  `(program_id, relationship_kind, from_entity_id, to_entity_id) WHERE status = 'active'`. The
-  index depends on the `status` column introduced by ADR-022 and MUST NOT be created before
-  existing active duplicates are withdrawn.
+  `(program_id, relationship_kind, from_entity_id, to_entity_id) WHERE status = 'active'`,
+  following the existing `one_active_learner_evidence_target_link` partial-unique-index pattern in
+  the same file. The index depends on the `status` column introduced by ADR-022 and MUST NOT be
+  created before existing active duplicates are withdrawn.
+- Reactivation (`withdrawn → active`) of a navigation relationship under ADR-022 MUST be rejected
+  when an active relationship with the same `(program_id, relationship_kind, from_entity_id,
+  to_entity_id)` already exists; the curator must withdraw or re-point the conflicting active edge
+  first. Reactivation MUST NOT be able to create a second active duplicate.
 - `createAcceptedNavigationRelationshipRecord` (`src/storage.js`) MUST reject creation of an
   active relationship whose tuple already names an active relationship in the same Program, raising
   the storage invariant that `acceptNavigationCandidate` (`src/corpus.js`) maps — via
@@ -102,7 +117,8 @@ restore path and any future writer unguarded — the invariant belongs at the da
   active navigation relationships sharing a tuple within a Program.
 - The decision MUST be verified by domain, HTTP-contract, and backup/restore tests in the
   downstream spec, including: duplicate acceptance rejected with the new reason; the original edge
-  left intact; a withdrawn edge re-acceptable; and a duplicate-bearing backup rejected.
+  left intact; a withdrawn edge re-acceptable; reactivation rejected when an active duplicate
+  exists; and a duplicate-bearing backup rejected.
 
 ## Consequences
 
@@ -111,6 +127,11 @@ restore path and any future writer unguarded — the invariant belongs at the da
 - Prevention is coupled to ADR-022: the index needs ADR-022's `status` column, and existing
   duplicate active rows must be withdrawn through ADR-022 before the constraint can be enabled.
   This ADR therefore ships **after** ADR-022's withdrawal mechanism, not before.
+- The uniqueness invariant tightens ADR-022's `withdrawn → active` reactivation: a reactivation that
+  would collide with an existing active edge is now rejected, matching ADR-022's own
+  block-on-active-conflict posture for withdrawal. A curator may need to withdraw the conflicting
+  edge first; because withdrawal is itself reversible, the conflict is cheap to resolve in either
+  direction.
 - Enforcing at the storage layer covers the `relationship_update` candidate kind and restore for
   free; no separate per-path validation is needed, and future write paths inherit the guard.
 - Idempotency-key retries of a genuine duplicate request keep returning the original `accepted`

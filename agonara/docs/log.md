@@ -13,6 +13,11 @@
   ADR-022's lifecycle; sequenced after it so existing duplicate rows are withdrawn first); directed
   tuple only, symmetric-kind reverse collapse deferred. The *cleanup* of already-accepted
   duplicates remains the ADR-022 withdrawal path. Schema/routes/migration left to a downstream spec.
+  Hardened after an adversarial review: closed a cross-ADR collision (ADR-022 `withdrawn → active`
+  reactivation is now held to the same uniqueness guard, so it cannot resurrect a second active
+  duplicate), cited the existing `one_active_learner_evidence_target_link` partial-unique index as
+  the proven precedent, and corrected the enforcement wording (restore is covered by the DB-level
+  index + pre-mutation check, not `createAcceptedNavigationRelationshipRecord`).
 
 - Reframed the curator and student role skills so the agent is the human role-holder's
   **assistant**, not the role itself: `agonara-curator-corpus` (v1.3.0),
