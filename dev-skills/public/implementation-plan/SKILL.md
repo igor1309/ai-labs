@@ -70,6 +70,23 @@ check. The literal `set at execution` is the one allowed deferral marker for
 `Expected worktree` and `Expected branch`; it is not an invented value and does
 not fail the check.
 
+## Plan Lifecycle
+
+A plan runs in one of two lifecycle modes. They differ only in whether the
+execution lock can be concrete at authoring time.
+
+- **Same-session — authored and executed together.** Authoring and execution
+  share one session, worktree, and branch. The execution lock may be concrete:
+  the author records the real worktree and branch, and `Preflight check` is
+  satisfied once execution preflight evidence exists.
+- **Deferred — authored, committed/merged, executed later.** The plan is
+  authored in one session and executed later in a different session and branch.
+  At authoring the execution lock is **intent only**: express `Expected
+  worktree`/`Expected branch` as a pattern or `set at execution`, never a pinned
+  authoring branch (which goes dead once the plan is committed or merged). The
+  executor re-establishes the lock against the real session at execution start —
+  see `process-gates` for the execution-start re-validation gate.
+
 ## Acceptance Checklist
 
 Run this checklist before Step 1 of any implementation plan. Halt on any

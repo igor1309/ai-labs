@@ -39,18 +39,10 @@ before Step 1.
 
 ## Forward tasks
 
-IP-4/IP-5 add lifecycle and the `process-gates` boundary; IP-6/IP-7 reinforce; IP-8 is the
+IP-5 adds the `process-gates` execution-start boundary; IP-6/IP-7 reinforce; IP-8 is the
 release wrapper that gates shipping. These build on the declaration-block split, the
-`set at execution` deferral marker, and the stale-pin acceptance guards already present in
-`implementation-plan`.
-
-### IP-4 — Add a "Plan lifecycle" subsection (P1)
-
-- **Change:** new short subsection naming both modes:
-  - (a) authored-and-executed in one session — the execution lock may be concrete;
-  - (b) authored, committed/merged, executed later — the execution lock is **intent only** at
-    authoring and MUST be re-established by the executor at execution start.
-- **DoD:** subsection exists, names both modes, and cross-references `process-gates` for (b).
+`set at execution` deferral marker, the stale-pin acceptance guards, and the `Plan Lifecycle`
+section (same-session vs deferred modes) already present in `implementation-plan`.
 
 ### IP-5 — Execution-start re-validation of the lock — boundary with `process-gates` (P1)
 
@@ -73,8 +65,9 @@ release wrapper that gates shipping. These build on the declaration-block split,
 ### IP-7 — Reconcile `## Existing Plan Migration` with the new lifecycle rules (P2)
 
 - **Change:** add a clause: when executing a previously-merged plan, treat its execution lock as
-  intent and re-establish it (IP-4/IP-5) rather than honoring a dead pin.
-- **DoD:** clause present and consistent with IP-4/IP-5.
+  intent and re-establish it (per the `Plan Lifecycle` deferred mode and IP-5's `process-gates`
+  gate) rather than honoring a dead pin.
+- **DoD:** clause present and consistent with the `Plan Lifecycle` section and IP-5.
 
 ### IP-8 — Release hygiene for the change set (P0 to complete)
 
