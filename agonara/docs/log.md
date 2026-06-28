@@ -2,6 +2,11 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 2 review fix: navigation forward reads now apply lifecycle
+  filtering consistently. Withdrawn corpus entities leave the student navigation listing and
+  current navigation detail reads, active navigation relationships are limited to active
+  endpoints, and addressed historical navigation revision reads continue to resolve.
+
 - ADR-022 implementation Phase 1: added the lifecycle status substrate to the six
   accepted-entity tables and `program_sources`. Fresh schemas and existing SQLite databases
   now converge on `status` (`active`/`withdrawn`, default `active`) plus nullable attribution

@@ -1141,6 +1141,74 @@ test("setAcceptedCorpusLifecycleStatus_shouldRejectWithdrawal_onActiveNavigation
   }
 });
 
+test("listProgramNavigation_shouldOmitWithdrawnCurrentEntityAndKeepRevisionReadable_status", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    createIdentity(database, makeIdentity({ id: "identity-student" }));
+    seedCuratorProgram(database, { programId: "program-a" });
+    seedStudentMembership(database, {
+      id: "membership-student",
+      programId: "program-a",
+      identityId: "identity-student",
+    });
+    const topic = acceptNavigationCandidate(commands, {
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Withdrawn topic",
+    });
+
+    const withdrawal = commands.setAcceptedCorpusLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: topic.entityId,
+      status: "withdrawn",
+    });
+
+    assert.deepEqual(
+      {
+        withdrawalStatus: withdrawal.status,
+        listing: commands.listProgramNavigation({
+          actingIdentityId: "identity-student",
+          programId: "program-a",
+        }).value.navigation,
+        detail: commands.getNavigationEntity({
+          actingIdentityId: "identity-student",
+          entityId: topic.entityId,
+        }),
+        historicalRevision: commands.getNavigationRevision({
+          actingIdentityId: "identity-student",
+          revisionId: topic.revisionId,
+        }),
+      },
+      {
+        withdrawalStatus: "accepted",
+        listing: {
+          programId: "program-a",
+          topics: [],
+          ungroupedConcepts: [],
+          ungroupedMaterials: [],
+        },
+        detail: { status: "rejected", reason: "navigation_entity_not_found" },
+        historicalRevision: {
+          status: "accepted",
+          value: {
+            navigationRevision: {
+              entityId: topic.entityId,
+              revisionId: topic.revisionId,
+              programId: "program-a",
+              acceptedKind: "topic",
+              title: "Withdrawn topic",
+              isCurrentRevision: true,
+            },
+          },
+        },
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("createNavigationCandidate_shouldPersistDraftMaterialMetadataAndRelationshipDrafts_onValidInput", async () => {
   const { commands, database } = await makeSUT();
 

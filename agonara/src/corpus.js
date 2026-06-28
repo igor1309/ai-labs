@@ -26,6 +26,7 @@ import {
   getAcceptedAssessmentCriterionRevisionRecord,
   MAX_MATERIAL_CONTENT_BYTES,
   getAcceptedCorpusEntityRecord,
+  getAcceptedCorpusEntityLifecycleStatusRecord,
   getAcceptedCorpusRevisionRecord,
   getAcceptedMaterialContentRecord,
   getProgramSourceRecord,
@@ -1152,11 +1153,15 @@ function listProgramNavigation({ database, getEffectiveParticipation, input }) {
 
   const entities = listAcceptedCorpusEntityRecords(database, {
     programId: authorization.program.id,
+    status: "active",
   });
+  const activeEntityIds = new Set(entities.map($0 => $0.id));
   const currentRevisions = new Map(
     entities.map($0 => [$0.id, getAcceptedCorpusRevisionRecord(database, $0.currentRevisionId)]),
   );
-  const currentRelationshipRevisions = listCurrentNavigationRelationshipRevisions(database, authorization.program.id);
+  const currentRelationshipRevisions = listCurrentNavigationRelationshipRevisions(database, authorization.program.id, {
+    activeEntityIds,
+  });
   const groupedConceptIds = new Set(
     currentRelationshipRevisions
       .filter($0 => $0.relationshipKind === "topic_includes_concept")
@@ -1187,8 +1192,8 @@ function listProgramNavigation({ database, getEffectiveParticipation, input }) {
 }
 
 function getNavigationEntity({ database, getEffectiveParticipation, input }) {
-  const entity = getAcceptedCorpusEntityRecord(database, input?.entityId);
-  if (!entity) {
+  const entity = getAcceptedCorpusEntityLifecycleStatusRecord(database, input?.entityId);
+  if (!entity || entity.status !== "active") {
     return rejected("navigation_entity_not_found");
   }
   const authorization = resolveAcceptedReadAuthorization({
@@ -1200,12 +1205,18 @@ function getNavigationEntity({ database, getEffectiveParticipation, input }) {
     return rejected(authorization.reason);
   }
 
+  const activeEntityIds = new Set(
+    listAcceptedCorpusEntityRecords(database, {
+      programId: entity.programId,
+      status: "active",
+    }).map($0 => $0.id),
+  );
   const revision = getAcceptedCorpusRevisionRecord(database, entity.currentRevisionId);
   return accepted({
     navigationNode: summarizeStudentNavigationNode(
       database,
       revision,
-      listCurrentNavigationRelationshipRevisions(database, entity.programId),
+      listCurrentNavigationRelationshipRevisions(database, entity.programId, { activeEntityIds }),
     ),
   });
 }
@@ -3186,10 +3197,13 @@ function currentNavigationNodeSummaries(database, currentRevisions, matches) {
     }));
 }
 
-function listCurrentNavigationRelationshipRevisions(database, programId) {
-  return listAcceptedNavigationRelationshipRecords(database, { programId })
+function listCurrentNavigationRelationshipRevisions(database, programId, { activeEntityIds = null } = {}) {
+  return listAcceptedNavigationRelationshipRecords(database, { programId, status: "active" })
     .map($0 => getAcceptedNavigationRelationshipRevisionRecord(database, $0.currentRevisionId))
-    .filter($0 => $0 !== null);
+    .filter($0 => $0 !== null)
+    .filter(
+      $0 => activeEntityIds === null || (activeEntityIds.has($0.fromEntityId) && activeEntityIds.has($0.toEntityId)),
+    );
 }
 
 function resolveNavigationRelationshipDraft(database, { candidate, acceptedCorpus, draft }) {
