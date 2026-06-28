@@ -2,6 +2,19 @@
 
 ## 2026-06-28
 
+- Released **agonara v0.4.0** (`agonara_v0.3.0..` delta). Minor, backward-compatible feature
+  release completing the ADR-022 entity-withdrawal lifecycle: an `active ↔ withdrawn` status
+  across the six accepted-entity families and `program_sources`, curator-authorized
+  withdraw/reactivate, withdrawal blocked while active dependents exist (navigation dependents,
+  readiness requirements, criterion dependents, and learner-evidence-bearing open-answer/quick
+  checks — no cascade), read-path filtering that hides withdrawn entities and learner-state
+  targets/relationships from delivery and navigation, two-tier program-source deletion
+  (hard-delete unreferenced, withdraw-only referenced) plus material-content deletion tiers, the
+  per-family status HTTP routes (accepted corpus, quick check, open answer, criterion, readiness,
+  navigation relationship) and source-lifecycle routes, and the learn-UI lifecycle controls
+  (withdraw/reactivate, source-deletion control, withdrawn-item view). Withdrawn status is carried
+  through backup/restore.
+
 - Close ADR-022 with explicit lifecycle acceptance for every entity family, same-status writes,
   inactive dependents, withdrawn backup graphs, and domain/HTTP/browser workflows; align Product
   Intent, the implemented spec, runtime evidence, README, dashboard, and forward-task backlogs.
