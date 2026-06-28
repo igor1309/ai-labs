@@ -13,6 +13,10 @@
   derivation that treats withdrawn corpus entities and their relationships as absent, and
   active-only readiness delivery listings while historical revision reads keep resolving.
 
+- ADR-022 implementation Phase 2 sub-slice: withdrawal of an accepted corpus entity is now
+  blocked with `entity_withdrawal_blocked` when an active navigation relationship references
+  it, preserving the dependent relationship and avoiding cascade mutation.
+
 - Drafted the **accepted-entity withdrawal and source deletion** spec
   (`docs/specs/accepted-entity-withdrawal-and-source-deletion.md`) operationalizing
   [ADR-022](docs/adr/adr-022-accepted-entity-withdrawal-and-source-deletion.md): an

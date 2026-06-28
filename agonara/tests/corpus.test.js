@@ -1087,6 +1087,60 @@ test("setAcceptedCorpusLifecycleStatus_shouldWithdrawAndReactivateEntity_without
   }
 });
 
+test("setAcceptedCorpusLifecycleStatus_shouldRejectWithdrawal_onActiveNavigationRelationship_status", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    const topic = acceptNavigationCandidate(commands, {
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Topic",
+    });
+    const concept = acceptNavigationCandidate(commands, {
+      programId: "program-a",
+      candidateKind: "concept",
+      title: "Concept",
+      relationshipDrafts: [
+        {
+          relationshipKind: "topic_includes_concept",
+          fromEntityId: topic.entityId,
+          toCandidateRef: "self",
+        },
+      ],
+    });
+
+    const result = commands.setAcceptedCorpusLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: concept.entityId,
+      status: "withdrawn",
+    });
+
+    assert.deepEqual(
+      {
+        result,
+        activeCorpusIds: commands
+          .listAcceptedCorpus({
+            actingIdentityId: "identity-curator",
+            programId: "program-a",
+          })
+          .value.acceptedCorpus.map($0 => $0.entityId),
+        relationshipIds: listAcceptedNavigationRelationshipRecords(database, { programId: "program-a" }).map($0 => $0.id),
+      },
+      {
+        result: {
+          status: "rejected",
+          reason: "entity_withdrawal_blocked",
+        },
+        activeCorpusIds: [concept.entityId, topic.entityId],
+        relationshipIds: ["source-6"],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("createNavigationCandidate_shouldPersistDraftMaterialMetadataAndRelationshipDrafts_onValidInput", async () => {
   const { commands, database } = await makeSUT();
 

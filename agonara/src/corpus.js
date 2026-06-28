@@ -989,6 +989,15 @@ function setAcceptedCorpusLifecycleStatus({ database, getEffectiveParticipation,
   if (authorization.status === "rejected") {
     return rejected(authorization.reason);
   }
+  if (
+    input.status === "withdrawn" &&
+    hasActiveNavigationRelationshipDependent(database, {
+      entityId: entity.id,
+      programId: entity.programId,
+    })
+  ) {
+    return rejected("entity_withdrawal_blocked");
+  }
 
   const updated = setAcceptedCorpusEntityLifecycleStatusRecord(database, {
     entityId: entity.id,
@@ -1005,6 +1014,13 @@ function setAcceptedCorpusLifecycleStatus({ database, getEffectiveParticipation,
       updatedAt: updated.updatedAt,
     },
   });
+}
+
+function hasActiveNavigationRelationshipDependent(database, { entityId, programId }) {
+  return listAcceptedNavigationRelationshipRecords(database, {
+    programId,
+    status: "active",
+  }).some($0 => $0.fromEntityId === entityId || $0.toEntityId === entityId);
 }
 
 function listAcceptedCorpus({ database, getEffectiveParticipation, input }) {

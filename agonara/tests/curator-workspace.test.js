@@ -241,7 +241,7 @@ test("inspectCuratorCoverageGaps_shouldReportDeterministicAcceptedCorpusDiagnost
 });
 
 test("inspectCuratorCoverageGaps_shouldTreatWithdrawnEntitiesAsAbsent_status", () => {
-  const { commands, corpusCommands, database } = makeSUT();
+  const { commands, database } = makeSUT();
 
   try {
     const { linkedConcept, linkedTopic } = seedCoverageCorpus(database, { programId: "program-a" });
@@ -252,22 +252,18 @@ test("inspectCuratorCoverageGaps_shouldTreatWithdrawnEntitiesAsAbsent_status", (
       scopeKind: "topic",
       scopeId: linkedTopic.entityId,
     });
-    corpusCommands.setAcceptedCorpusLifecycleStatus({
-      actingIdentityId: "identity-curator",
-      entityId: linkedConcept.entityId,
-      status: "withdrawn",
-    });
+    database
+      .prepare("update accepted_corpus_entities set status = 'withdrawn' where id = ?")
+      .run(linkedConcept.entityId);
     const withdrawn = commands.inspectCuratorCoverageGaps({
       actingIdentityId: "identity-curator",
       programId: "program-a",
       scopeKind: "topic",
       scopeId: linkedTopic.entityId,
     });
-    corpusCommands.setAcceptedCorpusLifecycleStatus({
-      actingIdentityId: "identity-curator",
-      entityId: linkedConcept.entityId,
-      status: "active",
-    });
+    database
+      .prepare("update accepted_corpus_entities set status = 'active' where id = ?")
+      .run(linkedConcept.entityId);
     const reactivated = commands.inspectCuratorCoverageGaps({
       actingIdentityId: "identity-curator",
       programId: "program-a",
