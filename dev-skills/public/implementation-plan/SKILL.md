@@ -146,3 +146,9 @@ If a legacy plan describes per-phase worktrees, branches, or PRs, either:
 
 - rename those units to tasks, or
 - merge them into one task whose phases share one worktree, branch, and PR.
+
+When executing a previously-committed or merged plan, treat its execution lock as
+intent, not as a live target: re-establish `Expected worktree`/`Expected branch`
+against the current session per the `Plan Lifecycle` deferred mode and the
+`process-gates` execution-lock realignment step. A pinned authoring branch that no
+longer exists is replaced, not honored as a blocker.

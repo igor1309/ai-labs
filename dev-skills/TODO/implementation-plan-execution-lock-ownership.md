@@ -39,19 +39,11 @@ before Step 1.
 
 ## Forward tasks
 
-IP-7 reinforces; IP-8 is the release wrapper that gates shipping. These build on the
-declaration-block split, the `set at execution` deferral marker, the stale-pin acceptance
-guards, the `Plan Lifecycle` section (same-session vs deferred modes) and the deferred-lock
-declaration example in `implementation-plan`, and the execution-lock realignment step in the
-`process-gates` Implementation Preflight Gate.
-
-### IP-7 — Reconcile `## Existing Plan Migration` with the new lifecycle rules (P2)
-
-- **Change:** add a clause: when executing a previously-merged plan, treat its execution lock as
-  intent and re-establish it (per the `Plan Lifecycle` deferred mode and the `process-gates`
-  execution-lock realignment step) rather than honoring a dead pin.
-- **DoD:** clause present and consistent with the `Plan Lifecycle` section and the `process-gates`
-  realignment step.
+IP-8 is the release wrapper that gates shipping. It ships the declaration-block split, the
+`set at execution` deferral marker, the stale-pin acceptance guards, the `Plan Lifecycle`
+section (same-session vs deferred modes), the deferred-lock declaration example, and the
+`## Existing Plan Migration` reconciliation in `implementation-plan`, plus the execution-lock
+realignment step in the `process-gates` Implementation Preflight Gate.
 
 ### IP-8 — Release hygiene for the change set (P0 to complete)
 
