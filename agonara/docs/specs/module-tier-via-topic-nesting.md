@@ -62,8 +62,13 @@ passed through by `mapNavigationStorageRejection`:
   `childTopics`). A leaf topic has `childTopics: []`.
 - A nested child topic MUST NOT also appear at the top level of `navigation.topics`.
 - The sibling `ungroupedConcepts` / `ungroupedMaterials` fields are unchanged.
-- The existing per-topic concept/material summaries on each topic node are unchanged and
-  apply at every nesting level.
+- Each topic node's existing summary fields are unchanged (today
+  `currentNavigationNodeSummaries` emits `entityId`, `revisionId`, `acceptedKind`, `title`, and
+  the material signal fields — there are **no** per-topic concept/material child arrays). The
+  only added field is `childTopics`. Concepts and materials remain represented exactly as today
+  (grouped concepts/materials are still filtered out of the `ungrouped*` lists via their
+  `topic_includes_concept` / `topic_uses_material` edges); this ADR does not embed them under
+  topic nodes.
 
 ### Migration
 
@@ -158,12 +163,16 @@ All rules are scoped to **active** relationships unless stated otherwise (use
 
 12. A startup migration MUST widen the `relationship_kind` CHECK on
     `accepted_navigation_relationships` and `accepted_navigation_relationship_revisions` to
-    include `topic_includes_topic`, by rebuilding both tables together with FK enforcement
-    disabled for the rebuild span inside a transaction: recreate every index, preserve every
-    column — including `status`, `status_updated_by_identity_id`, `status_updated_at` — and
-    every row byte-for-byte in meaning, pass `PRAGMA foreign_key_check` before commit, and
-    verify each relationship's `current_revision_id` still resolves to a revision of the same
-    relationship.
+    include `topic_includes_topic` by rebuilding both tables. Because `PRAGMA foreign_keys` is a
+    **no-op inside an open transaction** in SQLite, the FK toggle MUST sit OUTSIDE the
+    transaction, in this exact order: `PRAGMA foreign_keys = OFF` → `BEGIN` → create new-shape
+    tables, copy all rows, drop old, rename new, recreate every index → `PRAGMA foreign_key_check`
+    (must return no rows) → verify each relationship's `current_revision_id` still resolves to a
+    revision of the same relationship → `COMMIT` → `PRAGMA foreign_keys = ON`. The FK pragma MUST
+    NOT be toggled with `database.transaction(...)` (which opens a transaction). The rebuild MUST
+    preserve every column — including `status`, `status_updated_by_identity_id`,
+    `status_updated_at` — and every row's meaning, and recreate every index, including any
+    active-unique navigation index added by ADR-023 (a Dependency-gate prerequisite).
 13. The migration MUST be idempotent: re-running it on an already-widened schema is a no-op,
     and it MUST NOT change the meaning of any existing accepted row or invalidate any existing
     flat program.
@@ -208,8 +217,10 @@ Navigation read (`listProgramNavigation`):
     B does not appear at top level.
 14. Arbitrary depth (A→B→C) nests C under B under A.
 15. Withdrawing A→B returns B to top-level; B no longer appears under A.
-16. A mixed container (A has child B and its own concept) shows both the nested child and the
-    own concept summary.
+16. A mixed container — topic A includes child topic B (`topic_includes_topic`) and is also the
+    `from` of a `topic_includes_concept` edge — appears with `childTopics` containing B, and A's
+    grouped concept is filtered out of `ungroupedConcepts` exactly as today (mixed containment
+    does not disturb the existing concept/material grouping).
 
 Coverage-gap diagnostics (`inspectCuratorCoverageGaps`):
 
@@ -241,6 +252,19 @@ Migration:
 24. The migration is idempotent: running it twice yields the same schema and rows as running it
     once, and a `topic_includes_topic` row inserts successfully afterward.
 
+`relationship_update` path (the second acceptance branch, distinct from new-candidate
+acceptance):
+
+25. A `relationship_update` candidate carrying a valid `topic_includes_topic` draft nests B under
+    A (parity with test 1 on the update path).
+26. A `relationship_update` draft that would give a child a second active parent is rejected
+    `navigation_topic_already_has_parent`.
+27. A `relationship_update` draft to a withdrawn endpoint is rejected
+    `navigation_relationship_endpoint_withdrawn`; one that closes a containment cycle is rejected
+    `navigation_topic_inclusion_cycle`.
+28. A `relationship_update` duplicate of an active `topic_includes_topic` edge is rejected
+    `navigation_relationship_already_accepted` (ADR-023, once present).
+
 ## Done criteria
 
 - The relationship kind, three rejection reasons (enum + OpenAPI), nesting read projection,
@@ -251,6 +275,6 @@ Migration:
 - All enumerated tests pass; `./scripts/run_silent.sh "tests" npm test` and
   `./scripts/run_silent.sh "build" npx tsc --noEmit` are green (Node 22).
 - No existing accepted row changes meaning and every existing flat program reads unchanged
-  (tests 14, 23).
+  (test 23; the read contract for a flat program is also exercised by test 13's top-level case).
 - Each ADR-024 invariant maps to at least one passing test (traceability carried into the
   implementation plan's ADR Traceability Matrix).

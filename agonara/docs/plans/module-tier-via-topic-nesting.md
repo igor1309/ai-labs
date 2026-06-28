@@ -40,11 +40,14 @@ target — it carries the ADR/spec/plan docs and goes dead once this plan merges
 [ADR-023](../adr/adr-023-navigation-relationship-acceptance-uniqueness.md) navigation-relationship
 acceptance uniqueness MUST be implemented before this plan's code lands. ADR-024 composes with —
 does not duplicate — ADR-023's active-uniqueness guard and `navigation_relationship_already_accepted`
-reason. Preflight MUST confirm `navigation_relationship_already_accepted` exists in
-`src/storage.js` / `src/http-contract.js` before starting Phase 2. ADR-022's navigation
-withdrawal/status lifecycle is already implemented (v0.4.0): `accepted_navigation_relationships`
-carries the `status` column and `setAcceptedNavigationRelationshipLifecycleStatus` exists, so the
-`active`-scoped rules are buildable now. Preflight MUST confirm the `status` column is present.
+reason. Preflight MUST confirm, **before starting Phase 1** (Phase 1 is code — the CHECK-widening
+migration must already recreate ADR-023's active-unique navigation index, so ADR-023 cannot land
+after it), that BOTH the `navigation_relationship_already_accepted` reason
+(`src/storage.js` / `src/http-contract.js`) AND ADR-023's active-unique navigation index
+(`src/storage.js`) exist. ADR-022's navigation withdrawal/status lifecycle is already implemented
+(v0.4.0): `accepted_navigation_relationships` carries the `status` column and
+`setAcceptedNavigationRelationshipLifecycleStatus` exists, so the `active`-scoped rules are
+buildable now. Preflight MUST confirm the `status` column is present.
 
 ## Scope guardrails
 
@@ -73,7 +76,10 @@ carries the `status` column and `setAcceptedNavigationRelationshipLifecycleStatu
     `topic_includes_topic` over **active** edges, throwing `navigation_topic_inclusion_cycle`.
   - New asserts in the shared create path (~4297 create site, ~5096) and restore path
     (~6169 `restoreIdentityBackup`): single-parent (`navigation_topic_already_has_parent`) and
-    both-endpoints-active (`navigation_relationship_endpoint_withdrawn`).
+    both-endpoints-active (`navigation_relationship_endpoint_withdrawn`). The active-endpoint
+    check MUST read endpoint lifecycle status via `getAcceptedCorpusEntityLifecycleStatusRecord`
+    (~4150) — `getAcceptedCorpusEntityRecord` (~4092) does NOT select `status`, so using it would
+    silently check nothing.
   - `setAcceptedNavigationRelationshipLifecycleStatusRecord` (~4366): on `withdrawn → active`,
     run the full invariant set inside the same transaction.
 - `src/corpus.js`
@@ -93,8 +99,9 @@ carries the `status` column and `setAcceptedNavigationRelationshipLifecycleStatu
   - `ApiRejectionReason` enum (~1084): add `navigation_topic_already_has_parent`,
     `navigation_topic_inclusion_cycle`, `navigation_relationship_endpoint_withdrawn`.
 - `src/learn-ui.js`
-  - flat navigation consumer (~3079–3083): render `childTopics` recursively (or read the flat
-    index the spec keeps) so nested topics display.
+  - flat navigation consumer `renderNavigationSummary` / `renderNavigationSummaryList` /
+    `navigationNodeButton` (~3341–3377; NOT ~3079, which is `llmSuggestionDraftPreviewText`):
+    render `childTopics` recursively so nested topics display.
 - `docs/api/openapi.yml`: surface the three new reasons in the `ApiRejectionReason` schema.
 - `agonara/skills/agonara-curator-corpus/SKILL.md`: teach the module-as-nesting-topic model.
 
@@ -105,7 +112,7 @@ carries the `status` column and `setAcceptedNavigationRelationshipLifecycleStatu
 - [ ] Phase 3 — Reactivation and restore enforcement
 - [ ] Phase 4 — Navigation read nesting projection and learn-ui consumer
 - [ ] Phase 5 — Coverage-gap container exemption and former-parent re-flag
-- [ ] Phase 6 — HTTP contract and OpenAPI reasons
+- [ ] Phase 6 — HTTP contract finalization (status mapping verification)
 - [ ] Phase 7 — Curator skill, docs/log, traceability, closeout
 
 ## ADR traceability matrix
@@ -113,17 +120,18 @@ carries the `status` column and `setAcceptedNavigationRelationshipLifecycleStatu
 | ADR-024 invariant | Spec rule | Phase | Tests |
 |---|---|---|---|
 | New kind `topic_includes_topic`, both endpoints `topic` | 1–2 | 2 | 1, 2, 3 |
-| Both endpoints active | 3 | 2 (accept), 3 (reactivate/restore) | 8, 22 |
-| Single active parent (tree) | 4 | 2, 3 | 4, 5, 9 |
-| Acyclic, separate from prerequisite graph | 5 | 2, 3 | 6, 7, 10 |
+| Both endpoints active | 3 | 2 (accept), 3 (reactivate/restore) | 8, 22, 27 |
+| Single active parent (tree) | 4 | 2, 3 | 4, 5, 9, 26 |
+| Acyclic, separate from prerequisite graph | 5 | 2, 3 | 6, 7, 10, 27 |
 | Atomic lifecycle transition | 6 | 2, 3 | 12 |
+| `relationship_update` path parity | 1, 4 | 2 | 25, 26, 27, 28 |
 | Restore validates invariants before mutation | 7 | 3 | 21, 22 |
 | Nesting navigation read | 8 | 4 | 13, 14, 15, 16 |
 | Container topics exempt from `topic_without_*` | 9–11 | 5 | 17, 18, 19 |
 | FK-safe CHECK-widening migration, idempotent | 12–13 | 1 | 23, 24 |
-| Compatibility (existing rows/programs unchanged) | 14 | 1, 4 | 14, 23 |
-| Composes with ADR-023 uniqueness | (dependency) | gate + 2 | 11 |
-| Three reasons in enum + OpenAPI | interface | 6 | 20 |
+| Compatibility (existing rows/programs unchanged) | 14 | 1, 4 | 23 |
+| Composes with ADR-023 uniqueness | (dependency) | gate + 2 | 11, 28 |
+| Three reasons in enum + OpenAPI | interface | 2 (add), 6 (verify) | 20 |
 
 ## Product intent traceability
 
@@ -152,18 +160,27 @@ Add the startup migration that rebuilds `accepted_navigation_relationships` and
 
 ## Phase 2 — Relationship kind, endpoint-kind, and accept-time invariants (atomic)
 
+- Step 2.0 — Add the three new reasons (`navigation_topic_already_has_parent`,
+  `navigation_topic_inclusion_cycle`, `navigation_relationship_endpoint_withdrawn`) to the
+  `ApiRejectionReason` enum (`src/http-contract.js`) and `docs/api/openapi.yml` **in this phase,
+  before any code can emit them** — the public contract must list a reason before the runtime can
+  return it (no intermediate commit returns an undeclared reason). Final status-mapping
+  verification is Phase 6.
 - Step 2.1 — Add `"topic_includes_topic"` to `supportedNavigationRelationshipKinds`
   (`src/corpus.js`) and the topic/topic pair to `isValidNavigationRelationshipEndpointPair`
   (`src/storage.js`).
 - Step 2.2 — Add the single-parent guard (`navigation_topic_already_has_parent`) and
-  both-endpoints-active guard (`navigation_relationship_endpoint_withdrawn`) at the shared create
-  path, active-scoped; extend `assertNavigationRelationshipDoesNotCreateCycle` with the
-  containment pass (`navigation_topic_inclusion_cycle`), kept distinct from the prerequisite
-  graph. Ensure all run inside the existing `acceptNavigationCandidate` transaction.
-- Step 2.3 — Tests 1–8, 12 (accept-time): nest accepted; endpoint-kind mismatch; self-reference;
-  second active parent rejected; re-parent after withdrawal allowed; cycle rejected (shallow and
-  deep); graph isolation vs `concept_prerequisite`; withdrawn endpoint rejected; concurrent
-  acceptance does not commit two parents/cycle.
+  both-endpoints-active guard (`navigation_relationship_endpoint_withdrawn`, reading endpoint
+  status via `getAcceptedCorpusEntityLifecycleStatusRecord`) at the shared create path,
+  active-scoped; extend `assertNavigationRelationshipDoesNotCreateCycle` with the containment pass
+  (`navigation_topic_inclusion_cycle`), kept distinct from the prerequisite graph. Ensure all run
+  inside the existing `acceptNavigationCandidate` transaction. This covers both the new-candidate
+  and `relationship_update` acceptance branches.
+- Step 2.3 — Tests 1–8, 12 (accept-time) and 25–28 (`relationship_update` path): nest accepted;
+  endpoint-kind mismatch; self-reference; second active parent rejected; re-parent after
+  withdrawal allowed; cycle rejected (shallow and deep); graph isolation vs `concept_prerequisite`;
+  withdrawn endpoint rejected; concurrent acceptance does not commit two parents/cycle; and the
+  same guards proven on the `relationship_update` branch.
 - Run tests + build; commit `agonara: ADR-024 phase 2 — topic_includes_topic kind and accept-time invariants`.
 
 ## Phase 3 — Reactivation and restore enforcement
@@ -181,7 +198,9 @@ Add the startup migration that rebuilds `accepted_navigation_relationships` and
 - Step 4.1 — `listProgramNavigation`: top-level topics = those with no active
   `topic_includes_topic` parent; nest active child topics recursively under `childTopics`;
   withdrawn edges/topics excluded; `ungroupedConcepts`/`ungroupedMaterials` unchanged.
-- Step 4.2 — Update the `learn-ui.js` consumer (~3079–3083) to render `childTopics` recursively.
+- Step 4.2 — Update the `learn-ui.js` consumer `renderNavigationSummary` /
+  `renderNavigationSummaryList` / `navigationNodeButton` (~3341–3377) to render `childTopics`
+  recursively.
 - Step 4.3 — Tests 13–16.
 - Run tests + build; commit `agonara: ADR-024 phase 4 — nesting navigation read and learn-ui`.
 
@@ -193,14 +212,15 @@ Add the startup migration that rebuilds `accepted_navigation_relationships` and
 - Step 5.2 — Tests 17–19.
 - Run tests + build; commit `agonara: ADR-024 phase 5 — container-aware coverage gaps`.
 
-## Phase 6 — HTTP contract and OpenAPI reasons
+## Phase 6 — HTTP contract finalization (status mapping verification)
 
-- Step 6.1 — Add `navigation_topic_already_has_parent`, `navigation_topic_inclusion_cycle`,
-  `navigation_relationship_endpoint_withdrawn` to the `ApiRejectionReason` enum
-  (`src/http-contract.js`) and to `docs/api/openapi.yml`; confirm each maps to the documented
-  HTTP status.
+The three reasons were added to the enum + OpenAPI in Step 2.0 (before any code could emit
+them). This phase only finalizes and verifies the contract.
+
+- Step 6.1 — Confirm each of the three reasons maps to the documented HTTP status in the request
+  handlers and that the OpenAPI `ApiRejectionReason` schema is complete and example-consistent.
 - Step 6.2 — Test 20.
-- Run tests + build; commit `agonara: ADR-024 phase 6 — HTTP/OpenAPI rejection reasons`.
+- Run tests + build; commit `agonara: ADR-024 phase 6 — HTTP/OpenAPI status mapping verified`.
 
 ## Phase 7 — Curator skill, docs/log, traceability, closeout
 
@@ -214,12 +234,12 @@ Add the startup migration that rebuilds `accepted_navigation_relationships` and
 
 ## Done criteria
 
-- All 24 spec tests pass; `./scripts/run_silent.sh "tests" npm test` and `npx tsc --noEmit` green
-  (Node 22).
-- ADR-023 uniqueness present (dependency gate satisfied); test 11 passes.
+- All 28 spec tests pass; `./scripts/run_silent.sh "tests" npm test` and
+  `./scripts/run_silent.sh "build" npx tsc --noEmit` green (Node 22).
+- ADR-023 uniqueness present (dependency gate satisfied); tests 11 and 28 pass.
 - Every ADR-024 invariant maps to ≥1 passing test (traceability matrix above).
 - No existing accepted row changes meaning; every existing flat program reads unchanged
-  (tests 14, 23).
+  (test 23).
 - Spec and plan moved to their `implemented/` directories; log updated.
 
 ## Final closeout

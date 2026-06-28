@@ -85,7 +85,7 @@ Implementation realities, confirmed in source at v0.4.0:
 - **The navigation read is flat today.** `listProgramNavigation` returns `navigation.topics` as a
   flat list of all topics plus sibling `ungroupedConcepts` / `ungroupedMaterials`; concepts are
   not nested under topics. A nesting projection is a read-contract change. The one confirmed
-  consumer of `navigation.topics` is `learn-ui` (`src/learn-ui.js:3079-3083`), which renders it as
+  consumer of `navigation.topics` is `learn-ui` (`src/learn-ui.js:3341-3377`), which renders it as
   a single flat level.
 - **The kind set lives in `corpus.js`.** Candidate validation checks
   `supportedNavigationRelationshipKinds` (`src/corpus.js:110`); `http-contract.js` has no
@@ -145,7 +145,7 @@ Rejected alternatives:
    contract: `navigation.topics` MUST present top-level topics (no active `topic_includes_topic`
    parent) with each child topic reachable under its parent. The exact shape — child nested only,
    or also in a separately-named flat index — MUST be fixed in the spec; the confirmed consumer
-   `learn-ui` (`src/learn-ui.js:3079-3083`) renders one flat level, so the spec MUST either keep a
+   `learn-ui` (`src/learn-ui.js:3341-3377`) renders one flat level, so the spec MUST either keep a
    flat index or make that consumer render recursively. (Readiness-check `period` scope is
    unaffected: it validates request-supplied `topicEntityIds` regardless of nesting.)
 9. **Gap diagnostics account for container topics.** A topic with active child topics is a
