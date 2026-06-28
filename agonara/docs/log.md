@@ -2,6 +2,12 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 1: added the lifecycle status substrate to the six
+  accepted-entity tables and `program_sources`. Fresh schemas and existing SQLite databases
+  now converge on `status` (`active`/`withdrawn`, default `active`) plus nullable attribution
+  columns; backup export/restore preserves lifecycle status and rejects invalid lifecycle
+  values before mutation.
+
 - Drafted the **accepted-entity withdrawal and source deletion** spec
   (`docs/specs/accepted-entity-withdrawal-and-source-deletion.md`) operationalizing
   [ADR-022](docs/adr/adr-022-accepted-entity-withdrawal-and-source-deletion.md): an

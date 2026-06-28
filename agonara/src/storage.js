@@ -69,6 +69,18 @@ export const MAX_MATERIAL_CONTENT_BYTES = 1048576;
 
 const CONTENT_FORMATS = new Set(["markdown", "plain_text"]);
 
+const lifecycleStatuses = new Set(["active", "withdrawn"]);
+
+const lifecycleTables = [
+  "accepted_assessment_criterion_entities",
+  "accepted_quick_check_entities",
+  "accepted_readiness_check_entities",
+  "accepted_open_answer_check_entities",
+  "accepted_corpus_entities",
+  "accepted_navigation_relationships",
+  "program_sources",
+];
+
 export function openIdentityDatabase(path = ":memory:") {
   const database = new Database(path);
   database.pragma("foreign_keys = ON");
@@ -211,7 +223,10 @@ export function initializeIdentityStorage(database) {
       locator text,
       citation text,
       recorded_by_identity_id text not null references identities(id),
-      recorded_at text not null
+      recorded_at text not null,
+      status text not null default 'active' check (status in ('active','withdrawn')),
+      status_updated_by_identity_id text references identities(id),
+      status_updated_at text
     );
 
     create table if not exists corpus_candidates (
@@ -262,7 +277,10 @@ export function initializeIdentityStorage(database) {
     create table if not exists accepted_assessment_criterion_entities (
       id text primary key,
       program_id text not null references program_shells(id),
-      current_revision_id text not null
+      current_revision_id text not null,
+      status text not null default 'active' check (status in ('active','withdrawn')),
+      status_updated_by_identity_id text references identities(id),
+      status_updated_at text
     );
 
     create table if not exists accepted_assessment_criterion_revisions (
@@ -320,7 +338,10 @@ export function initializeIdentityStorage(database) {
     create table if not exists accepted_quick_check_entities (
       id text primary key,
       program_id text not null references program_shells(id),
-      current_revision_id text not null
+      current_revision_id text not null,
+      status text not null default 'active' check (status in ('active','withdrawn')),
+      status_updated_by_identity_id text references identities(id),
+      status_updated_at text
     );
 
     create table if not exists accepted_quick_check_revisions (
@@ -378,7 +399,10 @@ export function initializeIdentityStorage(database) {
     create table if not exists accepted_readiness_check_entities (
       id text primary key,
       program_id text not null references program_shells(id),
-      current_revision_id text not null
+      current_revision_id text not null,
+      status text not null default 'active' check (status in ('active','withdrawn')),
+      status_updated_by_identity_id text references identities(id),
+      status_updated_at text
     );
 
     create table if not exists accepted_readiness_check_revisions (
@@ -459,7 +483,10 @@ export function initializeIdentityStorage(database) {
     create table if not exists accepted_open_answer_check_entities (
       id text primary key,
       program_id text not null references program_shells(id),
-      current_revision_id text not null
+      current_revision_id text not null,
+      status text not null default 'active' check (status in ('active','withdrawn')),
+      status_updated_by_identity_id text references identities(id),
+      status_updated_at text
     );
 
     create table if not exists accepted_open_answer_check_revisions (
@@ -575,7 +602,10 @@ export function initializeIdentityStorage(database) {
       accepted_kind text not null check (
         accepted_kind in ('topic', 'concept', 'definition', 'principle', 'material_reference')
       ),
-      current_revision_id text not null
+      current_revision_id text not null,
+      status text not null default 'active' check (status in ('active','withdrawn')),
+      status_updated_by_identity_id text references identities(id),
+      status_updated_at text
     );
 
     create table if not exists accepted_corpus_revisions (
@@ -626,7 +656,10 @@ export function initializeIdentityStorage(database) {
       ),
       from_entity_id text not null references accepted_corpus_entities(id),
       to_entity_id text not null references accepted_corpus_entities(id),
-      current_revision_id text not null
+      current_revision_id text not null,
+      status text not null default 'active' check (status in ('active','withdrawn')),
+      status_updated_by_identity_id text references identities(id),
+      status_updated_at text
     );
 
     create table if not exists accepted_navigation_relationship_revisions (
@@ -726,6 +759,31 @@ export function initializeIdentityStorage(database) {
       source_content_provenance_json text
     );
   `);
+  ensureLifecycleColumns(database);
+}
+
+function ensureLifecycleColumns(database) {
+  for (const tableName of lifecycleTables) {
+    const existingColumns = new Set(
+      database.prepare(`pragma table_info(${tableName})`).all().map($0 => $0.name),
+    );
+    if (!existingColumns.has("status")) {
+      database
+        .prepare(
+          `alter table ${tableName}
+           add column status text not null default 'active' check (status in ('active','withdrawn'))`,
+        )
+        .run();
+    }
+    if (!existingColumns.has("status_updated_by_identity_id")) {
+      database
+        .prepare(`alter table ${tableName} add column status_updated_by_identity_id text`)
+        .run();
+    }
+    if (!existingColumns.has("status_updated_at")) {
+      database.prepare(`alter table ${tableName} add column status_updated_at text`).run();
+    }
+  }
 }
 
 export function createIdentity(
@@ -5728,6 +5786,86 @@ function assertOpenAnswerAttemptExists(database, attemptId) {
   }
 }
 
+function listProgramSourceBackupRecords(database) {
+  return database
+    .prepare(
+      `select id, program_id as programId, source_kind as sourceKind, title, locator, citation,
+              recorded_by_identity_id as recordedByIdentityId, recorded_at as recordedAt,
+              status, status_updated_by_identity_id as statusUpdatedByIdentityId,
+              status_updated_at as statusUpdatedAt
+       from program_sources
+       order by recorded_at, id`,
+    )
+    .all();
+}
+
+function listAcceptedCorpusEntityBackupRecords(database) {
+  return database
+    .prepare(
+      `select id, program_id as programId, accepted_kind as acceptedKind,
+              current_revision_id as currentRevisionId, status,
+              status_updated_by_identity_id as statusUpdatedByIdentityId,
+              status_updated_at as statusUpdatedAt
+       from accepted_corpus_entities
+       order by id`,
+    )
+    .all();
+}
+
+function listAcceptedNavigationRelationshipBackupRecords(database) {
+  return database
+    .prepare(
+      `select id,
+              program_id as programId,
+              relationship_kind as relationshipKind,
+              from_entity_id as fromEntityId,
+              to_entity_id as toEntityId,
+              current_revision_id as currentRevisionId,
+              status,
+              status_updated_by_identity_id as statusUpdatedByIdentityId,
+              status_updated_at as statusUpdatedAt
+       from accepted_navigation_relationships
+       order by id`,
+    )
+    .all();
+}
+
+function listAcceptedAssessmentCriterionEntityBackupRecords(database) {
+  return listAcceptedEntityBackupRecords(database, {
+    tableName: "accepted_assessment_criterion_entities",
+  });
+}
+
+function listAcceptedQuickCheckEntityBackupRecords(database) {
+  return listAcceptedEntityBackupRecords(database, {
+    tableName: "accepted_quick_check_entities",
+  });
+}
+
+function listAcceptedReadinessCheckEntityBackupRecords(database) {
+  return listAcceptedEntityBackupRecords(database, {
+    tableName: "accepted_readiness_check_entities",
+  });
+}
+
+function listAcceptedOpenAnswerCheckEntityBackupRecords(database) {
+  return listAcceptedEntityBackupRecords(database, {
+    tableName: "accepted_open_answer_check_entities",
+  });
+}
+
+function listAcceptedEntityBackupRecords(database, { tableName }) {
+  return database
+    .prepare(
+      `select id, program_id as programId, current_revision_id as currentRevisionId, status,
+              status_updated_by_identity_id as statusUpdatedByIdentityId,
+              status_updated_at as statusUpdatedAt
+       from ${tableName}
+       order by id`,
+    )
+    .all();
+}
+
 export function exportIdentityBackup(database) {
   return {
     version: 1,
@@ -5740,31 +5878,31 @@ export function exportIdentityBackup(database) {
     programInvitations: listProgramInvitationRecords(database),
     programEvents: listProgramEventRecords(database),
     programMembershipEvents: listProgramMembershipEventRecords(database),
-    programSources: listProgramSourceRecords(database),
+    programSources: listProgramSourceBackupRecords(database),
     corpusCandidates: listCorpusCandidateRecords(database),
-    acceptedCorpusEntities: listAcceptedCorpusEntityRecords(database),
+    acceptedCorpusEntities: listAcceptedCorpusEntityBackupRecords(database),
     acceptedCorpusRevisions: listAcceptedCorpusRevisionRecords(database),
     sourceContents: listSourceContentRecords(database),
     acceptedMaterialContents: listAcceptedMaterialContentRecords(database),
-    acceptedNavigationRelationships: listAcceptedNavigationRelationshipRecords(database),
+    acceptedNavigationRelationships: listAcceptedNavigationRelationshipBackupRecords(database),
     acceptedNavigationRelationshipRevisions: listAcceptedNavigationRelationshipRevisionRecords(database),
     learnerEvidenceTargetLinks: listLearnerEvidenceTargetLinkRecords(database, { includeDeleted: true }),
     corpusEvents: listCorpusEventRecords(database),
     assessmentCriterionCandidates: listAssessmentCriterionCandidateRecords(database),
-    acceptedAssessmentCriterionEntities: listAcceptedAssessmentCriterionEntityRecords(database),
+    acceptedAssessmentCriterionEntities: listAcceptedAssessmentCriterionEntityBackupRecords(database),
     acceptedAssessmentCriterionRevisions: listAcceptedAssessmentCriterionRevisionRecords(database),
     quickCheckCandidates: listQuickCheckCandidateRecords(database),
-    acceptedQuickCheckEntities: listAcceptedQuickCheckEntityRecords(database),
+    acceptedQuickCheckEntities: listAcceptedQuickCheckEntityBackupRecords(database),
     acceptedQuickCheckRevisions: listAcceptedQuickCheckRevisionRecords(database),
     quickCheckAttempts: listQuickCheckAttemptRecords(database),
     readinessCheckCandidates: listReadinessCheckCandidateRecords(database),
-    acceptedReadinessCheckEntities: listAcceptedReadinessCheckEntityRecords(database),
+    acceptedReadinessCheckEntities: listAcceptedReadinessCheckEntityBackupRecords(database),
     acceptedReadinessCheckRevisions: listAcceptedReadinessCheckRevisionRecords(database),
     readinessCheckAttempts: listReadinessCheckAttemptRecords(database),
     llmCurationSuggestions: listLlmCurationSuggestionRecords(database),
     llmCurationSuggestionGenerations: listLlmCurationSuggestionGenerationRecords(database),
     openAnswerCheckCandidates: listOpenAnswerCheckCandidateRecords(database),
-    acceptedOpenAnswerCheckEntities: listAcceptedOpenAnswerCheckEntityRecords(database),
+    acceptedOpenAnswerCheckEntities: listAcceptedOpenAnswerCheckEntityBackupRecords(database),
     acceptedOpenAnswerCheckRevisions: listAcceptedOpenAnswerCheckRevisionRecords(database),
     openAnswerAttempts: listOpenAnswerAttemptRecords(database),
     openAnswerEvaluations: listOpenAnswerEvaluationRecords(database),
@@ -5787,6 +5925,7 @@ export function restoreIdentityBackup(database, backup) {
     throw new StorageInvariantError("program_curator_missing");
   }
 
+  assertValidLifecycleStatusesInBackup(backup);
   assertValidCorpusGraphInBackup(backup);
   assertValidContentGraphInBackup(backup);
   assertValidNavigationGraphInBackup(backup);
@@ -5944,8 +6083,18 @@ export function restoreIdentityBackup(database, backup) {
     );
     const insertProgramSource = database.prepare(
       `insert into program_sources (
-         id, program_id, source_kind, title, locator, citation, recorded_by_identity_id, recorded_at
-       ) values (?, ?, ?, ?, ?, ?, ?, ?)`,
+         id,
+         program_id,
+         source_kind,
+         title,
+         locator,
+         citation,
+         recorded_by_identity_id,
+         recorded_at,
+         status,
+         status_updated_by_identity_id,
+         status_updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     const insertCorpusCandidate = database.prepare(
       `insert into corpus_candidates (
@@ -5968,8 +6117,14 @@ export function restoreIdentityBackup(database, backup) {
     );
     const insertAcceptedCorpusEntity = database.prepare(
       `insert into accepted_corpus_entities (
-         id, program_id, accepted_kind, current_revision_id
-       ) values (?, ?, ?, ?)`,
+         id,
+         program_id,
+         accepted_kind,
+         current_revision_id,
+         status,
+         status_updated_by_identity_id,
+         status_updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?)`,
     );
     const insertAcceptedCorpusRevision = database.prepare(
       `insert into accepted_corpus_revisions (
@@ -5996,8 +6151,11 @@ export function restoreIdentityBackup(database, backup) {
          relationship_kind,
          from_entity_id,
          to_entity_id,
-         current_revision_id
-       ) values (?, ?, ?, ?, ?, ?)`,
+         current_revision_id,
+         status,
+         status_updated_by_identity_id,
+         status_updated_at
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     const insertAcceptedNavigationRelationshipRevision = database.prepare(
       `insert into accepted_navigation_relationship_revisions (
@@ -6053,8 +6211,8 @@ export function restoreIdentityBackup(database, backup) {
     );
     const insertAcceptedAssessmentCriterionEntity = database.prepare(
       `insert into accepted_assessment_criterion_entities (
-         id, program_id, current_revision_id
-       ) values (?, ?, ?)`,
+         id, program_id, current_revision_id, status, status_updated_by_identity_id, status_updated_at
+       ) values (?, ?, ?, ?, ?, ?)`,
     );
     const insertAcceptedAssessmentCriterionRevision = database.prepare(
       `insert into accepted_assessment_criterion_revisions (
@@ -6092,8 +6250,8 @@ export function restoreIdentityBackup(database, backup) {
     );
     const insertAcceptedQuickCheckEntity = database.prepare(
       `insert into accepted_quick_check_entities (
-         id, program_id, current_revision_id
-       ) values (?, ?, ?)`,
+         id, program_id, current_revision_id, status, status_updated_by_identity_id, status_updated_at
+       ) values (?, ?, ?, ?, ?, ?)`,
     );
     const insertAcceptedQuickCheckRevision = database.prepare(
       `insert into accepted_quick_check_revisions (
@@ -6133,8 +6291,8 @@ export function restoreIdentityBackup(database, backup) {
     );
     const insertAcceptedOpenAnswerCheckEntity = database.prepare(
       `insert into accepted_open_answer_check_entities (
-         id, program_id, current_revision_id
-       ) values (?, ?, ?)`,
+         id, program_id, current_revision_id, status, status_updated_by_identity_id, status_updated_at
+       ) values (?, ?, ?, ?, ?, ?)`,
     );
     const insertAcceptedOpenAnswerCheckRevision = database.prepare(
       `insert into accepted_open_answer_check_revisions (
@@ -6195,8 +6353,8 @@ export function restoreIdentityBackup(database, backup) {
     );
     const insertAcceptedReadinessCheckEntity = database.prepare(
       `insert into accepted_readiness_check_entities (
-         id, program_id, current_revision_id
-       ) values (?, ?, ?)`,
+         id, program_id, current_revision_id, status, status_updated_by_identity_id, status_updated_at
+       ) values (?, ?, ?, ?, ?, ?)`,
     );
     const insertAcceptedReadinessCheckRevision = database.prepare(
       `insert into accepted_readiness_check_revisions (
@@ -6397,6 +6555,9 @@ export function restoreIdentityBackup(database, backup) {
         source.citation ?? null,
         source.recordedByIdentityId,
         source.recordedAt,
+        backupLifecycleStatus(source),
+        source.statusUpdatedByIdentityId ?? null,
+        source.statusUpdatedAt ?? null,
       );
     }
 
@@ -6426,6 +6587,9 @@ export function restoreIdentityBackup(database, backup) {
         entity.programId,
         entity.acceptedKind,
         entity.currentRevisionId,
+        backupLifecycleStatus(entity),
+        entity.statusUpdatedByIdentityId ?? null,
+        entity.statusUpdatedAt ?? null,
       );
     }
 
@@ -6487,6 +6651,9 @@ export function restoreIdentityBackup(database, backup) {
         relationship.fromEntityId,
         relationship.toEntityId,
         relationship.currentRevisionId,
+        backupLifecycleStatus(relationship),
+        relationship.statusUpdatedByIdentityId ?? null,
+        relationship.statusUpdatedAt ?? null,
       );
     }
 
@@ -6558,6 +6725,9 @@ export function restoreIdentityBackup(database, backup) {
         entity.id,
         entity.programId,
         entity.currentRevisionId,
+        backupLifecycleStatus(entity),
+        entity.statusUpdatedByIdentityId ?? null,
+        entity.statusUpdatedAt ?? null,
       );
     }
 
@@ -6606,6 +6776,9 @@ export function restoreIdentityBackup(database, backup) {
         entity.id,
         entity.programId,
         entity.currentRevisionId,
+        backupLifecycleStatus(entity),
+        entity.statusUpdatedByIdentityId ?? null,
+        entity.statusUpdatedAt ?? null,
       );
     }
 
@@ -6656,6 +6829,9 @@ export function restoreIdentityBackup(database, backup) {
         entity.id,
         entity.programId,
         entity.currentRevisionId,
+        backupLifecycleStatus(entity),
+        entity.statusUpdatedByIdentityId ?? null,
+        entity.statusUpdatedAt ?? null,
       );
     }
 
@@ -6733,6 +6909,9 @@ export function restoreIdentityBackup(database, backup) {
         entity.id,
         entity.programId,
         entity.currentRevisionId,
+        backupLifecycleStatus(entity),
+        entity.statusUpdatedByIdentityId ?? null,
+        entity.statusUpdatedAt ?? null,
       );
     }
 
@@ -7477,6 +7656,30 @@ function isValidBackupShape(backup) {
       Array.isArray(backup.adminAuthorities) &&
       Array.isArray(backup.auditEvents),
   );
+}
+
+function assertValidLifecycleStatusesInBackup(backup) {
+  for (const record of backupLifecycleRecords(backup)) {
+    if (!lifecycleStatuses.has(backupLifecycleStatus(record))) {
+      throw new StorageInvariantError("lifecycle_status_invalid");
+    }
+  }
+}
+
+function backupLifecycleRecords(backup) {
+  return [
+    ...(backup.programSources ?? []),
+    ...(backup.acceptedAssessmentCriterionEntities ?? []),
+    ...(backup.acceptedQuickCheckEntities ?? []),
+    ...(backup.acceptedReadinessCheckEntities ?? []),
+    ...(backup.acceptedOpenAnswerCheckEntities ?? []),
+    ...(backup.acceptedCorpusEntities ?? []),
+    ...(backup.acceptedNavigationRelationships ?? []),
+  ];
+}
+
+function backupLifecycleStatus(record) {
+  return record.status ?? "active";
 }
 
 function hasEffectiveAdminInBackup(backup) {

@@ -28,9 +28,11 @@ Push policy: push at closeout
 ## Execution lock
 
 Worktree mode: none
-Expected worktree: not applicable (`Worktree mode: none`; work in the primary checkout at `/home/user/ai-labs`)
-Expected branch: `claude/agonara-adr-22-spec-2zp737`
-Preflight check: [ ] done
+Expected worktree: `/Users/igormalyarov/.codex/worktrees/fd17/ai-labs` (user override, 2026-06-28)
+Expected branch: `codex/adr-22-withdrawal-implementation` (user override, 2026-06-28)
+Preflight check: [x] done — `git worktree list --porcelain` shows this worktree on
+`refs/heads/codex/adr-22-withdrawal-implementation`; `git branch --show-current` returned
+`codex/adr-22-withdrawal-implementation`.
 
 ## Scope guardrails
 
@@ -171,7 +173,7 @@ Targeted commands:
 
 ## Phase tracker
 
-- [ ] Phase 1 — Lifecycle Status Substrate, Migration, and Restore Validation
+- [x] Phase 1 — Lifecycle Status Substrate, Migration, and Restore Validation
 - [ ] Phase 2 — Accepted-Entity Withdraw/Reactivate, Active-Dependent Block, and Read Filtering
 - [ ] Phase 3 — Source Withdrawal and Two-Tier Deletion
 - [ ] Phase 4 — HTTP Lifecycle API and OpenAPI
