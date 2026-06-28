@@ -3170,6 +3170,39 @@ paths:
           $ref: "#/components/responses/Rejected"
         "500":
           $ref: "#/components/responses/Fault"
+  /open-answer-checks/{entityId}/status:
+    put:
+      tags:
+        - corpus
+      operationId: setAcceptedOpenAnswerCheckLifecycleStatus
+      summary: Withdraw or reactivate an accepted open-answer check entity.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/LifecycleStatus"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
   /programs/{programId}/quick-checks:
     get:
       tags:

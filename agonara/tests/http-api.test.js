@@ -4150,6 +4150,97 @@ test("acceptedOpenAnswerChecks_shouldListCurrentAndPreserveCriterionSnapshot_onC
   }
 });
 
+test("openAnswerCheckStatus_shouldRequireCsrfCuratorAndKeepHistoricalRevisionReadable", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(80) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const ordinary = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Ordinary Identity",
+      login: "ordinary-open-answer-status@example.test",
+    });
+    const program = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await program.json()).value.program.programId;
+    const openAnswerCheck = await createAcceptedOpenAnswerCheck(baseUrl, bootstrap, programId, {
+      checkTitle: "Withdrawn open answer check",
+    });
+    const missingCsrf = await fetch(`${baseUrl}/open-answer-checks/${openAnswerCheck.entityId}/status`, {
+      body: JSON.stringify({ status: "withdrawn" }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+      },
+      method: "PUT",
+    });
+    const nonCurator = await updateOpenAnswerCheckStatus(baseUrl, ordinary, openAnswerCheck.entityId, {
+      status: "withdrawn",
+    });
+    const invalid = await updateOpenAnswerCheckStatus(baseUrl, bootstrap, openAnswerCheck.entityId, {
+      status: "retired",
+    });
+    const withdrawn = await updateOpenAnswerCheckStatus(baseUrl, bootstrap, openAnswerCheck.entityId, {
+      status: "withdrawn",
+    });
+    const list = await fetch(`${baseUrl}/programs/${programId}/open-answer-checks`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+    const detail = await fetch(`${baseUrl}/open-answer-checks/revisions/${openAnswerCheck.revisionId}`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        missingCsrf: { body: await missingCsrf.json(), statusCode: missingCsrf.status },
+        nonCurator: { body: await nonCurator.json(), statusCode: nonCurator.status },
+        invalid: { body: await invalid.json(), statusCode: invalid.status },
+        withdrawn: { body: await withdrawn.json(), statusCode: withdrawn.status },
+        list: { body: acceptedOpenAnswerCheckListProjection(await list.json()), statusCode: list.status },
+        detail: { body: acceptedOpenAnswerCheckProjection(await detail.json()), statusCode: detail.status },
+      },
+      {
+        missingCsrf: {
+          body: { status: "rejected", reason: "csrf_required" },
+          statusCode: 403,
+        },
+        nonCurator: {
+          body: { status: "rejected", reason: "admin_or_curator_required" },
+          statusCode: 403,
+        },
+        invalid: {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
+        withdrawn: {
+          body: {
+            status: "accepted",
+            value: {
+              entity: {
+                id: openAnswerCheck.entityId,
+                status: "withdrawn",
+                updatedByIdentityId: "id-1",
+                updatedAt: "2026-05-27T10:00:00.000Z",
+              },
+            },
+          },
+          statusCode: 200,
+        },
+        list: { body: [], statusCode: 200 },
+        detail: {
+          body: {
+            acceptedFromCandidateId: openAnswerCheck.acceptedFromCandidateId,
+            criterionRevisionIds: openAnswerCheck.criterionRevisionIds,
+            programId,
+            title: "Withdrawn open answer check",
+          },
+          statusCode: 200,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("assessmentAcceptance_shouldRejectBlankTargetEntityIds_withValidationFailed", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus();
 
@@ -11572,6 +11663,18 @@ async function updateAcceptedCorpusStatus(baseUrl, session, entityId, body) {
 
 async function updateQuickCheckStatus(baseUrl, session, entityId, body) {
   return fetch(`${baseUrl}/quick-checks/${entityId}/status`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "PUT",
+  });
+}
+
+async function updateOpenAnswerCheckStatus(baseUrl, session, entityId, body) {
+  return fetch(`${baseUrl}/open-answer-checks/${entityId}/status`, {
     body: JSON.stringify(body),
     headers: {
       cookie: session.cookie,

@@ -6165,6 +6165,28 @@ export const routeContracts = [
     ]
   },
   {
+    "method": "PUT",
+    "path": "/open-answer-checks/{entityId}/status",
+    "operationId": "setAcceptedOpenAnswerCheckLifecycleStatus",
+    "handlerKey": "corpus.setAcceptedOpenAnswerCheckLifecycleStatus",
+    "tag": "corpus",
+    "summary": "Withdraw or reactivate an accepted open-answer check entity.",
+    "auth": { "kind": "session", "csrf": true },
+    "requestBody": { "contentType": "application/json", "required": true, "schema": { "ref": "#/components/requestBodies/LifecycleStatus" } },
+    "responses": [
+      { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
+      { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 401, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 403, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 404, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 409, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 500, "envelope": "fault", "schema": { "ref": "#/components/responses/Fault" } }
+    ],
+    "pathParameters": [
+      { "name": "entityId", "schema": { "type": "string", "minLength": 1 }, "required": true }
+    ]
+  },
+  {
     "method": "GET",
     "path": "/programs/{programId}/quick-checks",
     "operationId": "listQuickCheckDeliveries",
