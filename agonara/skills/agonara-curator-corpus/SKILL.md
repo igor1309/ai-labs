@@ -1,7 +1,7 @@
 ---
 name: agonara-curator-corpus
 author: Igor Malyarov
-version: "1.7.0"
+version: "1.7.1"
 description: Assist a human Agonara Program Curator — do the corpus API work on their behalf to assemble program structure, modeling what the curator hands you (a section, an idea, a document to host) into the right corpus shape and asking when the shape is unclear — create a program, propose topics and concepts as corpus candidates, add material references and relationships through navigation candidates, host readable material content for students, keep drafts separate from accepted corpus, explicitly accept or reject candidates, read accepted corpus and revisions, and read corpus events; treat your own drafts and reports as untrusted until the curator verifies each candidate against trusted state, accept per entity rather than in a batch, and declare contamination on any procedural violation. Use when a curator's assistant agent is building or refining the accepted structure of a program. The substrate the other curator skills (assessment, research) attach to.
 trigger: when a curator's assistant agent needs to create a program or move topic/concept/material/navigation content between draft and accepted corpus
 ---
@@ -298,7 +298,13 @@ homes, both curator-owned:
 - **Accepted material content** — the self-contained, immutable copy a **student**
   reads, keyed by the accepted material's revision id:
   - set — `PUT /materials/revisions/{revisionId}/content` with
-    `{ "content", "contentFormat", "sourceContentProvenance"? }`. It is set **once
+    `{ "content", "contentFormat", "sourceContentProvenance"? }`. **The method is
+    `PUT`, never `POST`** — unlike the acceptance steps, hosting content is not a
+    `POST`. A `POST` (or any non-`PUT`) to this path matches no route and comes
+    back as a bare `not_found`, the server's catch-all for an unknown route — that
+    is **not** a content-availability or permission signal and the API is **not**
+    blocking you; resend the exact same request as `PUT` rather than pivoting to
+    another flow. It is set **once
     per revision**; re-setting the same revision is rejected with
     `material_content_already_set`. To publish a correction, accept a new material
     revision (the navigation candidate flow above) and set content on that fresh
@@ -311,7 +317,13 @@ The accepted copy is **decoupled from the source**: editing or deleting source
 content never changes already-accepted material content, and a material exposes a
 `hasContent` signal in navigation so students know a hosted copy exists. Honor
 `rejected` reasons (`content_not_found`, `accepted_revision_not_found`,
-`source_not_found`) instead of retrying unchanged.
+`source_not_found`) instead of retrying unchanged. Keep `content_not_found` and
+`not_found` distinct: `content_not_found` means the route is fine and the
+revision is real but no content is hosted **yet** (set it with `PUT`);
+`accepted_revision_not_found` means the revision id is wrong; a bare `not_found`
+on a content write means the request never reached the content handler — almost
+always wrong method (`POST` instead of `PUT`) or a malformed path — so fix the
+request, never conclude the API is blocking hosted content.
 
 ### Recipe — host a document as a student-readable material
 
