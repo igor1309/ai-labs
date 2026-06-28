@@ -90,6 +90,99 @@ test("corpusAcceptance_shouldBuildAcceptedProgramCorpusFromGroundedCandidate", (
   }
 });
 
+test("lifecycleAcceptance_shouldWithdrawReactivateAndApplySourceDeletionTiers", () => {
+  const { corpusCommands, database, programCommands } = makeSUT();
+
+  try {
+    const program = programCommands.createProgramShell({
+      actingIdentityId: "identity-curator",
+      title: "Cell Biology",
+    }).value.programShell;
+    programCommands.joinSelfJoinProgram({
+      actingIdentityId: "identity-student",
+      programId: program.programId,
+    });
+    const referencedSource = corpusCommands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      sourceKind: "textbook",
+      title: "Referenced source",
+    }).value.programSource;
+    const unreferencedSource = corpusCommands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      sourceKind: "article",
+      title: "Stray source",
+    }).value.programSource;
+    const candidate = corpusCommands.createCorpusCandidate({
+      actingIdentityId: "identity-curator",
+      programId: program.programId,
+      candidateKind: "topic",
+      title: "Cell membranes",
+      sourceIds: [referencedSource.sourceId],
+    }).value.corpusCandidate;
+    const accepted = corpusCommands.acceptCorpusCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: candidate.candidateId,
+    }).value.acceptedCorpus;
+
+    const withdrawn = corpusCommands.setAcceptedCorpusLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: accepted.entityId,
+      status: "withdrawn",
+    });
+    const hiddenFromStudent = corpusCommands.listAcceptedCorpus({
+      actingIdentityId: "identity-student",
+      programId: program.programId,
+    }).value.acceptedCorpus;
+    const historical = corpusCommands.getAcceptedCorpusRevision({
+      actingIdentityId: "identity-student",
+      revisionId: accepted.revisionId,
+    });
+    const reactivated = corpusCommands.setAcceptedCorpusLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: accepted.entityId,
+      status: "active",
+    });
+    const blockedReferencedDelete = corpusCommands.deleteProgramSource({
+      actingIdentityId: "identity-curator",
+      sourceId: referencedSource.sourceId,
+    });
+    const withdrawnSource = corpusCommands.setProgramSourceLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      sourceId: referencedSource.sourceId,
+      status: "withdrawn",
+    });
+    const deletedUnreferencedSource = corpusCommands.deleteProgramSource({
+      actingIdentityId: "identity-curator",
+      sourceId: unreferencedSource.sourceId,
+    });
+
+    assert.deepEqual(
+      {
+        withdrawnStatus: withdrawn.value.entity.status,
+        hiddenFromStudent,
+        historicalSourceIds: historical.value.acceptedCorpus.sourceIds,
+        reactivatedStatus: reactivated.value.entity.status,
+        blockedReferencedDelete,
+        withdrawnSourceStatus: withdrawnSource.value.source.status,
+        deletedUnreferencedSourceId: deletedUnreferencedSource.value.source.id,
+      },
+      {
+        withdrawnStatus: "withdrawn",
+        hiddenFromStudent: [],
+        historicalSourceIds: [referencedSource.sourceId],
+        reactivatedStatus: "active",
+        blockedReferencedDelete: { status: "rejected", reason: "source_hard_delete_blocked" },
+        withdrawnSourceStatus: "withdrawn",
+        deletedUnreferencedSourceId: unreferencedSource.sourceId,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("learnerEvidenceTargetLinkCuration_shouldCreateListAndSoftDeleteAcceptedCorpusMetadata", () => {
   const { corpusCommands, database, programCommands } = makeSUT();
 

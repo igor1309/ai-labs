@@ -2,7 +2,7 @@
 date: 2026-06-28
 model: claude-opus-4-8
 description: "Implementation plan for accepted-entity withdrawal and two-tier source deletion (ADR-022, spec accepted-entity-withdrawal-and-source-deletion)."
-status: planned
+status: implemented
 type: implementation-plan
 ---
 
@@ -10,12 +10,12 @@ type: implementation-plan
 
 ## Goal
 
-Implement [Accepted Entity Withdrawal and Source Deletion](../specs/accepted-entity-withdrawal-and-source-deletion.md)
-under [ADR-022](../adr/adr-022-accepted-entity-withdrawal-and-source-deletion.md) so a
+Implement [Accepted Entity Withdrawal and Source Deletion](../../specs/accepted-entity-withdrawal-and-source-deletion.md)
+under [ADR-022](../../adr/adr-022-accepted-entity-withdrawal-and-source-deletion.md) so a
 `Program Curator` can reversibly withdraw and reactivate every accepted-entity family and
 Program source record, with withdrawn items leaving student delivery and curator coverage while
 all revisions stay addressable, and so unreferenced source records hard-delete while referenced
-ones are withdraw-only — completing the deletion tiers [ADR-021](../adr/adr-021-material-content-storage-and-role-gated-reading.md)
+ones are withdraw-only — completing the deletion tiers [ADR-021](../../adr/adr-021-material-content-storage-and-role-gated-reading.md)
 deferred.
 
 ## Execution mode
@@ -28,9 +28,11 @@ Push policy: push at closeout
 ## Execution lock
 
 Worktree mode: none
-Expected worktree: not applicable (`Worktree mode: none`; work in the primary checkout at `/home/user/ai-labs`)
-Expected branch: `claude/agonara-adr-22-spec-2zp737`
-Preflight check: [ ] done
+Expected worktree: `/Users/igormalyarov/.codex/worktrees/fd17/ai-labs` (user override, 2026-06-28)
+Expected branch: `codex/adr-22-withdrawal-implementation` (user override, 2026-06-28)
+Preflight check: [x] done — `git worktree list --porcelain` shows this worktree on
+`refs/heads/codex/adr-22-withdrawal-implementation`; `git branch --show-current` returned
+`codex/adr-22-withdrawal-implementation`.
 
 ## Scope guardrails
 
@@ -84,17 +86,15 @@ Expected files:
   backfill pass. Also: source-record hard-delete helper; backup export of `status` and
   attribution; restore graph validation (status vocabulary + withdrawn revision/provenance
   resolution before mutation).
-- `agonara/src/curator-workspace.js` — withdraw/reactivate domain commands for quick-check,
-  open-answer-check, assessment-criterion, and readiness-check entities; the active-dependent
-  block resolver (readiness requirements → any targeted entity; open-answer `criterion_revision_ids`
-  → owning criterion entity; active `learner_evidence_target_links`; active navigation
-  relationships); coverage-gap derivation and curator listings filtered on `status = 'active'`;
-  a curator-visible withdrawn surface for reactivation.
-- `agonara/src/corpus.js` — withdraw/reactivate domain commands for `accepted_corpus_entities`
-  and `accepted_navigation_relationships`; source withdraw/reactivate; two-tier source-record
-  deletion (reference check over accepted-corpus `source_ids_json`, hard-delete unreferenced,
-  `source_hard_delete_blocked` for referenced); material-content deletion-tier completion
-  (unevidenced material content hard-deletes with its entity; evidenced retires by withdrawal).
+- `agonara/src/curator-workspace.js` — coverage-gap derivation and curator coverage listings
+  filtered on `status = 'active'`.
+- `agonara/src/corpus.js` — withdraw/reactivate domain commands for every accepted-entity family
+  and source; the active-dependent resolver (readiness requirements, open-answer criterion
+  revisions, learner-evidence target links, and navigation relationships); active curator
+  listings; two-tier source-record deletion (reference check over accepted-corpus
+  `source_ids_json`, hard-delete unreferenced, `source_hard_delete_blocked` for referenced); and
+  material-content deletion tiers (unevidenced content hard-deletes, evidenced content retires
+  through entity withdrawal).
 - `agonara/src/student-workspace.js` — student delivery and listings filtered on
   `status = 'active'`; historical revision reads still resolve withdrawn entities' revisions.
 - `agonara/src/http-contract.js` — per-family `PUT <base>/{entityId}/status` declarations,
@@ -107,11 +107,10 @@ Expected files:
   withdraw/reactivate/delete controls, and a withdrawn-items view for reactivation.
 - `agonara/tests/storage.test.js` — status column/constraint, migration backfill, and
   restore-validation tests.
-- `agonara/tests/curator-workspace.test.js` — withdraw/reactivate, active-dependent block (all
-  reference kinds), no-cascade, and coverage-gap/listing filtering tests.
+- `agonara/tests/curator-workspace.test.js` — coverage-gap filtering tests.
 - `agonara/tests/corpus.test.js`, `agonara/tests/corpus-executable-acceptance.test.js` —
-  corpus/navigation withdrawal, source withdraw/reactivate, two-tier source deletion, and
-  material-content deletion-tier tests.
+  all-family withdrawal/reactivation, active-dependent blocks and no-cascade behavior,
+  source withdraw/reactivate, two-tier source deletion, and material-content deletion-tier tests.
 - `agonara/tests/student-workspace.test.js` — delivery/listing exclusion of withdrawn entities
   and historical-revision resolution tests.
 - `agonara/tests/http-api.test.js`, `agonara/tests/executable-acceptance.test.js` — lifecycle
@@ -119,8 +118,10 @@ Expected files:
 - `agonara/tests/openapi-contract.test.js` — OpenAPI contract coverage for new routes/reasons.
 - `agonara/tests/backup-restore.test.js` — status round-trip and malformed/unresolvable
   withdrawn-graph rejection tests.
-- `agonara/tests/accepted-entity-withdrawal.playwright.js` — browser curator withdraw/reactivate
-  and source-delete workflows.
+- `agonara/tests/quick-check-product-ui.playwright.js`,
+  `agonara/tests/topic-concept-material-navigation.playwright.js` — browser curator
+  withdraw/reactivate, blocked-dependent guidance, source lifecycle/delete, and responsive
+  layout workflows on the established product surfaces.
 - `agonara/playwright.config.js` — reuse existing config unless a strictly additive project
   setting is required.
 - `agonara/docs/specs/accepted-entity-withdrawal-and-source-deletion.md` — update
@@ -164,19 +165,19 @@ Targeted commands:
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "lifecycle delivery" node --test --test-name-pattern "withdraw|status|deliver|listing" agonara/tests/student-workspace.test.js`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "lifecycle http" node --test --test-name-pattern "withdraw|reactivate|status|source" agonara/tests/http-api.test.js agonara/tests/executable-acceptance.test.js agonara/tests/openapi-contract.test.js`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "lifecycle backup restore" node --test --test-name-pattern "status|withdraw" agonara/tests/backup-restore.test.js`
-- `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "lifecycle browser" npx playwright test agonara/tests/accepted-entity-withdrawal.playwright.js --config agonara/playwright.config.js`
+- `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" npx playwright test --config agonara/playwright.config.js agonara/tests/quick-check-product-ui.playwright.js agonara/tests/topic-concept-material-navigation.playwright.js`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`
 - `./scripts/run_silent.sh "build" npx tsc --noEmit`
 - `git diff --check`
 
 ## Phase tracker
 
-- [ ] Phase 1 — Lifecycle Status Substrate, Migration, and Restore Validation
-- [ ] Phase 2 — Accepted-Entity Withdraw/Reactivate, Active-Dependent Block, and Read Filtering
-- [ ] Phase 3 — Source Withdrawal and Two-Tier Deletion
-- [ ] Phase 4 — HTTP Lifecycle API and OpenAPI
-- [ ] Phase 5 — Product UI Withdraw/Reactivate and Source Delete
-- [ ] Phase 6 — Docs, Product Intent, Traceability, Dashboard, Archive
+- [x] Phase 1 — Lifecycle Status Substrate, Migration, and Restore Validation
+- [x] Phase 2 — Accepted-Entity Withdraw/Reactivate, Active-Dependent Block, and Read Filtering
+- [x] Phase 3 — Source Withdrawal and Two-Tier Deletion
+- [x] Phase 4 — HTTP Lifecycle API and OpenAPI
+- [x] Phase 5 — Product UI Withdraw/Reactivate and Source Delete
+- [x] Phase 6 — Docs, Product Intent, Traceability, Dashboard, Archive
 
 Update tracker checkboxes only after the phase's required verification passes and the phase commit is created.
 
@@ -266,10 +267,9 @@ listings, and coverage-gap derivation while keeping historical revisions address
   satisfied coverage gap, restored on reactivation.
 - Add RED delivery tests proving student delivery/listings omit withdrawn entities while a
   historical `…/revisions/{revisionId}` read still resolves a withdrawn entity's revision.
-- Implement the withdraw/reactivate commands and the shared active-dependent reference resolver
-  across `agonara/src/curator-workspace.js` (checks/criteria/readiness, coverage-gaps) and
-  `agonara/src/corpus.js` (corpus entities, navigation relationships), and the delivery/listing
-  filters in `agonara/src/student-workspace.js`.
+- Implement the withdraw/reactivate commands and shared active-dependent reference resolver in
+  `agonara/src/corpus.js`, coverage-gap filtering in `agonara/src/curator-workspace.js`, and
+  delivery/listing filters in `agonara/src/student-workspace.js`.
 
 **Dependencies**: Phase 1 complete.
 

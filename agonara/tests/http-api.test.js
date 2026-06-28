@@ -3022,6 +3022,203 @@ test("quickCheckDeliveries_shouldListAndReturnStudentSafeRevision_onEffectiveStu
   }
 });
 
+test("quickCheckStatus_shouldRequireCsrfCuratorAndKeepHistoricalRevisionReadable", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(80) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const ordinary = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Ordinary Identity",
+      login: "ordinary-quick-status@example.test",
+    });
+    const student = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Student",
+      login: "quick-status-student@example.test",
+    });
+    const program = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await program.json()).value.program.programId;
+    await joinStudentProgram(baseUrl, student, programId);
+    const quickCheck = await createAcceptedQuickCheck(baseUrl, bootstrap, programId, {
+      title: "Withdrawn quick check",
+    });
+    const missingCsrf = await fetch(`${baseUrl}/quick-checks/${quickCheck.entityId}/status`, {
+      body: JSON.stringify({ status: "withdrawn" }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+      },
+      method: "PUT",
+    });
+    const nonCurator = await updateQuickCheckStatus(baseUrl, ordinary, quickCheck.entityId, {
+      status: "withdrawn",
+    });
+    const invalid = await updateQuickCheckStatus(baseUrl, bootstrap, quickCheck.entityId, {
+      status: "retired",
+    });
+    const withdrawn = await updateQuickCheckStatus(baseUrl, bootstrap, quickCheck.entityId, {
+      status: "withdrawn",
+    });
+    const list = await fetch(`${baseUrl}/programs/${programId}/quick-checks`, {
+      headers: { cookie: student.cookie },
+    });
+    const detail = await fetch(`${baseUrl}/quick-checks/revisions/${quickCheck.revisionId}`, {
+      headers: { cookie: student.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        missingCsrf: { body: await missingCsrf.json(), statusCode: missingCsrf.status },
+        nonCurator: { body: await nonCurator.json(), statusCode: nonCurator.status },
+        invalid: { body: await invalid.json(), statusCode: invalid.status },
+        withdrawn: { body: await withdrawn.json(), statusCode: withdrawn.status },
+        list: { body: quickCheckDeliveryListProjection(await list.json()), statusCode: list.status },
+        detail: { body: quickCheckDeliveryProjection(await detail.json()), statusCode: detail.status },
+      },
+      {
+        missingCsrf: {
+          body: { status: "rejected", reason: "csrf_required" },
+          statusCode: 403,
+        },
+        nonCurator: {
+          body: { status: "rejected", reason: "admin_or_curator_required" },
+          statusCode: 403,
+        },
+        invalid: {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
+        withdrawn: {
+          body: {
+            status: "accepted",
+            value: {
+              entity: {
+                id: quickCheck.entityId,
+                status: "withdrawn",
+                updatedByIdentityId: "id-1",
+                updatedAt: "2026-05-27T10:00:00.000Z",
+              },
+            },
+          },
+          statusCode: 200,
+        },
+        list: { body: [], statusCode: 200 },
+        detail: {
+          body: {
+            checkKind: "single_select_quick_check",
+            optionTexts: ["Closed under addition", "Only finite dimension"],
+            programId,
+            prompt: "Which property is required for a vector space?",
+            title: "Withdrawn quick check",
+          },
+          statusCode: 200,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("lifecycleStatusRoutes_shouldSurfaceNotFoundNoopAndBlockedReasons", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(160) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const student = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Student",
+      login: "lifecycle-edge-student@example.test",
+    });
+    const program = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await program.json()).value.program.programId;
+    await joinStudentProgram(baseUrl, student, programId);
+    const quickCheck = await createAcceptedQuickCheck(baseUrl, bootstrap, programId, {
+      title: "Stable quick check",
+    });
+    const topic = await createAcceptedNavigationCandidate(baseUrl, bootstrap, programId, {
+      candidateKind: "topic",
+      title: "Vector spaces",
+    });
+    const concept = await createAcceptedNavigationCandidate(baseUrl, bootstrap, programId, {
+      candidateKind: "concept",
+      relationshipDrafts: [
+        {
+          relationshipKind: "topic_includes_concept",
+          fromEntityId: topic.entityId,
+          toCandidateRef: "self",
+        },
+      ],
+      title: "Basis",
+    });
+
+    const missing = await updateQuickCheckStatus(baseUrl, bootstrap, "entity-missing", {
+      status: "withdrawn",
+    });
+    const noOp = await updateQuickCheckStatus(baseUrl, bootstrap, quickCheck.entityId, {
+      status: "active",
+    });
+    const blocked = await updateAcceptedCorpusStatus(baseUrl, bootstrap, topic.entityId, {
+      status: "withdrawn",
+    });
+    const navigation = await getHttpResponse(baseUrl, `/programs/${programId}/navigation`, student);
+    const detail = await getHttpResponse(baseUrl, `/navigation/entities/${concept.entityId}`, student);
+    const serializedLifecycleResponses = JSON.stringify([
+      await missing.clone().json(),
+      await noOp.clone().json(),
+      await blocked.clone().json(),
+    ]);
+
+    assert.deepEqual(
+      {
+        missing: { body: await missing.json(), statusCode: missing.status },
+        noOp: { body: await noOp.json(), statusCode: noOp.status },
+        blocked: { body: await blocked.json(), statusCode: blocked.status },
+        hasLifecyclePayloadLeak: containsLifecycleStatusPayloadLeak(serializedLifecycleResponses),
+        navigation: navigationSummaryProjection(navigation.body, navigation.statusCode),
+        detail: navigationNodeProjection(detail.body, detail.statusCode),
+      },
+      {
+        missing: {
+          body: { status: "rejected", reason: "accepted_entity_not_found" },
+          statusCode: 404,
+        },
+        noOp: {
+          body: {
+            status: "accepted",
+            value: {
+              entity: {
+                id: quickCheck.entityId,
+                status: "active",
+                updatedByIdentityId: "id-1",
+                updatedAt: "2026-05-27T10:00:00.000Z",
+              },
+            },
+          },
+          statusCode: 200,
+        },
+        blocked: {
+          body: { status: "rejected", reason: "entity_withdrawal_blocked" },
+          statusCode: 409,
+        },
+        hasLifecyclePayloadLeak: false,
+        navigation: {
+          statusCode: 200,
+          topics: ["Vector spaces"],
+          ungroupedConcepts: [],
+          ungroupedMaterials: [],
+        },
+        detail: {
+          incomingKinds: ["topic_includes_concept"],
+          outgoingKinds: [],
+          statusCode: 200,
+          title: "Basis",
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("quickCheckDeliveries_shouldRejectNonStudentsUnknownsAndCursorScopeMismatch", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(60) });
 
@@ -3366,6 +3563,97 @@ test("listAcceptedReadinessChecksForCuration_shouldExposeCuratorListWithEntityAn
         revisionId: acceptedReadiness.revisionId,
         programId: scenario.programId,
         title: "Topic readiness",
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("readinessCheckStatus_shouldRequireCsrfCuratorAndKeepHistoricalRevisionReadable", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramCorpusAndStudentWorkspace({
+    ids: manyIds(180),
+  });
+
+  try {
+    const scenario = await createReadinessHttpScenario(baseUrl);
+    const ordinary = await createIdentitySession(baseUrl, scenario.bootstrap, {
+      displayName: "Ordinary Identity",
+      login: "ordinary-readiness-status@example.test",
+    });
+    const readinessCheck = await createAcceptedReadinessCheck(
+      baseUrl,
+      scenario.curator,
+      scenario.programId,
+      scenario.topic.entityId,
+      { title: "Withdrawn readiness" },
+    );
+    const missingCsrf = await fetch(`${baseUrl}/readiness-checks/${readinessCheck.entityId}/status`, {
+      body: JSON.stringify({ status: "withdrawn" }),
+      headers: {
+        cookie: scenario.curator.cookie,
+        "content-type": "application/json",
+      },
+      method: "PUT",
+    });
+    const nonCurator = await updateReadinessCheckStatus(baseUrl, ordinary, readinessCheck.entityId, {
+      status: "withdrawn",
+    });
+    const invalid = await updateReadinessCheckStatus(baseUrl, scenario.curator, readinessCheck.entityId, {
+      status: "retired",
+    });
+    const withdrawn = await updateReadinessCheckStatus(baseUrl, scenario.curator, readinessCheck.entityId, {
+      status: "withdrawn",
+    });
+    const list = await fetch(`${baseUrl}/programs/${scenario.programId}/readiness-checks/curation`, {
+      headers: { cookie: scenario.curator.cookie },
+    });
+    const detail = await fetch(`${baseUrl}/readiness-checks/revisions/${readinessCheck.revisionId}/curation`, {
+      headers: { cookie: scenario.curator.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        missingCsrf: { body: await missingCsrf.json(), statusCode: missingCsrf.status },
+        nonCurator: { body: await nonCurator.json(), statusCode: nonCurator.status },
+        invalid: { body: await invalid.json(), statusCode: invalid.status },
+        withdrawn: { body: await withdrawn.json(), statusCode: withdrawn.status },
+        list: readinessCurationListProjection(await list.json(), list.status),
+        detail: readinessCurationProjection(await detail.json(), detail.status),
+      },
+      {
+        missingCsrf: {
+          body: { status: "rejected", reason: "csrf_required" },
+          statusCode: 403,
+        },
+        nonCurator: {
+          body: { status: "rejected", reason: "admin_or_curator_required" },
+          statusCode: 403,
+        },
+        invalid: {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
+        withdrawn: {
+          body: {
+            status: "accepted",
+            value: {
+              entity: {
+                id: readinessCheck.entityId,
+                status: "withdrawn",
+                updatedByIdentityId: scenario.curator.identityId,
+                updatedAt: "2026-05-27T10:00:00.000Z",
+              },
+            },
+          },
+          statusCode: 200,
+        },
+        list: { statusCode: 200, titles: [] },
+        detail: {
+          requirementTargets: [["topic", scenario.topic.entityId, "on_track"]],
+          statusCode: 200,
+          title: "Withdrawn readiness",
+        },
       },
     );
   } finally {
@@ -3832,6 +4120,97 @@ test("acceptedAssessmentCriteria_shouldListCurrentAndReturnHistoricalRevision_on
   }
 });
 
+test("assessmentCriterionStatus_shouldRequireCsrfCuratorAndKeepHistoricalRevisionReadable", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(60) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const ordinary = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Ordinary Identity",
+      login: "ordinary-criterion-status@example.test",
+    });
+    const program = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await program.json()).value.program.programId;
+    const criterion = await createAcceptedAssessmentCriterion(baseUrl, bootstrap, programId, {
+      title: "Withdrawn criterion",
+    });
+    const missingCsrf = await fetch(`${baseUrl}/assessment-criteria/${criterion.entityId}/status`, {
+      body: JSON.stringify({ status: "withdrawn" }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+      },
+      method: "PUT",
+    });
+    const nonCurator = await updateAssessmentCriterionStatus(baseUrl, ordinary, criterion.entityId, {
+      status: "withdrawn",
+    });
+    const invalid = await updateAssessmentCriterionStatus(baseUrl, bootstrap, criterion.entityId, {
+      status: "retired",
+    });
+    const withdrawn = await updateAssessmentCriterionStatus(baseUrl, bootstrap, criterion.entityId, {
+      status: "withdrawn",
+    });
+    const list = await fetch(`${baseUrl}/programs/${programId}/assessment-criteria`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+    const detail = await fetch(`${baseUrl}/assessment-criteria/revisions/${criterion.revisionId}`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        missingCsrf: { body: await missingCsrf.json(), statusCode: missingCsrf.status },
+        nonCurator: { body: await nonCurator.json(), statusCode: nonCurator.status },
+        invalid: { body: await invalid.json(), statusCode: invalid.status },
+        withdrawn: { body: await withdrawn.json(), statusCode: withdrawn.status },
+        list: { body: acceptedAssessmentCriterionListProjection(await list.json()), statusCode: list.status },
+        detail: { body: acceptedAssessmentCriterionProjection(await detail.json()), statusCode: detail.status },
+      },
+      {
+        missingCsrf: {
+          body: { status: "rejected", reason: "csrf_required" },
+          statusCode: 403,
+        },
+        nonCurator: {
+          body: { status: "rejected", reason: "admin_or_curator_required" },
+          statusCode: 403,
+        },
+        invalid: {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
+        withdrawn: {
+          body: {
+            status: "accepted",
+            value: {
+              entity: {
+                id: criterion.entityId,
+                status: "withdrawn",
+                updatedByIdentityId: "id-1",
+                updatedAt: "2026-05-27T10:00:00.000Z",
+              },
+            },
+          },
+          statusCode: 200,
+        },
+        list: { body: [], statusCode: 200 },
+        detail: {
+          body: {
+            acceptedFromCandidateId: criterion.acceptedFromCandidateId,
+            programId,
+            sourceIds: [],
+            title: "Withdrawn criterion",
+          },
+          statusCode: 200,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("openAnswerCheckCandidates_shouldCreateAndListDraftCandidate_onAcceptedCriterion", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(60) });
 
@@ -4046,6 +4425,97 @@ test("acceptedOpenAnswerChecks_shouldListCurrentAndPreserveCriterionSnapshot_onC
         historicalStatusCode: 200,
         listed: ["Closure check"],
         listedStatusCode: 200,
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("openAnswerCheckStatus_shouldRequireCsrfCuratorAndKeepHistoricalRevisionReadable", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(80) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const ordinary = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Ordinary Identity",
+      login: "ordinary-open-answer-status@example.test",
+    });
+    const program = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await program.json()).value.program.programId;
+    const openAnswerCheck = await createAcceptedOpenAnswerCheck(baseUrl, bootstrap, programId, {
+      checkTitle: "Withdrawn open answer check",
+    });
+    const missingCsrf = await fetch(`${baseUrl}/open-answer-checks/${openAnswerCheck.entityId}/status`, {
+      body: JSON.stringify({ status: "withdrawn" }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+      },
+      method: "PUT",
+    });
+    const nonCurator = await updateOpenAnswerCheckStatus(baseUrl, ordinary, openAnswerCheck.entityId, {
+      status: "withdrawn",
+    });
+    const invalid = await updateOpenAnswerCheckStatus(baseUrl, bootstrap, openAnswerCheck.entityId, {
+      status: "retired",
+    });
+    const withdrawn = await updateOpenAnswerCheckStatus(baseUrl, bootstrap, openAnswerCheck.entityId, {
+      status: "withdrawn",
+    });
+    const list = await fetch(`${baseUrl}/programs/${programId}/open-answer-checks`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+    const detail = await fetch(`${baseUrl}/open-answer-checks/revisions/${openAnswerCheck.revisionId}`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        missingCsrf: { body: await missingCsrf.json(), statusCode: missingCsrf.status },
+        nonCurator: { body: await nonCurator.json(), statusCode: nonCurator.status },
+        invalid: { body: await invalid.json(), statusCode: invalid.status },
+        withdrawn: { body: await withdrawn.json(), statusCode: withdrawn.status },
+        list: { body: acceptedOpenAnswerCheckListProjection(await list.json()), statusCode: list.status },
+        detail: { body: acceptedOpenAnswerCheckProjection(await detail.json()), statusCode: detail.status },
+      },
+      {
+        missingCsrf: {
+          body: { status: "rejected", reason: "csrf_required" },
+          statusCode: 403,
+        },
+        nonCurator: {
+          body: { status: "rejected", reason: "admin_or_curator_required" },
+          statusCode: 403,
+        },
+        invalid: {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
+        withdrawn: {
+          body: {
+            status: "accepted",
+            value: {
+              entity: {
+                id: openAnswerCheck.entityId,
+                status: "withdrawn",
+                updatedByIdentityId: "id-1",
+                updatedAt: "2026-05-27T10:00:00.000Z",
+              },
+            },
+          },
+          statusCode: 200,
+        },
+        list: { body: [], statusCode: 200 },
+        detail: {
+          body: {
+            acceptedFromCandidateId: openAnswerCheck.acceptedFromCandidateId,
+            criterionRevisionIds: openAnswerCheck.criterionRevisionIds,
+            programId,
+            title: "Withdrawn open answer check",
+          },
+          statusCode: 200,
+        },
       },
     );
   } finally {
@@ -5057,6 +5527,151 @@ test("corpusSourcesCreate_shouldRejectInvalidSourceFields_withValidationFailed",
         body: { status: "rejected", reason: "validation_failed" },
         statusCode: 400,
       })),
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("corpusSourceStatus_shouldRequireCsrfCuratorAndHideWithdrawnSources", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(40) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const ordinary = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Ordinary Identity",
+      login: "ordinary-source-status@example.test",
+    });
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const createdSource = await createProgramSource(baseUrl, bootstrap, programId, {
+      sourceKind: "textbook",
+      title: "Program source",
+    });
+    const sourceId = (await createdSource.json()).value.programSource.sourceId;
+    const missingCsrf = await fetch(`${baseUrl}/sources/${sourceId}/status`, {
+      body: JSON.stringify({ status: "withdrawn" }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+      },
+      method: "PUT",
+    });
+    const nonCurator = await updateProgramSourceStatus(baseUrl, ordinary, sourceId, {
+      status: "withdrawn",
+    });
+    const invalid = await updateProgramSourceStatus(baseUrl, bootstrap, sourceId, {
+      status: "retired",
+    });
+    const withdrawn = await updateProgramSourceStatus(baseUrl, bootstrap, sourceId, {
+      status: "withdrawn",
+    });
+    const listed = await fetch(`${baseUrl}/programs/${programId}/sources`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        missingCsrf: { body: await missingCsrf.json(), statusCode: missingCsrf.status },
+        nonCurator: { body: await nonCurator.json(), statusCode: nonCurator.status },
+        invalid: { body: await invalid.json(), statusCode: invalid.status },
+        withdrawn: { body: await withdrawn.json(), statusCode: withdrawn.status },
+        listed: { body: await listed.json(), statusCode: listed.status },
+      },
+      {
+        missingCsrf: {
+          body: { status: "rejected", reason: "csrf_required" },
+          statusCode: 403,
+        },
+        nonCurator: {
+          body: { status: "rejected", reason: "admin_or_curator_required" },
+          statusCode: 403,
+        },
+        invalid: {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
+        withdrawn: {
+          body: {
+            status: "accepted",
+            value: {
+              source: {
+                id: sourceId,
+                status: "withdrawn",
+                updatedByIdentityId: "id-1",
+                updatedAt: "2026-05-27T10:00:00.000Z",
+              },
+            },
+          },
+          statusCode: 200,
+        },
+        listed: {
+          body: {
+            status: "accepted",
+            value: {
+              programSources: [],
+            },
+          },
+          statusCode: 200,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("corpusSourceDelete_shouldHardDeleteUnreferencedAndRejectReferencedSource", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(80) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const unreferencedSource = await createProgramSource(baseUrl, bootstrap, programId, {
+      sourceKind: "article",
+      title: "Unreferenced source",
+    });
+    const unreferencedSourceId = (await unreferencedSource.json()).value.programSource.sourceId;
+    const referencedSource = await createProgramSource(baseUrl, bootstrap, programId, {
+      sourceKind: "article",
+      title: "Referenced source",
+    });
+    const referencedSourceId = (await referencedSource.json()).value.programSource.sourceId;
+    const candidate = await createCorpusCandidate(baseUrl, bootstrap, programId, {
+      body: "Referenced body",
+      candidateKind: "topic",
+      sourceIds: [referencedSourceId],
+      title: "Referenced topic",
+    });
+    const candidateId = (await candidate.json()).value.corpusCandidate.candidateId;
+    await acceptCorpusCandidate(baseUrl, bootstrap, candidateId, {});
+
+    const deleted = await deleteProgramSource(baseUrl, bootstrap, unreferencedSourceId);
+    const blocked = await deleteProgramSource(baseUrl, bootstrap, referencedSourceId);
+
+    assert.deepEqual(
+      {
+        deleted: { body: await deleted.json(), statusCode: deleted.status },
+        blocked: { body: await blocked.json(), statusCode: blocked.status },
+      },
+      {
+        deleted: {
+          body: {
+            status: "accepted",
+            value: {
+              source: {
+                id: unreferencedSourceId,
+              },
+            },
+          },
+          statusCode: 200,
+        },
+        blocked: {
+          body: { status: "rejected", reason: "source_hard_delete_blocked" },
+          statusCode: 409,
+        },
+      },
     );
   } finally {
     await close();
@@ -6529,6 +7144,94 @@ test("acceptedCorpusList_shouldReturnCurrentScopedFilteredAndPaginatedAcceptedCo
   }
 });
 
+test("acceptedCorpusStatus_shouldRequireCsrfCuratorAndKeepHistoricalRevisionReadable", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(80) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const ordinary = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Ordinary Identity",
+      login: "ordinary-corpus-status@example.test",
+    });
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const acceptedCorpus = await createAcceptedCandidate(baseUrl, bootstrap, programId, {
+      candidateKind: "topic",
+      title: "Withdrawn topic",
+    });
+    const missingCsrf = await fetch(`${baseUrl}/corpus/${acceptedCorpus.entityId}/status`, {
+      body: JSON.stringify({ status: "withdrawn" }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+      },
+      method: "PUT",
+    });
+    const nonCurator = await updateAcceptedCorpusStatus(baseUrl, ordinary, acceptedCorpus.entityId, {
+      status: "withdrawn",
+    });
+    const invalid = await updateAcceptedCorpusStatus(baseUrl, bootstrap, acceptedCorpus.entityId, {
+      status: "retired",
+    });
+    const withdrawn = await updateAcceptedCorpusStatus(baseUrl, bootstrap, acceptedCorpus.entityId, {
+      status: "withdrawn",
+    });
+    const listed = await fetch(`${baseUrl}/programs/${programId}/accepted-corpus`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+    const historical = await fetch(`${baseUrl}/accepted-corpus-revisions/${acceptedCorpus.revisionId}`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        missingCsrf: { body: await missingCsrf.json(), statusCode: missingCsrf.status },
+        nonCurator: { body: await nonCurator.json(), statusCode: nonCurator.status },
+        invalid: { body: await invalid.json(), statusCode: invalid.status },
+        withdrawn: { body: await withdrawn.json(), statusCode: withdrawn.status },
+        listed: acceptedCorpusListProjection(await listed.json(), listed.status),
+        historical: acceptedCorpusRevisionProjection(await historical.json(), historical.status),
+      },
+      {
+        missingCsrf: {
+          body: { status: "rejected", reason: "csrf_required" },
+          statusCode: 403,
+        },
+        nonCurator: {
+          body: { status: "rejected", reason: "admin_or_curator_required" },
+          statusCode: 403,
+        },
+        invalid: {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
+        withdrawn: {
+          body: {
+            status: "accepted",
+            value: {
+              entity: {
+                id: acceptedCorpus.entityId,
+                status: "withdrawn",
+                updatedByIdentityId: "id-1",
+                updatedAt: "2026-05-27T10:00:00.000Z",
+              },
+            },
+          },
+          statusCode: 200,
+        },
+        listed: { statusCode: 200, titles: [] },
+        historical: {
+          statusCode: 200,
+          title: "Withdrawn topic",
+          revisionId: acceptedCorpus.revisionId,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("acceptedCorpusList_shouldDefaultLimitAndRejectInvalidQueries", async () => {
   const acceptedCorpus = Array.from({ length: 51 }, (_, index) => ({
     entityId: `entity-${index + 1}`,
@@ -6863,6 +7566,119 @@ test("navigationReadsHttp_shouldReturnStudentSafeGraphAndHistoricalRevision_onAc
           topics: ["Vector spaces current"],
           ungroupedConcepts: [],
           ungroupedMaterials: [],
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("navigationRelationshipStatus_shouldRequireCsrfCuratorAndLeaveActiveGraphReads", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
+    ids: manyIds(120),
+  });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const ordinary = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Ordinary Identity",
+      login: "ordinary-navigation-relationship-status@example.test",
+    });
+    const student = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Program Student",
+      login: "navigation-relationship-status-student@example.test",
+    });
+    const program = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await program.json()).value.program.programId;
+    await joinStudentProgram(baseUrl, student, programId);
+    const topic = await createAcceptedNavigationCandidate(baseUrl, bootstrap, programId, {
+      candidateKind: "topic",
+      title: "Vector spaces",
+    });
+    const conceptCandidate = await createNavigationCandidate(baseUrl, bootstrap, programId, {
+      candidateKind: "concept",
+      relationshipDrafts: [
+        {
+          relationshipKind: "topic_includes_concept",
+          fromEntityId: topic.entityId,
+          toCandidateRef: "self",
+        },
+      ],
+      title: "Basis",
+    });
+    const conceptCandidateId = (await conceptCandidate.json()).value.navigationCandidate.candidateId;
+    const acceptedConcept = await acceptNavigationCandidate(baseUrl, bootstrap, conceptCandidateId, {});
+    const navigationChange = (await acceptedConcept.json()).value.navigationChange;
+    const concept = navigationChange.acceptedCorpus;
+    const relationship = navigationChange.acceptedRelationships[0];
+    const missingCsrf = await fetch(`${baseUrl}/navigation-relationships/${relationship.relationshipId}/status`, {
+      body: JSON.stringify({ status: "withdrawn" }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+      },
+      method: "PUT",
+    });
+    const nonCurator = await updateNavigationRelationshipStatus(baseUrl, ordinary, relationship.relationshipId, {
+      status: "withdrawn",
+    });
+    const invalid = await updateNavigationRelationshipStatus(baseUrl, bootstrap, relationship.relationshipId, {
+      status: "retired",
+    });
+    const withdrawn = await updateNavigationRelationshipStatus(baseUrl, bootstrap, relationship.relationshipId, {
+      status: "withdrawn",
+    });
+    const navigation = await getHttpResponse(baseUrl, `/programs/${programId}/navigation`, student);
+    const detail = await getHttpResponse(baseUrl, `/navigation/entities/${concept.entityId}`, student);
+
+    assert.deepEqual(
+      {
+        missingCsrf: { body: await missingCsrf.json(), statusCode: missingCsrf.status },
+        nonCurator: { body: await nonCurator.json(), statusCode: nonCurator.status },
+        invalid: { body: await invalid.json(), statusCode: invalid.status },
+        withdrawn: { body: await withdrawn.json(), statusCode: withdrawn.status },
+        navigation: navigationSummaryProjection(navigation.body, navigation.statusCode),
+        detail: navigationNodeProjection(detail.body, detail.statusCode),
+      },
+      {
+        missingCsrf: {
+          body: { status: "rejected", reason: "csrf_required" },
+          statusCode: 403,
+        },
+        nonCurator: {
+          body: { status: "rejected", reason: "admin_or_curator_required" },
+          statusCode: 403,
+        },
+        invalid: {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
+        withdrawn: {
+          body: {
+            status: "accepted",
+            value: {
+              entity: {
+                id: relationship.relationshipId,
+                status: "withdrawn",
+                updatedByIdentityId: "id-1",
+                updatedAt: "2026-05-27T10:00:00.000Z",
+              },
+            },
+          },
+          statusCode: 200,
+        },
+        navigation: {
+          statusCode: 200,
+          topics: ["Vector spaces"],
+          ungroupedConcepts: ["Basis"],
+          ungroupedMaterials: [],
+        },
+        detail: {
+          incomingKinds: [],
+          outgoingKinds: [],
+          statusCode: 200,
+          title: "Basis",
         },
       },
     );
@@ -11206,6 +12022,100 @@ async function createProgramSource(baseUrl, session, programId, body) {
   });
 }
 
+async function updateProgramSourceStatus(baseUrl, session, sourceId, body) {
+  return fetch(`${baseUrl}/sources/${sourceId}/status`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "PUT",
+  });
+}
+
+async function deleteProgramSource(baseUrl, session, sourceId) {
+  return fetch(`${baseUrl}/sources/${sourceId}`, {
+    headers: {
+      cookie: session.cookie,
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "DELETE",
+  });
+}
+
+async function updateAcceptedCorpusStatus(baseUrl, session, entityId, body) {
+  return fetch(`${baseUrl}/corpus/${entityId}/status`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "PUT",
+  });
+}
+
+async function updateNavigationRelationshipStatus(baseUrl, session, relationshipId, body) {
+  return fetch(`${baseUrl}/navigation-relationships/${relationshipId}/status`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "PUT",
+  });
+}
+
+async function updateAssessmentCriterionStatus(baseUrl, session, entityId, body) {
+  return fetch(`${baseUrl}/assessment-criteria/${entityId}/status`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "PUT",
+  });
+}
+
+async function updateQuickCheckStatus(baseUrl, session, entityId, body) {
+  return fetch(`${baseUrl}/quick-checks/${entityId}/status`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "PUT",
+  });
+}
+
+async function updateOpenAnswerCheckStatus(baseUrl, session, entityId, body) {
+  return fetch(`${baseUrl}/open-answer-checks/${entityId}/status`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "PUT",
+  });
+}
+
+async function updateReadinessCheckStatus(baseUrl, session, entityId, body) {
+  return fetch(`${baseUrl}/readiness-checks/${entityId}/status`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "PUT",
+  });
+}
+
 async function createCorpusCandidate(baseUrl, session, programId, body) {
   return fetch(`${baseUrl}/programs/${programId}/corpus-candidates`, {
     body: JSON.stringify(body),
@@ -11372,6 +12282,27 @@ async function rejectReadinessCheckCandidate(baseUrl, session, candidateId, body
     },
     method: "POST",
   });
+}
+
+async function createAcceptedReadinessCheck(
+  baseUrl,
+  session,
+  programId,
+  topicEntityId,
+  { title = "Topic readiness" } = {},
+) {
+  const created = await createReadinessCheckCandidate(baseUrl, session, programId, {
+    requirements: [{
+      requiredLevel: "on_track",
+      targetId: topicEntityId,
+      targetKind: "topic",
+    }],
+    scope: { scopeKind: "topic", topicEntityId },
+    title,
+  });
+  const candidateId = (await created.json()).value.readinessCheckCandidate.candidateId;
+  const accepted = await acceptReadinessCheckCandidate(baseUrl, session, candidateId, {});
+  return (await accepted.json()).value.acceptedReadinessCheck;
 }
 
 async function createAcceptedCandidate(baseUrl, session, programId, body) {
@@ -11741,6 +12672,21 @@ async function createLearnerStateTargetLink(baseUrl, session, programId, body) {
   });
 }
 
+async function createAcceptedAssessmentCriterion(
+  baseUrl,
+  session,
+  programId,
+  { body = "Explain closure under addition.", title = "Vector-space closure" } = {},
+) {
+  const candidate = await createAssessmentCriterionCandidate(baseUrl, session, programId, {
+    body,
+    title,
+  });
+  const candidateId = (await candidate.json()).value.assessmentCriterionCandidate.candidateId;
+  const acceptedCriterion = await acceptAssessmentCriterionCandidate(baseUrl, session, candidateId, {});
+  return (await acceptedCriterion.json()).value.acceptedAssessmentCriterion;
+}
+
 async function createAcceptedOpenAnswerCheck(
   baseUrl,
   session,
@@ -11956,6 +12902,13 @@ function readinessCurationProjection(body, statusCode) {
     ]),
     statusCode,
     title: readinessCheck?.title,
+  };
+}
+
+function readinessCurationListProjection(body, statusCode) {
+  return {
+    statusCode,
+    titles: body.value?.acceptedReadinessChecks?.map($0 => $0.title) ?? [],
   };
 }
 
@@ -12730,6 +13683,10 @@ function acceptedAssessmentCriterionProjection(body) {
   };
 }
 
+function acceptedAssessmentCriterionListProjection(body) {
+  return body.value?.acceptedAssessmentCriteria?.map($0 => $0.title) ?? [];
+}
+
 function openAnswerCheckCandidateProjection(body) {
   const candidate = body.value?.openAnswerCheckCandidate;
   return {
@@ -12814,6 +13771,22 @@ function containsQuickCheckStudentDeliveryLeaks(serialized) {
     "rationale",
     "correct",
     "idempotency",
+  ].some($0 => serialized.includes($0));
+}
+
+function containsLifecycleStatusPayloadLeak(serialized) {
+  return [
+    "acceptedFromCandidateId",
+    "answerKey",
+    "body",
+    "criterionRevisionIds",
+    "locator",
+    "options",
+    "prompt",
+    "relationshipKind",
+    "requirements",
+    "rationale",
+    "sourceIds",
   ].some($0 => serialized.includes($0));
 }
 

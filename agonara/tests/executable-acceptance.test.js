@@ -611,6 +611,41 @@ test("acceptance_shouldExerciseCorpusApi_onHttpInstance", async () => {
       const historicalRevision = await getJson(`${baseUrl}/accepted-corpus-revisions/${historicalRevisionId}`, {
         cookie: student.cookie,
       });
+      const withdrawn = await putJson(
+        `${baseUrl}/corpus/${entityId}/status`,
+        { status: "withdrawn" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const withdrawnCorpus = await getJson(`${baseUrl}/programs/${programId}/accepted-corpus`, {
+        cookie: student.cookie,
+      });
+      const withdrawnHistoricalRevision = await getJson(
+        `${baseUrl}/accepted-corpus-revisions/${historicalRevisionId}`,
+        { cookie: student.cookie },
+      );
+      const reactivated = await putJson(
+        `${baseUrl}/corpus/${entityId}/status`,
+        { status: "active" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const blockedSourceDelete = await deleteJson(`${baseUrl}/sources/${sourceId}`, {
+        cookie: bootstrap.cookie,
+        csrfToken: bootstrap.body.value.csrfToken,
+      });
+      const withdrawnSource = await putJson(
+        `${baseUrl}/sources/${sourceId}/status`,
+        { status: "withdrawn" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const unreferencedSource = await postJson(
+        `${baseUrl}/programs/${programId}/sources`,
+        { sourceKind: "article", title: "Stray source" },
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
+      const deletedUnreferencedSource = await deleteJson(
+        `${baseUrl}/sources/${unreferencedSource.body.value.programSource.sourceId}`,
+        { cookie: bootstrap.cookie, csrfToken: bootstrap.body.value.csrfToken },
+      );
       const corpusEvents = await getJson(`${baseUrl}/programs/${programId}/corpus-events`, {
         cookie: bootstrap.cookie,
       });
@@ -637,14 +672,25 @@ test("acceptance_shouldExerciseCorpusApi_onHttpInstance", async () => {
           })),
           corpusEventTypes: corpusEvents.body.value.corpusEvents.map($0 => $0.eventType),
           currentRevisionIsNew: replaced.body.value.acceptedCorpus.revisionId !== historicalRevisionId,
+          lifecycle: {
+            blockedSourceDelete: blockedSourceDelete.body,
+            deletedUnreferencedSourceId: deletedUnreferencedSource.body.value.source.id,
+            reactivatedStatus: reactivated.body.value.entity.status,
+            withdrawnHistoricalTitle: withdrawnHistoricalRevision.body.value.acceptedCorpus.title,
+            withdrawnList: withdrawnCorpus.body.value.acceptedCorpus,
+            withdrawnSourceStatus: withdrawnSource.body.value.source.status,
+            withdrawnStatus: withdrawn.body.value.entity.status,
+          },
           draftStatus: draft.body.value.corpusCandidate.status,
           historicalTitle: historicalRevision.body.value.acceptedCorpus.title,
           httpStatusCodes: {
             acceptedCorpus: acceptedCorpus.statusCode,
+            blockedSourceDelete: blockedSourceDelete.statusCode,
             candidate: candidate.statusCode,
             corpusEvents: corpusEvents.statusCode,
             created: created.statusCode,
             draft: draft.statusCode,
+            deletedUnreferencedSource: deletedUnreferencedSource.statusCode,
             firstAccepted: firstAccepted.statusCode,
             historicalRevision: historicalRevision.statusCode,
             missingAcceptCsrf: missingAcceptCsrf.statusCode,
@@ -656,8 +702,14 @@ test("acceptance_shouldExerciseCorpusApi_onHttpInstance", async () => {
             rejectedDraft: rejectedDraft.statusCode,
             replaced: replaced.statusCode,
             replacementCandidate: replacementCandidate.statusCode,
+            reactivated: reactivated.statusCode,
             source: source.statusCode,
             studentJoin: studentJoin.statusCode,
+            unreferencedSource: unreferencedSource.statusCode,
+            withdrawn: withdrawn.statusCode,
+            withdrawnCorpus: withdrawnCorpus.statusCode,
+            withdrawnHistoricalRevision: withdrawnHistoricalRevision.statusCode,
+            withdrawnSource: withdrawnSource.statusCode,
           },
           missingAcceptCsrf: missingAcceptCsrf.body,
           missingCandidateCsrf: missingCandidateCsrf.body,
@@ -684,16 +736,28 @@ test("acceptance_shouldExerciseCorpusApi_onHttpInstance", async () => {
             "corpus_candidate_created",
             "corpus_candidate_created",
             "corpus_candidate_rejected",
+            "program_source_recorded",
           ],
           currentRevisionIsNew: true,
+          lifecycle: {
+            blockedSourceDelete: { status: "rejected", reason: "source_hard_delete_blocked" },
+            deletedUnreferencedSourceId: unreferencedSource.body.value.programSource.sourceId,
+            reactivatedStatus: "active",
+            withdrawnHistoricalTitle: "Vector spaces",
+            withdrawnList: [],
+            withdrawnSourceStatus: "withdrawn",
+            withdrawnStatus: "withdrawn",
+          },
           draftStatus: "draft",
           historicalTitle: "Vector spaces",
           httpStatusCodes: {
             acceptedCorpus: 200,
+            blockedSourceDelete: 409,
             candidate: 200,
             corpusEvents: 200,
             created: 200,
             draft: 200,
+            deletedUnreferencedSource: 200,
             firstAccepted: 200,
             historicalRevision: 200,
             missingAcceptCsrf: 403,
@@ -705,8 +769,14 @@ test("acceptance_shouldExerciseCorpusApi_onHttpInstance", async () => {
             rejectedDraft: 200,
             replaced: 200,
             replacementCandidate: 200,
+            reactivated: 200,
             source: 200,
             studentJoin: 200,
+            unreferencedSource: 200,
+            withdrawn: 200,
+            withdrawnCorpus: 200,
+            withdrawnHistoricalRevision: 200,
+            withdrawnSource: 200,
           },
           missingAcceptCsrf: { status: "rejected", reason: "csrf_required" },
           missingCandidateCsrf: { status: "rejected", reason: "csrf_required" },
@@ -1517,6 +1587,14 @@ async function postJson(url, body, { cookie = null, csrfToken = null } = {}) {
     body: JSON.stringify(body),
     headers: jsonHeaders({ cookie, csrfToken }),
     method: "POST",
+  });
+}
+
+async function putJson(url, body, { cookie = null, csrfToken = null } = {}) {
+  return await fetchJson(url, {
+    body: JSON.stringify(body),
+    headers: jsonHeaders({ cookie, csrfToken }),
+    method: "PUT",
   });
 }
 

@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import * as storage from "../src/storage.js";
 import {
@@ -229,6 +232,98 @@ test("createProgramSourceRecord_shouldPersistAndListByProgram_onExistingPrograms
           },
         ],
       },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("initializeIdentityStorage_shouldAddStatusColumns_onFreshAndExistingLifecycleStatusTables_status", () => {
+  const databasePath = makeTemporaryDatabasePath();
+  const freshDatabase = makeInitializedDatabase();
+  const oldDatabase = openIdentityDatabase(databasePath);
+
+  try {
+    oldDatabase.pragma("foreign_keys = OFF");
+    createLegacyLifecycleTables(oldDatabase);
+  } finally {
+    oldDatabase.close();
+  }
+
+  const upgradedDatabase = openIdentityDatabase(databasePath);
+
+  try {
+    initializeIdentityStorage(upgradedDatabase);
+
+    assert.deepEqual(
+      Object.fromEntries(
+        lifecycleTables.map(tableName => [
+          tableName,
+          {
+            fresh: projectLifecycleColumns(freshDatabase, tableName),
+            upgraded: projectLifecycleColumns(upgradedDatabase, tableName),
+          },
+        ]),
+      ),
+      Object.fromEntries(
+        lifecycleTables.map(tableName => [
+          tableName,
+          {
+            fresh: lifecycleColumnProjection,
+            upgraded: lifecycleColumnProjection,
+          },
+        ]),
+      ),
+    );
+  } finally {
+    freshDatabase.close();
+    upgradedDatabase.close();
+    rmSync(databasePath, { force: true });
+  }
+});
+
+test("lifecycleStatusStorage_shouldRejectInvalidStatus_onEntityAndSourceTables", () => {
+  const database = makeInitializedDatabase();
+
+  try {
+    createIdentity(database, makeIdentity("identity-a"));
+    storage.createProgramShellRecord(database, makeProgramShell({ id: "program-a" }));
+
+    assert.throws(
+      () =>
+        database
+          .prepare(
+            `insert into accepted_quick_check_entities (
+               id, program_id, current_revision_id, status
+             ) values (?, ?, ?, ?)`,
+          )
+          .run("quick-check-entity-a", "program-a", "quick-check-revision-a", "archived"),
+      error => error.message.includes("CHECK constraint failed"),
+    );
+    assert.throws(
+      () =>
+        database
+          .prepare(
+            `insert into program_sources (
+               id,
+               program_id,
+               source_kind,
+               title,
+               recorded_by_identity_id,
+               recorded_at,
+               status
+             ) values (?, ?, ?, ?, ?, ?, ?)`,
+          )
+          .run(
+            "source-a",
+            "program-a",
+            "article",
+            "Source source-a",
+            "identity-a",
+            "2026-05-28T10:00:00.000Z",
+            "archived",
+          ),
+      error => error.message.includes("CHECK constraint failed"),
     );
   } finally {
     database.close();
@@ -5651,10 +5746,144 @@ test("revokeAdminAuthority_shouldPersistRevocation_onAnotherEffectiveAdmin", () 
   }
 });
 
+const lifecycleTables = [
+  "accepted_assessment_criterion_entities",
+  "accepted_quick_check_entities",
+  "accepted_readiness_check_entities",
+  "accepted_open_answer_check_entities",
+  "accepted_corpus_entities",
+  "accepted_navigation_relationships",
+  "program_sources",
+];
+
+const lifecycleColumnProjection = {
+  status: {
+    notNull: 1,
+    defaultValue: "'active'",
+  },
+  statusUpdatedByIdentityId: {
+    notNull: 0,
+    defaultValue: null,
+  },
+  statusUpdatedAt: {
+    notNull: 0,
+    defaultValue: null,
+  },
+};
+
 function makeInitializedDatabase() {
   const database = openIdentityDatabase();
   initializeIdentityStorage(database);
   return database;
+}
+
+function makeTemporaryDatabasePath() {
+  return join(mkdtempSync(join(tmpdir(), "agonara-storage-")), "identity.sqlite");
+}
+
+function projectLifecycleColumns(database, tableName) {
+  return Object.fromEntries(
+    database
+      .prepare(`pragma table_info(${tableName})`)
+      .all()
+      .filter($0 => ["status", "status_updated_by_identity_id", "status_updated_at"].includes($0.name))
+      .map($0 => [
+        snakeToLifecycleColumnName($0.name),
+        {
+          notNull: $0.notnull,
+          defaultValue: $0.dflt_value,
+        },
+      ]),
+  );
+}
+
+function snakeToLifecycleColumnName(name) {
+  return {
+    status: "status",
+    status_updated_by_identity_id: "statusUpdatedByIdentityId",
+    status_updated_at: "statusUpdatedAt",
+  }[name];
+}
+
+function createLegacyLifecycleTables(database) {
+  database.exec(`
+    create table accepted_assessment_criterion_entities (
+      id text primary key,
+      program_id text not null,
+      current_revision_id text not null
+    );
+
+    create table accepted_quick_check_entities (
+      id text primary key,
+      program_id text not null,
+      current_revision_id text not null
+    );
+
+    create table accepted_readiness_check_entities (
+      id text primary key,
+      program_id text not null,
+      current_revision_id text not null
+    );
+
+    create table accepted_open_answer_check_entities (
+      id text primary key,
+      program_id text not null,
+      current_revision_id text not null
+    );
+
+    create table accepted_corpus_entities (
+      id text primary key,
+      program_id text not null,
+      accepted_kind text not null check (
+        accepted_kind in ('topic', 'concept', 'definition', 'principle', 'material_reference')
+      ),
+      current_revision_id text not null
+    );
+
+    create table accepted_navigation_relationships (
+      id text primary key,
+      program_id text not null,
+      relationship_kind text not null check (
+        relationship_kind in (
+          'topic_includes_concept',
+          'topic_uses_material',
+          'concept_uses_material',
+          'concept_has_definition',
+          'concept_has_principle',
+          'concept_prerequisite',
+          'concept_related',
+          'concept_distinguishes_from'
+        )
+      ),
+      from_entity_id text not null,
+      to_entity_id text not null,
+      current_revision_id text not null
+    );
+
+    create table program_sources (
+      id text primary key,
+      program_id text not null,
+      source_kind text not null check (
+        source_kind in (
+          'public_plan',
+          'exam_requirement',
+          'standard',
+          'textbook',
+          'article',
+          'lecture',
+          'course',
+          'note',
+          'research_result',
+          'other'
+        )
+      ),
+      title text not null,
+      locator text,
+      citation text,
+      recorded_by_identity_id text not null,
+      recorded_at text not null
+    );
+  `);
 }
 
 function makeIdentity(id) {

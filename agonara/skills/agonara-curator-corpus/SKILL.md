@@ -90,9 +90,9 @@ unskippable gate:
   read the source, run the [concept-extraction](concept-extraction.md) gap check,
   and propose corpus and navigation candidates freely. You **must not** call any
   acceptance or linking endpoint in that phase —
-  `POST /corpus-candidates/{id}/acceptance`,
-  `POST /navigation-candidates/{id}/acceptance`,
-  `PUT /materials/revisions/{id}/content`, or accepting a `relationship_update`.
+  `POST /corpus-candidates/{candidateId}/acceptance`,
+  `POST /navigation-candidates/{candidateId}/acceptance`,
+  `PUT /materials/revisions/{revisionId}/content`, or accepting a `relationship_update`.
   The proposal phase ends when you **stop without accepting**. The acceptance
   phase begins only from a fresh curator instruction that selects items from the
   numbered list you presented (below); a later turn, a resumed session, or a

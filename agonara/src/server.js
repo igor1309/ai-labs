@@ -1456,6 +1456,7 @@ async function handleCorpusApi({
   const navigationCandidatesMatch = pathname.match(/^\/programs\/([^/]+)\/navigation-candidates$/);
   const programNavigationMatch = pathname.match(/^\/programs\/([^/]+)\/navigation$/);
   const acceptedCorpusMatch = pathname.match(/^\/programs\/([^/]+)\/accepted-corpus$/);
+  const acceptedCorpusStatusMatch = pathname.match(/^\/corpus\/([^/]+)\/status$/);
   const corpusEventsMatch = pathname.match(/^\/programs\/([^/]+)\/corpus-events$/);
   const candidateAcceptanceMatch = pathname.match(/^\/corpus-candidates\/([^/]+)\/acceptance$/);
   const candidateRejectionMatch = pathname.match(/^\/corpus-candidates\/([^/]+)\/rejection$/);
@@ -1463,6 +1464,9 @@ async function handleCorpusApi({
   const navigationCandidateRejectionMatch = pathname.match(/^\/navigation-candidates\/([^/]+)\/rejection$/);
   const navigationEntityMatch = pathname.match(/^\/navigation\/entities\/([^/]+)$/);
   const navigationRevisionMatch = pathname.match(/^\/navigation\/revisions\/([^/]+)$/);
+  const navigationRelationshipStatusMatch = pathname.match(/^\/navigation-relationships\/([^/]+)\/status$/);
+  const sourceStatusMatch = pathname.match(/^\/sources\/([^/]+)\/status$/);
+  const sourceRecordMatch = pathname.match(/^\/sources\/([^/]+)$/);
   const sourceContentMatch = pathname.match(/^\/sources\/([^/]+)\/content$/);
   const materialRevisionContentMatch = pathname.match(/^\/materials\/revisions\/([^/]+)\/content$/);
   const materialContentMatch = pathname.match(/^\/materials\/([^/]+)\/content$/);
@@ -1480,6 +1484,7 @@ async function handleCorpusApi({
   const acceptedAssessmentCriterionRevisionMatch = pathname.match(
     /^\/assessment-criteria\/revisions\/([^/]+)$/,
   );
+  const assessmentCriterionStatusMatch = pathname.match(/^\/assessment-criteria\/([^/]+)\/status$/);
   const acceptedOpenAnswerChecksMatch = pathname.match(/^\/programs\/([^/]+)\/open-answer-checks$/);
   const openAnswerCheckCandidatesMatch = pathname.match(
     /^\/programs\/([^/]+)\/open-answer-checks\/candidates$/,
@@ -1493,8 +1498,10 @@ async function handleCorpusApi({
   const acceptedOpenAnswerCheckRevisionMatch = pathname.match(
     /^\/open-answer-checks\/revisions\/([^/]+)$/,
   );
+  const openAnswerCheckStatusMatch = pathname.match(/^\/open-answer-checks\/([^/]+)\/status$/);
   const quickCheckDeliveriesMatch = pathname.match(/^\/programs\/([^/]+)\/quick-checks$/);
   const quickCheckCurationListMatch = pathname.match(/^\/programs\/([^/]+)\/quick-checks\/curation$/);
+  const quickCheckStatusMatch = pathname.match(/^\/quick-checks\/([^/]+)\/status$/);
   const quickCheckDeliveryRevisionMatch = pathname.match(/^\/quick-checks\/revisions\/([^/]+)$/);
   const quickCheckCandidatesMatch = pathname.match(
     /^\/programs\/([^/]+)\/quick-checks\/candidates$/,
@@ -1520,6 +1527,7 @@ async function handleCorpusApi({
   const acceptedReadinessCheckCurationRevisionMatch = pathname.match(
     /^\/readiness-checks\/revisions\/([^/]+)\/curation$/,
   );
+  const readinessCheckStatusMatch = pathname.match(/^\/readiness-checks\/([^/]+)\/status$/);
   const readinessCheckCurationListMatch = pathname.match(
     /^\/programs\/([^/]+)\/readiness-checks\/curation$/,
   );
@@ -1634,6 +1642,31 @@ async function handleCorpusApi({
       revisionId: decodeURIComponent(quickCheckDeliveryRevisionMatch[1]),
     });
     sendJson(response, statusForResult(result), mapQuickCheckDeliveryResult(result));
+    return true;
+  }
+
+  if (request.method === "PUT" && quickCheckStatusMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+    const result = corpusCommands.setAcceptedQuickCheckLifecycleStatus({
+      actingIdentityId: session.value.identity.id,
+      entityId: decodeURIComponent(quickCheckStatusMatch[1]),
+      status: body.value.status,
+    });
+    sendJson(response, statusForResult(result), result);
     return true;
   }
 
@@ -1837,6 +1870,31 @@ async function handleCorpusApi({
     return true;
   }
 
+  if (request.method === "PUT" && readinessCheckStatusMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+    const result = corpusCommands.setAcceptedReadinessCheckLifecycleStatus({
+      actingIdentityId: session.value.identity.id,
+      entityId: decodeURIComponent(readinessCheckStatusMatch[1]),
+      status: body.value.status,
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
   if (request.method === "POST" && quickCheckAcceptanceMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -2029,6 +2087,31 @@ async function handleCorpusApi({
     return true;
   }
 
+  if (request.method === "PUT" && assessmentCriterionStatusMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+    const result = corpusCommands.setAcceptedAssessmentCriterionLifecycleStatus({
+      actingIdentityId: session.value.identity.id,
+      entityId: decodeURIComponent(assessmentCriterionStatusMatch[1]),
+      status: body.value.status,
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
   if (request.method === "GET" && acceptedOpenAnswerChecksMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -2071,6 +2154,31 @@ async function handleCorpusApi({
       revisionId: decodeURIComponent(acceptedOpenAnswerCheckRevisionMatch[1]),
     });
     sendJson(response, statusForResult(result), mapAcceptedOpenAnswerCheckResult(result));
+    return true;
+  }
+
+  if (request.method === "PUT" && openAnswerCheckStatusMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+    const result = corpusCommands.setAcceptedOpenAnswerCheckLifecycleStatus({
+      actingIdentityId: session.value.identity.id,
+      entityId: decodeURIComponent(openAnswerCheckStatusMatch[1]),
+      status: body.value.status,
+    });
+    sendJson(response, statusForResult(result), result);
     return true;
   }
 
@@ -2291,6 +2399,50 @@ async function handleCorpusApi({
     return true;
   }
 
+  if (request.method === "PUT" && sourceStatusMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+    const result = corpusCommands.setProgramSourceLifecycleStatus({
+      actingIdentityId: session.value.identity.id,
+      sourceId: decodeURIComponent(sourceStatusMatch[1]),
+      status: body.value.status,
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
+  if (request.method === "DELETE" && sourceRecordMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+    const result = corpusCommands.deleteProgramSource({
+      actingIdentityId: session.value.identity.id,
+      sourceId: decodeURIComponent(sourceRecordMatch[1]),
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
   if (request.method === "GET" && sourceContentMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -2430,6 +2582,31 @@ async function handleCorpusApi({
     return true;
   }
 
+  if (request.method === "PUT" && navigationRelationshipStatusMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+    const result = corpusCommands.setAcceptedNavigationRelationshipLifecycleStatus({
+      actingIdentityId: session.value.identity.id,
+      relationshipId: decodeURIComponent(navigationRelationshipStatusMatch[1]),
+      status: body.value.status,
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
   if (request.method === "GET" && acceptedCorpusMatch) {
     const session = resolveHttpSession({ identityCommands, request });
     if (session.status === "rejected") {
@@ -2464,6 +2641,31 @@ async function handleCorpusApi({
       routeKey,
     });
     sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "PUT" && acceptedCorpusStatusMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+    const result = corpusCommands.setAcceptedCorpusLifecycleStatus({
+      actingIdentityId: session.value.identity.id,
+      entityId: decodeURIComponent(acceptedCorpusStatusMatch[1]),
+      status: body.value.status,
+    });
+    sendJson(response, statusForResult(result), result);
     return true;
   }
 
@@ -4662,6 +4864,7 @@ function httpStatusFor(reason) {
     case "criterion_candidate_already_accepted":
     case "criterion_candidate_already_rejected":
     case "criterion_entity_program_mismatch":
+    case "entity_withdrawal_blocked":
     case "coverage_gap_scope_program_mismatch":
     case "idempotency_conflict":
     case "identity_already_has_credential":
@@ -4694,6 +4897,7 @@ function httpStatusFor(reason) {
     case "readiness_scope_program_mismatch":
     case "source_not_found":
     case "source_program_mismatch":
+    case "source_hard_delete_blocked":
     case "policy_not_satisfied":
     case "llm_curation_suggestion_already_materialized":
     case "llm_curation_suggestion_already_rejected":

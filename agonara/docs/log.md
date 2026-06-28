@@ -2,6 +2,10 @@
 
 ## 2026-06-28
 
+- Close ADR-022 with explicit lifecycle acceptance for every entity family, same-status writes,
+  inactive dependents, withdrawn backup graphs, and domain/HTTP/browser workflows; align Product
+  Intent, the implemented spec, runtime evidence, README, dashboard, and forward-task backlogs.
+
 - Reworked the curator acceptance gate to a **numbered-handle confirmation** tuned
   for mobile curators. Across `agonara-curator-corpus` (v1.7.0),
   `agonara-curator-assessment` (v1.6.0), and `agonara-curator-research` (v1.3.0),
@@ -35,9 +39,150 @@
   sources/gaps/suggestions only from live API reads). `concept-extraction.md` now
   stops at the gate instead of "confirm before acceptance."
 
+- ADR-022 implementation Phase 5 now exposes the plan-declared source lifecycle controls and
+  withdrawn-items action in `/learn`, handles source lifecycle response envelopes correctly,
+  and gives curators actionable guidance for every blocked-dependent class.
+
+- ADR-022 implementation Phase 5 sub-slice: added browser workflow coverage for `/learn` source
+  hard-delete. Curators can delete unreferenced sources and see a withdraw-instead block message
+  for referenced sources.
+
+- ADR-022 implementation Phase 5 sub-slice: added browser workflow coverage for withdrawing an
+  accepted Quick Check from `/learn`, listing it in the withdrawn-items view, and reactivating it
+  back to active from that view.
+
+- ADR-022 implementation Phase 5 sub-slice: extended browser layout coverage for the `/learn`
+  lifecycle and source-delete controls across desktop and mobile widths, including named controls,
+  live status regions, and overlap checks.
+
+- ADR-022 implementation Phase 5 sub-slice: added a `/learn` withdrawn-items session view.
+  Successful lifecycle withdrawals are listed with per-item reactivation controls that call the
+  active status route and remove reactivated items from the view.
+
+- ADR-022 implementation Phase 5 sub-slice: added the `/learn` curator source hard-delete
+  control. Unreferenced source deletion calls `DELETE /sources/{sourceId}`, while referenced
+  source blocks display a withdraw-instead message.
+
+- ADR-022 implementation Phase 5 sub-slice: added the `/learn` curator lifecycle panel with
+  stable `#entity-lifecycle-panel`, withdraw/reactivate actions, redacted status messaging, and
+  route wiring for accepted entities and source withdrawal/reactivation.
+
+- ADR-022 implementation Phase 4 review fix: added HTTP lifecycle edge-case coverage for
+  missing accepted entities, same-status accepted no-ops, `entity_withdrawal_blocked` conflict
+  surfacing, lifecycle response redaction, and dependent graph preservation.
+
+- ADR-022 implementation Phase 4 sub-slice: exposed accepted navigation-relationship lifecycle
+  status over HTTP at `PUT /navigation-relationships/{entityId}/status`. Withdrawn
+  relationships leave active student navigation grouping/detail reads, and OpenAPI includes the
+  lifecycle route.
+
+- ADR-022 implementation Phase 4 sub-slice: exposed accepted readiness-check lifecycle status
+  over HTTP at `PUT /readiness-checks/{entityId}/status`. Withdrawn readiness checks leave
+  active curation listings while addressed historical curation revisions remain readable, and
+  OpenAPI includes the lifecycle route.
+
+- ADR-022 implementation Phase 4 sub-slice: exposed accepted assessment-criterion lifecycle
+  status over HTTP at `PUT /assessment-criteria/{entityId}/status`. Withdrawn criteria leave
+  active accepted-criteria listings while addressed historical revisions remain readable, and
+  OpenAPI includes the lifecycle route.
+
+- ADR-022 implementation Phase 4 sub-slice: exposed accepted open-answer-check lifecycle
+  status over HTTP at `PUT /open-answer-checks/{entityId}/status`. Withdrawn open-answer
+  checks leave active curation listings while addressed historical revisions remain readable,
+  and OpenAPI includes the lifecycle route.
+
+- ADR-022 implementation Phase 4 sub-slice: exposed accepted Quick Check lifecycle status over
+  HTTP at `PUT /quick-checks/{entityId}/status`. Withdrawn quick checks leave student delivery
+  lists while addressed historical delivery revisions remain readable, and OpenAPI includes the
+  lifecycle route.
+
+- ADR-022 implementation Phase 4 sub-slice: exposed accepted Corpus entity lifecycle status
+  over HTTP at `PUT /corpus/{entityId}/status`. Withdrawal now leaves active accepted-corpus
+  listings while addressed historical revisions continue to resolve, and OpenAPI includes the
+  lifecycle route.
+
+- ADR-022 implementation Phase 4 sub-slice: exposed source lifecycle status and source-record
+  hard-delete over HTTP with session+CSRF gates. The OpenAPI contract now declares
+  `PUT /sources/{sourceId}/status` and `DELETE /sources/{sourceId}`, including
+  `source_hard_delete_blocked`.
+
+- ADR-022 implementation Phase 3 sub-slice: completed accepted material-content deletion
+  tiers in the corpus domain. Unevidenced material content hard-deletes; evidenced material
+  content preserves historical bytes and retires through entity withdrawal, while active
+  dependents still block the withdrawal path.
+
+- ADR-022 implementation Phase 3 sub-slice: added domain coverage proving unreferenced
+  source-record hard deletion does not mutate accepted material content, accepted corpus
+  revisions, learner-evidence target links, or historical material reads.
+
+- ADR-022 implementation Phase 3 sub-slice: added curator-authorized program-source hard
+  deletion for unreferenced sources. Sources referenced by any accepted corpus revision,
+  including withdrawn corpus entities, now reject hard deletion with
+  `source_hard_delete_blocked` while preserving accepted corpus provenance.
+
+- ADR-022 implementation Phase 3 sub-slice: added curator-authorized program-source
+  withdrawal/reactivation. Withdrawn sources leave active curator source listings while accepted
+  corpus revisions keep their provenance `sourceIds`, and reactivation restores the source.
+
+- ADR-022 implementation Phase 2 sub-slice: student learner-state evidence rollups now use
+  only active navigation relationships, so withdrawn relationships no longer roll concept
+  evidence into topic summaries.
+
+- ADR-022 implementation Phase 2 sub-slice: student learner-state target definitions now filter
+  accepted corpus targets, quick checks, open-answer checks, and assessment criteria on
+  `status = active`, so withdrawn entities leave forward learner-state summary/detail reads.
+
+- ADR-022 implementation Phase 2 sub-slice: added curator-authorized navigation-relationship
+  lifecycle withdrawal/reactivation. Withdrawn relationships leave forward navigation grouping,
+  reactivation restores grouping, and stored relationship revisions remain addressable.
+
+- ADR-022 implementation Phase 2 sub-slice: added curator-authorized readiness-check
+  lifecycle withdrawal/reactivation. Withdrawn readiness checks leave active curation listings,
+  reactivation restores them, and addressed historical readiness revisions continue to resolve.
+
+- ADR-022 implementation Phase 2 sub-slice: added curator-authorized open-answer-check
+  lifecycle withdrawal. Active learner-evidence target links owned by the open-answer check now
+  block withdrawal with `entity_withdrawal_blocked`, while deleted links no longer block and no
+  cascade mutation is introduced.
+
+- ADR-022 implementation Phase 2 sub-slice: added curator-authorized assessment-criterion
+  lifecycle withdrawal. Active open-answer checks that pin any revision of the criterion entity,
+  and active learner-evidence target links owned by the criterion, now block withdrawal without
+  cascade mutation; deleted learner-evidence links no longer block withdrawal.
+
+- ADR-022 implementation Phase 2 sub-slice: added curator-authorized quick-check lifecycle
+  withdrawal with active learner-evidence target links as `entity_withdrawal_blocked`
+  dependents. Deleted learner-evidence links no longer block withdrawal, and no cascade mutation
+  is introduced.
+
+- ADR-022 implementation Phase 2 sub-slice: withdrawal of an accepted corpus entity is now
+  blocked with `entity_withdrawal_blocked` when an active readiness check's current revision
+  has a requirement targeting that entity, preserving both the corpus entity and readiness
+  dependent without cascade mutation.
+
+- ADR-022 implementation Phase 2 review fix: navigation forward reads now apply lifecycle
+  filtering consistently. Withdrawn corpus entities leave the student navigation listing and
+  current navigation detail reads, active navigation relationships are limited to active
+  endpoints, and addressed historical navigation revision reads continue to resolve.
+
+- ADR-022 implementation Phase 1: added the lifecycle status substrate to the six
+  accepted-entity tables and `program_sources`. Fresh schemas and existing SQLite databases
+  now converge on `status` (`active`/`withdrawn`, default `active`) plus nullable attribution
+  columns; backup export/restore preserves lifecycle status and rejects invalid lifecycle
+  values before mutation.
+
+- ADR-022 implementation Phase 2 sub-slice: added curator-authorized corpus entity
+  withdraw/reactivate with attribution, active-only accepted-corpus listings, coverage-gap
+  derivation that treats withdrawn corpus entities and their relationships as absent, and
+  active-only readiness delivery listings while historical revision reads keep resolving.
+
+- ADR-022 implementation Phase 2 sub-slice: withdrawal of an accepted corpus entity is now
+  blocked with `entity_withdrawal_blocked` when an active navigation relationship references
+  it, preserving the dependent relationship and avoiding cascade mutation.
+
 - Drafted the **accepted-entity withdrawal and source deletion** spec
   (`docs/specs/accepted-entity-withdrawal-and-source-deletion.md`) operationalizing
-  [ADR-022](docs/adr/adr-022-accepted-entity-withdrawal-and-source-deletion.md): an
+  [ADR-022](adr/adr-022-accepted-entity-withdrawal-and-source-deletion.md): an
   entity-level `active ↔ withdrawn` lifecycle status across the six accepted-entity
   families and `program_sources`, curator-authorized withdraw/reactivate, the
   active-dependent block (no cascade), read-path filtering for delivery/listings/coverage-gap

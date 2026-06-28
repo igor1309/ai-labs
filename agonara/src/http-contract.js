@@ -422,6 +422,21 @@ export const openApiContractMetadata = {
           }
         }
       },
+      "LifecycleStatus": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": ["status"],
+              "properties": {
+                "status": { "type": "string", "enum": ["active", "withdrawn"] }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      },
       "OptionalObject": {
         "required": false,
         "content": {
@@ -1100,6 +1115,7 @@ export const openApiContractMetadata = {
           "criterion_revision_not_found",
           "csrf_invalid",
           "csrf_required",
+          "entity_withdrawal_blocked",
           "idempotency_conflict",
           "identity_already_has_credential",
           "identity_disabled",
@@ -1168,6 +1184,7 @@ export const openApiContractMetadata = {
           "session_not_found",
           "session_revoked",
           "source_not_found",
+          "source_hard_delete_blocked",
           "source_program_mismatch",
           "suggestion_materialization_rejected",
           "suggestion_policy_not_found",
@@ -3547,6 +3564,49 @@ export const routeContracts = [
   },
   {
     "method": "PUT",
+    "path": "/sources/{sourceId}/status",
+    "operationId": "setProgramSourceLifecycleStatus",
+    "handlerKey": "corpus.setProgramSourceLifecycleStatus",
+    "tag": "corpus",
+    "summary": "Withdraw or reactivate a Program source record.",
+    "auth": { "kind": "session", "csrf": true },
+    "requestBody": { "contentType": "application/json", "required": true, "schema": { "ref": "#/components/requestBodies/LifecycleStatus" } },
+    "responses": [
+      { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
+      { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 401, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 403, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 404, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 409, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 500, "envelope": "fault", "schema": { "ref": "#/components/responses/Fault" } }
+    ],
+    "pathParameters": [
+      { "name": "sourceId", "schema": { "type": "string", "minLength": 1 }, "required": true }
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/sources/{sourceId}",
+    "operationId": "deleteProgramSource",
+    "handlerKey": "corpus.deleteProgramSource",
+    "tag": "corpus",
+    "summary": "Hard-delete an unreferenced Program source record.",
+    "auth": { "kind": "session", "csrf": true },
+    "responses": [
+      { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
+      { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 401, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 403, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 404, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 409, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 500, "envelope": "fault", "schema": { "ref": "#/components/responses/Fault" } }
+    ],
+    "pathParameters": [
+      { "name": "sourceId", "schema": { "type": "string", "minLength": 1 }, "required": true }
+    ]
+  },
+  {
+    "method": "PUT",
     "path": "/materials/revisions/{revisionId}/content",
     "operationId": "setAcceptedMaterialContent",
     "handlerKey": "corpus.setAcceptedMaterialContent",
@@ -4121,6 +4181,28 @@ export const routeContracts = [
         },
         "required": true
       }
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/corpus/{entityId}/status",
+    "operationId": "setAcceptedCorpusLifecycleStatus",
+    "handlerKey": "corpus.setAcceptedCorpusLifecycleStatus",
+    "tag": "corpus",
+    "summary": "Withdraw or reactivate an accepted Corpus entity.",
+    "auth": { "kind": "session", "csrf": true },
+    "requestBody": { "contentType": "application/json", "required": true, "schema": { "ref": "#/components/requestBodies/LifecycleStatus" } },
+    "responses": [
+      { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
+      { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 401, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 403, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 404, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 409, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 500, "envelope": "fault", "schema": { "ref": "#/components/responses/Fault" } }
+    ],
+    "pathParameters": [
+      { "name": "entityId", "schema": { "type": "string", "minLength": 1 }, "required": true }
     ]
   },
   {
@@ -4726,6 +4808,28 @@ export const routeContracts = [
     ]
   },
   {
+    "method": "PUT",
+    "path": "/navigation-relationships/{entityId}/status",
+    "operationId": "setAcceptedNavigationRelationshipLifecycleStatus",
+    "handlerKey": "corpus.setAcceptedNavigationRelationshipLifecycleStatus",
+    "tag": "corpus",
+    "summary": "Withdraw or reactivate an accepted navigation relationship.",
+    "auth": { "kind": "session", "csrf": true },
+    "requestBody": { "contentType": "application/json", "required": true, "schema": { "ref": "#/components/requestBodies/LifecycleStatus" } },
+    "responses": [
+      { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
+      { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 401, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 403, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 404, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 409, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 500, "envelope": "fault", "schema": { "ref": "#/components/responses/Fault" } }
+    ],
+    "pathParameters": [
+      { "name": "entityId", "schema": { "type": "string", "minLength": 1 }, "required": true }
+    ]
+  },
+  {
     "method": "GET",
     "path": "/programs/{programId}/assessment-criteria/candidates",
     "operationId": "listAssessmentCriterionCandidates",
@@ -5151,6 +5255,28 @@ export const routeContracts = [
         },
         "required": true
       }
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/assessment-criteria/{entityId}/status",
+    "operationId": "setAcceptedAssessmentCriterionLifecycleStatus",
+    "handlerKey": "corpus.setAcceptedAssessmentCriterionLifecycleStatus",
+    "tag": "corpus",
+    "summary": "Withdraw or reactivate an accepted assessment criterion entity.",
+    "auth": { "kind": "session", "csrf": true },
+    "requestBody": { "contentType": "application/json", "required": true, "schema": { "ref": "#/components/requestBodies/LifecycleStatus" } },
+    "responses": [
+      { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
+      { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 401, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 403, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 404, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 409, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 500, "envelope": "fault", "schema": { "ref": "#/components/responses/Fault" } }
+    ],
+    "pathParameters": [
+      { "name": "entityId", "schema": { "type": "string", "minLength": 1 }, "required": true }
     ]
   },
   {
@@ -6003,6 +6129,28 @@ export const routeContracts = [
     ]
   },
   {
+    "method": "PUT",
+    "path": "/quick-checks/{entityId}/status",
+    "operationId": "setAcceptedQuickCheckLifecycleStatus",
+    "handlerKey": "corpus.setAcceptedQuickCheckLifecycleStatus",
+    "tag": "corpus",
+    "summary": "Withdraw or reactivate an accepted Quick Check entity.",
+    "auth": { "kind": "session", "csrf": true },
+    "requestBody": { "contentType": "application/json", "required": true, "schema": { "ref": "#/components/requestBodies/LifecycleStatus" } },
+    "responses": [
+      { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
+      { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 401, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 403, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 404, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 409, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 500, "envelope": "fault", "schema": { "ref": "#/components/responses/Fault" } }
+    ],
+    "pathParameters": [
+      { "name": "entityId", "schema": { "type": "string", "minLength": 1 }, "required": true }
+    ]
+  },
+  {
     "method": "GET",
     "path": "/programs/{programId}/readiness-checks/curation",
     "operationId": "listAcceptedReadinessChecksForCuration",
@@ -6058,6 +6206,28 @@ export const routeContracts = [
         },
         "required": true
       }
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/open-answer-checks/{entityId}/status",
+    "operationId": "setAcceptedOpenAnswerCheckLifecycleStatus",
+    "handlerKey": "corpus.setAcceptedOpenAnswerCheckLifecycleStatus",
+    "tag": "corpus",
+    "summary": "Withdraw or reactivate an accepted open-answer check entity.",
+    "auth": { "kind": "session", "csrf": true },
+    "requestBody": { "contentType": "application/json", "required": true, "schema": { "ref": "#/components/requestBodies/LifecycleStatus" } },
+    "responses": [
+      { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
+      { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 401, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 403, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 404, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 409, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 500, "envelope": "fault", "schema": { "ref": "#/components/responses/Fault" } }
+    ],
+    "pathParameters": [
+      { "name": "entityId", "schema": { "type": "string", "minLength": 1 }, "required": true }
     ]
   },
   {
@@ -6544,6 +6714,28 @@ export const routeContracts = [
         },
         "required": true
       }
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/readiness-checks/{entityId}/status",
+    "operationId": "setAcceptedReadinessCheckLifecycleStatus",
+    "handlerKey": "corpus.setAcceptedReadinessCheckLifecycleStatus",
+    "tag": "corpus",
+    "summary": "Withdraw or reactivate an accepted readiness check entity.",
+    "auth": { "kind": "session", "csrf": true },
+    "requestBody": { "contentType": "application/json", "required": true, "schema": { "ref": "#/components/requestBodies/LifecycleStatus" } },
+    "responses": [
+      { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
+      { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 401, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 403, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 404, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 409, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 500, "envelope": "fault", "schema": { "ref": "#/components/responses/Fault" } }
+    ],
+    "pathParameters": [
+      { "name": "entityId", "schema": { "type": "string", "minLength": 1 }, "required": true }
     ]
   },
   {

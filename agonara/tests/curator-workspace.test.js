@@ -240,6 +240,56 @@ test("inspectCuratorCoverageGaps_shouldReportDeterministicAcceptedCorpusDiagnost
   }
 });
 
+test("inspectCuratorCoverageGaps_shouldTreatWithdrawnEntitiesAsAbsent_status", () => {
+  const { commands, database } = makeSUT();
+
+  try {
+    const { linkedConcept, linkedTopic } = seedCoverageCorpus(database, { programId: "program-a" });
+
+    const before = commands.inspectCuratorCoverageGaps({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      scopeKind: "topic",
+      scopeId: linkedTopic.entityId,
+    });
+    database
+      .prepare("update accepted_corpus_entities set status = 'withdrawn' where id = ?")
+      .run(linkedConcept.entityId);
+    const withdrawn = commands.inspectCuratorCoverageGaps({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      scopeKind: "topic",
+      scopeId: linkedTopic.entityId,
+    });
+    database
+      .prepare("update accepted_corpus_entities set status = 'active' where id = ?")
+      .run(linkedConcept.entityId);
+    const reactivated = commands.inspectCuratorCoverageGaps({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      scopeKind: "topic",
+      scopeId: linkedTopic.entityId,
+    });
+
+    assert.deepEqual(
+      {
+        before: projectGaps(before.value.report.gaps),
+        withdrawn: projectGaps(withdrawn.value.report.gaps),
+        reactivated: projectGaps(reactivated.value.report.gaps),
+      },
+      {
+        before: [],
+        withdrawn: [
+          ["info", "topic_without_concepts", "topic", linkedTopic.entityId, linkedTopic.title, 0],
+        ],
+        reactivated: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("inspectCuratorCoverageGaps_shouldRedactProtectedDetailsAndPreserveAdjacentState", () => {
   const { commands, database } = makeSUT();
 
@@ -1206,6 +1256,7 @@ function seedCoverageCorpus(database, { programId }) {
 
   return {
     concept,
+    linkedConcept,
     linkedQuickCheck,
     linkedQuickCheckOptionId: linkedQuickCheck.options[0].optionId,
     linkedTopic,

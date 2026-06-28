@@ -31,7 +31,7 @@ governs how you report and how you accept suggestions.** Two rules apply:
 
 - **Report only from trusted state.** Present sources, coverage gaps, and
   suggestions from live API reads (`GET …/sources`, `…/coverage-gaps`,
-  `…/llm-curation-suggestions`, and `GET /llm-curation-suggestions/{id}` for
+  `…/llm-curation-suggestions`, and `GET /llm-curation-suggestions/{suggestionId}` for
   origin) — never from memory or your own earlier narrative. A coverage gap is a
   diagnostic, never a fact already in the corpus.
 - **Acting on a suggestion is per suggestion and curator-owned — both ways.**

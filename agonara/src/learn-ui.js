@@ -656,9 +656,41 @@ export const learnUiHtml = `<!doctype html>
                   <button data-action="save-source-content" data-requires-session type="submit">Save source content</button>
                   <button data-action="read-source-content" data-requires-session class="secondary" type="button">Read source content</button>
                   <button data-action="delete-source-content" data-requires-session class="danger" type="button">Delete source content</button>
+                  <button data-action="withdraw-source" data-requires-session class="danger" type="button">Withdraw source</button>
+                  <button data-action="reactivate-source" data-requires-session class="secondary" type="button">Reactivate source</button>
+                  <button data-action="delete-source-record" data-requires-session class="danger" type="button">Delete source</button>
                 </div>
               </form>
               <p id="source-content-status" class="status" aria-live="polite"></p>
+              <p id="source-lifecycle-status" class="status" aria-live="polite"></p>
+              <section id="entity-lifecycle-panel" class="stack" aria-label="Entity Lifecycle">
+                <h3>Lifecycle</h3>
+                <label>
+                  Accepted item family
+                  <select id="entity-lifecycle-family-input">
+                    <option value="corpus">Corpus topic, concept, or material</option>
+                    <option value="quick_check">Quick Check</option>
+                    <option value="open_answer_check">Open-answer check</option>
+                    <option value="assessment_criterion">Assessment criterion</option>
+                    <option value="readiness_check">Readiness check</option>
+                    <option value="navigation_relationship">Navigation relationship</option>
+                    <option value="source">Program source</option>
+                  </select>
+                </label>
+                <label>
+                  Entity or source id
+                  <input id="entity-lifecycle-id-input" autocomplete="off">
+                </label>
+                <div class="actions">
+                  <button data-action="withdraw-entity" data-requires-session class="danger" type="button">Withdraw</button>
+                  <button data-action="reactivate-entity" data-requires-session class="secondary" type="button">Reactivate</button>
+                </div>
+                <p id="entity-lifecycle-status" class="status" aria-live="polite"></p>
+                <button data-action="open-withdrawn-items" data-requires-session class="secondary" type="button">Withdrawn items</button>
+                <div id="withdrawn-items-view" class="list">
+                  <p class="empty">No withdrawn items in this session.</p>
+                </div>
+              </section>
             </section>
 
             <section id="navigation-student-panel" class="stack" aria-label="Student Navigation">
@@ -1057,6 +1089,7 @@ export const learnUiHtml = `<!doctype html>
         selectedReadinessCheck: null,
         selectedReadinessRevisionId: null,
         selectedRevisionId: null,
+        withdrawnLifecycleItems: [],
       };
 
       const elements = {
@@ -1082,6 +1115,11 @@ export const learnUiHtml = `<!doctype html>
         curationDetail: document.querySelector("#quick-check-curation-detail"),
         deliveryDetail: document.querySelector("#quick-check-delivery-detail"),
         deliveryList: document.querySelector("#quick-check-delivery-list"),
+        entityLifecycleFamilyInput: document.querySelector("#entity-lifecycle-family-input"),
+        entityLifecycleIdInput: document.querySelector("#entity-lifecycle-id-input"),
+        entityLifecyclePanel: document.querySelector("#entity-lifecycle-panel"),
+        entityLifecycleStatus: document.querySelector("#entity-lifecycle-status"),
+        withdrawnItemsView: document.querySelector("#withdrawn-items-view"),
         logoutButton: document.querySelector("#logout-button"),
         membershipAdmissionPolicyForm: document.querySelector("#program-admission-policy-form"),
         membershipAdmissionPolicyInput: document.querySelector("#program-admission-policy-input"),
@@ -1158,6 +1196,7 @@ export const learnUiHtml = `<!doctype html>
         sourceContentIdInput: document.querySelector("#source-content-id-input"),
         sourceContentInput: document.querySelector("#source-content-input"),
         sourceContentStatus: document.querySelector("#source-content-status"),
+        sourceLifecycleStatus: document.querySelector("#source-lifecycle-status"),
         navigationMaterialKindInput: document.querySelector("#navigation-material-kind-input"),
         navigationNodeDetail: document.querySelector("#navigation-node-detail"),
         navigationRationaleInput: document.querySelector("#navigation-rationale-input"),
@@ -1296,6 +1335,37 @@ export const learnUiHtml = `<!doctype html>
         }
         if (event.target.closest("[data-action='delete-source-content']")) {
           void deleteSourceContent();
+          return;
+        }
+        if (event.target.closest("[data-action='withdraw-source']")) {
+          void setSourceLifecycleStatus("withdrawn");
+          return;
+        }
+        if (event.target.closest("[data-action='reactivate-source']")) {
+          void setSourceLifecycleStatus("active");
+          return;
+        }
+        if (event.target.closest("[data-action='delete-source-record']")) {
+          void deleteSourceRecord();
+        }
+      });
+
+      elements.entityLifecyclePanel.addEventListener("click", event => {
+        if (event.target.closest("[data-action='withdraw-entity']")) {
+          void setEntityLifecycleStatus("withdrawn");
+          return;
+        }
+        if (event.target.closest("[data-action='reactivate-entity']")) {
+          void setEntityLifecycleStatus("active");
+          return;
+        }
+        if (event.target.closest("[data-action='open-withdrawn-items']")) {
+          elements.withdrawnItemsView.scrollIntoView({ block: "nearest" });
+          return;
+        }
+        const reactivateButton = event.target.closest("[data-action='reactivate-withdrawn-item']");
+        if (reactivateButton) {
+          void reactivateWithdrawnItem(reactivateButton.dataset.family, reactivateButton.dataset.entityId);
         }
       });
 
@@ -2035,6 +2105,7 @@ export const learnUiHtml = `<!doctype html>
         state.selectedLlmSuggestion = null;
         state.selectedLlmSuggestionId = null;
         state.selectedReadinessAttemptId = null;
+        state.withdrawnLifecycleItems = [];
         elements.programIdInput.value = "";
         elements.signinStatus.textContent = "";
         clearCoverageGapSurfaces();
@@ -2042,6 +2113,7 @@ export const learnUiHtml = `<!doctype html>
         clearMembershipSurfaces();
         clearLearnerStateSurfaces();
         clearReadinessSurfaces();
+        renderWithdrawnItemsView();
         renderSession();
       }
 
@@ -2097,6 +2169,206 @@ export const learnUiHtml = `<!doctype html>
         state.candidates = [];
         renderCandidateList();
         renderCurationStatus("Refresh failed");
+      }
+
+      async function setEntityLifecycleStatus(status) {
+        if (!state.identity) {
+          elements.entityLifecycleStatus.textContent = "Sign in first.";
+          return;
+        }
+        const entityId = elements.entityLifecycleIdInput.value.trim();
+        if (!entityId) {
+          elements.entityLifecycleStatus.textContent = "Enter an entity or source id.";
+          return;
+        }
+
+        const route = lifecycleStatusRoute(elements.entityLifecycleFamilyInput.value, entityId);
+        if (!route) {
+          elements.entityLifecycleStatus.textContent = "Choose an accepted item family.";
+          return;
+        }
+
+        const result = await requestJson(route, {
+          body: { status },
+          csrf: true,
+          method: "PUT",
+        });
+        if (result.status === "accepted") {
+          const lifecycleEntity = result.value.entity ?? result.value.source;
+          updateWithdrawnLifecycleItems({
+            entityId: lifecycleEntity.id,
+            family: elements.entityLifecycleFamilyInput.value,
+            status: lifecycleEntity.status,
+          });
+          elements.entityLifecycleStatus.textContent =
+            "Lifecycle status is " + lifecycleEntity.status + " for " + lifecycleEntity.id + ".";
+          return;
+        }
+        elements.entityLifecycleStatus.textContent = lifecycleStatusFailureMessage(result.reason);
+      }
+
+      function lifecycleStatusRoute(family, entityId) {
+        const encodedId = encodeURIComponent(entityId);
+        const routes = {
+          assessment_criterion: "/assessment-criteria/" + encodedId + "/status",
+          corpus: "/corpus/" + encodedId + "/status",
+          navigation_relationship: "/navigation-relationships/" + encodedId + "/status",
+          open_answer_check: "/open-answer-checks/" + encodedId + "/status",
+          quick_check: "/quick-checks/" + encodedId + "/status",
+          readiness_check: "/readiness-checks/" + encodedId + "/status",
+          source: "/sources/" + encodedId + "/status",
+        };
+        return routes[family];
+      }
+
+      function updateWithdrawnLifecycleItems({ entityId, family, status }) {
+        state.withdrawnLifecycleItems = state.withdrawnLifecycleItems.filter(
+          $0 => !($0.entityId === entityId && $0.family === family),
+        );
+        if (status === "withdrawn") {
+          state.withdrawnLifecycleItems.push({ entityId, family });
+        }
+        renderWithdrawnItemsView();
+      }
+
+      function renderWithdrawnItemsView() {
+        if (state.withdrawnLifecycleItems.length === 0) {
+          elements.withdrawnItemsView.innerHTML = '<p class="empty">No withdrawn items in this session.</p>';
+          return;
+        }
+        elements.withdrawnItemsView.innerHTML = "";
+        for (const item of state.withdrawnLifecycleItems) {
+          const row = document.createElement("article");
+          row.className = "list-item";
+          const label = document.createElement("strong");
+          label.textContent = lifecycleFamilyLabel(item.family);
+          const entity = document.createElement("span");
+          entity.textContent = item.entityId;
+          const button = document.createElement("button");
+          button.className = "secondary";
+          button.dataset.action = "reactivate-withdrawn-item";
+          button.dataset.entityId = item.entityId;
+          button.dataset.family = item.family;
+          button.type = "button";
+          button.textContent = "Reactivate";
+          row.append(label, entity, button);
+          elements.withdrawnItemsView.append(row);
+        }
+      }
+
+      async function reactivateWithdrawnItem(family, entityId) {
+        if (!state.identity) {
+          elements.entityLifecycleStatus.textContent = "Sign in first.";
+          return;
+        }
+        const route = lifecycleStatusRoute(family, entityId);
+        if (!route) {
+          elements.entityLifecycleStatus.textContent = "Choose an accepted item family.";
+          return;
+        }
+        const result = await requestJson(route, {
+          body: { status: "active" },
+          csrf: true,
+          method: "PUT",
+        });
+        if (result.status === "accepted") {
+          const lifecycleEntity = result.value.entity ?? result.value.source;
+          updateWithdrawnLifecycleItems({
+            entityId: lifecycleEntity.id,
+            family,
+            status: lifecycleEntity.status,
+          });
+          elements.entityLifecycleStatus.textContent =
+            "Lifecycle status is " + lifecycleEntity.status + " for " + lifecycleEntity.id + ".";
+          return;
+        }
+        elements.entityLifecycleStatus.textContent = lifecycleStatusFailureMessage(result.reason);
+      }
+
+      function lifecycleFamilyLabel(family) {
+        const labels = {
+          assessment_criterion: "Assessment criterion",
+          corpus: "Corpus",
+          navigation_relationship: "Navigation relationship",
+          open_answer_check: "Open-answer check",
+          quick_check: "Quick Check",
+          readiness_check: "Readiness check",
+          source: "Program source",
+        };
+        return labels[family] ?? "Accepted item";
+      }
+
+      function lifecycleStatusFailureMessage(reason) {
+        if (reason === "entity_withdrawal_blocked") {
+          return "Withdrawal blocked by active dependents. Remove active relationships, readiness requirements, open-answer check references, or learner-evidence target links before retrying.";
+        }
+        if (reason === "accepted_entity_not_found" || reason === "source_not_found") {
+          return "Item not found.";
+        }
+        if (reason === "validation_failed") {
+          return "Lifecycle status is invalid.";
+        }
+        return "Lifecycle update failed.";
+      }
+
+      async function setSourceLifecycleStatus(status) {
+        if (!state.identity) {
+          elements.sourceLifecycleStatus.textContent = "Sign in first.";
+          return;
+        }
+        const sourceId = elements.sourceContentIdInput.value.trim();
+        if (!sourceId) {
+          elements.sourceLifecycleStatus.textContent = "Enter a source id.";
+          return;
+        }
+
+        const result = await requestJson("/sources/" + encodeURIComponent(sourceId) + "/status", {
+          body: { status },
+          csrf: true,
+          method: "PUT",
+        });
+        if (result.status === "accepted") {
+          const lifecycleEntity = result.value.source;
+          updateWithdrawnLifecycleItems({
+            entityId: lifecycleEntity.id,
+            family: "source",
+            status: lifecycleEntity.status,
+          });
+          elements.sourceLifecycleStatus.textContent =
+            "Lifecycle status is " + lifecycleEntity.status + " for " + lifecycleEntity.id + ".";
+          return;
+        }
+        elements.sourceLifecycleStatus.textContent = lifecycleStatusFailureMessage(result.reason);
+      }
+
+      async function deleteSourceRecord() {
+        if (!state.identity) {
+          elements.sourceContentStatus.textContent = "Sign in first.";
+          return;
+        }
+        const sourceId = elements.sourceContentIdInput.value.trim();
+        if (!sourceId) {
+          elements.sourceContentStatus.textContent = "Enter a source id.";
+          return;
+        }
+
+        const result = await requestJson("/sources/" + encodeURIComponent(sourceId), {
+          csrf: true,
+          method: "DELETE",
+        });
+        if (result.status === "accepted") {
+          elements.sourceContentStatus.textContent = "Deleted source " + result.value.source.id + ".";
+          return;
+        }
+        if (result.reason === "source_hard_delete_blocked") {
+          elements.sourceContentStatus.textContent = "Source is referenced; withdraw it instead.";
+          return;
+        }
+        if (result.reason === "source_not_found") {
+          elements.sourceContentStatus.textContent = "Source not found.";
+          return;
+        }
+        elements.sourceContentStatus.textContent = "Source deletion failed.";
       }
 
       function renderCandidateList() {

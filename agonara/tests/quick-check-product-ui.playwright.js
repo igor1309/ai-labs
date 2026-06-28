@@ -187,6 +187,32 @@ test("quickCheckProductUiStudent_shouldShowUnavailable_onNonOwnerAttemptLookup",
   }
 });
 
+test("quickCheckProductUiLifecycle_shouldWithdrawAndReactivateAcceptedQuickCheck", async ({ page }) => {
+  const harness = await startLearnHarness();
+
+  try {
+    await signIn(page, harness.baseUrl);
+    await page.locator("#entity-lifecycle-family-input").selectOption("quick_check");
+    await page.locator("#entity-lifecycle-id-input").fill(harness.acceptedQuickCheck.entityId);
+    await page.locator("[data-action='withdraw-entity']").click();
+
+    await expect(page.locator("#entity-lifecycle-status")).toContainText(
+      "Lifecycle status is withdrawn for " + harness.acceptedQuickCheck.entityId,
+    );
+    await expect(page.locator("#withdrawn-items-view")).toContainText("Quick Check");
+    await expect(page.locator("#withdrawn-items-view")).toContainText(harness.acceptedQuickCheck.entityId);
+
+    await page.locator("#withdrawn-items-view").getByRole("button", { name: "Reactivate" }).click();
+    await expect(page.locator("#entity-lifecycle-status")).toContainText(
+      "Lifecycle status is active for " + harness.acceptedQuickCheck.entityId,
+    );
+    await expect(page.locator("#withdrawn-items-view")).toContainText("No withdrawn items in this session.");
+    await expect(page.locator("#withdrawn-items-view")).not.toContainText(harness.acceptedQuickCheck.entityId);
+  } finally {
+    await harness.close();
+  }
+});
+
 test("quickCheckProductUiLayout_shouldKeepControlsNamedAndNonOverlapping_onDesktopAndMobile", async ({ page }) => {
   const harness = await startLearnHarness();
 
@@ -313,7 +339,7 @@ async function startLearnHarness() {
   const baseUrl = await listen(server);
   const bootstrap = await bootstrapIdentity(baseUrl);
   const programId = await createProgram(baseUrl, bootstrap, "Linear Algebra");
-  await createAcceptedQuickCheck(baseUrl, bootstrap, programId);
+  const acceptedQuickCheck = await createAcceptedQuickCheck(baseUrl, bootstrap, programId);
   const student = await createIdentitySession(baseUrl, bootstrap, {
     displayName: "Learning Student",
     login: "student@example.test",
@@ -328,6 +354,7 @@ async function startLearnHarness() {
   await joinStudentProgram(baseUrl, otherStudent, programId);
 
   return {
+    acceptedQuickCheck,
     baseUrl,
     close: async () => {
       await close(server);
@@ -390,7 +417,7 @@ async function createAcceptedQuickCheck(baseUrl, session, programId) {
     method: "POST",
   });
   const candidateBody = await candidate.json();
-  await fetch(`${baseUrl}/quick-checks/candidates/${candidateBody.value.quickCheckCandidate.candidateId}/acceptance`, {
+  const accepted = await fetch(`${baseUrl}/quick-checks/candidates/${candidateBody.value.quickCheckCandidate.candidateId}/acceptance`, {
     body: JSON.stringify({}),
     headers: {
       cookie: session.cookie,
@@ -399,6 +426,7 @@ async function createAcceptedQuickCheck(baseUrl, session, programId) {
     },
     method: "POST",
   });
+  return (await accepted.json()).value.acceptedQuickCheck;
 }
 
 async function createIdentitySession(baseUrl, session, { displayName, login, password }) {

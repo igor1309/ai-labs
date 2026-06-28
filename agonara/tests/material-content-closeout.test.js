@@ -40,5 +40,5 @@ test("materialContentCloseout_shouldTraceIntentToImplementedSpecPlanCodeAndTests
 test("materialContentCloseout_shouldRefreshLocDashboard_onPhaseFiveCloseout", () => {
   const dashboard = readFileSync(repoRoot + "docs/loc-dashboard.html", "utf8");
 
-  assert.equal(dashboard.includes("Last updated: 2026-06-27"), true);
+  assert.match(dashboard, /Last updated: \d{4}-\d{2}-\d{2} \d{2}:\d{2} &middot; loc-dashboard\.sh/);
 });

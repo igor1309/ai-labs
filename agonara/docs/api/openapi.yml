@@ -327,6 +327,21 @@ components:
                 type: object
                 additionalProperties: true
             additionalProperties: false
+    LifecycleStatus:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - status
+            properties:
+              status:
+                type: string
+                enum:
+                  - active
+                  - withdrawn
+            additionalProperties: false
     OptionalObject:
       required: false
       content:
@@ -795,6 +810,7 @@ components:
         - criterion_revision_not_found
         - csrf_invalid
         - csrf_required
+        - entity_withdrawal_blocked
         - idempotency_conflict
         - identity_already_has_credential
         - identity_disabled
@@ -863,6 +879,7 @@ components:
         - session_not_found
         - session_revoked
         - source_not_found
+        - source_hard_delete_blocked
         - source_program_mismatch
         - suggestion_materialization_rejected
         - suggestion_policy_not_found
@@ -1917,6 +1934,70 @@ paths:
           $ref: "#/components/responses/Rejected"
         "500":
           $ref: "#/components/responses/Fault"
+  /sources/{sourceId}/status:
+    put:
+      tags:
+        - corpus
+      operationId: setProgramSourceLifecycleStatus
+      summary: Withdraw or reactivate a Program source record.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: sourceId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/LifecycleStatus"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /sources/{sourceId}:
+    delete:
+      tags:
+        - corpus
+      operationId: deleteProgramSource
+      summary: Hard-delete an unreferenced Program source record.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: sourceId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
   /materials/revisions/{revisionId}/content:
     get:
       tags:
@@ -2233,6 +2314,39 @@ paths:
           $ref: "#/components/responses/Rejected"
         "500":
           $ref: "#/components/responses/Fault"
+  /corpus/{entityId}/status:
+    put:
+      tags:
+        - corpus
+      operationId: setAcceptedCorpusLifecycleStatus
+      summary: Withdraw or reactivate an accepted Corpus entity.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/LifecycleStatus"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
   /accepted-corpus-revisions/{revisionId}:
     get:
       tags:
@@ -2479,6 +2593,39 @@ paths:
           $ref: "#/components/responses/Rejected"
         "500":
           $ref: "#/components/responses/Fault"
+  /navigation-relationships/{entityId}/status:
+    put:
+      tags:
+        - corpus
+      operationId: setAcceptedNavigationRelationshipLifecycleStatus
+      summary: Withdraw or reactivate an accepted navigation relationship.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/LifecycleStatus"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
   /programs/{programId}/assessment-criteria/candidates:
     get:
       tags:
@@ -2650,6 +2797,39 @@ paths:
         "403":
           $ref: "#/components/responses/Rejected"
         "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /assessment-criteria/{entityId}/status:
+    put:
+      tags:
+        - corpus
+      operationId: setAcceptedAssessmentCriterionLifecycleStatus
+      summary: Withdraw or reactivate an accepted assessment criterion entity.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/LifecycleStatus"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
           $ref: "#/components/responses/Rejected"
         "500":
           $ref: "#/components/responses/Fault"
@@ -2999,6 +3179,39 @@ paths:
           $ref: "#/components/responses/Rejected"
         "500":
           $ref: "#/components/responses/Fault"
+  /quick-checks/{entityId}/status:
+    put:
+      tags:
+        - corpus
+      operationId: setAcceptedQuickCheckLifecycleStatus
+      summary: Withdraw or reactivate an accepted Quick Check entity.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/LifecycleStatus"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
   /programs/{programId}/readiness-checks/curation:
     get:
       tags:
@@ -3020,6 +3233,39 @@ paths:
         "403":
           $ref: "#/components/responses/Rejected"
         "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /open-answer-checks/{entityId}/status:
+    put:
+      tags:
+        - corpus
+      operationId: setAcceptedOpenAnswerCheckLifecycleStatus
+      summary: Withdraw or reactivate an accepted open-answer check entity.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/LifecycleStatus"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
           $ref: "#/components/responses/Rejected"
         "500":
           $ref: "#/components/responses/Fault"
@@ -3218,6 +3464,39 @@ paths:
         "403":
           $ref: "#/components/responses/Rejected"
         "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /readiness-checks/{entityId}/status:
+    put:
+      tags:
+        - corpus
+      operationId: setAcceptedReadinessCheckLifecycleStatus
+      summary: Withdraw or reactivate an accepted readiness check entity.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/LifecycleStatus"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
           $ref: "#/components/responses/Rejected"
         "500":
           $ref: "#/components/responses/Fault"

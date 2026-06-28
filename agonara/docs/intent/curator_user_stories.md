@@ -1,9 +1,9 @@
 ---
 title: Agonara Curator User Stories
-date: 2026-05-26
+date: 2026-06-28
 description: Program curator user stories for Agonara program освоения.
 model: gpt-5.5-thinking
-version: 0.3.0
+version: 0.4.0
 ---
 
 # Agonara Curator User Stories
@@ -177,6 +177,24 @@ As a program curator, I want to load or derive the readable content of a materia
 Status: accepted
 
 Acceptance signal: a curator can store, read, and delete a source's content and set the accepted content of a material reference, and that content is served to students through the program; Agonara does not gate the content on licensing.
+
+## Lifecycle and Deletion
+
+### CUR-20 — Withdraw and reactivate accepted content
+
+As a program curator, I want to withdraw an accepted item and reactivate it later so that I can remove unsuitable content from current use without erasing revisions or student history.
+
+Status: accepted
+
+Acceptance signal: a withdrawn item leaves student delivery and active curator coverage, remains visible for reactivation, and returns with the same current revision when reactivated.
+
+### CUR-21 — Remove Program sources safely
+
+As a program curator, I want to delete an unreferenced Program source and withdraw a referenced source so that stray records can be removed without invalidating accepted content or provenance.
+
+Status: accepted
+
+Acceptance signal: an unreferenced source hard-deletes, while a referenced source rejects hard deletion and can be withdrawn without losing its provenance edges.
 
 ## Boundaries
 

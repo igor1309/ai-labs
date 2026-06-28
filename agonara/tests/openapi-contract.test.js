@@ -161,6 +161,119 @@ test("routeContracts_shouldDeclareMaterialContentBodiesAndPaginationQueries", ()
   );
 });
 
+test("routeContracts_shouldDeclareLifecycleAndDeletionRoutes", () => {
+  assert.deepEqual(
+    {
+      corpusStatus: {
+        ...mutationRouteProjection(routeContract("PUT", "/corpus/{entityId}/status")),
+        requestBody: requestBodyProjection(routeContract("PUT", "/corpus/{entityId}/status")),
+      },
+      criterionStatus: {
+        ...mutationRouteProjection(routeContract("PUT", "/assessment-criteria/{entityId}/status")),
+        requestBody: requestBodyProjection(routeContract("PUT", "/assessment-criteria/{entityId}/status")),
+      },
+      deleteSource: mutationRouteProjection(routeContract("DELETE", "/sources/{sourceId}")),
+      navigationRelationshipStatus: {
+        ...mutationRouteProjection(routeContract("PUT", "/navigation-relationships/{entityId}/status")),
+        requestBody: requestBodyProjection(routeContract("PUT", "/navigation-relationships/{entityId}/status")),
+      },
+      quickCheckStatus: {
+        ...mutationRouteProjection(routeContract("PUT", "/quick-checks/{entityId}/status")),
+        requestBody: requestBodyProjection(routeContract("PUT", "/quick-checks/{entityId}/status")),
+      },
+      openAnswerStatus: {
+        ...mutationRouteProjection(routeContract("PUT", "/open-answer-checks/{entityId}/status")),
+        requestBody: requestBodyProjection(routeContract("PUT", "/open-answer-checks/{entityId}/status")),
+      },
+      readinessStatus: {
+        ...mutationRouteProjection(routeContract("PUT", "/readiness-checks/{entityId}/status")),
+        requestBody: requestBodyProjection(routeContract("PUT", "/readiness-checks/{entityId}/status")),
+      },
+      setSourceStatus: {
+        ...mutationRouteProjection(routeContract("PUT", "/sources/{sourceId}/status")),
+        requestBody: requestBodyProjection(routeContract("PUT", "/sources/{sourceId}/status")),
+      },
+    },
+    {
+      corpusStatus: {
+        csrf: true,
+        handlerKey: "corpus.setAcceptedCorpusLifecycleStatus",
+        operationId: "setAcceptedCorpusLifecycleStatus",
+        requestBody: {
+          contentType: "application/json",
+          required: true,
+          schemaRef: "#/components/requestBodies/LifecycleStatus",
+        },
+      },
+      criterionStatus: {
+        csrf: true,
+        handlerKey: "corpus.setAcceptedAssessmentCriterionLifecycleStatus",
+        operationId: "setAcceptedAssessmentCriterionLifecycleStatus",
+        requestBody: {
+          contentType: "application/json",
+          required: true,
+          schemaRef: "#/components/requestBodies/LifecycleStatus",
+        },
+      },
+      deleteSource: {
+        csrf: true,
+        handlerKey: "corpus.deleteProgramSource",
+        operationId: "deleteProgramSource",
+      },
+      navigationRelationshipStatus: {
+        csrf: true,
+        handlerKey: "corpus.setAcceptedNavigationRelationshipLifecycleStatus",
+        operationId: "setAcceptedNavigationRelationshipLifecycleStatus",
+        requestBody: {
+          contentType: "application/json",
+          required: true,
+          schemaRef: "#/components/requestBodies/LifecycleStatus",
+        },
+      },
+      quickCheckStatus: {
+        csrf: true,
+        handlerKey: "corpus.setAcceptedQuickCheckLifecycleStatus",
+        operationId: "setAcceptedQuickCheckLifecycleStatus",
+        requestBody: {
+          contentType: "application/json",
+          required: true,
+          schemaRef: "#/components/requestBodies/LifecycleStatus",
+        },
+      },
+      openAnswerStatus: {
+        csrf: true,
+        handlerKey: "corpus.setAcceptedOpenAnswerCheckLifecycleStatus",
+        operationId: "setAcceptedOpenAnswerCheckLifecycleStatus",
+        requestBody: {
+          contentType: "application/json",
+          required: true,
+          schemaRef: "#/components/requestBodies/LifecycleStatus",
+        },
+      },
+      readinessStatus: {
+        csrf: true,
+        handlerKey: "corpus.setAcceptedReadinessCheckLifecycleStatus",
+        operationId: "setAcceptedReadinessCheckLifecycleStatus",
+        requestBody: {
+          contentType: "application/json",
+          required: true,
+          schemaRef: "#/components/requestBodies/LifecycleStatus",
+        },
+      },
+      setSourceStatus: {
+        csrf: true,
+        handlerKey: "corpus.setProgramSourceLifecycleStatus",
+        operationId: "setProgramSourceLifecycleStatus",
+        requestBody: {
+          contentType: "application/json",
+          required: true,
+          schemaRef: "#/components/requestBodies/LifecycleStatus",
+        },
+      },
+    },
+  );
+});
+
 test("routeContracts_shouldDeclareResponsesForEveryPublicStatus", () => {
   const missingResponses = routeContracts
     .filter($0 => $0.responses.length === 0 || $0.responses.some(response => !response.status || !response.envelope))
@@ -364,6 +477,14 @@ function requestBodyProjection(route) {
     contentType: route.requestBody?.contentType,
     required: route.requestBody?.required,
     schemaRef: route.requestBody?.schema?.ref,
+  };
+}
+
+function mutationRouteProjection(route) {
+  return {
+    csrf: route.auth?.csrf,
+    handlerKey: route.handlerKey,
+    operationId: route.operationId,
   };
 }
 

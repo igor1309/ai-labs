@@ -934,6 +934,131 @@ test("restoreBackup_shouldRestoreCorpusRecords_onAcceptedBackup", async () => {
   }
 });
 
+test("exportBackup_shouldIncludeLifecycleStatus_onAcceptedEntityAndSourceRecords_status", async () => {
+  const backup = await makeExportedCorpusBackup();
+
+  assert.deepEqual(
+    {
+      sourceStatuses: backup.programSources.map($0 => $0.status),
+      sourceStatusAttribution: backup.programSources.map($0 => ({
+        updatedByIdentityId: $0.statusUpdatedByIdentityId,
+        updatedAt: $0.statusUpdatedAt,
+      })),
+      entityStatuses: backup.acceptedCorpusEntities.map($0 => $0.status),
+      entityStatusAttribution: backup.acceptedCorpusEntities.map($0 => ({
+        updatedByIdentityId: $0.statusUpdatedByIdentityId,
+        updatedAt: $0.statusUpdatedAt,
+      })),
+    },
+    {
+      sourceStatuses: ["active"],
+      sourceStatusAttribution: [{ updatedByIdentityId: null, updatedAt: null }],
+      entityStatuses: ["active"],
+      entityStatusAttribution: [{ updatedByIdentityId: null, updatedAt: null }],
+    },
+  );
+});
+
+test("restoreBackup_shouldRejectInvalidLifecycleStatus_beforeMutation_status", async () => {
+  const backup = await makeExportedCorpusBackup();
+  const target = makeSUT();
+
+  try {
+    const seedResult = target.commands.restoreBackup(backup);
+    const invalidBackup = structuredClone(backup);
+    invalidBackup.programSources[0] = {
+      ...invalidBackup.programSources[0],
+      status: "archived",
+    };
+    const result = target.commands.restoreBackup(invalidBackup);
+
+    assert.deepEqual(
+      {
+        seedStatus: seedResult.status,
+        result,
+        restoredSourceStatuses: target.commands.exportBackup().value.backup.programSources.map($0 => $0.status),
+      },
+      {
+        seedStatus: "accepted",
+        result: {
+          status: "rejected",
+          reason: "lifecycle_status_invalid",
+        },
+        restoredSourceStatuses: ["active"],
+      },
+    );
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRoundTripWithdrawnEntityAndSourceGraph_status", async () => {
+  const backup = await makeExportedWithdrawnCorpusBackup();
+  const target = makeSUT();
+
+  try {
+    const result = target.commands.restoreBackup(backup);
+    const restored = target.commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        result,
+        entityStatuses: restored.acceptedCorpusEntities.map($0 => $0.status),
+        sourceStatuses: restored.programSources.map($0 => $0.status),
+        revisionSources: restored.acceptedCorpusRevisions.map($0 => $0.sourceIds),
+      },
+      {
+        result: { status: "accepted", value: { restored: true } },
+        entityStatuses: ["withdrawn"],
+        sourceStatuses: ["withdrawn"],
+        revisionSources: [["source-1"]],
+      },
+    );
+  } finally {
+    target.database.close();
+  }
+});
+
+test("restoreBackup_shouldRejectUnresolvableWithdrawnGraphs_beforeMutation_status", async () => {
+  const baseline = await makeExportedCorpusBackup();
+  const withdrawn = await makeExportedWithdrawnCorpusBackup();
+  const target = makeSUT();
+
+  try {
+    const seedResult = target.commands.restoreBackup(baseline);
+    const missingRevision = structuredClone(withdrawn);
+    missingRevision.acceptedCorpusRevisions = [];
+    const missingSource = structuredClone(withdrawn);
+    missingSource.programSources = [];
+
+    const results = [
+      target.commands.restoreBackup(missingRevision),
+      target.commands.restoreBackup(missingSource),
+    ];
+    const restored = target.commands.exportBackup().value.backup;
+
+    assert.deepEqual(
+      {
+        seedStatus: seedResult.status,
+        results,
+        entityStatuses: restored.acceptedCorpusEntities.map($0 => $0.status),
+        sourceStatuses: restored.programSources.map($0 => $0.status),
+      },
+      {
+        seedStatus: "accepted",
+        results: [
+          { status: "rejected", reason: "accepted_revision_not_found" },
+          { status: "rejected", reason: "program_source_not_found" },
+        ],
+        entityStatuses: ["active"],
+        sourceStatuses: ["active"],
+      },
+    );
+  } finally {
+    target.database.close();
+  }
+});
+
 test("restoreBackup_shouldRestoreAssessmentRecordsAndRevisionGraph_onAcceptedBackup", async () => {
   const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
   const target = makeSUT();
@@ -3930,6 +4055,43 @@ async function makeExportedCorpusBackup() {
       membershipEventId: "membership-event-1",
     });
     seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+
+    return source.commands.exportBackup().value.backup;
+  } finally {
+    source.database.close();
+  }
+}
+
+async function makeExportedWithdrawnCorpusBackup() {
+  const source = makeSUT({ ids: ["identity-1", "credential-1", "session-1", "audit-1"] });
+
+  try {
+    await source.commands.bootstrapFirstAdmin({
+      bootstrapSecret: "operator-secret",
+      displayName: "Root Admin",
+      login: "admin@example.test",
+      password: "correct horse battery staple",
+    });
+    seedProgramRecords(source.database, {
+      identityId: "identity-1",
+      programId: "program-1",
+      membershipId: "membership-1",
+      programEventId: "program-event-1",
+      membershipEventId: "membership-event-1",
+    });
+    seedCorpusRecords(source.database, { identityId: "identity-1", programId: "program-1" });
+    storage.setAcceptedCorpusEntityLifecycleStatusRecord(source.database, {
+      entityId: "entity-1",
+      status: "withdrawn",
+      updatedByIdentityId: "identity-1",
+      updatedAt: "2026-05-27T10:05:00.000Z",
+    });
+    storage.setProgramSourceLifecycleStatusRecord(source.database, {
+      sourceId: "source-1",
+      status: "withdrawn",
+      updatedByIdentityId: "identity-1",
+      updatedAt: "2026-05-27T10:06:00.000Z",
+    });
 
     return source.commands.exportBackup().value.backup;
   } finally {
