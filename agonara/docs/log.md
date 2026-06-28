@@ -72,7 +72,13 @@
   restore validation), and the partial-unique index is a **backstop** added by a guarded startup
   step that skips-with-diagnostic — never auto-withdrawing or deleting — until a curator has cleaned
   the existing duplicates through the ADR-022 API. Updated ADR-023, its spec, and its plan to match.
-  Implementation is gated on the ADR-022 plan landing.
+  Implementation is gated on the ADR-022 plan landing. A follow-up adversarial review (arch-doc +
+  adr-governance 5-dimension) then fixed three findings verified against `src/storage.js`: the
+  existing partial indexes live in a static schema DDL block that cannot be guarded in place, so the
+  navigation index must be a conditional JS step *outside* it; `storage.js` has no logging seam, so
+  "emit a diagnostic" became a stated work item with the mechanism left to implementation; and two
+  consistency slips (a leftover "migration"; an over-broad "single guard covers every write" that
+  ignored the separate restore writer).
 
 - Reframed the curator and student role skills so the agent is the human role-holder's
   **assistant**, not the role itself: `agonara-curator-corpus` (v1.3.0),

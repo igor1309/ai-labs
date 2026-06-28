@@ -85,12 +85,16 @@ Expected files:
   `createAcceptedNavigationRelationshipRecord` raising a `StorageInvariantError` for an existing
   active tuple (the primary, index-independent guard); (2) restore graph validation extended to
   reject a backup with two active relationships sharing a tuple; (3) a **guarded** idempotent
-  startup step that checks for active duplicate `(program_id, relationship_kind, from_entity_id,
-  to_entity_id)` tuples and, only when none remain, runs `create unique index if not exists
-  one_active_navigation_relationship on accepted_navigation_relationships (program_id,
-  relationship_kind, from_entity_id, to_entity_id) where status = 'active'` (mirroring
-  `one_active_learner_evidence_target_link`); when duplicates remain it logs a diagnostic naming the
-  tuples and skips, never throwing and never mutating rows.
+  startup step — a conditional JS step run *after/outside* the static schema DDL block (the existing
+  `one_active_*` partial indexes are static DDL and cannot be guarded in place, so the navigation
+  index MUST NOT be added to that block) — that checks for active duplicate `(program_id,
+  relationship_kind, from_entity_id, to_entity_id)` tuples and, only when none remain, runs `create
+  unique index if not exists one_active_navigation_relationship on accepted_navigation_relationships
+  (program_id, relationship_kind, from_entity_id, to_entity_id) where status = 'active'`; when
+  duplicates remain it surfaces a diagnostic naming the tuples and skips, never throwing and never
+  mutating rows. `storage.js` has no logging/diagnostic seam today, so the step also needs one (a log
+  line, a structured warning return, or equivalent) — the mechanism is an implementation choice but
+  the diagnostic MUST be operator-observable.
 - `agonara/src/corpus.js` — map the storage duplicate invariant to
   `navigation_relationship_already_accepted` on the `acceptNavigationCandidate` path (via
   `mapNavigationStorageRejection`), covering the `relationship_update` candidate kind; add the
@@ -232,16 +236,20 @@ with no dependency on the backstop index, and the OpenAPI surface matches.
 - Add RED storage test: with no duplicates, the step creates
   `one_active_navigation_relationship` and a subsequent active duplicate insert is rejected at the
   DB level (defence-in-depth behind the Phase 1 guard).
-- Implement the guarded startup step in `agonara/src/storage.js` (duplicate scan → conditional
-  `create unique index if not exists … where status = 'active'` or diagnostic-and-skip), mirroring
-  the `one_active_learner_evidence_target_link` pattern. Do **not** add any auto-withdraw or delete.
+- Implement the guarded startup step in `agonara/src/storage.js` as a conditional JS step run
+  outside the static schema DDL block (duplicate scan → conditional `create unique index if not
+  exists … where status = 'active'` or diagnostic-and-skip). The index DDL mirrors the
+  `one_active_learner_evidence_target_link` shape but, unlike it, MUST NOT be placed in the static
+  schema string. Add the operator-observable diagnostic seam this requires (none exists today). Do
+  **not** add any auto-withdraw or delete.
 
 **Dependencies**: Phase 1 complete.
 
-**Risks**: the step creates the index unconditionally and throws on a duplicate-bearing database; it
-"helpfully" withdraws or deletes a row (un-attributed mutation, violating ADR-022 rule 4); the
-diagnostic is silent so an operator never learns the data needs cleaning; the index is created
-non-partial and wrongly blocks a withdrawn tuple.
+**Risks**: the navigation index is added to the static schema DDL block where it cannot be guarded
+and throws on a duplicate-bearing database; the step "helpfully" withdraws or deletes a row
+(un-attributed mutation, violating ADR-022 rule 4); the diagnostic is silent (no logging seam) so an
+operator never learns the data needs cleaning; the index is created non-partial and wrongly blocks a
+withdrawn tuple.
 
 **Validation**: targeted uniqueness-storage command; full Agonara tests; root build;
 `git diff --check`; post-implementation self + adversarial review against the guard condition,

@@ -115,15 +115,19 @@ type ApiRejectionReason =
 
 ### Introducing the backstop index (guarded, no auto-mutation)
 
-9. The backstop partial-unique index is created by a guarded idempotent startup step:
-   `create unique index if not exists … where status = 'active'`. Before creating it, the step MUST
-   check for active duplicate tuples; if any remain, it MUST **skip creation and emit a startup
-   diagnostic** naming the offending tuples, and MUST NOT throw. The step MUST NOT auto-withdraw,
-   hard-delete, or otherwise mutate accepted rows to force the index — an un-attributed status
-   change would violate ADR-022 spec rule 4. Pre-existing active duplicates are cleaned only by an
-   attributable `Program Curator` withdrawal through the ADR-022 API; once the data is clean, the
-   next startup creates the index. Re-running the step is a no-op (the index already exists, or the
-   diagnostic repeats).
+9. The backstop partial-unique index is created by a guarded idempotent startup step. Because the
+   existing partial indexes live in a static schema DDL block that cannot be made conditional, this
+   step MUST be a conditional JS step run *outside* that block: it MUST check for active duplicate
+   tuples and, only when none remain, run `create unique index if not exists … where status =
+   'active'`. If active duplicates remain it MUST **skip creation and surface a diagnostic** naming
+   the offending tuples, and MUST NOT throw. The diagnostic MUST be observable to an operator
+   (`storage.js` has no logging seam today, so the implementation MUST add one — a log line, a
+   returned/structured warning, or an equivalent surface; the exact mechanism is an implementation
+   choice). The step MUST NOT auto-withdraw, hard-delete, or otherwise mutate accepted rows to force
+   the index — an un-attributed status change would violate ADR-022 spec rule 4. Pre-existing active
+   duplicates are cleaned only by an attributable `Program Curator` withdrawal through the ADR-022
+   API; once the data is clean, the next startup creates the index. Re-running the step is a no-op
+   (the index already exists, or the diagnostic repeats).
 
 ## Tests (required)
 

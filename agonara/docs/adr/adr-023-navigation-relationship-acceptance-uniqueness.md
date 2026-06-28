@@ -39,12 +39,15 @@ no unique index on the endpoint tuple. So accepting the same `topic_includes_con
 topic/concept pair twice succeeds and leaves two redundant edges in accepted navigation — reported
 in practice by a curator who could neither prevent nor (pre-ADR-022) repair the duplicate. The
 same `createAcceptedNavigationRelationshipRecord` path serves both first-time acceptance and the
-`relationship_update` candidate kind, so a single storage-layer guard covers every write that
-originates a relationship.
+`relationship_update` candidate kind, so one guard at that function covers both acceptance writes;
+backup restore inserts through its own statement and is guarded separately (Decision 7).
 
 Constraints: the live DB already contains duplicate **active** rows (the reported pair), so a
-unique index cannot be introduced until those are resolved; and ADR-022 — accepted but not yet
-implemented — is about to add the `active`/`withdrawn` status the index must be scoped to.
+unique index cannot be introduced until those are resolved; ADR-022 — accepted but not yet
+implemented — is about to add the `active`/`withdrawn` status the index must be scoped to; and the
+existing partial indexes (e.g. `one_active_learner_evidence_target_link`) live in a static schema
+DDL block with no conditional logic or diagnostic/logging seam, so a *guarded* index needs new
+machinery outside that block (see Decision 6).
 
 Rejected alternatives: **silent idempotent return** of the existing edge (hides that nothing was
 created and diverges from the existing `*_candidate_already_accepted` rejection family; true
@@ -84,18 +87,22 @@ invariant — cleanup must be an attributable curator action).
    tuple; the prior withdrawn edge remains addressable. The same scoping means the invariant also
    binds ADR-022 **reactivation** (`withdrawn → active`): reactivating a withdrawn relationship MUST
    be rejected when an active relationship with the same tuple already exists, so reactivation can
-   never resurrect a second active duplicate. This makes the index dependent on ADR-022's `status`
-   column and extends ADR-022's reactivation semantics with this uniqueness guard.
+   never resurrect a second active duplicate. Both the guard and the backstop index therefore depend
+   on ADR-022's `status` column, and this extends ADR-022's reactivation semantics with a uniqueness
+   guard.
 6. **Existing duplicates are cleaned by a curator, not by a migration; index creation is guarded.**
    Pre-existing accepted duplicates (present and `active` after ADR-022's backfill) are resolved by
    a `Program Curator` withdrawing all but one of the identical active edges through the ADR-022
    withdrawal API — an attributable, intentional action (ADR-022 rule 4). The system MUST NOT
    auto-withdraw or hard-delete rows at startup to make room for the index: an un-attributed status
    change would violate ADR-022's attribution invariant. The backstop index is therefore created by
-   a **guarded** idempotent startup step (`create unique index if not exists … where status =
-   'active'`) that first checks for active duplicates and, if any remain, **skips creation and emits
-   a startup diagnostic** naming the offending tuples, so startup never throws; the index appears
-   automatically on the next start once the curator has cleaned the data.
+   a **guarded** idempotent startup step — a conditional JS step *outside* the static schema DDL
+   block (the existing partial indexes are static DDL and cannot be guarded in place) — that first
+   checks for active duplicates and, if any remain, **skips creation and surfaces a diagnostic**
+   naming the offending tuples, so startup never throws; the index appears automatically on the next
+   start once the curator has cleaned the data. The diagnostic uses whatever logging/observability
+   seam the implementation has at schema-setup time; `storage.js` has none today, so providing one is
+   part of the work (the diagnostic mechanism is left to the spec/plan, not fixed here).
 7. **Restore rejects duplicates.** Backup restore MUST reject, before mutation, a backup that
    contains two active navigation relationships with the same tuple in a Program — consistent with
    ADR-022's pre-mutation restore validation.
@@ -159,7 +166,7 @@ invariant — cleanup must be an attributable curator action).
   envelope (envelope-layer behavior, unchanged); only a *new* acceptance of an already-accepted
   tuple is rejected.
 - Symmetric-kind reverse duplicates (`concept_related` / `concept_distinguishes_from` with swapped
-  endpoints) remain possible until a future decision; deferring keeps this ADR's migration to a
+  endpoints) remain possible until a future decision; deferring keeps this ADR's backstop to a
   single directed index.
 - Conformance MUST be verified by the downstream spec's acceptance criteria and tests; this ADR is
   the boundary, the spec is its enforcement mechanism.
