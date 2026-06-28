@@ -87,6 +87,29 @@ execution lock can be concrete at authoring time.
   executor re-establishes the lock against the real session at execution start —
   see `process-gates` for the execution-start re-validation gate.
 
+### Deferred-lock declaration example
+
+A plan authored now for execution in a later session declares the execution lock
+as intent only. The author sets the planning-intent fields; the execution-lock
+fields use the pattern or `set at execution` form, and `Preflight check` is left
+for the executor:
+
+```
+Execution mode: auto-continue
+Human review between tasks: no
+Push policy: push at closeout
+Worktree mode: create new
+Expected worktree: set at execution
+Expected branch: claude/<feature>-impl-*
+Preflight check: [ ] (executor establishes the lock at execution start)
+```
+
+Because `Expected branch` is a pattern (or `set at execution`), merging this plan
+before execution leaves no concrete branch to go stale. The executor resolves
+both lock fields against the real session per the `process-gates` Implementation
+Preflight Gate. Do not pin the authoring branch here — that is the same-session
+form, and it goes dead once the plan is merged.
+
 ## Acceptance Checklist
 
 Run this checklist before Step 1 of any implementation plan. Halt on any

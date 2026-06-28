@@ -39,19 +39,11 @@ before Step 1.
 
 ## Forward tasks
 
-IP-6/IP-7 reinforce; IP-8 is the release wrapper that gates shipping. These build on the
+IP-7 reinforces; IP-8 is the release wrapper that gates shipping. These build on the
 declaration-block split, the `set at execution` deferral marker, the stale-pin acceptance
-guards, the `Plan Lifecycle` section (same-session vs deferred modes) in `implementation-plan`,
-and the execution-lock realignment step in the `process-gates` Implementation Preflight Gate.
-
-### IP-6 — Worked example of a deferred-lock plan (P2)
-
-- **Change:** add an example fragment (in the skill or `docs/my-way/05-implementation-plan/example.md`)
-  showing `Worktree mode: create new`, `Expected branch: claude/<feature>-impl-*` (or
-  `set at execution`), `Preflight check: [ ] (executor establishes at execution start)`, so
-  agents stop pattern-matching the same-session pinned-branch form.
-- **DoD:** example present and consistent with the declaration-block split and the
-  `set at execution` deferral marker in `implementation-plan`.
+guards, the `Plan Lifecycle` section (same-session vs deferred modes) and the deferred-lock
+declaration example in `implementation-plan`, and the execution-lock realignment step in the
+`process-gates` Implementation Preflight Gate.
 
 ### IP-7 — Reconcile `## Existing Plan Migration` with the new lifecycle rules (P2)
 
