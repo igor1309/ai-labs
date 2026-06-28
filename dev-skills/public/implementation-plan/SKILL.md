@@ -89,6 +89,11 @@ failure and fix the plan first.
   push policy.
 - [ ] `Expected worktree` and `Expected branch` resolve to one task-level target,
   not a different target per phase.
+- [ ] If `Expected branch` names a concrete branch, this plan is executed and
+  pushed from that branch **in this session**; otherwise it is a pattern or
+  `set at execution`.
+- [ ] A plan intended to be committed/merged before execution MUST NOT pin a
+  concrete authoring branch as `Expected branch`.
 - [ ] Push cadence aligns with task boundaries, not phase boundaries.
 
 ## Existing Plan Migration
