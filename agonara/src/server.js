@@ -1463,6 +1463,8 @@ async function handleCorpusApi({
   const navigationCandidateRejectionMatch = pathname.match(/^\/navigation-candidates\/([^/]+)\/rejection$/);
   const navigationEntityMatch = pathname.match(/^\/navigation\/entities\/([^/]+)$/);
   const navigationRevisionMatch = pathname.match(/^\/navigation\/revisions\/([^/]+)$/);
+  const sourceStatusMatch = pathname.match(/^\/sources\/([^/]+)\/status$/);
+  const sourceRecordMatch = pathname.match(/^\/sources\/([^/]+)$/);
   const sourceContentMatch = pathname.match(/^\/sources\/([^/]+)\/content$/);
   const materialRevisionContentMatch = pathname.match(/^\/materials\/revisions\/([^/]+)\/content$/);
   const materialContentMatch = pathname.match(/^\/materials\/([^/]+)\/content$/);
@@ -2287,6 +2289,50 @@ async function handleCorpusApi({
         contentFormat: body.value.contentFormat,
       });
     }
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
+  if (request.method === "PUT" && sourceStatusMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+    const result = corpusCommands.setProgramSourceLifecycleStatus({
+      actingIdentityId: session.value.identity.id,
+      sourceId: decodeURIComponent(sourceStatusMatch[1]),
+      status: body.value.status,
+    });
+    sendJson(response, statusForResult(result), result);
+    return true;
+  }
+
+  if (request.method === "DELETE" && sourceRecordMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+    const result = corpusCommands.deleteProgramSource({
+      actingIdentityId: session.value.identity.id,
+      sourceId: decodeURIComponent(sourceRecordMatch[1]),
+    });
     sendJson(response, statusForResult(result), result);
     return true;
   }
@@ -4662,6 +4708,7 @@ function httpStatusFor(reason) {
     case "criterion_candidate_already_accepted":
     case "criterion_candidate_already_rejected":
     case "criterion_entity_program_mismatch":
+    case "entity_withdrawal_blocked":
     case "coverage_gap_scope_program_mismatch":
     case "idempotency_conflict":
     case "identity_already_has_credential":
@@ -4694,6 +4741,7 @@ function httpStatusFor(reason) {
     case "readiness_scope_program_mismatch":
     case "source_not_found":
     case "source_program_mismatch":
+    case "source_hard_delete_blocked":
     case "policy_not_satisfied":
     case "llm_curation_suggestion_already_materialized":
     case "llm_curation_suggestion_already_rejected":

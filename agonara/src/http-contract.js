@@ -422,6 +422,21 @@ export const openApiContractMetadata = {
           }
         }
       },
+      "LifecycleStatus": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": ["status"],
+              "properties": {
+                "status": { "type": "string", "enum": ["active", "withdrawn"] }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      },
       "OptionalObject": {
         "required": false,
         "content": {
@@ -1100,6 +1115,7 @@ export const openApiContractMetadata = {
           "criterion_revision_not_found",
           "csrf_invalid",
           "csrf_required",
+          "entity_withdrawal_blocked",
           "idempotency_conflict",
           "identity_already_has_credential",
           "identity_disabled",
@@ -1168,6 +1184,7 @@ export const openApiContractMetadata = {
           "session_not_found",
           "session_revoked",
           "source_not_found",
+          "source_hard_delete_blocked",
           "source_program_mismatch",
           "suggestion_materialization_rejected",
           "suggestion_policy_not_found",
@@ -3539,6 +3556,49 @@ export const routeContracts = [
       { "status": 401, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
       { "status": 403, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
       { "status": 404, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 500, "envelope": "fault", "schema": { "ref": "#/components/responses/Fault" } }
+    ],
+    "pathParameters": [
+      { "name": "sourceId", "schema": { "type": "string", "minLength": 1 }, "required": true }
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/sources/{sourceId}/status",
+    "operationId": "setProgramSourceLifecycleStatus",
+    "handlerKey": "corpus.setProgramSourceLifecycleStatus",
+    "tag": "corpus",
+    "summary": "Withdraw or reactivate a Program source record.",
+    "auth": { "kind": "session", "csrf": true },
+    "requestBody": { "contentType": "application/json", "required": true, "schema": { "ref": "#/components/requestBodies/LifecycleStatus" } },
+    "responses": [
+      { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
+      { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 401, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 403, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 404, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 409, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 500, "envelope": "fault", "schema": { "ref": "#/components/responses/Fault" } }
+    ],
+    "pathParameters": [
+      { "name": "sourceId", "schema": { "type": "string", "minLength": 1 }, "required": true }
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/sources/{sourceId}",
+    "operationId": "deleteProgramSource",
+    "handlerKey": "corpus.deleteProgramSource",
+    "tag": "corpus",
+    "summary": "Hard-delete an unreferenced Program source record.",
+    "auth": { "kind": "session", "csrf": true },
+    "responses": [
+      { "status": 200, "envelope": "accepted", "schema": { "ref": "#/components/responses/Accepted" } },
+      { "status": 400, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 401, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 403, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 404, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
+      { "status": 409, "envelope": "rejected", "schema": { "ref": "#/components/responses/Rejected" } },
       { "status": 500, "envelope": "fault", "schema": { "ref": "#/components/responses/Fault" } }
     ],
     "pathParameters": [

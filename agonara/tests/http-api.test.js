@@ -5063,6 +5063,151 @@ test("corpusSourcesCreate_shouldRejectInvalidSourceFields_withValidationFailed",
   }
 });
 
+test("corpusSourceStatus_shouldRequireCsrfCuratorAndHideWithdrawnSources", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(40) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const ordinary = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Ordinary Identity",
+      login: "ordinary-source-status@example.test",
+    });
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const createdSource = await createProgramSource(baseUrl, bootstrap, programId, {
+      sourceKind: "textbook",
+      title: "Program source",
+    });
+    const sourceId = (await createdSource.json()).value.programSource.sourceId;
+    const missingCsrf = await fetch(`${baseUrl}/sources/${sourceId}/status`, {
+      body: JSON.stringify({ status: "withdrawn" }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+      },
+      method: "PUT",
+    });
+    const nonCurator = await updateProgramSourceStatus(baseUrl, ordinary, sourceId, {
+      status: "withdrawn",
+    });
+    const invalid = await updateProgramSourceStatus(baseUrl, bootstrap, sourceId, {
+      status: "retired",
+    });
+    const withdrawn = await updateProgramSourceStatus(baseUrl, bootstrap, sourceId, {
+      status: "withdrawn",
+    });
+    const listed = await fetch(`${baseUrl}/programs/${programId}/sources`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        missingCsrf: { body: await missingCsrf.json(), statusCode: missingCsrf.status },
+        nonCurator: { body: await nonCurator.json(), statusCode: nonCurator.status },
+        invalid: { body: await invalid.json(), statusCode: invalid.status },
+        withdrawn: { body: await withdrawn.json(), statusCode: withdrawn.status },
+        listed: { body: await listed.json(), statusCode: listed.status },
+      },
+      {
+        missingCsrf: {
+          body: { status: "rejected", reason: "csrf_required" },
+          statusCode: 403,
+        },
+        nonCurator: {
+          body: { status: "rejected", reason: "admin_or_curator_required" },
+          statusCode: 403,
+        },
+        invalid: {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
+        withdrawn: {
+          body: {
+            status: "accepted",
+            value: {
+              source: {
+                id: sourceId,
+                status: "withdrawn",
+                updatedByIdentityId: "id-1",
+                updatedAt: "2026-05-27T10:00:00.000Z",
+              },
+            },
+          },
+          statusCode: 200,
+        },
+        listed: {
+          body: {
+            status: "accepted",
+            value: {
+              programSources: [],
+            },
+          },
+          statusCode: 200,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("corpusSourceDelete_shouldHardDeleteUnreferencedAndRejectReferencedSource", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(80) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const unreferencedSource = await createProgramSource(baseUrl, bootstrap, programId, {
+      sourceKind: "article",
+      title: "Unreferenced source",
+    });
+    const unreferencedSourceId = (await unreferencedSource.json()).value.programSource.sourceId;
+    const referencedSource = await createProgramSource(baseUrl, bootstrap, programId, {
+      sourceKind: "article",
+      title: "Referenced source",
+    });
+    const referencedSourceId = (await referencedSource.json()).value.programSource.sourceId;
+    const candidate = await createCorpusCandidate(baseUrl, bootstrap, programId, {
+      body: "Referenced body",
+      candidateKind: "topic",
+      sourceIds: [referencedSourceId],
+      title: "Referenced topic",
+    });
+    const candidateId = (await candidate.json()).value.corpusCandidate.candidateId;
+    await acceptCorpusCandidate(baseUrl, bootstrap, candidateId, {});
+
+    const deleted = await deleteProgramSource(baseUrl, bootstrap, unreferencedSourceId);
+    const blocked = await deleteProgramSource(baseUrl, bootstrap, referencedSourceId);
+
+    assert.deepEqual(
+      {
+        deleted: { body: await deleted.json(), statusCode: deleted.status },
+        blocked: { body: await blocked.json(), statusCode: blocked.status },
+      },
+      {
+        deleted: {
+          body: {
+            status: "accepted",
+            value: {
+              source: {
+                id: unreferencedSourceId,
+              },
+            },
+          },
+          statusCode: 200,
+        },
+        blocked: {
+          body: { status: "rejected", reason: "source_hard_delete_blocked" },
+          statusCode: 409,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("corpusCandidatesList_shouldReturnOnlyRequestedProgramCandidates_forCurator", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({
     ids: [
@@ -11203,6 +11348,28 @@ async function createProgramSource(baseUrl, session, programId, body) {
       "x-agonara-csrf": session.csrfToken,
     },
     method: "POST",
+  });
+}
+
+async function updateProgramSourceStatus(baseUrl, session, sourceId, body) {
+  return fetch(`${baseUrl}/sources/${sourceId}/status`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "PUT",
+  });
+}
+
+async function deleteProgramSource(baseUrl, session, sourceId) {
+  return fetch(`${baseUrl}/sources/${sourceId}`, {
+    headers: {
+      cookie: session.cookie,
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "DELETE",
   });
 }
 

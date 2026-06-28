@@ -327,6 +327,21 @@ components:
                 type: object
                 additionalProperties: true
             additionalProperties: false
+    LifecycleStatus:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - status
+            properties:
+              status:
+                type: string
+                enum:
+                  - active
+                  - withdrawn
+            additionalProperties: false
     OptionalObject:
       required: false
       content:
@@ -795,6 +810,7 @@ components:
         - criterion_revision_not_found
         - csrf_invalid
         - csrf_required
+        - entity_withdrawal_blocked
         - idempotency_conflict
         - identity_already_has_credential
         - identity_disabled
@@ -863,6 +879,7 @@ components:
         - session_not_found
         - session_revoked
         - source_not_found
+        - source_hard_delete_blocked
         - source_program_mismatch
         - suggestion_materialization_rejected
         - suggestion_policy_not_found
@@ -1914,6 +1931,70 @@ paths:
         "403":
           $ref: "#/components/responses/Rejected"
         "404":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /sources/{sourceId}/status:
+    put:
+      tags:
+        - corpus
+      operationId: setProgramSourceLifecycleStatus
+      summary: Withdraw or reactivate a Program source record.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: sourceId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/LifecycleStatus"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
+  /sources/{sourceId}:
+    delete:
+      tags:
+        - corpus
+      operationId: deleteProgramSource
+      summary: Hard-delete an unreferenced Program source record.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: sourceId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
           $ref: "#/components/responses/Rejected"
         "500":
           $ref: "#/components/responses/Fault"

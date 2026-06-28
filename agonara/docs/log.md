@@ -2,6 +2,11 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 4 sub-slice: exposed source lifecycle status and source-record
+  hard-delete over HTTP with session+CSRF gates. The OpenAPI contract now declares
+  `PUT /sources/{sourceId}/status` and `DELETE /sources/{sourceId}`, including
+  `source_hard_delete_blocked`.
+
 - ADR-022 implementation Phase 3 sub-slice: completed accepted material-content deletion
   tiers in the corpus domain. Unevidenced material content hard-deletes; evidenced material
   content preserves historical bytes and retires through entity withdrawal, while active

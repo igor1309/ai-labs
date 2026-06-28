@@ -161,6 +161,35 @@ test("routeContracts_shouldDeclareMaterialContentBodiesAndPaginationQueries", ()
   );
 });
 
+test("routeContracts_shouldDeclareSourceLifecycleAndDeletionRoutes", () => {
+  assert.deepEqual(
+    {
+      deleteSource: mutationRouteProjection(routeContract("DELETE", "/sources/{sourceId}")),
+      setSourceStatus: {
+        ...mutationRouteProjection(routeContract("PUT", "/sources/{sourceId}/status")),
+        requestBody: requestBodyProjection(routeContract("PUT", "/sources/{sourceId}/status")),
+      },
+    },
+    {
+      deleteSource: {
+        csrf: true,
+        handlerKey: "corpus.deleteProgramSource",
+        operationId: "deleteProgramSource",
+      },
+      setSourceStatus: {
+        csrf: true,
+        handlerKey: "corpus.setProgramSourceLifecycleStatus",
+        operationId: "setProgramSourceLifecycleStatus",
+        requestBody: {
+          contentType: "application/json",
+          required: true,
+          schemaRef: "#/components/requestBodies/LifecycleStatus",
+        },
+      },
+    },
+  );
+});
+
 test("routeContracts_shouldDeclareResponsesForEveryPublicStatus", () => {
   const missingResponses = routeContracts
     .filter($0 => $0.responses.length === 0 || $0.responses.some(response => !response.status || !response.envelope))
@@ -364,6 +393,14 @@ function requestBodyProjection(route) {
     contentType: route.requestBody?.contentType,
     required: route.requestBody?.required,
     schemaRef: route.requestBody?.schema?.ref,
+  };
+}
+
+function mutationRouteProjection(route) {
+  return {
+    csrf: route.auth?.csrf,
+    handlerKey: route.handlerKey,
+    operationId: route.operationId,
   };
 }
 
