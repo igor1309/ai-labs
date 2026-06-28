@@ -2,6 +2,18 @@
 
 ## 2026-06-28
 
+- Accepted **ADR-023 — Navigation-Relationship Acceptance Uniqueness**
+  (`docs/adr/adr-023-navigation-relationship-acceptance-uniqueness.md`), the *prevention* half of
+  the duplicate-navigation problem a curator reported. Accepted navigation relationships become
+  unique per directed `(program_id, relationship_kind, from_entity_id, to_entity_id)` among
+  **active** edges; a duplicate acceptance is rejected with a new
+  `navigation_relationship_already_accepted` reason, enforced at the storage layer (partial-unique
+  index + `createAcceptedNavigationRelationshipRecord`) so it covers first-time acceptance, the
+  `relationship_update` candidate kind, and restore. Scoped to `status = active` (depends on
+  ADR-022's lifecycle; sequenced after it so existing duplicate rows are withdrawn first); directed
+  tuple only, symmetric-kind reverse collapse deferred. The *cleanup* of already-accepted
+  duplicates remains the ADR-022 withdrawal path. Schema/routes/migration left to a downstream spec.
+
 - Reframed the curator and student role skills so the agent is the human role-holder's
   **assistant**, not the role itself: `agonara-curator-corpus` (v1.3.0),
   `agonara-curator-assessment`, `agonara-curator-participation`, `agonara-curator-research`,
