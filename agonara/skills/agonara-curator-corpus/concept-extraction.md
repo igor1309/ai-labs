@@ -119,7 +119,12 @@ coverage of the full topic.
 
 These are **draft** concepts. Propose each as a `concept` corpus candidate
 through the *Topics and concepts — corpus candidates* flow in
-[`SKILL.md`](SKILL.md), carrying its `rationale`, and confirm shape and
-granularity with the human curator before acceptance. Extraction never
-auto-accepts (CUR-06): a human-owned acceptance action is what moves any concept
-into accepted corpus.
+[`SKILL.md`](SKILL.md), carrying its `rationale`. Then **stop at the acceptance
+gate** (see *The acceptance gate* in [`SKILL.md`](SKILL.md)): present each
+candidate as read back from the API and the coverage gap-check as a
+per-block→candidate-id mapping the curator can verify against the source — not as
+a claim that coverage holds — and wait for their per-entity go-ahead before
+accepting or linking anything. Do not accept in the run you proposed, and do not
+treat a correct-looking layer as if it were accepted; "not proven wrong" is not
+"trusted." Extraction never auto-accepts (CUR-06): a human-owned, verified
+acceptance is what moves any concept into accepted corpus.
