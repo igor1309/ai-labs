@@ -82,3 +82,28 @@ test("learnUiSourceDelete_shouldExposeDeleteControlAndBlockedMessage", () => {
     notFoundMessage: true,
   });
 });
+
+test("learnUiWithdrawnItemsView_shouldRecordAndReactivateWithdrawnItems", () => {
+  const withdrawnViewContract = {
+    view: learnUiHtml.includes('id="withdrawn-items-view"'),
+    state: learnUiHtml.includes("withdrawnLifecycleItems: []"),
+    recordsWithdrawal: learnUiHtml.includes("updateWithdrawnLifecycleItems({"),
+    reactivationAction: learnUiHtml.includes('data-action=\'reactivate-withdrawn-item\'') ||
+      learnUiHtml.includes('data-action="reactivate-withdrawn-item"') ||
+      learnUiHtml.includes('button.dataset.action = "reactivate-withdrawn-item"'),
+    activeReactivationBody: learnUiHtml.includes('body: { status: "active" }'),
+    removesReactivated: learnUiHtml.includes('status === "withdrawn"'),
+    domSafeRendering: learnUiHtml.includes("document.createElement(\"strong\")") &&
+      learnUiHtml.includes("button.dataset.entityId = item.entityId"),
+  };
+
+  assert.deepEqual(withdrawnViewContract, {
+    view: true,
+    state: true,
+    recordsWithdrawal: true,
+    reactivationAction: true,
+    activeReactivationBody: true,
+    removesReactivated: true,
+    domSafeRendering: true,
+  });
+});

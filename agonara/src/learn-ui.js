@@ -683,6 +683,9 @@ export const learnUiHtml = `<!doctype html>
                   <button data-action="reactivate-entity" data-requires-session class="secondary" type="button">Reactivate</button>
                 </div>
                 <p id="entity-lifecycle-status" class="status" aria-live="polite"></p>
+                <div id="withdrawn-items-view" class="list">
+                  <p class="empty">No withdrawn items in this session.</p>
+                </div>
               </section>
             </section>
 
@@ -1082,6 +1085,7 @@ export const learnUiHtml = `<!doctype html>
         selectedReadinessCheck: null,
         selectedReadinessRevisionId: null,
         selectedRevisionId: null,
+        withdrawnLifecycleItems: [],
       };
 
       const elements = {
@@ -1111,6 +1115,7 @@ export const learnUiHtml = `<!doctype html>
         entityLifecycleIdInput: document.querySelector("#entity-lifecycle-id-input"),
         entityLifecyclePanel: document.querySelector("#entity-lifecycle-panel"),
         entityLifecycleStatus: document.querySelector("#entity-lifecycle-status"),
+        withdrawnItemsView: document.querySelector("#withdrawn-items-view"),
         logoutButton: document.querySelector("#logout-button"),
         membershipAdmissionPolicyForm: document.querySelector("#program-admission-policy-form"),
         membershipAdmissionPolicyInput: document.querySelector("#program-admission-policy-input"),
@@ -1339,6 +1344,11 @@ export const learnUiHtml = `<!doctype html>
         }
         if (event.target.closest("[data-action='reactivate-entity']")) {
           void setEntityLifecycleStatus("active");
+          return;
+        }
+        const reactivateButton = event.target.closest("[data-action='reactivate-withdrawn-item']");
+        if (reactivateButton) {
+          void reactivateWithdrawnItem(reactivateButton.dataset.family, reactivateButton.dataset.entityId);
         }
       });
 
@@ -2078,6 +2088,7 @@ export const learnUiHtml = `<!doctype html>
         state.selectedLlmSuggestion = null;
         state.selectedLlmSuggestionId = null;
         state.selectedReadinessAttemptId = null;
+        state.withdrawnLifecycleItems = [];
         elements.programIdInput.value = "";
         elements.signinStatus.textContent = "";
         clearCoverageGapSurfaces();
@@ -2085,6 +2096,7 @@ export const learnUiHtml = `<!doctype html>
         clearMembershipSurfaces();
         clearLearnerStateSurfaces();
         clearReadinessSurfaces();
+        renderWithdrawnItemsView();
         renderSession();
       }
 
@@ -2165,6 +2177,11 @@ export const learnUiHtml = `<!doctype html>
           method: "PUT",
         });
         if (result.status === "accepted") {
+          updateWithdrawnLifecycleItems({
+            entityId: result.value.entity.id,
+            family: elements.entityLifecycleFamilyInput.value,
+            status: result.value.entity.status,
+          });
           elements.entityLifecycleStatus.textContent =
             "Lifecycle status is " + result.value.entity.status + " for " + result.value.entity.id + ".";
           return;
@@ -2184,6 +2201,82 @@ export const learnUiHtml = `<!doctype html>
           source: "/sources/" + encodedId + "/status",
         };
         return routes[family];
+      }
+
+      function updateWithdrawnLifecycleItems({ entityId, family, status }) {
+        state.withdrawnLifecycleItems = state.withdrawnLifecycleItems.filter(
+          $0 => !($0.entityId === entityId && $0.family === family),
+        );
+        if (status === "withdrawn") {
+          state.withdrawnLifecycleItems.push({ entityId, family });
+        }
+        renderWithdrawnItemsView();
+      }
+
+      function renderWithdrawnItemsView() {
+        if (state.withdrawnLifecycleItems.length === 0) {
+          elements.withdrawnItemsView.innerHTML = '<p class="empty">No withdrawn items in this session.</p>';
+          return;
+        }
+        elements.withdrawnItemsView.innerHTML = "";
+        for (const item of state.withdrawnLifecycleItems) {
+          const row = document.createElement("article");
+          row.className = "list-item";
+          const label = document.createElement("strong");
+          label.textContent = lifecycleFamilyLabel(item.family);
+          const entity = document.createElement("span");
+          entity.textContent = item.entityId;
+          const button = document.createElement("button");
+          button.className = "secondary";
+          button.dataset.action = "reactivate-withdrawn-item";
+          button.dataset.entityId = item.entityId;
+          button.dataset.family = item.family;
+          button.type = "button";
+          button.textContent = "Reactivate";
+          row.append(label, entity, button);
+          elements.withdrawnItemsView.append(row);
+        }
+      }
+
+      async function reactivateWithdrawnItem(family, entityId) {
+        if (!state.identity) {
+          elements.entityLifecycleStatus.textContent = "Sign in first.";
+          return;
+        }
+        const route = lifecycleStatusRoute(family, entityId);
+        if (!route) {
+          elements.entityLifecycleStatus.textContent = "Choose an accepted item family.";
+          return;
+        }
+        const result = await requestJson(route, {
+          body: { status: "active" },
+          csrf: true,
+          method: "PUT",
+        });
+        if (result.status === "accepted") {
+          updateWithdrawnLifecycleItems({
+            entityId: result.value.entity.id,
+            family,
+            status: result.value.entity.status,
+          });
+          elements.entityLifecycleStatus.textContent =
+            "Lifecycle status is " + result.value.entity.status + " for " + result.value.entity.id + ".";
+          return;
+        }
+        elements.entityLifecycleStatus.textContent = lifecycleStatusFailureMessage(result.reason);
+      }
+
+      function lifecycleFamilyLabel(family) {
+        const labels = {
+          assessment_criterion: "Assessment criterion",
+          corpus: "Corpus",
+          navigation_relationship: "Navigation relationship",
+          open_answer_check: "Open-answer check",
+          quick_check: "Quick Check",
+          readiness_check: "Readiness check",
+          source: "Program source",
+        };
+        return labels[family] ?? "Accepted item";
       }
 
       function lifecycleStatusFailureMessage(reason) {

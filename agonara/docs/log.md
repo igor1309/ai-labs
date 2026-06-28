@@ -2,6 +2,10 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 5 sub-slice: added a `/learn` withdrawn-items session view.
+  Successful lifecycle withdrawals are listed with per-item reactivation controls that call the
+  active status route and remove reactivated items from the view.
+
 - ADR-022 implementation Phase 5 sub-slice: added the `/learn` curator source hard-delete
   control. Unreferenced source deletion calls `DELETE /sources/{sourceId}`, while referenced
   source blocks display a withdraw-instead message.
