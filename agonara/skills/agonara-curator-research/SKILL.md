@@ -1,8 +1,8 @@
 ---
 name: agonara-curator-research
 author: Igor Malyarov
-version: "1.1.0"
-description: Assist a human Agonara Program Curator to ground and expand a program — record external sources with justifying metadata, read coverage-gap diagnostics as draft guidance, and generate, trace, and explicitly accept or reject LLM-assisted curation suggestions. Use when a curator's assistant agent is researching a program: adding sources, finding gaps, or reviewing generated suggestions. Suggestions and gaps are draft material until accepted; accepting a suggestion only materializes a draft candidate, never accepted corpus.
+version: "1.3.0"
+description: Assist a human Agonara Program Curator to ground and expand a program — record external sources with justifying metadata, read coverage-gap diagnostics as draft guidance, and generate, trace, and explicitly accept or reject LLM-assisted curation suggestions. Report sources, gaps, and suggestions only from live API reads, never from memory; present suggestions as a numbered list and act only on the item numbers the curator picks after verifying origin. Use when a curator's assistant agent is researching a program: adding sources, finding gaps, or reviewing generated suggestions. Suggestions and gaps are draft material until accepted; accepting a suggestion only materializes a draft candidate, never accepted corpus.
 trigger: when a curator's assistant agent needs to record an external source, read coverage gaps, or generate/review LLM curation suggestions
 ---
 
@@ -23,6 +23,29 @@ promote anything into accepted corpus. Acceptance into the program is always
 [`agonara-curator-corpus`](../agonara-curator-corpus/SKILL.md) /
 [`agonara-curator-assessment`](../agonara-curator-assessment/SKILL.md).
 
+## The acceptance gate and trusted-state reporting
+
+This skill never promotes anything into accepted corpus — but the **contamination
+doctrine in [`agonara-curator-corpus`](../agonara-curator-corpus/SKILL.md) still
+governs how you report and how you accept suggestions.** Two rules apply:
+
+- **Report only from trusted state.** Present sources, coverage gaps, and
+  suggestions from live API reads (`GET …/sources`, `…/coverage-gaps`,
+  `…/llm-curation-suggestions`, and `GET /llm-curation-suggestions/{suggestionId}` for
+  origin) — never from memory or your own earlier narrative. A coverage gap is a
+  diagnostic, never a fact already in the corpus.
+- **Acting on a suggestion is per suggestion and curator-owned — both ways.**
+  Accepting a suggestion (`POST /llm-curation-suggestions/{suggestionId}/acceptance`)
+  only *materializes a draft candidate* — it is not corpus acceptance — and
+  rejecting one (`POST /llm-curation-suggestions/{suggestionId}/rejection`) discards
+  generated material the curator may have wanted. For either, trace origin first
+  (`GET /llm-curation-suggestions/{suggestionId}`) and present the suggestions as a
+  **numbered list**; the curator approves by explicit item number or range (never a
+  bare "all"), you echo the resolved suggestion ids, and you accept or reject only
+  those. Do not make them type ids and do not silently discard suggestions. A
+  materialized candidate then faces the full corpus/assessment acceptance gate
+  downstream, where its content is verified against trusted state.
+
 ## External sources
 
 Record the public plans, exam requirements, standards, materials, and research
@@ -36,6 +59,13 @@ findings that justify the program (CUR-07):
 Recorded sources are referenced by id (`sourceIds`) when proposing corpus
 candidates in [`agonara-curator-corpus`](../agonara-curator-corpus/SKILL.md).
 Recording a source does not by itself add any topic, concept, or check.
+
+Source recording is a direct mutation, **per source**: record only sources the
+curator or operator gave you — never invent provenance — and after recording,
+report them from `GET /programs/{programId}/sources`, not from memory. A recorded
+source is justification metadata, not verified truth: when a candidate cites it in
+`sourceIds`, the curator must be able to verify that source's content in trusted
+state before accepting the candidate downstream.
 
 ## Coverage gaps
 

@@ -6,6 +6,39 @@
   inactive dependents, withdrawn backup graphs, and domain/HTTP/browser workflows; align Product
   Intent, the implemented spec, runtime evidence, README, dashboard, and forward-task backlogs.
 
+- Reworked the curator acceptance gate to a **numbered-handle confirmation** tuned
+  for mobile curators. Across `agonara-curator-corpus` (v1.7.0),
+  `agonara-curator-assessment` (v1.6.0), and `agonara-curator-research` (v1.3.0),
+  the assistant now halts with a **short numbered list** (`1.`, `2.`, `3.` …) — each
+  line carrying the facts the curator must verify plus the read endpoint to inspect
+  the item in full — and the curator approves by **explicit item numbers or ranges**
+  (`accept 1,3,4`, `accept 1-8`) instead of typing ids, which are awful to copy on a
+  phone. Bare "all"/"yes"/"looks good" is rejected as non-specific; the assistant
+  never synthesizes a selection. Before accepting it **re-fetches the candidate list**
+  to confirm it still matches what was presented, resolves each number strictly
+  against that list (refusing any number not on it), and **echoes each item's title
+  and id** before mutating. Per-kind rules carry over to the numbered model: hosted
+  material content stays a **separate exchange** from the material's acceptance; a
+  `relationship_update` is accepted **whole**, so partial approval forces a
+  re-proposed candidate of only the approved drafts; an entity revision echoes both
+  `candidateId` and `targetEntityId` on selection.
+
+- Added a **zero-trust acceptance gate and contamination doctrine** to the curator
+  skills. `agonara-curator-corpus` (v1.6.0) now defines the gate as the source of
+  truth: proposal and acceptance are separate phases, the assistant may propose
+  freely but must not accept in the same run, the acceptance phase begins only from
+  a fresh curator instruction naming the candidate ids, the curator's own inspection
+  of trusted state — not a pasted read-back — is the authority, acceptance is per
+  entity (never a batch blessing), and any accepted/linked/hosted entity lacking a
+  curator named-id verification record is contaminated by default. It also spells out
+  the extra trusted-state facts to surface per acceptance kind (immutable hosted
+  material content, multi-draft `relationship_update`s, `targetEntityId` revisions).
+  `agonara-curator-assessment` (v1.5.0) and `agonara-curator-research` (v1.2.0) defer
+  to that gate and add their path-specific rules (verify the draft candidate and its
+  answer key before accepting, gate learner-state target-link mutations, report
+  sources/gaps/suggestions only from live API reads). `concept-extraction.md` now
+  stops at the gate instead of "confirm before acceptance."
+
 - ADR-022 implementation Phase 5 now exposes the plan-declared source lifecycle controls and
   withdrawn-items action in `/learn`, handles source lifecycle response envelopes correctly,
   and gives curators actionable guidance for every blocked-dependent class.
@@ -187,6 +220,43 @@
   before proposing concept candidates. Targets the failure mode of stopping at a few
   obvious "core" concepts by holding an explicit Definition of Done. The doc ships
   inside the skill folder so it resolves on the deployed curator bot.
+
+- Accepted **ADR-023 — Navigation-Relationship Acceptance Uniqueness**
+  (`docs/adr/adr-023-navigation-relationship-acceptance-uniqueness.md`), the *prevention* half of
+  the duplicate-navigation problem a curator reported. Accepted navigation relationships become
+  unique per directed `(program_id, relationship_kind, from_entity_id, to_entity_id)` among
+  **active** edges; a duplicate acceptance is rejected with a new
+  `navigation_relationship_already_accepted` reason, enforced at the storage layer (partial-unique
+  index + a pre-insert check) so it covers first-time acceptance, the `relationship_update`
+  candidate kind, and restore. Scoped to `status = active` (depends on ADR-022's lifecycle;
+  sequenced after it so existing duplicate rows are withdrawn first); directed tuple only,
+  symmetric-kind reverse collapse deferred. The *cleanup* of already-accepted duplicates remains
+  the ADR-022 withdrawal path. Hardened after an adversarial review: closed a cross-ADR collision
+  (ADR-022 `withdrawn → active` reactivation is now held to the same uniqueness guard) and cited
+  the existing `one_active_learner_evidence_target_link` partial-unique index as the proven
+  precedent.
+
+- Drafted the ADR-023 **navigation-relationship acceptance uniqueness** spec
+  (`docs/specs/navigation-relationship-acceptance-uniqueness.md`, `draft`) and implementation plan
+  (`docs/plans/navigation-relationship-acceptance-uniqueness.md`, `planned`) on top of the ADR-022
+  withdrawal spec/plan. Both make the two ADR-022 integration points durable, recorded
+  **downstream only** (the cascade flows ADR → spec → plan → implementation; the ADR-022 spec is
+  not edited from here): the reactivation carve-out (a navigation-relationship-only precondition
+  that narrows ADR-022 spec rule 10, which otherwise makes reactivation unconditional — stated in
+  the ADR-023 spec rule 5) and the no-migration-framework reality. On the latter, corrected the
+  approach after spotting that auto-withdrawing pre-existing duplicate rows at startup would be an
+  **un-attributed status change violating ADR-022 spec rule 4**: prevention of *new* duplicates is
+  now the unconditional, index-independent application guards (create-path check, reactivation,
+  restore validation), and the partial-unique index is a **backstop** added by a guarded startup
+  step that skips-with-diagnostic — never auto-withdrawing or deleting — until a curator has cleaned
+  the existing duplicates through the ADR-022 API. Updated ADR-023, its spec, and its plan to match.
+  Implementation is gated on the ADR-022 plan landing. A follow-up adversarial review (arch-doc +
+  adr-governance 5-dimension) then fixed three findings verified against `src/storage.js`: the
+  existing partial indexes live in a static schema DDL block that cannot be guarded in place, so the
+  navigation index must be a conditional JS step *outside* it; `storage.js` has no logging seam, so
+  "emit a diagnostic" became a stated work item with the mechanism left to implementation; and two
+  consistency slips (a leftover "migration"; an over-broad "single guard covers every write" that
+  ignored the separate restore writer).
 
 - Reframed the curator and student role skills so the agent is the human role-holder's
   **assistant**, not the role itself: `agonara-curator-corpus` (v1.3.0),

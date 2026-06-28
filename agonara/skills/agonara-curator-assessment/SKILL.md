@@ -1,8 +1,8 @@
 ---
 name: agonara-curator-assessment
 author: Igor Malyarov
-version: "1.4.0"
-description: Assist a human Agonara Program Curator to author assessment — open-answer checks, quick checks, and readiness checks via the candidate→acceptance→revision flow, define program-owned assessment criteria, link checks to learner-state targets, and keep answer keys and correctness curator-only (never student-facing). Use when a curator's assistant agent is adding or accepting checks or criteria on a program. Builds on the corpus skill; checks attach to accepted corpus entities.
+version: "1.6.0"
+description: Assist a human Agonara Program Curator to author assessment — open-answer checks, quick checks, and readiness checks via the candidate→acceptance→revision flow, define program-owned assessment criteria, link checks to learner-state targets, and keep answer keys and correctness curator-only (never student-facing). Treat your own drafts and reports as untrusted: present a numbered list, the curator verifies each candidate (and its answer key) against trusted state and approves by explicit item number before you accept, acceptance is per item not batched, and any acceptance lacking that verification is contaminated. Use when a curator's assistant agent is adding or accepting checks or criteria on a program. Builds on the corpus skill; checks attach to accepted corpus entities.
 trigger: when a curator's assistant agent needs to author or accept a check (open-answer, quick, readiness), define assessment criteria, or manage learner-state target links
 ---
 
@@ -23,6 +23,65 @@ attach to accepted corpus entities, so this skill builds on
 [`agonara-curator-corpus`](../agonara-curator-corpus/SKILL.md) and reuses its
 draft↔accepted (candidate→acceptance→revision) lifecycle — propose a candidate,
 review it, then explicitly accept (never auto-accept).
+
+## The acceptance gate — your work is untrusted until the curator verifies it
+
+This skill mutates accepted program state — accepting checks and criteria, and
+creating learner-state target links — so the **acceptance gate and contamination
+doctrine in [`agonara-curator-corpus`](../agonara-curator-corpus/SKILL.md) govern
+here without exception.** In short: proposal and acceptance are separate phases;
+you may propose freely but **must not** accept in the same run; you present a
+**short numbered list** and the curator approves by **explicit item numbers or
+ranges** (`accept 1,3` / `accept 1-8`) — never make them type ids, never
+synthesize the selection yourself, and reject any non-specific approval (a bare
+"all", "everything", "yes", "looks good") as no selection (see the corpus gate);
+the curator's own inspection of trusted state —
+not your pasted read-back — is the authority; you resolve the numbers to ids and
+echo what you will accept before accepting; and any accepted entity lacking a
+curator verification record is contaminated by default. Re-read that section; it
+is not repeated here.
+
+On top of it, these assessment paths carry trusted state the curator must verify
+before they pick a number:
+
+- **Verify the draft candidate before accepting; the revision only when revising.**
+  Acceptance acts on a **draft candidate**, so pre-acceptance verification reads
+  the candidate, not a revision: present it from its candidates list
+  (`GET /programs/{programId}/quick-checks/candidates`,
+  `…/open-answer-checks/candidates`, `…/readiness-checks/candidates`,
+  `…/assessment-criteria/candidates`) — for a quick check its prompt, options, and
+  answer key; for a readiness check its scope and every
+  `{ targetKind, targetId, requiredLevel }`. The `/curation` revision reads
+  (`GET /quick-checks/revisions/{revisionId}/curation`,
+  `…/readiness-checks/revisions/{revisionId}/curation`) are for **accepted**
+  revisions — use them for the before/after when revising in place, not as a
+  substitute for candidate read-back. If a candidate read-back cannot show the
+  curator the answer key they are approving, do not accept.
+- **The key is the thing to verify.** A check's value is its key/correctness; never
+  let the student-safe delivery view stand in for the key, and a check accepted
+  without the curator verifying its key against the source is contaminated.
+- **Revising an accepted check or criterion** — `targetEntityId` on any of the
+  open-answer / quick / readiness / criteria acceptances — overwrites accepted
+  content students may already see. Present the current accepted revision read-back
+  (the curator `/curation` or accepted list) and the proposed candidate as a
+  before/after the curator can diff; when the curator picks that item's number,
+  **echo both the `candidateId` and the `targetEntityId`** you will use before
+  accepting.
+- **Learner-state target links are direct mutations, not candidates.**
+  `POST /programs/{programId}/learner-state-target-links` and
+  `DELETE /learner-state-target-links/{targetLinkId}` change accepted mapping with
+  no candidate flow to gate them. To **create**, verify that
+  `evidenceOwnerEntityId` and `targetId` resolve to accepted entities in trusted
+  state. To **delete**, first fetch
+  `GET /programs/{programId}/learner-state-target-links` and present the links as a
+  **numbered list** with each one's `evidenceOwnerKind`, `evidenceOwnerEntityId`,
+  `targetKind`, and `targetId`; the curator picks the number, you echo the resolved
+  `targetLinkId`, and you delete only that one — never infer it from the endpoint
+  ids alone. Take an explicit numbered selection either way.
+- **Reject only on the curator's call.** Acceptance and rejection are both
+  curator-owned dispositions: you propose, the curator disposes. Do not reject a
+  check or criterion candidate the curator has not chosen to reject — surface it
+  and let them decide.
 
 ## The boundary that governs everything here
 

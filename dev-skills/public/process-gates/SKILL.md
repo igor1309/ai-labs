@@ -1,7 +1,7 @@
 ---
 name: process-gates
 author: Igor Malyarov
-version: "1.2.0"
+version: "1.3.0"
 description: Use during implementation execution for preflight, pre-commit scope checks, step closeout, pre-push/pre-PR gates, hard process gates, and completion verification. For authoring or editing implementation plans, use implementation-plan first.
 trigger: when implementing, running preflight, committing, pushing, opening PRs, closing out steps, or verifying completion
 ---
@@ -56,15 +56,16 @@ Required verification is scope-based:
 
 Before any implementation action (editing files, running implementation tests, or committing), run and report preflight:
 
-1. Confirm the active plan's worktree mode: `create new`, `reuse existing`, or `none`.
-2. Verify with git commands (minimum): `git worktree list --porcelain` and `git branch --show-current`.
-3. Capture current worktree path and branch.
-4. Emit a preflight status line:
+1. **Establish/realign the execution lock.** Before Step 1, read the plan's `Expected worktree` and `Expected branch`. When either is a pattern, the literal `set at execution`, or names a branch that no longer exists — the case of a plan authored for deferred execution and then committed/merged — establish the lock against the current session's real worktree and branch instead of honoring the authored value. A pinned-but-dead `Expected branch` is replaced, not honored as a blocker. Record the resolved worktree and branch as the active lock for the remaining steps. A concrete, still-live `Expected branch` is used as-is.
+2. Confirm the active plan's worktree mode: `create new`, `reuse existing`, or `none`.
+3. Verify with git commands (minimum): `git worktree list --porcelain` and `git branch --show-current`.
+4. Capture current worktree path and branch.
+5. Emit a preflight status line:
    - `Preflight: worktree=<path>, branch=<branch>, separate_worktree=<pass|fail>`
    - `separate_worktree=pass` means the current worktree satisfies the active plan's worktree mode and branch lock. For `reuse existing`, it may be an existing non-root dedicated worktree.
-5. If worktree mode is `create new` and preflight is `fail`, create a new separate worktree and rerun preflight until it is `pass` (do not implement from the root worktree).
-6. If worktree mode is `reuse existing` and preflight is `fail`, stop and report the mismatch instead of creating or switching worktrees.
-7. If any preflight item fails, no file edits are allowed.
+6. If worktree mode is `create new` and preflight is `fail`, create a new separate worktree and rerun preflight until it is `pass` (do not implement from the root worktree).
+7. If worktree mode is `reuse existing` and preflight is `fail`, stop and report the mismatch instead of creating or switching worktrees.
+8. If any preflight item fails, no file edits are allowed.
 
 ## Process Discipline Hard Gates
 
