@@ -2,6 +2,23 @@
 
 ## 2026-06-28
 
+- Reworked the curator acceptance gate to a **numbered-handle confirmation** tuned
+  for mobile curators. Across `agonara-curator-corpus` (v1.7.0),
+  `agonara-curator-assessment` (v1.6.0), and `agonara-curator-research` (v1.3.0),
+  the assistant now halts with a **short numbered list** (`1.`, `2.`, `3.` …) — each
+  line carrying the facts the curator must verify plus the read endpoint to inspect
+  the item in full — and the curator approves by **explicit item numbers or ranges**
+  (`accept 1,3,4`, `accept 1-8`) instead of typing ids, which are awful to copy on a
+  phone. Bare "all"/"yes"/"looks good" is rejected as non-specific; the assistant
+  never synthesizes a selection. Before accepting it **re-fetches the candidate list**
+  to confirm it still matches what was presented, resolves each number strictly
+  against that list (refusing any number not on it), and **echoes each item's title
+  and id** before mutating. Per-kind rules carry over to the numbered model: hosted
+  material content stays a **separate exchange** from the material's acceptance; a
+  `relationship_update` is accepted **whole**, so partial approval forces a
+  re-proposed candidate of only the approved drafts; an entity revision echoes both
+  `candidateId` and `targetEntityId` on selection.
+
 - Added a **zero-trust acceptance gate and contamination doctrine** to the curator
   skills. `agonara-curator-corpus` (v1.6.0) now defines the gate as the source of
   truth: proposal and acceptance are separate phases, the assistant may propose
