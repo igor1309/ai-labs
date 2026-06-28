@@ -2,6 +2,16 @@
 
 ## 2026-06-28
 
+- Add a `concept-extraction.md` reference doc to `agonara-curator-corpus` (v1.4.0)
+  and link it from `SKILL.md`'s topics-and-concepts section. It captures a reusable
+  draft-concept-extraction procedure: read and segment the whole topic into semantic
+  blocks, extract teachable units per block, balance coverage against granularity with
+  a merge/trim pass, and run a mandatory `semantic blocks → teachable units → concepts`
+  gap check (a reasoning pass over source material vs. the draft concepts)
+  before proposing concept candidates. Targets the failure mode of stopping at a few
+  obvious "core" concepts by holding an explicit Definition of Done. The doc ships
+  inside the skill folder so it resolves on the deployed curator bot.
+
 - Reframed the curator and student role skills so the agent is the human role-holder's
   **assistant**, not the role itself: `agonara-curator-corpus` (v1.3.0),
   `agonara-curator-assessment`, `agonara-curator-participation`, `agonara-curator-research`,
