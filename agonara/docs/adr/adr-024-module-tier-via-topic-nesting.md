@@ -1,7 +1,7 @@
 ---
 date: 2026-06-28
 model: claude-opus-4-8
-status: proposed
+status: accepted
 description: "Decision to add a module tier to the corpus as a structural role of an existing topic via a new directed navigation relationship topic_includes_topic, rather than a new entity kind, with single-parent + acyclicity + active-endpoint invariants enforced atomically on accept and reactivation, gap-diagnostic adjustments for container topics, and a data-compatible rollout that still requires an FK-safe schema migration to widen the relationship_kind CHECK."
 ---
 
