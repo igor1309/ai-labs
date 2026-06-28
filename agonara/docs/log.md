@@ -8,6 +8,11 @@
   columns; backup export/restore preserves lifecycle status and rejects invalid lifecycle
   values before mutation.
 
+- ADR-022 implementation Phase 2 sub-slice: added curator-authorized corpus entity
+  withdraw/reactivate with attribution, active-only accepted-corpus listings, coverage-gap
+  derivation that treats withdrawn corpus entities and their relationships as absent, and
+  active-only readiness delivery listings while historical revision reads keep resolving.
+
 - Drafted the **accepted-entity withdrawal and source deletion** spec
   (`docs/specs/accepted-entity-withdrawal-and-source-deletion.md`) operationalizing
   [ADR-022](docs/adr/adr-022-accepted-entity-withdrawal-and-source-deletion.md): an

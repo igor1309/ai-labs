@@ -1760,6 +1760,7 @@ function listReadinessCheckDeliveries({ database, getEffectiveParticipation, inp
   return accepted({
     readinessChecks: listAcceptedReadinessCheckEntityRecords(database, {
       programId: authorization.program.id,
+      status: "active",
     })
       .map($0 => getAcceptedReadinessCheckRevisionRecord(database, $0.currentRevisionId))
       .filter($0 => $0 !== null)

@@ -986,6 +986,107 @@ test("listAcceptedCorpus_shouldAllowSignedInPreviewWithoutMembership", async () 
   }
 });
 
+test("setAcceptedCorpusLifecycleStatus_shouldWithdrawAndReactivateEntity_withoutLosingHistoricalRevision_status", async () => {
+  const { commands, database } = await makeSUT({
+    now: makeAdvancingClock("2026-06-28T10:00:00.000Z"),
+  });
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      sourceKind: "article",
+      title: "Program source",
+    });
+    const candidate = commands.createCorpusCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Withdrawable topic",
+      body: "Topic body",
+      sourceIds: ["source-1"],
+    });
+    const accepted = commands.acceptCorpusCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: candidate.value.corpusCandidate.candidateId,
+    }).value.acceptedCorpus;
+
+    const withdrawn = commands.setAcceptedCorpusLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: accepted.entityId,
+      status: "withdrawn",
+    });
+    const activeListAfterWithdraw = commands.listAcceptedCorpus({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+    });
+    const historicalReadAfterWithdraw = commands.getAcceptedCorpusRevision({
+      actingIdentityId: "identity-curator",
+      revisionId: accepted.revisionId,
+    });
+    const reactivated = commands.setAcceptedCorpusLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: accepted.entityId,
+      status: "active",
+    });
+
+    assert.deepEqual(
+      {
+        withdrawn,
+        activeListAfterWithdraw: activeListAfterWithdraw.value.acceptedCorpus.map($0 => $0.entityId),
+        historicalReadAfterWithdraw: historicalReadAfterWithdraw.value.acceptedCorpus,
+        reactivated,
+        activeListAfterReactivate: commands
+          .listAcceptedCorpus({
+            actingIdentityId: "identity-curator",
+            programId: "program-a",
+          })
+          .value.acceptedCorpus.map($0 => $0.entityId),
+        storedEntity: listAcceptedCorpusEntityRecords(database, { programId: "program-a" }).map($0 => ({
+          id: $0.id,
+          currentRevisionId: $0.currentRevisionId,
+        })),
+      },
+      {
+        withdrawn: {
+          status: "accepted",
+          value: {
+            entity: {
+              id: accepted.entityId,
+              status: "withdrawn",
+              updatedByIdentityId: "identity-curator",
+              updatedAt: "2026-06-28T10:00:00.006Z",
+            },
+          },
+        },
+        activeListAfterWithdraw: [],
+        historicalReadAfterWithdraw: accepted,
+        reactivated: {
+          status: "accepted",
+          value: {
+            entity: {
+              id: accepted.entityId,
+              status: "active",
+              updatedByIdentityId: "identity-curator",
+              updatedAt: "2026-06-28T10:00:00.007Z",
+            },
+          },
+        },
+        activeListAfterReactivate: [accepted.entityId],
+        storedEntity: [
+          {
+            id: accepted.entityId,
+            currentRevisionId: accepted.revisionId,
+          },
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("createNavigationCandidate_shouldPersistDraftMaterialMetadataAndRelationshipDrafts_onValidInput", async () => {
   const { commands, database } = await makeSUT();
 

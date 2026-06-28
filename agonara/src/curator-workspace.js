@@ -1084,7 +1084,7 @@ function resolveCoverageScope({ database, programId, scopeKind, scopeId }) {
 }
 
 function buildCoverageModel(database, programId) {
-  const navigationEntities = listAcceptedCorpusEntityRecords(database, { programId }).map(entity => {
+  const navigationEntities = listAcceptedCorpusEntityRecords(database, { programId, status: "active" }).map(entity => {
     const revision = getAcceptedCorpusRevisionRecord(database, entity.currentRevisionId);
     return {
       ...entity,
@@ -1092,32 +1092,37 @@ function buildCoverageModel(database, programId) {
       title: revision.title,
     };
   });
-  const relationships = listAcceptedNavigationRelationshipRecords(database, { programId }).map(
-    relationship => ({
+  const activeNavigationEntityIds = new Set(navigationEntities.map($0 => $0.id));
+  const relationships = listAcceptedNavigationRelationshipRecords(database, { programId, status: "active" })
+    .filter(
+      $0 =>
+        activeNavigationEntityIds.has($0.fromEntityId) &&
+        activeNavigationEntityIds.has($0.toEntityId),
+    )
+    .map(relationship => ({
       ...relationship,
       revision: getAcceptedNavigationRelationshipRevisionRecord(
         database,
         relationship.currentRevisionId,
       ),
-    }),
-  );
-  const quickChecks = listAcceptedQuickCheckEntityRecords(database, { programId }).map(entity => ({
+    }));
+  const quickChecks = listAcceptedQuickCheckEntityRecords(database, { programId, status: "active" }).map(entity => ({
     ...entity,
     revision: getAcceptedQuickCheckRevisionRecord(database, entity.currentRevisionId),
   }));
-  const openAnswerChecks = listAcceptedOpenAnswerCheckEntityRecords(database, { programId }).map(
+  const openAnswerChecks = listAcceptedOpenAnswerCheckEntityRecords(database, { programId, status: "active" }).map(
     entity => ({
       ...entity,
       revision: getAcceptedOpenAnswerCheckRevisionRecord(database, entity.currentRevisionId),
     }),
   );
-  const criteria = listAcceptedAssessmentCriterionEntityRecords(database, { programId }).map(
+  const criteria = listAcceptedAssessmentCriterionEntityRecords(database, { programId, status: "active" }).map(
     entity => ({
       ...entity,
       revision: getAcceptedAssessmentCriterionRevisionRecord(database, entity.currentRevisionId),
     }),
   );
-  const readinessChecks = listAcceptedReadinessCheckEntityRecords(database, { programId }).map(
+  const readinessChecks = listAcceptedReadinessCheckEntityRecords(database, { programId, status: "active" }).map(
     entity => ({
       ...entity,
       revision: getAcceptedReadinessCheckRevisionRecord(database, entity.currentRevisionId),

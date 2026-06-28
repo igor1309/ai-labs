@@ -32,6 +32,7 @@ import {
   getSourceContentRecord,
   setAcceptedMaterialContentRecord,
   setSourceContentRecord,
+  setAcceptedCorpusEntityLifecycleStatusRecord,
   deleteSourceContentRecord,
   getAcceptedNavigationRelationshipRevisionRecord,
   getAcceptedOpenAnswerCheckEntityRecord,
@@ -233,6 +234,8 @@ export function createCorpusCommands({
       readMaterialContent({ database, getEffectiveParticipation, input }),
     readMaterialRevisionContent: input =>
       readMaterialRevisionContent({ database, getEffectiveParticipation, input }),
+    setAcceptedCorpusLifecycleStatus: input =>
+      setAcceptedCorpusLifecycleStatus({ database, getEffectiveParticipation, input, now }),
     rejectAssessmentCriterionCandidate: input =>
       rejectAssessmentCriterionCandidate({ database, getEffectiveParticipation, input, now }),
     rejectOpenAnswerCheckCandidate: input =>
@@ -916,6 +919,7 @@ function listAcceptedAssessmentCriteria({ database, getEffectiveParticipation, i
 
   const entities = listAcceptedAssessmentCriterionEntityRecords(database, {
     programId: authorization.program.id,
+    status: "active",
   });
 
   return accepted({
@@ -937,6 +941,7 @@ function listAcceptedOpenAnswerChecks({ database, getEffectiveParticipation, inp
 
   const entities = listAcceptedOpenAnswerCheckEntityRecords(database, {
     programId: authorization.program.id,
+    status: "active",
   });
 
   return accepted({
@@ -958,12 +963,47 @@ function listQuickCheckDeliveries({ database, getEffectiveParticipation, input }
 
   const entities = listAcceptedQuickCheckEntityRecords(database, {
     programId: authorization.program.id,
+    status: "active",
   });
 
   return accepted({
     quickCheckDeliveries: entities.map($0 =>
       summarizeQuickCheckDelivery(getAcceptedQuickCheckRevisionRecord(database, $0.currentRevisionId)),
     ),
+  });
+}
+
+function setAcceptedCorpusLifecycleStatus({ database, getEffectiveParticipation, input, now }) {
+  if (!new Set(["active", "withdrawn"]).has(input?.status)) {
+    return rejected("validation_failed");
+  }
+  const entity = getAcceptedCorpusEntityRecord(database, input?.entityId);
+  if (!entity) {
+    return rejected("accepted_entity_not_found");
+  }
+  const authorization = resolveCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: entity.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  const updated = setAcceptedCorpusEntityLifecycleStatusRecord(database, {
+    entityId: entity.id,
+    status: input.status,
+    updatedByIdentityId: authorization.identity.id,
+    updatedAt: now().toISOString(),
+  });
+
+  return accepted({
+    entity: {
+      id: updated.id,
+      status: updated.status,
+      updatedByIdentityId: updated.updatedByIdentityId,
+      updatedAt: updated.updatedAt,
+    },
   });
 }
 
@@ -978,6 +1018,7 @@ function listAcceptedCorpus({ database, getEffectiveParticipation, input }) {
 
   const entities = listAcceptedCorpusEntityRecords(database, {
     programId: authorization.program.id,
+    status: "active",
   }).filter($0 => input?.acceptedKind === undefined || $0.acceptedKind === input.acceptedKind);
 
   return accepted({
@@ -1243,6 +1284,7 @@ function listAcceptedQuickChecksForCuration({ database, getEffectiveParticipatio
 
   const entities = listAcceptedQuickCheckEntityRecords(database, {
     programId: authorization.program.id,
+    status: "active",
   });
 
   return accepted({
@@ -1264,6 +1306,7 @@ function listAcceptedReadinessChecksForCuration({ database, getEffectiveParticip
 
   const entities = listAcceptedReadinessCheckEntityRecords(database, {
     programId: authorization.program.id,
+    status: "active",
   });
 
   return accepted({

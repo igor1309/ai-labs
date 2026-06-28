@@ -240,6 +240,60 @@ test("inspectCuratorCoverageGaps_shouldReportDeterministicAcceptedCorpusDiagnost
   }
 });
 
+test("inspectCuratorCoverageGaps_shouldTreatWithdrawnEntitiesAsAbsent_status", () => {
+  const { commands, corpusCommands, database } = makeSUT();
+
+  try {
+    const { linkedConcept, linkedTopic } = seedCoverageCorpus(database, { programId: "program-a" });
+
+    const before = commands.inspectCuratorCoverageGaps({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      scopeKind: "topic",
+      scopeId: linkedTopic.entityId,
+    });
+    corpusCommands.setAcceptedCorpusLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: linkedConcept.entityId,
+      status: "withdrawn",
+    });
+    const withdrawn = commands.inspectCuratorCoverageGaps({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      scopeKind: "topic",
+      scopeId: linkedTopic.entityId,
+    });
+    corpusCommands.setAcceptedCorpusLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: linkedConcept.entityId,
+      status: "active",
+    });
+    const reactivated = commands.inspectCuratorCoverageGaps({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      scopeKind: "topic",
+      scopeId: linkedTopic.entityId,
+    });
+
+    assert.deepEqual(
+      {
+        before: projectGaps(before.value.report.gaps),
+        withdrawn: projectGaps(withdrawn.value.report.gaps),
+        reactivated: projectGaps(reactivated.value.report.gaps),
+      },
+      {
+        before: [],
+        withdrawn: [
+          ["info", "topic_without_concepts", "topic", linkedTopic.entityId, linkedTopic.title, 0],
+        ],
+        reactivated: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("inspectCuratorCoverageGaps_shouldRedactProtectedDetailsAndPreserveAdjacentState", () => {
   const { commands, database } = makeSUT();
 
@@ -1206,6 +1260,7 @@ function seedCoverageCorpus(database, { programId }) {
 
   return {
     concept,
+    linkedConcept,
     linkedQuickCheck,
     linkedQuickCheckOptionId: linkedQuickCheck.options[0].optionId,
     linkedTopic,

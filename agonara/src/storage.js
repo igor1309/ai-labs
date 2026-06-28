@@ -1613,25 +1613,35 @@ export function getAcceptedAssessmentCriterionEntityRecord(database, id) {
   return row ?? null;
 }
 
-export function listAcceptedAssessmentCriterionEntityRecords(database, { programId = null } = {}) {
-  if (programId === null) {
-    return database
-      .prepare(
-        `select id, program_id as programId, current_revision_id as currentRevisionId
-         from accepted_assessment_criterion_entities
-         order by id`,
-      )
-      .all();
+export function listAcceptedAssessmentCriterionEntityRecords(database, { programId = null, status = null } = {}) {
+  return listAcceptedCurrentRevisionEntityRecords(database, {
+    programId,
+    status,
+    tableName: "accepted_assessment_criterion_entities",
+  });
+}
+
+function listAcceptedCurrentRevisionEntityRecords(database, { programId, status, tableName }) {
+  const conditions = [];
+  const values = [];
+  if (programId !== null) {
+    conditions.push("program_id = ?");
+    values.push(programId);
   }
+  if (status !== null) {
+    conditions.push("status = ?");
+    values.push(status);
+  }
+  const whereClause = conditions.length === 0 ? "" : `where ${conditions.join(" and ")}`;
 
   return database
     .prepare(
       `select id, program_id as programId, current_revision_id as currentRevisionId
-       from accepted_assessment_criterion_entities
-       where program_id = ?
+       from ${tableName}
+       ${whereClause}
        order by id`,
     )
-    .all(programId);
+    .all(...values);
 }
 
 export function updateAcceptedAssessmentCriterionEntityCurrentRevision(database, { entityId, currentRevisionId }) {
@@ -2023,25 +2033,12 @@ export function getAcceptedQuickCheckEntityRecord(database, id) {
   return row ?? null;
 }
 
-export function listAcceptedQuickCheckEntityRecords(database, { programId = null } = {}) {
-  if (programId === null) {
-    return database
-      .prepare(
-        `select id, program_id as programId, current_revision_id as currentRevisionId
-         from accepted_quick_check_entities
-         order by id`,
-      )
-      .all();
-  }
-
-  return database
-    .prepare(
-      `select id, program_id as programId, current_revision_id as currentRevisionId
-       from accepted_quick_check_entities
-       where program_id = ?
-       order by id`,
-    )
-    .all(programId);
+export function listAcceptedQuickCheckEntityRecords(database, { programId = null, status = null } = {}) {
+  return listAcceptedCurrentRevisionEntityRecords(database, {
+    programId,
+    status,
+    tableName: "accepted_quick_check_entities",
+  });
 }
 
 export function updateAcceptedQuickCheckEntityCurrentRevision(database, { entityId, currentRevisionId }) {
@@ -2729,25 +2726,12 @@ export function getAcceptedReadinessCheckEntityRecord(database, id) {
   return row ?? null;
 }
 
-export function listAcceptedReadinessCheckEntityRecords(database, { programId = null } = {}) {
-  if (programId === null) {
-    return database
-      .prepare(
-        `select id, program_id as programId, current_revision_id as currentRevisionId
-         from accepted_readiness_check_entities
-         order by id`,
-      )
-      .all();
-  }
-
-  return database
-    .prepare(
-      `select id, program_id as programId, current_revision_id as currentRevisionId
-       from accepted_readiness_check_entities
-       where program_id = ?
-       order by id`,
-    )
-    .all(programId);
+export function listAcceptedReadinessCheckEntityRecords(database, { programId = null, status = null } = {}) {
+  return listAcceptedCurrentRevisionEntityRecords(database, {
+    programId,
+    status,
+    tableName: "accepted_readiness_check_entities",
+  });
 }
 
 export function updateAcceptedReadinessCheckEntityCurrentRevision(database, { entityId, currentRevisionId }) {
@@ -3002,25 +2986,12 @@ export function getAcceptedOpenAnswerCheckEntityRecord(database, id) {
   return row ?? null;
 }
 
-export function listAcceptedOpenAnswerCheckEntityRecords(database, { programId = null } = {}) {
-  if (programId === null) {
-    return database
-      .prepare(
-        `select id, program_id as programId, current_revision_id as currentRevisionId
-         from accepted_open_answer_check_entities
-         order by id`,
-      )
-      .all();
-  }
-
-  return database
-    .prepare(
-      `select id, program_id as programId, current_revision_id as currentRevisionId
-       from accepted_open_answer_check_entities
-       where program_id = ?
-       order by id`,
-    )
-    .all(programId);
+export function listAcceptedOpenAnswerCheckEntityRecords(database, { programId = null, status = null } = {}) {
+  return listAcceptedCurrentRevisionEntityRecords(database, {
+    programId,
+    status,
+    tableName: "accepted_open_answer_check_entities",
+  });
 }
 
 export function updateAcceptedOpenAnswerCheckEntityCurrentRevision(database, { entityId, currentRevisionId }) {
@@ -3934,27 +3905,66 @@ export function getAcceptedCorpusEntityRecord(database, id) {
   return row ?? null;
 }
 
-export function listAcceptedCorpusEntityRecords(database, { programId = null } = {}) {
-  if (programId === null) {
-    return database
-      .prepare(
-        `select id, program_id as programId, accepted_kind as acceptedKind,
-                current_revision_id as currentRevisionId
-         from accepted_corpus_entities
-         order by id`,
-      )
-      .all();
+export function listAcceptedCorpusEntityRecords(database, { programId = null, status = null } = {}) {
+  const conditions = [];
+  const values = [];
+  if (programId !== null) {
+    conditions.push("program_id = ?");
+    values.push(programId);
   }
+  if (status !== null) {
+    conditions.push("status = ?");
+    values.push(status);
+  }
+  const whereClause = conditions.length === 0 ? "" : `where ${conditions.join(" and ")}`;
 
   return database
     .prepare(
       `select id, program_id as programId, accepted_kind as acceptedKind,
               current_revision_id as currentRevisionId
        from accepted_corpus_entities
-       where program_id = ?
+       ${whereClause}
        order by id`,
     )
-    .all(programId);
+    .all(...values);
+}
+
+export function setAcceptedCorpusEntityLifecycleStatusRecord(
+  database,
+  { entityId, status, updatedByIdentityId, updatedAt },
+) {
+  if (!lifecycleStatuses.has(status)) {
+    throw new StorageInvariantError("lifecycle_status_invalid");
+  }
+  assertIdentityExists(database, updatedByIdentityId);
+  database
+    .prepare(
+      `update accepted_corpus_entities
+       set status = ?,
+           status_updated_by_identity_id = ?,
+           status_updated_at = ?
+       where id = ?`,
+    )
+    .run(status, updatedByIdentityId, updatedAt, entityId);
+
+  return getAcceptedCorpusEntityLifecycleStatusRecord(database, entityId);
+}
+
+export function getAcceptedCorpusEntityLifecycleStatusRecord(database, entityId) {
+  const row = database
+    .prepare(
+      `select id,
+              program_id as programId,
+              current_revision_id as currentRevisionId,
+              status,
+              status_updated_by_identity_id as updatedByIdentityId,
+              status_updated_at as updatedAt
+       from accepted_corpus_entities
+       where id = ?`,
+    )
+    .get(entityId);
+
+  return row ?? null;
 }
 
 export function updateAcceptedCorpusEntityCurrentRevision(
@@ -4128,9 +4138,18 @@ export function getAcceptedNavigationRelationshipRecord(database, id) {
   return row ?? null;
 }
 
-export function listAcceptedNavigationRelationshipRecords(database, { programId = null } = {}) {
-  const whereClause = programId === null ? "" : "where program_id = ?";
-  const values = programId === null ? [] : [programId];
+export function listAcceptedNavigationRelationshipRecords(database, { programId = null, status = null } = {}) {
+  const conditions = [];
+  const values = [];
+  if (programId !== null) {
+    conditions.push("program_id = ?");
+    values.push(programId);
+  }
+  if (status !== null) {
+    conditions.push("status = ?");
+    values.push(status);
+  }
+  const whereClause = conditions.length === 0 ? "" : `where ${conditions.join(" and ")}`;
 
   return database
     .prepare(
