@@ -2,6 +2,10 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 2 sub-slice: added curator-authorized navigation-relationship
+  lifecycle withdrawal/reactivation. Withdrawn relationships leave forward navigation grouping,
+  reactivation restores grouping, and stored relationship revisions remain addressable.
+
 - ADR-022 implementation Phase 2 sub-slice: added curator-authorized readiness-check
   lifecycle withdrawal/reactivation. Withdrawn readiness checks leave active curation listings,
   reactivation restores them, and addressed historical readiness revisions continue to resolve.

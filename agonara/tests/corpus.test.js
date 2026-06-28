@@ -1364,6 +1364,114 @@ test("listProgramNavigation_shouldOmitWithdrawnCurrentEntityAndKeepRevisionReada
   }
 });
 
+test("setAcceptedNavigationRelationshipLifecycleStatus_shouldWithdrawAndReactivateRelationship_withoutLosingRevision_status", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    const topic = acceptNavigationCandidate(commands, {
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Grouped topic",
+    });
+    const concept = acceptNavigationCandidate(commands, {
+      programId: "program-a",
+      candidateKind: "concept",
+      title: "Grouped concept",
+      relationshipDrafts: [
+        {
+          relationshipKind: "topic_includes_concept",
+          fromEntityId: topic.entityId,
+          toCandidateRef: "self",
+        },
+      ],
+    });
+    const relationship = listAcceptedNavigationRelationshipRecords(database, { programId: "program-a" })[0];
+    const relationshipRevision = getAcceptedNavigationRelationshipRevisionRecord(database, relationship.currentRevisionId);
+
+    const withdrawn = commands.setAcceptedNavigationRelationshipLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      relationshipId: relationship.id,
+      status: "withdrawn",
+    });
+    const navigationAfterWithdraw = commands.listProgramNavigation({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+    }).value.navigation;
+    const reactivated = commands.setAcceptedNavigationRelationshipLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      relationshipId: relationship.id,
+      status: "active",
+    });
+
+    assert.deepEqual(
+      {
+        withdrawn,
+        navigationAfterWithdraw: {
+          topics: navigationAfterWithdraw.topics.map($0 => $0.entityId),
+          ungroupedConcepts: navigationAfterWithdraw.ungroupedConcepts.map($0 => $0.entityId),
+        },
+        relationshipRevision,
+        reactivated,
+        navigationAfterReactivate: commands
+          .listProgramNavigation({
+            actingIdentityId: "identity-curator",
+            programId: "program-a",
+          })
+          .value.navigation.ungroupedConcepts.map($0 => $0.entityId),
+      },
+      {
+        withdrawn: {
+          status: "accepted",
+          value: {
+            entity: {
+              id: relationship.id,
+              status: "withdrawn",
+              updatedByIdentityId: "identity-curator",
+              updatedAt: "2026-05-28T11:00:00.008Z",
+            },
+          },
+        },
+        navigationAfterWithdraw: {
+          topics: [topic.entityId],
+          ungroupedConcepts: [concept.entityId],
+        },
+        relationshipRevision: {
+          id: relationship.currentRevisionId,
+          relationshipId: relationship.id,
+          programId: "program-a",
+          relationshipKind: "topic_includes_concept",
+          fromEntityId: topic.entityId,
+          fromRevisionId: topic.revisionId,
+          fromKind: "topic",
+          toEntityId: concept.entityId,
+          toRevisionId: concept.revisionId,
+          toKind: "concept",
+          label: null,
+          sourceIds: [],
+          acceptedFromCandidateId: "corpus-event-3",
+          acceptedByIdentityId: "identity-curator",
+          acceptedAt: "2026-05-28T11:00:00.006Z",
+        },
+        reactivated: {
+          status: "accepted",
+          value: {
+            entity: {
+              id: relationship.id,
+              status: "active",
+              updatedByIdentityId: "identity-curator",
+              updatedAt: "2026-05-28T11:00:00.009Z",
+            },
+          },
+        },
+        navigationAfterReactivate: [],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("createNavigationCandidate_shouldPersistDraftMaterialMetadataAndRelationshipDrafts_onValidInput", async () => {
   const { commands, database } = await makeSUT();
 

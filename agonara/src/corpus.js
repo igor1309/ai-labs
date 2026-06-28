@@ -39,8 +39,10 @@ import {
   setAcceptedOpenAnswerCheckEntityLifecycleStatusRecord,
   setAcceptedQuickCheckEntityLifecycleStatusRecord,
   setAcceptedReadinessCheckEntityLifecycleStatusRecord,
+  setAcceptedNavigationRelationshipLifecycleStatusRecord,
   deleteSourceContentRecord,
   getAcceptedNavigationRelationshipRevisionRecord,
+  getAcceptedNavigationRelationshipLifecycleStatusRecord,
   getAcceptedOpenAnswerCheckEntityRecord,
   getAcceptedOpenAnswerCheckEntityLifecycleStatusRecord,
   getAcceptedOpenAnswerCheckRevisionRecord,
@@ -247,6 +249,8 @@ export function createCorpusCommands({
       setAcceptedAssessmentCriterionLifecycleStatus({ database, getEffectiveParticipation, input, now }),
     setAcceptedCorpusLifecycleStatus: input =>
       setAcceptedCorpusLifecycleStatus({ database, getEffectiveParticipation, input, now }),
+    setAcceptedNavigationRelationshipLifecycleStatus: input =>
+      setAcceptedNavigationRelationshipLifecycleStatus({ database, getEffectiveParticipation, input, now }),
     setAcceptedOpenAnswerCheckLifecycleStatus: input =>
       setAcceptedOpenAnswerCheckLifecycleStatus({ database, getEffectiveParticipation, input, now }),
     setAcceptedQuickCheckLifecycleStatus: input =>
@@ -1019,6 +1023,40 @@ function setAcceptedCorpusLifecycleStatus({ database, getEffectiveParticipation,
 
   const updated = setAcceptedCorpusEntityLifecycleStatusRecord(database, {
     entityId: entity.id,
+    status: input.status,
+    updatedByIdentityId: authorization.identity.id,
+    updatedAt: now().toISOString(),
+  });
+
+  return accepted({
+    entity: {
+      id: updated.id,
+      status: updated.status,
+      updatedByIdentityId: updated.updatedByIdentityId,
+      updatedAt: updated.updatedAt,
+    },
+  });
+}
+
+function setAcceptedNavigationRelationshipLifecycleStatus({ database, getEffectiveParticipation, input, now }) {
+  if (!new Set(["active", "withdrawn"]).has(input?.status)) {
+    return rejected("validation_failed");
+  }
+  const relationship = getAcceptedNavigationRelationshipLifecycleStatusRecord(database, input?.relationshipId);
+  if (!relationship) {
+    return rejected("accepted_entity_not_found");
+  }
+  const authorization = resolveCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: relationship.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+
+  const updated = setAcceptedNavigationRelationshipLifecycleStatusRecord(database, {
+    relationshipId: relationship.id,
     status: input.status,
     updatedByIdentityId: authorization.identity.id,
     updatedAt: now().toISOString(),
