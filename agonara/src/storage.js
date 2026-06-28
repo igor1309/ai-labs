@@ -1166,6 +1166,10 @@ export function getProgramSourceRecord(database, id) {
   return row ?? null;
 }
 
+export function deleteProgramSourceRecord(database, sourceId) {
+  database.prepare(`delete from program_sources where id = ?`).run(sourceId);
+}
+
 export function listProgramSourceRecords(database, { programId = null, status = null } = {}) {
   const conditions = [];
   const values = [];

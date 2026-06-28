@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
+  MAX_MATERIAL_CONTENT_BYTES,
   StorageInvariantError,
   createAcceptedAssessmentCriterionEntityRecord,
   createAcceptedAssessmentCriterionRevisionRecord,
@@ -22,29 +23,17 @@ import {
   createQuickCheckCandidateRecord,
   createReadinessCheckCandidateRecord,
   deleteLearnerEvidenceTargetLinkRecord,
+  deleteProgramSourceRecord,
+  deleteSourceContentRecord,
   getAcceptedAssessmentCriterionEntityRecord,
   getAcceptedAssessmentCriterionEntityLifecycleStatusRecord,
   getAcceptedAssessmentCriterionRevisionRecord,
-  MAX_MATERIAL_CONTENT_BYTES,
   getAcceptedCorpusEntityRecord,
   getAcceptedCorpusEntityLifecycleStatusRecord,
   getAcceptedCorpusRevisionRecord,
   getAcceptedMaterialContentRecord,
-  getProgramSourceRecord,
-  getProgramSourceLifecycleStatusRecord,
-  getSourceContentRecord,
-  setAcceptedMaterialContentRecord,
-  setSourceContentRecord,
-  setProgramSourceLifecycleStatusRecord,
-  setAcceptedAssessmentCriterionEntityLifecycleStatusRecord,
-  setAcceptedCorpusEntityLifecycleStatusRecord,
-  setAcceptedOpenAnswerCheckEntityLifecycleStatusRecord,
-  setAcceptedQuickCheckEntityLifecycleStatusRecord,
-  setAcceptedReadinessCheckEntityLifecycleStatusRecord,
-  setAcceptedNavigationRelationshipLifecycleStatusRecord,
-  deleteSourceContentRecord,
-  getAcceptedNavigationRelationshipRevisionRecord,
   getAcceptedNavigationRelationshipLifecycleStatusRecord,
+  getAcceptedNavigationRelationshipRevisionRecord,
   getAcceptedOpenAnswerCheckEntityRecord,
   getAcceptedOpenAnswerCheckEntityLifecycleStatusRecord,
   getAcceptedOpenAnswerCheckRevisionRecord,
@@ -60,11 +49,15 @@ import {
   getLearnerEvidenceTargetLinkRecord,
   getOpenAnswerCheckCandidateRecord,
   getProgramShellRecord,
+  getProgramSourceLifecycleStatusRecord,
+  getProgramSourceRecord,
   getQuickCheckCandidateRecord,
   getReadinessCheckCandidateRecord,
+  getSourceContentRecord,
   isEffectiveAdmin,
   listAcceptedAssessmentCriterionEntityRecords,
   listAcceptedCorpusEntityRecords,
+  listAcceptedCorpusRevisionRecords,
   listAcceptedNavigationRelationshipRecords,
   listAcceptedOpenAnswerCheckEntityRecords,
   listAcceptedQuickCheckEntityRecords,
@@ -77,6 +70,15 @@ import {
   listProgramSourceRecords,
   listQuickCheckCandidateRecords,
   listReadinessCheckCandidateRecords,
+  setAcceptedAssessmentCriterionEntityLifecycleStatusRecord,
+  setAcceptedCorpusEntityLifecycleStatusRecord,
+  setAcceptedMaterialContentRecord,
+  setAcceptedNavigationRelationshipLifecycleStatusRecord,
+  setAcceptedOpenAnswerCheckEntityLifecycleStatusRecord,
+  setAcceptedQuickCheckEntityLifecycleStatusRecord,
+  setAcceptedReadinessCheckEntityLifecycleStatusRecord,
+  setProgramSourceLifecycleStatusRecord,
+  setSourceContentRecord,
   updateAcceptedAssessmentCriterionEntityCurrentRevision,
   updateAcceptedCorpusEntityCurrentRevision,
   updateAcceptedOpenAnswerCheckEntityCurrentRevision,
@@ -235,6 +237,8 @@ export function createCorpusCommands({
       listQuickCheckCandidates({ database, getEffectiveParticipation, input }),
     recordProgramSource: input =>
       recordProgramSource({ database, generateId, getEffectiveParticipation, input, now }),
+    deleteProgramSource: input =>
+      deleteProgramSource({ database, getEffectiveParticipation, input }),
     setProgramSourceLifecycleStatus: input =>
       setProgramSourceLifecycleStatus({ database, getEffectiveParticipation, input, now }),
     setSourceContent: input =>
@@ -2347,6 +2351,33 @@ function setProgramSourceLifecycleStatus({ database, getEffectiveParticipation, 
   });
 }
 
+function deleteProgramSource({ database, getEffectiveParticipation, input }) {
+  const source = getProgramSourceLifecycleStatusRecord(database, input?.sourceId);
+  if (!source) {
+    return rejected("source_not_found");
+  }
+  const authorization = resolveCuratorAuthorization({
+    database,
+    getEffectiveParticipation,
+    input: { actingIdentityId: input?.actingIdentityId, programId: source.programId },
+  });
+  if (authorization.status === "rejected") {
+    return rejected(authorization.reason);
+  }
+  if (isProgramSourceReferencedByAcceptedCorpus(database, source.id)) {
+    return rejected("source_hard_delete_blocked");
+  }
+
+  deleteSourceContentRecord(database, source.id);
+  deleteProgramSourceRecord(database, source.id);
+
+  return accepted({
+    source: {
+      id: source.id,
+    },
+  });
+}
+
 function listProgramSources({ database, getEffectiveParticipation, input }) {
   const authorization = resolveCuratorAuthorization({ database, getEffectiveParticipation, input });
   if (authorization.status === "rejected") {
@@ -3726,6 +3757,10 @@ function validateProgramSourceIds(database, { programId, sourceIds }) {
     }
   }
   return accepted({});
+}
+
+function isProgramSourceReferencedByAcceptedCorpus(database, sourceId) {
+  return listAcceptedCorpusRevisionRecords(database).some($0 => $0.sourceIds.includes(sourceId));
 }
 
 function summarizeNavigationRelationshipDrafts(relationshipDrafts) {

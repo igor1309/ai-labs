@@ -388,6 +388,90 @@ test("setProgramSourceLifecycleStatus_shouldWithdrawAndReactivateSource_withoutL
   }
 });
 
+test("deleteProgramSource_shouldHardDeleteUnreferencedAndBlockReferencedWithdrawnCorpusSource", async () => {
+  const { commands, database } = await makeSUT();
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    const unreferenced = commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      sourceKind: "article",
+      title: "Unreferenced source",
+    }).value.programSource;
+    commands.setSourceContent({
+      actingIdentityId: "identity-curator",
+      sourceId: unreferenced.sourceId,
+      content: "Unreferenced raw source body",
+      contentFormat: "markdown",
+    });
+    const referenced = commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      sourceKind: "article",
+      title: "Referenced source",
+    }).value.programSource;
+    const candidate = commands.createCorpusCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Referenced topic",
+      body: "Referenced body",
+      sourceIds: [referenced.sourceId],
+    }).value.corpusCandidate;
+    const acceptedCorpus = commands.acceptCorpusCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: candidate.candidateId,
+    }).value.acceptedCorpus;
+    commands.setAcceptedCorpusLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: acceptedCorpus.entityId,
+      status: "withdrawn",
+    });
+
+    const deletedUnreferenced = commands.deleteProgramSource({
+      actingIdentityId: "identity-curator",
+      sourceId: unreferenced.sourceId,
+    });
+    const blockedReferenced = commands.deleteProgramSource({
+      actingIdentityId: "identity-curator",
+      sourceId: referenced.sourceId,
+    });
+
+    assert.deepEqual(
+      {
+        deletedUnreferenced,
+        blockedReferenced,
+        rawSourceContent: getSourceContentRecord(database, unreferenced.sourceId),
+        storedSources: listProgramSourceRecords(database, { programId: "program-a" }).map($0 => $0.id),
+        referencedProvenance: commands.getAcceptedCorpusRevision({
+          actingIdentityId: "identity-curator",
+          revisionId: acceptedCorpus.revisionId,
+        }).value.acceptedCorpus.sourceIds,
+      },
+      {
+        deletedUnreferenced: {
+          status: "accepted",
+          value: {
+            source: {
+              id: unreferenced.sourceId,
+            },
+          },
+        },
+        blockedReferenced: {
+          status: "rejected",
+          reason: "source_hard_delete_blocked",
+        },
+        rawSourceContent: null,
+        storedSources: [referenced.sourceId],
+        referencedProvenance: [referenced.sourceId],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("createCorpusCandidate_shouldRejectNonCurator", async () => {
   const { commands, database } = await makeSUT();
 

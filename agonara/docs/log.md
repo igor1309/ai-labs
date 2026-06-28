@@ -2,6 +2,11 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 3 sub-slice: added curator-authorized program-source hard
+  deletion for unreferenced sources. Sources referenced by any accepted corpus revision,
+  including withdrawn corpus entities, now reject hard deletion with
+  `source_hard_delete_blocked` while preserving accepted corpus provenance.
+
 - ADR-022 implementation Phase 3 sub-slice: added curator-authorized program-source
   withdrawal/reactivation. Withdrawn sources leave active curator source listings while accepted
   corpus revisions keep their provenance `sourceIds`, and reactivation restores the source.
