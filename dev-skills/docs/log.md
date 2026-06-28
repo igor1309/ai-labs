@@ -4,6 +4,10 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-06-28
+
+- **implementation-plan v1.1.0** (IP-1 of the execution-lock ownership backlog; not yet published — marketplace sync + PR are IP-8): split the seven-field declaration block into two owner-tagged groups — *planning intent* (`Execution mode`, `Human review between tasks`, `Push policy`), author-set at authoring; and *execution lock* (`Worktree mode`, `Expected worktree`, `Expected branch`, `Preflight check`), executor-set at execution start. Pre-filling the lock at authoring is allowed only when authoring and execution are the same session and worktree. The split assigns ownership and timing without relaxing the before-Step-1 rule (the executor populates the lock at execution start, which precedes Step 1). The Acceptance Checklist now verifies the split. Closes the ownership half of the gap where an authored-then-merged plan pinned its dead authoring branch and stalled a later executor.
+
 ## 2026-06-25
 
 - New **add-openclaw-agent v0.1.0** skill (marketplace v1.53.0): a decision-ordered guide for adding a specialized agent to an OpenClaw gateway, so the runtime no longer has to be re-explored per agent. Encodes the trigger fork (inbound / scheduled / both), the `agent/**`→`AGENTS.md` CI-sync layout (and that `runtime/**` is hand-deployed), the one-bot/one-topic Telegram routing + `threadId` discovery, and two non-obvious **verified** runtime constraints: forum-topic file delivery (the agent message tool is auto-disabled in topics per OpenClaw #31368 → write the file and shell out to the Bot API `sendDocument` with `message_thread_id`), and web research (`web_fetch` is key-free; `web_search` needs a provider — prefer the key-free Codex Hosted Search on a Codex-harness deployment). Deliberately reference-based and ID-free (host/bot/chat/topic IDs stay in the deployment's own docs) so the public sync leaks no infra. Authored out of the `product-research-agent` intake; to be hardened against that agent's real build.

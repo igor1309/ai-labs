@@ -1,7 +1,7 @@
 ---
 name: implementation-plan
 author: Igor Malyarov
-version: "1.0.0"
+version: "1.1.0"
 description: Use when authoring, editing, or validating implementation plans under any docs/plans path; defines task/phase/step vocabulary, required execution declarations, and the acceptance checklist that catches invalid worktree, branch, and push-policy declarations before execution starts.
 trigger: when creating or modifying implementation plans, especially files under **/docs/plans/**.md
 ---
@@ -28,16 +28,31 @@ or restructure it before execution.
 
 ## Required Declaration Block
 
-Every implementation plan must declare these fields before Step 1:
+Every implementation plan must declare these seven fields before Step 1. They
+split into two groups by who owns them and when they are set.
+
+**Planning intent — author-set at authoring time:**
 
 - `Execution mode`: `auto-continue` or `human-review-gated`
 - `Human review between tasks`: `yes` or `no`
+- `Push policy`: `no push`, `push after task`, or `push at closeout`
+
+**Execution lock — executor-set at execution start:**
+
 - `Worktree mode`: `create new`, `reuse existing`, or `none`
 - `Expected worktree`: a concrete path or single resolvable pattern
 - `Expected branch`: a concrete branch name or single resolvable pattern
-- `Push policy`: `no push`, `push after task`, or `push at closeout`
 - `Preflight check`: unchecked while authoring; checked only after verified
   execution preflight evidence exists
+
+The author sets the planning-intent fields. The executor sets the execution-lock
+fields against the real session at execution start. An author may pre-fill the
+execution lock **only** when authoring and execution are the same session and
+worktree.
+
+This does not relax the rule that every field is declared before Step 1: the
+executor populates the lock *at execution start, which precedes Step 1*. The
+split assigns ownership and timing; it does not move any field past Step 1.
 
 Do not invent declaration values. Values like `standard`, `normal`, `phase
 branch`, or `push at the end of each phase as one PR` fail the declaration
@@ -49,6 +64,10 @@ Run this checklist before Step 1 of any implementation plan. Halt on any
 failure and fix the plan first.
 
 - [ ] All required declaration fields are present and non-empty.
+- [ ] The declaration block respects the planning-intent vs execution-lock split:
+  planning-intent fields are author-set; execution-lock fields are executor-set at
+  execution start, and are pre-filled at authoring only when authoring and
+  execution are the same session and worktree.
 - [ ] `Worktree mode` is exactly one of `create new`, `reuse existing`, `none`.
 - [ ] `Push policy` is exactly one of `no push`, `push after task`,
   `push at closeout`.
