@@ -2,6 +2,17 @@
 
 ## 2026-06-28
 
+- Logged a forward-task backlog item for **Module → topic navigation hierarchy**
+  after a curator (program 1840) hit `validation_failed` accepting a
+  `topic_includes_topic` `relationship_update`. Confirmed this is working as
+  designed: navigation is intentionally two-level — `topic_includes_topic` is not in
+  `supportedNavigationRelationshipKinds` (`src/corpus.js`), `storage.js` has no
+  topic→topic endpoint pair, and there is no `module` corpus kind (a "module" is
+  just a top-level `topic`). Recorded the gap and the three candidate directions
+  (self-referential `topic_includes_topic`; a distinct `module` kind; or promoting
+  period-readiness scopes to navigation grouping) as needing a pre-ADR/ADR decision
+  before any build, since it extends the ADR-010 boundary and the navigation contract.
+
 - Released **agonara v0.4.0** (`agonara_v0.3.0..` delta). Minor, backward-compatible feature
   release completing the ADR-022 entity-withdrawal lifecycle: an `active ↔ withdrawn` status
   across the six accepted-entity families and `program_sources`, curator-authorized
