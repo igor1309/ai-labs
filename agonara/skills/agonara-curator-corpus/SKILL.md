@@ -1,7 +1,7 @@
 ---
 name: agonara-curator-corpus
 author: Igor Malyarov
-version: "1.7.0"
+version: "1.8.0"
 description: Assist a human Agonara Program Curator — do the corpus API work on their behalf to assemble program structure, modeling what the curator hands you (a section, an idea, a document to host) into the right corpus shape and asking when the shape is unclear — create a program, propose topics and concepts as corpus candidates, add material references and relationships through navigation candidates, host readable material content for students, keep drafts separate from accepted corpus, explicitly accept or reject candidates, read accepted corpus and revisions, and read corpus events; treat your own drafts and reports as untrusted until the curator verifies each candidate against trusted state, accept per entity rather than in a batch, and declare contamination on any procedural violation. Use when a curator's assistant agent is building or refining the accepted structure of a program. The substrate the other curator skills (assessment, research) attach to.
 trigger: when a curator's assistant agent needs to create a program or move topic/concept/material/navigation content between draft and accepted corpus
 ---
@@ -270,6 +270,10 @@ lifecycle:
 - **Read accepted navigation** — `GET /programs/{programId}/navigation` (the
   student-safe accepted structure), `GET /navigation/entities/{entityId}`,
   `GET /navigation/revisions/{revisionId}`.
+- **Take down a wrong or duplicate link** — there is no unlink/delete; you
+  **withdraw** the relationship via its lifecycle status. See
+  [*Retiring content*](#retiring-content--withdraw-and-reactivate-lifecycle-status)
+  below.
 
 Navigation guards relationship integrity: expect `rejected` reasons like
 `navigation_prerequisite_cycle`, `navigation_relationship_self_reference`, or
@@ -298,7 +302,13 @@ homes, both curator-owned:
 - **Accepted material content** — the self-contained, immutable copy a **student**
   reads, keyed by the accepted material's revision id:
   - set — `PUT /materials/revisions/{revisionId}/content` with
-    `{ "content", "contentFormat", "sourceContentProvenance"? }`. It is set **once
+    `{ "content", "contentFormat", "sourceContentProvenance"? }`. **The method is
+    `PUT`, never `POST`** — unlike the acceptance steps, hosting content is not a
+    `POST`. A `POST` (or any non-`PUT`) to this path matches no route and comes
+    back as a bare `not_found`, the server's catch-all for an unknown route — that
+    is **not** a content-availability or permission signal and the API is **not**
+    blocking you; resend the exact same request as `PUT` rather than pivoting to
+    another flow. It is set **once
     per revision**; re-setting the same revision is rejected with
     `material_content_already_set`. To publish a correction, accept a new material
     revision (the navigation candidate flow above) and set content on that fresh
@@ -311,7 +321,13 @@ The accepted copy is **decoupled from the source**: editing or deleting source
 content never changes already-accepted material content, and a material exposes a
 `hasContent` signal in navigation so students know a hosted copy exists. Honor
 `rejected` reasons (`content_not_found`, `accepted_revision_not_found`,
-`source_not_found`) instead of retrying unchanged.
+`source_not_found`) instead of retrying unchanged. Keep `content_not_found` and
+`not_found` distinct: `content_not_found` means the route is fine and the
+revision is real but no content is hosted **yet** (set it with `PUT`);
+`accepted_revision_not_found` means the revision id is wrong; a bare `not_found`
+on a content write means the request never reached the content handler — almost
+always wrong method (`POST` instead of `PUT`) or a malformed path — so fix the
+request, never conclude the API is blocking hosted content.
 
 ### Recipe — host a document as a student-readable material
 
@@ -339,6 +355,44 @@ per-entity go-ahead before running any of them.**
 
 Verify by reading, not from memory: `GET /programs/{programId}/navigation` should
 show the material under its topic with `hasContent` true.
+
+## Retiring content — withdraw and reactivate (lifecycle status)
+
+Accepted corpus is append-only for **creation** — a revision is never rewritten
+or hard-deleted — but accepted content can be **retired** by withdrawing it, and
+a withdrawn item can be **reactivated**. Withdrawal is reversible and preserves
+all history; a withdrawn entity or link is excluded from student delivery,
+student listings, and curator coverage-gap derivation, while staying visible to
+the curator for reactivation. This is the only "remove" there is — there is **no
+hard delete** for an accepted corpus entity or a navigation relationship, so do
+not look for or invent a delete/unlink endpoint, and do not read a failure to
+delete as "the API is blocking me."
+
+- **Withdraw / reactivate an entity** (topic, concept, definition, principle,
+  `material_reference`) — `PUT /corpus/{entityId}/status` with
+  `{ "status": "withdrawn" }` (or `"active"` to reactivate). Reactivation restores
+  the entity with its `current_revision_id` unchanged.
+- **Withdraw / reactivate a navigation relationship** (e.g. a `topic_uses_material`
+  link) — `PUT /navigation-relationships/{relationshipId}/status` with
+  `{ "status": "withdrawn" }` (or `"active"`). This is how you take down a wrong,
+  duplicate, or empty link.
+- **Order matters — links before their entity.** An entity that still has any
+  **active** navigation relationship on it (as either endpoint) cannot be
+  withdrawn: the attempt is rejected `entity_withdrawal_blocked`. To retire a
+  material, **withdraw its `topic_uses_material` link(s) first, then withdraw the
+  material entity**; reactivate in reverse (entity first, then its link). Honor
+  the other `rejected` reasons — `accepted_entity_not_found` (wrong id) and
+  `validation_failed` (`status` must be exactly `active` or `withdrawn`) — instead
+  of retrying unchanged.
+
+Withdrawal and reactivation are **disposing actions, and disposing is the
+curator's, not yours** — the same human-owned gate as acceptance and rejection.
+Never withdraw or reactivate on your own initiative. When you spot retirable
+content (a duplicate, an empty material, a stale link), **present the targets as a
+numbered list** — each line carrying the title, the entity/relationship id, and
+why you'd retire it — and act only on the curator's explicit numbered selection,
+just as with acceptance. Read back the resulting state from the live API
+afterward; do not report a retirement you have not confirmed.
 
 ## Boundaries this skill keeps
 
