@@ -42,17 +42,20 @@ Single items not yet promoted to a topic file.
   hard-delete-unreferenced / withdraw-referenced, raw blob per ADR-021 — and its
   implementation is tracked in [`material-content.md`](material-content.md).)
 
-- **Navigation-relationship acceptance uniqueness — spec + implementation** of
-  `docs/adr/adr-023-navigation-relationship-acceptance-uniqueness.md`: partial-unique index on
-  `accepted_navigation_relationships (program_id, relationship_kind, from_entity_id,
-  to_entity_id) WHERE status = 'active'`, the duplicate guard in
-  `createAcceptedNavigationRelationshipRecord` surfaced as
-  `navigation_relationship_already_accepted` (new `ApiRejectionReason` in
-  `src/http-contract.js`), restore rejection of duplicate-bearing backups, and the migration that
-  withdraws pre-existing duplicate active rows first. Depends on ADR-022's `status` column and
-  withdrawal path, so it is **sequenced after** the "Withdrawal/source-deletion spec +
-  implementation" task in [`material-content.md`](material-content.md). This is the *prevention*
-  half; *cleanup* of already-accepted duplicates is that ADR-022 withdrawal path.
+- **Navigation-relationship acceptance uniqueness — implementation** of
+  `docs/adr/adr-023-navigation-relationship-acceptance-uniqueness.md`. Spec
+  (`docs/specs/navigation-relationship-acceptance-uniqueness.md`) and implementation plan
+  (`docs/plans/navigation-relationship-acceptance-uniqueness.md`) are drafted; only the build
+  remains. The work: partial-unique index on `accepted_navigation_relationships (program_id,
+  relationship_kind, from_entity_id, to_entity_id) WHERE status = 'active'`, the duplicate guard in
+  `createAcceptedNavigationRelationshipRecord` surfaced as `navigation_relationship_already_accepted`
+  (new `ApiRejectionReason` in `src/http-contract.js`), the reactivation precondition narrowing
+  ADR-022 spec rule 10, restore rejection of duplicate-bearing backups, and the dedup-first
+  idempotent startup step that withdraws pre-existing duplicate active rows before creating the
+  index. **Sequenced after** the "Withdrawal/source-deletion spec + implementation" task in
+  [`material-content.md`](material-content.md) (needs ADR-022's `status` column and withdraw/
+  reactivate command in place first). This is the *prevention* half; *cleanup* of already-accepted
+  duplicates is that ADR-022 withdrawal path.
 
 - **Drive the open-answer evaluator (nothing fires it).** The whole evaluation
   pipeline is implemented and wired — Nomos LLM provider adapter, evaluator
