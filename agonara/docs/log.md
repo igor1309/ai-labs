@@ -7,7 +7,7 @@
   draft-concept-extraction procedure: read and segment the whole topic into semantic
   blocks, extract teachable units per block, balance coverage against granularity with
   a merge/trim pass, and run a mandatory `semantic blocks → teachable units → concepts`
-  gap check (cross-checked against the research skill's `coverage-gaps` diagnostic)
+  gap check (a reasoning pass over source material vs. the draft concepts)
   before proposing concept candidates. Targets the failure mode of stopping at a few
   obvious "core" concepts by holding an explicit Definition of Done. The doc ships
   inside the skill folder so it resolves on the deployed curator bot.

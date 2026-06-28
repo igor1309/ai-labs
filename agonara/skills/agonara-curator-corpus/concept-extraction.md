@@ -90,14 +90,14 @@ This step is not optional; skipping it is the original failure. Walk
 - **intentionally merged** — folded into another concept for a stated reason,
 - **missing** — not reflected anywhere in the concept layer.
 
-Any **missing** block means the work is not done — return to Step 3 for it.
-The `coverage-gaps` read in
-[`agonara-curator-research`](../agonara-curator-research/SKILL.md) is a useful
-companion, but mind what it sees: it diagnoses the program's **accepted** corpus,
-so it can show where the topic is already thinly covered — it cannot see your
-draft concepts and so cannot confirm this layer is complete. Use it to orient,
-not as a substitute for the manual gap map. Both are draft guidance, never
-accepted content.
+Any **missing** block means the work is not done — return to Step 3 for it. This
+is your own reasoning pass over the source material against the concepts you are
+drafting; do not wait for a tool to tell you what is missing. (The
+`coverage-gaps` diagnostic in
+[`agonara-curator-research`](../agonara-curator-research/SKILL.md) answers a
+different question — structural gaps in the *accepted* corpus, e.g. an accepted
+topic with no concept links — so it belongs after acceptance, not in this draft
+gap check.)
 
 ## Definition of Done
 
