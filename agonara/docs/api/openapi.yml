@@ -3113,6 +3113,39 @@ paths:
           $ref: "#/components/responses/Rejected"
         "500":
           $ref: "#/components/responses/Fault"
+  /quick-checks/{entityId}/status:
+    put:
+      tags:
+        - corpus
+      operationId: setAcceptedQuickCheckLifecycleStatus
+      summary: Withdraw or reactivate an accepted Quick Check entity.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        $ref: "#/components/requestBodies/LifecycleStatus"
+      responses:
+        "200":
+          $ref: "#/components/responses/Accepted"
+        "400":
+          $ref: "#/components/responses/Rejected"
+        "401":
+          $ref: "#/components/responses/Rejected"
+        "403":
+          $ref: "#/components/responses/Rejected"
+        "404":
+          $ref: "#/components/responses/Rejected"
+        "409":
+          $ref: "#/components/responses/Rejected"
+        "500":
+          $ref: "#/components/responses/Fault"
   /programs/{programId}/readiness-checks/curation:
     get:
       tags:

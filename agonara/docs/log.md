@@ -2,6 +2,11 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 4 sub-slice: exposed accepted Quick Check lifecycle status over
+  HTTP at `PUT /quick-checks/{entityId}/status`. Withdrawn quick checks leave student delivery
+  lists while addressed historical delivery revisions remain readable, and OpenAPI includes the
+  lifecycle route.
+
 - ADR-022 implementation Phase 4 sub-slice: exposed accepted Corpus entity lifecycle status
   over HTTP at `PUT /corpus/{entityId}/status`. Withdrawal now leaves active accepted-corpus
   listings while addressed historical revisions continue to resolve, and OpenAPI includes the
