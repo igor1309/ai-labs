@@ -161,9 +161,13 @@ test("routeContracts_shouldDeclareMaterialContentBodiesAndPaginationQueries", ()
   );
 });
 
-test("routeContracts_shouldDeclareSourceLifecycleAndDeletionRoutes", () => {
+test("routeContracts_shouldDeclareLifecycleAndDeletionRoutes", () => {
   assert.deepEqual(
     {
+      corpusStatus: {
+        ...mutationRouteProjection(routeContract("PUT", "/corpus/{entityId}/status")),
+        requestBody: requestBodyProjection(routeContract("PUT", "/corpus/{entityId}/status")),
+      },
       deleteSource: mutationRouteProjection(routeContract("DELETE", "/sources/{sourceId}")),
       setSourceStatus: {
         ...mutationRouteProjection(routeContract("PUT", "/sources/{sourceId}/status")),
@@ -171,6 +175,16 @@ test("routeContracts_shouldDeclareSourceLifecycleAndDeletionRoutes", () => {
       },
     },
     {
+      corpusStatus: {
+        csrf: true,
+        handlerKey: "corpus.setAcceptedCorpusLifecycleStatus",
+        operationId: "setAcceptedCorpusLifecycleStatus",
+        requestBody: {
+          contentType: "application/json",
+          required: true,
+          schemaRef: "#/components/requestBodies/LifecycleStatus",
+        },
+      },
       deleteSource: {
         csrf: true,
         handlerKey: "corpus.deleteProgramSource",

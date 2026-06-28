@@ -6674,6 +6674,94 @@ test("acceptedCorpusList_shouldReturnCurrentScopedFilteredAndPaginatedAcceptedCo
   }
 });
 
+test("acceptedCorpusStatus_shouldRequireCsrfCuratorAndKeepHistoricalRevisionReadable", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(80) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const ordinary = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Ordinary Identity",
+      login: "ordinary-corpus-status@example.test",
+    });
+    const createdProgram = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await createdProgram.json()).value.program.programId;
+    const acceptedCorpus = await createAcceptedCandidate(baseUrl, bootstrap, programId, {
+      candidateKind: "topic",
+      title: "Withdrawn topic",
+    });
+    const missingCsrf = await fetch(`${baseUrl}/corpus/${acceptedCorpus.entityId}/status`, {
+      body: JSON.stringify({ status: "withdrawn" }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+      },
+      method: "PUT",
+    });
+    const nonCurator = await updateAcceptedCorpusStatus(baseUrl, ordinary, acceptedCorpus.entityId, {
+      status: "withdrawn",
+    });
+    const invalid = await updateAcceptedCorpusStatus(baseUrl, bootstrap, acceptedCorpus.entityId, {
+      status: "retired",
+    });
+    const withdrawn = await updateAcceptedCorpusStatus(baseUrl, bootstrap, acceptedCorpus.entityId, {
+      status: "withdrawn",
+    });
+    const listed = await fetch(`${baseUrl}/programs/${programId}/accepted-corpus`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+    const historical = await fetch(`${baseUrl}/accepted-corpus-revisions/${acceptedCorpus.revisionId}`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        missingCsrf: { body: await missingCsrf.json(), statusCode: missingCsrf.status },
+        nonCurator: { body: await nonCurator.json(), statusCode: nonCurator.status },
+        invalid: { body: await invalid.json(), statusCode: invalid.status },
+        withdrawn: { body: await withdrawn.json(), statusCode: withdrawn.status },
+        listed: acceptedCorpusListProjection(await listed.json(), listed.status),
+        historical: acceptedCorpusRevisionProjection(await historical.json(), historical.status),
+      },
+      {
+        missingCsrf: {
+          body: { status: "rejected", reason: "csrf_required" },
+          statusCode: 403,
+        },
+        nonCurator: {
+          body: { status: "rejected", reason: "admin_or_curator_required" },
+          statusCode: 403,
+        },
+        invalid: {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
+        withdrawn: {
+          body: {
+            status: "accepted",
+            value: {
+              entity: {
+                id: acceptedCorpus.entityId,
+                status: "withdrawn",
+                updatedByIdentityId: "id-1",
+                updatedAt: "2026-05-27T10:00:00.000Z",
+              },
+            },
+          },
+          statusCode: 200,
+        },
+        listed: { statusCode: 200, titles: [] },
+        historical: {
+          statusCode: 200,
+          title: "Withdrawn topic",
+          revisionId: acceptedCorpus.revisionId,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("acceptedCorpusList_shouldDefaultLimitAndRejectInvalidQueries", async () => {
   const acceptedCorpus = Array.from({ length: 51 }, (_, index) => ({
     entityId: `entity-${index + 1}`,
@@ -11370,6 +11458,18 @@ async function deleteProgramSource(baseUrl, session, sourceId) {
       "x-agonara-csrf": session.csrfToken,
     },
     method: "DELETE",
+  });
+}
+
+async function updateAcceptedCorpusStatus(baseUrl, session, entityId, body) {
+  return fetch(`${baseUrl}/corpus/${entityId}/status`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "PUT",
   });
 }
 

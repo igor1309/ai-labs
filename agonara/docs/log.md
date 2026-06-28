@@ -2,6 +2,11 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 4 sub-slice: exposed accepted Corpus entity lifecycle status
+  over HTTP at `PUT /corpus/{entityId}/status`. Withdrawal now leaves active accepted-corpus
+  listings while addressed historical revisions continue to resolve, and OpenAPI includes the
+  lifecycle route.
+
 - ADR-022 implementation Phase 4 sub-slice: exposed source lifecycle status and source-record
   hard-delete over HTTP with session+CSRF gates. The OpenAPI contract now declares
   `PUT /sources/{sourceId}/status` and `DELETE /sources/{sourceId}`, including

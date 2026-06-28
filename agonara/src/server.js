@@ -1456,6 +1456,7 @@ async function handleCorpusApi({
   const navigationCandidatesMatch = pathname.match(/^\/programs\/([^/]+)\/navigation-candidates$/);
   const programNavigationMatch = pathname.match(/^\/programs\/([^/]+)\/navigation$/);
   const acceptedCorpusMatch = pathname.match(/^\/programs\/([^/]+)\/accepted-corpus$/);
+  const acceptedCorpusStatusMatch = pathname.match(/^\/corpus\/([^/]+)\/status$/);
   const corpusEventsMatch = pathname.match(/^\/programs\/([^/]+)\/corpus-events$/);
   const candidateAcceptanceMatch = pathname.match(/^\/corpus-candidates\/([^/]+)\/acceptance$/);
   const candidateRejectionMatch = pathname.match(/^\/corpus-candidates\/([^/]+)\/rejection$/);
@@ -2510,6 +2511,31 @@ async function handleCorpusApi({
       routeKey,
     });
     sendJson(response, statusForResult(mappedResult), mappedResult);
+    return true;
+  }
+
+  if (request.method === "PUT" && acceptedCorpusStatusMatch) {
+    const csrf = requireCsrf(request, csrfTokens);
+    if (csrf.status === "rejected") {
+      sendJson(response, httpStatusFor(csrf.reason), csrf);
+      return true;
+    }
+    const session = identityCommands.resolveSession({ sessionId: csrf.sessionId });
+    if (session.status === "rejected") {
+      sendJson(response, httpStatusFor(session.reason), session);
+      return true;
+    }
+    const body = await readRequiredJsonObject(request);
+    if (body.status === "rejected") {
+      sendJson(response, 400, body);
+      return true;
+    }
+    const result = corpusCommands.setAcceptedCorpusLifecycleStatus({
+      actingIdentityId: session.value.identity.id,
+      entityId: decodeURIComponent(acceptedCorpusStatusMatch[1]),
+      status: body.value.status,
+    });
+    sendJson(response, statusForResult(result), result);
     return true;
   }
 
