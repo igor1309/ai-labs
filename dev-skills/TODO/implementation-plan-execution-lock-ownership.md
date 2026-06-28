@@ -78,12 +78,11 @@ release wrapper that gates shipping. These build on the declaration-block split,
 
 ### IP-8 — Release hygiene for the change set (P0 to complete)
 
-- **Change:** per `dev-skills/.claude/CLAUDE.md`, MINOR-bump `process-gates` (IP-5);
-  `implementation-plan` is already at its MINOR-bumped version for this change set, so do not
-  bump it again — only sync it. Sync `public/.claude-plugin/marketplace.json` and
-  `public/.codex-plugin/plugin.json` versions to the current SKILL.md versions; update
-  `dev-skills/docs/log.md`; PR into `trunk` with auto-merge; post-merge, verify CI and the public
-  skills repo.
+- **Change:** per `dev-skills/.claude/CLAUDE.md`, MINOR-bump `implementation-plan` (new
+  section/behavior) and `process-gates` (IP-5) — version bumps for this change set are
+  deliberately deferred to here, not done per-commit. Sync `public/.claude-plugin/marketplace.json`
+  and `public/.codex-plugin/plugin.json` versions; update `dev-skills/docs/log.md`; PR into
+  `trunk` with auto-merge; post-merge, verify CI and the public skills repo.
 - **DoD:** versions bumped/synced, logs updated, single PR merged, post-merge checks pass.
 
 ## Open question
