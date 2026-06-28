@@ -3929,6 +3929,97 @@ test("acceptedAssessmentCriteria_shouldListCurrentAndReturnHistoricalRevision_on
   }
 });
 
+test("assessmentCriterionStatus_shouldRequireCsrfCuratorAndKeepHistoricalRevisionReadable", async () => {
+  const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(60) });
+
+  try {
+    const bootstrap = await bootstrapAdmin(baseUrl);
+    const ordinary = await createIdentitySession(baseUrl, bootstrap, {
+      displayName: "Ordinary Identity",
+      login: "ordinary-criterion-status@example.test",
+    });
+    const program = await createProgram(baseUrl, bootstrap, { title: "Linear Algebra" });
+    const programId = (await program.json()).value.program.programId;
+    const criterion = await createAcceptedAssessmentCriterion(baseUrl, bootstrap, programId, {
+      title: "Withdrawn criterion",
+    });
+    const missingCsrf = await fetch(`${baseUrl}/assessment-criteria/${criterion.entityId}/status`, {
+      body: JSON.stringify({ status: "withdrawn" }),
+      headers: {
+        cookie: bootstrap.cookie,
+        "content-type": "application/json",
+      },
+      method: "PUT",
+    });
+    const nonCurator = await updateAssessmentCriterionStatus(baseUrl, ordinary, criterion.entityId, {
+      status: "withdrawn",
+    });
+    const invalid = await updateAssessmentCriterionStatus(baseUrl, bootstrap, criterion.entityId, {
+      status: "retired",
+    });
+    const withdrawn = await updateAssessmentCriterionStatus(baseUrl, bootstrap, criterion.entityId, {
+      status: "withdrawn",
+    });
+    const list = await fetch(`${baseUrl}/programs/${programId}/assessment-criteria`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+    const detail = await fetch(`${baseUrl}/assessment-criteria/revisions/${criterion.revisionId}`, {
+      headers: { cookie: bootstrap.cookie },
+    });
+
+    assert.deepEqual(
+      {
+        missingCsrf: { body: await missingCsrf.json(), statusCode: missingCsrf.status },
+        nonCurator: { body: await nonCurator.json(), statusCode: nonCurator.status },
+        invalid: { body: await invalid.json(), statusCode: invalid.status },
+        withdrawn: { body: await withdrawn.json(), statusCode: withdrawn.status },
+        list: { body: acceptedAssessmentCriterionListProjection(await list.json()), statusCode: list.status },
+        detail: { body: acceptedAssessmentCriterionProjection(await detail.json()), statusCode: detail.status },
+      },
+      {
+        missingCsrf: {
+          body: { status: "rejected", reason: "csrf_required" },
+          statusCode: 403,
+        },
+        nonCurator: {
+          body: { status: "rejected", reason: "admin_or_curator_required" },
+          statusCode: 403,
+        },
+        invalid: {
+          body: { status: "rejected", reason: "validation_failed" },
+          statusCode: 400,
+        },
+        withdrawn: {
+          body: {
+            status: "accepted",
+            value: {
+              entity: {
+                id: criterion.entityId,
+                status: "withdrawn",
+                updatedByIdentityId: "id-1",
+                updatedAt: "2026-05-27T10:00:00.000Z",
+              },
+            },
+          },
+          statusCode: 200,
+        },
+        list: { body: [], statusCode: 200 },
+        detail: {
+          body: {
+            acceptedFromCandidateId: criterion.acceptedFromCandidateId,
+            programId,
+            sourceIds: [],
+            title: "Withdrawn criterion",
+          },
+          statusCode: 200,
+        },
+      },
+    );
+  } finally {
+    await close();
+  }
+});
+
 test("openAnswerCheckCandidates_shouldCreateAndListDraftCandidate_onAcceptedCriterion", async () => {
   const { baseUrl, close } = await listenWithIdentityProgramAndCorpus({ ids: manyIds(60) });
 
@@ -11661,6 +11752,18 @@ async function updateAcceptedCorpusStatus(baseUrl, session, entityId, body) {
   });
 }
 
+async function updateAssessmentCriterionStatus(baseUrl, session, entityId, body) {
+  return fetch(`${baseUrl}/assessment-criteria/${entityId}/status`, {
+    body: JSON.stringify(body),
+    headers: {
+      cookie: session.cookie,
+      "content-type": "application/json",
+      "x-agonara-csrf": session.csrfToken,
+    },
+    method: "PUT",
+  });
+}
+
 async function updateQuickCheckStatus(baseUrl, session, entityId, body) {
   return fetch(`${baseUrl}/quick-checks/${entityId}/status`, {
     body: JSON.stringify(body),
@@ -12218,6 +12321,21 @@ async function createLearnerStateTargetLink(baseUrl, session, programId, body) {
     cookie: session.cookie,
     csrfToken: session.csrfToken,
   });
+}
+
+async function createAcceptedAssessmentCriterion(
+  baseUrl,
+  session,
+  programId,
+  { body = "Explain closure under addition.", title = "Vector-space closure" } = {},
+) {
+  const candidate = await createAssessmentCriterionCandidate(baseUrl, session, programId, {
+    body,
+    title,
+  });
+  const candidateId = (await candidate.json()).value.assessmentCriterionCandidate.candidateId;
+  const acceptedCriterion = await acceptAssessmentCriterionCandidate(baseUrl, session, candidateId, {});
+  return (await acceptedCriterion.json()).value.acceptedAssessmentCriterion;
 }
 
 async function createAcceptedOpenAnswerCheck(
@@ -13207,6 +13325,10 @@ function acceptedAssessmentCriterionProjection(body) {
     sourceIds: criterion?.sourceIds,
     title: criterion?.title,
   };
+}
+
+function acceptedAssessmentCriterionListProjection(body) {
+  return body.value?.acceptedAssessmentCriteria?.map($0 => $0.title) ?? [];
 }
 
 function openAnswerCheckCandidateProjection(body) {

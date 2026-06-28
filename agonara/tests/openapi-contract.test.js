@@ -168,6 +168,10 @@ test("routeContracts_shouldDeclareLifecycleAndDeletionRoutes", () => {
         ...mutationRouteProjection(routeContract("PUT", "/corpus/{entityId}/status")),
         requestBody: requestBodyProjection(routeContract("PUT", "/corpus/{entityId}/status")),
       },
+      criterionStatus: {
+        ...mutationRouteProjection(routeContract("PUT", "/assessment-criteria/{entityId}/status")),
+        requestBody: requestBodyProjection(routeContract("PUT", "/assessment-criteria/{entityId}/status")),
+      },
       deleteSource: mutationRouteProjection(routeContract("DELETE", "/sources/{sourceId}")),
       quickCheckStatus: {
         ...mutationRouteProjection(routeContract("PUT", "/quick-checks/{entityId}/status")),
@@ -187,6 +191,16 @@ test("routeContracts_shouldDeclareLifecycleAndDeletionRoutes", () => {
         csrf: true,
         handlerKey: "corpus.setAcceptedCorpusLifecycleStatus",
         operationId: "setAcceptedCorpusLifecycleStatus",
+        requestBody: {
+          contentType: "application/json",
+          required: true,
+          schemaRef: "#/components/requestBodies/LifecycleStatus",
+        },
+      },
+      criterionStatus: {
+        csrf: true,
+        handlerKey: "corpus.setAcceptedAssessmentCriterionLifecycleStatus",
+        operationId: "setAcceptedAssessmentCriterionLifecycleStatus",
         requestBody: {
           contentType: "application/json",
           required: true,

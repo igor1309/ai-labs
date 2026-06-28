@@ -2,6 +2,11 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 4 sub-slice: exposed accepted assessment-criterion lifecycle
+  status over HTTP at `PUT /assessment-criteria/{entityId}/status`. Withdrawn criteria leave
+  active accepted-criteria listings while addressed historical revisions remain readable, and
+  OpenAPI includes the lifecycle route.
+
 - ADR-022 implementation Phase 4 sub-slice: exposed accepted open-answer-check lifecycle
   status over HTTP at `PUT /open-answer-checks/{entityId}/status`. Withdrawn open-answer
   checks leave active curation listings while addressed historical revisions remain readable,
