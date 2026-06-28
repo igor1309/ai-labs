@@ -61,12 +61,13 @@
 - Drafted the ADR-023 **navigation-relationship acceptance uniqueness** spec
   (`docs/specs/navigation-relationship-acceptance-uniqueness.md`, `draft`) and implementation plan
   (`docs/plans/navigation-relationship-acceptance-uniqueness.md`, `planned`) on top of the ADR-022
-  withdrawal spec/plan. Both make the two ADR-022 integration points durable: the reactivation
-  carve-out (a navigation-relationship-only precondition extending ADR-022 spec rule 10, which
-  otherwise makes reactivation unconditional) and the no-migration-framework ordering (dedup
-  existing duplicates by withdrawal, then create the partial-unique index, in one idempotent
-  startup step). Implementation is gated on the ADR-022 plan landing. Added a forward-reference to
-  ADR-022 spec rule 10 so the reconciliation is recorded on both sides.
+  withdrawal spec/plan. Both make the two ADR-022 integration points durable, recorded
+  **downstream only** (the cascade flows ADR → spec → plan → implementation; the ADR-022 spec is
+  not edited from here): the reactivation carve-out (a navigation-relationship-only precondition
+  that narrows ADR-022 spec rule 10, which otherwise makes reactivation unconditional — stated in
+  the ADR-023 spec rule 5) and the no-migration-framework ordering (dedup existing duplicates by
+  withdrawal, then create the partial-unique index, in one idempotent startup step). Implementation
+  is gated on the ADR-022 plan landing.
 
 - Reframed the curator and student role skills so the agent is the human role-holder's
   **assistant**, not the role itself: `agonara-curator-corpus` (v1.3.0),

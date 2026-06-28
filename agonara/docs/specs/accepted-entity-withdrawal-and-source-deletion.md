@@ -157,14 +157,7 @@ hard-delete independently through `DELETE /sources/{sourceId}/content`
    - an `active` accepted navigation relationship whose `from_entity_id` or `to_entity_id` is
      the corpus entity being withdrawn.
 10. A `withdrawn` dependent does not block withdrawal. Reactivation has no dependent
-    precondition — an entity may be reactivated regardless of its dependents' statuses. (One
-    narrow exception is added downstream by
-    [ADR-023](../adr/adr-023-navigation-relationship-acceptance-uniqueness.md) and its
-    [spec](navigation-relationship-acceptance-uniqueness.md): reactivating a navigation
-    relationship is rejected with `navigation_relationship_already_accepted` when an active
-    relationship with the same `(program_id, relationship_kind, from_entity_id, to_entity_id)`
-    already exists, so reactivation cannot create two active duplicates. This is a sibling-uniqueness
-    precondition, not a dependent precondition, and applies only to navigation relationships.)
+    precondition — an entity may be reactivated regardless of its dependents' statuses.
 
 ### Read-path filtering
 
