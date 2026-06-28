@@ -1348,6 +1348,58 @@ test("setAcceptedCorpusLifecycleStatus_shouldWithdrawAndReactivateEntity_without
   }
 });
 
+test("setAcceptedCorpusLifecycleStatus_shouldAcceptSameStatusAndRefreshAttribution_status", async () => {
+  const { commands, database } = await makeSUT({
+    now: makeAdvancingClock("2026-06-28T10:30:00.000Z"),
+  });
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    const accepted = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Stable topic",
+    });
+
+    const activeNoOp = commands.setAcceptedCorpusLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: accepted.entityId,
+      status: "active",
+    }).value.entity;
+    const withdrawn = commands.setAcceptedCorpusLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: accepted.entityId,
+      status: "withdrawn",
+    }).value.entity;
+    const withdrawnNoOp = commands.setAcceptedCorpusLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: accepted.entityId,
+      status: "withdrawn",
+    }).value.entity;
+    const stored = listAcceptedCorpusEntityRecords(database, { programId: "program-a" })[0];
+
+    assert.deepEqual(
+      {
+        activeNoOp: { actor: activeNoOp.updatedByIdentityId, status: activeNoOp.status },
+        withdrawn: { actor: withdrawn.updatedByIdentityId, status: withdrawn.status },
+        withdrawnNoOp: { actor: withdrawnNoOp.updatedByIdentityId, status: withdrawnNoOp.status },
+        timestampsAdvance:
+          activeNoOp.updatedAt < withdrawn.updatedAt && withdrawn.updatedAt < withdrawnNoOp.updatedAt,
+        currentRevisionId: stored.currentRevisionId,
+      },
+      {
+        activeNoOp: { actor: "identity-curator", status: "active" },
+        withdrawn: { actor: "identity-curator", status: "withdrawn" },
+        withdrawnNoOp: { actor: "identity-curator", status: "withdrawn" },
+        timestampsAdvance: true,
+        currentRevisionId: accepted.revisionId,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("setAcceptedCorpusLifecycleStatus_shouldRejectWithdrawal_onActiveNavigationRelationship_status", async () => {
   const { commands, database } = await makeSUT();
 
@@ -1462,6 +1514,215 @@ test("setAcceptedCorpusLifecycleStatus_shouldRejectWithdrawal_onActiveReadinessR
         },
         activeCorpusIds: [concept.entityId, topic.entityId],
         readinessEntities: [[readiness.entityId, readiness.revisionId]],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("lifecycleWithdrawal_shouldAllowWithdrawnDependentsAndUnconditionalReactivation_status", async () => {
+  const { commands, database } = await makeSUT({ ids: generatedIds("inactive-dependents", 180) });
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    const navigationTopic = acceptNavigationCandidate(commands, {
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Navigation topic",
+    });
+    const navigationConcept = acceptNavigationCandidate(commands, {
+      programId: "program-a",
+      candidateKind: "concept",
+      relationshipDrafts: [
+        {
+          relationshipKind: "topic_includes_concept",
+          fromEntityId: navigationTopic.entityId,
+          toCandidateRef: "self",
+        },
+      ],
+      title: "Navigation concept",
+    });
+    const relationship = listAcceptedNavigationRelationshipRecords(database, {
+      programId: "program-a",
+    })[0];
+    const withdrawnRelationship = commands.setAcceptedNavigationRelationshipLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      relationshipId: relationship.id,
+      status: "withdrawn",
+    });
+    const withdrawnNavigationConcept = commands.setAcceptedCorpusLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: navigationConcept.entityId,
+      status: "withdrawn",
+    });
+
+    const readinessTopic = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "topic",
+      title: "Readiness topic",
+    });
+    const readinessConcept = createAcceptedNavigationTarget(commands, {
+      programId: "program-a",
+      candidateKind: "concept",
+      title: "Readiness concept",
+    });
+    const readinessCandidate = commands.createReadinessCheckCandidate({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      title: "Readiness dependent",
+      scope: { scopeKind: "topic", topicEntityId: readinessTopic.entityId },
+      requirements: [
+        {
+          targetKind: "concept",
+          targetId: readinessConcept.entityId,
+          requiredLevel: "developing",
+        },
+      ],
+    }).value.readinessCheckCandidate;
+    const readiness = commands.acceptReadinessCheckCandidate({
+      actingIdentityId: "identity-curator",
+      candidateId: readinessCandidate.candidateId,
+    }).value.acceptedReadinessCheck;
+    const withdrawnReadiness = commands.setAcceptedReadinessCheckLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: readiness.entityId,
+      status: "withdrawn",
+    });
+    const withdrawnReadinessConcept = commands.setAcceptedCorpusLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: readinessConcept.entityId,
+      status: "withdrawn",
+    });
+
+    const criterion = createAcceptedAssessmentCriterionOwner(commands, { programId: "program-a" });
+    const openAnswer = createAcceptedOpenAnswerOwner(commands, {
+      programId: "program-a",
+      criterionEntityIds: [criterion.entityId],
+    });
+    const withdrawnOpenAnswer = commands.setAcceptedOpenAnswerCheckLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: openAnswer.entityId,
+      status: "withdrawn",
+    });
+    const withdrawnCriterion = commands.setAcceptedAssessmentCriterionLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: criterion.entityId,
+      status: "withdrawn",
+    });
+    const activeOpenAnswer = commands.setAcceptedOpenAnswerCheckLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: openAnswer.entityId,
+      status: "active",
+    });
+    const activeCriterion = commands.setAcceptedAssessmentCriterionLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: criterion.entityId,
+      status: "active",
+    });
+
+    assert.deepEqual(
+      {
+        relationship: withdrawnRelationship.value.entity.status,
+        navigationTarget: withdrawnNavigationConcept.value.entity.status,
+        readiness: withdrawnReadiness.value.entity.status,
+        readinessTarget: withdrawnReadinessConcept.value.entity.status,
+        openAnswerSequence: [
+          withdrawnOpenAnswer.value.entity.status,
+          activeOpenAnswer.value.entity.status,
+        ],
+        criterionSequence: [
+          withdrawnCriterion.value.entity.status,
+          activeCriterion.value.entity.status,
+        ],
+      },
+      {
+        relationship: "withdrawn",
+        navigationTarget: "withdrawn",
+        readiness: "withdrawn",
+        readinessTarget: "withdrawn",
+        openAnswerSequence: ["withdrawn", "active"],
+        criterionSequence: ["withdrawn", "active"],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test("acceptedAssessmentLifecycle_shouldWithdrawReactivateAndPreserveCurrentRevisions_status", async () => {
+  const { commands, database } = await makeSUT({ ids: generatedIds("assessment-cycles", 120) });
+
+  try {
+    seedCuratorProgram(database, { programId: "program-a" });
+    const quickCheck = createAcceptedQuickCheckOwner(commands, { programId: "program-a" });
+    const criterion = createAcceptedAssessmentCriterionOwner(commands, { programId: "program-a" });
+    const openAnswer = createAcceptedOpenAnswerOwner(commands, {
+      programId: "program-a",
+      criterionEntityIds: [criterion.entityId],
+    });
+
+    const quickStatuses = [
+      commands.setAcceptedQuickCheckLifecycleStatus({
+        actingIdentityId: "identity-curator",
+        entityId: quickCheck.entityId,
+        status: "withdrawn",
+      }).value.entity.status,
+      commands.setAcceptedQuickCheckLifecycleStatus({
+        actingIdentityId: "identity-curator",
+        entityId: quickCheck.entityId,
+        status: "active",
+      }).value.entity.status,
+    ];
+    const withdrawnOpenAnswer = commands.setAcceptedOpenAnswerCheckLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: openAnswer.entityId,
+      status: "withdrawn",
+    });
+    const criterionStatuses = [
+      commands.setAcceptedAssessmentCriterionLifecycleStatus({
+        actingIdentityId: "identity-curator",
+        entityId: criterion.entityId,
+        status: "withdrawn",
+      }).value.entity.status,
+      commands.setAcceptedAssessmentCriterionLifecycleStatus({
+        actingIdentityId: "identity-curator",
+        entityId: criterion.entityId,
+        status: "active",
+      }).value.entity.status,
+    ];
+    const activeOpenAnswer = commands.setAcceptedOpenAnswerCheckLifecycleStatus({
+      actingIdentityId: "identity-curator",
+      entityId: openAnswer.entityId,
+      status: "active",
+    });
+
+    assert.deepEqual(
+      {
+        quickStatuses,
+        openAnswerStatuses: [
+          withdrawnOpenAnswer.value.entity.status,
+          activeOpenAnswer.value.entity.status,
+        ],
+        criterionStatuses,
+        currentRevisions: {
+          quickCheck: listAcceptedQuickCheckEntityRecords(database, { programId: "program-a" })[0]
+            .currentRevisionId,
+          openAnswer: listAcceptedOpenAnswerCheckEntityRecords(database, { programId: "program-a" })[0]
+            .currentRevisionId,
+          criterion: listAcceptedAssessmentCriterionEntityRecords(database, { programId: "program-a" })[0]
+            .currentRevisionId,
+        },
+      },
+      {
+        quickStatuses: ["withdrawn", "active"],
+        openAnswerStatuses: ["withdrawn", "active"],
+        criterionStatuses: ["withdrawn", "active"],
+        currentRevisions: {
+          quickCheck: quickCheck.revisionId,
+          openAnswer: openAnswer.revisionId,
+          criterion: criterion.revisionId,
+        },
       },
     );
   } finally {

@@ -2,6 +2,10 @@
 
 ## 2026-06-28
 
+- Close ADR-022 with explicit lifecycle acceptance for every entity family, same-status writes,
+  inactive dependents, withdrawn backup graphs, and domain/HTTP/browser workflows; align Product
+  Intent, the implemented spec, runtime evidence, README, dashboard, and forward-task backlogs.
+
 - ADR-022 implementation Phase 5 now exposes the plan-declared source lifecycle controls and
   withdrawn-items action in `/learn`, handles source lifecycle response envelopes correctly,
   and gives curators actionable guidance for every blocked-dependent class.
@@ -145,7 +149,7 @@
 
 - Drafted the **accepted-entity withdrawal and source deletion** spec
   (`docs/specs/accepted-entity-withdrawal-and-source-deletion.md`) operationalizing
-  [ADR-022](docs/adr/adr-022-accepted-entity-withdrawal-and-source-deletion.md): an
+  [ADR-022](adr/adr-022-accepted-entity-withdrawal-and-source-deletion.md): an
   entity-level `active ↔ withdrawn` lifecycle status across the six accepted-entity
   families and `program_sources`, curator-authorized withdraw/reactivate, the
   active-dependent block (no cascade), read-path filtering for delivery/listings/coverage-gap

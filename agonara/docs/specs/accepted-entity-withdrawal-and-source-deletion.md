@@ -2,8 +2,8 @@
 date: 2026-06-28
 model: claude-opus-4-8
 description: "Spec: Agonara accepted-entity withdrawal lifecycle and two-tier Program source deletion."
-version: 0.0.1
-status: draft
+version: 1.0.0
+status: implemented
 type: spec
 ---
 
@@ -84,7 +84,7 @@ setEntityLifecycleStatus(entityId: string, input: SetLifecycleStatusInput): Life
 
 // Source records.
 setSourceLifecycleStatus(sourceId: string, input: SetLifecycleStatusInput): LifecycleStatusResult
-deleteSourceRecord(sourceId: string): { sourceId: string }   // hard delete, unreferenced only
+deleteSourceRecord(sourceId: string): { source: { id: string } } // hard delete, unreferenced only
 ```
 
 ### HTTP endpoints
@@ -93,7 +93,7 @@ deleteSourceRecord(sourceId: string): { sourceId: string }   // hard delete, unr
 |---|---|---|---|
 | `PUT` | `<family base>/{entityId}/status` | Program Curator session and CSRF header | `AcceptedResult<{ entity: LifecycleStatusResult }>` |
 | `PUT` | `/sources/{sourceId}/status` | Program Curator session and CSRF header | `AcceptedResult<{ source: LifecycleStatusResult }>` |
-| `DELETE` | `/sources/{sourceId}` | Program Curator session and CSRF header | `AcceptedResult<{ sourceId: string }>` |
+| `DELETE` | `/sources/{sourceId}` | Program Curator session and CSRF header | `AcceptedResult<{ source: { id: string } }>` |
 
 `<family base>` is one of the six entity-family bases in the table above. The status routes
 take `SetLifecycleStatusInput`. `DELETE /sources/{sourceId}` removes the whole source record
@@ -316,3 +316,27 @@ hard-delete independently through `DELETE /sources/{sourceId}/content`
   before mutation.
 - Product Intent carries the new curator withdraw/reactivate and source-deletion stories.
 - Agonara tests, root build, docs checks, and `git diff --check` pass after implementation.
+
+## Implementation status
+
+Implemented by the [Accepted Entity Withdrawal and Source Deletion Implementation
+Plan](../plans/implemented/accepted-entity-withdrawal-and-source-deletion.md).
+
+Runtime evidence:
+
+- [Lifecycle storage, migration, backup, and restore validation](../../src/storage.js)
+- [Accepted check lifecycle and coverage filtering](../../src/curator-workspace.js)
+- [Corpus, navigation, source, and material deletion tiers](../../src/corpus.js)
+- [Student delivery and listing filters](../../src/student-workspace.js)
+- [HTTP lifecycle routes](../../src/server.js) and [OpenAPI contract](../api/openapi.yml)
+- [`/learn` curator lifecycle and source controls](../../src/learn-ui.js)
+
+Verification evidence:
+
+- [Storage tests](../../tests/storage.test.js) and [backup/restore tests](../../tests/backup-restore.test.js)
+- [Curator Workspace tests](../../tests/curator-workspace.test.js)
+- [Corpus tests](../../tests/corpus.test.js)
+- [Student Workspace tests](../../tests/student-workspace.test.js)
+- [HTTP API tests](../../tests/http-api.test.js) and [OpenAPI contract tests](../../tests/openapi-contract.test.js)
+- [Quick Check lifecycle browser tests](../../tests/quick-check-product-ui.playwright.js)
+- [Navigation and source lifecycle browser tests](../../tests/topic-concept-material-navigation.playwright.js)

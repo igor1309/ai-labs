@@ -22,8 +22,6 @@ Backlogs are split by topic so each concern stays discoverable on its own:
   MCP or HTTP agents).
 - [`workflow-calibration-gaps.md`](workflow-calibration-gaps.md) — calibrating the
   `traceability-review` dynamic workflow, using Agonara as the eval corpus.
-- [`material-content.md`](material-content.md) — storing material text and serving it
-  role-gated (ADR-021 + spec): deletion decision, implementation, product docs, skills.
 
 Promote a topic to its own `backlog/<topic>.md` file when it is a distinct
 concern that has reached roughly three or more items or is clearly going to grow;
@@ -36,11 +34,7 @@ Single items not yet promoted to a topic file.
 - **Program lifecycle: archival / deletion / ownership transfer.** Still not
   exposed (`docs/specs/corpus-storage-and-curator-acceptance-api.md` #65/#66;
   `corpus-storage-and-curator-acceptance-first-slice.md` #37/#44); needs its own
-  ADR for audit-preserving semantics. (The **source-deletion** half of the former
-  item is now decided in
-  `docs/adr/adr-022-accepted-entity-withdrawal-and-source-deletion.md` — two-tier
-  hard-delete-unreferenced / withdraw-referenced, raw blob per ADR-021 — and its
-  implementation is tracked in [`material-content.md`](material-content.md).)
+  ADR for audit-preserving semantics.
 
 - **Drive the open-answer evaluator (nothing fires it).** The whole evaluation
   pipeline is implemented and wired — Nomos LLM provider adapter, evaluator

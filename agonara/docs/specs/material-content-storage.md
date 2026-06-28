@@ -39,9 +39,10 @@ Primary implementation and verification:
 - [`/learn` reader and curator content UI](../../src/learn-ui.js), with browser coverage in
   [navigation Playwright tests](../../tests/topic-concept-material-navigation.playwright.js).
 
-Accepted-content withdrawal and source-record deletion (ADR-022) are tracked separately in
-[`backlog/material-content.md`](../../backlog/material-content.md); the material-content spec
-covers raw-blob hard delete only.
+Accepted-content withdrawal and source-record deletion are implemented separately under
+[ADR-022](../adr/adr-022-accepted-entity-withdrawal-and-source-deletion.md) and its
+[implemented spec](accepted-entity-withdrawal-and-source-deletion.md); this material-content
+spec covers raw-blob hard delete only.
 
 ## Public interface
 
