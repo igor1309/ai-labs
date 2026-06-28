@@ -65,9 +65,14 @@
   **downstream only** (the cascade flows ADR → spec → plan → implementation; the ADR-022 spec is
   not edited from here): the reactivation carve-out (a navigation-relationship-only precondition
   that narrows ADR-022 spec rule 10, which otherwise makes reactivation unconditional — stated in
-  the ADR-023 spec rule 5) and the no-migration-framework ordering (dedup existing duplicates by
-  withdrawal, then create the partial-unique index, in one idempotent startup step). Implementation
-  is gated on the ADR-022 plan landing.
+  the ADR-023 spec rule 5) and the no-migration-framework reality. On the latter, corrected the
+  approach after spotting that auto-withdrawing pre-existing duplicate rows at startup would be an
+  **un-attributed status change violating ADR-022 spec rule 4**: prevention of *new* duplicates is
+  now the unconditional, index-independent application guards (create-path check, reactivation,
+  restore validation), and the partial-unique index is a **backstop** added by a guarded startup
+  step that skips-with-diagnostic — never auto-withdrawing or deleting — until a curator has cleaned
+  the existing duplicates through the ADR-022 API. Updated ADR-023, its spec, and its plan to match.
+  Implementation is gated on the ADR-022 plan landing.
 
 - Reframed the curator and student role skills so the agent is the human role-holder's
   **assistant**, not the role itself: `agonara-curator-corpus` (v1.3.0),

@@ -24,10 +24,10 @@ ADR-022 withdrawal path.
 
 ## Scope
 
-In scope: a uniqueness invariant over active accepted navigation relationships; rejection of
-duplicate acceptance with a new reason; a navigation-relationship reactivation precondition that
-narrows ADR-022 spec rule 10; restore rejection of duplicate-bearing backups; the non-destructive,
-dedup-first ordering for introducing the constraint. Out of scope (ADR-023 Non-Goals):
+In scope: application guards that prevent new active duplicates (the create-path check covering
+acceptance and `relationship_update`, the reactivation precondition that narrows ADR-022 spec rule
+10, and restore rejection of duplicate-bearing backups); a new rejection reason; and a guarded
+backstop database index added once existing duplicates are cleaned. Out of scope (ADR-023 Non-Goals):
 removal/withdrawal/repair of relationships already accepted in error (the ADR-022 withdrawal path);
 reverse-direction / symmetric-kind canonicalization of the key; uniqueness for non-navigation
 accepted-entity families; any change to acceptance authority, endpoint-kind, self-reference, or
@@ -37,9 +37,12 @@ prerequisite-cycle validation (ADR-010 and the navigation spec).
 
 This spec consumes the `active`/`withdrawn` lifecycle status that the ADR-022 withdrawal spec adds
 to `accepted_navigation_relationships`; it MUST NOT be implemented before that status column
-exists. Because the ADR-022 status migration backfills every existing relationship — including
-already-accepted duplicates — to `active`, this spec's uniqueness constraint cannot be enabled
-until those pre-existing active duplicates are resolved by withdrawal (rule 9).
+exists. The application guards (rules 2–8) ship as soon as that status column exists and are
+otherwise unconditional — they fire on writes, not on rows already present, so they prevent new
+duplicates regardless of existing data. Only the backstop index (rule 9) is data-dependent: because
+the ADR-022 status migration backfills every existing relationship — including already-accepted
+duplicates — to `active`, the index cannot be created until a curator has withdrawn the extras
+through the ADR-022 API, and until then the guarded startup step skips it with a diagnostic.
 
 ## Public interface
 
@@ -95,10 +98,13 @@ type ApiRejectionReason =
 
 ### Enforcement surface
 
-7. The invariant MUST be enforced at the storage layer so it holds for every writer — the
-   acceptance path, the `relationship_update` path, reactivation, and backup restore — not only the
-   acceptance-validation path. The acceptance and reactivation paths MUST surface the graceful
-   `navigation_relationship_already_accepted` reason rather than a raw constraint error.
+7. New active duplicates MUST be prevented by application-level guards that fire on every write —
+   the duplicate check in `createAcceptedNavigationRelationshipRecord` (covering the acceptance and
+   `relationship_update` paths), the reactivation guard (rule 5), and the restore validation (rule
+   8) — each surfacing the graceful `navigation_relationship_already_accepted` reason (restore
+   surfaces a restore-validation rejection). These guards MUST work regardless of whether the
+   backstop index (rule 9) exists; prevention MUST NOT depend on the index being present. A
+   database partial-unique index scoped to `status = 'active'` is added as a backstop per rule 9.
 
 ### Restore
 
@@ -107,26 +113,31 @@ type ApiRejectionReason =
    validation (status vocabulary + withdrawn-graph resolution) with an active-duplicate check; a
    backup with one active and one withdrawn relationship for the same tuple MUST restore cleanly.
 
-### Introducing the constraint (non-destructive, dedup-first)
+### Introducing the backstop index (guarded, no auto-mutation)
 
-9. Enabling the uniqueness constraint MUST NOT fail or delete data on a database that already
-   contains active duplicates. Pre-existing active duplicates MUST first be reduced to a single
-   active relationship per tuple by **withdrawing** the extras (ADR-022 withdrawal), preserving
-   every withdrawn relationship and its revisions; only then is the active-scoped uniqueness
-   constraint established. The reduction MUST be deterministic and idempotent (re-running it is a
-   no-op).
+9. The backstop partial-unique index is created by a guarded idempotent startup step:
+   `create unique index if not exists … where status = 'active'`. Before creating it, the step MUST
+   check for active duplicate tuples; if any remain, it MUST **skip creation and emit a startup
+   diagnostic** naming the offending tuples, and MUST NOT throw. The step MUST NOT auto-withdraw,
+   hard-delete, or otherwise mutate accepted rows to force the index — an un-attributed status
+   change would violate ADR-022 spec rule 4. Pre-existing active duplicates are cleaned only by an
+   attributable `Program Curator` withdrawal through the ADR-022 API; once the data is clean, the
+   next startup creates the index. Re-running the step is a no-op (the index already exists, or the
+   diagnostic repeats).
 
 ## Tests (required)
 
 ### Storage tests
 
-1. The active-scoped uniqueness constraint rejects a second active relationship with the same
-   `(program_id, relationship_kind, from_entity_id, to_entity_id)`, and permits the same tuple when
-   the existing relationship is `withdrawn`.
-2. Introducing the constraint on a database pre-seeded with two active duplicate relationships for
-   one tuple reduces them to a single active relationship by withdrawing the extra (the withdrawn
-   row and its revisions stay resolvable) and then succeeds; re-running the introduction step is a
-   no-op.
+1. The create-path guard in `createAcceptedNavigationRelationshipRecord` rejects a second active
+   relationship with the same `(program_id, relationship_kind, from_entity_id, to_entity_id)`, and
+   permits the same tuple when the existing relationship is `withdrawn` — independent of whether the
+   backstop index exists.
+2. The guarded backstop-index startup step, run on a database pre-seeded with two active duplicate
+   relationships for one tuple, **skips** index creation, emits a diagnostic naming the offending
+   tuple, does **not** throw, and does **not** mutate any row (both duplicates remain active);
+   after the extra is withdrawn through the ADR-022 path, the next run creates the index; running
+   the step again once the index exists is a no-op.
 
 ### Domain tests — acceptance
 
@@ -160,14 +171,15 @@ type ApiRejectionReason =
 
 ## Done criteria
 
-- Among active accepted navigation relationships, the directed tuple is unique per Program,
-  enforced at the storage layer across acceptance, `relationship_update`, reactivation, and restore.
+- New active duplicates are prevented across acceptance, `relationship_update`, reactivation, and
+  restore by application guards that do not depend on the backstop index existing.
 - Duplicate acceptance and colliding reactivation are rejected with
   `navigation_relationship_already_accepted`; the original edge is untouched and acceptance is atomic.
-- A `withdrawn` tuple is re-acceptable; the constraint is scoped to active rows only.
+- A `withdrawn` tuple is re-acceptable; the uniqueness scope is active rows only.
 - Restore rejects active-duplicate-bearing backups before mutation.
-- Introducing the constraint is non-destructive and dedup-first on databases that already hold
-  active duplicates.
+- The backstop index is created by a guarded startup step that skips-with-diagnostic (never throws,
+  never mutates rows) while active duplicates remain, and materializes once a curator has cleaned
+  them through the ADR-022 API.
 - The new reason appears in the OpenAPI surface; no other rejection reason or request/response shape
   changes.
 - Implementation is sequenced after the ADR-022 withdrawal spec is implemented.
