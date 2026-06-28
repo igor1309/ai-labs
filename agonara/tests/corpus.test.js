@@ -472,6 +472,89 @@ test("deleteProgramSource_shouldHardDeleteUnreferencedAndBlockReferencedWithdraw
   }
 });
 
+test("deleteProgramSource_shouldLeaveMaterialContentRevisionAndLearnerEvidence_onUnreferencedSource", async () => {
+  const { commands, database } = await makeMaterialContentSUT();
+
+  try {
+    const quickCheck = createAcceptedQuickCheckOwner(commands, { programId: "program-a" });
+    commands.createLearnerEvidenceTargetLink({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      targetKind: "material_reference",
+      targetId: "entity-a",
+      evidenceOwnerKind: "quick_check",
+      evidenceOwnerEntityId: quickCheck.entityId,
+    });
+    setAcceptedMaterialContentRecord(database, {
+      revisionId: "revision-a",
+      content: "# Accepted material body",
+      contentFormat: "markdown",
+    });
+    const source = commands.recordProgramSource({
+      actingIdentityId: "identity-curator",
+      programId: "program-a",
+      sourceKind: "article",
+      title: "Unreferenced source",
+    }).value.programSource;
+    commands.setSourceContent({
+      actingIdentityId: "identity-curator",
+      sourceId: source.sourceId,
+      content: "Raw intake body",
+      contentFormat: "markdown",
+    });
+
+    const before = {
+      acceptedMaterialContent: getAcceptedMaterialContentRecord(database, "revision-a"),
+      acceptedRevision: getAcceptedCorpusRevisionRecord(database, "revision-a"),
+      learnerEvidenceTargetLinks: listLearnerEvidenceTargetLinkRecords(database, {
+        programId: "program-a",
+        includeDeleted: true,
+      }),
+      materialContent: commands.readMaterialRevisionContent({
+        actingIdentityId: "identity-student",
+        revisionId: "revision-a",
+      }).value.content,
+    };
+    const deleted = commands.deleteProgramSource({
+      actingIdentityId: "identity-curator",
+      sourceId: source.sourceId,
+    });
+
+    assert.deepEqual(
+      {
+        deleted,
+        rawSourceContent: getSourceContentRecord(database, source.sourceId),
+        sourceIds: listProgramSourceRecords(database, { programId: "program-a" }).map($0 => $0.id),
+        acceptedMaterialContent: getAcceptedMaterialContentRecord(database, "revision-a"),
+        acceptedRevision: getAcceptedCorpusRevisionRecord(database, "revision-a"),
+        learnerEvidenceTargetLinks: listLearnerEvidenceTargetLinkRecords(database, {
+          programId: "program-a",
+          includeDeleted: true,
+        }),
+        materialContent: commands.readMaterialRevisionContent({
+          actingIdentityId: "identity-student",
+          revisionId: "revision-a",
+        }).value.content,
+      },
+      {
+        deleted: {
+          status: "accepted",
+          value: {
+            source: {
+              id: source.sourceId,
+            },
+          },
+        },
+        rawSourceContent: null,
+        sourceIds: ["source-a"],
+        ...before,
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("createCorpusCandidate_shouldRejectNonCurator", async () => {
   const { commands, database } = await makeSUT();
 
