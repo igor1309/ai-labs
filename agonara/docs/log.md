@@ -2,6 +2,37 @@
 
 ## 2026-06-28
 
+- Drafted the **accepted-entity withdrawal and source deletion** spec
+  (`docs/specs/accepted-entity-withdrawal-and-source-deletion.md`) operationalizing
+  [ADR-022](docs/adr/adr-022-accepted-entity-withdrawal-and-source-deletion.md): an
+  entity-level `active ↔ withdrawn` lifecycle status across the six accepted-entity
+  families and `program_sources`, curator-authorized withdraw/reactivate, the
+  active-dependent block (no cascade), read-path filtering for delivery/listings/coverage-gap
+  derivation, two-tier source deletion (hard-delete unreferenced, withdraw-only referenced),
+  completion of ADR-021's material-content deletion tiers, and backup/restore of status. Adds
+  `entity_withdrawal_blocked` and `source_hard_delete_blocked` to the rejection vocabulary.
+  Status `draft`; implementation tracked in `backlog/material-content.md`. Ran an adversarial
+  spec review (`docs/reviews/accepted-entity-withdrawal-and-source-deletion-spec-adversarial-review.md`):
+  fixed one fail (active-dependent block understated readiness targets and mis-described the
+  open-answer→criterion reference as entity-direct when it pins criterion revisions) and two
+  warns (a non-existent `quick_check_not_found` reason example; murky no-op `updatedAt`
+  semantics); remaining findings pass.
+
+- Authored the **accepted-entity withdrawal and source deletion** implementation plan
+  (`docs/plans/accepted-entity-withdrawal-and-source-deletion.md`) for the ADR-022 spec,
+  following the My Way plan structure: single task, six phases (status substrate + migration;
+  withdraw/reactivate + active-dependent block + read filtering; source two-tier deletion;
+  HTTP lifecycle API + OpenAPI; product UI; docs/closeout), with execution declarations
+  (`auto-continue`, `Worktree mode: none`, branch `claude/agonara-adr-22-spec-2zp737`,
+  `push at closeout`, preflight unchecked), scope guardrails, an exact file/route inventory,
+  and ADR/product-intent traceability matrices. Status `planned`. Ran an adversarial plan
+  review (`docs/reviews/accepted-entity-withdrawal-and-source-deletion-plan-adversarial-review.md`):
+  fixed one fail (the plan referenced a non-existent migration framework — Agonara's schema is
+  `create table if not exists` only, so adding a `status` column to existing tables now uses an
+  idempotent `pragma table_info` + `alter table add column ... default 'active'` startup step
+  that backfills) and one warn (parallel-phase ambiguity in Phase 3 dependencies); declaration
+  block, scope, traceability, and closeout pass.
+
 - Add a `concept-extraction.md` reference doc to `agonara-curator-corpus` (v1.4.0)
   and link it from `SKILL.md`'s topics-and-concepts section. It captures a reusable
   draft-concept-extraction procedure: read and segment the whole topic into semantic
