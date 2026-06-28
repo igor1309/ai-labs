@@ -1,7 +1,7 @@
 ---
 name: agonara-curator-corpus
 author: Igor Malyarov
-version: "1.3.0"
+version: "1.4.0"
 description: Assist a human Agonara Program Curator — do the corpus API work on their behalf to assemble program structure, modeling what the curator hands you (a section, an idea, a document to host) into the right corpus shape and asking when the shape is unclear — create a program, propose topics and concepts as corpus candidates, add material references and relationships through navigation candidates, host readable material content for students, keep drafts separate from accepted corpus, explicitly accept or reject candidates, read accepted corpus and revisions, and read corpus events. Use when a curator's assistant agent is building or refining the accepted structure of a program. The substrate the other curator skills (assessment, research) attach to.
 trigger: when a curator's assistant agent needs to create a program or move topic/concept/material/navigation content between draft and accepted corpus
 ---
@@ -102,6 +102,17 @@ Never present a `draft` (or `rejected`) candidate as accepted program content.
 Acceptance and rejection act only on a `draft` candidate; re-acting on one
 already resolved returns a `rejected` reason such as `candidate_already_accepted`
 or `candidate_already_rejected` (or `candidate_not_found`).
+
+### Drafting a concept layer for a topic
+
+When the curator hands you a topic and wants its **concepts** drafted — not a
+single concept but the layer that covers the topic's teachable content — follow
+[`concept-extraction.md`](concept-extraction.md). It exists to defeat the common
+failure of stopping at a few obvious "core" concepts: read and segment the whole
+topic, extract teachable units per block, balance granularity with a merge/trim
+pass, and prove coverage with a mandatory gap check before proposing the
+candidates here. Propose the results as `concept` candidates through the flow
+above; extraction never auto-accepts.
 
 ## Read accepted corpus
 

@@ -2,22 +2,71 @@
 
 ## 2026-06-28
 
+- Drafted the **accepted-entity withdrawal and source deletion** spec
+  (`docs/specs/accepted-entity-withdrawal-and-source-deletion.md`) operationalizing
+  [ADR-022](docs/adr/adr-022-accepted-entity-withdrawal-and-source-deletion.md): an
+  entity-level `active ↔ withdrawn` lifecycle status across the six accepted-entity
+  families and `program_sources`, curator-authorized withdraw/reactivate, the
+  active-dependent block (no cascade), read-path filtering for delivery/listings/coverage-gap
+  derivation, two-tier source deletion (hard-delete unreferenced, withdraw-only referenced),
+  completion of ADR-021's material-content deletion tiers, and backup/restore of status. Adds
+  `entity_withdrawal_blocked` and `source_hard_delete_blocked` to the rejection vocabulary.
+  Status `draft`; implementation tracked in `backlog/material-content.md`. Ran an adversarial
+  spec review (`docs/reviews/accepted-entity-withdrawal-and-source-deletion-spec-adversarial-review.md`):
+  fixed one fail (active-dependent block understated readiness targets and mis-described the
+  open-answer→criterion reference as entity-direct when it pins criterion revisions) and two
+  warns (a non-existent `quick_check_not_found` reason example; murky no-op `updatedAt`
+  semantics); remaining findings pass.
+
+- Authored the **accepted-entity withdrawal and source deletion** implementation plan
+  (`docs/plans/accepted-entity-withdrawal-and-source-deletion.md`) for the ADR-022 spec,
+  following the My Way plan structure: single task, six phases (status substrate + migration;
+  withdraw/reactivate + active-dependent block + read filtering; source two-tier deletion;
+  HTTP lifecycle API + OpenAPI; product UI; docs/closeout), with execution declarations
+  (`auto-continue`, `Worktree mode: none`, branch `claude/agonara-adr-22-spec-2zp737`,
+  `push at closeout`, preflight unchecked), scope guardrails, an exact file/route inventory,
+  and ADR/product-intent traceability matrices. Status `planned`. Ran an adversarial plan
+  review (`docs/reviews/accepted-entity-withdrawal-and-source-deletion-plan-adversarial-review.md`):
+  fixed one fail (the plan referenced a non-existent migration framework — Agonara's schema is
+  `create table if not exists` only, so adding a `status` column to existing tables now uses an
+  idempotent `pragma table_info` + `alter table add column ... default 'active'` startup step
+  that backfills) and one warn (parallel-phase ambiguity in Phase 3 dependencies); declaration
+  block, scope, traceability, and closeout pass.
+
+- Add a `concept-extraction.md` reference doc to `agonara-curator-corpus` (v1.4.0)
+  and link it from `SKILL.md`'s topics-and-concepts section. It captures a reusable
+  draft-concept-extraction procedure: read and segment the whole topic into semantic
+  blocks, extract teachable units per block, balance coverage against granularity with
+  a merge/trim pass, and run a mandatory `semantic blocks → teachable units → concepts`
+  gap check (a reasoning pass over source material vs. the draft concepts)
+  before proposing concept candidates. Targets the failure mode of stopping at a few
+  obvious "core" concepts by holding an explicit Definition of Done. The doc ships
+  inside the skill folder so it resolves on the deployed curator bot.
+
 - Accepted **ADR-023 — Navigation-Relationship Acceptance Uniqueness**
   (`docs/adr/adr-023-navigation-relationship-acceptance-uniqueness.md`), the *prevention* half of
   the duplicate-navigation problem a curator reported. Accepted navigation relationships become
   unique per directed `(program_id, relationship_kind, from_entity_id, to_entity_id)` among
   **active** edges; a duplicate acceptance is rejected with a new
   `navigation_relationship_already_accepted` reason, enforced at the storage layer (partial-unique
-  index + `createAcceptedNavigationRelationshipRecord`) so it covers first-time acceptance, the
-  `relationship_update` candidate kind, and restore. Scoped to `status = active` (depends on
-  ADR-022's lifecycle; sequenced after it so existing duplicate rows are withdrawn first); directed
-  tuple only, symmetric-kind reverse collapse deferred. The *cleanup* of already-accepted
-  duplicates remains the ADR-022 withdrawal path. Schema/routes/migration left to a downstream spec.
-  Hardened after an adversarial review: closed a cross-ADR collision (ADR-022 `withdrawn → active`
-  reactivation is now held to the same uniqueness guard, so it cannot resurrect a second active
-  duplicate), cited the existing `one_active_learner_evidence_target_link` partial-unique index as
-  the proven precedent, and corrected the enforcement wording (restore is covered by the DB-level
-  index + pre-mutation check, not `createAcceptedNavigationRelationshipRecord`).
+  index + a pre-insert check) so it covers first-time acceptance, the `relationship_update`
+  candidate kind, and restore. Scoped to `status = active` (depends on ADR-022's lifecycle;
+  sequenced after it so existing duplicate rows are withdrawn first); directed tuple only,
+  symmetric-kind reverse collapse deferred. The *cleanup* of already-accepted duplicates remains
+  the ADR-022 withdrawal path. Hardened after an adversarial review: closed a cross-ADR collision
+  (ADR-022 `withdrawn → active` reactivation is now held to the same uniqueness guard) and cited
+  the existing `one_active_learner_evidence_target_link` partial-unique index as the proven
+  precedent.
+
+- Drafted the ADR-023 **navigation-relationship acceptance uniqueness** spec
+  (`docs/specs/navigation-relationship-acceptance-uniqueness.md`, `draft`) and implementation plan
+  (`docs/plans/navigation-relationship-acceptance-uniqueness.md`, `planned`) on top of the ADR-022
+  withdrawal spec/plan. Both make the two ADR-022 integration points durable: the reactivation
+  carve-out (a navigation-relationship-only precondition extending ADR-022 spec rule 10, which
+  otherwise makes reactivation unconditional) and the no-migration-framework ordering (dedup
+  existing duplicates by withdrawal, then create the partial-unique index, in one idempotent
+  startup step). Implementation is gated on the ADR-022 plan landing. Added a forward-reference to
+  ADR-022 spec rule 10 so the reconciliation is recorded on both sides.
 
 - Reframed the curator and student role skills so the agent is the human role-holder's
   **assistant**, not the role itself: `agonara-curator-corpus` (v1.3.0),
