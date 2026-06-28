@@ -2,6 +2,10 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 2 sub-slice: student learner-state evidence rollups now use
+  only active navigation relationships, so withdrawn relationships no longer roll concept
+  evidence into topic summaries.
+
 - ADR-022 implementation Phase 2 sub-slice: student learner-state target definitions now filter
   accepted corpus targets, quick checks, open-answer checks, and assessment criteria on
   `status = active`, so withdrawn entities leave forward learner-state summary/detail reads.

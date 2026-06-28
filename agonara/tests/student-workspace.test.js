@@ -2207,6 +2207,73 @@ test("learnerStateReads_shouldOmitWithdrawnForwardTargets_status", () => {
   }
 });
 
+test("learnerStateReads_shouldNotRollUpEvidenceAcrossWithdrawnNavigationRelationships_status", () => {
+  const { commands, database } = makeSUT({
+    ids: ["open-evaluated", "evaluation-1"],
+    now: makeAdvancingClock("2026-06-02T10:00:00.000Z"),
+  });
+
+  try {
+    seedStudentProgramWithAcceptedQuickCheck(database, { programId: "program-a" });
+    seedStudentProgramWithAcceptedCheck(database, { programId: "program-a" });
+    seedLearnerStateNavigationGraph(database, { programId: "program-a" });
+    database
+      .prepare("update accepted_navigation_relationships set status = 'withdrawn' where id = ?")
+      .run("relationship-topic-concept");
+    createLearnerEvidenceTargetLinkRecord(database, {
+      id: "target-link-concept-criterion",
+      programId: "program-a",
+      targetKind: "concept",
+      targetId: "concept-entity-a",
+      evidenceOwnerKind: "accepted_assessment_criterion",
+      evidenceOwnerEntityId: "criterion-entity-a",
+      createdByIdentityId: "identity-curator",
+      createdAt: "2026-06-02T09:36:00.000Z",
+      updatedAt: "2026-06-02T09:36:00.000Z",
+    });
+    const evaluatedAttempt = commands.submitOpenAnswerAttempt({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+      checkRevisionId: "check-revision-a",
+      submittedAnswer: "Evaluated explanation",
+      idempotencyKey: "open-evaluated-key",
+    }).value.attempt;
+    commands.recordOpenAnswerEvaluation({
+      attemptId: evaluatedAttempt.attemptId,
+      evaluatorKind: "student_workspace",
+      summaryFeedback: "The answer misses the central invariant.",
+      criterionFeedback: [
+        makeCriterionFeedback({
+          criterionRevisionId: "criterion-revision-a",
+          outcome: "missing",
+          feedback: "Missing invariant.",
+        }),
+      ],
+    });
+
+    const summary = projectLearnerStateSummary(commands.getLearnerStateProgramSummary({
+      actingIdentityId: "identity-student",
+      programId: "program-a",
+    }));
+
+    assert.deepEqual(
+      {
+        topics: summary.topics,
+        concepts: summary.concepts,
+      },
+      {
+        topics: [["topic-entity-a", "no_evidence", 0]],
+        concepts: [
+          ["concept-entity-unused", "no_evidence", 0],
+          ["concept-entity-a", "needs_attention", 1],
+        ],
+      },
+    );
+  } finally {
+    database.close();
+  }
+});
+
 test("readinessAttempts_shouldDeriveResultSnapshotAndPreserveHistory_onExplicitSubmission", () => {
   const { commands, database } = makeSUT({
     ids: [

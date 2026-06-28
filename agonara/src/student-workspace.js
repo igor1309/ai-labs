@@ -2277,7 +2277,7 @@ function buildLearnerStateModel({ database, programId, studentIdentityId }) {
     }
   }
 
-  const relationshipRecords = listAcceptedNavigationRelationshipRecords(database, { programId });
+  const relationshipRecords = listAcceptedNavigationRelationshipRecords(database, { programId, status: "active" });
   const targetKindByEntityId = new Map(targetDefinitions.map($0 => [$0.targetId, $0.targetKind]));
   const directEvidenceResolver = targetKey => directEvidenceByTarget.get(targetKey) ?? [];
   const rolledEvidenceResolver = target => {
