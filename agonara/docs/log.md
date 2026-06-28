@@ -2,6 +2,10 @@
 
 ## 2026-06-28
 
+- ADR-022 implementation Phase 5 sub-slice: added the `/learn` curator source hard-delete
+  control. Unreferenced source deletion calls `DELETE /sources/{sourceId}`, while referenced
+  source blocks display a withdraw-instead message.
+
 - ADR-022 implementation Phase 5 sub-slice: added the `/learn` curator lifecycle panel with
   stable `#entity-lifecycle-panel`, withdraw/reactivate actions, redacted status messaging, and
   route wiring for accepted entities and source withdrawal/reactivation.

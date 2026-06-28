@@ -656,6 +656,7 @@ export const learnUiHtml = `<!doctype html>
                   <button data-action="save-source-content" data-requires-session type="submit">Save source content</button>
                   <button data-action="read-source-content" data-requires-session class="secondary" type="button">Read source content</button>
                   <button data-action="delete-source-content" data-requires-session class="danger" type="button">Delete source content</button>
+                  <button data-action="delete-source" data-requires-session class="danger" type="button">Delete source</button>
                 </div>
               </form>
               <p id="source-content-status" class="status" aria-live="polite"></p>
@@ -1324,6 +1325,10 @@ export const learnUiHtml = `<!doctype html>
         }
         if (event.target.closest("[data-action='delete-source-content']")) {
           void deleteSourceContent();
+          return;
+        }
+        if (event.target.closest("[data-action='delete-source']")) {
+          void deleteSourceRecord();
         }
       });
 
@@ -2192,6 +2197,36 @@ export const learnUiHtml = `<!doctype html>
           return "Lifecycle status is invalid.";
         }
         return "Lifecycle update failed.";
+      }
+
+      async function deleteSourceRecord() {
+        if (!state.identity) {
+          elements.sourceContentStatus.textContent = "Sign in first.";
+          return;
+        }
+        const sourceId = elements.sourceContentIdInput.value.trim();
+        if (!sourceId) {
+          elements.sourceContentStatus.textContent = "Enter a source id.";
+          return;
+        }
+
+        const result = await requestJson("/sources/" + encodeURIComponent(sourceId), {
+          csrf: true,
+          method: "DELETE",
+        });
+        if (result.status === "accepted") {
+          elements.sourceContentStatus.textContent = "Deleted source " + result.value.sourceId + ".";
+          return;
+        }
+        if (result.reason === "source_hard_delete_blocked") {
+          elements.sourceContentStatus.textContent = "Source is referenced; withdraw it instead.";
+          return;
+        }
+        if (result.reason === "source_not_found") {
+          elements.sourceContentStatus.textContent = "Source not found.";
+          return;
+        }
+        elements.sourceContentStatus.textContent = "Source deletion failed.";
       }
 
       function renderCandidateList() {

@@ -60,3 +60,25 @@ test("learnUiLifecyclePanel_shouldExposeWithdrawReactivateControlsAndRoutes", ()
     csrfMutation: true,
   });
 });
+
+test("learnUiSourceDelete_shouldExposeDeleteControlAndBlockedMessage", () => {
+  const sourceDeleteContract = {
+    deleteAction: learnUiHtml.includes('data-action="delete-source"'),
+    deleteRoute: learnUiHtml.includes('requestJson("/sources/" + encodeURIComponent(sourceId), {'),
+    deleteMethod: learnUiHtml.includes('method: "DELETE"'),
+    csrf: learnUiHtml.includes("csrf: true"),
+    successMessage: learnUiHtml.includes('"Deleted source " + result.value.sourceId + "."'),
+    blockedMessage: learnUiHtml.includes('"Source is referenced; withdraw it instead."'),
+    notFoundMessage: learnUiHtml.includes('"Source not found."'),
+  };
+
+  assert.deepEqual(sourceDeleteContract, {
+    deleteAction: true,
+    deleteRoute: true,
+    deleteMethod: true,
+    csrf: true,
+    successMessage: true,
+    blockedMessage: true,
+    notFoundMessage: true,
+  });
+});
