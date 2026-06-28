@@ -91,10 +91,13 @@ This step is not optional; skipping it is the original failure. Walk
 - **missing** — not reflected anywhere in the concept layer.
 
 Any **missing** block means the work is not done — return to Step 3 for it.
-Cross-check against the program's machine diagnostics too: the `coverage-gaps`
-read in [`agonara-curator-research`](../agonara-curator-research/SKILL.md) can
-surface weak or missing coverage you did not see by eye. Treat both your manual
-gap map and the diagnostic as guidance, never as accepted content.
+The `coverage-gaps` read in
+[`agonara-curator-research`](../agonara-curator-research/SKILL.md) is a useful
+companion, but mind what it sees: it diagnoses the program's **accepted** corpus,
+so it can show where the topic is already thinly covered — it cannot see your
+draft concepts and so cannot confirm this layer is complete. Use it to orient,
+not as a substitute for the manual gap map. Both are draft guidance, never
+accepted content.
 
 ## Definition of Done
 
@@ -115,7 +118,8 @@ coverage of the full topic.
 ## Hand-off
 
 These are **draft** concepts. Propose each as a `concept` corpus candidate
-(`POST /programs/{programId}/corpus-candidates`, see [`SKILL.md`](SKILL.md)) with
-its `rationale`, and confirm shape and granularity with the human curator before
-acceptance. Extraction never auto-accepts (CUR-06): a human-owned acceptance
-action is what moves any concept into accepted corpus.
+through the *Topics and concepts — corpus candidates* flow in
+[`SKILL.md`](SKILL.md), carrying its `rationale`, and confirm shape and
+granularity with the human curator before acceptance. Extraction never
+auto-accepts (CUR-06): a human-owned acceptance action is what moves any concept
+into accepted corpus.
