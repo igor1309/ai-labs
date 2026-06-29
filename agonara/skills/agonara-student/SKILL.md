@@ -1,7 +1,7 @@
 ---
 name: agonara-student
 author: Igor Malyarov
-version: "1.4.0"
+version: "1.5.0"
 description: Assist a human Agonara Student through the instance's HTTP API — discover and preview programs without creating state, self-join/leave/rejoin and act on invitations, resume learning and follow the next step, study accepted concepts and materials with navigation intact and read hosted material content where present, present checks and relay the student's own quick, open, and readiness answers, and read feedback, results, and the evidence behind progress. The agent coaches learning but never produces the student's assessment evidence. The student sees only accepted corpus and its own state — never curator drafts, answer keys, correctness metadata, or evaluator internals. Use when an agent acts as a student's assistant against an Agonara instance.
 trigger: when an agent assists a human Student against an Agonara instance — discovering or joining programs, learning, taking checks, or reading its own progress
 ---
@@ -142,7 +142,8 @@ so the boundary lives here, in how you behave.
   quick checks, quizzes, or practice tests from the accepted materials so the
   student can self-assess (in the conversation, to coach with — not persisted as
   program check candidates; that is curation). Hold every question you write to
-  the **MCQ item-quality bar below**.
+  the **MCQ item-quality bar below**, and run the set through the **authored-quiz
+  loop below**.
 - **Never let formatting betray the answer.** Improving a question's readability
   is welcome, but apply it uniformly to the whole question. Do not bold, expand,
   qualify, hedge, add detail to, or structure the correct option differently from
@@ -243,9 +244,52 @@ single the key out:
 - **Items must not cue each other.** Don't let one question reveal the answer to
   another across the set.
 
-A practical bar: read the options cold, with the prompt but without knowing
-the key. If you can pick the answer from wording, length, plausibility, position,
-or process of elimination alone, the item is too weak — revise.
+#### Definition of Done — clear this gate before presenting any item
+
+An authored item is presentable only when **all** of the item-quality
+requirements above hold together — the stem rules, the cue/homogeneity rules, and
+the structure rules. Run it as an explicit self-check, not a vibe: do not present
+an item you have not walked against the list. The two anti-failure focuses:
+
+- **Every distractor names a real mistake.** State to yourself the specific
+  misconception, partial reasoning, or confusion each wrong option encodes. If you
+  cannot name it, the option is filler — replace it before presenting.
+- **The item survives the cold read.** Read the options with the prompt but
+  without the key: if the answer is pickable by wording, length, grammar,
+  absolutes, plausibility, position, or process of elimination, it fails — revise
+  before presenting.
+
+Position has two levels: order the options within an item logically, and across
+the set do not let the key cluster on one slot.
+
+**Anti-failure rule.** Plausible-looking options is not done — done is every
+distractor a nameable mistake and the item unguessable on a cold read.
+
+## Running an authored MCQ practice quiz
+
+When you build and run a practice quiz yourself (the authored path above), the
+loop has a required shape — guidance alone has let items go out weak and answers
+go by unassessed.
+
+- **Record the rationale privately, up front.** As you generate each item, note —
+  for yourself, never shown — the key and the nameable mistake behind each
+  distractor (the same mistakes the Definition of Done required). Reveal them only
+  in the feedback after the student answers; until then the answer stays hidden.
+- **Gate every item before presenting.** Clear the *Definition of Done* above for
+  each question. Do not present an item that has not passed it.
+- **Assess before you advance — this is required.** Immediately after the student
+  gives a clear, final answer, and before sending anything that advances to the
+  next question, state the verdict:
+  whether they were right, why the correct option is correct, why their option was
+  wrong if it was, and the misconception each wrong option encodes (from your
+  private record). Advancing to the next question without this assessment is a
+  failure of the loop, not a style choice.
+- **Don't assess an unclear answer.** If the answer is ambiguous, gives more than
+  one option, or is not final, ask the student to settle on one — do not guess it
+  for them and do not advance.
+- **Stuck is a study cue, not a hint.** If the student is stuck or asks for help
+  before answering, offer to return to studying the concept; never give an
+  answer-directed hint during the item.
 
 ## Check and assess
 
@@ -262,8 +306,10 @@ student they will be "assessed later," and never route assessment to a curator �
 the curator authors checks but cannot and does not grade attempts. You can only
 submit an answer against an **accepted** check (`checkRevisionId`): if the student
 answered an ad-hoc question you invented that has no accepted check behind it,
-there is no assessment path — coach informally and ask the curator to author a
-real check rather than implying a graded result exists.
+there is no API or graded assessment path: if this was an authored MCQ practice
+quiz, give your own correctness feedback through the authored-quiz loop above;
+otherwise coach informally and ask the curator to author a real check rather than
+implying a graded result exists.
 
 Every submission is a mutation that requires the session cookie, `X-Agonara-CSRF`,
 **and** an `X-Agonara-Idempotency-Key` (the contract marks the idempotency key
