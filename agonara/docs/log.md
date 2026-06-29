@@ -2,6 +2,22 @@
 
 ## 2026-06-29
 
+- Fixed an MCQ **option-labelling ergonomics regression** in **`agonara-student`
+  (v1.5.1)**: a live student saw lettered options (`A/B/C/D`) in the prompt but
+  numbered answer buttons (`1 2 3 4`), forced to map button → letter → option to
+  answer. Root cause: the assistant passed bare ordinals as the `clarify` choices
+  and carried the readable options under a *second* (lettered) scheme plus a
+  `1.A/2.B` bridge key. Added a presentation rule: **put the option text on the
+  buttons** — each button's label is the option's own words, the stem stays in the
+  prompt, options are not re-listed under a second (lettered/numbered) scheme, and
+  no bridging key. Verified the button mechanism against inventory
+  `vps/Hermes/agonara-student-quiz-presentation.md` (Hermes `clarify` inline buttons,
+  label = choice text) rather than guessing. **Behavioral dry-run** (single item +
+  a 2-item authored series) confirmed every item renders option text on the buttons
+  with a stem-only prompt and no bridging key, and the assess-then-advance chain stays
+  unbroken (substantive verdict before each advance, terminating wrap-up, keys spread
+  across slots) — no edition change needed. Hermes-side `SOUL.md` "Presenting checks"
+  rule tightened to match (inventory repo); deploy to the host trees still pending.
 - Hardened **`agonara-student` (v1.5.0)** authored-MCQ practice-quiz quality after a
   live student reported easy answer-picking, missing correctness feedback, incoherent
   items, and the key clustering in early slots. Added a **Definition-of-Done gate** the
