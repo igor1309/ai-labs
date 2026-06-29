@@ -1,7 +1,7 @@
 ---
 name: button-quiz-loop
 description: Use when running a button-based quiz/drill in chat and continuity matters more than commentary.
-version: 1.2.1
+version: 1.2.2
 author: Igor Malyarov
 license: MIT
 metadata:
@@ -17,7 +17,7 @@ metadata:
 Use this skill when running a sequential multiple-choice drill through chat buttons.
 Its purpose is to prevent protocol breakage: no acknowledgement-only turns, no text fallback unless the user explicitly asks for it (the one sanctioned exception is timeout recovery — see "Transport failures"), and no meta-explanations during the run.
 
-This skill is for **delivery discipline**, not question-writing quality. Pair it with `agonara-student` for item quality (its "MCQ item quality" bar — the canonical owner) and `assistant-authored-study-drills` for authored-drill orchestration.
+This skill is for **delivery discipline**, not question-writing quality — pair it with `agonara-student` for item quality (its "MCQ item quality" bar, the canonical owner). The authored-drill skill that runs button delivery layers its orchestration on top of this one.
 
 ## When to Use
 
