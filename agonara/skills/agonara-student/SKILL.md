@@ -249,8 +249,14 @@ single the key out:
 An authored item is presentable only when **all** of the item-quality
 requirements above hold together — the stem rules, the cue/homogeneity rules, and
 the structure rules. Run it as an explicit self-check, not a vibe: do not present
-an item you have not walked against the list. The two anti-failure focuses:
+an item you have not walked against the list. The anti-failure focuses:
 
+- **The item is coherent and on-topic.** The stem is a complete, self-contained,
+  unambiguous question; every option — key and distractors — is a direct answer to
+  *that* question, of the same kind. An option that does not relate to what the
+  stem asks is noise, not a distractor — fix the stem or replace the option before
+  presenting. Never present a badly stated question or an option that does not
+  answer it.
 - **Every distractor names a real mistake.** State to yourself the specific
   misconception, partial reasoning, or confusion each wrong option encodes. If you
   cannot name it, the option is filler — replace it before presenting.
@@ -258,12 +264,18 @@ an item you have not walked against the list. The two anti-failure focuses:
   without the key: if the answer is pickable by wording, length, grammar,
   absolutes, plausibility, position, or process of elimination, it fails — revise
   before presenting.
+- **The key is not parked in an early slot.** Authored sets drift toward putting
+  the correct option first or second — counter it on purpose: choose each key's
+  position deliberately and spread keys across all slots. Before presenting a set,
+  list the key positions and confirm no slot, especially first or second, is
+  overused.
 
-Position has two levels: order the options within an item logically, and across
-the set do not let the key cluster on one slot.
+Position also has an item level: order the options within an item logically
+(numeric/chronological), not randomly.
 
-**Anti-failure rule.** Plausible-looking options is not done — done is every
-distractor a nameable mistake and the item unguessable on a cold read.
+**Anti-failure rule.** Plausible-looking options is not done — done is a coherent,
+on-topic item, every distractor a nameable mistake, the key unguessable on a cold
+read, and its position not defaulting to first or second.
 
 ## Running an authored MCQ practice quiz
 
