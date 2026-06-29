@@ -1,5 +1,25 @@
 # Log
 
+## 2026-06-29
+
+- Hardened **`agonara-student` (v1.5.0)** authored-MCQ practice-quiz quality after a
+  live student reported easy answer-picking, missing correctness feedback, incoherent
+  items, and the key clustering in early slots. Added a **Definition-of-Done gate** the
+  assistant must clear before presenting any item (coherence/relevance, every distractor
+  a nameable mistake, cold-read resistance, deliberate key-position spread), a **required
+  immediate assess-then-advance step** with a private per-item rationale record revealed
+  only after the answer, and a **"running an authored MCQ practice quiz"** loop. Two Codex
+  passes (intake review, then changes-vs-intent review) drove wording fixes.
+- Ran a **dry-run experiment** before deploy: a sub-agent authored 3 Russian MCQs from a
+  psychodiagnostics-ethics source under the v1.5.0 skill, exposing its private rationale
+  for audit. Result: nameable-distractor, application-not-recall, coherence, and
+  position-spread gates held; three leaks got through — absolutes parked in distractors
+  («только», «не передаются»), a parallel-structure tell (key the only option without a
+  conditional clause), and a self-check that rationalised a leak away. Fixed all three:
+  the cold-read focus now mandates a per-option **absolute scan** and **parallel-structure
+  check**, and the self-check must **show evidence (longest option, absolutes found, key
+  positions), not assert a verdict**.
+
 ## 2026-06-28
 
 - Logged a forward-task backlog item for **Module → topic navigation hierarchy**
