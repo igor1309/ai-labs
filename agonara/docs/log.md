@@ -2,22 +2,23 @@
 
 ## 2026-06-29
 
-- Fixed an MCQ **option-labelling ergonomics regression** in **`agonara-student`
-  (v1.5.1)**: a live student saw lettered options (`A/B/C/D`) in the prompt but
-  numbered answer buttons (`1 2 3 4`), forced to map button → letter → option to
-  answer. Root cause: the assistant passed bare ordinals as the `clarify` choices
-  and carried the readable options under a *second* (lettered) scheme plus a
-  `1.A/2.B` bridge key. Added a presentation rule: **put the option text on the
-  buttons** — each button's label is the option's own words, the stem stays in the
-  prompt, options are not re-listed under a second (lettered/numbered) scheme, and
-  no bridging key. Verified the button mechanism against inventory
-  `vps/Hermes/agonara-student-quiz-presentation.md` (Hermes `clarify` inline buttons,
-  label = choice text) rather than guessing. **Behavioral dry-run** (single item +
-  a 2-item authored series) confirmed every item renders option text on the buttons
-  with a stem-only prompt and no bridging key, and the assess-then-advance chain stays
-  unbroken (substantive verdict before each advance, terminating wrap-up, keys spread
-  across slots) — no edition change needed. Hermes-side `SOUL.md` "Presenting checks"
-  rule tightened to match (inventory repo); deploy to the host trees still pending.
+- Fixed an MCQ **option-labelling ergonomics regression**: a live student saw lettered
+  options (`A/B/C/D`) in the prompt but numbered answer buttons (`1 2 3 4`), forced to
+  map button → letter → option to answer. Root cause: the assistant passed bare ordinals
+  as the `clarify` choices and carried the readable options under a *second* (lettered)
+  scheme plus a `1.A/2.B` bridge key. Rule: **the `clarify` button label is the option's
+  own text** — stem in the prompt, options on the buttons once, no second scheme and no
+  bridging key. **Placed in `button-quiz-loop` (v1.1.0)**, which owns button *delivery
+  discipline* and is the skill `SOUL.md` already points to — sharpened its checklist,
+  added an "ordinal-proxy buttons" pitfall, and a verification item. An earlier pass put
+  the rule in `agonara-student` (v1.5.1) and restated it in the Hermes `SOUL.md`; both
+  were **reverted** to avoid a double source of truth — `agonara-student` returns to
+  v1.5.0, `SOUL.md` stays a pointer (per gotcha #11: a skill is a discoverable pointer,
+  the always-on rule lives where SOUL points). Verified the button mechanism against
+  inventory `vps/Hermes/agonara-student-quiz-presentation.md` (Hermes `clarify` inline
+  buttons, label = choice text). A behavioral dry-run (single item + 2-item authored
+  series) confirmed option text renders on the buttons with a stem-only prompt, no
+  bridging key, and an unbroken assess-then-advance chain.
 - Hardened **`agonara-student` (v1.5.0)** authored-MCQ practice-quiz quality after a
   live student reported easy answer-picking, missing correctness feedback, incoherent
   items, and the key clustering in early slots. Added a **Definition-of-Done gate** the

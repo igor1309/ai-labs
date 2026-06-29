@@ -1,7 +1,7 @@
 ---
 name: button-quiz-loop
 description: Use when running a button-based quiz/drill in chat and continuity matters more than commentary.
-version: 1.0.0
+version: 1.1.0
 author: Hermes Agent
 license: MIT
 metadata:
@@ -46,6 +46,15 @@ Then do exactly one of the following:
 
 No other exit is allowed.
 
+### Button labels carry the option text
+
+Each `clarify` choice's label **is the option's own text** — put the full option on
+the button. Never label buttons with bare ordinals (`1`, `2`, …) or letters
+(`A`, `B`) while the readable options sit in the prompt, and never add a key that
+bridges the two (`1. A`, `2. B`). Two labellings force the learner to translate
+button → label → option before answering. The stem goes in the prompt; the options
+go on the buttons, once.
+
 ## Forbidden outputs between questions
 
 Do not send any standalone message of these forms between button questions:
@@ -63,7 +72,7 @@ If you want brief confirmation, bundle it inside the **next** `clarify` prompt, 
 
 - [ ] This is not the final wrap-up.
 - [ ] The next user-facing step is a `clarify` call.
-- [ ] The `clarify` call contains all answer options as buttons.
+- [ ] The `clarify` call contains all answer options as buttons, each labelled with the option's own text (never a bare number/letter).
 - [ ] I am not emitting a standalone acknowledgement message.
 - [ ] I am not switching to plain text unless the user explicitly requested that switch.
 
@@ -108,10 +117,15 @@ If you accidentally break the protocol:
    The assistant behaves as if one answered question completes the local task.
    In a sequential drill, the local task is complete only after the next `clarify` is sent or the whole set ends.
 
+5. **Ordinal-proxy buttons**
+   The assistant labels buttons `1/2/3` while the readable options sit lettered in the prompt, forcing a button → option mapping.
+   This is a protocol failure: the button label must be the option's own text.
+
 ## Verification Checklist
 
 - [ ] Between question N and question N+1 there is no standalone acknowledgement-only assistant message.
 - [ ] Every non-final quiz item is delivered through `clarify`.
+- [ ] Each button was labelled with the option's own text, not a bare ordinal/letter proxy.
 - [ ] Plain-text fallback was used only if the user explicitly wanted it.
 - [ ] If `clarify` returned an immediate `user_response`, the next action was another `clarify` or the final wrap-up.
 - [ ] The chain preserved momentum instead of diverting into process commentary.

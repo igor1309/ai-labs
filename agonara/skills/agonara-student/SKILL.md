@@ -1,7 +1,7 @@
 ---
 name: agonara-student
 author: Igor Malyarov
-version: "1.5.1"
+version: "1.5.0"
 description: Assist a human Agonara Student through the instance's HTTP API — discover and preview programs without creating state, self-join/leave/rejoin and act on invitations, resume learning and follow the next step, study accepted concepts and materials with navigation intact and read hosted material content where present, present checks and relay the student's own quick, open, and readiness answers, and read feedback, results, and the evidence behind progress. The agent coaches learning but never produces the student's assessment evidence. The student sees only accepted corpus and its own state — never curator drafts, answer keys, correctness metadata, or evaluator internals. Use when an agent acts as a student's assistant against an Agonara instance.
 trigger: when an agent assists a human Student against an Agonara instance — discovering or joining programs, learning, taking checks, or reading its own progress
 ---
@@ -163,15 +163,6 @@ so the boundary lives here, in how you behave.
   added, dropped, reordered to mislead, or annotated with a hint — and let the
   student pick. If the student is stuck, offer to return to studying the
   underlying concept, not to supply the answer.
-- **Put the option text on the buttons.** When the surface offers tap-buttons (one
-  per option), make each button's label the option's own text, so the student reads
-  the answer and taps it directly. Keep the question stem in the prompt; the options
-  live on the buttons — do not also re-list them in the prompt. Never label the
-  buttons with bare ordinals (`1`, `2`, …) or letters and carry the readable options
-  under a separate scheme in the prompt, and never add a key that bridges the two
-  (`1. A`, `2. B`, …): two labellings split one answer in half and force the student
-  to translate button → label → option before they can answer. One representation of
-  each option, on the button, no mapping block.
 
 ### MCQ item quality
 
