@@ -2,6 +2,21 @@
 
 ## 2026-06-29
 
+- **Harvested and consolidated the host-only student-drill skills.** Three skills lived
+  only in the Hermes student profile tree, unbacked (`assistant-authored-study-drills`,
+  `oral-exam-drills`, `student-practice-question-design`) — pulled them into the ai-labs
+  source (the only backup) and fixed them rather than archiving as-is. They were
+  session-transcript accretions with the same rules restated across all three and against
+  `agonara-student` (item quality) and `button-quiz-loop` (delivery). Consolidated to
+  **one owner per concern**: item quality → `agonara-student`; button delivery →
+  `button-quiz-loop` (**v1.2.0**, absorbed transport/timeout recovery); authored-MCQ
+  *orchestration* → `assistant-authored-study-drills` (**v1.1.0**, rewritten 281→113 lines
+  as tight rules + pointers, no restated item-quality/delivery); oral/free-response →
+  `oral-exam-drills` (**v1.1.0**, deduped header, pointer to the boundary). **Retired**
+  `student-practice-question-design` (most redundant + internally duplicated); its
+  reference notes moved under `assistant-authored-study-drills/references/`. Distilled the
+  prose hard (per the "skills are read on-demand" principle); user-specific calibration
+  narrative kept in `references/`, not in rule bodies.
 - Fixed an MCQ **option-labelling ergonomics regression**: a live student saw lettered
   options (`A/B/C/D`) in the prompt but numbered answer buttons (`1 2 3 4`), forced to
   map button → letter → option to answer. Root cause: the assistant passed bare ordinals

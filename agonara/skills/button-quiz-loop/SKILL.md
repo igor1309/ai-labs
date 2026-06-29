@@ -1,7 +1,7 @@
 ---
 name: button-quiz-loop
 description: Use when running a button-based quiz/drill in chat and continuity matters more than commentary.
-version: 1.1.0
+version: 1.2.0
 author: Hermes Agent
 license: MIT
 metadata:
@@ -90,6 +90,15 @@ Interpretation rule:
 - immediate `user_response` ≠ reason to send `Принял`
 
 The correct action is still: **next `clarify` now**.
+
+## Transport failures: timeout and stalls
+
+A button card can time out or stall before the learner answers. A single failure is **not** proof the button flow is dead.
+
+- If a `clarify` card times out, **repost the same question as plain text with numbered options** plus a short note ("If the buttons didn't appear, answer with the number"). This is transport recovery, not a new question — do not restart the set.
+- Once the learner answers the fallback, **resume button delivery on the next item** if the flow had been working.
+- After a visible stall or a "ты застрял? / continue / what's happening" complaint, name the interruption plainly, re-anchor the current question number, and continue — do not pretend the exchange was smooth, and do not write a transport postmortem.
+- Do not permanently abandon buttons because one item stalled; the platform usually recovers next turn.
 
 ## Recovery Rule
 
