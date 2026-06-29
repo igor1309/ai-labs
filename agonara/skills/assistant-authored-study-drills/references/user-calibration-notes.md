@@ -26,3 +26,15 @@ When a question has weak distractors:
 
 ## Practical drafting note
 For tricky questions, aim for 3 near-neighbor distractors rather than 1 correct option plus 3 obvious rejects.
+
+## Two-contour failure episode (the reason the balance rule exists)
+The user was prepared heavily on meaning — principles, dilemma/non-dilemma
+distinctions, case analysis, code-of-ethics argument — and scored 71/100 on a real
+test, losing points on the *nomenclature* layer: named classifications and author
+typologies (Markov/Markova, Schwartz, and similar — who distinguished what, how the
+scheme is named and built). The course tested the factual contour; the prep had
+under-trained it. Correction the user asked for: not a separate cram block and not a
+pure-logic block, but a **mixed run** that trains understanding and course fixtures
+together, with per-answer feedback that names the *error type* (logic / fact /
+adjacent-category confusion / unknown author-scheme). The canonical rule lives in the
+SKILL body ("Two-contour balance"); this is the episode behind it.

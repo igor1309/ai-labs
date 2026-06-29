@@ -1,8 +1,8 @@
 ---
 name: assistant-authored-study-drills
 author: Igor Malyarov
-version: "1.1.1"
-description: Orchestrate assistant-authored MCQ practice drills — provenance, cadence, difficulty shaping, coverage, source-grounding, and live quality repair. Defers item-quality, button delivery, and oral construction to their owning skills.
+version: "1.2.0"
+description: Orchestrate assistant-authored MCQ practice drills — provenance, cadence, difficulty shaping, coverage, two-contour balance (meaning and course nomenclature), source-grounding, and live quality repair. Defers item-quality, button delivery, and oral construction to their owning skills.
 trigger: when the user wants practice questions you author (drills, mock quizzes, "drill me") rather than official Agonara items
 ---
 
@@ -57,6 +57,45 @@ If the user asks to cover all topics / the whole syllabus:
 2. distribute items across the syllabus before deepening one fertile subtopic;
 3. do not let a quality fix silently collapse coverage into the easiest-to-write niche;
 4. if the user says coverage narrowed, acknowledge it and rebalance the remaining set.
+
+## Two-contour balance: meaning *and* course nomenclature
+
+Coverage above spreads items across the syllabus by **topic**. This is the second
+coverage axis — across the **cognitive layer** — and it is just as load-bearing.
+Understanding alone is not test-resistance: a learner strong on principles, cases,
+and anti-stretch reasoning can still lose real test points on the *nomenclature*
+layer (who distinguished what; how an author's classification is named and built;
+named categories, types, pairs, lists). A run that trains only the comfortable
+analytical contour and skips the factual one leaves that gap intact — the
+documented failure mode, not a hypothetical.
+
+- **Train both contours, deliberately.** A substantial run must exercise meaning
+  *and* exact course fact, mirroring how the course actually tests — not whichever
+  is more elegant to write. If the course checks fixtures (names, typologies,
+  categories, author schemes, precise content details), the run checks them too.
+- **Required item-type mix.** Across a run, include: principles/distinctions;
+  cases/application; authors/typologies/categories/named schemes; and exact details
+  from the materials. Don't let the set collapse into the analytical bucket.
+- **No drift to the comfortable side.** Catch yourself defaulting to "meaning"
+  items because they read better. If you notice the mix has skewed, say so and
+  rebalance — same discipline as the topic-coverage rebalance above.
+- **Prioritise known-weak fixture zones.** Weight the factual contour toward the
+  zones the learner has actually slipped on — named classifications, typologies,
+  categories, author breakdowns, exact course content — over zones already solid.
+  Use `learner-state` weak areas and prior-session history as the priority signal.
+- **Fixture distractors compete on the fixture.** For nomenclature items,
+  distractors are adjacent author schemes, neighbouring categories, and near-miss
+  formulations — the same confusions the real test exploits. This is the
+  `agonara-student` item-quality bar applied to the factual layer (a real nameable
+  mistake per distractor); don't restate the bar, instantiate it.
+- **Verdict names the error *type*.** Fold into the required `agonara-student`
+  assess-then-advance verdict which contour the miss sits in: a logic/reasoning
+  error, a plain fact error, a confusion of adjacent categories, or not knowing a
+  specific author/scheme. This is a refinement of the verdict's "misconception each
+  wrong option encodes," not a replacement for it.
+
+One line: prepare the learner not just to *understand* the course but to survive
+*how the course is actually tested*.
 
 ## Source-grounded drills
 

@@ -2,6 +2,21 @@
 
 ## 2026-06-29
 
+- **Coach persona intent + two-contour drill recalibration.** Drafted
+  `docs/intent/coach-persona-intent.md` (My Way product-intent structure): a coaching
+  capability that *teaches* (explanation depth, cause diagnosis from evidence,
+  prerequisite-first, confusable distinctions) and *trains test-resistance two-contour*
+  (understanding **and** course-specific factual nomenclature), grounded in a real
+  episode — a learner strong on meaning scored 71/100, losing the nomenclature layer
+  (named classifications / author typologies). Stories COACH-01..08 proposed; the
+  skill-vs-persisted-state realization left to research/pre-ADR; assessment-integrity and
+  visibility boundaries restated, not weakened. Realized the skill-only slice now:
+  `assistant-authored-study-drills` **v1.2.0** gains a "Two-contour balance" section (a
+  second coverage axis across the cognitive layer, not just topic) — required item-type
+  mix, no drift to the comfortable analytical side, weak-fixture-zone priority, fixture
+  distractors via the `agonara-student` bar, and error-type-named verdicts. Episode
+  recorded in the skill's `references/user-calibration-notes.md`.
+
 - **Codex-reviewed the consolidation; fixed 8 findings.** Ran an adversarial Codex
   review (read-only) over the four skills, judged each against the files, and fixed all
   eight: a contradiction where `button-flow-failures.md` told the agent to distrust an
