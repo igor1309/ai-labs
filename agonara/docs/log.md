@@ -2,6 +2,21 @@
 
 ## 2026-06-29
 
+- **Codex-reviewed the consolidation; fixed 8 findings.** Ran an adversarial Codex
+  review (read-only) over the four skills, judged each against the files, and fixed all
+  eight: a contradiction where `button-flow-failures.md` told the agent to distrust an
+  immediate `clarify` `user_response` while `button-quiz-loop` says treat it as real
+  (reconciled the reference); a stale `button-quiz-loop` pointer sending item-quality to
+  the wrong skill (→ `agonara-student`); residual item-quality restatement and a
+  duplicated assess-then-advance loop in the orchestration skill (→ pointers to
+  `agonara-student`, which stays the owner — Codex wanted the loop *moved out*, rejected
+  as it would gut the portable canonical skill); a feedback-depth contradiction (compact
+  vs required full verdict → defer to `agonara-student`); an internal `button-quiz-loop`
+  contradiction where timeout recovery mandated plain text the rest of the skill forbade
+  (declared the sole sanctioned exception); a lost end-of-set wrap-up rule (re-added to
+  the orchestration skill); and three skills with non-canonical `author` (→ Igor Malyarov).
+  Versions: `button-quiz-loop` 1.2.1, `assistant-authored-study-drills` 1.1.1,
+  `oral-exam-drills` 1.1.1.
 - **Harvested and consolidated the host-only student-drill skills.** Three skills lived
   only in the Hermes student profile tree, unbacked (`assistant-authored-study-drills`,
   `oral-exam-drills`, `student-practice-question-design`) — pulled them into the ai-labs

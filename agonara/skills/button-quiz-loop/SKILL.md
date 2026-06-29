@@ -1,8 +1,8 @@
 ---
 name: button-quiz-loop
 description: Use when running a button-based quiz/drill in chat and continuity matters more than commentary.
-version: 1.2.0
-author: Hermes Agent
+version: 1.2.1
+author: Igor Malyarov
 license: MIT
 metadata:
   hermes:
@@ -15,9 +15,9 @@ metadata:
 ## Overview
 
 Use this skill when running a sequential multiple-choice drill through chat buttons.
-Its purpose is to prevent protocol breakage: no acknowledgement-only turns, no text fallback unless the user explicitly asks for it, and no meta-explanations during the run.
+Its purpose is to prevent protocol breakage: no acknowledgement-only turns, no text fallback unless the user explicitly asks for it (the one sanctioned exception is timeout recovery — see "Transport failures"), and no meta-explanations during the run.
 
-This skill is for **delivery discipline**, not question-writing quality. Pair it with `assistant-authored-study-drills` for item quality and with `agonara-student` when the questions are official program items.
+This skill is for **delivery discipline**, not question-writing quality. Pair it with `agonara-student` for item quality (its "MCQ item quality" bar — the canonical owner) and `assistant-authored-study-drills` for authored-drill orchestration.
 
 ## When to Use
 
@@ -74,7 +74,7 @@ If you want brief confirmation, bundle it inside the **next** `clarify` prompt, 
 - [ ] The next user-facing step is a `clarify` call.
 - [ ] The `clarify` call contains all answer options as buttons, each labelled with the option's own text (never a bare number/letter).
 - [ ] I am not emitting a standalone acknowledgement message.
-- [ ] I am not switching to plain text unless the user explicitly requested that switch.
+- [ ] I am not switching to plain text unless the user explicitly requested it — or this is the timeout recovery below.
 
 If any checkbox would be false, stop and repair the step before sending.
 
@@ -93,7 +93,7 @@ The correct action is still: **next `clarify` now**.
 
 ## Transport failures: timeout and stalls
 
-A button card can time out or stall before the learner answers. A single failure is **not** proof the button flow is dead.
+A button card can time out or stall before the learner answers. A single failure is **not** proof the button flow is dead. This is the **one sanctioned exception** to the no-plain-text rule above — a transport repair, not a user-requested format switch.
 
 - If a `clarify` card times out, **repost the same question as plain text with numbered options** plus a short note ("If the buttons didn't appear, answer with the number"). This is transport recovery, not a new question — do not restart the set.
 - Once the learner answers the fallback, **resume button delivery on the next item** if the flow had been working.
@@ -116,7 +116,7 @@ If you accidentally break the protocol:
 
 2. **Format drift**
    The assistant silently switches from buttons to plain text.
-   This is a protocol failure unless the user explicitly asked for plain text.
+   This is a protocol failure unless the user explicitly asked for plain text — or it is the sanctioned timeout recovery (see "Transport failures").
 
 3. **Meta-looping**
    The assistant begins discussing why the cycle broke instead of continuing the drill.
@@ -135,6 +135,6 @@ If you accidentally break the protocol:
 - [ ] Between question N and question N+1 there is no standalone acknowledgement-only assistant message.
 - [ ] Every non-final quiz item is delivered through `clarify`.
 - [ ] Each button was labelled with the option's own text, not a bare ordinal/letter proxy.
-- [ ] Plain-text fallback was used only if the user explicitly wanted it.
+- [ ] Plain-text was used only on explicit user request or as timeout recovery (the sole sanctioned exception).
 - [ ] If `clarify` returned an immediate `user_response`, the next action was another `clarify` or the final wrap-up.
 - [ ] The chain preserved momentum instead of diverting into process commentary.
