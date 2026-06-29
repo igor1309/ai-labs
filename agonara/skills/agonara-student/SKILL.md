@@ -257,6 +257,12 @@ an item you have not walked against the list. The anti-failure focuses:
   stem asks is noise, not a distractor — fix the stem or replace the option before
   presenting. Never present a badly stated question or an option that does not
   answer it.
+- **Options match the grain the stem asks for.** If the stem asks for a pair, a
+  relationship, a sequence, or "which two…", every option must itself be a
+  pair / relationship / sequence — never answer a pair question with single items.
+  If it asks for one thing, options are single. A mismatch between what the stem
+  requests and the form of the options is a broken item: re-scope the stem or
+  rebuild the options so they answer the question actually asked.
 - **Every distractor names a real mistake.** State to yourself the specific
   misconception, partial reasoning, or confusion each wrong option encodes. If you
   cannot name it, the option is filler — replace it before presenting.
