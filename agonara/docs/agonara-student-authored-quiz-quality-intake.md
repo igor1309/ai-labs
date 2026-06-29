@@ -17,15 +17,19 @@ questions) are not addressed here. NOT in scope: the accepted-corpus check flow
 
 Single file in play: `agonara/skills/agonara-student/SKILL.md` (v1.4.0).
 
-## The two pains
+## The pains
 
 1. **Weak distractors.** LLM-authored items come out trivially pickable — the
    student gets them right without knowing the material.
 2. **No correctness feedback.** After the student answers, the assistant advances
    to the next question without saying right/wrong and why. No API/accepted check
    is involved — this is informal coaching the assistant owns, and it's dropped.
+3. **Incoherent items.** Stems come out badly stated, and options appear that do
+   not relate to the question at all — noise, not distractors.
+4. **Position bias.** The correct option clusters in the first or second slot,
+   making the set guessable by position despite the existing rule against it.
 
-Root cause (both): the MCQ item-quality rules (lines 166–248) are **already
+Root cause (all): the MCQ item-quality rules (lines 166–248) are **already
 mandatory** ("Hold every question to the bar", "Apply them to every question"),
 but the authored-quiz loop has **no explicit self-check and no stop condition** —
 nothing forces the agent to verify the rules before presenting, and nothing
@@ -45,9 +49,15 @@ near-duplicates / all-none, logical numeric ordering, no cross-item cueing), and
 the cue/homogeneity rules. Call out as the **anti-failure focus**: every
 distractor names a real, stateable misconception, and the item clears the
 cold-read test (key not pickable by length, grammar, absolutes, wording, or
-elimination). Note the position check has two levels: item-level option ordering
-and set-level key-position distribution. Anti-failure rule: *"plausible-looking
-options is not done — each distractor must be a nameable mistake."*
+elimination). Two further focuses target pains 3 and 4: **coherence/relevance** —
+the stem is a complete, self-contained, unambiguous question and every option is a
+direct answer to it of the same kind (no unrelated options, no badly stated
+stems); and **anti-position-bias** — choose each key's slot deliberately, spread
+keys across all positions, and audit the set so the key does not default to the
+first or second slot. Note the position check has two levels: item-level option
+ordering and set-level key-position distribution. Anti-failure rule:
+*"plausible-looking options is not done — each distractor must be a nameable
+mistake."*
 
 ### Fix 2 — Required assess-then-advance step
 
