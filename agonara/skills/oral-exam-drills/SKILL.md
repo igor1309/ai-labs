@@ -1,7 +1,7 @@
 ---
 name: oral-exam-drills
-author: Hermes
-version: "1.1.0"
+author: Igor Malyarov
+version: "1.1.1"
 description: Conduct oral and case-based study drills without leaking answers, over-structuring prompts, or rewarding polish over substance.
 ---
 

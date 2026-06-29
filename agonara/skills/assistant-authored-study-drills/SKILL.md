@@ -1,7 +1,7 @@
 ---
 name: assistant-authored-study-drills
-author: Hermes
-version: "1.1.0"
+author: Igor Malyarov
+version: "1.1.1"
 description: Orchestrate assistant-authored MCQ practice drills — provenance, cadence, difficulty shaping, coverage, source-grounding, and live quality repair. Defers item-quality, button delivery, and oral construction to their owning skills.
 trigger: when the user wants practice questions you author (drills, mock quizzes, "drill me") rather than official Agonara items
 ---
@@ -15,6 +15,7 @@ Use this skill when the user wants **practice questions you write** rather than 
 - **Item quality** (strong distractors, key-position spread, cold-read resistance, stem–option shape) → the **`agonara-student`** "MCQ item quality" bar. Hold every item you author to it; do not restate it here.
 - **Button delivery** (`clarify` continuity, button-label-is-option-text, immediate `user_response`, timeout recovery) → **`button-quiz-loop`**. Run every button drill under it.
 - **Oral / free-response / case drills** → **`oral-exam-drills`**. Use it when the drill is not single-select.
+- **Per-item assess-then-advance loop** (record the key + each distractor's mistake privately, gate each item, give the required verdict before advancing) → the **`agonara-student`** "Running an authored MCQ practice quiz" loop. Run every authored item under it; don't restate it here.
 
 This skill is what connects them into a coherent authored-MCQ session.
 
@@ -30,13 +31,13 @@ This skill is what connects them into a coherent authored-MCQ session.
 2. **One item at a time** unless the user explicitly asks for batch delivery.
 3. **Acknowledge the commentary, not just the chosen option.** If they answer with a choice plus reasoning, respond to the reasoning briefly.
 4. **Respect sequencing literally.** If the user says "1/2/3 in order, not in one message" or "wait for «дальше»", stop after the requested slice and wait.
-5. **Compact between items.** A short confirmation/correction, then move on — no mini-lectures unless asked.
+5. **Assess before advancing.** The verdict's *content* is the `agonara-student` assess-then-advance rule (required, not optional) — don't shrink it to a bare "right/wrong," and don't expand it into a mini-lecture.
 
 ## Established cadence beats generic defaults
 
-If a drill has already settled into a working rhythm — typically `answer → brief evaluation → next question` — preserve it unless the user asks to change it.
+If a drill has already settled into a working rhythm — `answer → verdict → next question` — preserve it unless the user asks to change it.
 
-- Do not drop the brief evaluation just because you switched to button mode. To keep the button chain unbroken, place the evaluation at the **start of the next `clarify` prompt** (see `button-quiz-loop`).
+- Do not drop the verdict just because you switched to button mode. To keep the button chain unbroken, place it at the **start of the next `clarify` prompt** (see `button-quiz-loop`) — the verdict is still the full `agonara-student` one, just bundled into the next card.
 - If you changed the scheme mid-run by accident, say so, restore the prior format, and restart the affected item.
 
 ## Difficulty shaping
@@ -99,11 +100,19 @@ If the user points out a case is under-specified or supports no single determina
 
 If the user asks whether you can use native Telegram polls or drive an external bot for the quiz, answer the **capability** directly and first (native polls do not work in private 1-on-1 chats; you do not operate other bots). Offer a short alternative only after the boundary answer — do not turn it into a long workaround detour.
 
+## Ending the set
+
+A drill ends; it doesn't trail off.
+
+- **Planned set complete:** close with a short summary — the user's strongest distinctions and remaining weak spots — not another question.
+- **Early exit:** if the user stops mid-set, give that same summary for what was covered rather than dropping the thread.
+- In button delivery, this summary is the terminal `clarify`-exit (the final wrap-up in `button-quiz-loop`), not a mid-chain message.
+
 ## Pitfalls
 
 - Letting an authored drill blur into official assessment handling.
-- Restating the item-quality or delivery rules here instead of pointing to their owners.
-- Repeating the key's position across items; throwaway distractors; ignoring meta-feedback about item quality.
+- Restating the item-quality or delivery rules here instead of pointing to their owners (item quality lives in `agonara-student`).
+- Ignoring the user's meta-feedback that an item is weak or leaky — repair it (above) instead of defending it.
 - Advancing past a "wait for «дальше»"-style cue.
 
 ## References
