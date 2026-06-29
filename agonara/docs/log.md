@@ -19,6 +19,14 @@
   the cold-read focus now mandates a per-option **absolute scan** and **parallel-structure
   check**, and the self-check must **show evidence (longest option, absolutes found, key
   positions), not assert a verdict**.
+- Validated the **assess-then-advance loop end-to-end** — the one behavioral branch the
+  earlier generation-only dry-runs never exercised. Drove a 2-question interactive drill
+  where the reviewer supplied the student's answers: a wrong answer produced the required
+  verdict (right/wrong, why the key is correct, why the chosen option is wrong, the
+  misconception in each distractor) *before* advancing; a correct answer produced its
+  verdict and closed with a wrap-up (score, strength, weakness, study pointer) rather than
+  another question. The never-first key-position fix and the absolute scan both fired live.
+  No defect found; no skill change needed.
 
 ## 2026-06-28
 
