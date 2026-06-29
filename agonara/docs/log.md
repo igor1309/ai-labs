@@ -2,6 +2,20 @@
 
 ## 2026-06-29
 
+- **`agonara-coach` skill — the explaining half (D1, ship-and-learn).** Authored
+  `skills/agonara-coach/SKILL.md` v1.0.0 realizing the ephemeral skill-only fork direction
+  for COACH-01..04: explanation depth ladder (precision, not padding), diagnose-the-cause
+  before re-teaching (named failure type from learner-state evidence, with the
+  factual/nomenclature gap called out as its own target), prerequisites-first traversal of
+  accepted relationships, and confusable concepts taught by their discriminating feature.
+  Co-installs with the student cluster, so it points to `agonara-student` (API reads,
+  assessment-integrity boundary, item-quality) and the drill skills (practice + two-contour
+  balance) without restating them — no route citations, no duplicated item-quality block.
+  Holds a `Definition of Done` gate in the `agonara-student` "evidence, not a verdict" idiom.
+  This also answers the intent's sub-question A: the rule list is substantive, not a thin
+  wrapper, so a separate skill is justified. Registered in `skills/README.md` (student
+  cluster + concern-ownership table); intent traceability updated. Not yet deployed to the
+  Hermes student profile — separate deploy step.
 - **Coach realization research.** Added `docs/research/coach-realization-fork.md` (My Way
   research) framing the skill-vs-persisted-state fork left open by the coach intent. Core
   finding: most of the coach (COACH-01..06) needs no persistence and is realizable in-session;
