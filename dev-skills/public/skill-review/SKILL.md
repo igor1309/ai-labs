@@ -1,7 +1,7 @@
 ---
 name: skill-review
 author: Igor Malyarov
-version: "1.2.0"
+version: "1.3.0"
 description: Review and improve existing agent skills. Use when evaluating skill quality, auditing skill collections, asking "review skill", "is this skill effective", "improve skill description", or maintaining a skill library.
 ---
 
@@ -106,6 +106,64 @@ Per skill:
 - Don't penalize short skills — 30 lines of signal beats 300 lines of padding
 - Don't require sections that don't apply (no empty "Common Mistakes" sections)
 - Don't flag missing tests — that's a separate concern from content quality
+
+## Behavioral dry-run (eligible skills only)
+
+The axes above read a skill's prose. They cannot tell you whether a *generative*
+skill produces good output — two runs that both obey the skill to the letter can
+still differ in quality. For those skills, reading is not enough: exercise the
+skill and audit what it produces.
+
+**Eligibility — all three must hold; if any fails, skip and review by reading:**
+
+1. **Generative, not procedural.** The behavior under review directs the agent to
+   author an artifact, not follow a fixed sequence or check against a rulebook.
+   Gate on the behavior being changed, not the whole skill — a mostly-procedural
+   skill with one generative substep qualifies when that substep is what changed.
+2. **Quality varies.** Two letter-perfect runs can differ materially in quality
+   (e.g. a technically-valid but trivially-pickable quiz distractor).
+3. **Ground truth exists.** There is something to audit against — a source text,
+   a spec, a test, a contract.
+
+Procedural skills (a release flow, a worktree setup), rulebooks (governance,
+composition rules), and deterministic ops fail #1 or #2 — a dry-run tells you
+nothing a careful read doesn't. Don't run one.
+
+**Mandatory for eligible skills on a generative-behavior change** — when the
+skill is created, or an edit changes *what or how it generates* (not a typo, not
+a doc-link fix). Skipping it then ships the change validated only by reading the
+instructions, never by running them.
+
+**Two harness shapes — pick by what the skill produces:**
+
+- **Generation skills (produce-and-audit).** Spawn a sub-agent under the skill;
+  have it produce N artifacts from real input *with its private reasoning
+  revealed* (the key and rationale, not just the surface output); audit each
+  against ground truth. Run **≥2 different inputs** — single runs hide aggregate
+  patterns (a key that never lands in the first slot only shows across a set).
+  Exercise **every behavioral branch the change touches**, not just the one
+  easiest to generate. When the skill has a known failure mode, also hold **one
+  input constant that triggers it** — every run then hits the identical failure,
+  so a fix is provably the cause rather than run-to-run noise.
+- **Review/judgment skills (plant-and-detect).** Feed the skill an input with
+  known planted defects (and a known-clean one); check it finds the planted set
+  and invents nothing. Here the artifact under audit is the *review* and the
+  ground truth is the planted set.
+- **Transformation/editing skills (input-output audit).** Give the skill a source
+  artifact and a change request; audit the revised artifact against the request
+  *and* against preserved source facts. Include at least one **preservation
+  case** — content the request did not touch must come back unchanged.
+
+Keep the harness honest: audit against ground truth yourself — don't accept the
+sub-agent's own self-check as the verdict, since the author and the grader are the
+same model. When a provenance-stamped baseline exists, prefer it as the input set
+(see *Refactoring a skill*).
+
+**Optional — tier probe.** Running the same dry-run across model tiers answers
+"how cheap a model can run this" and localizes where model judgment still lives
+versus what has been pushed into deterministic tooling: a step whose output goes
+tier-independent has been scripted out of the model; one that still diverges by
+tier is where judgment (and the stronger tier) is still load-bearing.
 
 ## Refactoring a skill
 
