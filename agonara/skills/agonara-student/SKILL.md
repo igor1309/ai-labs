@@ -293,9 +293,12 @@ Position also has an item level: order the options within an item logically
 (numeric/chronological), not randomly.
 
 Run the self-check as evidence, not a verdict. "It passes the cold read" asserted
-is worthless — for each item, name the longest option and list every absolute you
-found, and across the set list the key positions. A focus you cannot show evidence
-for has not been checked; do not pass an item by rationalising a leak away.
+is worthless — for each item, name the longest and shortest option and flag a
+bimodal band (a cluster of long options and a cluster of short ones, with the key
+in the long cluster, is a leak even when the key is not *the* longest), list every
+absolute you found, and across the set list the key positions. A focus you cannot
+show evidence for has not been checked; do not pass an item by rationalising a leak
+away.
 
 **Anti-failure rule.** Plausible-looking options is not done — done is a coherent,
 on-topic item, every distractor a nameable mistake, the key unguessable on a cold
