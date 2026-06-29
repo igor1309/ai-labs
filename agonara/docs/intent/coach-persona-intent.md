@@ -228,8 +228,8 @@ research/pre-ADR по развилке «скилл vs persisted state».
 
 | Story | Research | Pre-ADR / ADR | Spec | Implementation plan | Code / tests |
 |---|---|---|---|---|---|
-| COACH-01..04 | TBD | TBD | TBD | TBD | TBD |
-| COACH-05..07 | TBD (развилка состояние-vs-вывод) | TBD | TBD | partial, skill-level: [`assistant-authored-study-drills`](../../skills/assistant-authored-study-drills/SKILL.md) §"Two-contour balance" (v1.2.0) | [`assistant-authored-study-drills` SKILL](../../skills/assistant-authored-study-drills/SKILL.md), [calibration note](../../skills/assistant-authored-study-drills/references/user-calibration-notes.md) |
+| COACH-01..04 | [Coach realization fork](../research/coach-realization-fork.md) §sub-question A | TBD | TBD | TBD | TBD |
+| COACH-05..07 | [Coach realization fork](../research/coach-realization-fork.md) (fork + priority-source) | TBD | TBD | partial, skill-level: [`assistant-authored-study-drills`](../../skills/assistant-authored-study-drills/SKILL.md) §"Two-contour balance" (v1.2.0) | [`assistant-authored-study-drills` SKILL](../../skills/assistant-authored-study-drills/SKILL.md), [calibration note](../../skills/assistant-authored-study-drills/references/user-calibration-notes.md) |
 | COACH-08 | n/a | reuses assessment-integrity boundary ([ADR-011](../adr/adr-011-accepted-checks-and-student-assessment-boundary.md), [ADR-016](../adr/adr-016-quick-check-assessment-boundary.md)) | n/a (owned by `agonara-student` skill) | n/a | [`agonara-student` skill](../../skills/agonara-student/SKILL.md) |
 
 Связанные существующие поверхности, на которые коуч опирается уже сегодня:

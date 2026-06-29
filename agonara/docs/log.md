@@ -2,6 +2,18 @@
 
 ## 2026-06-29
 
+- **Coach realization research.** Added `docs/research/coach-realization-fork.md` (My Way
+  research) framing the skill-vs-persisted-state fork left open by the coach intent. Core
+  finding: most of the coach (COACH-01..06) needs no persistence and is realizable in-session;
+  the only capability that *forces* persisted state is spaced repetition, and the crux tension
+  is that the richest factual-contour signal (practice-drill performance) is exactly what the
+  system deliberately does not persist. Three candidate directions (D1 ephemeral / D2 persisted
+  coaching learner-state / D3 minimal student-owned watchlist), with the assessment-integrity
+  boundary (ADR-011/016) as the central risk for any persisted option. Developed the two coupled
+  sub-questions: a clean four-skill teaching decomposition with a provisional lean toward a
+  separate `agonara-coach` (gated on a real rule list), and nomenclature-priority grounding where
+  the cheap path is reading accepted exam-requirement sources (option c) rather than a new corpus
+  metadata field (option b). Open questions handed to pre-ADR; intent traceability updated.
 - **Coach persona intent + two-contour drill recalibration.** Drafted
   `docs/intent/coach-persona-intent.md` (My Way product-intent structure): a coaching
   capability that *teaches* (explanation depth, cause diagnosis from evidence,
