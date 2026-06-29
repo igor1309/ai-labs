@@ -32,6 +32,14 @@ Use `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH"` before direct
 the shell's default Node is different. This avoids native module ABI failures
 for dependencies such as `better-sqlite3`.
 
+## Hermes skill/SOUL layering
+
+Skills deploy to the Hermes bots, where a skill **body loads on-demand** (a
+discoverable pointer), not every turn — a rule that must fire every turn lives in
+the profile **SOUL.md**, which only *points* to the skill (no restated content).
+Before changing student/curator behavior, read inventory `vps/Hermes/gotchas.md`
+(#11) and `agonara-student-quiz-presentation.md`.
+
 ## Deployment Discipline
 
 For Agonara deployment work, read `docs/deployment-discipline.md`.

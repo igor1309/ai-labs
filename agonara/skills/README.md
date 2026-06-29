@@ -90,6 +90,25 @@ every skill to stand on its own:
   silently diverge — see
   [`../tests/operator-skill-contract.test.js`](../tests/operator-skill-contract.test.js).
 
+## Concern ownership (student drill/practice cluster)
+
+The student profile also carries authored-practice/drill skills —
+`button-quiz-loop`, `assistant-authored-study-drills`, `oral-exam-drills` —
+alongside `agonara-student`. These **co-install on the student profile**, so each
+concern has one owner and the others point to it (no restatement):
+
+| Concern | Owner |
+|---|---|
+| MCQ item quality | `agonara-student` |
+| Authored assess-then-advance loop + assessment boundary | `agonara-student` |
+| Button / `clarify` delivery | `button-quiz-loop` |
+| Authored-MCQ orchestration | `assistant-authored-study-drills` |
+| Oral / free-response drills | `oral-exam-drills` |
+
+Add a behavioral rule to its owner and reference it from the others — **within
+this co-installing set only**. Cross-*bucket* sharing (e.g. curator↔student) still
+follows the duplicate-and-guard rule above, since those skills never co-install.
+
 ## Deploying an edit to the live bots
 
 These skills run live on the Hermes Telegram bots (`agonara-curator` /
