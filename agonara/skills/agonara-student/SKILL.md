@@ -284,7 +284,10 @@ an item you have not walked against the list. The anti-failure focuses:
   the correct option first or second — counter it on purpose: choose each key's
   position deliberately and spread keys across all slots. Before presenting a set,
   list the key positions and confirm no slot, especially first or second, is
-  overused.
+  overused. Spreading across *all* slots includes the first: never using slot one
+  is its own predictable pattern ("when in doubt, not the first option"), so the
+  key must land in the first slot too, its fair share of the time — do not
+  overcorrect into never-first.
 
 Position also has an item level: order the options within an item logically
 (numeric/chronological), not randomly.
