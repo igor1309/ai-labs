@@ -263,7 +263,17 @@ an item you have not walked against the list. The anti-failure focuses:
 - **The item survives the cold read.** Read the options with the prompt but
   without the key: if the answer is pickable by wording, length, grammar,
   absolutes, plausibility, position, or process of elimination, it fails — revise
-  before presenting.
+  before presenting. Two of these are mandatory per-option scans, not impressions:
+  - **Absolute scan.** Check every distractor for an absolute or limiter
+    («только / всегда / никогда / все / ни один / единственный»; only / always /
+    never / all / none / sole). One parked in a distractor hands out a free
+    elimination — rewrite it, or carry the same limiter across every option so it
+    stops being a tell. (An absolute in the *key* alone is the same flaw.)
+  - **Parallel structure.** Check that every option shares one form. If the key
+    is the odd one out — the only option without a conditional "if/provided"
+    clause, the only one phrased differently, the only complete sentence — a
+    test-wise learner picks it by shape, not knowledge. Make every option the
+    same shape.
 - **The key is not parked in an early slot.** Authored sets drift toward putting
   the correct option first or second — counter it on purpose: choose each key's
   position deliberately and spread keys across all slots. Before presenting a set,
@@ -272,6 +282,11 @@ an item you have not walked against the list. The anti-failure focuses:
 
 Position also has an item level: order the options within an item logically
 (numeric/chronological), not randomly.
+
+Run the self-check as evidence, not a verdict. "It passes the cold read" asserted
+is worthless — for each item, name the longest option and list every absolute you
+found, and across the set list the key positions. A focus you cannot show evidence
+for has not been checked; do not pass an item by rationalising a leak away.
 
 **Anti-failure rule.** Plausible-looking options is not done — done is a coherent,
 on-topic item, every distractor a nameable mistake, the key unguessable on a cold
