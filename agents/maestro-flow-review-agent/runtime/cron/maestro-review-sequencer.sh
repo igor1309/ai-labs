@@ -116,7 +116,7 @@ gate(){
 # run one unit. returns 0 ok | 1 clean-fail (continue) | 2 dangerous (stop cycle)
 run_unit(){
   local unit="$1" cycle="$2" cdir="$3"
-  local sk="maestro-sched-${unit}-${cycle}" out="/tmp/maestro-seq-${unit}.out"
+  local sk="maestro-sched-${unit}-${cycle}" out="$cdir/${unit}.out"   # in the root-owned cycle dir, not sticky /tmp (fs.protected_regular blocks cross-owner writes)
   local breach="$cdir/${unit}.breach"
   rm -f "$breach"; : > "$out"
   touch "$cdir/${unit}.in_flight"
