@@ -110,10 +110,23 @@ follows the duplicate-and-guard rule above, since those skills never co-install.
 
 ## Deploying these skills
 
-This repo is the **source of truth for skill content** only. How the skills reach
-a live agent — pushing copies, update cadence, restart behavior — is the
-**consuming runtime's** concern, owned wherever that concrete deployment lives,
-not here. Edit and commit the skill in this repo; each deployment pulls from it.
+This repo is the **source of truth for skill content**. Edit and commit the skill
+here; each deployment pulls from it.
+
+For the **live Hermes student bots**, that pull is automated:
+[`.github/workflows/agonara-hermes-skills-sync.yml`](../../.github/workflows/agonara-hermes-skills-sync.yml)
+rsyncs the student-facing set to the Hermes skills directory on every `trunk`
+push that touches `agonara/skills/**`. The synced folders are an explicit
+manifest, [`hermes-deploy.txt`](hermes-deploy.txt) — **not** a glob — so the
+curator and admin role buckets, which must never co-install with student, are
+excluded. Host address, user, target dir, and the SSH deploy key are GitHub
+secrets (`HERMES_DEPLOY_*`, `HERMES_SKILLS_DIR`), never committed, per
+[`../docs/deployment-discipline.md`](../docs/deployment-discipline.md). To deploy
+a skill to Hermes, add its folder name to the manifest.
+
+Other consuming runtimes (a curator/admin operator's own agent, etc.) still pull
+copies on their own cadence — that wiring is owned wherever that concrete
+deployment lives, not here.
 
 ## Packaging & distribution design
 

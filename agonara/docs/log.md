@@ -1,6 +1,27 @@
 # Log
 
-## 2026-06-29
+## 2026-06-30
+
+- **Drafted CI auto-deploy of Agonara skills to the live Hermes bots.** Added
+  `.github/workflows/agonara-hermes-skills-sync.yml`: on every `trunk` push
+  touching `agonara/skills/**` (plus `workflow_dispatch`), it stages the skill
+  folders named in the new manifest `agonara/skills/hermes-deploy.txt` and rsyncs
+  each into the Hermes skills directory over SSH, then verifies each `SKILL.md`
+  landed. The manifest scopes the deploy to the **student-facing co-installing
+  set** (`agonara-api-access`, `agonara-membership`, `agonara-student`,
+  `button-quiz-loop`, `assistant-authored-study-drills`, `oral-exam-drills`) and
+  deliberately excludes the curator/admin role buckets, which must never
+  co-install with student — an explicit reviewable list rather than a `skills/**`
+  glob. rsync runs **per folder** with `--delete` so it prunes only stale files
+  inside each Agonara skill, never sibling skills the operator maintains on the
+  host. Host address, user, target dir, and the deploy key are GitHub secrets
+  (`HERMES_DEPLOY_HOST`/`_USER`/`_SSH_KEY`, `HERMES_SKILLS_DIR`) — none committed,
+  per `deployment-discipline.md`; this is stricter than the existing OpenClaw
+  `*-agent-sync.yml` workflows, which hardcode their VPS IP. Failures route through
+  `notify-telegram-failure.yml` per the workflows rule. Updated the "Deploying
+  these skills" section of `skills/README.md` to document the automated Hermes
+  pull path. **Requires the four `HERMES_*` repo secrets to be provisioned before
+  the workflow can deploy.**
 
 - **Codex-reviewed the consolidation; fixed 8 findings.** Ran an adversarial Codex
   review (read-only) over the four skills, judged each against the files, and fixed all

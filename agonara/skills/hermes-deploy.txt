@@ -1,0 +1,18 @@
+# Agonara skill folders to deploy to the Hermes student bots.
+#
+# One skill-folder name per line (relative to agonara/skills/). Blank lines and
+# lines starting with '#' are ignored. Consumed by the
+# `.github/workflows/agonara-hermes-skills-sync.yml` workflow, which rsyncs each
+# listed folder into the Hermes skills directory on trunk push.
+#
+# Scope = the student-facing co-installing set (see skills/README.md). Hermes
+# runs student bots, so the curator (`agonara-curator-*`) and `agonara-admin`
+# role buckets are deliberately EXCLUDED — they never co-install with student.
+# Add a folder here only when it is meant to ship to the Hermes student profile.
+
+agonara-api-access
+agonara-membership
+agonara-student
+button-quiz-loop
+assistant-authored-study-drills
+oral-exam-drills
