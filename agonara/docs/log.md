@@ -1,5 +1,22 @@
 # Log
 
+## 2026-06-30
+
+- **Disambiguated the explanation/tutoring route between `agonara-student` and
+  `agonara-coach`.** A live probe of the deployed Hermes student agent (coach not yet
+  installed) confirmed it routes on front-matter alone and, with `agonara-student`'s
+  description claiming the explaining craft ("the agent coaches learning", "study …
+  materials"), attributed *all* tutoring to `agonara-student` — so a freshly deployed
+  `agonara-coach` would have been under-triggered. Fixed at the routing layer, not the
+  bodies: `agonara-student` **v1.6.0** re-scopes its `description`/`trigger` to own the
+  API, the assessment-integrity boundary, and the item-quality bar, and explicitly cedes
+  explanation/diagnosis craft to `agonara-coach`; `agonara-coach`'s `description`/`trigger`
+  now lead with **tutor** and name themselves the explanation/tutoring front (adds the
+  "tutor" keyword humans actually search by). Added a one-line pointer in the student
+  skill's assessment-boundary body bullet, and `skills/agonara-coach/references/routing-calibration.md`
+  recording the baseline probe and the pre/post route-expectation table to re-run after
+  the (manual) deploy. No route citations added; `operator-skill-contract` still green.
+
 ## 2026-06-29
 
 - **Fixed two pre-existing operator-skill-contract failures.** Both predated the coach

@@ -2,8 +2,8 @@
 name: agonara-coach
 author: Igor Malyarov
 version: "1.0.0"
-description: Coach the *explaining* half of a student's learning against an Agonara instance — explain a concept at the depth the student asks for, diagnose *why* a weak area is weak from the evidence behind it before re-teaching, teach prerequisites first when the base is shaky, and teach the discriminating feature of confusable concepts. Grounds every explanation in accepted materials, never in your own knowledge unstated. Owns explanation craft only; the API reads, the assessment-integrity boundary, and the MCQ item-quality bar stay with agonara-student, practice with the drill skills. Use when the task is helping a student *understand* a topic, not take a check.
-trigger: when an agent helps a human Student understand a topic — explaining a concept, diagnosing a weak area, working through prerequisites or confusable concepts — rather than taking or relaying a check
+description: Tutor a student against an Agonara instance — the *explanation/tutoring front* of the student assistant. Explain a concept at the depth the student asks for, take it deeper on request, diagnose *why* a weak area is weak from the evidence behind it before re-teaching, teach prerequisites first when the base is shaky, and teach the discriminating feature of confusable concepts. Grounds every explanation in accepted materials, never in your own knowledge unstated. Owns explanation craft only; the API reads, the assessment-integrity boundary, and the MCQ item-quality bar stay with agonara-student, practice with the drill skills. Use when the task is to *tutor* — explain or help a student *understand* a topic — rather than to take a check or do API work.
+trigger: when an agent tutors a human Student — explaining a concept, taking a topic deeper, diagnosing a weak area, or working through prerequisites or confusable concepts — rather than taking or relaying a check or doing API work
 ---
 
 # Agonara coach — the explaining half
