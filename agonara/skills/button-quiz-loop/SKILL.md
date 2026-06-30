@@ -1,12 +1,11 @@
 ---
 name: button-quiz-loop
 description: Use when running a button-based quiz/drill in chat and continuity matters more than commentary.
-version: 1.2.3
+version: 1.2.4
 author: Igor Malyarov
 license: MIT
 metadata:
-  hermes:
-    tags: [quiz, buttons, clarify, drill, protocol]
+  tags: [quiz, buttons, clarify, drill, protocol]
 ---
 
 # Button Quiz Loop
