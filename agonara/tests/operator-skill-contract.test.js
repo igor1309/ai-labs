@@ -61,8 +61,13 @@ function extractItemQualityBlock(path) {
     return null;
   }
 
+  // The guarded shared block is the four item-writing subsections — the stem, the
+  // distractor rules, the leak-cue rules, and the structure rules — ending at the
+  // last line of "#### Structure". Each skill then appends its own closing (the
+  // curator's concise cold-read reminder; the student's authored-quiz Definition of
+  // Done), which legitimately differ and are not guarded for byte-parity.
   const end = lines.findIndex(
-    ($0, index) => index >= start && $0.endsWith("the item is too weak — revise."),
+    ($0, index) => index >= start && $0.endsWith("another across the set."),
   );
 
   if (end === -1) {

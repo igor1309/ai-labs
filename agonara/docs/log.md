@@ -2,6 +2,19 @@
 
 ## 2026-06-29
 
+- **Fixed two pre-existing operator-skill-contract failures.** Both predated the coach
+  work (reproduced at the merge base) and were surfaced while verifying the new skill.
+  (1) Route citation: `agonara-curator-corpus` cited `PUT
+  /navigation-relationships/{relationshipId}/status`, but the contract path parameter is
+  `{entityId}` (consistent with `/corpus/{entityId}/status`) — aligned the skill to the
+  contract. (2) Item-quality byte-parity: the cross-bucket duplicate-and-guard block had
+  drifted — the four shared item-writing subsections (stem / distractors / leak-cues /
+  structure) are still byte-identical across `agonara-curator-assessment` and
+  `agonara-student`, but their *closings* legitimately diverged (the curator's concise
+  cold-read reminder vs the student's authored-quiz `Definition of Done`). The guard's end
+  marker pointed into that diverged tail, so it broke. Moved the guarded region's end to the
+  last line of `#### Structure`, so the test guards exactly the genuinely-shared bar and
+  each skill keeps its own closing. `agonara/tests/operator-skill-contract.test.js` now green.
 - **`agonara-coach` skill — the explaining half (D1, ship-and-learn).** Authored
   `skills/agonara-coach/SKILL.md` v1.0.0 realizing the ephemeral skill-only fork direction
   for COACH-01..04: explanation depth ladder (precision, not padding), diagnose-the-cause
