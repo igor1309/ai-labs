@@ -36,10 +36,10 @@ So the runtime can fill the message without re-deriving anything, the agent ends
 - Minor: <n>
 - Flows reviewed: <n>
 - Commit: <short SHA>
-- PR: <url | none>
+- Fix: <short SHA of the trunk commit pushed | none>
 ```
 
-`PR: none` is correct and expected on a clean run or a Provisional-only run (no Verified diff to open a PR with — see `agent.md`). The runtime reads `Findings` to choose between the Findings and Heartbeat templates; it copies the rest verbatim.
+`Fix: none` is correct and expected on a clean run or a Provisional-only run (no Verified diff to commit — see `agent.md`). The runtime reads `Findings` to choose between the Findings and Heartbeat templates; it copies the rest verbatim.
 
 ## Findings message
 
@@ -50,15 +50,15 @@ Run: <manual | scheduled> · <YYYY-MM-DD HH:MM UTC>
 ios.config: <short SHA> on trunk
 
 Critical: <n> · Recommendations: <n> · Minor: <n>
-PR: <new | updated> #<num> — <PR URL>
+Fix: <committed to trunk — short SHA | none>
 
-Do not auto-merge. Review the PR manually.
+Committed straight to trunk (ios.config uses trunk, not PRs). Review the change.
 ```
 
 Rules:
 
-- The `[maestro-review]` prefix is byte-identical to the PR title prefix in `agent.md`.
-- `PR:` reads `none — no Verified fix to apply (findings are Provisional; see review)` when the run found issues but opened no PR.
+- The `[maestro-review]` prefix is byte-identical to the commit-message prefix in `agent.md`.
+- `Fix:` reads `none — no Verified fix to apply (findings are Provisional; see review)` when the run found issues but committed nothing.
 - Counts come from the parseable summary; the runtime does not recompute them.
 
 ## Heartbeat message (clean run)
@@ -116,4 +116,4 @@ If the runtime cannot post (network, rate limit, invalid token), it must:
 1. Persist the message body to the wrapper log (`runtime/cron/maestro-review-cron.sh` → `LOG_FILE`) for replay.
 2. Surface the failure via the host's standard alerting path (out of scope here).
 
-Any PR the agent opened is unaffected by a notification failure — it remains a valid artifact on GitHub.
+Any commit the agent pushed to trunk is unaffected by a notification failure — it remains on GitHub.
