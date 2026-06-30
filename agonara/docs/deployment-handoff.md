@@ -43,6 +43,11 @@ self-hosting. This is a deliberate, scoped exception to ADR-017's
 private-not-multitenant boundary and needs its own decision. Sketch:
 [`demo-instance-exception.md`](demo-instance-exception.md).
 
+**Hermes skill auto-deploy (operator/inventory owned).** Drafted handoff to
+automate pushing the student-bot skill set from ai-labs to the live Hermes
+agent; implementation and run belong to the operator inventory, not ai-labs.
+Package: [`hermes-skills-deploy-handoff.md`](hermes-skills-deploy-handoff.md).
+
 **Future Admin access layer.** Public `/admin` is blocked at Caddy for now.
 Operators use private loopback/SSH access.
 
