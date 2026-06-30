@@ -1,0 +1,15 @@
+# maestro-flows drift snapshot — thin committed baseline (ADR-001 Decision 8, M8).
+# Source: igor1309/ios.config .maestro/flows/ @ 0fb11b5, snapshot 2026-06-30.
+# Format: <flow_count> <subfolder>  — ordered smallest-first (Decision 6).
+# Drift key = the SUBFOLDER SET; an added/removed subfolder is reported as drift.
+# Counts are advisory — the sequencer recomputes them at runtime for ordering
+# and the M5 over-budget split check. Regenerate with maestro-flows-snapshot.sh.
+1 cvvpin
+1 sticker
+1 user_profile
+3 coins
+6 history
+6 support
+7 cbdc
+9 transgran
+32 payments
