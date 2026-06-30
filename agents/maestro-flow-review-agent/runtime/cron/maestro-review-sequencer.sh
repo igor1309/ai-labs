@@ -41,7 +41,8 @@ AVAIL_FLOOR=600     # M3: MemAvailable (MB) required to start a unit
 HARD_FLOOR=250      # M12: breaker abort floor (MB)
 SWAP_HIGH=600       # M3: swap-used (MB) that triggers guarded reclaim
 RESERVE=400         # M3: avail must exceed SwapUsed+RESERVE for safe reclaim
-HOOK_MAX=8          # M12: openclaw-hooks ceiling (baseline <=6)
+HOOK_MAX=8          # M12: openclaw-hooks ceiling (baseline <=6; swarm plateaus AT 8 = gateway concurrency cap)
+SWAP_ABORT=1000     # M12: swap-used (MB) breaker ceiling — the REAL OOM precursor. 2026-06-30 G2 thrash held avail ~500 (>HARD_FLOOR) while swap filled to 1279; hooks/avail alone missed it.
 SAMPLES=3           # M3: consecutive sustained-headroom samples
 SAMPLE_GAP=3        # seconds between samples
 STALE_CYCLE_HOURS=6 # resume an incomplete cycle younger than this; else start fresh
@@ -127,13 +128,13 @@ run_unit(){
   local mon=""
   if [ "$DRY_RUN" = 0 ]; then
     ( while [ -e "$cdir/${unit}.in_flight" ]; do
-        h=$(hooks_count); a=$(mem_avail); s=$(appserver_count)
-        if [ "$h" -gt "$HOOK_MAX" ] || [ "$a" -lt "$HARD_FLOOR" ] || [ "$s" -gt 1 ]; then
-          echo "hooks=$h avail=$a appsrv=$s" > "$breach"
+        h=$(hooks_count); a=$(mem_avail); s=$(appserver_count); w=$(swap_used)
+        if [ "$w" -gt "$SWAP_ABORT" ] || [ "$h" -ge "$HOOK_MAX" ] || [ "$a" -lt "$HARD_FLOOR" ] || [ "$s" -gt 1 ]; then
+          echo "swapU=$w hooks=$h avail=$a appsrv=$s" > "$breach"
           systemctl stop openclaw   # M12: cgroup halt of a gateway-side swarm
           break
         fi
-        sleep 4
+        sleep 2
       done ) &
     mon=$!
   fi
