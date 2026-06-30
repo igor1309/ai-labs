@@ -71,12 +71,11 @@ is the wrong consumer for this directory.
 
 ## Authoring constraints
 
-Each skill is **deployed independently** to its own Hermes profile (see the
-deploy section below and the packaging model in
-[`operator-skill-packaging_pre_adr.md`](operator-skill-packaging_pre_adr.md)).
-Only the skill *folder* ships to the host — `research/`, `docs/`, `backlog/`, and
-sibling buckets in another role plugin are **not** present at runtime. So author
-every skill to stand on its own:
+Each skill is **deployed independently** — only the skill *folder* ships to a
+runtime; `research/`, `docs/`, `backlog/`, and sibling buckets in another role
+plugin are **not** present there — per the packaging model in
+[`operator-skill-packaging_pre_adr.md`](operator-skill-packaging_pre_adr.md). So
+author every skill to stand on its own:
 
 - **No links a deployed bot can't resolve.** Do not reference `../../research/…`,
   `../../docs/…`, or another *role's* skill from inside `SKILL.md` — those paths
@@ -98,9 +97,9 @@ every skill to stand on its own:
 
 ## Concern ownership (student drill/practice cluster)
 
-The student profile also carries authored-practice/drill skills —
+The student skill set also carries authored-practice/drill skills —
 `button-quiz-loop`, `assistant-authored-study-drills`, `oral-exam-drills` —
-alongside `agonara-student`. These **co-install on the student profile**, so each
+alongside `agonara-student`. These **co-install with `agonara-student`**, so each
 concern has one owner and the others point to it (no restatement):
 
 | Concern | Owner |
@@ -116,15 +115,12 @@ Add a behavioral rule to its owner and reference it from the others — **within
 this co-installing set only**. Cross-*bucket* sharing (e.g. curator↔student) still
 follows the duplicate-and-guard rule above, since those skills never co-install.
 
-## Deploying an edit to the live bots
+## Deploying these skills
 
-These skills run live on the Hermes Telegram bots (`agonara-curator` /
-`agonara-student` profiles), which carry their own deployed copies. After editing
-a skill here and committing, push it to the host with the deploy script in the
-**inventory** repo — `vps/Hermes/scripts/deploy-agonara-skills.sh` — and see
-`vps/Hermes/agonara-skills-deploy.md` for the procedure (host details live in
-inventory, not in this repo). Skill content hot-discovers on the host, so no
-gateway restart is needed; the bots pick up the change on their next turn.
+This repo is the **source of truth for skill content** only. How the skills reach
+a live agent — pushing copies, update cadence, restart behavior — is the
+**consuming runtime's** concern, owned wherever that concrete deployment lives,
+not here. Edit and commit the skill in this repo; each deployment pulls from it.
 
 ## Packaging & distribution design
 
