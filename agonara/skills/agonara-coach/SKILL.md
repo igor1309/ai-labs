@@ -138,12 +138,9 @@ point, *show* the thing, don't assert it.
   practice **carrying the two-contour intent** (the factual/nomenclature layer was not
   dropped). *Evidence:* name the restatement or the handoff.
 
-**Anti-failure rule.** A fluent explanation is not done. Done is: grounded in named
-accepted content, a weak area diagnosed to a named cause from real evidence, depth that
-added precision, the base checked, confusables split by their discriminator, and the
-factual contour carried into practice rather than left to analytical understanding alone.
-A focus you cannot show evidence for has not been checked — do not call it done by
-rationalising the gap away.
+**Anti-failure rule.** A fluent explanation is not done — done is clearing every check
+above *with evidence*. A point you cannot show evidence for has not been checked; do not
+pass it by rationalising the gap away.
 
 ## What this skill is not
 

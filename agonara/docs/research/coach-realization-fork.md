@@ -2,7 +2,6 @@
 date: 2026-06-29
 model: claude-opus-4-8
 description: "Problem-space research on whether the coach capability is realized as ephemeral skill behavior or new persisted coaching state, plus the coupled skill-decomposition and nomenclature-priority questions."
-version: 0.1.0
 ---
 
 # Coach realization fork: ephemeral skill vs persisted coaching state

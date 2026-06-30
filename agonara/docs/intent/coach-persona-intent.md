@@ -72,10 +72,6 @@ so that I can build understanding without being stuck at one fixed level.
 
 Status: proposed
 
-Acceptance signal: студент может запросить «проще» или «глубже/строже» по одному и
-тому же понятию и получить объяснение соответствующего уровня, привязанное к принятым
-материалам, без выхода за принятый корпус.
-
 #### COACH-02 — Диагностика причины слабого места
 
 As a student,
@@ -84,10 +80,6 @@ state — which attempts, what feedback — rather than just flagging it as weak
 so that I fix the actual misconception instead of blindly re-reading.
 
 Status: proposed
-
-Acceptance signal: для слабой метки коуч читает `learner-state/targets/...` evidence и
-называет конкретную причину (какая попытка, какой feedback, какое смешение понятий),
-а не выдаёт «повтори тему». Диагностика не мутирует принятый корпус.
 
 #### COACH-03 — Сначала фундамент (prerequisite-aware)
 
@@ -98,9 +90,6 @@ so that I am not taught the top of a chain while its base is missing.
 
 Status: proposed
 
-Acceptance signal: при слабом понятии коуч проходит по принятым связям
-`concept_prerequisite` назад и адресует фундамент до верхушки.
-
 #### COACH-04 — Различение спутываемых понятий
 
 As a student,
@@ -109,9 +98,6 @@ so that I do not hold a shallow or false understanding that survives until a tes
 exposes it.
 
 Status: proposed
-
-Acceptance signal: для пары спутываемых понятий (STU-07 уже отдаёт такие пары) коуч
-объясняет *различие, которое надо сохранить*, а не показывает их рядом без разбора.
 
 ### Тестоустойчивость (двухконтурная тренировка)
 
@@ -126,9 +112,6 @@ a derivation.
 
 Status: proposed
 
-Acceptance signal: коуч способен вести прогон, целевой на фактуру (фамилии, типологии,
-категории, пары, списки), грунтованный на принятых материалах, держа item-quality bar.
-
 #### COACH-06 — Смешанный двухконтурный прогон
 
 As a student,
@@ -139,11 +122,6 @@ needed nor where a precise course fact is needed.
 
 Status: proposed
 
-Acceptance signal: прогон явно балансирует между «принципы / логика / кейсы» и «имена /
-классификации / категории / структура материала»; коуч может показать этот баланс, а не
-сваливаться в один контур по инерции. Не «отдельный блок зубрёжки» и не «отдельный блок
-логики» — вперемешку.
-
 #### COACH-07 — Приоритизация фактуры
 
 As a student,
@@ -152,9 +130,6 @@ frequently-tested / rare-but-nasty —
 so that limited prep time goes to the facts most likely to decide the test first.
 
 Status: proposed
-
-Acceptance signal: коуч может разметить номенклатуру темы по трём уровням приоритета и
-вести прогон в этом порядке. (Источник приоритета — открытый вопрос ниже.)
 
 ### Целостность коучинга (граница как обязательство)
 
@@ -167,11 +142,6 @@ never produce, choose, hint, or submit my own assessment evidence,
 so that my recorded progress stays grounded in my own attempts.
 
 Status: proposed
-
-Acceptance signal: пока официальный check активен, коуч не порождает и не подсказывает
-ответ и подаёт только тот ответ, который студент назвал сам (правило assessment-integrity
-владеет `agonara-student`; здесь оно подтверждается как обязательство коуча, а не
-ослабляется обучающей ролью).
 
 ## Acceptance signals
 
