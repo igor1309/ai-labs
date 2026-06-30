@@ -22,7 +22,10 @@ upstream `agonara/skills/` into a **public** GitHub repo `agonara-skills` shaped
 as two role-scoped, flat subfolders — `student/` and `curator/` — each containing
 only its bucket's skills. The partition (which skill is a student vs a curator
 skill) is **owned by the source of truth and made structural by the subfolders**;
-the Hermes host taps its role's subfolder and never sees the other role's skills.
+each Hermes profile discovers and installs only its role subfolder. (This is an
+install/packaging-isolation guarantee, not a confidentiality boundary — the repo is
+public, so the other role's subtree is still retrievable; it is simply never
+installed into the wrong profile.)
 
 The projection additionally (a) **strips user-specific reference content** so no
 personal data reaches the public repo, and (b) **stamps provenance** (the ai-labs
@@ -70,7 +73,9 @@ and invariants; the workflow + an implementation plan follow it.
   Producer owns the partition; consumer taps its subfolder. (Rejected: flat repo
   with host-side bucketing — leaks a source-of-truth decision to the consumer and
   is how curator skills already drifted into the student tree. Rejected: two
-  separate repos — kept only as the fallback if Hermes can't tap a subfolder.)
+  separate repos — no gain over subfolders, and the subfolder shape is confirmed
+  feasible (inventory gate 1a, verified 2026-06-30), so it is not even a held
+  fallback.)
 - **Bucket lists (the publish allowlist):**
   - `student/`: `agonara-api-access`, `agonara-membership`, `agonara-student`,
     `agonara-coach`, `button-quiz-loop`, `assistant-authored-study-drills`,
@@ -130,10 +135,13 @@ only after the managed path is proven (inventory §6).
 
 ## Risks & Unknowns
 
-- **Subfolder-tap capability is unverified** (inventory gate 1a / Open Q #7):
-  whether Hermes can scope a tap to a repo *subfolder* and tap one repo at two
-  subpaths. If not, the output shape falls back to **two repos**. The workflow
-  should be written so the output shape is a single switch, not a rewrite.
+- **Subfolder-tap registration is a direct `taps.json` write, not a CLI flag.**
+  The subfolder *capability* is confirmed (inventory gate 1a, verified 2026-06-30:
+  taps persist `{repo, path}` in `.hub/taps.json`, one repo tappable at two
+  subpaths), so the two-repo fallback is dropped. But `hermes skills tap add` does
+  not expose the subfolder `path` (it defaults to `skills/`); scoping to `student/`
+  / `curator/` is a consumer-owned direct `taps.json` edit — a host concern, noted
+  here only so the producer does not assume a CLI affordance that does not exist.
 - **Shared-foundation dedup mechanics** (inventory Open Q #6): the projection must
   copy `api-access`/`membership` into both subfolders as **real files** (a tap
   needs real content, not a symlink) while keeping one upstream edit point.
@@ -161,11 +169,6 @@ ai-labs. Leans included; the ADR resolves them.
    in the canonical tree) as the primary mechanism, with the publish-time scan as
    a backstop — vs publish-time scrub only. *Lean:* upstream rule primary; this
    extends the producer-owns-scope principle to public/private classification.
-4. **Output-shape contingency.** One repo with `student/`+`curator/` subfolders
-   (preferred) vs two repos (fallback), gated on the Hermes subfolder-tap
-   capability (risk above). *Lean:* build for one-repo-two-subfolders behind a
-   single output-shape switch.
-
 ## Cross-References
 
 - Consumer-side decision: `inventory/vps/Hermes/adr/adr-001-canonical-skill-distribution.md`.

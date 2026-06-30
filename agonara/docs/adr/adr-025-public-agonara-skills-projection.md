@@ -76,7 +76,7 @@ Two facts frame the producer decision:
 | Alternative | Why rejected |
 |---|---|
 | **Flat published repo; host buckets via install lists** | Leaks the role-partition decision to the consumer; is how curator skills reached the student tree. The partition belongs in the source. |
-| **Two separate repos (one per role)** | Two repos to publish, permission, and keep in lockstep, for no gain over two subfolders in one repo. Retained only as the fallback if Hermes cannot scope a tap to a subfolder (Open Questions). |
+| **Two separate repos (one per role)** | Two repos to publish, permission, and keep in lockstep, for no gain over two subfolders in one repo. The subfolder shape is confirmed feasible (inventory gate 1a, verified 2026-06-30: taps persist `{repo, path}` in `.hub/taps.json`, one repo tappable at two subpaths), so this is a clean rejection, not a held fallback. |
 | **Mirror all of `agonara/skills/` verbatim** | Publishes `agonara-admin`, repo-only meta docs (`operator-skill-packaging_pre_adr.md`, `claude-code-plugin-system.md`, `README.md` repo-only sections), and the user-specific reference files — admin surface and personal data on a public repo. |
 | **Author the public repo directly / push-on-demand by hand** | Two edit points → drift; loses provenance and determinism. The repo MUST be generated from a pinned upstream commit. |
 | **Track the mutable head as the install source** | Gives the host no pinned, verifiable artifact. The projection emits a pinned, provenance-stamped release (consumed under inventory D8). |
@@ -123,8 +123,10 @@ output — the backstop, not the mechanism of record.
 The projection is a pure function of a specific upstream commit. Each published
 release records the **ai-labs commit SHA** it was projected from and a
 **per-skill-tree content hash**, so the host can install from an immutable pinned
-ref and verify it before activation (inventory D1/D8). The public repo is push-only
-output of this projection — never edited in place.
+ref and verify it before activation (inventory D1/D8). Provenance is emitted
+**unconditionally** as a verifiable contract; whether the host *enforces*
+verification (MUST vs SHOULD) is ADR-001's decision, not this ADR's. The public
+repo is push-only output of this projection — never edited in place.
 
 ### 5. Producer push; consumer pull
 
@@ -132,13 +134,21 @@ The projection is pushed to the public repo from ai-labs CI using a repo PAT
 (producer-side outbound push). This does not require, and MUST NOT introduce, any
 **inbound** key on the Hermes host — the host pulls (inventory D7). The host-side
 tap registration, seal, reconciliation, and migration are out of scope here and
-owned by inventory ADR-001.
+owned by inventory ADR-001. This ADR owns **creating** each immutable,
+provenance-stamped release; **advancing** the host's pinned ref to a new release
+(its trigger, approval, and rollback) is owned by inventory ADR-001. Where ADR-001
+currently re-specifies producer mechanics (its D1 provenance authoring, D6 privacy,
+gate 7 scan), those rules belong here — ADR-001 should reference ADR-025 rather
+than restate them.
 
 ## Rules / Invariants
 
 - **P1 (single upstream, deterministic projection).** `agonara/skills/` MUST be the
   only edit point. The `agonara-skills` repo MUST be a deterministic projection of a
-  specific ai-labs commit and MUST NOT be hand-authored.
+  specific ai-labs commit and MUST NOT be hand-authored. The projection MUST rebuild
+  from a clean staging tree each run and MUST verify the output equals upstream minus
+  the explicit exclusion set — detecting removed skills and failing on any unexpected
+  exclusion (mechanism in the spec/plan).
 - **P2 (source-owned partition).** Role-bucket membership MUST be declared by a
   source-side manifest in ai-labs and realized as the `student/` / `curator/`
   subfolder structure. The consumer MUST NOT be required to re-derive it.
@@ -150,24 +160,48 @@ owned by inventory ADR-001.
   authored once upstream and projected into both subfolders as **real files**
   (no symlinks); the two published copies MUST be byte-identical to the single
   upstream source.
-- **P5 (public, content-only).** The published repo MUST be public and MUST contain
-  only runtime-agnostic product content — no host details, IPs, keys, repo-only
-  meta docs, or `agonara-admin`.
-- **P6 (privacy owned upstream + backstop).** User-specific/personal reference data
-  MUST NOT be authored into `agonara/skills/`. The projection MUST additionally
-  exclude such files by allowlist/scan and MUST fail the publish if any reach the
-  output. The known files to exclude are the four named in Context.
+- **P5 (public, content-scoped).** The published repo MUST be public. Its **role
+  payload subfolders** (`student/`, `curator/`) MUST contain only runtime-agnostic
+  product content — no host details, IPs, keys, repo-only meta docs, or
+  `agonara-admin`. Repository-level metadata is limited to a closed, declared set
+  (the P7 provenance manifest, plus `LICENSE`/`README`); nothing else.
+- **P6 (privacy, three gates).** (1) User-specific/personal reference data MUST NOT
+  be authored into `agonara/skills/`, enforced by an upstream check that **fails on
+  forbidden content in the source**. (2) The projection MUST copy only explicitly
+  allowlisted files. (3) The projection MUST scan the **staged output** and fail the
+  publish if any personal data reaches it. A source-minus-output file set that
+  differs from the explicit exclusion manifest MUST fail for review (mechanism in
+  the spec/plan). The four files named in Context are the current known exclusions.
 - **P7 (provenance).** Each release MUST record the upstream commit SHA and a
-  per-skill-tree content hash, in a defined, machine-readable location in the
-  published repo.
-- **P8 (projection-only, outbound-only).** The public repo MUST be written only by
-  the projection (push), never edited in place; the producer push MUST NOT require
-  an inbound deploy key on the consuming host.
-- **P9 (parity gate).** `agonara/tests/operator-skill-contract.test.js` MUST pass
-  before a publish; the projection MUST NOT break the duplicate-and-guard parity or
-  route-citation guarantees.
+  per-skill-tree content hash in a **machine-readable** location in the published
+  repo. The exact path, schema, and hash algorithm are pinned by the spec/plan
+  (Open Questions); P7 requires only that the record exist and be machine-parseable.
+- **P8 (projection-only, enforced).** The public repo MUST be written only by the
+  projection (push), never edited in place, and the producer push MUST NOT require
+  an inbound deploy key on the consuming host (host pulls, inventory D7). Write
+  access MUST be restricted to the projection's CI identity, with protected
+  branches/tags and a publish-time rejection of target history not descended from
+  the last producer release (mechanism in the spec/plan).
+- **P9 (projection contract checks).** A publish MUST be gated by checks over the
+  **generated output**, not only the existing in-repo parity test: projected
+  directory names MUST match the source manifest (P3); both shared-foundation copies
+  MUST be byte-identical to upstream (P4); the duplicate-and-guard parity and
+  route-citation guarantees MUST hold on the projected trees; and every shipped
+  `SKILL.md` link MUST resolve within its own role subfolder (P10). The existing
+  `agonara/tests/operator-skill-contract.test.js` MUST also pass but is not
+  sufficient alone (mechanism in the spec/plan).
 - **P10 (no dangling links in shipped skills).** A projected `SKILL.md` MUST NOT
   reference another role's skill or a repo-only `research/`/`docs/` path.
+- **P11 (atomic, pinned publish).** Publication MUST be atomic: the projection
+  validates the manifest + per-tree hashes in staging, commits them **with** the
+  payload, and publishes an **immutable, protected tag** at that commit. That
+  tag/commit is the consumer handoff identity — the "pinned ref" the host installs
+  from (inventory D8) — and MUST NOT be moved after publication.
+- **P12 (first-publish precondition).** Repository creation and the first push MUST
+  be blocked until the upstream privacy check (P6 gate 1) passes — specifically, the
+  four user-specific reference files named in Context MUST be absent from
+  `agonara/skills/`. The upstream-hygiene relocation is a prerequisite, not a
+  follow-up.
 
 ## Consequences
 
@@ -192,9 +226,10 @@ owned by inventory ADR-001.
 - **Host install, the `skills`/`skill_manage` seal, reconciliation, rollback, and
   migration** — owned by inventory ADR-001.
 - **`agonara-admin` placement** — deferred (inventory Open Q #3); not published here.
-- **The Hermes subfolder-tap capability decision** — verified on the host
-  (inventory gate 1a); this ADR builds for one-repo-two-subfolders with a two-repo
-  fallback (Open Questions).
+- **The Hermes subfolder-tap capability decision** — verified supported on the
+  host (inventory gate 1a, 2026-06-30: taps persist `{repo, path}` in
+  `.hub/taps.json`, one repo tappable at two subpaths). This ADR builds for
+  one-repo-two-subfolders only; there is no two-repo fallback.
 - **Memory durability / off-host backup** — separate, held companion ADR.
 - **A Claude Code plugin marketplace** (`marketplace.json`, prefix-dropping) — the
   public repo is a tap of skill folders, not an installable plugin marketplace.
@@ -205,14 +240,15 @@ owned by inventory ADR-001.
 
 1. **Publish trigger / cadence.** CI-on-push to `trunk` with a `paths:` filter over
    the projected skill folders (mirroring `.github/workflows/sync-skills-public.yml`)
-   vs a manual/release-gated publish. *Lean:* CI on push to trunk, filtered to the
-   projected paths, emitting a pinned provenance-stamped release. Coordinates with
+   vs a manual/release-gated publish. The trigger's input set MUST cover the full
+   projection inputs — not just the projected skill folders, but the bucket manifest,
+   the projector, the privacy policy/allowlist, the provenance schema, and the
+   workflow itself — plus a manual-dispatch path, so a change to publication logic
+   cannot leave the public repo stale. *Lean:* CI on push to trunk over that full
+   input set, emitting a pinned provenance-stamped release. Coordinates with
    inventory Open Q #2 (host-pull interval).
 2. **Provenance location/format.** Where the commit SHA + per-tree hashes live in
    the published repo (top-level manifest, per-subfolder file, or release metadata).
-3. **Output shape.** One repo with `student/`/`curator/` subfolders (preferred) vs
-   two repos (fallback), gated on the Hermes subfolder-tap capability (inventory
-   gate 1a / Open Q #7). Build behind a single output-shape switch.
-4. **Shared-foundation dedup mechanics.** How the projection copies the two
+3. **Shared-foundation dedup mechanics.** How the projection copies the two
    foundations into both subfolders from one source while keeping P4's
    byte-identical guarantee (inventory Open Q #6).
