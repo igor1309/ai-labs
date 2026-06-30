@@ -52,6 +52,8 @@ The trigger sets the review scope:
 
 - **Path scope.** A single flow path is supplied. Review that flow and its full `runFlow` chain.
 
+- **Flow-list scope.** An explicit list of flow paths is supplied (the runtime's windowed scheduler uses this to bound a large subfolder into smaller review windows). Review **exactly those listed flows** — and, for each, its full `runFlow` chain for context (a leaf is still judged in the context of its chain; children pulled in for context are not themselves added to the reviewed set unless they are also in the list). Do **not** expand to sibling flows in the same directory that are not listed. Coverage of the whole subfolder is the runtime's responsibility (it lists every flow across its windows), not this run's — this run reviews only its slice.
+
 - **Collection scope.** No PR or path is supplied (the default for a scheduled run). Review the whole `.maestro/flows/` collection.
 
 ## What you do
