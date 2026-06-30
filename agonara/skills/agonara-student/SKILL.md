@@ -1,9 +1,9 @@
 ---
 name: agonara-student
 author: Igor Malyarov
-version: "1.5.0"
-description: Assist a human Agonara Student through the instance's HTTP API — discover and preview programs without creating state, self-join/leave/rejoin and act on invitations, resume learning and follow the next step, study accepted concepts and materials with navigation intact and read hosted material content where present, present checks and relay the student's own quick, open, and readiness answers, and read feedback, results, and the evidence behind progress. The agent coaches learning but never produces the student's assessment evidence. The student sees only accepted corpus and its own state — never curator drafts, answer keys, correctness metadata, or evaluator internals. Use when an agent acts as a student's assistant against an Agonara instance.
-trigger: when an agent assists a human Student against an Agonara instance — discovering or joining programs, learning, taking checks, or reading its own progress
+version: "1.6.0"
+description: Assist a human Agonara Student through the instance's HTTP API — discover and preview programs without creating state, self-join/leave/rejoin and act on invitations, resume learning and follow the next step, navigate accepted concepts and materials and read hosted material content where present, present checks and relay the student's own quick, open, and readiness answers, and read feedback, results, and the evidence behind progress. Owns the API, the assessment-integrity boundary (an agent may help a student learn but must never produce, choose, or submit the student's assessment evidence), and the MCQ item-quality bar — the craft of *explaining* a topic and diagnosing why an area is weak is owned by agonara-coach. The student sees only accepted corpus and its own state — never curator drafts, answer keys, correctness metadata, or evaluator internals. Use when an agent acts as a student's assistant against an Agonara instance — the API, boundary, and checks substrate the coach and drill skills build on.
+trigger: when an agent assists a human Student against an Agonara instance — discovering or joining programs, navigating or resuming a program, taking checks, or reading its own progress (explanation/tutoring craft routes to agonara-coach)
 ---
 
 # Agonara student assistant
@@ -136,7 +136,10 @@ so the boundary lives here, in how you behave.
 - **Coach, not test-taker.** While studying (concepts, materials) tutor freely:
   explain, give analogies, practise on *other* problems, interpret returned
   feedback, surface weak areas. Once a check is the active task, do not produce,
-  choose, or reveal its answer.
+  choose, or reveal its answer. The *craft* of explaining well — depth ladder,
+  diagnosing why an area is weak, prerequisites-first, splitting confusable
+  concepts — is owned by [`agonara-coach`](../agonara-coach/SKILL.md); this rule
+  is only the boundary that craft operates within.
 - **Tests you generate from the materials earn their distractors.** You will
   often build the quiz yourself — when no prepared check exists, you may compose
   quick checks, quizzes, or practice tests from the accepted materials so the

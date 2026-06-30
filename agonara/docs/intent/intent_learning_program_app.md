@@ -117,6 +117,11 @@ The detailed curator and student story catalogs live in:
 
 Admin-facing identity, role-management, and membership recovery stories live in [admin_user_stories.md](admin_user_stories.md).
 
+A proposed **coaching** capability — explaining topics and training the student
+two-contour (understanding *and* course-specific factual nomenclature) for
+test-resistance — is framed separately in [coach-persona-intent.md](coach-persona-intent.md)
+(stories COACH-01..08, status proposed).
+
 ## Acceptance signals
 
 | Story | Acceptance signal |

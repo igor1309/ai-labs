@@ -1,6 +1,77 @@
 # Log
 
+## 2026-06-30
+
+- **Disambiguated the explanation/tutoring route between `agonara-student` and
+  `agonara-coach`.** A live probe of the deployed Hermes student agent (coach not yet
+  installed) confirmed it routes on front-matter alone and, with `agonara-student`'s
+  description claiming the explaining craft ("the agent coaches learning", "study …
+  materials"), attributed *all* tutoring to `agonara-student` — so a freshly deployed
+  `agonara-coach` would have been under-triggered. Fixed at the routing layer, not the
+  bodies: `agonara-student` **v1.6.0** re-scopes its `description`/`trigger` to own the
+  API, the assessment-integrity boundary, and the item-quality bar, and explicitly cedes
+  explanation/diagnosis craft to `agonara-coach`; `agonara-coach`'s `description`/`trigger`
+  now lead with **tutor** and name themselves the explanation/tutoring front (adds the
+  "tutor" keyword humans actually search by). Added a one-line pointer in the student
+  skill's assessment-boundary body bullet, and `skills/agonara-coach/references/routing-calibration.md`
+  recording the baseline probe and the pre/post route-expectation table to re-run after
+  the (manual) deploy. No route citations added; `operator-skill-contract` still green.
+
 ## 2026-06-29
+
+- **Fixed two pre-existing operator-skill-contract failures.** Both predated the coach
+  work (reproduced at the merge base) and were surfaced while verifying the new skill.
+  (1) Route citation: `agonara-curator-corpus` cited `PUT
+  /navigation-relationships/{relationshipId}/status`, but the contract path parameter is
+  `{entityId}` (consistent with `/corpus/{entityId}/status`) — aligned the skill to the
+  contract. (2) Item-quality byte-parity: the cross-bucket duplicate-and-guard block had
+  drifted — the four shared item-writing subsections (stem / distractors / leak-cues /
+  structure) are still byte-identical across `agonara-curator-assessment` and
+  `agonara-student`, but their *closings* legitimately diverged (the curator's concise
+  cold-read reminder vs the student's authored-quiz `Definition of Done`). The guard's end
+  marker pointed into that diverged tail, so it broke. Moved the guarded region's end to the
+  last line of `#### Structure`, so the test guards exactly the genuinely-shared bar and
+  each skill keeps its own closing. `agonara/tests/operator-skill-contract.test.js` now green.
+- **`agonara-coach` skill — the explaining half (D1, ship-and-learn).** Authored
+  `skills/agonara-coach/SKILL.md` v1.0.0 realizing the ephemeral skill-only fork direction
+  for COACH-01..04: explanation depth ladder (precision, not padding), diagnose-the-cause
+  before re-teaching (named failure type from learner-state evidence, with the
+  factual/nomenclature gap called out as its own target), prerequisites-first traversal of
+  accepted relationships, and confusable concepts taught by their discriminating feature.
+  Co-installs with the student cluster, so it points to `agonara-student` (API reads,
+  assessment-integrity boundary, item-quality) and the drill skills (practice + two-contour
+  balance) without restating them — no route citations, no duplicated item-quality block.
+  Holds a `Definition of Done` gate in the `agonara-student` "evidence, not a verdict" idiom.
+  This also answers the intent's sub-question A: the rule list is substantive, not a thin
+  wrapper, so a separate skill is justified. Registered in `skills/README.md` (student
+  cluster + concern-ownership table); intent traceability updated. Not yet deployed to the
+  Hermes student profile — separate deploy step.
+- **Coach realization research.** Added `docs/research/coach-realization-fork.md` (My Way
+  research) framing the skill-vs-persisted-state fork left open by the coach intent. Core
+  finding: most of the coach (COACH-01..06) needs no persistence and is realizable in-session;
+  the only capability that *forces* persisted state is spaced repetition, and the crux tension
+  is that the richest factual-contour signal (practice-drill performance) is exactly what the
+  system deliberately does not persist. Three candidate directions (D1 ephemeral / D2 persisted
+  coaching learner-state / D3 minimal student-owned watchlist), with the assessment-integrity
+  boundary (ADR-011/016) as the central risk for any persisted option. Developed the two coupled
+  sub-questions: a clean four-skill teaching decomposition with a provisional lean toward a
+  separate `agonara-coach` (gated on a real rule list), and nomenclature-priority grounding where
+  the cheap path is reading accepted exam-requirement sources (option c) rather than a new corpus
+  metadata field (option b). Open questions handed to pre-ADR; intent traceability updated.
+- **Coach persona intent + two-contour drill recalibration.** Drafted
+  `docs/intent/coach-persona-intent.md` (My Way product-intent structure): a coaching
+  capability that *teaches* (explanation depth, cause diagnosis from evidence,
+  prerequisite-first, confusable distinctions) and *trains test-resistance two-contour*
+  (understanding **and** course-specific factual nomenclature), grounded in a real
+  episode — a learner strong on meaning scored 71/100, losing the nomenclature layer
+  (named classifications / author typologies). Stories COACH-01..08 proposed; the
+  skill-vs-persisted-state realization left to research/pre-ADR; assessment-integrity and
+  visibility boundaries restated, not weakened. Realized the skill-only slice now:
+  `assistant-authored-study-drills` **v1.2.0** gains a "Two-contour balance" section (a
+  second coverage axis across the cognitive layer, not just topic) — required item-type
+  mix, no drift to the comfortable analytical side, weak-fixture-zone priority, fixture
+  distractors via the `agonara-student` bar, and error-type-named verdicts. Episode
+  recorded in the skill's `references/user-calibration-notes.md`.
 
 - **Codex-reviewed the consolidation; fixed 8 findings.** Ran an adversarial Codex
   review (read-only) over the four skills, judged each against the files, and fixed all

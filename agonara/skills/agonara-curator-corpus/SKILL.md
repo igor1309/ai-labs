@@ -373,7 +373,7 @@ delete as "the API is blocking me."
   `{ "status": "withdrawn" }` (or `"active"` to reactivate). Reactivation restores
   the entity with its `current_revision_id` unchanged.
 - **Withdraw / reactivate a navigation relationship** (e.g. a `topic_uses_material`
-  link) — `PUT /navigation-relationships/{relationshipId}/status` with
+  link) — `PUT /navigation-relationships/{entityId}/status` with
   `{ "status": "withdrawn" }` (or `"active"`). This is how you take down a wrong,
   duplicate, or empty link.
 - **Order matters — links before their entity.** An entity that still has any

@@ -42,6 +42,33 @@ of truth (the linked Agonara Markdown specs / implementation), not to memory:
 - cover the bodies the OpenAPI leaves as `additionalProperties: true`, where the
   route-level contract provides no guard.
 
+## Route to skill bodies via the runtime's always-on layer (modalities)
+
+The skill bodies (`agonara-student`, `agonara-coach`, the drill skills) hold craft
+but do not decide when they run. Modality selection — which mode of the single
+student assistant applies this turn — belongs in the consuming runtime's **always-on
+layer** (the profile/SOUL it exposes every turn), which points to bodies, not in
+competing skill triggers. `agonara-coach` currently has no route in: nothing tells
+the agent to enter the explaining modality, and `agonara-student` still claims the
+coaching craft, so the coach skill would not reliably activate.
+
+Blocked on reading the runtime's current always-on layer before proposing any edit.
+Goals for that edit, once it is in hand:
+
+- name the student assistant's modalities as one role (discover/join · study &
+  explain [coach] · practice/drill · official check/assess · progress/next step),
+  each with its activation cue and the skill body it points to;
+- give the explaining modality an explicit route into `agonara-coach`;
+- keep the two cross-cutting rules (never produce assessment evidence; show only
+  accepted corpus + own state) above the modalities;
+- state that switching is fluid (explain → drill → official check) so the agent
+  does not lock into one modality;
+- as secondary cleanup, dedupe the inline explain craft in `agonara-student` so the
+  coach body owns it (craft dedup, not role separation).
+
+This is an always-on-layer change owned by the consuming runtime's deployment, not
+an in-repo skill edit; read that layer first.
+
 ## Skill discovery, publishing, and packaging
 
 The brief's deferred open question #1 — the operator skills exist in-repo with no

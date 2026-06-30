@@ -50,6 +50,12 @@ The **student** skill:
   accepted concepts and materials, take quick/open/readiness checks, and read
   feedback, results, and the evidence behind progress — seeing only accepted
   corpus and the student's own state.
+- [`agonara-coach/`](agonara-coach/SKILL.md) — the *explaining* half of student
+  coaching: explain a concept at the depth asked for, diagnose *why* a weak area is
+  weak from its evidence before re-teaching, teach prerequisites first, and split
+  confusable concepts by their discriminating feature — grounded in accepted
+  materials, holding the teaching-side of the assessment boundary, and handing off to
+  the drill skills for practice (carrying the two-contour intent).
 
 The **admin** skill:
 
@@ -98,6 +104,7 @@ concern has one owner and the others point to it (no restatement):
 
 | Concern | Owner |
 |---|---|
+| Explanation craft (depth ladder, cause-diagnosis, prerequisites, confusables) | `agonara-coach` |
 | MCQ item quality | `agonara-student` |
 | Authored assess-then-advance loop + assessment boundary | `agonara-student` |
 | Button / `clarify` delivery | `button-quiz-loop` |
