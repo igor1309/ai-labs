@@ -12,8 +12,15 @@
 #                                             gate read; NO agent/model/swapoff/systemctl
 set -uo pipefail
 
-DRY_RUN=0
-[ "${1:-}" = "--dry-run" ] && DRY_RUN=1
+DRY_RUN=0; NO_PR=0; ONLY=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry-run) DRY_RUN=1;;            # plan only: no agent/model/swapoff/systemctl
+    --no-pr)   NO_PR=1;;              # review-only units (gate testing — no outward PR)
+    --only)    shift; ONLY="${1:-}";; # process just this one subfolder (gate testing)
+  esac
+  shift
+done
 
 # ---- paths ----
 REPO=/home/openclaw/ios.config
@@ -114,6 +121,9 @@ run_unit(){
   rm -f "$breach"; : > "$out"
   touch "$cdir/${unit}.in_flight"
 
+  local norpr=""
+  [ "$NO_PR" = 1 ] && norpr=" Do NOT create a branch, do NOT push, do NOT open or update any PR. Review-only."
+
   local mon=""
   if [ "$DRY_RUN" = 0 ]; then
     ( while [ -e "$cdir/${unit}.in_flight" ]; do
@@ -133,7 +143,7 @@ run_unit(){
   if [ "$DRY_RUN" = 1 ]; then
     log "DRY: would run unit '$unit' session=$sk timeout=${TURN_BUDGET}s"; printf -- '- Findings: 0\n- PR: none\n' > "$out"; rc=0
   else
-    su - openclaw -c "cd '$REPO' && timeout $TURN_BUDGET '$OPENCLAW_BIN' agent --agent $AGENT --session-key '$sk' --message '/maestro-review .maestro/flows/${unit}/ -- SCHEDULED windowed unit: review ONLY the flows under .maestro/flows/${unit} and their runFlow chains. Output the standard review format plus the run-summary field block. Do NOT write the manual-run state file.'" > "$out" 2>&1
+    su - openclaw -c "cd '$REPO' && timeout $TURN_BUDGET '$OPENCLAW_BIN' agent --agent $AGENT --session-key '$sk' --message '/maestro-review .maestro/flows/${unit}/ -- SCHEDULED windowed unit: review ONLY the flows under .maestro/flows/${unit} and their runFlow chains. Output the standard review format plus the run-summary field block. Do NOT write the manual-run state file.${norpr}'" > "$out" 2>&1
     rc=$?
   fi
   t1=$(date +%s)
@@ -210,6 +220,7 @@ main(){
   local stopped=0 nfail=0 nfind=0 cnt unit r f
   while read -r cnt unit; do
     [ -z "$unit" ] && continue
+    [ -n "$ONLY" ] && [ "$unit" != "$ONLY" ] && continue
     if [ -e "$cdir/${unit}.completed" ]; then f=$(grep -oE '[0-9]+' "$cdir/${unit}.completed" | head -1); nfind=$((nfind + ${f:-0})); log "skip $unit (completed)"; continue; fi
     if ! gate; then log "gate failed before $unit -> stop cycle"; tg "[maestro-seq] ⚠ cycle stopped before ${unit} — insufficient headroom."; stopped=1; break; fi
     run_unit "$unit" "$cycle" "$cdir"; r=$?
