@@ -42,7 +42,7 @@ step and MUST land before any first publish.
 
 ## Execution mode
 
-Mode: human-review-gated
+Execution mode: human-review-gated
 Human review between tasks: yes
 Stop conditions: failed gates, unclear scope, missing credentials/tooling, destructive operations, unmet dependency gate, explicit user interruption
 Push policy: push at closeout
