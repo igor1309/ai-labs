@@ -1,0 +1,25 @@
+{
+  "sharedFoundations": ["agonara-api-access", "agonara-membership"],
+  "buckets": {
+    "student": [
+      "agonara-student",
+      "agonara-coach",
+      "button-quiz-loop",
+      "assistant-authored-study-drills",
+      "oral-exam-drills"
+    ],
+    "curator": [
+      "agonara-curator-corpus",
+      "agonara-curator-assessment",
+      "agonara-curator-research",
+      "agonara-curator-participation"
+    ]
+  },
+  "ship": {
+    "agonara-curator-corpus": ["concept-extraction.md"],
+    "oral-exam-drills": ["references/question-quality-and-grading.md"]
+  },
+  "scrub": {
+    "assistant-authored-study-drills": ["## References"]
+  }
+}
