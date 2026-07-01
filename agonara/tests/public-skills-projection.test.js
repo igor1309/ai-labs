@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import test from "node:test";
 
-import { project } from "../scripts/project-public-skills.mjs";
+import { project, runCli } from "../scripts/project-public-skills.mjs";
 
 // A synthetic upstream tree + manifest + assets, decoupled from real skill names,
 // exercising foundations, ship extras, an unshipped personal reference, a scrub
@@ -384,4 +384,48 @@ test("projectPublicSkills_shouldCopyRepoLevelAssetsToStagedRoot_onProjection", a
 
   assert.equal(readFileSync(join(tree.outDir, "README.md"), "utf8"), "# Sample public README\n");
   assert.equal(readFileSync(join(tree.outDir, "LICENSE"), "utf8"), "SAMPLE LICENSE\n");
+});
+
+function cliArgs(tree, reportPath) {
+  return [
+    "--upstream-sha", SHA,
+    "--skills-dir", tree.skillsDir,
+    "--manifest", tree.manifestPath,
+    "--assets", tree.assetsDir,
+    "--openapi", tree.openapiPath,
+    "--out", tree.outDir,
+    "--report", reportPath,
+  ];
+}
+
+test("runCli_shouldExitZeroAndWriteOkReport_onGreenProjection", async () => {
+  const tree = makeUpstreamTree();
+  const reportPath = join(tree.root, "report.json");
+
+  const code = await runCli(cliArgs(tree, reportPath));
+
+  assert.equal(code, 0);
+  assert.equal(JSON.parse(readFileSync(reportPath, "utf8")).ok, true);
+});
+
+test("runCli_shouldExitOneAndReportKind_onGateBreach", async () => {
+  const tree = makeUpstreamTree();
+  const broken = {
+    ...tree.manifest,
+    buckets: { ...tree.manifest.buckets, student: [...tree.manifest.buckets.student, "stu-ghost"] },
+  };
+  writeFileSync(tree.manifestPath, JSON.stringify(broken, null, 2));
+  const reportPath = join(tree.root, "report.json");
+
+  const code = await runCli(cliArgs(tree, reportPath));
+
+  assert.equal(code, 1);
+  const report = JSON.parse(readFileSync(reportPath, "utf8"));
+  assert.equal(report.ok, false);
+  assert.equal(report.failures.some($0 => $0.kind === "missing-skill"), true);
+});
+
+test("runCli_shouldExitTwo_onMissingRequiredFlag", async () => {
+  const code = await runCli(["--out", "/tmp/whatever"]);
+  assert.equal(code, 2);
 });

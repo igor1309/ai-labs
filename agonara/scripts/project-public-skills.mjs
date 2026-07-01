@@ -5,6 +5,7 @@
 import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { itemQualityBlock, openApiRoutes, routeCitations, routeKey } from "./skill-contract.mjs";
 
@@ -164,4 +165,57 @@ export async function project({ skillsDir, manifestPath, assetsDir, outDir, upst
   }
 
   return { ok: failures.length === 0, failures };
+}
+
+const REQUIRED_FLAGS = ["upstream-sha", "skills-dir", "manifest", "assets", "out"];
+
+function parseArgs(argv) {
+  const args = {};
+  for (let i = 0; i < argv.length; i += 2) {
+    if (!argv[i].startsWith("--") || i + 1 >= argv.length) {
+      return null;
+    }
+    args[argv[i].slice(2)] = argv[i + 1];
+  }
+  return args;
+}
+
+function writeReport(target, report) {
+  if (!target) return;
+  const json = `${JSON.stringify(report, null, 2)}\n`;
+  if (target === "-") {
+    process.stdout.write(json);
+  } else {
+    writeFileSync(target, json);
+  }
+}
+
+// CLI wrapper: exit 0 (all gates pass), 1 (gate breach), 2 (usage/IO error).
+export async function runCli(argv) {
+  const args = parseArgs(argv);
+  if (!args || REQUIRED_FLAGS.some($0 => !args[$0])) {
+    return 2;
+  }
+  try {
+    const result = await project({
+      skillsDir: args["skills-dir"],
+      manifestPath: args.manifest,
+      assetsDir: args.assets,
+      openapiPath: args.openapi,
+      outDir: args.out,
+      upstreamSha: args["upstream-sha"],
+    });
+    writeReport(args.report, result);
+    return result.ok ? 0 : 1;
+  } catch (error) {
+    writeReport(args.report, {
+      ok: false,
+      failures: [{ rule: "CLI", kind: "error", detail: String(error && error.message) }],
+    });
+    return 2;
+  }
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  runCli(process.argv.slice(2)).then($0 => process.exit($0));
 }
