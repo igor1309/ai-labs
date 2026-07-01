@@ -52,10 +52,10 @@ Push policy: push at closeout
 
 ## Execution lock
 
-Worktree mode: create new
-Expected worktree: set at execution
-Expected branch: `claude/agonara-skills-projection-impl-*`
-Preflight check: [ ] (executor establishes the lock at execution start)
+Worktree mode: none
+Expected worktree: `/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs` (primary checkout — user directed "work in here", overriding the authored `create new`)
+Expected branch: `agonara/spec-public-skills-projection`
+Preflight check: [x] `worktree=/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs, branch=agonara/spec-public-skills-projection, separate_worktree=pass (mode=none)`
 
 ## Scope guardrails
 
