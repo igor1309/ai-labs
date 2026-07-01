@@ -57,7 +57,7 @@ function scrubSections(content, headings) {
   return lines.join("\n");
 }
 
-export async function project({ skillsDir, manifestPath, outDir, upstreamSha, openapiPath }) {
+export async function project({ skillsDir, manifestPath, assetsDir, outDir, upstreamSha, openapiPath }) {
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   const ship = manifest.ship || {};
   const scrub = manifest.scrub || {};
@@ -102,6 +102,12 @@ export async function project({ skillsDir, manifestPath, outDir, upstreamSha, op
     for (const skill of [...manifest.sharedFoundations, ...skills]) {
       copySkill(bucket, skill);
       trees[`${bucket}/${skill}`] = join(outDir, bucket, skill);
+    }
+  }
+
+  if (assetsDir) {
+    for (const name of readdirSync(assetsDir)) {
+      copyFileSync(join(assetsDir, name), join(outDir, name));
     }
   }
 

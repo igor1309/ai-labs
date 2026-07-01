@@ -370,3 +370,18 @@ test("projectPublicSkills_shouldFailWhenGuardedItemQualityBlocksDiverge_acrossPu
     true,
   );
 });
+
+test("projectPublicSkills_shouldCopyRepoLevelAssetsToStagedRoot_onProjection", async () => {
+  const tree = makeUpstreamTree();
+
+  await project({
+    skillsDir: tree.skillsDir,
+    manifestPath: tree.manifestPath,
+    assetsDir: tree.assetsDir,
+    upstreamSha: SHA,
+    outDir: tree.outDir,
+  });
+
+  assert.equal(readFileSync(join(tree.outDir, "README.md"), "utf8"), "# Sample public README\n");
+  assert.equal(readFileSync(join(tree.outDir, "LICENSE"), "utf8"), "SAMPLE LICENSE\n");
+});
