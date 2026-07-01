@@ -10,23 +10,25 @@
   breach. Pinned the three open questions — provenance as a top-level
   `provenance.json` (sha256 per-tree hashes), trigger as CI-on-`trunk` + manual
   dispatch, and shared-foundation dedup as byte-identical real-file copies — and
-  mapped P1–P12 to R1–R12 with enumerated tests. Hardened after a Codex review:
-  corrected the privacy model from "strip personal files" to "assert absence"
-  (personal content never in source per P12), so R6 gate 1 also fails on a shipped
-  `SKILL.md` still referencing a relocated file; folded that `SKILL.md` cleanup
-  into the R12 hygiene precondition; fixed the R11/R12/R13 numbering and the
-  Pn↔Rn mapping; canonicalized the provenance tree-hash; gave the CLI an
-  exit-code + `--report` failure-kind contract; and reclassified the repo-ruleset
-  check from "unverifiable" to a `gh api` inspection.
+  mapped the ADR invariants to enumerated tests. Hardened over two review passes
+  (Codex, then a design challenge): the privacy model landed as a **publish
+  boundary**, not source relocation — personal files stay in `agonara/skills/` for
+  the private deploy and are kept out of the public repo by a default-deny allowlist
+  (`privatePaths`) plus a publish-time section `scrub` of the personal `## References`
+  block, with an output scan as backstop. Also canonicalized the provenance
+  tree-hash, gave the CLI an exit-code + `--report` failure-kind contract, fixed the
+  Pn↔Rn numbering, and reclassified the repo-ruleset check from "unverifiable" to a
+  `gh api` inspection.
 
 - **Planned the projection implementation —
   `docs/plans/agonara-skills-public-projection.md`.** A deferred, TDD-sequenced,
-  single-task plan: upstream hygiene first (relocate the four personal files +
-  drop their `SKILL.md` pointers, R12), then manifest/assets, projector core
-  (structure/partition/foundations/scope), privacy gates, provenance, output
-  contract checks, CLI + report, and the publish workflow — each step RED→GREEN→
-  commit and traced to a spec rule. Out-of-band prerequisites (public repo, PAT
-  secret, branch/tag rulesets) are called out as a human-owned dependency gate.
+  single-task plan: manifest/assets first (declaring `privatePaths` + `scrub`, no
+  source relocation), then projector core (structure/partition/foundations/scope),
+  the privacy publish boundary, provenance, output contract checks, CLI + report,
+  and the publish workflow — each step RED→GREEN→commit and traced to a spec rule,
+  with the mandatory six-part phase anatomy and an ADR traceability matrix.
+  Out-of-band prerequisites (public repo, PAT secret, branch/tag rulesets) are a
+  human-owned dependency gate.
 
 - **Decided the public distribution model for the operator skills — ADR-025
   (proposed).** Resolved the distribution question left open in
@@ -36,8 +38,10 @@
   (`student/`, `curator/`) so the role partition is structural — which closes the
   curator-into-student drift path at its source. Producer-side only; the consumer
   counterpart is inventory ADR-001. Captured the intake brief and hardened both
-  docs against a Codex review. **Prerequisite:** four user-specific reference files
-  still in `agonara/skills/` must be relocated out before any first publish.
+  docs against a Codex review. **2026-07-01 revision:** the initial relocation
+  prerequisite (P12) was withdrawn — the allowlist already makes publication exact,
+  so the four user-specific reference files stay in `agonara/skills/` and the
+  projection scrubs the personal `SKILL.md` section at publish instead.
 
 ## 2026-06-30
 
