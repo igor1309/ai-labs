@@ -1,0 +1,78 @@
+name: Publish Agonara Skills
+
+on:
+  push:
+    branches:
+      - trunk
+    paths:
+      - 'agonara/skills/**'
+      - 'agonara/skills-publish-manifest.json'
+      - 'agonara/publish-assets/**'
+      - 'agonara/scripts/project-public-skills.mjs'
+      - 'agonara/scripts/skill-contract.mjs'
+      - 'agonara/scripts/publish-guard.mjs'
+      - 'agonara/docs/api/openapi.yml'
+      - '.github/workflows/agonara-skills-publish.yml'
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout ai-labs
+        uses: actions/checkout@v5
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Checkout agonara-skills (public target)
+        uses: actions/checkout@v5
+        with:
+          repository: igor1309/agonara-skills
+          token: ${{ secrets.AGONARA_SKILLS_PAT }}
+          path: agonara-skills-public
+          fetch-depth: 0
+
+      - name: Project into a clean staging tree
+        run: |
+          node agonara/scripts/project-public-skills.mjs \
+            --upstream-sha "$GITHUB_SHA" \
+            --skills-dir agonara/skills \
+            --manifest agonara/skills-publish-manifest.json \
+            --assets agonara/publish-assets \
+            --openapi agonara/docs/api/openapi.yml \
+            --out staging \
+            --report report.json
+          cat report.json
+
+      - name: Guard history, commit payload, and publish pinned tag
+        working-directory: agonara-skills-public
+        run: |
+          set -euo pipefail
+          TAG="release/$(echo "$GITHUB_SHA" | cut -c1-12)"
+
+          # R11 idempotent: an already-published release is a no-op, never a re-tag.
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "release $TAG already published; nothing to do"
+            exit 0
+          fi
+
+          # R8 ancestry: the fetched public HEAD must descend from the last release.
+          LAST_TAG="$(git tag --list 'release/*' --sort=-creatordate | head -n1 || true)"
+          if [ -n "$LAST_TAG" ]; then
+            node "$GITHUB_WORKSPACE/agonara/scripts/publish-guard.mjs" "$LAST_TAG" HEAD
+          fi
+
+          # R11 atomic: replace payload, commit payload + provenance together, tag it.
+          find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+          cp -R "$GITHUB_WORKSPACE"/staging/. .
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add -A
+          git commit -m "release ${TAG#release/} from ai-labs $GITHUB_SHA"
+          git tag -a "$TAG" -m "Agonara skills release from ai-labs $GITHUB_SHA"
+          git push origin HEAD
+          git push origin "$TAG"
