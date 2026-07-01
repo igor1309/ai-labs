@@ -19,6 +19,15 @@
   exit-code + `--report` failure-kind contract; and reclassified the repo-ruleset
   check from "unverifiable" to a `gh api` inspection.
 
+- **Planned the projection implementation —
+  `docs/plans/agonara-skills-public-projection.md`.** A deferred, TDD-sequenced,
+  single-task plan: upstream hygiene first (relocate the four personal files +
+  drop their `SKILL.md` pointers, R12), then manifest/assets, projector core
+  (structure/partition/foundations/scope), privacy gates, provenance, output
+  contract checks, CLI + report, and the publish workflow — each step RED→GREEN→
+  commit and traced to a spec rule. Out-of-band prerequisites (public repo, PAT
+  secret, branch/tag rulesets) are called out as a human-owned dependency gate.
+
 - **Decided the public distribution model for the operator skills — ADR-025
   (proposed).** Resolved the distribution question left open in
   `skills/operator-skill-packaging_pre_adr.md`: publish the skills as a
