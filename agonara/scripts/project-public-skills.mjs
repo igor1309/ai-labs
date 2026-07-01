@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 
-import { openApiRoutes, routeCitations, routeKey } from "./skill-contract.mjs";
+import { itemQualityBlock, openApiRoutes, routeCitations, routeKey } from "./skill-contract.mjs";
 
 // Relative Markdown link targets in a SKILL.md body (skips absolute URLs and anchors).
 function relativeLinkTargets(content) {
@@ -127,6 +127,20 @@ export async function project({ skillsDir, manifestPath, outDir, upstreamSha, op
           failures.push({ rule: "R9", kind: "route-citation", detail: `${rel} -> ${cite.method} ${cite.path}` });
         }
       }
+    }
+  }
+
+  const guardedBlocks = listStagedFiles(outDir)
+    .filter($0 => $0.endsWith("/SKILL.md"))
+    .map($0 => ({ rel: $0, block: itemQualityBlock(readFileSync(join(outDir, $0), "utf8")) }))
+    .filter($0 => $0.block !== null);
+  for (const other of guardedBlocks.slice(1)) {
+    if (other.block !== guardedBlocks[0].block) {
+      failures.push({
+        rule: "R9",
+        kind: "item-quality-parity",
+        detail: `${guardedBlocks[0].rel} vs ${other.rel}`,
+      });
     }
   }
 

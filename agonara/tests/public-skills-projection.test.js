@@ -342,3 +342,31 @@ test("projectPublicSkills_shouldFailOnRouteCitationAbsentFromOpenApi_butPassWhen
   const good = await project(opts);
   assert.equal(good.failures.some($0 => $0.rule === "R9"), false);
 });
+
+test("projectPublicSkills_shouldFailWhenGuardedItemQualityBlocksDiverge_acrossPublishedSkills", async () => {
+  const tree = makeUpstreamTree();
+  const opts = {
+    skillsDir: tree.skillsDir,
+    manifestPath: tree.manifestPath,
+    assetsDir: tree.assetsDir,
+    upstreamSha: SHA,
+    outDir: tree.outDir,
+  };
+  const block = "#### The stem\n\nKeep distractors plausible to one another across the set.\n";
+  writeFileSync(join(tree.skillsDir, "stu-alpha", "SKILL.md"), `# A\n\n${block}`);
+  writeFileSync(join(tree.skillsDir, "cur-gamma", "SKILL.md"), `# G\n\n${block}`);
+
+  const matched = await project(opts);
+  assert.equal(matched.failures.some($0 => $0.rule === "R9"), false);
+
+  writeFileSync(
+    join(tree.skillsDir, "cur-gamma", "SKILL.md"),
+    "# G\n\n#### The stem\n\nDifferent rule to one another across the set.\n",
+  );
+  const diverged = await project(opts);
+  assert.equal(diverged.ok, false);
+  assert.equal(
+    diverged.failures.some($0 => $0.rule === "R9" && $0.kind === "item-quality-parity"),
+    true,
+  );
+});
