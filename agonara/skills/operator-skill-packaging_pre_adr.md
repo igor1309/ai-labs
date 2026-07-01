@@ -152,6 +152,12 @@ count, to the role names, or to the cross-runtime story.
 - **Intra-role granularity.** Does curator stay a four-skill bucket, and do
   student/admin remain single-skill packages (and if so, what is the single
   skill's folder/invocation name)?
-- **Distribution model.** Instance-shipped (versioned with the API) versus a
+- **Distribution model.** ~~Instance-shipped (versioned with the API) versus a
   standalone marketplace — which, and how does it interact with the role-scoped
-  split? (The split is strongest in the standalone case.)
+  split? (The split is strongest in the standalone case.)~~ **Resolved by
+  [`../docs/adr/adr-025-public-agonara-skills-projection.md`](../docs/adr/adr-025-public-agonara-skills-projection.md):**
+  a standalone public `agonara-skills` tap repo, projected from this upstream as
+  two source-owned role subfolders. (Note: ADR-025 packages by published *tap
+  repo*, not the Claude Code plugin marketplace this pre-ADR explored — the
+  role-scoped split is preserved, but as subfolders, not `marketplace.json`
+  plugins.)
