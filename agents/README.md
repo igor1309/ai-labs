@@ -17,6 +17,7 @@ Specialized OpenClaw agents whose definitions live here and whose runtime is the
 | `doc-drift-agent` | Reviews `igor1309/ai-labs` documentation scopes (opens fix PRs) |
 | `maestro-flow-review-agent` | Reviews `igor1309/ios.config` Maestro flow YAML (opens fix PRs) |
 | `product-research-agent` | On-demand evidence-only research on a named product; returns a report as a Telegram file (no schedule, no PRs) |
+| `hermes-memory-review-agent` | Weekly review of a read-only Hermes memory snapshot → proposing-only report committed to the canonical skills repo; hourly memory-update ping (never merges) |
 
 ## Conventions
 

@@ -23,7 +23,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 
 | Path | Purpose |
 |------|---------|
-| `agents/` | OpenClaw agent-fleet operational docs (runbook, gotchas, shared README/TODO) and the nested `maestro-flow-review-agent/`, `doc-drift-agent/`, and `product-research-agent/` definitions |
+| `agents/` | OpenClaw agent-fleet operational docs (runbook, gotchas, shared README/TODO) and the nested `maestro-flow-review-agent/`, `doc-drift-agent/`, `product-research-agent/`, and `hermes-memory-review-agent/` definitions |
 | `migrate-to-skills/guides/` | Foundational methodologies and style guides for AI-assisted work |
 | `prompts/` | Focused one-shot task instructions |
 | `dev-skills/` | Development workspace for Claude Code skills; published to `igor1309/skills` |
