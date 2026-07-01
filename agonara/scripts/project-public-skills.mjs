@@ -7,12 +7,19 @@ import { dirname, join } from "node:path";
 
 export async function project({ skillsDir, manifestPath, outDir }) {
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  const ship = manifest.ship || {};
+
+  const copySkill = (bucket, skill) => {
+    for (const rel of ["SKILL.md", ...(ship[skill] || [])]) {
+      const dest = join(outDir, bucket, skill, rel);
+      mkdirSync(dirname(dest), { recursive: true });
+      copyFileSync(join(skillsDir, skill, rel), dest);
+    }
+  };
 
   for (const [bucket, skills] of Object.entries(manifest.buckets)) {
-    for (const skill of skills) {
-      const dest = join(outDir, bucket, skill, "SKILL.md");
-      mkdirSync(dirname(dest), { recursive: true });
-      copyFileSync(join(skillsDir, skill, "SKILL.md"), dest);
+    for (const skill of [...manifest.sharedFoundations, ...skills]) {
+      copySkill(bucket, skill);
     }
   }
 }

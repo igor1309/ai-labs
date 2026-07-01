@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import test from "node:test";
 
 import { project } from "../scripts/project-public-skills.mjs";
@@ -56,6 +56,14 @@ function makeUpstreamTree() {
   return { root, skillsDir, assetsDir, outDir, manifestPath, manifest };
 }
 
+function listFiles(dir) {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter($0 => $0.isFile())
+    .map($0 => relative(dir, join($0.parentPath, $0.name)).split("\\").join("/"))
+    .sort();
+}
+
 const SHA = "a".repeat(40);
 
 test("projectPublicSkills_shouldWriteEachBucketSkillIntoItsRoleSubfolder_onProjection", async () => {
@@ -71,4 +79,33 @@ test("projectPublicSkills_shouldWriteEachBucketSkillIntoItsRoleSubfolder_onProje
 
   assert.equal(existsSync(join(tree.outDir, "student", "stu-alpha", "SKILL.md")), true);
   assert.equal(existsSync(join(tree.outDir, "curator", "cur-gamma", "SKILL.md")), true);
+});
+
+test("projectPublicSkills_shouldStageExactlyTheAllowlistPayload_onProjection", async () => {
+  const tree = makeUpstreamTree();
+
+  await project({
+    skillsDir: tree.skillsDir,
+    manifestPath: tree.manifestPath,
+    assetsDir: tree.assetsDir,
+    upstreamSha: SHA,
+    outDir: tree.outDir,
+  });
+
+  const payload = [
+    ...listFiles(join(tree.outDir, "student")).map($0 => `student/${$0}`),
+    ...listFiles(join(tree.outDir, "curator")).map($0 => `curator/${$0}`),
+  ].sort();
+
+  assert.deepEqual(payload, [
+    "curator/cur-gamma/SKILL.md",
+    "curator/cur-gamma/extra.md",
+    "curator/foundation-one/SKILL.md",
+    "curator/foundation-two/SKILL.md",
+    "student/foundation-one/SKILL.md",
+    "student/foundation-two/SKILL.md",
+    "student/stu-alpha/SKILL.md",
+    "student/stu-drills/SKILL.md",
+    "student/stu-drills/references/keep.md",
+  ]);
 });
