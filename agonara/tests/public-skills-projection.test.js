@@ -208,3 +208,23 @@ test("projectPublicSkills_shouldCopyFoundationsAsByteIdenticalRealFiles_intoBoth
   assert.equal(lstatSync(studentCopy).isSymbolicLink(), false);
   assert.equal(lstatSync(curatorCopy).isSymbolicLink(), false);
 });
+
+test("projectPublicSkills_shouldScrubDeclaredSectionFromPublishedSkill_keepingSourceIntact", async () => {
+  const tree = makeUpstreamTree();
+  const sourceSkill = join(tree.skillsDir, "stu-drills", "SKILL.md");
+  const sourceBefore = readFileSync(sourceSkill, "utf8");
+
+  await project({
+    skillsDir: tree.skillsDir,
+    manifestPath: tree.manifestPath,
+    assetsDir: tree.assetsDir,
+    upstreamSha: SHA,
+    outDir: tree.outDir,
+  });
+
+  const published = readFileSync(join(tree.outDir, "student", "stu-drills", "SKILL.md"), "utf8");
+  assert.equal(published.includes("Body kept."), true, "content outside the section stays");
+  assert.equal(published.includes("## References"), false, "the scrubbed heading is gone");
+  assert.equal(published.includes("references/secret.md"), false, "no pointer to an unshipped file remains");
+  assert.equal(readFileSync(sourceSkill, "utf8"), sourceBefore, "source SKILL.md is untouched");
+});

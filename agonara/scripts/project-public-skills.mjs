@@ -2,12 +2,35 @@
 // tree (student/ + curator/ role subfolders), per the publish manifest.
 // Behavior is added test-first; see tests/public-skills-projection.test.js.
 
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+
+// Remove each declared Markdown section — the heading line through the line before
+// the next heading of the same or higher level (or end of file) — from a SKILL.md
+// body. Used to strip personal sections from the published copy only.
+function scrubSections(content, headings) {
+  let lines = content.split("\n");
+  for (const heading of headings) {
+    const level = (heading.match(/^#+/) || [""])[0].length;
+    const start = lines.indexOf(heading);
+    if (start === -1) continue;
+    let end = lines.length;
+    for (let i = start + 1; i < lines.length; i++) {
+      const marker = lines[i].match(/^(#+)\s/);
+      if (marker && marker[1].length <= level) {
+        end = i;
+        break;
+      }
+    }
+    lines = [...lines.slice(0, start), ...lines.slice(end)];
+  }
+  return lines.join("\n");
+}
 
 export async function project({ skillsDir, manifestPath, outDir }) {
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   const ship = manifest.ship || {};
+  const scrub = manifest.scrub || {};
   const failures = [];
 
   const declaredSkills = [
@@ -33,9 +56,14 @@ export async function project({ skillsDir, manifestPath, outDir }) {
 
   const copySkill = (bucket, skill) => {
     for (const rel of ["SKILL.md", ...(ship[skill] || [])]) {
+      const src = join(skillsDir, skill, rel);
       const dest = join(outDir, bucket, skill, rel);
       mkdirSync(dirname(dest), { recursive: true });
-      copyFileSync(join(skillsDir, skill, rel), dest);
+      if (rel === "SKILL.md" && scrub[skill]) {
+        writeFileSync(dest, scrubSections(readFileSync(src, "utf8"), scrub[skill]));
+      } else {
+        copyFileSync(src, dest);
+      }
     }
   };
 
