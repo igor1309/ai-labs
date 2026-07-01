@@ -34,7 +34,7 @@ unit-tests without them, but the workflow (Phase 7) cannot publish until they ho
    public, empty (ADR consequence — "created out of band").
 2. **Repo PAT secret.** A push-scoped PAT stored as an ai-labs CI secret (analogous
    to `PUBLIC_REPO_PAT`), restricted to the `agonara-skills` repo.
-3. **Repo protection (R8).** Branch/tag rulesets on `main` and `release/*`
+3. **Repo protection (R8).** Branch/tag rulesets on `trunk` and `release/*`
    restricting push and tag-creation to the projection CI identity — inspected via
    `gh api repos/<owner>/agonara-skills/rulesets` at closeout.
 

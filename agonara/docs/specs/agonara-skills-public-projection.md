@@ -258,8 +258,8 @@ projector process). Rules R1–R11 map one-to-one to ADR invariants P1–P11.
   descendant of the last release tag (`git merge-base --is-ancestor <lastTag>
   <fetchedHead>`); a HEAD not descended from the last release MUST reject the
   publish (`kind: not-descendant`) — no rewrite/force between releases.
-- `main` and release tags on `agonara-skills` MUST be ruleset-protected to the CI
-  identity. Verified by config inspection —
+- `trunk` (the public repo's default branch) and release tags on `agonara-skills`
+  MUST be ruleset-protected to the CI identity. Verified by config inspection —
   `gh api repos/<owner>/agonara-skills/rulesets` MUST show branch/tag rulesets
   restricting pushes/tag-creation to the projection identity (see
   [Done criteria](#done-criteria)).
@@ -298,7 +298,7 @@ Run over the **staged (published) trees**, not source:
 
 - Publication MUST be atomic: the projector validates the manifest and per-tree
   hashes in staging; the workflow then commits the payload **and** `provenance.json`
-  in a **single** commit on the public repo's `main`, and creates an **annotated**
+  in a **single** commit on the public repo's default branch (`trunk`), and creates an **annotated**
   tag `release/<upstream-short-sha>` at that commit.
 - The tag/commit is the release identity a consumer pins to and MUST NOT be moved
   after publication. Re-running for the same upstream SHA MUST be a no-op if the tag
@@ -397,7 +397,7 @@ fixture. Personal-data cases use synthetic markers, never real user data.
   publishes atomically per R11.
 - **Repo protection (R8) — verifiable by inspection, not by an in-repo test:**
   `gh api repos/<owner>/agonara-skills/rulesets` shows branch/tag rulesets
-  restricting push and tag-creation on `main` and `release/*` to the projection CI
+  restricting push and tag-creation on `trunk` and `release/*` to the projection CI
   identity. This requires the out-of-band repo to exist, so it is checked post-repo
   creation rather than in the ai-labs test suite; it is inspectable, not
   Unverifiable.
