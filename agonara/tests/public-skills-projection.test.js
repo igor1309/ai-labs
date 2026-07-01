@@ -138,3 +138,26 @@ test("projectPublicSkills_shouldRebuildFromCleanStagingAndBeByteIdentical_onReru
   await project(opts);
   assert.equal(hashTree(tree.outDir), first, "reruns must be byte-identical");
 });
+
+test("projectPublicSkills_shouldFailClosed_whenADeclaredSkillIsAbsentFromSource", async () => {
+  const tree = makeUpstreamTree();
+  const broken = {
+    ...tree.manifest,
+    buckets: { ...tree.manifest.buckets, student: [...tree.manifest.buckets.student, "stu-ghost"] },
+  };
+  writeFileSync(tree.manifestPath, JSON.stringify(broken, null, 2));
+
+  const result = await project({
+    skillsDir: tree.skillsDir,
+    manifestPath: tree.manifestPath,
+    assetsDir: tree.assetsDir,
+    upstreamSha: SHA,
+    outDir: tree.outDir,
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(
+    result.failures.some($0 => $0.rule === "R1" && $0.detail.includes("stu-ghost")),
+    true,
+  );
+});

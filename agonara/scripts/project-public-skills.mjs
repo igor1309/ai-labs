@@ -2,12 +2,27 @@
 // tree (student/ + curator/ role subfolders), per the publish manifest.
 // Behavior is added test-first; see tests/public-skills-projection.test.js.
 
-import { copyFileSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 export async function project({ skillsDir, manifestPath, outDir }) {
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   const ship = manifest.ship || {};
+  const failures = [];
+
+  const declaredSkills = [
+    ...manifest.sharedFoundations,
+    ...manifest.buckets.student,
+    ...manifest.buckets.curator,
+  ];
+  for (const skill of declaredSkills) {
+    if (!existsSync(join(skillsDir, skill, "SKILL.md"))) {
+      failures.push({ rule: "R1", kind: "missing-skill", detail: skill });
+    }
+  }
+  if (failures.length > 0) {
+    return { ok: false, failures };
+  }
 
   rmSync(outDir, { recursive: true, force: true });
 
@@ -24,4 +39,6 @@ export async function project({ skillsDir, manifestPath, outDir }) {
       copySkill(bucket, skill);
     }
   }
+
+  return { ok: true, failures: [] };
 }
