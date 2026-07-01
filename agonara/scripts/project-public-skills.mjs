@@ -2,6 +2,7 @@
 // tree (student/ + curator/ role subfolders), per the publish manifest.
 // Behavior is added test-first; see tests/public-skills-projection.test.js.
 
+import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 
@@ -12,7 +13,17 @@ function listStagedFiles(dir) {
   if (!existsSync(dir)) return [];
   return readdirSync(dir, { recursive: true, withFileTypes: true })
     .filter($0 => $0.isFile())
-    .map($0 => relative(dir, join($0.parentPath, $0.name)));
+    .map($0 => relative(dir, join($0.parentPath, $0.name)).split("\\").join("/"));
+}
+
+// Canonical, filesystem-order-independent content hash of a projected tree:
+// sorted POSIX relpaths, each "<relpath> <sha256hex>\n", hashed together.
+function treeHash(dir) {
+  const serial = listStagedFiles(dir)
+    .sort()
+    .map($0 => `${$0} ${createHash("sha256").update(readFileSync(join(dir, $0))).digest("hex")}\n`)
+    .join("");
+  return createHash("sha256").update(serial).digest("hex");
 }
 
 // Remove each declared Markdown section — the heading line through the line before
@@ -37,7 +48,7 @@ function scrubSections(content, headings) {
   return lines.join("\n");
 }
 
-export async function project({ skillsDir, manifestPath, outDir }) {
+export async function project({ skillsDir, manifestPath, outDir, upstreamSha }) {
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   const ship = manifest.ship || {};
   const scrub = manifest.scrub || {};
@@ -77,11 +88,20 @@ export async function project({ skillsDir, manifestPath, outDir }) {
     }
   };
 
+  const trees = {};
   for (const [bucket, skills] of Object.entries(manifest.buckets)) {
     for (const skill of [...manifest.sharedFoundations, ...skills]) {
       copySkill(bucket, skill);
+      trees[`${bucket}/${skill}`] = join(outDir, bucket, skill);
     }
   }
+
+  const sortedTrees = {};
+  for (const key of Object.keys(trees).sort()) {
+    sortedTrees[key] = treeHash(trees[key]);
+  }
+  const provenance = { upstreamCommit: upstreamSha, hashAlgo: "sha256", trees: sortedTrees };
+  writeFileSync(join(outDir, "provenance.json"), `${JSON.stringify(provenance, null, 2)}\n`);
 
   for (const rel of listStagedFiles(outDir)) {
     const text = readFileSync(join(outDir, rel), "utf8");

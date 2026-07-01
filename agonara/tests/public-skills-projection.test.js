@@ -71,6 +71,14 @@ function hashTree(dir) {
     .join("\n");
 }
 
+// Independent recomputation of the spec R7 canonical tree hash.
+function treeHashR7(dir) {
+  const serial = listFiles(dir)
+    .map($0 => `${$0} ${createHash("sha256").update(readFileSync(join(dir, $0))).digest("hex")}\n`)
+    .join("");
+  return createHash("sha256").update(serial).digest("hex");
+}
+
 const SHA = "a".repeat(40);
 
 test("projectPublicSkills_shouldWriteEachBucketSkillIntoItsRoleSubfolder_onProjection", async () => {
@@ -251,5 +259,30 @@ test("projectPublicSkills_shouldPassScanOnCleanTreeButFail_whenAPersonalMarkerRe
   assert.equal(
     dirty.failures.some($0 => $0.rule === "R6" && $0.kind === "personal-marker"),
     true,
+  );
+});
+
+test("projectPublicSkills_shouldEmitDeterministicProvenanceWithPerTreeHashes_onProjection", async () => {
+  const tree = makeUpstreamTree();
+
+  await project({
+    skillsDir: tree.skillsDir,
+    manifestPath: tree.manifestPath,
+    assetsDir: tree.assetsDir,
+    upstreamSha: SHA,
+    outDir: tree.outDir,
+  });
+
+  const prov = JSON.parse(readFileSync(join(tree.outDir, "provenance.json"), "utf8"));
+
+  assert.deepEqual(Object.keys(prov), ["upstreamCommit", "hashAlgo", "trees"]);
+  assert.equal(prov.upstreamCommit, SHA);
+  assert.equal(prov.hashAlgo, "sha256");
+  assert.equal(Object.keys(prov.trees).includes("student/stu-alpha"), true);
+  assert.equal(Object.keys(prov.trees).includes("curator/cur-gamma"), true);
+  assert.deepEqual(Object.keys(prov.trees), [...Object.keys(prov.trees)].sort());
+  assert.equal(
+    prov.trees["student/stu-alpha"],
+    treeHashR7(join(tree.outDir, "student", "stu-alpha")),
   );
 });
