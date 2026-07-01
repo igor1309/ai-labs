@@ -32,8 +32,11 @@ unit-tests without them, but the workflow (Phase 7) cannot publish until they ho
 
 1. **Public repo exists.** `agonara-skills` created on the target GitHub owner,
    public, empty (ADR consequence — "created out of band").
-2. **Repo PAT secret.** A push-scoped PAT stored as an ai-labs CI secret (analogous
-   to `PUBLIC_REPO_PAT`), restricted to the `agonara-skills` repo.
+2. **Repo PAT secret.** The workflow authenticates the cross-repo push with the
+   existing `PUBLIC_REPO_PAT` secret (a classic repo-scoped token already used to
+   publish to `igor1309/skills`); confirmed reachable for `igor1309/agonara-skills`
+   by the first publish run. Swap to a dedicated least-privilege secret later by
+   changing only the `token:` reference.
 3. **Repo protection (R8).** Branch/tag rulesets on `trunk` and `release/*`
    restricting push and tag-creation to the projection CI identity — inspected via
    `gh api repos/<owner>/agonara-skills/rulesets` at closeout.

@@ -218,7 +218,8 @@ release is the consumer's concern.
   reference files remain in `agonara/skills/` for the private deployment and are
   excluded from the public projection by the P6 allowlist, while the projection
   scrubs the personal section that references them from the published `SKILL.md`.
-- Publishing depends on a new repo PAT secret in ai-labs CI and an existing public
+- Publishing depends on a push-scoped repo PAT secret in ai-labs CI (the existing
+  `PUBLIC_REPO_PAT` is reused) and an existing public
   `agonara-skills` repo (created out of band).
 - Future extension: a third bucket for `agonara-admin` if it is decided to reach a
   consumer; the manifest + subfolder pattern extends to it without reshaping the
