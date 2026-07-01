@@ -4,7 +4,14 @@
 
 import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
+
+// Relative Markdown link targets in a SKILL.md body (skips absolute URLs and anchors).
+function relativeLinkTargets(content) {
+  return [...content.matchAll(/\[[^\]]*\]\(\s*([^)\s]+)/g)]
+    .map($0 => $0[1].split("#")[0])
+    .filter($0 => $0 && !/^[a-z][a-z0-9+.-]*:/i.test($0) && !$0.startsWith("//"));
+}
 
 // Heuristic backstop markers for personal data reaching the published output.
 const PERSONAL_MARKERS = [/\b\d{1,3}\/100\b/, /\buser-specific\b/i, /\bcalibration\b/i];
@@ -106,7 +113,20 @@ export async function project({ skillsDir, manifestPath, outDir, upstreamSha }) 
   for (const rel of listStagedFiles(outDir)) {
     const text = readFileSync(join(outDir, rel), "utf8");
     if (PERSONAL_MARKERS.some($0 => $0.test(text))) {
-      failures.push({ rule: "R6", kind: "personal-marker", detail: rel.split("\\").join("/") });
+      failures.push({ rule: "R6", kind: "personal-marker", detail: rel });
+    }
+  }
+
+  for (const rel of listStagedFiles(outDir).filter($0 => $0.endsWith("/SKILL.md"))) {
+    const bucket = rel.split("/")[0];
+    const roleRoot = join(outDir, bucket);
+    const skillPath = join(outDir, rel);
+    for (const link of relativeLinkTargets(readFileSync(skillPath, "utf8"))) {
+      const target = resolve(dirname(skillPath), link);
+      const inRole = target === roleRoot || target.startsWith(roleRoot + sep);
+      if (!inRole || !existsSync(target)) {
+        failures.push({ rule: "R10", kind: "dangling-link", detail: `${rel} -> ${link}` });
+      }
     }
   }
 

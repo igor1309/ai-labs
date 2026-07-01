@@ -286,3 +286,32 @@ test("projectPublicSkills_shouldEmitDeterministicProvenanceWithPerTreeHashes_onP
     treeHashR7(join(tree.outDir, "student", "stu-alpha")),
   );
 });
+
+test("projectPublicSkills_shouldFailOnDanglingLinkButPassInSubfolderLink_inPublishedSkill", async () => {
+  const tree = makeUpstreamTree();
+  const opts = {
+    skillsDir: tree.skillsDir,
+    manifestPath: tree.manifestPath,
+    assetsDir: tree.assetsDir,
+    upstreamSha: SHA,
+    outDir: tree.outDir,
+  };
+
+  writeFileSync(
+    join(tree.skillsDir, "stu-alpha", "SKILL.md"),
+    "# Student Alpha\n\nSee [notes](../../research/notes.md).\n",
+  );
+  const bad = await project(opts);
+  assert.equal(bad.ok, false);
+  assert.equal(
+    bad.failures.some($0 => $0.rule === "R10" && $0.kind === "dangling-link"),
+    true,
+  );
+
+  writeFileSync(
+    join(tree.skillsDir, "stu-alpha", "SKILL.md"),
+    "# Student Alpha\n\nBuilds on [foundation](../foundation-one/SKILL.md).\n",
+  );
+  const good = await project(opts);
+  assert.equal(good.failures.some($0 => $0.rule === "R10"), false);
+});
