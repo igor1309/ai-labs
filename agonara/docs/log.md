@@ -1,5 +1,18 @@
 # Log
 
+## 2026-07-01
+
+- **Decided the public distribution model for the operator skills — ADR-025
+  (proposed).** Resolved the distribution question left open in
+  `skills/operator-skill-packaging_pre_adr.md`: publish the skills as a
+  privacy-scrubbed, provenance-stamped **projection** of `agonara/skills/` into a
+  public `agonara-skills` repo, split into two source-owned role subfolders
+  (`student/`, `curator/`) so the role partition is structural — which closes the
+  curator-into-student drift path at its source. Producer-side only; the consumer
+  counterpart is inventory ADR-001. Captured the intake brief and hardened both
+  docs against a Codex review. **Prerequisite:** four user-specific reference files
+  still in `agonara/skills/` must be relocated out before any first publish.
+
 ## 2026-06-30
 
 - **Disambiguated the explanation/tutoring route between `agonara-student` and
