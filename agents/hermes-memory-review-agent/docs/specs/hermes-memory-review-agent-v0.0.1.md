@@ -167,9 +167,20 @@ agent and passes the trigger kind and a `--scheduled` token for scheduled ticks.
 
 ## Tests (required)
 
-Artifact checks are runnable against the repo. Behavioral cases run against the
-deployed agent (or a dry-run harness) with a fixture snapshot; Bot API and
-git/push interactions are mocked so counts and arguments are assertable.
+Artifact checks (T1–T6) are runnable against the repo and pass at build time.
+Behavioral cases (T7–T22) are **run-verified**, not an automated suite: they are
+demonstrated against a fixture snapshot on a dry-run / first live run, matching
+the sibling agents (doc-drift, maestro), which ship no wrapper test harness and
+verify by running. This is the "match siblings" verification decision for
+v0.0.1; a later version may extract the deterministic wrapper logic into a
+harness that automates the T13–T22 subset.
+
+Implementation split (informs which side each case exercises): the **hourly ping
+is deterministic and owned by the cron wrapper — no LLM invocation** (it counts
+new `pending/memory/` items and posts a number); the **weekly review is the LLM
+agent's job**. Delivery, the suppression gate, the concurrency lock, and the ping
+cursor are wrapper-enforced (rules 8, 10, 12, 14). Manual triggering applies to
+`weekly-review`; the hourly ping needs no manual trigger.
 
 ### Artifact / structure (repo-inspectable)
 
