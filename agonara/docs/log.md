@@ -2,6 +2,16 @@
 
 ## 2026-07-01
 
+- **Specced the public-skills projection — `docs/specs/agonara-skills-public-projection.md`.**
+  Turned ADR-025 into an implementable, testable producer contract: a deterministic
+  `project-public-skills.mjs` + source-owned `skills-publish-manifest.json` that
+  renders `agonara/skills/` into role-scoped `student/`/`curator/` subfolders,
+  privacy-scrubbed and provenance-stamped, failing the publish on any invariant
+  breach. Pinned the three open questions — provenance as a top-level
+  `provenance.json` (sha256 per-tree hashes), trigger as CI-on-`trunk` + manual
+  dispatch, and shared-foundation dedup as byte-identical real-file copies — and
+  mapped P1–P12 to R1–R12 with 16 enumerated tests.
+
 - **Decided the public distribution model for the operator skills — ADR-025
   (proposed).** Resolved the distribution question left open in
   `skills/operator-skill-packaging_pre_adr.md`: publish the skills as a
