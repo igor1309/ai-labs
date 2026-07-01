@@ -10,7 +10,14 @@
   breach. Pinned the three open questions — provenance as a top-level
   `provenance.json` (sha256 per-tree hashes), trigger as CI-on-`trunk` + manual
   dispatch, and shared-foundation dedup as byte-identical real-file copies — and
-  mapped P1–P12 to R1–R12 with 16 enumerated tests.
+  mapped P1–P12 to R1–R12 with enumerated tests. Hardened after a Codex review:
+  corrected the privacy model from "strip personal files" to "assert absence"
+  (personal content never in source per P12), so R6 gate 1 also fails on a shipped
+  `SKILL.md` still referencing a relocated file; folded that `SKILL.md` cleanup
+  into the R12 hygiene precondition; fixed the R11/R12/R13 numbering and the
+  Pn↔Rn mapping; canonicalized the provenance tree-hash; gave the CLI an
+  exit-code + `--report` failure-kind contract; and reclassified the repo-ruleset
+  check from "unverifiable" to a `gh api` inspection.
 
 - **Decided the public distribution model for the operator skills — ADR-025
   (proposed).** Resolved the distribution question left open in
