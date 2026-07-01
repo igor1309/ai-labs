@@ -37,13 +37,13 @@ Personal reference content (calibration notes, per-user preferences) stays in
 `agonara/skills/` — the private/self deployment reads it. It never reaches the
 public projection because the projector draws the boundary at publish (ADR P6):
 
-- **Files** are published by a **default-deny allowlist** — only `SKILL.md` +
-  declared `ship[]`. The four personal reference files are declared `privatePaths`:
-  they stay in source, are never published, and do not trip the undeclared-file
-  check. Any *other* undeclared file fails for review.
+- **Files** are published by a **single default-deny allowlist** — only `SKILL.md` +
+  declared `ship[]`. Everything else under a skill folder, the four personal
+  reference files included, simply is not published; there is no second list. The
+  output is exactly the allowlist projection, pinned by tests (R1).
 - **Personal prose inside a shipped `SKILL.md`** (the `## References` section that
-  describes the private files) is removed by a declared **`scrub`** — so no personal
-  text and no pointer to an unpublished file survives in shipped content.
+  describes the unshipped files) is removed by a declared **`scrub`** — so no
+  personal text and no pointer to an unpublished file survives in shipped content.
 - An **output scan** is the backstop, not the mechanism of record.
 
 ## Non-Goals
@@ -62,8 +62,8 @@ public projection because the projector draws the boundary at publish (ADR P6):
 - **Upstream tree** — `agonara/skills/` at a specific ai-labs commit.
 - **Upstream commit SHA** — the release identity (`--upstream-sha`), full 40-char.
 - **Publish manifest** — `agonara/skills-publish-manifest.json`, source-owned,
-  the sole declaration of bucket membership, per-file ship allowlist, private files,
-  and per-skill section scrub:
+  the sole declaration of bucket membership, the per-file ship allowlist, and
+  per-skill section scrub:
 
   ```json
   {
@@ -78,12 +78,6 @@ public projection because the projector draws the boundary at publish (ADR P6):
       "agonara-curator-corpus": ["concept-extraction.md"],
       "oral-exam-drills": ["references/question-quality-and-grading.md"]
     },
-    "privatePaths": [
-      "assistant-authored-study-drills/references/user-calibration-notes.md",
-      "assistant-authored-study-drills/references/user-specific-preferences.md",
-      "assistant-authored-study-drills/references/button-flow-failures.md",
-      "agonara-coach/references/routing-calibration.md"
-    ],
     "scrub": {
       "assistant-authored-study-drills": ["## References"]
     }
@@ -93,10 +87,8 @@ public projection because the projector draws the boundary at publish (ADR P6):
   - `sharedFoundations` are projected into **both** buckets.
   - `ship[skill]` lists skill-relative product files published **in addition to**
     `SKILL.md` (always published). Nothing else in a skill folder is copied
-    (default-deny allowlist).
-  - `privatePaths` are source-relative files that stay in source and are **never
-    published**; declaring them suppresses the R6 undeclared-file failure for the
-    files that are deliberately private.
+    (single default-deny allowlist) — the personal reference files, being absent
+    from `ship`, are simply not published; they need no separate declaration.
   - `scrub[skill]` lists Markdown section headings to remove from that skill's
     **published** `SKILL.md` (see R6.2). The source `SKILL.md` is unchanged.
 
@@ -124,11 +116,10 @@ node agonara/scripts/project-public-skills.mjs \
   usage or I/O error. Fail-closed.
 - **Report:** on every run the projector writes a JSON result to `--report` (a path,
   or `-` for stdout):
-  `{ "ok": <bool>, "failures": [ { "rule": "R6", "kind": "undeclared-file", "detail": "<path>" }, … ] }`.
+  `{ "ok": <bool>, "failures": [ { "rule": "R6", "kind": "personal-marker", "detail": "<path>" }, … ] }`.
   `kind` distinguishes failure modes so a caller can assert a specific one
-  (`undeclared-file` = R6.1; `personal-marker` = R6.3; `not-descendant` = R8;
-  `dangling-link` = R10; …). A gate breach lists every failure it found, not only
-  the first.
+  (`personal-marker` = R6.3; `not-descendant` = R8; `dangling-link` = R10; …). A
+  gate breach lists every failure it found, not only the first.
 - **Purity:** for a fixed (upstream tree, manifest, assets, SHA) the staged bytes —
   `provenance.json` included — are identical across runs and machines. No
   wall-clock, hostname, filesystem-ordering, or other environment input.
@@ -212,7 +203,7 @@ projector process). Rules R1–R11 map one-to-one to ADR invariants P1–P11.
 
 - Each `student/<skill>` and `curator/<skill>` MUST contain only `SKILL.md` plus
   that skill's declared `ship[]` files. No `research/`, `docs/`, `backlog/`,
-  `privatePaths` files, or other repo-only content.
+  unshipped reference files, or other repo-only content.
 - Repository-level entries are limited to the closed set
   `{provenance.json, README.md, LICENSE}` plus the two role subfolders. Any other
   top-level entry in the staged tree MUST fail.
@@ -220,17 +211,17 @@ projector process). Rules R1–R11 map one-to-one to ADR invariants P1–P11.
 ### R6 — privacy publish boundary (three gates)
 
 1. **Allowlist copy (mechanism of record).** For each bucketed skill the projector
-   publishes **only** `SKILL.md` + `ship[skill]`. A source file whose skill-relative
-   path is in `privatePaths` is **skipped, not published, and not a failure**. Any
-   other source file under a bucketed skill — in neither `ship[skill]` nor
-   `privatePaths` nor `SKILL.md` — MUST fail **for review** (`kind: undeclared-file`):
-   a new, undeclared file is never silently shipped nor silently dropped; a human
-   classifies it (`ship`, `privatePaths`, or remove upstream).
+   publishes **only** `SKILL.md` + `ship[skill]` and copies **nothing else** under
+   the skill folder. Every other file — the personal reference files included — is
+   left in source, unpublished, by this one default-deny rule; there is no second
+   denylist to keep in sync. The staged output is therefore exactly the allowlist
+   projection, pinned by R1's allowlist-exact check.
 2. **Section scrub.** For each `scrub[skill]` heading, the projector MUST remove that
    Markdown section — the heading line through the line before the next heading of
    the same or higher level (or end of file) — from the **published** `SKILL.md`
    only. After scrub, the published `SKILL.md` MUST NOT contain the removed heading
-   or any reference to a `privatePaths` basename. The source `SKILL.md` is untouched.
+   or any reference to an unshipped `references/` file. The source `SKILL.md` is
+   untouched.
 3. **Output scan (backstop).** A heuristic content scan over the staged output MUST
    fail (`kind: personal-marker`) on: a recorded score matching `/\b\d{1,3}\/100\b/`;
    a match of `/\buser-specific\b/i` or `/\bcalibration\b/i`; or any string in a
@@ -300,7 +291,8 @@ Run over the **staged (published) trees**, not source:
   (`kind: dangling-link`). A link to `../../research/…`, `../../docs/…`, or a skill
   in the other role subfolder MUST fail.
 - Because R6.2 scrubs the personal `## References` section before this check runs,
-  the published `SKILL.md` carries no pointer to a `privatePaths` file to dangle.
+  the published `SKILL.md` carries no pointer to an unshipped `references/` file to
+  dangle.
 
 ### R11 — atomic, pinned publish *(workflow)*
 
@@ -332,7 +324,8 @@ fixture. Personal-data cases use synthetic markers, never real user data.
    recursive `path→sha256` map).
 2. **R1 allowlist-exact output** — the staged file set equals exactly the published
    `SKILL.md` + `ship[]` per bucketed skill + both foundations in both buckets +
-   `{provenance.json, README.md, LICENSE}`; no `privatePaths` file and no extra file.
+   `{provenance.json, README.md, LICENSE}`; no unshipped reference file and no extra
+   file.
 3. **R1 missing/extra skill** — a manifest skill absent from source fails
    (`ok:false`); `agonara-admin` present in source but in no bucket is absent from
    output and does **not** fail.
@@ -345,17 +338,18 @@ fixture. Personal-data cases use synthetic markers, never real user data.
    `curator/agonara-api-access`, and upstream are equal; mutating one staged copy
    fails the R4 check; no symlink exists in output.
 7. **R5 content scope** — a stray `research/` file under a source skill is not
-   copied; a `privatePaths` file is absent from output; an unexpected top-level
+   copied; an unshipped reference file is absent from output; an unexpected top-level
    staged entry (e.g. `notes.md`) fails; a root of exactly
    `{provenance.json, README.md, LICENSE, student/, curator/}` passes.
-8. **R6.1 private vs undeclared** — a `privatePaths` file present in source is not
-   published and does **not** fail; an undeclared file under a bucketed skill (not in
-   `ship[]` nor `privatePaths`) fails with `kind: undeclared-file`; adding it to
-   `ship[]` publishes it.
+8. **R6.1 allowlist-only** — a personal reference file present in source (e.g.
+   `agonara-coach/references/routing-calibration.md`) is not published and does
+   **not** fail; only `SKILL.md` + `ship[]` appear for each skill; adding a file to
+   `ship[]` publishes it, removing it from `ship[]` drops it — no second list is
+   consulted.
 9. **R6.2 section scrub** — a scrubbed `## References` section (and everything under
    it up to the next same/higher heading) is absent from the published `SKILL.md`;
-   content before and after the section is intact; no `privatePaths` basename remains
-   in the published `SKILL.md`; the source `SKILL.md` is unchanged.
+   content before and after the section is intact; no unshipped `references/` file
+   name remains in the published `SKILL.md`; the source `SKILL.md` is unchanged.
 10. **R6.3 output scan** — a synthetic marker (`71/100`, `user-specific`, a
     denylisted host string) surviving into staged output fails with
     `kind: personal-marker`; clean product content passes.
@@ -390,15 +384,15 @@ fixture. Personal-data cases use synthetic markers, never real user data.
   `provenance.json` and the copied `README.md`/`LICENSE`, and an `ok:true` report; a
   breach exits `1` with a `failures[]` entry naming the rule and kind.
 - **Manifest & assets:** `agonara/skills-publish-manifest.json` (sole
-  bucket/ship/`privatePaths`/`scrub` declaration, R2/R6) and
+  bucket/ship/`scrub` declaration, R2/R6) and
   `agonara/publish-assets/{README.md,LICENSE}` exist.
 - **Tests:** all cases in [Tests](#tests-required) pass —
   `./scripts/run_silent.sh "tests" npm test` (Node 22 per `agonara/CLAUDE.md`) and
   `./scripts/run_silent.sh "build" npx tsc --noEmit`.
 - **Privacy boundary proven (R6):** the published
   `student/assistant-authored-study-drills/SKILL.md` contains no `## References`
-  section and no `privatePaths` basename, while `agonara/skills/` is unchanged
-  (no relocation).
+  section and no unshipped `references/` file name, while `agonara/skills/` is
+  unchanged (no relocation).
 - **Workflow:** `.github/workflows/agonara-skills-publish.yml` triggers per R12 and
   publishes atomically per R11.
 - **Repo protection (R8) — verifiable by inspection, not by an in-repo test:**

@@ -39,8 +39,9 @@ unit-tests without them, but the workflow (Phase 7) cannot publish until they ho
    `gh api repos/<owner>/agonara-skills/rulesets` at closeout.
 
 No upstream hygiene / file relocation is required (ADR P12 withdrawn): the four
-personal reference files stay in `agonara/skills/` and are handled by the manifest
-(`privatePaths` + `scrub`), not moved.
+personal reference files stay in `agonara/skills/`. They are simply absent from the
+`ship` allowlist so they are never published, and the manifest `scrub` removes the
+`SKILL.md` section that names them — nothing is moved.
 
 ## Execution mode
 
@@ -99,7 +100,7 @@ projector reads.
 **Key work items.**
 - Step 1.1 — Author `agonara/skills-publish-manifest.json` exactly as the spec
   interface declares: `sharedFoundations`, `buckets.student`, `buckets.curator`,
-  `ship`, `privatePaths` (the four personal files), `scrub`
+  `ship` (the single allowlist), `scrub`
   (`assistant-authored-study-drills` → `["## References"]`). Commit:
   `agonara: add public-skills publish manifest`.
 - Step 1.2 — Add `agonara/publish-assets/README.md` (landing README: two role
@@ -107,8 +108,9 @@ projector reads.
   `agonara: add public-skills repo assets`.
 
 **Dependencies.** None.
-**Risks.** Manifest drift from the actual skill folder contents — mitigated by the
-Phase 3 undeclared-file check failing any unclassified file.
+**Risks.** Manifest drift from the actual skill folder contents — mitigated by
+R1's allowlist-exact test pinning the staged output to exactly `SKILL.md` + `ship[]`,
+so a forgotten product file shows up as a missing publish.
 **Validation.** `node -e` parses the manifest JSON; `./scripts/run_silent.sh "tests" npm test`
 stays green (no projector yet, existing suite unaffected).
 **Completion signal.** Manifest + both assets exist and parse.
@@ -130,8 +132,8 @@ helper; one RED→GREEN→commit each):
 - Step 2.3 (R4) — Test 6: foundations copied as real files into both subfolders,
   byte-identical to upstream by tree hash. Commit:
   `agonara: dedup shared foundations as real files`.
-- Step 2.4 (R5) — Test 7: stray `research/`/`privatePaths` files not copied;
-  unexpected top-level entry fails; exact closed root passes. Commit:
+- Step 2.4 (R5) — Test 7: stray `research/` and unshipped `references/` files not
+  copied; unexpected top-level entry fails; exact closed root passes. Commit:
   `agonara: scope projected content to product files`.
 
 **Dependencies.** Phase 1 (manifest, assets).
@@ -147,12 +149,14 @@ lists before copy/hash (R1, R7 step 2).
 backstop-scan output.
 
 **Key work items.**
-- Step 3.1 (R6.1) — Test 8: a `privatePaths` file is skipped, not published, and not
-  a failure; any other undeclared file fails with `kind: undeclared-file`; adding it
-  to `ship[]` publishes it. Commit: `agonara: publish only allowlisted skill files`.
+- Step 3.1 (R6.1) — Test 8: only `SKILL.md` + `ship[]` publish; the personal
+  reference files (and any other unshipped file) are not published and do not fail;
+  adding a file to `ship[]` publishes it, removing it drops it — no second list.
+  Commit: `agonara: publish only allowlisted skill files`.
 - Step 3.2 (R6.2) — Test 9: the declared `## References` section (heading through the
   next same/higher heading) is removed from the **published** `SKILL.md`; surrounding
-  content intact; no `privatePaths` basename remains; source `SKILL.md` unchanged.
+  content intact; no unshipped `references/` file name remains; source `SKILL.md`
+  unchanged.
   Commit: `agonara: scrub declared personal sections from published skills`.
 - Step 3.3 (R6.3) — Test 10: synthetic markers (`71/100`, `user-specific`, a
   denylisted host string) in staged output fail with `kind: personal-marker`; clean
@@ -265,8 +269,8 @@ atomic publish path is exercised by the fixture tests.
   `provenance.json` + assets with `ok:true`; each seeded breach exits `1` with the
   named `kind`.
 - Privacy boundary proven: published `student/assistant-authored-study-drills/SKILL.md`
-  has no `## References` section and no `privatePaths` basename, and `agonara/skills/`
-  is unchanged (`git diff` shows no source relocation).
+  has no `## References` section and no unshipped `references/` file name, and
+  `agonara/skills/` is unchanged (`git diff` shows no source relocation).
 - Dependency gate confirmed: repo exists, PAT secret present, and
   `gh api repos/<owner>/agonara-skills/rulesets` shows the R8 protections.
 - `agonara/skills/operator-skill-packaging_pre_adr.md` superseded per ADR-025.

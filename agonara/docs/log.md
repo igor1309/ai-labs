@@ -13,16 +13,17 @@
   mapped the ADR invariants to enumerated tests. Hardened over two review passes
   (Codex, then a design challenge): the privacy model landed as a **publish
   boundary**, not source relocation — personal files stay in `agonara/skills/` for
-  the private deploy and are kept out of the public repo by a default-deny allowlist
-  (`privatePaths`) plus a publish-time section `scrub` of the personal `## References`
-  block, with an output scan as backstop. Also canonicalized the provenance
+  the private deploy and are kept out of the public repo by a single default-deny
+  allowlist (`ship`) — the personal files are simply unshipped, no second list —
+  plus a publish-time section `scrub` of the personal `## References` block, with an
+  output scan as backstop. Also canonicalized the provenance
   tree-hash, gave the CLI an exit-code + `--report` failure-kind contract, fixed the
   Pn↔Rn numbering, and reclassified the repo-ruleset check from "unverifiable" to a
   `gh api` inspection.
 
 - **Planned the projection implementation —
   `docs/plans/agonara-skills-public-projection.md`.** A deferred, TDD-sequenced,
-  single-task plan: manifest/assets first (declaring `privatePaths` + `scrub`, no
+  single-task plan: manifest/assets first (single `ship` allowlist + `scrub`, no
   source relocation), then projector core (structure/partition/foundations/scope),
   the privacy publish boundary, provenance, output contract checks, CLI + report,
   and the publish workflow — each step RED→GREEN→commit and traced to a spec rule,

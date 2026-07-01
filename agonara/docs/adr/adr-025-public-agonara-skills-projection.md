@@ -109,10 +109,11 @@ User-specific / personal reference content (calibration notes, recorded scores,
 personal preferences, host/instance details) MAY remain in `agonara/skills/` for
 the private/self deployment that consumes it, but MUST NOT reach the public
 projection. The boundary is drawn by the projection, not by removing content from
-source: a default-deny allowlist publishes only declared skill files; declared
-private files stay in source and are never published; and personal sections inside
-an otherwise-shipped `SKILL.md` are scrubbed from the published copy. An output
-content scan is the backstop, not the mechanism of record.
+source: a single default-deny allowlist publishes only declared skill files —
+everything else in a skill folder, the personal reference files included, simply
+stays in source unpublished; and personal sections inside an otherwise-shipped
+`SKILL.md` are scrubbed from the published copy. An output content scan is the
+backstop, not the mechanism of record.
 
 Rationale for keeping the files in source: the allowlist already makes publication
 exact — an undeclared file cannot leak — so relocating personal files out of the
@@ -162,17 +163,16 @@ release is the consumer's concern.
   `agonara-admin`. Repository-level metadata is limited to a closed, declared set
   (the P7 provenance manifest, plus `LICENSE`/`README`); nothing else.
 - **P6 (privacy, publish boundary).** The boundary MUST be drawn by the projection
-  over content that MAY remain in source. (1) **Files:** the projection MUST publish
-  only explicitly allowlisted files (each skill's `SKILL.md` plus its declared
-  shipped files); declared private files remain in source and MUST NOT be published;
-  any file under a bucketed skill that is neither shipped nor declared private MUST
-  fail for review — an undeclared file is never silently shipped nor silently
-  dropped. (2) **Content:** declared personal sections inside a shipped `SKILL.md`
-  MUST be scrubbed from the published copy, so no personal prose and no reference to
-  an unpublished file survives in shipped content. (3) **Backstop:** the projection
+  over content that MAY remain in source, by a **single allowlist** — no second
+  denylist. (1) **Files:** the projection MUST publish only allowlisted files (each
+  skill's `SKILL.md` plus its declared shipped files) and MUST publish nothing else
+  under a skill folder; every other file, the personal reference files included,
+  stays in source and is not published, by the same default-deny rule. (2)
+  **Content:** declared personal sections inside a shipped `SKILL.md` MUST be
+  scrubbed from the published copy, so no personal prose and no reference to an
+  unpublished file survives in shipped content. (3) **Backstop:** the projection
   MUST scan the staged output and fail the publish if personal data reaches it — the
-  backstop, not the mechanism of record. The four reference files named in Context
-  are the current declared private files (mechanism in the spec/plan).
+  backstop, not the mechanism of record (mechanism in the spec/plan).
 - **P7 (provenance).** Each release MUST record the upstream commit SHA and a
   per-skill-tree content hash in a machine-readable location in the published repo.
   The exact path, schema, and hash algorithm are pinned by the spec/plan (Open
