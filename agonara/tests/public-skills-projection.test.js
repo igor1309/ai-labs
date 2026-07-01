@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import test from "node:test";
@@ -64,6 +65,12 @@ function listFiles(dir) {
     .sort();
 }
 
+function hashTree(dir) {
+  return listFiles(dir)
+    .map($0 => `${$0} ${createHash("sha256").update(readFileSync(join(dir, $0))).digest("hex")}`)
+    .join("\n");
+}
+
 const SHA = "a".repeat(40);
 
 test("projectPublicSkills_shouldWriteEachBucketSkillIntoItsRoleSubfolder_onProjection", async () => {
@@ -108,4 +115,26 @@ test("projectPublicSkills_shouldStageExactlyTheAllowlistPayload_onProjection", a
     "student/stu-drills/SKILL.md",
     "student/stu-drills/references/keep.md",
   ]);
+});
+
+test("projectPublicSkills_shouldRebuildFromCleanStagingAndBeByteIdentical_onRerun", async () => {
+  const tree = makeUpstreamTree();
+  const stray = join(tree.outDir, "student", "STALE.md");
+  mkdirSync(dirname(stray), { recursive: true });
+  writeFileSync(stray, "stale");
+
+  const opts = {
+    skillsDir: tree.skillsDir,
+    manifestPath: tree.manifestPath,
+    assetsDir: tree.assetsDir,
+    upstreamSha: SHA,
+    outDir: tree.outDir,
+  };
+  await project(opts);
+
+  assert.equal(existsSync(stray), false, "stale file from a prior run must not survive");
+
+  const first = hashTree(tree.outDir);
+  await project(opts);
+  assert.equal(hashTree(tree.outDir), first, "reruns must be byte-identical");
 });

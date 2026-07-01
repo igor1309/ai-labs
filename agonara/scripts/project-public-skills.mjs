@@ -2,12 +2,14 @@
 // tree (student/ + curator/ role subfolders), per the publish manifest.
 // Behavior is added test-first; see tests/public-skills-projection.test.js.
 
-import { copyFileSync, mkdirSync, readFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 export async function project({ skillsDir, manifestPath, outDir }) {
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   const ship = manifest.ship || {};
+
+  rmSync(outDir, { recursive: true, force: true });
 
   const copySkill = (bucket, skill) => {
     for (const rel of ["SKILL.md", ...(ship[skill] || [])]) {
