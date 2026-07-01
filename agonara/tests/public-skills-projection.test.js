@@ -228,3 +228,28 @@ test("projectPublicSkills_shouldScrubDeclaredSectionFromPublishedSkill_keepingSo
   assert.equal(published.includes("references/secret.md"), false, "no pointer to an unshipped file remains");
   assert.equal(readFileSync(sourceSkill, "utf8"), sourceBefore, "source SKILL.md is untouched");
 });
+
+test("projectPublicSkills_shouldPassScanOnCleanTreeButFail_whenAPersonalMarkerReachesOutput", async () => {
+  const tree = makeUpstreamTree();
+  const opts = {
+    skillsDir: tree.skillsDir,
+    manifestPath: tree.manifestPath,
+    assetsDir: tree.assetsDir,
+    upstreamSha: SHA,
+    outDir: tree.outDir,
+  };
+
+  const clean = await project(opts);
+  assert.equal(clean.ok, true, "a clean tree passes the scan");
+
+  writeFileSync(
+    join(tree.skillsDir, "cur-gamma", "extra.md"),
+    "# Extra\n\nrecorded 71/100 last session\n",
+  );
+  const dirty = await project(opts);
+  assert.equal(dirty.ok, false);
+  assert.equal(
+    dirty.failures.some($0 => $0.rule === "R6" && $0.kind === "personal-marker"),
+    true,
+  );
+});

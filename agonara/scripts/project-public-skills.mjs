@@ -2,8 +2,18 @@
 // tree (student/ + curator/ role subfolders), per the publish manifest.
 // Behavior is added test-first; see tests/public-skills-projection.test.js.
 
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
+
+// Heuristic backstop markers for personal data reaching the published output.
+const PERSONAL_MARKERS = [/\b\d{1,3}\/100\b/, /\buser-specific\b/i, /\bcalibration\b/i];
+
+function listStagedFiles(dir) {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter($0 => $0.isFile())
+    .map($0 => relative(dir, join($0.parentPath, $0.name)));
+}
 
 // Remove each declared Markdown section — the heading line through the line before
 // the next heading of the same or higher level (or end of file) — from a SKILL.md
@@ -73,5 +83,12 @@ export async function project({ skillsDir, manifestPath, outDir }) {
     }
   }
 
-  return { ok: true, failures: [] };
+  for (const rel of listStagedFiles(outDir)) {
+    const text = readFileSync(join(outDir, rel), "utf8");
+    if (PERSONAL_MARKERS.some($0 => $0.test(text))) {
+      failures.push({ rule: "R6", kind: "personal-marker", detail: rel.split("\\").join("/") });
+    }
+  }
+
+  return { ok: failures.length === 0, failures };
 }
