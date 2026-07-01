@@ -14,7 +14,7 @@ subfolders `student/` and `curator/`, privacy-scrubbed, provenance-stamped — a
 fails the publish on any invariant breach, so the public repo is a verifiable,
 release-pinned projection with a single upstream edit point.
 
-Realizes [ADR-025](../adr/adr-025-public-agonara-skills-projection.md): rules
+Realizes [ADR-025](../../adr/adr-025-public-agonara-skills-projection.md): rules
 R1–R11 realize ADR invariants P1–P11 one-to-one; R12 realizes ADR Open Question 1
 (publish trigger), which has no P. (ADR P12 is withdrawn — the privacy model draws
 the boundary at publish, not by relocating source; see ADR Revision history.)

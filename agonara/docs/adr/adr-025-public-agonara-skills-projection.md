@@ -242,7 +242,7 @@ release is the consumer's concern.
 ## Open Questions
 
 All three are **resolved in the spec**
-([`../specs/agonara-skills-public-projection.md`](../specs/agonara-skills-public-projection.md));
+([`../specs/implemented/agonara-skills-public-projection.md`](../specs/implemented/agonara-skills-public-projection.md));
 recorded here with their resolutions for provenance.
 
 1. **Publish trigger / cadence.** *Resolved:* CI on push to `trunk` over the full

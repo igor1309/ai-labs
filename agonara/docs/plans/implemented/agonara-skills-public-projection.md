@@ -10,8 +10,8 @@ type: implementation-plan
 
 ## Goal
 
-Implement [Agonara-Skills Public Projection](../specs/agonara-skills-public-projection.md)
-under [ADR-025](../adr/adr-025-public-agonara-skills-projection.md): a deterministic
+Implement [Agonara-Skills Public Projection](../../specs/implemented/agonara-skills-public-projection.md)
+under [ADR-025](../../adr/adr-025-public-agonara-skills-projection.md): a deterministic
 Node projector (`agonara/scripts/project-public-skills.mjs`) driven by a source-owned
 manifest that renders `agonara/skills/` into a staged `agonara-skills` tree of two
 role subfolders (`student/`, `curator/`), privacy-scrubbed at publish and
