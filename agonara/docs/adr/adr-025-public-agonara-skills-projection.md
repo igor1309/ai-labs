@@ -1,7 +1,7 @@
 ---
 date: 2026-06-30
 model: claude-opus-4-8
-status: proposed
+status: accepted
 description: "Producer-side decision to publish Agonara's operator skills as a deterministic, privacy-scrubbed, provenance-stamped projection from the single upstream agonara/skills/ into a public agonara-skills repo shaped as two source-owned role subfolders (student/, curator/), resolving the distribution question in operator-skill-packaging_pre_adr.md."
 ---
 
@@ -144,8 +144,10 @@ release is the consumer's concern.
   only edit point. The `agonara-skills` repo MUST be a deterministic projection of
   a specific ai-labs commit and MUST NOT be hand-authored. The projection MUST
   rebuild from a clean staging tree each run and MUST verify the output equals
-  upstream minus the explicit exclusion set — detecting removed skills and failing
-  on any unexpected exclusion (mechanism in the spec/plan).
+  exactly the manifest allowlist projection (each bucketed skill's `SKILL.md` plus
+  its declared shipped files, foundations in both buckets) — failing if a declared
+  skill is absent from source or any file outside the allowlist appears in the
+  output (mechanism in the spec/plan).
 - **P2 (source-owned partition).** Role-bucket membership MUST be declared by a
   source-side manifest in ai-labs and realized as the `student/` / `curator/`
   subfolder structure. A consumer MUST NOT be required to re-derive it.
@@ -175,8 +177,9 @@ release is the consumer's concern.
   backstop, not the mechanism of record (mechanism in the spec/plan).
 - **P7 (provenance).** Each release MUST record the upstream commit SHA and a
   per-skill-tree content hash in a machine-readable location in the published repo.
-  The exact path, schema, and hash algorithm are pinned by the spec/plan (Open
-  Questions); P7 requires only that the record exist and be machine-parseable.
+  The exact path, schema, and hash algorithm are pinned by the spec (top-level
+  `provenance.json`, `sha256`); P7 requires only that the record exist and be
+  machine-parseable.
 - **P8 (projection-only, enforced).** The public repo MUST be written only by the
   projection (push), never edited in place, and the producer push MUST NOT require
   an inbound deploy key on any consumer. Write access MUST be restricted to the
@@ -237,19 +240,19 @@ release is the consumer's concern.
 
 ## Open Questions
 
-1. **Publish trigger / cadence.** CI-on-push to `trunk` versus a manual /
-   release-gated publish. The trigger's input set MUST cover the full projection
-   inputs — the projected skill folders, the bucket manifest, the projector, the
-   privacy allowlist, the provenance schema, and the workflow itself — plus a
-   manual-dispatch path, so a change to publication logic cannot leave the public
-   repo stale. *Lean:* CI on push to `trunk` over that full input set, emitting a
-   pinned provenance-stamped release.
-2. **Provenance location / format.** Where the commit SHA and per-tree hashes live
-   in the published repo (top-level manifest, per-subfolder file, or release
-   metadata) and the hash algorithm.
-3. **Shared-foundation dedup mechanics.** How the projection copies the two
-   foundations into both subfolders from one source while keeping P4's
-   byte-identical guarantee.
+All three are **resolved in the spec**
+([`../specs/agonara-skills-public-projection.md`](../specs/agonara-skills-public-projection.md));
+recorded here with their resolutions for provenance.
+
+1. **Publish trigger / cadence.** *Resolved:* CI on push to `trunk` over the full
+   projection-input set (skill folders, the bucket manifest, the projector, the
+   allowlist manifest, the provenance schema, and the workflow itself) plus a
+   `workflow_dispatch` path, emitting a pinned provenance-stamped release (spec R12).
+2. **Provenance location / format.** *Resolved:* a single top-level `provenance.json`
+   carrying the upstream commit SHA and per-tree `sha256` hashes (spec R7).
+3. **Shared-foundation dedup mechanics.** *Resolved:* the projection copies the one
+   upstream foundation folder into both subfolders as byte-identical real files
+   (no symlinks), verified by tree-hash equality (spec R4).
 
 ## Revision history
 
@@ -262,6 +265,12 @@ release is the consumer's concern.
   files. P6 was reframed as a publish boundary (allowlist for files + section scrub
   for personal prose inside a shipped `SKILL.md` + output-scan backstop), P12 was
   withdrawn, and the "one-time hygiene pass" consequence was removed. Net effect:
-  the files stay in source; nothing personal reaches the public projection. Still
-  `proposed`; edited in place per the ADR review standard (§6 applies to accepted
-  ADRs).
+  the files stay in source; nothing personal reaches the public projection. Edited
+  in place per the ADR review standard (§6 applies to accepted ADRs).
+- **2026-07-01 — accepted after review.** Reviewed against the arch-doc-review
+  checklist and the ADR review standard's five dimensions. Two findings fixed before
+  acceptance: P1 still described "upstream minus the explicit exclusion set" (stale
+  two-list language) — reworded to the single-allowlist projection to match P6/spec
+  R1; and the three Open Questions were marked resolved with pointers to the spec
+  (P7 no longer defers provenance format to an open question). Status `proposed →
+  accepted`.

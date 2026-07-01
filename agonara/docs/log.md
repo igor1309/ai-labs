@@ -2,6 +2,13 @@
 
 ## 2026-07-01
 
+- **Accepted ADR-025 after review.** Reviewed the twice-revised ADR against the
+  arch-doc-review checklist and the ADR review standard's five dimensions. Fixed two
+  findings before accepting: P1 still carried the stale "upstream minus the explicit
+  exclusion set" wording (contradicting the single-allowlist P6) — reworded to the
+  allowlist projection; and the three Open Questions (trigger, provenance format,
+  dedup) were marked resolved with pointers to the spec. Status `proposed → accepted`.
+
 - **Specced the public-skills projection — `docs/specs/agonara-skills-public-projection.md`.**
   Turned ADR-025 into an implementable, testable producer contract: a deterministic
   `project-public-skills.mjs` + source-owned `skills-publish-manifest.json` that
