@@ -54,7 +54,10 @@ function makeUpstreamTree() {
   put(join(assetsDir, "README.md"), "# Sample public README\n");
   put(join(assetsDir, "LICENSE"), "SAMPLE LICENSE\n");
 
-  return { root, skillsDir, assetsDir, outDir, manifestPath, manifest };
+  const openapiPath = join(root, "openapi.yml");
+  writeFileSync(openapiPath, "paths:\n  /things:\n    get:\n    post:\n  /things/{id}:\n    get:\n");
+
+  return { root, skillsDir, assetsDir, outDir, manifestPath, manifest, openapiPath };
 }
 
 function listFiles(dir) {
@@ -314,4 +317,28 @@ test("projectPublicSkills_shouldFailOnDanglingLinkButPassInSubfolderLink_inPubli
   );
   const good = await project(opts);
   assert.equal(good.failures.some($0 => $0.rule === "R10"), false);
+});
+
+test("projectPublicSkills_shouldFailOnRouteCitationAbsentFromOpenApi_butPassWhenPresent", async () => {
+  const tree = makeUpstreamTree();
+  const opts = {
+    skillsDir: tree.skillsDir,
+    manifestPath: tree.manifestPath,
+    assetsDir: tree.assetsDir,
+    openapiPath: tree.openapiPath,
+    upstreamSha: SHA,
+    outDir: tree.outDir,
+  };
+
+  writeFileSync(join(tree.skillsDir, "stu-alpha", "SKILL.md"), "# A\n\nCall GET /nonexistent.\n");
+  const bad = await project(opts);
+  assert.equal(bad.ok, false);
+  assert.equal(
+    bad.failures.some($0 => $0.rule === "R9" && $0.kind === "route-citation"),
+    true,
+  );
+
+  writeFileSync(join(tree.skillsDir, "stu-alpha", "SKILL.md"), "# A\n\nCall GET /things to list.\n");
+  const good = await project(opts);
+  assert.equal(good.failures.some($0 => $0.rule === "R9"), false);
 });

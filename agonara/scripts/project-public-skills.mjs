@@ -6,6 +6,8 @@ import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 
+import { openApiRoutes, routeCitations, routeKey } from "./skill-contract.mjs";
+
 // Relative Markdown link targets in a SKILL.md body (skips absolute URLs and anchors).
 function relativeLinkTargets(content) {
   return [...content.matchAll(/\[[^\]]*\]\(\s*([^)\s]+)/g)]
@@ -55,7 +57,7 @@ function scrubSections(content, headings) {
   return lines.join("\n");
 }
 
-export async function project({ skillsDir, manifestPath, outDir, upstreamSha }) {
+export async function project({ skillsDir, manifestPath, outDir, upstreamSha, openapiPath }) {
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   const ship = manifest.ship || {};
   const scrub = manifest.scrub || {};
@@ -114,6 +116,17 @@ export async function project({ skillsDir, manifestPath, outDir, upstreamSha }) 
     const text = readFileSync(join(outDir, rel), "utf8");
     if (PERSONAL_MARKERS.some($0 => $0.test(text))) {
       failures.push({ rule: "R6", kind: "personal-marker", detail: rel });
+    }
+  }
+
+  if (openapiPath) {
+    const routes = openApiRoutes(readFileSync(openapiPath, "utf8"));
+    for (const rel of listStagedFiles(outDir).filter($0 => $0.endsWith("/SKILL.md"))) {
+      for (const cite of routeCitations(readFileSync(join(outDir, rel), "utf8"))) {
+        if (!routes.has(routeKey(cite.method, cite.path))) {
+          failures.push({ rule: "R9", kind: "route-citation", detail: `${rel} -> ${cite.method} ${cite.path}` });
+        }
+      }
     }
   }
 
