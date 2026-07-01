@@ -2,6 +2,19 @@
 
 ## 2026-07-01
 
+- **Implemented the public-skills projection (spec R1–R12).** Built the deterministic
+  projector `scripts/project-public-skills.mjs` + `scripts/skill-contract.mjs`
+  (shared route/parity logic, now the single source for the in-repo contract test)
+  + `scripts/publish-guard.mjs` (R8 ancestry) + `.github/workflows/agonara-skills-publish.yml`,
+  driven by `skills-publish-manifest.json` (single `ship` allowlist + `scrub`) and
+  `publish-assets/`. Strict TDD, 18 tests: role-bucketed projection, clean rebuild,
+  validation (missing-skill, both-buckets), section scrub of the personal
+  `## References` block, personal-marker scan, canonical `provenance.json`, route +
+  item-quality + link checks over the staged trees, CLI report/exit-code contract,
+  and workflow trigger + ancestry guard. Verified end-to-end against the real skills
+  tree: `ok:true`, correct student/curator shape, personal files and section
+  excluded, source untouched. Full agonara node suite + `tsc` green.
+
 - **Accepted ADR-025 after review.** Reviewed the twice-revised ADR against the
   arch-doc-review checklist and the ADR review standard's five dimensions. Fixed two
   findings before accepting: P1 still carried the stale "upstream minus the explicit
