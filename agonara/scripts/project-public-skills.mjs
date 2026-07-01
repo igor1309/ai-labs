@@ -20,6 +20,11 @@ export async function project({ skillsDir, manifestPath, outDir }) {
       failures.push({ rule: "R1", kind: "missing-skill", detail: skill });
     }
   }
+  for (const skill of manifest.buckets.student) {
+    if (manifest.buckets.curator.includes(skill)) {
+      failures.push({ rule: "R3", kind: "both-buckets", detail: skill });
+    }
+  }
   if (failures.length > 0) {
     return { ok: false, failures };
   }

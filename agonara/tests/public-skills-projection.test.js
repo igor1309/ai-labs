@@ -161,3 +161,29 @@ test("projectPublicSkills_shouldFailClosed_whenADeclaredSkillIsAbsentFromSource"
     true,
   );
 });
+
+test("projectPublicSkills_shouldFailClosed_whenASkillIsInBothNonFoundationBuckets", async () => {
+  const tree = makeUpstreamTree();
+  const broken = {
+    ...tree.manifest,
+    buckets: {
+      student: [...tree.manifest.buckets.student, "cur-gamma"],
+      curator: tree.manifest.buckets.curator,
+    },
+  };
+  writeFileSync(tree.manifestPath, JSON.stringify(broken, null, 2));
+
+  const result = await project({
+    skillsDir: tree.skillsDir,
+    manifestPath: tree.manifestPath,
+    assetsDir: tree.assetsDir,
+    upstreamSha: SHA,
+    outDir: tree.outDir,
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(
+    result.failures.some($0 => $0.rule === "R3" && $0.detail.includes("cur-gamma")),
+    true,
+  );
+});
