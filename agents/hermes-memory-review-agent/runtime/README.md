@@ -74,8 +74,11 @@ fields:
 - `last_ping` = `{ ids: [...], utc: "..." }` — written by the **wrapper** on each
   delivered hourly ping; the durable cursor for "new since last ping".
 
-The wrapper merges `last_ping` without disturbing `last_manual_run_utc`, and vice
-versa.
+Both writers use the **same `flock`** (`run.lock`) and an atomic
+temp-file-beside-then-`mv` merge, so `last_ping` and `last_manual_run_utc` never
+clobber each other even if an hourly tick and a manual weekly run overlap. The
+wrapper is the sole writer of `last_ping`; the agent is the sole writer of
+`last_manual_run_utc` (via the lock-guarded `jq` merge in `agent/agent.md` step 8).
 
 ## Deployment
 

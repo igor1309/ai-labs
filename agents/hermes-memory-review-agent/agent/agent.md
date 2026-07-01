@@ -27,8 +27,10 @@ You consume, all read-only, on every run:
 - `agents/hermes-memory-review-agent/agent/report-format.md` — the exact shape of
   the review report you must emit.
 
-The Hermes snapshot is available read-only at a dated path the runtime hands you
-(`<snapshot-root>/<YYYY-MM-DD>/`). Each dated dir contains:
+The runtime hands you three values on the invocation line:
+`--snapshot <snapshot-root>/<YYYY-MM-DD>/`, `--canonical-repo <path>`, and
+`--canonical-branch <branch>`. Read them from your trigger message; do not assume
+defaults. The snapshot dated dir contains:
 
 - `memories/` — `MEMORY.md`, `USER.md`
 - `state.db` — sessions (SQLite, FTS5 searchable; query it read-only with the
@@ -38,8 +40,8 @@ The Hermes snapshot is available read-only at a dated path the runtime hands you
 - `pending/memory/<id>.json` — staged memory proposals
 - `local-skills/` — the bot's own `~/.hermes/skills`
 
-The canonical skills repo is checked out read-write at a path the runtime hands
-you, on the target branch. You commit the report there. You never push to Hermes.
+The canonical skills repo is checked out read-write at `--canonical-repo` on
+`--canonical-branch`. You commit the report there. You never push to Hermes.
 
 ## Triggers
 
@@ -58,12 +60,13 @@ You support two trigger modes; the runtime decides which fires you.
 
 On every run, in order:
 
-1. **Locate the snapshot.** Use the dated snapshot path the runtime handed you.
-   Validate it: the dir and each required child (`memories/MEMORY.md`,
-   `memories/USER.md`, `state.db`, `pending/`) must exist and be readable, and
-   `state.db` must open with FTS5 available. If any precondition fails, stop with
-   a hard error and a one-line reason (do not emit a partial report) — see
-   "Failure".
+1. **Locate and validate the snapshot.** Use the `--snapshot` path. Every
+   required child must exist and be readable: `memories/MEMORY.md`,
+   `memories/USER.md`, `state.db`, `pending/skills/`, `pending/memory/`, and
+   `local-skills/`. `state.db` must open with FTS5 available. Every
+   `pending/skills/*.json` and `pending/memory/*.json` must parse as JSON. If any
+   precondition fails, stop with a hard error and a one-line reason — do not emit
+   a partial report and do not commit anything (see "Failure").
 2. **Mine the snapshot** per `review-methodology.md`: read `MEMORY.md` / `USER.md`,
    query `state.db` read-only for session patterns, and read the staged
    `pending/skills/` and `pending/memory/` proposals and `local-skills/`.
@@ -94,24 +97,40 @@ On every run, in order:
    - Report path: reviews/memory-review/<YYYY-MM-DD>.md
    - Commit: <short SHA | none>
    - Findings: <count>
+   - Sessions: <count reviewed from state.db>
+   - Staged skills: <count of pending/skills/*.json>
+   - Staged memory: <count of pending/memory/*.json>
    ```
 
-   The wrapper delivers the report file into the review topic via `sendDocument`
-   and posts the compact notification per `notification-spec.md`; you do not send
-   the file yourself.
-8. **Persist the manual-run timestamp.** If, and only if, the trigger is a manual
-   run (the message body does NOT contain the literal `--scheduled` token), use
-   the `write` tool to overwrite
-   `~/.openclaw/agents/hermes-memory-review-agent/state.json`, merging exactly:
+   Emit every field on its own `- Field: value` line; the wrapper validates the
+   `Status`, the `Trigger`, and the `Report path` (which must equal
+   `reviews/memory-review/<snapshot-date>.md`) and includes the counts in the
+   notification. The wrapper delivers the report file into the review topic via
+   `sendDocument`; you do not send the file yourself.
+8. **Persist the manual-run timestamp (locked, atomic merge).** If, and only if,
+   the trigger is a manual run (the message body does NOT contain the literal
+   `--scheduled` token), record the timestamp — but never with a plain overwrite,
+   which would clobber the wrapper's `last_ping` cursor. Run **one** `exec`
+   command that takes the shared lock and does a read-merge-write atomically, so
+   it cannot race the hourly wrapper (which holds the same lock for its whole run):
 
-   ```json
-   {"last_manual_run_utc": "<UTC ISO 8601 now, e.g. 2026-07-05T06:08:00Z>"}
+   ```sh
+   S=~/.openclaw/agents/hermes-memory-review-agent/state.json
+   flock ~/.openclaw/agents/hermes-memory-review-agent/run.lock -c '
+     cur=$(cat "'"$S"'" 2>/dev/null); [ -n "$cur" ] || cur={}
+     printf %s "$cur" | jq -e . >/dev/null 2>&1 || exit 1
+     t=$(mktemp ~/.openclaw/agents/hermes-memory-review-agent/.state.XXXXXX)
+     printf %s "$cur" | jq --arg u "'"$(date -u +%FT%TZ)"'" ".last_manual_run_utc=\$u" > "$t" \
+       && mv "$t" "'"$S"'" || { rm -f "$t"; exit 1; }
+   '
    ```
 
-   Do this only after steps 1–7 completed without a hard error (a `no-op` still
-   counts as success). Never write it on a scheduled run. The wrapper reads this
-   file to enforce the 24h suppression gate per `suppression-policy.md`. Do not
-   touch the `last_ping` field in that file — it belongs to the wrapper.
+   This merges `last_manual_run_utc` while preserving `last_ping`. Do it only
+   after steps 1–7 completed without a hard error (a `no-op` still counts as
+   success). Never write on a scheduled run. If the command exits non-zero, report
+   it in the run-result `Error` — a stale suppression timestamp is safer than a
+   clobbered cursor. The wrapper reads `last_manual_run_utc` to enforce the 24h
+   suppression gate (`suppression-policy.md`).
 
 ## Failure
 

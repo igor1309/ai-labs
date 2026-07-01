@@ -134,16 +134,21 @@ agent and passes the trigger kind and a `--scheduled` token for scheduled ticks.
     current ids not in `last_ping.ids`; that count is `new_count`. The cursor is
     advanced to the current id set **only after** the ping is delivered
     successfully (rule 8 delivery test); a failed delivery leaves the cursor
-    unchanged so the next run retries. A deleted-then-reappearing id counts as
-    new again (identity is the current filename, not history).
+    unchanged so the next run retries. On a run with no new ids but with pinged
+    ids that have since disappeared, the cursor is **pruned** to the current set
+    (no message) so a deleted-then-reappearing id counts as new again — identity
+    is the current filename, not history.
 11. **Ping carries no memory content.** The ping states that updates were staged
     and how many; it does not transcribe or apply the staged memory.
-12. **Suppression gate (scheduled vs manual).** A successful manual run of a
-    trigger suppresses that trigger's next scheduled tick within a window:
-    `weekly-review` window = 24h, `hourly-ping` window = 55m. "Successful" =
-    run-result `status` is `ok` or `no-op`. The window is compared in UTC. The
+12. **Suppression gate (scheduled vs manual).** A successful manual
+    `weekly-review` suppresses the next scheduled `weekly-review` tick within a
+    24h window. "Successful" = run-result `status` is `ok` or `no-op`. The
+    `hourly-ping` has no suppression gate — it is deterministic and idempotent via
+    its cursor. The window is compared in UTC. The
     gate is enforced by the wrapper reading per-agent state; the agent persists
-    `last_manual_run_utc.<trigger>` on manual runs only (never on `--scheduled`).
+    a scalar `last_manual_run_utc` on manual runs only (never on `--scheduled`).
+    Manual triggering applies to `weekly-review` only (rule 13), so a single
+    scalar suffices — there is no per-trigger manual timestamp.
 13. **Manual trigger routing.** A manual `@`-mention in the review topic runs
     `weekly-review`; in the ping topic runs `hourly-ping`. A mention in any
     other topic, or a malformed/empty command body, is rejected with a one-line
@@ -242,7 +247,9 @@ cursor are wrapper-enforced (rules 8, 10, 12, 14). Manual triggering applies to
   cursor advanced to the current id set. Expect: 1 message with `new_count`; no
   memory body; `state.json last_ping.ids` updated.
 - **T14 — hourly ping silent when empty.** All current ids already in
-  `last_ping.ids` → zero Telegram messages; cursor unchanged. Expect: 0 messages.
+  `last_ping.ids` and no ids have disappeared → zero Telegram messages; cursor
+  unchanged. Expect: 0 messages. If ids have disappeared, the cursor is pruned to
+  the current set (still 0 messages) so a later reappearance counts as new (T16).
 - **T15 — ping cursor not advanced on failed delivery.** `sendMessage` mocked to
   fail → cursor unchanged; next run retries the same ids. Expect: `last_ping.ids`
   equals its pre-run value; second run re-attempts.
