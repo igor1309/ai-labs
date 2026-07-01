@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import test from "node:test";
@@ -186,4 +186,25 @@ test("projectPublicSkills_shouldFailClosed_whenASkillIsInBothNonFoundationBucket
     result.failures.some($0 => $0.rule === "R3" && $0.detail.includes("cur-gamma")),
     true,
   );
+});
+
+test("projectPublicSkills_shouldCopyFoundationsAsByteIdenticalRealFiles_intoBothBuckets", async () => {
+  const tree = makeUpstreamTree();
+
+  await project({
+    skillsDir: tree.skillsDir,
+    manifestPath: tree.manifestPath,
+    assetsDir: tree.assetsDir,
+    upstreamSha: SHA,
+    outDir: tree.outDir,
+  });
+
+  const upstream = readFileSync(join(tree.skillsDir, "foundation-one", "SKILL.md"));
+  const studentCopy = join(tree.outDir, "student", "foundation-one", "SKILL.md");
+  const curatorCopy = join(tree.outDir, "curator", "foundation-one", "SKILL.md");
+
+  assert.deepEqual(readFileSync(studentCopy), upstream);
+  assert.deepEqual(readFileSync(curatorCopy), upstream);
+  assert.equal(lstatSync(studentCopy).isSymbolicLink(), false);
+  assert.equal(lstatSync(curatorCopy).isSymbolicLink(), false);
 });
