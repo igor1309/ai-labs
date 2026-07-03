@@ -44,6 +44,17 @@ description: "Hermes memory review for <snapshot-date> — <N> findings across <
 ## Reject / ignore
 ```
 
+When `state.db` (or `sqlite3`) was unavailable, the review is **md/json-only**
+(`review-methodology.md` "Degraded review") and the header `Sessions reviewed`
+line reads exactly:
+
+```markdown
+- Sessions reviewed: 0 (state.db unavailable — md/json-only review)
+```
+
+The seven sections and their order are unchanged in this case; session-derived
+findings are simply absent.
+
 All seven `##` sections are present in this exact order on every report. A
 section with no findings this cycle contains exactly the line:
 

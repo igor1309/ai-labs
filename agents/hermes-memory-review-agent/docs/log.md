@@ -1,5 +1,19 @@
 # hermes-memory-review-agent — Log
 
+## 2026-07-03 — state.db made optional (degraded review)
+
+Relaxed the `state.db` hard-fail so an unavailable session source no longer
+blocks a run — the deploy blocker. `state.db`/`sqlite3` is now best-effort: if
+absent, unreadable, corrupt, lacking FTS5, or the tool is missing, the weekly
+review degrades to a **md/json-only review** over `memories/`, `pending/`, and
+`local-skills/`, skips session mining, and still commits the report. The report
+header and run-result carry a degraded marker (`Sessions reviewed: 0 (state.db
+unavailable …)`, `Degraded: sessions`), and the wrapper echoes it into the
+Telegram summary. All other required children stay hard preconditions. Spec: rule
+17 added, rule 15 + T21 narrowed, T23 added. Touched `agent.md`,
+`review-methodology.md`, `report-format.md`, the wrapper, `runtime/README.md`,
+and the ADR.
+
 ## 2026-07-01 — Agent definition authored
 
 Stood up the `hermes-memory-review-agent` definition from the inventory handoff

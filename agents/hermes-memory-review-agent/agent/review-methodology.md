@@ -17,17 +17,30 @@ All read-only, in the dated snapshot dir:
 
 - `memories/MEMORY.md`, `memories/USER.md` — the bot's durable memory and its
   model of the user.
-- `state.db` — session history. Query with the `sqlite3` CLI, read-only. It is
-  FTS5-searchable; use full-text search to find recurring themes, corrections,
-  and dead-ends rather than reading every session.
+- `state.db` — session history. **Best-effort** (see "Degraded review" below).
+  When present, query with the `sqlite3` CLI, read-only. It is FTS5-searchable;
+  use full-text search to find recurring themes, corrections, and dead-ends
+  rather than reading every session.
 - `pending/skills/<id>.json` — skill edits the bot staged via `write_approval`
   but that have not been applied.
 - `pending/memory/<id>.json` — memory edits staged the same way.
 - `local-skills/` — the bot's own current `~/.hermes/skills`, for comparing a
   staged proposal against what exists.
 
-Treat `state.db` as the evidence spine: a claim in `MEMORY.md` is stronger when a
-session in `state.db` shows where it came from.
+When `state.db` is available, treat it as the evidence spine: a claim in
+`MEMORY.md` is stronger when a session in `state.db` shows where it came from.
+
+## Degraded review (state.db unavailable)
+
+`state.db` is not a precondition. If it is absent, unreadable, corrupt, lacks
+FTS5, or `sqlite3` is unavailable, run a **md/json-only review**: skip all session
+mining and derive findings from `memories/`, `pending/skills/`, `pending/memory/`,
+and `local-skills/` alone. Session-derived findings (Repeated coaching patterns,
+Corrections, Failed approaches surfaced only from sessions) will have no evidence
+to cite and are simply absent — never fabricate a `state.db` citation. Emit all
+seven sections regardless, set the report header line to `Sessions reviewed: 0
+(state.db unavailable — md/json-only review)`, and carry the degraded marker in
+the run-result (`agent.md` step 7).
 
 ## What qualifies for each section
 

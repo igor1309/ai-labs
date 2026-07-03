@@ -55,7 +55,10 @@ are inventory-owned per the ownership boundary) and record them in the inventory
 Two topics must be created (review, memory-ping) and their `threadId`s captured
 via the message-link trick (see `add-openclaw-agent` skill). Cross-host read of
 the snapshot and `pending/memory` (box-1 agent ↔ box-2 Hermes) is inventory's to
-wire. Confirm `sqlite3` is installed on the gateway (the agent queries `state.db`).
+wire. `sqlite3` on the gateway is **recommended** — it enables the agent's session
+mining of `state.db`. It is not required: if `state.db`/`sqlite3` is unavailable
+the weekly review degrades to a md/json-only review rather than failing (spec
+rule 17), so its absence never blocks deploy or a run.
 
 ## Bot token
 

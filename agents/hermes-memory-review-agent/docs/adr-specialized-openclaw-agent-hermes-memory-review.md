@@ -108,7 +108,8 @@ The full contract is
 - Several concrete values are inventory-owned and handed to the agent at wiring
   time: canonical repo location + branch, snapshot/pending paths, Telegram
   `chat_id` + both `message_thread_id`s, bot token, and gateway `sqlite3`
-  availability.
+  availability (recommended for session mining; its absence degrades the weekly
+  review to md/json-only rather than blocking it).
 
 ## 6. Non-Goals
 

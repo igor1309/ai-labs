@@ -52,7 +52,9 @@ agent and passes the trigger kind and a `--scheduled` token for scheduled ticks.
 - **Snapshot dir** (`weekly-review`): a dated directory
   `<snapshot-root>/<YYYY-MM-DD>/` containing:
   - `memories/` — `MEMORY.md`, `USER.md`
-  - `state.db` — sessions, SQLite with FTS5
+  - `state.db` — sessions, SQLite with FTS5 (**best-effort**: if absent,
+    unreadable, or `sqlite3` is unavailable, the review degrades to md/json-only
+    per Behavior rule 17 — it is not a precondition)
   - `pending/skills/<id>.json` — staged skill proposals
   - `pending/memory/<id>.json` — staged memory proposals
   - `local-skills/` — the bot's `~/.hermes/skills`
@@ -160,20 +162,34 @@ agent and passes the trigger kind and a `--scheduled` token for scheduled ticks.
     manual/scheduled overlap.
 15. **Input validation and failure (fail-closed).** The run fails (rule 3
     `failed`, no partial report, no commit, no cursor advance) when any of:
-    snapshot dir missing or missing a required child; `state.db` unreadable,
-    corrupt, or lacking FTS5; `sqlite3` absent; canonical checkout dirty or
-    `pull --ff-only` / push fails; a `pending/*/*.json` file is malformed JSON.
-    Failures are classified `recoverable` (transient: push conflict, Telegram
-    5xx) vs `hard` (corrupt db, missing tooling); both emit a failed-run alert,
+    snapshot dir missing or missing a **required** child (`memories/MEMORY.md`,
+    `memories/USER.md`, `pending/skills/`, `pending/memory/`, `local-skills/`);
+    canonical checkout dirty or `pull --ff-only` / push fails; a `pending/*/*.json`
+    file is malformed JSON. An unavailable `state.db` / `sqlite3` is **not** a
+    failure — it triggers a degraded review (rule 17). Failures are classified
+    `recoverable` (transient: push conflict, Telegram 5xx) vs `hard` (malformed
+    `pending` JSON, missing required memory child); both emit a failed-run alert,
     recoverable ones note "retry next tick".
 16. **No web access assumed.** If the review reads external URLs it uses
     `web_fetch` (keyless); `web_search` only if a provider is confirmed. The
     contract does not require web access.
+17. **Session source is optional (degraded review).** `state.db` and the
+    `sqlite3` tool are best-effort inputs, not preconditions. If `state.db` is
+    absent, unreadable, corrupt, lacks FTS5, or `sqlite3` is unavailable, the run
+    does **not** fail: the agent performs a **md/json-only review** over the
+    required children (`memories/`, `pending/skills/`, `pending/memory/`,
+    `local-skills/`), skips all session mining, and still produces and commits the
+    report. The report header records the degradation (`Sessions reviewed: 0
+    (state.db unavailable — md/json-only review)`) and the run-result carries
+    `Degraded: sessions (state.db unavailable)` with `Sessions: 0`. Session-derived
+    findings (which would carry `state.db` evidence per rule 5) are simply absent;
+    md/json-derived findings are unaffected. All other required children remain
+    hard preconditions (rule 15).
 
 ## Tests (required)
 
 Artifact checks (T1–T6) are runnable against the repo and pass at build time.
-Behavioral cases (T7–T22) are **run-verified**, not an automated suite: they are
+Behavioral cases (T7–T23) are **run-verified**, not an automated suite: they are
 demonstrated against a fixture snapshot on a dry-run / first live run, matching
 the sibling agents (doc-drift, maestro), which ship no wrapper test harness and
 verify by running. This is the "match siblings" verification decision for
@@ -268,16 +284,28 @@ cursor are wrapper-enforced (rules 8, 10, 12, 14). Manual triggering applies to
 - **T20 — schedule intersection.** Static check: the weekly (`0 6 * * 0`) and
   hourly (`20 * * * *`) cron expressions share no firing minute. Expect: no
   common (minute,hour,dow) tuple.
-- **T21 — failure paths fail-closed.** For each of: missing snapshot child,
-  corrupt `state.db`, absent `sqlite3`, dirty canonical checkout, `push`
-  conflict, malformed `pending/*/*.json` → run-result `failed`, no report
-  commit, no cursor advance, one failed-run alert; the alert marks transient
-  cases "retry next tick". Expect: per boundary, the stated no-side-effect +
-  alert outcome.
+- **T21 — failure paths fail-closed.** For each of: missing **required**
+  snapshot child (any of `memories/MEMORY.md`, `memories/USER.md`,
+  `pending/skills/`, `pending/memory/`, `local-skills/`), dirty canonical
+  checkout, `push` conflict, malformed `pending/*/*.json` → run-result `failed`,
+  no report commit, no cursor advance, one failed-run alert; the alert marks
+  transient cases "retry next tick". Expect: per boundary, the stated
+  no-side-effect + alert outcome. (Unavailable `state.db` / `sqlite3` is **not**
+  in this list — see T23.)
 - **T22 — read-only invariant.** Run with snapshot and `pending/` mounted
   read-only and the filesystem/Hermes collaborator instrumented to reject and
   record write attempts. Expect: zero attempted writes to snapshot/pending/Hermes
   AND those trees byte-identical before/after.
+- **T23 — state.db optional → degraded review (rule 17).** For each of: `state.db`
+  absent, `state.db` corrupt/unopenable, `sqlite3` unavailable — with all required
+  children present → run-result `status: ok`, `Degraded: sessions (state.db
+  unavailable)`, `Sessions: 0`; the report is committed at the snapshot-date path
+  with all seven sections and the header line `Sessions reviewed: 0 (state.db
+  unavailable — md/json-only review)`; md/json-derived findings still appear,
+  session-derived findings are absent. Conversely, removing a **required** child
+  in the same degraded state still yields `failed` (T21) — degradation is scoped
+  to `state.db`/`sqlite3` only. Expect: report committed, no failure, degraded
+  markers set; required-child removal still fails.
 
 ## Done criteria
 
@@ -286,11 +314,12 @@ cursor are wrapper-enforced (rules 8, 10, 12, 14). Manual triggering applies to
 - The CI-sync workflow satisfies T2; the cron cadence satisfies T3 and T20;
   repository registration (T4) and the inventory-coordination checklist (T5) are
   present.
-- `agent/agent.md` plus supporting specs encode every behavior rule 1–16, and
+- `agent/agent.md` plus supporting specs encode every behavior rule 1–17, and
   `agent/report-format.md` satisfies T6.
-- Behavioral cases T7–T22 are demonstrated against a fixture snapshot (dry-run
+- Behavioral cases T7–T23 are demonstrated against a fixture snapshot (dry-run
   or first live run) with recorded evidence, Bot API and git interactions mocked.
 - Deferred items are stated explicitly, not silently assumed: Option C;
   multi-bot aggregation; and the inventory-owned values (canonical-repo location
-  + branch, Telegram topic/bot allocation, snapshot/pending paths, SQLite
-  tooling confirmation on the gateway).
+  + branch, Telegram topic/bot allocation, snapshot/pending paths). `sqlite3` on
+  the gateway is recommended (it enables session mining) but optional — its
+  absence degrades the review rather than blocking it (rule 17).
