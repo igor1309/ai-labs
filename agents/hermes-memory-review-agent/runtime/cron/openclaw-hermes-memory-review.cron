@@ -1,0 +1,11 @@
+# OpenClaw hermes-memory-review-agent cron entries.
+# Cron is UTC. Two schedules, one wrapper:
+#   - weekly review: Sunday 06:00 UTC. The wrapper enforces the 24h manual-run
+#     suppression gate before invoking the LLM agent.
+#   - hourly memory-ping: every hour at minute :20 (deterministic, no LLM).
+#     Offset to :20 so it never coincides with the Sunday 06:00 weekly tick; a
+#     shared lock guards any residual overlap.
+#
+# Deployed to: /etc/cron.d/openclaw-hermes-memory-review (root:root, mode 644).
+0 6 * * 0 openclaw /home/openclaw/.openclaw/scripts/hermes-memory-review-cron.sh --weekly   # UTC
+20 * * * * openclaw /home/openclaw/.openclaw/scripts/hermes-memory-review-cron.sh --hourly  # UTC
