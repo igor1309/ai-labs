@@ -60,16 +60,26 @@ You support two trigger modes; the runtime decides which fires you.
 
 On every run, in order:
 
-1. **Locate and validate the snapshot.** Use the `--snapshot` path. Every
-   required child must exist and be readable: `memories/MEMORY.md`,
-   `memories/USER.md`, `state.db`, `pending/skills/`, `pending/memory/`, and
-   `local-skills/`. `state.db` must open with FTS5 available. Every
-   `pending/skills/*.json` and `pending/memory/*.json` must parse as JSON. If any
-   precondition fails, stop with a hard error and a one-line reason — do not emit
-   a partial report and do not commit anything (see "Failure").
+1. **Locate and validate the snapshot.** Use the `--snapshot` path. These
+   children must exist and be readable, or stop with a hard error and a one-line
+   reason — do not emit a partial report and do not commit anything (see
+   "Failure"): `memories/MEMORY.md`, `memories/USER.md`, `pending/skills/`,
+   `pending/memory/`, and `local-skills/`. Every `pending/skills/*.json` and
+   `pending/memory/*.json` must parse as JSON.
+
+   `state.db` is **best-effort, not a precondition.** Probe it: if it exists and
+   opens read-only with FTS5 via `sqlite3`, session mining is enabled. If it is
+   absent, unreadable, corrupt, lacks FTS5, or `sqlite3` is unavailable, do
+   **not** fail — mark the session source unavailable, skip all session mining,
+   and run a **md/json-only review** over the required children above. Record the
+   degradation in the report and run-result (steps 5 and 7). The other required
+   children remain hard preconditions.
 2. **Mine the snapshot** per `review-methodology.md`: read `MEMORY.md` / `USER.md`,
-   query `state.db` read-only for session patterns, and read the staged
-   `pending/skills/` and `pending/memory/` proposals and `local-skills/`.
+   and — **only when the session source is available** (step 1) — query `state.db`
+   read-only for session patterns; then read the staged `pending/skills/` and
+   `pending/memory/` proposals and `local-skills/`. When the session source is
+   unavailable, skip session mining entirely and derive findings from the
+   memories, staged proposals, and local skills alone.
 3. **Classify findings** into the seven report sections: New durable facts;
    Repeated coaching patterns; Corrections from the user; Failed approaches;
    Candidate skill improvements; Proposed canonical patches; Reject / ignore.
@@ -80,7 +90,10 @@ On every run, in order:
    carry evidence — precision over recall.
 5. **Emit the report** shaped exactly by `report-format.md`: YAML front-matter
    plus the seven `##` sections in order. A section with no findings is present
-   with an explicit "none this cycle" note — never omit a section.
+   with an explicit "none this cycle" note — never omit a section. When the
+   session source was unavailable (step 1), set the header line to
+   `Sessions reviewed: 0 (state.db unavailable — md/json-only review)` per
+   `report-format.md`; do not add, drop, or reorder any `##` section.
 6. **Write the report to the canonical repo** at
    `reviews/memory-review/<snapshot-date>.md` (the snapshot's date, not today's).
    The canonical checkout must be clean; if it is dirty, stop with a hard error.
@@ -97,16 +110,19 @@ On every run, in order:
    - Report path: reviews/memory-review/<YYYY-MM-DD>.md
    - Commit: <short SHA | none>
    - Findings: <count>
-   - Sessions: <count reviewed from state.db>
+   - Sessions: <count reviewed from state.db, or 0 when the source was unavailable>
    - Staged skills: <count of pending/skills/*.json>
    - Staged memory: <count of pending/memory/*.json>
+   - Degraded: <none | sessions (state.db unavailable)>
    ```
 
    Emit every field on its own `- Field: value` line; the wrapper validates the
    `Status`, the `Trigger`, and the `Report path` (which must equal
    `reviews/memory-review/<snapshot-date>.md`) and includes the counts in the
-   notification. The wrapper delivers the report file into the review topic via
-   `sendDocument`; you do not send the file yourself.
+   notification. Set `Degraded: sessions (state.db unavailable)` on a md/json-only
+   run (step 1) and `Degraded: none` otherwise; the wrapper echoes a degradation
+   note into the summary. The wrapper delivers the report file into the review
+   topic via `sendDocument`; you do not send the file yourself.
 8. **Persist the manual-run timestamp (locked, atomic merge).** If, and only if,
    the trigger is a manual run (the message body does NOT contain the literal
    `--scheduled` token), record the timestamp — but never with a plain overwrite,
@@ -181,6 +197,7 @@ and the contract in
 | ADR / spec rule | Where it lives in this definition |
 |-----------------|-----------------------------------|
 | read-only over the snapshot | "Hard constraints" → read-only; step 1 validation |
+| state.db optional → md/json-only review | "What you do" steps 1–2, 5, 7 + spec rule 17 |
 | propose-only report, never merge | "What you do" step 6 + "Hard constraints" |
 | evidence-anchored findings | "What you do" step 4 + `review-methodology.md` |
 | fixed seven-section report | "What you do" step 5 + `report-format.md` |

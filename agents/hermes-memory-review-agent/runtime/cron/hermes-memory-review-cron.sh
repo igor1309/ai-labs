@@ -251,13 +251,17 @@ staged_sk=$(numfield 'Staged skills'); staged_sk=${staged_sk:-0}
 staged_mem=$(numfield 'Staged memory'); staged_mem=${staged_mem:-0}
 commit=$(field 'Commit'); commit=${commit:-unknown}
 report_rel=$(field 'Report path')
+deg=$(field 'Degraded'); deg=${deg:-none}
+deg_note=""
+[[ "$deg" != "none" && -n "$deg" ]] && deg_note="
+⚠ Degraded: ${deg}"
 
 if [[ "$status" == "no-op" ]]; then
   tg "$REVIEW_THREAD_ID" "[hermes-review] Weekly review — ${snap_date} (no change)
 
 Findings: ${findings}
 Sessions reviewed: ${sessions} · staged skills: ${staged_sk} · staged memory: ${staged_mem}
-Commit: none (no change)
+Commit: none (no change)${deg_note}
 
 Report unchanged from last run. Proposes only — review and promote by hand." || true
   logger -t openclaw-hermes-review "weekly: no-op for ${snap_date}"
@@ -282,7 +286,7 @@ tg "$REVIEW_THREAD_ID" "[hermes-review] Weekly review — ${snap_date}
 
 Findings: ${findings}
 Sessions reviewed: ${sessions} · staged skills: ${staged_sk} · staged memory: ${staged_mem}
-Commit: ${commit} on ${CANONICAL_BRANCH}
+Commit: ${commit} on ${CANONICAL_BRANCH}${deg_note}
 
 Report attached above. Proposes only — review and promote by hand." || true
 logger -t openclaw-hermes-review "weekly: delivered review for ${snap_date} (${findings} findings)"
