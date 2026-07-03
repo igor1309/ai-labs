@@ -46,6 +46,27 @@ block that records:
 - a per-phase validation list copied from that extraction rather than rewritten
   from memory.
 
+## Process-gates: log-freshness at pre-commit, not only pre-push
+
+The log-updated gate lives only in the **Pre-Push / Pre-PR** gate
+(`dev-skills/public/process-gates/SKILL.md`, item 1 "Log updated"); the
+**Pre-Commit Scope Check** has no log check. So a meaningful change set can be
+committed — repeatedly — with no log entry, and the omission only surfaces at
+push. Worse, push flows that bypass the process-gates checklist (e.g. the
+`/pr-merge` command) never fire the pre-push gate, so a log miss can reach `trunk`.
+
+Observed: an ADR plus its intake brief were committed across two commits with no
+`docs/log.md` entry; the miss was caught by the user, not by a gate.
+
+Change:
+
+- Add a log-freshness item to the **Pre-Commit Scope Check**: before committing a
+  meaningful change set, confirm the matching `docs/log.md` (repo and/or project)
+  has an entry for it, or explicitly record why none is warranted (e.g. a pure
+  refactor with no user-visible outcome). Keep the pre-push gate as the backstop.
+- Decide whether `/pr-merge` (or any push path) must assert the pre-push gate ran,
+  so log/plan gates are not silently skipped when merging via a command.
+
 ## Traceability-review negative-guarantee handling
 
 Extend the traceability-review skill's `spec ↔ tests` pass for clauses that

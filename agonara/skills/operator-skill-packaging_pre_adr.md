@@ -6,6 +6,13 @@ description: "Pre-ADR exploring how to package and distribute Agonara's operator
 
 # Packaging Agonara Operator Skills for Distribution
 
+> **Superseded (2026-07-01) by [ADR-025](../docs/adr/adr-025-public-agonara-skills-projection.md)**
+> and implemented via [the projection spec](../docs/specs/implemented/agonara-skills-public-projection.md).
+> The distribution question this pre-ADR parked is resolved: a deterministic,
+> privacy-scrubbed, provenance-stamped projection publishes the skills into a public
+> `agonara-skills` repo as source-owned `student/` and `curator/` role subfolders.
+> Retained for historical context.
+
 ## Context
 
 Agonara's operator skills (`agonara-api-access`, `agonara-membership`, the
