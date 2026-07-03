@@ -2,6 +2,55 @@
 
 ## 2026-07-01
 
+- **Implemented the public-skills projection (spec R1–R12).** Built the deterministic
+  projector `scripts/project-public-skills.mjs` + `scripts/skill-contract.mjs`
+  (shared route/parity logic, now the single source for the in-repo contract test)
+  + `scripts/publish-guard.mjs` (R8 ancestry) + `.github/workflows/agonara-skills-publish.yml`,
+  driven by `skills-publish-manifest.json` (single `ship` allowlist + `scrub`) and
+  `publish-assets/`. Strict TDD, 18 tests: role-bucketed projection, clean rebuild,
+  validation (missing-skill, both-buckets), section scrub of the personal
+  `## References` block, personal-marker scan, canonical `provenance.json`, route +
+  item-quality + link checks over the staged trees, CLI report/exit-code contract,
+  and workflow trigger + ancestry guard. Verified end-to-end against the real skills
+  tree: `ok:true`, correct student/curator shape, personal files and section
+  excluded, source untouched. Full agonara node suite + `tsc` green.
+
+- **Accepted ADR-025 after review.** Reviewed the twice-revised ADR against the
+  arch-doc-review checklist and the ADR review standard's five dimensions. Fixed two
+  findings before accepting: P1 still carried the stale "upstream minus the explicit
+  exclusion set" wording (contradicting the single-allowlist P6) — reworded to the
+  allowlist projection; and the three Open Questions (trigger, provenance format,
+  dedup) were marked resolved with pointers to the spec. Status `proposed → accepted`.
+
+- **Specced the public-skills projection — `docs/specs/agonara-skills-public-projection.md`.**
+  Turned ADR-025 into an implementable, testable producer contract: a deterministic
+  `project-public-skills.mjs` + source-owned `skills-publish-manifest.json` that
+  renders `agonara/skills/` into role-scoped `student/`/`curator/` subfolders,
+  privacy-scrubbed and provenance-stamped, failing the publish on any invariant
+  breach. Pinned the three open questions — provenance as a top-level
+  `provenance.json` (sha256 per-tree hashes), trigger as CI-on-`trunk` + manual
+  dispatch, and shared-foundation dedup as byte-identical real-file copies — and
+  mapped the ADR invariants to enumerated tests. Hardened over two review passes
+  (Codex, then a design challenge): the privacy model landed as a **publish
+  boundary**, not source relocation — personal files stay in `agonara/skills/` for
+  the private deploy and are kept out of the public repo by a single default-deny
+  allowlist (`ship`) — the personal files are simply unshipped, no second list —
+  plus a publish-time section `scrub` of the personal `## References` block, with an
+  output scan as backstop. Also canonicalized the provenance
+  tree-hash, gave the CLI an exit-code + `--report` failure-kind contract, fixed the
+  Pn↔Rn numbering, and reclassified the repo-ruleset check from "unverifiable" to a
+  `gh api` inspection.
+
+- **Planned the projection implementation —
+  `docs/plans/agonara-skills-public-projection.md`.** A deferred, TDD-sequenced,
+  single-task plan: manifest/assets first (single `ship` allowlist + `scrub`, no
+  source relocation), then projector core (structure/partition/foundations/scope),
+  the privacy publish boundary, provenance, output contract checks, CLI + report,
+  and the publish workflow — each step RED→GREEN→commit and traced to a spec rule,
+  with the mandatory six-part phase anatomy and an ADR traceability matrix.
+  Out-of-band prerequisites (public repo, PAT secret, branch/tag rulesets) are a
+  human-owned dependency gate.
+
 - **Decided the public distribution model for the operator skills — ADR-025
   (proposed).** Resolved the distribution question left open in
   `skills/operator-skill-packaging_pre_adr.md`: publish the skills as a
@@ -10,8 +59,10 @@
   (`student/`, `curator/`) so the role partition is structural — which closes the
   curator-into-student drift path at its source. Producer-side only; the consumer
   counterpart is inventory ADR-001. Captured the intake brief and hardened both
-  docs against a Codex review. **Prerequisite:** four user-specific reference files
-  still in `agonara/skills/` must be relocated out before any first publish.
+  docs against a Codex review. **2026-07-01 revision:** the initial relocation
+  prerequisite (P12) was withdrawn — the allowlist already makes publication exact,
+  so the four user-specific reference files stay in `agonara/skills/` and the
+  projection scrubs the personal `SKILL.md` section at publish instead.
 
 ## 2026-06-30
 
