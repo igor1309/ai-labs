@@ -107,8 +107,8 @@ One process initially; ingress and core stay logically separate.
 | `NOTIO_PORT`                   | no       | `8080`  | HTTP listen port                         |
 | `NOTIO_VERSION`                | no       | `dev`   | Reported by `/version`                   |
 | `NOTIO_TELEGRAM_BOT_TOKEN`     | normal   | —       | Telegram bot token for feedback; required in normal mode, optional in diagnostic mode |
-| `NOTIO_SUPABASE_URL`           | normal   | —       | Supabase project URL; required in normal mode, optional in diagnostic mode |
-| `NOTIO_SUPABASE_KEY`           | normal   | —       | Supabase service-role key; required in normal mode, optional in diagnostic mode |
+| `NOTIO_SUPABASE_URL`           | no       | —       | Supabase project URL; enables Supabase persistence when set |
+| `NOTIO_SUPABASE_KEY`           | no       | —       | Supabase service-role key; enables Supabase persistence when set |
 | `NOTIO_DIAGNOSTIC_MODE`        | no       | —       | `ack` \| `inspect` \| `delay` \| `fail`              |
 | `NOTIO_DIAGNOSTIC_DELAY_MS`    | no       | `5000`  | Delay for `delay` mode; ignored otherwise            |
 | `NOTIO_DIAGNOSTIC_FAIL_STATUS` | no       | `500`   | HTTP status for `fail` mode; ignored otherwise       |
