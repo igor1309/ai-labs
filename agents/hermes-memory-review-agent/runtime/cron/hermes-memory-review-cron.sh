@@ -217,7 +217,10 @@ export PATH=/home/openclaw/.npm-global/bin:$PATH
 output_file=$(mktemp)
 trap 'rm -f "$output_file"' EXIT
 
-openclaw agent --agent hermes-memory-review-agent \
+# --local (embedded one-shot on the existing OAuth) is mandatory for scheduled
+# agents on this host: the gateway execution path spawns per-subagent Codex
+# processes that exhaust memory on the 2.4 GB box (inventory gotcha #28).
+openclaw agent --local --timeout 1200 --agent hermes-memory-review-agent \
   --message "/hermes-memory-review --scheduled --snapshot ${snapshot_dir} --canonical-repo ${CANONICAL_REPO} --canonical-branch ${CANONICAL_BRANCH}" \
   > "$output_file" 2>&1
 rc=$?
