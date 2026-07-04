@@ -1,5 +1,17 @@
 # hermes-memory-review-agent — Log
 
+## 2026-07-04 — backlog: restore state.db later; doc drift fixed
+
+Recorded the session-mining follow-up: inventory dropped `state.db` from the
+daily snapshot because of its **size**, so the weekly review runs degraded
+(md/json-only) and session-derived findings are absent until a future version
+restores a size-aware `state.db`. Added it to `TODO.md` "Later" (detailed design
+deferred) and to the spec's deferred list. Softened the stale `TODO.md`
+"Confirm sqlite3" prerequisite to optional, matching rule 17. Also flagged two
+coordination seams to the inventory agent in the wiring handoff: (1) state.db-drop
+is safe, (2) the hourly wrapper reads `PENDING_MEMORY_DIR` as a live local dir and
+does not git-pull it, so the hub source must be refreshed before each :20 tick.
+
 ## 2026-07-03 — state.db made optional (degraded review)
 
 Relaxed the `state.db` hard-fail so an unavailable session source no longer
