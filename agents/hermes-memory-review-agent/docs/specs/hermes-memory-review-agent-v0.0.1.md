@@ -319,7 +319,9 @@ cursor are wrapper-enforced (rules 8, 10, 12, 14). Manual triggering applies to
 - Behavioral cases T7–T23 are demonstrated against a fixture snapshot (dry-run
   or first live run) with recorded evidence, Bot API and git interactions mocked.
 - Deferred items are stated explicitly, not silently assumed: Option C;
-  multi-bot aggregation; and the inventory-owned values (canonical-repo location
-  + branch, Telegram topic/bot allocation, snapshot/pending paths). `sqlite3` on
-  the gateway is recommended (it enables session mining) but optional — its
-  absence degrades the review rather than blocking it (rule 17).
+  multi-bot aggregation; restoring `state.db` to the snapshot to re-enable session
+  mining in a future version (dropped for snapshot-size reasons — see `TODO.md`
+  "Later"); and the inventory-owned values (canonical-repo location + branch,
+  Telegram topic/bot allocation, snapshot/pending paths). `sqlite3` on the gateway
+  is recommended (it enables session mining) but optional — its absence degrades
+  the review rather than blocking it (rule 17).
