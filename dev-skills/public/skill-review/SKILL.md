@@ -17,6 +17,8 @@ Modern agents are highly capable reasoners. Skills should provide context the ag
 
 **The preservation test:** if a section contains specific values (country codes, error strings, exact enum cases, character pairs, file paths), assume it encodes a debugging discovery until proven otherwise. Domain knowledge looks like noise to outsiders — the author had a reason. Your job is to find it or ask, not assume it's absent.
 
+**Provenance values:** before flagging a recorded provenance value (model name, author, date) as incorrect, verify what actually produced the artifact — git authorship, run logs — or mark it "ask user". A value you cannot attribute is ambiguous evidence, not a defect.
+
 ## Knowing When You Can't
 
 If you lack domain context to judge most of a skill's content, say so upfront. Scope the review to what you can evaluate — structure, description quality, staleness — and flag the rest as beyond your confidence. A partial honest review beats a complete fabricated one.
