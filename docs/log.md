@@ -1,5 +1,17 @@
 # Log
 
+## 2026-07-05
+
+- Courses: added July-2026 market + demand research under
+  `research/courses/market-2026/` (global + RU, competitive + demand — four
+  reports) extending the existing competitor survey; indexed as inputs to
+  `decision-matrix.md` / `positioning-notes.md`, not commitments. Then drafted
+  `research/courses/opening-lectures/` — opening-lecture structures for the three
+  prospective programs (интернет-предприниматели с IT / программисты / служащие),
+  each as Socratic top-level questions over a shared arc
+  (provocation → mechanism → shift → judgment → honest limit). Discussion ground,
+  no launch decision. Docs/research only — no release unit or CI workflow.
+
 ## 2026-06-23
 
 - Cairana: land the future product (AI assistant for psychologists, working name/research stage). Added `cairana/README.md`, `cairana/docs/log.md`, and a simple `cairana/index.html` landing page; classified the dir in `scripts/loc-dashboard.sh` (known list + row), the `docs/loc-dashboard.html` data array, the README Components table, and the `index.html` / `docs/products.html` landing pages. No release unit or CI workflow — docs/research only.
