@@ -10,7 +10,11 @@
   prospective programs (интернет-предприниматели с IT / программисты / служащие),
   each as Socratic top-level questions over a shared arc
   (provocation → mechanism → shift → judgment → honest limit). Discussion ground,
-  no launch decision. Docs/research only — no release unit or CI workflow.
+  no launch decision. Captured Khakhalev's July-2026 on-site workshop promo under
+  `research/courses/khakhalev/` with a competitive note (his live "redo a solved
+  task" format mirrors our Program 2 opener; his own reference flags "lacked more
+  depth" — our Socratic wedge). Internal codename for the initiative: **Kiora**.
+  Docs/research only — no release unit or CI workflow.
 
 ## 2026-06-23
 
