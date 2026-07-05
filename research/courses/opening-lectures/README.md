@@ -5,6 +5,8 @@ description: "Draft opening-lecture structures for the three prospective program
 
 # Opening lectures — three programs
 
+> Internal codename: **Kiora**.
+
 Draft structures for the **first lecture** of each of the three prospective
 programs. This is **ground for discussion**, not a launch decision, a topic
 freeze, or a commitment to any one program — all three are held in parallel.
