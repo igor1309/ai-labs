@@ -14,7 +14,9 @@
   `research/courses/khakhalev/` with a competitive note (his live "redo a solved
   task" format mirrors our Program 2 opener; his own reference flags "lacked more
   depth" — our Socratic wedge). Internal codename for the initiative: **Kiora**.
-  Docs/research only — no release unit or CI workflow.
+  Added a top-level `research/courses/README.md` orienting the initiative (reading
+  order across base → market-2026 → opening-lectures). Docs/research only — no
+  release unit or CI workflow.
 
 ## 2026-06-23
 
