@@ -2,8 +2,27 @@
 
 ## 2026-07-06
 
+- FolioTell: lower the Swift package tools version to 6.1 so the GitHub
+  macOS runner can build the package with its installed Swift toolchain.
+- FolioTell: move the TestFlight backlog under the project and add a
+  project-local product backlog covering playback resume, background playback
+  validation, speech text normalization, real-device language/voice validation,
+  compact navigation controls, a lightweight recent-documents library, reusable
+  Maestro regressions, and Markdown rendering polish.
 - Foliotell research: added iPhone text-to-speech reader UI reference corpus under `foliotell/research/`, with per-app source inventories, downloaded screenshots, interaction inventory, and comparison table for document-reader design work.
-
+- FolioTell: filter selectable voices to the detected document speech language, falling back to all installed voices only when no language-matched voices exist.
+- FolioTell: add persisted voice selection to the reader settings menu, with Auto preserving language-based voice choice and installed voices overriding playback directly.
+- FolioTell: render leading YAML front matter as caption-sized secondary text in the reader while preserving body styling and speech skip/read behavior.
+- FolioTell: move reader controls into the bottom safe-area inset and replace the speed picker/front-matter toggle with a compact settings menu.
+- FolioTell: select a Russian speech voice for Cyrillic utterances so the supplied Pushkin document is spoken as Russian instead of through the system default voice.
+- FolioTell: compact the reader controls by replacing the front-matter segmented control with a switch and fixing the primary Play/Pause/Resume button width. Skip mode now handles UTF-8 BOM-prefixed Markdown, so the supplied Pushkin file skips its YAML front matter during speech.
+- FolioTell: add a persisted front-matter playback setting so speech can skip leading YAML front matter by default or read it when selected.
+- FolioTell: fix live speed changes restarting from the beginning by tracking the current spoken range and replacing the utterance from the remaining text boundary when the rate changes.
+- FolioTell: replace the split Play and Pause/Resume controls with one primary Play/Pause/Resume button plus Stop, matching the playback state directly and simplifying the simulator flow.
+- FolioTell: fix the Play button state during the playback cycle. Play is disabled while speech is speaking or paused, Pause/Resume and Stop remain active for active playback states, and the reusable Maestro flow now asserts that tapping Play while paused leaves playback paused. Added a forward TestFlight backlog item scoped explicitly to Apple team `VRVJ9YNRQU`.
+- FolioTell: persist the simulator playback-control check as a reusable Maestro flow, add the provided app icon as a processed 1024x1024 asset catalog resource, and add a dedicated FolioTell CI workflow wired through path filters so Swift build/test gates run for FolioTell code, tests, resources, Maestro flow, or CI changes while docs-only edits stay out of that trigger.
+- FolioTell: fix the playback controls bug found on simulator. Playback state now stays `speaking` across internal speech-cancel callbacks caused by restart/speed-change behavior, so Pause/Resume and Stop remain usable while audio plays. Added core state-machine tests and verified the installed simulator app with Maestro using the imported Pushkin Markdown file.
+- FolioTell: implement v0.0.1 as a Swift package. The new SwiftUI app target launches through `DocumentGroup`, opens read-only Markdown/plain-text documents, shows a reader with persisted speed presets and play/pause-resume/stop controls, and speaks through `AVSpeechSynthesizer`; the core target has Swift Testing coverage for document validation/loading and speech speed mappings. Updated FolioTell and repo product metadata from spec-stage to implemented package, and refreshed the LOC dashboard.
 - Land the `foliotell` project: a native document-to-speech iPhone app (SwiftUI +
   `AVSpeechSynthesizer`) that reads local Markdown and plain-text files aloud —
   working name, in naming-validation and specification stage. Add the naming brief,
