@@ -1,6 +1,8 @@
 # Log
 
 ## 2026-07-06
+- Add a public marketing landing page for the App Store submission under `landing/`: a self-contained, theme-aware `index.html` (deep-blue brand matching the app icon, teal accents, hero with App Store "coming soon / in review" badge, feature and how-it-works sections, privacy emphasis) plus a matching `privacy.html` policy page and a copy of the 1024×1024 app icon. Distinct from the internal orientation surface at `index.html`.
+
 - Opt FolioTell iPhone archives out of Mac Designed for iPhone/iPad and Apple Vision Pro compatibility build settings so App Store Connect does not treat uploads as publishable on unsupported platforms.
 
 - Declare FolioTell export compliance in the app Info.plist so TestFlight uploads include `ITSAppUsesNonExemptEncryption=false`.
