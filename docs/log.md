@@ -2,6 +2,7 @@
 
 ## 2026-07-06
 
+- FolioTell: prepare the first release tag as `foliotell_v0.0.1` by aligning the canonical release metadata and generated release-unit manifest with the implemented v0.0.1 app and binding the TestFlight deploy job to its GitHub environment secrets.
 - FolioTell: register as a release unit (`foliotell_v<version>` tags) and route TestFlight uploads through the existing release-unit workflow instead of ordinary merge CI. The FolioTell release job runs Swift build/test/archive gates on macOS, writes the App Store Connect API key from secrets, then invokes the team-pinned TestFlight distribution script.
 - FolioTell: lower the Swift package tools version to 6.1 so the GitHub
   macOS runner can build the package with its installed Swift toolchain.
