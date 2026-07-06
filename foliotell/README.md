@@ -59,6 +59,7 @@ Run `scripts/distribute-testflight.sh --help` for modes including `--validate-on
 
 ## Docs
 
+- [App Store Connect product card](docs/app-store-connect-product-card.md) — backed-up app information, version metadata, and API update limitations.
 - [Naming brief](docs/foliotell-naming-brief.md) — product scope, naming objective, scoring model, and availability standard.
 - [Candidate evaluation](docs/foliotell-candidate-evaluation.md) — weighted comparison of candidate names.
 - [Technical specification](docs/foliotell-technical-spec.md) — v0.0.1 and v0.0.2 scope, document support, reader screen, speech, and acceptance criteria.

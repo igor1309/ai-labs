@@ -1,6 +1,10 @@
 # Log
 
 ## 2026-07-06
+- Deploy the public FolioTell landing page to Cloudflare Pages at `https://foliotell.pages.dev`, including its privacy page, and record the Pages URL in the App Store Connect product card.
+
+- Back up FolioTell's App Store Connect product metadata in a repo product card, including app identity, localized app info, version localization copy, unset fields, and API limitations for category and what's-new updates.
+
 - Add a public marketing landing page for the App Store submission under `landing/`: a self-contained, theme-aware `index.html` (deep-blue brand matching the app icon, teal accents, hero with App Store "coming soon / in review" badge, feature and how-it-works sections, privacy emphasis) plus a matching `privacy.html` policy page and a copy of the 1024×1024 app icon. Distinct from the internal orientation surface at `index.html`.
 
 - Opt FolioTell iPhone archives out of Mac Designed for iPhone/iPad and Apple Vision Pro compatibility build settings so App Store Connect does not treat uploads as publishable on unsupported platforms.
