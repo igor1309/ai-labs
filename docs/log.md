@@ -2,6 +2,8 @@
 
 ## 2026-07-06
 
+- FolioTell: lower the Swift package tools version to 6.1 so the GitHub
+  macOS runner can build the package with its installed Swift toolchain.
 - FolioTell: move the TestFlight backlog under the project and add a
   project-local product backlog covering playback resume, background playback
   validation, speech text normalization, real-device language/voice validation,

@@ -1,6 +1,9 @@
 # Log
 
 ## 2026-07-06
+- Lower the package tools version to Swift 6.1 so GitHub Actions can build the
+  FolioTell package with the macOS runner's installed Swift toolchain.
+
 - Move the TestFlight backlog under the FolioTell project and add a
   project-local product backlog covering the next priorities: playback resume,
   background playback validation, speech text normalization, real-device
