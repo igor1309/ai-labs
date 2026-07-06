@@ -1,4 +1,6 @@
+#if !FOLIOTELL_SINGLE_TARGET
 import FolioTellCore
+#endif
 import SwiftUI
 import UniformTypeIdentifiers
 

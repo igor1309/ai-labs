@@ -1,6 +1,8 @@
 # Log
 
 ## 2026-07-06
+- Register FolioTell as a release unit (`foliotell_v<version>` tags) and route TestFlight uploads through the existing release-unit workflow instead of ordinary merge CI. The release job runs Swift build/test/archive gates on macOS, writes the App Store Connect API key from secrets, then invokes the team-pinned TestFlight distribution script.
+
 - Lower the package tools version to Swift 6.1 so GitHub Actions can build the
   FolioTell package with the macOS runner's installed Swift toolchain.
 
@@ -9,6 +11,8 @@
   background playback validation, speech text normalization, real-device
   language/voice validation, compact navigation controls, recent documents,
   reusable Maestro regressions, and Markdown rendering polish.
+
+- Close the TestFlight packaging gap: add an archive-ready iOS Xcode project wrapper around the existing Swift sources, pin export/team settings to Apple team `VRVJ9YNRQU` and bundle id `foliotell.FolioTell`, add `scripts/distribute-testflight.sh` for API-key based archive/export/upload automation that refuses any other team/provider, and extend CI to verify the unsigned iOS archive wrapper.
 
 - Move the original UI-research prompt into `foliotell/research/` so the generated source inventories, screenshots, inventory, and comparison table keep their originating artifact in the project.
 

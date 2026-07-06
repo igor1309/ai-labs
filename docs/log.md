@@ -2,6 +2,7 @@
 
 ## 2026-07-06
 
+- FolioTell: register as a release unit (`foliotell_v<version>` tags) and route TestFlight uploads through the existing release-unit workflow instead of ordinary merge CI. The FolioTell release job runs Swift build/test/archive gates on macOS, writes the App Store Connect API key from secrets, then invokes the team-pinned TestFlight distribution script.
 - FolioTell: lower the Swift package tools version to 6.1 so the GitHub
   macOS runner can build the package with its installed Swift toolchain.
 - FolioTell: move the TestFlight backlog under the project and add a
@@ -9,6 +10,7 @@
   validation, speech text normalization, real-device language/voice validation,
   compact navigation controls, a lightweight recent-documents library, reusable
   Maestro regressions, and Markdown rendering polish.
+- FolioTell: close the TestFlight packaging gap by adding an archive-ready iOS Xcode project wrapper around the existing Swift sources, a checked export-options plist pinned to Apple team `VRVJ9YNRQU` and bundle id `foliotell.FolioTell`, and `foliotell/scripts/distribute-testflight.sh` for API-key based archive/export/upload automation that refuses any other team/provider. The FolioTell CI gate now also verifies the unsigned iOS archive wrapper.
 - Foliotell research: added iPhone text-to-speech reader UI reference corpus under `foliotell/research/`, with per-app source inventories, downloaded screenshots, interaction inventory, and comparison table for document-reader design work.
 - FolioTell: filter selectable voices to the detected document speech language, falling back to all installed voices only when no language-matched voices exist.
 - FolioTell: add persisted voice selection to the reader settings menu, with Auto preserving language-based voice choice and installed voices overriding playback directly.
