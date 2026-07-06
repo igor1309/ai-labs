@@ -13,6 +13,9 @@ struct ReaderView: View {
         content
             .padding()
             .navigationTitle(displayFileName)
+            .safeAreaInset(edge: .bottom) {
+                bottomControls
+            }
             .onDisappear {
                 speechController.stop()
             }
@@ -32,7 +35,7 @@ struct ReaderView: View {
             case let .failure(_, error):
                 ErrorView(error: error)
             case let .success(document):
-                readerControls(for: document)
+                documentText(document)
             }
 
             Spacer()
@@ -59,40 +62,77 @@ struct ReaderView: View {
         nonmutating set { selectedFrontMatterPlaybackMode = newValue.rawValue }
     }
 
-    private var shouldReadFrontMatter: Bool {
-        get { selectedFrontMatterMode == .read }
-        nonmutating set { selectedFrontMatterMode = newValue ? .read : .skip }
-    }
-
     @ViewBuilder
-    private func readerControls(for document: FolioDocument) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Picker("Speed", selection: Binding(get: { selectedSpeed }, set: { selectedSpeed = $0 })) {
-                ForEach(SpeechSpeed.allCases) { speed in
-                    Text(speed.rawValue).tag(speed)
-                }
-            }
-            .pickerStyle(.segmented)
-
-            HStack(alignment: .center, spacing: 12) {
-                Toggle("Front matter", isOn: Binding(get: { shouldReadFrontMatter }, set: { shouldReadFrontMatter = $0 }))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .tint(.blue)
-                    .fixedSize(horizontal: true, vertical: false)
+    private var bottomControls: some View {
+        switch loadedDocument {
+        case .failure:
+            EmptyView()
+        case let .success(document):
+            HStack(spacing: 10) {
+                settingsMenu
 
                 Spacer(minLength: 8)
 
                 playbackButtons(for: document)
             }
-            .padding(.top, 2)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(.bar)
+        }
+    }
 
-            ScrollView {
-                Text(document.text)
-                    .font(.body)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .textSelection(.enabled)
+    @ViewBuilder
+    private var settingsMenu: some View {
+        Menu {
+            Section("Speed") {
+                ForEach(SpeechSpeed.allCases) { speed in
+                    Button {
+                        selectedSpeed = speed
+                    } label: {
+                        if selectedSpeed == speed {
+                            Label(speed.rawValue, systemImage: "checkmark")
+                        } else {
+                            Text(speed.rawValue)
+                        }
+                    }
+                }
             }
+
+            Section("Front matter") {
+                ForEach(FrontMatterPlaybackMode.allCases) { mode in
+                    Button {
+                        selectedFrontMatterMode = mode
+                    } label: {
+                        if selectedFrontMatterMode == mode {
+                            Label(mode.title, systemImage: "checkmark")
+                        } else {
+                            Text(mode.title)
+                        }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "slider.horizontal.3")
+                    .foregroundStyle(.secondary)
+
+                Text("\(selectedSpeed.rawValue) · \(selectedFrontMatterMode.title)")
+                    .foregroundStyle(.primary)
+            }
+                .font(.subheadline.weight(.medium))
+                .lineLimit(1)
+                .frame(minHeight: 44)
+        }
+        .accessibilityIdentifier("readerSettingsMenu")
+    }
+
+    @ViewBuilder
+    private func documentText(_ document: FolioDocument) -> some View {
+        ScrollView {
+            Text(document.text)
+                .font(.body)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .textSelection(.enabled)
         }
     }
 

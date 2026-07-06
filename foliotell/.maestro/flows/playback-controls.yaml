@@ -10,9 +10,12 @@ appId: foliotell.FolioTell
 - waitForAnimationToEnd:
     timeout: 2000
 - assertVisible: "Play"
-- assertVisible: "Front matter"
+- assertVisible:
+    text: ".*Skip.*"
 - tapOn: "Play"
 - assertVisible: "Pause"
+- tapOn:
+    text: ".*Skip.*"
 - tapOn: "1.5x"
 - assertVisible: "Pause"
 - tapOn: "Pause"
