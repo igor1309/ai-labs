@@ -16,6 +16,7 @@ appId: foliotell.FolioTell
 - assertVisible: "Pause"
 - tapOn:
     text: ".*Skip.*"
+- assertVisible: "Auto"
 - tapOn: "1.5x"
 - assertVisible: "Pause"
 - tapOn: "Pause"

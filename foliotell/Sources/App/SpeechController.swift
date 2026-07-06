@@ -10,6 +10,7 @@ final class SpeechController: NSObject, ObservableObject {
     private var playback = PlaybackStateMachine()
     private var currentUtteranceID: ObjectIdentifier?
     private var ignoredUtteranceIDs: Set<ObjectIdentifier> = []
+    private var currentVoiceIdentifier: String?
 
     override init() {
         super.init()
@@ -24,23 +25,30 @@ final class SpeechController: NSObject, ObservableObject {
         playbackState.primaryControlSystemImage
     }
 
-    func togglePrimaryControl(_ text: String, speed: SpeechSpeed) {
+    func togglePrimaryControl(_ text: String, speed: SpeechSpeed, voiceIdentifier: String?) {
         switch playbackState {
         case .idle:
-            play(text, speed: speed)
+            play(text, speed: speed, voiceIdentifier: voiceIdentifier)
         case .paused, .speaking:
             pauseOrResume()
         }
     }
 
-    func play(_ text: String, speed: SpeechSpeed) {
-        startSpeaking(fullText: text, utteranceText: text, speed: speed, startingAtUTF16Offset: 0)
+    func play(_ text: String, speed: SpeechSpeed, voiceIdentifier: String?) {
+        startSpeaking(
+            fullText: text,
+            utteranceText: text,
+            speed: speed,
+            voiceIdentifier: voiceIdentifier,
+            startingAtUTF16Offset: 0
+        )
     }
 
     private func startSpeaking(
         fullText: String,
         utteranceText: String,
         speed: SpeechSpeed,
+        voiceIdentifier: String?,
         startingAtUTF16Offset: Int
     ) {
         let isReplacingUtterance = synthesizer.isSpeaking || synthesizer.isPaused || playbackState != .idle
@@ -53,6 +61,7 @@ final class SpeechController: NSObject, ObservableObject {
             isReplacingUtterance: isReplacingUtterance,
             startingAtUTF16Offset: startingAtUTF16Offset
         )
+        currentVoiceIdentifier = voiceIdentifier
         publishPlaybackState()
         if isReplacingUtterance {
             synthesizer.stopSpeaking(at: .immediate)
@@ -61,7 +70,9 @@ final class SpeechController: NSObject, ObservableObject {
         let utterance = AVSpeechUtterance(string: utteranceText)
         currentUtteranceID = ObjectIdentifier(utterance)
         utterance.rate = speed.utteranceRate
-        if let languageCode = SpeechVoiceLanguage.languageCode(for: utteranceText) {
+        if let voiceIdentifier, let voice = AVSpeechSynthesisVoice(identifier: voiceIdentifier) {
+            utterance.voice = voice
+        } else if let languageCode = SpeechVoiceLanguage.languageCode(for: utteranceText) {
             utterance.voice = AVSpeechSynthesisVoice(language: languageCode)
         }
         synthesizer.speak(utterance)
@@ -87,6 +98,7 @@ final class SpeechController: NSObject, ObservableObject {
     func stop() {
         ignoredUtteranceIDs.removeAll()
         playback.stopRequested()
+        currentVoiceIdentifier = nil
         publishPlaybackState()
         synthesizer.stopSpeaking(at: .immediate)
     }
@@ -97,9 +109,29 @@ final class SpeechController: NSObject, ObservableObject {
                 fullText: playback.currentText,
                 utteranceText: playback.remainingTextFromCurrentSpeechBoundary,
                 speed: speed,
+                voiceIdentifier: currentVoiceIdentifier,
                 startingAtUTF16Offset: playback.currentSpokenUTF16Offset
             )
         }
+    }
+
+    func updateVoiceIdentifier(_ voiceIdentifier: String?) {
+        guard currentVoiceIdentifier != voiceIdentifier else {
+            return
+        }
+
+        currentVoiceIdentifier = voiceIdentifier
+        guard playback.playbackState != .idle else {
+            return
+        }
+
+        startSpeaking(
+            fullText: playback.currentText,
+            utteranceText: playback.remainingTextFromCurrentSpeechBoundary,
+            speed: playback.currentSpeed,
+            voiceIdentifier: voiceIdentifier,
+            startingAtUTF16Offset: playback.currentSpokenUTF16Offset
+        )
     }
 
     private func publishPlaybackState() {

@@ -1,3 +1,4 @@
+import AVFoundation
 import FolioTellCore
 import SwiftUI
 
@@ -7,6 +8,7 @@ struct ReaderView: View {
 
     @AppStorage("selectedSpeechSpeed") private var selectedSpeechSpeed = SpeechSpeed.one.rawValue
     @AppStorage("selectedFrontMatterPlaybackMode") private var selectedFrontMatterPlaybackMode = FrontMatterPlaybackMode.skip.rawValue
+    @AppStorage("selectedSpeechVoiceIdentifier") private var selectedSpeechVoiceIdentifier = SpeechVoiceSelection.automaticIdentifier
     @StateObject private var speechController = SpeechController()
 
     var body: some View {
@@ -21,6 +23,9 @@ struct ReaderView: View {
             }
             .onChange(of: selectedSpeed) { _, newSpeed in
                 speechController.updateSpeed(newSpeed)
+            }
+            .onChange(of: selectedVoiceIdentifierForPlayback) { _, newVoiceIdentifier in
+                speechController.updateVoiceIdentifier(newVoiceIdentifier)
             }
     }
 
@@ -60,6 +65,37 @@ struct ReaderView: View {
     private var selectedFrontMatterMode: FrontMatterPlaybackMode {
         get { FrontMatterPlaybackMode.mode(for: selectedFrontMatterPlaybackMode) }
         nonmutating set { selectedFrontMatterPlaybackMode = newValue.rawValue }
+    }
+
+    private var voiceOptions: [SpeechVoiceOption] {
+        AVSpeechSynthesisVoice.speechVoices()
+            .map(SpeechVoiceOption.init)
+            .sorted { lhs, rhs in
+                if lhs.language == rhs.language {
+                    lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                } else {
+                    lhs.language.localizedCaseInsensitiveCompare(rhs.language) == .orderedAscending
+                }
+            }
+    }
+
+    private var selectedVoiceIdentifierForPlayback: String? {
+        SpeechVoiceSelection.selectedVoiceIdentifier(
+            storedIdentifier: selectedSpeechVoiceIdentifier,
+            availableIdentifiers: Set(voiceOptions.map(\.id))
+        )
+    }
+
+    private var selectedVoiceTitle: String {
+        guard let selectedVoiceIdentifierForPlayback else {
+            return "Auto"
+        }
+
+        return voiceOptions.first(where: { $0.id == selectedVoiceIdentifierForPlayback })?.name ?? "Auto"
+    }
+
+    private var settingsSummary: String {
+        "\(selectedSpeed.rawValue) · \(selectedFrontMatterMode.title) · \(selectedVoiceTitle)"
     }
 
     @ViewBuilder
@@ -111,12 +147,36 @@ struct ReaderView: View {
                     }
                 }
             }
+
+            Section("Voice") {
+                Button {
+                    selectedSpeechVoiceIdentifier = SpeechVoiceSelection.automaticIdentifier
+                } label: {
+                    if selectedVoiceIdentifierForPlayback == nil {
+                        Label("Auto", systemImage: "checkmark")
+                    } else {
+                        Text("Auto")
+                    }
+                }
+
+                ForEach(voiceOptions) { voiceOption in
+                    Button {
+                        selectedSpeechVoiceIdentifier = voiceOption.id
+                    } label: {
+                        if selectedVoiceIdentifierForPlayback == voiceOption.id {
+                            Label(voiceOption.menuTitle, systemImage: "checkmark")
+                        } else {
+                            Text(voiceOption.menuTitle)
+                        }
+                    }
+                }
+            }
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "slider.horizontal.3")
                     .foregroundStyle(.secondary)
 
-                Text("\(selectedSpeed.rawValue) · \(selectedFrontMatterMode.title)")
+                Text(settingsSummary)
                     .foregroundStyle(.primary)
             }
                 .font(.subheadline.weight(.medium))
@@ -154,7 +214,11 @@ struct ReaderView: View {
         Group {
             HStack(spacing: 8) {
                 Button {
-                    speechController.togglePrimaryControl(selectedFrontMatterMode.speechText(from: document.text), speed: selectedSpeed)
+                    speechController.togglePrimaryControl(
+                        selectedFrontMatterMode.speechText(from: document.text),
+                        speed: selectedSpeed,
+                        voiceIdentifier: selectedVoiceIdentifierForPlayback
+                    )
                 } label: {
                     Image(systemName: speechController.primaryControlSystemImage)
                         .font(.title3.weight(.semibold))
@@ -185,6 +249,22 @@ struct ReaderView: View {
 
     private var stopForegroundStyle: Color {
         speechController.playbackState.isStopEnabled ? Color.accentColor : Color.secondary.opacity(0.35)
+    }
+}
+
+private struct SpeechVoiceOption: Identifiable {
+    let id: String
+    let name: String
+    let language: String
+
+    init(_ voice: AVSpeechSynthesisVoice) {
+        id = voice.identifier
+        name = voice.name
+        language = voice.language
+    }
+
+    var menuTitle: String {
+        "\(name) (\(language))"
     }
 }
 
