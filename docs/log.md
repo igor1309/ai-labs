@@ -2,6 +2,9 @@
 
 ## 2026-07-07
 
+- FolioTell: prepare patch release `foliotell_v0.0.2` for the TestFlight
+  device-speech fix, keeping the release under the `VRVJ9YNRQU` team/provider
+  path.
 - FolioTell: configure the iOS audio session for spoken playback and declare
   background audio mode so TestFlight builds can read documents audibly on
   device instead of relying on the default app audio session.
