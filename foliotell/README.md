@@ -8,6 +8,8 @@ description: "FolioTell — a native document-to-speech iPhone app that reads lo
 
 Orientation surface: [index.html](index.html) — a single internal page for FolioTell (thesis, v0.0.1 scope, naming direction, non-goals, and a doc hub).
 
+Public landing: [landing/index.html](landing/index.html) — the App Store marketing page (self-contained, theme-aware), with a [privacy policy](landing/privacy.html).
+
 Document-to-speech iPhone app.
 
 ## Description

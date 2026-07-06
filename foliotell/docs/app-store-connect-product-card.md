@@ -62,7 +62,7 @@ text to speech,tts,markdown,plain text,documents,reader,speech,offline,voice,fil
 
 - Canonical URL: `https://foliotell.pages.dev`
 - Privacy policy URL: `https://foliotell.pages.dev/privacy`
-- Source artifact: `/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/claude/course-launch-planning-kc422s/foliotell/landing/index.html`
+- Source artifact: `foliotell/landing/index.html`
 - Published files: `index.html`, `privacy.html`, `appicon.png`
 
 ## Categories
@@ -85,7 +85,7 @@ text to speech,tts,markdown,plain text,documents,reader,speech,offline,voice,fil
 - `foliotell/docs/foliotell-technical-spec.md`: v0.0.1 behavior and constraints.
 - `foliotell/App/Info.plist`: app display name and export compliance declaration.
 - `foliotell/release.toml`: canonical release version metadata.
-- Public landing source artifact: `/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/claude/course-launch-planning-kc422s/foliotell/landing/`.
+- Public landing source artifact: `foliotell/landing/`.
 
 ## Sync Rule
 
