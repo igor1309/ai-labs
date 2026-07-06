@@ -61,6 +61,9 @@ final class SpeechController: NSObject, ObservableObject {
         let utterance = AVSpeechUtterance(string: utteranceText)
         currentUtteranceID = ObjectIdentifier(utterance)
         utterance.rate = speed.utteranceRate
+        if let languageCode = SpeechVoiceLanguage.languageCode(for: utteranceText) {
+            utterance.voice = AVSpeechSynthesisVoice(language: languageCode)
+        }
         synthesizer.speak(utterance)
     }
 

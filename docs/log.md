@@ -3,6 +3,7 @@
 ## 2026-07-06
 
 - Foliotell research: added iPhone text-to-speech reader UI reference corpus under `foliotell/research/`, with per-app source inventories, downloaded screenshots, interaction inventory, and comparison table for document-reader design work.
+- FolioTell: select a Russian speech voice for Cyrillic utterances so the supplied Pushkin document is spoken as Russian instead of through the system default voice.
 - FolioTell: compact the reader controls by replacing the front-matter segmented control with a switch and fixing the primary Play/Pause/Resume button width. Skip mode now handles UTF-8 BOM-prefixed Markdown, so the supplied Pushkin file skips its YAML front matter during speech.
 - FolioTell: add a persisted front-matter playback setting so speech can skip leading YAML front matter by default or read it when selected.
 - FolioTell: fix live speed changes restarting from the beginning by tracking the current spoken range and replacing the utterance from the remaining text boundary when the rate changes.
