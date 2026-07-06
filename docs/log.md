@@ -1,5 +1,11 @@
 # Log
 
+## 2026-07-07
+
+- FolioTell: configure the iOS audio session for spoken playback and declare
+  background audio mode so TestFlight builds can read documents audibly on
+  device instead of relying on the default app audio session.
+
 ## 2026-07-06
 
 - FolioTell: prepare the first release tag as `foliotell_v0.0.1` by aligning the canonical release metadata and generated release-unit manifest with the implemented v0.0.1 app and binding the TestFlight deploy job to its GitHub environment secrets.
