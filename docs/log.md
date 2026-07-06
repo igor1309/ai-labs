@@ -2,6 +2,8 @@
 
 ## 2026-07-06
 
+- Foliotell research: added iPhone text-to-speech reader UI reference corpus under `foliotell/research/`, with per-app source inventories, downloaded screenshots, interaction inventory, and comparison table for document-reader design work.
+
 - Land the `foliotell` project: a native document-to-speech iPhone app (SwiftUI +
   `AVSpeechSynthesizer`) that reads local Markdown and plain-text files aloud —
   working name, in naming-validation and specification stage. Add the naming brief,
