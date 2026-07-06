@@ -5,6 +5,7 @@
 
 - Add the iPhone text-to-speech reader UI reference corpus under `foliotell/research/`: per-app source inventories, downloaded App Store/official screenshots, interaction inventory, and comparison table for the document-reader design.
 
+- Fix live speed changes restarting from the beginning: speech progress is now tracked from `AVSpeechSynthesizer` range callbacks, and speed replacement restarts from the remaining text boundary instead of replaying the full document.
 - Collapse playback into one primary Play/Pause/Resume button plus Stop so the visible control matches the current playback state instead of showing a disabled or misleading separate Play button.
 - Fix the Play button state in the playback cycle: the primary Play control is now disabled while speech is speaking or paused, Pause/Resume and Stop remain enabled during active playback, and the reusable Maestro flow verifies that tapping Play while paused does not restart playback.
 - Persist the simulator playback-control regression as a reusable Maestro flow, add the supplied app icon as a processed 1024x1024 asset catalog resource, and add a FolioTell CI workflow that runs Swift build/test gates only for code, tests, app resources, Maestro flow, or FolioTell CI changes.

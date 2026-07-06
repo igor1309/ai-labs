@@ -13,6 +13,8 @@ appId: foliotell.FolioTell
 - assertVisible: "Idle"
 - tapOn: "Play"
 - assertVisible: "Speaking"
+- tapOn: "1.5x"
+- assertVisible: "Speaking"
 - tapOn: "Pause"
 - assertVisible: "Paused"
 - tapOn: "Resume"

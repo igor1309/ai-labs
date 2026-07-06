@@ -9,7 +9,13 @@ struct PlaybackStateMachineTests {
 
         sut.startSpeaking(text: "Winter morning", speed: .oneAndHalf, isReplacingUtterance: false)
 
-        #expect(sut.projection == PlaybackProjection(currentSpeed: .oneAndHalf, currentText: "Winter morning", playbackState: .speaking))
+        #expect(sut.projection == PlaybackProjection(
+            currentSpeed: .oneAndHalf,
+            currentText: "Winter morning",
+            currentUtteranceStartUTF16Offset: 0,
+            currentSpokenUTF16Offset: 0,
+            playbackState: .speaking
+        ))
     }
 
     @Test func test_speechCancelled_shouldStaySpeaking_onInternalReplacementCancel() {
@@ -85,6 +91,28 @@ struct PlaybackStateMachineTests {
         #expect(shouldRestart)
     }
 
+    @Test func test_remainingTextFromCurrentSpeechBoundary_shouldReturnUnspokenText_onSpeedRestart() {
+
+        var sut = PlaybackStateMachine()
+
+        sut.startSpeaking(text: "Winter morning", speed: .one, isReplacingUtterance: false)
+        sut.willSpeakRange(startingAtUTF16Offset: "Winter ".utf16.count)
+
+        #expect(sut.remainingTextFromCurrentSpeechBoundary == "morning")
+    }
+
+    @Test func test_willSpeakRange_shouldOffsetFromReplacementUtteranceStart_onSpeedRestart() {
+
+        var sut = PlaybackStateMachine()
+
+        sut.startSpeaking(text: "Winter morning", speed: .one, isReplacingUtterance: false)
+        sut.willSpeakRange(startingAtUTF16Offset: "Winter ".utf16.count)
+        sut.startSpeaking(text: sut.currentText, speed: .two, isReplacingUtterance: true, startingAtUTF16Offset: sut.currentSpokenUTF16Offset)
+        sut.willSpeakRange(startingAtUTF16Offset: "mor".utf16.count)
+
+        #expect(sut.remainingTextFromCurrentSpeechBoundary == "ning")
+    }
+
     @Test func test_applySpeed_shouldNotRequestRestart_onIdleSpeedChange() {
 
         var sut = PlaybackStateMachine()
@@ -100,6 +128,8 @@ struct PlaybackStateMachineTests {
 private struct PlaybackProjection: Equatable {
     let currentSpeed: SpeechSpeed
     let currentText: String
+    let currentUtteranceStartUTF16Offset: Int
+    let currentSpokenUTF16Offset: Int
     let playbackState: PlaybackState
 }
 
@@ -113,7 +143,13 @@ private struct PlaybackControlsProjection: Equatable {
 private extension PlaybackStateMachine {
 
     var projection: PlaybackProjection {
-        PlaybackProjection(currentSpeed: currentSpeed, currentText: currentText, playbackState: playbackState)
+        PlaybackProjection(
+            currentSpeed: currentSpeed,
+            currentText: currentText,
+            currentUtteranceStartUTF16Offset: currentUtteranceStartUTF16Offset,
+            currentSpokenUTF16Offset: currentSpokenUTF16Offset,
+            playbackState: playbackState
+        )
     }
 }
 

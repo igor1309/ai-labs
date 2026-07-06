@@ -8,6 +8,8 @@ final class SpeechController: NSObject, ObservableObject {
 
     private let synthesizer = AVSpeechSynthesizer()
     private var playback = PlaybackStateMachine()
+    private var currentUtteranceID: ObjectIdentifier?
+    private var ignoredUtteranceIDs: Set<ObjectIdentifier> = []
 
     override init() {
         super.init()
@@ -32,14 +34,32 @@ final class SpeechController: NSObject, ObservableObject {
     }
 
     func play(_ text: String, speed: SpeechSpeed) {
+        startSpeaking(fullText: text, utteranceText: text, speed: speed, startingAtUTF16Offset: 0)
+    }
+
+    private func startSpeaking(
+        fullText: String,
+        utteranceText: String,
+        speed: SpeechSpeed,
+        startingAtUTF16Offset: Int
+    ) {
         let isReplacingUtterance = synthesizer.isSpeaking || synthesizer.isPaused || playbackState != .idle
-        playback.startSpeaking(text: text, speed: speed, isReplacingUtterance: isReplacingUtterance)
+        if isReplacingUtterance, let currentUtteranceID {
+            ignoredUtteranceIDs.insert(currentUtteranceID)
+        }
+        playback.startSpeaking(
+            text: fullText,
+            speed: speed,
+            isReplacingUtterance: isReplacingUtterance,
+            startingAtUTF16Offset: startingAtUTF16Offset
+        )
         publishPlaybackState()
         if isReplacingUtterance {
             synthesizer.stopSpeaking(at: .immediate)
         }
 
-        let utterance = AVSpeechUtterance(string: text)
+        let utterance = AVSpeechUtterance(string: utteranceText)
+        currentUtteranceID = ObjectIdentifier(utterance)
         utterance.rate = speed.utteranceRate
         synthesizer.speak(utterance)
     }
@@ -62,6 +82,7 @@ final class SpeechController: NSObject, ObservableObject {
     }
 
     func stop() {
+        ignoredUtteranceIDs.removeAll()
         playback.stopRequested()
         publishPlaybackState()
         synthesizer.stopSpeaking(at: .immediate)
@@ -69,7 +90,12 @@ final class SpeechController: NSObject, ObservableObject {
 
     func updateSpeed(_ speed: SpeechSpeed) {
         if playback.applySpeed(speed) {
-            play(playback.currentText, speed: speed)
+            startSpeaking(
+                fullText: playback.currentText,
+                utteranceText: playback.remainingTextFromCurrentSpeechBoundary,
+                speed: speed,
+                startingAtUTF16Offset: playback.currentSpokenUTF16Offset
+            )
         }
     }
 
@@ -80,17 +106,50 @@ final class SpeechController: NSObject, ObservableObject {
 
 extension SpeechController: AVSpeechSynthesizerDelegate {
 
-    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+    nonisolated func speechSynthesizer(
+        _ synthesizer: AVSpeechSynthesizer,
+        willSpeakRangeOfSpeechString characterRange: NSRange,
+        utterance: AVSpeechUtterance
+    ) {
         Task { @MainActor in
+            playback.willSpeakRange(startingAtUTF16Offset: characterRange.location)
+        }
+    }
+
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        let utteranceID = ObjectIdentifier(utterance)
+        Task { @MainActor in
+            guard didReceiveCurrentUtteranceCallback(utteranceID) else {
+                return
+            }
+
             playback.speechFinished()
             publishPlaybackState()
         }
     }
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
+        let utteranceID = ObjectIdentifier(utterance)
         Task { @MainActor in
+            guard didReceiveCurrentUtteranceCallback(utteranceID) else {
+                return
+            }
+
             playback.speechCancelled()
             publishPlaybackState()
         }
+    }
+
+    private func didReceiveCurrentUtteranceCallback(_ utteranceID: ObjectIdentifier) -> Bool {
+        if ignoredUtteranceIDs.remove(utteranceID) != nil {
+            return false
+        }
+
+        guard currentUtteranceID == utteranceID else {
+            return false
+        }
+
+        currentUtteranceID = nil
+        return true
     }
 }
