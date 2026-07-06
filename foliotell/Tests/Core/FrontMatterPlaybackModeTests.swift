@@ -16,6 +16,18 @@ struct FrontMatterPlaybackModeTests {
         #expect(FrontMatterPlaybackMode.skip.speechText(from: text) == "Body starts here.")
     }
 
+    @Test func test_speechText_shouldSkipFrontMatter_onUTF8BOMPrefix() {
+
+        let text = """
+        \u{feff}---
+        title: Winter Morning
+        ---
+        Body starts here.
+        """
+
+        #expect(FrontMatterPlaybackMode.skip.speechText(from: text) == "Body starts here.")
+    }
+
     @Test func test_speechText_shouldReadFrontMatter_onReadMode() {
 
         let text = """

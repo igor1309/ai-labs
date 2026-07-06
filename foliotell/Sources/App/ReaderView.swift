@@ -59,9 +59,14 @@ struct ReaderView: View {
         nonmutating set { selectedFrontMatterPlaybackMode = newValue.rawValue }
     }
 
+    private var shouldReadFrontMatter: Bool {
+        get { selectedFrontMatterMode == .read }
+        nonmutating set { selectedFrontMatterMode = newValue ? .read : .skip }
+    }
+
     @ViewBuilder
     private func readerControls(for document: FolioDocument) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 14) {
             Picker("Speed", selection: Binding(get: { selectedSpeed }, set: { selectedSpeed = $0 })) {
                 ForEach(SpeechSpeed.allCases) { speed in
                     Text(speed.rawValue).tag(speed)
@@ -69,35 +74,18 @@ struct ReaderView: View {
             }
             .pickerStyle(.segmented)
 
-            Picker("Front matter", selection: Binding(get: { selectedFrontMatterMode }, set: { selectedFrontMatterMode = $0 })) {
-                ForEach(FrontMatterPlaybackMode.allCases) { mode in
-                    Text(mode.title).tag(mode)
-                }
+            HStack(alignment: .center, spacing: 12) {
+                Toggle("Front matter", isOn: Binding(get: { shouldReadFrontMatter }, set: { shouldReadFrontMatter = $0 }))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .tint(.blue)
+                    .fixedSize(horizontal: true, vertical: false)
+
+                Spacer(minLength: 8)
+
+                playbackButtons(for: document)
             }
-            .pickerStyle(.segmented)
-
-            HStack(spacing: 12) {
-                Button {
-                    speechController.togglePrimaryControl(selectedFrontMatterMode.speechText(from: document.text), speed: selectedSpeed)
-                } label: {
-                    Label(speechController.primaryControlTitle, systemImage: speechController.primaryControlSystemImage)
-                }
-                .accessibilityIdentifier("primaryPlaybackButton")
-                .buttonStyle(.borderedProminent)
-
-                Button {
-                    speechController.stop()
-                } label: {
-                    Label("Stop", systemImage: "stop.fill")
-                }
-                .accessibilityIdentifier("stopButton")
-                .disabled(speechController.playbackState.isStopEnabled == false)
-                .buttonStyle(.bordered)
-            }
-
-            Text(speechController.playbackState.title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            .padding(.top, 2)
 
             ScrollView {
                 Text(document.text)
@@ -106,6 +94,47 @@ struct ReaderView: View {
                     .textSelection(.enabled)
             }
         }
+    }
+
+    @ViewBuilder
+    private func playbackButtons(for document: FolioDocument) -> some View {
+        let controlSize: CGFloat = 44
+        let cornerRadius: CGFloat = 9
+
+        Group {
+            HStack(spacing: 8) {
+                Button {
+                    speechController.togglePrimaryControl(selectedFrontMatterMode.speechText(from: document.text), speed: selectedSpeed)
+                } label: {
+                    Image(systemName: speechController.primaryControlSystemImage)
+                        .font(.title3.weight(.semibold))
+                        .frame(width: controlSize, height: controlSize)
+                        .foregroundStyle(.white)
+                        .background(Color.accentColor, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                }
+                .accessibilityLabel(speechController.primaryControlTitle)
+                .accessibilityIdentifier("primaryPlaybackButton")
+                .buttonStyle(.plain)
+
+                Button {
+                    speechController.stop()
+                } label: {
+                    Image(systemName: "stop.fill")
+                        .font(.body.weight(.semibold))
+                        .frame(width: controlSize, height: controlSize)
+                        .foregroundStyle(stopForegroundStyle)
+                        .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                }
+                .accessibilityLabel("Stop")
+                .accessibilityIdentifier("stopButton")
+                .disabled(speechController.playbackState.isStopEnabled == false)
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var stopForegroundStyle: Color {
+        speechController.playbackState.isStopEnabled ? Color.accentColor : Color.secondary.opacity(0.35)
     }
 }
 
@@ -131,20 +160,6 @@ private extension FolioDocumentError {
             "This file type is not supported."
         case .unsupportedTextEncoding:
             "This document is not UTF-8 text."
-        }
-    }
-}
-
-private extension PlaybackState {
-
-    var title: String {
-        switch self {
-        case .idle:
-            "Idle"
-        case .paused:
-            "Paused"
-        case .speaking:
-            "Speaking"
         }
     }
 }

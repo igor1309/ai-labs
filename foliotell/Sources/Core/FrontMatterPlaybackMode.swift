@@ -32,11 +32,12 @@ public enum FrontMatterPlaybackMode: String, CaseIterable, Equatable, Identifiab
 private extension String {
 
     func removingLeadingYAMLFrontMatter() -> String {
-        guard hasPrefix("---") else {
+        let frontMatterCandidate = first == "\u{feff}" ? dropFirst() : self[...]
+        guard frontMatterCandidate.hasPrefix("---") else {
             return self
         }
 
-        let lines = split(separator: "\n", omittingEmptySubsequences: false)
+        let lines = frontMatterCandidate.split(separator: "\n", omittingEmptySubsequences: false)
         guard lines.first == "---" else {
             return self
         }
