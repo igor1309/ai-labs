@@ -3,7 +3,9 @@
 ## 2026-07-06
 
 - Foliotell research: added iPhone text-to-speech reader UI reference corpus under `foliotell/research/`, with per-app source inventories, downloaded screenshots, interaction inventory, and comparison table for document-reader design work.
-
+- FolioTell: persist the simulator playback-control check as a reusable Maestro flow, add the provided app icon as a processed 1024x1024 asset catalog resource, and add a dedicated FolioTell CI workflow wired through path filters so Swift build/test gates run for FolioTell code, tests, resources, Maestro flow, or CI changes while docs-only edits stay out of that trigger.
+- FolioTell: fix the playback controls bug found on simulator. Playback state now stays `speaking` across internal speech-cancel callbacks caused by restart/speed-change behavior, so Pause/Resume and Stop remain usable while audio plays. Added core state-machine tests and verified the installed simulator app with Maestro using the imported Pushkin Markdown file.
+- FolioTell: implement v0.0.1 as a Swift package. The new SwiftUI app target launches through `DocumentGroup`, opens read-only Markdown/plain-text documents, shows a reader with persisted speed presets and play/pause-resume/stop controls, and speaks through `AVSpeechSynthesizer`; the core target has Swift Testing coverage for document validation/loading and speech speed mappings. Updated FolioTell and repo product metadata from spec-stage to implemented package, and refreshed the LOC dashboard.
 - Land the `foliotell` project: a native document-to-speech iPhone app (SwiftUI +
   `AVSpeechSynthesizer`) that reads local Markdown and plain-text files aloud —
   working name, in naming-validation and specification stage. Add the naming brief,

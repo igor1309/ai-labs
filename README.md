@@ -67,7 +67,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | neris | Framework | Agentic execution layer in Swift |
 | niora | Concept | Contextual field of emergence |
 | cairana | Product (research) | AI assistant for psychologists. Turns sessions into structured notes, case context, and next steps; working name in naming-validation stage |
-| foliotell | Product (spec) | Native document-to-speech iPhone app that reads local Markdown and plain-text files aloud with Apple speech synthesis; working name in naming-validation and specification stage |
+| foliotell | iOS app | Native document-to-speech iPhone app that reads local Markdown and plain-text files aloud with Apple speech synthesis; working name with v0.0.1 implemented as a Swift package |
 | tools | Tooling | Developer workflow helpers |
 | dev-skills | Tooling | Claude Code skills marketplace |
 | sandbox | Research | Experiments and prototypes |

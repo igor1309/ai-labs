@@ -1,0 +1,21 @@
+appId: foliotell.FolioTell
+---
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible:
+    text: "А_С_Пушкин.*"
+- tapOn:
+    point: "50%, 65%"
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible: "Play"
+- assertVisible: "Idle"
+- tapOn: "Play"
+- assertVisible: "Speaking"
+- tapOn: "Pause"
+- assertVisible: "Paused"
+- tapOn: "Resume"
+- assertVisible: "Speaking"
+- tapOn: "Stop"
+- assertVisible: "Idle"
