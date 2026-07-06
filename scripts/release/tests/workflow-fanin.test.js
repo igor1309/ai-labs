@@ -45,6 +45,48 @@ describe('release-unit workflow fan-in', () => {
     }
   });
 
+  it('includes FolioTell test and TestFlight jobs in release and notification fan-in', () => {
+    const requiredJobs = [
+      'test-foliotell',
+      'deploy-foliotell-testflight',
+    ];
+    const fanInSections = [
+      jobSection('github-release'),
+      jobSection('notify'),
+    ];
+
+    for (const section of fanInSections) {
+      for (const job of requiredJobs) {
+        assert.ok(section.includes(job), `${sectionName(section)} missing ${job}`);
+      }
+    }
+  });
+
+  it('requires successful FolioTell TestFlight upload before GitHub release', () => {
+    const githubRelease = jobSection('github-release');
+
+    assert.ok(githubRelease.includes("needs.verify.outputs.basename != 'foliotell'"));
+    assert.ok(githubRelease.includes("needs.deploy-foliotell-testflight.result == 'success'"));
+  });
+
+  it('fails fast when FolioTell TestFlight secrets are missing', () => {
+    const deploy = jobSection('deploy-foliotell-testflight');
+
+    assert.ok(deploy.includes('Verify FolioTell TestFlight secrets'));
+    assert.ok(deploy.includes('FOLIOTELL_ASC_API_KEY_ID: ${{ secrets.FOLIOTELL_ASC_API_KEY_ID }}'));
+    assert.ok(deploy.includes('FOLIOTELL_ASC_API_ISSUER_ID: ${{ secrets.FOLIOTELL_ASC_API_ISSUER_ID }}'));
+    assert.ok(deploy.includes('FOLIOTELL_ASC_API_PRIVATE_KEY: ${{ secrets.FOLIOTELL_ASC_API_PRIVATE_KEY }}'));
+    assert.ok(deploy.includes('::error::${name} is required for FolioTell TestFlight release'));
+  });
+
+  it('pins FolioTell TestFlight upload to the declared Apple team', () => {
+    const deploy = jobSection('deploy-foliotell-testflight');
+
+    assert.ok(deploy.includes('FOLIOTELL_PROVIDER_ID: VRVJ9YNRQU'));
+    assert.ok(deploy.includes('FOLIOTELL_TEAM_ID: VRVJ9YNRQU'));
+    assert.ok(deploy.includes('scripts/distribute-testflight.sh --upload'));
+  });
+
   it('requires successful Agonara deploy jobs before GitHub release', () => {
     const githubRelease = jobSection('github-release');
 
@@ -99,6 +141,13 @@ describe('release-unit workflow fan-in', () => {
 
     assert.ok(notify.includes('deploy-agonara-staging=${{ needs.deploy-agonara-staging.result }}'));
     assert.ok(notify.includes('deploy-agonara-prod=${{ needs.deploy-agonara-prod.result }}'));
+  });
+
+  it('reports FolioTell jobs in failure notifications', () => {
+    const notify = jobSection('notify');
+
+    assert.ok(notify.includes('test-foliotell=${{ needs.test-foliotell.result }}'));
+    assert.ok(notify.includes('deploy-foliotell-testflight=${{ needs.deploy-foliotell-testflight.result }}'));
   });
 
   it('cleans Agonara smoke artifacts when smoke execution fails', () => {

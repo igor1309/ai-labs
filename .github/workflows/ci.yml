@@ -77,6 +77,7 @@ jobs:
               - "scripts/release/**"
               - "agonara/**"
               - "clipdeck/**"
+              - "foliotell/**"
               - "loki/**"
               - "nomos/**"
               - "notio/**"
@@ -138,7 +139,12 @@ jobs:
             agonara-ci:
               - ".github/workflows/agonara-core.yml"
             foliotell:
+              - "foliotell/App/**"
+              - "foliotell/Config/**"
+              - "foliotell/FolioTell.xcodeproj/**"
               - "foliotell/Package.swift"
+              - "foliotell/release.toml"
+              - "foliotell/scripts/**"
               - "foliotell/Sources/**"
               - "foliotell/Tests/**"
               - "foliotell/.maestro/**"

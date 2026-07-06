@@ -1,5 +1,7 @@
 import AVFoundation
+#if !FOLIOTELL_SINGLE_TARGET
 import FolioTellCore
+#endif
 import SwiftUI
 
 struct ReaderView: View {
