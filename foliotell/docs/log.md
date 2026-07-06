@@ -1,5 +1,11 @@
 # Log
 
+## 2026-07-07
+
+- Configure FolioTell's iOS audio session for spoken playback and declare
+  background audio mode so TestFlight builds can read documents audibly on
+  device instead of depending on the default app audio session.
+
 ## 2026-07-06
 - Deploy the public FolioTell landing page to Cloudflare Pages at `https://foliotell.pages.dev`, including its privacy page, and record the Pages URL in the App Store Connect product card.
 

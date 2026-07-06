@@ -69,6 +69,8 @@ final class SpeechController: NSObject, ObservableObject {
             synthesizer.stopSpeaking(at: .immediate)
         }
 
+        configureAudioSessionForPlayback()
+
         let utterance = AVSpeechUtterance(string: utteranceText)
         currentUtteranceID = ObjectIdentifier(utterance)
         utterance.rate = speed.utteranceRate
@@ -103,6 +105,7 @@ final class SpeechController: NSObject, ObservableObject {
         currentVoiceIdentifier = nil
         publishPlaybackState()
         synthesizer.stopSpeaking(at: .immediate)
+        deactivateAudioSession()
     }
 
     func updateSpeed(_ speed: SpeechSpeed) {
@@ -139,6 +142,28 @@ final class SpeechController: NSObject, ObservableObject {
     private func publishPlaybackState() {
         playbackState = playback.playbackState
     }
+
+    private func configureAudioSessionForPlayback() {
+        #if os(iOS)
+        do {
+            let audioSession = AVAudioSession.sharedInstance()
+            try audioSession.setCategory(.playback, mode: .spokenAudio)
+            try audioSession.setActive(true)
+        } catch {
+            print("FolioTell audio session setup failed: \(error)")
+        }
+        #endif
+    }
+
+    private func deactivateAudioSession() {
+        #if os(iOS)
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        } catch {
+            print("FolioTell audio session deactivation failed: \(error)")
+        }
+        #endif
+    }
 }
 
 extension SpeechController: AVSpeechSynthesizerDelegate {
@@ -162,6 +187,7 @@ extension SpeechController: AVSpeechSynthesizerDelegate {
 
             playback.speechFinished()
             publishPlaybackState()
+            deactivateAudioSession()
         }
     }
 
@@ -174,6 +200,7 @@ extension SpeechController: AVSpeechSynthesizerDelegate {
 
             playback.speechCancelled()
             publishPlaybackState()
+            deactivateAudioSession()
         }
     }
 
