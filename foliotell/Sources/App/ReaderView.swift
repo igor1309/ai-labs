@@ -6,6 +6,7 @@ struct ReaderView: View {
     let fileName: String
 
     @AppStorage("selectedSpeechSpeed") private var selectedSpeechSpeed = SpeechSpeed.one.rawValue
+    @AppStorage("selectedFrontMatterPlaybackMode") private var selectedFrontMatterPlaybackMode = FrontMatterPlaybackMode.skip.rawValue
     @StateObject private var speechController = SpeechController()
 
     var body: some View {
@@ -53,6 +54,11 @@ struct ReaderView: View {
         nonmutating set { selectedSpeechSpeed = newValue.rawValue }
     }
 
+    private var selectedFrontMatterMode: FrontMatterPlaybackMode {
+        get { FrontMatterPlaybackMode.mode(for: selectedFrontMatterPlaybackMode) }
+        nonmutating set { selectedFrontMatterPlaybackMode = newValue.rawValue }
+    }
+
     @ViewBuilder
     private func readerControls(for document: FolioDocument) -> some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -63,9 +69,16 @@ struct ReaderView: View {
             }
             .pickerStyle(.segmented)
 
+            Picker("Front matter", selection: Binding(get: { selectedFrontMatterMode }, set: { selectedFrontMatterMode = $0 })) {
+                ForEach(FrontMatterPlaybackMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+
             HStack(spacing: 12) {
                 Button {
-                    speechController.togglePrimaryControl(document.text, speed: selectedSpeed)
+                    speechController.togglePrimaryControl(selectedFrontMatterMode.speechText(from: document.text), speed: selectedSpeed)
                 } label: {
                     Label(speechController.primaryControlTitle, systemImage: speechController.primaryControlSystemImage)
                 }

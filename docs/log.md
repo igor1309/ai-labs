@@ -3,6 +3,7 @@
 ## 2026-07-06
 
 - Foliotell research: added iPhone text-to-speech reader UI reference corpus under `foliotell/research/`, with per-app source inventories, downloaded screenshots, interaction inventory, and comparison table for document-reader design work.
+- FolioTell: add a persisted front-matter playback setting so speech can skip leading YAML front matter by default or read it when selected.
 - FolioTell: fix live speed changes restarting from the beginning by tracking the current spoken range and replacing the utterance from the remaining text boundary when the rate changes.
 - FolioTell: replace the split Play and Pause/Resume controls with one primary Play/Pause/Resume button plus Stop, matching the playback state directly and simplifying the simulator flow.
 - FolioTell: fix the Play button state during the playback cycle. Play is disabled while speech is speaking or paused, Pause/Resume and Stop remain active for active playback states, and the reusable Maestro flow now asserts that tapping Play while paused leaves playback paused. Added a forward TestFlight backlog item scoped explicitly to Apple team `VRVJ9YNRQU`.
