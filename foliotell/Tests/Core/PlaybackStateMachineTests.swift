@@ -63,6 +63,17 @@ struct PlaybackStateMachineTests {
         #expect(sut.playbackState == .speaking)
     }
 
+    @Test func test_playbackStateControls_shouldDisableStart_onActivePlayback() {
+
+        let projections = PlaybackState.allTestCases.map(\.controlsProjection)
+
+        #expect(projections == [
+            PlaybackControlsProjection(playbackState: .idle, isStartEnabled: true, isPauseResumeEnabled: false, isStopEnabled: false),
+            PlaybackControlsProjection(playbackState: .speaking, isStartEnabled: false, isPauseResumeEnabled: true, isStopEnabled: true),
+            PlaybackControlsProjection(playbackState: .paused, isStartEnabled: false, isPauseResumeEnabled: true, isStopEnabled: true),
+        ])
+    }
+
     @Test func test_applySpeed_shouldRequestRestart_onSpeakingSpeedChange() {
 
         var sut = PlaybackStateMachine()
@@ -92,9 +103,32 @@ private struct PlaybackProjection: Equatable {
     let playbackState: PlaybackState
 }
 
+private struct PlaybackControlsProjection: Equatable {
+    let playbackState: PlaybackState
+    let isStartEnabled: Bool
+    let isPauseResumeEnabled: Bool
+    let isStopEnabled: Bool
+}
+
 private extension PlaybackStateMachine {
 
     var projection: PlaybackProjection {
         PlaybackProjection(currentSpeed: currentSpeed, currentText: currentText, playbackState: playbackState)
+    }
+}
+
+private extension PlaybackState {
+
+    static var allTestCases: [PlaybackState] {
+        [.idle, .speaking, .paused]
+    }
+
+    var controlsProjection: PlaybackControlsProjection {
+        PlaybackControlsProjection(
+            playbackState: self,
+            isStartEnabled: isStartEnabled,
+            isPauseResumeEnabled: isPauseResumeEnabled,
+            isStopEnabled: isStopEnabled
+        )
     }
 }

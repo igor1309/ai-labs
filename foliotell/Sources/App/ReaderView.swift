@@ -70,6 +70,7 @@ struct ReaderView: View {
                     Label("Play", systemImage: "play.fill")
                 }
                 .accessibilityIdentifier("playButton")
+                .disabled(speechController.playbackState.isStartEnabled == false)
                 .buttonStyle(.borderedProminent)
 
                 Button {
@@ -78,7 +79,7 @@ struct ReaderView: View {
                     Label(speechController.pauseResumeTitle, systemImage: speechController.pauseResumeSystemImage)
                 }
                 .accessibilityIdentifier("pauseResumeButton")
-                .disabled(speechController.playbackState == .idle)
+                .disabled(speechController.playbackState.isPauseResumeEnabled == false)
                 .buttonStyle(.bordered)
 
                 Button {
@@ -87,7 +88,7 @@ struct ReaderView: View {
                     Label("Stop", systemImage: "stop.fill")
                 }
                 .accessibilityIdentifier("stopButton")
-                .disabled(speechController.playbackState == .idle)
+                .disabled(speechController.playbackState.isStopEnabled == false)
                 .buttonStyle(.bordered)
             }
 

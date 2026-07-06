@@ -4,6 +4,21 @@ public enum PlaybackState: Equatable, Sendable {
     case speaking
 }
 
+public extension PlaybackState {
+
+    var isStartEnabled: Bool {
+        self == .idle
+    }
+
+    var isPauseResumeEnabled: Bool {
+        self != .idle
+    }
+
+    var isStopEnabled: Bool {
+        self != .idle
+    }
+}
+
 public struct PlaybackStateMachine: Equatable, Sendable {
     public private(set) var currentSpeed: SpeechSpeed
     public private(set) var currentText: String
