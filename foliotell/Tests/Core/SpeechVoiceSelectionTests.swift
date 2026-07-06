@@ -3,6 +3,47 @@ import Testing
 
 struct SpeechVoiceSelectionTests {
 
+    @Test func test_filteredVoiceIdentifiers_shouldReturnMatchingLanguageVoices_onDetectedLanguage() {
+
+        #expect(
+            SpeechVoiceSelection.filteredVoiceIdentifiers(
+                availableIdentifiers: ["voice-ru", "voice-en"],
+                languagesByIdentifier: [
+                    "voice-ru": "ru-RU",
+                    "voice-en": "en-US",
+                ],
+                detectedLanguageCode: "ru-RU"
+            ) == ["voice-ru"]
+        )
+    }
+
+    @Test func test_filteredVoiceIdentifiers_shouldReturnAllVoices_onMissingDetectedLanguage() {
+
+        #expect(
+            SpeechVoiceSelection.filteredVoiceIdentifiers(
+                availableIdentifiers: ["voice-ru", "voice-en"],
+                languagesByIdentifier: [
+                    "voice-ru": "ru-RU",
+                    "voice-en": "en-US",
+                ],
+                detectedLanguageCode: nil
+            ) == ["voice-ru", "voice-en"]
+        )
+    }
+
+    @Test func test_filteredVoiceIdentifiers_shouldReturnAllVoices_onNoLanguageMatch() {
+
+        #expect(
+            SpeechVoiceSelection.filteredVoiceIdentifiers(
+                availableIdentifiers: ["voice-en"],
+                languagesByIdentifier: [
+                    "voice-en": "en-US",
+                ],
+                detectedLanguageCode: "ru-RU"
+            ) == ["voice-en"]
+        )
+    }
+
     @Test func test_selectedVoiceIdentifier_shouldReturnDefault_onAutomaticSelection() {
 
         #expect(

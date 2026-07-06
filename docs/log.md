@@ -3,6 +3,7 @@
 ## 2026-07-06
 
 - Foliotell research: added iPhone text-to-speech reader UI reference corpus under `foliotell/research/`, with per-app source inventories, downloaded screenshots, interaction inventory, and comparison table for document-reader design work.
+- FolioTell: filter selectable voices to the detected document speech language, falling back to all installed voices only when no language-matched voices exist.
 - FolioTell: add persisted voice selection to the reader settings menu, with Auto preserving language-based voice choice and installed voices overriding playback directly.
 - FolioTell: render leading YAML front matter as caption-sized secondary text in the reader while preserving body styling and speech skip/read behavior.
 - FolioTell: move reader controls into the bottom safe-area inset and replace the speed picker/front-matter toggle with a compact settings menu.

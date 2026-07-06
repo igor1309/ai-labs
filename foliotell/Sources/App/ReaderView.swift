@@ -67,9 +67,33 @@ struct ReaderView: View {
         nonmutating set { selectedFrontMatterPlaybackMode = newValue.rawValue }
     }
 
+    private var allVoiceOptions: [SpeechVoiceOption] {
+        AVSpeechSynthesisVoice.speechVoices().map(SpeechVoiceOption.init)
+    }
+
+    private var documentSpeechText: String? {
+        switch loadedDocument {
+        case .failure:
+            nil
+        case let .success(document):
+            selectedFrontMatterMode.speechText(from: document.text)
+        }
+    }
+
+    private var detectedDocumentLanguageCode: String? {
+        documentSpeechText.flatMap(SpeechVoiceLanguage.languageCode(for:))
+    }
+
     private var voiceOptions: [SpeechVoiceOption] {
-        AVSpeechSynthesisVoice.speechVoices()
-            .map(SpeechVoiceOption.init)
+        let allVoiceOptions = allVoiceOptions
+        let filteredIdentifiers = SpeechVoiceSelection.filteredVoiceIdentifiers(
+            availableIdentifiers: Set(allVoiceOptions.map(\.id)),
+            languagesByIdentifier: Dictionary(uniqueKeysWithValues: allVoiceOptions.map { ($0.id, $0.language) }),
+            detectedLanguageCode: detectedDocumentLanguageCode
+        )
+
+        return allVoiceOptions
+            .filter { filteredIdentifiers.contains($0.id) }
             .sorted { lhs, rhs in
                 if lhs.language == rhs.language {
                     lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending

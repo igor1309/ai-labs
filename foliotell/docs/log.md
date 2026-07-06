@@ -5,6 +5,7 @@
 
 - Add the iPhone text-to-speech reader UI reference corpus under `foliotell/research/`: per-app source inventories, downloaded App Store/official screenshots, interaction inventory, and comparison table for the document-reader design.
 
+- Filter selectable voices to the detected document speech language, falling back to all installed voices only when no language-matched voices exist.
 - Add persisted voice selection to the reader settings menu, with Auto preserving language-based voice choice and installed voices overriding playback directly.
 - Render leading YAML front matter as caption-sized secondary text in the reader while preserving normal body styling and existing speech skip/read behavior.
 - Move reader controls into the bottom safe-area inset and replace the speed picker/front-matter toggle with a compact settings menu.
