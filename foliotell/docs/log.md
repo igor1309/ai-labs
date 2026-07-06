@@ -1,6 +1,8 @@
 # Log
 
 ## 2026-07-06
+- Opt FolioTell iPhone archives out of Mac Designed for iPhone/iPad and Apple Vision Pro compatibility build settings so App Store Connect does not treat uploads as publishable on unsupported platforms.
+
 - Declare FolioTell export compliance in the app Info.plist so TestFlight uploads include `ITSAppUsesNonExemptEncryption=false`.
 
 - Prepare FolioTell's first release tag as `foliotell_v0.0.1`: align the canonical release metadata and generated release-unit manifest with the implemented v0.0.1 app and bind the TestFlight deploy job to its GitHub environment secrets.
