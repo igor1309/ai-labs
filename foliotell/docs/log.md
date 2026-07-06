@@ -5,6 +5,7 @@
 
 - Add the iPhone text-to-speech reader UI reference corpus under `foliotell/research/`: per-app source inventories, downloaded App Store/official screenshots, interaction inventory, and comparison table for the document-reader design.
 
+- Render leading YAML front matter as caption-sized secondary text in the reader while preserving normal body styling and existing speech skip/read behavior.
 - Move reader controls into the bottom safe-area inset and replace the speed picker/front-matter toggle with a compact settings menu.
 - Select a Russian speech voice for Cyrillic text so the supplied Pushkin document is spoken as Russian instead of through the system default voice.
 - Compact the front-matter setting from a segmented control into a switch, keep Play/Pause/Resume at a stable width, and fix skip mode for UTF-8 BOM-prefixed Markdown so the supplied Pushkin file no longer speaks its YAML front matter.

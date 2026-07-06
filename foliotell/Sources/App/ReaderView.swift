@@ -128,11 +128,21 @@ struct ReaderView: View {
 
     @ViewBuilder
     private func documentText(_ document: FolioDocument) -> some View {
+        let renderableText = FrontMatterRendering.renderableText(from: document.text)
+
         ScrollView {
-            Text(document.text)
-                .font(.body)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .textSelection(.enabled)
+            VStack(alignment: .leading, spacing: 12) {
+                if let frontMatter = renderableText.frontMatter {
+                    Text(frontMatter)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Text(renderableText.body)
+                    .font(.body)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .textSelection(.enabled)
         }
     }
 
