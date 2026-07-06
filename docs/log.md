@@ -2,6 +2,11 @@
 
 ## 2026-07-06
 
+- FolioTell: move the TestFlight backlog under the project and add a
+  project-local product backlog covering playback resume, background playback
+  validation, speech text normalization, real-device language/voice validation,
+  compact navigation controls, a lightweight recent-documents library, reusable
+  Maestro regressions, and Markdown rendering polish.
 - Foliotell research: added iPhone text-to-speech reader UI reference corpus under `foliotell/research/`, with per-app source inventories, downloaded screenshots, interaction inventory, and comparison table for document-reader design work.
 - FolioTell: filter selectable voices to the detected document speech language, falling back to all installed voices only when no language-matched voices exist.
 - FolioTell: add persisted voice selection to the reader settings menu, with Auto preserving language-based voice choice and installed voices overriding playback directly.
