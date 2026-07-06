@@ -1,5 +1,15 @@
 # Log
 
+## 2026-07-06
+
+- Land the `foliotell` project: a native document-to-speech iPhone app (SwiftUI +
+  `AVSpeechSynthesizer`) that reads local Markdown and plain-text files aloud —
+  working name, in naming-validation and specification stage. Add the naming brief,
+  candidate evaluation, and technical specification (front matter normalized to repo
+  convention), a project README, an internal orientation `index.html`, and a project
+  log. Classify the directory across `scripts/loc-dashboard.sh`, the LOC dashboard
+  data, the README Components table, the root landings page, and `docs/products.html`.
+
 ## 2026-07-05
 
 - Courses: added July-2026 market + demand research under
