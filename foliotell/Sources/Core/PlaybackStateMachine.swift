@@ -6,12 +6,26 @@ public enum PlaybackState: Equatable, Sendable {
 
 public extension PlaybackState {
 
-    var isStartEnabled: Bool {
-        self == .idle
+    var primaryControlTitle: String {
+        switch self {
+        case .idle:
+            "Play"
+        case .paused:
+            "Resume"
+        case .speaking:
+            "Pause"
+        }
     }
 
-    var isPauseResumeEnabled: Bool {
-        self != .idle
+    var primaryControlSystemImage: String {
+        switch self {
+        case .idle:
+            "play.fill"
+        case .paused:
+            "playpause.fill"
+        case .speaking:
+            "pause.fill"
+        }
     }
 
     var isStopEnabled: Bool {

@@ -63,14 +63,14 @@ struct PlaybackStateMachineTests {
         #expect(sut.playbackState == .speaking)
     }
 
-    @Test func test_playbackStateControls_shouldDisableStart_onActivePlayback() {
+    @Test func test_playbackStateControls_shouldExposePrimaryAction_onPlaybackState() {
 
         let projections = PlaybackState.allTestCases.map(\.controlsProjection)
 
         #expect(projections == [
-            PlaybackControlsProjection(playbackState: .idle, isStartEnabled: true, isPauseResumeEnabled: false, isStopEnabled: false),
-            PlaybackControlsProjection(playbackState: .speaking, isStartEnabled: false, isPauseResumeEnabled: true, isStopEnabled: true),
-            PlaybackControlsProjection(playbackState: .paused, isStartEnabled: false, isPauseResumeEnabled: true, isStopEnabled: true),
+            PlaybackControlsProjection(playbackState: .idle, primaryControlTitle: "Play", primaryControlSystemImage: "play.fill", isStopEnabled: false),
+            PlaybackControlsProjection(playbackState: .speaking, primaryControlTitle: "Pause", primaryControlSystemImage: "pause.fill", isStopEnabled: true),
+            PlaybackControlsProjection(playbackState: .paused, primaryControlTitle: "Resume", primaryControlSystemImage: "playpause.fill", isStopEnabled: true),
         ])
     }
 
@@ -105,8 +105,8 @@ private struct PlaybackProjection: Equatable {
 
 private struct PlaybackControlsProjection: Equatable {
     let playbackState: PlaybackState
-    let isStartEnabled: Bool
-    let isPauseResumeEnabled: Bool
+    let primaryControlTitle: String
+    let primaryControlSystemImage: String
     let isStopEnabled: Bool
 }
 
@@ -126,8 +126,8 @@ private extension PlaybackState {
     var controlsProjection: PlaybackControlsProjection {
         PlaybackControlsProjection(
             playbackState: self,
-            isStartEnabled: isStartEnabled,
-            isPauseResumeEnabled: isPauseResumeEnabled,
+            primaryControlTitle: primaryControlTitle,
+            primaryControlSystemImage: primaryControlSystemImage,
             isStopEnabled: isStopEnabled
         )
     }

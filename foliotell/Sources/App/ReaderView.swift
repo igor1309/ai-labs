@@ -65,22 +65,12 @@ struct ReaderView: View {
 
             HStack(spacing: 12) {
                 Button {
-                    speechController.play(document.text, speed: selectedSpeed)
+                    speechController.togglePrimaryControl(document.text, speed: selectedSpeed)
                 } label: {
-                    Label("Play", systemImage: "play.fill")
+                    Label(speechController.primaryControlTitle, systemImage: speechController.primaryControlSystemImage)
                 }
-                .accessibilityIdentifier("playButton")
-                .disabled(speechController.playbackState.isStartEnabled == false)
+                .accessibilityIdentifier("primaryPlaybackButton")
                 .buttonStyle(.borderedProminent)
-
-                Button {
-                    speechController.pauseOrResume()
-                } label: {
-                    Label(speechController.pauseResumeTitle, systemImage: speechController.pauseResumeSystemImage)
-                }
-                .accessibilityIdentifier("pauseResumeButton")
-                .disabled(speechController.playbackState.isPauseResumeEnabled == false)
-                .buttonStyle(.bordered)
 
                 Button {
                     speechController.stop()

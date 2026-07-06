@@ -14,12 +14,21 @@ final class SpeechController: NSObject, ObservableObject {
         synthesizer.delegate = self
     }
 
-    var pauseResumeTitle: String {
-        playbackState == .paused ? "Resume" : "Pause"
+    var primaryControlTitle: String {
+        playbackState.primaryControlTitle
     }
 
-    var pauseResumeSystemImage: String {
-        playbackState == .paused ? "playpause.fill" : "pause.fill"
+    var primaryControlSystemImage: String {
+        playbackState.primaryControlSystemImage
+    }
+
+    func togglePrimaryControl(_ text: String, speed: SpeechSpeed) {
+        switch playbackState {
+        case .idle:
+            play(text, speed: speed)
+        case .paused, .speaking:
+            pauseOrResume()
+        }
     }
 
     func play(_ text: String, speed: SpeechSpeed) {
