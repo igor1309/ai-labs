@@ -1,12 +1,12 @@
 ---
 date: 2026-07-06
 model: gpt-5.5-thinking
-description: "FolioTell — a native document-to-speech iPhone app that reads local Markdown and plain-text files aloud (working name, implemented v0.0.1 package)"
+description: "FolioTell — a native document-to-speech iPhone app that reads local Markdown and plain-text files aloud (working name, implemented v0.0.2 package)"
 ---
 
 # foliotell
 
-Orientation surface: [index.html](index.html) — a single internal page for FolioTell (thesis, v0.0.1 scope, naming direction, non-goals, and a doc hub).
+Orientation surface: [index.html](index.html) — a single internal page for FolioTell (thesis, v0.0.2 scope, naming direction, non-goals, and a doc hub).
 
 Public landing: [landing/index.html](landing/index.html) — the App Store marketing page (self-contained, theme-aware), with a [privacy policy](landing/privacy.html).
 
@@ -14,7 +14,7 @@ Document-to-speech iPhone app.
 
 ## Description
 
-FolioTell opens local Markdown or plain-text files from the system document browser and reads them aloud using Apple speech synthesis, with selectable playback speed. A native, offline, read-only SwiftUI app — *no account, backend, analytics, subscription, or network dependency*. Working name; v0.0.1 is implemented as a Swift package.
+FolioTell opens local Markdown or plain-text files from the system document browser and reads them aloud using Apple speech synthesis, with selectable playback speed. A native, offline, read-only SwiftUI app — *no account, backend, analytics, subscription, or network dependency*. Working name; v0.0.2 is implemented as a Swift package.
 
 ## Implementation
 
