@@ -1,5 +1,14 @@
 # Log
 
+## 2026-07-08
+
+- Resolve the automatic speech voice from the installed voice catalog,
+  preferring voices with populated audio settings, instead of trusting
+  `AVSpeechSynthesisVoice(language:)`, which can return a voice that produces
+  no audio on device; log the resolved voice so device failures are
+  diagnosable from the console. Addresses reading still silent on device in
+  TestFlight 0.0.2.
+
 ## 2026-07-07
 
 - Prepare patch release `foliotell_v0.0.2` for the TestFlight device-speech

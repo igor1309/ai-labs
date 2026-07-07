@@ -1,5 +1,13 @@
 # Log
 
+## 2026-07-08
+
+- FolioTell: resolve the automatic speech voice from the installed voice
+  catalog (preferring voices with populated audio settings) instead of the
+  `AVSpeechSynthesisVoice(language:)` initializer, which can return a voice
+  that produces no audio on device; log the resolved voice for on-device
+  diagnosis. Addresses reading still silent on device in TestFlight 0.0.2.
+
 ## 2026-07-07
 
 - FolioTell: prepare patch release `foliotell_v0.0.2` for the TestFlight
