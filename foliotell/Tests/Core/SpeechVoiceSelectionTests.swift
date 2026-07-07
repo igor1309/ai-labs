@@ -73,4 +73,54 @@ struct SpeechVoiceSelectionTests {
             ) == nil
         )
     }
+
+    @Test func test_automaticVoiceIdentifier_shouldReturnMatchingVoice_onExactLanguageMatch() {
+
+        #expect(
+            SpeechVoiceSelection.automaticVoiceIdentifier(
+                matching: "ru-RU",
+                availableVoices: [
+                    SpeechVoiceDescriptor(identifier: "voice-ru", language: "ru-RU", isAudioCapable: true),
+                    SpeechVoiceDescriptor(identifier: "voice-en", language: "en-US", isAudioCapable: true),
+                ]
+            ) == "voice-ru"
+        )
+    }
+
+    @Test func test_automaticVoiceIdentifier_shouldPreferAudioCapableVoice_onBrokenVoiceListedFirst() {
+
+        #expect(
+            SpeechVoiceSelection.automaticVoiceIdentifier(
+                matching: "ru-RU",
+                availableVoices: [
+                    SpeechVoiceDescriptor(identifier: "voice-ru-broken", language: "ru-RU", isAudioCapable: false),
+                    SpeechVoiceDescriptor(identifier: "voice-ru-capable", language: "ru-RU", isAudioCapable: true),
+                ]
+            ) == "voice-ru-capable"
+        )
+    }
+
+    @Test func test_automaticVoiceIdentifier_shouldReturnMatchingVoice_onNoAudioCapableMatch() {
+
+        #expect(
+            SpeechVoiceSelection.automaticVoiceIdentifier(
+                matching: "ru-RU",
+                availableVoices: [
+                    SpeechVoiceDescriptor(identifier: "voice-ru-broken", language: "ru-RU", isAudioCapable: false),
+                ]
+            ) == "voice-ru-broken"
+        )
+    }
+
+    @Test func test_automaticVoiceIdentifier_shouldReturnDefault_onNoLanguageMatch() {
+
+        #expect(
+            SpeechVoiceSelection.automaticVoiceIdentifier(
+                matching: "ru-RU",
+                availableVoices: [
+                    SpeechVoiceDescriptor(identifier: "voice-en", language: "en-US", isAudioCapable: true),
+                ]
+            ) == nil
+        )
+    }
 }

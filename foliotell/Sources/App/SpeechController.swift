@@ -2,12 +2,14 @@ import AVFoundation
 #if !FOLIOTELL_SINGLE_TARGET
 import FolioTellCore
 #endif
+import OSLog
 import SwiftUI
 
 @MainActor
 final class SpeechController: NSObject, ObservableObject {
     @Published private(set) var playbackState: PlaybackState = .idle
 
+    private let logger = Logger(subsystem: "foliotell.FolioTell", category: "speech")
     private let synthesizer = AVSpeechSynthesizer()
     private var playback = PlaybackStateMachine()
     private var currentUtteranceID: ObjectIdentifier?
@@ -77,7 +79,7 @@ final class SpeechController: NSObject, ObservableObject {
         if let voiceIdentifier, let voice = AVSpeechSynthesisVoice(identifier: voiceIdentifier) {
             utterance.voice = voice
         } else if let languageCode = SpeechVoiceLanguage.languageCode(for: utteranceText) {
-            utterance.voice = AVSpeechSynthesisVoice(language: languageCode)
+            utterance.voice = automaticVoice(matching: languageCode)
         }
         synthesizer.speak(utterance)
     }
@@ -141,6 +143,28 @@ final class SpeechController: NSObject, ObservableObject {
 
     private func publishPlaybackState() {
         playbackState = playback.playbackState
+    }
+
+    private func automaticVoice(matching languageCode: String) -> AVSpeechSynthesisVoice? {
+        // Voices with empty audioFileSettings can instantiate yet produce no audio
+        // on device, so the catalog lookup prefers voices with populated settings.
+        let availableVoices = AVSpeechSynthesisVoice.speechVoices().map {
+            SpeechVoiceDescriptor(
+                identifier: $0.identifier,
+                language: $0.language,
+                isAudioCapable: $0.audioFileSettings.isEmpty == false
+            )
+        }
+        guard let identifier = SpeechVoiceSelection.automaticVoiceIdentifier(
+            matching: languageCode,
+            availableVoices: availableVoices
+        ) else {
+            logger.error("no voice matches \(languageCode); catalog has \(availableVoices.count) voices; falling back to default voice")
+            return nil
+        }
+
+        logger.info("resolved \(languageCode) to voice \(identifier) from \(availableVoices.count) catalog voices")
+        return AVSpeechSynthesisVoice(identifier: identifier)
     }
 
     private func configureAudioSessionForPlayback() {
