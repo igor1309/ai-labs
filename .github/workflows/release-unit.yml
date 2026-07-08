@@ -578,6 +578,11 @@ jobs:
         with:
           ref: ${{ github.ref_name }}
 
+      # macos-latest images differ in default Xcode (16.4 vs 26.5), which changes
+      # both the SDK the shipped app is built against and the altool generation.
+      - name: Select newest Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)/Contents/Developer"
+
       - name: Verify FolioTell TestFlight secrets
         env:
           FOLIOTELL_ASC_API_KEY_ID: ${{ secrets.FOLIOTELL_ASC_API_KEY_ID }}
