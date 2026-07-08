@@ -14,6 +14,11 @@ Repo-specific addenda to the `release-process` skill. Read when doing release wo
 - Pre-push gate for Node/TypeScript: `./scripts/run_silent.sh "build" npx tsc --noEmit` and `./scripts/run_silent.sh "tests" npm test`. **`npm test` is the full root suite, and that is the gate** — the release-unit `core` job re-runs the same full suite, so a pre-existing failure in *any* unit blocks *every* unit's release. Trunk being green is not sufficient: per-project CI path filters skip the full suite, so a failure can hide on trunk and only surface in the release run. If the full suite is red, the release is blocked until it is green — never substitute `npm run test:<unit>` for the gate.
 - Smoke model: `vars.OPENROUTER_CI_MODEL` and `secrets.OPENROUTER_API_KEY`.
 - Legacy coexistence: the existing `v*` tag namespace (`.github/workflows/release.yml`, Oracle-specific) coexists with the new `<basename>_v*` namespace. The legacy workflow is not modified; migration is deferred.
+- Delegation: routine releases with a self-contained unit runbook (e.g.
+  `foliotell/docs/release-runbook.md`) can be executed by the `release-executor`
+  subagent (`.claude/agents/release-executor.md`, haiku model) — pass unit,
+  versions, branch name, log entries, and PR title/body in the invocation
+  prompt; it stops and reports on anything off-runbook.
 
 ## Definition of done
 
