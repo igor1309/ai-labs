@@ -6,6 +6,15 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-07-08
 
+- **skill-review v1.5.0**: promoted the drafted "Folder shape" axis (§9,
+  skills with supporting files only) from the skill's backlog — supporting
+  files should be bucketed by loading contract (`scripts/` run for output,
+  `references/` read on demand, `assets/` inert), a convention three canonical
+  layout sources converge on; triggers only above a couple of unbucketed
+  files, a single loose file is a comment at most. Explicit axis-9 verdict
+  added to the output format. `backlog/` is now empty and removed; skill
+  backlog fully drained. Marketplace bump deferred to the pending dev-skills
+  batch.
 - **skill-review v1.4.0**: promoted the drafted "Failure observability" axis
   (§8, script-driving skills only) from the skill's backlog into Evaluation
   Axes — a skill must surface non-zero script exits mechanically, not depend
