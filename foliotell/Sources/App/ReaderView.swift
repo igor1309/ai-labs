@@ -22,10 +22,15 @@ struct ReaderView: View {
     var body: some View {
         content
             .padding()
-            .navigationTitle(displayFileName)
-            .safeAreaInset(edge: .bottom) {
-                bottomControls
+            .overlay(alignment: .bottom) {
+                playbackProgressRibbon
             }
+            .navigationTitle(displayFileName)
+            #if os(iOS)
+            .toolbar {
+                readerBottomBar
+            }
+            #endif
             .task {
                 // speechVoices() can stall for seconds on device; query the
                 // catalog once, off the main actor, instead of per render.
@@ -213,46 +218,73 @@ struct ReaderView: View {
     }
 
     @ViewBuilder
-    private var bottomControls: some View {
-        switch loadedDocument {
-        case .failure:
-            EmptyView()
-        case let .success(document):
-            VStack(spacing: 8) {
-                ProgressView(value: playbackProgress(for: document))
-                    .progressViewStyle(.linear)
-                    .accessibilityLabel("Listening progress")
-                    .accessibilityIdentifier("playbackProgress")
+    private var playbackProgressRibbon: some View {
+        if case let .success(document) = loadedDocument {
+            ProgressView(value: playbackProgress(for: document))
+                .progressViewStyle(.linear)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 4)
+                .accessibilityLabel("Listening progress")
+                .accessibilityIdentifier("playbackProgress")
+        }
+    }
 
-                controlsCluster(for: document)
+    #if os(iOS)
+    // Native bottom-bar toolbar: on iOS 26 the system renders it as one Liquid
+    // Glass bar that floats over the reader text (no edge inset). The transport
+    // controls (previous · play/pause · next) are centered between the settings
+    // menu and stop via flexible spacers.
+    @ToolbarContentBuilder
+    private var readerBottomBar: some ToolbarContent {
+        if case let .success(document) = loadedDocument {
+            ToolbarItemGroup(placement: .bottomBar) {
+                settingsMenu(for: document)
+
+                Spacer()
+
+                Button {
+                    jumpToPreviousSentence(in: document)
+                } label: {
+                    Image(systemName: "backward.fill")
+                }
+                .accessibilityLabel("Previous sentence")
+                .accessibilityIdentifier("previousSentenceButton")
+
+                Button {
+                    speechController.togglePrimaryControl(
+                        speechText(for: document),
+                        speed: selectedSpeed,
+                        voiceIdentifier: selectedVoiceIdentifierForPlayback,
+                        startingAtUTF16Offset: resumeSpokenUTF16Offset(for: document)
+                    )
+                } label: {
+                    Image(systemName: speechController.primaryControlSystemImage)
+                }
+                .accessibilityLabel(speechController.primaryControlTitle)
+                .accessibilityIdentifier("primaryPlaybackButton")
+
+                Button {
+                    jumpToNextSentence(in: document)
+                } label: {
+                    Image(systemName: "forward.fill")
+                }
+                .accessibilityLabel("Next sentence")
+                .accessibilityIdentifier("nextSentenceButton")
+
+                Spacer()
+
+                Button {
+                    speechController.stop()
+                } label: {
+                    Image(systemName: "stop.fill")
+                }
+                .accessibilityLabel("Stop")
+                .accessibilityIdentifier("stopButton")
+                .disabled(speechController.playbackState.isStopEnabled == false)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(.bar)
         }
     }
-
-    @ViewBuilder
-    private func controlsCluster(for document: FolioDocument) -> some View {
-        let cluster = HStack(spacing: 10) {
-            settingsMenu(for: document)
-
-            Spacer(minLength: 8)
-
-            playbackButtons(for: document)
-        }
-
-        // Group the controls in a single Liquid Glass surface so adjacent glass
-        // elements blend (Apple Music-style toolbar). The container is iOS 26+;
-        // the macOS build path (swift build) keeps the flat cluster.
-        #if os(iOS)
-        GlassEffectContainer(spacing: 8) {
-            cluster
-        }
-        #else
-        cluster
-        #endif
-    }
+    #endif
 
     @ViewBuilder
     private func settingsMenu(for document: FolioDocument) -> some View {
@@ -319,10 +351,6 @@ struct ReaderView: View {
             }
         } label: {
             Image(systemName: "slider.horizontal.3")
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
-                .frame(minWidth: 44, minHeight: 44)
-                .readerControlGlass(cornerRadius: 9)
         }
         .accessibilityLabel("Playback settings")
         .accessibilityIdentifier("readerSettingsMenu")
@@ -396,96 +424,6 @@ struct ReaderView: View {
         }
     }
 
-    @ViewBuilder
-    private func playbackButtons(for document: FolioDocument) -> some View {
-        let controlSize: CGFloat = 44
-        let cornerRadius: CGFloat = 9
-
-        Group {
-            HStack(spacing: 8) {
-                Button {
-                    jumpToPreviousSentence(in: document)
-                } label: {
-                    Image(systemName: "backward.fill")
-                        .font(.body.weight(.semibold))
-                        .frame(width: controlSize, height: controlSize)
-                        .foregroundStyle(Color.accentColor)
-                        .readerControlGlass(cornerRadius: cornerRadius)
-                }
-                .accessibilityLabel("Previous sentence")
-                .accessibilityIdentifier("previousSentenceButton")
-                .buttonStyle(.plain)
-
-                Button {
-                    speechController.togglePrimaryControl(
-                        speechText(for: document),
-                        speed: selectedSpeed,
-                        voiceIdentifier: selectedVoiceIdentifierForPlayback,
-                        startingAtUTF16Offset: resumeSpokenUTF16Offset(for: document)
-                    )
-                } label: {
-                    Image(systemName: speechController.primaryControlSystemImage)
-                        .font(.title3.weight(.semibold))
-                        .frame(width: controlSize, height: controlSize)
-                        .foregroundStyle(.white)
-                        .readerControlGlass(cornerRadius: cornerRadius, tint: Color.accentColor)
-                }
-                .accessibilityLabel(speechController.primaryControlTitle)
-                .accessibilityIdentifier("primaryPlaybackButton")
-                .buttonStyle(.plain)
-
-                Button {
-                    jumpToNextSentence(in: document)
-                } label: {
-                    Image(systemName: "forward.fill")
-                        .font(.body.weight(.semibold))
-                        .frame(width: controlSize, height: controlSize)
-                        .foregroundStyle(Color.accentColor)
-                        .readerControlGlass(cornerRadius: cornerRadius)
-                }
-                .accessibilityLabel("Next sentence")
-                .accessibilityIdentifier("nextSentenceButton")
-                .buttonStyle(.plain)
-
-                Button {
-                    speechController.stop()
-                } label: {
-                    Image(systemName: "stop.fill")
-                        .font(.body.weight(.semibold))
-                        .frame(width: controlSize, height: controlSize)
-                        .foregroundStyle(stopForegroundStyle)
-                        .readerControlGlass(cornerRadius: cornerRadius)
-                }
-                .accessibilityLabel("Stop")
-                .accessibilityIdentifier("stopButton")
-                .disabled(speechController.playbackState.isStopEnabled == false)
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    private var stopForegroundStyle: Color {
-        speechController.playbackState.isStopEnabled ? Color.accentColor : Color.secondary.opacity(0.35)
-    }
-}
-
-private extension View {
-
-    /// Liquid Glass chrome for a reader control. On iOS 26 the label sits on an
-    /// interactive glass capsule/rect (optionally tinted for the primary
-    /// control); the macOS build path (swift build) keeps the original flat
-    /// rounded-rectangle fill so the App target compiles without the iOS 26 SDK.
-    @ViewBuilder
-    func readerControlGlass(cornerRadius: CGFloat, tint: Color? = nil) -> some View {
-        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-
-        #if os(iOS)
-        let glass = tint.map { Glass.regular.tint($0).interactive() } ?? Glass.regular.interactive()
-        glassEffect(glass, in: shape)
-        #else
-        background(tint ?? Color.secondary.opacity(0.12), in: shape)
-        #endif
-    }
 }
 
 private struct SpeechVoiceOption: Identifiable, Sendable {

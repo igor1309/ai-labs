@@ -5,6 +5,14 @@
 - Fix the TestFlight archive signing identity so the release workflow requests
   Apple Distribution provisioning assets instead of development signing assets.
 
+- Rework the reader controls into a native bottom-bar toolbar
+  (`ToolbarItemGroup(placement: .bottomBar)`) instead of a `.safeAreaInset`
+  bar with hand-rolled `glassEffect`. On iOS 26 the system renders it as one
+  Liquid Glass bar that floats over the text (no edge inset); transport
+  (previous · play/pause · next) is centered between the settings menu and stop,
+  and the progress ribbon floats above the text as an overlay. Removes the
+  custom glass helper and `GlassEffectContainer`.
+
 - Release `foliotell_v0.4.0` — reader bottom controls rendered with Liquid Glass
   (settings icon + playback buttons on grouped interactive glass, primary button
   accent-tinted); deployment target raised to iOS 26.
