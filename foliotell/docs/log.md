@@ -2,6 +2,16 @@
 
 ## 2026-07-08
 
+- Restructure playback around two IMRX-style state machines (ADR-002):
+  transport (utterance lifecycle, token-scoped synthesizer callbacks) and
+  position (cached derivation, anchor persistence) in Core, wired at an
+  App-layer composition root with spy-tested effect handlers and wiring tests;
+  `SpeechController` and `PlaybackStateMachine` removed, views split into pure
+  presentation plus observable wrapper. Two Codex adversarial reviews hardened
+  token monotonicity, scoped pause/resume resolutions, and the paused word
+  boundary. Behavior parity verified on simulator (playback-controls
+  assertions); per-word position mapping dropped from O(document) to lookups.
+
 - Release `foliotell_v0.4.2` — reader bottom-bar fix: playback controls render
   again in the document reader.
 
