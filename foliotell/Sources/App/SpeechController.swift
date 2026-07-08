@@ -95,6 +95,48 @@ final class SpeechController: NSObject, ObservableObject {
         synthesizer.speak(utterance)
     }
 
+    func jumpToPreviousSentence() {
+        jump(toSpokenUTF16Offset: PlaybackPositionMapping.previousSentenceStartUTF16Offset(
+            in: playback.currentText,
+            from: playback.currentSpokenUTF16Offset
+        ))
+    }
+
+    func jumpToNextSentence() {
+        guard let target = PlaybackPositionMapping.nextSentenceStartUTF16Offset(
+            in: playback.currentText,
+            from: playback.currentSpokenUTF16Offset
+        ) else {
+            return
+        }
+
+        jump(toSpokenUTF16Offset: target)
+    }
+
+    private func jump(toSpokenUTF16Offset target: Int) {
+        switch playbackState {
+        case .idle:
+            break
+        case .speaking:
+            startSpeaking(
+                fullText: playback.currentText,
+                speed: playback.currentSpeed,
+                voiceIdentifier: currentVoiceIdentifier,
+                startingAtUTF16Offset: target
+            )
+        case .paused:
+            // Discard the paused utterance silently; resume restarts from the
+            // repositioned offset via the continueSpeaking() fallback.
+            if let currentUtteranceID {
+                ignoredUtteranceIDs.insert(currentUtteranceID)
+            }
+            currentUtteranceID = nil
+            synthesizer.stopSpeaking(at: .immediate)
+            playback.reposition(toUTF16Offset: target)
+            onSpokenPositionChange?(playback.currentSpokenUTF16Offset)
+        }
+    }
+
     func pauseOrResume() {
         switch playbackState {
         case .idle:
@@ -103,6 +145,13 @@ final class SpeechController: NSObject, ObservableObject {
             if synthesizer.continueSpeaking() {
                 playback.resumeSucceeded()
                 publishPlaybackState()
+            } else {
+                startSpeaking(
+                    fullText: playback.currentText,
+                    speed: playback.currentSpeed,
+                    voiceIdentifier: currentVoiceIdentifier,
+                    startingAtUTF16Offset: playback.currentSpokenUTF16Offset
+                )
             }
         case .speaking:
             let didAcceptPause = synthesizer.pauseSpeaking(at: .word)

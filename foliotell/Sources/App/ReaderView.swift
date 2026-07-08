@@ -348,6 +348,54 @@ struct ReaderView: View {
         }
     }
 
+    private func jumpToPreviousSentence(in document: FolioDocument) {
+        switch speechController.playbackState {
+        case .paused, .speaking:
+            speechController.jumpToPreviousSentence()
+        case .idle:
+            let speechText = speechText(for: document)
+            applyIdleJump(
+                toSpokenUTF16Offset: PlaybackPositionMapping.previousSentenceStartUTF16Offset(
+                    in: speechText,
+                    from: resumeSpokenUTF16Offset(for: document)
+                ),
+                document: document
+            )
+        }
+    }
+
+    private func jumpToNextSentence(in document: FolioDocument) {
+        switch speechController.playbackState {
+        case .paused, .speaking:
+            speechController.jumpToNextSentence()
+        case .idle:
+            let speechText = speechText(for: document)
+            guard let target = PlaybackPositionMapping.nextSentenceStartUTF16Offset(
+                in: speechText,
+                from: resumeSpokenUTF16Offset(for: document)
+            ) else {
+                return
+            }
+
+            applyIdleJump(toSpokenUTF16Offset: target, document: document)
+        }
+    }
+
+    private func applyIdleJump(toSpokenUTF16Offset target: Int, document: FolioDocument) {
+        let anchor = PlaybackPositionMapping.documentAnchor(
+            documentText: document.text,
+            frontMatterMode: selectedFrontMatterMode,
+            spokenUTF16Offset: target
+        )
+        storedAnchor = anchor
+        // After an idle jump the position IS the anchor — drop any stale
+        // frozen live offset so the progress bar tracks the jump.
+        liveDocumentUTF16Offset = nil
+        if let documentPath {
+            positionStore.setAnchor(anchor, forDocumentPath: documentPath)
+        }
+    }
+
     @ViewBuilder
     private func playbackButtons(for document: FolioDocument) -> some View {
         let controlSize: CGFloat = 44
@@ -355,6 +403,19 @@ struct ReaderView: View {
 
         Group {
             HStack(spacing: 8) {
+                Button {
+                    jumpToPreviousSentence(in: document)
+                } label: {
+                    Image(systemName: "backward.fill")
+                        .font(.body.weight(.semibold))
+                        .frame(width: controlSize, height: controlSize)
+                        .foregroundStyle(Color.accentColor)
+                        .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                }
+                .accessibilityLabel("Previous sentence")
+                .accessibilityIdentifier("previousSentenceButton")
+                .buttonStyle(.plain)
+
                 Button {
                     speechController.togglePrimaryControl(
                         speechText(for: document),
@@ -371,6 +432,19 @@ struct ReaderView: View {
                 }
                 .accessibilityLabel(speechController.primaryControlTitle)
                 .accessibilityIdentifier("primaryPlaybackButton")
+                .buttonStyle(.plain)
+
+                Button {
+                    jumpToNextSentence(in: document)
+                } label: {
+                    Image(systemName: "forward.fill")
+                        .font(.body.weight(.semibold))
+                        .frame(width: controlSize, height: controlSize)
+                        .foregroundStyle(Color.accentColor)
+                        .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                }
+                .accessibilityLabel("Next sentence")
+                .accessibilityIdentifier("nextSentenceButton")
                 .buttonStyle(.plain)
 
                 Button {
