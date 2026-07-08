@@ -5,7 +5,11 @@ struct PlaybackTransportStateTests {
 
     @Test func test_playbackState_shouldProjectUIState_onEachTransportState() {
 
-        let states: [PlaybackTransportState] = [.idle, .speaking(makeSession()), .paused(makeSession())]
+        let states: [PlaybackTransportState] = [
+            .idle(lastUtteranceToken: 0),
+            .speaking(makeSession()),
+            .paused(makeSession()),
+        ]
 
         #expect(states.map(\.playbackState) == [.idle, .speaking, .paused])
     }
@@ -13,7 +17,7 @@ struct PlaybackTransportStateTests {
     @Test func test_spokenUTF16Offset_shouldExposeSessionOffset_onActiveStates() {
 
         let states: [PlaybackTransportState] = [
-            .idle,
+            .idle(lastUtteranceToken: 0),
             .speaking(makeSession(spokenUTF16Offset: 7)),
             .paused(makeSession(spokenUTF16Offset: 16)),
         ]

@@ -52,10 +52,10 @@ struct PlaybackTransportEffectHandlerTests {
         let (sut, log) = makeSUT(pauseResult: true)
         var dispatched = [PlaybackTransportEvent]()
 
-        sut.handleEffect(.pause) { dispatched.append($0) }
+        sut.handleEffect(.pause(utteranceToken: 1)) { dispatched.append($0) }
 
         #expect(log.calls == [.pause])
-        #expect(dispatched == [.pauseResolved(accepted: true)])
+        #expect(dispatched == [.pauseResolved(accepted: true, utteranceToken: 1)])
     }
 
     @Test func test_handleEffect_shouldDispatchRejectedPause_onPauseRejected() {
@@ -63,9 +63,9 @@ struct PlaybackTransportEffectHandlerTests {
         let (sut, _) = makeSUT(pauseResult: false)
         var dispatched = [PlaybackTransportEvent]()
 
-        sut.handleEffect(.pause) { dispatched.append($0) }
+        sut.handleEffect(.pause(utteranceToken: 1)) { dispatched.append($0) }
 
-        #expect(dispatched == [.pauseResolved(accepted: false)])
+        #expect(dispatched == [.pauseResolved(accepted: false, utteranceToken: 1)])
     }
 
     @Test func test_handleEffect_shouldDispatchAcceptedResume_onResumeAccepted() {
@@ -73,10 +73,10 @@ struct PlaybackTransportEffectHandlerTests {
         let (sut, log) = makeSUT(resumeResult: true)
         var dispatched = [PlaybackTransportEvent]()
 
-        sut.handleEffect(.resume) { dispatched.append($0) }
+        sut.handleEffect(.resume(utteranceToken: 1)) { dispatched.append($0) }
 
         #expect(log.calls == [.resume])
-        #expect(dispatched == [.resumeResolved(accepted: true)])
+        #expect(dispatched == [.resumeResolved(accepted: true, utteranceToken: 1)])
     }
 
     @Test func test_handleEffect_shouldDispatchRejectedResume_onResumeRejected() {
@@ -84,9 +84,9 @@ struct PlaybackTransportEffectHandlerTests {
         let (sut, _) = makeSUT(resumeResult: false)
         var dispatched = [PlaybackTransportEvent]()
 
-        sut.handleEffect(.resume) { dispatched.append($0) }
+        sut.handleEffect(.resume(utteranceToken: 1)) { dispatched.append($0) }
 
-        #expect(dispatched == [.resumeResolved(accepted: false)])
+        #expect(dispatched == [.resumeResolved(accepted: false, utteranceToken: 1)])
     }
 
     @Test func test_handleEffect_shouldNotifyStartOverThenReplaceUtterance_onRestartPlayback() {

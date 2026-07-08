@@ -5,7 +5,7 @@ struct PlaybackTransportReducerTests {
 
     @Test func test_reduce_shouldStartSpeakingAndBeginSpeaking_onPrimaryTappedInIdle() {
 
-        let (state, effect) = reduce(.idle, .primaryTapped(makeRequest()))
+        let (state, effect) = reduce(.idle(lastUtteranceToken: 0),.primaryTapped(makeRequest()))
 
         #expect(state == .speaking(makeSession()))
         #expect(effect == .beginSpeaking(makeCommand(), replacingCurrentUtterance: false))
@@ -13,7 +13,7 @@ struct PlaybackTransportReducerTests {
 
     @Test func test_reduce_shouldClampStartOffsetToTextLength_onPrimaryTappedInIdleWithExcessiveOffset() {
 
-        let (state, _) = reduce(.idle, .primaryTapped(makeRequest(text: "Short.", startUTF16Offset: 1000)))
+        let (state, _) = reduce(.idle(lastUtteranceToken: 0),.primaryTapped(makeRequest(text: "Short.", startUTF16Offset: 1000)))
 
         #expect(state == .speaking(makeSession(
             text: "Short.",
@@ -27,7 +27,7 @@ struct PlaybackTransportReducerTests {
         let (state, effect) = reduce(.speaking(makeSession()), .primaryTapped(makeRequest()))
 
         #expect(state == .speaking(makeSession()))
-        #expect(effect == .pause)
+        #expect(effect == .pause(utteranceToken: 1))
     }
 
     @Test func test_reduce_shouldRequestResume_onPrimaryTappedWhilePausedWithActiveUtterance() {
@@ -35,7 +35,7 @@ struct PlaybackTransportReducerTests {
         let (state, effect) = reduce(.paused(makeSession()), .primaryTapped(makeRequest()))
 
         #expect(state == .paused(makeSession()))
-        #expect(effect == .resume)
+        #expect(effect == .resume(utteranceToken: 1))
     }
 
     @Test func test_reduce_shouldSpeakFreshUtterance_onPrimaryTappedWhilePausedWithoutActiveUtterance() {
@@ -57,7 +57,7 @@ struct PlaybackTransportReducerTests {
 
     @Test func test_reduce_shouldPause_onAcceptedPauseWhileSpeaking() {
 
-        let (state, effect) = reduce(.speaking(makeSession()), .pauseResolved(accepted: true))
+        let (state, effect) = reduce(.speaking(makeSession()), .pauseResolved(accepted: true, utteranceToken: 1))
 
         #expect(state == .paused(makeSession()))
         #expect(effect == nil)
@@ -65,7 +65,7 @@ struct PlaybackTransportReducerTests {
 
     @Test func test_reduce_shouldStaySpeaking_onRejectedPauseWhileSpeaking() {
 
-        let (state, effect) = reduce(.speaking(makeSession()), .pauseResolved(accepted: false))
+        let (state, effect) = reduce(.speaking(makeSession()), .pauseResolved(accepted: false, utteranceToken: 1))
 
         #expect(state == .speaking(makeSession()))
         #expect(effect == nil)
@@ -74,17 +74,17 @@ struct PlaybackTransportReducerTests {
     @Test func test_reduce_shouldIgnorePauseResolution_onIdleAndPaused() {
 
         let results = [
-            reduce(.idle, .pauseResolved(accepted: true)),
-            reduce(.paused(makeSession()), .pauseResolved(accepted: true)),
+            reduce(.idle(lastUtteranceToken: 0),.pauseResolved(accepted: true, utteranceToken: 1)),
+            reduce(.paused(makeSession()), .pauseResolved(accepted: true, utteranceToken: 1)),
         ]
 
-        #expect(results.map(\.0) == [.idle, .paused(makeSession())])
+        #expect(results.map(\.0) == [.idle(lastUtteranceToken: 0), .paused(makeSession())])
         #expect(results.map(\.1) == [nil, nil])
     }
 
     @Test func test_reduce_shouldResumeSpeaking_onAcceptedResumeWhilePaused() {
 
-        let (state, effect) = reduce(.paused(makeSession()), .resumeResolved(accepted: true))
+        let (state, effect) = reduce(.paused(makeSession()), .resumeResolved(accepted: true, utteranceToken: 1))
 
         #expect(state == .speaking(makeSession()))
         #expect(effect == nil)
@@ -94,7 +94,7 @@ struct PlaybackTransportReducerTests {
 
         let paused = makeSession(spokenUTF16Offset: 16)
 
-        let (state, effect) = reduce(.paused(paused), .resumeResolved(accepted: false))
+        let (state, effect) = reduce(.paused(paused), .resumeResolved(accepted: false, utteranceToken: 1))
 
         #expect(state == .speaking(makeSession(
             utteranceToken: 2,
@@ -110,11 +110,11 @@ struct PlaybackTransportReducerTests {
     @Test func test_reduce_shouldIgnoreResumeResolution_onIdleAndSpeaking() {
 
         let results = [
-            reduce(.idle, .resumeResolved(accepted: true)),
-            reduce(.speaking(makeSession()), .resumeResolved(accepted: true)),
+            reduce(.idle(lastUtteranceToken: 0),.resumeResolved(accepted: true, utteranceToken: 1)),
+            reduce(.speaking(makeSession()), .resumeResolved(accepted: true, utteranceToken: 1)),
         ]
 
-        #expect(results.map(\.0) == [.idle, .speaking(makeSession())])
+        #expect(results.map(\.0) == [.idle(lastUtteranceToken: 0), .speaking(makeSession())])
         #expect(results.map(\.1) == [nil, nil])
     }
 
@@ -122,7 +122,7 @@ struct PlaybackTransportReducerTests {
 
         let (state, effect) = reduce(.speaking(makeSession()), .stopTapped)
 
-        #expect(state == .idle)
+        #expect(state == .idle(lastUtteranceToken: 1))
         #expect(effect == .stopPlayback)
     }
 
@@ -130,23 +130,23 @@ struct PlaybackTransportReducerTests {
 
         let (state, effect) = reduce(.paused(makeSession()), .stopTapped)
 
-        #expect(state == .idle)
+        #expect(state == .idle(lastUtteranceToken: 1))
         #expect(effect == .stopPlayback)
     }
 
     @Test func test_reduce_shouldIgnoreStop_onIdle() {
 
-        let (state, effect) = reduce(.idle, .stopTapped)
+        let (state, effect) = reduce(.idle(lastUtteranceToken: 0),.stopTapped)
 
-        #expect(state == .idle)
+        #expect(state == .idle(lastUtteranceToken: 0))
         #expect(effect == nil)
     }
 
     @Test func test_reduce_shouldNotifyStartOverOnly_onStartOverTappedInIdle() {
 
-        let (state, effect) = reduce(.idle, .startOverTapped)
+        let (state, effect) = reduce(.idle(lastUtteranceToken: 0),.startOverTapped)
 
-        #expect(state == .idle)
+        #expect(state == .idle(lastUtteranceToken: 0))
         #expect(effect == .notifyStartOver)
     }
 
@@ -205,9 +205,9 @@ struct PlaybackTransportReducerTests {
 
     @Test func test_reduce_shouldIgnoreSpeedChange_onIdle() {
 
-        let (state, effect) = reduce(.idle, .speedChanged(.oneAndHalf))
+        let (state, effect) = reduce(.idle(lastUtteranceToken: 0),.speedChanged(.oneAndHalf))
 
-        #expect(state == .idle)
+        #expect(state == .idle(lastUtteranceToken: 0))
         #expect(effect == nil)
     }
 
@@ -239,9 +239,9 @@ struct PlaybackTransportReducerTests {
 
     @Test func test_reduce_shouldIgnoreVoiceChange_onIdle() {
 
-        let (state, effect) = reduce(.idle, .voiceChanged("voice.ru"))
+        let (state, effect) = reduce(.idle(lastUtteranceToken: 0),.voiceChanged("voice.ru"))
 
-        #expect(state == .idle)
+        #expect(state == .idle(lastUtteranceToken: 0))
         #expect(effect == nil)
     }
 
@@ -327,11 +327,11 @@ struct PlaybackTransportReducerTests {
     @Test func test_reduce_shouldNotifyIdleJump_onJumpTapsInIdle() {
 
         let results = [
-            reduce(.idle, .jumpToNextSentenceTapped),
-            reduce(.idle, .jumpToPreviousSentenceTapped),
+            reduce(.idle(lastUtteranceToken: 0),.jumpToNextSentenceTapped),
+            reduce(.idle(lastUtteranceToken: 0),.jumpToPreviousSentenceTapped),
         ]
 
-        #expect(results.map(\.0) == [.idle, .idle])
+        #expect(results.map(\.0) == [.idle(lastUtteranceToken: 0), .idle(lastUtteranceToken: 0)])
         #expect(results.map(\.1) == [.notifyIdleJump(.next), .notifyIdleJump(.previous)])
     }
 
@@ -369,22 +369,66 @@ struct PlaybackTransportReducerTests {
         #expect(effect == nil)
     }
 
-    @Test func test_reduce_shouldIgnoreWillSpeakRange_onIdleAndPaused() {
+    @Test func test_reduce_shouldIgnoreWillSpeakRange_onIdle() {
 
-        let results = [
-            reduce(.idle, .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 6)),
-            reduce(.paused(makeSession()), .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 6)),
-        ]
+        let (state, effect) = reduce(
+            .idle(lastUtteranceToken: 1),
+            .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 6)
+        )
 
-        #expect(results.map(\.0) == [.idle, .paused(makeSession())])
-        #expect(results.map(\.1) == [nil, nil])
+        #expect(state == .idle(lastUtteranceToken: 1))
+        #expect(effect == nil)
+    }
+
+    @Test func test_reduce_shouldAdvancePausedBoundary_onWillSpeakRangeWithCurrentTokenWhilePaused() {
+
+        // A word-boundary callback can land just after an accepted pause; the
+        // paused position must track it so resume does not repeat the word.
+        let (state, effect) = reduce(
+            .paused(makeSession()),
+            .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 6)
+        )
+
+        #expect(state == .paused(makeSession(spokenUTF16Offset: 6)))
+        #expect(effect == nil)
+    }
+
+    @Test func test_reduce_shouldIssueFreshToken_onPrimaryTappedInIdleAfterEarlierPlayback() {
+
+        // Tokens stay monotonic across idle: a replay after stop must not
+        // reuse the stopped utterance's token, or its late didCancel would
+        // kill the new session.
+        let (state, effect) = reduce(.idle(lastUtteranceToken: 1), .primaryTapped(makeRequest()))
+
+        #expect(state == .speaking(makeSession(utteranceToken: 2)))
+        #expect(effect == .beginSpeaking(makeCommand(utteranceToken: 2), replacingCurrentUtterance: false))
+    }
+
+    @Test func test_reduce_shouldIgnorePauseResolution_onStaleUtteranceToken() {
+
+        let replaced = makeSession(utteranceToken: 2)
+
+        let (state, effect) = reduce(.speaking(replaced), .pauseResolved(accepted: true, utteranceToken: 1))
+
+        #expect(state == .speaking(replaced))
+        #expect(effect == nil)
+    }
+
+    @Test func test_reduce_shouldIgnoreResumeResolution_onStaleUtteranceToken() {
+
+        let repositioned = makeSession(utteranceToken: 2, hasActiveUtterance: false)
+
+        let (state, effect) = reduce(.paused(repositioned), .resumeResolved(accepted: true, utteranceToken: 1))
+
+        #expect(state == .paused(repositioned))
+        #expect(effect == nil)
     }
 
     @Test func test_reduce_shouldFinishPlayback_onDidFinishWithCurrentTokenWhileSpeaking() {
 
         let (state, effect) = reduce(.speaking(makeSession()), .utteranceDidFinish(utteranceToken: 1))
 
-        #expect(state == .idle)
+        #expect(state == .idle(lastUtteranceToken: 1))
         #expect(effect == .finishPlayback)
     }
 
@@ -392,7 +436,7 @@ struct PlaybackTransportReducerTests {
 
         let (state, effect) = reduce(.paused(makeSession()), .utteranceDidFinish(utteranceToken: 1))
 
-        #expect(state == .idle)
+        #expect(state == .idle(lastUtteranceToken: 1))
         #expect(effect == .finishPlayback)
     }
 
@@ -409,9 +453,9 @@ struct PlaybackTransportReducerTests {
 
     @Test func test_reduce_shouldIgnoreDidFinish_onIdleAfterStop() {
 
-        let (state, effect) = reduce(.idle, .utteranceDidFinish(utteranceToken: 1))
+        let (state, effect) = reduce(.idle(lastUtteranceToken: 0),.utteranceDidFinish(utteranceToken: 1))
 
-        #expect(state == .idle)
+        #expect(state == .idle(lastUtteranceToken: 0))
         #expect(effect == nil)
     }
 
@@ -419,7 +463,7 @@ struct PlaybackTransportReducerTests {
 
         let (state, effect) = reduce(.speaking(makeSession()), .utteranceDidCancel(utteranceToken: 1))
 
-        #expect(state == .idle)
+        #expect(state == .idle(lastUtteranceToken: 1))
         #expect(effect == .deactivateAudioSession)
     }
 
@@ -427,7 +471,7 @@ struct PlaybackTransportReducerTests {
 
         let (state, effect) = reduce(.paused(makeSession()), .utteranceDidCancel(utteranceToken: 1))
 
-        #expect(state == .idle)
+        #expect(state == .idle(lastUtteranceToken: 1))
         #expect(effect == .deactivateAudioSession)
     }
 
@@ -444,9 +488,9 @@ struct PlaybackTransportReducerTests {
 
     @Test func test_reduce_shouldIgnoreDidCancel_onIdleAfterStop() {
 
-        let (state, effect) = reduce(.idle, .utteranceDidCancel(utteranceToken: 1))
+        let (state, effect) = reduce(.idle(lastUtteranceToken: 0),.utteranceDidCancel(utteranceToken: 1))
 
-        #expect(state == .idle)
+        #expect(state == .idle(lastUtteranceToken: 0))
         #expect(effect == nil)
     }
 

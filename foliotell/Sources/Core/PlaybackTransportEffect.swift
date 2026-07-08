@@ -33,8 +33,10 @@ public enum PlaybackTransportEffect: Equatable, Sendable {
     case beginSpeaking(SpeakCommand, replacingCurrentUtterance: Bool)
     /// Stop the synthesizer and release the audio session.
     case stopPlayback
-    case pause
-    case resume
+    /// Tokens scope the eventual resolution to the utterance that requested
+    /// it, so an interleaved replacement cannot be paused/resumed by mistake.
+    case pause(utteranceToken: Int)
+    case resume(utteranceToken: Int)
     /// Cancel the pending synthesizer utterance while staying paused; the
     /// audio session stays active for the eventual resume.
     case cancelUtterance

@@ -38,11 +38,11 @@ public extension PlaybackTransportReducer {
                 isUnchanged: { $0.voiceIdentifier == voiceIdentifier }
             )
 
-        case let .pauseResolved(accepted):
-            return pauseResolved(state, accepted: accepted)
+        case let .pauseResolved(accepted, utteranceToken):
+            return pauseResolved(state, accepted: accepted, utteranceToken: utteranceToken)
 
-        case let .resumeResolved(accepted):
-            return resumeResolved(state, accepted: accepted)
+        case let .resumeResolved(accepted, utteranceToken):
+            return resumeResolved(state, accepted: accepted, utteranceToken: utteranceToken)
 
         case let .willSpeakRange(utteranceToken, utteranceUTF16Offset):
             return willSpeakRange(state, utteranceToken: utteranceToken, utteranceUTF16Offset: utteranceUTF16Offset)
@@ -68,24 +68,24 @@ private extension PlaybackTransportReducer {
     func primaryTapped(_ state: State, _ request: PlaybackRequest) -> (State, Effect?) {
 
         switch state {
-        case .idle:
+        case let .idle(lastUtteranceToken):
             let startOffset = min(max(request.startUTF16Offset, 0), request.text.utf16.count)
             let session = PlaybackSession(
                 text: request.text,
                 speed: request.speed,
                 voiceIdentifier: request.voiceIdentifier,
-                utteranceToken: 1,
+                utteranceToken: lastUtteranceToken + 1,
                 utteranceStartUTF16Offset: startOffset,
                 spokenUTF16Offset: startOffset,
                 hasActiveUtterance: true
             )
             return (.speaking(session), .beginSpeaking(command(for: session), replacingCurrentUtterance: false))
 
-        case .speaking:
-            return (state, .pause)
+        case let .speaking(session):
+            return (state, .pause(utteranceToken: session.utteranceToken))
 
         case let .paused(session) where session.hasActiveUtterance:
-            return (state, .resume)
+            return (state, .resume(utteranceToken: session.utteranceToken))
 
         case let .paused(session):
             return speakFreshUtterance(
@@ -102,8 +102,8 @@ private extension PlaybackTransportReducer {
         case .idle:
             return (state, nil)
 
-        case .speaking, .paused:
-            return (.idle, .stopPlayback)
+        case let .speaking(session), let .paused(session):
+            return (.idle(lastUtteranceToken: session.utteranceToken), .stopPlayback)
         }
     }
 
@@ -127,16 +127,26 @@ private extension PlaybackTransportReducer {
 
         switch state {
         case let .speaking(session) where session.utteranceToken == utteranceToken:
-            var session = session
-            session.spokenUTF16Offset = min(
-                max(session.utteranceStartUTF16Offset + utteranceUTF16Offset, 0),
-                session.text.utf16.count
-            )
-            return (.speaking(session), nil)
+            return (.speaking(advanced(session, byUtteranceUTF16Offset: utteranceUTF16Offset)), nil)
+
+        // A word-boundary callback can land just after an accepted pause;
+        // the paused boundary must track it or resume repeats/skips a word.
+        case let .paused(session) where session.utteranceToken == utteranceToken:
+            return (.paused(advanced(session, byUtteranceUTF16Offset: utteranceUTF16Offset)), nil)
 
         case .idle, .speaking, .paused:
             return (state, nil)
         }
+    }
+
+    func advanced(_ session: PlaybackSession, byUtteranceUTF16Offset utteranceUTF16Offset: Int) -> PlaybackSession {
+
+        var session = session
+        session.spokenUTF16Offset = min(
+            max(session.utteranceStartUTF16Offset + utteranceUTF16Offset, 0),
+            session.text.utf16.count
+        )
+        return session
     }
 
     /// Terminal synthesizer callback for the current utterance moves playback
@@ -145,11 +155,9 @@ private extension PlaybackTransportReducer {
     func utteranceEnded(_ state: State, utteranceToken: Int, effect: Effect) -> (State, Effect?) {
 
         switch state {
-        case let .speaking(session) where session.utteranceToken == utteranceToken:
-            return (.idle, effect)
-
-        case let .paused(session) where session.utteranceToken == utteranceToken:
-            return (.idle, effect)
+        case let .speaking(session) where session.utteranceToken == utteranceToken,
+             let .paused(session) where session.utteranceToken == utteranceToken:
+            return (.idle(lastUtteranceToken: session.utteranceToken), effect)
 
         case .idle, .speaking, .paused:
             return (state, nil)
@@ -227,10 +235,10 @@ private extension PlaybackTransportReducer {
         }
     }
 
-    func pauseResolved(_ state: State, accepted: Bool) -> (State, Effect?) {
+    func pauseResolved(_ state: State, accepted: Bool, utteranceToken: Int) -> (State, Effect?) {
 
         switch state {
-        case let .speaking(session) where accepted:
+        case let .speaking(session) where session.utteranceToken == utteranceToken && accepted:
             return (.paused(session), nil)
 
         case .idle, .speaking, .paused:
@@ -238,20 +246,20 @@ private extension PlaybackTransportReducer {
         }
     }
 
-    func resumeResolved(_ state: State, accepted: Bool) -> (State, Effect?) {
+    func resumeResolved(_ state: State, accepted: Bool, utteranceToken: Int) -> (State, Effect?) {
 
         switch state {
-        case let .paused(session) where accepted:
+        case let .paused(session) where session.utteranceToken == utteranceToken && accepted:
             return (.speaking(session), nil)
 
-        case let .paused(session):
+        case let .paused(session) where session.utteranceToken == utteranceToken:
             return speakFreshUtterance(
                 session,
                 fromUTF16Offset: session.spokenUTF16Offset,
                 replacingCurrentUtterance: true
             )
 
-        case .idle, .speaking:
+        case .idle, .speaking, .paused:
             return (state, nil)
         }
     }

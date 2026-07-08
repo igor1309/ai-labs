@@ -33,7 +33,9 @@ public struct PlaybackSession: Equatable, Sendable {
 }
 
 public enum PlaybackTransportState: Equatable, Sendable {
-    case idle
+    /// `lastUtteranceToken` keeps tokens monotonic across idle so terminal
+    /// callbacks from a stopped utterance can never match a later session.
+    case idle(lastUtteranceToken: Int)
     case speaking(PlaybackSession)
     case paused(PlaybackSession)
 }

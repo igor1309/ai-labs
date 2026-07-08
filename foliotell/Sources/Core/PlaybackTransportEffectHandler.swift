@@ -52,11 +52,11 @@ public final class PlaybackTransportEffectHandler {
         case .cancelUtterance:
             stopSpeaking()
 
-        case .pause:
-            dispatch(.pauseResolved(accepted: pause()))
+        case let .pause(utteranceToken):
+            dispatch(.pauseResolved(accepted: pause(), utteranceToken: utteranceToken))
 
-        case .resume:
-            dispatch(.resumeResolved(accepted: resume()))
+        case let .resume(utteranceToken):
+            dispatch(.resumeResolved(accepted: resume(), utteranceToken: utteranceToken))
 
         case .notifyStartOver:
             notifyStartOver()
