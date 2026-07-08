@@ -65,6 +65,10 @@ Living references:
 - [Release runbook](docs/release-runbook.md) — exact release commands, gates, caveats (runner Xcode variance, altool flags), and tag-recovery procedure.
 - [App Store Connect product card](docs/app-store-connect-product-card.md) — backed-up app information, version metadata, and API update limitations.
 
+Briefs (`docs/`):
+
+- [Naming brief](docs/foliotell-naming-brief.md) — product scope, naming objective, scoring model, and availability standard.
+
 Intake briefs (`docs/intake/`, pre-planning context capture per task):
 
 - [Speech text normalization](docs/intake/speech-normalization-intake.md)
@@ -72,7 +76,6 @@ Intake briefs (`docs/intake/`, pre-planning context capture per task):
 
 Research (`research/`, plus the UI reference corpus):
 
-- [Naming brief](research/foliotell-naming-brief.md) — product scope, naming objective, scoring model, and availability standard.
 - [Candidate evaluation](research/foliotell-candidate-evaluation.md) — weighted comparison of candidate names.
 
 ## Pages
