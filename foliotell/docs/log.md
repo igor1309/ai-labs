@@ -2,6 +2,12 @@
 
 ## 2026-07-08
 
+- Make the TestFlight upload portable across runner Xcode generations:
+  documented `altool --apiKey/--apiIssuer` flags with the key in
+  `~/.appstoreconnect/private_keys`, plus a newest-Xcode selection step in the
+  deploy job, after the `foliotell_v0.0.3` run failed on a Xcode 16.4 runner
+  whose altool rejects the previous flag spellings.
+
 - Release `foliotell_v0.0.3` with the catalog-based automatic voice
   resolution fix for silent reading on device.
 
