@@ -1,6 +1,8 @@
 # Log
 
 ## 2026-07-08
+- FolioTell: release `foliotell_v0.4.2` — fix the reader bottom bar not rendering (DocumentGroup does not bridge `.bottomBar`; inner NavigationStack with emptied top bar restores the Liquid Glass transport).
+
 - FolioTell: make TestFlight release archives unsigned so App Store Connect
   distribution signing happens during export instead of conflicting with the
   target's automatic development signing settings.

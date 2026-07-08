@@ -1,6 +1,8 @@
 # Log
 
 ## 2026-07-08
+- Release `foliotell_v0.4.2` — reader bottom bar fix: inner NavigationStack hosts the `.bottomBar` toolbar DocumentGroup drops, with its top bar emptied so DocumentGroup's chrome stays the only visible bar; progress ribbon moved to a top overlay.
+
 
 - Fix the reader bottom bar not rendering (0.4.1 regression, found on
   simulator): `DocumentGroup` hosts the reader in its own navigation
