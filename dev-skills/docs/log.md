@@ -6,6 +6,15 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-07-08
 
+- **skill-review v1.4.0**: promoted the drafted "Failure observability" axis
+  (§8, script-driving skills only) from the skill's backlog into Evaluation
+  Axes — a skill must surface non-zero script exits mechanically, not depend
+  on the agent narrating them — with an explicit axis-8 verdict required in
+  the output format. Origin: the Poeme add-module experiment, where a failing
+  wiring script was silently hand-fixed on every run and each run still
+  reported PASS. `backlog/backlog.md` removed as shipped; the folder-shape
+  axis draft (`backlog/folder.md`) remains open. Marketplace bump deferred to
+  the pending dev-skills batch.
 - **pr-ci-watch v1.3.0**: added the long-planned run-level watching section —
   `gh run watch <run-id> --exit-status` for tag-triggered release/deploy
   workflows, post-rerun streaming, and single-run scenarios, with the same

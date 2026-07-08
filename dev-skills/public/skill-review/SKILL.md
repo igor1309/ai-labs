@@ -1,7 +1,7 @@
 ---
 name: skill-review
 author: Igor Malyarov
-version: "1.3.0"
+version: "1.4.0"
 description: Review and improve existing agent skills. Use when evaluating skill quality, auditing skill collections, asking "review skill", "is this skill effective", "improve skill description", or maintaining a skill library.
 ---
 
@@ -78,6 +78,20 @@ Objective gates that don't need domain context.
 - Do referenced file paths, module names, APIs still exist?
 - Are code examples accurate against current codebase?
 
+### 8. Failure observability (applies only to skills that drive scripts/tools)
+
+- When a script the skill invokes exits non-zero, does the skill's report/gate
+  **surface** it — or can the agent silently hand-fix and still report success?
+- Is there a **mechanical breadcrumb** (the script logs its own exit; the gate
+  echoes it) so the failure record does not depend on the agent narrating it?
+- Is "script failure surfaced" a **DoD criterion**, not just prose?
+
+Flag as a finding any script-driving skill where a non-zero script exit can be
+absent from the run's report. Cite the skill-conventions `## Scripts`
+"fail loud, fail visible" rule. (Origin: the Poeme add-module experiment — a
+wiring script failed with non-zero exit on every run, both agents silently
+hand-fixed it, and every run still reported `PASS`.)
+
 ## Output Format
 
 Per skill:
@@ -97,6 +111,8 @@ Per skill:
 ```
 
 **Rules for the section-by-section audit:**
+- For script-driving skills, include an explicit axis-8 verdict (failure
+  observability) — present it as its own finding, not folded into prose
 - Every section gets a verdict — no skipping with a blanket percentage
 - "noise" requires a specific reason (not "verbose" or "could be shorter")
 - "ask user" is mandatory when you suspect domain knowledge but can't confirm
