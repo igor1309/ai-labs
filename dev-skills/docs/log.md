@@ -6,6 +6,14 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-07-08
 
+- **pr-ci-watch v1.3.0**: added the long-planned run-level watching section —
+  `gh run watch <run-id> --exit-status` for tag-triggered release/deploy
+  workflows, post-rerun streaming, and single-run scenarios, with the same
+  redirect/exit-code/timeout discipline as the PR-level watch and a ~20s
+  wait-before-`gh run list` race note. `gh pr checks --watch` remains the
+  default for PR greenness. Closes `pr-ci-watch/TODO.md` (removed); validated
+  by the same-day foliotell 0.0.3/0.1.0 release sessions, which used exactly
+  this pattern. Marketplace bump deferred to the pending dev-skills batch.
 - **using-dev-skills v1.0.3**: split the "bug report" ladder cue — analysis-only
   asks route to Debugging (bug-analysis), while bug reports with a fix/deploy
   request are delivery work investigated inline, not an analysis-report skill.
