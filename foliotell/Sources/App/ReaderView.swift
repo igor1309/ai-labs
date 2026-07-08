@@ -173,11 +173,10 @@ struct ReaderView: View {
             return
         }
 
-        liveDocumentUTF16Offset = PlaybackPositionMapping.documentUTF16Offset(
+        liveDocumentUTF16Offset = SpeechDerivation(
             documentText: document.text,
-            frontMatterMode: selectedFrontMatterMode,
-            spokenUTF16Offset: spokenUTF16Offset
-        )
+            frontMatterMode: selectedFrontMatterMode
+        ).documentUTF16Offset(forSpokenUTF16Offset: spokenUTF16Offset)
     }
 
     private func recordAnchor(atSpokenUTF16Offset spokenUTF16Offset: Int) {
@@ -185,11 +184,10 @@ struct ReaderView: View {
             return
         }
 
-        let anchor = PlaybackPositionMapping.documentAnchor(
+        let anchor = SpeechDerivation(
             documentText: document.text,
-            frontMatterMode: selectedFrontMatterMode,
-            spokenUTF16Offset: spokenUTF16Offset
-        )
+            frontMatterMode: selectedFrontMatterMode
+        ).documentAnchor(forSpokenUTF16Offset: spokenUTF16Offset)
         guard anchor != storedAnchor else {
             return
         }
@@ -212,11 +210,10 @@ struct ReaderView: View {
             return 0
         }
 
-        return PlaybackPositionMapping.resumeSpokenUTF16Offset(
+        return SpeechDerivation(
             documentText: document.text,
-            frontMatterMode: selectedFrontMatterMode,
-            documentAnchor: storedAnchor
-        )
+            frontMatterMode: selectedFrontMatterMode
+        ).resumeSpokenUTF16Offset(forDocumentAnchor: storedAnchor)
     }
 
     private func startOver(_ document: FolioDocument) {
@@ -436,11 +433,10 @@ struct ReaderView: View {
     }
 
     private func applyIdleJump(toSpokenUTF16Offset target: Int, document: FolioDocument) {
-        let anchor = PlaybackPositionMapping.documentAnchor(
+        let anchor = SpeechDerivation(
             documentText: document.text,
-            frontMatterMode: selectedFrontMatterMode,
-            spokenUTF16Offset: target
-        )
+            frontMatterMode: selectedFrontMatterMode
+        ).documentAnchor(forSpokenUTF16Offset: target)
         storedAnchor = anchor
         // After an idle jump the position IS the anchor — drop any stale
         // frozen live offset so the progress bar tracks the jump.
