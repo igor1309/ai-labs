@@ -20,6 +20,8 @@
 		A1000000000000000000000B /* SpeechVoiceSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002B /* SpeechVoiceSelection.swift */; };
 		A1000000000000000000000C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002C /* Assets.xcassets */; };
 		A1000000000000000000000D /* SpeechTextNormalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002D /* SpeechTextNormalization.swift */; };
+		A1000000000000000000000E /* PlaybackPositionMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002E /* PlaybackPositionMapping.swift */; };
+		A1000000000000000000000F /* PlaybackPositionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002F /* PlaybackPositionStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +40,8 @@
 		A1000000000000000000002B /* SpeechVoiceSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/SpeechVoiceSelection.swift; sourceTree = "<group>"; };
 		A1000000000000000000002C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Sources/App/Resources/Assets.xcassets; sourceTree = "<group>"; };
 		A1000000000000000000002D /* SpeechTextNormalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/SpeechTextNormalization.swift; sourceTree = "<group>"; };
+		A1000000000000000000002E /* PlaybackPositionMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackPositionMapping.swift; sourceTree = "<group>"; };
+		A1000000000000000000002F /* PlaybackPositionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/App/PlaybackPositionStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -90,6 +94,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000022 /* FolioFileDocument.swift */,
+				A1000000000000000000002F /* PlaybackPositionStore.swift */,
 				A10000000000000000000021 /* FolioTellApp.swift */,
 				A10000000000000000000023 /* ReaderView.swift */,
 				A10000000000000000000024 /* SpeechController.swift */,
@@ -103,6 +108,7 @@
 				A10000000000000000000025 /* FolioDocument.swift */,
 				A10000000000000000000026 /* FrontMatterPlaybackMode.swift */,
 				A10000000000000000000027 /* FrontMatterRendering.swift */,
+				A1000000000000000000002E /* PlaybackPositionMapping.swift */,
 				A10000000000000000000028 /* PlaybackStateMachine.swift */,
 				A10000000000000000000029 /* SpeechSpeed.swift */,
 				A1000000000000000000002D /* SpeechTextNormalization.swift */,
@@ -187,6 +193,8 @@
 				A10000000000000000000006 /* FrontMatterPlaybackMode.swift in Sources */,
 				A10000000000000000000007 /* FrontMatterRendering.swift in Sources */,
 				A10000000000000000000005 /* FolioDocument.swift in Sources */,
+				A1000000000000000000000E /* PlaybackPositionMapping.swift in Sources */,
+				A1000000000000000000000F /* PlaybackPositionStore.swift in Sources */,
 				A10000000000000000000008 /* PlaybackStateMachine.swift in Sources */,
 				A10000000000000000000003 /* ReaderView.swift in Sources */,
 				A10000000000000000000004 /* SpeechController.swift in Sources */,

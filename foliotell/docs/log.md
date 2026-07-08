@@ -2,6 +2,18 @@
 
 ## 2026-07-08
 
+- Persist per-document playback position and resume: playback position is
+  saved as a sentence anchor in the raw document text (stable across
+  front-matter mode changes and normalization tweaks, per ADR-001), keyed by
+  document path in UserDefaults behind a reader-owned store protocol. Play
+  resumes from the start of the interrupted sentence (backwards overlap);
+  stop parks instead of resetting; natural completion clears the record; a
+  "Start Over" menu action and a thin progress bar join the bottom controls.
+  Core mapping (`PlaybackPositionMapping`) built via greedy subsequence
+  alignment — the speech pipeline only deletes characters — with 14 tests
+  including Russian and mode-change cases. On-device resume checklist (stop/
+  relaunch/finish/speed-change/Start Over) is the pending user pass.
+
 - Docs housekeeping: README now opens with the product (orientation/landing
   pages moved to a bottom "Pages" section) and groups the doc list by kind;
   the technical spec moved to `docs/specs/`, naming research (naming brief,

@@ -7,12 +7,16 @@ import SwiftUI
 struct ReaderView: View {
     let loadedDocument: LoadedFolioDocument
     let fileName: String
+    let documentPath: String?
 
     @AppStorage("selectedSpeechSpeed") private var selectedSpeechSpeed = SpeechSpeed.one.rawValue
     @AppStorage("selectedFrontMatterPlaybackMode") private var selectedFrontMatterPlaybackMode = FrontMatterPlaybackMode.skip.rawValue
     @AppStorage("selectedSpeechVoiceIdentifier") private var selectedSpeechVoiceIdentifier = SpeechVoiceSelection.automaticIdentifier
     @StateObject private var speechController = SpeechController()
     @State private var availableVoices: [SpeechVoiceOption] = []
+    @State private var storedAnchor: Int?
+
+    private let positionStore: PlaybackPositionStore = DefaultsPlaybackPositionStore()
 
     var body: some View {
         content
@@ -27,6 +31,17 @@ struct ReaderView: View {
                 availableVoices = await Task.detached(priority: .userInitiated) {
                     AVSpeechSynthesisVoice.speechVoices().map(SpeechVoiceOption.init)
                 }.value
+            }
+            .onAppear {
+                if let documentPath {
+                    storedAnchor = positionStore.anchor(forDocumentPath: documentPath)
+                }
+                speechController.onSpokenPositionChange = { spokenUTF16Offset in
+                    recordAnchor(atSpokenUTF16Offset: spokenUTF16Offset)
+                }
+                speechController.onPlaybackDidFinishNaturally = {
+                    clearStoredAnchor()
+                }
             }
             .onDisappear {
                 speechController.stop()
@@ -135,18 +150,83 @@ struct ReaderView: View {
         "\(selectedSpeed.rawValue) · \(selectedFrontMatterMode.title) · \(selectedVoiceTitle)"
     }
 
+    private func recordAnchor(atSpokenUTF16Offset spokenUTF16Offset: Int) {
+        guard let documentPath, case let .success(document) = loadedDocument else {
+            return
+        }
+
+        let anchor = PlaybackPositionMapping.documentAnchor(
+            documentText: document.text,
+            frontMatterMode: selectedFrontMatterMode,
+            spokenUTF16Offset: spokenUTF16Offset
+        )
+        guard anchor != storedAnchor else {
+            return
+        }
+
+        storedAnchor = anchor
+        positionStore.setAnchor(anchor, forDocumentPath: documentPath)
+    }
+
+    private func clearStoredAnchor() {
+        if let documentPath {
+            positionStore.clearAnchor(forDocumentPath: documentPath)
+        }
+        storedAnchor = nil
+    }
+
+    private func resumeSpokenUTF16Offset(for document: FolioDocument) -> Int {
+
+        guard let storedAnchor else {
+            return 0
+        }
+
+        return PlaybackPositionMapping.resumeSpokenUTF16Offset(
+            documentText: document.text,
+            frontMatterMode: selectedFrontMatterMode,
+            documentAnchor: storedAnchor
+        )
+    }
+
+    private func startOver(_ document: FolioDocument) {
+        clearStoredAnchor()
+        if speechController.playbackState != .idle {
+            speechController.play(
+                speechText(for: document),
+                speed: selectedSpeed,
+                voiceIdentifier: selectedVoiceIdentifierForPlayback
+            )
+        }
+    }
+
+    private func playbackProgress(for document: FolioDocument) -> Double {
+
+        guard let storedAnchor, document.text.utf16.count > 0 else {
+            return 0
+        }
+
+        return min(1, Double(storedAnchor) / Double(document.text.utf16.count))
+    }
+
     @ViewBuilder
     private var bottomControls: some View {
         switch loadedDocument {
         case .failure:
             EmptyView()
         case let .success(document):
-            HStack(spacing: 10) {
-                settingsMenu
+            VStack(spacing: 8) {
+                ProgressView(value: playbackProgress(for: document))
+                    .progressViewStyle(.linear)
+                    .accessibilityLabel("Listening progress")
+                    .accessibilityIdentifier("playbackProgress")
 
-                Spacer(minLength: 8)
+                HStack(spacing: 10) {
+                    settingsMenu(for: document)
 
-                playbackButtons(for: document)
+                    Spacer(minLength: 8)
+
+                    playbackButtons(for: document)
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -155,7 +235,7 @@ struct ReaderView: View {
     }
 
     @ViewBuilder
-    private var settingsMenu: some View {
+    private func settingsMenu(for document: FolioDocument) -> some View {
         Menu {
             Section("Speed") {
                 ForEach(SpeechSpeed.allCases) { speed in
@@ -208,6 +288,15 @@ struct ReaderView: View {
                     }
                 }
             }
+
+            Section {
+                Button {
+                    startOver(document)
+                } label: {
+                    Label("Start Over", systemImage: "gobackward")
+                }
+                .disabled(storedAnchor == nil && speechController.playbackState == .idle)
+            }
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "slider.horizontal.3")
@@ -254,7 +343,8 @@ struct ReaderView: View {
                     speechController.togglePrimaryControl(
                         speechText(for: document),
                         speed: selectedSpeed,
-                        voiceIdentifier: selectedVoiceIdentifierForPlayback
+                        voiceIdentifier: selectedVoiceIdentifierForPlayback,
+                        startingAtUTF16Offset: resumeSpokenUTF16Offset(for: document)
                     )
                 } label: {
                     Image(systemName: speechController.primaryControlSystemImage)

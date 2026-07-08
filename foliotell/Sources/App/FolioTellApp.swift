@@ -7,7 +7,8 @@ struct FolioTellApp: App {
         DocumentGroup(viewing: FolioFileDocument.self) { configuration in
             ReaderView(
                 loadedDocument: configuration.document.loadedDocument,
-                fileName: configuration.fileURL?.lastPathComponent ?? "Document"
+                fileName: configuration.fileURL?.lastPathComponent ?? "Document",
+                documentPath: configuration.fileURL?.path(percentEncoded: false)
             )
         }
     }
