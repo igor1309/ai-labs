@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-07-08
+- Release `foliotell_v0.2.0` — per-document playback position persistence and resume: positions saved as document-text sentence anchors, resume with sentence-start backwards overlap, Start Over menu action, compact progress bar.
 
 - Persist per-document playback position and resume: playback position is
   saved as a sentence anchor in the raw document text (stable across
