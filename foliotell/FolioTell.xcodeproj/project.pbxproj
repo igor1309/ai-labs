@@ -19,6 +19,7 @@
 		A1000000000000000000000A /* SpeechVoiceLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002A /* SpeechVoiceLanguage.swift */; };
 		A1000000000000000000000B /* SpeechVoiceSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002B /* SpeechVoiceSelection.swift */; };
 		A1000000000000000000000C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002C /* Assets.xcassets */; };
+		A1000000000000000000000D /* SpeechTextNormalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002D /* SpeechTextNormalization.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +37,7 @@
 		A1000000000000000000002A /* SpeechVoiceLanguage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/SpeechVoiceLanguage.swift; sourceTree = "<group>"; };
 		A1000000000000000000002B /* SpeechVoiceSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/SpeechVoiceSelection.swift; sourceTree = "<group>"; };
 		A1000000000000000000002C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Sources/App/Resources/Assets.xcassets; sourceTree = "<group>"; };
+		A1000000000000000000002D /* SpeechTextNormalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/SpeechTextNormalization.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,6 +105,7 @@
 				A10000000000000000000027 /* FrontMatterRendering.swift */,
 				A10000000000000000000028 /* PlaybackStateMachine.swift */,
 				A10000000000000000000029 /* SpeechSpeed.swift */,
+				A1000000000000000000002D /* SpeechTextNormalization.swift */,
 				A1000000000000000000002A /* SpeechVoiceLanguage.swift */,
 				A1000000000000000000002B /* SpeechVoiceSelection.swift */,
 			);
@@ -188,6 +191,7 @@
 				A10000000000000000000003 /* ReaderView.swift in Sources */,
 				A10000000000000000000004 /* SpeechController.swift in Sources */,
 				A10000000000000000000009 /* SpeechSpeed.swift in Sources */,
+				A1000000000000000000000D /* SpeechTextNormalization.swift in Sources */,
 				A1000000000000000000000A /* SpeechVoiceLanguage.swift in Sources */,
 				A1000000000000000000000B /* SpeechVoiceSelection.swift in Sources */,
 			);
