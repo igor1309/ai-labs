@@ -2,6 +2,11 @@
 
 ## 2026-07-08
 
+- Fix the reader settings menu freezing the app on iPhone: query the voice
+  catalog once off the main actor and cache it instead of calling
+  `AVSpeechSynthesisVoice.speechVoices()` several times per render, and
+  detect document language without the full normalization pass on the render
+  path.
 - Normalize document text for speech: playback now speaks document content
   instead of raw Markdown markup — heading markers, emphasis/strong/
   strikethrough markers, inline code backticks, code fences, link/image
