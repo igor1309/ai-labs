@@ -11,16 +11,6 @@ Keep the near-term backlog focused on making FolioTell trustworthy as a
 document-listening app before expanding formats, accounts, network features, or
 AI features.
 
-## Persist playback position and resume
-
-Remember the current spoken position per document and resume from that position
-after closing, reopening, stopping, or relaunching the app.
-
-- Track progress at a stable text boundary, such as paragraph or sentence range.
-- Show a compact progress affordance in the reader.
-- Preserve per-document playback position independently from global settings.
-- Verify that changing speed or voice does not reset playback to the beginning.
-
 ## Verify background and lock-screen playback
 
 Confirm the listening experience on a real device when the app is backgrounded

@@ -6,9 +6,9 @@ description: "Implementation plan: per-document playback position persistence an
 
 # Implementation Plan — FolioTell Persist Playback Position
 
-Implements [`../specs/persist-playback-position.md`](../specs/persist-playback-position.md)
-(ADR: [`../adr/adr-001-per-document-playback-position.md`](../adr/adr-001-per-document-playback-position.md),
-intake: [`../intake/persist-position-intake.md`](../intake/persist-position-intake.md)),
+Implements [`../../specs/implemented/persist-playback-position.md`](../../specs/implemented/persist-playback-position.md)
+(ADR: [`../../adr/adr-001-per-document-playback-position.md`](../../adr/adr-001-per-document-playback-position.md),
+intake: [`../../intake/persist-position-intake.md`](../../intake/persist-position-intake.md)),
 closing the "Persist playback position and resume" backlog item.
 
 ## Goal

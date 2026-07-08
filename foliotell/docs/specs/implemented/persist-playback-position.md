@@ -8,8 +8,8 @@ description: "Spec: per-document playback position persistence and sentence-anch
 
 Spec for the backlog item "Persist playback position and resume" in
 `foliotell/backlog/product.md`. Intake:
-[`../intake/persist-position-intake.md`](../intake/persist-position-intake.md).
-Architecture: [ADR-001](../adr/adr-001-per-document-playback-position.md).
+[`../../intake/persist-position-intake.md`](../../intake/persist-position-intake.md).
+Architecture: [ADR-001](../../adr/adr-001-per-document-playback-position.md).
 
 ## Goal
 
