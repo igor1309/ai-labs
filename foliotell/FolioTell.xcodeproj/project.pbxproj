@@ -54,18 +54,18 @@
 		A1000000000000000000002D /* SpeechTextNormalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/SpeechTextNormalization.swift; sourceTree = "<group>"; };
 		A1000000000000000000002E /* PlaybackPositionMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackPositionMapping.swift; sourceTree = "<group>"; };
 		A1000000000000000000002F /* PlaybackPositionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/App/PlaybackPositionStore.swift; sourceTree = "<group>"; };
-		A10000000000000000000201 /* RxViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/RxViewModel.swift; sourceTree = "<group>"; };
+		A10000000000000000000201 /* RxViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/RxViewModel/RxViewModel.swift; sourceTree = "<group>"; };
 		A10000000000000000000202 /* SpeechDerivation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/SpeechDerivation.swift; sourceTree = "<group>"; };
-		A10000000000000000000203 /* PlaybackTransportState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackTransportState.swift; sourceTree = "<group>"; };
-		A10000000000000000000204 /* PlaybackTransportEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackTransportEvent.swift; sourceTree = "<group>"; };
-		A10000000000000000000205 /* PlaybackTransportEffect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackTransportEffect.swift; sourceTree = "<group>"; };
-		A10000000000000000000206 /* PlaybackTransportReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackTransportReducer.swift; sourceTree = "<group>"; };
-		A10000000000000000000207 /* PlaybackTransportEffectHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackTransportEffectHandler.swift; sourceTree = "<group>"; };
-		A10000000000000000000208 /* PlaybackPositionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackPositionState.swift; sourceTree = "<group>"; };
-		A10000000000000000000209 /* PlaybackPositionEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackPositionEvent.swift; sourceTree = "<group>"; };
-		A1000000000000000000020A /* PlaybackPositionEffect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackPositionEffect.swift; sourceTree = "<group>"; };
-		A1000000000000000000020B /* PlaybackPositionReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackPositionReducer.swift; sourceTree = "<group>"; };
-		A1000000000000000000020C /* PlaybackPositionEffectHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackPositionEffectHandler.swift; sourceTree = "<group>"; };
+		A10000000000000000000203 /* PlaybackTransportState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackTransport/Domain/PlaybackTransportState.swift; sourceTree = "<group>"; };
+		A10000000000000000000204 /* PlaybackTransportEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackTransport/Domain/PlaybackTransportEvent.swift; sourceTree = "<group>"; };
+		A10000000000000000000205 /* PlaybackTransportEffect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackTransport/Domain/PlaybackTransportEffect.swift; sourceTree = "<group>"; };
+		A10000000000000000000206 /* PlaybackTransportReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackTransport/Logic/PlaybackTransportReducer.swift; sourceTree = "<group>"; };
+		A10000000000000000000207 /* PlaybackTransportEffectHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackTransport/Logic/PlaybackTransportEffectHandler.swift; sourceTree = "<group>"; };
+		A10000000000000000000208 /* PlaybackPositionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackPosition/Domain/PlaybackPositionState.swift; sourceTree = "<group>"; };
+		A10000000000000000000209 /* PlaybackPositionEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackPosition/Domain/PlaybackPositionEvent.swift; sourceTree = "<group>"; };
+		A1000000000000000000020A /* PlaybackPositionEffect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackPosition/Domain/PlaybackPositionEffect.swift; sourceTree = "<group>"; };
+		A1000000000000000000020B /* PlaybackPositionReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackPosition/Logic/PlaybackPositionReducer.swift; sourceTree = "<group>"; };
+		A1000000000000000000020C /* PlaybackPositionEffectHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackPosition/Logic/PlaybackPositionEffectHandler.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
