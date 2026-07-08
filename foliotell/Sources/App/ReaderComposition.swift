@@ -117,11 +117,15 @@ struct ReaderRootView: View {
         case let .failure(fileName, error):
             ReaderFailureView(fileName: fileName, error: error)
         case let .success(document):
-            ReaderScreen(document: document, makeSession: { frontMatterMode in
+            ReaderScreen(document: document, makeSession: {
+                // Evaluated once per document by the screen's StateObject;
+                // the persisted mode is read at that moment.
                 ReaderComposition.makeReaderSession(
                     document: document,
                     documentPath: documentPath,
-                    frontMatterMode: frontMatterMode,
+                    frontMatterMode: FrontMatterPlaybackMode.mode(
+                        for: UserDefaults.standard.string(forKey: "selectedFrontMatterPlaybackMode") ?? ""
+                    ),
                     positionStore: DefaultsPlaybackPositionStore(),
                     makeSynthesis: { SpeechSynthesizerAdapter(dispatch: $0) },
                     scheduler: .mainQueue

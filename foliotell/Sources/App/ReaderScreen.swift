@@ -4,28 +4,21 @@ import FolioTellCore
 #endif
 import SwiftUI
 
-/// Owns the per-document session lifecycle; the session factory runs once per
-/// document, seeded with the front-matter mode persisted at creation time.
+/// Owns the per-document session lifecycle; the injected factory runs once
+/// per document.
 struct ReaderScreen: View {
     let document: FolioDocument
 
     @StateObject private var session: ReaderSession
 
-    init(document: FolioDocument, makeSession: @escaping (FrontMatterPlaybackMode) -> ReaderSession) {
+    init(document: FolioDocument, makeSession: @escaping () -> ReaderSession) {
 
         self.document = document
-        _session = StateObject(wrappedValue: makeSession(Self.storedFrontMatterMode))
+        _session = StateObject(wrappedValue: makeSession())
     }
 
     var body: some View {
         ReaderSessionView(document: document, transport: session.transport, position: session.position)
-    }
-
-    private static var storedFrontMatterMode: FrontMatterPlaybackMode {
-
-        FrontMatterPlaybackMode.mode(
-            for: UserDefaults.standard.string(forKey: "selectedFrontMatterPlaybackMode") ?? ""
-        )
     }
 }
 
