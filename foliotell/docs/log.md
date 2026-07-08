@@ -2,6 +2,12 @@
 
 ## 2026-07-08
 
+- Close the stop-latency backlog item: v0.1.1 on device (iPhone 15 Pro,
+  iOS 26.5) stops immediately. The 0.0.3 latency was most plausibly the
+  render-path `speechVoices()` main-thread stall removed by the 0.1.0
+  menu-freeze fix; recorded in the `device-speech.md` hypothesis table as
+  probable cause, with the stop-path instrumentation kept as the reopen path.
+
 - Release `foliotell_v0.1.1` — stop/pause-path instrumentation for the
   on-device stop-latency investigation; no behavior change.
 - Instrument the stop and pause paths for the device stop-latency
