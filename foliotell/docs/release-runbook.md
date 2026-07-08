@@ -64,6 +64,15 @@ gh pr merge <pr> --merge --auto --delete-branch
 
 Merge commit, never squash. `trunk` is protected — no direct pushes.
 
+If enabling auto-merge fails (or shows `automerge: none`) because checks are
+already green and the PR is CLEAN, merge directly:
+`gh pr merge <pr> --merge --delete-branch`. If the PR reports BEHIND, run
+`gh pr update-branch <pr>` and wait for checks again.
+
+To delegate execution to a cheap agent, use the `release-executor` subagent
+(`.claude/agents/release-executor.md`); pass unit, versions, branch name, log
+entries, and PR title/body in the invocation prompt.
+
 ### 5. Tag and watch
 
 ```bash

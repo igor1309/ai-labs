@@ -15,7 +15,13 @@
       "Bash(./scripts/run_silent.sh:*)",
       "Bash(./scripts/watch-pr.sh:*)",
       "Bash(node --test reinix/tests:*)",
-      "Bash(gh pr checks:*)"
+      "Bash(gh pr checks:*)",
+      "Bash(swift test:*)",
+      "Bash(swift build:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(gh run watch:*)",
+      "Bash(node scripts/release/generate-manifest.js:*)",
+      "Bash(node scripts/release/validate-manifest.js)"
     ]
   }
 }
