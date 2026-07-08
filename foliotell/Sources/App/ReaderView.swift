@@ -15,6 +15,7 @@ struct ReaderView: View {
     @StateObject private var speechController = SpeechController()
     @State private var availableVoices: [SpeechVoiceOption] = []
     @State private var storedAnchor: Int?
+    @State private var liveDocumentUTF16Offset: Int?
 
     private let positionStore: PlaybackPositionStore = DefaultsPlaybackPositionStore()
 
@@ -37,6 +38,7 @@ struct ReaderView: View {
                     storedAnchor = positionStore.anchor(forDocumentPath: documentPath)
                 }
                 speechController.onSpokenPositionChange = { spokenUTF16Offset in
+                    updateLiveProgress(atSpokenUTF16Offset: spokenUTF16Offset)
                     recordAnchor(atSpokenUTF16Offset: spokenUTF16Offset)
                 }
                 speechController.onPlaybackDidFinishNaturally = {
@@ -150,6 +152,18 @@ struct ReaderView: View {
         "\(selectedSpeed.rawValue) · \(selectedFrontMatterMode.title) · \(selectedVoiceTitle)"
     }
 
+    private func updateLiveProgress(atSpokenUTF16Offset spokenUTF16Offset: Int) {
+        guard case let .success(document) = loadedDocument else {
+            return
+        }
+
+        liveDocumentUTF16Offset = PlaybackPositionMapping.documentUTF16Offset(
+            documentText: document.text,
+            frontMatterMode: selectedFrontMatterMode,
+            spokenUTF16Offset: spokenUTF16Offset
+        )
+    }
+
     private func recordAnchor(atSpokenUTF16Offset spokenUTF16Offset: Int) {
         guard let documentPath, case let .success(document) = loadedDocument else {
             return
@@ -173,6 +187,7 @@ struct ReaderView: View {
             positionStore.clearAnchor(forDocumentPath: documentPath)
         }
         storedAnchor = nil
+        liveDocumentUTF16Offset = nil
     }
 
     private func resumeSpokenUTF16Offset(for document: FolioDocument) -> Int {
@@ -201,11 +216,12 @@ struct ReaderView: View {
 
     private func playbackProgress(for document: FolioDocument) -> Double {
 
-        guard let storedAnchor, document.text.utf16.count > 0 else {
+        let documentLength = document.text.utf16.count
+        guard let position = liveDocumentUTF16Offset ?? storedAnchor, documentLength > 0 else {
             return 0
         }
 
-        return min(1, Double(storedAnchor) / Double(document.text.utf16.count))
+        return min(1, Double(position) / Double(documentLength))
     }
 
     @ViewBuilder
@@ -332,6 +348,54 @@ struct ReaderView: View {
         }
     }
 
+    private func jumpToPreviousSentence(in document: FolioDocument) {
+        switch speechController.playbackState {
+        case .paused, .speaking:
+            speechController.jumpToPreviousSentence()
+        case .idle:
+            let speechText = speechText(for: document)
+            applyIdleJump(
+                toSpokenUTF16Offset: PlaybackPositionMapping.previousSentenceStartUTF16Offset(
+                    in: speechText,
+                    from: resumeSpokenUTF16Offset(for: document)
+                ),
+                document: document
+            )
+        }
+    }
+
+    private func jumpToNextSentence(in document: FolioDocument) {
+        switch speechController.playbackState {
+        case .paused, .speaking:
+            speechController.jumpToNextSentence()
+        case .idle:
+            let speechText = speechText(for: document)
+            guard let target = PlaybackPositionMapping.nextSentenceStartUTF16Offset(
+                in: speechText,
+                from: resumeSpokenUTF16Offset(for: document)
+            ) else {
+                return
+            }
+
+            applyIdleJump(toSpokenUTF16Offset: target, document: document)
+        }
+    }
+
+    private func applyIdleJump(toSpokenUTF16Offset target: Int, document: FolioDocument) {
+        let anchor = PlaybackPositionMapping.documentAnchor(
+            documentText: document.text,
+            frontMatterMode: selectedFrontMatterMode,
+            spokenUTF16Offset: target
+        )
+        storedAnchor = anchor
+        // After an idle jump the position IS the anchor — drop any stale
+        // frozen live offset so the progress bar tracks the jump.
+        liveDocumentUTF16Offset = nil
+        if let documentPath {
+            positionStore.setAnchor(anchor, forDocumentPath: documentPath)
+        }
+    }
+
     @ViewBuilder
     private func playbackButtons(for document: FolioDocument) -> some View {
         let controlSize: CGFloat = 44
@@ -339,6 +403,19 @@ struct ReaderView: View {
 
         Group {
             HStack(spacing: 8) {
+                Button {
+                    jumpToPreviousSentence(in: document)
+                } label: {
+                    Image(systemName: "backward.fill")
+                        .font(.body.weight(.semibold))
+                        .frame(width: controlSize, height: controlSize)
+                        .foregroundStyle(Color.accentColor)
+                        .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                }
+                .accessibilityLabel("Previous sentence")
+                .accessibilityIdentifier("previousSentenceButton")
+                .buttonStyle(.plain)
+
                 Button {
                     speechController.togglePrimaryControl(
                         speechText(for: document),
@@ -355,6 +432,19 @@ struct ReaderView: View {
                 }
                 .accessibilityLabel(speechController.primaryControlTitle)
                 .accessibilityIdentifier("primaryPlaybackButton")
+                .buttonStyle(.plain)
+
+                Button {
+                    jumpToNextSentence(in: document)
+                } label: {
+                    Image(systemName: "forward.fill")
+                        .font(.body.weight(.semibold))
+                        .frame(width: controlSize, height: controlSize)
+                        .foregroundStyle(Color.accentColor)
+                        .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                }
+                .accessibilityLabel("Next sentence")
+                .accessibilityIdentifier("nextSentenceButton")
                 .buttonStyle(.plain)
 
                 Button {

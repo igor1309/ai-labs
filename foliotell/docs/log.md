@@ -1,6 +1,24 @@
 # Log
 
 ## 2026-07-08
+
+- Sentence navigation: back/forward buttons join the reader's bottom controls
+  (back · play/pause · forward · stop), moving the position one sentence per
+  tap in every playback state — speaking jumps restart speech at the target
+  sentence, paused jumps reposition silently (resume speaks from the new
+  spot), idle jumps move the stored resume point with the progress bar as
+  feedback. Back clamps to the document start; forward at the last sentence
+  is a no-op. Core gains sentence-boundary queries and a state-machine
+  reposition (9 tests). Closes the "compact progress navigation controls"
+  backlog item; on-device pass (all three states + clamps) pending.
+
+- Fix stalled progress bar on short documents (v0.2.0 device finding): the
+  bar now advances word-by-word during playback via a new unsnapped
+  `PlaybackPositionMapping.documentUTF16Offset` mapping, instead of only at
+  sentence transitions — a short text spends most of its playback inside one
+  sentence, so the bar sat at 0. Persistence is unchanged (still
+  sentence-anchored); spec rule 19 amended in place.
+
 - Release `foliotell_v0.2.0` — per-document playback position persistence and resume: positions saved as document-text sentence anchors, resume with sentence-start backwards overlap, Start Over menu action, compact progress bar.
 
 - Persist per-document playback position and resume: playback position is

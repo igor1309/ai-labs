@@ -121,6 +121,44 @@ struct PlaybackStateMachineTests {
 
         #expect(shouldRestart == false)
     }
+
+    @Test func test_reposition_shouldKeepPausedStateAndMoveOffsets_onPausedReposition() {
+
+        var sut = PlaybackStateMachine()
+        sut.startSpeaking(text: "Winter morning. Frost and sun.", speed: .one, isReplacingUtterance: false)
+        sut.pauseSucceeded()
+
+        sut.reposition(toUTF16Offset: 16)
+
+        #expect(sut.projection == PlaybackProjection(
+            currentSpeed: .one,
+            currentText: "Winter morning. Frost and sun.",
+            currentUtteranceStartUTF16Offset: 16,
+            currentSpokenUTF16Offset: 16,
+            playbackState: .paused
+        ))
+    }
+
+    @Test func test_reposition_shouldBoundOffsetToTextLength_onOffsetBeyondText() {
+
+        var sut = PlaybackStateMachine()
+        sut.startSpeaking(text: "Winter morning.", speed: .one, isReplacingUtterance: false)
+
+        sut.reposition(toUTF16Offset: 1000)
+
+        #expect(sut.currentSpokenUTF16Offset == 15)
+    }
+
+    @Test func test_remainingTextFromCurrentSpeechBoundary_shouldReturnSuffixFromNewPosition_onReposition() {
+
+        var sut = PlaybackStateMachine()
+        sut.startSpeaking(text: "Winter morning. Frost and sun.", speed: .one, isReplacingUtterance: false)
+        sut.pauseSucceeded()
+
+        sut.reposition(toUTF16Offset: 16)
+
+        #expect(sut.remainingTextFromCurrentSpeechBoundary == "Frost and sun.")
+    }
 }
 
 // MARK: - Helpers

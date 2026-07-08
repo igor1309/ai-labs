@@ -193,6 +193,91 @@ struct PlaybackPositionMappingTests {
         #expect(resumeOffset == (speechText as NSString).range(of: "День").location)
     }
 
+    @Test func test_documentUTF16Offset_shouldReturnUnsnappedDocumentOffset_onHeadingMarkerBeforeSentence() {
+
+        // Spoken offset 10 is mid-word inside "Cold." — the document offset
+        // is 12, not the sentence start (which documentAnchor would return).
+        let documentOffset = PlaybackPositionMapping.documentUTF16Offset(
+            documentText: "# Winter. Cold.",
+            frontMatterMode: .read,
+            spokenUTF16Offset: 10
+        )
+
+        #expect(documentOffset == 12)
+    }
+
+    @Test func test_documentUTF16Offset_shouldClampToLastSpokenUnit_onOffsetBeyondSpeechEnd() {
+
+        let documentOffset = PlaybackPositionMapping.documentUTF16Offset(
+            documentText: "# Winter. Cold.",
+            frontMatterMode: .read,
+            spokenUTF16Offset: 1000
+        )
+
+        #expect(documentOffset == 14)
+    }
+
+    @Test func test_previousSentenceStartUTF16Offset_shouldReturnPrecedingSentenceStart_onOffsetInSecondSentence() {
+
+        let previousStart = PlaybackPositionMapping.previousSentenceStartUTF16Offset(
+            in: "Winter morning is cold. Frost and sun.",
+            from: 30
+        )
+
+        #expect(previousStart == 0)
+    }
+
+    @Test func test_previousSentenceStartUTF16Offset_shouldReturnZero_onOffsetInFirstSentence() {
+
+        let previousStart = PlaybackPositionMapping.previousSentenceStartUTF16Offset(
+            in: "Winter morning is cold. Frost and sun.",
+            from: 7
+        )
+
+        #expect(previousStart == 0)
+    }
+
+    @Test func test_previousSentenceStartUTF16Offset_shouldTreatGapAsPrecedingSentence_onOffsetInWhitespaceBetweenSentences() {
+
+        // Offset 9 is the whitespace after "Two." — it belongs to the second
+        // sentence, so previous is the first sentence's start.
+        let previousStart = PlaybackPositionMapping.previousSentenceStartUTF16Offset(
+            in: "One. Two. Three.",
+            from: 9
+        )
+
+        #expect(previousStart == 0)
+    }
+
+    @Test func test_nextSentenceStartUTF16Offset_shouldReturnFollowingSentenceStart_onOffsetInFirstSentence() {
+
+        let nextStart = PlaybackPositionMapping.nextSentenceStartUTF16Offset(
+            in: "Winter morning is cold. Frost and sun.",
+            from: 7
+        )
+
+        #expect(nextStart == 24)
+    }
+
+    @Test func test_nextSentenceStartUTF16Offset_shouldReturnNil_onOffsetInLastSentence() {
+
+        let nextStart = PlaybackPositionMapping.nextSentenceStartUTF16Offset(
+            in: "Winter morning is cold. Frost and sun.",
+            from: 30
+        )
+
+        #expect(nextStart == nil)
+    }
+
+    @Test func test_nextSentenceStartUTF16Offset_shouldReturnFollowingSentenceStart_onRussianSentences() {
+
+        let text = "Мороз и солнце. День чудесный."
+
+        let nextStart = PlaybackPositionMapping.nextSentenceStartUTF16Offset(in: text, from: 3)
+
+        #expect(nextStart == (text as NSString).range(of: "День").location)
+    }
+
     @Test func test_documentAnchor_shouldReturnSameAnchor_onReadModeFrontMatter() {
 
         // Same body sentence as the .skip case: under .read the speech text

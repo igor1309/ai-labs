@@ -32,15 +32,6 @@ Markdown documents.
 - Add a manual language override or "show all voices" escape hatch if detection
   is wrong or the desired system voice is hidden.
 
-## Add compact progress navigation controls
-
-Add listening navigation only where it fits the bottom control surface.
-
-- Support previous/next sentence or paragraph navigation.
-- Keep the primary play/pause, stop, speed, front-matter, and voice controls in
-  the bottom safe-area inset.
-- Avoid adding a second toolbar or controls above the document body.
-
 ## Add a lightweight recent-documents library
 
 Remember recently opened documents and their per-document listening state.
