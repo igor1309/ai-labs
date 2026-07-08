@@ -122,12 +122,16 @@ upload_ipa() {
     [[ -n "$ipa" ]] || die "no IPA found in $EXPORT_PATH"
   fi
 
+  # Classic altool (Xcode 16.x) only understands the documented --apiKey /
+  # --apiIssuer flags and discovers the key via ~/.appstoreconnect/private_keys;
+  # team pinning stays enforced by signing (DEVELOPMENT_TEAM) and export options.
+  run mkdir -p "$HOME/.appstoreconnect/private_keys"
+  run cp "$API_KEY_PATH" "$HOME/.appstoreconnect/private_keys/AuthKey_${API_KEY_ID}.p8"
   run xcrun altool --upload-app \
     -f "$ipa" \
-    --api-key "$API_KEY_ID" \
-    --api-issuer "$API_ISSUER_ID" \
-    --p8-file-path "$API_KEY_PATH" \
-    --team-id "$REQUIRED_TEAM_ID"
+    -t ios \
+    --apiKey "$API_KEY_ID" \
+    --apiIssuer "$API_ISSUER_ID"
 }
 
 while [[ $# -gt 0 ]]; do

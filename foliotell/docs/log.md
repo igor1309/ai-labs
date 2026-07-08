@@ -12,6 +12,22 @@
   sample (BOM + YAML front matter + heading + Russian body) and mixed
   Markdown/plain-text cases.
 
+- Make the TestFlight upload portable across runner Xcode generations:
+  documented `altool --apiKey/--apiIssuer` flags with the key in
+  `~/.appstoreconnect/private_keys`, plus a newest-Xcode selection step in the
+  deploy job, after the `foliotell_v0.0.3` run failed on a Xcode 16.4 runner
+  whose altool rejects the previous flag spellings.
+
+- Release `foliotell_v0.0.3` with the catalog-based automatic voice
+  resolution fix for silent reading on device.
+
+- Resolve the automatic speech voice from the installed voice catalog,
+  preferring voices with populated audio settings, instead of trusting
+  `AVSpeechSynthesisVoice(language:)`, which can return a voice that produces
+  no audio on device; log the resolved voice so device failures are
+  diagnosable from the console. Addresses reading still silent on device in
+  TestFlight 0.0.2.
+
 ## 2026-07-07
 
 - Prepare patch release `foliotell_v0.0.2` for the TestFlight device-speech
