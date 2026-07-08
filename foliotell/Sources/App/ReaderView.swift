@@ -230,18 +230,17 @@ struct ReaderView: View {
     }
 
     #if os(iOS)
-    // Native bottom-bar toolbar: on iOS 26 the system renders it as one Liquid
-    // Glass bar that floats over the reader text (no edge inset). The transport
-    // controls (previous · play/pause · next) are centered between the settings
-    // menu and stop via flexible spacers.
+    // Native bottom-bar toolbar: on iOS 26 the system renders it as Liquid Glass
+    // floating over the reader text (no edge inset). The playback transport lives
+    // in one glass capsule centered between flexible spacers; the settings menu
+    // is promoted into its own separate glass capsule, the way Search is set
+    // apart in Apple Music.
     @ToolbarContentBuilder
     private var readerBottomBar: some ToolbarContent {
         if case let .success(document) = loadedDocument {
+            ToolbarSpacer(.flexible, placement: .bottomBar)
+
             ToolbarItemGroup(placement: .bottomBar) {
-                settingsMenu(for: document)
-
-                Spacer()
-
                 Button {
                     jumpToPreviousSentence(in: document)
                 } label: {
@@ -271,8 +270,6 @@ struct ReaderView: View {
                 .accessibilityLabel("Next sentence")
                 .accessibilityIdentifier("nextSentenceButton")
 
-                Spacer()
-
                 Button {
                     speechController.stop()
                 } label: {
@@ -281,6 +278,12 @@ struct ReaderView: View {
                 .accessibilityLabel("Stop")
                 .accessibilityIdentifier("stopButton")
                 .disabled(speechController.playbackState.isStopEnabled == false)
+            }
+
+            ToolbarSpacer(.flexible, placement: .bottomBar)
+
+            ToolbarItem(placement: .bottomBar) {
+                settingsMenu(for: document)
             }
         }
     }

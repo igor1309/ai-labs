@@ -2,16 +2,21 @@
 
 ## 2026-07-08
 
+- Release `foliotell_v0.4.1` — reader controls rebuilt as a native Liquid Glass
+  bottom-bar toolbar (centered transport, settings menu promoted to its own
+  capsule, progress ribbon floating above the text).
+
 - Fix the TestFlight archive signing identity so the release workflow requests
   Apple Distribution provisioning assets instead of development signing assets.
 
 - Rework the reader controls into a native bottom-bar toolbar
   (`ToolbarItemGroup(placement: .bottomBar)`) instead of a `.safeAreaInset`
-  bar with hand-rolled `glassEffect`. On iOS 26 the system renders it as one
-  Liquid Glass bar that floats over the text (no edge inset); transport
-  (previous · play/pause · next) is centered between the settings menu and stop,
-  and the progress ribbon floats above the text as an overlay. Removes the
-  custom glass helper and `GlassEffectContainer`.
+  bar with hand-rolled `glassEffect`. On iOS 26 the system renders it as Liquid
+  Glass floating over the text (no edge inset); the transport (previous ·
+  play/pause · next · stop) sits in one glass capsule centered between flexible
+  `ToolbarSpacer`s, and the settings menu is promoted into its own separate
+  capsule (like Search in Apple Music). The progress ribbon floats above the
+  text as an overlay. Removes the custom glass helper and `GlassEffectContainer`.
 
 - Release `foliotell_v0.4.0` — reader bottom controls rendered with Liquid Glass
   (settings icon + playback buttons on grouped interactive glass, primary button
