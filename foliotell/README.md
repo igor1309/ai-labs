@@ -52,7 +52,7 @@ GitHub release workflow secrets:
 
 Optional release metadata:
 
-- `FOLIOTELL_VERSION` defaults to `0.1.0`
+- `FOLIOTELL_VERSION` defaults to the version in `release.toml`
 - `FOLIOTELL_BUILD_NUMBER` defaults to the git commit count
 
 Run `scripts/distribute-testflight.sh --help` for modes including `--validate-only`, `--archive-only`, and `--dry-run`.
