@@ -2,6 +2,8 @@
 
 ## 2026-07-08
 
+- Release `foliotell_v0.1.1` — stop/pause-path instrumentation for the
+  on-device stop-latency investigation; no behavior change.
 - Instrument the stop and pause paths for the device stop-latency
   investigation: log `stopSpeaking`/`pauseSpeaking` acceptance,
   `didFinish`/`didCancel` arrival, and audio-session deactivation outcomes

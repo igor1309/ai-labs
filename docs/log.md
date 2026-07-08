@@ -2,6 +2,9 @@
 
 ## 2026-07-08
 
+- FolioTell: release `foliotell_v0.1.1` — stop/pause-path instrumentation for
+  the on-device stop-latency investigation (machine-side timeline in Console
+  under subsystem `foliotell.FolioTell`); no behavior change.
 - FolioTell: release `foliotell_v0.1.0` — speech text normalization (documents are spoken as content, not raw Markdown markup), the iPhone settings-menu freeze fix, and the portable TestFlight upload path.
 - FolioTell: fix the reader settings menu freezing the app on iPhone — query
   the voice catalog once off the main actor and cache it, instead of calling
