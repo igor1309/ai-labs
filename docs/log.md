@@ -1,6 +1,9 @@
 # Log
 
 ## 2026-07-08
+- FolioTell: fix the TestFlight archive signing identity so release CI requests
+  Apple Distribution provisioning assets instead of development signing assets.
+
 - FolioTell: release `foliotell_v0.4.0` — reader bottom controls rendered with Liquid Glass (grouped interactive glass for the settings icon and playback buttons); deployment target raised to iOS 26.
 
 - FolioTell: release `foliotell_v0.3.1` — reader settings control is now icon-only, fixing the truncated `1.5x · Skip ·…` summary label; menu content unchanged.

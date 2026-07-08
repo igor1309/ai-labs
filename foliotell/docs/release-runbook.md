@@ -114,6 +114,10 @@ it; no action needed.
 - **Team pinning.** Apple team/provider is hard-pinned to `VRVJ9YNRQU` by
   `require_exact_team`, `DEVELOPMENT_TEAM`, and the export options plist —
   not by an altool flag.
+- **Archive signing identity.** The TestFlight archive command must pass
+  `CODE_SIGN_IDENTITY="Apple Distribution"`. Without that override, Xcode's
+  Release build settings resolve to `Apple Development`, and CI asks App Store
+  Connect to create development signing assets instead of distribution assets.
 - **Build number** is the workflow `run_number`, so TestFlight build numbers
   are not contiguous across releases. Marketing version comes from
   `release.toml` via the `verify` job.
