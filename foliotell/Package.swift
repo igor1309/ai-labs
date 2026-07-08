@@ -31,18 +31,28 @@ let package = Package(
             ],
             path: "Tests/Core"
         ),
+        .testTarget(
+            name: .folioTellAppTests,
+            dependencies: [
+                .folioTellAppTarget,
+                .folioTellCore,
+            ],
+            path: "Tests/App"
+        ),
     ]
 )
 
 private extension Target.Dependency {
 
     static let folioTellCore = Target.Dependency.byName(name: .folioTellCore)
+    static let folioTellAppTarget = Target.Dependency.byName(name: .folioTellApp)
 }
 
 private extension String {
 
     static let folioTell = "FolioTell"
     static let folioTellApp = "FolioTellApp"
+    static let folioTellAppTests = "FolioTellAppTests"
     static let folioTellCore = "FolioTellCore"
     static let folioTellCoreTests = "FolioTellCoreTests"
 }
