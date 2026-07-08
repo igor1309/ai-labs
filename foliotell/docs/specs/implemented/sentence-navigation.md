@@ -8,10 +8,10 @@ description: "Spec: sentence navigation — fast forward / back buttons active i
 
 Delta mini-spec (my-way minor-feature path) for the backlog item "Add compact
 progress navigation controls" in `foliotell/backlog/product.md`. Intake:
-[`../intake/sentence-navigation-intake.md`](../intake/sentence-navigation-intake.md).
+[`../../intake/sentence-navigation-intake.md`](../../intake/sentence-navigation-intake.md).
 Builds on the persist-position feature
-([ADR-001](../adr/adr-001-per-document-playback-position.md), implemented
-spec [`implemented/persist-playback-position.md`](implemented/persist-playback-position.md))
+([ADR-001](../../adr/adr-001-per-document-playback-position.md), implemented
+spec [`persist-playback-position.md`](persist-playback-position.md))
 and the word-granular progress commit on `foliotell/live-progress`.
 
 ## Goal

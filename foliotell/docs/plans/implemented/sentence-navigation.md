@@ -6,8 +6,8 @@ description: "Implementation plan: sentence navigation — back/forward buttons 
 
 # Implementation Plan — FolioTell Sentence Navigation
 
-Implements [`../specs/sentence-navigation.md`](../specs/sentence-navigation.md)
-(intake: [`../intake/sentence-navigation-intake.md`](../intake/sentence-navigation-intake.md)),
+Implements [`../../specs/implemented/sentence-navigation.md`](../../specs/implemented/sentence-navigation.md)
+(intake: [`../../intake/sentence-navigation-intake.md`](../../intake/sentence-navigation-intake.md)),
 closing the "Add compact progress navigation controls" backlog item.
 
 ## Goal
