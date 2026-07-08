@@ -8,7 +8,7 @@ description: "Spec: SpeechTextNormalization — content-only speech string for F
 
 Delta mini-spec (my-way minor-feature path) for the backlog item "Normalize
 text for speech" in `foliotell/backlog/product.md`. Intake:
-[`../speech-normalization-intake.md`](../speech-normalization-intake.md).
+[`../../speech-normalization-intake.md`](../../speech-normalization-intake.md).
 
 ## Goal
 
@@ -94,25 +94,32 @@ Pure helper tests in `Tests/Core/SpeechTextNormalizationTests.swift`:
 5. `test_speechText_shouldStripEmphasisMarkers_onPairedAsterisks` — rule 4.
 6. `test_speechText_shouldStripStrongMarkers_onPairedDoubleAsterisks` — rule 4.
 7. `test_speechText_shouldStripStrikethroughMarkers_onPairedTildes` — rule 4.
-8. `test_speechText_shouldPreserveUnderscores_onWordInternalUnderscores` — rule 4.
-9. `test_speechText_shouldPreserveMarker_onUnpairedEmphasisMarker` — rule 4.
-10. `test_speechText_shouldStripBackticks_onInlineCode` — rule 5.
-11. `test_speechText_shouldRemoveFenceLines_onFencedCodeBlock` — rule 6.
-12. `test_speechText_shouldSpeakLinkText_onInlineLink` — rule 7.
-13. `test_speechText_shouldSpeakAltText_onImage` — rule 7.
-14. `test_speechText_shouldStripListMarkers_onBulletAndOrderedItems` — rule 8.
-15. `test_speechText_shouldStripQuoteMarkers_onNestedBlockquote` — rule 9.
-16. `test_speechText_shouldRemoveLine_onThematicBreak` — rule 10.
-17. `test_speechText_shouldCollapseBlankLines_onRemovedMarkupLines` — rule 11.
-18. `test_speechText_shouldSpeakContentOnly_onPushkinShapedMarkdown` — rules
+8. `test_speechText_shouldStripUnderscoreMarkers_onPairedUnderscores` — rule 4.
+9. `test_speechText_shouldPreserveUnderscores_onWordInternalUnderscores` — rule 4.
+10. `test_speechText_shouldPreserveMarker_onUnpairedEmphasisMarker` — rule 4.
+11. `test_speechText_shouldStripBackticks_onInlineCode` — rule 5.
+12. `test_speechText_shouldRemoveFenceLinesAndKeepContentVerbatim_onFencedCodeBlock`
+    — rule 6.
+13. `test_speechText_shouldSpeakLinkText_onInlineLink` — rule 7.
+14. `test_speechText_shouldSpeakAltText_onImage` — rule 7.
+15. `test_speechText_shouldStripListMarkers_onBulletAndOrderedItems` — rule 8.
+16. `test_speechText_shouldStripQuoteMarkers_onNestedBlockquote` — rule 9.
+17. `test_speechText_shouldRemoveLine_onThematicBreakAndYAMLDelimiter` — rule 10.
+18. `test_speechText_shouldCollapseBlankLines_onRemovedMarkupLines` — rule 11.
+19. `test_speechText_shouldSpeakContentOnly_onPushkinShapedMarkdown` — rules
     2, 3, 11 combined: an inline document string that is a valid artifact —
     UTF-8 BOM prefix, multi-line quoted-value YAML front matter, a `#`
     heading, and a Russian plain-text paragraph — normalized (after skip-mode
     front-matter stripping) to heading text plus paragraph.
-19. `test_speechText_shouldSpeakYAMLContentWithoutDelimiters_onReadModeFrontMatter`
+20. `test_speechText_shouldSpeakYAMLContentWithoutDelimiters_onReadModeFrontMatter`
     — rule 10: read-mode output keeps `key: "value"` lines, drops `---`.
-20. `test_speechText_shouldStripMarkersOnly_onMixedMarkdownAndPlainText` —
+21. `test_speechText_shouldStripMarkersOnly_onMixedMarkdownAndPlainText` —
     rules 1 + 3–8 combined on a mixed document.
+
+Test-list changes during execution (noted additions): a dedicated
+paired-underscore stripping test was added so rule 4's positive underscore
+case has RED coverage; the fence test name now states content stays verbatim;
+the thematic-break test also covers the `...` YAML closer.
 
 ## Done criteria
 

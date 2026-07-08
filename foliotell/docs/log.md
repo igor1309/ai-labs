@@ -1,5 +1,17 @@
 # Log
 
+## 2026-07-08
+
+- Normalize document text for speech: playback now speaks document content
+  instead of raw Markdown markup — heading markers, emphasis/strong/
+  strikethrough markers, inline code backticks, code fences, link/image
+  syntax, list and blockquote markers, and delimiter-only lines are stripped
+  from the spoken string (URLs are never spoken), while the visual document
+  rendering stays unchanged. Language detection and voice filtering now run
+  on the same normalized speech string. Covered by a Pushkin-shaped inline
+  sample (BOM + YAML front matter + heading + Russian body) and mixed
+  Markdown/plain-text cases.
+
 ## 2026-07-07
 
 - Prepare patch release `foliotell_v0.0.2` for the TestFlight device-speech

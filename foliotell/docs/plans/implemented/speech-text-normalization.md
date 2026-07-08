@@ -6,8 +6,8 @@ description: "Implementation plan: SpeechTextNormalization — content-only spee
 
 # Implementation Plan — FolioTell Speech Text Normalization
 
-Implements [`../specs/speech-text-normalization.md`](../specs/speech-text-normalization.md)
-(intake: [`../speech-normalization-intake.md`](../speech-normalization-intake.md)),
+Implements [`../../specs/implemented/speech-text-normalization.md`](../../specs/implemented/speech-text-normalization.md)
+(intake: [`../../speech-normalization-intake.md`](../../speech-normalization-intake.md)),
 closing the "Normalize text for speech" backlog item.
 
 ## Goal
