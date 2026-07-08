@@ -2,6 +2,19 @@
 
 ## 2026-07-08
 
+- Fix the reader bottom bar not rendering (0.4.1 regression, found on
+  simulator): `DocumentGroup` hosts the reader in its own navigation
+  container, which does not bridge `.bottomBar` toolbar placement — the
+  0.4.1 toolbar rework attached the controls to a container that never
+  renders them (a title-only probe confirmed the drop). The reader now wraps
+  its content in an inner `NavigationStack` so the bottom bar has a SwiftUI
+  container to attach to; the inner top bar must stay installed (hiding it
+  drops the bottom bar too), so it is emptied instead — no back button,
+  empty inline title, hidden background — leaving DocumentGroup's chrome as
+  the only visible bar. The progress ribbon moved to a top overlay. Verified
+  on simulator across fresh open, back-and-reopen, and terminate-relaunch
+  restoration, with play/pause/next/stop exercised via Maestro.
+
 - Make TestFlight release archives unsigned so App Store Connect distribution
   signing happens during export instead of conflicting with the target's
   automatic development signing settings.

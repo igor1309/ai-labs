@@ -20,17 +20,40 @@ struct ReaderView: View {
     private let positionStore: PlaybackPositionStore = DefaultsPlaybackPositionStore()
 
     var body: some View {
+        readerContent
+    }
+
+    #if os(iOS)
+    // DocumentGroup hosts the reader in its own navigation container, which does
+    // not bridge `.bottomBar` toolbar placement. An inner NavigationStack gives
+    // the bottom bar a SwiftUI navigation container to attach to. Its top bar
+    // must stay installed (hiding it drops the bottom bar too), so it is
+    // emptied instead — no back button, empty inline title, hidden background —
+    // leaving DocumentGroup's title/back/Actions chrome as the only visible bar.
+    private var readerContent: some View {
+        NavigationStack {
+            reader
+                .toolbar {
+                    readerBottomBar
+                }
+                .navigationBarBackButtonHidden(true)
+                .toolbarBackground(.hidden, for: .navigationBar)
+                .navigationTitle("")
+                .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+    #else
+    private var readerContent: some View {
+        reader
+    }
+    #endif
+
+    private var reader: some View {
         content
             .padding()
-            .overlay(alignment: .bottom) {
+            .overlay(alignment: .top) {
                 playbackProgressRibbon
             }
-            .navigationTitle(displayFileName)
-            #if os(iOS)
-            .toolbar {
-                readerBottomBar
-            }
-            #endif
             .task {
                 // speechVoices() can stall for seconds on device; query the
                 // catalog once, off the main actor, instead of per render.
