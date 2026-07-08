@@ -1,23 +1,44 @@
-import AVFoundation
 #if !FOLIOTELL_SINGLE_TARGET
 import FolioTellCore
 #endif
 import SwiftUI
 
+/// Everything the reader renders, derived by the wrapper from the machines
+/// and the persisted settings.
+struct ReaderRenderState: Equatable {
+    let title: String
+    let frontMatterText: String?
+    let bodyText: String
+    let progress: Double
+    let playbackState: PlaybackState
+    let isStartOverEnabled: Bool
+    let selectedSpeed: SpeechSpeed
+    let selectedFrontMatterMode: FrontMatterPlaybackMode
+    let selectedVoiceIdentifier: String?
+    let voiceOptions: [ReaderVoiceOption]
+}
+
+struct ReaderVoiceOption: Equatable, Identifiable {
+    let id: String
+    let menuTitle: String
+}
+
+enum ReaderViewEvent: Equatable {
+    case primaryTapped
+    case stopTapped
+    case previousSentenceTapped
+    case nextSentenceTapped
+    case startOverTapped
+    case speedSelected(SpeechSpeed)
+    case frontMatterModeSelected(FrontMatterPlaybackMode)
+    case voiceSelected(String?)
+}
+
+/// Pure presentation of the reader: a function of `state`, routing every user
+/// action out through `event`.
 struct ReaderView: View {
-    let loadedDocument: LoadedFolioDocument
-    let fileName: String
-    let documentPath: String?
-
-    @AppStorage("selectedSpeechSpeed") private var selectedSpeechSpeed = SpeechSpeed.one.rawValue
-    @AppStorage("selectedFrontMatterPlaybackMode") private var selectedFrontMatterPlaybackMode = FrontMatterPlaybackMode.skip.rawValue
-    @AppStorage("selectedSpeechVoiceIdentifier") private var selectedSpeechVoiceIdentifier = SpeechVoiceSelection.automaticIdentifier
-    @StateObject private var speechController = SpeechController()
-    @State private var availableVoices: [SpeechVoiceOption] = []
-    @State private var storedAnchor: Int?
-    @State private var liveDocumentUTF16Offset: Int?
-
-    private let positionStore: PlaybackPositionStore = DefaultsPlaybackPositionStore()
+    let state: ReaderRenderState
+    let event: (ReaderViewEvent) -> Void
 
     var body: some View {
         readerContent
@@ -54,199 +75,46 @@ struct ReaderView: View {
             .overlay(alignment: .top) {
                 playbackProgressRibbon
             }
-            .task {
-                // speechVoices() can stall for seconds on device; query the
-                // catalog once, off the main actor, instead of per render.
-                availableVoices = await Task.detached(priority: .userInitiated) {
-                    AVSpeechSynthesisVoice.speechVoices().map(SpeechVoiceOption.init)
-                }.value
-            }
-            .onAppear {
-                if let documentPath {
-                    storedAnchor = positionStore.anchor(forDocumentPath: documentPath)
-                }
-                speechController.onSpokenPositionChange = { spokenUTF16Offset in
-                    updateLiveProgress(atSpokenUTF16Offset: spokenUTF16Offset)
-                    recordAnchor(atSpokenUTF16Offset: spokenUTF16Offset)
-                }
-                speechController.onPlaybackDidFinishNaturally = {
-                    clearStoredAnchor()
-                }
-            }
-            .onDisappear {
-                speechController.stop()
-            }
-            .onChange(of: selectedSpeed) { _, newSpeed in
-                speechController.updateSpeed(newSpeed)
-            }
-            .onChange(of: selectedVoiceIdentifierForPlayback) { _, newVoiceIdentifier in
-                speechController.updateVoiceIdentifier(newVoiceIdentifier)
-            }
     }
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 24) {
-            Text(displayFileName)
+            Text(state.title)
                 .font(.title2)
                 .fontWeight(.semibold)
                 .lineLimit(2)
 
-            switch loadedDocument {
-            case let .failure(_, error):
-                ErrorView(error: error)
-            case let .success(document):
-                documentText(document)
-            }
+            documentText
 
             Spacer()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var displayFileName: String {
-        switch loadedDocument {
-        case let .failure(fileName, _):
-            fileName
-        case let .success(document):
-            document.fileName
-        }
-    }
-
-    private var selectedSpeed: SpeechSpeed {
-        get { SpeechSpeed.speed(for: selectedSpeechSpeed) }
-        nonmutating set { selectedSpeechSpeed = newValue.rawValue }
-    }
-
-    private var selectedFrontMatterMode: FrontMatterPlaybackMode {
-        get { FrontMatterPlaybackMode.mode(for: selectedFrontMatterPlaybackMode) }
-        nonmutating set { selectedFrontMatterPlaybackMode = newValue.rawValue }
-    }
-
-    private func speechText(for document: FolioDocument) -> String {
-
-        SpeechTextNormalization.speechText(
-            from: selectedFrontMatterMode.speechText(from: document.text)
-        )
-    }
-
-    private var detectedDocumentLanguageCode: String? {
-        switch loadedDocument {
-        case .failure:
-            nil
-        case let .success(document):
-            // Cyrillic detection is unaffected by Markdown syntax, so the
-            // render path skips the full normalization pass.
-            SpeechVoiceLanguage.languageCode(
-                for: selectedFrontMatterMode.speechText(from: document.text)
-            )
-        }
-    }
-
-    private var voiceOptions: [SpeechVoiceOption] {
-        let allVoiceOptions = availableVoices
-        let filteredIdentifiers = SpeechVoiceSelection.filteredVoiceIdentifiers(
-            availableIdentifiers: Set(allVoiceOptions.map(\.id)),
-            languagesByIdentifier: Dictionary(uniqueKeysWithValues: allVoiceOptions.map { ($0.id, $0.language) }),
-            detectedLanguageCode: detectedDocumentLanguageCode
-        )
-
-        return allVoiceOptions
-            .filter { filteredIdentifiers.contains($0.id) }
-            .sorted { lhs, rhs in
-                if lhs.language == rhs.language {
-                    lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
-                } else {
-                    lhs.language.localizedCaseInsensitiveCompare(rhs.language) == .orderedAscending
+    private var documentText: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if let frontMatterText = state.frontMatterText {
+                    Text(frontMatterText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
+
+                Text(state.bodyText)
+                    .font(.body)
             }
-    }
-
-    private var selectedVoiceIdentifierForPlayback: String? {
-        SpeechVoiceSelection.selectedVoiceIdentifier(
-            storedIdentifier: selectedSpeechVoiceIdentifier,
-            availableIdentifiers: Set(voiceOptions.map(\.id))
-        )
-    }
-
-    private func updateLiveProgress(atSpokenUTF16Offset spokenUTF16Offset: Int) {
-        guard case let .success(document) = loadedDocument else {
-            return
-        }
-
-        liveDocumentUTF16Offset = SpeechDerivation(
-            documentText: document.text,
-            frontMatterMode: selectedFrontMatterMode
-        ).documentUTF16Offset(forSpokenUTF16Offset: spokenUTF16Offset)
-    }
-
-    private func recordAnchor(atSpokenUTF16Offset spokenUTF16Offset: Int) {
-        guard let documentPath, case let .success(document) = loadedDocument else {
-            return
-        }
-
-        let anchor = SpeechDerivation(
-            documentText: document.text,
-            frontMatterMode: selectedFrontMatterMode
-        ).documentAnchor(forSpokenUTF16Offset: spokenUTF16Offset)
-        guard anchor != storedAnchor else {
-            return
-        }
-
-        storedAnchor = anchor
-        positionStore.setAnchor(anchor, forDocumentPath: documentPath)
-    }
-
-    private func clearStoredAnchor() {
-        if let documentPath {
-            positionStore.clearAnchor(forDocumentPath: documentPath)
-        }
-        storedAnchor = nil
-        liveDocumentUTF16Offset = nil
-    }
-
-    private func resumeSpokenUTF16Offset(for document: FolioDocument) -> Int {
-
-        guard let storedAnchor else {
-            return 0
-        }
-
-        return SpeechDerivation(
-            documentText: document.text,
-            frontMatterMode: selectedFrontMatterMode
-        ).resumeSpokenUTF16Offset(forDocumentAnchor: storedAnchor)
-    }
-
-    private func startOver(_ document: FolioDocument) {
-        clearStoredAnchor()
-        if speechController.playbackState != .idle {
-            speechController.play(
-                speechText(for: document),
-                speed: selectedSpeed,
-                voiceIdentifier: selectedVoiceIdentifierForPlayback
-            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .textSelection(.enabled)
         }
     }
 
-    private func playbackProgress(for document: FolioDocument) -> Double {
-
-        let documentLength = document.text.utf16.count
-        guard let position = liveDocumentUTF16Offset ?? storedAnchor, documentLength > 0 else {
-            return 0
-        }
-
-        return min(1, Double(position) / Double(documentLength))
-    }
-
-    @ViewBuilder
     private var playbackProgressRibbon: some View {
-        if case let .success(document) = loadedDocument {
-            ProgressView(value: playbackProgress(for: document))
-                .progressViewStyle(.linear)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 4)
-                .accessibilityLabel("Listening progress")
-                .accessibilityIdentifier("playbackProgress")
-        }
+        ProgressView(value: state.progress)
+            .progressViewStyle(.linear)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 4)
+            .accessibilityLabel("Listening progress")
+            .accessibilityIdentifier("playbackProgress")
     }
 
     #if os(iOS)
@@ -257,67 +125,59 @@ struct ReaderView: View {
     // apart in Apple Music.
     @ToolbarContentBuilder
     private var readerBottomBar: some ToolbarContent {
-        if case let .success(document) = loadedDocument {
-            ToolbarSpacer(.flexible, placement: .bottomBar)
+        ToolbarSpacer(.flexible, placement: .bottomBar)
 
-            ToolbarItemGroup(placement: .bottomBar) {
-                Button {
-                    jumpToPreviousSentence(in: document)
-                } label: {
-                    Image(systemName: "backward.fill")
-                }
-                .accessibilityLabel("Previous sentence")
-                .accessibilityIdentifier("previousSentenceButton")
-
-                Button {
-                    speechController.togglePrimaryControl(
-                        speechText(for: document),
-                        speed: selectedSpeed,
-                        voiceIdentifier: selectedVoiceIdentifierForPlayback,
-                        startingAtUTF16Offset: resumeSpokenUTF16Offset(for: document)
-                    )
-                } label: {
-                    Image(systemName: speechController.primaryControlSystemImage)
-                }
-                .accessibilityLabel(speechController.primaryControlTitle)
-                .accessibilityIdentifier("primaryPlaybackButton")
-
-                Button {
-                    jumpToNextSentence(in: document)
-                } label: {
-                    Image(systemName: "forward.fill")
-                }
-                .accessibilityLabel("Next sentence")
-                .accessibilityIdentifier("nextSentenceButton")
-
-                Button {
-                    speechController.stop()
-                } label: {
-                    Image(systemName: "stop.fill")
-                }
-                .accessibilityLabel("Stop")
-                .accessibilityIdentifier("stopButton")
-                .disabled(speechController.playbackState.isStopEnabled == false)
+        ToolbarItemGroup(placement: .bottomBar) {
+            Button {
+                event(.previousSentenceTapped)
+            } label: {
+                Image(systemName: "backward.fill")
             }
+            .accessibilityLabel("Previous sentence")
+            .accessibilityIdentifier("previousSentenceButton")
 
-            ToolbarSpacer(.flexible, placement: .bottomBar)
-
-            ToolbarItem(placement: .bottomBar) {
-                settingsMenu(for: document)
+            Button {
+                event(.primaryTapped)
+            } label: {
+                Image(systemName: state.playbackState.primaryControlSystemImage)
             }
+            .accessibilityLabel(state.playbackState.primaryControlTitle)
+            .accessibilityIdentifier("primaryPlaybackButton")
+
+            Button {
+                event(.nextSentenceTapped)
+            } label: {
+                Image(systemName: "forward.fill")
+            }
+            .accessibilityLabel("Next sentence")
+            .accessibilityIdentifier("nextSentenceButton")
+
+            Button {
+                event(.stopTapped)
+            } label: {
+                Image(systemName: "stop.fill")
+            }
+            .accessibilityLabel("Stop")
+            .accessibilityIdentifier("stopButton")
+            .disabled(state.playbackState.isStopEnabled == false)
+        }
+
+        ToolbarSpacer(.flexible, placement: .bottomBar)
+
+        ToolbarItem(placement: .bottomBar) {
+            settingsMenu
         }
     }
     #endif
 
-    @ViewBuilder
-    private func settingsMenu(for document: FolioDocument) -> some View {
+    private var settingsMenu: some View {
         Menu {
             Section("Speed") {
                 ForEach(SpeechSpeed.allCases) { speed in
                     Button {
-                        selectedSpeed = speed
+                        event(.speedSelected(speed))
                     } label: {
-                        if selectedSpeed == speed {
+                        if state.selectedSpeed == speed {
                             Label(speed.rawValue, systemImage: "checkmark")
                         } else {
                             Text(speed.rawValue)
@@ -329,9 +189,9 @@ struct ReaderView: View {
             Section("Front matter") {
                 ForEach(FrontMatterPlaybackMode.allCases) { mode in
                     Button {
-                        selectedFrontMatterMode = mode
+                        event(.frontMatterModeSelected(mode))
                     } label: {
-                        if selectedFrontMatterMode == mode {
+                        if state.selectedFrontMatterMode == mode {
                             Label(mode.title, systemImage: "checkmark")
                         } else {
                             Text(mode.title)
@@ -342,20 +202,20 @@ struct ReaderView: View {
 
             Section("Voice") {
                 Button {
-                    selectedSpeechVoiceIdentifier = SpeechVoiceSelection.automaticIdentifier
+                    event(.voiceSelected(nil))
                 } label: {
-                    if selectedVoiceIdentifierForPlayback == nil {
+                    if state.selectedVoiceIdentifier == nil {
                         Label("Auto", systemImage: "checkmark")
                     } else {
                         Text("Auto")
                     }
                 }
 
-                ForEach(voiceOptions) { voiceOption in
+                ForEach(state.voiceOptions) { voiceOption in
                     Button {
-                        selectedSpeechVoiceIdentifier = voiceOption.id
+                        event(.voiceSelected(voiceOption.id))
                     } label: {
-                        if selectedVoiceIdentifierForPlayback == voiceOption.id {
+                        if state.selectedVoiceIdentifier == voiceOption.id {
                             Label(voiceOption.menuTitle, systemImage: "checkmark")
                         } else {
                             Text(voiceOption.menuTitle)
@@ -366,11 +226,11 @@ struct ReaderView: View {
 
             Section {
                 Button {
-                    startOver(document)
+                    event(.startOverTapped)
                 } label: {
                     Label("Start Over", systemImage: "gobackward")
                 }
-                .disabled(storedAnchor == nil && speechController.playbackState == .idle)
+                .disabled(state.isStartOverEnabled == false)
             }
         } label: {
             Image(systemName: "slider.horizontal.3")
@@ -378,99 +238,28 @@ struct ReaderView: View {
         .accessibilityLabel("Playback settings")
         .accessibilityIdentifier("readerSettingsMenu")
     }
-
-    @ViewBuilder
-    private func documentText(_ document: FolioDocument) -> some View {
-        let renderableText = FrontMatterRendering.renderableText(from: document.text)
-
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                if let frontMatter = renderableText.frontMatter {
-                    Text(frontMatter)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Text(renderableText.body)
-                    .font(.body)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .textSelection(.enabled)
-        }
-    }
-
-    private func jumpToPreviousSentence(in document: FolioDocument) {
-        switch speechController.playbackState {
-        case .paused, .speaking:
-            speechController.jumpToPreviousSentence()
-        case .idle:
-            let speechText = speechText(for: document)
-            applyIdleJump(
-                toSpokenUTF16Offset: PlaybackPositionMapping.previousSentenceStartUTF16Offset(
-                    in: speechText,
-                    from: resumeSpokenUTF16Offset(for: document)
-                ),
-                document: document
-            )
-        }
-    }
-
-    private func jumpToNextSentence(in document: FolioDocument) {
-        switch speechController.playbackState {
-        case .paused, .speaking:
-            speechController.jumpToNextSentence()
-        case .idle:
-            let speechText = speechText(for: document)
-            guard let target = PlaybackPositionMapping.nextSentenceStartUTF16Offset(
-                in: speechText,
-                from: resumeSpokenUTF16Offset(for: document)
-            ) else {
-                return
-            }
-
-            applyIdleJump(toSpokenUTF16Offset: target, document: document)
-        }
-    }
-
-    private func applyIdleJump(toSpokenUTF16Offset target: Int, document: FolioDocument) {
-        let anchor = SpeechDerivation(
-            documentText: document.text,
-            frontMatterMode: selectedFrontMatterMode
-        ).documentAnchor(forSpokenUTF16Offset: target)
-        storedAnchor = anchor
-        // After an idle jump the position IS the anchor — drop any stale
-        // frozen live offset so the progress bar tracks the jump.
-        liveDocumentUTF16Offset = nil
-        if let documentPath {
-            positionStore.setAnchor(anchor, forDocumentPath: documentPath)
-        }
-    }
-
 }
 
-private struct SpeechVoiceOption: Identifiable, Sendable {
-    let id: String
-    let name: String
-    let language: String
-
-    init(_ voice: AVSpeechSynthesisVoice) {
-        id = voice.identifier
-        name = voice.name
-        language = voice.language
-    }
-
-    var menuTitle: String {
-        "\(name) (\(language))"
-    }
-}
-
-private struct ErrorView: View {
+/// Load-failure presentation: file name and a readable reason.
+struct ReaderFailureView: View {
+    let fileName: String
     let error: FolioDocumentError
 
     var body: some View {
-        Text(error.message)
-            .font(.body)
-            .foregroundStyle(.red)
+        VStack(alignment: .leading, spacing: 24) {
+            Text(fileName)
+                .font(.title2)
+                .fontWeight(.semibold)
+                .lineLimit(2)
+
+            Text(error.message)
+                .font(.body)
+                .foregroundStyle(.red)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
     }
 }
 
