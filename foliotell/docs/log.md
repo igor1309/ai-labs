@@ -2,6 +2,11 @@
 
 ## 2026-07-08
 
+- Backlog: recorded two reader bottom-controls items in `backlog/product.md` —
+  fix the settings menu's truncated bottom inset (long voice list clipped by the
+  bottom-inset controls bar) and render the bottom controls with Liquid Glass
+  (deployment target may rise to iOS 26).
+
 - Release `foliotell_v0.3.0` — sentence navigation buttons (back · play/pause · forward · stop; jumps work while speaking, paused, and idle) and the word-granular live progress bar fix for short documents.
 
 
