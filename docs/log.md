@@ -2,6 +2,8 @@
 
 ## 2026-07-08
 
+- FolioTell: release `foliotell_v0.0.3` with the catalog-based automatic
+  voice resolution fix for silent reading on device.
 - FolioTell: resolve the automatic speech voice from the installed voice
   catalog (preferring voices with populated audio settings) instead of the
   `AVSpeechSynthesisVoice(language:)` initializer, which can return a voice

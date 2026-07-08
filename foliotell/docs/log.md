@@ -2,6 +2,9 @@
 
 ## 2026-07-08
 
+- Release `foliotell_v0.0.3` with the catalog-based automatic voice
+  resolution fix for silent reading on device.
+
 - Resolve the automatic speech voice from the installed voice catalog,
   preferring voices with populated audio settings, instead of trusting
   `AVSpeechSynthesisVoice(language:)`, which can return a voice that produces
