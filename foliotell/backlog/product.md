@@ -1,8 +1,8 @@
 ---
-date: 2026-07-08
+date: 2026-07-06
 model: gpt-5
 description: "Forward product backlog for FolioTell after the first simulator implementation."
-version: 0.0.2
+version: 0.0.1
 ---
 
 # Backlog — FolioTell product
@@ -51,39 +51,6 @@ Keep simulator coverage for the interaction bugs that have already appeared.
   beginning.
 - Verify front-matter skip/read behavior.
 - Verify the voice menu is filtered for the detected document language.
-
-## Fix the settings menu's truncated bottom inset
-
-The reader's settings menu (`readerSettingsMenu`) opens from the bottom-controls
-bar, which lives in a `.safeAreaInset(edge: .bottom)`. With the Voice section
-listing every filtered voice the menu grows long, and it renders with a bad
-bottom inset that truncates the last entries — the tail of the list is cut off
-and hard or impossible to reach.
-
-- Reproduce with a document that yields many filtered voices (long voice list).
-- Make the full menu reliably reachable regardless of length: let it scroll to
-  the true bottom, or present the long/voice portion so it clears the
-  bottom-inset controls bar rather than being clipped by it.
-- Consider splitting Voice selection out of the inline `Menu` into its own
-  presentation (sheet or dedicated picker) if the popover cannot host the full
-  list cleanly — this also pairs with the "show detected language" and
-  "show all voices" items above.
-- Add a Maestro/regression check that the last voice entry is reachable.
-
-## Render the bottom controls with Liquid Glass
-
-Adopt Liquid Glass for the reader's bottom-controls bar and settings menu for a
-first-class iOS 26 look. The minimum deployment target can be raised to iOS 26
-for this — no back-compat constraint.
-
-- Replace the `.background(.bar)` treatment on the bottom controls with the
-  Liquid Glass material (`glassEffect` / `.glass` button styling as available).
-- Apply glass styling to the playback buttons and the settings menu label so the
-  control cluster reads as one glass surface.
-- Raise the deployment target to iOS 26 in `Package.swift` and the Xcode project;
-  update the release/build config and any docs that state the minimum iOS.
-- Sequence this after the truncated-menu fix so the menu presentation is settled
-  before restyling it.
 
 ## Render Markdown more clearly
 
