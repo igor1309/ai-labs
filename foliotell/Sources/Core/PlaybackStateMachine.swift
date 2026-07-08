@@ -86,6 +86,12 @@ public struct PlaybackStateMachine: Equatable, Sendable {
         return String(currentText[index...])
     }
 
+    /// Moves the tracked position without changing the playback state.
+    public mutating func reposition(toUTF16Offset utf16Offset: Int) {
+        currentUtteranceStartUTF16Offset = boundedUTF16Offset(utf16Offset)
+        currentSpokenUTF16Offset = currentUtteranceStartUTF16Offset
+    }
+
     public mutating func pauseSucceeded() {
         playbackState = .paused
     }
