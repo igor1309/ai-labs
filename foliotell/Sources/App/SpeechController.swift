@@ -213,6 +213,7 @@ extension SpeechController: AVSpeechSynthesizerDelegate {
                 return
             }
 
+            logger.info("didFinish received for current utterance")
             playback.speechFinished()
             publishPlaybackState()
             deactivateAudioSession()
