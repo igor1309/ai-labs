@@ -11,11 +11,11 @@ appId: foliotell.FolioTell
     timeout: 2000
 - assertVisible: "Play"
 - assertVisible:
-    text: ".*Skip.*"
+    id: "readerSettingsMenu"
 - tapOn: "Play"
 - assertVisible: "Pause"
 - tapOn:
-    text: ".*Skip.*"
+    id: "readerSettingsMenu"
 - assertVisible: "Auto"
 - tapOn: "1.5x"
 - assertVisible: "Pause"

@@ -1,6 +1,8 @@
 # Log
 
 ## 2026-07-08
+- FolioTell: release `foliotell_v0.3.1` — reader settings control is now icon-only, fixing the truncated `1.5x · Skip ·…` summary label; menu content unchanged.
+
 - FolioTell: release `foliotell_v0.3.0` — sentence navigation (back/forward one sentence per tap in every playback state) and word-granular live progress bar.
 
 - FolioTell: release `foliotell_v0.2.0` — per-document playback position persistence and sentence-anchored resume (stop parks, relaunch resumes, Start Over, progress bar).

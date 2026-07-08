@@ -140,18 +140,6 @@ struct ReaderView: View {
         )
     }
 
-    private var selectedVoiceTitle: String {
-        guard let selectedVoiceIdentifierForPlayback else {
-            return "Auto"
-        }
-
-        return voiceOptions.first(where: { $0.id == selectedVoiceIdentifierForPlayback })?.name ?? "Auto"
-    }
-
-    private var settingsSummary: String {
-        "\(selectedSpeed.rawValue) · \(selectedFrontMatterMode.title) · \(selectedVoiceTitle)"
-    }
-
     private func updateLiveProgress(atSpokenUTF16Offset spokenUTF16Offset: Int) {
         guard case let .success(document) = loadedDocument else {
             return
@@ -314,17 +302,12 @@ struct ReaderView: View {
                 .disabled(storedAnchor == nil && speechController.playbackState == .idle)
             }
         } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "slider.horizontal.3")
-                    .foregroundStyle(.secondary)
-
-                Text(settingsSummary)
-                    .foregroundStyle(.primary)
-            }
+            Image(systemName: "slider.horizontal.3")
                 .font(.subheadline.weight(.medium))
-                .lineLimit(1)
-                .frame(minHeight: 44)
+                .foregroundStyle(.secondary)
+                .frame(minWidth: 44, minHeight: 44)
         }
+        .accessibilityLabel("Playback settings")
         .accessibilityIdentifier("readerSettingsMenu")
     }
 
