@@ -9,6 +9,13 @@ import SwiftUI
 final class SpeechController: NSObject, ObservableObject {
     @Published private(set) var playbackState: PlaybackState = .idle
 
+    /// Absolute UTF16 offset into the current speech text, reported as the
+    /// synthesizer progresses.
+    var onSpokenPositionChange: ((Int) -> Void)?
+    /// Fired when speech reaches the end of the document (not on stop or
+    /// utterance replacement).
+    var onPlaybackDidFinishNaturally: (() -> Void)?
+
     private let logger = Logger(subsystem: "foliotell.FolioTell", category: "speech")
     private let synthesizer = AVSpeechSynthesizer()
     private var playback = PlaybackStateMachine()
@@ -29,28 +36,31 @@ final class SpeechController: NSObject, ObservableObject {
         playbackState.primaryControlSystemImage
     }
 
-    func togglePrimaryControl(_ text: String, speed: SpeechSpeed, voiceIdentifier: String?) {
+    func togglePrimaryControl(
+        _ text: String,
+        speed: SpeechSpeed,
+        voiceIdentifier: String?,
+        startingAtUTF16Offset: Int = 0
+    ) {
         switch playbackState {
         case .idle:
-            play(text, speed: speed, voiceIdentifier: voiceIdentifier)
+            play(text, speed: speed, voiceIdentifier: voiceIdentifier, startingAtUTF16Offset: startingAtUTF16Offset)
         case .paused, .speaking:
             pauseOrResume()
         }
     }
 
-    func play(_ text: String, speed: SpeechSpeed, voiceIdentifier: String?) {
+    func play(_ text: String, speed: SpeechSpeed, voiceIdentifier: String?, startingAtUTF16Offset: Int = 0) {
         startSpeaking(
             fullText: text,
-            utteranceText: text,
             speed: speed,
             voiceIdentifier: voiceIdentifier,
-            startingAtUTF16Offset: 0
+            startingAtUTF16Offset: startingAtUTF16Offset
         )
     }
 
     private func startSpeaking(
         fullText: String,
-        utteranceText: String,
         speed: SpeechSpeed,
         voiceIdentifier: String?,
         startingAtUTF16Offset: Int
@@ -73,6 +83,7 @@ final class SpeechController: NSObject, ObservableObject {
 
         configureAudioSessionForPlayback()
 
+        let utteranceText = playback.remainingTextFromCurrentSpeechBoundary
         let utterance = AVSpeechUtterance(string: utteranceText)
         currentUtteranceID = ObjectIdentifier(utterance)
         utterance.rate = speed.utteranceRate
@@ -117,7 +128,6 @@ final class SpeechController: NSObject, ObservableObject {
         if playback.applySpeed(speed) {
             startSpeaking(
                 fullText: playback.currentText,
-                utteranceText: playback.remainingTextFromCurrentSpeechBoundary,
                 speed: speed,
                 voiceIdentifier: currentVoiceIdentifier,
                 startingAtUTF16Offset: playback.currentSpokenUTF16Offset
@@ -137,7 +147,6 @@ final class SpeechController: NSObject, ObservableObject {
 
         startSpeaking(
             fullText: playback.currentText,
-            utteranceText: playback.remainingTextFromCurrentSpeechBoundary,
             speed: playback.currentSpeed,
             voiceIdentifier: voiceIdentifier,
             startingAtUTF16Offset: playback.currentSpokenUTF16Offset
@@ -203,6 +212,7 @@ extension SpeechController: AVSpeechSynthesizerDelegate {
     ) {
         Task { @MainActor in
             playback.willSpeakRange(startingAtUTF16Offset: characterRange.location)
+            onSpokenPositionChange?(playback.currentSpokenUTF16Offset)
         }
     }
 
@@ -214,9 +224,16 @@ extension SpeechController: AVSpeechSynthesizerDelegate {
             }
 
             logger.info("didFinish received for current utterance")
+            // Stop also delivers didFinish, but stopRequested() has already
+            // moved playback to .idle by then — only a still-active state
+            // means speech ran off the end of the document.
+            let didFinishNaturally = playback.playbackState != .idle
             playback.speechFinished()
             publishPlaybackState()
             deactivateAudioSession()
+            if didFinishNaturally {
+                onPlaybackDidFinishNaturally?()
+            }
         }
     }
 
