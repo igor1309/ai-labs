@@ -6,10 +6,6 @@ description: "FolioTell — a native document-to-speech iPhone app that reads lo
 
 # foliotell
 
-Orientation surface: [index.html](index.html) — a single internal page for FolioTell (thesis, v0.0.1 scope, naming direction, non-goals, and a doc hub).
-
-Public landing: [landing/index.html](landing/index.html) — the App Store marketing page (self-contained, theme-aware), with a [privacy policy](landing/privacy.html).
-
 Document-to-speech iPhone app.
 
 ## Description
@@ -59,12 +55,33 @@ Run `scripts/distribute-testflight.sh --help` for modes including `--validate-on
 
 ## Docs
 
+Specs (`docs/specs/`, implemented specs move to `docs/specs/implemented/`):
+
+- [Technical specification](docs/specs/foliotell-technical-spec.md) — v0.0.1 and v0.0.2 scope, document support, reader screen, speech, and acceptance criteria.
+
+Living references:
+
+- [Device speech](docs/device-speech.md) — design rationale, per-release hypothesis ledger, and diagnostic runbook for device-only audio behavior.
 - [Release runbook](docs/release-runbook.md) — exact release commands, gates, caveats (runner Xcode variance, altool flags), and tag-recovery procedure.
-- [Device speech](docs/device-speech.md) — audio session and voice resolution design, falsified hypotheses, and the on-device silent-reading diagnostic procedure.
 - [App Store Connect product card](docs/app-store-connect-product-card.md) — backed-up app information, version metadata, and API update limitations.
+
+Briefs (`docs/`):
+
 - [Naming brief](docs/foliotell-naming-brief.md) — product scope, naming objective, scoring model, and availability standard.
-- [Candidate evaluation](docs/foliotell-candidate-evaluation.md) — weighted comparison of candidate names.
-- [Technical specification](docs/foliotell-technical-spec.md) — v0.0.1 and v0.0.2 scope, document support, reader screen, speech, and acceptance criteria.
+
+Intake briefs (`docs/intake/`, pre-planning context capture per task):
+
+- [Speech text normalization](docs/intake/speech-normalization-intake.md)
+- [Stop latency on device](docs/intake/stop-latency-intake.md)
+
+Research (`research/`, plus the UI reference corpus):
+
+- [Candidate evaluation](research/foliotell-candidate-evaluation.md) — weighted comparison of candidate names.
+
+## Pages
+
+- Internal orientation: [index.html](index.html) — thesis, v0.0.1 scope, naming direction, non-goals, and a doc hub.
+- Public landing: [landing/index.html](landing/index.html) — the App Store marketing page, with a [privacy policy](landing/privacy.html).
 
 ## Stack
 

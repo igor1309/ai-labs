@@ -2,12 +2,15 @@
 
 ## 2026-07-08
 
+- FolioTell: release `foliotell_v0.1.1` — stop/pause-path instrumentation for
+  the on-device stop-latency investigation (machine-side timeline in Console
+  under subsystem `foliotell.FolioTell`); no behavior change.
 - Retro hardening: delegation-preflight and tool-mechanics rules in
   collaboration preferences, a worktree-safety stop condition in the
   release-executor agent, a bug-report cue split in `using-dev-skills`
-  (v1.0.3, marketplace bump deferred), and a global research-briefs rule
-  (gather local facts before spawning researchers).
-
+  (v1.0.3), and a global research-briefs rule (gather local facts before
+  spawning researchers). Skill updates published as dev-skills marketplace
+  v1.56.0 (using-dev-skills 1.0.3, pr-ci-watch 1.3.0, skill-review 1.5.0).
 - FolioTell: release `foliotell_v0.1.0` — speech text normalization (documents are spoken as content, not raw Markdown markup), the iPhone settings-menu freeze fix, and the portable TestFlight upload path.
 - FolioTell: fix the reader settings menu freezing the app on iPhone — query
   the voice catalog once off the main actor and cache it, instead of calling

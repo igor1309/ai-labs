@@ -7,7 +7,7 @@ description: "Intake brief: fix FolioTell stop latency on device — Stop leaves
 # Intake Brief — FolioTell: Fix Stop Latency on Device
 
 Source: `foliotell/backlog/product.md` § "Fix stop latency on device".
-Investigation ledger: [`device-speech.md`](device-speech.md).
+Investigation ledger: [`../device-speech.md`](../device-speech.md).
 
 ## What I'm Building
 
