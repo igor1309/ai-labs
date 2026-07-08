@@ -2,6 +2,9 @@
 
 ## 2026-07-08
 
+- Release `foliotell_v0.3.0` — sentence navigation buttons (back · play/pause · forward · stop; jumps work while speaking, paused, and idle) and the word-granular live progress bar fix for short documents.
+
+
 - Sentence navigation: back/forward buttons join the reader's bottom controls
   (back · play/pause · forward · stop), moving the position one sentence per
   tap in every playback state — speaking jumps restart speech at the target
