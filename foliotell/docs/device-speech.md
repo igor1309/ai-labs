@@ -6,10 +6,13 @@ description: "FolioTell device speech — audio session and voice resolution des
 
 # Device Speech: Design, History, and Diagnostics
 
-Why FolioTell's speech path is built the way it is, which hypotheses are
-already falsified, and how to diagnose "reading is silent on device" without
-re-deriving this investigation. The core symptom class: speech works in the
-iOS Simulator but produces no audio on a physical iPhone, while playback
+Living reference for FolioTell's device speech behavior — not a spec and not
+one-off research. It records three things: the current design rationale
+(why the speech path is built the way it is), the hypothesis ledger (what
+was tried, falsified, or confirmed per release), and the diagnostic runbook
+for device-only audio symptoms. Update it whenever a device investigation
+adds or invalidates knowledge. The founding symptom class: speech works in
+the iOS Simulator but produces no audio on a physical iPhone, while playback
 state (play/pause UI) advances normally.
 
 ## Current Design
@@ -77,6 +80,12 @@ Action → Include Info Messages), or the timeline lines never appear.
 
 Key facts for interpretation:
 
+- `AVSpeechSynthesisVoice.speechVoices()` can stall for **seconds** on
+  device — never call it on the main thread or per render. Per-render calls
+  caused the 0.1.0 settings-menu freeze and, most plausibly, the 0.0.3 stop
+  latency; the cached off-main-actor query (PR #723) is verified fixed on
+  device (2026-07-08, iPhone 15 Pro, iOS 26.5, v0.1.1) — menu opens
+  instantly, Stop is immediate.
 - The simulator ships with a much richer pre-installed voice catalog than
   devices — "works in simulator" says nothing about device voice
   availability.
@@ -100,7 +109,7 @@ Key facts for interpretation:
 
 - Stop latency: **resolved** — see the 0.1.1 hypothesis-table row. Kept
   knowledge from the investigation (intake at
-  [`stop-latency-intake.md`](stop-latency-intake.md)): simulator baseline
+  [`intake/stop-latency-intake.md`](intake/stop-latency-intake.md)): simulator baseline
   (2026-07-08, iPhone 15 Pro sim, iOS 18.6, compact Milena) shows
   `stopSpeaking(at: .immediate)` accepted, both audio-session deactivations
   succeeding, and the full machine-side stop sequence completing in ~12 ms;
