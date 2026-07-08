@@ -11,6 +11,20 @@ Keep the near-term backlog focused on making FolioTell trustworthy as a
 document-listening app before expanding formats, accounts, network features, or
 AI features.
 
+## Fix unreachable menu that blocks the app on iPhone
+
+On iPhone the menu cannot be reached, and tapping it blocks the app entirely so
+no further interaction is possible.
+
+- Reproduce on iPhone hardware and identify which menu is affected (for example
+  the voice or controls menu in the bottom control surface).
+- Determine whether the tap freezes the app or opens a menu that renders
+  off-screen or cannot be dismissed, trapping the UI.
+- Check the menu placement against the bottom safe-area inset and compact iPhone
+  size classes versus the layout where it currently works.
+- Menu must be reachable, tappable, and dismissable on iPhone without blocking
+  any other control.
+
 ## Fix stop latency on device
 
 Pressing Stop on a real device leaves speech audible for a number of seconds
