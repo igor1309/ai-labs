@@ -49,7 +49,7 @@ state (play/pause UI) advances normally.
 |---|---|---|
 | 0.0.1 | — | Silent reading on device reported (simulator fine). |
 | 0.0.2 | Default app audio session is the cause; configure `.playback`/`.spokenAudio` + background audio mode (PR #709). | **Falsified** — shipped, upload confirmed, still silent on device (iPhone 15 Pro, iOS 26.5). |
-| 0.0.3 | `AVSpeechSynthesisVoice(language:)` returns a non-functional voice; resolve from installed catalog instead (PR #713). | Awaiting device validation as of 2026-07-08. |
+| 0.0.3 | `AVSpeechSynthesisVoice(language:)` returns a non-functional voice; resolve from installed catalog instead (PR #713). | **Confirmed on device** (2026-07-08, iPhone 15 Pro, iOS 26.5) — reading is audible. |
 
 Do not re-propose falsified fixes. The audio-session code is kept because it
 is correct and mute-switch-protective, not because it fixed the silence.
@@ -93,8 +93,10 @@ Key facts for interpretation:
 
 ## Open Questions
 
-- Device validation of the 0.0.3 catalog-based resolution is pending.
-- If 0.0.3 is still silent with a *successful* `resolved …` log line, the
+- Stop latency on device: after Stop, speech stays audible for several
+  seconds (v0.0.3). Tracked in `../backlog/product.md` ("Fix stop latency on
+  device").
+- If silence ever recurs despite a *successful* `resolved …` log line, the
   next candidates are: the specific voice asset broken on that device
   (re-download the voice in Settings), or an iOS 26.x regression not covered
   by the 2023-2025 forum record — capture the Console output first.

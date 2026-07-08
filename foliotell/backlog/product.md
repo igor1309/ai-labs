@@ -11,6 +11,20 @@ Keep the near-term backlog focused on making FolioTell trustworthy as a
 document-listening app before expanding formats, accounts, network features, or
 AI features.
 
+## Fix stop latency on device
+
+Pressing Stop on a real device leaves speech audible for a number of seconds
+before it actually halts (reported on iPhone 15 Pro, iOS 26.5, v0.0.3).
+
+- Reproduce on device and measure the delay from tap to silence.
+- Investigate whether `stopSpeaking(at: .immediate)` returns before audio
+  drains, and whether the audio-session deactivation in `stop()` /
+  `didCancel` interacts with the buffered output.
+- Check whether the delay varies by voice (compact vs. enhanced) and by
+  speech speed.
+- Stop must silence output well under a second; pause should be equally
+  responsive.
+
 ## Persist playback position and resume
 
 Remember the current spoken position per document and resume from that position
