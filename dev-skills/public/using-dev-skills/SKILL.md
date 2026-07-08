@@ -1,7 +1,7 @@
 ---
 name: using-dev-skills
 author: Igor Malyarov
-version: "1.0.2"
+version: "1.0.3"
 description: Use when starting any conversation - maps the dev-skills toolkit by ladder (TDD, spec, review, planning, release, Swift) so the right skill is invoked before any response or action.
 trigger: at the start of any task before exploring the repo, writing code, or answering a codebase-specific question
 ---
@@ -44,7 +44,8 @@ For the toolkit itself. Applies on the first message of a session (replay-before
 
 | You have… | Ladder |
 |---|---|
-| A bug report or stack trace | Debugging |
+| A bug report or stack trace, analysis wanted | Debugging |
+| A bug report with a fix/deploy requested | Treat as delivery: investigate inline, no analysis-report skill |
 | A vague feature request | Spec |
 | An approved review finding | Planning |
 | A test name list or RED/GREEN ask | TDD |

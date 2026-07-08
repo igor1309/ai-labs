@@ -4,6 +4,15 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-07-08
+
+- **using-dev-skills v1.0.3**: split the "bug report" ladder cue — analysis-only
+  asks route to Debugging (bug-analysis), while bug reports with a fix/deploy
+  request are delivery work investigated inline, not an analysis-report skill.
+  Motivated by a foliotell session where `bug-analysis` was invoked against its
+  own "do not use when a fix is requested" guard. Marketplace bump deferred to
+  the pending dev-skills batch.
+
 ## 2026-06-29
 
 - **skill-review v1.3.0** (marketplace v1.55.0): added a gated `## Behavioral dry-run` section. The existing axes only read a skill's prose; this adds a step that *exercises* a generative skill and audits its output — but only for skills where that makes sense, behind a 3-part eligibility filter (generative-not-procedural, gated on the behavior under change; quality-varies; ground-truth-exists) that excludes procedural flows, rulebooks, and deterministic ops. Mandatory for eligible skills on a generative-behavior change. Documents three harness shapes — produce-and-audit (generation), plant-and-detect (review), input-output audit with a preservation case (transformation/editing) — plus controlled-variable discipline (hold an input that triggers a known failure so a fix is provably the cause) and an optional cross-tier probe (where output goes tier-independent, judgment has been scripted out of the model). Codex-reviewed (eligibility/trigger/leanness passed; the transformation harness was the one accepted finding). Motivated by an agonara-student session where the highest-impact change shipped validated only by reading; the new method then validated that skill's assess-then-advance loop end-to-end.
