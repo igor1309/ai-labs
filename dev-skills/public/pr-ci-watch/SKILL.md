@@ -1,7 +1,7 @@
 ---
 name: pr-ci-watch
 author: Igor Malyarov
-version: "1.2.3"
+version: "1.3.0"
 description: Use when the user wants to monitor GitHub PR CI status, wait for checks to finish, merge on green, or investigate failed checks. Triggers on phrases like "is CI done", "wait for checks", "watch the PR", "merge when green", or after pushing commits that invoke CI workflows. Prevents wasteful polling of `gh pr checks` and encodes the blocking/background decision.
 ---
 
@@ -89,6 +89,34 @@ gh run view <run-id> --log-failed
 ```
 
 Get run IDs from the `--watch` output or `gh pr checks <pr> --json name,link,state`. Summarize the failure in 1–3 lines, then ask before anything destructive (revert, force-push, rerun).
+
+After a rerun, stream the retry instead of polling:
+
+```bash
+gh run rerun <run-id>
+gh run watch <run-id> --exit-status > /tmp/<repo>-run-<run-id>.log 2>&1
+```
+
+## Run-level watching
+
+`gh pr checks --watch` stays the default for "is the PR green?" — it covers all
+checks and merge gating. `gh run watch <run-id>` operates one level down, on a
+single workflow run: it follows that run to completion and, with
+`--exit-status`, exits nonzero if the run fails. Use it instead of the PR-level
+watch when:
+
+- the thing being watched is a **specific workflow run**, not a PR — e.g. a
+  tag-triggered release/deploy workflow ("watch the deploy", "watch run 12345");
+- you just **re-ran a failed check** and want to follow the retry (above);
+- only one run matters and the user wants its progress, not a PR status table.
+
+Same discipline as the PR-level watch: **redirect output to a file** (watch
+output repeats status lines across refreshes), branch on exit code, set
+`timeout: 600000`, foreground by default, background only to keep working in
+parallel. Find run IDs with
+`gh run list --workflow "<name>" --limit 1 --json databaseId,status` — and if
+the run was just triggered (e.g. by a tag push), wait ~20 seconds first or the
+list comes back empty.
 
 ## Known race: "no checks reported"
 

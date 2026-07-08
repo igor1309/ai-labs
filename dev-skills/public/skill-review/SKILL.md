@@ -1,7 +1,7 @@
 ---
 name: skill-review
 author: Igor Malyarov
-version: "1.3.0"
+version: "1.5.0"
 description: Review and improve existing agent skills. Use when evaluating skill quality, auditing skill collections, asking "review skill", "is this skill effective", "improve skill description", or maintaining a skill library.
 ---
 
@@ -78,6 +78,36 @@ Objective gates that don't need domain context.
 - Do referenced file paths, module names, APIs still exist?
 - Are code examples accurate against current codebase?
 
+### 8. Failure observability (applies only to skills that drive scripts/tools)
+
+- When a script the skill invokes exits non-zero, does the skill's report/gate
+  **surface** it — or can the agent silently hand-fix and still report success?
+- Is there a **mechanical breadcrumb** (the script logs its own exit; the gate
+  echoes it) so the failure record does not depend on the agent narrating it?
+- Is "script failure surfaced" a **DoD criterion**, not just prose?
+
+Flag as a finding any script-driving skill where a non-zero script exit can be
+absent from the run's report. Cite the skill-conventions `## Scripts`
+"fail loud, fail visible" rule. (Origin: the Poeme add-module experiment — a
+wiring script failed with non-zero exit on every run, both agents silently
+hand-fixed it, and every run still reported `PASS`.)
+
+### 9. Folder shape (applies only to skills with supporting files)
+
+- Are supporting files grouped by role into `scripts/` / `references/` /
+  `assets/` (or equivalent), rather than scattered flat in the skill root?
+- Does the bucket match the file's loading contract (executable → `scripts/`,
+  read-on-demand doc → `references/`, inert resource → `assets/`)?
+
+The directory name encodes the loading contract — it is the type tag for each
+file; flat siblings erase that signal. A flat skill is **not** a spec
+violation — `SKILL.md` plus one or two siblings is fine. The finding triggers
+only once a skill carries more than a couple of supporting files unbucketed;
+a single loose file is a comment at most, not a finding. Cite the convergence
+of the three canonical layout sources (Anthropic skills overview, the
+agentskills.io specification and home — see `research/`): cited precedent,
+not taste.
+
 ## Output Format
 
 Per skill:
@@ -97,6 +127,10 @@ Per skill:
 ```
 
 **Rules for the section-by-section audit:**
+- For script-driving skills, include an explicit axis-8 verdict (failure
+  observability) — present it as its own finding, not folded into prose
+- For skills with supporting files, include an explicit axis-9 verdict
+  (folder shape) — same rule: its own finding, not folded into prose
 - Every section gets a verdict — no skipping with a blanket percentage
 - "noise" requires a specific reason (not "verbose" or "could be shorter")
 - "ask user" is mandatory when you suspect domain knowledge but can't confirm

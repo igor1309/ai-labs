@@ -4,6 +4,38 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-07-08
+
+- **skill-review v1.5.0**: promoted the drafted "Folder shape" axis (§9,
+  skills with supporting files only) from the skill's backlog — supporting
+  files should be bucketed by loading contract (`scripts/` run for output,
+  `references/` read on demand, `assets/` inert), a convention three canonical
+  layout sources converge on; triggers only above a couple of unbucketed
+  files, a single loose file is a comment at most. Explicit axis-9 verdict
+  added to the output format. `backlog/` is now empty and removed; skill
+  backlog fully drained. Published as marketplace v1.56.0.
+- **skill-review v1.4.0**: promoted the drafted "Failure observability" axis
+  (§8, script-driving skills only) from the skill's backlog into Evaluation
+  Axes — a skill must surface non-zero script exits mechanically, not depend
+  on the agent narrating them — with an explicit axis-8 verdict required in
+  the output format. Origin: the Poeme add-module experiment, where a failing
+  wiring script was silently hand-fixed on every run and each run still
+  reported PASS. `backlog/backlog.md` removed as shipped; the folder-shape
+  axis draft (`backlog/folder.md`) remains open. Published as marketplace v1.56.0.
+- **pr-ci-watch v1.3.0**: added the long-planned run-level watching section —
+  `gh run watch <run-id> --exit-status` for tag-triggered release/deploy
+  workflows, post-rerun streaming, and single-run scenarios, with the same
+  redirect/exit-code/timeout discipline as the PR-level watch and a ~20s
+  wait-before-`gh run list` race note. `gh pr checks --watch` remains the
+  default for PR greenness. Closes `pr-ci-watch/TODO.md` (removed); validated
+  by the same-day foliotell 0.0.3/0.1.0 release sessions, which used exactly
+  this pattern. Published as marketplace v1.56.0.
+- **using-dev-skills v1.0.3**: split the "bug report" ladder cue — analysis-only
+  asks route to Debugging (bug-analysis), while bug reports with a fix/deploy
+  request are delivery work investigated inline, not an analysis-report skill.
+  Motivated by a foliotell session where `bug-analysis` was invoked against its
+  own "do not use when a fix is requested" guard. Published as marketplace v1.56.0.
+
 ## 2026-06-29
 
 - **skill-review v1.3.0** (marketplace v1.55.0): added a gated `## Behavioral dry-run` section. The existing axes only read a skill's prose; this adds a step that *exercises* a generative skill and audits its output — but only for skills where that makes sense, behind a 3-part eligibility filter (generative-not-procedural, gated on the behavior under change; quality-varies; ground-truth-exists) that excludes procedural flows, rulebooks, and deterministic ops. Mandatory for eligible skills on a generative-behavior change. Documents three harness shapes — produce-and-audit (generation), plant-and-detect (review), input-output audit with a preservation case (transformation/editing) — plus controlled-variable discipline (hold an input that triggers a known failure so a fix is provably the cause) and an optional cross-tier probe (where output goes tier-independent, judgment has been scripted out of the model). Codex-reviewed (eligibility/trigger/leanness passed; the transformation harness was the one accepted finding). Motivated by an agonara-student session where the highest-impact change shipped validated only by reading; the new method then validated that skill's assess-then-advance loop end-to-end.

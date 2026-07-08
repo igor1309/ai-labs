@@ -25,6 +25,9 @@ unit's release runbook, and nothing else.
 
 - Repo root: /Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs — run
   git/gh/node/scripts from there.
+- Before your first git command, run `git status --short`; if the tree has
+  uncommitted changes you did not make, STOP and report instead of switching
+  branches over someone else's state.
 - Never commit or push directly to trunk; everything goes through a PR.
 - Run `git add` and `git commit` as two separate commands, never chained.
 - Merge PRs with `gh pr merge <n> --merge --auto --delete-branch` (merge
