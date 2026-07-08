@@ -52,13 +52,15 @@ GitHub release workflow secrets:
 
 Optional release metadata:
 
-- `FOLIOTELL_VERSION` defaults to `0.1.0`
+- `FOLIOTELL_VERSION` defaults to the version in `release.toml`
 - `FOLIOTELL_BUILD_NUMBER` defaults to the git commit count
 
 Run `scripts/distribute-testflight.sh --help` for modes including `--validate-only`, `--archive-only`, and `--dry-run`.
 
 ## Docs
 
+- [Release runbook](docs/release-runbook.md) — exact release commands, gates, caveats (runner Xcode variance, altool flags), and tag-recovery procedure.
+- [Device speech](docs/device-speech.md) — audio session and voice resolution design, falsified hypotheses, and the on-device silent-reading diagnostic procedure.
 - [App Store Connect product card](docs/app-store-connect-product-card.md) — backed-up app information, version metadata, and API update limitations.
 - [Naming brief](docs/foliotell-naming-brief.md) — product scope, naming objective, scoring model, and availability standard.
 - [Candidate evaluation](docs/foliotell-candidate-evaluation.md) — weighted comparison of candidate names.
