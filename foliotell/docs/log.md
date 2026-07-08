@@ -2,6 +2,7 @@
 
 ## 2026-07-08
 
+- Release `foliotell_v0.1.0` — speech text normalization, the iPhone settings-menu freeze fix, and the portable TestFlight upload path.
 - Fix the reader settings menu freezing the app on iPhone: query the voice
   catalog once off the main actor and cache it instead of calling
   `AVSpeechSynthesisVoice.speechVoices()` several times per render, and
