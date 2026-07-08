@@ -2,6 +2,9 @@
 
 ## 2026-07-08
 
+- Fix the TestFlight archive signing identity so the release workflow requests
+  Apple Distribution provisioning assets instead of development signing assets.
+
 - Release `foliotell_v0.4.0` — reader bottom controls rendered with Liquid Glass
   (settings icon + playback buttons on grouped interactive glass, primary button
   accent-tinted); deployment target raised to iOS 26.
