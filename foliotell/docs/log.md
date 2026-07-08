@@ -2,6 +2,11 @@
 
 ## 2026-07-08
 
+- Add a self-contained release runbook (commands, gates, Xcode/altool caveats,
+  tag recovery) and a device-speech doc (design rationale, falsified hypotheses,
+  Console diagnostic procedure); fix the README's stale `FOLIOTELL_VERSION`
+  default.
+
 - Make the TestFlight upload portable across runner Xcode generations:
   documented `altool --apiKey/--apiIssuer` flags with the key in
   `~/.appstoreconnect/private_keys`, plus a newest-Xcode selection step in the
