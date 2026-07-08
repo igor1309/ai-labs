@@ -90,14 +90,10 @@ archive() {
     -configuration Release \
     -destination "generic/platform=iOS" \
     -archivePath "$ARCHIVE_PATH" \
-    -allowProvisioningUpdates \
-    -authenticationKeyPath "$API_KEY_PATH" \
-    -authenticationKeyID "$API_KEY_ID" \
-    -authenticationKeyIssuerID "$API_ISSUER_ID" \
     DEVELOPMENT_TEAM="$REQUIRED_TEAM_ID" \
     PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
     MARKETING_VERSION="$MARKETING_VERSION" \
-    CODE_SIGN_IDENTITY="Apple Distribution" \
+    CODE_SIGNING_ALLOWED=NO \
     CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
 }
 

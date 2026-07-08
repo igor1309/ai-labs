@@ -1,6 +1,10 @@
 # Log
 
 ## 2026-07-08
+- FolioTell: make TestFlight release archives unsigned so App Store Connect
+  distribution signing happens during export instead of conflicting with the
+  target's automatic development signing settings.
+
 - FolioTell: release `foliotell_v0.4.1` — reader controls rebuilt as a native Liquid Glass bottom-bar toolbar (centered transport, settings menu promoted to its own capsule, progress ribbon floating above the text).
 
 - FolioTell: fix the TestFlight archive signing identity so release CI requests
