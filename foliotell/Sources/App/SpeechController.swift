@@ -94,7 +94,9 @@ final class SpeechController: NSObject, ObservableObject {
                 publishPlaybackState()
             }
         case .speaking:
-            if synthesizer.pauseSpeaking(at: .word) {
+            let didAcceptPause = synthesizer.pauseSpeaking(at: .word)
+            logger.info("pause requested; pauseSpeaking(at: .word) accepted: \(didAcceptPause)")
+            if didAcceptPause {
                 playback.pauseSucceeded()
                 publishPlaybackState()
             }
@@ -106,7 +108,8 @@ final class SpeechController: NSObject, ObservableObject {
         playback.stopRequested()
         currentVoiceIdentifier = nil
         publishPlaybackState()
-        synthesizer.stopSpeaking(at: .immediate)
+        let didAcceptStop = synthesizer.stopSpeaking(at: .immediate)
+        logger.info("stop requested; stopSpeaking(at: .immediate) accepted: \(didAcceptStop)")
         deactivateAudioSession()
     }
 
@@ -183,8 +186,9 @@ final class SpeechController: NSObject, ObservableObject {
         #if os(iOS)
         do {
             try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            logger.info("audio session deactivated")
         } catch {
-            print("FolioTell audio session deactivation failed: \(error)")
+            logger.error("audio session deactivation failed: \(error)")
         }
         #endif
     }
@@ -209,6 +213,7 @@ extension SpeechController: AVSpeechSynthesizerDelegate {
                 return
             }
 
+            logger.info("didFinish received for current utterance")
             playback.speechFinished()
             publishPlaybackState()
             deactivateAudioSession()
@@ -222,6 +227,7 @@ extension SpeechController: AVSpeechSynthesizerDelegate {
                 return
             }
 
+            logger.info("didCancel received for current utterance")
             playback.speechCancelled()
             publishPlaybackState()
             deactivateAudioSession()

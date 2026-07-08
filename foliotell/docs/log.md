@@ -2,6 +2,14 @@
 
 ## 2026-07-08
 
+- Instrument the stop and pause paths for the device stop-latency
+  investigation: log `stopSpeaking`/`pauseSpeaking` acceptance,
+  `didFinish`/`didCancel` arrival, and audio-session deactivation outcomes
+  (previously a bare `print`) under the `foliotell.FolioTell` subsystem. No
+  behavior change. Simulator baseline recorded in `device-speech.md`: full
+  machine-side stop sequence ~12 ms, synthesizer delivers `didFinish` (not
+  `didCancel`) after stop — the audible latency is device-side.
+
 - Release `foliotell_v0.1.0` — speech text normalization, the iPhone settings-menu freeze fix, and the portable TestFlight upload path.
 - Fix the reader settings menu freezing the app on iPhone: query the voice
   catalog once off the main actor and cache it instead of calling
