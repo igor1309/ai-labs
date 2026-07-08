@@ -2,6 +2,10 @@
 
 ## 2026-07-08
 
+- Make TestFlight release archives unsigned so App Store Connect distribution
+  signing happens during export instead of conflicting with the target's
+  automatic development signing settings.
+
 - Release `foliotell_v0.4.1` — reader controls rebuilt as a native Liquid Glass
   bottom-bar toolbar (centered transport, settings menu promoted to its own
   capsule, progress ribbon floating above the text).

@@ -10,9 +10,10 @@ const distributeScript = readFileSync(
 );
 
 describe('FolioTell TestFlight distribution script', () => {
-  it('archives with an Apple Distribution signing identity', () => {
+  it('archives without signing so exportArchive owns distribution signing', () => {
     const archiveFunction = /^archive\(\) \{\n(?<body>[\s\S]*?)\n\}/m.exec(distributeScript)?.groups.body ?? '';
 
-    assert.match(archiveFunction, /CODE_SIGN_IDENTITY="Apple Distribution"/);
+    assert.match(archiveFunction, /CODE_SIGNING_ALLOWED=NO/);
+    assert.doesNotMatch(archiveFunction, /CODE_SIGN_IDENTITY=/);
   });
 });
