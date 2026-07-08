@@ -32,15 +32,23 @@ Markdown documents.
 - Add a manual language override or "show all voices" escape hatch if detection
   is wrong or the desired system voice is hidden.
 
-## Add a lightweight recent-documents library
+## Persist per-document listening settings
 
-Remember recently opened documents and their per-document listening state.
+Keep each document's listening setup independent, so switching between
+documents (for example a Russian poem at 0.9× and an English article at 1.5×)
+does not drag one document's speed, voice, or front-matter mode onto another.
+Recents listing and reopening are already covered by the system document
+browser's Recents tab; no custom library UI unless a "continue listening"
+affordance proves necessary.
 
-- Store recent document identity, display title, playback position, speed, voice,
-  and front-matter mode.
-- Reopen recent documents without forcing the user back through the Files picker
-  when security-scoped access is still available.
+- Store speed, voice, and front-matter mode per document alongside the
+  playback position, extending the ADR-001 position store (designed as this
+  extension point).
+- Fall back to the global defaults for documents without a record.
 - Keep this local and offline; no account, sync, analytics, or backend.
+- Optional follow-up, only if renames/moves happen in practice: key records by
+  security-scoped bookmark instead of path so listening state survives
+  rename/move.
 
 ## Maintain reusable Maestro regression flows
 
