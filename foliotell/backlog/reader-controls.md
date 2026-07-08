@@ -17,29 +17,19 @@ The settings control's summary label crams three settings into one line —
 `settingsSummary` = `speed · front-matter · voice` (e.g. `1.5x · Skip · Auto`).
 Next to the playback buttons there is not enough width, so the line clips with
 an ellipsis (`1.5x · Skip ·…`), hiding the voice and making the control look
-broken. The underlying `Menu` content is also unbounded because the Voice
-section lists every filtered voice.
+broken.
 
-The fix is a product decision as much as a layout one: only **speed** changes
-while listening; **voice** and **front matter** are set-once. So the label
-should surface the live setting and the set-once settings should not bloat this
-control.
+The fix is label-only — the `Menu` content (Speed / Front matter / Voice
+sections) stays exactly as is:
 
-- Shrink the label to the live-relevant setting — speed only (`1.5x`), keeping
-  the `slider.horizontal.3` icon. Drop voice (and likely front matter) from the
-  label string.
-- Move **Voice** selection out of the inline `Menu` into its own presentation
-  (a scrollable, searchable sheet/picker) so a long voice list can never be
-  clipped by the `.safeAreaInset(edge: .bottom)` controls bar. This also pairs
-  with the existing "show detected language" / "show all voices" backlog items.
-- Keep the popover `Menu` to the short, bounded settings (Speed, Front matter,
-  Start Over) so the truncation is gone by construction, not by fighting the
-  popover.
-- Add a regression check that the label is not truncated and the full voice
-  list is reachable.
-
-Open question: whether front matter also leaves the label/popover, or stays as a
-short bounded choice.
+- Drop the `settingsSummary` text from the menu label; the control becomes just
+  the `slider.horizontal.3` options icon that is already there. With no text
+  there is nothing to truncate, and the compact icon is the natural transition
+  toward an Apple Music–style Liquid Glass toolbar.
+- Give the icon-only control an accessibility label (the text it replaces was
+  also its de facto description).
+- Remove the now-unused `settingsSummary` / `selectedVoiceTitle` helpers if
+  nothing else references them.
 
 ## Render the bottom controls with Liquid Glass
 
