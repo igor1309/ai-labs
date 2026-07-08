@@ -2,6 +2,12 @@
 
 ## 2026-07-08
 
+- FolioTell: add a self-contained release runbook (commands, gates,
+  Xcode/altool caveats, tag recovery) and a device-speech doc (design
+  rationale, falsified hypotheses, Console diagnostic procedure) so future
+  releases and silent-reading investigations start from captured knowledge
+  instead of re-derivation; fix the README's stale `FOLIOTELL_VERSION`
+  default.
 - FolioTell: make the TestFlight upload portable across runner Xcode
   generations — documented `altool --apiKey/--apiIssuer` flags with the key in
   `~/.appstoreconnect/private_keys`, and pin the deploy job to the newest
