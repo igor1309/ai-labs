@@ -2,6 +2,15 @@
 
 ## 2026-07-08
 
+- Reader bottom controls adopt Liquid Glass: the settings icon and the
+  back/play-pause/forward/stop buttons now sit on interactive glass (the
+  primary button tinted with the accent color), grouped in a
+  `GlassEffectContainer` so adjacent controls blend into one surface. Glass is
+  iOS-only and `#if os(iOS)` guarded — the macOS `swift build` path keeps the
+  flat fill, so only the iOS archive needs the iOS 26 SDK. Deployment target
+  raised to iOS 26 (`Package.swift` + pbxproj) and the `foliotell-core`
+  workflow now selects the newest Xcode so the archive compiles against it.
+
 - Release `foliotell_v0.3.1` — the reader's settings control is now the
   `slider.horizontal.3` icon only. The old summary label crammed
   speed · front-matter · voice onto one line beside the playback buttons and
