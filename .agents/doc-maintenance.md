@@ -8,6 +8,12 @@ description: "Doc-maintenance conventions — README Components table and log up
 
 When to update the README Components table and the logs.
 
+## Project Doc Homes
+
+- Naming briefs stay in `<project>/docs/`, not `<project>/research/` —
+  research materials (evaluations, corpora, prompts) go to
+  `<project>/research/`.
+
 ## README Components Table
 
 The `## Components` table in `README.md` lists every component with its type and one-line description. Keep it current:
