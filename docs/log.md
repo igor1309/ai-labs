@@ -1,6 +1,7 @@
 # Log
 
 ## 2026-07-08
+- FolioTell: release `foliotell_v0.2.0` — per-document playback position persistence and sentence-anchored resume (stop parks, relaunch resumes, Start Over, progress bar).
 
 - FolioTell: release `foliotell_v0.1.1` — stop/pause-path instrumentation for
   the on-device stop-latency investigation (machine-side timeline in Console
