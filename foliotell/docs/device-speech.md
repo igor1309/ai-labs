@@ -50,6 +50,7 @@ state (play/pause UI) advances normally.
 | 0.0.1 | — | Silent reading on device reported (simulator fine). |
 | 0.0.2 | Default app audio session is the cause; configure `.playback`/`.spokenAudio` + background audio mode (PR #709). | **Falsified** — shipped, upload confirmed, still silent on device (iPhone 15 Pro, iOS 26.5). |
 | 0.0.3 | `AVSpeechSynthesisVoice(language:)` returns a non-functional voice; resolve from installed catalog instead (PR #713). | **Confirmed on device** (2026-07-08, iPhone 15 Pro, iOS 26.5) — reading is audible. |
+| 0.1.1 | Stop latency (seconds of audible speech after Stop, reported on 0.0.3) is a main-thread stall symptom: per-render `speechVoices()` calls blocked the UI, delaying the stop's effects; removed by the 0.1.0 menu-freeze fix (PR #723). | **Resolved on device** (2026-07-08, iPhone 15 Pro, iOS 26.5, v0.1.1) — Stop is immediate. Probable cause, not proven: the instrumented measurement matrix was never needed; the stop-path instrumentation (PR #726) stays in place as the reopen path. |
 
 Do not re-propose falsified fixes. The audio-session code is kept because it
 is correct and mute-switch-protective, not because it fixed the silence.
@@ -97,16 +98,16 @@ Key facts for interpretation:
 
 ## Open Questions
 
-- Stop latency on device: after Stop, speech stays audible for several
-  seconds (v0.0.3). Tracked in `../backlog/product.md` ("Fix stop latency on
-  device"); intake at [`stop-latency-intake.md`](stop-latency-intake.md).
-  Simulator baseline (2026-07-08, iPhone 15 Pro sim, iOS 18.6, compact
-  Milena): `stopSpeaking(at: .immediate)` accepted, both audio-session
-  deactivations succeed, full machine-side stop sequence completes in ~12 ms
-  — no reproduction; the latency is device-side. Instrumented timeline
-  fact: after `stopSpeaking`, the synthesizer delivers **`didFinish`, not
-  `didCancel`** on this runtime — device measurements must not assume the
-  cancel callback fires.
+- Stop latency: **resolved** — see the 0.1.1 hypothesis-table row. Kept
+  knowledge from the investigation (intake at
+  [`stop-latency-intake.md`](stop-latency-intake.md)): simulator baseline
+  (2026-07-08, iPhone 15 Pro sim, iOS 18.6, compact Milena) shows
+  `stopSpeaking(at: .immediate)` accepted, both audio-session deactivations
+  succeeding, and the full machine-side stop sequence completing in ~12 ms;
+  after `stopSpeaking`, the synthesizer delivers **`didFinish`, not
+  `didCancel`** on this runtime — future measurements must not assume the
+  cancel callback fires. If stop latency recurs, run the instrumented
+  Console procedure above before proposing fixes.
 - If silence ever recurs despite a *successful* `resolved …` log line, the
   next candidates are: the specific voice asset broken on that device
   (re-download the voice in Settings), or an iOS 26.x regression not covered
