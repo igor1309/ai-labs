@@ -2,6 +2,14 @@
 
 ## 2026-07-08
 
+- Release `foliotell_v0.3.1` — the reader's settings control is now the
+  `slider.horizontal.3` icon only. The old summary label crammed
+  speed · front-matter · voice onto one line beside the playback buttons and
+  clipped with an ellipsis (`1.5x · Skip ·…`); dropping the text removes the
+  truncation. Menu content (Speed / Front matter / Voice) is unchanged; the
+  control keeps its `readerSettingsMenu` identifier and gains an
+  accessibility label. Maestro flow now opens the menu by id.
+
 - Backlog: added `backlog/reader-controls.md` with two reader bottom-controls
   items — fix the truncated settings label (the `speed · front-matter · voice`
   summary clips to `1.5x · Skip ·…`; drop the text so the control is just the
