@@ -11,21 +11,6 @@ Keep the near-term backlog focused on making FolioTell trustworthy as a
 document-listening app before expanding formats, accounts, network features, or
 AI features.
 
-## Fix menu that never opens and freezes the app on iPhone
-
-On iPhone, tapping the menu (voice/controls menu in the bottom control surface)
-does nothing visible — the menu never shows and nothing changes on screen — and
-immediately after the tap the whole app becomes non-responsive.
-
-- Reproduce on iPhone hardware and confirm the whole app hangs (not just the
-  menu) after the tap, requiring a force-quit.
-- Determine why the menu presentation never appears: check whether the tap is
-  triggering a crash, main-thread deadlock, or a presentation that fails
-  silently on compact iPhone size classes.
-- Check the menu placement and anchor against the bottom safe-area inset versus
-  the layout where it currently works.
-- Menu must open on tap and be dismissable on iPhone without freezing the app.
-
 ## Fix stop latency on device
 
 Pressing Stop on a real device leaves speech audible for a number of seconds
