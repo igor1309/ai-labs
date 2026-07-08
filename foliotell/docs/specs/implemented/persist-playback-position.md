@@ -33,6 +33,15 @@ public enum PlaybackPositionMapping {
         spokenUTF16Offset: Int
     ) -> Int
 
+    /// Document-text UTF16 offset of the speech-text position, without
+    /// snapping to a sentence start. Drives live progress display; persisted
+    /// positions use `documentAnchor` instead. (Amendment 2026-07-08.)
+    public static func documentUTF16Offset(
+        documentText: String,
+        frontMatterMode: FrontMatterPlaybackMode,
+        spokenUTF16Offset: Int
+    ) -> Int
+
     /// Speech-text UTF16 offset at which playback resumes a stored anchor.
     public static func resumeSpokenUTF16Offset(
         documentText: String,
@@ -121,8 +130,12 @@ App integration:
     record and, if speech is active, restarts from the beginning.
 19. **Progress affordance.** A thin, non-interactive progress indicator sits
     inside the existing bottom controls container (no second toolbar, nothing
-    above the document body). Its value is `anchor / documentText.utf16.count`
-    (0 with no record), updating at sentence transitions.
+    above the document body). During playback its value is the live
+    word-granular document offset (`documentUTF16Offset`) over
+    `documentText.utf16.count`; when idle it falls back to
+    `anchor / documentText.utf16.count` (0 with no record). *Amended
+    2026-07-08: the original sentence-transition-only updates left the bar
+    visibly stalled on short documents (device finding on v0.2.0).*
 20. **Store implementation.** `DefaultsPlaybackPositionStore` uses
     `UserDefaults.standard` with key `"playbackPositionAnchor:<path>"` and an
     integer anchor value; `clearAnchor` removes the key.
@@ -167,6 +180,13 @@ Pure mapping tests in `Tests/Core/PlaybackPositionMappingTests.swift`:
     segmentation).
 14. `test_resumeSpokenUTF16Offset_shouldStartAtSentenceStart_onEmphasisInsideSentence`
     — rules 2, 4 (inline markers inside the anchored sentence).
+
+Amendment 2026-07-08 (live progress):
+
+15. `test_documentUTF16Offset_shouldReturnUnsnappedDocumentOffset_onHeadingMarkerBeforeSentence`
+    — rule 19 amendment (unsnapped mapping distinct from `documentAnchor`).
+16. `test_documentUTF16Offset_shouldClampToLastSpokenUnit_onOffsetBeyondSpeechEnd`
+    — rule 19 amendment (bounded lookup).
 
 App-layer rules 11–20 are wiring over the tested Core mapping plus the
 existing restart machinery; they are verified by build gates and an on-device

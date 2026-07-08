@@ -193,6 +193,30 @@ struct PlaybackPositionMappingTests {
         #expect(resumeOffset == (speechText as NSString).range(of: "День").location)
     }
 
+    @Test func test_documentUTF16Offset_shouldReturnUnsnappedDocumentOffset_onHeadingMarkerBeforeSentence() {
+
+        // Spoken offset 10 is mid-word inside "Cold." — the document offset
+        // is 12, not the sentence start (which documentAnchor would return).
+        let documentOffset = PlaybackPositionMapping.documentUTF16Offset(
+            documentText: "# Winter. Cold.",
+            frontMatterMode: .read,
+            spokenUTF16Offset: 10
+        )
+
+        #expect(documentOffset == 12)
+    }
+
+    @Test func test_documentUTF16Offset_shouldClampToLastSpokenUnit_onOffsetBeyondSpeechEnd() {
+
+        let documentOffset = PlaybackPositionMapping.documentUTF16Offset(
+            documentText: "# Winter. Cold.",
+            frontMatterMode: .read,
+            spokenUTF16Offset: 1000
+        )
+
+        #expect(documentOffset == 14)
+    }
+
     @Test func test_documentAnchor_shouldReturnSameAnchor_onReadModeFrontMatter() {
 
         // Same body sentence as the .skip case: under .read the speech text

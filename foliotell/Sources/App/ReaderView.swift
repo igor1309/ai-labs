@@ -15,6 +15,7 @@ struct ReaderView: View {
     @StateObject private var speechController = SpeechController()
     @State private var availableVoices: [SpeechVoiceOption] = []
     @State private var storedAnchor: Int?
+    @State private var liveDocumentUTF16Offset: Int?
 
     private let positionStore: PlaybackPositionStore = DefaultsPlaybackPositionStore()
 
@@ -37,6 +38,7 @@ struct ReaderView: View {
                     storedAnchor = positionStore.anchor(forDocumentPath: documentPath)
                 }
                 speechController.onSpokenPositionChange = { spokenUTF16Offset in
+                    updateLiveProgress(atSpokenUTF16Offset: spokenUTF16Offset)
                     recordAnchor(atSpokenUTF16Offset: spokenUTF16Offset)
                 }
                 speechController.onPlaybackDidFinishNaturally = {
@@ -150,6 +152,18 @@ struct ReaderView: View {
         "\(selectedSpeed.rawValue) · \(selectedFrontMatterMode.title) · \(selectedVoiceTitle)"
     }
 
+    private func updateLiveProgress(atSpokenUTF16Offset spokenUTF16Offset: Int) {
+        guard case let .success(document) = loadedDocument else {
+            return
+        }
+
+        liveDocumentUTF16Offset = PlaybackPositionMapping.documentUTF16Offset(
+            documentText: document.text,
+            frontMatterMode: selectedFrontMatterMode,
+            spokenUTF16Offset: spokenUTF16Offset
+        )
+    }
+
     private func recordAnchor(atSpokenUTF16Offset spokenUTF16Offset: Int) {
         guard let documentPath, case let .success(document) = loadedDocument else {
             return
@@ -173,6 +187,7 @@ struct ReaderView: View {
             positionStore.clearAnchor(forDocumentPath: documentPath)
         }
         storedAnchor = nil
+        liveDocumentUTF16Offset = nil
     }
 
     private func resumeSpokenUTF16Offset(for document: FolioDocument) -> Int {
@@ -201,11 +216,12 @@ struct ReaderView: View {
 
     private func playbackProgress(for document: FolioDocument) -> Double {
 
-        guard let storedAnchor, document.text.utf16.count > 0 else {
+        let documentLength = document.text.utf16.count
+        guard let position = liveDocumentUTF16Offset ?? storedAnchor, documentLength > 0 else {
             return 0
         }
 
-        return min(1, Double(storedAnchor) / Double(document.text.utf16.count))
+        return min(1, Double(position) / Double(documentLength))
     }
 
     @ViewBuilder

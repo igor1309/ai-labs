@@ -22,6 +22,27 @@ public enum PlaybackPositionMapping {
         return sentenceStartUTF16Offset(in: documentText, containing: sourceOffsets[spokenSentenceStart])
     }
 
+    /// Document-text UTF16 offset of the speech-text position, without
+    /// snapping to a sentence start. Drives live progress display; persisted
+    /// positions use `documentAnchor` instead.
+    public static func documentUTF16Offset(
+        documentText: String,
+        frontMatterMode: FrontMatterPlaybackMode,
+        spokenUTF16Offset: Int
+    ) -> Int {
+
+        let speechText = SpeechTextNormalization.speechText(
+            from: frontMatterMode.speechText(from: documentText)
+        )
+        let sourceOffsets = subsequenceSourceUTF16Offsets(of: speechText, in: documentText)
+        guard sourceOffsets.isEmpty == false else {
+            return 0
+        }
+
+        let boundedIndex = min(max(spokenUTF16Offset, 0), sourceOffsets.count - 1)
+        return sourceOffsets[boundedIndex]
+    }
+
     /// Speech-text UTF16 offset at which playback resumes a stored anchor.
     public static func resumeSpokenUTF16Offset(
         documentText: String,
