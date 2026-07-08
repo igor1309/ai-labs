@@ -78,8 +78,15 @@ struct ReaderView: View {
         case .failure:
             nil
         case let .success(document):
-            selectedFrontMatterMode.speechText(from: document.text)
+            speechText(for: document)
         }
+    }
+
+    private func speechText(for document: FolioDocument) -> String {
+
+        SpeechTextNormalization.speechText(
+            from: selectedFrontMatterMode.speechText(from: document.text)
+        )
     }
 
     private var detectedDocumentLanguageCode: String? {
@@ -241,7 +248,7 @@ struct ReaderView: View {
             HStack(spacing: 8) {
                 Button {
                     speechController.togglePrimaryControl(
-                        selectedFrontMatterMode.speechText(from: document.text),
+                        speechText(for: document),
                         speed: selectedSpeed,
                         voiceIdentifier: selectedVoiceIdentifierForPlayback
                     )
