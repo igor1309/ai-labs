@@ -224,18 +224,34 @@ struct ReaderView: View {
                     .accessibilityLabel("Listening progress")
                     .accessibilityIdentifier("playbackProgress")
 
-                HStack(spacing: 10) {
-                    settingsMenu(for: document)
-
-                    Spacer(minLength: 8)
-
-                    playbackButtons(for: document)
-                }
+                controlsCluster(for: document)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .background(.bar)
         }
+    }
+
+    @ViewBuilder
+    private func controlsCluster(for document: FolioDocument) -> some View {
+        let cluster = HStack(spacing: 10) {
+            settingsMenu(for: document)
+
+            Spacer(minLength: 8)
+
+            playbackButtons(for: document)
+        }
+
+        // Group the controls in a single Liquid Glass surface so adjacent glass
+        // elements blend (Apple Music-style toolbar). The container is iOS 26+;
+        // the macOS build path (swift build) keeps the flat cluster.
+        #if os(iOS)
+        GlassEffectContainer(spacing: 8) {
+            cluster
+        }
+        #else
+        cluster
+        #endif
     }
 
     @ViewBuilder
@@ -306,6 +322,7 @@ struct ReaderView: View {
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(.secondary)
                 .frame(minWidth: 44, minHeight: 44)
+                .readerControlGlass(cornerRadius: 9)
         }
         .accessibilityLabel("Playback settings")
         .accessibilityIdentifier("readerSettingsMenu")
@@ -393,7 +410,7 @@ struct ReaderView: View {
                         .font(.body.weight(.semibold))
                         .frame(width: controlSize, height: controlSize)
                         .foregroundStyle(Color.accentColor)
-                        .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                        .readerControlGlass(cornerRadius: cornerRadius)
                 }
                 .accessibilityLabel("Previous sentence")
                 .accessibilityIdentifier("previousSentenceButton")
@@ -411,7 +428,7 @@ struct ReaderView: View {
                         .font(.title3.weight(.semibold))
                         .frame(width: controlSize, height: controlSize)
                         .foregroundStyle(.white)
-                        .background(Color.accentColor, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                        .readerControlGlass(cornerRadius: cornerRadius, tint: Color.accentColor)
                 }
                 .accessibilityLabel(speechController.primaryControlTitle)
                 .accessibilityIdentifier("primaryPlaybackButton")
@@ -424,7 +441,7 @@ struct ReaderView: View {
                         .font(.body.weight(.semibold))
                         .frame(width: controlSize, height: controlSize)
                         .foregroundStyle(Color.accentColor)
-                        .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                        .readerControlGlass(cornerRadius: cornerRadius)
                 }
                 .accessibilityLabel("Next sentence")
                 .accessibilityIdentifier("nextSentenceButton")
@@ -437,7 +454,7 @@ struct ReaderView: View {
                         .font(.body.weight(.semibold))
                         .frame(width: controlSize, height: controlSize)
                         .foregroundStyle(stopForegroundStyle)
-                        .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                        .readerControlGlass(cornerRadius: cornerRadius)
                 }
                 .accessibilityLabel("Stop")
                 .accessibilityIdentifier("stopButton")
@@ -449,6 +466,25 @@ struct ReaderView: View {
 
     private var stopForegroundStyle: Color {
         speechController.playbackState.isStopEnabled ? Color.accentColor : Color.secondary.opacity(0.35)
+    }
+}
+
+private extension View {
+
+    /// Liquid Glass chrome for a reader control. On iOS 26 the label sits on an
+    /// interactive glass capsule/rect (optionally tinted for the primary
+    /// control); the macOS build path (swift build) keeps the original flat
+    /// rounded-rectangle fill so the App target compiles without the iOS 26 SDK.
+    @ViewBuilder
+    func readerControlGlass(cornerRadius: CGFloat, tint: Color? = nil) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+
+        #if os(iOS)
+        let glass = tint.map { Glass.regular.tint($0).interactive() } ?? Glass.regular.interactive()
+        glassEffect(glass, in: shape)
+        #else
+        background(tint ?? Color.secondary.opacity(0.12), in: shape)
+        #endif
     }
 }
 

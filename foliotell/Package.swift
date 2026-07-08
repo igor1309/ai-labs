@@ -1,11 +1,11 @@
-// swift-tools-version: 6.1
+// swift-tools-version: 6.2
 
 @preconcurrency import PackageDescription
 
 let package = Package(
     name: "foliotell",
     platforms: [
-        .iOS(.v17),
+        .iOS(.v26),
         .macOS(.v15),
     ],
     products: [
