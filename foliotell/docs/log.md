@@ -2,6 +2,16 @@
 
 ## 2026-07-08
 
+- Normalize document text for speech: playback now speaks document content
+  instead of raw Markdown markup — heading markers, emphasis/strong/
+  strikethrough markers, inline code backticks, code fences, link/image
+  syntax, list and blockquote markers, and delimiter-only lines are stripped
+  from the spoken string (URLs are never spoken), while the visual document
+  rendering stays unchanged. Language detection and voice filtering now run
+  on the same normalized speech string. Covered by a Pushkin-shaped inline
+  sample (BOM + YAML front matter + heading + Russian body) and mixed
+  Markdown/plain-text cases.
+
 - Add a self-contained release runbook (commands, gates, Xcode/altool caveats,
   tag recovery) and a device-speech doc (design rationale, falsified hypotheses,
   Console diagnostic procedure); fix the README's stale `FOLIOTELL_VERSION`

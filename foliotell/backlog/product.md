@@ -45,16 +45,6 @@ or the device is locked.
 - Add lock-screen or remote transport support only after the basic background
   behavior is validated.
 
-## Normalize text for speech
-
-Build a speech text pipeline that reads document content rather than raw markup.
-
-- Strip skipped leading YAML front matter from speech input.
-- Strip Markdown formatting markers, headings, link syntax, and other structural
-  punctuation that should not be spoken literally.
-- Keep the visual document rendering separate from the normalized speech string.
-- Cover the supplied Pushkin Markdown sample and mixed Markdown/plain-text cases.
-
 ## Validate language and voice behavior on device
 
 Make voice selection predictable for non-English documents, especially Russian
