@@ -28,3 +28,4 @@ Always-on rules. Read at session start; they apply to every task regardless of s
 - Keep scope minimal and explicit; avoid scope creep.
 - Tests must cover reasonable edge cases for new or changed behavior.
 - Versioning: bump only the packages with code changes, keep `package.json` and `package-lock.json` root versions aligned, and update lockfile entries when package versions change.
+- After a costly investigation or multi-step operational procedure (release, deploy recovery, device debugging), capture the knowledge in an explicit project runbook/doc — exact commands, expected outputs, caveats, falsified hypotheses, and stop/escalation conditions — so a fresh session or a cheap agent can execute from the doc alone. Before declaring such work done, check the docs would suffice without re-derivation.
