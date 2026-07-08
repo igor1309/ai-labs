@@ -2,6 +2,16 @@
 
 ## 2026-07-08
 
+- Docs housekeeping: README now opens with the product (orientation/landing
+  pages moved to a bottom "Pages" section) and groups the doc list by kind;
+  the technical spec moved to `docs/specs/`, naming research (naming brief,
+  candidate evaluation) to `research/`, intake briefs to `docs/intake/`;
+  `device-speech.md` states its role explicitly (living reference: design
+  rationale + hypothesis ledger + diagnostic runbook). Locked the on-device
+  verification of the 0.1.0 settings-menu fix (menu opens instantly on
+  iPhone 15 Pro, iOS 26.5, v0.1.1) into the device-speech key facts,
+  alongside the `speechVoices()` main-thread rule.
+
 - Close the stop-latency backlog item: v0.1.1 on device (iPhone 15 Pro,
   iOS 26.5) stops immediately. The 0.0.3 latency was most plausibly the
   render-path `speechVoices()` main-thread stall removed by the 0.1.0

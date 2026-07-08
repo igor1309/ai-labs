@@ -8,7 +8,7 @@ description: "Spec: SpeechTextNormalization — content-only speech string for F
 
 Delta mini-spec (my-way minor-feature path) for the backlog item "Normalize
 text for speech" in `foliotell/backlog/product.md`. Intake:
-[`../../speech-normalization-intake.md`](../../speech-normalization-intake.md).
+[`../../intake/speech-normalization-intake.md`](../../intake/speech-normalization-intake.md).
 
 ## Goal
 
