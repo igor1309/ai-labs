@@ -70,6 +70,10 @@ To capture on device: connect the iPhone, open Console.app (or
 the app. Also check Settings → Accessibility → Spoken Content → Voices for
 whether a Russian voice is installed at all.
 
+Capture gotcha: the stop/pause instrumentation logs at **info** level, which
+`log stream` drops by default — pass `--level=debug` (in Console.app enable
+Action → Include Info Messages), or the timeline lines never appear.
+
 Key facts for interpretation:
 
 - The simulator ships with a much richer pre-installed voice catalog than
@@ -95,7 +99,14 @@ Key facts for interpretation:
 
 - Stop latency on device: after Stop, speech stays audible for several
   seconds (v0.0.3). Tracked in `../backlog/product.md` ("Fix stop latency on
-  device").
+  device"); intake at [`stop-latency-intake.md`](stop-latency-intake.md).
+  Simulator baseline (2026-07-08, iPhone 15 Pro sim, iOS 18.6, compact
+  Milena): `stopSpeaking(at: .immediate)` accepted, both audio-session
+  deactivations succeed, full machine-side stop sequence completes in ~12 ms
+  — no reproduction; the latency is device-side. Instrumented timeline
+  fact: after `stopSpeaking`, the synthesizer delivers **`didFinish`, not
+  `didCancel`** on this runtime — device measurements must not assume the
+  cancel callback fires.
 - If silence ever recurs despite a *successful* `resolved …` log line, the
   next candidates are: the specific voice asset broken on that device
   (re-download the voice in Settings), or an iOS 26.x regression not covered
