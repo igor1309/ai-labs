@@ -1,6 +1,12 @@
 {
   "permissions": {
-    "allow": ["Bash(swift test:*)"],
-    "additionalDirectories": ["~/Developer/my-apps/ci-shared"]
+    "allow": [
+      "Bash(swift test:*)",
+      "mcp__bf7c680d-5fdc-5ef4-b4a0-abadb619bf0a__subscribe_pr_activity",
+      "mcp__bf7c680d-5fdc-5ef4-b4a0-abadb619bf0a__send_later"
+    ],
+    "additionalDirectories": [
+      "~/Developer/my-apps/ci-shared"
+    ]
   }
 }

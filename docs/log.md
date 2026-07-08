@@ -2,6 +2,12 @@
 
 ## 2026-07-08
 
+- FolioTell: release `foliotell_v0.1.0` — speech text normalization (documents are spoken as content, not raw Markdown markup), the iPhone settings-menu freeze fix, and the portable TestFlight upload path.
+- FolioTell: fix the reader settings menu freezing the app on iPhone — query
+  the voice catalog once off the main actor and cache it, instead of calling
+  `AVSpeechSynthesisVoice.speechVoices()` several times per render (a call
+  with documented multi-second device stalls), and detect document language
+  without running the full speech normalization pass on the render path.
 - FolioTell: add a self-contained release runbook (commands, gates,
   Xcode/altool caveats, tag recovery) and a device-speech doc (design
   rationale, falsified hypotheses, Console diagnostic procedure) so future
