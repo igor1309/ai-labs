@@ -13,8 +13,7 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
   layout sources converge on; triggers only above a couple of unbucketed
   files, a single loose file is a comment at most. Explicit axis-9 verdict
   added to the output format. `backlog/` is now empty and removed; skill
-  backlog fully drained. Marketplace bump deferred to the pending dev-skills
-  batch.
+  backlog fully drained. Published as marketplace v1.56.0.
 - **skill-review v1.4.0**: promoted the drafted "Failure observability" axis
   (§8, script-driving skills only) from the skill's backlog into Evaluation
   Axes — a skill must surface non-zero script exits mechanically, not depend
@@ -22,8 +21,7 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
   the output format. Origin: the Poeme add-module experiment, where a failing
   wiring script was silently hand-fixed on every run and each run still
   reported PASS. `backlog/backlog.md` removed as shipped; the folder-shape
-  axis draft (`backlog/folder.md`) remains open. Marketplace bump deferred to
-  the pending dev-skills batch.
+  axis draft (`backlog/folder.md`) remains open. Published as marketplace v1.56.0.
 - **pr-ci-watch v1.3.0**: added the long-planned run-level watching section —
   `gh run watch <run-id> --exit-status` for tag-triggered release/deploy
   workflows, post-rerun streaming, and single-run scenarios, with the same
@@ -31,13 +29,12 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
   wait-before-`gh run list` race note. `gh pr checks --watch` remains the
   default for PR greenness. Closes `pr-ci-watch/TODO.md` (removed); validated
   by the same-day foliotell 0.0.3/0.1.0 release sessions, which used exactly
-  this pattern. Marketplace bump deferred to the pending dev-skills batch.
+  this pattern. Published as marketplace v1.56.0.
 - **using-dev-skills v1.0.3**: split the "bug report" ladder cue — analysis-only
   asks route to Debugging (bug-analysis), while bug reports with a fix/deploy
   request are delivery work investigated inline, not an analysis-report skill.
   Motivated by a foliotell session where `bug-analysis` was invoked against its
-  own "do not use when a fix is requested" guard. Marketplace bump deferred to
-  the pending dev-skills batch.
+  own "do not use when a fix is requested" guard. Published as marketplace v1.56.0.
 
 ## 2026-06-29
 
