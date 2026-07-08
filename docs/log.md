@@ -2,6 +2,11 @@
 
 ## 2026-07-08
 
+- FolioTell: fix the reader settings menu freezing the app on iPhone — query
+  the voice catalog once off the main actor and cache it, instead of calling
+  `AVSpeechSynthesisVoice.speechVoices()` several times per render (a call
+  with documented multi-second device stalls), and detect document language
+  without running the full speech normalization pass on the render path.
 - FolioTell: add a self-contained release runbook (commands, gates,
   Xcode/altool caveats, tag recovery) and a device-speech doc (design
   rationale, falsified hypotheses, Console diagnostic procedure) so future

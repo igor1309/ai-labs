@@ -12,6 +12,7 @@ struct ReaderView: View {
     @AppStorage("selectedFrontMatterPlaybackMode") private var selectedFrontMatterPlaybackMode = FrontMatterPlaybackMode.skip.rawValue
     @AppStorage("selectedSpeechVoiceIdentifier") private var selectedSpeechVoiceIdentifier = SpeechVoiceSelection.automaticIdentifier
     @StateObject private var speechController = SpeechController()
+    @State private var availableVoices: [SpeechVoiceOption] = []
 
     var body: some View {
         content
@@ -19,6 +20,13 @@ struct ReaderView: View {
             .navigationTitle(displayFileName)
             .safeAreaInset(edge: .bottom) {
                 bottomControls
+            }
+            .task {
+                // speechVoices() can stall for seconds on device; query the
+                // catalog once, off the main actor, instead of per render.
+                availableVoices = await Task.detached(priority: .userInitiated) {
+                    AVSpeechSynthesisVoice.speechVoices().map(SpeechVoiceOption.init)
+                }.value
             }
             .onDisappear {
                 speechController.stop()
@@ -69,19 +77,6 @@ struct ReaderView: View {
         nonmutating set { selectedFrontMatterPlaybackMode = newValue.rawValue }
     }
 
-    private var allVoiceOptions: [SpeechVoiceOption] {
-        AVSpeechSynthesisVoice.speechVoices().map(SpeechVoiceOption.init)
-    }
-
-    private var documentSpeechText: String? {
-        switch loadedDocument {
-        case .failure:
-            nil
-        case let .success(document):
-            speechText(for: document)
-        }
-    }
-
     private func speechText(for document: FolioDocument) -> String {
 
         SpeechTextNormalization.speechText(
@@ -90,11 +85,20 @@ struct ReaderView: View {
     }
 
     private var detectedDocumentLanguageCode: String? {
-        documentSpeechText.flatMap(SpeechVoiceLanguage.languageCode(for:))
+        switch loadedDocument {
+        case .failure:
+            nil
+        case let .success(document):
+            // Cyrillic detection is unaffected by Markdown syntax, so the
+            // render path skips the full normalization pass.
+            SpeechVoiceLanguage.languageCode(
+                for: selectedFrontMatterMode.speechText(from: document.text)
+            )
+        }
     }
 
     private var voiceOptions: [SpeechVoiceOption] {
-        let allVoiceOptions = allVoiceOptions
+        let allVoiceOptions = availableVoices
         let filteredIdentifiers = SpeechVoiceSelection.filteredVoiceIdentifiers(
             availableIdentifiers: Set(allVoiceOptions.map(\.id)),
             languagesByIdentifier: Dictionary(uniqueKeysWithValues: allVoiceOptions.map { ($0.id, $0.language) }),
@@ -285,7 +289,7 @@ struct ReaderView: View {
     }
 }
 
-private struct SpeechVoiceOption: Identifiable {
+private struct SpeechVoiceOption: Identifiable, Sendable {
     let id: String
     let name: String
     let language: String
