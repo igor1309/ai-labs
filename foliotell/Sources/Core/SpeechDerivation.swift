@@ -56,10 +56,21 @@ public struct SpeechDerivation: Equatable, Sendable {
     }
 
     /// Start of the sentence containing `utf16Offset`, given sorted sentence
-    /// starts; 0 when the offset precedes every sentence.
+    /// starts; 0 when the offset precedes every sentence. Binary search keeps
+    /// the per-spoken-word callback path at O(log sentences).
     private static func sentenceStart(in sortedStarts: [Int], containing utf16Offset: Int) -> Int {
 
-        return sortedStarts.last(where: { $0 <= utf16Offset }) ?? 0
+        var low = 0
+        var high = sortedStarts.count
+        while low < high {
+            let mid = (low + high) / 2
+            if sortedStarts[mid] <= utf16Offset {
+                low = mid + 1
+            } else {
+                high = mid
+            }
+        }
+        return low > 0 ? sortedStarts[low - 1] : 0
     }
 
     private static func sentenceStartUTF16Offsets(in text: String) -> [Int] {
