@@ -2,6 +2,10 @@
 
 ## 2026-07-08
 
+- Release `foliotell_v0.4.0` — reader bottom controls rendered with Liquid Glass
+  (settings icon + playback buttons on grouped interactive glass, primary button
+  accent-tinted); deployment target raised to iOS 26.
+
 - Reader bottom controls adopt Liquid Glass: the settings icon and the
   back/play-pause/forward/stop buttons now sit on interactive glass (the
   primary button tinted with the accent color), grouped in a
