@@ -2,6 +2,14 @@
 
 ## 2026-07-08
 
+- Instrument the stop and pause paths for the device stop-latency
+  investigation: log `stopSpeaking`/`pauseSpeaking` acceptance,
+  `didFinish`/`didCancel` arrival, and audio-session deactivation outcomes
+  (previously a bare `print`) under the `foliotell.FolioTell` subsystem. No
+  behavior change. Simulator baseline recorded in `device-speech.md`: full
+  machine-side stop sequence ~12 ms, synthesizer delivers `didFinish` (not
+  `didCancel`) after stop — the audible latency is device-side.
+
 - Normalize document text for speech: playback now speaks document content
   instead of raw Markdown markup — heading markers, emphasis/strong/
   strikethrough markers, inline code backticks, code fences, link/image
