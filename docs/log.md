@@ -1,5 +1,12 @@
 # Log
 
+## 2026-07-09
+- Release CI: fail the `release-unit.yml` verify step when `verify-tag.js`
+  rejects a tag — the pipe through `tee` swallowed the non-zero exit, so a
+  tag/manifest version mismatch produced a green run with empty outputs,
+  skipped the unit's deploy jobs, and published a garbage GitHub release
+  (observed on a premature `foliotell_v0.4.3` tag).
+
 ## 2026-07-08
 - FolioTell: release `foliotell_v0.4.2` — fix the reader bottom bar not rendering; playback controls are back.
 

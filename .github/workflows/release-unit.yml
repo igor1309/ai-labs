@@ -43,6 +43,9 @@ jobs:
         env:
           TAG: ${{ github.ref_name }}
         run: |
+          # pipefail: without it the step's exit code is tee's, and a
+          # verify-tag.js rejection silently yields empty outputs downstream.
+          set -o pipefail
           # verify-tag.js parses the tag safely (no shell→JS interpolation),
           # validates against the manifest, and outputs key=value lines.
           node scripts/release/verify-tag.js "$TAG" | tee /dev/stderr >> "$GITHUB_OUTPUT"
