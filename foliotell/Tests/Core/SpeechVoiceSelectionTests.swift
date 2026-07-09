@@ -112,6 +112,58 @@ struct SpeechVoiceSelectionTests {
         )
     }
 
+    @Test func test_automaticVoiceIdentifier_shouldPreferHigherQualityVoice_onLowerQualityListedFirst() {
+
+        #expect(
+            SpeechVoiceSelection.automaticVoiceIdentifier(
+                matching: "ru-RU",
+                availableVoices: [
+                    SpeechVoiceDescriptor(identifier: "voice-ru-compact", language: "ru-RU", isAudioCapable: true, quality: .standard),
+                    SpeechVoiceDescriptor(identifier: "voice-ru-enhanced", language: "ru-RU", isAudioCapable: true, quality: .enhanced),
+                ]
+            ) == "voice-ru-enhanced"
+        )
+    }
+
+    @Test func test_automaticVoiceIdentifier_shouldPreferPremiumVoice_onEnhancedListedFirst() {
+
+        #expect(
+            SpeechVoiceSelection.automaticVoiceIdentifier(
+                matching: "ru-RU",
+                availableVoices: [
+                    SpeechVoiceDescriptor(identifier: "voice-ru-enhanced", language: "ru-RU", isAudioCapable: true, quality: .enhanced),
+                    SpeechVoiceDescriptor(identifier: "voice-ru-premium", language: "ru-RU", isAudioCapable: true, quality: .premium),
+                ]
+            ) == "voice-ru-premium"
+        )
+    }
+
+    @Test func test_automaticVoiceIdentifier_shouldPreferAudioCapableVoice_onHigherQualityBrokenVoice() {
+
+        #expect(
+            SpeechVoiceSelection.automaticVoiceIdentifier(
+                matching: "ru-RU",
+                availableVoices: [
+                    SpeechVoiceDescriptor(identifier: "voice-ru-enhanced-broken", language: "ru-RU", isAudioCapable: false, quality: .enhanced),
+                    SpeechVoiceDescriptor(identifier: "voice-ru-compact", language: "ru-RU", isAudioCapable: true, quality: .standard),
+                ]
+            ) == "voice-ru-compact"
+        )
+    }
+
+    @Test func test_automaticVoiceIdentifier_shouldReturnFirstVoice_onEqualQualityMatches() {
+
+        #expect(
+            SpeechVoiceSelection.automaticVoiceIdentifier(
+                matching: "ru-RU",
+                availableVoices: [
+                    SpeechVoiceDescriptor(identifier: "voice-ru-first", language: "ru-RU", isAudioCapable: true, quality: .enhanced),
+                    SpeechVoiceDescriptor(identifier: "voice-ru-second", language: "ru-RU", isAudioCapable: true, quality: .enhanced),
+                ]
+            ) == "voice-ru-first"
+        )
+    }
+
     @Test func test_automaticVoiceIdentifier_shouldReturnDefault_onNoLanguageMatch() {
 
         #expect(

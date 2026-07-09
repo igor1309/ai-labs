@@ -32,6 +32,79 @@ Markdown documents.
 - Add a manual language override or "show all voices" escape hatch if detection
   is wrong or the desired system voice is hidden.
 
+## Voice-quality onboarding
+
+Help users move from the pre-installed compact voices to the higher-quality
+Apple voices when that upgrade is available. Auto selection already prefers
+the best installed voice; the remaining gap is that many devices still ship
+with only compact voices, and voice downloads happen in Settings →
+Accessibility → Spoken Content → Voices.
+
+- Detect when the document's language has only standard-quality voices
+  installed, and show a one-time dismissible hint with the exact Settings
+  path.
+- Deep-link to Settings where iOS allows it, and keep the copy honest about
+  the user needing to download the voice manually.
+- Show quality labels (Enhanced/Premium) next to voice names in the voice
+  picker so the upgrade is visible at pick time.
+- If an Enhanced or Premium voice for the language is already installed, do
+  not show the download hint; instead acknowledge the better voice in the
+  picker or settings surface.
+- Consider a short first-launch onboarding step only if we still need a
+  stronger nudge after the picker labels and one-time hint exist.
+
+## On-device neural TTS (needs UI discussion beyond tech)
+
+Evaluate embedding an open neural TTS engine for a quality level above
+Enhanced Apple voices while staying fully offline — the current product
+promise (no network, private by design) must hold. Do not start
+implementation from this item alone: the product/UI questions below need a
+design discussion first.
+
+Technical shape:
+
+- Candidate engines: Piper (MIT, ONNX, Russian voices: irina, ruslan, denis,
+  dmitri) via sherpa-onnx Swift bindings; Silero as an alternative. Verify
+  each voice model's own license separately from the engine license.
+- Leaving `AVSpeechSynthesizer` means owning the audio pipeline: synthesize
+  PCM, play via AVAudioEngine, and keep the audio-session behavior
+  (`.playback`/`.spokenAudio`, mute-switch override, background audio) that
+  is already validated on device.
+- Sentence highlighting and PlaybackTransport events currently come from
+  `willSpeakRange` delegate callbacks; a neural engine must reconstruct
+  word/sentence timing from the model's alignment output. This is the
+  hardest technical piece — treat it as the feasibility gate.
+- Models are ~60–100 MB per voice: decide bundled vs downloaded, and how
+  that squares with the offline promise (first-run download needs network
+  once).
+
+Product/UI discussion needed before any spec:
+
+- Voice management UI: browsing, downloading, deleting models; storage
+  visibility.
+- How neural voices coexist with Apple voices in the picker (sections?
+  quality badges? per-language defaults?).
+- Whether Auto selection may pick a neural voice, and what the fallback
+  chain is when a model is missing.
+- App size, review implications, and whether the quality gain over Enhanced
+  Apple voices justifies the added complexity at all.
+
+## Cloud TTS voices (option, gated on a product decision)
+
+Optional highest-quality tier via a cloud TTS provider (ElevenLabs, OpenAI,
+Azure `ru-RU` neural, Yandex SpeechKit — the strongest for Russian
+specifically). Parked as an option, not planned work.
+
+- Directly conflicts with the shipped promise: landing page and product card
+  say no network, no account, fully private. Requires an explicit product
+  decision to reposition (e.g. strictly opt-in "premium voices" with clear
+  disclosure), not just a feature spec.
+- If ever pursued: per-character cost model, API-key/account handling,
+  streaming playback with sentence timing, and on-device caching of
+  synthesized audio for offline replay all need answers first.
+- Revisit only after the on-device neural TTS evaluation settles — if that
+  lands, this tier may be unnecessary.
+
 ## Persist per-document listening settings
 
 Keep each document's listening setup independent, so switching between

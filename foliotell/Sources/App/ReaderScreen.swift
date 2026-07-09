@@ -3,6 +3,9 @@ import AVFoundation
 import FolioTellCore
 #endif
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 /// Owns the per-document session lifecycle; the injected factory runs once
 /// per document.
@@ -33,16 +36,13 @@ struct ReaderSessionView: View {
     @AppStorage("selectedSpeechSpeed") private var selectedSpeechSpeed = SpeechSpeed.one.rawValue
     @AppStorage("selectedFrontMatterPlaybackMode") private var selectedFrontMatterPlaybackMode = FrontMatterPlaybackMode.skip.rawValue
     @AppStorage("selectedSpeechVoiceIdentifier") private var selectedSpeechVoiceIdentifier = SpeechVoiceSelection.automaticIdentifier
+    @AppStorage("dismissedVoiceQualityOnboardingLanguageCodes") private var dismissedVoiceQualityOnboardingLanguageCodes = ""
     @State private var availableVoices: [AvailableVoice] = []
 
     var body: some View {
-        ReaderView(state: renderState, event: handle)
+            ReaderView(state: renderState, event: handle)
             .task {
-                // speechVoices() can stall for seconds on device; query the
-                // catalog once, off the main actor, instead of per render.
-                availableVoices = await Task.detached(priority: .userInitiated) {
-                    AVSpeechSynthesisVoice.speechVoices().map(AvailableVoice.init)
-                }.value
+                availableVoices = await loadAvailableVoices()
             }
             .onDisappear {
                 transport.event(.stopTapped)
@@ -79,6 +79,10 @@ private extension ReaderSessionView {
             selectedFrontMatterPlaybackMode = mode.rawValue
         case let .voiceSelected(voiceIdentifier):
             selectedSpeechVoiceIdentifier = voiceIdentifier ?? SpeechVoiceSelection.automaticIdentifier
+        case .voiceQualityBannerOpenSettings:
+            openSettings()
+        case .voiceQualityBannerDismissed:
+            dismissVoiceQualityBanner()
         }
     }
 
@@ -105,6 +109,7 @@ private extension ReaderSessionView {
             selectedSpeed: selectedSpeed,
             selectedFrontMatterMode: selectedFrontMatterMode,
             selectedVoiceIdentifier: selectedVoiceIdentifierForPlayback,
+            voiceQualityBanner: voiceQualityBanner,
             voiceOptions: voiceOptions
         )
     }
@@ -119,6 +124,14 @@ private extension ReaderSessionView {
 
     var detectedDocumentLanguageCode: String? {
         SpeechVoiceLanguage.languageCode(for: position.state.speechText)
+    }
+
+    var voiceQualityBanner: ReaderVoiceQualityBanner? {
+        VoiceQualityOnboarding.banner(
+            detectedLanguageCode: detectedDocumentLanguageCode,
+            availableVoices: availableVoices,
+            dismissedLanguageCodes: dismissedVoiceQualityOnboardingLanguageCodesSet
+        )
     }
 
     var voiceOptions: [ReaderVoiceOption] {
@@ -138,7 +151,7 @@ private extension ReaderSessionView {
                     lhs.language.localizedCaseInsensitiveCompare(rhs.language) == .orderedAscending
                 }
             }
-            .map { ReaderVoiceOption(id: $0.id, menuTitle: "\($0.name) (\($0.language))") }
+            .map(ReaderVoiceOption.init)
     }
 
     var selectedVoiceIdentifierForPlayback: String? {
@@ -148,16 +161,226 @@ private extension ReaderSessionView {
             availableIdentifiers: Set(voiceOptions.map(\.id))
         )
     }
+
+    var dismissedVoiceQualityOnboardingLanguageCodesSet: Set<String> {
+
+        Set(
+            dismissedVoiceQualityOnboardingLanguageCodes
+                .split(separator: ",")
+                .map(String.init)
+                .filter { $0.isEmpty == false }
+        )
+    }
+
+    func dismissVoiceQualityBanner() {
+
+        guard let languageCode = voiceQualityBanner?.languageCode else {
+            return
+        }
+
+        var dismissedLanguageCodes = dismissedVoiceQualityOnboardingLanguageCodesSet
+        dismissedLanguageCodes.insert(languageCode)
+        dismissedVoiceQualityOnboardingLanguageCodes = dismissedLanguageCodes.sorted().joined(separator: ",")
+    }
+
+    func openSettings() {
+
+        #if os(iOS)
+        guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else {
+            return
+        }
+
+        UIApplication.shared.open(settingsURL)
+        #endif
+    }
+
+    func loadAvailableVoices() async -> [AvailableVoice] {
+
+        #if DEBUG
+        if let overrideVoices = VoiceCatalogOverride.availableVoices() {
+            return overrideVoices
+        }
+        #endif
+
+        // speechVoices() can stall for seconds on device; query the catalog
+        // once, off the main actor, instead of per render.
+        return await Task.detached(priority: .userInitiated) {
+            AVSpeechSynthesisVoice.speechVoices().map(AvailableVoice.init)
+        }.value
+    }
 }
 
-private struct AvailableVoice: Sendable {
+struct AvailableVoice: Sendable {
     let id: String
     let name: String
     let language: String
+    let quality: SpeechVoiceQuality
+
+    var menuTitle: String {
+        let baseTitle = "\(name) (\(language))"
+        switch quality {
+        case .standard:
+            return baseTitle
+        case .enhanced:
+            return "\(baseTitle) · Enhanced"
+        case .premium:
+            return "\(baseTitle) · Premium"
+        }
+    }
 
     init(_ voice: AVSpeechSynthesisVoice) {
         id = voice.identifier
         name = voice.name
         language = voice.language
+        quality = SpeechVoiceQuality(voice.quality)
+    }
+
+    init(id: String, name: String, language: String, quality: SpeechVoiceQuality) {
+        self.id = id
+        self.name = name
+        self.language = language
+        self.quality = quality
+    }
+}
+
+enum VoiceQualityOnboarding {
+
+    static func banner(
+        detectedLanguageCode: String?,
+        availableVoices: [AvailableVoice],
+        dismissedLanguageCodes: Set<String>
+    ) -> ReaderVoiceQualityBanner? {
+
+        guard let detectedLanguageCode else {
+            return nil
+        }
+
+        let languageVoices = availableVoices.filter { $0.language == detectedLanguageCode }
+        guard languageVoices.isEmpty == false else {
+            return nil
+        }
+
+        if let quality = bestQuality(in: languageVoices), quality != .standard {
+            return ReaderVoiceQualityBanner(
+                kind: .installedAcknowledgement,
+                languageCode: detectedLanguageCode,
+                title: "\(quality.displayName) voice installed",
+                message: "The picker already includes a higher-quality voice for this document's language."
+            )
+        }
+
+        guard dismissedLanguageCodes.contains(detectedLanguageCode) == false else {
+            return nil
+        }
+
+        return ReaderVoiceQualityBanner(
+            kind: .upgradeHint,
+            languageCode: detectedLanguageCode,
+            title: "Voice quality upgrade",
+            message: "This document is using a standard-quality voice. For better pronunciation, install an Enhanced or Premium voice in Settings > Accessibility > Spoken Content > Voices."
+        )
+    }
+
+    private static func bestQuality(in voices: [AvailableVoice]) -> SpeechVoiceQuality? {
+
+        voices
+            .map(\.quality)
+            .max()
+    }
+}
+
+#if DEBUG
+private enum VoiceCatalogOverride {
+
+    static func availableVoices() -> [AvailableVoice]? {
+
+        guard let mode = previewMode() else {
+            return nil
+        }
+
+        switch mode {
+        case "upgrade":
+            return [
+                AvailableVoice(id: "ru-compact", name: "Milena", language: "ru-RU", quality: .standard),
+                AvailableVoice(id: "en-compact", name: "Samantha", language: "en-US", quality: .standard),
+            ]
+        case "installed":
+            return [
+                AvailableVoice(id: "ru-compact", name: "Milena", language: "ru-RU", quality: .standard),
+                AvailableVoice(id: "ru-enhanced", name: "Yuliya", language: "ru-RU", quality: .enhanced),
+            ]
+        default:
+            return nil
+        }
+    }
+
+    private static func previewMode() -> String? {
+        if let environmentValue = ProcessInfo.processInfo.environment["FOLIOTELL_VOICE_QUALITY_PREVIEW"] {
+            return environmentValue
+        }
+
+        let arguments = ProcessInfo.processInfo.arguments
+        if let indexed = arguments.firstIndex(of: "FOLIOTELL_VOICE_QUALITY_PREVIEW"),
+           arguments.indices.contains(indexed + 1) {
+            return arguments[indexed + 1]
+        }
+
+        if let valueArgument = arguments.first(where: { $0.hasPrefix("FOLIOTELL_VOICE_QUALITY_PREVIEW=") }) {
+            return String(valueArgument.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false).last ?? "")
+        }
+
+        let userDefaults = UserDefaults.standard
+        if let storedMode = userDefaults.string(forKey: "voiceQualityPreviewMode"),
+           storedMode.isEmpty == false {
+            return storedMode
+        }
+
+        if let fileValue = filePreviewMode() {
+            return fileValue
+        }
+
+        return nil
+    }
+
+    private static func filePreviewMode() -> String? {
+
+        let fileManager = FileManager.default
+        guard let applicationSupportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            return nil
+        }
+
+        let previewURL = applicationSupportURL.appendingPathComponent("voice-quality-preview.txt")
+        guard let contents = try? String(contentsOf: previewURL, encoding: .utf8) else {
+            return nil
+        }
+
+        let trimmed = contents.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+#endif
+
+private extension SpeechVoiceQuality {
+
+    init(_ quality: AVSpeechSynthesisVoiceQuality) {
+        switch quality {
+        case .premium:
+            self = .premium
+        case .enhanced:
+            self = .enhanced
+        default:
+            self = .standard
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .standard:
+            "Standard"
+        case .enhanced:
+            "Enhanced"
+        case .premium:
+            "Premium"
+        }
     }
 }
