@@ -32,10 +32,18 @@ Repo-specific addenda to the `release-process` skill. Read when doing release wo
 The `release-process` skill's "Completion verification" checklist applies. Repo-specific additions:
 
 - Full root suite green before tagging (see the pre-push gate above) — not the per-unit subset.
-- Readiness gate green before pushing the tag (agonara): `node scripts/release/check-agonara-release-readiness.js --tag <basename>_v<version>` (add `--check-github-secrets` to confirm deploy secrets exist).
+- Agonara only: before pushing an `agonara_v<version>` tag, the Agonara
+  readiness gate must pass: `node scripts/release/check-agonara-release-readiness.js --tag agonara_v<version>`.
+  Add `--check-github-secrets` to verify deploy-secret names without reading
+  their values. This script rejects every non-Agonara tag by design; do not run
+  it for FolioTell or another release unit.
 - Tag points at the release-candidate merge commit on `trunk` (the release-unit
   `verify` job rejects a tag not reachable from `origin/trunk`).
-- After tag push, `release-unit.yml` (`verify → core → deploy-* → github-release`) is green and the deployed `/operations/health` reports the released version.
+- After tag push, the unit's applicable `release-unit.yml` jobs are green.
+  Agonara additionally requires its deployed `/operations/health` to report
+  the released version. FolioTell instead requires `verify`, `test-foliotell`,
+  `deploy-foliotell-testflight`, and `github-release` to succeed, as its
+  runbook specifies.
 
 ## Recovery: re-pointing a tag after a failed run
 

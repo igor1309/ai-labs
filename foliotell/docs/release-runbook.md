@@ -32,9 +32,9 @@ git rebase origin/trunk
 git switch -c <agent>/release-foliotell-<version>
 ```
 
-Once the candidate is synchronized and its product scope is frozen, do not add
-new product changes. The release PR can contain the complete reviewed product
-diff plus the release metadata commit.
+All intended product changes must be committed before the candidate is frozen.
+Afterward, do not add product changes. The release PR can contain the complete
+reviewed product diff plus the release metadata commit.
 
 ### 2. Bump and document
 

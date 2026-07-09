@@ -2,6 +2,10 @@
 
 ## 2026-07-10
 
+- Release governance: explicitly exempt FolioTell from the Agonara-only
+  readiness and health gates; FolioTell evidence is its TestFlight release
+  workflow.
+
 - Release process: FolioTell release candidates may transition from a complete
   feature branch without a prior code-only merge; the candidate freezes before
   version metadata and full release notes are added, then merges to `trunk` for

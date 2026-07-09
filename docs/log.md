@@ -2,6 +2,9 @@
 
 ## 2026-07-10
 
+- Release governance: scope the Agonara readiness and `/operations/health`
+  gates to Agonara; FolioTell uses its own TestFlight release evidence.
+
 - Release process: a complete feature branch may transition in place to a
   frozen release candidate; version metadata and full notes are added before
   the candidate PR merges to `trunk`, while tagging remains trunk-only.
