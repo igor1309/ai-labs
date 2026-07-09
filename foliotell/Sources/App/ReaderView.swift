@@ -161,18 +161,11 @@ struct ReaderView: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 24) {
-            Text(state.title)
-                .font(.title2)
-                .fontWeight(.semibold)
-                .lineLimit(2)
-
             if let voiceQualityBanner = state.voiceQualityBanner {
                 voiceQualityBannerView(voiceQualityBanner)
             }
 
             documentText
-
-            Spacer()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

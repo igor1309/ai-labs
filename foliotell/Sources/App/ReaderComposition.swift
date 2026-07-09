@@ -143,10 +143,36 @@ struct ReaderRootView: View {
         }
     }
 
+    private var navigationTitle: String {
+        let fileName: String
+
+        switch loadedDocument {
+        case let .failure(failedFileName, _):
+            fileName = failedFileName
+        case let .success(document):
+            fileName = document.fileName
+        }
+
+        guard let extensionStart = fileName.lastIndex(of: ".") else {
+            return fileName
+        }
+
+        return String(fileName[..<extensionStart])
+    }
+
     #if os(iOS)
     private var readerContent: some View {
         documentContent
+            .navigationTitle(navigationTitle)
             .toolbar {
+                ToolbarTitleMenu()
+
+                ToolbarItem(placement: .principal) {
+                    Text(navigationTitle)
+                        .lineLimit(1)
+                        .accessibilityIdentifier("readerNavigationTitle")
+                }
+
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         isSettingsPresented = true
