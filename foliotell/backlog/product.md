@@ -34,22 +34,24 @@ Markdown documents.
 
 ## Voice-quality onboarding
 
-Get users from the pre-installed compact voices (the robotic default,
-especially audible in Russian) to the Enhanced/Premium Apple voices. Auto
-selection already prefers the best installed voice; the gap is that most
-devices only have compact voices installed, and voices cannot be downloaded
-programmatically — only the user can, in Settings → Accessibility → Spoken
-Content → Voices.
+Help users move from the pre-installed compact voices to the higher-quality
+Apple voices when that upgrade is available. Auto selection already prefers
+the best installed voice; the remaining gap is that many devices still ship
+with only compact voices, and voice downloads happen in Settings →
+Accessibility → Spoken Content → Voices.
 
-- Detect when only standard-quality voices are installed for the document's
-  detected language, and show a one-time, dismissible hint with the exact
-  Settings path (deep-link to Settings where iOS allows).
+- Detect when the document's language has only standard-quality voices
+  installed, and show a one-time dismissible hint with the exact Settings
+  path.
+- Deep-link to Settings where iOS allows it, and keep the copy honest about
+  the user needing to download the voice manually.
 - Show quality labels (Enhanced/Premium) next to voice names in the voice
-  picker so the difference is visible at pick time.
-- Consider a short first-launch onboarding step that frames voice download as
-  the single biggest quality upgrade.
-- Keep the hint honest: if an Enhanced/Premium voice for the language is
-  already installed, never show it.
+  picker so the upgrade is visible at pick time.
+- If an Enhanced or Premium voice for the language is already installed, do
+  not show the download hint; instead acknowledge the better voice in the
+  picker or settings surface.
+- Consider a short first-launch onboarding step only if we still need a
+  stronger nudge after the picker labels and one-time hint exist.
 
 ## On-device neural TTS (needs UI discussion beyond tech)
 
