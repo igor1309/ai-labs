@@ -2,6 +2,10 @@
 
 ## 2026-07-09
 
+- Enforce versioned release notes: release preparation now requires
+  `docs/releases/<version>.md`, validates its title and user-facing changes
+  in CI, and publishes its Markdown body without YAML metadata to GitHub.
+
 - Release `foliotell_v0.5.0` — voice-quality onboarding presents Settings
   guidance when only standard voices exist, acknowledges installed Enhanced
   or Premium voices, labels them in the picker, and selects the best

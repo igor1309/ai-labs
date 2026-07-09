@@ -69,6 +69,18 @@ describe('release-unit workflow fan-in', () => {
     assert.ok(githubRelease.includes("needs.deploy-foliotell-testflight.result == 'success'"));
   });
 
+  it('validates and publishes checked-in FolioTell release notes', () => {
+    const verify = jobSection('verify');
+    const githubRelease = jobSection('github-release');
+
+    assert.ok(verify.includes('Validate FolioTell release notes'));
+    assert.ok(verify.includes('node scripts/release/validate-foliotell-release-notes.js'));
+    assert.ok(githubRelease.includes('Checkout release contents'));
+    assert.ok(githubRelease.includes('foliotell/docs/releases/${RELEASE_VERSION}.md'));
+    assert.ok(githubRelease.includes('awk \'NR == 1 && $0 == "---"'));
+    assert.ok(githubRelease.includes('bodyFile: ${{ env.RELEASE_BODY_FILE }}'));
+  });
+
   it('fails fast when FolioTell TestFlight secrets are missing', () => {
     const deploy = jobSection('deploy-foliotell-testflight');
 

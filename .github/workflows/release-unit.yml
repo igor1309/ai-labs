@@ -62,6 +62,10 @@ jobs:
       - name: Validate manifest invariants
         run: node scripts/release/validate-manifest.js
 
+      - name: Validate FolioTell release notes
+        if: ${{ steps.parse.outputs.basename == 'foliotell' }}
+        run: node scripts/release/validate-foliotell-release-notes.js
+
   core:
     if: ${{ needs.verify.outputs.basename != 'foliotell' && needs.verify.outputs.basename != 'notio-backend' && needs.verify.outputs.basename != 'notio-frontend' }}
     needs: [verify]
@@ -654,12 +658,32 @@ jobs:
     env:
       RELEASE_TAG: ${{ github.ref_name }}
     steps:
+      - name: Checkout release contents
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Prepare release body
+        env:
+          RELEASE_BASENAME: ${{ needs.verify.outputs.basename }}
+          RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          if [ "$RELEASE_BASENAME" = "foliotell" ]; then
+            release_notes="foliotell/docs/releases/${RELEASE_VERSION}.md"
+            release_body="$RUNNER_TEMP/release-body.md"
+            awk 'NR == 1 && $0 == "---" { in_front_matter = 1; next } in_front_matter && $0 == "---" { in_front_matter = 0; next } !in_front_matter { print }' "$release_notes" > "$release_body"
+          else
+            release_body="$RUNNER_TEMP/release-body.md"
+            printf 'Release of **%s** version `%s`.\n' "$RELEASE_BASENAME" "$RELEASE_VERSION" > "$release_body"
+          fi
+          echo "RELEASE_BODY_FILE=$release_body" >> "$GITHUB_ENV"
+
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ env.RELEASE_TAG }}
           name: "${{ needs.verify.outputs.basename }} v${{ needs.verify.outputs.version }}"
-          body: "Release of **${{ needs.verify.outputs.basename }}** version `${{ needs.verify.outputs.version }}`."
+          bodyFile: ${{ env.RELEASE_BODY_FILE }}
           generateReleaseNotes: false
           draft: false
           prerelease: false

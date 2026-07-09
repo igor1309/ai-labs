@@ -1,6 +1,10 @@
 # Log
 
 ## 2026-07-09
+- FolioTell: enforce prepared release notes — a versioned note is now required
+  in release-preparation CI, revalidated from the tag, and published verbatim
+  as the GitHub Release body after its YAML metadata is removed.
+
 - FolioTell: release `foliotell_v0.5.0` — language-aware voice-quality
   onboarding, Enhanced/Premium voice acknowledgement, and quality-labelled
   voice choices; automatic selection now prefers the best installed
