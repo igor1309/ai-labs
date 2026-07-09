@@ -1,5 +1,11 @@
 # Log
 
+## 2026-07-10
+
+- FolioTell: prepare `foliotell_v0.6.0` — dedicated Reader Settings, separate
+  Voice and Playback controls, and a one-time acknowledgement of installed
+  Enhanced/Premium voices.
+
 ## 2026-07-09
 - FolioTell: enforce prepared release notes — a versioned note is now required
   in release-preparation CI, revalidated from the tag, and published verbatim
