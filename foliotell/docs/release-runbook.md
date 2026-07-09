@@ -13,22 +13,41 @@ skill; this runbook is the FolioTell-specific execution order.
 
 ## Preconditions
 
-- All code changes for the release are already merged to `trunk` (the release
-  PR contains only the version bump, manifest, release note, and log entries).
-- Working tree clean, on `trunk`, up to date: `git checkout trunk && git pull --ff-only`.
+- The complete product scope is ready on a feature branch or on `trunk`.
+- Working tree clean, with the candidate synchronized to the latest `trunk`.
 - No `foliotell_v<new-version>` tag exists locally or on origin.
 
 ## Release Steps
 
-### 1. Branch and bump
+### 1. Transition to release-candidate state
+
+A feature branch may, but does not have to, become the release-candidate
+branch. Keeping the existing branch is valid; create a new branch only when a
+separate review boundary is useful.
 
 ```bash
-git checkout -b <agent>/release-foliotell-<version> trunk
+git fetch origin trunk
+git rebase origin/trunk
+# Optional: create a separate candidate branch from the complete feature branch.
+git switch -c <agent>/release-foliotell-<version>
+```
+
+All intended product changes must be committed before the candidate is frozen.
+Afterward, do not add product changes. The release PR can contain the complete
+reviewed product diff plus the release metadata commit.
+
+### 2. Bump and document
+
+```bash
 sed -i '' 's/version = "<old>"/version = "<new>"/' foliotell/release.toml
 node scripts/release/generate-manifest.js
 node scripts/release/validate-manifest.js
 node scripts/release/generate-manifest.js --check
 ```
+
+Compute the release notes from the previous FolioTell tag to the frozen
+candidate tip. This includes every user-facing change in the candidate, not
+only the most recent commit.
 
 SemVer: patch for fixes, minor for features (pre-1.0 discipline per repo
 convention).
@@ -42,13 +61,13 @@ GitHub Release body.
 node scripts/release/validate-foliotell-release-notes.js
 ```
 
-### 2. Log entries
+### 3. Log entries
 
 Add exactly one new entry at the top of the current date section in **both**
 `docs/log.md` (prefixed `FolioTell:`) and `foliotell/docs/log.md`, scoped to
 the released delta.
 
-### 3. Gates
+### 4. Gates
 
 ```bash
 ./scripts/run_silent.sh "build" npx tsc --noEmit
@@ -60,18 +79,19 @@ failure in any unit blocks this release. Swift gates (`swift build` /
 `swift test` in `foliotell/`) are required only if Swift code changed since
 they last ran green.
 
-### 4. PR
+### 5. PR
 
 ```bash
 git add foliotell/release.toml release-units.toml foliotell/docs/releases/<version>.md docs/log.md foliotell/docs/log.md
 git commit -m "release foliotell <version>"
-git push -u origin <branch>
+git push -u origin <candidate-branch>
 gh pr create --title "Release FolioTell <version>" --body "<summary + verification>"
 gh pr merge <pr> --merge --auto --delete-branch
 ./scripts/watch-pr.sh <pr>
 ```
 
-Merge commit, never squash. `trunk` is protected — no direct pushes.
+The PR may include the frozen product changes and the release metadata
+commit. Merge commit, never squash. `trunk` is protected — no direct pushes.
 
 If enabling auto-merge fails (or shows `automerge: none`) because checks are
 already green and the PR is CLEAN, merge directly:
@@ -82,7 +102,7 @@ To delegate execution to a cheap agent, use the `release-executor` subagent
 (`.claude/agents/release-executor.md`); pass unit, versions, branch name, log
 entries, and PR title/body in the invocation prompt.
 
-### 5. Tag and watch
+### 6. Tag and watch
 
 ```bash
 git checkout trunk && git pull --ff-only
@@ -92,7 +112,7 @@ gh run list --workflow "Release Unit" --limit 1   # grab the run id
 gh run watch <run-id> --exit-status
 ```
 
-### 6. Verify
+### 7. Verify
 
 All four jobs must conclude `success` (the rest are skipped for foliotell):
 
@@ -107,6 +127,15 @@ Expected: `verify`, `test-foliotell`, `deploy-foliotell-testflight`,
 
 TestFlight then processes the build for minutes before internal testers see
 it; no action needed.
+
+## Why this transition exists
+
+Release metadata does not need to wait for a prior code-only merge. The
+candidate branch is the review boundary: it contains the full product delta,
+then freezes while the version, manifest, notes, logs, and gates are added.
+The final merge to `trunk` preserves trunk-only tagging and deployment while
+avoiding a second release-preparation cycle after the product work is already
+reviewed.
 
 ## Caveats
 
