@@ -2,6 +2,11 @@
 
 ## 2026-07-09
 
+- Release `foliotell_v0.5.0` — voice-quality onboarding presents Settings
+  guidance when only standard voices exist, acknowledges installed Enhanced
+  or Premium voices, labels them in the picker, and selects the best
+  audio-capable match automatically.
+
 - Implement the voice-quality onboarding UI in the reader: show the upgrade
   hint when only standard voices are available, and switch to a green
   acknowledgement when an Enhanced/Premium voice is already installed.
