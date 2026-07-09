@@ -1,27 +1,113 @@
+# Re-baselined for iOS 26 simulators (see docs/maestro-simulator-runbook.md):
+# - the document browser opens files only on a double tap under synthesized
+#   input, and restores its last tab/folder across launches;
+# - menu items sometimes miss under synthesized taps, so every menu
+#   interaction verifies the menu closed and retries once;
+# - persisted position makes repeat runs resume mid-document, so the flow
+#   clears it (Start Over while idle) before playing.
+# Environment: "FolioTell iPhone 26.3" simulator, Pushkin fixture seeded in
+# the app container (full poem — short fixtures end mid-flow).
 appId: foliotell.FolioTell
 ---
-- launchApp
+- launchApp:
+    stopApp: true
 - waitForAnimationToEnd:
     timeout: 2000
+# The browser restores its last tab; navigate to Browse if the document
+# is not already on screen.
+- runFlow:
+    when:
+      notVisible: "А_С_Пушкин.*"
+    commands:
+      - tapOn: "Browse"
+      - waitForAnimationToEnd:
+          timeout: 2000
+# Browse may restore at the root locations list ("iCloud Drive" is unique to
+# it) — enter On My iPhone.
+- runFlow:
+    when:
+      visible: "iCloud Drive"
+    commands:
+      - tapOn: "On My iPhone"
+      - waitForAnimationToEnd:
+          timeout: 2000
+# If the browser restored one level up (On My iPhone grid), enter the
+# FolioTell folder — first grid cell.
+- runFlow:
+    when:
+      notVisible: "А_С_Пушкин.*"
+    commands:
+      - tapOn:
+          point: "19%, 52%"
+      - waitForAnimationToEnd:
+          timeout: 2000
 - assertVisible:
     text: "А_С_Пушкин.*"
+# Double tap: a single synthesized tap does not open documents on iOS 26.
 - tapOn:
-    point: "50%, 65%"
+    point: "19%, 52%"
+- waitForAnimationToEnd:
+    timeout: 1000
+- tapOn:
+    point: "19%, 52%"
 - waitForAnimationToEnd:
     timeout: 2000
 - assertVisible: "Play"
 - assertVisible:
     id: "readerSettingsMenu"
-- tapOn: "Play"
-- assertVisible: "Pause"
+# Reset any persisted position while idle so Play always starts from the
+# beginning with full runway.
 - tapOn:
     id: "readerSettingsMenu"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible: "Auto"
+- tapOn: "Start Over"
+- waitForAnimationToEnd:
+    timeout: 1000
+# Start Over is disabled when no position is stored — dismiss the menu with
+# an outside tap in that case.
+- runFlow:
+    when:
+      visible: "Auto"
+    commands:
+      - tapOn:
+          point: "50%, 20%"
+      - waitForAnimationToEnd:
+          timeout: 1000
+- assertNotVisible: "Auto"
+- assertVisible: "Play"
+- tapOn: "Play"
+- assertVisible: "Pause"
+# Speed change mid-playback must not restart or stop speech.
+- tapOn:
+    id: "readerSettingsMenu"
+- waitForAnimationToEnd:
+    timeout: 1500
 - assertVisible: "Auto"
 - tapOn: "1.5x"
+- waitForAnimationToEnd:
+    timeout: 1000
+# Menu-item taps can miss under synthesized input — retry once if the menu
+# is still open.
+- runFlow:
+    when:
+      visible: "Auto"
+    commands:
+      - tapOn: "1.5x"
+      - waitForAnimationToEnd:
+          timeout: 1000
+- assertNotVisible: "Auto"
 - assertVisible: "Pause"
 - tapOn: "Pause"
+- waitForAnimationToEnd:
+    timeout: 1000
 - assertVisible: "Resume"
 - tapOn: "Resume"
+- waitForAnimationToEnd:
+    timeout: 1000
 - assertVisible: "Pause"
 - tapOn: "Stop"
+- waitForAnimationToEnd:
+    timeout: 1000
 - assertVisible: "Play"
