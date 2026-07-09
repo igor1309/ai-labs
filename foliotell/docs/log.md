@@ -1,5 +1,11 @@
 # Log
 
+## 2026-07-10
+
+- Release `foliotell_v0.6.0` — Reader Settings now owns front-matter playback,
+  Voice and Playback controls are separated, and an installed Enhanced or
+  Premium voice acknowledgement clears automatically after appearing once.
+
 ## 2026-07-09
 
 - Make the installed Enhanced/Premium voice acknowledgement transient and
