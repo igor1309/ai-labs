@@ -16,6 +16,27 @@ struct ReaderRenderState: Equatable {
     let selectedFrontMatterMode: FrontMatterPlaybackMode
     let selectedVoiceIdentifier: String?
     let voiceOptions: [ReaderVoiceOption]
+
+    var settingsMenuState: ReaderSettingsMenuState {
+
+        ReaderSettingsMenuState(
+            selectedSpeed: selectedSpeed,
+            selectedFrontMatterMode: selectedFrontMatterMode,
+            selectedVoiceIdentifier: selectedVoiceIdentifier,
+            voiceOptions: voiceOptions,
+            isStartOverEnabled: isStartOverEnabled
+        )
+    }
+}
+
+/// The settings menu's complete input, intentionally excluding word-level
+/// playback progress and the transport control state.
+struct ReaderSettingsMenuState: Equatable {
+    let selectedSpeed: SpeechSpeed
+    let selectedFrontMatterMode: FrontMatterPlaybackMode
+    let selectedVoiceIdentifier: String?
+    let voiceOptions: [ReaderVoiceOption]
+    let isStartOverEnabled: Bool
 }
 
 struct ReaderVoiceOption: Equatable, Identifiable {
@@ -171,6 +192,16 @@ struct ReaderView: View {
     #endif
 
     private var settingsMenu: some View {
+        ReaderSettingsMenu(state: state.settingsMenuState, event: event)
+            .equatable()
+    }
+}
+
+private struct ReaderSettingsMenu: View {
+    let state: ReaderSettingsMenuState
+    let event: (ReaderViewEvent) -> Void
+
+    var body: some View {
         Menu {
             Section("Speed") {
                 ForEach(SpeechSpeed.allCases) { speed in
@@ -237,6 +268,14 @@ struct ReaderView: View {
         }
         .accessibilityLabel("Playback settings")
         .accessibilityIdentifier("readerSettingsMenu")
+    }
+}
+
+extension ReaderSettingsMenu: @MainActor Equatable {
+
+    static func == (lhs: ReaderSettingsMenu, rhs: ReaderSettingsMenu) -> Bool {
+
+        lhs.state == rhs.state
     }
 }
 

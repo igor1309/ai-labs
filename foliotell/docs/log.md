@@ -2,6 +2,10 @@
 
 ## 2026-07-09
 
+- Stabilize the open playback-settings menu during word-level progress updates:
+  isolate its equatable content state from transport/progress rendering and
+  cover the projection with a regression test.
+
 - Release `foliotell_v0.4.3` — playback rebuilt on two IMRX-style state
   machines (transport + position, ADR-002) with behavior parity, and the
   Maestro iOS 26 simulator runbook with a re-baselined playback-controls flow.
