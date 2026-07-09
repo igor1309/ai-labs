@@ -224,6 +224,9 @@ jobs:
       - name: Validate manifest invariants
         run: node scripts/release/validate-manifest.js
 
+      - name: Validate FolioTell release notes
+        run: node scripts/release/validate-foliotell-release-notes.js
+
       - name: Run release script tests
         run: ./scripts/run_silent.sh "release-tests" node --test scripts/release/tests/*.test.js
 

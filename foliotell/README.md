@@ -63,6 +63,7 @@ Living references:
 
 - [Device speech](docs/device-speech.md) — design rationale, per-release hypothesis ledger, and diagnostic runbook for device-only audio behavior.
 - [Release runbook](docs/release-runbook.md) — exact release commands, gates, caveats (runner Xcode variance, altool flags), and tag-recovery procedure.
+- [Release notes](docs/releases/) — versioned, checked-in GitHub Release bodies.
 - [App Store Connect product card](docs/app-store-connect-product-card.md) — backed-up app information, version metadata, and API update limitations.
 
 Briefs (`docs/`):

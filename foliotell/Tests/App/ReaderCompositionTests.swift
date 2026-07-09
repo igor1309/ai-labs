@@ -113,6 +113,34 @@ struct ReaderCompositionTests {
         #expect(banner == nil)
     }
 
+    @Test func test_banner_shouldReturnNil_onAcknowledgedInstalledLanguage() {
+
+        let banner = VoiceQualityOnboarding.banner(
+            detectedLanguageCode: "ru-RU",
+            availableVoices: [
+                makeVoice(id: "ru-enhanced", name: "Yuliya", language: "ru-RU", quality: .enhanced),
+            ],
+            dismissedLanguageCodes: [],
+            acknowledgedInstalledLanguageCodes: ["ru-RU"]
+        )
+
+        #expect(banner == nil)
+    }
+
+    @Test func test_banner_shouldReturnUpgradeHint_onAcknowledgedInstalledLanguageWithStandardVoices() {
+
+        let banner = VoiceQualityOnboarding.banner(
+            detectedLanguageCode: "ru-RU",
+            availableVoices: [
+                makeVoice(id: "ru-compact", name: "Milena", language: "ru-RU", quality: .standard),
+            ],
+            dismissedLanguageCodes: [],
+            acknowledgedInstalledLanguageCodes: ["ru-RU"]
+        )
+
+        #expect(banner?.kind == .upgradeHint)
+    }
+
     @Test func test_menuTitle_shouldAppendQualityLabel_onEnhancedVoice() {
 
         let option = ReaderVoiceOption(

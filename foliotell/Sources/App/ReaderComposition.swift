@@ -112,7 +112,16 @@ struct ReaderRootView: View {
     let loadedDocument: LoadedFolioDocument
     let documentPath: String?
 
+    #if os(iOS)
+    @State private var isSettingsPresented = false
+    #endif
+
     var body: some View {
+        readerContent
+    }
+
+    @ViewBuilder
+    private var documentContent: some View {
         switch loadedDocument {
         case let .failure(fileName, error):
             ReaderFailureView(fileName: fileName, error: error)
@@ -133,4 +142,54 @@ struct ReaderRootView: View {
             })
         }
     }
+
+    private var navigationTitle: String {
+        let fileName: String
+
+        switch loadedDocument {
+        case let .failure(failedFileName, _):
+            fileName = failedFileName
+        case let .success(document):
+            fileName = document.fileName
+        }
+
+        guard let extensionStart = fileName.lastIndex(of: ".") else {
+            return fileName
+        }
+
+        return String(fileName[..<extensionStart])
+    }
+
+    #if os(iOS)
+    private var readerContent: some View {
+        documentContent
+            .navigationTitle(navigationTitle)
+            .toolbar {
+                ToolbarTitleMenu()
+
+                ToolbarItem(placement: .principal) {
+                    Text(navigationTitle)
+                        .lineLimit(1)
+                        .accessibilityIdentifier("readerNavigationTitle")
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isSettingsPresented = true
+                    } label: {
+                        Image(systemName: "slider.horizontal.3")
+                    }
+                    .accessibilityLabel("Reader settings")
+                    .accessibilityIdentifier("readerSettingsGear")
+                }
+            }
+            .sheet(isPresented: $isSettingsPresented) {
+                ReaderSettingsView()
+            }
+    }
+    #else
+    private var readerContent: some View {
+        documentContent
+    }
+    #endif
 }

@@ -14,7 +14,7 @@ skill; this runbook is the FolioTell-specific execution order.
 ## Preconditions
 
 - All code changes for the release are already merged to `trunk` (the release
-  PR contains only the version bump, manifest, and log entries).
+  PR contains only the version bump, manifest, release note, and log entries).
 - Working tree clean, on `trunk`, up to date: `git checkout trunk && git pull --ff-only`.
 - No `foliotell_v<new-version>` tag exists locally or on origin.
 
@@ -32,6 +32,15 @@ node scripts/release/generate-manifest.js --check
 
 SemVer: patch for fixes, minor for features (pre-1.0 discipline per repo
 convention).
+
+Create `foliotell/docs/releases/<new-version>.md` with YAML front matter, an
+exact `# FolioTell <new-version>` title, and a non-empty `## What's New`
+section. Its user-facing Markdown, excluding the YAML metadata, becomes the
+GitHub Release body.
+
+```bash
+node scripts/release/validate-foliotell-release-notes.js
+```
 
 ### 2. Log entries
 
@@ -54,7 +63,7 @@ they last ran green.
 ### 4. PR
 
 ```bash
-git add foliotell/release.toml release-units.toml docs/log.md foliotell/docs/log.md
+git add foliotell/release.toml release-units.toml foliotell/docs/releases/<version>.md docs/log.md foliotell/docs/log.md
 git commit -m "release foliotell <version>"
 git push -u origin <branch>
 gh pr create --title "Release FolioTell <version>" --body "<summary + verification>"

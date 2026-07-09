@@ -54,14 +54,38 @@ appId: foliotell.FolioTell
     timeout: 2000
 - assertVisible: "Play"
 - assertVisible:
-    id: "readerSettingsMenu"
+    id: "readerSettingsGear"
+- assertVisible:
+    id: "readerVoiceMenu"
+- assertVisible:
+    id: "readerPlaybackMenu"
+# Front Matter is a reader setting, not a compact playback-menu item.
+- tapOn:
+    id: "readerSettingsGear"
+- assertVisible:
+    id: "readerSettingsPage"
+- takeScreenshot: reader-settings
+- assertVisible: "Read"
+- assertVisible: "Skip"
+- tapOn:
+    id: "frontMatterReadOption"
+- assertVisible: "Read selected"
+- tapOn:
+    id: "readerSettingsDone"
+- tapOn:
+    id: "readerVoiceMenu"
+- assertVisible: "Auto"
+- tapOn:
+    point: "50%, 20%"
+- assertNotVisible: "Auto"
 # Reset any persisted position while idle so Play always starts from the
 # beginning with full runway.
 - tapOn:
-    id: "readerSettingsMenu"
+    id: "readerPlaybackMenu"
 - waitForAnimationToEnd:
     timeout: 1500
-- assertVisible: "Auto"
+- assertNotVisible: "Auto"
+- assertNotVisible: "Front matter"
 - tapOn: "Start Over"
 - waitForAnimationToEnd:
     timeout: 1000
@@ -69,34 +93,36 @@ appId: foliotell.FolioTell
 # an outside tap in that case.
 - runFlow:
     when:
-      visible: "Auto"
+      visible: "1.5x"
     commands:
       - tapOn:
           point: "50%, 20%"
       - waitForAnimationToEnd:
           timeout: 1000
-- assertNotVisible: "Auto"
+- assertNotVisible: "1.5x"
 - assertVisible: "Play"
 - tapOn: "Play"
 - assertVisible: "Pause"
 # Speed change mid-playback must not restart or stop speech.
 - tapOn:
-    id: "readerSettingsMenu"
+    id: "readerPlaybackMenu"
 - waitForAnimationToEnd:
     timeout: 1500
-- assertVisible: "Auto"
+- assertNotVisible: "Auto"
 - tapOn: "1.5x"
 - waitForAnimationToEnd:
     timeout: 1000
-# Menu-item taps can miss under synthesized input — retry once if the menu
-# is still open.
+# If the speed menu remains open after the selection, dismiss it without
+# changing the selected speed before asserting the playback state.
 - runFlow:
     when:
-      visible: "Auto"
+      visible: "1.5x"
     commands:
-      - tapOn: "1.5x"
+      - tapOn:
+          point: "50%, 20%"
       - waitForAnimationToEnd:
           timeout: 1000
+- assertNotVisible: "1.5x"
 - assertNotVisible: "Auto"
 - assertVisible: "Pause"
 - tapOn: "Pause"

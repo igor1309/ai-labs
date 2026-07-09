@@ -63,6 +63,30 @@ matches the filename pattern `А_С_Пушкин.*`.
 the app and does not populate Recents — seed via the container and open
 through the browser UI.
 
+## Voice-Quality Acknowledgement Flow
+
+`voice-quality-acknowledgement.yaml` proves the installed Enhanced/Premium
+voice acknowledgement is not a persistent sticker: it asserts the banner on
+the first opening, waits for its five-second auto-dismissal, stops the app,
+opens the same document again, and asserts the banner is absent.
+
+Run it with the deterministic debug voice catalog and a reset acknowledgement
+state. Stop the app before updating its defaults:
+
+```bash
+xcrun simctl terminate <UDID> foliotell.FolioTell
+xcrun simctl spawn <UDID> defaults write foliotell.FolioTell \
+  voiceQualityPreviewMode -string installed
+xcrun simctl spawn <UDID> defaults write foliotell.FolioTell \
+  acknowledgedInstalledVoiceQualityLanguageCodes -string ""
+maestro test foliotell/.maestro/flows/voice-quality-acknowledgement.yaml \
+  --device <UDID>
+```
+
+The test emits `enhanced-voice-first-open`,
+`enhanced-voice-auto-dismissed`, and `enhanced-voice-second-open` screenshots.
+The first must contain `voiceQualityBanner`; the latter two must not.
+
 ## Synthesized-Input Quirks (iOS 26 document browser)
 
 These hold on iOS 26.3 and 26.4, for both legacy and current builds — they

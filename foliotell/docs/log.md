@@ -2,6 +2,15 @@
 
 ## 2026-07-09
 
+- Make the installed Enhanced/Premium voice acknowledgement transient and
+  one-time per language: it now auto-dismisses after five seconds and does
+  not reappear when the document is opened again. The standard-only upgrade
+  hint remains independently dismissible.
+
+- Enforce versioned release notes: release preparation now requires
+  `docs/releases/<version>.md`, validates its title and user-facing changes
+  in CI, and publishes its Markdown body without YAML metadata to GitHub.
+
 - Release `foliotell_v0.5.0` — voice-quality onboarding presents Settings
   guidance when only standard voices exist, acknowledges installed Enhanced
   or Premium voices, labels them in the picker, and selects the best
@@ -21,7 +30,6 @@
 - Stabilize the open playback-settings menu during word-level progress updates:
   isolate its equatable content state from transport/progress rendering and
   cover the projection with a regression test.
-
 - Auto voice selection now prefers the highest-quality installed voice
   (Premium > Enhanced > compact) among audio-capable exact-language matches,
   so an installed Enhanced Russian voice wins over compact Milena; quality
