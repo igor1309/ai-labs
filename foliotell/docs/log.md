@@ -2,6 +2,10 @@
 
 ## 2026-07-09
 
+- Release `foliotell_v0.4.3` — playback rebuilt on two IMRX-style state
+  machines (transport + position, ADR-002) with behavior parity, and the
+  Maestro iOS 26 simulator runbook with a re-baselined playback-controls flow.
+
 - Re-baseline the playback-controls Maestro flow for iOS 26: browser-state
   navigation, double-tap open, idle Start Over position reset, and verified
   menu interactions with one retry; three consecutive green runs on the
