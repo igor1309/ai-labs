@@ -6,6 +6,14 @@
   isolate its equatable content state from transport/progress rendering and
   cover the projection with a regression test.
 
+- Auto voice selection now prefers the highest-quality installed voice
+  (Premium > Enhanced > compact) among audio-capable exact-language matches,
+  so an installed Enhanced Russian voice wins over compact Milena; quality
+  still never overrides audio-capability (silent-voice bug class). Landing
+  page points users at the Settings voice-download path; backlog gains
+  voice-quality onboarding, on-device neural TTS (flagged for UI discussion),
+  and a gated cloud-TTS option.
+
 - Release `foliotell_v0.4.3` — playback rebuilt on two IMRX-style state
   machines (transport + position, ADR-002) with behavior parity, and the
   Maestro iOS 26 simulator runbook with a re-baselined playback-controls flow.

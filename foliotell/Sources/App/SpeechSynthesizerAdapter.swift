@@ -86,7 +86,8 @@ extension SpeechSynthesizerAdapter: SpeechSynthesisControlling {
             SpeechVoiceDescriptor(
                 identifier: $0.identifier,
                 language: $0.language,
-                isAudioCapable: $0.audioFileSettings.isEmpty == false
+                isAudioCapable: $0.audioFileSettings.isEmpty == false,
+                quality: SpeechVoiceQuality($0.quality)
             )
         }
         guard let identifier = SpeechVoiceSelection.automaticVoiceIdentifier(
@@ -99,6 +100,17 @@ extension SpeechSynthesizerAdapter: SpeechSynthesisControlling {
 
         logger.info("resolved \(languageCode) to voice \(identifier) from \(availableVoices.count) catalog voices")
         return AVSpeechSynthesisVoice(identifier: identifier)
+    }
+}
+
+private extension SpeechVoiceQuality {
+
+    init(_ quality: AVSpeechSynthesisVoiceQuality) {
+        switch quality {
+        case .premium: self = .premium
+        case .enhanced: self = .enhanced
+        default: self = .standard
+        }
     }
 }
 
