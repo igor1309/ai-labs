@@ -1,6 +1,11 @@
 # Log
 
 ## 2026-07-09
+- FolioTell: release `foliotell_v0.5.0` — language-aware voice-quality
+  onboarding, Enhanced/Premium voice acknowledgement, and quality-labelled
+  voice choices; automatic selection now prefers the best installed
+  audio-capable voice.
+
 - Release CI: pin `test-foliotell` to the newest runner Xcode (same "Select
   newest Xcode" step as the deploy job and `foliotell-core.yml`) — a
   `macos-latest` image with default Xcode 16.x/Swift 6.1 rejected the
