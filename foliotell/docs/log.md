@@ -2,6 +2,11 @@
 
 ## 2026-07-10
 
+- Release process: FolioTell release candidates may transition from a complete
+  feature branch without a prior code-only merge; the candidate freezes before
+  version metadata and full release notes are added, then merges to `trunk` for
+  tagging.
+
 - Release `foliotell_v0.6.0` — Reader Settings now owns front-matter playback,
   Voice and Playback controls are separated, and an installed Enhanced or
   Premium voice acknowledgement clears automatically after appearing once.
