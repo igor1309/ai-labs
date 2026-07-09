@@ -1,5 +1,13 @@
 # Log
 
+## 2026-07-09
+
+- Capture the Maestro-on-iOS-26 investigation as a runbook
+  (`docs/maestro-simulator-runbook.md`): environment history (iOS 18 flow home
+  orphaned by the deployment-target bump), working 26.3 simulator, fixture
+  seeding, and the synthesized-input quirks (double-tap to open, rename trap,
+  menu settle waits).
+
 ## 2026-07-08
 
 - Restructure playback around two IMRX-style state machines (ADR-002):
