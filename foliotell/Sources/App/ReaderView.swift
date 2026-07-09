@@ -18,6 +18,32 @@ struct ReaderRenderState: Equatable {
     let voiceQualityBanner: ReaderVoiceQualityBanner?
     let voiceOptions: [ReaderVoiceOption]
 
+    init(
+        title: String,
+        frontMatterText: String?,
+        bodyText: String,
+        progress: Double,
+        playbackState: PlaybackState,
+        isStartOverEnabled: Bool,
+        selectedSpeed: SpeechSpeed,
+        selectedFrontMatterMode: FrontMatterPlaybackMode,
+        selectedVoiceIdentifier: String?,
+        voiceQualityBanner: ReaderVoiceQualityBanner? = nil,
+        voiceOptions: [ReaderVoiceOption]
+    ) {
+        self.title = title
+        self.frontMatterText = frontMatterText
+        self.bodyText = bodyText
+        self.progress = progress
+        self.playbackState = playbackState
+        self.isStartOverEnabled = isStartOverEnabled
+        self.selectedSpeed = selectedSpeed
+        self.selectedFrontMatterMode = selectedFrontMatterMode
+        self.selectedVoiceIdentifier = selectedVoiceIdentifier
+        self.voiceQualityBanner = voiceQualityBanner
+        self.voiceOptions = voiceOptions
+    }
+
     var settingsMenuState: ReaderSettingsMenuState {
 
         ReaderSettingsMenuState(
@@ -47,6 +73,11 @@ struct ReaderVoiceOption: Equatable, Identifiable {
     init(_ voice: AvailableVoice) {
         id = voice.id
         menuTitle = voice.menuTitle
+    }
+
+    init(id: String, menuTitle: String) {
+        self.id = id
+        self.menuTitle = menuTitle
     }
 }
 
