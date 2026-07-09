@@ -25,6 +25,67 @@ struct ReaderScreen: View {
     }
 }
 
+struct ReaderSettingsView: View {
+    @AppStorage("selectedFrontMatterPlaybackMode") private var storedFrontMatterMode = FrontMatterPlaybackMode.skip.rawValue
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Front matter") {
+                    ForEach(FrontMatterPlaybackMode.allCases) { mode in
+                        Button {
+                            storedFrontMatterMode = mode.rawValue
+                        } label: {
+                            if selectedFrontMatterMode == mode {
+                                Label(mode.title, systemImage: "checkmark")
+                            } else {
+                                Text(mode.title)
+                            }
+                        }
+                        .accessibilityLabel(accessibilityLabel(for: mode))
+                        .accessibilityIdentifier(accessibilityIdentifier(for: mode))
+                    }
+                }
+            }
+            .navigationTitle("Reader settings")
+            .navigationBarBackButtonHidden(true)
+            .accessibilityIdentifier("readerSettingsPage")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .accessibilityIdentifier("readerSettingsDone")
+                }
+            }
+        }
+    }
+}
+
+private extension ReaderSettingsView {
+
+    var selectedFrontMatterMode: FrontMatterPlaybackMode {
+        FrontMatterPlaybackMode.mode(for: storedFrontMatterMode)
+    }
+
+    func accessibilityLabel(for mode: FrontMatterPlaybackMode) -> String {
+
+        selectedFrontMatterMode == mode ? "\(mode.title) selected" : mode.title
+    }
+
+    func accessibilityIdentifier(for mode: FrontMatterPlaybackMode) -> String {
+
+        switch mode {
+        case .read:
+            "frontMatterReadOption"
+        case .skip:
+            "frontMatterSkipOption"
+        }
+    }
+}
+
 /// Adapter wrapper: observes both machines, holds the global settings, and
 /// delegates rendering to the pure `ReaderView` as `(state, event)`.
 struct ReaderSessionView: View {

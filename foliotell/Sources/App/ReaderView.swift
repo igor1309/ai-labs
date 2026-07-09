@@ -250,12 +250,15 @@ struct ReaderView: View {
 
     #if os(iOS)
     // Native bottom-bar toolbar: on iOS 26 the system renders it as Liquid Glass
-    // floating over the reader text (no edge inset). The playback transport lives
-    // in one glass capsule centered between flexible spacers; the settings menu
-    // is promoted into its own separate glass capsule, the way Search is set
-    // apart in Apple Music.
+    // floating over the reader text (no edge inset). Voice selection stays on
+    // the leading edge, transport stays centered, and the frequent playback
+    // actions stay on the trailing edge.
     @ToolbarContentBuilder
     private var readerBottomBar: some ToolbarContent {
+        ToolbarItem(placement: .bottomBar) {
+            voiceMenu
+        }
+
         ToolbarSpacer(.flexible, placement: .bottomBar)
 
         ToolbarItemGroup(placement: .bottomBar) {
@@ -296,22 +299,42 @@ struct ReaderView: View {
         ToolbarSpacer(.flexible, placement: .bottomBar)
 
         ToolbarItem(placement: .bottomBar) {
-            settingsMenu
+            playbackMenu
         }
     }
     #endif
 
-    private var settingsMenu: some View {
-        ReaderSettingsMenu(state: state.settingsMenuState, event: event)
-            .equatable()
+    private var voiceMenu: some View {
+        Menu {
+            Button {
+                event(.voiceSelected(nil))
+            } label: {
+                if state.selectedVoiceIdentifier == nil {
+                    Label("Auto", systemImage: "checkmark")
+                } else {
+                    Text("Auto")
+                }
+            }
+
+            ForEach(state.voiceOptions) { voiceOption in
+                Button {
+                    event(.voiceSelected(voiceOption.id))
+                } label: {
+                    if state.selectedVoiceIdentifier == voiceOption.id {
+                        Label(voiceOption.menuTitle, systemImage: "checkmark")
+                    } else {
+                        Text(voiceOption.menuTitle)
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: "waveform")
+        }
+        .accessibilityLabel("Voice")
+        .accessibilityIdentifier("readerVoiceMenu")
     }
-}
 
-private struct ReaderSettingsMenu: View {
-    let state: ReaderSettingsMenuState
-    let event: (ReaderViewEvent) -> Void
-
-    var body: some View {
+    private var playbackMenu: some View {
         Menu {
             Section("Speed") {
                 ForEach(SpeechSpeed.allCases) { speed in
@@ -327,44 +350,6 @@ private struct ReaderSettingsMenu: View {
                 }
             }
 
-            Section("Front matter") {
-                ForEach(FrontMatterPlaybackMode.allCases) { mode in
-                    Button {
-                        event(.frontMatterModeSelected(mode))
-                    } label: {
-                        if state.selectedFrontMatterMode == mode {
-                            Label(mode.title, systemImage: "checkmark")
-                        } else {
-                            Text(mode.title)
-                        }
-                    }
-                }
-            }
-
-            Section("Voice") {
-                Button {
-                    event(.voiceSelected(nil))
-                } label: {
-                    if state.selectedVoiceIdentifier == nil {
-                        Label("Auto", systemImage: "checkmark")
-                    } else {
-                        Text("Auto")
-                    }
-                }
-
-                ForEach(state.voiceOptions) { voiceOption in
-                    Button {
-                        event(.voiceSelected(voiceOption.id))
-                    } label: {
-                        if state.selectedVoiceIdentifier == voiceOption.id {
-                            Label(voiceOption.menuTitle, systemImage: "checkmark")
-                        } else {
-                            Text(voiceOption.menuTitle)
-                        }
-                    }
-                }
-            }
-
             Section {
                 Button {
                     event(.startOverTapped)
@@ -374,18 +359,10 @@ private struct ReaderSettingsMenu: View {
                 .disabled(state.isStartOverEnabled == false)
             }
         } label: {
-            Image(systemName: "slider.horizontal.3")
+            Image(systemName: "speedometer")
         }
-        .accessibilityLabel("Playback settings")
-        .accessibilityIdentifier("readerSettingsMenu")
-    }
-}
-
-extension ReaderSettingsMenu: @MainActor Equatable {
-
-    static func == (lhs: ReaderSettingsMenu, rhs: ReaderSettingsMenu) -> Bool {
-
-        lhs.state == rhs.state
+        .accessibilityLabel("Playback controls")
+        .accessibilityIdentifier("readerPlaybackMenu")
     }
 }
 

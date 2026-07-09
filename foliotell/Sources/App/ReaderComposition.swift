@@ -112,7 +112,16 @@ struct ReaderRootView: View {
     let loadedDocument: LoadedFolioDocument
     let documentPath: String?
 
+    #if os(iOS)
+    @State private var isSettingsPresented = false
+    #endif
+
     var body: some View {
+        readerContent
+    }
+
+    @ViewBuilder
+    private var documentContent: some View {
         switch loadedDocument {
         case let .failure(fileName, error):
             ReaderFailureView(fileName: fileName, error: error)
@@ -133,4 +142,28 @@ struct ReaderRootView: View {
             })
         }
     }
+
+    #if os(iOS)
+    private var readerContent: some View {
+        documentContent
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isSettingsPresented = true
+                    } label: {
+                        Image(systemName: "slider.horizontal.3")
+                    }
+                    .accessibilityLabel("Reader settings")
+                    .accessibilityIdentifier("readerSettingsGear")
+                }
+            }
+            .sheet(isPresented: $isSettingsPresented) {
+                ReaderSettingsView()
+            }
+    }
+    #else
+    private var readerContent: some View {
+        documentContent
+    }
+    #endif
 }

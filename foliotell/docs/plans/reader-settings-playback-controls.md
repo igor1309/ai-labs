@@ -31,7 +31,9 @@ Preflight check: [x] `git worktree list --porcelain` and `git branch --show-curr
 
 ## Scope guardrails
 
-- Add a top-trailing gear that opens a dedicated reader settings page.
+- Add a `slider.horizontal.3` control to the outer `DocumentGroup`
+  top-trailing bar that opens a dedicated reader settings page.
+- Present Reader Settings with trailing Done as its only dismissal control.
 - Move the Front Matter Read/Skip control to that page.
 - Add a leading bottom-bar Voice menu for Auto and installed Apple voices.
 - Limit the trailing bottom-bar playback menu to Speed and Start Over.
@@ -99,10 +101,11 @@ Preflight check: [x] `git worktree list --porcelain` and `git branch --show-curr
 
 ## Done criteria
 
-1. Opening a document shows a top-trailing gear, a leading Voice menu, and a
+1. Opening a document shows a top-trailing settings control, a leading Voice menu, and a
    trailing compact playback menu, proven by the updated Maestro identifiers.
-2. The settings page contains Front Matter Read and Skip; the compact playback
-   menu does not, proven by Maestro visibility assertions.
+2. The settings page contains Front Matter Read and Skip with trailing Done as
+   its only dismissal control; the compact playback menu does not, proven by
+   Maestro visibility assertions.
 3. The Voice menu contains Auto and the filtered installed-voice list, proven
    by Maestro assertions and focused app tests.
 4. The compact playback menu contains only Speed and Start Over, proven by
