@@ -70,4 +70,6 @@ Proceed to a product/implementation specification only when every spike row has 
 
 1. Which iOS versions and physical device classes must meet the performance gate?
 2. Which user-visible reading granularity is required: sentence highlighting, word highlighting, or a position-only indicator?
-3. Must the first neural voice be bundled, or may it be downloaded later? This affects app size, availability, and the settings/download backlog item, but not whether synthesis itself is on-device after the model is present.
+3. Model distribution is decided: the reader downloads neural voices through
+   FolioTell settings. The remaining product questions are recorded in
+   [`docs/product-intent/downloadable-on-device-neural-voices.md`](../docs/product-intent/downloadable-on-device-neural-voices.md).
