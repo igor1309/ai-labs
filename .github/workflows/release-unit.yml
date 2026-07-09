@@ -120,6 +120,9 @@ jobs:
         with:
           ref: ${{ github.ref_name }}
 
+      - name: Select newest Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)/Contents/Developer"
+
       - name: Build package
         run: swift build
         working-directory: foliotell

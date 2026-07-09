@@ -1,6 +1,10 @@
 # Log
 
 ## 2026-07-09
+- Release CI: pin `test-foliotell` to the newest runner Xcode (same "Select
+  newest Xcode" step as the deploy job and `foliotell-core.yml`) — a
+  `macos-latest` image with default Xcode 16.x/Swift 6.1 rejected the
+  swift-tools-6.2 package and failed the `foliotell_v0.4.3` release run.
 - FolioTell: release `foliotell_v0.4.3` — playback rebuilt on two IMRX-style
   state machines (transport + position, ADR-002) with behavior parity, plus
   the Maestro iOS 26 simulator runbook and re-baselined playback-controls
