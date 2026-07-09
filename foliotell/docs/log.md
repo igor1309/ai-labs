@@ -2,6 +2,17 @@
 
 ## 2026-07-09
 
+- Implement the voice-quality onboarding UI in the reader: show the upgrade
+  hint when only standard voices are available, and switch to a green
+  acknowledgement when an Enhanced/Premium voice is already installed.
+  Verified both states with Maestro screenshots on the seeded iOS 26.3
+  simulator.
+
+- Refine the voice-quality onboarding backlog item so the upgrade hint only
+  appears when the detected language has no Enhanced/Premium voice installed;
+  when a better voice is already present, the UI should acknowledge it in the
+  picker instead of repeating download guidance.
+
 - Stabilize the open playback-settings menu during word-level progress updates:
   isolate its equatable content state from transport/progress rendering and
   cover the projection with a regression test.

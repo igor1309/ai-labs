@@ -15,6 +15,7 @@ struct ReaderRenderState: Equatable {
     let selectedSpeed: SpeechSpeed
     let selectedFrontMatterMode: FrontMatterPlaybackMode
     let selectedVoiceIdentifier: String?
+    let voiceQualityBanner: ReaderVoiceQualityBanner?
     let voiceOptions: [ReaderVoiceOption]
 
     var settingsMenuState: ReaderSettingsMenuState {
@@ -42,6 +43,33 @@ struct ReaderSettingsMenuState: Equatable {
 struct ReaderVoiceOption: Equatable, Identifiable {
     let id: String
     let menuTitle: String
+
+    init(_ voice: AvailableVoice) {
+        id = voice.id
+        menuTitle = voice.menuTitle
+    }
+}
+
+struct ReaderVoiceQualityBanner: Equatable, Identifiable {
+    enum Kind: Equatable {
+        case upgradeHint
+        case installedAcknowledgement
+    }
+
+    let id: String
+    let kind: Kind
+    let languageCode: String
+    let title: String
+    let message: String
+
+    init(kind: Kind, languageCode: String, title: String, message: String) {
+
+        self.kind = kind
+        self.languageCode = languageCode
+        self.title = title
+        self.message = message
+        id = "\(kind)-\(languageCode)"
+    }
 }
 
 enum ReaderViewEvent: Equatable {
@@ -53,6 +81,8 @@ enum ReaderViewEvent: Equatable {
     case speedSelected(SpeechSpeed)
     case frontMatterModeSelected(FrontMatterPlaybackMode)
     case voiceSelected(String?)
+    case voiceQualityBannerOpenSettings
+    case voiceQualityBannerDismissed
 }
 
 /// Pure presentation of the reader: a function of `state`, routing every user
@@ -105,6 +135,10 @@ struct ReaderView: View {
                 .fontWeight(.semibold)
                 .lineLimit(2)
 
+            if let voiceQualityBanner = state.voiceQualityBanner {
+                voiceQualityBannerView(voiceQualityBanner)
+            }
+
             documentText
 
             Spacer()
@@ -127,6 +161,51 @@ struct ReaderView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .textSelection(.enabled)
         }
+    }
+
+    @ViewBuilder
+    private func voiceQualityBannerView(_ banner: ReaderVoiceQualityBanner) -> some View {
+
+        let accentColor: Color = banner.kind == .upgradeHint ? .orange : .green
+        VStack(alignment: .leading, spacing: 12) {
+            Label {
+                Text(banner.title)
+                    .font(.headline)
+            } icon: {
+                Image(systemName: banner.kind == .upgradeHint ? "sparkles" : "checkmark.seal.fill")
+            }
+            .foregroundStyle(accentColor)
+
+            Text(banner.message)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+
+            if banner.kind == .upgradeHint {
+                HStack(spacing: 12) {
+                    Button {
+                        event(.voiceQualityBannerOpenSettings)
+                    } label: {
+                        Text("Open Settings")
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    Button {
+                        event(.voiceQualityBannerDismissed)
+                    } label: {
+                        Text("Not now")
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(accentColor.opacity(0.2))
+        )
+        .accessibilityIdentifier("voiceQualityBanner")
     }
 
     private var playbackProgressRibbon: some View {

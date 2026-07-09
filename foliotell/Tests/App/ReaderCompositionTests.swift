@@ -74,6 +74,54 @@ struct ReaderCompositionTests {
         #expect(store.calls.last == .set("/doc.md", 16))
     }
 
+    @Test func test_banner_shouldReturnUpgradeHint_onStandardVoicesOnly() {
+
+        let banner = VoiceQualityOnboarding.banner(
+            detectedLanguageCode: "ru-RU",
+            availableVoices: [
+                makeVoice(id: "ru-compact", name: "Milena", language: "ru-RU", quality: .standard),
+            ],
+            dismissedLanguageCodes: []
+        )
+
+        #expect(banner?.kind == .upgradeHint)
+    }
+
+    @Test func test_banner_shouldReturnInstalledAcknowledgement_onEnhancedVoice() {
+
+        let banner = VoiceQualityOnboarding.banner(
+            detectedLanguageCode: "ru-RU",
+            availableVoices: [
+                makeVoice(id: "ru-enhanced", name: "Yuliya", language: "ru-RU", quality: .enhanced),
+            ],
+            dismissedLanguageCodes: []
+        )
+
+        #expect(banner?.kind == .installedAcknowledgement)
+    }
+
+    @Test func test_banner_shouldReturnNil_onDismissedLanguage() {
+
+        let banner = VoiceQualityOnboarding.banner(
+            detectedLanguageCode: "ru-RU",
+            availableVoices: [
+                makeVoice(id: "ru-compact", name: "Milena", language: "ru-RU", quality: .standard),
+            ],
+            dismissedLanguageCodes: ["ru-RU"]
+        )
+
+        #expect(banner == nil)
+    }
+
+    @Test func test_menuTitle_shouldAppendQualityLabel_onEnhancedVoice() {
+
+        let option = ReaderVoiceOption(
+            makeVoice(id: "ru-enhanced", name: "Yuliya", language: "ru-RU", quality: .enhanced)
+        )
+
+        #expect(option.menuTitle == "Yuliya (ru-RU) · Enhanced")
+    }
+
     // MARK: - Helpers
 
     private func makeSUT(
@@ -105,6 +153,16 @@ struct ReaderCompositionTests {
             voiceIdentifier: nil,
             startUTF16Offset: session.position.state.resumeSpokenUTF16Offset
         )
+    }
+
+    private func makeVoice(
+        id: String,
+        name: String,
+        language: String,
+        quality: SpeechVoiceQuality
+    ) -> AvailableVoice {
+
+        AvailableVoice(id: id, name: name, language: language, quality: quality)
     }
 }
 
