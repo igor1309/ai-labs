@@ -21,7 +21,6 @@
 - Stabilize the open playback-settings menu during word-level progress updates:
   isolate its equatable content state from transport/progress rendering and
   cover the projection with a regression test.
-
 - Auto voice selection now prefers the highest-quality installed voice
   (Premium > Enhanced > compact) among audio-capable exact-language matches,
   so an installed Enhanced Russian voice wins over compact Milena; quality
