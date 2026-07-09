@@ -2,6 +2,15 @@
 
 ## 2026-07-10
 
+- Analyze the reported playback-latency regression and play/pause desync
+  (`docs/playback-latency-desync-analysis.md`): the 0.6.0 controls split
+  removed the equatable menu isolation so both bottom-bar menus rebuild per
+  spoken word again (the struct-only regression test stayed green), the
+  composition root has a transport→handler→adapter retain cycle leaking the
+  playback stack per document, and pause/stop acceptance failures drop
+  silently. Ranked hypotheses, device verification steps, and the
+  integration-test gaps to close — analysis only, no code changes.
+
 - Release governance: explicitly exempt FolioTell from the Agonara-only
   readiness and health gates; FolioTell evidence is its TestFlight release
   workflow.
