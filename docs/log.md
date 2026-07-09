@@ -1,6 +1,10 @@
 # Log
 
 ## 2026-07-09
+- FolioTell: release `foliotell_v0.4.3` — playback rebuilt on two IMRX-style
+  state machines (transport + position, ADR-002) with behavior parity, plus
+  the Maestro iOS 26 simulator runbook and re-baselined playback-controls
+  flow.
 - Release CI: fail the `release-unit.yml` verify step when `verify-tag.js`
   rejects a tag — the pipe through `tee` swallowed the non-zero exit, so a
   tag/manifest version mismatch produced a green run with empty outputs,
