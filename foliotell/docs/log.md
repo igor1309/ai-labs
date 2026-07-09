@@ -2,6 +2,12 @@
 
 ## 2026-07-09
 
+- Re-baseline the playback-controls Maestro flow for iOS 26: browser-state
+  navigation, double-tap open, idle Start Over position reset, and verified
+  menu interactions with one retry; three consecutive green runs on the
+  seeded 26.3 simulator. Runbook updated with the fixture-length requirement
+  and menu-retry pattern.
+
 - Capture the Maestro-on-iOS-26 investigation as a runbook
   (`docs/maestro-simulator-runbook.md`): environment history (iOS 18 flow home
   orphaned by the deployment-target bump), working 26.3 simulator, fixture

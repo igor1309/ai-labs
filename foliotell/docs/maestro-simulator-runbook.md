@@ -52,8 +52,12 @@ printf '\xef\xbb\xbf---\ntitle: "Зимнее утро"\nauthor: "А. С. Пуш
   > "$CONTAINER/Documents/А_С_Пушкин_Зимнее_утро.md"
 ```
 
-Any BOM-prefixed front-matter Markdown with a few Russian sentences works;
-the flow matches the filename pattern `А_С_Пушкин.*`.
+Any BOM-prefixed front-matter Markdown with Russian text works — but it MUST
+provide **several minutes of speech** (≥ ~6000 characters). The persisted
+speed setting can map to a fast synthesis rate: a ~1.5k-character fixture
+finished naturally in ~18 seconds, ending playback before the flow's asserts
+(each Maestro assert retries for up to ~17 s) reached the Stop step. The flow
+matches the filename pattern `А_С_Пушкин.*`.
 
 `xcrun simctl openurl <UDID> "file://..."` does **not** open the document in
 the app and does not populate Recents — seed via the container and open
@@ -80,15 +84,22 @@ are environment behavior, not app regressions:
 - **The settings menu needs a settle wait** (`waitForAnimationToEnd`,
   ~1500 ms) after opening before its items accept taps; without it, item taps
   (e.g. `1.5x`) silently miss and the menu stays open.
+- **Menu-item taps still miss occasionally even after the settle wait** —
+  after tapping an item, verify the menu closed (`assertNotVisible: "Auto"`)
+  and retry the item tap once if it is still open (`runFlow`/`when visible`).
+- **Persisted position and speed survive across runs** (`@AppStorage` +
+  position store). For repeat-run determinism the flow resets position via
+  Start Over while idle before playing; speed is set explicitly by the flow.
 
 ## Verified Control-Cycle Sequence
 
-The behavioral payload of `playback-controls.yaml` (everything after
-document-open) passes verbatim on the refactored app once the document is
-open: Play → Pause visible; settings menu → Auto visible; 1.5x mid-play →
-still Pause (no restart); Pause → Resume → Pause; Stop → Play. A mirrored
-flow with the double-tap open and settle waits is the working template for
-re-baselining the checked-in flow for iOS 26.
+`playback-controls.yaml` is re-baselined for iOS 26 and self-contained: it
+navigates the restored browser state, double-taps the document open, resets
+the persisted position (Start Over while idle), then exercises Play → Pause,
+the settings menu, 1.5x mid-play without restart, Pause → Resume, and Stop —
+verifying each menu interaction landed and retrying once if not. Three
+consecutive green runs on the seeded 26.3 simulator is the stability bar it
+was validated against.
 
 ## Stop / Escalation
 
