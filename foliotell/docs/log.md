@@ -2,6 +2,11 @@
 
 ## 2026-07-09
 
+- Make the installed Enhanced/Premium voice acknowledgement transient and
+  one-time per language: it now auto-dismisses after five seconds and does
+  not reappear when the document is opened again. The standard-only upgrade
+  hint remains independently dismissible.
+
 - Enforce versioned release notes: release preparation now requires
   `docs/releases/<version>.md`, validates its title and user-facing changes
   in CI, and publishes its Markdown body without YAML metadata to GitHub.

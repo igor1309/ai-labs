@@ -98,6 +98,7 @@ struct ReaderSessionView: View {
     @AppStorage("selectedFrontMatterPlaybackMode") private var selectedFrontMatterPlaybackMode = FrontMatterPlaybackMode.skip.rawValue
     @AppStorage("selectedSpeechVoiceIdentifier") private var selectedSpeechVoiceIdentifier = SpeechVoiceSelection.automaticIdentifier
     @AppStorage("dismissedVoiceQualityOnboardingLanguageCodes") private var dismissedVoiceQualityOnboardingLanguageCodes = ""
+    @AppStorage("acknowledgedInstalledVoiceQualityLanguageCodes") private var acknowledgedInstalledVoiceQualityLanguageCodes = ""
     @State private var availableVoices: [AvailableVoice] = []
 
     var body: some View {
@@ -191,7 +192,8 @@ private extension ReaderSessionView {
         VoiceQualityOnboarding.banner(
             detectedLanguageCode: detectedDocumentLanguageCode,
             availableVoices: availableVoices,
-            dismissedLanguageCodes: dismissedVoiceQualityOnboardingLanguageCodesSet
+            dismissedLanguageCodes: dismissedVoiceQualityOnboardingLanguageCodesSet,
+            acknowledgedInstalledLanguageCodes: acknowledgedInstalledVoiceQualityLanguageCodesSet
         )
     }
 
@@ -233,15 +235,42 @@ private extension ReaderSessionView {
         )
     }
 
+    var acknowledgedInstalledVoiceQualityLanguageCodesSet: Set<String> {
+
+        Set(
+            acknowledgedInstalledVoiceQualityLanguageCodes
+                .split(separator: ",")
+                .map(String.init)
+                .filter { $0.isEmpty == false }
+        )
+    }
+
     func dismissVoiceQualityBanner() {
 
-        guard let languageCode = voiceQualityBanner?.languageCode else {
+        guard let banner = voiceQualityBanner else {
             return
         }
+
+        switch banner.kind {
+        case .upgradeHint:
+            dismissVoiceQualityUpgradeHint(for: banner.languageCode)
+        case .installedAcknowledgement:
+            acknowledgeInstalledVoiceQuality(for: banner.languageCode)
+        }
+    }
+
+    func dismissVoiceQualityUpgradeHint(for languageCode: String) {
 
         var dismissedLanguageCodes = dismissedVoiceQualityOnboardingLanguageCodesSet
         dismissedLanguageCodes.insert(languageCode)
         dismissedVoiceQualityOnboardingLanguageCodes = dismissedLanguageCodes.sorted().joined(separator: ",")
+    }
+
+    func acknowledgeInstalledVoiceQuality(for languageCode: String) {
+
+        var acknowledgedLanguageCodes = acknowledgedInstalledVoiceQualityLanguageCodesSet
+        acknowledgedLanguageCodes.insert(languageCode)
+        acknowledgedInstalledVoiceQualityLanguageCodes = acknowledgedLanguageCodes.sorted().joined(separator: ",")
     }
 
     func openSettings() {
@@ -309,7 +338,8 @@ enum VoiceQualityOnboarding {
     static func banner(
         detectedLanguageCode: String?,
         availableVoices: [AvailableVoice],
-        dismissedLanguageCodes: Set<String>
+        dismissedLanguageCodes: Set<String>,
+        acknowledgedInstalledLanguageCodes: Set<String> = []
     ) -> ReaderVoiceQualityBanner? {
 
         guard let detectedLanguageCode else {
@@ -322,6 +352,10 @@ enum VoiceQualityOnboarding {
         }
 
         if let quality = bestQuality(in: languageVoices), quality != .standard {
+            guard acknowledgedInstalledLanguageCodes.contains(detectedLanguageCode) == false else {
+                return nil
+            }
+
             return ReaderVoiceQualityBanner(
                 kind: .installedAcknowledgement,
                 languageCode: detectedLanguageCode,

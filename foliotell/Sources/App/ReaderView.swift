@@ -230,6 +230,19 @@ struct ReaderView: View {
                 .strokeBorder(accentColor.opacity(0.2))
         )
         .accessibilityIdentifier("voiceQualityBanner")
+        .task(id: banner.id) {
+            guard banner.kind == .installedAcknowledgement else {
+                return
+            }
+
+            do {
+                try await Task.sleep(for: .seconds(5))
+            } catch {
+                return
+            }
+
+            event(.voiceQualityBannerDismissed)
+        }
     }
 
     private var playbackProgressRibbon: some View {
