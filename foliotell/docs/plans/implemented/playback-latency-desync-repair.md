@@ -128,11 +128,11 @@ Preflight check: [x] `git worktree list --porcelain` and `git branch --show-curr
 3. Play, immediate pause, immediate stop, and late AVFoundation callbacks have explicit token-safe reducer behavior covered by queued-scheduler tests.
 4. Auto voice startup never synchronously enumerates voices and catalog arrival never restarts/resumes playback, covered by collaborator-spy tests.
 5. `swift test`, `swift build`, and the unsigned iOS archive command pass.
-6. Device checks record responsive play/pause/stop on a book-length document and no orphaned audio after repeated close/reopen cycles.
+6. TestFlight user feedback records responsive play/pause/stop on a book-length document and no orphaned audio after repeated close/reopen cycles; direct user instruction defers this physical-device check until the TestFlight build is available.
 
 ## Final closeout
 
-Final gates: focused tests per phase; `swift test`; `swift build`; unsigned iOS archive; device latency/menu/lifecycle checks; diff and log review.
+Final gates: focused tests per phase; `swift test`; `swift build`; unsigned iOS archive; diff and log review. TestFlight user feedback is the deferred physical-device validation gate.
 
 Archive plan: move to `foliotell/docs/plans/implemented/`.
 

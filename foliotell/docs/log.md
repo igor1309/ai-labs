@@ -2,14 +2,18 @@
 
 ## 2026-07-10
 
+- Release `foliotell_v0.6.1` — restore responsive playback controls,
+  reliable early Pause behavior, and reader-session cleanup; TestFlight user
+  feedback will provide the final physical-device validation.
+
 - Repair the playback latency and play/pause desynchronization regressions:
   restore Equatable Voice/Playback menu boundaries, cache document presentation
   and voice-menu derivations outside word-progress updates, break the
   transport→handler→adapter retain cycle with a weak event relay, retain/retry
   an early pause request at the first word boundary, and serve automatic voice
   selection from the asynchronously loaded catalog. Unit, SPM build, and iOS
-  archive gates pass; physical-device latency and lifecycle verification remain
-  required before release.
+  archive gates pass; physical-device latency and lifecycle verification will
+  be collected from the TestFlight build.
 
 - Analyze the reported playback-latency regression and play/pause desync
   (`docs/playback-latency-desync-analysis.md`): the 0.6.0 controls split
