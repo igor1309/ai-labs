@@ -2,13 +2,13 @@
 
 ## 2026-07-10
 
-- Replace the 0.6.1 live playback graph with one main-actor reader
-  coordinator: direct UI-to-synthesizer control, direct AV delegate facts,
-  monotonic utterance tokens, and a single published word-progress snapshot.
-  The composed integration suite covers same-turn Play, startup Pause,
-  stale finish after restart, anchor persistence, and one publication per
-  word; package tests and the unsigned iOS archive pass. Physical-device
-  timing remains the release-acceptance gate.
+- Prepare `foliotell_v0.6.2` — replace the 0.6.1 live playback graph with one
+  main-actor reader coordinator: direct UI-to-synthesizer control, direct AV
+  delegate facts, monotonic utterance tokens, and a single published
+  word-progress snapshot. The composed integration suite covers same-turn
+  Play, startup Pause, stale finish after restart, anchor persistence, and one
+  publication per word; package tests and the unsigned iOS archive pass.
+  Physical-device timing remains the release-acceptance gate.
 
 - Release `foliotell_v0.6.1` — subsequent TestFlight device evidence
   falsified its intended responsive-control outcome: Play had a multi-second
