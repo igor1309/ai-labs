@@ -69,11 +69,10 @@ public struct EventScheduler: Sendable {
 
     let schedule: @Sendable (@escaping @MainActor () -> Void) -> Void
 
-    /// Defers processing to the next main-queue pass.
+    /// Processes inline on the main actor. Main-actor isolation already
+    /// serializes UI-originated events, so dispatching them again adds latency.
     public static let mainQueue = EventScheduler { action in
-        DispatchQueue.main.async {
-            MainActor.assumeIsolated { action() }
-        }
+        MainActor.assumeIsolated { action() }
     }
 
     /// Processes inline; requires the caller to be on the main actor.

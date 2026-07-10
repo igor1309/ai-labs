@@ -1,3 +1,4 @@
+import Combine
 @testable import FolioTellApp
 import FolioTellCore
 import Testing
@@ -5,18 +6,18 @@ import Testing
 @MainActor
 struct ReaderCompositionTests {
 
-    @Test func test_makeReaderSession_shouldStartTransportIdle() throws {
+    @Test func test_makeReaderSession_shouldStartPlaybackIdle() throws {
 
         let (session, _, _) = try makeSUT()
 
-        #expect(session.transport.state == .idle(lastUtteranceToken: 0))
+        #expect(session.playback.playbackState == .idle)
     }
 
     @Test func test_makeReaderSession_shouldSeedPositionAnchorFromStore() throws {
 
         let (session, _, store) = try makeSUT(storedAnchor: 16)
 
-        #expect(session.position.state.storedAnchor == 16)
+        #expect(session.playback.storedAnchor == 16)
         #expect(store.calls == [.anchor("/doc.md")])
     }
 
@@ -24,7 +25,7 @@ struct ReaderCompositionTests {
 
         let (session, synthesis, _) = try makeSUT(storedAnchor: 16)
 
-        session.transport.event(.primaryTapped(makePlaybackRequest(from: session)))
+        session.primaryTapped(speed: .one, voiceIdentifier: nil)
 
         #expect(synthesis.calls == [
             .activateAudioSession,
@@ -38,39 +39,103 @@ struct ReaderCompositionTests {
         ])
     }
 
-    @Test func test_willSpeakRange_shouldFeedPositionThroughBinderAndPersistAnchor() throws {
+    @Test func test_primaryTapped_shouldReachSynthesizerInSameMainActorTurn() throws {
+
+        let (session, synthesis, _) = try makeSUT()
+
+        session.primaryTapped(speed: .one, voiceIdentifier: nil)
+
+        #expect(synthesis.calls == [
+            .activateAudioSession,
+            .speak(SpeakCommand(
+                utteranceToken: 1,
+                text: "Winter morning. Frost and sun.",
+                speed: .one,
+                voiceIdentifier: nil,
+                languageCode: nil
+            )),
+        ])
+    }
+
+    @Test func test_primaryTapped_shouldPauseAfterSynthesizerStarts_whenPauseWasRequestedDuringStartup() throws {
+
+        let (session, synthesis, _) = try makeSUT(pauseResults: [false, true])
+
+        session.primaryTapped(speed: .one, voiceIdentifier: nil)
+        session.primaryTapped(speed: .one, voiceIdentifier: nil)
+        synthesis.emit(.didStart(utteranceToken: 1))
+
+        #expect(synthesis.calls == [
+            .activateAudioSession,
+            .speak(SpeakCommand(
+                utteranceToken: 1,
+                text: "Winter morning. Frost and sun.",
+                speed: .one,
+                voiceIdentifier: nil,
+                languageCode: nil
+            )),
+            .pause,
+            .pause,
+        ])
+        #expect(session.playback.playbackState == .paused)
+    }
+
+    @Test func test_willSpeakRange_shouldPersistAnchorThroughSingleCoordinator() throws {
 
         let (session, synthesis, store) = try makeSUT()
-        session.transport.event(.primaryTapped(makePlaybackRequest(from: session)))
+        session.primaryTapped(speed: .one, voiceIdentifier: nil)
 
-        synthesis.dispatch(.willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 20))
+        synthesis.emit(.willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 20))
 
-        #expect(session.position.state.liveDocumentUTF16Offset == 20)
-        #expect(session.position.state.storedAnchor == 16)
+        #expect(session.playback.progressFraction > 0)
+        #expect(session.playback.storedAnchor == 16)
         #expect(store.calls.last == .set("/doc.md", 16))
+    }
+
+    @Test func test_willSpeakRange_shouldPublishOnePlaybackSnapshotPerWord() throws {
+
+        let (session, synthesis, _) = try makeSUT()
+        let snapshotSpy = PlaybackSnapshotSpy(session.$playback)
+
+        session.primaryTapped(speed: .one, voiceIdentifier: nil)
+        synthesis.emit(.willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 7))
+        synthesis.emit(.willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 20))
+
+        #expect(snapshotSpy.values.count == 4)
     }
 
     @Test func test_utteranceDidFinish_shouldClearPositionAndReleaseAudioSession() throws {
 
         let (session, synthesis, store) = try makeSUT()
-        session.transport.event(.primaryTapped(makePlaybackRequest(from: session)))
+        session.primaryTapped(speed: .one, voiceIdentifier: nil)
 
-        synthesis.dispatch(.utteranceDidFinish(utteranceToken: 1))
+        synthesis.emit(.didFinish(utteranceToken: 1))
 
-        #expect(session.transport.state == .idle(lastUtteranceToken: 1))
-        #expect(session.position.state.storedAnchor == nil)
-        #expect(session.position.state.liveDocumentUTF16Offset == nil)
+        #expect(session.playback.playbackState == .idle)
+        #expect(session.playback.storedAnchor == nil)
         #expect(store.calls.last == .clear("/doc.md"))
         #expect(synthesis.calls.last == .deactivateAudioSession)
+    }
+
+    @Test func test_staleFinish_shouldNotStopNewPlayback_afterStopAndRestart() throws {
+
+        let (session, synthesis, _) = try makeSUT()
+
+        session.primaryTapped(speed: .one, voiceIdentifier: nil)
+        session.stopTapped()
+        session.primaryTapped(speed: .one, voiceIdentifier: nil)
+        synthesis.emit(.didFinish(utteranceToken: 1))
+
+        #expect(session.playback.playbackState == .speaking)
     }
 
     @Test func test_idleJumpNext_shouldForwardToPositionAndPersistAnchor() throws {
 
         let (session, _, store) = try makeSUT()
 
-        session.transport.event(.jumpToNextSentenceTapped)
+        session.jump(.next)
 
-        #expect(session.position.state.storedAnchor == 16)
+        #expect(session.playback.storedAnchor == 16)
         #expect(store.calls.last == .set("/doc.md", 16))
     }
 
@@ -160,7 +225,8 @@ struct ReaderCompositionTests {
     // MARK: - Helpers
 
     private func makeSUT(
-        storedAnchor: Int? = nil
+        storedAnchor: Int? = nil,
+        pauseResults: [Bool] = []
     ) throws -> (session: ReaderSession, synthesis: SynthesisSpy, store: PositionStoreSpy) {
 
         let store = PositionStoreSpy(stubbedAnchor: storedAnchor)
@@ -170,24 +236,13 @@ struct ReaderCompositionTests {
             documentPath: "/doc.md",
             frontMatterMode: .read,
             positionStore: store,
-            makeSynthesis: { dispatch in
-                let spy = SynthesisSpy(dispatch: dispatch)
+            makeSynthesis: {
+                let spy = SynthesisSpy(pauseResults: pauseResults)
                 synthesis = spy
                 return spy
-            },
-            scheduler: .immediate
+            }
         )
         return (session, synthesis, store)
-    }
-
-    private func makePlaybackRequest(from session: ReaderSession) -> PlaybackRequest {
-
-        return PlaybackRequest(
-            text: session.position.state.speechText,
-            speed: .one,
-            voiceIdentifier: nil,
-            startUTF16Offset: session.position.state.resumeSpokenUTF16Offset
-        )
     }
 
     private func makeReleasedPlaybackStackReferences() throws -> (
@@ -217,6 +272,18 @@ private final class WeakReference<Object: AnyObject> {
     init(_ object: Object) {
 
         self.object = object
+    }
+}
+
+private final class PlaybackSnapshotSpy {
+    private(set) var values = [ReaderPlaybackSnapshot]()
+    private var cancellable: AnyCancellable?
+
+    init<Publisher: Combine.Publisher>(_ publisher: Publisher) where Publisher.Output == ReaderPlaybackSnapshot, Publisher.Failure == Never {
+
+        cancellable = publisher.sink { [weak self] in
+            self?.values.append($0)
+        }
     }
 }
 
@@ -264,10 +331,11 @@ private final class SynthesisSpy: SpeechSynthesisControlling {
     }
 
     var calls = [Call]()
-    let dispatch: (PlaybackTransportEvent) -> Void
+    var eventHandler: ((SpeechSynthesisEvent) -> Void)?
+    private var pauseResults: [Bool]
 
-    init(dispatch: @escaping (PlaybackTransportEvent) -> Void) {
-        self.dispatch = dispatch
+    init(pauseResults: [Bool]) {
+        self.pauseResults = pauseResults
     }
 
     func speak(_ command: SpeakCommand) {
@@ -281,7 +349,7 @@ private final class SynthesisSpy: SpeechSynthesisControlling {
     func pause() -> Bool {
 
         calls.append(.pause)
-        return true
+        return pauseResults.isEmpty ? true : pauseResults.removeFirst()
     }
 
     func resume() -> Bool {
@@ -296,5 +364,10 @@ private final class SynthesisSpy: SpeechSynthesisControlling {
 
     func deactivateAudioSession() {
         calls.append(.deactivateAudioSession)
+    }
+
+    func emit(_ event: SpeechSynthesisEvent) {
+
+        eventHandler?(event)
     }
 }

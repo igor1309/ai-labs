@@ -4,19 +4,18 @@ import FolioTellCore
 #endif
 import OSLog
 
-/// Thin AVFoundation shell: executes speak commands, maps delegate callbacks
-/// back to transport events carrying the utterance token they belong to.
+/// Thin AVFoundation shell: executes speak commands and emits delegate facts
+/// to the single reader coordinator that owns playback state.
 @MainActor
 final class SpeechSynthesizerAdapter: NSObject {
 
     private let logger = Logger(subsystem: "foliotell.FolioTell", category: "speech")
     private let synthesizer = AVSpeechSynthesizer()
-    private let dispatch: (PlaybackTransportEvent) -> Void
     private var utteranceTokens: [ObjectIdentifier: Int] = [:]
+    var eventHandler: ((SpeechSynthesisEvent) -> Void)?
 
-    init(dispatch: @escaping (PlaybackTransportEvent) -> Void) {
+    override init() {
 
-        self.dispatch = dispatch
         super.init()
         synthesizer.delegate = self
     }
@@ -30,8 +29,6 @@ extension SpeechSynthesizerAdapter: SpeechSynthesisControlling {
         if let voiceIdentifier = command.voiceIdentifier,
            let voice = AVSpeechSynthesisVoice(identifier: voiceIdentifier) {
             utterance.voice = voice
-        } else if let languageCode = command.languageCode {
-            utterance.voice = automaticVoice(matching: languageCode)
         }
         utteranceTokens[ObjectIdentifier(utterance)] = command.utteranceToken
         synthesizer.speak(utterance)
@@ -77,27 +74,6 @@ extension SpeechSynthesizerAdapter: SpeechSynthesisControlling {
         #endif
     }
 
-    /// Voices with empty audioFileSettings can instantiate yet produce no
-    /// audio on device, so the cached catalog prefers voices with populated
-    /// settings without adding a synchronous discovery stall to playback.
-    private func automaticVoice(matching languageCode: String) -> AVSpeechSynthesisVoice? {
-
-        guard let identifier = SpeechVoiceSelection.automaticVoiceIdentifier(
-            matching: languageCode,
-            availableVoices: SpeechVoiceCatalogCache.availableVoices
-        ) else {
-            logger.error("no cached voice matches \(languageCode); falling back to default voice")
-            return AVSpeechSynthesisVoice(language: languageCode)
-        }
-
-        logger.info("resolved \(languageCode) to cached voice \(identifier)")
-        return AVSpeechSynthesisVoice(identifier: identifier)
-    }
-}
-
-@MainActor
-enum SpeechVoiceCatalogCache {
-    static var availableVoices = [SpeechVoiceDescriptor]()
 }
 
 private extension SpeechVoiceQuality {
@@ -113,6 +89,17 @@ private extension SpeechVoiceQuality {
 
 extension SpeechSynthesizerAdapter: AVSpeechSynthesizerDelegate {
 
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didStart utterance: AVSpeechUtterance) {
+        let utteranceID = ObjectIdentifier(utterance)
+        Task { @MainActor [weak self] in
+            guard let self, let utteranceToken = self.utteranceTokens[utteranceID] else {
+                return
+            }
+
+            self.eventHandler?(.didStart(utteranceToken: utteranceToken))
+        }
+    }
+
     nonisolated func speechSynthesizer(
         _ synthesizer: AVSpeechSynthesizer,
         willSpeakRangeOfSpeechString characterRange: NSRange,
@@ -124,7 +111,7 @@ extension SpeechSynthesizerAdapter: AVSpeechSynthesizerDelegate {
                 return
             }
 
-            dispatch(.willSpeakRange(utteranceToken: utteranceToken, utteranceUTF16Offset: characterRange.location))
+            eventHandler?(.willSpeakRange(utteranceToken: utteranceToken, utteranceUTF16Offset: characterRange.location))
         }
     }
 
@@ -136,7 +123,7 @@ extension SpeechSynthesizerAdapter: AVSpeechSynthesizerDelegate {
             }
 
             logger.info("didFinish received for utterance token \(utteranceToken)")
-            dispatch(.utteranceDidFinish(utteranceToken: utteranceToken))
+            eventHandler?(.didFinish(utteranceToken: utteranceToken))
         }
     }
 
@@ -148,7 +135,7 @@ extension SpeechSynthesizerAdapter: AVSpeechSynthesizerDelegate {
             }
 
             logger.info("didCancel received for utterance token \(utteranceToken)")
-            dispatch(.utteranceDidCancel(utteranceToken: utteranceToken))
+            eventHandler?(.didCancel(utteranceToken: utteranceToken))
         }
     }
 }

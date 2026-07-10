@@ -21,7 +21,7 @@ struct ReaderScreen: View {
     }
 
     var body: some View {
-        ReaderSessionView(session: session, transport: session.transport, position: session.position)
+        ReaderSessionView(session: session)
     }
 }
 
@@ -86,12 +86,10 @@ private extension ReaderSettingsView {
     }
 }
 
-/// Adapter wrapper: observes both machines, holds the global settings, and
-/// delegates rendering to the pure `ReaderView` as `(state, event)`.
+/// Adapter wrapper: observes the single reader coordinator, holds global
+/// settings, and delegates rendering to the pure `ReaderView`.
 struct ReaderSessionView: View {
     @ObservedObject var session: ReaderSession
-    @ObservedObject var transport: ReaderSession.TransportModel
-    @ObservedObject var position: ReaderSession.PositionModel
 
     @AppStorage("selectedSpeechSpeed") private var selectedSpeechSpeed = SpeechSpeed.one.rawValue
     @AppStorage("selectedFrontMatterPlaybackMode") private var selectedFrontMatterPlaybackMode = FrontMatterPlaybackMode.skip.rawValue
@@ -107,7 +105,6 @@ struct ReaderSessionView: View {
             .task {
                 let selectedVoiceBeforeCatalogLoad = selectedVoiceIdentifierForPlayback
                 availableVoices = await loadAvailableVoices()
-                SpeechVoiceCatalogCache.availableVoices = availableVoices.map(\.speechDescriptor)
                 updateVoiceOptions()
                 let selectedVoiceAfterCatalogLoad = selectedVoiceIdentifierForPlayback
                 if selectedVoiceBeforeCatalogLoad != selectedVoiceAfterCatalogLoad {
@@ -118,10 +115,10 @@ struct ReaderSessionView: View {
                 }
             }
             .onDisappear {
-                transport.event(.stopTapped)
+                session.stopTapped()
             }
             .onChange(of: selectedSpeed) { _, newSpeed in
-                transport.event(.speedChanged(newSpeed))
+                session.updateSpeed(newSpeed)
             }
             .onChange(of: selectedVoiceIdentifierForPlayback) { oldVoiceIdentifier, newVoiceIdentifier in
                 let voiceChange = VoiceSelectionChange(
@@ -133,13 +130,12 @@ struct ReaderSessionView: View {
                     return
                 }
 
-                transport.event(.voiceChanged(newVoiceIdentifier))
+                session.updateVoice(newVoiceIdentifier)
             }
             .onChange(of: selectedFrontMatterMode) { _, newMode in
-                position.event(.frontMatterModeChanged(newMode))
+                session.updateFrontMatterMode(newMode)
             }
-            .onChange(of: position.state.speechText) { _, newSpeechText in
-                session.updateDocumentPresentation(speechText: newSpeechText)
+            .onChange(of: session.playback.speechText) { _, _ in
                 updateVoiceOptions()
             }
     }
@@ -150,15 +146,15 @@ private extension ReaderSessionView {
     func handle(_ viewEvent: ReaderViewEvent) {
         switch viewEvent {
         case .primaryTapped:
-            transport.event(.primaryTapped(playbackRequest))
+            session.primaryTapped(speed: selectedSpeed, voiceIdentifier: selectedVoiceIdentifierForPlayback)
         case .stopTapped:
-            transport.event(.stopTapped)
+            session.stopTapped()
         case .previousSentenceTapped:
-            transport.event(.jumpToPreviousSentenceTapped)
+            session.jump(.previous)
         case .nextSentenceTapped:
-            transport.event(.jumpToNextSentenceTapped)
+            session.jump(.next)
         case .startOverTapped:
-            transport.event(.startOverTapped)
+            session.startOverTapped()
         case let .speedSelected(speed):
             selectedSpeechSpeed = speed.rawValue
         case let .frontMatterModeSelected(mode):
@@ -172,25 +168,15 @@ private extension ReaderSessionView {
         }
     }
 
-    var playbackRequest: PlaybackRequest {
-
-        PlaybackRequest(
-            text: position.state.speechText,
-            speed: selectedSpeed,
-            voiceIdentifier: selectedVoiceIdentifierForPlayback,
-            startUTF16Offset: position.state.resumeSpokenUTF16Offset
-        )
-    }
-
     var renderState: ReaderRenderState {
 
         return ReaderRenderState(
             title: session.documentPresentation.title,
             frontMatterText: session.documentPresentation.frontMatterText,
             bodyText: session.documentPresentation.bodyText,
-            progress: position.state.progressFraction,
-            playbackState: transport.state.playbackState,
-            isStartOverEnabled: position.state.storedAnchor != nil || transport.state.playbackState != .idle,
+            progress: session.playback.progressFraction,
+            playbackState: session.playback.playbackState,
+            isStartOverEnabled: session.playback.storedAnchor != nil || session.playback.playbackState != .idle,
             selectedSpeed: selectedSpeed,
             selectedFrontMatterMode: selectedFrontMatterMode,
             selectedVoiceIdentifier: selectedVoiceIdentifierForPlayback,
@@ -247,9 +233,20 @@ private extension ReaderSessionView {
 
     var selectedVoiceIdentifierForPlayback: String? {
 
-        SpeechVoiceSelection.selectedVoiceIdentifier(
+        if let selectedIdentifier = SpeechVoiceSelection.selectedVoiceIdentifier(
             storedIdentifier: selectedSpeechVoiceIdentifier,
             availableIdentifiers: Set(voiceOptions.map(\.id))
+        ) {
+            return selectedIdentifier
+        }
+
+        guard let detectedDocumentLanguageCode else {
+            return nil
+        }
+
+        return SpeechVoiceSelection.automaticVoiceIdentifier(
+            matching: detectedDocumentLanguageCode,
+            availableVoices: availableVoices.map(\.speechDescriptor)
         )
     }
 
