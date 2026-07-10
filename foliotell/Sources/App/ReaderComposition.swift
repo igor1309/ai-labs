@@ -128,8 +128,7 @@ final class ReaderSession: ObservableObject {
         synthesis.stopSpeaking()
         synthesis.deactivateAudioSession()
         activePlayback = nil
-        liveDocumentUTF16Offset = nil
-        publish()
+        clearPosition()
     }
 
     func startOverTapped() {

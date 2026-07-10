@@ -8,8 +8,8 @@ struct SpeechVoiceLanguageTests {
         #expect(SpeechVoiceLanguage.languageCode(for: "Мороз и солнце, день чудесный") == "ru-RU")
     }
 
-    @Test func test_languageCode_shouldReturnDefault_onEnglishText() {
+    @Test func test_languageCode_shouldReturnEnglish_onNonCyrillicText() {
 
-        #expect(SpeechVoiceLanguage.languageCode(for: "Winter morning") == nil)
+        #expect(SpeechVoiceLanguage.languageCode(for: "Winter morning") == "en-US")
     }
 }

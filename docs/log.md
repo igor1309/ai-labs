@@ -2,6 +2,10 @@
 
 ## 2026-07-10
 
+- FolioTell: prepare `foliotell_v0.6.3` — device feedback fixes Stop reset,
+  Resume icon clarity, concise voice labels, and Russian-to-English document
+  voice resolution; composed regression tests and iOS archive pass.
+
 - FolioTell: prepare `foliotell_v0.6.2` — replace the queued playback graph
   that regressed device responsiveness with a single main-actor coordinator;
   composed Swift tests cover same-turn Play, startup Pause, stale callbacks,

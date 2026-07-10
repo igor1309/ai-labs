@@ -3,6 +3,30 @@ import Testing
 
 struct SpeechVoiceSelectionTests {
 
+    @Test func test_voiceSelection_shouldResolveEnglishAutoVoice_onEnglishDocumentAfterRussianSelection() {
+
+        let availableVoices = [
+            SpeechVoiceDescriptor(identifier: "voice-ru", language: "ru-RU", isAudioCapable: true),
+            SpeechVoiceDescriptor(identifier: "voice-en", language: "en-US", isAudioCapable: true),
+        ]
+        let languageCode = SpeechVoiceLanguage.languageCode(for: "Winter morning")
+        let availableIdentifiers = Set(availableVoices.map(\.identifier))
+        let languagesByIdentifier = Dictionary(uniqueKeysWithValues: availableVoices.map { ($0.identifier, $0.language) })
+        let documentVoiceIdentifiers = SpeechVoiceSelection.filteredVoiceIdentifiers(
+            availableIdentifiers: availableIdentifiers,
+            languagesByIdentifier: languagesByIdentifier,
+            detectedLanguageCode: languageCode
+        )
+        let selectedVoiceIdentifier = SpeechVoiceSelection.selectedVoiceIdentifier(
+            storedIdentifier: "voice-ru",
+            availableIdentifiers: documentVoiceIdentifiers
+        ) ?? languageCode.flatMap {
+            SpeechVoiceSelection.automaticVoiceIdentifier(matching: $0, availableVoices: availableVoices)
+        }
+
+        #expect(selectedVoiceIdentifier == "voice-en")
+    }
+
     @Test func test_filteredVoiceIdentifiers_shouldReturnMatchingLanguageVoices_onDetectedLanguage() {
 
         #expect(
