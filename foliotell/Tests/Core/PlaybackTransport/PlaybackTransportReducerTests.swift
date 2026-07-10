@@ -562,7 +562,7 @@ struct PlaybackTransportReducerTests {
         text: String = "Winter morning. Frost and sun.",
         speed: SpeechSpeed = .one,
         voiceIdentifier: String? = nil,
-        languageCode: String? = nil
+        languageCode: String? = "en-US"
     ) -> SpeakCommand {
 
         return SpeakCommand(

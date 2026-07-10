@@ -10,7 +10,7 @@ struct PlaybackStateTests {
         #expect(projections == [
             PlaybackControlsProjection(playbackState: .idle, primaryControlTitle: "Play", primaryControlSystemImage: "play.fill", isStopEnabled: false),
             PlaybackControlsProjection(playbackState: .speaking, primaryControlTitle: "Pause", primaryControlSystemImage: "pause.fill", isStopEnabled: true),
-            PlaybackControlsProjection(playbackState: .paused, primaryControlTitle: "Resume", primaryControlSystemImage: "playpause.fill", isStopEnabled: true),
+            PlaybackControlsProjection(playbackState: .paused, primaryControlTitle: "Resume", primaryControlSystemImage: "play.fill", isStopEnabled: true),
         ])
     }
 }

@@ -2,7 +2,7 @@ public enum SpeechVoiceLanguage {
 
     public static func languageCode(for text: String) -> String? {
 
-        text.unicodeScalars.contains(where: \.isCyrillic) ? "ru-RU" : nil
+        text.unicodeScalars.contains(where: \.isCyrillic) ? "ru-RU" : "en-US"
     }
 }
 

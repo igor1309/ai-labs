@@ -2,6 +2,12 @@
 
 ## 2026-07-10
 
+- Prepare `foliotell_v0.6.3` — Stop now clears the saved reading position,
+  Resume uses an unambiguous Play icon, voice rows use concise names, and an
+  English document resolves an English voice instead of retaining a Russian
+  selection from a prior document. Composed regression tests, the Swift suite,
+  and the unsigned iOS archive pass.
+
 - Prepare `foliotell_v0.6.2` — replace the 0.6.1 live playback graph with one
   main-actor reader coordinator: direct UI-to-synthesizer control, direct AV
   delegate facts, monotonic utterance tokens, and a single published

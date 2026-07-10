@@ -358,15 +358,7 @@ struct AvailableVoice: Sendable {
     }
 
     var menuTitle: String {
-        let baseTitle = "\(name) (\(language))"
-        switch quality {
-        case .standard:
-            return baseTitle
-        case .enhanced:
-            return "\(baseTitle) · Enhanced"
-        case .premium:
-            return "\(baseTitle) · Premium"
-        }
+        name
     }
 
     init(_ voice: AVSpeechSynthesisVoice) {

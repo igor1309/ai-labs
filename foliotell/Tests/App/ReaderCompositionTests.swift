@@ -34,7 +34,7 @@ struct ReaderCompositionTests {
                 text: "Frost and sun.",
                 speed: .one,
                 voiceIdentifier: nil,
-                languageCode: nil
+                languageCode: "en-US"
             )),
         ])
     }
@@ -52,7 +52,7 @@ struct ReaderCompositionTests {
                 text: "Winter morning. Frost and sun.",
                 speed: .one,
                 voiceIdentifier: nil,
-                languageCode: nil
+                languageCode: "en-US"
             )),
         ])
     }
@@ -72,7 +72,7 @@ struct ReaderCompositionTests {
                 text: "Winter morning. Frost and sun.",
                 speed: .one,
                 voiceIdentifier: nil,
-                languageCode: nil
+                languageCode: "en-US"
             )),
             .pause,
             .pause,
@@ -127,6 +127,34 @@ struct ReaderCompositionTests {
         synthesis.emit(.didFinish(utteranceToken: 1))
 
         #expect(session.playback.playbackState == .speaking)
+    }
+
+    @Test func test_stopTapped_shouldClearSavedAnchorBeforeRestartingPlayback() throws {
+
+        let (session, synthesis, store) = try makeSUT()
+        session.primaryTapped(speed: .one, voiceIdentifier: nil)
+        synthesis.emit(.willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 20))
+        session.stopTapped()
+        session.primaryTapped(speed: .one, voiceIdentifier: nil)
+
+        #expect(store.calls.last == .clear("/doc.md"))
+    }
+
+    @Test func test_primaryTapped_shouldSpeakFromDocumentStart_afterStop() throws {
+
+        let (session, synthesis, _) = try makeSUT()
+        session.primaryTapped(speed: .one, voiceIdentifier: nil)
+        synthesis.emit(.willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 20))
+        session.stopTapped()
+        session.primaryTapped(speed: .one, voiceIdentifier: nil)
+
+        #expect(synthesis.calls.last == .speak(SpeakCommand(
+            utteranceToken: 2,
+            text: "Winter morning. Frost and sun.",
+            speed: .one,
+            voiceIdentifier: nil,
+            languageCode: "en-US"
+        )))
     }
 
     @Test func test_idleJumpNext_shouldForwardToPositionAndPersistAnchor() throws {
@@ -213,13 +241,13 @@ struct ReaderCompositionTests {
         #expect(banner?.kind == .upgradeHint)
     }
 
-    @Test func test_menuTitle_shouldAppendQualityLabel_onEnhancedVoice() {
+    @Test func test_menuTitle_shouldUseVoiceNameWithoutRepeatingLanguageOrQuality() {
 
         let option = ReaderVoiceOption(
-            makeVoice(id: "ru-enhanced", name: "Yuliya", language: "ru-RU", quality: .enhanced)
+            makeVoice(id: "ru-enhanced", name: "Milena Enhanced", language: "ru-RU", quality: .enhanced)
         )
 
-        #expect(option.menuTitle == "Yuliya (ru-RU) · Enhanced")
+        #expect(option.menuTitle == "Milena Enhanced")
     }
 
     // MARK: - Helpers

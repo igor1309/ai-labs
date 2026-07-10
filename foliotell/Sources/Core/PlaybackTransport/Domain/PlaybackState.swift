@@ -22,7 +22,7 @@ public extension PlaybackState {
         case .idle:
             "play.fill"
         case .paused:
-            "playpause.fill"
+            "play.fill"
         case .speaking:
             "pause.fill"
         }
