@@ -4,12 +4,20 @@ import Testing
 
 struct ReaderRenderStateTests {
 
-    @Test func test_settingsMenuContent_shouldRemainStable_onPlaybackTick() {
+    @Test func test_voiceMenuContent_shouldRemainStable_onPlaybackTick() {
 
         let stateBeforeTick = makeState(progress: 0.25)
         let stateAfterTick = makeState(progress: 0.5)
 
-        #expect(stateBeforeTick.settingsMenuState == stateAfterTick.settingsMenuState)
+        #expect(stateBeforeTick.voiceMenuState == stateAfterTick.voiceMenuState)
+    }
+
+    @Test func test_playbackMenuContent_shouldRemainStable_onPlaybackTick() {
+
+        let stateBeforeTick = makeState(progress: 0.25)
+        let stateAfterTick = makeState(progress: 0.5)
+
+        #expect(stateBeforeTick.playbackMenuState == stateAfterTick.playbackMenuState)
     }
 
     private func makeState(progress: Double) -> ReaderRenderState {

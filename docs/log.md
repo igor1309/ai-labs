@@ -2,6 +2,10 @@
 
 ## 2026-07-10
 
+- FolioTell: prepare `foliotell_v0.6.1` — restore responsive playback controls,
+  reliable early Pause behavior, and reader-session cleanup; TestFlight user
+  feedback will provide the final physical-device validation.
+
 - Release governance: scope the Agonara readiness and `/operations/health`
   gates to Agonara; FolioTell uses its own TestFlight release evidence.
 

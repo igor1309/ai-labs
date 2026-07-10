@@ -21,7 +21,7 @@ struct ReaderScreen: View {
     }
 
     var body: some View {
-        ReaderSessionView(document: document, transport: session.transport, position: session.position)
+        ReaderSessionView(session: session, transport: session.transport, position: session.position)
     }
 }
 
@@ -89,8 +89,7 @@ private extension ReaderSettingsView {
 /// Adapter wrapper: observes both machines, holds the global settings, and
 /// delegates rendering to the pure `ReaderView` as `(state, event)`.
 struct ReaderSessionView: View {
-    let document: FolioDocument
-
+    @ObservedObject var session: ReaderSession
     @ObservedObject var transport: ReaderSession.TransportModel
     @ObservedObject var position: ReaderSession.PositionModel
 
@@ -100,11 +99,23 @@ struct ReaderSessionView: View {
     @AppStorage("dismissedVoiceQualityOnboardingLanguageCodes") private var dismissedVoiceQualityOnboardingLanguageCodes = ""
     @AppStorage("acknowledgedInstalledVoiceQualityLanguageCodes") private var acknowledgedInstalledVoiceQualityLanguageCodes = ""
     @State private var availableVoices: [AvailableVoice] = []
+    @State private var voiceOptions: [ReaderVoiceOption] = []
+    @State private var ignoredCatalogVoiceChange: VoiceSelectionChange?
 
     var body: some View {
             ReaderView(state: renderState, event: handle)
             .task {
+                let selectedVoiceBeforeCatalogLoad = selectedVoiceIdentifierForPlayback
                 availableVoices = await loadAvailableVoices()
+                SpeechVoiceCatalogCache.availableVoices = availableVoices.map(\.speechDescriptor)
+                updateVoiceOptions()
+                let selectedVoiceAfterCatalogLoad = selectedVoiceIdentifierForPlayback
+                if selectedVoiceBeforeCatalogLoad != selectedVoiceAfterCatalogLoad {
+                    ignoredCatalogVoiceChange = VoiceSelectionChange(
+                        oldValue: selectedVoiceBeforeCatalogLoad,
+                        newValue: selectedVoiceAfterCatalogLoad
+                    )
+                }
             }
             .onDisappear {
                 transport.event(.stopTapped)
@@ -112,11 +123,24 @@ struct ReaderSessionView: View {
             .onChange(of: selectedSpeed) { _, newSpeed in
                 transport.event(.speedChanged(newSpeed))
             }
-            .onChange(of: selectedVoiceIdentifierForPlayback) { _, newVoiceIdentifier in
+            .onChange(of: selectedVoiceIdentifierForPlayback) { oldVoiceIdentifier, newVoiceIdentifier in
+                let voiceChange = VoiceSelectionChange(
+                    oldValue: oldVoiceIdentifier,
+                    newValue: newVoiceIdentifier
+                )
+                if ignoredCatalogVoiceChange == voiceChange {
+                    ignoredCatalogVoiceChange = nil
+                    return
+                }
+
                 transport.event(.voiceChanged(newVoiceIdentifier))
             }
             .onChange(of: selectedFrontMatterMode) { _, newMode in
                 position.event(.frontMatterModeChanged(newMode))
+            }
+            .onChange(of: position.state.speechText) { _, newSpeechText in
+                session.updateDocumentPresentation(speechText: newSpeechText)
+                updateVoiceOptions()
             }
     }
 }
@@ -160,11 +184,10 @@ private extension ReaderSessionView {
 
     var renderState: ReaderRenderState {
 
-        let renderableText = FrontMatterRendering.renderableText(from: document.text)
         return ReaderRenderState(
-            title: document.fileName,
-            frontMatterText: renderableText.frontMatter,
-            bodyText: renderableText.body,
+            title: session.documentPresentation.title,
+            frontMatterText: session.documentPresentation.frontMatterText,
+            bodyText: session.documentPresentation.bodyText,
             progress: position.state.progressFraction,
             playbackState: transport.state.playbackState,
             isStartOverEnabled: position.state.storedAnchor != nil || transport.state.playbackState != .idle,
@@ -185,7 +208,7 @@ private extension ReaderSessionView {
     }
 
     var detectedDocumentLanguageCode: String? {
-        SpeechVoiceLanguage.languageCode(for: position.state.speechText)
+        session.documentPresentation.languageCode
     }
 
     var voiceQualityBanner: ReaderVoiceQualityBanner? {
@@ -197,7 +220,7 @@ private extension ReaderSessionView {
         )
     }
 
-    var voiceOptions: [ReaderVoiceOption] {
+    func makeVoiceOptions() -> [ReaderVoiceOption] {
 
         let filteredIdentifiers = SpeechVoiceSelection.filteredVoiceIdentifiers(
             availableIdentifiers: Set(availableVoices.map(\.id)),
@@ -215,6 +238,11 @@ private extension ReaderSessionView {
                 }
             }
             .map(ReaderVoiceOption.init)
+    }
+
+    func updateVoiceOptions() {
+
+        voiceOptions = makeVoiceOptions()
     }
 
     var selectedVoiceIdentifierForPlayback: String? {
@@ -300,11 +328,37 @@ private extension ReaderSessionView {
     }
 }
 
+struct ReaderDocumentPresentation: Equatable {
+    let title: String
+    let frontMatterText: String?
+    let bodyText: String
+    let languageCode: String?
+
+    init(documentText: String, speechText: String, fileName: String = "") {
+
+        let renderableText = FrontMatterRendering.renderableText(from: documentText)
+        title = fileName
+        frontMatterText = renderableText.frontMatter
+        bodyText = renderableText.body
+        languageCode = SpeechVoiceLanguage.languageCode(for: speechText)
+    }
+}
+
 struct AvailableVoice: Sendable {
     let id: String
     let name: String
     let language: String
+    let isAudioCapable: Bool
     let quality: SpeechVoiceQuality
+
+    var speechDescriptor: SpeechVoiceDescriptor {
+        SpeechVoiceDescriptor(
+            identifier: id,
+            language: language,
+            isAudioCapable: isAudioCapable,
+            quality: quality
+        )
+    }
 
     var menuTitle: String {
         let baseTitle = "\(name) (\(language))"
@@ -322,15 +376,28 @@ struct AvailableVoice: Sendable {
         id = voice.identifier
         name = voice.name
         language = voice.language
+        isAudioCapable = voice.audioFileSettings.isEmpty == false
         quality = SpeechVoiceQuality(voice.quality)
     }
 
-    init(id: String, name: String, language: String, quality: SpeechVoiceQuality) {
+    init(
+        id: String,
+        name: String,
+        language: String,
+        isAudioCapable: Bool = true,
+        quality: SpeechVoiceQuality
+    ) {
         self.id = id
         self.name = name
         self.language = language
+        self.isAudioCapable = isAudioCapable
         self.quality = quality
     }
+}
+
+private struct VoiceSelectionChange: Equatable {
+    let oldValue: String?
+    let newValue: String?
 }
 
 enum VoiceQualityOnboarding {

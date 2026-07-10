@@ -11,6 +11,9 @@ public struct PlaybackSession: Equatable, Sendable {
     /// repositioning); resume must speak a fresh utterance instead of
     /// continuing.
     public var hasActiveUtterance: Bool
+    /// Records a pause tap accepted by the transport while AVFoundation is
+    /// still unable to pause the starting utterance.
+    public var isPauseRequested: Bool
 
     public init(
         text: String,
@@ -19,7 +22,8 @@ public struct PlaybackSession: Equatable, Sendable {
         utteranceToken: Int,
         utteranceStartUTF16Offset: Int,
         spokenUTF16Offset: Int,
-        hasActiveUtterance: Bool
+        hasActiveUtterance: Bool,
+        isPauseRequested: Bool = false
     ) {
 
         self.text = text
@@ -29,6 +33,7 @@ public struct PlaybackSession: Equatable, Sendable {
         self.utteranceStartUTF16Offset = utteranceStartUTF16Offset
         self.spokenUTF16Offset = spokenUTF16Offset
         self.hasActiveUtterance = hasActiveUtterance
+        self.isPauseRequested = isPauseRequested
     }
 }
 

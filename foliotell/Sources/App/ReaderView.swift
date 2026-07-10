@@ -44,25 +44,34 @@ struct ReaderRenderState: Equatable {
         self.voiceOptions = voiceOptions
     }
 
-    var settingsMenuState: ReaderSettingsMenuState {
+    var voiceMenuState: ReaderVoiceMenuState {
 
-        ReaderSettingsMenuState(
-            selectedSpeed: selectedSpeed,
-            selectedFrontMatterMode: selectedFrontMatterMode,
+        ReaderVoiceMenuState(
             selectedVoiceIdentifier: selectedVoiceIdentifier,
-            voiceOptions: voiceOptions,
+            voiceOptions: voiceOptions
+        )
+    }
+
+    var playbackMenuState: ReaderPlaybackMenuState {
+
+        ReaderPlaybackMenuState(
+            selectedSpeed: selectedSpeed,
             isStartOverEnabled: isStartOverEnabled
         )
     }
 }
 
-/// The settings menu's complete input, intentionally excluding word-level
+/// The Voice menu's complete input, intentionally excluding word-level
 /// playback progress and the transport control state.
-struct ReaderSettingsMenuState: Equatable {
-    let selectedSpeed: SpeechSpeed
-    let selectedFrontMatterMode: FrontMatterPlaybackMode
+struct ReaderVoiceMenuState: Equatable {
     let selectedVoiceIdentifier: String?
     let voiceOptions: [ReaderVoiceOption]
+}
+
+/// The Playback menu's complete input, intentionally excluding word-level
+/// playback progress and the transport control state.
+struct ReaderPlaybackMenuState: Equatable {
+    let selectedSpeed: SpeechSpeed
     let isStartOverEnabled: Bool
 }
 
@@ -262,7 +271,8 @@ struct ReaderView: View {
     @ToolbarContentBuilder
     private var readerBottomBar: some ToolbarContent {
         ToolbarItem(placement: .bottomBar) {
-            voiceMenu
+            ReaderVoiceMenu(state: state.voiceMenuState, event: event)
+                .equatable()
         }
 
         ToolbarSpacer(.flexible, placement: .bottomBar)
@@ -305,12 +315,19 @@ struct ReaderView: View {
         ToolbarSpacer(.flexible, placement: .bottomBar)
 
         ToolbarItem(placement: .bottomBar) {
-            playbackMenu
+            ReaderPlaybackMenu(state: state.playbackMenuState, event: event)
+                .equatable()
         }
     }
     #endif
 
-    private var voiceMenu: some View {
+}
+
+private struct ReaderVoiceMenu: View {
+    let state: ReaderVoiceMenuState
+    let event: (ReaderViewEvent) -> Void
+
+    var body: some View {
         Menu {
             Button {
                 event(.voiceSelected(nil))
@@ -339,8 +356,13 @@ struct ReaderView: View {
         .accessibilityLabel("Voice")
         .accessibilityIdentifier("readerVoiceMenu")
     }
+}
 
-    private var playbackMenu: some View {
+private struct ReaderPlaybackMenu: View {
+    let state: ReaderPlaybackMenuState
+    let event: (ReaderViewEvent) -> Void
+
+    var body: some View {
         Menu {
             Section("Speed") {
                 ForEach(SpeechSpeed.allCases) { speed in
@@ -369,6 +391,22 @@ struct ReaderView: View {
         }
         .accessibilityLabel("Playback controls")
         .accessibilityIdentifier("readerPlaybackMenu")
+    }
+}
+
+extension ReaderVoiceMenu: @MainActor Equatable {
+
+    static func == (lhs: ReaderVoiceMenu, rhs: ReaderVoiceMenu) -> Bool {
+
+        lhs.state == rhs.state
+    }
+}
+
+extension ReaderPlaybackMenu: @MainActor Equatable {
+
+    static func == (lhs: ReaderPlaybackMenu, rhs: ReaderPlaybackMenu) -> Bool {
+
+        lhs.state == rhs.state
     }
 }
 

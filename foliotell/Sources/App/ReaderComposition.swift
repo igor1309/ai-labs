@@ -30,13 +30,30 @@ final class ReaderSession: ObservableObject {
     let position: PositionModel
 
     private let synthesis: SpeechSynthesisControlling
+    private let documentText: String
+    private let documentTitle: String
     private var cancellables = Set<AnyCancellable>()
 
-    init(transport: TransportModel, position: PositionModel, synthesis: SpeechSynthesisControlling) {
+    @Published private(set) var documentPresentation: ReaderDocumentPresentation
+
+    init(
+        transport: TransportModel,
+        position: PositionModel,
+        synthesis: SpeechSynthesisControlling,
+        documentText: String,
+        documentTitle: String
+    ) {
 
         self.transport = transport
         self.position = position
         self.synthesis = synthesis
+        self.documentText = documentText
+        self.documentTitle = documentTitle
+        documentPresentation = ReaderDocumentPresentation(
+            documentText: documentText,
+            speechText: position.state.speechText,
+            fileName: documentTitle
+        )
 
         transport.$state
             .map(\.spokenUTF16Offset)
@@ -44,6 +61,20 @@ final class ReaderSession: ObservableObject {
             .compactMap { $0 }
             .sink { [weak position] in position?.event(.spokenOffsetChanged($0)) }
             .store(in: &cancellables)
+    }
+
+    func updateDocumentPresentation(speechText: String) {
+
+        let updatedPresentation = ReaderDocumentPresentation(
+            documentText: documentText,
+            speechText: speechText,
+            fileName: documentTitle
+        )
+        guard documentPresentation != updatedPresentation else {
+            return
+        }
+
+        documentPresentation = updatedPresentation
     }
 }
 
@@ -78,8 +109,8 @@ enum ReaderComposition {
             scheduler: scheduler
         )
 
-        var transport: TransportModel!
-        let synthesis = makeSynthesis { transport.event($0) }
+        let transportEventRelay = PlaybackTransportEventRelay()
+        let synthesis = makeSynthesis { transportEventRelay.dispatch($0) }
         let transportReducer = PlaybackTransportReducer()
         let transportEffectHandler = PlaybackTransportEffectHandler(
             speak: { synthesis.speak($0) },
@@ -92,18 +123,35 @@ enum ReaderComposition {
             notifyStartOver: { [weak position] in position?.event(.startOverRequested) },
             notifyIdleJump: { [weak position] in position?.event(.idleJumpRequested($0)) }
         )
-        transport = TransportModel(
+        let transport = TransportModel(
             initialState: .idle(lastUtteranceToken: 0),
             reduce: transportReducer.reduce,
             handleEffect: transportEffectHandler.handleEffect,
             scheduler: scheduler
         )
+        transportEventRelay.transport = transport
 
-        return ReaderSession(transport: transport, position: position, synthesis: synthesis)
+        return ReaderSession(
+            transport: transport,
+            position: position,
+            synthesis: synthesis,
+            documentText: document.text,
+            documentTitle: document.fileName
+        )
     }
 
     private typealias TransportModel = ReaderSession.TransportModel
     private typealias PositionModel = ReaderSession.PositionModel
+}
+
+@MainActor
+private final class PlaybackTransportEventRelay {
+    weak var transport: ReaderSession.TransportModel?
+
+    func dispatch(_ event: PlaybackTransportEvent) {
+
+        transport?.event(event)
+    }
 }
 
 /// Entry view built by the app scene: routes load failures to the error view
