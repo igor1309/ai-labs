@@ -74,6 +74,13 @@ struct ReaderCompositionTests {
         #expect(store.calls.last == .set("/doc.md", 16))
     }
 
+    @Test func test_makeReaderSession_shouldReleasePlaybackStack_onSessionRelease() throws {
+
+        let references = try makeReleasedPlaybackStackReferences()
+
+        #expect(references.session.object == nil && references.synthesis.object == nil)
+    }
+
     @Test func test_banner_shouldReturnUpgradeHint_onStandardVoicesOnly() {
 
         let banner = VoiceQualityOnboarding.banner(
@@ -183,6 +190,16 @@ struct ReaderCompositionTests {
         )
     }
 
+    private func makeReleasedPlaybackStackReferences() throws -> (
+        session: WeakReference<ReaderSession>,
+        synthesis: WeakReference<SynthesisSpy>
+    ) {
+
+        let (session, synthesis, _) = try makeSUT()
+
+        return (WeakReference(session), WeakReference(synthesis))
+    }
+
     private func makeVoice(
         id: String,
         name: String,
@@ -191,6 +208,15 @@ struct ReaderCompositionTests {
     ) -> AvailableVoice {
 
         AvailableVoice(id: id, name: name, language: language, quality: quality)
+    }
+}
+
+private final class WeakReference<Object: AnyObject> {
+    weak var object: Object?
+
+    init(_ object: Object) {
+
+        self.object = object
     }
 }
 

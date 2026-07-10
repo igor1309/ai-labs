@@ -78,29 +78,26 @@ extension SpeechSynthesizerAdapter: SpeechSynthesisControlling {
     }
 
     /// Voices with empty audioFileSettings can instantiate yet produce no
-    /// audio on device, so the catalog lookup prefers voices with populated
-    /// settings.
+    /// audio on device, so the cached catalog prefers voices with populated
+    /// settings without adding a synchronous discovery stall to playback.
     private func automaticVoice(matching languageCode: String) -> AVSpeechSynthesisVoice? {
 
-        let availableVoices = AVSpeechSynthesisVoice.speechVoices().map {
-            SpeechVoiceDescriptor(
-                identifier: $0.identifier,
-                language: $0.language,
-                isAudioCapable: $0.audioFileSettings.isEmpty == false,
-                quality: SpeechVoiceQuality($0.quality)
-            )
-        }
         guard let identifier = SpeechVoiceSelection.automaticVoiceIdentifier(
             matching: languageCode,
-            availableVoices: availableVoices
+            availableVoices: SpeechVoiceCatalogCache.availableVoices
         ) else {
-            logger.error("no voice matches \(languageCode); catalog has \(availableVoices.count) voices; falling back to default voice")
-            return nil
+            logger.error("no cached voice matches \(languageCode); falling back to default voice")
+            return AVSpeechSynthesisVoice(language: languageCode)
         }
 
-        logger.info("resolved \(languageCode) to voice \(identifier) from \(availableVoices.count) catalog voices")
+        logger.info("resolved \(languageCode) to cached voice \(identifier)")
         return AVSpeechSynthesisVoice(identifier: identifier)
     }
+}
+
+@MainActor
+enum SpeechVoiceCatalogCache {
+    static var availableVoices = [SpeechVoiceDescriptor]()
 }
 
 private extension SpeechVoiceQuality {

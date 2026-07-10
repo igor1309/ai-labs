@@ -82,7 +82,13 @@ private extension PlaybackTransportReducer {
             return (.speaking(session), .beginSpeaking(command(for: session), replacingCurrentUtterance: false))
 
         case let .speaking(session):
-            return (state, .pause(utteranceToken: session.utteranceToken))
+            guard session.isPauseRequested == false else {
+                return (state, nil)
+            }
+
+            var session = session
+            session.isPauseRequested = true
+            return (.speaking(session), .pause(utteranceToken: session.utteranceToken))
 
         case let .paused(session) where session.hasActiveUtterance:
             return (state, .resume(utteranceToken: session.utteranceToken))
@@ -119,6 +125,7 @@ private extension PlaybackTransportReducer {
             session.utteranceStartUTF16Offset = 0
             session.spokenUTF16Offset = 0
             session.hasActiveUtterance = true
+            session.isPauseRequested = false
             return (.speaking(session), .restartPlayback(command(for: session)))
         }
     }
@@ -127,7 +134,11 @@ private extension PlaybackTransportReducer {
 
         switch state {
         case let .speaking(session) where session.utteranceToken == utteranceToken:
-            return (.speaking(advanced(session, byUtteranceUTF16Offset: utteranceUTF16Offset)), nil)
+            let advancedSession = advanced(session, byUtteranceUTF16Offset: utteranceUTF16Offset)
+            let effect: Effect? = advancedSession.isPauseRequested
+                ? .pause(utteranceToken: advancedSession.utteranceToken)
+                : nil
+            return (.speaking(advancedSession), effect)
 
         // A word-boundary callback can land just after an accepted pause;
         // the paused boundary must track it or resume repeats/skips a word.
@@ -239,6 +250,8 @@ private extension PlaybackTransportReducer {
 
         switch state {
         case let .speaking(session) where session.utteranceToken == utteranceToken && accepted:
+            var session = session
+            session.isPauseRequested = false
             return (.paused(session), nil)
 
         case .idle, .speaking, .paused:
@@ -276,6 +289,7 @@ private extension PlaybackTransportReducer {
         session.utteranceStartUTF16Offset = min(max(offset, 0), session.text.utf16.count)
         session.spokenUTF16Offset = session.utteranceStartUTF16Offset
         session.hasActiveUtterance = true
+        session.isPauseRequested = false
         return (.speaking(session), .beginSpeaking(
             command(for: session),
             replacingCurrentUtterance: replacingCurrentUtterance

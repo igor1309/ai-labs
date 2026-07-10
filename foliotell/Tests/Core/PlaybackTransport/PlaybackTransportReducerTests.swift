@@ -26,7 +26,7 @@ struct PlaybackTransportReducerTests {
 
         let (state, effect) = reduce(.speaking(makeSession()), .primaryTapped(makeRequest()))
 
-        #expect(state == .speaking(makeSession()))
+        #expect(state == .speaking(makeSession(isPauseRequested: true)))
         #expect(effect == .pause(utteranceToken: 1))
     }
 
@@ -69,6 +69,21 @@ struct PlaybackTransportReducerTests {
 
         #expect(state == .speaking(makeSession()))
         #expect(effect == nil)
+    }
+
+    @Test func test_reduce_shouldRetryPause_onWordBoundaryAfterRejectedPause() {
+
+        let (pauseRequestedState, _) = reduce(.speaking(makeSession()), .primaryTapped(makeRequest()))
+        let (rejectedPauseState, _) = reduce(
+            pauseRequestedState,
+            .pauseResolved(accepted: false, utteranceToken: 1)
+        )
+        let (_, effect) = reduce(
+            rejectedPauseState,
+            .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 0)
+        )
+
+        #expect(effect == .pause(utteranceToken: 1))
     }
 
     @Test func test_reduce_shouldIgnorePauseResolution_onIdleAndPaused() {
@@ -526,7 +541,8 @@ struct PlaybackTransportReducerTests {
         utteranceToken: Int = 1,
         utteranceStartUTF16Offset: Int = 0,
         spokenUTF16Offset: Int = 0,
-        hasActiveUtterance: Bool = true
+        hasActiveUtterance: Bool = true,
+        isPauseRequested: Bool = false
     ) -> PlaybackSession {
 
         return PlaybackSession(
@@ -536,7 +552,8 @@ struct PlaybackTransportReducerTests {
             utteranceToken: utteranceToken,
             utteranceStartUTF16Offset: utteranceStartUTF16Offset,
             spokenUTF16Offset: spokenUTF16Offset,
-            hasActiveUtterance: hasActiveUtterance
+            hasActiveUtterance: hasActiveUtterance,
+            isPauseRequested: isPauseRequested
         )
     }
 
