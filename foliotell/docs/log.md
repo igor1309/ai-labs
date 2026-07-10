@@ -2,18 +2,22 @@
 
 ## 2026-07-10
 
-- Release `foliotell_v0.6.1` — restore responsive playback controls,
-  reliable early Pause behavior, and reader-session cleanup; TestFlight user
-  feedback will provide the final physical-device validation.
+- Prepare `foliotell_v0.6.2` — replace the 0.6.1 live playback graph with one
+  main-actor reader coordinator: direct UI-to-synthesizer control, direct AV
+  delegate facts, monotonic utterance tokens, and a single published
+  word-progress snapshot. The composed integration suite covers same-turn
+  Play, startup Pause, stale finish after restart, anchor persistence, and one
+  publication per word; package tests and the unsigned iOS archive pass.
+  Physical-device timing remains the release-acceptance gate.
+
+- Release `foliotell_v0.6.1` — subsequent TestFlight device evidence
+  falsified its intended responsive-control outcome: Play had a multi-second
+  delay and Pause was not observable promptly. The release is the regression
+  baseline for the coordinator repair above.
 
 - Repair the playback latency and play/pause desynchronization regressions:
-  restore Equatable Voice/Playback menu boundaries, cache document presentation
-  and voice-menu derivations outside word-progress updates, break the
-  transport→handler→adapter retain cycle with a weak event relay, retain/retry
-  an early pause request at the first word boundary, and serve automatic voice
-  selection from the asynchronously loaded catalog. Unit, SPM build, and iOS
-  archive gates pass; physical-device latency and lifecycle verification will
-  be collected from the TestFlight build.
+  the attempted queue/relay/binder patch did not meet device behavior; it is
+  superseded by the single-coordinator repair above.
 
 - Analyze the reported playback-latency regression and play/pause desync
   (`docs/playback-latency-desync-analysis.md`): the 0.6.0 controls split

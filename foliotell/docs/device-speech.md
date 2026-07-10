@@ -54,6 +54,7 @@ state (play/pause UI) advances normally.
 | 0.0.2 | Default app audio session is the cause; configure `.playback`/`.spokenAudio` + background audio mode (PR #709). | **Falsified** — shipped, upload confirmed, still silent on device (iPhone 15 Pro, iOS 26.5). |
 | 0.0.3 | `AVSpeechSynthesisVoice(language:)` returns a non-functional voice; resolve from installed catalog instead (PR #713). | **Confirmed on device** (2026-07-08, iPhone 15 Pro, iOS 26.5) — reading is audible. |
 | 0.1.1 | Stop latency (seconds of audible speech after Stop, reported on 0.0.3) is a main-thread stall symptom: per-render `speechVoices()` calls blocked the UI, delaying the stop's effects; removed by the 0.1.0 menu-freeze fix (PR #723). | **Resolved on device** (2026-07-08, iPhone 15 Pro, iOS 26.5, v0.1.1) — Stop is immediate. Probable cause, not proven: the instrumented measurement matrix was never needed; the stop-path instrumentation (PR #726) stays in place as the reopen path. |
+| 0.6.1 | Splitting one playback flow into queued transport and position machines preserves responsiveness. | **Falsified on device** (2026-07-10) — Play has a multi-second delay and Pause is not observable promptly. The repair removes the live queue/binder/relay graph; fresh device timing is required before another release is accepted. |
 
 Do not re-propose falsified fixes. The audio-session code is kept because it
 is correct and mute-switch-protective, not because it fixed the silence.

@@ -2,6 +2,12 @@
 
 ## 2026-07-10
 
+- FolioTell: prepare `foliotell_v0.6.2` — replace the queued playback graph
+  that regressed device responsiveness with a single main-actor coordinator;
+  composed Swift tests cover same-turn Play, startup Pause, stale callbacks,
+  and bounded word updates. The candidate is ready for TestFlight device
+  timing validation.
+
 - FolioTell: prepare `foliotell_v0.6.1` — restore responsive playback controls,
   reliable early Pause behavior, and reader-session cleanup; TestFlight user
   feedback will provide the final physical-device validation.

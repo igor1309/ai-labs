@@ -20,7 +20,7 @@ docker = false
 basename = "foliotell"
 path = "foliotell"
 metadata = "release.toml"
-version = "0.6.1"
+version = "0.6.2"
 docker = false
 
 [[units]]
