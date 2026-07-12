@@ -30,36 +30,86 @@ Reference points on the iOS side:
 - Device-behavior discipline to replicate: `docs/device-speech.md` — Android
   TTS will need its own hypothesis ledger.
 
-## Stage 0 — Decisions and scaffold
+## Decisions (settled 2026-07-12)
 
-Settle the choices every later stage depends on, then land an empty-but-green
-project skeleton.
+1. **Stack:** native Kotlin + Jetpack Compose + platform
+   `android.speech.tts.TextToSpeech`. Recorded in the Stage 0 ADR.
+2. **Repo placement:** refactor `foliotell/` into a platform-family directory
+   first (iOS app moves to `foliotell/ios/`), then Android lands as
+   `foliotell/android/`. This follows the existing `notio/` precedent —
+   nested release units per `{ path = "notio/backend", basename =
+   "notio-backend" }` — rather than a new top-level dir. See the Stage 0
+   pre-task below.
+3. **Application id:** `dev.igor1309.foliotell`. Permanent once the first
+   build is uploaded.
+4. **Play account:** the existing personal Google Play developer account.
+5. **Signing:** Play App Signing — Google holds the app signing key, the repo
+   side holds only an upload keystore.
+6. **Versioning:** independent of iOS, starting at `0.0.1`, tag namespace
+   `foliotell-android_v*`.
+7. **Module layout:** two Gradle modules — `:core` pure-JVM and
+   unit-testable, `:app` for Compose/TTS — mirroring the
+   `FolioTellCore`/`App` split.
+8. **API floor:** high, no legacy — `minSdk` tracks current Android; the
+   exact API level is finalized against the actual test devices at Stage 1
+   start.
+9. **Privacy policy:** one platform-neutral policy at the existing
+   `https://foliotell.pages.dev/privacy` URL, referenced by both stores.
 
-Decisions to record (each with a lean, finalized at stage start):
+## Stage 0 — Family refactor and scaffold
 
-- **Stack.** Lean: native Kotlin + Jetpack Compose +
-  `android.speech.tts.TextToSpeech`. Mirrors the iOS choice of the native
-  platform stack and on-device system voices; KMP/Flutter would contradict the
-  "sibling product, no shared code" frame and add a toolchain the repo doesn't
-  have. Worth an ADR since it's load-bearing for everything after.
-- **Repo placement.** Lean: new top-level `foliotell-android/` directory. It
-  has its own toolchain and dependencies (Gradle/JDK/Android SDK), so
-  per-project CI isolation (`.agents/per-project-ci-isolation.md`) wants a
-  dedicated workflow, and release units are cleanest per top-level dir. The
-  full new-project checklist (`.agents/new-project-checklist.md`) applies:
-  `loc-dashboard.sh` known list + row, README `## Components` row,
-  `docs/loc-dashboard.html` card, seeded project log, root log entry.
-- **Application id.** The iOS bundle id (`foliotell.FolioTell`) is not a
-  template; Play needs a proper reverse-DNS id (e.g. `dev.igor1309.foliotell`)
-  that is permanent once the first build is uploaded. Decide before Stage 2.
+### Pre-task: platform-family refactor (own PR, between releases)
+
+Restructure `foliotell/` on the `notio/` family model before any Android code
+lands:
+
+- Move the iOS app into `foliotell/ios/`: `Package.swift`, `Sources/`,
+  `Tests/`, `App/`, `Config/`, `FolioTell.xcodeproj`, `scripts/`,
+  `release.toml`, and iOS-specific docs (`device-speech.md`,
+  `release-runbook.md`, `releases/`, `specs/`, `adr/`, `plans/`, `intake/`).
+- Keep at family level: `README.md`, `index.html`, `landing/` (source of the
+  published `foliotell.pages.dev` site — moving it would touch the Pages
+  deploy and the App-Store-referenced privacy URL, for no benefit), the
+  product backlog, and family docs (naming brief, product intent, this
+  roadmap, `docs/log.md`; per-platform logs can split later if churn demands).
+- Update path references, all verified touchpoints:
+  - `release-units.config.toml`: `"foliotell"` → `{ path = "foliotell/ios",
+    basename = "foliotell" }`; regenerate `release-units.toml`.
+  - `.github/workflows/foliotell-core.yml`: `working-directory` entries and
+    path filters.
+  - `.github/workflows/release-unit.yml`: `working-directory: foliotell` in
+    the `test-foliotell` and `deploy-foliotell-testflight` jobs, and the
+    `foliotell/docs/releases/<version>.md` release-notes path.
+  - `scripts/release/validate-foliotell-release-notes.js`: hardcoded
+    `foliotell/release.toml` and `foliotell/docs/releases/` paths.
+- Unchanged by design: the top-level dir set (so `loc-dashboard.sh` known
+  list stays as-is; the single `foliotell` dashboard row keeps covering the
+  family until a per-platform split is wanted), the `foliotell_v*` tag
+  namespace, and all published URLs.
+- Gate: full root suite green plus a `--validate-only`/dry-run pass of the
+  release-notes validator and distribute script from the new paths. Land as
+  its own PR with no product changes mixed in.
+
+### Scaffold
+
+- Record the stack and placement decisions (items 1–2 above) in an ADR under
+  the family docs.
+- Land the `foliotell/android/` skeleton: two Gradle modules per decision 7,
+  building with a near-empty test suite.
+- Dedicated `foliotell-android-core.yml` workflow on Linux runners,
+  path-filtered to `foliotell/android/**`, per
+  `.agents/per-project-ci-isolation.md`.
+- No new top-level dir, so the new-project checklist applies only partially:
+  no `loc-dashboard.sh` known-list change; add the `foliotell-android` row to
+  the README `## Components` table when the unit lands (mirroring the
+  `notio-backend`/`notio-frontend` rows).
 
 Done criteria:
 
-- Stack and placement ADR merged.
-- Project skeleton builds and its (near-empty) test suite runs in a dedicated
-  `foliotell-android-core.yml` workflow on Linux runners, path-filtered to the
-  project dir.
-- New-project checklist items landed in the same change set.
+- Refactor PR merged with the iOS release pipeline verified from the new
+  paths.
+- ADR merged; skeleton builds and its test suite runs green in
+  `foliotell-android-core.yml`.
 
 ## Stage 1 — The app
 
@@ -72,8 +122,10 @@ idioms:
 - Reader screen: filename, Play, Pause/Resume, Stop, speed presets (1× /
   1.25× / 1.5× / 1.75× / 2×).
 - Speech via the platform `TextToSpeech` engine with on-device system voices;
-  central speed-preset mapping, mirroring `FolioTellCore`'s testable core
-  (document validation/loading, speed mapping) as a plain Kotlin module.
+  document validation/loading and central speed-preset mapping live in the
+  pure-JVM `:core` module (decision 7).
+- `minSdk`/`targetSdk` per decision 8: current Android, no legacy support
+  burden; finalize the API level against the physical test devices.
 - Fully offline; no permissions beyond what SAF grants per document.
 
 Explicitly deferred past this stage (they are iOS v0.1+–v0.6 features, tracked
@@ -89,7 +141,7 @@ start an Android equivalent of the hypothesis ledger at first device test.
 
 Done criteria:
 
-- Core-module unit tests cover document loading/validation errors and speed
+- `:core` unit tests cover document loading/validation errors and speed
   mapping; suite green in `foliotell-android-core.yml`.
 - App runs on an emulator and at least one physical device: open a Markdown
   file, play, pause/resume, stop, change speed.
@@ -100,15 +152,16 @@ Done criteria:
 Get builds onto real devices through Play's TestFlight analog: the **internal
 testing track**.
 
-- Google Play Console developer account (one-time registration); create the
-  app record with the Stage 0 application id.
-- Signing: enroll in Play App Signing; generate and store the upload keystore.
-  The keystore and its passwords become repo secrets in Stage 3 — until then
-  they live only in the local signing setup.
-- Store listing minimum for internal testing: privacy policy URL (extend the
-  existing `landing/privacy.html` or publish an Android-inclusive variant) and
-  the Data safety form — trivially "no data collected" given the product
-  promise, and that promise must keep holding.
+- Create the app record under the existing personal Play developer account
+  (decision 4) with application id `dev.igor1309.foliotell` (decision 3).
+- Signing per decision 5: enroll in Play App Signing; generate and store the
+  upload keystore. The keystore and its passwords become repo secrets in
+  Stage 3 — until then they live only in the local signing setup.
+- Store listing minimum for internal testing: the shared platform-neutral
+  privacy policy at `foliotell.pages.dev/privacy` (decision 9 — make the
+  wording platform-neutral if it is iOS-specific today) and the Data safety
+  form — trivially "no data collected" given the product promise, and that
+  promise must keep holding.
 - First upload of a signed AAB is manual via the Console (required before API
   uploads work); subsequent uploads may stay manual in this stage.
 - Create the Play API service account and grant it release access — this is
@@ -116,7 +169,7 @@ testing track**.
   here (one scripted upload, the analog of
   `scripts/distribute-testflight.sh`).
 
-Production rollout is out of scope for this stage; note that new personal Play
+Production rollout is out of scope for this stage; note that personal Play
 accounts carry extra testing requirements before production access, which is
 another reason the internal track is the target.
 
@@ -135,9 +188,11 @@ Done criteria:
 Fold the Stage 2 manual pipeline into the repo's release-unit machinery, the
 way FolioTell iOS releases run today.
 
-- Register the release unit: `foliotell-android` basename in
-  `release-units.config.toml`, regenerate `release-units.toml`, add
-  `<project>/release.toml`. Tags: `foliotell-android_v<version>`.
+- Register the release unit: `{ path = "foliotell/android", basename =
+  "foliotell-android" }` in `release-units.config.toml`, regenerate
+  `release-units.toml`, add `foliotell/android/release.toml`. Tags:
+  `foliotell-android_v<version>`, versioned independently of iOS from `0.0.1`
+  (decision 6).
 - Extend `.github/workflows/release-unit.yml` with the Android analogs of the
   FolioTell jobs: a `test-foliotell-android` job (Gradle build + tests +
   release AAB on Linux runners — no macOS runner needed) and a
@@ -147,10 +202,11 @@ way FolioTell iOS releases run today.
 - Repo secrets: upload keystore (base64), keystore/key passwords, Play
   service-account JSON — named with a `FOLIOTELL_ANDROID_` prefix, mirroring
   the `FOLIOTELL_ASC_*` convention.
-- Versioned release notes under the project's `docs/releases/` with the same
-  CI validation the iOS unit has.
-- Write the unit's release runbook (mirroring `docs/release-runbook.md`) so
-  routine releases are `release-executor`-delegable.
+- Versioned release notes under the unit's `docs/releases/` with the same CI
+  validation the iOS unit has.
+- Write the unit's release runbook (mirroring the iOS
+  `docs/release-runbook.md`) so routine releases are
+  `release-executor`-delegable.
 
 Done criteria:
 

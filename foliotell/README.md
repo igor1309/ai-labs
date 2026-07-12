@@ -69,7 +69,7 @@ Living references:
 Briefs (`docs/`):
 
 - [Naming brief](docs/foliotell-naming-brief.md) — product scope, naming objective, scoring model, and availability standard.
-- [Android roadmap](docs/foliotell-android-roadmap.md) — staged milestones (decisions/scaffold, app, distribution, CI/CD lock) for a sibling Android app.
+- [Android roadmap](docs/foliotell-android-roadmap.md) — settled decisions and staged milestones (family refactor/scaffold, app, distribution, CI/CD lock) for a sibling Android app.
 
 Intake briefs (`docs/intake/`, pre-planning context capture per task):
 

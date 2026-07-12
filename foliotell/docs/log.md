@@ -2,6 +2,15 @@
 
 ## 2026-07-12
 
+- Settle the Android roadmap's open decisions: native Kotlin/Compose with
+  platform TTS, a `foliotell/` platform-family refactor (`foliotell/ios/` +
+  `foliotell/android/`, on the `notio/` nested-unit precedent) as a Stage 0
+  pre-task with verified pipeline touchpoints, application id
+  `dev.igor1309.foliotell`, existing personal Play account, Play App Signing,
+  independent `foliotell-android_v*` versioning, two-module `:core`/`:app`
+  layout, current-Android API floor, and one shared platform-neutral privacy
+  policy.
+
 - Author the Android roadmap (`docs/foliotell-android-roadmap.md`) — four
   staged milestones for a sibling native Android app: Stage 0 decisions and
   scaffold (stack, repo placement, application id, per-project CI), Stage 1
