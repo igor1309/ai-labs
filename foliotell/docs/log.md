@@ -2,6 +2,18 @@
 
 ## 2026-07-12
 
+- Execute the Android roadmap's Stage 0 pre-task: `foliotell/` becomes a
+  platform-family directory — the iOS app moves to `foliotell/ios/`
+  (sources, `FolioTell.xcodeproj`, scripts, `release.toml`, iOS docs
+  including the release runbook, releases, specs, ADRs, plans, and intake
+  briefs), while the README, landing page, backlog, research, and family
+  docs (naming brief, product intent, Android roadmap, this log) stay at the
+  family level. Release-unit config, CI path filters, release workflow jobs,
+  release scripts/tests, and agent docs now point at the new paths; the
+  `foliotell_v*` tag namespace and published `foliotell.pages.dev` URLs are
+  unchanged. Verified by the full root suite, manifest generate/validate
+  checks, and the release-notes validator.
+
 - Settle the Android roadmap's open decisions: native Kotlin/Compose with
   platform TTS, a `foliotell/` platform-family refactor (`foliotell/ios/` +
   `foliotell/android/`, on the `notio/` nested-unit precedent) as a Stage 0

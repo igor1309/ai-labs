@@ -35,7 +35,7 @@ Environment:
   FOLIOTELL_PROVIDER_ID          Optional; must be $REQUIRED_TEAM_ID when set.
   FOLIOTELL_VERSION              Marketing version. Default: $MARKETING_VERSION
   FOLIOTELL_BUILD_NUMBER         Build number. Default: git commit count.
-  FOLIOTELL_BUILD_ROOT           Output root. Default: foliotell/build/testflight
+  FOLIOTELL_BUILD_ROOT           Output root. Default: foliotell/ios/build/testflight
   FOLIOTELL_ASC_API_KEY_ID       App Store Connect API key id. Required for upload.
   FOLIOTELL_ASC_API_ISSUER_ID    App Store Connect API issuer id. Required for upload.
   FOLIOTELL_ASC_API_KEY_PATH     Path to AuthKey_<key id>.p8. Required for upload.

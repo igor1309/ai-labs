@@ -23,12 +23,13 @@ a port of the iOS codebase: no shared code, no cross-platform framework.
 
 Reference points on the iOS side:
 
-- Core scope: `docs/specs/foliotell-technical-spec.md` (v0.0.1/v0.0.2) — the
-  Stage 1 parity target.
-- Distribution/CI shape to mirror: `release.toml`, `docs/release-runbook.md`,
-  and the `foliotell` jobs in `.github/workflows/release-unit.yml`.
-- Device-behavior discipline to replicate: `docs/device-speech.md` — Android
-  TTS will need its own hypothesis ledger.
+- Core scope: `ios/docs/specs/foliotell-technical-spec.md` (v0.0.1/v0.0.2) —
+  the Stage 1 parity target.
+- Distribution/CI shape to mirror: `ios/release.toml`,
+  `ios/docs/release-runbook.md`, and the `foliotell` jobs in
+  `.github/workflows/release-unit.yml`.
+- Device-behavior discipline to replicate: `ios/docs/device-speech.md` —
+  Android TTS will need its own hypothesis ledger.
 
 ## Decisions (settled 2026-07-12)
 
@@ -167,7 +168,7 @@ testing track**.
 - Create the Play API service account and grant it release access — this is
   the credential Stage 3 automates with, so it's provisioned and smoke-tested
   here (one scripted upload, the analog of
-  `scripts/distribute-testflight.sh`).
+  `ios/scripts/distribute-testflight.sh`).
 
 Production rollout is out of scope for this stage; note that personal Play
 accounts carry extra testing requirements before production access, which is

@@ -129,11 +129,11 @@ jobs:
 
       - name: Build package
         run: swift build
-        working-directory: foliotell
+        working-directory: foliotell/ios
 
       - name: Run package tests
         run: swift test
-        working-directory: foliotell
+        working-directory: foliotell/ios
 
       - name: Verify unsigned iOS archive
         run: |
@@ -146,7 +146,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM=VRVJ9YNRQU \
             PRODUCT_BUNDLE_IDENTIFIER=foliotell.FolioTell
-        working-directory: foliotell
+        working-directory: foliotell/ios
 
   deploy-nomos-staging:
     if: ${{ needs.verify.outputs.basename == 'nomos' }}
@@ -629,7 +629,7 @@ jobs:
           FOLIOTELL_TEAM_ID: VRVJ9YNRQU
           FOLIOTELL_VERSION: ${{ needs.verify.outputs.version }}
         run: scripts/distribute-testflight.sh --upload
-        working-directory: foliotell
+        working-directory: foliotell/ios
 
   github-release:
     needs: [core, verify, test-notio-backend, test-foliotell, deploy-nomos-staging, deploy-nomos-prod, deploy-agonara-staging, deploy-agonara-prod, deploy-notio-backend, deploy-notio-frontend, deploy-clipdeck, deploy-foliotell-testflight]
@@ -669,7 +669,7 @@ jobs:
           RELEASE_VERSION: ${{ needs.verify.outputs.version }}
         run: |
           if [ "$RELEASE_BASENAME" = "foliotell" ]; then
-            release_notes="foliotell/docs/releases/${RELEASE_VERSION}.md"
+            release_notes="foliotell/ios/docs/releases/${RELEASE_VERSION}.md"
             release_body="$RUNNER_TEMP/release-body.md"
             awk 'NR == 1 && $0 == "---" { in_front_matter = 1; next } in_front_matter && $0 == "---" { in_front_matter = 0; next } !in_front_matter { print }' "$release_notes" > "$release_body"
           else

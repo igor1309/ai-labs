@@ -1,5 +1,17 @@
 # Log
 
+## 2026-07-12
+
+- FolioTell: restructure `foliotell/` into a platform-family directory on the
+  `notio/` model — the iOS app (sources, Xcode project, scripts,
+  `release.toml`, iOS-specific docs) moves to `foliotell/ios/`, ahead of the
+  planned `foliotell/android/` sibling. Release unit path, CI path filters,
+  release workflow jobs, release scripts and their tests, and agent docs
+  updated; family-level README, landing page, backlog, research, and product
+  docs stay in place, so published URLs and the `foliotell_v*` tag namespace
+  are unchanged. Full root suite, manifest checks, and the release-notes
+  validator pass from the new paths.
+
 ## 2026-07-10
 
 - FolioTell: prepare `foliotell_v0.6.3` — device feedback fixes Stop reset,

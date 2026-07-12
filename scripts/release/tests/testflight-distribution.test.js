@@ -5,7 +5,7 @@ import { describe, it } from 'node:test';
 
 const repoRoot = resolve(import.meta.dirname, '..', '..', '..');
 const distributeScript = readFileSync(
-  resolve(repoRoot, 'foliotell/scripts/distribute-testflight.sh'),
+  resolve(repoRoot, 'foliotell/ios/scripts/distribute-testflight.sh'),
   'utf8',
 );
 

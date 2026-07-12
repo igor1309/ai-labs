@@ -22,7 +22,7 @@ Repo-specific addenda to the `release-process` skill. Read when doing release wo
   release metadata changes. After the transition, do not add product changes;
   merge the candidate to `trunk` before tagging.
 - Delegation: routine releases with a self-contained unit runbook (e.g.
-  `foliotell/docs/release-runbook.md`) can be executed by the `release-executor`
+  `foliotell/ios/docs/release-runbook.md`) can be executed by the `release-executor`
   subagent (`.claude/agents/release-executor.md`, haiku model) — pass unit,
   versions, branch name, log entries, and PR title/body in the invocation
   prompt; it stops and reports on anything off-runbook.

@@ -74,8 +74,8 @@ describe('validate-foliotell-release-notes', () => {
   }
 
   function writeReleaseMetadata() {
-    mkdirSync(join(temporaryDirectory, 'foliotell'), { recursive: true });
-    writeFileSync(join(temporaryDirectory, 'foliotell', 'release.toml'), 'version = "0.5.0"\n');
+    mkdirSync(join(temporaryDirectory, 'foliotell', 'ios'), { recursive: true });
+    writeFileSync(join(temporaryDirectory, 'foliotell', 'ios', 'release.toml'), 'version = "0.5.0"\n');
   }
 
   function writeReleaseNote({
@@ -84,7 +84,7 @@ describe('validate-foliotell-release-notes', () => {
     whatsNew = '- Improved voice quality onboarding.',
   } = {}) {
     writeReleaseMetadata();
-    const releasesDirectory = join(temporaryDirectory, 'foliotell', 'docs', 'releases');
+    const releasesDirectory = join(temporaryDirectory, 'foliotell', 'ios', 'docs', 'releases');
     mkdirSync(releasesDirectory, { recursive: true });
     writeFileSync(
       join(releasesDirectory, '0.5.0.md'),

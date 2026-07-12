@@ -28,11 +28,11 @@ jobs:
 
       - name: Build
         run: swift build
-        working-directory: foliotell
+        working-directory: foliotell/ios
 
       - name: Run tests
         run: swift test
-        working-directory: foliotell
+        working-directory: foliotell/ios
 
       - name: Verify iOS archive wrapper
         run: |
@@ -45,4 +45,4 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM=VRVJ9YNRQU \
             PRODUCT_BUNDLE_IDENTIFIER=foliotell.FolioTell
-        working-directory: foliotell
+        working-directory: foliotell/ios
