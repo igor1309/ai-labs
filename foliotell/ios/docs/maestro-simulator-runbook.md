@@ -6,7 +6,7 @@ description: "Runbook for running FolioTell Maestro flows on iOS 26 simulators: 
 
 # Maestro Simulator Runbook
 
-How to run the FolioTell Maestro flows (`foliotell/.maestro/flows/`) on a
+How to run the FolioTell Maestro flows (`foliotell/ios/.maestro/flows/`) on a
 simulator, including the environment facts and input quirks discovered on
 2026-07-08. Follow this instead of re-deriving; every step below was verified
 live.
@@ -79,7 +79,7 @@ xcrun simctl spawn <UDID> defaults write foliotell.FolioTell \
   voiceQualityPreviewMode -string installed
 xcrun simctl spawn <UDID> defaults write foliotell.FolioTell \
   acknowledgedInstalledVoiceQualityLanguageCodes -string ""
-maestro test foliotell/.maestro/flows/voice-quality-acknowledgement.yaml \
+maestro test foliotell/ios/.maestro/flows/voice-quality-acknowledgement.yaml \
   --device <UDID>
 ```
 

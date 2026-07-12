@@ -82,9 +82,9 @@ text to speech,tts,markdown,plain text,documents,reader,speech,offline,voice,fil
 
 - `foliotell/README.md`: product description, release identity, team/provider, bundle ID, and distribution credential model.
 - `foliotell/index.html`: public-facing tagline and product positioning.
-- `foliotell/docs/specs/foliotell-technical-spec.md`: v0.0.1 behavior and constraints.
-- `foliotell/App/Info.plist`: app display name and export compliance declaration.
-- `foliotell/release.toml`: canonical release version metadata.
+- `foliotell/ios/docs/specs/foliotell-technical-spec.md`: v0.0.1 behavior and constraints.
+- `foliotell/ios/App/Info.plist`: app display name and export compliance declaration.
+- `foliotell/ios/release.toml`: canonical release version metadata.
 - Public landing source artifact: `foliotell/landing/`.
 
 ## Sync Rule

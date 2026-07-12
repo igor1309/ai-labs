@@ -2,6 +2,14 @@
 
 ## 2026-07-12
 
+- Post-refactor doc audit: fix stale pre-refactor paths in the two live iOS
+  docs that the touchpoint sweep missed (`ios/docs/maestro-simulator-runbook.md`
+  Maestro flow paths, `ios/docs/app-store-connect-product-card.md`
+  sources-of-truth list) and reframe the repo README Components row from
+  "iOS app" to the `foliotell` app family. Historical docs (implemented
+  plans, intake briefs, release notes, log history) keep their original
+  paths as records.
+
 - Record ADR-003 (`docs/adr/adr-003-android-native-stack-and-family-placement.md`) —
   the Android sibling is native Kotlin/Compose with platform `TextToSpeech`,
   no shared code with iOS, placed at `foliotell/android/` as an independent
