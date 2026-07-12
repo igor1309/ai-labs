@@ -34,13 +34,15 @@ Reference points on the iOS side:
 ## Decisions (settled 2026-07-12)
 
 1. **Stack:** native Kotlin + Jetpack Compose + platform
-   `android.speech.tts.TextToSpeech`. Recorded in the Stage 0 ADR.
+   `android.speech.tts.TextToSpeech`. Recorded in
+   [ADR-003](adr/adr-003-android-native-stack-and-family-placement.md).
 2. **Repo placement:** refactor `foliotell/` into a platform-family directory
    first (iOS app moves to `foliotell/ios/`), then Android lands as
    `foliotell/android/`. This follows the existing `notio/` precedent —
    nested release units per `{ path = "notio/backend", basename =
-   "notio-backend" }` — rather than a new top-level dir. See the Stage 0
-   pre-task below.
+   "notio-backend" }` — rather than a new top-level dir. Recorded in
+   [ADR-003](adr/adr-003-android-native-stack-and-family-placement.md); see
+   the Stage 0 pre-task below.
 3. **Application id:** `dev.igor1309.foliotell`. Permanent once the first
    build is uploaded.
 4. **Play account:** the existing personal Google Play developer account.

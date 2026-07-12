@@ -2,6 +2,13 @@
 
 ## 2026-07-12
 
+- Record ADR-003 (`docs/adr/adr-003-android-native-stack-and-family-placement.md`) —
+  the Android sibling is native Kotlin/Compose with platform `TextToSpeech`,
+  no shared code with iOS, placed at `foliotell/android/` as an independent
+  nested release unit (`foliotell-android_v*`) with a two-module
+  `:core`/`:app` layout and its own Linux CI workflow. Family-level ADRs
+  start here; ADR-001/002 remain iOS-scoped in `ios/docs/adr/`.
+
 - Execute the Android roadmap's Stage 0 pre-task: `foliotell/` becomes a
   platform-family directory — the iOS app moves to `foliotell/ios/`
   (sources, `FolioTell.xcodeproj`, scripts, `release.toml`, iOS docs

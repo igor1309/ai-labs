@@ -79,6 +79,10 @@ Briefs (`docs/`):
 - [Naming brief](docs/foliotell-naming-brief.md) — product scope, naming objective, scoring model, and availability standard.
 - [Android roadmap](docs/foliotell-android-roadmap.md) — settled decisions and staged milestones (family refactor/scaffold, app, distribution, CI/CD lock) for a sibling Android app.
 
+Family ADRs (`docs/adr/`; iOS-scoped ADR-001/002 live in `ios/docs/adr/`):
+
+- [ADR-003 — Android sibling: native stack and family placement](docs/adr/adr-003-android-native-stack-and-family-placement.md)
+
 Intake briefs (`ios/docs/intake/`, pre-planning context capture per task):
 
 - [Speech text normalization](ios/docs/intake/speech-normalization-intake.md)
