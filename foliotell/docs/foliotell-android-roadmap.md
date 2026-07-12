@@ -90,8 +90,9 @@ lands:
   family until a per-platform split is wanted), the `foliotell_v*` tag
   namespace, and all published URLs.
 - Gate: full root suite green plus a `--validate-only`/dry-run pass of the
-  release-notes validator and distribute script from the new paths. Land as
-  its own PR with no product changes mixed in.
+  release-notes validator and distribute script from the new paths. Ships on
+  the roadmap branch/PR together with the Stage 0 docs (one branch, one PR),
+  with no product changes mixed in.
 
 ### Scaffold
 
