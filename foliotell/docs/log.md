@@ -1,5 +1,14 @@
 # Log
 
+## 2026-07-12
+
+- Author the Android roadmap (`docs/foliotell-android-roadmap.md`) — four
+  staged milestones for a sibling native Android app: Stage 0 decisions and
+  scaffold (stack, repo placement, application id, per-project CI), Stage 1
+  the app at core-spec parity, Stage 2 Play internal-testing distribution,
+  Stage 3 release-unit CI/CD lock. Roadmap only; per-stage specs and plans
+  follow at stage start.
+
 ## 2026-07-10
 
 - Prepare `foliotell_v0.6.3` — Stop now clears the saved reading position,
