@@ -15,10 +15,19 @@ FolioTell opens local Markdown or plain-text files from the system document brow
 ## Layout
 
 `foliotell/` is a platform-family directory (like `notio/`): the iOS app lives
-in `ios/`, the planned Android sibling lands in `android/` (see the
+in `ios/`, the Android sibling in `android/` (Kotlin/Compose skeleton; see the
 [Android roadmap](docs/foliotell-android-roadmap.md)), and product-level
 assets — this README, the landing page, the backlog, research, and family
 docs — stay at the family level.
+
+## Implementation (Android, `android/`)
+
+Stage 0 scaffold per the roadmap and ADR-003: two Gradle modules —
+`android/core/` (pure JVM, unit-testable) and `android/app/` (Jetpack
+Compose, application id `dev.igor1309.foliotell`). CI runs
+`.github/workflows/foliotell-android-core.yml` (Linux) on
+`foliotell/android/**` changes. In sandboxes without Google Maven access,
+build the core alone: `gradle :core:test -PskipAndroidApp=true`.
 
 ## Implementation (iOS, `ios/`)
 

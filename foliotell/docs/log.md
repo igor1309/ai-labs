@@ -2,6 +2,16 @@
 
 ## 2026-07-12
 
+- Land the `android/` Stage 0 scaffold: a two-module Gradle skeleton per
+  ADR-003 — pure-JVM `:core` (Kotlin, `kotlin-test` seed suite) and Compose
+  `:app` (application id `dev.igor1309.foliotell`, compileSdk/minSdk 35
+  placeholder pending decision 8), Gradle 8.14.3 wrapper, AGP 8.9.2, Kotlin
+  2.1.20, Compose BOM 2025.04.01 — plus the dedicated
+  `foliotell-android-core.yml` Linux CI workflow wired into the `ci.yml`
+  dispatcher (filters, job, report/notify fan-in). `:core:test` verified
+  locally via `-PskipAndroidApp=true` (the sandbox cannot reach Google
+  Maven); the `:app` assemble gate runs in CI.
+
 - Post-refactor doc audit: fix stale pre-refactor paths in the two live iOS
   docs that the touchpoint sweep missed (`ios/docs/maestro-simulator-runbook.md`
   Maestro flow paths, `ios/docs/app-store-connect-product-card.md`

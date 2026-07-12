@@ -2,6 +2,11 @@
 
 ## 2026-07-12
 
+- FolioTell: scaffold the Android sibling at `foliotell/android/` (two-module
+  Gradle skeleton per ADR-003) and add the dedicated
+  `foliotell-android-core.yml` Linux CI workflow to the `ci.yml` dispatcher,
+  per the per-project CI isolation rule.
+
 - FolioTell: restructure `foliotell/` into a platform-family directory on the
   `notio/` model — the iOS app (sources, Xcode project, scripts,
   `release.toml`, iOS-specific docs) moves to `foliotell/ios/`, ahead of the
