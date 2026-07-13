@@ -1,5 +1,13 @@
 # Log
 
+## 2026-07-13
+
+- FolioTell: extend `.agents/foliotell.md` with an Android section (build
+  commands, sandbox constraints, no-root-build-script rule) and widen the
+  CLAUDE.md FolioTell trigger to all of `foliotell/`, so agents picking up
+  Android work are routed to the operational knowledge instead of
+  re-deriving it.
+
 ## 2026-07-12
 
 - FolioTell: scaffold the Android sibling at `foliotell/android/` (two-module

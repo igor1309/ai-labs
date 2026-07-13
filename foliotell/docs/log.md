@@ -1,19 +1,23 @@
 # Log
 
+## 2026-07-13
+
+- Capture the Android operational knowledge where agents look for it: an
+  Android section in `.agents/foliotell.md` (build commands, sandbox network
+  constraints and the environment-domains fix, the deliberate
+  no-root-build-script layout) with the CLAUDE.md FolioTell trigger widened
+  from `foliotell/ios/` to all of `foliotell/`; the scaffold log entry trimmed
+  to outcome + pointer per doc-maintenance style.
+
 ## 2026-07-12
 
-- Land the `android/` Stage 0 scaffold: a two-module Gradle skeleton per
-  ADR-003 — pure-JVM `:core` (Kotlin, `kotlin-test` seed suite) and Compose
-  `:app` (application id `dev.igor1309.foliotell`, compileSdk/minSdk 35
-  placeholder pending decision 8), Gradle 8.14.3 wrapper, AGP 8.9.2, Kotlin
-  2.1.20, Compose BOM 2025.04.01 — plus the dedicated
-  `foliotell-android-core.yml` Linux CI workflow wired into the `ci.yml`
-  dispatcher (filters, job, report/notify fan-in). There is no root build
-  script — each module declares its own plugins, because a root `apply
-  false` block either puts AGP on the root classpath (unresolvable in
-  sandboxes limited to Maven Central) or breaks `:app`'s versioned Kotlin
-  plugin request (first CI run failed exactly there). `:core:test` verified
-  locally via `-PskipAndroidApp=true`; the `:app` assemble gate runs in CI.
+- Land the `android/` Stage 0 scaffold per ADR-003: two-module Gradle
+  skeleton — pure-JVM `:core` (kotlin-test seed suite) and Compose `:app`
+  (application id `dev.igor1309.foliotell`, SDK 35 placeholder pending
+  decision 8) — plus the dedicated `foliotell-android-core.yml` Linux CI
+  workflow wired into the `ci.yml` dispatcher. Build commands, sandbox
+  constraints, and the no-root-build-script rule: `.agents/foliotell.md`
+  (Android section).
 
 - Post-refactor doc audit: fix stale pre-refactor paths in the two live iOS
   docs that the touchpoint sweep missed (`ios/docs/maestro-simulator-runbook.md`

@@ -89,10 +89,11 @@ When adding a new project with its own dependencies, create a dedicated `<projec
 
 ## FolioTell Build Rules
 
-When touching Swift sources under `foliotell/ios/`, follow
-[`.agents/foliotell.md`](.agents/foliotell.md) — the project has a dual
-SPM/Xcode-project build, and new source files must be registered in
-`FolioTell.xcodeproj/project.pbxproj` or the CI archive fails.
+When working under `foliotell/` — iOS Swift sources or the Android Gradle
+project — follow [`.agents/foliotell.md`](.agents/foliotell.md). iOS has a
+dual SPM/Xcode-project build (new source files must be registered in
+`FolioTell.xcodeproj/project.pbxproj` or the CI archive fails); Android has
+sandbox build constraints and a deliberate no-root-build-script layout.
 
 ## Nomos API Keys
 
