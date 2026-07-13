@@ -67,7 +67,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | neris | Framework | Agentic execution layer in Swift |
 | niora | Concept | Contextual field of emergence |
 | cairana | Product (research) | AI assistant for psychologists. Turns sessions into structured notes, case context, and next steps; working name in naming-validation stage |
-| foliotell | App family | Native document-to-speech apps that read local Markdown and plain-text files aloud: shipping iOS app (release unit `foliotell`, in `ios/`) with Apple speech synthesis; Android sibling scaffolded in `android/` (Kotlin/Compose) per the Android roadmap |
+| foliotell | App family | Native document-to-speech apps that read local Markdown and plain-text files aloud: shipping iOS app (release unit `foliotell`, in `ios/`) with Apple speech synthesis; Android sibling app in `android/` (Kotlin/Compose reader with platform TTS, Stage 1 of the Android roadmap) |
 | tools | Tooling | Developer workflow helpers |
 | dev-skills | Tooling | Claude Code skills marketplace |
 | sandbox | Research | Experiments and prototypes |

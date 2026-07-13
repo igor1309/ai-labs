@@ -10,8 +10,8 @@ android {
 
     defaultConfig {
         applicationId = "dev.igor1309.foliotell"
-        // High floor, no legacy (roadmap decision 8); the exact API level is
-        // finalized against the physical test devices at Stage 1 start.
+        // High floor, no legacy (roadmap decision 8, finalized): OS releases
+        // older than two years are unsupported.
         minSdk = 35
         targetSdk = 35
         versionCode = 1

@@ -53,9 +53,10 @@ Reference points on the iOS side:
 7. **Module layout:** two Gradle modules — `:core` pure-JVM and
    unit-testable, `:app` for Compose/TTS — mirroring the
    `FolioTellCore`/`App` split.
-8. **API floor:** high, no legacy — `minSdk` tracks current Android; the
-   exact API level is finalized against the actual test devices at Stage 1
-   start.
+8. **API floor:** high, no legacy — `minSdk` tracks current Android.
+   Finalized 2026-07-13: `minSdk = 35` (Android 15) — OS releases older
+   than two years are unsupported. There are no physical Android test
+   devices; acceptance runs on the emulator until a device is available.
 9. **Privacy policy:** one platform-neutral policy at the existing
    `https://foliotell.pages.dev/privacy` URL, referenced by both stores.
 
@@ -128,8 +129,8 @@ idioms:
 - Speech via the platform `TextToSpeech` engine with on-device system voices;
   document validation/loading and central speed-preset mapping live in the
   pure-JVM `:core` module (decision 7).
-- `minSdk`/`targetSdk` per decision 8: current Android, no legacy support
-  burden; finalize the API level against the physical test devices.
+- `minSdk`/`targetSdk` per decision 8: `35` (Android 15), no legacy support
+  burden — OS releases older than two years are unsupported.
 - Fully offline; no permissions beyond what SAF grants per document.
 
 Explicitly deferred past this stage (they are iOS v0.1+–v0.6 features, tracked
@@ -139,16 +140,19 @@ picker and language-aware voice selection, background/lock-screen playback.
 
 Known risk to budget for: Android TTS engine variance. Unlike
 `AVSpeechSynthesizer`, the installed engine differs per OEM (Google TTS,
-Samsung TTS, …) and voice/language availability is not guaranteed. Real-device
-behavior is the acceptance gate, same as the iOS device-speech discipline;
-start an Android equivalent of the hypothesis ledger at first device test.
+Samsung TTS, …) and voice/language availability is not guaranteed. With no
+physical device on hand (decision 8), the emulator's Google TTS is the
+Stage 1 acceptance gate; per-OEM engine behavior stays an open risk until a
+real device is available — start the Android equivalent of the iOS
+device-speech hypothesis ledger at that first device test.
 
 Done criteria:
 
 - `:core` unit tests cover document loading/validation errors and speed
   mapping; suite green in `foliotell-android-core.yml`.
-- App runs on an emulator and at least one physical device: open a Markdown
-  file, play, pause/resume, stop, change speed.
+- App runs on an emulator: open a Markdown file, play, pause/resume, stop,
+  change speed. (Real-device validation is deferred until a device is
+  available — none exists; see decision 8.)
 - A debug APK is buildable from a clean checkout with documented commands.
 
 ## Stage 2 — Distribution
