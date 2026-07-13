@@ -15,10 +15,10 @@ const rootIndex = process.argv.indexOf('--root');
 const repositoryRoot = rootIndex === -1
   ? resolve(import.meta.dirname, '..', '..')
   : resolve(process.argv[rootIndex + 1]);
-const releaseMetadataPath = join(repositoryRoot, 'foliotell', 'release.toml');
+const releaseMetadataPath = join(repositoryRoot, 'foliotell', 'ios', 'release.toml');
 const releaseMetadata = parse(readFileSync(releaseMetadataPath, 'utf8'));
 const version = String(releaseMetadata.version);
-const releaseNotesPath = join(repositoryRoot, 'foliotell', 'docs', 'releases', `${version}.md`);
+const releaseNotesPath = join(repositoryRoot, 'foliotell', 'ios', 'docs', 'releases', `${version}.md`);
 
 if (existsSync(releaseNotesPath) === false) {
   fail(`FolioTell ${version}: missing release notes at ${releaseNotesPath}`);

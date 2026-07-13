@@ -1,6 +1,6 @@
 ---
 name: release-executor
-description: Mechanically executes a per-unit release from the unit's release runbook (e.g. foliotell/docs/release-runbook.md). Use for routine releases where the runbook covers every step; it stops and reports at any off-runbook condition instead of improvising. The invocation prompt must supply unit, old/new version, branch name, log entries, and PR title/body.
+description: Mechanically executes a per-unit release from the unit's release runbook (e.g. foliotell/ios/docs/release-runbook.md). Use for routine releases where the runbook covers every step; it stops and reports at any off-runbook condition instead of improvising. The invocation prompt must supply unit, old/new version, branch name, log entries, and PR title/body.
 model: haiku
 tools: Bash, Read, Grep, Glob
 ---

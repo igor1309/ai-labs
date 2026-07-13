@@ -39,7 +39,7 @@ reviewed product diff plus the release metadata commit.
 ### 2. Bump and document
 
 ```bash
-sed -i '' 's/version = "<old>"/version = "<new>"/' foliotell/release.toml
+sed -i '' 's/version = "<old>"/version = "<new>"/' foliotell/ios/release.toml
 node scripts/release/generate-manifest.js
 node scripts/release/validate-manifest.js
 node scripts/release/generate-manifest.js --check
@@ -52,7 +52,7 @@ only the most recent commit.
 SemVer: patch for fixes, minor for features (pre-1.0 discipline per repo
 convention).
 
-Create `foliotell/docs/releases/<new-version>.md` with YAML front matter, an
+Create `foliotell/ios/docs/releases/<new-version>.md` with YAML front matter, an
 exact `# FolioTell <new-version>` title, and a non-empty `## What's New`
 section. Its user-facing Markdown, excluding the YAML metadata, becomes the
 GitHub Release body.
@@ -76,13 +76,13 @@ the released delta.
 
 The full root suite is the gate — the release workflow re-runs it, so a
 failure in any unit blocks this release. Swift gates (`swift build` /
-`swift test` in `foliotell/`) are required only if Swift code changed since
+`swift test` in `foliotell/ios/`) are required only if Swift code changed since
 they last ran green.
 
 ### 5. PR
 
 ```bash
-git add foliotell/release.toml release-units.toml foliotell/docs/releases/<version>.md docs/log.md foliotell/docs/log.md
+git add foliotell/ios/release.toml release-units.toml foliotell/ios/docs/releases/<version>.md docs/log.md foliotell/docs/log.md
 git commit -m "release foliotell <version>"
 git push -u origin <candidate-branch>
 gh pr create --title "Release FolioTell <version>" --body "<summary + verification>"
@@ -143,7 +143,7 @@ reviewed.
   Xcodes (16.x vs 26.x observed within one week in 2026-07). The deploy job
   has a "Select newest Xcode" step so the shipped SDK and the `altool`
   generation do not depend on runner luck. Do not remove it.
-- **altool flags.** `foliotell/scripts/distribute-testflight.sh` must use only
+- **altool flags.** `foliotell/ios/scripts/distribute-testflight.sh` must use only
   the documented interface: `-t ios --apiKey <id> --apiIssuer <issuer>` with
   the key at `~/.appstoreconnect/private_keys/AuthKey_<id>.p8`. The
   undocumented spellings (`--api-key`, `--p8-file-path`, `--team-id`) are

@@ -1,5 +1,63 @@
 # Log
 
+## 2026-07-12
+
+- Land the `android/` Stage 0 scaffold: a two-module Gradle skeleton per
+  ADR-003 — pure-JVM `:core` (Kotlin, `kotlin-test` seed suite) and Compose
+  `:app` (application id `dev.igor1309.foliotell`, compileSdk/minSdk 35
+  placeholder pending decision 8), Gradle 8.14.3 wrapper, AGP 8.9.2, Kotlin
+  2.1.20, Compose BOM 2025.04.01 — plus the dedicated
+  `foliotell-android-core.yml` Linux CI workflow wired into the `ci.yml`
+  dispatcher (filters, job, report/notify fan-in). There is no root build
+  script — each module declares its own plugins, because a root `apply
+  false` block either puts AGP on the root classpath (unresolvable in
+  sandboxes limited to Maven Central) or breaks `:app`'s versioned Kotlin
+  plugin request (first CI run failed exactly there). `:core:test` verified
+  locally via `-PskipAndroidApp=true`; the `:app` assemble gate runs in CI.
+
+- Post-refactor doc audit: fix stale pre-refactor paths in the two live iOS
+  docs that the touchpoint sweep missed (`ios/docs/maestro-simulator-runbook.md`
+  Maestro flow paths, `ios/docs/app-store-connect-product-card.md`
+  sources-of-truth list) and reframe the repo README Components row from
+  "iOS app" to the `foliotell` app family. Historical docs (implemented
+  plans, intake briefs, release notes, log history) keep their original
+  paths as records.
+
+- Record ADR-003 (`docs/adr/adr-003-android-native-stack-and-family-placement.md`) —
+  the Android sibling is native Kotlin/Compose with platform `TextToSpeech`,
+  no shared code with iOS, placed at `foliotell/android/` as an independent
+  nested release unit (`foliotell-android_v*`) with a two-module
+  `:core`/`:app` layout and its own Linux CI workflow. Family-level ADRs
+  start here; ADR-001/002 remain iOS-scoped in `ios/docs/adr/`.
+
+- Execute the Android roadmap's Stage 0 pre-task: `foliotell/` becomes a
+  platform-family directory — the iOS app moves to `foliotell/ios/`
+  (sources, `FolioTell.xcodeproj`, scripts, `release.toml`, iOS docs
+  including the release runbook, releases, specs, ADRs, plans, and intake
+  briefs), while the README, landing page, backlog, research, and family
+  docs (naming brief, product intent, Android roadmap, this log) stay at the
+  family level. Release-unit config, CI path filters, release workflow jobs,
+  release scripts/tests, and agent docs now point at the new paths; the
+  `foliotell_v*` tag namespace and published `foliotell.pages.dev` URLs are
+  unchanged. Verified by the full root suite, manifest generate/validate
+  checks, and the release-notes validator.
+
+- Settle the Android roadmap's open decisions: native Kotlin/Compose with
+  platform TTS, a `foliotell/` platform-family refactor (`foliotell/ios/` +
+  `foliotell/android/`, on the `notio/` nested-unit precedent) as a Stage 0
+  pre-task with verified pipeline touchpoints, application id
+  `dev.igor1309.foliotell`, existing personal Play account, Play App Signing,
+  independent `foliotell-android_v*` versioning, two-module `:core`/`:app`
+  layout, current-Android API floor, and one shared platform-neutral privacy
+  policy.
+
+- Author the Android roadmap (`docs/foliotell-android-roadmap.md`) — four
+  staged milestones for a sibling native Android app: Stage 0 decisions and
+  scaffold (stack, repo placement, application id, per-project CI), Stage 1
+  the app at core-spec parity, Stage 2 Play internal-testing distribution,
+  Stage 3 release-unit CI/CD lock. Roadmap only; per-stage specs and plans
+  follow at stage start.
+
 ## 2026-07-10
 
 - Prepare `foliotell_v0.6.3` — Stop now clears the saved reading position,

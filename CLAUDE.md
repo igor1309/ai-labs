@@ -89,7 +89,7 @@ When adding a new project with its own dependencies, create a dedicated `<projec
 
 ## FolioTell Build Rules
 
-When touching Swift sources under `foliotell/`, follow
+When touching Swift sources under `foliotell/ios/`, follow
 [`.agents/foliotell.md`](.agents/foliotell.md) — the project has a dual
 SPM/Xcode-project build, and new source files must be registered in
 `FolioTell.xcodeproj/project.pbxproj` or the CI archive fails.

@@ -12,17 +12,34 @@ Document-to-speech iPhone app.
 
 FolioTell opens local Markdown or plain-text files from the system document browser and reads them aloud using Apple speech synthesis, with selectable playback speed. A native, offline, read-only SwiftUI app — *no account, backend, analytics, subscription, or network dependency*. Working name; v0.0.1 is implemented as a Swift package.
 
-## Implementation
+## Layout
 
-- `Package.swift` defines the `FolioTell` executable and `FolioTellCore` library.
-- `Sources/App/` contains the SwiftUI `DocumentGroup`, `FileDocument`, reader screen, and `AVSpeechSynthesizer` controller.
-- `Sources/Core/` contains testable document validation/loading and speech speed mapping.
-- `Tests/Core/` covers supported document loading, error cases, and speed presets.
-- `FolioTell.xcodeproj` wraps the same sources as an archive-ready iOS app for bundle id `foliotell.FolioTell` on Apple team `VRVJ9YNRQU`.
+`foliotell/` is a platform-family directory (like `notio/`): the iOS app lives
+in `ios/`, the Android sibling in `android/` (Kotlin/Compose skeleton; see the
+[Android roadmap](docs/foliotell-android-roadmap.md)), and product-level
+assets — this README, the landing page, the backlog, research, and family
+docs — stay at the family level.
+
+## Implementation (Android, `android/`)
+
+Stage 0 scaffold per the roadmap and ADR-003: two Gradle modules —
+`android/core/` (pure JVM, unit-testable) and `android/app/` (Jetpack
+Compose, application id `dev.igor1309.foliotell`). CI runs
+`.github/workflows/foliotell-android-core.yml` (Linux) on
+`foliotell/android/**` changes. In sandboxes without Google Maven access,
+build the core alone: `gradle :core:test -PskipAndroidApp=true`.
+
+## Implementation (iOS, `ios/`)
+
+- `ios/Package.swift` defines the `FolioTell` executable and `FolioTellCore` library.
+- `ios/Sources/App/` contains the SwiftUI `DocumentGroup`, `FileDocument`, reader screen, and `AVSpeechSynthesizer` controller.
+- `ios/Sources/Core/` contains testable document validation/loading and speech speed mapping.
+- `ios/Tests/Core/` covers supported document loading, error cases, and speed presets.
+- `ios/FolioTell.xcodeproj` wraps the same sources as an archive-ready iOS app for bundle id `foliotell.FolioTell` on Apple team `VRVJ9YNRQU`.
 
 ## Release Unit
 
-FolioTell is a release unit with canonical version metadata in `release.toml`. Release tags use the repo standard:
+The iOS app is a release unit with canonical version metadata in `ios/release.toml`. Release tags use the repo standard:
 
 ```text
 foliotell_v<version>
@@ -32,7 +49,7 @@ Pushing a matching release tag triggers the repo release workflow, runs FolioTel
 
 ## Distribution Script
 
-Use `scripts/distribute-testflight.sh` to archive, export, and upload a TestFlight build locally or from the release workflow. The script refuses any Apple team or provider other than `VRVJ9YNRQU`.
+Use `ios/scripts/distribute-testflight.sh` to archive, export, and upload a TestFlight build locally or from the release workflow. The script refuses any Apple team or provider other than `VRVJ9YNRQU`.
 
 Local upload credentials:
 
@@ -51,29 +68,34 @@ Optional release metadata:
 - `FOLIOTELL_VERSION` defaults to the version in `release.toml`
 - `FOLIOTELL_BUILD_NUMBER` defaults to the git commit count
 
-Run `scripts/distribute-testflight.sh --help` for modes including `--validate-only`, `--archive-only`, and `--dry-run`.
+Run `ios/scripts/distribute-testflight.sh --help` for modes including `--validate-only`, `--archive-only`, and `--dry-run`.
 
 ## Docs
 
-Specs (`docs/specs/`, implemented specs move to `docs/specs/implemented/`):
+Specs (`ios/docs/specs/`, implemented specs move to `ios/docs/specs/implemented/`):
 
-- [Technical specification](docs/specs/foliotell-technical-spec.md) — v0.0.1 and v0.0.2 scope, document support, reader screen, speech, and acceptance criteria.
+- [Technical specification](ios/docs/specs/foliotell-technical-spec.md) — v0.0.1 and v0.0.2 scope, document support, reader screen, speech, and acceptance criteria.
 
 Living references:
 
-- [Device speech](docs/device-speech.md) — design rationale, per-release hypothesis ledger, and diagnostic runbook for device-only audio behavior.
-- [Release runbook](docs/release-runbook.md) — exact release commands, gates, caveats (runner Xcode variance, altool flags), and tag-recovery procedure.
-- [Release notes](docs/releases/) — versioned, checked-in GitHub Release bodies.
-- [App Store Connect product card](docs/app-store-connect-product-card.md) — backed-up app information, version metadata, and API update limitations.
+- [Device speech](ios/docs/device-speech.md) — design rationale, per-release hypothesis ledger, and diagnostic runbook for device-only audio behavior.
+- [Release runbook](ios/docs/release-runbook.md) — exact release commands, gates, caveats (runner Xcode variance, altool flags), and tag-recovery procedure.
+- [Release notes](ios/docs/releases/) — versioned, checked-in GitHub Release bodies.
+- [App Store Connect product card](ios/docs/app-store-connect-product-card.md) — backed-up app information, version metadata, and API update limitations.
 
 Briefs (`docs/`):
 
 - [Naming brief](docs/foliotell-naming-brief.md) — product scope, naming objective, scoring model, and availability standard.
+- [Android roadmap](docs/foliotell-android-roadmap.md) — settled decisions and staged milestones (family refactor/scaffold, app, distribution, CI/CD lock) for a sibling Android app.
 
-Intake briefs (`docs/intake/`, pre-planning context capture per task):
+Family ADRs (`docs/adr/`; iOS-scoped ADR-001/002 live in `ios/docs/adr/`):
 
-- [Speech text normalization](docs/intake/speech-normalization-intake.md)
-- [Stop latency on device](docs/intake/stop-latency-intake.md)
+- [ADR-003 — Android sibling: native stack and family placement](docs/adr/adr-003-android-native-stack-and-family-placement.md)
+
+Intake briefs (`ios/docs/intake/`, pre-planning context capture per task):
+
+- [Speech text normalization](ios/docs/intake/speech-normalization-intake.md)
+- [Stop latency on device](ios/docs/intake/stop-latency-intake.md)
 
 Research (`research/`, plus the UI reference corpus):
 

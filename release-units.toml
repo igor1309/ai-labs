@@ -18,7 +18,7 @@ docker = false
 
 [[units]]
 basename = "foliotell"
-path = "foliotell"
+path = "foliotell/ios"
 metadata = "release.toml"
 version = "0.6.3"
 docker = false

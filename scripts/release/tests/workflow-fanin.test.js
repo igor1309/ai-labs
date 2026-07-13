@@ -76,7 +76,7 @@ describe('release-unit workflow fan-in', () => {
     assert.ok(verify.includes('Validate FolioTell release notes'));
     assert.ok(verify.includes('node scripts/release/validate-foliotell-release-notes.js'));
     assert.ok(githubRelease.includes('Checkout release contents'));
-    assert.ok(githubRelease.includes('foliotell/docs/releases/${RELEASE_VERSION}.md'));
+    assert.ok(githubRelease.includes('foliotell/ios/docs/releases/${RELEASE_VERSION}.md'));
     assert.ok(githubRelease.includes('awk \'NR == 1 && $0 == "---"'));
     assert.ok(githubRelease.includes('bodyFile: ${{ env.RELEASE_BODY_FILE }}'));
   });
