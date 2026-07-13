@@ -30,8 +30,8 @@ machine live in the pure-JVM `:core` module; the Compose UI and the
 - Read-only document access via SAF per-document grants; no other permissions.
 - Fully offline; no account, backend, analytics, subscription, or network
   dependency.
-- `minSdk = 35` — provisional per roadmap decision 8; verify against the
-  physical test device before the Stage 2 first install.
+- `minSdk = 35` (Android 15) — roadmap decision 8, finalized: OS releases
+  older than two years are unsupported.
 
 ### Public interface (`:core`)
 
@@ -288,8 +288,9 @@ and no spies to specify.
 - `test_play_shouldBeIgnored_onSpeaking`
 - `test_resume_shouldBeIgnored_onSpeaking`
 
-Manual acceptance (emulator and at least one physical device; the Android
-analog of the iOS acceptance criteria):
+Manual acceptance (emulator; re-run on a physical device when one is
+available — none exists today. The Android analog of the iOS acceptance
+criteria):
 
 - App launches to the open screen; the picker opens and a `.md` file can be
   picked.
@@ -310,4 +311,5 @@ analog of the iOS acceptance criteria):
   exists and is green in `foliotell-android-core.yml`.
 - `:app` implements the app behavior rules; `:app:assembleDebug` is green in
   CI and the debug-APK build commands are documented.
-- Manual acceptance passes on an emulator and at least one physical device.
+- Manual acceptance passes on an emulator (the real-device pass is deferred
+  until a device is available; roadmap decision 8).

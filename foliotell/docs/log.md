@@ -2,6 +2,13 @@
 
 ## 2026-07-13
 
+- Finalize roadmap decision 8: `minSdk = 35` (Android 15) — OS releases
+  older than two years are unsupported. There are no physical Android
+  devices, so the Stage 1 acceptance gate is emulator-based; real-device
+  validation (and the TTS engine-variance ledger) is deferred until a
+  device is available. Roadmap, spec, and `:app` Gradle config updated in
+  place.
+
 - Execute the Android roadmap's Stage 1: the technical spec
   (`android/docs/specs/foliotell-android-technical-spec.md` — SAF open flow,
   reader transport, five speed presets, platform TTS, and the playback
@@ -9,7 +16,7 @@
   (SpeedPreset, strict-UTF-8 DocumentLoader, UtteranceChunker,
   ReaderPlayback reducer; 55 unit tests matching the spec enumeration), and
   the Compose/TTS reader in `:app`. Implementation plan archived at
-  `android/docs/plans/implemented/stage-1-app.md`; emulator/device manual
+  `android/docs/plans/implemented/stage-1-app.md`; emulator manual
   acceptance remains the open Stage 1 gate.
 
 - Capture the Android operational knowledge where agents look for it: an
