@@ -8,9 +8,12 @@
   placeholder pending decision 8), Gradle 8.14.3 wrapper, AGP 8.9.2, Kotlin
   2.1.20, Compose BOM 2025.04.01 — plus the dedicated
   `foliotell-android-core.yml` Linux CI workflow wired into the `ci.yml`
-  dispatcher (filters, job, report/notify fan-in). `:core:test` verified
-  locally via `-PskipAndroidApp=true` (the sandbox cannot reach Google
-  Maven); the `:app` assemble gate runs in CI.
+  dispatcher (filters, job, report/notify fan-in). There is no root build
+  script — each module declares its own plugins, because a root `apply
+  false` block either puts AGP on the root classpath (unresolvable in
+  sandboxes limited to Maven Central) or breaks `:app`'s versioned Kotlin
+  plugin request (first CI run failed exactly there). `:core:test` verified
+  locally via `-PskipAndroidApp=true`; the `:app` assemble gate runs in CI.
 
 - Post-refactor doc audit: fix stale pre-refactor paths in the two live iOS
   docs that the touchpoint sweep missed (`ios/docs/maestro-simulator-runbook.md`
