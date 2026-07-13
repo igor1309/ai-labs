@@ -2,6 +2,16 @@
 
 ## 2026-07-13
 
+- Execute the Android roadmap's Stage 1: the technical spec
+  (`android/docs/specs/foliotell-android-technical-spec.md` — SAF open flow,
+  reader transport, five speed presets, platform TTS, and the playback
+  state × event matrix), the pure-JVM `:core` logic built test-first
+  (SpeedPreset, strict-UTF-8 DocumentLoader, UtteranceChunker,
+  ReaderPlayback reducer; 55 unit tests matching the spec enumeration), and
+  the Compose/TTS reader in `:app`. Implementation plan archived at
+  `android/docs/plans/implemented/stage-1-app.md`; emulator/device manual
+  acceptance remains the open Stage 1 gate.
+
 - Capture the Android operational knowledge where agents look for it: an
   Android section in `.agents/foliotell.md` (build commands, sandbox network
   constraints and the environment-domains fix, the deliberate

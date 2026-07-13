@@ -52,6 +52,10 @@ cd foliotell/android
 ./gradlew :app:assembleDebug
 ```
 
+A clean checkout needs nothing beyond a JDK (CI uses 21) and network access
+to Google Maven/Maven Central; `:app:assembleDebug` writes the installable
+debug APK to `app/build/outputs/apk/debug/app-debug.apk`.
+
 ### Restricted sandboxes (Claude Code remote)
 
 The sandbox network policy blocks `dl.google.com`, which is the only host for

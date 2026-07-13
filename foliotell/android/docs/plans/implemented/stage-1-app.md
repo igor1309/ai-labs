@@ -5,8 +5,8 @@ description: "Implementation plan: FolioTell Android Stage 1 — :core document/
 
 # Implementation Plan — FolioTell Android Stage 1 (The App)
 
-Implements the [Android technical spec v0.0.1](../specs/foliotell-android-technical-spec.md)
-(Stage 1 of the [Android roadmap](../../../docs/foliotell-android-roadmap.md)),
+Implements the [Android technical spec v0.0.1](../../specs/foliotell-android-technical-spec.md)
+(Stage 1 of the [Android roadmap](../../../../docs/foliotell-android-roadmap.md)),
 under the ADR-003 invariants.
 
 ## Goal
