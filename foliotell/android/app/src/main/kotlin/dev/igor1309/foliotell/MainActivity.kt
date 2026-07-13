@@ -5,7 +5,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import dev.igor1309.foliotell.core.FolioTellCore
 
 class MainActivity : ComponentActivity() {
 
@@ -13,7 +12,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                Text(text = FolioTellCore.NAME)
+                Text(text = "FolioTell")
             }
         }
     }
