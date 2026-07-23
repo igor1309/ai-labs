@@ -76,7 +76,7 @@ a fresh spawn per review, strong model, cold context — it must read the diff w
 
 ## implement
 
-require: one surgical commit per green step (interruption-proof) plus the step's committed proof per the plan's DoD, tracker + log update at the end of its own step, "QUESTION FOR ORCHESTRATOR: …" when blocked — it may consult you, "if you've read >10 files without an edit, stop exploring, adopt the default, edit", and "if a named touchpoint or design premise no longer holds, stop and ask — shifted line numbers alone are not drift; drift is the orchestrator's call, not yours, never silently redesign"
+require: one surgical commit per green step (interruption-proof) plus the step's committed proof per the plan's DoD — commit the moment the step's gates pass; if a session or quota limit interrupts you, a committable green state is the priority over any further edit — tracker + log update at the end of its own step, "QUESTION FOR ORCHESTRATOR: …" when blocked — it may consult you, "if you've read >10 files without an edit, stop exploring, adopt the default, edit", and "if a named touchpoint or design premise no longer holds, stop and ask — shifted line numbers alone are not drift; drift is the orchestrator's call, not yours, never silently redesign"
 
 ## watch
 
