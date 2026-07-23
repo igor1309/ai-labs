@@ -1,6 +1,7 @@
 # adversarial-cycle backlog
 
-- 2026-07-23 (promotion): skill created inert (no dispatch trigger). The hardened
-  contracts from `research/adversarial-cycle/restructure-brief.md` fold in over
-  Steps 2–6 of `research/adversarial-cycle/restructure-plan.md`; the dispatch
-  trigger activates last (Step 6). Until then this skill does not dispatch.
+- 2026-07-23: optional — add a `.claude/commands/` dispatch shim (e.g.
+  `/run-adversarial-cycle <brief-path>`). Not required: the engine dispatches via
+  its frontmatter trigger and the ticket-workflow delegate stage's explicit
+  `run adversarial cycle on <brief-path>` instruction. Add only if a one-key human
+  entry earns its slot.
