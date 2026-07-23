@@ -1,6 +1,6 @@
 ---
 name: adversarial-cycle
-description: Multi-agent execution engine that takes a committed brief to green, committed code — an orchestrator spawns and watches a Planner, per-step Implementers, a cold Reviewer, and a codex cross-model gate, holds cycle state in a committed tracker, and ends in done or stopped. Use for a well-specified implementation task that warrants plan → implement → review → verify under adversarial gates. Invoked by explicit committed-brief dispatch only. Triggers on "run adversarial cycle on <committed-brief-path>", "run the adversarial cycle", "dispatch the adversarial-cycle engine".
+description: Multi-agent execution engine that takes a committed brief to green, committed code — an orchestrator spawns and watches a Planner, per-step Implementers, a cold Reviewer, and a codex cross-model gate, holds cycle state in a committed tracker, and ends in done or stopped. Use for a well-specified implementation task that warrants plan → implement → review → verify under adversarial gates. Invoked by explicit committed-brief dispatch only. Triggers only on "run adversarial cycle on <committed-brief-path>" — dispatch requires a committed brief path.
 author: Igor Malyarov
 ---
 
