@@ -4,6 +4,16 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-07-24
+
+- **debug-print v1.1.0**: the skill told the agent to add prints and wait for
+  pasted console output, with nothing said about whether that output can exist.
+  `debugPrint` goes to stdout, which is discarded unless the launch attaches a
+  console or redirects it — so a "launch and leave" or a UI-automation driver
+  yields an empty log that reads exactly like code that never ran. The skill now
+  requires handing back to unified logging instead of instrumenting a run nobody
+  can observe. Published as marketplace v1.57.0.
+
 ## 2026-07-08
 
 - **skill-review v1.5.0**: promoted the drafted "Folder shape" axis (§9,

@@ -1,7 +1,7 @@
 ---
 name: debug-print
 author: Igor Malyarov
-version: "1.0.0"
+version: "1.1.0"
 description: Isolate bugs by adding debugPrint logging only — no behavior changes. Use when the user wants to add debug prints to trace a bug. Argument is the bug description.
 allowed-tools: Read, Edit, Write, Bash(xcodebuild:*), Bash(swift:*)
 ---
@@ -30,6 +30,12 @@ Bug: $ARGUMENTS
 2. Summarize where you added prints: file, function, what each print indicates.
 3. Tell the user what app flow to run to trigger the bug.
 4. Wait for the user to paste console output. Then propose next instrumentation or a fix.
+
+`debugPrint` writes to stdout, which survives only if the launch attaches a console
+(debugger, `simctl launch --console-pty`) or redirects it to a file. If the run you need
+to observe does neither and you cannot change how it is launched, say so and hand back —
+that trace needs unified logging, which is outside this skill. Prints nobody can read look
+identical to code that never ran.
 
 ## Reply format
 
