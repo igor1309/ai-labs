@@ -115,6 +115,6 @@ Enter a profession and get a structured AI-generated assessment: risk timeline, 
 - Cloudflare Workers
 - Cloudflare Pages
 - Vanilla JS
-- OpenRouter
+- Nomos
 - D1
 - KV Cache
