@@ -2,7 +2,7 @@
 date: 2026-07-08
 model: claude-fable-5
 description: "Decision on how FolioTell persists per-document playback position: document-text sentence anchor, path-keyed, client-owned store protocol."
-status: proposed
+status: accepted
 ---
 
 # ADR-001 — Per-Document Playback Position Persistence
@@ -84,8 +84,12 @@ Resume semantics:
 
 - Starting playback on a document with a stored anchor MUST begin speech at
   that sentence's start.
-- Stop MUST preserve the stored anchor (stop no longer means
-  start-from-the-top).
+- Stop MUST clear the stored anchor, so the next play starts from the document
+  beginning. (Superseded 2026-07-10 by `ff42eedf1`, PR #765. As originally
+  written this ADR required stop to *preserve* the anchor — "park here". That
+  shipped for ~40 minutes on 2026-07-10 and was reverted on device feedback:
+  a stop that parks is indistinguishable from pause. `ReaderSession.stopTapped`
+  calls `clearPosition()`; pause remains the park-here affordance.)
 - Speech reaching the end of the document MUST clear the stored anchor, so
   a finished document replays from the beginning.
 - An anchor that no longer resolves — the document changed externally, or the
@@ -114,8 +118,11 @@ Resume semantics:
 
 ## Consequences
 
-- Stop-button semantics change from "reset to top" to "park here"; the spec
-  must define how a user deliberately starts over.
+- Stop-button semantics were to change from "reset to top" to "park here"; the
+  spec must define how a user deliberately starts over. **Not adopted** —
+  reverted 2026-07-10 by `ff42eedf1` (PR #765); stop still resets to top, and
+  `startOverTapped` is the explicit start-over event. See the superseding note
+  under Resume semantics.
 - Positions are lost when a document is renamed or moved (path identity) —
   accepted until the recent-documents item introduces bookmarks; the store
   protocol is the seam where a bookmark-based key can replace the path key.

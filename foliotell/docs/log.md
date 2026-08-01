@@ -1,5 +1,17 @@
 # Log
 
+## 2026-08-01
+
+- Correct ADR-001's stop semantics, which had contradicted shipped behavior
+  since 2026-07-10. The ADR required stop to *preserve* the anchor ("park
+  here"); `ff42eedf1` (PR #765) reverted that to reset-to-top ~40 minutes
+  after it shipped, on device feedback that a parking stop is
+  indistinguishable from pause. Resume-semantics and Consequences bullets now
+  state the behavior with a superseding note; status moved `proposed` →
+  `accepted`. The Maestro backlog item carried the same stale assumption
+  (stop grouped with pause/resume under "without restarting from the
+  beginning") and now asserts reset-to-top separately.
+
 ## 2026-07-13
 
 - Finalize roadmap decision 8: `minSdk = 35` (Android 15) — OS releases

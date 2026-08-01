@@ -128,8 +128,10 @@ affordance proves necessary.
 Keep simulator coverage for the interaction bugs that have already appeared.
 
 - Open the supplied Pushkin Markdown file.
-- Verify play, pause/resume, stop, and speed change without restarting from the
+- Verify play, pause/resume, and speed change without restarting from the
   beginning.
+- Verify stop, then play, restarts from the document beginning (ADR-001,
+  superseded Resume semantics).
 - Verify front-matter skip/read behavior.
 - Verify the voice menu is filtered for the detected document language.
 
