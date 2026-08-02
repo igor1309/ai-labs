@@ -22,7 +22,7 @@ docs — stay at the family level.
 
 ## Implementation (Android, `android/`)
 
-Stage 0 scaffold per the roadmap and ADR-003: two Gradle modules —
+Stage 1 app per the roadmap and ADR-003: two Gradle modules —
 `android/core/` (pure JVM, unit-testable) and `android/app/` (Jetpack
 Compose, application id `dev.igor1309.foliotell`). CI runs
 `.github/workflows/foliotell-android-core.yml` (Linux) on
