@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+WORKTREE_PATH="${1-}"
+if [[ -z "$WORKTREE_PATH" ]]; then
+  echo "usage: $(basename "$0") <worktree-path>" >&2
+  exit 64
+fi
+
+WORKTREE_PATH="$(cd "$WORKTREE_PATH" && pwd -P)"
+
+if ! REPOSITORY_ROOT="$(git -C "$WORKTREE_PATH" rev-parse --show-toplevel 2>/dev/null)"; then
+  echo "Error: target is not a Git worktree: $WORKTREE_PATH" >&2
+  exit 1
+fi
+REPOSITORY_ROOT="$(cd "$REPOSITORY_ROOT" && pwd -P)"
+
+if [[ "$WORKTREE_PATH" != "$REPOSITORY_ROOT" ]]; then
+  echo "Error: target must be the exact worktree root: $WORKTREE_PATH" >&2
+  exit 1
+fi
+
+if ! WORKTREE_LIST="$(git -C "$WORKTREE_PATH" worktree list --porcelain)"; then
+  echo "Error: cannot list registered worktrees for: $WORKTREE_PATH" >&2
+  exit 1
+fi
+
+PRIMARY_WORKTREE=""
+TARGET_IS_REGISTERED=false
+while IFS= read -r line; do
+  [[ "$line" == worktree\ * ]] || continue
+
+  registered_path="${line#worktree }"
+  if ! registered_path="$(cd "$registered_path" 2>/dev/null && pwd -P)"; then
+    continue
+  fi
+
+  if [[ -z "$PRIMARY_WORKTREE" ]]; then
+    PRIMARY_WORKTREE="$registered_path"
+  fi
+  if [[ "$registered_path" == "$WORKTREE_PATH" ]]; then
+    TARGET_IS_REGISTERED=true
+  fi
+done <<< "$WORKTREE_LIST"
+
+if [[ -z "$PRIMARY_WORKTREE" || "$TARGET_IS_REGISTERED" != true ]]; then
+  echo "Error: target is not an exact registered worktree: $WORKTREE_PATH" >&2
+  exit 1
+fi
+
+if [[ "$WORKTREE_PATH" == "$PRIMARY_WORKTREE" ]]; then
+  echo "Error: refusing to remove the primary checkout: $WORKTREE_PATH" >&2
+  exit 1
+fi
+
+RUNTIME_HOOK="$WORKTREE_PATH/.worktree-hooks/runtime"
+RUNTIME_STATE="$WORKTREE_PATH/.worktree-runtime"
+
+if [[ -x "$RUNTIME_HOOK" ]]; then
+  "$RUNTIME_HOOK" dispose --worktree "$WORKTREE_PATH"
+elif [[ -e "$RUNTIME_STATE" || -L "$RUNTIME_STATE" ]]; then
+  echo "Error: managed runtime state exists but no executable runtime hook is available: $RUNTIME_HOOK" >&2
+  exit 1
+fi
+
+git -C "$WORKTREE_PATH" worktree remove "$WORKTREE_PATH"

@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+BRANCH="${1-}"
+
+"$SCRIPT_DIR/git-worktree-create" "$@"
+
+WORKTREE_PATH="$(git worktree list --porcelain | awk -v branch="refs/heads/$BRANCH" '
+  $1 == "worktree" { path = substr($0, 10) }
+  $1 == "branch" && $2 == branch { print path; exit }
+')"
+
+if [[ -z "$WORKTREE_PATH" ]]; then
+  echo "Error: created worktree not found for branch: $BRANCH" >&2
+  exit 1
+fi
+
+WORKTREE_PATH="$(cd "$WORKTREE_PATH" && pwd -P)"
+"$SCRIPT_DIR/ensure-shared-config-links.sh" "$WORKTREE_PATH"
+
+RUNTIME_HOOK="$WORKTREE_PATH/.worktree-hooks/runtime"
+if [[ -x "$RUNTIME_HOOK" ]]; then
+  "$RUNTIME_HOOK" provision --worktree "$WORKTREE_PATH"
+fi

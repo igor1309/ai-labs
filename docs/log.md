@@ -51,6 +51,12 @@
   the generated local dashboard validates every product destination.
 - CI: narrow the shared path filter to shared infrastructure so dashboard
   script edits do not trigger unrelated provider-smoke jobs.
+## 2026-08-02
+
+- Worktree skill: add public create/remove orchestration that synchronizes shared
+  config, invokes optional project runtime hooks with canonical paths, validates
+  exact linked-worktree removal targets, and preserves enrolled worktrees when
+  safe disposal cannot run.
 
 ## 2026-07-13
 

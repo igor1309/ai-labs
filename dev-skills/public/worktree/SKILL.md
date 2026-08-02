@@ -1,76 +1,100 @@
 ---
 name: worktree
 author: Igor Malyarov
-version: "0.2.1"
+version: "0.3.0"
 description: >
-  Create a new git worktree, sync shared config into it via the bundled sync
-  script (never replicate config by hand or hand-author symlinks), and verify
-  the resulting worktree is clean. Triggers on "create a worktree", "new
-  worktree", "set up a worktree". Self-contained — the worktree creator and
-  config-sync script ship with this skill under scripts/.
+  Create or remove a linked Git worktree through public lifecycle commands that
+  synchronize shared config and invoke optional project runtime hooks. Triggers
+  on "create a worktree", "new worktree", "set up a worktree", "remove a
+  worktree". Self-contained — the orchestration, creator, and config-sync scripts
+  ship with this skill under scripts/.
 ---
 
 # Worktree
 
-Create a feature worktree, sync its shared config with the bundled script, and
-verify the result. The scripts this skill needs are bundled under its own
-`scripts/` directory, so it works without any pre-installed tooling.
+Create or remove a feature worktree through the bundled public orchestration
+commands. They keep shared configuration and optional project-owned runtime
+resources in the worktree lifecycle. The scripts this skill needs are bundled
+under its own `scripts/` directory, so it works without pre-installed tooling.
 
 Below, `<skill-dir>` is this skill's base directory — the absolute path announced
-when the skill loads. Run the commands from **inside the target git repository**
-(the creator resolves the repo from the current directory).
+when the skill loads. Run the create command from **inside the target Git
+repository**; the remove command receives its target as an explicit path.
 
 ## Steps
 
-### 1. Create the worktree
+### 1. Create and provision the worktree
 
-Always call the bundled creator by its path — it works regardless of `PATH` and
-needs nothing installed. It creates a **new** branch in its own worktree at
-`<parent>/<repo>.worktrees/<safe-branch>` — create-only (never checks out an
-existing branch), local refs only, base defaults to `HEAD`.
-
-```bash
-"<skill-dir>/scripts/git-worktree-create" <branch> [<base-branch>]
-# e.g. "<skill-dir>/scripts/git-worktree-create" feature/new-api origin/trunk
-```
-
-Do **not** branch on whether `gitwt` is installed: the `gitwt` global is only on
-`PATH` in interactive shells, so that check is unreliable from an agent or a
-non-interactive shell. `gitwt` is a human convenience for typing in a terminal
-(see the install section); the bundled path is the canonical invocation here.
-
-It prints the target directory and a `cd` line. Capture the target dir for step 2.
-
-### 2. Sync shared config — never by hand
-
-Run the bundled sync script against the new worktree path (this one works from any
-directory). **Do not replicate config by hand or hand-author symlinks** — the
-script owns that and is idempotent.
+Always call the bundled public command by its path — it works regardless of
+`PATH` and needs nothing installed. It creates a **new** branch in its own
+worktree at `<parent>/<repo>.worktrees/<safe-branch>`, synchronizes shared config,
+then invokes the project's executable `.worktree-hooks/runtime` hook when one is
+present. The hook receives the canonical absolute worktree path, and its stdout
+is forwarded unchanged.
 
 ```bash
-"<skill-dir>/scripts/ensure-shared-config-links.sh" "<worktree-path>"
+"<skill-dir>/scripts/worktree-create" <branch> [<base-branch>] [-C|--dir <target-root>]
+# e.g. "<skill-dir>/scripts/worktree-create" feature/new-api origin/trunk
 ```
 
-By default, it resolves shared config from the conventional sibling
-`<repo>.config` directory or from the repository's main worktree when the target
-uses another layout. It links each eligible direct child into the worktree root
-and is safe to re-run. See `references/shared-config-links.md` for explicit-path
-usage and failure modes.
+The command preserves this order:
 
-### 3. Verify the worktree is clean
+1. `git-worktree-create` creates the new branch and linked worktree.
+2. `ensure-shared-config-links.sh` synchronizes shared configuration.
+3. `<absolute-worktree>/.worktree-hooks/runtime provision --worktree <absolute-worktree>`
+   runs when the hook is executable.
+
+A provisioning failure returns nonzero and leaves the created worktree available
+for retry. The command does not roll it back.
+
+Do **not** branch on whether `gitwt` is installed: `gitwt` is the low-level
+create-only command and lives on `PATH` only in interactive shells. It does not
+synchronize config or invoke project runtime provisioning.
+
+### 2. Handle leftover build artifacts
+
+A fresh worktree shares no build output with the main checkout, but a reused
+target directory or synchronized config can leave stale artifacts (`.build/`,
+`node_modules/`, `DerivedData/`). Remove or regenerate them before building so
+the worktree builds cleanly.
+
+### 3. Dispose and remove the worktree
+
+Call the bundled public removal command with an explicit worktree path:
 
 ```bash
-git -C "<worktree-path>" status --short
+"<skill-dir>/scripts/worktree-remove" "<absolute-worktree-path>"
 ```
 
-Expect no output. If the sync script reports unignored shared-config links, add
-the listed names to the exclude file it prints, then rerun the sync and status
-commands. Do not start work while setup-owned entries remain in `git status`.
+Before resolving a project hook, the command canonicalizes the target and proves
+it is an exact registered linked worktree in its own repository. It refuses the
+primary checkout, unrelated directories, and paths inside a worktree.
 
-## Global `gitwt` install (optional, one-time per machine)
+When an executable project hook exists, the command runs:
 
-To run the creator as a global `gitwt` command, symlink it to the **stable
-marketplace checkout** of this skill (auto-updates when the skill republishes):
+```bash
+<absolute-worktree>/.worktree-hooks/runtime dispose --worktree <absolute-worktree>
+```
+
+Only successful disposal proceeds to `git worktree remove`. Failed or ambiguous
+disposal returns nonzero and preserves both worktree and runtime state for retry.
+An absent hook is a no-op only when `.worktree-runtime` enrollment state is also
+absent. A missing, broken, or non-executable hook refuses removal when that state
+exists.
+
+### 4. Keep the narrow scripts narrow
+
+`git-worktree-create` remains create-only, and
+`ensure-shared-config-links.sh` remains link-only. Do not invoke either as a
+substitute for the public lifecycle commands, and never replicate config or
+hand-author shared-config symlinks. See `references/shared-config-links.md` for
+the linking convention and failure modes.
+
+## Low-level `gitwt` install (optional, one-time per machine)
+
+To run the create-only helper as a global `gitwt` command, symlink it to the
+**stable marketplace checkout** of this skill (auto-updates when the skill
+republishes):
 
 ```bash
 TARGET=~/.claude/plugins/marketplaces/dev-skills/worktree/scripts/git-worktree-create
