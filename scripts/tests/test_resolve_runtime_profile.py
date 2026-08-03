@@ -35,6 +35,7 @@ class ResolveRuntimeProfileTests(unittest.TestCase):
         self.assertEqual(manifest["adapter"], "claude")
         self.assertEqual(manifest["roles"]["planner"]["model"], "opus")
         self.assertEqual(manifest["roles"]["implementer"]["reasoning_effort"], "medium")
+        self.assertEqual(manifest["roles"]["implementer"]["access"], "workspace-write")
         self.assertEqual(manifest["roles"]["reviewer"]["context_mode"], "cold")
 
     def test_default_codex_profile_shouldResolveConfiguredRoles(self):
@@ -45,6 +46,7 @@ class ResolveRuntimeProfileTests(unittest.TestCase):
         self.assertEqual(manifest["roles"]["planner"]["model"], "gpt-5.6-sol")
         self.assertEqual(manifest["roles"]["implementer"]["model"], "gpt-5.6-terra")
         self.assertEqual(manifest["independent_review"]["model"], "gpt-5.6-luna")
+        self.assertEqual(manifest["roles"]["reviewer"]["executable"], "codex")
 
     def test_required_roles_shouldBePresent(self):
         manifest = self.resolve("codex")
@@ -103,12 +105,15 @@ class ResolveRuntimeProfileTests(unittest.TestCase):
 schema_version = 1
 runtime = "codex"
 launcher = "codex"
+executable = "codex"
 provider = "openai"
 unavailable_model_policy = "stop"
 
 [roles.planner]
 model = "gpt-5.6-sol"
 reasoning_effort = "high"
+context_mode = "warm"
+access = "read-only"
 """.strip()
                 + "\n"
             )

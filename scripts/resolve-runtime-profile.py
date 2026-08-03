@@ -20,6 +20,7 @@ SKILL_ROOT = Path(__file__).resolve().parent.parent
 REQUIRED_ROLES = ("planner", "implementer", "reviewer", "escalation")
 SUPPORTED_HOSTS = ("claude", "codex")
 VALID_CONTEXT_MODES = ("cold", "warm")
+VALID_ACCESS_MODES = ("read-only", "workspace-write")
 
 
 class ProfileError(ValueError):
@@ -76,10 +77,16 @@ def _validate_role(role: str, config: Any) -> dict[str, Any]:
         raise ProfileError(
             f"roles.{role}.context_mode must be one of {', '.join(VALID_CONTEXT_MODES)}"
         )
+    access = _string(role_config.get("access"), f"roles.{role}.access")
+    if access not in VALID_ACCESS_MODES:
+        raise ProfileError(
+            f"roles.{role}.access must be one of {', '.join(VALID_ACCESS_MODES)}"
+        )
     return {
         "model": role_config["model"],
         "reasoning_effort": effort,
         "context_mode": context_mode,
+        "access": access,
     }
 
 
@@ -88,6 +95,7 @@ def _validate_profile(profile: dict[str, Any], host: str) -> tuple[dict[str, Any
         raise ProfileError("profile schema_version must be 1")
     runtime = _string(profile.get("runtime"), "profile.runtime")
     launcher = _string(profile.get("launcher"), "profile.launcher")
+    executable = _string(profile.get("executable"), "profile.executable")
     if runtime not in SUPPORTED_HOSTS:
         raise ProfileError(f"profile.runtime must be one of {', '.join(SUPPORTED_HOSTS)}")
     if runtime != host:
@@ -113,6 +121,9 @@ def _validate_profile(profile: dict[str, Any], host: str) -> tuple[dict[str, Any
     independent_launcher = _string(
         independent_review.get("launcher"), "independent_review.launcher"
     )
+    independent_executable = _string(
+        independent_review.get("executable"), "independent_review.executable"
+    )
     independent_provider = _string(
         independent_review.get("provider"), "independent_review.provider"
     )
@@ -124,11 +135,16 @@ def _validate_profile(profile: dict[str, Any], host: str) -> tuple[dict[str, Any
     independent_context = _string(
         independent_review.get("context_mode"), "independent_review.context_mode"
     )
+    independent_access = _string(
+        independent_review.get("access"), "independent_review.access"
+    )
     classification = _string(
         independent_review.get("classification"), "independent_review.classification"
     )
     if independent_context != "cold":
         raise ProfileError("independent_review.context_mode must be 'cold'")
+    if independent_access != "read-only":
+        raise ProfileError("independent_review.access must be 'read-only'")
     if independent_launcher not in SUPPORTED_HOSTS:
         raise ProfileError("independent_review.launcher must be a supported runtime")
     if independent_runtime not in SUPPORTED_HOSTS:
@@ -152,15 +168,18 @@ def _validate_profile(profile: dict[str, Any], host: str) -> tuple[dict[str, Any
     validated_independent_review = {
         "runtime": independent_runtime,
         "launcher": independent_launcher,
+        "executable": independent_executable,
         "provider": independent_provider,
         "model": independent_review["model"],
         "reasoning_effort": independent_effort,
         "context_mode": independent_context,
+        "access": independent_access,
         "classification": classification,
     }
     return validated_roles, {
         "runtime": runtime,
         "launcher": launcher,
+        "executable": executable,
         "provider": _string(profile.get("provider"), "profile.provider"),
         "independent_review": validated_independent_review,
         "presets": validated_presets,
@@ -320,20 +339,24 @@ def _manifest(
             "role": role,
             "runtime": profile["runtime"],
             "launcher": profile["launcher"],
+            "executable": profile["executable"],
             "provider": profile["provider"],
             "model": config["model"],
             "reasoning_effort": config["reasoning_effort"],
             "context_mode": config["context_mode"],
+            "access": config["access"],
             "source": config["source"],
         }
     manifest_independent_review = {
         "role": "independent_review",
         "runtime": independent_review["runtime"],
         "launcher": independent_review["launcher"],
+        "executable": independent_review["executable"],
         "provider": independent_review["provider"],
         "model": independent_review["model"],
         "reasoning_effort": independent_review["reasoning_effort"],
         "context_mode": independent_review["context_mode"],
+        "access": independent_review["access"],
         "classification": independent_review["classification"],
         "source": independent_review["source"],
     }

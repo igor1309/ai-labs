@@ -28,6 +28,7 @@ class RuntimeNeutralContractTests(unittest.TestCase):
         required_fragments = [
             "scripts/resolve-runtime-profile.py",
             "scripts/launch-runtime-agent.py",
+            "scripts/runtime-lifecycle.py",
             "canonical execution manifest",
             "one Implementer",
             "fresh cold Reviewer",

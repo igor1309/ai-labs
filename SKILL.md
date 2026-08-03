@@ -25,10 +25,13 @@ The caller must dispatch it with a committed brief path and its source oracle.
   the orchestrator's `review_round_spent` value to
   `scripts/launch-runtime-agent.py`.
 - The launcher returns a canonical result. On `accepted`, retain
-  `runtime_task_or_agent_id` for watch and follow-up operations. On `rejected`,
-  record the exact adapter error, requested role/model/effort, result, and
-  review-round value, then enter the existing `stopped` transition. Do not
-  issue another launch or select a replacement.
+  `runtime_task_or_agent_id` for watch and follow-up operations through
+  `scripts/runtime-lifecycle.py`. Use its `status` operation while a launch is
+  active, `follow-up` for owner-routed continuation, and `cancel` when a
+  recorded process must be stopped. On `rejected`, record the exact adapter
+  error, requested role/model/effort, result, and review-round value, then
+  enter the existing `stopped` transition. Do not issue another launch or
+  select a replacement.
 - Open the cycle tracker and commit it after every decision, so a relaunched
   orchestrator resumes without re-deriving state.
 - Resolve the plan according to the committed brief and run a review of the
@@ -60,7 +63,7 @@ by this skill. It is committed beside the brief and records:
   independent-clean`; step `pending → implementing → green-committed →
   reviewer-clean → independent-clean`.
 - The last SHA, review-record path, independent-audit path, open fails/warns,
-  and the accepted native identifier used for watch/follow-up operations.
+  and the accepted runtime identifier used for watch/follow-up operations.
 - A stateful fix-round count per artifact. Increment and commit the round
   before dispatching a fix; a dispatched-but-interrupted round is spent.
 - The current next action and the terminal state once reached.

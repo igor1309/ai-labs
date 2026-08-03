@@ -64,9 +64,9 @@ agents would duplicate orchestration and constrain selection.
 
 | Layer | Owns | Must not own |
 |---|---|---|
-| `SKILL.md` | lifecycle, role responsibilities, review rounds, tracker transitions, watch policy, terminal states, receipt contract, invocation of the neutral launcher boundary | vendor/model names, native launcher names/arguments, fallback selection, adapter result interpretation beyond the shared contract |
-| `runtime/claude.toml` | Claude defaults for every role and independent review, plus the `claude` adapter identifier | orchestration decisions or native launch implementation |
-| `runtime/codex.toml` | Codex defaults, the `codex` adapter identifier, and the `luna-max` preset | orchestration decisions or native launch implementation |
+| `SKILL.md` | lifecycle, role responsibilities, review rounds, tracker transitions, watch policy, terminal states, receipt contract, invocation of the neutral launcher/lifecycle boundaries | vendor/model names, CLI argument construction, fallback selection, adapter result interpretation beyond the shared contract |
+| `runtime/claude.toml` | Claude executable, defaults, access mapping, and independent review | orchestration decisions or CLI implementation |
+| `runtime/codex.toml` | Codex executable, defaults, sandbox mapping, and the `luna-max` preset | orchestration decisions or CLI implementation |
 | `scripts/resolve-runtime-profile.py` | profile validation, host selection, preset expansion, override precedence, resolved JSON manifest | spawning agents or choosing fallbacks |
 | `scripts/launch-runtime-agent.py` | executable neutral `launch(manifest, role, task, review_round_spent)` boundary, adapter selection from the manifest, shared launch-result validation | role sequencing, fallback, tracker transitions, review judgment, fix ownership |
 | `scripts/launchers/claude.py` | map one resolved role to a Claude CLI subprocess, enforce its access mode, and normalize its JSON/session response | changing resolved model/effort, retrying with another model, orchestration decisions |
@@ -113,7 +113,7 @@ The resolver applies exactly this precedence per role:
 3. selected host profile default.
 
 The host selects its matching profile; a caller cannot label a Codex host as
-Claude or the reverse. Resolved values are passed to the runtime at each spawn,
+Claude or the reverse. Resolved values are passed to the runtime at each launch,
 not persisted as global defaults.
 
 ### Executable launcher boundary

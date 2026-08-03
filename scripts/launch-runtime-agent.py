@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Dispatch one canonical runtime launch to its selected native adapter."""
+"""Dispatch one canonical runtime launch to its selected CLI adapter."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import json
 import sys
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 
 LAUNCHER_ROOT = Path(__file__).resolve().parent / "launchers"
@@ -105,7 +105,10 @@ def launch(
     role: str,
     task: str,
     review_round_spent: Any,
-    native_launch: Callable[..., Any] | Mapping[str, Callable[..., Any]] | None = None,
+    *,
+    workspace: Path | None = None,
+    evidence_dir: Path | None = None,
+    state_dir: Path | None = None,
 ) -> dict[str, Any]:
     config = _role_config(manifest, role)
     if config is None:
@@ -119,11 +122,15 @@ def launch(
         module = _load_adapter(adapter)
     except RuntimeError as error:
         return _rejected(role, config, review_round_spent, str(error))
-    if isinstance(native_launch, Mapping):
-        primitive = native_launch.get(adapter)
-    else:
-        primitive = native_launch
-    result = module.launch(manifest, role, task, review_round_spent, native_launch=primitive)
+    result = module.launch(
+        manifest,
+        role,
+        task,
+        review_round_spent,
+        workspace=workspace,
+        evidence_dir=evidence_dir,
+        state_dir=state_dir,
+    )
     return _validate_result(result, manifest, role, config, review_round_spent)
 
 
@@ -133,6 +140,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--role", required=True)
     parser.add_argument("--task", required=True)
     parser.add_argument("--review-round-spent", required=True, type=int)
+    parser.add_argument("--workspace", default=".")
+    parser.add_argument("--evidence-dir")
+    parser.add_argument("--state-dir")
     arguments = parser.parse_args(argv)
     try:
         manifest_path = Path(arguments.manifest)
@@ -142,6 +152,17 @@ def main(argv: list[str] | None = None) -> int:
             arguments.role,
             arguments.task,
             arguments.review_round_spent,
+            workspace=Path(arguments.workspace).expanduser().resolve(),
+            evidence_dir=(
+                Path(arguments.evidence_dir).expanduser().resolve()
+                if arguments.evidence_dir is not None
+                else None
+            ),
+            state_dir=(
+                Path(arguments.state_dir).expanduser().resolve()
+                if arguments.state_dir is not None
+                else None
+            ),
         )
     except (OSError, json.JSONDecodeError, TypeError) as error:
         print(f"error: {error}", file=sys.stderr)
