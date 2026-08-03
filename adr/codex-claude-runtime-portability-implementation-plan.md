@@ -21,6 +21,13 @@ This plan implements the requirements in the
 It changes process configuration only. No Vortex application code, product
 tests, simulator state, or product behavior is in scope.
 
+The earlier Phase 5 acceptance index is invalid for executable portability: its
+host bridges invoked the installed CLIs and injected their responses into
+callback-only adapters. It is superseded by the live subprocess evidence
+required by this corrected plan. Historical commits and the original intake
+remain unchanged; this correction records the invalid claim rather than
+rewriting its history.
+
 ## Grounding Snapshot
 
 Grounded on 2026-08-03 against:
@@ -32,12 +39,19 @@ Grounded on 2026-08-03 against:
 - installed `claude 2.1.220`, which accepts explicit `--model` and `--effort`;
 - installed `codex-cli 0.146.0`, whose `exec` command accepts `--model`,
   configuration overrides, read-only sandboxing, and persisted last output;
-- the native Codex subagent contract, where model and reasoning effort are
-  supplied at spawn time;
-- the current Codex default (`gpt-5.6-sol`, `high`) and the observed Luna Max
-  pairing (`gpt-5.6-luna`, `max`);
-- existing paired Claude Markdown and Codex TOML subagent definitions under
-  `.claude/agents/` and `.codex/agents/`.
+- the installed Claude CLI contract: `claude --print --output-format json
+  --model <model> --effort <effort> --permission-mode <mode>`, with prompts on
+  stdin and a returned `session_id`;
+- the installed Codex CLI contract: `codex exec --json --model <model>
+  --sandbox <mode> --cd <workspace> --output-last-message <path> -`, with
+  `-c model_reasoning_effort=<effort>` for the exact effort and a returned
+  `thread.started.thread_id`;
+- the installed follow-up contracts: `claude --resume <session_id>` and
+  `codex exec resume --json <thread_id> -`;
+- the installed lifecycle inspection surface `claude agents --json --cwd
+  <workspace>` and the Codex persisted session identifier;
+- the current Codex default (`gpt-5.6-sol`, `high`) and the required Luna Max
+  pairing (`gpt-5.6-luna`, `max`).
 
 The paired static-agent pattern is precedent for runtime-specific syntax, but
 is not the chosen shape here. A cycle creates fresh role agents per artifact and
@@ -55,8 +69,9 @@ agents would duplicate orchestration and constrain selection.
 | `runtime/codex.toml` | Codex defaults, the `codex` adapter identifier, and the `luna-max` preset | orchestration decisions or native launch implementation |
 | `scripts/resolve-runtime-profile.py` | profile validation, host selection, preset expansion, override precedence, resolved JSON manifest | spawning agents or choosing fallbacks |
 | `scripts/launch-runtime-agent.py` | executable neutral `launch(manifest, role, task, review_round_spent)` boundary, adapter selection from the manifest, shared launch-result validation | role sequencing, fallback, tracker transitions, review judgment, fix ownership |
-| `scripts/launchers/claude.py` | map one resolved role to a Claude Task/subagent launch and normalize its native response | changing resolved model/effort, retrying with another model, orchestration decisions |
-| `scripts/launchers/codex.py` | map one resolved role to native Codex subagent spawn and normalize its native response | changing resolved model/effort, retrying with another model, orchestration decisions |
+| `scripts/launchers/claude.py` | map one resolved role to a Claude CLI subprocess, enforce its access mode, and normalize its JSON/session response | changing resolved model/effort, retrying with another model, orchestration decisions |
+| `scripts/launchers/codex.py` | map one resolved role to a Codex CLI subprocess, enforce its sandbox, and normalize its JSONL/thread response | changing resolved model/effort, retrying with another model, orchestration decisions |
+| `scripts/runtime-lifecycle.py` | neutral status, follow-up, and cancellation boundary over persisted CLI launch records and the selected adapter | changing model/effort, hiding unsupported lifecycle operations, or mutating cycle decisions |
 | `independent-review.md` | read-only findings contract, independence classification, audit fields, and fix routing | direct application of accepted fixes |
 | `codex-judge.md` | standalone human-invoked judge → fix → log workflow | acting as the cycle's review adapter |
 
@@ -68,9 +83,9 @@ No persistent global Codex profile, new `.claude/agents/` entry, or new
 
 Both TOML files use schema version 1 and define these required entries:
 
-- host runtime and launcher adapter;
+- host runtime, launcher adapter, and executable name;
 - Planner, Implementer, cold Reviewer, escalation, and independent-review
-  model plus effort;
+  model plus effort and access (`read-only` or `workspace-write`);
 - independent-review launcher and either `cross-runtime` or
   `same-runtime-fresh-pass`; concrete model identifiers are recorded
   separately so the audit can state whether the models actually differ;
@@ -81,8 +96,8 @@ The default mappings are:
 
 | Host | Planner | Implementer | Reviewer | Escalation | Independent review |
 |---|---|---|---|---|---|
-| Claude | `opus` / `high` | `sonnet` / `medium` | `opus` / `high` | `opus` / `high` | direct read-only Codex, `gpt-5.6-sol` / `high`, `cross-runtime` |
-| Codex | `gpt-5.6-sol` / `high` | `gpt-5.6-terra` / `medium` | `gpt-5.6-sol` / `high` | `gpt-5.6-sol` / `xhigh` | fresh Codex agent, `gpt-5.6-luna` / `max`, `same-runtime-fresh-pass` |
+| Claude | `opus` / `high`, read-only | `sonnet` / `medium`, workspace-write | `opus` / `high`, read-only | `opus` / `high`, read-only | direct read-only Codex, `gpt-5.6-sol` / `high`, `cross-runtime` |
+| Codex | `gpt-5.6-sol` / `high`, read-only | `gpt-5.6-terra` / `medium`, workspace-write | `gpt-5.6-sol` / `high`, read-only | `gpt-5.6-sol` / `xhigh`, read-only | fresh read-only Codex, `gpt-5.6-luna` / `max`, `same-runtime-fresh-pass` |
 
 The Codex profile defines `luna-max` as the inseparable pair
 `model = "gpt-5.6-luna"` and `reasoning_effort = "max"`. It is selectable for
@@ -107,31 +122,52 @@ not persisted as global defaults.
 orchestration. Its required input is the canonical resolved execution manifest
 from `resolve-runtime-profile.py`, plus the role, artifact-specific task prompt,
 and the orchestrator-supplied `review_round_spent` value. The manifest provides
-the selected adapter, runtime, exact model/effort, and context mode. The launcher
-validates that the role exists and dispatches to exactly one concrete adapter:
+the selected adapter, executable, runtime, exact model/effort, access, and
+context mode. The launcher validates that the role exists and dispatches to
+exactly one concrete CLI adapter.
 
-- `scripts/launchers/claude.py` calls the Claude Task/subagent primitive with
-  the manifest's model and effort. `context_mode = "cold"` creates a fresh
-  subagent whose prompt contains only the artifact-specific upstream contract
-  and task inputs named by the cycle.
-- `scripts/launchers/codex.py` calls native Codex subagent spawn with the
-  manifest's model as `model`, effort as `reasoning_effort`, and
-  `fork_turns = "none"` for `context_mode = "cold"`. It never substitutes a
-  CLI `codex exec` process for native spawn.
+`scripts/launchers/claude.py` runs the configured executable with
+`--print --output-format json --model <model> --effort <effort>` and the
+adapter-owned permission mapping (`plan` for read-only and `acceptEdits` for
+the implementer's workspace-write scope). A cold launch does not pass
+`--resume` or `--continue`; the returned JSON must contain the session
+identifier needed by follow-up operations.
 
-The production host supplies its native launch primitive to its adapter. Tests
-supply recording/fake primitives through the same adapter interface. Both
-adapters return the same canonical launch-result object:
+`scripts/launchers/codex.py` runs the configured executable as
+`exec --json --model <model> -c model_reasoning_effort=<effort> --sandbox
+<read-only|workspace-write> --cd <workspace> --output-last-message <path> -`.
+The prompt is supplied on stdin, the first `thread.started.thread_id` is the
+stored identifier, and a cold launch has no resume argument. The adapter never
+uses the old native-spawn vocabulary or an external host bridge.
+
+`scripts/runtime-lifecycle.py` is the neutral executable boundary for the
+identifier promised by the tracker. `status` reads the persisted launch record
+and, while a process is active, consults the runtime's status surface;
+`follow-up` dispatches the runtime's verified resume command with the same
+resolved model, effort, and access; and `cancel` terminates a still-running
+recorded subprocess or returns a structured unsupported/completed result. Each
+operation preserves the selected profile and never chooses a fallback.
+
+Both adapters execute without a callback injection. They use an argument-list
+subprocess with no shell, the caller's workspace as `cwd`, and a per-launch
+evidence record containing the exact argv, cwd, stdout, stderr, exit status,
+identifier, and canonical result. Read-only roles receive no write-capable CLI
+mode. The implementer receives only the caller-provided workspace; no extra
+directory is added. A non-zero exit returns the exact CLI failure stream once,
+with no retry or alternate model. Tests replace the executable on `PATH` with a
+recording stub, so they exercise the same public entry point.
+
+Both adapters return the same canonical launch-result object:
 
 | Field | Contract |
 |---|---|
 | `role` | Exact requested role from the manifest |
 | `runtime` | `claude` or `codex` from the manifest |
-| `requested_model` | Exact resolved model passed to the native primitive |
-| `requested_effort` | Exact resolved effort passed to the native primitive |
+| `requested_model` | Exact resolved model passed to the CLI |
+| `requested_effort` | Exact resolved effort passed to the CLI |
 | `status` | Exactly `accepted` or `rejected` |
-| `runtime_task_or_agent_id` | Native task/agent identifier when accepted; `null` when rejected |
-| `adapter_error` | `null` when accepted; exact unmodified native adapter error when rejected |
+| `runtime_task_or_agent_id` | CLI session/thread identifier when accepted; `null` when rejected |
+| `adapter_error` | `null` when accepted; exact unmodified CLI failure output when rejected |
 | `review_round_spent` | Echo of the orchestrator's already-decided input; the adapter cannot infer or change it |
 
 The adapters perform translation and result normalization only. They do not
@@ -172,51 +208,51 @@ include the resolved execution-manifest digest.
 | Repository | Current branch | Planned policy |
 |---|---|---|
 | `/Users/igormalyarov/Developer/Fora/iFora/iOS-app/ios.config` | `trunk` | explicit-path commits on `trunk`; preserve unrelated dirty paths; no push |
-| `/Users/igormalyarov/.claude` | `trunk` | explicit-path commit for `commands/codex-judge.md`; no push |
 
-Execution starts only after the intake and this plan are committed in
-`ios.config`; creating this plan does not itself authorize a commit or launch a
-cycle.
+The existing `/Users/igormalyarov/.claude/commands/codex-judge.md` already
+states the standalone ownership boundary and was read during grounding. It
+does not need a task-owned edit unless implementation proves a contract gap.
 
-Before every implementation commit:
+Before every commit:
 
 ```bash
-git -C <repository> status --short
-git -C <repository> diff --cached --name-only
+git status --short
+git diff --cached --name-only
+git diff --check
 ```
 
-Expect: every staged path belongs to the current phase; unrelated existing
-changes remain unstaged. Stage 3 removes the cycle's dependency on
-`codex-judge` before Stage 4 narrows that command's documented ownership, so
-the cross-repository sequence has no broken intermediate state.
+Expect: every staged path belongs to the current phase, unrelated existing
+changes remain unstaged, and the phase diff has no whitespace errors.
 
 ## Delivery Map
 
 | Phase | Outcome | Repository | Commit |
 |---|---|---|---|
-| 1 | Runtime boundary and compatibility decision | `ios.config` | `define adversarial cycle runtime portability contract` |
-| 2 | Executable profiles, resolver, and native launcher adapters | `ios.config` | `add adversarial cycle runtime profiles and launchers` |
-| 3 | Runtime-neutral orchestration, tracking, and independent review | `ios.config` | `make adversarial cycle orchestration runtime neutral` |
-| 4 | Standalone `codex-judge` ownership boundary | `~/.claude` | `separate codex judge from cycle review ownership` |
-| 5 | Claude, Codex, Luna Max, and failure-policy acceptance evidence | `ios.config` | `verify adversarial cycle runtime portability` |
+| 1 | Corrected CLI subprocess decision and invalid-evidence record | `ios.config` | `correct adversarial cycle cli portability contract` |
+| 2 | Executable profiles, resolver, adapters, and lifecycle boundary | `ios.config` | `launch adversarial cycle through cli adapters` |
+| 3 | Public-entry deterministic subprocess and permission tests | `ios.config` | `cover adversarial cycle cli execution contract` |
+| 4 | Live Claude/Codex miniature cycles and superseding evidence | `ios.config` | `prove adversarial cycle cli portability` |
+| 5 | Full gates, self-review, and scoped hygiene correction | `ios.config` | `close adversarial cycle cli portability gaps` |
 
-## Phase 1 — Record the Runtime Boundary
+## Phase 1 — Correct the Runtime Boundary
 
-**Objective:** Commit the durable architecture decision before changing the
-procedure.
+**Objective:** Correct the committed design before production edits without
+altering the authoritative intake or historical acceptance claims.
 
 **Work:**
 
-1. Add `adr/codex-claude-runtime-portability.md` with status, context,
-   decision, invariants, compatibility policy, consequences, and the intake as
-   provenance.
-2. Freeze the ownership table, profile schema, defaults, override precedence,
-   Luna Max mapping, no-fallback behavior, independent-review vocabulary, and
-   legacy tracker interpretation defined in this plan.
-3. Freeze the neutral launcher input/result contracts, concrete adapter paths,
-   cold-context mappings, and adapter non-ownership rules defined in this plan.
-4. State that profiles are skill resources interpreted at run time and do not
-   modify global Claude or Codex defaults.
+1. Update this plan and the ADR to select CLI subprocess adapters for both
+   runtimes. Remove native-spawn as a requirement and state the exact verified
+   Claude and Codex command contracts, including model/effort and permission
+   arguments.
+2. Add the lifecycle boundary and its status/follow-up/cancel responsibilities
+   to the design. Record risks: CLI version drift, output-schema drift, process
+   cancellation limits, shell injection, workspace escape, and session
+   persistence. Record controls: version/help grounding, argument-list
+   execution, exact argv evidence, no shell, explicit sandbox/access modes,
+   cold-launch omission of resume flags, and no fallback.
+3. Mark the existing host-bridge/native-spawn acceptance index invalid and
+   superseded. Preserve the intake and historical commits byte-for-byte.
 
 ### Phase 1 Gate
 
@@ -224,54 +260,50 @@ procedure.
 python3 - <<'PY'
 from pathlib import Path
 
-path = Path('.claude/skills/adversarial-cycle/adr/codex-claude-runtime-portability.md')
-text = path.read_text()
+plan = Path('.claude/skills/adversarial-cycle/adr/codex-claude-runtime-portability-implementation-plan.md').read_text()
+adr = Path('.claude/skills/adversarial-cycle/adr/codex-claude-runtime-portability.md').read_text()
 required = [
-    'status:', '## Decision', '## Invariants', '## Compatibility',
-    'gpt-5.6-luna', 'unavailable', 'legacy-codex-review',
-    'launch-runtime-agent.py', 'runtime_task_or_agent_id',
-    'review_round_spent',
+    'CLI subprocess', 'gpt-5.6-luna', 'model_reasoning_effort',
+    'runtime-lifecycle.py', 'no fallback', 'superseded',
 ]
-missing = [value for value in required if value not in text]
+missing = [value for value in required if value not in plan + adr]
 if missing:
     raise SystemExit(f'missing: {missing}')
-print('ADR: PASS')
+print('corrected contract: PASS')
 PY
+git diff --check
 ```
 
-Expect: `ADR: PASS` and the commit contains only the ADR.
+Expect: `corrected contract: PASS`, exit 0 for `git diff --check`, the intake
+has no diff, and the staged set contains only the plan and ADR.
 
-## Phase 2 — Add Profiles, Resolution, and Native Launchers
+## Phase 2 — Implement CLI Adapters and Lifecycle
 
-**Objective:** Make runtime selection and caller overrides deterministic,
-inspectable, launchable through one shared contract, and independently
-testable.
+**Objective:** Make a resolved valid launch executable through the shipped
+public entry point with exact caller-selected values and least privilege.
 
 **Work:**
 
-1. Add `runtime/claude.toml` and `runtime/codex.toml` with the exact defaults
-   above.
-2. Add `scripts/resolve-runtime-profile.py`. It accepts the detected host and
-   repeatable role overrides, validates the profile, expands presets, rejects
-   conflicting preset fields, and prints a canonical JSON execution manifest.
-3. Add `scripts/launch-runtime-agent.py`, `scripts/launchers/claude.py`, and
-   `scripts/launchers/codex.py` with the input, mapping, cold-context, result,
-   and rejection contracts above.
-4. Add `scripts/tests/test_resolve_runtime_profile.py` with tests for both
-   default profiles, required roles, literal override precedence, Luna Max
-   expansion, conflicting effort rejection, host/profile mismatch rejection,
-   missing required fields, and stop-without-fallback behavior.
-5. Add `scripts/tests/test_runtime_launchers.py`. Inject recording Claude Task
-   and Codex native-spawn primitives and assert their exact arguments. Inject
-   accepted and rejected fake results and assert every shared result field,
-   exact error preservation, task/agent identifier handling, and unchanged
-   `review_round_spent` echo.
-6. Include negative tests proving a Claude manifest cannot reach the Codex
-   adapter, a Codex manifest cannot reach the Claude adapter, cold Codex roles
-   use `fork_turns = "none"`, and neither rejection invokes a second primitive
-   or changes the requested model/effort.
-7. Capture the required failing tests before adding the resolver/launchers,
-   then commit only after both test modules are green.
+1. Add executable/access fields to both profiles. The only workspace-write role
+   is Implementer; Planner, Reviewer, escalation, and independent review are
+   read-only.
+2. Extend the resolver manifest with those fields while preserving explicit
+   literal and `luna-max` overrides, exact effort, and `unavailable_model_policy
+   = "stop"` without a fallback field.
+3. Replace callback-only launchers with argument-list subprocess adapters. Claude
+   uses `--print --output-format json --model --effort` and maps access to
+   `--permission-mode`; Codex uses `exec --json --model`,
+   `-c model_reasoning_effort=...`, `--sandbox`, `--cd`, and
+   `--output-last-message`. Parse Claude `session_id` and Codex
+   `thread.started.thread_id`; preserve exact stdout/stderr and exit status in
+   the per-launch evidence record.
+4. Add `scripts/runtime-lifecycle.py` with executable `status`, `follow-up`, and
+   `cancel` operations. Follow-up uses the verified Claude `--resume` or Codex
+   `exec resume` contract and the same resolved model/effort/access. Cancel
+   terminates an active recorded process and reports completed/unsupported
+   states explicitly.
+5. Keep cold launches fresh by omitting resume/continue arguments and do not
+   inject a custom host bridge or callback in production.
 
 ### Phase 2 Gate
 
@@ -283,43 +315,32 @@ python3 .claude/skills/adversarial-cycle/scripts/resolve-runtime-profile.py \
   --host codex --set implementer=luna-max
 ```
 
-Expect: the test command exits 0; the resolved JSON contains
-`"model":"gpt-5.6-luna"`, `"reasoning_effort":"max"`, and
-`"source":"caller-preset"` for Implementer; no fallback field exists. The
-recording Claude primitive receives its configured `model` and `effort`; the
-recording Codex primitive receives `model = "gpt-5.6-luna"`,
-`reasoning_effort = "max"`, and `fork_turns = "none"`. Accepted fakes return
-their native identifier; rejected fakes preserve their exact error, return no
-identifier, echo the supplied review-round value, and record exactly one native
-launch attempt.
+Expect: all current tests exit 0; the manifest contains
+`gpt-5.6-luna`/`max` with `caller-preset`, access fields, and no fallback; a
+direct launch with a valid manifest no longer returns “primitive is not
+configured”; and the lifecycle script exists with all three operations.
 
-## Phase 3 — Make the Cycle Runtime-Neutral
+## Phase 3 — Prove the Public Entry Contract
 
-**Objective:** Preserve the full cycle while removing Claude/Codex choices from
-shared orchestration and resolving review-fix ownership.
+**Objective:** Exercise the same production entry point with deterministic
+stub executables and remove callback injection as the acceptance seam.
 
 **Work:**
 
-1. Add `independent-review.md` with the read-only findings contract, audit
-   fields, independence classifications, finding judgment, owner-routed fixes,
-   and the two-round rule.
-2. Update `SKILL.md` to resolve one profile before the first spawn, pass the
-   canonical execution manifest to `launch-runtime-agent.py` for every role,
-   and record the manifest plus every canonical launch result in the tracker.
-3. On `accepted`, continue using the returned native task/agent identifier for
-   watch and follow-up operations. On `rejected`, record the exact adapter error
-   and enter the existing `stopped` transition without another launch.
-4. Replace hard-coded Opus/Sonnet/Codex wording with role/profile references;
-   keep role count, cold-reviewer creation, watch behavior, tracker commits,
-   evidence discipline, stop/done states, and receipts unchanged.
-5. Extend tracker and receipt fields with profile path/digest and the resolved
-   runtime/model/effort/launcher per artifact.
-6. Add the legacy `codex-audit` resume rule. Do not rewrite prior trackers.
-7. Keep `evidence-discipline.md` runtime-neutral; change it only if a concrete
-   runtime-specific phrase is found during the phase diff.
-8. Add a static contract test that fails when shared orchestration reintroduces
-   the profile-owned model names, names `Task`/`spawn_agent` directly, or calls
-   `codex-judge` as its gate.
+1. Before production implementation, add a public-entry test that resolves a
+   valid manifest and expects an accepted launch without injecting a callback.
+   Run it against the old implementation, capture the real failure, and commit
+   nothing at RED.
+2. Add recording stub `claude` and `codex` executables in tests. Invoke
+   `resolve-runtime-profile.py` followed by `launch-runtime-agent.py` as child
+   processes, with the stub directory first on `PATH`.
+3. Assert exact argv, stdin prompt, cwd, model, effort, permission/sandbox,
+   cold-launch absence of resume flags, stdout/stderr, exit code, identifier
+   extraction, canonical result fields, and one-attempt/no-fallback rejection.
+4. Exercise read-only roles against a stub that attempts an edit and assert the
+   configured read-only mode; exercise Implementer with only the requested
+   workspace. Exercise lifecycle status, follow-up, and cancellation through
+   the executable boundary.
 
 ### Phase 3 Gate
 
@@ -327,130 +348,100 @@ shared orchestration and resolving review-fix ownership.
 python3 -m unittest discover \
   -s .claude/skills/adversarial-cycle/scripts/tests \
   -p 'test_*.py'
-rg -n '(Planner \(opus\)|Implementer \(sonnet\)|escalate to Opus|codex-judge flow|Claude Task|spawn_agent)' \
-  .claude/skills/adversarial-cycle/SKILL.md
+git diff --check
 ```
 
-Expect: all tests exit 0; `rg` exits 1 with no matches; inspection of
-`SKILL.md` still shows one Implementer per step, a fresh cold Reviewer, the
-two-round cap, committed tracker transitions, watch/recovery, `done`/`stopped`,
-and receipt requirements.
+Expect: the suite exits 0; no production test passes a callback to the public
+launcher; stubs record exact runtime-specific CLI arguments; all result and
+lifecycle assertions pass; and the diff has no whitespace errors.
 
-## Phase 4 — Clarify `codex-judge` Ownership
+## Phase 4 — Run Live Miniature Cycles and Replace Evidence
 
-**Objective:** Preserve the useful standalone command while preventing it from
-being mistaken for the cycle adapter.
+**Objective:** Prove both installed runtimes through the shipped entry point,
+including Luna Max, and make every acceptance claim falsifiable.
 
 **Work:**
 
-1. Update `/Users/igormalyarov/.claude/commands/codex-judge.md` to state that
-   its judge → direct-fix → log behavior is for standalone invocation.
-2. Point cycle callers to the skill-owned read-only independent-review
-   contract; do not duplicate the runtime profiles or cycle procedure in the
-   global command.
-3. Preserve the current read-only Codex acquisition, grounded judgment, direct
-   fix, verification, and audit-log behavior for non-cycle use.
+1. Create a disposable fixture repository and deterministic brief whose sole
+   implementation step produces one known text artifact.
+2. Resolve and launch a Claude cycle through the public entry point. Capture
+   command/evidence records, session identifier, manifest digest, tracker,
+   review/audit records, follow-up/status proof, receipt, and clean final tree.
+3. Recreate the same fixture and launch Codex with
+   `--set implementer=luna-max`. Capture the actual argv proving
+   `gpt-5.6-luna`, `model_reasoning_effort=max`, read-only/workspace controls,
+   the returned thread identifier, lifecycle proof, and clean final tree.
+4. Exercise the unavailable explicit model through stub executables and prove
+   exact rejection, exit status, one attempt, and no profile-default launch.
+5. Replace the acceptance index with a dated evidence index that begins with
+   the invalid/superseded host-bridge verdict and records only PASS cells backed
+   by committed command/evidence artifacts. Preserve zero-finding/zero-fix
+   independent-review results when no findings are returned.
 
 ### Phase 4 Gate
 
-```bash
-git -C /Users/igormalyarov/.claude diff --check
-rg -n 'standalone|adversarial-cycle|direct-fix|read-only' \
-  /Users/igormalyarov/.claude/commands/codex-judge.md
-```
+Inspect the acceptance index and every referenced evidence artifact.
 
-Expect: `git diff --check` exits 0; all four boundary terms are present; the
-commit contains only `commands/codex-judge.md`.
+Expect: Claude and Codex both pass the public-entry launch; Luna Max appears in
+the recorded Codex argv and returned thread evidence; all required result,
+permission, cold-launch, no-fallback, lifecycle, tracker, receipt, and hygiene
+claims have a command/output/exit-status artifact; and the superseded claims
+are explicitly labeled rather than silently retained as PASS.
 
-## Phase 5 — Prove Both Runtimes and Failure Semantics
+## Phase 5 — Final Gates and Self-Review
 
-**Objective:** Exercise the procedure, including Luna Max selection, instead of
-accepting schema-only portability.
+**Objective:** Verify the exact final tree, correct the historical Phase 1
+trailing-blank-line warning in a scoped follow-up if it remains applicable, and
+report all limitations.
 
-**Work:**
+**Checks:**
 
-1. Create one disposable fixture repository and one committed miniature brief
-   whose only implementation step adds a deterministic text artifact.
-2. Run the cycle once from Claude with profile defaults. Capture the canonical
-   manifest, Claude adapter input/result, native Task identifier, tracker,
-   review records, independent audit, terminal receipt, and clean final trees.
-3. Recreate the fixture from the same base and run once from Codex with
-   `implementer=luna-max`. Capture the same manifest-shaped input and canonical
-   result, native agent identifier, and cycle artifacts. Prove the Codex adapter
-   launched the Implementer with `gpt-5.6-luna`, `max` reasoning, and cold
-   context.
-4. Exercise `model = "unavailable-runtime-portability-test-model"` through a
-   rejecting fake primitive behind each adapter. Prove both adapters return the
-   same rejected-result shape, preserve the exact adapter error and supplied
-   review-round value, and never launch the profile default. Do not spend a real
-   provider request on a deliberately invalid model name.
-5. Confirm accepted independent-review findings, if any, were fixed by the
-   owning Planner/Implementer in follow-up commits. A run with no accepted
-   findings records zero routed fixes and still satisfies the check.
-6. Add a dated `research/runtime-portability-acceptance.md` evidence index with
-   host versions, fixture base SHA, terminal SHAs, resolved manifests, artifact
-   paths, and per-cell verdicts. Do not copy run history into `SKILL.md`.
+1. Run the full current Python suite, resolver smoke commands for both profiles,
+   static runtime-neutral contract checks, direct production smokes for Claude,
+   Codex, Luna Max, rejection, and lifecycle operations.
+2. Run `git diff --check` for every task commit and inspect `git log --check`
+   for the task-owned Phase 1 commits. If the Phase 1 trailing-blank-line
+   warning remains, remove only that blank line in a separate scoped commit and
+   rerun its gate.
+3. Run the current `codex-judge` command directly in read-only mode against the
+   final task diff, judge every finding against the actual plan/ADR/code, write
+   the required audit log before any accepted fix, and verify accepted fixes.
+4. Confirm the final status preserves all unrelated dirty paths and no push,
+   reset, revert, amend, or branch switch occurred.
 
 ### Phase 5 Gate
 
-Inspect the committed acceptance index and both terminal trackers.
-
-Expect these exact verdict cells:
-
-| Cell | Expect |
-|---|---|
-| Claude defaults | `PASS` with the Claude profile digest and configured role values |
-| Shared launcher input | `PASS` when both live adapters consume the same canonical manifest schema and role envelope |
-| Claude launcher mapping | `PASS` with requested model/effort, cold-context proof, and native Task identifier |
-| Claude independent review | `PASS` classified `cross-runtime`, with providers and models recorded |
-| Codex defaults | `PASS` with the Codex profile digest |
-| Luna Max override | `PASS` with `gpt-5.6-luna` / `max` and caller-preset provenance |
-| Codex launcher mapping | `PASS` with native spawn arguments, `fork_turns = "none"`, and native agent identifier |
-| Codex independent review | `PASS` classified `same-runtime-fresh-pass`, with models recorded |
-| Shared launch result | `PASS` when accepted/rejected Claude and Codex results contain every contract field |
-| Unavailable explicit model | `PASS` only when both adapters preserve the exact rejection, terminal state is `stopped`, and no fallback launch exists |
-| Fix ownership | `PASS` with owner follow-up commit(s), or an explicit zero-accepted-findings record |
-| Legacy tracker fixture | `PASS` without rewriting the legacy tracker |
-| Receipt compatibility | `PASS` with existing brief/app/run-doc SHAs plus execution-manifest digest |
-| Worktree hygiene | `PASS` with clean fixture code and run-doc trees |
-
-The phase is blocked if either host runtime cannot complete its live probe. A
-schema test is not a substitute for the missing runtime verdict.
+Expect: every check exits 0; every acceptance criterion is PASS with a
+referenced artifact; no fail/warning remains open; the final diff contains only
+task-owned changes; and the report names any unavailable live operation instead
+of claiming completion.
 
 ## Traceability
 
-| Intake requirement or unknown | Plan coverage |
+| Intake requirement or unknown | Corrected plan coverage |
 |---|---|
-| Preserve Planner, per-step Implementer, cold Reviewer, caps, tracker, evidence, and receipt | Phases 1, 3, and 5 |
+| Preserve Planner, per-step Implementer, cold Reviewer, caps, tracker, evidence, and receipt | Phases 2, 4, and 5 |
 | Move runtime-specific models and tools outside orchestration | Phases 1–3 |
-| Map one canonical execution manifest to concrete Claude and Codex native launch primitives | Phases 2, 3, and 5 |
-| Normalize accepted/rejected native launches without moving orchestration into adapters | Phases 2, 3, and 5 |
-| Default Claude and Codex configurations | Phase 2 |
-| Select Luna Max in Codex | Phases 2 and 5 |
-| Preserve caller override; do not silently replace unavailable model | Phases 1, 2, and 5 |
-| Keep independent-review meaning accurate | Phases 3 and 5 |
-| Resolve cycle owner routing versus `codex-judge` direct fixes | Phases 3 and 4 |
-| Record runtime profile and concrete models in tracker | Phases 3 and 5 |
-| Verify nested/runtime execution rather than command syntax alone | Phase 5 |
-| Preserve current evidence discipline | Phases 3 and 5 |
+| One runtime-neutral process with separate Claude/Codex executable configurations | Phases 1–3 |
+| Explicit caller model/effort overrides and Luna Max selection | Phases 2–4 |
+| Exact requested model/effort and no silent fallback | Phases 2–4 |
+| Executable Claude and Codex adapters through the public entry point | Phases 2–4 |
+| Least privilege, cold launches, identifier watch/follow-up lifecycle | Phases 2–4 |
+| Keep independent-review meaning accurate | Phases 1, 2, and 4 |
+| Preserve `codex-judge` standalone ownership | Phase 1 and final review |
+| Preserve historical intake/acceptance history while superseding invalid evidence | Phases 1 and 4 |
 | Keep application code and product behavior out of scope | Scope guard in every phase |
 
 ## Stop Conditions
 
-Stop the implementation and preserve the last green commit when:
-
-- a runtime rejects a documented default or `luna-max` mapping;
-- host detection cannot distinguish Claude from Codex without caller guessing;
-- either adapter accepts the other runtime's manifest, changes requested
-  model/effort, omits a launch-result field, loses the exact native error,
-  retries after rejection, or launches without the required cold context;
-- `SKILL.md` must name a native Task/spawn primitive instead of using the
-  neutral launcher boundary;
-- a legacy tracker cannot resume without rewriting committed history;
-- the independent-review adapter can edit the target before findings are
-  judged;
-- a cross-repository phase would require staging unrelated user work;
-- a live acceptance run lacks a tracker, audit, receipt, or model provenance.
+Stop and preserve the last green commit when a runtime rejects a documented
+default or Luna Max mapping; a CLI changes/omits requested model or effort; a
+read-only role can edit; the implementer can escape its workspace; a cold
+launch resumes prior context; an identifier cannot drive status/follow-up; a
+rejection retries or falls back; exact failure output is lost; a lifecycle
+operation remains prose-only; a legacy tracker requires rewriting; a live run
+lacks tracker/audit/receipt/model provenance; or unrelated dirty paths would be
+staged.
 
 These are contract failures requiring plan/ADR revision. They are not grounds
 for a silent fallback or a weaker proof.
@@ -459,18 +450,17 @@ for a silent fallback or a weaker proof.
 
 | Check surface | Current result |
 |---|---|
-| `ios.config` and `~/.claude` Git roots | available |
+| `ios.config` Git root and current `trunk` | available; dirty unrelated paths preserved |
 | Python TOML-capable runtime | available: Python 3.14.6 |
-| Claude model/effort flags | available: Claude Code 2.1.220 |
-| Codex model/config/read-only/output flags | available: codex-cli 0.146.0 |
-| Future ADR/profile/resolver/launcher/static-test commands | executable shape grounded; expected to fail until their phase creates the named artifact |
-| Full Claude and Codex miniature cycles | at risk until Phase 5; they are mandatory and cannot be replaced by static checks |
+| Claude version/help | available: Claude Code 2.1.220; `--model`, `--effort`, `--print`, JSON, permission, resume, and agents help read |
+| Codex version/help | available: codex-cli 0.146.0; `exec`, JSON, model, config, sandbox, cd, output, resume, and lifecycle help read |
+| Public production RED | required before Phase 2 production edits |
+| Full live cycles | at risk until Phase 4; mandatory and cannot be replaced by schema tests |
 
 ## Plan Completion Criteria
 
-Implementation is complete only when all five phase commits exist in order,
-every phase gate is PASS, both native adapters have deterministic contract
-proof and live requested-model/effort evidence, the two runtime probes and the
-unavailable-model negative control are committed in the acceptance index, no
-fail or warning is open, and unrelated pre-existing changes in either
-repository remain outside the phase commits.
+Implementation is complete only when the corrected documentation, executable
+profiles/adapters/lifecycle boundary, public-entry stub tests, live Claude and
+Codex evidence, unavailable-model negative control, full gates, and adversarial
+self-review are committed; every PASS has falsifiable evidence; no fail or
+warning is open; and unrelated pre-existing changes remain outside the commits.

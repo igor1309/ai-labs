@@ -12,7 +12,8 @@ status: accepted
 The `adversarial-cycle` procedure owns a lifecycle of planning, one
 Implementer per step, independent review, review-round limits, tracker
 transitions, evidence, and terminal receipts. Its current wording also embeds
-Claude model assignments, a Codex review command, and native launch concepts.
+Claude model assignments, a Codex review command, and runtime-specific launch
+concepts.
 That coupling prevents the same procedure from being driven by Claude or
 Codex, makes caller-selected models undefined, and leaves the ownership of
 review fixes ambiguous.
@@ -22,54 +23,70 @@ which is the provenance for the requirements and observed runtime constraints.
 The change is limited to process configuration. Vortex application code,
 product tests, simulator state, and product behavior remain out of scope.
 
+The prior Phase 5 acceptance index is invalid for executable portability. Its
+host bridges ran the installed CLIs and injected their responses into the
+callback-only adapters, so those PASS cells do not prove that the shipped
+public entry point can launch either runtime. This decision supersedes that
+evidence without rewriting its historical commit or the authoritative intake.
+
 ## Decision
 
 Keep one runtime-neutral `adversarial-cycle` orchestration contract. Store
 runtime-specific defaults and model choices in skill-owned profiles:
 
-- `runtime/claude.toml` describes the Claude host and Claude launcher.
-- `runtime/codex.toml` describes the Codex host, Codex launcher, and the
-  atomic `luna-max` preset (`gpt-5.6-luna` with `max` reasoning).
+- `runtime/claude.toml` describes the Claude host, executable, access mapping,
+  and launcher.
+- `runtime/codex.toml` describes the Codex host, executable, sandbox mapping,
+  and launcher, and the atomic `luna-max` preset (`gpt-5.6-luna` with `max`
+  reasoning).
 
 Profiles are skill resources interpreted at run time. They do not modify
 global Claude or Codex defaults, persistent agent definitions, or caller
 configuration.
 
 The shared orchestration resolves one canonical execution manifest before the
-first spawn and passes that manifest, the role, the artifact-specific task,
+first launch and passes that manifest, the role, the artifact-specific task,
 and the orchestrator-supplied `review_round_spent` value through
 `scripts/launch-runtime-agent.py` for every launch. The shared boundary chooses
 the adapter named in the manifest and validates the shared result contract.
 It does not perform orchestration.
 
+Both adapters are CLI subprocess adapters. They invoke the installed
+executables directly with an argument list, never through a shell and never
+through a custom host bridge. The neutral lifecycle boundary is
+`scripts/runtime-lifecycle.py`; it owns executable status, follow-up, and
+cancellation operations for the stored session/thread identifier.
+
 ### Ownership boundary
 
 | Layer | Owns | Must not own |
 |---|---|---|
-| `SKILL.md` | Lifecycle, role responsibilities, review rounds, tracker transitions, watch policy, terminal states, receipts, and calls to the neutral launcher | Vendor/model names, native launcher names or arguments, fallback selection, review judgment, or fix routing inside an adapter |
-| `runtime/claude.toml` | Claude defaults for Planner, Implementer, cold Reviewer, escalation, and independent review, plus the `claude` adapter identifier | Orchestration or native launch implementation |
-| `runtime/codex.toml` | Codex defaults, the `codex` adapter identifier, and `luna-max` | Orchestration or native launch implementation |
+| `SKILL.md` | Lifecycle, role responsibilities, review rounds, tracker transitions, watch policy, terminal states, receipts, and calls to the neutral launcher/lifecycle boundaries | Vendor/model names, CLI argument construction, fallback selection, review judgment, or fix routing inside an adapter |
+| `runtime/claude.toml` | Claude executable, defaults, access mapping, and independent-review settings | Orchestration or CLI implementation |
+| `runtime/codex.toml` | Codex executable, defaults, sandbox mapping, and `luna-max` | Orchestration or CLI implementation |
 | `scripts/resolve-runtime-profile.py` | Profile validation, host selection, preset expansion, and override precedence | Spawning agents or choosing fallbacks |
 | `scripts/launch-runtime-agent.py` | Neutral launch input, adapter dispatch from the manifest, and shared result validation | Role sequencing, fallback, tracker transitions, review judgment, or fix ownership |
-| `scripts/launchers/claude.py` | Translation from one resolved role to a Claude Task/subagent launch and native response normalization | Changing model/effort, retrying, or making orchestration decisions |
-| `scripts/launchers/codex.py` | Translation from one resolved role to a native Codex subagent spawn and native response normalization | Changing model/effort, retrying, or making orchestration decisions |
+| `scripts/launchers/claude.py` | Translation from one resolved role to a Claude CLI subprocess and JSON/session response normalization | Changing model/effort, retrying, or making orchestration decisions |
+| `scripts/launchers/codex.py` | Translation from one resolved role to a Codex CLI subprocess and JSONL/thread response normalization | Changing model/effort, retrying, or making orchestration decisions |
+| `scripts/runtime-lifecycle.py` | Neutral status, follow-up, and cancellation operations over launch records and adapter lifecycle commands | Changing model/effort, hiding unsupported operations, or mutating cycle decisions |
 | `independent-review.md` | Read-only findings, independence classification, audit fields, and owner-routed fixes | Applying accepted fixes directly |
 | `codex-judge.md` | Standalone human-invoked judge → fix → log workflow | Acting as the cycle's review adapter |
 
 ### Profile schema and defaults
 
-Both profiles use schema version 1 and provide the host runtime, launcher
-adapter, Planner, Implementer, cold Reviewer, escalation, and independent
-review model/effort values. They also provide the independent-review launcher,
-an independence classification, concrete model identifiers for audit records,
-the unavailable-model policy, and zero or more atomic presets.
+Both profiles use schema version 1 and provide the host runtime, executable,
+launcher adapter, Planner, Implementer, cold Reviewer, escalation, and
+independent-review model/effort/access values. They also provide the
+independent-review launcher, an independence classification, concrete model
+identifiers for audit records, the unavailable-model policy, and zero or more
+atomic presets.
 
 The defaults are fixed as follows:
 
 | Host | Planner | Implementer | Reviewer | Escalation | Independent review |
 |---|---|---|---|---|---|
-| Claude | `opus` / `high` | `sonnet` / `medium` | `opus` / `high` | `opus` / `high` | direct read-only Codex, `gpt-5.6-sol` / `high`, `cross-runtime` |
-| Codex | `gpt-5.6-sol` / `high` | `gpt-5.6-terra` / `medium` | `gpt-5.6-sol` / `high` | `gpt-5.6-sol` / `xhigh` | fresh Codex agent, `gpt-5.6-luna` / `max`, `same-runtime-fresh-pass` |
+| Claude | `opus` / `high`, read-only | `sonnet` / `medium`, workspace-write | `opus` / `high`, read-only | `opus` / `high`, read-only | direct read-only Codex, `gpt-5.6-sol` / `high`, `cross-runtime` |
+| Codex | `gpt-5.6-sol` / `high`, read-only | `gpt-5.6-terra` / `medium`, workspace-write | `gpt-5.6-sol` / `high`, read-only | `gpt-5.6-sol` / `xhigh`, read-only | fresh read-only Codex, `gpt-5.6-luna` / `max`, `same-runtime-fresh-pass` |
 
 The Codex `luna-max` preset is inseparable: it expands to
 `model = "gpt-5.6-luna"` and `reasoning_effort = "max"`. It is selectable for
@@ -94,17 +111,33 @@ The unavailable-model policy is `stop`; no profile declares a fallback.
 The canonical launcher input is the resolved execution manifest, the requested
 role, the artifact-specific task prompt, and the supplied
 `review_round_spent` value. The manifest contains the selected runtime,
-adapter, exact model and effort, and context mode.
+executable, adapter, exact model and effort, access, and context mode.
 
-`scripts/launchers/claude.py` passes the manifest's model and effort to the
-Claude Task/subagent primitive. For `context_mode = "cold"`, it creates a
-fresh subagent whose prompt contains only the artifact-specific upstream
-contract and task inputs named by the cycle.
+`scripts/launchers/claude.py` runs the configured executable with
+`--print --output-format json --model <model> --effort <effort>` and maps
+read-only access to `--permission-mode plan` and workspace-write access to
+`--permission-mode acceptEdits`. A cold launch omits `--resume` and
+`--continue`; the returned JSON must contain `session_id`.
 
-`scripts/launchers/codex.py` passes the manifest's model as `model`, the effort
-as `reasoning_effort`, and `fork_turns = "none"` for
-`context_mode = "cold"` to native Codex subagent spawn. It never substitutes a
-CLI `codex exec` process for native spawn.
+`scripts/launchers/codex.py` runs the configured executable as
+`exec --json --model <model> -c model_reasoning_effort=<effort> --sandbox
+<read-only|workspace-write> --cd <workspace> --output-last-message <path> -`.
+The prompt is supplied on stdin and the first `thread.started.thread_id` is
+stored. A cold launch omits resume arguments.
+
+`scripts/runtime-lifecycle.py` is the neutral executable boundary for the
+stored identifier. `status` reads the launch record and the runtime status
+surface when the process is active; `follow-up` uses the verified Claude
+`--resume` or Codex `exec resume` command with the same resolved model, effort,
+and access; and `cancel` terminates an active recorded subprocess or returns a
+structured completed/unsupported result. No lifecycle operation selects a
+fallback or hides a CLI limitation.
+
+Both adapters use argument-list subprocesses with no shell, the caller's
+workspace as `cwd`, and per-launch evidence containing argv, cwd, stdout,
+stderr, exit status, identifier, and canonical result. Tests replace the
+configured executable on `PATH` with a recording stub through the same public
+entry point.
 
 Both adapters return the same canonical launch-result object:
 
@@ -112,11 +145,11 @@ Both adapters return the same canonical launch-result object:
 |---|---|
 | `role` | Exact requested role from the manifest |
 | `runtime` | `claude` or `codex` from the manifest |
-| `requested_model` | Exact model passed to the native primitive |
-| `requested_effort` | Exact effort passed to the native primitive |
+| `requested_model` | Exact model passed to the CLI |
+| `requested_effort` | Exact effort passed to the CLI |
 | `status` | Exactly `accepted` or `rejected` |
-| `runtime_task_or_agent_id` | Native identifier when accepted; `null` when rejected |
-| `adapter_error` | `null` when accepted; exact unmodified native adapter error when rejected |
+| `runtime_task_or_agent_id` | CLI session/thread identifier when accepted; `null` when rejected |
+| `adapter_error` | `null` when accepted; exact unmodified CLI failure output when rejected |
 | `review_round_spent` | Echo of the supplied value; the adapter cannot infer or change it |
 
 Adapters translate and normalize only. They do not choose role order, charge
@@ -153,16 +186,20 @@ neutral names and include the resolved execution-manifest digest.
   caps, committed tracker transitions, evidence discipline, terminal states,
   and receipts remain part of one cycle contract.
 - The resolver selects exactly one compatible host profile before the first
-  spawn and emits a canonical manifest; every role launch uses that manifest.
+  launch and emits a canonical manifest; every role launch uses that manifest.
 - A Claude manifest reaches only the Claude adapter, and a Codex manifest
   reaches only the Codex adapter.
-- Every native launch receives the exact resolved model and effort. Cold Codex
-  launches receive `fork_turns = "none"`.
-- Every result includes all canonical fields; acceptance includes the native
-  task/agent identifier and rejection includes no identifier.
-- Rejection preserves the exact adapter error, makes exactly one native launch
+- Every CLI launch receives the exact resolved model and effort. Cold launches
+  omit resume/continue arguments.
+- Every result includes all canonical fields; acceptance includes the CLI
+  session/thread identifier and rejection includes no identifier.
+- Rejection preserves the exact CLI failure output, makes exactly one launch
   attempt, does not change model or effort, does not retry, and stops the cycle
   without fallback.
+- Read-only roles use a read-only CLI mode; only the Implementer receives
+  workspace-write access, and its subprocess `cwd` is the caller's workspace.
+- Lifecycle status, follow-up, and cancellation are executable operations with
+  explicit completed/unsupported results.
 - Adapters never sequence roles, spend review rounds, judge findings, route
   fixes, or mutate tracker state.
 - Profiles are runtime resources and do not alter global defaults.
@@ -173,8 +210,14 @@ The implementation must accept both installed host runtimes and the defaults
 recorded above. The Codex `luna-max` selection must resolve to
 `gpt-5.6-luna` / `max`. An explicit model such as
 `unavailable-runtime-portability-test-model` remains the requested model and
-must produce a stopped result when a fake native primitive rejects it; it must
+must produce a stopped result when the CLI rejects it; it must
 not be replaced by a default.
+
+The CLI controls are version-sensitive. The implementation is grounded against
+Claude Code `2.1.220` and Codex CLI `0.146.0`; each live acceptance record must
+include the version/help command output, exact argv, stdout/stderr, exit status,
+and extracted identifier. A future CLI with incompatible help output is a
+stopped condition until its adapter and evidence are updated.
 
 The standalone `codex-judge` command retains its current read-only Codex
 acquisition, grounded judgment, direct fix, verification, and audit-log
@@ -185,12 +228,17 @@ contract instead.
 
 Runtime selection, model provenance, launch identifiers, rejection details, and
 the execution-manifest digest become explicit evidence in trackers and
-receipts. Native adapter tests can verify translation with recording/fake
-primitives without invoking providers. Live acceptance probes remain necessary
-to prove nested Claude and Codex execution; schema tests alone are insufficient.
+receipts. CLI adapter tests use recording executables and the public entry
+point, while live acceptance probes prove the installed Claude and Codex
+executables actually run. Schema tests alone are insufficient.
+
+CLI subprocesses trade native host integration for portability. The controls
+are explicit argument lists, no shell expansion, per-role access/sandbox,
+caller-workspace `cwd`, cold-launch omission of resume flags, exact command and
+stream evidence, version/help grounding, and a stop policy for non-zero exits,
+missing identifiers, unsupported lifecycle operations, or model/effort drift.
 
 The procedure gains a small resolver and launcher boundary, and callers must
 provide the detected host plus any role overrides. A rejected requested model
 stops the cycle rather than silently recovering, preserving the caller's
 selection and making availability failures visible.
-
