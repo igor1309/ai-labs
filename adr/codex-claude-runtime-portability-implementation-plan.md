@@ -233,7 +233,9 @@ required = [
     'review_round_spent',
 ]
 missing = [value for value in required if value not in text]
-raise SystemExit(f'missing: {missing}') if missing else print('ADR: PASS')
+if missing:
+    raise SystemExit(f'missing: {missing}')
+print('ADR: PASS')
 PY
 ```
 
