@@ -236,8 +236,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     try:
         if arguments.operation == "status":
+            json.loads(Path(arguments.manifest).read_text())
             return _status(state_dir, arguments.identifier)
         if arguments.operation == "cancel":
+            json.loads(Path(arguments.manifest).read_text())
             return _cancel(state_dir, arguments.identifier)
         if arguments.role is None or arguments.task is None:
             return _result(

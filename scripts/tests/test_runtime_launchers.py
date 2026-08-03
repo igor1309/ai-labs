@@ -339,6 +339,79 @@ else:
             (True, "plan", False, True, "read-only", False),
         )
 
+    def test_lifecycle_status_shouldConsumeManifestFromPipe(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_path = Path(temporary_directory)
+            bin_directory = temporary_path / "bin"
+            bin_directory.mkdir()
+            self.make_stub(bin_directory, "codex")
+            record_path = temporary_path / "calls.json"
+            environment = self.make_environment(
+                bin_directory,
+                record_path,
+                STUB_IDENTIFIER="codex-thread-pipe",
+            )
+            manifest_path = self.resolve_manifest(temporary_path, "codex")
+            evidence_directory = temporary_path / "evidence"
+            state_directory = temporary_path / "state"
+            launch_result = self.run_public(
+                manifest_path,
+                "implementer",
+                temporary_path,
+                evidence_directory,
+                state_directory,
+                environment,
+            )
+            identifier = self.load_result(launch_result)["runtime_task_or_agent_id"]
+            padded_manifest_path = temporary_path / "padded-manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["padding"] = "x" * 131072
+            padded_manifest_path.write_text(json.dumps(manifest))
+            writer_path = temporary_path / "manifest-writer.py"
+            writer_path.write_text(
+                "import sys\n"
+                "from pathlib import Path\n"
+                "sys.stdout.write(Path(sys.argv[1]).read_text())\n"
+            )
+            writer = subprocess.Popen(
+                ["python3", str(writer_path), str(padded_manifest_path)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                env=environment,
+            )
+            status_result = subprocess.run(
+                [
+                    "python3",
+                    str(LIFECYCLE),
+                    "status",
+                    "--manifest",
+                    "/dev/stdin",
+                    "--identifier",
+                    identifier,
+                    "--state-dir",
+                    str(state_directory),
+                ],
+                cwd=SKILL_ROOT,
+                stdin=writer.stdout,
+                capture_output=True,
+                text=True,
+                env=environment,
+            )
+            writer.stdout.close()
+            writer_stderr = writer.communicate()[1]
+
+        self.assertEqual(
+            (
+                launch_result.returncode,
+                status_result.returncode,
+                json.loads(status_result.stdout)["status"],
+                writer.returncode,
+                writer_stderr,
+            ),
+            (0, 0, "completed", 0, ""),
+        )
+
     def test_lifecycle_shouldStatusFollowUpAndReportCompletedCancellation(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             temporary_path = Path(temporary_directory)
