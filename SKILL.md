@@ -1,88 +1,180 @@
 ---
 name: adversarial-cycle
-description: Multi-agent execution engine that takes a committed brief to green, committed code — an orchestrator spawns and watches a Planner, per-step Implementers, a cold Reviewer, and a codex cross-model gate, holds cycle state in a committed tracker, and ends in done or stopped. Use for a well-specified implementation task that warrants plan → implement → review → verify under adversarial gates. Invoked by explicit committed-brief dispatch only. Triggers only on "run adversarial cycle on <committed-brief-path>" — dispatch requires a committed brief path.
+description: Multi-agent execution engine that takes a committed brief to green, committed code — an orchestrator resolves a skill-owned runtime profile, launches a Planner, one Implementer per step, a cold Reviewer, and an independent review, holds cycle state in a committed tracker, and ends in done or stopped.
 author: Igor Malyarov
 ---
 
 # adversarial cycle
 
-task is {}
-Planner (opus) plans. Implementer (sonnet, one per step) implements. Reviewer (strong model, a fresh cold spawn per review) reviews. codex-reviewer is the cross-model gate.
-You orchestrate: you hold the cycle's state in your own committed tracker, spawn subagents and watch, judge Reviewer and codex findings against the code, and decide — next step, re-plan, escalate, abort. You originate no review, run no tests, change no code/tests; your teeth are in the decisions, not in redoing the work.
+This skill owns a runtime-neutral process. A selected skill-owned execution
+profile supplies the concrete runtime, model, effort, launcher, and independent
+review values; this procedure owns lifecycle, evidence, decisions, and state.
+The caller must dispatch it with a committed brief path and its source oracle.
 
 ## workflow
 
-- the caller hands you a committed brief (the task's semantic acceptance contract) and its source oracle — you do not draft it; run `## review` on the brief against that oracle before spawning, and a brief that omits an acceptance claim or misreads the source returns `stopped` for the caller to revise and relaunch as a linked cycle — you never repair it
-- open your tracker (see `## tracker`) and commit it after every decision, so a relaunched you resumes without re-deriving
-- spawn Planner subagent to plan (see `## plan`) according to the committed brief
-- run review (see `## review`) of the plan
-- then, per plan step, in order: spawn an Implementer for that step alone (see `## implement`) — never one Implementer for the whole plan; an interrupted Implementer must not leave more than one step of unverified tree
-- spawn in the background, never blocking: a blocking spawn returns only on completion and makes `## watch` impossible
-- run review (see `## review`) of the step
-- move to the next step only when the current one is clean
-- if implementation disproves the plan, hand it back to Planner to revise; the revision goes through `## review` like any artifact, and marks every prior step it invalidates as reopened or superseded in the cycle tracker (prior commits preserved, corrective steps added); you judge the findings, you do not improvise the design
-- on any stop or escalation, freeze the worktree and preserve history: record the terminal state in the tracker; report the last green step commit, HEAD, the dirty diff, and the unresolved findings — never call the branch complete
+- The caller hands over a committed brief and its source oracle. Review the
+  brief against that oracle before any launch. A brief that omits an acceptance
+  claim or misreads the source returns `stopped` for the caller to revise and
+  relaunch as a linked cycle; this skill does not repair it.
+- Before the first role launch, detect the host, resolve one profile with
+  `scripts/resolve-runtime-profile.py`, and retain the canonical execution
+  manifest plus its profile path and digest in the tracker.
+- For every Planner, Implementer, Reviewer, escalation, or independent-review
+  launch, pass the same manifest, the role, the artifact-specific prompt, and
+  the orchestrator's `review_round_spent` value to
+  `scripts/launch-runtime-agent.py`.
+- The launcher returns a canonical result. On `accepted`, retain
+  `runtime_task_or_agent_id` for watch and follow-up operations. On `rejected`,
+  record the exact adapter error, requested role/model/effort, result, and
+  review-round value, then enter the existing `stopped` transition. Do not
+  issue another launch or select a replacement.
+- Open the cycle tracker and commit it after every decision, so a relaunched
+  orchestrator resumes without re-deriving state.
+- Resolve the plan according to the committed brief and run a review of the
+  plan against the brief and its sources.
+- Per plan step, launch exactly one Implementer, then review the step. An
+  interrupted Implementer must not leave more than one step of unverified
+  tree.
+- Launch a fresh cold Reviewer for every review. The Reviewer is read-only and
+  returns the independent-review findings contract; the orchestrator judges
+  each finding and routes accepted fixes to the owner.
+- Move to the next step only when the current step is clean: its green commit,
+  review record, independent audit, and evidence satisfy the plan.
+- If implementation disproves the plan, return it to the Planner for a revised
+  committed plan. Mark every invalidated step reopened or superseded in the
+  tracker and preserve prior commits; do not silently redesign.
+- On any stop or escalation, freeze the worktree and preserve history. Report
+  the last green step commit, current HEAD, dirty diff, and unresolved
+  findings.
 
 ## tracker
 
-the cycle tracker — your own state, distinct from the plan's per-step DoD table that the Planner writes and the Implementer updates; you are the cycle tracker's only writer. committed to the run docs (caller-supplied, beside the brief); a fresh orchestrator reads it and resumes without asking:
+The cycle tracker is distinct from the plan's per-step DoD table and is owned
+by this skill. It is committed beside the brief and records:
 
-- pointers: task, branch, worktree, brief path, plan path
-- per artifact its cycle state — plan: drafted → committed → reviewer-clean → codex-clean; step: pending → implementing → green-committed → reviewer-clean → codex-clean — plus last SHA, review-record path, codex-audit path, open fails/warns
-- fix-round count per artifact — the 2-round cap is stateful; increment and commit the round before dispatching the fix, never after: a dispatched-then-interrupted round is spent, and a relaunched you that reads a stale count loops past the cap forever
-- the current next action, and the terminal state once reached
+- Pointers: task, branch, worktree, brief path, and plan path.
+- The selected profile path and digest, canonical execution manifest, and each
+  canonical launch result for every artifact.
+- Per-artifact state: plan `drafted → committed → reviewer-clean →
+  independent-clean`; step `pending → implementing → green-committed →
+  reviewer-clean → independent-clean`.
+- The last SHA, review-record path, independent-audit path, open fails/warns,
+  and the accepted native identifier used for watch/follow-up operations.
+- A stateful fix-round count per artifact. Increment and commit the round
+  before dispatching a fix; a dispatched-but-interrupted round is spent.
+- The current next action and the terminal state once reached.
 
-commit it after every decision — a death then loses at most one transition. never keep cycle state only in your context.
+The tracker records decisions as they happen; it appends later rounds rather
+than overwriting earlier failure evidence.
 
 ## done
 
-the cycle's own DoD — it ends in exactly one of two states, read from the tracker, not from your narrative:
+The cycle ends in exactly one of two tracker states:
 
-- **done** — every plan step has a tracker entry and its own green commit, none skipped or folded into another; plan and every step each carry a committed review record and a committed codex audit; no fail or warn left open; HEAD is the last step commit, code and run-docs worktrees clean, brief and gotchas committed; the receipt is committed (see `## receipt`)
-- **stopped** — an escalation fired (round-2 cap, drift you can't resolve, a subagent that won't converge, a brief the caller must fix): the open fails and warns are named, the branch is frozen per `## workflow`, the decision is the caller's. a correct ending, not a shortfall — never grind past the cap chasing "done"
+- **done** — every plan step has its own green commit, no step is skipped or
+  folded into another, the plan and every step have a committed review record
+  and independent audit, no fail or warning is open, code and run-document
+  worktrees are clean, the brief and gotchas are committed, and the receipt is
+  committed.
+- **stopped** — a round cap, drift, unavailable selected runtime/model,
+  unresolved review finding, or other declared escalation fired. The tracker
+  names open fails/warns and the worktree is frozen for the caller.
 
-no third state: never round up a stop to done, never report done with anything open
+There is no third state. Do not round a stop up to done.
 
 ## receipt
 
-the engine returns a committed receipt, not a bare verdict — the caller's release/closure recompute it:
+The engine returns a committed receipt, not a bare verdict. The release or
+closure stage recomputes:
 
-- the verdict (`done` / `stopped`); on `stopped`, the open fails/warns
-- the brief **blob** SHA — stable as later tracker commits advance the run-docs HEAD — naming its repo+path
-- the verified **app-tree** SHA, naming the code repo
-- the **terminal run-docs commit** holding the evidence index
+- The verdict (`done` or `stopped`) and, for `stopped`, open fails/warns.
+- The brief blob SHA naming its repository and path.
+- The verified app-tree SHA naming the code repository.
+- The terminal run-document commit holding the evidence index.
+- The execution-manifest digest and selected profile provenance.
 
-only a `done` receipt whose recomputed SHAs still match is releasable; `stopped` never advances.
+Only a `done` receipt whose recomputed SHAs still match is releasable.
 
 ## review
 
-review of {artifact(s)} workflow is:
-review compares each artifact against its **upstream contract**, never its own DoD — the brief against the caller's source oracle, the plan against brief+sources, a step/proof against plan+brief; a self-consistent artifact that silently dropped a requirement still fails
-spawn a fresh Reviewer (see `## reviewer`); judge its findings against the code, send accepted ones to the owning subagent (Implementer for code, Planner for plan) as follow-up commits (never amend); at most 2 fix rounds per artifact — after round 2 any unresolved fail or warn stops and escalates to the user, never proceed unclean
-when the Reviewer pass is clean, run codex review (codex-judge flow); instruct codex NOT to re-run already-green test suites; judge each finding against the code, send accepted ones back to the owning subagent as follow-up commits, keep the audit log
-hand-wave only on facts — wrong premise, already handled elsewhere, out of scope. "hard to reach", "unlikely in practice", "only through heavy app wiring" are not reasons: the composition root is the product, and reachability is what integration proves. your hand-waves are the one act in this cycle nobody else reviews
+Review compares an artifact against its upstream contract, never only against
+its own DoD: brief against source oracle, plan against brief and sources, and
+step/proof against plan and brief.
+
+Use a fresh Reviewer for each review. Its brief is small because the upstream
+contract and artifact are committed. It reads the diff, attacks the claimed
+design, and writes a committed review record without changing the target. It
+also attacks the Implementer's committed proof using `evidence-discipline.md`:
+wrong SHA, total zero, build-only proof where the app gate is required, a
+package check standing in for an app check, stale timestamps, or a missing
+mandatory gate are findings.
+
+After a clean Reviewer result, run the read-only independent-review contract
+owned by this skill. Record its runtime, concrete model, effort, launcher,
+provider, and independence classification. Judge every finding against the
+upstream contract and actual code:
+
+- **ACCEPT** means the premise is proven and the owning Planner or Implementer
+  receives a surgical follow-up fix.
+- **HAND-WAVE** means the premise is wrong, already handled, out of scope, or
+  unsupported by the supplied evidence; record the reason.
+
+At most two fix rounds are allowed per artifact. After round two, any open
+fail or warning stops the cycle and escalates to the caller.
+
+The standalone `codex-judge` command remains outside this cycle. The cycle
+uses only the skill-owned read-only independent-review contract and routes
+accepted fixes through the artifact owner so its audit trail remains intact.
+Historical `codex-audit` tracker entries are interpreted as independent audits
+with `classification = legacy-codex-review`; committed historical keys and
+commits are not rewritten.
 
 ## plan
 
-- plan with reasonable steps/chunks for commit on green, plan should have clear DoDs and tracking; if plan involves changing code define how should agent prove tests were run and are green — that committed proof is what the Reviewer attacks
-- step 1 is a baseline/reachability proof when the task is a defect: prove the named surface reachable and capture the oracle before any production-code change — a broken harness (down proxy, wrong entry, wrong surface) must not read as "does not reproduce"
-- when a defect's failing mechanism has not been observed — a UI that will not render, a wrong value, a state that will not settle — treat every code-reading explanation as a hypothesis, and make step 1 capture the failure from the **running system** (a state/log trace of the actual failure) before the later fix steps are accepted; if that observation contradicts the cause the plan's fix steps assume, it is a grounding discovery / spec drift — revise the plan before those steps run, do not absorb it. When runtime reproduction is genuinely unavailable, require the strongest captured evidence (a crash, request, or log) over pure source inference, and state which you relied on
-- the Planner may raise "QUESTION FOR ORCHESTRATOR" for blocked access (e.g. a down mitm proxy — a process only the user starts); such a block spends no review round
-- a grounding discovery that changes surface, preconditions, oracle, or a contradiction ruling stops as spec drift (back to the caller), never silently absorbed
-- draft implementation plan for task; save it in the run docs with a tracker and per-step DoD; each step must name its chosen design (types, signatures, optionality, fallbacks) — a step with an open design choice is not ready to spawn; where a choice can't be pre-made, state a default + "adopt unless concrete contrary evidence; state it in one line and proceed"; commit it before spawning, run a grounding pass and inline the findings into the plan itself, per step — the brief dies with the Planner, and each step's Implementer is a cold agent that reads only the plan: precedent file paths, code map with file:line per touchpoint, simulator UDID, exact environment-setup commands (feature flags, mitm stubs, proxy checks); inline each skill's 3-5 binding rules — name a skill only when a hook enforces invoking it; spell out causal chains (e.g. "button visible" requires flag AND eligibility stub); give the ordered edit list per step, ending with the DoD runs
+- Plan in chunks that can reach a green, self-contained commit. Each step has
+  a clear DoD and tracking fields, and names resolved roles rather than
+  embedding runtime-specific values.
+- For a defect, step one proves the named surface is reachable and captures
+  the oracle before production changes. A broken harness must not read as
+  "does not reproduce".
+- If the failing mechanism has not been observed, treat source explanations as
+  hypotheses. Capture the strongest running evidence available; if it
+  contradicts the assumed cause, stop for plan revision rather than absorbing
+  the drift.
+- A Planner may raise `QUESTION FOR ORCHESTRATOR` for blocked access, such as a
+  user-owned service that is down. That block spends no review round.
+- Every step names its design choices, profile/resource paths, code map,
+  environment setup, causal chain, ordered edits, and exact DoD runs. Open
+  design choices must have an adopted default and a contrary-evidence rule.
 
 ## reviewer
 
-a fresh spawn per review, strong model, cold context — it must read the diff without having watched it made. its brief is small because the plan is committed: "refute {artifact} at SHA <x> against its **upstream contract** (source→brief→plan→step) and the design its report claims". it reviews the diff against the upstream contract and the claimed design decisions; for an implementation it also attacks the Implementer's committed proof per the evidence discipline (see `evidence-discipline.md`) — wrong SHA, total=0, build-only where the app gate is required, a package test standing in for the app test, stale timestamp, missing the mandatory gate = the proof is weak, that is a finding. it runs no tests: a weak proof is flagged, not re-run — you decide whether to bounce it back to the Implementer. it commits a review record (findings + proof verdict) beside the plan.
+A fresh cold Reviewer is used for each review. It reads the committed diff
+against the upstream contract and the claimed design. It does not run tests;
+weak proof is a finding for the orchestrator to judge. It writes a committed
+review record beside the plan or step.
 
 ## implement
 
-require: one surgical commit per green step (interruption-proof) plus the step's committed proof per the plan's DoD — commit the moment the step's gates pass; if a session or quota limit interrupts you, a committable green state is the priority over any further edit — tracker + log update at the end of its own step, "QUESTION FOR ORCHESTRATOR: …" when blocked — it may consult you, "if you've read >10 files without an edit, stop exploring, adopt the default, edit", and "if a named touchpoint or design premise no longer holds, stop and ask — shifted line numbers alone are not drift; drift is the orchestrator's call, not yours, never silently redesign"
+Each step requires one surgical green commit and its committed proof. Commit
+the moment the step's gates pass. If the session is interrupted, prioritize a
+committable green state over further edits. Ask
+`QUESTION FOR ORCHESTRATOR: …` when blocked. If a named touchpoint or design
+premise no longer holds, stop and report the drift rather than silently
+redesigning.
 
 ## watch
 
-watch every ~10 min for the subagent's whole life, never once at spawn — each pass ask: has the worktree moved (uncommitted edits, then the step's commit), is the agent alive, or is it stale / killed / silently done? silence is not progress and never signals you, and status prose is not movement either. two passes with no movement is stuck, not slow: send a check-in demanding one-paragraph status + convergence to the default design; if that pass is also dead, kill it, park its dirty tree on a rescue ref (never discard — `## workflow` owes the user that diff), and respawn the step from the last green commit. answer design questions by message (spec defect ≠ capability defect); escalate to Opus only on wrong edits after the design is decided, or the review loop repeating on the same seam twice
+Watch the whole life of every launch at least every ten minutes. Check whether
+the worktree moved, whether a launch result or commit appeared, and whether
+the agent is alive, stale, or silently done. Silence is not progress. Two
+passes without movement are stuck: demand a short status and convergence to
+the committed design; if it remains dead, preserve the dirty tree on a rescue
+ref and resume from the last green commit.
 
 ## gotchas
 
-record run-local environment gotchas into the run docs and commit them, so future subagents don't rediscover; the Planner's grounding pass reads the existing gotchas first. after a terminal, reusable recipes and rules are promoted by the caller's retro to their owning skill or AGENTS.md — the engine writes run-local, the caller promotes durable
+Record run-local environment gotchas in the run documents and commit them so a
+future cycle does not rediscover them. After a terminal state, promote reusable
+recipes to their owning skill or instruction file through the caller's retro.
