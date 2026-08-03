@@ -114,7 +114,7 @@ def launch(
     if config is None:
         return _error_result(role, None, review_round_spent, f"role {role!r} is missing from manifest")
     if (
-        manifest.get("adapter") != "codex"
+        (manifest.get("adapter") != "codex" and role != "independent_review")
         or config.get("launcher") != "codex"
         or config.get("runtime") != "codex"
     ):

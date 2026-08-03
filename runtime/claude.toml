@@ -12,7 +12,7 @@ context_mode = "warm"
 [roles.implementer]
 model = "sonnet"
 reasoning_effort = "medium"
-context_mode = "warm"
+context_mode = "cold"
 
 [roles.reviewer]
 model = "opus"
