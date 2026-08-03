@@ -71,7 +71,8 @@ pipeline with `--host claude`.
 | Codex status | **PASS** | `runtime-lifecycle.py status` exited `0` for both live IDs and returned `status=completed` with state-record paths |
 | Codex cancel result | **PASS** | `runtime-lifecycle.py cancel` exited `1` with explicit `launch is already complete; cancellation is not applicable`; no silent mutation or retry |
 | Codex fixture artifact | **PASS** | `artifact.txt` is exactly `runtime-portability-artifact\n`; terminal fixture commit is `d94dfef`; `git status --porcelain` is empty |
-| Deterministic CLI contract | **PASS** | 17 tests, exit `0`; stub executables exercise exact argv, stdin, cwd, streams, exit status, identifier extraction, access, cold launch, no fallback, and lifecycle |
+| Deterministic CLI contract | **PASS** | 18 tests, exit `0`; stub executables exercise exact argv, stdin, cwd, streams, exit status, identifier extraction, access, cold launch, no fallback, and lifecycle |
+| Resolver-to-lifecycle pipe | **PASS** | `test_lifecycle_status_shouldConsumeManifestFromPipe` passes after `4024baf`; the resolver writer exits `0` while lifecycle status returns `completed` |
 | Direct sandboxed Codex failure | **PASS** | `codex-run/.cycle/evidence/implementer-9d4ccd4b307540de8f202d35afef7773`; exit `1`; exact provider/network failure is preserved and no fallback launch occurs |
 | Worktree hygiene | **PASS** | Both disposable fixture terminals are clean; the Claude terminal contains only the committed rejected-launch evidence and no artifact |
 
