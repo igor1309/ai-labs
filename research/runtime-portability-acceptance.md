@@ -1,108 +1,124 @@
 ---
 date: 2026-08-03
 model: gpt-5.6
-description: "Dated acceptance evidence index for Claude and Codex adversarial-cycle runtime portability."
+description: "Live subprocess acceptance evidence for Claude and Codex adversarial-cycle runtime portability."
+status: blocked-by-claude-auth
 ---
 
 # Runtime Portability Acceptance
 
-This index records the Phase 5 acceptance evidence for the runtime-neutral
-adversarial-cycle launcher boundary. The disposable probes used the committed
-skill resolver, dispatcher, and adapters. Their host bridges invoked the
-installed Claude and Codex runtimes and supplied the resulting native host
-responses to the adapters; the production adapters themselves only translated
-the canonical manifest and normalized the host result.
+## Claim status
 
-## Environment and Fixture
+The historical Phase 5 index committed as `2f94fab` is invalid and
+superseded. Its host bridges ran the installed CLIs outside the production
+adapters and injected the host responses into callback-only launchers. Its
+native-spawn PASS cells do not prove public-entry executable portability and
+must not be used as acceptance evidence.
+
+This corrected index records subprocess evidence from the shipped
+`resolve-runtime-profile.py` → `launch-runtime-agent.py` entry point. Overall
+acceptance is **STOPPED** because the installed Claude CLI is not authenticated;
+the Codex live path is green.
+
+## Environment and fixture
 
 - Date: 2026-08-03.
 - Python: `Python 3.14.6`.
-- Claude: `2.1.220 (Claude Code)`.
+- Claude: `2.1.220 (Claude Code)`; `claude auth status` exited 1 with
+  `{"loggedIn":false,"authMethod":"none","apiProvider":"firstParty"}`.
 - Codex: `codex-cli 0.146.0`.
-- Disposable evidence root:
-  `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak`.
-- Shared fixture base: `670de0aff2a1e4e397ae388e4a196860f3c5b9c9`.
-- The miniature brief requires one deterministic `artifact.txt` containing
-  `runtime-portability-artifact` followed by a newline.
-- Claude terminal tree: `6a5bdbbadc221b8f4c17bc8d5448f5854278c0d6`.
-- Codex terminal tree: `f60ac9a3469d244d53fbde3b241dbfe94bc76ec6`.
-- Both terminal fixture worktrees have empty `git status --porcelain` output.
+- Base fixture SHA: `4722055797cf9c4ea692c57b4b9e67db0a08a64e`.
+- Live evidence root:
+  `/private/tmp/adversarial-cycle-live.ua0QoR`.
+- Codex `CODEX_HOME`: disposable
+  `/private/tmp/adversarial-cycle-live.ua0QoR/codex-home` containing a copy of
+  the installed auth file; the shared `~/.codex` was not written.
+- Codex terminal SHA:
+  `d94dfef156e2b26a941b9c63858aa4f41565b023`.
+- Claude terminal SHA:
+  `7b7ac59d173afeb5b14438d245fe550ef58caae0`; no implementation artifact;
+  `.cycle` contains only the rejected launch evidence.
 
-## Resolved Manifests
+## Resolved configuration
 
-| Host | Manifest | Profile digest | Manifest digest | Implementer selection |
+| Host | Profile digest | Implementer | Reviewer | Access control |
 |---|---|---|---|---|
-| Claude | `claude-run/.cycle/execution-manifest.json` | `fba9536f7baa0a0d1e5d3c59fd6cd786c8d19dd8496166d0e50d687e72` | `6e13c014d03a1905cec4ddac357bd04341a907ed5075aa41ee1fa036e01baf96` | `sonnet` / `medium`, `profile-default`, cold |
-| Codex | `codex-run/.cycle/execution-manifest.json` | `8795ae73c31bf4b1cdee62a0a4c19ab8254921a4e3a81c0d22cf78d92f2a0f42` | `1576f3e6e5de2f01c8ff274ce1b5b64fa8ea7b9ca469d9d7eafef99946540487` | `gpt-5.6-luna` / `max`, `caller-preset`, cold |
+| Claude | `0a3867e97131a6b8b8ef47b5605ad78be422fd8a2fb2861e2783498b8fba8694` | `sonnet` / `medium` | `opus` / `high` | Implementer `workspace-write`; Reviewer `read-only` |
+| Codex | `3d0916b336f353fa18106ecc51628dc1809d59030f2ddd35ca2b2ab3d41f1c2e` | `gpt-5.6-luna` / `max`, `caller-preset` | `gpt-5.6-sol` / `high` | Implementer `workspace-write`; Reviewer `read-only` |
 
-The Claude manifest uses `runtime/claude.toml`; the Codex manifest uses
-`runtime/codex.toml`. Both set `unavailable_model_policy = "stop"` and contain
-no fallback field.
+The Codex resolver command was:
 
-## Acceptance Verdicts
+```bash
+env CODEX_HOME=/private/tmp/adversarial-cycle-live.ua0QoR/codex-home \
+  PYTHONDONTWRITEBYTECODE=1 python3 \
+  .claude/skills/adversarial-cycle/scripts/resolve-runtime-profile.py \
+  --host codex --set implementer=luna-max
+```
 
-| Cell | Verdict | Evidence |
+Its manifest recorded `gpt-5.6-luna`, `max`, `source=caller-preset`, and no
+fallback field. The Claude default resolver was run through the same public
+pipeline with `--host claude`.
+
+## Verdicts
+
+| Cell | Verdict | Falsifying evidence |
 |---|---|---|
-| Claude defaults | **PASS** | Claude manifest digest above; Planner `opus`/`high` warm, Implementer `sonnet`/`medium` cold, Reviewer `opus`/`high` cold, Escalation `opus`/`high` warm. |
-| Shared launcher input | **PASS** | Both live manifests use schema version 1 with the same role envelope and canonical role/result fields; manifests are recorded at the paths below. |
-| Claude launcher mapping | **PASS** | Implementer requested `model=sonnet`, `effort=medium`, `context_mode=cold`; host Task/session identifier `215b06f0-1700-4a83-8ca6-a4b58b823419`; cold Reviewer identifier `2e57bf8e-9d0f-48ee-b856-4af11988ced0`. |
-| Claude independent review | **PASS** | Classification `cross-runtime`; orchestrator `sonnet`/Anthropic and independent reviewer `gpt-5.6-sol`/OpenAI; Codex host identifier `019fc705-94d8-7a20-8143-afcbcb50cb34`; audit is read-only and clean. |
-| Codex defaults | **PASS** | Codex manifest digest above; Planner `gpt-5.6-sol`/`high` warm, Reviewer `gpt-5.6-sol`/`high` cold, Escalation `gpt-5.6-sol`/`xhigh` warm, independent review `gpt-5.6-luna`/`max` cold. |
-| Luna Max override | **PASS** | `--set implementer=luna-max` resolves Implementer to `gpt-5.6-luna` / `max`, with `source=caller-preset` and cold context. |
-| Codex launcher mapping | **PASS** | Implementer host arguments contain `model=gpt-5.6-luna`, `reasoning_effort=max`, `fork_turns=none`; native agent identifier `019fc706-3524-75b3-aec0-7a03ade10173`. |
-| Codex independent review | **PASS** | Classification `same-runtime-fresh-pass`; orchestrator and reviewer both record OpenAI Codex `gpt-5.6-luna` / `max` in separate cold launches; reviewer identifier `019fc706-d34b-7c03-b078-21aa4d53313d`; audit is read-only and clean. |
-| Shared launch result | **PASS** | Accepted Claude and Codex results and rejected fake results all contain `role`, `runtime`, `requested_model`, `requested_effort`, `status`, `runtime_task_or_agent_id`, `adapter_error`, and `review_round_spent`; accepted results carry native IDs and rejected results carry `null` IDs. |
-| Unavailable explicit model | **PASS** | Both adapters preserve the requested `unavailable-runtime-portability-test-model`, exact adapter errors, and supplied `review_round_spent=11`; each has one native attempt, no profile-default launch, no fallback launch, and a terminal `stopped` tracker. |
-| Fix ownership | **PASS** | Both independent audits have zero accepted findings and zero routed fixes; both terminal trackers record `accepted_independent_findings=0`. |
-| Legacy tracker fixture | **PASS** | The historical `codex-audit` key remains byte-for-byte represented by equal before/after source digests; interpretation records `legacy-codex-review` without rewriting the source. |
-| Receipt compatibility | **PASS** | Claude and Codex receipts retain the brief SHA, implementation tree SHA, tracker path, verdict `done`, and execution-manifest digest; corresponding terminal trackers carry the same compatibility values. |
-| Worktree hygiene | **PASS** | Claude and Codex terminal fixture trees, plus the legacy fixture tree, report clean status; rejection fixtures also report clean status. |
+| Historical native-spawn acceptance | **INVALID / SUPERSEDED** | `2f94fab`; host-bridge wording and evidence are retained in git history, not reused |
+| Claude public launch | **BLOCKED** | Claude evidence directory `claude-run/.cycle/evidence/implementer-de23dd1a4604431d9148a356a3fc3263`; subprocess exit `1`; exact CLI result says `Not logged in`; no artifact was created |
+| Codex public launch with Luna Max | **PASS** | `codex-run/.cycle/evidence/implementer-76d9718f56484f8c946e54b9489bf52e`; exit `0`; argv contains `--model gpt-5.6-luna`, `model_reasoning_effort="max"`, `--sandbox workspace-write`; returned thread `019fc7c3-1e1a-70c2-bb89-cbc0394ca99e` |
+| Codex cold Reviewer | **PASS** | `codex-run/.cycle/evidence/reviewer-93d2528dd9b14b568ca22d5237cd1ef4`; exit `0`; argv contains `--sandbox read-only` and no resume argument; returned thread `019fc7c4-19b4-7240-adcb-7df08caeb7e5` |
+| Codex owner follow-up | **PASS** | `codex-run/.cycle/evidence/implementer-89d19ae950bb41cbb243298238de324e`; `codex exec resume` uses the Luna Max model/effort and returns the original thread ID; exit `0` |
+| Codex status | **PASS** | `runtime-lifecycle.py status` exited `0` for both live IDs and returned `status=completed` with state-record paths |
+| Codex cancel result | **PASS** | `runtime-lifecycle.py cancel` exited `1` with explicit `launch is already complete; cancellation is not applicable`; no silent mutation or retry |
+| Codex fixture artifact | **PASS** | `artifact.txt` is exactly `runtime-portability-artifact\n`; terminal fixture commit is `d94dfef`; `git status --porcelain` is empty |
+| Deterministic CLI contract | **PASS** | 17 tests, exit `0`; stub executables exercise exact argv, stdin, cwd, streams, exit status, identifier extraction, access, cold launch, no fallback, and lifecycle |
+| Direct sandboxed Codex failure | **PASS** | `codex-run/.cycle/evidence/implementer-9d4ccd4b307540de8f202d35afef7773`; exit `1`; exact provider/network failure is preserved and no fallback launch occurs |
+| Worktree hygiene | **PASS** | Both disposable fixture terminals are clean; the Claude terminal contains only the committed rejected-launch evidence and no artifact |
 
-## Evidence Map
+## Exact live launch commands
 
-### Live Claude probe
+Claude implementer command, exit `1`:
 
-- Summary: `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/summary-claude.json`.
-- Run: `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/claude-run`.
-- Manifest: `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/claude-run/.cycle/execution-manifest.json`.
-- Tracker: `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/claude-run/.cycle/tracker.json`.
-- Receipt: `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/claude-run/.cycle/receipt.json`.
-- Independent audit: `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/claude-run/.cycle/audits/independent.json`.
-- Host primitive evidence: `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/claude-run/.cycle/native/planner.json`, `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/claude-run/.cycle/native/implementer.json`, `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/claude-run/.cycle/native/reviewer.json`, and `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/claude-run/.cycle/native/independent_review.json`.
+```bash
+env PYTHONDONTWRITEBYTECODE=1 python3 \
+  .claude/skills/adversarial-cycle/scripts/resolve-runtime-profile.py \
+  --host claude |
+env PYTHONDONTWRITEBYTECODE=1 python3 \
+  .claude/skills/adversarial-cycle/scripts/launch-runtime-agent.py \
+  --manifest /dev/stdin --role implementer --review-round-spent 0 \
+  --workspace /private/tmp/adversarial-cycle-live.ua0QoR/claude-run \
+  --evidence-dir /private/tmp/adversarial-cycle-live.ua0QoR/claude-run/.cycle/evidence \
+  --state-dir /private/tmp/adversarial-cycle-live.ua0QoR/claude-run/.cycle/state
+```
 
-### Live Codex probe
+Codex implementer command, escalated live run exit `0`:
 
-- Summary: `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/summary-codex.json`.
-- Run: `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/codex-run`.
-- Manifest: `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/codex-run/.cycle/execution-manifest.json`.
-- Tracker: `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/codex-run/.cycle/tracker.json`.
-- Receipt: `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/codex-run/.cycle/receipt.json`.
-- Independent audit: `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/codex-run/.cycle/audits/independent.json`.
-- Host primitive evidence: `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/codex-run/.cycle/native/planner.json`, `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/codex-run/.cycle/native/implementer.json`, `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/codex-run/.cycle/native/reviewer.json`, and `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/codex-run/.cycle/native/independent_review.json`.
+```bash
+env CODEX_HOME=/private/tmp/adversarial-cycle-live.ua0QoR/codex-home \
+  PYTHONDONTWRITEBYTECODE=1 python3 \
+  .claude/skills/adversarial-cycle/scripts/resolve-runtime-profile.py \
+  --host codex --set implementer=luna-max |
+env CODEX_HOME=/private/tmp/adversarial-cycle-live.ua0QoR/codex-home \
+  PYTHONDONTWRITEBYTECODE=1 python3 \
+  .claude/skills/adversarial-cycle/scripts/launch-runtime-agent.py \
+  --manifest /dev/stdin --role implementer --review-round-spent 0 \
+  --workspace /private/tmp/adversarial-cycle-live.ua0QoR/codex-run \
+  --evidence-dir /private/tmp/adversarial-cycle-live.ua0QoR/codex-run/.cycle/evidence \
+  --state-dir /private/tmp/adversarial-cycle-live.ua0QoR/codex-run/.cycle/state
+```
 
-### Failure and compatibility probes
+The first identical Codex command without network escalation exited `1` and
+is retained as the direct sandbox failure evidence; the escalated command is
+the live provider PASS.
 
-- Unavailable-model negative control:
-  `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/unavailable-model-negative-control.json`.
-- Claude stopped rejection fixture tracker:
-  `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/claude-rejection-fixture/.cycle/tracker.json`.
-- Codex stopped rejection fixture tracker:
-  `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/codex-rejection-fixture/.cycle/tracker.json`.
-- Legacy tracker evidence:
-  `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/legacy-tracker-evidence.json`.
-- Legacy source tracker:
-  `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/legacy-fixture/.cycle/legacy-tracker.json`.
-- Interpreted legacy audit:
-  `/var/folders/4t/dtttc90s5njf7xp72c_wtwlm0000gn/T/adversarial-cycle-runtime-portability-3em6xlak/legacy-fixture/.cycle/interpreted-independent-audit.json`.
+## Limitations and release rule
 
-## Gate Record
-
-- Phase 1 corrected ADR gate: `ADR: PASS`, exit 0, against the preserved ADR.
-- Phase 2 unit gate: 17 tests, exit 0; resolver Luna Max output contains
-  `gpt-5.6-luna`, `max`, and `caller-preset`, with no fallback field.
-- Phase 3 unit/static gate: 19 tests, exit 0; the forbidden-pattern `rg`
-  check returned no matches (exit 1 as required).
-- Phase 4 gate: `git diff --check` exit 0 and all four ownership terms present;
-  the separate repository commit contains only `commands/codex-judge.md`.
-- Phase 5 acceptance inspection: every verdict cell in this index is `PASS`;
-  both terminal trackers and receipts are present and compatible.
+- Claude cannot receive a PASS until an authenticated Claude CLI session or
+  `ANTHROPIC_API_KEY` is supplied and the same public-entry miniature cycle
+  creates, reviews, and records the fixture artifact.
+- The Codex live result proves launch, requested model/effort, permission
+  mapping, returned thread identity, reviewer isolation, and owner follow-up.
+- The deterministic suite proves both runtime adapters without provider calls;
+  it does not convert the blocked Claude live cell into a PASS.
+- The corrected task is not releasable while the overall status is
+  `blocked-by-claude-auth`.
