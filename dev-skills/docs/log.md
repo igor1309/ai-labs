@@ -4,6 +4,19 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-08-06
+
+- **worktree v0.2.0**: the config-sync script linked shared config into a
+  worktree and stopped there, but a link only stays invisible if the consuming
+  repo also excludes its name — and nothing creates that pattern. A missing one
+  failed silently: the link showed as untracked in every `git status` from then
+  on, and the fix (`.git/info/exclude`) was tribal knowledge. The script now
+  reports every managed link git does not ignore, naming the entries and the
+  exclude file to append them to. It checks all managed links, not just ones
+  created on the current run, so a long-standing omission still surfaces;
+  tracked entries are exempt. Advisory only — it never edits git state and
+  never changes the exit code. Published as marketplace v1.58.0.
+
 ## 2026-07-24
 
 - **debug-print v1.1.0**: the skill told the agent to add prints and wait for

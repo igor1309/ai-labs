@@ -1,7 +1,7 @@
 ---
 name: worktree
 author: Igor Malyarov
-version: "0.1.2"
+version: "0.2.0"
 description: >
   Create a new git worktree, sync shared config into it via the bundled sync
   script (never replicate config by hand or hand-author symlinks), and clear

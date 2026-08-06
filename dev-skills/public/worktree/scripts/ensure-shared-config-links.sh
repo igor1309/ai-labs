@@ -16,6 +16,9 @@ set -euo pipefail
 # - Warns and skips any existing *non-symlink* in the worktree root
 #   (continues processing remaining entries).
 # - Skips git metadata entries at the shared-config root (e.g. .git*).
+# - Warns about managed links the repo does not git-ignore (they would show as
+#   untracked in every `git status`). Advisory only: it never edits git state
+#   and never changes the exit code.
 #
 # Shared-config resolution (in precedence order):
 # 1. explicit second argument, if given
@@ -95,6 +98,7 @@ should_skip_name() {
 
 LINKED=0
 SKIPPED=0
+MANAGED=()   # names of links this run owns (newly created or already correct)
 
 link_or_warn() {
   local target="$1"
@@ -107,6 +111,8 @@ link_or_warn() {
     return
   fi
 
+  MANAGED+=("${name}")
+
   if [ -L "${linkpath}" ] && [ "$(readlink "${linkpath}")" = "${target}" ]; then
     return
   fi
@@ -114,6 +120,36 @@ link_or_warn() {
   ln -sfn -- "${target}" "${linkpath}"
   echo "Linked: ${name} -> ${target}"
   LINKED=$((LINKED + 1))
+}
+
+# Report managed links that git does not ignore.
+#
+# The links are shared config, never repository content, so each one needs a
+# matching pattern in the repo's exclude file or it shows up as untracked in
+# every `git status`. Nothing else creates those patterns, and a missing one is
+# silent — this run is the moment to notice. Advisory only: it reports, never
+# edits git state, and never changes the exit code.
+report_unignored_links() {
+  [ "${#MANAGED[@]}" -gt 0 ] || return 0
+
+  local exclude_file unignored=()
+  exclude_file="$(cd "${WT_ROOT}" && cd "$(git rev-parse --git-common-dir)" && pwd)/info/exclude"
+
+  local name
+  for name in "${MANAGED[@]}"; do
+    # Ignored already — nothing to report.
+    git -C "${WT_ROOT}" check-ignore -q -- "${name}" && continue
+    # Tracked content is legitimately un-ignored; only untracked links are noise.
+    git -C "${WT_ROOT}" ls-files --error-unmatch -- "${name}" >/dev/null 2>&1 && continue
+    unignored+=("${name}")
+  done
+
+  [ "${#unignored[@]}" -gt 0 ] || return 0
+
+  echo "WARNING: ${#unignored[@]} shared-config link(s) are not git-ignored and will appear as untracked:" >&2
+  printf '  %s\n' "${unignored[@]}" >&2
+  echo "Add them to ${exclude_file} :" >&2
+  printf '  %s\n' "${unignored[@]}" >&2
 }
 
 # Link every direct child of SHARED into WT_ROOT
@@ -128,6 +164,8 @@ for src in "${SHARED}"/*; do
 
   link_or_warn "${src}" "${WT_ROOT}/${name}"
 done
+
+report_unignored_links
 
 echo "Done: ${LINKED} linked, ${SKIPPED} skipped."
 

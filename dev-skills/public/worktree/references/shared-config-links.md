@@ -40,6 +40,14 @@ The script aborts early for layout errors and warns (but continues) on conflicts
 
 If a name collision happens (e.g. repo tracks `agent/` but shared config also has `agent/`), resolve the conflict by renaming one side.
 
+## Un-ignored links
+
+The symlinks are shared config, never repository content, so each name needs a matching pattern in the consuming repo's `.git/info/exclude` (or its `.gitignore`). Nothing creates those patterns automatically, and a missing one is silent — the link simply shows up as untracked in every `git status` from then on.
+
+After linking, the script reports every link it manages that git does not ignore, listing the names and the exclude file to append them to. It checks **all** managed links, not only ones created on this run, so an entry that was linked long ago and never excluded still surfaces. Links that are legitimately tracked in the repository are not reported.
+
+This is advisory: the script never edits git state, and the warning does not change the exit code.
+
 ## Usage
 
 Typical integration (after creating a worktree):
@@ -68,3 +76,6 @@ The script warns and skips non-symlinks but continues processing the rest. Renam
 
 **Can I run it again after adding new shared config entries?**
 Yes. It is idempotent — new symlinks are created, existing ones are left alone.
+
+**I added a shared config entry and it shows as untracked. Why?**
+Linking is only half the job; the name also needs a pattern in the consuming repo's `.git/info/exclude`. The script's un-ignored-links warning names the entry and the file to add it to.
