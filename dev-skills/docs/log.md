@@ -4,6 +4,24 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-08-07
+
+- **intake v2.0.0**: the skill had grown to 1666 words, the largest in the
+  collection, and roughly a third of it was the same rules said twice — a
+  `Core Principle` block, a `Hard Rules` block, and an `Anti-Patterns` block
+  that announced itself as a restatement of `Hard Rules`. Repetition is not
+  free: it weights avoidance of named failure modes over doing the work.
+  Removed both duplicate blocks and `Large-Scope Mode`, whose numeric trigger
+  ("12-15 evidence bullets") and mandated verbatim sentence turned judgment
+  into form-filling. Three instructions actively degraded the agent and are
+  gone: refusing to answer when the user asks how they would implement it (a
+  skill phase does not outrank the user), asking questions strictly one at a
+  time when `AskUserQuestion` batches four, and asking where to save the brief
+  instead of defaulting the path. Also resolved a contradiction — "do not
+  create any files" versus Phase 4's required write — and corrected the stale
+  `Task` tool name to `Agent`. 939 words, same four phases. Published as
+  marketplace v1.59.0.
+
 ## 2026-08-06
 
 - **worktree v0.2.0**: the config-sync script linked shared config into a
