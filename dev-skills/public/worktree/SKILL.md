@@ -1,20 +1,20 @@
 ---
 name: worktree
 author: Igor Malyarov
-version: "0.2.0"
+version: "0.2.1"
 description: >
   Create a new git worktree, sync shared config into it via the bundled sync
-  script (never replicate config by hand or hand-author symlinks), and clear
-  leftover build artifacts. Triggers on "create a worktree", "new worktree",
-  "set up a worktree". Self-contained — the worktree creator and config-sync
-  script ship with this skill under scripts/.
+  script (never replicate config by hand or hand-author symlinks), and verify
+  the resulting worktree is clean. Triggers on "create a worktree", "new
+  worktree", "set up a worktree". Self-contained — the worktree creator and
+  config-sync script ship with this skill under scripts/.
 ---
 
 # Worktree
 
-Create a feature worktree, sync its shared config from the bundled sync script,
-and deal with leftover build artifacts. The scripts this skill needs are bundled
-under its own `scripts/` directory, so it works without any pre-installed tooling.
+Create a feature worktree, sync its shared config with the bundled script, and
+verify the result. The scripts this skill needs are bundled under its own
+`scripts/` directory, so it works without any pre-installed tooling.
 
 Below, `<skill-dir>` is this skill's base directory — the absolute path announced
 when the skill loads. Run the commands from **inside the target git repository**
@@ -51,16 +51,21 @@ script owns that and is idempotent.
 "<skill-dir>/scripts/ensure-shared-config-links.sh" "<worktree-path>"
 ```
 
-It links every direct child of the sibling `<repo>.config` directory into the
-worktree root (skipping git metadata, `README.md`, and junk). Safe to re-run. See
-`references/shared-config-links.md` for the convention and failure modes.
+By default, it resolves shared config from the conventional sibling
+`<repo>.config` directory or from the repository's main worktree when the target
+uses another layout. It links each eligible direct child into the worktree root
+and is safe to re-run. See `references/shared-config-links.md` for explicit-path
+usage and failure modes.
 
-### 3. Handle leftover build artifacts
+### 3. Verify the worktree is clean
 
-A fresh worktree shares no build output with the main checkout, but a reused
-target dir or synced config can leave stale artifacts (`.build/`, `node_modules/`,
-`DerivedData/`). Remove or regenerate them before building so the worktree builds
-clean.
+```bash
+git -C "<worktree-path>" status --short
+```
+
+Expect no output. If the sync script reports unignored shared-config links, add
+the listed names to the exclude file it prints, then rerun the sync and status
+commands. Do not start work while setup-owned entries remain in `git status`.
 
 ## Global `gitwt` install (optional, one-time per machine)
 
