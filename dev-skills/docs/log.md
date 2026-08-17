@@ -16,6 +16,16 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
   behavioral dry-runs with a scenario-and-observe harness for interaction-driving
   skills, grounded in the intake v2.0 regressions that prose-only review treated
   too easily as ordinary noise.
+## 2026-08-12
+
+- **Removed state-machine-spec-dod and state-machine-impl-dod**: both checklists
+  encode one repo's state-machine conventions — paired state/effect tests,
+  `test_<action>_should<Assert>_on<Setup>` naming, reducer- and effect-handler
+  spy protocols — so they read as cross-repo skills while only ever applying to
+  the repo that has those patterns. Moved to `ios.config`'s `.claude/skills/`,
+  beside `rx-state-machine-development`, which is where the conventions they
+  check are defined. Same reasoning as the earlier `swift-package-manifest`
+  move. Marketplace v1.60.0.
 
 ## 2026-08-07
 
