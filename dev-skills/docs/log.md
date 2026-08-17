@@ -6,6 +6,10 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-08-17
 
+- **pr-ci-watch v1.4.0**: split non-green outcomes into failed checks, blocked
+  merge gates, missing check registration, and shell pipelines that mask a
+  producer's exit status. Each signal now leads to a distinct diagnostic, so a
+  missing workflow or approval is no longer reported as a generic CI failure.
 - **skill-review v1.6.0**: added an instruction-interference axis for conflicts,
   duplicated behavioral weighting, workflow rules that override direct user
   requests, and unnecessary clarification despite defined defaults. Extended
