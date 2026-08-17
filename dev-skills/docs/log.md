@@ -6,6 +6,11 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 ## 2026-08-17
 
+- **worktree v0.2.1**: made clean-status verification an explicit setup gate and
+  documented shared-config discovery for both conventional and Codex-managed
+  worktree layouts. Agents now stop on setup-owned status entries instead of
+  beginning implementation in a polluted worktree. Published together with the
+  other skill-progression changes as marketplace v1.61.0.
 - **pr-ci-watch v1.4.0**: split non-green outcomes into failed checks, blocked
   merge gates, missing check registration, and shell pipelines that mask a
   producer's exit status. Each signal now leads to a distinct diagnostic, so a
@@ -16,6 +21,7 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
   behavioral dry-runs with a scenario-and-observe harness for interaction-driving
   skills, grounded in the intake v2.0 regressions that prose-only review treated
   too easily as ordinary noise.
+
 ## 2026-08-12
 
 - **Removed state-machine-spec-dod and state-machine-impl-dod**: both checklists
