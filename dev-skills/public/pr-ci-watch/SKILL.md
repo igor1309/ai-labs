@@ -1,7 +1,7 @@
 ---
 name: pr-ci-watch
 author: Igor Malyarov
-version: "1.3.0"
+version: "1.4.0"
 description: Use when the user wants to monitor GitHub PR CI status, wait for checks to finish, merge on green, or investigate failed checks. Triggers on phrases like "is CI done", "wait for checks", "watch the PR", "merge when green", or after pushing commits that invoke CI workflows. Prevents wasteful polling of `gh pr checks` and encodes the blocking/background decision.
 ---
 
@@ -19,7 +19,10 @@ description: Use when the user wants to monitor GitHub PR CI status, wait for ch
 gh pr checks <pr-number> --watch --fail-fast > /tmp/<repo>-pr-<pr>.log 2>&1
 ```
 
-- Exit 0: all green. Nonzero: something failed. Exit 8: still pending (shouldn't occur with `--watch` but handle defensively).
+- Exit 0: the watch reached a passing state. Nonzero: diagnose the signal below;
+  it may be a failed check, cancellation, missing registration, or CLI error.
+  Exit 8 means checks are still pending (it should not occur with `--watch`, but
+  handle it defensively).
 - `--fail-fast` is the default for fast feedback. Drop it if the user wants to see all failures at once.
 - No PR number given? Resolve from current branch: `gh pr view --json number -q .number`.
 - Set `timeout: 600000` on the Bash tool call — `--watch` can block indefinitely if a check hangs.
@@ -65,7 +68,7 @@ gh pr merge <pr> --merge --auto --delete-branch
 CI green does NOT mean the PR can merge. Auto-merge is blocked by conflicts, missing approvals, or other branch-protection rules. After checks pass, **always** verify:
 
 ```bash
-gh pr view <pr> --json state,mergeable,mergeStateStatus,autoMergeRequest -q '.'
+gh pr view <pr> --json state,mergeable,mergeStateStatus,autoMergeRequest,reviewDecision,statusCheckRollup -q '.'
 ```
 
 - `state: "MERGED"` → the PR already merged (auto-merge fired while CI was settling). Report success and stop — no further checks needed.
@@ -76,19 +79,39 @@ Interpret the result:
 
 - `mergeable: "MERGEABLE"` + `mergeStateStatus: "CLEAN"` → auto-merge will proceed, report success.
 - `mergeable: "CONFLICTING"` → auto-merge is blocked. Report the conflict immediately and offer to resolve it (fetch base branch, merge locally, fix conflicts, push). Do NOT tell the user "auto-merge will proceed" or "wait a moment."
-- `mergeStateStatus: "BLOCKED"` with `mergeable: "MERGEABLE"` → a branch-protection rule (review, required check) is unsatisfied. Report which rule is blocking.
+- `mergeStateStatus: "BLOCKED"` with `mergeable: "MERGEABLE"` → a branch-protection rule is unsatisfied. Use `reviewDecision` and `statusCheckRollup` from the same response to name the missing approval or required check.
 
 **Never declare a PR will auto-merge based solely on CI status.** The mergeability check is mandatory.
 
-## On failure
+## Diagnose by signal
 
-Pull only what failed, not full logs:
+Do not collapse every non-green result into "CI failed." Classify the signal
+before choosing the next command:
+
+| Signal | Classification | Next action |
+|---|---|---|
+| `--watch` exits nonzero and `gh pr checks <pr> --json name,link,bucket,state` contains `bucket: "fail"` or `"cancel"` | Failed check | Pull only that run's failed steps with `gh run view <run-id> --log-failed`. |
+| `--watch` exits 0, but the mergeability query returns `mergeStateStatus: "BLOCKED"` | Merge gate | Report the unsatisfied approval or required check from `reviewDecision` and `statusCheckRollup`. Do not hunt for a failed run unless a check bucket is also `fail` or `cancel`. |
+| The watch reports `no checks reported on branch`, the one allowed retry has elapsed, and `gh pr checks <pr> --json name,link,bucket,state` returns `[]` | Check-registration gap | Inspect recent runs for the PR head branch with the command below. Report whether no workflow started, a workflow was skipped, or GitHub has not associated the run with the PR. |
+| An outer command exits 0 even though a producer visibly failed, especially after piping through `tee` | Masked process failure | Re-run the producer without the pipeline, or run the pipeline under `bash -o pipefail`. Treat the original result as unknown, never green. |
+
+For a check-registration gap:
+
+```bash
+head_branch=$(gh pr view <pr> --json headRefName -q .headRefName)
+gh run list --branch "$head_branch" --limit 10 \
+  --json databaseId,workflowName,event,status,conclusion,url
+```
+
+For a failed check, pull only what failed, not full logs:
 
 ```bash
 gh run view <run-id> --log-failed
 ```
 
-Get run IDs from the `--watch` output or `gh pr checks <pr> --json name,link,state`. Summarize the failure in 1–3 lines, then ask before anything destructive (revert, force-push, rerun).
+Get run IDs from the `--watch` output or the check link returned by
+`gh pr checks <pr> --json name,link,bucket,state`. Summarize the failure in 1–3
+lines, then ask before anything destructive (revert, force-push, rerun).
 
 After a rerun, stream the retry instead of polling:
 
@@ -121,6 +144,18 @@ list comes back empty.
 ## Known race: "no checks reported"
 
 If `--watch` runs too soon after a push, it may exit 1 with "no checks reported on branch" before GitHub registers the workflow. Retry once after 5–10 seconds — still with `--watch`, never a poll loop.
+
+## Preserve exit status
+
+Branch on the watch command's own exit status. Do not pipe a watch, test, build,
+or deploy command through `tee` and trust the pipeline's default status: it may
+report `tee`'s success after the producer failed. The commands in this skill use
+redirection for that reason. If a pipeline is unavoidable, preserve both quiet
+capture and the producer's exit status:
+
+```bash
+bash -o pipefail -c 'producer 2>&1 | tee /tmp/<operation>.log >/dev/null'
+```
 
 ## Forbidden
 
