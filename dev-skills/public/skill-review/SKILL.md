@@ -1,7 +1,7 @@
 ---
 name: skill-review
 author: Igor Malyarov
-version: "1.5.0"
+version: "1.6.0"
 description: Review and improve existing agent skills. Use when evaluating skill quality, auditing skill collections, asking "review skill", "is this skill effective", "improve skill description", or maintaining a skill library.
 ---
 
@@ -108,6 +108,27 @@ of the three canonical layout sources (Anthropic skills overview, the
 agentskills.io specification and home — see `research/`): cited precedent,
 not taste.
 
+### 10. Instruction interference (applies only to interaction-driving skills)
+
+Signal-to-noise grades instructions in isolation. This axis grades what happens
+when instructions governing the same decision interact. Apply it when a skill
+controls questions, phase transitions, defaults, or responses to the user.
+
+- Do any instructions require incompatible actions, defaults, or priorities?
+- Does repetition overweight avoidance of one failure mode until it displaces
+  the skill's actual task?
+- Can a phase or workflow rule override the user's latest direct instruction?
+- Does a fixed question order, quantity, template, or threshold constrain
+  judgment without a fragile operation that justifies it?
+- Does the skill require clarification where it already defines a safe default?
+
+Flag the affected sections as `conflict`, not merely `noise`, when their
+combination can change behavior for the worse. Prove the interaction from
+overlapping scope, an observed run, a known incident, or a planted fixture.
+Repetition alone is insufficient: a critical warning repeated at two distinct
+decision points can be intentional. Mark it `ask user` when the rationale or
+behavioral effect cannot be established.
+
 ## Output Format
 
 Per skill:
@@ -117,13 +138,13 @@ Per skill:
 **Verdict:** Keep as-is / Needs refinement / Needs rewrite / Consider retiring
 
 **Section-by-section** (every section must appear):
-- [signal / noise / ask user]: [section name]
+- [signal / noise / conflict / ask user]: [section name]
   Reason: [specific: duplicates AGENTS.md §X / general knowledge / encodes gotcha / ...]
 
 **Strengths:**
 - [What works well]
 
-**Suggested changes** (only for sections marked noise, with specific fix)
+**Suggested changes** (only for sections marked noise or conflict, with specific fix)
 ```
 
 **Rules for the section-by-section audit:**
@@ -131,8 +152,12 @@ Per skill:
   observability) — present it as its own finding, not folded into prose
 - For skills with supporting files, include an explicit axis-9 verdict
   (folder shape) — same rule: its own finding, not folded into prose
+- For interaction-driving skills, include an explicit axis-10 verdict
+  (instruction interference) — same rule: its own finding, not folded into prose
 - Every section gets a verdict — no skipping with a blanket percentage
 - "noise" requires a specific reason (not "verbose" or "could be shorter")
+- "conflict" requires two or more interacting instructions and the resulting
+  behavior; do not use it for a standalone omission or unrelated axis failure
 - "ask user" is mandatory when you suspect domain knowledge but can't confirm
 - Do NOT use percentage-based noise estimates — they sound authoritative but are consistently wrong and lead fixers to over-cut
 
@@ -146,31 +171,35 @@ Per skill:
 ## Behavioral dry-run (eligible skills only)
 
 The axes above read a skill's prose. They cannot tell you whether a *generative*
-skill produces good output — two runs that both obey the skill to the letter can
-still differ in quality. For those skills, reading is not enough: exercise the
+skill produces good output or whether an *interaction-driving* skill produces a
+sound user-facing trajectory. Two runs that obey the skill to the letter can
+still differ materially. For those skills, reading is not enough: exercise the
 skill and audit what it produces.
 
-**Eligibility — all three must hold; if any fails, skip and review by reading:**
+**Eligibility — route 1 or route 2 must hold, and route 3 must hold:**
 
-1. **Generative, not procedural.** The behavior under review directs the agent to
-   author an artifact, not follow a fixed sequence or check against a rulebook.
-   Gate on the behavior being changed, not the whole skill — a mostly-procedural
-   skill with one generative substep qualifies when that substep is what changed.
-2. **Quality varies.** Two letter-perfect runs can differ materially in quality
-   (e.g. a technically-valid but trivially-pickable quiz distractor).
+1. **Generative behavior.** The behavior under review directs the agent to
+   author an artifact, not follow a fixed sequence or check against a rulebook,
+   and two compliant runs can differ materially in quality. Gate on the behavior
+   being changed, not the whole skill — a mostly-procedural skill with one
+   generative substep qualifies when that substep is what changed.
+2. **Interaction-driving behavior.** The behavior under review governs
+   questions, phase transitions, defaults, or responses to the user, and two
+   compliant runs can differ materially in user-facing behavior.
 3. **Ground truth exists.** There is something to audit against — a source text,
    a spec, a test, a contract.
 
 Procedural skills (a release flow, a worktree setup), rulebooks (governance,
-composition rules), and deterministic ops fail #1 or #2 — a dry-run tells you
-nothing a careful read doesn't. Don't run one.
+composition rules), and deterministic ops still fail both routes unless the
+behavior under change controls a user interaction. Don't run a dry-run when a
+careful read fully determines the result.
 
-**Mandatory for eligible skills on a generative-behavior change** — when the
-skill is created, or an edit changes *what or how it generates* (not a typo, not
-a doc-link fix). Skipping it then ships the change validated only by reading the
-instructions, never by running them.
+**Mandatory for eligible skills on a behavior change** — when the skill is
+created, or an edit changes *what or how it generates or interacts* (not a typo,
+not a doc-link fix). Skipping it then ships the change validated only by reading
+the instructions, never by running them.
 
-**Two harness shapes — pick by what the skill produces:**
+**Harness shapes — pick by what the skill produces or controls:**
 
 - **Generation skills (produce-and-audit).** Spawn a sub-agent under the skill;
   have it produce N artifacts from real input *with its private reasoning
@@ -189,6 +218,14 @@ instructions, never by running them.
   artifact and a change request; audit the revised artifact against the request
   *and* against preserved source facts. Include at least one **preservation
   case** — content the request did not touch must come back unchanged.
+- **Interaction-driving skills (scenario-and-observe).** Run fixed scenarios
+  covering: sufficient context where the agent should proceed, one missing
+  material decision where it should clarify, and a direct user request that
+  interrupts the nominal phase. Audit observable behavior against the contract:
+  whether each question was necessary, whether work progressed, whether a
+  defined default was used, and whether the direct request was answered. Hold
+  the prompts constant before and after a known regression so the behavior
+  change, rather than scenario drift, explains the result.
 
 Keep the harness honest: audit against ground truth yourself — don't accept the
 sub-agent's own self-check as the verdict, since the author and the grader are the

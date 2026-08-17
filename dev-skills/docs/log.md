@@ -4,6 +4,15 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-08-17
+
+- **skill-review v1.6.0**: added an instruction-interference axis for conflicts,
+  duplicated behavioral weighting, workflow rules that override direct user
+  requests, and unnecessary clarification despite defined defaults. Extended
+  behavioral dry-runs with a scenario-and-observe harness for interaction-driving
+  skills, grounded in the intake v2.0 regressions that prose-only review treated
+  too easily as ordinary noise.
+
 ## 2026-08-07
 
 - **intake v2.0.0**: the skill had grown to 1666 words, the largest in the
