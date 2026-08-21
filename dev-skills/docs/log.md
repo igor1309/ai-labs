@@ -4,6 +4,25 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-08-21
+
+- **Three new skills — code-review-discipline v1.0.0, background-task-liveness
+  v1.0.0, doc-discipline v1.0.0 (marketplace v1.64.0)**: each is the procedural
+  half of a global rule that previously carried both the rule and its recipe.
+  `code-review-discipline` covers self-review before declaring work done, the
+  evidence bar a fail/warning must clear, and turning findings into a plan;
+  `background-task-liveness` covers which signal to poll per work type, telling a
+  slow run from a wedged one, and keeping monitor state across a teardown;
+  `doc-discipline` covers doc shape and the cold-reader pass, prose economy, link
+  direction, what to cite instead of a topic-branch SHA, and log entries. The
+  rules now state the constraint and point here for the how.
+- **Publishing correction**: all three were authored directly in the installed
+  marketplace checkout (`~/.claude/plugins/marketplaces/dev-skills`) rather than
+  in `dev-skills/public/`, so they existed only on that machine and would have
+  been erased by the next plugin auto-update. Ported into the source repo
+  unchanged apart from the `version` front-matter the install-dir copies were
+  missing.
+
 ## 2026-08-17
 
 - **worktree v0.2.1**: made clean-status verification an explicit setup gate and
