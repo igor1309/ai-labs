@@ -22,6 +22,13 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
   been erased by the next plugin auto-update. Ported into the source repo
   unchanged apart from the `version` front-matter the install-dir copies were
   missing.
+- **strict-tdd v1.0.2 (marketplace v1.64.1)**: the "compilation errors are not
+  RED" rule lived in two places — this skill carried the prohibition, the
+  always-on `general.md` rule in `~/.claude/rules/` carried the prohibition plus
+  the positive definition of RED. Two copies, and the incomplete one was the one
+  a TDD session loaded. Folded the definition into the skill's bullet and deleted
+  the rule line, so the rule lives in exactly one place and fires on the trigger
+  that makes it meaningful.
 
 ## 2026-08-17
 
