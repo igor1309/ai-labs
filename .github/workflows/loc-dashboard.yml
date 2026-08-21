@@ -7,7 +7,7 @@ name: LOC Dashboard
 
 on:
   schedule:
-    - cron: "23 6 * * *"
+    - cron: "23 6 * * *"   # 09:23 MSK
   workflow_dispatch:
 
 permissions:
