@@ -4,6 +4,20 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-08-24
+
+- **skill-review renamed to skill-conventions, v2.0.0 (marketplace v1.65.0)**:
+  the published skill now owns the whole reusable skill-business lifecycle, not
+  just the audit half. It absorbed the generic conventions — taxonomy and DoD,
+  how-to-not-log, hook/skill/script, script rules, `backlog/` and `adr/` layout,
+  frontmatter gates — from the Fora `ios.config` repo-local skill of the same
+  name, now deleted, with that repo's specifics moved to its `.claude/AGENTS.md`.
+  The ten-axis review method moved to `references/review-method.md` behind a
+  gated link, leaving SKILL.md at 189 lines; review is now an explicit mode that
+  reports a change plan without editing files. A plant-and-detect dry-run
+  returned all eight planted defects, invented none, and left the clean control
+  untouched. `postmortem` v0.1.2 re-points its cross-link.
+
 ## 2026-08-21
 
 - **Three new skills — code-review-discipline v1.0.0, background-task-liveness

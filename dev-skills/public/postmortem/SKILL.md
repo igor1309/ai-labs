@@ -1,8 +1,8 @@
 ---
 name: postmortem
 author: Igor Malyarov
-version: "0.1.1"
-description: Reflect on the current session and propose polish/tweaks/fixes for a named skill, grounded in evidence from this conversation. Use when wrapping up a session that exercised a skill — to capture what worked, what should be fixed, and what adjacent skills were missing. Sibling to skill-review, but session-scoped instead of corpus-scoped.
+version: "0.1.2"
+description: Reflect on the current session and propose polish/tweaks/fixes for a named skill, grounded in evidence from this conversation. Use when wrapping up a session that exercised a skill — to capture what worked, what should be fixed, and what adjacent skills were missing. Sibling to skill-conventions, but session-scoped instead of corpus-scoped.
 argument-hint: "<skill-name>"
 disable-model-invocation: true
 ---
