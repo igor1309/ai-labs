@@ -6,12 +6,12 @@
   },
   "metadata": {
     "description": "Development workflows and career advancement tools for software engineers",
-    "version": "1.64.1"
+    "version": "1.65.0"
   },
   "plugins": [
     {
       "name": "dev-skills",
-      "description": "Development workflows: collaborative discussion, task intake, TDD, strict TDD, architecture review, component architecture review, architecture doc review, ADR governance, composition root wiring, process gates, implementation plan authoring and validation, protocol ownership, release process, spec writing, executable specification scaffolding, feature spec protocol, documentation auditing, domain availability checking, cold-start checkpoint, Docker discipline, session postmortem, PR CI monitoring, Swift packaging, simulator settings, skill review, synopsis generation, job search strategy, jobs-to-be-done, architecture sketch review, bug analysis, tactical action planning, debug print logging, iOS simulator install, REST contract review, test runner, testing schedulers, best free OpenRouter LLM selection, session handoff, requirements-traceability review, using-dev-skills entry map, OpenClaw agent creation, worktree creation with bundled config-sync, code review discipline, background task liveness, and documentation discipline",
+      "description": "Development workflows: collaborative discussion, task intake, TDD, strict TDD, architecture review, component architecture review, architecture doc review, ADR governance, composition root wiring, process gates, implementation plan authoring and validation, protocol ownership, release process, spec writing, executable specification scaffolding, feature spec protocol, documentation auditing, domain availability checking, cold-start checkpoint, Docker discipline, session postmortem, PR CI monitoring, Swift packaging, simulator settings, skill conventions and review, synopsis generation, job search strategy, jobs-to-be-done, architecture sketch review, bug analysis, tactical action planning, debug print logging, iOS simulator install, REST contract review, test runner, testing schedulers, best free OpenRouter LLM selection, session handoff, requirements-traceability review, using-dev-skills entry map, OpenClaw agent creation, worktree creation with bundled config-sync, code review discipline, background task liveness, and documentation discipline",
       "source": "./",
       "strict": false,
       "skills": [
@@ -48,7 +48,7 @@
         "./release-process",
         "./rest-contract-review",
         "./simulator-settings",
-        "./skill-review",
+        "./skill-conventions",
         "./spec-writing",
         "./strict-tdd",
         "./swift-package-manifest",
