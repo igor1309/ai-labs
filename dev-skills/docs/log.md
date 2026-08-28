@@ -4,6 +4,75 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-08-28
+
+- **doc-discipline v1.1.0 (marketplace v1.66.0)**: the prose-economy test that
+  governed a new document now governs an edit to an existing one. An added
+  section must name a rule that no existing section carries, or its content
+  belongs inside an existing section — or nowhere. `Known issues` and `Caveats`
+  fail by construction: nothing has been observed to break, so the section
+  states what might. The check is on the diff, which either adds no heading line
+  or comes with a commit message naming the rule the new heading carries. This
+  closes the gap that let amendments accrete headings no reader needs.
+
+## 2026-08-24
+
+- **skill-review renamed to skill-conventions, v2.0.0 (marketplace v1.65.0)**:
+  the published skill now owns the whole reusable skill-business lifecycle, not
+  just the audit half. It absorbed the generic conventions — taxonomy and DoD,
+  how-to-not-log, hook/skill/script, script rules, `backlog/` and `adr/` layout,
+  frontmatter gates — from the Fora `ios.config` repo-local skill of the same
+  name, now deleted, with that repo's specifics moved to its `.claude/AGENTS.md`.
+  The ten-axis review method moved to `references/review-method.md` behind a
+  gated link, leaving SKILL.md at 189 lines; review is now an explicit mode that
+  reports a change plan without editing files. A plant-and-detect dry-run
+  returned all eight planted defects, invented none, and left the clean control
+  untouched. `postmortem` v0.1.2 re-points its cross-link.
+
+## 2026-08-21
+
+- **Three new skills — code-review-discipline v1.0.0, background-task-liveness
+  v1.0.0, doc-discipline v1.0.0 (marketplace v1.64.0)**: each is the procedural
+  half of a global rule that previously carried both the rule and its recipe.
+  `code-review-discipline` covers self-review before declaring work done, the
+  evidence bar a fail/warning must clear, and turning findings into a plan;
+  `background-task-liveness` covers which signal to poll per work type, telling a
+  slow run from a wedged one, and keeping monitor state across a teardown;
+  `doc-discipline` covers doc shape and the cold-reader pass, prose economy, link
+  direction, what to cite instead of a topic-branch SHA, and log entries. The
+  rules now state the constraint and point here for the how.
+- **Publishing correction**: all three were authored directly in the installed
+  marketplace checkout (`~/.claude/plugins/marketplaces/dev-skills`) rather than
+  in `dev-skills/public/`, so they existed only on that machine and would have
+  been erased by the next plugin auto-update. Ported into the source repo
+  unchanged apart from the `version` front-matter the install-dir copies were
+  missing.
+- **strict-tdd v1.0.2 (marketplace v1.64.1)**: the "compilation errors are not
+  RED" rule lived in two places — this skill carried the prohibition, the
+  always-on `general.md` rule in `~/.claude/rules/` carried the prohibition plus
+  the positive definition of RED. Two copies, and the incomplete one was the one
+  a TDD session loaded. Folded the definition into the skill's bullet and deleted
+  the rule line, so the rule lives in exactly one place and fires on the trigger
+  that makes it meaningful.
+
+## 2026-08-17
+
+- **worktree v0.2.1**: made clean-status verification an explicit setup gate and
+  documented shared-config discovery for both conventional and Codex-managed
+  worktree layouts. Agents now stop on setup-owned status entries instead of
+  beginning implementation in a polluted worktree. Published together with the
+  other skill-progression changes as marketplace v1.61.0.
+- **pr-ci-watch v1.4.0**: split non-green outcomes into failed checks, blocked
+  merge gates, missing check registration, and shell pipelines that mask a
+  producer's exit status. Each signal now leads to a distinct diagnostic, so a
+  missing workflow or approval is no longer reported as a generic CI failure.
+- **skill-review v1.6.0**: added an instruction-interference axis for conflicts,
+  duplicated behavioral weighting, workflow rules that override direct user
+  requests, and unnecessary clarification despite defined defaults. Extended
+  behavioral dry-runs with a scenario-and-observe harness for interaction-driving
+  skills, grounded in the intake v2.0 regressions that prose-only review treated
+  too easily as ordinary noise.
+
 ## 2026-08-12
 
 - **Removed state-machine-spec-dod and state-machine-impl-dod**: both checklists
