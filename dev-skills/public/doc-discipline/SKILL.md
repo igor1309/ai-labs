@@ -3,7 +3,7 @@ name: doc-discipline
 description: Use before drafting or restructuring an ADR, spec, grounding or research note, plan, tracker or log entry; before citing a commit in durable prose; before adding a link between two docs; and when retiring a plan or tracker that others link to. Triggers on "write the doc", "review the doc", "cold-reader pass", "should this doc link to", "cross-link", "link the docs", "retire the plan", "delete the tracker", "supersede the doc", "cite the commit", "reference the SHA", "log entry".
 allowed-tools: Read, Write, Edit, Grep, Glob
 author: Igor Malyarov
-version: "1.0.0"
+version: "1.1.0"
 ---
 
 # Docs
@@ -19,6 +19,14 @@ Before keeping a sentence, ask what breaks if it is deleted. Defending a rule,
 announcing what the document is not doing, and enumerating which parts of a
 referenced file apply all break nothing — the last also implies the unlisted
 parts do not.
+
+The same test governs an amendment to a doc that already exists. An edit that
+adds a section must name the rule that section carries and that no existing
+section carries; otherwise the content belongs inside an existing section, or
+nowhere. A "known issues" or "caveats" section fails this by construction:
+nothing has been observed to break, so the section states what might. Check the
+diff — it adds no heading line, or the commit message names the rule the new
+heading carries.
 
 ## Linking
 

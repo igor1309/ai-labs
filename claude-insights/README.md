@@ -15,7 +15,7 @@ Aggregates Claude Code usage data (`~/.claude/usage-data/`) into a weekly JSON s
 - **claude-insights.py** — aggregates local JSON, extracts narrative from `report.html`, pushes to Supabase (with `--push`, also pings the DB to prevent free-tier auto-pause)
 - **notify-insights** — Supabase Edge Function, called by DB webhook on INSERT/UPDATE, sends Telegram message
 - **telegram-bot** — Supabase Edge Function, Telegram webhook handler, responds to `/latest` and `/compare`
-- **_shared/format.ts** — shared message formatter (HTML parse mode, narrative in blockquotes)
+- **_shared/format.ts** — shared message formatter (Markdown rich message, narrative in blockquotes)
 - **_shared/llm.ts** — LLM call helper for trend analysis via Nomos
 
 ## Usage

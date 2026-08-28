@@ -16,8 +16,8 @@ Live on OpenClaw as of 2026-05-09. Notifications post via the shared bot `@igor1
 
 ## Source
 
-- Intent: `doc-drift-agent/docs/automated-doc-drift-review-and-fix-suggestions-intent.md`
-- ADR: `doc-drift-agent/docs/adr-specialized-openclaw-agent-readme-drift-review.md` (README-only documentation drift review)
+- Intent: `docs/automated-doc-drift-review-and-fix-suggestions-intent.md`
+- ADR: `docs/adr-specialized-openclaw-agent-readme-drift-review.md` (README-only documentation drift review)
 
 ## Layout
 
