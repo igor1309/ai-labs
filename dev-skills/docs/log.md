@@ -4,6 +4,17 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-08-28
+
+- **doc-discipline v1.1.0 (marketplace v1.66.0)**: the prose-economy test that
+  governed a new document now governs an edit to an existing one. An added
+  section must name a rule that no existing section carries, or its content
+  belongs inside an existing section — or nowhere. `Known issues` and `Caveats`
+  fail by construction: nothing has been observed to break, so the section
+  states what might. The check is on the diff, which either adds no heading line
+  or comes with a commit message naming the rule the new heading carries. This
+  closes the gap that let amendments accrete headings no reader needs.
+
 ## 2026-08-24
 
 - **skill-review renamed to skill-conventions, v2.0.0 (marketplace v1.65.0)**:
