@@ -1,7 +1,7 @@
 ---
 date: 2026-07-06
 model: gpt-5.5-thinking
-description: "FolioTell — a native document-to-speech iPhone app that reads local Markdown and plain-text files aloud (working name, implemented v0.0.1 package)"
+description: "FolioTell — a native document-to-speech iPhone app that reads local Markdown and plain-text files aloud (working name, implemented v0.6.3 package)"
 ---
 
 # foliotell
