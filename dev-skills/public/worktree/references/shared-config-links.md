@@ -7,27 +7,28 @@ reviewer: claude-opus-4.5
 
 # Shared worktree config symlinks
 
-This tool ensures every git worktree receives the same ignored/local configuration by creating symlinks from the worktree root to a shared sibling directory.
+This tool ensures every git worktree receives the same ignored/local
+configuration by creating symlinks from the worktree root to a shared config
+directory.
 
-## Convention (hard requirement)
+## Shared-config location
 
-Worktrees must live under:
+The script resolves shared config in this order:
 
-- `/X/<repo>.worktrees/<worktree-name>`
+1. Use the explicit second argument. The directory must already exist.
+2. For `/X/<repo>.worktrees/<worktree-name>`, use `/X/<repo>.config`.
+3. For another worktree layout, derive `<main-worktree>.config` from Git's
+   common directory.
 
-Shared config must live alongside:
-
-- `/X/<repo>.config`
-
-Given a worktree root `/X/<repo>.worktrees/foo`, the script derives the shared config directory as `/X/<repo>.config`.
+Derived shared-config directories are created if missing.
 
 ## Behavior
 
-For every *direct child* entry inside `/X/<repo>.config` (files and directories), the script ensures a symlink exists in the worktree root with the same name:
+For every *direct child* entry inside the shared config directory (files and
+directories), the script ensures a symlink exists in the worktree root with the
+same name:
 
 - `<worktree>/<name>` -> `<shared>/<name>`
-
-The shared directory is created if missing.
 
 ## Safety / failure modes
 
@@ -36,9 +37,19 @@ The script aborts early for layout errors and warns (but continues) on conflicts
 - Refuses to run if the provided path looks like the worktrees container (`*.worktrees`).
 - Refuses to run if the path is not a git working tree.
 - Refuses if the derived shared config path resolves inside the worktree (self-referential layout).
-- Warns and skips any existing **non-symlink** in the worktree root (prevents clobbering tracked files or local data). Remaining entries are still processed.
+- Warns and skips any existing **non-symlink** in the worktree root (prevents
+  clobbering tracked files or local data). Remaining entries are still processed,
+  then the script exits with status 2.
 
 If a name collision happens (e.g. repo tracks `agent/` but shared config also has `agent/`), resolve the conflict by renaming one side.
+
+## Un-ignored links
+
+The symlinks are shared config, never repository content, so each name needs a matching pattern in the consuming repo's `.git/info/exclude` (or its `.gitignore`). Nothing creates those patterns automatically, and a missing one is silent — the link simply shows up as untracked in every `git status` from then on.
+
+After linking, the script reports every link it manages that git does not ignore, listing the names and the exclude file to append them to. It checks **all** managed links, not only ones created on this run, so an entry that was linked long ago and never excluded still surfaces. Links that are legitimately tracked in the repository are not reported.
+
+This is advisory: the script never edits git state, and the warning does not change the exit code.
 
 ## Usage
 
@@ -47,6 +58,9 @@ Typical integration (after creating a worktree):
 ```bash
 git worktree add "/X/<repo>.worktrees/$name" "$branch_or_commit"
 ./ensure-shared-config-links.sh "/X/<repo>.worktrees/$name"
+
+# Override shared-config discovery.
+./ensure-shared-config-links.sh "/X/<repo>.worktrees/$name" "/Y/shared-config"
 ```
 
 ## Notes
@@ -68,3 +82,6 @@ The script warns and skips non-symlinks but continues processing the rest. Renam
 
 **Can I run it again after adding new shared config entries?**
 Yes. It is idempotent — new symlinks are created, existing ones are left alone.
+
+**I added a shared config entry and it shows as untracked. Why?**
+Linking is only half the job; the name also needs a pattern in the consuming repo's `.git/info/exclude`. The script's un-ignored-links warning names the entry and the file to add it to.

@@ -1,7 +1,7 @@
 ---
 date: 2026-07-06
 model: gpt-5.5-thinking
-description: "FolioTell — a native document-to-speech iPhone app that reads local Markdown and plain-text files aloud (working name, implemented v0.0.1 package)"
+description: "FolioTell — a native document-to-speech iPhone app that reads local Markdown and plain-text files aloud (working name, implemented v0.6.3 package)"
 ---
 
 # foliotell
@@ -65,7 +65,7 @@ GitHub release workflow secrets:
 
 Optional release metadata:
 
-- `FOLIOTELL_VERSION` defaults to the version in `release.toml`
+- `FOLIOTELL_VERSION` defaults to the version in `ios/release.toml`
 - `FOLIOTELL_BUILD_NUMBER` defaults to the git commit count
 
 Run `ios/scripts/distribute-testflight.sh --help` for modes including `--validate-only`, `--archive-only`, and `--dry-run`.
