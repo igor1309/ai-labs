@@ -1,7 +1,7 @@
 ---
 name: strict-tdd
 author: Igor Malyarov
-version: "1.0.1"
+version: "1.0.2"
 description: Strict TDD mode — RED/GREEN/REFACTOR discipline with no-junk scope lock
 trigger: when the user explicitly asks for TDD, RED/GREEN, or equivalent
 ---
@@ -12,7 +12,7 @@ Trigger strict TDD mode when the user explicitly asks for TDD, RED/GREEN, or equ
 
 - One test at a time.
 - RED first: add or update one test, run tests, and get a failing assertion for the missing behavior.
-- Compilation errors are not RED.
+- Compilation errors are not RED. RED means code including tests compile, but a test fails with an assertion that expresses the missing behavior.
 - During RED, production code changes are forbidden.
 - Stop after RED and wait for explicit user approval only in `human-review-gated` mode.
 - In `auto-continue` mode, continue from RED to GREEN after capturing the failing assertion evidence.

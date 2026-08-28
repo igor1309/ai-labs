@@ -39,7 +39,7 @@ services:
       - langfuse_redis:/data
 
   clickhouse:
-    image: clickhouse/clickhouse-server:24.12
+    image: clickhouse/clickhouse-server:26.4
     restart: unless-stopped
     user: "101:101"
     healthcheck:
@@ -78,7 +78,7 @@ services:
       - langfuse_minio:/data
 
   langfuse-worker:
-    image: langfuse/langfuse-worker:3
+    image: langfuse/langfuse-worker:4
     restart: unless-stopped
     depends_on:
       postgres:
@@ -113,9 +113,11 @@ services:
       LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://minio:9000
       LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
       TELEMETRY_ENABLED: "false"
+      LANGFUSE_MIGRATION_V4_WRITE_MODE: dual
+      LANGFUSE_BACKGROUND_MIGRATION_V4_ENABLE_HISTORIC_BACKFILL: "false"
 
   langfuse-web:
-    image: langfuse/langfuse:3
+    image: langfuse/langfuse:4
     restart: unless-stopped
     depends_on:
       postgres:
@@ -163,6 +165,8 @@ services:
       LANGFUSE_INIT_USER_NAME: ${LANGFUSE_INIT_USER_NAME}
       LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD}
       TELEMETRY_ENABLED: "false"
+      LANGFUSE_MIGRATION_V4_WRITE_MODE: dual
+      LANGFUSE_BACKGROUND_MIGRATION_V4_ENABLE_HISTORIC_BACKFILL: "false"
 
 volumes:
   langfuse_postgres:
