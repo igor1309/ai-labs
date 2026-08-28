@@ -1,0 +1,139 @@
+# Re-baselined for iOS 26 simulators (see docs/maestro-simulator-runbook.md):
+# - the document browser opens files only on a double tap under synthesized
+#   input, and restores its last tab/folder across launches;
+# - menu items sometimes miss under synthesized taps, so every menu
+#   interaction verifies the menu closed and retries once;
+# - persisted position makes repeat runs resume mid-document, so the flow
+#   clears it (Start Over while idle) before playing.
+# Environment: "FolioTell iPhone 26.3" simulator, Pushkin fixture seeded in
+# the app container (full poem — short fixtures end mid-flow).
+appId: foliotell.FolioTell
+---
+- launchApp:
+    stopApp: true
+- waitForAnimationToEnd:
+    timeout: 2000
+# The browser restores its last tab; navigate to Browse if the document
+# is not already on screen.
+- runFlow:
+    when:
+      notVisible: "А_С_Пушкин.*"
+    commands:
+      - tapOn: "Browse"
+      - waitForAnimationToEnd:
+          timeout: 2000
+# Browse may restore at the root locations list ("iCloud Drive" is unique to
+# it) — enter On My iPhone.
+- runFlow:
+    when:
+      visible: "iCloud Drive"
+    commands:
+      - tapOn: "On My iPhone"
+      - waitForAnimationToEnd:
+          timeout: 2000
+# If the browser restored one level up (On My iPhone grid), enter the
+# FolioTell folder — first grid cell.
+- runFlow:
+    when:
+      notVisible: "А_С_Пушкин.*"
+    commands:
+      - tapOn:
+          point: "19%, 52%"
+      - waitForAnimationToEnd:
+          timeout: 2000
+- assertVisible:
+    text: "А_С_Пушкин.*"
+# Double tap: a single synthesized tap does not open documents on iOS 26.
+- tapOn:
+    point: "19%, 52%"
+- waitForAnimationToEnd:
+    timeout: 1000
+- tapOn:
+    point: "19%, 52%"
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible: "Play"
+- assertVisible:
+    id: "readerSettingsGear"
+- assertVisible:
+    id: "readerVoiceMenu"
+- assertVisible:
+    id: "readerPlaybackMenu"
+# Front Matter is a reader setting, not a compact playback-menu item.
+- tapOn:
+    id: "readerSettingsGear"
+- assertVisible:
+    id: "readerSettingsPage"
+- takeScreenshot: reader-settings
+- assertVisible: "Read"
+- assertVisible: "Skip"
+- tapOn:
+    id: "frontMatterReadOption"
+- assertVisible: "Read selected"
+- tapOn:
+    id: "readerSettingsDone"
+- tapOn:
+    id: "readerVoiceMenu"
+- assertVisible: "Auto"
+- tapOn:
+    point: "50%, 20%"
+- assertNotVisible: "Auto"
+# Reset any persisted position while idle so Play always starts from the
+# beginning with full runway.
+- tapOn:
+    id: "readerPlaybackMenu"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertNotVisible: "Auto"
+- assertNotVisible: "Front matter"
+- tapOn: "Start Over"
+- waitForAnimationToEnd:
+    timeout: 1000
+# Start Over is disabled when no position is stored — dismiss the menu with
+# an outside tap in that case.
+- runFlow:
+    when:
+      visible: "1.5x"
+    commands:
+      - tapOn:
+          point: "50%, 20%"
+      - waitForAnimationToEnd:
+          timeout: 1000
+- assertNotVisible: "1.5x"
+- assertVisible: "Play"
+- tapOn: "Play"
+- assertVisible: "Pause"
+# Speed change mid-playback must not restart or stop speech.
+- tapOn:
+    id: "readerPlaybackMenu"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertNotVisible: "Auto"
+- tapOn: "1.5x"
+- waitForAnimationToEnd:
+    timeout: 1000
+# If the speed menu remains open after the selection, dismiss it without
+# changing the selected speed before asserting the playback state.
+- runFlow:
+    when:
+      visible: "1.5x"
+    commands:
+      - tapOn:
+          point: "50%, 20%"
+      - waitForAnimationToEnd:
+          timeout: 1000
+- assertNotVisible: "1.5x"
+- assertNotVisible: "Auto"
+- assertVisible: "Pause"
+- tapOn: "Pause"
+- waitForAnimationToEnd:
+    timeout: 1000
+- assertVisible: "Resume"
+- tapOn: "Resume"
+- waitForAnimationToEnd:
+    timeout: 1000
+- assertVisible: "Pause"
+- tapOn: "Stop"
+- waitForAnimationToEnd:
+    timeout: 1000
+- assertVisible: "Play"

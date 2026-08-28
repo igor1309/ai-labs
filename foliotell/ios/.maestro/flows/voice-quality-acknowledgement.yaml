@@ -1,0 +1,89 @@
+# Proves the installed-voice acknowledgement is transient and only shown on
+# the first opening for a language. Before running, use the reset commands in
+# docs/maestro-simulator-runbook.md to select the deterministic installed
+# voice catalog and clear the acknowledgement state.
+appId: foliotell.FolioTell
+---
+- launchApp:
+    stopApp: true
+- waitForAnimationToEnd:
+    timeout: 2000
+- runFlow:
+    when:
+      notVisible: "А_С_Пушкин.*"
+    commands:
+      - tapOn: "Browse"
+      - waitForAnimationToEnd:
+          timeout: 2000
+- runFlow:
+    when:
+      visible: "iCloud Drive"
+    commands:
+      - tapOn: "On My iPhone"
+      - waitForAnimationToEnd:
+          timeout: 2000
+- runFlow:
+    when:
+      notVisible: "А_С_Пушкин.*"
+    commands:
+      - tapOn:
+          point: "19%, 52%"
+      - waitForAnimationToEnd:
+          timeout: 2000
+- assertVisible:
+    text: "А_С_Пушкин.*"
+- tapOn:
+    point: "19%, 52%"
+- waitForAnimationToEnd:
+    timeout: 1000
+- tapOn:
+    point: "19%, 52%"
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible:
+    id: "voiceQualityBanner"
+- takeScreenshot: "enhanced-voice-first-open"
+# assertNotVisible retries while the acknowledgement remains on screen; the
+# app's five-second timer must remove it before this assertion passes.
+- assertNotVisible:
+    id: "voiceQualityBanner"
+- takeScreenshot: "enhanced-voice-auto-dismissed"
+- launchApp:
+    stopApp: true
+- waitForAnimationToEnd:
+    timeout: 2000
+- runFlow:
+    when:
+      notVisible: "А_С_Пушкин.*"
+    commands:
+      - tapOn: "Browse"
+      - waitForAnimationToEnd:
+          timeout: 2000
+- runFlow:
+    when:
+      visible: "iCloud Drive"
+    commands:
+      - tapOn: "On My iPhone"
+      - waitForAnimationToEnd:
+          timeout: 2000
+- runFlow:
+    when:
+      notVisible: "А_С_Пушкин.*"
+    commands:
+      - tapOn:
+          point: "19%, 52%"
+      - waitForAnimationToEnd:
+          timeout: 2000
+- assertVisible:
+    text: "А_С_Пушкин.*"
+- tapOn:
+    point: "19%, 52%"
+- waitForAnimationToEnd:
+    timeout: 1000
+- tapOn:
+    point: "19%, 52%"
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertNotVisible:
+    id: "voiceQualityBanner"
+- takeScreenshot: "enhanced-voice-second-open"

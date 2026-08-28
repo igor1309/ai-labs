@@ -17,6 +17,13 @@ version = "0.1.16"
 docker = false
 
 [[units]]
+basename = "foliotell"
+path = "foliotell/ios"
+metadata = "release.toml"
+version = "0.6.3"
+docker = false
+
+[[units]]
 basename = "nomos"
 path = "nomos"
 metadata = "package.json"

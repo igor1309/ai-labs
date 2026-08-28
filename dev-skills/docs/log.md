@@ -4,6 +4,159 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-08-28
+
+- **doc-discipline v1.1.0 (marketplace v1.66.0)**: the prose-economy test that
+  governed a new document now governs an edit to an existing one. An added
+  section must name a rule that no existing section carries, or its content
+  belongs inside an existing section — or nowhere. `Known issues` and `Caveats`
+  fail by construction: nothing has been observed to break, so the section
+  states what might. The check is on the diff, which either adds no heading line
+  or comes with a commit message naming the rule the new heading carries. This
+  closes the gap that let amendments accrete headings no reader needs.
+
+## 2026-08-24
+
+- **skill-review renamed to skill-conventions, v2.0.0 (marketplace v1.65.0)**:
+  the published skill now owns the whole reusable skill-business lifecycle, not
+  just the audit half. It absorbed the generic conventions — taxonomy and DoD,
+  how-to-not-log, hook/skill/script, script rules, `backlog/` and `adr/` layout,
+  frontmatter gates — from the Fora `ios.config` repo-local skill of the same
+  name, now deleted, with that repo's specifics moved to its `.claude/AGENTS.md`.
+  The ten-axis review method moved to `references/review-method.md` behind a
+  gated link, leaving SKILL.md at 189 lines; review is now an explicit mode that
+  reports a change plan without editing files. A plant-and-detect dry-run
+  returned all eight planted defects, invented none, and left the clean control
+  untouched. `postmortem` v0.1.2 re-points its cross-link.
+
+## 2026-08-21
+
+- **Three new skills — code-review-discipline v1.0.0, background-task-liveness
+  v1.0.0, doc-discipline v1.0.0 (marketplace v1.64.0)**: each is the procedural
+  half of a global rule that previously carried both the rule and its recipe.
+  `code-review-discipline` covers self-review before declaring work done, the
+  evidence bar a fail/warning must clear, and turning findings into a plan;
+  `background-task-liveness` covers which signal to poll per work type, telling a
+  slow run from a wedged one, and keeping monitor state across a teardown;
+  `doc-discipline` covers doc shape and the cold-reader pass, prose economy, link
+  direction, what to cite instead of a topic-branch SHA, and log entries. The
+  rules now state the constraint and point here for the how.
+- **Publishing correction**: all three were authored directly in the installed
+  marketplace checkout (`~/.claude/plugins/marketplaces/dev-skills`) rather than
+  in `dev-skills/public/`, so they existed only on that machine and would have
+  been erased by the next plugin auto-update. Ported into the source repo
+  unchanged apart from the `version` front-matter the install-dir copies were
+  missing.
+- **strict-tdd v1.0.2 (marketplace v1.64.1)**: the "compilation errors are not
+  RED" rule lived in two places — this skill carried the prohibition, the
+  always-on `general.md` rule in `~/.claude/rules/` carried the prohibition plus
+  the positive definition of RED. Two copies, and the incomplete one was the one
+  a TDD session loaded. Folded the definition into the skill's bullet and deleted
+  the rule line, so the rule lives in exactly one place and fires on the trigger
+  that makes it meaningful.
+
+## 2026-08-17
+
+- **worktree v0.2.1**: made clean-status verification an explicit setup gate and
+  documented shared-config discovery for both conventional and Codex-managed
+  worktree layouts. Agents now stop on setup-owned status entries instead of
+  beginning implementation in a polluted worktree. Published together with the
+  other skill-progression changes as marketplace v1.61.0.
+- **pr-ci-watch v1.4.0**: split non-green outcomes into failed checks, blocked
+  merge gates, missing check registration, and shell pipelines that mask a
+  producer's exit status. Each signal now leads to a distinct diagnostic, so a
+  missing workflow or approval is no longer reported as a generic CI failure.
+- **skill-review v1.6.0**: added an instruction-interference axis for conflicts,
+  duplicated behavioral weighting, workflow rules that override direct user
+  requests, and unnecessary clarification despite defined defaults. Extended
+  behavioral dry-runs with a scenario-and-observe harness for interaction-driving
+  skills, grounded in the intake v2.0 regressions that prose-only review treated
+  too easily as ordinary noise.
+
+## 2026-08-12
+
+- **Removed state-machine-spec-dod and state-machine-impl-dod**: both checklists
+  encode one repo's state-machine conventions — paired state/effect tests,
+  `test_<action>_should<Assert>_on<Setup>` naming, reducer- and effect-handler
+  spy protocols — so they read as cross-repo skills while only ever applying to
+  the repo that has those patterns. Moved to `ios.config`'s `.claude/skills/`,
+  beside `rx-state-machine-development`, which is where the conventions they
+  check are defined. Same reasoning as the earlier `swift-package-manifest`
+  move. Marketplace v1.60.0.
+
+## 2026-08-07
+
+- **intake v2.0.0**: the skill had grown to 1666 words, the largest in the
+  collection, and roughly a third of it was the same rules said twice — a
+  `Core Principle` block, a `Hard Rules` block, and an `Anti-Patterns` block
+  that announced itself as a restatement of `Hard Rules`. Repetition is not
+  free: it weights avoidance of named failure modes over doing the work.
+  Removed both duplicate blocks and `Large-Scope Mode`, whose numeric trigger
+  ("12-15 evidence bullets") and mandated verbatim sentence turned judgment
+  into form-filling. Three instructions actively degraded the agent and are
+  gone: refusing to answer when the user asks how they would implement it (a
+  skill phase does not outrank the user), asking questions strictly one at a
+  time when `AskUserQuestion` batches four, and asking where to save the brief
+  instead of defaulting the path. Also resolved a contradiction — "do not
+  create any files" versus Phase 4's required write — and corrected the stale
+  `Task` tool name to `Agent`. 939 words, same four phases. Published as
+  marketplace v1.59.0.
+
+## 2026-08-06
+
+- **worktree v0.2.0**: the config-sync script linked shared config into a
+  worktree and stopped there, but a link only stays invisible if the consuming
+  repo also excludes its name — and nothing creates that pattern. A missing one
+  failed silently: the link showed as untracked in every `git status` from then
+  on, and the fix (`.git/info/exclude`) was tribal knowledge. The script now
+  reports every managed link git does not ignore, naming the entries and the
+  exclude file to append them to. It checks all managed links, not just ones
+  created on the current run, so a long-standing omission still surfaces;
+  tracked entries are exempt. Advisory only — it never edits git state and
+  never changes the exit code. Published as marketplace v1.58.0.
+
+## 2026-07-24
+
+- **debug-print v1.1.0**: the skill told the agent to add prints and wait for
+  pasted console output, with nothing said about whether that output can exist.
+  `debugPrint` goes to stdout, which is discarded unless the launch attaches a
+  console or redirects it — so a "launch and leave" or a UI-automation driver
+  yields an empty log that reads exactly like code that never ran. The skill now
+  requires handing back to unified logging instead of instrumenting a run nobody
+  can observe. Published as marketplace v1.57.0.
+
+## 2026-07-08
+
+- **skill-review v1.5.0**: promoted the drafted "Folder shape" axis (§9,
+  skills with supporting files only) from the skill's backlog — supporting
+  files should be bucketed by loading contract (`scripts/` run for output,
+  `references/` read on demand, `assets/` inert), a convention three canonical
+  layout sources converge on; triggers only above a couple of unbucketed
+  files, a single loose file is a comment at most. Explicit axis-9 verdict
+  added to the output format. `backlog/` is now empty and removed; skill
+  backlog fully drained. Published as marketplace v1.56.0.
+- **skill-review v1.4.0**: promoted the drafted "Failure observability" axis
+  (§8, script-driving skills only) from the skill's backlog into Evaluation
+  Axes — a skill must surface non-zero script exits mechanically, not depend
+  on the agent narrating them — with an explicit axis-8 verdict required in
+  the output format. Origin: the Poeme add-module experiment, where a failing
+  wiring script was silently hand-fixed on every run and each run still
+  reported PASS. `backlog/backlog.md` removed as shipped; the folder-shape
+  axis draft (`backlog/folder.md`) remains open. Published as marketplace v1.56.0.
+- **pr-ci-watch v1.3.0**: added the long-planned run-level watching section —
+  `gh run watch <run-id> --exit-status` for tag-triggered release/deploy
+  workflows, post-rerun streaming, and single-run scenarios, with the same
+  redirect/exit-code/timeout discipline as the PR-level watch and a ~20s
+  wait-before-`gh run list` race note. `gh pr checks --watch` remains the
+  default for PR greenness. Closes `pr-ci-watch/TODO.md` (removed); validated
+  by the same-day foliotell 0.0.3/0.1.0 release sessions, which used exactly
+  this pattern. Published as marketplace v1.56.0.
+- **using-dev-skills v1.0.3**: split the "bug report" ladder cue — analysis-only
+  asks route to Debugging (bug-analysis), while bug reports with a fix/deploy
+  request are delivery work investigated inline, not an analysis-report skill.
+  Motivated by a foliotell session where `bug-analysis` was invoked against its
+  own "do not use when a fix is requested" guard. Published as marketplace v1.56.0.
+
 ## 2026-06-29
 
 - **skill-review v1.3.0** (marketplace v1.55.0): added a gated `## Behavioral dry-run` section. The existing axes only read a skill's prose; this adds a step that *exercises* a generative skill and audits its output — but only for skills where that makes sense, behind a 3-part eligibility filter (generative-not-procedural, gated on the behavior under change; quality-varies; ground-truth-exists) that excludes procedural flows, rulebooks, and deterministic ops. Mandatory for eligible skills on a generative-behavior change. Documents three harness shapes — produce-and-audit (generation), plant-and-detect (review), input-output audit with a preservation case (transformation/editing) — plus controlled-variable discipline (hold an input that triggers a known failure so a fix is provably the cause) and an optional cross-tier probe (where output goes tier-independent, judgment has been scripted out of the model). Codex-reviewed (eligibility/trigger/leanness passed; the transformation harness was the one accepted finding). Motivated by an agonara-student session where the highest-impact change shipped validated only by reading; the new method then validated that skill's assess-then-advance loop end-to-end.

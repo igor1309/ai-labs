@@ -1,7 +1,7 @@
 ---
 name: intake
 author: Igor Malyarov
-version: "1.5.0"
+version: "2.0.0"
 description: >
   Use when starting work on a task — assigned implementation, bug report,
   vague requirement, or open-ended exploration — even if the user doesn't
@@ -11,7 +11,7 @@ description: >
   Planning or coding from shallow context produces wrong solutions; this
   skill forces a deliberate context-capture step before any downstream work
   begins. Stops cleanly — no auto-transition to planning or implementation.
-allowed-tools: Read, Grep, Glob, WebSearch, WebFetch, Task, AskUserQuestion, Write
+allowed-tools: Read, Grep, Glob, WebSearch, WebFetch, Agent, AskUserQuestion, Write
 ---
 
 # Task Intake
@@ -24,217 +24,107 @@ The assignment is: $ARGUMENTS
 If `$ARGUMENTS` is empty, infer the task from the conversation context. If no
 task is apparent, ask the user what they'd like you to start from.
 
-## Core Principle
-
-The spec is authoritative. Read before you ask. Capture context before
-anything downstream begins. Never guess.
-
 ## Phase 1: Homework
 
-Do this silently — no output to the user yet. The user does not need a
-play-by-play of your reading.
+Do this silently — no play-by-play of your reading.
 
-### Read the primary task document
+**Read the primary task document.** The referenced spec, plan, PR description,
+or architecture doc is your source of truth. Read it thoroughly.
 
-Read the referenced document (spec, plan, PR description, architecture doc)
-thoroughly. This is your source of truth.
+**Follow its references, to the depth each one warrants.** A referenced spec or
+contract: read the relevant sections. A referenced folder: explore the
+structure, read representative files. A referenced type or module: read the
+definition and understand its role. You are resolving unknowns from the primary
+doc, not cataloging the repository.
 
-### Follow references as needed
+**Read the skills whose domain overlaps the task.** Skills loaded in the session
+often encode wiring patterns, composition APIs, flow architecture, type
+conventions, and process constraints that exist nowhere else in the repo.
+Descriptions are summaries; the body holds the rules and gotchas. Read the ones
+that overlap, not all of them.
 
-If the primary doc references other documents, API contracts, folders, or
-modules — follow them. Be smart about depth:
+**Explore the code the task will touch.** Files, types, and modules the spec
+names or implies; existing patterns for similar functionality; dependencies and
+conventions that will shape the implementation. Use `Agent` (Explore) for
+parallel exploration when the scope is large, direct Read/Grep/Glob for focused
+lookups.
 
-- A referenced spec or contract: read the relevant sections.
-- A referenced folder with many files: explore the structure, read key
-  representative files. Do not ingest everything blindly.
-- A referenced type or module: read the definition and understand its role.
+**Answer your own questions first.** When a question forms, check whether the
+docs or the code already answer it. Most of the time they do.
 
-Your goal is to resolve unknowns from the primary doc, not to catalog
-everything in the repository.
+## Phase 2: The Brief
 
-### Check available skills for domain knowledge
+Present these sections inline — a draft the user can react to before you persist
+it in Phase 4.
 
-Skills loaded in the session may encode critical information about the
-codebase: wiring patterns, composition APIs, flow architecture, type
-conventions, and process constraints. This knowledge often exists nowhere
-else — not in code comments, not in a docs folder. The skills *are* the
-documentation.
+Write it in your own words. A brief that restates the spec in the spec's own
+words proves you can copy, not that you understand.
 
-- Scan the skill descriptions visible in the system prompt.
-- For skills that seem relevant to the task's domain, read the full SKILL.md —
-  descriptions are summaries, the real value is in the body (composition rules,
-  flow outlines, code examples, gotchas).
-- Be selective. Don't read every skill. Read the ones whose domain overlaps
-  with the task.
-- Surface what you learn in the brief — relevant constraints in "Key
-  Constraints", files and modules the task touches in "What I'm Touching",
-  broader patterns and conventions in "Findings."
+**What I'm Building** — the deliverable and what changes when it's done.
 
-### Explore the codebase
+**What I'm Touching** — the specific files, modules, types, and patterns the
+task involves, with paths.
 
-Find the code the task will touch. Look for:
+**Findings** — factual observations from the codebase: relevant files, patterns
+used for similar functionality, constraints and dependencies discovered. Say
+what you searched and what you excluded, so the reader can judge the coverage.
+When enumeration starts repeating the same pattern, group matches into families
+with counts and a couple of representative paths, and spend the space on
+conflicts, deviations, and outliers instead.
 
-- Files, types, and modules mentioned in or implied by the spec.
-- Existing patterns for similar functionality — how the codebase already does
-  things like what the task requires.
-- Dependencies, constraints, and conventions that will shape the
-  implementation.
+**Key Constraints** — rules, invariants, and boundaries the implementation must
+honor. The things that, if violated, mean the implementation is wrong regardless
+of whether it "works."
 
-Use subagents (Task tool with Explore agent) for parallel exploration when the
-scope is large. Use direct Read/Grep/Glob for focused lookups.
+**Risks & Unknowns** — what could go wrong, gaps in your understanding,
+ambiguities in how existing code behaves.
 
-### Find answers, don't ask for them
+**Reproduction** — bug-fix tasks only; omit it otherwise. Propose a failing test
+that proves the broken behavior: its name, what it asserts, and why that
+assertion fails under the current bug. Describe the test, don't write it. If the
+behavior isn't unit-testable, describe the manual reproduction instead.
 
-If a question forms in your mind, check whether the docs or the code already
-answer it. Most of the time they do. Only surface questions to the user when
-you have genuinely exhausted what you can learn on your own.
+**Questions** — omit if you have none. Ask only questions whose answer changes
+what gets built; anything else is noise you should have resolved yourself. Put
+them in a single `AskUserQuestion` call rather than serially — the user answers
+once.
 
-## Phase 2: Output Format
-
-Assemble and present the brief with these sections inline in the
-conversation. You'll persist it to a file in Phase 4 after alignment; for
-now, this is a draft the user can react to.
-
-Restate in your own words — do not parrot the spec, do not copy-paste from
-referenced docs. The brief is your understanding made visible; copy-paste
-here produces wrong implementations downstream.
-
-### What I'm Building
-
-The deliverable, in your own words. What does this task produce? What changes
-when it's done? This should be a concise description that a developer could
-read and say "yes, that's the task" or "no, you've missed the point."
-
-### What I'm Touching
-
-Specific files, modules, types, and patterns from the codebase that this task
-involves. Show that you've located the relevant code and understand where the
-changes land.
-
-### Findings
-
-Factual observations from the codebase.
-Start with two lead bullets:
-- `Scope:` what was searched, coverage boundaries, and exclusions. Include counts when relevant.
-- `Pattern evidence:` representative analogs or pattern families (or explicit `none found`).
-
-Then include:
-- Relevant files and modules (with paths)
-- Patterns and conventions used for similar functionality
-- Constraints or dependencies discovered
-
-### Key Constraints
-
-Rules, invariants, boundaries, and conventions from the spec and the codebase
-that the implementation must honor. These are the things that, if violated,
-mean the implementation is wrong regardless of whether it "works."
-
-### Risks & Unknowns
-
-- Things that could go wrong or complicate the task
-- Gaps in understanding
-- Ambiguities in how existing code behaves
-
-### Reproduction (bug-fix tasks)
-
-For bug fixes, propose a failing test that proves the broken behavior. Include
-the test name, what it asserts, and why that assertion fails under the current
-bug. This is a specification — describe the test, don't write code.
-
-If the behavior isn't unit-testable, describe the manual reproduction instead.
-
-Omit this section entirely for non-bug tasks.
-
-### Questions
-
-Clarifying questions about the task or approach, if any. Omit this section if
-there are none.
-
-Each question must be:
-
-- Specific — not "is this right?" but "the spec says X, the code does Y, which
-  takes precedence?"
-- Genuine — you actually don't know, not fishing for confirmation.
-- One at a time — present the most important question first. Wait for the
-  answer before asking the next.
-- Leaned — state your take and why, and add one sentence on the strongest
-  counter to it (the constraint or context that would flip you). You've done
-  the homework; you should have a position. "A or B?" is passive — "I'd go
-  with A because [reason], unless you see something I'm missing" is useful.
-  If you genuinely lack enough context for a lean, say so explicitly — don't
-  just go neutral.
-
-### Large-Scope Mode
-
-Use this mode when detailed listing would exceed 12-15 evidence bullets or starts repeating the same pattern.
-
-- Keep the same top-level sections. Do not add extra top-level sections.
-- In `Findings`, include a compact coverage summary: files scanned, files deeply read, directories covered, search pattern count, and exclusions.
-- Group matches into pattern families with counts and 2-3 representative file paths per family.
-- Prioritize conflicts, deviations, and outliers. Do not enumerate repetitive matches.
-- Add this line in `Findings`: `Examples are representative; full match list omitted for brevity.`
-- If conflicting patterns are present, include a `Conflicts` block inside `Findings`.
+Lean on each one. State your take and why, plus a sentence on the strongest
+counter — the constraint or context that would flip you. You've done the
+homework; you should have a position. "A or B?" is passive. "I'd go with A
+because [reason], unless you see something I'm missing" is useful. If you
+genuinely lack the context to lean, say so explicitly rather than going neutral.
 
 ## Phase 3: Alignment
 
-If you had questions, the user answers them. Listen carefully. Update your
-understanding. If new questions arise from the answers, ask them — still one
-at a time.
+The user answers; update your understanding. If their answers raise new
+questions, ask those too.
 
-If the user corrects your understanding in the brief, acknowledge the
-correction concretely. Do not just say "got it" — restate the corrected point
-so the user can verify you actually absorbed it.
+When the user corrects you, restate the corrected point concretely so they can
+verify you absorbed it. "Got it" doesn't demonstrate anything.
 
 ## Phase 4: Capture
 
-When there are no remaining questions — either you had none, or they've all
-been resolved — capture the brief and stop:
+Once no questions remain:
 
-1. Ask the user where to save the brief (file path).
-2. Write the brief — the content you assembled in Phase 2, with any
-   corrections from Phase 3 — to that path.
-3. Confirm the saved path and stop. Do not propose next steps, do not
-   transition to planning, do not ask "what now."
+1. Write the brief — Phase 2 content with Phase 3 corrections — to the path in
+   `$ARGUMENTS` if one was given; otherwise to a sibling of the primary task
+   document, or the repo's conventional docs location, named for the task.
+2. State the path you wrote to, and stop.
 
-Whether the user moves to planning, refines the spec, raises a blocker, or
-does something else entirely is their decision — not yours.
+Whether the user moves to planning, refines the spec, raises a blocker, or does
+something else is their decision.
 
 ## Hard Rules
 
-- **The spec is law.** Implement what it says. If you think the spec is wrong,
-  flag it as an open question. Never silently deviate, rewrite, or "improve"
-  the specification.
-- **Read before you ask.** If the answer is in the docs or the code, find it.
-  Asking the user something you could have looked up is disrespectful of their
-  time and preparation.
-- **No code changes.** Do not modify, create, or delete any files. You are in
+- **The spec is law.** If you think it's wrong, flag it as an open question.
+  Never silently deviate, rewrite, or "improve" it.
+- **Read before you ask.** Asking the user something you could have looked up
+  spends their time to save your own.
+- **No file changes** other than writing the brief in Phase 4. You are in
   intake, not implementation.
-- **No guessing.** If you are unsure, ask. A wrong guess that becomes an
-  implementation is far more expensive than a question. But exhaust your own
-  sources first (see "Read before you ask").
-- **No solution design.** Do not propose how to implement the task.
-  Solutions don't belong in intake regardless of what comes next. Your job
-  here is to understand *what*, not decide *how*.
-- **Stop cleanly.** After saving the brief, stop. Do not auto-transition to
-  planning, implementation, or further investigation. If the user asks for
-  solutions while in intake, decline and offer to wrap up the brief instead.
-
-## Anti-Patterns
-
-Concrete ways the Hard Rules get violated in practice. If you catch yourself
-doing one of these, you've broken the corresponding rule above.
-
-- **The lazy reader**: Asking the user to explain something that's written in
-  the referenced docs. You had the doc path. You should have read it.
-- **The spec rewriter**: Quietly changing or "improving" what the spec asks
-  for. The spec was prepared with care. Implement it, don't edit it.
-- **The parrot**: Restating the spec in the spec's own words. That proves you
-  can copy, not that you understand.
-- **The question flood**: Dumping all questions at once. One at a time.
-- **The premature architect**: Proposing implementation approaches during
-  intake. Decline; intake is for understanding, not solutioning.
-- **The shallow explorer**: Reading only the primary doc and ignoring the
-  codebase. Half the understanding comes from seeing how the code is already
-  structured.
-- **The exhaustive cataloger**: Reading every file in every referenced folder.
-  Be smart about depth — representative samples, not complete inventories.
+- **No solution design in the brief.** Intake establishes *what*, not *how*. If
+  the user asks you directly how you'd implement it, answer them — and say the
+  answer isn't part of the brief.
+- **Stop after saving.** No auto-transition to planning, implementation, or
+  further investigation.

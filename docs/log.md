@@ -1,5 +1,196 @@
 # Log
 
+## 2026-07-13
+
+- FolioTell: extend `.agents/foliotell.md` with an Android section (build
+  commands, sandbox constraints, no-root-build-script rule) and widen the
+  CLAUDE.md FolioTell trigger to all of `foliotell/`, so agents picking up
+  Android work are routed to the operational knowledge instead of
+  re-deriving it.
+
+## 2026-07-12
+
+- FolioTell: scaffold the Android sibling at `foliotell/android/` (two-module
+  Gradle skeleton per ADR-003) and add the dedicated
+  `foliotell-android-core.yml` Linux CI workflow to the `ci.yml` dispatcher,
+  per the per-project CI isolation rule.
+
+- FolioTell: restructure `foliotell/` into a platform-family directory on the
+  `notio/` model — the iOS app (sources, Xcode project, scripts,
+  `release.toml`, iOS-specific docs) moves to `foliotell/ios/`, ahead of the
+  planned `foliotell/android/` sibling. Release unit path, CI path filters,
+  release workflow jobs, release scripts and their tests, and agent docs
+  updated; family-level README, landing page, backlog, research, and product
+  docs stay in place, so published URLs and the `foliotell_v*` tag namespace
+  are unchanged. Full root suite, manifest checks, and the release-notes
+  validator pass from the new paths.
+
+## 2026-07-10
+
+- FolioTell: prepare `foliotell_v0.6.3` — device feedback fixes Stop reset,
+  Resume icon clarity, concise voice labels, and Russian-to-English document
+  voice resolution; composed regression tests and iOS archive pass.
+
+- FolioTell: prepare `foliotell_v0.6.2` — replace the queued playback graph
+  that regressed device responsiveness with a single main-actor coordinator;
+  composed Swift tests cover same-turn Play, startup Pause, stale callbacks,
+  and bounded word updates. The candidate is ready for TestFlight device
+  timing validation.
+
+- FolioTell: prepare `foliotell_v0.6.1` — restore responsive playback controls,
+  reliable early Pause behavior, and reader-session cleanup; TestFlight user
+  feedback will provide the final physical-device validation.
+
+- Release governance: scope the Agonara readiness and `/operations/health`
+  gates to Agonara; FolioTell uses its own TestFlight release evidence.
+
+- Release process: a complete feature branch may transition in place to a
+  frozen release candidate; version metadata and full notes are added before
+  the candidate PR merges to `trunk`, while tagging remains trunk-only.
+
+- FolioTell: prepare `foliotell_v0.6.0` — dedicated Reader Settings, separate
+  Voice and Playback controls, and a one-time acknowledgement of installed
+  Enhanced/Premium voices.
+
+## 2026-07-09
+- FolioTell: enforce prepared release notes — a versioned note is now required
+  in release-preparation CI, revalidated from the tag, and published verbatim
+  as the GitHub Release body after its YAML metadata is removed.
+
+- FolioTell: release `foliotell_v0.5.0` — language-aware voice-quality
+  onboarding, Enhanced/Premium voice acknowledgement, and quality-labelled
+  voice choices; automatic selection now prefers the best installed
+  audio-capable voice.
+
+- Release CI: pin `test-foliotell` to the newest runner Xcode (same "Select
+  newest Xcode" step as the deploy job and `foliotell-core.yml`) — a
+  `macos-latest` image with default Xcode 16.x/Swift 6.1 rejected the
+  swift-tools-6.2 package and failed the `foliotell_v0.4.3` release run.
+- FolioTell: release `foliotell_v0.4.3` — playback rebuilt on two IMRX-style
+  state machines (transport + position, ADR-002) with behavior parity, plus
+  the Maestro iOS 26 simulator runbook and re-baselined playback-controls
+  flow.
+- Release CI: fail the `release-unit.yml` verify step when `verify-tag.js`
+  rejects a tag — the pipe through `tee` swallowed the non-zero exit, so a
+  tag/manifest version mismatch produced a green run with empty outputs,
+  skipped the unit's deploy jobs, and published a garbage GitHub release
+  (observed on a premature `foliotell_v0.4.3` tag).
+
+## 2026-07-08
+- FolioTell: release `foliotell_v0.4.2` — fix the reader bottom bar not rendering; playback controls are back.
+
+- FolioTell: make TestFlight release archives unsigned so App Store Connect
+  distribution signing happens during export instead of conflicting with the
+  target's automatic development signing settings.
+
+- FolioTell: release `foliotell_v0.4.1` — reader controls rebuilt as a native Liquid Glass bottom-bar toolbar (centered transport, settings menu promoted to its own capsule, progress ribbon floating above the text).
+
+- FolioTell: fix the TestFlight archive signing identity so release CI requests
+  Apple Distribution provisioning assets instead of development signing assets.
+
+- FolioTell: release `foliotell_v0.4.0` — reader bottom controls rendered with Liquid Glass (grouped interactive glass for the settings icon and playback buttons); deployment target raised to iOS 26.
+
+- FolioTell: release `foliotell_v0.3.1` — reader settings control is now icon-only, fixing the truncated `1.5x · Skip ·…` summary label; menu content unchanged.
+
+- FolioTell: release `foliotell_v0.3.0` — sentence navigation (back/forward one sentence per tap in every playback state) and word-granular live progress bar.
+
+- FolioTell: release `foliotell_v0.2.0` — per-document playback position persistence and sentence-anchored resume (stop parks, relaunch resumes, Start Over, progress bar).
+
+- FolioTell: release `foliotell_v0.1.1` — stop/pause-path instrumentation for
+  the on-device stop-latency investigation (machine-side timeline in Console
+  under subsystem `foliotell.FolioTell`); no behavior change.
+- Retro hardening: delegation-preflight and tool-mechanics rules in
+  collaboration preferences, a worktree-safety stop condition in the
+  release-executor agent, a bug-report cue split in `using-dev-skills`
+  (v1.0.3), and a global research-briefs rule (gather local facts before
+  spawning researchers). Skill updates published as dev-skills marketplace
+  v1.56.0 (using-dev-skills 1.0.3, pr-ci-watch 1.3.0, skill-review 1.5.0).
+- FolioTell: release `foliotell_v0.1.0` — speech text normalization (documents are spoken as content, not raw Markdown markup), the iPhone settings-menu freeze fix, and the portable TestFlight upload path.
+- FolioTell: fix the reader settings menu freezing the app on iPhone — query
+  the voice catalog once off the main actor and cache it, instead of calling
+  `AVSpeechSynthesisVoice.speechVoices()` several times per render (a call
+  with documented multi-second device stalls), and detect document language
+  without running the full speech normalization pass on the render path.
+- FolioTell: add a self-contained release runbook (commands, gates,
+  Xcode/altool caveats, tag recovery) and a device-speech doc (design
+  rationale, falsified hypotheses, Console diagnostic procedure) so future
+  releases and silent-reading investigations start from captured knowledge
+  instead of re-derivation; fix the README's stale `FOLIOTELL_VERSION`
+  default.
+- FolioTell: make the TestFlight upload portable across runner Xcode
+  generations — documented `altool --apiKey/--apiIssuer` flags with the key in
+  `~/.appstoreconnect/private_keys`, and pin the deploy job to the newest
+  Xcode on the runner image. The `foliotell_v0.0.3` release run failed on a
+  runner defaulting to Xcode 16.4, whose altool rejects the previous flags.
+- FolioTell: release `foliotell_v0.0.3` with the catalog-based automatic
+  voice resolution fix for silent reading on device.
+- FolioTell: resolve the automatic speech voice from the installed voice
+  catalog (preferring voices with populated audio settings) instead of the
+  `AVSpeechSynthesisVoice(language:)` initializer, which can return a voice
+  that produces no audio on device; log the resolved voice for on-device
+  diagnosis. Addresses reading still silent on device in TestFlight 0.0.2.
+
+## 2026-07-07
+
+- FolioTell: prepare patch release `foliotell_v0.0.2` for the TestFlight
+  device-speech fix, keeping the release under the `VRVJ9YNRQU` team/provider
+  path.
+- FolioTell: configure the iOS audio session for spoken playback and declare
+  background audio mode so TestFlight builds can read documents audibly on
+  device instead of relying on the default app audio session.
+
+## 2026-07-06
+
+- FolioTell: prepare the first release tag as `foliotell_v0.0.1` by aligning the canonical release metadata and generated release-unit manifest with the implemented v0.0.1 app and binding the TestFlight deploy job to its GitHub environment secrets.
+- FolioTell: register as a release unit (`foliotell_v<version>` tags) and route TestFlight uploads through the existing release-unit workflow instead of ordinary merge CI. The FolioTell release job runs Swift build/test/archive gates on macOS, writes the App Store Connect API key from secrets, then invokes the team-pinned TestFlight distribution script.
+- FolioTell: lower the Swift package tools version to 6.1 so the GitHub
+  macOS runner can build the package with its installed Swift toolchain.
+- FolioTell: move the TestFlight backlog under the project and add a
+  project-local product backlog covering playback resume, background playback
+  validation, speech text normalization, real-device language/voice validation,
+  compact navigation controls, a lightweight recent-documents library, reusable
+  Maestro regressions, and Markdown rendering polish.
+- FolioTell: close the TestFlight packaging gap by adding an archive-ready iOS Xcode project wrapper around the existing Swift sources, a checked export-options plist pinned to Apple team `VRVJ9YNRQU` and bundle id `foliotell.FolioTell`, and `foliotell/scripts/distribute-testflight.sh` for API-key based archive/export/upload automation that refuses any other team/provider. The FolioTell CI gate now also verifies the unsigned iOS archive wrapper.
+- Foliotell research: added iPhone text-to-speech reader UI reference corpus under `foliotell/research/`, with per-app source inventories, downloaded screenshots, interaction inventory, and comparison table for document-reader design work.
+- FolioTell: filter selectable voices to the detected document speech language, falling back to all installed voices only when no language-matched voices exist.
+- FolioTell: add persisted voice selection to the reader settings menu, with Auto preserving language-based voice choice and installed voices overriding playback directly.
+- FolioTell: render leading YAML front matter as caption-sized secondary text in the reader while preserving body styling and speech skip/read behavior.
+- FolioTell: move reader controls into the bottom safe-area inset and replace the speed picker/front-matter toggle with a compact settings menu.
+- FolioTell: select a Russian speech voice for Cyrillic utterances so the supplied Pushkin document is spoken as Russian instead of through the system default voice.
+- FolioTell: compact the reader controls by replacing the front-matter segmented control with a switch and fixing the primary Play/Pause/Resume button width. Skip mode now handles UTF-8 BOM-prefixed Markdown, so the supplied Pushkin file skips its YAML front matter during speech.
+- FolioTell: add a persisted front-matter playback setting so speech can skip leading YAML front matter by default or read it when selected.
+- FolioTell: fix live speed changes restarting from the beginning by tracking the current spoken range and replacing the utterance from the remaining text boundary when the rate changes.
+- FolioTell: replace the split Play and Pause/Resume controls with one primary Play/Pause/Resume button plus Stop, matching the playback state directly and simplifying the simulator flow.
+- FolioTell: fix the Play button state during the playback cycle. Play is disabled while speech is speaking or paused, Pause/Resume and Stop remain active for active playback states, and the reusable Maestro flow now asserts that tapping Play while paused leaves playback paused. Added a forward TestFlight backlog item scoped explicitly to Apple team `VRVJ9YNRQU`.
+- FolioTell: persist the simulator playback-control check as a reusable Maestro flow, add the provided app icon as a processed 1024x1024 asset catalog resource, and add a dedicated FolioTell CI workflow wired through path filters so Swift build/test gates run for FolioTell code, tests, resources, Maestro flow, or CI changes while docs-only edits stay out of that trigger.
+- FolioTell: fix the playback controls bug found on simulator. Playback state now stays `speaking` across internal speech-cancel callbacks caused by restart/speed-change behavior, so Pause/Resume and Stop remain usable while audio plays. Added core state-machine tests and verified the installed simulator app with Maestro using the imported Pushkin Markdown file.
+- FolioTell: implement v0.0.1 as a Swift package. The new SwiftUI app target launches through `DocumentGroup`, opens read-only Markdown/plain-text documents, shows a reader with persisted speed presets and play/pause-resume/stop controls, and speaks through `AVSpeechSynthesizer`; the core target has Swift Testing coverage for document validation/loading and speech speed mappings. Updated FolioTell and repo product metadata from spec-stage to implemented package, and refreshed the LOC dashboard.
+- Land the `foliotell` project: a native document-to-speech iPhone app (SwiftUI +
+  `AVSpeechSynthesizer`) that reads local Markdown and plain-text files aloud —
+  working name, in naming-validation and specification stage. Add the naming brief,
+  candidate evaluation, and technical specification (front matter normalized to repo
+  convention), a project README, an internal orientation `index.html`, and a project
+  log. Classify the directory across `scripts/loc-dashboard.sh`, the LOC dashboard
+  data, the README Components table, the root landings page, and `docs/products.html`.
+
+## 2026-07-05
+
+- Courses: added July-2026 market + demand research under
+  `research/courses/market-2026/` (global + RU, competitive + demand — four
+  reports) extending the existing competitor survey; indexed as inputs to
+  `decision-matrix.md` / `positioning-notes.md`, not commitments. Then drafted
+  `research/courses/opening-lectures/` — opening-lecture structures for the three
+  prospective programs (интернет-предприниматели с IT / программисты / служащие),
+  each as Socratic top-level questions over a shared arc
+  (provocation → mechanism → shift → judgment → honest limit). Discussion ground,
+  no launch decision. Captured Khakhalev's July-2026 on-site workshop promo under
+  `research/courses/khakhalev/` with a competitive note (his live "redo a solved
+  task" format mirrors our Program 2 opener; his own reference flags "lacked more
+  depth" — our Socratic wedge). Internal codename for the initiative: **Kiora**.
+  Added a top-level `research/courses/README.md` orienting the initiative (reading
+  order across base → market-2026 → opening-lectures). Docs/research only — no
+  release unit or CI workflow.
+
 ## 2026-06-23
 
 - Cairana: land the future product (AI assistant for psychologists, working name/research stage). Added `cairana/README.md`, `cairana/docs/log.md`, and a simple `cairana/index.html` landing page; classified the dir in `scripts/loc-dashboard.sh` (known list + row), the `docs/loc-dashboard.html` data array, the README Components table, and the `index.html` / `docs/products.html` landing pages. No release unit or CI workflow — docs/research only.

@@ -1,0 +1,441 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000000000000000000001 /* FolioTellApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000021 /* FolioTellApp.swift */; };
+		A10000000000000000000002 /* FolioFileDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000022 /* FolioFileDocument.swift */; };
+		A10000000000000000000003 /* ReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000023 /* ReaderView.swift */; };
+		A10000000000000000000005 /* FolioDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000025 /* FolioDocument.swift */; };
+		A10000000000000000000006 /* FrontMatterPlaybackMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000026 /* FrontMatterPlaybackMode.swift */; };
+		A10000000000000000000007 /* FrontMatterRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000027 /* FrontMatterRendering.swift */; };
+		A10000000000000000000009 /* SpeechSpeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000029 /* SpeechSpeed.swift */; };
+		A1000000000000000000000A /* SpeechVoiceLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002A /* SpeechVoiceLanguage.swift */; };
+		A1000000000000000000000B /* SpeechVoiceSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002B /* SpeechVoiceSelection.swift */; };
+		A1000000000000000000000C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002C /* Assets.xcassets */; };
+		A1000000000000000000000D /* SpeechTextNormalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002D /* SpeechTextNormalization.swift */; };
+		A1000000000000000000000E /* PlaybackPositionMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002E /* PlaybackPositionMapping.swift */; };
+		A1000000000000000000000F /* PlaybackPositionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002F /* PlaybackPositionStore.swift */; };
+		A10000000000000000000101 /* RxViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000201 /* RxViewModel.swift */; };
+		A10000000000000000000102 /* SpeechDerivation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000202 /* SpeechDerivation.swift */; };
+		A10000000000000000000103 /* PlaybackTransportState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000203 /* PlaybackTransportState.swift */; };
+		A10000000000000000000104 /* PlaybackTransportEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000204 /* PlaybackTransportEvent.swift */; };
+		A10000000000000000000105 /* PlaybackTransportEffect.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000205 /* PlaybackTransportEffect.swift */; };
+		A10000000000000000000106 /* PlaybackTransportReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000206 /* PlaybackTransportReducer.swift */; };
+		A10000000000000000000107 /* PlaybackTransportEffectHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000207 /* PlaybackTransportEffectHandler.swift */; };
+		A10000000000000000000108 /* PlaybackPositionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000208 /* PlaybackPositionState.swift */; };
+		A10000000000000000000109 /* PlaybackPositionEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000209 /* PlaybackPositionEvent.swift */; };
+		A1000000000000000000010A /* PlaybackPositionEffect.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000020A /* PlaybackPositionEffect.swift */; };
+		A1000000000000000000010B /* PlaybackPositionReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000020B /* PlaybackPositionReducer.swift */; };
+		A1000000000000000000010C /* PlaybackPositionEffectHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000020C /* PlaybackPositionEffectHandler.swift */; };
+		A1000000000000000000010D /* PlaybackState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000020D /* PlaybackState.swift */; };
+		A1000000000000000000010E /* SpeechSynthesizerAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000020E /* SpeechSynthesizerAdapter.swift */; };
+		A1000000000000000000010F /* ReaderComposition.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000020F /* ReaderComposition.swift */; };
+		A10000000000000000000110 /* ReaderScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000210 /* ReaderScreen.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A10000000000000000000010 /* FolioTell.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FolioTell.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000020 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = App/Info.plist; sourceTree = "<group>"; };
+		A10000000000000000000021 /* FolioTellApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/App/FolioTellApp.swift; sourceTree = "<group>"; };
+		A10000000000000000000022 /* FolioFileDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/App/FolioFileDocument.swift; sourceTree = "<group>"; };
+		A10000000000000000000023 /* ReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/App/ReaderView.swift; sourceTree = "<group>"; };
+		A10000000000000000000025 /* FolioDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/FolioDocument.swift; sourceTree = "<group>"; };
+		A10000000000000000000026 /* FrontMatterPlaybackMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/FrontMatterPlaybackMode.swift; sourceTree = "<group>"; };
+		A10000000000000000000027 /* FrontMatterRendering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/FrontMatterRendering.swift; sourceTree = "<group>"; };
+		A10000000000000000000029 /* SpeechSpeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/SpeechSpeed.swift; sourceTree = "<group>"; };
+		A1000000000000000000002A /* SpeechVoiceLanguage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/SpeechVoiceLanguage.swift; sourceTree = "<group>"; };
+		A1000000000000000000002B /* SpeechVoiceSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/SpeechVoiceSelection.swift; sourceTree = "<group>"; };
+		A1000000000000000000002C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Sources/App/Resources/Assets.xcassets; sourceTree = "<group>"; };
+		A1000000000000000000002D /* SpeechTextNormalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/SpeechTextNormalization.swift; sourceTree = "<group>"; };
+		A1000000000000000000002E /* PlaybackPositionMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackPositionMapping.swift; sourceTree = "<group>"; };
+		A1000000000000000000002F /* PlaybackPositionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/App/PlaybackPositionStore.swift; sourceTree = "<group>"; };
+		A10000000000000000000201 /* RxViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/RxViewModel/RxViewModel.swift; sourceTree = "<group>"; };
+		A10000000000000000000202 /* SpeechDerivation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/SpeechDerivation.swift; sourceTree = "<group>"; };
+		A10000000000000000000203 /* PlaybackTransportState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackTransport/Domain/PlaybackTransportState.swift; sourceTree = "<group>"; };
+		A10000000000000000000204 /* PlaybackTransportEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackTransport/Domain/PlaybackTransportEvent.swift; sourceTree = "<group>"; };
+		A10000000000000000000205 /* PlaybackTransportEffect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackTransport/Domain/PlaybackTransportEffect.swift; sourceTree = "<group>"; };
+		A10000000000000000000206 /* PlaybackTransportReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackTransport/Logic/PlaybackTransportReducer.swift; sourceTree = "<group>"; };
+		A10000000000000000000207 /* PlaybackTransportEffectHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackTransport/Logic/PlaybackTransportEffectHandler.swift; sourceTree = "<group>"; };
+		A10000000000000000000208 /* PlaybackPositionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackPosition/Domain/PlaybackPositionState.swift; sourceTree = "<group>"; };
+		A10000000000000000000209 /* PlaybackPositionEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackPosition/Domain/PlaybackPositionEvent.swift; sourceTree = "<group>"; };
+		A1000000000000000000020A /* PlaybackPositionEffect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackPosition/Domain/PlaybackPositionEffect.swift; sourceTree = "<group>"; };
+		A1000000000000000000020B /* PlaybackPositionReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackPosition/Logic/PlaybackPositionReducer.swift; sourceTree = "<group>"; };
+		A1000000000000000000020C /* PlaybackPositionEffectHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackPosition/Logic/PlaybackPositionEffectHandler.swift; sourceTree = "<group>"; };
+		A1000000000000000000020D /* PlaybackState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Core/PlaybackTransport/Domain/PlaybackState.swift; sourceTree = "<group>"; };
+		A1000000000000000000020E /* SpeechSynthesizerAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/App/SpeechSynthesizerAdapter.swift; sourceTree = "<group>"; };
+		A1000000000000000000020F /* ReaderComposition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/App/ReaderComposition.swift; sourceTree = "<group>"; };
+		A10000000000000000000210 /* ReaderScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/App/ReaderScreen.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A10000000000000000000030 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A10000000000000000000040 = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000041 /* App */,
+				A10000000000000000000042 /* Sources */,
+				A10000000000000000000043 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A10000000000000000000041 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000020 /* Info.plist */,
+				A1000000000000000000002C /* Assets.xcassets */,
+			);
+			name = App;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000042 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000044 /* App */,
+				A10000000000000000000045 /* Core */,
+			);
+			name = Sources;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000043 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000010 /* FolioTell.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000044 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000022 /* FolioFileDocument.swift */,
+				A1000000000000000000002F /* PlaybackPositionStore.swift */,
+				A10000000000000000000021 /* FolioTellApp.swift */,
+				A1000000000000000000020F /* ReaderComposition.swift */,
+				A10000000000000000000210 /* ReaderScreen.swift */,
+				A10000000000000000000023 /* ReaderView.swift */,
+				A1000000000000000000020E /* SpeechSynthesizerAdapter.swift */,
+			);
+			name = App;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000045 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000025 /* FolioDocument.swift */,
+				A10000000000000000000026 /* FrontMatterPlaybackMode.swift */,
+				A10000000000000000000027 /* FrontMatterRendering.swift */,
+				A1000000000000000000020A /* PlaybackPositionEffect.swift */,
+				A1000000000000000000020C /* PlaybackPositionEffectHandler.swift */,
+				A10000000000000000000209 /* PlaybackPositionEvent.swift */,
+				A1000000000000000000002E /* PlaybackPositionMapping.swift */,
+				A1000000000000000000020B /* PlaybackPositionReducer.swift */,
+				A10000000000000000000208 /* PlaybackPositionState.swift */,
+				A1000000000000000000020D /* PlaybackState.swift */,
+				A10000000000000000000205 /* PlaybackTransportEffect.swift */,
+				A10000000000000000000207 /* PlaybackTransportEffectHandler.swift */,
+				A10000000000000000000204 /* PlaybackTransportEvent.swift */,
+				A10000000000000000000206 /* PlaybackTransportReducer.swift */,
+				A10000000000000000000203 /* PlaybackTransportState.swift */,
+				A10000000000000000000201 /* RxViewModel.swift */,
+				A10000000000000000000202 /* SpeechDerivation.swift */,
+				A10000000000000000000029 /* SpeechSpeed.swift */,
+				A1000000000000000000002D /* SpeechTextNormalization.swift */,
+				A1000000000000000000002A /* SpeechVoiceLanguage.swift */,
+				A1000000000000000000002B /* SpeechVoiceSelection.swift */,
+			);
+			name = Core;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A10000000000000000000050 /* FolioTell */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000000000000000000080 /* Build configuration list for PBXNativeTarget "FolioTell" */;
+			buildPhases = (
+				A10000000000000000000060 /* Sources */,
+				A10000000000000000000070 /* Resources */,
+				A10000000000000000000030 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FolioTell;
+			productName = FolioTell;
+			productReference = A10000000000000000000010 /* FolioTell.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A10000000000000000000090 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2630;
+				LastUpgradeCheck = 2630;
+				TargetAttributes = {
+					A10000000000000000000050 = {
+						CreatedOnToolsVersion = 26.3;
+						DevelopmentTeam = VRVJ9YNRQU;
+					};
+				};
+			};
+			buildConfigurationList = A10000000000000000000091 /* Build configuration list for PBXProject "FolioTell" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A10000000000000000000040;
+			productRefGroup = A10000000000000000000043 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A10000000000000000000050 /* FolioTell */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A10000000000000000000070 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000000000000000000000C /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A10000000000000000000060 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000002 /* FolioFileDocument.swift in Sources */,
+				A10000000000000000000001 /* FolioTellApp.swift in Sources */,
+				A10000000000000000000006 /* FrontMatterPlaybackMode.swift in Sources */,
+				A10000000000000000000007 /* FrontMatterRendering.swift in Sources */,
+				A10000000000000000000005 /* FolioDocument.swift in Sources */,
+				A1000000000000000000000E /* PlaybackPositionMapping.swift in Sources */,
+				A1000000000000000000000F /* PlaybackPositionStore.swift in Sources */,
+				A10000000000000000000003 /* ReaderView.swift in Sources */,
+				A10000000000000000000009 /* SpeechSpeed.swift in Sources */,
+				A1000000000000000000000D /* SpeechTextNormalization.swift in Sources */,
+				A1000000000000000000000A /* SpeechVoiceLanguage.swift in Sources */,
+				A1000000000000000000000B /* SpeechVoiceSelection.swift in Sources */,
+				A10000000000000000000101 /* RxViewModel.swift in Sources */,
+				A10000000000000000000102 /* SpeechDerivation.swift in Sources */,
+				A10000000000000000000103 /* PlaybackTransportState.swift in Sources */,
+				A10000000000000000000104 /* PlaybackTransportEvent.swift in Sources */,
+				A10000000000000000000105 /* PlaybackTransportEffect.swift in Sources */,
+				A10000000000000000000106 /* PlaybackTransportReducer.swift in Sources */,
+				A10000000000000000000107 /* PlaybackTransportEffectHandler.swift in Sources */,
+				A10000000000000000000108 /* PlaybackPositionState.swift in Sources */,
+				A10000000000000000000109 /* PlaybackPositionEvent.swift in Sources */,
+				A1000000000000000000010A /* PlaybackPositionEffect.swift in Sources */,
+				A1000000000000000000010B /* PlaybackPositionReducer.swift in Sources */,
+				A1000000000000000000010C /* PlaybackPositionEffectHandler.swift in Sources */,
+				A1000000000000000000010D /* PlaybackState.swift in Sources */,
+				A1000000000000000000010E /* SpeechSynthesizerAdapter.swift in Sources */,
+				A1000000000000000000010F /* ReaderComposition.swift in Sources */,
+				A10000000000000000000110 /* ReaderScreen.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A10000000000000000000081 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = VRVJ9YNRQU;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = foliotell.FolioTell;
+				PRODUCT_NAME = FolioTell;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG FOLIOTELL_SINGLE_TARGET";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		A10000000000000000000082 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = VRVJ9YNRQU;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = foliotell.FolioTell;
+				PRODUCT_NAME = FolioTell;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = FOLIOTELL_SINGLE_TARGET;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		A10000000000000000000092 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A10000000000000000000093 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A10000000000000000000080 /* Build configuration list for PBXNativeTarget "FolioTell" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000081 /* Debug */,
+				A10000000000000000000082 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A10000000000000000000091 /* Build configuration list for PBXProject "FolioTell" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000092 /* Debug */,
+				A10000000000000000000093 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A10000000000000000000090 /* Project object */;
+}

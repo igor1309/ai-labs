@@ -87,6 +87,14 @@ Use the `protocol-owned-by-client` skill. See `dev-skills/public/protocol-owned-
 When adding a new project with its own dependencies, create a dedicated `<project>-core.yml` CI workflow — see
 [`.agents/per-project-ci-isolation.md`](.agents/per-project-ci-isolation.md).
 
+## FolioTell Build Rules
+
+When working under `foliotell/` — iOS Swift sources or the Android Gradle
+project — follow [`.agents/foliotell.md`](.agents/foliotell.md). iOS has a
+dual SPM/Xcode-project build (new source files must be registered in
+`FolioTell.xcodeproj/project.pbxproj` or the CI archive fails); Android has
+sandbox build constraints and a deliberate no-root-build-script layout.
+
 ## Nomos API Keys
 
 Each project must have its own Nomos project and API key. Do not reuse Nomos keys across projects.

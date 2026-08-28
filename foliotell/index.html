@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FolioTell — orientation surface</title>
+<style>
+  :root {
+    --bg:       #14110c;
+    --bg-2:     #1b1710;
+    --surface:  #221c13;
+    --surface-2:#2b2418;
+    --rule:     #322a1c;
+    --rule-2:   #453a26;
+    --text:     #f4efe4;
+    --text-2:   #ddd3bf;
+    --text-3:   #a2957a;
+    --accent:   #e0a458;
+    --accent-2: #f2c07e;
+    --voice:    #93c5fd;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Inter",
+                 "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Hero */
+  header.hero {
+    padding: 112px 24px 72px;
+    text-align: center;
+    background:
+      radial-gradient(900px 380px at 50% -120px, rgba(224, 164, 88, 0.16) 0%, transparent 65%),
+      var(--bg);
+    border-bottom: 1px solid var(--rule);
+  }
+  .mark {
+    display: inline-block;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-size: 12px;
+    color: var(--text-3);
+    margin-bottom: 24px;
+  }
+  h1.title {
+    font-size: clamp(48px, 7vw, 96px);
+    margin: 0 0 10px;
+    letter-spacing: -0.025em;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .anchor { max-width: 720px; margin: 0 auto; font-size: clamp(17px, 2vw, 20px); color: var(--text-2); line-height: 1.55; }
+  .anchor + .anchor { margin-top: 18px; }
+  .anchor.outcome {
+    max-width: 680px;
+    font-size: clamp(24px, 3.5vw, 36px);
+    line-height: 1.28;
+    color: var(--text);
+    letter-spacing: -0.015em;
+  }
+  .anchor.summary { max-width: 760px; color: var(--text-2); }
+  .anchor.summary strong { color: var(--text); font-weight: 600; }
+  .hero-cta { margin-top: 36px; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+
+  /* Layout */
+  main { max-width: 1080px; margin: 0 auto; padding: 24px; }
+  section { padding: 64px 0; border-bottom: 1px solid var(--rule); scroll-margin-top: 80px; }
+  section:last-of-type { border-bottom: none; }
+  .eyebrow {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    margin: 0 0 12px;
+    font-weight: 600;
+  }
+  h2.section-title {
+    font-size: clamp(26px, 4vw, 38px);
+    margin: 0 0 14px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .section-subblock { margin-top: 48px; padding-top: 48px; border-top: 1px solid var(--rule); }
+  .lede { max-width: 760px; color: var(--text-2); font-size: 16px; margin: 0 0 36px; }
+  code { font-family: var(--mono); font-size: 0.92em; color: var(--accent-2); }
+
+  /* Pipeline */
+  .pipeline { display: flex; flex-wrap: wrap; align-items: stretch; gap: 12px; }
+  .stage {
+    flex: 1 1 200px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .stage .kicker { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); }
+  .stage h3 { margin: 6px 0 4px; font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+  .stage p { margin: 0; font-size: 13px; color: var(--text-3); line-height: 1.5; }
+  .arrow { align-self: center; color: var(--accent); font-size: 1.1rem; }
+  @media (max-width: 720px) { .arrow { transform: rotate(90deg); } }
+
+  /* Card grid */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .card .kicker { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); }
+  .card.voice .kicker { color: var(--voice); }
+  .card h3 { font-size: 16px; margin: 0; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+  .card p { margin: 0; color: var(--text-2); font-size: 14px; line-height: 1.55; }
+
+  /* Speed chips */
+  .speeds { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+  .speed {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--accent-2);
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    border-radius: 8px;
+    padding: 8px 14px;
+  }
+
+  /* Question cards */
+  .caps { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .cap { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 18px 20px; }
+  .cap p { margin: 0; font-size: 14px; color: var(--text-2); line-height: 1.5; }
+
+  /* Chips (non-goals) */
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-2);
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    border-radius: 8px;
+    padding: 9px 14px;
+  }
+
+  /* Doc links */
+  .links { display: flex; flex-wrap: wrap; gap: 12px; }
+  .doc-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: 1px solid var(--rule-2);
+    border-radius: 8px;
+    color: var(--text-2);
+    font-size: 14px;
+    background: var(--surface);
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .doc-link:hover { color: var(--text); border-color: var(--text-3); text-decoration: none; }
+  .doc-link code { font-family: var(--mono); font-size: 12px; color: var(--text-3); }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 12px 20px; border-radius: 10px;
+    background: var(--surface); color: var(--text-2);
+    border: 1px solid var(--rule-2); font-size: 15px;
+    transition: border-color .15s ease, color .15s ease, transform .15s ease;
+  }
+  .btn:hover { color: var(--text); border-color: var(--text-3); transform: translateY(-1px); text-decoration: none; }
+
+  /* Footer */
+  footer { border-top: 1px solid var(--rule); padding: 32px 24px 64px; text-align: center; color: var(--text-3); font-size: 12.5px; }
+  footer .sep { margin: 0 8px; color: var(--rule-2); }
+
+  /* Scroll reveal + hover lift */
+  .card, .cap, .stage {
+    transition:
+      opacity .55s cubic-bezier(.2, .6, .2, 1),
+      transform .35s cubic-bezier(.2, .6, .2, 1),
+      border-color .18s ease,
+      background .18s ease,
+      box-shadow .25s ease;
+  }
+  .card:hover, .cap:hover, .stage:hover {
+    transform: translateY(-3px);
+    border-color: var(--rule-2);
+    box-shadow: 0 12px 30px -18px rgba(0, 0, 0, 0.7);
+  }
+  .js .card, .js .cap, .js .stage { opacity: 0; transform: translateY(18px); }
+  .js .card.in-view, .js .cap.in-view, .js .stage.in-view { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .card, .cap, .stage, .js .card, .js .cap, .js .stage {
+      opacity: 1 !important; transform: none !important;
+      transition: border-color .18s ease, background .18s ease !important;
+    }
+  }
+</style>
+<script>document.documentElement.classList.add('js');</script>
+</head>
+<body>
+
+<header class="hero">
+  <div class="mark">Private product exploration · Orientation surface</div>
+  <h1 class="title">FolioTell</h1>
+  <p class="anchor outcome">Hear your documents, straight from the file browser.</p>
+  <p class="anchor summary">
+    A native document-to-speech iPhone app. Open a local <strong>Markdown</strong> or
+    <strong>plain-text</strong> file from the system document browser and listen to it
+    with Apple speech synthesis — offline, read-only, no account. Working name; v0.0.1
+    is implemented as a Swift package.
+  </p>
+  <div class="hero-cta">
+    <a class="btn" href="#flow">How v0.0.1 works →</a>
+    <a class="btn" href="#docs">Go deeper</a>
+  </div>
+</header>
+
+<main>
+
+<!-- FLOW -->
+<section id="flow">
+  <p class="eyebrow">v0.0.1 flow</p>
+  <h2 class="section-title">From file browser to spoken document</h2>
+  <p class="lede">The implemented app uses the system document browser as the entry screen. Open a supported file and the reader appears immediately.</p>
+  <div class="pipeline">
+    <div class="stage"><span class="kicker">01</span><h3>Browse</h3><p>Launch straight into the system document browser; browse folders, no custom file picker.</p></div>
+    <div class="arrow">→</div>
+    <div class="stage"><span class="kicker">02</span><h3>Open</h3><p>Read-only open of <code>.md</code>, <code>.markdown</code>, or <code>.txt</code> as plain UTF-8 text.</p></div>
+    <div class="arrow">→</div>
+    <div class="stage"><span class="kicker">03</span><h3>Read aloud</h3><p>Play, pause / resume, and stop via <code>AVSpeechSynthesizer</code> and Apple system voices.</p></div>
+    <div class="arrow">→</div>
+    <div class="stage"><span class="kicker">04</span><h3>Control speed</h3><p>Five distinct speed presets mapped centrally to <code>AVSpeechUtterance.rate</code>.</p></div>
+  </div>
+  <div class="speeds">
+    <span class="speed">1×</span>
+    <span class="speed">1.25×</span>
+    <span class="speed">1.5×</span>
+    <span class="speed">1.75×</span>
+    <span class="speed">2×</span>
+  </div>
+</section>
+
+<!-- WHAT IT IS -->
+<section id="shape">
+  <p class="eyebrow">Product shape</p>
+  <h2 class="section-title">Document-oriented, spoken, and local</h2>
+  <p class="lede">A small, native SwiftUI app built on <code>DocumentGroup(viewing:)</code> and a <code>FileDocument</code> — no backend behind it.</p>
+  <div class="grid">
+    <div class="card voice">
+      <span class="kicker">Reader</span>
+      <h3>Document-first</h3>
+      <p>Opening a document immediately presents the reader; closing it returns to the same browser folder.</p>
+    </div>
+    <div class="card voice">
+      <span class="kicker">Speech</span>
+      <h3>Apple synthesis</h3>
+      <p>System voices via <code>AVSpeechUtterance</code>. Selected speed persists across launches with <code>AppStorage</code>.</p>
+    </div>
+    <div class="card voice">
+      <span class="kicker">State</span>
+      <h3>Idle · speaking · paused</h3>
+      <p>A small explicit state machine over document, selected speed, playback state, and error — with concise error messaging.</p>
+    </div>
+  </div>
+
+  <div class="section-subblock">
+    <p class="eyebrow">Next</p>
+    <h2 class="section-title">v0.0.2 — folder-oriented playback</h2>
+    <div class="grid">
+      <div class="card">
+        <span class="kicker">Folder</span>
+        <h3>Retained access</h3>
+        <p>Keep access to a selected folder and list its supported files.</p>
+      </div>
+      <div class="card">
+        <span class="kicker">Navigation</span>
+        <h3>Previous / next</h3>
+        <p>Move between files, with optional automatic playback of the next file.</p>
+      </div>
+      <div class="card">
+        <span class="kicker">Position</span>
+        <h3>Resume per document</h3>
+        <p>Preserve playback position per document across sessions.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NAMING -->
+<section id="naming">
+  <p class="eyebrow">Naming · in validation</p>
+  <h2 class="section-title">Working name among close candidates</h2>
+  <p class="lede">FolioTell is the current working name — <em>folio</em> (a document collection) plus <em>tell</em> (spoken delivery). Comparative working scores against the naming brief:</p>
+  <div class="grid">
+    <div class="card">
+      <span class="kicker">89 · leading</span>
+      <h3>Sayfold</h3>
+      <p>Compact and immediately pronounceable; document meaning is metaphorical and may need a subtitle.</p>
+    </div>
+    <div class="card">
+      <span class="kicker">87 · working name</span>
+      <h3>FolioTell</h3>
+      <p>Strong built-in document semantics and format-neutral; slightly literary and four syllables.</p>
+    </div>
+    <div class="card">
+      <span class="kicker">83</span>
+      <h3>Verbatone</h3>
+      <p>Polished and memorable, but existing audio-product usage creates search and brand friction.</p>
+    </div>
+  </div>
+</section>
+
+<!-- DELIBERATELY NOT -->
+<section id="not">
+  <p class="eyebrow">Deliberately not</p>
+  <h2 class="section-title">What FolioTell refuses to be</h2>
+  <p class="lede">Scope is held tight on purpose — these are v0.0.1 constraints, not a roadmap.</p>
+  <div class="chips">
+    <span class="chip">no account</span>
+    <span class="chip">no backend</span>
+    <span class="chip">no analytics</span>
+    <span class="chip">no subscription</span>
+    <span class="chip">no network dependency</span>
+    <span class="chip">read-only access</span>
+    <span class="chip">not a read-later app</span>
+    <span class="chip">not an audiobook / podcast app</span>
+  </div>
+</section>
+
+<!-- DOCS -->
+<section id="docs">
+  <p class="eyebrow">Go deeper</p>
+  <h2 class="section-title">Source documents</h2>
+  <div class="links">
+    <a class="doc-link" href="ios/Package.swift">Swift package <code>ios/Package.swift</code></a>
+    <a class="doc-link" href="ios/docs/specs/foliotell-technical-spec.md">Technical specification <code>ios/docs/specs/foliotell-technical-spec.md</code></a>
+    <a class="doc-link" href="docs/foliotell-naming-brief.md">Naming brief <code>docs/foliotell-naming-brief.md</code></a>
+    <a class="doc-link" href="research/foliotell-candidate-evaluation.md">Candidate evaluation <code>research/foliotell-candidate-evaluation.md</code></a>
+    <a class="doc-link" href="docs/log.md">Project log <code>docs/log.md</code></a>
+    <a class="doc-link" href="../index.html">Internal landings <code>../index.html</code></a>
+  </div>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var selector = '.card, .cap, .stage';
+  var cards = document.querySelectorAll(selector);
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce || !('IntersectionObserver' in window)) {
+    for (var i = 0; i < cards.length; i++) cards[i].classList.add('in-view');
+    return;
+  }
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (!entry.isIntersecting) return;
+      var el = entry.target;
+      var siblings = Array.prototype.slice.call(el.parentElement.children);
+      var delay = Math.min(siblings.indexOf(el), 6) * 55;
+      el.style.transitionDelay = delay + 'ms';
+      el.classList.add('in-view');
+      window.setTimeout(function () { el.style.transitionDelay = ''; }, delay + 700);
+      observer.unobserve(el);
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+  for (var j = 0; j < cards.length; j++) observer.observe(cards[j]);
+})();
+</script>
+
+<footer>
+  <span>FolioTell · document-to-speech iPhone app</span>
+  <span class="sep">·</span>
+  <span>orientation surface · private product exploration</span>
+  <span class="sep">·</span>
+  <span>working name</span>
+</footer>
+
+</body>
+</html>

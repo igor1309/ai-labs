@@ -89,7 +89,7 @@ Notes:
 3. Deploy Pages web app.
 
 ## CI workflows
-- `CI` (`.github/workflows/ci.yml`) delegates baseline checks to reusable `.github/workflows/core.yml`.
+- `CI` (`.github/workflows/ci.yml`) delegates Oracle baseline checks to reusable `.github/workflows/oracle-core.yml`.
 - `Web E2E` (`.github/workflows/web-e2e.yml`) delegates to reusable `.github/workflows/core-web-e2e.yml` and stays manual (`workflow_dispatch`).
 - Telegram failure notifications are sent via `scripts/ci/notify_telegram_failure.sh`.
 
@@ -115,6 +115,6 @@ Enter a profession and get a structured AI-generated assessment: risk timeline, 
 - Cloudflare Workers
 - Cloudflare Pages
 - Vanilla JS
-- OpenRouter
+- Nomos
 - D1
 - KV Cache

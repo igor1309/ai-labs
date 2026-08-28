@@ -17,12 +17,22 @@ Release policy is outcome-based and per-unit. Commands are implementation detail
 - **Canonical version**: Node units use `package.json`; non-Node units use `release.toml`. A unit MUST NOT contain both. Versions follow semver.
 - **Tagging**: per-unit tags follow `<basename>_v<version>` (e.g., `nomos_v0.6.0`). Basename is the leaf directory name, must be globally unique, and must not contain underscores.
 - **Release detection**: a release occurs only when **both** files under the unit root changed **and** the canonical version changed since the last matching tag (`<basename>_v*`). No tag → base is the initial commit.
-- **Trunk-only**: releases trigger only on push to the main branch. Release branches are prohibited.
+- **Trunk-only delivery**: release tags and deployments occur only from the main
+  branch. A short-lived release-candidate branch is allowed for preparation;
+  it is merged to the main branch before tagging and is never itself a release
+  source.
 - **Docker units**: Docker-producing units (marked in manifest) define two image tags: `<version>` and `<git-sha>`.
 
 ## Release invariants
 
-- **Start state**: release from the main branch.
+- **Candidate start**: a release candidate may start from the main branch or
+  from a feature branch whose complete scope is ready. A feature branch may,
+  but does not have to, transition in place to release-candidate state.
+- **Candidate freeze**: before version metadata is added, sync the candidate
+  with the latest main branch and freeze the product scope. After that point,
+  only release metadata, notes, and logs may change.
+- **Final source**: merge the frozen release candidate to the main branch and
+  create the tag from that merge commit.
 - **SemVer decision**: choose release bump per SemVer 2.0 from the delta since the previous unit tag (or full history on first release).
 - **Release notes**: add exactly one new top entry in the release-scope log at the top of the current date section, scoped to the reviewed delta.
 - **Version consistency**: canonical version in the unit's metadata file and the release tag `<basename>_v<version>` must match.

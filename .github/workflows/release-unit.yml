@@ -43,6 +43,9 @@ jobs:
         env:
           TAG: ${{ github.ref_name }}
         run: |
+          # pipefail: without it the step's exit code is tee's, and a
+          # verify-tag.js rejection silently yields empty outputs downstream.
+          set -o pipefail
           # verify-tag.js parses the tag safely (no shell→JS interpolation),
           # validates against the manifest, and outputs key=value lines.
           node scripts/release/verify-tag.js "$TAG" | tee /dev/stderr >> "$GITHUB_OUTPUT"
@@ -59,8 +62,12 @@ jobs:
       - name: Validate manifest invariants
         run: node scripts/release/validate-manifest.js
 
+      - name: Validate FolioTell release notes
+        if: ${{ steps.parse.outputs.basename == 'foliotell' }}
+        run: node scripts/release/validate-foliotell-release-notes.js
+
   core:
-    if: ${{ needs.verify.outputs.basename != 'notio-backend' && needs.verify.outputs.basename != 'notio-frontend' }}
+    if: ${{ needs.verify.outputs.basename != 'foliotell' && needs.verify.outputs.basename != 'notio-backend' && needs.verify.outputs.basename != 'notio-frontend' }}
     needs: [verify]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -105,6 +112,41 @@ jobs:
       - name: Run tests
         working-directory: notio/backend
         run: swift test
+
+  test-foliotell:
+    if: ${{ needs.verify.outputs.basename == 'foliotell' }}
+    needs: [verify]
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Select newest Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)/Contents/Developer"
+
+      - name: Build package
+        run: swift build
+        working-directory: foliotell/ios
+
+      - name: Run package tests
+        run: swift test
+        working-directory: foliotell/ios
+
+      - name: Verify unsigned iOS archive
+        run: |
+          xcodebuild archive \
+            -project FolioTell.xcodeproj \
+            -scheme FolioTell \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath "$RUNNER_TEMP/FolioTell.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM=VRVJ9YNRQU \
+            PRODUCT_BUNDLE_IDENTIFIER=foliotell.FolioTell
+        working-directory: foliotell/ios
 
   deploy-nomos-staging:
     if: ${{ needs.verify.outputs.basename == 'nomos' }}
@@ -534,22 +576,80 @@ jobs:
       ref: ${{ github.ref_name }}
     secrets: inherit
 
+  deploy-foliotell-testflight:
+    if: ${{ needs.verify.outputs.basename == 'foliotell' }}
+    needs: [test-foliotell, verify]
+    runs-on: macos-latest
+    environment: testflight
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
+
+      # macos-latest images differ in default Xcode (16.4 vs 26.5), which changes
+      # both the SDK the shipped app is built against and the altool generation.
+      - name: Select newest Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)/Contents/Developer"
+
+      - name: Verify FolioTell TestFlight secrets
+        env:
+          FOLIOTELL_ASC_API_KEY_ID: ${{ secrets.FOLIOTELL_ASC_API_KEY_ID }}
+          FOLIOTELL_ASC_API_ISSUER_ID: ${{ secrets.FOLIOTELL_ASC_API_ISSUER_ID }}
+          FOLIOTELL_ASC_API_PRIVATE_KEY: ${{ secrets.FOLIOTELL_ASC_API_PRIVATE_KEY }}
+        run: |
+          set -e
+          missing=0
+          for name in FOLIOTELL_ASC_API_KEY_ID FOLIOTELL_ASC_API_ISSUER_ID FOLIOTELL_ASC_API_PRIVATE_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::${name} is required for FolioTell TestFlight release"
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ]
+
+      - name: Write App Store Connect API key
+        env:
+          FOLIOTELL_ASC_API_KEY_ID: ${{ secrets.FOLIOTELL_ASC_API_KEY_ID }}
+          FOLIOTELL_ASC_API_PRIVATE_KEY: ${{ secrets.FOLIOTELL_ASC_API_PRIVATE_KEY }}
+        run: |
+          set -e
+          key_path="$RUNNER_TEMP/AuthKey_${FOLIOTELL_ASC_API_KEY_ID}.p8"
+          printf '%s' "$FOLIOTELL_ASC_API_PRIVATE_KEY" > "$key_path"
+          chmod 600 "$key_path"
+          echo "FOLIOTELL_ASC_API_KEY_PATH=$key_path" >> "$GITHUB_ENV"
+
+      - name: Upload to TestFlight
+        env:
+          FOLIOTELL_ASC_API_KEY_ID: ${{ secrets.FOLIOTELL_ASC_API_KEY_ID }}
+          FOLIOTELL_ASC_API_ISSUER_ID: ${{ secrets.FOLIOTELL_ASC_API_ISSUER_ID }}
+          FOLIOTELL_BUILD_NUMBER: ${{ github.run_number }}
+          FOLIOTELL_PROVIDER_ID: VRVJ9YNRQU
+          FOLIOTELL_TEAM_ID: VRVJ9YNRQU
+          FOLIOTELL_VERSION: ${{ needs.verify.outputs.version }}
+        run: scripts/distribute-testflight.sh --upload
+        working-directory: foliotell/ios
+
   github-release:
-    needs: [core, verify, test-notio-backend, deploy-nomos-staging, deploy-nomos-prod, deploy-agonara-staging, deploy-agonara-prod, deploy-notio-backend, deploy-notio-frontend, deploy-clipdeck]
+    needs: [core, verify, test-notio-backend, test-foliotell, deploy-nomos-staging, deploy-nomos-prod, deploy-agonara-staging, deploy-agonara-prod, deploy-notio-backend, deploy-notio-frontend, deploy-clipdeck, deploy-foliotell-testflight]
     if: >-
       ${{ always() && !cancelled()
       && needs.verify.result == 'success'
       && (needs.core.result == 'success' || needs.core.result == 'skipped')
       && (needs.test-notio-backend.result == 'success' || needs.test-notio-backend.result == 'skipped')
+      && (needs.test-foliotell.result == 'success' || needs.test-foliotell.result == 'skipped')
       && needs.deploy-nomos-staging.result != 'failure'
       && needs.deploy-nomos-prod.result != 'failure'
       && (needs.verify.outputs.basename != 'agonara' || needs.deploy-agonara-staging.result == 'success')
       && (needs.verify.outputs.basename != 'agonara' || needs.deploy-agonara-prod.result == 'success')
+      && (needs.verify.outputs.basename != 'foliotell' || needs.deploy-foliotell-testflight.result == 'success')
       && (needs.deploy-agonara-staging.result == 'success' || needs.deploy-agonara-staging.result == 'skipped')
       && (needs.deploy-agonara-prod.result == 'success' || needs.deploy-agonara-prod.result == 'skipped')
       && (needs.deploy-notio-backend.result == 'success' || needs.deploy-notio-backend.result == 'skipped')
       && (needs.deploy-notio-frontend.result == 'success' || needs.deploy-notio-frontend.result == 'skipped')
       && (needs.deploy-clipdeck.result == 'success' || needs.deploy-clipdeck.result == 'skipped')
+      && (needs.deploy-foliotell-testflight.result == 'success' || needs.deploy-foliotell-testflight.result == 'skipped')
       }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -558,12 +658,32 @@ jobs:
     env:
       RELEASE_TAG: ${{ github.ref_name }}
     steps:
+      - name: Checkout release contents
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Prepare release body
+        env:
+          RELEASE_BASENAME: ${{ needs.verify.outputs.basename }}
+          RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          if [ "$RELEASE_BASENAME" = "foliotell" ]; then
+            release_notes="foliotell/ios/docs/releases/${RELEASE_VERSION}.md"
+            release_body="$RUNNER_TEMP/release-body.md"
+            awk 'NR == 1 && $0 == "---" { in_front_matter = 1; next } in_front_matter && $0 == "---" { in_front_matter = 0; next } !in_front_matter { print }' "$release_notes" > "$release_body"
+          else
+            release_body="$RUNNER_TEMP/release-body.md"
+            printf 'Release of **%s** version `%s`.\n' "$RELEASE_BASENAME" "$RELEASE_VERSION" > "$release_body"
+          fi
+          echo "RELEASE_BODY_FILE=$release_body" >> "$GITHUB_ENV"
+
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ env.RELEASE_TAG }}
           name: "${{ needs.verify.outputs.basename }} v${{ needs.verify.outputs.version }}"
-          body: "Release of **${{ needs.verify.outputs.basename }}** version `${{ needs.verify.outputs.version }}`."
+          bodyFile: ${{ env.RELEASE_BODY_FILE }}
           generateReleaseNotes: false
           draft: false
           prerelease: false
@@ -576,6 +696,7 @@ jobs:
       && (needs.verify.result == 'failure'
       || needs.core.result == 'failure'
       || needs.test-notio-backend.result == 'failure'
+      || needs.test-foliotell.result == 'failure'
       || needs.deploy-nomos-staging.result == 'failure'
       || needs.deploy-nomos-prod.result == 'failure'
       || needs.deploy-agonara-staging.result == 'failure'
@@ -583,9 +704,10 @@ jobs:
       || needs.deploy-notio-backend.result == 'failure'
       || needs.deploy-notio-frontend.result == 'failure'
       || needs.deploy-clipdeck.result == 'failure'
+      || needs.deploy-foliotell-testflight.result == 'failure'
       || needs.github-release.result == 'failure')
       }}
-    needs: [verify, core, test-notio-backend, deploy-nomos-staging, deploy-nomos-prod, deploy-agonara-staging, deploy-agonara-prod, deploy-notio-backend, deploy-notio-frontend, deploy-clipdeck, github-release]
+    needs: [verify, core, test-notio-backend, test-foliotell, deploy-nomos-staging, deploy-nomos-prod, deploy-agonara-staging, deploy-agonara-prod, deploy-notio-backend, deploy-notio-frontend, deploy-clipdeck, deploy-foliotell-testflight, github-release]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "Release Unit"
@@ -595,6 +717,7 @@ jobs:
         verify=${{ needs.verify.result }}
         core=${{ needs.core.result }}
         test-notio-backend=${{ needs.test-notio-backend.result }}
+        test-foliotell=${{ needs.test-foliotell.result }}
         deploy-nomos-staging=${{ needs.deploy-nomos-staging.result }}
         deploy-nomos-prod=${{ needs.deploy-nomos-prod.result }}
         deploy-agonara-staging=${{ needs.deploy-agonara-staging.result }}
@@ -602,6 +725,7 @@ jobs:
         deploy-notio-backend=${{ needs.deploy-notio-backend.result }}
         deploy-notio-frontend=${{ needs.deploy-notio-frontend.result }}
         deploy-clipdeck=${{ needs.deploy-clipdeck.result }}
+        deploy-foliotell-testflight=${{ needs.deploy-foliotell-testflight.result }}
         github-release=${{ needs.github-release.result }}
     secrets:
       CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
