@@ -10,6 +10,12 @@ test("ciPathFilters_shouldRunAgonaraCore_onPackageLockChanges", () => {
   assert.ok(agonaraFilter.includes('"agonara/package-lock.json"'));
 });
 
+test("ciPathFilters_shouldNotTreatDashboardScriptAsSharedInfrastructure", () => {
+  const sharedFilter = filterSection("shared", "nomos");
+
+  assert.doesNotMatch(sharedFilter, /"scripts\/\*\*"/);
+});
+
 function filterSection(filterName, nextFilterName) {
   const match = workflow.match(new RegExp(`\\n            ${filterName}:\\n([\\s\\S]*?)\\n            ${nextFilterName}:`));
   assert.ok(match, `missing ${filterName} filter`);
