@@ -1,5 +1,10 @@
 # Log
 
+## 2026-09-03
+
+- Dashboard: link the Cairana product card to its existing landing page so
+  the generated local dashboard validates every product destination.
+
 ## 2026-07-13
 
 - FolioTell: extend `.agents/foliotell.md` with an Android section (build
