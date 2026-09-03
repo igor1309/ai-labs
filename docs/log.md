@@ -1,5 +1,12 @@
 # Log
 
+## 2026-09-03
+
+- Dashboard: link the Cairana product card to its existing landing page so
+  the generated local dashboard validates every product destination.
+- CI: narrow the shared path filter to shared infrastructure so dashboard
+  script edits do not trigger unrelated provider-smoke jobs.
+
 ## 2026-07-13
 
 - FolioTell: extend `.agents/foliotell.md` with an Android section (build
