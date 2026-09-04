@@ -14,11 +14,11 @@ Definition for a specialized OpenClaw agent that keeps three repo surfaces in sy
 
 Sibling to `doc-drift-agent`: same OpenClaw runtime pattern, distinct editable-file allowlist, distinct cron cadence. README drift remains owned by `doc-drift-agent`.
 
-This directory owns the source of truth for what the agent inspects, how it synthesizes changes, and the shape of its sync PRs and notifications. The runtime — schedule, Telegram listener, GitHub credentials — will live in OpenClaw and is out of scope for the source tree.
+This directory owns the source of truth for what the agent inspects, how it synthesizes changes, and the shape of its sync PRs and notifications. The runtime — schedule, Telegram listener, GitHub credentials — lives in OpenClaw and is out of scope for the source tree.
 
 ## Status
 
-**Definition authored.** Intent and ADR landed 2026-05-10 on branch `codex/dashboard-sync-agent`. Agent definition artifacts and CI sync workflow are present; VPS runtime deployment remains owned by OpenClaw.
+**Live on OpenClaw.** Agent definition artifacts and CI sync workflow are present; the VPS workspace, suppression state, cron wrapper, and Telegram topic routing are owned by OpenClaw.
 
 ## Source
 
