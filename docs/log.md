@@ -1,5 +1,9 @@
 # Log
 
+## 2026-09-05
+
+- Refresh the LOC dashboard rows, summary totals, ratio, and timestamp from the current counting script.
+
 ## 2026-09-03
 
 - Dashboard: link the Cairana product card to its existing landing page so
