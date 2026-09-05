@@ -1,10 +1,12 @@
 ---
-date: 2026-06-23
-model: claude-opus-4-8
+date: 2026-09-05
+model: gpt-6-astra
 description: "Cairana — AI assistant for psychologists; structured notes, case context, and continuity of care (working name, research/naming stage)"
 ---
 
 # cairana
+
+Landing page: index.html
 
 Orientation surface: [index.html](index.html) — a single internal page that reloads the current state of cairana (thesis, layer model, the two spines, non-goals, market position, open questions, and a doc hub).
 
