@@ -1,5 +1,9 @@
 # Log
 
+## 2026-09-05
+
+- Declare the existing orientation page as the dashboard landing target so product-card regeneration preserves its link.
+
 ## 2026-06-25
 - Rebuild the index page as an internal orientation surface sourced from the product recap and the cairana-vs-landscape comparison (thesis, layer model, two spines, non-goals, market position, open questions, doc hub), keeping the existing visual design; reference it as such from the README.
 - Adopt cairana as the product name in the product-thinking recap; retain "personal practice workbench" as a descriptor, not a name (recap renamed to `cairana-product-recap.md`).
