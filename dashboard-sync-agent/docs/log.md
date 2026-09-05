@@ -1,5 +1,9 @@
 # Log
 
+## 2026-09-05
+
+- Exclude the repository task backlog from untracked project candidates, matching its existing LOC-script classification.
+
 ## 2026-06-10
 
 - products.html card links: `synthesis-spec.md` Surface (2) never knew product cards could be hyperlinked, so each run stripped the `<a class="product reveal" href=…>` wrappers down to `<div>` — directly contradicting the `scripts/tests/loc-dashboard.test.js` "links product cards…" / "links the Clipdeck product card…" tests, which assert those 8 links exist (seen as the `<a>`→`<div>` flips in PR #516). Added a "Card link wrapper" rule: the agent reads a single `Landing page: <value>` line from `<key>/README.md`, emitting `href` verbatim for absolute URLs (`^https?://`) or `../<key>/<value>` for project-root-relative paths, and wraps the card in `<a>` when present (else `<div>`). Seeded the line into the 8 linked projects' READMEs (agonara, oracle, dev-skills, reinix, claude-insights, nomos, notio → local paths; clipdeck → external URL) reproducing the exact tested hrefs. No landing pages were relocated; the root portfolio `index.html`, the oracle/notio builds, and the existing test are untouched, and the test now guards against future link-stripping. Updated `agent.md` step 2 to read the line.

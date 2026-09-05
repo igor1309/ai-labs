@@ -1,6 +1,6 @@
 ---
-date: 2026-05-10
-model: claude-opus-4-7
+date: 2026-09-05
+model: gpt-6-astra
 description: "Project-registry rule for dashboard-sync-agent: how to derive the canonical tracked project set from the root README's ## Components and ## Structure tables"
 ---
 
@@ -47,7 +47,7 @@ As of `trunk@HEAD` (2026-05-25): no untracked candidates. `neris` and `niora` we
 The following top-level entries are excluded from the candidates check entirely. They are workspace machinery, not projects, and do not belong in either table:
 
 - `node_modules/`, `vendor/`, `.git/`, `.github/`, `.claude/`, `.codex/`, `.lazyweb/`, `.wrangler/`
-- `worktrees/`, `_inbox/`
+- `worktrees/`, `_inbox/`, `backlog/`
 - `docker/`, `docs/`, `img/`, `migrate-to-skills/`, `research/`, `scripts/`, `tests/`
 - Single-file siblings (no subdirectory case applies)
 
