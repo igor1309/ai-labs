@@ -14,7 +14,7 @@ This directory owns the source of truth for what the agent inspects and how it r
 
 ## Status
 
-**Live (2026-06-01).** Deployed on the OpenClaw VPS: agent in `openclaw.json` `agents.list`, `ios.config` cloned, cron wrapper + `/etc/cron.d/openclaw-maestro-review` (00:00 UTC), CI sync workflow (`.github/workflows/maestro-flow-review-agent-sync.yml`). Runs on the shared `@igor1309_ai_labs_bot` in the ai-labs agents supergroup (`-1003954520541`): notifications post to the **`#maestro-review` topic (thread 2)**; inbound triggering is via that topic's per-topic `agentId` (`@`-mention the bot). No per-agent bot/account. First real run opened ios.config#10; current Verified fixes commit directly to `trunk`. Registered in the repo dashboards and `## Components` table. Consolidating the existing top-level agents under `agents/` is tracked in issue #434.
+**Live (2026-06-01).** Deployed on the OpenClaw VPS: agent in `openclaw.json` `agents.list`, `ios.config` cloned, cron wrapper + `/etc/cron.d/openclaw-maestro-review`, CI sync workflow (`.github/workflows/maestro-flow-review-agent-sync.yml`). Runs on the shared `@igor1309_ai_labs_bot` in the ai-labs agents supergroup (`-1003954520541`): notifications post to the **`#maestro-review` topic (thread 2)**; inbound triggering is via that topic's per-topic `agentId` (`@`-mention the bot). No per-agent bot/account. First real run opened ios.config#10; current Verified fixes commit directly to `trunk`. Registered in the repo dashboards and `## Components` table. Consolidating the existing top-level agents under `agents/` is tracked in issue #434.
 
 ## Layout
 
@@ -24,7 +24,7 @@ This directory owns the source of truth for what the agent inspects and how it r
 | `agent/notification-spec.md` | Heartbeat notification contract (findings / clean / suppressed) |
 | `agent/suppression-policy.md` | 12h scheduled-run suppression gate |
 | `runtime/cron/maestro-review-cron.sh` | VPS cron wrapper (refresh, gate, invoke, post one message/tick) |
-| `runtime/cron/openclaw-maestro-review.cron` | `/etc/cron.d` entry (daily 00:00 UTC) |
+| `runtime/cron/openclaw-maestro-review.cron` | `/etc/cron.d` entry |
 | `runtime/README.md` | VPS-side deployment notes |
 | `docs/log.md` | Project log |
 | `README.md` | This file |
