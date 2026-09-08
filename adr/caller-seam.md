@@ -133,15 +133,16 @@ The boundary contracts this ADR does own:
 
 ## The membership test (scope), then the dispatch test (invoker)
 
-Inherited from `modular.md`.
+Inherited from the retired `modular.md` (2026-06-16).
 
 **1. Scope.** The engine is **out of the single-ticket umbrella** — altitude-agnostic
 (`task is {}`) and reusable for any well-specified implementation task once persistence is
 caller-supplied (contract 4). By the membership test it is a cross-cutting capability, like
 `xcodebuild-runner`, and so a **standalone top-level skill**. Intake, task-definition, release,
-closure, and retros remain single-ticket **stages** under `ticket-workflow/phases/`.
+closure, and retros remain single-ticket **stages** — each its own phase skill since 2026-09-08,
+and all of them still outside the engine's scope.
 
-**2. Dispatch.** Per contract 6: ticket intents load `ticket-workflow`; the explicit committed-
+**2. Dispatch.** Per contract 6: ticket intents load the lifecycle skills; the explicit committed-
 brief trigger loads the engine. No autonomous edge crosses between them.
 
 ## Invariants
