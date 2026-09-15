@@ -20,14 +20,11 @@ description: "Noreta forward work and open questions"
 
 ## Work
 
-- [ ] **Runtime state is frozen when the source is made.**
-  `claudeCodeRuntimeStates` reads the registry once and every later lookup
-  answers from that copy, while `claudeCodeSessions` re-reads the transcripts on
-  every call. A long-lived source therefore shows a new session as inactive and
-  a finished one as still running. `main.ts` reads once and exits, so nothing
-  shows it yet.
-- [ ] **No adapter sets `repository`.** Only the test doubles supply it, so
-  searching and grouping by repository never match on real sessions.
+- [ ] **A gone workspace has no repository.** `repositoryOf` asks the file
+  system, so a deleted worktree answers nothing: 658 of 710 real sessions are in
+  that state, and searching or grouping by repository misses all of them.
+  Answering needs the repository remembered while the workspace was there, which
+  needs somewhere to keep it.
 - [ ] Transcript renderer, starting with the simplest presentation that keeps
   tool calls and diffs distinguishable. Its own cycle.
 - [ ] A real `SessionChanges`: nothing implements the port outside tests, so
