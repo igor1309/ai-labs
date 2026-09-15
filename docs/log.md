@@ -2,6 +2,10 @@
 
 ## 2026-09-15
 
+- Noreta reads real Claude Code data: sessions, their runtime state and their
+  transcripts, with a plain-text listing behind `npm start`. Refreshed the
+  `## Components` row and the `loc-dashboard.html` entry.
+
 - Implement all seven Noreta QA features against `noreta/docs/qa.md`, one at a
   time, each followed by a Codex adversarial review whose findings were judged
   and fixed. Every feature has a domain model and a test named after each Gherkin
