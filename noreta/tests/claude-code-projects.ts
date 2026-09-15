@@ -33,6 +33,12 @@ export function writeProject(
   }
 }
 
+// Not every entry beside the projects is a project: macOS leaves a `.DS_Store`
+// wherever a window has been opened.
+export function writeStrayFile(projectsDirectory: string, name: string): void {
+  writeFileSync(join(projectsDirectory, name), "");
+}
+
 export function existingDirectory(): string {
   return mkdtempSync(join(tmpdir(), "noreta-workspace-"));
 }

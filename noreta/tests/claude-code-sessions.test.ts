@@ -10,6 +10,7 @@ import {
   type TranscriptRecord,
   userRecord,
   writeProject,
+  writeStrayFile,
 } from "./claude-code-projects.js";
 import { livePid, register, registryDirectoryOf } from "./claude-code-registry.js";
 import { checkoutDirectory } from "./git-layouts.js";
@@ -80,6 +81,22 @@ describe("What the Claude Code adapter discovers", () => {
     assert.deepEqual(
       sessions().map((session) => session.id),
       ["started-elsewhere"],
+    );
+  });
+
+  // Reading that file as a project directory throws, and one stray file would
+  // then cost every session on the machine.
+  it("ignores a file lying among the project directories", () => {
+    const projects = projectsDirectoryOf({
+      id: "placed",
+      records: [userRecord({ id: "placed", at: at("10:00") })],
+    });
+
+    writeStrayFile(projects, ".DS_Store");
+
+    assert.deepEqual(
+      claudeCodeSessions(projects, notRunning)().map((session) => session.id),
+      ["placed"],
     );
   });
 
