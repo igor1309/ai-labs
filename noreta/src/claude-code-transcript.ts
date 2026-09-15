@@ -1,12 +1,10 @@
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync } from "node:fs";
 
+import { parsedRecord, transcriptFilesOf } from "./claude-code-files.js";
 import type { TranscriptEntry, TranscriptSource } from "./transcript.js";
 
-// Reads one session's transcript from the JSONL file Claude Code keeps for it,
-// under the directory of whichever project the session ran in. That directory's
-// name is a lossy encoding of the workspace path, so the file is found by the
-// session id alone.
+// Reads one session's transcript from the file Claude Code keeps for it, found
+// by the session id alone.
 export function claudeCodeTranscript(projectsDirectory: string): TranscriptSource {
   return (sessionId: string): TranscriptEntry[] =>
     transcriptFilesOf(projectsDirectory, sessionId).flatMap(entriesIn);
@@ -36,17 +34,10 @@ type Hunk = {
 };
 
 function entriesIn(file: string): TranscriptEntry[] {
-  return readFileSync(file, "utf8").split("\n").flatMap(parsedRecord).flatMap(entriesOf);
-}
-
-// A running session is appended to while it is read, so its last line can be
-// half written. One unreadable line is not a reason to lose the transcript.
-function parsedRecord(line: string): TranscriptRecord[] {
-  try {
-    return [JSON.parse(line) as TranscriptRecord];
-  } catch {
-    return [];
-  }
+  return readFileSync(file, "utf8")
+    .split("\n")
+    .flatMap(parsedRecord<TranscriptRecord>)
+    .flatMap(entriesOf);
 }
 
 function entriesOf(record: TranscriptRecord): TranscriptEntry[] {
@@ -128,11 +119,4 @@ function unifiedDiffLines(hunk: Hunk): string[] {
     `@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@`,
     ...hunk.lines,
   ];
-}
-
-function transcriptFilesOf(projectsDirectory: string, sessionId: string): string[] {
-  return readdirSync(projectsDirectory, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((project) => join(projectsDirectory, project.name, `${sessionId}.jsonl`))
-    .filter((file) => existsSync(file));
 }

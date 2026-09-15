@@ -1,14 +1,6 @@
-import {
-  closeSync,
-  existsSync,
-  fstatSync,
-  openSync,
-  readFileSync,
-  readSync,
-  readdirSync,
-} from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
 
+import { parsedRecord, tailOf, transcriptFiles } from "./claude-code-files.js";
 import type { ObservedSession, RuntimeState, SessionSource } from "./sessions.js";
 
 // What the adapter needs to know about a session that a transcript cannot say:
@@ -21,10 +13,8 @@ export type RuntimeStates = () => (sessionId: string) => RuntimeState | undefine
 // One such snapshot, answering for every session in one read.
 type RuntimeSnapshot = ReturnType<RuntimeStates>;
 
-// Reads the sessions Claude Code leaves on disk: one JSONL transcript per
-// session, under one directory per project. That directory's name is the
-// workspace path with its separators replaced, which is lossy — the workspace
-// is read from the records instead.
+// Reads the sessions Claude Code leaves on disk, one per transcript. Where a
+// session is working is read from its records, never from where its file sits.
 export function claudeCodeSessions(
   projectsDirectory: string,
   runtimeStates: RuntimeStates,
@@ -97,42 +87,8 @@ function contextRecords(file: string): SessionContext[] {
   return found.length > 0 || tail.whole ? found : contextIn(readFileSync(file, "utf8"));
 }
 
-const tailBytes = 64 * 1024;
-
-// A tail that starts inside the file starts inside a line, so that first
-// fragment is dropped rather than left to parse by accident.
-function tailOf(file: string): { text: string; whole: boolean } {
-  const handle = openSync(file, "r");
-
-  try {
-    const size = fstatSync(handle).size;
-    const start = Math.max(0, size - tailBytes);
-    const buffer = Buffer.alloc(size - start);
-
-    readSync(handle, buffer, 0, buffer.length, start);
-
-    const text = buffer.toString("utf8");
-
-    return start === 0
-      ? { text, whole: true }
-      : { text: text.slice(text.indexOf("\n") + 1), whole: false };
-  } finally {
-    closeSync(handle);
-  }
-}
-
 function contextIn(text: string): SessionContext[] {
-  return text.split("\n").flatMap(parsedRecord).filter(isContext);
-}
-
-// A running session is appended to while it is read, so its last line can be
-// half written. One unreadable line is not a reason to lose the session.
-function parsedRecord(line: string): Partial<SessionContext>[] {
-  try {
-    return [JSON.parse(line) as Partial<SessionContext>];
-  } catch {
-    return [];
-  }
+  return text.split("\n").flatMap(parsedRecord<Partial<SessionContext>>).filter(isContext);
 }
 
 function isContext(record: Partial<SessionContext>): record is SessionContext {
@@ -142,16 +98,4 @@ function isContext(record: Partial<SessionContext>): record is SessionContext {
     record.gitBranch !== undefined &&
     record.timestamp !== undefined
   );
-}
-
-function transcriptFiles(projectsDirectory: string): string[] {
-  return readdirSync(projectsDirectory, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .flatMap((project) => transcriptsIn(join(projectsDirectory, project.name)));
-}
-
-function transcriptsIn(project: string): string[] {
-  return readdirSync(project)
-    .filter((file) => file.endsWith(".jsonl"))
-    .map((file) => join(project, file));
 }
