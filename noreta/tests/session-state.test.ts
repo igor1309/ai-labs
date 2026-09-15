@@ -24,9 +24,10 @@ describe("Runtime state", () => {
     assert.equal(view.runtimeState, "working");
   });
 
-  it("leaves the state out when the session is not running", () => {
+  it("says inactive when the session is not running", () => {
     const [view] = viewSessions(sourceOf({ id: "s1" }));
 
-    assert.equal("runtimeState" in view, false);
+    assert.equal(view.runtimeState, "inactive");
+    assert.deepEqual(stateOf(view), { id: "s1", active: false, waiting: false });
   });
 });

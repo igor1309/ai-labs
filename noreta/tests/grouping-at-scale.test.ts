@@ -36,6 +36,7 @@ function manySessions(count: number): SessionView[] {
     agent: "claude",
     workspace: "/workspace",
     workspaceOnDisk: true,
+    runtimeState: "inactive",
     lastActivityAt: new Date("2026-09-15T10:00:00Z"),
   }));
 }

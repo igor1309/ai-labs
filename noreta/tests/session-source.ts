@@ -2,25 +2,29 @@ import {
   isActive,
   isWaiting,
   type ObservedSession,
+  type RuntimeState,
   type SessionSource,
   type SessionView,
 } from "../src/sessions.js";
 
 type PartialSession = Omit<
   ObservedSession,
-  "agent" | "workspace" | "workspaceOnDisk" | "lastActivityAt"
+  "agent" | "workspace" | "workspaceOnDisk" | "runtimeState" | "lastActivityAt"
 > & {
   agent?: string;
   workspace?: string;
   workspaceOnDisk?: boolean;
+  runtimeState?: RuntimeState;
   lastActivityAt?: Date;
 };
 
 // Scenarios that say nothing about a session's activity time or agent should
-// not have to invent one.
+// not have to invent one. A scenario that does not say a session is running is
+// about one that is not.
 const unspecifiedActivity = new Date("2026-01-01T00:00:00Z");
 const unspecifiedAgent = "claude";
 const unspecifiedWorkspace = "/workspace";
+const unspecifiedRuntimeState = "inactive";
 
 export function sourceOf(...sessions: PartialSession[]): SessionSource {
   return () => sessions.map(observed);
@@ -52,6 +56,7 @@ function observed(session: PartialSession): ObservedSession {
     agent: session.agent ?? unspecifiedAgent,
     workspace: session.workspace ?? unspecifiedWorkspace,
     workspaceOnDisk: session.workspaceOnDisk ?? true,
+    runtimeState: session.runtimeState ?? unspecifiedRuntimeState,
     lastActivityAt: session.lastActivityAt ?? unspecifiedActivity,
   };
 }

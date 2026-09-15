@@ -75,16 +75,16 @@ function observedSession(
       workspaceOnDisk: workspace.onDisk,
       ...(workspace.repository === undefined ? {} : { repository: workspace.repository }),
       ...(isBranch(context.gitBranch) ? { branch: context.gitBranch } : {}),
-      ...runtimeStateOf(snapshot(context.sessionId)),
+      runtimeState: runtimeStateOf(snapshot(context.sessionId)),
       lastActivityAt: new Date(context.timestamp),
     },
   ];
 }
 
-// A session that is not running carries no runtime state at all, which is what
-// makes it inactive.
-function runtimeStateOf(state: RuntimeState | undefined): { runtimeState?: RuntimeState } {
-  return state === undefined ? {} : { runtimeState: state };
+// A session the registry says nothing about is not running, and the adapter says
+// so rather than leaving the session with no state for a reader to interpret.
+function runtimeStateOf(state: RuntimeState | undefined): RuntimeState {
+  return state ?? "inactive";
 }
 
 // Claude Code writes "HEAD" when the workspace has no branch checked out: it is

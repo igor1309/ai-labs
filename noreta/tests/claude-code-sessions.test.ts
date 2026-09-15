@@ -50,6 +50,7 @@ describe("What the Claude Code adapter discovers", () => {
         workspace: "/nowhere/product-noreta",
         workspaceOnDisk: false,
         branch: "product/noreta",
+        runtimeState: "inactive",
         lastActivityAt: at("13:27"),
       },
     ]);
@@ -203,7 +204,7 @@ describe("What the Claude Code adapter discovers", () => {
       claudeCodeRuntimeStates(registry),
       missingWorkspace,
     );
-    assert.deepEqual(sessions().map((session) => session.runtimeState), [undefined]);
+    assert.deepEqual(sessions().map((session) => session.runtimeState), ["inactive"]);
 
     register(registry, { pid: livePid, sessionId: "starting", status: "busy" });
 
