@@ -46,6 +46,8 @@ Codex session yet — there is no adapter and no entry point.
 | `src/ordering.ts` | The one ordering rule: sort by a timestamp in either direction, treating an unreadable one as the oldest instead of returning `NaN`. |
 | `src/transcript.ts` | Session transcript: messages, tool calls and file diffs, oldest first. Reading sits behind the `TranscriptSource` port. |
 | `src/claude-code.ts` | Discovery adapter: reads the JSONL transcripts Claude Code leaves under `~/.claude/projects` and reports each as an `ObservedSession`. The project directory's name is the workspace path with its separators replaced, which is lossy, so workspace and branch come from the records. Runtime state comes from the `RuntimeStates` port, which it owns. |
+| `src/session-lines.ts` | Plain-text lines for a session list: an active marker, agent, state, branch and workspace, and last activity. The state column reads `active`, `waiting` or `inactive` — `SessionView` carries no `working`/`idle` split to show. |
+| `src/main.ts` | Composition root and entry point: the only module that reads the home directory and the clock. Wires both Claude Code adapters into the domain and prints the last 7 days of sessions. Its wiring has no test; the real run is the check. |
 | `tests/active-sessions.test.ts` | One test per Gherkin scenario of the "See active sessions" feature in [docs/qa.md](docs/qa.md), named after it. |
 | `tests/recent-sessions.test.ts` | Same, for "See recent sessions". |
 | `tests/read-session.test.ts` | Same, for "Read a session". |
@@ -67,12 +69,14 @@ Codex session yet — there is no adapter and no entry point.
 | `tests/claude-code-runtime.test.ts` | Not QA scenarios: the status mapping, and a registration that outlived its process. |
 | `tests/claude-code-registry.ts` | Writes a throwaway registry directory for those tests. |
 | `tests/session-state.test.ts` | Not a QA scenario: a session waiting without a known kind still reads as waiting. |
+| `tests/session-lines.test.ts` | Not QA scenarios: how a session list reads as plain text. |
 | `tests/session-source.ts` | Test sources feeding `SessionSource`, plus the `stateOf` projection. |
 | `tests/transcript-source.ts` | Test sources feeding `TranscriptSource`. |
 
 What this does **not** yet do: `TranscriptSource` still has no production
 implementation, so nothing reads a real transcript — only `SessionSource` does,
-and only for Claude Code. There is no renderer and no entry point. A Codex
+and only for Claude Code. `npm start` prints recent sessions as plain text; the
+presentation target beyond that is undecided. A Codex
 adapter and startup reconciliation are still ahead; see
 [docs/implementation-notes.md](docs/implementation-notes.md).
 
@@ -111,6 +115,12 @@ Tests and typecheck, from the repo root:
 ```bash
 node --import tsx --test noreta/tests/*.test.ts
 npx tsc --noEmit -p noreta
+```
+
+Run against this machine's Claude Code sessions, from the repo root:
+
+```bash
+npm --prefix noreta start
 ```
 
 ## Stack

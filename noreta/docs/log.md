@@ -1,6 +1,12 @@
 # Log
 
 ## 2026-09-15
+- First entry point: `npm start` wires the Claude Code session and registry
+  adapters into the domain and prints the last 7 days as plain text, active
+  sessions marked. Formatting is a pure, tested function; the composition root's
+  wiring is untested and was checked by a real run whose 4 active sessions
+  matched the 4 live registrations. The state column cannot show working vs idle
+  — `SessionView` does not carry that split.
 - Session discovery reads each transcript's last 64 KB instead of the whole
   file: 4.3–5.6 s → ~200 ms for 1546 real sessions, output identical to the
   whole-file read. Two guard tests pin the tail edges; each fails when the read
