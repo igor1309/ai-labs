@@ -17,15 +17,15 @@ Feature: See active sessions
       When I view my sessions
       Then the session is shown as active
 
-    Scenario: A session waiting for input is active
+    Scenario: A session waiting for input is visible as waiting
       Given a session has a live runtime waiting for input
       When I view my sessions
-      Then the session is shown as active
+      Then the session is shown as waiting
 
-    Scenario: A session waiting for approval is active
+    Scenario: A session waiting for approval is visible as waiting
       Given a session has a live runtime waiting for approval
       When I view my sessions
-      Then the session is shown as active
+      Then the session is shown as waiting
 
     Scenario: An idle session is active
       Given a session has a live runtime doing nothing
@@ -54,12 +54,12 @@ Feature: See active sessions
 
 Feature: See recent sessions
 
-  Rule: Inactive sessions expose when work last happened
+  Rule: Inactive sessions expose their last activity
 
     Scenario: An inactive session is shown
       Given an inactive session exists
       When I view my sessions
-      Then I see when its last message occurred
+      Then I see when its last activity occurred
 
   Rule: Recent work is available in the default view
 
@@ -132,10 +132,10 @@ Feature: Find a session
         | "feature/noreta" | branch       |
         | "codex"          | agent        |
 
-  Rule: Search covers sessions outside the default view
+  Rule: Search covers sessions outside the recent history
 
-    Scenario: Search finds a session outside the default view
-      Given a session outside the default view contains "rate limiter"
+    Scenario: Search finds a session outside the recent history
+      Given a session outside the recent history contains "rate limiter"
       When I search for "rate limiter"
       Then I see that session in the results
 
@@ -169,11 +169,11 @@ Feature: Organize sessions
 
 Feature: Access older sessions
 
-  Rule: Sessions remain available beyond the default view
+  Rule: Sessions remain available outside the recent history
 
-    Scenario: Reveal sessions outside the default view
-      Given sessions outside the default view exist
-      When I choose to see sessions outside the default view
+    Scenario: Reveal sessions outside the recent history
+      Given sessions outside the recent history exist
+      When I choose to see sessions outside the recent history
       Then I can browse those sessions
 
   Rule: A session retains its historical working context

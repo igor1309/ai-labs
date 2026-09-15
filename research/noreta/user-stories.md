@@ -13,7 +13,7 @@ Feature: Coding agent sessions
   Scenario: See active sessions
     Given I have coding agent sessions on my Mac
     When I open the app
-    Then I see which sessions are currently active
+    Then I see which sessions are currently active and which are waiting for me
 
   Scenario: See recent sessions
     Given I have inactive coding agent sessions
