@@ -1,3 +1,5 @@
+import { byTime } from "./ordering.js";
+
 export type RuntimeState =
   | "working"
   | "waiting-for-input"
@@ -27,28 +29,9 @@ export function viewSessions(source: SessionSource): SessionView[] {
       waiting: isWaiting(session.runtimeState),
       lastActivityAt: session.lastActivityAt,
     }))
-    .sort(byMostRecentActivity);
+    .sort(byTime((view) => view.lastActivityAt, "newest-first"));
 }
 
 function isWaiting(runtimeState: RuntimeState | undefined): boolean {
   return runtimeState === "waiting-for-input" || runtimeState === "waiting-for-approval";
-}
-
-function byMostRecentActivity(left: SessionView, right: SessionView): number {
-  const leftTime = activityTime(left);
-  const rightTime = activityTime(right);
-
-  if (leftTime === rightTime) {
-    return 0;
-  }
-
-  return rightTime > leftTime ? 1 : -1;
-}
-
-// An unreadable timestamp sorts as the oldest rather than poisoning the
-// comparator: NaN would make every comparison it takes part in meaningless.
-function activityTime(view: SessionView): number {
-  const time = view.lastActivityAt.getTime();
-
-  return Number.isNaN(time) ? Number.MIN_SAFE_INTEGER : time;
 }

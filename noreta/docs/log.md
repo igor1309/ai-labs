@@ -1,6 +1,10 @@
 # Log
 
 ## 2026-09-15
+- Extract `src/ordering.ts`: `sessions.ts` and `transcript.ts` had each grown
+  their own comparator and NaN-safe time reader, so the rule that an unreadable
+  timestamp sorts oldest lived in two places. It now lives in one, parameterised
+  by direction; `grep -rn "Number.isNaN" noreta/src/` returns a single hit.
 - Codex review of "Read a session": messages now carry a speaker, because the
   rule is "session history preserves *conversational* order" and a transcript
   that cannot tell the user from the agent is not a conversation. Declined the

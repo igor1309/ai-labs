@@ -40,6 +40,7 @@ Codex session yet — there is no adapter and no entry point.
 | Path | Contents |
 |------|----------|
 | `src/sessions.ts` | Session view: maps observed sessions to active/waiting state and orders them by last activity. Discovery sits behind the `SessionSource` port. |
+| `src/ordering.ts` | The one ordering rule: sort by a timestamp in either direction, treating an unreadable one as the oldest instead of returning `NaN`. |
 | `src/transcript.ts` | Session transcript: messages, tool calls and file diffs, oldest first. Reading sits behind the `TranscriptSource` port. |
 | `tests/active-sessions.test.ts` | One test per Gherkin scenario of the "See active sessions" feature in [docs/qa.md](docs/qa.md), named after it. |
 | `tests/recent-sessions.test.ts` | Same, for "See recent sessions". |
