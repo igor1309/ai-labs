@@ -4,9 +4,11 @@
 - Two live processes registering one session no longer resolve by `readdir`
   order, which was arbitrary: the busiest of them wins. The costs are asymmetric
   — over-reporting that a session wants attention costs a glance, under-reporting
-  it costs a stall — so `working` beats `waiting` beats `idle`. The ranking is a
-  `Record<RuntimeState, number>`, so a new state has to be ranked rather than
-  silently sorting last. Observed on this machine: pids 88743 and 72339 both
+  it costs a stall — so `working` beats `waiting` beats `idle`. The ranking is
+  exhaustive over the three states the registry can report, which is an
+  `Extract` of the domain's `RuntimeState` rather than the whole of it: the two
+  waiting kinds are unreachable from this source, so ranking them would be two
+  lines no test could ever reach. Observed on this machine: pids 88743 and 72339 both
   claim one session, and agreed, so nothing changes for it today.
 - Runtime state, from `~/.claude/sessions/<pid>.json` — Claude Code's registry of
   its running sessions, which carries the session id, so no heuristic is needed
