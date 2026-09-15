@@ -3,10 +3,12 @@ import { describe, it } from "node:test";
 
 import { claudeCodeRuntimeStates } from "../src/claude-code-registry.js";
 import {
+  absentRegistryDirectory,
   deadPid,
   livePid,
   otherLivePid,
   register,
+  registerHalfWritten,
   registryDirectoryOf,
 } from "./claude-code-registry.js";
 
@@ -90,5 +92,28 @@ describe("What the Claude Code adapter reads of a running session", () => {
     register(registry, { pid: livePid, sessionId: "late", status: "busy" });
 
     assert.equal(runtimeStates()("late"), "working");
+  });
+
+  // Every registration is written by a live process, so a snapshot can catch one
+  // half written. One unreadable file is not a reason to lose every other
+  // session on the machine.
+  it("reports a session alongside a half-written registration", () => {
+    const registry = registryDirectoryOf({
+      pid: livePid,
+      sessionId: "readable",
+      status: "busy",
+    });
+
+    registerHalfWritten(registry, otherLivePid);
+
+    assert.equal(claudeCodeRuntimeStates(registry)()("readable"), "working");
+  });
+
+  // Claude Code makes the registry when a session first registers, so a machine
+  // that has never run one has no registry to read. Nothing is running there.
+  it("reports no session when the registry has never been written", () => {
+    const registry = absentRegistryDirectory();
+
+    assert.equal(claudeCodeRuntimeStates(registry)()("anyone"), undefined);
   });
 });

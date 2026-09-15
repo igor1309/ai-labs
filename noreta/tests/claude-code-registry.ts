@@ -27,6 +27,18 @@ export function register(directory: string, ...entries: RegistryEntry[]): void {
   }
 }
 
+// A machine where no session has ever registered has no registry at all, so the
+// path names a directory Claude Code has not created.
+export function absentRegistryDirectory(): string {
+  return join(mkdtempSync(join(tmpdir(), "noreta-registry-")), "sessions");
+}
+
+// A registration is written by the live process it names, so a snapshot can
+// catch one part way through and read only the bytes written so far.
+export function registerHalfWritten(directory: string, pid: number): void {
+  writeFileSync(join(directory, `${pid}.json`), `{"pid":${pid},"sessionI`);
+}
+
 export const livePid = process.pid;
 
 // Above macOS's maximum process id, so no process can ever hold it.

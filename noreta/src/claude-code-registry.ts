@@ -1,6 +1,7 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
+import { parsedRecord } from "./claude-code-files.js";
 import type { RuntimeStates } from "./claude-code.js";
 import type { RuntimeState } from "./sessions.js";
 
@@ -84,8 +85,21 @@ function runtimeState(status: string | undefined): ObservedState {
   return status === "waiting" ? "waiting" : "idle";
 }
 
+// A registration is written by the live process it names, so a snapshot can
+// catch one half written. Losing that file is not a reason to lose every other
+// session on the machine, which is why the transcripts' tolerance is the one
+// the registry gets too.
 function registrations(registryDirectory: string): Registration[] {
-  return readdirSync(registryDirectory)
-    .filter((file) => file.endsWith(".json"))
-    .map((file) => JSON.parse(readFileSync(join(registryDirectory, file), "utf8")) as Registration);
+  return registrationFiles(registryDirectory).flatMap((file) =>
+    parsedRecord<Registration>(readFileSync(join(registryDirectory, file), "utf8")),
+  );
+}
+
+// Claude Code makes the registry when a session first registers, so a machine
+// that has never run one has no directory to read. That is nothing running, not
+// something broken, and it is not a reason to bring Noreta down.
+function registrationFiles(registryDirectory: string): string[] {
+  return existsSync(registryDirectory)
+    ? readdirSync(registryDirectory).filter((file) => file.endsWith(".json"))
+    : [];
 }
