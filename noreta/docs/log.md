@@ -1,6 +1,12 @@
 # Log
 
 ## 2026-09-15
+- Implement "Read a session": `src/transcript.ts` reads a session's entries
+  oldest-first through a `TranscriptSource` port, with messages, tool calls and
+  file diffs as distinct entry kinds so a reader cannot flatten agent activity
+  into prose. The two semantic-presentation scenarios are pinned at runtime —
+  they falsify a reader that drops non-message entries, but the kinds themselves
+  are a type-level contract the adapters will have to honour.
 - Machine-check the scenario-to-test mapping: `tests/qa-coverage.test.ts` parses
   `docs/qa.md` and asserts each implemented feature's test file declares exactly
   its scenario titles, so a renamed or dropped scenario fails CI instead of

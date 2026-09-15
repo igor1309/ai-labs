@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { viewSessions } from "../src/sessions.js";
+import { readTranscript, type TranscriptEntry } from "../src/transcript.js";
 import { sourceOf } from "./session-source.js";
+import { at } from "./time.js";
+import { transcriptOf } from "./transcript-source.js";
 
 // Edge cases behind "Recent sessions are ordered by last activity". Not QA
 // scenarios, so they live outside the scenario-named files.
@@ -46,3 +49,30 @@ describe("Ordering by last activity", () => {
     );
   });
 });
+
+describe("Ordering a transcript", () => {
+  it("keeps valid entries ordered around an unreadable timestamp", () => {
+    const source = transcriptOf("s1", [
+      { kind: "message", at: at("10:02"), text: "second" },
+      { kind: "message", at: new Date("not a date"), text: "unreadable" },
+      { kind: "message", at: at("10:01"), text: "first" },
+    ]);
+
+    assert.deepEqual(
+      readTranscript(source, "s1").map(describeEntry),
+      ["unreadable", "first", "second"],
+    );
+  });
+
+  it("returns nothing for a session the source does not know", () => {
+    const source = transcriptOf("s1", [
+      { kind: "message", at: at("10:01"), text: "first" },
+    ]);
+
+    assert.deepEqual(readTranscript(source, "other"), []);
+  });
+});
+
+function describeEntry(entry: TranscriptEntry): string {
+  return entry.kind === "message" ? entry.text : entry.kind;
+}

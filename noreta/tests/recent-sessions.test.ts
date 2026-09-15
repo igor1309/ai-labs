@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import { viewSessions } from "../src/sessions.js";
 import { sourceOf } from "./session-source.js";
+import { at } from "./time.js";
 
 describe("Feature: See recent sessions", () => {
   describe("Rule: Inactive sessions expose their last activity", () => {
@@ -43,7 +44,3 @@ describe("Feature: See recent sessions", () => {
     });
   });
 });
-
-function at(time: string): Date {
-  return new Date(`2026-09-15T${time}:00Z`);
-}

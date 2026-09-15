@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 const scenarioFiles = new Map([
   ["See active sessions", "active-sessions.test.ts"],
   ["See recent sessions", "recent-sessions.test.ts"],
+  ["Read a session", "read-session.test.ts"],
 ]);
 
 const testsDirectory = dirname(fileURLToPath(import.meta.url));

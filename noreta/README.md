@@ -40,11 +40,14 @@ Codex session yet — there is no adapter and no entry point.
 | Path | Contents |
 |------|----------|
 | `src/sessions.ts` | Session view: maps observed sessions to active/waiting state and orders them by last activity. Discovery sits behind the `SessionSource` port. |
+| `src/transcript.ts` | Session transcript: messages, tool calls and file diffs, oldest first. Reading sits behind the `TranscriptSource` port. |
 | `tests/active-sessions.test.ts` | One test per Gherkin scenario of the "See active sessions" feature in [docs/qa.md](docs/qa.md), named after it. |
 | `tests/recent-sessions.test.ts` | Same, for "See recent sessions". |
+| `tests/read-session.test.ts` | Same, for "Read a session". |
 | `tests/qa-coverage.test.ts` | Asserts each implemented feature's test file declares exactly the scenario titles in [docs/qa.md](docs/qa.md). |
-| `tests/session-ordering.test.ts` | Ordering edge cases that are not QA scenarios: unreadable and tied timestamps. |
+| `tests/session-ordering.test.ts` | Ordering edge cases that are not QA scenarios: unreadable and tied timestamps, unknown sessions. |
 | `tests/session-source.ts` | Test sources feeding `SessionSource`, plus the `stateOf` projection. |
+| `tests/transcript-source.ts` | Test sources feeding `TranscriptSource`. |
 
 What this does **not** yet do: `SessionSource` has no production implementation,
 so the only thing that feeds `viewSessions` is a test source. The scenarios
