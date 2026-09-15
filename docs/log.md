@@ -2,6 +2,12 @@
 
 ## 2026-09-15
 
+- Land Noreta's first code and register it in CI: `noreta-core.yml` (typecheck
+  against `noreta/tsconfig.json` plus the test glob), a `noreta`/`noreta-ci`
+  path filter and dispatch job in `ci.yml` wired into `report` and `notify`, and
+  `test:noreta` chained into the root `npm test`. The `## Components` row and
+  the `loc-dashboard.html` data row no longer claim the project has no code.
+
 - Allow the `better-sqlite3` install script in `package.json` (`allowScripts`).
   npm 12 blocks dependency install scripts by default, so a fresh `npm ci` left
   the native binding unbuilt and 77 nomos tests failed locally on
