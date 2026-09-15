@@ -1,8 +1,12 @@
 import type { ObservedSession, SessionSource, SessionView } from "../src/sessions.js";
 
-type PartialSession = Omit<ObservedSession, "agent" | "workspace" | "lastActivityAt"> & {
+type PartialSession = Omit<
+  ObservedSession,
+  "agent" | "workspace" | "workspaceOnDisk" | "lastActivityAt"
+> & {
   agent?: string;
   workspace?: string;
+  workspaceOnDisk?: boolean;
   lastActivityAt?: Date;
 };
 
@@ -40,7 +44,7 @@ export function changingSource(...sessions: PartialSession[]): {
 // Projects away the activity time for scenarios about active/waiting state.
 export function stateOf(
   view: SessionView,
-): Omit<SessionView, "agent" | "workspace" | "lastActivityAt"> {
+): Omit<SessionView, "agent" | "workspace" | "workspaceOnDisk" | "lastActivityAt"> {
   return { id: view.id, active: view.active, waiting: view.waiting };
 }
 
@@ -49,6 +53,7 @@ function observed(session: PartialSession): ObservedSession {
     ...session,
     agent: session.agent ?? unspecifiedAgent,
     workspace: session.workspace ?? unspecifiedWorkspace,
+    workspaceOnDisk: session.workspaceOnDisk ?? true,
     lastActivityAt: session.lastActivityAt ?? unspecifiedActivity,
   };
 }

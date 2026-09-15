@@ -10,8 +10,11 @@ export type ObservedSession = {
   id: string;
   agent: string;
   // Where the session is working: its directory, which for a worktree is the
-  // worktree's own path rather than the repository root.
+  // worktree's own path rather than the repository root. A deleted worktree
+  // keeps its path — the session stays associated with where it ran — and is
+  // reported as gone rather than collapsed into the repository root.
   workspace: string;
+  workspaceOnDisk: boolean;
   // Present when that directory is in a repository, and when that repository
   // has a branch checked out.
   repository?: string;
@@ -26,6 +29,7 @@ export type SessionView = {
   id: string;
   agent: string;
   workspace: string;
+  workspaceOnDisk: boolean;
   repository?: string;
   branch?: string;
   active: boolean;
@@ -39,6 +43,7 @@ export function viewSessions(source: SessionSource): SessionView[] {
       id: session.id,
       agent: session.agent,
       workspace: session.workspace,
+      workspaceOnDisk: session.workspaceOnDisk,
       ...(session.repository === undefined ? {} : { repository: session.repository }),
       ...(session.branch === undefined ? {} : { branch: session.branch }),
       active: session.runtimeState !== undefined,
@@ -54,6 +59,12 @@ export type Recency = { now: Date; withinDays: number };
 
 export function recentSessions(sessions: SessionView[], recency: Recency): SessionView[] {
   return sessions.filter((session) => session.active || isRecent(session, recency));
+}
+
+// The complement of `recentSessions` over the same list: nothing is dropped by
+// the cutoff, it is only held back until asked for.
+export function olderSessions(sessions: SessionView[], recency: Recency): SessionView[] {
+  return sessions.filter((session) => !session.active && !isRecent(session, recency));
 }
 
 export function activeSessions(sessions: SessionView[]): SessionView[] {

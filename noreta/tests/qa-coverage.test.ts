@@ -4,9 +4,10 @@ import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
-// Each implemented QA feature owns one test file whose `it` names are exactly
-// its scenario titles. Features absent from this map are not implemented yet;
-// files absent from it (edge cases, this one) are not scenario files.
+// Each QA feature owns one test file whose `it` names are exactly its scenario
+// titles. Every feature in qa.md must appear here, so adding one to the document
+// fails this suite until it has tests. Files absent from the map (edge cases,
+// this one) are not scenario files.
 const scenarioFiles = new Map([
   ["See active sessions", "active-sessions.test.ts"],
   ["See recent sessions", "recent-sessions.test.ts"],
@@ -14,6 +15,7 @@ const scenarioFiles = new Map([
   ["Follow an active session", "follow-session.test.ts"],
   ["Find a session", "find-session.test.ts"],
   ["Organize sessions", "organize-sessions.test.ts"],
+  ["Access older sessions", "access-older-sessions.test.ts"],
 ]);
 
 const testsDirectory = dirname(fileURLToPath(import.meta.url));
@@ -34,11 +36,8 @@ describe("QA scenario coverage", () => {
   }
 
 
-  it("names only features that exist in qa.md", () => {
-    const declared = [...scenarioFiles.keys()];
-    const present = declared.filter((feature) => featureNames().includes(feature));
-
-    assert.deepEqual(present, declared);
+  it("accounts for every feature in qa.md", () => {
+    assert.deepEqual([...scenarioFiles.keys()].sort(), featureNames().sort());
   });
 });
 

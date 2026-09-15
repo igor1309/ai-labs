@@ -39,7 +39,7 @@ Codex session yet — there is no adapter and no entry point.
 
 | Path | Contents |
 |------|----------|
-| `src/sessions.ts` | Session view: `viewSessions` reads the `SessionSource` and orders by last activity; `recentSessions` and `activeSessions` are list-to-list projections over the result. |
+| `src/sessions.ts` | Session view: `viewSessions` reads the `SessionSource` and orders by last activity; `recentSessions`, `olderSessions` and `activeSessions` are list-to-list projections over the result. |
 | `src/follow.ts` | Follows one session: pushes a fresh state and transcript whenever the `SessionChanges` port signals, so an open session reflects new activity without being asked. |
 | `src/search.ts` | Finds sessions by agent, repository, branch or message text, across the whole source rather than the default view. |
 | `src/grouping.ts` | Partitions a session list by repository, workspace or agent. |
@@ -51,11 +51,13 @@ Codex session yet — there is no adapter and no entry point.
 | `tests/follow-session.test.ts` | Same, for "Follow an active session". |
 | `tests/find-session.test.ts` | Same, for "Find a session" — one test per Examples row. |
 | `tests/organize-sessions.test.ts` | Same, for "Organize sessions". |
+| `tests/access-older-sessions.test.ts` | Same, for "Access older sessions". |
 | `tests/search-sources.test.ts` | Not QA scenarios: what search asks of the transcript source, and the empty query. |
 | `tests/qa-coverage.test.ts` | Asserts each implemented feature's test file declares exactly the scenario titles in [docs/qa.md](docs/qa.md). |
 | `tests/follow-unknown-session.test.ts` | Not QA scenarios: following an unknown id, and how often following pushes. |
 | `tests/change-signal.ts` | Test stand-in for the watcher behind `SessionChanges`. |
 | `tests/transcript-entries.test.ts` | Entry-shape guarantees that are not QA scenarios: speakers stay distinguishable. |
+| `tests/recent-and-older.test.ts` | Not a QA scenario: the recent/older split loses no session. |
 | `tests/grouping-at-scale.test.ts` | Not a QA scenario: grouping a long history stays linear. |
 | `tests/session-ordering.test.ts` | Ordering edge cases that are not QA scenarios: unreadable and tied timestamps, unknown sessions. |
 | `tests/session-source.ts` | Test sources feeding `SessionSource`, plus the `stateOf` projection. |

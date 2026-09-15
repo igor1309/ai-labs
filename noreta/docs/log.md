@@ -1,6 +1,13 @@
 # Log
 
 ## 2026-09-15
+- Implement "Access older sessions", the last QA feature: `olderSessions` is the
+  complement of `recentSessions` over the same list, and sessions carry
+  `workspaceOnDisk`, so a deleted worktree keeps its path and is reported as gone
+  rather than collapsed into the repository root. With every feature implemented,
+  the coverage test now requires the feature map to account for *every* feature in
+  `docs/qa.md` — adding a scenario to the document fails the suite until it has a
+  test, verified by adding one.
 - Make the session projections compose: `recentSessions` took a `SessionSource`
   while `activeSessions` and `groupSessions` took a list, so the three could not
   be chained. All three are list-to-list now, and `viewSessions` is the one
