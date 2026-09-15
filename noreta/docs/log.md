@@ -1,6 +1,11 @@
 # Log
 
 ## 2026-09-15
+- Implement "Follow an active session": `src/follow.ts` returns a reader that
+  re-reads both sources on every call, so an open session picks up new messages
+  and runtime transitions. All four scenarios falsify a snapshot-once reader,
+  which is the implementation they exist to rule out. Pull, not push — the
+  SSE/WebSocket transport in the implementation notes sits above this.
 - Extract `src/ordering.ts`: `sessions.ts` and `transcript.ts` had each grown
   their own comparator and NaN-safe time reader, so the rule that an unreadable
   timestamp sorts oldest lived in two places. It now lives in one, parameterised

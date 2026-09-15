@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { viewSessions } from "../src/sessions.js";
-import { readTranscript, type TranscriptEntry } from "../src/transcript.js";
+import { readTranscript } from "../src/transcript.js";
 import { sourceOf } from "./session-source.js";
 import { at } from "./time.js";
-import { transcriptOf } from "./transcript-source.js";
+import { describeEntry, transcriptOf } from "./transcript-source.js";
 
 // Edge cases behind "Recent sessions are ordered by last activity". Not QA
 // scenarios, so they live outside the scenario-named files.
@@ -72,7 +72,3 @@ describe("Ordering a transcript", () => {
     assert.deepEqual(readTranscript(source, "other"), []);
   });
 });
-
-function describeEntry(entry: TranscriptEntry): string {
-  return entry.kind === "message" ? entry.text : entry.kind;
-}
