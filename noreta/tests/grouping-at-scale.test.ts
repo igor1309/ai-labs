@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { groupSessions } from "../src/grouping.js";
+import { groupBy } from "../src/grouping.js";
 import type { ScenarioSession } from "./session-source.js";
 
 // Not a QA scenario. Grouping by agent is the worst case and the likeliest one:
@@ -18,11 +18,11 @@ describe("Grouping a long history", () => {
     const sessions = manySessions(50_000);
 
     const started = process.hrtime.bigint();
-    const groups = groupSessions(sessions, "agent");
+    const groups = groupBy(sessions, (session) => session.agent);
     const elapsedMilliseconds = Number(process.hrtime.bigint() - started) / 1e6;
 
     assert.equal(groups.length, 1);
-    assert.equal(groups[0].sessions.length, sessions.length);
+    assert.equal(groups[0].items.length, sessions.length);
     assert.ok(
       elapsedMilliseconds < 500,
       `grouping 50,000 sessions took ${elapsedMilliseconds.toFixed(0)}ms, which means it is no longer linear`,

@@ -1,42 +1,47 @@
-export type GroupBy = "repository" | "workspace" | "agent";
-
-// What grouping reads of a session, and nothing besides: the contexts it can
-// group by. The record is this module's own: a source hands over whatever it
-// keeps, and a session is groupable when it carries these. A context a session
-// may not have is optional here, and the sessions that lack it form their own
-// group.
-type GroupableSession = {
-  agent: string;
-  workspace: string;
-  repository?: string;
+// A group holds the records the caller handed in, so they come back as whatever
+// the caller keeps. `key` is whatever the accessor returned for the group's
+// first item, `undefined` included: every item belongs to exactly one group,
+// and the items an accessor has no key for form theirs. Naming that group is
+// the reader's job, not this module's.
+export type Group<
+  Item,
+  Key extends string | number | bigint | boolean | null | undefined,
+> = {
+  key: Key;
+  items: Item[];
 };
 
-// `name` is absent when the sessions in the group have no such context — they
-// still form a group, because every session belongs to exactly one. Naming that
-// group is the reader's job, not this module's. A group holds the records the
-// caller handed in, so they come back as whatever the caller keeps.
-export type SessionGroup<Session> = {
-  name: string | undefined;
-  sessions: Session[];
-};
+// What to group by is the caller's reading of its own record, taken as an
+// accessor rather than a field name this module would have to know the words
+// of.
+//
+// The key is one the `Map` below can compare by value. What the constraint
+// leaves out is everything compared by identity: every object, and `symbol`
+// too, primitive though it is. Under such a key two readings that are equal —
+// two `Date`s of the same instant, say — would each get a group of their own,
+// and the caller would read that as grouping quietly not working. A caller
+// holding one reduces it to a value first, choosing what "the same" means
+// for it.
+export function groupBy<
+  Item,
+  Key extends string | number | bigint | boolean | null | undefined,
+>(
+  items: Item[],
+  keyOf: (item: Item) => Key,
+): Group<Item, Key>[] {
+  const groups = new Map<Key, Item[]>();
 
-export function groupSessions<Session extends GroupableSession>(
-  sessions: Session[],
-  by: GroupBy,
-): SessionGroup<Session>[] {
-  const groups = new Map<string | undefined, Session[]>();
-
-  for (const session of sessions) {
-    const name = session[by];
-    const group = groups.get(name);
+  for (const item of items) {
+    const key = keyOf(item);
+    const group = groups.get(key);
 
     if (group === undefined) {
-      groups.set(name, [session]);
+      groups.set(key, [item]);
     } else {
       // Owned by this call, so appending cannot disturb the caller's list.
-      group.push(session);
+      group.push(item);
     }
   }
 
-  return [...groups].map(([name, grouped]) => ({ name, sessions: grouped }));
+  return [...groups].map(([key, grouped]) => ({ key, items: grouped }));
 }

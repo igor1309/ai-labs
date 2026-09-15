@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { groupSessions, type SessionGroup } from "../src/grouping.js";
+import { groupBy, type Group } from "../src/grouping.js";
 import { activeSessions } from "../src/sessions.js";
 import { isActive, type ScenarioSession, sessionsOf } from "./session-source.js";
 
@@ -15,7 +15,7 @@ describe("Feature: Organize sessions", () => {
         { id: "loose" },
       );
 
-      const groups = groupSessions(sessions, "repository");
+      const groups = groupBy(sessions, (session) => session.repository);
 
       assert.deepEqual(membership(groups), {
         "ai-labs": ["a", "c"],
@@ -32,7 +32,7 @@ describe("Feature: Organize sessions", () => {
         { id: "c", workspace: "/repos/ai-labs" },
       );
 
-      const groups = groupSessions(sessions, "workspace");
+      const groups = groupBy(sessions, (session) => session.workspace);
 
       assert.deepEqual(membership(groups), {
         "/repos/ai-labs": ["a", "c"],
@@ -48,7 +48,7 @@ describe("Feature: Organize sessions", () => {
         { id: "c", agent: "claude" },
       );
 
-      const groups = groupSessions(sessions, "agent");
+      const groups = groupBy(sessions, (session) => session.agent);
 
       assert.deepEqual(membership(groups), {
         claude: ["a", "c"],
@@ -75,17 +75,21 @@ describe("Feature: Organize sessions", () => {
   });
 });
 
-function membership(groups: SessionGroup<ScenarioSession>[]): Record<string, string[]> {
+// A context a session may not have groups the ones that lack it under no key,
+// so these assertions read every grouping in the same shape.
+type SessionGroup = Group<ScenarioSession, string | undefined>;
+
+function membership(groups: SessionGroup[]): Record<string, string[]> {
   return Object.fromEntries(
-    groups.map((group) => [group.name ?? "(none)", group.sessions.map((s) => s.id)]),
+    groups.map((group) => [group.key ?? "(none)", group.items.map((s) => s.id)]),
   );
 }
 
 function eachSessionAppearsExactlyOnce(
-  groups: SessionGroup<ScenarioSession>[],
+  groups: SessionGroup[],
   sessions: ScenarioSession[],
 ): void {
-  const placed = groups.flatMap((group) => group.sessions.map((session) => session.id));
+  const placed = groups.flatMap((group) => group.items.map((session) => session.id));
 
   assert.deepEqual(
     [...placed].sort(),
