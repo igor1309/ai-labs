@@ -1,10 +1,10 @@
 ---
 date: 2026-09-15
 model: gpt-5.6-sol
-description: "Exploratory implementation notes for a local-first Claude/Codex session viewer: session model, indexing, update model, and proposed stack"
+description: "Exploratory Noreta implementation notes — a local-first Claude/Codex session viewer: session model, indexing, update model, and proposed stack"
 ---
 
-# Implementation Notes
+# Noreta — Implementation Notes
 
 Working implementation notes for a local-first Claude/Codex session
 launcher. These are exploratory technical decisions and constraints, not

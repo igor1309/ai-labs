@@ -1,10 +1,10 @@
 ---
 date: 2026-09-15
 model: gpt-5.6-sol
-description: "Product vision for a local hub of coding agent sessions (Claude Code, Codex, Pi): read-only Mac MVP, iPhone V2, later runtime interaction"
+description: "Noreta product vision — a local hub of coding agent sessions (Claude Code, Codex, Pi): read-only Mac MVP, iPhone V2, later runtime interaction"
 ---
 
-# Локальный центр для работы с сессиями coding agents
+# Noreta — локальный центр для работы с сессиями coding agents
 
 Собирает в одном интерфейсе сессии разных агентов --- Claude Code,
 Codex, Pi, позже OpenCode и других --- и даёт единое представление
