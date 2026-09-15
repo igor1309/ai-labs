@@ -39,8 +39,10 @@ Codex session yet — there is no adapter and no entry point.
 
 | Path | Contents |
 |------|----------|
-| `src/sessions.ts` | Session view: maps observed sessions to active/waiting state. Discovery sits behind the `SessionSource` port. |
+| `src/sessions.ts` | Session view: maps observed sessions to active/waiting state and orders them by last activity. Discovery sits behind the `SessionSource` port. |
 | `tests/active-sessions.test.ts` | One test per Gherkin scenario of the "See active sessions" feature in [docs/qa.md](docs/qa.md), named after it. |
+| `tests/recent-sessions.test.ts` | Same, for "See recent sessions". |
+| `tests/session-source.ts` | Test sources feeding `SessionSource`. |
 
 What this does **not** yet do: `SessionSource` has no production implementation,
 so the only thing that feeds `viewSessions` is a test source. The scenarios

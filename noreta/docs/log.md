@@ -1,6 +1,11 @@
 # Log
 
 ## 2026-09-15
+- Implement "See recent sessions": sessions carry `lastActivityAt`, the view
+  surfaces it, and the default view is ordered most-recent-first. Test helpers
+  move to `tests/session-source.ts`. "A recently inactive session exists" is
+  pinned rather than driven — nothing filters the default view by recency until
+  "Access older sessions" introduces the cutoff.
 - Implement the first QA feature, "See active sessions": `src/sessions.ts` maps
   observed sessions to the active/waiting view a session list is drawn from, and
   `tests/active-sessions.test.ts` carries one test per Gherkin scenario, named

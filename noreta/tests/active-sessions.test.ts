@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { viewSessions, type ObservedSession, type SessionSource } from "../src/sessions.js";
+import { viewSessions } from "../src/sessions.js";
+import { changingSource, sourceOf } from "./session-source.js";
 
 describe("Feature: See active sessions", () => {
   describe("Rule: A session with a live runtime is active", () => {
@@ -76,28 +77,3 @@ describe("Feature: See active sessions", () => {
     });
   });
 });
-
-function sourceOf(...sessions: ObservedSession[]): SessionSource {
-  return () => sessions;
-}
-
-function changingSource(...sessions: ObservedSession[]): {
-  read: SessionSource;
-  readCount: () => number;
-  replaceWith: (...next: ObservedSession[]) => void;
-} {
-  let current = sessions;
-  let reads = 0;
-
-  return {
-    read: () => {
-      reads += 1;
-
-      return current;
-    },
-    readCount: () => reads,
-    replaceWith: (...next) => {
-      current = next;
-    },
-  };
-}
