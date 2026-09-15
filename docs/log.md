@@ -2,6 +2,12 @@
 
 ## 2026-09-15
 
+- Implement all seven Noreta QA features against `noreta/docs/qa.md`, one at a
+  time, each followed by a Codex adversarial review whose findings were judged
+  and fixed. Every feature has a domain model and a test named after each Gherkin
+  scenario; none has an agent adapter yet. Refreshed the `## Components` row and
+  the `loc-dashboard.html` entry for the new code.
+
 - Land Noreta's first code and register it in CI: `noreta-core.yml` (typecheck
   against `noreta/tsconfig.json` plus the test glob), a `noreta`/`noreta-ci`
   path filter and dispatch job in `ci.yml` wired into `report` and `notify`, and
