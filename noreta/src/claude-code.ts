@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 
 import { parsedRecord, tailOf, transcriptFiles } from "./claude-code-files.js";
+import { repositoryOf } from "./git-repository.js";
 import type { ObservedSession, RuntimeState, SessionSource } from "./sessions.js";
 
 // What the adapter needs to know about a session that a transcript cannot say:
@@ -52,12 +53,17 @@ function observedSession(
     return [];
   }
 
+  // Not taken from the record's branch: a workspace can be in a repository with
+  // no branch checked out, and only the file system says which repository.
+  const repository = repositoryOf(context.cwd);
+
   return [
     {
       id: context.sessionId,
       agent: "claude",
       workspace: context.cwd,
       workspaceOnDisk: existsSync(context.cwd),
+      ...(repository === undefined ? {} : { repository }),
       ...(isBranch(context.gitBranch) ? { branch: context.gitBranch } : {}),
       ...runtimeStateOf(snapshot(context.sessionId)),
       lastActivityAt: new Date(context.timestamp),

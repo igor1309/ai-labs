@@ -12,6 +12,7 @@ import {
   writeProject,
 } from "./claude-code-projects.js";
 import { livePid, register, registryDirectoryOf } from "./claude-code-registry.js";
+import { checkoutDirectory } from "./git-layouts.js";
 import { at } from "./time.js";
 
 // Nothing in these files is running: the registry is a separate source, tested
@@ -92,6 +93,21 @@ describe("What the Claude Code adapter discovers", () => {
     assert.deepEqual(
       claudeCodeSessions(projects, notRunning)().map((session) => session.workspaceOnDisk),
       [true],
+    );
+  });
+
+  // A transcript says where a session works, never which repository that is:
+  // the answer is on disk, beside the workspace.
+  it("reads the repository from the workspace on disk", () => {
+    const workspace = checkoutDirectory("ai-labs");
+    const projects = projectsDirectoryOf({
+      id: "checked-out",
+      records: [userRecord({ id: "checked-out", workspace, at: at("10:00") })],
+    });
+
+    assert.deepEqual(
+      claudeCodeSessions(projects, notRunning)().map((session) => session.repository),
+      ["ai-labs"],
     );
   });
 
