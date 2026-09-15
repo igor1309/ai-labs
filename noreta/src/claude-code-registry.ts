@@ -13,16 +13,21 @@ import type { RuntimeState } from "./sessions.js";
 // these stay the domain's states, not a parallel vocabulary.
 type ObservedState = Extract<RuntimeState, "working" | "waiting" | "idle">;
 
+// The scan belongs to the snapshot, not to the adapter: a directory read on
+// each snapshot is what makes the answer about now rather than about whenever
+// the adapter was wired.
 export function claudeCodeRuntimeStates(registryDirectory: string): RuntimeStates {
-  const states = new Map<string, ObservedState>();
+  return () => {
+    const states = new Map<string, ObservedState>();
 
-  for (const [sessionId, state] of registrations(registryDirectory)
-    .filter(isRunning)
-    .map(asState)) {
-    states.set(sessionId, busier(states.get(sessionId), state));
-  }
+    for (const [sessionId, state] of registrations(registryDirectory)
+      .filter(isRunning)
+      .map(asState)) {
+      states.set(sessionId, busier(states.get(sessionId), state));
+    }
 
-  return (sessionId: string): RuntimeState | undefined => states.get(sessionId);
+    return (sessionId: string): RuntimeState | undefined => states.get(sessionId);
+  };
 }
 
 // Two live processes can register the same session — one resumed in another

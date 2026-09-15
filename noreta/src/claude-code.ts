@@ -13,8 +13,13 @@ import type { ObservedSession, RuntimeState, SessionSource } from "./sessions.js
 
 // What the adapter needs to know about a session that a transcript cannot say:
 // whether it is running now, and what it is doing. Undefined when the session
-// is not running.
-export type RuntimeStates = (sessionId: string) => RuntimeState | undefined;
+// is not running. Sessions start and stop while a source is held open, so the
+// answer is only true of the moment it was asked for: the outer call takes that
+// snapshot, and the type says where "now" is.
+export type RuntimeStates = () => (sessionId: string) => RuntimeState | undefined;
+
+// One such snapshot, answering for every session in one read.
+type RuntimeSnapshot = ReturnType<RuntimeStates>;
 
 // Reads the sessions Claude Code leaves on disk: one JSONL transcript per
 // session, under one directory per project. That directory's name is the
@@ -24,10 +29,15 @@ export function claudeCodeSessions(
   projectsDirectory: string,
   runtimeStates: RuntimeStates,
 ): SessionSource {
-  return (): ObservedSession[] =>
-    transcriptFiles(projectsDirectory).flatMap((file) =>
-      observedSession(file, runtimeStates),
+  return (): ObservedSession[] => {
+    // One snapshot for the whole read, not one per session: the registry is a
+    // directory scan, and a read covers every session on the machine.
+    const snapshot = runtimeStates();
+
+    return transcriptFiles(projectsDirectory).flatMap((file) =>
+      observedSession(file, snapshot),
     );
+  };
 }
 
 // What a record has to carry to describe its session. Records that do not —
@@ -43,7 +53,7 @@ type SessionContext = {
 // checkout, and its timestamp is the last thing the session did.
 function observedSession(
   file: string,
-  runtimeStates: RuntimeStates,
+  snapshot: RuntimeSnapshot,
 ): ObservedSession[] {
   const records = contextRecords(file);
   const context = records[records.length - 1];
@@ -59,7 +69,7 @@ function observedSession(
       workspace: context.cwd,
       workspaceOnDisk: existsSync(context.cwd),
       ...(isBranch(context.gitBranch) ? { branch: context.gitBranch } : {}),
-      ...runtimeStateOf(runtimeStates(context.sessionId)),
+      ...runtimeStateOf(snapshot(context.sessionId)),
       lastActivityAt: new Date(context.timestamp),
     },
   ];

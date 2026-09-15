@@ -14,11 +14,17 @@ export type RegistryEntry = {
 export function registryDirectoryOf(...entries: RegistryEntry[]): string {
   const directory = mkdtempSync(join(tmpdir(), "noreta-registry-"));
 
+  register(directory, ...entries);
+
+  return directory;
+}
+
+// A session is started by whatever launched the agent, so it can register long
+// after the registry directory was made.
+export function register(directory: string, ...entries: RegistryEntry[]): void {
   for (const entry of entries) {
     writeFileSync(join(directory, `${entry.pid}.json`), JSON.stringify(entry));
   }
-
-  return directory;
 }
 
 export const livePid = process.pid;

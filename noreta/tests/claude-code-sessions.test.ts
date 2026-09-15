@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { claudeCodeRuntimeStates } from "../src/claude-code-registry.js";
 import { claudeCodeSessions, type RuntimeStates } from "../src/claude-code.js";
 import {
   appendPartialRecord,
@@ -10,11 +11,12 @@ import {
   userRecord,
   writeProject,
 } from "./claude-code-projects.js";
+import { livePid, register, registryDirectoryOf } from "./claude-code-registry.js";
 import { at } from "./time.js";
 
 // Nothing in these files is running: the registry is a separate source, tested
 // on its own in claude-code-runtime.test.ts.
-const notRunning: RuntimeStates = () => undefined;
+const notRunning: RuntimeStates = () => () => undefined;
 
 // Not QA scenarios: what the Claude Code adapter makes of the files on disk.
 describe("What the Claude Code adapter discovers", () => {
@@ -138,12 +140,48 @@ describe("What the Claude Code adapter discovers", () => {
       id: "running",
       records: [userRecord({ id: "running", at: at("10:00") })],
     });
-    const running: RuntimeStates = (id) => (id === "running" ? "working" : undefined);
+    const running: RuntimeStates = () => (id) => (id === "running" ? "working" : undefined);
 
     assert.deepEqual(
       claudeCodeSessions(projects, running)().map((session) => session.runtimeState),
       ["working"],
     );
+  });
+
+  // Wired to the real registry, because the defect only shows when a source is
+  // held across a change on disk: a session that starts after the first read
+  // was reported inactive for as long as the source lived.
+  it("reports the runtime state the registry holds at each read", () => {
+    const projects = projectsDirectoryOf({
+      id: "starting",
+      records: [userRecord({ id: "starting", at: at("10:00") })],
+    });
+    const registry = registryDirectoryOf();
+    const sessions = claudeCodeSessions(projects, claudeCodeRuntimeStates(registry));
+    assert.deepEqual(sessions().map((session) => session.runtimeState), [undefined]);
+
+    register(registry, { pid: livePid, sessionId: "starting", status: "busy" });
+
+    assert.deepEqual(sessions().map((session) => session.runtimeState), ["working"]);
+  });
+
+  // Asking per session would scan the registry directory once for every session
+  // on the machine, so a read takes one snapshot and asks it about each.
+  it("takes one runtime snapshot for a read of several sessions", () => {
+    const projects = projectsDirectoryOf(
+      { id: "one", records: [userRecord({ id: "one", at: at("10:00") })] },
+      { id: "two", records: [userRecord({ id: "two", at: at("10:00") })] },
+    );
+    let snapshots = 0;
+    const counted: RuntimeStates = () => {
+      snapshots += 1;
+
+      return () => undefined;
+    };
+
+    claudeCodeSessions(projects, counted)();
+
+    assert.equal(snapshots, 1);
   });
 
   it("finds the newest record at the end of a long transcript", () => {
