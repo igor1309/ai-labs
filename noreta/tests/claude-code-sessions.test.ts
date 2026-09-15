@@ -6,6 +6,7 @@ import {
   appendPartialRecord,
   existingDirectory,
   projectsDirectoryOf,
+  type TranscriptRecord,
   userRecord,
 } from "./claude-code-projects.js";
 import { at } from "./time.js";
@@ -125,4 +126,45 @@ describe("What the Claude Code adapter discovers", () => {
       ["working"],
     );
   });
+
+  it("finds the newest record at the end of a long transcript", () => {
+    const projects = projectsDirectoryOf({
+      id: "long",
+      records: [
+        userRecord({ id: "long", branch: "trunk", at: at("09:00") }),
+        ...unplacedRecords(megabyte),
+        userRecord({ id: "long", branch: "feature/noreta", at: at("10:30") }),
+      ],
+    });
+
+    assert.deepEqual(
+      claudeCodeSessions(projects, notRunning)().map((session) => session.branch),
+      ["feature/noreta"],
+    );
+  });
+
+  it("finds the context of a long transcript that ends in other records", () => {
+    const projects = projectsDirectoryOf({
+      id: "trailing",
+      records: [
+        userRecord({ id: "trailing", branch: "feature/noreta", at: at("10:30") }),
+        ...unplacedRecords(megabyte),
+      ],
+    });
+
+    assert.deepEqual(
+      claudeCodeSessions(projects, notRunning)().map((session) => session.branch),
+      ["feature/noreta"],
+    );
+  });
 });
+
+const megabyte = 1024 * 1024;
+
+// Records that say nothing about where a session is working, enough of them to
+// fill roughly `bytes` — so a transcript can be long without its context moving.
+function unplacedRecords(bytes: number): TranscriptRecord[] {
+  const record = { type: "attachment", content: "x".repeat(1000) };
+
+  return Array.from({ length: Math.ceil(bytes / 1000) }, () => record);
+}

@@ -1,4 +1,12 @@
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import {
+  closeSync,
+  existsSync,
+  fstatSync,
+  openSync,
+  readFileSync,
+  readSync,
+  readdirSync,
+} from "node:fs";
 import { join } from "node:path";
 
 import type { ObservedSession, RuntimeState, SessionSource } from "./sessions.js";
@@ -69,8 +77,42 @@ function isBranch(gitBranch: string): boolean {
   return gitBranch !== "HEAD";
 }
 
+// The newest context record sits at the end of a transcript, and transcripts
+// run to megabytes, so only the tail is read. The whole file is read only when
+// the tail holds no context record at all.
 function contextRecords(file: string): SessionContext[] {
-  return readFileSync(file, "utf8").split("\n").flatMap(parsedRecord).filter(isContext);
+  const tail = tailOf(file);
+  const found = contextIn(tail.text);
+
+  return found.length > 0 || tail.whole ? found : contextIn(readFileSync(file, "utf8"));
+}
+
+const tailBytes = 64 * 1024;
+
+// A tail that starts inside the file starts inside a line, so that first
+// fragment is dropped rather than left to parse by accident.
+function tailOf(file: string): { text: string; whole: boolean } {
+  const handle = openSync(file, "r");
+
+  try {
+    const size = fstatSync(handle).size;
+    const start = Math.max(0, size - tailBytes);
+    const buffer = Buffer.alloc(size - start);
+
+    readSync(handle, buffer, 0, buffer.length, start);
+
+    const text = buffer.toString("utf8");
+
+    return start === 0
+      ? { text, whole: true }
+      : { text: text.slice(text.indexOf("\n") + 1), whole: false };
+  } finally {
+    closeSync(handle);
+  }
+}
+
+function contextIn(text: string): SessionContext[] {
+  return text.split("\n").flatMap(parsedRecord).filter(isContext);
 }
 
 // A running session is appended to while it is read, so its last line can be

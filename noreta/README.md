@@ -61,7 +61,7 @@ Codex session yet — there is no adapter and no entry point.
 | `tests/recent-and-older.test.ts` | Not a QA scenario: the recent/older split loses no session. |
 | `tests/grouping-at-scale.test.ts` | Not a QA scenario: grouping a long history stays linear. |
 | `tests/session-ordering.test.ts` | Ordering edge cases that are not QA scenarios: unreadable and tied timestamps, unknown sessions. |
-| `tests/claude-code-sessions.test.ts` | Not QA scenarios: what the Claude Code adapter makes of the files on disk — the record it believes, a half-written last line, a workspace that is gone, a transcript that never says where it is working. |
+| `tests/claude-code-sessions.test.ts` | Not QA scenarios: what the Claude Code adapter makes of the files on disk — the record it believes, a half-written last line, a workspace that is gone, a transcript that never says where it is working, and a long transcript whose context is at either end. |
 | `tests/claude-code-projects.ts` | Writes a throwaway `~/.claude/projects` tree for those tests. |
 | `src/claude-code-registry.ts` | Implements `RuntimeStates` from `~/.claude/sessions/<pid>.json`, the registry Claude Code keeps of its running sessions. The file name is the claim that the session runs, so a registration whose process is gone is dropped rather than believed. Two live processes can register one session; the busiest of them is reported. |
 | `tests/claude-code-runtime.test.ts` | Not QA scenarios: the status mapping, and a registration that outlived its process. |
@@ -84,11 +84,10 @@ session blocked either way reports the bare `waiting`, and "A session waiting
 for input is visible as waiting" and "A session waiting for approval is visible
 as waiting" are distinguishable only through a source that says which.
 
-Measured against a real `~/.claude/projects` of 793 project directories: 1540
-sessions in 5.8s, 888 of them with a workspace that is gone. That cost is the
-whole-file read — every transcript is parsed end to end, and the largest are
-megabytes. Reading only what identity and last activity need is untouched
-work.
+Discovery reads only the last 64 KB of each transcript, where the newest
+context record sits, and falls back to the whole file only when that tail holds
+none. Against a real `~/.claude/projects` of 1546 sessions it takes about 200 ms,
+with output identical to a whole-file read.
 
 ### Pinned scenarios
 

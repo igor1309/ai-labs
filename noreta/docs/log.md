@@ -1,6 +1,10 @@
 # Log
 
 ## 2026-09-15
+- Session discovery reads each transcript's last 64 KB instead of the whole
+  file: 4.3–5.6 s → ~200 ms for 1546 real sessions, output identical to the
+  whole-file read. Two guard tests pin the tail edges; each fails when the read
+  is broken the way it guards against.
 - Two live processes registering one session no longer resolve by `readdir`
   order, which was arbitrary: the busiest of them wins. The costs are asymmetric
   — over-reporting that a session wants attention costs a glance, under-reporting
