@@ -1,12 +1,12 @@
 ---
 date: 2026-09-15
 model: gpt-5.6-sol
-description: "Top 7 Noreta user stories for the read-only Mac MVP, written as Gherkin features"
+description: "QA scenarios for the Noreta read-only Mac MVP, one Gherkin feature per user story"
 ---
 
-# Noreta — QA
+# Noreta - QA
 
-```gherkin
+``` gherkin
 Feature: See active sessions
 
   Rule: A session with a live runtime is active
@@ -16,8 +16,13 @@ Feature: See active sessions
       When I view my sessions
       Then the session is shown as active
 
-    Scenario: An idle session is active
+    Scenario: A waiting session is active
       Given a session has a live runtime waiting for input
+      When I view my sessions
+      Then the session is shown as active
+
+    Scenario: An idle session is active
+      Given a session has a live runtime doing nothing
       When I view my sessions
       Then the session is shown as active
 
@@ -56,6 +61,11 @@ Feature: See recent sessions
       Given a session recently became inactive
       When I open Noreta
       Then the session is available in the default view
+
+    Scenario: Recent sessions are ordered by last activity
+      Given several inactive sessions have different last activity times
+      When I view recent sessions
+      Then the most recently active session appears first
 
 
 Feature: Read a session
@@ -100,7 +110,7 @@ Feature: Find a session
   Rule: Search covers session context and content
 
     Scenario Outline: Search sessions
-      Given indexed sessions exist
+      Given sessions exist
       When I search for <query>
       Then I see sessions matching <dimension>
 
@@ -126,24 +136,24 @@ Feature: Organize sessions
     Scenario: Group by repository
       Given sessions from several repositories exist
       When I group sessions by repository
-      Then I see a group for each repository
+      Then every session appears in exactly one repository group
 
     Scenario: Group by workspace
       Given sessions from several workspaces exist
       When I group sessions by workspace
-      Then I see a group for each workspace
+      Then every session appears in exactly one workspace group
 
     Scenario: Group by agent
       Given sessions from several agents exist
       When I group sessions by agent
-      Then I see a group for each agent
+      Then every session appears in exactly one agent group
 
   Rule: Sessions can be filtered by their attributes
 
     Scenario: Filter active sessions
       Given active and inactive sessions exist
       When I filter by active state
-      Then I see the active sessions
+      Then only active sessions are shown
 
 
 Feature: Access older sessions
@@ -160,7 +170,8 @@ Feature: Access older sessions
     Scenario: Its worktree has been deleted
       Given a session belongs to a worktree
       When that worktree is deleted
-      Then the session retains its historical workspace identity
+      Then the session remains associated with that worktree
+      And the worktree is shown as no longer on disk
 
     Scenario: Open a session from a deleted worktree
       Given a session belongs to a deleted worktree
