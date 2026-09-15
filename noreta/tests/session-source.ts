@@ -1,4 +1,4 @@
-// The order a reader sees, which the list's caller puts on it — `main.ts` calls
+// The order a reader sees, which the list's caller puts on it — `composition-root.ts` calls
 // this same function. Applied only where a scenario is about order.
 export { newestFirst } from "../src/ordering.js";
 
@@ -70,7 +70,7 @@ export function changingSource(...sessions: PartialSession[]): {
 }
 
 // How a reader of these records tells a running session from one that is not,
-// which is what the list is handed — `main.ts` hands it the same reading of the
+// which is what the list is handed — `composition-root.ts` hands it the same reading of the
 // same records. As a function it cannot drift from `runtimeState`; as a field
 // it could.
 export function isActive(session: Pick<ScenarioSession, "runtimeState">): boolean {
