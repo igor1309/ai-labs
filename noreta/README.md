@@ -49,6 +49,7 @@ Codex session yet — there is no adapter and no entry point.
 | `tests/read-session.test.ts` | Same, for "Read a session". |
 | `tests/follow-session.test.ts` | Same, for "Follow an active session". |
 | `tests/find-session.test.ts` | Same, for "Find a session" — one test per Examples row. |
+| `tests/search-sources.test.ts` | Not QA scenarios: what search asks of the transcript source, and the empty query. |
 | `tests/qa-coverage.test.ts` | Asserts each implemented feature's test file declares exactly the scenario titles in [docs/qa.md](docs/qa.md). |
 | `tests/follow-unknown-session.test.ts` | Not QA scenarios: following an unknown id, and how often following pushes. |
 | `tests/change-signal.ts` | Test stand-in for the watcher behind `SessionChanges`. |
@@ -62,6 +63,13 @@ has a production implementation, so the only thing feeding them is a test
 source. There is no adapter, no renderer and no entry point. Real Claude Code
 and Codex adapters, startup reconciliation and termination detection are still
 ahead; see [docs/implementation-notes.md](docs/implementation-notes.md).
+
+### Open questions
+
+- A transcript source that throws still aborts a whole search once any session
+  needs its transcript read. Sessions matched by context are safe, but the
+  product has to decide between skipping the unreadable session silently and
+  returning partial results with a warning. No scenario covers it yet.
 
 ### Pinned scenarios
 

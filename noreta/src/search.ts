@@ -1,5 +1,5 @@
 import { viewSessions, type SessionSource, type SessionView } from "./sessions.js";
-import { readTranscript, type TranscriptSource } from "./transcript.js";
+import type { TranscriptSource } from "./transcript.js";
 
 export function searchSessions(
   sessions: SessionSource,
@@ -8,20 +8,27 @@ export function searchSessions(
 ): SessionView[] {
   const wanted = query.toLowerCase();
 
-  return viewSessions(sessions).filter((session) =>
-    searchable(session, transcripts).some((text) => text.includes(wanted)),
+  return viewSessions(sessions).filter(
+    (session) =>
+      contextMatches(session, wanted) || wasSpokenIn(transcripts, session.id, wanted),
   );
 }
 
-function searchable(session: SessionView, transcripts: TranscriptSource): string[] {
-  return [session.agent, session.repository, session.branch]
-    .filter((context): context is string => context !== undefined)
-    .map((context) => context.toLowerCase())
-    .concat(spokenWords(transcripts, session.id));
+function contextMatches(session: SessionView, wanted: string): boolean {
+  return [session.agent, session.repository, session.branch].some(
+    (context) => context !== undefined && context.toLowerCase().includes(wanted),
+  );
 }
 
-function spokenWords(transcripts: TranscriptSource, sessionId: string): string[] {
-  return readTranscript(transcripts, sessionId)
-    .filter((entry) => entry.kind === "message")
-    .map((entry) => entry.text.toLowerCase());
+// Only reached when the session's context did not already match, so a session
+// findable by its repository stays findable when its transcript cannot be read.
+// Read straight from the source: matching does not care about order.
+function wasSpokenIn(
+  transcripts: TranscriptSource,
+  sessionId: string,
+  wanted: string,
+): boolean {
+  return transcripts(sessionId).some(
+    (entry) => entry.kind === "message" && entry.text.toLowerCase().includes(wanted),
+  );
 }

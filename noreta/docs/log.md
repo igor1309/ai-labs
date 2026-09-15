@@ -1,6 +1,13 @@
 # Log
 
 ## 2026-09-15
+- Codex review of "Find a session", accepted: search checked a session's
+  transcript before its agent, repository and branch, so a metadata-only query
+  read and sorted every transcript, and a transcript source that threw lost a
+  session whose agent had matched. Context now short-circuits and the transcript
+  is read straight from the source without the ordering pass. Reworked the four
+  Examples-row tests first: they all shared one session matching on every
+  dimension, so no single-dimension bug could fail them.
 - Implement "Find a session": `src/search.ts` matches a query against a session's
   agent, repository, branch and message text. Its second rule names sessions
   "outside the recent history", so this slice also introduces the window —

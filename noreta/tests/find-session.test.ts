@@ -10,19 +10,19 @@ import { transcriptOf } from "./transcript-source.js";
 describe("Feature: Find a session", () => {
   describe("Rule: Search covers session context and content", () => {
     it("Search sessions: rate limiter", () => {
-      assert.deepEqual(found("rate limiter"), ["wanted"]);
+      assert.deepEqual(found("rate limiter"), ["by-message-text"]);
     });
 
     it("Search sessions: ai-labs", () => {
-      assert.deepEqual(found("ai-labs"), ["wanted"]);
+      assert.deepEqual(found("ai-labs"), ["by-repository"]);
     });
 
     it("Search sessions: feature/noreta", () => {
-      assert.deepEqual(found("feature/noreta"), ["wanted"]);
+      assert.deepEqual(found("feature/noreta"), ["by-branch"]);
     });
 
     it("Search sessions: codex", () => {
-      assert.deepEqual(found("codex"), ["wanted"]);
+      assert.deepEqual(found("codex"), ["by-agent"]);
     });
   });
 
@@ -49,17 +49,16 @@ describe("Feature: Find a session", () => {
 
 const weeksLater = new Date("2026-09-29T10:00:00Z");
 
+// One session per dimension, each matching on that dimension alone, so a test
+// fails when its own dimension breaks rather than being carried by another.
 function found(query: string): string[] {
   const sessions = sourceOf(
-    {
-      id: "wanted",
-      agent: "codex",
-      repository: "ai-labs",
-      branch: "feature/noreta",
-    },
-    { id: "other", agent: "claude", repository: "elsewhere", branch: "trunk" },
+    { id: "by-agent", agent: "codex", repository: "unrelated", branch: "unrelated" },
+    { id: "by-repository", agent: "claude", repository: "ai-labs", branch: "unrelated" },
+    { id: "by-branch", agent: "claude", repository: "unrelated", branch: "feature/noreta" },
+    { id: "by-message-text", agent: "claude", repository: "unrelated", branch: "unrelated" },
   );
-  const transcripts = transcriptOf("wanted", [
+  const transcripts = transcriptOf("by-message-text", [
     { kind: "message", at: at("10:01"), role: "user", text: "fix the rate limiter" },
   ]);
 
