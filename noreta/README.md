@@ -46,7 +46,7 @@ Codex session yet — there is no adapter and no entry point.
 | `src/ordering.ts` | The one ordering rule: sort by a timestamp in either direction, treating an unreadable one as the oldest instead of returning `NaN`. |
 | `src/transcript.ts` | Session transcript: messages, tool calls and file diffs, oldest first. Reading sits behind the `TranscriptSource` port. |
 | `src/claude-code.ts` | Discovery adapter: reads the JSONL transcripts Claude Code leaves under `~/.claude/projects` and reports each as an `ObservedSession`. The project directory's name is the workspace path with its separators replaced, which is lossy, so workspace and branch come from the records. Runtime state comes from the `RuntimeStates` port, which it owns. |
-| `src/claude-code-transcript.ts` | Implements `TranscriptSource`: reads a session's JSONL transcript, found by session id in whichever project directory holds it. Text blocks become messages, `tool_use` blocks tool calls, and an edit's `structuredPatch` a unified diff. |
+| `src/claude-code-transcript.ts` | Implements `TranscriptSource`: reads a session's JSONL transcript, found by session id in whichever project directory holds it. Text blocks become messages, `tool_use` blocks tool calls, and an edit's `structuredPatch` a unified diff; a created file, whose patch is empty, reads as every line added. |
 | `src/session-lines.ts` | Plain-text lines for a session list: an active marker, agent, state, branch and workspace, and last activity. The state column reads `active`, `waiting` or `inactive` — `SessionView` carries no `working`/`idle` split to show. |
 | `src/main.ts` | Composition root and entry point: the only module that reads the home directory and the clock. Wires both Claude Code adapters into the domain and prints the last 7 days of sessions. Its wiring has no test; the real run is the check. |
 | `tests/active-sessions.test.ts` | One test per Gherkin scenario of the "See active sessions" feature in [docs/qa.md](docs/qa.md), named after it. |
@@ -77,8 +77,7 @@ Codex session yet — there is no adapter and no entry point.
 
 What this does **not** yet do: both ports have a Claude Code implementation
 and nothing else. The transcript adapter skips what Claude Code marks `isMeta`, but still
-reports unmarked wrappers such as `<task-notification>` as user messages, and
-a newly created file as an empty diff.
+reports unmarked wrappers such as `<task-notification>` as user messages.
 `npm start` prints recent sessions as plain text; the
 presentation target beyond that is undecided. A Codex
 adapter and startup reconciliation are still ahead; see

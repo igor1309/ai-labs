@@ -17,7 +17,12 @@ type TranscriptRecord = {
   isMeta?: boolean;
   timestamp: string;
   message?: { content: string | ContentBlock[] };
-  toolUseResult?: { filePath?: string; structuredPatch?: Hunk[] };
+  toolUseResult?: {
+    type?: string;
+    filePath?: string;
+    content?: string;
+    structuredPatch?: Hunk[];
+  };
 };
 
 type ContentBlock = { type: string; text?: string; name?: string };
@@ -88,14 +93,34 @@ function fileDiffEntries(record: TranscriptRecord, at: Date): TranscriptEntry[] 
     return [];
   }
 
+  const hunks =
+    result.type === "create" && result.content !== undefined
+      ? [createdFileHunk(result.content)]
+      : result.structuredPatch;
+
   return [
     {
       kind: "file-diff",
       at,
       path: result.filePath,
-      diff: result.structuredPatch.flatMap(unifiedDiffLines).join("\n"),
+      diff: hunks.flatMap(unifiedDiffLines).join("\n"),
     },
   ];
+}
+
+// Creating a file records an empty patch and the whole content, so the change is
+// every line of that content, added. The newline ending the last line does not
+// start another.
+function createdFileHunk(content: string): Hunk {
+  const lines = content.replace(/\n$/, "").split("\n");
+
+  return {
+    oldStart: 0,
+    oldLines: 0,
+    newStart: 1,
+    newLines: lines.length,
+    lines: lines.map((line) => `+${line}`),
+  };
 }
 
 function unifiedDiffLines(hunk: Hunk): string[] {

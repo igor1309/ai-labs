@@ -112,6 +112,35 @@ describe("What the Claude Code transcript adapter reads", () => {
     ]);
   });
 
+  // Writing a new file records its whole content and an empty patch, so the
+  // change is the file itself, every line added.
+  it("reads a created file as a diff adding every line", () => {
+    const projects = projectsDirectoryOf({
+      id: "s1",
+      records: [
+        {
+          type: "user",
+          toolUseResult: {
+            type: "create",
+            filePath: "/nowhere/new.ts",
+            content: "a\nb\n",
+            structuredPatch: [],
+          },
+          timestamp: at("10:05").toISOString(),
+        },
+      ],
+    });
+
+    assert.deepEqual(claudeCodeTranscript(projects)("s1"), [
+      {
+        kind: "file-diff",
+        at: at("10:05"),
+        path: "/nowhere/new.ts",
+        diff: "@@ -0,0 +1,2 @@\n+a\n+b",
+      },
+    ]);
+  });
+
   it("skips records that are not conversation", () => {
     const projects = projectsDirectoryOf({
       id: "s1",

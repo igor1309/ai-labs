@@ -1,6 +1,8 @@
 # Log
 
 ## 2026-09-15
+- A created file reads as a diff adding every line instead of an empty diff —
+  392 of 1850 diffs across 300 real transcripts had shown nothing.
 - Text Claude Code marks as its own (`isMeta`) no longer reads as the user
   speaking, so it stops showing up in transcripts and search.
 - A session's transcript is read from Claude Code's JSONL: messages, tool calls
