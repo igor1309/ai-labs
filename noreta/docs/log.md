@@ -1,6 +1,17 @@
 # Log
 
 ## 2026-09-15
+- Implement "Find a session": `src/search.ts` matches a query against a session's
+  agent, repository, branch and message text. Its second rule names sessions
+  "outside the recent history", so this slice also introduces the window —
+  `recentSessions(source, recency)` is the default view (active sessions at any
+  age, inactive ones inside the cutoff) while `viewSessions` stays unfiltered and
+  is what search reads. That un-pins "A recently inactive session exists": it now
+  fails if the window is removed.
+- Strengthen the coverage check for Scenario Outlines: each Examples row is
+  expected as its own test, named `<outline>: <query>`. The first attempt only
+  asserted the query string appeared somewhere in the file, which passed for the
+  wrong reason — the session setup contained the same literals.
 - Codex review of "Follow an active session": took the finding's fix rather than
   hedging the claim again. Following now pushes through a `SessionChanges` port —
   "the sources may have changed", to be implemented by a watcher or poller — so

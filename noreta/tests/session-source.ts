@@ -1,9 +1,14 @@
 import type { ObservedSession, SessionSource, SessionView } from "../src/sessions.js";
 
-type PartialSession = Omit<ObservedSession, "lastActivityAt"> & { lastActivityAt?: Date };
+type PartialSession = Omit<ObservedSession, "agent" | "lastActivityAt"> & {
+  agent?: string;
+  lastActivityAt?: Date;
+};
 
-// Scenarios that say nothing about activity times should not have to invent one.
+// Scenarios that say nothing about a session's activity time or agent should
+// not have to invent one.
 const unspecifiedActivity = new Date("2026-01-01T00:00:00Z");
+const unspecifiedAgent = "claude";
 
 export function sourceOf(...sessions: PartialSession[]): SessionSource {
   return () => sessions.map(observed);
@@ -31,10 +36,14 @@ export function changingSource(...sessions: PartialSession[]): {
 }
 
 // Projects away the activity time for scenarios about active/waiting state.
-export function stateOf(view: SessionView): Omit<SessionView, "lastActivityAt"> {
+export function stateOf(view: SessionView): Omit<SessionView, "agent" | "lastActivityAt"> {
   return { id: view.id, active: view.active, waiting: view.waiting };
 }
 
 function observed(session: PartialSession): ObservedSession {
-  return { ...session, lastActivityAt: session.lastActivityAt ?? unspecifiedActivity };
+  return {
+    ...session,
+    agent: session.agent ?? unspecifiedAgent,
+    lastActivityAt: session.lastActivityAt ?? unspecifiedActivity,
+  };
 }

@@ -12,6 +12,7 @@ const scenarioFiles = new Map([
   ["See recent sessions", "recent-sessions.test.ts"],
   ["Read a session", "read-session.test.ts"],
   ["Follow an active session", "follow-session.test.ts"],
+  ["Find a session", "find-session.test.ts"],
 ]);
 
 const testsDirectory = dirname(fileURLToPath(import.meta.url));
@@ -31,6 +32,7 @@ describe("QA scenario coverage", () => {
     });
   }
 
+
   it("names only features that exist in qa.md", () => {
     const declared = [...scenarioFiles.keys()];
     const present = declared.filter((feature) => featureNames().includes(feature));
@@ -39,14 +41,23 @@ describe("QA scenario coverage", () => {
   });
 });
 
+
 function featureNames(): string[] {
   return [...qa().matchAll(/^\s*Feature: (.+)$/gm)].map((match) => match[1].trim());
 }
 
+// A plain scenario is one title. An outline is one title per Examples row,
+// suffixed with that row's query — a single test named after the outline could
+// otherwise cover one row and look complete.
 function scenarioTitles(feature: string): string[] {
-  return [...featureBlock(feature).matchAll(/^\s*Scenario(?: Outline)?: (.+)$/gm)].map(
-    (match) => match[1].trim(),
-  );
+  const sections = featureBlock(feature).split(/^\s*Scenario(?: Outline)?: /m).slice(1);
+
+  return sections.flatMap((section) => {
+    const title = section.split("\n")[0].trim();
+    const queries = [...section.matchAll(/^\s*\|\s*"([^"]+)"\s*\|/gm)].map((row) => row[1]);
+
+    return queries.length === 0 ? [title] : queries.map((query) => `${title}: ${query}`);
+  });
 }
 
 function featureBlock(feature: string): string {

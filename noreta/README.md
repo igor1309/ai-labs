@@ -39,14 +39,16 @@ Codex session yet — there is no adapter and no entry point.
 
 | Path | Contents |
 |------|----------|
-| `src/sessions.ts` | Session view: maps observed sessions to active/waiting state and orders them by last activity. Discovery sits behind the `SessionSource` port. |
+| `src/sessions.ts` | Session view: maps observed sessions to active/waiting state and orders them by last activity. `recentSessions` applies the default view's recency cutoff. Discovery sits behind the `SessionSource` port. |
 | `src/follow.ts` | Follows one session: pushes a fresh state and transcript whenever the `SessionChanges` port signals, so an open session reflects new activity without being asked. |
+| `src/search.ts` | Finds sessions by agent, repository, branch or message text, across the whole source rather than the default view. |
 | `src/ordering.ts` | The one ordering rule: sort by a timestamp in either direction, treating an unreadable one as the oldest instead of returning `NaN`. |
 | `src/transcript.ts` | Session transcript: messages, tool calls and file diffs, oldest first. Reading sits behind the `TranscriptSource` port. |
 | `tests/active-sessions.test.ts` | One test per Gherkin scenario of the "See active sessions" feature in [docs/qa.md](docs/qa.md), named after it. |
 | `tests/recent-sessions.test.ts` | Same, for "See recent sessions". |
 | `tests/read-session.test.ts` | Same, for "Read a session". |
 | `tests/follow-session.test.ts` | Same, for "Follow an active session". |
+| `tests/find-session.test.ts` | Same, for "Find a session" — one test per Examples row. |
 | `tests/qa-coverage.test.ts` | Asserts each implemented feature's test file declares exactly the scenario titles in [docs/qa.md](docs/qa.md). |
 | `tests/follow-unknown-session.test.ts` | Not QA scenarios: following an unknown id, and how often following pushes. |
 | `tests/change-signal.ts` | Test stand-in for the watcher behind `SessionChanges`. |
@@ -71,7 +73,6 @@ checking behavior that exists. Kept honest here rather than buried in the log.
 |----------|------------------------|---------------------|
 | A session starts outside Noreta | The port is re-read per call and no code knows how a session was started | A real discovery adapter |
 | Noreta starts after the agent | Same | A real discovery adapter |
-| A recently inactive session exists | Nothing filters the default view by recency | The cutoff introduced by "Access older sessions" |
 | A transcript contains a tool call | Nothing renders a transcript; the test only proves tagged entries survive ordering | A renderer, tested at the presentation boundary |
 | A transcript contains a file diff | Same | A renderer, tested at the presentation boundary |
 

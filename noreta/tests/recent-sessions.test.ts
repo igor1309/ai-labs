@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { viewSessions } from "../src/sessions.js";
+import { recentSessions, viewSessions } from "../src/sessions.js";
 import { sourceOf } from "./session-source.js";
 import { at } from "./time.js";
 
@@ -12,7 +12,7 @@ describe("Feature: See recent sessions", () => {
       const source = sourceOf({ id: "s1", lastActivityAt });
 
       assert.deepEqual(viewSessions(source), [
-        { id: "s1", active: false, waiting: false, lastActivityAt },
+        { id: "s1", agent: "claude", active: false, waiting: false, lastActivityAt },
       ]);
     });
   });
@@ -22,10 +22,13 @@ describe("Feature: See recent sessions", () => {
       const source = sourceOf(
         { id: "live", runtimeState: "working", lastActivityAt: at("10:00") },
         { id: "just-finished", lastActivityAt: at("09:59") },
+        { id: "long-forgotten", lastActivityAt: new Date("2026-01-01T00:00:00Z") },
       );
 
       assert.deepEqual(
-        viewSessions(source).map((session) => session.id),
+        recentSessions(source, { now: at("10:00"), withinDays: 7 }).map(
+          (session) => session.id,
+        ),
         ["live", "just-finished"],
       );
     });
@@ -38,7 +41,9 @@ describe("Feature: See recent sessions", () => {
       );
 
       assert.deepEqual(
-        viewSessions(source).map((session) => session.id),
+        recentSessions(source, { now: at("10:00"), withinDays: 7 }).map(
+          (session) => session.id,
+        ),
         ["newest", "middle", "oldest"],
       );
     });
