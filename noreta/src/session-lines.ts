@@ -1,6 +1,6 @@
-import { isActive, type SessionView } from "./sessions.js";
+import { isActive, type ObservedSession } from "./sessions.js";
 
-export function sessionLines(sessions: SessionView[]): string[] {
+export function sessionLines(sessions: ObservedSession[]): string[] {
   return sessions.map(
     (session) =>
       `${isActive(session) ? "*" : " "} ${session.agent}  ${state(session)}  ${session.branch ?? "-"}  ${session.workspace}  ${session.lastActivityAt.toISOString()}`,
@@ -16,7 +16,7 @@ type Word = "working" | "waiting" | "idle" | "inactive";
 // Every state is spelled out rather than printed as it comes, so a state added
 // to the union reaches the `never` below and fails the build instead of
 // reaching the list as a word nobody chose.
-function state({ runtimeState }: SessionView): Word {
+function state({ runtimeState }: Pick<ObservedSession, "runtimeState">): Word {
   switch (runtimeState) {
     case undefined:
       return "inactive";

@@ -6,8 +6,9 @@ import { claudeCodeRegistryStates } from "./claude-code-registry.js";
 import { claudeCodeSessions, type WorkspaceFacts } from "./claude-code.js";
 import { composeClaudeCodeRuntimeStates } from "./compose-claude-code-runtime-states.js";
 import { repositoryOf } from "./git-repository.js";
+import { newestFirst } from "./ordering.js";
 import { sessionLines } from "./session-lines.js";
-import { recentSessions, viewSessions } from "./sessions.js";
+import { recentSessions } from "./sessions.js";
 
 // Composition root: the only place that reads the machine — where Claude Code
 // keeps its files, and what time it is — and hands both to the pure modules.
@@ -26,9 +27,15 @@ const runtimeStates = composeClaudeCodeRuntimeStates(
   claudeCodeRegistryStates(join(claudeDirectory, "sessions")),
 );
 
-const sessions = viewSessions(
-  claudeCodeSessions(join(claudeDirectory, "projects"), runtimeStates, workspaceFacts),
+const readSessions = claudeCodeSessions(
+  join(claudeDirectory, "projects"),
+  runtimeStates,
+  workspaceFacts,
 );
+
+// Newest first is this list's order, not the source's: the adapter reads files
+// in whatever order the directory gives them.
+const sessions = newestFirst(readSessions());
 
 for (const line of sessionLines(recentSessions(sessions, { now: new Date(), withinDays: 7 }))) {
   console.log(line);

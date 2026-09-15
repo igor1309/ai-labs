@@ -1,26 +1,19 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import {
-  olderSessions,
-  recentSessions,
-  viewSessions,
-  type SessionSource,
-} from "../src/sessions.js";
+import { olderSessions, recentSessions, type SessionSource } from "../src/sessions.js";
 import { readTranscript } from "../src/transcript.js";
-import { changingSource, sourceOf } from "./session-source.js";
+import { changingSource, sessionsOf, sourceOf } from "./session-source.js";
 import { at } from "./time.js";
 import { describeEntry, transcriptOf } from "./transcript-source.js";
 
 describe("Feature: Access older sessions", () => {
   describe("Rule: Sessions remain available outside the recent history", () => {
     it("Reveal sessions outside the recent history", () => {
-      const sessions = viewSessions(
-        sourceOf(
-          { id: "recent", lastActivityAt: at("10:00") },
-          { id: "long-ago", lastActivityAt: new Date("2026-01-01T00:00:00Z") },
-          { id: "longer-ago", lastActivityAt: new Date("2025-06-01T00:00:00Z") },
-        ),
+      const sessions = sessionsOf(
+        { id: "recent", lastActivityAt: at("10:00") },
+        { id: "long-ago", lastActivityAt: new Date("2026-01-01T00:00:00Z") },
+        { id: "longer-ago", lastActivityAt: new Date("2025-06-01T00:00:00Z") },
       );
       const recency = { now: at("10:00"), withinDays: 7 };
       assert.deepEqual(ids(recentSessions(sessions, recency)), ["recent"]);
@@ -55,7 +48,7 @@ describe("Feature: Access older sessions", () => {
       const transcripts = transcriptOf("in-worktree", [
         { kind: "message", at: at("10:01"), role: "user", text: "what did we decide" },
       ]);
-      assert.equal(viewSessions(source)[0].workspaceOnDisk, false);
+      assert.equal(source()[0].workspaceOnDisk, false);
 
       assert.deepEqual(readTranscript(transcripts, "in-worktree").map(describeEntry), [
         "what did we decide",
@@ -75,7 +68,7 @@ function inWorktree(worktree: string, { onDisk }: { onDisk: boolean }) {
 }
 
 function workspaceOf(source: SessionSource) {
-  const [session] = viewSessions(source);
+  const [session] = source();
 
   return {
     workspace: session.workspace,

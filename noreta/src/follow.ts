@@ -1,8 +1,8 @@
-import { viewSessions, type SessionSource, type SessionView } from "./sessions.js";
+import type { ObservedSession, SessionSource } from "./sessions.js";
 import { readTranscript, type TranscriptEntry, type TranscriptSource } from "./transcript.js";
 
 export type FollowedSession = {
-  session: SessionView | undefined;
+  session: ObservedSession | undefined;
   transcript: TranscriptEntry[];
 };
 
@@ -20,7 +20,7 @@ export function followSession(
 ): () => void {
   const push = (): void =>
     onUpdate({
-      session: viewSessions(sessions).find((view) => view.id === sessionId),
+      session: sessions().find((session) => session.id === sessionId),
       transcript: readTranscript(transcripts, sessionId),
     });
 

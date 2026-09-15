@@ -1,3 +1,8 @@
+// The order a reader sees a list of sessions in, which its caller puts on it.
+export function newestFirst<Item extends { lastActivityAt: Date }>(items: Item[]): Item[] {
+  return [...items].sort(byTime((item) => item.lastActivityAt, "newest-first"));
+}
+
 // An unreadable timestamp sorts as the oldest rather than poisoning the
 // comparator: NaN would make every comparison it takes part in meaningless,
 // and one bad record would silently defeat ordering for every other one.
@@ -5,7 +10,7 @@ export function byTime<T>(
   timeOf: (item: T) => Date,
   direction: "newest-first" | "oldest-first",
 ): (left: T, right: T) => number {
-  const newestFirst = direction === "newest-first";
+  const wantsNewestFirst = direction === "newest-first";
 
   return (left, right) => {
     const leftTime = comparableTime(timeOf(left));
@@ -17,7 +22,7 @@ export function byTime<T>(
 
     const leftIsNewer = leftTime > rightTime;
 
-    return leftIsNewer === newestFirst ? -1 : 1;
+    return leftIsNewer === wantsNewestFirst ? -1 : 1;
   };
 }
 

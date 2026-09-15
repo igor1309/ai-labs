@@ -3,8 +3,11 @@ import {
   isWaiting,
   type ObservedSession,
   type SessionSource,
-  type SessionView,
 } from "../src/sessions.js";
+
+// The order a reader sees, which the list's caller puts on it — `main.ts` calls
+// this same function. Applied only where a scenario is about order.
+export { newestFirst } from "../src/ordering.js";
 
 type PartialSession = Omit<
   ObservedSession,
@@ -27,6 +30,12 @@ export function sourceOf(...sessions: PartialSession[]): SessionSource {
   return () => sessions.map(observed);
 }
 
+// The sessions a source reports, read once, for scenarios about a list rather
+// than about a source.
+export function sessionsOf(...sessions: PartialSession[]): ObservedSession[] {
+  return sourceOf(...sessions)();
+}
+
 export function changingSource(...sessions: PartialSession[]): {
   read: SessionSource;
   replaceWith: (...next: PartialSession[]) => void;
@@ -41,10 +50,12 @@ export function changingSource(...sessions: PartialSession[]): {
   };
 }
 
-// Reads a view the way a scenario about active/waiting state talks about it,
+// Reads a session the way a scenario about active/waiting state talks about it,
 // leaving out everything those scenarios do not name.
-export function stateOf(view: SessionView): { id: string; active: boolean; waiting: boolean } {
-  return { id: view.id, active: isActive(view), waiting: isWaiting(view) };
+export function stateOf(
+  session: Pick<ObservedSession, "id" | "runtimeState">,
+): { id: string; active: boolean; waiting: boolean } {
+  return { id: session.id, active: isActive(session), waiting: isWaiting(session) };
 }
 
 function observed(session: PartialSession): ObservedSession {

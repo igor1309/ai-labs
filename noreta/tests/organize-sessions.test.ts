@@ -2,19 +2,17 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { groupSessions, type SessionGroup } from "../src/grouping.js";
-import { activeSessions, viewSessions, type SessionView } from "../src/sessions.js";
-import { sourceOf } from "./session-source.js";
+import { activeSessions, type ObservedSession } from "../src/sessions.js";
+import { sessionsOf } from "./session-source.js";
 
 describe("Feature: Organize sessions", () => {
   describe("Rule: Sessions can be grouped by working context", () => {
     it("Group by repository", () => {
-      const sessions = viewSessions(
-        sourceOf(
-          { id: "a", repository: "ai-labs" },
-          { id: "b", repository: "elsewhere" },
-          { id: "c", repository: "ai-labs" },
-          { id: "loose" },
-        ),
+      const sessions = sessionsOf(
+        { id: "a", repository: "ai-labs" },
+        { id: "b", repository: "elsewhere" },
+        { id: "c", repository: "ai-labs" },
+        { id: "loose" },
       );
 
       const groups = groupSessions(sessions, "repository");
@@ -28,12 +26,10 @@ describe("Feature: Organize sessions", () => {
     });
 
     it("Group by workspace", () => {
-      const sessions = viewSessions(
-        sourceOf(
-          { id: "a", workspace: "/repos/ai-labs" },
-          { id: "b", workspace: "/repos/ai-labs.worktrees/product-noreta" },
-          { id: "c", workspace: "/repos/ai-labs" },
-        ),
+      const sessions = sessionsOf(
+        { id: "a", workspace: "/repos/ai-labs" },
+        { id: "b", workspace: "/repos/ai-labs.worktrees/product-noreta" },
+        { id: "c", workspace: "/repos/ai-labs" },
       );
 
       const groups = groupSessions(sessions, "workspace");
@@ -46,12 +42,10 @@ describe("Feature: Organize sessions", () => {
     });
 
     it("Group by agent", () => {
-      const sessions = viewSessions(
-        sourceOf(
-          { id: "a", agent: "claude" },
-          { id: "b", agent: "codex" },
-          { id: "c", agent: "claude" },
-        ),
+      const sessions = sessionsOf(
+        { id: "a", agent: "claude" },
+        { id: "b", agent: "codex" },
+        { id: "c", agent: "claude" },
       );
 
       const groups = groupSessions(sessions, "agent");
@@ -66,13 +60,11 @@ describe("Feature: Organize sessions", () => {
 
   describe("Rule: Sessions can be filtered by their attributes", () => {
     it("Filter active sessions", () => {
-      const sessions = viewSessions(
-        sourceOf(
-          { id: "working", runtimeState: "working" },
-          { id: "waiting", runtimeState: "waiting-for-input" },
-          { id: "idle", runtimeState: "idle" },
-          { id: "inactive" },
-        ),
+      const sessions = sessionsOf(
+        { id: "working", runtimeState: "working" },
+        { id: "waiting", runtimeState: "waiting-for-input" },
+        { id: "idle", runtimeState: "idle" },
+        { id: "inactive" },
       );
 
       const shown = activeSessions(sessions).map((session) => session.id);
@@ -83,15 +75,15 @@ describe("Feature: Organize sessions", () => {
   });
 });
 
-function membership(groups: SessionGroup[]): Record<string, string[]> {
+function membership(groups: SessionGroup<ObservedSession>[]): Record<string, string[]> {
   return Object.fromEntries(
     groups.map((group) => [group.name ?? "(none)", group.sessions.map((s) => s.id)]),
   );
 }
 
 function eachSessionAppearsExactlyOnce(
-  groups: SessionGroup[],
-  sessions: SessionView[],
+  groups: SessionGroup<ObservedSession>[],
+  sessions: ObservedSession[],
 ): void {
   const placed = groups.flatMap((group) => group.sessions.map((session) => session.id));
 

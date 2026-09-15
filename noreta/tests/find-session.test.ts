@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { searchSessions } from "../src/search.js";
-import { recentSessions, viewSessions } from "../src/sessions.js";
+import { recentSessions } from "../src/sessions.js";
 import type { TranscriptSource } from "../src/transcript.js";
-import { sourceOf } from "./session-source.js";
+import { sessionsOf } from "./session-source.js";
 import { at } from "./time.js";
 import { filesystemError, transcriptOf } from "./transcript-source.js";
 
@@ -29,7 +29,7 @@ describe("Feature: Find a session", () => {
 
   describe("Rule: Search covers sessions outside the recent history", () => {
     it("Search finds a session outside the recent history", () => {
-      const sessions = sourceOf({
+      const sessions = sessionsOf({
         id: "long-ago",
         agent: "claude",
         lastActivityAt: at("10:00"),
@@ -38,11 +38,10 @@ describe("Feature: Find a session", () => {
         { kind: "message", at: at("09:00"), role: "user", text: "the rate limiter again" },
       ]);
       const recency = { now: weeksLater, withinDays: 7 };
-      const views = viewSessions(sessions);
-      assert.deepEqual(recentSessions(views, recency), [], "outside the recent history");
+      assert.deepEqual(recentSessions(sessions, recency), [], "outside the recent history");
 
       assert.deepEqual(
-        searchSessions(views, transcripts, "rate limiter").matches.map(
+        searchSessions(sessions, transcripts, "rate limiter").matches.map(
           (session) => session.id,
         ),
         ["long-ago"],
@@ -52,7 +51,7 @@ describe("Feature: Find a session", () => {
 
   describe("Rule: An unreadable transcript does not hide the other results", () => {
     it("A transcript cannot be read", () => {
-      const sessions = sourceOf(
+      const sessions = sessionsOf(
         { id: "unreadable", agent: "claude", lastActivityAt: at("10:00") },
         { id: "readable", agent: "claude", lastActivityAt: at("09:00") },
       );
@@ -66,7 +65,7 @@ describe("Feature: Find a session", () => {
         ];
       };
 
-      const results = searchSessions(viewSessions(sessions), transcripts, "rate limiter");
+      const results = searchSessions(sessions, transcripts, "rate limiter");
 
       assert.deepEqual(results.matches.map((session) => session.id), ["readable"]);
       assert.deepEqual(results.unreadable, ["unreadable"]);
@@ -79,7 +78,7 @@ const weeksLater = new Date("2026-09-29T10:00:00Z");
 // One session per dimension, each matching on that dimension alone, so a test
 // fails when its own dimension breaks rather than being carried by another.
 function found(query: string): string[] {
-  const sessions = sourceOf(
+  const sessions = sessionsOf(
     { id: "by-agent", agent: "codex", repository: "unrelated", branch: "unrelated" },
     { id: "by-repository", agent: "claude", repository: "ai-labs", branch: "unrelated" },
     { id: "by-branch", agent: "claude", repository: "unrelated", branch: "feature/noreta" },
@@ -89,7 +88,7 @@ function found(query: string): string[] {
     { kind: "message", at: at("10:01"), role: "user", text: "fix the rate limiter" },
   ]);
 
-  return searchSessions(viewSessions(sessions), transcripts, query).matches.map(
+  return searchSessions(sessions, transcripts, query).matches.map(
     (session) => session.id,
   );
 }

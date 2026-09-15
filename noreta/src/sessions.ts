@@ -1,5 +1,3 @@
-import { byTime } from "./ordering.js";
-
 // The states this list tells apart, and nothing besides. A source can know a
 // session is blocked without knowing what on: Claude Code's registry reports
 // that it is waiting and never which answer it wants. `waiting` is that case,
@@ -36,25 +34,14 @@ export type ObservedSession = {
 
 export type SessionSource = () => ObservedSession[];
 
-export type SessionView = {
-  id: string;
-  agent: string;
-  workspace: string;
-  workspaceOnDisk: boolean;
-  repository?: string;
-  branch?: string;
-  runtimeState?: RuntimeState;
-  lastActivityAt: Date;
-};
-
 // Whether a session is running, and whether it is blocked, are readings of the
 // state its source reported rather than facts beside it. As functions they
 // cannot drift from `runtimeState`; as fields they could.
-export function isActive(session: Pick<SessionView, "runtimeState">): boolean {
+export function isActive(session: Pick<ObservedSession, "runtimeState">): boolean {
   return session.runtimeState !== undefined;
 }
 
-export function isWaiting(session: Pick<SessionView, "runtimeState">): boolean {
+export function isWaiting(session: Pick<ObservedSession, "runtimeState">): boolean {
   return (
     session.runtimeState === "waiting" ||
     session.runtimeState === "waiting-for-input" ||
@@ -62,47 +49,48 @@ export function isWaiting(session: Pick<SessionView, "runtimeState">): boolean {
   );
 }
 
-export function viewSessions(source: SessionSource): SessionView[] {
-  return source()
-    .map((session) => ({
-      id: session.id,
-      agent: session.agent,
-      workspace: session.workspace,
-      workspaceOnDisk: session.workspaceOnDisk,
-      ...(session.repository === undefined ? {} : { repository: session.repository }),
-      ...(session.branch === undefined ? {} : { branch: session.branch }),
-      ...(session.runtimeState === undefined ? {} : { runtimeState: session.runtimeState }),
-      lastActivityAt: session.lastActivityAt,
-    }))
-    .sort(byTime((view) => view.lastActivityAt, "newest-first"));
-}
-
 // How far back the default view reaches. The cutoff is a view choice, not a
 // retention rule: nothing is dropped, it is only left out of this list.
 export type Recency = { now: Date; withinDays: number };
 
-export function recentSessions(sessions: SessionView[], recency: Recency): SessionView[] {
+// What the filters below read of a session, and nothing besides: whether it is
+// running, and when it last did anything. They hand back the records they were
+// given, so a caller keeps its own record type through the call.
+type SessionActivity = Pick<ObservedSession, "runtimeState" | "lastActivityAt">;
+
+export function recentSessions<Session extends SessionActivity>(
+  sessions: Session[],
+  recency: Recency,
+): Session[] {
   return sessions.filter((session) => belongsInDefaultView(session, recency));
 }
 
 // The complement of `recentSessions` over the same list, derived from the same
 // predicate so the two cannot drift apart: nothing is dropped by the cutoff, it
 // is only held back until asked for.
-export function olderSessions(sessions: SessionView[], recency: Recency): SessionView[] {
+export function olderSessions<Session extends SessionActivity>(
+  sessions: Session[],
+  recency: Recency,
+): Session[] {
   return sessions.filter((session) => !belongsInDefaultView(session, recency));
 }
 
 // An active session belongs there however old its last activity: it is running
 // now, whatever its transcript last said.
-function belongsInDefaultView(session: SessionView, recency: Recency): boolean {
+function belongsInDefaultView(session: SessionActivity, recency: Recency): boolean {
   return isActive(session) || isRecent(session, recency);
 }
 
-export function activeSessions(sessions: SessionView[]): SessionView[] {
+export function activeSessions<Session extends Pick<ObservedSession, "runtimeState">>(
+  sessions: Session[],
+): Session[] {
   return sessions.filter(isActive);
 }
 
-function isRecent(session: SessionView, { now, withinDays }: Recency): boolean {
+function isRecent(
+  session: Pick<ObservedSession, "lastActivityAt">,
+  { now, withinDays }: Recency,
+): boolean {
   const age = now.getTime() - session.lastActivityAt.getTime();
 
   return age <= withinDays * millisecondsPerDay;

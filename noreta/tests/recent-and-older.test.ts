@@ -1,21 +1,19 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { olderSessions, recentSessions, viewSessions } from "../src/sessions.js";
-import { sourceOf } from "./session-source.js";
+import { olderSessions, recentSessions } from "../src/sessions.js";
+import { sessionsOf } from "./session-source.js";
 import { at } from "./time.js";
 
 // Not a QA scenario, but the property both rules lean on: the cutoff holds
 // sessions back, it never drops them. A session in neither list would be
 // unreachable from the UI, which is the failure the notes call out.
 describe("Recent and older sessions", () => {
-  const sessions = viewSessions(
-    sourceOf(
-      { id: "live-but-stale", runtimeState: "working", lastActivityAt: longAgo() },
-      { id: "recent", lastActivityAt: at("10:00") },
-      { id: "old", lastActivityAt: longAgo() },
-      { id: "unreadable", lastActivityAt: new Date("not a date") },
-    ),
+  const sessions = sessionsOf(
+    { id: "live-but-stale", runtimeState: "working", lastActivityAt: longAgo() },
+    { id: "recent", lastActivityAt: at("10:00") },
+    { id: "old", lastActivityAt: longAgo() },
+    { id: "unreadable", lastActivityAt: new Date("not a date") },
   );
   const recency = { now: at("10:00"), withinDays: 7 };
 

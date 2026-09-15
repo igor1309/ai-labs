@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { groupSessions } from "../src/grouping.js";
-import type { SessionView } from "../src/sessions.js";
+import type { ObservedSession } from "../src/sessions.js";
 
 // Not a QA scenario. Grouping by agent is the worst case and the likeliest one:
 // a user has two or three agents, so every session lands in one group. Building
@@ -30,7 +30,7 @@ describe("Grouping a long history", () => {
   });
 });
 
-function manySessions(count: number): SessionView[] {
+function manySessions(count: number): ObservedSession[] {
   return Array.from({ length: count }, (unused, index) => ({
     id: `s${index}`,
     agent: "claude",
