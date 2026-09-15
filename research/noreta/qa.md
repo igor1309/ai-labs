@@ -1,7 +1,8 @@
 ---
 date: 2026-09-15
+description: QA scenarios for the Noreta read-only Mac MVP, one Gherkin
+  feature per user story
 model: gpt-5.6-sol
-description: "QA scenarios for the Noreta read-only Mac MVP, one Gherkin feature per user story"
 ---
 
 # Noreta - QA
@@ -16,8 +17,13 @@ Feature: See active sessions
       When I view my sessions
       Then the session is shown as active
 
-    Scenario: A waiting session is active
+    Scenario: A session waiting for input is active
       Given a session has a live runtime waiting for input
+      When I view my sessions
+      Then the session is shown as active
+
+    Scenario: A session waiting for approval is active
+      Given a session has a live runtime waiting for approval
       When I view my sessions
       Then the session is shown as active
 
@@ -31,7 +37,7 @@ Feature: See active sessions
     Scenario: A runtime terminates
       Given an active session exists
       When its runtime terminates
-      Then the session becomes inactive
+      Then the session is shown as inactive
 
   Rule: Sessions are discovered independently of how they were started
 
@@ -99,6 +105,11 @@ Feature: Follow an active session
       When the agent produces a new message
       Then the message appears in the transcript
 
+    Scenario: A working session starts waiting
+      Given I am viewing a working session
+      When its agent starts waiting for input
+      Then the session is shown as waiting
+
     Scenario: The runtime becomes inactive
       Given I am viewing an active session
       When its runtime terminates
@@ -123,8 +134,8 @@ Feature: Find a session
 
   Rule: Search covers sessions outside the default view
 
-    Scenario: Search finds an old session
-      Given an old session contains "rate limiter"
+    Scenario: Search finds a session outside the default view
+      Given a session outside the default view contains "rate limiter"
       When I search for "rate limiter"
       Then I see that session in the results
 
@@ -160,9 +171,9 @@ Feature: Access older sessions
 
   Rule: Sessions remain available beyond the default view
 
-    Scenario: Reveal older sessions
-      Given sessions older than the default view exist
-      When I choose to see older sessions
+    Scenario: Reveal sessions outside the default view
+      Given sessions outside the default view exist
+      When I choose to see sessions outside the default view
       Then I can browse those sessions
 
   Rule: A session retains its historical working context

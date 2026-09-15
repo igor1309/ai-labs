@@ -1,12 +1,13 @@
 ---
 date: 2026-09-15
+description: Top 7 Noreta user stories for the read-only Mac MVP,
+  written as Gherkin scenarios
 model: gpt-5.6-sol
-description: "Top 7 Noreta user stories for the read-only Mac MVP, written as Gherkin scenarios"
 ---
 
 # Noreta — User Stories
 
-```gherkin
+``` gherkin
 Feature: Coding agent sessions
 
   Scenario: See active sessions
@@ -42,5 +43,5 @@ Feature: Coding agent sessions
   Scenario: Access older sessions
     Given I have sessions outside the recent history
     When I choose to view older sessions
-    Then I can browse and open them
+    Then I can browse and open them with their historical working context
 ```
