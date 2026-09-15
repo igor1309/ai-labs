@@ -17,7 +17,6 @@ describe("Feature: See recent sessions", () => {
           agent: "claude",
           workspace: "/workspace",
           workspaceOnDisk: true,
-          runtimeState: "inactive",
           lastActivityAt,
         },
       ]);

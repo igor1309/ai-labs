@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { claudeCodeRuntimeStates } from "../src/claude-code-registry.js";
+import { claudeCodeRegistryStates } from "../src/claude-code-registry.js";
 import {
   claudeCodeSessions,
   type RuntimeStates,
   type WorkspaceFacts,
 } from "../src/claude-code.js";
+import { composeClaudeCodeRuntimeStates } from "../src/compose-claude-code-runtime-states.js";
 import {
   appendPartialRecord,
   projectsDirectoryOf,
@@ -50,7 +51,6 @@ describe("What the Claude Code adapter discovers", () => {
         workspace: "/nowhere/product-noreta",
         workspaceOnDisk: false,
         branch: "product/noreta",
-        runtimeState: "inactive",
         lastActivityAt: at("13:27"),
       },
     ]);
@@ -190,9 +190,10 @@ describe("What the Claude Code adapter discovers", () => {
     );
   });
 
-  // Wired to the real registry, because the defect only shows when a source is
-  // held across a change on disk: a session that starts after the first read
-  // was reported inactive for as long as the source lived.
+  // Wired to the real registry the way the composition root wires it, because
+  // the defect only shows when a source is held across a change on disk: a
+  // session that starts after the first read was reported as not running for as
+  // long as the source lived.
   it("reports the runtime state the registry holds at each read", () => {
     const projects = projectsDirectoryOf({
       id: "starting",
@@ -201,10 +202,10 @@ describe("What the Claude Code adapter discovers", () => {
     const registry = registryDirectoryOf();
     const sessions = claudeCodeSessions(
       projects,
-      claudeCodeRuntimeStates(registry),
+      composeClaudeCodeRuntimeStates(claudeCodeRegistryStates(registry)),
       missingWorkspace,
     );
-    assert.deepEqual(sessions().map((session) => session.runtimeState), ["inactive"]);
+    assert.deepEqual(sessions().map((session) => session.runtimeState), [undefined]);
 
     register(registry, { pid: livePid, sessionId: "starting", status: "busy" });
 

@@ -2,8 +2,9 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-import { claudeCodeRuntimeStates } from "./claude-code-registry.js";
+import { claudeCodeRegistryStates } from "./claude-code-registry.js";
 import { claudeCodeSessions, type WorkspaceFacts } from "./claude-code.js";
+import { composeClaudeCodeRuntimeStates } from "./compose-claude-code-runtime-states.js";
 import { repositoryOf } from "./git-repository.js";
 import { sessionLines } from "./session-lines.js";
 import { recentSessions, viewSessions } from "./sessions.js";
@@ -19,12 +20,14 @@ const workspaceFacts: WorkspaceFacts = (workspace) => ({
   repository: repositoryOf(workspace),
 });
 
+// The registry is what tells this machine which sessions are running;
+// composition puts its words to the ones the adapter reads.
+const runtimeStates = composeClaudeCodeRuntimeStates(
+  claudeCodeRegistryStates(join(claudeDirectory, "sessions")),
+);
+
 const sessions = viewSessions(
-  claudeCodeSessions(
-    join(claudeDirectory, "projects"),
-    claudeCodeRuntimeStates(join(claudeDirectory, "sessions")),
-    workspaceFacts,
-  ),
+  claudeCodeSessions(join(claudeDirectory, "projects"), runtimeStates, workspaceFacts),
 );
 
 for (const line of sessionLines(recentSessions(sessions, { now: new Date(), withinDays: 7 }))) {

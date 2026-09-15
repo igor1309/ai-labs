@@ -7,14 +7,18 @@ export function sessionLines(sessions: SessionView[]): string[] {
   );
 }
 
-// The three waiting kinds read as one word: the list says a session is blocked,
-// not what on. Every other state is its own word. Every state is spelled out
-// rather than printed as it comes, so a state added to the union reaches the
-// `never` below and fails the build instead of reaching the list as a word
-// nobody chose.
-function state({ runtimeState }: SessionView): string {
+// The words this list prints, which are its own and not the states it reads:
+// the three waiting kinds read as one, because the list says a session is
+// blocked and not what on, and a session with no state gets `inactive` — the
+// column has to say something, and the reader wants a word rather than a gap.
+type Word = "working" | "waiting" | "idle" | "inactive";
+
+// Every state is spelled out rather than printed as it comes, so a state added
+// to the union reaches the `never` below and fails the build instead of
+// reaching the list as a word nobody chose.
+function state({ runtimeState }: SessionView): Word {
   switch (runtimeState) {
-    case "inactive":
+    case undefined:
       return "inactive";
     case "working":
       return "working";

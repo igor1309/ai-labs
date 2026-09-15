@@ -2,24 +2,28 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import { parsedRecord } from "./claude-code-files.js";
-import type { RuntimeStates } from "./claude-code.js";
-import type { RuntimeState } from "./sessions.js";
 
 // Claude Code registers each running session as `<pid>.json` under
 // `~/.claude/sessions`. The file is the claim that the session is running; its
 // `status` says what the session is doing.
-// What the registry can say. Claude Code writes `busy`, `waiting` or `idle` and
-// never which answer a waiting session wants, so the two waiting kinds the
-// domain knows about are not reachable from here. Drawn from `RuntimeState` so
-// these stay the domain's states, not a parallel vocabulary.
-type ObservedState = Extract<RuntimeState, "working" | "waiting" | "idle">;
+// What the registry can say, spelled out here rather than taken from whoever
+// reads it: Claude Code writes `busy`, `waiting` or `idle` and never which
+// answer a waiting session wants, and that is true of this registry however it
+// is wired up. Where these words are put to the adapter's own is
+// `compose-claude-code-runtime-states.ts`.
+export type RegistryState = "working" | "waiting" | "idle";
 
-// The scan belongs to the snapshot, not to the adapter: a directory read on
+// A read of the registry, answering for every session at once. A session it
+// holds no live registration for is not running, which is the absence of a
+// state rather than one of them.
+export type RegistryStates = () => (sessionId: string) => RegistryState | undefined;
+
+// The scan belongs to the snapshot, not to the wiring: a directory read on
 // each snapshot is what makes the answer about now rather than about whenever
-// the adapter was wired.
-export function claudeCodeRuntimeStates(registryDirectory: string): RuntimeStates {
+// `compose-claude-code-runtime-states.ts` wired this read in.
+export function claudeCodeRegistryStates(registryDirectory: string): RegistryStates {
   return () => {
-    const states = new Map<string, ObservedState>();
+    const states = new Map<string, RegistryState>();
 
     for (const [sessionId, state] of registrations(registryDirectory)
       .filter(isRunning)
@@ -27,7 +31,7 @@ export function claudeCodeRuntimeStates(registryDirectory: string): RuntimeState
       states.set(sessionId, busier(states.get(sessionId), state));
     }
 
-    return (sessionId: string): RuntimeState | undefined => states.get(sessionId);
+    return (sessionId: string): RegistryState | undefined => states.get(sessionId);
   };
 }
 
@@ -36,15 +40,15 @@ export function claudeCodeRuntimeStates(registryDirectory: string): RuntimeState
 // over-reporting that a session wants attention costs a glance, under-reporting
 // it costs a stall.
 function busier(
-  known: ObservedState | undefined,
-  state: ObservedState,
-): ObservedState {
+  known: RegistryState | undefined,
+  state: RegistryState,
+): RegistryState {
   return known !== undefined && activity[known] < activity[state] ? known : state;
 }
 
 // Lower is more active. Exhaustive over the states this reads, so one of them
 // cannot go unranked and silently sort last.
-const activity: Record<ObservedState, number> = {
+const activity: Record<RegistryState, number> = {
   working: 0,
   waiting: 1,
   idle: 2,
@@ -68,8 +72,8 @@ function isRunning(registration: Registration): boolean {
   }
 }
 
-function asState(registration: Registration): [string, ObservedState] {
-  return [registration.sessionId, runtimeState(registration.status)];
+function asState(registration: Registration): [string, RegistryState] {
+  return [registration.sessionId, registryState(registration.status)];
 }
 
 // Claude Code's own three statuses. `waiting` carries no kind: the registry
@@ -77,7 +81,7 @@ function asState(registration: Registration): [string, ObservedState] {
 // prompts and plain questions, so nothing here can tell input from approval.
 // Anything else, including a registration that never wrote a status, is running
 // without a claim on what it is doing.
-function runtimeState(status: string | undefined): ObservedState {
+function registryState(status: string | undefined): RegistryState {
   if (status === "busy") {
     return "working";
   }

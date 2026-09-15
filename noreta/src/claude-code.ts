@@ -1,14 +1,24 @@
 import { readFileSync } from "node:fs";
 
 import { parsedRecord, tailOf, transcriptFiles } from "./claude-code-files.js";
-import type { ObservedSession, RuntimeState, SessionSource } from "./sessions.js";
+import type { ObservedSession, SessionSource } from "./sessions.js";
+
+// What a runtime can tell this adapter a session is doing. Narrower than the
+// states the list can show: a runtime sees that a session is blocked without
+// seeing what on, so the domain's two waiting kinds are not among these — the
+// port admits what a runtime can supply, and widens when one arrives that can
+// tell them apart. Named here, by the port that asks for it, so a runtime is
+// held to what this adapter reads rather than to what some other reader of the
+// same words happens to want. A runtime's own words are put to these in
+// composition — `compose-claude-code-runtime-states.ts`.
+export type SessionStatus = "working" | "waiting" | "idle";
 
 // What the adapter needs to know about a session that a transcript cannot say:
 // whether it is running now, and what it is doing. Undefined when the session
 // is not running. Sessions start and stop while a source is held open, so the
 // answer is only true of the moment it was asked for: the outer call takes that
 // snapshot, and the type says where "now" is.
-export type RuntimeStates = () => (sessionId: string) => RuntimeState | undefined;
+export type RuntimeStates = () => (sessionId: string) => SessionStatus | undefined;
 
 // One such snapshot, answering for every session in one read.
 type RuntimeSnapshot = ReturnType<RuntimeStates>;
@@ -66,6 +76,9 @@ function observedSession(
   // Not taken from the record's branch: a workspace can be in a repository with
   // no branch checked out, and only the file system says which repository.
   const workspace = workspaceFacts(context.cwd);
+  // A session the runtime says nothing about is not running, and carries no
+  // state rather than a word standing in for its absence.
+  const status = snapshot(context.sessionId);
 
   return [
     {
@@ -75,16 +88,10 @@ function observedSession(
       workspaceOnDisk: workspace.onDisk,
       ...(workspace.repository === undefined ? {} : { repository: workspace.repository }),
       ...(isBranch(context.gitBranch) ? { branch: context.gitBranch } : {}),
-      runtimeState: runtimeStateOf(snapshot(context.sessionId)),
+      ...(status === undefined ? {} : { runtimeState: status }),
       lastActivityAt: new Date(context.timestamp),
     },
   ];
-}
-
-// A session the registry says nothing about is not running, and the adapter says
-// so rather than leaving the session with no state for a reader to interpret.
-function runtimeStateOf(state: RuntimeState | undefined): RuntimeState {
-  return state ?? "inactive";
 }
 
 // Claude Code writes "HEAD" when the workspace has no branch checked out: it is

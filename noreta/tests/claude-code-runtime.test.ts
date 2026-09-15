@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { claudeCodeRuntimeStates } from "../src/claude-code-registry.js";
+import { claudeCodeRegistryStates } from "../src/claude-code-registry.js";
 import {
   absentRegistryDirectory,
   deadPid,
@@ -12,9 +12,9 @@ import {
   registryDirectoryOf,
 } from "./claude-code-registry.js";
 
-// Not QA scenarios: what the adapter makes of Claude Code's registry of running
-// sessions, `~/.claude/sessions/<pid>.json`.
-describe("What the Claude Code adapter reads of a running session", () => {
+// Not QA scenarios: what the registry read makes of Claude Code's registry of
+// running sessions, `~/.claude/sessions/<pid>.json`.
+describe("What Claude Code's registry says about a running session", () => {
   it("reports a busy session as working", () => {
     const registry = registryDirectoryOf({
       pid: livePid,
@@ -22,7 +22,7 @@ describe("What the Claude Code adapter reads of a running session", () => {
       status: "busy",
     });
 
-    assert.equal(claudeCodeRuntimeStates(registry)()("busy-one"), "working");
+    assert.equal(claudeCodeRegistryStates(registry)()("busy-one"), "working");
   });
 
   it("reports an idle session as idle", () => {
@@ -32,7 +32,7 @@ describe("What the Claude Code adapter reads of a running session", () => {
       status: "idle",
     });
 
-    assert.equal(claudeCodeRuntimeStates(registry)()("idle-one"), "idle");
+    assert.equal(claudeCodeRegistryStates(registry)()("idle-one"), "idle");
   });
 
   // The file outlives the process it names when a session dies without cleaning
@@ -44,7 +44,7 @@ describe("What the Claude Code adapter reads of a running session", () => {
       status: "busy",
     });
 
-    assert.equal(claudeCodeRuntimeStates(registry)()("departed"), undefined);
+    assert.equal(claudeCodeRegistryStates(registry)()("departed"), undefined);
   });
 
   // `waitingFor` is a free-text detail with four known literals, of which
@@ -58,7 +58,7 @@ describe("What the Claude Code adapter reads of a running session", () => {
       waitingFor: "input needed",
     });
 
-    assert.equal(claudeCodeRuntimeStates(registry)()("blocked"), "waiting");
+    assert.equal(claudeCodeRegistryStates(registry)()("blocked"), "waiting");
   });
 
   // The SDK-driven sessions register without ever writing a status. Their
@@ -67,7 +67,7 @@ describe("What the Claude Code adapter reads of a running session", () => {
   it("reports a registration without a status as idle", () => {
     const registry = registryDirectoryOf({ pid: livePid, sessionId: "quiet" });
 
-    assert.equal(claudeCodeRuntimeStates(registry)()("quiet"), "idle");
+    assert.equal(claudeCodeRegistryStates(registry)()("quiet"), "idle");
   });
 
   // Two live processes can register the same session, and nothing says which is
@@ -79,19 +79,19 @@ describe("What the Claude Code adapter reads of a running session", () => {
       { pid: otherLivePid, sessionId: "twice", status: "busy" },
     );
 
-    assert.equal(claudeCodeRuntimeStates(registry)()("twice"), "working");
+    assert.equal(claudeCodeRegistryStates(registry)()("twice"), "working");
   });
 
   // Sessions start and stop while Noreta is held open, so the registry is read
-  // for each answer rather than once when the adapter was made.
-  it("reports a session that registered after the adapter was made", () => {
+  // for each answer rather than once when the read was made.
+  it("reports a session that registered after the read was made", () => {
     const registry = registryDirectoryOf();
-    const runtimeStates = claudeCodeRuntimeStates(registry);
-    assert.equal(runtimeStates()("late"), undefined);
+    const registryStates = claudeCodeRegistryStates(registry);
+    assert.equal(registryStates()("late"), undefined);
 
     register(registry, { pid: livePid, sessionId: "late", status: "busy" });
 
-    assert.equal(runtimeStates()("late"), "working");
+    assert.equal(registryStates()("late"), "working");
   });
 
   // Every registration is written by a live process, so a snapshot can catch one
@@ -106,7 +106,7 @@ describe("What the Claude Code adapter reads of a running session", () => {
 
     registerHalfWritten(registry, otherLivePid);
 
-    assert.equal(claudeCodeRuntimeStates(registry)()("readable"), "working");
+    assert.equal(claudeCodeRegistryStates(registry)()("readable"), "working");
   });
 
   // Claude Code makes the registry when a session first registers, so a machine
@@ -114,6 +114,6 @@ describe("What the Claude Code adapter reads of a running session", () => {
   it("reports no session when the registry has never been written", () => {
     const registry = absentRegistryDirectory();
 
-    assert.equal(claudeCodeRuntimeStates(registry)()("anyone"), undefined);
+    assert.equal(claudeCodeRegistryStates(registry)()("anyone"), undefined);
   });
 });

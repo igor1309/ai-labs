@@ -1,18 +1,19 @@
 import { byTime } from "./ordering.js";
 
-// A source can know a session is blocked without knowing what on: Claude Code's
-// registry reports that it is waiting and never which answer it wants. `waiting`
-// is that case, kept distinct from the two kinds rather than guessing one.
-// `inactive` is a state like the others rather than the absence of one, so a
-// source says a session is not running instead of leaving that to be read off a
-// missing field.
+// The states this list tells apart, and nothing besides. A source can know a
+// session is blocked without knowing what on: Claude Code's registry reports
+// that it is waiting and never which answer it wants. `waiting` is that case,
+// kept distinct from the two kinds rather than guessing one.
+// Every word here is something a running session is doing, so there is none for
+// not running: that is the absence of a state, and the field is absent for it.
+// Each source names the states it can report for itself; this union is what the
+// list reads, not a vocabulary the sources share.
 export type RuntimeState =
   | "working"
   | "waiting"
   | "waiting-for-input"
   | "waiting-for-approval"
-  | "idle"
-  | "inactive";
+  | "idle";
 
 export type ObservedSession = {
   id: string;
@@ -27,7 +28,9 @@ export type ObservedSession = {
   // has a branch checked out.
   repository?: string;
   branch?: string;
-  runtimeState: RuntimeState;
+  // Present while the session is running. Absent is the source saying it is
+  // not — there is nothing it could be doing.
+  runtimeState?: RuntimeState;
   lastActivityAt: Date;
 };
 
@@ -40,7 +43,7 @@ export type SessionView = {
   workspaceOnDisk: boolean;
   repository?: string;
   branch?: string;
-  runtimeState: RuntimeState;
+  runtimeState?: RuntimeState;
   lastActivityAt: Date;
 };
 
@@ -48,7 +51,7 @@ export type SessionView = {
 // state its source reported rather than facts beside it. As functions they
 // cannot drift from `runtimeState`; as fields they could.
 export function isActive(session: Pick<SessionView, "runtimeState">): boolean {
-  return session.runtimeState !== "inactive";
+  return session.runtimeState !== undefined;
 }
 
 export function isWaiting(session: Pick<SessionView, "runtimeState">): boolean {
@@ -68,7 +71,7 @@ export function viewSessions(source: SessionSource): SessionView[] {
       workspaceOnDisk: session.workspaceOnDisk,
       ...(session.repository === undefined ? {} : { repository: session.repository }),
       ...(session.branch === undefined ? {} : { branch: session.branch }),
-      runtimeState: session.runtimeState,
+      ...(session.runtimeState === undefined ? {} : { runtimeState: session.runtimeState }),
       lastActivityAt: session.lastActivityAt,
     }))
     .sort(byTime((view) => view.lastActivityAt, "newest-first"));
