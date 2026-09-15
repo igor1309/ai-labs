@@ -13,6 +13,7 @@ const scenarioFiles = new Map([
   ["Read a session", "read-session.test.ts"],
   ["Follow an active session", "follow-session.test.ts"],
   ["Find a session", "find-session.test.ts"],
+  ["Organize sessions", "organize-sessions.test.ts"],
 ]);
 
 const testsDirectory = dirname(fileURLToPath(import.meta.url));

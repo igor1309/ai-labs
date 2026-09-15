@@ -12,7 +12,14 @@ describe("Feature: See recent sessions", () => {
       const source = sourceOf({ id: "s1", lastActivityAt });
 
       assert.deepEqual(viewSessions(source), [
-        { id: "s1", agent: "claude", active: false, waiting: false, lastActivityAt },
+        {
+          id: "s1",
+          agent: "claude",
+          workspace: "/workspace",
+          active: false,
+          waiting: false,
+          lastActivityAt,
+        },
       ]);
     });
   });

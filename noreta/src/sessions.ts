@@ -9,8 +9,11 @@ export type RuntimeState =
 export type ObservedSession = {
   id: string;
   agent: string;
-  // Present when the session's working directory is in a repository, and when
-  // that repository has a branch checked out.
+  // Where the session is working: its directory, which for a worktree is the
+  // worktree's own path rather than the repository root.
+  workspace: string;
+  // Present when that directory is in a repository, and when that repository
+  // has a branch checked out.
   repository?: string;
   branch?: string;
   runtimeState?: RuntimeState;
@@ -22,6 +25,7 @@ export type SessionSource = () => ObservedSession[];
 export type SessionView = {
   id: string;
   agent: string;
+  workspace: string;
   repository?: string;
   branch?: string;
   active: boolean;
@@ -34,6 +38,7 @@ export function viewSessions(source: SessionSource): SessionView[] {
     .map((session) => ({
       id: session.id,
       agent: session.agent,
+      workspace: session.workspace,
       ...(session.repository === undefined ? {} : { repository: session.repository }),
       ...(session.branch === undefined ? {} : { branch: session.branch }),
       active: session.runtimeState !== undefined,
@@ -51,6 +56,10 @@ export function recentSessions(source: SessionSource, recency: Recency): Session
   return viewSessions(source).filter(
     (session) => session.active || isRecent(session, recency),
   );
+}
+
+export function activeSessions(sessions: SessionView[]): SessionView[] {
+  return sessions.filter((session) => session.active);
 }
 
 function isRecent(session: SessionView, { now, withinDays }: Recency): boolean {

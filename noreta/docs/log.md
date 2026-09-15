@@ -1,6 +1,14 @@
 # Log
 
 ## 2026-09-15
+- Implement "Organize sessions": `src/grouping.ts` partitions a session list by
+  repository, workspace or agent, and `activeSessions` filters by active state.
+  Sessions carry a `workspace` — the working directory, which for a worktree is
+  the worktree's own path, not the repository root. A group's `name` is
+  `undefined` when its sessions have no such context: they still form one group,
+  because the rule is that every session lands in exactly one, and labelling
+  that group is the reader's job. Each grouping test asserts the partition
+  itself — every session placed, none placed twice — not just the memberships.
 - Codex review of "Find a session", accepted: search checked a session's
   transcript before its agent, repository and branch, so a metadata-only query
   read and sorted every transcript, and a transcript source that threw lost a
