@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import { searchSessions } from "../src/search.js";
 import { recentSessions, viewSessions } from "../src/sessions.js";
+import type { TranscriptSource } from "../src/transcript.js";
 import { sourceOf } from "./session-source.js";
 import { at } from "./time.js";
 import { transcriptOf } from "./transcript-source.js";
@@ -40,9 +41,34 @@ describe("Feature: Find a session", () => {
       assert.deepEqual(recentSessions(viewSessions(sessions), recency), [], "outside the recent history");
 
       assert.deepEqual(
-        searchSessions(sessions, transcripts, "rate limiter").map((session) => session.id),
+        searchSessions(sessions, transcripts, "rate limiter").matches.map(
+          (session) => session.id,
+        ),
         ["long-ago"],
       );
+    });
+  });
+
+  describe("Rule: An unreadable transcript does not hide the other results", () => {
+    it("A transcript cannot be read", () => {
+      const sessions = sourceOf(
+        { id: "unreadable", agent: "claude", lastActivityAt: at("10:00") },
+        { id: "readable", agent: "claude", lastActivityAt: at("09:00") },
+      );
+      const transcripts: TranscriptSource = (sessionId) => {
+        if (sessionId === "unreadable") {
+          throw new Error("transcript unreadable");
+        }
+
+        return [
+          { kind: "message", at: at("09:01"), role: "user", text: "fix the rate limiter" },
+        ];
+      };
+
+      const results = searchSessions(sessions, transcripts, "rate limiter");
+
+      assert.deepEqual(results.matches.map((session) => session.id), ["readable"]);
+      assert.deepEqual(results.unreadable, ["unreadable"]);
     });
   });
 });
@@ -62,5 +88,5 @@ function found(query: string): string[] {
     { kind: "message", at: at("10:01"), role: "user", text: "fix the rate limiter" },
   ]);
 
-  return searchSessions(sessions, transcripts, query).map((session) => session.id);
+  return searchSessions(sessions, transcripts, query).matches.map((session) => session.id);
 }

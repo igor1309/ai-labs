@@ -1,6 +1,13 @@
 # Log
 
 ## 2026-09-15
+- Close the one open question on search: a `TranscriptSource` that throws no
+  longer aborts the whole search. `searchSessions` returns
+  `{ matches, unreadable }`, so an unreadable session is reported instead of
+  silently vanishing from the results — the alternative, skipping it quietly,
+  leaves nobody able to tell "no match" from "could not read". New QA scenario
+  "A transcript cannot be read" under its own rule; the five existing call sites
+  read `.matches`. Nothing renders the warning yet: there is still no renderer.
 - Codex review of "Access older sessions", accepted with a correction: both
   deleted-worktree scenarios were called pinned, but only one is. Breaking the
   view so it folds a deleted worktree into its repository root fails "Its worktree

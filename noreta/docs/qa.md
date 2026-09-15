@@ -2,7 +2,7 @@
 date: 2026-09-15
 description: QA scenarios for the Noreta read-only Mac MVP, one Gherkin
   feature per user story
-model: gpt-5.6-sol
+model: claude-opus-5
 ---
 
 # Noreta — QA
@@ -149,6 +149,15 @@ Feature: Find a session
       Given a session outside the recent history contains "rate limiter"
       When I search for "rate limiter"
       Then I see that session in the results
+
+  Rule: An unreadable transcript does not hide the other results
+
+    Scenario: A transcript cannot be read
+      Given a session whose transcript cannot be read
+      And another session whose transcript contains "rate limiter"
+      When I search for "rate limiter"
+      Then I see the session containing "rate limiter" in the results
+      And the session whose transcript cannot be read is reported as unreadable
 
 
 Feature: Organize sessions

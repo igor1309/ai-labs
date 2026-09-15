@@ -41,7 +41,7 @@ Codex session yet — there is no adapter and no entry point.
 |------|----------|
 | `src/sessions.ts` | Session view: `viewSessions` reads the `SessionSource` and orders by last activity; `recentSessions`, `olderSessions` and `activeSessions` are list-to-list projections over the result. |
 | `src/follow.ts` | Follows one session: pushes a fresh state and transcript whenever the `SessionChanges` port signals, so an open session reflects new activity without being asked. |
-| `src/search.ts` | Finds sessions by agent, repository, branch or message text, across the whole source rather than the default view. |
+| `src/search.ts` | Finds sessions by agent, repository, branch or message text, across the whole source rather than the default view. Returns the matches together with the sessions whose transcript could not be read, so an unreadable one is reported rather than dropped. |
 | `src/grouping.ts` | Partitions a session list by repository, workspace or agent. |
 | `src/ordering.ts` | The one ordering rule: sort by a timestamp in either direction, treating an unreadable one as the oldest instead of returning `NaN`. |
 | `src/transcript.ts` | Session transcript: messages, tool calls and file diffs, oldest first. Reading sits behind the `TranscriptSource` port. |
@@ -49,7 +49,7 @@ Codex session yet — there is no adapter and no entry point.
 | `tests/recent-sessions.test.ts` | Same, for "See recent sessions". |
 | `tests/read-session.test.ts` | Same, for "Read a session". |
 | `tests/follow-session.test.ts` | Same, for "Follow an active session". |
-| `tests/find-session.test.ts` | Same, for "Find a session" — one test per Examples row. |
+| `tests/find-session.test.ts` | Same, for "Find a session" — one test per Examples row, plus the scenarios outside the outline. |
 | `tests/organize-sessions.test.ts` | Same, for "Organize sessions". |
 | `tests/access-older-sessions.test.ts` | Same, for "Access older sessions". |
 | `tests/search-sources.test.ts` | Not QA scenarios: what search asks of the transcript source, and the empty query. |
@@ -68,13 +68,6 @@ has a production implementation, so the only thing feeding them is a test
 source. There is no adapter, no renderer and no entry point. Real Claude Code
 and Codex adapters, startup reconciliation and termination detection are still
 ahead; see [docs/implementation-notes.md](docs/implementation-notes.md).
-
-### Open questions
-
-- A transcript source that throws still aborts a whole search once any session
-  needs its transcript read. Sessions matched by context are safe, but the
-  product has to decide between skipping the unreadable session silently and
-  returning partial results with a warning. No scenario covers it yet.
 
 ### Pinned scenarios
 

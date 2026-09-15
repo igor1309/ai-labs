@@ -20,7 +20,7 @@ describe("What search reads", () => {
 
     const found = searchSessions(onlyByAgent, transcripts, "codex");
 
-    assert.deepEqual(found.map((session) => session.id), ["by-agent"]);
+    assert.deepEqual(found.matches.map((session) => session.id), ["by-agent"]);
     assert.equal(reads, 0, "a context match should not need the transcript");
   });
 
@@ -30,7 +30,7 @@ describe("What search reads", () => {
     };
 
     assert.deepEqual(
-      searchSessions(onlyByAgent, unreadable, "codex").map((session) => session.id),
+      searchSessions(onlyByAgent, unreadable, "codex").matches.map((session) => session.id),
       ["by-agent"],
     );
   });
@@ -50,7 +50,7 @@ describe("What search reads", () => {
 
   it("matches every session on an empty query", () => {
     assert.deepEqual(
-      searchSessions(withContext, () => [], "").map((session) => session.id),
+      searchSessions(withContext, () => [], "").matches.map((session) => session.id),
       ["by-agent", "by-repository"],
     );
   });
