@@ -63,6 +63,30 @@ describe("Session lines", () => {
     ]);
   });
 
+  it("shows both waiting kinds as the same word", () => {
+    const source = sourceOf(
+      {
+        id: "s1",
+        branch: "main",
+        workspace: "/repo",
+        runtimeState: "waiting-for-input",
+        lastActivityAt: at("10:00"),
+      },
+      {
+        id: "s2",
+        branch: "main",
+        workspace: "/repo",
+        runtimeState: "waiting-for-approval",
+        lastActivityAt: at("09:00"),
+      },
+    );
+
+    assert.deepEqual(sessionLines(viewSessions(source)), [
+      "* claude  waiting  main  /repo  2026-09-15T10:00:00.000Z",
+      "* claude  waiting  main  /repo  2026-09-15T09:00:00.000Z",
+    ]);
+  });
+
   it("shows a dash for a session with no branch", () => {
     const source = sourceOf({ id: "s1", workspace: "/tmp", lastActivityAt: at("10:00") });
 
