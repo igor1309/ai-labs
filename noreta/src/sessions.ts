@@ -38,6 +38,7 @@ export type SessionView = {
   branch?: string;
   active: boolean;
   waiting: boolean;
+  runtimeState?: RuntimeState;
   lastActivityAt: Date;
 };
 
@@ -52,6 +53,7 @@ export function viewSessions(source: SessionSource): SessionView[] {
       ...(session.branch === undefined ? {} : { branch: session.branch }),
       active: session.runtimeState !== undefined,
       waiting: isWaiting(session.runtimeState),
+      ...(session.runtimeState === undefined ? {} : { runtimeState: session.runtimeState }),
       lastActivityAt: session.lastActivityAt,
     }))
     .sort(byTime((view) => view.lastActivityAt, "newest-first"));

@@ -39,7 +39,7 @@ Codex session yet — there is no adapter and no entry point.
 
 | Path | Contents |
 |------|----------|
-| `src/sessions.ts` | Session view: `viewSessions` reads the `SessionSource` and orders by last activity; `recentSessions`, `olderSessions` and `activeSessions` are list-to-list projections over the result. `RuntimeState` carries a bare `waiting` beside the two kinds, for a source that knows a session is blocked but not on what. |
+| `src/sessions.ts` | Session view: `viewSessions` reads the `SessionSource` and orders by last activity; `recentSessions`, `olderSessions` and `activeSessions` are list-to-list projections over the result. `RuntimeState` carries a bare `waiting` beside the two kinds, for a source that knows a session is blocked but not on what. A view carries the state the source reported beside the `active` and `waiting` flags derived from it. |
 | `src/follow.ts` | Follows one session: pushes a fresh state and transcript whenever the `SessionChanges` port signals, so an open session reflects new activity without being asked. |
 | `src/search.ts` | Finds sessions by agent, repository, branch or message text, across the whole source rather than the default view. Returns the matches together with the sessions whose transcript could not be read, so an unreadable one is reported rather than dropped. |
 | `src/grouping.ts` | Partitions a session list by repository, workspace or agent. |
@@ -47,7 +47,7 @@ Codex session yet — there is no adapter and no entry point.
 | `src/transcript.ts` | Session transcript: messages, tool calls and file diffs, oldest first. Reading sits behind the `TranscriptSource` port. |
 | `src/claude-code.ts` | Discovery adapter: reads the JSONL transcripts Claude Code leaves under `~/.claude/projects` and reports each as an `ObservedSession`. The project directory's name is the workspace path with its separators replaced, which is lossy, so workspace and branch come from the records. Runtime state comes from the `RuntimeStates` port, which it owns. |
 | `src/claude-code-transcript.ts` | Implements `TranscriptSource`: reads a session's JSONL transcript, found by session id in whichever project directory holds it. Text blocks become messages, `tool_use` blocks tool calls, and an edit's `structuredPatch` a unified diff; a created file, whose patch is empty, reads as every line added. |
-| `src/session-lines.ts` | Plain-text lines for a session list: an active marker, agent, state, branch and workspace, and last activity. The state column reads `active`, `waiting` or `inactive` — `SessionView` carries no `working`/`idle` split to show. |
+| `src/session-lines.ts` | Plain-text lines for a session list: an active marker, agent, state, branch and workspace, and last activity. The state column reads `working`, `idle`, `waiting` or `inactive`; the three waiting kinds read as one word, since the list says a session is blocked rather than what on. |
 | `src/main.ts` | Composition root and entry point: the only module that reads the home directory and the clock. Wires both Claude Code adapters into the domain and prints the last 7 days of sessions. Its wiring has no test; the real run is the check. |
 | `tests/active-sessions.test.ts` | One test per Gherkin scenario of the "See active sessions" feature in [docs/qa.md](docs/qa.md), named after it. |
 | `tests/recent-sessions.test.ts` | Same, for "See recent sessions". |

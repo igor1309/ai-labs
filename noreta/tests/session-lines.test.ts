@@ -21,7 +21,7 @@ describe("Session lines", () => {
     ]);
   });
 
-  it("marks an active session", () => {
+  it("marks an active session and shows it as working", () => {
     const source = sourceOf({
       id: "s1",
       branch: "main",
@@ -31,7 +31,21 @@ describe("Session lines", () => {
     });
 
     assert.deepEqual(sessionLines(viewSessions(source)), [
-      "* claude  active  main  /repo  2026-09-15T10:00:00.000Z",
+      "* claude  working  main  /repo  2026-09-15T10:00:00.000Z",
+    ]);
+  });
+
+  it("shows a running session that is doing nothing as idle", () => {
+    const source = sourceOf({
+      id: "s1",
+      branch: "main",
+      workspace: "/repo",
+      runtimeState: "idle",
+      lastActivityAt: at("10:00"),
+    });
+
+    assert.deepEqual(sessionLines(viewSessions(source)), [
+      "* claude  idle  main  /repo  2026-09-15T10:00:00.000Z",
     ]);
   });
 

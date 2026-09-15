@@ -14,3 +14,19 @@ describe("Waiting without knowing what for", () => {
     assert.deepEqual(stateOf(view), { id: "blocked", active: true, waiting: true });
   });
 });
+
+// The state a source reported is finer than active/waiting: a running session is
+// either working or idle, and only the source can tell them apart.
+describe("Runtime state", () => {
+  it("carries the state the source reported", () => {
+    const [view] = viewSessions(sourceOf({ id: "s1", runtimeState: "working" }));
+
+    assert.equal(view.runtimeState, "working");
+  });
+
+  it("leaves the state out when the session is not running", () => {
+    const [view] = viewSessions(sourceOf({ id: "s1" }));
+
+    assert.equal("runtimeState" in view, false);
+  });
+});

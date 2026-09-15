@@ -44,7 +44,7 @@ export function changingSource(...sessions: PartialSession[]): {
 // Projects away the activity time for scenarios about active/waiting state.
 export function stateOf(
   view: SessionView,
-): Omit<SessionView, "agent" | "workspace" | "workspaceOnDisk" | "lastActivityAt"> {
+): Omit<SessionView, "agent" | "workspace" | "workspaceOnDisk" | "runtimeState" | "lastActivityAt"> {
   return { id: view.id, active: view.active, waiting: view.waiting };
 }
 

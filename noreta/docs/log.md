@@ -1,6 +1,8 @@
 # Log
 
 ## 2026-09-15
+- The state column tells `working` from `idle`: a view now carries the state its
+  source reported, not only the flags derived from it.
 - A created file reads as a diff adding every line instead of an empty diff —
   392 of 1850 diffs across 300 real transcripts had shown nothing.
 - Text Claude Code marks as its own (`isMeta`) no longer reads as the user
