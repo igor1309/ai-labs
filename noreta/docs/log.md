@@ -1,16 +1,13 @@
 # Log
 
 ## 2026-09-15
-- A session's repository is read from git's layout beside its workspace, so a
-  worktree names the repository it belongs to. 44 of 710 real sessions report
-  one; the rest are deleted worktrees, which nothing on disk can answer for.
-- Runtime state is read on every source read rather than once at wiring, so a
-  session that starts or stops while Noreta runs is seen.
+- A session's repository is read from git's layout beside its workspace: a
+  worktree names the repository it belongs to, a workspace that is gone names
+  none.
+- Runtime state is read on every source read, so a session that starts or stops
+  while Noreta runs is seen.
 - Every QA scenario is covered on both sides of its port — the domain through a
-  test source, the adapter against files on disk — each half proved to fail by
-  breaking the code behind it. That retired the "pinned scenario" idea, and
-  found two gaps: runtime state is frozen when the source is made, and no
-  adapter sets `repository`.
+  test source, the adapter against files on disk.
 - The session list tells `working` from `idle`; `active` and `waiting` are read
   from the reported runtime state instead of stored beside it.
 - Transcripts are read from Claude Code's JSONL: messages, tool calls, and edits
