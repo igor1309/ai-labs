@@ -1,63 +1,21 @@
 # Log
 
 ## 2026-09-15
-- First entry point: `npm start` wires the Claude Code session and registry
-  adapters into the domain and prints the last 7 days as plain text, active
-  sessions marked. Formatting is a pure, tested function; the composition root's
-  wiring is untested and was checked by a real run whose 4 active sessions
-  matched the 4 live registrations. The state column cannot show working vs idle
-  — `SessionView` does not carry that split.
-- Session discovery reads each transcript's last 64 KB instead of the whole
-  file: 4.3–5.6 s → ~200 ms for 1546 real sessions, output identical to the
-  whole-file read. Two guard tests pin the tail edges; each fails when the read
-  is broken the way it guards against.
-- Two live processes registering one session no longer resolve by `readdir`
-  order, which was arbitrary: the busiest of them wins. The costs are asymmetric
-  — over-reporting that a session wants attention costs a glance, under-reporting
-  it costs a stall — so `working` beats `waiting` beats `idle`. The ranking is
-  exhaustive over the three states the registry can report, which is an
-  `Extract` of the domain's `RuntimeState` rather than the whole of it: the two
-  waiting kinds are unreachable from this source, so ranking them would be two
-  lines no test could ever reach. Observed on this machine: pids 88743 and 72339 both
-  claim one session, and agreed, so nothing changes for it today.
-- Runtime state, from `~/.claude/sessions/<pid>.json` — Claude Code's registry of
-  its running sessions, which carries the session id, so no heuristic is needed
-  to say which session a process belongs to. Earlier candidates all failed on
-  evidence: transcripts are not held open, so there is no file-to-pid link, and
-  a process's cwd is one-to-many (four live processes shared one workspace).
-  The file name is the liveness claim and is checked against the process, so a
-  registration that outlived its process is dropped — that is termination
-  detection. Nine of 1541 sessions come out active, matching the registry
-  exactly.
-- Decided in the open: the registry's `status` is `busy`/`waiting`/`idle`, while
-  the domain asks for four states. `waitingFor` looked like it would separate
-  input from approval and does not — it is free text with four literals, and
-  `"dialog open"` covers both a permission prompt and a plain question. Rather
-  than guess a kind, `RuntimeState` gained a bare `waiting` beside the two kinds
-  and `isWaiting` covers all three. Two QA scenarios are therefore out of this
-  adapter's reach, which the README now says rather than leaving them looking
-  merely unbuilt. A registration with no status at all — the SDK sessions — reads
-  as idle.
-- First adapter: `claudeCodeSessions` reads the JSONL transcripts under
-  `~/.claude/projects` and implements `SessionSource`, so the domain runs on real
-  data for the first time. Discovery only — no runtime state, so every session
-  reads as inactive. The project directory's name is the workspace path with its
-  separators replaced and cannot be decoded back, so workspace and branch come
-  from the records; the newest context record wins, since the branch moves with
-  the checkout. Real data drove two of the six cycles: Claude Code writes
-  `gitBranch: "HEAD"` when no branch is checked out (207 of the first 400
-  transcripts), which is not a branch name, and a running session's last line can
-  be half written, which was aborting the whole read. Against 793 project
-  directories: 1540 sessions in 5.8s, 888 with a workspace that is gone. That
-  5.8s is every transcript parsed end to end — identity and last activity do not
-  need the whole file, and nothing has been done about it yet.
-- Close the one open question on search: a `TranscriptSource` that throws no
-  longer aborts the whole search. `searchSessions` returns
-  `{ matches, unreadable }`, so an unreadable session is reported instead of
-  silently vanishing from the results — the alternative, skipping it quietly,
-  leaves nobody able to tell "no match" from "could not read". New QA scenario
-  "A transcript cannot be read" under its own rule; the five existing call sites
-  read `.matches`. Nothing renders the warning yet: there is still no renderer.
+- `npm start` prints recent Claude Code sessions as plain text, active ones
+  marked — the first way to run Noreta against real data. The state column
+  cannot yet split working from idle.
+- Discovery reads only each transcript's tail: about 200 ms for 1546 real
+  sessions, down from 4–6 s, with identical output.
+- A session registered by two live processes reports the busier state, so a
+  session that wants attention is never hidden behind an idle twin.
+- Active, waiting and ended sessions come from Claude Code's own session
+  registry instead of being inferred. The registry cannot tell input from
+  approval, so `RuntimeState` gained a bare `waiting`, and the two QA scenarios
+  that tell them apart are out of this adapter's reach.
+- Claude Code sessions are discovered from `~/.claude/projects`, so the domain
+  runs on real data for the first time.
+- Search reports sessions whose transcript cannot be read instead of aborting,
+  so "no match" and "could not read" stay distinguishable.
 - Codex review of "Access older sessions", accepted with a correction: both
   deleted-worktree scenarios were called pinned, but only one is. Breaking the
   view so it folds a deleted worktree into its repository root fails "Its worktree
