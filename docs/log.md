@@ -1,5 +1,13 @@
 # Log
 
+## 2026-09-15
+
+- Move `niora/` from the top level to `research/niora/`: the name is excluded
+  because of the niora.ai conflict, and the directory holds only early-stage
+  design notes. Dropped its `## Components` row, its products-page card (and
+  the now-empty Concepts group), its `loc-dashboard.html` data entry, and its
+  `loc-dashboard.sh` `known`/row-loop entries.
+
 ## 2026-09-05
 
 - Refresh the LOC dashboard rows, summary totals, ratio, and timestamp from the current counting script.
