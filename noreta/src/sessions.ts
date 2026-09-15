@@ -7,7 +7,7 @@ export type RuntimeState =
 export type ObservedSession = {
   id: string;
   runtimeState?: RuntimeState;
-  lastActivityAt?: Date;
+  lastActivityAt: Date;
 };
 
 export type SessionSource = () => ObservedSession[];
@@ -16,7 +16,7 @@ export type SessionView = {
   id: string;
   active: boolean;
   waiting: boolean;
-  lastActivityAt?: Date;
+  lastActivityAt: Date;
 };
 
 export function viewSessions(source: SessionSource): SessionView[] {
@@ -25,21 +25,30 @@ export function viewSessions(source: SessionSource): SessionView[] {
       id: session.id,
       active: session.runtimeState !== undefined,
       waiting: isWaiting(session.runtimeState),
-      ...(session.lastActivityAt === undefined
-        ? {}
-        : { lastActivityAt: session.lastActivityAt }),
+      lastActivityAt: session.lastActivityAt,
     }))
     .sort(byMostRecentActivity);
 }
 
-function byMostRecentActivity(left: SessionView, right: SessionView): number {
-  return activityTime(right) - activityTime(left);
-}
-
-function activityTime(view: SessionView): number {
-  return view.lastActivityAt?.getTime() ?? 0;
-}
-
 function isWaiting(runtimeState: RuntimeState | undefined): boolean {
   return runtimeState === "waiting-for-input" || runtimeState === "waiting-for-approval";
+}
+
+function byMostRecentActivity(left: SessionView, right: SessionView): number {
+  const leftTime = activityTime(left);
+  const rightTime = activityTime(right);
+
+  if (leftTime === rightTime) {
+    return 0;
+  }
+
+  return rightTime > leftTime ? 1 : -1;
+}
+
+// An unreadable timestamp sorts as the oldest rather than poisoning the
+// comparator: NaN would make every comparison it takes part in meaningless.
+function activityTime(view: SessionView): number {
+  const time = view.lastActivityAt.getTime();
+
+  return Number.isNaN(time) ? Number.MIN_SAFE_INTEGER : time;
 }

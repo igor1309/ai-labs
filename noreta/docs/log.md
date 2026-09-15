@@ -1,6 +1,12 @@
 # Log
 
 ## 2026-09-15
+- Codex review of "See recent sessions", both findings accepted: `lastActivityAt`
+  is required rather than optional, so the "inactive sessions expose their last
+  activity" rule is carried by the type instead of by whatever the caller
+  remembers to pass; and the ordering comparator is total, because `?? 0` does
+  not catch the `NaN` an Invalid Date produces and one malformed record silently
+  defeated ordering for every other session.
 - Implement "See recent sessions": sessions carry `lastActivityAt`, the view
   surfaces it, and the default view is ordered most-recent-first. Test helpers
   move to `tests/session-source.ts`. "A recently inactive session exists" is
