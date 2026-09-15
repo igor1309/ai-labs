@@ -19,8 +19,9 @@ the MVP observes local sessions on a Mac, V2 brings the same read-only access to
 iPhone, and later stages add interaction with local runtimes (reply, approvals,
 resume, handoff, automation).
 
-Working name. Implementation has started: the first QA feature,
-"See active sessions", is in `src/`, with `tests/` covering its scenarios.
+Working name. Implementation has started with the session-state projection
+behind the "See active sessions" feature. Nothing reads a real Claude Code or
+Codex session yet — there is no adapter and no entry point.
 
 ## Docs
 
@@ -38,8 +39,16 @@ Working name. Implementation has started: the first QA feature,
 
 | Path | Contents |
 |------|----------|
-| `src/sessions.ts` | Session view: maps observed sessions to active/waiting state. Discovery is behind the `SessionSource` port. |
+| `src/sessions.ts` | Session view: maps observed sessions to active/waiting state. Discovery sits behind the `SessionSource` port. |
 | `tests/active-sessions.test.ts` | One test per Gherkin scenario of the "See active sessions" feature in [docs/qa.md](docs/qa.md), named after it. |
+
+What this does **not** yet do: `SessionSource` has no production implementation,
+so the only thing that feeds `viewSessions` is a test source. The scenarios
+under "Sessions are discovered independently of how they were started" are
+therefore pinned rather than driven — they constrain the adapters when those
+arrive, and cannot fail today. Real Claude Code and Codex adapters, startup
+reconciliation, and termination detection are the next slice; see
+[docs/implementation-notes.md](docs/implementation-notes.md).
 
 Tests and typecheck, from the repo root:
 
