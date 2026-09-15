@@ -1,14 +1,26 @@
-import type { TranscriptEntry, TranscriptSource } from "../src/transcript.js";
+// The order a reader sees a transcript in, which its caller puts on it —
+// `follow.ts` calls this same function. Applied where a scenario reads a
+// session's history.
+export { oldestFirst } from "../src/ordering.js";
+
+// What a scenario's transcript entry carries. Its own record, like the modules
+// it is handed to: nothing here follows a particular source's record.
+export type ScenarioEntry =
+  | { kind: "message"; at: Date; role: "user" | "agent"; text: string }
+  | { kind: "tool-call"; at: Date; name: string }
+  | { kind: "file-diff"; at: Date; path: string; diff: string };
+
+export type ScenarioTranscript = (sessionId: string) => ScenarioEntry[];
 
 // A message reads as its text; anything else reads as its kind.
-export function describeEntry(entry: TranscriptEntry): string {
+export function describeEntry(entry: ScenarioEntry): string {
   return entry.kind === "message" ? entry.text : entry.kind;
 }
 
 export function transcriptOf(
   sessionId: string,
-  entries: TranscriptEntry[],
-): TranscriptSource {
+  entries: ScenarioEntry[],
+): ScenarioTranscript {
   return (requested) => (requested === sessionId ? entries : []);
 }
 
@@ -25,8 +37,8 @@ export function filesystemError(code: string): NodeJS.ErrnoException {
 
 export function changingTranscript(
   sessionId: string,
-  entries: TranscriptEntry[],
-): { read: TranscriptSource; append: (entry: TranscriptEntry) => void } {
+  entries: ScenarioEntry[],
+): { read: ScenarioTranscript; append: (entry: ScenarioEntry) => void } {
   let current = [...entries];
 
   return {

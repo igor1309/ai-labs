@@ -1,11 +1,20 @@
 import { readFileSync } from "node:fs";
 
 import { parsedRecord, transcriptFilesOf } from "./claude-code-files.js";
-import type { TranscriptEntry, TranscriptSource } from "./transcript.js";
+
+// What this adapter makes of a transcript file. Its own record: another source
+// describes its entries in its own terms, and a consumer takes the entries it
+// was handed rather than a shape the sources agree on.
+export type TranscriptEntry =
+  | { kind: "message"; at: Date; role: "user" | "agent"; text: string }
+  | { kind: "tool-call"; at: Date; name: string }
+  | { kind: "file-diff"; at: Date; path: string; diff: string };
 
 // Reads one session's transcript from the file Claude Code keeps for it, found
 // by the session id alone.
-export function claudeCodeTranscript(projectsDirectory: string): TranscriptSource {
+export function claudeCodeTranscript(
+  projectsDirectory: string,
+): (sessionId: string) => TranscriptEntry[] {
   return (sessionId: string): TranscriptEntry[] =>
     transcriptFilesOf(projectsDirectory, sessionId).flatMap(entriesIn);
 }

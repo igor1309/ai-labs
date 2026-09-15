@@ -3,6 +3,11 @@ export function newestFirst<Item extends { lastActivityAt: Date }>(items: Item[]
   return [...items].sort(byTime((item) => item.lastActivityAt, "newest-first"));
 }
 
+// The order a reader sees a transcript in, which its caller puts on it.
+export function oldestFirst<Item extends { at: Date }>(items: Item[]): Item[] {
+  return [...items].sort(byTime((item) => item.at, "oldest-first"));
+}
+
 // An unreadable timestamp sorts as the oldest rather than poisoning the
 // comparator: NaN would make every comparison it takes part in meaningless,
 // and one bad record would silently defeat ordering for every other one.

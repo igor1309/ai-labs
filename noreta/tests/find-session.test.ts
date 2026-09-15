@@ -3,10 +3,13 @@ import { describe, it } from "node:test";
 
 import { searchSessions } from "../src/search.js";
 import { recentSessions } from "../src/sessions.js";
-import type { TranscriptSource } from "../src/transcript.js";
 import { isActive, sessionsOf } from "./session-source.js";
 import { at } from "./time.js";
-import { filesystemError, transcriptOf } from "./transcript-source.js";
+import {
+  filesystemError,
+  type ScenarioTranscript,
+  transcriptOf,
+} from "./transcript-source.js";
 
 describe("Feature: Find a session", () => {
   describe("Rule: Search covers session context and content", () => {
@@ -59,7 +62,7 @@ describe("Feature: Find a session", () => {
         { id: "unreadable", agent: "claude", lastActivityAt: at("10:00") },
         { id: "readable", agent: "claude", lastActivityAt: at("09:00") },
       );
-      const transcripts: TranscriptSource = (sessionId) => {
+      const transcripts: ScenarioTranscript = (sessionId) => {
         if (sessionId === "unreadable") {
           throw filesystemError("ENOENT");
         }

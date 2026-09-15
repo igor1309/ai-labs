@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { olderSessions, recentSessions } from "../src/sessions.js";
-import { readTranscript } from "../src/transcript.js";
 import {
   changingSource,
   isActive,
@@ -11,7 +10,7 @@ import {
   sourceOf,
 } from "./session-source.js";
 import { at } from "./time.js";
-import { describeEntry, transcriptOf } from "./transcript-source.js";
+import { describeEntry, oldestFirst, transcriptOf } from "./transcript-source.js";
 
 describe("Feature: Access older sessions", () => {
   describe("Rule: Sessions remain available outside the recent history", () => {
@@ -59,7 +58,7 @@ describe("Feature: Access older sessions", () => {
       ]);
       assert.equal(source()[0].workspaceOnDisk, false);
 
-      assert.deepEqual(readTranscript(transcripts, "in-worktree").map(describeEntry), [
+      assert.deepEqual(oldestFirst(transcripts("in-worktree")).map(describeEntry), [
         "what did we decide",
       ]);
     });

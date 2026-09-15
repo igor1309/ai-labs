@@ -2,11 +2,15 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { followSession, type FollowedSession } from "../src/follow.js";
-import type { TranscriptEntry } from "../src/transcript.js";
 import { changeSignal } from "./change-signal.js";
 import { changingSource, type ScenarioSession, stateOf } from "./session-source.js";
 import { at } from "./time.js";
-import { changingTranscript, describeEntry } from "./transcript-source.js";
+import {
+  changingTranscript,
+  describeEntry,
+  type ScenarioEntry,
+  type ScenarioTranscript,
+} from "./transcript-source.js";
 
 describe("Feature: Follow an active session", () => {
   describe("Rule: An open transcript reflects new activity", () => {
@@ -65,16 +69,16 @@ type ViewedSession = Parameters<typeof changingSource>[0];
 // Opens a session the way a reader would and keeps whatever was last pushed to
 // the screen. Nothing here re-reads a source: updates have to arrive on their
 // own, which is what the scenarios are about.
-function view(session: ViewedSession, transcripts: (id: string) => TranscriptEntry[] = noTranscript) {
+function view(session: ViewedSession, transcripts: ScenarioTranscript = noTranscript) {
   const sessions = changingSource(session);
   const changes = changeSignal();
-  let onScreen: FollowedSession<ScenarioSession> | undefined;
+  let onScreen: FollowedSession<ScenarioSession, ScenarioEntry> | undefined;
 
   followSession(sessions.read, transcripts, session.id, changes.subscribe, (followed) => {
     onScreen = followed;
   });
 
-  const shown = (): FollowedSession<ScenarioSession> => {
+  const shown = (): FollowedSession<ScenarioSession, ScenarioEntry> => {
     assert.ok(onScreen, "opening a session should show it");
 
     return onScreen;
@@ -97,6 +101,6 @@ function view(session: ViewedSession, transcripts: (id: string) => TranscriptEnt
   };
 }
 
-function noTranscript(): TranscriptEntry[] {
+function noTranscript(): ScenarioEntry[] {
   return [];
 }

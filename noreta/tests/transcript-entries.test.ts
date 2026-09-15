@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { readTranscript } from "../src/transcript.js";
 import { at } from "./time.js";
-import { transcriptOf } from "./transcript-source.js";
+import { oldestFirst, transcriptOf } from "./transcript-source.js";
 
 // Entry-shape guarantees behind "Read a session". Not QA scenarios, so they
 // live outside the scenario-named files.
@@ -15,7 +14,7 @@ describe("Transcript entries", () => {
     ]);
 
     assert.deepEqual(
-      readTranscript(source, "s1").map((entry) =>
+      oldestFirst(source("s1")).map((entry) =>
         entry.kind === "message" ? entry.role : entry.kind,
       ),
       ["user", "agent"],
