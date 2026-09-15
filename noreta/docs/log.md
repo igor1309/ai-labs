@@ -1,6 +1,10 @@
 # Log
 
 ## 2026-09-15
+- Machine-check the scenario-to-test mapping: `tests/qa-coverage.test.ts` parses
+  `docs/qa.md` and asserts each implemented feature's test file declares exactly
+  its scenario titles, so a renamed or dropped scenario fails CI instead of
+  quietly widening the gap between the QA doc and the suite.
 - Codex review of "See recent sessions", both findings accepted: `lastActivityAt`
   is required rather than optional, so the "inactive sessions expose their last
   activity" rule is carried by the type instead of by whatever the caller
