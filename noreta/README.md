@@ -6,7 +6,7 @@ description: "Noreta — local hub for coding-agent sessions across Claude Code,
 
 # noreta
 
-Local hub for coding-agent sessions.
+Local hub for coding-agent sessions. Working name.
 
 ## Description
 
@@ -19,9 +19,20 @@ the MVP observes local sessions on a Mac, V2 brings the same read-only access to
 iPhone, and later stages add interaction with local runtimes (reply, approvals,
 resume, handoff, automation).
 
-Working name. Implementation has started with the session-state projection
-behind the "See active sessions" feature. Nothing reads a real Claude Code or
-Codex session yet — there is no adapter and no entry point.
+## Run
+
+From the repo root. List this machine's recent Claude Code sessions:
+
+```bash
+npm --prefix noreta start
+```
+
+Tests and typecheck:
+
+```bash
+node --import tsx --test noreta/tests/*.test.ts
+npx tsc --noEmit -p noreta
+```
 
 ## Docs
 
@@ -32,6 +43,7 @@ Codex session yet — there is no adapter and no entry point.
 | [docs/user-stories.md](docs/user-stories.md) | Top user stories for the read-only Mac MVP, as Gherkin scenarios |
 | [docs/qa.md](docs/qa.md) | QA scenarios for the MVP, one Gherkin feature per user story |
 | [docs/implementation-notes.md](docs/implementation-notes.md) | Exploratory technical notes — session model, indexing, update model, proposed stack |
+| [docs/TODO.md](docs/TODO.md) | Forward work and open questions |
 | [docs/backlog.md](docs/backlog.md) | Deferred ideas |
 | [docs/log.md](docs/log.md) | Project log |
 
@@ -39,96 +51,45 @@ Codex session yet — there is no adapter and no entry point.
 
 | Path | Contents |
 |------|----------|
-| `src/sessions.ts` | Session view: `viewSessions` reads the `SessionSource` and orders by last activity; `recentSessions`, `olderSessions` and `activeSessions` are list-to-list projections over the result. `RuntimeState` carries a bare `waiting` beside the two kinds, for a source that knows a session is blocked but not on what. A view carries the state its source reported; `isActive` and `isWaiting` read that state rather than standing beside it as fields that could drift from it. |
-| `src/follow.ts` | Follows one session: pushes a fresh state and transcript whenever the `SessionChanges` port signals, so an open session reflects new activity without being asked. |
-| `src/search.ts` | Finds sessions by agent, repository, branch or message text, across the whole source rather than the default view. Returns the matches together with the sessions whose transcript could not be read, so an unreadable one is reported rather than dropped. |
+| `src/sessions.ts` | Session view: `viewSessions` reads the `SessionSource` and orders by last activity; `recentSessions`, `olderSessions` and `activeSessions` are list-to-list projections over the result. A view carries the `RuntimeState` its source reported, and `isActive` and `isWaiting` read it. `RuntimeState` has a bare `waiting` beside the two kinds, for a source that knows a session is blocked but not on what. |
+| `src/follow.ts` | Follows one session: pushes a fresh state and transcript whenever the `SessionChanges` port signals. |
+| `src/search.ts` | Finds sessions by agent, repository, branch or message text across the whole source. Returns the matches together with the sessions whose transcript could not be read. |
 | `src/grouping.ts` | Partitions a session list by repository, workspace or agent. |
-| `src/ordering.ts` | The one ordering rule: sort by a timestamp in either direction, treating an unreadable one as the oldest instead of returning `NaN`. |
-| `src/transcript.ts` | Session transcript: messages, tool calls and file diffs, oldest first. Reading sits behind the `TranscriptSource` port. |
-| `src/claude-code.ts` | Discovery adapter: reads the JSONL transcripts Claude Code leaves under `~/.claude/projects` and reports each as an `ObservedSession`. The project directory's name is the workspace path with its separators replaced, which is lossy, so workspace and branch come from the records. Runtime state comes from the `RuntimeStates` port, which it owns. |
-| `src/claude-code-transcript.ts` | Implements `TranscriptSource`: reads a session's JSONL transcript, found by session id in whichever project directory holds it. Text blocks become messages, `tool_use` blocks tool calls, and an edit's `structuredPatch` a unified diff; a created file, whose patch is empty, reads as every line added. |
-| `src/session-lines.ts` | Plain-text lines for a session list: an active marker, agent, state, branch and workspace, and last activity. The state column reads `working`, `idle`, `waiting` or `inactive`; the three waiting kinds read as one word, since the list says a session is blocked rather than what on. |
-| `src/main.ts` | Composition root and entry point: the only module that reads the home directory and the clock. Wires both Claude Code adapters into the domain and prints the last 7 days of sessions. Its wiring has no test; the real run is the check. |
-| `tests/active-sessions.test.ts` | One test per Gherkin scenario of the "See active sessions" feature in [docs/qa.md](docs/qa.md), named after it. |
+| `src/ordering.ts` | The one ordering rule: sort by a timestamp in either direction, an unreadable one sorting oldest. |
+| `src/transcript.ts` | Session transcript: messages, tool calls and file diffs, oldest first, read through the `TranscriptSource` port. |
+| `src/claude-code.ts` | Implements `SessionSource` from the JSONL transcripts under `~/.claude/projects`. Workspace and branch come from the records, since the project directory's name is lossy; only the last 64 KB of each transcript is read, the whole file only when that tail holds no context record. Runtime state comes from the `RuntimeStates` port, which it owns. |
+| `src/claude-code-registry.ts` | Implements `RuntimeStates` from `~/.claude/sessions/<pid>.json`. A registration whose process is gone is dropped; of two live processes registering one session, the busiest is reported. |
+| `src/claude-code-transcript.ts` | Implements `TranscriptSource`: finds a session's JSONL transcript by id. Text blocks become messages, `tool_use` blocks tool calls, an edit's `structuredPatch` a unified diff, and a created file every line added; records Claude Code marks `isMeta` are skipped. |
+| `src/session-lines.ts` | Plain-text lines for a session list: active marker, agent, state (`working`, `idle`, `waiting` or `inactive`), branch, workspace and last activity. |
+| `src/main.ts` | Composition root and entry point: the only module that reads the home directory and the clock. Prints the last 7 days of Claude Code sessions. |
+| `tests/active-sessions.test.ts` | One test per Gherkin scenario of "See active sessions" in [docs/qa.md](docs/qa.md), named after it. |
 | `tests/recent-sessions.test.ts` | Same, for "See recent sessions". |
 | `tests/read-session.test.ts` | Same, for "Read a session". |
 | `tests/follow-session.test.ts` | Same, for "Follow an active session". |
 | `tests/find-session.test.ts` | Same, for "Find a session" — one test per Examples row, plus the scenarios outside the outline. |
 | `tests/organize-sessions.test.ts` | Same, for "Organize sessions". |
 | `tests/access-older-sessions.test.ts` | Same, for "Access older sessions". |
-| `tests/search-sources.test.ts` | Not QA scenarios: what search asks of the transcript source, and the empty query. |
-| `tests/qa-coverage.test.ts` | Asserts each implemented feature's test file declares exactly the scenario titles in [docs/qa.md](docs/qa.md). |
-| `tests/follow-unknown-session.test.ts` | Not QA scenarios: following an unknown id, and how often following pushes. |
-| `tests/change-signal.ts` | Test stand-in for the watcher behind `SessionChanges`. |
-| `tests/transcript-entries.test.ts` | Entry-shape guarantees that are not QA scenarios: speakers stay distinguishable. |
-| `tests/recent-and-older.test.ts` | Not a QA scenario: the recent/older split loses no session. |
-| `tests/grouping-at-scale.test.ts` | Not a QA scenario: grouping a long history stays linear. |
-| `tests/session-ordering.test.ts` | Ordering edge cases that are not QA scenarios: unreadable and tied timestamps, unknown sessions. |
-| `tests/claude-code-sessions.test.ts` | Not QA scenarios: what the Claude Code adapter makes of the files on disk — the record it believes, a half-written last line, a workspace that is gone, a transcript that never says where it is working, and a long transcript whose context is at either end. |
-| `tests/claude-code-projects.ts` | Writes a throwaway `~/.claude/projects` tree for those tests. |
-| `src/claude-code-registry.ts` | Implements `RuntimeStates` from `~/.claude/sessions/<pid>.json`, the registry Claude Code keeps of its running sessions. The file name is the claim that the session runs, so a registration whose process is gone is dropped rather than believed. Two live processes can register one session; the busiest of them is reported. |
-| `tests/claude-code-runtime.test.ts` | Not QA scenarios: the status mapping, and a registration that outlived its process. |
-| `tests/claude-code-registry.ts` | Writes a throwaway registry directory for those tests. |
-| `tests/session-state.test.ts` | Not a QA scenario: a session waiting without a known kind still reads as waiting. |
-| `tests/session-lines.test.ts` | Not QA scenarios: how a session list reads as plain text. |
-| `tests/claude-code-transcript.test.ts` | Not QA scenarios: what the transcript adapter makes of Claude Code's records. |
+| `tests/qa-coverage.test.ts` | Asserts each feature's test file declares exactly the scenario titles in [docs/qa.md](docs/qa.md), and that every feature there has a file. |
+| `tests/claude-code-sessions.test.ts` | What the discovery adapter makes of the files on disk. |
+| `tests/claude-code-runtime.test.ts` | The registry status mapping, and a registration that outlived its process. |
+| `tests/claude-code-transcript.test.ts` | What the transcript adapter makes of Claude Code's records. |
+| `tests/session-lines.test.ts` | How a session list reads as plain text. |
+| `tests/session-state.test.ts` | A bare `waiting`, and the reported state carried onto the view. |
+| `tests/search-sources.test.ts` | What search asks of the transcript source, and the empty query. |
+| `tests/follow-unknown-session.test.ts` | Following an unknown id, and how often following pushes. |
+| `tests/transcript-entries.test.ts` | Speakers stay distinguishable. |
+| `tests/recent-and-older.test.ts` | The recent/older split loses no session. |
+| `tests/grouping-at-scale.test.ts` | Grouping a long history stays linear. |
+| `tests/session-ordering.test.ts` | Unreadable and tied timestamps, unknown sessions. |
 | `tests/session-source.ts` | Test sources feeding `SessionSource`, plus the `stateOf` projection. |
 | `tests/transcript-source.ts` | Test sources feeding `TranscriptSource`. |
-
-What this does **not** yet do: both ports have a Claude Code implementation
-and nothing else. The transcript adapter skips what Claude Code marks `isMeta`, but still
-reports unmarked wrappers such as `<task-notification>` as user messages.
-`npm start` prints recent sessions as plain text; the
-presentation target beyond that is undecided. A Codex
-adapter and startup reconciliation are still ahead; see
-[docs/implementation-notes.md](docs/implementation-notes.md).
-
-Two QA scenarios are out of this adapter's reach rather than merely unbuilt.
-Claude Code's registry records a free-text `waitingFor` whose commonest value,
-`"dialog open"`, covers a permission prompt and a plain question alike, so
-nothing on disk separates waiting for input from waiting for approval. A
-session blocked either way reports the bare `waiting`, and "A session waiting
-for input is visible as waiting" and "A session waiting for approval is visible
-as waiting" are distinguishable only through a source that says which.
-
-Discovery reads only the last 64 KB of each transcript, where the newest
-context record sits, and falls back to the whole file only when that tail holds
-none. Against a real `~/.claude/projects` of 1546 sessions it takes about 200 ms,
-with output identical to a whole-file read.
-
-### Pinned scenarios
-
-Every QA scenario has a test, but some of those tests cannot fail against the
-current code — they constrain whatever implements the missing piece rather than
-checking behavior that exists. Kept honest here rather than buried in the log.
-Each entry was confirmed by breaking the implementation and watching the test
-stay green.
-
-| Scenario | Why it cannot fail yet | What would drive it |
-|----------|------------------------|---------------------|
-| A session starts outside Noreta | The port is re-read per call and no code knows how a session was started | These scenarios running against `claudeCodeSessions` rather than a test source — the adapter exists now, their tests do not use it |
-| Noreta starts after the agent | Same | Same |
-| A transcript contains a tool call | The test runs against a test source, so it only proves tagged entries survive ordering | The scenario running against `claudeCodeTranscript`, which does map tool calls, rather than a test source |
-| A transcript contains a file diff | Same | The scenario running against `claudeCodeTranscript`, which does map edits to diffs, rather than a test source |
-| Its worktree has been deleted | Half of it is real: the view cannot drop the worktree path or fold it into the repository root without failing. Nothing *notices* a worktree disappearing, though — the test hands the view a session already marked gone | The scenario running against `claudeCodeSessions`, which does check the workspace, rather than a test source |
-| Open a session from a deleted worktree | `readTranscript` never consults a workspace, so no implementation of it could fail this | The scenario running against `claudeCodeTranscript`, which finds a transcript by session id and never consults the workspace, rather than a test source |
-
-Tests and typecheck, from the repo root:
-
-```bash
-node --import tsx --test noreta/tests/*.test.ts
-npx tsc --noEmit -p noreta
-```
-
-Run against this machine's Claude Code sessions, from the repo root:
-
-```bash
-npm --prefix noreta start
-```
+| `tests/time.ts` | Builds timestamps on one fixed day from a clock time. |
+| `tests/change-signal.ts` | Test stand-in for the watcher behind `SessionChanges`. |
+| `tests/claude-code-projects.ts` | Writes a throwaway `~/.claude/projects` tree. |
+| `tests/claude-code-registry.ts` | Writes a throwaway registry directory. |
 
 ## Stack
 
-Only the parts above exist. The rest is proposed: TypeScript end-to-end —
-Node.js, Fastify, SQLite, React, Vite, Tailwind, shadcn/ui, with SSE or
-WebSocket for realtime updates. See
+TypeScript on Node.js. Proposed beyond that: Fastify, SQLite, React, Vite,
+Tailwind, shadcn/ui, with SSE or WebSocket for realtime updates — see
 [docs/implementation-notes.md](docs/implementation-notes.md).
