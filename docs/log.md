@@ -2,6 +2,12 @@
 
 ## 2026-09-15
 
+- Promote `noreta/` from `research/noreta/` to a top-level project: collect its
+  docs under `noreta/docs/`, seed a README and project log, and register it in
+  the `## Components` table, the products page (Applications), the
+  `loc-dashboard.html` data array, and the `loc-dashboard.sh` `known`/row-loop
+  entries. No release unit and no CI workflow — the project has no code yet.
+
 - Move `niora/` from the top level to `research/niora/`: the name is excluded
   because of the niora.ai conflict, and the directory holds only early-stage
   design notes. Dropped its `## Components` row, its products-page card (and
