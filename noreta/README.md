@@ -76,8 +76,9 @@ Codex session yet — there is no adapter and no entry point.
 | `tests/transcript-source.ts` | Test sources feeding `TranscriptSource`. |
 
 What this does **not** yet do: both ports have a Claude Code implementation
-and nothing else. The transcript adapter reports harness wrappers such as
-`<system-reminder>` as user messages, and a newly created file as an empty diff.
+and nothing else. The transcript adapter skips what Claude Code marks `isMeta`, but still
+reports unmarked wrappers such as `<task-notification>` as user messages, and
+a newly created file as an empty diff.
 `npm start` prints recent sessions as plain text; the
 presentation target beyond that is undecided. A Codex
 adapter and startup reconciliation are still ahead; see

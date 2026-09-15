@@ -1,6 +1,8 @@
 # Log
 
 ## 2026-09-15
+- Text Claude Code marks as its own (`isMeta`) no longer reads as the user
+  speaking, so it stops showing up in transcripts and search.
 - A session's transcript is read from Claude Code's JSONL: messages, tool calls
   and file edits as diffs, so the transcript port has a real implementation.
   Harness wrappers still read as user messages and a created file as an empty

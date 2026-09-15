@@ -154,6 +154,25 @@ describe("What the Claude Code transcript adapter reads", () => {
     ]);
   });
 
+  // Claude Code marks what it writes into the user's turn on its own behalf —
+  // the caveat it prepends to a local command's output — as `isMeta`.
+  it("skips what Claude Code wrote into the user's turn itself", () => {
+    const projects = projectsDirectoryOf({
+      id: "s1",
+      records: [
+        {
+          ...plainTextMessage("<local-command-caveat>Caveat: generated</local-command-caveat>", at("10:00")),
+          isMeta: true,
+        },
+        plainTextMessage("rank the sessions", at("10:01")),
+      ],
+    });
+
+    assert.deepEqual(claudeCodeTranscript(projects)("s1").map(describeEntry), [
+      "rank the sessions",
+    ]);
+  });
+
   it("reads an unknown session as an empty transcript", () => {
     const projects = projectsDirectoryOf({
       id: "known",

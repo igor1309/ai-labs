@@ -14,6 +14,7 @@ export function claudeCodeTranscript(projectsDirectory: string): TranscriptSourc
 
 type TranscriptRecord = {
   type?: string;
+  isMeta?: boolean;
   timestamp: string;
   message?: { content: string | ContentBlock[] };
   toolUseResult?: { filePath?: string; structuredPatch?: Hunk[] };
@@ -50,6 +51,12 @@ function entriesOf(record: TranscriptRecord): TranscriptEntry[] {
 }
 
 function messageEntries(record: TranscriptRecord, at: Date): TranscriptEntry[] {
+  // Claude Code marks what it writes into the user's turn on its own behalf as
+  // `isMeta`; nobody said it.
+  if (record.isMeta === true) {
+    return [];
+  }
+
   const role = record.type === "assistant" ? "agent" : "user";
   const content = record.message?.content ?? [];
 
