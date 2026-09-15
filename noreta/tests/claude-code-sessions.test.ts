@@ -8,6 +8,7 @@ import {
   projectsDirectoryOf,
   type TranscriptRecord,
   userRecord,
+  writeProject,
 } from "./claude-code-projects.js";
 import { at } from "./time.js";
 
@@ -58,6 +59,24 @@ describe("What the Claude Code adapter discovers", () => {
         lastActivityAt,
       })),
       [{ branch: "feature/noreta", lastActivityAt: at("10:30") }],
+    );
+  });
+
+  // A session is started by whatever launched the agent, not by Noreta, so its
+  // transcript can appear at any time after the source is made.
+  it("discovers a transcript written after the source was made", () => {
+    const projects = projectsDirectoryOf();
+    const sessions = claudeCodeSessions(projects, notRunning);
+    assert.deepEqual(sessions(), []);
+
+    writeProject(projects, "-another-project", {
+      id: "started-elsewhere",
+      records: [userRecord({ id: "started-elsewhere", at: at("10:00") })],
+    });
+
+    assert.deepEqual(
+      sessions().map((session) => session.id),
+      ["started-elsewhere"],
     );
   });
 

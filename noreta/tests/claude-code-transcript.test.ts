@@ -183,6 +183,21 @@ describe("What the Claude Code transcript adapter reads", () => {
     ]);
   });
 
+  // Claude Code keeps a transcript apart from the workspace it records, so
+  // deleting that workspace leaves the transcript to read.
+  it("reads the transcript of a session whose workspace is gone", () => {
+    const projects = projectsDirectoryOf({
+      id: "s1",
+      records: [
+        { ...plainTextMessage("what did we decide", at("10:01")), cwd: "/nowhere/deleted-worktree" },
+      ],
+    });
+
+    assert.deepEqual(claudeCodeTranscript(projects)("s1").map(describeEntry), [
+      "what did we decide",
+    ]);
+  });
+
   // Claude Code marks what it writes into the user's turn on its own behalf —
   // the caveat it prepends to a local command's output — as `isMeta`.
   it("skips what Claude Code wrote into the user's turn itself", () => {

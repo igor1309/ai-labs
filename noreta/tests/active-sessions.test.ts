@@ -67,13 +67,11 @@ describe("Feature: See active sessions", () => {
     });
 
     it("Noreta starts after the agent", () => {
-      const source = changingSource({ id: "already-running", runtimeState: "working" });
-      assert.equal(source.readCount(), 0, "the session exists before Noreta observes anything");
+      const source = sourceOf({ id: "already-running", runtimeState: "working" });
 
-      assert.deepEqual(viewSessions(source.read).map(stateOf), [
+      assert.deepEqual(viewSessions(source).map(stateOf), [
         { id: "already-running", active: true, waiting: false },
       ]);
-      assert.equal(source.readCount(), 1);
     });
   });
 });

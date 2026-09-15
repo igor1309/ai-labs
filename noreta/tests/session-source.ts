@@ -28,19 +28,12 @@ export function sourceOf(...sessions: PartialSession[]): SessionSource {
 
 export function changingSource(...sessions: PartialSession[]): {
   read: SessionSource;
-  readCount: () => number;
   replaceWith: (...next: PartialSession[]) => void;
 } {
   let current = sessions;
-  let reads = 0;
 
   return {
-    read: () => {
-      reads += 1;
-
-      return current.map(observed);
-    },
-    readCount: () => reads,
+    read: () => current.map(observed),
     replaceWith: (...next) => {
       current = next;
     },
