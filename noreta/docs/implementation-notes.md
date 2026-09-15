@@ -1,6 +1,6 @@
 ---
-date: 2026-09-15
-model: gpt-5.6-sol
+date: 2026-09-16
+model: claude-sonnet-5
 description: "Exploratory Noreta implementation notes — a local-first Claude/Codex session viewer: session model, indexing, update model, and proposed stack"
 ---
 
@@ -41,7 +41,7 @@ Useful attributes include:
 -   associated runtime identifier, when active
 -   runtime state
 -   creation time
--   last message time
+-   last activity time
 -   cwd / workspace path
 -   whether the workspace currently exists
 -   repository identity/root, when applicable
@@ -66,7 +66,7 @@ Useful active substates:
 `inactive` means the persisted session can potentially be resumed, but
 there is no live runtime currently owning it.
 
-For inactive sessions, `lastMessageAt` is particularly important as a
+For inactive sessions, `lastActivityAt` is particularly important as a
 relevance signal.
 
 Filesystem modification time should not be the source of truth for

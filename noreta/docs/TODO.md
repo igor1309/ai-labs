@@ -1,5 +1,5 @@
 ---
-date: 2026-09-15
+date: 2026-09-16
 model: claude-opus-5
 description: "Noreta forward work and open questions"
 ---
@@ -29,9 +29,10 @@ description: "Noreta forward work and open questions"
   tool calls and diffs distinguishable. Its own cycle.
 - [ ] A real `SessionChanges`: nothing implements the port outside tests, so
   following a session never updates.
-- [ ] Search on real data: not wired into `main.ts`, and it reads every
+- [ ] Search on real data: not wired into `composition-root.ts`, and it reads every
   transcript whole — 10.7 s over 1549. Indexing is proposed in
   [implementation-notes.md](implementation-notes.md).
-- [ ] Codex adapters for `SessionSource`, `TranscriptSource` and `RuntimeStates`.
+- [ ] Codex adapters for sessions, transcripts and runtime states, each in its
+  own records.
 - [ ] Startup and periodic reconciliation, per
   [implementation-notes.md](implementation-notes.md).
