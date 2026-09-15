@@ -25,3 +25,7 @@ export const livePid = process.pid;
 
 // Above macOS's maximum process id, so no process can ever hold it.
 export const deadPid = 999_999;
+
+// A second live process id, so two registrations can both pass the liveness
+// check. The parent always exists: if it exits, the process is reparented.
+export const otherLivePid = process.ppid;

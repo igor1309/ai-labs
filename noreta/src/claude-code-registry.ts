@@ -8,10 +8,34 @@ import type { RuntimeState } from "./sessions.js";
 // `~/.claude/sessions`. The file is the claim that the session is running; its
 // `status` says what the session is doing.
 export function claudeCodeRuntimeStates(registryDirectory: string): RuntimeStates {
-  const states = new Map(registrations(registryDirectory).filter(isRunning).map(asState));
+  const states = new Map<string, RuntimeState>();
+
+  for (const [sessionId, state] of registrations(registryDirectory)
+    .filter(isRunning)
+    .map(asState)) {
+    states.set(sessionId, busier(states.get(sessionId), state));
+  }
 
   return (sessionId: string): RuntimeState | undefined => states.get(sessionId);
 }
+
+// Two live processes can register the same session — one resumed in another
+// window — and nothing on disk says which is the real one. Report the busiest:
+// over-reporting that a session wants attention costs a glance, under-reporting
+// it costs a stall.
+function busier(known: RuntimeState | undefined, state: RuntimeState): RuntimeState {
+  return known !== undefined && activity[known] < activity[state] ? known : state;
+}
+
+// Lower is more active. Exhaustive over `RuntimeState`, so a new state has to
+// be ranked here rather than silently sorting last.
+const activity: Record<RuntimeState, number> = {
+  working: 0,
+  waiting: 1,
+  "waiting-for-input": 1,
+  "waiting-for-approval": 1,
+  idle: 2,
+};
 
 type Registration = {
   pid: number;

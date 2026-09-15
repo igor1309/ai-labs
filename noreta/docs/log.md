@@ -1,6 +1,13 @@
 # Log
 
 ## 2026-09-15
+- Two live processes registering one session no longer resolve by `readdir`
+  order, which was arbitrary: the busiest of them wins. The costs are asymmetric
+  — over-reporting that a session wants attention costs a glance, under-reporting
+  it costs a stall — so `working` beats `waiting` beats `idle`. The ranking is a
+  `Record<RuntimeState, number>`, so a new state has to be ranked rather than
+  silently sorting last. Observed on this machine: pids 88743 and 72339 both
+  claim one session, and agreed, so nothing changes for it today.
 - Runtime state, from `~/.claude/sessions/<pid>.json` — Claude Code's registry of
   its running sessions, which carries the session id, so no heuristic is needed
   to say which session a process belongs to. Earlier candidates all failed on

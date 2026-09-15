@@ -63,7 +63,7 @@ Codex session yet — there is no adapter and no entry point.
 | `tests/session-ordering.test.ts` | Ordering edge cases that are not QA scenarios: unreadable and tied timestamps, unknown sessions. |
 | `tests/claude-code-sessions.test.ts` | Not QA scenarios: what the Claude Code adapter makes of the files on disk — the record it believes, a half-written last line, a workspace that is gone, a transcript that never says where it is working. |
 | `tests/claude-code-projects.ts` | Writes a throwaway `~/.claude/projects` tree for those tests. |
-| `src/claude-code-registry.ts` | Implements `RuntimeStates` from `~/.claude/sessions/<pid>.json`, the registry Claude Code keeps of its running sessions. The file name is the claim that the session runs, so a registration whose process is gone is dropped rather than believed. |
+| `src/claude-code-registry.ts` | Implements `RuntimeStates` from `~/.claude/sessions/<pid>.json`, the registry Claude Code keeps of its running sessions. The file name is the claim that the session runs, so a registration whose process is gone is dropped rather than believed. Two live processes can register one session; the busiest of them is reported. |
 | `tests/claude-code-runtime.test.ts` | Not QA scenarios: the status mapping, and a registration that outlived its process. |
 | `tests/claude-code-registry.ts` | Writes a throwaway registry directory for those tests. |
 | `tests/session-state.test.ts` | Not a QA scenario: a session waiting without a known kind still reads as waiting. |

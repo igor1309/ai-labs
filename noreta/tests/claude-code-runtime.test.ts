@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { claudeCodeRuntimeStates } from "../src/claude-code-registry.js";
-import { deadPid, livePid, registryDirectoryOf } from "./claude-code-registry.js";
+import {
+  deadPid,
+  livePid,
+  otherLivePid,
+  registryDirectoryOf,
+} from "./claude-code-registry.js";
 
 // Not QA scenarios: what the adapter makes of Claude Code's registry of running
 // sessions, `~/.claude/sessions/<pid>.json`.
@@ -60,5 +65,17 @@ describe("What the Claude Code adapter reads of a running session", () => {
     const registry = registryDirectoryOf({ pid: livePid, sessionId: "quiet" });
 
     assert.equal(claudeCodeRuntimeStates(registry)("quiet"), "idle");
+  });
+
+  // Two live processes can register the same session, and nothing says which is
+  // the real one. Report the busiest: over-reporting that a session wants
+  // attention costs a glance, under-reporting it costs a stall.
+  it("reports the busiest of two registrations of one session", () => {
+    const registry = registryDirectoryOf(
+      { pid: livePid, sessionId: "twice", status: "idle" },
+      { pid: otherLivePid, sessionId: "twice", status: "busy" },
+    );
+
+    assert.equal(claudeCodeRuntimeStates(registry)("twice"), "working");
   });
 });
