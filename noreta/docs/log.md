@@ -1,6 +1,11 @@
 # Log
 
 ## 2026-09-15
+- Every QA scenario is covered on both sides of its port — the domain through a
+  test source, the adapter against files on disk — each half proved to fail by
+  breaking the code behind it. That retired the "pinned scenario" idea, and
+  found two gaps: runtime state is frozen when the source is made, and no
+  adapter sets `repository`.
 - The session list tells `working` from `idle`; `active` and `waiting` are read
   from the reported runtime state instead of stored beside it.
 - Transcripts are read from Claude Code's JSONL: messages, tool calls, and edits

@@ -20,11 +20,14 @@ description: "Noreta forward work and open questions"
 
 ## Work
 
-- [ ] Cover both halves of six scenarios with tests that fail when that half
-  breaks — the domain through its port, the adapter against files on disk: "A
-  session starts outside Noreta", "Noreta starts after the agent", "A transcript
-  contains a tool call", "A transcript contains a file diff", "Its worktree has
-  been deleted", "Open a session from a deleted worktree".
+- [ ] **Runtime state is frozen when the source is made.**
+  `claudeCodeRuntimeStates` reads the registry once and every later lookup
+  answers from that copy, while `claudeCodeSessions` re-reads the transcripts on
+  every call. A long-lived source therefore shows a new session as inactive and
+  a finished one as still running. `main.ts` reads once and exits, so nothing
+  shows it yet.
+- [ ] **No adapter sets `repository`.** Only the test doubles supply it, so
+  searching and grouping by repository never match on real sessions.
 - [ ] Transcript renderer, starting with the simplest presentation that keeps
   tool calls and diffs distinguishable. Its own cycle.
 - [ ] A real `SessionChanges`: nothing implements the port outside tests, so
