@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { searchSessions } from "../src/search.js";
+import { recentSessions, viewSessions } from "../src/sessions.js";
 import type { TranscriptEntry, TranscriptSource } from "../src/transcript.js";
 import { sourceOf } from "./session-source.js";
 import { at } from "./time.js";
@@ -74,6 +75,24 @@ describe("What search reads", () => {
     assert.throws(() => searchSessions(withContext, broken, "rate limiter"), TypeError);
   });
 
+  // The list is the caller's. Searching a group, or the recent list, means the
+  // sessions that list left out are not found — search cannot go back to the
+  // source for them.
+  it("searches only the sessions it is given", () => {
+    const sessions = viewSessions(
+      sourceOf(
+        { id: "recent", agent: "codex", lastActivityAt: at("10:00") },
+        { id: "long-ago", agent: "codex", lastActivityAt: longAgo },
+      ),
+    );
+    const recent = recentSessions(sessions, { now: at("10:00"), withinDays: 7 });
+
+    assert.deepEqual(
+      searchSessions(recent, () => [], "codex").matches.map((session) => session.id),
+      ["recent"],
+    );
+  });
+
   it("matches every session on an empty query", () => {
     assert.deepEqual(
       searchSessions(withContext, () => [], "").matches.map((session) => session.id),
@@ -82,14 +101,21 @@ describe("What search reads", () => {
   });
 });
 
-const withContext = sourceOf(
-  { id: "by-agent", agent: "codex", repository: "unrelated", lastActivityAt: at("10:00") },
-  { id: "by-repository", agent: "claude", repository: "ai-labs", lastActivityAt: at("09:00") },
+// Far enough before the notional day that a week's cutoff holds it back.
+const longAgo = new Date("2026-01-01T00:00:00Z");
+
+const withContext = viewSessions(
+  sourceOf(
+    { id: "by-agent", agent: "codex", repository: "unrelated", lastActivityAt: at("10:00") },
+    { id: "by-repository", agent: "claude", repository: "ai-labs", lastActivityAt: at("09:00") },
+  ),
 );
 
-const onlyByAgent = sourceOf({
-  id: "by-agent",
-  agent: "codex",
-  repository: "unrelated",
-  lastActivityAt: at("10:00"),
-});
+const onlyByAgent = viewSessions(
+  sourceOf({
+    id: "by-agent",
+    agent: "codex",
+    repository: "unrelated",
+    lastActivityAt: at("10:00"),
+  }),
+);

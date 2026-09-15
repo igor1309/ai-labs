@@ -1,4 +1,4 @@
-import { viewSessions, type SessionSource, type SessionView } from "./sessions.js";
+import type { SessionView } from "./sessions.js";
 import type { TranscriptSource } from "./transcript.js";
 
 // What a search found, and which sessions it could not answer for. A session
@@ -9,15 +9,17 @@ export type SearchResults = {
   unreadable: string[];
 };
 
+// Searches the list it is handed, like the other list functions: a caller can
+// search a group or the recent list by narrowing the list first.
 export function searchSessions(
-  sessions: SessionSource,
+  sessions: SessionView[],
   transcripts: TranscriptSource,
   query: string,
 ): SearchResults {
   const wanted = query.toLowerCase();
   const unreadable: string[] = [];
 
-  const matches = viewSessions(sessions).filter((session) => {
+  const matches = sessions.filter((session) => {
     if (contextMatches(session, wanted)) {
       return true;
     }

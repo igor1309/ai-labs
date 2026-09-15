@@ -38,10 +38,11 @@ describe("Feature: Find a session", () => {
         { kind: "message", at: at("09:00"), role: "user", text: "the rate limiter again" },
       ]);
       const recency = { now: weeksLater, withinDays: 7 };
-      assert.deepEqual(recentSessions(viewSessions(sessions), recency), [], "outside the recent history");
+      const views = viewSessions(sessions);
+      assert.deepEqual(recentSessions(views, recency), [], "outside the recent history");
 
       assert.deepEqual(
-        searchSessions(sessions, transcripts, "rate limiter").matches.map(
+        searchSessions(views, transcripts, "rate limiter").matches.map(
           (session) => session.id,
         ),
         ["long-ago"],
@@ -65,7 +66,7 @@ describe("Feature: Find a session", () => {
         ];
       };
 
-      const results = searchSessions(sessions, transcripts, "rate limiter");
+      const results = searchSessions(viewSessions(sessions), transcripts, "rate limiter");
 
       assert.deepEqual(results.matches.map((session) => session.id), ["readable"]);
       assert.deepEqual(results.unreadable, ["unreadable"]);
@@ -88,5 +89,7 @@ function found(query: string): string[] {
     { kind: "message", at: at("10:01"), role: "user", text: "fix the rate limiter" },
   ]);
 
-  return searchSessions(sessions, transcripts, query).matches.map((session) => session.id);
+  return searchSessions(viewSessions(sessions), transcripts, query).matches.map(
+    (session) => session.id,
+  );
 }
