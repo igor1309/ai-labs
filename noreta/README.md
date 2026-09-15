@@ -56,6 +56,7 @@ Codex session yet — there is no adapter and no entry point.
 | `tests/follow-unknown-session.test.ts` | Not QA scenarios: following an unknown id, and how often following pushes. |
 | `tests/change-signal.ts` | Test stand-in for the watcher behind `SessionChanges`. |
 | `tests/transcript-entries.test.ts` | Entry-shape guarantees that are not QA scenarios: speakers stay distinguishable. |
+| `tests/grouping-at-scale.test.ts` | Not a QA scenario: grouping a long history stays linear. |
 | `tests/session-ordering.test.ts` | Ordering edge cases that are not QA scenarios: unreadable and tied timestamps, unknown sessions. |
 | `tests/session-source.ts` | Test sources feeding `SessionSource`, plus the `stateOf` projection. |
 | `tests/transcript-source.ts` | Test sources feeding `TranscriptSource`. |

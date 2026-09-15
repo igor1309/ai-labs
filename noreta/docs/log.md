@@ -1,6 +1,13 @@
 # Log
 
 ## 2026-09-15
+- Codex review of "Organize sessions", accepted: grouping rebuilt each group's
+  array on every insertion, which is quadratic and worst exactly where it is most
+  likely — grouping by agent puts every session in one of two or three groups.
+  Measured 45/372/1754ms for 10k/20k/40k sessions before, 1/0/4ms after. The
+  regression check measures elapsed time explicitly: `it`'s timeout does not
+  interrupt synchronous work, so the first attempt passed against the quadratic
+  shape and proved nothing.
 - Implement "Organize sessions": `src/grouping.ts` partitions a session list by
   repository, workspace or agent, and `activeSessions` filters by active state.
   Sessions carry a `workspace` — the working directory, which for a worktree is

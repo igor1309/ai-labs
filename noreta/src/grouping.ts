@@ -15,8 +15,14 @@ export function groupSessions(sessions: SessionView[], by: GroupBy): SessionGrou
 
   for (const session of sessions) {
     const name = session[by];
+    const group = groups.get(name);
 
-    groups.set(name, [...(groups.get(name) ?? []), session]);
+    if (group === undefined) {
+      groups.set(name, [session]);
+    } else {
+      // Owned by this call, so appending cannot disturb the caller's list.
+      group.push(session);
+    }
   }
 
   return [...groups].map(([name, grouped]) => ({ name, sessions: grouped }));
