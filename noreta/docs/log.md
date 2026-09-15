@@ -1,6 +1,24 @@
 # Log
 
 ## 2026-09-15
+- Runtime state, from `~/.claude/sessions/<pid>.json` — Claude Code's registry of
+  its running sessions, which carries the session id, so no heuristic is needed
+  to say which session a process belongs to. Earlier candidates all failed on
+  evidence: transcripts are not held open, so there is no file-to-pid link, and
+  a process's cwd is one-to-many (four live processes shared one workspace).
+  The file name is the liveness claim and is checked against the process, so a
+  registration that outlived its process is dropped — that is termination
+  detection. Nine of 1541 sessions come out active, matching the registry
+  exactly.
+- Decided in the open: the registry's `status` is `busy`/`waiting`/`idle`, while
+  the domain asks for four states. `waitingFor` looked like it would separate
+  input from approval and does not — it is free text with four literals, and
+  `"dialog open"` covers both a permission prompt and a plain question. Rather
+  than guess a kind, `RuntimeState` gained a bare `waiting` beside the two kinds
+  and `isWaiting` covers all three. Two QA scenarios are therefore out of this
+  adapter's reach, which the README now says rather than leaving them looking
+  merely unbuilt. A registration with no status at all — the SDK sessions — reads
+  as idle.
 - First adapter: `claudeCodeSessions` reads the JSONL transcripts under
   `~/.claude/projects` and implements `SessionSource`, so the domain runs on real
   data for the first time. Discovery only — no runtime state, so every session

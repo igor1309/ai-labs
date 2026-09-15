@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { claudeCodeSessions } from "../src/claude-code.js";
+import { claudeCodeSessions, type RuntimeStates } from "../src/claude-code.js";
 import {
   appendPartialRecord,
   existingDirectory,
@@ -9,6 +9,10 @@ import {
   userRecord,
 } from "./claude-code-projects.js";
 import { at } from "./time.js";
+
+// Nothing in these files is running: the registry is a separate source, tested
+// on its own in claude-code-runtime.test.ts.
+const notRunning: RuntimeStates = () => undefined;
 
 // Not QA scenarios: what the Claude Code adapter makes of the files on disk.
 describe("What the Claude Code adapter discovers", () => {
@@ -26,7 +30,7 @@ describe("What the Claude Code adapter discovers", () => {
       ],
     });
 
-    assert.deepEqual(claudeCodeSessions(projects)(), [
+    assert.deepEqual(claudeCodeSessions(projects, notRunning)(), [
       {
         id: "945458b6",
         agent: "claude",
@@ -48,7 +52,7 @@ describe("What the Claude Code adapter discovers", () => {
     });
 
     assert.deepEqual(
-      claudeCodeSessions(projects)().map(({ branch, lastActivityAt }) => ({
+      claudeCodeSessions(projects, notRunning)().map(({ branch, lastActivityAt }) => ({
         branch,
         lastActivityAt,
       })),
@@ -64,7 +68,7 @@ describe("What the Claude Code adapter discovers", () => {
     });
 
     assert.deepEqual(
-      claudeCodeSessions(projects)().map((session) => session.workspaceOnDisk),
+      claudeCodeSessions(projects, notRunning)().map((session) => session.workspaceOnDisk),
       [true],
     );
   });
@@ -76,7 +80,7 @@ describe("What the Claude Code adapter discovers", () => {
     );
 
     assert.deepEqual(
-      claudeCodeSessions(projects)().map((session) => session.id),
+      claudeCodeSessions(projects, notRunning)().map((session) => session.id),
       ["placed"],
     );
   });
@@ -90,7 +94,7 @@ describe("What the Claude Code adapter discovers", () => {
     appendPartialRecord(projects, "busy");
 
     assert.deepEqual(
-      claudeCodeSessions(projects)().map((session) => session.id),
+      claudeCodeSessions(projects, notRunning)().map((session) => session.id),
       ["busy"],
     );
   });
@@ -104,8 +108,21 @@ describe("What the Claude Code adapter discovers", () => {
       records: [userRecord({ id: "branchless", branch: "HEAD", at: at("10:00") })],
     });
 
-    assert.deepEqual(claudeCodeSessions(projects)().map((session) => session.branch), [
+    assert.deepEqual(claudeCodeSessions(projects, notRunning)().map((session) => session.branch), [
       undefined,
     ]);
+  });
+
+  it("carries the runtime state of a session that is running", () => {
+    const projects = projectsDirectoryOf({
+      id: "running",
+      records: [userRecord({ id: "running", at: at("10:00") })],
+    });
+    const running: RuntimeStates = (id) => (id === "running" ? "working" : undefined);
+
+    assert.deepEqual(
+      claudeCodeSessions(projects, running)().map((session) => session.runtimeState),
+      ["working"],
+    );
   });
 });

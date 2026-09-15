@@ -1,7 +1,11 @@
 import { byTime } from "./ordering.js";
 
+// A source can know a session is blocked without knowing what on: Claude Code's
+// registry reports that it is waiting and never which answer it wants. `waiting`
+// is that case, kept distinct from the two kinds rather than guessing one.
 export type RuntimeState =
   | "working"
+  | "waiting"
   | "waiting-for-input"
   | "waiting-for-approval"
   | "idle";
@@ -87,5 +91,9 @@ function isRecent(session: SessionView, { now, withinDays }: Recency): boolean {
 const millisecondsPerDay = 24 * 60 * 60 * 1000;
 
 function isWaiting(runtimeState: RuntimeState | undefined): boolean {
-  return runtimeState === "waiting-for-input" || runtimeState === "waiting-for-approval";
+  return (
+    runtimeState === "waiting" ||
+    runtimeState === "waiting-for-input" ||
+    runtimeState === "waiting-for-approval"
+  );
 }
