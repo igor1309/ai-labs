@@ -1,12 +1,18 @@
 # Log
 
 ## 2026-09-15
+- Codex review of "Read a session": messages now carry a speaker, because the
+  rule is "session history preserves *conversational* order" and a transcript
+  that cannot tell the user from the agent is not a conversation. Declined the
+  demand for tool arguments, results and outcomes — no scenario asks what a tool
+  did, only that a tool call is distinguishable from conversation.
 - Implement "Read a session": `src/transcript.ts` reads a session's entries
-  oldest-first through a `TranscriptSource` port, with messages, tool calls and
-  file diffs as distinct entry kinds so a reader cannot flatten agent activity
-  into prose. The two semantic-presentation scenarios are pinned at runtime —
-  they falsify a reader that drops non-message entries, but the kinds themselves
-  are a type-level contract the adapters will have to honour.
+  oldest-first through a `TranscriptSource` port, preserving messages, tool
+  calls and file diffs as distinct kinds rather than flattening them. This slice
+  is ordering and preservation only: nothing renders a transcript yet, so the
+  two semantic-presentation outcomes are not verified — a renderer could still
+  print every diff as plain text and pass the suite. See the pinned-scenarios
+  table in the README.
 - Machine-check the scenario-to-test mapping: `tests/qa-coverage.test.ts` parses
   `docs/qa.md` and asserts each implemented feature's test file declares exactly
   its scenario titles, so a renamed or dropped scenario fails CI instead of

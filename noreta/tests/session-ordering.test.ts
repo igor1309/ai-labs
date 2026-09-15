@@ -53,9 +53,9 @@ describe("Ordering by last activity", () => {
 describe("Ordering a transcript", () => {
   it("keeps valid entries ordered around an unreadable timestamp", () => {
     const source = transcriptOf("s1", [
-      { kind: "message", at: at("10:02"), text: "second" },
-      { kind: "message", at: new Date("not a date"), text: "unreadable" },
-      { kind: "message", at: at("10:01"), text: "first" },
+      { kind: "message", at: at("10:02"), role: "agent", text: "second" },
+      { kind: "message", at: new Date("not a date"), role: "agent", text: "unreadable" },
+      { kind: "message", at: at("10:01"), role: "user", text: "first" },
     ]);
 
     assert.deepEqual(
@@ -66,7 +66,7 @@ describe("Ordering a transcript", () => {
 
   it("returns nothing for a session the source does not know", () => {
     const source = transcriptOf("s1", [
-      { kind: "message", at: at("10:01"), text: "first" },
+      { kind: "message", at: at("10:01"), role: "user", text: "first" },
     ]);
 
     assert.deepEqual(readTranscript(source, "other"), []);

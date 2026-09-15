@@ -45,17 +45,30 @@ Codex session yet — there is no adapter and no entry point.
 | `tests/recent-sessions.test.ts` | Same, for "See recent sessions". |
 | `tests/read-session.test.ts` | Same, for "Read a session". |
 | `tests/qa-coverage.test.ts` | Asserts each implemented feature's test file declares exactly the scenario titles in [docs/qa.md](docs/qa.md). |
+| `tests/transcript-entries.test.ts` | Entry-shape guarantees that are not QA scenarios: speakers stay distinguishable. |
 | `tests/session-ordering.test.ts` | Ordering edge cases that are not QA scenarios: unreadable and tied timestamps, unknown sessions. |
 | `tests/session-source.ts` | Test sources feeding `SessionSource`, plus the `stateOf` projection. |
 | `tests/transcript-source.ts` | Test sources feeding `TranscriptSource`. |
 
-What this does **not** yet do: `SessionSource` has no production implementation,
-so the only thing that feeds `viewSessions` is a test source. The scenarios
-under "Sessions are discovered independently of how they were started" are
-therefore pinned rather than driven — they constrain the adapters when those
-arrive, and cannot fail today. Real Claude Code and Codex adapters, startup
-reconciliation, and termination detection are the next slice; see
-[docs/implementation-notes.md](docs/implementation-notes.md).
+What this does **not** yet do: neither `SessionSource` nor `TranscriptSource`
+has a production implementation, so the only thing feeding them is a test
+source. There is no adapter, no renderer and no entry point. Real Claude Code
+and Codex adapters, startup reconciliation and termination detection are still
+ahead; see [docs/implementation-notes.md](docs/implementation-notes.md).
+
+### Pinned scenarios
+
+Every QA scenario has a test, but some of those tests cannot fail against the
+current code — they constrain whatever implements the missing piece rather than
+checking behavior that exists. Kept honest here rather than buried in the log.
+
+| Scenario | Why it cannot fail yet | What would drive it |
+|----------|------------------------|---------------------|
+| A session starts outside Noreta | The port is re-read per call and no code knows how a session was started | A real discovery adapter |
+| Noreta starts after the agent | Same | A real discovery adapter |
+| A recently inactive session exists | Nothing filters the default view by recency | The cutoff introduced by "Access older sessions" |
+| A transcript contains a tool call | Nothing renders a transcript; the test only proves tagged entries survive ordering | A renderer, tested at the presentation boundary |
+| A transcript contains a file diff | Same | A renderer, tested at the presentation boundary |
 
 Tests and typecheck, from the repo root:
 

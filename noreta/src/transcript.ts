@@ -1,5 +1,5 @@
 export type TranscriptEntry =
-  | { kind: "message"; at: Date; text: string }
+  | { kind: "message"; at: Date; role: "user" | "agent"; text: string }
   | { kind: "tool-call"; at: Date; name: string }
   | { kind: "file-diff"; at: Date; path: string; diff: string };
 
