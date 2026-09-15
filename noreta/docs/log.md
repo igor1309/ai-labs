@@ -1,6 +1,19 @@
 # Log
 
 ## 2026-09-15
+- First adapter: `claudeCodeSessions` reads the JSONL transcripts under
+  `~/.claude/projects` and implements `SessionSource`, so the domain runs on real
+  data for the first time. Discovery only — no runtime state, so every session
+  reads as inactive. The project directory's name is the workspace path with its
+  separators replaced and cannot be decoded back, so workspace and branch come
+  from the records; the newest context record wins, since the branch moves with
+  the checkout. Real data drove two of the six cycles: Claude Code writes
+  `gitBranch: "HEAD"` when no branch is checked out (207 of the first 400
+  transcripts), which is not a branch name, and a running session's last line can
+  be half written, which was aborting the whole read. Against 793 project
+  directories: 1540 sessions in 5.8s, 888 with a workspace that is gone. That
+  5.8s is every transcript parsed end to end — identity and last activity do not
+  need the whole file, and nothing has been done about it yet.
 - Close the one open question on search: a `TranscriptSource` that throws no
   longer aborts the whole search. `searchSessions` returns
   `{ matches, unreadable }`, so an unreadable session is reported instead of

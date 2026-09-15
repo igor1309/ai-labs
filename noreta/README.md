@@ -45,6 +45,7 @@ Codex session yet — there is no adapter and no entry point.
 | `src/grouping.ts` | Partitions a session list by repository, workspace or agent. |
 | `src/ordering.ts` | The one ordering rule: sort by a timestamp in either direction, treating an unreadable one as the oldest instead of returning `NaN`. |
 | `src/transcript.ts` | Session transcript: messages, tool calls and file diffs, oldest first. Reading sits behind the `TranscriptSource` port. |
+| `src/claude-code.ts` | Discovery adapter: reads the JSONL transcripts Claude Code leaves under `~/.claude/projects` and reports each as an `ObservedSession`. The project directory's name is the workspace path with its separators replaced, which is lossy, so workspace and branch come from the records. Discovery only — it reports no runtime state. |
 | `tests/active-sessions.test.ts` | One test per Gherkin scenario of the "See active sessions" feature in [docs/qa.md](docs/qa.md), named after it. |
 | `tests/recent-sessions.test.ts` | Same, for "See recent sessions". |
 | `tests/read-session.test.ts` | Same, for "Read a session". |
@@ -60,14 +61,24 @@ Codex session yet — there is no adapter and no entry point.
 | `tests/recent-and-older.test.ts` | Not a QA scenario: the recent/older split loses no session. |
 | `tests/grouping-at-scale.test.ts` | Not a QA scenario: grouping a long history stays linear. |
 | `tests/session-ordering.test.ts` | Ordering edge cases that are not QA scenarios: unreadable and tied timestamps, unknown sessions. |
+| `tests/claude-code-sessions.test.ts` | Not QA scenarios: what the Claude Code adapter makes of the files on disk — the record it believes, a half-written last line, a workspace that is gone, a transcript that never says where it is working. |
+| `tests/claude-code-projects.ts` | Writes a throwaway `~/.claude/projects` tree for those tests. |
 | `tests/session-source.ts` | Test sources feeding `SessionSource`, plus the `stateOf` projection. |
 | `tests/transcript-source.ts` | Test sources feeding `TranscriptSource`. |
 
-What this does **not** yet do: neither `SessionSource` nor `TranscriptSource`
-has a production implementation, so the only thing feeding them is a test
-source. There is no adapter, no renderer and no entry point. Real Claude Code
-and Codex adapters, startup reconciliation and termination detection are still
-ahead; see [docs/implementation-notes.md](docs/implementation-notes.md).
+What this does **not** yet do: `TranscriptSource` still has no production
+implementation, so nothing reads a real transcript — only `SessionSource` does,
+and only for Claude Code. `claudeCodeSessions` reports no runtime state, so
+every discovered session reads as inactive and `activeSessions` is always
+empty. There is no renderer and no entry point. A Codex adapter, runtime-state
+detection, startup reconciliation and termination detection are still ahead;
+see [docs/implementation-notes.md](docs/implementation-notes.md).
+
+Measured against a real `~/.claude/projects` of 793 project directories: 1540
+sessions in 5.8s, 888 of them with a workspace that is gone. That cost is the
+whole-file read — every transcript is parsed end to end, and the largest are
+megabytes. Reading only what identity and last activity need is untouched
+work.
 
 ### Pinned scenarios
 
@@ -79,11 +90,11 @@ stay green.
 
 | Scenario | Why it cannot fail yet | What would drive it |
 |----------|------------------------|---------------------|
-| A session starts outside Noreta | The port is re-read per call and no code knows how a session was started | A real discovery adapter |
-| Noreta starts after the agent | Same | A real discovery adapter |
+| A session starts outside Noreta | The port is re-read per call and no code knows how a session was started | These scenarios running against `claudeCodeSessions` rather than a test source — the adapter exists now, their tests do not use it |
+| Noreta starts after the agent | Same | Same |
 | A transcript contains a tool call | Nothing renders a transcript; the test only proves tagged entries survive ordering | A renderer, tested at the presentation boundary |
 | A transcript contains a file diff | Same | A renderer, tested at the presentation boundary |
-| Its worktree has been deleted | Half of it is real: the view cannot drop the worktree path or fold it into the repository root without failing. Nothing *notices* a worktree disappearing, though — the test hands the view a session already marked gone | A discovery adapter that reconciles the filesystem |
+| Its worktree has been deleted | Half of it is real: the view cannot drop the worktree path or fold it into the repository root without failing. Nothing *notices* a worktree disappearing, though — the test hands the view a session already marked gone | The scenario running against `claudeCodeSessions`, which does check the workspace, rather than a test source |
 | Open a session from a deleted worktree | `readTranscript` never consults a workspace, so no implementation of it could fail this | A transcript adapter that locates files without going through the workspace |
 
 Tests and typecheck, from the repo root:
