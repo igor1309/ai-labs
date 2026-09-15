@@ -3,7 +3,11 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 import { claudeCodeRegistryStates } from "./claude-code-registry.js";
-import { claudeCodeSessions, type WorkspaceFacts } from "./claude-code.js";
+import {
+  claudeCodeSessions,
+  type ObservedSession,
+  type WorkspaceFacts,
+} from "./claude-code.js";
 import { composeClaudeCodeRuntimeStates } from "./compose-claude-code-runtime-states.js";
 import { repositoryOf } from "./git-repository.js";
 import { newestFirst } from "./ordering.js";
@@ -37,6 +41,14 @@ const readSessions = claudeCodeSessions(
 // in whatever order the directory gives them.
 const sessions = newestFirst(readSessions());
 
-for (const line of sessionLines(recentSessions(sessions, { now: new Date(), withinDays: 7 }))) {
+// Reading the adapter's records for the list, which does not know them: a
+// Claude Code session carries a runtime state only while it is running, so
+// having one is what running looks like in these records.
+const isActive = (session: Pick<ObservedSession, "runtimeState">): boolean =>
+  session.runtimeState !== undefined;
+
+const recency = { now: new Date(), withinDays: 7 };
+
+for (const line of sessionLines(recentSessions(sessions, recency, isActive))) {
   console.log(line);
 }

@@ -1,8 +1,10 @@
-import type { ObservedSession, SessionSource } from "./sessions.js";
 import { readTranscript, type TranscriptEntry, type TranscriptSource } from "./transcript.js";
 
-export type FollowedSession = {
-  session: ObservedSession | undefined;
+// What following pushes: the record the source handed over, so a caller keeps
+// its own record through the call, and undefined when the sources hold no
+// session of that id.
+export type FollowedSession<Session> = {
+  session: Session | undefined;
   transcript: TranscriptEntry[];
 };
 
@@ -11,12 +13,15 @@ export type FollowedSession = {
 // to ask. Subscribing hands back the way to stop.
 export type SessionChanges = (onChange: () => void) => () => void;
 
-export function followSession(
-  sessions: SessionSource,
+// What following reads of a session, and nothing besides: the id it was asked
+// to follow. Whatever else a source keeps comes back untouched in what is
+// pushed.
+export function followSession<Session extends { id: string }>(
+  sessions: () => Session[],
   transcripts: TranscriptSource,
   sessionId: string,
   changes: SessionChanges,
-  onUpdate: (followed: FollowedSession) => void,
+  onUpdate: (followed: FollowedSession<Session>) => void,
 ): () => void {
   const push = (): void =>
     onUpdate({

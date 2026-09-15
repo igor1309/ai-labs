@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { groupSessions, type SessionGroup } from "../src/grouping.js";
-import { activeSessions, type ObservedSession } from "../src/sessions.js";
-import { sessionsOf } from "./session-source.js";
+import { activeSessions } from "../src/sessions.js";
+import { isActive, type ScenarioSession, sessionsOf } from "./session-source.js";
 
 describe("Feature: Organize sessions", () => {
   describe("Rule: Sessions can be grouped by working context", () => {
@@ -67,7 +67,7 @@ describe("Feature: Organize sessions", () => {
         { id: "inactive" },
       );
 
-      const shown = activeSessions(sessions).map((session) => session.id);
+      const shown = activeSessions(sessions, isActive).map((session) => session.id);
 
       assert.deepEqual([...shown].sort(), ["idle", "waiting", "working"]);
       assert.equal(shown.includes("inactive"), false);
@@ -75,15 +75,15 @@ describe("Feature: Organize sessions", () => {
   });
 });
 
-function membership(groups: SessionGroup<ObservedSession>[]): Record<string, string[]> {
+function membership(groups: SessionGroup<ScenarioSession>[]): Record<string, string[]> {
   return Object.fromEntries(
     groups.map((group) => [group.name ?? "(none)", group.sessions.map((s) => s.id)]),
   );
 }
 
 function eachSessionAppearsExactlyOnce(
-  groups: SessionGroup<ObservedSession>[],
-  sessions: ObservedSession[],
+  groups: SessionGroup<ScenarioSession>[],
+  sessions: ScenarioSession[],
 ): void {
   const placed = groups.flatMap((group) => group.sessions.map((session) => session.id));
 

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { olderSessions, recentSessions } from "../src/sessions.js";
-import { sessionsOf } from "./session-source.js";
+import { isActive, sessionsOf } from "./session-source.js";
 import { at } from "./time.js";
 
 // Not a QA scenario, but the property both rules lean on: the cutoff holds
@@ -18,7 +18,10 @@ describe("Recent and older sessions", () => {
   const recency = { now: at("10:00"), withinDays: 7 };
 
   it("together account for every session exactly once", () => {
-    const split = [...recentSessions(sessions, recency), ...olderSessions(sessions, recency)];
+    const split = [
+      ...recentSessions(sessions, recency, isActive),
+      ...olderSessions(sessions, recency, isActive),
+    ];
     const ids = split.map((session) => session.id);
 
     assert.deepEqual([...ids].sort(), sessions.map((session) => session.id).sort());
@@ -27,12 +30,18 @@ describe("Recent and older sessions", () => {
 
   it("keeps an active session in the recent list however old its last activity", () => {
     assert.ok(
-      recentSessions(sessions, recency).some((session) => session.id === "live-but-stale"),
+      recentSessions(sessions, recency, isActive).some(
+        (session) => session.id === "live-but-stale",
+      ),
     );
   });
 
   it("reveals a session whose last activity cannot be read", () => {
-    assert.ok(olderSessions(sessions, recency).some((session) => session.id === "unreadable"));
+    assert.ok(
+      olderSessions(sessions, recency, isActive).some(
+        (session) => session.id === "unreadable",
+      ),
+    );
   });
 });
 

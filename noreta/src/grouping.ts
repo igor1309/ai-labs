@@ -1,10 +1,15 @@
-import type { ObservedSession } from "./sessions.js";
-
 export type GroupBy = "repository" | "workspace" | "agent";
 
 // What grouping reads of a session, and nothing besides: the contexts it can
-// group by.
-type GroupableSession = Pick<ObservedSession, GroupBy>;
+// group by. The record is this module's own: a source hands over whatever it
+// keeps, and a session is groupable when it carries these. A context a session
+// may not have is optional here, and the sessions that lack it form their own
+// group.
+type GroupableSession = {
+  agent: string;
+  workspace: string;
+  repository?: string;
+};
 
 // `name` is absent when the sessions in the group have no such context — they
 // still form a group, because every session belongs to exactly one. Naming that

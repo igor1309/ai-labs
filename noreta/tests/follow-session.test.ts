@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 import { followSession, type FollowedSession } from "../src/follow.js";
 import type { TranscriptEntry } from "../src/transcript.js";
 import { changeSignal } from "./change-signal.js";
-import { changingSource, stateOf } from "./session-source.js";
+import { changingSource, type ScenarioSession, stateOf } from "./session-source.js";
 import { at } from "./time.js";
 import { changingTranscript, describeEntry } from "./transcript-source.js";
 
@@ -68,13 +68,13 @@ type ViewedSession = Parameters<typeof changingSource>[0];
 function view(session: ViewedSession, transcripts: (id: string) => TranscriptEntry[] = noTranscript) {
   const sessions = changingSource(session);
   const changes = changeSignal();
-  let onScreen: FollowedSession | undefined;
+  let onScreen: FollowedSession<ScenarioSession> | undefined;
 
   followSession(sessions.read, transcripts, session.id, changes.subscribe, (followed) => {
     onScreen = followed;
   });
 
-  const shown = (): FollowedSession => {
+  const shown = (): FollowedSession<ScenarioSession> => {
     assert.ok(onScreen, "opening a session should show it");
 
     return onScreen;

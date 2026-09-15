@@ -1,9 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { olderSessions, recentSessions, type SessionSource } from "../src/sessions.js";
+import { olderSessions, recentSessions } from "../src/sessions.js";
 import { readTranscript } from "../src/transcript.js";
-import { changingSource, sessionsOf, sourceOf } from "./session-source.js";
+import {
+  changingSource,
+  isActive,
+  type ScenarioSource,
+  sessionsOf,
+  sourceOf,
+} from "./session-source.js";
 import { at } from "./time.js";
 import { describeEntry, transcriptOf } from "./transcript-source.js";
 
@@ -16,9 +22,12 @@ describe("Feature: Access older sessions", () => {
         { id: "longer-ago", lastActivityAt: new Date("2025-06-01T00:00:00Z") },
       );
       const recency = { now: at("10:00"), withinDays: 7 };
-      assert.deepEqual(ids(recentSessions(sessions, recency)), ["recent"]);
+      assert.deepEqual(ids(recentSessions(sessions, recency, isActive)), ["recent"]);
 
-      assert.deepEqual(ids(olderSessions(sessions, recency)), ["long-ago", "longer-ago"]);
+      assert.deepEqual(ids(olderSessions(sessions, recency, isActive)), [
+        "long-ago",
+        "longer-ago",
+      ]);
     });
   });
 
@@ -67,7 +76,7 @@ function inWorktree(worktree: string, { onDisk }: { onDisk: boolean }) {
   };
 }
 
-function workspaceOf(source: SessionSource) {
+function workspaceOf(source: ScenarioSource) {
   const [session] = source();
 
   return {

@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 
 import { followSession, type FollowedSession } from "../src/follow.js";
 import { changeSignal } from "./change-signal.js";
-import { sourceOf } from "./session-source.js";
+import { type ScenarioSession, sourceOf } from "./session-source.js";
 import { at } from "./time.js";
 import { transcriptOf } from "./transcript-source.js";
 
@@ -11,7 +11,7 @@ import { transcriptOf } from "./transcript-source.js";
 // and how often it pushes.
 describe("Following a session the sources do not know", () => {
   it("shows no session and an empty transcript", () => {
-    const shown: FollowedSession[] = [];
+    const shown: FollowedSession<ScenarioSession>[] = [];
 
     followSession(
       sourceOf({ id: "s1", runtimeState: "working" }),
@@ -29,7 +29,7 @@ describe("Following a session the sources do not know", () => {
 
 describe("Following pushes", () => {
   it("shows the session once on opening, before anything changes", () => {
-    const shown: FollowedSession[] = [];
+    const shown: FollowedSession<ScenarioSession>[] = [];
 
     followSession(
       sourceOf({ id: "s1", runtimeState: "working" }),
@@ -44,7 +44,7 @@ describe("Following pushes", () => {
 
   it("shows the session again on every change", () => {
     const changes = changeSignal();
-    const shown: FollowedSession[] = [];
+    const shown: FollowedSession<ScenarioSession>[] = [];
 
     followSession(
       sourceOf({ id: "s1", runtimeState: "working" }),
@@ -61,7 +61,7 @@ describe("Following pushes", () => {
 
   it("shows nothing more once following is stopped", () => {
     const changes = changeSignal();
-    const shown: FollowedSession[] = [];
+    const shown: FollowedSession<ScenarioSession>[] = [];
 
     const stop = followSession(
       sourceOf({ id: "s1", runtimeState: "working" }),

@@ -1,9 +1,16 @@
-import type { ObservedSession } from "./sessions.js";
 import type { TranscriptSource } from "./transcript.js";
 
 // What a search reads of a session, and nothing besides: the context it matches
-// on, and the id it asks the transcript source for.
-type SearchableSession = Pick<ObservedSession, "id" | "agent" | "repository" | "branch">;
+// on, and the id it asks the transcript source for. The record is this module's
+// own: a source hands over whatever it keeps, and a session is searchable when
+// it carries these. A context a session may not have is optional here, and
+// matching skips it.
+type SearchableSession = {
+  id: string;
+  agent: string;
+  repository?: string;
+  branch?: string;
+};
 
 // What a search found, and which sessions it could not answer for. A session
 // whose transcript could not be read is neither a match nor a miss: it is

@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 import { searchSessions } from "../src/search.js";
 import { recentSessions } from "../src/sessions.js";
 import type { TranscriptSource } from "../src/transcript.js";
-import { sessionsOf } from "./session-source.js";
+import { isActive, sessionsOf } from "./session-source.js";
 import { at } from "./time.js";
 import { filesystemError, transcriptOf } from "./transcript-source.js";
 
@@ -38,7 +38,11 @@ describe("Feature: Find a session", () => {
         { kind: "message", at: at("09:00"), role: "user", text: "the rate limiter again" },
       ]);
       const recency = { now: weeksLater, withinDays: 7 };
-      assert.deepEqual(recentSessions(sessions, recency), [], "outside the recent history");
+      assert.deepEqual(
+        recentSessions(sessions, recency, isActive),
+        [],
+        "outside the recent history",
+      );
 
       assert.deepEqual(
         searchSessions(sessions, transcripts, "rate limiter").matches.map(

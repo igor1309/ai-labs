@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { recentSessions } from "../src/sessions.js";
-import { newestFirst, sessionsOf } from "./session-source.js";
+import { isActive, newestFirst, sessionsOf } from "./session-source.js";
 import { at } from "./time.js";
 
 describe("Feature: See recent sessions", () => {
@@ -32,7 +32,7 @@ describe("Feature: See recent sessions", () => {
       );
 
       assert.deepEqual(
-        recentSessions(sessions, { now: at("10:00"), withinDays: 7 }).map(
+        recentSessions(sessions, { now: at("10:00"), withinDays: 7 }, isActive).map(
           (session) => session.id,
         ),
         ["live", "just-finished"],
@@ -47,7 +47,7 @@ describe("Feature: See recent sessions", () => {
       );
 
       assert.deepEqual(
-        recentSessions(newestFirst(sessions), { now: at("10:00"), withinDays: 7 }).map(
+        recentSessions(newestFirst(sessions), { now: at("10:00"), withinDays: 7 }, isActive).map(
           (session) => session.id,
         ),
         ["newest", "middle", "oldest"],

@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 import { searchSessions } from "../src/search.js";
 import { recentSessions } from "../src/sessions.js";
 import type { TranscriptEntry, TranscriptSource } from "../src/transcript.js";
-import { sessionsOf } from "./session-source.js";
+import { isActive, sessionsOf } from "./session-source.js";
 import { at } from "./time.js";
 import { filesystemError } from "./transcript-source.js";
 
@@ -83,7 +83,7 @@ describe("What search reads", () => {
       { id: "recent", agent: "codex", lastActivityAt: at("10:00") },
       { id: "long-ago", agent: "codex", lastActivityAt: longAgo },
     );
-    const recent = recentSessions(sessions, { now: at("10:00"), withinDays: 7 });
+    const recent = recentSessions(sessions, { now: at("10:00"), withinDays: 7 }, isActive);
 
     assert.deepEqual(
       searchSessions(recent, () => [], "codex").matches.map((session) => session.id),

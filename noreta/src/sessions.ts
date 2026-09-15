@@ -1,68 +1,24 @@
-// The states this list tells apart, and nothing besides. A source can know a
-// session is blocked without knowing what on: Claude Code's registry reports
-// that it is waiting and never which answer it wants. `waiting` is that case,
-// kept distinct from the two kinds rather than guessing one.
-// Every word here is something a running session is doing, so there is none for
-// not running: that is the absence of a state, and the field is absent for it.
-// Each source names the states it can report for itself; this union is what the
-// list reads, not a vocabulary the sources share.
-export type RuntimeState =
-  | "working"
-  | "waiting"
-  | "waiting-for-input"
-  | "waiting-for-approval"
-  | "idle";
-
-export type ObservedSession = {
-  id: string;
-  agent: string;
-  // Where the session is working: its directory, which for a worktree is the
-  // worktree's own path rather than the repository root. A deleted worktree
-  // keeps its path — the session stays associated with where it ran — and is
-  // reported as gone rather than collapsed into the repository root.
-  workspace: string;
-  workspaceOnDisk: boolean;
-  // Present when that directory is in a repository, and when that repository
-  // has a branch checked out.
-  repository?: string;
-  branch?: string;
-  // Present while the session is running. Absent is the source saying it is
-  // not — there is nothing it could be doing.
-  runtimeState?: RuntimeState;
-  lastActivityAt: Date;
-};
-
-export type SessionSource = () => ObservedSession[];
-
-// Whether a session is running, and whether it is blocked, are readings of the
-// state its source reported rather than facts beside it. As functions they
-// cannot drift from `runtimeState`; as fields they could.
-export function isActive(session: Pick<ObservedSession, "runtimeState">): boolean {
-  return session.runtimeState !== undefined;
-}
-
-export function isWaiting(session: Pick<ObservedSession, "runtimeState">): boolean {
-  return (
-    session.runtimeState === "waiting" ||
-    session.runtimeState === "waiting-for-input" ||
-    session.runtimeState === "waiting-for-approval"
-  );
-}
-
 // How far back the default view reaches. The cutoff is a view choice, not a
 // retention rule: nothing is dropped, it is only left out of this list.
 export type Recency = { now: Date; withinDays: number };
 
-// What the filters below read of a session, and nothing besides: whether it is
-// running, and when it last did anything. They hand back the records they were
-// given, so a caller keeps its own record type through the call.
-type SessionActivity = Pick<ObservedSession, "runtimeState" | "lastActivityAt">;
+// What the filters below read of a session, and nothing besides: when it last
+// did anything. They hand back the records they were given, so a caller keeps
+// its own record type through the call.
+type SessionActivity = { lastActivityAt: Date };
+
+// Whether a session is running is the caller's reading of its own record, taken
+// as a predicate rather than looked up in a state this module would have to
+// know the words of. A source that names its states differently, or has none,
+// needs nothing here to change.
+type IsActive<Session> = (session: Session) => boolean;
 
 export function recentSessions<Session extends SessionActivity>(
   sessions: Session[],
   recency: Recency,
+  isActive: IsActive<Session>,
 ): Session[] {
-  return sessions.filter((session) => belongsInDefaultView(session, recency));
+  return sessions.filter((session) => belongsInDefaultView(session, recency, isActive));
 }
 
 // The complement of `recentSessions` over the same list, derived from the same
@@ -71,26 +27,29 @@ export function recentSessions<Session extends SessionActivity>(
 export function olderSessions<Session extends SessionActivity>(
   sessions: Session[],
   recency: Recency,
+  isActive: IsActive<Session>,
 ): Session[] {
-  return sessions.filter((session) => !belongsInDefaultView(session, recency));
+  return sessions.filter((session) => !belongsInDefaultView(session, recency, isActive));
 }
 
 // An active session belongs there however old its last activity: it is running
 // now, whatever its transcript last said.
-function belongsInDefaultView(session: SessionActivity, recency: Recency): boolean {
+function belongsInDefaultView<Session extends SessionActivity>(
+  session: Session,
+  recency: Recency,
+  isActive: IsActive<Session>,
+): boolean {
   return isActive(session) || isRecent(session, recency);
 }
 
-export function activeSessions<Session extends Pick<ObservedSession, "runtimeState">>(
+export function activeSessions<Session>(
   sessions: Session[],
+  isActive: IsActive<Session>,
 ): Session[] {
   return sessions.filter(isActive);
 }
 
-function isRecent(
-  session: Pick<ObservedSession, "lastActivityAt">,
-  { now, withinDays }: Recency,
-): boolean {
+function isRecent(session: SessionActivity, { now, withinDays }: Recency): boolean {
   const age = now.getTime() - session.lastActivityAt.getTime();
 
   return age <= withinDays * millisecondsPerDay;

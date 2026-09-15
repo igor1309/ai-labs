@@ -1,24 +1,50 @@
 import { readFileSync } from "node:fs";
 
 import { parsedRecord, tailOf, transcriptFiles } from "./claude-code-files.js";
-import type { ObservedSession, SessionSource } from "./sessions.js";
 
-// What a runtime can tell this adapter a session is doing. Narrower than the
-// states the list can show: a runtime sees that a session is blocked without
-// seeing what on, so the domain's two waiting kinds are not among these — the
-// port admits what a runtime can supply, and widens when one arrives that can
-// tell them apart. Named here, by the port that asks for it, so a runtime is
-// held to what this adapter reads rather than to what some other reader of the
-// same words happens to want. A runtime's own words are put to these in
-// composition — `compose-claude-code-runtime-states.ts`.
-export type SessionStatus = "working" | "waiting" | "idle";
+// The states this adapter tells apart, and nothing besides. Narrower than the
+// states a reader can show: a runtime knows a session is blocked without
+// knowing what on — Claude Code's registry reports that it is waiting and never
+// which answer it wants — so the two waiting kinds are not among these. What a
+// runtime can supply is what this admits, and it widens when one arrives that
+// can tell them apart.
+// Every word here is something a running session is doing, so there is none for
+// not running: that is the absence of a state, and the field is absent for it.
+// These are this adapter's words, not a vocabulary its readers share: a
+// runtime's own words are put to them in composition —
+// `compose-claude-code-runtime-states.ts` — and a reader names what it shows
+// for each.
+export type RuntimeState = "working" | "waiting" | "idle";
 
-// What the adapter needs to know about a session that a transcript cannot say:
-// whether it is running now, and what it is doing. Undefined when the session
-// is not running. Sessions start and stop while a source is held open, so the
-// answer is only true of the moment it was asked for: the outer call takes that
-// snapshot, and the type says where "now" is.
-export type RuntimeStates = () => (sessionId: string) => SessionStatus | undefined;
+// What this adapter reports about a session it found on disk. Its own record:
+// another source describes its sessions in its own terms, and a consumer takes
+// the records it was handed rather than a shape the sources agree on.
+export type ObservedSession = {
+  id: string;
+  agent: string;
+  // Where the session is working: its directory, which for a worktree is the
+  // worktree's own path rather than the repository root. A deleted worktree
+  // keeps its path — the session stays associated with where it ran — and is
+  // reported as gone rather than collapsed into the repository root.
+  workspace: string;
+  workspaceOnDisk: boolean;
+  // Present when that directory is in a repository, and when that repository
+  // has a branch checked out.
+  repository?: string;
+  branch?: string;
+  // Present while the session is running. Absent is the source saying it is
+  // not — there is nothing it could be doing.
+  runtimeState?: RuntimeState;
+  lastActivityAt: Date;
+};
+
+export type SessionSource = () => ObservedSession[];
+
+// What a runtime can tell this adapter a session is doing. Undefined when the
+// session is not running. Sessions start and stop while a source is held open,
+// so the answer is only true of the moment it was asked for: the outer call
+// takes that snapshot, and the type says where "now" is.
+export type RuntimeStates = () => (sessionId: string) => RuntimeState | undefined;
 
 // One such snapshot, answering for every session in one read.
 type RuntimeSnapshot = ReturnType<RuntimeStates>;
@@ -78,7 +104,7 @@ function observedSession(
   const workspace = workspaceFacts(context.cwd);
   // A session the runtime says nothing about is not running, and carries no
   // state rather than a word standing in for its absence.
-  const status = snapshot(context.sessionId);
+  const runtimeState = snapshot(context.sessionId);
 
   return [
     {
@@ -88,7 +114,7 @@ function observedSession(
       workspaceOnDisk: workspace.onDisk,
       ...(workspace.repository === undefined ? {} : { repository: workspace.repository }),
       ...(isBranch(context.gitBranch) ? { branch: context.gitBranch } : {}),
-      ...(status === undefined ? {} : { runtimeState: status }),
+      ...(runtimeState === undefined ? {} : { runtimeState }),
       lastActivityAt: new Date(context.timestamp),
     },
   ];
