@@ -24,7 +24,11 @@ export function searchSessions(
 
     try {
       return wasSpokenIn(transcripts, session.id, wanted);
-    } catch {
+    } catch (error) {
+      if (!isFilesystemFailure(error)) {
+        throw error;
+      }
+
       unreadable.push(session.id);
 
       return false;
@@ -32,6 +36,18 @@ export function searchSessions(
   });
 
   return { matches, unreadable };
+}
+
+// The ways a transcript's file can be out of reach: gone with the worktree that
+// held it, not readable by this user, or a path that is a directory. Everything
+// else a read can throw is a defect, and reporting it as an unreadable session
+// would hide it behind a name in a list.
+const filesystemFailures = new Set(["ENOENT", "EACCES", "EISDIR"]);
+
+function isFilesystemFailure(error: unknown): boolean {
+  const code = (error as NodeJS.ErrnoException | undefined)?.code;
+
+  return code !== undefined && filesystemFailures.has(code);
 }
 
 function contextMatches(session: SessionView, wanted: string): boolean {

@@ -12,6 +12,17 @@ export function transcriptOf(
   return (requested) => (requested === sessionId ? entries : []);
 }
 
+// How a transcript that cannot be read actually fails: the file is gone, the
+// user cannot open it, or the path is a directory. A bare `Error` is not one of
+// these, so a test about an unreadable transcript has to throw a real one.
+export function filesystemError(code: string): NodeJS.ErrnoException {
+  const error: NodeJS.ErrnoException = new Error(`${code}: transcript unreadable`);
+
+  error.code = code;
+
+  return error;
+}
+
 export function changingTranscript(
   sessionId: string,
   entries: TranscriptEntry[],

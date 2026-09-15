@@ -5,6 +5,7 @@ import { searchSessions } from "../src/search.js";
 import type { TranscriptEntry, TranscriptSource } from "../src/transcript.js";
 import { sourceOf } from "./session-source.js";
 import { at } from "./time.js";
+import { filesystemError } from "./transcript-source.js";
 
 // Not QA scenarios: what search asks of the transcript source. A session whose
 // context matches must stay findable when its transcript cannot be read — this
@@ -26,7 +27,7 @@ describe("What search reads", () => {
 
   it("finds a session by context even when its transcript cannot be read", () => {
     const unreadable: TranscriptSource = () => {
-      throw new Error("transcript unreadable");
+      throw filesystemError("ENOENT");
     };
 
     assert.deepEqual(
@@ -46,6 +47,31 @@ describe("What search reads", () => {
     searchSessions(withContext, transcripts, "ai-labs");
 
     assert.deepEqual(asked, ["by-agent"]);
+  });
+
+  // One test per code: a list that lost one of them would still pass a test
+  // that only ever throws the code it kept.
+  for (const code of ["ENOENT", "EACCES", "EISDIR"]) {
+    it(`reports a session as unreadable when its transcript fails with ${code}`, () => {
+      const unreachable: TranscriptSource = () => {
+        throw filesystemError(code);
+      };
+
+      const found = searchSessions(withContext, unreachable, "rate limiter");
+
+      assert.deepEqual(found.matches, []);
+      assert.deepEqual(found.unreadable, ["by-agent", "by-repository"]);
+    });
+  }
+
+  // A defect in how a transcript is read looks nothing like a missing file, and
+  // counting it as an unreadable session would bury it behind a name in a list.
+  it("lets an error that is not a filesystem failure through", () => {
+    const broken: TranscriptSource = () => {
+      throw new TypeError("entry.text is not a string");
+    };
+
+    assert.throws(() => searchSessions(withContext, broken, "rate limiter"), TypeError);
   });
 
   it("matches every session on an empty query", () => {
