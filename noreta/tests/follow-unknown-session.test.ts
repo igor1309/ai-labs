@@ -58,4 +58,24 @@ describe("Following pushes", () => {
 
     assert.equal(shown.length, 3);
   });
+
+  it("shows nothing more once following is stopped", () => {
+    const changes = changeSignal();
+    const shown: FollowedSession[] = [];
+
+    const stop = followSession(
+      sourceOf({ id: "s1", runtimeState: "working" }),
+      transcriptOf("s1", []),
+      "s1",
+      changes.subscribe,
+      (followed) => shown.push(followed),
+    );
+
+    assert.equal(typeof stop, "function", "following should hand back a way to stop");
+
+    stop();
+    changes.fire();
+
+    assert.equal(shown.length, 1);
+  });
 });

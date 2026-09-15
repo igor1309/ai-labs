@@ -8,8 +8,8 @@ export type FollowedSession = {
 
 // "The sources may have changed" — implemented by a filesystem watcher or a
 // poller. Following pushes a fresh view on each signal, so the reader never has
-// to ask.
-export type SessionChanges = (onChange: () => void) => void;
+// to ask. Subscribing hands back the way to stop.
+export type SessionChanges = (onChange: () => void) => () => void;
 
 export function followSession(
   sessions: SessionSource,
@@ -17,7 +17,7 @@ export function followSession(
   sessionId: string,
   changes: SessionChanges,
   onUpdate: (followed: FollowedSession) => void,
-): void {
+): () => void {
   const push = (): void =>
     onUpdate({
       session: viewSessions(sessions).find((view) => view.id === sessionId),
@@ -25,5 +25,6 @@ export function followSession(
     });
 
   push();
-  changes(push);
+
+  return changes(push);
 }
