@@ -20,12 +20,14 @@ Feature: See active sessions
     Scenario: A session waiting for input is visible as waiting
       Given a session has a live runtime waiting for input
       When I view my sessions
-      Then the session is shown as waiting
+      Then the session is shown as active
+      And the session is shown as waiting
 
     Scenario: A session waiting for approval is visible as waiting
       Given a session has a live runtime waiting for approval
       When I view my sessions
-      Then the session is shown as waiting
+      Then the session is shown as active
+      And the session is shown as waiting
 
     Scenario: An idle session is active
       Given a session has a live runtime doing nothing
@@ -105,10 +107,17 @@ Feature: Follow an active session
       When the agent produces a new message
       Then the message appears in the transcript
 
-    Scenario: A working session starts waiting
-      Given I am viewing a working session
+    Scenario: An active session starts waiting for input
+      Given I am viewing an active session executing a turn
       When its agent starts waiting for input
-      Then the session is shown as waiting
+      Then the session is shown as active
+      And the session is shown as waiting
+
+    Scenario: An active session starts waiting for approval
+      Given I am viewing an active session executing a turn
+      When its agent starts waiting for approval
+      Then the session is shown as active
+      And the session is shown as waiting
 
     Scenario: The runtime becomes inactive
       Given I am viewing an active session
@@ -162,9 +171,10 @@ Feature: Organize sessions
   Rule: Sessions can be filtered by their attributes
 
     Scenario: Filter active sessions
-      Given active and inactive sessions exist
+      Given working, waiting, idle, and inactive sessions exist
       When I filter by active state
-      Then only active sessions are shown
+      Then working, waiting, and idle sessions are shown
+      And inactive sessions are not shown
 
 
 Feature: Access older sessions
