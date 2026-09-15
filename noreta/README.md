@@ -39,7 +39,7 @@ Codex session yet — there is no adapter and no entry point.
 
 | Path | Contents |
 |------|----------|
-| `src/sessions.ts` | Session view: maps observed sessions to active/waiting state and orders them by last activity. `recentSessions` applies the default view's recency cutoff. Discovery sits behind the `SessionSource` port. |
+| `src/sessions.ts` | Session view: `viewSessions` reads the `SessionSource` and orders by last activity; `recentSessions` and `activeSessions` are list-to-list projections over the result. |
 | `src/follow.ts` | Follows one session: pushes a fresh state and transcript whenever the `SessionChanges` port signals, so an open session reflects new activity without being asked. |
 | `src/search.ts` | Finds sessions by agent, repository, branch or message text, across the whole source rather than the default view. |
 | `src/grouping.ts` | Partitions a session list by repository, workspace or agent. |

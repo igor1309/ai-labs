@@ -1,6 +1,10 @@
 # Log
 
 ## 2026-09-15
+- Make the session projections compose: `recentSessions` took a `SessionSource`
+  while `activeSessions` and `groupSessions` took a list, so the three could not
+  be chained. All three are list-to-list now, and `viewSessions` is the one
+  function that reads a source.
 - Codex review of "Organize sessions", accepted: grouping rebuilt each group's
   array on every insertion, which is quadratic and worst exactly where it is most
   likely — grouping by agent puts every session in one of two or three groups.

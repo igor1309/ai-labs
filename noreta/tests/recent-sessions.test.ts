@@ -33,7 +33,7 @@ describe("Feature: See recent sessions", () => {
       );
 
       assert.deepEqual(
-        recentSessions(source, { now: at("10:00"), withinDays: 7 }).map(
+        recentSessions(viewSessions(source), { now: at("10:00"), withinDays: 7 }).map(
           (session) => session.id,
         ),
         ["live", "just-finished"],
@@ -48,7 +48,7 @@ describe("Feature: See recent sessions", () => {
       );
 
       assert.deepEqual(
-        recentSessions(source, { now: at("10:00"), withinDays: 7 }).map(
+        recentSessions(viewSessions(source), { now: at("10:00"), withinDays: 7 }).map(
           (session) => session.id,
         ),
         ["newest", "middle", "oldest"],

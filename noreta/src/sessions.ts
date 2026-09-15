@@ -52,10 +52,8 @@ export function viewSessions(source: SessionSource): SessionView[] {
 // retention rule: nothing is dropped, it is only left out of this list.
 export type Recency = { now: Date; withinDays: number };
 
-export function recentSessions(source: SessionSource, recency: Recency): SessionView[] {
-  return viewSessions(source).filter(
-    (session) => session.active || isRecent(session, recency),
-  );
+export function recentSessions(sessions: SessionView[], recency: Recency): SessionView[] {
+  return sessions.filter((session) => session.active || isRecent(session, recency));
 }
 
 export function activeSessions(sessions: SessionView[]): SessionView[] {
