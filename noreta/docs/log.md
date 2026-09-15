@@ -1,13 +1,23 @@
 # Log
 
 ## 2026-09-15
-- Implement "Access older sessions", the last QA feature: `olderSessions` is the
-  complement of `recentSessions` over the same list, and sessions carry
-  `workspaceOnDisk`, so a deleted worktree keeps its path and is reported as gone
-  rather than collapsed into the repository root. With every feature implemented,
-  the coverage test now requires the feature map to account for *every* feature in
-  `docs/qa.md` — adding a scenario to the document fails the suite until it has a
-  test, verified by adding one.
+- Codex review of "Access older sessions", accepted with a correction: both
+  deleted-worktree scenarios were called pinned, but only one is. Breaking the
+  view so it folds a deleted worktree into its repository root fails "Its worktree
+  has been deleted" and leaves "Open a session from a deleted worktree" green — so
+  the retention half is real and the detection half is not. Both are now in the
+  README's pinned table, described by what their tests do and do not establish.
+  Also derived `olderSessions` from the same predicate as `recentSessions` instead
+  of restating it as a hand-written complement.
+- Implement "Access older sessions", the last of the seven QA features to get a
+  domain implementation: `olderSessions` is the complement of `recentSessions`
+  over the same list, and sessions carry `workspaceOnDisk`, so a deleted worktree
+  keeps its path and is reported as gone rather than collapsed into the
+  repository root. The coverage test now requires the feature map to account for
+  *every* feature in `docs/qa.md` — adding a scenario to the document fails the
+  suite until it has a test, verified by adding one. Every feature has a domain
+  model and a test per scenario; none has an adapter, and nothing yet reads a
+  real Claude Code or Codex session.
 - Make the session projections compose: `recentSessions` took a `SessionSource`
   while `activeSessions` and `groupSessions` took a list, so the three could not
   be chained. All three are list-to-list now, and `viewSessions` is the one

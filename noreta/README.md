@@ -81,6 +81,8 @@ ahead; see [docs/implementation-notes.md](docs/implementation-notes.md).
 Every QA scenario has a test, but some of those tests cannot fail against the
 current code — they constrain whatever implements the missing piece rather than
 checking behavior that exists. Kept honest here rather than buried in the log.
+Each entry was confirmed by breaking the implementation and watching the test
+stay green.
 
 | Scenario | Why it cannot fail yet | What would drive it |
 |----------|------------------------|---------------------|
@@ -88,6 +90,8 @@ checking behavior that exists. Kept honest here rather than buried in the log.
 | Noreta starts after the agent | Same | A real discovery adapter |
 | A transcript contains a tool call | Nothing renders a transcript; the test only proves tagged entries survive ordering | A renderer, tested at the presentation boundary |
 | A transcript contains a file diff | Same | A renderer, tested at the presentation boundary |
+| Its worktree has been deleted | Half of it is real: the view cannot drop the worktree path or fold it into the repository root without failing. Nothing *notices* a worktree disappearing, though — the test hands the view a session already marked gone | A discovery adapter that reconciles the filesystem |
+| Open a session from a deleted worktree | `readTranscript` never consults a workspace, so no implementation of it could fail this | A transcript adapter that locates files without going through the workspace |
 
 Tests and typecheck, from the repo root:
 

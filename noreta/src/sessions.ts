@@ -58,13 +58,20 @@ export function viewSessions(source: SessionSource): SessionView[] {
 export type Recency = { now: Date; withinDays: number };
 
 export function recentSessions(sessions: SessionView[], recency: Recency): SessionView[] {
-  return sessions.filter((session) => session.active || isRecent(session, recency));
+  return sessions.filter((session) => belongsInDefaultView(session, recency));
 }
 
-// The complement of `recentSessions` over the same list: nothing is dropped by
-// the cutoff, it is only held back until asked for.
+// The complement of `recentSessions` over the same list, derived from the same
+// predicate so the two cannot drift apart: nothing is dropped by the cutoff, it
+// is only held back until asked for.
 export function olderSessions(sessions: SessionView[], recency: Recency): SessionView[] {
-  return sessions.filter((session) => !session.active && !isRecent(session, recency));
+  return sessions.filter((session) => !belongsInDefaultView(session, recency));
+}
+
+// An active session belongs there however old its last activity: it is running
+// now, whatever its transcript last said.
+function belongsInDefaultView(session: SessionView, recency: Recency): boolean {
+  return session.active || isRecent(session, recency);
 }
 
 export function activeSessions(sessions: SessionView[]): SessionView[] {
