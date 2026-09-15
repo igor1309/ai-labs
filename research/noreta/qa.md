@@ -5,7 +5,7 @@ description: QA scenarios for the Noreta read-only Mac MVP, one Gherkin
 model: gpt-5.6-sol
 ---
 
-# Noreta - QA
+# Noreta — QA
 
 ``` gherkin
 Feature: See active sessions
@@ -16,6 +16,7 @@ Feature: See active sessions
       Given a session has a live runtime executing a turn
       When I view my sessions
       Then the session is shown as active
+      And the session is not shown as waiting
 
     Scenario: A session waiting for input is visible as waiting
       Given a session has a live runtime waiting for input
@@ -33,6 +34,7 @@ Feature: See active sessions
       Given a session has a live runtime doing nothing
       When I view my sessions
       Then the session is shown as active
+      And the session is not shown as waiting
 
   Rule: A session without a live runtime is inactive
 

@@ -5,7 +5,7 @@ description: Top 7 Noreta user stories for the read-only Mac MVP,
 model: gpt-5.6-sol
 ---
 
-# Noreta - User Stories
+# Noreta — User Stories
 
 ``` gherkin
 Feature: Coding agent sessions
