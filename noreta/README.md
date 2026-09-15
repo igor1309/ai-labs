@@ -39,7 +39,7 @@ Codex session yet — there is no adapter and no entry point.
 
 | Path | Contents |
 |------|----------|
-| `src/sessions.ts` | Session view: `viewSessions` reads the `SessionSource` and orders by last activity; `recentSessions`, `olderSessions` and `activeSessions` are list-to-list projections over the result. `RuntimeState` carries a bare `waiting` beside the two kinds, for a source that knows a session is blocked but not on what. A view carries the state the source reported beside the `active` and `waiting` flags derived from it. |
+| `src/sessions.ts` | Session view: `viewSessions` reads the `SessionSource` and orders by last activity; `recentSessions`, `olderSessions` and `activeSessions` are list-to-list projections over the result. `RuntimeState` carries a bare `waiting` beside the two kinds, for a source that knows a session is blocked but not on what. A view carries the state its source reported; `isActive` and `isWaiting` read that state rather than standing beside it as fields that could drift from it. |
 | `src/follow.ts` | Follows one session: pushes a fresh state and transcript whenever the `SessionChanges` port signals, so an open session reflects new activity without being asked. |
 | `src/search.ts` | Finds sessions by agent, repository, branch or message text, across the whole source rather than the default view. Returns the matches together with the sessions whose transcript could not be read, so an unreadable one is reported rather than dropped. |
 | `src/grouping.ts` | Partitions a session list by repository, workspace or agent. |

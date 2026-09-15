@@ -1,6 +1,8 @@
 # Log
 
 ## 2026-09-15
+- `active` and `waiting` became readings of `runtimeState` instead of fields
+  beside it, so the two cannot disagree about the same session.
 - The state column tells `working` from `idle`: a view now carries the state its
   source reported, not only the flags derived from it.
 - A created file reads as a diff adding every line instead of an empty diff —

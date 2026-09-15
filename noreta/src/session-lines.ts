@@ -1,9 +1,9 @@
-import type { SessionView } from "./sessions.js";
+import { isActive, isWaiting, type SessionView } from "./sessions.js";
 
 export function sessionLines(sessions: SessionView[]): string[] {
   return sessions.map(
     (session) =>
-      `${session.active ? "*" : " "} ${session.agent}  ${state(session)}  ${session.branch ?? "-"}  ${session.workspace}  ${session.lastActivityAt.toISOString()}`,
+      `${isActive(session) ? "*" : " "} ${session.agent}  ${state(session)}  ${session.branch ?? "-"}  ${session.workspace}  ${session.lastActivityAt.toISOString()}`,
   );
 }
 
@@ -11,7 +11,7 @@ export function sessionLines(sessions: SessionView[]): string[] {
 // not what on. Every other running state is its own word, and a session that is
 // not running has none.
 function state(session: SessionView): string {
-  if (session.waiting) {
+  if (isWaiting(session)) {
     return "waiting";
   }
 

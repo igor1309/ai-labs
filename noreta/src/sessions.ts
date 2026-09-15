@@ -36,11 +36,24 @@ export type SessionView = {
   workspaceOnDisk: boolean;
   repository?: string;
   branch?: string;
-  active: boolean;
-  waiting: boolean;
   runtimeState?: RuntimeState;
   lastActivityAt: Date;
 };
+
+// Whether a session is running, and whether it is blocked, are readings of the
+// state its source reported rather than facts beside it. As functions they
+// cannot drift from `runtimeState`; as fields they could.
+export function isActive(session: Pick<SessionView, "runtimeState">): boolean {
+  return session.runtimeState !== undefined;
+}
+
+export function isWaiting(session: Pick<SessionView, "runtimeState">): boolean {
+  return (
+    session.runtimeState === "waiting" ||
+    session.runtimeState === "waiting-for-input" ||
+    session.runtimeState === "waiting-for-approval"
+  );
+}
 
 export function viewSessions(source: SessionSource): SessionView[] {
   return source()
@@ -51,8 +64,6 @@ export function viewSessions(source: SessionSource): SessionView[] {
       workspaceOnDisk: session.workspaceOnDisk,
       ...(session.repository === undefined ? {} : { repository: session.repository }),
       ...(session.branch === undefined ? {} : { branch: session.branch }),
-      active: session.runtimeState !== undefined,
-      waiting: isWaiting(session.runtimeState),
       ...(session.runtimeState === undefined ? {} : { runtimeState: session.runtimeState }),
       lastActivityAt: session.lastActivityAt,
     }))
@@ -77,11 +88,11 @@ export function olderSessions(sessions: SessionView[], recency: Recency): Sessio
 // An active session belongs there however old its last activity: it is running
 // now, whatever its transcript last said.
 function belongsInDefaultView(session: SessionView, recency: Recency): boolean {
-  return session.active || isRecent(session, recency);
+  return isActive(session) || isRecent(session, recency);
 }
 
 export function activeSessions(sessions: SessionView[]): SessionView[] {
-  return sessions.filter((session) => session.active);
+  return sessions.filter(isActive);
 }
 
 function isRecent(session: SessionView, { now, withinDays }: Recency): boolean {
@@ -91,11 +102,3 @@ function isRecent(session: SessionView, { now, withinDays }: Recency): boolean {
 }
 
 const millisecondsPerDay = 24 * 60 * 60 * 1000;
-
-function isWaiting(runtimeState: RuntimeState | undefined): boolean {
-  return (
-    runtimeState === "waiting" ||
-    runtimeState === "waiting-for-input" ||
-    runtimeState === "waiting-for-approval"
-  );
-}

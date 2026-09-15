@@ -1,4 +1,10 @@
-import type { ObservedSession, SessionSource, SessionView } from "../src/sessions.js";
+import {
+  isActive,
+  isWaiting,
+  type ObservedSession,
+  type SessionSource,
+  type SessionView,
+} from "../src/sessions.js";
 
 type PartialSession = Omit<
   ObservedSession,
@@ -41,11 +47,10 @@ export function changingSource(...sessions: PartialSession[]): {
   };
 }
 
-// Projects away the activity time for scenarios about active/waiting state.
-export function stateOf(
-  view: SessionView,
-): Omit<SessionView, "agent" | "workspace" | "workspaceOnDisk" | "runtimeState" | "lastActivityAt"> {
-  return { id: view.id, active: view.active, waiting: view.waiting };
+// Reads a view the way a scenario about active/waiting state talks about it,
+// leaving out everything those scenarios do not name.
+export function stateOf(view: SessionView): { id: string; active: boolean; waiting: boolean } {
+  return { id: view.id, active: isActive(view), waiting: isWaiting(view) };
 }
 
 function observed(session: PartialSession): ObservedSession {
