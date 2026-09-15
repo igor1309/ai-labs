@@ -30,5 +30,8 @@
   },
   "overrides": {
     "fast-uri": "3.1.2"
+  },
+  "allowScripts": {
+    "better-sqlite3@11.10.0": true
   }
 }

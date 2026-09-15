@@ -2,6 +2,17 @@
 
 ## 2026-09-15
 
+- Allow the `better-sqlite3` install script in `package.json` (`allowScripts`).
+  npm 12 blocks dependency install scripts by default, so a fresh `npm ci` left
+  the native binding unbuilt and 77 nomos tests failed locally on
+  `Could not locate the bindings file`; CI, on the npm bundled with the pinned
+  Node 22, was never affected. Only `better-sqlite3` is approved — the other six
+  blocked packages are not needed by `npm test`.
+
+- Correct the new-project checklist: `product reveal` cards live in
+  `docs/products.html`, not `docs/loc-dashboard.html`, which only holds the
+  `data` array behind the chart and table.
+
 - Promote `noreta/` from `research/noreta/` to a top-level project: collect its
   docs under `noreta/docs/`, seed a README and project log, and register it in
   the `## Components` table, the products page (Applications), the
