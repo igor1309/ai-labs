@@ -1,11 +1,16 @@
 # Log
 
 ## 2026-09-15
-- Implement "Follow an active session": `src/follow.ts` returns a reader that
-  re-reads both sources on every call, so an open session picks up new messages
-  and runtime transitions. All four scenarios falsify a snapshot-once reader,
-  which is the implementation they exist to rule out. Pull, not push — the
-  SSE/WebSocket transport in the implementation notes sits above this.
+- Codex review of "Follow an active session": took the finding's fix rather than
+  hedging the claim again. Following now pushes through a `SessionChanges` port —
+  "the sources may have changed", to be implemented by a watcher or poller — so
+  the scenarios assert that an update *arrives* at an open session rather than
+  that a re-read would have found one. No test calls a reader; deleting the
+  subscription fails all four. Declined the finding's claim that a stale-forever
+  view passed the old tests: a caching reader failed all four of those too.
+- Implement "Follow an active session": `src/follow.ts` follows one session by
+  re-reading its state and transcript, so an open session picks up new messages
+  and runtime transitions.
 - Extract `src/ordering.ts`: `sessions.ts` and `transcript.ts` had each grown
   their own comparator and NaN-safe time reader, so the rule that an unreadable
   timestamp sorts oldest lived in two places. It now lives in one, parameterised
