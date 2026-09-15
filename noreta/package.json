@@ -1,0 +1,10 @@
+{
+  "name": "noreta",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --import tsx --test tests/*.test.ts",
+    "test:file": "node --import tsx --test"
+  }
+}

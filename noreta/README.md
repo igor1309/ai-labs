@@ -19,7 +19,8 @@ the MVP observes local sessions on a Mac, V2 brings the same read-only access to
 iPhone, and later stages add interaction with local runtimes (reply, approvals,
 resume, handoff, automation).
 
-Working name; currently in the product-definition stage — no implementation yet.
+Working name. Implementation has started: the first QA feature,
+"See active sessions", is in `src/`, with `tests/` covering its scenarios.
 
 ## Docs
 
@@ -33,8 +34,23 @@ Working name; currently in the product-definition stage — no implementation ye
 | [docs/backlog.md](docs/backlog.md) | Deferred ideas |
 | [docs/log.md](docs/log.md) | Project log |
 
+## Implementation
+
+| Path | Contents |
+|------|----------|
+| `src/sessions.ts` | Session view: maps observed sessions to active/waiting state. Discovery is behind the `SessionSource` port. |
+| `tests/active-sessions.test.ts` | One test per Gherkin scenario of the "See active sessions" feature in [docs/qa.md](docs/qa.md), named after it. |
+
+Tests and typecheck, from the repo root:
+
+```bash
+node --import tsx --test noreta/tests/*.test.ts
+npx tsc --noEmit -p noreta
+```
+
 ## Stack
 
-Proposed, not yet implemented: TypeScript end-to-end — Node.js, Fastify, SQLite,
-React, Vite, Tailwind, shadcn/ui, with SSE or WebSocket for realtime updates.
-See [docs/implementation-notes.md](docs/implementation-notes.md).
+Only the parts above exist. The rest is proposed: TypeScript end-to-end —
+Node.js, Fastify, SQLite, React, Vite, Tailwind, shadcn/ui, with SSE or
+WebSocket for realtime updates. See
+[docs/implementation-notes.md](docs/implementation-notes.md).
