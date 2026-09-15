@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 
 import { parsedRecord, tailOf, transcriptFiles } from "./claude-code-files.js";
+import { byTime } from "./ordering.js";
 
 // The states this adapter tells apart, and nothing besides. Narrower than the
 // states a reader can show: a runtime knows a session is blocked without
@@ -70,11 +71,32 @@ export function claudeCodeSessions(
     // directory scan, and a read covers every session on the machine.
     const snapshot = runtimeStates();
 
-    return transcriptFiles(projectsDirectory).flatMap((file) =>
-      observedSession(file, snapshot, workspaceFacts),
+    return newestPerSession(
+      transcriptFiles(projectsDirectory).flatMap((file) =>
+        observedSession(file, snapshot, workspaceFacts),
+      ),
     );
   };
 }
+
+// A transcript's name is unique only within its project directory, so one
+// session can be found under several. Readers look a session up by id, and the
+// newest of its transcripts describes it now.
+function newestPerSession(sessions: ObservedSession[]): ObservedSession[] {
+  const newest = new Map<string, ObservedSession>();
+
+  for (const session of sessions) {
+    const known = newest.get(session.id);
+
+    if (known === undefined || newerFirst(session, known) < 0) {
+      newest.set(session.id, session);
+    }
+  }
+
+  return [...newest.values()];
+}
+
+const newerFirst = byTime((session: ObservedSession) => session.lastActivityAt, "newest-first");
 
 // What a record has to carry to describe its session. Records that do not —
 // mode changes, attachments, titles — say nothing about where it is working.

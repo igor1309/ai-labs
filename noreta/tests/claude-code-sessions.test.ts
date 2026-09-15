@@ -91,6 +91,58 @@ describe("What the Claude Code adapter discovers", () => {
     );
   });
 
+  // A transcript's name is unique only within its project directory, and the
+  // transcript reader already merges every project's copy of a session, so a
+  // session found under two of them is one session, described by its newest.
+  it("reports a session found under two project directories once", () => {
+    const projects = projectsDirectoryOf({
+      id: "resumed",
+      records: [userRecord({ id: "resumed", workspace: "/nowhere/first", at: at("09:00") })],
+    });
+
+    writeProject(projects, "-another-project", {
+      id: "resumed",
+      records: [userRecord({ id: "resumed", workspace: "/nowhere/second", at: at("10:00") })],
+    });
+
+    assert.deepEqual(
+      claudeCodeSessions(projects, notRunning, missingWorkspace)().map(
+        ({ id, workspace }) => ({ id, workspace }),
+      ),
+      [{ id: "resumed", workspace: "/nowhere/second" }],
+    );
+  });
+
+  // An unreadable timestamp makes every raw comparison false, so without an
+  // ordering that ranks it oldest, whichever copy is scanned first would win.
+  for (const unreadableFirst of [false, true]) {
+    it(`prefers a readable copy of a session to an unreadable one (unreadable scanned ${unreadableFirst ? "first" : "last"})`, () => {
+      const readable: TranscriptRecord = userRecord({
+        id: "resumed",
+        workspace: "/nowhere/readable",
+        at: at("09:00"),
+      });
+      const unreadable: TranscriptRecord = {
+        ...userRecord({ id: "resumed", workspace: "/nowhere/unreadable", at: at("10:00") }),
+        timestamp: "not a date",
+      };
+      const [scannedFirst, scannedLast] = unreadableFirst
+        ? [unreadable, readable]
+        : [readable, unreadable];
+
+      const projects = projectsDirectoryOf({ id: "resumed", records: [scannedFirst] });
+
+      writeProject(projects, "-another-project", { id: "resumed", records: [scannedLast] });
+
+      assert.deepEqual(
+        claudeCodeSessions(projects, notRunning, missingWorkspace)().map(
+          ({ id, workspace }) => ({ id, workspace }),
+        ),
+        [{ id: "resumed", workspace: "/nowhere/readable" }],
+      );
+    });
+  }
+
   // Reading that file as a project directory throws, and one stray file would
   // then cost every session on the machine.
   it("ignores a file lying among the project directories", () => {
