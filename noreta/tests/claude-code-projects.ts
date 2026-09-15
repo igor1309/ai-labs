@@ -39,10 +39,6 @@ export function writeStrayFile(projectsDirectory: string, name: string): void {
   writeFileSync(join(projectsDirectory, name), "");
 }
 
-export function existingDirectory(): string {
-  return mkdtempSync(join(tmpdir(), "noreta-workspace-"));
-}
-
 function asJsonl(records: TranscriptRecord[]): string {
   return records.map((record) => `${JSON.stringify(record)}\n`).join("");
 }

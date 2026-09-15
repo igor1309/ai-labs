@@ -1,7 +1,6 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 
 import { parsedRecord, tailOf, transcriptFiles } from "./claude-code-files.js";
-import { repositoryOf } from "./git-repository.js";
 import type { ObservedSession, RuntimeState, SessionSource } from "./sessions.js";
 
 // What the adapter needs to know about a session that a transcript cannot say:
@@ -14,11 +13,21 @@ export type RuntimeStates = () => (sessionId: string) => RuntimeState | undefine
 // One such snapshot, answering for every session in one read.
 type RuntimeSnapshot = ReturnType<RuntimeStates>;
 
+// What the adapter needs to know about the directory a session works in that
+// the transcript cannot say: whether it is still there, and which repository
+// holds it. A transcript records the path a session was given — a workspace can
+// be deleted under it, and only the file system knows where it belongs.
+export type WorkspaceFacts = (workspace: string) => {
+  onDisk: boolean;
+  repository?: string;
+};
+
 // Reads the sessions Claude Code leaves on disk, one per transcript. Where a
 // session is working is read from its records, never from where its file sits.
 export function claudeCodeSessions(
   projectsDirectory: string,
   runtimeStates: RuntimeStates,
+  workspaceFacts: WorkspaceFacts,
 ): SessionSource {
   return (): ObservedSession[] => {
     // One snapshot for the whole read, not one per session: the registry is a
@@ -26,7 +35,7 @@ export function claudeCodeSessions(
     const snapshot = runtimeStates();
 
     return transcriptFiles(projectsDirectory).flatMap((file) =>
-      observedSession(file, snapshot),
+      observedSession(file, snapshot, workspaceFacts),
     );
   };
 }
@@ -45,6 +54,7 @@ type SessionContext = {
 function observedSession(
   file: string,
   snapshot: RuntimeSnapshot,
+  workspaceFacts: WorkspaceFacts,
 ): ObservedSession[] {
   const records = contextRecords(file);
   const context = records[records.length - 1];
@@ -55,15 +65,15 @@ function observedSession(
 
   // Not taken from the record's branch: a workspace can be in a repository with
   // no branch checked out, and only the file system says which repository.
-  const repository = repositoryOf(context.cwd);
+  const workspace = workspaceFacts(context.cwd);
 
   return [
     {
       id: context.sessionId,
       agent: "claude",
       workspace: context.cwd,
-      workspaceOnDisk: existsSync(context.cwd),
-      ...(repository === undefined ? {} : { repository }),
+      workspaceOnDisk: workspace.onDisk,
+      ...(workspace.repository === undefined ? {} : { repository: workspace.repository }),
       ...(isBranch(context.gitBranch) ? { branch: context.gitBranch } : {}),
       ...runtimeStateOf(snapshot(context.sessionId)),
       lastActivityAt: new Date(context.timestamp),
