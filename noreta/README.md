@@ -46,6 +46,7 @@ Codex session yet — there is no adapter and no entry point.
 | `src/ordering.ts` | The one ordering rule: sort by a timestamp in either direction, treating an unreadable one as the oldest instead of returning `NaN`. |
 | `src/transcript.ts` | Session transcript: messages, tool calls and file diffs, oldest first. Reading sits behind the `TranscriptSource` port. |
 | `src/claude-code.ts` | Discovery adapter: reads the JSONL transcripts Claude Code leaves under `~/.claude/projects` and reports each as an `ObservedSession`. The project directory's name is the workspace path with its separators replaced, which is lossy, so workspace and branch come from the records. Runtime state comes from the `RuntimeStates` port, which it owns. |
+| `src/claude-code-transcript.ts` | Implements `TranscriptSource`: reads a session's JSONL transcript, found by session id in whichever project directory holds it. Text blocks become messages, `tool_use` blocks tool calls, and an edit's `structuredPatch` a unified diff. |
 | `src/session-lines.ts` | Plain-text lines for a session list: an active marker, agent, state, branch and workspace, and last activity. The state column reads `active`, `waiting` or `inactive` — `SessionView` carries no `working`/`idle` split to show. |
 | `src/main.ts` | Composition root and entry point: the only module that reads the home directory and the clock. Wires both Claude Code adapters into the domain and prints the last 7 days of sessions. Its wiring has no test; the real run is the check. |
 | `tests/active-sessions.test.ts` | One test per Gherkin scenario of the "See active sessions" feature in [docs/qa.md](docs/qa.md), named after it. |
@@ -70,12 +71,14 @@ Codex session yet — there is no adapter and no entry point.
 | `tests/claude-code-registry.ts` | Writes a throwaway registry directory for those tests. |
 | `tests/session-state.test.ts` | Not a QA scenario: a session waiting without a known kind still reads as waiting. |
 | `tests/session-lines.test.ts` | Not QA scenarios: how a session list reads as plain text. |
+| `tests/claude-code-transcript.test.ts` | Not QA scenarios: what the transcript adapter makes of Claude Code's records. |
 | `tests/session-source.ts` | Test sources feeding `SessionSource`, plus the `stateOf` projection. |
 | `tests/transcript-source.ts` | Test sources feeding `TranscriptSource`. |
 
-What this does **not** yet do: `TranscriptSource` still has no production
-implementation, so nothing reads a real transcript — only `SessionSource` does,
-and only for Claude Code. `npm start` prints recent sessions as plain text; the
+What this does **not** yet do: both ports have a Claude Code implementation
+and nothing else. The transcript adapter reports harness wrappers such as
+`<system-reminder>` as user messages, and a newly created file as an empty diff.
+`npm start` prints recent sessions as plain text; the
 presentation target beyond that is undecided. A Codex
 adapter and startup reconciliation are still ahead; see
 [docs/implementation-notes.md](docs/implementation-notes.md).
@@ -105,10 +108,10 @@ stay green.
 |----------|------------------------|---------------------|
 | A session starts outside Noreta | The port is re-read per call and no code knows how a session was started | These scenarios running against `claudeCodeSessions` rather than a test source — the adapter exists now, their tests do not use it |
 | Noreta starts after the agent | Same | Same |
-| A transcript contains a tool call | Nothing renders a transcript; the test only proves tagged entries survive ordering | A renderer, tested at the presentation boundary |
-| A transcript contains a file diff | Same | A renderer, tested at the presentation boundary |
+| A transcript contains a tool call | The test runs against a test source, so it only proves tagged entries survive ordering | The scenario running against `claudeCodeTranscript`, which does map tool calls, rather than a test source |
+| A transcript contains a file diff | Same | The scenario running against `claudeCodeTranscript`, which does map edits to diffs, rather than a test source |
 | Its worktree has been deleted | Half of it is real: the view cannot drop the worktree path or fold it into the repository root without failing. Nothing *notices* a worktree disappearing, though — the test hands the view a session already marked gone | The scenario running against `claudeCodeSessions`, which does check the workspace, rather than a test source |
-| Open a session from a deleted worktree | `readTranscript` never consults a workspace, so no implementation of it could fail this | A transcript adapter that locates files without going through the workspace |
+| Open a session from a deleted worktree | `readTranscript` never consults a workspace, so no implementation of it could fail this | The scenario running against `claudeCodeTranscript`, which finds a transcript by session id and never consults the workspace, rather than a test source |
 
 Tests and typecheck, from the repo root:
 

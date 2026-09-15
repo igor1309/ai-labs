@@ -12,15 +12,25 @@ export type WrittenSession = { id: string; records: TranscriptRecord[] };
 // or in the adapter reads it.
 export function projectsDirectoryOf(...sessions: WrittenSession[]): string {
   const root = mkdtempSync(join(tmpdir(), "noreta-projects-"));
-  const project = join(root, "-a-project");
+
+  writeProject(root, "-a-project", ...sessions);
+
+  return root;
+}
+
+// Adds another project subdirectory, for sessions that ran somewhere else.
+export function writeProject(
+  projectsDirectory: string,
+  name: string,
+  ...sessions: WrittenSession[]
+): void {
+  const project = join(projectsDirectory, name);
 
   mkdirSync(project);
 
   for (const session of sessions) {
     writeFileSync(join(project, `${session.id}.jsonl`), asJsonl(session.records));
   }
-
-  return root;
 }
 
 export function existingDirectory(): string {

@@ -1,6 +1,10 @@
 # Log
 
 ## 2026-09-15
+- A session's transcript is read from Claude Code's JSONL: messages, tool calls
+  and file edits as diffs, so the transcript port has a real implementation.
+  Harness wrappers still read as user messages and a created file as an empty
+  diff.
 - `npm start` prints recent Claude Code sessions as plain text, active ones
   marked — the first way to run Noreta against real data. The state column
   cannot yet split working from idle.
