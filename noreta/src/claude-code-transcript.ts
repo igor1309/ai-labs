@@ -17,6 +17,7 @@ export function claudeCodeTranscript(
 type TranscriptRecord = {
   type?: string;
   isMeta?: boolean;
+  origin?: { kind?: string };
   timestamp: string;
   message?: { content: string | ContentBlock[] };
   toolUseResult?: {
@@ -51,7 +52,7 @@ function entriesOf(record: TranscriptRecord): TranscriptEntry[] {
 }
 
 function messageEntries(record: TranscriptRecord, at: Date): TranscriptEntry[] {
-  if (record.isMeta === true) {
+  if (record.isMeta === true || record.origin?.kind === "task-notification") {
     return [];
   }
 

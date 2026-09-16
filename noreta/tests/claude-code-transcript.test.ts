@@ -215,6 +215,26 @@ describe("What the Claude Code transcript adapter reads", () => {
     ]);
   });
 
+  it("skips a background task's notification", () => {
+    const projects = projectsDirectoryOf({
+      id: "s1",
+      records: [
+        {
+          ...plainTextMessage("<task-notification>Task done</task-notification>", at("10:00")),
+          origin: { kind: "task-notification" },
+        },
+        {
+          ...plainTextMessage("rank the sessions", at("10:01")),
+          origin: { kind: "human" },
+        },
+      ],
+    });
+
+    assert.deepEqual(claudeCodeTranscript(projects)("s1").map(describeEntry), [
+      "rank the sessions",
+    ]);
+  });
+
   it("reads an unknown session as an empty transcript", () => {
     const projects = projectsDirectoryOf({
       id: "known",

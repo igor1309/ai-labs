@@ -6,13 +6,6 @@ description: "Noreta forward work and open questions"
 
 # TODO
 
-## Open questions
-
-- [ ] **Harness wrapper messages.** `<task-notification>`,
-  `<local-command-stdout>` and `<bash-stdout>` records read as user messages;
-  Claude Code sets no marker on them. Leave them, or filter on a structural
-  signal.
-
 ## Work
 
 - [ ] **A gone workspace has no repository.** `repositoryOf` asks the file
@@ -25,7 +18,9 @@ description: "Noreta forward work and open questions"
   whichever directory the file system listed first. Sorting the project
   directories would decide it the same way every run.
 - [ ] Transcript renderer, starting with the simplest presentation that keeps
-  tool calls and diffs distinguishable. Its own cycle.
+  tool calls and diffs distinguishable. Its own cycle. `<local-command-stdout>`
+  and `<bash-stdout>` records read as user messages and carry no marker but
+  their leading tag; decide there how to show them.
 - [ ] A real `SessionChanges`: nothing implements the port outside tests, so
   following a session never updates.
 - [ ] Search on real data: not wired into `composition-root.ts`, and it reads every
