@@ -7,6 +7,7 @@
 - Each module declares the shapes it consumes; only composition modules import another module's types.
 - Grouping keys limited to values compared by value, so equal repositories never split into two groups.
 - Comments kept only where they explain this code at the point it is edited; 232 lines cut that restated code, tests or docs.
+- A test fails the build when a comment restates a claim the tests already carry, so the cut holds.
 
 ## 2026-09-15
 - Repository read from git's layout; a deleted worktree names none.
