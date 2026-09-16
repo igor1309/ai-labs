@@ -101,14 +101,17 @@ RUN="$(mktemp -d)"
 codex exec --sandbox read-only --output-last-message "$RUN/findings.md" - < "$RUN/prompt.md" > "$RUN/run.log" 2>&1
 ```
 
-Run `codex exec` in the background with a monitor that stops on three minutes
-without log growth, or on `^(stream error|fatal:|Rate limit|401 Unauthorized|context deadline)`.
+Run `codex exec` in the background with a monitor that stops when the process
+exits, or on `^(stream error|fatal:|Rate limit|401 Unauthorized|context deadline)`.
 Anchor every alternative: unanchored, the pattern matches this file's own text
 once Codex reads it, and the monitor reports an error that never happened.
 
-A stall is a verdict, not a wait. Kill Codex and run it once more; if the second
-run stalls too, send the reviewer's findings to the judge alone and have the
-verdict record that Codex did not report.
+A quiet log is not a stall. A live review writes nothing for minutes at a time —
+one round in the run this prompt came from went seven minutes silent and then
+finished normally — so never kill a run whose process is alive. What ends the
+wait is the process exiting: with a findings file it goes to the judge, and
+without one, run it once more and then judge on the reviewer alone, with the
+verdict recording that Codex did not report.
 
 ## Commits
 
