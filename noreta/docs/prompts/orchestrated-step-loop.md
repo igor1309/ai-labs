@@ -8,7 +8,14 @@ description: "Orchestrator prompt for landing a multi-step refactor through suba
 
 The orchestrator runs each step through a fixed loop and does nothing else: it
 spawns agents, runs Codex, and commits. It never verifies, fixes, or repeats a
-subagent's work.
+subagent's work. The pull to do so arrives dressed as economy — a two-line fix
+looks cheaper than a spawn — and taking it lands the change in the tree without
+passing the loop that exists to check it.
+
+One verification stays with the orchestrator: **provenance**. Subagent reports
+describe this session's own edits as pre-existing uncommitted work; three did so
+in the run this prompt came from. Check the tree against session-start `HEAD`
+yourself, and read "already dirty when I started" as carrying no information.
 
 ## Loop per step
 
@@ -17,7 +24,7 @@ implementer → tester → Codex → judge → (accepted: fixer → tester → C
 1. **Implementer** makes the step's change.
 2. **Tester** runs the gates and reports GREEN or RED with counts. RED goes to a fixer.
 3. **Codex** reviews the uncommitted diff, read-only.
-4. **Judge** rules each Codex finding ACCEPT or HAND-WAVE with file:line evidence. When Codex returns nothing, the judge does an independent pass.
+4. **Judge** rules each Codex finding ACCEPT or HAND-WAVE with file:line evidence. When Codex returns nothing, the judge does an independent pass. A finding hand-waved in one round and raised again in the next is a missing record, not a weak rebuttal: file it where the next reviewer will find it, and tell the next judge it is settled.
 5. **Fixer** addresses ACCEPT findings, then the loop repeats from the tester.
 6. **Commit** only on green tests and a judge verdict with no open ACCEPT.
 
@@ -37,6 +44,17 @@ Run from the repository root:
 ./scripts/run_silent.sh "build" npx tsc --noEmit -p noreta
 node --import tsx --test noreta/tests/*.test.ts 2>&1 | tail -12
 ```
+
+Tests and build run per module and so cannot see a property of the import graph.
+The architecture invariant this loop exists to land needs its own check:
+
+```bash
+grep -rn 'from "\./' noreta/src | grep -vE 'ordering|grouping|claude-code-files|git-repository'
+```
+
+Expect lines only in `main.ts`, `composition-root.ts` and
+`compose-claude-code-runtime-states.ts` — the composition pieces. Any other file
+importing a module is the invariant broken.
 
 ## Codex review
 
