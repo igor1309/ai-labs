@@ -8,11 +8,6 @@ description: "Noreta forward work and open questions"
 
 ## Work
 
-- [ ] **A gone workspace has no repository.** `repositoryOf` asks the file
-  system, so a deleted worktree answers nothing: 658 of 710 real sessions are in
-  that state, and searching or grouping by repository misses all of them.
-  Answering needs the repository remembered while the workspace was there, which
-  needs somewhere to keep it.
 - [ ] **Two unreadable dates tie.** When one session is found under two project
   directories and neither copy's last activity can be read, the copy kept is
   whichever directory the file system listed first. Sorting the project
@@ -29,4 +24,6 @@ description: "Noreta forward work and open questions"
 - [ ] Codex adapters for sessions, transcripts and runtime states, each in its
   own records.
 - [ ] Startup and periodic reconciliation, per
-  [implementation-notes.md](implementation-notes.md).
+  [implementation-notes.md](implementation-notes.md). A workspace's repository is
+  recorded only while a listing runs, so one created and deleted between two runs
+  is never recorded, and the sessions already in that state name no repository.

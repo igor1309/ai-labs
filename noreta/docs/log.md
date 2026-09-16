@@ -10,6 +10,8 @@
 - A test fails the build when a comment restates a claim the tests already carry, so the cut holds.
 - Waiting for input and waiting for approval merged into one scenario per feature: both show as `waiting`.
 - Background task notifications dropped from transcripts, told apart by `origin.kind`.
+- A workspace's repository is kept in `~/.noreta/workspace-repositories.sqlite` while the workspace is on disk, so a deleted worktree still names it.
+- Remembering never changes what the listing shows: a write the memory refuses is dropped, and the repository read from disk still shows.
 
 ## 2026-09-15
 - Repository read from git's layout; a deleted worktree names none.

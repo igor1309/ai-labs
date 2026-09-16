@@ -41,6 +41,11 @@ export function unversionedDirectory(): string {
   return freshDirectory();
 }
 
+// A directory that is no longer on disk, as a deleted worktree leaves its path.
+export function missingDirectory(): string {
+  return join(freshDirectory(), "deleted");
+}
+
 function freshDirectory(): string {
   return mkdtempSync(join(tmpdir(), "noreta-git-"));
 }

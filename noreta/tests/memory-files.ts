@@ -1,16 +1,64 @@
-import { mkdtempSync } from "node:fs";
+import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { Worker } from "node:worker_threads";
+
+import { openWorkspaceRepositories } from "../src/workspace-repositories.js";
 
 // A path in a directory of its own where no file exists yet.
 export function freshMemoryFile(): string {
   return join(mkdtempSync(join(tmpdir(), "noreta-memory-")), "workspaces.sqlite");
 }
 
+// A fresh file already holding the given repository for each workspace.
+export function rememberedIn(repositories: Record<string, string>): string {
+  const file = freshMemoryFile();
+  const memory = openWorkspaceRepositories(file);
+
+  for (const [workspace, repository] of Object.entries(repositories)) {
+    memory.remember(workspace, repository);
+  }
+  memory.close();
+
+  return file;
+}
+
+// The same file with its write permission taken away: it still opens and
+// answers questions, and every statement that would change it is refused.
+export function writeProtected(file: string): string {
+  chmodSync(file, 0o444);
+
+  return file;
+}
+
+// A file already holding bytes no database starts with, so opening it fails.
+export function notADatabase(): string {
+  const file = freshMemoryFile();
+  writeFileSync(file, "workspaces, but not as sqlite knows them");
+
+  return file;
+}
+
 // A path whose parent directory does not exist yet.
 export function memoryFileInMissingDirectory(): string {
   return join(mkdtempSync(join(tmpdir(), "noreta-memory-")), "missing", "workspaces.sqlite");
+}
+
+// Whether some writer holds the file's write lock right now, asked without waiting.
+export function isWriteLocked(file: string): boolean {
+  const database = new DatabaseSync(file);
+
+  try {
+    database.exec("BEGIN IMMEDIATE");
+    database.exec("ROLLBACK");
+
+    return false;
+  } catch {
+    return true;
+  } finally {
+    database.close();
+  }
 }
 
 // Another writer, on its own thread, holding the file's write lock for a while.

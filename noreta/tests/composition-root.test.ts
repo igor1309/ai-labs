@@ -7,10 +7,19 @@ import {
   isActive,
   recentSessionLines,
 } from "../src/composition-root.js";
+import { openWorkspaceRepositories } from "../src/workspace-repositories.js";
 import { claudeDirectoryOf } from "./claude-code-directory.js";
 import { userRecord } from "./claude-code-projects.js";
 import { livePid } from "./claude-code-registry.js";
-import { checkoutDirectory } from "./git-layouts.js";
+import { checkoutDirectory, missingDirectory } from "./git-layouts.js";
+import {
+  freshMemoryFile,
+  holdWriteLock,
+  isWriteLocked,
+  notADatabase,
+  rememberedIn,
+  writeProtected,
+} from "./memory-files.js";
 import { at } from "./time.js";
 
 // Not QA scenarios: how the composition root reads the adapter's records for
@@ -72,7 +81,7 @@ describe("What the composition root wires together", () => {
       registered: [{ pid: livePid, sessionId: "live", status: "busy" }],
     });
 
-    assert.deepEqual(claudeCodeSessionSource(claudeDirectory)(), [
+    assert.deepEqual(claudeCodeSessionSource(claudeDirectory, freshMemoryFile())(), [
       {
         id: "live",
         agent: "claude",
@@ -85,7 +94,96 @@ describe("What the composition root wires together", () => {
       },
     ]);
   });
+
+  it("remembers the repository of a workspace on disk", () => {
+    const workspace = checkoutDirectory("a-checkout");
+    const memoryFile = freshMemoryFile();
+
+    claudeCodeSessionSource(claudeDirectoryWith(workspace), memoryFile)();
+
+    assert.equal(openWorkspaceRepositories(memoryFile).recall(workspace), "a-checkout");
+  });
+
+  // Every transcript asks again, so a write each time would queue behind any
+  // other process writing the file.
+  it("lists a remembered workspace without waiting for another writer", async () => {
+    const workspace = checkoutDirectory("a-checkout");
+    const memoryFile = rememberedIn({ [workspace]: "a-checkout" });
+    const otherWriter = await holdWriteLock(memoryFile, 1000);
+
+    claudeCodeSessionSource(claudeDirectoryWith(workspace), memoryFile)();
+
+    assert.equal(isWriteLocked(memoryFile), true);
+    await otherWriter.released;
+  });
+
+  // Outlasts the memory's five-second wait for the lock.
+  it("lists a workspace on disk while another writer holds the memory too long", async () => {
+    const workspace = checkoutDirectory("a-checkout");
+    const memoryFile = rememberedIn({ "/another-workspace": "another-repository" });
+    const otherWriter = await holdWriteLock(memoryFile, 6000);
+
+    const sessions = claudeCodeSessionSource(claudeDirectoryWith(workspace), memoryFile)();
+    await otherWriter.released;
+
+    assert.deepEqual(sessions.map(workspaceOf), [
+      { workspaceOnDisk: true, repository: "a-checkout" },
+    ]);
+    assert.equal(openWorkspaceRepositories(memoryFile).recall(workspace), undefined);
+  });
+
+  it("lists a workspace on disk while the memory refuses to be written", () => {
+    const workspace = checkoutDirectory("a-checkout");
+    const memoryFile = writeProtected(
+      rememberedIn({ "/another-workspace": "another-repository" }),
+    );
+
+    assert.deepEqual(
+      claudeCodeSessionSource(claudeDirectoryWith(workspace), memoryFile)().map(workspaceOf),
+      [{ workspaceOnDisk: true, repository: "a-checkout" }],
+    );
+    assert.equal(openWorkspaceRepositories(memoryFile).recall(workspace), undefined);
+  });
+
+  it("lists a workspace on disk while the memory cannot be opened", () => {
+    const workspace = checkoutDirectory("a-checkout");
+
+    assert.deepEqual(
+      claudeCodeSessionSource(claudeDirectoryWith(workspace), notADatabase())().map(workspaceOf),
+      [{ workspaceOnDisk: true, repository: "a-checkout" }],
+    );
+  });
+
+  it("reports the repository remembered for a workspace no longer on disk", () => {
+    const workspace = missingDirectory();
+    const memoryFile = rememberedIn({ [workspace]: "a-checkout" });
+
+    assert.deepEqual(
+      claudeCodeSessionSource(claudeDirectoryWith(workspace), memoryFile)().map(workspaceOf),
+      [{ workspaceOnDisk: false, repository: "a-checkout" }],
+    );
+  });
 });
+
+// A Claude directory holding one session, not running, in the given workspace.
+function claudeDirectoryWith(workspace: string): string {
+  return claudeDirectoryOf({
+    sessions: [
+      {
+        id: "session",
+        records: [userRecord({ id: "session", workspace, branch: "trunk", at: at("10:00") })],
+      },
+    ],
+    registered: [],
+  });
+}
+
+function workspaceOf(session: ObservedSession): {
+  workspaceOnDisk: boolean;
+  repository: string | undefined;
+} {
+  return { workspaceOnDisk: session.workspaceOnDisk, repository: session.repository };
+}
 
 // A record the adapter could report, naming only what a test is about.
 function observedSession(

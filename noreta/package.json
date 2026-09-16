@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node --import tsx src/main.ts",
+    "start": "node --disable-warning=ExperimentalWarning --import tsx src/main.ts",
     "test": "node --import tsx --test tests/*.test.ts",
     "test:file": "node --import tsx --test"
   }

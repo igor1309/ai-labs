@@ -1,5 +1,5 @@
 ---
-date: 2026-09-15
+date: 2026-09-16
 model: claude-opus-5
 description: "Noreta — local hub for coding-agent sessions across Claude Code, Codex and Pi; read-only macOS MVP, iPhone next, runtime interaction later"
 ---
@@ -26,6 +26,13 @@ From the repo root. List this machine's recent Claude Code sessions:
 ```bash
 npm --prefix noreta start
 ```
+
+Each run records, for every session it reads, the repository of that session's
+workspace — when the workspace is still on disk and git names one — into
+`~/.noreta/workspace-repositories.sqlite`. The listing does not print a
+repository, so the record changes nothing visible yet; it is what lets a session
+whose workspace was deleted still name its repository. Deleting that file loses
+those records and nothing else.
 
 Tests and typecheck:
 
