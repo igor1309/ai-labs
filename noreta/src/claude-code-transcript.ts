@@ -2,16 +2,11 @@ import { readFileSync } from "node:fs";
 
 import { parsedRecord, transcriptFilesOf } from "./claude-code-files.js";
 
-// What this adapter makes of a transcript file. Its own record: another source
-// describes its entries in its own terms, and a consumer takes the entries it
-// was handed rather than a shape the sources agree on.
 export type TranscriptEntry =
   | { kind: "message"; at: Date; role: "user" | "agent"; text: string }
   | { kind: "tool-call"; at: Date; name: string }
   | { kind: "file-diff"; at: Date; path: string; diff: string };
 
-// Reads one session's transcript from the file Claude Code keeps for it, found
-// by the session id alone.
 export function claudeCodeTranscript(
   projectsDirectory: string,
 ): (sessionId: string) => TranscriptEntry[] {
@@ -56,8 +51,6 @@ function entriesOf(record: TranscriptRecord): TranscriptEntry[] {
 }
 
 function messageEntries(record: TranscriptRecord, at: Date): TranscriptEntry[] {
-  // Claude Code marks what it writes into the user's turn on its own behalf as
-  // `isMeta`; nobody said it.
   if (record.isMeta === true) {
     return [];
   }
@@ -65,8 +58,6 @@ function messageEntries(record: TranscriptRecord, at: Date): TranscriptEntry[] {
   const role = record.type === "assistant" ? "agent" : "user";
   const content = record.message?.content ?? [];
 
-  // Claude Code writes some user messages as a bare string; everything else is
-  // a list of blocks.
   if (typeof content === "string") {
     return [{ kind: "message", at, role, text: content }];
   }
@@ -80,12 +71,10 @@ function messageEntries(record: TranscriptRecord, at: Date): TranscriptEntry[] {
       return [{ kind: "tool-call", at, name: block.name }];
     }
 
-    // Thinking, and a tool's own result text, are not something anyone said.
     return [];
   });
 }
 
-// An edit's result carries the change as hunks rather than as diff text.
 function fileDiffEntries(record: TranscriptRecord, at: Date): TranscriptEntry[] {
   const result = record.toolUseResult;
 
@@ -108,9 +97,7 @@ function fileDiffEntries(record: TranscriptRecord, at: Date): TranscriptEntry[] 
   ];
 }
 
-// Creating a file records an empty patch and the whole content, so the change is
-// every line of that content, added. The newline ending the last line does not
-// start another.
+// The newline ending the last line does not start another.
 function createdFileHunk(content: string): Hunk {
   const lines = content.replace(/\n$/, "").split("\n");
 

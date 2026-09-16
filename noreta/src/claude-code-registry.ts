@@ -3,24 +3,10 @@ import { join } from "node:path";
 
 import { parsedRecord } from "./claude-code-files.js";
 
-// Claude Code registers each running session as `<pid>.json` under
-// `~/.claude/sessions`. The file is the claim that the session is running; its
-// `status` says what the session is doing.
-// What the registry can say, spelled out here rather than taken from whoever
-// reads it: Claude Code writes `busy`, `waiting` or `idle` and never which
-// answer a waiting session wants, and that is true of this registry however it
-// is wired up. Where these words are put to the adapter's own is
-// `compose-claude-code-runtime-states.ts`.
 export type RegistryState = "working" | "waiting" | "idle";
 
-// A read of the registry, answering for every session at once. A session it
-// holds no live registration for is not running, which is the absence of a
-// state rather than one of them.
 export type RegistryStates = () => (sessionId: string) => RegistryState | undefined;
 
-// The scan belongs to the snapshot, not to the wiring: a directory read on
-// each snapshot is what makes the answer about now rather than about whenever
-// `compose-claude-code-runtime-states.ts` wired this read in.
 export function claudeCodeRegistryStates(registryDirectory: string): RegistryStates {
   return () => {
     const states = new Map<string, RegistryState>();
@@ -35,10 +21,6 @@ export function claudeCodeRegistryStates(registryDirectory: string): RegistrySta
   };
 }
 
-// Two live processes can register the same session — one resumed in another
-// window — and nothing on disk says which is the real one. Report the busiest:
-// over-reporting that a session wants attention costs a glance, under-reporting
-// it costs a stall.
 function busier(
   known: RegistryState | undefined,
   state: RegistryState,
@@ -46,8 +28,7 @@ function busier(
   return known !== undefined && activity[known] < activity[state] ? known : state;
 }
 
-// Lower is more active. Exhaustive over the states this reads, so one of them
-// cannot go unranked and silently sort last.
+// Lower is more active.
 const activity: Record<RegistryState, number> = {
   working: 0,
   waiting: 1,
@@ -76,11 +57,6 @@ function asState(registration: Registration): [string, RegistryState] {
   return [registration.sessionId, registryState(registration.status)];
 }
 
-// Claude Code's own three statuses. `waiting` carries no kind: the registry
-// records a free-text `waitingFor` whose commonest value covers both permission
-// prompts and plain questions, so nothing here can tell input from approval.
-// Anything else, including a registration that never wrote a status, is running
-// without a claim on what it is doing.
 function registryState(status: string | undefined): RegistryState {
   if (status === "busy") {
     return "working";
@@ -89,19 +65,12 @@ function registryState(status: string | undefined): RegistryState {
   return status === "waiting" ? "waiting" : "idle";
 }
 
-// A registration is written by the live process it names, so a snapshot can
-// catch one half written. Losing that file is not a reason to lose every other
-// session on the machine, which is why the transcripts' tolerance is the one
-// the registry gets too.
 function registrations(registryDirectory: string): Registration[] {
   return registrationFiles(registryDirectory).flatMap((file) =>
     parsedRecord<Registration>(readFileSync(join(registryDirectory, file), "utf8")),
   );
 }
 
-// Claude Code makes the registry when a session first registers, so a machine
-// that has never run one has no directory to read. That is nothing running, not
-// something broken, and it is not a reason to bring Noreta down.
 function registrationFiles(registryDirectory: string): string[] {
   return existsSync(registryDirectory)
     ? readdirSync(registryDirectory).filter((file) => file.endsWith(".json"))

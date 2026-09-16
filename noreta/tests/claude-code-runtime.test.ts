@@ -35,8 +35,6 @@ describe("What Claude Code's registry says about a running session", () => {
     assert.equal(claudeCodeRegistryStates(registry)()("idle-one"), "idle");
   });
 
-  // The file outlives the process it names when a session dies without cleaning
-  // up, and a registration nobody is behind is not a running session.
   it("ignores a registration whose process is gone", () => {
     const registry = registryDirectoryOf({
       pid: deadPid,
@@ -94,9 +92,6 @@ describe("What Claude Code's registry says about a running session", () => {
     assert.equal(registryStates()("late"), "working");
   });
 
-  // Every registration is written by a live process, so a snapshot can catch one
-  // half written. One unreadable file is not a reason to lose every other
-  // session on the machine.
   it("reports a session alongside a half-written registration", () => {
     const registry = registryDirectoryOf({
       pid: livePid,
@@ -109,8 +104,6 @@ describe("What Claude Code's registry says about a running session", () => {
     assert.equal(claudeCodeRegistryStates(registry)()("readable"), "working");
   });
 
-  // Claude Code makes the registry when a session first registers, so a machine
-  // that has never run one has no registry to read. Nothing is running there.
   it("reports no session when the registry has never been written", () => {
     const registry = absentRegistryDirectory();
 

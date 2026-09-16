@@ -213,9 +213,6 @@ describe("What the Claude Code adapter discovers", () => {
     );
   });
 
-  // Claude Code writes "HEAD" when the workspace has no branch checked out —
-  // it is not in a repository, or its HEAD is detached. Either way it is not a
-  // branch name, and a session carrying it has no branch.
   it("has no branch when the transcript says HEAD", () => {
     const projects = projectsDirectoryOf({
       id: "branchless",

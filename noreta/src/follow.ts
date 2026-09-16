@@ -1,8 +1,5 @@
 import { oldestFirst } from "./ordering.js";
 
-// What following pushes: the records the sources handed over, so a caller keeps
-// its own records through the call, and undefined when the sources hold no
-// session of that id. The transcript comes oldest first.
 export type FollowedSession<Session, Entry> = {
   session: Session | undefined;
   transcript: Entry[];
@@ -13,15 +10,10 @@ export type FollowedSession<Session, Entry> = {
 // to ask. Subscribing hands back the way to stop.
 export type SessionChanges = (onChange: () => void) => () => void;
 
-// The sessions a source holds now, read afresh on every push.
 type FollowedSource<Session> = () => Session[];
 
-// The transcript a source holds now for a session id, read afresh on every push.
 type FollowedTranscripts<Entry> = (sessionId: string) => Entry[];
 
-// What following reads of a session and an entry, and nothing besides: the id
-// it was asked to follow, and when each entry happened. Whatever else a source
-// keeps comes back untouched in what is pushed.
 export function followSession<Session extends { id: string }, Entry extends { at: Date }>(
   sessions: FollowedSource<Session>,
   transcripts: FollowedTranscripts<Entry>,

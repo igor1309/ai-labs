@@ -1,12 +1,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 
-// Which repository a directory belongs to, answered by git's own layout on disk.
-// Nothing an agent records can say it: a worktree's repository is somewhere else
-// entirely, and only the file system knows where.
 export function repositoryOf(workspace: string): string | undefined {
-  // A directory that is gone cannot say where it belonged — its path is all a
-  // deleted worktree leaves behind.
   if (!existsSync(workspace)) {
     return undefined;
   }
@@ -25,8 +20,6 @@ export function repositoryOf(workspace: string): string | undefined {
   }
 }
 
-// A plain checkout keeps a `.git` directory and is its own root; a linked
-// worktree keeps a `.git` file naming the repository that holds it.
 function rootOf(directory: string, marker: string): string {
   return statSync(marker).isDirectory() ? directory : mainRepositoryOf(marker);
 }

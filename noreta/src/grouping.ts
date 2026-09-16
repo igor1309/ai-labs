@@ -7,19 +7,11 @@
 // means for it.
 type GroupKey = string | number | bigint | boolean | null | undefined;
 
-// A group holds the records the caller handed in, so they come back as whatever
-// the caller keeps. `key` is whatever the accessor returned for the group's
-// first item, `undefined` included: every item belongs to exactly one group,
-// and the items an accessor has no key for form theirs. Naming that group is
-// the reader's job, not this module's.
 export type Group<Item, Key extends GroupKey> = {
   key: Key;
   items: Item[];
 };
 
-// What to group by is the caller's reading of its own record, taken as an
-// accessor rather than a field name this module would have to know the words
-// of.
 export function groupBy<Item, Key extends GroupKey>(
   items: Item[],
   keyOf: (item: Item) => Key,

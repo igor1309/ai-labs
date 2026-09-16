@@ -112,8 +112,6 @@ describe("What the Claude Code transcript adapter reads", () => {
     ]);
   });
 
-  // Writing a new file records its whole content and an empty patch, so the
-  // change is the file itself, every line added.
   it("reads a created file as a diff adding every line", () => {
     const projects = projectsDirectoryOf({
       id: "s1",

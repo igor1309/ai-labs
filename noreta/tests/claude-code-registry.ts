@@ -9,8 +9,6 @@ export type RegistryEntry = {
   waitingFor?: string;
 };
 
-// Claude Code registers each running session as `<pid>.json`, so the file name
-// is the claim that the session is live and the contents say what it is doing.
 export function registryDirectoryOf(...entries: RegistryEntry[]): string {
   const directory = mkdtempSync(join(tmpdir(), "noreta-registry-"));
 
@@ -27,14 +25,10 @@ export function register(directory: string, ...entries: RegistryEntry[]): void {
   }
 }
 
-// A machine where no session has ever registered has no registry at all, so the
-// path names a directory Claude Code has not created.
 export function absentRegistryDirectory(): string {
   return join(mkdtempSync(join(tmpdir(), "noreta-registry-")), "sessions");
 }
 
-// A registration is written by the live process it names, so a snapshot can
-// catch one part way through and read only the bytes written so far.
 export function registerHalfWritten(directory: string, pid: number): void {
   writeFileSync(join(directory, `${pid}.json`), `{"pid":${pid},"sessionI`);
 }

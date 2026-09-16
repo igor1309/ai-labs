@@ -1,9 +1,7 @@
-// The order a reader sees a list of sessions in, which its caller puts on it.
 export function newestFirst<Item extends { lastActivityAt: Date }>(items: Item[]): Item[] {
   return [...items].sort(byTime((item) => item.lastActivityAt, "newest-first"));
 }
 
-// The order a reader sees a transcript in, which its caller puts on it.
 export function oldestFirst<Item extends { at: Date }>(items: Item[]): Item[] {
   return [...items].sort(byTime((item) => item.at, "oldest-first"));
 }
