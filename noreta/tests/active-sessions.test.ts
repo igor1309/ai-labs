@@ -13,16 +13,8 @@ describe("Feature: See active sessions", () => {
       ]);
     });
 
-    it("A session waiting for input is visible as waiting", () => {
-      const source = sourceOf({ id: "s1", runtimeState: "waiting-for-input" });
-
-      assert.deepEqual(source().map(stateOf), [
-        { id: "s1", active: true, waiting: true },
-      ]);
-    });
-
-    it("A session waiting for approval is visible as waiting", () => {
-      const source = sourceOf({ id: "s1", runtimeState: "waiting-for-approval" });
+    it("A session waiting for me is visible as waiting", () => {
+      const source = sourceOf({ id: "s1", runtimeState: "waiting" });
 
       assert.deepEqual(source().map(stateOf), [
         { id: "s1", active: true, waiting: true },

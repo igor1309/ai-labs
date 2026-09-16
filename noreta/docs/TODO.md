@@ -8,11 +8,6 @@ description: "Noreta forward work and open questions"
 
 ## Open questions
 
-- [ ] **Waiting for input vs waiting for approval.** Claude Code's registry
-  records a free-text `waitingFor` whose commonest value, `"dialog open"`,
-  covers a permission prompt and a plain question alike. "A session waiting for
-  input is visible as waiting" and "A session waiting for approval is visible as
-  waiting" need a source that says which, or a change to the scenarios.
 - [ ] **Harness wrapper messages.** `<task-notification>`,
   `<local-command-stdout>` and `<bash-stdout>` records read as user messages;
   Claude Code sets no marker on them. Leave them, or filter on a structural

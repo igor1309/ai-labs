@@ -1,5 +1,5 @@
 ---
-date: 2026-09-15
+date: 2026-09-16
 description: QA scenarios for the Noreta read-only Mac MVP, one Gherkin
   feature per user story
 model: claude-opus-5
@@ -18,14 +18,8 @@ Feature: See active sessions
       Then the session is shown as active
       And the session is not shown as waiting
 
-    Scenario: A session waiting for input is visible as waiting
-      Given a session has a live runtime waiting for input
-      When I view my sessions
-      Then the session is shown as active
-      And the session is shown as waiting
-
-    Scenario: A session waiting for approval is visible as waiting
-      Given a session has a live runtime waiting for approval
+    Scenario: A session waiting for me is visible as waiting
+      Given a session has a live runtime waiting for input or approval
       When I view my sessions
       Then the session is shown as active
       And the session is shown as waiting
@@ -109,15 +103,9 @@ Feature: Follow an active session
       When the agent produces a new message
       Then the message appears in the transcript
 
-    Scenario: An active session starts waiting for input
+    Scenario: An active session starts waiting for me
       Given I am viewing an active session executing a turn
-      When its agent starts waiting for input
-      Then the session is shown as active
-      And the session is shown as waiting
-
-    Scenario: An active session starts waiting for approval
-      Given I am viewing an active session executing a turn
-      When its agent starts waiting for approval
+      When its agent starts waiting for input or approval
       Then the session is shown as active
       And the session is shown as waiting
 

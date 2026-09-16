@@ -3,8 +3,7 @@
 export { newestFirst } from "../src/ordering.js";
 
 // The states a scenario can put on a session: these tests' own words, not a
-// source's. Scenarios are about a reader that tells the two waiting kinds
-// apart, and no source has to be able to report every one of them.
+// source's. No source has to be able to report every one of them.
 type ScenarioState =
   | "working"
   | "waiting"

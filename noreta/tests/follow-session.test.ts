@@ -35,20 +35,11 @@ describe("Feature: Follow an active session", () => {
       ]);
     });
 
-    it("An active session starts waiting for input", () => {
+    it("An active session starts waiting for me", () => {
       const viewing = view({ id: "s1", runtimeState: "working" });
       assert.deepEqual(viewing.shownState(), { id: "s1", active: true, waiting: false });
 
-      viewing.runtimeBecomes({ id: "s1", runtimeState: "waiting-for-input" });
-
-      assert.deepEqual(viewing.shownState(), { id: "s1", active: true, waiting: true });
-    });
-
-    it("An active session starts waiting for approval", () => {
-      const viewing = view({ id: "s1", runtimeState: "working" });
-      assert.deepEqual(viewing.shownState(), { id: "s1", active: true, waiting: false });
-
-      viewing.runtimeBecomes({ id: "s1", runtimeState: "waiting-for-approval" });
+      viewing.runtimeBecomes({ id: "s1", runtimeState: "waiting" });
 
       assert.deepEqual(viewing.shownState(), { id: "s1", active: true, waiting: true });
     });
