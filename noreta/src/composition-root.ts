@@ -20,10 +20,15 @@ import { recentSessions } from "./sessions.js";
 
 // What the file system says about a workspace, which is all the adapter can ask
 // for: the transcript only holds the path.
-const workspaceFacts: WorkspaceFacts = (workspace) => ({
-  onDisk: existsSync(workspace),
-  repository: repositoryOf(workspace),
-});
+const workspaceFacts: WorkspaceFacts = (workspace) => {
+  const onDisk = existsSync(workspace);
+  const repository = onDisk ? repositoryOf(workspace) : undefined;
+
+  return {
+    onDisk,
+    ...(repository === undefined ? {} : { repository }),
+  };
+};
 
 // The sessions Claude Code keeps under `claudeDirectory`: transcripts in
 // `projects`, and the registry in `sessions`, which is what tells this machine
