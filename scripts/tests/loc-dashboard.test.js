@@ -13,11 +13,10 @@ it('reports docs-only components as regular LOC rows', () => {
 
   assert.deepEqual(
     projectRows(output)
-      .filter((line) => /^(nexum|niora)\s/.test(line.trim()))
+      .filter((line) => /^nexum\s/.test(line.trim()))
       .map((line) => line.trim().split(/\s+/).slice(0, 3)),
     [
       ['nexum', '0', '0'],
-      ['niora', '0', '0'],
     ]
   );
 });

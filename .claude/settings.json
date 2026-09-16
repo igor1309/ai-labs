@@ -1,15 +1,4 @@
 {
-  "enabledPlugins": {
-    "dev-skills@dev-skills": true
-  },
-  "extraKnownMarketplaces": {
-    "dev-skills": {
-      "source": {
-        "source": "github",
-        "repo": "igor1309/skills"
-      }
-    }
-  },
   "permissions": {
     "allow": [
       "Bash(./scripts/run_silent.sh:*)",
@@ -23,5 +12,7 @@
       "Bash(node scripts/release/generate-manifest.js:*)",
       "Bash(node scripts/release/validate-manifest.js)"
     ]
-  }
+  },
+  "enabledPlugins": {},
+  "extraKnownMarketplaces": {}
 }

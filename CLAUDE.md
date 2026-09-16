@@ -63,7 +63,9 @@ When authoring or editing any file under `**/docs/plans/**.md`, use the
 See `dev-skills/public/implementation-plan/SKILL.md`.
 
 Verification commands (always-on):
-- Pre-commit/pre-push verification for Node/TypeScript code, config, dependency, CI, release, or generated-artifact changes: `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "build" npx tsc --noEmit`.
+- Pre-commit/pre-push verification for Node/TypeScript code, config, dependency, CI, release, or generated-artifact changes: `./scripts/run_silent.sh "tests" npm test` and `./scripts/run_silent.sh "typecheck" npm run typecheck`.
+- `npm run typecheck` fans out to one `typecheck:<project>` script per TypeScript project — `clipdeck`, `noreta`, `notio-frontend`, `session-digest` — each using that project's own tsconfig and strictness. `typecheck:clipdeck`, `typecheck:noreta`, and `typecheck:notio-frontend` mirror the typecheck step in their own `<project>-core.yml` workflow; `session-digest` has no workflow, so this local run is its only typecheck. Add a `typecheck:<project>` script and chain it into `typecheck` whenever a new TypeScript project lands. `claude-insights`'s Supabase Edge Functions are Deno TypeScript with no tsconfig, outside this fan-out, and checked with `deno check`, which needs an import map the repo does not have.
+- `typecheck:notio-frontend` needs `notio/frontend`'s own dependencies, which root `npm ci` does not install. Run `npm --prefix notio/frontend ci` once per checkout, as `notio-frontend-core.yml` does.
 - Swift-only scopes: `swift test` / `swift build`.
 
 For plan authoring, archiving, and PR procedures, see [`.agents/process-gates.md`](.agents/process-gates.md) — read when planning, implementing, or opening a PR.
@@ -113,11 +115,14 @@ Use `scripts/run_silent.sh` for Node/TypeScript tests and builds covered by the 
 # Node/TypeScript tests
 ./scripts/run_silent.sh "tests" npm test
 
-# Node/TypeScript build / typecheck
-./scripts/run_silent.sh "build" npx tsc --noEmit
+# Node/TypeScript typecheck (all tsconfig projects)
+./scripts/run_silent.sh "typecheck" npm run typecheck
+
+# A single project, when you only touched that one
+./scripts/run_silent.sh "typecheck" npm run typecheck:noreta
 ```
 
-Do NOT run `npm test` or `npx tsc` directly — always use the wrapper for Node/TypeScript scopes. Use the unit's native toolchain commands for non-Node scopes such as Swift.
+Do NOT run `npm test`, `npm run typecheck`, or `npx tsc` directly — always use the wrapper for Node/TypeScript scopes. Use the unit's native toolchain commands for non-Node scopes such as Swift.
 
 ## Composition Root
 

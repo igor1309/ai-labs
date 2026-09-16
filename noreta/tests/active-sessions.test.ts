@@ -1,0 +1,68 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+
+import { changingSource, sourceOf, stateOf } from "./session-source.js";
+
+describe("Feature: See active sessions", () => {
+  describe("Rule: A session with a live runtime is active", () => {
+    it("A working session is active", () => {
+      const source = sourceOf({ id: "s1", runtimeState: "working" });
+
+      assert.deepEqual(source().map(stateOf), [
+        { id: "s1", active: true, waiting: false },
+      ]);
+    });
+
+    it("A session waiting for me is visible as waiting", () => {
+      const source = sourceOf({ id: "s1", runtimeState: "waiting" });
+
+      assert.deepEqual(source().map(stateOf), [
+        { id: "s1", active: true, waiting: true },
+      ]);
+    });
+
+    it("An idle session is active", () => {
+      const source = sourceOf({ id: "s1", runtimeState: "idle" });
+
+      assert.deepEqual(source().map(stateOf), [
+        { id: "s1", active: true, waiting: false },
+      ]);
+    });
+  });
+
+  describe("Rule: A session without a live runtime is inactive", () => {
+    it("A runtime terminates", () => {
+      const source = changingSource({ id: "s1", runtimeState: "working" });
+      assert.deepEqual(source.read().map(stateOf), [
+        { id: "s1", active: true, waiting: false },
+      ]);
+
+      source.replaceWith({ id: "s1" });
+
+      assert.deepEqual(source.read().map(stateOf), [
+        { id: "s1", active: false, waiting: false },
+      ]);
+    });
+  });
+
+  describe("Rule: Sessions are discovered independently of how they were started", () => {
+    it("A session starts outside Noreta", () => {
+      const source = changingSource();
+      assert.deepEqual(source.read().map(stateOf), []);
+
+      source.replaceWith({ id: "started-elsewhere", runtimeState: "working" });
+
+      assert.deepEqual(source.read().map(stateOf), [
+        { id: "started-elsewhere", active: true, waiting: false },
+      ]);
+    });
+
+    it("Noreta starts after the agent", () => {
+      const source = sourceOf({ id: "already-running", runtimeState: "working" });
+
+      assert.deepEqual(source().map(stateOf), [
+        { id: "already-running", active: true, waiting: false },
+      ]);
+    });
+  });
+});

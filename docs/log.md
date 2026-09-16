@@ -1,5 +1,46 @@
 # Log
 
+## 2026-09-15
+
+- Noreta reads real Claude Code data: sessions, their runtime state and their
+  transcripts, with a plain-text listing behind `npm start`. Refreshed the
+  `## Components` row and the `loc-dashboard.html` entry.
+
+- Implement all seven Noreta QA features against `noreta/docs/qa.md`, one at a
+  time, each followed by a Codex adversarial review whose findings were judged
+  and fixed. Every feature has a domain model and a test named after each Gherkin
+  scenario; none has an agent adapter yet. Refreshed the `## Components` row and
+  the `loc-dashboard.html` entry for the new code.
+
+- Land Noreta's first code and register it in CI: `noreta-core.yml` (typecheck
+  against `noreta/tsconfig.json` plus the test glob), a `noreta`/`noreta-ci`
+  path filter and dispatch job in `ci.yml` wired into `report` and `notify`, and
+  `test:noreta` chained into the root `npm test`. The `## Components` row and
+  the `loc-dashboard.html` data row no longer claim the project has no code.
+
+- Allow the `better-sqlite3` install script in `package.json` (`allowScripts`).
+  npm 12 blocks dependency install scripts by default, so a fresh `npm ci` left
+  the native binding unbuilt and 77 nomos tests failed locally on
+  `Could not locate the bindings file`; CI, on the npm bundled with the pinned
+  Node 22, was never affected. Only `better-sqlite3` is approved — the other six
+  blocked packages are not needed by `npm test`.
+
+- Correct the new-project checklist: `product reveal` cards live in
+  `docs/products.html`, not `docs/loc-dashboard.html`, which only holds the
+  `data` array behind the chart and table.
+
+- Promote `noreta/` from `research/noreta/` to a top-level project: collect its
+  docs under `noreta/docs/`, seed a README and project log, and register it in
+  the `## Components` table, the products page (Applications), the
+  `loc-dashboard.html` data array, and the `loc-dashboard.sh` `known`/row-loop
+  entries. No release unit and no CI workflow — the project has no code yet.
+
+- Move `niora/` from the top level to `research/niora/`: the name is excluded
+  because of the niora.ai conflict, and the directory holds only early-stage
+  design notes. Dropped its `## Components` row, its products-page card (and
+  the now-empty Concepts group), its `loc-dashboard.html` data entry, and its
+  `loc-dashboard.sh` `known`/row-loop entries.
+
 ## 2026-09-05
 
 - Refresh the LOC dashboard rows, summary totals, ratio, and timestamp from the current counting script.

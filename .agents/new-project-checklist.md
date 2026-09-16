@@ -1,6 +1,6 @@
 ---
-date: 2026-06-23
-model: claude-opus-4-8
+date: 2026-09-15
+model: claude-opus-5
 description: "Checklist to run when a top-level directory is added, renamed, or removed"
 ---
 
@@ -12,7 +12,8 @@ When a new top-level directory is added (or an existing one is renamed/removed),
 
 - `scripts/loc-dashboard.sh`: add the dir to the `known` list in `check_project_drift`. **Required for any new top-level dir** — an unclassified dir fails the drift test, which the release-unit `core` job runs as part of the full root suite, so it blocks *every* release until fixed. For a **project** that should appear as a dashboard row, also add it to the `ROW PROJECTS` header comment and the per-project `for proj in ...` loop.
 - `README.md` `## Components` table: add a row with type and one-line description.
-- `docs/loc-dashboard.html`: add a `product reveal` card under `## Components` and a corresponding entry in the `data` array used by the chart.
+- `docs/products.html`: add a `product reveal` card to the `product-grid` of the `group-title` section the project belongs to. Link the card (`<a class="product reveal" href="...">`) only if a landing page exists; when you do, add the href to the `landingLinks` list in `scripts/tests/loc-dashboard.test.js`, which asserts each listed href is both linked and present on disk.
+- `docs/loc-dashboard.html`: add an entry to the `data` array, which feeds both the chart and the table.
 - `<project>/docs/log.md`: seed a project log with an initial entry (project established, scope, initial artifacts).
 - `docs/log.md`: add a top-level entry summarizing the landing.
 - `release-units.config.toml` (only if the project ships a release unit).

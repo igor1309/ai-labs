@@ -1,0 +1,11 @@
+{
+  "name": "noreta",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning --import tsx src/main.ts",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "test:file": "node --import tsx --test"
+  }
+}
