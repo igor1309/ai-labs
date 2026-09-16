@@ -3,6 +3,8 @@ description: Ask Codex for an adversarial review, critically judge each finding 
 argument-hint: <what to review, in plain words — e.g. "the migration plan in docs/plans/x.md" | "the working-tree changes" | "the diff against main">
 ---
 
+_Archived, not installed: this command is no longer available as `/codex-judge`. Paths below are relative to the archive root, `research/- DOT and ROOT/claude/`._
+
 Ask Codex for an adversarial review of the current work, then **judge it** — don't obey it. This command owns only the judge → fix → log loop. Decision mode is autonomous: decide and act in one run, no confirmation gate, with a durable audit log.
 
 Target / focus:
@@ -22,11 +24,11 @@ producing its own.
 1. **Assemble the prompt with the script. Never hand-write one.**
 
    ```bash
-   ~/.claude/scripts/codex-judge/assemble-review-prompt.sh \
+   scripts/codex-judge/assemble-review-prompt.sh \
      --out <findings-file> \
      --path <artifact> [--path <artifact>...] \
      [--range <base>..HEAD --repo <dir>] > <prompt-file>
-   ~/.claude/scripts/codex-judge/verify-review-prompt.sh <prompt-file>
+   scripts/codex-judge/verify-review-prompt.sh <prompt-file>
    ```
 
    The template owns the prompt. `$ARGUMENTS` names **scope only** — resolved

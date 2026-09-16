@@ -8,14 +8,14 @@ description: "Codex adversarial review — run the flow directly with the codex-
 
 When the user asks for a Codex review — of a diff, a plan, a state machine — run
 the whole flow yourself: assemble the prompt with
-`~/.claude/scripts/codex-judge/assemble-review-prompt.sh`, run `codex exec`
-directly, judge each finding ACCEPT / HAND-WAVE against the actual code, fix the
-accepted ones, and write the durable audit log.
+`scripts/codex-judge/assemble-review-prompt.sh`, run `codex exec` directly,
+judge each finding ACCEPT / HAND-WAVE against the actual code, fix the accepted
+ones, and write the durable audit log.
 
-There is no `codex-judge` slash command installed any more — the command file
-that spelled this flow out in full was archived to the ai-labs repo under
-`research/- DOT and ROOT/claude/commands/`. The scripts it drove still live in
-`~/.claude/scripts/codex-judge/`.
+Nothing here is installed any more. This whole tree is an archive: the rule, the
+command file that spells the flow out in full (`commands/codex-judge.md`), and
+the scripts it drives (`scripts/codex-judge/`). Paths in this file are relative
+to the archive root, `research/- DOT and ROOT/claude/`.
 
 **Never route a review through a relay subagent** (e.g. `codex:codex-rescue`).
 Such an agent is a one-shot forwarder: it may issue a single `task` call and is

@@ -68,7 +68,7 @@ as `` ^`/.+`$ ``.
 
 ### Rename
 
-`/codex-judge` → `/adversarial-judge`; update `~/.claude/rules/codex-review.md`,
+`/codex-judge` → `/adversarial-judge`; update `rules/codex-review.md`,
 which currently routes all review requests to the Codex-named command.
 
 ### Judging
