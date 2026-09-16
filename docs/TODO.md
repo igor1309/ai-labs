@@ -1,5 +1,6 @@
 ---
-date: 2026-04-19
+date: 2026-09-16
+model: claude-opus-5
 description: "Tracked initiatives for ai-labs"
 ---
 
@@ -23,3 +24,15 @@ Open questions:
 - Where it lives: extension to `process-gates`, a new skill, or a note in `my-way`.
 
 Tracked as RFC: [#331](https://github.com/igor1309/ai-labs/issues/331).
+
+## 4. Release CI typechecks nothing
+
+`release.yml` and `release-unit.yml` run `npx tsc --noEmit`, which resolves the
+root `tsconfig.json` and its single empty file, so a release can report a green
+typecheck while any project has errors. The local gate is `npm run typecheck`.
+
+Moving the workflows to it needs an install step first: `notio/frontend` is not
+a root workspace, so `npm ci` at the root leaves `typecheck:notio-frontend`
+without its dependencies. Six `*-core.yml` workflows run the same no-op command
+over directories holding no TypeScript at all; decide there whether to drop
+those lines or leave them.
