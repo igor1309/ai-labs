@@ -16,6 +16,9 @@ One verification stays with the orchestrator: **provenance**. Subagent reports
 describe this session's own edits as pre-existing uncommitted work; three did so
 in the run this prompt came from. Check the tree against session-start `HEAD`
 yourself, and read "already dirty when I started" as carrying no information.
+The same holds for your own edits: when you touch files mid-step, name those
+paths in the next subagent's prompt, or it reports them back to you as
+pre-existing.
 
 ## Loop per step
 
@@ -27,17 +30,33 @@ implementer → tester → (Codex-reviewer ‖ reviewer) → judge → (accepted
 | --- | --- | --- | --- |
 | Orchestrator | the step list | spawns, runs Codex, hands both reviews to the judge, commits — verifies only provenance | one commit per step |
 | Implementer | working dir, step, gates | makes the step's change | edited code, no commit |
-| Tester | working dir, gates | runs the gates | GREEN with counts, or RED with the list of failed tests |
+| Tester | working dir, gates | runs the gates | GREEN with the third gate's counts, or RED with the list of failed tests |
 | Codex-reviewer | uncommitted diff | reviews read-only, fixes nothing | findings file |
 | Reviewer | uncommitted diff | reviews independently of Codex, read-only, fixes nothing | findings file |
-| Judge | both findings files, diff | rules each finding ACCEPT or HAND-WAVE with file:line evidence; independent pass when both reviewers return nothing | verdict file; returns its path to the orchestrator |
+| Judge | both findings files, diff | rules each finding ACCEPT or HAND-WAVE with file:line evidence; independent pass when both reviewers return nothing | verdict file, the settled record for later rounds; returns its path to the orchestrator |
 | Fixer | ACCEPT findings | addresses them and nothing else | edited code, no commit |
 
 The two reviewers run on the same diff and do not see each other's findings. RED
-goes to a fixer. A finding hand-waved in one round and raised again in the next
-is a missing record, not a weak rebuttal: file it where the next reviewer will
-find it, and tell the next judge it is settled. Commit only on green tests and a
-judge verdict with no open ACCEPT.
+goes to a fixer. Commit only on green tests and a judge verdict with no open
+ACCEPT.
+
+ACCEPT is binary: the fixer addresses the finding in this step, or the
+orchestrator writes it into `TODO.md` against the step that will carry it. A
+ruling that defers without naming a destination leaves the finding in a scratch
+file nobody reads again.
+
+Hand the next round's reviewers and judge the verdict file itself. A summary of
+it written by hand drops items — one in the run this prompt came from dropped two
+of three accepted findings. A finding hand-waved in one round and raised again in
+the next is a missing record, not a weak rebuttal.
+
+From round 3 on, only a finding that fails a gate or breaks a stated invariant
+re-enters the loop; record the rest and leave them. Each fix is new code that the
+next round reviews, so rounds converge only when something stops them.
+
+Markdown waits for the last green round. The orchestrator edits docs once the
+judge closes the step: a mid-round docs edit can fail a gate the fixer is being
+judged on.
 
 ## Subagent prompts
 
@@ -45,6 +64,8 @@ judge verdict with no open ACCEPT.
 - Name the working directory, the step, and the gate commands.
 - Every subagent: no log, no commit. Code subagents also touch no markdown.
 - Give the question and the established facts, not the expected answer.
+- Running the app happens under a temporary `HOME`. A reviewer that ran
+  `npm start` against the real one wrote `~/.noreta` onto the user's machine.
 
 ## Gates
 
@@ -80,9 +101,14 @@ RUN="$(mktemp -d)"
 codex exec --sandbox read-only --output-last-message "$RUN/findings.md" - < "$RUN/prompt.md" > "$RUN/run.log" 2>&1
 ```
 
-Run `codex exec` in the background with a monitor that stops on
-`stream error|fatal:|Rate limit|401 Unauthorized|context deadline` or on three
-minutes without log growth.
+Run `codex exec` in the background with a monitor that stops on three minutes
+without log growth, or on `^(stream error|fatal:|Rate limit|401 Unauthorized|context deadline)`.
+Anchor every alternative: unanchored, the pattern matches this file's own text
+once Codex reads it, and the monitor reports an error that never happened.
+
+A stall is a verdict, not a wait. Kill Codex and run it once more; if the second
+run stalls too, send the reviewer's findings to the judge alone and have the
+verdict record that Codex did not report.
 
 ## Commits
 
