@@ -25,6 +25,10 @@ description: "Noreta forward work and open questions"
   that state, and searching or grouping by repository misses all of them.
   Answering needs the repository remembered while the workspace was there, which
   needs somewhere to keep it.
+- [ ] **Two unreadable dates tie.** When one session is found under two project
+  directories and neither copy's last activity can be read, the copy kept is
+  whichever directory the file system listed first. Sorting the project
+  directories would decide it the same way every run.
 - [ ] Transcript renderer, starting with the simplest presentation that keeps
   tool calls and diffs distinguishable. Its own cycle.
 - [ ] A real `SessionChanges`: nothing implements the port outside tests, so
