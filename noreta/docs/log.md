@@ -1,6 +1,8 @@
 # Log
 
 ## 2026-09-16
+- A session resumed under a second project directory is reported once, described by its newest transcript.
+- `exactOptionalPropertyTypes` on for noreta: an unknown repository is an absent key, never `undefined`.
 - `main.ts` only reads the machine and prints; wiring lives in `composition-root.ts`, now under test.
 - Each module declares the shapes it consumes; only composition modules import another module's types.
 - Grouping keys limited to values compared by value, so equal repositories never split into two groups.
