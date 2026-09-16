@@ -6,19 +6,14 @@ description: "Orchestrator prompt for landing a multi-step refactor through suba
 
 # Orchestrated Step Loop
 
-The orchestrator runs each step through a fixed loop and does nothing else: it
-spawns agents, runs Codex, and commits. It never verifies, fixes, or repeats a
-subagent's work. The pull to do so arrives dressed as economy — a two-line fix
-looks cheaper than a spawn — and taking it lands the change in the tree without
-passing the loop that exists to check it.
+The orchestrator spawns agents, runs Codex, and commits. It never verifies,
+fixes, or repeats a subagent's work — a two-line fix looks cheaper than a spawn
+and skips the loop that would have checked it.
 
-One verification stays with the orchestrator: **provenance**. Subagent reports
-describe this session's own edits as pre-existing uncommitted work; three did so
-in the run this prompt came from. Check the tree against session-start `HEAD`
-yourself, and read "already dirty when I started" as carrying no information.
-The same holds for your own edits: when you touch files mid-step, name those
-paths in the next subagent's prompt, or it reports them back to you as
-pre-existing.
+Provenance stays with the orchestrator: check the tree against session-start
+`HEAD` yourself, and read "already dirty when I started" as carrying no
+information. Name your own mid-step edits in the next subagent's prompt, or they
+come back reported as pre-existing.
 
 ## Loop per step
 
@@ -36,27 +31,16 @@ implementer → tester → (Codex-reviewer ‖ reviewer) → judge → (accepted
 | Judge | both findings files, diff | rules each finding ACCEPT or HAND-WAVE with file:line evidence; independent pass when both reviewers return nothing | verdict file, the settled record for later rounds; returns its path to the orchestrator |
 | Fixer | ACCEPT findings | addresses them and nothing else | edited code, no commit |
 
-The two reviewers run on the same diff and do not see each other's findings. RED
-goes to a fixer. Commit only on green tests and a judge verdict with no open
-ACCEPT.
+Both reviewers see the same diff and not each other. RED goes to a fixer. Commit
+only on green tests and a verdict with no open ACCEPT.
 
-ACCEPT is binary: the fixer addresses the finding in this step, or the
-orchestrator writes it into `TODO.md` against the step that will carry it. A
-ruling that defers without naming a destination leaves the finding in a scratch
-file nobody reads again.
-
-Hand the next round's reviewers and judge the verdict file itself. A summary of
-it written by hand drops items — one in the run this prompt came from dropped two
-of three accepted findings. A finding hand-waved in one round and raised again in
-the next is a missing record, not a weak rebuttal.
-
-From round 3 on, only a finding that fails a gate or breaks a stated invariant
-re-enters the loop; record the rest and leave them. Each fix is new code that the
-next round reviews, so rounds converge only when something stops them.
-
-Markdown waits for the last green round. The orchestrator edits docs once the
-judge closes the step: a mid-round docs edit can fail a gate the fixer is being
-judged on.
+- ACCEPT is binary: fixed in this step, or written into `TODO.md` against the
+  step that carries it. Deferring without a destination loses it.
+- Hand the next round the verdict file itself; a hand-written summary dropped
+  two of three accepted findings.
+- From round 3, only a gate failure or a broken invariant re-enters the loop.
+- Markdown waits for the last green round: a mid-round docs edit can fail the
+  gate the fixer is judged on.
 
 ## Subagent prompts
 
@@ -64,8 +48,8 @@ judged on.
 - Name the working directory, the step, and the gate commands.
 - Every subagent: no log, no commit. Code subagents also touch no markdown.
 - Give the question and the established facts, not the expected answer.
-- Running the app happens under a temporary `HOME`. A reviewer that ran
-  `npm start` against the real one wrote `~/.noreta` onto the user's machine.
+- Run the app under a temporary `HOME`; one reviewer's `npm start` wrote
+  `~/.noreta` onto the user's machine.
 
 ## Gates
 
@@ -90,9 +74,8 @@ importing a module is the invariant broken.
 
 ## Reviews
 
-The orchestrator runs Codex itself; it is never delegated to a relay subagent.
-The second reviewer is a subagent spawned on the same diff. Neither fixes
-anything. Untracked new files need `git add -N` first, or the diff omits them.
+The orchestrator runs Codex itself, never through a relay subagent. Untracked
+new files need `git add -N` first, or the diff omits them.
 
 ```bash
 RUN="$(mktemp -d)"
@@ -101,17 +84,14 @@ RUN="$(mktemp -d)"
 codex exec --sandbox read-only --output-last-message "$RUN/findings.md" - < "$RUN/prompt.md" > "$RUN/run.log" 2>&1
 ```
 
-Run `codex exec` in the background with a monitor that stops when the process
-exits, or on `^(stream error|fatal:|Rate limit|401 Unauthorized|context deadline)`.
-Anchor every alternative: unanchored, the pattern matches this file's own text
-once Codex reads it, and the monitor reports an error that never happened.
+Monitor it in the background until the process exits, or on
+`^(stream error|fatal:|Rate limit|401 Unauthorized|context deadline)` — anchored,
+or the pattern matches this file's own text once Codex reads it.
 
-A quiet log is not a stall. A live review writes nothing for minutes at a time —
-one round in the run this prompt came from went seven minutes silent and then
-finished normally — so never kill a run whose process is alive. What ends the
-wait is the process exiting: with a findings file it goes to the judge, and
-without one, run it once more and then judge on the reviewer alone, with the
-verdict recording that Codex did not report.
+A quiet log is not a stall; one round went seven minutes silent and finished
+normally. Never kill a live process. On exit with findings, go to the judge;
+on exit without them, rerun once, then judge on the reviewer alone and say so in
+the verdict.
 
 ## Commits
 
