@@ -19,14 +19,25 @@ yourself, and read "already dirty when I started" as carrying no information.
 
 ## Loop per step
 
-implementer → tester → Codex → judge → (accepted: fixer → tester → Codex → judge) → commit
+implementer → tester → (Codex-reviewer ‖ reviewer) → judge → (accepted: fixer → tester → both reviewers → judge) → commit
 
-1. **Implementer** makes the step's change.
-2. **Tester** runs the gates and reports GREEN or RED with counts. RED goes to a fixer.
-3. **Codex** reviews the uncommitted diff, read-only.
-4. **Judge** rules each Codex finding ACCEPT or HAND-WAVE with file:line evidence. When Codex returns nothing, the judge does an independent pass. A finding hand-waved in one round and raised again in the next is a missing record, not a weak rebuttal: file it where the next reviewer will find it, and tell the next judge it is settled.
-5. **Fixer** addresses ACCEPT findings, then the loop repeats from the tester.
-6. **Commit** only on green tests and a judge verdict with no open ACCEPT.
+### Roles
+
+| Role | Input | Responsibility | Output |
+| --- | --- | --- | --- |
+| Orchestrator | the step list | spawns, runs Codex, hands both reviews to the judge, commits — verifies only provenance | one commit per step |
+| Implementer | working dir, step, gates | makes the step's change | edited code, no commit |
+| Tester | working dir, gates | runs the gates | GREEN with counts, or RED with the list of failed tests |
+| Codex-reviewer | uncommitted diff | reviews read-only, fixes nothing | findings file |
+| Reviewer | uncommitted diff | reviews independently of Codex, read-only, fixes nothing | findings file |
+| Judge | both findings files, diff | rules each finding ACCEPT or HAND-WAVE with file:line evidence; independent pass when both reviewers return nothing | verdict file; returns its path to the orchestrator |
+| Fixer | ACCEPT findings | addresses them and nothing else | edited code, no commit |
+
+The two reviewers run on the same diff and do not see each other's findings. RED
+goes to a fixer. A finding hand-waved in one round and raised again in the next
+is a missing record, not a weak rebuttal: file it where the next reviewer will
+find it, and tell the next judge it is settled. Commit only on green tests and a
+judge verdict with no open ACCEPT.
 
 ## Subagent prompts
 
@@ -56,11 +67,11 @@ Expect lines only in `main.ts`, `composition-root.ts` and
 `compose-claude-code-runtime-states.ts` — the composition pieces. Any other file
 importing a module is the invariant broken.
 
-## Codex review
+## Reviews
 
 The orchestrator runs Codex itself; it is never delegated to a relay subagent.
-Codex never fixes anything. Untracked new files need `git add -N` first, or the
-diff omits them.
+The second reviewer is a subagent spawned on the same diff. Neither fixes
+anything. Untracked new files need `git add -N` first, or the diff omits them.
 
 ```bash
 RUN="$(mktemp -d)"
