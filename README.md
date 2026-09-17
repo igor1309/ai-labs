@@ -45,7 +45,6 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 
 | Component | Type | Description |
 |-----------|------|-------------|
-| .agents | Agent docs | Progressive-disclosure repository-specific agent docs referenced from `CLAUDE.md` / `AGENTS.md` |
 | agents | Agent definitions | OpenClaw agent-fleet operational docs and nested specialized agent definitions |
 | agonara | Application | Bring-your-own-agent (BYOA) structured learning program environment. API-first backend with `/learn`/`/admin` UIs and an operator CLI as first-class clients; curated programs, learner progression, evidence of mastery |
 | nexum | Application | Private repo memory system |
