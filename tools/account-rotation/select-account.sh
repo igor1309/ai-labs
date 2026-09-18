@@ -3,17 +3,21 @@ set -eu
 
 tool_dir=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 limits_script=${SELECT_ACCOUNT_LIMITS_SCRIPT:-"$tool_dir/../ccswitch-limits/ccswitch-limits.sh"}
+codex_mgr_script=${SELECT_ACCOUNT_CODEX_MGR_SCRIPT:-"$tool_dir/../codex-mgr/codex-mgr.sh"}
 
+provider=ccswitch
 case "${1:-}" in
     '') ;;
-    --help)
-        printf 'Usage: %s\n' "$0"
+    --codex) provider=codex ;;
+    -h | --help)
+        printf 'Usage: %s [--codex]\n' "$0"
         printf '  queries every ccswitch account and prints the account number selected by\n'
         printf '  account-selection-adr.md; progress and ratios go to stderr\n'
+        printf '  --codex  select among codex-mgr profiles instead and print the profile email\n'
         exit 0
         ;;
     *)
-        printf 'Usage: %s\n' "$0" >&2
+        printf 'Usage: %s [--codex]\n' "$0" >&2
         exit 2
         ;;
 esac
@@ -106,9 +110,22 @@ select_account() {
     printf '%s\n' "$ranking" | head -n 1 | {
         IFS="$tab_character" read -r account_number bottleneck headroom email
         printf 'selected account %s %s\n' "$account_number" "$email" >&2
-        printf '%s\n' "$account_number"
+        # codex-mgr profiles are keyed by email; the number is only their list position.
+        if [ "$provider" = "codex" ]; then
+            printf '%s\n' "$email"
+        else
+            printf '%s\n' "$account_number"
+        fi
     }
 }
 
+query_limits() {
+    if [ "$provider" = "codex" ]; then
+        "$codex_mgr_script" limits --json
+    else
+        "$limits_script" --json
+    fi
+}
+
 printf 'querying accounts...\n' >&2
-"$limits_script" --json | select_account
+query_limits | select_account

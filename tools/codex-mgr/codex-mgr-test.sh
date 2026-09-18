@@ -1,9 +1,22 @@
 #!/bin/bash
-# Tests for codex-mgr. Currently covers the `limits` command.
+# Tests for codex-mgr: limits, install/uninstall, and load of a missing profile.
 set -euo pipefail
 
 test_dir=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 script_path="$test_dir/codex-mgr.sh"
+
+case "${1:-}" in
+    '') ;;
+    -h | --help)
+        printf 'Usage: %s\n' "$0"
+        printf '  runs the codex-mgr tests with mocks; prints ok on success\n'
+        exit 0
+        ;;
+    *)
+        printf 'Usage: %s\n' "$0" >&2
+        exit 2
+        ;;
+esac
 
 assert_equal() {
     local expected="$1"
@@ -140,7 +153,7 @@ run_limits_scenario() {
     local status=0
     HOME="$home_dir" CODEX_PROFILES_DIR="$profiles_dir" PATH="$mock_bin_dir:$PATH" \
         COMMAND_LOG_PATH="$command_log_path" TZ=UTC \
-        bash "$script_path" limits > "$output_path" 2>&1 || status=$?
+        bash "$script_path" limits "$@" > "$output_path" 2>&1 || status=$?
 
     local actual_output actual_log
     actual_output=$(read_optional_file "$output_path")
@@ -194,6 +207,22 @@ __EXPECTED__
 assert_equal "$expected_result" "$(run_limits_scenario)"
 printf 'ok: limits\n'
 
+# --json: one record per profile in the ccswitch-limits --json shape.
+expected_json_output=$(cat <<'__EXPECTED__'
+{"account_number":1,"email":"active@example.com","active":true,"status":"ok","usage":{"five_hour":{"utilization":12,"resets_at":"2026-03-24T00:00:00Z"},"seven_day":{"utilization":40,"resets_at":"2026-03-27T00:00:00Z"}}}
+{"account_number":2,"email":"first@example.com","active":false,"status":"ok","usage":{"five_hour":{"utilization":6,"resets_at":"2026-03-24T20:00:00Z"},"seven_day":{"utilization":35,"resets_at":"2026-03-27T20:00:00Z"}}}
+{"account_number":3,"email":"missing@example.com","active":false,"status":"oauth_token_not_found"}
+{"account_number":4,"email":"nulledge@example.com","active":false,"status":"ok","usage":{"five_hour":{"utilization":8,"resets_at":"2026-03-24T20:00:00Z"},"seven_day":null}}
+{"account_number":5,"email":"ybad@example.com","active":false,"status":"invalid_usage_response"}
+{"account_number":6,"email":"zfail@example.com","active":false,"status":"usage_request_failed"}
+__EXPECTED__
+)
+
+json_result=$(run_limits_scenario --json)
+assert_equal "exit=0" "$(printf '%s\n' "$json_result" | head -n 1)"
+assert_equal "$expected_json_output" "$(printf '%s\n' "$json_result" | sed -n '/^output<<EOF$/,/^EOF$/p' | sed '1d;$d')"
+printf 'ok: limits --json\n'
+
 run_install_uninstall_scenario() {
     local temp_dir
     temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/codex-mgr-install-test.XXXXXX")
@@ -220,3 +249,82 @@ run_install_uninstall_scenario() {
 
 assert_equal "linked=yes points_at_script=yes warned=yes removed=yes" "$(run_install_uninstall_scenario)"
 printf 'ok: install/uninstall\n'
+
+# Help or an unknown argument: nothing is installed or removed.
+run_install_arguments_scenario() {
+    local temp_dir
+    temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/codex-mgr-install-args-test.XXXXXX")
+    trap '[[ -n "${temp_dir:-}" ]] && rm -rf "$temp_dir"' EXIT HUP INT TERM
+
+    local script argument status
+    for script in install.sh uninstall.sh; do
+        for argument in -h --help --bogus; do
+            status=0
+            CODEX_MGR_BIN_DIR="$temp_dir/bin" sh "$test_dir/$script" "$argument" >/dev/null 2>&1 || status=$?
+            printf '%s %s: exit=%s created=%s\n' "$script" "$argument" "$status" "$([[ -e "$temp_dir/bin" ]] && echo yes || echo no)"
+        done
+    done
+}
+
+assert_equal "install.sh -h: exit=0 created=no
+install.sh --help: exit=0 created=no
+install.sh --bogus: exit=2 created=no
+uninstall.sh -h: exit=0 created=no
+uninstall.sh --help: exit=0 created=no
+uninstall.sh --bogus: exit=2 created=no" "$(run_install_arguments_scenario)"
+printf 'ok: install/uninstall arguments\n'
+
+# save/load/delete reject names that resolve outside the profiles directory,
+# and leave the live auth, the outside directory, and the profiles intact.
+run_invalid_profile_scenario() {
+    local temp_dir
+    temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/codex-mgr-invalid-test.XXXXXX")
+    trap '[[ -n "${temp_dir:-}" ]] && rm -rf "$temp_dir"' EXIT HUP INT TERM
+
+    mkdir -p "$temp_dir/home/.codex" "$temp_dir/root/profiles/me@example.com" "$temp_dir/root/outside@example.com"
+    printf '{"live":true}' > "$temp_dir/home/.codex/auth.json"
+    printf '{"outside":true}' > "$temp_dir/root/outside@example.com/auth.json"
+
+    local command name status output
+    for command in save load delete; do
+        for name in ../outside@example.com "$temp_dir/root/outside@example.com" nested/me@example.com "" . ..; do
+            status=0
+            output=$(HOME="$temp_dir/home" CODEX_PROFILES_DIR="$temp_dir/root/profiles" \
+                bash "$script_path" "$command" "$name" 2>&1) || status=$?
+            if [[ "$status" != 1 || "$output" != "Error: invalid profile name '$name'." ]]; then
+                printf 'unexpected: %s %s -> exit=%s %s\n' "$command" "$name" "$status" "$output"
+            fi
+        done
+    done
+
+    printf 'live=%s outside=%s profile=%s backups=%s\n' \
+        "$(cat "$temp_dir/home/.codex/auth.json")" \
+        "$(cat "$temp_dir/root/outside@example.com/auth.json")" \
+        "$([[ -d "$temp_dir/root/profiles/me@example.com" ]] && echo kept || echo removed)" \
+        "$(find "$temp_dir/home/.codex" -name 'auth.json.backup.*' | wc -l | tr -d ' ')"
+}
+
+assert_equal 'live={"live":true} outside={"outside":true} profile=kept backups=0' "$(run_invalid_profile_scenario)"
+printf 'ok: invalid profile names\n'
+
+run_load_missing_scenario() {
+    local profiles_dir="$1"
+    local temp_dir
+    temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/codex-mgr-load-test.XXXXXX")
+    trap '[[ -n "${temp_dir:-}" ]] && rm -rf "$temp_dir"' EXIT HUP INT TERM
+
+    mkdir -p "$temp_dir/home" "$temp_dir/profiles/first@example.com" "$temp_dir/profiles/second@example.com"
+
+    local status=0 output
+    output=$(HOME="$temp_dir/home" CODEX_PROFILES_DIR="$temp_dir/$profiles_dir" \
+        bash "$script_path" load nope@example.com 2>&1) || status=$?
+    printf 'exit=%s\n%s\n' "$status" "$output"
+}
+
+assert_equal "exit=1
+Error: Profile 'nope@example.com' not found.
+Available: first@example.com second@example.com" "$(run_load_missing_scenario profiles)"
+assert_equal "exit=1
+Error: Profile 'nope@example.com' not found.
+Available: none" "$(run_load_missing_scenario no-profiles)"
+printf 'ok: load missing profile\n'

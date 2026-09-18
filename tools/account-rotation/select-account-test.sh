@@ -4,6 +4,19 @@ set -eu
 tool_dir=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 script_path="$tool_dir/select-account.sh"
 
+case "${1:-}" in
+    '') ;;
+    -h | --help)
+        printf 'Usage: %s\n' "$0"
+        printf '  runs the select-account.sh tests with mocks; prints ok on success\n'
+        exit 0
+        ;;
+    *)
+        printf 'Usage: %s\n' "$0" >&2
+        exit 2
+        ;;
+esac
+
 # 2026-03-24T12:00:00Z
 now=1774353600
 
@@ -152,5 +165,22 @@ tie_b=$(printf '%s\n%s' "$(account_record 2 ok 40.0 "$short_reset" 30.0 "$weekly
 first=$(run_selection "$tie_a" | sed -n '2p')
 second=$(run_selection "$tie_b" | sed -n '2p')
 assert_equal "$first" "$second"
+
+# --codex: codex-mgr profiles are ranked the same way and selected by email.
+codex_dir=$(mktemp -d)
+printf '%s\n%s\n' "$(account_record 1 ok 50.0 "$short_reset" 50.0 "$weekly_reset")" "$(account_record 2 ok 20.0 "$short_reset" 20.0 "$weekly_reset")" >"$codex_dir/records.jsonl"
+printf '#!/bin/sh\nprintf "%%s\\n" "$*" >"%s/args"\ncat "%s/records.jsonl"\n' "$codex_dir" "$codex_dir" >"$codex_dir/codex-mgr.sh"
+chmod +x "$codex_dir/codex-mgr.sh"
+codex_output=$(SELECT_ACCOUNT_LIMITS_SCRIPT=false SELECT_ACCOUNT_CODEX_MGR_SCRIPT="$codex_dir/codex-mgr.sh" SELECT_ACCOUNT_NOW=$now TZ=UTC sh "$script_path" --codex 2>/dev/null </dev/null)
+assert_equal "limits --json
+a2@example.com" "$(cat "$codex_dir/args")
+$codex_output"
+rm -rf "$codex_dir"
+
+# Help: printed without querying accounts.
+for help_flag in -h --help; do
+    help_output=$(SELECT_ACCOUNT_LIMITS_SCRIPT=false SELECT_ACCOUNT_CODEX_MGR_SCRIPT=false sh "$script_path" "$help_flag")
+    assert_equal "Usage: $script_path [--codex]" "$(printf '%s\n' "$help_output" | head -n 1)"
+done
 
 printf 'ok\n'
