@@ -16,10 +16,12 @@ Git worktree manager, Claude account switcher with usage-limit reporting, Codex 
 
 | Component | Type | Description |
 | --- | --- | --- |
+| `account-rotation` | Library | Quota-aware account selection for `ccswitch` accounts and `codex-mgr` profiles, used by `cl` and `cx` |
 | `ccswitch-limits` | CLI | Reports Anthropic usage limits for every `ccswitch`-managed Claude account |
 | `cl` | CLI | Claude Code launcher — picks the account with the best quota pacing (or the one given), optionally resumes a session |
 | `claude-account-switch` | Research | Exploration notes for an Alfred-based Claude Code account switcher |
 | `codex-mgr` | CLI | Codex CLI auth-profile manager — save/load/switch profiles and report per-profile usage limits |
+| `cx` | CLI | Codex launcher — picks the `codex-mgr` profile with the best quota pacing (or the one given), optionally resumes a session |
 | `mac-health` | Scheduled checks | launchd-driven macOS health checks (memory, disk, leftovers) with a JSONL log and threshold notifications |
 | `wt` | CLI | Git worktree manager — one command creates a branch and its worktree folder |
 
