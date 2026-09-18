@@ -274,6 +274,39 @@ uninstall.sh --help: exit=0 created=no
 uninstall.sh --bogus: exit=2 created=no" "$(run_install_arguments_scenario)"
 printf 'ok: install/uninstall arguments\n'
 
+# save/load/delete reject names that resolve outside the profiles directory,
+# and leave the live auth, the outside directory, and the profiles intact.
+run_invalid_profile_scenario() {
+    local temp_dir
+    temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/codex-mgr-invalid-test.XXXXXX")
+    trap '[[ -n "${temp_dir:-}" ]] && rm -rf "$temp_dir"' EXIT HUP INT TERM
+
+    mkdir -p "$temp_dir/home/.codex" "$temp_dir/root/profiles/me@example.com" "$temp_dir/root/outside@example.com"
+    printf '{"live":true}' > "$temp_dir/home/.codex/auth.json"
+    printf '{"outside":true}' > "$temp_dir/root/outside@example.com/auth.json"
+
+    local command name status output
+    for command in save load delete; do
+        for name in ../outside@example.com "$temp_dir/root/outside@example.com" nested/me@example.com "" . ..; do
+            status=0
+            output=$(HOME="$temp_dir/home" CODEX_PROFILES_DIR="$temp_dir/root/profiles" \
+                bash "$script_path" "$command" "$name" 2>&1) || status=$?
+            if [[ "$status" != 1 || "$output" != "Error: invalid profile name '$name'." ]]; then
+                printf 'unexpected: %s %s -> exit=%s %s\n' "$command" "$name" "$status" "$output"
+            fi
+        done
+    done
+
+    printf 'live=%s outside=%s profile=%s backups=%s\n' \
+        "$(cat "$temp_dir/home/.codex/auth.json")" \
+        "$(cat "$temp_dir/root/outside@example.com/auth.json")" \
+        "$([[ -d "$temp_dir/root/profiles/me@example.com" ]] && echo kept || echo removed)" \
+        "$(find "$temp_dir/home/.codex" -name 'auth.json.backup.*' | wc -l | tr -d ' ')"
+}
+
+assert_equal 'live={"live":true} outside={"outside":true} profile=kept backups=0' "$(run_invalid_profile_scenario)"
+printf 'ok: invalid profile names\n'
+
 run_load_missing_scenario() {
     local profiles_dir="$1"
     local temp_dir

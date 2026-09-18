@@ -76,6 +76,17 @@ get_profile_account_id() {
 }
 
 
+# Profile names are directory names under $PROFILES_DIR; reject any that
+# would resolve elsewhere (empty, ".", "..", or containing "/"), since load
+# copies from and delete removes that directory.
+require_profile_name() {
+    local name="$1"
+    if [[ -z "$name" || "$name" == "." || "$name" == ".." || "$name" == *"/"* ]]; then
+        echo "Error: invalid profile name '$name'." >&2
+        exit 1
+    fi
+}
+
 get_profile_dirs() {
     find "$PROFILES_DIR" -maxdepth 1 -type d -not -path "$PROFILES_DIR" | sort
 }
@@ -248,6 +259,7 @@ case "${1:-}" in
             exit 1
         fi
         PROFILE_EMAIL="$2"
+        require_profile_name "$PROFILE_EMAIL"
         PROFILE_NAME="$PROFILE_EMAIL"
         if [[ "$PROFILE_EMAIL" != *"@"* ]]; then
             echo "Error: email must contain '@'. Usage: codex-mgr save <email>" >&2
@@ -279,6 +291,7 @@ case "${1:-}" in
             exit 1
         fi
         PROFILE_NAME="$2"
+        require_profile_name "$PROFILE_NAME"
         PROFILE_PATH="$PROFILES_DIR/$PROFILE_NAME/auth.json"
         
         if [[ ! -f "$PROFILE_PATH" ]]; then
@@ -499,6 +512,7 @@ case "${1:-}" in
             exit 1
         fi
         PROFILE_NAME="$2"
+        require_profile_name "$PROFILE_NAME"
         PROFILE_PATH="$PROFILES_DIR/$PROFILE_NAME"
         if [[ ! -d "$PROFILE_PATH" ]]; then
             echo "Error: Profile '$PROFILE_NAME' not found." >&2

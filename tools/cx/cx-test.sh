@@ -41,6 +41,7 @@ run_cx() {
     shift 2
 
     scenario_dir=$(mktemp -d)
+    : >"$scenario_dir/log"
 
     if [ "$selected_profile" = "none" ]; then
         printf '#!/bin/sh\nprintf "select %%s\\n" "$*" >>"%s/log"\nexit 1\n' "$scenario_dir" >"$scenario_dir/select"
@@ -141,6 +142,15 @@ cx: switch to other@example.com failed; staying on the current profile (active@e
 log:
 codex-mgr load other@example.com
 codex " "$(run_cx none fail other@example.com)"
+
+# A profile containing "/" is rejected before anything runs.
+for bad_profile in ../../outside@example.com /tmp/outside@example.com nested/me@example.com me@example.com/..; do
+    bad_output=$(run_cx other@example.com ok "$bad_profile")
+    assert_equal "exit=2
+stderr:
+cx: invalid profile $bad_profile
+log:" "$bad_output"
+done
 
 # Help: printed without selecting, switching, or starting codex.
 for help_flag in -h --help; do

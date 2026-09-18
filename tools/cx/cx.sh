@@ -52,6 +52,11 @@ case "${1:-}" in
         usage
         exit 0
         ;;
+    */*@* | *@*/*)
+        # Profiles are directories under the codex-mgr profiles dir.
+        printf 'cx: invalid profile %s\n' "$1" >&2
+        exit 2
+        ;;
     *@*)
         profile=$1
         shift
