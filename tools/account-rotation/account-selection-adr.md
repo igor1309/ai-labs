@@ -4,62 +4,57 @@
 
 ## Context
 
-- All accounts have equal short-window and monthly quota capacities.
-- Each account has independent reset schedules for both horizons.
-- Each admitted session has the same known quota cost.
-- Reset schedules and quota counters are authoritative, versioned state.
-- Linear consumption across each current reset interval is the pacing reference.
+A pool of equivalent accounts is available for new sessions. Each account has:
+
+- the same short-window quota capacity;
+- the same monthly quota capacity;
+- independent reset times for each quota horizon.
+
+A session has a known, equivalent quota cost across accounts. Quota state and reset boundaries are authoritative. Window duration means the elapsed time between the actual boundaries of that account's current quota interval.
 
 ## Objective
 
-Keep each account’s **tighter quota horizon** sustainably paced. Only when that constraint is equal should we prefer more abundant / sooner-expiring capacity. This is a pacing policy, not a claim of globally optimal throughput.
+Allocate sessions so that the **most constrained quota horizon remains sustainably paced**, while using capacity that would otherwise expire.
+
+Protecting the tighter horizon takes priority over exploiting surplus in the looser horizon.
 
 ## Decision
 
-For each selection attempt:
+Use **bottleneck-aware linear budget pacing**.
 
-1. Capture one authoritative `score_time` and read all candidate accounts from one consistent snapshot.
-2. Evaluate all resets due at `score_time`; `now >= reset_at` belongs to the new window.
-3. An account is eligible when both quotas can admit one session.
-4. For each quota `q`, compute the **pre-reservation pacing ratio**:
+For each eligible account and quota horizon `q`, define:
 
 ```text
-ratio_q =
-  (remaining_q * window_length_q) /
-  (capacity_q * time_to_reset_q)
+pacing_ratio(q) =
+    remaining_fraction(q) /
+    remaining_time_fraction(q)
 ```
 
-`ratio = 1` is exactly on linear pace; larger values indicate more capacity available relative to remaining time.
+A ratio of `1` represents linear pacing. Higher values indicate capacity that can be consumed faster than the reference pace; lower values indicate a tighter budget.
 
-Score each account as:
+Rank each account by:
 
 ```text
 (min(short_ratio, monthly_ratio),
  max(short_ratio, monthly_ratio))
 ```
 
-Choose the lexicographically largest score. Therefore the tighter horizon has absolute priority; the second value affects only an exact primary tie.
+and prefer the lexicographically largest value.
 
-Compare ratios exactly by rational cross-multiplication using checked wide integers. `window_length_q` is the authoritative duration of the current reset interval.
+Thus:
 
-For an exact top-score tie, use rendezvous hashing over `(session_id, account_id)` to distribute selections without shared tie-break state.
+1. the tighter quota horizon determines the primary ranking;
+2. the looser horizon breaks equal primary rankings;
+3. an independent deterministic tie-breaker resolves otherwise equal accounts.
 
-## Concurrency Contract
+Selection uses the current quota interval. A reset crossing invalidates a decision based on the previous interval and requires selection against the new state.
 
-Selection is **snapshot-optimal at `score_time`**, not globally maximal at commit time.
-
-Reservation is one atomic transition on the chosen account:
-
-```text
-apply commit-time due resets
-verify scored version/window identity
-re-check both quotas
-decrement both quotas
-increment version
-```
-
-Any version or reset-boundary conflict retries the full selection from a fresh snapshot, using jittered backoff until the request deadline.
+An account is eligible only when both quota horizons can cover the session cost and their state satisfies the quota model invariants: positive capacity and interval duration, valid reset boundary, and remaining quota within capacity.
 
 ## Consequences
 
-Pre-reservation scoring can consume the final admissible slot before reset. Atomic reservation prevents over-admission. Concurrent selectors may contend on the same maximum account; retry/backoff bounds that cost.
+This policy explicitly favors sustainable pacing of the bottleneck over maximizing immediate quota utilization. It accounts for staggered resets and can consume capacity approaching expiry without sacrificing the tighter horizon's priority.
+
+It is a scheduling heuristic; it does not claim globally optimal throughput.
+
+Concurrency control, state storage, arithmetic representation, reset advancement, retry policy, tie-break implementation, and operational failure handling are implementation concerns governed separately.
