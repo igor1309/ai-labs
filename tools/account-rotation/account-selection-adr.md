@@ -4,17 +4,13 @@
 
 ## Context
 
-A pool of accounts is interchangeable for new sessions. All accounts have equal short-window and monthly quota capacities, independent reset times for each horizon, and equivalent per-session quota cost.
+A pool of accounts is interchangeable for new sessions. All accounts have equal short-window and weekly quota capacities, independent reset times for each horizon, and equivalent per-session quota cost.
 
 This decision applies while those assumptions hold; heterogeneous capacities or session costs require reconsideration.
 
 ## Objective
 
-Use **linear budget pacing** to maximize the pacing ratio of the most constrained quota horizon among candidate accounts.
-
-Among accounts with an equal bottleneck pacing ratio, prefer greater headroom on the other horizon. This avoids unnecessarily consuming an account that is equally constrained at its bottleneck but more constrained overall.
-
-The policy therefore prioritizes preservation of the tightest horizon, while biasing toward surplus capacity as its reset approaches.
+Use linear budget pacing to maximize the pacing ratio of the most constrained quota horizon among candidate accounts.
 
 ## Decision
 
@@ -26,31 +22,35 @@ pacing_ratio(q) =
     remaining_time_fraction(q)
 ```
 
-`1` represents linear pacing; higher values indicate capacity available faster than the reference pace.
+`remaining_fraction` is the fraction of that horizon's quota capacity still available. `remaining_time_fraction` is the fraction of its current reset interval still remaining.
 
-Consider only accounts with valid authoritative quota state and sufficient quota on every constrained horizon.
+A ratio of `1` represents linear pacing. As a reset approaches, unused capacity raises the ratio, naturally biasing selection toward capacity that is becoming more perishable.
 
-Rank each account lexicographically by:
+Consider only accounts with valid authoritative quota state and sufficient quota on both horizons.
+
+Rank each account by the **descending lexicographic maximum** of:
 
 ```text
-(min(short_ratio, monthly_ratio),
- max(short_ratio, monthly_ratio))
+(min(short_ratio, weekly_ratio),
+ max(short_ratio, weekly_ratio))
 ```
 
-The first value maximizes bottleneck sustainability. The second prefers greater overall headroom when bottleneck sustainability is equal. Otherwise-equal accounts use an independent deterministic tie-breaker.
+The primary rule maximizes the bottleneck pacing ratio. Only when primary ratios are exactly equal does the second value prefer the account with greater headroom on its other horizon. Any remaining equality uses an independent deterministic tie-breaker.
 
-A reset crossing requires reselection because the pacing ratios—and therefore the basis of the ranking—belong to the quota intervals in which they were calculated.
+If any candidate's quota resets while a selection is pending, reselect against the new candidate states. A reset causes a discontinuous score change that can reorder candidates. Existing assigned sessions are unaffected.
 
 ## Alternatives Considered
 
 - **Round-robin/random:** ignores quota pressure and reset timing.
 - **Most quota remaining:** ignores how soon capacity resets.
 - **Expiry-first:** can spend an account whose other horizon is critically constrained.
-- **Bottleneck only:** leaves materially different secondary headroom indistinguishable.
+- **Bottleneck only:** equivalent for ordinary selections, but leaves exact bottleneck ties unordered.
 - **Weighted combined score:** allows surplus in one horizon to compensate for scarcity in the other, contrary to bottleneck priority.
 
 ## Consequences
 
-The policy favors sustainable bottleneck pacing over immediate utilization. It is a scheduling heuristic and makes no claim of globally optimal throughput.
+The policy favors sustainable bottleneck pacing over immediate utilization. It is greedy and uses current quota state rather than forecasting future demand; assignments may therefore concentrate temporarily on the current highest-ranked account.
+
+It is a scheduling heuristic and makes no claim of globally optimal throughput.
 
 Concurrency, persistence, arithmetic, retry behavior, and tie-break mechanics are implementation concerns governed separately.
