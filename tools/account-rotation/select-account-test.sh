@@ -153,4 +153,15 @@ first=$(run_selection "$tie_a" | sed -n '2p')
 second=$(run_selection "$tie_b" | sed -n '2p')
 assert_equal "$first" "$second"
 
+# --codex: codex-mgr profiles are ranked the same way and selected by email.
+codex_dir=$(mktemp -d)
+printf '%s\n%s\n' "$(account_record 1 ok 50.0 "$short_reset" 50.0 "$weekly_reset")" "$(account_record 2 ok 20.0 "$short_reset" 20.0 "$weekly_reset")" >"$codex_dir/records.jsonl"
+printf '#!/bin/sh\nprintf "%%s\\n" "$*" >"%s/args"\ncat "%s/records.jsonl"\n' "$codex_dir" "$codex_dir" >"$codex_dir/codex-mgr.sh"
+chmod +x "$codex_dir/codex-mgr.sh"
+codex_output=$(SELECT_ACCOUNT_LIMITS_SCRIPT=false SELECT_ACCOUNT_CODEX_MGR_SCRIPT="$codex_dir/codex-mgr.sh" SELECT_ACCOUNT_NOW=$now TZ=UTC sh "$script_path" --codex 2>/dev/null </dev/null)
+assert_equal "limits --json
+a2@example.com" "$(cat "$codex_dir/args")
+$codex_output"
+rm -rf "$codex_dir"
+
 printf 'ok\n'
