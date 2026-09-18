@@ -140,7 +140,7 @@ run_limits_scenario() {
     local status=0
     HOME="$home_dir" CODEX_PROFILES_DIR="$profiles_dir" PATH="$mock_bin_dir:$PATH" \
         COMMAND_LOG_PATH="$command_log_path" TZ=UTC \
-        bash "$script_path" limits > "$output_path" 2>&1 || status=$?
+        bash "$script_path" limits "$@" > "$output_path" 2>&1 || status=$?
 
     local actual_output actual_log
     actual_output=$(read_optional_file "$output_path")
@@ -193,6 +193,22 @@ __EXPECTED__
 
 assert_equal "$expected_result" "$(run_limits_scenario)"
 printf 'ok: limits\n'
+
+# --json: one record per profile in the ccswitch-limits --json shape.
+expected_json_output=$(cat <<'__EXPECTED__'
+{"account_number":1,"email":"active@example.com","active":true,"status":"ok","usage":{"five_hour":{"utilization":12,"resets_at":"2026-03-24T00:00:00Z"},"seven_day":{"utilization":40,"resets_at":"2026-03-27T00:00:00Z"}}}
+{"account_number":2,"email":"first@example.com","active":false,"status":"ok","usage":{"five_hour":{"utilization":6,"resets_at":"2026-03-24T20:00:00Z"},"seven_day":{"utilization":35,"resets_at":"2026-03-27T20:00:00Z"}}}
+{"account_number":3,"email":"missing@example.com","active":false,"status":"oauth_token_not_found"}
+{"account_number":4,"email":"nulledge@example.com","active":false,"status":"ok","usage":{"five_hour":{"utilization":8,"resets_at":"2026-03-24T20:00:00Z"},"seven_day":null}}
+{"account_number":5,"email":"ybad@example.com","active":false,"status":"invalid_usage_response"}
+{"account_number":6,"email":"zfail@example.com","active":false,"status":"usage_request_failed"}
+__EXPECTED__
+)
+
+json_result=$(run_limits_scenario --json)
+assert_equal "exit=0" "$(printf '%s\n' "$json_result" | head -n 1)"
+assert_equal "$expected_json_output" "$(printf '%s\n' "$json_result" | sed -n '/^output<<EOF$/,/^EOF$/p' | sed '1d;$d')"
+printf 'ok: limits --json\n'
 
 run_install_uninstall_scenario() {
     local temp_dir

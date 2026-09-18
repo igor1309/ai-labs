@@ -26,6 +26,7 @@ USAGE:
     codex-mgr list                 # List profiles with active (*) indicator
     codex-mgr switch               # Switch to next profile in list
     codex-mgr limits               # Show usage limits per profile
+    codex-mgr limits --json        # Same, one JSON line per profile
     codex-mgr delete <email>       # Delete a saved profile
     codex-mgr help                # Show this help
 
@@ -203,6 +204,42 @@ format_usage_limits() {
     format_usage_window "$payload" "weekly:" '.rate_limit.secondary_window'
 }
 
+# One JSON line per profile, in the record shape of `ccswitch-limits --json`
+# so account-rotation/select-account.sh can rank Codex profiles:
+# account_number is the profile's 1-based position in list order, and each
+# window becomes {utilization, resets_at} with resets_at as ISO 8601 UTC.
+emit_limits_record() {
+    local account_number="$1"
+    local profile="$2"
+    local is_active="$3"
+    local status="$4"
+    local payload="${5:-null}"
+
+    jq -cn \
+        --argjson account_number "$account_number" \
+        --arg email "$profile" \
+        --argjson active "$is_active" \
+        --arg status "$status" \
+        --argjson payload "$payload" '
+        def window:
+            if . == null then null
+            else {
+                utilization: .used_percent,
+                resets_at: (if (.reset_at | type) == "number" then (.reset_at | todate) else null end)
+            }
+            end;
+
+        {account_number: $account_number, email: $email, active: $active, status: $status}
+        + if $status == "ok"
+          then {usage: {
+              five_hour: ($payload.rate_limit.primary_window | window),
+              seven_day: ($payload.rate_limit.secondary_window | window)
+          }}
+          else {}
+          end
+    '
+}
+
 # Main logic
 case "${1:-}" in
     "save")
@@ -370,18 +407,54 @@ case "${1:-}" in
         ;;
     
     "limits")
+        case "${2:-}" in
+            "") output_mode=text ;;
+            "--json") output_mode=json ;;
+            *)
+                echo "Error: Usage: codex-mgr limits [--json]" >&2
+                exit 1
+                ;;
+        esac
         if [[ ! -d "$PROFILES_DIR" ]]; then
-            echo "No profiles found."
+            echo "No profiles found." >&2
             exit 1
         fi
         dirs=()
         while IFS= read -r line; do dirs+=("$line"); done < <(get_profile_dirs)
         if [[ ${#dirs[@]} -eq 0 ]]; then
-            echo "No profiles saved yet."
+            echo "No profiles saved yet." >&2
             exit 1
         fi
-        DISPLAY_TIMEZONE="$(resolve_display_timezone)"
         active_dir="$(get_active_profile_dir)"
+
+        if [[ "$output_mode" == "json" ]]; then
+            account_number=0
+            for dir in "${dirs[@]}"; do
+                account_number=$((account_number + 1))
+                profile="$(basename "$dir")"
+                is_active=false
+                [[ "$dir" == "$active_dir" ]] && is_active=true
+
+                access_token="$(get_profile_access_token "$dir")"
+                if [[ -z "$access_token" ]]; then
+                    emit_limits_record "$account_number" "$profile" "$is_active" oauth_token_not_found
+                    continue
+                fi
+                usage_payload="$(query_codex_usage "$access_token" "$(get_profile_account_id "$dir")")" || usage_payload=""
+                if [[ -z "$usage_payload" ]]; then
+                    emit_limits_record "$account_number" "$profile" "$is_active" usage_request_failed
+                    continue
+                fi
+                if ! printf '%s' "$usage_payload" | jq -e '.rate_limit | type == "object"' >/dev/null 2>&1; then
+                    emit_limits_record "$account_number" "$profile" "$is_active" invalid_usage_response
+                    continue
+                fi
+                emit_limits_record "$account_number" "$profile" "$is_active" ok "$usage_payload"
+            done
+            exit 0
+        fi
+
+        DISPLAY_TIMEZONE="$(resolve_display_timezone)"
         printed_block=no
         for dir in "${dirs[@]}"; do
             if [[ "$printed_block" == "yes" ]]; then
