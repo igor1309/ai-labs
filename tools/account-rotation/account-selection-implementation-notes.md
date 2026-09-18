@@ -6,3 +6,4 @@ These notes operationalize the policy in [account-selection-adr.md](./account-se
 2. Skip accounts whose query failed or that lack sufficient quota on either horizon.
 3. For each remaining account, compute `short_ratio` and `weekly_ratio` as defined in the ADR.
 4. Select the account with the lexicographically greatest `(min(short_ratio, weekly_ratio), max(short_ratio, weekly_ratio))`. Break exact ties by lowest account ID.
+5. If no account remains, select none and report the failure.
