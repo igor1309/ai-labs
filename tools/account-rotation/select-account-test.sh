@@ -4,6 +4,19 @@ set -eu
 tool_dir=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 script_path="$tool_dir/select-account.sh"
 
+case "${1:-}" in
+    '') ;;
+    -h | --help)
+        printf 'Usage: %s\n' "$0"
+        printf '  runs the select-account.sh tests with mocks; prints ok on success\n'
+        exit 0
+        ;;
+    *)
+        printf 'Usage: %s\n' "$0" >&2
+        exit 2
+        ;;
+esac
+
 # 2026-03-24T12:00:00Z
 now=1774353600
 
@@ -163,5 +176,11 @@ assert_equal "limits --json
 a2@example.com" "$(cat "$codex_dir/args")
 $codex_output"
 rm -rf "$codex_dir"
+
+# Help: printed without querying accounts.
+for help_flag in -h --help; do
+    help_output=$(SELECT_ACCOUNT_LIMITS_SCRIPT=false SELECT_ACCOUNT_CODEX_MGR_SCRIPT=false sh "$script_path" "$help_flag")
+    assert_equal "Usage: $script_path [--codex]" "$(printf '%s\n' "$help_output" | head -n 1)"
+done
 
 printf 'ok\n'

@@ -3,6 +3,20 @@ set -eu
 
 tool_dir=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 script_path="$tool_dir/cx.sh"
+
+case "${1:-}" in
+    '') ;;
+    -h | --help)
+        printf 'Usage: %s\n' "$0"
+        printf '  runs the cx tests with mocks; prints ok on success\n'
+        exit 0
+        ;;
+    *)
+        printf 'Usage: %s\n' "$0" >&2
+        exit 2
+        ;;
+esac
+
 session_id="019a2b3c-4d5e-7f60-8a9b-0c1d2e3f4a5b"
 
 assert_equal() {

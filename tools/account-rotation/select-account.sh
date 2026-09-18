@@ -9,7 +9,7 @@ provider=ccswitch
 case "${1:-}" in
     '') ;;
     --codex) provider=codex ;;
-    --help)
+    -h | --help)
         printf 'Usage: %s [--codex]\n' "$0"
         printf '  queries every ccswitch account and prints the account number selected by\n'
         printf '  account-selection-adr.md; progress and ratios go to stderr\n'

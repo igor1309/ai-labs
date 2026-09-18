@@ -12,6 +12,20 @@ script_path="$tool_dir/cl.sh"
 bin_dir=${CL_BIN_DIR:-"$HOME/.local/bin"}
 link_path="$bin_dir/cl"
 
+case "${1:-}" in
+    '') ;;
+    -h | --help)
+        printf 'Usage: %s\n' "$0"
+        printf '  symlinks cl.sh to %s\n' "$link_path"
+        printf '  (directory: CL_BIN_DIR, default ~/.local/bin)\n'
+        exit 0
+        ;;
+    *)
+        printf 'Usage: %s\n' "$0" >&2
+        exit 2
+        ;;
+esac
+
 if [ ! -f "$script_path" ]; then
     printf 'ERROR: %s not found\n' "$script_path" >&2
     exit 1

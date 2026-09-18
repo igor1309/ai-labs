@@ -3,6 +3,20 @@ set -eu
 
 tool_dir=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 script_path="$tool_dir/cl.sh"
+
+case "${1:-}" in
+    '') ;;
+    -h | --help)
+        printf 'Usage: %s\n' "$0"
+        printf '  runs the cl tests with mocks; prints ok on success\n'
+        exit 0
+        ;;
+    *)
+        printf 'Usage: %s\n' "$0" >&2
+        exit 2
+        ;;
+esac
+
 session_id="33b61934-2a6a-46e1-8380-8fce55ef8c09"
 
 assert_equal() {

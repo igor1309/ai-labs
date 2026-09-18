@@ -5,6 +5,19 @@ set -euo pipefail
 test_dir=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 script_path="$test_dir/codex-mgr.sh"
 
+case "${1:-}" in
+    '') ;;
+    -h | --help)
+        printf 'Usage: %s\n' "$0"
+        printf '  runs the codex-mgr tests with mocks; prints ok on success\n'
+        exit 0
+        ;;
+    *)
+        printf 'Usage: %s\n' "$0" >&2
+        exit 2
+        ;;
+esac
+
 assert_equal() {
     local expected="$1"
     local actual="$2"
@@ -236,6 +249,30 @@ run_install_uninstall_scenario() {
 
 assert_equal "linked=yes points_at_script=yes warned=yes removed=yes" "$(run_install_uninstall_scenario)"
 printf 'ok: install/uninstall\n'
+
+# Help or an unknown argument: nothing is installed or removed.
+run_install_arguments_scenario() {
+    local temp_dir
+    temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/codex-mgr-install-args-test.XXXXXX")
+    trap '[[ -n "${temp_dir:-}" ]] && rm -rf "$temp_dir"' EXIT HUP INT TERM
+
+    local script argument status
+    for script in install.sh uninstall.sh; do
+        for argument in -h --help --bogus; do
+            status=0
+            CODEX_MGR_BIN_DIR="$temp_dir/bin" sh "$test_dir/$script" "$argument" >/dev/null 2>&1 || status=$?
+            printf '%s %s: exit=%s created=%s\n' "$script" "$argument" "$status" "$([[ -e "$temp_dir/bin" ]] && echo yes || echo no)"
+        done
+    done
+}
+
+assert_equal "install.sh -h: exit=0 created=no
+install.sh --help: exit=0 created=no
+install.sh --bogus: exit=2 created=no
+uninstall.sh -h: exit=0 created=no
+uninstall.sh --help: exit=0 created=no
+uninstall.sh --bogus: exit=2 created=no" "$(run_install_arguments_scenario)"
+printf 'ok: install/uninstall arguments\n'
 
 run_load_missing_scenario() {
     local profiles_dir="$1"
