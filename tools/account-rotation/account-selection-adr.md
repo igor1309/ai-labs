@@ -4,25 +4,21 @@
 
 ## Context
 
-A pool of equivalent accounts is available for new sessions. Each account has:
+A pool of accounts is interchangeable for new sessions. All accounts have equal short-window and monthly quota capacities, independent reset times for each horizon, and equivalent per-session quota cost.
 
-- the same short-window quota capacity;
-- the same monthly quota capacity;
-- independent reset times for each quota horizon.
-
-A session has a known, equivalent quota cost across accounts. Quota state and reset boundaries are authoritative. Window duration means the elapsed time between the actual boundaries of that account's current quota interval.
+This decision applies while those assumptions hold; heterogeneous capacities or session costs require reconsideration.
 
 ## Objective
 
-Allocate sessions so that the **most constrained quota horizon remains sustainably paced**, while using capacity that would otherwise expire.
+Use **linear budget pacing** to maximize the pacing ratio of the most constrained quota horizon among candidate accounts.
 
-Protecting the tighter horizon takes priority over exploiting surplus in the looser horizon.
+Among accounts with an equal bottleneck pacing ratio, prefer greater headroom on the other horizon. This avoids unnecessarily consuming an account that is equally constrained at its bottleneck but more constrained overall.
+
+The policy therefore prioritizes preservation of the tightest horizon, while biasing toward surplus capacity as its reset approaches.
 
 ## Decision
 
-Use **bottleneck-aware linear budget pacing**.
-
-For each eligible account and quota horizon `q`, define:
+For each quota horizon `q`:
 
 ```text
 pacing_ratio(q) =
@@ -30,31 +26,31 @@ pacing_ratio(q) =
     remaining_time_fraction(q)
 ```
 
-A ratio of `1` represents linear pacing. Higher values indicate capacity that can be consumed faster than the reference pace; lower values indicate a tighter budget.
+`1` represents linear pacing; higher values indicate capacity available faster than the reference pace.
 
-Rank each account by:
+Consider only accounts with valid authoritative quota state and sufficient quota on every constrained horizon.
+
+Rank each account lexicographically by:
 
 ```text
 (min(short_ratio, monthly_ratio),
  max(short_ratio, monthly_ratio))
 ```
 
-and prefer the lexicographically largest value.
+The first value maximizes bottleneck sustainability. The second prefers greater overall headroom when bottleneck sustainability is equal. Otherwise-equal accounts use an independent deterministic tie-breaker.
 
-Thus:
+A reset crossing requires reselection because the pacing ratios—and therefore the basis of the ranking—belong to the quota intervals in which they were calculated.
 
-1. the tighter quota horizon determines the primary ranking;
-2. the looser horizon breaks equal primary rankings;
-3. an independent deterministic tie-breaker resolves otherwise equal accounts.
+## Alternatives Considered
 
-Selection uses the current quota interval. A reset crossing invalidates a decision based on the previous interval and requires selection against the new state.
-
-An account is eligible only when both quota horizons can cover the session cost and their state satisfies the quota model invariants: positive capacity and interval duration, valid reset boundary, and remaining quota within capacity.
+- **Round-robin/random:** ignores quota pressure and reset timing.
+- **Most quota remaining:** ignores how soon capacity resets.
+- **Expiry-first:** can spend an account whose other horizon is critically constrained.
+- **Bottleneck only:** leaves materially different secondary headroom indistinguishable.
+- **Weighted combined score:** allows surplus in one horizon to compensate for scarcity in the other, contrary to bottleneck priority.
 
 ## Consequences
 
-This policy explicitly favors sustainable pacing of the bottleneck over maximizing immediate quota utilization. It accounts for staggered resets and can consume capacity approaching expiry without sacrificing the tighter horizon's priority.
+The policy favors sustainable bottleneck pacing over immediate utilization. It is a scheduling heuristic and makes no claim of globally optimal throughput.
 
-It is a scheduling heuristic; it does not claim globally optimal throughput.
-
-Concurrency control, state storage, arithmetic representation, reset advancement, retry policy, tie-break implementation, and operational failure handling are implementation concerns governed separately.
+Concurrency, persistence, arithmetic, retry behavior, and tie-break mechanics are implementation concerns governed separately.
