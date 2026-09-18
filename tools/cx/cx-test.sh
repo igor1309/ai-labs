@@ -34,7 +34,9 @@ assert_equal() {
 
 # run_cx <selected profile or "none"> <load result: ok|fail> [cx args...]
 # Prints the exit code, stderr, and the log of select/codex-mgr load/codex calls.
-# The active profile is active@example.com.
+# The active profile is active@example.com. stdin is not a terminal, so cx does
+# not ask for confirmation unless $confirm_keys is set: then confirmation is
+# forced and $confirm_keys is the typed input.
 run_cx() {
     selected_profile=$1
     load_result=$2
@@ -42,6 +44,9 @@ run_cx() {
 
     scenario_dir=$(mktemp -d)
     : >"$scenario_dir/log"
+    force_confirm=""
+    printf '%s' "${confirm_keys-}" >"$scenario_dir/stdin"
+    [ -z "${confirm_keys+set}" ] || force_confirm=1
 
     if [ "$selected_profile" = "none" ]; then
         printf '#!/bin/sh\nprintf "select %%s\\n" "$*" >>"%s/log"\nexit 1\n' "$scenario_dir" >"$scenario_dir/select"
@@ -68,7 +73,8 @@ __CODEX_MGR__
         CX_CODEX_MGR_COMMAND="$scenario_dir/codex-mgr" \
         CX_CODEX_COMMAND="$scenario_dir/codex" \
         CX_FAILURE_PAUSE_SECONDS=0 \
-        sh "$script_path" "$@" >/dev/null 2>"$scenario_dir/stderr"
+        CX_FORCE_CONFIRM="$force_confirm" \
+        sh "$script_path" "$@" <"$scenario_dir/stdin" >/dev/null 2>"$scenario_dir/stderr"
     exit_code=$?
     set -e
 
@@ -152,10 +158,86 @@ cx: invalid profile $bad_profile
 log:" "$bad_output"
 done
 
+# Confirmation, for a profile picked by quota.
+enter='
+'
+prompt_suffix="Enter to continue, any other key to cancel "
+
+# Enter: the selected profile is loaded.
+assert_equal "exit=0
+stderr:
+cx: Switch to other@example.com and start codex? $prompt_suffix
+log:
+select --codex
+codex-mgr load other@example.com
+codex resume $session_id" "$(confirm_keys=$enter run_cx other@example.com ok "$session_id")"
+
+# Any other key: nothing is switched or started.
+assert_equal "exit=1
+stderr:
+cx: Switch to other@example.com and start codex? $prompt_suffix
+cx: cancelled
+log:
+select --codex" "$(confirm_keys=n run_cx other@example.com ok)"
+
+# End of input cancels too.
+assert_equal "exit=1
+stderr:
+cx: Switch to other@example.com and start codex? $prompt_suffix
+cx: cancelled
+log:
+select --codex" "$(confirm_keys= run_cx other@example.com ok)"
+
+# Already active: asks before starting.
+assert_equal "exit=0
+stderr:
+cx: already on profile active@example.com
+cx: Start codex? $prompt_suffix
+log:
+select --codex
+codex " "$(confirm_keys=$enter run_cx active@example.com ok)"
+
+# No eligible profile: asks before starting on the current profile.
+assert_equal "exit=1
+stderr:
+cx: no profile selected; staying on the current profile (active@example.com)
+cx: Start codex? $prompt_suffix
+cx: cancelled
+log:
+select --codex" "$(confirm_keys=q run_cx none ok)"
+
+# A given email is not confirmed.
+assert_equal "exit=0
+stderr:
+
+log:
+codex-mgr load other@example.com
+codex " "$(confirm_keys= run_cx none ok other@example.com)"
+
+# ...unless its switch fails.
+assert_equal "exit=0
+stderr:
+cx: switch to other@example.com failed; staying on the current profile (active@example.com)
+cx: Start codex? $prompt_suffix
+log:
+codex-mgr load other@example.com
+codex " "$(confirm_keys=$enter run_cx none fail other@example.com)"
+
+# -y / --yes: no confirmation; the rest is parsed as usual.
+for yes_flag in -y --yes; do
+    assert_equal "exit=0
+stderr:
+
+log:
+select --codex
+codex-mgr load other@example.com
+codex resume $session_id --model gpt-5" "$(confirm_keys= run_cx other@example.com ok "$yes_flag" "$session_id" --model gpt-5)"
+done
+
 # Help: printed without selecting, switching, or starting codex.
 for help_flag in -h --help; do
     help_output=$(CX_SELECT_ACCOUNT_SCRIPT=false CX_CODEX_MGR_COMMAND=false CX_CODEX_COMMAND=false sh "$script_path" "$help_flag")
-    assert_equal "Usage: cx [email] [session-id] [codex args...]" "$(printf '%s\n' "$help_output" | head -n 1)"
+    assert_equal "Usage: cx [-y] [email] [session-id] [codex args...]" "$(printf '%s\n' "$help_output" | head -n 1)"
 done
 
 printf 'ok\n'

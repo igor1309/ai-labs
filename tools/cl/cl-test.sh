@@ -34,12 +34,19 @@ assert_equal() {
 
 # run_cl <selected account or "none"> <switch result: ok|fail> [cl args...]
 # Prints the exit code, stderr, and the log of select/ccswitch/claude calls.
+# stdin is not a terminal, so cl does not ask for confirmation unless
+# $confirm_keys is set: then confirmation is forced and $confirm_keys is the
+# typed input.
 run_cl() {
     selected_account=$1
     switch_result=$2
     shift 2
 
     scenario_dir=$(mktemp -d)
+    : >"$scenario_dir/log"
+    force_confirm=""
+    printf '%s' "${confirm_keys-}" >"$scenario_dir/stdin"
+    [ -z "${confirm_keys+set}" ] || force_confirm=1
     mkdir -p "$scenario_dir/home/.claude-switch-backup"
     cat <<'__SEQUENCE__' >"$scenario_dir/home/.claude-switch-backup/sequence.json"
 {
@@ -71,7 +78,8 @@ __SEQUENCE__
         CL_CCSWITCH_COMMAND="$scenario_dir/ccswitch" \
         CL_CLAUDE_COMMAND="$scenario_dir/claude" \
         CL_FAILURE_PAUSE_SECONDS=0 \
-        sh "$script_path" "$@" >/dev/null 2>"$scenario_dir/stderr"
+        CL_FORCE_CONFIRM="$force_confirm" \
+        sh "$script_path" "$@" <"$scenario_dir/stdin" >/dev/null 2>"$scenario_dir/stderr"
     exit_code=$?
     set -e
 
@@ -145,10 +153,86 @@ log:
 ccswitch --switch-to other@example.com
 claude " "$(run_cl none fail other@example.com)"
 
+# Confirmation, for an account picked by quota.
+enter='
+'
+prompt_suffix="Enter to continue, any other key to cancel "
+
+# Enter: the selected account is switched to.
+assert_equal "exit=0
+stderr:
+cl: Switch to account 19 (other@example.com) and start claude? $prompt_suffix
+log:
+select
+ccswitch --switch-to 19
+claude --resume $session_id" "$(confirm_keys=$enter run_cl 19 ok "$session_id")"
+
+# Any other key: nothing is switched or started.
+assert_equal "exit=1
+stderr:
+cl: Switch to account 19 (other@example.com) and start claude? $prompt_suffix
+cl: cancelled
+log:
+select" "$(confirm_keys=n run_cl 19 ok)"
+
+# End of input cancels too.
+assert_equal "exit=1
+stderr:
+cl: Switch to account 19 (other@example.com) and start claude? $prompt_suffix
+cl: cancelled
+log:
+select" "$(confirm_keys= run_cl 19 ok)"
+
+# Already active: asks before starting.
+assert_equal "exit=0
+stderr:
+cl: already on account 22 (active@example.com)
+cl: Start claude? $prompt_suffix
+log:
+select
+claude " "$(confirm_keys=$enter run_cl 22 ok)"
+
+# No eligible account: asks before starting on the current account.
+assert_equal "exit=1
+stderr:
+cl: no account selected; staying on the current account (active@example.com)
+cl: Start claude? $prompt_suffix
+cl: cancelled
+log:
+select" "$(confirm_keys=q run_cl none ok)"
+
+# A given account is not confirmed.
+assert_equal "exit=0
+stderr:
+
+log:
+ccswitch --switch-to 19
+claude " "$(confirm_keys= run_cl none ok 19)"
+
+# ...unless its switch fails.
+assert_equal "exit=0
+stderr:
+cl: switch to other@example.com failed; staying on the current account (active@example.com)
+cl: Start claude? $prompt_suffix
+log:
+ccswitch --switch-to other@example.com
+claude " "$(confirm_keys=$enter run_cl none fail other@example.com)"
+
+# -y / --yes: no confirmation; the rest is parsed as usual.
+for yes_flag in -y --yes; do
+    assert_equal "exit=0
+stderr:
+
+log:
+select
+ccswitch --switch-to 19
+claude --resume $session_id --model opus" "$(confirm_keys= run_cl 19 ok "$yes_flag" "$session_id" --model opus)"
+done
+
 # Help: printed without selecting, switching, or starting claude.
 for help_flag in -h --help; do
     help_output=$(CL_SELECT_ACCOUNT_SCRIPT=false CL_CCSWITCH_COMMAND=false CL_CLAUDE_COMMAND=false sh "$script_path" "$help_flag")
-    assert_equal "Usage: cl [email|account-number] [session-id] [claude args...]" "$(printf '%s\n' "$help_output" | head -n 1)"
+    assert_equal "Usage: cl [-y] [email|account-number] [session-id] [claude args...]" "$(printf '%s\n' "$help_output" | head -n 1)"
 done
 
 printf 'ok\n'
