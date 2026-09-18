@@ -185,6 +185,7 @@ run_scenario() {
     scenario_name=$1
     readlink_mode=$2
     mock_variant=${3:-standard}
+    output_mode=${4:-formatted}
     temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/ccswitch-limits-test-${scenario_name}.XXXXXX")
     trap 'rm -rf "$temp_dir"' EXIT HUP INT TERM
 
@@ -224,7 +225,11 @@ run_scenario() {
     chmod +x "$mock_bin_dir/claude" "$mock_bin_dir/security" "$mock_bin_dir/curl" "$mock_bin_dir/readlink"
 
     status=0
-    HOME="$home_dir" PATH="$mock_bin_dir:$PATH" COMMAND_LOG_PATH="$command_log_path" TZ=UTC sh "$script_path" >"$output_path" 2>&1 || status=$?
+    if [ "$output_mode" = "json" ]; then
+        HOME="$home_dir" PATH="$mock_bin_dir:$PATH" COMMAND_LOG_PATH="$command_log_path" TZ=UTC sh "$script_path" --json >"$output_path" 2>&1 || status=$?
+    else
+        HOME="$home_dir" PATH="$mock_bin_dir:$PATH" COMMAND_LOG_PATH="$command_log_path" TZ=UTC sh "$script_path" >"$output_path" 2>&1 || status=$?
+    fi
 
     actual_output=$(read_optional_file "$output_path")
     actual_log=$(read_optional_file "$command_log_path")
@@ -391,3 +396,23 @@ __EXPECTED__
 assert_equal "$expected_result" "$(run_scenario local local standard)"
 assert_equal "$expected_result" "$(run_scenario fallback fallback standard)"
 assert_equal "$expected_stale_result" "$(run_scenario stale_active local stale)"
+
+expected_json_result=$(cat <<'__EXPECTED__'
+exit=0
+output<<EOF
+{"account_number":3,"email":"first@example.com","active":false,"status":"ok","usage":{"five_hour":{"utilization":6.0,"resets_at":"2026-03-24T19:59:59.943648+00:00"},"seven_day":{"utilization":35.0,"resets_at":"2026-03-27T03:59:59.943679+00:00"}}}
+{"account_number":4,"email":"active@example.com","active":true,"status":"ok","usage":{"five_hour":{"utilization":12.0,"resets_at":"2026-03-25T00:00:00.000000+00:00"},"seven_day":{"utilization":40.0,"resets_at":"2026-03-28T00:00:00.000000+00:00"}}}
+{"account_number":5,"email":"missing@example.com","active":false,"status":"oauth_token_not_found"}
+EOF
+log<<EOF
+security find-generic-password -s Claude Code-Account-3-first@example.com -w
+curl https://api.anthropic.com/api/oauth/usage | Authorization: Bearer token-3 | User-Agent: claude-code/2.1.81 | anthropic-beta: oauth-2025-04-20 | Accept: application/json
+security find-generic-password -s Claude Code-Account-4-active@example.com -w
+security find-generic-password -s Claude Code-credentials -w
+curl https://api.anthropic.com/api/oauth/usage | Authorization: Bearer token-active | User-Agent: claude-code/2.1.81 | anthropic-beta: oauth-2025-04-20 | Accept: application/json
+security find-generic-password -s Claude Code-Account-5-missing@example.com -w
+EOF
+__EXPECTED__
+)
+
+assert_equal "$expected_json_result" "$(run_scenario json local standard json)"

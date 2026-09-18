@@ -1,6 +1,21 @@
 #!/bin/sh
 set -eu
 
+output_mode=formatted
+case "${1:-}" in
+    '') ;;
+    --json) output_mode=json ;;
+    --help)
+        printf 'Usage: %s [--json]\n' "$0"
+        printf '  --json  emit one JSON object per account (JSON Lines)\n'
+        exit 0
+        ;;
+    *)
+        printf 'Usage: %s [--json]\n' "$0" >&2
+        exit 2
+        ;;
+esac
+
 sequence_file="${HOME}/.claude-switch-backup/sequence.json"
 usage_url="https://api.anthropic.com/api/oauth/usage"
 oauth_beta_header="oauth-2025-04-20"
@@ -119,6 +134,31 @@ format_usage_limits() {
     printf '  seven_day: %s%% used, resets %s\n' "$(format_usage_percentage "$seven_day_utilization")" "$(format_reset_timestamp "$seven_day_reset")"
 }
 
+emit_json_record() {
+    account_number=$1
+    account_email=$2
+    is_active_account=$3
+    status=$4
+    usage_payload=${5:-}
+
+    if [ "$status" = "ok" ]; then
+        jq -cn \
+            --arg account_number "$account_number" \
+            --arg email "$account_email" \
+            --argjson active "$([ "$is_active_account" = "yes" ] && printf true || printf false)" \
+            --arg status "$status" \
+            --argjson usage "$usage_payload" \
+            '{account_number: ($account_number | tonumber), email: $email, active: $active, status: $status, usage: $usage}'
+    else
+        jq -cn \
+            --arg account_number "$account_number" \
+            --arg email "$account_email" \
+            --argjson active "$([ "$is_active_account" = "yes" ] && printf true || printf false)" \
+            --arg status "$status" \
+            '{account_number: ($account_number | tonumber), email: $email, active: $active, status: $status}'
+    fi
+}
+
 if [ ! -f "$sequence_file" ]; then
     printf 'Error: ccswitch sequence file not found at %s\n' "$sequence_file" >&2
     exit 1
@@ -140,7 +180,7 @@ while IFS="$tab_character" read -r account_number active_account_number account_
         continue
     fi
 
-    if [ "$printed_account_block" = "yes" ]; then
+    if [ "$output_mode" = "formatted" ] && [ "$printed_account_block" = "yes" ]; then
         printf '\n'
     fi
     printed_account_block=yes
@@ -153,7 +193,9 @@ while IFS="$tab_character" read -r account_number active_account_number account_
         is_active_account=yes
     fi
 
-    printf '%s\n' "$account_header"
+    if [ "$output_mode" = "formatted" ]; then
+        printf '%s\n' "$account_header"
+    fi
 
     account_token=$(extract_access_token "$(read_keychain_service "Claude Code-Account-${account_number}-${account_email}")")
     active_token=""
@@ -162,7 +204,11 @@ while IFS="$tab_character" read -r account_number active_account_number account_
     fi
 
     if [ -z "$account_token" ] && [ -z "$active_token" ]; then
-        printf '  unavailable: OAuth token not found\n'
+        if [ "$output_mode" = "json" ]; then
+            emit_json_record "$account_number" "$account_email" "$is_active_account" oauth_token_not_found
+        else
+            printf '  unavailable: OAuth token not found\n'
+        fi
         continue
     fi
 
@@ -174,14 +220,26 @@ while IFS="$tab_character" read -r account_number active_account_number account_
         usage_payload=$(query_usage_limits "$active_token" "$user_agent") || true
     fi
     if [ -z "$usage_payload" ]; then
-        printf '  unavailable: usage request failed\n'
+        if [ "$output_mode" = "json" ]; then
+            emit_json_record "$account_number" "$account_email" "$is_active_account" usage_request_failed
+        else
+            printf '  unavailable: usage request failed\n'
+        fi
         continue
     fi
 
     formatted_usage=$(format_usage_limits "$usage_payload") || {
-        printf '  unavailable: usage response was invalid\n'
+        if [ "$output_mode" = "json" ]; then
+            emit_json_record "$account_number" "$account_email" "$is_active_account" invalid_usage_response
+        else
+            printf '  unavailable: usage response was invalid\n'
+        fi
         continue
     }
 
-    printf '%s\n' "$formatted_usage"
+    if [ "$output_mode" = "json" ]; then
+        emit_json_record "$account_number" "$account_email" "$is_active_account" ok "$usage_payload"
+    else
+        printf '%s\n' "$formatted_usage"
+    fi
 done

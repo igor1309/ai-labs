@@ -12,6 +12,8 @@ Prints Anthropic usage limits for every account managed by `ccswitch`.
 
 ```sh
 ./ccswitch-limits.sh
+# Machine-readable JSON Lines, one object per account:
+./ccswitch-limits.sh --json
 ```
 
 ## Test
@@ -28,6 +30,8 @@ Prints Anthropic usage limits for every account managed by `ccswitch`.
 - tries the per-account token first; if the API call fails (e.g. stale/expired token), retries with the active credentials token
 - formats reset times as `HH:mm DD.MM`
 - uses the Mac local timezone when available, otherwise `Europe/Moscow`
+- `--json` emits one JSON object per account, preserving the parsed API response in `usage`
+- JSON mode emits structured statuses (`oauth_token_not_found`, `usage_request_failed`, or `invalid_usage_response`) for unavailable accounts
 
 ## Notes
 
