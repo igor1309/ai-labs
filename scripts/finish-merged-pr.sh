@@ -7,9 +7,20 @@ trunk=trunk
 repo_root=$(git rev-parse --show-toplevel)
 git_dir=$(git rev-parse --git-dir)
 common_dir=$(git rev-parse --git-common-dir)
+current_branch=$(git symbolic-ref --short -q HEAD || true)
+
+[[ -n "$current_branch" ]] || { echo "refusing cleanup: detached HEAD" >&2; exit 1; }
+[[ "$current_branch" == "$branch" ]] || { echo "refusing cleanup: current branch is $current_branch, expected $branch" >&2; exit 1; }
+[[ "$branch" != "$trunk" ]] || { echo "refusing cleanup: feature branch cannot be $trunk" >&2; exit 1; }
 
 [[ -z "$(git status --porcelain)" ]] || { echo "refusing cleanup: current worktree is dirty" >&2; exit 1; }
 git fetch --prune origin
+if ! git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+    : # The remote branch was deleted, as expected.
+else
+    echo "refusing cleanup: remote branch origin/$branch still exists" >&2
+    exit 1
+fi
 
 if [[ "$git_dir" == "$common_dir" ]]; then
     git switch "$trunk"
