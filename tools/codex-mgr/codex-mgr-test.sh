@@ -1,5 +1,5 @@
 #!/bin/bash
-# Tests for codex-mgr. Currently covers the `limits` command.
+# Tests for codex-mgr: limits, install/uninstall, and load of a missing profile.
 set -euo pipefail
 
 test_dir=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
@@ -236,3 +236,25 @@ run_install_uninstall_scenario() {
 
 assert_equal "linked=yes points_at_script=yes warned=yes removed=yes" "$(run_install_uninstall_scenario)"
 printf 'ok: install/uninstall\n'
+
+run_load_missing_scenario() {
+    local profiles_dir="$1"
+    local temp_dir
+    temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/codex-mgr-load-test.XXXXXX")
+    trap '[[ -n "${temp_dir:-}" ]] && rm -rf "$temp_dir"' EXIT HUP INT TERM
+
+    mkdir -p "$temp_dir/home" "$temp_dir/profiles/first@example.com" "$temp_dir/profiles/second@example.com"
+
+    local status=0 output
+    output=$(HOME="$temp_dir/home" CODEX_PROFILES_DIR="$temp_dir/$profiles_dir" \
+        bash "$script_path" load nope@example.com 2>&1) || status=$?
+    printf 'exit=%s\n%s\n' "$status" "$output"
+}
+
+assert_equal "exit=1
+Error: Profile 'nope@example.com' not found.
+Available: first@example.com second@example.com" "$(run_load_missing_scenario profiles)"
+assert_equal "exit=1
+Error: Profile 'nope@example.com' not found.
+Available: none" "$(run_load_missing_scenario no-profiles)"
+printf 'ok: load missing profile\n'

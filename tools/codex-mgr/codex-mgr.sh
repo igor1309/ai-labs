@@ -283,7 +283,8 @@ case "${1:-}" in
         
         if [[ ! -f "$PROFILE_PATH" ]]; then
             echo "Error: Profile '$PROFILE_NAME' not found." >&2
-            echo "Available: $(find "$PROFILES_DIR" -maxdepth 1 -type d -not -path "$PROFILES_DIR" -printf '%f\n' 2>/dev/null | sort || echo 'none')" >&2
+            available="$(get_profile_dirs 2>/dev/null | while IFS= read -r dir; do basename "$dir"; done | paste -sd ' ' - || true)"
+            echo "Available: ${available:-none}" >&2
             exit 1
         fi
         if [[ ! -s "$PROFILE_PATH" ]]; then
