@@ -1,12 +1,14 @@
 #!/bin/sh
 set -eu
 
-# cx [-y] [email] [session-id] [codex args...]
+# cx [-y] [-f] [email] [session-id] [codex args...]
 #
 # Launches Codex on a codex-mgr profile:
 # - an email switches to that profile;
 # - otherwise the profile is picked by account-rotation/select-account.sh --codex,
 #   and cx waits for Enter before switching (any other key cancels; -y skips);
+# - -f skips the quota query and the switch, starting codex on the current
+#   profile; with an email it only implies -y;
 # - a session ID resumes that session.
 # A failed selection or switch is reported and codex still starts on the
 # current profile, after the same confirmation.
@@ -80,8 +82,10 @@ stay_on_current_profile() {
 }
 
 usage() {
-    printf 'Usage: cx [-y] [email] [session-id] [codex args...]\n'
+    printf 'Usage: cx [-y] [-f] [email] [session-id] [codex args...]\n'
     printf '  -y, --yes   start without asking for confirmation\n'
+    printf '  -f, --fast  start on the current profile at once: no quota query, no\n'
+    printf '              switch, no confirmation\n'
     printf '  email       switch to that codex-mgr profile\n'
     printf '              (default: pick the profile by remaining quota, then ask to\n'
     printf '              confirm: Enter continues, any other key cancels)\n'
@@ -94,12 +98,21 @@ confirm=yes
 if [ ! -t 0 ] && [ "${CX_FORCE_CONFIRM:-}" != "1" ]; then
     confirm=no
 fi
-case "${1:-}" in
-    -y | --yes)
-        confirm=no
-        shift
-        ;;
-esac
+fast=no
+while :; do
+    case "${1:-}" in
+        -y | --yes)
+            confirm=no
+            shift
+            ;;
+        -f | --fast)
+            fast=yes
+            confirm=no
+            shift
+            ;;
+        *) break ;;
+    esac
+done
 
 profile=""
 case "${1:-}" in
@@ -125,8 +138,9 @@ if [ -n "${1:-}" ] && printf '%s' "$1" | grep -Eq "$session_pattern"; then
 fi
 
 # Only a profile picked by quota is confirmed; a given email already is.
+# -f leaves the profile empty, so the switch below is skipped too.
 selected=no
-if [ -z "$profile" ]; then
+if [ -z "$profile" ] && [ "$fast" = "no" ]; then
     selected=yes
     profile=$("$select_account_script" --codex) || profile=""
     if [ -z "$profile" ]; then

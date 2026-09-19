@@ -234,10 +234,43 @@ codex-mgr load other@example.com
 codex resume $session_id --model gpt-5" "$(confirm_keys= run_cx other@example.com ok "$yes_flag" "$session_id" --model gpt-5)"
 done
 
+# -f / --fast: no quota query and no switch; the rest is parsed as usual.
+for fast_flag in -f --fast; do
+    assert_equal "exit=0
+stderr:
+
+log:
+codex resume $session_id --model gpt-5" "$(confirm_keys= run_cx other@example.com ok "$fast_flag" "$session_id" --model gpt-5)"
+done
+
+# -f does not confirm, even on a terminal.
+assert_equal "exit=0
+stderr:
+
+log:
+codex " "$(confirm_keys=q run_cx other@example.com ok -f)"
+
+# -f still switches to a given profile: it only skips the quota query.
+assert_equal "exit=0
+stderr:
+
+log:
+codex-mgr load other@example.com
+codex " "$(confirm_keys= run_cx none ok -f other@example.com)"
+
+# -y and -f combine, in either order.
+for flag_order in "-y -f" "-f -y"; do
+    assert_equal "exit=0
+stderr:
+
+log:
+codex " "$(confirm_keys= run_cx other@example.com ok $flag_order)"
+done
+
 # Help: printed without selecting, switching, or starting codex.
 for help_flag in -h --help; do
     help_output=$(CX_SELECT_ACCOUNT_SCRIPT=false CX_CODEX_MGR_COMMAND=false CX_CODEX_COMMAND=false sh "$script_path" "$help_flag")
-    assert_equal "Usage: cx [-y] [email] [session-id] [codex args...]" "$(printf '%s\n' "$help_output" | head -n 1)"
+    assert_equal "Usage: cx [-y] [-f] [email] [session-id] [codex args...]" "$(printf '%s\n' "$help_output" | head -n 1)"
 done
 
 printf 'ok\n'

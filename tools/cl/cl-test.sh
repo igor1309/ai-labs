@@ -229,10 +229,43 @@ ccswitch --switch-to 19
 claude --resume $session_id --model opus" "$(confirm_keys= run_cl 19 ok "$yes_flag" "$session_id" --model opus)"
 done
 
+# -f / --fast: no quota query and no switch; the rest is parsed as usual.
+for fast_flag in -f --fast; do
+    assert_equal "exit=0
+stderr:
+
+log:
+claude --resume $session_id --model opus" "$(confirm_keys= run_cl 19 ok "$fast_flag" "$session_id" --model opus)"
+done
+
+# -f does not confirm, even on a terminal.
+assert_equal "exit=0
+stderr:
+
+log:
+claude " "$(confirm_keys=q run_cl 19 ok -f)"
+
+# -f still switches to a given account: it only skips the quota query.
+assert_equal "exit=0
+stderr:
+
+log:
+ccswitch --switch-to other@example.com
+claude " "$(confirm_keys= run_cl none ok -f other@example.com)"
+
+# -y and -f combine, in either order.
+for flag_order in "-y -f" "-f -y"; do
+    assert_equal "exit=0
+stderr:
+
+log:
+claude " "$(confirm_keys= run_cl 19 ok $flag_order)"
+done
+
 # Help: printed without selecting, switching, or starting claude.
 for help_flag in -h --help; do
     help_output=$(CL_SELECT_ACCOUNT_SCRIPT=false CL_CCSWITCH_COMMAND=false CL_CLAUDE_COMMAND=false sh "$script_path" "$help_flag")
-    assert_equal "Usage: cl [-y] [email|account-number] [session-id] [claude args...]" "$(printf '%s\n' "$help_output" | head -n 1)"
+    assert_equal "Usage: cl [-y] [-f] [email|account-number] [session-id] [claude args...]" "$(printf '%s\n' "$help_output" | head -n 1)"
 done
 
 printf 'ok\n'
