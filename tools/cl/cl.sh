@@ -1,12 +1,14 @@
 #!/bin/sh
 set -eu
 
-# cl [-y] [email|account-number] [session-id] [claude args...]
+# cl [-y] [-f] [email|account-number] [session-id] [claude args...]
 #
 # Launches Claude Code on a ccswitch-managed account:
 # - an email or account number switches to that account;
 # - otherwise the account is picked by account-rotation/select-account.sh,
 #   and cl waits for Enter before switching (any other key cancels; -y skips);
+# - -f skips the quota query and the switch, starting claude on the current
+#   account; with an email or account number it only implies -y;
 # - a session ID resumes that session.
 # A failed selection or switch is reported and claude still starts on the
 # current account, after the same confirmation.
@@ -86,8 +88,10 @@ stay_on_current_account() {
 }
 
 usage() {
-    printf 'Usage: cl [-y] [email|account-number] [session-id] [claude args...]\n'
+    printf 'Usage: cl [-y] [-f] [email|account-number] [session-id] [claude args...]\n'
     printf '  -y, --yes                start without asking for confirmation\n'
+    printf '  -f, --fast               start on the current account at once: no quota\n'
+    printf '                           query, no switch, no confirmation\n'
     printf '  email or account number  switch to that account\n'
     printf '                           (default: pick the account by remaining quota,\n'
     printf '                           then ask to confirm: Enter continues, any other\n'
@@ -101,12 +105,21 @@ confirm=yes
 if [ ! -t 0 ] && [ "${CL_FORCE_CONFIRM:-}" != "1" ]; then
     confirm=no
 fi
-case "${1:-}" in
-    -y | --yes)
-        confirm=no
-        shift
-        ;;
-esac
+fast=no
+while :; do
+    case "${1:-}" in
+        -y | --yes)
+            confirm=no
+            shift
+            ;;
+        -f | --fast)
+            fast=yes
+            confirm=no
+            shift
+            ;;
+        *) break ;;
+    esac
+done
 
 account=""
 case "${1:-}" in
@@ -132,8 +145,9 @@ if [ -n "${1:-}" ] && printf '%s' "$1" | grep -Eq "$session_pattern"; then
 fi
 
 # Only an account picked by quota is confirmed; a given one already is.
+# -f leaves the account empty, so the switch below is skipped too.
 selected=no
-if [ -z "$account" ]; then
+if [ -z "$account" ] && [ "$fast" = "no" ]; then
     selected=yes
     account=$("$select_account_script") || account=""
     if [ -z "$account" ]; then
