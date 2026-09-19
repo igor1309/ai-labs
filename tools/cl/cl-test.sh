@@ -70,13 +70,23 @@ __SEQUENCE__
         printf '#!/bin/sh\nprintf "ccswitch %%s\\n" "$*" >>"%s/log"\nexit 1\n' "$scenario_dir" >"$scenario_dir/ccswitch"
     fi
     printf '#!/bin/sh\nprintf "claude %%s\\n" "$*" >>"%s/log"\n' "$scenario_dir" >"$scenario_dir/claude"
+    printf '#!/bin/sh\nprintf "claude-cwd %%s\\n" "$PWD" >>"%s/log"\nprintf "claude %%s\\n" "$*" >>"%s/log"\n' "$scenario_dir" "$scenario_dir" >"$scenario_dir/claude-pwd"
     chmod +x "$scenario_dir/select" "$scenario_dir/ccswitch" "$scenario_dir/claude"
+
+    claude_command="$scenario_dir/claude"
+    if [ -n "${session_cwd-}" ]; then
+        transcript_dir="$scenario_dir/home/.claude/projects/test-project"
+        mkdir -p "$transcript_dir" "$session_cwd"
+        printf '{"cwd":"%s"}\n' "$session_cwd" >"$transcript_dir/$session_id.jsonl"
+        claude_command="$scenario_dir/claude-pwd"
+    fi
+    chmod +x "$scenario_dir/claude-pwd"
 
     set +e
     HOME="$scenario_dir/home" \
         CL_SELECT_ACCOUNT_SCRIPT="$scenario_dir/select" \
         CL_CCSWITCH_COMMAND="$scenario_dir/ccswitch" \
-        CL_CLAUDE_COMMAND="$scenario_dir/claude" \
+        CL_CLAUDE_COMMAND="$claude_command" \
         CL_FAILURE_PAUSE_SECONDS=0 \
         CL_FORCE_CONFIRM="$force_confirm" \
         sh "$script_path" "$@" <"$scenario_dir/stdin" >/dev/null 2>"$scenario_dir/stderr"
@@ -136,6 +146,17 @@ stderr:
 log:
 ccswitch --switch-to other@example.com
 claude --resume $session_id" "$(run_cl none ok other@example.com "$session_id")"
+
+# A session is resumed from its recorded project, even when cl is run elsewhere.
+resume_dir=$(mktemp -d)
+assert_equal "exit=0
+stderr:
+
+log:
+ccswitch --switch-to other@example.com
+claude-cwd $resume_dir
+claude --resume $session_id" "$(session_cwd=$resume_dir run_cl none ok other@example.com "$session_id")"
+rmdir "$resume_dir"
 
 # No eligible account: claude still starts on the current account.
 assert_equal "exit=0
