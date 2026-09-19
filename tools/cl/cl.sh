@@ -76,6 +76,19 @@ account_label() {
     printf '%s%s' "$1" "${label_email:+ ($label_email)}"
 }
 
+# Claude resolves --resume within the current project. Find the transcript and
+# return its recorded working directory so a session can be resumed from any
+# directory where cl is invoked.
+session_working_directory() {
+    projects_dir="$HOME/.claude/projects"
+    [ -d "$projects_dir" ] || return 0
+
+    transcript=$(find "$projects_dir" -mindepth 2 -maxdepth 2 -type f -name "$1.jsonl" -print -quit 2>/dev/null || true)
+    [ -n "$transcript" ] || return 0
+
+    head -n 1 "$transcript" | jq -r '.cwd // empty' 2>/dev/null || true
+}
+
 stay_on_current_account() {
     reason=$1
     active_email=$(active_account | cut -f 2)
@@ -172,6 +185,10 @@ if [ -n "$account" ]; then
 fi
 
 if [ -n "$session" ]; then
+    session_cwd=$(session_working_directory "$session")
+    if [ -n "$session_cwd" ] && [ -d "$session_cwd" ]; then
+        cd "$session_cwd"
+    fi
     exec "$claude_command" --resume "$session" "$@"
 fi
 

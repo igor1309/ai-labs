@@ -29,7 +29,9 @@ cl me@example.com <session> --model opus
 - `-y` / `--yes` skips the confirmation; so does a non-terminal stdin. A given email or account number is switched to without asking, unless the switch fails. Note that `-y` still runs the quota query and still switches accounts — it only skips the keypress
 - `-f` / `--fast` is the fast path: no quota query, no switch, no confirmation, so `claude` starts on the currently active account right away. Use it when you already know the account is fine and want to skip the ~2s selection. With an email or account number it only implies `-y`: that account is still switched to
 - flags come before the other arguments and may be combined in either order (`cl -y -f`)
-- a session ID (UUID) resumes that session with `claude --resume`
+- a session ID (UUID) resumes that session with `claude --resume`; `cl` finds
+  the local transcript and changes to its recorded project first, so this works
+  even when `cl` is invoked from another directory
 - remaining arguments are passed to `claude`
 - if no account is eligible or the switch fails, `cl` says so and starts `claude` on the current account, after the same confirmation (without confirmation: after a 2-second pause)
 - `cl` is for starting sessions; run other `claude` commands directly. In particular, `cl auth …` switches accounts first, so `cl auth logout` logs out the account that was just picked — use `claude auth …`
