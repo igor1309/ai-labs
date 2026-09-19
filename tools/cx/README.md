@@ -11,10 +11,11 @@ Launches Codex on a [`codex-mgr`](../codex-mgr/README.md) profile — the Codex 
 ## Usage
 
 ```sh
-cx [-y] [email] [session-id] [codex args...]
+cx [-y] [-f] [email] [session-id] [codex args...]
 
 cx                          # pick the profile by quota, confirm, then start codex
 cx -y                       # same, without confirmation
+cx -f                       # start at once on the current profile, no quota query
 cx me@example.com           # switch to that profile, then start codex
 cx 019a2b3c-4d5e-...        # pick the profile by quota, confirm, then resume that session
 cx me@example.com <session> --model gpt-5
@@ -25,7 +26,9 @@ cx me@example.com <session> --model gpt-5
 - an email as the first argument switches to that profile with `codex-mgr load`
 - without one, the profile is picked by [`select-account.sh --codex`](../account-rotation/select-account.sh) per [account-selection-adr.md](../account-rotation/account-selection-adr.md), from `codex-mgr limits --json`; it prints every profile's 5h and 7d usage and reset time, the ratios, and the selected profile
 - after quota selection, `cx` asks before switching and starting `codex`: `Switch to … and start codex? Enter to continue, any other key to cancel`. Enter continues; any other key (or Ctrl-C) exits without switching or starting `codex`. This leaves the usage list readable before `codex` takes over the terminal
-- `-y` / `--yes` (first argument only) skips the confirmation; so does a non-terminal stdin. A given email is switched to without asking, unless the switch fails
+- `-y` / `--yes` skips the confirmation; so does a non-terminal stdin. A given email is switched to without asking, unless the switch fails. Note that `-y` still runs the quota query and still switches profiles — it only skips the keypress
+- `-f` / `--fast` is the fast path: no quota query, no switch, no confirmation, so `codex` starts on the currently active profile right away. Use it when you already know the profile is fine and want to skip the ~2s selection. With an email it only implies `-y`: that profile is still switched to
+- flags come before the other arguments and may be combined in either order (`cx -y -f`)
 - a session ID (UUID) resumes that session with `codex resume`
 - remaining arguments are passed to `codex`
 - if no profile is eligible or the switch fails, `cx` says so and starts `codex` on the current profile, after the same confirmation (without confirmation: after a 2-second pause)
