@@ -33,7 +33,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | `insights/` | Notes on AI tooling and usage patterns |
 | `reading/` | Reading notes and curated references |
 | `debates/` | Long-form debates and synthesis docs |
-| `gemini/` | Gemini-specific prompt and workflow notes |
+| `research/gemini/` | Gemini-specific prompt and workflow notes |
 
 ## AI Tooling
 
