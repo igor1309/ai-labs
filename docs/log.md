@@ -1,5 +1,17 @@
 # Log
 
+## 2026-09-20
+
+- Moved the AI-account tooling out of this repo into `inventory/tools/`: `cl`,
+  `cx`, `codex-mgr`, `ccswitch-limits` and the shared `account-rotation`
+  library, which form one dependency cluster and now sit next to the accounts
+  they operate on. All five moved together as flat siblings, so their
+  `$tool_dir/../<sibling>/` lookups still resolve; the `~/.local/bin` symlinks
+  were repointed by re-running each `install.sh` (`ccswitch-limits` has none and
+  was re-linked by hand). All five test suites pass from the new location.
+  `tools/` keeps `mac-health` and `wt`; its README lost the moved rows plus a
+  stale `claude-account-switch` row for a directory that no longer exists.
+
 ## 2026-09-15
 
 - Noreta reads real Claude Code data: sessions, their runtime state and their
