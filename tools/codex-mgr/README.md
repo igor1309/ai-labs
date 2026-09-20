@@ -53,7 +53,7 @@ ln -s "$PWD/codex-mgr.sh" ~/.local/bin/codex-mgr
 
 - Format: `* <profile>` for the active profile
 - Non-active profiles are shown without the `*` marker
-- Active profile is inferred from the current Codex auth: a profile whose `auth.json` matches it exactly, else the `.active` marker, else a profile with the same account ID
+- Active profile is inferred from current Codex auth: exact `auth.json` match first, then a unique account-ID match; the `.active` marker is used only when live identity is unavailable or agrees with it
 
 ## Switch
 
@@ -74,6 +74,7 @@ ln -s "$PWD/codex-mgr.sh" ~/.local/bin/codex-mgr
 - Reset times use the local timezone (resolved from `/etc/localtime`, falling back to UTC)
 - Degrades gracefully per profile: `unavailable: OAuth token not found`,
   `unavailable: usage request failed`, or `unavailable: usage response was invalid`
+- Rejects HTTP-success responses that lack a structurally valid rate-limit bucket; malformed app-server data falls back to WHAM, while malformed WHAM data reports `invalid_usage_response`
 - `--json` prints one JSON line per profile in the `ccswitch-limits --json` record shape,
   which [`select-account.sh --codex`](../account-rotation/README.md) ranks profiles from:
   - `account_number` is the profile's 1-based position in list order; `email` is the profile name

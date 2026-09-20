@@ -92,7 +92,7 @@ get_profile_dirs() {
 }
 
 get_active_profile_dir() {
-    local current_account_id
+    local current_account_id marker marker_dir marker_account_id
     current_account_id="$(get_current_account_id)"
     local dirs=()
     while IFS= read -r line; do dirs+=("$line"); done < <(get_profile_dirs)
@@ -104,23 +104,71 @@ get_active_profile_dir() {
         fi
     done
 
-    if [[ -f "$ACTIVE_FILE" ]]; then
-        local marker
-        marker="$(cat "$ACTIVE_FILE")"
-        if [[ -n "$marker" && -d "$PROFILES_DIR/$marker" ]]; then
-            echo "$PROFILES_DIR/$marker"
-            return
-        fi
-    fi
-
+    local account_matches=()
     for dir in "${dirs[@]}"; do
         local profile_account_id
         profile_account_id="$(get_profile_account_id "$dir")"
         if [[ -n "$current_account_id" && -n "$profile_account_id" && "$profile_account_id" == "$current_account_id" ]]; then
-            echo "$dir"
-            return
+            account_matches+=("$dir")
         fi
     done
+    if [[ ${#account_matches[@]} -eq 1 ]]; then
+        echo "${account_matches[0]}"
+        return
+    fi
+
+    if [[ -f "$ACTIVE_FILE" ]]; then
+        marker="$(cat "$ACTIVE_FILE")"
+        marker_dir="$PROFILES_DIR/$marker"
+        if [[ -n "$marker" && -d "$marker_dir" ]]; then
+            marker_account_id="$(get_profile_account_id "$marker_dir")"
+            # A marker is only authoritative when the live identity is absent
+            # or agrees with it. Never attach live app-server data to a stale,
+            # contradictory marker.
+            if [[ -z "$current_account_id" || "$marker_account_id" == "$current_account_id" ]]; then
+                echo "$marker_dir"
+                return
+            fi
+        fi
+    fi
+
+    if [[ ${#account_matches[@]} -gt 0 ]]; then
+        for dir in "${account_matches[@]}"; do
+            if [[ "$dir" == "${marker_dir:-}" ]]; then
+                echo "$dir"
+                return
+            fi
+        done
+    fi
+}
+
+validate_app_server_buckets() {
+    jq -e '
+        def valid_window:
+            type == "object"
+            and (.usedPercent | type) == "number"
+            and (.windowDurationMins | type) == "number"
+            and (.resetsAt | type) == "number";
+        (if ((.rateLimitsByLimitId | type) == "object" and (.rateLimitsByLimitId | length) > 0)
+         then [.rateLimitsByLimitId[]]
+         elif (.rateLimits | type) == "object"
+         then [.rateLimits]
+         else [] end) as $buckets
+        | ($buckets | length) > 0
+          and any($buckets[]; ((.primary | valid_window) or (.secondary | valid_window)))
+    ' >/dev/null 2>&1
+}
+
+validate_wham_payload() {
+    jq -e '
+        def valid_window:
+            type == "object"
+            and (.used_percent | type) == "number"
+            and (.limit_window_seconds | type) == "number"
+            and (.reset_at | type) == "number";
+        (.rate_limit | type) == "object"
+        and ((.rate_limit.primary_window | valid_window) or (.rate_limit.secondary_window | valid_window))
+    ' >/dev/null 2>&1
 }
 
 # Codex CLI rotates refresh tokens in-place: each refresh invalidates the
@@ -423,7 +471,7 @@ query_profile_limits() {
 
     if [[ "$is_active" == "true" ]]; then
         raw_payload="$(query_app_server_rate_limits)" || raw_payload=""
-        if [[ -n "$raw_payload" ]]; then
+        if [[ -n "$raw_payload" ]] && validate_app_server_buckets <<<"$raw_payload"; then
             normalized="$(normalize_app_server_usage "$raw_payload" 2>/dev/null)" || normalized=""
             if [[ -n "$normalized" ]]; then
                 jq -cn --arg source app_server --argjson payload "$normalized" '{source: $source, payload: $payload}'
@@ -445,6 +493,7 @@ query_profile_limits() {
     [[ -n "$access_token" ]] || return 2
     raw_payload="$(query_codex_usage "$access_token" "$account_id")" || return 1
     [[ -n "$raw_payload" ]] || return 1
+    validate_wham_payload <<<"$raw_payload" || return 3
     normalized="$(normalize_wham_usage "$raw_payload" 2>/dev/null)" || return 3
     [[ -n "$normalized" ]] || return 3
     jq -cn --arg source wham_fallback --argjson payload "$normalized" '{source: $source, payload: $payload}'

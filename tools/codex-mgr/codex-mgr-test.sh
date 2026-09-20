@@ -97,7 +97,7 @@ case "$authorization" in
         printf '{"rate_limit":{"primary_window":{"used_percent":8,"limit_window_seconds":18000,"reset_at":1774382400},"secondary_window":null}}'
         ;;
     "Authorization: Bearer token-bad")
-        printf 'not json'
+        printf '{"message":"ok but unrelated"}'
         ;;
     "Authorization: Bearer token-fail")
         exit 22
@@ -128,7 +128,11 @@ while IFS= read -r request; do
             printf '%s\n' '{"id":0,"result":{"userAgent":"codex-mock","codexHome":"/mock"}}'
             ;;
         account/rateLimits/read)
-            printf '%s\n' '{"id":2,"result":{"rateLimits":{"limitId":"codex","primary":{"usedPercent":12,"windowDurationMins":300,"resetsAt":1774310400},"secondary":{"usedPercent":40,"windowDurationMins":10080,"resetsAt":1774569600},"planType":"plus"},"rateLimitsByLimitId":{"codex":{"limitId":"codex","primary":{"usedPercent":12,"windowDurationMins":300,"resetsAt":1774310400},"secondary":{"usedPercent":40,"windowDurationMins":10080,"resetsAt":1774569600},"planType":"plus"},"code_review":{"limitId":"code_review","limitName":"code review","primary":{"usedPercent":20,"windowDurationMins":60,"resetsAt":1774314000},"secondary":null,"planType":"plus"}},"rateLimitResetCredits":{"availableCount":2,"credits":[{"id":"reset-1","status":"available","expiresAt":1775000000}]}}}'
+            if [[ "${APP_SERVER_EMPTY:-0}" == "1" ]]; then
+                printf '%s\n' '{"id":2,"result":{}}'
+            else
+                printf '%s\n' '{"id":2,"result":{"rateLimits":{"limitId":"codex","primary":{"usedPercent":12,"windowDurationMins":300,"resetsAt":1774310400},"secondary":{"usedPercent":40,"windowDurationMins":10080,"resetsAt":1774569600},"planType":"plus"},"rateLimitsByLimitId":{"codex":{"limitId":"codex","primary":{"usedPercent":12,"windowDurationMins":300,"resetsAt":1774310400},"secondary":{"usedPercent":40,"windowDurationMins":10080,"resetsAt":1774569600},"planType":"plus"},"code_review":{"limitId":"code_review","limitName":"code review","primary":{"usedPercent":20,"windowDurationMins":60,"resetsAt":1774314000},"secondary":null,"planType":"plus"}},"rateLimitResetCredits":{"availableCount":2,"credits":[{"id":"reset-1","status":"available","expiresAt":1775000000}]}}}'
+            fi
             ;;
     esac
 done
@@ -172,9 +176,16 @@ run_limits_scenario() {
     write_profile "$profiles_dir" "ybad@example.com" '{"tokens":{"access_token":"token-bad","account_id":"acct-bad"}}'
     write_profile "$profiles_dir" "zfail@example.com" '{"tokens":{"access_token":"token-fail","account_id":"acct-fail"}}'
 
-    # Mark active@example.com by account id, but give the live auth a newer
-    # access token so fallback tests prove the saved snapshot is not used.
-    printf '%s' '{"tokens":{"access_token":"token-live","account_id":"acct-active"}}' > "$home_dir/.codex/auth.json"
+    if [[ "${CODEX_MGR_TEST_STALE_MARKER:-0}" == "1" ]]; then
+        write_profile "$profiles_dir" "new@example.com" '{"tokens":{"access_token":"token-new-snapshot","account_id":"acct-new"}}'
+        write_profile "$profiles_dir" "old@example.com" '{"tokens":{"access_token":"token-old","account_id":"acct-old"}}'
+        printf '%s\n' 'old@example.com' > "$profiles_dir/.active"
+        printf '%s' '{"tokens":{"access_token":"token-live","account_id":"acct-new"}}' > "$home_dir/.codex/auth.json"
+    else
+        # Mark active@example.com by account id, but give the live auth a newer
+        # access token so fallback tests prove the saved snapshot is not used.
+        printf '%s' '{"tokens":{"access_token":"token-live","account_id":"acct-active"}}' > "$home_dir/.codex/auth.json"
+    fi
 
     write_curl_mock "$mock_bin_dir"
     write_codex_mock "$mock_bin_dir"
@@ -183,7 +194,8 @@ run_limits_scenario() {
 
     local status=0
     HOME="$home_dir" CODEX_PROFILES_DIR="$profiles_dir" PATH="$mock_bin_dir:$PATH" \
-        COMMAND_LOG_PATH="$command_log_path" APP_SERVER_FAIL="${CODEX_MGR_TEST_APP_SERVER_FAIL:-0}" TZ=UTC \
+        COMMAND_LOG_PATH="$command_log_path" APP_SERVER_FAIL="${CODEX_MGR_TEST_APP_SERVER_FAIL:-0}" \
+        APP_SERVER_EMPTY="${CODEX_MGR_TEST_APP_SERVER_EMPTY:-0}" TZ=UTC \
         bash "$script_path" limits "$@" > "$output_path" 2>&1 || status=$?
 
     local actual_output actual_log
@@ -272,6 +284,26 @@ if printf '%s\n' "$fallback_log" | grep -q 'Authorization: Bearer token-active';
     exit 1
 fi
 printf 'ok: active fallback uses live auth\n'
+
+# A structurally empty app-server success is not usable rate-limit data; it
+# must fall back to live-auth WHAM instead of emitting a fabricated success.
+empty_app_result=$(CODEX_MGR_TEST_APP_SERVER_EMPTY=1 run_limits_scenario --json)
+empty_app_output=$(printf '%s\n' "$empty_app_result" | sed -n '/^output<<EOF$/,/^EOF$/p' | sed '1d;$d')
+assert_equal "wham_fallback" "$(printf '%s\n' "$empty_app_output" | jq -r 'select(.active == true) | .source')"
+printf 'ok: empty app-server payload falls back\n'
+
+# A stale marker must not receive live app-server limits when live auth points
+# at a different saved account.
+stale_marker_result=$(CODEX_MGR_TEST_STALE_MARKER=1 run_limits_scenario --json)
+stale_marker_output=$(printf '%s\n' "$stale_marker_result" | sed -n '/^output<<EOF$/,/^EOF$/p' | sed '1d;$d')
+assert_equal $'new@example.com\tapp_server' "$(printf '%s\n' "$stale_marker_output" | jq -r 'select(.active == true) | [.email, .source] | @tsv')"
+assert_equal "false" "$(printf '%s\n' "$stale_marker_output" | jq -r 'select(.email == "old@example.com") | .active')"
+printf 'ok: stale marker cannot override live account id\n'
+
+# The token-bad mock returns valid JSON with no rate_limit root. It must retain
+# invalid_usage_response rather than being normalized into an empty success.
+assert_equal "invalid_usage_response" "$(printf '%s\n' "$json_result" | sed -n '/^output<<EOF$/,/^EOF$/p' | sed '1d;$d' | jq -r 'select(.email == "ybad@example.com") | .status')"
+printf 'ok: unrelated WHAM JSON is invalid\n'
 
 run_install_uninstall_scenario() {
     local temp_dir
