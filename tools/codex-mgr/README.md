@@ -66,6 +66,7 @@ ln -s "$PWD/codex-mgr.sh" ~/.local/bin/codex-mgr
 - Prints usage limits per profile, one block per saved profile
 - Active profile is marked with `(active)`
 - Queries the active account through Codex app-server's supported `account/rateLimits/read` API; Codex owns token refresh and persistence in live `~/.codex/auth.json`
+- Runs app-server as a bounded child process; shutdown closes its input, escalates from TERM to KILL when necessary, and removes request files on success, failure, or interruption
 - Queries inactive saved profiles read-only through the internal WHAM compatibility endpoint; it never refreshes or rewrites copied credentials
 - If app-server is unavailable, the active account also uses WHAM as a compatibility fallback, but with the live auth file rather than the saved profile snapshot
 - Matches the `5h` and `weekly` compatibility windows by their reported durations (300 and 10,080 minutes), not by primary/secondary position

@@ -229,21 +229,49 @@ query_codex_usage() {
 
 stop_app_server() {
     local server_pid="$1"
-    local attempt
-    for attempt in {1..20}; do
-        if ! kill -0 "$server_pid" 2>/dev/null; then
+    local attempt process_state
+
+    for attempt in {1..10}; do
+        process_state="$(ps -o stat= -p "$server_pid" 2>/dev/null || true)"
+        if [[ -z "$process_state" || "$process_state" == *Z* ]]; then
             wait "$server_pid" 2>/dev/null || true
             return 0
         fi
         sleep 0.05
     done
-    kill "$server_pid" 2>/dev/null || true
-    wait "$server_pid" 2>/dev/null || true
+
+    kill -TERM "$server_pid" 2>/dev/null || true
+    for attempt in {1..20}; do
+        process_state="$(ps -o stat= -p "$server_pid" 2>/dev/null || true)"
+        if [[ -z "$process_state" || "$process_state" == *Z* ]]; then
+            wait "$server_pid" 2>/dev/null || true
+            return 0
+        fi
+        sleep 0.05
+    done
+
+    kill -KILL "$server_pid" 2>/dev/null || true
+    for attempt in {1..20}; do
+        process_state="$(ps -o stat= -p "$server_pid" 2>/dev/null || true)"
+        if [[ -z "$process_state" || "$process_state" == *Z* ]]; then
+            wait "$server_pid" 2>/dev/null || true
+            return 0
+        fi
+        sleep 0.05
+    done
+}
+
+cleanup_app_server() {
+    local server_pid="$1"
+    local request_dir="$2"
+    exec 3>&- 2>/dev/null || true
+    stop_app_server "$server_pid"
+    rm -rf "$request_dir"
 }
 
 # Query the supported Codex account API. This runs only against the live
 # CODEX_HOME, so Codex itself owns any token refresh and persistence.
-query_app_server_rate_limits() {
+query_app_server_rate_limits() (
     local request_dir input_fifo output_file server_pid response attempt
     request_dir="$(mktemp -d "${TMPDIR:-/tmp}/codex-mgr-app-server.XXXXXX")"
     input_fifo="$request_dir/input"
@@ -252,15 +280,14 @@ query_app_server_rate_limits() {
 
     codex app-server <"$input_fifo" >"$output_file" 2>/dev/null &
     server_pid=$!
+    trap 'cleanup_app_server "$server_pid" "$request_dir"' EXIT
+    trap 'cleanup_app_server "$server_pid" "$request_dir"; trap - EXIT; exit 130' HUP INT TERM
     exec 3>"$input_fifo"
 
     if ! printf '%s\n' '{"method":"initialize","id":0,"params":{"clientInfo":{"name":"codex_mgr","title":"codex-mgr","version":"1.0.0"}}}' >&3; then
-        exec 3>&-
-        stop_app_server "$server_pid"
-        rm -rf "$request_dir"
         return 1
     fi
-    for attempt in {1..100}; do
+    for ((attempt = 0; attempt < 100; attempt++)); do
         if grep -q '"id":0' "$output_file" 2>/dev/null; then
             break
         fi
@@ -271,19 +298,13 @@ query_app_server_rate_limits() {
     done
 
     if ! grep -q '"id":0' "$output_file" 2>/dev/null; then
-        exec 3>&-
-        stop_app_server "$server_pid"
-        rm -rf "$request_dir"
         return 1
     fi
 
     if ! printf '%s\n' '{"method":"initialized","params":{}}' '{"method":"account/rateLimits/read","id":2,"params":{}}' >&3; then
-        exec 3>&-
-        stop_app_server "$server_pid"
-        rm -rf "$request_dir"
         return 1
     fi
-    for attempt in {1..200}; do
+    for ((attempt = 0; attempt < 200; attempt++)); do
         if grep -q '"id":2' "$output_file" 2>/dev/null; then
             break
         fi
@@ -296,10 +317,9 @@ query_app_server_rate_limits() {
     exec 3>&-
     stop_app_server "$server_pid"
     response="$(jq -c 'select(.id == 2 and .result != null) | .result' "$output_file" 2>/dev/null | tail -n 1)"
-    rm -rf "$request_dir"
     [[ -n "$response" ]] || return 1
     printf '%s' "$response"
-}
+)
 
 normalize_app_server_usage() {
     local payload="$1"

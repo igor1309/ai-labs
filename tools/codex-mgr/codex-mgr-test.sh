@@ -2,7 +2,7 @@
 # Tests for codex-mgr: limits, install/uninstall, and load of a missing profile.
 set -euo pipefail
 
-test_dir=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+test_dir=$(CDPATH='' cd -- "$(dirname "$0")" && pwd)
 script_path="$test_dir/codex-mgr.sh"
 
 case "${1:-}" in
@@ -120,6 +120,10 @@ set -euo pipefail
 printf 'codex %s\n' "$*" >> "$COMMAND_LOG_PATH"
 [[ "$#" -eq 1 && "$1" == "app-server" ]] || exit 1
 [[ "${APP_SERVER_FAIL:-0}" != "1" ]] || exit 1
+if [[ "${APP_SERVER_STUBBORN:-0}" == "1" ]]; then
+    trap '' TERM
+    printf '%s\n' "$$" > "$APP_SERVER_PID_PATH"
+fi
 
 while IFS= read -r request; do
     method=$(printf '%s' "$request" | jq -r '.method')
@@ -136,6 +140,10 @@ while IFS= read -r request; do
             ;;
     esac
 done
+
+if [[ "${APP_SERVER_STUBBORN:-0}" == "1" ]]; then
+    while :; do sleep 1; done
+fi
 __CODEX__
 }
 
@@ -166,8 +174,10 @@ run_limits_scenario() {
     local mock_bin_dir="$temp_dir/bin"
     local command_log_path="$temp_dir/command-log.txt"
     local output_path="$temp_dir/output.txt"
+    local runtime_tmp_dir="$temp_dir/tmp"
+    local app_server_pid_path="$temp_dir/app-server.pid"
 
-    mkdir -p "$home_dir/.codex" "$mock_bin_dir"
+    mkdir -p "$home_dir/.codex" "$mock_bin_dir" "$runtime_tmp_dir"
 
     write_profile "$profiles_dir" "active@example.com" '{"tokens":{"access_token":"token-active","account_id":"acct-active"}}'
     write_profile "$profiles_dir" "first@example.com" '{"tokens":{"access_token":"token-1","account_id":"acct-1"}}'
@@ -195,8 +205,23 @@ run_limits_scenario() {
     local status=0
     HOME="$home_dir" CODEX_PROFILES_DIR="$profiles_dir" PATH="$mock_bin_dir:$PATH" \
         COMMAND_LOG_PATH="$command_log_path" APP_SERVER_FAIL="${CODEX_MGR_TEST_APP_SERVER_FAIL:-0}" \
-        APP_SERVER_EMPTY="${CODEX_MGR_TEST_APP_SERVER_EMPTY:-0}" TZ=UTC \
+        APP_SERVER_EMPTY="${CODEX_MGR_TEST_APP_SERVER_EMPTY:-0}" \
+        APP_SERVER_STUBBORN="${CODEX_MGR_TEST_APP_SERVER_STUBBORN:-0}" \
+        APP_SERVER_PID_PATH="$app_server_pid_path" TMPDIR="$runtime_tmp_dir" TZ=UTC \
         bash "$script_path" limits "$@" > "$output_path" 2>&1 || status=$?
+
+    if [[ "${CODEX_MGR_TEST_APP_SERVER_STUBBORN:-0}" == "1" ]]; then
+        local stubborn_pid
+        stubborn_pid="$(read_optional_file "$app_server_pid_path")"
+        if [[ -n "$stubborn_pid" ]] && kill -0 "$stubborn_pid" 2>/dev/null; then
+            printf 'stubborn app-server process still alive: %s\n' "$stubborn_pid" >&2
+            exit 1
+        fi
+        if find "$runtime_tmp_dir" -maxdepth 1 -type d -name 'codex-mgr-app-server.*' | grep -q .; then
+            printf 'app-server temporary directory leaked\n' >&2
+            exit 1
+        fi
+    fi
 
     local actual_output actual_log
     actual_output=$(read_optional_file "$output_path")
@@ -304,6 +329,12 @@ printf 'ok: stale marker cannot override live account id\n'
 # invalid_usage_response rather than being normalized into an empty success.
 assert_equal "invalid_usage_response" "$(printf '%s\n' "$json_result" | sed -n '/^output<<EOF$/,/^EOF$/p' | sed '1d;$d' | jq -r 'select(.email == "ybad@example.com") | .status')"
 printf 'ok: unrelated WHAM JSON is invalid\n'
+
+# A child that ignores TERM and stays alive after stdin closes must be killed,
+# reaped, and have its request directory removed within the bounded shutdown.
+stubborn_result=$(CODEX_MGR_TEST_APP_SERVER_STUBBORN=1 run_limits_scenario --json)
+assert_equal "exit=0" "$(printf '%s\n' "$stubborn_result" | head -n 1)"
+printf 'ok: stubborn app-server is killed and cleaned up\n'
 
 run_install_uninstall_scenario() {
     local temp_dir
