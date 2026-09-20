@@ -59,6 +59,24 @@ exit 1
 __CLAUDE__
 }
 
+write_ping_mock() {
+    mock_bin_dir=$1
+
+    cat <<'__PING__' >"$mock_bin_dir/ping"
+#!/bin/sh
+set -eu
+
+printf 'ping %s\n' "$*" >>"$COMMAND_LOG_PATH"
+
+if [ "$#" -eq 5 ] && [ "$1" = "-c" ] && [ "$2" = "1" ] && [ "$3" = "-W" ] && [ "$4" = "1000" ] && [ "$5" = "api.anthropic.com" ]; then
+    exit "${PING_EXIT_STATUS:-0}"
+fi
+
+printf 'unexpected ping invocation: %s\n' "$*" >&2
+exit 1
+__PING__
+}
+
 write_security_mock() {
     mock_bin_dir=$1
 
@@ -186,6 +204,7 @@ run_scenario() {
     readlink_mode=$2
     mock_variant=${3:-standard}
     output_mode=${4:-formatted}
+    ping_exit_status=${5:-0}
     temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/ccswitch-limits-test-${scenario_name}.XXXXXX")
     trap 'rm -rf "$temp_dir"' EXIT HUP INT TERM
 
@@ -197,6 +216,7 @@ run_scenario() {
     mkdir -p "$mock_bin_dir"
     write_sequence_file "$home_dir"
     write_claude_mock "$mock_bin_dir"
+    write_ping_mock "$mock_bin_dir"
 
     case "$mock_variant" in
         standard)
@@ -222,13 +242,13 @@ run_scenario() {
             ;;
     esac
 
-    chmod +x "$mock_bin_dir/claude" "$mock_bin_dir/security" "$mock_bin_dir/curl" "$mock_bin_dir/readlink"
+    chmod +x "$mock_bin_dir/claude" "$mock_bin_dir/ping" "$mock_bin_dir/security" "$mock_bin_dir/curl" "$mock_bin_dir/readlink"
 
     status=0
     if [ "$output_mode" = "json" ]; then
-        HOME="$home_dir" PATH="$mock_bin_dir:$PATH" COMMAND_LOG_PATH="$command_log_path" TZ=UTC sh "$script_path" --json >"$output_path" 2>&1 || status=$?
+        HOME="$home_dir" PATH="$mock_bin_dir:$PATH" COMMAND_LOG_PATH="$command_log_path" PING_EXIT_STATUS="$ping_exit_status" TZ=UTC sh "$script_path" --json >"$output_path" 2>&1 || status=$?
     else
-        HOME="$home_dir" PATH="$mock_bin_dir:$PATH" COMMAND_LOG_PATH="$command_log_path" TZ=UTC sh "$script_path" >"$output_path" 2>&1 || status=$?
+        HOME="$home_dir" PATH="$mock_bin_dir:$PATH" COMMAND_LOG_PATH="$command_log_path" PING_EXIT_STATUS="$ping_exit_status" TZ=UTC sh "$script_path" >"$output_path" 2>&1 || status=$?
     fi
 
     actual_output=$(read_optional_file "$output_path")
@@ -260,6 +280,7 @@ Account 5: missing@example.com
   unavailable: OAuth token not found
 EOF
 log<<EOF
+ping -c 1 -W 1000 api.anthropic.com
 security find-generic-password -s Claude Code-Account-3-first@example.com -w
 curl https://api.anthropic.com/api/oauth/usage | Authorization: Bearer token-3 | User-Agent: claude-code/2.1.81 | anthropic-beta: oauth-2025-04-20 | Accept: application/json
 security find-generic-password -s Claude Code-Account-4-active@example.com -w
@@ -382,6 +403,7 @@ Account 5: missing@example.com
   unavailable: OAuth token not found
 EOF
 log<<EOF
+ping -c 1 -W 1000 api.anthropic.com
 security find-generic-password -s Claude Code-Account-3-first@example.com -w
 curl https://api.anthropic.com/api/oauth/usage | Authorization: Bearer token-3 | User-Agent: claude-code/2.1.81 | anthropic-beta: oauth-2025-04-20 | Accept: application/json
 security find-generic-password -s Claude Code-Account-4-active@example.com -w
@@ -395,6 +417,7 @@ __EXPECTED__
 
 assert_equal "$expected_result" "$(run_scenario local local standard)"
 assert_equal "$expected_result" "$(run_scenario fallback fallback standard)"
+assert_equal "$expected_result" "$(run_scenario ping_failure local standard formatted 1)"
 assert_equal "$expected_stale_result" "$(run_scenario stale_active local stale)"
 
 expected_json_result=$(cat <<'__EXPECTED__'
@@ -405,6 +428,7 @@ output<<EOF
 {"account_number":5,"email":"missing@example.com","active":false,"status":"oauth_token_not_found"}
 EOF
 log<<EOF
+ping -c 1 -W 1000 api.anthropic.com
 security find-generic-password -s Claude Code-Account-3-first@example.com -w
 curl https://api.anthropic.com/api/oauth/usage | Authorization: Bearer token-3 | User-Agent: claude-code/2.1.81 | anthropic-beta: oauth-2025-04-20 | Accept: application/json
 security find-generic-password -s Claude Code-Account-4-active@example.com -w

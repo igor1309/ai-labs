@@ -27,6 +27,7 @@ Prints Anthropic usage limits for every account managed by `ccswitch`.
 - reads accounts from `~/.claude-switch-backup/sequence.json`
 - reads per-account OAuth tokens from Keychain (`Claude Code-Account-N-email`)
 - for the active account, also reads the `Claude Code-credentials` token
+- sends one best-effort ping with a one-second timeout to `api.anthropic.com` before making usage requests; ping failure does not block HTTPS requests
 - tries the per-account token first; if the API call fails (e.g. stale/expired token), retries with the active credentials token
 - formats reset times as `HH:mm DD.MM`
 - uses the Mac local timezone when available, otherwise `Europe/Moscow`
@@ -35,7 +36,7 @@ Prints Anthropic usage limits for every account managed by `ccswitch`.
 
 ## Notes
 
-- requires `jq`, `curl`, `security`, and `claude`
+- requires `jq`, `curl`, `ping`, `security`, and `claude`
 - if no token is found for an account, prints `OAuth token not found`
 - if the API rejects all available tokens, prints `usage request failed`
 - inactive accounts with expired tokens cannot be queried until switched to

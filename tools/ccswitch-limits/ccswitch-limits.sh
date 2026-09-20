@@ -18,6 +18,7 @@ esac
 
 sequence_file="${HOME}/.claude-switch-backup/sequence.json"
 usage_url="https://api.anthropic.com/api/oauth/usage"
+usage_host="api.anthropic.com"
 oauth_beta_header="oauth-2025-04-20"
 
 read_keychain_service() {
@@ -44,6 +45,10 @@ resolve_user_agent() {
     fi
 
     printf 'claude-code/unknown'
+}
+
+ping_usage_host() {
+    ping -c 1 -W 1000 "$usage_host" >/dev/null 2>&1 || true
 }
 
 query_usage_limits() {
@@ -173,6 +178,10 @@ user_agent=$(resolve_user_agent)
 display_timezone=$(resolve_display_timezone)
 tab_character=$(printf '\t')
 printed_account_block=no
+
+# Warm up DNS/network reachability before the usage requests. ICMP may be
+# blocked even when HTTPS works, so this probe is deliberately non-gating.
+ping_usage_host
 
 jq -r '.sequence[] as $account_number | [$account_number, .activeAccountNumber, (.accounts[($account_number | tostring)].email // "")] | @tsv' "$sequence_file" |
 while IFS="$tab_character" read -r account_number active_account_number account_email; do
