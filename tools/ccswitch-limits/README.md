@@ -27,9 +27,9 @@ Prints Anthropic usage limits for every account managed by `ccswitch`.
 - reads accounts from `~/.claude-switch-backup/sequence.json`
 - reads per-account OAuth tokens from Keychain (`Claude Code-Account-N-email`)
 - treats the live `Claude Code-credentials` item as authoritative for the active account; the saved per-account copy is only a fallback when the live item is absent
-- checks `expiresAt` with a five-minute safety margin and refreshes expiring credentials before requesting usage
-- serializes refresh-token rotation with a per-account `shlock`, re-reads credentials after acquiring the lock, and writes the complete rotated credential back to the same Keychain item
-- on usage HTTP `401` or `403`, refreshes once and retries; on `429`, honors `Retry-After` once and retries
+- treats every Keychain item as read-only: `ccswitch` writes both the live item and saved per-account items without a shared lock, while Keychain offers no compare-and-swap update
+- checks `expiresAt` with a five-minute safety margin and skips credentials that are expired or about to expire
+- on usage HTTP `401` or `403`, fails that account without rewriting credentials; on `429`, honors `Retry-After` once, capped at 30 seconds, and retries
 - formats reset times as `HH:mm DD.MM`
 - uses the Mac local timezone when available, otherwise `Europe/Moscow`
 - `--json` emits one JSON object per account, preserving the parsed API response in `usage`
@@ -37,9 +37,8 @@ Prints Anthropic usage limits for every account managed by `ccswitch`.
 
 ## Notes
 
-- requires `jq`, `curl`, `shlock`, `security`, and `claude`
-- uses `https://platform.claude.com/v1/oauth/token` for refreshes and `https://api.anthropic.com/api/oauth/usage` for quota reads
-- lock files live under `~/.claude-switch-backup/locks/`; stale locks are recovered by `shlock`
+- requires `jq`, `curl`, `security`, and `claude`
+- uses `https://api.anthropic.com/api/oauth/usage` for quota reads
 - if no token is found for an account, prints `OAuth token not found`
 - if the API rejects all available tokens, prints `usage request failed`
-- an account without a refresh token cannot recover from an expired or rejected access token until it is logged in again
+- expired or rejected credentials must be refreshed by Claude Code (for example, by opening that account and using `/usage`) before this read-only reporter can query them

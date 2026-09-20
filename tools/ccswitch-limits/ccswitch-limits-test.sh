@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-tool_dir=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+tool_dir=$(CDPATH='' cd -- "$(dirname "$0")" && pwd)
 script_path="$tool_dir/ccswitch-limits.sh"
 
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
@@ -73,6 +73,10 @@ case "$1" in
     add-generic-password)
         service=''
         while [ "$#" -gt 0 ]; do case "$1" in -s) service=$2; shift 2;; -a) shift 2;; *) shift;; esac; done
+        if [ "$service" = 'Claude Code-credentials' ]; then
+            printf 'forbidden live write\n' >>"$COMMAND_LOG"
+            exit 99
+        fi
         file=$(service_file "$service"); cat >"$file"; printf 'security write %s\n' "$service" >>"$COMMAND_LOG";;
     *) exit 2;;
 esac
@@ -105,6 +109,12 @@ case "$SCENARIO:$authorization:$count" in
     unauthorized:token-1:1) printf '%s' '{"error":{}}' >"$output"; printf '401'; exit 0;;
     forbidden:token-1:1) printf '%s' '{"error":{}}' >"$output"; printf '403'; exit 0;;
     rate_limited:token-1:1) printf 'retry-after: 7\r\n' >"$headers"; printf '%s' '{"error":{}}' >"$output"; printf '429'; exit 0;;
+    rate_limited_large:token-1:1) printf 'retry-after: 999999\r\n' >"$headers"; printf '%s' '{"error":{}}' >"$output"; printf '429'; exit 0;;
+    rate_limited_date:token-1:1) printf 'retry-after: Wed, 31 Dec 2099 23:59:59 GMT\r\n' >"$headers"; printf '%s' '{"error":{}}' >"$output"; printf '429'; exit 0;;
+    active_rejected:token-live:1)
+        printf '%s' '{"claudeAiOauth":{"accessToken":"token-switched","refreshToken":"refresh-switched","expiresAt":9999999999999,"scopes":["user:inference","user:profile"]}}' >"$TEST_STATE_DIR/live"
+        printf 'concurrent live switch\n' >>"$COMMAND_LOG"
+        printf '%s' '{"error":{}}' >"$output"; printf '401'; exit 0;;
 esac
 case "$authorization" in
     token-1|token-1-new) printf '%s' '{"five_hour":{"utilization":6.0,"resets_at":"2026-03-24T19:59:59+00:00"},"seven_day":{"utilization":35.0,"resets_at":"2026-03-27T03:59:59+00:00"}}' >"$output";;
@@ -121,19 +131,34 @@ run_scenario() {
     home_dir="$temp_dir/home"; mock_bin="$temp_dir/bin"; state_dir="$temp_dir/state"; output="$temp_dir/output"; log="$temp_dir/log"
     mkdir -p "$mock_bin" "$state_dir"; write_sequence "$home_dir"; write_credentials "$state_dir" "$scenario"; write_mocks "$mock_bin"
     HOME="$home_dir" PATH="$mock_bin:$PATH" COMMAND_LOG="$log" TEST_STATE_DIR="$state_dir" SCENARIO="$scenario" sh "$script_path" >"$output"
-    assert_contains 'Account 1: inactive@example.com' "$output"; assert_contains 'five_hour:   6% used' "$output"
-    assert_contains 'Account 2: active@example.com (active)' "$output"; assert_contains 'five_hour:  12% used' "$output"
+    assert_contains 'Account 1: inactive@example.com' "$output"
+    case "$scenario" in
+        expired|unauthorized|forbidden) assert_contains 'unavailable: usage request failed' "$output";;
+        *) assert_contains 'five_hour:   6% used' "$output";;
+    esac
+    assert_contains 'Account 2: active@example.com (active)' "$output"
+    if [ "$scenario" = active_expired ] || [ "$scenario" = active_rejected ]; then
+        assert_contains 'unavailable: usage request failed' "$output"
+    else
+        assert_contains 'five_hour:  12% used' "$output"
+    fi
     assert_contains 'unavailable: OAuth token not found' "$output"; assert_not_contains 'curl usage token-stored-active' "$log"
     case "$scenario" in
         standard) assert_not_contains 'curl refresh' "$log";;
         expired|unauthorized|forbidden)
-            assert_contains 'curl refresh' "$log"; assert_contains 'security write Claude Code-Account-1-inactive@example.com' "$log"
-            assert_contains 'curl usage token-1-new' "$log"; assert_contains 'shlock -f ' "$log";;
+            assert_not_contains 'curl refresh' "$log"; assert_not_contains 'security write Claude Code-Account-1-inactive@example.com' "$log"
+            assert_not_contains 'forbidden live write' "$log";;
         active_expired)
-            assert_contains 'curl refresh' "$log"; assert_contains 'security write Claude Code-credentials' "$log"
-            assert_contains 'curl usage token-live-new' "$log"; assert_not_contains 'security write Claude Code-Account-2-active@example.com' "$log";;
+            assert_not_contains 'curl refresh' "$log"; assert_not_contains 'security write Claude Code-credentials' "$log"
+            assert_not_contains 'forbidden live write' "$log";;
+        active_rejected)
+            assert_contains 'concurrent live switch' "$log"; assert_not_contains 'curl refresh' "$log"
+            assert_not_contains 'security write Claude Code-credentials' "$log"; assert_not_contains 'forbidden live write' "$log"
+            [ "$(jq -r '.claudeAiOauth.accessToken' "$state_dir/live")" = token-switched ] || fail 'concurrent live credential was overwritten';;
         rate_limited)
             assert_contains 'sleep 7' "$log"; assert_count 2 'curl usage token-1' "$log"; assert_not_contains 'curl refresh' "$log";;
+        rate_limited_large|rate_limited_date)
+            assert_contains 'sleep 30' "$log"; assert_count 2 'curl usage token-1' "$log"; assert_not_contains 'sleep 999999' "$log";;
     esac
     rm -rf "$temp_dir"
 }
@@ -143,7 +168,10 @@ run_scenario expired
 run_scenario unauthorized
 run_scenario forbidden
 run_scenario active_expired
+run_scenario active_rejected
 run_scenario rate_limited
+run_scenario rate_limited_large
+run_scenario rate_limited_date
 
 json_dir=$(mktemp -d "${TMPDIR:-/tmp}/ccswitch-limits-test-json.XXXXXX")
 trap 'rm -rf "$json_dir"' EXIT HUP INT TERM

@@ -18,11 +18,9 @@ esac
 
 sequence_file="${HOME}/.claude-switch-backup/sequence.json"
 usage_url="https://api.anthropic.com/api/oauth/usage"
-token_url="https://platform.claude.com/v1/oauth/token"
-oauth_client_id="9d1c250a-e61b-44d9-88ed-5944d1962f5e"
 oauth_beta_header="oauth-2025-04-20"
 refresh_margin_ms=300000
-lock_wait_seconds=10
+max_retry_after_seconds=30
 
 runtime_dir=$(mktemp -d "${TMPDIR:-/tmp}/ccswitch-limits.XXXXXX")
 trap 'rm -rf "$runtime_dir"' EXIT HUP INT TERM
@@ -30,25 +28,6 @@ trap 'rm -rf "$runtime_dir"' EXIT HUP INT TERM
 read_keychain_service() {
     service_name=$1
     security find-generic-password -s "$service_name" -w 2>/dev/null || true
-}
-
-read_keychain_account() {
-    service_name=$1
-    security find-generic-password -s "$service_name" 2>/dev/null |
-        sed -n 's/^[[:space:]]*"acct"<blob>="\(.*\)"$/\1/p'
-}
-
-write_keychain_service() {
-    service_name=$1
-    credentials_payload=$2
-    keychain_account=$(read_keychain_account "$service_name")
-
-    if [ -z "$keychain_account" ]; then
-        return 1
-    fi
-
-    printf '%s\n' "$credentials_payload" |
-        security add-generic-password -U -a "$keychain_account" -s "$service_name" -w >/dev/null 2>&1
 }
 
 extract_access_token() {
@@ -82,117 +61,6 @@ credentials_expired() {
         '.claudeAiOauth.expiresAt | numbers | . <= ($now_ms + $margin_ms)' >/dev/null 2>&1
 }
 
-acquire_refresh_lock() {
-    account_number=$1
-    lock_dir="${HOME}/.claude-switch-backup/locks"
-    lock_file="${lock_dir}/account-${account_number}.lock"
-    waited=0
-
-    mkdir -p "$lock_dir"
-    while ! shlock -f "$lock_file" -p $$; do
-        if [ "$waited" -ge "$lock_wait_seconds" ]; then
-            return 1
-        fi
-        sleep 1
-        waited=$((waited + 1))
-    done
-
-    refresh_lock_file=$lock_file
-}
-
-release_refresh_lock() {
-    if [ -n "${refresh_lock_file:-}" ]; then
-        rm -f "$refresh_lock_file"
-        refresh_lock_file=""
-    fi
-}
-
-refresh_credentials() {
-    account_number=$1
-    service_name=$2
-    attempted_access_token=$3
-    force_refresh=$4
-
-    acquire_refresh_lock "$account_number" || return 1
-
-    latest_payload=$(read_keychain_service "$service_name")
-    latest_access_token=$(extract_access_token "$latest_payload")
-    if [ -z "$latest_payload" ] || [ -z "$latest_access_token" ]; then
-        release_refresh_lock
-        return 1
-    fi
-
-    # A peer refreshed while this process waited. Its credential wins.
-    if [ -n "$attempted_access_token" ] && [ "$latest_access_token" != "$attempted_access_token" ]; then
-        release_refresh_lock
-        printf '%s' "$latest_payload"
-        return 0
-    fi
-
-    if [ "$force_refresh" != "yes" ] && ! credentials_expired "$latest_payload"; then
-        release_refresh_lock
-        printf '%s' "$latest_payload"
-        return 0
-    fi
-
-    refresh_token=$(printf '%s' "$latest_payload" | jq -r '.claudeAiOauth.refreshToken // empty')
-    credential_client_id=$(printf '%s' "$latest_payload" | jq -r --arg default "$oauth_client_id" '.claudeAiOauth.clientId // $default')
-    credential_scope=$(printf '%s' "$latest_payload" | jq -r '.claudeAiOauth.scopes // [] | join(" ")')
-    if [ -z "$refresh_token" ]; then
-        release_refresh_lock
-        return 1
-    fi
-
-    refresh_request=$(jq -cn \
-        --arg refresh_token "$refresh_token" \
-        --arg client_id "$credential_client_id" \
-        --arg scope "$credential_scope" \
-        '{grant_type: "refresh_token", refresh_token: $refresh_token, client_id: $client_id, scope: $scope}')
-    : >"$runtime_dir/refresh-body"
-    refresh_status=$(printf '%s' "$refresh_request" | curl -sS --max-time 30 \
-        -o "$runtime_dir/refresh-body" \
-        -w '%{http_code}' \
-        "$token_url" \
-        -H 'Content-Type: application/json' \
-        -H 'Accept: application/json' \
-        -H "User-Agent: $user_agent" \
-        --data-binary @- 2>/dev/null) || refresh_status=000
-
-    if [ "$refresh_status" != "200" ] || ! jq -e '.access_token and .expires_in' "$runtime_dir/refresh-body" >/dev/null 2>&1; then
-        release_refresh_lock
-        return 1
-    fi
-
-    now_ms=$(($(date +%s) * 1000))
-    refreshed_payload=$(jq -c \
-        --slurpfile response "$runtime_dir/refresh-body" \
-        --argjson now_ms "$now_ms" '
-            ($response[0]) as $response
-            |
-            .claudeAiOauth.accessToken = $response.access_token
-            | .claudeAiOauth.expiresAt = ($now_ms + (($response.expires_in | tonumber) * 1000))
-            | if ($response.refresh_token // "") != "" then .claudeAiOauth.refreshToken = $response.refresh_token else . end
-            | if $response.refresh_token_expires_in != null then
-                .claudeAiOauth.refreshTokenExpiresAt = ($now_ms + (($response.refresh_token_expires_in | tonumber) * 1000))
-              else . end
-            | if ($response.scope // "") != "" then .claudeAiOauth.scopes = ($response.scope | split(" ")) else . end
-        ' <<EOF
-$latest_payload
-EOF
-    ) || {
-        release_refresh_lock
-        return 1
-    }
-
-    if ! write_keychain_service "$service_name" "$refreshed_payload"; then
-        release_refresh_lock
-        return 1
-    fi
-
-    release_refresh_lock
-    printf '%s' "$refreshed_payload"
-}
-
 query_usage_once() {
     access_token=$1
     user_agent=$2
@@ -222,19 +90,20 @@ retry_after_seconds() {
             fi
             now_epoch=$(date +%s)
             if [ "$retry_epoch" -le "$now_epoch" ]; then
-                printf '0'
+                retry_delay=0
             else
-                printf '%s' "$((retry_epoch - now_epoch))"
+                retry_delay=$((retry_epoch - now_epoch))
             fi
             ;;
-        *) printf '%s' "$retry_after" ;;
+        *) retry_delay=$retry_after ;;
     esac
+
+    awk -v delay="$retry_delay" -v maximum="$max_retry_after_seconds" \
+        'BEGIN { if (delay > maximum) print maximum; else print delay + 0 }'
 }
 
 query_usage_limits() {
-    account_number=$1
-    service_name=$2
-    credentials_payload=$3
+    credentials_payload=$1
 
     access_token=$(extract_access_token "$credentials_payload")
     if [ -z "$access_token" ]; then
@@ -242,11 +111,9 @@ query_usage_limits() {
     fi
 
     if credentials_expired "$credentials_payload"; then
-        credentials_payload=$(refresh_credentials "$account_number" "$service_name" "$access_token" no) || return 1
-        access_token=$(extract_access_token "$credentials_payload")
+        return 1
     fi
 
-    refreshed_after_rejection=no
     waited_after_rate_limit=no
     while :; do
         query_usage_once "$access_token" "$user_agent"
@@ -256,12 +123,7 @@ query_usage_limits() {
                 return 0
                 ;;
             401 | 403)
-                if [ "$refreshed_after_rejection" = "yes" ]; then
-                    return 1
-                fi
-                credentials_payload=$(refresh_credentials "$account_number" "$service_name" "$access_token" yes) || return 1
-                access_token=$(extract_access_token "$credentials_payload")
-                refreshed_after_rejection=yes
+                return 1
                 ;;
             429)
                 if [ "$waited_after_rate_limit" = "yes" ] || [ -z "$usage_retry_after" ]; then
@@ -423,12 +285,10 @@ while IFS="$tab_character" read -r account_number active_account_number account_
     fi
 
     account_service="Claude Code-Account-${account_number}-${account_email}"
-    credential_service=$account_service
     credentials_payload=$(read_keychain_service "$account_service")
     if [ "$is_active_account" = "yes" ]; then
         live_payload=$(read_keychain_service "Claude Code-credentials")
         if [ -n "$live_payload" ]; then
-            credential_service="Claude Code-credentials"
             credentials_payload=$live_payload
         fi
     fi
@@ -442,7 +302,7 @@ while IFS="$tab_character" read -r account_number active_account_number account_
         continue
     fi
 
-    usage_payload=$(query_usage_limits "$account_number" "$credential_service" "$credentials_payload") || true
+    usage_payload=$(query_usage_limits "$credentials_payload") || true
     if [ -z "$usage_payload" ]; then
         if [ "$output_mode" = "json" ]; then
             emit_json_record "$account_number" "$account_email" "$is_active_account" usage_request_failed
