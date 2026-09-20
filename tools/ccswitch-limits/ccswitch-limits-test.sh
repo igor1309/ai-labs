@@ -4,439 +4,152 @@ set -eu
 tool_dir=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 script_path="$tool_dir/ccswitch-limits.sh"
 
-assert_equal() {
-    expected=$1
-    actual=$2
-
-    if [ "$actual" = "$expected" ]; then
-        return
-    fi
-
-    printf 'expected:\n%s\n' "$expected" >&2
-    printf 'actual:\n%s\n' "$actual" >&2
-    exit 1
+fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
+assert_contains() { grep -F "$1" "$2" >/dev/null || fail "expected '$1' in $2"; }
+assert_not_contains() { if grep -F "$1" "$2" >/dev/null; then fail "did not expect '$1' in $2"; fi; }
+assert_count() {
+    expected=$1; needle=$2; file=$3
+    actual=$(grep -F -c "$needle" "$file" || true)
+    [ "$actual" = "$expected" ] || fail "expected $expected occurrences of '$needle', got $actual"
 }
 
-read_optional_file() {
-    file_path=$1
-
-    if [ -f "$file_path" ]; then
-        cat "$file_path"
-    fi
+write_sequence() {
+    mkdir -p "$1/.claude-switch-backup"
+    cat <<'EOF' >"$1/.claude-switch-backup/sequence.json"
+{"activeAccountNumber":2,"sequence":[1,2,3],"accounts":{"1":{"email":"inactive@example.com"},"2":{"email":"active@example.com"},"3":{"email":"missing@example.com"}}}
+EOF
 }
 
-write_sequence_file() {
-    home_dir=$1
-
-    mkdir -p "$home_dir/.claude-switch-backup"
-    cat <<'__SEQUENCE__' >"$home_dir/.claude-switch-backup/sequence.json"
-{
-  "activeAccountNumber": 4,
-  "sequence": [3, 4, 5],
-  "accounts": {
-    "3": { "email": "first@example.com" },
-    "4": { "email": "active@example.com" },
-    "5": { "email": "missing@example.com" }
-  }
-}
-__SEQUENCE__
+write_credentials() {
+    state_dir=$1; scenario=$2; inactive_expiry=9999999999999; live_expiry=9999999999999
+    [ "$scenario" != expired ] || inactive_expiry=0
+    [ "$scenario" != active_expired ] || live_expiry=0
+    jq -cn --arg token token-1 --arg refresh refresh-1 --argjson expiry "$inactive_expiry" \
+        '{claudeAiOauth:{accessToken:$token,refreshToken:$refresh,expiresAt:$expiry,scopes:["user:inference","user:profile"]}}' >"$state_dir/account-1"
+    jq -cn --arg token token-stored-active --arg refresh refresh-stored-active \
+        '{claudeAiOauth:{accessToken:$token,refreshToken:$refresh,expiresAt:0,scopes:["user:inference","user:profile"]}}' >"$state_dir/account-2"
+    jq -cn --arg token token-live --arg refresh refresh-live --argjson expiry "$live_expiry" \
+        '{claudeAiOauth:{accessToken:$token,refreshToken:$refresh,expiresAt:$expiry,scopes:["user:inference","user:profile"]}}' >"$state_dir/live"
 }
 
-write_claude_mock() {
-    mock_bin_dir=$1
-
-    cat <<'__CLAUDE__' >"$mock_bin_dir/claude"
+write_mocks() {
+    mock_bin=$1
+    cat <<'EOF' >"$mock_bin/claude"
+#!/bin/sh
+printf '2.1.81 (Claude Code)\n'
+EOF
+    cat <<'EOF' >"$mock_bin/readlink"
+#!/bin/sh
+printf '/var/db/timezone/zoneinfo/Europe/Moscow\n'
+EOF
+    cat <<'EOF' >"$mock_bin/shlock"
 #!/bin/sh
 set -eu
-
-if [ "$#" -eq 1 ] && [ "$1" = "--version" ]; then
-    printf '2.1.81 (Claude Code)\n'
-    exit 0
-fi
-
-printf 'unexpected claude invocation: %s\n' "$*" >&2
-exit 1
-__CLAUDE__
-}
-
-write_ping_mock() {
-    mock_bin_dir=$1
-
-    cat <<'__PING__' >"$mock_bin_dir/ping"
+printf 'shlock %s\n' "$*" >>"$COMMAND_LOG"
+while [ "$#" -gt 0 ]; do case "$1" in -f) lock_file=$2; shift 2;; -p) shift 2;; *) exit 2;; esac; done
+: >"$lock_file"
+EOF
+    cat <<'EOF' >"$mock_bin/sleep"
+#!/bin/sh
+printf 'sleep %s\n' "$*" >>"$COMMAND_LOG"
+EOF
+    cat <<'EOF' >"$mock_bin/security"
 #!/bin/sh
 set -eu
-
-printf 'ping %s\n' "$*" >>"$COMMAND_LOG_PATH"
-
-if [ "$#" -eq 5 ] && [ "$1" = "-c" ] && [ "$2" = "1" ] && [ "$3" = "-W" ] && [ "$4" = "1000" ] && [ "$5" = "api.anthropic.com" ]; then
-    exit "${PING_EXIT_STATUS:-0}"
-fi
-
-printf 'unexpected ping invocation: %s\n' "$*" >&2
-exit 1
-__PING__
+service_file() {
+    case "$1" in
+        'Claude Code-Account-1-inactive@example.com') printf '%s/account-1' "$TEST_STATE_DIR";;
+        'Claude Code-Account-2-active@example.com') printf '%s/account-2' "$TEST_STATE_DIR";;
+        'Claude Code-Account-3-missing@example.com') printf '%s/missing' "$TEST_STATE_DIR";;
+        'Claude Code-credentials') printf '%s/live' "$TEST_STATE_DIR";;
+        *) exit 2;;
+    esac
 }
-
-write_security_mock() {
-    mock_bin_dir=$1
-
-    cat <<'__SECURITY__' >"$mock_bin_dir/security"
-#!/bin/sh
-set -eu
-
-printf 'security %s\n' "$*" >>"$COMMAND_LOG_PATH"
-
-if [ "$#" -ne 4 ] || [ "$1" != "find-generic-password" ] || [ "$2" != "-s" ] || [ "$4" != "-w" ]; then
-    printf 'unexpected security invocation: %s\n' "$*" >&2
-    exit 1
-fi
-
-case "$3" in
-    "Claude Code-Account-3-first@example.com")
-        printf '{"claudeAiOauth":{"accessToken":"token-3"}}'
-        ;;
-    "Claude Code-Account-4-active@example.com")
-        exit 44
-        ;;
-    "Claude Code-credentials")
-        printf '{"claudeAiOauth":{"accessToken":"token-active"}}'
-        ;;
-    "Claude Code-Account-5-missing@example.com")
-        exit 44
-        ;;
-    *)
-        printf 'unexpected keychain service: %s\n' "$3" >&2
-        exit 1
-        ;;
+case "$1" in
+    find-generic-password)
+        service=$3; file=$(service_file "$service"); [ -f "$file" ] || exit 44
+        if [ "${4:-}" = '-w' ]; then printf 'security read %s\n' "$service" >>"$COMMAND_LOG"; cat "$file"
+        else printf 'security metadata %s\n' "$service" >>"$COMMAND_LOG"; printf '    "acct"<blob>="test-user"\n'; fi;;
+    add-generic-password)
+        service=''
+        while [ "$#" -gt 0 ]; do case "$1" in -s) service=$2; shift 2;; -a) shift 2;; *) shift;; esac; done
+        file=$(service_file "$service"); cat >"$file"; printf 'security write %s\n' "$service" >>"$COMMAND_LOG";;
+    *) exit 2;;
 esac
-__SECURITY__
-}
-
-write_curl_mock() {
-    mock_bin_dir=$1
-
-    cat <<'__CURL__' >"$mock_bin_dir/curl"
+EOF
+    cat <<'EOF' >"$mock_bin/curl"
 #!/bin/sh
 set -eu
-
-url=''
-authorization=''
-user_agent=''
-beta=''
-accept=''
-
+output=''; headers=''; url=''; authorization=''
 while [ "$#" -gt 0 ]; do
     case "$1" in
-        -fsS)
-            shift
-            ;;
-        -H)
-            case "$2" in
-                Authorization:*)
-                    authorization=$2
-                    ;;
-                User-Agent:*)
-                    user_agent=$2
-                    ;;
-                anthropic-beta:*)
-                    beta=$2
-                    ;;
-                Accept:*)
-                    accept=$2
-                    ;;
-            esac
-            shift 2
-            ;;
-        *)
-            url=$1
-            shift
-            ;;
+        -o) output=$2; shift 2;; -D) headers=$2; shift 2;; -w|--max-time) shift 2;;
+        -H) case "$2" in Authorization:*) authorization=${2#Authorization: Bearer };; esac; shift 2;;
+        --data-binary) shift 2;; -sS) shift;; http*) url=$1; shift;; *) shift;;
     esac
 done
-
-printf 'curl %s | %s | %s | %s | %s\n' "$url" "$authorization" "$user_agent" "$beta" "$accept" >>"$COMMAND_LOG_PATH"
-
-case "$authorization" in
-    "Authorization: Bearer token-3")
-        printf '{"five_hour":{"utilization":6.0,"resets_at":"2026-03-24T19:59:59.943648+00:00"},"seven_day":{"utilization":35.0,"resets_at":"2026-03-27T03:59:59.943679+00:00"}}'
-        ;;
-    "Authorization: Bearer token-active")
-        printf '{"five_hour":{"utilization":12.0,"resets_at":"2026-03-25T00:00:00.000000+00:00"},"seven_day":{"utilization":40.0,"resets_at":"2026-03-28T00:00:00.000000+00:00"}}'
-        ;;
-    *)
-        printf 'unexpected authorization header: %s\n' "$authorization" >&2
-        exit 1
-        ;;
-esac
-__CURL__
-}
-
-write_readlink_local_mock() {
-    mock_bin_dir=$1
-
-    cat <<'__READLINK__' >"$mock_bin_dir/readlink"
-#!/bin/sh
-set -eu
-
-if [ "$#" -eq 1 ] && [ "$1" = "/etc/localtime" ]; then
-    printf '/var/db/timezone/zoneinfo/Europe/Moscow\n'
-    exit 0
+if [ "$url" = 'https://platform.claude.com/v1/oauth/token' ]; then
+    cat >/dev/null; printf 'curl refresh\n' >>"$COMMAND_LOG"
+    if [ "$SCENARIO" = active_expired ]; then
+        printf '%s' '{"access_token":"token-live-new","refresh_token":"refresh-live-new","expires_in":3600,"scope":"user:inference user:profile"}' >"$output"
+    else
+        printf '%s' '{"access_token":"token-1-new","refresh_token":"refresh-1-new","expires_in":3600,"scope":"user:inference user:profile"}' >"$output"
+    fi
+    printf '200'; exit 0
 fi
-
-printf 'unexpected readlink invocation: %s\n' "$*" >&2
-exit 1
-__READLINK__
-}
-
-write_readlink_fallback_mock() {
-    mock_bin_dir=$1
-
-    cat <<'__READLINK__' >"$mock_bin_dir/readlink"
-#!/bin/sh
-set -eu
-
-exit 1
-__READLINK__
+[ "$url" = 'https://api.anthropic.com/api/oauth/usage' ] || exit 2
+printf 'curl usage %s\n' "$authorization" >>"$COMMAND_LOG"
+count_file="$TEST_STATE_DIR/usage-count-$authorization"; count=0; [ ! -f "$count_file" ] || count=$(cat "$count_file")
+count=$((count + 1)); printf '%s' "$count" >"$count_file"; : >"$headers"
+case "$SCENARIO:$authorization:$count" in
+    unauthorized:token-1:1) printf '%s' '{"error":{}}' >"$output"; printf '401'; exit 0;;
+    forbidden:token-1:1) printf '%s' '{"error":{}}' >"$output"; printf '403'; exit 0;;
+    rate_limited:token-1:1) printf 'retry-after: 7\r\n' >"$headers"; printf '%s' '{"error":{}}' >"$output"; printf '429'; exit 0;;
+esac
+case "$authorization" in
+    token-1|token-1-new) printf '%s' '{"five_hour":{"utilization":6.0,"resets_at":"2026-03-24T19:59:59+00:00"},"seven_day":{"utilization":35.0,"resets_at":"2026-03-27T03:59:59+00:00"}}' >"$output";;
+    token-live|token-live-new) printf '%s' '{"five_hour":{"utilization":12.0,"resets_at":"2026-03-25T00:00:00+00:00"},"seven_day":{"utilization":40.0,"resets_at":"2026-03-28T00:00:00+00:00"}}' >"$output";;
+    *) exit 2;;
+esac
+printf '200'
+EOF
+    chmod +x "$mock_bin"/*
 }
 
 run_scenario() {
-    scenario_name=$1
-    readlink_mode=$2
-    mock_variant=${3:-standard}
-    output_mode=${4:-formatted}
-    ping_exit_status=${5:-0}
-    temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/ccswitch-limits-test-${scenario_name}.XXXXXX")
-    trap 'rm -rf "$temp_dir"' EXIT HUP INT TERM
-
-    home_dir="$temp_dir/home"
-    mock_bin_dir="$temp_dir/bin"
-    command_log_path="$temp_dir/command-log.txt"
-    output_path="$temp_dir/output.txt"
-
-    mkdir -p "$mock_bin_dir"
-    write_sequence_file "$home_dir"
-    write_claude_mock "$mock_bin_dir"
-    write_ping_mock "$mock_bin_dir"
-
-    case "$mock_variant" in
-        standard)
-            write_security_mock "$mock_bin_dir"
-            write_curl_mock "$mock_bin_dir"
-            ;;
-        stale)
-            write_security_stale_active_mock "$mock_bin_dir"
-            write_curl_stale_mock "$mock_bin_dir"
-            ;;
+    scenario=$1; temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/ccswitch-limits-test-${scenario}.XXXXXX")
+    home_dir="$temp_dir/home"; mock_bin="$temp_dir/bin"; state_dir="$temp_dir/state"; output="$temp_dir/output"; log="$temp_dir/log"
+    mkdir -p "$mock_bin" "$state_dir"; write_sequence "$home_dir"; write_credentials "$state_dir" "$scenario"; write_mocks "$mock_bin"
+    HOME="$home_dir" PATH="$mock_bin:$PATH" COMMAND_LOG="$log" TEST_STATE_DIR="$state_dir" SCENARIO="$scenario" sh "$script_path" >"$output"
+    assert_contains 'Account 1: inactive@example.com' "$output"; assert_contains 'five_hour:   6% used' "$output"
+    assert_contains 'Account 2: active@example.com (active)' "$output"; assert_contains 'five_hour:  12% used' "$output"
+    assert_contains 'unavailable: OAuth token not found' "$output"; assert_not_contains 'curl usage token-stored-active' "$log"
+    case "$scenario" in
+        standard) assert_not_contains 'curl refresh' "$log";;
+        expired|unauthorized|forbidden)
+            assert_contains 'curl refresh' "$log"; assert_contains 'security write Claude Code-Account-1-inactive@example.com' "$log"
+            assert_contains 'curl usage token-1-new' "$log"; assert_contains 'shlock -f ' "$log";;
+        active_expired)
+            assert_contains 'curl refresh' "$log"; assert_contains 'security write Claude Code-credentials' "$log"
+            assert_contains 'curl usage token-live-new' "$log"; assert_not_contains 'security write Claude Code-Account-2-active@example.com' "$log";;
+        rate_limited)
+            assert_contains 'sleep 7' "$log"; assert_count 2 'curl usage token-1' "$log"; assert_not_contains 'curl refresh' "$log";;
     esac
-
-    case "$readlink_mode" in
-        local)
-            write_readlink_local_mock "$mock_bin_dir"
-            ;;
-        fallback)
-            write_readlink_fallback_mock "$mock_bin_dir"
-            ;;
-        *)
-            printf 'unexpected readlink mode: %s\n' "$readlink_mode" >&2
-            exit 1
-            ;;
-    esac
-
-    chmod +x "$mock_bin_dir/claude" "$mock_bin_dir/ping" "$mock_bin_dir/security" "$mock_bin_dir/curl" "$mock_bin_dir/readlink"
-
-    status=0
-    if [ "$output_mode" = "json" ]; then
-        HOME="$home_dir" PATH="$mock_bin_dir:$PATH" COMMAND_LOG_PATH="$command_log_path" PING_EXIT_STATUS="$ping_exit_status" TZ=UTC sh "$script_path" --json >"$output_path" 2>&1 || status=$?
-    else
-        HOME="$home_dir" PATH="$mock_bin_dir:$PATH" COMMAND_LOG_PATH="$command_log_path" PING_EXIT_STATUS="$ping_exit_status" TZ=UTC sh "$script_path" >"$output_path" 2>&1 || status=$?
-    fi
-
-    actual_output=$(read_optional_file "$output_path")
-    actual_log=$(read_optional_file "$command_log_path")
-
-    cat <<__RESULT__
-exit=$status
-output<<EOF
-$actual_output
-EOF
-log<<EOF
-$actual_log
-EOF
-__RESULT__
+    rm -rf "$temp_dir"
 }
 
-expected_result=$(cat <<'__EXPECTED__'
-exit=0
-output<<EOF
-Account 3: first@example.com
-  five_hour:   6% used, resets 22:59 24.03
-  seven_day:  35% used, resets 06:59 27.03
+run_scenario standard
+run_scenario expired
+run_scenario unauthorized
+run_scenario forbidden
+run_scenario active_expired
+run_scenario rate_limited
 
-Account 4: active@example.com (active)
-  five_hour:  12% used, resets 03:00 25.03
-  seven_day:  40% used, resets 03:00 28.03
-
-Account 5: missing@example.com
-  unavailable: OAuth token not found
-EOF
-log<<EOF
-ping -c 1 -W 1000 api.anthropic.com
-security find-generic-password -s Claude Code-Account-3-first@example.com -w
-curl https://api.anthropic.com/api/oauth/usage | Authorization: Bearer token-3 | User-Agent: claude-code/2.1.81 | anthropic-beta: oauth-2025-04-20 | Accept: application/json
-security find-generic-password -s Claude Code-Account-4-active@example.com -w
-security find-generic-password -s Claude Code-credentials -w
-curl https://api.anthropic.com/api/oauth/usage | Authorization: Bearer token-active | User-Agent: claude-code/2.1.81 | anthropic-beta: oauth-2025-04-20 | Accept: application/json
-security find-generic-password -s Claude Code-Account-5-missing@example.com -w
-EOF
-__EXPECTED__
-)
-
-write_security_stale_active_mock() {
-    mock_bin_dir=$1
-
-    cat <<'__SECURITY__' >"$mock_bin_dir/security"
-#!/bin/sh
-set -eu
-
-printf 'security %s\n' "$*" >>"$COMMAND_LOG_PATH"
-
-if [ "$#" -ne 4 ] || [ "$1" != "find-generic-password" ] || [ "$2" != "-s" ] || [ "$4" != "-w" ]; then
-    printf 'unexpected security invocation: %s\n' "$*" >&2
-    exit 1
-fi
-
-case "$3" in
-    "Claude Code-Account-3-first@example.com")
-        printf '{"claudeAiOauth":{"accessToken":"token-3"}}'
-        ;;
-    "Claude Code-Account-4-active@example.com")
-        printf '{"claudeAiOauth":{"accessToken":"token-4-stale"}}'
-        ;;
-    "Claude Code-credentials")
-        printf '{"claudeAiOauth":{"accessToken":"token-active"}}'
-        ;;
-    "Claude Code-Account-5-missing@example.com")
-        exit 44
-        ;;
-    *)
-        printf 'unexpected keychain service: %s\n' "$3" >&2
-        exit 1
-        ;;
-esac
-__SECURITY__
-}
-
-write_curl_stale_mock() {
-    mock_bin_dir=$1
-
-    cat <<'__CURL__' >"$mock_bin_dir/curl"
-#!/bin/sh
-set -eu
-
-url=''
-authorization=''
-user_agent=''
-beta=''
-accept=''
-
-while [ "$#" -gt 0 ]; do
-    case "$1" in
-        -fsS)
-            shift
-            ;;
-        -H)
-            case "$2" in
-                Authorization:*)
-                    authorization=$2
-                    ;;
-                User-Agent:*)
-                    user_agent=$2
-                    ;;
-                anthropic-beta:*)
-                    beta=$2
-                    ;;
-                Accept:*)
-                    accept=$2
-                    ;;
-            esac
-            shift 2
-            ;;
-        *)
-            url=$1
-            shift
-            ;;
-    esac
-done
-
-printf 'curl %s | %s | %s | %s | %s\n' "$url" "$authorization" "$user_agent" "$beta" "$accept" >>"$COMMAND_LOG_PATH"
-
-case "$authorization" in
-    "Authorization: Bearer token-3")
-        printf '{"five_hour":{"utilization":6.0,"resets_at":"2026-03-24T19:59:59.943648+00:00"},"seven_day":{"utilization":35.0,"resets_at":"2026-03-27T03:59:59.943679+00:00"}}'
-        ;;
-    "Authorization: Bearer token-4-stale")
-        exit 22
-        ;;
-    "Authorization: Bearer token-active")
-        printf '{"five_hour":{"utilization":12.0,"resets_at":"2026-03-25T00:00:00.000000+00:00"},"seven_day":{"utilization":40.0,"resets_at":"2026-03-28T00:00:00.000000+00:00"}}'
-        ;;
-    *)
-        printf 'unexpected authorization header: %s\n' "$authorization" >&2
-        exit 1
-        ;;
-esac
-__CURL__
-}
-
-expected_stale_result=$(cat <<'__EXPECTED__'
-exit=0
-output<<EOF
-Account 3: first@example.com
-  five_hour:   6% used, resets 22:59 24.03
-  seven_day:  35% used, resets 06:59 27.03
-
-Account 4: active@example.com (active)
-  five_hour:  12% used, resets 03:00 25.03
-  seven_day:  40% used, resets 03:00 28.03
-
-Account 5: missing@example.com
-  unavailable: OAuth token not found
-EOF
-log<<EOF
-ping -c 1 -W 1000 api.anthropic.com
-security find-generic-password -s Claude Code-Account-3-first@example.com -w
-curl https://api.anthropic.com/api/oauth/usage | Authorization: Bearer token-3 | User-Agent: claude-code/2.1.81 | anthropic-beta: oauth-2025-04-20 | Accept: application/json
-security find-generic-password -s Claude Code-Account-4-active@example.com -w
-security find-generic-password -s Claude Code-credentials -w
-curl https://api.anthropic.com/api/oauth/usage | Authorization: Bearer token-4-stale | User-Agent: claude-code/2.1.81 | anthropic-beta: oauth-2025-04-20 | Accept: application/json
-curl https://api.anthropic.com/api/oauth/usage | Authorization: Bearer token-active | User-Agent: claude-code/2.1.81 | anthropic-beta: oauth-2025-04-20 | Accept: application/json
-security find-generic-password -s Claude Code-Account-5-missing@example.com -w
-EOF
-__EXPECTED__
-)
-
-assert_equal "$expected_result" "$(run_scenario local local standard)"
-assert_equal "$expected_result" "$(run_scenario fallback fallback standard)"
-assert_equal "$expected_result" "$(run_scenario ping_failure local standard formatted 1)"
-assert_equal "$expected_stale_result" "$(run_scenario stale_active local stale)"
-
-expected_json_result=$(cat <<'__EXPECTED__'
-exit=0
-output<<EOF
-{"account_number":3,"email":"first@example.com","active":false,"status":"ok","usage":{"five_hour":{"utilization":6.0,"resets_at":"2026-03-24T19:59:59.943648+00:00"},"seven_day":{"utilization":35.0,"resets_at":"2026-03-27T03:59:59.943679+00:00"}}}
-{"account_number":4,"email":"active@example.com","active":true,"status":"ok","usage":{"five_hour":{"utilization":12.0,"resets_at":"2026-03-25T00:00:00.000000+00:00"},"seven_day":{"utilization":40.0,"resets_at":"2026-03-28T00:00:00.000000+00:00"}}}
-{"account_number":5,"email":"missing@example.com","active":false,"status":"oauth_token_not_found"}
-EOF
-log<<EOF
-ping -c 1 -W 1000 api.anthropic.com
-security find-generic-password -s Claude Code-Account-3-first@example.com -w
-curl https://api.anthropic.com/api/oauth/usage | Authorization: Bearer token-3 | User-Agent: claude-code/2.1.81 | anthropic-beta: oauth-2025-04-20 | Accept: application/json
-security find-generic-password -s Claude Code-Account-4-active@example.com -w
-security find-generic-password -s Claude Code-credentials -w
-curl https://api.anthropic.com/api/oauth/usage | Authorization: Bearer token-active | User-Agent: claude-code/2.1.81 | anthropic-beta: oauth-2025-04-20 | Accept: application/json
-security find-generic-password -s Claude Code-Account-5-missing@example.com -w
-EOF
-__EXPECTED__
-)
-
-assert_equal "$expected_json_result" "$(run_scenario json local standard json)"
+json_dir=$(mktemp -d "${TMPDIR:-/tmp}/ccswitch-limits-test-json.XXXXXX")
+trap 'rm -rf "$json_dir"' EXIT HUP INT TERM
+mkdir -p "$json_dir/home" "$json_dir/bin" "$json_dir/state"
+write_sequence "$json_dir/home"; write_credentials "$json_dir/state" standard; write_mocks "$json_dir/bin"
+HOME="$json_dir/home" PATH="$json_dir/bin:$PATH" COMMAND_LOG="$json_dir/log" TEST_STATE_DIR="$json_dir/state" SCENARIO=standard sh "$script_path" --json >"$json_dir/output"
+[ "$(wc -l <"$json_dir/output" | tr -d ' ')" = 3 ] || fail 'expected three JSON records'
+jq -e -s '.[0].status == "ok" and .[1].active == true and .[2].status == "oauth_token_not_found"' "$json_dir/output" >/dev/null
+printf 'ccswitch-limits tests passed\n'
