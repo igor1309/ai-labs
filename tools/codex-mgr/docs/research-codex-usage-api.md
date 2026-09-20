@@ -1,15 +1,20 @@
 ---
-date: 2026-05-30
+date: 2026-09-20
 model: claude-opus-4-8
-description: "Research notes on the Codex CLI usage/limits API and auth.json structure"
+description: "Research notes on Codex app-server rate limits, the WHAM compatibility endpoint, and auth ownership"
 ---
 
 # Research: Codex CLI Usage/Limits API
 
 Source: web research of the openai/codex Rust source, official docs, and 2025–2026
-issues/PRs (via subagent). Confirmed against ~`rust-v0.131`/`v0.132` (May 2026). This
-is an **undocumented internal ChatGPT backend**; exact strings are version-dependent
-and should be re-verified if Codex changes the contract.
+issues/PRs. The preferred interface is the documented Codex app-server
+`account/rateLimits/read` method. The direct WHAM endpoint is an
+**undocumented internal ChatGPT backend** retained only as a compatibility path.
+
+**Re-verified 2026-09-20 with Codex CLI 0.155.1:** app-server returned
+`rateLimits`, `rateLimitsByLimitId`, and `rateLimitResetCredits`. The live WHAM
+response also contained `rate_limit_reset_credits.available_count` and
+`applicable_available_count`.
 
 **Verified live on 2026-05-30:** `codex-mgr limits` successfully queried
 `GET https://chatgpt.com/backend-api/wham/usage` with the access token + account id
@@ -44,7 +49,25 @@ ChatGPT-login mode:
 - The Bearer value is `.tokens.access_token`. `id_token` is an OIDC identity token for
   claim extraction, not for API auth.
 
-## Usage Endpoint
+## Supported app-server API
+
+Start `codex app-server`, complete the JSON-RPC `initialize` / `initialized`
+handshake, then call:
+
+```json
+{"method":"account/rateLimits/read","id":2,"params":{}}
+```
+
+The result contains the backward-compatible `rateLimits` bucket, all buckets in
+`rateLimitsByLimitId`, and `rateLimitResetCredits`. Each window reports
+`usedPercent`, `windowDurationMins`, and `resetsAt` (Unix seconds). Codex manages
+ChatGPT OAuth renewal and persistent credential updates for this path.
+
+`codex-mgr` uses app-server only with live `~/.codex`. Saved inactive profiles
+are copies whose refresh tokens may have been superseded; refreshing them
+independently risks replaying a single-use rotated token.
+
+## WHAM compatibility endpoint
 
 There is a dedicated GET endpoint returning parseable JSON (rate limits are not
 header-only):
@@ -126,15 +149,20 @@ echo "$USAGE" | jq -r '
 
 ## Caveats to Handle
 
-1. **Token expiry** → HTTP 401. The CLI refreshes internally via
-   `POST https://auth.openai.com/oauth/token` with `refresh_token` (no supported public
-   API). From a script, treat 401/failure as `unavailable: …`; do not attempt refresh.
+1. **Token expiry** → use app-server for the live active account so Codex owns
+   refresh and persistence. Treat an inactive snapshot's 401 as unavailable;
+   do not refresh the copy independently.
 2. **`account_id` may be absent** after some refresh cycles → omit the header
    (`${ACCOUNT_ID:+…}`). Works without it for personal (non-workspace) accounts.
-3. **`secondary_window` may be null** for some plan types → guard formatting.
+3. **Windows may be null, reordered, or added** → classify compatibility
+   windows by duration (300 minutes for 5h, 10,080 for 7d), and preserve all
+   returned buckets.
 4. **`reset_at` is seconds**, not milliseconds.
 5. **Version-dependent**: confirmed ~`rust-v0.131`/`v0.132` (May 2026); `/wham/usage`
    replaced an older `/api/codex/usage` path.
+6. **Reset credits**: app-server reports `availableCount` and optional credit
+   details. WHAM additionally reports `applicable_available_count`; absence is
+   different from zero.
 
 ## Sources
 

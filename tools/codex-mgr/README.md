@@ -65,7 +65,12 @@ ln -s "$PWD/codex-mgr.sh" ~/.local/bin/codex-mgr
 
 - Prints usage limits per profile, one block per saved profile
 - Active profile is marked with `(active)`
-- Each block shows the `5h` and `weekly` windows as `<pct>% used, resets <HH:MM dd.mm>`
+- Queries the active account through Codex app-server's supported `account/rateLimits/read` API; Codex owns token refresh and persistence in live `~/.codex/auth.json`
+- Queries inactive saved profiles read-only through the internal WHAM compatibility endpoint; it never refreshes or rewrites copied credentials
+- If app-server is unavailable, the active account also uses WHAM as a compatibility fallback, but with the live auth file rather than the saved profile snapshot
+- Matches the `5h` and `weekly` compatibility windows by their reported durations (300 and 10,080 minutes), not by primary/secondary position
+- Shows every returned limit bucket and window as `<pct>% used, resets <HH:MM dd.mm>`; missing windows remain missing
+- Shows available reset credits and, when WHAM reports it, how many are currently applicable
 - Reset times use the local timezone (resolved from `/etc/localtime`, falling back to UTC)
 - Degrades gracefully per profile: `unavailable: OAuth token not found`,
   `unavailable: usage request failed`, or `unavailable: usage response was invalid`
@@ -73,14 +78,15 @@ ln -s "$PWD/codex-mgr.sh" ~/.local/bin/codex-mgr
   which [`select-account.sh --codex`](../account-rotation/README.md) ranks profiles from:
   - `account_number` is the profile's 1-based position in list order; `email` is the profile name
   - `status` is `ok`, `oauth_token_not_found`, `usage_request_failed`, or `invalid_usage_response`
-  - with `ok`, `usage.five_hour` / `usage.seven_day` are the primary / secondary windows as
-    `{utilization, resets_at}` (`resets_at` in ISO 8601 UTC), or `null` when the API omits the window
+  - with `ok`, `source` is `app_server` or `wham_fallback`
+  - `usage.five_hour` / `usage.seven_day` preserve the account-rotation compatibility view as `{utilization, resets_at, window_duration_mins}`, selected by duration, or `null` when absent
+  - `limit_buckets` contains every returned bucket and window
+  - `reset_credits` contains `available_count`, `applicable_available_count` when known, and any returned credit details
 
   ```json
-  {"account_number":1,"email":"me@example.com","active":true,"status":"ok","usage":{"five_hour":{"utilization":12,"resets_at":"2026-03-24T00:00:00Z"},"seven_day":{"utilization":40,"resets_at":"2026-03-27T00:00:00Z"}}}
+  {"account_number":1,"email":"me@example.com","active":true,"status":"ok","source":"app_server","usage":{"five_hour":{"utilization":12,"resets_at":"2026-03-24T00:00:00Z","window_duration_mins":300},"seven_day":{"utilization":40,"resets_at":"2026-03-27T00:00:00Z","window_duration_mins":10080}},"limit_buckets":[{"limit_id":"codex","limit_name":null,"primary":{"utilization":12,"resets_at":"2026-03-24T00:00:00Z","window_duration_mins":300},"secondary":{"utilization":40,"resets_at":"2026-03-27T00:00:00Z","window_duration_mins":10080}}],"reset_credits":{"available_count":0,"applicable_available_count":null,"credits":[]}}
   ```
-- Queries the Codex usage endpoint with the access token from each profile's
-  `auth.json`; see `docs/research-codex-usage-api.md` for the endpoint contract
+- See `docs/research-codex-usage-api.md` for the supported and compatibility endpoint contracts
 
 ## Test
 
@@ -91,7 +97,7 @@ ln -s "$PWD/codex-mgr.sh" ~/.local/bin/codex-mgr
 ## Requirements
 
 - Bash 3.2+ (macOS default)
-- `jq`, `curl`
+- `codex`, `jq`, `curl`
 
 ## Storage
 
@@ -102,5 +108,5 @@ ln -s "$PWD/codex-mgr.sh" ~/.local/bin/codex-mgr
 
 ## Docs
 
-- [`docs/research-codex-usage-api.md`](docs/research-codex-usage-api.md) — usage endpoint and `auth.json` structure
+- [`docs/research-codex-usage-api.md`](docs/research-codex-usage-api.md) — app-server limits, WHAM compatibility, and auth ownership
 - [`docs/intake-limits-command.md`](docs/intake-limits-command.md) — intake brief for `limits` (historical)

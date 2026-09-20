@@ -84,13 +84,17 @@ printf 'curl %s | %s | %s | %s\n' "$url" "$authorization" "$account" "$user_agen
 
 case "$authorization" in
     "Authorization: Bearer token-active")
-        printf '{"rate_limit":{"primary_window":{"used_percent":12,"reset_at":1774310400},"secondary_window":{"used_percent":40,"reset_at":1774569600}}}'
+        printf 'unexpected saved active-profile token use\n' >&2
+        exit 1
+        ;;
+    "Authorization: Bearer token-live")
+        printf '{"plan_type":"plus","rate_limit":{"primary_window":{"used_percent":12,"limit_window_seconds":18000,"reset_at":1774310400},"secondary_window":{"used_percent":40,"limit_window_seconds":604800,"reset_at":1774569600}},"rate_limit_reset_credits":{"available_count":2,"applicable_available_count":1}}'
         ;;
     "Authorization: Bearer token-1")
-        printf '{"rate_limit":{"primary_window":{"used_percent":6,"reset_at":1774382400},"secondary_window":{"used_percent":35,"reset_at":1774641600}}}'
+        printf '{"rate_limit":{"primary_window":{"used_percent":6,"limit_window_seconds":18000,"reset_at":1774382400},"secondary_window":{"used_percent":35,"limit_window_seconds":604800,"reset_at":1774641600}},"rate_limit_reset_credits":{"available_count":1,"applicable_available_count":0}}'
         ;;
     "Authorization: Bearer token-null")
-        printf '{"rate_limit":{"primary_window":{"used_percent":8,"reset_at":1774382400},"secondary_window":null}}'
+        printf '{"rate_limit":{"primary_window":{"used_percent":8,"limit_window_seconds":18000,"reset_at":1774382400},"secondary_window":null}}'
         ;;
     "Authorization: Bearer token-bad")
         printf 'not json'
@@ -104,6 +108,31 @@ case "$authorization" in
         ;;
 esac
 __CURL__
+}
+
+write_codex_mock() {
+    local mock_bin_dir="$1"
+
+    cat <<'__CODEX__' > "$mock_bin_dir/codex"
+#!/bin/bash
+set -euo pipefail
+
+printf 'codex %s\n' "$*" >> "$COMMAND_LOG_PATH"
+[[ "$#" -eq 1 && "$1" == "app-server" ]] || exit 1
+[[ "${APP_SERVER_FAIL:-0}" != "1" ]] || exit 1
+
+while IFS= read -r request; do
+    method=$(printf '%s' "$request" | jq -r '.method')
+    case "$method" in
+        initialize)
+            printf '%s\n' '{"id":0,"result":{"userAgent":"codex-mock","codexHome":"/mock"}}'
+            ;;
+        account/rateLimits/read)
+            printf '%s\n' '{"id":2,"result":{"rateLimits":{"limitId":"codex","primary":{"usedPercent":12,"windowDurationMins":300,"resetsAt":1774310400},"secondary":{"usedPercent":40,"windowDurationMins":10080,"resetsAt":1774569600},"planType":"plus"},"rateLimitsByLimitId":{"codex":{"limitId":"codex","primary":{"usedPercent":12,"windowDurationMins":300,"resetsAt":1774310400},"secondary":{"usedPercent":40,"windowDurationMins":10080,"resetsAt":1774569600},"planType":"plus"},"code_review":{"limitId":"code_review","limitName":"code review","primary":{"usedPercent":20,"windowDurationMins":60,"resetsAt":1774314000},"secondary":null,"planType":"plus"}},"rateLimitResetCredits":{"availableCount":2,"credits":[{"id":"reset-1","status":"available","expiresAt":1775000000}]}}}'
+            ;;
+    esac
+done
+__CODEX__
 }
 
 write_readlink_mock() {
@@ -143,16 +172,18 @@ run_limits_scenario() {
     write_profile "$profiles_dir" "ybad@example.com" '{"tokens":{"access_token":"token-bad","account_id":"acct-bad"}}'
     write_profile "$profiles_dir" "zfail@example.com" '{"tokens":{"access_token":"token-fail","account_id":"acct-fail"}}'
 
-    # Mark active@example.com as the live profile.
-    cp "$profiles_dir/active@example.com/auth.json" "$home_dir/.codex/auth.json"
+    # Mark active@example.com by account id, but give the live auth a newer
+    # access token so fallback tests prove the saved snapshot is not used.
+    printf '%s' '{"tokens":{"access_token":"token-live","account_id":"acct-active"}}' > "$home_dir/.codex/auth.json"
 
     write_curl_mock "$mock_bin_dir"
+    write_codex_mock "$mock_bin_dir"
     write_readlink_mock "$mock_bin_dir"
-    chmod +x "$mock_bin_dir/curl" "$mock_bin_dir/readlink"
+    chmod +x "$mock_bin_dir/codex" "$mock_bin_dir/curl" "$mock_bin_dir/readlink"
 
     local status=0
     HOME="$home_dir" CODEX_PROFILES_DIR="$profiles_dir" PATH="$mock_bin_dir:$PATH" \
-        COMMAND_LOG_PATH="$command_log_path" TZ=UTC \
+        COMMAND_LOG_PATH="$command_log_path" APP_SERVER_FAIL="${CODEX_MGR_TEST_APP_SERVER_FAIL:-0}" TZ=UTC \
         bash "$script_path" limits "$@" > "$output_path" 2>&1 || status=$?
 
     local actual_output actual_log
@@ -174,19 +205,22 @@ expected_result=$(cat <<'__EXPECTED__'
 exit=0
 output<<EOF
 active@example.com (active)
-  5h:      12% used, resets 03:00 24.03
-  weekly:  40% used, resets 03:00 27.03
+  5h:                  12% used, resets 03:00 24.03
+  weekly:              40% used, resets 03:00 27.03
+  code review 60m:     20% used, resets 04:00 24.03
+  reset credits: 2 available
 
 first@example.com
-  5h:       6% used, resets 23:00 24.03
-  weekly:  35% used, resets 23:00 27.03
+  5h:                   6% used, resets 23:00 24.03
+  weekly:              35% used, resets 23:00 27.03
+  reset credits: 1 available, 0 currently applicable
 
 missing@example.com
   unavailable: OAuth token not found
 
 nulledge@example.com
-  5h:       8% used, resets 23:00 24.03
-  weekly:  unknown
+  5h:                   8% used, resets 23:00 24.03
+  reset credits: 0 available
 
 ybad@example.com
   unavailable: usage response was invalid
@@ -195,7 +229,7 @@ zfail@example.com
   unavailable: usage request failed
 EOF
 log<<EOF
-curl https://chatgpt.com/backend-api/wham/usage | Authorization: Bearer token-active | ChatGPT-Account-Id: acct-active | User-Agent: codex-cli
+codex app-server
 curl https://chatgpt.com/backend-api/wham/usage | Authorization: Bearer token-1 | ChatGPT-Account-Id: acct-1 | User-Agent: codex-cli
 curl https://chatgpt.com/backend-api/wham/usage | Authorization: Bearer token-null | ChatGPT-Account-Id: acct-null | User-Agent: codex-cli
 curl https://chatgpt.com/backend-api/wham/usage | Authorization: Bearer token-bad | ChatGPT-Account-Id: acct-bad | User-Agent: codex-cli
@@ -209,10 +243,10 @@ printf 'ok: limits\n'
 
 # --json: one record per profile in the ccswitch-limits --json shape.
 expected_json_output=$(cat <<'__EXPECTED__'
-{"account_number":1,"email":"active@example.com","active":true,"status":"ok","usage":{"five_hour":{"utilization":12,"resets_at":"2026-03-24T00:00:00Z"},"seven_day":{"utilization":40,"resets_at":"2026-03-27T00:00:00Z"}}}
-{"account_number":2,"email":"first@example.com","active":false,"status":"ok","usage":{"five_hour":{"utilization":6,"resets_at":"2026-03-24T20:00:00Z"},"seven_day":{"utilization":35,"resets_at":"2026-03-27T20:00:00Z"}}}
+{"account_number":1,"email":"active@example.com","active":true,"status":"ok","source":"app_server","usage":{"five_hour":{"utilization":12,"resets_at":"2026-03-24T00:00:00Z","window_duration_mins":300},"seven_day":{"utilization":40,"resets_at":"2026-03-27T00:00:00Z","window_duration_mins":10080}},"limit_buckets":[{"limit_id":"codex","limit_name":null,"plan_type":"plus","primary":{"utilization":12,"resets_at":"2026-03-24T00:00:00Z","window_duration_mins":300},"secondary":{"utilization":40,"resets_at":"2026-03-27T00:00:00Z","window_duration_mins":10080},"credits":null,"individual_limit":null,"spend_control_reached":null,"rate_limit_reached_type":null},{"limit_id":"code_review","limit_name":"code review","plan_type":"plus","primary":{"utilization":20,"resets_at":"2026-03-24T01:00:00Z","window_duration_mins":60},"secondary":null,"credits":null,"individual_limit":null,"spend_control_reached":null,"rate_limit_reached_type":null}],"reset_credits":{"available_count":2,"applicable_available_count":null,"credits":[{"id":"reset-1","status":"available","expiresAt":1775000000}]}}
+{"account_number":2,"email":"first@example.com","active":false,"status":"ok","source":"wham_fallback","usage":{"five_hour":{"utilization":6,"resets_at":"2026-03-24T20:00:00Z","window_duration_mins":300},"seven_day":{"utilization":35,"resets_at":"2026-03-27T20:00:00Z","window_duration_mins":10080}},"limit_buckets":[{"limit_id":"codex","limit_name":null,"plan_type":null,"primary":{"utilization":6,"resets_at":"2026-03-24T20:00:00Z","window_duration_mins":300},"secondary":{"utilization":35,"resets_at":"2026-03-27T20:00:00Z","window_duration_mins":10080},"credits":null,"individual_limit":null,"spend_control_reached":null,"rate_limit_reached_type":null}],"reset_credits":{"available_count":1,"applicable_available_count":0,"credits":[]}}
 {"account_number":3,"email":"missing@example.com","active":false,"status":"oauth_token_not_found"}
-{"account_number":4,"email":"nulledge@example.com","active":false,"status":"ok","usage":{"five_hour":{"utilization":8,"resets_at":"2026-03-24T20:00:00Z"},"seven_day":null}}
+{"account_number":4,"email":"nulledge@example.com","active":false,"status":"ok","source":"wham_fallback","usage":{"five_hour":{"utilization":8,"resets_at":"2026-03-24T20:00:00Z","window_duration_mins":300},"seven_day":null},"limit_buckets":[{"limit_id":"codex","limit_name":null,"plan_type":null,"primary":{"utilization":8,"resets_at":"2026-03-24T20:00:00Z","window_duration_mins":300},"secondary":null,"credits":null,"individual_limit":null,"spend_control_reached":null,"rate_limit_reached_type":null}],"reset_credits":{"available_count":0,"applicable_available_count":null,"credits":[]}}
 {"account_number":5,"email":"ybad@example.com","active":false,"status":"invalid_usage_response"}
 {"account_number":6,"email":"zfail@example.com","active":false,"status":"usage_request_failed"}
 __EXPECTED__
@@ -222,6 +256,22 @@ json_result=$(run_limits_scenario --json)
 assert_equal "exit=0" "$(printf '%s\n' "$json_result" | head -n 1)"
 assert_equal "$expected_json_output" "$(printf '%s\n' "$json_result" | sed -n '/^output<<EOF$/,/^EOF$/p' | sed '1d;$d')"
 printf 'ok: limits --json\n'
+
+# If app-server is unavailable, the active-account compatibility fallback must
+# use live ~/.codex/auth.json, never the saved profile snapshot.
+fallback_result=$(CODEX_MGR_TEST_APP_SERVER_FAIL=1 run_limits_scenario --json)
+fallback_output=$(printf '%s\n' "$fallback_result" | sed -n '/^output<<EOF$/,/^EOF$/p' | sed '1d;$d')
+fallback_log=$(printf '%s\n' "$fallback_result" | sed -n '/^log<<EOF$/,/^EOF$/p' | sed '1d;$d')
+assert_equal "wham_fallback" "$(printf '%s\n' "$fallback_output" | head -n 1 | jq -r '.source')"
+if ! printf '%s\n' "$fallback_log" | grep -q 'Authorization: Bearer token-live'; then
+    printf 'active fallback did not use live auth\n' >&2
+    exit 1
+fi
+if printf '%s\n' "$fallback_log" | grep -q 'Authorization: Bearer token-active'; then
+    printf 'active fallback used saved profile auth\n' >&2
+    exit 1
+fi
+printf 'ok: active fallback uses live auth\n'
 
 run_install_uninstall_scenario() {
     local temp_dir
