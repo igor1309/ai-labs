@@ -7,7 +7,7 @@ version: 0.0.1
 type: prompt
 ---
 
-Architecture Review — Go Codebase
+Architecture Review
 
 Review the codebase for maintainability, change isolation, clear ownership, dependency direction, composition, and SOLID design quality.
 
