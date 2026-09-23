@@ -2,7 +2,7 @@
 date: 2026-09-23
 author: Igor Malyarov
 model: gpt-6
-name: Architecture review
+name: Code review — architecture
 version: 0.0.1
 type: prompt
 ---
