@@ -2,7 +2,7 @@
 date: 2026-09-23
 author: Igor Malyarov
 model: gpt-6
-name: Architecture review — Go codebase
+name: Architecture review
 version: 0.0.1
 type: prompt
 ---
