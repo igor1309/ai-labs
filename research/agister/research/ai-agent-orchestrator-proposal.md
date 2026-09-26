@@ -11,23 +11,23 @@ Draft proposal based on the current design direction.
 
 ## Goal
 
-Define a small, declarative configuration model for an AI agent orchestrator without recreating a general-purpose automation platform such as n8n.
+Define a small, declarative configuration model for an AI agent orchestrator without recreating a general-purpose automation platform.
 
-The configuration should describe:
+The configuration describes three concerns:
 
 - workflow topology,
 - node behavior,
 - reusable agent/runtime profiles.
 
-The model is intentionally lightweight rather than fully exhaustive or formally complete.
+The model is intentionally lightweight and can evolve as orchestration requirements become concrete.
 
 ---
 
 ## Core Model
 
-The orchestrator is represented as a directed execution graph.
+The orchestrator is a directed execution graph.
 
-Two primary node types are proposed:
+Two primary node types:
 
 - `flow` — controls execution topology.
 - `task` — performs work on data.
@@ -43,7 +43,7 @@ Node
 └── Task
 ```
 
-A typical review workflow may look like:
+Example:
 
 ```text
                    ┌─ adversarial review ─┐
@@ -64,11 +64,8 @@ The configuration is split into three entities.
 
 The workflow defines graph topology and references nodes.
 
-Example:
-
 ```yaml
 name: review-code
-
 start: review_split
 
 nodes:
@@ -78,14 +75,6 @@ nodes:
   - tests
   - architecture
   - synthesis
-```
-
-An alternative representation is to keep edges explicitly in the workflow:
-
-```yaml
-name: review-code
-
-start: review_split
 
 edges:
   review_split:
@@ -107,7 +96,7 @@ edges:
     - synthesis
 ```
 
-This keeps graph topology separate from node implementation.
+Keeping edges in the workflow gives the workflow ownership of topology and allows nodes to be reused across workflows.
 
 ---
 
@@ -124,7 +113,7 @@ type: flow
 kind: split
 ```
 
-A conditional routing node could be represented as:
+Conditional routing:
 
 ```yaml
 type: flow
@@ -138,22 +127,21 @@ routes:
     next: standard_review
 ```
 
-A join node could be represented as:
+Join:
 
 ```yaml
 type: flow
 kind: join
-
 strategy: all
 ```
 
-Possible flow kinds:
+Initial flow kinds:
 
 - `route` — choose an outgoing path.
 - `split` — fan out into multiple branches.
-- `join` — combine or synchronize branches.
+- `join` — synchronize or combine branches.
 
-Additional kinds can be introduced later if required, such as retry, loop, gate, or timeout.
+Additional kinds such as retry, loop, gate, or timeout can be introduced later.
 
 #### Task node
 
@@ -166,9 +154,7 @@ prompt: |
   Look for hidden failure modes.
 ```
 
-A task represents actual work performed on the data passing through the graph.
-
-Tasks can reuse the same agent profile while having different prompts and graph roles.
+A task performs work using a referenced agent profile.
 
 ---
 
@@ -176,9 +162,7 @@ Tasks can reuse the same agent profile while having different prompts and graph 
 
 **Format:** TOML
 
-Agent definitions primarily contain reusable runtime and model settings.
-
-Example:
+Agent definitions contain reusable runtime and model settings.
 
 ```toml
 runtime = "llm"
@@ -189,7 +173,7 @@ effort = "high"
 format = "markdown"
 ```
 
-Likely agent configuration concerns include:
+Likely agent settings include:
 
 - runtime,
 - model,
@@ -200,50 +184,11 @@ Likely agent configuration concerns include:
 - limits and timeouts,
 - provider-specific settings.
 
-The task owns the work instruction; the agent owns reusable execution configuration.
+The task owns the work instruction. The agent owns reusable execution configuration.
 
 ---
 
 ## Format Choice
-
-### YAML
-
-Use YAML for workflows and nodes.
-
-It fits graph-oriented definitions because it handles:
-
-- nested structures,
-- lists,
-- branching,
-- references,
-- multiline prompts.
-
-Example:
-
-```yaml
-type: task
-agent: reviewer
-
-prompt: |
-  Review the code diff.
-  Focus on architectural regressions.
-```
-
-### TOML
-
-Use TOML for reusable agent/runtime configuration.
-
-It works well for settings-oriented data:
-
-```toml
-model = "gpt-5.6"
-effort = "high"
-
-[output]
-format = "json"
-```
-
-Proposed separation:
 
 ```text
 workflow YAML  → topology
@@ -251,47 +196,15 @@ node YAML      → behavior
 agent TOML     → runtime configuration
 ```
 
----
+YAML fits workflows and nodes because they contain nested graph structures, lists, branches, references, and multiline prompts.
 
-## Terminology
-
-### `Task`
-
-Preferred replacement for `Content`.
-
-`Task` describes an execution unit more accurately because content is the data passing through the node rather than the node itself.
-
-Other terms considered:
-
-- Step
-- Operation
-- Processor
-- Work
-
-### `Flow`
-
-Preferred as the broad node type for execution-control nodes.
-
-Example:
-
-```yaml
-type: flow
-kind: route
-```
-
-rather than:
-
-```yaml
-type: route
-```
-
-This preserves a stable high-level node taxonomy while allowing new flow operations to be added through `kind`.
+TOML fits agent profiles because they are primarily settings-oriented.
 
 ---
 
 ## Design Principles
 
-### Keep topology separate from execution
+### Separate topology from execution
 
 The workflow describes how nodes connect.
 
@@ -301,15 +214,15 @@ Agents describe how a task is executed.
 
 ### Keep the DSL small
 
-The system should model the execution graph required for AI orchestration rather than becoming a general visual automation engine.
+The system should model AI orchestration primitives rather than expand into a general automation DSL.
 
 ### Prefer references over duplication
 
-Reusable agent profiles should be referenced by tasks rather than repeated across node definitions.
+Reusable agent profiles are referenced by tasks rather than repeated across node definitions.
 
-### Allow incomplete declarative definitions
+### Evolve from concrete requirements
 
-The initial DSL can remain intentionally small and evolve as concrete orchestration requirements appear.
+The initial schema can remain intentionally incomplete and add semantics only when real workflows require them.
 
 ---
 
@@ -333,69 +246,13 @@ orchestrator/
     └── synthesizer.toml
 ```
 
-Example task:
-
-```yaml
-# nodes/adversarial.yaml
-
-type: task
-agent: reviewer
-
-prompt: |
-  Review the diff adversarially.
-  Look for hidden failure modes.
-```
-
-Example shared agent:
-
-```toml
-# agents/reviewer.toml
-
-runtime = "llm"
-model = "gpt-5.6"
-effort = "high"
-
-[output]
-format = "markdown"
-```
-
 ---
 
 ## Open Design Questions
 
-### Edge ownership
-
-Two viable models remain:
-
-**Workflow-owned edges**
-
-```yaml
-edges:
-  review_split:
-    - adversarial
-    - lint
-```
-
-This gives the workflow complete ownership of topology.
-
-**Node-owned edges**
-
-```yaml
-type: flow
-kind: split
-
-next:
-  - adversarial
-  - lint
-```
-
-This is more compact but couples node behavior to one graph.
-
-Workflow-owned edges are likely preferable if node reuse across workflows is important.
-
 ### Join semantics
 
-The DSL still needs a precise model for:
+Define behavior for:
 
 - waiting for all branches,
 - waiting for any branch,
@@ -407,7 +264,7 @@ The DSL still needs a precise model for:
 
 The initial model assumes node output becomes downstream node input.
 
-A later revision should define:
+Later revisions may define:
 
 - named inputs and outputs,
 - selectors,
@@ -417,21 +274,19 @@ A later revision should define:
 
 ### Conditions
 
-Conditional routing will need an expression model.
+Conditional routing needs an expression model.
 
-Options include:
+Possible directions:
 
-- a small built-in expression syntax,
+- small built-in expression syntax,
 - JSONPath/JMESPath-style selectors,
-- embedded expressions from the host language.
+- host-language expressions.
 
 This can remain unspecified until routing requirements are concrete.
 
 ---
 
 ## Proposed Initial Scope
-
-A minimal first version can support:
 
 ```text
 Node types:
@@ -444,9 +299,9 @@ Flow kinds:
   join
 
 Configuration:
-  workflow.yaml
+  workflows/*.yaml
   nodes/*.yaml
   agents/*.toml
 ```
 
-That is enough to express sequential tasks, conditional routing, parallel fan-out, synchronization, and reusable agent configurations without introducing a broad automation DSL.
+This is sufficient for sequential tasks, conditional routing, parallel fan-out, synchronization, and reusable agent configurations.
