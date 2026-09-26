@@ -11,65 +11,63 @@ Draft proposal based on the current design direction.
 
 ## Goal
 
-Define a small, declarative configuration model for an AI agent orchestrator without recreating a general-purpose automation platform.
+Define a declarative configuration model for complex AI-agent orchestration.
 
-The configuration describes three concerns:
+The configuration separates three concerns:
 
-- workflow topology,
-- node behavior,
+- workflow topology and control flow,
+- executable tasks,
 - reusable agent/runtime profiles.
 
-The model is intentionally lightweight and can evolve as orchestration requirements become concrete.
-
----
+The proposal is intentionally provisional. Syntax and boundaries should evolve from concrete orchestration requirements.
 
 ## Core Model
 
 The orchestrator is a directed execution graph.
 
-Two primary node types:
+> **Control flow is graph structure unless it actually performs computation.**
 
-- `flow` — controls execution topology.
-- `task` — performs work on data.
-
-Conceptually:
+Sequencing, conditional paths, fan-out, and fan-in are expressed by the workflow graph. Executable work is represented by `task` nodes.
 
 ```text
-Node
-├── Flow
-│   ├── route
-│   ├── split
-│   └── join
-└── Task
+Workflow
+├── topology
+│   ├── sequencing
+│   ├── conditional routing
+│   ├── fan-out
+│   └── fan-in
+└── tasks
+    ├── agent invocation
+    ├── tool invocation
+    ├── code execution
+    ├── deterministic transform
+    ├── external process / API
+    └── other executable work
 ```
-
-Example:
 
 ```text
                    ┌─ adversarial review ─┐
                    ├─ lint review ────────┤
-code diff ─ split ─┼─ test review ────────┼─ join ─ final synthesis
+code diff ─────────┼─ test review ────────┼─ final synthesis
                    └─ architecture review ┘
 ```
 
----
+Fan-out exists because the graph has multiple outgoing paths. It does not require a `split` node.
 
 ## Configuration Layers
-
-The configuration is split into three entities.
 
 ### 1. Workflow
 
 **Format:** YAML
 
-The workflow defines graph topology and references nodes.
+The workflow owns graph topology and references tasks.
 
 ```yaml
 name: review-code
-start: review_split
+start: prepare_diff
 
-nodes:
-  - review_split
+tasks:
+  - prepare_diff
   - adversarial
   - lint
   - tests
@@ -77,7 +75,7 @@ nodes:
   - synthesis
 
 edges:
-  review_split:
+  prepare_diff:
     - adversarial
     - lint
     - tests
@@ -85,84 +83,69 @@ edges:
 
   adversarial:
     - synthesis
-
   lint:
     - synthesis
-
   tests:
     - synthesis
-
   architecture:
     - synthesis
 ```
 
-Keeping edges in the workflow gives the workflow ownership of topology and allows nodes to be reused across workflows.
+Multiple outgoing edges represent fan-out. Multiple incoming edges represent fan-in.
 
----
+Conditional routing is also workflow topology. Exact syntax remains open; conceptually:
 
-### 2. Node
+```yaml
+edges:
+  classify:
+    - when: severity == "high"
+      to: deep_review
+    - default: true
+      to: standard_review
+```
+
+The workflow remains the single owner of topology.
+
+### 2. Task
 
 **Format:** YAML
 
-A node defines execution semantics.
-
-#### Flow node
-
-```yaml
-type: flow
-kind: split
-```
-
-Conditional routing:
-
-```yaml
-type: flow
-kind: route
-
-routes:
-  - when: severity == "high"
-    next: deep_review
-
-  - default: true
-    next: standard_review
-```
-
-Join:
-
-```yaml
-type: flow
-kind: join
-strategy: all
-```
-
-Initial flow kinds:
-
-- `route` — choose an outgoing path.
-- `split` — fan out into multiple branches.
-- `join` — synchronize or combine branches.
-
-Additional kinds such as retry, loop, gate, or timeout can be introduced later.
-
-#### Task node
+A task is an executable unit of work.
 
 ```yaml
 type: task
-agent: reviewer
+uses: agent:reviewer
 
-prompt: |
-  Review the diff adversarially.
-  Look for hidden failure modes.
+input:
+  instruction: |
+    Review the diff adversarially.
+    Look for hidden failure modes.
 ```
 
-A task performs work using a referenced agent profile.
+Tasks can represent other executable mechanisms:
 
----
+```yaml
+type: task
+uses: tool:lint
+```
+
+```yaml
+type: task
+uses: code:run-tests
+```
+
+```yaml
+type: task
+uses: transform:normalize-results
+```
+
+The exact `uses` syntax is illustrative. A task performs work; the workflow determines how execution moves between tasks.
 
 ### 3. Agent
 
 **Format:** TOML
 
-Agent definitions contain reusable runtime and model settings.
+Agent definitions contain reusable execution configuration.
 
 ```toml
 runtime = "llm"
@@ -173,58 +156,91 @@ effort = "high"
 format = "markdown"
 ```
 
-Likely agent settings include:
+Likely settings include runtime, model, reasoning effort, tool configuration and permissions, output configuration, limits and timeouts, and provider-specific settings.
 
-- runtime,
-- model,
-- reasoning effort,
-- tool permissions,
-- output format,
-- structured-output schema,
-- limits and timeouts,
-- provider-specific settings.
+The current boundary treats characteristics such as model and reasoning effort as properties of the agent definition.
 
-The task owns the work instruction. The agent owns reusable execution configuration.
+## Dataflow
 
----
+Control-flow dependencies and data dependencies are related but distinct.
+
+A task may consume output from any relevant upstream node rather than only its nearest predecessor.
+
+```yaml
+type: task
+uses: agent:synthesizer
+
+inputs:
+  adversarial: adversarial.output
+  lint: lint.output
+  tests: tests.output
+  architecture: architecture.output
+```
+
+This syntax is illustrative. A later revision should define the data-reference model from concrete requirements, including named inputs and outputs, field selection, transformations, shared context, branch-local state, and multiple producers.
+
+## Fan-In / Join Semantics
+
+Fan-in occurs when multiple graph paths converge on a downstream task.
+
+> A downstream task with multiple required incoming paths waits for all of them.
+
+This keeps synchronization primarily a property of graph execution rather than requiring a dedicated `join` node. More advanced synchronization semantics can be introduced when concrete workflows require them.
+
+## Failure Semantics
+
+Any executable task may fail. Failure behavior therefore belongs to the general execution model.
+
+The model will need semantics for task failure state, retries, propagation, recovery paths, routing based on failure, and downstream behavior when an upstream dependency fails.
+
+An open architectural question is whether failure is represented as graph-visible state/output, execution policy, or a combination.
+
+## Discussion: Graph-Native Control Flow
+
+Graph-native control flow is the default model. Conditions, fan-out, fan-in, and sequencing are properties of workflow topology.
+
+Advantages:
+
+- topology has one owner,
+- graph visualization maps directly to execution structure,
+- validation can reason over the workflow as a whole,
+- fan-out requires no artificial `split` entity,
+- tasks remain reusable independently of a particular workflow.
+
+The workflow DSL consequently carries the control-flow semantics required for complex orchestration.
+
+## Discussion: Executable Control Escape Hatch
+
+Some control operations may need to perform actual computation rather than merely describe topology. In that case, an executable control construct may be appropriate.
+
+```text
+structural control → workflow graph
+computed control   → executable construct
+```
+
+The test remains:
+
+> **Control flow is graph structure unless it actually performs computation.**
+
+This allows sophisticated orchestration without turning every structural graph operation into an executable node. Its exact representation should be introduced when a concrete use case requires it.
 
 ## Format Choice
 
 ```text
-workflow YAML  → topology
-node YAML      → behavior
-agent TOML     → runtime configuration
+workflow YAML  → topology and control flow
+task YAML      → executable work
+agent TOML     → reusable runtime configuration
 ```
 
-YAML fits workflows and nodes because they contain nested graph structures, lists, branches, references, and multiline prompts.
+YAML fits workflows and tasks because they can contain nested structures, lists, branches, references, and multiline content. TOML fits agent profiles because they are predominantly settings-oriented.
 
-TOML fits agent profiles because they are primarily settings-oriented.
+This format split is provisional. If agent definitions become structurally complex enough that YAML provides a better representation, the format can change without altering the conceptual separation.
 
----
+## References and Identity
 
-## Design Principles
+Tasks and other reusable entities require stable references.
 
-### Separate topology from execution
-
-The workflow describes how nodes connect.
-
-Nodes describe what happens at a graph position.
-
-Agents describe how a task is executed.
-
-### Keep the DSL small
-
-The system should model AI orchestration primitives rather than expand into a general automation DSL.
-
-### Prefer references over duplication
-
-Reusable agent profiles are referenced by tasks rather than repeated across node definitions.
-
-### Evolve from concrete requirements
-
-The initial schema can remain intentionally incomplete and add semantics only when real workflows require them.
-
----
+Questions such as local versus global identifiers, filename-derived identity, logical names, and path references should remain visible as the design develops. Concrete reuse and composition requirements can determine the useful semantics.
 
 ## Example Project Layout
 
@@ -232,76 +248,42 @@ The initial schema can remain intentionally incomplete and add semantics only wh
 orchestrator/
 ├── workflows/
 │   └── review-code.yaml
-│
-├── nodes/
-│   ├── review-split.yaml
+├── tasks/
+│   ├── prepare-diff.yaml
 │   ├── adversarial.yaml
 │   ├── lint.yaml
 │   ├── tests.yaml
 │   ├── architecture.yaml
 │   └── synthesis.yaml
-│
 └── agents/
     ├── reviewer.toml
     └── synthesizer.toml
 ```
 
----
+The layout illustrates separation of topology, executable work, and reusable agent configuration. Composition and reuse mechanics remain open.
 
-## Open Design Questions
+## Design Principles
 
-### Join semantics
+### Control flow belongs to the graph
 
-Define behavior for:
+Sequencing, conditions, fan-out, and fan-in are topology unless the control operation itself performs computation.
 
-- waiting for all branches,
-- waiting for any branch,
-- partial completion,
-- branch failure,
-- merge strategy.
+### Tasks perform work
 
-### Data passing
+A task represents executable behavior and may be backed by an agent, tool, code, transform, external process, or another execution mechanism.
 
-The initial model assumes node output becomes downstream node input.
+### Control flow and dataflow are distinct
 
-Later revisions may define:
+Graph edges determine execution dependencies. Tasks may reference data produced by multiple relevant nodes.
 
-- named inputs and outputs,
-- selectors,
-- transformations,
-- shared context,
-- branch-local state.
+### Failure is a general execution concern
 
-### Conditions
+Every task can fail, so failure semantics apply across the orchestration model.
 
-Conditional routing needs an expression model.
+### Separate reusable execution configuration
 
-Possible directions:
+Agent profiles capture reusable runtime characteristics independently of task instructions and workflow topology.
 
-- small built-in expression syntax,
-- JSONPath/JMESPath-style selectors,
-- host-language expressions.
+### Evolve from complex use cases
 
-This can remain unspecified until routing requirements are concrete.
-
----
-
-## Proposed Initial Scope
-
-```text
-Node types:
-  flow
-  task
-
-Flow kinds:
-  route
-  split
-  join
-
-Configuration:
-  workflows/*.yaml
-  nodes/*.yaml
-  agents/*.toml
-```
-
-This is sufficient for sequential tasks, conditional routing, parallel fan-out, synchronization, and reusable agent configurations.
+The schema should gain semantics when real orchestration requirements justify them rather than attempting to enumerate the final DSL in advance.
