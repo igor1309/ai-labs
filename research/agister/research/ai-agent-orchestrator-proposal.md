@@ -122,6 +122,13 @@ edges:
 
 The workflow remains the single owner of topology.
 
+Routing to a process may either continue an existing process or start a new one.
+This distinction is significant for stateful processes: returning a test report
+to the same implementer is different from starting a fresh implementer with that
+report.
+
+The exact syntax remains open.
+
 ### 2. Process
 
 **Format:** YAML
@@ -227,6 +234,21 @@ inputs:
 ```
 
 This syntax is illustrative. A later revision should define the data-reference model from concrete requirements, including named inputs and outputs, field selection, transformations, shared context, branch-local state, and multiple producers.
+
+Data dependencies are not limited to process return values. Processes may
+produce artifacts or effects that later execution depends on, such as files,
+commits, records, or changes to external state.
+
+The configuration model will need to represent such dependencies where they are
+relevant to orchestration. Exact semantics remain open.
+
+## Discussion: Task Refinement
+
+Execution may discover additional work required to complete a task. For example,
+a review may produce findings that become new work to be performed.
+
+This refines the task being carried out rather than changing the workflow
+definition. The model for representing such refinement remains open.
 
 ## Fan-In / Join Semantics
 
