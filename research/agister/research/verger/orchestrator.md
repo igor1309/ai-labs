@@ -72,6 +72,10 @@ task as soon as it is ready, including while other tasks are running. Verger's
 historical material often calls such a row a *step*; Agister uses *row* for the
 durable plan record and *task* for its executable materialization.
 
+Rows may declare dependencies. Agister validates the dependency graph whenever
+rows are queued or amended and refuses to materialize work with unresolved,
+cyclic or otherwise invalid prerequisites.
+
 The goal is complete only when every required milestone has passed its exit
 conditions in the versioned plan. This preserves two distinctions exposed by
 Verger: row completion is not milestone completion, and milestone completion is
@@ -84,6 +88,11 @@ specific brief, inputs, constraints and required evidence for that work. A task
 has a stable identity and committed revisions, survives an interrupted or
 failed attempt, and may be continued or revised without losing its row or
 milestone context.
+
+Each task has an acceptance profile derived from its class. The profile defines
+what the task may change and which evidence it must return; product code,
+documentation, orchestration tooling and investigation need not share one
+acceptance path.
 
 A consumer of `task.current` resolves it when activated and records the exact
 revision used. After a suspension, resumption binds live task references to the
@@ -268,6 +277,13 @@ it. After restart, Agister reconciles every open intent: reattach to a live
 process, recover a completed result, safely repeat an idempotent effect, or mark
 the run interrupted or lost.
 
+The supervisor that starts an effect owns its complete lifecycle. Every child
+or background process has an owner, a bound, cleanup behavior and a reaper;
+early success does not skip teardown. Provider and usage-limit termination are
+routine recoverable outcomes. Recovery may resume the recorded process when its
+identity and inputs remain trustworthy, otherwise it starts a fresh attempt
+with the earlier work explicitly marked unverified.
+
 ## Control flow and dataflow
 
 Routes express execution dependency, not implicit value passing. A stage names
@@ -328,10 +344,10 @@ those decisions.
 |---|---|---|
 | **Orchestration Core** | Validate workflows and own goal plan, milestone, row, task, run, transition and completion semantics | Accept commands and events; emit state events and effect intents |
 | **State Authority** | Preserve goal plans, milestones, rows, tasks, revisions, events, outcomes, artifacts and rebuildable projections | Append and load events; store and resolve artifacts; serve historical facts |
-| **Scheduler** | Admit ready work under resource, concurrency, quota and hold policies | Accept admission requests; return grant, wait or refusal with a reason |
-| **Effect Supervisor** | Start, observe, interrupt and reconcile external work | Accept effect intents; emit lifecycle observations and normalized outcomes |
+| **Scheduler** | Admit ready work and fire declared triggers under resource, concurrency, conflict, quota, host and drain policies | Accept admission and trigger requests; return grant, wait or refusal with a reason |
+| **Effect Supervisor** | Start, observe, interrupt, clean up, reap and reconcile external work | Accept effect intents; emit lifecycle observations and normalized outcomes |
 | **Process Gateway** | Adapt agents, tools, commands and other runtimes to the common process contract | Accept process requests; emit progress, completion and failure outcomes |
-| **Evidence Authority** | Preserve immutable candidate manifests and associate gates, reviews, findings, provenance and acceptance evidence with exact revisions | Resolve candidate records; accept evidence and findings; answer acceptance eligibility |
+| **Evidence Authority** | Preserve immutable candidate manifests and scoped verification, review, provenance and acceptance evidence for exact revisions and integrated heads | Resolve candidate records; accept evidence and findings; answer acceptance eligibility |
 | **Interaction Boundary** | Present commands, queries, event streams, decisions and notifications to clients | Stable command, query and subscription interfaces |
 
 The interfaces above are logical contracts, not protocol choices. The
@@ -378,6 +394,10 @@ permission profile, closed standard input where required, a process group, a
 hard timeout and a schema for its result. Builders cannot write Agister's state
 directory or the repository's authoritative branch.
 
+The sandbox enforces capability restrictions and exposes a scrubbed environment;
+prompt text is not a security boundary. Scratch space is private to the attempt,
+and cleanup may remove only resources owned by that attempt.
+
 The Effect Supervisor provisions the workspace from the effective process
 policy and candidate revision for each activation. A workspace is never handed
 from one process to another as ordinary output; parallel processes receive
@@ -391,30 +411,62 @@ configured evidence is attached to the exact candidate revision.
 Deterministic verification runs in a clean throwaway workspace. Mutation
 patches are checked for applicability and compilation before they can count as
 evidence. A hung plant, a plant that does not compile, or a test that cannot be
-shown to fail proves nothing.
+shown to fail proves nothing. A verification run also records the tests, tags
+and target scope it actually exercised. Every surviving mutation requires an
+explicit test-gap or equivalence ruling.
 
 ### Resource scheduling
 
-The scheduler reasons about three scopes:
+The scheduler reasons about several scopes:
 
 | Scope | Examples |
 |---|---|
+| Goal | task dependencies, mutable conflict domains and drain state |
 | Repository | builder, reviewer and judge concurrency; one state writer |
 | Machine | CPU-heavy runs, stress exclusivity, disk reservations and load |
 | Provider | account quotas, rate limits, availability and recovery probes |
 
-Resources are declared by processes and admitted centrally. Waiting for a
-resource does not consume the process's execution time box, and status names the
-holder and queue position.
+Resources and conflict domains are declared by tasks and processes and admitted
+centrally. Each process activation is admitted before its expensive worker is
+instantiated: cheap infrastructure waits, not a model session. Waiting does not
+consume the process's execution time box, and status names the holder and queue
+position. Lane capacity follows the effective bottleneck rather than the
+nominal number of workers available.
 
 Heavy verification is serialized when its timing assumptions require it.
 Load/stress reproduction is exclusive and sized from measured headroom. Reviews
 do not overlap load-sensitive plant runs. Admission uses observations, not an
 agent's promise that a command is light.
 
+Host capabilities and settings required by a process are preconditions checked
+before admission. Tasks that declare the same mutable hotspot may be serialized
+even when other resources are available. A conflict preserves the candidate as
+unverified work and returns the task to schedulable state rather than asking a
+worker to repair shared history.
+
+Drain is a durable scheduler state distinct from pause. Before its effective
+boundary, existing capacity continues to be filled; afterward, running work may
+settle but no new work starts. Status reports when only orchestration and
+cleanup remain.
+
 Provider holds require evidence from an actual failed attempt. Announced reset
 times are hints, not facts. A probe attempt or an explicit owner `go` command
 can lift the hold; predicted limits do not stop work.
+
+### Verification scheduling
+
+Verification has declared scope. A task check covers the materialized task; a
+batch or cadence check covers accumulated changes; a milestone gate covers its
+exit contract; and an integrated-head check detects interactions between
+independently accepted candidates. Evidence records both the revision and the
+scope actually exercised.
+
+Count-, state- and time-based verification triggers are scheduled work, not
+status reminders. Heavy tiers wait for an admissible quiet slot. Policies may
+change their thresholds as measurements change without changing what it means
+for a trigger to be due. A failed integrated-head check blocks further
+acceptance and creates recovery work; it does not retroactively manufacture a
+failure for one arbitrarily chosen task.
 
 ### Observability and bounds
 
@@ -429,13 +481,22 @@ resource assignment and capped log. Agister distinguishes:
 - lost after an unreconciled failure; and
 - failed by the process itself.
 
+The monitor for an execution does not share that execution's lifecycle, and the
+service itself has an external liveness signal. Missing or stale monitoring is
+an observable failure, not an absence of news. Metrics distinguish a measured
+zero from missing, unreadable or stale input, and a later fact may explicitly
+supersede an earlier alarm.
+
 The status surface reports measured facts rather than relaying an agent's account
 of itself. It shows active work, elapsed time, queue position, resource holders,
-machine load, disk headroom, holds and the single reason a step cannot advance.
+machine load, disk headroom, holds and the single reason a row or task cannot
+advance.
 
-Metrics include cycle time, first-pass rate, time to catch a mutation, hangs,
-infrastructure-failure classes, resource wait and findings later proven false.
-Metrics are connected to policy rather than collected only for display:
+Metrics include useful plan progress, fix and documentation work, cycle time,
+first-pass rate, time to catch a mutation, rework, worker deaths, idle capacity,
+review-chain depth, hangs, infrastructure-failure classes, resource wait and
+findings later proven false. Metrics are connected to policy rather than
+collected only for display:
 
 - falling first-pass rate causes work to be split more finely;
 - persistently slow mutation detection creates a canary-test row;
@@ -474,9 +535,11 @@ The stages have deliberately different authorities:
 
 - Agister materializes the selected row as a task and generates its brief from
   the durable row, task revision, process definition and a versioned template.
-  Per-run prose cannot silently add policy. A new brief rule
-  must also create work to enforce that rule mechanically where possible;
-  enforcement comes first and the brief retains only the rationale.
+  The generated input records its template and state revisions and is validated
+  as part of generation. Per-run prose cannot silently add policy: a difference
+  between the generated brief and what is sent becomes a template change. Every
+  instruction-only rule names its mechanical enforcement or is marked
+  unenforced; enforcement comes first and the brief retains only the rationale.
 - A fresh builder performs one small, test-first step in isolation.
 - Deterministic scripts decide whether the exact candidate passes its gate and
   catches its mutation plants. Their adapters attach normalized evidence and
@@ -494,6 +557,12 @@ The stages have deliberately different authorities:
   fail may disprove it.
 - Agister applies the result and assigns identifiers. Agents never compete to
   write the tracker.
+
+Each finding records its parent and review-fix depth. Review policy budgets both
+invocation count and context size and may batch related changes, defer deeper
+chains or escalate them rather than confusing repeated repair with forward
+progress. The particular depth and batching thresholds are configuration, not
+universal semantics.
 
 At a milestone boundary, a cross-model coherence reviewer reads each affected
 module as a whole. It looks for duplicated logic, sibling instances of repaired
@@ -574,12 +643,17 @@ The inbox contains only:
 
 Status stays on the dashboard. Product defects become rows and then tasks when
 ready. Questions already answered by the specification are not asked. Open
-implementation or build
-questions go first to an advisor process, whose provisional ruling lets
-unrelated work continue and remains reversible by the owner.
+implementation or build questions go first to an advisor process, whose
+provisional ruling lets unrelated work continue and remains reversible by the
+owner.
+
+Each owner question receives one consolidated response covering the decision,
+its trigger, current state and known gaps; fragments in a status stream do not
+count as an answer.
 
 Owner pauses and holds are durable events, not chat messages. Commands that the
-owner must run are complete, preflighted and accompanied by rollback. A
+owner must run are delivered as one complete action with preflight, verification
+and rollback rather than a sequence the owner must reconstruct. A
 notification mechanism is driven by committed state, so delivery does not
 depend on the orchestrator remembering to send it.
 
@@ -599,26 +673,30 @@ The MVP should make these properties difficult to violate:
 8. Resource and safety rules are enforced by admission, not remembered prose.
 9. Essential artifacts survive a service crash and machine reboot.
 10. The owner can see why work is waiting without reading worker logs.
+11. Waiting for admission does not consume an expensive worker or its time box.
+12. Every spawned effect has an owner and cleanup path, including early exit.
+13. A due policy trigger becomes scheduled work rather than a reminder.
 
 ## MVP boundary
 
 The first version needs versioned goal plans with milestones and rows, row
-addition and splitting during execution, task materialization, static workflows,
-a concrete goal-to-task workflow boundary, structured parallel stages with
-`completion: all`, named cycle budgets,
-stage-level process continuation, agent and command processes, explicit data
-references, durable events, effect reconciliation, isolated workspaces,
-resource admission, generated briefs, deterministic verification, per-change
-and milestone-coherence review, specification-friction routing, review/judge
-routing and the owner command channel.
+addition and splitting during execution, dependency validation, typed task
+acceptance profiles, task materialization, static workflows, a concrete
+goal-to-task workflow boundary, structured parallel stages with
+`completion: all`, named cycle budgets, stage-level process continuation, agent
+and command processes, explicit data references, durable events, effect
+reconciliation and reaping, isolated workspaces, pre-spawn resource admission,
+durable drain, generated and validated briefs, triggered verification scopes,
+per-change and milestone-coherence review, review-chain tracking,
+specification-friction routing, review/judge routing and the owner command
+channel.
 
 It should deliberately defer dynamic workflow-definition mutation, generalized
 workflow composition beyond that concrete boundary, first-result and quorum
-parallel completion,
-human-as-process semantics, concurrent runs that mutate the same goal plan,
-generalized cancellation and a universal rich process-output envelope. Those
-capabilities should be added only when a concrete workflow establishes their
-semantics.
+parallel completion, human-as-process semantics, concurrent runs that mutate the
+same goal plan, generalized cancellation and a universal rich process-output
+envelope. Those capabilities should be added only when a concrete workflow
+establishes their semantics.
 
 Agister's first success criterion is not that it offers a universal orchestration
 notation. It is that the service can run the proven Verger build loop through
