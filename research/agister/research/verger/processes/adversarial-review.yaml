@@ -18,4 +18,8 @@ input:
     - candidate_revision
     - diff
     - changed_files
-    - writer_model_family
+
+output:
+  format: json
+  schema: agister.review-result/v1alpha1
+  require_valid: true

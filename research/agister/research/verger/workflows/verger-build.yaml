@@ -3,10 +3,10 @@
 # Scope: advance one durable Verger task scope until its required steps,
 # milestone gates, and coherence reviews are complete.
 #
-# Schema names are provisional. Each node named under `edges` is a process
-# reference; process membership is intentionally not duplicated in a list.
-# Process retry, timeout, isolation, resource, and provider policy belong in
-# process definitions and service policy rather than in this graph.
+# Schema names are provisional. Stage identity is separate from implementation:
+# external work names a process, while transactional state operations use the
+# core's closed set of built-ins. Process retry, timeout, isolation, resource,
+# and provider policy remain outside this workflow.
 
 schema: agister.workflow/v1alpha1
 name: verger-build
@@ -25,10 +25,105 @@ inputs:
 
 start: select_step
 
-# Control edges express execution dependencies. Every conditional branch is
-# exhaustive. Every transition that repeats a cycle declares a bound supplied
-# by the durable task.
-edges:
+defaults:
+  on_failure:
+    terminal: failed
+  on_exhausted:
+    terminal: failed
+
+# Limits are resolved from the run-start task revision. Every transition sharing
+# a budget consumes the same counter. Subject-scoped counters reset only when
+# the corresponding durable identity changes.
+budgets:
+  progress_cycles:
+    limit: '${inputs.limits.max_progress_cycles}'
+    scope: run
+  steps:
+    limit: '${inputs.limits.max_steps}'
+    scope: run
+  corrections:
+    limit: '${inputs.limits.max_corrections_per_step}'
+    scope: task.active_step.id
+  step_infrastructure_failures:
+    limit: '${inputs.limits.max_infrastructure_failures}'
+    scope: task.active_step.id
+  milestone_infrastructure_failures:
+    limit: '${inputs.limits.max_infrastructure_failures}'
+    scope: task.active_milestone.id
+  milestone_cycles:
+    limit: '${inputs.limits.max_milestone_cycles}'
+    scope: run
+  owner_waits:
+    limit: '${inputs.limits.max_owner_waits}'
+    scope: run
+
+stages:
+  select_step:
+    builtin: select-step
+    consume: progress_cycles
+  generate_brief:
+    builtin: generate-brief
+  build:
+    process: process:build
+  record_builder_result:
+    builtin: record-builder-result
+  record_specification_friction:
+    builtin: record-specification-friction
+  gate:
+    process: process:gate
+  preflight_plants:
+    process: process:preflight-plants
+  plants:
+    process: process:plants
+  record_gate_infrastructure_failure:
+    builtin: record-infrastructure-failure
+    consume: step_infrastructure_failures
+    on_exhausted:
+      to: commit_gate_infrastructure_root_cause
+  record_plant_infrastructure_failure:
+    builtin: record-infrastructure-failure
+    consume: step_infrastructure_failures
+    on_exhausted:
+      to: commit_plant_infrastructure_root_cause
+  accept:
+    builtin: accept-candidate
+  review:
+    process: process:adversarial_review
+  judge_review:
+    process: process:judge-review
+  commit_review_findings:
+    builtin: commit-review-findings
+  close_step:
+    builtin: close-step
+  milestone_gate:
+    process: process:milestone-gate
+  record_milestone_infrastructure_failure:
+    builtin: record-infrastructure-failure
+    consume: milestone_infrastructure_failures
+    on_exhausted:
+      to: commit_milestone_infrastructure_root_cause
+  commit_milestone_findings:
+    builtin: commit-milestone-findings
+  coherence_review:
+    # Its process policy resolves every accepted revision's writer provenance
+    # and requires a reviewer family different from all of them.
+    process: process:cross-family-coherence-review
+  judge_coherence:
+    process: process:judge-coherence
+  commit_coherence_findings:
+    builtin: commit-coherence-findings
+  close_milestone:
+    builtin: close-milestone
+  commit_gate_infrastructure_root_cause:
+    builtin: commit-infrastructure-root-cause
+  commit_plant_infrastructure_root_cause:
+    builtin: commit-infrastructure-root-cause
+  commit_milestone_infrastructure_root_cause:
+    builtin: commit-infrastructure-root-cause
+
+# Routes express execution dependencies. Conditional choices are
+# exhaustive, and every repeating route consumes one named finite budget.
+routes:
   select_step:
     - when: 'output.route == "step_ready"'
       to: generate_brief
@@ -36,13 +131,13 @@ edges:
       to: milestone_gate
     - when: 'output.route == "waiting_for_owner"'
       suspend:
-        until: task.revised
+        until: 'decision.applied(${select_step.output.decision_id})'
         resume: select_step
-        max_resumes: '${inputs.limits.max_owner_waits}'
+        consume: owner_waits
     - when: 'output.route == "scope_complete"'
       terminal: succeeded
     - default: true
-      to: exception_judge
+      terminal: failed
 
   generate_brief:
     - to: build
@@ -53,61 +148,63 @@ edges:
     - when: 'output.status == "blocked_by_specification"'
       to: record_specification_friction
     - default: true
-      to: exception_judge
+      terminal: failed
 
   record_builder_result:
     - to: gate
 
   record_specification_friction:
     - to: select_step
-      max_traversals: '${inputs.limits.max_steps}'
+      consume: corrections
 
   gate:
     - when: 'output.status == "passed"'
       to: preflight_plants
     - when: 'output.status == "product_failure"'
       to: generate_brief
-      max_traversals: '${inputs.limits.max_corrections_per_step}'
+      consume: corrections
     - when: 'output.status == "infrastructure_failure"'
-      to: record_infrastructure_failure
+      to: record_gate_infrastructure_failure
     - default: true
-      to: exception_judge
+      terminal: failed
 
   preflight_plants:
     - when: 'output.status == "ready"'
       to: plants
     - when: 'output.status == "invalid_plant"'
       to: generate_brief
-      max_traversals: '${inputs.limits.max_corrections_per_step}'
+      consume: corrections
     - default: true
-      to: exception_judge
+      terminal: failed
 
   plants:
     - when: 'output.status == "passed"'
       to: accept
     - when: 'output.status == "product_failure"'
       to: generate_brief
-      max_traversals: '${inputs.limits.max_corrections_per_step}'
+      consume: corrections
     - when: 'output.status == "infrastructure_failure"'
-      to: record_infrastructure_failure
+      to: record_plant_infrastructure_failure
     - default: true
-      to: exception_judge
+      terminal: failed
 
-  record_infrastructure_failure:
-    - to: select_step
-      max_traversals: '${inputs.limits.max_steps}'
+  record_gate_infrastructure_failure:
+    - to: gate
+
+  record_plant_infrastructure_failure:
+    - to: plants
 
   accept:
     - when: 'output.status == "accepted"'
       to: review
     - default: true
-      to: exception_judge
+      terminal: failed
 
   review:
     - when: 'output.status == "completed"'
       to: judge_review
     - default: true
-      to: exception_judge
+      terminal: failed
 
   judge_review:
     - when: 'output.status == "no_findings"'
@@ -115,14 +212,14 @@ edges:
     - when: 'output.status == "follow_up_required"'
       to: commit_review_findings
     - default: true
-      to: exception_judge
+      terminal: failed
 
   commit_review_findings:
     - to: close_step
 
   close_step:
     - to: select_step
-      max_traversals: '${inputs.limits.max_steps}'
+      consume: steps
 
   milestone_gate:
     - when: 'output.status == "passed"'
@@ -130,19 +227,22 @@ edges:
     - when: 'output.status == "product_failure"'
       to: commit_milestone_findings
     - when: 'output.status == "infrastructure_failure"'
-      to: record_infrastructure_failure
+      to: record_milestone_infrastructure_failure
     - default: true
-      to: exception_judge
+      terminal: failed
 
   commit_milestone_findings:
     - to: select_step
-      max_traversals: '${inputs.limits.max_steps}'
+      consume: milestone_cycles
+
+  record_milestone_infrastructure_failure:
+    - to: milestone_gate
 
   coherence_review:
     - when: 'output.status == "completed"'
       to: judge_coherence
     - default: true
-      to: exception_judge
+      terminal: failed
 
   judge_coherence:
     - when: 'output.status == "no_findings"'
@@ -150,39 +250,27 @@ edges:
     - when: 'output.status == "follow_up_required"'
       to: commit_coherence_findings
     - default: true
-      to: exception_judge
+      terminal: failed
 
   commit_coherence_findings:
     - to: select_step
-      max_traversals: '${inputs.limits.max_steps}'
+      consume: milestone_cycles
 
   close_milestone:
     - to: select_step
-      max_traversals: '${inputs.limits.max_milestones}'
+      consume: milestone_cycles
 
-  exception_judge:
-    - when: 'output.route == "retry_active_step"'
-      to: generate_brief
-      max_traversals: '${inputs.limits.max_exception_retries}'
-    - when: 'output.route == "commit_follow_up"'
-      to: commit_exception_follow_up
-    - when: 'output.route == "owner_decision"'
-      to: publish_owner_decision
-    - default: true
-      terminal: failed
+  commit_gate_infrastructure_root_cause:
+    - terminal: failed
 
-  commit_exception_follow_up:
-    - to: select_step
-      max_traversals: '${inputs.limits.max_steps}'
+  commit_plant_infrastructure_root_cause:
+    - terminal: failed
 
-  publish_owner_decision:
-    - suspend:
-        until: task.revised
-        resume: select_step
-        max_resumes: '${inputs.limits.max_owner_waits}'
+  commit_milestone_infrastructure_root_cause:
+    - terminal: failed
 
 # Provisional data bindings. Processes may consume durable task state and named
-# upstream output independently of the control edge that activated them.
+# upstream output independently of the route that invoked them.
 data:
   select_step:
     task: task.current
@@ -202,6 +290,7 @@ data:
   record_builder_result:
     step: task.active_step
     result: build.output
+    optional_friction: build.output.friction
 
   record_specification_friction:
     step: task.active_step
@@ -221,19 +310,24 @@ data:
     candidate: task.active_step.candidate_revision
     plants: task.active_step.plants
 
-  record_infrastructure_failure:
+  record_gate_infrastructure_failure:
     step: task.active_step
-    failure: predecessor.output
+    failure: gate.output
+
+  record_plant_infrastructure_failure:
+    step: task.active_step
+    failure: plants.output
 
   accept:
     step: task.active_step
     candidate: task.active_step.candidate_revision
-    gate_evidence: gate.output.evidence
-    plant_evidence: plants.output.evidence
 
   review:
     step: task.active_step
-    accepted_revision: accept.output.revision
+    base_revision: task.active_step.base_revision
+    candidate_revision: accept.output.revision
+    diff: evidence.candidate(accept.output.revision).diff
+    changed_files: evidence.candidate(accept.output.revision).changed_files
 
   judge_review:
     step: task.active_step
@@ -254,9 +348,13 @@ data:
     milestone: task.active_milestone
     findings: milestone_gate.output.findings
 
+  record_milestone_infrastructure_failure:
+    milestone: task.active_milestone
+    failure: milestone_gate.output
+
   coherence_review:
     milestone: task.active_milestone
-    accepted_revisions: task.active_milestone.accepted_revisions
+    candidate_revisions: task.active_milestone.accepted_revisions
 
   judge_coherence:
     milestone: task.active_milestone
@@ -269,13 +367,17 @@ data:
   close_milestone:
     milestone: task.active_milestone
 
-  exception_judge:
+  commit_gate_infrastructure_root_cause:
     task: task.current
-    trigger: predecessor.output
+    step: task.active_step
+    failure: gate.output
 
-  commit_exception_follow_up:
+  commit_plant_infrastructure_root_cause:
     task: task.current
-    ruling: exception_judge.output
+    step: task.active_step
+    failure: plants.output
 
-  publish_owner_decision:
-    decision: exception_judge.output.decision
+  commit_milestone_infrastructure_root_cause:
+    task: task.current
+    milestone: task.active_milestone
+    failure: milestone_gate.output

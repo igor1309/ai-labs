@@ -1,30 +1,27 @@
-# Shared execution policy for static, agent-backed review processes.
-# Concrete processes own their role, instruction, and required inputs.
+# Shared execution-policy defaults for static, agent-backed review processes.
+# Concrete work and input/output contracts remain in each process.
 
 schema: agister.process-policy/v1alpha1
 name: static-review
 status: example
 
-agent_selection:
-  different_family_from: input.writer_model_family
-  on_unsatisfied: fail
+constraints:
+  agent.model_family:
+    not_equal: >-
+      evidence.candidate(input.candidate_revision).provenance.writer.model_family
+    on_unsatisfied: fail
 
 workspace:
   access: read-only
   scope: candidate
 
 tools:
-  # Capability exposure. These denials are also enforced by isolation below;
-  # effective permission is their intersection.
+  # This allowlist controls exposed capabilities. Isolation independently
+  # contains sensitive effects even if a runtime bypasses its tool surface.
   allow:
     - repository.read
     - repository.diff
     - repository.search
-  deny:
-    - repository.write
-    - repository.history.write
-    - process.execute
-    - network
 
 timeout: 20m
 retry:
@@ -33,14 +30,11 @@ resources:
   - reviews
 
 isolation:
-  # Supervisor-enforced containment, independent of the exposed tool set.
-  network: denied
-  repository_write: denied
-
-output:
-  format: json
-  schema: agister.review-result/v1alpha1
-  require_valid: true
+  deny:
+    - repository.write
+    - repository.history.write
+    - process.execute
+    - network
 
 artifacts:
   retain:

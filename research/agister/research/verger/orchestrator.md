@@ -11,36 +11,40 @@ agents, tools and deterministic programs. It turns a task into a validated,
 observable sequence of executions without asking a model to remember the loop,
 judge its own output or coordinate shared machine resources.
 
-The design combines two bodies of work in this directory:
+The design is synthesized from operational evidence in the Verger build
+sessions, summarized in [agent orchestration lessons](lessons/agent-orchestration.md)
+and embodied more concretely in the
+[build-loop orchestrator](prior-drafts/build-loop-orchestrator-v3.4.md). Those
+sessions are the design authority. They establish the work Agister must reliably
+perform: durable state, deterministic gates, isolated workspaces, bounded
+execution, explicit resource admission, independent review and a deliberately
+narrow owner channel.
 
-- the declarative task/workflow/process model from the
-  [orchestrator proposal](proposals/ai-agent-orchestrator-proposal.md) and its
-  [discussion](proposals/ai-agent-orchestrator-proposal-discussion.md); and
-- the operational evidence from the Verger build sessions, summarized in
-  [agent orchestration lessons](lessons/agent-orchestration.md) and embodied
-  more concretely in the
-  [build-loop orchestrator](prior-drafts/build-loop-orchestrator-v3.4.md).
-
-The proposal supplies the general execution model. The Verger sessions supply
-the constraints that make that model reliable in practice: durable state,
-deterministic gates, isolated workspaces, bounded execution, explicit resource
-admission, independent review and a deliberately narrow owner channel.
+The earlier [orchestrator proposal](proposals/ai-agent-orchestrator-proposal.md)
+and its [discussion](proposals/ai-agent-orchestrator-proposal-discussion.md) are
+inputs, not foundations. Their vocabulary and candidate abstractions are used
+only where the operational lessons demonstrate a concrete need. Internal
+implementation models do not justify user-facing concepts by themselves.
 
 ## The central idea
 
-> A task is durable work. A workflow is its static control graph. A process is
-> anything that performs work. Agister owns execution state and side effects.
+> A task is durable work. A workflow is its versioned execution plan. Processes do
+> domain work; core built-ins apply orchestration-owned transitions. Agister
+> owns execution state and side effects.
 
-Structural control flow belongs to the workflow graph. Computation belongs to
-processes. A route may inspect a value already produced by a process, but if a
-new value or judgment must be produced in order to choose the route, producing
-it is itself a process.
+Structural control flow belongs to the workflow definition. Domain computation and
+judgment belong to processes. A route may inspect a value already produced by a
+process, but if a new domain value or judgment must be produced in order to
+choose the route, producing it is itself a process. The core's closed built-ins
+are limited to deterministic orchestration operations over authoritative state,
+such as selecting planned work, rendering a versioned brief, recording a
+result, checking evidence eligibility or emitting a guarded effect intent.
 
 ```text
 durable task
     │
     ▼
-validated workflow graph ─── references ─── process definitions
+validated workflow plan ──── references ─── process definitions
     │                                      │
     │                                      └── agent/runtime profiles
     ▼
@@ -61,47 +65,95 @@ A task is the durable, mutable unit of work: implement a feature, repair a
 defect, prepare a release, investigate a failure, or complete another explicit
 objective. It has a stable identity and committed revisions.
 
-A run operates against a particular task revision. Execution may refine the
-task and commit a new revision without changing the workflow graph. A task
-survives an interrupted or failed run and may be continued later. Successful
-completion of a valid workflow run completes the task it was asked to perform.
+A run starts against a particular task revision, which freezes workflow inputs
+and budget limits. Execution may refine the task and commit a new revision
+without changing the workflow plan. A live `task.current` reference resolves
+when its consumer activates and records the exact revision used. After a
+suspension, resumption binds live task references to the revision containing the
+applied decision while the run-start inputs remain unchanged. A task survives
+an interrupted or failed run and may be continued later. Successful completion
+of a valid workflow run completes the task it was asked to perform.
 
 ### Workflow
 
-A workflow is a declarative directed graph. It owns:
+A workflow is a declarative plan of named stages. It owns sequencing,
+conditional routing, structured parallel work, bounded repetition, suspension
+and references to executable processes.
 
-- sequencing;
-- conditional routing;
-- fan-out and fan-in;
-- bounded cycles; and
-- references to executable processes.
+Agister may compile the plan to a graph internally, but graph theory is not the
+authoring model. The workflow describes domain stages and their outcomes. A
+route invokes its destination once. If several routes name the same
+destination, each invocation is independent; the configuration has no
+convergence construct that someone must classify or justify.
 
-The graph is fixed for the duration of a run. Runtime discoveries may change
-task or orchestration state, create follow-up work, or select another existing
-route, but they do not add or remove nodes and edges.
+The authoring surface earns a construct only when observed work needs it. Its
+vocabulary is therefore practical: run this stage, choose from its typed
+outcomes, run these named checks concurrently and wait for all of them, suspend
+for this decision, or repeat within this budget. Scheduler mechanisms do not
+leak into configuration merely because they exist in an internal model.
 
-Workflow success is derived from topology: all active paths have reached their
-terminal topology and every required execution has completed successfully. A
-special `end` process is unnecessary.
+The plan is fixed for the duration of a run. Runtime discoveries may change task
+or orchestration state, create follow-up work, or select another declared route,
+but they do not rewrite the plan.
 
-Each node activation has one identity derived from the workflow run, node and
-activation epoch. Incoming paths contribute tokens to that node's barrier. Once
-all active required inputs for an epoch are present, the core creates exactly
-one node activation; incoming edges never create independent process instances.
-A repeated cycle advances the epoch. A process is new by default for each node
-activation; only deliberate continuation of a stateful process is annotated as
-`process: same`.
+Parallel work is one structured stage. It declares named child processes and a
+completion rule; the parent owns child identity, lifecycle and collected
+outputs. The MVP supports `completion: all`: every child must complete
+successfully before the stage produces its result. A failed child follows the
+parallel stage's `on_failure` route after the other children settle. Because the
+children cannot route elsewhere, the configuration never hand-wires
+synchronization or invents correlation keys. First-result, quorum and
+optional-child policies wait for concrete requirements.
 
-Success, failure and suspension are topology rather than executable processes.
-A terminal route declares `terminal: succeeded` or `terminal: failed`. A
-suspending route declares a durable event condition and a resume target. It
-consumes no process resource while suspended, and resumption creates the target
-node's next activation epoch.
+A workflow succeeds only through an explicit `terminal: succeeded` route. Any
+`terminal: failed` route fails it, and a running or suspended stage means it is
+not finished. A stage with no outgoing route is a validation error; a special
+`end` process and implicit leaf success are both unnecessary.
+
+A stage has a workflow-local identity separate from its implementation. It
+names a process, one operation from the core's closed set of transactional
+built-ins, or a structured parallel block. Built-ins may update orchestration
+state or emit a durable effect intent, but they do not run through the Process
+Gateway as if they were external workers.
+
+A purely transactional built-in completes with the state transition that
+records its output. An intent-backed built-in remains active until the Effect
+Supervisor's normalized outcome is recorded, then produces its output or takes
+its `on_failure` route. For example, acceptance emits `FastForward`, waits for
+its outcome, and returns the accepted revision only after landing succeeds.
+
+Success, failure and suspension are workflow outcomes rather than executable
+processes. A terminal route declares `terminal: succeeded` or
+`terminal: failed`. A suspending route declares a durable event condition and a
+resume target. It consumes no process resource while suspended, and resumption
+invokes the target stage. Event registration and the state snapshot used to test
+the condition are committed atomically, so an event cannot be lost between the
+decision to suspend and registration.
+
+Output routes are evaluated only after a process completes successfully and
+produces a valid output. Failed, interrupted or lost execution follows the
+stage's `on_failure` route; absent an override, the workflow definition supplies
+`terminal: failed`. Domain results such as `product_failure` and
+`infrastructure_failure` are successful process outputs, not runtime failures.
+
+Cycle and suspension bounds use named budgets declared once by the workflow.
+Each budget has a frozen run-start limit and an explicit scope, such as the run
+or active step identity. A stage activation, transition or suspension may
+consume a named budget; all consumers share its counter. Scope changes create a
+fresh counter. An exhausted budget follows the stage's `on_exhausted` route or,
+by default, `terminal: failed`. That route receives a typed
+`budget.exhaustion` value containing the budget name, scope and observed count.
 
 Before execution, Agister rejects structural errors that can be found
 statically. At minimum, references must resolve, conditional routing must be
-exhaustive, cycles must declare a bound on the repeating transition, joins must
-have satisfiable inputs, and the declared start must be reachable.
+exhaustive, every cycle must consume a finite budget, every parallel stage must
+declare valid children and a supported completion rule, resume targets must
+exist, every leaf must terminate explicitly, data entries must name declared
+stages, every output reference must resolve to an earlier stage or a named child
+of one parallel stage, budget limits and scope expressions must resolve,
+built-ins and core resolver namespaces must be recognized, effective process
+policy must fit the service ceiling, continuation must be supported by the
+selected runtime, and the declared start must be reachable.
 
 ### Process
 
@@ -115,20 +167,31 @@ A process is the uniform executable abstraction. Implementations may invoke:
 
 Runtime-specific completion is normalized to a small orchestration outcome such
 as completed, failed, interrupted or lost. Process adapters own provider
-details; the graph does not know how an agent session, shell process or API call
-detects completion.
+details; the workflow does not know how an agent session, shell process or API
+call detects completion.
 
-A process definition also declares execution policy: its timeout, retry policy,
-required resources, isolation, output schema and artifact handling. Retry is a
-property of process execution, not an implicit graph cycle.
+A process definition owns its executable work and data contract: role,
+instruction, required inputs and output schema. Its effective execution policy
+includes timeout, retry, resources, workspace, tools, isolation and artifact
+handling, declared either directly or through one referenced process policy.
+Retry is a property of process execution, not a workflow repetition.
 
 A process may reference one reusable process policy. Service safety limits are
 the hard ceiling, the referenced policy supplies defaults, and the concrete
-process may only narrow them. It may reduce limits, remove capabilities or add
-restrictions and resource requirements; it cannot widen access or weaken a
-safety constraint. An incompatible override makes the process invalid before
-execution. Concrete role, instruction and input declarations always remain in
-the process rather than the shared policy.
+process may only narrow them. A policy outside the service ceiling is invalid,
+not silently clamped. A concrete override is checked field by field:
+
+| Policy field | Permitted concrete change |
+|---|---|
+| Timeouts, attempts and numeric quotas | Decrease |
+| Tool and workspace capability sets | Remove capabilities or narrow scope |
+| Isolation denials and runtime constraints | Add restrictions |
+| Required resources and policy-required inputs | Add requirements |
+| Required audit artifacts | Add artifacts or retain them longer |
+
+Fields without a defined partial order are not overridable. In particular, the
+output schema belongs to the concrete process rather than to the shared policy.
+An incompatible override makes the effective process invalid before execution.
 
 Tool permissions and isolation are separate enforcement layers. Tool policy
 defines which capabilities are exposed to the process; isolation defines what
@@ -136,18 +199,23 @@ the Effect Supervisor permits even if a tool or runtime misbehaves. Their
 effective permission is the intersection, and neither layer can grant something
 the other denies.
 
-An agent-backed process instantiates a reusable agent profile. The process owns
-the concrete role, instruction, inputs, output contract, workspace, tool
-permissions and execution policy. The agent profile owns only reusable runtime
-configuration: runtime and model selection, reasoning effort, session behavior
-and provider-specific settings. An agent profile is therefore not independently
-runnable and contains no task prompt. Multiple processes may use the same
-profile for different roles.
+An agent-backed process instantiates a reusable agent profile. The effective
+process owns the concrete role, instruction, inputs, output contract and its
+directly declared or inherited execution policy. The agent profile owns only
+reusable runtime configuration: runtime and model selection, model family,
+reasoning effort, session capabilities and provider-specific settings. An agent
+profile is therefore not independently runnable and contains no task prompt.
+Multiple processes may use the same profile for different roles. Constraints
+that compare worker and author model families use the resolved profile and the
+recorded provenance of the candidate-producing attempt, never an editable task
+claim.
 
 Stateful processes retain their internal state in their native runtime where
-possible. On re-entry, a workflow must say whether it is continuing the same
-process identity or starting a new one. Agister persists the identity and
-continuation handle, not a provider's private internal state.
+possible. A stage activation starts a new process by default. A stage may instead
+declare `continue: previous_activation`; validation rejects continuation when its
+profile or adapter is fresh-only. Continuation belongs to the stage, never to a
+route, so alternative routes cannot disagree. Agister persists the
+identity and continuation handle, not a provider's private internal state.
 
 ### Runs, attempts and effects
 
@@ -174,17 +242,25 @@ the run interrupted or lost.
 
 ## Control flow and dataflow
 
-Edges express execution dependency, not implicit value passing. A process names
+Routes express execution dependency, not implicit value passing. A stage names
 the outputs, artifacts and state it consumes, which may come from more than its
-immediate predecessor.
+immediate predecessor. A structured parallel stage exposes its child results
+under its own output:
 
 ```yaml
-inputs:
-  candidate: implement.output.commit
-  tests: test.output.report
-  findings:
-    - adversarial_review.output
-    - architecture_review.output
+stages:
+  review_suite:
+    parallel:
+      completion: all
+      children:
+        adversarial_review:
+          process: process:adversarial_review
+        architecture_review:
+          process: process:architecture_review
+data:
+  synthesize_review:
+    adversarial: review_suite.output.adversarial_review
+    architecture: review_suite.output.architecture_review
 ```
 
 Outputs may be structured values, files, commits, patches, logs or references
@@ -192,9 +268,25 @@ to external effects. Agister records their identity and provenance. It does not
 force all runtimes into a rich universal output envelope before concrete use
 cases justify one.
 
-Fan-out is multiple outgoing paths. Fan-in is convergence on a downstream node;
-by default, a node waits for all active required inputs. An executable split or
-join is introduced only when the operation itself computes something.
+`stage.output` resolves to the most recent execution of that stage in the
+recorded invocation chain leading to the consumer. This remains unambiguous
+across bounded repetition because each pass has its own chain. If two executions
+of the named producer can both reach the consumer without one following the
+other, the reference is invalid and the workflow must use a structured parallel
+output or durable task or evidence state. Mutable task references resolve when
+the consumer starts, and the exact task revision is recorded with its
+provenance; workflow inputs remain frozen at run start.
+
+`evidence.candidate(revision)` is a read-only core resolver backed by the
+Evidence Authority. It returns the immutable candidate manifest—base revision,
+diff and changed files—together with evidence and producer provenance for that
+exact revision; callers cannot supply or replace any of them. Policy constraints
+may dereference it from a declared candidate-revision input.
+
+Several routes may invoke the same reusable stage, but each invocation remains
+independent and receives only its declared inputs. If different failures require
+different data or recovery, they use different named stages. The workflow does
+not pass an untyped predecessor or generic exception object between them.
 
 ## Proposed architecture
 
@@ -211,7 +303,7 @@ those decisions.
 | **Scheduler** | Admit ready work under resource, concurrency, quota and hold policies | Accept admission requests; return grant, wait or refusal with a reason |
 | **Effect Supervisor** | Start, observe, interrupt and reconcile external work | Accept effect intents; emit lifecycle observations and normalized outcomes |
 | **Process Gateway** | Adapt agents, tools, commands and other runtimes to the common process contract | Accept process requests; emit progress, completion and failure outcomes |
-| **Evidence Authority** | Associate gates, reviews, findings and acceptance evidence with exact candidate revisions | Accept evidence and findings; answer acceptance eligibility |
+| **Evidence Authority** | Preserve immutable candidate manifests and associate gates, reviews, findings, provenance and acceptance evidence with exact revisions | Resolve candidate records; accept evidence and findings; answer acceptance eligibility |
 | **Interaction Boundary** | Present commands, queries, event streams, decisions and notifications to clients | Stable command, query and subscription interfaces |
 
 The interfaces above are logical contracts, not protocol choices. The
@@ -257,8 +349,14 @@ permission profile, closed standard input where required, a process group, a
 hard timeout and a schema for its result. Builders cannot write Agister's state
 directory or the repository's authoritative branch.
 
-Agents never merge, rebase or cherry-pick. They return a commit, patch or
-structured finding. Agister performs repository mutations only after the
+The Effect Supervisor provisions the workspace from the effective process
+policy and candidate revision for each activation. A workspace is never handed
+from one process to another as ordinary output; parallel processes receive
+independent workspaces unless a future schema explicitly defines safe sharing.
+
+Agents never perform Git history operations such as merge, rebase or
+cherry-pick. They return a commit, patch or structured finding. Agister performs
+repository mutations only after the
 configured evidence is attached to the exact candidate revision.
 
 Deterministic verification runs in a clean throwaway workspace. Mutation
@@ -327,11 +425,11 @@ The first production workflow is software delivery. The concrete
 bounded correction, milestone and decision routes:
 
 ```text
-brief -> build -> gate -> mutation check -> accept -> independent review -> done
-            ^        |          |                       |
-            |        |          |                       v
-            +--------+----------+------------------ follow-up task
-                 bounded correction routes
+brief -> build -> gate -> preflight -> mutation check -> accept -> review -> close
+  ^                 |             |
+  +---- bounded correction -------+
+
+review finding -> durable follow-up -> next selection
 ```
 
 The stages have deliberately different authorities:
@@ -342,11 +440,15 @@ The stages have deliberately different authorities:
   enforcement comes first and the brief retains only the rationale.
 - A fresh builder performs one small, test-first step in isolation.
 - Deterministic scripts decide whether the exact candidate passes its gate and
-  catches its mutation plants.
-- Acceptance is a pure lookup of recorded evidence keyed by candidate revision;
-  it never re-runs verification opportunistically.
+  catches its mutation plants. Their adapters attach normalized evidence and
+  producer provenance to that candidate through the Evidence Authority before
+  returning a completed output.
+- Acceptance is a core built-in that asks the Evidence Authority whether the
+  candidate revision is eligible and emits the guarded landing intent; evidence
+  is never accepted as caller-supplied process data or re-run opportunistically.
 - A reviewer from another model family receives the change without a suggested
-  focus.
+  focus. The comparison uses immutable writer-attempt provenance and the
+  reviewer's resolved agent profile.
 - A fresh judge classifies each finding. It may dismiss only a duplicate, an
   out-of-scope item or something already covered. A finding thought false becomes
   a reproduction task; only evidence that can itself fail may disprove it.
@@ -382,82 +484,38 @@ failure and infrastructure failure.
 A friction report names the governing section, the observed problem and a
 proposed resolution. It enters a planner/advisor queue; a ruling may revise the
 specification and create follow-up tasks. Unless the current step is impossible
-or unsafe, friction does not block it and does not authorize the builder to
-silently reinterpret the specification.
+or unsafe, the builder returns the candidate with an optional friction report;
+friction does not block it and does not authorize the builder to silently
+reinterpret the specification. `blocked_by_specification` is reserved for the
+impossible or unsafe case.
 
 ## Configuration boundary
 
 The conceptual split is:
 
 ```text
-workflow YAML  -> graph, routing and process references
-process YAML   -> executable work and execution policy
-agent TOML     -> reusable model/runtime profile
-service TOML   -> machine-wide resources and safety limits
+workflow YAML       -> stages, routing, structured parallel work and budgets
+process YAML        -> executable work, data contract and policy overrides
+process-policy YAML -> reusable execution-policy defaults and constraints
+agent TOML          -> reusable runtime capabilities and model identity
+service TOML        -> machine-wide resources and hard safety ceilings
 ```
 
 For example, adversarial and architecture review processes may both use the
 same `agent:reviewer` profile. Each process supplies its own instruction and
-input/output contract. A cross-family requirement is process policy because it
-is evaluated against the author of the particular candidate, not an intrinsic
-property of the reusable agent profile.
-
-Illustrative workflow:
-
-```yaml
-name: build-and-review
-start: build
-
-edges:
-  build:
-    - to: gate
-  gate:
-    - when: output.passed
-      to: plants
-    - when: output.product_failure
-      to: build
-      max_traversals: 2
-    - default: true
-      to: exception_judge
-  plants:
-    - when: output.passed
-      to: accept
-    - when: output.product_failure
-      to: build
-      max_traversals: 2
-    - default: true
-      to: exception_judge
-  accept:
-    - to: review
-  review:
-    - to: judge
-  judge:
-    - when: output.follow_up_required
-      to: build
-      max_traversals: 2
-    - default: true
-      terminal: succeeded
-```
-
-Illustrative process:
-
-```yaml
-type: process
-uses: agent:builder
-timeout: 20m
-resources: [builder]
-workspace: disposable-clone
-input:
-  instruction: "Implement the supplied step, test first, and return a commit."
-output:
-  schema: builder-result.json
-```
+input/output contract. Their shared policy supplies read-only execution defaults
+and a cross-family constraint evaluated against candidate provenance. The
+profile supplies the reviewer's own model family so the constraint is
+checkable. The architecture process also narrows the shared timeout, providing
+a concrete composition example.
 
 These formats and field names are provisional. The important boundary is:
-workflow owns topology, process owns work, agent profile owns reusable runtime
-settings, and service configuration owns shared-machine policy. Participating
-processes are derived from graph references rather than duplicated in a
-separate membership list. Concrete examples are the
+workflow owns stage order, routing, parallel completion and bounds; process owns
+work and its contract; process policy owns reusable execution defaults; agent
+profile owns reusable runtime settings; and service configuration owns hard
+ceilings. Participating processes are derived from stage definitions rather
+than duplicated in a separate membership list.
+Concrete examples are the
 [adversarial review process](processes/adversarial-review.yaml),
 [architecture review process](processes/architecture-review.yaml) and their
 shared [static-review process policy](policies/static-review.yaml) and
@@ -503,21 +561,22 @@ The MVP should make these properties difficult to violate:
 
 ## MVP boundary
 
-The first version needs static workflows, bounded cycles, same/new process
-re-entry, agent and command processes, explicit data references, durable events,
-effect reconciliation, isolated workspaces, resource admission, generated
-briefs, deterministic verification, per-change and milestone-coherence review,
+The first version needs static workflows, structured parallel stages with
+`completion: all`, named cycle budgets, stage-level process continuation, agent
+and command processes, explicit data references, durable events, effect
+reconciliation, isolated workspaces, resource admission, generated briefs,
+deterministic verification, per-change and milestone-coherence review,
 specification-friction routing, review/judge routing and the owner command
 channel.
 
-It should deliberately defer dynamic graph mutation, transparent subworkflow
-composition, human-as-process semantics, concurrent runs that mutate the same
-task, generalized cancellation and a universal rich process-output envelope.
-Those capabilities should be added only when a concrete workflow establishes
-their semantics.
+It should deliberately defer dynamic plan mutation, transparent subworkflow
+composition, first-result and quorum parallel completion, human-as-process
+semantics, concurrent runs that mutate the same task, generalized cancellation
+and a universal rich process-output envelope. Those capabilities should be
+added only when a concrete workflow establishes their semantics.
 
-Agister's first success criterion is not that it can draw an arbitrary agent
-graph. It is that the service can run the proven Verger build loop through
+Agister's first success criterion is not that it offers a universal orchestration
+notation. It is that the service can run the proven Verger build loop through
 limits, crashes, flaky infrastructure and owner absence without losing state,
 accepting unverified work or requiring an LLM to remember what happens next.
 
@@ -567,7 +626,8 @@ interface, then exposed by that client.
 
 | Entity | Illustrative states |
 |---|---|
-| Task step | Main path from `queued` through build, verification, acceptance and review to `done`; also `exception` and `blocked` |
+| Task step | Main path from `queued` through build, verification, acceptance and review to `done`; may be `blocked` by an explicit typed outcome |
+| Workflow run | `running`, `suspended(condition, revision)`, `succeeded` or `failed` |
 | Process run | `requested -> waiting(resource) -> running -> exited(code)` or `hung`, `lost`, `interrupted(cause)` |
 | Review | `queued -> running -> exited -> judged`, with interrupted reviews returning to the queue |
 | Finding | `open` followed by `follow-up`, `rejected(covered)`, `proven-false`, or `closed(scope, duplicate)` |
@@ -586,13 +646,13 @@ Each external action runs through an intent-specific adapter:
 | `SpawnAgent` | Start a pinned CLI in an isolated clone and process group, with explicit permissions, bounded execution and schema-validated output. |
 | `RunGate` / `RunPlants` | Use the authoritative verification scripts, record their revision and run in a throwaway worktree while holding the heavy resource. |
 | `RunStress` | Hold the exclusive machine resource and admit only from measured headroom. |
-| `Merge` | Fast-forward only to the candidate revision whose evidence passed; refuse a dirty checkout or moved base. |
+| `FastForward` | Land only the candidate revision whose evidence passed; refuse a dirty checkout or moved base. |
 | `Notify` | Deliver an idempotent owner notification keyed by inbox item. |
 
 The service records a process ID, start time and boot identity. On restart it
 reattaches to a matching live process, recovers a completed result from its
 files, marks work interrupted after a reboot, or records it lost when reality
-cannot be established. Merge reconciliation checks whether the target is still
+cannot be established. Fast-forward reconciliation checks whether the target is still
 old, already equals the tested revision, or moved somewhere else. Notifications
 may be duplicated but not silently dropped.
 
@@ -624,11 +684,23 @@ baseline_multiplier = 3
 floor_seconds = 20
 builder_minutes = 20
 stall_seconds = 300
+
+[safety.llm]
+capability_ceiling = [
+  "repository.read",
+  "repository.diff",
+  "repository.search",
+  "repository.write",
+  "process.execute",
+]
+max_timeout_minutes = 30
 ```
 
 These numbers are starting calibrations from Verger, not schema defaults that
 all installations must inherit. A resource cap changes through a recorded
 configuration event, never through an exception typed into a running session.
+The service's per-runtime capability and numeric ceilings are validated before
+process policies; a policy that asks for anything outside them is invalid.
 
 Machine resources are shared across repository instances. A stress run waits
 for heavy jobs and reviews to drain. A load-sensitive mutation run prevents new

@@ -8,8 +8,8 @@ Agister orchestration design.
 1. [Agister orchestrator](orchestrator.md) — current synthesis and proposed MVP.
 2. [Verger build workflow](workflows/verger-build.yaml) — a concrete draft of
    the static, bounded workflow derived from the design and lessons.
-3. [Parallel review example](workflows/review-code.yaml) — the minimal fan-out,
-   fan-in and synthesis example from the configuration proposal.
+3. [Parallel review example](workflows/review-code.yaml) — a structured parallel
+   review stage followed by synthesis.
 4. [Adversarial review process](processes/adversarial-review.yaml) and
    [architecture review process](processes/architecture-review.yaml) — two
    concrete roles sharing one process policy and agent profile.
@@ -17,13 +17,13 @@ Agister orchestration design.
    narrowing-only execution policy for review roles.
 6. [Reviewer agent profile](agents/reviewer.toml) — reusable model/runtime
    configuration shared by concrete review processes.
-7. [Configuration proposal](proposals/ai-agent-orchestrator-proposal.md) — the
-   task, workflow and process model from which the synthesis developed.
-8. [Agent orchestration lessons](lessons/agent-orchestration.md) — consolidated
+7. [Agent orchestration lessons](lessons/agent-orchestration.md) — consolidated
    evidence from the Verger design and build sessions.
-9. [Build-loop orchestrator v3.4](prior-drafts/build-loop-orchestrator-v3.4.md) —
+8. [Build-loop orchestrator v3.4](prior-drafts/build-loop-orchestrator-v3.4.md) —
    the detailed implementation draft incorporated as the current document's
    illustrative profile.
+9. [Configuration proposal](proposals/ai-agent-orchestrator-proposal.md) — an
+   earlier conceptual exploration retained as provenance, not current authority.
 
 ## Directory guide
 
@@ -39,6 +39,11 @@ Agister orchestration design.
   passes.
 - `source-notes/` contains prompts and intermediate session-reading notes. These
   are evidence, not current design authority.
+
+The workflow files are semantic drafts rather than complete runnable bundles.
+They use registry-style process and built-in identifiers to show boundaries;
+only the review processes relevant to the configuration example are defined in
+this directory. A runnable bundle must resolve every reference before execution.
 
 The repository history preserves earlier revisions of each document. Files in
 `prior-drafts/` are retained because they contain useful implementation detail,
