@@ -84,6 +84,20 @@ Workflow success is derived from topology: all active paths have reached their
 terminal topology and every required execution has completed successfully. A
 special `end` process is unnecessary.
 
+Each node activation has one identity derived from the workflow run, node and
+activation epoch. Incoming paths contribute tokens to that node's barrier. Once
+all active required inputs for an epoch are present, the core creates exactly
+one node activation; incoming edges never create independent process instances.
+A repeated cycle advances the epoch. A process is new by default for each node
+activation; only deliberate continuation of a stateful process is annotated as
+`process: same`.
+
+Success, failure and suspension are topology rather than executable processes.
+A terminal route declares `terminal: succeeded` or `terminal: failed`. A
+suspending route declares a durable event condition and a resume target. It
+consumes no process resource while suspended, and resumption creates the target
+node's next activation epoch.
+
 Before execution, Agister rejects structural errors that can be found
 statically. At minimum, references must resolve, conditional routing must be
 exhaustive, cycles must declare a bound on the repeating transition, joins must
@@ -107,6 +121,20 @@ detects completion.
 A process definition also declares execution policy: its timeout, retry policy,
 required resources, isolation, output schema and artifact handling. Retry is a
 property of process execution, not an implicit graph cycle.
+
+A process may reference one reusable process policy. Service safety limits are
+the hard ceiling, the referenced policy supplies defaults, and the concrete
+process may only narrow them. It may reduce limits, remove capabilities or add
+restrictions and resource requirements; it cannot widen access or weaken a
+safety constraint. An incompatible override makes the process invalid before
+execution. Concrete role, instruction and input declarations always remain in
+the process rather than the shared policy.
+
+Tool permissions and isolation are separate enforcement layers. Tool policy
+defines which capabilities are exposed to the process; isolation defines what
+the Effect Supervisor permits even if a tool or runtime misbehaves. Their
+effective permission is the intersection, and neither layer can grant something
+the other denies.
 
 An agent-backed process instantiates a reusable agent profile. The process owns
 the concrete role, instruction, inputs, output contract, workspace, tool
@@ -388,7 +416,6 @@ edges:
       to: plants
     - when: output.product_failure
       to: build
-      process: new
       max_traversals: 2
     - default: true
       to: exception_judge
@@ -397,7 +424,6 @@ edges:
       to: accept
     - when: output.product_failure
       to: build
-      process: new
       max_traversals: 2
     - default: true
       to: exception_judge
@@ -408,10 +434,9 @@ edges:
   judge:
     - when: output.follow_up_required
       to: build
-      process: new
       max_traversals: 2
     - default: true
-      terminal: true
+      terminal: succeeded
 ```
 
 Illustrative process:
@@ -435,7 +460,8 @@ processes are derived from graph references rather than duplicated in a
 separate membership list. Concrete examples are the
 [adversarial review process](processes/adversarial-review.yaml),
 [architecture review process](processes/architecture-review.yaml) and their
-shared [reviewer agent profile](agents/reviewer.toml).
+shared [static-review process policy](policies/static-review.yaml) and
+[reviewer agent profile](agents/reviewer.toml).
 
 ## Owner and decision channels
 

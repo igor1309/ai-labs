@@ -6,6 +6,7 @@ status: example
 
 type: process
 uses: agent:reviewer
+policy: process-policy:static-review
 
 input:
   instruction: >-
@@ -18,42 +19,3 @@ input:
     - diff
     - changed_files
     - writer_model_family
-
-agent_selection:
-  different_family_from: input.writer_model_family
-  on_unsatisfied: fail
-
-workspace:
-  access: read-only
-  scope: candidate
-
-tools:
-  allow:
-    - repository.read
-    - repository.diff
-    - repository.search
-  deny:
-    - repository.write
-    - repository.history.write
-    - process.execute
-    - network
-
-timeout: 20m
-retry:
-  max_attempts: 1
-resources:
-  - reviews
-
-isolation:
-  network: denied
-  repository_write: denied
-
-output:
-  format: json
-  schema: agister.review-result/v1alpha1
-  require_valid: true
-
-artifacts:
-  retain:
-    - review_result
-    - run_log
