@@ -8,3 +8,9 @@ save to /Users/igormalyarov/Developer/my-apps/inventory/.claude/worktrees/verger
 each lesson/idea under 64 words add list of sessions to lessons doc
 
 ---
+
+there is a collection of lessons learned from verger implementation in claude sessions but verger-orchestration-status session has continued since
+explain what lessons and good ideas regarding agent orchestration, workflows, gates, guards, isolation, checks, mistakes, etc can we get from it to build good orchestration machinery?
+each lesson/idea under 64 words
+save findings to new file in /Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs/research/agister/research/verger/lessons/
+orchestration docs and their changes should be of your interest as well
