@@ -1,0 +1,85 @@
+# Illustrative workflow: execute one task materialized from a goal-plan row.
+#
+# This file shows responsibility and control flow, not a settled schema. Data
+# bindings, exhaustive failures, recovery and policy detail are intentionally
+# omitted while the orchestration model is still being explored.
+
+schema: agister.workflow/v1alpha1
+name: execute-task
+status: illustrative
+
+interface:
+  consumes:
+    - immutable task revision
+    - row and milestone identity
+  returns:
+    - task outcome
+    - evidence references
+    - proposed follow-up rows
+
+start: prepare
+
+budgets:
+  correction:
+    limit: task.limits.max_corrections
+    scope: task
+
+stages:
+  prepare:
+    process: process:prepare-task
+  implement:
+    process: process:build
+  verify:
+    process: process:gate
+  mutation_check:
+    process: process:plants
+  accept:
+    builtin: accept-candidate
+  review:
+    process: process:adversarial-review
+  judge_review:
+    process: process:judge-review
+
+routes:
+  prepare:
+    - to: implement
+
+  implement:
+    - when: output.status == "candidate_ready"
+      to: verify
+    - default: true
+      terminal: failed
+
+  verify:
+    - when: output.status == "passed"
+      to: mutation_check
+    - when: output.status == "product_failure"
+      to: prepare
+      consume: correction
+    - default: true
+      terminal: failed
+
+  mutation_check:
+    - when: output.status == "passed"
+      to: accept
+    - when: output.status == "product_failure"
+      to: prepare
+      consume: correction
+    - default: true
+      terminal: failed
+
+  accept:
+    - to: review
+
+  review:
+    - to: judge_review
+
+  judge_review:
+    # Both outcomes complete this task. Proposed follow-up rows are returned to
+    # the goal workflow; this workflow never edits the goal plan itself.
+    - when: output.status == "no_findings"
+      terminal: succeeded
+    - when: output.status == "follow_up_required"
+      terminal: succeeded
+    - default: true
+      terminal: failed

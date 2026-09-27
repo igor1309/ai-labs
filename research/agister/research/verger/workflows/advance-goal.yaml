@@ -1,0 +1,101 @@
+# Illustrative workflow: advance one goal across rows and milestone boundaries.
+#
+# This file shows responsibility and control flow, not a settled schema. The
+# workflow invocation notation is provisional and demonstrates only the
+# concrete boundary between goal progression and task execution.
+
+schema: agister.workflow/v1alpha1
+name: advance-goal
+status: illustrative
+
+interface:
+  consumes:
+    - current goal-plan revision
+  returns:
+    - completed goal or durable reason it cannot advance
+
+start: select_work
+
+budgets:
+  progress:
+    limit: goal.limits.max_progress_cycles
+    scope: goal
+
+stages:
+  select_work:
+    process: process:select-goal-work
+  materialize_task:
+    builtin: materialize-task
+  execute_task:
+    workflow: workflow:execute-task
+  apply_task_outcome:
+    builtin: apply-task-outcome
+  milestone_gate:
+    process: process:milestone-gate
+  record_gate_rows:
+    builtin: append-rows
+  coherence_review:
+    process: process:cross-family-coherence-review
+  judge_coherence:
+    process: process:judge-coherence
+  record_coherence_rows:
+    builtin: append-rows
+  close_milestone:
+    builtin: close-milestone
+
+routes:
+  select_work:
+    - when: output.status == "row_ready"
+      to: materialize_task
+    - when: output.status == "milestone_gate_ready"
+      to: milestone_gate
+    - when: output.status == "goal_complete"
+      terminal: succeeded
+    - default: true
+      terminal: failed
+
+  materialize_task:
+    - to: execute_task
+
+  execute_task:
+    - when: output.status == "completed"
+      to: apply_task_outcome
+    - default: true
+      terminal: failed
+
+  apply_task_outcome:
+    # This is the single-writer boundary: evidence and proposed rows are
+    # validated before the goal plan changes.
+    - to: select_work
+      consume: progress
+
+  milestone_gate:
+    - when: output.status == "passed"
+      to: coherence_review
+    - when: output.status == "follow_up_required"
+      to: record_gate_rows
+    - default: true
+      terminal: failed
+
+  record_gate_rows:
+    - to: select_work
+      consume: progress
+
+  coherence_review:
+    - to: judge_coherence
+
+  judge_coherence:
+    - when: output.status == "no_findings"
+      to: close_milestone
+    - when: output.status == "follow_up_required"
+      to: record_coherence_rows
+    - default: true
+      terminal: failed
+
+  record_coherence_rows:
+    - to: select_work
+      consume: progress
+
+  close_milestone:
+    - to: select_work
+      consume: progress

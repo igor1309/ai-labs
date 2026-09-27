@@ -6,8 +6,9 @@ Agister orchestration design.
 ## Reading order
 
 1. [Agister orchestrator](orchestrator.md) — current synthesis and proposed MVP.
-2. [Verger build workflow](workflows/verger-build.yaml) — a concrete draft of
-   the static, bounded workflow derived from the design and lessons.
+2. [Advance-goal workflow](workflows/advance-goal.yaml) and
+   [execute-task workflow](workflows/execute-task.yaml) — compact illustrations
+   of the boundary between goal progression and task execution.
 3. [Parallel review example](workflows/review-code.yaml) — a structured parallel
    review stage followed by synthesis.
 4. [Adversarial review process](processes/adversarial-review.yaml) and
@@ -40,10 +41,12 @@ Agister orchestration design.
 - `source-notes/` contains prompts and intermediate session-reading notes. These
   are evidence, not current design authority.
 
-The workflow files are semantic drafts rather than complete runnable bundles.
-They use registry-style process and built-in identifiers to show boundaries;
-only the review processes relevant to the configuration example are defined in
-this directory. A runnable bundle must resolve every reference before execution.
+The workflow files are conceptual illustrations rather than complete runnable
+bundles or proposed exhaustive schemas. They optimize for visible
+responsibilities and interfaces; bindings, failure permutations and much policy
+detail are intentionally omitted. Registry-style identifiers show boundaries,
+and only the review processes relevant to the configuration example are defined
+in this directory.
 
 The repository history preserves earlier revisions of each document. Files in
 `prior-drafts/` are retained because they contain useful implementation detail,

@@ -97,6 +97,12 @@ A workflow is a declarative execution definition of named stages. It owns
 sequencing, conditional routing, structured parallel work, bounded repetition,
 suspension and references to executable processes.
 
+The first required workflow boundary is concrete rather than general: goal
+progression invokes task execution for one materialized task and receives its
+outcome, evidence references and proposed rows. This separation protects plan
+ownership. It does not imply arbitrary recursive workflow composition, and its
+configuration notation remains provisional.
+
 Agister may compile the plan to a graph internally, but graph theory is not the
 authoring model. The workflow describes domain stages and their outcomes. A
 route invokes its destination once. If several routes name the same
@@ -131,9 +137,10 @@ not finished. A stage with no outgoing route is a validation error; a special
 
 A stage has a workflow-local identity separate from its implementation. It
 names a process, one operation from the core's closed set of transactional
-built-ins, or a structured parallel block. Built-ins may update orchestration
-state or emit a durable effect intent, but they do not run through the Process
-Gateway as if they were external workers.
+built-ins, a structured parallel block or the concrete goal-to-task workflow
+boundary described above. Built-ins may update orchestration state or emit a
+durable effect intent, but they do not run through the Process Gateway as if
+they were external workers.
 
 A purely transactional built-in completes with the state transition that
 records its output. An intent-backed built-in remains active until the Effect
@@ -440,22 +447,27 @@ Metrics are connected to policy rather than collected only for display:
 Thresholds are calibrations kept in configuration and tuned from recorded
 observations. They are not universal constants copied from one project.
 
-## The build loop as a workflow
+## Verger execution as two workflows
 
-The first production workflow is a goal-scoped software-delivery loop. It
-repeatedly selects a ready row from the active milestone, materializes it as a
-task, gathers the required evidence, and then either adds discovered rows or
-advances to the milestone gate. Passing that gate and its coherence review
-opens the next milestone; it does not merely end the last task. The concrete
-[Verger workflow draft](workflows/verger-build.yaml) expands this path with
-bounded correction, milestone and decision routes:
+Two compact workflow illustrations expose the important scope boundary. The
+[advance-goal workflow](workflows/advance-goal.yaml) selects ready rows, applies
+task outcomes, adds discovered rows and advances through milestone gates. The
+[execute-task workflow](workflows/execute-task.yaml) takes one materialized task
+through implementation, evidence, acceptance and review. It returns proposed
+rows but cannot edit the goal plan or close a milestone.
 
 ```text
-brief -> build -> gate -> preflight -> mutation check -> accept -> review -> close
-  ^                 |             |
-  +---- bounded correction -------+
+advance-goal:
+  select row -> materialize task -> execute-task -> apply outcome -> select again
+       |
+       +-> no ready rows -> milestone gate -> coherence review -> next milestone
 
-review finding -> durable follow-up -> next selection
+execute-task:
+  prepare -> implement -> verify -> mutation check -> accept -> review
+               ^          |
+               +----------+ bounded correction
+
+  review findings -> proposed rows returned to advance-goal
 ```
 
 The stages have deliberately different authorities:
@@ -592,15 +604,17 @@ The MVP should make these properties difficult to violate:
 
 The first version needs versioned goal plans with milestones and rows, row
 addition and splitting during execution, task materialization, static workflows,
-structured parallel stages with `completion: all`, named cycle budgets,
+a concrete goal-to-task workflow boundary, structured parallel stages with
+`completion: all`, named cycle budgets,
 stage-level process continuation, agent and command processes, explicit data
 references, durable events, effect reconciliation, isolated workspaces,
 resource admission, generated briefs, deterministic verification, per-change
 and milestone-coherence review, specification-friction routing, review/judge
 routing and the owner command channel.
 
-It should deliberately defer dynamic workflow-definition mutation, transparent
-subworkflow composition, first-result and quorum parallel completion,
+It should deliberately defer dynamic workflow-definition mutation, generalized
+workflow composition beyond that concrete boundary, first-result and quorum
+parallel completion,
 human-as-process semantics, concurrent runs that mutate the same goal plan,
 generalized cancellation and a universal rich process-output envelope. Those
 capabilities should be added only when a concrete workflow establishes their
