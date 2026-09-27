@@ -6,31 +6,27 @@ status: draft
 
 # Agister: a durable orchestrator for agent work
 
-Agister is a local orchestration service for long-running work performed by AI
-agents, tools and deterministic programs. It turns a task into a validated,
-observable sequence of executions without asking a model to remember the loop,
-judge its own output or coordinate shared machine resources.
+Agister is a local orchestration service for long-running goals carried out by
+AI agents, tools and deterministic programs. It keeps the evolving plan, work
+state, evidence and side effects outside model conversations and advances the
+goal through explicit milestone boundaries.
 
-The design is synthesized from operational evidence in the Verger build
-sessions, summarized in [agent orchestration lessons](lessons/agent-orchestration.md)
-and embodied more concretely in the
-[build-loop orchestrator](prior-drafts/build-loop-orchestrator-v3.4.md). Those
-sessions are the design authority. They establish the work Agister must reliably
-perform: durable state, deterministic gates, isolated workspaces, bounded
-execution, explicit resource admission, independent review and a deliberately
-narrow owner channel.
-
-The earlier [orchestrator proposal](proposals/ai-agent-orchestrator-proposal.md)
-and its [discussion](proposals/ai-agent-orchestrator-proposal-discussion.md) are
-inputs, not foundations. Their vocabulary and candidate abstractions are used
-only where the operational lessons demonstrate a concrete need. Internal
-implementation models do not justify user-facing concepts by themselves.
+The design is informed by real Verger build sessions, consolidated in
+[agent orchestration lessons](lessons/agent-orchestration.md) and explored in
+detail by the [v3.4 build-loop draft](prior-drafts/build-loop-orchestrator-v3.4.md).
+Those sessions are evidence and real operational experience—an especially
+useful source of observations and ideas, not a design authority. The earlier
+[proposal](proposals/ai-agent-orchestrator-proposal.md) and its
+[discussion](proposals/ai-agent-orchestrator-proposal-discussion.md) provide
+additional hypotheses; the current design adopts ideas only when the evidence
+or a concrete use case justifies them.
 
 ## The central idea
 
-> A task is durable work. A workflow is its versioned execution plan. Processes do
-> domain work; core built-ins apply orchestration-owned transitions. Agister
-> owns execution state and side effects.
+> A goal is durable intent. Its evolving plan is divided into milestones and
+> durable rows; ready rows become executable tasks. A workflow governs how work
+> advances, processes perform domain work, and Agister owns state, evidence,
+> scheduling and side effects.
 
 Structural control flow belongs to the workflow definition. Domain computation and
 judgment belong to processes. A route may inspect a value already produced by a
@@ -41,16 +37,14 @@ such as selecting planned work, rendering a versioned brief, recording a
 result, checking evidence eligibility or emitting a guarded effect intent.
 
 ```text
-durable task
-    │
-    ▼
-validated workflow plan ──── references ─── process definitions
-    │                                      │
-    │                                      └── agent/runtime profiles
-    ▼
-orchestration state ─── emits intents ─── isolated workers
-    ▲                                      │
-    └──────── records outcomes ────────────┘
+durable goal
+└── versioned plan
+    ├── milestone
+    │   ├── row ── becomes ── task ── governed by ── workflow
+    │   │                                      └───── processes
+    │   ├── more rows may be added from execution evidence
+    │   └── milestone gate + coherence review
+    └── later milestones
 ```
 
 Agister is therefore not an autonomous “manager agent.” It is a state machine,
@@ -59,26 +53,49 @@ generation is required; they do not hold the authoritative state of the run.
 
 ## The execution model
 
+### Goal, milestones and rows
+
+A goal is the durable outcome Agister is advancing. Its versioned plan contains
+multiple milestones, each representing a meaningful outcome boundary rather
+than merely a batch of work. A milestone owns its rows, exit criteria,
+deterministic gate and any required coherence review. Finishing every known row
+does not finish the milestone until those exit conditions pass.
+
+A row is the durable planning and tracking record for a necessary piece of
+work. It has a stable identity, belongs to a milestone and records its reason,
+acceptance evidence and state. The plan is deliberately allowed to grow while
+work is running: findings, failed gates, specification rulings, manual
+exceptions and operational failures may add or split rows. Agister assigns
+their identities and commits the change through one writer; workers propose
+work but never edit the register directly. A newly added row may become another
+task as soon as it is ready, including while other tasks are running. Verger's
+historical material often calls such a row a *step*; Agister uses *row* for the
+durable plan record and *task* for its executable materialization.
+
+The goal is complete only when every required milestone has passed its exit
+conditions in the versioned plan. This preserves two distinctions exposed by
+Verger: row completion is not milestone completion, and milestone completion is
+not goal completion.
+
 ### Task
 
-A task is the durable, mutable unit of work: implement a feature, repair a
-defect, prepare a release, investigate a failure, or complete another explicit
-objective. It has a stable identity and committed revisions.
+A task is the executable materialization of a ready row. It carries the
+specific brief, inputs, constraints and required evidence for that work. A task
+has a stable identity and committed revisions, survives an interrupted or
+failed attempt, and may be continued or revised without losing its row or
+milestone context.
 
-A run starts against a particular task revision, which freezes workflow inputs
-and budget limits. Execution may refine the task and commit a new revision
-without changing the workflow plan. A live `task.current` reference resolves
-when its consumer activates and records the exact revision used. After a
-suspension, resumption binds live task references to the revision containing the
-applied decision while the run-start inputs remain unchanged. A task survives
-an interrupted or failed run and may be continued later. Successful completion
-of a valid workflow run completes the task it was asked to perform.
+A consumer of `task.current` resolves it when activated and records the exact
+revision used. After a suspension, resumption binds live task references to the
+revision containing the applied decision, while run-start inputs remain
+unchanged. Completing a task may close its row or create further rows; it never
+completes the enclosing milestone or goal by implication.
 
 ### Workflow
 
-A workflow is a declarative plan of named stages. It owns sequencing,
-conditional routing, structured parallel work, bounded repetition, suspension
-and references to executable processes.
+A workflow is a declarative execution definition of named stages. It owns
+sequencing, conditional routing, structured parallel work, bounded repetition,
+suspension and references to executable processes.
 
 Agister may compile the plan to a graph internally, but graph theory is not the
 authoring model. The workflow describes domain stages and their outcomes. A
@@ -92,9 +109,11 @@ outcomes, run these named checks concurrently and wait for all of them, suspend
 for this decision, or repeat within this budget. Scheduler mechanisms do not
 leak into configuration merely because they exist in an internal model.
 
-The plan is fixed for the duration of a run. Runtime discoveries may change task
-or orchestration state, create follow-up work, or select another declared route,
-but they do not rewrite the plan.
+The workflow definition is fixed for the duration of a run. Runtime discoveries
+may revise goal, row, task or orchestration state and may add rows to the goal
+plan, but they do not rewrite the executing workflow definition. Keeping those
+two kinds of plan distinct is essential: learned work changes the goal plan;
+execution continues through declared workflow behavior.
 
 Parallel work is one structured stage. It declares named child processes and a
 completion rule; the parent owns child identity, lifecycle and collected
@@ -219,9 +238,11 @@ identity and continuation handle, not a provider's private internal state.
 
 ### Runs, attempts and effects
 
-A workflow run is one execution of a workflow against a task revision. A
-process run is one activation of a process within it. An attempt is one try by
-the selected runtime.
+A workflow run is one execution of a workflow against a declared scope and
+frozen input revisions. Its scope may be a goal, milestone or task. The first
+Verger workflow is goal-scoped: one run advances many row-derived tasks and
+milestones. A process run is one activation of a process within it. An attempt
+is one try by the selected runtime.
 
 The state machine is pure:
 
@@ -273,8 +294,8 @@ recorded invocation chain leading to the consumer. This remains unambiguous
 across bounded repetition because each pass has its own chain. If two executions
 of the named producer can both reach the consumer without one following the
 other, the reference is invalid and the workflow must use a structured parallel
-output or durable task or evidence state. Mutable task references resolve when
-the consumer starts, and the exact task revision is recorded with its
+output or durable goal, row, task or evidence state. Mutable task references
+resolve when the consumer starts, and the exact task revision is recorded with its
 provenance; workflow inputs remain frozen at run start.
 
 `evidence.candidate(revision)` is a read-only core resolver backed by the
@@ -298,8 +319,8 @@ those decisions.
 
 | Component | Responsibility | Interface |
 |---|---|---|
-| **Orchestration Core** | Validate workflows and own task, run, process, transition, cycle and completion semantics | Accept commands and events; emit state events and effect intents |
-| **State Authority** | Preserve tasks, revisions, events, outcomes, artifacts and rebuildable projections | Append and load events; store and resolve artifacts; serve historical facts |
+| **Orchestration Core** | Validate workflows and own goal plan, milestone, row, task, run, transition and completion semantics | Accept commands and events; emit state events and effect intents |
+| **State Authority** | Preserve goal plans, milestones, rows, tasks, revisions, events, outcomes, artifacts and rebuildable projections | Append and load events; store and resolve artifacts; serve historical facts |
 | **Scheduler** | Admit ready work under resource, concurrency, quota and hold policies | Accept admission requests; return grant, wait or refusal with a reason |
 | **Effect Supervisor** | Start, observe, interrupt and reconcile external work | Accept effect intents; emit lifecycle observations and normalized outcomes |
 | **Process Gateway** | Adapt agents, tools, commands and other runtimes to the common process contract | Accept process requests; emit progress, completion and failure outcomes |
@@ -332,9 +353,10 @@ review queue and owner inbox are projections that can be rebuilt from that log.
 Run artifacts that must survive a reboot live beside it; `/tmp` is used only for
 disposable material.
 
-The target repository remains the durable authority for task inputs and accepted
-artifacts. Task revisions, step specifications and accepted code are committed
-before dependent work begins. Separating control state from the target tree
+The target repository remains the durable authority for goal inputs, milestone
+and row specifications, and accepted artifacts. Plan and task revisions, row
+specifications and accepted code are committed before dependent work begins.
+Separating control state from the target tree
 prevents builders from editing their own verdicts while preserving the lesson
 that no essential state may exist only in an orchestrator conversation.
 
@@ -409,9 +431,9 @@ infrastructure-failure classes, resource wait and findings later proven false.
 Metrics are connected to policy rather than collected only for display:
 
 - falling first-pass rate causes work to be split more finely;
-- persistently slow mutation detection creates a canary-test task;
+- persistently slow mutation detection creates a canary-test row;
 - a high rate of findings later proven false triggers review of judge policy;
-- repeated manual exceptions create tasks that automate or remove them; and
+- repeated manual exceptions create rows that automate or remove them; and
 - orchestration work exceeding its budget freezes new loop features until
   product work catches up.
 
@@ -420,7 +442,11 @@ observations. They are not universal constants copied from one project.
 
 ## The build loop as a workflow
 
-The first production workflow is software delivery. The concrete
+The first production workflow is a goal-scoped software-delivery loop. It
+repeatedly selects a ready row from the active milestone, materializes it as a
+task, gathers the required evidence, and then either adds discovered rows or
+advances to the milestone gate. Passing that gate and its coherence review
+opens the next milestone; it does not merely end the last task. The concrete
 [Verger workflow draft](workflows/verger-build.yaml) expands this path with
 bounded correction, milestone and decision routes:
 
@@ -434,8 +460,9 @@ review finding -> durable follow-up -> next selection
 
 The stages have deliberately different authorities:
 
-- Agister generates each brief from the durable task, process definition and a
-  versioned template. Per-run prose cannot silently add policy. A new brief rule
+- Agister materializes the selected row as a task and generates its brief from
+  the durable row, task revision, process definition and a versioned template.
+  Per-run prose cannot silently add policy. A new brief rule
   must also create work to enforce that rule mechanically where possible;
   enforcement comes first and the brief retains only the rationale.
 - A fresh builder performs one small, test-first step in isolation.
@@ -451,7 +478,8 @@ The stages have deliberately different authorities:
   reviewer's resolved agent profile.
 - A fresh judge classifies each finding. It may dismiss only a duplicate, an
   out-of-scope item or something already covered. A finding thought false becomes
-  a reproduction task; only evidence that can itself fail may disprove it.
+  a reproduction row, which later becomes a task; only evidence that can itself
+  fail may disprove it.
 - Agister applies the result and assigns identifiers. Agents never compete to
   write the tracker.
 
@@ -468,8 +496,8 @@ failure is classified by one shared, tested classifier; retries cannot turn an
 independent test failure, race or hang into a pass. Repeated infrastructure
 failures create root-cause work.
 
-Step size is policy, not taste. A builder time-box breach is normally a signal
-to split the step in the durable task plan. Investigation, implementation and a
+Row size is policy, not taste. A builder time-box breach is normally a signal
+to split the row in the durable goal plan. Investigation, implementation and a
 large assertion set are separate steps when they cannot reliably fit the same
 box. A fresh agent handles each step so context growth cannot silently degrade
 later work.
@@ -483,7 +511,7 @@ failure and infrastructure failure.
 
 A friction report names the governing section, the observed problem and a
 proposed resolution. It enters a planner/advisor queue; a ruling may revise the
-specification and create follow-up tasks. Unless the current step is impossible
+specification and create follow-up rows. Unless the current task is impossible
 or unsafe, the builder returns the candidate with an optional friction report;
 friction does not block it and does not authorize the builder to silently
 reinterpret the specification. `blocked_by_specification` is reserved for the
@@ -532,8 +560,9 @@ The inbox contains only:
   choice; and
 - incidents that require action outside Agister's authority.
 
-Status stays on the dashboard. Product defects become tasks. Questions already
-answered by the specification are not asked. Open implementation or build
+Status stays on the dashboard. Product defects become rows and then tasks when
+ready. Questions already answered by the specification are not asked. Open
+implementation or build
 questions go first to an advisor process, whose provisional ruling lets
 unrelated work continue and remains reversible by the owner.
 
@@ -549,8 +578,8 @@ The MVP should make these properties difficult to violate:
 1. A model conversation is never the sole holder of orchestration state.
 2. Exactly one authority writes state for a repository.
 3. Every effect has a recorded intent and a recorded outcome.
-4. Every run is isolated, bounded, observable and attributable to a task
-   revision, workflow version and process definition.
+4. Every run is isolated, bounded, observable and attributable to its declared
+   goal, milestone or task scope, workflow version and process definition.
 5. Only evidence for the exact candidate revision may authorize acceptance.
 6. Agents propose work and judgments; deterministic mechanisms apply state
    transitions and repository mutations.
@@ -561,19 +590,21 @@ The MVP should make these properties difficult to violate:
 
 ## MVP boundary
 
-The first version needs static workflows, structured parallel stages with
-`completion: all`, named cycle budgets, stage-level process continuation, agent
-and command processes, explicit data references, durable events, effect
-reconciliation, isolated workspaces, resource admission, generated briefs,
-deterministic verification, per-change and milestone-coherence review,
-specification-friction routing, review/judge routing and the owner command
-channel.
+The first version needs versioned goal plans with milestones and rows, row
+addition and splitting during execution, task materialization, static workflows,
+structured parallel stages with `completion: all`, named cycle budgets,
+stage-level process continuation, agent and command processes, explicit data
+references, durable events, effect reconciliation, isolated workspaces,
+resource admission, generated briefs, deterministic verification, per-change
+and milestone-coherence review, specification-friction routing, review/judge
+routing and the owner command channel.
 
-It should deliberately defer dynamic plan mutation, transparent subworkflow
-composition, first-result and quorum parallel completion, human-as-process
-semantics, concurrent runs that mutate the same task, generalized cancellation
-and a universal rich process-output envelope. Those capabilities should be
-added only when a concrete workflow establishes their semantics.
+It should deliberately defer dynamic workflow-definition mutation, transparent
+subworkflow composition, first-result and quorum parallel completion,
+human-as-process semantics, concurrent runs that mutate the same goal plan,
+generalized cancellation and a universal rich process-output envelope. Those
+capabilities should be added only when a concrete workflow establishes their
+semantics.
 
 Agister's first success criterion is not that it offers a universal orchestration
 notation. It is that the service can run the proven Verger build loop through
