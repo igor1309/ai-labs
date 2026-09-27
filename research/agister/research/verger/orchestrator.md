@@ -14,11 +14,12 @@ judge its own output or coordinate shared machine resources.
 The design combines two bodies of work in this directory:
 
 - the declarative task/workflow/process model from the
-  [orchestrator proposal](ai-agent-orchestrator-proposal.md) and its
-  [discussion](ai-agent-orchestrator-proposal-discussion.md); and
+  [orchestrator proposal](proposals/ai-agent-orchestrator-proposal.md) and its
+  [discussion](proposals/ai-agent-orchestrator-proposal-discussion.md); and
 - the operational evidence from the Verger build sessions, summarized in
-  [agent orchestration lessons](agent-orchestration.md) and embodied more
-  concretely in the [build-loop orchestrator](Build-loop%20orchestrator.md).
+  [agent orchestration lessons](lessons/agent-orchestration.md) and embodied
+  more concretely in the
+  [build-loop orchestrator](prior-drafts/build-loop-orchestrator-v3.4.md).
 
 The proposal supplies the general execution model. The Verger sessions supply
 the constraints that make that model reliable in practice: durable state,
@@ -447,9 +448,10 @@ accepting unverified work or requiring an LLM to remember what happens next.
 ## Appendix: v3.4 implementation profile
 
 The abstract model above permits more than one implementation. The
-[Verger v3.4 draft](Build-loop%20orchestrator.md) supplies a useful concrete
-profile for the first local implementation. The values and field names below
-are illustrative; the safety properties are the important part.
+[Verger v3.4 draft](prior-drafts/build-loop-orchestrator-v3.4.md) supplies a
+useful concrete profile for the first local implementation. The values and
+field names below are illustrative; the safety properties are the important
+part.
 
 ### Deployment and storage
 
