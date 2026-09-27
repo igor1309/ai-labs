@@ -1,96 +1,114 @@
-# The build-loop orchestrator
+# The build-loop orchestrator, v2
 
-A design for building software through subagents, based on what Verger M1–M7 taught (see *Verger orchestration lessons*, cited as L-numbers).
+A design for building software through subagents, based on Verger M1–M7 (*Verger orchestration lessons*, cited as L-numbers). v2 takes in the findings of *Build-loop orchestrator — review* (cited as R1–R7).
 
 ## Concise
 
-The orchestrator builds software by sending out builder agents, one small step at a time. It never builds, verifies or reviews anything itself. Scripts decide every verdict, a judge handles every review, and all state lives in the repo.
+The orchestrator is a script, not an agent. It is a state machine over the tracker, and it calls models only where judgment is needed. Scripts decide every verdict, gates enforce every rule, and all state lives in the repo.
 
 **Roles**
-- **Orchestrator:** picks the next row, spawns a builder, runs `accept`, routes reviews and questions. Repeated manual work becomes a script.
-- **Builder:** a fresh agent for every step. It gets a brief that a script generated, writes tests first, and reports only the SHA, the gate line and the plant table.
-- **Scripts:** deterministic, run in throwaway worktrees under a machine-wide lock, with timeouts scaled from a baseline run. They record verdicts in a ledger keyed by SHA, so accepting a step is a lookup.
-- **Reviewer:** a model from another family. It gets only the commits, no steer. Reviews go through a queue with a concurrency cap.
-- **Judge:** a fresh agent for each review. Every finding becomes a row unless it is already covered, out of scope or a duplicate. Only a test can prove a finding false.
-- **Advisor:** rules provisionally on questions the specs leave open.
-- **Owner:** decides through the inbox only, on batched questions with recommended picks.
+- **Driver (script):** picks the next row, spawns a builder, runs `accept`, and routes reviews, findings and questions. It holds no memory beyond the repo, so it cannot drift.
+- **Builder:** a fresh agent for every step, with a generated brief. It reports only the SHA, the gate line, the plant table and any spec friction.
+- **Gates:** deterministic, in throwaway worktrees. They record verdicts in a ledger keyed by SHA and enforce the rules a brief states.
+- **Reviewer:** another model family, commits only, no steer. Queued and capped.
+- **Judge:** a fresh agent for each review. Only a test can reject a finding.
+- **Coherence reviewer:** reads a whole module at each milestone boundary.
+- **Planner and advisor:** turn open questions and spec friction into rulings and rows.
+- **Owner:** decides through the inbox only.
 
 **Invariants**
-- A step has at most 7 scenarios and 10 cases. Oversized work is split in the tracker, never inside a brief.
-- State is committed before each builder starts, so any session can resume from the repo.
-- Nothing blocks the build: not a decision, not a review, not a quota.
-- Every wait has a bound, and a hang is a defect. Liveness is checked with `pgrep` and heartbeats, never taken from an agent's own account.
-- A milestone is done when its gate passes, not when its rows are done.
+- Steps stay small, and are split in the tracker, never in a brief.
+- A rule that matters has a gate check. The brief only explains.
+- State is committed before each builder starts, so the driver can resume anywhere.
+- Nothing blocks the build: not a decision, a review or a quota.
+- Every wait is bounded. Liveness comes from processes and heartbeats, never from an agent's own account.
+- Loop health is measured from the ledger, and every threshold is a calibration tuned by those metrics.
+- A milestone is done when its gate and its coherence review pass.
 
 ## Detailed
 
 ### Principles
 
-1. **Small steps, fresh agents.** Speed depends on step size, and a long-lived agent's context rots (L3, L5). Slow steps get split, not coached.
-2. **Scripts decide.** An agent verifying its own work eventually gets it wrong (L8). Judgment goes to separate agents: judge and advisor.
-3. **The repo is the memory.** Sessions get compacted, cleared and cut off by limits, so everything that matters is committed (L23).
-4. **The owner's attention is scarce.** It gets one channel, and only decisions go there (L34).
+1. **Code over prose.** Most of the failures in v1 were an LLM orchestrator drifting (L1, L10, L20, L22). What it actually does is a state machine, so v2 makes it one (R1). Models do only what needs judgment.
+2. **Enforce, don't instruct.** A rule that exists only in a brief gets gamed (L41). Gates enforce, and briefs explain (R2).
+3. **Small steps, fresh agents, repo as memory** (L3, L5, L23).
+4. **Local correctness is not global coherence.** Small steps need a counterweight at a larger scale (R3).
 
 ### State layout
 
-State is split by who reads it (L24):
-- **Specs:** contracts, scenarios, the ADR and the D-numbered decision register. Rarely changed; readers load single entries.
-- **Plan:** one file per milestone. Each milestone has a gate.
-- **Steps:** one file per tracker row. A builder reads only its own.
-- **`tracker.tsv`:** the single source of truth for every row's status. Only scripts write it, and only one writer at a time.
-- **Queues:** the review queue and module tags.
-- **`INBOX.md`:** open owner decisions, plus owner holds such as "pause reviews", which are state, not chat (L26).
+- **Specs:** contracts, scenarios, the ADR and the D-numbered decision register.
+- **Plan:** one file per milestone, each with a gate. **Steps:** one file per row.
+- **`tracker.tsv`:** the source of truth. Only scripts write it, one writer at a time.
+- **Ledger:** verdicts keyed by SHA, with timings. It is also the source for metrics.
+- **Queues:** reviews, spec friction, module tags.
+- **`INBOX.md`:** open owner decisions and holds (L26).
 
-### The step cycle
+### The driver
 
-1. `status` shows the next row, which is committed as `in progress`.
-2. `start` resets a throwaway worktree and prints the brief. It refuses if the previous merge was never accepted (L11) or if the brief would miss a module tag (L7).
-3. A fresh builder gets the brief and nothing else. The brief's rules come from past violations: write tests first, report failures verbatim, apply plants only to copies under `/tmp`, never rebase, merge or cherry-pick (L40, L41). A "wall" must cite the missing spec text (L42).
-4. `gate` runs the suite plus `leftovers` (orphaned processes), then `plants` runs the mutation plants. Each plant must compile, and must be killed within a bound; a hang is not a kill. An `Equivalent:` plant needs a stated reason (L16). Both record a verdict in the ledger.
-5. `accept` merges only on a clean ledger entry for that SHA. It re-runs nothing and runs from a `/tmp` copy of itself (L13).
-6. The commits enter the review queue.
+The driver is an idempotent loop. Each pass reads the tracker, ledger, queues and inbox holds, and takes the next legal action:
 
-### Verdict hygiene
+1. Commit the next row as `in progress`. Generate the brief, refusing if a module tag is missing (L7). Reset a throwaway worktree, refusing if the last merge was never accepted (L11).
+2. Spawn a builder in an explicit write-enabled permission mode (L2). Wait with a bound, and check the heartbeat and `pgrep` (L19, L20).
+3. Run `gate` and `plants`, then `accept`, which merges on a clean ledger entry and re-runs nothing (L8, L13).
+4. Enqueue the commits for review, and file any reported friction.
+5. Dispatch reviews and judges up to the caps. Only a review that exited 0 goes to a judge (L29, L31).
 
-- Machine-wide lock; clean baseline first. Baseline failure stops everything; timeouts are 3× baseline, minimum 20 s (L14).
-- Time a kill from the first failing test, not from the start of the package run (L15).
-- When a re-run disagrees, fix the threshold rather than adding re-runs. A re-measure is as strict as the first run (L15, L17).
-- An environment failure, such as a vanished build-cache file, gets one retry, then exits without using up the step's attempt (L17).
-- Test the scripts against real tool output, not tidy fakes (L12).
+Every decision is read from committed state, so a crash or compaction loses nothing (L23). On a usage limit it resumes once. On a second hit it stops spawning and leaves rows `in progress` (L27).
 
-### Observability
+Anything the driver cannot decide becomes an **exception**: a finding reported false, a change in spec behavior, a failure the gates can't classify. An exception goes to the judge or advisor, or to the inbox as a decision. The driver never improvises.
 
-Every run and step is bounded, and a fired bound records HANG. Each run writes a heartbeat with its pid. `status --stale` takes active builders from the tracker, so one that stalls before its first edit is still caught (L19). The orchestrator wakes at about half the time box and checks `pgrep` and file times, never an agent's own report (L20). When something is slow, it measures before explaining (L18).
+### Rules as gate checks
 
-### Reviews
+Each brief rule is paired with a check where one is possible (R2):
 
-- The reviewer, from another model family, gets only the commits: no focus, no tests. Static reviews are labelled static (L28).
-- The queue is committed and runs in priority order; a spec change other steps depend on goes first. At most 5 reviews and at most 5 judges run at once, and building continues under the gates while reviews wait (L31).
-- Only a review that exited 0 goes to a judge. Judges run one at a time because they write the tracker (L29).
-- The judge turns each surviving finding into a row. A finding it suspects is false becomes "test first; if the test passes, report false" (L29). False findings cost builder runs, and that price is accepted (L30).
-- A doc change that alters spec behavior is reviewed before it is committed. Claims checked only by `grep` are labelled as such (L32).
+| Brief rule | Gate check |
+|---|---|
+| Write tests first | Commit order: test files before code |
+| Don't re-run until green | The ledger shows attempts per SHA |
+| No check evasion | Static scan for split strings and disabled checks |
+| No git surgery | `start` owns branch refs; builder rebases are rejected |
+| Plants only on copies | Worktree must be clean after `plants` |
 
-### Decisions and the owner
+The brief has a size budget. A rule is retired from the brief once a gate enforces it, and only its one-line rationale stays. A new violation adds a check first and prose second.
 
-- A question the specs leave open goes to the advisor. The advisor's ruling is recorded as a D-number and applied provisionally, and the loop moves on (L33).
-- Owner decisions are batched in one inbox item, each with a recommended pick, and sent with one push notification. Work continues with the pick written in and marked `PENDING`, so the answer finalises with a one-line edit (L35).
-- A defect never becomes a question: it becomes a row (L34).
-- What the agent can't do goes to the owner as a copy-paste-complete `!` line with its rollback: no placeholders, preconditions checked before asking for `yes`, staged under `/tmp`. `sudo` runs in a separate Terminal (L37, L38).
+### Verdicts
 
-### Milestones and capacity
+Verdicts run under a machine-wide lock after a clean baseline, with timeouts scaled from it (L14). Kills are timed from the first failing test and bounded; plants must compile (L15, L16). A disagreeing re-run means fixing the threshold (L15). Environment failures retry once without consuming the attempt (L17). Scripts are tested against real tool output (L12).
 
-One planner per milestone, in parallel worktrees, drafts numbered questions. The advisor rules, and rulings flow into spec, then plan, then rows. A milestone is done only when its gate passes (L21, L36).
+### Spec friction
 
-If Claude's usage limit stops builders, the orchestrator resumes once. On a second hit it stops spawning and leaves rows `in progress` for the next session (L27).
+A wall must cite missing spec text (L42), but builders also find specs that are awkward or wrong, and v1 had no way to report that (R4). v2 lets a builder finish the step as specified and report friction as one line naming the spec section, the problem and a suggestion. Friction goes to the planner queue. The advisor rules on it, and a ruling becomes a spec edit plus rows. The build never waits for it.
+
+### Reviews and coherence
+
+- **Per commit:** the cross-family reviewer gets no steer, and static reviews are labelled static (L28). A judge turns each finding into a row unless it is covered, out of scope or a duplicate, and a suspected false finding becomes "test first" (L29). Spec-behavior doc changes are reviewed before they are committed (L32).
+- **Per milestone:** a coherence reviewer reads each touched module whole, looking for duplicated logic, sibling copies of fixed bugs (L44), boundary drift and missing abstractions. Its findings go through the same judge (R3).
+
+### Metrics
+
+A `metrics` script reads the ledger and tracker (R5):
+- cycle time per step and the share of steps that pass on the first attempt;
+- findings per reviewed step, and the share later proven false;
+- defects found after a merge, by source;
+- hang and flake counts;
+- the share of rows spent on loop tooling versus the product.
+
+Each metric has a trigger:
+- First-pass rate drops: split steps further.
+- False-finding rate is high: review the judge rules (L30).
+- Loop share rises above its budget: freeze new loop features until product work catches up (R6).
+
+### Calibrations
+
+Every number in this design is a calibration from Verger (R7), not a law: 7 scenarios and 10 cases per step, 5 concurrent reviews and judges, timeouts at 3× baseline with a 20 s floor, a wake-up at half the time box. Each lives in one config file and is tuned from the metrics.
+
+### The owner
+
+- Advisor rulings are provisional and recorded as D-numbers, and they never block (L33).
+- Decisions are batched, each with a recommended pick. Work continues marked `PENDING` (L35).
+- Defects become rows, never questions (L34).
+- What only the owner can do comes as a complete `!` line with its rollback, preflight-checked and staged under `/tmp`. `sudo` goes in a separate Terminal (L37, L38).
 
 ### Environment
 
-- External binaries are pinned by path, version and SHA-256. A re-pin is a pipeline: review the upstream source diff, amend the spec, have the owner install the binary and paste back its hash, then run the full real-binary suite (L45).
-- After an upgrade, check `ps` and the changed defaults for hidden background processes (L46).
-- A flake is a defect with a cause: its own step, with the failure rate measured before and after. Then look for sibling copies of the bug (L43, L44).
-
-### Starting or resuming a session
-
-1. Read the whole process first: the loop spec, the scripts, the decision register and the review rules. Reuse what exists (L1).
-2. Check the permission mode, since plan mode makes builders read-only (L2).
-3. Read the tracker and inbox, then continue from the committed state.
+External binaries are pinned by path, version and hash. Re-pins run as a pipeline that checks new background processes and defaults (L45, L46). A flake is a defect: its own step, rates measured before and after, and a search for sibling bugs (L43, L44).
