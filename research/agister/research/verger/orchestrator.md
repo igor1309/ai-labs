@@ -160,6 +160,37 @@ Fan-out is multiple outgoing paths. Fan-in is convergence on a downstream node;
 by default, a node waits for all active required inputs. An executable split or
 join is introduced only when the operation itself computes something.
 
+## Proposed architecture
+
+Agister is one orchestration authority with explicit internal ports. Components
+are responsibility boundaries, not necessarily separate deployed services. The
+core owns orchestration decisions; surrounding components persist facts,
+control capacity, perform effects and expose the system without duplicating
+those decisions.
+
+| Component | Responsibility | Interface |
+|---|---|---|
+| **Orchestration Core** | Validate workflows and own task, run, process, transition, cycle and completion semantics | Accept commands and events; emit state events and effect intents |
+| **State Authority** | Preserve tasks, revisions, events, outcomes, artifacts and rebuildable projections | Append and load events; store and resolve artifacts; serve historical facts |
+| **Scheduler** | Admit ready work under resource, concurrency, quota and hold policies | Accept admission requests; return grant, wait or refusal with a reason |
+| **Effect Supervisor** | Start, observe, interrupt and reconcile external work | Accept effect intents; emit lifecycle observations and normalized outcomes |
+| **Process Gateway** | Adapt agents, tools, commands and other runtimes to the common process contract | Accept process requests; emit progress, completion and failure outcomes |
+| **Evidence Authority** | Associate gates, reviews, findings and acceptance evidence with exact candidate revisions | Accept evidence and findings; answer acceptance eligibility |
+| **Interaction Boundary** | Present commands, queries, event streams, decisions and notifications to clients | Stable command, query and subscription interfaces |
+
+The interfaces above are logical contracts, not protocol choices. The
+Orchestration Core is the only component that advances workflow state. The
+State Authority records that state but does not decide it. The Effect Supervisor
+reports reality but does not interpret a process outcome as workflow success.
+The Evidence Authority can authorize acceptance only for the exact candidate
+revision covered by its evidence.
+
+CLI, web UI, macOS integration and automation are clients of the Interaction
+Boundary. They may present different views and workflows, but none writes the
+State Authority or invokes workers directly. This lets the first client define
+and exercise the application contract without becoming a second orchestration
+implementation.
+
 ## Runtime architecture
 
 Agister runs as one long-lived local service per machine and one state-machine
@@ -452,6 +483,24 @@ The abstract model above permits more than one implementation. The
 useful concrete profile for the first local implementation. The values and
 field names below are illustrative; the safety properties are the important
 part.
+
+### Delivery sequence
+
+The first implementation follows the interface split above:
+
+1. **Core and CLI.** Complete the orchestration, state, execution and evidence
+   path behind the Interaction Boundary. The CLI is the first complete client
+   and the reference surface for commands, queries and recovery.
+2. **Web UI.** Add an operational view and owner controls through the same
+   command, query and event interfaces. It introduces no private orchestration
+   behavior.
+3. **macOS integration.** Add native lifecycle, notification and convenience
+   surfaces after the headless behavior is established. They remain clients of
+   the same boundary.
+
+Each stage must remain usable without the later presentation layers. A feature
+needed by the web or macOS surface is added first to the shared application
+interface, then exposed by that client.
 
 ### Deployment and storage
 
