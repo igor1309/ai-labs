@@ -1,0 +1,14 @@
+# Reusable reviewer agent profile.
+#
+# This file configures the reusable runtime, not review behavior. The invoking
+# process owns the role, instruction, inputs, permissions, execution policy and
+# output contract.
+
+schema = "agister.agent/v1alpha1"
+name = "reviewer"
+status = "example"
+
+runtime = "llm"
+model = "reviewer-high"
+reasoning_effort = "high"
+session = "fresh"

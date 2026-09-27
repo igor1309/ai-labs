@@ -108,6 +108,14 @@ A process definition also declares execution policy: its timeout, retry policy,
 required resources, isolation, output schema and artifact handling. Retry is a
 property of process execution, not an implicit graph cycle.
 
+An agent-backed process instantiates a reusable agent profile. The process owns
+the concrete role, instruction, inputs, output contract, workspace, tool
+permissions and execution policy. The agent profile owns only reusable runtime
+configuration: runtime and model selection, reasoning effort, session behavior
+and provider-specific settings. An agent profile is therefore not independently
+runnable and contains no task prompt. Multiple processes may use the same
+profile for different roles.
+
 Stateful processes retain their internal state in their native runtime where
 possible. On re-entry, a workflow must say whether it is continuing the same
 process identity or starting a new one. Agister persists the identity and
@@ -286,7 +294,9 @@ observations. They are not universal constants copied from one project.
 
 ## The build loop as a workflow
 
-The first production workflow is software delivery. Its main path is:
+The first production workflow is software delivery. The concrete
+[Verger workflow draft](workflows/verger-build.yaml) expands this path with
+bounded correction, milestone and decision routes:
 
 ```text
 brief -> build -> gate -> mutation check -> accept -> independent review -> done
@@ -358,6 +368,12 @@ agent TOML     -> reusable model/runtime profile
 service TOML   -> machine-wide resources and safety limits
 ```
 
+For example, adversarial and architecture review processes may both use the
+same `agent:reviewer` profile. Each process supplies its own instruction and
+input/output contract. A cross-family requirement is process policy because it
+is evaluated against the author of the particular candidate, not an intrinsic
+property of the reusable agent profile.
+
 Illustrative workflow:
 
 ```yaml
@@ -416,7 +432,10 @@ These formats and field names are provisional. The important boundary is:
 workflow owns topology, process owns work, agent profile owns reusable runtime
 settings, and service configuration owns shared-machine policy. Participating
 processes are derived from graph references rather than duplicated in a
-separate membership list.
+separate membership list. Concrete examples are the
+[adversarial review process](processes/adversarial-review.yaml),
+[architecture review process](processes/architecture-review.yaml) and their
+shared [reviewer agent profile](agents/reviewer.toml).
 
 ## Owner and decision channels
 

@@ -1,0 +1,121 @@
+# Minimal workflow example derived from the review graph in the configuration
+# proposal. Schema names are provisional.
+#
+# The graph performs one fan-out and one fan-in. There are no executable split
+# or join processes: multiple outgoing edges create the branches, and synthesis
+# waits for every active required incoming path. Agent-backed review processes
+# such as ../processes/adversarial-review.yaml and
+# ../processes/architecture-review.yaml use ../agents/reviewer.toml with their
+# own role, instruction, permissions, execution policy, and output contract.
+
+schema: agister.workflow/v1alpha1
+name: review-code
+status: example
+
+description: >-
+  Prepare one immutable candidate, inspect it through independent adversarial,
+  lint, test, and architecture processes, then synthesize one review outcome.
+
+inputs:
+  repository: task.repository
+  base_revision: task.base_revision
+  candidate_revision: task.candidate_revision
+
+start: prepare_diff
+
+edges:
+  prepare_diff:
+    - to: adversarial_review
+      process: new
+    - to: lint_review
+      process: new
+    - to: test_review
+      process: new
+    - to: architecture_review
+      process: new
+
+  adversarial_review:
+    - to: synthesize_review
+      process: new
+
+  lint_review:
+    - to: synthesize_review
+      process: new
+
+  test_review:
+    - to: synthesize_review
+      process: new
+
+  architecture_review:
+    - to: synthesize_review
+      process: new
+
+  synthesize_review:
+    - when: 'output.status == "completed" && output.findings > 0'
+      to: publish_findings
+      process: new
+    - when: 'output.status == "completed" && output.findings == 0'
+      to: complete_review
+      process: new
+    - default: true
+      to: fail_review
+      process: new
+
+# `publish_findings` and `complete_review` are successful terminal processes.
+# `fail_review` is a failed terminal process for an invalid or inconclusive
+# synthesis. Failure of a required branch after its execution policy is
+# exhausted fails the workflow rather than silently producing a partial review.
+
+data:
+  prepare_diff:
+    repository: inputs.repository
+    base_revision: inputs.base_revision
+    candidate_revision: inputs.candidate_revision
+
+  adversarial_review:
+    base_revision: inputs.base_revision
+    candidate_revision: inputs.candidate_revision
+    diff: prepare_diff.output.diff
+    changed_files: prepare_diff.output.changed_files
+    writer_model_family: task.writer_model_family
+
+  lint_review:
+    candidate_revision: inputs.candidate_revision
+    workspace: prepare_diff.output.workspace
+    changed_files: prepare_diff.output.changed_files
+
+  test_review:
+    candidate_revision: inputs.candidate_revision
+    diff: prepare_diff.output.diff
+    test_changes: prepare_diff.output.test_changes
+    verification_summary: prepare_diff.output.verification_summary
+
+  architecture_review:
+    base_revision: inputs.base_revision
+    candidate_revision: inputs.candidate_revision
+    diff: prepare_diff.output.diff
+    changed_files: prepare_diff.output.changed_files
+    architecture_context: task.architecture_context
+    writer_model_family: task.writer_model_family
+
+  synthesize_review:
+    candidate_revision: inputs.candidate_revision
+    adversarial: adversarial_review.output
+    lint: lint_review.output
+    tests: test_review.output
+    architecture: architecture_review.output
+
+  publish_findings:
+    task: task.current
+    candidate_revision: inputs.candidate_revision
+    findings: synthesize_review.output.findings
+
+  complete_review:
+    task: task.current
+    candidate_revision: inputs.candidate_revision
+    review: synthesize_review.output
+
+  fail_review:
+    task: task.current
+    candidate_revision: inputs.candidate_revision
+    synthesis: synthesize_review.output

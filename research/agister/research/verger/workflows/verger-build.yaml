@@ -1,0 +1,351 @@
+# Draft workflow derived from ../orchestrator.md and the Verger lessons.
+#
+# Scope: advance one durable Verger task scope until its required steps,
+# milestone gates, and coherence reviews are complete.
+#
+# Schema names are provisional. Each node named under `edges` is a process
+# reference; process membership is intentionally not duplicated in a list.
+# Process retry, timeout, isolation, resource, and provider policy belong in
+# process definitions and service policy rather than in this graph.
+
+schema: agister.workflow/v1alpha1
+name: verger-build
+status: draft
+
+description: >-
+  Select and complete small Verger build steps, attach deterministic evidence
+  to exact candidate revisions, route independent review findings into durable
+  follow-up work, and close milestones only after their gate and coherence
+  review pass.
+
+inputs:
+  repository: task.repository
+  scope: task.scope
+  limits: task.limits
+
+start: select_step
+
+# Control edges express execution dependencies. Every conditional branch is
+# exhaustive. Every transition that repeats a cycle declares a bound supplied
+# by the durable task.
+edges:
+  select_step:
+    - when: 'output.route == "step_ready"'
+      to: generate_brief
+      process: new
+    - when: 'output.route == "milestone_gate_ready"'
+      to: milestone_gate
+      process: new
+    - when: 'output.route == "waiting_for_owner"'
+      to: await_task_revision
+      process: new
+    - when: 'output.route == "scope_complete"'
+      to: complete_task
+      process: new
+    - default: true
+      to: exception_judge
+      process: new
+
+  generate_brief:
+    - to: build
+      process: new
+
+  build:
+    - when: 'output.status == "candidate_ready"'
+      to: record_builder_result
+      process: new
+    - when: 'output.status == "blocked_by_specification"'
+      to: record_specification_friction
+      process: new
+    - default: true
+      to: exception_judge
+      process: new
+
+  record_builder_result:
+    - to: gate
+      process: new
+
+  record_specification_friction:
+    - to: select_step
+      process: new
+      max_traversals: '${inputs.limits.max_steps}'
+
+  gate:
+    - when: 'output.status == "passed"'
+      to: preflight_plants
+      process: new
+    - when: 'output.status == "product_failure"'
+      to: generate_brief
+      process: new
+      max_traversals: '${inputs.limits.max_corrections_per_step}'
+    - when: 'output.status == "infrastructure_failure"'
+      to: record_infrastructure_failure
+      process: new
+    - default: true
+      to: exception_judge
+      process: new
+
+  preflight_plants:
+    - when: 'output.status == "ready"'
+      to: plants
+      process: new
+    - when: 'output.status == "invalid_plant"'
+      to: generate_brief
+      process: new
+      max_traversals: '${inputs.limits.max_corrections_per_step}'
+    - default: true
+      to: exception_judge
+      process: new
+
+  plants:
+    - when: 'output.status == "passed"'
+      to: accept
+      process: new
+    - when: 'output.status == "product_failure"'
+      to: generate_brief
+      process: new
+      max_traversals: '${inputs.limits.max_corrections_per_step}'
+    - when: 'output.status == "infrastructure_failure"'
+      to: record_infrastructure_failure
+      process: new
+    - default: true
+      to: exception_judge
+      process: new
+
+  record_infrastructure_failure:
+    - to: select_step
+      process: new
+      max_traversals: '${inputs.limits.max_steps}'
+
+  accept:
+    - when: 'output.status == "accepted"'
+      to: review
+      process: new
+    - default: true
+      to: exception_judge
+      process: new
+
+  review:
+    - when: 'output.status == "completed"'
+      to: judge_review
+      process: new
+    - default: true
+      to: exception_judge
+      process: new
+
+  judge_review:
+    - when: 'output.status == "no_findings"'
+      to: close_step
+      process: new
+    - when: 'output.status == "follow_up_required"'
+      to: commit_review_findings
+      process: new
+    - default: true
+      to: exception_judge
+      process: new
+
+  commit_review_findings:
+    - to: close_step
+      process: new
+
+  close_step:
+    - to: select_step
+      process: new
+      max_traversals: '${inputs.limits.max_steps}'
+
+  milestone_gate:
+    - when: 'output.status == "passed"'
+      to: coherence_review
+      process: new
+    - when: 'output.status == "product_failure"'
+      to: commit_milestone_findings
+      process: new
+    - when: 'output.status == "infrastructure_failure"'
+      to: record_infrastructure_failure
+      process: new
+    - default: true
+      to: exception_judge
+      process: new
+
+  commit_milestone_findings:
+    - to: select_step
+      process: new
+      max_traversals: '${inputs.limits.max_steps}'
+
+  coherence_review:
+    - when: 'output.status == "completed"'
+      to: judge_coherence
+      process: new
+    - default: true
+      to: exception_judge
+      process: new
+
+  judge_coherence:
+    - when: 'output.status == "no_findings"'
+      to: close_milestone
+      process: new
+    - when: 'output.status == "follow_up_required"'
+      to: commit_coherence_findings
+      process: new
+    - default: true
+      to: exception_judge
+      process: new
+
+  commit_coherence_findings:
+    - to: select_step
+      process: new
+      max_traversals: '${inputs.limits.max_steps}'
+
+  close_milestone:
+    - to: select_step
+      process: new
+      max_traversals: '${inputs.limits.max_milestones}'
+
+  await_task_revision:
+    - when: 'output.status == "task_revised"'
+      to: select_step
+      process: new
+      max_traversals: '${inputs.limits.max_owner_waits}'
+    - default: true
+      to: exception_judge
+      process: new
+
+  exception_judge:
+    - when: 'output.route == "retry_active_step"'
+      to: generate_brief
+      process: new
+      max_traversals: '${inputs.limits.max_exception_retries}'
+    - when: 'output.route == "commit_follow_up"'
+      to: commit_exception_follow_up
+      process: new
+    - when: 'output.route == "owner_decision"'
+      to: publish_owner_decision
+      process: new
+    - default: true
+      to: fail_task
+      process: new
+
+  commit_exception_follow_up:
+    - to: select_step
+      process: new
+      max_traversals: '${inputs.limits.max_steps}'
+
+  publish_owner_decision:
+    - to: await_task_revision
+      process: new
+      max_traversals: '${inputs.limits.max_owner_waits}'
+
+# `complete_task` and `fail_task` are terminal processes. The former completes
+# successfully after confirming the durable scope is closed; the latter returns
+# a failed process outcome with the unresolved exception attached.
+
+# Provisional data bindings. Processes may consume durable task state and named
+# upstream output independently of the control edge that activated them.
+data:
+  select_step:
+    task: task.current
+    scope: inputs.scope
+
+  generate_brief:
+    task: task.current
+    step: task.active_step
+    prior_failure: task.active_step.latest_failure
+
+  build:
+    task: task.current
+    step: task.active_step
+    brief: generate_brief.output.brief
+    unverified_work: task.active_step.recovery_artifact
+
+  record_builder_result:
+    step: task.active_step
+    result: build.output
+
+  record_specification_friction:
+    step: task.active_step
+    friction: build.output.friction
+
+  gate:
+    step: task.active_step
+    candidate: task.active_step.candidate_revision
+
+  preflight_plants:
+    step: task.active_step
+    candidate: task.active_step.candidate_revision
+    plants: task.active_step.plants
+
+  plants:
+    step: task.active_step
+    candidate: task.active_step.candidate_revision
+    plants: task.active_step.plants
+
+  record_infrastructure_failure:
+    step: task.active_step
+    failure: predecessor.output
+
+  accept:
+    step: task.active_step
+    candidate: task.active_step.candidate_revision
+    gate_evidence: gate.output.evidence
+    plant_evidence: plants.output.evidence
+
+  review:
+    step: task.active_step
+    accepted_revision: accept.output.revision
+
+  judge_review:
+    step: task.active_step
+    review: review.output
+
+  commit_review_findings:
+    step: task.active_step
+    findings: judge_review.output.findings
+
+  close_step:
+    step: task.active_step
+
+  milestone_gate:
+    task: task.current
+    milestone: task.active_milestone
+
+  commit_milestone_findings:
+    milestone: task.active_milestone
+    findings: milestone_gate.output.findings
+
+  coherence_review:
+    milestone: task.active_milestone
+    accepted_revisions: task.active_milestone.accepted_revisions
+
+  judge_coherence:
+    milestone: task.active_milestone
+    review: coherence_review.output
+
+  commit_coherence_findings:
+    milestone: task.active_milestone
+    findings: judge_coherence.output.findings
+
+  close_milestone:
+    milestone: task.active_milestone
+
+  await_task_revision:
+    task: task.current
+    decision: task.pending_owner_decision
+
+  exception_judge:
+    task: task.current
+    trigger: predecessor.output
+
+  commit_exception_follow_up:
+    task: task.current
+    ruling: exception_judge.output
+
+  publish_owner_decision:
+    decision: exception_judge.output.decision
+
+  complete_task:
+    task: task.current
+    scope: inputs.scope
+
+  fail_task:
+    task: task.current
+    exception: exception_judge.output
