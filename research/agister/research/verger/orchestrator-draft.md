@@ -240,7 +240,17 @@ machine load, disk headroom, holds and the single reason a step cannot advance.
 
 Metrics include cycle time, first-pass rate, time to catch a mutation, hangs,
 infrastructure-failure classes, resource wait and findings later proven false.
-Repeated manual exceptions and persistently slow checks become tracked work.
+Metrics are connected to policy rather than collected only for display:
+
+- falling first-pass rate causes work to be split more finely;
+- persistently slow mutation detection creates a canary-test task;
+- a high rate of findings later proven false triggers review of judge policy;
+- repeated manual exceptions create tasks that automate or remove them; and
+- orchestration work exceeding its budget freezes new loop features until
+  product work catches up.
+
+Thresholds are calibrations kept in configuration and tuned from recorded
+observations. They are not universal constants copied from one project.
 
 ## The build loop as a workflow
 
@@ -256,6 +266,10 @@ brief -> build -> gate -> mutation check -> accept -> independent review -> done
 
 The stages have deliberately different authorities:
 
+- Agister generates each brief from the durable task, process definition and a
+  versioned template. Per-run prose cannot silently add policy. A new brief rule
+  must also create work to enforce that rule mechanically where possible;
+  enforcement comes first and the brief retains only the rationale.
 - A fresh builder performs one small, test-first step in isolation.
 - Deterministic scripts decide whether the exact candidate passes its gate and
   catches its mutation plants.
@@ -269,6 +283,13 @@ The stages have deliberately different authorities:
 - Agister applies the result and assigns identifiers. Agents never compete to
   write the tracker.
 
+At a milestone boundary, a cross-model coherence reviewer reads each affected
+module as a whole. It looks for duplicated logic, sibling instances of repaired
+bugs, boundary drift, missing abstractions and locally correct changes that do
+not compose into a coherent system. Its findings follow the same judge and
+evidence path as per-change review. A milestone is complete only when both its
+deterministic gate and its required coherence review have passed.
+
 A failed check is evidence, not an invitation to retry until green. Product
 failures return through a bounded correction route. A suspected infrastructure
 failure is classified by one shared, tested classifier; retries cannot turn an
@@ -280,6 +301,19 @@ to split the step in the durable task plan. Investigation, implementation and a
 large assertion set are separate steps when they cannot reliably fit the same
 box. A fresh agent handles each step so context growth cannot silently degrade
 later work.
+
+### Specification friction
+
+A builder can satisfy the current specification and still discover that the
+specification is contradictory, awkward or missing a necessary boundary.
+Agister records this as **specification friction**, distinct from product
+failure and infrastructure failure.
+
+A friction report names the governing section, the observed problem and a
+proposed resolution. It enters a planner/advisor queue; a ruling may revise the
+specification and create follow-up tasks. Unless the current step is impossible
+or unsafe, friction does not block it and does not authorize the builder to
+silently reinterpret the specification.
 
 ## Configuration boundary
 
@@ -394,8 +428,10 @@ The MVP should make these properties difficult to violate:
 
 The first version needs static workflows, bounded cycles, same/new process
 re-entry, agent and command processes, explicit data references, durable events,
-effect reconciliation, isolated workspaces, resource admission, deterministic
-verification, review/judge routing and the owner command channel.
+effect reconciliation, isolated workspaces, resource admission, generated
+briefs, deterministic verification, per-change and milestone-coherence review,
+specification-friction routing, review/judge routing and the owner command
+channel.
 
 It should deliberately defer dynamic graph mutation, transparent subworkflow
 composition, human-as-process semantics, concurrent runs that mutate the same
@@ -407,3 +443,146 @@ Agister's first success criterion is not that it can draw an arbitrary agent
 graph. It is that the service can run the proven Verger build loop through
 limits, crashes, flaky infrastructure and owner absence without losing state,
 accepting unverified work or requiring an LLM to remember what happens next.
+
+## Appendix: v3.4 implementation profile
+
+The abstract model above permits more than one implementation. The
+[Verger v3.4 draft](Build-loop%20orchestrator.md) supplies a useful concrete
+profile for the first local implementation. The values and field names below
+are illustrative; the safety properties are the important part.
+
+### Deployment and storage
+
+- One Go service runs per build machine, with one state-machine instance and
+  exclusive lock per repository.
+- State lives under `~/.agister/repos/<repo-id>/`; builders cannot read or write
+  it. The event log is `events.jsonl`, with version, sequence, timestamp, entity,
+  event, payload and cause on every line.
+- A sequence gap refuses startup. A torn final record is truncated and recorded
+  as an incident. A binary refuses a newer event version, and old events are
+  folded rather than rewritten.
+- Generated views are replaced atomically. Run logs, mutation patches, partial
+  diffs and owner-script inputs that must survive reboot live with the state,
+  never in `/tmp`.
+- A supervisor such as `launchd` restarts the service after a crash or reboot,
+  causing reconciliation to run without an owner present.
+
+### Concrete entity states
+
+| Entity | Illustrative states |
+|---|---|
+| Task step | Main path from `queued` through build, verification, acceptance and review to `done`; also `exception` and `blocked` |
+| Process run | `requested -> waiting(resource) -> running -> exited(code)` or `hung`, `lost`, `interrupted(cause)` |
+| Review | `queued -> running -> exited -> judged`, with interrupted reviews returning to the queue |
+| Finding | `open` followed by `follow-up`, `rejected(covered)`, `proven-false`, or `closed(scope, duplicate)` |
+| Decision | `open -> answered -> applied` |
+| Hold | `active(reason, evidence) -> probing -> lifted` |
+
+A finding becomes `proven-false` only when the disproving test has itself been
+shown capable of failing, for example through a mutation plant.
+
+### Effects and recovery
+
+Each external action runs through an intent-specific adapter:
+
+| Intent | Concrete behavior |
+|---|---|
+| `SpawnAgent` | Start a pinned CLI in an isolated clone and process group, with explicit permissions, bounded execution and schema-validated output. |
+| `RunGate` / `RunPlants` | Use the authoritative verification scripts, record their revision and run in a throwaway worktree while holding the heavy resource. |
+| `RunStress` | Hold the exclusive machine resource and admit only from measured headroom. |
+| `Merge` | Fast-forward only to the candidate revision whose evidence passed; refuse a dirty checkout or moved base. |
+| `Notify` | Deliver an idempotent owner notification keyed by inbox item. |
+
+The service records a process ID, start time and boot identity. On restart it
+reattaches to a matching live process, recovers a completed result from its
+files, marks work interrupted after a reboot, or records it lost when reality
+cannot be established. Merge reconciliation checks whether the target is still
+old, already equals the tested revision, or moved somewhere else. Notifications
+may be duplicated but not silently dropped.
+
+An interrupted run spends no product attempt unless the process caused the
+interruption, such as by flooding its bounded output. A dead or timed-out
+process never counts as successful evidence. Partial diffs and commits are
+preserved as unverified inputs for a fresh agent.
+
+### Resources and admission
+
+```toml
+[resources]
+heavy = 1
+builders = 1
+reviews = 5
+judges = 5
+
+[load]
+admit_below = 12
+abort_above = 24
+
+[disk]
+min_free_gb = 20
+reserve_gb = 2
+log_cap_mb = 50
+
+[timeouts]
+baseline_multiplier = 3
+floor_seconds = 20
+builder_minutes = 20
+stall_seconds = 300
+```
+
+These numbers are starting calibrations from Verger, not schema defaults that
+all installations must inherit. A resource cap changes through a recorded
+configuration event, never through an exception typed into a running session.
+
+Machine resources are shared across repository instances. A stress run waits
+for heavy jobs and reviews to drain. A load-sensitive mutation run prevents new
+reviews from starting and begins only after running reviews finish. Low disk,
+excess output or unsafe load interrupts affected process groups and records the
+cause instead of manufacturing a product failure.
+
+### Local control and observability
+
+Owner mutations travel over a `0600` Unix socket. Read-only status is available
+on loopback through a server-rendered dashboard and JSON/event endpoints. The
+web surface escapes agent output, applies a self-only content security policy,
+rejects foreign `Host` headers and masks known secret patterns.
+
+The concrete CLI includes operations such as:
+
+```text
+agister status
+agister explain <step>
+agister go
+agister decide <decision> <choice>
+agister hold <resource> <reason>
+agister lift <resource>
+agister retry <step> --reason <reason>
+agister retro
+agister doctor
+```
+
+`explain` returns one immediate cause: a running process, failed guard, hold, or
+resource with its holder and queue position. `retro` collects incidents for
+batch analysis; lessons are not written into the live loop one mistake at a
+time.
+
+### Verification of the orchestrator
+
+The service itself needs:
+
+- table tests for every valid and invalid state/event pair;
+- adapter fixtures made from real provider output, including ANSI text,
+  truncated streams, limit messages and misleading decoys;
+- crash tests between intent recording, effect execution and result recording;
+- replay tests that reproduce projections byte for byte;
+- contention tests across repositories for machine and provider resources;
+- containment tests proving builders cannot mutate state, move the authoritative
+  branch or launch undeclared heavy work; and
+- recovery tests for reboot, process loss, moved repository state, full disk
+  and duplicate outcomes.
+
+A staged rollout first observes the existing tracker and ledger, then drives
+spawning and acceptance while making the event log authoritative, and only
+later absorbs scripts whose measured maintenance cost justifies moving them
+into the service. Verification logic remains in scripts until there is evidence
+that porting it improves correctness.
