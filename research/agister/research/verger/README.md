@@ -6,24 +6,26 @@ Agister orchestration design.
 ## Reading order
 
 1. [Agister orchestrator](orchestrator.md) — current synthesis and proposed MVP.
-2. [Advance-goal workflow](workflows/advance-goal.yaml) and
+2. [Functional requirements](functional-requirements.md) — capabilities derived
+   from the Verger operational lessons without fixing implementation details.
+3. [Advance-goal workflow](workflows/advance-goal.yaml) and
    [execute-task workflow](workflows/execute-task.yaml) — compact illustrations
    of the boundary between goal progression and task execution.
-3. [Parallel review example](workflows/review-code.yaml) — a structured parallel
+4. [Parallel review example](workflows/review-code.yaml) — a structured parallel
    review stage followed by synthesis.
-4. [Adversarial review process](processes/adversarial-review.yaml) and
+5. [Adversarial review process](processes/adversarial-review.yaml) and
    [architecture review process](processes/architecture-review.yaml) — two
    concrete roles sharing one process policy and agent profile.
-5. [Static-review process policy](policies/static-review.yaml) — shared,
+6. [Static-review process policy](policies/static-review.yaml) — shared,
    narrowing-only execution policy for review roles.
-6. [Reviewer agent profile](agents/reviewer.toml) — reusable model/runtime
+7. [Reviewer agent profile](agents/reviewer.toml) — reusable model/runtime
    configuration shared by concrete review processes.
-7. [Agent orchestration lessons](lessons/agent-orchestration.md) — consolidated
+8. [Agent orchestration lessons](lessons/agent-orchestration.md) — consolidated
    evidence from the Verger design and build sessions.
-8. [Build-loop orchestrator v3.4](prior-drafts/build-loop-orchestrator-v3.4.md) —
+9. [Build-loop orchestrator v3.4](prior-drafts/build-loop-orchestrator-v3.4.md) —
    the detailed implementation draft incorporated as the current document's
    illustrative profile.
-9. [Configuration proposal](proposals/ai-agent-orchestrator-proposal.md) — an
+10. [Configuration proposal](proposals/ai-agent-orchestrator-proposal.md) — an
    earlier conceptual exploration retained as provenance, not current authority.
 
 ## Directory guide
