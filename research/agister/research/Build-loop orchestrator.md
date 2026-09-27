@@ -1,19 +1,19 @@
-# The build-loop orchestrator, v3.2: `agister`
+# The build-loop orchestrator, v3.3: `agister`
 
-v2 made the orchestrator a script (R1). In v3 that script became `agister`, a long-running local Go server. It owns the state machine, carries out every side effect and makes its state visible at all times.
+v3 turned v2's script (R1) into `agister`, a long-running local Go server that owns the state machine and every side effect.
 
-v3.2 applies *Build-loop orchestrator v3 — review of addendum* (lessons L48–L59). It fixes three places where v3 was wrong: reviews and plants runs weren't kept apart (L50), a builder cut off by a usage limit went to `exception` (L55), and incidents had no path to the owner (L59). It also bounds every run by size and free disk (L48). L- and R-numbers cite the lessons, the addendum and *Build-loop orchestrator — review*.
+v3.3 applies the adversarial review of v3.2 (A1–A12), two gaps found while checking it (G1, G2), and its own adversarial review (B1–B8). L- and R-numbers cite the lessons and earlier reviews.
 
 ## Concise
 
-`agister` is one Go binary that runs on the build machine, one instance per repo. It is the only writer of loop state.
+`agister` is one Go binary on the build machine. A lock enforces one instance per repo. It is the only writer of loop state.
 
-- **State is an event log.** Every transition is appended to `dev/events.jsonl`, and the current state is a fold over that log. `tracker.tsv`, `INBOX.md` and the review queue are generated views of it. The log is committed at step boundaries.
-- **Transitions are pure; effects are separate.** A transition checks its guards and emits *intents*: spawn a builder, run the gate, merge. Workers carry out the intents and report the results back as events. After a crash, `agister` checks every open intent against reality before doing anything else.
-- **Agents are subprocesses.** Builders, judges, planners and the advisor run as `claude -p` or `codex exec`. Each gets closed stdin, an explicit permission mode, a hard timeout and a result schema. The agent's output stream is its heartbeat.
-- **Limits are resources.** The scheduler enforces the machine lock for heavy runs, the review and judge caps, provider quotas, free disk and output size. An exhausted resource becomes a timed hold, not a failure.
-- **Everything is observable.** A loopback dashboard updates live, and `/metrics` reports loop health. `agister explain <step>` says why a step is where it is and what it is waiting for.
-- **The owner acts through commands.** Decisions, holds and resumes are events sent from the CLI or the dashboard. Each new INBOX item gets one push; incidents are INBOX items too.
+- **State is an event log outside the repo.** Transitions append to `~/.agister/repos/<id>/events.jsonl`, and state is a fold over that log. `tracker.tsv`, `INBOX.md` and the review queue are generated views. Builders can't reach any of it.
+- **Transitions are pure; effects are separate.** Transitions emit durable intents; workers report results as events. After a crash, open intents are reconciled first.
+- **Agents are sandboxed subprocesses** (`claude -p`, `codex exec`) in disposable clones, with closed stdin, a hard timeout and a result schema. Output goes to a per-run file whose growth is the heartbeat.
+- **Limits are scoped resources** (repo, machine or provider account). Exhaustion interrupts or holds work and never counts as a failure.
+- **Observable, read-only:** a loopback dashboard, `/metrics` and `agister explain <step>`.
+- **The owner acts through commands** over a Unix socket. Each INBOX item, incidents included, is pushed at least once.
 
 What stays from v2: small steps, a fresh agent for every run, gates that decide, only a test rejects a finding, and nothing blocks the build.
 
@@ -21,38 +21,35 @@ What stays from v2: small steps, a fresh agent for every run, gates that decide,
 
 ### 1. Why a server
 
-v2's driver is a loop. A loop that must survive crashes, enforce caps, track heartbeats and answer "what are you doing?" is a server. Running as a long-lived process removes three v1 failure modes by construction:
-- no LLM holds orchestration state (L22);
-- no agent's self-report is relayed, because liveness is a pid plus an output stream (L20);
-- compaction loses nothing, because the log is the state (L23).
+It rules out three v1 failure modes: an LLM holding orchestration state (L22), relayed self-reports (L20), and state lost to compaction (L23).
 
 ### 2. The model
 
-The model has six entities, each with explicit states. A transition is legal only from the states listed.
-
 | Entity | States |
 |---|---|
-| **Step** (tracker row) | `queued → briefed → building → gating → planting → accepted → reviewed → done`, plus `exception` and `blocked` |
-| **Run** (one agent or script process) | `requested → running → exited(code) \| hung \| lost` |
-| **Review** | `queued → running → exited → judged`, or `limited → queued` |
-| **Finding** | `open → row \| rejected(covered, scope, dup) \| proven-false` |
+| **Step** | `queued → briefed → building → gating → planting → merging → accepted → reviewed → done`, plus `exception` and `blocked` |
+| **Run** | `requested → running → exited(code) \| hung \| lost \| interrupted(cause)` |
+| **Review** | `queued → running → exited → judged`, or `interrupted → queued` |
+| **Finding** | `open → row \| rejected(covered) \| proven-false \| closed(scope, dup)` |
 | **Decision** | `open → answered → applied` |
 | **Hold** | `active(reason, until?) → lifted` |
 
-The step machine:
+`closed` is administrative, not a rejection, so "only a test rejects a finding" holds (A8).
 
 ```mermaid
 stateDiagram-v2
   queued --> briefed: brief generated
   briefed --> building: builder spawned
   building --> gating: SHA reported
-  building --> briefed: provider limit (partial saved; no attempt spent)
-  building --> exception: hung, lost or no SHA, not limited
+  building --> briefed: interrupted, attempts left (partial saved)
+  building --> exception: hung, lost, no SHA or no attempts left
   gating --> planting: gate PASS
-  gating --> briefed: gate FAIL, attempts left (fresh builder)
-  gating --> exception: gate FAIL, no attempts left
-  planting --> accepted: every plant killed within its bound
-  planting --> exception: a plant hung or survived
+  gating --> briefed: gate FAIL, attempts left
+  gating --> exception: gate FAIL with none left, hung or lost
+  planting --> merging: every plant caught within its bound
+  planting --> exception: a plant hung or survived, or run lost
+  merging --> accepted: main fast-forwarded to tested SHA
+  merging --> exception: main moved
   accepted --> reviewed: review judged
   reviewed --> done
   exception --> queued: judge or advisor ruling
@@ -60,130 +57,140 @@ stateDiagram-v2
   blocked --> queued: decision applied
 ```
 
-A limit cut-off skips `exception`, where a judge would spawn during the provider's hold (L55).
+`merging` emits `Merge` (G1). An interrupted gate, plants or merge run reruns on the same SHA (B6). Interruptions skip `exception`, where a judge would spawn into the hold (L55). `main moved` goes to a judge on purpose: a rebase changes what was tested.
 
-A transition is a pure Go function, `(State, Event) → (State, []Intent, error)`. Guards replace v1's script refusals (L11). For example, `briefed → building` is refused while the previous merge is unaccepted or the module tag is missing (L7). A refusal is itself logged with its reason, so a blocked step is always explained, never silent.
+A transition is a pure Go function, `(State, Event) → (State, []Intent, error)`. Guards replace v1's script refusals (L11). For example, `briefed → building` is refused while another step is in `building` through `merging`, or the module tag is missing (L7). Steps in `exception` or `blocked` don't hold the queue; the next brief lists them as missing from its base (B3). Refusals are logged with their reason.
 
-### 3. Events and persistence
+### 3. State and persistence
 
-- **`dev/events.jsonl`** is append-only. Each line has a sequence number, a timestamp, the entity, the event, its payload and its cause (the intent or command that produced it).
-- **Projections.** `tracker.tsv`, `review-queue.tsv`, `INBOX.md` and the ledger view are regenerated after every event. Hand edits are refused.
-- **Commits.** `agister` commits the log and projections at step boundaries (accepted, done, blocked) and after every owner command. Between commits, events are fsynced to disk, so a crash loses at most the in-flight run, and reconciliation recovers that.
-- **Replay.** `agister replay` rebuilds state from the log alone.
+- **Location.** The log, views, run files, locks and socket live in `~/.agister/repos/<id>/`. Builder sandboxes deny `~/.agister/` (A1, A6, B1).
+- **Write-ahead (B2).** An intent is appended and fsynced before its effect starts; a result is fsynced before anything acts on it.
+- **History.** The state directory is its own git repo. At step boundaries and after owner commands, `agister` commits the log and views; run files stay local and rotate (B8). Back it up by pushing that repo.
+- **Reserved paths.** A candidate SHA whose diff touches a reserved path is rejected before gating (A6).
+- **Hand edits.** A view whose hash changed opens an incident and is regenerated.
+- **Framing (A10).** Each line is one JSON object: `v` (schema version), `seq`, `ts`, entity, event, payload, cause. On open, a torn final line is truncated as an incident, a `seq` gap refuses start, and a duplicate intent result is dropped. A binary refuses newer `v`; old events are folded, never rewritten. Views are replaced by write-then-rename.
+- **Replay.** `agister replay` rebuilds all state from the log alone. Anything read from shared machine or provider state is logged as an observation, so replay never consults it (B5).
 
 ### 4. Effects and reconciliation
 
 | Intent | Worker action |
 |---|---|
-| `SpawnAgent` | Runs `claude -p --output-format stream-json --verbose --permission-mode <explicit> --json-schema <result>`, or `codex exec --json --output-schema <result> … </dev/null`. Each runs in its own process group (L2; the stdin hang). |
-| `RunGate`, `RunPlants` | Runs the existing scripts in a throwaway worktree under the machine lock. |
-| `Merge` | Fast-forwards to a SHA that has a clean verdict. |
-| `Notify` | One push per new INBOX item. When INBOX can't be written, the push carries the whole message from memory, and the INBOX line follows once it can be written (L59). |
+| `SpawnAgent` | `claude -p --output-format stream-json --verbose --permission-mode <explicit> --json-schema <result>`, or `codex exec --json --output-schema <result> … </dev/null`, in a disposable `git clone --shared`, its only writable path; `agister` fetches the SHA. |
+| `RunGate`, `RunPlants` | The existing scripts, in a throwaway worktree, holding `heavy`. |
+| `Merge` | `git merge --ff-only <SHA>` where main is checked out, so the owner's files move with it (B4). A dirty checkout refuses: `Hold(merge)` plus an INBOX item. |
+| `Notify` | A push with the INBOX item ID. If INBOX can't be written, it carries the whole message (L59). |
 
-Every intent has an ID and is idempotent. On startup, `agister` resolves each intent that has no result:
-- **Process alive** (pid and start time match): re-attach.
-- **Process exited:** read its recorded output and emit the result.
-- **No trace:** mark the run `lost`; the step goes to `exception`.
+`agister` records main after every merge. Main moving any other way opens an incident (B1).
 
-Nothing is re-run silently.
+**Process launch (A2).** Every process starts under `agister shim`, leading its own process group (L2). The shim writes stdout and stderr to `runs/<id>.out`, never a pipe, and the exit code to `runs/<id>.exit`. A restart loses nothing.
 
-**Time bounds** use `context.WithTimeout`. When a bound fires, `agister` kills the whole process group, which rules out QT11-style orphans (L43), and records `hung`. The heartbeat is the output stream itself: an agent silent for N seconds is stalled, whatever it last said about itself (L19, L20).
+**Recovery (A5).** On startup, each open intent is resolved by kind:
+- **Process** (pid and start time recorded): alive → re-attach to its file; exited → emit the result from `.out` and `.exit`; no trace → `lost`.
+- **`Merge`:** main is the tested SHA → success; main is the recorded old value → redo; otherwise → `main moved`.
+- **`Notify`:** unacknowledged pushes are resent with the same ID. A duplicate is possible; a missing push is not.
 
-**Size bounds.** Each run's output stream is capped (`log_cap_mb`). Every file `agister` appends to, including run logs and `events.jsonl`, is checked after each append. When free space falls below `min_free_gb`, `agister`:
-- refuses to spawn;
-- stops running process groups;
-- places `Hold(disk)`;
-- opens an INBOX item listing the largest files, its own run logs first (L48, L49).
+Nothing else is re-run.
 
-**Partial work.** A run that ends without a SHA leaves its worktree diff saved as an artifact. The next brief for that step names it as **unverified reference: tests first**. It also names, the same way, any `beyond_row` code another builder reported for that row (L51, L55).
+**Time bounds** use `context.WithTimeout`. When one fires, `agister` kills the process group (no orphans, L43) and records `hung`. An agent whose file hasn't grown for `stall_seconds` is stalled, whatever it last said (L19, L20).
+
+**Interruption (A4, A7).** A run `agister` stops on purpose ends `interrupted(disk | output | provider | owner | shutdown)`, never `hung` or `lost`. No attempt is spent, except for `output`: a run that floods its log (`log_cap_mb`) caused that itself. Plants results record each plant as `caught` (a test failed), `survived` or `interrupted`; a dead process never counts as `caught`.
+
+**Disk.** Below `min_free_gb`, every instance stops spawning, interrupts running groups, places `Hold(disk)` and lists the largest files in INBOX, its run logs first (L48, L49). Each spawn reserves `reserve_gb` in machine state, keyed by pid and start time and reclaimed when the holder dies (A3, B5).
+
+**Partial work.** A run that ends without a SHA leaves its diff as an artifact. The next brief names it, and any `beyond_row` code, as an **unverified reference: tests first** (L51, L55).
 
 ### 5. Scheduler and quotas
 
-Resources are semaphores configured in `agister.toml`. Every number is a calibration, not a law (R7):
+Every resource has a scope (A3):
+
+| Scope | Resources | Mechanism |
+|---|---|---|
+| Repo | builders, reviews, judges | in-process semaphore |
+| Machine | `heavy`, plants waiters, disk reservations | `flock` under `~/.agister/`, shared by all instances |
+| Provider account | limit holds, spawn-off | `~/.agister/providers.json`, updated under `flock` |
+
+**Singleton (A11).** Before opening the log, `agister` takes an exclusive `flock` on its state directory; a second instance exits naming the holder's pid.
 
 ```toml
 [resources]
-heavy    = 1   # machine-wide lock for gates and plants (L14)
-builders = 2
-reviews  = 5   # L31
-judges   = 5
-# the tracker has one writer by construction: agister itself
+heavy    = 1   # machine; gates and plants (L14)
+builders = 1   # repo (G2)
+reviews  = 5   # repo (L31)
+judges   = 5   # repo
 
 [disk]
 min_free_gb = 20
+reserve_gb  = 2
 log_cap_mb  = 50
 
 [timeouts]
 baseline_multiplier = 3
 floor_seconds       = 20
 builder_minutes     = 20
+stall_seconds       = 300
+limit_window_hours  = 5
 ```
 
-**Plants runs are load-sensitive.** While one holds or waits for `heavy`, no review starts, and a plants run starts only once running reviews have drained (L50). This rule prefers the plants run, which covers both orderings.
+Numbers are calibrations (R7). `builders` is 1 because the build guard serializes steps (G2).
 
-**Usage limits** are recognized from real recorded samples, not guessed patterns (L12). A limit places a timed `Hold(provider, until)`: that provider's queued work waits, and everything else continues. A second Claude limit in one session turns spawning off (L27). A `limited` review goes back to the queue and never reaches a judge (L29).
+**Plants runs are load-sensitive.** While any plants run on the machine holds or waits for `heavy`, no instance starts a review, and a plants run starts only once running reviews drain (L50, B7).
+
+**Usage limits** are recognized from recorded samples (L12). A limit places a timed `Hold(provider, until)` in shared state; that provider's work waits on every instance. A second Claude limit within `limit_window_hours` turns spawning off everywhere until `agister spawn on` (L27). A limited review is interrupted and requeued, never judged (L29).
 
 ### 6. Observability
 
-Everything listens on loopback only.
+Everything listens on loopback, read-only (A12). Every request needs the token from the `0600` state directory, which builders can't read, so agents can't query verdicts.
 
 | Surface | Shows |
 |---|---|
-| `GET /` | Dashboard: steps by state; live runs with elapsed-versus-bound bars and their last output line; queues, holds and open decisions. Server-rendered, updated over SSE. |
-| `GET /api/state`, `GET /api/events?since=N` | JSON for tools and agents. |
-| `GET /runs/{id}/log` | Tail of a run's output stream, capped. |
-| `GET /metrics` | Prometheus: cycle time, first-pass rate, findings per step, false-finding rate, hangs, loop-versus-product share (R5, R6). |
-| `agister status` | One-screen terminal summary. |
-| `agister explain <step>` | Current state, last transition and its cause, the guard being waited on, elapsed time against the bound. |
+| `GET /` | Steps by state, live runs with elapsed-versus-bound bars, INBOX, queues, holds, open decisions. Server-rendered, SSE. |
+| `GET /api/state`, `/api/events?since=N` | JSON for the owner's tools. |
+| `GET /runs/{id}/log` | Capped tail of a run file. |
+| `GET /metrics` | Loop health: cycle time, first-pass rate, false findings, hangs (R5, R6). |
+| `agister status`, `inbox`, `explain <step>` | Terminal summary; open INBOX items; why a step is stuck. |
 
-`explain` answers "why is it stuck?" with exactly one of four things: a resource, a hold, a running process (with its pid and last output), or a failed guard (with its reason).
+`explain` names one cause: a resource, a hold, a running process or a failed guard.
 
-Metric triggers from v2 emit events such as `metric.first_pass_drop` or a slow time to kill (a canary-test row, L56). They become rows, not inbox items.
+Agent output is untrusted: all text is HTML-escaped, never rendered as Markdown; CSP is `default-src 'self'`; foreign `Host` headers are refused; known secret patterns are masked.
+
+Metric triggers (e.g. slow time to kill, L56) become rows.
 
 ### 7. The owner's interface
 
-Commands travel over a Unix socket, so only the local user can send them, and each becomes an event:
+Commands travel only over the `0600` Unix socket. Each command becomes an event:
 
 ```
 agister decide O3 b
 agister hold reviews "limit tight"
 agister lift reviews
-agister spawn off
+agister spawn off | on
 agister retry <step> --reason "<why>"
 ```
 
-Decisions keep the v2 contract: batched, each with a recommended pick, and applied as `PENDING` until answered (L35). Privileged actions still arrive as a complete `!` line with a rollback; `agister` never runs `sudo` (L37, L38).
-
-**Overrides retire themselves.** `retry` and every `!` line take a reason. They open the row that retires their cause, unless one is already open. The row stays open until the tested replacement is done (L57, L58).
+Decisions are batched, each with a recommended pick applied as `PENDING` (L35). Privileged actions arrive as a complete `!` line with a rollback; `agister` never runs `sudo` (L37, L38). `retry` and every `!` line take a reason and open a row retiring their cause, open until its tested replacement is done (L57, L58).
 
 ### 8. Judgment stays with agents
 
-Models are called only for:
-- building;
-- judging a review;
-- ruling on an exception or on spec friction;
-- planning a milestone;
-- the coherence review at each milestone boundary (R3, R4).
+Models only build, judge reviews, rule on exceptions or spec friction, plan milestones and review milestone coherence (R3, R4). Result schemas go to the CLI and are revalidated; invalid output fails the run.
 
-Each call is an intent with a result schema, which is passed to the CLI (`--json-schema` or `--output-schema`) and validated again by `agister`. Output that fails validation fails the run. It is never interpreted.
-
-The builder's schema includes `beyond_row`, which lists code written outside its row's assertions (L51).
+**Scope is measured, then classified (A9).** Changed hunks come from `git diff base..SHA`. The builder's `beyond_row` only classifies them; an unclassified hunk counts as `beyond_row` (L51).
 
 ### 9. Testing `agister`
 
-- **Transitions:** table tests over every state and event pair. Each pair is either a legal transition or a refusal with its reason.
-- **Workers:** behind interfaces. Fakes replay real recorded output, including ANSI codes, limit messages and truncated streams (L12).
-- **Replay and chaos:** logs recorded from real sessions must reproduce their projections byte for byte. The same must hold when `agister` is killed at random points and reconciles.
+- **Transitions:** table tests over every state and event pair.
+- **Workers:** fakes replay real recorded output: ANSI codes, limit messages, truncated streams (L12).
+- **Chaos:** recorded logs reproduce their views byte for byte, even after kills between an effect and its result, or a torn final line.
+- **Contention:** two repos share `heavy`, disk and provider holds correctly; a second instance in one repo is refused.
+- **Containment:** a builder that tries to write `~/.agister/`, move main or read the token fails.
 
 ### 10. Migration
 
-1. **Shadow.** `agister` reads the current `tracker.tsv` and ledger, runs nothing and only observes: the dashboard, `explain` and metrics. The session orchestrator still drives, running only `dev/` scripts. Any helper it needs becomes a row (L48).
-2. **Drive.** `agister` takes over spawning and accepting. The event log becomes the source of truth, and the TSV files become projections.
-3. **Absorb.** Gates stay as scripts while they work. Porting one to Go is its own row, justified by a metric, not by taste.
+1. **Shadow.** `agister` reads the in-tree `tracker.tsv` and ledger and only observes (L48).
+2. **Drive.** `agister` spawns and accepts, and its log becomes the truth. One commit removes the old tracker files from the product tree and reserves their paths.
+3. **Absorb.** Gates stay scripts; porting one to Go is a row justified by a metric.
 
 ### 11. Risks
 
-- **Meta-software growth (R6).** `agister` is exactly what R6 warns about. Keep it to a state machine, a scheduler, workers and a dashboard, give it its own row budget, and keep gate logic out of it.
-- **CLI drift.** `claude` and `codex` change their output formats between releases. Pin their versions (L45) and keep recorded fixtures for each pinned version.
-- **Commit noise.** If it becomes a problem, move the log to its own branch.
-- **A single point of failure.** When `agister` is down, nothing moves. State is on disk, and a restart reconciles. A watcher outside `agister` pushes the whole message when `agister`'s heartbeat stops, since `agister` is INBOX's only writer. `agister` writes the INBOX line on restart (L59).
+- **Meta-software growth (R6).** Own row budget; no gate logic.
+- **CLI drift and sandbox gaps.** Pin the CLI versions (L45), each with recorded fixtures and a passing containment test.
+- **Single point of failure.** An outside watcher pushes when `agister`'s heartbeat stops; the INBOX line follows on restart (L59).
