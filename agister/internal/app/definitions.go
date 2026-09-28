@@ -27,10 +27,20 @@ func (s *Settings) Init(ctx context.Context, overwrite bool) (contract.InitResul
 	}
 	var files []string
 	err := fs.WalkDir(s.Examples, ".", func(name string, entry fs.DirEntry, err error) error {
-		if err == nil && !entry.IsDir() {
+		if err != nil {
+			return err
+		}
+		if strings.HasPrefix(entry.Name(), ".") && name != "." {
+			// Stray OS metadata such as .DS_Store is never a definition.
+			if entry.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if !entry.IsDir() {
 			files = append(files, name)
 		}
-		return err
+		return nil
 	})
 	if err != nil {
 		return result, err
@@ -41,6 +51,8 @@ func (s *Settings) Init(ctx context.Context, overwrite bool) (contract.InitResul
 		if dir := path.Dir(name); dir != "." {
 			kind = definition.Kind(dir)
 			base = strings.TrimSuffix(path.Base(name), path.Ext(name))
+		} else if name != "service.toml" {
+			return result, fmt.Errorf("unexpected example file %q", name)
 		}
 		data, err := fs.ReadFile(s.Examples, name)
 		if err != nil {

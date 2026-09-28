@@ -160,6 +160,26 @@ func TestInitWritesEachExampleWithoutOverwriting(t *testing.T) {
 	}
 }
 
+func TestInitSkipsHiddenFilesAndRejectsStrayRootFiles(t *testing.T) {
+	writer := &writerSpy{}
+	examples := fstest.MapFS{
+		".DS_Store":        {Data: []byte("Bud1")},
+		"agents/.DS_Store": {Data: []byte("Bud1")},
+		"agents/a.toml":    {Data: []byte("x")},
+		"service.toml":     {Data: []byte("x")},
+	}
+	if _, err := (&app.Settings{Writer: writer, Examples: examples}).Init(context.Background(), false); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(writer.writes, []string{"agents/a", "service/service"}) {
+		t.Fatalf("writes %v", writer.writes)
+	}
+	stray := fstest.MapFS{"notes.txt": {Data: []byte("x")}}
+	if _, err := (&app.Settings{Writer: &writerSpy{}, Examples: stray}).Init(context.Background(), false); err == nil {
+		t.Fatal("a stray root file was accepted")
+	}
+}
+
 func TestCreateAgentValidatesAgainstTheRuntimeMapping(t *testing.T) {
 	h := newHarness()
 	writer := &writerSpy{}

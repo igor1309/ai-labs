@@ -6,7 +6,7 @@ import (
 	"io/fs"
 )
 
-//go:embed all:settings
+//go:embed settings
 var files embed.FS
 
 // Settings returns the example settings laid out as kind/name.ext.
