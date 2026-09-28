@@ -133,11 +133,12 @@ func (ChangedFiles) Resolve(ctx context.Context, spec app.InputSpec) (app.Resolv
 	if err != nil {
 		return app.Resolved{}, err
 	}
-	out, err := run(ctx, spec.Cwd, "diff", "--name-only", from, head)
+	// -z: names as they are, NUL-separated; not split on spaces, not quoted.
+	out, err := run(ctx, spec.Cwd, "diff", "--name-only", "-z", from, head)
 	if err != nil {
 		return app.Resolved{}, err
 	}
-	files := strings.Fields(out)
+	files := strings.FieldsFunc(out, func(r rune) bool { return r == 0 })
 	if len(files) == 0 {
 		return app.Resolved{}, fmt.Errorf("no changes between %s and %s", spec.Args["base"], spec.Args["head"])
 	}

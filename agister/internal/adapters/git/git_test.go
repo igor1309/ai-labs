@@ -75,6 +75,20 @@ func TestInputsResolveToImmutableIdentities(t *testing.T) {
 	}
 }
 
+// File names reach the agent as they are: not split on spaces, not quoted.
+func TestChangedFilesKeepTheirNames(t *testing.T) {
+	dir := repository(t)
+	for _, name := range []string{"my notes.md", "café.md"} {
+		os.WriteFile(filepath.Join(dir, name), []byte("x\n"), 0o600)
+	}
+	sh(t, dir, "add", ".")
+	sh(t, dir, "commit", "--quiet", "-m", "names")
+	files := resolve(t, git.ChangedFiles{}, dir, map[string]string{"base": "main", "head": "feature"})
+	if want := []string{"a.txt", "b.txt", "café.md", "my notes.md"}; !reflect.DeepEqual(files.Value, want) {
+		t.Fatalf("files = %q, want %q", files.Value, want)
+	}
+}
+
 func TestInputErrors(t *testing.T) {
 	dir := repository(t)
 	for name, c := range map[string]struct {
