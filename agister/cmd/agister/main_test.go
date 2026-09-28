@@ -53,6 +53,8 @@ func repository(t *testing.T, scenario string) string {
 	gitCmd(t, dir, "init", "--quiet", "--initial-branch=main")
 	gitCmd(t, dir, "config", "user.email", "test@example.com")
 	gitCmd(t, dir, "config", "user.name", "Test")
+	// No detached maintenance (git >= 2.47) may race the directory's cleanup.
+	gitCmd(t, dir, "config", "maintenance.auto", "false")
 	write(t, filepath.Join(dir, "a.txt"), "one\n")
 	gitCmd(t, dir, "add", ".")
 	gitCmd(t, dir, "commit", "--quiet", "-m", "base")

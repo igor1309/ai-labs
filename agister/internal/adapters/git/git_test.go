@@ -29,6 +29,9 @@ func repository(t *testing.T) string {
 	sh(t, dir, "init", "--quiet", "--initial-branch=main")
 	sh(t, dir, "config", "user.email", "t@example.com")
 	sh(t, dir, "config", "user.name", "T")
+	// Git >= 2.47 detaches the maintenance a commit triggers; a background
+	// writer in .git would race the test's temporary-directory cleanup.
+	sh(t, dir, "config", "maintenance.auto", "false")
 	os.WriteFile(filepath.Join(dir, "a.txt"), []byte("one\n"), 0o600)
 	sh(t, dir, "add", ".")
 	sh(t, dir, "commit", "--quiet", "-m", "base")
