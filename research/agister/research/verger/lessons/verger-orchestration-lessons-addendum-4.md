@@ -1,12 +1,14 @@
 # Verger orchestration lessons — addendum 4, 27.09–28.09.2026
 
-This continues *Verger orchestration lessons — addendum 3*, and its numbering continues from L116. It covers the rest of session `4e110584` (verger-orchestration-status), from 20:23 UTC on 27.09 to 20:08 UTC on 28.09:
+This continues *Verger orchestration lessons — addendum 3*, and its numbering continues from L116. It covers the rest of session `4e110584` (verger-orchestration-status), from 20:23 UTC on 27.09 to 20:33 UTC on 28.09, when the owner went to sleep. The session was still running then:
 - the overnight loop and its drain;
 - the discovery that `verger` was red;
 - the batch pipeline (D-43);
 - the retirement of plants in favour of red-then-green (D-45);
 - a day spent building and landing the harness;
 - the return to product work (batch m7a).
+
+Later work is not covered.
 
 **Sources:**
 - the owner's prompts and the orchestrator's replies;
@@ -124,6 +126,12 @@ Times are UTC. Each lesson is 64 words or fewer. Part 9 lists reusable mechanism
 **L157. Superseded text must go in the same commit.** D-20 is marked "superseded by D-43", and D-51 retired the 5-step cadence. Yet `batch-pipeline.md`'s Transition still describes the recovery batch as future work, and README § Tiers still waits on a follow-up. *Rule:* when a decision lands, rewrite or delete every section that describes the old state. Transition text gets an expiry.
 
 **L158. Advisor decisions follow a template that worked.** D-44 to D-53 each record who raised the question, the options, what was excluded, the decision, and follow-ups that each come with a test. The status names the model and effort. *Rule:* a decision record lists its follow-up rows and the test that proves each one. A decision without a test isn't done.
+
+**L159. A metric that breaks silently when the pipeline changes.** Once steps were accepted as `in batch …` rather than `done`, `report.sh` counted 0 steps and raised an ALERT all day, and nobody acted. *Rule:* a lifecycle change updates every reader of that lifecycle in the same step. An alert that fires constantly is broken and needs a look.
+
+**L160. A scheduler inside the session died again.** The hourly check was a cron job inside the session, and the restart deleted it. The owner noticed hours later ("did you re-arm hourly notifications?"). This repeats L85. *Rule:* a resume checklist re-arms in-session schedules after every restart. Better: move them to launchd, outside the session.
+
+**L161. A one-time exception came back the same day.** `batch-land.sh` refused recovery, so it landed by hand. The causes (`review-verdicts.md` not a state path, `--close` unaware of D-52) stayed open, so m7a faced the same hand-land. *Rule:* each use of an exception queues a fix for its cause, and that fix goes ahead of the next batch that needs it.
 
 ---
 
