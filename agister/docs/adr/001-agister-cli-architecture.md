@@ -1,6 +1,6 @@
 # ADR-001: Agister CLI architecture
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-09-28
 - **Scope:** Agister system architecture for the CLI stage (before the service)
 - **Decision type:** Architecture
@@ -163,11 +163,13 @@ will produce, so workflows route on it without knowing what ran:
 
 Task outcomes belong to the future workflow layer.
 
-### 7. Refusals come before effects and are recorded
+### 7. Refusals come before the agent turn and are recorded
 
-Everything that can refuse a call is checked before the runtime starts. Every
-refusal, including invalid definitions and limits that cannot be enforced, is
-recorded as evidence with its reason.
+Everything that can refuse a call is checked before the provider turn starts.
+Runtime identity probing and input resolution may run preparatory subprocesses,
+but no agent turn or workspace is started. Every refusal, including invalid
+definitions and limits that cannot be enforced, is recorded as evidence with
+its reason.
 
 ### 8. Inputs are immutable
 
@@ -296,11 +298,13 @@ mechanisms; the service, its transport and lifecycle.
 6. Runtime adapters know nothing of permissions, policies or processes.
 7. Every call ends in a node result. A runtime-reported failure is never
    upgraded; completed means contract-valid output, whatever it says.
-8. Every refusal happens before any runtime starts and is recorded.
+8. Every refusal happens before the provider turn starts and is recorded.
 9. Inputs are resolved to immutable values before the call.
 10. Agents cannot reach settings, evidence or provenance.
 11. Missing provenance is unknown, never satisfaction.
-12. Every effect is owned, bounded and cleaned up; an unfinished run is lost.
+12. Every effect is owned and bounded, and ordinary exits clean it up; an
+    unfinished run is lost. Reaping effects after the CLI is killed with
+    SIGKILL is a known CLI-stage gap tracked in [deferred work](../deferred.md).
     Only a deliberate continuation reads another run, and never changes it.
 13. Diagnostics never change behavior and are not evidence.
 14. Concrete implementations are connected only at the composition root.

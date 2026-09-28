@@ -10,7 +10,7 @@ cd agister
 go build -o bin/agister ./cmd/agister
 
 bin/agister init                  # example settings into ~/.agister ($AGISTER_HOME or --home)
-bin/agister check                 # validate all settings; lists every problem
+bin/agister check                 # validate all settings; report discovered problems
 bin/agister check --probe         # also ask each agent's runtime for its version
 
 bin/agister process list
@@ -18,7 +18,7 @@ bin/agister process show adversarial_review
 bin/agister run adversarial_review --param base=main
 bin/agister run ask --param question="What does cmd/agister do?"
 bin/agister run ask --continue <run-id> --param question="And cmd/agister/main_test.go?"
-bin/agister run ask --max-cost 0.25 --json ...   # print the node result as JSON
+bin/agister run ask --max-cost 0.25 --json       # print the node result as JSON
 
 bin/agister runs
 bin/agister runs show <run-id>
@@ -44,7 +44,7 @@ Exit codes: `0` completed, `1` failed, `2` interrupted, `3` refused, `4` lost, `
   logs/  provenance/                  evidence and diagnostics
 ```
 
-Every call re-validates what it uses and refuses before any runtime starts.
+Every call re-validates what it uses and refuses before the provider turn starts.
 `examples/settings/` is what `init` installs. `examples/codex/` is opt-in;
 see its README.
 
@@ -69,6 +69,8 @@ go test -coverpkg=./internal/...,./cmd/... -coverprofile=cover.out ./... && go t
 | Wiring | `cmd/agister` | real composition root, fake runtimes |
 | Architecture | `internal/archtest` | dependency rules, no kind of work in code |
 
-CI: `.github/workflows/agister-core.yml`, run from `ci.yml` on changes under `agister/`.
+CI: `.github/workflows/agister-core.yml`, invoked from `ci.yml` for Agister
+Go, module and example changes, selected policy changes, or CI workflow changes.
+Documentation-only changes do not trigger it.
 
 Known gaps and their triggers: [docs/deferred.md](docs/deferred.md). Live observations: [docs/findings.md](docs/findings.md).
