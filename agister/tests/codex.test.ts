@@ -3,25 +3,26 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 
-import { codexAdapter, codexArguments, codexPrompt, createCodexStreamState, reconcileCodexTurn, reduceCodexLine } from "../src/codex.js";
+import { codexAdapter, codexArguments, codexSandbox, codexPrompt, createCodexStreamState, reconcileCodexTurn, reduceCodexLine } from "../src/codex.js";
 import type { ProcessEvidence } from "../src/process-supervisor.js";
-import type { RuntimeEvent, TurnRequest } from "../src/runtime.js";
+import type { Capability, RuntimeEvent, TurnRequest } from "../src/runtime.js";
 
 const FAKE_CODEX = fileURLToPath(new URL("./fixtures/fake-codex.mjs", import.meta.url));
 const THREAD = "01a0e850-b808-71c2-8401-53ba16d8ae18";
+const READ_ONLY_SANDBOX: Capability[] = ["repository.read", "repository.search", "repository.diff", "repository.history.read", "process.execute"];
 
 function request(overrides: Partial<TurnRequest> = {}): TurnRequest {
   return {
     prompt: "hello",
     cwd: process.cwd(),
-    policy: { workspace: "read-only", isolateConfig: true, timeoutMs: 10_000 },
+    policy: { capabilities: READ_ONLY_SANDBOX, isolateConfig: true, timeoutMs: 10_000 },
     ...overrides,
   };
 }
 
 const cleanExit: ProcessEvidence = { timedOut: false, aborted: false, exit: { code: 0, signal: null } };
 
-test("builds exec arguments: JSONL, OS sandbox from workspace policy, prompt on stdin", () => {
+test("builds exec arguments: JSONL, OS sandbox from capabilities, prompt on stdin", () => {
   const args = codexArguments(request({ model: "gpt-5.5", effort: "high" }), "/tmp/schema.json");
   assert.deepEqual(args, [
     "exec", "--json", "--skip-git-repo-check",
@@ -33,16 +34,31 @@ test("builds exec arguments: JSONL, OS sandbox from workspace policy, prompt on 
     "--output-schema", "/tmp/schema.json",
     "-",
   ]);
-  const write = codexArguments(request({ policy: { workspace: "workspace-write", isolateConfig: false, timeoutMs: 1 } }));
+  const write = codexArguments(request({
+    policy: { capabilities: [...READ_ONLY_SANDBOX, "repository.write", "repository.history.write"], isolateConfig: false, timeoutMs: 1 },
+  }));
   assert.deepEqual(write, ["exec", "--json", "--skip-git-repo-check", "--sandbox", "workspace-write", "--config", 'approval_policy="never"', "-"]);
 });
 
 test("rejects what Codex cannot honour instead of ignoring it", () => {
   assert.throws(() => codexArguments(request({ sessionId: "x" })), /cannot preset a session ID/);
+  // The static-review capability set: no command execution. Codex always runs commands.
   assert.throws(
-    () => codexArguments(request({ policy: { workspace: "read-only", isolateConfig: true, timeoutMs: 1, tools: { expose: [], allow: [] } } })),
-    /takes no tool surface/,
+    () => codexArguments(request({ policy: { capabilities: ["repository.read", "repository.diff", "repository.search"], isolateConfig: true, timeoutMs: 1 } })),
+    /read-only sandbox also grants repository.history.read.*; the read-only sandbox also grants process.execute/,
   );
+});
+
+test("sandbox choice: a policy must match what the sandbox mode grants, both ways", () => {
+  assert.deepEqual(codexSandbox(READ_ONLY_SANDBOX), { mode: "read-only", problems: [] });
+  assert.deepEqual(codexSandbox([...READ_ONLY_SANDBOX, "repository.write", "repository.history.write"]).problems, []);
+  assert.deepEqual(codexSandbox([...READ_ONLY_SANDBOX, "repository.write"]).problems, [
+    "the workspace-write sandbox also grants repository.history.write, which the policy does not allow",
+  ]);
+  assert.deepEqual(codexSandbox([...READ_ONLY_SANDBOX, "network"]).problems, ["the read-only sandbox cannot grant network"]);
+  assert.equal(codexSandbox(["repository.read"]).problems.length, 4);
+  const adapter = codexAdapter();
+  assert.deepEqual(adapter.checkPolicy({ capabilities: READ_ONLY_SANDBOX, isolateConfig: true, timeoutMs: 1 }), []);
 });
 
 test("process instructions are prepended to the prompt", () => {
@@ -141,7 +157,7 @@ test("adapter: provider error followed by non-zero exit is failed with the last 
 test("adapter: turn.failed, lost, timeout", async () => {
   assert.deepEqual(pick((await runFake("SCENARIO:turn_failed")).result), ["failed", "provider_turn_failed: context window exceeded"]);
   assert.deepEqual(pick((await runFake("SCENARIO:no_result")).result), ["lost", "exited_without_result"]);
-  const hung = await runFake("SCENARIO:hang", { policy: { workspace: "read-only", isolateConfig: false, timeoutMs: 300 } });
+  const hung = await runFake("SCENARIO:hang", { policy: { capabilities: READ_ONLY_SANDBOX, isolateConfig: false, timeoutMs: 300 } });
   assert.deepEqual(pick(hung.result), ["interrupted", "timeout"]);
 });
 

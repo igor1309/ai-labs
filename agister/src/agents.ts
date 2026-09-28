@@ -19,6 +19,8 @@ export interface AgentProfile {
   runtime: string;
   model?: string;
   effort?: string;
+  // Declared family of the model, compared by cross-family constraints.
+  modelFamily?: string;
   session: "fresh-only";
   command?: string;
 }
@@ -40,7 +42,7 @@ export function validateProfile(table: FlatTable, source: string, runtimes: Runt
     return value as string;
   };
 
-  const known = new Set(["schema", "name", "runtime", "model", "effort", "session", "command"]);
+  const known = new Set(["schema", "name", "runtime", "model", "model_family", "effort", "session", "command"]);
   for (const key of Object.keys(table)) {
     if (!known.has(key)) fail(`unknown field: ${key}`);
   }
@@ -63,6 +65,8 @@ export function validateProfile(table: FlatTable, source: string, runtimes: Runt
 
   const profile: AgentProfile = { name, runtime, session: "fresh-only" };
   const model = optionalString("model");
+  const modelFamily = optionalString("model_family");
+  if (modelFamily !== undefined) profile.modelFamily = modelFamily;
   const command = optionalString("command");
   if (model !== undefined) profile.model = model;
   if (effort !== undefined) profile.effort = effort;
@@ -91,6 +95,7 @@ export async function saveProfile(
 ): Promise<string> {
   const table: FlatTable = { schema: AGENT_SCHEMA, name: profile.name, runtime: profile.runtime };
   if (profile.model) table["model"] = profile.model;
+  if (profile.modelFamily) table["model_family"] = profile.modelFamily;
   if (profile.effort) table["effort"] = profile.effort;
   table["session"] = profile.session;
   if (profile.command) table["command"] = profile.command;

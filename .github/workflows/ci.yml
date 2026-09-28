@@ -141,6 +141,7 @@ jobs:
             agister:
               - "agister/src/**"
               - "agister/tests/**"
+              - "agister/templates/**"
               - "agister/package.json"
               - "agister/tsconfig.json"
             agister-ci:

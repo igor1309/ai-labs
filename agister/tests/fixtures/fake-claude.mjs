@@ -14,7 +14,7 @@ const scenario = /SCENARIO:([a-z_]+)/.exec(prompt)?.[1] ?? "approve";
 const sessionId = scenario === "mismatch" ? "00000000-0000-0000-0000-000000000000" : flag("--session-id");
 const emit = (message) => process.stdout.write(JSON.stringify(message) + "\n");
 
-emit({ type: "system", subtype: "init", session_id: sessionId, model: flag("--model") ?? "fake-model", permissionMode: flag("--permission-mode"), tools: ["Read"], cwd: process.cwd(), argv: args });
+emit({ type: "system", subtype: "init", session_id: sessionId, model: flag("--model") ?? "fake-model", permissionMode: flag("--permission-mode"), tools: ["Read"], cwd: process.cwd(), argv: args, prompt });
 
 if (scenario === "hang") {
   setInterval(() => {}, 1_000);

@@ -5,11 +5,13 @@ import { test } from "node:test";
 import {
   claudeArguments,
   claudeCodeAdapter,
+  claudeToolSurface,
   createStreamState,
   reconcileTurn,
   reduceStreamLine,
 } from "../src/claude-code.js";
 import type { ProcessEvidence } from "../src/process-supervisor.js";
+import { CAPABILITIES, type Capability } from "../src/runtime.js";
 import type { RuntimeEvent, TurnRequest } from "../src/runtime.js";
 
 const FAKE_CLAUDE = fileURLToPath(new URL("./fixtures/fake-claude.mjs", import.meta.url));
@@ -21,10 +23,9 @@ function request(overrides: Partial<TurnRequest> = {}): TurnRequest {
     cwd: process.cwd(),
     sessionId: SESSION,
     policy: {
-      workspace: "read-only",
+      capabilities: ["repository.read", "repository.diff"],
       isolateConfig: true,
       timeoutMs: 10_000,
-      tools: { expose: ["Read", "Grep"], allow: ["Read", "Bash(git diff:*)"] },
     },
     ...overrides,
   };
@@ -40,9 +41,9 @@ const evidence = (overrides: Partial<ProcessEvidence> = {}): ProcessEvidence => 
 test("builds headless arguments without a positional prompt", () => {
   const args = claudeArguments(request({ model: "sonnet", effort: "high", outputSchema: { type: "object" } }));
   assert.deepEqual(args.slice(0, 9), [
-    "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "dontAsk", "--tools=Read,Grep", "--session-id", SESSION,
+    "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "dontAsk", "--tools=Read,Glob", "--session-id", SESSION,
   ]);
-  assert.ok(args.includes("--allowedTools=Read,Bash(git diff:*)"));
+  assert.ok(args.includes("--allowedTools=Read,Glob"));
   assert.ok(args.includes("--restricted") && args.includes("--strict-mcp-config"));
   assert.deepEqual(args.slice(args.indexOf("--model"), args.indexOf("--model") + 2), ["--model", "sonnet"]);
   assert.deepEqual(args.slice(args.indexOf("--effort"), args.indexOf("--effort") + 2), ["--effort", "high"]);
@@ -50,8 +51,8 @@ test("builds headless arguments without a positional prompt", () => {
   assert.ok(!args.includes("hello"));
 });
 
-test("an empty tool list disables every tool", () => {
-  const args = claudeArguments(request({ policy: { workspace: "read-only", isolateConfig: false, timeoutMs: 1, tools: { expose: [], allow: [] } } }));
+test("no capabilities disables every tool", () => {
+  const args = claudeArguments(request({ policy: { capabilities: [], isolateConfig: false, timeoutMs: 1 } }));
   assert.ok(args.includes("--tools="));
   assert.ok(!args.some((arg) => arg.startsWith("--allowedTools")));
   assert.ok(!args.includes("--restricted"));
@@ -151,7 +152,7 @@ test("adapter: supervises a real subprocess to a completed turn", async () => {
   assert.equal(result.providerSessionId, SESSION);
   assert.deepEqual((result.structuredOutput as { verdict: string }).verdict, "approve");
   assert.equal(result.permissionDenials?.length, 1);
-  assert.equal(events[0]!.kind, "PROCESS_STARTED");
+  assert.deepEqual(events.slice(0, 2).map((event) => event.kind), ["CAPABILITIES_WITHHELD", "PROCESS_STARTED"]);
   assert.equal(events.at(-1)!.kind, "PROCESS_EXITED");
   assert.ok(events.some((event) => event.kind === "STREAM_PARSE_ERROR"));
   assert.ok(raw.length >= 6);
@@ -177,7 +178,7 @@ test("adapter: clean exit without a result is lost", async () => {
 test("adapter: timeout terminates the process group and reports interrupted", async () => {
   const started = Date.now();
   const { result, events } = await runFake("SCENARIO:hang", {
-    policy: { workspace: "read-only", isolateConfig: false, timeoutMs: 300 },
+    policy: { capabilities: [], isolateConfig: false, timeoutMs: 300 },
   });
   assert.deepEqual([result.outcome, result.reason], ["interrupted", "timeout"]);
   assert.ok(events.some((event) => event.kind === "TIMEOUT"));
@@ -198,24 +199,45 @@ test("adapter: a missing runtime binary is a failed turn, not a crash", async ()
   assert.ok(events.some((event) => event.kind === "SPAWN_FAILED"));
 });
 
-test("tool surface: defaults follow the workspace policy, write tools cannot leak into read-only", () => {
-  const base = { isolateConfig: false, timeoutMs: 1 };
-  const readOnly = claudeArguments(request({ policy: { ...base, workspace: "read-only" } }));
-  assert.ok(readOnly.includes("--tools=Read,Grep,Glob"));
-  assert.ok(readOnly.includes("--allowedTools=Read,Grep,Glob"));
-  assert.ok(claudeArguments(request({ policy: { ...base, workspace: "workspace-write" } })).includes("--tools=Read,Grep,Glob,Edit,Write"));
-  assert.throws(
-    () => claudeArguments(request({ policy: { ...base, workspace: "read-only", tools: { expose: ["Read", "Edit"], allow: [] } } })),
-    /read-only policy exposes write tools: Edit/,
-  );
+test("capabilities map onto dedicated tools; command capabilities are withheld, never fenced by prefix rules", () => {
+  assert.deepEqual(claudeToolSurface(["repository.read", "repository.search"]), {
+    expose: ["Read", "Glob", "Grep"],
+    allow: ["Read", "Glob", "Grep"],
+    withheld: [],
+  });
+  // Static review: diffs would need Bash, and exposed Bash auto-approves
+  // read-only commands such as git show, so the capability is withheld.
+  assert.deepEqual(claudeToolSurface(["repository.read", "repository.diff", "repository.search"]), {
+    expose: ["Read", "Glob", "Grep"],
+    allow: ["Read", "Glob", "Grep"],
+    withheld: ["repository.diff"],
+  });
+  assert.deepEqual(claudeToolSurface(["repository.write"]).expose, ["Edit", "Write", "NotebookEdit"]);
+  assert.deepEqual(claudeToolSurface(["network"]).expose, ["WebFetch", "WebSearch"]);
+  assert.deepEqual(claudeToolSurface([...CAPABILITIES]).expose.includes("Bash"), true);
+  assert.deepEqual(claudeToolSurface([...CAPABILITIES]).withheld, []);
 });
 
-test("adapter: an invalid policy fails the turn without spawning", async () => {
-  const { result, events } = await runFake("x", {
-    policy: { workspace: "read-only", isolateConfig: false, timeoutMs: 1_000, tools: { expose: ["Write"], allow: [] } },
-  });
-  assert.deepEqual([result.outcome, result.reason], ["failed", "invalid_policy: read-only policy exposes write tools: Write"]);
-  assert.equal(events.length, 0);
+test("process.execute means unrestricted Bash, so Claude Code refuses it unless everything is granted", () => {
+  const adapter = claudeCodeAdapter();
+  const policy = (capabilities: Capability[]) => ({ capabilities, isolateConfig: true, timeoutMs: 1 });
+  assert.deepEqual(adapter.checkPolicy(policy(["repository.read", "repository.diff", "network"])), []);
+  assert.deepEqual(adapter.checkPolicy(policy([...CAPABILITIES])), []);
+  const problems = adapter.checkPolicy(policy(["repository.read", "process.execute"]));
+  assert.equal(problems.length, CAPABILITIES.length - 2);
+  assert.match(problems[0]!, /unrestricted Bash \(process.execute\) also grants repository.search/);
+  assert.throws(() => claudeArguments(request({ policy: policy(["process.execute"]) })), /also grants repository.read/);
+});
+
+test("adapter: withheld capabilities are reported; a refused policy spawns nothing", async () => {
+  const withheld = await runFake("SCENARIO:approve", { policy: { capabilities: ["repository.read", "repository.diff"], isolateConfig: true, timeoutMs: 5_000 } });
+  const event = withheld.events.find((item) => item.kind === "CAPABILITIES_WITHHELD");
+  assert.deepEqual(event?.data?.["capabilities"], ["repository.diff"]);
+
+  const refused = await runFake("x", { policy: { capabilities: ["process.execute"], isolateConfig: true, timeoutMs: 5_000 } });
+  assert.equal(refused.result.outcome, "failed");
+  assert.match(refused.result.reason!, /^invalid_policy: unrestricted Bash/);
+  assert.equal(refused.events.length, 0);
 });
 
 test("without a preset session ID no mismatch is reported", () => {

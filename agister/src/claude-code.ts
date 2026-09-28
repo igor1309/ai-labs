@@ -6,7 +6,7 @@ import {
   type ProcessEvidence,
   type SupervisedProcess,
 } from "./process-supervisor.js";
-import type { ExecutionPolicy, RuntimeAdapter, RuntimeEvent, TurnObserver, TurnRequest, TurnResult } from "./runtime.js";
+import { CAPABILITIES, type Capability, type RuntimeAdapter, type RuntimeEvent, type TurnObserver, type TurnRequest, type TurnResult } from "./runtime.js";
 
 // Claude Code adapter: one headless `claude -p` process per turn, reading the
 // stream-json protocol from stdout.
@@ -20,11 +20,40 @@ import type { ExecutionPolicy, RuntimeAdapter, RuntimeEvent, TurnObserver, TurnR
 
 export const CLAUDE_EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
 
-const WRITE_TOOLS = ["Edit", "Write", "NotebookEdit"];
-const DEFAULT_TOOLS = {
-  "read-only": ["Read", "Grep", "Glob"],
-  "workspace-write": ["Read", "Grep", "Glob", "Edit", "Write"],
+// Claude Code enforces policy through its tool surface: only tools listed in
+// --tools exist, and with --permission-mode dontAsk only allowed calls run.
+// Bash cannot be fenced that way: once exposed, Claude Code auto-approves its
+// built-in read-only commands (git show, git log, ...) regardless of
+// --allowedTools (observed live), and there is no OS sandbox here. So:
+// - capabilities with a dedicated tool map to that tool;
+// - diff and history reads, which would need Bash, are withheld unless the
+//   policy grants process.execute (reported as CAPABILITIES_WITHHELD);
+// - process.execute exposes unrestricted Bash, which can do everything, so
+//   the policy must grant everything or the adapter refuses it.
+const TOOLS: Partial<Record<Capability, string[]>> = {
+  "repository.read": ["Read", "Glob"],
+  "repository.search": ["Grep"],
+  "repository.write": ["Edit", "Write", "NotebookEdit"],
+  "network": ["WebFetch", "WebSearch"],
 };
+const NEEDS_COMMANDS: Capability[] = ["repository.diff", "repository.history.read", "repository.history.write"];
+
+export function claudePolicyProblems(capabilities: readonly Capability[]): string[] {
+  if (!capabilities.includes("process.execute")) return [];
+  return CAPABILITIES
+    .filter((capability) => !capabilities.includes(capability))
+    .map((capability) => `unrestricted Bash (process.execute) also grants ${capability}, which the policy does not allow`);
+}
+
+export function claudeToolSurface(capabilities: readonly Capability[]): { expose: string[]; allow: string[]; withheld: Capability[] } {
+  const tools = new Set<string>();
+  for (const capability of capabilities) (TOOLS[capability] ?? []).forEach((tool) => tools.add(tool));
+  if (capabilities.includes("process.execute")) tools.add("Bash");
+  const withheld = capabilities.includes("process.execute")
+    ? []
+    : capabilities.filter((capability) => NEEDS_COMMANDS.includes(capability));
+  return { expose: [...tools], allow: [...tools], withheld };
+}
 
 export interface ClaudeCodeAdapterOptions {
   command?: string;
@@ -36,29 +65,18 @@ export function claudeCodeAdapter(options: ClaudeCodeAdapterOptions = {}): Runti
 
   return {
     runtime: "claude-code",
-    capabilities: { presetSessionId: true, toolSurface: true },
+    capabilities: { presetSessionId: true },
+    checkPolicy: (policy) => claudePolicyProblems(policy.capabilities),
     runTurn: (request, observer) => runClaudeTurn(command, options.killGraceMs, request, observer),
     resumeHint: (sessionId) => `claude --resume ${sessionId}`,
   };
 }
 
-// Claude Code has no OS sandbox here: the workspace policy is enforced by the
-// tool surface, so a read-only policy must not expose write tools.
-export function claudeToolSurface(policy: ExecutionPolicy): { expose: string[]; allow: string[] } {
-  if (!policy.tools) {
-    const tools = DEFAULT_TOOLS[policy.workspace];
-    return { expose: tools, allow: tools };
-  }
-  if (policy.workspace === "read-only") {
-    const writable = policy.tools.expose.filter((tool) => WRITE_TOOLS.includes(tool));
-    if (writable.length > 0) throw new Error(`read-only policy exposes write tools: ${writable.join(", ")}`);
-  }
-  return policy.tools;
-}
-
 export function claudeArguments(request: TurnRequest): string[] {
   const { policy } = request;
-  const surface = claudeToolSurface(policy);
+  const problems = claudePolicyProblems(policy.capabilities);
+  if (problems.length > 0) throw new Error(problems.join("; "));
+  const surface = claudeToolSurface(policy.capabilities);
   // The prompt goes through stdin: variadic flags such as --tools would
   // otherwise swallow a trailing positional prompt, and diffs can be large.
   const args = [
@@ -246,6 +264,10 @@ async function runClaudeTurn(
     args = claudeArguments(request);
   } catch (error) {
     return { outcome: "failed", reason: `invalid_policy: ${error instanceof Error ? error.message : String(error)}` };
+  }
+  const { withheld } = claudeToolSurface(request.policy.capabilities);
+  if (withheld.length > 0) {
+    observer.event({ source: "adapter", kind: "CAPABILITIES_WITHHELD", data: { capabilities: withheld, reason: "needs Bash, which cannot be restricted without process.execute" } });
   }
   const state = createStreamState(request.sessionId);
   const spec: SupervisedProcess = {

@@ -24,7 +24,10 @@ test("only the composition root imports concrete runtimes", () => {
 });
 
 test("the CLI and the application depend on neither runtimes nor logging", () => {
-  for (const file of ["main.ts", "application.ts", "agents.ts", "review.ts", "run-store.ts"]) {
+  for (const file of [
+    "main.ts", "application.ts", "agents.ts", "config.ts", "candidate.ts",
+    "review-result.ts", "output-schemas.ts", "run-store.ts", "duration.ts", "errors.ts",
+  ]) {
     const forbidden = imports(file).filter((target) => [...CONCRETE_RUNTIMES, ...LOGGING, "composition-root"].includes(target));
     assert.deepEqual(forbidden, [], `${file} imports ${forbidden.join(", ")}`);
   }

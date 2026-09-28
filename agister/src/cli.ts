@@ -10,6 +10,14 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
+// A closed pipe (e.g. `agister runs | head`) ends output, not the process with a trace.
+for (const stream of [process.stdout, process.stderr]) {
+  stream.on("error", (error: NodeJS.ErrnoException) => {
+    if (error.code === "EPIPE") process.exit(process.exitCode ?? 0);
+    throw error;
+  });
+}
+
 const controller = new AbortController();
 process.on("SIGINT", () => {
   if (controller.signal.aborted) process.exit(130);

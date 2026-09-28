@@ -10,7 +10,7 @@ import {
   type ProcessEvidence,
   type SupervisedProcess,
 } from "./process-supervisor.js";
-import type { RuntimeAdapter, RuntimeEvent, TurnObserver, TurnRequest, TurnResult } from "./runtime.js";
+import type { Capability, RuntimeAdapter, RuntimeEvent, TurnObserver, TurnRequest, TurnResult } from "./runtime.js";
 
 // Codex adapter: one `codex exec --json` process per turn, reading JSONL
 // thread events from stdout.
@@ -22,7 +22,8 @@ import type { RuntimeAdapter, RuntimeEvent, TurnObserver, TurnRequest, TurnResul
 //   `turn.completed` / `turn.failed` decide the turn outcome.
 // - Structured output is the final agent message, constrained by
 //   `--output-schema`, which must be a file.
-// - The workspace policy is enforced by Codex's OS sandbox, not a tool list.
+// - Capabilities are enforced by Codex's OS sandbox, not a tool list, so only
+//   policies that match a sandbox mode exactly can run.
 // - There is no system-prompt flag; process instructions are prepended to
 //   the prompt in a delimited block.
 
@@ -38,22 +39,52 @@ export function codexAdapter(options: CodexAdapterOptions = {}): RuntimeAdapter 
 
   return {
     runtime: "codex",
-    capabilities: { presetSessionId: false, toolSurface: false },
+    capabilities: { presetSessionId: false },
+    checkPolicy: (policy) => codexSandbox(policy.capabilities).problems,
     runTurn: (request, observer) => runCodexTurn(command, options.killGraceMs, request, observer),
     resumeHint: (sessionId) => `codex resume ${sessionId}`,
   };
 }
 
+// Codex enforces policy with an OS sandbox, not a tool list. Each mode
+// grants a fixed set of capabilities whether or not they are asked for:
+// the agent always runs commands, and commands can always read, search and
+// inspect history. A policy must therefore include everything its sandbox
+// mode grants, or the adapter refuses it rather than over-granting.
+const SANDBOX_GRANTS: Record<"read-only" | "workspace-write", readonly Capability[]> = {
+  "read-only": ["repository.read", "repository.search", "repository.diff", "repository.history.read", "process.execute"],
+  "workspace-write": [
+    "repository.read", "repository.search", "repository.diff", "repository.history.read", "process.execute",
+    "repository.write", "repository.history.write",
+  ],
+};
+
+export function codexSandbox(capabilities: readonly Capability[]): { mode: "read-only" | "workspace-write"; problems: string[] } {
+  const writes = capabilities.includes("repository.write") || capabilities.includes("repository.history.write");
+  const mode = writes ? "workspace-write" : "read-only";
+  const grants = SANDBOX_GRANTS[mode];
+  const problems = [
+    ...grants
+      .filter((capability) => !capabilities.includes(capability))
+      .map((capability) => `the ${mode} sandbox also grants ${capability}, which the policy does not allow`),
+    ...capabilities
+      .filter((capability) => !grants.includes(capability))
+      .map((capability) => `the ${mode} sandbox cannot grant ${capability}`),
+  ];
+  return { mode, problems };
+}
+
 export function codexArguments(request: TurnRequest, schemaPath?: string): string[] {
   const { policy } = request;
-  if (policy.tools) throw new Error("Codex enforces the workspace policy with its sandbox and takes no tool surface");
+  const sandbox = codexSandbox(policy.capabilities);
+  if (sandbox.problems.length > 0) throw new Error(sandbox.problems.join("; "));
   if (request.sessionId) throw new Error("Codex cannot preset a session ID");
 
   const args = [
     "exec",
     "--json",
     "--skip-git-repo-check",
-    "--sandbox", policy.workspace,
+    "--sandbox", sandbox.mode,
     "--config", 'approval_policy="never"',
   ];
   if (policy.isolateConfig) args.push("--ignore-user-config", "--ignore-rules");

@@ -12,6 +12,7 @@ export function withLogging(adapter: RuntimeAdapter, logger: Logger, clock: () =
     runtime: adapter.runtime,
     capabilities: adapter.capabilities,
     resumeHint: (sessionId) => adapter.resumeHint(sessionId),
+    checkPolicy: (policy) => adapter.checkPolicy(policy),
 
     async runTurn(request, observer) {
       const started = clock();
@@ -64,10 +65,9 @@ function describeRequest(request: TurnRequest): Record<string, unknown> {
     model: request.model,
     effort: request.effort,
     sessionId: request.sessionId,
-    workspace: request.policy.workspace,
+    capabilities: request.policy.capabilities,
     isolateConfig: request.policy.isolateConfig,
     timeoutMs: request.policy.timeoutMs,
-    tools: request.policy.tools,
     outputSchema: request.outputSchema !== undefined,
     promptChars: request.prompt.length,
   };

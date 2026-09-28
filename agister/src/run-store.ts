@@ -23,6 +23,9 @@ export interface RunRecord {
   finishedAt?: string;
   requestedSessionId?: string;
   inputs: Record<string, unknown>;
+  // What was executed: process, policy, agent, effective policy and the
+  // SHA-256 of each source file, so the run stays attributable.
+  definition?: Record<string, unknown>;
   result?: TurnResult;
   output?: unknown;
 }

@@ -1,0 +1,25 @@
+# The adversarial review on a sandboxed runtime: same work and contract,
+# different agent and policy.
+
+schema: agister.process/v1alpha1
+name: adversarial_review_sandboxed
+
+type: process
+uses: agent:codex-reviewer
+policy: process-policy:sandboxed-review
+
+input:
+  instruction: >-
+    Review the exact candidate independently and adversarially. Report material
+    correctness, safety, contract, and maintainability findings. Do not assume a
+    suspected defect or focus supplied outside this process.
+  required:
+    - base_revision
+    - candidate_revision
+    - diff
+    - changed_files
+
+output:
+  format: json
+  schema: agister.review-result/v1alpha1
+  require_valid: true

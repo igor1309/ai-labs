@@ -14,13 +14,14 @@ function recorder(minLevel: "debug" | "info" = "debug") {
 function stubAdapter(behaviour: (emit: (event: RuntimeEvent) => void) => Promise<TurnResult>): RuntimeAdapter {
   return {
     runtime: "stub",
-    capabilities: { presetSessionId: true, toolSurface: false },
+    capabilities: { presetSessionId: true },
+    checkPolicy: () => ["stub problem"],
     runTurn: (_request, observer) => behaviour((event) => observer.event(event)),
     resumeHint: (id) => `stub resume ${id}`,
   };
 }
 
-const request = { prompt: "secret prompt text", cwd: "/w", policy: { workspace: "read-only" as const, isolateConfig: true, timeoutMs: 5 } };
+const request = { prompt: "secret prompt text", cwd: "/w", policy: { capabilities: [], isolateConfig: true, timeoutMs: 5 } };
 
 test("decorator is transparent: same identity, capabilities, events and result", async () => {
   const { logger } = recorder();
@@ -32,6 +33,7 @@ test("decorator is transparent: same identity, capabilities, events and result",
   assert.equal(logged.runtime, "stub");
   assert.equal(logged.capabilities, inner.capabilities);
   assert.equal(logged.resumeHint("x"), "stub resume x");
+  assert.deepEqual(logged.checkPolicy(request.policy), ["stub problem"]);
 
   const seen: string[] = [];
   const raw: string[] = [];
