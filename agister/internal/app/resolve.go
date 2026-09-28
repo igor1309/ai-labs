@@ -42,7 +42,13 @@ type resolver struct {
 	validator   OutputValidator
 }
 
-func (r resolver) resolve(ctx context.Context, processName, agentOverride, callerTimeout string) (*resolution, error) {
+// overrides are the caller's narrowing limits.
+type overrides struct {
+	timeout    string
+	maxCostUSD *float64
+}
+
+func (r resolver) resolve(ctx context.Context, processName, agentOverride string, caller overrides) (*resolution, error) {
 	res := &resolution{}
 	load := func(kind definition.Kind, name string) (definition.Document, error) {
 		doc, err := r.definitions.Read(ctx, kind, name)
@@ -116,15 +122,18 @@ func (r resolver) resolve(ctx context.Context, processName, agentOverride, calle
 		}
 	}
 
-	var caller policy.Caller
-	if callerTimeout != "" {
-		timeout, err := time.ParseDuration(callerTimeout)
+	limits := policy.Caller{MaxCostUSD: caller.maxCostUSD}
+	if caller.timeout != "" {
+		timeout, err := time.ParseDuration(caller.timeout)
 		if err != nil || timeout <= 0 {
-			return res, refuse("invalid timeout %q", callerTimeout)
+			return res, refuse("invalid timeout %q", caller.timeout)
 		}
-		caller.Timeout = &timeout
+		limits.Timeout = &timeout
 	}
-	if res.effective, err = policy.Compose(res.service, res.policy, res.process, caller); err != nil {
+	if caller.maxCostUSD != nil && *caller.maxCostUSD <= 0 {
+		return res, refuse("invalid cost limit %g", *caller.maxCostUSD)
+	}
+	if res.effective, err = policy.Compose(res.service, res.policy, res.process, limits); err != nil {
 		return res, refuse("%v", err)
 	}
 
@@ -139,6 +148,9 @@ func (r resolver) resolve(ctx context.Context, processName, agentOverride, calle
 	}
 	if !res.mapping.Verified(res.identity.Version) {
 		return res, refuse("runtime mapping %s is not verified for %s version %s (verified: %s)", res.mapping.Name, res.mapping.Adapter, res.identity.Version, strings.Join(res.mapping.VerifiedVersions, ", "))
+	}
+	if res.effective.MaxCostUSD != nil && !res.identity.CostLimit {
+		return res, refuse("runtime %s cannot enforce the cost limit %g", res.mapping.Name, *res.effective.MaxCostUSD)
 	}
 	if res.plan, err = enforce.Make(res.effective.Permissions, res.mapping, res.effective.Require, res.service.StateReaching); err != nil {
 		return res, refuse("runtime %s: %v", res.mapping.Name, err)

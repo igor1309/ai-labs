@@ -21,5 +21,15 @@
   detector through a spy test; the release now happens before the record
   is finished.
 
+- **Continuation forks.** `--resume <earlier> --fork-session --session-id
+  <new>` resumes the earlier conversation in a new session and leaves the
+  earlier one unchanged; a resumed session is found from another working
+  directory.
+- **The cost limit overshoots.** `--max-budget-usd 0.0001` ended the turn
+  with `error_max_budget_usd`, having spent $0.0010.
+- **Usage excludes cached input.** Claude's `input_tokens` counts only
+  uncached input; cache reads and writes are reported separately and kept
+  apart in the node result.
+
 Verified live against Claude Code 2.1.283. Codex is covered by protocol
 fixtures only.

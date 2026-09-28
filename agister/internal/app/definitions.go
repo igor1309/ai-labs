@@ -62,7 +62,13 @@ func (s *Settings) Init(ctx context.Context, overwrite bool) (contract.InitResul
 func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwrite bool) (string, error) {
 	agent := definition.Agent{
 		Name: spec.Name, Runtime: spec.Runtime, Model: spec.Model, ModelFamily: spec.ModelFamily,
-		Effort: spec.Effort, Command: spec.Command, Session: "fresh-only",
+		Effort: spec.Effort, Command: spec.Command, Session: spec.Session,
+	}
+	if agent.Session == "" {
+		agent.Session = definition.SessionFresh
+	}
+	if agent.Session != definition.SessionFresh && agent.Session != definition.SessionResumable {
+		return "", &contract.InputError{Message: fmt.Sprintf("invalid session mode %q (supported: %s, %s)", agent.Session, definition.SessionFresh, definition.SessionResumable)}
 	}
 	if !definition.ValidName(agent.Name) {
 		return "", &contract.InputError{Message: fmt.Sprintf("invalid agent name %q", agent.Name)}
@@ -108,7 +114,7 @@ func (s *Settings) ListAgents(ctx context.Context) ([]contract.Agent, error) {
 		if err != nil {
 			return nil, err
 		}
-		agents = append(agents, contract.Agent{Name: agent.Name, Runtime: agent.Runtime, Model: agent.Model, ModelFamily: agent.ModelFamily, Effort: agent.Effort, Command: agent.Command})
+		agents = append(agents, contract.Agent{Name: agent.Name, Runtime: agent.Runtime, Model: agent.Model, ModelFamily: agent.ModelFamily, Effort: agent.Effort, Session: agent.Session, Command: agent.Command})
 	}
 	return agents, nil
 }
@@ -146,7 +152,7 @@ type Inspection struct {
 }
 
 func (i *Inspection) ShowProcess(ctx context.Context, name, agent string) (contract.ProcessView, error) {
-	res, err := resolver{definitions: i.Definitions, runtimes: i.Runtimes, validator: i.Validator}.resolve(ctx, name, agent, "")
+	res, err := resolver{definitions: i.Definitions, runtimes: i.Runtimes, validator: i.Validator}.resolve(ctx, name, agent, overrides{})
 	var refusal *Refusal
 	if err != nil && !errors.As(err, &refusal) {
 		return contract.ProcessView{}, err
@@ -162,6 +168,7 @@ func (i *Inspection) ShowProcess(ctx context.Context, name, agent string) (contr
 		Output:      res.process.Output.Format,
 		Timeout:     res.effective.Timeout,
 		MaxAttempts: res.effective.MaxAttempts,
+		MaxCostUSD:  res.effective.MaxCostUSD,
 		Allowed:     res.effective.Allow,
 		Denied:      res.effective.Deny,
 		Permissions: res.effective.Permissions,

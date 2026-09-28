@@ -57,15 +57,16 @@ func (r *Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
 	return app.RuntimeIdentity{Contract: Contract, Version: version}, nil
 }
 
-func (r *Runner) ResumeHint(sessionID string) string { return "codex resume " + sessionID }
-
 // Arguments builds the command line for a turn.
 func Arguments(request app.TurnRequest, schemaPath string) ([]string, error) {
 	if len(request.Primitives) != 1 || !contains(sandboxModes, request.Primitives[0]) {
 		return nil, fmt.Errorf("codex needs exactly one sandbox mode primitive (%s), got %v", strings.Join(sandboxModes, ", "), request.Primitives)
 	}
-	if request.SessionID != "" {
-		return nil, fmt.Errorf("codex cannot preset a session ID")
+	if request.SessionID != "" || request.ResumeSessionID != "" {
+		return nil, fmt.Errorf("codex/1 neither presets nor continues sessions")
+	}
+	if request.MaxCostUSD != nil {
+		return nil, fmt.Errorf("codex/1 cannot limit cost")
 	}
 	args := []string{
 		"exec", "--json", "--skip-git-repo-check",
@@ -98,17 +99,17 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 	if len(request.OutputSchema) > 0 {
 		dir, err := os.MkdirTemp("", "agister-codex-")
 		if err != nil {
-			return run.Turn{Outcome: run.TurnFailed, Reason: err.Error()}
+			return supervisor.Failed(run.ClassInternal, err)
 		}
 		defer os.RemoveAll(dir)
 		schemaPath = filepath.Join(dir, "output-schema.json")
 		if err := os.WriteFile(schemaPath, request.OutputSchema, 0o600); err != nil {
-			return run.Turn{Outcome: run.TurnFailed, Reason: err.Error()}
+			return supervisor.Failed(run.ClassInternal, err)
 		}
 	}
 	args, err := Arguments(request, schemaPath)
 	if err != nil {
-		return run.Turn{Outcome: run.TurnFailed, Reason: err.Error()}
+		return supervisor.Failed(run.ClassInternal, err)
 	}
 	state := &Stream{}
 	evidence := supervisor.Run(ctx, supervisor.Spec{
@@ -209,23 +210,55 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 	}
 	turn.Text = s.LastMessage
 	if s.Failed != "" {
-		turn.Outcome, turn.Reason = run.TurnFailed, "runtime reported turn.failed: "+s.Failed
+		turn.Status, turn.Error = run.Failed, classify(s.Failed)
 		return turn
 	}
-	turn.Usage = s.Usage
+	if s.Usage != nil {
+		turn.Usage = &run.Usage{
+			InputTokens:     count(s.Usage, "input_tokens"),
+			OutputTokens:    count(s.Usage, "output_tokens"),
+			CacheReadTokens: count(s.Usage, "cached_input_tokens"),
+			ReasoningTokens: count(s.Usage, "reasoning_output_tokens"),
+		}
+	}
 	if schemaRequested {
 		if s.LastMessage == "" {
-			turn.Outcome, turn.Reason = run.TurnFailed, "no structured output"
+			turn.Status, turn.Error = run.Failed, run.Fault(run.ClassInvalidOutput, "no structured output")
 			return turn
 		}
 		if !json.Valid([]byte(s.LastMessage)) {
-			turn.Outcome, turn.Reason = run.TurnFailed, "structured output is not JSON"
+			turn.Status, turn.Error = run.Failed, run.Fault(run.ClassInvalidOutput, "structured output is not JSON")
 			return turn
 		}
 		turn.Output = json.RawMessage(s.LastMessage)
 	}
-	turn.Outcome = run.TurnCompleted
+	turn.Status = run.Completed
 	return turn
+}
+
+// classify maps a turn.failed message to a failure class. Codex reports
+// failures as text only; none of these has been observed live.
+func classify(message string) *run.Error {
+	lower := strings.ToLower(message)
+	class := run.ClassRuntimeError
+	switch {
+	case strings.Contains(lower, "rate limit") || strings.Contains(lower, "usage limit") || strings.Contains(lower, "429"):
+		class = run.ClassRateLimited
+	case strings.Contains(lower, "unauthorized") || strings.Contains(lower, "401") || strings.Contains(lower, "login"):
+		class = run.ClassAuth
+	case strings.Contains(lower, "context window") || strings.Contains(lower, "context length"):
+		class = run.ClassContextOverflow
+	}
+	return run.Fault(class, "runtime reported turn.failed: %s", message)
+}
+
+func count(source map[string]any, key string) *int64 {
+	value, ok := source[key].(float64)
+	if !ok {
+		return nil
+	}
+	n := int64(value)
+	return &n
 }
 
 func toolName(item map[string]any) string {

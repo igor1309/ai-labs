@@ -109,7 +109,7 @@ func Conformance(t *testing.T, subject Subject) {
 
 	t.Run("completed turn with structured output", func(t *testing.T) {
 		result, sink := turn(t, "SCENARIO:approve", nil, context.Background())
-		if result.Outcome != run.TurnCompleted || len(result.Output) == 0 || result.ProviderSessionID == "" {
+		if result.Status != run.Completed || len(result.Output) == 0 || result.ProviderSessionID == "" {
 			t.Fatalf("turn = %+v", result)
 		}
 		kinds := sink.Kinds()
@@ -123,21 +123,21 @@ func Conformance(t *testing.T, subject Subject) {
 
 	t.Run("runtime-reported failure is never upgraded by a clean exit", func(t *testing.T) {
 		result, _ := turn(t, "SCENARIO:error_result", nil, context.Background())
-		if result.Outcome != run.TurnFailed || !strings.Contains(result.Reason, "runtime reported") {
+		if !is(result, run.Failed, run.ClassRuntimeError) || !strings.Contains(result.Error.Message, "runtime reported") {
 			t.Fatalf("turn = %+v", result)
 		}
 	})
 
 	t.Run("non-zero exit without a result fails and keeps stderr", func(t *testing.T) {
 		result, _ := turn(t, "SCENARIO:exit_nonzero", nil, context.Background())
-		if result.Outcome != run.TurnFailed || !strings.HasPrefix(result.Reason, "exit code") || result.StderrTail == "" {
+		if !is(result, run.Failed, run.ClassRuntimeError) || !strings.HasPrefix(result.Error.Message, "exit code") || result.StderrTail == "" {
 			t.Fatalf("turn = %+v", result)
 		}
 	})
 
 	t.Run("clean exit without a result is lost", func(t *testing.T) {
 		result, _ := turn(t, "SCENARIO:no_result", nil, context.Background())
-		if result.Outcome != run.TurnLost || !strings.HasPrefix(result.Reason, "exited without a result") {
+		if !is(result, run.Lost, run.ClassNoResult) {
 			t.Fatalf("turn = %+v", result)
 		}
 	})
@@ -145,7 +145,7 @@ func Conformance(t *testing.T, subject Subject) {
 	t.Run("timeout interrupts the process group", func(t *testing.T) {
 		started := time.Now()
 		result, sink := turn(t, "SCENARIO:hang", func(r *app.TurnRequest) { r.Timeout = 300 * time.Millisecond }, context.Background())
-		if result.Outcome != run.TurnInterrupted || result.Reason != "timeout" || time.Since(started) > 10*time.Second {
+		if !is(result, run.Interrupted, run.ClassTimeout) || time.Since(started) > 10*time.Second {
 			t.Fatalf("turn = %+v after %s", result, time.Since(started))
 		}
 		if !strings.Contains(strings.Join(sink.Kinds(), " "), "TIMEOUT") {
@@ -157,7 +157,7 @@ func Conformance(t *testing.T, subject Subject) {
 		ctx, cancel := context.WithCancel(context.Background())
 		time.AfterFunc(300*time.Millisecond, cancel)
 		result, _ := turn(t, "SCENARIO:hang", nil, ctx)
-		if result.Outcome != run.TurnInterrupted || result.Reason != "cancelled" {
+		if !is(result, run.Interrupted, run.ClassCancelled) {
 			t.Fatalf("turn = %+v", result)
 		}
 	})
@@ -165,11 +165,16 @@ func Conformance(t *testing.T, subject Subject) {
 	t.Run("a missing runtime is a failed turn, not a crash", func(t *testing.T) {
 		request := subject.Request("x")
 		result := subject.New("/nonexistent/runtime").RunTurn(context.Background(), request, &Recorder{})
-		if result.Outcome != run.TurnFailed || !strings.HasPrefix(result.Reason, "spawn failed") {
+		if !is(result, run.Failed, run.ClassRuntimeUnavailable) {
 			t.Fatalf("turn = %+v", result)
 		}
 		if _, err := subject.New("/nonexistent/runtime").Identity(context.Background()); err == nil {
 			t.Fatal("identity of a missing runtime succeeded")
 		}
 	})
+}
+
+// is reports whether a turn ended with status and a fault of class.
+func is(turn run.Turn, status run.Status, class run.Class) bool {
+	return turn.Status == status && turn.Error != nil && turn.Error.Class == class
 }

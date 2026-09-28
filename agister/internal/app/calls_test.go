@@ -76,7 +76,6 @@ output:
   format: json
   schema: s
   require_valid: true
-  result: {field: outcome, reject: [no]}
 `},
 		definition.KindSchema: {"s": schema},
 	}
@@ -84,6 +83,7 @@ output:
 
 type harness struct {
 	calls      *app.Calls
+	runs       *runsSpy
 	defs       *definitionsSpy
 	runner     *runnerSpy
 	runtimes   *runtimesSpy
@@ -96,14 +96,18 @@ type harness struct {
 
 func newHarness() *harness {
 	h := &harness{
-		defs:       &definitionsSpy{docs: settingsDocs()},
-		runner:     &runnerSpy{identity: app.RuntimeIdentity{Contract: "spy/1", Version: "1.2.3", PresetSessionID: true}, turn: run.Turn{Outcome: run.TurnCompleted, Output: json.RawMessage(`{"outcome":"yes"}`), ProviderSessionID: "prov-1"}},
+		defs: &definitionsSpy{docs: settingsDocs()},
+		runner: &runnerSpy{
+			identity: app.RuntimeIdentity{Contract: "spy/1", Version: "1.2.3", PresetSessionID: true, Resume: true, CostLimit: true},
+			turn:     run.Turn{Status: run.Completed, Output: json.RawMessage(`{"outcome":"no"}`), ProviderSessionID: "prov-1"},
+		},
 		workspaces: &workspacesSpy{root: "/repo", dir: "/work/checkout"},
 		provenance: &provenanceSpy{},
 		validator:  &validatorSpy{},
 		recorder:   newRecorderSpy(),
 	}
 	h.runtimes = &runtimesSpy{runner: h.runner}
+	h.runs = &runsSpy{records: map[string]run.Record{}, states: map[string]run.State{}}
 	h.inputs = &inputsSpy{respond: func(spec app.InputSpec) (app.Resolved, error) {
 		switch spec.Source {
 		case "git.revision":
@@ -120,6 +124,7 @@ func newHarness() *harness {
 		Provenance:  h.provenance,
 		Validator:   h.validator,
 		Recorder:    h.recorder,
+		Runs:        h.runs,
 		Clock:       fixedClock{},
 		IDs:         fixedIDs{},
 		StateDir:    "/state",
@@ -143,12 +148,28 @@ func (h *harness) call(t *testing.T, request contract.CallRequest) run.Record {
 	return h.recorder.wait(t)
 }
 
-func TestAcceptedCallSendsTheComposedPayloads(t *testing.T) {
+// class is a finished record's failure class, empty when it completed.
+func class(record run.Record) run.Class {
+	if record.Result == nil || record.Result.Error == nil {
+		return ""
+	}
+	return record.Result.Error.Class
+}
+
+func message(record run.Record) string {
+	if record.Result == nil || record.Result.Error == nil {
+		return ""
+	}
+	return record.Result.Error.Message
+}
+
+func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 	h := newHarness()
 	record := h.call(t, contract.CallRequest{Params: map[string]string{"base": "trunk"}})
 
-	if record.Outcome != run.CallAccepted || string(record.Output) != `{"outcome":"yes"}` {
-		t.Fatalf("record = %+v", record)
+	// Whatever the output says, it is the output of a completed node.
+	if record.Result.Status != run.Completed || record.Result.Error != nil || string(record.Result.Output) != `{"outcome":"no"}` {
+		t.Fatalf("result = %+v", record.Result)
 	}
 	// The runtime was asked for by the mapping's adapter and the agent's command.
 	if !reflect.DeepEqual(h.runtimes.asked, []string{"spy|/bin/spy"}) {
@@ -186,7 +207,7 @@ func TestAcceptedCallSendsTheComposedPayloads(t *testing.T) {
 		t.Fatalf("prompt = %q", got.Prompt)
 	}
 	// The schema was compiled before the call and the output validated after.
-	if len(h.validator.compiled) != 1 || string(h.validator.validated[0]) != `{"outcome":"yes"}` {
+	if len(h.validator.compiled) != 1 || string(h.validator.validated[0]) != `{"outcome":"no"}` {
 		t.Fatalf("validator: compiled %d, validated %v", len(h.validator.compiled), h.validator.validated)
 	}
 	// Evidence: definitions with digests, plan, inputs, identities.
@@ -213,19 +234,19 @@ func TestAcceptedCallSendsTheComposedPayloads(t *testing.T) {
 	}
 }
 
-func TestCallOutcomeFollowsTheResponses(t *testing.T) {
+func TestNodeStatusFollowsTheResponses(t *testing.T) {
 	cases := []struct {
 		name        string
 		turn        run.Turn
 		validateErr error
-		outcome     run.CallOutcome
-		reason      string
+		status      run.Status
+		class       run.Class
 		validated   int
 	}{
-		{"runtime failure", run.Turn{Outcome: run.TurnFailed, Reason: "exit code 3"}, nil, run.CallFailed, "failed: exit code 3", 0},
-		{"lost turn", run.Turn{Outcome: run.TurnLost, Reason: "exited without a result"}, nil, run.CallFailed, "lost: exited without a result", 0},
-		{"invalid output", run.Turn{Outcome: run.TurnCompleted, Output: json.RawMessage(`{}`)}, errors.New("missing outcome"), run.CallFailed, "invalid output: missing outcome", 1},
-		{"rejecting output", run.Turn{Outcome: run.TurnCompleted, Output: json.RawMessage(`{"outcome":"no"}`)}, nil, run.CallRejected, "outcome is no", 1},
+		{"runtime failure keeps its class", run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "429")}, nil, run.Failed, run.ClassRateLimited, 0},
+		{"lost turn", run.Turn{Status: run.Lost, Error: run.Fault(run.ClassNoResult, "")}, nil, run.Lost, run.ClassNoResult, 0},
+		{"timeout", run.Turn{Status: run.Interrupted, Error: run.Fault(run.ClassTimeout, "")}, nil, run.Interrupted, run.ClassTimeout, 0},
+		{"invalid output", run.Turn{Status: run.Completed, Output: json.RawMessage(`{}`)}, errors.New("missing outcome"), run.Failed, run.ClassInvalidOutput, 1},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -233,19 +254,152 @@ func TestCallOutcomeFollowsTheResponses(t *testing.T) {
 			h.runner.turn = c.turn
 			h.validator.validateErr = c.validateErr
 			record := h.call(t, contract.CallRequest{})
-			if record.Outcome != c.outcome || record.Reason != c.reason {
-				t.Fatalf("outcome %s (%s), want %s (%s)", record.Outcome, record.Reason, c.outcome, c.reason)
+			if record.Result.Status != c.status || class(record) != c.class {
+				t.Fatalf("result %s/%s, want %s/%s", record.Result.Status, class(record), c.status, c.class)
 			}
 			if len(h.validator.validated) != c.validated {
 				t.Fatalf("validated %d times", len(h.validator.validated))
 			}
-			if record.Outcome != run.CallAccepted && record.Outcome != run.CallRejected && record.Output != nil {
-				t.Fatalf("output recorded for a failed call: %s", record.Output)
+			if record.Result.Output != nil {
+				t.Fatalf("output recorded for a node that did not complete: %s", record.Result.Output)
 			}
 			if h.workspaces.releases() != 1 {
 				t.Fatalf("released %d times", h.workspaces.releases())
 			}
 		})
+	}
+}
+
+func TestResultCarriesUsageCostTimingAndSession(t *testing.T) {
+	h := newHarness()
+	clock := &steppingClock{now: time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)}
+	h.calls.Clock = clock
+	tokens, cost, runtimeMS := int64(7), 0.25, int64(900)
+	h.runner.turn = run.Turn{Status: run.Completed, Output: json.RawMessage(`{}`), ProviderSessionID: "prov-1", CostUSD: &cost, RuntimeMS: &runtimeMS, Usage: &run.Usage{InputTokens: &tokens}}
+	record := h.call(t, contract.CallRequest{})
+	result := record.Result
+	if result.Cost.Source != run.CostRuntime || *result.Cost.USD != 0.25 || *result.Usage.InputTokens != 7 {
+		t.Fatalf("cost %+v, usage %+v", result.Cost, result.Usage)
+	}
+	// Agister measures its own clock: the call from submission to finish,
+	// the turn within it. The runtime's figure is kept beside them.
+	timing := result.Timing
+	if !timing.StartedAt.Equal(record.CreatedAt) || timing.WallMS != timing.FinishedAt.Sub(record.CreatedAt).Milliseconds() ||
+		*timing.TurnMS <= 0 || *timing.TurnMS >= timing.WallMS || *timing.RuntimeMS != 900 {
+		t.Fatalf("timing = %+v", result.Timing)
+	}
+	if result.Session == nil || result.Session.ProviderSessionID != "prov-1" || result.Session.Continues != "" {
+		t.Fatalf("session = %+v", result.Session)
+	}
+
+	// A runtime that reports no cost leaves it unknown, never zero.
+	h = newHarness()
+	if record := h.call(t, contract.CallRequest{}); record.Result.Cost.Source != run.CostUnknown || record.Result.Cost.USD != nil {
+		t.Fatalf("cost = %+v", record.Result.Cost)
+	}
+}
+
+func TestCostLimitReachesTheRuntimeOrRefuses(t *testing.T) {
+	h := newHarness()
+	h.defs.docs[definition.KindPolicy]["pol"] += "max_cost_usd: 2\n"
+	limit := 0.5
+	record := h.call(t, contract.CallRequest{MaxCostUSD: &limit})
+	if got := h.runner.calls()[0].MaxCostUSD; got == nil || *got != 0.5 || *record.Effective.MaxCostUSD != 0.5 {
+		t.Fatalf("limit sent %v, effective %v", got, record.Effective.MaxCostUSD)
+	}
+
+	h = newHarness()
+	h.defs.docs[definition.KindPolicy]["pol"] += "max_cost_usd: 2\n"
+	h.runner.identity.CostLimit = false
+	if record := h.call(t, contract.CallRequest{}); class(record) != run.ClassRefused || !strings.Contains(message(record), "cannot enforce the cost limit 2") {
+		t.Fatalf("result = %+v", record.Result)
+	}
+}
+
+func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
+	resumable := func(h *harness) {
+		h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+	}
+	earlier := run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Result: &run.Result{Status: run.Interrupted, Session: &run.Session{ProviderSessionID: "prov-0"}}}
+
+	h := newHarness()
+	resumable(h)
+	h.runs.records["run-0"], h.runs.states["run-0"] = earlier, run.StateFinished
+	record := h.call(t, contract.CallRequest{Continue: "run-0"})
+	got := h.runner.calls()[0]
+	// The earlier session is continued in a new one.
+	if got.ResumeSessionID != "prov-0" || got.SessionID != "session-1" || record.Result.Session.Continues != "run-0" || record.Request.Continue != "run-0" {
+		t.Fatalf("request %+v, session %+v", got, record.Result.Session)
+	}
+
+	for _, c := range []struct {
+		name    string
+		arrange func(*harness)
+		reason  string
+	}{
+		{"fresh-only agent", func(h *harness) {}, "agent a is fresh-only; it cannot continue run run-0"},
+		{"runtime cannot resume", func(h *harness) { resumable(h); h.runner.identity.Resume = false }, "runtime rt cannot continue sessions"},
+		{"unknown run", func(h *harness) { resumable(h); delete(h.runs.records, "run-0") }, "run run-0: not found"},
+		{"run still running", func(h *harness) { resumable(h); h.runs.states["run-0"] = run.StateRunning }, "run run-0 is running, not finished"},
+		{"another agent's run", func(h *harness) {
+			resumable(h)
+			other := earlier
+			other.Agent = "b"
+			h.runs.records["run-0"] = other
+		}, "run run-0 ran agent b"},
+		{"run without a session", func(h *harness) {
+			resumable(h)
+			bare := earlier
+			bare.Result = &run.Result{Status: run.Failed}
+			h.runs.records["run-0"] = bare
+		}, "run run-0 has no provider session"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			h := newHarness()
+			h.runs.records["run-0"], h.runs.states["run-0"] = earlier, run.StateFinished
+			c.arrange(h)
+			record := h.call(t, contract.CallRequest{Continue: "run-0"})
+			if class(record) != run.ClassRefused || !strings.Contains(message(record), c.reason) {
+				t.Fatalf("result %+v, want refusal %q", record.Result.Error, c.reason)
+			}
+			if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
+				t.Fatal("effects before the refusal")
+			}
+		})
+	}
+}
+
+func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
+	h := newHarness()
+	h.workspaces.changes = []byte("diff --git a/x b/x\n")
+	h.recorder.onFinish = func() int { return h.workspaces.releases() }
+	record := h.call(t, contract.CallRequest{})
+	if !reflect.DeepEqual(h.workspaces.changed, [][2]string{{"/work/checkout", "sha-HEAD"}}) || string(h.recorder.artifacts["changes.patch"]) != "diff --git a/x b/x\n" {
+		t.Fatalf("changes asked %v, stored %v", h.workspaces.changed, h.recorder.artifacts)
+	}
+	if len(record.Result.Artifacts) != 1 || record.Result.Artifacts[0].Path != "artifacts/changes.patch" || !contains(h.recorder.kinds(), "ARTIFACT_STORED") {
+		t.Fatalf("artifacts = %+v", record.Result.Artifacts)
+	}
+
+	// Nothing changed: no artifact. A failure to collect is recorded and
+	// does not change the node status.
+	h = newHarness()
+	if record := h.call(t, contract.CallRequest{}); len(record.Result.Artifacts) != 0 || len(h.recorder.artifacts) != 0 {
+		t.Fatalf("artifacts = %+v", record.Result.Artifacts)
+	}
+	h = newHarness()
+	h.workspaces.changeErr = errors.New("git broke")
+	if record := h.call(t, contract.CallRequest{}); record.Result.Status != run.Completed || !contains(h.recorder.kinds(), "ARTIFACT_FAILED") {
+		t.Fatalf("result %+v, events %v", record.Result, h.recorder.kinds())
+	}
+
+	// A workspace the call does not own is the caller's; its changes are not taken.
+	h = newHarness()
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n  checkout: candidate_revision\n", "", 1)
+	h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "scope: candidate", "scope: repository", 1)
+	h.workspaces.changes = []byte("x")
+	if record := h.call(t, contract.CallRequest{}); record.Result.Status != run.Completed || len(h.workspaces.changed) != 0 {
+		t.Fatalf("result %+v, changes asked %v", record.Result, h.workspaces.changed)
 	}
 }
 
@@ -284,8 +438,8 @@ func TestRefusalsComeBeforeEffects(t *testing.T) {
 				c.arrange(h)
 			}
 			record := h.call(t, c.request)
-			if record.Outcome != run.CallRefused || !strings.Contains(record.Reason, c.reason) {
-				t.Fatalf("outcome %s (%s), want refused (%s)", record.Outcome, record.Reason, c.reason)
+			if record.Result.Status != run.Failed || class(record) != run.ClassRefused || !strings.Contains(message(record), c.reason) {
+				t.Fatalf("result %+v, want refused (%s)", record.Result.Error, c.reason)
 			}
 			if len(h.runner.calls()) != 0 {
 				t.Fatal("the runtime ran after a refusal")
@@ -323,8 +477,8 @@ func TestCancelInterruptsAndReleases(t *testing.T) {
 		t.Fatal(err)
 	}
 	record := h.recorder.wait(t)
-	if record.Outcome != run.CallFailed || record.Reason != "interrupted: cancelled" || h.workspaces.releases() != 1 {
-		t.Fatalf("record = %s (%s), released %d", record.Outcome, record.Reason, h.workspaces.releases())
+	if record.Result.Status != run.Interrupted || class(record) != run.ClassCancelled || h.workspaces.releases() != 1 {
+		t.Fatalf("result = %+v, released %d", record.Result, h.workspaces.releases())
 	}
 	var input *contract.InputError
 	if err := runs.Cancel(context.Background(), "run-1"); !errors.As(err, &input) {

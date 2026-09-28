@@ -13,13 +13,15 @@ import (
 
 // Caller holds the overrides a caller may apply. They may only narrow.
 type Caller struct {
-	Timeout *time.Duration
+	Timeout    *time.Duration
+	MaxCostUSD *float64
 }
 
 // Effective is a call's composed limits.
 type Effective struct {
 	Timeout     time.Duration           `json:"timeout"`
 	MaxAttempts int                     `json:"max_attempts"`
+	MaxCostUSD  *float64                `json:"max_cost_usd,omitempty"` // unset: no cost limit
 	Allow       []string                `json:"allow"`
 	Deny        []string                `json:"deny"`
 	Permissions []string                `json:"permissions"` // allowed and not denied
@@ -90,6 +92,8 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 			timeout = caller.Timeout
 		}
 	}
+
+	cost := narrowCost(add, service, origin, base.MaxCostUSD, over.MaxCostUSD, caller.MaxCostUSD)
 
 	attempts := 1
 	if value := narrowInt(add, "retry.max_attempts", base.MaxAttempts, over.MaxAttempts); value != nil {
@@ -174,6 +178,7 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 	return Effective{
 		Timeout:     *timeout,
 		MaxAttempts: attempts,
+		MaxCostUSD:  cost,
 		Allow:       nonNil(allow),
 		Deny:        nonNil(deny),
 		Permissions: nonNil(permissions),
@@ -195,6 +200,26 @@ func narrowDuration(add func(string, ...any), field string, base, over *time.Dur
 		return base
 	}
 	return over
+}
+
+// narrowCost composes the cost limit. Unlike timeout it may stay unset,
+// but once any layer sets it, the layers below may only lower it.
+func narrowCost(add func(string, ...any), service definition.Service, origin string, base, over, caller *float64) *float64 {
+	limit := service.MaxCostUSD
+	for _, layer := range []struct {
+		name  string
+		value *float64
+	}{{origin, base}, {"the process", over}, {"the caller", caller}} {
+		if layer.value == nil {
+			continue
+		}
+		if limit != nil && *layer.value > *limit {
+			add("max_cost_usd: %s sets %g, which widens %g", layer.name, *layer.value, *limit)
+			continue
+		}
+		limit = layer.value
+	}
+	return limit
 }
 
 func narrowInt(add func(string, ...any), field string, base, over *int) *int {

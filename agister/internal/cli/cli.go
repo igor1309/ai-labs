@@ -13,22 +13,24 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 )
 
-// Exit codes.
+// Exit codes. A run's code follows its node status; what a completed
+// run's output means is for the caller to read, not for the exit code.
 const (
-	ExitAccepted    = 0
-	ExitRejected    = 1
-	ExitFailed      = 2
-	ExitRefused     = 3
-	ExitLost        = 4
-	ExitUsage       = 64
-	ExitInterrupted = 130
-	ExitInternal    = 70
+	ExitCompleted    = 0
+	ExitFailed       = 1
+	ExitInterrupted  = 2
+	ExitRefused      = 3
+	ExitLost         = 4
+	ExitUsage        = 64
+	ExitInternal     = 70
+	ExitStoppedWatch = 130
 )
 
 const usage = `agister — run agent calls defined in settings
@@ -36,11 +38,12 @@ const usage = `agister — run agent calls defined in settings
 Usage:
   agister init [--force]
   agister check [--probe]            validate all settings (--probe: ask each runtime its version)
-  agister agent create <name> --runtime <runtime> [--model <m>] [--model-family <f>] [--effort <e>] [--command <path>] [--force]
+  agister agent create <name> --runtime <runtime> [--model <m>] [--model-family <f>] [--effort <e>] [--session fresh-only|resumable] [--command <path>] [--force]
   agister agent list
   agister process list
   agister process show <process> [--agent <name>]
-  agister run <process> [--param <name>=<value>]... [--agent <name>] [--timeout <d>] [--json]
+  agister run <process> [--param <name>=<value>]... [--agent <name>] [--timeout <d>] [--max-cost <usd>]
+                         [--continue <run-id>] [--json]   (--json: print the node result)
   agister runs [list]
   agister runs show <run-id>
   agister runs watch <run-id> [--after <seq>]
@@ -50,7 +53,7 @@ Options:
   --quiet        No progress on stderr
   --debug        Diagnostics on stderr (always kept in <home>/logs/agister.jsonl)
 
-Exit codes: 0 accepted, 1 rejected, 2 failed, 3 refused, 4 lost, 64 usage.`
+Exit codes: 0 completed, 1 failed, 2 interrupted, 3 refused, 4 lost, 64 usage, 130 stopped watching.`
 
 // IO is the process environment the CLI works in.
 type IO struct {
@@ -95,10 +98,11 @@ func Run(ctx context.Context, args []string, env IO, build Build) int {
 }
 
 type options struct {
-	home, runtime, model, modelFamily, effort, command, agent, timeout string
-	force, quiet, debug, json, help, probe                             bool
-	after                                                              int
-	params                                                             paramFlag
+	home, runtime, model, modelFamily, effort, session, command string
+	agent, timeout, maxCost, continueRun                        string
+	force, quiet, debug, json, help, probe                      bool
+	after                                                       int
+	params                                                      paramFlag
 }
 
 type paramFlag map[string]string
@@ -125,6 +129,9 @@ func parse(args []string) (options, []string, error) {
 	set.StringVar(&opts.command, "command", "", "")
 	set.StringVar(&opts.agent, "agent", "", "")
 	set.StringVar(&opts.timeout, "timeout", "", "")
+	set.StringVar(&opts.session, "session", "", "")
+	set.StringVar(&opts.maxCost, "max-cost", "", "")
+	set.StringVar(&opts.continueRun, "continue", "", "")
 	set.BoolVar(&opts.force, "force", false, "")
 	set.BoolVar(&opts.quiet, "quiet", false, "")
 	set.BoolVar(&opts.debug, "debug", false, "")
@@ -222,7 +229,7 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 			if opts.runtime == "" {
 				return 0, usageError{"agent create needs --runtime"}
 			}
-			path, err := client.CreateAgent(ctx, contract.Agent{Name: name, Runtime: opts.runtime, Model: opts.model, ModelFamily: opts.modelFamily, Effort: opts.effort, Command: opts.command}, opts.force)
+			path, err := client.CreateAgent(ctx, contract.Agent{Name: name, Runtime: opts.runtime, Model: opts.model, ModelFamily: opts.modelFamily, Effort: opts.effort, Session: opts.session, Command: opts.command}, opts.force)
 			if err != nil {
 				return 0, err
 			}
@@ -278,7 +285,14 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 		if err != nil {
 			return 0, err
 		}
-		request := contract.CallRequest{Process: name, Params: opts.params, Agent: opts.agent, Timeout: opts.timeout, Cwd: env.Cwd}
+		request := contract.CallRequest{Process: name, Params: opts.params, Agent: opts.agent, Timeout: opts.timeout, Continue: opts.continueRun, Cwd: env.Cwd}
+		if opts.maxCost != "" {
+			limit, err := strconv.ParseFloat(opts.maxCost, 64)
+			if err != nil || limit <= 0 {
+				return 0, usageError{"--max-cost needs a positive number of USD"}
+			}
+			request.MaxCostUSD = &limit
+		}
 		id, err := client.Submit(ctx, request)
 		if err != nil {
 			return 0, err
@@ -294,7 +308,7 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 				return 0, err
 			}
 			for _, run := range runs {
-				fmt.Fprintf(env.Stdout, "%s\t%s\t%s\t%s\t%s\n", run.ID, run.Process, or(run.Agent, "-"), state(run), run.Reason)
+				fmt.Fprintf(env.Stdout, "%s\t%s\t%s\t%s\n", run.ID, run.Process, or(run.Agent, "-"), status(run))
 			}
 			return 0, nil
 		case "show":
@@ -351,7 +365,7 @@ func follow(ctx context.Context, client contract.Client, id string, after int, o
 	})
 	if !owned && ctx.Err() != nil {
 		fmt.Fprintf(env.Stderr, "stopped watching run %s; it continues\n", id)
-		return ExitInterrupted, nil
+		return ExitStoppedWatch, nil
 	}
 	if err != nil {
 		return 0, err
@@ -361,63 +375,82 @@ func follow(ctx context.Context, client contract.Client, id string, after int, o
 		return 0, err
 	}
 	if opts.json {
-		env.Stdout.Write(run.Record)
-		fmt.Fprintln(env.Stdout)
-	} else if len(run.Output) > 0 {
+		_ = printJSON(env.Stdout, run.Result)
+	} else if result := run.Result; result != nil && len(result.Output) > 0 {
 		var pretty any
-		_ = json.Unmarshal(run.Output, &pretty)
+		_ = json.Unmarshal(result.Output, &pretty)
 		_ = printJSON(env.Stdout, pretty)
-	} else if run.Text != "" {
-		fmt.Fprintln(env.Stdout, run.Text)
+	} else if result != nil && result.Status == "completed" && result.Text != "" {
+		fmt.Fprintln(env.Stdout, result.Text)
 	}
 	summarize(env.Stderr, run)
 	return exitCode(run), nil
 }
 
 func exitCode(run contract.Run) int {
-	if run.Status == "lost" {
+	result := run.Result
+	if result == nil {
+		return ExitInternal // Observe returned, so the run is no longer running
+	}
+	switch result.Status {
+	case "completed":
+		return ExitCompleted
+	case "interrupted":
+		return ExitInterrupted
+	case "lost":
 		return ExitLost
 	}
-	switch run.Outcome {
-	case "accepted":
-		return ExitAccepted
-	case "rejected":
-		return ExitRejected
-	case "refused":
+	if result.Error != nil && result.Error.Class == "refused" {
 		return ExitRefused
 	}
 	return ExitFailed
 }
 
 func summarize(w io.Writer, run contract.Run) {
-	parts := []string{"run " + run.ID + ": " + state(run)}
-	if run.Reason != "" {
-		parts = append(parts, "("+run.Reason+")")
+	parts := []string{"run " + run.ID + ": " + status(run)}
+	result := run.Result
+	if result == nil {
+		fmt.Fprintln(w, strings.Join(parts, " "))
+		return
 	}
-	if run.CostUSD != nil {
-		parts = append(parts, fmt.Sprintf("$%.4f", *run.CostUSD))
+	if result.Error != nil && result.Error.Message != "" {
+		parts = append(parts, "("+result.Error.Message+")")
 	}
-	if run.DurationMS != nil {
-		parts = append(parts, (time.Duration(*run.DurationMS) * time.Millisecond).Round(100*time.Millisecond).String())
+	if result.Cost.USD != nil {
+		parts = append(parts, fmt.Sprintf("$%.4f", *result.Cost.USD))
+	}
+	if result.Timing.WallMS > 0 {
+		parts = append(parts, (time.Duration(result.Timing.WallMS) * time.Millisecond).Round(100*time.Millisecond).String())
+	}
+	if u := result.Usage; u != nil && u.InputTokens != nil && u.OutputTokens != nil {
+		parts = append(parts, fmt.Sprintf("%d in/%d out tokens", *u.InputTokens, *u.OutputTokens))
 	}
 	fmt.Fprintln(w, strings.Join(parts, " "))
 	if run.StderrTail != "" {
 		fmt.Fprintf(w, "  stderr: %s\n", truncate(run.StderrTail, 500))
 	}
-	if run.ProviderSessionID != "" {
-		fmt.Fprintf(w, "  provider session: %s", run.ProviderSessionID)
-		if run.ResumeHint != "" {
-			fmt.Fprintf(w, " (%s)", run.ResumeHint)
+	for _, artifact := range result.Artifacts {
+		fmt.Fprintf(w, "  artifact: %s (%d bytes, %s)\n", artifact.Path, artifact.Bytes, artifact.Digest)
+	}
+	if result.Session != nil {
+		fmt.Fprintf(w, "  provider session: %s", result.Session.ProviderSessionID)
+		if result.Session.Continues != "" {
+			fmt.Fprintf(w, " (continues run %s)", result.Session.Continues)
 		}
 		fmt.Fprintln(w)
 	}
 }
 
-func state(run contract.Run) string {
-	if run.Status != "finished" {
-		return run.Status
+// status is the node status, qualified by its failure class.
+func status(run contract.Run) string {
+	result := run.Result
+	if result == nil {
+		return run.State
 	}
-	return run.Outcome
+	if result.Error != nil {
+		return result.Status + "/" + result.Error.Class
+	}
+	return result.Status
 }
 
 func describe(event contract.Event) string {
@@ -446,7 +479,7 @@ func describe(event contract.Event) string {
 			return "  ↳ tool error"
 		}
 	case "PROVIDER_ERROR", "PROVIDER_RETRY", "RATE_LIMITED", "TIMEOUT", "ABORT_REQUESTED", "SPAWN_FAILED",
-		"STREAM_PARSE_ERROR", "SESSION_ID_MISMATCH", "TURN_FAILED", "WORKSPACE_RELEASE_FAILED":
+		"STREAM_PARSE_ERROR", "SESSION_ID_MISMATCH", "TURN_FAILED", "WORKSPACE_RELEASE_FAILED", "ARTIFACT_FAILED":
 		encoded, _ := json.Marshal(data)
 		return fmt.Sprintf("! %s %s", event.Kind, encoded)
 	}
@@ -473,7 +506,7 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 		{"  allowed", or(strings.Join(view.Allowed, ", "), "(none)")},
 		{"  denied", or(strings.Join(view.Denied, ", "), "(none)")},
 		{"workspace", view.Access + ", scope " + view.Scope},
-		{"limits", fmt.Sprintf("timeout %s, attempts %d", view.Timeout, view.MaxAttempts)},
+		{"limits", limits(view)},
 		{"constraints", or(strings.Join(view.Constraints, "; "), "(none)")},
 	}
 	if view.Refusal != "" {
@@ -484,6 +517,14 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 	for _, line := range lines {
 		fmt.Fprintf(w, "%-12s %s\n", line[0], line[1])
 	}
+}
+
+func limits(view contract.ProcessView) string {
+	text := fmt.Sprintf("timeout %s, attempts %d", view.Timeout, view.MaxAttempts)
+	if view.MaxCostUSD != nil {
+		text += fmt.Sprintf(", cost $%g", *view.MaxCostUSD)
+	}
+	return text
 }
 
 func printJSON(w io.Writer, value any) error {

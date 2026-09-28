@@ -40,9 +40,6 @@ type Value struct {
 type Output struct {
 	Format string // "json" or "text"
 	Schema string // name of a schema definition (json only)
-	// Which valid outputs mean the call was rejected.
-	ResultField string
-	Reject      []string
 }
 
 // Process is a named agent call.
@@ -165,7 +162,7 @@ func ParseProcess(doc Document) (Process, error) {
 		}
 	}
 
-	output := fields(values["output"], "output", []string{"format", "schema", "require_valid", "result"}, p)
+	output := fields(values["output"], "output", []string{"format", "schema", "require_valid"}, p)
 	process.Output.Format = required(output, "format", "output", p)
 	switch process.Output.Format {
 	case "json":
@@ -173,16 +170,9 @@ func ParseProcess(doc Document) (Process, error) {
 		if valid, ok := boolean(output["require_valid"], "output.require_valid", p); !ok || !valid {
 			p.add("output.require_valid", "must be true (accepting invalid output is not supported)")
 		}
-		if node, ok := output["result"]; ok {
-			result := fields(node, "output.result", []string{"field", "reject"}, p)
-			process.Output.ResultField = required(result, "field", "output.result", p)
-			process.Output.Reject = stringList(result["reject"], "output.result.reject", p)
-		}
 	case "text":
-		for _, key := range []string{"schema", "result"} {
-			if _, ok := output[key]; ok {
-				p.add("output."+key, "applies to json output only")
-			}
+		if _, ok := output["schema"]; ok {
+			p.add("output.schema", "applies to json output only")
 		}
 	case "":
 	default:

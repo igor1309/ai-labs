@@ -72,14 +72,16 @@ The diagram shows dependency boundaries only.
 
 | Term | Meaning |
 |---|---|
-| **Agent** | Reusable runtime profile: runtime, model, model family, effort. No task, no permissions. |
+| **Agent** | Reusable runtime profile: runtime, model, model family, effort, whether its sessions may be continued. No task, no permissions. |
 | **Process** | A named agent call: instruction, inputs and their sources, workspace, output contract, references to an agent and a policy. |
-| **Policy** | Reusable limits: allowed and denied permissions, time, attempts, constraints. |
+| **Policy** | Reusable limits: allowed and denied permissions, time, cost, attempts, constraints. |
 | **Permission** | A named right in Agister's vocabulary, e.g. read the repository, run commands. |
 | **Runtime feature** | What a runtime adapter supports, e.g. preset session identity, structured output. A property of the adapter, not a setting. |
 | **Permission mapping** | For one runtime adapter: its restriction primitives (tools, sandbox modes, …) and every permission each primitive actually grants. |
 | **Enforcement plan** | For one call: primitives to grant and permissions withheld, or a refusal. |
 | **Run** | The record of one agent call. |
+| **Node result** | What any unit of work (an agent call today) hands to a workflow: status, failure class, output, usage, cost, timing, artifacts, session. |
+| **Continuation** | A call that deliberately resumes a finished run's session. |
 
 ## Architectural rules
 
@@ -105,8 +107,10 @@ input source kinds, constraint kinds.
 
 ### 3. Limits only narrow
 
-Effective limits are composed as service ⊇ policy ⊇ process ⊇ caller. Each
-layer may only narrow the one above; widening is rejected, never clamped.
+Effective limits (time, cost, attempts, permissions, workspace) are
+composed as service ⊇ policy ⊇ process ⊇ caller. Each layer may only narrow
+the one above; widening is rejected, never clamped. A limit the runtime
+cannot enforce refuses the call.
 Caller overrides are recorded. Denied permissions always win over allowed
 ones.
 
@@ -123,26 +127,41 @@ runtime's permission mapping:
   call is refused if the process declared it needs them.
 
 A mapping describes a specific adapter contract and runtime version and is
-valid only for them. The adapter refuses to run with a mapping made for a
-different contract or version. A mapping is trusted only once it has been
-verified against the real runtime.
+used only with the adapter contract and runtime version it describes. A
+mapping is trusted only once it has been verified against the real runtime.
 
 ### 5. Runtime adapters are polymorphic and permission-blind
 
 Runtime-specific behavior sits behind the Runtime Port. An adapter receives
 primitives, not permissions, policies or processes, and returns a normalized
-turn outcome with ordered events. Adding a runtime means adding an adapter
-and its mapping.
+turn (status, failure class, output, usage, cost) with ordered events. It
+declares the features it supports, such as continuing a session or limiting
+cost; the core refuses a call that needs a missing one. Adding a runtime
+means adding an adapter and its mapping.
 
-### 6. Outcomes are layered and never upgraded
+### 6. Every call ends in a node result
 
-- **Turn** (completed, failed, interrupted, lost): the runtime's own report
-  first, then Agister's timeout or cancellation, then process exit. A
-  runtime-reported failure is never turned into success.
-- **Call** (accepted, rejected, failed, refused): a completed turn counts
-  only with contract-valid output. The process defines which valid outputs
-  mean rejection.
-- **Task**: belongs to the future workflow layer.
+A call ends in the same result any future node (agent, command, check)
+will produce, so workflows route on it without knowing what ran:
+
+- **Status:** completed, failed, interrupted or lost. The runtime's own
+  report comes first, then Agister's timeout or cancellation, then the
+  process exit. A runtime-reported failure is never upgraded.
+- **Completed** means contract-valid output. What the output says, such as
+  an unfavourable verdict, is not a status: routing on it belongs to the
+  workflow. Every other status follows the failure route.
+- **Failure class** from a closed set (refused, invalid output, budget
+  exhausted, rate limited, auth, context overflow, runtime error, timeout,
+  cancelled, abandoned, …), so a workflow can tell a retryable failure from
+  a final one.
+- **Usage and cost** as the runtime reports them, with their source; an
+  unreported cost is unknown, never zero. **Timing** is measured by
+  Agister; the runtime's own figure is kept beside it.
+- **Artifacts** a call produced in a workspace it owns, stored with the
+  evidence before the workspace is released.
+- **Session** the call ran in, and the run it continued, if any.
+
+Task outcomes belong to the future workflow layer.
 
 ### 7. Refusals come before effects and are recorded
 
@@ -185,7 +204,10 @@ finished is read as lost, never as in progress.
 ### 12. Calls are independent
 
 Concurrent calls share only settings, which they read, and evidence, which
-each writes only for its own run. No call depends on another's state.
+each writes only for its own run. No call depends on another's state, with
+one deliberate exception: a continuation reads a finished run's evidence to
+resume its session, in a new session that leaves the earlier one unchanged.
+Continuation is explicit per call, and only for agents that allow it.
 
 ### 13. Every component collaborates through abstractions it defines
 
@@ -265,19 +287,21 @@ mechanisms; the service, its transport and lifecycle.
 1. The core knows no particular kind of work, agent or output meaning.
 2. Agents, processes, policies, output contracts, permission mappings and
    limits are settings.
-3. Limits only narrow, from service to policy to process to caller.
+3. Limits only narrow, from service to policy to process to caller; a limit
+   that cannot be enforced refuses the call.
 4. Policies are expressed in permissions, never in runtime primitives.
 5. No primitive is granted whose mapped grants exceed the effective
    permissions, and no mapping is used outside the adapter contract and
    runtime version it describes.
 6. Runtime adapters know nothing of permissions, policies or processes.
-7. A runtime-reported failure is never upgraded; a completed turn counts only
-   with contract-valid output.
+7. Every call ends in a node result. A runtime-reported failure is never
+   upgraded; completed means contract-valid output, whatever it says.
 8. Every refusal happens before any runtime starts and is recorded.
 9. Inputs are resolved to immutable values before the call.
 10. Agents cannot reach settings, evidence or provenance.
 11. Missing provenance is unknown, never satisfaction.
 12. Every effect is owned, bounded and cleaned up; an unfinished run is lost.
+    Only a deliberate continuation reads another run, and never changes it.
 13. Diagnostics never change behavior and are not evidence.
 14. Concrete implementations are connected only at the composition root.
 15. Humans and agents share one CLI surface that depends only on the
@@ -289,4 +313,5 @@ mechanisms; the service, its transport and lifecycle.
 - [Agister orchestrator](../../../research/agister/research/verger/orchestrator.md)
 - [Functional requirements](../../../research/agister/research/verger/functional-requirements.md)
 - [Runtime research](../../../research/agister/research/codex-claude-orchestrator-runtime-research.md)
+- [Runtime discussions](../../../research/agister/research/verger/runtime-discussions.md)
 - Prototype evidence in the [README](../../README.md)

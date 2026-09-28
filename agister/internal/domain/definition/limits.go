@@ -13,6 +13,7 @@ import (
 type Limits struct {
 	Timeout     *time.Duration `json:"timeout,omitempty"`
 	MaxAttempts *int           `json:"max_attempts,omitempty"`
+	MaxCostUSD  *float64       `json:"max_cost_usd,omitempty"`
 	Allow       []string       `json:"allow,omitempty"`
 	AllowSet    bool           `json:"-"`
 	Deny        []string       `json:"deny,omitempty"`
@@ -35,7 +36,7 @@ type Constraint struct {
 
 const ModelFamilySubject = "agent.model_family"
 
-var limitKeys = []string{"timeout", "retry", "tools", "workspace", "isolation", "resources", "artifacts", "constraints"}
+var limitKeys = []string{"timeout", "max_cost_usd", "retry", "tools", "workspace", "isolation", "resources", "artifacts", "constraints"}
 
 var provenanceExpression = regexp.MustCompile(`^evidence\.candidate\(input\.([a-z_][a-z0-9_]*)\)\.provenance\.writer\.model_family$`)
 
@@ -45,6 +46,15 @@ func parseLimits(values map[string]*yaml.Node, toolKeys, workspaceKeys []string,
 		if text, ok := scalar(node, "timeout", p); ok {
 			if value, ok := duration(text, "timeout", p); ok {
 				limits.Timeout = &value
+			}
+		}
+	}
+	if node, ok := values["max_cost_usd"]; ok {
+		if value, ok := number(node, "max_cost_usd", p); ok {
+			if value <= 0 {
+				p.add("max_cost_usd", "must be positive")
+			} else {
+				limits.MaxCostUSD = &value
 			}
 		}
 	}

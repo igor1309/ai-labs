@@ -58,7 +58,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Error: unauthorized")
 		os.Exit(1)
 	case "error_result":
-		emit(map[string]any{"type": "turn.failed", "error": map[string]any{"message": "context window exceeded"}})
+		emit(map[string]any{"type": "turn.failed", "error": map[string]any{"message": "model stream ended unexpectedly"}})
 		return
 	}
 	emit(map[string]any{"type": "item.started", "item": map[string]any{"id": "item_1", "type": "command_execution", "command": "git diff --stat", "status": "in_progress"}})

@@ -5,6 +5,9 @@ Not installed by `agister init`: `agister check` refuses them as shipped.
 - The mapping is not verified against a live Codex (`verified_versions: []`).
 - Both sandbox modes read files outside the workspace (`host.read`), which
   Agister never grants.
+- Contract `codex/1` neither continues sessions nor limits cost, so calls
+  with `--continue` or under a cost limit are refused. Whether Codex should
+  do either is an open question.
 
 To use Codex, verify what each sandbox mode actually grants on your Codex
 version, update `runtimes/codex.yaml` to match, copy these files into

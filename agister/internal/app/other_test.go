@@ -2,11 +2,13 @@ package app_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"reflect"
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
@@ -64,18 +66,19 @@ func TestCheckProbesEachAgentsRuntime(t *testing.T) {
 type readerSpy struct {
 	calls   []int // afterSeq per call
 	batches [][]run.Event
-	status  []run.Status
+	status  []run.State
 	record  run.Record
+	state   run.State
 }
 
-func (s *readerSpy) Events(_ context.Context, _ string, afterSeq int) ([]run.Event, run.Status, error) {
+func (s *readerSpy) Events(_ context.Context, _ string, afterSeq int) ([]run.Event, run.State, error) {
 	i := len(s.calls)
 	s.calls = append(s.calls, afterSeq)
 	return s.batches[i], s.status[i], nil
 }
 
-func (s *readerSpy) Get(context.Context, string) (run.Record, run.Status, error) {
-	return s.record, run.StatusFinished, nil
+func (s *readerSpy) Get(context.Context, string) (run.Record, run.State, error) {
+	return s.record, s.state, nil
 }
 
 func (s *readerSpy) List(context.Context) ([]run.Record, error) { return []run.Record{s.record}, nil }
@@ -83,7 +86,7 @@ func (s *readerSpy) List(context.Context) ([]run.Record, error) { return []run.R
 func TestObserveResumesAfterTheLastDeliveredEvent(t *testing.T) {
 	reader := &readerSpy{
 		batches: [][]run.Event{{{Seq: 4}, {Seq: 5}}, {}, {{Seq: 6}}},
-		status:  []run.Status{run.StatusRunning, run.StatusRunning, run.StatusFinished},
+		status:  []run.State{run.StateRunning, run.StateRunning, run.StateFinished},
 	}
 	runs := &app.Runs{Reader: reader, PollInterval: 1}
 	var delivered []int
@@ -96,13 +99,33 @@ func TestObserveResumesAfterTheLastDeliveredEvent(t *testing.T) {
 	}
 }
 
-func TestInspectAsksTheRecordedAdapterForTheResumeHint(t *testing.T) {
-	h := newHarness()
-	reader := &readerSpy{record: run.Record{ID: "r", Outcome: run.CallAccepted,
-		Runtime: &run.Runtime{Adapter: "spy"}, Turn: &run.Turn{Outcome: run.TurnCompleted, ProviderSessionID: "prov-1"}}}
-	view, err := (&app.Runs{Reader: reader, Runtimes: h.runtimes}).Inspect(context.Background(), "r")
-	if err != nil || view.ResumeHint != "spy resume prov-1" || view.Status != "finished" || view.Outcome != "accepted" {
+func TestInspectShowsTheNodeResultAsRecorded(t *testing.T) {
+	cost, ms, tokens := 0.1, int64(5), int64(3)
+	result := &run.Result{
+		Status: run.Failed, Error: run.Fault(run.ClassBudgetExhausted, "limit"), Text: "t",
+		Usage: &run.Usage{InputTokens: &tokens, ReasoningTokens: &tokens}, Cost: run.Cost{USD: &cost, Source: run.CostRuntime},
+		Timing:    run.Timing{StartedAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(), WallMS: 1000, TurnMS: &ms, RuntimeMS: &ms},
+		Artifacts: []run.Artifact{{Name: "changes.patch", Path: "artifacts/changes.patch", Digest: "sha256:x", Bytes: 1}},
+		Session:   &run.Session{ProviderSessionID: "prov-1", Continues: "run-0"},
+	}
+	reader := &readerSpy{state: run.StateFinished, record: run.Record{ID: "r", Result: result, Turn: &run.Turn{StderrTail: "boom"}}}
+	view, err := (&app.Runs{Reader: reader}).Inspect(context.Background(), "r")
+	if err != nil || view.State != "finished" || view.StderrTail != "boom" {
 		t.Fatalf("view = %+v, %v", view, err)
+	}
+	// The contract carries every field of the domain result.
+	want, _ := json.Marshal(result)
+	got, _ := json.Marshal(view.Result)
+	if string(got) != string(want) {
+		t.Fatalf("contract result\n%s\nwant\n%s", got, want)
+	}
+}
+
+func TestAnAbandonedRunIsALostNode(t *testing.T) {
+	reader := &readerSpy{state: run.StateAbandoned, record: run.Record{ID: "r", CreatedAt: time.Unix(1, 0)}}
+	view, err := (&app.Runs{Reader: reader}).Inspect(context.Background(), "r")
+	if err != nil || view.State != "abandoned" || view.Result == nil || view.Result.Status != "lost" || view.Result.Error.Class != "abandoned" || view.Result.Cost.Source != "unknown" {
+		t.Fatalf("view = %+v, %v", view.Result, err)
 	}
 }
 

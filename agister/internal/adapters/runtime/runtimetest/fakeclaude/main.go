@@ -56,6 +56,8 @@ func main() {
 		os.Exit(3)
 	case "no_result":
 		return
+	case "edit":
+		os.WriteFile("written-by-agent.txt", []byte("hello\n"), 0o600)
 	}
 	emit(map[string]any{"type": "assistant", "message": map[string]any{"content": []any{map[string]any{"type": "tool_use", "id": "toolu_1", "name": "Read", "input": map[string]any{"file_path": "a.txt"}}}}})
 	emit(map[string]any{"type": "user", "message": map[string]any{"content": []any{map[string]any{"type": "tool_result", "tool_use_id": "toolu_1", "content": "ok"}}}})
@@ -66,7 +68,8 @@ func main() {
 		emit(map[string]any{"type": "result", "subtype": "error_during_execution", "is_error": true, "session_id": session, "errors": []string{"tool crashed"}})
 		return
 	}
-	result := map[string]any{"type": "result", "subtype": "success", "is_error": false, "session_id": session, "result": "All good.", "num_turns": 2, "total_cost_usd": 0.0123, "duration_ms": 3400, "permission_denials": []any{map[string]any{"tool_name": "Edit"}}}
+	result := map[string]any{"type": "result", "subtype": "success", "is_error": false, "session_id": session, "result": "All good.", "num_turns": 2, "total_cost_usd": 0.0123, "duration_ms": 3400, "permission_denials": []any{map[string]any{"tool_name": "Edit"}},
+		"usage": map[string]any{"input_tokens": 100, "output_tokens": 50, "cache_read_input_tokens": 10, "cache_creation_input_tokens": 5}}
 	if flag("--json-schema") != "" && scenario != "no_structured_output" {
 		result["structured_output"] = outputs(scenario)
 	}

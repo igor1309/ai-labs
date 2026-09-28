@@ -4,13 +4,16 @@
 //	events.jsonl    ordered events, appended
 //	provider.jsonl  raw runtime output, appended
 //	owner.lock      held (flock) by the process running the call
+//	artifacts/      files the call produced
 //
-// A record that is not finished and whose lock nobody holds is lost.
+// A record that is not finished and whose lock nobody holds is abandoned.
 package fsruns
 
 import (
 	"bufio"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -87,6 +91,23 @@ func (h *handle) Update(record run.Record) error {
 	return h.writeRecord(record)
 }
 
+func (h *handle) Artifact(name string, data []byte) (run.Artifact, error) {
+	if name == "" || name != filepath.Base(name) || strings.HasPrefix(name, ".") {
+		return run.Artifact{}, fmt.Errorf("invalid artifact name %q", name)
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	dir := filepath.Join(h.dir, "artifacts")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return run.Artifact{}, err
+	}
+	if err := os.WriteFile(filepath.Join(dir, name), data, 0o600); err != nil {
+		return run.Artifact{}, err
+	}
+	sum := sha256.Sum256(data)
+	return run.Artifact{Name: name, Path: "artifacts/" + name, Digest: "sha256:" + hex.EncodeToString(sum[:]), Bytes: int64(len(data))}, nil
+}
+
 func (h *handle) Finish(record run.Record) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -111,7 +132,7 @@ func (h *handle) writeRecord(record run.Record) error {
 	return os.Rename(temporary, filepath.Join(h.dir, "record.json"))
 }
 
-func (s Store) Get(_ context.Context, id string) (run.Record, run.Status, error) {
+func (s Store) Get(_ context.Context, id string) (run.Record, run.State, error) {
 	var record run.Record
 	data, err := os.ReadFile(filepath.Join(s.runDir(id), "record.json"))
 	if errors.Is(err, fs.ErrNotExist) {
@@ -126,7 +147,7 @@ func (s Store) Get(_ context.Context, id string) (run.Record, run.Status, error)
 	return record, s.status(id, record), nil
 }
 
-func (s Store) Events(ctx context.Context, id string, afterSeq int) ([]run.Event, run.Status, error) {
+func (s Store) Events(ctx context.Context, id string, afterSeq int) ([]run.Event, run.State, error) {
 	// Status first: events written before the run finished are then all on disk.
 	_, status, err := s.Get(ctx, id)
 	if err != nil {
@@ -182,28 +203,28 @@ func (s Store) List(ctx context.Context) ([]run.Record, error) {
 }
 
 // status: finished if the record says so; otherwise running while some
-// process holds the owner lock, and lost once nobody does.
-func (s Store) status(id string, record run.Record) run.Status {
+// process holds the owner lock, and abandoned once nobody does.
+func (s Store) status(id string, record run.Record) run.State {
 	if record.FinishedAt != nil {
-		return run.StatusFinished
+		return run.StateFinished
 	}
 	lock, err := os.Open(filepath.Join(s.runDir(id), "owner.lock"))
 	if err != nil {
-		return run.StatusLost
+		return run.StateAbandoned
 	}
 	defer lock.Close()
 	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_SH|syscall.LOCK_NB); err != nil {
-		return run.StatusRunning
+		return run.StateRunning
 	}
 	_ = syscall.Flock(int(lock.Fd()), syscall.LOCK_UN)
 	// Re-read: the owner may have finished between the two checks.
 	if data, err := os.ReadFile(filepath.Join(s.runDir(id), "record.json")); err == nil {
 		var latest run.Record
 		if json.Unmarshal(data, &latest) == nil && latest.FinishedAt != nil {
-			return run.StatusFinished
+			return run.StateFinished
 		}
 	}
-	return run.StatusLost
+	return run.StateAbandoned
 }
 
 func appendLine(path string, value any) error {

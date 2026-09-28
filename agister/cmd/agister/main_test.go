@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -68,7 +69,7 @@ func setup(t *testing.T, scenario string) (home, repo string) {
 	for _, args := range [][]string{
 		{"init"},
 		{"agent", "create", "reviewer", "--force", "--runtime", "claude-code", "--model", "sonnet", "--model-family", "anthropic", "--effort", "high", "--command", claude},
-		{"agent", "create", "assistant", "--force", "--runtime", "claude-code", "--model-family", "anthropic", "--command", claude},
+		{"agent", "create", "assistant", "--force", "--runtime", "claude-code", "--model-family", "anthropic", "--session", "resumable", "--command", claude},
 	} {
 		if r := agister(t, home, repo, args...); r.code != 0 {
 			t.Fatalf("%v: %d %s", args, r.code, r.stderr)
@@ -125,7 +126,7 @@ func (r run) argv() []string {
 func TestAgentCallEndToEnd(t *testing.T) {
 	home, repo := setup(t, "approve")
 	r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main")
-	if r.code != cli.ExitAccepted {
+	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
 	var output map[string]any
@@ -135,8 +136,15 @@ func TestAgentCallEndToEnd(t *testing.T) {
 
 	last := lastRun(t, home)
 	record := last.record
-	if record["outcome"] != "accepted" || record["agent"] != "reviewer" {
+	result := record["result"].(map[string]any)
+	if result["status"] != "completed" || record["agent"] != "reviewer" || result["output"].(map[string]any)["verdict"] != "approve" {
 		t.Fatalf("record = %v", record)
+	}
+	// The node result: usage and cost as the runtime reports them, timing as Agister measures it.
+	usage, cost, timing := result["usage"].(map[string]any), result["cost"].(map[string]any), result["timing"].(map[string]any)
+	if usage["input_tokens"] != 100.0 || usage["cache_write_tokens"] != 5.0 || cost["source"] != "runtime" || cost["usd"] != 0.0123 ||
+		timing["runtime_ms"] != 3400.0 || timing["turn_ms"] == nil || result["session"].(map[string]any)["provider_session_id"] != record["requested_session_id"] {
+		t.Fatalf("result = %v", result)
 	}
 	// Every definition used is attributed with its digest.
 	var kinds []string
@@ -163,7 +171,7 @@ func TestAgentCallEndToEnd(t *testing.T) {
 	}
 	// Primitives, not permissions, reach the runtime.
 	args := strings.Join(last.argv(), " ")
-	if !strings.Contains(args, "--tools=Read,Glob,Grep --allowedTools=Read,Glob,Grep") || strings.Contains(args, "Bash") {
+	if !strings.Contains(args, "--tools=Read,Glob,Grep --allowedTools=Read,Glob,Grep") || strings.Contains(args, "Bash") || !strings.Contains(args, "--max-budget-usd 3") {
 		t.Fatalf("argv = %s", args)
 	}
 	prompt := last.first["prompt"].(string)
@@ -217,7 +225,7 @@ func TestRefusedCallIsRecorded(t *testing.T) {
 	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, `process "no_such_process": not found`) {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
-	if last := lastRun(t, home); last.record["outcome"] != "refused" {
+	if last := lastRun(t, home); last.record["result"].(map[string]any)["error"].(map[string]any)["class"] != "refused" {
 		t.Fatalf("record = %v", last.record)
 	}
 }
@@ -265,7 +273,7 @@ output:
   require_valid: true
 `)
 	r := agister(t, home, repo, "run", "check_docs", "--quiet")
-	if r.code != cli.ExitAccepted {
+	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
 	if args := strings.Join(lastRun(t, home).argv(), " "); !strings.Contains(args, "--tools=Read --allowedTools=Read") {
@@ -300,7 +308,7 @@ func readJSON(t *testing.T, path string, value any) {
 }
 
 // Cancelling through the contract interrupts the runtime and releases the
-// workspace; the run finishes as failed (interrupted), not lost.
+// workspace; the run finishes interrupted, not lost.
 func TestCancelThroughTheContract(t *testing.T) {
 	home, repo := setup(t, "hang")
 	client, err := compose(cli.Config{Home: home})
@@ -324,10 +332,82 @@ func TestCancelThroughTheContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	inspected, err := client.Inspect(ctx, id)
-	if err != nil || inspected.Status != "finished" || inspected.Outcome != "failed" || inspected.Reason != "interrupted: cancelled" {
+	if err != nil || inspected.State != "finished" || inspected.Result.Status != "interrupted" || inspected.Result.Error.Class != "cancelled" {
 		t.Fatalf("run = %+v, %v", inspected, err)
 	}
 	if lines := strings.Split(gitCmd(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
 		t.Fatalf("worktree not released: %v", lines)
+	}
+}
+
+// A domain result, even an unfavourable one, is output of a completed node:
+// routing on it is the workflow's business.
+func TestVerdictIsOutputNotStatus(t *testing.T) {
+	home, repo := setup(t, "request_changes")
+	r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--json", "--quiet")
+	var result contract.Result
+	if err := json.Unmarshal([]byte(r.stdout), &result); err != nil || r.code != cli.ExitCompleted || result.Status != "completed" || !strings.Contains(string(result.Output), `"request_changes"`) {
+		t.Fatalf("exit %d, result %s, err %v", r.code, r.stdout, err)
+	}
+}
+
+// A continuation resumes the earlier run's provider session in a new one.
+func TestContinuationEndToEnd(t *testing.T) {
+	home, repo := setup(t, "approve")
+	client, err := compose(cli.Config{Home: home})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	finish := func(request contract.CallRequest) contract.Run {
+		id, err := client.Submit(ctx, request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := client.Observe(ctx, id, 0, func(contract.Event) error { return nil }); err != nil {
+			t.Fatal(err)
+		}
+		inspected, err := client.Inspect(ctx, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return inspected
+	}
+	first := finish(contract.CallRequest{Process: "ask", Params: map[string]string{"question": "What is a.txt?"}, Cwd: repo})
+	second := finish(contract.CallRequest{Process: "ask", Params: map[string]string{"question": "And b.txt?"}, Continue: first.ID, Cwd: repo})
+	if first.Result.Status != "completed" || second.Result.Status != "completed" {
+		t.Fatalf("first %+v, second %+v", first.Result, second.Result)
+	}
+	earlier, later := first.Result.Session.ProviderSessionID, second.Result.Session.ProviderSessionID
+	var provider map[string]any
+	data, _ := os.ReadFile(filepath.Join(home, "runs", second.ID, "provider.jsonl"))
+	_ = json.Unmarshal([]byte(strings.SplitN(string(data), "\n", 2)[0]), &provider)
+	args := fmt.Sprint(provider["argv"])
+	if earlier == later || second.Result.Session.Continues != first.ID || !strings.Contains(args, "--resume "+earlier+" --fork-session --session-id "+later) {
+		t.Fatalf("earlier %s, later %s, argv %s", earlier, later, args)
+	}
+	// The reviewer is fresh-only: continuing with it is refused.
+	refused := finish(contract.CallRequest{Process: "adversarial_review", Params: map[string]string{"base": "main"}, Continue: first.ID, Cwd: repo})
+	if refused.Result.Error == nil || refused.Result.Error.Class != "refused" || !strings.Contains(refused.Result.Error.Message, "fresh-only") {
+		t.Fatalf("result = %+v", refused.Result)
+	}
+}
+
+// What the agent changed in its own checkout is kept as an artifact before
+// the checkout is released; the repository is untouched.
+func TestWorkspaceChangesAreKept(t *testing.T) {
+	home, repo := setup(t, "edit")
+	if r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--quiet"); r.code != cli.ExitCompleted {
+		t.Fatalf("exit %d\n%s", r.code, r.stderr)
+	}
+	last := lastRun(t, home)
+	artifacts := last.record["result"].(map[string]any)["artifacts"].([]any)
+	artifact := artifacts[0].(map[string]any)
+	patch := read(t, filepath.Join(last.dir, artifact["path"].(string)))
+	if len(artifacts) != 1 || !strings.Contains(patch, "+++ b/written-by-agent.txt") || !strings.HasPrefix(artifact["digest"].(string), "sha256:") {
+		t.Fatalf("artifacts %v, patch:\n%s", artifacts, patch)
+	}
+	if status := gitCmd(t, repo, "status", "--porcelain"); status != "" {
+		t.Fatalf("repository changed: %s", status)
 	}
 }

@@ -66,10 +66,16 @@ func TestRejectsWhatItCannotHonour(t *testing.T) {
 			t.Fatalf("primitives %v accepted", primitives)
 		}
 	}
-	r := request("x")
-	r.SessionID = "preset"
-	if _, err := codex.Arguments(r, ""); err == nil || !strings.Contains(err.Error(), "cannot preset") {
-		t.Fatalf("err = %v", err)
+	for _, mutate := range []func(*app.TurnRequest){
+		func(r *app.TurnRequest) { r.SessionID = "preset" },
+		func(r *app.TurnRequest) { r.ResumeSessionID = "earlier" },
+		func(r *app.TurnRequest) { limit := 1.0; r.MaxCostUSD = &limit },
+	} {
+		r := request("x")
+		mutate(&r)
+		if _, err := codex.Arguments(r, ""); err == nil || !strings.Contains(err.Error(), "codex/1") {
+			t.Fatalf("err = %v", err)
+		}
 	}
 }
 
@@ -88,12 +94,15 @@ func TestErrorEventsAreNotTerminal(t *testing.T) {
 	}
 	code := 0
 	clean := supervisor.Evidence{Exit: &run.Exit{Code: &code}}
-	if turn := stream.Reconcile(clean, true); turn.Outcome != run.TurnLost || turn.Reason != "exited without a result: Reconnecting... 2/5" {
+	if turn := stream.Reconcile(clean, true); turn.Status != run.Lost || turn.Error.Class != run.ClassNoResult || turn.Error.Message != "exited without a result: Reconnecting... 2/5" {
 		t.Fatalf("errors so far are evidence, not an outcome: %+v", turn)
 	}
-	stream.Reduce(`{"type":"turn.completed","usage":{"input_tokens":10}}`)
+	stream.Reduce(`{"type":"turn.completed","usage":{"input_tokens":10,"cached_input_tokens":4,"output_tokens":5,"reasoning_output_tokens":3}}`)
 	turn := stream.Reconcile(clean, true)
-	if turn.Outcome != run.TurnCompleted || string(turn.Output) != `{"answer":"vm"}` || turn.ProviderSessionID != "t-1" {
+	if turn.Status != run.Completed || string(turn.Output) != `{"answer":"vm"}` || turn.ProviderSessionID != "t-1" || turn.CostUSD != nil {
+		t.Fatalf("turn = %+v", turn)
+	}
+	if u := turn.Usage; *u.InputTokens != 10 || *u.CacheReadTokens != 4 || *u.OutputTokens != 5 || *u.ReasoningTokens != 3 || u.CacheWriteTokens != nil {
 		t.Fatalf("turn = %+v", turn)
 	}
 }
@@ -103,7 +112,25 @@ func TestStructuredOutputMustBeJSON(t *testing.T) {
 	stream.Reduce(`{"type":"item.completed","item":{"type":"agent_message","text":"not json"}}`)
 	stream.Reduce(`{"type":"turn.completed"}`)
 	code := 0
-	if turn := stream.Reconcile(supervisor.Evidence{Exit: &run.Exit{Code: &code}}, true); turn.Outcome != run.TurnFailed || turn.Reason != "structured output is not JSON" {
+	if turn := stream.Reconcile(supervisor.Evidence{Exit: &run.Exit{Code: &code}}, true); turn.Status != run.Failed || turn.Error.Class != run.ClassInvalidOutput {
 		t.Fatalf("turn = %+v", turn)
+	}
+}
+
+func TestFailuresAreClassified(t *testing.T) {
+	code := 0
+	clean := supervisor.Evidence{Exit: &run.Exit{Code: &code}}
+	for message, class := range map[string]run.Class{
+		"You've hit your usage limit": run.ClassRateLimited,
+		"401 Unauthorized":            run.ClassAuth,
+		"exceeds the context window":  run.ClassContextOverflow,
+		"stream disconnected":         run.ClassRuntimeError,
+	} {
+		stream := &codex.Stream{}
+		data, _ := json.Marshal(map[string]any{"type": "turn.failed", "error": map[string]any{"message": message}})
+		stream.Reduce(string(data))
+		if turn := stream.Reconcile(clean, false); turn.Status != run.Failed || turn.Error.Class != class {
+			t.Errorf("%q: %+v", message, turn.Error)
+		}
 	}
 }

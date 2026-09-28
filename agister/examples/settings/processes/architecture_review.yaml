@@ -33,6 +33,3 @@ output:
   format: json
   schema: review-result
   require_valid: true
-  result:
-    field: verdict
-    reject: [request_changes]

@@ -91,47 +91,91 @@ func run(ctx context.Context, spy *clientSpy, args ...string) result {
 	return result{code, stdout.String(), stderr.String()}
 }
 
+// finished is a finished run with the given result.
+func finished(status, class string) contract.Run {
+	result := &contract.Result{Status: status, Cost: contract.Cost{Source: "unknown"}}
+	if class != "" {
+		result.Error = &contract.Error{Class: class, Message: "why"}
+	}
+	return contract.Run{ID: "run-1", State: "finished", Result: result}
+}
+
 func TestRunSubmitsTheRequestBuiltFromArguments(t *testing.T) {
-	spy := &clientSpy{run: contract.Run{ID: "run-1", Status: "finished", Outcome: "accepted", Text: "hi"}}
-	r := run(context.Background(), spy, "run", "p", "--param", "a=1", "--agent", "x", "--param", "b=two=2", "--timeout", "5m", "--quiet")
-	want := contract.CallRequest{Process: "p", Params: map[string]string{"a": "1", "b": "two=2"}, Agent: "x", Timeout: "5m", Cwd: "/work"}
+	spy := &clientSpy{run: finished("completed", "")}
+	spy.run.Result.Text = "hi"
+	r := run(context.Background(), spy, "run", "p", "--param", "a=1", "--agent", "x", "--param", "b=two=2", "--timeout", "5m", "--max-cost", "0.5", "--continue", "run-0", "--quiet")
+	limit := 0.5
+	want := contract.CallRequest{Process: "p", Params: map[string]string{"a": "1", "b": "two=2"}, Agent: "x", Timeout: "5m", MaxCostUSD: &limit, Continue: "run-0", Cwd: "/work"}
 	if !reflect.DeepEqual(spy.submitted, []contract.CallRequest{want}) {
 		t.Fatalf("submitted %+v", spy.submitted)
 	}
 	if !reflect.DeepEqual(spy.observed, []string{"run-1@0"}) || spy.config.Home != "/env-home" || spy.config.Debug != nil {
 		t.Fatalf("observed %v, config %+v", spy.observed, spy.config)
 	}
-	if r.code != cli.ExitAccepted || r.stdout != "hi\n" {
+	if r.code != cli.ExitCompleted || r.stdout != "hi\n" {
 		t.Fatalf("result = %+v", r)
 	}
 }
 
-func TestExitCodeAndOutputFollowTheInspectedRun(t *testing.T) {
+func TestExitCodeAndOutputFollowTheNodeResult(t *testing.T) {
+	withOutput := finished("completed", "")
+	withOutput.Result.Output = json.RawMessage(`{"verdict":"request_changes"}`)
+	withStderr := finished("failed", "runtime_error")
+	withStderr.StderrTail = "boom"
+	failedText := finished("failed", "invalid_output")
+	failedText.Result.Text = "partial answer"
 	cases := []struct {
+		name   string
 		run    contract.Run
 		code   int
 		stdout string
 		stderr string
 	}{
-		{contract.Run{Status: "finished", Outcome: "accepted", Output: json.RawMessage(`{"a":"<b>"}`)}, cli.ExitAccepted, "{\n  \"a\": \"<b>\"\n}\n", ": accepted"},
-		{contract.Run{Status: "finished", Outcome: "rejected", Reason: "outcome is no"}, cli.ExitRejected, "", ": rejected (outcome is no)"},
-		{contract.Run{Status: "finished", Outcome: "failed", StderrTail: "boom"}, cli.ExitFailed, "", "stderr: boom"},
-		{contract.Run{Status: "finished", Outcome: "refused", Reason: "no"}, cli.ExitRefused, "", ": refused (no)"},
-		{contract.Run{Status: "lost"}, cli.ExitLost, "", ": lost"},
+		// A domain result is output, and the exit code says only that the node completed.
+		{"output", withOutput, cli.ExitCompleted, "{\n  \"verdict\": \"request_changes\"\n}\n", ": completed"},
+		{"failed", withStderr, cli.ExitFailed, "", ": failed/runtime_error (why)\n  stderr: boom"},
+		{"text of a failed node is not printed as its answer", failedText, cli.ExitFailed, "", ": failed/invalid_output"},
+		{"interrupted", finished("interrupted", "timeout"), cli.ExitInterrupted, "", ": interrupted/timeout"},
+		{"refused", finished("failed", "refused"), cli.ExitRefused, "", ": failed/refused (why)"},
+		{"lost", finished("lost", "abandoned"), cli.ExitLost, "", ": lost/abandoned"},
 	}
 	for _, c := range cases {
-		c.run.ID = "run-1"
 		spy := &clientSpy{run: c.run}
 		r := run(context.Background(), spy, "run", "p", "--quiet")
 		if r.code != c.code || r.stdout != c.stdout || !strings.Contains(r.stderr, c.stderr) {
-			t.Errorf("%s: %+v", c.run.Outcome+c.run.Status, r)
+			t.Errorf("%s: %+v", c.name, r)
 		}
+	}
+}
+
+func TestJSONPrintsTheNodeResult(t *testing.T) {
+	spy := &clientSpy{run: finished("failed", "rate_limited")}
+	r := run(context.Background(), spy, "run", "p", "--json", "--quiet")
+	var got contract.Result
+	if err := json.Unmarshal([]byte(r.stdout), &got); err != nil || got.Status != "failed" || got.Error.Class != "rate_limited" || r.code != cli.ExitFailed {
+		t.Fatalf("stdout %s, err %v", r.stdout, err)
+	}
+}
+
+func TestResultSummary(t *testing.T) {
+	spy := &clientSpy{run: finished("completed", "")}
+	cost, in, out := 0.1234, int64(10), int64(20)
+	result := spy.run.Result
+	result.Cost = contract.Cost{USD: &cost, Source: "runtime"}
+	result.Timing.WallMS = 1500
+	result.Usage = &contract.Usage{InputTokens: &in, OutputTokens: &out}
+	result.Artifacts = []contract.Artifact{{Path: "artifacts/changes.patch", Bytes: 3, Digest: "sha256:x"}}
+	result.Session = &contract.Session{ProviderSessionID: "prov-1", Continues: "run-0"}
+	r := run(context.Background(), spy, "run", "p", "--quiet")
+	want := "run run-1: completed $0.1234 1.5s 10 in/20 out tokens\n  artifact: artifacts/changes.patch (3 bytes, sha256:x)\n  provider session: prov-1 (continues run run-0)\n"
+	if r.stderr != want {
+		t.Fatalf("stderr:\n%s\nwant\n%s", r.stderr, want)
 	}
 }
 
 func TestInterruptCancelsTheRunAndStillReportsIt(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	spy := &clientSpy{run: contract.Run{ID: "run-1", Status: "finished", Outcome: "failed", Reason: "interrupted: cancelled"}, onCancel: make(chan string, 1)}
+	spy := &clientSpy{run: finished("interrupted", "cancelled"), onCancel: make(chan string, 1)}
 	var cancelled string
 	spy.observe = func(observeCtx context.Context) {
 		cancel()
@@ -146,7 +190,7 @@ func TestInterruptCancelsTheRunAndStillReportsIt(t *testing.T) {
 		}
 	}
 	r := run(ctx, spy, "run", "p", "--quiet")
-	if cancelled != "run-1" || r.code != cli.ExitFailed {
+	if cancelled != "run-1" || r.code != cli.ExitInterrupted {
 		t.Fatalf("cancelled %q, result %+v", cancelled, r)
 	}
 }
@@ -159,13 +203,13 @@ func TestInterruptStopsWatchingWithoutCancelling(t *testing.T) {
 		<-observeCtx.Done() // watching follows the caller's interrupt
 	}
 	r := run(ctx, spy, "runs", "watch", "r", "--quiet")
-	if r.code != cli.ExitInterrupted || len(spy.cancelled) != 0 || !strings.Contains(r.stderr, "stopped watching run r; it continues") {
+	if r.code != cli.ExitStoppedWatch || len(spy.cancelled) != 0 || !strings.Contains(r.stderr, "stopped watching run r; it continues") {
 		t.Fatalf("result %+v, cancelled %v", r, spy.cancelled)
 	}
 }
 
 func TestProgressDescribesEvents(t *testing.T) {
-	spy := &clientSpy{run: contract.Run{ID: "run-1", Status: "finished", Outcome: "accepted"}, events: []contract.Event{
+	spy := &clientSpy{run: finished("completed", ""), events: []contract.Event{
 		{Kind: "PLANNED", Data: map[string]any{"primitives": []any{"Read"}}},
 		{Kind: "REFUSED", Data: map[string]any{"reason": "because"}},
 		{Kind: "TOOL_RESULT", Data: map[string]any{"is_error": true}},
@@ -178,7 +222,7 @@ func TestProgressDescribesEvents(t *testing.T) {
 }
 
 func TestWatchResumesFromTheGivenSequence(t *testing.T) {
-	spy := &clientSpy{run: contract.Run{ID: "r", Status: "finished", Outcome: "accepted"}}
+	spy := &clientSpy{run: finished("completed", "")}
 	run(context.Background(), spy, "runs", "watch", "r", "--after", "5", "--quiet")
 	if !reflect.DeepEqual(spy.observed, []string{"r@5"}) || len(spy.submitted) != 0 {
 		t.Fatalf("observed %v", spy.observed)
@@ -199,8 +243,8 @@ func TestCheck(t *testing.T) {
 
 func TestAgentCreatePayload(t *testing.T) {
 	spy := &clientSpy{}
-	r := run(context.Background(), spy, "--home", "rel", "agent", "create", "x", "--runtime", "rt", "--model", "m", "--model-family", "f", "--effort", "high", "--command", "/bin/c")
-	want := contract.Agent{Name: "x", Runtime: "rt", Model: "m", ModelFamily: "f", Effort: "high", Command: "/bin/c"}
+	r := run(context.Background(), spy, "--home", "rel", "agent", "create", "x", "--runtime", "rt", "--model", "m", "--model-family", "f", "--effort", "high", "--session", "resumable", "--command", "/bin/c")
+	want := contract.Agent{Name: "x", Runtime: "rt", Model: "m", ModelFamily: "f", Effort: "high", Session: "resumable", Command: "/bin/c"}
 	if r.code != 0 || !reflect.DeepEqual(spy.agents, []contract.Agent{want}) || spy.config.Home != "/work/rel" {
 		t.Fatalf("result %+v, agents %+v, home %s", r, spy.agents, spy.config.Home)
 	}
@@ -213,6 +257,8 @@ func TestUsageErrorsNeverReachTheClient(t *testing.T) {
 		{"run", "p", "--param", "no-equals"},
 		{"agent", "create", "x"},
 		{"--unknown-flag"},
+		{"run", "p", "--max-cost", "free"},
+		{"run", "p", "--max-cost", "-1"},
 	} {
 		spy := &clientSpy{}
 		r := run(context.Background(), spy, args...)

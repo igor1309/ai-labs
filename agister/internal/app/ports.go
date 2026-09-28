@@ -35,19 +35,27 @@ type RuntimeIdentity struct {
 	Version  string
 	// The caller may choose the provider session ID before the turn.
 	PresetSessionID bool
+	// A turn may continue an earlier session in a new one, leaving the
+	// earlier session unchanged. Requires PresetSessionID.
+	Resume bool
+	// The runtime stops a turn that reaches a cost limit.
+	CostLimit bool
 }
 
 // TurnRequest is one runtime turn, expressed in primitives, not permissions.
 type TurnRequest struct {
-	Prompt       string
-	Instruction  string
-	Cwd          string
-	SessionID    string
-	Model        string
-	Effort       string
-	Primitives   []string
-	Timeout      time.Duration
-	OutputSchema json.RawMessage
+	Prompt      string
+	Instruction string
+	Cwd         string
+	SessionID   string
+	// The provider session to continue in SessionID; empty for a fresh one.
+	ResumeSessionID string
+	MaxCostUSD      *float64
+	Model           string
+	Effort          string
+	Primitives      []string
+	Timeout         time.Duration
+	OutputSchema    json.RawMessage
 }
 
 // EventSink receives a turn's events and raw runtime output.
@@ -61,7 +69,6 @@ type EventSink interface {
 type TurnRunner interface {
 	Identity(ctx context.Context) (RuntimeIdentity, error)
 	RunTurn(ctx context.Context, request TurnRequest, sink EventSink) run.Turn
-	ResumeHint(providerSessionID string) string
 }
 
 // Runtimes builds the runner for an adapter name and runtime command.
@@ -94,6 +101,9 @@ type InputProvider interface {
 type Workspaces interface {
 	Root(ctx context.Context, cwd string) (string, error)
 	Checkout(ctx context.Context, repository, revision string) (dir string, release func() error, err error)
+	// Changes returns everything in a checkout that differs from revision,
+	// committed or not, as a patch; empty when nothing does.
+	Changes(ctx context.Context, dir, revision string) ([]byte, error)
 }
 
 // Provenance returns the recorded writer of a revision, or nil.
@@ -118,14 +128,21 @@ type RunHandle interface {
 	Append(event run.Event) error
 	Raw(line string) error
 	Update(record run.Record) error
+	// Artifact stores a file the call produced beside its evidence.
+	Artifact(name string, data []byte) (run.Artifact, error)
 	Finish(record run.Record) error
 }
 
-// RunReader reads evidence. A record that is not finished and no longer
-// owned reads as lost.
+// RunLookup reads one run's evidence. A record that is not finished and no
+// longer owned reads as abandoned.
+type RunLookup interface {
+	Get(ctx context.Context, id string) (run.Record, run.State, error)
+}
+
+// RunReader reads evidence.
 type RunReader interface {
-	Get(ctx context.Context, id string) (run.Record, run.Status, error)
-	Events(ctx context.Context, id string, afterSeq int) ([]run.Event, run.Status, error)
+	RunLookup
+	Events(ctx context.Context, id string, afterSeq int) ([]run.Event, run.State, error)
 	List(ctx context.Context) ([]run.Record, error)
 }
 

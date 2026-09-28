@@ -126,6 +126,18 @@ func integer(node *yaml.Node, field string, p *problems) (int, bool) {
 	return value, true
 }
 
+func number(node *yaml.Node, field string, p *problems) (float64, bool) {
+	var value float64
+	if node == nil {
+		return 0, false
+	}
+	if err := node.Decode(&value); err != nil || (node.Tag != "!!float" && node.Tag != "!!int") {
+		p.add(field, "must be a number")
+		return 0, false
+	}
+	return value, true
+}
+
 func duration(text, field string, p *problems) (time.Duration, bool) {
 	value, err := time.ParseDuration(text)
 	if err != nil || value <= 0 {

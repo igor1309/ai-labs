@@ -70,6 +70,16 @@ func (Workspaces) Checkout(ctx context.Context, repository, revision string) (st
 	return dir, release, nil
 }
 
+// Changes stages everything in the checkout, in its own index, and diffs
+// it against revision.
+func (Workspaces) Changes(ctx context.Context, dir, revision string) ([]byte, error) {
+	if _, err := run(ctx, dir, "add", "--all"); err != nil {
+		return nil, err
+	}
+	out, err := run(ctx, dir, "diff", "--cached", "--binary", revision)
+	return []byte(out), err
+}
+
 // Revision resolves {rev} to a commit.
 type Revision struct{}
 

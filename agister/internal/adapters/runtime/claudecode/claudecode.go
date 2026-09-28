@@ -8,7 +8,12 @@
 // working directory. Permission mappings for this contract describe what
 // each tool grants under exactly these flags.
 //
-// Turn outcome precedence: the runtime's `result` message, then Agister's
+// A continuation resumes the earlier session with --fork-session into the
+// preset session ID, so the earlier session is never changed. A cost limit
+// is passed as --max-budget-usd; Claude Code checks it between model
+// requests, so the reported cost may exceed it.
+//
+// Turn status precedence: the runtime's `result` message, then Agister's
 // timeout or cancellation, then the process exit.
 package claudecode
 
@@ -17,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -50,10 +56,8 @@ func (r *Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
 	if version == "" {
 		return app.RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
 	}
-	return app.RuntimeIdentity{Contract: Contract, Version: version, PresetSessionID: true}, nil
+	return app.RuntimeIdentity{Contract: Contract, Version: version, PresetSessionID: true, Resume: true, CostLimit: true}, nil
 }
-
-func (r *Runner) ResumeHint(sessionID string) string { return "claude --resume " + sessionID }
 
 // Arguments builds the command line for a turn.
 func Arguments(request app.TurnRequest) ([]string, error) {
@@ -73,8 +77,17 @@ func Arguments(request app.TurnRequest) ([]string, error) {
 	if tools != "" {
 		args = append(args, "--allowedTools="+tools)
 	}
+	if request.ResumeSessionID != "" {
+		if request.SessionID == "" {
+			return nil, fmt.Errorf("a continuation needs a new session ID")
+		}
+		args = append(args, "--resume", request.ResumeSessionID, "--fork-session")
+	}
 	if request.SessionID != "" {
 		args = append(args, "--session-id", request.SessionID)
+	}
+	if request.MaxCostUSD != nil {
+		args = append(args, "--max-budget-usd", strconv.FormatFloat(*request.MaxCostUSD, 'f', -1, 64))
 	}
 	args = append(args, "--restricted", "--strict-mcp-config")
 	if request.Model != "" {
@@ -95,7 +108,7 @@ func Arguments(request app.TurnRequest) ([]string, error) {
 func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
 	args, err := Arguments(request)
 	if err != nil {
-		return run.Turn{Outcome: run.TurnFailed, Reason: err.Error()}
+		return supervisor.Failed(run.ClassInternal, err)
 	}
 	state := &Stream{RequestedSessionID: request.SessionID}
 	evidence := supervisor.Run(ctx, supervisor.Spec{
@@ -127,6 +140,7 @@ type Stream struct {
 	Model              string
 	LastText           string
 	Result             map[string]any
+	RateLimit          string // set when the provider rejected a request
 }
 
 func (s *Stream) Reduce(line string) []Event {
@@ -149,6 +163,9 @@ func (s *Stream) Reduce(line string) []Event {
 	case "rate_limit_event":
 		info, _ := message["rate_limit_info"].(map[string]any)
 		if status, _ := info["status"].(string); status != "" && status != "allowed" {
+			if status == "rejected" {
+				s.RateLimit = status
+			}
 			return []Event{{run.SourceProtocol, "RATE_LIMITED", map[string]any{"status": status, "resets_at": info["resetsAt"]}}}
 		}
 	}
@@ -218,28 +235,33 @@ func (s *Stream) result(message map[string]any) []Event {
 	return []Event{{run.SourceProtocol, kind, data}}
 }
 
-// Reconcile decides the turn outcome from the stream and the transport.
+// Reconcile decides the turn status from the stream and the transport.
 func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) run.Turn {
 	turn := supervisor.Base(evidence)
 	turn.ProviderSessionID = s.ProviderSessionID
 	turn.Model = s.Model
 	result := s.Result
 	if result == nil {
-		return supervisor.WithoutTerminal(turn, evidence, "")
+		return supervisor.WithoutTerminal(turn, evidence, s.rejection())
 	}
 	if cost, ok := result["total_cost_usd"].(float64); ok {
 		turn.CostUSD = &cost
 	}
 	if duration, ok := result["duration_ms"].(float64); ok {
 		ms := int64(duration)
-		turn.DurationMS = &ms
+		turn.RuntimeMS = &ms
 	}
 	if turns, ok := result["num_turns"].(float64); ok {
 		n := int(turns)
 		turn.NumTurns = &n
 	}
 	if usage, ok := result["usage"].(map[string]any); ok {
-		turn.Usage = usage
+		turn.Usage = &run.Usage{
+			InputTokens:      count(usage, "input_tokens"),
+			OutputTokens:     count(usage, "output_tokens"),
+			CacheReadTokens:  count(usage, "cache_read_input_tokens"),
+			CacheWriteTokens: count(usage, "cache_creation_input_tokens"),
+		}
 	}
 	if denials, ok := result["permission_denials"].([]any); ok {
 		turn.PermissionDenials = len(denials)
@@ -252,24 +274,62 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 		turn.Output, _ = json.Marshal(output)
 	}
 	if !succeeded(result) {
-		reason := fmt.Sprintf("runtime reported %v", result["subtype"])
-		if errors, ok := result["errors"].([]any); ok && len(errors) > 0 {
-			reason += ": " + fmt.Sprint(errors...)
-		}
-		turn.Outcome, turn.Reason = run.TurnFailed, reason
+		turn.Status, turn.Error = run.Failed, s.classify(result)
 		return turn
 	}
 	if schemaRequested && len(turn.Output) == 0 {
-		turn.Outcome, turn.Reason = run.TurnFailed, "no structured output"
+		turn.Status, turn.Error = run.Failed, run.Fault(run.ClassInvalidOutput, "no structured output")
 		return turn
 	}
-	turn.Outcome = run.TurnCompleted
+	turn.Status = run.Completed
 	return turn
+}
+
+// classify maps a failed result to a failure class. Only the budget
+// subtype has been observed live; the rest follow the result's fields.
+func (s *Stream) classify(result map[string]any) *run.Error {
+	message := fmt.Sprintf("runtime reported %v", result["subtype"])
+	if errors, ok := result["errors"].([]any); ok && len(errors) > 0 {
+		message += ": " + fmt.Sprint(errors...)
+	} else if text, ok := result["result"].(string); ok && text != "" {
+		message += ": " + truncate(text, 300)
+	}
+	status, _ := result["api_error_status"].(float64)
+	lower := strings.ToLower(message)
+	class := run.ClassRuntimeError
+	switch {
+	case result["subtype"] == "error_max_budget_usd":
+		class = run.ClassBudgetExhausted
+	case status == 429 || s.RateLimit != "":
+		class = run.ClassRateLimited
+	case status == 401 || status == 403:
+		class = run.ClassAuth
+	case status == 413 || strings.Contains(lower, "prompt is too long") || strings.Contains(lower, "context window"):
+		class = run.ClassContextOverflow
+	}
+	return run.Fault(class, "%s", message)
+}
+
+// rejection describes a rate-limit refusal seen before the stream ended.
+func (s *Stream) rejection() string {
+	if s.RateLimit == "" {
+		return ""
+	}
+	return "rate limit " + s.RateLimit
 }
 
 func succeeded(result map[string]any) bool {
 	isError, _ := result["is_error"].(bool)
 	return result["subtype"] == "success" && !isError
+}
+
+func count(source map[string]any, key string) *int64 {
+	value, ok := source[key].(float64)
+	if !ok {
+		return nil
+	}
+	n := int64(value)
+	return &n
 }
 
 func blocks(message map[string]any) []map[string]any {

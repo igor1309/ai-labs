@@ -156,3 +156,31 @@ func TestDenialsWinAndEveryProblemIsReported(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestCostLimitOnlyLowers(t *testing.T) {
+	pol := researchPolicy(t)
+	if effective, err := policy.Compose(service, &pol, process(t, ""), policy.Caller{}); err != nil || effective.MaxCostUSD != nil {
+		t.Fatalf("no layer sets a cost limit: %+v, %v", effective.MaxCostUSD, err)
+	}
+	two, five := 2.0, 5.0
+	pol.Limits.MaxCostUSD = &two
+	if effective, err := policy.Compose(service, &pol, process(t, "max_cost_usd: 1.5\n"), policy.Caller{}); err != nil || *effective.MaxCostUSD != 1.5 {
+		t.Fatalf("process lowers: %+v, %v", effective.MaxCostUSD, err)
+	}
+	if _, err := policy.Compose(service, &pol, process(t, "max_cost_usd: 3\n"), policy.Caller{}); err == nil || !strings.Contains(err.Error(), "max_cost_usd: the process sets 3, which widens 2") {
+		t.Fatalf("err = %v", err)
+	}
+	if _, err := policy.Compose(service, &pol, process(t, ""), policy.Caller{MaxCostUSD: &five}); err == nil || !strings.Contains(err.Error(), "the caller sets 5") {
+		t.Fatalf("err = %v", err)
+	}
+	capped := service
+	capped.MaxCostUSD = &two
+	pol.Limits.MaxCostUSD = &five
+	if _, err := policy.Compose(capped, &pol, process(t, ""), policy.Caller{}); err == nil || !strings.Contains(err.Error(), "policy static-review sets 5, which widens 2") {
+		t.Fatalf("err = %v", err)
+	}
+	pol.Limits.MaxCostUSD = nil
+	if effective, err := policy.Compose(capped, &pol, process(t, ""), policy.Caller{}); err != nil || *effective.MaxCostUSD != 2 {
+		t.Fatalf("the service limit applies when nothing lowers it: %+v, %v", effective.MaxCostUSD, err)
+	}
+}

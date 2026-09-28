@@ -17,13 +17,22 @@ bin/agister process list
 bin/agister process show adversarial_review
 bin/agister run adversarial_review --param base=main
 bin/agister run ask --param question="What does cmd/agister do?"
+bin/agister run ask --continue <run-id> --param question="And cmd/agister/main_test.go?"
+bin/agister run ask --max-cost 0.25 --json ...   # print the node result as JSON
 
 bin/agister runs
 bin/agister runs show <run-id>
 bin/agister runs watch <run-id> --after <seq>
 ```
 
-Exit codes: `0` accepted, `1` rejected, `2` failed, `3` refused, `4` lost, `64` usage or invalid settings, `130` interrupted watch.
+Every call ends in a **node result**, the same shape any future node will
+have: `status` (`completed`, `failed`, `interrupted`, `lost`), an error
+`class` when not completed (`refused`, `invalid_output`, `budget_exhausted`,
+`rate_limited`, `timeout`, …), `output`, `usage`, `cost` with its source,
+`timing`, `artifacts` (changes made in a checkout) and `session`. A verdict
+in the output is output: routing on it is the caller's job.
+
+Exit codes: `0` completed, `1` failed, `2` interrupted, `3` refused, `4` lost, `64` usage or invalid settings, `130` stopped watching.
 
 ## Settings
 
@@ -31,7 +40,8 @@ Exit codes: `0` accepted, `1` rejected, `2` failed, `3` refused, `4` lost, `64` 
 ~/.agister/
   service.toml  agents/*.toml  processes/*.yaml  policies/*.yaml
   runtimes/*.yaml  schemas/*.json      settings (validated by `check`)
-  runs/  logs/  provenance/            evidence and diagnostics
+  runs/<id>/  record.json events.jsonl provider.jsonl artifacts/
+  logs/  provenance/                  evidence and diagnostics
 ```
 
 Every call re-validates what it uses and refuses before any runtime starts.

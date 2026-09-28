@@ -76,12 +76,13 @@ func compose(config cli.Config) (contract.Client, error) {
 			Provenance:  fsprovenance.Store{Dir: filepath.Join(config.Home, "provenance")},
 			Validator:   schema.Validator{},
 			Recorder:    evidence,
+			Runs:        evidence,
 			Clock:       system.Clock{},
 			IDs:         system.IDs{},
 			StateDir:    config.Home,
 			Hosted:      hosted,
 		},
-		Runs: &app.Runs{Reader: evidence, Runtimes: runtimes, Hosted: hosted},
+		Runs: &app.Runs{Reader: evidence, Hosted: hosted},
 	}, nil
 }
 

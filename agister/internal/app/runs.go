@@ -12,9 +12,8 @@ import (
 
 // Runs reads evidence: observation, inspection, listing, cancellation.
 type Runs struct {
-	Reader   RunReader
-	Runtimes Runtimes
-	Hosted   *Hosted
+	Reader RunReader
+	Hosted *Hosted
 	// How often Observe polls a running record.
 	PollInterval time.Duration
 }
@@ -35,7 +34,7 @@ func (r *Runs) Observe(ctx context.Context, id string, afterSeq int, each func(c
 			}
 			afterSeq = event.Seq
 		}
-		if status != run.StatusRunning {
+		if status != run.StateRunning {
 			return nil
 		}
 		select {
@@ -77,29 +76,30 @@ func (r *Runs) ListRuns(ctx context.Context) ([]contract.Run, error) {
 	return runs, nil
 }
 
-func (r *Runs) view(record run.Record, status run.Status) contract.Run {
+func (r *Runs) view(record run.Record, state run.State) contract.Run {
 	view := contract.Run{
 		ID:        record.ID,
 		Process:   record.Process,
 		Agent:     record.Agent,
-		Status:    string(status),
-		Outcome:   string(record.Outcome),
-		Reason:    record.Reason,
+		State:     string(state),
 		CreatedAt: record.CreatedAt,
-		Output:    record.Output,
 	}
-	if turn := record.Turn; turn != nil {
-		view.ProviderSessionID = turn.ProviderSessionID
-		view.CostUSD = turn.CostUSD
-		view.DurationMS = turn.DurationMS
-		view.Text = turn.Text
-		if turn.Outcome != run.TurnCompleted {
-			view.StderrTail = turn.StderrTail
+	result := record.Result
+	if state == run.StateAbandoned {
+		result = &run.Result{
+			Status: run.Lost,
+			Error:  run.Fault(run.ClassAbandoned, "the process running it ended before it finished"),
+			Cost:   run.Cost{Source: run.CostUnknown},
+			Timing: run.Timing{StartedAt: record.CreatedAt},
 		}
-		if turn.ProviderSessionID != "" && record.Runtime != nil {
-			if runner, err := r.Runtimes.Runner(record.Runtime.Adapter, ""); err == nil {
-				view.ResumeHint = runner.ResumeHint(turn.ProviderSessionID)
-			}
+	}
+	if result != nil {
+		// The contract mirrors the domain result field for field.
+		data, _ := json.Marshal(result)
+		view.Result = &contract.Result{}
+		_ = json.Unmarshal(data, view.Result)
+		if result.Status != run.Completed && record.Turn != nil {
+			view.StderrTail = record.Turn.StderrTail
 		}
 	}
 	view.Record, _ = json.Marshal(record)

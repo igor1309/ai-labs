@@ -51,6 +51,7 @@ type Agent struct {
 	Model       string
 	ModelFamily string
 	Effort      string
+	Session     string // fresh-only (default) | resumable
 	Command     string
 }
 
@@ -83,6 +84,7 @@ type ProcessView struct {
 	Output      string
 	Timeout     time.Duration
 	MaxAttempts int
+	MaxCostUSD  *float64 // unset: no cost limit
 	Allowed     []string
 	Denied      []string
 	Permissions []string
@@ -96,11 +98,13 @@ type ProcessView struct {
 }
 
 type CallRequest struct {
-	Process string
-	Params  map[string]string
-	Agent   string // optional override
-	Timeout string // optional, may only shorten
-	Cwd     string
+	Process    string
+	Params     map[string]string
+	Agent      string   // optional override
+	Timeout    string   // optional, may only shorten
+	MaxCostUSD *float64 // optional, may only lower
+	Continue   string   // optional: a finished run whose session to continue
+	Cwd        string
 }
 
 type Event struct {
@@ -111,20 +115,68 @@ type Event struct {
 	Data   map[string]any
 }
 
+// Run is one call as a client sees it.
 type Run struct {
-	ID                string
-	Process           string
-	Agent             string
-	Status            string // running | finished | lost
-	Outcome           string // accepted | rejected | failed | refused
-	Reason            string
-	CreatedAt         time.Time
-	ProviderSessionID string
-	ResumeHint        string
-	CostUSD           *float64
-	DurationMS        *int64
-	Text              string
-	StderrTail        string // the runtime's last stderr, when the turn did not complete
-	Output            json.RawMessage
-	Record            json.RawMessage // the full evidence record
+	ID        string
+	Process   string
+	Agent     string
+	State     string  // running | finished | abandoned
+	Result    *Result // set unless running
+	CreatedAt time.Time
+	// The runtime's last stderr, when the node did not complete.
+	StderrTail string
+	Record     json.RawMessage // the full evidence record
+}
+
+// Result is a node's output, the same for every kind of node: a workflow
+// routes a completed node on Output and any other status on its failure
+// route, optionally by Error.Class.
+type Result struct {
+	Status    string          `json:"status"` // completed | failed | interrupted | lost
+	Error     *Error          `json:"error,omitempty"`
+	Output    json.RawMessage `json:"output,omitempty"`
+	Text      string          `json:"text,omitempty"`
+	Usage     *Usage          `json:"usage,omitempty"`
+	Cost      Cost            `json:"cost"`
+	Timing    Timing          `json:"timing"`
+	Artifacts []Artifact      `json:"artifacts,omitempty"`
+	Session   *Session        `json:"session,omitempty"`
+}
+
+type Error struct {
+	Class   string `json:"class"`
+	Message string `json:"message,omitempty"`
+}
+
+type Usage struct {
+	InputTokens      *int64 `json:"input_tokens,omitempty"`
+	OutputTokens     *int64 `json:"output_tokens,omitempty"`
+	CacheReadTokens  *int64 `json:"cache_read_tokens,omitempty"`
+	CacheWriteTokens *int64 `json:"cache_write_tokens,omitempty"`
+	ReasoningTokens  *int64 `json:"reasoning_tokens,omitempty"`
+}
+
+type Cost struct {
+	USD    *float64 `json:"usd,omitempty"`
+	Source string   `json:"source"` // runtime | unknown
+}
+
+type Timing struct {
+	StartedAt  time.Time `json:"started_at"`
+	FinishedAt time.Time `json:"finished_at"`
+	WallMS     int64     `json:"wall_ms"`
+	TurnMS     *int64    `json:"turn_ms,omitempty"`
+	RuntimeMS  *int64    `json:"runtime_ms,omitempty"`
+}
+
+type Artifact struct {
+	Name   string `json:"name"`
+	Path   string `json:"path"`
+	Digest string `json:"digest"`
+	Bytes  int64  `json:"bytes"`
+}
+
+type Session struct {
+	ProviderSessionID string `json:"provider_session_id"`
+	Continues         string `json:"continues,omitempty"`
 }

@@ -8,7 +8,7 @@ before.
 - **Gap:** ADR-001 rule 11 (every effect owned and cleaned up). If the CLI
   process is killed with SIGKILL during a call, the runtime's process group
   keeps running and the candidate checkout stays on disk and in
-  `git worktree list`. The run correctly reads as `lost`, but nothing reaps
+  `git worktree list`. The run correctly reads as lost (`abandoned`), but nothing reaps
   its effects. SIGINT and SIGTERM are handled cleanly.
 - **Evidence:** reproduced 2026-09-28 with the fake runtime (hang scenario):
   after `kill -9` of `agister run`, the runtime process and the worktree
@@ -43,12 +43,29 @@ before.
   grants happened; each mapping lists that evidence (suite run, date,
   runtime version) next to `verified_versions`.
 
-## 3. ADR wording: who refuses a mismatched mapping
+## 3. Failure classes seen only in field names
 
-- **Gap:** ADR-001 rule 4 says "the adapter refuses to run with a mapping
-  made for a different contract or version". The implementation checks it
-  in the core, against the identity the adapter reports. The effect is the
-  same.
-- **Trigger:** the next ADR revision.
-- **Done when:** the rule reads "a mapping is used only with the adapter
-  contract and runtime version it describes".
+- **Gap:** ADR-001 rule 6 lets workflows route on a failure class. Only
+  `budget_exhausted` (Claude `error_max_budget_usd`) and the transport
+  classes (timeout, cancelled, no result, runtime unavailable) have been
+  observed. Claude's `rate_limited`, `auth` and `context_overflow` follow
+  `api_error_status` and message text; every Codex class follows message
+  text. A misread class falls back to `runtime_error`, which is safe for
+  routing but hides a retryable failure.
+- **Why deferred:** these failures cannot be provoked on demand here (the
+  environment's proxy authenticates every request).
+- **Trigger:** the first real occurrence, or a workflow that retries on a
+  class.
+- **Done when:** each class has a fixture copied from real runtime output.
+
+## 4. The cost limit is the runtime's, and soft
+
+- **Gap:** Claude Code checks `--max-budget-usd` between model requests, so
+  a call can overshoot: live, a $0.0001 limit ended at $0.0010. The
+  overshoot is recorded (the result's cost), not prevented. Runtimes that
+  cannot limit cost (Codex) are refused whenever a limit applies.
+- **Why deferred:** one call's overshoot is bounded by one model request.
+- **Trigger:** budgets across calls (workflow budgets), or an overshoot that
+  matters.
+- **Done when:** Agister tracks spend per budget across calls and stops
+  submitting once it is spent.

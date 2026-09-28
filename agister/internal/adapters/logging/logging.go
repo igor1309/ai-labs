@@ -83,8 +83,6 @@ func (r Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
 	return identity, err
 }
 
-func (r Runner) ResumeHint(sessionID string) string { return r.Inner.ResumeHint(sessionID) }
-
 func (r Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
 	started := time.Now()
 	r.Log.InfoContext(ctx, "turn.started",
@@ -94,11 +92,15 @@ func (r Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.E
 	counting := &countingSink{inner: sink, counts: map[string]int{}, log: r.Log, ctx: ctx, adapter: r.Adapter}
 	turn := r.Inner.RunTurn(ctx, request, counting)
 	level := slog.LevelInfo
-	if turn.Outcome != run.TurnCompleted {
+	fault := ""
+	if turn.Status != run.Completed {
 		level = slog.LevelWarn
+		if turn.Error != nil {
+			fault = turn.Error.String()
+		}
 	}
 	r.Log.Log(ctx, level, "turn.finished",
-		"adapter", r.Adapter, "outcome", string(turn.Outcome), "reason", turn.Reason,
+		"adapter", r.Adapter, "status", string(turn.Status), "error", fault,
 		"provider_session_id", turn.ProviderSessionID, "wall", time.Since(started).String(), "events", counting.counts)
 	return turn
 }

@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"errors"
-	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -25,8 +24,10 @@ type Calls struct {
 	Provenance  Provenance
 	Validator   OutputValidator
 	Recorder    RunRecorder
-	Clock       Clock
-	IDs         IDs
+	// Earlier runs, read only to continue a session.
+	Runs  RunLookup
+	Clock Clock
+	IDs   IDs
 	// Agister's own state; no agent workspace may overlap it.
 	StateDir string
 	Hosted   *Hosted
@@ -72,11 +73,13 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 		Process:   request.Process,
 		CreatedAt: now,
 		Request: run.Request{
-			Process: request.Process,
-			Params:  request.Params,
-			Agent:   request.Agent,
-			Timeout: request.Timeout,
-			Cwd:     request.Cwd,
+			Process:    request.Process,
+			Params:     request.Params,
+			Agent:      request.Agent,
+			Timeout:    request.Timeout,
+			MaxCostUSD: request.MaxCostUSD,
+			Continue:   request.Continue,
+			Cwd:        request.Cwd,
 		},
 	}
 	handle, err := c.Recorder.Create(ctx, record)
@@ -99,25 +102,42 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	event := func(source, kind string, data map[string]any) {
 		_ = handle.Append(run.Event{At: c.Clock.Now(), Source: source, Kind: kind, Data: data})
 	}
-	// Effects end before the record does: the workspace is released first.
+	result := run.Result{Cost: run.Cost{Source: run.CostUnknown}, Timing: run.Timing{StartedAt: record.CreatedAt}}
+	// Effects end before the record does: the workspace's changes are kept
+	// and the workspace released first.
+	var collect func()
 	release := func() error { return nil }
-	finish := func(outcome run.CallOutcome, reason string) {
+	finish := func(fault *run.Error) {
+		if collect != nil {
+			collect()
+			collect = nil
+		}
 		if err := release(); err != nil {
 			event(run.SourceAgister, "WORKSPACE_RELEASE_FAILED", map[string]any{"error": err.Error()})
 		}
 		release = func() error { return nil }
 		now := c.Clock.Now()
 		record.FinishedAt = &now
-		record.Outcome = outcome
-		record.Reason = reason
-		event(run.SourceAgister, "CALL_FINISHED", map[string]any{"outcome": string(outcome), "reason": reason})
+		result.Status, result.Error = run.Completed, fault
+		if fault != nil {
+			result.Status = run.StatusOf(fault.Class)
+			result.Output = nil
+		}
+		result.Timing.FinishedAt = now
+		result.Timing.WallMS = now.Sub(result.Timing.StartedAt).Milliseconds()
+		record.Result = &result
+		data := map[string]any{"status": string(result.Status)}
+		if fault != nil {
+			data["class"], data["message"] = string(fault.Class), fault.Message
+		}
+		event(run.SourceAgister, "CALL_FINISHED", data)
 		// A finished run is no longer cancellable.
 		c.Hosted.remove(record.ID)
 		_ = handle.Finish(record)
 	}
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			finish(run.CallFailed, fmt.Sprintf("internal error: %v", recovered))
+			finish(run.Fault(run.ClassInternal, "%v", recovered))
 		}
 	}()
 	event(run.SourceAgister, "CALL_SUBMITTED", map[string]any{"process": record.Process})
@@ -126,13 +146,14 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		var refusal *Refusal
 		if errors.As(err, &refusal) {
 			event(run.SourceAgister, "REFUSED", map[string]any{"reason": refusal.Reason})
-			finish(run.CallRefused, refusal.Reason)
+			finish(run.Fault(run.ClassRefused, "%s", refusal.Reason))
 			return
 		}
-		finish(run.CallFailed, err.Error())
+		finish(run.Fault(run.ClassInternal, "%v", err))
 	}
 
-	res, err := resolver{definitions: c.Definitions, runtimes: c.Runtimes, validator: c.Validator}.resolve(ctx, record.Request.Process, record.Request.Agent, record.Request.Timeout)
+	caller := overrides{timeout: record.Request.Timeout, maxCostUSD: record.Request.MaxCostUSD}
+	res, err := resolver{definitions: c.Definitions, runtimes: c.Runtimes, validator: c.Validator}.resolve(ctx, record.Request.Process, record.Request.Agent, caller)
 	record.Definitions = res.sources
 	if err != nil {
 		fail(err)
@@ -146,6 +167,12 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	event(run.SourceAgister, "PLANNED", map[string]any{"primitives": res.plan.Primitives, "granted": res.plan.Granted, "withheld": res.plan.Withheld})
 	if len(res.plan.Withheld) > 0 {
 		event(run.SourceAgister, "PERMISSIONS_WITHHELD", map[string]any{"permissions": res.plan.Withheld})
+	}
+
+	resumeSessionID, err := c.continuation(ctx, res, record.Request.Continue)
+	if err != nil {
+		fail(err)
+		return
 	}
 
 	inputs, err := c.resolveInputs(ctx, res.process, record.Request)
@@ -174,31 +201,37 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 			fail(err)
 			return
 		}
-		result := constraint.ModelFamily(rule, res.agent.ModelFamily, revision, writer)
-		event(run.SourceAgister, "CONSTRAINT_CHECKED", map[string]any{"subject": result.Subject, "satisfied": result.Satisfied, "unknown": result.Unknown, "basis": result.Basis})
-		if !result.Satisfied {
-			fail(refuse("constraint %s unsatisfied: %s", result.Subject, result.Basis))
+		outcome := constraint.ModelFamily(rule, res.agent.ModelFamily, revision, writer)
+		event(run.SourceAgister, "CONSTRAINT_CHECKED", map[string]any{"subject": outcome.Subject, "satisfied": outcome.Satisfied, "unknown": outcome.Unknown, "basis": outcome.Basis})
+		if !outcome.Satisfied {
+			fail(refuse("constraint %s unsatisfied: %s", outcome.Subject, outcome.Basis))
 			return
 		}
 	}
 
-	workspace, releaseWorkspace, err := c.prepareWorkspace(ctx, res.process, inputs, record.Request.Cwd)
+	workspace, releaseWorkspace, owned, err := c.prepareWorkspace(ctx, res.process, inputs, record.Request.Cwd)
 	if err != nil {
 		fail(err)
 		return
 	}
 	release = releaseWorkspace
 	record.Workspace = workspace
+	if owned {
+		revision, _ := revisionOf(inputs, res.process.Checkout)
+		collect = func() { result.Artifacts = c.collectChanges(ctx, handle, workspace, revision, event) }
+	}
 
 	request := TurnRequest{
-		Prompt:       prompt.Inputs(inputs),
-		Instruction:  prompt.Instruction(res.process.Instruction, res.plan.Granted, res.plan.Withheld),
-		Cwd:          workspace,
-		Model:        res.agent.Model,
-		Effort:       res.agent.Effort,
-		Primitives:   res.plan.Primitives,
-		Timeout:      res.effective.Timeout,
-		OutputSchema: res.schema,
+		Prompt:          prompt.Inputs(inputs),
+		Instruction:     prompt.Instruction(res.process.Instruction, res.plan.Granted, res.plan.Withheld),
+		Cwd:             workspace,
+		ResumeSessionID: resumeSessionID,
+		MaxCostUSD:      res.effective.MaxCostUSD,
+		Model:           res.agent.Model,
+		Effort:          res.agent.Effort,
+		Primitives:      res.plan.Primitives,
+		Timeout:         res.effective.Timeout,
+		OutputSchema:    res.schema,
 	}
 	if res.identity.PresetSessionID {
 		request.SessionID = c.IDs.SessionID()
@@ -206,18 +239,81 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	}
 	_ = handle.Update(record)
 
+	turnStart := c.Clock.Now()
 	turn := res.runner.RunTurn(ctx, request, sink{handle: handle, clock: c.Clock})
+	turnMS := c.Clock.Now().Sub(turnStart).Milliseconds()
 	record.Turn = &turn
 
+	result.Timing.TurnMS = &turnMS
+	result.Timing.RuntimeMS = turn.RuntimeMS
+	result.Usage = turn.Usage
+	result.Text = turn.Text
+	if turn.CostUSD != nil {
+		result.Cost = run.Cost{USD: turn.CostUSD, Source: run.CostRuntime}
+	}
+	if turn.ProviderSessionID != "" {
+		result.Session = &run.Session{ProviderSessionID: turn.ProviderSessionID, Continues: record.Request.Continue}
+	}
+
 	var validation error
-	if turn.Outcome == run.TurnCompleted && res.process.Output.Format == "json" {
+	if turn.Status == run.Completed && res.process.Output.Format == "json" {
 		validation = c.Validator.Validate(res.schema, turn.Output)
 	}
-	outcome, reason := run.Judge(turn, res.process.Output, validation)
-	if validation == nil && turn.Outcome == run.TurnCompleted {
-		record.Output = turn.Output
+	_, fault := run.Conclude(turn, res.process.Output, validation)
+	if fault == nil && res.process.Output.Format == "json" {
+		result.Output = turn.Output
 	}
-	finish(outcome, reason)
+	finish(fault)
+}
+
+// continuation checks a request to continue an earlier run's session and
+// returns that provider session. Continuing is deliberate: the agent must
+// allow it, the runtime must support it, and the earlier run must be
+// finished, by the same agent, with a session.
+func (c *Calls) continuation(ctx context.Context, res *resolution, runID string) (string, error) {
+	if runID == "" {
+		return "", nil
+	}
+	if res.agent.Session != definition.SessionResumable {
+		return "", refuse("agent %s is %s; it cannot continue run %s", res.agent.Name, res.agent.Session, runID)
+	}
+	if !res.identity.Resume || !res.identity.PresetSessionID {
+		return "", refuse("runtime %s cannot continue sessions", res.mapping.Name)
+	}
+	prior, state, err := c.Runs.Get(ctx, runID)
+	if err != nil {
+		return "", refuse("run %s: %v", runID, err)
+	}
+	switch {
+	case state != run.StateFinished:
+		return "", refuse("run %s is %s, not finished", runID, state)
+	case prior.Agent != res.agent.Name:
+		return "", refuse("run %s ran agent %s; only agent %s's own runs can be continued by it", runID, prior.Agent, res.agent.Name)
+	case prior.Runtime == nil || prior.Runtime.Adapter != res.mapping.Adapter:
+		return "", refuse("run %s did not run on %s", runID, res.mapping.Adapter)
+	case prior.Result == nil || prior.Result.Session == nil || prior.Result.Session.ProviderSessionID == "":
+		return "", refuse("run %s has no provider session", runID)
+	}
+	return prior.Result.Session.ProviderSessionID, nil
+}
+
+// collectChanges keeps a call's changes to its own workspace as an
+// artifact. A failure is recorded; it does not change the call's status.
+func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revision string, event func(string, string, map[string]any)) []run.Artifact {
+	patch, err := c.Workspaces.Changes(context.WithoutCancel(ctx), dir, revision)
+	if err == nil && len(patch) == 0 {
+		return nil
+	}
+	var artifact run.Artifact
+	if err == nil {
+		artifact, err = handle.Artifact("changes.patch", patch)
+	}
+	if err != nil {
+		event(run.SourceAgister, "ARTIFACT_FAILED", map[string]any{"name": "changes.patch", "error": err.Error()})
+		return nil
+	}
+	event(run.SourceAgister, "ARTIFACT_STORED", map[string]any{"name": artifact.Name, "digest": artifact.Digest, "bytes": artifact.Bytes})
+	return []run.Artifact{artifact}
 }
 
 // resolveInputs binds caller params and resolves every input value to an
@@ -267,17 +363,18 @@ func (c *Calls) resolveInputs(ctx context.Context, process definition.Process, r
 
 // prepareWorkspace returns the agent's working directory: a checkout of the
 // declared revision, or the repository. It must not overlap Agister's state.
-func (c *Calls) prepareWorkspace(ctx context.Context, process definition.Process, inputs []run.Input, cwd string) (string, func() error, error) {
+// owned is true for a checkout the call created.
+func (c *Calls) prepareWorkspace(ctx context.Context, process definition.Process, inputs []run.Input, cwd string) (dir string, release func() error, owned bool, err error) {
 	noop := func() error { return nil }
 	root, err := c.Workspaces.Root(ctx, cwd)
 	if err != nil {
 		root = cwd
 	}
 	if overlaps(root, c.StateDir) {
-		return "", noop, refuse("workspace %s overlaps Agister's state %s", root, c.StateDir)
+		return "", noop, false, refuse("workspace %s overlaps Agister's state %s", root, c.StateDir)
 	}
 	if process.Checkout == "" {
-		return root, noop, nil
+		return root, noop, false, nil
 	}
 	var revision string
 	for _, input := range inputs {
@@ -286,17 +383,17 @@ func (c *Calls) prepareWorkspace(ctx context.Context, process definition.Process
 		}
 	}
 	if revision == "" {
-		return "", noop, refuse("workspace.checkout: input %s is not a revision", process.Checkout)
+		return "", noop, false, refuse("workspace.checkout: input %s is not a revision", process.Checkout)
 	}
-	dir, release, err := c.Workspaces.Checkout(ctx, root, revision)
+	dir, release, err = c.Workspaces.Checkout(ctx, root, revision)
 	if err != nil {
-		return "", noop, err
+		return "", noop, false, err
 	}
 	if overlaps(dir, c.StateDir) {
 		_ = release()
-		return "", noop, refuse("workspace %s overlaps Agister's state %s", dir, c.StateDir)
+		return "", noop, false, refuse("workspace %s overlaps Agister's state %s", dir, c.StateDir)
 	}
-	return dir, release, nil
+	return dir, release, true, nil
 }
 
 type sink struct {

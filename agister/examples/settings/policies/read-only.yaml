@@ -11,3 +11,4 @@ tools:
     - repository.search
 
 timeout: 10m
+max_cost_usd: 1

@@ -157,7 +157,7 @@ func Run(ctx context.Context, spec Spec, events app.EventSink, onLine func(strin
 
 // Base is a turn carrying only transport evidence.
 func Base(evidence Evidence) run.Turn {
-	return run.Turn{Outcome: run.TurnLost, Exit: evidence.Exit, StderrTail: evidence.StderrTail}
+	return run.Turn{Status: run.Lost, Exit: evidence.Exit, StderrTail: evidence.StderrTail}
 }
 
 // WithoutTerminal decides a turn for which the runtime reported no terminal
@@ -168,21 +168,28 @@ func WithoutTerminal(turn run.Turn, evidence Evidence, lastError string) run.Tur
 	if lastError != "" {
 		detail = ": " + lastError
 	}
+	var fault *run.Error
 	switch {
 	case evidence.TimedOut:
-		turn.Outcome, turn.Reason = run.TurnInterrupted, "timeout"
+		fault = run.Fault(run.ClassTimeout, "")
 	case evidence.Aborted:
-		turn.Outcome, turn.Reason = run.TurnInterrupted, "cancelled"
+		fault = run.Fault(run.ClassCancelled, "")
 	case evidence.SpawnError != "":
-		turn.Outcome, turn.Reason = run.TurnFailed, "spawn failed: "+evidence.SpawnError
+		fault = run.Fault(run.ClassRuntimeUnavailable, "%s", evidence.SpawnError)
 	case evidence.Exit != nil && evidence.Exit.Code != nil && *evidence.Exit.Code != 0:
-		turn.Outcome, turn.Reason = run.TurnFailed, "exit code "+strconv.Itoa(*evidence.Exit.Code)+detail
+		fault = run.Fault(run.ClassRuntimeError, "exit code %s%s", strconv.Itoa(*evidence.Exit.Code), detail)
 	case evidence.Exit != nil && evidence.Exit.Signal != "":
-		turn.Outcome, turn.Reason = run.TurnLost, "killed by "+evidence.Exit.Signal+detail
+		fault = run.Fault(run.ClassKilled, "%s%s", evidence.Exit.Signal, detail)
 	default:
-		turn.Outcome, turn.Reason = run.TurnLost, "exited without a result"+detail
+		fault = run.Fault(run.ClassNoResult, "exited without a result%s", detail)
 	}
+	turn.Status, turn.Error = run.StatusOf(fault.Class), fault
 	return turn
+}
+
+// Failed is a turn that could not be attempted.
+func Failed(class run.Class, err error) run.Turn {
+	return run.Turn{Status: run.StatusOf(class), Error: run.Fault(class, "%v", err)}
 }
 
 // Version runs `<command> --version` and returns its output.

@@ -99,7 +99,7 @@ func TestStreamReduction(t *testing.T) {
 	}
 	code := 0
 	turn := stream.Reconcile(supervisor.Evidence{Exit: &run.Exit{Code: &code}}, true)
-	if turn.Outcome != run.TurnCompleted || string(turn.Output) != `{"answer":"vm"}` || turn.Text != "The hostname is vm." || *turn.CostUSD != 0.06 {
+	if turn.Status != run.Completed || string(turn.Output) != `{"answer":"vm"}` || turn.Text != "The hostname is vm." || *turn.CostUSD != 0.06 {
 		t.Fatalf("turn = %+v", turn)
 	}
 }
@@ -126,14 +126,69 @@ func TestResultPrecedence(t *testing.T) {
 		stream.Reduce(result)
 		return stream
 	}
-	if turn := with(`{"type":"result","subtype":"success","is_error":true}`).Reconcile(clean, false); turn.Outcome != run.TurnFailed {
+	if turn := with(`{"type":"result","subtype":"success","is_error":true}`).Reconcile(clean, false); turn.Status != run.Failed {
 		t.Fatalf("success with is_error must fail: %+v", turn)
 	}
-	if turn := with(`{"type":"result","subtype":"success","is_error":false}`).Reconcile(clean, true); turn.Outcome != run.TurnFailed || turn.Reason != "no structured output" {
+	if turn := with(`{"type":"result","subtype":"success","is_error":false}`).Reconcile(clean, true); turn.Status != run.Failed || turn.Error.Class != run.ClassInvalidOutput {
 		t.Fatalf("missing structured output must fail: %+v", turn)
 	}
 	timedOut := supervisor.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "terminated"}}
-	if turn := with(`{"type":"result","subtype":"success","is_error":false}`).Reconcile(timedOut, false); turn.Outcome != run.TurnCompleted {
+	if turn := with(`{"type":"result","subtype":"success","is_error":false}`).Reconcile(timedOut, false); turn.Status != run.Completed {
 		t.Fatalf("a result before the timeout decides the turn: %+v", turn)
+	}
+}
+
+func TestContinuationForksAndCostLimitIsPassed(t *testing.T) {
+	r := request("x")
+	r.ResumeSessionID = "earlier"
+	limit := 0.5
+	r.MaxCostUSD = &limit
+	args, err := claudecode.Arguments(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "--resume earlier --fork-session --session-id "+session) || !strings.Contains(joined, "--max-budget-usd 0.5") {
+		t.Fatalf("args = %v", args)
+	}
+	r.SessionID = ""
+	if _, err := claudecode.Arguments(r); err == nil {
+		t.Fatal("continuing without a new session ID would change the earlier session")
+	}
+}
+
+func TestUsageIsNormalized(t *testing.T) {
+	stream := &claudecode.Stream{}
+	stream.Reduce(`{"type":"result","subtype":"success","is_error":false,"duration_ms":1200,"usage":{"input_tokens":10,"output_tokens":20,"cache_read_input_tokens":30,"cache_creation_input_tokens":40}}`)
+	code := 0
+	turn := stream.Reconcile(supervisor.Evidence{Exit: &run.Exit{Code: &code}}, false)
+	u := turn.Usage
+	if u == nil || *u.InputTokens != 10 || *u.OutputTokens != 20 || *u.CacheReadTokens != 30 || *u.CacheWriteTokens != 40 || u.ReasoningTokens != nil || *turn.RuntimeMS != 1200 {
+		t.Fatalf("usage %+v, turn %+v", u, turn)
+	}
+}
+
+func TestFailuresAreClassified(t *testing.T) {
+	code := 0
+	clean := supervisor.Evidence{Exit: &run.Exit{Code: &code}}
+	for _, c := range []struct {
+		name  string
+		lines []string
+		class run.Class
+	}{
+		{"budget (observed live)", []string{`{"type":"result","subtype":"error_max_budget_usd","is_error":true,"errors":["Reached maximum budget ($0.0001)"]}`}, run.ClassBudgetExhausted},
+		{"http 429", []string{`{"type":"result","subtype":"success","is_error":true,"api_error_status":429}`}, run.ClassRateLimited},
+		{"rejected by the rate limiter", []string{`{"type":"rate_limit_event","rate_limit_info":{"status":"rejected"}}`, `{"type":"result","subtype":"success","is_error":true}`}, run.ClassRateLimited},
+		{"http 401", []string{`{"type":"result","subtype":"success","is_error":true,"api_error_status":401}`}, run.ClassAuth},
+		{"prompt too long", []string{`{"type":"result","subtype":"success","is_error":true,"result":"Prompt is too long"}`}, run.ClassContextOverflow},
+		{"anything else", []string{`{"type":"result","subtype":"error_max_turns","is_error":true}`}, run.ClassRuntimeError},
+	} {
+		stream := &claudecode.Stream{}
+		for _, line := range c.lines {
+			stream.Reduce(line)
+		}
+		if turn := stream.Reconcile(clean, false); turn.Status != run.Failed || turn.Error.Class != c.class {
+			t.Errorf("%s: %+v", c.name, turn.Error)
+		}
 	}
 }

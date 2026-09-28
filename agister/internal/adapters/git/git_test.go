@@ -114,3 +114,36 @@ func TestCheckoutIsDetachedAndReleased(t *testing.T) {
 		t.Fatalf("worktrees = %v", lines)
 	}
 }
+
+func TestChangesCoverEverythingSinceTheRevision(t *testing.T) {
+	repo := repository(t)
+	ctx := context.Background()
+	revision := sh(t, repo, "rev-parse", "HEAD")
+	dir, release, err := git.Workspaces{}.Checkout(ctx, repo, revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	if patch, err := (git.Workspaces{}).Changes(ctx, dir, revision); err != nil || len(patch) != 0 {
+		t.Fatalf("untouched checkout: %q, %v", patch, err)
+	}
+	// A commit in the checkout, an edit and an untracked file.
+	os.WriteFile(filepath.Join(dir, "c.txt"), []byte("committed\n"), 0o600)
+	sh(t, dir, "add", "c.txt")
+	sh(t, dir, "-c", "user.email=a@example.com", "-c", "user.name=A", "commit", "--quiet", "-m", "agent")
+	os.WriteFile(filepath.Join(dir, "a.txt"), []byte("edited\n"), 0o600)
+	os.WriteFile(filepath.Join(dir, "d.txt"), []byte("untracked\n"), 0o600)
+	patch, err := git.Workspaces{}.Changes(ctx, dir, revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"b/a.txt", "b/c.txt", "b/d.txt", "+edited"} {
+		if !strings.Contains(string(patch), want) {
+			t.Fatalf("patch misses %s:\n%s", want, patch)
+		}
+	}
+	// The repository itself is untouched.
+	if status := sh(t, repo, "status", "--porcelain"); status != "" {
+		t.Fatalf("repository changed: %s", status)
+	}
+}

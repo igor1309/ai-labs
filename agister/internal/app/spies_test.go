@@ -74,12 +74,10 @@ func (s *runnerSpy) RunTurn(ctx context.Context, request app.TurnRequest, sink a
 	}
 	if s.block {
 		<-ctx.Done()
-		return run.Turn{Outcome: run.TurnInterrupted, Reason: "cancelled"}
+		return run.Turn{Status: run.Interrupted, Error: run.Fault(run.ClassCancelled, "")}
 	}
 	return s.turn
 }
-
-func (s *runnerSpy) ResumeHint(id string) string { return "spy resume " + id }
 
 func (s *runnerSpy) calls() []app.TurnRequest {
 	s.mu.Lock()
@@ -124,6 +122,9 @@ type workspacesSpy struct {
 	dir       string
 	checkouts [][2]string
 	released  int
+	changed   [][2]string // dir, revision
+	changes   []byte
+	changeErr error
 }
 
 func (s *workspacesSpy) Root(context.Context, string) (string, error) { return s.root, nil }
@@ -138,6 +139,13 @@ func (s *workspacesSpy) Checkout(_ context.Context, repository, revision string)
 		s.released++
 		return nil
 	}, nil
+}
+
+func (s *workspacesSpy) Changes(_ context.Context, dir, revision string) ([]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.changed = append(s.changed, [2]string{dir, revision})
+	return s.changes, s.changeErr
 }
 
 func (s *workspacesSpy) releases() int {
@@ -173,12 +181,13 @@ func (s *validatorSpy) Validate(_ []byte, output json.RawMessage) error {
 }
 
 type recorderSpy struct {
-	mu       sync.Mutex
-	created  []run.Record
-	updates  []run.Record
-	events   []run.Event
-	raw      []string
-	finished chan run.Record
+	mu        sync.Mutex
+	created   []run.Record
+	updates   []run.Record
+	events    []run.Event
+	raw       []string
+	artifacts map[string][]byte
+	finished  chan run.Record
 
 	onFinish         func() int // observed state at finish time
 	releasedAtFinish int
@@ -214,6 +223,16 @@ func (s *recorderSpy) Update(record run.Record) error {
 	return nil
 }
 
+func (s *recorderSpy) Artifact(name string, data []byte) (run.Artifact, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.artifacts == nil {
+		s.artifacts = map[string][]byte{}
+	}
+	s.artifacts[name] = data
+	return run.Artifact{Name: name, Path: "artifacts/" + name, Digest: "sha256:spy", Bytes: int64(len(data))}, nil
+}
+
 func (s *recorderSpy) Finish(record run.Record) error {
 	if s.onFinish != nil {
 		s.releasedAtFinish = s.onFinish()
@@ -241,6 +260,38 @@ func (s *recorderSpy) wait(t *testing.T) run.Record {
 		t.Fatal("the call never finished")
 		return run.Record{}
 	}
+}
+
+// runsSpy answers lookups of earlier runs.
+type runsSpy struct {
+	mu      sync.Mutex
+	records map[string]run.Record
+	states  map[string]run.State
+	asked   []string
+}
+
+func (s *runsSpy) Get(_ context.Context, id string) (run.Record, run.State, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.asked = append(s.asked, id)
+	record, ok := s.records[id]
+	if !ok {
+		return run.Record{}, "", fmt.Errorf("not found")
+	}
+	return record, s.states[id], nil
+}
+
+// steppingClock advances a second on every reading.
+type steppingClock struct {
+	mu  sync.Mutex
+	now time.Time
+}
+
+func (c *steppingClock) Now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.now = c.now.Add(time.Second)
+	return c.now
 }
 
 type fixedClock struct{}

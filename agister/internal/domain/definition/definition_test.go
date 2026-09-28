@@ -92,7 +92,6 @@ output:
   format: json
   schema: s
   require_valid: true
-  result: {field: verdict, reject: [no]}
 `))
 	if err != nil {
 		t.Fatal(err)
@@ -103,7 +102,7 @@ output:
 	if bound := process.Values[0].Bind(map[string]string{"base": "trunk"}); bound["base"] != "trunk" || bound["head"] != "HEAD" {
 		t.Fatalf("bound = %v", bound)
 	}
-	if process.Params[0].Default != "main" || process.Params[1].HasDefault || process.Require[0] != "repository.read" || process.Output.Reject[0] != "no" {
+	if process.Params[0].Default != "main" || process.Params[1].HasDefault || process.Require[0] != "repository.read" || process.Output.Schema != "s" {
 		t.Fatalf("process = %+v", process)
 	}
 }
@@ -126,6 +125,8 @@ output:
   format: json
   schema: s
   require_valid: false
+  result: {field: verdict, reject: [no]}
+max_cost_usd: -1
 constraints:
   agent.model_family: {not_equal: task.claim, on_unsatisfied: fail}
 `))
@@ -140,6 +141,8 @@ constraints:
 		`refers to ${param.missing}`,
 		`workspace.checkout: "nothing" is not an input value`,
 		`output.require_valid: must be true`,
+		`output.result: unknown field`,
+		`max_cost_usd: must be positive`,
 		`supported form: evidence.candidate`,
 	} {
 		if !strings.Contains(err.Error(), want) {
@@ -172,12 +175,12 @@ primitives:
 }
 
 func TestAgentRoundTrip(t *testing.T) {
-	agent := definition.Agent{Name: "r", Runtime: "claude-code", Model: "opus", ModelFamily: "anthropic", Effort: "high"}
+	agent := definition.Agent{Name: "r", Runtime: "claude-code", Model: "opus", ModelFamily: "anthropic", Effort: "high", Session: definition.SessionResumable}
 	parsed, err := definition.ParseAgent(doc(definition.KindAgent, "r", string(definition.FormatAgent(agent))))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if parsed.Name != "r" || parsed.Model != "opus" || parsed.ModelFamily != "anthropic" || parsed.Session != "fresh-only" {
+	if parsed.Name != "r" || parsed.Model != "opus" || parsed.ModelFamily != "anthropic" || parsed.Session != definition.SessionResumable {
 		t.Fatalf("parsed = %+v", parsed)
 	}
 	if _, err := definition.ParseAgent(doc(definition.KindAgent, "r", "schema = \"agister.agent/v1alpha1\"\nname = \"r\"\nruntime = \"x\"\ncolour = \"red\"\n")); err == nil || !strings.Contains(err.Error(), "colour: unknown field") {

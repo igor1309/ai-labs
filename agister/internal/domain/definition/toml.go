@@ -28,15 +28,23 @@ type Agent struct {
 	Model       string `json:"model,omitempty"`
 	ModelFamily string `json:"model_family,omitempty"`
 	Effort      string `json:"effort,omitempty"`
-	Session     string `json:"session"`
+	Session     string `json:"session"` // SessionFresh or SessionResumable
 	Command     string `json:"command,omitempty"`
 	Source      Source `json:"-"`
 }
+
+// Session modes. A fresh-only agent always starts a new session; a
+// resumable one may continue a finished run's session when a caller asks.
+const (
+	SessionFresh     = "fresh-only"
+	SessionResumable = "resumable"
+)
 
 // Service holds the hard limits and the permission vocabulary.
 type Service struct {
 	MaxTimeout  time.Duration
 	MaxAttempts int
+	MaxCostUSD  *float64 // unset: no service-wide cost limit
 	Permissions []string
 	// Permissions that would let an agent reach Agister's own state. They
 	// are never granted, whatever a policy allows.
@@ -119,10 +127,10 @@ func ParseAgent(doc Document) (Agent, error) {
 		Source:      doc.Source,
 	}
 	if agent.Session == "" {
-		agent.Session = "fresh-only"
+		agent.Session = SessionFresh
 	}
-	if agent.Session != "fresh-only" {
-		p.add("session", "unsupported session mode %q (supported: fresh-only)", agent.Session)
+	if agent.Session != SessionFresh && agent.Session != SessionResumable {
+		p.add("session", "unsupported session mode %q (supported: %s, %s)", agent.Session, SessionFresh, SessionResumable)
 	}
 	checkName(agent.Name, doc.Source.Name, p)
 	return agent, p.err("agent " + subjectName(doc.Source))
@@ -138,7 +146,7 @@ func FormatAgent(agent Agent) []byte {
 		{"model", agent.Model},
 		{"model_family", agent.ModelFamily},
 		{"effort", agent.Effort},
-		{"session", "fresh-only"},
+		{"session", agent.Session},
 		{"command", agent.Command},
 	}
 	for _, entry := range table {
@@ -154,7 +162,7 @@ func FormatAgent(agent Agent) []byte {
 // ParseService parses the service settings.
 func ParseService(doc Document) (Service, error) {
 	p := &problems{}
-	table := decodeTOML(doc.Bytes, doc.Source.Path, []string{"schema", "max_timeout", "max_attempts", "permissions", "state_reaching"}, p)
+	table := decodeTOML(doc.Bytes, doc.Source.Path, []string{"schema", "max_timeout", "max_attempts", "max_cost_usd", "permissions", "state_reaching"}, p)
 	if table["schema"] != ServiceSchema {
 		p.add("schema", "must be %q", ServiceSchema)
 	}
@@ -168,6 +176,17 @@ func ParseService(doc Document) (Service, error) {
 			p.add("max_attempts", "must be a positive integer")
 		} else {
 			service.MaxAttempts = int(attempts)
+		}
+	}
+	if value, ok := table["max_cost_usd"]; ok {
+		cost, isFloat := value.(float64)
+		if whole, isInt := value.(int64); isInt {
+			cost, isFloat = float64(whole), true
+		}
+		if !isFloat || cost <= 0 {
+			p.add("max_cost_usd", "must be a positive number")
+		} else {
+			service.MaxCostUSD = &cost
 		}
 	}
 	service.Permissions = tomlStrings(table, "permissions", p)
