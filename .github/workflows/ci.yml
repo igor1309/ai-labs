@@ -139,11 +139,11 @@ jobs:
             noreta-ci:
               - ".github/workflows/noreta-core.yml"
             agister:
-              - "agister/src/**"
-              - "agister/tests/**"
-              - "agister/templates/**"
-              - "agister/package.json"
-              - "agister/tsconfig.json"
+              - "agister/**/*.go"
+              - "agister/go.mod"
+              - "agister/go.sum"
+              - "agister/examples/**"
+              - "research/agister/research/verger/policies/**"
             agister-ci:
               - ".github/workflows/agister-core.yml"
             dev-skills:

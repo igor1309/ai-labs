@@ -1,0 +1,35 @@
+# What each Claude Code tool actually grants under adapter contract
+# claude-code/1 (--permission-mode dontAsk, --restricted, --strict-mcp-config:
+# file tools confined to the working directory).
+schema: agister.runtime/v1alpha1
+name: claude-code
+adapter: claude-code
+contract: claude-code/1
+verified_versions: ["2.1."]
+efforts: [low, medium, high, xhigh, max]
+primitives:
+  select: any
+  items:
+    Read: {grants: [repository.read]}
+    Glob: {grants: [repository.read]}
+    Grep: {grants: [repository.search]}
+    Edit: {grants: [repository.write]}
+    Write: {grants: [repository.write]}
+    NotebookEdit: {grants: [repository.write]}
+    WebFetch: {grants: [network]}
+    WebSearch: {grants: [network]}
+    # Exposed Bash auto-approves read-only commands (git show, git log, …)
+    # whatever --allowedTools says (observed live), and can reach anything
+    # the user can. It grants everything.
+    Bash:
+      grants:
+        - process.execute
+        - repository.read
+        - repository.search
+        - repository.diff
+        - repository.history.read
+        - repository.write
+        - repository.history.write
+        - network
+        - host.read
+        - host.write

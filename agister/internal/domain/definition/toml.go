@@ -1,0 +1,200 @@
+package definition
+
+import (
+	"bytes"
+	"regexp"
+	"sort"
+	"time"
+
+	"github.com/BurntSushi/toml"
+)
+
+// Flat settings documents (agent, service) are TOML.
+
+const (
+	AgentSchema   = "agister.agent/v1alpha1"
+	ServiceSchema = "agister.service/v1alpha1"
+)
+
+var namePattern = regexp.MustCompile(`^[a-z][a-z0-9_-]*$`)
+
+// ValidName reports whether name is usable as a definition name.
+func ValidName(name string) bool { return namePattern.MatchString(name) }
+
+// Agent is a reusable runtime profile. It carries no task and no permissions.
+type Agent struct {
+	Name        string `json:"name"`
+	Runtime     string `json:"runtime"` // name of a runtime permission mapping
+	Model       string `json:"model,omitempty"`
+	ModelFamily string `json:"model_family,omitempty"`
+	Effort      string `json:"effort,omitempty"`
+	Session     string `json:"session"`
+	Command     string `json:"command,omitempty"`
+	Source      Source `json:"-"`
+}
+
+// Service holds the hard limits and the permission vocabulary.
+type Service struct {
+	MaxTimeout  time.Duration
+	MaxAttempts int
+	Permissions []string
+	// Permissions that would let an agent reach Agister's own state. They
+	// are never granted, whatever a policy allows.
+	StateReaching []string
+	Source        Source
+}
+
+func decodeTOML(data []byte, subject string, allowed []string, p *problems) map[string]any {
+	table := map[string]any{}
+	if _, err := toml.Decode(string(data), &table); err != nil {
+		p.add("", "%v", err)
+		return table
+	}
+	keys := make([]string, 0, len(table))
+	for key := range table {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		if !contains(allowed, key) {
+			p.add(key, "unknown field")
+		}
+	}
+	return table
+}
+
+func tomlString(table map[string]any, key string, needed bool, p *problems) string {
+	value, ok := table[key]
+	if !ok {
+		if needed {
+			p.add(key, "is required")
+		}
+		return ""
+	}
+	text, ok := value.(string)
+	if !ok || text == "" {
+		p.add(key, "must be a non-empty string")
+		return ""
+	}
+	return text
+}
+
+func tomlStrings(table map[string]any, key string, p *problems) []string {
+	value, ok := table[key]
+	if !ok {
+		return nil
+	}
+	items, ok := value.([]any)
+	if !ok {
+		p.add(key, "must be a list of strings")
+		return nil
+	}
+	out := make([]string, 0, len(items))
+	for i, item := range items {
+		text, ok := item.(string)
+		if !ok {
+			p.add(fieldIndex(key, i), "must be a string")
+			continue
+		}
+		out = append(out, text)
+	}
+	return out
+}
+
+// ParseAgent parses an agent profile.
+func ParseAgent(doc Document) (Agent, error) {
+	p := &problems{}
+	table := decodeTOML(doc.Bytes, doc.Source.Path, []string{"schema", "name", "runtime", "model", "model_family", "effort", "session", "command"}, p)
+	if table["schema"] != AgentSchema {
+		p.add("schema", "must be %q", AgentSchema)
+	}
+	agent := Agent{
+		Name:        tomlString(table, "name", true, p),
+		Runtime:     tomlString(table, "runtime", true, p),
+		Model:       tomlString(table, "model", false, p),
+		ModelFamily: tomlString(table, "model_family", false, p),
+		Effort:      tomlString(table, "effort", false, p),
+		Session:     tomlString(table, "session", false, p),
+		Command:     tomlString(table, "command", false, p),
+		Source:      doc.Source,
+	}
+	if agent.Session == "" {
+		agent.Session = "fresh-only"
+	}
+	if agent.Session != "fresh-only" {
+		p.add("session", "unsupported session mode %q (supported: fresh-only)", agent.Session)
+	}
+	checkName(agent.Name, doc.Source.Name, p)
+	return agent, p.err("agent " + subjectName(doc.Source))
+}
+
+// FormatAgent renders an agent profile as a settings document.
+func FormatAgent(agent Agent) []byte {
+	var buffer bytes.Buffer
+	table := [][2]string{
+		{"schema", AgentSchema},
+		{"name", agent.Name},
+		{"runtime", agent.Runtime},
+		{"model", agent.Model},
+		{"model_family", agent.ModelFamily},
+		{"effort", agent.Effort},
+		{"session", "fresh-only"},
+		{"command", agent.Command},
+	}
+	for _, entry := range table {
+		if entry[1] == "" {
+			continue
+		}
+		key, _ := toml.Marshal(map[string]string{entry[0]: entry[1]})
+		buffer.Write(key)
+	}
+	return buffer.Bytes()
+}
+
+// ParseService parses the service settings.
+func ParseService(doc Document) (Service, error) {
+	p := &problems{}
+	table := decodeTOML(doc.Bytes, doc.Source.Path, []string{"schema", "max_timeout", "max_attempts", "permissions", "state_reaching"}, p)
+	if table["schema"] != ServiceSchema {
+		p.add("schema", "must be %q", ServiceSchema)
+	}
+	service := Service{Source: doc.Source, MaxAttempts: 1}
+	if text := tomlString(table, "max_timeout", true, p); text != "" {
+		service.MaxTimeout, _ = duration(text, "max_timeout", p)
+	}
+	if value, ok := table["max_attempts"]; ok {
+		attempts, ok := value.(int64)
+		if !ok || attempts < 1 {
+			p.add("max_attempts", "must be a positive integer")
+		} else {
+			service.MaxAttempts = int(attempts)
+		}
+	}
+	service.Permissions = tomlStrings(table, "permissions", p)
+	if len(service.Permissions) == 0 {
+		p.add("permissions", "must list the permission vocabulary")
+	}
+	service.StateReaching = tomlStrings(table, "state_reaching", p)
+	for _, permission := range service.StateReaching {
+		if !contains(service.Permissions, permission) {
+			p.add("state_reaching", "%q is not in permissions", permission)
+		}
+	}
+	return service, p.err("service settings")
+}
+
+func checkName(declared, expected string, p *problems) {
+	if declared != "" && expected != "" && declared != expected {
+		p.add("name", "%q does not match its definition name %q", declared, expected)
+	}
+	if declared != "" && !ValidName(declared) {
+		p.add("name", "invalid name %q", declared)
+	}
+}
+
+func subjectName(source Source) string {
+	if source.Path != "" {
+		return source.Name + " (" + source.Path + ")"
+	}
+	return source.Name
+}

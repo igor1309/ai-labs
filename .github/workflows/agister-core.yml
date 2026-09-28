@@ -15,23 +15,26 @@ jobs:
   core:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: agister
     steps:
       - name: Checkout
         uses: actions/checkout@v5
         with:
           ref: ${{ inputs.ref || github.sha }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
-          node-version-file: .node-version
-          cache: npm
+          go-version-file: agister/go.mod
+          cache-dependency-path: agister/go.sum
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Format
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
 
-      - name: Typecheck
-        run: ./scripts/run_silent.sh "build" npx tsc --noEmit -p agister
+      - name: Vet
+        run: go vet ./...
 
-      - name: Run tests
-        run: ./scripts/run_silent.sh "tests" node --import tsx --test agister/tests/*.test.ts
+      - name: Test
+        run: go test -race ./...

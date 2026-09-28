@@ -1,0 +1,23 @@
+schema = "agister.service/v1alpha1"
+
+# Hard limits no policy may exceed. Retries are not supported yet.
+max_timeout = "1h"
+max_attempts = 1
+
+# The permission vocabulary. Policies and runtime mappings may use only these.
+permissions = [
+  "repository.read",
+  "repository.search",
+  "repository.diff",
+  "repository.history.read",
+  "repository.write",
+  "repository.history.write",
+  "process.execute",
+  "network",
+  "host.read",
+  "host.write",
+]
+
+# Reaching beyond the workspace could reach Agister's own state, so these
+# are never granted, whatever a policy allows.
+state_reaching = ["host.read", "host.write"]
