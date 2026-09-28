@@ -8,10 +8,15 @@ import { parseFlatToml, stringifyFlatToml, type FlatTable } from "./toml.js";
 // or policy; those belong to the process that uses the profile.
 
 export const AGENT_SCHEMA = "agister.agent/v1alpha1";
-export const RUNTIMES = ["claude-code"] as const;
-export const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
-
+export const RUNTIMES = ["claude-code", "codex"] as const;
 export type Runtime = (typeof RUNTIMES)[number];
+
+// Effort levels are runtime vocabulary, validated per runtime rather than
+// mapped onto a shared scale.
+export const EFFORTS: Record<Runtime, readonly string[]> = {
+  "claude-code": ["low", "medium", "high", "xhigh", "max"],
+  codex: ["minimal", "low", "medium", "high", "xhigh"],
+};
 
 export interface AgentProfile {
   name: string;
@@ -55,8 +60,9 @@ export function validateProfile(table: FlatTable, source: string): AgentProfile 
   }
 
   const effort = optionalString("effort");
-  if (effort !== undefined && !(EFFORTS as readonly string[]).includes(effort)) {
-    fail(`unsupported effort: ${effort} (supported: ${EFFORTS.join(", ")})`);
+  const efforts = EFFORTS[runtime as Runtime];
+  if (effort !== undefined && !efforts.includes(effort)) {
+    fail(`unsupported ${runtime} effort: ${effort} (supported: ${efforts.join(", ")})`);
   }
 
   const session = optionalString("session") ?? "fresh-only";

@@ -14,12 +14,25 @@ import type { ExecutionPolicy } from "./runtime.js";
 const exec = promisify(execFile);
 const MAX_DIFF_CHARS = 150_000;
 
-export const REVIEW_POLICY: ExecutionPolicy = {
-  tools: ["Read", "Grep", "Glob", "Bash"],
-  allowedTools: ["Read", "Grep", "Glob", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)"],
-  restricted: true,
-  timeoutMs: 20 * 60_000,
-};
+export const REVIEW_TIMEOUT_MS = 20 * 60_000;
+
+// Read-only review. Claude Code enforces it through its tool surface (read
+// tools plus git inspection); Codex through its read-only OS sandbox, which
+// still lets the reviewer run read-only commands.
+export function reviewPolicy(runtime: string, timeoutMs: number): ExecutionPolicy {
+  const policy: ExecutionPolicy = {
+    workspace: "read-only",
+    isolateConfig: true,
+    timeoutMs: Math.min(timeoutMs, REVIEW_TIMEOUT_MS),
+  };
+  if (runtime === "claude-code") {
+    policy.claude = {
+      tools: ["Read", "Grep", "Glob", "Bash"],
+      allowedTools: ["Read", "Grep", "Glob", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)"],
+    };
+  }
+  return policy;
+}
 
 export const SEVERITIES = ["blocker", "major", "minor", "nit"] as const;
 export type Severity = (typeof SEVERITIES)[number];
@@ -38,6 +51,8 @@ export interface ReviewResult {
   findings: Finding[];
 }
 
+// Strict-mode compatible: every property is required (Codex/OpenAI structured
+// outputs reject optional properties), so an unknown line is `null`.
 export const REVIEW_OUTPUT_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -50,11 +65,11 @@ export const REVIEW_OUTPUT_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["severity", "file", "title", "detail"],
+        required: ["severity", "file", "line", "title", "detail"],
         properties: {
           severity: { type: "string", enum: [...SEVERITIES] },
           file: { type: "string" },
-          line: { type: "integer", minimum: 1 },
+          line: { type: ["integer", "null"] },
           title: { type: "string" },
           detail: { type: "string" },
         },
@@ -183,7 +198,7 @@ export function validateReviewResult(value: unknown): ReviewResult {
     for (const key of ["file", "title", "detail"]) {
       if (typeof finding[key] !== "string") fail(`findings[${index}].${key}`);
     }
-    const line = finding["line"];
+    const line = finding["line"] ?? undefined;
     if (line !== undefined && (!Number.isInteger(line) || (line as number) < 1)) fail(`findings[${index}].line`);
     const result: Finding = {
       severity: finding["severity"] as Severity,

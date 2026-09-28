@@ -5,28 +5,30 @@ import { parseArgs } from "node:util";
 
 import { EFFORTS, listProfiles, loadProfile, RUNTIMES, saveProfile, type AgentProfile, type Runtime } from "./agents.js";
 import { claudeCodeAdapter } from "./claude-code.js";
+import { codexAdapter } from "./codex.js";
 import {
   defaultBase,
   formatReview,
   resolveReviewTarget,
   REVIEW_INSTRUCTION,
   REVIEW_OUTPUT_SCHEMA,
-  REVIEW_POLICY,
+  reviewPolicy,
   reviewPrompt,
   validateReviewResult,
   withCandidateWorktree,
 } from "./review.js";
 import { createRun, listRuns, newRunId, readRun, type RunRecord } from "./run-store.js";
-import type { ExecutionPolicy, RuntimeAdapter, RuntimeEvent, TurnResult } from "./runtime.js";
+import type { ExecutionPolicy, RuntimeAdapter, RuntimeEvent, TurnRequest, TurnResult } from "./runtime.js";
 
 export const EXIT = { ok: 0, changesRequested: 1, runFailed: 2, usage: 64 } as const;
 
 const USAGE = `agister — run agent-backed processes through provider runtimes
 
 Usage:
-  agister agent create <name> [--model <m>] [--effort <e>] [--runtime claude-code] [--command <path>] [--force]
+  agister agent create <name> [--runtime claude-code|codex] [--model <m>] [--effort <e>] [--command <path>] [--force]
   agister agent list
-  agister run <agent> [--prompt <text>] [--tools Read,Grep] [--allow <rule,...>] [--timeout 10m] [--json]
+  agister run <agent> [--prompt <text>] [--timeout 10m] [--json]
+                     [--tools Read,Grep] [--allow <rule,...>]   (claude-code only)
   agister review [--agent reviewer] [--base <rev>] [--candidate HEAD] [--timeout 20m] [--json]
   agister runs [list]
   agister runs show <run-id>
@@ -105,7 +107,9 @@ async function dispatch(argv: string[], io: Io): Promise<number> {
         const name = rest[0] ?? usage("agent create needs a name");
         const runtime = (values.runtime ?? "claude-code") as Runtime;
         if (!(RUNTIMES as readonly string[]).includes(runtime)) usage(`unsupported runtime: ${runtime}`);
-        if (values.effort && !(EFFORTS as readonly string[]).includes(values.effort)) usage(`unsupported effort: ${values.effort}`);
+        if (values.effort && !EFFORTS[runtime].includes(values.effort)) {
+          usage(`unsupported ${runtime} effort: ${values.effort} (supported: ${EFFORTS[runtime].join(", ")})`);
+        }
         const profile: AgentProfile = { name, runtime, session: "fresh-only" };
         if (values.model) profile.model = values.model;
         if (values.effort) profile.effort = values.effort;
@@ -131,13 +135,16 @@ async function dispatch(argv: string[], io: Io): Promise<number> {
       const prompt = values.prompt ?? (await io.stdin());
       if (prompt.trim() === "") usage("empty prompt; pass --prompt or pipe it on stdin");
       const policy: ExecutionPolicy = {
-        tools: values.tools !== undefined ? splitList(values.tools) : ["Read", "Grep", "Glob"],
-        allowedTools: values.allow !== undefined ? splitList(values.allow) : [],
-        restricted: true,
+        workspace: "read-only",
+        isolateConfig: true,
         timeoutMs: parseDuration(values.timeout ?? "10m"),
       };
-      // Exposed tools are allowed unless the caller narrows them with --allow.
-      if (values.allow === undefined) policy.allowedTools = policy.tools;
+      if (values.tools !== undefined || values.allow !== undefined) {
+        if (profile.runtime !== "claude-code") usage(`--tools/--allow apply to claude-code agents only; ${profile.name} is ${profile.runtime}`);
+        const tools = values.tools !== undefined ? splitList(values.tools) : ["Read", "Grep", "Glob"];
+        // Exposed tools are allowed unless the caller narrows them with --allow.
+        policy.claude = { tools, allowedTools: values.allow !== undefined ? splitList(values.allow) : tools };
+      }
 
       const { record } = await runProcess({
         io, stateDirectory, profile, progress,
@@ -158,10 +165,7 @@ async function dispatch(argv: string[], io: Io): Promise<number> {
       const profile = await loadProfile(stateDirectory, values.agent ?? "reviewer");
       const base = values.base ?? (await defaultBase(io.cwd));
       const target = await resolveReviewTarget(io.cwd, base, values.candidate ?? "HEAD");
-      const policy: ExecutionPolicy = {
-        ...REVIEW_POLICY,
-        timeoutMs: Math.min(parseDuration(values.timeout ?? "20m"), REVIEW_POLICY.timeoutMs),
-      };
+      const policy = reviewPolicy(profile.runtime, parseDuration(values.timeout ?? "20m"));
       if (!values.quiet) {
         io.stderr(`reviewing ${short(target.candidate)} against ${short(target.mergeBase)} (${target.changedFiles.length} files) with agent ${profile.name}\n`);
       }
@@ -230,23 +234,24 @@ interface ProcessRun {
 
 async function runProcess(run: ProcessRun): Promise<{ record: RunRecord }> {
   const adapter = adapterFor(run.profile);
-  const sessionId = randomUUID();
-  const handle = createRun(run.stateDirectory, {
+  const sessionId = adapter.capabilities.presetSessionId ? randomUUID() : undefined;
+  const record: Parameters<typeof createRun>[1] = {
     id: newRunId(new Date(), () => randomUUID().replace(/-/g, "")),
     process: run.process,
     agent: run.profile.name,
     runtime: adapter.runtime,
     workspace: run.cwd,
-    requestedSessionId: sessionId,
     inputs: run.inputs,
-  });
+  };
+  if (sessionId) record.requestedSessionId = sessionId;
+  const handle = createRun(run.stateDirectory, record);
 
-  const request: Parameters<RuntimeAdapter["runTurn"]>[0] = {
+  const request: TurnRequest = {
     prompt: run.prompt,
     cwd: run.cwd,
-    sessionId,
     policy: run.policy,
   };
+  if (sessionId) request.sessionId = sessionId;
   if (run.profile.model) request.model = run.profile.model;
   if (run.profile.effort) request.effort = run.profile.effort;
   if (run.appendSystemPrompt) request.appendSystemPrompt = run.appendSystemPrompt;
@@ -279,6 +284,8 @@ function adapterFor(profile: AgentProfile): RuntimeAdapter {
   switch (profile.runtime) {
     case "claude-code":
       return claudeCodeAdapter(profile.command ? { command: profile.command } : {});
+    case "codex":
+      return codexAdapter(profile.command ? { command: profile.command } : {});
   }
 }
 
@@ -291,7 +298,10 @@ function reportOutcome(io: Io, record: RunRecord): void {
   if (result.durationMs !== undefined) parts.push(`${(result.durationMs / 1000).toFixed(1)}s`);
   if (result.permissionDenials?.length) parts.push(`${result.permissionDenials.length} permission denial(s)`);
   io.stderr(`${parts.join(" ")}\n`);
-  if (result.providerSessionId) io.stderr(`  provider session: ${result.providerSessionId} (claude --resume ${result.providerSessionId})\n`);
+  if (result.providerSessionId) {
+    const resume = record.runtime === "codex" ? "codex resume" : "claude --resume";
+    io.stderr(`  provider session: ${result.providerSessionId} (${resume} ${result.providerSessionId})\n`);
+  }
   if (result.outcome !== "completed" && result.stderrTail) io.stderr(`  stderr: ${truncate(result.stderrTail, 500)}\n`);
 }
 
@@ -309,6 +319,7 @@ function describeEvent(event: RuntimeEvent): string | undefined {
     case "TOOL_RESULT":
       return data["isError"] ? `  ↳ tool error` : undefined;
     case "PROVIDER_RETRY":
+    case "PROVIDER_ERROR":
     case "RATE_LIMITED":
     case "TIMEOUT":
     case "ABORT_REQUESTED":

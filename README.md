@@ -53,7 +53,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | notio-frontend | Release unit | Svelte/Vite Supabase browse client, Cloudflare Pages deployable |
 | oracle | Web App | "Oracle — Am I Done?" One-shot career outlook tool |
 | reinix | CLI release unit | Workflow runner for governed coding-agent loops |
-| agister | CLI (step 1) | Agister orchestrator, first slice: Claude Code runtime adapter with normalized turn outcomes, agent profiles and a read-only `review` process; no service yet |
+| agister | CLI (steps 1–2) | Agister orchestrator, first slices: Claude Code and Codex runtime adapters with normalized turn outcomes, agent profiles and a read-only `review` process; no service yet |
 | nomos | Service | AI sovereignty layer |
 | corpus-scout | MCP tool | Lexical search over a local text corpus |
 | web-scout | MCP tool | SearXNG search for Claude Code |

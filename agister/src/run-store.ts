@@ -21,7 +21,7 @@ export interface RunRecord {
   workspace: string;
   createdAt: string;
   finishedAt?: string;
-  requestedSessionId: string;
+  requestedSessionId?: string;
   inputs: Record<string, unknown>;
   result?: TurnResult;
   output?: unknown;

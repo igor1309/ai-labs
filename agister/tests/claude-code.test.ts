@@ -8,8 +8,8 @@ import {
   createStreamState,
   reconcileTurn,
   reduceStreamLine,
-  type ProcessEvidence,
 } from "../src/claude-code.js";
+import type { ProcessEvidence } from "../src/process-supervisor.js";
 import type { RuntimeEvent, TurnRequest } from "../src/runtime.js";
 
 const FAKE_CLAUDE = fileURLToPath(new URL("./fixtures/fake-claude.mjs", import.meta.url));
@@ -20,7 +20,12 @@ function request(overrides: Partial<TurnRequest> = {}): TurnRequest {
     prompt: "hello",
     cwd: process.cwd(),
     sessionId: SESSION,
-    policy: { tools: ["Read", "Grep"], allowedTools: ["Read", "Bash(git diff:*)"], restricted: true, timeoutMs: 10_000 },
+    policy: {
+      workspace: "read-only",
+      isolateConfig: true,
+      timeoutMs: 10_000,
+      claude: { tools: ["Read", "Grep"], allowedTools: ["Read", "Bash(git diff:*)"] },
+    },
     ...overrides,
   };
 }
@@ -28,7 +33,6 @@ function request(overrides: Partial<TurnRequest> = {}): TurnRequest {
 const evidence = (overrides: Partial<ProcessEvidence> = {}): ProcessEvidence => ({
   timedOut: false,
   aborted: false,
-  schemaRequested: false,
   exit: { code: 0, signal: null },
   ...overrides,
 });
@@ -36,7 +40,7 @@ const evidence = (overrides: Partial<ProcessEvidence> = {}): ProcessEvidence => 
 test("builds headless arguments without a positional prompt", () => {
   const args = claudeArguments(request({ model: "sonnet", effort: "high", outputSchema: { type: "object" } }));
   assert.deepEqual(args.slice(0, 9), [
-    "-p", "--output-format", "stream-json", "--verbose", "--session-id", SESSION, "--permission-mode", "dontAsk", "--tools=Read,Grep",
+    "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "dontAsk", "--tools=Read,Grep", "--session-id", SESSION,
   ]);
   assert.ok(args.includes("--allowedTools=Read,Bash(git diff:*)"));
   assert.ok(args.includes("--restricted") && args.includes("--strict-mcp-config"));
@@ -47,7 +51,7 @@ test("builds headless arguments without a positional prompt", () => {
 });
 
 test("an empty tool list disables every tool", () => {
-  const args = claudeArguments(request({ policy: { tools: [], allowedTools: [], restricted: false, timeoutMs: 1 } }));
+  const args = claudeArguments(request({ policy: { workspace: "read-only", isolateConfig: false, timeoutMs: 1, claude: { tools: [], allowedTools: [] } } }));
   assert.ok(args.includes("--tools="));
   assert.ok(!args.some((arg) => arg.startsWith("--allowedTools")));
   assert.ok(!args.includes("--restricted"));
@@ -72,7 +76,7 @@ test("reduces the stream-json protocol into normalized events", () => {
   assert.equal(state.providerSessionId, SESSION);
   assert.equal(events[1]!.data!["name"], "Read");
 
-  const result = reconcileTurn(state, evidence({ schemaRequested: true }));
+  const result = reconcileTurn(state, evidence(), true);
   assert.equal(result.outcome, "completed");
   assert.deepEqual(result.structuredOutput, { answer: "vm" });
   assert.equal(result.text, "The hostname is vm.");
@@ -101,27 +105,29 @@ test("outcome precedence: provider result first, then Agister's own evidence, th
   };
 
   // A provider error stays a failure even though the process exits 0.
-  const failed = reconcileTurn(withResult({ subtype: "error_max_turns", is_error: true, errors: ["too many"] }), evidence());
+  const failed = reconcileTurn(withResult({ subtype: "error_max_turns", is_error: true, errors: ["too many"] }), evidence(), false);
   assert.equal(failed.outcome, "failed");
   assert.equal(failed.reason, "provider_error_max_turns: too many");
 
   // success + is_error is still an error.
-  assert.equal(reconcileTurn(withResult({ subtype: "success", is_error: true }), evidence()).outcome, "failed");
+  assert.equal(reconcileTurn(withResult({ subtype: "success", is_error: true }), evidence(), false).outcome, "failed");
 
   // A requested schema without structured output is not a completed turn.
-  const missing = reconcileTurn(withResult({ subtype: "success", is_error: false }), evidence({ schemaRequested: true }));
+  const missing = reconcileTurn(withResult({ subtype: "success", is_error: false }), evidence(), true);
   assert.deepEqual([missing.outcome, missing.reason], ["failed", "missing_structured_output"]);
 
   // A result that arrived before a timeout still decides the turn.
-  assert.equal(reconcileTurn(withResult({ subtype: "success", is_error: false }), evidence({ timedOut: true })).outcome, "completed");
+  assert.equal(reconcileTurn(withResult({ subtype: "success", is_error: false }), evidence({ timedOut: true }), false).outcome, "completed");
 
   const empty = createStreamState(SESSION);
-  assert.deepEqual(pickOutcome(reconcileTurn(empty, evidence({ timedOut: true, exit: { code: null, signal: "SIGTERM" } }))), ["interrupted", "timeout"]);
-  assert.deepEqual(pickOutcome(reconcileTurn(empty, evidence({ aborted: true }))), ["interrupted", "aborted"]);
-  assert.deepEqual(pickOutcome(reconcileTurn(empty, evidence({ exit: { code: 3, signal: null } }))), ["failed", "exit_code_3"]);
-  assert.deepEqual(pickOutcome(reconcileTurn(empty, evidence({ exit: { code: null, signal: "SIGKILL" } }))), ["lost", "killed_by_SIGKILL"]);
-  assert.deepEqual(pickOutcome(reconcileTurn(empty, evidence())), ["lost", "exited_without_result"]);
-  assert.deepEqual(pickOutcome(reconcileTurn(empty, { ...evidence(), exit: undefined as never, spawnError: "ENOENT" })), ["failed", "spawn_failed: ENOENT"]);
+  const settle = (overrides: Partial<ProcessEvidence>) => pickOutcome(reconcileTurn(empty, evidence(overrides), false));
+  assert.deepEqual(settle({ timedOut: true, exit: { code: null, signal: "SIGTERM" } }), ["interrupted", "timeout"]);
+  assert.deepEqual(settle({ aborted: true }), ["interrupted", "aborted"]);
+  assert.deepEqual(settle({ exit: { code: 3, signal: null } }), ["failed", "exit_code_3"]);
+  assert.deepEqual(settle({ exit: { code: null, signal: "SIGKILL" } }), ["lost", "killed_by_SIGKILL"]);
+  assert.deepEqual(settle({}), ["lost", "exited_without_result"]);
+  const { exit: _exit, ...withoutExit } = evidence();
+  assert.deepEqual(pickOutcome(reconcileTurn(empty, { ...withoutExit, spawnError: "ENOENT" }, false)), ["failed", "spawn_failed: ENOENT"]);
 });
 
 function pickOutcome(result: { outcome: string; reason?: string }): [string, string | undefined] {
@@ -171,7 +177,7 @@ test("adapter: clean exit without a result is lost", async () => {
 test("adapter: timeout terminates the process group and reports interrupted", async () => {
   const started = Date.now();
   const { result, events } = await runFake("SCENARIO:hang", {
-    policy: { tools: [], allowedTools: [], restricted: false, timeoutMs: 300 },
+    policy: { workspace: "read-only", isolateConfig: false, timeoutMs: 300 },
   });
   assert.deepEqual([result.outcome, result.reason], ["interrupted", "timeout"]);
   assert.ok(events.some((event) => event.kind === "TIMEOUT"));
@@ -190,4 +196,31 @@ test("adapter: a missing runtime binary is a failed turn, not a crash", async ()
   assert.equal(result.outcome, "failed");
   assert.match(result.reason!, /^spawn_failed: /);
   assert.ok(events.some((event) => event.kind === "SPAWN_FAILED"));
+});
+
+test("tool surface: defaults follow the workspace policy, write tools cannot leak into read-only", () => {
+  const base = { isolateConfig: false, timeoutMs: 1 };
+  const readOnly = claudeArguments(request({ policy: { ...base, workspace: "read-only" } }));
+  assert.ok(readOnly.includes("--tools=Read,Grep,Glob"));
+  assert.ok(readOnly.includes("--allowedTools=Read,Grep,Glob"));
+  assert.ok(claudeArguments(request({ policy: { ...base, workspace: "workspace-write" } })).includes("--tools=Read,Grep,Glob,Edit,Write"));
+  assert.throws(
+    () => claudeArguments(request({ policy: { ...base, workspace: "read-only", claude: { tools: ["Read", "Edit"], allowedTools: [] } } })),
+    /read-only policy exposes write tools: Edit/,
+  );
+});
+
+test("adapter: an invalid policy fails the turn without spawning", async () => {
+  const { result, events } = await runFake("x", {
+    policy: { workspace: "read-only", isolateConfig: false, timeoutMs: 1_000, claude: { tools: ["Write"], allowedTools: [] } },
+  });
+  assert.deepEqual([result.outcome, result.reason], ["failed", "invalid_policy: read-only policy exposes write tools: Write"]);
+  assert.equal(events.length, 0);
+});
+
+test("without a preset session ID no mismatch is reported", () => {
+  const state = createStreamState();
+  const events = reduceStreamLine(state, JSON.stringify({ type: "system", subtype: "init", session_id: "provider-minted" }));
+  assert.deepEqual(events.map((event) => event.kind), ["PROVIDER_SESSION_BOUND"]);
+  assert.ok(!claudeArguments(request({ sessionId: undefined as never })).includes("--session-id"));
 });

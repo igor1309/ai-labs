@@ -1,7 +1,12 @@
-import { spawn } from "node:child_process";
-import { createInterface } from "node:readline";
-
-import type { RuntimeAdapter, RuntimeEvent, TurnObserver, TurnRequest, TurnResult } from "./runtime.js";
+import {
+  baseResult,
+  reconcileWithoutTerminal,
+  superviseProcess,
+  truncate,
+  type ProcessEvidence,
+  type SupervisedProcess,
+} from "./process-supervisor.js";
+import type { ExecutionPolicy, RuntimeAdapter, RuntimeEvent, TurnObserver, TurnRequest, TurnResult } from "./runtime.js";
 
 // Claude Code adapter: one headless `claude -p` process per turn, reading the
 // stream-json protocol from stdout.
@@ -13,8 +18,11 @@ import type { RuntimeAdapter, RuntimeEvent, TurnObserver, TurnRequest, TurnResul
 // 3. Without a result, a non-zero exit or spawn failure means failed.
 // 4. A clean exit without any result is lost: nothing proves what happened.
 
-const KILL_GRACE_MS = 5_000;
-const STDERR_TAIL_BYTES = 4_096;
+const WRITE_TOOLS = ["Edit", "Write", "NotebookEdit"];
+const DEFAULT_TOOLS = {
+  "read-only": ["Read", "Grep", "Glob"],
+  "workspace-write": ["Read", "Grep", "Glob", "Edit", "Write"],
+};
 
 export interface ClaudeCodeAdapterOptions {
   command?: string;
@@ -23,28 +31,43 @@ export interface ClaudeCodeAdapterOptions {
 
 export function claudeCodeAdapter(options: ClaudeCodeAdapterOptions = {}): RuntimeAdapter {
   const command = options.command ?? "claude";
-  const killGraceMs = options.killGraceMs ?? KILL_GRACE_MS;
 
   return {
     runtime: "claude-code",
-    runTurn: (request, observer) => runClaudeTurn(command, killGraceMs, request, observer),
+    capabilities: { presetSessionId: true },
+    runTurn: (request, observer) => runClaudeTurn(command, options.killGraceMs, request, observer),
   };
+}
+
+// Claude Code has no OS sandbox here: the workspace policy is enforced by the
+// tool surface, so a read-only policy must not expose write tools.
+export function claudeToolSurface(policy: ExecutionPolicy): { tools: string[]; allowedTools: string[] } {
+  if (!policy.claude) {
+    const tools = DEFAULT_TOOLS[policy.workspace];
+    return { tools, allowedTools: tools };
+  }
+  if (policy.workspace === "read-only") {
+    const writable = policy.claude.tools.filter((tool) => WRITE_TOOLS.includes(tool));
+    if (writable.length > 0) throw new Error(`read-only policy exposes write tools: ${writable.join(", ")}`);
+  }
+  return policy.claude;
 }
 
 export function claudeArguments(request: TurnRequest): string[] {
   const { policy } = request;
+  const surface = claudeToolSurface(policy);
   // The prompt goes through stdin: variadic flags such as --tools would
   // otherwise swallow a trailing positional prompt, and diffs can be large.
   const args = [
     "-p",
     "--output-format", "stream-json",
     "--verbose",
-    "--session-id", request.sessionId,
     "--permission-mode", "dontAsk",
-    `--tools=${policy.tools.join(",")}`,
+    `--tools=${surface.tools.join(",")}`,
   ];
-  if (policy.allowedTools.length > 0) args.push(`--allowedTools=${policy.allowedTools.join(",")}`);
-  if (policy.restricted) args.push("--restricted", "--strict-mcp-config");
+  if (request.sessionId) args.push("--session-id", request.sessionId);
+  if (surface.allowedTools.length > 0) args.push(`--allowedTools=${surface.allowedTools.join(",")}`);
+  if (policy.isolateConfig) args.push("--restricted", "--strict-mcp-config");
   if (request.model) args.push("--model", request.model);
   if (request.effort) args.push("--effort", request.effort);
   if (request.appendSystemPrompt) args.push("--append-system-prompt", request.appendSystemPrompt);
@@ -56,15 +79,15 @@ export function claudeArguments(request: TurnRequest): string[] {
 // Stream reduction (pure)
 
 export interface StreamState {
-  requestedSessionId: string;
+  requestedSessionId?: string;
   providerSessionId?: string;
   model?: string;
   lastText?: string;
   result?: Record<string, unknown>;
 }
 
-export function createStreamState(requestedSessionId: string): StreamState {
-  return { requestedSessionId };
+export function createStreamState(requestedSessionId?: string): StreamState {
+  return requestedSessionId ? { requestedSessionId } : {};
 }
 
 export function reduceStreamLine(state: StreamState, line: string): RuntimeEvent[] {
@@ -114,7 +137,7 @@ function reduceSystem(state: StreamState, message: Record<string, any>): Runtime
         cwd: message["cwd"],
       },
     }];
-    if (sessionId !== state.requestedSessionId) {
+    if (state.requestedSessionId && sessionId !== state.requestedSessionId) {
       events.push({
         source: "adapter",
         kind: "SESSION_ID_MISMATCH",
@@ -181,143 +204,61 @@ function reduceResult(state: StreamState, message: Record<string, any>): Runtime
 // ---------------------------------------------------------------------------
 // Outcome reconciliation (pure)
 
-export interface ProcessEvidence {
-  exit?: { code: number | null; signal: string | null };
-  spawnError?: string;
-  timedOut: boolean;
-  aborted: boolean;
-  stderrTail?: string;
-  schemaRequested: boolean;
-}
-
-export function reconcileTurn(state: StreamState, evidence: ProcessEvidence): TurnResult {
-  const base: TurnResult = { outcome: "lost" };
+export function reconcileTurn(state: StreamState, evidence: ProcessEvidence, schemaRequested: boolean): TurnResult {
+  const base = baseResult(evidence);
   if (state.providerSessionId) base.providerSessionId = state.providerSessionId;
   if (state.model) base.model = state.model;
-  if (evidence.exit) base.exit = evidence.exit;
-  if (evidence.stderrTail) base.stderrTail = evidence.stderrTail;
 
   const result = state.result;
-  if (result) {
-    const turn: TurnResult = { ...base };
-    if (typeof result["total_cost_usd"] === "number") turn.costUsd = result["total_cost_usd"];
-    if (typeof result["duration_ms"] === "number") turn.durationMs = result["duration_ms"];
-    if (typeof result["num_turns"] === "number") turn.numTurns = result["num_turns"];
-    if (Array.isArray(result["permission_denials"])) turn.permissionDenials = result["permission_denials"];
-    const text = typeof result["result"] === "string" && result["result"] !== "" ? result["result"] : state.lastText;
-    if (text !== undefined) turn.text = text;
-    if (result["structured_output"] !== undefined) turn.structuredOutput = result["structured_output"];
+  if (!result) return reconcileWithoutTerminal(base, evidence);
 
-    if (result["subtype"] !== "success" || result["is_error"] === true) {
-      const errors = Array.isArray(result["errors"]) ? `: ${result["errors"].join("; ")}` : "";
-      return { ...turn, outcome: "failed", reason: `provider_${String(result["subtype"])}${errors}` };
-    }
-    if (evidence.schemaRequested && turn.structuredOutput === undefined) {
-      return { ...turn, outcome: "failed", reason: "missing_structured_output" };
-    }
-    return { ...turn, outcome: "completed" };
-  }
+  const turn: TurnResult = { ...base };
+  if (typeof result["total_cost_usd"] === "number") turn.costUsd = result["total_cost_usd"];
+  if (typeof result["duration_ms"] === "number") turn.durationMs = result["duration_ms"];
+  if (typeof result["num_turns"] === "number") turn.numTurns = result["num_turns"];
+  if (typeof result["usage"] === "object" && result["usage"] !== null) turn.usage = result["usage"] as Record<string, unknown>;
+  if (Array.isArray(result["permission_denials"])) turn.permissionDenials = result["permission_denials"];
+  const text = typeof result["result"] === "string" && result["result"] !== "" ? result["result"] : state.lastText;
+  if (text !== undefined) turn.text = text;
+  if (result["structured_output"] !== undefined) turn.structuredOutput = result["structured_output"];
 
-  if (evidence.timedOut) return { ...base, outcome: "interrupted", reason: "timeout" };
-  if (evidence.aborted) return { ...base, outcome: "interrupted", reason: "aborted" };
-  if (evidence.spawnError) return { ...base, outcome: "failed", reason: `spawn_failed: ${evidence.spawnError}` };
-  if (evidence.exit?.code !== null && evidence.exit?.code !== undefined && evidence.exit.code !== 0) {
-    return { ...base, outcome: "failed", reason: `exit_code_${evidence.exit.code}` };
+  if (result["subtype"] !== "success" || result["is_error"] === true) {
+    const errors = Array.isArray(result["errors"]) ? `: ${result["errors"].join("; ")}` : "";
+    return { ...turn, outcome: "failed", reason: `provider_${String(result["subtype"])}${errors}` };
   }
-  if (evidence.exit?.signal) return { ...base, outcome: "lost", reason: `killed_by_${evidence.exit.signal}` };
-  return { ...base, outcome: "lost", reason: "exited_without_result" };
+  if (schemaRequested && turn.structuredOutput === undefined) {
+    return { ...turn, outcome: "failed", reason: "missing_structured_output" };
+  }
+  return { ...turn, outcome: "completed" };
 }
 
-// ---------------------------------------------------------------------------
-// Process supervision
-
-function runClaudeTurn(
+async function runClaudeTurn(
   command: string,
-  killGraceMs: number,
+  killGraceMs: number | undefined,
   request: TurnRequest,
   observer: TurnObserver,
 ): Promise<TurnResult> {
-  const state = createStreamState(request.sessionId);
-  const args = claudeArguments(request);
-  const evidence: ProcessEvidence = {
-    timedOut: false,
-    aborted: false,
-    schemaRequested: request.outputSchema !== undefined,
-  };
-
-  return new Promise((resolve) => {
-    // Own process group, so termination reaches everything the CLI spawned.
-    const child = spawn(command, args, { cwd: request.cwd, detached: true, stdio: ["pipe", "pipe", "pipe"] });
-    let stderr = "";
-    let settled = false;
-    let killTimer: NodeJS.Timeout | undefined;
-
-    const terminate = () => {
-      if (child.pid === undefined || child.exitCode !== null || child.signalCode !== null) return;
-      signalGroup(child.pid, "SIGTERM");
-      killTimer = setTimeout(() => signalGroup(child.pid!, "SIGKILL"), killGraceMs);
-      killTimer.unref();
-    };
-
-    const timeout = setTimeout(() => {
-      evidence.timedOut = true;
-      observer.event({ source: "adapter", kind: "TIMEOUT", data: { timeoutMs: request.policy.timeoutMs } });
-      terminate();
-    }, request.policy.timeoutMs);
-
-    const onAbort = () => {
-      evidence.aborted = true;
-      observer.event({ source: "adapter", kind: "ABORT_REQUESTED" });
-      terminate();
-    };
-    request.signal?.addEventListener("abort", onAbort, { once: true });
-
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeout);
-      if (killTimer) clearTimeout(killTimer);
-      request.signal?.removeEventListener("abort", onAbort);
-      if (stderr.trim() !== "") evidence.stderrTail = stderr.trim();
-      resolve(reconcileTurn(state, evidence));
-    };
-
-    child.on("error", (error) => {
-      evidence.spawnError = error.message;
-      observer.event({ source: "process", kind: "SPAWN_FAILED", data: { error: error.message } });
-      if (child.pid === undefined) finish();
-    });
-
-    if (child.pid === undefined) return;
-    observer.event({ source: "process", kind: "PROCESS_STARTED", data: { pid: child.pid, command, args } });
-
-    child.stdin.on("error", () => {});
-    child.stdin.end(request.prompt);
-
-    child.stderr.on("data", (chunk: Buffer) => {
-      stderr = (stderr + chunk.toString("utf8")).slice(-STDERR_TAIL_BYTES);
-    });
-
-    const lines = createInterface({ input: child.stdout, crlfDelay: Infinity });
-    lines.on("line", (line) => {
-      observer.raw?.(line);
-      for (const event of reduceStreamLine(state, line)) observer.event(event);
-    });
-
-    child.on("close", (code, signal) => {
-      evidence.exit = { code, signal };
-      observer.event({ source: "process", kind: "PROCESS_EXITED", data: { code, signal } });
-      finish();
-    });
-  });
-}
-
-function signalGroup(pid: number, signal: NodeJS.Signals): void {
+  let args: string[];
   try {
-    process.kill(-pid, signal);
-  } catch {
-    // Already gone.
+    args = claudeArguments(request);
+  } catch (error) {
+    return { outcome: "failed", reason: `invalid_policy: ${error instanceof Error ? error.message : String(error)}` };
   }
+  const state = createStreamState(request.sessionId);
+  const spec: SupervisedProcess = {
+    command,
+    args,
+    cwd: request.cwd,
+    stdin: request.prompt,
+    timeoutMs: request.policy.timeoutMs,
+  };
+  if (request.signal) spec.signal = request.signal;
+  if (killGraceMs !== undefined) spec.killGraceMs = killGraceMs;
+
+  const evidence = await superviseProcess(spec, observer, (line) => {
+    for (const event of reduceStreamLine(state, line)) observer.event(event);
+  });
+  return reconcileTurn(state, evidence, request.outputSchema !== undefined);
 }
 
 function contentBlocks(message: Record<string, any>): Array<Record<string, any>> {
@@ -327,8 +268,4 @@ function contentBlocks(message: Record<string, any>): Array<Record<string, any>>
 
 function pick(source: Record<string, any>, keys: string[]): Record<string, unknown> {
   return Object.fromEntries(keys.filter((key) => source[key] !== undefined).map((key) => [key, source[key]]));
-}
-
-function truncate(text: string, max: number): string {
-  return text.length <= max ? text : `${text.slice(0, max)}…`;
 }

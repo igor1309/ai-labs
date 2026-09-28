@@ -9,6 +9,7 @@ import { test } from "node:test";
 import { EXIT, main, parseDuration, type Io } from "../src/main.js";
 
 const FAKE_CLAUDE = fileURLToPath(new URL("./fixtures/fake-claude.mjs", import.meta.url));
+const FAKE_CODEX = fileURLToPath(new URL("./fixtures/fake-codex.mjs", import.meta.url));
 
 interface Captured {
   code: number;
@@ -82,8 +83,11 @@ session = "fresh-only"
 
 test("agent create rejects unsupported runtimes and efforts", async () => {
   const root = mkdtempSync(join(tmpdir(), "agister-test-"));
-  assert.equal((await agister(root, ["agent", "create", "x", "--runtime", "codex"])).code, EXIT.usage);
+  assert.equal((await agister(root, ["agent", "create", "x", "--runtime", "gemini"])).code, EXIT.usage);
   assert.equal((await agister(root, ["agent", "create", "x", "--effort", "extreme"])).code, EXIT.usage);
+  // Effort vocabulary is per runtime.
+  assert.equal((await agister(root, ["agent", "create", "x", "--runtime", "codex", "--effort", "max"])).code, EXIT.usage);
+  assert.equal((await agister(root, ["agent", "create", "x", "--runtime", "claude-code", "--effort", "minimal"])).code, EXIT.usage);
   assert.equal((await agister(root, ["agent", "create", "Bad_Name"])).code, EXIT.runFailed);
 });
 
@@ -176,4 +180,42 @@ test("parses durations", () => {
   assert.equal(parseDuration("250ms"), 250);
   assert.equal(parseDuration("5"), 5_000);
   assert.throws(() => parseDuration("soon"), /invalid duration/);
+});
+
+test("review with a Codex agent: same process, different runtime", async () => {
+  const root = repository("request_changes");
+  const created = await agister(root, ["agent", "create", "codex-reviewer", "--runtime", "codex", "--model", "gpt-5.5", "--effort", "xhigh", "--command", FAKE_CODEX]);
+  assert.equal(created.code, EXIT.ok, created.stderr);
+
+  const result = await agister(root, ["review", "--base", "main", "--agent", "codex-reviewer", "--quiet"]);
+  assert.equal(result.code, EXIT.changesRequested, result.stderr);
+  assert.match(result.stdout, /\[major\] a\.txt:2 — Off by one/);
+  assert.match(result.stderr, /codex resume 01a0e850/);
+
+  const [id] = (await agister(root, ["runs"])).stdout.split("\t");
+  const record = JSON.parse((await agister(root, ["runs", "show", id!])).stdout);
+  assert.equal(record.runtime, "codex");
+  assert.equal(record.requestedSessionId, undefined);
+  assert.equal(record.result.providerSessionId, "01a0e850-b808-71c2-8401-53ba16d8ae18");
+  assert.deepEqual(record.output.findings[0].line, 2);
+
+  const init = JSON.parse(readFileSync(join(root, ".agister", "runs", id!, "provider.jsonl"), "utf8").split("\n")[0]!);
+  assert.equal(init.cwd, record.workspace);
+  assert.deepEqual(init.argv.slice(init.argv.indexOf("--sandbox"), init.argv.indexOf("--sandbox") + 2), ["--sandbox", "read-only"]);
+  assert.ok(init.argv.includes('model_reasoning_effort="xhigh"'));
+  assert.match(init.prompt, /^<instructions>\nYou are an independent code reviewer/);
+  assert.equal(init.schema.properties.findings.items.required.includes("line"), true);
+  assert.equal(git(root, "worktree", "list").trim().split("\n").length, 1);
+});
+
+test("run refuses Claude-only tool flags for a Codex agent", async () => {
+  const root = mkdtempSync(join(tmpdir(), "agister-test-"));
+  await agister(root, ["agent", "create", "cx", "--runtime", "codex", "--command", FAKE_CODEX]);
+  const refused = await agister(root, ["run", "cx", "--tools", "Read", "--prompt", "hi"]);
+  assert.equal(refused.code, EXIT.usage);
+  assert.match(refused.stderr, /claude-code agents only/);
+
+  const ok = await agister(root, ["run", "cx", "--prompt", "hi", "--quiet"]);
+  assert.equal(ok.code, EXIT.ok, ok.stderr);
+  assert.equal(ok.stdout, "All good.\n");
 });

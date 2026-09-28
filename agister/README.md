@@ -1,12 +1,13 @@
 ---
 date: 2026-09-28
-description: "Agister step 1: Claude Code runtime adapter and a review process behind a local CLI"
+description: "Agister steps 1–2: Claude Code and Codex runtime adapters and a review process behind a local CLI"
 ---
 
-# Agister CLI — step 1
+# Agister CLI — steps 1–2
 
-The first small slice of [Agister](../research/agister/research/verger/orchestrator.md):
-a **provider runtime adapter** for Claude Code, reached from a local CLI. There is
+The first small slices of [Agister](../research/agister/research/verger/orchestrator.md):
+**provider runtime adapters** for Claude Code (step 1) and Codex (step 2),
+reached from a local CLI. There is
 no service, scheduler or workflow engine yet. One command runs one
 agent-backed process once and leaves a durable record of what happened.
 
@@ -29,6 +30,38 @@ agent-backed process once and leaves a durable record of what happened.
 5. **Turn completion is not process success.** A completed turn must still
    produce output that passes the process's own contract before it counts.
 
+## What step 2 (Codex) showed about the boundary
+
+The same `review` process runs unchanged on either runtime. Making that work
+changed the contract in three places, each a real provider difference:
+
+| Difference | Claude Code | Codex | Contract change |
+|---|---|---|---|
+| Session identity | caller presets `--session-id` | provider mints `thread_id` | `capabilities.presetSessionId`; `sessionId` optional |
+| Workspace policy | tool surface (`--tools`, `--allowedTools`) | OS sandbox (`--sandbox read-only`) | neutral `workspace: read-only \| workspace-write`; Claude tools moved to an optional `claude` section that Codex rejects |
+| Effort vocabulary | `low … max` | `minimal … xhigh` | validated per runtime, not mapped |
+
+Adapter-internal differences that did not leak:
+
+- Codex emits top-level `error` events and `error` items mid-turn for
+  reconnects and transport fallbacks (observed from the real CLI). They are
+  recorded as `PROVIDER_ERROR` but never decide the outcome; only
+  `turn.completed` / `turn.failed` do. The last one is attached to the reason
+  when the process dies without a terminal event.
+- Codex has no system-prompt flag; process instructions are prepended to
+  the prompt in an `<instructions>` block.
+- Codex structured output is the final agent message, constrained by an
+  `--output-schema` file (written to a temp dir and removed afterwards).
+  OpenAI strict schemas require every property, so `line` is now required
+  and nullable.
+- Process supervision (process group, timeout, abort, stderr tail) is shared
+  in `process-supervisor.ts`; adapters only build arguments, reduce their
+  stream and reconcile the outcome.
+
+Verified against real Claude Code. Codex is verified against the documented
+`codex exec --json` protocol and the real CLI's startup and error stream,
+but not yet through a successful live turn.
+
 ## Usage
 
 Run from the repository you want to work on. State lives in `./.agister/`.
@@ -38,11 +71,12 @@ alias agister='node --disable-warning=ExperimentalWarning --import tsx /path/to/
 
 # 1. Define an agent (reusable runtime profile, no prompt)
 agister agent create reviewer --model sonnet --effort high
+agister agent create codex-reviewer --runtime codex --model gpt-5.5 --effort high
 agister agent list
 
 # 2. Use it: review the current branch against its base
 agister review                         # base: origin/HEAD, candidate: HEAD
-agister review --base main --candidate feature --agent reviewer
+agister review --base main --candidate feature --agent codex-reviewer
 
 # 3. Or run one ad-hoc, read-only turn
 agister run reviewer --prompt "Summarize the architecture of src/"
@@ -62,12 +96,15 @@ Exit codes: `0` ok, `1` review requested changes, `2` run failed, `64` usage.
 2. Checks out the candidate in a **temporary detached worktree**. The reviewer
    reads exactly the candidate revision, not your uncommitted changes. The
    worktree is always removed afterwards.
-3. Runs one fresh Claude Code turn with the review policy:
-   - tools: `Read, Grep, Glob, Bash`, pre-allowed: read tools plus
-     `git diff/log/show`; anything else is denied (`--permission-mode dontAsk`);
-   - `--restricted --strict-mcp-config`: no user/project settings, hooks or
-     MCP servers; file tools confined to the worktree;
-   - `--json-schema` for the `review-result` contract;
+3. Runs one fresh turn with the read-only review policy:
+   - Claude Code: tools `Read, Grep, Glob, Bash`, pre-allowed read tools plus
+     `git diff/log/show`, everything else denied (`--permission-mode dontAsk`);
+     `--restricted --strict-mcp-config` drops user/project settings, hooks and
+     MCP servers and confines file tools to the worktree;
+   - Codex: `--sandbox read-only` (commands may run, writes and network are
+     blocked by the OS sandbox), `approval_policy="never"`,
+     `--ignore-user-config --ignore-rules`;
+   - the `review-result` output schema;
    - 20 minute timeout (`--timeout` can only shorten it).
 4. Validates the structured output and prints findings by severity.
 
@@ -102,8 +139,10 @@ to point at a fake runtime.
 
 | File | Role |
 |---|---|
-| `src/runtime.ts` | Provider-neutral adapter contract: request, policy, events, outcome |
-| `src/claude-code.ts` | Claude Code adapter: arguments, stream reduction, outcome reconciliation, process-group supervision |
+| `src/runtime.ts` | Provider-neutral adapter contract: request, policy, capabilities, events, outcome |
+| `src/process-supervisor.ts` | Shared CLI process supervision and the no-terminal-event outcome rules |
+| `src/claude-code.ts` | Claude Code adapter: arguments, tool surface, stream-json reduction, outcome |
+| `src/codex.ts` | Codex adapter: arguments, sandbox mapping, JSONL reduction, outcome |
 | `src/agents.ts` | Agent profiles (`agister.agent/v1alpha1`) |
 | `src/review.ts` | The `review` process: target resolution, worktree, prompt, policy, output contract |
 | `src/run-store.ts` | File-backed run records and append-only events |
@@ -116,8 +155,8 @@ npm run test:agister && npm run typecheck:agister   # from the repo root
 ## Deliberately not here yet
 
 Service, durable intents and restart reconciliation, workflows and routing,
-parallel review suites, synthesis, resume/continuation, Codex adapter,
-process-policy files, OS-level isolation (tool policy only; no sandbox), and
+parallel review suites, synthesis, resume/continuation, process-policy
+files, OS-level isolation (tool policy only; no sandbox), and
 cross-model-family constraints. Each should come in only once a step shows it
 is needed.
 

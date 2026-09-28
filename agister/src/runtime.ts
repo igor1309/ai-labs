@@ -8,23 +8,30 @@
 export type TurnOutcome = "completed" | "failed" | "interrupted" | "lost";
 
 export interface ExecutionPolicy {
-  // Built-in tools exposed to the agent. An empty list exposes none.
-  tools: string[];
-  // Permission rules that run without asking, e.g. "Bash(git diff:*)".
-  // Anything else is denied: turns are unattended.
-  allowedTools: string[];
-  // Ask the runtime to ignore user/project settings, MCP servers and to confine
-  // file tools to the working directory, where it supports that.
-  restricted: boolean;
+  // What the agent may do to the workspace. Each adapter maps this onto its
+  // runtime's own mechanism (Claude Code: tool set; Codex: OS sandbox).
+  workspace: "read-only" | "workspace-write";
+  // Ignore user/project runtime configuration (settings, hooks, MCP servers,
+  // rules) so the run depends only on what Agister passes.
+  isolateConfig: boolean;
   timeoutMs: number;
+  // Claude Code tool surface. Absent means the adapter's default for
+  // `workspace`. Other runtimes reject it rather than silently ignoring it.
+  claude?: {
+    // Built-in tools exposed to the agent. An empty list exposes none.
+    tools: string[];
+    // Permission rules that run without asking, e.g. "Bash(git diff:*)".
+    // Anything else is denied: turns are unattended.
+    allowedTools: string[];
+  };
 }
 
 export interface TurnRequest {
   prompt: string;
   cwd: string;
-  // Agister-minted provider session ID, so the run knows it before the
-  // provider reports anything. The provider's reported ID is still recorded.
-  sessionId: string;
+  // Agister-minted provider session ID. Only honoured by adapters with the
+  // `presetSessionId` capability; others report the provider's own ID.
+  sessionId?: string;
   model?: string;
   effort?: string;
   appendSystemPrompt?: string;
@@ -49,6 +56,7 @@ export interface TurnResult {
   structuredOutput?: unknown;
   text?: string;
   costUsd?: number;
+  usage?: Record<string, unknown>;
   durationMs?: number;
   numTurns?: number;
   permissionDenials?: unknown[];
@@ -62,7 +70,13 @@ export interface TurnObserver {
   raw?(line: string): void;
 }
 
+export interface RuntimeCapabilities {
+  // The caller can choose the provider session ID before the turn starts.
+  presetSessionId: boolean;
+}
+
 export interface RuntimeAdapter {
   readonly runtime: string;
+  readonly capabilities: RuntimeCapabilities;
   runTurn(request: TurnRequest, observer: TurnObserver): Promise<TurnResult>;
 }
