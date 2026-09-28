@@ -221,6 +221,26 @@ func TestProgressDescribesEvents(t *testing.T) {
 	}
 }
 
+// Text from the agent or the runtime reaches the terminal with its control
+// characters escaped.
+func TestProgressAndSummaryEscapeControlCharacters(t *testing.T) {
+	spy := &clientSpy{run: finished("failed", "runtime_error"), events: []contract.Event{
+		{Kind: "TOOL_REQUESTED", Data: map[string]any{"name": "Bash", "input": "\x1b]0;owned\x07ls\rrm"}},
+		{Kind: "CALL_FINISHED"},
+	}}
+	spy.run.Result.Error.Message = "boom\x1b[2J"
+	spy.run.StderrTail = "line\u009b31m\nnext"
+	r := run(context.Background(), spy, "run", "p")
+	for _, want := range []string{`· Bash \x1b]0;owned\x07ls\x0drm`, `(boom\x1b[2J)`, "stderr: line\\x9b31m\nnext"} {
+		if !strings.Contains(r.stderr, want) {
+			t.Errorf("stderr lacks %q:\n%s", want, r.stderr)
+		}
+	}
+	if strings.ContainsAny(r.stderr, "\x1b\x07\r\u009b") {
+		t.Fatalf("raw control characters in stderr: %q", r.stderr)
+	}
+}
+
 func TestWatchResumesFromTheGivenSequence(t *testing.T) {
 	spy := &clientSpy{run: finished("completed", "")}
 	run(context.Background(), spy, "runs", "watch", "r", "--after", "5", "--quiet")

@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 )
@@ -358,7 +359,7 @@ func follow(ctx context.Context, client contract.Client, id string, after int, o
 	err := client.Observe(observeCtx, id, after, func(event contract.Event) error {
 		if !opts.quiet {
 			if line := describe(event); line != "" {
-				fmt.Fprintln(env.Stderr, line)
+				fmt.Fprintln(env.Stderr, printable(line))
 			}
 		}
 		return nil
@@ -414,7 +415,7 @@ func summarize(w io.Writer, run contract.Run) {
 		return
 	}
 	if result.Error != nil && result.Error.Message != "" {
-		parts = append(parts, "("+result.Error.Message+")")
+		parts = append(parts, "("+printable(result.Error.Message)+")")
 	}
 	if result.Cost.USD != nil {
 		parts = append(parts, fmt.Sprintf("$%.4f", *result.Cost.USD))
@@ -427,18 +428,32 @@ func summarize(w io.Writer, run contract.Run) {
 	}
 	fmt.Fprintln(w, strings.Join(parts, " "))
 	if run.StderrTail != "" {
-		fmt.Fprintf(w, "  stderr: %s\n", truncate(run.StderrTail, 500))
+		fmt.Fprintf(w, "  stderr: %s\n", printable(truncate(run.StderrTail, 500)))
 	}
 	for _, artifact := range result.Artifacts {
 		fmt.Fprintf(w, "  artifact: %s (%d bytes, %s)\n", artifact.Path, artifact.Bytes, artifact.Digest)
 	}
 	if result.Session != nil {
-		fmt.Fprintf(w, "  provider session: %s", result.Session.ProviderSessionID)
+		fmt.Fprintf(w, "  provider session: %s", printable(result.Session.ProviderSessionID))
 		if result.Session.Continues != "" {
 			fmt.Fprintf(w, " (continues run %s)", result.Session.Continues)
 		}
 		fmt.Fprintln(w)
 	}
+}
+
+// printable escapes control characters other than newline and tab, so text
+// from the agent or the runtime cannot drive the terminal.
+func printable(text string) string {
+	var out strings.Builder
+	for _, r := range text {
+		if unicode.IsControl(r) && r != '\n' && r != '\t' {
+			fmt.Fprintf(&out, "\\x%02x", r)
+			continue
+		}
+		out.WriteRune(r)
+	}
+	return out.String()
 }
 
 // status is the node status, qualified by its failure class.
