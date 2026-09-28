@@ -29,13 +29,19 @@ import (
 )
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	ctx, stop := shutdown(context.Background())
 	defer stop()
 	cwd, err := os.Getwd()
 	if err != nil {
 		cwd = "."
 	}
 	os.Exit(cli.Run(ctx, os.Args[1:], cli.IO{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Cwd: cwd, Getenv: os.Getenv}, compose))
+}
+
+// shutdown is cancelled by Ctrl-C, by kill, and by closing the terminal, so
+// each ends the runtime and releases the workspace.
+func shutdown(parent context.Context) (context.Context, context.CancelFunc) {
+	return signal.NotifyContext(parent, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 }
 
 func compose(config cli.Config) (contract.Client, error) {

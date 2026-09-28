@@ -9,7 +9,7 @@ before.
   process is killed with SIGKILL during a call, the runtime's process group
   keeps running and the candidate checkout stays on disk and in
   `git worktree list`. The run correctly reads as lost (`abandoned`), but nothing reaps
-  its effects. SIGINT and SIGTERM are handled cleanly.
+  its effects. SIGINT, SIGTERM and SIGHUP are handled cleanly.
 - **Evidence:** reproduced 2026-09-28 with the fake runtime (hang scenario):
   after `kill -9` of `agister run`, the runtime process and the worktree
   remained.

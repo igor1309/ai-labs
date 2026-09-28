@@ -10,13 +10,6 @@ version: 0.1.0
 Forward tasks only. Each lands as its own commit with a regression test;
 a fixed item is removed from this list.
 
-## 5. SIGHUP is not handled
-
-`main` handles SIGINT and SIGTERM only; closing the terminal orphans the
-runtime and leaves the checkout, as in deferred item 1.
-
-- Add SIGHUP to the handled signals.
-
 ## 6. Cancellation before the turn is recorded as refused
 
 Ctrl-C during resolution or input resolution makes the version probe or git
