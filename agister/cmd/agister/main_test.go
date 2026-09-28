@@ -5,12 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/igor1309/ai-labs/agister/examples"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
@@ -217,6 +219,27 @@ func TestShippedExamplesPassCheck(t *testing.T) {
 	write(t, filepath.Join(home, "schemas", "bad.json"), "{")
 	r = agister(t, home, repo, "check")
 	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, `agent broken: runtime mapping "nowhere" does not exist`) || !strings.Contains(r.stderr, "schema bad: schema is not JSON") {
+		t.Fatalf("exit %d\n%s", r.code, r.stderr)
+	}
+}
+
+// init writes the shipped service settings, and a binary file in their
+// place (a Finder .DS_Store once landed there) is reported as one problem.
+func TestUnreadableServiceSettingsFailCheck(t *testing.T) {
+	home, repo := t.TempDir(), t.TempDir()
+	if r := agister(t, home, repo, "init"); r.code != 0 {
+		t.Fatalf("init: %d %s", r.code, r.stderr)
+	}
+	shipped, err := fs.ReadFile(examples.Settings(), "service.toml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := read(t, filepath.Join(home, "service.toml")); got != string(shipped) {
+		t.Fatalf("init wrote a service.toml unlike the shipped one: %.40q...", got)
+	}
+	write(t, filepath.Join(home, "service.toml"), "\x00\x00\x00\x01Bud1\x00\x00")
+	r := agister(t, home, repo, "check")
+	if r.code != cli.ExitUsage || !strings.HasPrefix(r.stderr, "service service: not a UTF-8 text file\n1 problem(s)") {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
 }
