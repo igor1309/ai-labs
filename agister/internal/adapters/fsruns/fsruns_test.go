@@ -2,11 +2,13 @@ package fsruns
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -80,5 +82,34 @@ func TestArtifactsAreStoredWithTheirDigest(t *testing.T) {
 		if _, err := h.Artifact(name, nil); err == nil {
 			t.Fatalf("artifact name %q accepted", name)
 		}
+	}
+}
+
+// A run ID cannot lead out of the runs directory.
+func TestRunIDsStayInTheStore(t *testing.T) {
+	root := t.TempDir()
+	store := Store{Dir: filepath.Join(root, "runs")}
+	ctx := context.Background()
+	outside := Store{Dir: root}
+	h, err := outside.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "elsewhere", Process: "p", CreatedAt: time.Now()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.(*handle).lock.Close()
+
+	var input *contract.InputError
+	for _, id := range []string{"../elsewhere", "..", ".", "", "a/b", "/abs"} {
+		if record, _, err := store.Get(ctx, id); !errors.As(err, &input) {
+			t.Errorf("Get(%q) = %q, %v", id, record.ID, err)
+		}
+		if _, _, err := store.Events(ctx, id, 0); !errors.As(err, &input) {
+			t.Errorf("Events(%q) = %v", id, err)
+		}
+		if _, err := store.Create(ctx, run.Record{ID: id}); !errors.As(err, &input) {
+			t.Errorf("Create(%q) = %v", id, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(root, "b")); err == nil {
+		t.Fatal("Create wrote outside the store")
 	}
 }

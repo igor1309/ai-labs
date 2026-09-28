@@ -20,6 +20,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -39,7 +40,21 @@ var _ app.RunReader = Store{}
 
 func (s Store) runDir(id string) string { return filepath.Join(s.Dir, id) }
 
+// A run ID names one directory under Dir; anything else, such as a path
+// out of it, is refused before it reaches the filesystem.
+var idPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
+
+func checkID(id string) error {
+	if !idPattern.MatchString(id) {
+		return &contract.InputError{Message: fmt.Sprintf("%q is not a run ID", id)}
+	}
+	return nil
+}
+
 func (s Store) Create(_ context.Context, record run.Record) (app.RunHandle, error) {
+	if err := checkID(record.ID); err != nil {
+		return nil, err
+	}
 	dir := s.runDir(record.ID)
 	if err := os.MkdirAll(s.Dir, 0o700); err != nil {
 		return nil, err
@@ -134,6 +149,9 @@ func (h *handle) writeRecord(record run.Record) error {
 
 func (s Store) Get(_ context.Context, id string) (run.Record, run.State, error) {
 	var record run.Record
+	if err := checkID(id); err != nil {
+		return record, "", err
+	}
 	data, err := os.ReadFile(filepath.Join(s.runDir(id), "record.json"))
 	if errors.Is(err, fs.ErrNotExist) {
 		return record, "", fmt.Errorf("run %s: %w", id, contract.ErrNotFound)

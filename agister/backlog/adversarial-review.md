@@ -10,13 +10,6 @@ version: 0.1.0
 Forward tasks only. Each lands as its own commit with a regression test;
 a fixed item is removed from this list.
 
-## 8. Run IDs are not validated
-
-`fsruns` joins the ID into a path, so `--continue ../../x` or `runs show ../..`
-reads any `record.json`.
-
-- Validate run IDs like definition names.
-
 ## 9. Agent-controlled text reaches the terminal raw
 
 `cli.describe` prints tool inputs and errors unescaped, so escape sequences
