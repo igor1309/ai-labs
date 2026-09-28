@@ -40,8 +40,8 @@ test("builds exec arguments: JSONL, OS sandbox from workspace policy, prompt on 
 test("rejects what Codex cannot honour instead of ignoring it", () => {
   assert.throws(() => codexArguments(request({ sessionId: "x" })), /cannot preset a session ID/);
   assert.throws(
-    () => codexArguments(request({ policy: { workspace: "read-only", isolateConfig: true, timeoutMs: 1, claude: { tools: [], allowedTools: [] } } })),
-    /Claude Code tool policy/,
+    () => codexArguments(request({ policy: { workspace: "read-only", isolateConfig: true, timeoutMs: 1, tools: { expose: [], allow: [] } } })),
+    /takes no tool surface/,
   );
 });
 

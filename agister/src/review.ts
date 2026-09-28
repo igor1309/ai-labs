@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import type { ExecutionPolicy } from "./runtime.js";
+import type { ExecutionPolicy, RuntimeCapabilities } from "./runtime.js";
 
 // The `review` process: one independent, read-only review of an exact
 // candidate revision. The process owns the instruction, the input and output
@@ -16,19 +16,19 @@ const MAX_DIFF_CHARS = 150_000;
 
 export const REVIEW_TIMEOUT_MS = 20 * 60_000;
 
-// Read-only review. Claude Code enforces it through its tool surface (read
-// tools plus git inspection); Codex through its read-only OS sandbox, which
+// Read-only review. A runtime with a tool surface gets read tools plus git
+// inspection; a sandboxed runtime relies on its read-only OS sandbox, which
 // still lets the reviewer run read-only commands.
-export function reviewPolicy(runtime: string, timeoutMs: number): ExecutionPolicy {
+export function reviewPolicy(capabilities: RuntimeCapabilities, timeoutMs: number): ExecutionPolicy {
   const policy: ExecutionPolicy = {
     workspace: "read-only",
     isolateConfig: true,
     timeoutMs: Math.min(timeoutMs, REVIEW_TIMEOUT_MS),
   };
-  if (runtime === "claude-code") {
-    policy.claude = {
-      tools: ["Read", "Grep", "Glob", "Bash"],
-      allowedTools: ["Read", "Grep", "Glob", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)"],
+  if (capabilities.toolSurface) {
+    policy.tools = {
+      expose: ["Read", "Grep", "Glob", "Bash"],
+      allow: ["Read", "Grep", "Glob", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)"],
     };
   }
   return policy;

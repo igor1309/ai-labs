@@ -26,6 +26,8 @@ import type { RuntimeAdapter, RuntimeEvent, TurnObserver, TurnRequest, TurnResul
 // - There is no system-prompt flag; process instructions are prepended to
 //   the prompt in a delimited block.
 
+export const CODEX_EFFORTS = ["minimal", "low", "medium", "high", "xhigh"] as const;
+
 export interface CodexAdapterOptions {
   command?: string;
   killGraceMs?: number;
@@ -36,14 +38,15 @@ export function codexAdapter(options: CodexAdapterOptions = {}): RuntimeAdapter 
 
   return {
     runtime: "codex",
-    capabilities: { presetSessionId: false },
+    capabilities: { presetSessionId: false, toolSurface: false },
     runTurn: (request, observer) => runCodexTurn(command, options.killGraceMs, request, observer),
+    resumeHint: (sessionId) => `codex resume ${sessionId}`,
   };
 }
 
 export function codexArguments(request: TurnRequest, schemaPath?: string): string[] {
   const { policy } = request;
-  if (policy.claude) throw new Error("Claude Code tool policy cannot be applied to Codex");
+  if (policy.tools) throw new Error("Codex enforces the workspace policy with its sandbox and takes no tool surface");
   if (request.sessionId) throw new Error("Codex cannot preset a session ID");
 
   const args = [

@@ -8,19 +8,15 @@ import { parseFlatToml, stringifyFlatToml, type FlatTable } from "./toml.js";
 // or policy; those belong to the process that uses the profile.
 
 export const AGENT_SCHEMA = "agister.agent/v1alpha1";
-export const RUNTIMES = ["claude-code", "codex"] as const;
-export type Runtime = (typeof RUNTIMES)[number];
 
-// Effort levels are runtime vocabulary, validated per runtime rather than
-// mapped onto a shared scale.
-export const EFFORTS: Record<Runtime, readonly string[]> = {
-  "claude-code": ["low", "medium", "high", "xhigh", "max"],
-  codex: ["minimal", "low", "medium", "high", "xhigh"],
-};
+// Runtimes this installation knows, each with its own effort vocabulary.
+// Effort levels are validated per runtime rather than mapped onto a shared
+// scale. Supplied by the composition root; this module names no runtime.
+export type RuntimeVocabulary = ReadonlyMap<string, readonly string[]>;
 
 export interface AgentProfile {
   name: string;
-  runtime: Runtime;
+  runtime: string;
   model?: string;
   effort?: string;
   session: "fresh-only";
@@ -33,7 +29,7 @@ export function agentsDirectory(stateDirectory: string): string {
   return join(stateDirectory, "agents");
 }
 
-export function validateProfile(table: FlatTable, source: string): AgentProfile {
+export function validateProfile(table: FlatTable, source: string, runtimes: RuntimeVocabulary): AgentProfile {
   const fail = (message: string): never => {
     throw new Error(`${source}: ${message}`);
   };
@@ -55,12 +51,9 @@ export function validateProfile(table: FlatTable, source: string): AgentProfile 
   if (!NAME.test(name)) fail(`invalid name: ${name}`);
 
   const runtime = optionalString("runtime") ?? fail("runtime is required");
-  if (!(RUNTIMES as readonly string[]).includes(runtime)) {
-    fail(`unsupported runtime: ${runtime} (supported: ${RUNTIMES.join(", ")})`);
-  }
+  const efforts = runtimes.get(runtime) ?? fail(`unsupported runtime: ${runtime} (supported: ${[...runtimes.keys()].join(", ")})`);
 
   const effort = optionalString("effort");
-  const efforts = EFFORTS[runtime as Runtime];
   if (effort !== undefined && !efforts.includes(effort)) {
     fail(`unsupported ${runtime} effort: ${effort} (supported: ${efforts.join(", ")})`);
   }
@@ -68,7 +61,7 @@ export function validateProfile(table: FlatTable, source: string): AgentProfile 
   const session = optionalString("session") ?? "fresh-only";
   if (session !== "fresh-only") fail(`unsupported session mode: ${session}`);
 
-  const profile: AgentProfile = { name, runtime: runtime as Runtime, session: "fresh-only" };
+  const profile: AgentProfile = { name, runtime, session: "fresh-only" };
   const model = optionalString("model");
   const command = optionalString("command");
   if (model !== undefined) profile.model = model;
@@ -77,7 +70,7 @@ export function validateProfile(table: FlatTable, source: string): AgentProfile 
   return profile;
 }
 
-export async function loadProfile(stateDirectory: string, name: string): Promise<AgentProfile> {
+export async function loadProfile(stateDirectory: string, name: string, runtimes: RuntimeVocabulary): Promise<AgentProfile> {
   const path = join(agentsDirectory(stateDirectory), `${name}.toml`);
   let text: string;
   try {
@@ -85,7 +78,7 @@ export async function loadProfile(stateDirectory: string, name: string): Promise
   } catch {
     throw new Error(`agent not found: ${name} (expected ${path}; create it with \`agister agent create ${name}\`)`);
   }
-  const profile = validateProfile(parseFlatToml(text, path), path);
+  const profile = validateProfile(parseFlatToml(text, path), path, runtimes);
   if (profile.name !== name) throw new Error(`${path}: name "${profile.name}" does not match file name`);
   return profile;
 }
@@ -93,6 +86,7 @@ export async function loadProfile(stateDirectory: string, name: string): Promise
 export async function saveProfile(
   stateDirectory: string,
   profile: AgentProfile,
+  runtimes: RuntimeVocabulary,
   options: { overwrite?: boolean } = {},
 ): Promise<string> {
   const table: FlatTable = { schema: AGENT_SCHEMA, name: profile.name, runtime: profile.runtime };
@@ -103,7 +97,7 @@ export async function saveProfile(
 
   const directory = agentsDirectory(stateDirectory);
   const path = join(directory, `${profile.name}.toml`);
-  validateProfile(table, path);
+  validateProfile(table, path, runtimes);
 
   await mkdir(directory, { recursive: true });
   await writeFile(path, stringifyFlatToml(table), { flag: options.overwrite ? "w" : "wx" }).catch((error) => {
@@ -113,7 +107,7 @@ export async function saveProfile(
   return path;
 }
 
-export async function listProfiles(stateDirectory: string): Promise<AgentProfile[]> {
+export async function listProfiles(stateDirectory: string, runtimes: RuntimeVocabulary): Promise<AgentProfile[]> {
   let entries: string[];
   try {
     entries = await readdir(agentsDirectory(stateDirectory));
@@ -121,5 +115,5 @@ export async function listProfiles(stateDirectory: string): Promise<AgentProfile
     return [];
   }
   const names = entries.filter((entry) => entry.endsWith(".toml")).map((entry) => entry.slice(0, -5)).sort();
-  return Promise.all(names.map((name) => loadProfile(stateDirectory, name)));
+  return Promise.all(names.map((name) => loadProfile(stateDirectory, name, runtimes)));
 }

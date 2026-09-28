@@ -15,14 +15,15 @@ export interface ExecutionPolicy {
   // rules) so the run depends only on what Agister passes.
   isolateConfig: boolean;
   timeoutMs: number;
-  // Claude Code tool surface. Absent means the adapter's default for
-  // `workspace`. Other runtimes reject it rather than silently ignoring it.
-  claude?: {
-    // Built-in tools exposed to the agent. An empty list exposes none.
-    tools: string[];
+  // Explicit tool surface, for runtimes with the `toolSurface` capability.
+  // Absent means the adapter's default for `workspace`. Runtimes without the
+  // capability reject it rather than silently ignoring it.
+  tools?: {
+    // Tools exposed to the agent. An empty list exposes none.
+    expose: string[];
     // Permission rules that run without asking, e.g. "Bash(git diff:*)".
     // Anything else is denied: turns are unattended.
-    allowedTools: string[];
+    allow: string[];
   };
 }
 
@@ -73,10 +74,15 @@ export interface TurnObserver {
 export interface RuntimeCapabilities {
   // The caller can choose the provider session ID before the turn starts.
   presetSessionId: boolean;
+  // The workspace policy is enforced through a named tool surface that the
+  // caller may narrow (`ExecutionPolicy.tools`), rather than an OS sandbox.
+  toolSurface: boolean;
 }
 
 export interface RuntimeAdapter {
   readonly runtime: string;
   readonly capabilities: RuntimeCapabilities;
   runTurn(request: TurnRequest, observer: TurnObserver): Promise<TurnResult>;
+  // How a person reopens the provider session natively.
+  resumeHint(providerSessionId: string): string;
 }

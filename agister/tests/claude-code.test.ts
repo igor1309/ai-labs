@@ -24,7 +24,7 @@ function request(overrides: Partial<TurnRequest> = {}): TurnRequest {
       workspace: "read-only",
       isolateConfig: true,
       timeoutMs: 10_000,
-      claude: { tools: ["Read", "Grep"], allowedTools: ["Read", "Bash(git diff:*)"] },
+      tools: { expose: ["Read", "Grep"], allow: ["Read", "Bash(git diff:*)"] },
     },
     ...overrides,
   };
@@ -51,7 +51,7 @@ test("builds headless arguments without a positional prompt", () => {
 });
 
 test("an empty tool list disables every tool", () => {
-  const args = claudeArguments(request({ policy: { workspace: "read-only", isolateConfig: false, timeoutMs: 1, claude: { tools: [], allowedTools: [] } } }));
+  const args = claudeArguments(request({ policy: { workspace: "read-only", isolateConfig: false, timeoutMs: 1, tools: { expose: [], allow: [] } } }));
   assert.ok(args.includes("--tools="));
   assert.ok(!args.some((arg) => arg.startsWith("--allowedTools")));
   assert.ok(!args.includes("--restricted"));
@@ -205,14 +205,14 @@ test("tool surface: defaults follow the workspace policy, write tools cannot lea
   assert.ok(readOnly.includes("--allowedTools=Read,Grep,Glob"));
   assert.ok(claudeArguments(request({ policy: { ...base, workspace: "workspace-write" } })).includes("--tools=Read,Grep,Glob,Edit,Write"));
   assert.throws(
-    () => claudeArguments(request({ policy: { ...base, workspace: "read-only", claude: { tools: ["Read", "Edit"], allowedTools: [] } } })),
+    () => claudeArguments(request({ policy: { ...base, workspace: "read-only", tools: { expose: ["Read", "Edit"], allow: [] } } })),
     /read-only policy exposes write tools: Edit/,
   );
 });
 
 test("adapter: an invalid policy fails the turn without spawning", async () => {
   const { result, events } = await runFake("x", {
-    policy: { workspace: "read-only", isolateConfig: false, timeoutMs: 1_000, claude: { tools: ["Write"], allowedTools: [] } },
+    policy: { workspace: "read-only", isolateConfig: false, timeoutMs: 1_000, tools: { expose: ["Write"], allow: [] } },
   });
   assert.deepEqual([result.outcome, result.reason], ["failed", "invalid_policy: read-only policy exposes write tools: Write"]);
   assert.equal(events.length, 0);

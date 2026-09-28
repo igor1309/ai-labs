@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 
+import { composeAgister } from "../src/composition-root.js";
 import { EXIT, main, parseDuration, type Io } from "../src/main.js";
 
 const FAKE_CLAUDE = fileURLToPath(new URL("./fixtures/fake-claude.mjs", import.meta.url));
@@ -27,7 +28,7 @@ async function agister(cwd: string, argv: string[], stdin = ""): Promise<Capture
     stderr: (text) => { stderr += text; },
     stdin: async () => stdin,
   };
-  const code = await main(argv, io);
+  const code = await main(argv, io, composeAgister);
   return { code, stdout, stderr };
 }
 
@@ -213,9 +214,35 @@ test("run refuses Claude-only tool flags for a Codex agent", async () => {
   await agister(root, ["agent", "create", "cx", "--runtime", "codex", "--command", FAKE_CODEX]);
   const refused = await agister(root, ["run", "cx", "--tools", "Read", "--prompt", "hi"]);
   assert.equal(refused.code, EXIT.usage);
-  assert.match(refused.stderr, /claude-code agents only/);
+  assert.match(refused.stderr, /is sandboxed and takes no tool list/);
 
   const ok = await agister(root, ["run", "cx", "--prompt", "hi", "--quiet"]);
   assert.equal(ok.code, EXIT.ok, ok.stderr);
   assert.equal(ok.stdout, "All good.\n");
+});
+
+test("diagnostic logs are written per run, correlated with the run record", async () => {
+  const root = await withReviewer("approve");
+  assert.equal((await agister(root, ["run", "reviewer", "--quiet", "--prompt", "hi"])).code, EXIT.ok);
+  const [id] = (await agister(root, ["runs"])).stdout.split("\t");
+
+  const lines = readFileSync(join(root, ".agister", "logs", "agister.jsonl"), "utf8").trim().split("\n").map((line) => JSON.parse(line));
+  assert.equal(lines[0].message, "turn.started");
+  assert.equal(lines.at(-1).message, "turn.finished");
+  // In between, only warnings: the fake runtime emits one unparseable line.
+  assert.deepEqual(lines.slice(1, -1).map((line) => [line.level, line.kind]), [["warn", "STREAM_PARSE_ERROR"]]);
+  const finished = lines.find((line) => line.message === "turn.finished");
+  assert.equal(finished.runId, id);
+  assert.equal(finished.runtime, "claude-code");
+  assert.equal(finished.outcome, "completed");
+  assert.ok(lines.every((line) => line.level !== "debug"), "file log is info+ without --debug");
+});
+
+test("--debug also streams debug logs to stderr", async () => {
+  const root = await withReviewer("approve");
+  const result = await agister(root, ["run", "reviewer", "--quiet", "--debug", "--prompt", "hi"]);
+  assert.equal(result.code, EXIT.ok, result.stderr);
+  const logged = result.stderr.split("\n").filter((line) => line.startsWith("{")).map((line) => JSON.parse(line));
+  assert.ok(logged.some((line) => line.level === "debug" && line.message === "turn.event"));
+  assert.ok(logged.some((line) => line.message === "turn.finished"));
 });

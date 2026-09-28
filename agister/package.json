@@ -8,7 +8,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "agister": "node --disable-warning=ExperimentalWarning --import tsx src/main.ts",
+    "agister": "node --disable-warning=ExperimentalWarning --import tsx src/cli.ts",
     "test": "node --import tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit -p ."
   }

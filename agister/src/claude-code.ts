@@ -18,6 +18,8 @@ import type { ExecutionPolicy, RuntimeAdapter, RuntimeEvent, TurnObserver, TurnR
 // 3. Without a result, a non-zero exit or spawn failure means failed.
 // 4. A clean exit without any result is lost: nothing proves what happened.
 
+export const CLAUDE_EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
+
 const WRITE_TOOLS = ["Edit", "Write", "NotebookEdit"];
 const DEFAULT_TOOLS = {
   "read-only": ["Read", "Grep", "Glob"],
@@ -34,23 +36,24 @@ export function claudeCodeAdapter(options: ClaudeCodeAdapterOptions = {}): Runti
 
   return {
     runtime: "claude-code",
-    capabilities: { presetSessionId: true },
+    capabilities: { presetSessionId: true, toolSurface: true },
     runTurn: (request, observer) => runClaudeTurn(command, options.killGraceMs, request, observer),
+    resumeHint: (sessionId) => `claude --resume ${sessionId}`,
   };
 }
 
 // Claude Code has no OS sandbox here: the workspace policy is enforced by the
 // tool surface, so a read-only policy must not expose write tools.
-export function claudeToolSurface(policy: ExecutionPolicy): { tools: string[]; allowedTools: string[] } {
-  if (!policy.claude) {
+export function claudeToolSurface(policy: ExecutionPolicy): { expose: string[]; allow: string[] } {
+  if (!policy.tools) {
     const tools = DEFAULT_TOOLS[policy.workspace];
-    return { tools, allowedTools: tools };
+    return { expose: tools, allow: tools };
   }
   if (policy.workspace === "read-only") {
-    const writable = policy.claude.tools.filter((tool) => WRITE_TOOLS.includes(tool));
+    const writable = policy.tools.expose.filter((tool) => WRITE_TOOLS.includes(tool));
     if (writable.length > 0) throw new Error(`read-only policy exposes write tools: ${writable.join(", ")}`);
   }
-  return policy.claude;
+  return policy.tools;
 }
 
 export function claudeArguments(request: TurnRequest): string[] {
@@ -63,10 +66,10 @@ export function claudeArguments(request: TurnRequest): string[] {
     "--output-format", "stream-json",
     "--verbose",
     "--permission-mode", "dontAsk",
-    `--tools=${surface.tools.join(",")}`,
+    `--tools=${surface.expose.join(",")}`,
   ];
   if (request.sessionId) args.push("--session-id", request.sessionId);
-  if (surface.allowedTools.length > 0) args.push(`--allowedTools=${surface.allowedTools.join(",")}`);
+  if (surface.allow.length > 0) args.push(`--allowedTools=${surface.allow.join(",")}`);
   if (policy.isolateConfig) args.push("--restricted", "--strict-mcp-config");
   if (request.model) args.push("--model", request.model);
   if (request.effort) args.push("--effort", request.effort);

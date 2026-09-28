@@ -67,7 +67,7 @@ but not yet through a successful live turn.
 Run from the repository you want to work on. State lives in `./.agister/`.
 
 ```bash
-alias agister='node --disable-warning=ExperimentalWarning --import tsx /path/to/ai-labs/agister/src/main.ts'
+alias agister='node --disable-warning=ExperimentalWarning --import tsx /path/to/ai-labs/agister/src/cli.ts'
 
 # 1. Define an agent (reusable runtime profile, no prompt)
 agister agent create reviewer --model sonnet --effort high
@@ -137,16 +137,54 @@ to point at a fake runtime.
 
 ## Layout
 
+```text
+cli.ts ──► main.ts (CLI: parse, call, present; names no runtime)
+   │            │ drives
+   │            ▼
+   │       application.ts (use cases: agents, run, review, runs; runtime-agnostic)
+   │            ▲ RuntimeCatalog of RuntimeAdapter
+   └──► composition-root.ts ──► claude-code.ts, codex.ts   (concrete runtimes)
+                             └─► logged-runtime.ts, logging.ts  (cross-cutting)
+```
+
 | File | Role |
 |---|---|
-| `src/runtime.ts` | Provider-neutral adapter contract: request, policy, capabilities, events, outcome |
+| `src/cli.ts` | Process entry: real I/O, SIGINT, hands `composeAgister` to `main` |
+| `src/main.ts` | CLI only; receives a composition function, never imports a runtime |
+| `src/application.ts` | Use cases over a `RuntimeCatalog`; validates options against adapter capabilities |
+| `src/composition-root.ts` | The only module that imports concrete runtimes; wraps each in logging |
+| `src/runtime.ts` | Adapter contract: request, policy, capabilities, events, outcome, resume hint |
 | `src/process-supervisor.ts` | Shared CLI process supervision and the no-terminal-event outcome rules |
 | `src/claude-code.ts` | Claude Code adapter: arguments, tool surface, stream-json reduction, outcome |
 | `src/codex.ts` | Codex adapter: arguments, sandbox mapping, JSONL reduction, outcome |
-| `src/agents.ts` | Agent profiles (`agister.agent/v1alpha1`) |
-| `src/review.ts` | The `review` process: target resolution, worktree, prompt, policy, output contract |
+| `src/logged-runtime.ts` | Logging decorator for any `RuntimeAdapter` |
+| `src/logging.ts` | JSONL logger, sinks, async log context for correlation |
+| `src/agents.ts` | Agent profiles; runtime/effort vocabulary is injected |
+| `src/review.ts` | The `review` process: target, worktree, prompt, capability-based policy, contract |
 | `src/run-store.ts` | File-backed run records and append-only events |
-| `src/main.ts` | CLI |
+
+`tests/architecture.test.ts` enforces the layering: only the composition root
+imports concrete runtimes, and the CLI and application import neither runtimes
+nor logging.
+
+## Logging
+
+Two different things are kept apart:
+
+- **Run evidence**: `runs/<id>/events.jsonl`, `run.json`, `provider.jsonl`.
+  Always written, part of the product contract. Anything needed to understand
+  a run is an event or an outcome `reason`, never only a log line.
+- **Diagnostics**: `logs/agister.jsonl`, how Agister's own plumbing behaved.
+  A cross-cutting concern applied by the composition root: each runtime
+  adapter is wrapped with `withLogging`, which records `turn.started`,
+  warning-level events, `turn.finished` (outcome, wall time, event counts) and
+  `turn.crashed`. It changes no result and rethrows every error. Prompts are
+  not logged, only their size.
+
+Correlation uses an async log context: the application opens a scope with the
+run ID, process and agent, and every log line inside it carries them, without
+passing a logger or IDs through the core. The file log is info level;
+`--debug` adds debug-level lines (every event kind) to the file and stderr.
 
 ```bash
 npm run test:agister && npm run typecheck:agister   # from the repo root
