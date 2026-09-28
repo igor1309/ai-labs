@@ -1,0 +1,94 @@
+---
+date: 2026-09-28
+model: claude-opus-5-5
+description: "Fixes from the adversarial review of the Agister CLI Go implementation."
+version: 0.1.0
+---
+
+# Backlog — adversarial review fixes
+
+Forward tasks only. Each lands as its own commit with a regression test;
+a fixed item is removed from this list.
+
+## 1. `workspace.access: read-only` depends on magic permission names
+
+`policy.Compose` enforces read-only only by denying `repository.write` and
+`repository.history.write`, then drops denials not in the vocabulary. A custom
+vocabulary (e.g. `docs.write`) gets no read-only at all. `workspace.scope`,
+`resources` and `artifacts.retain` are parsed and composed but never enforced;
+`static-review.yaml` claims isolation "independently contains sensitive
+effects", which nothing does.
+
+- Make the vocabulary declare which permissions write, and derive read-only
+  from that.
+- Reject, or report in `check`, settings that nothing enforces.
+
+## 2. Provenance is never written
+
+Nothing writes `<home>/provenance/<rev>.json`, so the model-family constraint
+is always unknown: `on_unknown: pass` (shipped `static-review`) always passes,
+`fail` always refuses. Family comparison is also case-sensitive.
+
+- Record it as deferred with its trigger, or write provenance for revisions
+  Agister produces; compare families case-insensitively.
+
+## 3. Prompt input fences can be closed by the input
+
+`prompt.render` wraps multi-line inputs in a fixed ```` ``` ```` fence. A diff
+containing ```` ``` ```` closes it and can forge `## ` sections.
+
+- Fence with more backticks than the longest run in the value.
+
+## 4. Process group not reaped on normal exit; EOF-bound wait can hang
+
+The supervisor signals the group only on timeout/cancel, so background
+processes an agent starts outlive the call. Reading stops only at stdout EOF
+and `terminate` fires once, so a descendant that leaves the group while
+holding stdout hangs `Run` past the timeout.
+
+- Terminate the group after the leader exits; bound the wait
+  (`exec.Cmd.WaitDelay`).
+
+## 5. SIGHUP is not handled
+
+`main` handles SIGINT and SIGTERM only; closing the terminal orphans the
+runtime and leaves the checkout, as in deferred item 1.
+
+- Add SIGHUP to the handled signals.
+
+## 6. Cancellation before the turn is recorded as refused
+
+Ctrl-C during resolution or input resolution makes the version probe or git
+fail, and the error becomes `refused` (or `internal`), not `cancelled`.
+
+- Classify a failure under a cancelled context as cancelled.
+
+## 7. A panic in change collection crashes the process
+
+`finish` clears `collect` only after it returns; if it panics, the recover
+handler calls it again and the second panic kills the process with the record
+unfinished.
+
+- Clear `collect` before calling it.
+
+## 8. Run IDs are not validated
+
+`fsruns` joins the ID into a path, so `--continue ../../x` or `runs show ../..`
+reads any `record.json`.
+
+- Validate run IDs like definition names.
+
+## 9. Agent-controlled text reaches the terminal raw
+
+`cli.describe` prints tool inputs and errors unescaped, so escape sequences
+from the agent reach the terminal.
+
+- Strip control characters from progress output.
+
+## 10. Loose mapping checks
+
+A primitive with `grants: []` fits every plan, so it is always granted.
+`verified_versions` is a plain string prefix: `"2.1"` matches `2.10.x`.
+
+- Require non-empty grants; require a verified-version prefix to end in `.`
+  or match whole components.
