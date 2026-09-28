@@ -10,15 +10,6 @@ version: 0.1.0
 Forward tasks only. Each lands as its own commit with a regression test;
 a fixed item is removed from this list.
 
-## 2. Provenance is never written
-
-Nothing writes `<home>/provenance/<rev>.json`, so the model-family constraint
-is always unknown: `on_unknown: pass` (shipped `static-review`) always passes,
-`fail` always refuses. Family comparison is also case-sensitive.
-
-- Record it as deferred with its trigger, or write provenance for revisions
-  Agister produces; compare families case-insensitively.
-
 ## 3. Prompt input fences can be closed by the input
 
 `prompt.render` wraps multi-line inputs in a fixed ```` ``` ```` fence. A diff

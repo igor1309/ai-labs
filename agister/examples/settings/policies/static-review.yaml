@@ -9,8 +9,9 @@ constraints:
     not_equal: >-
       evidence.candidate(input.candidate_revision).provenance.writer.model_family
     on_unsatisfied: fail
-    # A revision Agister did not write has no recorded writer. This policy
-    # accepts reviewing it; "fail" would require Agister-recorded provenance.
+    # Agister records no writers yet (deferred item 6), so every revision's
+    # writer is unknown. This policy accepts that; "fail" would refuse
+    # every review.
     on_unknown: pass
 
 workspace:

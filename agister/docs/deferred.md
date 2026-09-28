@@ -82,3 +82,17 @@ before.
 - **Trigger:** the service (ADR-001 rule 16), or the first caller that
   relies on either field.
 - **Done when:** each field has an effect a test observes, or is rejected.
+
+## 6. No provenance is recorded
+
+- **Gap:** constraints on a revision's writer read
+  `<home>/provenance/<revision>.json`, but nothing writes it: Agister keeps
+  an agent's changes as a patch artifact and never commits them. Every
+  writer is therefore unknown, so `on_unknown: pass` always passes (the
+  shipped `static-review`) and `on_unknown: fail` always refuses.
+- **Why deferred:** there is no revision Agister produced to record.
+- **Trigger:** the first time Agister commits an agent's changes, or a
+  workflow that must refuse self-review on evidence rather than trust.
+- **Done when:** committing an agent's changes records its agent, model
+  family and run for the new commit, and a test shows a same-family
+  reviewer refused for it.

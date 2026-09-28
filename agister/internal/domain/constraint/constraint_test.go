@@ -19,6 +19,9 @@ func TestModelFamily(t *testing.T) {
 	if r := constraint.ModelFamily(rule, "a", "sha", &constraint.Writer{ModelFamily: "a"}); r.Satisfied || r.Unknown {
 		t.Fatalf("same family: %+v", r)
 	}
+	if r := constraint.ModelFamily(rule, "anthropic", "sha", &constraint.Writer{ModelFamily: "Anthropic"}); r.Satisfied {
+		t.Fatalf("same family in another case: %+v", r)
+	}
 	if r := constraint.ModelFamily(rule, "a", "sha", &constraint.Writer{ModelFamily: "b"}); !r.Satisfied {
 		t.Fatalf("different family: %+v", r)
 	}
