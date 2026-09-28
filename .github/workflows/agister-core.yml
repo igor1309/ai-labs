@@ -7,6 +7,7 @@ on:
         description: "Git ref to checkout."
         required: false
         type: string
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -37,4 +38,14 @@ jobs:
         run: go vet ./...
 
       - name: Test
-        run: go test -race ./...
+        run: go test -race -coverpkg=./internal/...,./cmd/... -coverprofile=cover.out ./...
+
+      - name: Coverage
+        run: go tool cover -func=cover.out | tail -1 | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Example settings pass check
+        run: |
+          go build -o bin/agister ./cmd/agister
+          home="$(mktemp -d)"
+          bin/agister --home "$home" init
+          bin/agister --home "$home" check

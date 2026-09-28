@@ -12,7 +12,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-
+	"sort"
 	"strings"
 	"time"
 
@@ -34,6 +34,7 @@ const usage = `agister — run agent calls defined in settings
 
 Usage:
   agister init [--force]
+  agister check [--probe]            validate all settings (--probe: ask each runtime its version)
   agister agent create <name> --runtime <runtime> [--model <m>] [--model-family <f>] [--effort <e>] [--command <path>] [--force]
   agister agent list
   agister process list
@@ -94,7 +95,7 @@ func Run(ctx context.Context, args []string, env IO, build Build) int {
 
 type options struct {
 	home, runtime, model, modelFamily, effort, command, agent, timeout string
-	force, quiet, debug, json, help                                    bool
+	force, quiet, debug, json, help, probe                             bool
 	after                                                              int
 	params                                                             paramFlag
 }
@@ -127,6 +128,7 @@ func parse(args []string) (options, []string, error) {
 	set.BoolVar(&opts.quiet, "quiet", false, "")
 	set.BoolVar(&opts.debug, "debug", false, "")
 	set.BoolVar(&opts.json, "json", false, "")
+	set.BoolVar(&opts.probe, "probe", false, "")
 	set.BoolVar(&opts.help, "help", false, "")
 	set.BoolVar(&opts.help, "h", false, "")
 	set.IntVar(&opts.after, "after", 0, "")
@@ -188,6 +190,26 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 		}
 		return 0, nil
 
+	case "check":
+		report, err := client.Check(ctx, opts.probe)
+		if err != nil {
+			return 0, err
+		}
+		for _, problem := range report.Problems {
+			fmt.Fprintln(env.Stderr, problem)
+		}
+		kinds := make([]string, 0, len(report.Checked))
+		for kind, count := range report.Checked {
+			kinds = append(kinds, fmt.Sprintf("%d %s", count, kind))
+		}
+		sort.Strings(kinds)
+		if len(report.Problems) > 0 {
+			fmt.Fprintf(env.Stderr, "%d problem(s) in %s\n", len(report.Problems), strings.Join(kinds, ", "))
+			return ExitUsage, nil
+		}
+		fmt.Fprintf(env.Stdout, "settings OK: %s\n", strings.Join(kinds, ", "))
+		return 0, nil
+
 	case "agent":
 		sub, _ := arg(0, "a subcommand")
 		switch sub {
@@ -226,6 +248,10 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 				return 0, err
 			}
 			for _, process := range processes {
+				if process.Problem != "" {
+					fmt.Fprintf(env.Stdout, "%s\t%s\n", process.Name, process.Problem)
+					continue
+				}
 				fmt.Fprintf(env.Stdout, "%s\tagent:%s\t%s\t%s\n", process.Name, process.Agent, or(process.Policy, "-"), process.Output)
 			}
 			return 0, nil

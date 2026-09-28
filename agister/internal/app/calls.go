@@ -99,7 +99,13 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	event := func(source, kind string, data map[string]any) {
 		_ = handle.Append(run.Event{At: c.Clock.Now(), Source: source, Kind: kind, Data: data})
 	}
+	// Effects end before the record does: the workspace is released first.
+	release := func() error { return nil }
 	finish := func(outcome run.CallOutcome, reason string) {
+		if err := release(); err != nil {
+			event(run.SourceAgister, "WORKSPACE_RELEASE_FAILED", map[string]any{"error": err.Error()})
+		}
+		release = func() error { return nil }
 		now := c.Clock.Now()
 		record.FinishedAt = &now
 		record.Outcome = outcome
@@ -124,7 +130,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		finish(run.CallFailed, err.Error())
 	}
 
-	res, err := resolver{definitions: c.Definitions, runtimes: c.Runtimes}.resolve(ctx, record.Request.Process, record.Request.Agent, record.Request.Timeout)
+	res, err := resolver{definitions: c.Definitions, runtimes: c.Runtimes, validator: c.Validator}.resolve(ctx, record.Request.Process, record.Request.Agent, record.Request.Timeout)
 	record.Definitions = res.sources
 	if err != nil {
 		fail(err)
@@ -168,16 +174,12 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		}
 	}
 
-	workspace, release, err := c.prepareWorkspace(ctx, res.process, inputs, record.Request.Cwd)
+	workspace, releaseWorkspace, err := c.prepareWorkspace(ctx, res.process, inputs, record.Request.Cwd)
 	if err != nil {
 		fail(err)
 		return
 	}
-	defer func() {
-		if err := release(); err != nil {
-			event(run.SourceAgister, "WORKSPACE_RELEASE_FAILED", map[string]any{"error": err.Error()})
-		}
-	}()
+	release = releaseWorkspace
 	record.Workspace = workspace
 
 	request := TurnRequest{

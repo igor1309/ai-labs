@@ -1,0 +1,253 @@
+package app_test
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"sort"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/igor1309/ai-labs/agister/internal/app"
+	"github.com/igor1309/ai-labs/agister/internal/domain/constraint"
+	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+)
+
+// Spies record every call's payload and answer with a scripted response.
+
+type definitionsSpy struct {
+	mu    sync.Mutex
+	docs  map[definition.Kind]map[string]string
+	reads []string
+}
+
+func (s *definitionsSpy) Read(_ context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.reads = append(s.reads, string(kind)+"/"+name)
+	text, ok := s.docs[kind][name]
+	if !ok {
+		return definition.Document{}, fmt.Errorf("not found")
+	}
+	sum := sha256.Sum256([]byte(text))
+	return definition.Document{
+		Source: definition.Source{Kind: kind, Name: name, Path: "mem/" + string(kind) + "/" + name, SHA256: hex.EncodeToString(sum[:])},
+		Bytes:  []byte(text),
+	}, nil
+}
+
+func (s *definitionsSpy) List(_ context.Context, kind definition.Kind) ([]string, error) {
+	var names []string
+	for name := range s.docs[kind] {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names, nil
+}
+
+type runnerSpy struct {
+	mu          sync.Mutex
+	identity    app.RuntimeIdentity
+	identityErr error
+	turn        run.Turn
+	block       bool // wait for cancellation
+	requests    []app.TurnRequest
+	started     chan struct{}
+}
+
+func (s *runnerSpy) Identity(context.Context) (app.RuntimeIdentity, error) {
+	return s.identity, s.identityErr
+}
+
+func (s *runnerSpy) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
+	s.mu.Lock()
+	s.requests = append(s.requests, request)
+	s.mu.Unlock()
+	sink.Event(run.SourceProcess, "PROCESS_STARTED", nil)
+	sink.Raw(`{"raw":true}`)
+	if s.started != nil {
+		close(s.started)
+	}
+	if s.block {
+		<-ctx.Done()
+		return run.Turn{Outcome: run.TurnInterrupted, Reason: "cancelled"}
+	}
+	return s.turn
+}
+
+func (s *runnerSpy) ResumeHint(id string) string { return "spy resume " + id }
+
+func (s *runnerSpy) calls() []app.TurnRequest {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]app.TurnRequest(nil), s.requests...)
+}
+
+type runtimesSpy struct {
+	mu     sync.Mutex
+	runner *runnerSpy
+	asked  []string // adapter|command
+}
+
+func (s *runtimesSpy) Runner(adapter, command string) (app.TurnRunner, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.asked = append(s.asked, adapter+"|"+command)
+	if adapter != "spy" {
+		return nil, fmt.Errorf("no runtime adapter %q", adapter)
+	}
+	return s.runner, nil
+}
+
+func (s *runtimesSpy) Adapters() []string { return []string{"spy"} }
+
+type inputsSpy struct {
+	mu      sync.Mutex
+	specs   []app.InputSpec
+	respond func(app.InputSpec) (app.Resolved, error)
+}
+
+func (s *inputsSpy) Resolve(_ context.Context, spec app.InputSpec) (app.Resolved, error) {
+	s.mu.Lock()
+	s.specs = append(s.specs, spec)
+	s.mu.Unlock()
+	return s.respond(spec)
+}
+
+type workspacesSpy struct {
+	mu        sync.Mutex
+	root      string
+	dir       string
+	checkouts [][2]string
+	released  int
+}
+
+func (s *workspacesSpy) Root(context.Context, string) (string, error) { return s.root, nil }
+
+func (s *workspacesSpy) Checkout(_ context.Context, repository, revision string) (string, func() error, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.checkouts = append(s.checkouts, [2]string{repository, revision})
+	return s.dir, func() error {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		s.released++
+		return nil
+	}, nil
+}
+
+func (s *workspacesSpy) releases() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.released
+}
+
+type provenanceSpy struct {
+	writer    *constraint.Writer
+	revisions []string
+}
+
+func (s *provenanceSpy) Writer(_ context.Context, revision string) (*constraint.Writer, error) {
+	s.revisions = append(s.revisions, revision)
+	return s.writer, nil
+}
+
+type validatorSpy struct {
+	compileErr, validateErr error
+	compiled                [][]byte
+	validated               []json.RawMessage
+}
+
+func (s *validatorSpy) Compile(schema []byte) error {
+	s.compiled = append(s.compiled, schema)
+	return s.compileErr
+}
+
+func (s *validatorSpy) Validate(_ []byte, output json.RawMessage) error {
+	s.validated = append(s.validated, output)
+	return s.validateErr
+}
+
+type recorderSpy struct {
+	mu       sync.Mutex
+	created  []run.Record
+	updates  []run.Record
+	events   []run.Event
+	raw      []string
+	finished chan run.Record
+
+	onFinish         func() int // observed state at finish time
+	releasedAtFinish int
+}
+
+func newRecorderSpy() *recorderSpy { return &recorderSpy{finished: make(chan run.Record, 1)} }
+
+func (s *recorderSpy) Create(_ context.Context, record run.Record) (app.RunHandle, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.created = append(s.created, record)
+	return s, nil
+}
+
+func (s *recorderSpy) Append(event run.Event) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.events = append(s.events, event)
+	return nil
+}
+
+func (s *recorderSpy) Raw(line string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.raw = append(s.raw, line)
+	return nil
+}
+
+func (s *recorderSpy) Update(record run.Record) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.updates = append(s.updates, record)
+	return nil
+}
+
+func (s *recorderSpy) Finish(record run.Record) error {
+	if s.onFinish != nil {
+		s.releasedAtFinish = s.onFinish()
+	}
+	s.finished <- record
+	return nil
+}
+
+func (s *recorderSpy) kinds() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var kinds []string
+	for _, event := range s.events {
+		kinds = append(kinds, event.Kind)
+	}
+	return kinds
+}
+
+func (s *recorderSpy) wait(t *testing.T) run.Record {
+	t.Helper()
+	select {
+	case record := <-s.finished:
+		return record
+	case <-time.After(5 * time.Second):
+		t.Fatal("the call never finished")
+		return run.Record{}
+	}
+}
+
+type fixedClock struct{}
+
+func (fixedClock) Now() time.Time { return time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC) }
+
+type fixedIDs struct{}
+
+func (fixedIDs) RunID(time.Time) string { return "run-1" }
+func (fixedIDs) SessionID() string      { return "session-1" }

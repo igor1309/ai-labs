@@ -6,6 +6,7 @@ import "github.com/igor1309/ai-labs/agister/internal/contract"
 // host the same use cases behind the same contract.
 type Host struct {
 	*Settings
+	*Checker
 	*Inspection
 	*Calls
 	*Runs

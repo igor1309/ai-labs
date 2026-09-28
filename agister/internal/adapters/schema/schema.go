@@ -15,21 +15,34 @@ var printer = message.NewPrinter(language.English)
 
 type Validator struct{}
 
+func compile(document []byte) (*jsonschema.Schema, error) {
+	schemaDoc, err := jsonschema.UnmarshalJSON(bytes.NewReader(document))
+	if err != nil {
+		return nil, fmt.Errorf("schema is not JSON: %w", err)
+	}
+	compiler := jsonschema.NewCompiler()
+	if err := compiler.AddResource("output.json", schemaDoc); err != nil {
+		return nil, fmt.Errorf("schema: %w", err)
+	}
+	compiled, err := compiler.Compile("output.json")
+	if err != nil {
+		return nil, fmt.Errorf("schema: %w", err)
+	}
+	return compiled, nil
+}
+
+func (Validator) Compile(document []byte) error {
+	_, err := compile(document)
+	return err
+}
+
 func (Validator) Validate(document []byte, output json.RawMessage) error {
 	if len(output) == 0 {
 		return fmt.Errorf("no structured output")
 	}
-	schemaDoc, err := jsonschema.UnmarshalJSON(bytes.NewReader(document))
+	compiled, err := compile(document)
 	if err != nil {
-		return fmt.Errorf("schema: %w", err)
-	}
-	compiler := jsonschema.NewCompiler()
-	if err := compiler.AddResource("output.json", schemaDoc); err != nil {
-		return fmt.Errorf("schema: %w", err)
-	}
-	compiled, err := compiler.Compile("output.json")
-	if err != nil {
-		return fmt.Errorf("schema: %w", err)
+		return err
 	}
 	instance, err := jsonschema.UnmarshalJSON(bytes.NewReader(output))
 	if err != nil {

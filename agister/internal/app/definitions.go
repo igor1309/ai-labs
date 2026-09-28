@@ -126,7 +126,8 @@ func (s *Settings) ListProcesses(ctx context.Context) ([]contract.ProcessSummary
 		}
 		process, err := definition.ParseProcess(doc)
 		if err != nil {
-			return nil, err
+			processes = append(processes, contract.ProcessSummary{Name: name, Problem: "invalid (run `agister check`)"})
+			continue
 		}
 		output := process.Output.Format
 		if process.Output.Schema != "" {
@@ -141,10 +142,11 @@ func (s *Settings) ListProcesses(ctx context.Context) ([]contract.ProcessSummary
 type Inspection struct {
 	Definitions DefinitionSource
 	Runtimes    Runtimes
+	Validator   OutputValidator
 }
 
 func (i *Inspection) ShowProcess(ctx context.Context, name, agent string) (contract.ProcessView, error) {
-	res, err := resolver{definitions: i.Definitions, runtimes: i.Runtimes}.resolve(ctx, name, agent, "")
+	res, err := resolver{definitions: i.Definitions, runtimes: i.Runtimes, validator: i.Validator}.resolve(ctx, name, agent, "")
 	var refusal *Refusal
 	if err != nil && !errors.As(err, &refusal) {
 		return contract.ProcessView{}, err

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"syscall"
 
 	"github.com/igor1309/ai-labs/agister/examples"
@@ -65,7 +66,8 @@ func compose(config cli.Config) (contract.Client, error) {
 
 	return &app.Host{
 		Settings:   &app.Settings{Definitions: definitions, Writer: definitions, Examples: examples.Settings()},
-		Inspection: &app.Inspection{Definitions: definitions, Runtimes: runtimes},
+		Checker:    &app.Checker{Definitions: definitions, Validator: schema.Validator{}, Runtimes: runtimes, Sources: names(sources)},
+		Inspection: &app.Inspection{Definitions: definitions, Runtimes: runtimes, Validator: schema.Validator{}},
 		Calls: &app.Calls{
 			Definitions: definitions,
 			Runtimes:    runtimes,
@@ -81,6 +83,15 @@ func compose(config cli.Config) (contract.Client, error) {
 		},
 		Runs: &app.Runs{Reader: evidence, Runtimes: runtimes, Hosted: hosted},
 	}, nil
+}
+
+func names[V any](m map[string]V) []string {
+	out := make([]string, 0, len(m))
+	for name := range m {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // diagnostics: info and above to <home>/logs/agister.jsonl; with --debug,

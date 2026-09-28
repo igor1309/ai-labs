@@ -15,12 +15,16 @@ type Registry map[string]func(command string) app.TurnRunner
 func (r Registry) Runner(adapter, command string) (app.TurnRunner, error) {
 	factory, ok := r[adapter]
 	if !ok {
-		names := make([]string, 0, len(r))
-		for name := range r {
-			names = append(names, name)
-		}
-		sort.Strings(names)
-		return nil, fmt.Errorf("no runtime adapter %q (available: %s)", adapter, strings.Join(names, ", "))
+		return nil, fmt.Errorf("no runtime adapter %q (available: %s)", adapter, strings.Join(r.Adapters(), ", "))
 	}
 	return factory(command), nil
+}
+
+func (r Registry) Adapters() []string {
+	names := make([]string, 0, len(r))
+	for name := range r {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }

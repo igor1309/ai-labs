@@ -39,6 +39,7 @@ type resolution struct {
 type resolver struct {
 	definitions DefinitionSource
 	runtimes    Runtimes
+	validator   OutputValidator
 }
 
 func (r resolver) resolve(ctx context.Context, processName, agentOverride, callerTimeout string) (*resolution, error) {
@@ -109,6 +110,10 @@ func (r resolver) resolve(ctx context.Context, processName, agentOverride, calle
 			return res, err
 		}
 		res.schema = doc.Bytes
+		// Fail before the agent runs, not when its output is validated.
+		if err := r.validator.Compile(res.schema); err != nil {
+			return res, refuse("schema %q: %v", res.process.Output.Schema, err)
+		}
 	}
 
 	var caller policy.Caller

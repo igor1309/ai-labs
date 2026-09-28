@@ -67,6 +67,7 @@ type TurnRunner interface {
 // Runtimes builds the runner for an adapter name and runtime command.
 type Runtimes interface {
 	Runner(adapter, command string) (TurnRunner, error)
+	Adapters() []string
 }
 
 // InputSpec asks one input source for a value.
@@ -100,8 +101,10 @@ type Provenance interface {
 	Writer(ctx context.Context, revision string) (*constraint.Writer, error)
 }
 
-// OutputValidator checks output against a JSON Schema document.
+// OutputValidator compiles JSON Schema documents and checks output
+// against them.
 type OutputValidator interface {
+	Compile(schema []byte) error
 	Validate(schema []byte, output json.RawMessage) error
 }
 

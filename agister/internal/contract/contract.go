@@ -17,6 +17,9 @@ type Client interface {
 	ListAgents(ctx context.Context) ([]Agent, error)
 	ListProcesses(ctx context.Context) ([]ProcessSummary, error)
 	ShowProcess(ctx context.Context, name, agent string) (ProcessView, error)
+	// Check validates every setting and reports all problems. With probe,
+	// it also asks each agent's runtime for its identity.
+	Check(ctx context.Context, probe bool) (CheckReport, error)
 
 	// Submit records a call and starts it. Every call gets a run, including
 	// one that is refused.
@@ -52,10 +55,16 @@ type Agent struct {
 }
 
 type ProcessSummary struct {
-	Name   string
-	Agent  string
-	Policy string
-	Output string
+	Name    string
+	Agent   string
+	Policy  string
+	Output  string
+	Problem string // set when the definition is invalid
+}
+
+type CheckReport struct {
+	Checked  map[string]int // definitions checked, by kind
+	Problems []string
 }
 
 type Param struct {
