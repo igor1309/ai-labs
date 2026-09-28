@@ -111,6 +111,8 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		record.Outcome = outcome
 		record.Reason = reason
 		event(run.SourceAgister, "CALL_FINISHED", map[string]any{"outcome": string(outcome), "reason": reason})
+		// A finished run is no longer cancellable.
+		c.Hosted.remove(record.ID)
 		_ = handle.Finish(record)
 	}
 	defer func() {
