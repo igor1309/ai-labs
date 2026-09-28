@@ -143,6 +143,12 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	event(run.SourceAgister, "CALL_SUBMITTED", map[string]any{"process": record.Process})
 
 	fail := func(err error) {
+		// A cancelled call's probes and git fail as a consequence; the
+		// cancellation is what happened.
+		if ctx.Err() != nil {
+			finish(run.Fault(run.ClassCancelled, "cancelled before the runtime started: %v", err))
+			return
+		}
 		var refusal *Refusal
 		if errors.As(err, &refusal) {
 			event(run.SourceAgister, "REFUSED", map[string]any{"reason": refusal.Reason})

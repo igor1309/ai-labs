@@ -487,6 +487,29 @@ func TestCancelInterruptsAndReleases(t *testing.T) {
 	}
 }
 
+// Cancelling before the runtime starts makes git and the version probe
+// fail; the call is cancelled, not refused.
+func TestCancelBeforeTheTurnIsCancelled(t *testing.T) {
+	h := newHarness()
+	runs := &app.Runs{Hosted: h.calls.Hosted}
+	h.inputs.respond = func(app.InputSpec) (app.Resolved, error) {
+		if err := runs.Cancel(context.Background(), "run-1"); err != nil {
+			t.Error(err)
+		}
+		return app.Resolved{}, errors.New("signal: killed")
+	}
+	record := h.call(t, contract.CallRequest{})
+	if record.Result.Status != run.Interrupted || class(record) != run.ClassCancelled || !strings.Contains(message(record), "signal: killed") {
+		t.Fatalf("result = %+v", record.Result.Error)
+	}
+	if kinds := h.recorder.kinds(); contains(kinds, "REFUSED") {
+		t.Fatalf("events = %v", kinds)
+	}
+	if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
+		t.Fatal("the call went on after the cancel")
+	}
+}
+
 func contains(list []string, value string) bool {
 	for _, item := range list {
 		if item == value {

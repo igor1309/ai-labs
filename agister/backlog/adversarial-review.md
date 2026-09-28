@@ -10,13 +10,6 @@ version: 0.1.0
 Forward tasks only. Each lands as its own commit with a regression test;
 a fixed item is removed from this list.
 
-## 6. Cancellation before the turn is recorded as refused
-
-Ctrl-C during resolution or input resolution makes the version probe or git
-fail, and the error becomes `refused` (or `internal`), not `cancelled`.
-
-- Classify a failure under a cancelled context as cancelled.
-
 ## 7. A panic in change collection crashes the process
 
 `finish` clears `collect` only after it returns; if it panics, the recover
