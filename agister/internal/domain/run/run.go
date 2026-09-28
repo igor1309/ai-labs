@@ -154,7 +154,11 @@ func Judge(turn Turn, output definition.Output, validation error) (CallOutcome, 
 	if err := json.Unmarshal(turn.Output, &object); err != nil {
 		return CallFailed, "output is not an object"
 	}
-	value := fmt.Sprint(object[output.ResultField])
+	field, ok := object[output.ResultField]
+	if !ok {
+		return CallFailed, "output has no " + output.ResultField
+	}
+	value := fmt.Sprint(field)
 	for _, reject := range output.Reject {
 		if value == reject {
 			return CallRejected, fmt.Sprintf("%s is %s", output.ResultField, value)

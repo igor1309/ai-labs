@@ -273,6 +273,9 @@ func TestRefusalsComeBeforeEffects(t *testing.T) {
 			h.provenance.writer = &constraint.Writer{Agent: "w", ModelFamily: "fam", RunID: "r0"}
 		}, contract.CallRequest{}, "constraint agent.model_family unsatisfied: agent family fam, writer family fam (run r0)", false},
 		{"workspace overlaps state", func(h *harness) { h.workspaces.root = "/state/repo" }, contract.CallRequest{}, "workspace /state/repo overlaps Agister's state /state", false},
+		{"constraint on an input that is not a revision", func(h *harness) {
+			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "{source: git.revision,", "{source: git.diff,", 1)
+		}, contract.CallRequest{}, "constraint agent.model_family: input candidate_revision is not a revision", false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

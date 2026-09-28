@@ -160,7 +160,13 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 			fail(refuse("process %s constrains %s, but agent %s declares no model_family", res.process.Name, rule.Subject, res.agent.Name))
 			return
 		}
-		revision := inputIdentity(inputs, rule.CandidateInput)
+		// Provenance is keyed by commit: any other input would always be
+		// "unknown" and could pass the constraint silently.
+		revision, ok := revisionOf(inputs, rule.CandidateInput)
+		if !ok {
+			fail(refuse("constraint %s: input %s is not a revision", rule.Subject, rule.CandidateInput))
+			return
+		}
 		writer, err := c.Provenance.Writer(ctx, revision)
 		if err != nil {
 			fail(err)
@@ -313,13 +319,13 @@ func summarize(inputs []run.Input) []run.Input {
 	return out
 }
 
-func inputIdentity(inputs []run.Input, name string) string {
+func revisionOf(inputs []run.Input, name string) (string, bool) {
 	for _, input := range inputs {
-		if input.Name == name {
-			return input.Identity
+		if input.Name == name && input.Revision {
+			return input.Identity, true
 		}
 	}
-	return ""
+	return "", false
 }
 
 func hasParam(params []definition.Param, name string) bool {

@@ -23,7 +23,7 @@ bin/agister runs show <run-id>
 bin/agister runs watch <run-id> --after <seq>
 ```
 
-Exit codes: `0` accepted, `1` rejected, `2` failed, `3` refused, `4` lost, `64` usage or invalid settings.
+Exit codes: `0` accepted, `1` rejected, `2` failed, `3` refused, `4` lost, `64` usage or invalid settings, `130` interrupted watch.
 
 ## Settings
 

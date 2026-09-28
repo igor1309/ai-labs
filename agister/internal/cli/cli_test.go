@@ -40,6 +40,9 @@ func (s *clientSpy) Observe(ctx context.Context, id string, after int, each func
 	if s.observe != nil {
 		s.observe(ctx)
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	for _, event := range s.events {
 		if err := each(event); err != nil {
 			return err
@@ -145,6 +148,19 @@ func TestInterruptCancelsTheRunAndStillReportsIt(t *testing.T) {
 	r := run(ctx, spy, "run", "p", "--quiet")
 	if cancelled != "run-1" || r.code != cli.ExitFailed {
 		t.Fatalf("cancelled %q, result %+v", cancelled, r)
+	}
+}
+
+func TestInterruptStopsWatchingWithoutCancelling(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	spy := &clientSpy{}
+	spy.observe = func(observeCtx context.Context) {
+		cancel()
+		<-observeCtx.Done() // watching follows the caller's interrupt
+	}
+	r := run(ctx, spy, "runs", "watch", "r", "--quiet")
+	if r.code != cli.ExitInterrupted || len(spy.cancelled) != 0 || !strings.Contains(r.stderr, "stopped watching run r; it continues") {
+		t.Fatalf("result %+v, cancelled %v", r, spy.cancelled)
 	}
 }
 

@@ -72,15 +72,30 @@ func Run(ctx context.Context, spec Spec, events app.EventSink, onLine func(strin
 	pid := command.Process.Pid
 	sink.Event(run.SourceProcess, "PROCESS_STARTED", map[string]any{"pid": pid, "command": spec.Command, "args": spec.Args})
 
+	// Signals go to the group only while it is known to exist: once the
+	// process has been waited for, its group ID may be reused.
+	var mu sync.Mutex
 	var once sync.Once
+	var killTimer *time.Timer
+	reaped := false
 	terminate := func() {
 		once.Do(func() {
+			mu.Lock()
+			defer mu.Unlock()
+			if reaped {
+				return
+			}
 			_ = syscall.Kill(-pid, syscall.SIGTERM)
-			time.AfterFunc(grace, func() { _ = syscall.Kill(-pid, syscall.SIGKILL) })
+			killTimer = time.AfterFunc(grace, func() {
+				mu.Lock()
+				defer mu.Unlock()
+				if !reaped {
+					_ = syscall.Kill(-pid, syscall.SIGKILL)
+				}
+			})
 		})
 	}
 	exited := make(chan struct{})
-	var mu sync.Mutex
 	go func() {
 		timer := time.NewTimer(spec.Timeout)
 		defer timer.Stop()
@@ -119,6 +134,10 @@ func Run(ctx context.Context, spec Spec, events app.EventSink, onLine func(strin
 
 	mu.Lock()
 	defer mu.Unlock()
+	reaped = true
+	if killTimer != nil {
+		killTimer.Stop()
+	}
 	exit := &run.Exit{}
 	if state := command.ProcessState; state != nil {
 		if status, ok := state.Sys().(syscall.WaitStatus); ok && status.Signaled() {

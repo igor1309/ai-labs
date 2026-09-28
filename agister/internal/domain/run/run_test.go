@@ -23,6 +23,8 @@ func TestJudge(t *testing.T) {
 		{run.Turn{Outcome: run.TurnFailed, Reason: "x"}, jsonOutput, nil, run.CallFailed},
 		{run.Turn{Outcome: run.TurnInterrupted}, definition.Output{Format: "text"}, nil, run.CallFailed},
 		{run.Turn{Outcome: run.TurnCompleted, Text: "hi"}, definition.Output{Format: "text"}, nil, run.CallAccepted},
+		// A valid output without the result field must not pass as accepted.
+		{completed(`{}`), jsonOutput, nil, run.CallFailed},
 	}
 	for i, c := range cases {
 		if got, reason := run.Judge(c.turn, c.output, c.validation); got != c.want {

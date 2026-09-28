@@ -21,13 +21,14 @@ import (
 
 // Exit codes.
 const (
-	ExitAccepted = 0
-	ExitRejected = 1
-	ExitFailed   = 2
-	ExitRefused  = 3
-	ExitLost     = 4
-	ExitUsage    = 64
-	ExitInternal = 70
+	ExitAccepted    = 0
+	ExitRejected    = 1
+	ExitFailed      = 2
+	ExitRefused     = 3
+	ExitLost        = 4
+	ExitUsage       = 64
+	ExitInterrupted = 130
+	ExitInternal    = 70
 )
 
 const usage = `agister — run agent calls defined in settings
@@ -282,7 +283,7 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 		if err != nil {
 			return 0, err
 		}
-		return follow(ctx, client, id, 0, env, opts)
+		return follow(ctx, client, id, 0, true, env, opts)
 
 	case "runs":
 		sub, _ := arg(0, "a subcommand")
@@ -313,29 +314,34 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 			if err != nil {
 				return 0, err
 			}
-			return follow(ctx, client, id, opts.after, env, opts)
+			return follow(ctx, client, id, opts.after, false, env, opts)
 		}
 		return 0, usageError{"unknown runs command: " + sub}
 	}
 	return 0, usageError{"unknown command: " + command}
 }
 
-// follow observes a run to its end, cancels it if interrupted, and presents
-// its result.
-func follow(ctx context.Context, client contract.Client, id string, after int, env IO, opts options) (int, error) {
+// follow observes a run to its end and presents its result. On interrupt,
+// a run this command started is cancelled and still reported; a watched
+// run is left alone and only the watching stops.
+func follow(ctx context.Context, client contract.Client, id string, after int, owned bool, env IO, opts options) (int, error) {
 	if !opts.quiet {
 		fmt.Fprintf(env.Stderr, "run %s\n", id)
 	}
-	observed := make(chan struct{})
-	defer close(observed)
-	go func() {
-		select {
-		case <-ctx.Done():
-			_ = client.Cancel(context.WithoutCancel(ctx), id)
-		case <-observed:
-		}
-	}()
-	err := client.Observe(context.WithoutCancel(ctx), id, after, func(event contract.Event) error {
+	observeCtx := ctx
+	if owned {
+		observeCtx = context.WithoutCancel(ctx)
+		observed := make(chan struct{})
+		defer close(observed)
+		go func() {
+			select {
+			case <-ctx.Done():
+				_ = client.Cancel(context.WithoutCancel(ctx), id)
+			case <-observed:
+			}
+		}()
+	}
+	err := client.Observe(observeCtx, id, after, func(event contract.Event) error {
 		if !opts.quiet {
 			if line := describe(event); line != "" {
 				fmt.Fprintln(env.Stderr, line)
@@ -343,6 +349,10 @@ func follow(ctx context.Context, client contract.Client, id string, after int, e
 		}
 		return nil
 	})
+	if !owned && ctx.Err() != nil {
+		fmt.Fprintf(env.Stderr, "stopped watching run %s; it continues\n", id)
+		return ExitInterrupted, nil
+	}
 	if err != nil {
 		return 0, err
 	}
