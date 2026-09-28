@@ -26,3 +26,6 @@ deno.lock
 # Playwright transient output
 test-results/
 playwright-report/
+
+# Agister local state
+.agister/
