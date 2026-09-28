@@ -218,7 +218,12 @@ func ParseMapping(doc Document) (Mapping, error) {
 	for _, entry := range mapping(primitives["items"], "primitives.items", p) {
 		field := "primitives.items." + entry.key
 		item := fields(entry.value, field, []string{"grants"}, p)
-		m.Primitives = append(m.Primitives, Primitive{Name: entry.key, Grants: stringList(item["grants"], field+".grants", p)})
+		grants := stringList(item["grants"], field+".grants", p)
+		// A primitive granting nothing would fit every plan.
+		if len(grants) == 0 {
+			p.add(field+".grants", "must grant at least one permission")
+		}
+		m.Primitives = append(m.Primitives, Primitive{Name: entry.key, Grants: grants})
 	}
 	if len(m.Primitives) == 0 {
 		p.add("primitives.items", "must declare at least one primitive")
@@ -240,9 +245,12 @@ func (m Mapping) UnknownPermissions(vocabulary []string) []string {
 }
 
 // Verified reports whether version matches one of the verified prefixes.
+// A prefix matches whole components: "2.1" and "2.1." match 2.1.3, not
+// 2.10.0.
 func (m Mapping) Verified(version string) bool {
 	for _, prefix := range m.VerifiedVersions {
-		if strings.HasPrefix(version, prefix) {
+		prefix = strings.TrimSuffix(prefix, ".")
+		if prefix != "" && (version == prefix || strings.HasPrefix(version, prefix+".")) {
 			return true
 		}
 	}

@@ -233,8 +233,43 @@ primitives:
 	if !mapping.Verified("2.1.283") || mapping.Verified("2.2.0") || mapping.Verified("12.1.0") {
 		t.Fatal("verified prefixes")
 	}
+	// A prefix matches whole version components, with or without the dot.
+	for prefix, versions := range map[string]map[string]bool{
+		"2.1":  {"2.1.3": true, "2.1": true, "2.10.0": false, "2.11": false, "12.1.0": false},
+		"2.1.": {"2.1.3": true, "2.10.0": false},
+		"":     {"2.1.3": false},
+	} {
+		m := definition.Mapping{VerifiedVersions: []string{prefix}}
+		for version, want := range versions {
+			if got := m.Verified(version); got != want {
+				t.Errorf("prefix %q, version %s: verified %v, want %v", prefix, version, got, want)
+			}
+		}
+	}
 	if unknown := mapping.UnknownPermissions([]string{"p.one"}); strings.Join(unknown, ",") != "p.two" {
 		t.Fatalf("unknown = %v", unknown)
+	}
+}
+
+// A primitive that grants nothing fits every plan, so it is rejected.
+func TestMappingPrimitivesGrantSomething(t *testing.T) {
+	for _, item := range []string{"X: {grants: []}", "X: {}"} {
+		_, err := definition.ParseMapping(doc(definition.KindRuntime, "r", `
+schema: agister.runtime/v1alpha1
+name: r
+adapter: a
+contract: a/1
+verified_versions: ["2.1."]
+primitives:
+  select: any
+  items:
+    Y: {grants: [p.one]}
+    `+item+`
+`))
+		var invalid *definition.InvalidError
+		if !errors.As(err, &invalid) || strings.Join(invalid.Problems, "; ") != "primitives.items.X.grants: must grant at least one permission" {
+			t.Errorf("%s: %v", item, err)
+		}
 	}
 }
 
