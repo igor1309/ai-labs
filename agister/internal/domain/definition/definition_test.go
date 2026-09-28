@@ -1,9 +1,11 @@
 package definition_test
 
 import (
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -148,6 +150,49 @@ constraints:
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("missing %q in:\n%v", want, err)
 		}
+	}
+}
+
+// A binary or unreadable document gets one plain problem, not a cascade of
+// missing-field errors.
+func TestUnreadableDocumentsReportOneProblem(t *testing.T) {
+	dsStore := "\x00\x00\x00\x01Bud1\x00\x00"
+	utf16 := "\xff\xfes\x00c\x00"
+	parsers := map[string]func(string) error{
+		"service": func(text string) error {
+			_, err := definition.ParseService(doc(definition.KindService, "service", text))
+			return err
+		},
+		"agent": func(text string) error {
+			_, err := definition.ParseAgent(doc(definition.KindAgent, "a", text))
+			return err
+		},
+		"policy": func(text string) error {
+			_, err := definition.ParsePolicy(doc(definition.KindPolicy, "p", text))
+			return err
+		},
+		"process": func(text string) error {
+			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", text))
+			return err
+		},
+		"runtime": func(text string) error {
+			_, err := definition.ParseMapping(doc(definition.KindRuntime, "r", text))
+			return err
+		},
+	}
+	for kind, parse := range parsers {
+		for _, text := range []string{dsStore, utf16} {
+			var invalid *definition.InvalidError
+			if err := parse(text); !errors.As(err, &invalid) ||
+				!reflect.DeepEqual(invalid.Problems, []string{"not a UTF-8 text file"}) {
+				t.Errorf("%s %q: %v", kind, text, err)
+			}
+		}
+	}
+	var invalid *definition.InvalidError
+	_, err := definition.ParseService(doc(definition.KindService, "service", "max_timeout = "))
+	if !errors.As(err, &invalid) || len(invalid.Problems) != 1 {
+		t.Errorf("malformed TOML: %v", err)
 	}
 }
 

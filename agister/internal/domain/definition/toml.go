@@ -53,10 +53,13 @@ type Service struct {
 }
 
 func decodeTOML(data []byte, subject string, allowed []string, p *problems) map[string]any {
+	if !readable(data, p) {
+		return nil
+	}
 	table := map[string]any{}
 	if _, err := toml.Decode(string(data), &table); err != nil {
 		p.add("", "%v", err)
-		return table
+		return nil
 	}
 	keys := make([]string, 0, len(table))
 	for key := range table {
@@ -113,6 +116,9 @@ func tomlStrings(table map[string]any, key string, p *problems) []string {
 func ParseAgent(doc Document) (Agent, error) {
 	p := &problems{}
 	table := decodeTOML(doc.Bytes, doc.Source.Path, []string{"schema", "name", "runtime", "model", "model_family", "effort", "session", "command"}, p)
+	if table == nil {
+		return Agent{Source: doc.Source}, p.err("agent " + subjectName(doc.Source))
+	}
 	if table["schema"] != AgentSchema {
 		p.add("schema", "must be %q", AgentSchema)
 	}
@@ -163,6 +169,9 @@ func FormatAgent(agent Agent) []byte {
 func ParseService(doc Document) (Service, error) {
 	p := &problems{}
 	table := decodeTOML(doc.Bytes, doc.Source.Path, []string{"schema", "max_timeout", "max_attempts", "max_cost_usd", "permissions", "state_reaching"}, p)
+	if table == nil {
+		return Service{Source: doc.Source}, p.err("service settings")
+	}
 	if table["schema"] != ServiceSchema {
 		p.add("schema", "must be %q", ServiceSchema)
 	}

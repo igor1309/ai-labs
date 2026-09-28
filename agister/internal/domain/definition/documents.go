@@ -86,6 +86,9 @@ func header(values map[string]*yaml.Node, schema, expected string, p *problems) 
 func ParsePolicy(doc Document) (Policy, error) {
 	p := &problems{}
 	root := parseYAML(doc.Bytes, p)
+	if root == nil {
+		return Policy{Name: doc.Source.Name, Source: doc.Source}, p.err("policy " + subjectName(doc.Source))
+	}
 	values := fields(root, "", append([]string{"schema", "name", "status"}, limitKeys...), p)
 	header(values, PolicySchema, doc.Source.Name, p)
 	limits, _, _ := parseLimits(values, []string{"allow"}, []string{"access", "scope"}, p)
@@ -96,6 +99,9 @@ func ParsePolicy(doc Document) (Policy, error) {
 func ParseProcess(doc Document) (Process, error) {
 	p := &problems{}
 	root := parseYAML(doc.Bytes, p)
+	if root == nil {
+		return Process{Name: doc.Source.Name, Source: doc.Source}, p.err("process " + subjectName(doc.Source))
+	}
 	values := fields(root, "", append([]string{"schema", "name", "status", "type", "uses", "policy", "input", "output"}, limitKeys...), p)
 	header(values, ProcessSchema, doc.Source.Name, p)
 	if value, _ := scalar(values["type"], "type", p); value != "process" {
@@ -191,6 +197,9 @@ func ParseProcess(doc Document) (Process, error) {
 func ParseMapping(doc Document) (Mapping, error) {
 	p := &problems{}
 	root := parseYAML(doc.Bytes, p)
+	if root == nil {
+		return Mapping{Name: doc.Source.Name, Source: doc.Source}, p.err("runtime mapping " + subjectName(doc.Source))
+	}
 	values := fields(root, "", []string{"schema", "name", "status", "adapter", "contract", "verified_versions", "efforts", "primitives"}, p)
 	header(values, RuntimeSchema, doc.Source.Name, p)
 	m := Mapping{

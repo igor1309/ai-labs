@@ -4,8 +4,10 @@
 package definition
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 )
 
 // Kind names a kind of definition document.
@@ -59,6 +61,17 @@ type InvalidError struct {
 
 func (e *InvalidError) Error() string {
 	return fmt.Sprintf("%s is invalid:\n  %s", e.Subject, strings.Join(e.Problems, "\n  "))
+}
+
+// readable reports whether data can be a settings document at all. Binary
+// content (a stray .DS_Store, a UTF-16 file) gets one plain problem instead
+// of whatever the parser makes of it.
+func readable(data []byte, p *problems) bool {
+	if bytes.IndexByte(data, 0) >= 0 || !utf8.Valid(data) {
+		p.add("", "not a UTF-8 text file")
+		return false
+	}
+	return true
 }
 
 // problems collects field-path problems while reading one document.

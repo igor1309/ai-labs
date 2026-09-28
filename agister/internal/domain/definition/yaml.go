@@ -16,6 +16,9 @@ type pair struct {
 }
 
 func parseYAML(data []byte, p *problems) *yaml.Node {
+	if !readable(data, p) {
+		return nil
+	}
 	var document yaml.Node
 	if err := yaml.Unmarshal(data, &document); err != nil {
 		p.add("", "%v", err)
