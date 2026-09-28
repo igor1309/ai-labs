@@ -262,6 +262,7 @@ func TestSettingsOnlyExtension(t *testing.T) {
 	write(t, filepath.Join(home, "service.toml"), `schema = "agister.service/v1alpha1"
 max_timeout = "5m"
 permissions = ["docs.read", "docs.write"]
+writing = ["docs.write"]
 `)
 	write(t, filepath.Join(home, "runtimes", "docs-runtime.yaml"), `schema: agister.runtime/v1alpha1
 name: docs-runtime

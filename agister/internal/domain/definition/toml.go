@@ -46,6 +46,9 @@ type Service struct {
 	MaxAttempts int
 	MaxCostUSD  *float64 // unset: no service-wide cost limit
 	Permissions []string
+	// Permissions that change the workspace or its history. Read-only
+	// access withholds them.
+	Writing []string
 	// Permissions that would let an agent reach Agister's own state. They
 	// are never granted, whatever a policy allows.
 	StateReaching []string
@@ -168,7 +171,7 @@ func FormatAgent(agent Agent) []byte {
 // ParseService parses the service settings.
 func ParseService(doc Document) (Service, error) {
 	p := &problems{}
-	table := decodeTOML(doc.Bytes, doc.Source.Path, []string{"schema", "max_timeout", "max_attempts", "max_cost_usd", "permissions", "state_reaching"}, p)
+	table := decodeTOML(doc.Bytes, doc.Source.Path, []string{"schema", "max_timeout", "max_attempts", "max_cost_usd", "permissions", "writing", "state_reaching"}, p)
 	if table == nil {
 		return Service{Source: doc.Source}, p.err("service settings")
 	}
@@ -201,6 +204,15 @@ func ParseService(doc Document) (Service, error) {
 	service.Permissions = tomlStrings(table, "permissions", p)
 	if len(service.Permissions) == 0 {
 		p.add("permissions", "must list the permission vocabulary")
+	}
+	if _, ok := table["writing"]; !ok {
+		p.add("writing", "is required: list the permissions that change the workspace (may be empty)")
+	}
+	service.Writing = tomlStrings(table, "writing", p)
+	for _, permission := range service.Writing {
+		if !contains(service.Permissions, permission) {
+			p.add("writing", "%q is not in permissions", permission)
+		}
 	}
 	service.StateReaching = tomlStrings(table, "state_reaching", p)
 	for _, permission := range service.StateReaching {

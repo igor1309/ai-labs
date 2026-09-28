@@ -10,19 +10,6 @@ version: 0.1.0
 Forward tasks only. Each lands as its own commit with a regression test;
 a fixed item is removed from this list.
 
-## 1. `workspace.access: read-only` depends on magic permission names
-
-`policy.Compose` enforces read-only only by denying `repository.write` and
-`repository.history.write`, then drops denials not in the vocabulary. A custom
-vocabulary (e.g. `docs.write`) gets no read-only at all. `workspace.scope`,
-`resources` and `artifacts.retain` are parsed and composed but never enforced;
-`static-review.yaml` claims isolation "independently contains sensitive
-effects", which nothing does.
-
-- Make the vocabulary declare which permissions write, and derive read-only
-  from that.
-- Reject, or report in `check`, settings that nothing enforces.
-
 ## 2. Provenance is never written
 
 Nothing writes `<home>/provenance/<rev>.json`, so the model-family constraint

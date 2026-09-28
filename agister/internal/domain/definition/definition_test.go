@@ -153,6 +153,25 @@ constraints:
 	}
 }
 
+// The service must say which permissions write, even if none do.
+func TestServiceDeclaresItsWritingPermissions(t *testing.T) {
+	base := "schema = \"agister.service/v1alpha1\"\nmax_timeout = \"1h\"\npermissions = [\"read\", \"write\"]\n"
+	for text, want := range map[string]string{
+		base:                             "writing: is required",
+		base + "writing = [\"erase\"]\n": `writing: "erase" is not in permissions`,
+	} {
+		if _, err := definition.ParseService(doc(definition.KindService, "service", text)); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%q: %v, want %q", text, err, want)
+		}
+	}
+	for text, want := range map[string]string{base + "writing = []\n": "", base + "writing = [\"write\"]\n": "write"} {
+		service, err := definition.ParseService(doc(definition.KindService, "service", text))
+		if err != nil || strings.Join(service.Writing, ",") != want {
+			t.Errorf("%q: writing %v, %v", text, service.Writing, err)
+		}
+	}
+}
+
 // A binary or unreadable document gets one plain problem, not a cascade of
 // missing-field errors.
 func TestUnreadableDocumentsReportOneProblem(t *testing.T) {

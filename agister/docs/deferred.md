@@ -69,3 +69,16 @@ before.
   matters.
 - **Done when:** Agister tracks spend per budget across calls and stops
   submitting once it is spent.
+
+## 5. `resources` and `artifacts.retain` are accepted but not enforced
+
+- **Gap:** policies and processes may declare `resources` and
+  `artifacts.retain` (the research `static-review` policy does). They are
+  parsed and validated, and then ignored: no call reserves a resource or
+  retains an artifact because of them.
+- **Why deferred:** both describe a service with shared resources and
+  artifact retention; the CLI stage has neither. The research policy keeps
+  parsing as written.
+- **Trigger:** the service (ADR-001 rule 16), or the first caller that
+  relies on either field.
+- **Done when:** each field has an effect a test observes, or is rejected.

@@ -28,8 +28,6 @@ type Effective struct {
 	Require     []string                `json:"require,omitempty"`
 	Access      string                  `json:"access"`
 	Scope       string                  `json:"scope"`
-	Resources   []string                `json:"resources,omitempty"`
-	Retain      []string                `json:"retain,omitempty"`
 	Constraints []definition.Constraint `json:"constraints,omitempty"`
 }
 
@@ -129,6 +127,9 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 		}
 	}
 
+	// The scope is where the agent works: a checkout of the candidate or
+	// the repository itself. workspace.checkout decides it; a declared
+	// scope must agree.
 	scope := base.Scope
 	if over.Scope != "" {
 		if scope != "" && scope != over.Scope {
@@ -137,11 +138,15 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 			scope = over.Scope
 		}
 	}
-	if scope == "" {
+	switch {
+	case scope == "" && process.Checkout != "":
+		scope = "candidate"
+	case scope == "":
 		scope = "repository"
-	}
-	if scope == "candidate" && process.Checkout == "" {
+	case scope == "candidate" && process.Checkout == "":
 		add("workspace.scope candidate requires workspace.checkout")
+	case scope == "repository" && process.Checkout != "":
+		add("workspace.scope repository conflicts with workspace.checkout, which works in a checkout")
 	}
 
 	constraints := append([]definition.Constraint(nil), base.Constraints...)
@@ -160,11 +165,8 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 
 	deny := union(base.Deny, over.Deny)
 	if access == "read-only" {
-		deny = union(deny, []string{"repository.write", "repository.history.write"})
+		deny = union(deny, service.Writing)
 	}
-	// Keep only names in the vocabulary: the read-only denials name
-	// permissions a vocabulary may not define.
-	deny = intersect(deny, service.Permissions)
 	permissions := subtract(allow, deny)
 	for _, name := range process.Require {
 		if !contains(permissions, name) {
@@ -185,8 +187,6 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 		Require:     process.Require,
 		Access:      access,
 		Scope:       scope,
-		Resources:   union(base.Resources, over.Resources),
-		Retain:      union(base.Retain, over.Retain),
 		Constraints: constraints,
 	}, nil
 }

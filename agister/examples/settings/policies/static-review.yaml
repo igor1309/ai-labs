@@ -18,8 +18,8 @@ workspace:
   scope: candidate
 
 tools:
-  # This allowlist controls exposed capabilities. Isolation independently
-  # contains sensitive effects even if a runtime bypasses its tool surface.
+  # This allowlist controls exposed capabilities; isolation.deny removes
+  # permissions from it. Neither contains a runtime that bypasses its tools.
   allow:
     - repository.read
     - repository.diff

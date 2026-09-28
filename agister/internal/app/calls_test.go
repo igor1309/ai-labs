@@ -23,6 +23,7 @@ func settingsDocs() map[definition.Kind]map[string]string {
 		definition.KindService: {"service": `schema = "agister.service/v1alpha1"
 max_timeout = "1h"
 permissions = ["repository.read", "repository.search", "repository.diff", "process.execute", "host.read"]
+writing = []
 state_reaching = ["host.read"]
 `},
 		definition.KindRuntime: {"rt": `schema: agister.runtime/v1alpha1

@@ -14,6 +14,7 @@ var service = definition.Service{
 	MaxTimeout:  time.Hour,
 	MaxAttempts: 1,
 	Permissions: []string{"repository.read", "repository.search", "repository.diff", "repository.history.read", "repository.write", "repository.history.write", "process.execute", "network"},
+	Writing:     []string{"repository.write", "repository.history.write"},
 }
 
 func researchPolicy(t *testing.T) definition.Policy {
@@ -114,12 +115,11 @@ func TestNarrowingInThePermittedDirection(t *testing.T) {
 timeout: 5m
 tools: {allow: [repository.read]}
 isolation: {deny: [repository.search]}
-resources: [gpu]
 `), policy.Caller{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if effective.Timeout != 5*time.Minute || strings.Join(effective.Permissions, ",") != "repository.read" || strings.Join(effective.Resources, ",") != "reviews,gpu" {
+	if effective.Timeout != 5*time.Minute || strings.Join(effective.Permissions, ",") != "repository.read" {
 		t.Fatalf("effective = %+v", effective)
 	}
 }
@@ -182,5 +182,59 @@ func TestCostLimitOnlyLowers(t *testing.T) {
 	pol.Limits.MaxCostUSD = nil
 	if effective, err := policy.Compose(capped, &pol, process(t, ""), policy.Caller{}); err != nil || *effective.MaxCostUSD != 2 {
 		t.Fatalf("the service limit applies when nothing lowers it: %+v, %v", effective.MaxCostUSD, err)
+	}
+}
+
+// Read-only withholds whatever the vocabulary declares as writing, not a
+// fixed set of names.
+func TestReadOnlyWithholdsTheVocabularysWritingPermissions(t *testing.T) {
+	docs := definition.Service{MaxTimeout: time.Hour, MaxAttempts: 1, Permissions: []string{"docs.read", "docs.write"}, Writing: []string{"docs.write"}}
+	compose := func(pol *definition.Policy) []string {
+		t.Helper()
+		p, err := definition.ParseProcess(definition.Document{Source: definition.Source{Name: "edit"}, Bytes: []byte(`
+schema: agister.process/v1alpha1
+name: edit
+type: process
+uses: agent:writer
+timeout: 1m
+tools: {allow: [docs.read, docs.write]}
+input: {instruction: Edit.}
+output: {format: text}
+`)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		effective, err := policy.Compose(docs, pol, p, policy.Caller{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return effective.Permissions
+	}
+	if got := strings.Join(compose(nil), ","); got != "docs.read" {
+		t.Errorf("default read-only: permissions %s", got)
+	}
+	writable := &definition.Policy{Name: "writable", Limits: definition.Limits{Access: "read-write"}}
+	if got := strings.Join(compose(writable), ","); got != "docs.read,docs.write" {
+		t.Errorf("read-write: permissions %s", got)
+	}
+}
+
+// The scope follows workspace.checkout; a declared scope must agree with it.
+func TestScopeFollowsTheCheckout(t *testing.T) {
+	compose := func(workspace string) (policy.Effective, error) {
+		t.Helper()
+		return policy.Compose(service, nil, mustProcessWithWorkspace(t, "timeout: 1m\n"+workspace), policy.Caller{})
+	}
+	if effective, err := compose("workspace: {checkout: candidate_revision}"); err != nil || effective.Scope != "candidate" {
+		t.Errorf("checkout: scope %q, %v", effective.Scope, err)
+	}
+	if effective, err := compose(""); err != nil || effective.Scope != "repository" {
+		t.Errorf("no checkout: scope %q, %v", effective.Scope, err)
+	}
+	if _, err := compose("workspace: {scope: repository, checkout: candidate_revision}"); err == nil || !strings.Contains(err.Error(), "scope repository conflicts with workspace.checkout") {
+		t.Errorf("repository with checkout: %v", err)
+	}
+	if _, err := compose("workspace: {scope: candidate}"); err == nil || !strings.Contains(err.Error(), "candidate requires workspace.checkout") {
+		t.Errorf("candidate without checkout: %v", err)
 	}
 }

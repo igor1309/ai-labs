@@ -18,6 +18,10 @@ permissions = [
   "host.write",
 ]
 
+# Permissions that change the workspace or its history. Read-only
+# workspace access withholds them.
+writing = ["repository.write", "repository.history.write"]
+
 # Reaching beyond the workspace could reach Agister's own state, so these
 # are never granted, whatever a policy allows.
 state_reaching = ["host.read", "host.write"]
