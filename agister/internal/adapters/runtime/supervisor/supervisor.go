@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -42,7 +43,10 @@ type Evidence struct {
 }
 
 // Run starts the process, feeds stdin, passes each stdout line to onLine and
-// the raw sink, and returns once the process has exited.
+// the raw sink, and returns once the process has exited. Whatever the
+// process leaves running in its group is killed then, and stdout is read
+// for at most the grace period after the exit, so a descendant that keeps
+// it open cannot hold the call.
 func Run(ctx context.Context, spec Spec, events app.EventSink, onLine func(string)) Evidence {
 	// The watcher and the reader both report; the sink sees one at a time.
 	sink := &serialSink{inner: events}
@@ -52,19 +56,26 @@ func Run(ctx context.Context, spec Spec, events app.EventSink, onLine func(strin
 		grace = defaultKillGrace
 	}
 
-	command := exec.Command(spec.Command, spec.Args...)
-	command.Dir = spec.Dir
-	command.Stdin = strings.NewReader(spec.Stdin)
-	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	stdout, err := command.StdoutPipe()
+	// A plain pipe, not StdoutPipe: Wait then returns when the process
+	// exits, not when every holder of stdout has closed it.
+	stdout, stdoutWriter, err := os.Pipe()
 	if err != nil {
 		evidence.SpawnError = err.Error()
 		return evidence
 	}
+	defer stdout.Close()
+	command := exec.Command(spec.Command, spec.Args...)
+	command.Dir = spec.Dir
+	command.Stdin = strings.NewReader(spec.Stdin)
+	command.Stdout = stdoutWriter
 	stderr := &tail{limit: stderrTailBytes}
 	command.Stderr = stderr
+	command.WaitDelay = grace // bounds stdin and stderr copying after the exit
+	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
-	if err := command.Start(); err != nil {
+	err = command.Start()
+	stdoutWriter.Close()
+	if err != nil {
 		evidence.SpawnError = err.Error()
 		sink.Event(run.SourceProcess, "SPAWN_FAILED", map[string]any{"error": err.Error()})
 		return evidence
@@ -116,28 +127,51 @@ func Run(ctx context.Context, spec Spec, events app.EventSink, onLine func(strin
 		}
 	}()
 
-	reader := bufio.NewReaderSize(stdout, 64*1024)
-	for {
-		line, err := reader.ReadString('\n')
-		if line = strings.TrimRight(line, "\r\n"); line != "" {
-			sink.line(line, onLine)
-		}
-		if err != nil {
-			if !errors.Is(err, io.EOF) {
-				sink.Event(run.SourceProcess, "STDOUT_READ_FAILED", map[string]any{"error": err.Error()})
+	read := make(chan struct{})
+	go func() {
+		defer close(read)
+		reader := bufio.NewReaderSize(stdout, 64*1024)
+		for {
+			line, err := reader.ReadString('\n')
+			if line = strings.TrimRight(line, "\r\n"); line != "" {
+				sink.line(line, onLine)
 			}
-			break
+			if err != nil {
+				if !errors.Is(err, io.EOF) && !errors.Is(err, os.ErrClosed) {
+					sink.Event(run.SourceProcess, "STDOUT_READ_FAILED", map[string]any{"error": err.Error()})
+				}
+				return
+			}
 		}
-	}
+	}()
+
 	waitErr := command.Wait()
 	close(exited)
 
 	mu.Lock()
-	defer mu.Unlock()
 	reaped = true
 	if killTimer != nil {
 		killTimer.Stop()
 	}
+	// The group outlives its leader while members remain, and its ID is
+	// not reused while it exists; an empty group fails with ESRCH.
+	leftovers := syscall.Kill(-pid, syscall.SIGKILL) == nil
+	mu.Unlock()
+	if leftovers {
+		sink.Event(run.SourceProcess, "LEFTOVER_PROCESSES_KILLED", map[string]any{"group": pid})
+	}
+
+	select {
+	case <-read:
+	case <-time.After(grace):
+		// Something outside the group still holds stdout open.
+		sink.Event(run.SourceProcess, "STDOUT_HELD_OPEN", map[string]any{"grace": grace.String()})
+		stdout.Close()
+		<-read
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
 	exit := &run.Exit{}
 	if state := command.ProcessState; state != nil {
 		if status, ok := state.Sys().(syscall.WaitStatus); ok && status.Signaled() {

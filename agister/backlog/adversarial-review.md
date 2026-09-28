@@ -10,16 +10,6 @@ version: 0.1.0
 Forward tasks only. Each lands as its own commit with a regression test;
 a fixed item is removed from this list.
 
-## 4. Process group not reaped on normal exit; EOF-bound wait can hang
-
-The supervisor signals the group only on timeout/cancel, so background
-processes an agent starts outlive the call. Reading stops only at stdout EOF
-and `terminate` fires once, so a descendant that leaves the group while
-holding stdout hangs `Run` past the timeout.
-
-- Terminate the group after the leader exits; bound the wait
-  (`exec.Cmd.WaitDelay`).
-
 ## 5. SIGHUP is not handled
 
 `main` handles SIGINT and SIGTERM only; closing the terminal orphans the

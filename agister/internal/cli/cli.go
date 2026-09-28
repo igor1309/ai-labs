@@ -479,7 +479,8 @@ func describe(event contract.Event) string {
 			return "  ↳ tool error"
 		}
 	case "PROVIDER_ERROR", "PROVIDER_RETRY", "RATE_LIMITED", "TIMEOUT", "ABORT_REQUESTED", "SPAWN_FAILED",
-		"STREAM_PARSE_ERROR", "SESSION_ID_MISMATCH", "TURN_FAILED", "WORKSPACE_RELEASE_FAILED", "ARTIFACT_FAILED":
+		"STREAM_PARSE_ERROR", "SESSION_ID_MISMATCH", "TURN_FAILED", "WORKSPACE_RELEASE_FAILED", "ARTIFACT_FAILED",
+		"LEFTOVER_PROCESSES_KILLED", "STDOUT_HELD_OPEN":
 		encoded, _ := json.Marshal(data)
 		return fmt.Sprintf("! %s %s", event.Kind, encoded)
 	}
