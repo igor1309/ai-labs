@@ -45,10 +45,26 @@ func render(value any) string {
 		return strings.Join(lines, "\n")
 	case string:
 		if strings.Contains(v, "\n") {
-			return "```\n" + strings.TrimRight(v, "\n") + "\n```"
+			fence := fence(v)
+			return fence + "\n" + strings.TrimRight(v, "\n") + "\n" + fence
 		}
 		return v
 	default:
 		return fmt.Sprint(v)
 	}
+}
+
+// fence is longer than any backtick run in text, so the text cannot close
+// it: a diff containing ``` stays inside its section.
+func fence(text string) string {
+	longest, run := 0, 0
+	for _, r := range text {
+		if r == '`' {
+			run++
+			longest = max(longest, run)
+		} else {
+			run = 0
+		}
+	}
+	return strings.Repeat("`", max(3, longest+1))
 }

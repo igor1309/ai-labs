@@ -10,13 +10,6 @@ version: 0.1.0
 Forward tasks only. Each lands as its own commit with a regression test;
 a fixed item is removed from this list.
 
-## 3. Prompt input fences can be closed by the input
-
-`prompt.render` wraps multi-line inputs in a fixed ```` ``` ```` fence. A diff
-containing ```` ``` ```` closes it and can forge `## ` sections.
-
-- Fence with more backticks than the longest run in the value.
-
 ## 4. Process group not reaped on normal exit; EOF-bound wait can hang
 
 The supervisor signals the group only on timeout/cancel, so background
