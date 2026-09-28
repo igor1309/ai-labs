@@ -10,3 +10,11 @@
 - Stop if cleanup reports a dirty worktree, a non-fast-forward update, or any
   other unsafe condition. Never force past the check.
 - Do not force-merge, force-delete branches, or discard untracked work.
+
+## Verifying fixes
+
+- Prove a fix with a regular, committed test: set up a temp directory
+  (`t.TempDir()`), put the bad input there, and assert the expected failure.
+- Do not verify by hand by planting broken files and running the binary;
+  that is expensive, unreliable, and never runs again.
+- Check that the new test fails with the fix reverted.
