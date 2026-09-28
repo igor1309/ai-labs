@@ -125,6 +125,7 @@ type workspacesSpy struct {
 	changed   [][2]string // dir, revision
 	changes   []byte
 	changeErr error
+	panics    bool // Changes panics
 }
 
 func (s *workspacesSpy) Root(context.Context, string) (string, error) { return s.root, nil }
@@ -145,6 +146,9 @@ func (s *workspacesSpy) Changes(_ context.Context, dir, revision string) ([]byte
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.changed = append(s.changed, [2]string{dir, revision})
+	if s.panics {
+		panic("changes exploded")
+	}
 	return s.changes, s.changeErr
 }
 

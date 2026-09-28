@@ -404,6 +404,20 @@ func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
 	}
 }
 
+// A panic while collecting changes finishes the record as internal and
+// still releases the workspace; collection is not retried.
+func TestPanicInChangeCollectionFinishesTheRecord(t *testing.T) {
+	h := newHarness()
+	h.workspaces.panics = true
+	record := h.call(t, contract.CallRequest{})
+	if class(record) != run.ClassInternal || !strings.Contains(message(record), "changes exploded") {
+		t.Fatalf("result = %+v", record.Result.Error)
+	}
+	if len(h.workspaces.changed) != 1 || h.workspaces.releases() != 1 {
+		t.Fatalf("changes asked %d times, released %d", len(h.workspaces.changed), h.workspaces.releases())
+	}
+}
+
 // Each refusal is recorded, and nothing after the refusing check happens.
 func TestRefusalsComeBeforeEffects(t *testing.T) {
 	cases := []struct {

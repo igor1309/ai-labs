@@ -108,9 +108,10 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	var collect func()
 	release := func() error { return nil }
 	finish := func(fault *run.Error) {
-		if collect != nil {
-			collect()
+		// Cleared first: if it panics, the recovery calls finish again.
+		if pending := collect; pending != nil {
 			collect = nil
+			pending()
 		}
 		if err := release(); err != nil {
 			event(run.SourceAgister, "WORKSPACE_RELEASE_FAILED", map[string]any{"error": err.Error()})

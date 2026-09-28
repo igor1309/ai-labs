@@ -10,14 +10,6 @@ version: 0.1.0
 Forward tasks only. Each lands as its own commit with a regression test;
 a fixed item is removed from this list.
 
-## 7. A panic in change collection crashes the process
-
-`finish` clears `collect` only after it returns; if it panics, the recover
-handler calls it again and the second panic kills the process with the record
-unfinished.
-
-- Clear `collect` before calling it.
-
 ## 8. Run IDs are not validated
 
 `fsruns` joins the ID into a path, so `--continue ../../x` or `runs show ../..`
