@@ -60,3 +60,5 @@ go test -coverpkg=./internal/...,./cmd/... -coverprofile=cover.out ./... && go t
 | Architecture | `internal/archtest` | dependency rules, no kind of work in code |
 
 CI: `.github/workflows/agister-core.yml`, run from `ci.yml` on changes under `agister/`.
+
+Known gaps and their triggers: [docs/deferred.md](docs/deferred.md). Live observations: [docs/findings.md](docs/findings.md).
