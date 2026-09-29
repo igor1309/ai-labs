@@ -109,8 +109,8 @@ permission vocabulary and service limits are settings, changeable without
 rebuilding. What the agent is told is also a setting: the process defines it,
 and the core only assembles it with inputs and granted permissions.
 
-The core owns what definitions mean (schemas, versions, validation). A
-definitions adapter only supplies documents and their origin.
+The core owns what definitions mean (schemas, versions, validation). The
+interfaces that read definitions only supply documents and their origin.
 
 Code adds mechanisms only where settings cannot express them: runtimes,
 input source kinds, constraint kinds.
@@ -229,7 +229,9 @@ Continuation is explicit per call, and only for agents that allow it.
 Each component declares the interfaces it requires at its own boundary, with
 only the capabilities it uses, and adapters satisfy them. No interface is
 shared between components, even when two need the same capability; one
-adapter may satisfy several. A component that only inspects definitions or
+adapter may satisfy several. The rule covers the interfaces a component
+requires, not a contract a module offers: the client contract (rule 15) is
+used by its callers and implemented by its decorators. A component that only inspects definitions or
 runs therefore has no access to anything that starts a runtime or writes a
 record. The rule applies recursively.
 
@@ -330,8 +332,8 @@ mechanisms; the service, its transport and lifecycle.
 15. Humans and agents share one CLI surface that depends only on the
     service-shaped client contract.
 16. When the service exists, it is the single operational authority.
-17. Each component declares the interfaces it requires; no interface is
-    shared between components.
+17. Each component declares the interfaces it requires; no required
+    interface is shared between components.
 
 ## Source basis
 
