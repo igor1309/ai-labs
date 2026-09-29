@@ -38,7 +38,7 @@ Go-specific interpretation
 * Implementation details remain unexported or live under internal.
 * Exported identifiers form a deliberately small module surface.
 * Module entrypoints expose the capabilities and data required by callers.
-* Consumer interfaces are declared close to the component that consumes the collaborator.
+* Consumer interfaces are declared by the consuming component itself (its type or use case), not in a shared file or package of interfaces. An interface used by more than one component is a finding, even when they need the same capability; one adapter satisfying several components' interfaces is fine.
 * Interface shape follows the consumer’s required capability; interface size follows naturally from that responsibility.
 * Constructors such as NewX(...) receive all required dependencies explicitly.
 * main acts as the application composition root and connects module APIs.
@@ -71,5 +71,7 @@ For each meaningful architectural issue, report:
 3. Evidence — concrete dependency, type ownership, wiring, or boundary structure observed.
 4. Impact — how it affects isolation, coupling, ownership, testability, or change propagation.
 5. Improvement — the smallest structural change that restores the intended boundary.
+
+A change that extends an existing violation (a new user of a shared interface, a new method on a widened one) is a finding in the change, even though the violation predates it.
 
 Prioritize architectural consequences over stylistic preferences.

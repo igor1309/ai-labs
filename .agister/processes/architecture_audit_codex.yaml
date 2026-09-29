@@ -1,0 +1,28 @@
+# Architecture audit of a whole candidate (no diff) against
+# prompts/code-review-architecture.md.
+schema: agister.process/v1alpha1
+name: architecture_audit_codex
+
+type: process
+uses: agent:codex-sol
+policy: process-policy:codex-review
+
+input:
+  instruction: >-
+    Audit the whole Agister module (agister/) at the exact candidate,
+    following the review prompt given as input review_prompt. Report
+    material findings only, with repository-relative paths and candidate
+    line numbers.
+  params:
+    candidate: {default: HEAD}
+  values:
+    candidate_revision: {source: git.revision, rev: "${param.candidate}"}
+    review_prompt: {source: file, path: prompts/code-review-architecture.md}
+
+workspace:
+  checkout: candidate_revision
+
+output:
+  format: json
+  schema: review-result
+  require_valid: true
