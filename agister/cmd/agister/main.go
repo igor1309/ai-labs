@@ -4,6 +4,9 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -51,7 +54,11 @@ func compose(config cli.Config) (contract.Client, error) {
 	}
 
 	global := fsdefs.Store{Dir: config.Home}
-	definitions := fsdefs.Layered{Global: global, Project: project(config)}
+	local, err := project(config, log)
+	if err != nil {
+		return nil, err
+	}
+	definitions := fsdefs.Layered{Global: global, Project: local}
 	evidence := fsruns.Store{Dir: filepath.Join(config.Home, "runs")}
 	runtimes := runtime.Registry{
 		"claude-code": func(command string) app.TurnRunner {
@@ -95,20 +102,34 @@ func compose(config cli.Config) (contract.Client, error) {
 
 // project is the settings layer of the repository containing the working
 // directory, like its .claude or .agents: <root>/.agister. None outside a
-// repository, without that directory, or when it is the home itself.
-func project(config cli.Config) *fsdefs.Store {
+// repository, without that directory, or when it is the home itself; why
+// is logged. A .agister that exists but cannot be used is an error, so
+// project settings never silently stop applying.
+func project(config cli.Config, log *slog.Logger) (*fsdefs.Store, error) {
 	if config.Cwd == "" {
-		return nil
+		return nil, nil
 	}
 	root, err := git.Workspaces{}.Root(context.Background(), config.Cwd)
 	if err != nil {
-		return nil
+		log.Debug("no project settings: not in a usable git repository", "cwd", config.Cwd, "error", err.Error())
+		return nil, nil
 	}
 	dir := filepath.Join(root, ".agister")
-	if info, err := os.Stat(dir); err != nil || !info.IsDir() || sameDir(dir, config.Home) {
-		return nil
+	info, err := os.Stat(dir)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		log.Debug("no project settings: directory absent", "dir", dir)
+		return nil, nil
+	case err != nil:
+		return nil, fmt.Errorf("project settings %s: %w", dir, err)
+	case !info.IsDir():
+		return nil, fmt.Errorf("project settings %s: not a directory", dir)
+	case sameDir(dir, config.Home):
+		log.Debug("no project settings: the repository's .agister is the home", "dir", dir)
+		return nil, nil
 	}
-	return &fsdefs.Store{Dir: dir}
+	log.Debug("project settings", "dir", dir)
+	return &fsdefs.Store{Dir: dir}, nil
 }
 
 func sameDir(a, b string) bool {

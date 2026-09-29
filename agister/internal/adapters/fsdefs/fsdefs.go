@@ -111,9 +111,10 @@ func (s Store) Write(_ context.Context, kind definition.Kind, name string, data 
 	return path, true, file.Close()
 }
 
-// Layered reads a project's settings over the global ones: a project
-// document replaces the global document of the same kind and name. Kinds a
-// project may not define are refused, not ignored, when the project has one.
+// Layered reads a project's settings beside the global ones. A project may
+// add definitions but not replace global ones, so the settings a user
+// trusts cannot be changed by a repository or by whichever branch is checked out.
+// What a project may not define is refused, never ignored.
 type Layered struct {
 	Global  Store
 	Project *Store // nil outside a project
@@ -124,19 +125,30 @@ func (l Layered) Read(ctx context.Context, kind definition.Kind, name string) (d
 		return l.Global.Read(ctx, kind, name)
 	}
 	doc, err := l.Project.Read(ctx, kind, name)
-	if err == nil && !kind.ProjectDefinable() {
-		return definition.Document{}, fmt.Errorf("defined in project settings (%s), but only global settings (%s) may define %s", doc.Source.Path, l.Global.Dir, kind)
-	}
-	if !errors.Is(err, errNotFound) {
+	if errors.Is(err, errNotFound) {
+		doc, err = l.Global.Read(ctx, kind, name)
+		if errors.Is(err, errNotFound) {
+			projectPath, _ := l.Project.path(kind, name)
+			globalPath, _ := l.Global.path(kind, name)
+			return doc, fmt.Errorf("%w (expected %s or %s)", errNotFound, projectPath, globalPath)
+		}
 		return doc, err
 	}
-	doc, err = l.Global.Read(ctx, kind, name)
-	if errors.Is(err, errNotFound) {
-		projectPath, _ := l.Project.path(kind, name)
-		globalPath, _ := l.Global.path(kind, name)
-		return doc, fmt.Errorf("%w (expected %s or %s)", errNotFound, projectPath, globalPath)
+	if err != nil {
+		return doc, err
 	}
-	return doc, err
+	if !kind.ProjectDefinable() {
+		return definition.Document{}, fmt.Errorf("defined in project settings (%s), but only global settings (%s) may define %s", doc.Source.Path, l.Global.Dir, kind)
+	}
+	global, err := l.Global.Read(ctx, kind, name)
+	if err == nil {
+		return definition.Document{}, fmt.Errorf("defined in both project settings (%s) and global settings (%s); a project may add definitions, not replace them", doc.Source.Path, global.Source.Path)
+	}
+	if !errors.Is(err, errNotFound) {
+		return definition.Document{}, err
+	}
+	doc.Source.Project = true
+	return doc, nil
 }
 
 // List names every document of kind in either layer.

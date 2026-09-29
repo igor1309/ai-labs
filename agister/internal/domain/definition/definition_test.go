@@ -273,6 +273,26 @@ primitives:
 	}
 }
 
+// A repository must not choose the binary Agister runs, so a project agent
+// may not set its command; a global one may.
+func TestProjectAgentMayNotSetCommand(t *testing.T) {
+	text := "schema = \"agister.agent/v1alpha1\"\nname = \"r\"\nruntime = \"x\"\ncommand = \"./run.sh\"\n"
+	global := doc(definition.KindAgent, "r", text)
+	if _, err := definition.ParseAgent(global); err != nil {
+		t.Fatalf("global agent: %v", err)
+	}
+	project := global
+	project.Source.Project = true
+	var invalid *definition.InvalidError
+	if _, err := definition.ParseAgent(project); !errors.As(err, &invalid) || !strings.Contains(err.Error(), "command: project settings may not set a runtime command") {
+		t.Fatalf("project agent: %v", err)
+	}
+	project.Bytes = []byte("schema = \"agister.agent/v1alpha1\"\nname = \"r\"\nruntime = \"x\"\n")
+	if _, err := definition.ParseAgent(project); err != nil {
+		t.Fatalf("project agent without command: %v", err)
+	}
+}
+
 func TestAgentRoundTrip(t *testing.T) {
 	agent := definition.Agent{Name: "r", Runtime: "claude-code", Model: "opus", ModelFamily: "anthropic", Effort: "high", Session: definition.SessionResumable}
 	parsed, err := definition.ParseAgent(doc(definition.KindAgent, "r", string(definition.FormatAgent(agent))))

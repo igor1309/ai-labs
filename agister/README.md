@@ -46,12 +46,14 @@ Exit codes: `0` completed, `1` failed, `2` interrupted, `3` refused, `4` lost, `
 
 A repository can keep its own settings in `<repository root>/.agister/`, the
 same way it keeps `.claude/` or `.agents/`. They apply wherever Agister runs
-inside that repository, and a project document replaces the global document
-of the same kind and name. `agister check` validates the merged set, and run
-records show which file each definition came from. `service.toml` and
-`runtimes/` are global only, because they bound what any policy may allow.
-A project that defines them is refused, never silently ignored. `init` and
-`agent create` still write global settings.
+inside that repository. A project may **add** definitions but never replace
+global ones, so a repository (or the branch checked out) cannot loosen the
+settings you trust. The same name in both places is refused. `service.toml`
+and `runtimes/` are global only, and project agents may not set `command`.
+Anything a project may not define is refused, never ignored. `check`
+validates both layers together, and `process show` and run records say which
+file each definition came from. With `--debug`, Agister says why no project
+settings apply. `init` and `agent create` still write global settings.
 
 ```text
 <repository>/.agister/

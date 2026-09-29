@@ -53,6 +53,8 @@ type Source struct {
 	Name   string `json:"name"`
 	Path   string `json:"path"`
 	SHA256 string `json:"sha256"`
+	// From a project's own settings rather than the global ones.
+	Project bool `json:"project,omitempty"`
 }
 
 // Document is a definition's raw bytes with their origin.

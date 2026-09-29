@@ -95,6 +95,8 @@ type ProcessView struct {
 	Primitives []string
 	Withheld   []string
 	Refusal    string
+	// Where each definition the call uses comes from.
+	Sources []string
 }
 
 type CallRequest struct {

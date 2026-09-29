@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -307,12 +308,11 @@ output:
 	}
 }
 
-// A repository's own .agister replaces global settings of the same name,
-// wherever in the repository Agister runs; outside it, only global ones apply.
-func TestProjectSettingsOverrideGlobal(t *testing.T) {
+// A repository's own .agister adds settings wherever in the repository
+// Agister runs; outside it, only global ones apply.
+func TestProjectSettingsAddToGlobal(t *testing.T) {
 	home, repo := setup(t, "approve")
 	ask := strings.Replace(read(t, filepath.Join(home, "processes", "ask.yaml")), "Answer the question", "PROJECT: answer the question", 1)
-	write(t, filepath.Join(repo, ".agister", "processes", "ask.yaml"), ask)
 	write(t, filepath.Join(repo, ".agister", "processes", "ask_here.yaml"), strings.Replace(ask, "name: ask", "name: ask_here", 1))
 	sub := filepath.Join(repo, "sub")
 	write(t, filepath.Join(sub, "keep"), "")
@@ -320,40 +320,83 @@ func TestProjectSettingsOverrideGlobal(t *testing.T) {
 	if r := agister(t, home, sub, "process", "list"); r.code != 0 || !strings.Contains(r.stdout, "ask_here") {
 		t.Fatalf("list in project: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if r := agister(t, home, sub, "run", "ask", "--quiet", "--param", "question=q"); r.code != cli.ExitCompleted {
+	project := filepath.Join(repo, ".agister", "processes", "ask_here.yaml")
+	r := agister(t, home, sub, "process", "show", "ask_here")
+	if r.code != 0 || !strings.Contains(r.stdout, "process ask_here: project "+project) || !strings.Contains(r.stdout, "policy read-only: global "+filepath.Join(home, "policies", "read-only.yaml")) {
+		t.Fatalf("show in project: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if r := agister(t, home, sub, "run", "ask_here", "--quiet", "--param", "question=q"); r.code != cli.ExitCompleted {
 		t.Fatalf("run in project: %d\n%s", r.code, r.stderr)
 	}
 	last := lastRun(t, home)
-	var process string
+	var process map[string]any
 	for _, source := range last.record["definitions"].([]any) {
 		if source := source.(map[string]any); source["kind"] == "processes" {
-			process = source["path"].(string)
+			process = source
 		}
 	}
-	if !strings.Contains(strings.Join(last.argv(), " "), "PROJECT: answer") || process != filepath.Join(repo, ".agister", "processes", "ask.yaml") {
-		t.Fatalf("project process not used: path %s, argv %v", process, last.argv())
+	if !strings.Contains(strings.Join(last.argv(), " "), "PROJECT: answer") || process["path"] != project || process["project"] != true {
+		t.Fatalf("project process not used or not attributed: %v, argv %v", process, last.argv())
 	}
 
 	outside := t.TempDir()
-	// Run IDs have one-second resolution; keep the next run the only one.
-	if err := os.RemoveAll(filepath.Join(home, "runs")); err != nil {
-		t.Fatal(err)
-	}
 	if r := agister(t, home, outside, "process", "list"); r.code != 0 || strings.Contains(r.stdout, "ask_here") {
 		t.Fatalf("list outside project: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if r := agister(t, home, outside, "run", "ask", "--quiet", "--param", "question=q"); r.code != cli.ExitCompleted {
-		t.Fatalf("run outside project: %d\n%s", r.code, r.stderr)
+	// Why no project settings apply is in the diagnostics.
+	if r := agister(t, home, outside, "--debug", "process", "list"); r.code != 0 || !strings.Contains(r.stderr, "no project settings: not in a usable git repository") {
+		t.Fatalf("diagnostics outside project: %d\n%s", r.code, r.stderr)
 	}
-	if args := strings.Join(lastRun(t, home).argv(), " "); strings.Contains(args, "PROJECT") {
-		t.Fatalf("project settings leaked outside the project: %s", args)
+}
+
+// A repository, or whichever branch is checked out, must not change the
+// settings the user trusts or choose the binary Agister runs.
+func TestProjectSettingsCannotReplaceGlobalOrChooseCommands(t *testing.T) {
+	home, repo := setup(t, "approve")
+	policy := read(t, filepath.Join(home, "policies", "static-review.yaml"))
+	write(t, filepath.Join(repo, ".agister", "policies", "static-review.yaml"), strings.Replace(policy, "access: read-only", "access: read-write", 1))
+
+	r := agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main")
+	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, "a project may add definitions, not replace them") {
+		t.Fatalf("run with replaced policy: %d\n%s", r.code, r.stderr)
+	}
+	// A replaced process is one problem row, not a failed listing.
+	write(t, filepath.Join(repo, ".agister", "processes", "ask.yaml"), read(t, filepath.Join(home, "processes", "ask.yaml")))
+	if r := agister(t, home, repo, "process", "list"); r.code != 0 || !strings.Contains(r.stdout, "adversarial_review") || !regexp.MustCompile(`ask\s+unreadable`).MatchString(r.stdout) {
+		t.Fatalf("list with replaced settings: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	os.RemoveAll(filepath.Join(repo, ".agister"))
+
+	// A project agent's command is refused before anything runs it, even
+	// when only inspecting the process.
+	marker := filepath.Join(t.TempDir(), "ran")
+	script := filepath.Join(repo, "runtime.sh")
+	write(t, script, "#!/bin/sh\ntouch "+marker+"\necho 2.1.300\n")
+	os.Chmod(script, 0o700)
+	write(t, filepath.Join(repo, ".agister", "agents", "local.toml"), "schema = \"agister.agent/v1alpha1\"\nname = \"local\"\nruntime = \"claude-code\"\ncommand = \""+script+"\"\n")
+	r = agister(t, home, repo, "process", "show", "ask", "--agent", "local")
+	if r.code != 0 || !strings.Contains(r.stdout, "REFUSED") || !strings.Contains(r.stdout, "project settings may not set a runtime command") {
+		t.Fatalf("show with project command: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if _, err := os.Stat(marker); err == nil {
+		t.Fatal("a project agent's command was executed")
 	}
 
-	// The limits and grants that bound the project's policies stay global.
+	// The limits and grants that bound every policy stay global.
 	write(t, filepath.Join(repo, ".agister", "service.toml"), read(t, filepath.Join(home, "service.toml")))
-	r := agister(t, home, sub, "check")
-	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "only global settings") {
-		t.Fatalf("check with project service: %d\n%s%s", r.code, r.stdout, r.stderr)
+	r = agister(t, home, repo, "check")
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "only global settings") || !strings.Contains(r.stderr, "agent local: command: project settings may not set a runtime command") {
+		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+}
+
+// A .agister that exists but cannot be used fails every command instead of
+// silently leaving the project's settings out.
+func TestUnusableProjectSettingsFail(t *testing.T) {
+	home, repo := setup(t, "approve")
+	write(t, filepath.Join(repo, ".agister"), "not a directory")
+	if r := agister(t, home, repo, "process", "list"); r.code == 0 || !strings.Contains(r.stderr, ".agister: not a directory") {
+		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 }
 

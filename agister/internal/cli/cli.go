@@ -51,8 +51,9 @@ Usage:
 
 Options:
   --home <dir>   Agister's state and settings (default: $AGISTER_HOME, else ~/.agister)
-                 <repository>/.agister settings replace home settings of the same name
-                 (not service.toml or runtimes, which stay global)
+                 <repository>/.agister adds agents, processes, policies and schemas;
+                 it may not replace home settings, set agent commands, or define
+                 service.toml or runtimes
   --quiet        No progress on stderr
   --debug        Diagnostics on stderr (always kept in <home>/logs/agister.jsonl)
 
@@ -532,6 +533,13 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 		lines = append(lines, [2]string{"plan", "REFUSED: " + view.Refusal})
 	} else {
 		lines = append(lines, [2]string{"plan", strings.Join(view.Primitives, ", ")}, [2]string{"  withheld", or(strings.Join(view.Withheld, ", "), "(none)")})
+	}
+	for i, source := range view.Sources {
+		label := ""
+		if i == 0 {
+			label = "sources"
+		}
+		lines = append(lines, [2]string{label, source})
 	}
 	for _, line := range lines {
 		fmt.Fprintf(w, "%-12s %s\n", line[0], line[1])

@@ -58,25 +58,31 @@ func TestRejectsUnsafeNamesAndReportsMissing(t *testing.T) {
 	}
 }
 
-func TestLayeredProjectReplacesGlobalByName(t *testing.T) {
+func TestLayeredProjectAddsButNeverReplaces(t *testing.T) {
 	ctx := context.Background()
 	global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
-	global.Write(ctx, definition.KindProcess, "shared", []byte("global"), false)
-	global.Write(ctx, definition.KindProcess, "global_only", []byte("global"), false)
-	project.Write(ctx, definition.KindProcess, "shared", []byte("project"), false)
-	project.Write(ctx, definition.KindProcess, "project_only", []byte("project"), false)
+	global.Write(ctx, definition.KindPolicy, "shared", []byte("global"), false)
+	global.Write(ctx, definition.KindPolicy, "global_only", []byte("global"), false)
+	project.Write(ctx, definition.KindPolicy, "shared", []byte("project"), false)
+	project.Write(ctx, definition.KindPolicy, "project_only", []byte("project"), false)
 	layered := fsdefs.Layered{Global: global, Project: &project}
 
-	for name, want := range map[string]string{"shared": "project", "global_only": "global", "project_only": "project"} {
-		doc, err := layered.Read(ctx, definition.KindProcess, name)
-		if err != nil || string(doc.Bytes) != want || !strings.HasPrefix(doc.Source.Path, map[string]string{"global": global.Dir, "project": project.Dir}[want]) {
-			t.Fatalf("%s = %+v, %v", name, doc, err)
-		}
+	if doc, err := layered.Read(ctx, definition.KindPolicy, "global_only"); err != nil || string(doc.Bytes) != "global" || doc.Source.Project {
+		t.Fatalf("global_only = %+v, %v", doc, err)
 	}
-	if names, err := layered.List(ctx, definition.KindProcess); err != nil || !reflect.DeepEqual(names, []string{"global_only", "project_only", "shared"}) {
+	if doc, err := layered.Read(ctx, definition.KindPolicy, "project_only"); err != nil || string(doc.Bytes) != "project" || !doc.Source.Project || !strings.HasPrefix(doc.Source.Path, project.Dir) {
+		t.Fatalf("project_only = %+v, %v", doc, err)
+	}
+	// A repository must not change settings the user trusts.
+	_, err := layered.Read(ctx, definition.KindPolicy, "shared")
+	if err == nil || !strings.Contains(err.Error(), "not replace them") || !strings.Contains(err.Error(), project.Dir) || !strings.Contains(err.Error(), global.Dir) {
+		t.Fatalf("shared = %v", err)
+	}
+	// Both stay listed, so check reports the conflict.
+	if names, err := layered.List(ctx, definition.KindPolicy); err != nil || !reflect.DeepEqual(names, []string{"global_only", "project_only", "shared"}) {
 		t.Fatalf("list = %v, %v", names, err)
 	}
-	_, err := layered.Read(ctx, definition.KindProcess, "missing")
+	_, err = layered.Read(ctx, definition.KindPolicy, "missing")
 	if err == nil || !strings.Contains(err.Error(), "not found") || !strings.Contains(err.Error(), project.Dir) || !strings.Contains(err.Error(), global.Dir) {
 		t.Fatalf("missing = %v", err)
 	}
@@ -84,7 +90,7 @@ func TestLayeredProjectReplacesGlobalByName(t *testing.T) {
 		t.Fatal("path traversal accepted")
 	}
 	outside := fsdefs.Layered{Global: global}
-	if doc, err := outside.Read(ctx, definition.KindProcess, "shared"); err != nil || string(doc.Bytes) != "global" {
+	if doc, err := outside.Read(ctx, definition.KindPolicy, "shared"); err != nil || string(doc.Bytes) != "global" {
 		t.Fatalf("without project = %+v, %v", doc, err)
 	}
 }
