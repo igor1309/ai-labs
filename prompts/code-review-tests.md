@@ -21,22 +21,26 @@ Definition of done:
 * An existing assertion weakened, removed or widened in the same change is
   a finding unless the change says why. A reverted fix still fails a
   loosened test, so revert checks do not catch this.
-* Tests are deterministic. Ordering is driven by the test: an injected
-  clock, context, hook or channel, not by a real delay that happens to be
-  long enough.
-* Real waits are findings. Mark each as **flaky** when machine load could
-  flip its outcome: a sleep racing logic, a timer that must fire before (or
-  must not fire before) something else, or a negative check ("did not
-  happen within N ms").
-* A deadline only guards a hang; it never decides the result. A test that
-  reports a timeout as a finding about the product ("no response", "no
-  report arrived") is a finding.
-* No test timeout, bound, poll deadline or test-process lifetime exceeds
-  1 minute. Longer waits bury real bugs: a hang reads as slowness, nobody
-  waits for it, and the feedback loop becomes too long to use. Report each
-  one with its value.
-* An upper bound on an event that surely comes is fine within that limit.
-  Say so rather than flagging it.
+* A wait is not a finding by itself. Yielding to a loop's next tick, or
+  polling for an event that surely comes, is fine. Judge each wait by what
+  it waits for, how long, on which clock, and what it hides:
+  * **Its expiry decides the result.** A sleep that must outlast some
+    logic, a timer that must fire before (or must not fire before)
+    something else, a negative check ("did not happen within N ms"). Mark
+    it **flaky** when machine load could flip it. A deadline may only
+    guard a hang; a test that reports a timeout as a finding about the
+    product ("no response", "no report arrived") is a finding.
+  * **It uses the wall clock where the code takes an injected one.** The
+    test should drive the clock it controls, not wait for real time to
+    pass.
+  * **It hides a missing synchronization.** A wait that papers over the
+    product having no way to say "done" (no event, hook or result to wait
+    on) points at the product, not only the test. Say which.
+  * **It is long.** No test timeout, bound, poll deadline or test-process
+    lifetime exceeds 1 minute. Longer waits bury real bugs: a hang reads
+    as slowness, nobody waits for it, and the feedback loop becomes too
+    long to use. Report each one with its value.
+  A wait none of these apply to is fine; leave it alone.
 * Tests clean up what they start (processes, temp dirs, goroutines) on
   every path, failure paths included.
 * No state outlives its test: package variables, environment, working
