@@ -148,12 +148,3 @@ before.
 - **Done when:** definitions resolve per call from the call's working
   directory, with a test that two calls from different repositories see
   their own settings.
-
-## 8. Process timers use real time in tests
-
-- **Gap:** the supervisor's kill-grace and timeout timers (`time.AfterFunc`)
-  are real, so their tests (KillGrace 200ms in the claudecode, codex,
-  logging and supervisor tests) depend on scheduling.
-- **Trigger:** a flaky timer test.
-- **Done when:** the supervisor takes an injected clock or timer and those
-  tests drive it.

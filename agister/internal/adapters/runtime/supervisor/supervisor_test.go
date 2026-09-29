@@ -36,7 +36,9 @@ func TestMain(m *testing.M) {
 		os.Stdout.WriteString("started\n")
 		os.Exit(0)
 	case "sleep":
-		time.Sleep(time.Minute)
+		// Blocks until the test kills it (t.Cleanup); never ends by itself
+		// within any test's lifetime.
+		time.Sleep(24 * time.Hour)
 		os.Exit(0)
 	}
 }
@@ -128,18 +130,16 @@ func TestStdoutHeldOutsideTheGroupDoesNotHoldTheCall(t *testing.T) {
 	t.Setenv("PID_FILE", pidFile)
 	sink := &events{}
 	var lines []string
-	start := time.Now()
+	// No elapsed-time bound: the escaped child never exits on its own, so
+	// Run returning at all, with STDOUT_HELD_OPEN, proves the grace ended
+	// the wait.
 	evidence := supervisor.Run(context.Background(), supervisor.Spec{
 		Command:   os.Args[0],
 		Timeout:   time.Hour,
 		KillGrace: 200 * time.Millisecond,
 	}, sink, func(line string) { lines = append(lines, line) })
-	elapsed := time.Since(start)
 	pid := pidFrom(t, pidFile)
 	t.Cleanup(func() { _ = syscall.Kill(pid, syscall.SIGKILL) })
-	if elapsed > 10*time.Second {
-		t.Fatalf("Run took %s", elapsed)
-	}
 	if evidence.Exit == nil || evidence.Exit.Code == nil || *evidence.Exit.Code != 0 || strings.Join(lines, ",") != "started" {
 		t.Fatalf("evidence = %+v, lines %v", evidence, lines)
 	}

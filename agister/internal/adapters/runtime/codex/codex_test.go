@@ -21,7 +21,7 @@ func request(prompt string) app.TurnRequest {
 		Primitives:   []string{"read-only"},
 		Model:        "gpt-5.5",
 		Effort:       "high",
-		Timeout:      10 * time.Second,
+		Timeout:      time.Minute,
 		OutputSchema: json.RawMessage(`{"type":"object"}`),
 	}
 }

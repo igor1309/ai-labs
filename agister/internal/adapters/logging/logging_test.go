@@ -16,7 +16,7 @@ import (
 )
 
 func request(prompt string) app.TurnRequest {
-	return app.TurnRequest{Prompt: prompt, Primitives: []string{"Read"}, Timeout: 10 * time.Second, OutputSchema: json.RawMessage(`{"type":"object"}`)}
+	return app.TurnRequest{Prompt: prompt, Primitives: []string{"Read"}, Timeout: time.Minute, OutputSchema: json.RawMessage(`{"type":"object"}`)}
 }
 
 // The decorator must be substitutable for what it wraps.

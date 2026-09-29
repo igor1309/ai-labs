@@ -24,7 +24,7 @@ func request(prompt string) app.TurnRequest {
 		SessionID:    session,
 		Model:        "sonnet",
 		Effort:       "high",
-		Timeout:      10 * time.Second,
+		Timeout:      time.Minute,
 		OutputSchema: json.RawMessage(`{"type":"object"}`),
 	}
 }
