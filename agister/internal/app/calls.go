@@ -21,6 +21,7 @@ import (
 // Calls submits and executes agent calls.
 type Calls struct {
 	resolver   CallResolver
+	runners    CallRunners
 	inputs     map[string]InputProvider
 	workspaces CallWorkspaces
 	changes    CallChanges
@@ -37,7 +38,21 @@ type Calls struct {
 // CallResolver reads the settings a call is resolved from, once, at submit,
 // and resolves the call from exactly those.
 type CallResolver interface {
-	Snapshot(ctx context.Context) *Resolver
+	Snapshot(ctx context.Context) CallResolution
+}
+
+// CallResolution resolves a call from the settings it was taken over.
+type CallResolution interface {
+	Resolve(ctx context.Context, processName, agentOverride string, caller overrides) (*resolution, error)
+}
+
+// Snapshot returns the resolver over the definitions as they are now (see
+// Resolver.frozen), as the resolution a call is executed with.
+func (r *Resolver) Snapshot(ctx context.Context) CallResolution { return r.frozen(ctx) }
+
+// CallRunners builds the runner of the runtime a call resolved to.
+type CallRunners interface {
+	Runner(adapter, command string) (TurnRunner, error)
 }
 
 // TurnRunner drives one runtime. It knows nothing of permissions, policies
@@ -126,6 +141,7 @@ type RunRecorder interface {
 // workspace may overlap.
 func NewCalls(
 	resolver CallResolver,
+	runners CallRunners,
 	inputs map[string]InputProvider,
 	workspaces CallWorkspaces,
 	changes CallChanges,
@@ -140,6 +156,7 @@ func NewCalls(
 ) *Calls {
 	return &Calls{
 		resolver:   resolver,
+		runners:    runners,
 		inputs:     inputs,
 		workspaces: workspaces,
 		changes:    changes,
@@ -223,7 +240,7 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 
 // execute runs one call. Every refusal happens before the runtime starts
 // and is recorded; every effect is released on every path.
-func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record, resolver *Resolver) {
+func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record, resolver CallResolution) {
 	event := func(source, kind string, data map[string]any) {
 		_ = handle.Append(run.Event{At: c.clock.Now(), Source: source, Kind: kind, Data: data})
 	}
@@ -289,6 +306,11 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	record.Definitions = recordSources(res.sources)
 	if err != nil {
 		fail(err)
+		return
+	}
+	runner, err := c.runners.Runner(res.mapping.Adapter, res.agent.Command)
+	if err != nil {
+		fail(refuse("runtime mapping %s: %v", res.mapping.Name, err))
 		return
 	}
 	record.Agent = res.agent.Name
@@ -382,7 +404,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	_ = handle.Update(record)
 
 	turnStart := c.clock.Now()
-	turn := res.runner.RunTurn(ctx, request, &sink{handle: handle, clock: c.clock, record: &record})
+	turn := runner.RunTurn(ctx, request, &sink{handle: handle, clock: c.clock, record: &record})
 	turnMS := c.clock.Now().Sub(turnStart).Milliseconds()
 	record.Turn = &turn
 

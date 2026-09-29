@@ -29,7 +29,6 @@ type resolution struct {
 	schema    []byte
 	sources   []definition.Source
 	effective policy.Effective
-	runner    TurnRunner
 	identity  RuntimeIdentity
 	plan      enforce.Plan
 }
@@ -38,7 +37,7 @@ type resolution struct {
 // runtime and plans enforcement. Every failure is a refusal.
 type Resolver struct {
 	definitions ResolverDefinitions
-	runners     ResolverRunners
+	identities  ResolverIdentities
 	validator   ResolverValidator
 }
 
@@ -49,9 +48,10 @@ type ResolverDefinitions interface {
 	List(ctx context.Context, kind definition.Kind) ([]string, error)
 }
 
-// ResolverRunners builds the runner for an adapter name and runtime command.
-type ResolverRunners interface {
-	Runner(adapter, command string) (TurnRunner, error)
+// ResolverIdentities asks a runtime adapter what it reports about itself,
+// to check the runtime a call would use.
+type ResolverIdentities interface {
+	Identity(ctx context.Context, adapter, command string) (RuntimeIdentity, error)
 }
 
 // ResolverValidator compiles an output schema.
@@ -61,16 +61,16 @@ type ResolverValidator interface {
 
 // NewResolver returns the component that resolves a process into what a
 // call or a view needs. Every collaborator is required.
-func NewResolver(definitions ResolverDefinitions, runners ResolverRunners, validator ResolverValidator) *Resolver {
-	return &Resolver{definitions: definitions, runners: runners, validator: validator}
+func NewResolver(definitions ResolverDefinitions, identities ResolverIdentities, validator ResolverValidator) *Resolver {
+	return &Resolver{definitions: definitions, identities: identities, validator: validator}
 }
 
-// Snapshot returns a resolver over the definitions as they are now, which
+// frozen returns a resolver over the definitions as they are now, which
 // reads nothing else afterwards (see the package function Snapshot).
-func (r *Resolver) Snapshot(ctx context.Context) *Resolver {
-	frozen := *r
-	frozen.definitions = Snapshot(ctx, r.definitions)
-	return &frozen
+func (r *Resolver) frozen(ctx context.Context) *Resolver {
+	copied := *r
+	copied.definitions = Snapshot(ctx, r.definitions)
+	return &copied
 }
 
 // overrides are the caller's narrowing limits.
@@ -168,10 +168,7 @@ func (r *Resolver) Resolve(ctx context.Context, processName, agentOverride strin
 		return res, refuse("%v", err)
 	}
 
-	if res.runner, err = r.runners.Runner(res.mapping.Adapter, res.agent.Command); err != nil {
-		return res, refuse("runtime mapping %s: %v", res.mapping.Name, err)
-	}
-	if res.identity, err = res.runner.Identity(ctx); err != nil {
+	if res.identity, err = r.identities.Identity(ctx, res.mapping.Adapter, res.agent.Command); err != nil {
 		return res, refuse("runtime %s is unavailable: %v", res.mapping.Name, err)
 	}
 	if res.identity.Contract != res.mapping.Contract {

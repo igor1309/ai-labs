@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/examples"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
@@ -187,6 +189,18 @@ func TestBuiltClientSharesTheBackgroundReaper(t *testing.T) {
 	}
 }
 
+// errorsOf lists the step failures a recorded reap says, as read back from
+// the run's events.
+func errorsOf(reaped map[string]any) []string {
+	var failures []string
+	list, _ := reaped["errors"].([]any)
+	for _, item := range list {
+		text, _ := item.(string)
+		failures = append(failures, text)
+	}
+	return failures
+}
+
 // Submitting a call on the built client reaps the runs a killed process
 // abandoned: here one that recorded a checkout and whose owner is gone.
 func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
@@ -243,6 +257,15 @@ func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
 	checkout, _ := reaped["checkout"].(map[string]any)
 	if process["outcome"] != "left" || checkout["removed"] != false || !strings.Contains(fmt.Sprint(reaped["errors"]), "is not a checkout Agister made") {
 		t.Fatalf("reap of the old run recorded %v", reaped)
+	}
+	// The supervisor's processes understand the references they made: this
+	// one they did not, and say so as ParseRef does.
+	_, _, parseErr := supervisor.ParseRef("not-a-reference")
+	if parseErr == nil {
+		t.Fatal("the supervisor understands the reference the test means it to refuse")
+	}
+	if want := fmt.Sprintf("process %q: %v", "not-a-reference", parseErr); !slices.Contains(errorsOf(reaped), want) {
+		t.Fatalf("reap of the old run recorded errors %q, want %q among them", errorsOf(reaped), want)
 	}
 	// The call that triggered it is its own run, and finishes on its own.
 	eventually(t, "the submitted call to finish", func() bool {

@@ -113,7 +113,11 @@ func (s *runnerSpy) calls() []app.TurnRequest {
 type runtimesSpy struct {
 	mu     sync.Mutex
 	runner *runnerSpy
-	asked  []string // adapter|command
+	asked  []string // adapter|command a runner was built for
+	// identified lists the adapter|command each identity was asked of.
+	identified []string
+	// runnerErr, when set, is why a runner cannot be built.
+	runnerErr error
 }
 
 func (s *runtimesSpy) Runner(adapter, command string) (app.TurnRunner, error) {
@@ -123,17 +127,22 @@ func (s *runtimesSpy) Runner(adapter, command string) (app.TurnRunner, error) {
 	if adapter != "spy" {
 		return nil, fmt.Errorf("no runtime adapter %q", adapter)
 	}
+	if s.runnerErr != nil {
+		return nil, s.runnerErr
+	}
 	return s.runner, nil
 }
 
 func (s *runtimesSpy) Adapters() []string { return []string{"spy"} }
 
 func (s *runtimesSpy) Identity(ctx context.Context, adapter, command string) (app.RuntimeIdentity, error) {
-	runner, err := s.Runner(adapter, command)
-	if err != nil {
-		return app.RuntimeIdentity{}, err
+	s.mu.Lock()
+	s.identified = append(s.identified, adapter+"|"+command)
+	s.mu.Unlock()
+	if adapter != "spy" {
+		return app.RuntimeIdentity{}, fmt.Errorf("no runtime adapter %q", adapter)
 	}
-	return runner.Identity(ctx)
+	return s.runner.Identity(ctx)
 }
 
 type inputsSpy struct {
@@ -402,24 +411,6 @@ func (s *processesSpy) Reap(ctx context.Context, ref string) (app.Reaping, error
 	return app.ReapKilled, s.err
 }
 
-// checkoutsSpy tells which checkouts runs some process still owns use.
-type checkoutsSpy struct {
-	mu        sync.Mutex
-	live      []string
-	liveReads int
-	onLive    func() // runs during LiveCheckouts
-}
-
-func (s *checkoutsSpy) LiveCheckouts(context.Context) ([]string, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.liveReads++
-	if s.onLive != nil {
-		s.onLive()
-	}
-	return s.live, nil
-}
-
 // reapHandle is all a reap has of an adopted run: it appends and finishes,
 // and can do nothing else with it.
 type reapHandle struct{ spy *recorderSpy }
@@ -430,9 +421,15 @@ func (h reapHandle) Append(event run.Event) error   { return h.spy.Append(event)
 func (h reapHandle) Finish(record run.Record) error { return h.spy.Finish(record) }
 
 // adopterSpy offers abandoned runs; each adoption hands out its own handle.
+// It also tells which checkouts runs some process still owns use.
 type adopterSpy struct {
-	mu       sync.Mutex
-	runs     []run.Record
+	mu        sync.Mutex
+	runs      []run.Record
+	live      []string
+	liveReads int
+	onLive    func() // runs during LiveCheckouts
+	// order lists LiveCheckouts as "live" and each Adopt as "adopt:<id>".
+	order    []string
 	adoptErr map[string]error
 	handles  map[string]*recorderSpy
 	adopted  []string
@@ -451,9 +448,21 @@ func (s *adopterSpy) Abandoned(context.Context) ([]run.Record, error) {
 	return append([]run.Record(nil), s.runs...), nil
 }
 
+func (s *adopterSpy) LiveCheckouts(context.Context) ([]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.liveReads++
+	s.order = append(s.order, "live")
+	if s.onLive != nil {
+		s.onLive()
+	}
+	return s.live, nil
+}
+
 func (s *adopterSpy) Adopt(_ context.Context, id string) (app.ReapHandle, run.Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.order = append(s.order, "adopt:"+id)
 	s.adopted = append(s.adopted, id)
 	if err := s.adoptErr[id]; err != nil {
 		return nil, run.Record{}, err

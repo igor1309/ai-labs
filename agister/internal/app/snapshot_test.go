@@ -69,7 +69,7 @@ func TestSnapshotReplaysReadAndListErrors(t *testing.T) {
 	check := func(src app.SnapshotSource) []string {
 		// The list failure aborts a check, so compare with policies listable.
 		runtimes := &runtimesSpy{runner: &runnerSpy{}}
-		checker := app.NewChecker(src, &validatorSpy{}, runtimes, runtimes, sources)
+		checker := app.NewChecker(src, &validatorSpy{}, runtimes, sources)
 		report, err := checker.Check(ctx, false)
 		if err != nil {
 			return []string{"error: " + err.Error()}

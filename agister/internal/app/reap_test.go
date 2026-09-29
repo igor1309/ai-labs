@@ -30,16 +30,14 @@ func abandonedRun(id string) run.Record {
 type reaper struct {
 	*app.Reaper
 	adopter   *adopterSpy
-	checkouts *checkoutsSpy
 	processes *processesSpy
 }
 
 func reaping(h *harness, runs ...run.Record) *reaper {
-	adopter, checkouts, processes := &adopterSpy{runs: runs}, &checkoutsSpy{}, &processesSpy{}
+	adopter, processes := &adopterSpy{runs: runs}, &processesSpy{}
 	return &reaper{
-		Reaper:    app.NewReaper(adopter, checkouts, processes, h.workspaces, fixedClock{}),
+		Reaper:    app.NewReaper(adopter, processes, h.workspaces, fixedClock{}),
 		adopter:   adopter,
-		checkouts: checkouts,
 		processes: processes,
 	}
 }
@@ -213,8 +211,8 @@ func TestReapingIsBounded(t *testing.T) {
 		t.Fatalf("adopted %v, reaped %v", adopter.adopted, processes.reaped)
 	}
 	// b was not even looked at: the loop stopped before reading live runs.
-	if r.checkouts.liveReads != 1 {
-		t.Fatalf("live reads = %d", r.checkouts.liveReads)
+	if r.adopter.liveReads != 1 {
+		t.Fatalf("live reads = %d", r.adopter.liveReads)
 	}
 	finished := adopter.handles["a"].wait(t)
 	if finished.Result == nil || finished.Result.Error.Class != run.ClassAbandoned {
@@ -230,7 +228,7 @@ func TestNothingIsAdoptedAfterTheDeadline(t *testing.T) {
 	h := newHarness()
 	r := reaping(h, abandonedRun("a"))
 	adopter, processes := r.adopter, r.processes
-	r.checkouts.onLive = driven(r)
+	r.adopter.onLive = driven(r)
 	r.reap()
 	if len(adopter.adopted) != 0 || len(processes.reaped) != 0 || len(h.workspaces.discarded) != 0 {
 		t.Fatalf("adopted %v, reaped %v, discarded %v", adopter.adopted, processes.reaped, h.workspaces.discarded)
@@ -270,7 +268,7 @@ func TestACheckoutARunningRunUsesIsNotDiscarded(t *testing.T) {
 	h := newHarness()
 	r := reaping(h, abandonedRun("old"))
 	adopter, processes := r.adopter, r.processes
-	r.checkouts.live = []string{"/tmp/agister-checkout-1/workspace"}
+	r.adopter.live = []string{"/tmp/agister-checkout-1/workspace"}
 	r.reap()
 	// The process is still ended and the run finished, but the directory stays.
 	if len(processes.reaped) != 1 || len(h.workspaces.discarded) != 0 {
@@ -283,6 +281,17 @@ func TestACheckoutARunningRunUsesIsNotDiscarded(t *testing.T) {
 	checkout := adopter.handles["old"].events[0].Data["checkout"].(map[string]any)
 	if checkout["removed"] != false || checkout["skipped"] == nil {
 		t.Fatalf("checkout = %v", checkout)
+	}
+}
+
+// The checkouts running runs use are read before the abandoned run is
+// adopted: the adopted run is this process's own and would read as live.
+func TestLiveCheckoutsAreReadBeforeTheRunIsAdopted(t *testing.T) {
+	h := newHarness()
+	r := reaping(h, abandonedRun("old"))
+	r.reap()
+	if want := []string{"live", "adopt:old"}; !reflect.DeepEqual(r.adopter.order, want) {
+		t.Fatalf("adopter asked in the order %v, want %v", r.adopter.order, want)
 	}
 }
 

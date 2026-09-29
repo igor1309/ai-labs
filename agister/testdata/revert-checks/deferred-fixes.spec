@@ -272,8 +272,8 @@ test: ./internal/app TestGatedOperationUsesTheCheckedSettings
 
 [a call resolves from live settings, not the snapshot it took at submit]
 file: internal/app/resolve.go
-find: frozen.definitions = Snapshot(ctx, r.definitions)
-replace: frozen.definitions = r.definitions
+find: copied.definitions = Snapshot(ctx, r.definitions)
+replace: copied.definitions = r.definitions
 test: ./internal/app TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded
 
 [a call takes its snapshot after its run is recorded]
@@ -327,8 +327,8 @@ test: ./cmd/agister TestBuiltClientReadsOnlyTheSourcesGiven
 
 [calls read live settings, not the given source]
 file: cmd/agister/main.go
-find: resolverOn(layered), sources,
-replace: resolverOn(definitions), sources,
+find: resolverOn(layered), runtimes, sources,
+replace: resolverOn(definitions), runtimes, sources,
 test: ./cmd/agister TestBuiltClientReadsOnlyTheSourcesGiven
 
 [inspection reads live settings, not the given source]

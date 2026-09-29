@@ -94,12 +94,12 @@ func wire(config cli.Config) (*app.Gated, *app.BackgroundReaper, error) {
 	// that fails has no caller to tell and no run record to say so: the
 	// log does.
 	reaping := &app.BackgroundReaper{
-		Reaper: app.NewReaper(evidence, evidence, supervisor.Processes{}, git.Workspaces{}, system.Clock{}),
+		Reaper: app.NewReaper(evidence, supervisor.Processes{}, git.Workspaces{}, system.Clock{}),
 		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },
 	}
 	provenance := fsprovenance.Store{Dir: filepath.Join(config.Home, "provenance")}
 	checkerOn := func(definitions app.GateDefinitions) *app.Checker {
-		return app.NewChecker(definitions, schema.Validator{}, runtimes, runtimes, names(sources))
+		return app.NewChecker(definitions, schema.Validator{}, runtimes, names(sources))
 	}
 	// Each use case that resolves a process gets a resolver of its own.
 	resolverOn := func(definitions app.GateDefinitions) *app.Resolver {
@@ -122,7 +122,7 @@ func wire(config cli.Config) (*app.Gated, *app.BackgroundReaper, error) {
 			Checker:    checkerOn(layered),
 			Inspection: app.NewInspection(resolverOn(layered)),
 			Calls: app.NewCalls(
-				resolverOn(layered), sources, git.Workspaces{}, git.Workspaces{}, provenance, schema.Validator{},
+				resolverOn(layered), runtimes, sources, git.Workspaces{}, git.Workspaces{}, provenance, schema.Validator{},
 				evidence, evidence, system.Clock{}, system.IDs{}, config.Home, hosted,
 			),
 			Runs: app.NewRuns(evidence, hosted, 0),

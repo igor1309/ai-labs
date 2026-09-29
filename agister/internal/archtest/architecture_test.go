@@ -132,3 +132,93 @@ func TestSharedDataFileDeclaresNoInterface(t *testing.T) {
 		return true
 	})
 }
+
+// An interface is used only in the file that declares it. The one exception
+// is a compile assertion, var _ X = ..., which names the interface a type
+// promises to satisfy without depending on it.
+func TestNoInterfaceIsNamedOutsideItsFile(t *testing.T) {
+	files, err := filepath.Glob("../app/*.go")
+	if err != nil || len(files) == 0 {
+		t.Fatalf("app files %v: %v", files, err)
+	}
+	fset := token.NewFileSet()
+	parsed := map[string]*ast.File{}
+	declaredIn := map[string]string{} // interface name -> file
+	for _, path := range files {
+		if strings.HasSuffix(path, "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(fset, path, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		parsed[path] = file
+		for _, decl := range file.Decls {
+			gen, ok := decl.(*ast.GenDecl)
+			if !ok {
+				continue
+			}
+			for _, spec := range gen.Specs {
+				if typ, ok := spec.(*ast.TypeSpec); ok {
+					if _, isInterface := typ.Type.(*ast.InterfaceType); isInterface {
+						declaredIn[typ.Name.Name] = path
+					}
+				}
+			}
+		}
+	}
+	for path, file := range parsed {
+		for _, use := range typeNames(file) {
+			if home, ok := declaredIn[use.name]; ok && home != path {
+				t.Errorf("%s names the interface %s, declared in %s; declare the interface the component needs beside it",
+					fset.Position(use.pos), use.name, filepath.Base(home))
+			}
+		}
+	}
+}
+
+type typeName struct {
+	name string
+	pos  token.Pos
+}
+
+// typeNames lists the names in a file's types and signatures, leaving out
+// the compile assertions var _ X = ....
+func typeNames(file *ast.File) []typeName {
+	var found []typeName
+	var inType func(ast.Expr)
+	inType = func(expr ast.Expr) {
+		if expr == nil {
+			return
+		}
+		ast.Inspect(expr, func(node ast.Node) bool {
+			switch n := node.(type) {
+			case *ast.SelectorExpr:
+				return false // a name in another package
+			case *ast.Ident:
+				found = append(found, typeName{n.Name, n.Pos()})
+			}
+			return true
+		})
+	}
+	ast.Inspect(file, func(node ast.Node) bool {
+		switch n := node.(type) {
+		case *ast.ValueSpec:
+			if len(n.Names) == 1 && n.Names[0].Name == "_" {
+				return false
+			}
+			inType(n.Type)
+		case *ast.TypeSpec:
+			inType(n.Type)
+			return false
+		case *ast.Field:
+			inType(n.Type)
+		case *ast.TypeAssertExpr:
+			inType(n.Type)
+		case *ast.CompositeLit:
+			inType(n.Type)
+		}
+		return true
+	})
+	return found
+}

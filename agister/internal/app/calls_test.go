@@ -130,6 +130,7 @@ func newHarness() *harness {
 func (h *harness) callsOn(src app.ResolverDefinitions) *app.Calls {
 	return app.NewCalls(
 		app.NewResolver(src, h.runtimes, h.validator),
+		h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
 		h.workspaces, h.changes, h.provenance, h.validator, h.recorder, h.runs,
 		h.clock, fixedIDs{}, "/state", h.hosted,
@@ -421,6 +422,40 @@ func TestPanicInChangeCollectionFinishesTheRecord(t *testing.T) {
 	}
 }
 
+// A call is resolved through the resolution role it declares, not through
+// the concrete Resolver: a double that is no Resolver stands in for it, is
+// snapshotted once, at submit, and resolves the call from that snapshot. A
+// refusal it gives is recorded and no runtime is asked for.
+func TestCallsResolveThroughTheResolutionTheyDeclare(t *testing.T) {
+	h := newHarness()
+	double := &app.SnapshotCounter{Reason: "the double refuses"}
+	h.calls = app.NewCalls(
+		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes, h.provenance,
+		h.validator, h.recorder, h.runs, h.clock, fixedIDs{}, "/state", h.hosted,
+	)
+	record := h.call(t, contract.CallRequest{})
+	if class(record) != run.ClassRefused || message(record) != "the double refuses" {
+		t.Fatalf("result %+v", record.Result)
+	}
+	if snapshots, resolved := double.Count(); snapshots != 1 || !reflect.DeepEqual(resolved, []string{"p"}) {
+		t.Fatalf("snapshots %d, resolved %v", snapshots, resolved)
+	}
+	if len(h.runtimes.asked) != 0 || len(h.defs.reads) != 0 {
+		t.Fatalf("runtimes asked %v, definitions read %v", h.runtimes.asked, h.defs.reads)
+	}
+}
+
+// The runtime a call is resolved on is checked through the identity of its
+// adapter and command, and the runner for the same adapter and command is
+// asked for only when the call executes.
+func TestCallChecksAndRunsTheRuntimeOfItsAgent(t *testing.T) {
+	h := newHarness()
+	h.call(t, contract.CallRequest{})
+	if want := []string{"spy|/bin/spy"}; !reflect.DeepEqual(h.runtimes.identified, want) || !reflect.DeepEqual(h.runtimes.asked, want) {
+		t.Fatalf("identified %v, runner built for %v, want %v", h.runtimes.identified, h.runtimes.asked, want)
+	}
+}
+
 // Each refusal is recorded, and nothing after the refusing check happens.
 func TestRefusalsComeBeforeEffects(t *testing.T) {
 	cases := []struct {
@@ -434,6 +469,7 @@ func TestRefusalsComeBeforeEffects(t *testing.T) {
 		{"invalid definition", func(h *harness) { h.defs.docs[definition.KindProcess]["p"] += "surprise: 1\n" }, contract.CallRequest{}, "surprise: unknown field", false},
 		{"schema does not compile", func(h *harness) { h.validator.compileErr = errors.New("bad schema") }, contract.CallRequest{}, `schema "s": bad schema`, false},
 		{"runtime unavailable", func(h *harness) { h.runner.identityErr = errors.New("no binary") }, contract.CallRequest{}, "runtime rt is unavailable: no binary", false},
+		{"runner cannot be built", func(h *harness) { h.runtimes.runnerErr = errors.New("no such command") }, contract.CallRequest{}, "runtime mapping rt: no such command", false},
 		{"adapter contract mismatch", func(h *harness) { h.runner.identity.Contract = "spy/2" }, contract.CallRequest{}, "describes adapter contract spy/1, but the adapter implements spy/2", false},
 		{"unverified version", func(h *harness) { h.runner.identity.Version = "2.0.0" }, contract.CallRequest{}, "verifies no primitive for spy version 2.0.0", false},
 		{"caller widens timeout", nil, contract.CallRequest{Timeout: "2h"}, "caller timeout 2h0m0s widens the effective 20m0s", false},

@@ -23,7 +23,7 @@ func TestCheckReportsEveryProblemAcrossDocuments(t *testing.T) {
 	h.defs.docs[definition.KindAgent]["broken"] = "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\ncolour = \"red\"\n"
 	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: q", 1) + "timeout: 2h\n"
 	h.validator.compileErr = errors.New("not a schema")
-	checker := app.NewChecker(h.defs, h.validator, h.runtimes, h.runtimes, []string{"git.revision", "git.diff"})
+	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 
 	report, err := checker.Check(context.Background(), false)
 	if err != nil {
@@ -44,7 +44,7 @@ func TestCheckReportsEveryProblemAcrossDocuments(t *testing.T) {
 	if report.Checked["processes"] != 2 || report.Checked["agents"] != 2 {
 		t.Fatalf("checked = %v", report.Checked)
 	}
-	if len(h.runner.calls()) != 0 || len(h.runtimes.asked) != 0 {
+	if len(h.runner.calls()) != 0 || len(h.runtimes.identified) != 0 {
 		t.Fatal("check without probe must not touch runtimes")
 	}
 }
@@ -56,7 +56,7 @@ func TestCheckReportsWhatDefinesWhat(t *testing.T) {
 	h.defs.docs[definition.KindPolicy]["spare"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "name: pol", "name: spare", 1)
 	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: q", 1), "agent:a", "agent:ghost", 1)
 	h.defs.docs[definition.KindAgent]["broken"] = "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\ncolour = \"red\"\n"
-	checker := app.NewChecker(h.defs, h.validator, h.runtimes, h.runtimes, []string{"git.revision", "git.diff"})
+	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 	report, err := checker.Check(context.Background(), false)
 	if err != nil {
 		t.Fatal(err)
@@ -91,12 +91,12 @@ func TestCheckReportsWhatDefinesWhat(t *testing.T) {
 
 func TestCheckProbesEachAgentsRuntime(t *testing.T) {
 	h := newHarness()
-	checker := app.NewChecker(h.defs, h.validator, h.runtimes, h.runtimes, []string{"git.revision", "git.diff"})
+	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 	if report, _ := checker.Check(context.Background(), true); len(report.Problems) != 0 {
 		t.Fatalf("problems = %v", report.Problems)
 	}
-	if !reflect.DeepEqual(h.runtimes.asked, []string{"spy|/bin/spy"}) {
-		t.Fatalf("asked = %v", h.runtimes.asked)
+	if !reflect.DeepEqual(h.runtimes.identified, []string{"spy|/bin/spy"}) {
+		t.Fatalf("identified = %v", h.runtimes.identified)
 	}
 	h.runner.identity.Version = "9.0.0"
 	report, _ := checker.Check(context.Background(), true)
@@ -110,14 +110,15 @@ func TestCheckProbesEachAgentsRuntime(t *testing.T) {
 func TestCheckProbeAsksNoIdentityOfAnAdapterTheCodeDoesNotProvide(t *testing.T) {
 	h := newHarness()
 	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(h.defs.docs[definition.KindRuntime]["rt"], "adapter: spy", "adapter: ghost", 1)
-	checker := app.NewChecker(h.defs, h.validator, h.runtimes, h.runtimes, []string{"git.revision", "git.diff"})
+	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 	without, _ := checker.Check(context.Background(), false)
 	report, _ := checker.Check(context.Background(), true)
-	if len(without.Problems) == 0 || !reflect.DeepEqual(report.Problems, without.Problems) {
-		t.Fatalf("problems without probe %v, with %v", without.Problems, report.Problems)
+	want := []string{`runtime mapping rt: unknown adapter "ghost" (available: spy)`}
+	if !reflect.DeepEqual(without.Problems, want) || !reflect.DeepEqual(report.Problems, without.Problems) {
+		t.Fatalf("problems without probe %q, with %q, want %q", without.Problems, report.Problems, want)
 	}
-	if len(h.runtimes.asked) != 0 {
-		t.Fatalf("identities asked for: %v", h.runtimes.asked)
+	if len(h.runtimes.identified) != 0 {
+		t.Fatalf("identities asked for: %v", h.runtimes.identified)
 	}
 }
 
@@ -127,7 +128,7 @@ func TestCheckProbePlansEachProcessOnTheInstalledVersion(t *testing.T) {
 	h := newHarness()
 	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(h.defs.docs[definition.KindRuntime]["rt"], "Read: {grants: [repository.read], verified: [\"1.\"]}", "Read: {grants: [repository.read], verified: [\"2.\"]}", 1)
 	h.defs.docs[definition.KindProcess]["p"] += "tools: {require: [repository.read]}\n"
-	checker := app.NewChecker(h.defs, h.validator, h.runtimes, h.runtimes, []string{"git.revision", "git.diff"})
+	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 	if report, _ := checker.Check(context.Background(), false); len(report.Problems) != 0 {
 		t.Fatalf("problems = %v", report.Problems)
 	}
@@ -404,7 +405,7 @@ func TestCreateAgentDryRun(t *testing.T) {
 func TestCreateAgentKeepsSettingsValid(t *testing.T) {
 	h := newHarness()
 	writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
-	checker := app.NewChecker(h.defs, h.validator, h.runtimes, h.runtimes, []string{"git.revision", "git.diff"})
+	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 	settings := app.NewSettings(h.defs, writer, nil, []app.Scope{{Name: "global settings", Check: checker}})
 	var input *contract.InputError
 	for _, approved := range []*contract.AgentWrite{nil, {Path: "agents/a", Replaces: true, Digest: "d-agents/a"}} {
@@ -448,13 +449,18 @@ func TestCreateAgentValidatesAgainstTheRuntimeMapping(t *testing.T) {
 // A process view says where each definition comes from as data, not text.
 func TestShowProcessSourcesAreStructured(t *testing.T) {
 	h := newHarness()
-	view, err := (app.NewInspection(app.NewResolver(h.defs, h.runtimes, h.validator))).ShowProcess(context.Background(), "p", "")
+	// The resolver behind it is given nothing that can start a turn.
+	identities := struct{ app.ResolverIdentities }{h.runtimes}
+	view, err := (app.NewInspection(app.NewResolver(h.defs, identities, h.validator))).ShowProcess(context.Background(), "p", "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := contract.DefinitionOrigin{Kind: "processes", Name: "p", Layer: "global", Path: "mem/processes/p"}
 	if len(view.Sources) < 2 || !reflect.DeepEqual(view.Sources[1], want) {
 		t.Fatalf("sources = %+v", view.Sources)
+	}
+	if len(h.runtimes.asked) != 0 || len(h.runner.calls()) != 0 {
+		t.Fatalf("showing a process built runners %v and ran turns %v", h.runtimes.asked, h.runner.calls())
 	}
 }
 
