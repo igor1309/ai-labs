@@ -2,6 +2,8 @@ package app_test
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"reflect"
@@ -242,9 +244,11 @@ func TestInitDryRunAndReplacement(t *testing.T) {
 			t.Fatalf("overwrite %v: plan %+v, result %+v, %v", overwrite, plan, result, err)
 		}
 		digests := map[string]string{"agents/a": "d-agents/a", "service/service": ""}
-		want := contract.InitResult{Created: []string{"service/service"}, Kept: []string{"agents/a"}, Digests: digests}
+		sum := sha256.Sum256([]byte("x"))
+		contents := map[string]string{"agents/a": hex.EncodeToString(sum[:]), "service/service": hex.EncodeToString(sum[:])}
+		want := contract.InitResult{Created: []string{"service/service"}, Kept: []string{"agents/a"}, Digests: digests, Contents: contents}
 		if overwrite {
-			want = contract.InitResult{Created: []string{"service/service"}, Replaced: []string{"agents/a"}, Digests: digests}
+			want = contract.InitResult{Created: []string{"service/service"}, Replaced: []string{"agents/a"}, Digests: digests, Contents: contents}
 		}
 		if !reflect.DeepEqual(result, want) {
 			t.Fatalf("overwrite %v: result %+v", overwrite, result)
@@ -281,8 +285,8 @@ func TestWritesRefuseFilesChangedSinceTheApprovedPlan(t *testing.T) {
 }
 
 // An approval is for the plan shown: a request that now plans something
-// else, such as another agent or replacing a file shown as kept, writes
-// nothing.
+// else, such as another agent, other content, or replacing a file shown as
+// kept, writes nothing.
 func TestWritesRefuseAnythingButTheApprovedPlan(t *testing.T) {
 	examples := fstest.MapFS{"service.toml": {Data: []byte("x")}, "agents/a.toml": {Data: []byte("x")}}
 	writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
@@ -294,6 +298,16 @@ func TestWritesRefuseAnythingButTheApprovedPlan(t *testing.T) {
 	var input *contract.InputError
 	if _, err := settings.Init(context.Background(), true, &keep); !errors.As(err, &input) || !strings.Contains(err.Error(), "not the plan you confirmed, so nothing was written: agents/a") || len(writer.writes) != 0 {
 		t.Fatalf("init: %v, writes %v", err, writer.writes)
+	}
+
+	examples["service.toml"] = &fstest.MapFile{Data: []byte("different")}
+	create, err := settings.Init(context.Background(), false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	examples["service.toml"] = &fstest.MapFile{Data: []byte("changed after the preview")}
+	if _, err := settings.Init(context.Background(), false, &create); !errors.As(err, &input) || !strings.Contains(err.Error(), "not the plan you confirmed, so nothing was written: service/service") || len(writer.writes) != 0 {
+		t.Fatalf("init content: %v, writes %v", err, writer.writes)
 	}
 
 	h := newHarness()
@@ -405,7 +419,7 @@ func TestShowProcessSourcesAreStructured(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := contract.Definition{Kind: "processes", Name: "p", Layer: "global", Path: "mem/processes/p"}
+	want := contract.DefinitionOrigin{Kind: "processes", Name: "p", Layer: "global", Path: "mem/processes/p"}
 	if len(view.Sources) < 2 || !reflect.DeepEqual(view.Sources[1], want) {
 		t.Fatalf("sources = %+v", view.Sources)
 	}

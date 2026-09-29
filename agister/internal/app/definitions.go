@@ -39,7 +39,7 @@ type ProposedCheck interface {
 }
 
 func (s *Settings) Init(ctx context.Context, overwrite bool, approved *contract.InitResult) (contract.InitResult, error) {
-	result := contract.InitResult{Digests: map[string]string{}}
+	result := contract.InitResult{Digests: map[string]string{}, Contents: map[string]string{}}
 	if s.Examples == nil {
 		return result, &contract.InputError{Message: "no example definitions are available"}
 	}
@@ -87,7 +87,9 @@ func (s *Settings) Init(ctx context.Context, overwrite bool, approved *contract.
 			return result, err
 		}
 		plan = append(plan, file{kind, base, current, digest, data})
+		sum := sha256.Sum256(data)
 		result.Digests[current] = digest
+		result.Contents[current] = hex.EncodeToString(sum[:])
 		switch {
 		case digest == "":
 			result.Created = append(result.Created, current)
@@ -119,8 +121,8 @@ func (s *Settings) Init(ctx context.Context, overwrite bool, approved *contract.
 }
 
 // initApproved refuses a plan other than the one approved: a file changed
-// since, or the same files handled differently, such as a kept file now
-// replaced.
+// since, the same files handled differently, such as a kept file now
+// replaced, or other content to write.
 func initApproved(approved, plan contract.InitResult) error {
 	actions := func(r contract.InitResult) map[string]string {
 		m := map[string]string{}
@@ -151,7 +153,7 @@ func initApproved(approved, plan contract.InitResult) error {
 		switch {
 		case approved.Digests[p] != plan.Digests[p]:
 			changed = append(changed, p)
-		case want[p] != got[p]:
+		case want[p] != got[p], approved.Contents[p] != plan.Contents[p]:
 			differ = append(differ, p)
 		}
 	}
@@ -348,7 +350,7 @@ func (i *Inspection) ShowProcess(ctx context.Context, name, agent string) (contr
 		if source.Project {
 			layer = "project"
 		}
-		view.Sources = append(view.Sources, contract.Definition{Kind: string(source.Kind), Name: source.Name, Layer: layer, Path: source.Path, Overrides: source.Overrides})
+		view.Sources = append(view.Sources, contract.DefinitionOrigin{Kind: string(source.Kind), Name: source.Name, Layer: layer, Path: source.Path, Overrides: source.Overrides})
 	}
 	if refusal != nil {
 		view.Refusal = refusal.Reason

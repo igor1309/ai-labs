@@ -69,6 +69,7 @@ type InitResult struct {
 	Replaced []string // existing files overwritten
 	Kept     []string
 	Digests  map[string]string // path: digest of the file as planned; empty when absent
+	Contents map[string]string // path: digest of the example to be written
 }
 
 type Agent struct {
@@ -110,6 +111,15 @@ type Definition struct {
 	UsedBy    []DefinitionRef `json:"used_by,omitempty"`
 }
 
+// DefinitionOrigin is where one definition a call uses comes from.
+type DefinitionOrigin struct {
+	Kind      string // agents, processes, policies, runtimes, schemas or service
+	Name      string
+	Layer     string // global or project
+	Path      string
+	Overrides string // the global document this one replaces
+}
+
 type DefinitionRef struct {
 	Kind string `json:"kind"`
 	Name string `json:"name"`
@@ -142,9 +152,8 @@ type ProcessView struct {
 	Primitives []string
 	Withheld   []string
 	Refusal    string
-	// Where each definition the call uses comes from; Uses and UsedBy are
-	// not set.
-	Sources []Definition
+	// Where each definition the call uses comes from.
+	Sources []DefinitionOrigin
 }
 
 type CallRequest struct {
