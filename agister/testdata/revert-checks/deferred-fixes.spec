@@ -58,6 +58,12 @@ replace: return host
 test: ./cmd/agister TestBuiltClientReadsOnlyTheSourcesGiven
 test: ./cmd/agister TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted
 
+[the reaper reads the run store the calls write]
+file: cmd/agister/main.go
+find: Adopter: evidence,
+replace: Adopter: fsruns.Store{Dir: config.Home},
+test: ./cmd/agister TestBuiltClientSharesTheBackgroundReaper
+
 [a refused submit starts no reap]
 file: internal/app/background.go
 find: \tif err == nil {\n\t\tr.Background.Start(ctx)

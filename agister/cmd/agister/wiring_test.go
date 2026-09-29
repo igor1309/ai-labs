@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"reflect"
-	"sort"
 	"testing"
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
@@ -26,53 +26,22 @@ func (*marker) Read(context.Context, definition.Kind, string) (definition.Docume
 }
 func (*marker) List(context.Context, definition.Kind) ([]string, error) { return nil, nil }
 
-// definitionsHeld maps the path of every definitions source held anywhere
-// under v (through pointers, interfaces, structs and slices) to that source.
-func definitionsHeld(v reflect.Value, path string, seen map[uintptr]bool, out map[string]any) {
-	sourceType := reflect.TypeOf((*app.DefinitionSource)(nil)).Elem()
-	if v.Type() == sourceType {
-		if !v.IsNil() {
-			out[path] = v.Elem().Pointer()
-		}
-		return
-	}
-	switch v.Kind() {
-	case reflect.Interface:
-		if !v.IsNil() {
-			definitionsHeld(v.Elem(), path, seen, out)
-		}
-	case reflect.Pointer:
-		if v.IsNil() || seen[v.Pointer()] {
-			return
-		}
-		seen[v.Pointer()] = true
-		definitionsHeld(v.Elem(), path, seen, out)
-	case reflect.Struct:
-		for i := 0; i < v.NumField(); i++ {
-			definitionsHeld(v.Field(i), path+"."+v.Type().Field(i).Name, seen, out)
-		}
-	case reflect.Slice, reflect.Array:
-		for i := 0; i < v.Len(); i++ {
-			definitionsHeld(v.Index(i), path+"["+string(rune('0'+i))+"]", seen, out)
-		}
-	}
-}
-
 // Every use case of the client the gate builds reads only the sources it
 // was given: the layered one everywhere, the global-only one for the global
 // write scope. Wiring any of them to the live settings would defeat the
-// snapshot.
+// snapshot. Each definitions dependency is asserted by name: a use case or
+// scope added later needs its own assertion here.
 func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 	project := repository(t, "x")
 	if err := os.MkdirAll(filepath.Join(project, ".agister"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	for name, tc := range map[string]struct {
-		cwd    string
-		scopes []string
+		cwd     string
+		project bool // a project settings layer, so a second write scope
 	}{
-		"global only": {cwd: "", scopes: []string{".Settings.Scopes[0].Check.Definitions"}},
-		"in project":  {cwd: project, scopes: []string{".Settings.Scopes[0].Check.Definitions", ".Settings.Scopes[1].Check.Definitions"}},
+		"global only": {cwd: ""},
+		"in project":  {cwd: project, project: true},
 	} {
 		t.Run(name, func(t *testing.T) {
 			gated, err := newGated(cli.Config{Home: t.TempDir(), Cwd: tc.cwd})
@@ -80,39 +49,73 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 				t.Fatal(err)
 			}
 			layered, global := &marker{"layered"}, &marker{"global"}
-			held := map[string]any{}
-			built, ok := gated.Build(layered, global).(app.ReapOnSubmit)
+			decorated, ok := gated.Build(layered, global).(app.ReapOnSubmit)
 			if !ok {
-				t.Fatalf("the built client is not decorated to reap on submit")
+				t.Fatalf("the built client is not %T", app.ReapOnSubmit{})
 			}
-			definitionsHeld(reflect.ValueOf(built.Client), "", map[uintptr]bool{}, held)
+			host, ok := decorated.Client.(*app.Host)
+			if !ok {
+				t.Fatalf("the decorated client is a %T, not a host", decorated.Client)
+			}
 
-			want := map[string]*marker{
-				".Settings.Definitions":   layered,
-				".Checker.Definitions":    layered,
-				".Inspection.Definitions": layered,
-				".Calls.Definitions":      layered,
-			}
-			want[tc.scopes[0]] = global
-			if len(tc.scopes) > 1 {
-				want[tc.scopes[1]] = layered
-			}
-			var paths []string
-			for path := range held {
-				paths = append(paths, path)
-			}
-			sort.Strings(paths)
-			for path, source := range want {
-				if held[path] != reflect.ValueOf(source).Pointer() {
-					t.Errorf("%s is not the %s source given (held: %v)", path, source.name, paths)
+			source := func(what string, got app.DefinitionSource, want *marker) {
+				t.Helper()
+				if got != app.DefinitionSource(want) {
+					t.Errorf("%s reads %v, not the %s source given", what, got, want.name)
 				}
 			}
-			for _, path := range paths {
-				if _, ok := want[path]; !ok {
-					t.Errorf("unexpected definitions source at %s", path)
+			source("settings", host.Settings.Definitions, layered)
+			source("check", host.Checker.Definitions, layered)
+			source("inspection", host.Inspection.Definitions, layered)
+			source("calls", host.Calls.Definitions, layered)
+
+			scopes := host.Settings.Scopes
+			wantScopes := 1
+			if tc.project {
+				wantScopes = 2
+			}
+			if len(scopes) != wantScopes {
+				t.Fatalf("write scopes = %d, want %d", len(scopes), wantScopes)
+			}
+			scopeChecker := func(scope app.Scope) *app.Checker {
+				t.Helper()
+				checker, ok := scope.Check.(*app.Checker)
+				if !ok {
+					t.Fatalf("scope %q is checked by a %T", scope.Name, scope.Check)
 				}
+				return checker
+			}
+			source("the global write scope", scopeChecker(scopes[0]).Definitions, global)
+			if tc.project {
+				source("the project write scope", scopeChecker(scopes[1]).Definitions, layered)
 			}
 		})
+	}
+}
+
+// The built client starts the one background reaper every build shares,
+// over the run store, the supervisor's processes and the git workspaces.
+func TestBuiltClientSharesTheBackgroundReaper(t *testing.T) {
+	home := t.TempDir()
+	gated, background, err := wire(cli.Config{Home: home})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, build := range []int{1, 2} {
+		decorated, ok := gated.Build(&marker{"layered"}, &marker{"global"}).(app.ReapOnSubmit)
+		if !ok || decorated.Background != background {
+			t.Fatalf("build %d does not start the shared reaper: %+v", build, decorated)
+		}
+	}
+	reaper, ok := background.Reaper.(*app.Reaper)
+	if !ok {
+		t.Fatalf("the background reaper runs a %T", background.Reaper)
+	}
+	if reaper.Adopter != app.RunAdopter(fsruns.Store{Dir: filepath.Join(home, "runs")}) ||
+		reaper.Processes != app.Processes(supervisor.Processes{}) ||
+		reaper.Workspaces != app.Workspaces(git.Workspaces{}) ||
+		reaper.Clock == nil {
+		t.Fatalf("reaper = %+v", reaper)
 	}
 }
 
