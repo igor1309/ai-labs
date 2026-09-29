@@ -20,7 +20,7 @@ type Settings struct {
 	Examples    Examples
 }
 
-func (s *Settings) Init(ctx context.Context, overwrite bool) (contract.InitResult, error) {
+func (s *Settings) Init(ctx context.Context, overwrite, dryRun bool) (contract.InitResult, error) {
 	var result contract.InitResult
 	if s.Examples == nil {
 		return result, &contract.InputError{Message: "no example definitions are available"}
@@ -58,14 +58,23 @@ func (s *Settings) Init(ctx context.Context, overwrite bool) (contract.InitResul
 		if err != nil {
 			return result, err
 		}
-		written, created, err := s.Writer.Write(ctx, kind, base, data, overwrite)
+		path, existed, err := s.Writer.Exists(ctx, kind, base)
 		if err != nil {
 			return result, err
 		}
-		if created {
-			result.Created = append(result.Created, written)
-		} else {
-			result.Kept = append(result.Kept, written)
+		created := !existed || overwrite
+		if !dryRun {
+			if path, created, err = s.Writer.Write(ctx, kind, base, data, overwrite); err != nil {
+				return result, err
+			}
+		}
+		switch {
+		case !created:
+			result.Kept = append(result.Kept, path)
+		case existed:
+			result.Replaced = append(result.Replaced, path)
+		default:
+			result.Created = append(result.Created, path)
 		}
 	}
 	return result, nil

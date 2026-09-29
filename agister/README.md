@@ -9,7 +9,9 @@ contracts are settings, not code. Architecture: [ADR-001](docs/adr/001-agister-c
 cd agister
 go build -o bin/agister ./cmd/agister
 
-bin/agister init                  # example settings into ~/.agister ($AGISTER_HOME or --home)
+bin/agister init                  # example settings into ~/.agister ($AGISTER_HOME or --home);
+                                  # shows what it writes and asks you to type "yes"
+                                  # (--force also replaces existing files; scripts: echo yes | ...)
 bin/agister check                 # validate all settings; report discovered problems
 bin/agister check --probe         # also ask each agent's runtime for its version
 

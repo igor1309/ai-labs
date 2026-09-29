@@ -134,6 +134,11 @@ type writerSpy struct {
 	existed map[string]bool
 }
 
+func (s *writerSpy) Exists(_ context.Context, kind definition.Kind, name string) (string, bool, error) {
+	key := string(kind) + "/" + name
+	return key, s.existed[key], nil
+}
+
 func (s *writerSpy) Write(_ context.Context, kind definition.Kind, name string, data []byte, overwrite bool) (string, bool, error) {
 	s.writes = append(s.writes, string(kind)+"/"+name)
 	key := string(kind) + "/" + name
@@ -150,13 +155,41 @@ func TestInitWritesEachExampleWithoutOverwriting(t *testing.T) {
 		"agents/a.toml":  {Data: []byte("x")},
 		"schemas/s.json": {Data: []byte("x")},
 	}
-	result, err := (&app.Settings{Writer: writer, Examples: examples}).Init(context.Background(), false)
+	result, err := (&app.Settings{Writer: writer, Examples: examples}).Init(context.Background(), false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(writer.writes, []string{"agents/a", "schemas/s", "service/service"}) ||
 		!reflect.DeepEqual(result.Kept, []string{"agents/a"}) || len(result.Created) != 2 {
 		t.Fatalf("writes %v, result %+v", writer.writes, result)
+	}
+}
+
+// A dry run reports what a real run would write and writes nothing; with
+// overwrite, existing files are reported as replaced, not created.
+func TestInitDryRunAndReplacement(t *testing.T) {
+	examples := fstest.MapFS{
+		"service.toml":  {Data: []byte("x")},
+		"agents/a.toml": {Data: []byte("x")},
+	}
+	for _, overwrite := range []bool{false, true} {
+		writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
+		settings := &app.Settings{Writer: writer, Examples: examples}
+		plan, err := settings.Init(context.Background(), overwrite, true)
+		if err != nil || len(writer.writes) != 0 {
+			t.Fatalf("overwrite %v: dry run wrote %v, %v", overwrite, writer.writes, err)
+		}
+		result, err := settings.Init(context.Background(), overwrite, false)
+		if err != nil || !reflect.DeepEqual(plan, result) {
+			t.Fatalf("overwrite %v: plan %+v, result %+v, %v", overwrite, plan, result, err)
+		}
+		want := contract.InitResult{Created: []string{"service/service"}, Kept: []string{"agents/a"}}
+		if overwrite {
+			want = contract.InitResult{Created: []string{"service/service"}, Replaced: []string{"agents/a"}}
+		}
+		if !reflect.DeepEqual(result, want) {
+			t.Fatalf("overwrite %v: result %+v", overwrite, result)
+		}
 	}
 }
 
@@ -168,14 +201,14 @@ func TestInitSkipsHiddenFilesAndRejectsStrayRootFiles(t *testing.T) {
 		"agents/a.toml":    {Data: []byte("x")},
 		"service.toml":     {Data: []byte("x")},
 	}
-	if _, err := (&app.Settings{Writer: writer, Examples: examples}).Init(context.Background(), false); err != nil {
+	if _, err := (&app.Settings{Writer: writer, Examples: examples}).Init(context.Background(), false, false); err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(writer.writes, []string{"agents/a", "service/service"}) {
 		t.Fatalf("writes %v", writer.writes)
 	}
 	stray := fstest.MapFS{"notes.txt": {Data: []byte("x")}}
-	if _, err := (&app.Settings{Writer: &writerSpy{}, Examples: stray}).Init(context.Background(), false); err == nil {
+	if _, err := (&app.Settings{Writer: &writerSpy{}, Examples: stray}).Init(context.Background(), false, false); err == nil {
 		t.Fatal("a stray root file was accepted")
 	}
 }

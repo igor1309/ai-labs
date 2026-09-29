@@ -85,6 +85,18 @@ func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 	return names, nil
 }
 
+func (s Store) Exists(_ context.Context, kind definition.Kind, name string) (string, bool, error) {
+	path, err := s.path(kind, name)
+	if err != nil {
+		return "", false, err
+	}
+	_, err = os.Stat(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return path, false, nil
+	}
+	return path, err == nil, err
+}
+
 func (s Store) Write(_ context.Context, kind definition.Kind, name string, data []byte, overwrite bool) (string, bool, error) {
 	path, err := s.path(kind, name)
 	if err != nil {

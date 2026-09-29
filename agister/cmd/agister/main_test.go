@@ -29,9 +29,15 @@ type result struct {
 
 func agister(t *testing.T, home, cwd string, args ...string) result {
 	t.Helper()
+	return agisterInput(t, "", home, cwd, args...)
+}
+
+// agisterInput runs agister with input as what the user types.
+func agisterInput(t *testing.T, input, home, cwd string, args ...string) result {
+	t.Helper()
 	var stdout, stderr bytes.Buffer
 	code := cli.Run(context.Background(), append([]string{"--home", home}, args...), cli.IO{
-		Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &stderr, Cwd: cwd,
+		Stdin: strings.NewReader(input), Stdout: &stdout, Stderr: &stderr, Cwd: cwd,
 		Getenv: func(string) string { return "" },
 	}, compose)
 	return result{code, stdout.String(), stderr.String()}
@@ -75,8 +81,10 @@ func repository(t *testing.T, scenario string) string {
 func setup(t *testing.T, scenario string) (home, repo string) {
 	home, repo = t.TempDir(), repository(t, scenario)
 	claude := runtimetest.Binary(t, "fakeclaude")
+	if r := agisterInput(t, "yes\n", home, repo, "init"); r.code != 0 {
+		t.Fatalf("init: %d %s", r.code, r.stderr)
+	}
 	for _, args := range [][]string{
-		{"init"},
 		{"agent", "create", "reviewer", "--force", "--runtime", "claude-code", "--model", "sonnet", "--model-family", "anthropic", "--effort", "high", "--command", claude},
 		{"agent", "create", "assistant", "--force", "--runtime", "claude-code", "--model-family", "anthropic", "--session", "resumable", "--command", claude},
 	} {
@@ -232,7 +240,7 @@ func TestShippedExamplesPassCheck(t *testing.T) {
 // place (a Finder .DS_Store once landed there) is reported as one problem.
 func TestUnreadableServiceSettingsFailCheck(t *testing.T) {
 	home, repo := t.TempDir(), t.TempDir()
-	if r := agister(t, home, repo, "init"); r.code != 0 {
+	if r := agisterInput(t, "yes\n", home, repo, "init"); r.code != 0 {
 		t.Fatalf("init: %d %s", r.code, r.stderr)
 	}
 	shipped, err := fs.ReadFile(examples.Settings(), "service.toml")
@@ -403,8 +411,41 @@ func TestComposedSettingsAreVerified(t *testing.T) {
 	if r := agister(t, home, repo, "--help"); r.code != 0 {
 		t.Fatalf("help: %d\n%s", r.code, r.stderr)
 	}
-	if r := agister(t, home, repo, "init"); r.code != 0 {
+	if r := agisterInput(t, "yes\n", home, repo, "init"); r.code != 0 {
 		t.Fatalf("init: %d\n%s", r.code, r.stderr)
+	}
+}
+
+// init writes nothing until the user types "yes", and --force says which
+// existing files it would replace before asking.
+func TestInitAsksBeforeWriting(t *testing.T) {
+	home, dir := filepath.Join(t.TempDir(), "home"), t.TempDir()
+	for _, input := range []string{"", "\n", "y\n", "no\n", "YES please\n"} {
+		r := agisterInput(t, input, home, dir, "init")
+		if r.code != cli.ExitUsage || !strings.Contains(r.stdout, "will create  "+filepath.Join(home, "service.toml")) || !strings.Contains(r.stderr, "Type yes to write") || !strings.Contains(r.stderr, "nothing was written") {
+			t.Fatalf("input %q: %d\n%s%s", input, r.code, r.stdout, r.stderr)
+		}
+		if _, err := os.Stat(home); err == nil {
+			if entries, _ := os.ReadDir(home); len(entries) > 1 || (len(entries) == 1 && entries[0].Name() != "logs") {
+				t.Fatalf("input %q: wrote %v", input, entries)
+			}
+		}
+	}
+	if r := agisterInput(t, " yes \n", home, dir, "init"); r.code != 0 || !strings.Contains(r.stdout, "created  "+filepath.Join(home, "service.toml")) {
+		t.Fatalf("yes: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	// Everything exists: nothing to write, nothing to confirm.
+	if r := agister(t, home, dir, "init"); r.code != 0 || !strings.Contains(r.stdout, "nothing to write") || strings.Contains(r.stderr, "Type yes") {
+		t.Fatalf("again: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	edited := filepath.Join(home, "agents", "reviewer.toml")
+	write(t, edited, read(t, edited)+"# mine\n")
+	r := agister(t, home, dir, "init", "--force")
+	if r.code != cli.ExitUsage || !strings.Contains(r.stdout, "will REPLACE "+edited) || !strings.HasSuffix(read(t, edited), "# mine\n") {
+		t.Fatalf("force without yes: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if r := agisterInput(t, "yes\n", home, dir, "init", "--force"); r.code != 0 || !strings.Contains(r.stdout, "replaced "+edited) || strings.HasSuffix(read(t, edited), "# mine\n") {
+		t.Fatalf("force with yes: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 }
 
@@ -414,7 +455,7 @@ func TestFreshHomeNeedsInit(t *testing.T) {
 	if r := agister(t, home, dir, "process", "list"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, "service service: not found") {
 		t.Fatalf("before init: %d\n%s", r.code, r.stderr)
 	}
-	if r := agister(t, home, dir, "init"); r.code != 0 {
+	if r := agisterInput(t, "yes\n", home, dir, "init"); r.code != 0 {
 		t.Fatalf("init: %d\n%s", r.code, r.stderr)
 	}
 	if r := agister(t, home, dir, "process", "list"); r.code != 0 {

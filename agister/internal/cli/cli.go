@@ -4,6 +4,7 @@
 package cli
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -37,7 +38,8 @@ const (
 const usage = `agister — run agent calls defined in settings
 
 Usage:
-  agister init [--force]
+  agister init [--force]             install example settings; shows the plan, writes only after "yes"
+                                     (--force replaces existing files)
   agister check [--probe]            validate all settings (--probe: ask each runtime its version);
                                      every other command but init does this first and stops on problems
   agister agent create <name> --runtime <runtime> [--model <m>] [--model-family <f>] [--effort <e>] [--session fresh-only|resumable] [--command <path>] [--force]
@@ -211,17 +213,7 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 
 	switch command {
 	case "init":
-		result, err := client.Init(ctx, opts.force)
-		if err != nil {
-			return 0, err
-		}
-		for _, path := range result.Created {
-			fmt.Fprintf(env.Stdout, "created %s\n", path)
-		}
-		for _, path := range result.Kept {
-			fmt.Fprintf(env.Stdout, "kept    %s (exists; --force replaces it)\n", path)
-		}
-		return 0, nil
+		return initSettings(ctx, client, opts.force, config.Home, env)
 
 	case "agent":
 		sub, _ := arg(0, "a subcommand")
@@ -544,6 +536,51 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 	for _, line := range lines {
 		fmt.Fprintf(w, "%-12s %s\n", line[0], line[1])
 	}
+}
+
+// initSettings shows what init would write and writes only after the user
+// types "yes": it creates files and, with --force, replaces edited ones.
+func initSettings(ctx context.Context, client contract.Client, force bool, home string, env IO) (int, error) {
+	plan, err := client.Init(ctx, force, true)
+	if err != nil {
+		return 0, err
+	}
+	writes := len(plan.Created) + len(plan.Replaced)
+	for _, path := range plan.Created {
+		fmt.Fprintf(env.Stdout, "will create  %s\n", path)
+	}
+	for _, path := range plan.Replaced {
+		fmt.Fprintf(env.Stdout, "will REPLACE %s (its current content is lost)\n", path)
+	}
+	for _, path := range plan.Kept {
+		fmt.Fprintf(env.Stdout, "will keep    %s (exists; --force replaces it)\n", path)
+	}
+	if writes == 0 {
+		fmt.Fprintf(env.Stdout, "nothing to write in %s\n", home)
+		return 0, nil
+	}
+	fmt.Fprintf(env.Stderr, "Type yes to write %d file(s) in %s: ", writes, home)
+	var answer string
+	if env.Stdin != nil {
+		answer, _ = bufio.NewReader(env.Stdin).ReadString('\n')
+	}
+	if strings.TrimSpace(answer) != "yes" {
+		return 0, &contract.InputError{Message: "init cancelled; nothing was written"}
+	}
+	result, err := client.Init(ctx, force, false)
+	if err != nil {
+		return 0, err
+	}
+	for _, path := range result.Created {
+		fmt.Fprintf(env.Stdout, "created  %s\n", path)
+	}
+	for _, path := range result.Replaced {
+		fmt.Fprintf(env.Stdout, "replaced %s\n", path)
+	}
+	for _, path := range result.Kept {
+		fmt.Fprintf(env.Stdout, "kept     %s\n", path)
+	}
+	return 0, nil
 }
 
 // printCheck prints a check report and returns its exit code. Overrides
