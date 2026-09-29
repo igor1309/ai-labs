@@ -209,9 +209,30 @@ type Record struct {
 	Plan               *enforce.Plan       `json:"plan,omitempty"`
 	Inputs             []Input             `json:"inputs,omitempty"`
 	Workspace          string              `json:"workspace,omitempty"`
+	Effects            *Effects            `json:"effects,omitempty"`
 	RequestedSessionID string              `json:"requested_session_id,omitempty"`
 	Turn               *Turn               `json:"turn,omitempty"`
 	Result             *Result             `json:"result,omitempty"` // set when finished
+}
+
+// Effects are what a call leaves outside its record, written down as soon
+// as each exists so that whoever finds the run abandoned can undo them.
+type Effects struct {
+	Checkout *Checkout `json:"checkout,omitempty"`
+	Process  *Process  `json:"process,omitempty"`
+}
+
+// Checkout is a workspace the call created in Repository.
+type Checkout struct {
+	Repository string `json:"repository"`
+	Dir        string `json:"dir"`
+}
+
+// Process is the runtime's process group. Token identifies the process
+// that leads it, so a reused ID is never taken for it; empty when unknown.
+type Process struct {
+	Group int    `json:"group"`
+	Token string `json:"token,omitempty"`
 }
 
 const RecordSchema = "agister.run/v1alpha2"
@@ -252,4 +273,15 @@ func Conclude(turn Turn, output definition.Output, validation error) (Status, *E
 		return Failed, Fault(ClassInvalidOutput, "%v", validation)
 	}
 	return Completed, nil
+}
+
+// AbandonedResult is the result of a run whose owner ended before it
+// finished.
+func AbandonedResult(startedAt time.Time) Result {
+	return Result{
+		Status: Lost,
+		Error:  Fault(ClassAbandoned, "the process running it ended before it finished"),
+		Cost:   Cost{Source: CostUnknown},
+		Timing: Timing{StartedAt: startedAt},
+	}
 }

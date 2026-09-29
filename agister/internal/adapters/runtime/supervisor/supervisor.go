@@ -81,6 +81,9 @@ func Run(ctx context.Context, spec Spec, events app.EventSink, onLine func(strin
 		return evidence
 	}
 	pid := command.Process.Pid
+	// Recorded before anything else: from here on the group can outlive us.
+	token, _ := Token(pid)
+	sink.ProcessStarted(pid, token)
 	sink.Event(run.SourceProcess, "PROCESS_STARTED", map[string]any{"pid": pid, "command": spec.Command, "args": spec.Args})
 
 	// Signals go to the group only while it is known to exist: once the
@@ -248,6 +251,12 @@ func (s *serialSink) Event(source, kind string, data map[string]any) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.inner.Event(source, kind, data)
+}
+
+func (s *serialSink) ProcessStarted(group int, token string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.inner.ProcessStarted(group, token)
 }
 
 func (s *serialSink) line(line string, onLine func(string)) {

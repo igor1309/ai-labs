@@ -65,6 +65,9 @@ type TurnRequest struct {
 // EventSink receives a turn's events and raw runtime output.
 type EventSink interface {
 	Event(source, kind string, data map[string]any)
+	// ProcessStarted reports the runtime's process group as soon as it
+	// exists; token identifies the process (empty when unknown).
+	ProcessStarted(group int, token string)
 	Raw(line string)
 }
 
@@ -108,6 +111,26 @@ type Workspaces interface {
 	// Changes returns everything in a checkout that differs from revision,
 	// committed or not, as a patch; empty when nothing does.
 	Changes(ctx context.Context, dir, revision string) ([]byte, error)
+	// Discard removes a checkout that Checkout made, whose owner ended
+	// without releasing it. A checkout already gone is success; a
+	// directory Checkout could not have made is refused.
+	Discard(ctx context.Context, repository, dir string) error
+}
+
+// Reaping is what Reap found of a process group.
+type Reaping string
+
+const (
+	ReapKilled Reaping = "killed" // the group was killed
+	ReapGone   Reaping = "gone"   // no such group
+	ReapLeft   Reaping = "left"   // a process holds the ID but is not known to be the recorded one
+)
+
+// Processes ends the process groups a dead owner left behind.
+type Processes interface {
+	// Reap kills the group unless its leader is alive and is not the
+	// process token identifies: the ID may have been reused.
+	Reap(group int, token string) (Reaping, error)
 }
 
 // Provenance returns the recorded writer of a revision, or nil.
@@ -135,6 +158,15 @@ type RunHandle interface {
 	// Artifact stores a file the call produced beside its evidence.
 	Artifact(name string, data []byte) (run.Artifact, error)
 	Finish(record run.Record) error
+}
+
+// RunAdopter takes over runs whose owner ended.
+type RunAdopter interface {
+	// Abandoned lists the unfinished runs nobody owns that recorded effects.
+	Abandoned(ctx context.Context) ([]run.Record, error)
+	// Adopt takes ownership of an abandoned run, as its record is now. It
+	// fails if the run is owned by another process or finished.
+	Adopt(ctx context.Context, id string) (RunHandle, run.Record, error)
 }
 
 // RunLookup reads one run's evidence. A record that is not finished and no

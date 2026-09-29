@@ -113,3 +113,62 @@ func TestRunIDsStayInTheStore(t *testing.T) {
 		t.Fatal("Create wrote outside the store")
 	}
 }
+
+func TestAdoptTakesOnlyAnAbandonedRun(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	ctx := context.Background()
+	effects := &run.Effects{Checkout: &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-1/workspace"}}
+	record := run.Record{Schema: run.RecordSchema, ID: "r1", Process: "p", CreatedAt: time.Now(), Effects: effects}
+	h, err := store.Create(ctx, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = h.Append(run.Event{Kind: "E"})
+
+	// Owned: neither listed nor adoptable.
+	if abandoned, _ := store.Abandoned(ctx); len(abandoned) != 0 {
+		t.Fatalf("owned run listed: %+v", abandoned)
+	}
+	if _, _, err := store.Adopt(ctx, "r1"); err == nil {
+		t.Fatal("adopted a run its owner holds")
+	}
+
+	// The owner disappears: the run is listed and adopted once.
+	h.(*handle).lock.Close()
+	if abandoned, _ := store.Abandoned(ctx); len(abandoned) != 1 || abandoned[0].ID != "r1" {
+		t.Fatalf("abandoned = %+v", abandoned)
+	}
+	adopted, got, err := store.Adopt(ctx, "r1")
+	if err != nil || got.Effects == nil || got.Effects.Checkout.Dir != effects.Checkout.Dir {
+		t.Fatalf("adopt: %+v, %v", got, err)
+	}
+	if _, status, _ := store.Get(ctx, "r1"); status != run.StateRunning {
+		t.Fatalf("adopted run reads %s", status)
+	}
+	if _, _, err := store.Adopt(ctx, "r1"); err == nil {
+		t.Fatal("adopted a run twice")
+	}
+
+	// The adopter can append (numbering on) and finish it.
+	if err := adopted.Append(run.Event{Kind: "F"}); err != nil {
+		t.Fatal(err)
+	}
+	if events, _, _ := store.Events(ctx, "r1", 0); len(events) != 2 || events[1].Seq != 2 {
+		t.Fatalf("events = %+v", events)
+	}
+	now := time.Now()
+	got.FinishedAt = &now
+	got.Result = &run.Result{Status: run.Lost}
+	if err := adopted.Finish(got); err != nil {
+		t.Fatal(err)
+	}
+	if _, status, _ := store.Get(ctx, "r1"); status != run.StateFinished {
+		t.Fatalf("finished run reads %s", status)
+	}
+	if _, _, err := store.Adopt(ctx, "r1"); err == nil {
+		t.Fatal("adopted a finished run")
+	}
+	if abandoned, _ := store.Abandoned(ctx); len(abandoned) != 0 {
+		t.Fatalf("finished run listed: %+v", abandoned)
+	}
+}

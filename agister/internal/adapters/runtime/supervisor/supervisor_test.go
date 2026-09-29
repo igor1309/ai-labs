@@ -52,6 +52,8 @@ func (e *events) Event(_, kind string, _ map[string]any) {
 	e.kinds = append(e.kinds, kind)
 }
 
+func (e *events) ProcessStarted(int, string) {}
+
 func (e *events) Raw(string) {}
 
 func (e *events) has(kind string) bool {

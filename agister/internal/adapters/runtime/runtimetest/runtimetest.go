@@ -51,12 +51,19 @@ type Recorder struct {
 	mu     sync.Mutex
 	Events []run.Event
 	Lines  []string
+	Groups []int
 }
 
 func (r *Recorder) Event(source, kind string, data map[string]any) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.Events = append(r.Events, run.Event{Seq: len(r.Events) + 1, Source: source, Kind: kind, Data: data})
+}
+
+func (r *Recorder) ProcessStarted(group int, token string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.Groups = append(r.Groups, group)
 }
 
 func (r *Recorder) Raw(line string) {

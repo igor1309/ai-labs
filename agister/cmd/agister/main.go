@@ -24,6 +24,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/claudecode"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/schema"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
 	"github.com/igor1309/ai-labs/agister/internal/app"
@@ -98,6 +99,8 @@ func compose(config cli.Config) (contract.Client, error) {
 			Provenance:  fsprovenance.Store{Dir: filepath.Join(config.Home, "provenance")},
 			Validator:   schema.Validator{},
 			Recorder:    evidence,
+			Adopter:     evidence,
+			Processes:   supervisor.Processes{},
 			Runs:        evidence,
 			Clock:       system.Clock{},
 			IDs:         system.IDs{},

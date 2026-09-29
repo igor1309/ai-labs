@@ -3,24 +3,35 @@
 Known gaps accepted for the CLI stage. Each has a trigger: do it then, not
 before.
 
-## 1. Effects outlive a killed Agister process
+## 1. Effects outlive a killed Agister process (partly done)
 
 - **Gap:** ADR-001 rule 11 (every effect owned and cleaned up). If the CLI
   process is killed with SIGKILL during a call, the runtime's process group
   keeps running and the candidate checkout stays on disk and in
-  `git worktree list`. The run correctly reads as lost (`abandoned`), but nothing reaps
-  its effects. SIGINT, SIGTERM and SIGHUP are handled cleanly.
+  `git worktree list` until something reaps them. SIGINT, SIGTERM and
+  SIGHUP are handled cleanly.
 - **Evidence:** reproduced 2026-09-28 with the fake runtime (hang scenario):
   after `kill -9` of `agister run`, the runtime process and the worktree
   remained.
-- **Why deferred:** reaping needs a persistent owner. A real Claude turn
-  ends on its own, so what is left is a temporary checkout.
-- **Trigger:** the service (ADR-001 rule 16), or earlier if leftover
-  checkouts become a nuisance.
-- **Done when:** runs record their process group and checkout path as
-  soon as they exist; reading a lost run (or service start) kills the
-  recorded group, removes the checkout and runs `git worktree prune`; a test
-  kills the owner and asserts both are gone.
+- **Done (2026-09-29):** a run records its checkout as soon as it exists and
+  its process group, with the leader's start time as a token, as soon as the
+  runtime starts. When a call starts, it adopts each abandoned run that
+  recorded effects (taking its owner lock, so one process does it), kills
+  the group, removes the checkout, prunes worktrees, appends
+  `EFFECTS_REAPED` and finishes the run as lost (`abandoned`). A step that
+  fails is recorded and does not stop the call or the rest. Tests: app
+  (spies), git, process, run store, and an end-to-end kill of a real
+  `agister run`.
+- **Residual gap:** effects are reaped only when the next call starts, not
+  when the run is read or at service start; until then they stay. A group
+  whose leader is alive with a different or unknown token is left alone
+  (the ID may be reused) and the event says so; the run is then finished
+  anyway, so that leftover is not retried. A kill between creating the
+  checkout and recording it leaves an unrecorded checkout.
+- **Trigger for the rest:** the service (ADR-001 rule 16), or earlier if
+  leftovers between calls become a nuisance.
+- **Done when (rest):** the service reaps on start and periodically, and
+  reads of a lost run may report what was left.
 
 ## 2. Permission mappings carry no verification evidence
 

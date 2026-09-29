@@ -70,6 +70,35 @@ func (Workspaces) Checkout(ctx context.Context, repository, revision string) (st
 	return dir, release, nil
 }
 
+// Discard removes a checkout whose call ended without releasing it. Only a
+// directory Checkout could have made is touched: <temp>/agister-checkout-*/workspace.
+func (Workspaces) Discard(ctx context.Context, repository, dir string) error {
+	parent := filepath.Dir(dir)
+	if filepath.Base(dir) != "workspace" || !strings.HasPrefix(filepath.Base(parent), "agister-checkout-") ||
+		resolved(filepath.Dir(parent)) != resolved(os.TempDir()) {
+		return fmt.Errorf("%s is not a checkout Agister made", dir)
+	}
+	_, err := run(ctx, repository, "worktree", "remove", "--force", dir)
+	if err != nil && strings.Contains(err.Error(), "is not a working tree") {
+		err = nil
+	}
+	if removeErr := os.RemoveAll(parent); err == nil {
+		err = removeErr
+	}
+	// Drops the record of a checkout whose directory was already gone.
+	if _, pruneErr := run(ctx, repository, "worktree", "prune"); err == nil {
+		err = pruneErr
+	}
+	return err
+}
+
+func resolved(path string) string {
+	if real, err := filepath.EvalSymlinks(path); err == nil {
+		path = real
+	}
+	return filepath.Clean(path)
+}
+
 // Changes stages everything in the checkout, in its own index, and diffs
 // it against revision.
 func (Workspaces) Changes(ctx context.Context, dir, revision string) ([]byte, error) {

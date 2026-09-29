@@ -24,6 +24,10 @@ type Calls struct {
 	Provenance  Provenance
 	Validator   OutputValidator
 	Recorder    RunRecorder
+	// Reap what runs killed before they finished left behind, when a call
+	// starts. Without both, nothing is reaped.
+	Adopter   RunAdopter
+	Processes Processes
 	// Earlier runs, read only to continue a session.
 	Runs  RunLookup
 	Clock Clock
@@ -91,6 +95,7 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 	go func() {
 		defer c.Hosted.remove(record.ID)
 		defer cancel()
+		c.reapAbandoned(runCtx)
 		c.execute(runCtx, handle, record)
 	}()
 	return record.ID, nil
@@ -216,7 +221,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		}
 	}
 
-	workspace, releaseWorkspace, owned, err := c.prepareWorkspace(ctx, res.process, inputs, record.Request.Cwd)
+	workspace, repository, releaseWorkspace, owned, err := c.prepareWorkspace(ctx, res.process, inputs, record.Request.Cwd)
 	if err != nil {
 		fail(err)
 		return
@@ -224,6 +229,10 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	release = releaseWorkspace
 	record.Workspace = workspace
 	if owned {
+		// Recorded before the runtime starts: if this process is killed,
+		// the next call removes the checkout.
+		record.Effects = &run.Effects{Checkout: &run.Checkout{Repository: repository, Dir: workspace}}
+		_ = handle.Update(record)
 		revision, _ := revisionOf(inputs, res.process.Checkout)
 		collect = func() { result.Artifacts = c.collectChanges(ctx, handle, workspace, revision, event) }
 	}
@@ -247,7 +256,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	_ = handle.Update(record)
 
 	turnStart := c.Clock.Now()
-	turn := res.runner.RunTurn(ctx, request, sink{handle: handle, clock: c.Clock})
+	turn := res.runner.RunTurn(ctx, request, &sink{handle: handle, clock: c.Clock, record: &record})
 	turnMS := c.Clock.Now().Sub(turnStart).Milliseconds()
 	record.Turn = &turn
 
@@ -370,18 +379,18 @@ func (c *Calls) resolveInputs(ctx context.Context, process definition.Process, r
 
 // prepareWorkspace returns the agent's working directory: a checkout of the
 // declared revision, or the repository. It must not overlap Agister's state.
-// owned is true for a checkout the call created.
-func (c *Calls) prepareWorkspace(ctx context.Context, process definition.Process, inputs []run.Input, cwd string) (dir string, release func() error, owned bool, err error) {
+// owned is true for a checkout the call created in repository.
+func (c *Calls) prepareWorkspace(ctx context.Context, process definition.Process, inputs []run.Input, cwd string) (dir, repository string, release func() error, owned bool, err error) {
 	noop := func() error { return nil }
 	root, err := c.Workspaces.Root(ctx, cwd)
 	if err != nil {
 		root = cwd
 	}
 	if overlaps(root, c.StateDir) {
-		return "", noop, false, refuse("workspace %s overlaps Agister's state %s", root, c.StateDir)
+		return "", "", noop, false, refuse("workspace %s overlaps Agister's state %s", root, c.StateDir)
 	}
 	if process.Checkout == "" {
-		return root, noop, false, nil
+		return root, root, noop, false, nil
 	}
 	var revision string
 	for _, input := range inputs {
@@ -390,29 +399,42 @@ func (c *Calls) prepareWorkspace(ctx context.Context, process definition.Process
 		}
 	}
 	if revision == "" {
-		return "", noop, false, refuse("workspace.checkout: input %s is not a revision", process.Checkout)
+		return "", "", noop, false, refuse("workspace.checkout: input %s is not a revision", process.Checkout)
 	}
 	dir, release, err = c.Workspaces.Checkout(ctx, root, revision)
 	if err != nil {
-		return "", noop, false, err
+		return "", "", noop, false, err
 	}
 	if overlaps(dir, c.StateDir) {
 		_ = release()
-		return "", noop, false, refuse("workspace %s overlaps Agister's state %s", dir, c.StateDir)
+		return "", "", noop, false, refuse("workspace %s overlaps Agister's state %s", dir, c.StateDir)
 	}
-	return dir, release, true, nil
+	return dir, root, release, true, nil
 }
 
+// sink records a turn's events, and its process as an effect on record,
+// which the turn's caller leaves alone while the turn runs.
 type sink struct {
 	handle RunHandle
 	clock  Clock
+	record *run.Record
 }
 
-func (s sink) Event(source, kind string, data map[string]any) {
+func (s *sink) ProcessStarted(group int, token string) {
+	effects := run.Effects{}
+	if s.record.Effects != nil {
+		effects = *s.record.Effects
+	}
+	effects.Process = &run.Process{Group: group, Token: token}
+	s.record.Effects = &effects
+	_ = s.handle.Update(*s.record)
+}
+
+func (s *sink) Event(source, kind string, data map[string]any) {
 	_ = s.handle.Append(run.Event{At: s.clock.Now(), Source: source, Kind: kind, Data: data})
 }
 
-func (s sink) Raw(line string) { _ = s.handle.Raw(line) }
+func (s *sink) Raw(line string) { _ = s.handle.Raw(line) }
 
 func summarize(inputs []run.Input) []run.Input {
 	out := make([]run.Input, len(inputs))

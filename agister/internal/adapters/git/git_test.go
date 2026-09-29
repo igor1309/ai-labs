@@ -164,3 +164,77 @@ func TestChangesCoverEverythingSinceTheRevision(t *testing.T) {
 		t.Fatalf("repository changed: %s", status)
 	}
 }
+
+// A checkout its call never released (the process was killed) is removed
+// from disk and from the repository's worktree list.
+func TestDiscardRemovesAnUnreleasedCheckout(t *testing.T) {
+	repo := repository(t)
+	ctx := context.Background()
+	checkout, _, err := git.Workspaces{}.Checkout(ctx, repo, sh(t, repo, "rev-parse", "HEAD"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := (git.Workspaces{}).Discard(ctx, repo, checkout); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Dir(checkout)); !os.IsNotExist(err) {
+		t.Fatal("checkout left behind")
+	}
+	if lines := strings.Split(sh(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
+		t.Fatalf("worktrees = %v", lines)
+	}
+	// Already gone is success.
+	if err := (git.Workspaces{}).Discard(ctx, repo, checkout); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Only a directory Checkout could have made is ever removed: each case
+// breaks exactly one part of the pattern.
+func TestDiscardRefusesOtherDirectories(t *testing.T) {
+	repo := repository(t)
+	parent, err := os.MkdirTemp("", "agister-checkout-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(parent)
+	otherParent, err := os.MkdirTemp("", "other-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(otherParent)
+	for name, dir := range map[string]string{
+		"wrong name":           filepath.Join(parent, "other"),
+		"wrong parent":         filepath.Join(otherParent, "workspace"),
+		"outside the temp dir": filepath.Join(t.TempDir(), "agister-checkout-x", "workspace"),
+		"the repository":       repo,
+	} {
+		os.MkdirAll(dir, 0o700)
+		if err := (git.Workspaces{}).Discard(context.Background(), repo, dir); err == nil {
+			t.Errorf("%s: discard succeeded", name)
+		}
+		if _, err := os.Stat(dir); err != nil {
+			t.Errorf("%s: removed: %v", name, err)
+		}
+	}
+}
+
+// A checkout whose directory is already gone is still dropped from the
+// worktree list.
+func TestDiscardPrunesACheckoutThatIsGone(t *testing.T) {
+	repo := repository(t)
+	ctx := context.Background()
+	checkout, _, err := git.Workspaces{}.Checkout(ctx, repo, sh(t, repo, "rev-parse", "HEAD"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(filepath.Dir(checkout)); err != nil {
+		t.Fatal(err)
+	}
+	if err := (git.Workspaces{}).Discard(ctx, repo, checkout); err != nil {
+		t.Fatal(err)
+	}
+	if lines := strings.Split(sh(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
+		t.Fatalf("worktrees = %v", lines)
+	}
+}
