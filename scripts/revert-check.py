@@ -32,7 +32,7 @@ under the OS temp dir; mutations, restores and `go test` happen only there.
 The worktree is removed on every exit the process can handle (normal, error,
 SIGINT, SIGTERM, SIGHUP). SIGKILL can leave only that temporary directory;
 every run starts with `git worktree prune`, and a leftover is harmless.
-Go tests run with a 1m timeout and each subprocess with a 90s timeout.
+Go tests run with a 45s timeout and each subprocess with a 60s timeout.
 """
 
 import os
@@ -136,8 +136,8 @@ def run_tests(module, tests):
         pattern = "^(" + "|".join(re.escape(n) for n in names) + ")$"
         try:
             output = run_group(
-                ["go", "test", "-count=1", "-timeout", "1m", "-v", "-run", pattern, package],
-                module, 90,
+                ["go", "test", "-count=1", "-timeout", "45s", "-v", "-run", pattern, package],
+                module, 60,
             )
         except subprocess.TimeoutExpired:
             # A hung run is a failed run, never a pass; check() reports it.

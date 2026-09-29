@@ -360,3 +360,9 @@ file: internal/adapters/runtime/supervisor/supervisor.go
 find: \trecorded := sink.ProcessStarted(Ref(pid, ""))\n
 replace: \tvar recorded error\n
 test: ./internal/adapters/runtime/supervisor TestGroupIsReportedBeforeItsTokenIsKnown
+
+[the process port gets the reap's context, with its deadline]
+file: internal/app/reap.go
+find: c.Processes.Reap(ctx, process.Ref)
+replace: c.Processes.Reap(context.Background(), process.Ref)
+test: ./internal/app TestProcessReapingHasTheReapDeadline

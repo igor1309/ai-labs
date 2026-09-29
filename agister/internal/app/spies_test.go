@@ -367,11 +367,16 @@ type processesSpy struct {
 	mu     sync.Mutex
 	reaped []string // references
 	err    error
+	// hook, when set, sees the context each Reap receives.
+	hook func(context.Context)
 }
 
-func (s *processesSpy) Reap(ref string) (app.Reaping, error) {
+func (s *processesSpy) Reap(ctx context.Context, ref string) (app.Reaping, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.hook != nil {
+		s.hook(ctx)
+	}
 	s.reaped = append(s.reaped, ref)
 	return app.ReapKilled, s.err
 }

@@ -1,6 +1,7 @@
 package supervisor
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -13,11 +14,12 @@ import (
 
 var errNoProcess = errors.New("no such process")
 
-// Token identifies a process instance: its start time and command name as
-// ps reports them. A process that reuses the ID starts at another time, or
-// within the same second runs another command.
-func Token(pid int) (string, error) {
-	command := exec.Command("ps", "-o", "lstart=,comm=", "-p", strconv.Itoa(pid))
+// Token identifies a process instance, best effort: its start time and
+// command name as ps reports them. A process that reuses the ID starts at
+// another time, or runs another command; lstart has one-second resolution,
+// so the same command reusing the ID within that second is not told apart.
+func Token(ctx context.Context, pid int) (string, error) {
+	command := exec.CommandContext(ctx, "ps", "-o", "lstart=,comm=", "-p", strconv.Itoa(pid))
 	command.Env = append(command.Environ(), "LC_ALL=C")
 	out, err := command.Output()
 	token := strings.TrimSpace(string(out))
@@ -68,7 +70,7 @@ var _ app.Processes = Processes{}
 // any live process holds it. With no such process the group is killed
 // anyway: its ID cannot be reused while any member remains. A reference
 // Ref did not make is left, with an error.
-func (Processes) Reap(ref string) (app.Reaping, error) {
+func (Processes) Reap(ctx context.Context, ref string) (app.Reaping, error) {
 	group, token, err := ParseRef(ref)
 	if err != nil {
 		return app.ReapLeft, err
@@ -76,7 +78,7 @@ func (Processes) Reap(ref string) (app.Reaping, error) {
 	if group <= 1 {
 		return app.ReapLeft, fmt.Errorf("%d is not a process group", group)
 	}
-	current, err := Token(group)
+	current, err := Token(ctx, group)
 	switch {
 	case err == nil && (token == "" || current != token):
 		return app.ReapLeft, fmt.Errorf("process %d is alive and is not known to be the recorded one; left alone", group)

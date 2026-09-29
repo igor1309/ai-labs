@@ -30,8 +30,8 @@ type Reaper struct {
 // Reap leaves runs some process still owns alone and never fails. Runs
 // not reached by the reap deadline are not adopted and wait for the next
 // reap, and the run being reaped when time runs out is finished with the
-// steps that failed recorded. Only the git steps honour the deadline:
-// os.RemoveAll in Discard does not, so a reap can run past it.
+// steps that failed recorded. The process and git steps honour the
+// deadline: os.RemoveAll in Discard does not, so a reap can run past it.
 func (c *Reaper) Reap(ctx context.Context) {
 	ctx, cancel := c.reapContext(ctx)
 	defer cancel()
@@ -87,7 +87,7 @@ func (c *Reaper) reap(ctx context.Context, handle RunHandle, record run.Record, 
 		effects = *record.Effects
 	}
 	if process := effects.Process; process != nil {
-		reaping, err := c.Processes.Reap(process.Ref)
+		reaping, err := c.Processes.Reap(ctx, process.Ref)
 		data["process"] = map[string]any{"ref": process.Ref, "outcome": string(reaping)}
 		if err != nil {
 			failures = append(failures, fmt.Sprintf("process %q: %v", process.Ref, err))

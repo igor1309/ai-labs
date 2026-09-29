@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -11,7 +12,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/cli"
+	"github.com/igor1309/ai-labs/agister/internal/contract"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -44,12 +48,16 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 	if err := victim.Start(); err != nil {
 		t.Fatal(err)
 	}
-	group := 0
+	group, checkout := 0, ""
 	t.Cleanup(func() {
 		_ = victim.Process.Kill()
 		_ = victim.Wait()
 		if group > 0 {
 			_ = syscall.Kill(-group, syscall.SIGKILL)
+			if checkout != "" {
+				_ = exec.Command("git", "-C", repo, "worktree", "remove", "--force", checkout).Run()
+				_ = os.RemoveAll(filepath.Dir(checkout))
+			}
 			return
 		}
 		// The poll below failed before the record was read: whatever the
@@ -92,11 +100,12 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 		_, token, err := supervisor.ParseRef(record.Effects.Process.Ref)
 		return err == nil && token != ""
 	})
-	group, _, err := supervisor.ParseRef(record.Effects.Process.Ref)
+	var err error
+	group, _, err = supervisor.ParseRef(record.Effects.Process.Ref)
 	if err != nil {
 		t.Fatal(err)
 	}
-	checkout := record.Effects.Checkout.Dir
+	checkout = record.Effects.Checkout.Dir
 
 	if err := victim.Process.Signal(syscall.SIGKILL); err != nil {
 		t.Fatal(err)
@@ -114,8 +123,25 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 		t.Fatalf("worktrees = %v", lines)
 	}
 
-	// Another call starts (and times out on its own hang).
-	agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--quiet", "--timeout", "1s")
+	// Another call starts (and times out on its own hang). It is submitted
+	// in process so the reap it starts can be awaited.
+	client, background, err := wire(cli.Config{Home: home, Cwd: repo})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := client.Submit(context.Background(), contract.CallRequest{
+		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "1s", Cwd: repo,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	background.Wait()
+	// The new call ends on its own timeout, taking its runtime and checkout.
+	store := fsruns.Store{Dir: filepath.Join(home, "runs")}
+	eventually(t, "the new call to finish", func() bool {
+		_, state, err := store.Get(context.Background(), id)
+		return err == nil && state == domain.StateFinished
+	})
 
 	eventually(t, "the old runtime to be gone", func() bool { return !groupAlive(group) })
 	if _, err := os.Stat(checkout); !errors.Is(err, os.ErrNotExist) {

@@ -78,7 +78,8 @@ before.
   (spies), git, process, run store, and an end-to-end kill of a real
   `agister run`.
 - **Residual gap:** effects are reaped only after the next call is
-  submitted, not when the run is read or at service start; until then they
+  submitted (and not while settings fail the gate: a refused Submit starts
+  no reap), not when the run is read or at service start; until then they
   stay. The reap is not awaited: a CLI that exits before it ends leaves the
   run it was reaping adopted but unfinished, and the next reap does it
   again (killing a gone group and removing a gone checkout succeed). A

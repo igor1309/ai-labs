@@ -140,7 +140,7 @@ type Processes interface {
 	// Reap ends the process the reference names, unless it may be another
 	// one by now. A reference the adapter did not make is ReapLeft, with an
 	// error.
-	Reap(ref string) (Reaping, error)
+	Reap(ctx context.Context, ref string) (Reaping, error)
 }
 
 // Provenance returns the recorded writer of a revision, or nil.

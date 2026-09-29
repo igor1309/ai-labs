@@ -92,7 +92,7 @@ func Run(ctx context.Context, spec Spec, events app.EventSink, onLine func(strin
 	// still ours, and nothing may run that no record could lead back to.
 	recorded := sink.ProcessStarted(Ref(pid, ""))
 	if recorded == nil {
-		if token, err := Token(pid); err == nil {
+		if token, err := Token(ctx, pid); err == nil {
 			recorded = sink.ProcessStarted(Ref(pid, token))
 		}
 	}

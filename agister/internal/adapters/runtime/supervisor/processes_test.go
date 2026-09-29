@@ -1,6 +1,7 @@
 package supervisor_test
 
 import (
+	"context"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -29,7 +30,7 @@ func sleeper(t *testing.T) (pid int, gone <-chan struct{}) {
 
 func TestReapKillsTheGroupOfTheRecordedProcess(t *testing.T) {
 	pid, gone := sleeper(t)
-	token, err := supervisor.Token(pid)
+	token, err := supervisor.Token(context.Background(), pid)
 	if err != nil || token == "" {
 		t.Fatalf("token = %q, %v", token, err)
 	}
@@ -37,7 +38,7 @@ func TestReapKillsTheGroupOfTheRecordedProcess(t *testing.T) {
 	if !strings.Contains(token, "sleep") {
 		t.Fatalf("token %q does not name the command", token)
 	}
-	reaping, err := supervisor.Processes{}.Reap(supervisor.Ref(pid, token))
+	reaping, err := supervisor.Processes{}.Reap(context.Background(), supervisor.Ref(pid, token))
 	if err != nil || reaping != app.ReapKilled {
 		t.Fatalf("reap = %s, %v", reaping, err)
 	}
@@ -48,10 +49,10 @@ func TestReapKillsTheGroupOfTheRecordedProcess(t *testing.T) {
 	}
 	// Nothing left: the group is simply gone, also for a reference that
 	// never learned the token (no process holds the ID, so nothing to spare).
-	if reaping, err := (supervisor.Processes{}).Reap(supervisor.Ref(pid, "")); err != nil || reaping != app.ReapGone {
+	if reaping, err := (supervisor.Processes{}).Reap(context.Background(), supervisor.Ref(pid, "")); err != nil || reaping != app.ReapGone {
 		t.Fatalf("reap of a dead group without a token = %s, %v", reaping, err)
 	}
-	if reaping, err := (supervisor.Processes{}).Reap(supervisor.Ref(pid, token)); err != nil || reaping != app.ReapGone {
+	if reaping, err := (supervisor.Processes{}).Reap(context.Background(), supervisor.Ref(pid, token)); err != nil || reaping != app.ReapGone {
 		t.Fatalf("reap of a dead group = %s, %v", reaping, err)
 	}
 }
@@ -61,7 +62,7 @@ func TestReapKillsTheGroupOfTheRecordedProcess(t *testing.T) {
 func TestReapLeavesAProcessItCannotIdentify(t *testing.T) {
 	pid, _ := sleeper(t)
 	for name, token := range map[string]string{"another token": "Thu Jan  1 00:00:00 1970", "no token": ""} {
-		reaping, err := supervisor.Processes{}.Reap(supervisor.Ref(pid, token))
+		reaping, err := supervisor.Processes{}.Reap(context.Background(), supervisor.Ref(pid, token))
 		if err == nil || reaping != app.ReapLeft {
 			t.Fatalf("%s: reap = %s, %v", name, reaping, err)
 		}
@@ -93,7 +94,7 @@ func TestRefRoundTrips(t *testing.T) {
 // group is signalled: the number in it is not taken for one.
 func TestReapLeavesAReferenceItDoesNotUnderstand(t *testing.T) {
 	pid, _ := sleeper(t)
-	token, err := supervisor.Token(pid)
+	token, err := supervisor.Token(context.Background(), pid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +106,7 @@ func TestReapLeavesAReferenceItDoesNotUnderstand(t *testing.T) {
 		"no group number":           "pgid:",
 		"not a number":              "pgid:abc:token",
 	} {
-		reaping, err := supervisor.Processes{}.Reap(ref)
+		reaping, err := supervisor.Processes{}.Reap(context.Background(), ref)
 		if err == nil || reaping != app.ReapLeft {
 			t.Fatalf("%s: reap = %s, %v", name, reaping, err)
 		}

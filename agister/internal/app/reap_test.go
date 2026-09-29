@@ -245,6 +245,20 @@ func TestReapingHasADeadlineByDefault(t *testing.T) {
 	}
 }
 
+func TestProcessReapingHasTheReapDeadline(t *testing.T) {
+	h := newHarness()
+	r := reaping(h, abandonedRun("a"))
+	var bounded bool
+	r.processes.hook = func(ctx context.Context) {
+		deadline, ok := ctx.Deadline()
+		bounded = ok && time.Until(deadline) <= 30*time.Second
+	}
+	r.reap()
+	if !bounded {
+		t.Fatal("the process port got no reap deadline")
+	}
+}
+
 func TestACheckoutARunningRunUsesIsNotDiscarded(t *testing.T) {
 	h := newHarness()
 	r := reaping(h, abandonedRun("old"))

@@ -23,7 +23,8 @@ type BackgroundReaper struct {
 }
 
 // Start begins a reap and returns at once. While one is running, it starts
-// nothing: that reap will already see what the caller left.
+// nothing: a run abandoned after that reap's scan waits for a later Submit
+// (see deferred item 2).
 func (b *BackgroundReaper) Start(ctx context.Context) {
 	b.mu.Lock()
 	if b.running {
