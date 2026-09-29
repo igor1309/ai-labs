@@ -559,7 +559,7 @@ func initSettings(ctx context.Context, client contract.Client, force bool, home 
 		fmt.Fprintf(env.Stdout, "nothing to write in %s\n", home)
 		return 0, nil
 	}
-	fmt.Fprintf(env.Stderr, "Type yes to write %d file(s) in %s: ", writes, home)
+	fmt.Fprintf(env.Stderr, "Type yes to write %d file(s) in %s:\n", writes, home)
 	var answer string
 	if env.Stdin != nil {
 		answer, _ = bufio.NewReader(env.Stdin).ReadString('\n')
