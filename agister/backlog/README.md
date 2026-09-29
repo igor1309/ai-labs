@@ -26,5 +26,5 @@ too constrained for its task.
 
 - It reports and does not refuse or rank. Deciding what is right stays
   with you.
-- Open: whether it is a view over `check`'s composed result or its own
-  use case, and its output (text, JSON, or both).
+- `check` already composes the effective settings, so it is one possible
+  place to build on.
