@@ -65,9 +65,11 @@ type TurnRequest struct {
 // EventSink receives a turn's events and raw runtime output.
 type EventSink interface {
 	Event(source, kind string, data map[string]any)
-	// ProcessStarted reports the runtime's process group as soon as it
-	// exists; token identifies the process (empty when unknown).
-	ProcessStarted(group int, token string)
+	// ProcessStarted reports the runtime's process as soon as it exists, as
+	// a reference only the runtime adapter can read (Processes.Reap takes
+	// it back). It may be reported again as more becomes known; the last
+	// report stands.
+	ProcessStarted(ref string)
 	Raw(line string)
 }
 
@@ -117,20 +119,22 @@ type Workspaces interface {
 	Discard(ctx context.Context, repository, dir string) error
 }
 
-// Reaping is what Reap found of a process group.
+// Reaping is what Reap found of a process.
 type Reaping string
 
 const (
-	ReapKilled Reaping = "killed" // the group was killed
-	ReapGone   Reaping = "gone"   // no such group
-	ReapLeft   Reaping = "left"   // a process holds the ID but is not known to be the recorded one
+	ReapKilled Reaping = "killed" // the process was killed
+	ReapGone   Reaping = "gone"   // no such process
+	ReapLeft   Reaping = "left"   // not killed: it is not known to be the recorded one, or the reference is not understood
 )
 
-// Processes ends the process groups a dead owner left behind.
+// Processes ends the runtime processes a dead owner left behind. What a
+// reference means is the adapter's own: the core only stores and returns it.
 type Processes interface {
-	// Reap kills the group unless its leader is alive and is not the
-	// process token identifies: the ID may have been reused.
-	Reap(group int, token string) (Reaping, error)
+	// Reap ends the process the reference names, unless it may be another
+	// one by now. A reference the adapter did not make is ReapLeft, with an
+	// error.
+	Reap(ref string) (Reaping, error)
 }
 
 // Provenance returns the recorded writer of a revision, or nil.

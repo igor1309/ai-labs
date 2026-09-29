@@ -85,9 +85,9 @@ func Run(ctx context.Context, spec Spec, events app.EventSink, onLine func(strin
 	// Looking up the token takes a moment, so the group is reported first;
 	// a kill in between leaves a record that reaping refuses to act on
 	// blindly, but that still names the group.
-	sink.ProcessStarted(pid, "")
+	sink.ProcessStarted(Ref(pid, ""))
 	if token, err := Token(pid); err == nil {
-		sink.ProcessStarted(pid, token)
+		sink.ProcessStarted(Ref(pid, token))
 	}
 	sink.Event(run.SourceProcess, "PROCESS_STARTED", map[string]any{"pid": pid, "command": spec.Command, "args": spec.Args})
 
@@ -258,10 +258,10 @@ func (s *serialSink) Event(source, kind string, data map[string]any) {
 	s.inner.Event(source, kind, data)
 }
 
-func (s *serialSink) ProcessStarted(group int, token string) {
+func (s *serialSink) ProcessStarted(ref string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.inner.ProcessStarted(group, token)
+	s.inner.ProcessStarted(ref)
 }
 
 func (s *serialSink) line(line string, onLine func(string)) {

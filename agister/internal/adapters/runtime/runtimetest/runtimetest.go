@@ -48,10 +48,10 @@ func Binary(t testing.TB, name string) string {
 
 // Recorder is an EventSink that keeps everything.
 type Recorder struct {
-	mu     sync.Mutex
-	Events []run.Event
-	Lines  []string
-	Groups []int
+	mu        sync.Mutex
+	Events    []run.Event
+	Lines     []string
+	Processes []string // references, in the order reported
 	// OnEvent, when set before the run, is called with each event's kind
 	// after it is recorded, outside the lock.
 	OnEvent func(kind string)
@@ -67,10 +67,10 @@ func (r *Recorder) Event(source, kind string, data map[string]any) {
 	}
 }
 
-func (r *Recorder) ProcessStarted(group int, token string) {
+func (r *Recorder) ProcessStarted(ref string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.Groups = append(r.Groups, group)
+	r.Processes = append(r.Processes, ref)
 }
 
 func (r *Recorder) Raw(line string) {

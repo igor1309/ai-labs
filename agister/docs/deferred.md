@@ -14,8 +14,12 @@ before.
   after `kill -9` of `agister run`, the runtime process and the worktree
   remained.
 - **Done (2026-09-29):** a run records its checkout as soon as it exists and
-  its process group, with the leader's start time as a token, as soon as the
-  runtime starts. Submitting a call starts a reap beside it, in the
+  its process as soon as the runtime starts, as an opaque reference only
+  the runtime adapter reads (the supervisor's is the process group, then
+  the group with the leader's start time as a token: `pgid:<group>[:<token>]`);
+  the core, the record and the reap event carry no group numbers of their
+  own. Records of schema v1alpha2, which held a group and token, are not
+  reapable: their reference reads empty and is left, with an error. Submitting a call starts a reap beside it, in the
   background: `app.Reaper` adopts each abandoned run that recorded effects
   (taking its owner lock, so one process does it), kills the group, removes
   the checkout, prunes worktrees, appends `EFFECTS_REAPED` and finishes the

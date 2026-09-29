@@ -51,12 +51,7 @@ type runResult struct {
 type events struct {
 	mu      sync.Mutex
 	kinds   []string
-	started []startedProcess
-}
-
-type startedProcess struct {
-	group int
-	token string
+	started []string // references, in the order reported
 }
 
 func (e *events) Event(_, kind string, _ map[string]any) {
@@ -65,10 +60,10 @@ func (e *events) Event(_, kind string, _ map[string]any) {
 	e.kinds = append(e.kinds, kind)
 }
 
-func (e *events) ProcessStarted(group int, token string) {
+func (e *events) ProcessStarted(ref string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	e.started = append(e.started, startedProcess{group, token})
+	e.started = append(e.started, ref)
 }
 
 func (e *events) Raw(string) {}
@@ -185,8 +180,15 @@ func TestGroupIsReportedBeforeItsTokenIsKnown(t *testing.T) {
 	if len(sink.started) < 2 {
 		t.Fatalf("reports = %+v", sink.started)
 	}
-	first, last := sink.started[0], sink.started[len(sink.started)-1]
-	if first.group <= 1 || first.token != "" || last.group != first.group || last.token == "" {
+	firstGroup, firstToken, err := supervisor.ParseRef(sink.started[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	lastGroup, lastToken, err := supervisor.ParseRef(sink.started[len(sink.started)-1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if firstGroup <= 1 || firstToken != "" || lastGroup != firstGroup || lastToken == "" {
 		t.Fatalf("reports = %+v", sink.started)
 	}
 }

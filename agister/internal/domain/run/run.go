@@ -228,14 +228,15 @@ type Checkout struct {
 	Dir        string `json:"dir"`
 }
 
-// Process is the runtime's process group. Token identifies the process
-// that leads it, so a reused ID is never taken for it; empty when unknown.
+// Process is the runtime's process as an opaque reference, made and read
+// only by the runtime adapter that started it. Records of v1alpha2 held a
+// process group and token instead; they read here with an empty Ref, which
+// no adapter can reap, so what such a run left is not reaped.
 type Process struct {
-	Group int    `json:"group"`
-	Token string `json:"token,omitempty"`
+	Ref string `json:"ref"`
 }
 
-const RecordSchema = "agister.run/v1alpha2"
+const RecordSchema = "agister.run/v1alpha3"
 
 // Request is what the caller asked for, recorded as given.
 type Request struct {

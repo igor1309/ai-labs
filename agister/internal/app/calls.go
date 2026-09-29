@@ -419,12 +419,12 @@ type sink struct {
 	record *run.Record
 }
 
-func (s *sink) ProcessStarted(group int, token string) {
+func (s *sink) ProcessStarted(ref string) {
 	effects := run.Effects{}
 	if s.record.Effects != nil {
 		effects = *s.record.Effects
 	}
-	effects.Process = &run.Process{Group: group, Token: token}
+	effects.Process = &run.Process{Ref: ref}
 	s.record.Effects = &effects
 	_ = s.handle.Update(*s.record)
 }

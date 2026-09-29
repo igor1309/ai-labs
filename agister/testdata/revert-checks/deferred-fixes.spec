@@ -88,10 +88,10 @@ find: record.Effects = &run.Effects{Checkout: &run.Checkout{Repository: reposito
 replace: _ = repository
 test: ./internal/app TestCallRecordsItsEffectsAsSoonAsTheyExist
 
-[the process group is recorded when it starts]
+[the process reference is recorded when it starts]
 file: internal/app/calls.go
-find: effects.Process = &run.Process{Group: group, Token: token}
-replace: _, _ = group, token
+find: effects.Process = &run.Process{Ref: ref}
+replace: _ = ref
 test: ./internal/app TestCallRecordsItsEffectsAsSoonAsTheyExist
 
 [a failed reap step still finishes the run]
@@ -99,6 +99,18 @@ file: internal/app/reap.go
 find: \t\t\tif err != nil {\n\t\t\t\tfailures = append(failures, fmt.Sprintf("checkout
 replace: \t\t\tif err != nil {\n\t\t\t\treturn\n\t\t\t\tfailures = append(failures, fmt.Sprintf("checkout
 test: ./internal/app TestFailedReapStepsStillFinishTheRunWithTheError
+
+[the supervisor's reference carries the token]
+file: internal/adapters/runtime/supervisor/processes.go
+find: return refPrefix + strconv.Itoa(group) + ":" + token
+replace: return refPrefix + strconv.Itoa(group)
+test: ./internal/adapters/runtime/supervisor TestRefRoundTrips
+
+[the supervisor refuses a reference it did not make]
+file: internal/adapters/runtime/supervisor/processes.go
+find: \tif !ok {\n\t\treturn 0, "", fmt.Errorf(
+replace: \tif !ok && false {\n\t\treturn 0, "", fmt.Errorf(
+test: ./internal/adapters/runtime/supervisor TestReapLeavesAReferenceItDoesNotUnderstand
 
 [the reaper kills the recorded group]
 file: internal/adapters/runtime/supervisor/processes.go
@@ -138,7 +150,7 @@ test: ./internal/adapters/runtime/supervisor TestReapKillsTheGroupOfTheRecordedP
 
 [the group is reported before its token is looked up]
 file: internal/adapters/runtime/supervisor/supervisor.go
-find: \tsink.ProcessStarted(pid, "")\n
+find: \tsink.ProcessStarted(Ref(pid, ""))\n
 replace: 
 test: ./internal/adapters/runtime/supervisor TestGroupIsReportedBeforeItsTokenIsKnown
 

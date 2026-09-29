@@ -31,17 +31,50 @@ func Token(pid int) (string, error) {
 	return "", err
 }
 
+const refPrefix = "pgid:"
+
+// Ref names a process group and, once known, the token of the process that
+// leads it, as the opaque reference the core stores: "pgid:<group>" while
+// the token is unknown, else "pgid:<group>:<token>". The token is last
+// because it may contain anything.
+func Ref(group int, token string) string {
+	if token == "" {
+		return refPrefix + strconv.Itoa(group)
+	}
+	return refPrefix + strconv.Itoa(group) + ":" + token
+}
+
+// ParseRef reads a reference Ref made; any other is an error.
+func ParseRef(ref string) (group int, token string, err error) {
+	rest, ok := strings.CutPrefix(ref, refPrefix)
+	if !ok {
+		return 0, "", fmt.Errorf("%q is not a process reference this runtime made", ref)
+	}
+	number, token, _ := strings.Cut(rest, ":")
+	group, err = strconv.Atoi(number)
+	if err != nil {
+		return 0, "", fmt.Errorf("%q is not a process reference this runtime made", ref)
+	}
+	return group, token, nil
+}
+
 // Processes ends process groups their owner left behind.
 type Processes struct{}
 
 var _ app.Processes = Processes{}
 
-// Reap kills the group led by process group unless a live process holds
-// that ID and is not the one token names. With no such process the group
-// is killed anyway: its ID cannot be reused while any member remains.
-func (Processes) Reap(group int, token string) (app.Reaping, error) {
+// Reap kills the group a reference (see Ref) names unless a live process
+// holds that ID and is not the one its token names; with no token, unless
+// any live process holds it. With no such process the group is killed
+// anyway: its ID cannot be reused while any member remains. A reference
+// Ref did not make is left, with an error.
+func (Processes) Reap(ref string) (app.Reaping, error) {
+	group, token, err := ParseRef(ref)
+	if err != nil {
+		return app.ReapLeft, err
+	}
 	if group <= 1 {
-		return "", fmt.Errorf("%d is not a process group", group)
+		return app.ReapLeft, fmt.Errorf("%d is not a process group", group)
 	}
 	current, err := Token(group)
 	switch {

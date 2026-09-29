@@ -123,6 +123,6 @@ func (s *countingSink) Event(source, kind string, data map[string]any) {
 	s.inner.Event(source, kind, data)
 }
 
-func (s *countingSink) ProcessStarted(group int, token string) { s.inner.ProcessStarted(group, token) }
+func (s *countingSink) ProcessStarted(ref string) { s.inner.ProcessStarted(ref) }
 
 func (s *countingSink) Raw(line string) { s.inner.Raw(line) }

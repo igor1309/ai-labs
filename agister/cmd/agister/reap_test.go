@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -66,9 +67,17 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 			return false
 		}
 		recordPath = paths[0]
-		return record.Effects != nil && record.Effects.Process != nil && record.Effects.Process.Token != "" && record.Effects.Checkout != nil
+		if record.Effects == nil || record.Effects.Process == nil || record.Effects.Checkout == nil {
+			return false
+		}
+		_, token, err := supervisor.ParseRef(record.Effects.Process.Ref)
+		return err == nil && token != ""
 	})
-	group, checkout := record.Effects.Process.Group, record.Effects.Checkout.Dir
+	group, _, err := supervisor.ParseRef(record.Effects.Process.Ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkout := record.Effects.Checkout.Dir
 
 	if err := victim.Process.Signal(syscall.SIGKILL); err != nil {
 		t.Fatal(err)

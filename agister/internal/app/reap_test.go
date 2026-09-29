@@ -21,7 +21,7 @@ func abandonedRun(id string) run.Record {
 		CreatedAt: time.Date(2026, 9, 28, 11, 0, 0, 0, time.UTC),
 		Effects: &run.Effects{
 			Checkout: &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-1/workspace"},
-			Process:  &run.Process{Group: 777, Token: "Mon Sep 28 11:00:00 2026"},
+			Process:  &run.Process{Ref: "ref-777"},
 		},
 	}
 }
@@ -47,7 +47,7 @@ func (r *reaper) reap() { r.Reap(context.Background()) }
 func TestCallRecordsItsEffectsAsSoonAsTheyExist(t *testing.T) {
 	h := newHarness()
 	record := h.call(t, contract.CallRequest{})
-	if want := (&run.Effects{Checkout: &run.Checkout{Repository: "/repo", Dir: "/work/checkout"}, Process: &run.Process{Group: 4242, Token: "token-4242"}}); !reflect.DeepEqual(record.Effects, want) {
+	if want := (&run.Effects{Checkout: &run.Checkout{Repository: "/repo", Dir: "/work/checkout"}, Process: &run.Process{Ref: "ref-4242"}}); !reflect.DeepEqual(record.Effects, want) {
 		t.Fatalf("effects = %+v", record.Effects)
 	}
 	// The checkout was written down before the runtime started.
@@ -68,7 +68,7 @@ func TestAbandonedRunIsReaped(t *testing.T) {
 	adopter, processes := r.adopter, r.processes
 	r.reap()
 
-	if !reflect.DeepEqual(processes.reaped, [][2]any{{777, "Mon Sep 28 11:00:00 2026"}}) {
+	if !reflect.DeepEqual(processes.reaped, []string{"ref-777"}) {
 		t.Fatalf("reaped = %v", processes.reaped)
 	}
 	if !reflect.DeepEqual(h.workspaces.discarded, [][2]string{{"/repo", "/tmp/agister-checkout-1/workspace"}}) {
@@ -82,7 +82,7 @@ func TestAbandonedRunIsReaped(t *testing.T) {
 		t.Fatalf("events = %v", kinds)
 	}
 	data := adopter.handles["old"].events[0].Data
-	if data["process"].(map[string]any)["outcome"] != "killed" || data["checkout"].(map[string]any)["removed"] != true {
+	if process := data["process"].(map[string]any); process["outcome"] != "killed" || process["ref"] != "ref-777" || len(process) != 2 || data["checkout"].(map[string]any)["removed"] != true {
 		t.Fatalf("event data = %v", data)
 	}
 }

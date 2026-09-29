@@ -83,7 +83,7 @@ func (s *runnerSpy) RunTurn(ctx context.Context, request app.TurnRequest, sink a
 	s.mu.Lock()
 	s.requests = append(s.requests, request)
 	s.mu.Unlock()
-	sink.ProcessStarted(4242, "token-4242")
+	sink.ProcessStarted("ref-4242")
 	sink.Event(run.SourceProcess, "PROCESS_STARTED", nil)
 	sink.Raw(`{"raw":true}`)
 	if s.started != nil {
@@ -349,14 +349,14 @@ func (fixedIDs) SessionID() string      { return "session-1" }
 
 type processesSpy struct {
 	mu     sync.Mutex
-	reaped [][2]any // group, token
+	reaped []string // references
 	err    error
 }
 
-func (s *processesSpy) Reap(group int, token string) (app.Reaping, error) {
+func (s *processesSpy) Reap(ref string) (app.Reaping, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.reaped = append(s.reaped, [2]any{group, token})
+	s.reaped = append(s.reaped, ref)
 	return app.ReapKilled, s.err
 }
 

@@ -87,10 +87,10 @@ func (c *Reaper) reap(ctx context.Context, handle RunHandle, record run.Record, 
 		effects = *record.Effects
 	}
 	if process := effects.Process; process != nil {
-		reaping, err := c.Processes.Reap(process.Group, process.Token)
-		data["process"] = map[string]any{"group": process.Group, "outcome": string(reaping)}
+		reaping, err := c.Processes.Reap(process.Ref)
+		data["process"] = map[string]any{"ref": process.Ref, "outcome": string(reaping)}
 		if err != nil {
-			failures = append(failures, fmt.Sprintf("process group %d: %v", process.Group, err))
+			failures = append(failures, fmt.Sprintf("process %q: %v", process.Ref, err))
 		}
 	}
 	if checkout := effects.Checkout; checkout != nil {
