@@ -90,8 +90,8 @@ test: ./internal/app TestReapOutlivesTheRequestThatStartedIt
 
 [the checkout is recorded before the runtime starts]
 file: internal/app/calls.go
-find: record.Effects = &run.Effects{Checkout: &run.Checkout{Repository: repository, Dir: workspace}}
-replace: _ = repository
+find: record.Effects = &run.Effects{Checkout: &run.Checkout{Repository: workspace.Repository, Dir: workspace.Dir}}
+replace: _ = workspace.Repository
 test: ./internal/app TestCallRecordsItsEffectsAsSoonAsTheyExist
 
 [the process reference is recorded when it starts]

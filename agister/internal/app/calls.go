@@ -221,32 +221,32 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		}
 	}
 
-	workspace, repository, releaseWorkspace, owned, err := c.prepareWorkspace(ctx, res.process, inputs, record.Request.Cwd)
+	workspace, err := c.prepareWorkspace(ctx, res.process, inputs, record.Request.Cwd)
 	if err != nil {
 		fail(err)
 		return
 	}
-	release = releaseWorkspace
-	record.Workspace = workspace
-	if owned {
+	release = workspace.Release
+	record.Workspace = workspace.Dir
+	if workspace.Owned {
 		// Recorded before the runtime starts: if this process is killed,
 		// a later reap removes the checkout. A checkout that cannot be
 		// recorded is one nobody could find, so it is released and the
 		// call refused.
-		record.Effects = &run.Effects{Checkout: &run.Checkout{Repository: repository, Dir: workspace}}
+		record.Effects = &run.Effects{Checkout: &run.Checkout{Repository: workspace.Repository, Dir: workspace.Dir}}
 		if err := handle.Update(record); err != nil {
 			record.Effects = nil
 			fail(fmt.Errorf("recording the checkout failed: %w", err))
 			return
 		}
 		revision, _ := revisionOf(inputs, res.process.Checkout)
-		collect = func() { result.Artifacts = c.collectChanges(ctx, handle, workspace, revision, event) }
+		collect = func() { result.Artifacts = c.collectChanges(ctx, handle, workspace.Dir, revision, event) }
 	}
 
 	request := TurnRequest{
 		Prompt:          prompt.Inputs(inputs),
 		Instruction:     prompt.Instruction(res.process.Instruction, res.plan.Granted, res.plan.Withheld),
-		Cwd:             workspace,
+		Cwd:             workspace.Dir,
 		ResumeSessionID: resumeSessionID,
 		MaxCostUSD:      res.effective.MaxCostUSD,
 		Model:           res.agent.Model,
@@ -383,20 +383,30 @@ func (c *Calls) resolveInputs(ctx context.Context, process definition.Process, r
 	return inputs, nil
 }
 
+// preparedWorkspace is where a call's agent works.
+type preparedWorkspace struct {
+	Dir string
+	// Repository is the one Dir belongs to, or is.
+	Repository string
+	// Release ends what preparing created; a no-op when it created nothing.
+	Release func() error
+	// Owned is true for a checkout the call created in Repository.
+	Owned bool
+}
+
 // prepareWorkspace returns the agent's working directory: a checkout of the
 // declared revision, or the repository. It must not overlap Agister's state.
-// owned is true for a checkout the call created in repository.
-func (c *Calls) prepareWorkspace(ctx context.Context, process definition.Process, inputs []run.Input, cwd string) (dir, repository string, release func() error, owned bool, err error) {
+func (c *Calls) prepareWorkspace(ctx context.Context, process definition.Process, inputs []run.Input, cwd string) (preparedWorkspace, error) {
 	noop := func() error { return nil }
 	root, err := c.Workspaces.Root(ctx, cwd)
 	if err != nil {
 		root = cwd
 	}
 	if overlaps(root, c.StateDir) {
-		return "", "", noop, false, refuse("workspace %s overlaps Agister's state %s", root, c.StateDir)
+		return preparedWorkspace{}, refuse("workspace %s overlaps Agister's state %s", root, c.StateDir)
 	}
 	if process.Checkout == "" {
-		return root, root, noop, false, nil
+		return preparedWorkspace{Dir: root, Repository: root, Release: noop}, nil
 	}
 	var revision string
 	for _, input := range inputs {
@@ -405,17 +415,17 @@ func (c *Calls) prepareWorkspace(ctx context.Context, process definition.Process
 		}
 	}
 	if revision == "" {
-		return "", "", noop, false, refuse("workspace.checkout: input %s is not a revision", process.Checkout)
+		return preparedWorkspace{}, refuse("workspace.checkout: input %s is not a revision", process.Checkout)
 	}
-	dir, release, err = c.Workspaces.Checkout(ctx, root, revision)
+	dir, release, err := c.Workspaces.Checkout(ctx, root, revision)
 	if err != nil {
-		return "", "", noop, false, err
+		return preparedWorkspace{}, err
 	}
 	if overlaps(dir, c.StateDir) {
 		_ = release()
-		return "", "", noop, false, refuse("workspace %s overlaps Agister's state %s", dir, c.StateDir)
+		return preparedWorkspace{}, refuse("workspace %s overlaps Agister's state %s", dir, c.StateDir)
 	}
-	return dir, root, release, true, nil
+	return preparedWorkspace{Dir: dir, Repository: root, Release: release, Owned: true}, nil
 }
 
 // sink records a turn's events, and its process as an effect on record,
