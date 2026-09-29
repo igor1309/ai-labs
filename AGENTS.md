@@ -18,3 +18,11 @@
 - Do not verify by hand by planting broken files and running the binary;
   that is expensive, unreliable, and never runs again.
 - Check that the new test fails with the fix reverted.
+
+## Implementation and review
+
+- Delegate implementation runs to a subagent on Sonnet 5.5. Brief it with
+  the plan; verify its result yourself (tests pass, each new test fails with
+  its fix reverted).
+- Have Codex review the result critically:
+  `codex exec --sandbox read-only -m gpt-6-sol -c model_reasoning_effort="high" "<prompt>" < /dev/null`.
