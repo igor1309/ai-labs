@@ -62,6 +62,58 @@ func TestCallRecordsItsEffectsAsSoonAsTheyExist(t *testing.T) {
 	}
 }
 
+// A checkout that cannot be recorded is one no reap could find: the call is
+// refused before the runtime starts, and the checkout is released.
+func TestCheckoutThatCannotBeRecordedIsReleasedAndTheCallRefused(t *testing.T) {
+	h := newHarness()
+	h.recorder.updateErr = func(record run.Record) error {
+		if record.Effects != nil && record.Effects.Checkout != nil {
+			return errors.New("disk full")
+		}
+		return nil
+	}
+	record := h.call(t, contract.CallRequest{})
+	if h.workspaces.releases() != 1 {
+		t.Fatalf("releases = %d", h.workspaces.releases())
+	}
+	if len(h.runner.calls()) != 0 {
+		t.Fatalf("a turn ran: %+v", h.runner.calls())
+	}
+	if class(record) != run.ClassInternal || record.Result.Status != run.Failed ||
+		!strings.Contains(message(record), "recording the checkout failed") || !strings.Contains(message(record), "disk full") {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	// The record does not claim a checkout it could not write down.
+	if record.Effects != nil {
+		t.Fatalf("effects = %+v", record.Effects)
+	}
+}
+
+// A process that cannot be recorded is reported to the runtime, which ends
+// it; the run does not claim it.
+func TestProcessThatCannotBeRecordedIsReportedToTheRuntime(t *testing.T) {
+	h := newHarness()
+	h.recorder.updateErr = func(record run.Record) error {
+		if record.Effects != nil && record.Effects.Process != nil {
+			return errors.New("disk full")
+		}
+		return nil
+	}
+	record := h.call(t, contract.CallRequest{})
+	h.runner.mu.Lock()
+	startErr := h.runner.startErr
+	h.runner.mu.Unlock()
+	if startErr == nil || !strings.Contains(startErr.Error(), "recording the process failed") || !strings.Contains(startErr.Error(), "disk full") {
+		t.Fatalf("the runtime was told %v", startErr)
+	}
+	if record.Result.Status != run.Failed || !strings.Contains(message(record), "recording the process failed") {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	if record.Effects == nil || record.Effects.Process != nil || record.Effects.Checkout == nil {
+		t.Fatalf("effects = %+v", record.Effects)
+	}
+}
+
 func TestAbandonedRunIsReaped(t *testing.T) {
 	h := newHarness()
 	r := reaping(h, abandonedRun("old"))

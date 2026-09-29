@@ -192,3 +192,14 @@ func TestFailuresAreClassified(t *testing.T) {
 		}
 	}
 }
+
+// A process that could not be recorded fails the turn, whatever the stream
+// says: it was killed, and nothing it reported can be trusted to be whole.
+func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
+	stream := &claudecode.Stream{}
+	stream.Reduce(`{"type":"result","subtype":"success","is_error":false}`)
+	turn := stream.Reconcile(supervisor.Evidence{RecordError: "disk full"}, false)
+	if turn.Status != run.Failed || turn.Error == nil || turn.Error.Class != run.ClassInternal || !strings.Contains(turn.Error.Message, "disk full") {
+		t.Fatalf("turn = %+v", turn)
+	}
+}

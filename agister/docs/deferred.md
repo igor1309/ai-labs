@@ -18,7 +18,11 @@ before.
   the runtime adapter reads (the supervisor's is the process group, then
   the group with the leader's start time as a token: `pgid:<group>[:<token>]`);
   the core, the record and the reap event carry no group numbers of their
-  own. Records of schema v1alpha2, which held a group and token, are not
+  own. Recording is part of the lifecycle contract: a checkout that cannot
+  be recorded is released and the call refused before the runtime starts
+  (failed, internal); a process that cannot be recorded makes
+  `EventSink.ProcessStarted` fail, the supervisor kills the group it just
+  started (`PROCESS_RECORD_FAILED`) and the turn fails saying so. Records of schema v1alpha2, which held a group and token, are not
   reapable: their reference reads empty and is left, with an error. Submitting a call starts a reap beside it, in the
   background: `app.Reaper` adopts each abandoned run that recorded effects
   (taking its owner lock, so one process does it), kills the group, removes
@@ -37,7 +41,8 @@ before.
   whose leader is alive with a different or unknown token is left alone
   (the ID may be reused) and the event says so; the run is then finished
   anyway, so that leftover is not retried. A kill between creating the
-  checkout and recording it leaves an unrecorded checkout. Reaping is
+  checkout (or starting the runtime) and recording it leaves it
+  unrecorded; only a failed record is handled. Reaping is
   bounded (30s by default): runs not reached stay for the next call, and a
   checkout that a running run records as its own is skipped and the event
   says so. The token check and the kill are not atomic (macOS has no

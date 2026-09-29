@@ -73,6 +73,7 @@ type runnerSpy struct {
 	block       bool // wait for cancellation
 	requests    []app.TurnRequest
 	started     chan struct{}
+	startErr    error // what ProcessStarted returned to the last turn
 }
 
 func (s *runnerSpy) Identity(context.Context) (app.RuntimeIdentity, error) {
@@ -83,7 +84,14 @@ func (s *runnerSpy) RunTurn(ctx context.Context, request app.TurnRequest, sink a
 	s.mu.Lock()
 	s.requests = append(s.requests, request)
 	s.mu.Unlock()
-	sink.ProcessStarted("ref-4242")
+	startErr := sink.ProcessStarted("ref-4242")
+	s.mu.Lock()
+	s.startErr = startErr
+	s.mu.Unlock()
+	if startErr != nil {
+		// What a runtime adapter does: the process is ended, the turn fails.
+		return run.Turn{Status: run.Failed, Error: run.Fault(run.ClassInternal, "%v", startErr)}
+	}
 	sink.Event(run.SourceProcess, "PROCESS_STARTED", nil)
 	sink.Raw(`{"raw":true}`)
 	if s.started != nil {
@@ -225,6 +233,9 @@ type recorderSpy struct {
 	artifacts map[string][]byte
 	finished  chan run.Record
 
+	// updateErr, when set, is asked about each Update; a non-nil result
+	// fails it and the record is not kept.
+	updateErr        func(record run.Record) error
 	onCreate         func()        // runs first in Create
 	hold             chan struct{} // when set, the first Append waits for it to close
 	onFinish         func() int    // observed state at finish time
@@ -263,6 +274,11 @@ func (s *recorderSpy) Raw(line string) error {
 func (s *recorderSpy) Update(record run.Record) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.updateErr != nil {
+		if err := s.updateErr(record); err != nil {
+			return err
+		}
+	}
 	s.updates = append(s.updates, record)
 	return nil
 }

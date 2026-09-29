@@ -2,6 +2,7 @@ package supervisor_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 // The test binary doubles as the runtime's descendants: with helperEnv set
@@ -52,6 +54,10 @@ type events struct {
 	mu      sync.Mutex
 	kinds   []string
 	started []string // references, in the order reported
+	// failAt, when positive, makes the report with that number (1-based)
+	// fail.
+	failAt   int
+	startErr error
 }
 
 func (e *events) Event(_, kind string, _ map[string]any) {
@@ -60,10 +66,14 @@ func (e *events) Event(_, kind string, _ map[string]any) {
 	e.kinds = append(e.kinds, kind)
 }
 
-func (e *events) ProcessStarted(ref string) {
+func (e *events) ProcessStarted(ref string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.started = append(e.started, ref)
+	if e.failAt > 0 && len(e.started) == e.failAt {
+		return e.startErr
+	}
+	return nil
 }
 
 func (e *events) Raw(string) {}
@@ -190,5 +200,58 @@ func TestGroupIsReportedBeforeItsTokenIsKnown(t *testing.T) {
 	}
 	if firstGroup <= 1 || firstToken != "" || lastGroup != firstGroup || lastToken == "" {
 		t.Fatalf("reports = %+v", sink.started)
+	}
+}
+
+// A group that cannot be recorded is killed at once, and the evidence says
+// why, whichever of the two reports failed: no started group is ever left
+// that no record leads back to.
+func TestGroupThatCannotBeRecordedIsKilled(t *testing.T) {
+	for name, failAt := range map[string]int{"the group report": 1, "the token report": 2} {
+		t.Run(name, func(t *testing.T) {
+			sink := &events{failAt: failAt, startErr: errors.New("disk full")}
+			evidence := supervisor.Run(context.Background(), supervisor.Spec{
+				Command: "/bin/sh",
+				Args:    []string{"-c", "sleep 30"},
+				// Only a failure of the kill would ever reach it.
+				Timeout: 5 * time.Second,
+			}, sink, func(string) {})
+
+			if evidence.RecordError != "disk full" {
+				t.Fatalf("evidence = %+v", evidence)
+			}
+			if evidence.Exit == nil || evidence.Exit.Signal != "killed" {
+				t.Fatalf("the process was not killed: %+v", evidence.Exit)
+			}
+			if !sink.has("PROCESS_RECORD_FAILED") {
+				t.Fatalf("events = %v", sink.kinds)
+			}
+			sink.mu.Lock()
+			ref := sink.started[0]
+			sink.mu.Unlock()
+			group, _, err := supervisor.ParseRef(ref)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = syscall.Kill(-group, syscall.SIGKILL) })
+			// Run waited for the leader, so it is gone, not a zombie.
+			if out, _ := exec.Command("ps", "-o", "stat=", "-p", strconv.Itoa(group)).Output(); strings.TrimSpace(string(out)) != "" {
+				t.Fatalf("the group's leader %d is still there (%s)", group, strings.TrimSpace(string(out)))
+			}
+			if syscall.Kill(-group, 0) == nil {
+				t.Fatalf("group %d still has members", group)
+			}
+
+			turn, failed := supervisor.RecordFailure(supervisor.Base(evidence), evidence)
+			if !failed || turn.Status != run.Failed || turn.Error == nil || !strings.Contains(turn.Error.Message, "recording the runtime process failed") || !strings.Contains(turn.Error.Message, "disk full") {
+				t.Fatalf("turn = %+v", turn)
+			}
+		})
+	}
+}
+
+func TestARecordedProcessIsNotAFailure(t *testing.T) {
+	if _, failed := supervisor.RecordFailure(run.Turn{}, supervisor.Evidence{}); failed {
+		t.Fatal("no record error, yet the turn was failed")
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"strings"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/claudecode"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
+	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 func request(prompt string) app.TurnRequest {
@@ -62,4 +64,32 @@ func TestLogsAreCorrelatedAndOmitPrompts(t *testing.T) {
 func stringOr(value any) string {
 	text, _ := value.(string)
 	return text
+}
+
+// starter is a runner that only reports its process.
+type starter struct{ got error }
+
+func (*starter) Identity(context.Context) (app.RuntimeIdentity, error) {
+	return app.RuntimeIdentity{}, nil
+}
+
+func (s *starter) RunTurn(_ context.Context, _ app.TurnRequest, sink app.EventSink) run.Turn {
+	s.got = sink.ProcessStarted("ref")
+	return run.Turn{Status: run.Completed}
+}
+
+// The decorator never swallows a failure to record the process: the
+// runtime must hear of it, and it is logged.
+func TestFailureToRecordTheProcessReachesTheRuntime(t *testing.T) {
+	var buffer bytes.Buffer
+	log := slog.New(slog.NewJSONHandler(&buffer, nil))
+	inner := &starter{}
+	failure := errors.New("disk full")
+	logging.Runner{Inner: inner, Adapter: "x", Log: log}.RunTurn(context.Background(), request("p"), &runtimetest.Recorder{ProcessErr: failure})
+	if !errors.Is(inner.got, failure) {
+		t.Fatalf("the runtime heard %v", inner.got)
+	}
+	if !strings.Contains(buffer.String(), "disk full") {
+		t.Fatalf("not logged: %s", buffer.String())
+	}
 }

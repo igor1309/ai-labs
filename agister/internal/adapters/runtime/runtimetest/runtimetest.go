@@ -52,6 +52,8 @@ type Recorder struct {
 	Events    []run.Event
 	Lines     []string
 	Processes []string // references, in the order reported
+	// ProcessErr is what ProcessStarted returns (after keeping the reference).
+	ProcessErr error
 	// OnEvent, when set before the run, is called with each event's kind
 	// after it is recorded, outside the lock.
 	OnEvent func(kind string)
@@ -67,10 +69,11 @@ func (r *Recorder) Event(source, kind string, data map[string]any) {
 	}
 }
 
-func (r *Recorder) ProcessStarted(ref string) {
+func (r *Recorder) ProcessStarted(ref string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.Processes = append(r.Processes, ref)
+	return r.ProcessErr
 }
 
 func (r *Recorder) Raw(line string) {

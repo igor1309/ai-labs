@@ -112,6 +112,66 @@ find: \tif !ok {\n\t\treturn 0, "", fmt.Errorf(
 replace: \tif !ok && false {\n\t\treturn 0, "", fmt.Errorf(
 test: ./internal/adapters/runtime/supervisor TestReapLeavesAReferenceItDoesNotUnderstand
 
+[a checkout that cannot be recorded is not ignored]
+file: internal/app/calls.go
+find: \t\tif err := handle.Update(record); err != nil {\n\t\t\trecord.Effects = nil\n
+replace: \t\tif err := handle.Update(record); false && err != nil {\n\t\t\trecord.Effects = nil\n
+test: ./internal/app TestCheckoutThatCannotBeRecordedIsReleasedAndTheCallRefused
+
+[a process that cannot be recorded is reported to the runtime]
+file: internal/app/calls.go
+find: \tif err := s.handle.Update(*s.record); err != nil {\n\t\ts.record.Effects = previous
+replace: \tif err := s.handle.Update(*s.record); false && err != nil {\n\t\ts.record.Effects = previous
+test: ./internal/app TestProcessThatCannotBeRecordedIsReportedToTheRuntime
+
+[the supervisor kills a group it could not record]
+file: internal/adapters/runtime/supervisor/supervisor.go
+find: \t\t_ = syscall.Kill(-pid, syscall.SIGKILL)\n\t\tsink.Event(run.SourceAgister, "PROCESS_RECORD_FAILED"
+replace: \t\tsink.Event(run.SourceAgister, "PROCESS_RECORD_FAILED"
+test: ./internal/adapters/runtime/supervisor TestGroupThatCannotBeRecordedIsKilled
+
+[the supervisor notices when the first report fails]
+file: internal/adapters/runtime/supervisor/supervisor.go
+find: \trecorded := sink.ProcessStarted(Ref(pid, ""))\n
+replace: \trecorded := error(nil)\n\t_ = sink.ProcessStarted(Ref(pid, ""))\n
+test: ./internal/adapters/runtime/supervisor TestGroupThatCannotBeRecordedIsKilled
+
+[the supervisor notices when the token report fails]
+file: internal/adapters/runtime/supervisor/supervisor.go
+find: \t\t\trecorded = sink.ProcessStarted(Ref(pid, token))\n
+replace: \t\t\t_ = sink.ProcessStarted(Ref(pid, token))\n
+test: ./internal/adapters/runtime/supervisor TestGroupThatCannotBeRecordedIsKilled
+
+[the serial sink passes the recording error on]
+file: internal/adapters/runtime/supervisor/supervisor.go
+find: \treturn s.inner.ProcessStarted(ref)
+replace: \t_ = s.inner.ProcessStarted(ref)\n\treturn nil
+test: ./internal/adapters/runtime/supervisor TestGroupThatCannotBeRecordedIsKilled
+
+[the logging sink passes the recording error on]
+file: internal/adapters/logging/logging.go
+find: \treturn err\n}\n\nfunc (s *countingSink) Raw
+replace: \treturn nil\n}\n\nfunc (s *countingSink) Raw
+test: ./internal/adapters/logging TestFailureToRecordTheProcessReachesTheRuntime
+
+[an unrecorded process fails the turn]
+file: internal/adapters/runtime/supervisor/supervisor.go
+find: \tif evidence.RecordError == "" {
+replace: \tif evidence.RecordError == "" || true {
+test: ./internal/adapters/runtime/supervisor TestGroupThatCannotBeRecordedIsKilled
+
+[claude-code fails the turn of an unrecorded process]
+file: internal/adapters/runtime/claudecode/claudecode.go
+find: if failed, ok := supervisor.RecordFailure(turn, evidence); ok {
+replace: if failed, ok := supervisor.RecordFailure(turn, evidence); ok && false {
+test: ./internal/adapters/runtime/claudecode TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays
+
+[codex fails the turn of an unrecorded process]
+file: internal/adapters/runtime/codex/codex.go
+find: if failed, ok := supervisor.RecordFailure(turn, evidence); ok {
+replace: if failed, ok := supervisor.RecordFailure(turn, evidence); ok && false {
+test: ./internal/adapters/runtime/codex TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays
+
 [the reaper kills the recorded group]
 file: internal/adapters/runtime/supervisor/processes.go
 find: syscall.Kill(-group, syscall.SIGKILL)
@@ -150,8 +210,8 @@ test: ./internal/adapters/runtime/supervisor TestReapKillsTheGroupOfTheRecordedP
 
 [the group is reported before its token is looked up]
 file: internal/adapters/runtime/supervisor/supervisor.go
-find: \tsink.ProcessStarted(Ref(pid, ""))\n
-replace: 
+find: \trecorded := sink.ProcessStarted(Ref(pid, ""))\n
+replace: \trecorded := error(nil)\n
 test: ./internal/adapters/runtime/supervisor TestGroupIsReportedBeforeItsTokenIsKnown
 
 [reaping is bounded by a timeout]

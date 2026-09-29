@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -229,9 +230,15 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	record.Workspace = workspace
 	if owned {
 		// Recorded before the runtime starts: if this process is killed,
-		// the next call removes the checkout.
+		// a later reap removes the checkout. A checkout that cannot be
+		// recorded is one nobody could find, so it is released and the
+		// call refused.
 		record.Effects = &run.Effects{Checkout: &run.Checkout{Repository: repository, Dir: workspace}}
-		_ = handle.Update(record)
+		if err := handle.Update(record); err != nil {
+			record.Effects = nil
+			fail(fmt.Errorf("recording the checkout failed: %w", err))
+			return
+		}
 		revision, _ := revisionOf(inputs, res.process.Checkout)
 		collect = func() { result.Artifacts = c.collectChanges(ctx, handle, workspace, revision, event) }
 	}
@@ -419,14 +426,22 @@ type sink struct {
 	record *run.Record
 }
 
-func (s *sink) ProcessStarted(ref string) {
+// ProcessStarted records the process on the run. A process that cannot be
+// recorded is not claimed by the record, and the error goes back to the
+// runtime, which ends it.
+func (s *sink) ProcessStarted(ref string) error {
+	previous := s.record.Effects
 	effects := run.Effects{}
-	if s.record.Effects != nil {
-		effects = *s.record.Effects
+	if previous != nil {
+		effects = *previous
 	}
 	effects.Process = &run.Process{Ref: ref}
 	s.record.Effects = &effects
-	_ = s.handle.Update(*s.record)
+	if err := s.handle.Update(*s.record); err != nil {
+		s.record.Effects = previous
+		return fmt.Errorf("recording the process failed: %w", err)
+	}
+	return nil
 }
 
 func (s *sink) Event(source, kind string, data map[string]any) {

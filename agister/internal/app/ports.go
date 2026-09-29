@@ -65,11 +65,13 @@ type TurnRequest struct {
 // EventSink receives a turn's events and raw runtime output.
 type EventSink interface {
 	Event(source, kind string, data map[string]any)
-	// ProcessStarted reports the runtime's process as soon as it exists, as
+	// ProcessStarted records the runtime's process as soon as it exists, as
 	// a reference only the runtime adapter can read (Processes.Reap takes
 	// it back). It may be reported again as more becomes known; the last
-	// report stands.
-	ProcessStarted(ref string)
+	// report stands. An error means the process is not on record, so
+	// nobody could find it after a crash: the runtime adapter must end it
+	// and fail the turn.
+	ProcessStarted(ref string) error
 	Raw(line string)
 }
 
