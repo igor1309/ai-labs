@@ -49,6 +49,11 @@ func shutdown(parent context.Context) (context.Context, context.CancelFunc) {
 }
 
 func compose(config cli.Config) (contract.Client, error) {
+	return newGated(config)
+}
+
+// newGated is the whole client behind the gate.
+func newGated(config cli.Config) (*app.Gated, error) {
 	log, err := diagnostics(config)
 	if err != nil {
 		return nil, err
@@ -78,28 +83,28 @@ func compose(config cli.Config) (contract.Client, error) {
 		"git.changed_files": git.ChangedFiles{},
 	}
 	hosted := app.NewHosted()
-	checker := &app.Checker{Definitions: definitions, Validator: schema.Validator{}, Runtimes: runtimes, Sources: names(sources)}
-	// Writes go to global settings, which must stay valid on their own and
-	// with the project in view.
-	scopes := []app.Scope{{Name: "global settings", Check: &app.Checker{Definitions: fsdefs.Layered{Global: global}, Validator: schema.Validator{}, Runtimes: runtimes, Sources: names(sources)}}}
-	if local != nil {
-		scopes = append(scopes, app.Scope{Name: "settings in " + filepath.Dir(local.Dir), Check: checker})
-	}
-
 	provenance := fsprovenance.Store{Dir: filepath.Join(config.Home, "provenance")}
-	// build makes the whole client over one definitions source. The gate
-	// builds it on a snapshot per operation, so every use case reads only
-	// the settings that operation checked; hosted runs and evidence are
-	// shared by every build. The scopes above still read live: they only
-	// validate a write, which the approved digests and the store's
-	// serialized writes protect.
-	build := func(definitions app.DefinitionSource) contract.Client {
+	checkerOn := func(definitions app.DefinitionSource) *app.Checker {
+		return &app.Checker{Definitions: definitions, Validator: schema.Validator{}, Runtimes: runtimes, Sources: names(sources)}
+	}
+	// build makes the whole client over the sources given: the layered
+	// settings and the global layer alone. The gate builds it on snapshots
+	// per operation, so every use case, including the scopes that validate a
+	// write, reads only the settings that operation checked; hosted runs and
+	// evidence are shared by every build.
+	build := func(layered, globalOnly app.DefinitionSource) contract.Client {
+		// Writes go to global settings, which must stay valid on their own
+		// and with the project in view.
+		scopes := []app.Scope{{Name: "global settings", Check: checkerOn(globalOnly)}}
+		if local != nil {
+			scopes = append(scopes, app.Scope{Name: "settings in " + filepath.Dir(local.Dir), Check: checkerOn(layered)})
+		}
 		return &app.Host{
-			Settings:   &app.Settings{Definitions: definitions, Writer: global, Examples: examples.Settings(), Scopes: scopes},
-			Checker:    &app.Checker{Definitions: definitions, Validator: schema.Validator{}, Runtimes: runtimes, Sources: names(sources)},
-			Inspection: &app.Inspection{Definitions: definitions, Runtimes: runtimes, Validator: schema.Validator{}},
+			Settings:   &app.Settings{Definitions: layered, Writer: global, Examples: examples.Settings(), Scopes: scopes},
+			Checker:    checkerOn(layered),
+			Inspection: &app.Inspection{Definitions: layered, Runtimes: runtimes, Validator: schema.Validator{}},
 			Calls: &app.Calls{
-				Definitions: definitions,
+				Definitions: layered,
 				Runtimes:    runtimes,
 				Inputs:      sources,
 				Workspaces:  git.Workspaces{},
@@ -119,7 +124,7 @@ func compose(config cli.Config) (contract.Client, error) {
 	}
 
 	// Nothing but init and check works on settings that do not pass check.
-	return &app.Gated{Definitions: definitions, Build: build}, nil
+	return &app.Gated{Definitions: definitions, Global: fsdefs.Layered{Global: global}, Build: build}, nil
 }
 
 // project is the settings layer of the repository containing the working

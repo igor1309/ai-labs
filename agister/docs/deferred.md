@@ -160,13 +160,21 @@ before.
   compare, the rename and the exclusive create, so Agister's own writers
   are serialized. Tests: a settings edit after the check does not reach the
   operation; a call resolves from the settings read before its run was
-  recorded; the lock is held at each step of a write.
+  recorded; the lock is held at each step of a write. The write scopes
+  (global alone, and layered) check snapshots taken in the same operation
+  (`Gated.Global`), and a test guards that the built client reads only the
+  sources it was given.
 - **Remains:** a lock binds only Agister's own writers. A hand edit (or
   another program's write) landing between the compare and the rename can
   still be lost, so the promise is serialized writes, not that no edit is
-  ever lost. The scope checkers that validate a write against global
-  settings still read live; a write is protected by its approved digests and
-  the serialized store, not by the snapshot.
+  ever lost.
+- **Remains:** snapshots are not coherent with multi-file writes. A
+  snapshot lists and reads files one after another, so `init --force`,
+  which replaces several files, can land in between and the snapshot may
+  combine an old service with a new process: a state that never existed on
+  disk. The operation still uses that combination consistently. Fix
+  direction: Init holds the store's lock across all its writes, and a
+  snapshot is taken under a shared lock.
 - **Trigger:** the service (ADR-001 rule 16), where other clients edit
   settings while calls run.
 - **Done when (rest):** a writer that cannot be raced by hand edits (for

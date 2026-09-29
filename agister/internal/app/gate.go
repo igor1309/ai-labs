@@ -12,8 +12,8 @@ import (
 // run is never refused, and a run it admitted stays observable, so editing
 // settings mid-run cannot strand a call that already started.
 //
-// Each gated operation reads the settings once into a snapshot, builds its
-// client on that snapshot, checks with that client and then runs the
+// Each gated operation reads the settings (layered, and the global layer
+// alone) once into snapshots, builds its client on them, checks with that client and then runs the
 // operation on the same client, so what was checked is what is used and an
 // edit landing in between changes neither. Init, Check, Cancel and following
 // an admitted run use a client built on the live source.
@@ -23,9 +23,13 @@ import (
 type Gated struct {
 	// Definitions is the live source, read once per gated operation.
 	Definitions DefinitionSource
+	// Global is the live global layer alone, snapshotted like Definitions for
+	// the write scope that checks global settings without the project.
+	Global DefinitionSource
 	// Build makes a client whose use cases read definitions only from the
-	// source given. It must share state (hosted runs, evidence) across builds.
-	Build func(DefinitionSource) contract.Client
+	// sources given: the layered settings and the global layer alone. It must
+	// share state (hosted runs, evidence) across builds.
+	Build func(layered, global DefinitionSource) contract.Client
 
 	mu       sync.Mutex
 	admitted map[string]bool
@@ -33,12 +37,13 @@ type Gated struct {
 
 var _ contract.Client = (*Gated)(nil)
 
-func (g *Gated) live() contract.Client { return g.Build(g.Definitions) }
+func (g *Gated) live() contract.Client { return g.Build(g.Definitions, g.Global) }
 
 // gate snapshots the settings, checks them and returns the client built on
 // that snapshot, or the refusal.
 func (g *Gated) gate(ctx context.Context) (contract.Client, error) {
-	client := g.Build(Snapshot(ctx, g.Definitions))
+	layered := Snapshot(ctx, g.Definitions)
+	client := g.Build(layered, Snapshot(ctx, g.Global))
 	report, err := client.Check(ctx, false)
 	if err != nil {
 		return nil, err

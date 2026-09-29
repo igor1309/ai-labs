@@ -155,8 +155,8 @@ test: ./internal/adapters/git TestDiscardRefusesOtherDirectories
 # Item 8: one settings snapshot per operation; serialized writes.
 [the gate builds the operation on live settings, not the checked snapshot]
 file: internal/app/gate.go
-find: client := g.Build(Snapshot(ctx, g.Definitions))
-replace: client := g.Build(g.Definitions)
+find: layered := Snapshot(ctx, g.Definitions)
+replace: layered := g.Definitions
 test: ./internal/app TestGatedOperationUsesTheCheckedSettings
 
 [a call resolves from live settings, not the snapshot it took at submit]
@@ -194,3 +194,46 @@ file: internal/adapters/fsdefs/fsdefs.go
 find: const lockName = ".write.lock"
 replace: const lockName = "processes/.lock.yaml"
 test: ./internal/adapters/fsdefs TestLockFileIsNeverListed
+
+# Item 8: write scopes and the wiring use the operation's snapshots.
+[the gate builds the global scope on the live global layer, not its snapshot]
+file: internal/app/gate.go
+find: client := g.Build(layered, Snapshot(ctx, g.Global))
+replace: client := g.Build(layered, g.Global)
+test: ./internal/app TestGatedWriteScopeChecksTheGlobalSnapshot
+
+[the global write scope reads live settings]
+file: cmd/agister/main.go
+find: Check: checkerOn(globalOnly)
+replace: Check: checkerOn(fsdefs.Layered{Global: global})
+test: ./cmd/agister TestBuiltClientReadsOnlyTheSourcesGiven
+
+[the project write scope reads live settings]
+file: cmd/agister/main.go
+find: Check: checkerOn(layered)})
+replace: Check: checkerOn(definitions)})
+test: ./cmd/agister TestBuiltClientReadsOnlyTheSourcesGiven
+
+[calls read live settings, not the given source]
+file: cmd/agister/main.go
+find: \t\t\tCalls: &app.Calls{\n\t\t\t\tDefinitions: layered,
+replace: \t\t\tCalls: &app.Calls{\n\t\t\t\tDefinitions: definitions,
+test: ./cmd/agister TestBuiltClientReadsOnlyTheSourcesGiven
+
+[inspection reads live settings, not the given source]
+file: cmd/agister/main.go
+find: Inspection: &app.Inspection{Definitions: layered,
+replace: Inspection: &app.Inspection{Definitions: definitions,
+test: ./cmd/agister TestBuiltClientReadsOnlyTheSourcesGiven
+
+[settings read live settings, not the given source]
+file: cmd/agister/main.go
+find: Settings:   &app.Settings{Definitions: layered,
+replace: Settings:   &app.Settings{Definitions: definitions,
+test: ./cmd/agister TestBuiltClientReadsOnlyTheSourcesGiven
+
+[the checker reads live settings, not the given source]
+file: cmd/agister/main.go
+find: Checker:    checkerOn(layered),
+replace: Checker:    checkerOn(definitions),
+test: ./cmd/agister TestBuiltClientReadsOnlyTheSourcesGiven

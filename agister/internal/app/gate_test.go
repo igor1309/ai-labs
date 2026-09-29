@@ -71,7 +71,8 @@ func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
 	inner := &clientFake{}
 	gated := &app.Gated{
 		Definitions: &definitionsSpy{docs: settingsDocs()},
-		Build:       func(app.DefinitionSource) contract.Client { return inner },
+		Global:      &definitionsSpy{docs: settingsDocs()},
+		Build:       func(_, _ app.DefinitionSource) contract.Client { return inner },
 	}
 	id, err := gated.Submit(ctx, contract.CallRequest{})
 	if err != nil || id != "run-1" {
@@ -157,7 +158,8 @@ func TestGatedOperationUsesTheCheckedSettings(t *testing.T) {
 	edited := false
 	gated := &app.Gated{
 		Definitions: h.defs,
-		Build: func(src app.DefinitionSource) contract.Client {
+		Global:      h.defs,
+		Build: func(src, _ app.DefinitionSource) contract.Client {
 			return &afterCheck{
 				Client: &app.Host{
 					Checker:    &app.Checker{Definitions: src, Validator: h.validator, Runtimes: h.runtimes, Sources: sources},
@@ -201,7 +203,8 @@ func TestGatedSubmitRecordsTheCheckedSettings(t *testing.T) {
 	}
 	gated := &app.Gated{
 		Definitions: h.defs,
-		Build: func(src app.DefinitionSource) contract.Client {
+		Global:      h.defs,
+		Build: func(src, _ app.DefinitionSource) contract.Client {
 			calls := *h.calls
 			calls.Definitions = src
 			return &app.Host{
@@ -226,5 +229,101 @@ func TestGatedSubmitRecordsTheCheckedSettings(t *testing.T) {
 	}
 	if len(record.Definitions) == 0 {
 		t.Fatal("no definitions recorded")
+	}
+}
+
+// An edit landing between the gate's check and Submit does not reach the
+// call: it is recorded with the digests that were checked.
+func TestGatedSubmitRecordsWhatTheCheckRead(t *testing.T) {
+	ctx := context.Background()
+	h := newHarness()
+	original := map[string]string{}
+	for kind, docs := range settingsDocs() {
+		for name, text := range docs {
+			original[string(kind)+"/"+name] = sha(text)
+		}
+	}
+	edited := false
+	gated := &app.Gated{
+		Definitions: h.defs,
+		Global:      h.defs,
+		Build: func(src, _ app.DefinitionSource) contract.Client {
+			calls := *h.calls
+			calls.Definitions = src
+			return &afterCheck{
+				Client: &app.Host{
+					Checker: &app.Checker{Definitions: src, Validator: h.validator, Runtimes: h.runtimes, Sources: []string{"git.revision", "git.diff", "param"}},
+					Calls:   &calls,
+				},
+				f: func() {
+					h.defs.set(definition.KindAgent, "a", strings.Replace(settingsDocs()[definition.KindAgent]["a"], "m1", "m2", 1))
+					edited = true
+				},
+			}
+		},
+	}
+	if _, err := gated.Submit(ctx, contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+		t.Fatal(err)
+	}
+	if !edited {
+		t.Fatal("the settings were not edited after the check")
+	}
+	record := h.recorder.wait(t)
+	if class(record) != "" {
+		t.Fatalf("call failed: %s", message(record))
+	}
+	seen := false
+	for _, source := range record.Definitions {
+		if source.Kind == definition.KindAgent && source.Name == "a" {
+			seen = true
+		}
+		if want := original[string(source.Kind)+"/"+source.Name]; source.SHA256 != want {
+			t.Errorf("%s/%s recorded %s, checked %s", source.Kind, source.Name, source.SHA256, want)
+		}
+	}
+	if !seen {
+		t.Fatal("agent a was not recorded")
+	}
+}
+
+// The scope a write must keep valid is judged on the global settings the
+// gate checked, not on what they became after: an edit landing after the
+// check does not turn the verdict.
+func TestGatedWriteScopeChecksTheGlobalSnapshot(t *testing.T) {
+	ctx := context.Background()
+	h := newHarness()
+	global := &definitionsSpy{docs: settingsDocs()}
+	gated := &app.Gated{
+		Definitions: h.defs,
+		Global:      global,
+		Build: func(src, globalOnly app.DefinitionSource) contract.Client {
+			checker := func(defs app.DefinitionSource) *app.Checker {
+				return &app.Checker{Definitions: defs, Validator: h.validator, Runtimes: h.runtimes, Sources: []string{"git.revision", "git.diff", "param"}}
+			}
+			return &afterCheck{
+				Client: &app.Host{
+					Checker: checker(src),
+					Settings: &app.Settings{
+						Definitions: src,
+						Writer:      &writerSpy{existed: map[string]bool{"agents/a": true}},
+						Scopes:      []app.Scope{{Name: "global settings", Check: checker(globalOnly)}},
+					},
+				},
+				f: func() {
+					// Live, the policy no longer constrains the model family.
+					policy := strings.Split(settingsDocs()[definition.KindPolicy]["pol"], "constraints:")[0]
+					global.set(definition.KindPolicy, "pol", policy)
+				},
+			}
+		},
+	}
+	// Policy pol constrains the model family; this agent declares none.
+	_, err := gated.CreateAgent(ctx, contract.Agent{Name: "a", Runtime: "rt"}, true, nil)
+	var input *contract.InputError
+	if !errors.As(err, &input) || !strings.Contains(err.Error(), "would break the global settings") {
+		t.Fatalf("err = %v, want the write refused on the checked settings", err)
+	}
+	if got := global.readCount(); got == 0 {
+		t.Fatal("the global settings were never read")
 	}
 }
