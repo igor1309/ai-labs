@@ -94,6 +94,14 @@ nothing. "yes" approves the plan that was shown: a file changed while you
 were asked is not overwritten, and nothing more is written. Scripts pipe
 the answer: `echo yes | agister init`.
 
+Agister does not handle settings edited concurrently with its own writes or
+calls. It serializes its own writes and gives each operation one consistent
+read, but anything else changing the files at the same moment is yours to
+avoid. That includes you, an editor, a sync, a `git pull` or an agent. An
+edit landing while `init` or `agent create` writes can be lost, and a call
+that starts while `init --force` is replacing files can see some old files
+and some new ones.
+
 `examples/settings/` is what `init` installs. `examples/codex/` is opt-in;
 see its README.
 

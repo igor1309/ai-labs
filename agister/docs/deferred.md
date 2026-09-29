@@ -149,7 +149,7 @@ before.
   directory, with a test that two calls from different repositories see
   their own settings.
 
-## 8. The settings gate and the use case read settings separately (partly done)
+## 8. The settings gate and the use case read settings separately (done; outside races not handled)
 
 - **Done:** each gated operation reads the settings once into an immutable
   snapshot (`app.Snapshot`, errors kept and replayed), builds its client on
@@ -164,22 +164,28 @@ before.
   (global alone, and layered) check snapshots taken in the same operation
   (`Gated.Global`), and a test guards that the built client reads only the
   sources it was given.
-- **Remains:** a lock binds only Agister's own writers. A hand edit (or
-  another program's write) landing between the compare and the rename can
-  still be lost, so the promise is serialized writes, not that no edit is
-  ever lost.
-- **Remains:** snapshots are not coherent with multi-file writes. A
-  snapshot lists and reads files one after another, so `init --force`,
-  which replaces several files, can land in between and the snapshot may
-  combine an old service with a new process: a state that never existed on
-  disk. The operation still uses that combination consistently. Fix
-  direction: Init holds the store's lock across all its writes, and a
-  snapshot is taken under a shared lock.
-- **Trigger:** the service (ADR-001 rule 16), where other clients edit
-  settings while calls run.
-- **Done when (rest):** a writer that cannot be raced by hand edits (for
-  example, verifying the digest again after the rename and reporting a lost
-  edit), if the service needs it.
+- **Not handled, by decision (2026-09-29):** Agister does not handle races
+  between its own settings writes or reads and anything else changing the
+  files, and the README says so. The promise is serialized Agister writes
+  and one consistent read per operation, not that no edit is lost.
+  - A hand edit, or another program's write, landing between the compare
+    and the rename can be lost. The lock binds only Agister's writers, and
+    no small, portable compare-and-rename is safe against an editor that
+    saves by renaming a new file over the old one.
+  - A snapshot lists and reads files one after another, so `init --force`,
+    which replaces several files, can land in between. The snapshot may
+    then combine an old service with a new process, a state that never
+    existed on disk. The operation still uses that combination
+    consistently.
+- **Why:** Agister writes settings only on `init` and `agent create`, after
+  you approve a plan whose digests it re-checks. That closes the window you
+  can actually hit. What remains needs an outside write in the same
+  milliseconds, and in a single-user CLI that is you racing yourself.
+- **Revisit when:** the service (ADR-001 rule 16) lets other clients edit
+  settings while calls run. Direction for the `init --force` case: Init
+  holds the store's lock across all its writes, through a write path that
+  expects the lock already held, and a snapshot takes a shared lock across
+  its whole read, both layers included.
 
 ## 9. Process timers use real time in tests
 
@@ -189,3 +195,21 @@ before.
 - **Trigger:** a flaky timer test.
 - **Done when:** the supervisor takes an injected clock or timer and those
   tests drive it.
+
+## 10. Can an agent Agister runs change Agister's settings?
+
+- **Gap:** unverified. Settings decide what an agent may do: its
+  permissions, its policy and the primitives it may use. If an agent
+  Agister launches can write `~/.agister` or a project's `.agister`, it can
+  widen what later calls grant. That includes its own later calls. The
+  runtime's tool restrictions and the checkout in a temp directory may
+  already prevent it, but no test shows it.
+- **Why deferred:** found while deciding not to handle outside edits
+  (item 8). It is a question of reach, not of races, and needs its own
+  look.
+- **Trigger:** a process that grants a write primitive (`Edit`, `Write`,
+  `NotebookEdit`, or `Bash` with writes). Or sooner, since this is the
+  more serious of the two.
+- **Done when:** a test shows that a call's agent cannot write either
+  settings layer under each shipped runtime mapping, or Agister refuses a
+  plan that would let it.
