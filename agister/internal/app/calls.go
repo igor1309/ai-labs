@@ -31,6 +31,9 @@ type Calls struct {
 	Processes Processes
 	// ReapTimeout bounds how long reaping may delay a call; zero means 30s.
 	ReapTimeout time.Duration
+	// ReapContext, when set, replaces the timeout: it returns the context
+	// that bounds reaping. Tests use it to drive the deadline.
+	ReapContext func(context.Context) (context.Context, context.CancelFunc)
 	// Earlier runs, read only to continue a session.
 	Runs  RunLookup
 	Clock Clock

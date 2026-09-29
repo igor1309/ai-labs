@@ -14,20 +14,17 @@ const defaultReapTimeout = 30 * time.Second
 
 // reapAbandoned undoes the effects of runs whose process was killed before
 // they finished, then finishes them. It runs when a call starts, never
-// fails that call, and leaves runs some process still owns alone. It delays
-// the call by at most the reap timeout: runs not reached by then are not
-// adopted and wait for the next call, and the run being reaped when time
-// runs out is finished with the steps that failed recorded.
+// fails that call, and leaves runs some process still owns alone. Runs
+// not reached by the reap deadline are not adopted and wait for the next
+// call, and the run being reaped when time runs out is finished with the
+// steps that failed recorded. Only the git steps honour the deadline:
+// os.RemoveAll in Discard does not, so the call can be delayed past it.
 func (c *Calls) reapAbandoned(ctx context.Context) {
 	if c.Adopter == nil || c.Processes == nil {
 		return
 	}
-	timeout := c.ReapTimeout
-	if timeout <= 0 {
-		timeout = defaultReapTimeout
-	}
 	// A cancelled call still leaves what it found in order, within the bound.
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), timeout)
+	ctx, cancel := c.reapContext(context.WithoutCancel(ctx))
 	defer cancel()
 	abandoned, err := c.Adopter.Abandoned(ctx)
 	if err != nil {
@@ -43,6 +40,10 @@ func (c *Calls) reapAbandoned(ctx context.Context) {
 		// Read before adopting: the run adopted next is owned by this
 		// process and would read as live.
 		live, liveErr := c.Adopter.LiveCheckouts(ctx)
+		// The deadline may have arrived meanwhile: never adopt after it.
+		if ctx.Err() != nil {
+			return
+		}
 		// Someone else adopting it first is fine: they reap it.
 		handle, record, err := c.Adopter.Adopt(ctx, listed.ID)
 		if err != nil {
@@ -50,6 +51,19 @@ func (c *Calls) reapAbandoned(ctx context.Context) {
 		}
 		c.reap(ctx, handle, record, live, liveErr)
 	}
+}
+
+// reapContext bounds reaping: Calls.ReapContext when set, else the reap
+// timeout.
+func (c *Calls) reapContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	if c.ReapContext != nil {
+		return c.ReapContext(ctx)
+	}
+	timeout := c.ReapTimeout
+	if timeout <= 0 {
+		timeout = defaultReapTimeout
+	}
+	return context.WithTimeout(ctx, timeout)
 }
 
 // reap ends one adopted run's effects and finishes it as lost. A step that

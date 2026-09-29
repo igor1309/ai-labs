@@ -118,24 +118,25 @@ func (s *inputsSpy) Resolve(_ context.Context, spec app.InputSpec) (app.Resolved
 }
 
 type workspacesSpy struct {
-	mu            sync.Mutex
-	root          string
-	dir           string
-	checkouts     [][2]string
-	released      int
-	changed       [][2]string // dir, revision
-	changes       []byte
-	changeErr     error
-	panics        bool        // Changes panics
-	discarded     [][2]string // repository, dir
-	discardErr    error
-	discardBlocks bool // Discard waits for its context to end
+	mu          sync.Mutex
+	root        string
+	dir         string
+	checkouts   [][2]string
+	released    int
+	changed     [][2]string // dir, revision
+	changes     []byte
+	changeErr   error
+	panics      bool        // Changes panics
+	discarded   [][2]string // repository, dir
+	discardErr  error
+	discardHook func(ctx context.Context, dir string) error // runs first; a non-nil result is returned
 }
 
 func (s *workspacesSpy) Discard(ctx context.Context, repository, dir string) error {
-	if s.discardBlocks {
-		<-ctx.Done()
-		return ctx.Err()
+	if s.discardHook != nil {
+		if err := s.discardHook(ctx, dir); err != nil {
+			return err
+		}
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -337,17 +338,23 @@ func (s *processesSpy) Reap(group int, token string) (app.Reaping, error) {
 
 // adopterSpy offers abandoned runs; each adoption hands out its own handle.
 type adopterSpy struct {
-	mu       sync.Mutex
-	runs     []run.Record
-	adoptErr map[string]error
-	handles  map[string]*recorderSpy
-	adopted  []string
-	live     []string
+	mu        sync.Mutex
+	runs      []run.Record
+	adoptErr  map[string]error
+	handles   map[string]*recorderSpy
+	adopted   []string
+	live      []string
+	liveReads int
+	onLive    func() // runs during LiveCheckouts
 }
 
 func (s *adopterSpy) LiveCheckouts(context.Context) ([]string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.liveReads++
+	if s.onLive != nil {
+		s.onLive()
+	}
 	return s.live, nil
 }
 

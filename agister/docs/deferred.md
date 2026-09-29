@@ -32,7 +32,12 @@ before.
   checkout that a running run records as its own is skipped and the event
   says so. The token check and the kill are not atomic (macOS has no
   pidfd), so a PID reused with the same start second and command between
-  them could be hit. A tampered run record can point at a checkout-shaped
+  them could be hit. The token includes the command name, so a runtime
+  wrapper that execs another program after start makes its group
+  unidentifiable; it is then left alive (the safe direction) and the run is
+  finished without retry. A failed or timed-out reap step is not retried:
+  the run is finished once, by design, and making cleanup retryable is
+  future work. A tampered run record can point at a checkout-shaped
   directory Agister did not create; that is outside the single-user threat
   model, since whoever can write run records controls Agister's home.
 - **Trigger for the rest:** the service (ADR-001 rule 16), or earlier if
@@ -168,3 +173,12 @@ before.
   and rename can still be lost, so the promise is serialized writes, not
   that no edit is ever lost. Tests change the settings between the check
   and the use and assert that the checked snapshot is the one used.
+
+## 9. Process timers use real time in tests
+
+- **Gap:** the supervisor's kill-grace and timeout timers (`time.AfterFunc`)
+  are real, so their tests (KillGrace 200ms in the claudecode, codex,
+  logging and supervisor tests) depend on scheduling.
+- **Trigger:** a flaky timer test.
+- **Done when:** the supervisor takes an injected clock or timer and those
+  tests drive it.

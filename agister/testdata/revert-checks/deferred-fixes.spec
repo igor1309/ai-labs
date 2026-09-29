@@ -112,8 +112,20 @@ test: ./internal/adapters/runtime/supervisor TestGroupIsReportedBeforeItsTokenIs
 
 [reaping is bounded by a timeout]
 file: internal/app/reap.go
-find: context.WithTimeout(context.WithoutCancel(ctx), timeout)
-replace: context.WithCancel(context.WithoutCancel(ctx)); _ = timeout
+find: return context.WithTimeout(ctx, timeout)
+replace: _ = timeout; return context.WithCancel(ctx)
+test: ./internal/app TestReapingHasADeadlineByDefault
+
+[the deadline is checked before adopting]
+file: internal/app/reap.go
+find: \t\t// The deadline may have arrived meanwhile: never adopt after it.\n\t\tif ctx.Err() != nil {
+replace: \t\tif false {
+test: ./internal/app TestNothingIsAdoptedAfterTheDeadline
+
+[the deadline is checked before reading live runs]
+file: internal/app/reap.go
+find: \t\tif ctx.Err() != nil {\n\t\t\treturn\n\t\t}\n\t\t// Read before
+replace: \t\t// Read before
 test: ./internal/app TestReapingIsBoundedAndTheCallStillRuns
 
 [a checkout a running run uses is not discarded]

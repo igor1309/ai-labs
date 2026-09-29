@@ -1,8 +1,10 @@
 package app_test
 
 import (
+	"context"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -108,11 +110,30 @@ func TestFailedReapStepsStillFinishTheRunWithTheError(t *testing.T) {
 	}
 }
 
+// driven returns a reap context the test ends by calling cancel.
+func driven(h *harness) context.CancelFunc {
+	var cancel context.CancelFunc
+	h.calls.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) {
+		ctx, cancel = context.WithCancel(ctx)
+		return ctx, cancel
+	}
+	return func() { cancel() }
+}
+
 func TestReapingIsBoundedAndTheCallStillRuns(t *testing.T) {
 	h := newHarness()
-	adopter, processes := reaping(h, abandonedRun("a"), abandonedRun("b"))
-	h.calls.ReapTimeout = 50 * time.Millisecond
-	h.workspaces.discardBlocks = true
+	a, b := abandonedRun("a"), abandonedRun("b")
+	a.Effects.Checkout.Dir = "/tmp/agister-checkout-a/workspace"
+	adopter, processes := reaping(h, a, b)
+	deadline := driven(h)
+	// The deadline arrives while a's checkout is being removed.
+	h.workspaces.discardHook = func(ctx context.Context, dir string) error {
+		if dir != a.Effects.Checkout.Dir {
+			return nil
+		}
+		deadline()
+		return ctx.Err()
+	}
 	record := h.call(t, contract.CallRequest{})
 	if record.Result == nil || record.Result.Status != run.Completed {
 		t.Fatalf("new call = %+v", record.Result)
@@ -122,12 +143,46 @@ func TestReapingIsBoundedAndTheCallStillRuns(t *testing.T) {
 	if !reflect.DeepEqual(adopter.adopted, []string{"a"}) || len(processes.reaped) != 1 {
 		t.Fatalf("adopted %v, reaped %v", adopter.adopted, processes.reaped)
 	}
-	a := adopter.handles["a"].wait(t)
-	if a.Result == nil || a.Result.Error.Class != run.ClassAbandoned {
-		t.Fatalf("run a = %+v", a.Result)
+	// b was not even looked at: the loop stopped before reading live runs.
+	if adopter.liveReads != 1 {
+		t.Fatalf("live reads = %d", adopter.liveReads)
 	}
-	if errs, _ := adopter.handles["a"].events[0].Data["errors"].([]string); len(errs) != 1 {
+	finished := adopter.handles["a"].wait(t)
+	if finished.Result == nil || finished.Result.Error.Class != run.ClassAbandoned {
+		t.Fatalf("run a = %+v", finished.Result)
+	}
+	errs, _ := adopter.handles["a"].events[0].Data["errors"].([]string)
+	if len(errs) != 1 || !strings.Contains(errs[0], context.Canceled.Error()) {
 		t.Fatalf("errors = %v", adopter.handles["a"].events[0].Data["errors"])
+	}
+}
+
+func TestNothingIsAdoptedAfterTheDeadline(t *testing.T) {
+	h := newHarness()
+	adopter, processes := reaping(h, abandonedRun("a"))
+	adopter.onLive = driven(h)
+	record := h.call(t, contract.CallRequest{})
+	if record.Result == nil || record.Result.Status != run.Completed {
+		t.Fatalf("new call = %+v", record.Result)
+	}
+	if len(adopter.adopted) != 0 || len(processes.reaped) != 0 || len(h.workspaces.discarded) != 0 {
+		t.Fatalf("adopted %v, reaped %v, discarded %v", adopter.adopted, processes.reaped, h.workspaces.discarded)
+	}
+}
+
+func TestReapingHasADeadlineByDefault(t *testing.T) {
+	h := newHarness()
+	reaping(h, abandonedRun("a"))
+	h.calls.ReapTimeout = time.Hour
+	var bounded bool
+	h.workspaces.discardHook = func(ctx context.Context, _ string) error {
+		deadline, ok := ctx.Deadline()
+		bounded = ok && time.Until(deadline) <= time.Hour
+		return nil
+	}
+	h.call(t, contract.CallRequest{})
+	if !bounded {
+		t.Fatal("reaping ran without a deadline")
 	}
 }
 

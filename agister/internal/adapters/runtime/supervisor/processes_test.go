@@ -2,6 +2,7 @@ package supervisor_test
 
 import (
 	"os/exec"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -54,16 +55,17 @@ func TestReapKillsTheGroupOfTheRecordedProcess(t *testing.T) {
 // The ID may belong to another process by now: a different or unknown
 // token is never enough to kill.
 func TestReapLeavesAProcessItCannotIdentify(t *testing.T) {
-	pid, gone := sleeper(t)
+	pid, _ := sleeper(t)
 	for name, token := range map[string]string{"another token": "Thu Jan  1 00:00:00 1970", "no token": ""} {
 		reaping, err := supervisor.Processes{}.Reap(pid, token)
 		if err == nil || reaping != app.ReapLeft {
 			t.Fatalf("%s: reap = %s, %v", name, reaping, err)
 		}
 	}
-	select {
-	case <-gone:
-		t.Fatal("a process that could not be identified was killed")
-	case <-time.After(300 * time.Millisecond):
+	// Reap signals synchronously, so a kill would already have been sent;
+	// a killed child is a zombie or gone, never running.
+	out, _ := exec.Command("ps", "-o", "stat=", "-p", strconv.Itoa(pid)).Output()
+	if stat := strings.TrimSpace(string(out)); stat == "" || strings.HasPrefix(stat, "Z") {
+		t.Fatalf("a process that could not be identified was killed (state %q)", stat)
 	}
 }
