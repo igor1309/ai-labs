@@ -25,10 +25,17 @@ type Settings struct {
 	Scopes []Scope
 }
 
-// Scope is one view of the settings and its checker.
+// Scope is one view of the settings a write takes part in.
 type Scope struct {
-	Name    string // for messages, e.g. "global settings"
-	Checker *Checker
+	Name  string // for messages, e.g. "global settings"
+	Check ProposedCheck
+}
+
+// ProposedCheck reports the problems a global document would add to one
+// view of the settings, were it written; problems already there are not
+// reported.
+type ProposedCheck interface {
+	ProblemsAdded(ctx context.Context, doc definition.Document) ([]string, error)
 }
 
 func (s *Settings) Init(ctx context.Context, overwrite bool, approved *contract.InitResult) (contract.InitResult, error) {
@@ -235,58 +242,15 @@ func notApproved(paths []string) error {
 // the one that could repair them.
 func (s *Settings) keepsSettingsValid(ctx context.Context, doc definition.Document) error {
 	for _, scope := range s.Scopes {
-		before, err := scope.Checker.Check(ctx, false)
+		added, err := scope.Check.ProblemsAdded(ctx, doc)
 		if err != nil {
 			return err
-		}
-		after := *scope.Checker
-		after.Definitions = withDocument{DefinitionSource: scope.Checker.Definitions, doc: doc}
-		report, err := after.Check(ctx, false)
-		if err != nil {
-			return err
-		}
-		existing := map[string]bool{}
-		for _, problem := range before.Problems {
-			existing[problem] = true
-		}
-		var added []string
-		for _, problem := range report.Problems {
-			if !existing[problem] {
-				added = append(added, problem)
-			}
 		}
 		if len(added) > 0 {
 			return &contract.InputError{Message: fmt.Sprintf("%s %s would break the %s, so nothing was written:\n  %s", doc.Source.Kind.Singular(), doc.Source.Name, scope.Name, strings.Join(added, "\n  "))}
 		}
 	}
 	return nil
-}
-
-// withDocument is a definitions source with one global document added or
-// replaced; a project document of the same name still takes priority.
-type withDocument struct {
-	DefinitionSource
-	doc definition.Document
-}
-
-func (w withDocument) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
-	if kind != w.doc.Source.Kind || name != w.doc.Source.Name {
-		return w.DefinitionSource.Read(ctx, kind, name)
-	}
-	if current, err := w.DefinitionSource.Read(ctx, kind, name); err == nil && current.Source.Project {
-		return current, nil
-	}
-	return w.doc, nil
-}
-
-func (w withDocument) List(ctx context.Context, kind definition.Kind) ([]string, error) {
-	names, err := w.DefinitionSource.List(ctx, kind)
-	if err != nil || kind != w.doc.Source.Kind || contains(names, w.doc.Source.Name) {
-		return names, err
-	}
-	names = append(append([]string(nil), names...), w.doc.Source.Name)
-	sort.Strings(names)
-	return names, nil
 }
 
 func (s *Settings) ListAgents(ctx context.Context) ([]contract.Agent, error) {

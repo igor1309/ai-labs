@@ -80,9 +80,9 @@ func compose(config cli.Config) (contract.Client, error) {
 	checker := &app.Checker{Definitions: definitions, Validator: schema.Validator{}, Runtimes: runtimes, Sources: names(sources)}
 	// Writes go to global settings, which must stay valid on their own and
 	// with the project in view.
-	scopes := []app.Scope{{Name: "global settings", Checker: &app.Checker{Definitions: fsdefs.Layered{Global: global}, Validator: schema.Validator{}, Runtimes: runtimes, Sources: names(sources)}}}
+	scopes := []app.Scope{{Name: "global settings", Check: &app.Checker{Definitions: fsdefs.Layered{Global: global}, Validator: schema.Validator{}, Runtimes: runtimes, Sources: names(sources)}}}
 	if local != nil {
-		scopes = append(scopes, app.Scope{Name: "settings in " + filepath.Dir(local.Dir), Checker: checker})
+		scopes = append(scopes, app.Scope{Name: "settings in " + filepath.Dir(local.Dir), Check: checker})
 	}
 
 	// Nothing but init and check works on settings that do not pass check.

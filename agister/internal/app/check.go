@@ -194,3 +194,58 @@ func sortedNames[V any](m map[string]V) []string {
 	sort.Strings(names)
 	return names
 }
+
+var _ ProposedCheck = (*Checker)(nil)
+
+// ProblemsAdded checks these settings with doc written to the global layer
+// and reports the problems it adds.
+func (c *Checker) ProblemsAdded(ctx context.Context, doc definition.Document) ([]string, error) {
+	before, err := c.Check(ctx, false)
+	if err != nil {
+		return nil, err
+	}
+	after := *c
+	after.Definitions = withDocument{DefinitionSource: c.Definitions, doc: doc}
+	report, err := after.Check(ctx, false)
+	if err != nil {
+		return nil, err
+	}
+	existing := map[string]bool{}
+	for _, problem := range before.Problems {
+		existing[problem] = true
+	}
+	var added []string
+	for _, problem := range report.Problems {
+		if !existing[problem] {
+			added = append(added, problem)
+		}
+	}
+	return added, nil
+}
+
+// withDocument is a definitions source with one global document added or
+// replaced; a project document of the same name still takes priority.
+type withDocument struct {
+	DefinitionSource
+	doc definition.Document
+}
+
+func (w withDocument) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	if kind != w.doc.Source.Kind || name != w.doc.Source.Name {
+		return w.DefinitionSource.Read(ctx, kind, name)
+	}
+	if current, err := w.DefinitionSource.Read(ctx, kind, name); err == nil && current.Source.Project {
+		return current, nil
+	}
+	return w.doc, nil
+}
+
+func (w withDocument) List(ctx context.Context, kind definition.Kind) ([]string, error) {
+	names, err := w.DefinitionSource.List(ctx, kind)
+	if err != nil || kind != w.doc.Source.Kind || contains(names, w.doc.Source.Name) {
+		return names, err
+	}
+	names = append(append([]string(nil), names...), w.doc.Source.Name)
+	sort.Strings(names)
+	return names, nil
+}

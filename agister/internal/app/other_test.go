@@ -358,7 +358,7 @@ func TestCreateAgentKeepsSettingsValid(t *testing.T) {
 	h := newHarness()
 	writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
 	checker := &app.Checker{Definitions: h.defs, Validator: h.validator, Runtimes: h.runtimes, Sources: []string{"git.revision", "git.diff"}}
-	settings := &app.Settings{Definitions: h.defs, Writer: writer, Scopes: []app.Scope{{Name: "global settings", Checker: checker}}}
+	settings := &app.Settings{Definitions: h.defs, Writer: writer, Scopes: []app.Scope{{Name: "global settings", Check: checker}}}
 	var input *contract.InputError
 	for _, approved := range []*contract.AgentWrite{nil, {Path: "agents/a", Replaces: true, Digest: "d-agents/a"}} {
 		// Policy pol constrains the model family; this a declares none.
@@ -408,5 +408,38 @@ func TestShowProcessSourcesAreStructured(t *testing.T) {
 	want := contract.Definition{Kind: "processes", Name: "p", Layer: "global", Path: "mem/processes/p"}
 	if len(view.Sources) < 2 || !reflect.DeepEqual(view.Sources[1], want) {
 		t.Fatalf("sources = %+v", view.Sources)
+	}
+}
+
+// proposedCheckSpy reports scripted problems and records what it was asked.
+type proposedCheckSpy struct {
+	added []string
+	docs  []definition.Document
+}
+
+func (s *proposedCheckSpy) ProblemsAdded(_ context.Context, doc definition.Document) ([]string, error) {
+	s.docs = append(s.docs, doc)
+	return s.added, nil
+}
+
+// Settings asks every scope about the agent as it would be written, and the
+// first scope it would break refuses the write, by name.
+func TestCreateAgentAsksEveryScope(t *testing.T) {
+	h := newHarness()
+	writer := &writerSpy{}
+	global, project := &proposedCheckSpy{}, &proposedCheckSpy{added: []string{"agent b: bad"}}
+	settings := &app.Settings{Definitions: h.defs, Writer: writer, Scopes: []app.Scope{{Name: "global settings", Check: global}, {Name: "project settings", Check: project}}}
+	var input *contract.InputError
+	if _, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "rt"}, false, nil); !errors.As(err, &input) || !strings.Contains(err.Error(), "agent b would break the project settings") || !strings.Contains(err.Error(), "agent b: bad") {
+		t.Fatalf("err = %v", err)
+	}
+	for _, spy := range []*proposedCheckSpy{global, project} {
+		if len(spy.docs) != 1 || spy.docs[0].Source.Kind != definition.KindAgent || spy.docs[0].Source.Name != "b" || spy.docs[0].Source.Path != "agents/b" || !strings.Contains(string(spy.docs[0].Bytes), `name = "b"`) {
+			t.Fatalf("asked about %+v", spy.docs)
+		}
+	}
+	project.added = nil
+	if _, err := createNow(settings, contract.Agent{Name: "b", Runtime: "rt"}, false); err != nil || !reflect.DeepEqual(writer.writes, []string{"agents/b"}) {
+		t.Fatalf("writes %v, %v", writer.writes, err)
 	}
 }
