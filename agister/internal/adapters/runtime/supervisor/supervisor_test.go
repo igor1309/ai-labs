@@ -38,9 +38,14 @@ func TestMain(m *testing.M) {
 	case "sleep":
 		// Blocks until the test kills it (t.Cleanup); never ends by itself
 		// within any test's lifetime.
-		time.Sleep(24 * time.Hour)
+		time.Sleep(2 * time.Minute)
 		os.Exit(0)
 	}
+}
+
+type model struct {
+	evidence supervisor.Evidence
+	lines    []string
 }
 
 type events struct {
@@ -101,7 +106,7 @@ func TestLeftoverProcessesAreKilledWhenTheRuntimeExits(t *testing.T) {
 	evidence := supervisor.Run(context.Background(), supervisor.Spec{
 		Command: "/bin/sh",
 		Args:    []string{"-c", `sleep 60 >/dev/null 2>&1 & echo $! > "$0"; echo done`, pidFile},
-		Timeout: time.Hour,
+		Timeout: time.Minute,
 	}, sink, func(string) {})
 	if evidence.Exit == nil || evidence.Exit.Code == nil || *evidence.Exit.Code != 0 {
 		t.Fatalf("evidence = %+v", evidence)
@@ -129,15 +134,26 @@ func TestStdoutHeldOutsideTheGroupDoesNotHoldTheCall(t *testing.T) {
 	t.Setenv(helperEnv, "escape")
 	t.Setenv("PID_FILE", pidFile)
 	sink := &events{}
-	var lines []string
-	// No elapsed-time bound: the escaped child never exits on its own, so
-	// Run returning at all, with STDOUT_HELD_OPEN, proves the grace ended
-	// the wait.
-	evidence := supervisor.Run(context.Background(), supervisor.Spec{
-		Command:   os.Args[0],
-		Timeout:   time.Hour,
-		KillGrace: 200 * time.Millisecond,
-	}, sink, func(line string) { lines = append(lines, line) })
+	// The escaped child never exits on its own, so Run returning at all,
+	// with STDOUT_HELD_OPEN, proves the grace ended the wait. The minute
+	// only backstops a hang.
+	done := make(chan model, 1)
+	go func() {
+		var lines []string
+		evidence := supervisor.Run(context.Background(), supervisor.Spec{
+			Command:   os.Args[0],
+			Timeout:   time.Minute,
+			KillGrace: 200 * time.Millisecond,
+		}, sink, func(line string) { lines = append(lines, line) })
+		done <- model{evidence, lines}
+	}()
+	var got model
+	select {
+	case got = <-done:
+	case <-time.After(time.Minute):
+		t.Fatal("Run did not return: stdout held outside the group held the call")
+	}
+	evidence, lines := got.evidence, got.lines
 	pid := pidFrom(t, pidFile)
 	t.Cleanup(func() { _ = syscall.Kill(pid, syscall.SIGKILL) })
 	if evidence.Exit == nil || evidence.Exit.Code == nil || *evidence.Exit.Code != 0 || strings.Join(lines, ",") != "started" {
@@ -155,7 +171,7 @@ func TestGroupIsReportedBeforeItsTokenIsKnown(t *testing.T) {
 	supervisor.Run(context.Background(), supervisor.Spec{
 		Command: "/bin/sh",
 		Args:    []string{"-c", "sleep 1"},
-		Timeout: time.Hour,
+		Timeout: time.Minute,
 	}, sink, func(string) {})
 	sink.mu.Lock()
 	defer sink.mu.Unlock()

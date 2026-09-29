@@ -173,11 +173,11 @@ func TestNothingIsAdoptedAfterTheDeadline(t *testing.T) {
 func TestReapingHasADeadlineByDefault(t *testing.T) {
 	h := newHarness()
 	reaping(h, abandonedRun("a"))
-	h.calls.ReapTimeout = time.Hour
+	h.calls.ReapTimeout = time.Minute
 	var bounded bool
 	h.workspaces.discardHook = func(ctx context.Context, _ string) error {
 		deadline, ok := ctx.Deadline()
-		bounded = ok && time.Until(deadline) <= time.Hour
+		bounded = ok && time.Until(deadline) <= time.Minute
 		return nil
 	}
 	h.call(t, contract.CallRequest{})
