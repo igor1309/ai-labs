@@ -22,6 +22,7 @@ type Checker struct {
 
 func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, error) {
 	report := contract.CheckReport{Checked: map[string]int{}}
+	index := map[contract.DefinitionRef]int{} // into report.Definitions
 	problem := func(subject, format string, args ...any) {
 		report.Problems = append(report.Problems, subject+": "+fmt.Sprintf(format, args...))
 	}
@@ -49,7 +50,17 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 				continue
 			}
 			report.Checked[string(kind)]++
+			if doc.Source.Overrides != "" {
+				report.Overrides = append(report.Overrides, fmt.Sprintf("%s %s: %s overrides %s", kind.Singular(), name, doc.Source.Path, doc.Source.Overrides))
+			}
+			layer := "global"
+			if doc.Source.Project {
+				layer = "project"
+			}
+			index[contract.DefinitionRef{Kind: string(kind), Name: name}] = len(report.Definitions)
+			report.Definitions = append(report.Definitions, contract.Definition{Kind: string(kind), Name: name, Layer: layer, Path: doc.Source.Path, Overrides: doc.Source.Overrides})
 			if err := parse(doc); err != nil {
+				report.Definitions[len(report.Definitions)-1].Invalid = true
 				var invalid *definition.InvalidError
 				if errors.As(err, &invalid) {
 					for _, p := range invalid.Problems {
@@ -114,6 +125,30 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			return report, err
 		}
 	}
+	// What each definition references, and the reverse.
+	link := func(from contract.DefinitionRef, kind definition.Kind, name string) {
+		source, ok := index[from]
+		if name == "" || !ok { // a name unlike its file is reported as a problem
+			return
+		}
+		to := contract.DefinitionRef{Kind: string(kind), Name: name}
+		report.Definitions[source].Uses = append(report.Definitions[source].Uses, to)
+		if i, ok := index[to]; ok {
+			report.Definitions[i].UsedBy = append(report.Definitions[i].UsedBy, from)
+		}
+	}
+	for _, name := range sortedNames(bundle.Agents) {
+		link(contract.DefinitionRef{Kind: string(definition.KindAgent), Name: name}, definition.KindRuntime, bundle.Agents[name].Runtime)
+	}
+	for _, name := range sortedNames(bundle.Processes) {
+		process, from := bundle.Processes[name], contract.DefinitionRef{Kind: string(definition.KindProcess), Name: name}
+		link(from, definition.KindAgent, process.Agent)
+		link(from, definition.KindPolicy, process.Policy)
+		if process.Output.Format == "json" {
+			link(from, definition.KindSchema, process.Output.Schema)
+		}
+	}
+
 	if bundle.Service == nil {
 		sort.Strings(report.Problems)
 		return report, nil
@@ -158,4 +193,59 @@ func sortedNames[V any](m map[string]V) []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+var _ ProposedCheck = (*Checker)(nil)
+
+// ProblemsAdded checks these settings with doc written to the global layer
+// and reports the problems it adds.
+func (c *Checker) ProblemsAdded(ctx context.Context, doc definition.Document) ([]string, error) {
+	before, err := c.Check(ctx, false)
+	if err != nil {
+		return nil, err
+	}
+	after := *c
+	after.Definitions = withDocument{DefinitionSource: c.Definitions, doc: doc}
+	report, err := after.Check(ctx, false)
+	if err != nil {
+		return nil, err
+	}
+	existing := map[string]bool{}
+	for _, problem := range before.Problems {
+		existing[problem] = true
+	}
+	var added []string
+	for _, problem := range report.Problems {
+		if !existing[problem] {
+			added = append(added, problem)
+		}
+	}
+	return added, nil
+}
+
+// withDocument is a definitions source with one global document added or
+// replaced; a project document of the same name still takes priority.
+type withDocument struct {
+	DefinitionSource
+	doc definition.Document
+}
+
+func (w withDocument) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	if kind != w.doc.Source.Kind || name != w.doc.Source.Name {
+		return w.DefinitionSource.Read(ctx, kind, name)
+	}
+	if current, err := w.DefinitionSource.Read(ctx, kind, name); err == nil && current.Source.Project {
+		return current, nil
+	}
+	return w.doc, nil
+}
+
+func (w withDocument) List(ctx context.Context, kind definition.Kind) ([]string, error) {
+	names, err := w.DefinitionSource.List(ctx, kind)
+	if err != nil || kind != w.doc.Source.Kind || contains(names, w.doc.Source.Name) {
+		return names, err
+	}
+	names = append(append([]string(nil), names...), w.doc.Source.Name)
+	sort.Strings(names)
+	return names, nil
 }

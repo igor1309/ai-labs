@@ -1,6 +1,7 @@
 // Package fsdefs stores definition documents as files under Agister's
 // state directory: service.toml, agents/*.toml, processes/*.yaml,
-// policies/*.yaml, runtimes/*.yaml, schemas/*.json.
+// policies/*.yaml, runtimes/*.yaml, schemas/*.json. Layered reads a
+// project's own settings over the global ones.
 package fsdefs
 
 import (
@@ -17,6 +18,8 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
+
+var errNotFound = errors.New("not found")
 
 type Store struct {
 	Dir string
@@ -52,14 +55,13 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 	}
 	data, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
-		return definition.Document{}, fmt.Errorf("not found (expected %s)", path)
+		return definition.Document{}, fmt.Errorf("%w (expected %s)", errNotFound, path)
 	}
 	if err != nil {
 		return definition.Document{}, err
 	}
-	sum := sha256.Sum256(data)
 	return definition.Document{
-		Source: definition.Source{Kind: kind, Name: name, Path: path, SHA256: hex.EncodeToString(sum[:])},
+		Source: definition.Source{Kind: kind, Name: name, Path: path, SHA256: digest(data)},
 		Bytes:  data,
 	}, nil
 }
@@ -82,7 +84,27 @@ func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 	return names, nil
 }
 
-func (s Store) Write(_ context.Context, kind definition.Kind, name string, data []byte, overwrite bool) (string, bool, error) {
+func (s Store) Current(_ context.Context, kind definition.Kind, name string) (string, string, error) {
+	path, err := s.path(kind, name)
+	if err != nil {
+		return "", "", err
+	}
+	data, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return path, "", nil
+	}
+	if err != nil {
+		return "", "", err
+	}
+	return path, digest(data), nil
+}
+
+// Write stores data over the document with digest expected, or where there
+// is none when expected is empty. A new document is created exclusively. A
+// replacement is written beside the document and renamed over it, so it is
+// never seen half-written; comparing and renaming are still two steps, and
+// an edit landing between them is lost.
+func (s Store) Write(_ context.Context, kind definition.Kind, name string, data []byte, expected string) (string, bool, error) {
 	path, err := s.path(kind, name)
 	if err != nil {
 		return "", false, err
@@ -90,20 +112,106 @@ func (s Store) Write(_ context.Context, kind definition.Kind, name string, data 
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return "", false, err
 	}
-	flags := os.O_WRONLY | os.O_CREATE | os.O_TRUNC
-	if !overwrite {
-		flags = os.O_WRONLY | os.O_CREATE | os.O_EXCL
+	if expected == "" {
+		file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		if errors.Is(err, fs.ErrExist) {
+			return path, false, nil
+		}
+		if err != nil {
+			return "", false, err
+		}
+		defer file.Close()
+		if _, err := file.Write(data); err != nil {
+			return "", false, err
+		}
+		return path, true, file.Close()
 	}
-	file, err := os.OpenFile(path, flags, 0o600)
-	if errors.Is(err, fs.ErrExist) {
+	current, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
 		return path, false, nil
 	}
 	if err != nil {
 		return "", false, err
 	}
-	defer file.Close()
-	if _, err := file.Write(data); err != nil {
+	if digest(current) != expected {
+		return path, false, nil
+	}
+	temp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*")
+	if err != nil {
 		return "", false, err
 	}
-	return path, true, file.Close()
+	defer os.Remove(temp.Name())
+	if _, err := temp.Write(data); err != nil {
+		temp.Close()
+		return "", false, err
+	}
+	if err := temp.Close(); err != nil {
+		return "", false, err
+	}
+	if err := os.Rename(temp.Name(), path); err != nil {
+		return "", false, err
+	}
+	return path, true, nil
+}
+
+func digest(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
+}
+
+// Layered reads a project's settings over the global ones: a project
+// document takes priority over the global document of the same kind and
+// name, and says which one it overrides. Checking the composed result is
+// the core's job, not the store's.
+type Layered struct {
+	Global  Store
+	Project *Store // nil outside a project
+}
+
+func (l Layered) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	if l.Project == nil {
+		return l.Global.Read(ctx, kind, name)
+	}
+	doc, err := l.Project.Read(ctx, kind, name)
+	if errors.Is(err, errNotFound) {
+		doc, err = l.Global.Read(ctx, kind, name)
+		if errors.Is(err, errNotFound) {
+			projectPath, _ := l.Project.path(kind, name)
+			globalPath, _ := l.Global.path(kind, name)
+			return doc, fmt.Errorf("%w (expected %s or %s)", errNotFound, projectPath, globalPath)
+		}
+		return doc, err
+	}
+	if err != nil {
+		return doc, err
+	}
+	doc.Source.Project = true
+	if globalPath, err := l.Global.path(kind, name); err == nil {
+		if _, err := os.Stat(globalPath); err == nil {
+			doc.Source.Overrides = globalPath
+		}
+	}
+	return doc, nil
+}
+
+// List names every document of kind in either layer.
+func (l Layered) List(ctx context.Context, kind definition.Kind) ([]string, error) {
+	names, err := l.Global.List(ctx, kind)
+	if err != nil || l.Project == nil {
+		return names, err
+	}
+	project, err := l.Project.List(ctx, kind)
+	if err != nil {
+		return nil, err
+	}
+	seen := map[string]bool{}
+	var all []string
+	for _, name := range append(names, project...) {
+		if !seen[name] {
+			seen[name] = true
+			all = append(all, name)
+		}
+	}
+	sort.Strings(all)
+	return all, nil
 }

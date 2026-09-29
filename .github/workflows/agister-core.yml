@@ -48,5 +48,5 @@ jobs:
         run: |
           go build -o bin/agister ./cmd/agister
           home="$(mktemp -d)"
-          bin/agister --home "$home" init
+          echo yes | bin/agister --home "$home" init
           bin/agister --home "$home" check

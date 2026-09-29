@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -29,9 +32,20 @@ type result struct {
 
 func agister(t *testing.T, home, cwd string, args ...string) result {
 	t.Helper()
+	return agisterInput(t, "", home, cwd, args...)
+}
+
+// agisterInput runs agister with input as what the user types.
+func agisterInput(t *testing.T, input, home, cwd string, args ...string) result {
+	t.Helper()
+	return agisterReading(t, strings.NewReader(input), home, cwd, args...)
+}
+
+func agisterReading(t *testing.T, stdin io.Reader, home, cwd string, args ...string) result {
+	t.Helper()
 	var stdout, stderr bytes.Buffer
 	code := cli.Run(context.Background(), append([]string{"--home", home}, args...), cli.IO{
-		Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &stderr, Cwd: cwd,
+		Stdin: stdin, Stdout: &stdout, Stderr: &stderr, Cwd: cwd,
 		Getenv: func(string) string { return "" },
 	}, compose)
 	return result{code, stdout.String(), stderr.String()}
@@ -51,7 +65,12 @@ func gitCmd(t *testing.T, dir string, args ...string) string {
 // repository has a base commit on main and a candidate on a branch whose
 // content carries the fake runtime's scenario marker.
 func repository(t *testing.T, scenario string) string {
-	dir := t.TempDir()
+	// Git reports the repository's real path (on macOS the temp dir sits
+	// behind the /var -> /private/var symlink); expectations use the same.
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	gitCmd(t, dir, "init", "--quiet", "--initial-branch=main")
 	gitCmd(t, dir, "config", "user.email", "test@example.com")
 	gitCmd(t, dir, "config", "user.name", "Test")
@@ -70,12 +89,15 @@ func repository(t *testing.T, scenario string) string {
 func setup(t *testing.T, scenario string) (home, repo string) {
 	home, repo = t.TempDir(), repository(t, scenario)
 	claude := runtimetest.Binary(t, "fakeclaude")
+	if r := agisterInput(t, "yes\n", home, repo, "init"); r.code != 0 {
+		t.Fatalf("init: %d %s", r.code, r.stderr)
+	}
 	for _, args := range [][]string{
-		{"init"},
 		{"agent", "create", "reviewer", "--force", "--runtime", "claude-code", "--model", "sonnet", "--model-family", "anthropic", "--effort", "high", "--command", claude},
 		{"agent", "create", "assistant", "--force", "--runtime", "claude-code", "--model-family", "anthropic", "--session", "resumable", "--command", claude},
 	} {
-		if r := agister(t, home, repo, args...); r.code != 0 {
+		// Both replace a shipped agent, so each asks.
+		if r := agisterInput(t, "yes\n", home, repo, args...); r.code != 0 {
 			t.Fatalf("%v: %d %s", args, r.code, r.stderr)
 		}
 	}
@@ -227,7 +249,7 @@ func TestShippedExamplesPassCheck(t *testing.T) {
 // place (a Finder .DS_Store once landed there) is reported as one problem.
 func TestUnreadableServiceSettingsFailCheck(t *testing.T) {
 	home, repo := t.TempDir(), t.TempDir()
-	if r := agister(t, home, repo, "init"); r.code != 0 {
+	if r := agisterInput(t, "yes\n", home, repo, "init"); r.code != 0 {
 		t.Fatalf("init: %d %s", r.code, r.stderr)
 	}
 	shipped, err := fs.ReadFile(examples.Settings(), "service.toml")
@@ -307,6 +329,275 @@ output:
 	}
 }
 
+// A repository's own .agister adds settings wherever in the repository
+// Agister runs; outside it, only global ones apply.
+func TestProjectSettingsAddToGlobal(t *testing.T) {
+	home, repo := setup(t, "approve")
+	ask := strings.Replace(read(t, filepath.Join(home, "processes", "ask.yaml")), "Answer the question", "PROJECT: answer the question", 1)
+	write(t, filepath.Join(repo, ".agister", "processes", "ask_here.yaml"), strings.Replace(ask, "name: ask", "name: ask_here", 1))
+	sub := filepath.Join(repo, "sub")
+	write(t, filepath.Join(sub, "keep"), "")
+
+	if r := agister(t, home, sub, "process", "list"); r.code != 0 || !strings.Contains(r.stdout, "ask_here") {
+		t.Fatalf("list in project: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	project := filepath.Join(repo, ".agister", "processes", "ask_here.yaml")
+	r := agister(t, home, sub, "process", "show", "ask_here")
+	if r.code != 0 || !strings.Contains(r.stdout, "process ask_here: project "+project) || !strings.Contains(r.stdout, "policy read-only: global "+filepath.Join(home, "policies", "read-only.yaml")) {
+		t.Fatalf("show in project: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if r := agister(t, home, sub, "run", "ask_here", "--quiet", "--param", "question=q"); r.code != cli.ExitCompleted {
+		t.Fatalf("run in project: %d\n%s", r.code, r.stderr)
+	}
+	last := lastRun(t, home)
+	var process map[string]any
+	for _, source := range last.record["definitions"].([]any) {
+		if source := source.(map[string]any); source["kind"] == "processes" {
+			process = source
+		}
+	}
+	if !strings.Contains(strings.Join(last.argv(), " "), "PROJECT: answer") || process["path"] != project || process["project"] != true {
+		t.Fatalf("project process not used or not attributed: %v, argv %v", process, last.argv())
+	}
+
+	outside := t.TempDir()
+	if r := agister(t, home, outside, "process", "list"); r.code != 0 || strings.Contains(r.stdout, "ask_here") {
+		t.Fatalf("list outside project: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	// Why no project settings apply is in the diagnostics.
+	if r := agister(t, home, outside, "--debug", "process", "list"); r.code != 0 || !strings.Contains(r.stderr, "no project settings: not in a usable git repository") {
+		t.Fatalf("diagnostics outside project: %d\n%s", r.code, r.stderr)
+	}
+}
+
+// A branch can swap the reviewer's family: the project agent takes priority
+// over the global one, and check, process show and the run record say so.
+func TestProjectOverridesAreNoted(t *testing.T) {
+	home, repo := setup(t, "approve")
+	global := filepath.Join(home, "agents", "reviewer.toml")
+	project := filepath.Join(repo, ".agister", "agents", "reviewer.toml")
+	write(t, project, strings.Replace(read(t, global), `model_family = "anthropic"`, `model_family = "experiment"`, 1))
+
+	r := agister(t, home, repo, "check")
+	if r.code != 0 || !strings.Contains(r.stdout, "override agent reviewer: "+project+" overrides "+global) || !strings.Contains(r.stdout, "settings OK") {
+		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	r = agister(t, home, repo, "check", "--tree")
+	if r.code != 0 || !regexp.MustCompile(`├─ agent reviewer +project `+regexp.QuoteMeta(project+" (overrides "+global+")")).MatchString(r.stdout) {
+		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	var report contract.CheckReport
+	r = agister(t, home, repo, "check", "--json")
+	if err := json.Unmarshal([]byte(r.stdout), &report); err != nil || r.code != 0 {
+		t.Fatalf("check --json: %d %v\n%s", r.code, err, r.stdout)
+	}
+	for _, d := range report.Definitions {
+		if d.Kind == "agents" && d.Name == "reviewer" && (d.Layer != "project" || d.Path != project || d.Overrides != global || len(d.UsedBy) == 0) {
+			t.Fatalf("reviewer = %+v", d)
+		}
+	}
+	r = agister(t, home, repo, "process", "show", "adversarial_review")
+	if r.code != 0 || !strings.Contains(r.stdout, "agent reviewer: project "+project+" (overrides "+global+")") {
+		t.Fatalf("show: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if r := agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main"); r.code != cli.ExitCompleted {
+		t.Fatalf("run: %d\n%s", r.code, r.stderr)
+	}
+	for _, source := range lastRun(t, home).record["definitions"].([]any) {
+		if source := source.(map[string]any); source["kind"] == "agents" && (source["path"] != project || source["project"] != true || source["overrides"] != global) {
+			t.Fatalf("agent source = %v", source)
+		}
+	}
+}
+
+// Overrides are verified as composed: a project service that global
+// policies exceed fails check, and every other command stops before it
+// does anything.
+func TestComposedSettingsAreVerified(t *testing.T) {
+	home, repo := setup(t, "approve")
+	write(t, filepath.Join(repo, ".agister", "service.toml"), strings.Replace(read(t, filepath.Join(home, "service.toml")), `max_timeout = "1h"`, `max_timeout = "5m"`, 1))
+
+	r := agister(t, home, repo, "check")
+	if r.code != cli.ExitUsage || !strings.Contains(r.stdout, "override service service:") || !strings.Contains(r.stderr, "process adversarial_review") {
+		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	for _, args := range [][]string{{}, {"run", "adversarial_review", "--quiet", "--param", "base=main"}, {"runs"}, {"process", "list"}} {
+		r := agister(t, home, repo, args...)
+		if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "process adversarial_review") || !strings.Contains(r.stderr, "settings have problems") {
+			t.Fatalf("%v: %d\n%s%s", args, r.code, r.stdout, r.stderr)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(home, "runs")); err == nil {
+		t.Fatal("a call started despite invalid settings")
+	}
+	// Help needs no settings, and init is how settings are repaired.
+	if r := agister(t, home, repo, "--help"); r.code != 0 {
+		t.Fatalf("help: %d\n%s", r.code, r.stderr)
+	}
+	if r := agisterInput(t, "yes\n", home, repo, "init"); r.code != 0 {
+		t.Fatalf("init: %d\n%s", r.code, r.stderr)
+	}
+}
+
+// init writes nothing until the user types "yes", and --force says which
+// existing files it would replace before asking.
+func TestInitAsksBeforeWriting(t *testing.T) {
+	home, dir := filepath.Join(t.TempDir(), "home"), t.TempDir()
+	for _, input := range []string{"", "\n", "y\n", "no\n", "YES please\n"} {
+		r := agisterInput(t, input, home, dir, "init")
+		if r.code != cli.ExitUsage || !strings.Contains(r.stdout, "will create  "+filepath.Join(home, "service.toml")) || !strings.Contains(r.stderr, "Type yes to write") || !strings.Contains(r.stderr, "nothing was written") {
+			t.Fatalf("input %q: %d\n%s%s", input, r.code, r.stdout, r.stderr)
+		}
+		if _, err := os.Stat(home); err == nil {
+			if entries, _ := os.ReadDir(home); len(entries) > 1 || (len(entries) == 1 && entries[0].Name() != "logs") {
+				t.Fatalf("input %q: wrote %v", input, entries)
+			}
+		}
+	}
+	if r := agisterInput(t, " yes \n", home, dir, "init"); r.code != 0 || !strings.Contains(r.stdout, "created  "+filepath.Join(home, "service.toml")) {
+		t.Fatalf("yes: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	// Everything exists: nothing to write, nothing to confirm.
+	if r := agister(t, home, dir, "init"); r.code != 0 || !strings.Contains(r.stdout, "nothing to write") || strings.Contains(r.stderr, "Type yes") {
+		t.Fatalf("again: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	edited := filepath.Join(home, "agents", "reviewer.toml")
+	write(t, edited, read(t, edited)+"# mine\n")
+	r := agister(t, home, dir, "init", "--force")
+	if r.code != cli.ExitUsage || !strings.Contains(r.stdout, "will REPLACE "+edited) || !strings.HasSuffix(read(t, edited), "# mine\n") {
+		t.Fatalf("force without yes: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if r := agisterInput(t, "yes\n", home, dir, "init", "--force"); r.code != 0 || !strings.Contains(r.stdout, "replaced "+edited) || strings.HasSuffix(read(t, edited), "# mine\n") {
+		t.Fatalf("force with yes: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+}
+
+// agent create asks for "yes" only when --force would replace an agent.
+func TestAgentCreateAsksBeforeReplacing(t *testing.T) {
+	home, dir := filepath.Join(t.TempDir(), "home"), t.TempDir()
+	if r := agisterInput(t, "yes\n", home, dir, "init"); r.code != 0 {
+		t.Fatalf("init: %d %s", r.code, r.stderr)
+	}
+	reviewer := filepath.Join(home, "agents", "reviewer.toml")
+	before := read(t, reviewer)
+	replace := []string{"agent", "create", "reviewer", "--force", "--runtime", "claude-code", "--model", "opus", "--model-family", "anthropic"}
+	for _, input := range []string{"", "y\n", "no\n"} {
+		r := agisterInput(t, input, home, dir, replace...)
+		if r.code != cli.ExitUsage || !strings.Contains(r.stdout, "will REPLACE "+reviewer) || !strings.Contains(r.stderr, "Type yes to replace agent reviewer") || read(t, reviewer) != before {
+			t.Fatalf("input %q: %d\n%s%s", input, r.code, r.stdout, r.stderr)
+		}
+	}
+	if r := agisterInput(t, "yes\n", home, dir, replace...); r.code != 0 || !strings.Contains(r.stdout, "replaced agent reviewer: "+reviewer) || !strings.Contains(read(t, reviewer), `model = "opus"`) {
+		t.Fatalf("yes: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	// An agent that would break the settings is refused before the question,
+	// and every command still works afterwards.
+	current := read(t, reviewer)
+	r := agisterInput(t, "yes\n", home, dir, "agent", "create", "reviewer", "--force", "--runtime", "claude-code")
+	if r.code != cli.ExitUsage || strings.Contains(r.stderr, "Type yes") || !strings.Contains(r.stderr, "agent reviewer would break the global settings") || read(t, reviewer) != current {
+		t.Fatalf("breaking agent: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if r := agister(t, home, dir, "check"); r.code != 0 {
+		t.Fatalf("check after refusal: %d\n%s", r.code, r.stderr)
+	}
+	// A new agent replaces nothing, so --force or not, nothing is asked.
+	if r := agister(t, home, dir, "agent", "create", "fresh", "--force", "--runtime", "claude-code"); r.code != 0 || strings.Contains(r.stderr, "Type yes") || !strings.Contains(r.stdout, "created agent fresh") {
+		t.Fatalf("new agent: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	// Without --force an existing agent is refused, not asked about.
+	if r := agister(t, home, dir, "agent", "create", "fresh", "--runtime", "claude-code"); r.code != cli.ExitUsage || strings.Contains(r.stderr, "Type yes") || !strings.Contains(r.stderr, "already exists") {
+		t.Fatalf("existing without force: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+}
+
+// agent create writes global settings, so it must keep them valid on their
+// own, not only as a project in view composes them.
+func TestAgentCreateKeepsEveryScopeValid(t *testing.T) {
+	home, repo := setup(t, "approve")
+	mapping := strings.Replace(read(t, filepath.Join(home, "runtimes", "claude-code.yaml")), "name: claude-code", "name: local-rt", 1)
+	write(t, filepath.Join(repo, ".agister", "runtimes", "local-rt.yaml"), mapping)
+
+	r := agister(t, home, repo, "agent", "create", "g", "--runtime", "local-rt", "--model-family", "anthropic")
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "agent g would break the global settings") || !strings.Contains(r.stderr, `runtime mapping "local-rt" does not exist`) {
+		t.Fatalf("inside the project: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if _, err := os.Stat(filepath.Join(home, "agents", "g.toml")); err == nil {
+		t.Fatal("an agent valid only in the project was written to global settings")
+	}
+	if r := agister(t, home, t.TempDir(), "check"); r.code != 0 {
+		t.Fatalf("outside the project: %d\n%s", r.code, r.stderr)
+	}
+
+	// Where the project defines the agent, the global one is shadowed there,
+	// so only the global scope judges it.
+	write(t, filepath.Join(repo, ".agister", "agents", "solo.toml"), "schema = \"agister.agent/v1alpha1\"\nname = \"solo\"\nruntime = \"claude-code\"\nmodel_family = \"anthropic\"\n")
+	process := strings.Replace(strings.Replace(read(t, filepath.Join(home, "processes", "adversarial_review.yaml")), "name: adversarial_review", "name: solo_review", 1), "agent:reviewer", "agent:solo", 1)
+	write(t, filepath.Join(repo, ".agister", "processes", "solo_review.yaml"), process)
+	if r := agister(t, home, repo, "agent", "create", "solo", "--runtime", "claude-code"); r.code != 0 {
+		t.Fatalf("shadowed agent: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+}
+
+// typedAfter answers the prompt, but only after something else happened
+// while the user was reading it.
+type typedAfter struct {
+	meanwhile func()
+	answer    io.Reader
+}
+
+func (r *typedAfter) Read(p []byte) (int, error) {
+	if r.meanwhile != nil {
+		r.meanwhile()
+		r.meanwhile = nil
+	}
+	return r.answer.Read(p)
+}
+
+// "yes" approves the plan that was shown, not whatever is on disk by then.
+func TestConfirmedWritesRefuseChangesMadeWhileAsking(t *testing.T) {
+	home, dir := filepath.Join(t.TempDir(), "home"), t.TempDir()
+	if r := agisterInput(t, "yes\n", home, dir, "init"); r.code != 0 {
+		t.Fatalf("init: %d %s", r.code, r.stderr)
+	}
+	reviewer := filepath.Join(home, "agents", "reviewer.toml")
+	edited := read(t, reviewer) + "# edited while asking\n"
+	editMeanwhile := func() { write(t, reviewer, edited) }
+
+	r := agisterReading(t, &typedAfter{editMeanwhile, strings.NewReader("yes\n")}, home, dir, "init", "--force")
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "changed since you confirmed") || read(t, reviewer) != edited {
+		t.Fatalf("init --force: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	r = agisterReading(t, &typedAfter{func() { write(t, reviewer, edited+"# again\n") }, strings.NewReader("yes\n")}, home, dir,
+		"agent", "create", "reviewer", "--force", "--runtime", "claude-code", "--model-family", "anthropic")
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "changed since you confirmed") || read(t, reviewer) != edited+"# again\n" {
+		t.Fatalf("agent create --force: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+}
+
+// On a fresh machine only init and help work; after init everything does.
+func TestFreshHomeNeedsInit(t *testing.T) {
+	home, dir := filepath.Join(t.TempDir(), "home"), t.TempDir()
+	if r := agister(t, home, dir, "process", "list"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, "service service: not found") {
+		t.Fatalf("before init: %d\n%s", r.code, r.stderr)
+	}
+	if r := agisterInput(t, "yes\n", home, dir, "init"); r.code != 0 {
+		t.Fatalf("init: %d\n%s", r.code, r.stderr)
+	}
+	if r := agister(t, home, dir, "process", "list"); r.code != 0 {
+		t.Fatalf("after init: %d\n%s", r.code, r.stderr)
+	}
+}
+
+// A .agister that exists but cannot be used fails every command instead of
+// silently leaving the project's settings out.
+func TestUnusableProjectSettingsFail(t *testing.T) {
+	home, repo := setup(t, "approve")
+	write(t, filepath.Join(repo, ".agister"), "not a directory")
+	if r := agister(t, home, repo, "process", "list"); r.code == 0 || !strings.Contains(r.stderr, ".agister: not a directory") {
+		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+}
+
 func write(t *testing.T, path, text string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
@@ -363,6 +654,40 @@ func TestCancelThroughTheContract(t *testing.T) {
 	}
 	if lines := strings.Split(gitCmd(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
 		t.Fatalf("worktree not released: %v", lines)
+	}
+}
+
+// Settings broken mid-run do not strand the run: it stays cancellable,
+// observable and inspectable, while other uses are refused.
+func TestRunSurvivesSettingsBrokenMidRun(t *testing.T) {
+	home, repo := setup(t, "hang")
+	client, err := compose(cli.Config{Home: home})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	id, err := client.Submit(ctx, contract.CallRequest{Process: "adversarial_review", Params: map[string]string{"base": "main"}, Cwd: repo})
+	if err != nil {
+		t.Fatal(err)
+	}
+	broken := false
+	err = client.Observe(ctx, id, 0, func(event contract.Event) error {
+		if event.Kind == "PROCESS_STARTED" && !broken {
+			broken = true
+			write(t, filepath.Join(home, "agents", "broken.toml"), "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\n")
+			return client.Cancel(ctx, id)
+		}
+		return nil
+	})
+	if err != nil || !broken {
+		t.Fatalf("observe: %v", err)
+	}
+	if inspected, err := client.Inspect(ctx, id); err != nil || inspected.Result.Status != "interrupted" {
+		t.Fatalf("inspect: %+v, %v", inspected, err)
+	}
+	var settings *contract.SettingsError
+	if _, err := client.ListRuns(ctx); !errors.As(err, &settings) {
+		t.Fatalf("list runs with broken settings: %v", err)
 	}
 }
 

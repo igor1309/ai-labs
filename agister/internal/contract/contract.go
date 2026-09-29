@@ -11,9 +11,26 @@ import (
 	"time"
 )
 
+// SettingsError refuses a use of the client while the settings have
+// problems; the report says which.
+type SettingsError struct {
+	Report CheckReport
+}
+
+func (e *SettingsError) Error() string {
+	return "settings have problems; fix them first (see `agister check`)"
+}
+
 type Client interface {
-	Init(ctx context.Context, overwrite bool) (InitResult, error)
-	CreateAgent(ctx context.Context, agent Agent, overwrite bool) (string, error)
+	// Init installs the example settings. Without an approved plan it
+	// writes nothing and returns the plan; with one it writes, refusing if
+	// the request now plans anything else or any file changed since.
+	Init(ctx context.Context, overwrite bool, approved *InitResult) (InitResult, error)
+	// CreateAgent writes an agent profile. Without an approved plan it
+	// validates and returns the plan, writing nothing; with one it writes,
+	// refusing if the request now plans anything else or the file changed
+	// since.
+	CreateAgent(ctx context.Context, agent Agent, overwrite bool, approved *AgentWrite) (AgentWrite, error)
 	ListAgents(ctx context.Context) ([]Agent, error)
 	ListProcesses(ctx context.Context) ([]ProcessSummary, error)
 	ShowProcess(ctx context.Context, name, agent string) (ProcessView, error)
@@ -40,9 +57,19 @@ func (e *InputError) Error() string { return e.Message }
 
 var ErrNotFound = errors.New("not found")
 
+type AgentWrite struct {
+	Path     string
+	Replaces bool   // an existing agent is overwritten
+	Digest   string // of the file as planned; empty when absent
+	Content  string // digest of the agent to be written
+}
+
 type InitResult struct {
-	Created []string
-	Kept    []string
+	Created  []string
+	Replaced []string // existing files overwritten
+	Kept     []string
+	Digests  map[string]string // path: digest of the file as planned; empty when absent
+	Contents map[string]string // path: digest of the example to be written
 }
 
 type Agent struct {
@@ -64,8 +91,38 @@ type ProcessSummary struct {
 }
 
 type CheckReport struct {
-	Checked  map[string]int // definitions checked, by kind
-	Problems []string
+	Checked  map[string]int `json:"checked"` // definitions checked, by kind
+	Problems []string       `json:"problems"`
+	// Project definitions that take priority over global ones.
+	Overrides []string `json:"overrides"`
+	// Every definition read, in check order, with what it references.
+	Definitions []Definition `json:"definitions"`
+}
+
+// Definition is one settings document in the composed settings.
+type Definition struct {
+	Kind      string          `json:"kind"` // service, agents, processes, policies, runtimes, schemas
+	Name      string          `json:"name"`
+	Layer     string          `json:"layer"` // global or project
+	Path      string          `json:"path"`
+	Overrides string          `json:"overrides,omitempty"` // the global document this one replaces
+	Invalid   bool            `json:"invalid,omitempty"`   // did not parse; see problems
+	Uses      []DefinitionRef `json:"uses,omitempty"`      // whether or not they exist
+	UsedBy    []DefinitionRef `json:"used_by,omitempty"`
+}
+
+// DefinitionOrigin is where one definition a call uses comes from.
+type DefinitionOrigin struct {
+	Kind      string // agents, processes, policies, runtimes, schemas or service
+	Name      string
+	Layer     string // global or project
+	Path      string
+	Overrides string // the global document this one replaces
+}
+
+type DefinitionRef struct {
+	Kind string `json:"kind"`
+	Name string `json:"name"`
 }
 
 type Param struct {
@@ -95,6 +152,8 @@ type ProcessView struct {
 	Primitives []string
 	Withheld   []string
 	Refusal    string
+	// Where each definition the call uses comes from.
+	Sources []DefinitionOrigin
 }
 
 type CallRequest struct {

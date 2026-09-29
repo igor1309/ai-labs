@@ -11,4 +11,6 @@ Not installed by `agister init`: `agister check` refuses them as shipped.
 
 To use Codex, verify what each sandbox mode actually grants on your Codex
 version, update `runtimes/codex.yaml` to match, copy these files into
-`$AGISTER_HOME`, and run `agister check --probe`.
+`$AGISTER_HOME`, or into one repository's `.agister/` to try them there
+only, and run `agister check --probe`. Every command runs `check` first, so
+until these files pass it, every command in that scope stops.

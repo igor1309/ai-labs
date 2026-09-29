@@ -9,9 +9,22 @@ contracts are settings, not code. Architecture: [ADR-001](docs/adr/001-agister-c
 cd agister
 go build -o bin/agister ./cmd/agister
 
-bin/agister init                  # example settings into ~/.agister ($AGISTER_HOME or --home)
+bin/agister --help                # every command and option; needs no settings
+
+bin/agister init                  # example settings into ~/.agister ($AGISTER_HOME or --home);
+                                  # shows what it writes and asks you to type "yes"
+                                  # (--force also replaces existing files; scripts: echo yes | ...)
 bin/agister check                 # validate all settings; report discovered problems
 bin/agister check --probe         # also ask each agent's runtime for its version
+bin/agister check --tree          # what defines what: each process, what it uses, which file
+                                  # (global or project, and what it overrides), unused definitions
+bin/agister check --json          # the whole report, including that graph, as JSON
+
+bin/agister agent list
+bin/agister agent create reviewer --runtime claude-code --model opus --model-family anthropic --force
+                                  # --force replaces an existing agent after you type "yes";
+                                  # creating a new one asks nothing; an agent that would make
+                                  # the settings fail check is refused before anything is written
 
 bin/agister process list
 bin/agister process show adversarial_review
@@ -32,7 +45,7 @@ have: `status` (`completed`, `failed`, `interrupted`, `lost`), an error
 `timing`, `artifacts` (changes made in a checkout) and `session`. A verdict
 in the output is output: routing on it is the caller's job.
 
-Exit codes: `0` completed, `1` failed, `2` interrupted, `3` refused, `4` lost, `64` usage or invalid settings, `130` stopped watching.
+Exit codes: `0` completed, `1` failed, `2` interrupted, `3` refused, `4` lost, `64` usage or invalid settings, `70` internal error, `130` stopped watching.
 
 ## Settings
 
@@ -44,7 +57,41 @@ Exit codes: `0` completed, `1` failed, `2` interrupted, `3` refused, `4` lost, `
   logs/  provenance/                  evidence and diagnostics
 ```
 
-Every call re-validates what it uses and refuses before the provider turn starts.
+A repository can keep its own settings in `<repository root>/.agister/`, the
+same way it keeps `.claude/` or `.agents/`, and so can any branch of it. They
+apply wherever Agister runs inside that repository, and take priority over
+global settings document by document: a project `agents/reviewer.toml`
+replaces the global one, for any kind of setting. Neither layer is assumed
+safe; what is checked is the result. `agister check` verifies the composed
+settings (references, limits composing service ⊇ policy ⊇ process,
+enforcement on each runtime) and lists every override, and every call
+re-verifies what it uses. `process show` and run records name each
+definition's file and the global one it overrides. With `--debug`, Agister
+says why no project settings apply; a `.agister` that is not a usable
+directory fails the command. `init` and `agent create` write global
+settings.
+
+```text
+<repository>/.agister/
+  service.toml  agents/*.toml  processes/*.yaml  policies/*.yaml
+  runtimes/*.yaml  schemas/*.json     same layout, higher priority
+```
+
+Nothing works on settings that do not compose. The client itself
+(`app.Gated`, so any client of the contract, not only the CLI) runs `check`
+(without `--probe`) before every use and refuses with the report on any
+problem: the CLI prints it and exits 64. `init` is exempt because it writes
+the settings, and `--help` needs none. Cancelling a run is never refused,
+and a run already started stays observable, so editing settings mid-run
+cannot strand it. Passing is silent. Every call also re-validates what it uses and refuses
+before the provider turn starts.
+
+`init` and `agent create --force` overwrite files, so each first lists what
+it would write and waits for you to type `yes`; any other answer writes
+nothing. "yes" approves the plan that was shown: a file changed while you
+were asked is not overwritten, and nothing more is written. Scripts pipe
+the answer: `echo yes | agister init`.
+
 `examples/settings/` is what `init` installs. `examples/codex/` is opt-in;
 see its README.
 

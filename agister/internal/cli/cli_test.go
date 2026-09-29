@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -22,6 +23,9 @@ type clientSpy struct {
 	cancelled       []string
 	checked         []bool
 	agents          []contract.Agent
+	agentExists     bool
+	approved        []contract.AgentWrite
+	refuse          error // returned by Submit
 
 	events   []contract.Event
 	onCancel chan string
@@ -31,6 +35,9 @@ type clientSpy struct {
 }
 
 func (s *clientSpy) Submit(_ context.Context, request contract.CallRequest) (string, error) {
+	if s.refuse != nil {
+		return "", s.refuse
+	}
 	s.submitted = append(s.submitted, request)
 	return "run-1", nil
 }
@@ -67,9 +74,13 @@ func (s *clientSpy) Check(_ context.Context, probe bool) (contract.CheckReport, 
 	return s.report, nil
 }
 
-func (s *clientSpy) CreateAgent(_ context.Context, agent contract.Agent, _ bool) (string, error) {
-	s.agents = append(s.agents, agent)
-	return "/home/agents/" + agent.Name + ".toml", nil
+func (s *clientSpy) CreateAgent(_ context.Context, agent contract.Agent, overwrite bool, approved *contract.AgentWrite) (contract.AgentWrite, error) {
+	write := contract.AgentWrite{Path: "/home/agents/" + agent.Name + ".toml", Replaces: overwrite && s.agentExists, Digest: "d1"}
+	if approved != nil {
+		s.agents = append(s.agents, agent)
+		s.approved = append(s.approved, *approved)
+	}
+	return write, nil
 }
 
 type result struct {
@@ -258,6 +269,89 @@ func TestCheck(t *testing.T) {
 	spy.report.Problems = nil
 	if r := run(context.Background(), spy, "check"); r.code != 0 || r.stdout != "settings OK: 2 agents\n" {
 		t.Fatalf("result %+v", r)
+	}
+}
+
+// A client refusal over broken settings prints their report, then the
+// refusal, and exits 64; a bare agister checks before it shows the usage.
+func TestSettingsRefusalPrintsTheReport(t *testing.T) {
+	broken := contract.CheckReport{Checked: map[string]int{"agents": 1}, Problems: []string{"agent a: bad"}, Overrides: []string{"agent a: /p overrides /g"}}
+	spy := &clientSpy{refuse: &contract.SettingsError{Report: broken}}
+	r := run(context.Background(), spy, "run", "p")
+	if r.code != cli.ExitUsage || r.stderr != "agent a: bad\n1 problem(s) in 1 agents\nagister: settings have problems; fix them first (see `agister check`)\n" || r.stdout != "override agent a: /p overrides /g\n" {
+		t.Fatalf("refused run: %+v", r)
+	}
+	spy = &clientSpy{report: broken}
+	if r := run(context.Background(), spy); r.code != cli.ExitUsage || !strings.HasPrefix(r.stderr, "agent a: bad\n") || strings.Contains(r.stdout, "Usage:") || !reflect.DeepEqual(spy.checked, []bool{false}) {
+		t.Fatalf("bare with broken settings: %+v", r)
+	}
+	spy = &clientSpy{}
+	if r := run(context.Background(), spy); r.code != cli.ExitUsage || !strings.Contains(r.stdout, "Usage:") {
+		t.Fatalf("bare: %+v", r)
+	}
+	for _, args := range [][]string{{"--help"}, {"-h"}, {"run", "p", "--help"}} {
+		spy := &clientSpy{report: broken}
+		if r := run(context.Background(), spy, args...); r.code != 0 || len(spy.checked) != 0 {
+			t.Errorf("%v: %+v, checked %v", args, r, spy.checked)
+		}
+	}
+}
+
+func TestCheckTreeAndJSON(t *testing.T) {
+	ref := func(kind, name string) contract.DefinitionRef { return contract.DefinitionRef{Kind: kind, Name: name} }
+	report := contract.CheckReport{
+		Checked:   map[string]int{"processes": 1},
+		Overrides: []string{"agent a: /p/agents/a.toml overrides /g/agents/a.toml"},
+		Definitions: []contract.Definition{
+			{Kind: "service", Name: "service", Layer: "global", Path: "/g/service.toml"},
+			{Kind: "runtimes", Name: "rt", Layer: "global", Path: "/g/runtimes/rt.yaml", UsedBy: []contract.DefinitionRef{ref("agents", "a")}},
+			{Kind: "agents", Name: "a", Layer: "project", Path: "/p/agents/a.toml", Overrides: "/g/agents/a.toml", Uses: []contract.DefinitionRef{ref("runtimes", "rt")}, UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
+			// b is used by no process, so neither is rt2, which only b uses.
+			{Kind: "runtimes", Name: "rt2", Layer: "global", Path: "/g/runtimes/rt2.yaml", UsedBy: []contract.DefinitionRef{ref("agents", "b")}},
+			{Kind: "agents", Name: "b", Layer: "global", Path: "/g/agents/b.toml", Uses: []contract.DefinitionRef{ref("runtimes", "rt2")}},
+			{Kind: "policies", Name: "spare", Layer: "project", Path: "/p/policies/spare.yaml", Invalid: true},
+			{Kind: "processes", Name: "p", Layer: "global", Path: "/g/processes/p.yaml", Uses: []contract.DefinitionRef{ref("agents", "a"), ref("policies", "gone")}},
+		},
+	}
+	spy := &clientSpy{report: report}
+	r := run(context.Background(), spy, "check", "--tree")
+	want := `service service   global  /g/service.toml
+process p         global  /g/processes/p.yaml
+├─ agent a        project /p/agents/a.toml (overrides /g/agents/a.toml)
+│  └─ runtime rt  global  /g/runtimes/rt.yaml
+└─ policy gone    MISSING
+unused (no process uses these)
+   runtime rt2    global  /g/runtimes/rt2.yaml
+   agent b        global  /g/agents/b.toml
+   policy spare   project /p/policies/spare.yaml INVALID
+settings OK: 1 processes
+`
+	if r.code != 0 || r.stdout != want {
+		t.Fatalf("tree: %d\n%s", r.code, r.stdout)
+	}
+
+	spy = &clientSpy{report: contract.CheckReport{Checked: map[string]int{}, Problems: []string{"agent a: bad"}}}
+	r = run(context.Background(), spy, "check", "--json", "--tree")
+	var got map[string]any
+	if err := json.Unmarshal([]byte(r.stdout), &got); err != nil || r.code != cli.ExitUsage || r.stderr != "" {
+		t.Fatalf("json: %d %v\n%s%s", r.code, err, r.stdout, r.stderr)
+	}
+	// Empty lists are lists, so consumers need no null checks.
+	if fmt.Sprint(got["problems"]) != "[agent a: bad]" || fmt.Sprint(got["overrides"]) != "[]" || fmt.Sprint(got["definitions"]) != "[]" {
+		t.Fatalf("json = %v", got)
+	}
+}
+
+func TestAgentCreateAsksOnlyToReplace(t *testing.T) {
+	spy := &clientSpy{agentExists: true}
+	r := run(context.Background(), spy, "agent", "create", "x", "--runtime", "rt", "--force")
+	if r.code != cli.ExitUsage || len(spy.agents) != 0 || r.stderr != "Type yes to replace agent x:\nagister: agent create cancelled; nothing was written\n" {
+		t.Fatalf("no answer: %+v, agents %v", r, spy.agents)
+	}
+	spy = &clientSpy{}
+	// The write carries the plan it was shown, so a changed file is refused.
+	if r := run(context.Background(), spy, "agent", "create", "x", "--runtime", "rt", "--force"); r.code != 0 || r.stderr != "" || r.stdout != "created agent x: /home/agents/x.toml\n" || len(spy.agents) != 1 || spy.approved[0].Digest != "d1" {
+		t.Fatalf("nothing to replace: %+v, agents %v", r, spy.agents)
 	}
 }
 
