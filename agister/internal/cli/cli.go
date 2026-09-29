@@ -101,10 +101,16 @@ func Run(ctx context.Context, args []string, env IO, build Build) int {
 	if err == nil {
 		return code
 	}
+	var settingsErr *contract.SettingsError
+	if errors.As(err, &settingsErr) {
+		printCheck(env, settingsErr.Report)
+	}
 	fmt.Fprintf(env.Stderr, "agister: %v\n", err)
 	var usageErr usageError
 	var inputErr *contract.InputError
 	switch {
+	case settingsErr != nil:
+		return ExitUsage
 	case errors.As(err, &usageErr):
 		fmt.Fprintf(env.Stderr, "\n%s\n", usage)
 		return ExitUsage
@@ -203,19 +209,23 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 	if len(positionals) > 0 {
 		command, rest = positionals[0], positionals[1:]
 	}
-	// Every command but init, which writes the settings, first checks all
-	// of them and stops on any problem.
-	if command != "init" {
-		report, err := client.Check(ctx, command == "check" && opts.probe)
+	// The client refuses everything but init and check while the settings
+	// have problems; check prints its own report, and a bare agister checks
+	// before it shows the usage.
+	if command == "check" {
+		report, err := client.Check(ctx, opts.probe)
 		if err != nil {
 			return 0, err
 		}
-		if command == "check" {
-			return printCheckAs(env, report, opts)
+		return printCheckAs(env, report, opts)
+	}
+	if command == "" {
+		report, err := client.Check(ctx, false)
+		if err != nil {
+			return 0, err
 		}
 		if len(report.Problems) > 0 {
-			printCheck(env, report)
-			return 0, &contract.InputError{Message: "settings have problems; fix them first (see `agister check`)"}
+			return 0, &contract.SettingsError{Report: report}
 		}
 	}
 	if command == "" {

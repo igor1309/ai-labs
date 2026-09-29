@@ -85,7 +85,8 @@ func compose(config cli.Config) (contract.Client, error) {
 		scopes = append(scopes, app.Scope{Name: "settings in " + filepath.Dir(local.Dir), Checker: checker})
 	}
 
-	return &app.Host{
+	// Nothing but init and check works on settings that do not pass check.
+	return &app.Gated{Inner: &app.Host{
 		Settings:   &app.Settings{Definitions: definitions, Writer: global, Examples: examples.Settings(), Scopes: scopes},
 		Checker:    checker,
 		Inspection: &app.Inspection{Definitions: definitions, Runtimes: runtimes, Validator: schema.Validator{}},
@@ -104,7 +105,7 @@ func compose(config cli.Config) (contract.Client, error) {
 			Hosted:      hosted,
 		},
 		Runs: &app.Runs{Reader: evidence, Hosted: hosted},
-	}, nil
+	}}, nil
 }
 
 // project is the settings layer of the repository containing the working

@@ -11,6 +11,16 @@ import (
 	"time"
 )
 
+// SettingsError refuses a use of the client while the settings have
+// problems; the report says which.
+type SettingsError struct {
+	Report CheckReport
+}
+
+func (e *SettingsError) Error() string {
+	return "settings have problems; fix them first (see `agister check`)"
+}
+
 type Client interface {
 	// Init installs the example settings. Without an approved plan it
 	// writes nothing and returns the plan; with one it writes, refusing if

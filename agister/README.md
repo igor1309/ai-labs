@@ -77,10 +77,13 @@ settings.
   runtimes/*.yaml  schemas/*.json     same layout, higher priority
 ```
 
-Every command except `init` and `--help` runs `check` first (without
-`--probe`) and stops with exit 64 on any problem, so nothing works on
-settings that do not compose; `init` is exempt because it writes them.
-Passing is silent. Every call also re-validates what it uses and refuses
+Nothing works on settings that do not compose. The client itself
+(`app.Gated`, so any client of the contract, not only the CLI) runs `check`
+(without `--probe`) before every use and refuses with the report on any
+problem: the CLI prints it and exits 64. `init` is exempt because it writes
+the settings, and `--help` needs none. Cancelling a run is never refused,
+and a run already started stays observable, so editing settings mid-run
+cannot strand it. Passing is silent. Every call also re-validates what it uses and refuses
 before the provider turn starts.
 
 `init` and `agent create --force` overwrite files, so each first lists what

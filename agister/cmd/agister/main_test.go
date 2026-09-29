@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -653,6 +654,40 @@ func TestCancelThroughTheContract(t *testing.T) {
 	}
 	if lines := strings.Split(gitCmd(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
 		t.Fatalf("worktree not released: %v", lines)
+	}
+}
+
+// Settings broken mid-run do not strand the run: it stays cancellable,
+// observable and inspectable, while other uses are refused.
+func TestRunSurvivesSettingsBrokenMidRun(t *testing.T) {
+	home, repo := setup(t, "hang")
+	client, err := compose(cli.Config{Home: home})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	id, err := client.Submit(ctx, contract.CallRequest{Process: "adversarial_review", Params: map[string]string{"base": "main"}, Cwd: repo})
+	if err != nil {
+		t.Fatal(err)
+	}
+	broken := false
+	err = client.Observe(ctx, id, 0, func(event contract.Event) error {
+		if event.Kind == "PROCESS_STARTED" && !broken {
+			broken = true
+			write(t, filepath.Join(home, "agents", "broken.toml"), "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\n")
+			return client.Cancel(ctx, id)
+		}
+		return nil
+	})
+	if err != nil || !broken {
+		t.Fatalf("observe: %v", err)
+	}
+	if inspected, err := client.Inspect(ctx, id); err != nil || inspected.Result.Status != "interrupted" {
+		t.Fatalf("inspect: %+v, %v", inspected, err)
+	}
+	var settings *contract.SettingsError
+	if _, err := client.ListRuns(ctx); !errors.As(err, &settings) {
+		t.Fatalf("list runs with broken settings: %v", err)
 	}
 }
 

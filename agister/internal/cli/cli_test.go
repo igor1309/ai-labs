@@ -25,6 +25,7 @@ type clientSpy struct {
 	agents          []contract.Agent
 	agentExists     bool
 	approved        []contract.AgentWrite
+	refuse          error // returned by Submit
 
 	events   []contract.Event
 	onCancel chan string
@@ -34,6 +35,9 @@ type clientSpy struct {
 }
 
 func (s *clientSpy) Submit(_ context.Context, request contract.CallRequest) (string, error) {
+	if s.refuse != nil {
+		return "", s.refuse
+	}
 	s.submitted = append(s.submitted, request)
 	return "run-1", nil
 }
@@ -268,23 +272,22 @@ func TestCheck(t *testing.T) {
 	}
 }
 
-// Every command but init and help checks all settings first, without
-// probing runtimes, and stops on any problem before it uses the client.
-func TestEveryCommandChecksSettingsFirst(t *testing.T) {
+// A client refusal over broken settings prints their report, then the
+// refusal, and exits 64; a bare agister checks before it shows the usage.
+func TestSettingsRefusalPrintsTheReport(t *testing.T) {
 	broken := contract.CheckReport{Checked: map[string]int{"agents": 1}, Problems: []string{"agent a: bad"}, Overrides: []string{"agent a: /p overrides /g"}}
-	for _, args := range [][]string{{}, {"run", "p"}, {"runs"}, {"runs", "show", "x"}, {"agent", "list"}, {"process", "show", "p"}} {
-		spy := &clientSpy{report: broken}
-		r := run(context.Background(), spy, args...)
-		if r.code != cli.ExitUsage || !reflect.DeepEqual(spy.checked, []bool{false}) || len(spy.submitted) != 0 ||
-			!strings.HasPrefix(r.stderr, "agent a: bad\n1 problem(s) in 1 agents\nagister: settings have problems") || r.stdout != "override agent a: /p overrides /g\n" {
-			t.Errorf("%v: %+v, checked %v", args, r, spy.checked)
-		}
+	spy := &clientSpy{refuse: &contract.SettingsError{Report: broken}}
+	r := run(context.Background(), spy, "run", "p")
+	if r.code != cli.ExitUsage || r.stderr != "agent a: bad\n1 problem(s) in 1 agents\nagister: settings have problems; fix them first (see `agister check`)\n" || r.stdout != "override agent a: /p overrides /g\n" {
+		t.Fatalf("refused run: %+v", r)
 	}
-	// Passing is silent, so a command's own output (such as --json) is all
-	// there is.
-	spy := &clientSpy{run: finished("completed", ""), report: contract.CheckReport{Overrides: []string{"agent a: /p overrides /g"}}}
-	if r := run(context.Background(), spy, "run", "p", "--quiet", "--json"); r.code != 0 || !strings.HasPrefix(r.stdout, "{") || !reflect.DeepEqual(spy.checked, []bool{false}) {
-		t.Fatalf("passing: %+v, checked %v", r, spy.checked)
+	spy = &clientSpy{report: broken}
+	if r := run(context.Background(), spy); r.code != cli.ExitUsage || !strings.HasPrefix(r.stderr, "agent a: bad\n") || strings.Contains(r.stdout, "Usage:") || !reflect.DeepEqual(spy.checked, []bool{false}) {
+		t.Fatalf("bare with broken settings: %+v", r)
+	}
+	spy = &clientSpy{}
+	if r := run(context.Background(), spy); r.code != cli.ExitUsage || !strings.Contains(r.stdout, "Usage:") {
+		t.Fatalf("bare: %+v", r)
 	}
 	for _, args := range [][]string{{"--help"}, {"-h"}, {"run", "p", "--help"}} {
 		spy := &clientSpy{report: broken}
