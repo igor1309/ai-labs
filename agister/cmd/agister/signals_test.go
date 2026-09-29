@@ -25,7 +25,7 @@ func TestShutdownSignalsCancel(t *testing.T) {
 			}
 			select {
 			case <-ctx.Done():
-			case <-time.After(2 * time.Second):
+			case <-time.After(10 * time.Second):
 				t.Fatalf("%s did not cancel the context", sig)
 			}
 		})

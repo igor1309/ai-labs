@@ -86,12 +86,8 @@ func (r *Runs) view(record run.Record, state run.State) contract.Run {
 	}
 	result := record.Result
 	if state == run.StateAbandoned {
-		result = &run.Result{
-			Status: run.Lost,
-			Error:  run.Fault(run.ClassAbandoned, "the process running it ended before it finished"),
-			Cost:   run.Cost{Source: run.CostUnknown},
-			Timing: run.Timing{StartedAt: record.CreatedAt},
-		}
+		lost := run.AbandonedResult(record.CreatedAt)
+		result = &lost
 	}
 	if result != nil {
 		// The contract mirrors the domain result field for field.

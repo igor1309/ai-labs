@@ -4,15 +4,9 @@
 schema: agister.process-policy/v1alpha1
 name: static-review
 
-constraints:
-  agent.model_family:
-    not_equal: >-
-      evidence.candidate(input.candidate_revision).provenance.writer.model_family
-    on_unsatisfied: fail
-    # Agister records no writers yet (deferred item 6), so every revision's
-    # writer is unknown. This policy accepts that; "fail" would refuse
-    # every review.
-    on_unknown: pass
+# No constraint on the candidate's writer: Agister records no writers yet
+# (deferred item 7), so such a constraint could only always pass or always
+# refuse.
 
 workspace:
   access: read-only
@@ -31,8 +25,6 @@ timeout: 20m
 max_cost_usd: 3
 retry:
   max_attempts: 1
-resources:
-  - reviews
 
 isolation:
   deny:
@@ -40,8 +32,3 @@ isolation:
     - repository.history.write
     - process.execute
     - network
-
-artifacts:
-  retain:
-    - review_result
-    - run_log

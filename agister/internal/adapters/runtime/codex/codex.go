@@ -204,6 +204,9 @@ func (s *Stream) itemCompleted(item map[string]any) []Event {
 // Reconcile decides the turn outcome from the stream and the transport.
 func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) run.Turn {
 	turn := supervisor.Base(evidence)
+	if failed, ok := supervisor.RecordFailure(turn, evidence); ok {
+		return failed
+	}
 	turn.ProviderSessionID = s.ThreadID
 	if !s.Completed && s.Failed == "" {
 		return supervisor.WithoutTerminal(turn, evidence, s.LastError)

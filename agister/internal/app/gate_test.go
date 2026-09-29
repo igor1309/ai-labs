@@ -3,10 +3,12 @@ package app_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
+	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
 
 // clientFake answers every method and records which were reached.
@@ -67,7 +69,11 @@ func (c *clientFake) ListRuns(context.Context) ([]contract.Run, error) {
 func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
 	ctx := context.Background()
 	inner := &clientFake{}
-	gated := &app.Gated{Inner: inner}
+	gated := &app.Gated{
+		Definitions: &definitionsSpy{docs: settingsDocs()},
+		Global:      &definitionsSpy{docs: settingsDocs()},
+		Build:       func(_, _ app.DefinitionSource) contract.Client { return inner },
+	}
 	id, err := gated.Submit(ctx, contract.CallRequest{})
 	if err != nil || id != "run-1" {
 		t.Fatalf("valid settings: %q, %v", id, err)
@@ -124,4 +130,200 @@ func join(list []string) string {
 		out += item
 	}
 	return out
+}
+
+// afterCheck runs f once, right after the check has answered.
+type afterCheck struct {
+	contract.Client
+	f func()
+}
+
+func (c *afterCheck) Check(ctx context.Context, probe bool) (contract.CheckReport, error) {
+	report, err := c.Client.Check(ctx, probe)
+	if f := c.f; f != nil {
+		c.f = nil
+		f()
+	}
+	return report, err
+}
+
+// An edit landing after the gate's check does not reach the operation: it
+// runs on the settings that were checked, and reads nothing from the live
+// source once they were read.
+func TestGatedOperationUsesTheCheckedSettings(t *testing.T) {
+	ctx := context.Background()
+	h := newHarness()
+	sources := []string{"git.revision", "git.diff", "param"}
+	readsAfterCheck := -1
+	edited := false
+	gated := &app.Gated{
+		Definitions: h.defs,
+		Global:      h.defs,
+		Build: func(src, _ app.DefinitionSource) contract.Client {
+			return &afterCheck{
+				Client: &app.Host{
+					Checker:    &app.Checker{Definitions: src, Validator: h.validator, Runtimes: h.runtimes, Sources: sources},
+					Inspection: &app.Inspection{Definitions: src, Runtimes: h.runtimes, Validator: h.validator},
+				},
+				f: func() {
+					readsAfterCheck = h.defs.readCount()
+					h.defs.set(definition.KindProcess, "p", "not a process")
+					h.defs.set(definition.KindAgent, "a", "not an agent")
+					edited = true
+				},
+			}
+		},
+	}
+	view, err := gated.ShowProcess(ctx, "p", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !edited || readsAfterCheck == 0 {
+		t.Fatalf("the settings were not read before the check (edited %v, reads %d)", edited, readsAfterCheck)
+	}
+	if view.Name != "p" || view.Agent != "a" {
+		t.Fatalf("view = %+v, want the checked process p with agent a", view)
+	}
+	if got := h.defs.readCount(); got != readsAfterCheck {
+		t.Fatalf("the operation read the live settings %d more times", got-readsAfterCheck)
+	}
+}
+
+// A submitted call is recorded with the digests of the settings that passed
+// the gate, though they were edited before the call resolved.
+func TestGatedSubmitRecordsTheCheckedSettings(t *testing.T) {
+	ctx := context.Background()
+	h := newHarness()
+	h.recorder.hold = make(chan struct{})
+	original := map[string]string{}
+	for kind, docs := range settingsDocs() {
+		for name, text := range docs {
+			original[string(kind)+"/"+name] = sha(text)
+		}
+	}
+	gated := &app.Gated{
+		Definitions: h.defs,
+		Global:      h.defs,
+		Build: func(src, _ app.DefinitionSource) contract.Client {
+			calls := *h.calls
+			calls.Definitions = src
+			return &app.Host{
+				Checker: &app.Checker{Definitions: src, Validator: h.validator, Runtimes: h.runtimes, Sources: []string{"git.revision", "git.diff", "param"}},
+				Calls:   &calls,
+			}
+		},
+	}
+	if _, err := gated.Submit(ctx, contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+		t.Fatal(err)
+	}
+	h.defs.set(definition.KindAgent, "a", strings.Replace(settingsDocs()[definition.KindAgent]["a"], "m1", "m2", 1))
+	close(h.recorder.hold)
+	record := h.recorder.wait(t)
+	if class(record) != "" {
+		t.Fatalf("call failed: %s", message(record))
+	}
+	for _, source := range record.Definitions {
+		if want := original[string(source.Kind)+"/"+source.Name]; source.SHA256 != want {
+			t.Errorf("%s/%s recorded %s, checked %s", source.Kind, source.Name, source.SHA256, want)
+		}
+	}
+	if len(record.Definitions) == 0 {
+		t.Fatal("no definitions recorded")
+	}
+}
+
+// An edit landing between the gate's check and Submit does not reach the
+// call: it is recorded with the digests that were checked.
+func TestGatedSubmitRecordsWhatTheCheckRead(t *testing.T) {
+	ctx := context.Background()
+	h := newHarness()
+	original := map[string]string{}
+	for kind, docs := range settingsDocs() {
+		for name, text := range docs {
+			original[string(kind)+"/"+name] = sha(text)
+		}
+	}
+	edited := false
+	gated := &app.Gated{
+		Definitions: h.defs,
+		Global:      h.defs,
+		Build: func(src, _ app.DefinitionSource) contract.Client {
+			calls := *h.calls
+			calls.Definitions = src
+			return &afterCheck{
+				Client: &app.Host{
+					Checker: &app.Checker{Definitions: src, Validator: h.validator, Runtimes: h.runtimes, Sources: []string{"git.revision", "git.diff", "param"}},
+					Calls:   &calls,
+				},
+				f: func() {
+					h.defs.set(definition.KindAgent, "a", strings.Replace(settingsDocs()[definition.KindAgent]["a"], "m1", "m2", 1))
+					edited = true
+				},
+			}
+		},
+	}
+	if _, err := gated.Submit(ctx, contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+		t.Fatal(err)
+	}
+	if !edited {
+		t.Fatal("the settings were not edited after the check")
+	}
+	record := h.recorder.wait(t)
+	if class(record) != "" {
+		t.Fatalf("call failed: %s", message(record))
+	}
+	seen := false
+	for _, source := range record.Definitions {
+		if source.Kind == definition.KindAgent && source.Name == "a" {
+			seen = true
+		}
+		if want := original[string(source.Kind)+"/"+source.Name]; source.SHA256 != want {
+			t.Errorf("%s/%s recorded %s, checked %s", source.Kind, source.Name, source.SHA256, want)
+		}
+	}
+	if !seen {
+		t.Fatal("agent a was not recorded")
+	}
+}
+
+// The scope a write must keep valid is judged on the global settings the
+// gate checked, not on what they became after: an edit landing after the
+// check does not turn the verdict.
+func TestGatedWriteScopeChecksTheGlobalSnapshot(t *testing.T) {
+	ctx := context.Background()
+	h := newHarness()
+	global := &definitionsSpy{docs: settingsDocs()}
+	gated := &app.Gated{
+		Definitions: h.defs,
+		Global:      global,
+		Build: func(src, globalOnly app.DefinitionSource) contract.Client {
+			checker := func(defs app.DefinitionSource) *app.Checker {
+				return &app.Checker{Definitions: defs, Validator: h.validator, Runtimes: h.runtimes, Sources: []string{"git.revision", "git.diff", "param"}}
+			}
+			return &afterCheck{
+				Client: &app.Host{
+					Checker: checker(src),
+					Settings: &app.Settings{
+						Definitions: src,
+						Writer:      &writerSpy{existed: map[string]bool{"agents/a": true}},
+						Scopes:      []app.Scope{{Name: "global settings", Check: checker(globalOnly)}},
+					},
+				},
+				f: func() {
+					// Live, the policy no longer constrains the model family.
+					policy := strings.Split(settingsDocs()[definition.KindPolicy]["pol"], "constraints:")[0]
+					global.set(definition.KindPolicy, "pol", policy)
+				},
+			}
+		},
+	}
+	// Policy pol constrains the model family; this agent declares none.
+	_, err := gated.CreateAgent(ctx, contract.Agent{Name: "a", Runtime: "rt"}, true, nil)
+	var input *contract.InputError
+	if !errors.As(err, &input) || !strings.Contains(err.Error(), "would break the global settings") {
+		t.Fatalf("err = %v, want the write refused on the checked settings", err)
+	}
+	if got := global.readCount(); got == 0 {
+		t.Fatal("the global settings were never read")
+	}
 }

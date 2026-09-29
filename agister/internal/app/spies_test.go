@@ -40,7 +40,23 @@ func (s *definitionsSpy) Read(_ context.Context, kind definition.Kind, name stri
 	}, nil
 }
 
+// set replaces one document of the live settings.
+func (s *definitionsSpy) set(kind definition.Kind, name, text string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.docs[kind][name] = text
+}
+
+func (s *definitionsSpy) readCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.reads)
+}
+
 func (s *definitionsSpy) List(_ context.Context, kind definition.Kind) ([]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.reads = append(s.reads, "list "+string(kind))
 	var names []string
 	for name := range s.docs[kind] {
 		names = append(names, name)
@@ -57,6 +73,7 @@ type runnerSpy struct {
 	block       bool // wait for cancellation
 	requests    []app.TurnRequest
 	started     chan struct{}
+	startErr    error // what ProcessStarted returned to the last turn
 }
 
 func (s *runnerSpy) Identity(context.Context) (app.RuntimeIdentity, error) {
@@ -67,6 +84,14 @@ func (s *runnerSpy) RunTurn(ctx context.Context, request app.TurnRequest, sink a
 	s.mu.Lock()
 	s.requests = append(s.requests, request)
 	s.mu.Unlock()
+	startErr := sink.ProcessStarted("ref-4242")
+	s.mu.Lock()
+	s.startErr = startErr
+	s.mu.Unlock()
+	if startErr != nil {
+		// What a runtime adapter does: the process is ended, the turn fails.
+		return run.Turn{Status: run.Failed, Error: run.Fault(run.ClassInternal, "%v", startErr)}
+	}
 	sink.Event(run.SourceProcess, "PROCESS_STARTED", nil)
 	sink.Raw(`{"raw":true}`)
 	if s.started != nil {
@@ -117,15 +142,30 @@ func (s *inputsSpy) Resolve(_ context.Context, spec app.InputSpec) (app.Resolved
 }
 
 type workspacesSpy struct {
-	mu        sync.Mutex
-	root      string
-	dir       string
-	checkouts [][2]string
-	released  int
-	changed   [][2]string // dir, revision
-	changes   []byte
-	changeErr error
-	panics    bool // Changes panics
+	mu          sync.Mutex
+	root        string
+	dir         string
+	checkouts   [][2]string
+	released    int
+	changed     [][2]string // dir, revision
+	changes     []byte
+	changeErr   error
+	panics      bool        // Changes panics
+	discarded   [][2]string // repository, dir
+	discardErr  error
+	discardHook func(ctx context.Context, dir string) error // runs first; a non-nil result is returned
+}
+
+func (s *workspacesSpy) Discard(ctx context.Context, repository, dir string) error {
+	if s.discardHook != nil {
+		if err := s.discardHook(ctx, dir); err != nil {
+			return err
+		}
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.discarded = append(s.discarded, [2]string{repository, dir})
+	return s.discardErr
 }
 
 func (s *workspacesSpy) Root(context.Context, string) (string, error) { return s.root, nil }
@@ -193,13 +233,23 @@ type recorderSpy struct {
 	artifacts map[string][]byte
 	finished  chan run.Record
 
-	onFinish         func() int // observed state at finish time
+	// updateErr, when set, is asked about each Update; a non-nil result
+	// fails it and the record is not kept.
+	updateErr        func(record run.Record) error
+	appendErr        error         // when set, Append fails with it
+	finishErr        error         // when set, Finish fails with it
+	onCreate         func()        // runs first in Create
+	hold             chan struct{} // when set, the first Append waits for it to close
+	onFinish         func() int    // observed state at finish time
 	releasedAtFinish int
 }
 
 func newRecorderSpy() *recorderSpy { return &recorderSpy{finished: make(chan run.Record, 1)} }
 
 func (s *recorderSpy) Create(_ context.Context, record run.Record) (app.RunHandle, error) {
+	if s.onCreate != nil {
+		s.onCreate()
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.created = append(s.created, record)
@@ -207,8 +257,14 @@ func (s *recorderSpy) Create(_ context.Context, record run.Record) (app.RunHandl
 }
 
 func (s *recorderSpy) Append(event run.Event) error {
+	if s.hold != nil {
+		<-s.hold
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.appendErr != nil {
+		return s.appendErr
+	}
 	s.events = append(s.events, event)
 	return nil
 }
@@ -223,6 +279,11 @@ func (s *recorderSpy) Raw(line string) error {
 func (s *recorderSpy) Update(record run.Record) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.updateErr != nil {
+		if err := s.updateErr(record); err != nil {
+			return err
+		}
+	}
 	s.updates = append(s.updates, record)
 	return nil
 }
@@ -238,6 +299,9 @@ func (s *recorderSpy) Artifact(name string, data []byte) (run.Artifact, error) {
 }
 
 func (s *recorderSpy) Finish(record run.Record) error {
+	if s.finishErr != nil {
+		return s.finishErr
+	}
 	if s.onFinish != nil {
 		s.releasedAtFinish = s.onFinish()
 	}
@@ -306,3 +370,84 @@ type fixedIDs struct{}
 
 func (fixedIDs) RunID(time.Time) string { return "run-1" }
 func (fixedIDs) SessionID() string      { return "session-1" }
+
+type processesSpy struct {
+	mu     sync.Mutex
+	reaped []string // references
+	err    error
+	// hook, when set, sees the context each Reap receives.
+	hook func(context.Context)
+}
+
+func (s *processesSpy) Reap(ctx context.Context, ref string) (app.Reaping, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.hook != nil {
+		s.hook(ctx)
+	}
+	s.reaped = append(s.reaped, ref)
+	return app.ReapKilled, s.err
+}
+
+// adopterSpy offers abandoned runs; each adoption hands out its own handle.
+type adopterSpy struct {
+	mu        sync.Mutex
+	runs      []run.Record
+	adoptErr  map[string]error
+	handles   map[string]*recorderSpy
+	adopted   []string
+	live      []string
+	liveReads int
+	onLive    func() // runs during LiveCheckouts
+	// listErr fails Abandoned; failing hands out, by run, handles set up
+	// to fail.
+	listErr error
+	failing map[string]func(*recorderSpy)
+}
+
+func (s *adopterSpy) LiveCheckouts(context.Context) ([]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.liveReads++
+	if s.onLive != nil {
+		s.onLive()
+	}
+	return s.live, nil
+}
+
+func (s *adopterSpy) Abandoned(context.Context) ([]run.Record, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.listErr != nil {
+		return nil, s.listErr
+	}
+	return append([]run.Record(nil), s.runs...), nil
+}
+
+func (s *adopterSpy) Adopt(_ context.Context, id string) (app.RunHandle, run.Record, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.adopted = append(s.adopted, id)
+	if err := s.adoptErr[id]; err != nil {
+		return nil, run.Record{}, err
+	}
+	if s.handles == nil {
+		s.handles = map[string]*recorderSpy{}
+	}
+	handle := newRecorderSpy()
+	if fail := s.failing[id]; fail != nil {
+		fail(handle)
+	}
+	s.handles[id] = handle
+	for _, record := range s.runs {
+		if record.ID == id {
+			return handle, record, nil
+		}
+	}
+	return nil, run.Record{}, fmt.Errorf("no run %s", id)
+}
+
+func sha(text string) string {
+	sum := sha256.Sum256([]byte(text))
+	return hex.EncodeToString(sum[:])
+}

@@ -21,7 +21,7 @@ func request(prompt string) app.TurnRequest {
 		Primitives:   []string{"read-only"},
 		Model:        "gpt-5.5",
 		Effort:       "high",
-		Timeout:      10 * time.Second,
+		Timeout:      time.Minute,
 		OutputSchema: json.RawMessage(`{"type":"object"}`),
 	}
 }
@@ -132,5 +132,16 @@ func TestFailuresAreClassified(t *testing.T) {
 		if turn := stream.Reconcile(clean, false); turn.Status != run.Failed || turn.Error.Class != class {
 			t.Errorf("%q: %+v", message, turn.Error)
 		}
+	}
+}
+
+// A process that could not be recorded fails the turn, whatever the stream
+// says: it was killed, and nothing it reported can be trusted to be whole.
+func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
+	stream := &codex.Stream{}
+	stream.Reduce(`{"type":"turn.completed"}`)
+	turn := stream.Reconcile(supervisor.Evidence{RecordError: "disk full"}, false)
+	if turn.Status != run.Failed || turn.Error == nil || turn.Error.Class != run.ClassInternal || !strings.Contains(turn.Error.Message, "disk full") {
+		t.Fatalf("turn = %+v", turn)
 	}
 }

@@ -146,16 +146,25 @@ func (r resolver) resolve(ctx context.Context, processName, agentOverride string
 	if res.identity.Contract != res.mapping.Contract {
 		return res, refuse("runtime mapping %s describes adapter contract %s, but the adapter implements %s", res.mapping.Name, res.mapping.Contract, res.identity.Contract)
 	}
-	if !res.mapping.Verified(res.identity.Version) {
-		return res, refuse("runtime mapping %s is not verified for %s version %s (verified: %s)", res.mapping.Name, res.mapping.Adapter, res.identity.Version, strings.Join(res.mapping.VerifiedVersions, ", "))
+	verified, unverified := res.mapping.ForVersion(res.identity.Version)
+	if len(verified.Primitives) == 0 {
+		return res, refuse("runtime mapping %s verifies no primitive for %s version %s", res.mapping.Name, res.mapping.Adapter, res.identity.Version)
 	}
 	if res.effective.MaxCostUSD != nil && !res.identity.CostLimit {
 		return res, refuse("runtime %s cannot enforce the cost limit %g", res.mapping.Name, *res.effective.MaxCostUSD)
 	}
-	if res.plan, err = enforce.Make(res.effective.Permissions, res.mapping, res.effective.Require, res.service.StateReaching); err != nil {
-		return res, refuse("runtime %s: %v", res.mapping.Name, err)
+	if res.plan, err = enforce.Make(res.effective.Permissions, verified, res.effective.Require, res.service.StateReaching); err != nil {
+		return res, refuse("runtime %s: %v%s", res.mapping.Name, err, unverifiedNote(unverified, "for version "+res.identity.Version))
 	}
 	return res, nil
+}
+
+// unverifiedNote names the primitives a refused plan could not use.
+func unverifiedNote(unverified []string, scope string) string {
+	if len(unverified) == 0 {
+		return ""
+	}
+	return fmt.Sprintf(" (not verified %s: %s)", scope, strings.Join(unverified, ", "))
 }
 
 func contains(list []string, value string) bool {

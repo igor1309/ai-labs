@@ -92,6 +92,13 @@ inputs, prepares the workspace, calls the runtime, validates the output and
 records the run. It knows no kind of work, no particular agent and no
 meaning of any output.
 
+It is a runner, not a guard. It does not judge whether settings are right,
+safe, trusted or suited to the task; they are the user's, and a project's
+settings override global ones unconditionally. Its checks are about
+whether settings compose and can be enforced as written, never about
+whether they should be. Reviewing settings before running them is the
+user's, and tooling for it belongs outside the core.
+
 ### 2. Definitions are settings
 
 Agents, processes, policies, output contracts, permission mappings, the
@@ -179,8 +186,11 @@ agent receives and what is recorded.
 
 ### 9. Agents cannot reach Agister's state
 
-Settings, evidence and provenance are outside every agent's workspace and
-permissions. They are reachable only through Agister's ports.
+Agister's state directory (global settings, evidence and provenance) is
+outside every agent's workspace and permissions, and reachable only through
+Agister's ports. A project's settings are files in the user's repository,
+like any other: an agent given write access to the repository can change
+them (rule 1).
 
 ### 10. Evidence is authoritative; diagnostics are cross-cutting
 
@@ -303,8 +313,11 @@ mechanisms; the service, its transport and lifecycle.
 10. Agents cannot reach settings, evidence or provenance.
 11. Missing provenance is unknown, never satisfaction.
 12. Every effect is owned and bounded, and ordinary exits clean it up; an
-    unfinished run is lost. Reaping effects after the CLI is killed with
-    SIGKILL is a known CLI-stage gap tracked in [deferred work](../deferred.md).
+    unfinished run is lost. After the CLI is killed with SIGKILL, a reap that
+    the next submitted call starts beside it (never inside it) attempts to
+    undo the effects the run recorded; an
+    attempt can fail, is bounded in time and is recorded on the run; what
+    that leaves is tracked in [deferred work](../deferred.md).
     Only a deliberate continuation reads another run, and never changes it.
 13. Diagnostics never change behavior and are not evidence.
 14. Concrete implementations are connected only at the composition root.

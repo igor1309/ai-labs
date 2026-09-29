@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -82,6 +83,10 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 			Cwd:        request.Cwd,
 		},
 	}
+	// The settings this call resolves from are read now, before the run is
+	// recorded; the call's goroutine, which may open much later, uses this
+	// snapshot and never reads the live source.
+	definitions := Snapshot(ctx, c.Definitions)
 	handle, err := c.Recorder.Create(ctx, record)
 	if err != nil {
 		return "", err
@@ -91,14 +96,14 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 	go func() {
 		defer c.Hosted.remove(record.ID)
 		defer cancel()
-		c.execute(runCtx, handle, record)
+		c.execute(runCtx, handle, record, definitions)
 	}()
 	return record.ID, nil
 }
 
 // execute runs one call. Every refusal happens before the runtime starts
 // and is recorded; every effect is released on every path.
-func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record) {
+func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record, definitions DefinitionSource) {
 	event := func(source, kind string, data map[string]any) {
 		_ = handle.Append(run.Event{At: c.Clock.Now(), Source: source, Kind: kind, Data: data})
 	}
@@ -160,7 +165,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	}
 
 	caller := overrides{timeout: record.Request.Timeout, maxCostUSD: record.Request.MaxCostUSD}
-	res, err := resolver{definitions: c.Definitions, runtimes: c.Runtimes, validator: c.Validator}.resolve(ctx, record.Request.Process, record.Request.Agent, caller)
+	res, err := resolver{definitions: definitions, runtimes: c.Runtimes, validator: c.Validator}.resolve(ctx, record.Request.Process, record.Request.Agent, caller)
 	record.Definitions = res.sources
 	if err != nil {
 		fail(err)
@@ -216,22 +221,32 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		}
 	}
 
-	workspace, releaseWorkspace, owned, err := c.prepareWorkspace(ctx, res.process, inputs, record.Request.Cwd)
+	workspace, err := c.prepareWorkspace(ctx, res.process, inputs, record.Request.Cwd)
 	if err != nil {
 		fail(err)
 		return
 	}
-	release = releaseWorkspace
-	record.Workspace = workspace
-	if owned {
+	release = workspace.Release
+	record.Workspace = workspace.Dir
+	if workspace.Owned {
+		// Recorded before the runtime starts: if this process is killed,
+		// a later reap removes the checkout. A checkout that cannot be
+		// recorded is one nobody could find, so it is released and the
+		// call refused.
+		record.Effects = &run.Effects{Checkout: &run.Checkout{Repository: workspace.Repository, Dir: workspace.Dir}}
+		if err := handle.Update(record); err != nil {
+			record.Effects = nil
+			fail(fmt.Errorf("recording the checkout failed: %w", err))
+			return
+		}
 		revision, _ := revisionOf(inputs, res.process.Checkout)
-		collect = func() { result.Artifacts = c.collectChanges(ctx, handle, workspace, revision, event) }
+		collect = func() { result.Artifacts = c.collectChanges(ctx, handle, workspace.Dir, revision, event) }
 	}
 
 	request := TurnRequest{
 		Prompt:          prompt.Inputs(inputs),
 		Instruction:     prompt.Instruction(res.process.Instruction, res.plan.Granted, res.plan.Withheld),
-		Cwd:             workspace,
+		Cwd:             workspace.Dir,
 		ResumeSessionID: resumeSessionID,
 		MaxCostUSD:      res.effective.MaxCostUSD,
 		Model:           res.agent.Model,
@@ -247,7 +262,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	_ = handle.Update(record)
 
 	turnStart := c.Clock.Now()
-	turn := res.runner.RunTurn(ctx, request, sink{handle: handle, clock: c.Clock})
+	turn := res.runner.RunTurn(ctx, request, &sink{handle: handle, clock: c.Clock, record: &record})
 	turnMS := c.Clock.Now().Sub(turnStart).Milliseconds()
 	record.Turn = &turn
 
@@ -324,7 +339,8 @@ func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revis
 }
 
 // resolveInputs binds caller params and resolves every input value to an
-// immutable value through its source.
+// immutable value through its source, in order: a value's arguments may
+// use the text of the values resolved before it, such as a commit hash.
 func (c *Calls) resolveInputs(ctx context.Context, process definition.Process, request run.Request) ([]run.Input, error) {
 	params := map[string]string{}
 	var unknown []string
@@ -354,34 +370,52 @@ func (c *Calls) resolveInputs(ctx context.Context, process definition.Process, r
 	}
 
 	inputs := make([]run.Input, 0, len(process.Values))
+	texts := map[string]string{}
 	for _, value := range process.Values {
 		provider, ok := c.Inputs[value.Source]
 		if !ok {
 			return nil, refuse("input %s: unknown source %q", value.Name, value.Source)
 		}
-		resolved, err := provider.Resolve(ctx, InputSpec{Source: value.Source, Args: value.Bind(params), Params: params, Cwd: request.Cwd})
+		args, err := value.Bind(params, texts)
 		if err != nil {
 			return nil, refuse("input %s: %v", value.Name, err)
+		}
+		resolved, err := provider.Resolve(ctx, InputSpec{Source: value.Source, Args: args, Params: params, Cwd: request.Cwd})
+		if err != nil {
+			return nil, refuse("input %s: %v", value.Name, err)
+		}
+		if text, ok := resolved.Value.(string); ok {
+			texts[value.Name] = text
 		}
 		inputs = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: resolved.Identity, Revision: resolved.Revision, Value: resolved.Value})
 	}
 	return inputs, nil
 }
 
+// preparedWorkspace is where a call's agent works.
+type preparedWorkspace struct {
+	Dir string
+	// Repository is the one Dir belongs to, or is.
+	Repository string
+	// Release ends what preparing created; a no-op when it created nothing.
+	Release func() error
+	// Owned is true for a checkout the call created in Repository.
+	Owned bool
+}
+
 // prepareWorkspace returns the agent's working directory: a checkout of the
 // declared revision, or the repository. It must not overlap Agister's state.
-// owned is true for a checkout the call created.
-func (c *Calls) prepareWorkspace(ctx context.Context, process definition.Process, inputs []run.Input, cwd string) (dir string, release func() error, owned bool, err error) {
+func (c *Calls) prepareWorkspace(ctx context.Context, process definition.Process, inputs []run.Input, cwd string) (preparedWorkspace, error) {
 	noop := func() error { return nil }
 	root, err := c.Workspaces.Root(ctx, cwd)
 	if err != nil {
 		root = cwd
 	}
 	if overlaps(root, c.StateDir) {
-		return "", noop, false, refuse("workspace %s overlaps Agister's state %s", root, c.StateDir)
+		return preparedWorkspace{}, refuse("workspace %s overlaps Agister's state %s", root, c.StateDir)
 	}
 	if process.Checkout == "" {
-		return root, noop, false, nil
+		return preparedWorkspace{Dir: root, Repository: root, Release: noop}, nil
 	}
 	var revision string
 	for _, input := range inputs {
@@ -390,29 +424,50 @@ func (c *Calls) prepareWorkspace(ctx context.Context, process definition.Process
 		}
 	}
 	if revision == "" {
-		return "", noop, false, refuse("workspace.checkout: input %s is not a revision", process.Checkout)
+		return preparedWorkspace{}, refuse("workspace.checkout: input %s is not a revision", process.Checkout)
 	}
-	dir, release, err = c.Workspaces.Checkout(ctx, root, revision)
+	dir, release, err := c.Workspaces.Checkout(ctx, root, revision)
 	if err != nil {
-		return "", noop, false, err
+		return preparedWorkspace{}, err
 	}
 	if overlaps(dir, c.StateDir) {
 		_ = release()
-		return "", noop, false, refuse("workspace %s overlaps Agister's state %s", dir, c.StateDir)
+		return preparedWorkspace{}, refuse("workspace %s overlaps Agister's state %s", dir, c.StateDir)
 	}
-	return dir, release, true, nil
+	return preparedWorkspace{Dir: dir, Repository: root, Release: release, Owned: true}, nil
 }
 
+// sink records a turn's events, and its process as an effect on record,
+// which the turn's caller leaves alone while the turn runs.
 type sink struct {
 	handle RunHandle
 	clock  Clock
+	record *run.Record
 }
 
-func (s sink) Event(source, kind string, data map[string]any) {
+// ProcessStarted records the process on the run. A process that cannot be
+// recorded is not claimed by the record, and the error goes back to the
+// runtime, which ends it.
+func (s *sink) ProcessStarted(ref string) error {
+	previous := s.record.Effects
+	effects := run.Effects{}
+	if previous != nil {
+		effects = *previous
+	}
+	effects.Process = &run.Process{Ref: ref}
+	s.record.Effects = &effects
+	if err := s.handle.Update(*s.record); err != nil {
+		s.record.Effects = previous
+		return fmt.Errorf("recording the process failed: %w", err)
+	}
+	return nil
+}
+
+func (s *sink) Event(source, kind string, data map[string]any) {
 	_ = s.handle.Append(run.Event{At: s.clock.Now(), Source: source, Kind: kind, Data: data})
 }
 
-func (s sink) Raw(line string) { _ = s.handle.Raw(line) }
+func (s *sink) Raw(line string) { _ = s.handle.Raw(line) }
 
 func summarize(inputs []run.Input) []run.Input {
 	out := make([]run.Input, len(inputs))

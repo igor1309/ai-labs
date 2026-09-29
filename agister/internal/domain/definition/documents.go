@@ -1,7 +1,9 @@
 package definition
 
 import (
+	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -32,8 +34,11 @@ type Param struct {
 // Value is one input the agent receives, and where it comes from.
 type Value struct {
 	Name   string
-	Source string            // input source kind, e.g. "git.diff", "file", "param"
-	Args   map[string]string // source arguments; may reference ${param.<name>}
+	Source string // input source kind, e.g. "git.diff", "file", "param"
+	// Args are the source arguments. They may reference ${param.<name>} and
+	// ${value.<name>}, the resolved text of an input value declared before
+	// this one.
+	Args map[string]string
 }
 
 // Output is a process's output contract.
@@ -59,20 +64,20 @@ type Process struct {
 
 // Primitive is one restriction primitive a runtime offers.
 type Primitive struct {
-	Name   string   `json:"name"`
-	Grants []string `json:"grants"`
+	Name     string   `json:"name"`
+	Grants   []string `json:"grants"`
+	Verified []string `json:"verified,omitempty"` // version prefixes its grants were checked against
 }
 
 // Mapping declares, for one runtime adapter, what each primitive grants.
 type Mapping struct {
-	Name             string
-	Adapter          string
-	Contract         string
-	VerifiedVersions []string // version prefixes the mapping was verified against
-	Efforts          []string
-	Select           string // "any" subset, or exactly "one"
-	Primitives       []Primitive
-	Source           Source
+	Name       string
+	Adapter    string
+	Contract   string
+	Efforts    []string
+	Select     string // "any" subset, or exactly "one"
+	Primitives []Primitive
+	Source     Source
 }
 
 func header(values map[string]*yaml.Node, schema, expected string, p *problems) {
@@ -150,9 +155,15 @@ func ParseProcess(doc Document) (Process, error) {
 		if value.Source == "" {
 			p.add(field+".source", "is required")
 		}
-		for _, reference := range value.references() {
+		for _, reference := range value.references("param") {
 			if !hasParam(process.Params, reference) {
 				p.add(field, "refers to ${param.%s}, which is not declared in input.params", reference)
+			}
+		}
+		// Values resolve in order, so a value refers only to earlier ones.
+		for _, reference := range value.references("value") {
+			if !hasValue(process.Values, reference) {
+				p.add(field, "refers to ${value.%s}, which is not an input value declared before it", reference)
 			}
 		}
 		process.Values = append(process.Values, value)
@@ -201,14 +212,18 @@ func ParseMapping(doc Document) (Mapping, error) {
 		return Mapping{Name: doc.Source.Name, Source: doc.Source}, p.err("runtime mapping " + subjectName(doc.Source))
 	}
 	values := fields(root, "", []string{"schema", "name", "status", "adapter", "contract", "verified_versions", "efforts", "primitives"}, p)
+	// One version list for the whole mapping vouched for primitives nobody
+	// had checked; verification is now recorded per primitive.
+	if _, ok := values["verified_versions"]; ok {
+		p.add("verified_versions", "no longer supported: list the versions each primitive was verified against in primitives.items.<name>.verified")
+	}
 	header(values, RuntimeSchema, doc.Source.Name, p)
 	m := Mapping{
-		Name:             doc.Source.Name,
-		Adapter:          required(values, "adapter", "", p),
-		Contract:         required(values, "contract", "", p),
-		VerifiedVersions: stringList(values["verified_versions"], "verified_versions", p),
-		Efforts:          stringList(values["efforts"], "efforts", p),
-		Source:           doc.Source,
+		Name:     doc.Source.Name,
+		Adapter:  required(values, "adapter", "", p),
+		Contract: required(values, "contract", "", p),
+		Efforts:  stringList(values["efforts"], "efforts", p),
+		Source:   doc.Source,
 	}
 	primitives := fields(values["primitives"], "primitives", []string{"select", "items"}, p)
 	m.Select = required(primitives, "select", "primitives", p)
@@ -217,13 +232,13 @@ func ParseMapping(doc Document) (Mapping, error) {
 	}
 	for _, entry := range mapping(primitives["items"], "primitives.items", p) {
 		field := "primitives.items." + entry.key
-		item := fields(entry.value, field, []string{"grants"}, p)
+		item := fields(entry.value, field, []string{"grants", "verified"}, p)
 		grants := stringList(item["grants"], field+".grants", p)
 		// A primitive granting nothing would fit every plan.
 		if len(grants) == 0 {
 			p.add(field+".grants", "must grant at least one permission")
 		}
-		m.Primitives = append(m.Primitives, Primitive{Name: entry.key, Grants: grants})
+		m.Primitives = append(m.Primitives, Primitive{Name: entry.key, Grants: grants, Verified: stringList(item["verified"], field+".verified", p)})
 	}
 	if len(m.Primitives) == 0 {
 		p.add("primitives.items", "must declare at least one primitive")
@@ -244,11 +259,11 @@ func (m Mapping) UnknownPermissions(vocabulary []string) []string {
 	return unknown
 }
 
-// Verified reports whether version matches one of the verified prefixes.
-// A prefix matches whole components: "2.1" and "2.1." match 2.1.3, not
-// 2.10.0.
-func (m Mapping) Verified(version string) bool {
-	for _, prefix := range m.VerifiedVersions {
+// VerifiedFor reports whether version matches one of the primitive's
+// verified prefixes. A prefix matches whole components: "2.1" and "2.1."
+// match 2.1.3, not 2.10.0.
+func (p Primitive) VerifiedFor(version string) bool {
+	for _, prefix := range p.Verified {
 		prefix = strings.TrimSuffix(prefix, ".")
 		if prefix != "" && (version == prefix || strings.HasPrefix(version, prefix+".")) {
 			return true
@@ -257,27 +272,97 @@ func (m Mapping) Verified(version string) bool {
 	return false
 }
 
-var paramReference = regexp.MustCompile(`\$\{param\.([a-z_][a-z0-9_]*)\}`)
+// ForVersion keeps only the primitives verified for version, so a plan
+// made from it never grants an unchecked primitive, and names the rest.
+func (m Mapping) ForVersion(version string) (Mapping, []string) {
+	return m.keep(func(p Primitive) bool { return p.VerifiedFor(version) })
+}
 
-func (v Value) references() []string {
+// Verified reports whether any primitive is verified for version.
+func (m Mapping) Verified(version string) bool {
+	verified, _ := m.ForVersion(version)
+	return len(verified.Primitives) > 0
+}
+
+// ForAnyVersion keeps the primitives verified for some version: what a
+// plan can use before the runtime's version is known.
+func (m Mapping) ForAnyVersion() (Mapping, []string) {
+	return m.keep(func(p Primitive) bool { return len(p.Verified) > 0 })
+}
+
+// Versions lists the distinct version prefixes some primitive is verified
+// for, sorted and without a trailing dot: each is a version a plan can be
+// made for.
+func (m Mapping) Versions() []string {
+	seen := map[string]bool{}
+	var versions []string
+	for _, primitive := range m.Primitives {
+		for _, prefix := range primitive.Verified {
+			if prefix = strings.TrimSuffix(prefix, "."); prefix != "" && !seen[prefix] {
+				seen[prefix] = true
+				versions = append(versions, prefix)
+			}
+		}
+	}
+	sort.Strings(versions)
+	return versions
+}
+
+func (m Mapping) keep(verified func(Primitive) bool) (Mapping, []string) {
+	kept := m
+	kept.Primitives = nil
+	var unverified []string
+	for _, primitive := range m.Primitives {
+		if verified(primitive) {
+			kept.Primitives = append(kept.Primitives, primitive)
+		} else {
+			unverified = append(unverified, primitive.Name)
+		}
+	}
+	return kept, unverified
+}
+
+var reference = regexp.MustCompile(`\$\{(param|value)\.([a-z_][a-z0-9_]*)\}`)
+
+// references returns the names the value's arguments refer to as
+// ${<kind>.<name>}.
+func (v Value) references(kind string) []string {
 	var names []string
 	for _, arg := range v.Args {
-		for _, match := range paramReference.FindAllStringSubmatch(arg, -1) {
-			names = append(names, match[1])
+		for _, match := range reference.FindAllStringSubmatch(arg, -1) {
+			if match[1] == kind {
+				names = append(names, match[2])
+			}
 		}
 	}
 	return names
 }
 
-// Bind substitutes ${param.<name>} references in the value's arguments.
-func (v Value) Bind(params map[string]string) map[string]string {
+// Bind substitutes the references in the value's arguments, in one pass:
+// ${param.<name>} from params, ${value.<name>} from values, the text of the
+// input values resolved before this one. A value reference values lacks is
+// an error: that input has no text value.
+func (v Value) Bind(params, values map[string]string) (map[string]string, error) {
 	bound := make(map[string]string, len(v.Args))
+	var missing []string
 	for key, arg := range v.Args {
-		bound[key] = paramReference.ReplaceAllStringFunc(arg, func(reference string) string {
-			return params[paramReference.FindStringSubmatch(reference)[1]]
+		bound[key] = reference.ReplaceAllStringFunc(arg, func(text string) string {
+			match := reference.FindStringSubmatch(text)
+			if match[1] == "param" {
+				return params[match[2]]
+			}
+			value, ok := values[match[2]]
+			if !ok {
+				missing = append(missing, match[2])
+			}
+			return value
 		})
 	}
-	return bound
+	if len(missing) > 0 {
+		sort.Strings(missing)
+		return nil, fmt.Errorf("refers to ${value.%s}, which has no text value", missing[0])
+	}
+	return bound, nil
 }
 
 func hasParam(params []Param, name string) bool {

@@ -40,6 +40,9 @@ type Evidence struct {
 	TimedOut   bool
 	Aborted    bool
 	StderrTail string
+	// RecordError is why the process could not be recorded; it was killed
+	// at once and the turn must fail (see RecordFailure).
+	RecordError string
 }
 
 // Run starts the process, feeds stdin, passes each stdout line to onLine and
@@ -81,7 +84,24 @@ func Run(ctx context.Context, spec Spec, events app.EventSink, onLine func(strin
 		return evidence
 	}
 	pid := command.Process.Pid
+	// Recorded before anything else: from here on the group can outlive us.
+	// Looking up the token takes a moment, so the group is reported first;
+	// a kill in between leaves a record that reaping refuses to act on
+	// blindly, but that still names the group. A group that cannot be
+	// recorded is killed at once: it is not yet waited for, so its ID is
+	// still ours, and nothing may run that no record could lead back to.
+	recorded := sink.ProcessStarted(Ref(pid, ""))
+	if recorded == nil {
+		if token, err := Token(ctx, pid); err == nil {
+			recorded = sink.ProcessStarted(Ref(pid, token))
+		}
+	}
 	sink.Event(run.SourceProcess, "PROCESS_STARTED", map[string]any{"pid": pid, "command": spec.Command, "args": spec.Args})
+	if recorded != nil {
+		evidence.RecordError = recorded.Error()
+		_ = syscall.Kill(-pid, syscall.SIGKILL)
+		sink.Event(run.SourceAgister, "PROCESS_RECORD_FAILED", map[string]any{"group": pid, "error": recorded.Error(), "killed": true})
+	}
 
 	// Signals go to the group only while it is known to exist: once the
 	// process has been waited for, its group ID may be reused.
@@ -194,6 +214,18 @@ func Base(evidence Evidence) run.Turn {
 	return run.Turn{Status: run.Lost, Exit: evidence.Exit, StderrTail: evidence.StderrTail}
 }
 
+// RecordFailure decides a turn whose process could not be recorded and was
+// killed for it, whatever the runtime said before that; false when the
+// process was recorded.
+func RecordFailure(turn run.Turn, evidence Evidence) (run.Turn, bool) {
+	if evidence.RecordError == "" {
+		return turn, false
+	}
+	fault := run.Fault(run.ClassInternal, "recording the runtime process failed, so it was killed: %s", evidence.RecordError)
+	turn.Status, turn.Error = run.StatusOf(fault.Class), fault
+	return turn, true
+}
+
 // WithoutTerminal decides a turn for which the runtime reported no terminal
 // event: Agister's own timeout or cancellation first, then spawn failure,
 // then the exit. A clean exit without a terminal event is lost.
@@ -248,6 +280,12 @@ func (s *serialSink) Event(source, kind string, data map[string]any) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.inner.Event(source, kind, data)
+}
+
+func (s *serialSink) ProcessStarted(ref string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.inner.ProcessStarted(ref)
 }
 
 func (s *serialSink) line(line string, onLine func(string)) {

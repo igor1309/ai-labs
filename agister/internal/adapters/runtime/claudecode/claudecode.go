@@ -238,6 +238,9 @@ func (s *Stream) result(message map[string]any) []Event {
 // Reconcile decides the turn status from the stream and the transport.
 func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) run.Turn {
 	turn := supervisor.Base(evidence)
+	if failed, ok := supervisor.RecordFailure(turn, evidence); ok {
+		return failed
+	}
 	turn.ProviderSessionID = s.ProviderSessionID
 	turn.Model = s.Model
 	result := s.Result

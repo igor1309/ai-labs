@@ -4,10 +4,14 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
+	"sync/atomic"
+	"syscall"
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
@@ -132,5 +136,99 @@ func TestLayeredProjectTakesPriority(t *testing.T) {
 	outside := fsdefs.Layered{Global: global}
 	if doc, err := outside.Read(ctx, definition.KindPolicy, "shared"); err != nil || string(doc.Bytes) != "global" {
 		t.Fatalf("without project = %+v, %v", doc, err)
+	}
+}
+
+// held reports whether another descriptor cannot take the store's write lock
+// right now, without waiting.
+func held(t *testing.T, dir string) bool {
+	t.Helper()
+	file, err := os.OpenFile(filepath.Join(dir, fsdefs.LockName), os.O_RDWR, 0)
+	if err != nil {
+		t.Fatalf("lock file: %v", err)
+	}
+	defer file.Close()
+	err = syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+	if err == nil {
+		return false
+	}
+	if err != syscall.EWOULDBLOCK {
+		t.Fatalf("probe: %v", err)
+	}
+	return true
+}
+
+// The lock is held while the digest is compared, while the replacement is
+// renamed over the document, and while a new document is created.
+func TestWriteHoldsTheLockAtEachStep(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	seen := map[string]bool{}
+	store := fsdefs.Store{Dir: dir}.Observing(func(point string) { seen[point] = held(t, dir) })
+
+	if _, written, err := store.Write(ctx, definition.KindProcess, "p", []byte("one"), ""); err != nil || !written {
+		t.Fatalf("create: %v %v", written, err)
+	}
+	sum := sha256.Sum256([]byte("one"))
+	if _, written, err := store.Write(ctx, definition.KindProcess, "p", []byte("two"), hex.EncodeToString(sum[:])); err != nil || !written {
+		t.Fatalf("replace: %v %v", written, err)
+	}
+	for _, point := range []string{"create", "compare", "rename"} {
+		if held, ok := seen[point]; !ok || !held {
+			t.Errorf("lock not held at %s (reached %v)", point, ok)
+		}
+	}
+	if held(t, dir) {
+		t.Error("lock still held after Write returned")
+	}
+}
+
+func TestLockFileIsNeverListed(t *testing.T) {
+	ctx := context.Background()
+	store := fsdefs.Store{Dir: t.TempDir()}
+	for _, kind := range []definition.Kind{definition.KindProcess, definition.KindAgent, definition.KindPolicy, definition.KindRuntime, definition.KindSchema} {
+		if _, _, err := store.Write(ctx, kind, "x", []byte("x"), ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(store.Dir, fsdefs.LockName)); err != nil {
+		t.Fatalf("lock file: %v", err)
+	}
+	for _, kind := range []definition.Kind{definition.KindAgent, definition.KindProcess, definition.KindPolicy, definition.KindRuntime, definition.KindSchema, definition.KindService} {
+		names, err := store.List(ctx, kind)
+		if err != nil || (kind != definition.KindService && !reflect.DeepEqual(names, []string{"x"})) || (kind == definition.KindService && len(names) != 0) {
+			t.Errorf("%s: %v %v", kind, names, err)
+		}
+	}
+}
+
+// A sanity check only; the lock tests above are what pin the lock down.
+func TestConcurrentWritesWithOneDigestLandOnce(t *testing.T) {
+	ctx := context.Background()
+	store := fsdefs.Store{Dir: t.TempDir()}
+	if _, _, err := store.Write(ctx, definition.KindProcess, "p", []byte("zero"), ""); err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256([]byte("zero"))
+	expected := hex.EncodeToString(sum[:])
+	const writers = 8
+	var wins atomic.Int32
+	var wg sync.WaitGroup
+	for i := 0; i < writers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, written, err := store.Write(ctx, definition.KindProcess, "p", []byte(fmt.Sprintf("writer %d", i)), expected)
+			if err != nil {
+				t.Error(err)
+			}
+			if written {
+				wins.Add(1)
+			}
+		}()
+	}
+	wg.Wait()
+	if wins.Load() != 1 {
+		t.Fatalf("%d writes landed, want 1", wins.Load())
 	}
 }

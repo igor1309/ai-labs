@@ -2,6 +2,7 @@ package supervisor_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 // The test binary doubles as the runtime's descendants: with helperEnv set
@@ -36,20 +38,48 @@ func TestMain(m *testing.M) {
 		os.Stdout.WriteString("started\n")
 		os.Exit(0)
 	case "sleep":
-		time.Sleep(time.Minute)
+		// Blocks until the test kills it (t.Cleanup); the bound only keeps a
+		// leak from outliving the test run.
+		time.Sleep(30 * time.Second)
 		os.Exit(0)
 	}
 }
 
+type runResult struct {
+	evidence supervisor.Evidence
+	lines    []string
+}
+
 type events struct {
-	mu    sync.Mutex
-	kinds []string
+	mu      sync.Mutex
+	kinds   []string
+	started []string // references, in the order reported
+	// failAt, when positive, makes the report with that number (1-based)
+	// fail.
+	failAt   int
+	startErr error
+	// onStart, when set, runs with each reference reported (under the lock,
+	// so it must not call back into the sink).
+	onStart func(ref string)
 }
 
 func (e *events) Event(_, kind string, _ map[string]any) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.kinds = append(e.kinds, kind)
+}
+
+func (e *events) ProcessStarted(ref string) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.started = append(e.started, ref)
+	if e.onStart != nil {
+		e.onStart(ref)
+	}
+	if e.failAt > 0 && len(e.started) == e.failAt {
+		return e.startErr
+	}
+	return nil
 }
 
 func (e *events) Raw(string) {}
@@ -84,17 +114,25 @@ func alive(pid int) bool { return syscall.Kill(pid, 0) == nil }
 func TestLeftoverProcessesAreKilledWhenTheRuntimeExits(t *testing.T) {
 	pidFile := filepath.Join(t.TempDir(), "pid")
 	sink := &events{}
+	// Killed on every path, including a failed Run: the PID file is read
+	// lazily and a missing one is ignored.
+	t.Cleanup(func() {
+		if data, err := os.ReadFile(pidFile); err == nil {
+			if pid, err := strconv.Atoi(strings.TrimSpace(string(data))); err == nil && pid > 1 {
+				_ = syscall.Kill(pid, syscall.SIGKILL)
+			}
+		}
+	})
 	evidence := supervisor.Run(context.Background(), supervisor.Spec{
 		Command: "/bin/sh",
-		Args:    []string{"-c", `sleep 60 >/dev/null 2>&1 & echo $! > "$0"; echo done`, pidFile},
-		Timeout: time.Hour,
+		Args:    []string{"-c", `sleep 30 >/dev/null 2>&1 & echo $! > "$0"; echo done`, pidFile},
+		Timeout: 30 * time.Second,
 	}, sink, func(string) {})
 	if evidence.Exit == nil || evidence.Exit.Code == nil || *evidence.Exit.Code != 0 {
 		t.Fatalf("evidence = %+v", evidence)
 	}
 	pid := pidFrom(t, pidFile)
-	t.Cleanup(func() { _ = syscall.Kill(pid, syscall.SIGKILL) })
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(10 * time.Second)
 	for alive(pid) && time.Now().Before(deadline) {
 		time.Sleep(10 * time.Millisecond)
 	}
@@ -115,23 +153,136 @@ func TestStdoutHeldOutsideTheGroupDoesNotHoldTheCall(t *testing.T) {
 	t.Setenv(helperEnv, "escape")
 	t.Setenv("PID_FILE", pidFile)
 	sink := &events{}
-	var lines []string
-	start := time.Now()
-	evidence := supervisor.Run(context.Background(), supervisor.Spec{
-		Command:   os.Args[0],
-		Timeout:   time.Hour,
-		KillGrace: 200 * time.Millisecond,
-	}, sink, func(line string) { lines = append(lines, line) })
-	elapsed := time.Since(start)
-	pid := pidFrom(t, pidFile)
-	t.Cleanup(func() { _ = syscall.Kill(pid, syscall.SIGKILL) })
-	if elapsed > 10*time.Second {
-		t.Fatalf("Run took %s", elapsed)
+	// Killed on every path, including a failed or hung Run: the PID file is
+	// read lazily and a missing one is ignored.
+	t.Cleanup(func() {
+		if data, err := os.ReadFile(pidFile); err == nil {
+			if pid, err := strconv.Atoi(strings.TrimSpace(string(data))); err == nil && pid > 1 {
+				_ = syscall.Kill(pid, syscall.SIGKILL)
+			}
+		}
+	})
+	// The escaped child never exits on its own, so Run returning at all,
+	// with STDOUT_HELD_OPEN, proves the grace ended the wait. The bound on
+	// Run is generous for a grace of 200ms and catches a grace regression.
+	done := make(chan runResult, 1)
+	go func() {
+		var lines []string
+		evidence := supervisor.Run(context.Background(), supervisor.Spec{
+			Command:   os.Args[0],
+			Timeout:   time.Minute,
+			KillGrace: 200 * time.Millisecond,
+		}, sink, func(line string) { lines = append(lines, line) })
+		done <- runResult{evidence, lines}
+	}()
+	var got runResult
+	select {
+	case got = <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("Run did not return: stdout held outside the group held the call")
 	}
+	evidence, lines := got.evidence, got.lines
 	if evidence.Exit == nil || evidence.Exit.Code == nil || *evidence.Exit.Code != 0 || strings.Join(lines, ",") != "started" {
 		t.Fatalf("evidence = %+v, lines %v", evidence, lines)
 	}
 	if !sink.has("STDOUT_HELD_OPEN") {
 		t.Fatalf("events = %v", sink.kinds)
+	}
+}
+
+// The group is reported the moment it exists, before the slower lookup of
+// its token, so a kill in between still leaves the group on record.
+func TestGroupIsReportedBeforeItsTokenIsKnown(t *testing.T) {
+	// The child outlives the test's need of it; the run ends when the sink
+	// sees the token-bearing report, so no delay orders anything.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	sink := &events{onStart: func(ref string) {
+		if _, token, err := supervisor.ParseRef(ref); err == nil && token != "" {
+			cancel()
+		}
+	}}
+	t.Cleanup(func() {
+		sink.mu.Lock()
+		defer sink.mu.Unlock()
+		if len(sink.started) > 0 {
+			if group, _, err := supervisor.ParseRef(sink.started[0]); err == nil && group > 1 {
+				_ = syscall.Kill(-group, syscall.SIGKILL)
+			}
+		}
+	})
+	supervisor.Run(ctx, supervisor.Spec{
+		Command: "/bin/sh",
+		Args:    []string{"-c", "sleep 30"},
+		Timeout: 30 * time.Second,
+	}, sink, func(string) {})
+	sink.mu.Lock()
+	defer sink.mu.Unlock()
+	if len(sink.started) < 2 {
+		t.Fatalf("reports = %+v", sink.started)
+	}
+	firstGroup, firstToken, err := supervisor.ParseRef(sink.started[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	lastGroup, lastToken, err := supervisor.ParseRef(sink.started[len(sink.started)-1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if firstGroup <= 1 || firstToken != "" || lastGroup != firstGroup || lastToken == "" {
+		t.Fatalf("reports = %+v", sink.started)
+	}
+}
+
+// A group that cannot be recorded is killed at once, and the evidence says
+// why, whichever of the two reports failed: no started group is ever left
+// that no record leads back to.
+func TestGroupThatCannotBeRecordedIsKilled(t *testing.T) {
+	for name, failAt := range map[string]int{"the group report": 1, "the token report": 2} {
+		t.Run(name, func(t *testing.T) {
+			sink := &events{failAt: failAt, startErr: errors.New("disk full")}
+			evidence := supervisor.Run(context.Background(), supervisor.Spec{
+				Command: "/bin/sh",
+				Args:    []string{"-c", "sleep 30"},
+				// Only a failure of the kill would ever reach it.
+				Timeout: 5 * time.Second,
+			}, sink, func(string) {})
+
+			if evidence.RecordError != "disk full" {
+				t.Fatalf("evidence = %+v", evidence)
+			}
+			if evidence.Exit == nil || evidence.Exit.Signal != "killed" {
+				t.Fatalf("the process was not killed: %+v", evidence.Exit)
+			}
+			if !sink.has("PROCESS_RECORD_FAILED") {
+				t.Fatalf("events = %v", sink.kinds)
+			}
+			sink.mu.Lock()
+			ref := sink.started[0]
+			sink.mu.Unlock()
+			group, _, err := supervisor.ParseRef(ref)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = syscall.Kill(-group, syscall.SIGKILL) })
+			// Run waited for the leader, so it is gone, not a zombie.
+			if out, _ := exec.Command("ps", "-o", "stat=", "-p", strconv.Itoa(group)).Output(); strings.TrimSpace(string(out)) != "" {
+				t.Fatalf("the group's leader %d is still there (%s)", group, strings.TrimSpace(string(out)))
+			}
+			if syscall.Kill(-group, 0) == nil {
+				t.Fatalf("group %d still has members", group)
+			}
+
+			turn, failed := supervisor.RecordFailure(supervisor.Base(evidence), evidence)
+			if !failed || turn.Status != run.Failed || turn.Error == nil || !strings.Contains(turn.Error.Message, "recording the runtime process failed") || !strings.Contains(turn.Error.Message, "disk full") {
+				t.Fatalf("turn = %+v", turn)
+			}
+		})
+	}
+}
+
+func TestARecordedProcessIsNotAFailure(t *testing.T) {
+	if _, failed := supervisor.RecordFailure(run.Turn{}, supervisor.Evidence{}); failed {
+		t.Fatal("no record error, yet the turn was failed")
 	}
 }

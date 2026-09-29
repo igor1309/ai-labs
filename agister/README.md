@@ -61,8 +61,9 @@ A repository can keep its own settings in `<repository root>/.agister/`, the
 same way it keeps `.claude/` or `.agents/`, and so can any branch of it. They
 apply wherever Agister runs inside that repository, and take priority over
 global settings document by document: a project `agents/reviewer.toml`
-replaces the global one, for any kind of setting. Neither layer is assumed
-safe; what is checked is the result. `agister check` verifies the composed
+replaces the global one, for any kind of setting, unconditionally: a project
+may set anything, looser or tighter than the global settings. What is checked
+is that the result composes. `agister check` verifies the composed
 settings (references, limits composing service ⊇ policy ⊇ process,
 enforcement on each runtime) and lists every override, and every call
 re-verifies what it uses. `process show` and run records name each
@@ -83,7 +84,9 @@ Nothing works on settings that do not compose. The client itself
 problem: the CLI prints it and exits 64. `init` is exempt because it writes
 the settings, and `--help` needs none. Cancelling a run is never refused,
 and a run already started stays observable, so editing settings mid-run
-cannot strand it. Passing is silent. Every call also re-validates what it uses and refuses
+cannot strand it. Passing is silent. Each gated operation reads the settings
+once and checks that snapshot, then uses the same snapshot, so an edit landing
+in between changes neither. Every call also re-validates what it uses and refuses
 before the provider turn starts.
 
 `init` and `agent create --force` overwrite files, so each first lists what
@@ -91,6 +94,23 @@ it would write and waits for you to type `yes`; any other answer writes
 nothing. "yes" approves the plan that was shown: a file changed while you
 were asked is not overwritten, and nothing more is written. Scripts pipe
 the answer: `echo yes | agister init`.
+
+Agister is a runner, not a guard. The settings are yours, and so is judging
+them: Agister does not decide whether they are right, safe, trusted, too
+expensive or too constrained for the task, and a project's settings are as
+authoritative as your global ones. Running Agister in a repository applies
+that repository's `.agister/`, including the commands its agents name, much
+as running its `Makefile` would, and an agent allowed to write the
+repository can change those settings for later calls. Review settings you
+did not write before you run them.
+
+Agister does not handle settings edited concurrently with its own writes or
+calls. It serializes its own writes and gives each operation one consistent
+read, but anything else changing the files at the same moment is yours to
+avoid. That includes you, an editor, a sync, a `git pull` or an agent. An
+edit landing while `init` or `agent create` writes can be lost, and a call
+that starts while `init --force` is replacing files can see some old files
+and some new ones.
 
 `examples/settings/` is what `init` installs. `examples/codex/` is opt-in;
 see its README.
@@ -120,4 +140,4 @@ CI: `.github/workflows/agister-core.yml`, invoked from `ci.yml` for Agister
 Go, module and example changes, selected policy changes, or CI workflow changes.
 Documentation-only changes do not trigger it.
 
-Known gaps and their triggers: [docs/deferred.md](docs/deferred.md). Live observations: [docs/findings.md](docs/findings.md).
+Known gaps and their triggers: [docs/deferred.md](docs/deferred.md). Ideas not yet planned: [backlog/](backlog/README.md). Live observations: [docs/findings.md](docs/findings.md).

@@ -12,7 +12,10 @@
   `host.read`, which is never granted, and it is not yet verified against a
   live Codex, so it ships opt-in (`examples/codex/`) and `check` refuses it.
 - **Claude Code rejects draft 2020-12 schemas** passed with `--json-schema`,
-  so example schemas declare no `$schema`.
+  so example schemas declare no `$schema`. `agister check` still accepts
+  one: on 2026-09-29 a project schema with the draft 2020-12 `$schema`
+  passed `check` and the call failed at the runtime's start (1.7s, no
+  cost).
 - **Schemas were compiled only after the agent ran.** A broken schema cost a
   full call before failing. They are now compiled before the call and by
   `agister check`.
@@ -31,5 +34,11 @@
   uncached input; cache reads and writes are reported separately and kept
   apart in the node result.
 
-Verified live against Claude Code 2.1.283. Codex is covered by protocol
+- **Glob is confined like Read and Grep.** With only Glob exposed under
+  `--restricted`, absolute, `..` and `~` paths, an absolute pattern and a
+  path through a symlink leaving the workspace were refused; `**/*`,
+  `../outside/*` and `linked/**/*` listed nothing outside the workspace,
+  and a symlinked file pointing outside was not listed (2.1.284).
+
+Verified live against Claude Code 2.1.283 (Glob: 2.1.284). Codex is covered by protocol
 fixtures only.

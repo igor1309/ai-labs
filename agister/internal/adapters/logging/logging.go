@@ -123,4 +123,12 @@ func (s *countingSink) Event(source, kind string, data map[string]any) {
 	s.inner.Event(source, kind, data)
 }
 
+func (s *countingSink) ProcessStarted(ref string) error {
+	err := s.inner.ProcessStarted(ref)
+	if err != nil {
+		s.log.WarnContext(s.ctx, "turn.process_not_recorded", "adapter", s.adapter, "error", err.Error())
+	}
+	return err
+}
+
 func (s *countingSink) Raw(line string) { s.inner.Raw(line) }

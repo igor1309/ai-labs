@@ -37,6 +37,7 @@ type Store struct {
 
 var _ app.RunRecorder = Store{}
 var _ app.RunReader = Store{}
+var _ app.RunAdopter = Store{}
 
 func (s Store) runDir(id string) string { return filepath.Join(s.Dir, id) }
 
@@ -76,6 +77,77 @@ func (s Store) Create(_ context.Context, record run.Record) (app.RunHandle, erro
 		return nil, err
 	}
 	return h, nil
+}
+
+// Abandoned lists the unfinished runs nobody owns that recorded effects.
+func (s Store) Abandoned(ctx context.Context) ([]run.Record, error) {
+	records, err := s.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var abandoned []run.Record
+	for _, record := range records {
+		if record.Effects == nil || record.FinishedAt != nil {
+			continue
+		}
+		if _, state, err := s.Get(ctx, record.ID); err == nil && state == run.StateAbandoned {
+			abandoned = append(abandoned, record)
+		}
+	}
+	return abandoned, nil
+}
+
+// LiveCheckouts lists the checkout directories of unfinished runs that
+// some process still owns.
+func (s Store) LiveCheckouts(ctx context.Context) ([]string, error) {
+	records, err := s.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var dirs []string
+	for _, record := range records {
+		if record.Effects == nil || record.Effects.Checkout == nil || record.FinishedAt != nil {
+			continue
+		}
+		if _, state, err := s.Get(ctx, record.ID); err != nil || state == run.StateRunning {
+			dirs = append(dirs, record.Effects.Checkout.Dir)
+		}
+	}
+	return dirs, nil
+}
+
+// Adopt takes the owner lock of an unfinished run, so exactly one process
+// ends what its dead owner left.
+func (s Store) Adopt(ctx context.Context, id string) (app.RunHandle, run.Record, error) {
+	var record run.Record
+	if err := checkID(id); err != nil {
+		return nil, record, err
+	}
+	lock, err := os.OpenFile(filepath.Join(s.runDir(id), "owner.lock"), os.O_RDWR, 0)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, record, fmt.Errorf("run %s: %w", id, contract.ErrNotFound)
+	}
+	if err != nil {
+		return nil, record, err
+	}
+	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		lock.Close()
+		return nil, record, fmt.Errorf("run %s is owned: %w", id, err)
+	}
+	// Read under the lock: the owner may have finished before it was released.
+	record, _, err = s.Get(ctx, id)
+	if err == nil && record.FinishedAt != nil {
+		err = fmt.Errorf("run %s is finished", id)
+	}
+	if err != nil {
+		lock.Close()
+		return nil, record, err
+	}
+	seq := 0
+	if events, _, err := s.Events(ctx, id, 0); err == nil && len(events) > 0 {
+		seq = events[len(events)-1].Seq
+	}
+	return &handle{dir: s.runDir(id), lock: lock, seq: seq}, record, nil
 }
 
 type handle struct {

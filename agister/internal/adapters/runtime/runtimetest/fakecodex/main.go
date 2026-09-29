@@ -51,7 +51,7 @@ func main() {
 
 	switch scenario {
 	case "hang":
-		time.Sleep(time.Hour)
+		time.Sleep(50 * time.Second)
 		return
 	case "exit_nonzero":
 		emit(map[string]any{"type": "error", "message": "unexpected status 401 Unauthorized"})

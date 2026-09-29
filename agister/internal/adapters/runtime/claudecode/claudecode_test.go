@@ -24,7 +24,7 @@ func request(prompt string) app.TurnRequest {
 		SessionID:    session,
 		Model:        "sonnet",
 		Effort:       "high",
-		Timeout:      10 * time.Second,
+		Timeout:      time.Minute,
 		OutputSchema: json.RawMessage(`{"type":"object"}`),
 	}
 }
@@ -190,5 +190,16 @@ func TestFailuresAreClassified(t *testing.T) {
 		if turn := stream.Reconcile(clean, false); turn.Status != run.Failed || turn.Error.Class != c.class {
 			t.Errorf("%s: %+v", c.name, turn.Error)
 		}
+	}
+}
+
+// A process that could not be recorded fails the turn, whatever the stream
+// says: it was killed, and nothing it reported can be trusted to be whole.
+func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
+	stream := &claudecode.Stream{}
+	stream.Reduce(`{"type":"result","subtype":"success","is_error":false}`)
+	turn := stream.Reconcile(supervisor.Evidence{RecordError: "disk full"}, false)
+	if turn.Status != run.Failed || turn.Error == nil || turn.Error.Class != run.ClassInternal || !strings.Contains(turn.Error.Message, "disk full") {
+		t.Fatalf("turn = %+v", turn)
 	}
 }

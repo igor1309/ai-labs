@@ -27,5 +27,3 @@ deno.lock
 test-results/
 playwright-report/
 
-# Agister local state
-.agister/

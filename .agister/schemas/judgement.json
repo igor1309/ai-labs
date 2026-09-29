@@ -1,0 +1,25 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["summary", "decisions"],
+  "properties": {
+    "summary": {"type": "string", "description": "Two or three sentences: what to do now, and the overall risk."},
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["decision", "sources", "file", "line", "title", "reason", "action"],
+        "properties": {
+          "decision": {"type": "string", "enum": ["fix", "defer", "owner", "reject"]},
+          "sources": {"type": "array", "items": {"type": "string"}, "description": "Source findings as <review>#<index>, 1-based; \"judge\" for your own."},
+          "file": {"type": "string", "description": "Repository-relative path."},
+          "line": {"type": ["integer", "null"]},
+          "title": {"type": "string"},
+          "reason": {"type": "string", "description": "What you verified in the code and why this decision."},
+          "action": {"type": "string", "description": "fix: the smallest change. defer: its trigger. reject: empty."}
+        }
+      }
+    }
+  }
+}

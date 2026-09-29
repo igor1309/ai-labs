@@ -209,12 +209,35 @@ type Record struct {
 	Plan               *enforce.Plan       `json:"plan,omitempty"`
 	Inputs             []Input             `json:"inputs,omitempty"`
 	Workspace          string              `json:"workspace,omitempty"`
+	Effects            *Effects            `json:"effects,omitempty"`
 	RequestedSessionID string              `json:"requested_session_id,omitempty"`
 	Turn               *Turn               `json:"turn,omitempty"`
 	Result             *Result             `json:"result,omitempty"` // set when finished
 }
 
-const RecordSchema = "agister.run/v1alpha2"
+// Effects are what a call leaves outside its record, written down as soon
+// as each exists so that whoever finds the run abandoned can undo them.
+type Effects struct {
+	Checkout *Checkout `json:"checkout,omitempty"`
+	Process  *Process  `json:"process,omitempty"`
+}
+
+// Checkout is a workspace the call created in Repository.
+type Checkout struct {
+	Repository string `json:"repository"`
+	Dir        string `json:"dir"`
+}
+
+// Process is the runtime's process as an opaque reference, made and read
+// only by the runtime adapter that started it. Records of v1alpha2 carry no
+// effects, so the reaper never lists them and what such a run left is not
+// reaped. Pre-release records that held a group and token read here with an
+// empty Ref, which no adapter can reap: it is left, with an error.
+type Process struct {
+	Ref string `json:"ref"`
+}
+
+const RecordSchema = "agister.run/v1alpha3"
 
 // Request is what the caller asked for, recorded as given.
 type Request struct {
@@ -252,4 +275,15 @@ func Conclude(turn Turn, output definition.Output, validation error) (Status, *E
 		return Failed, Fault(ClassInvalidOutput, "%v", validation)
 	}
 	return Completed, nil
+}
+
+// AbandonedResult is the result of a run whose owner ended before it
+// finished.
+func AbandonedResult(startedAt time.Time) Result {
+	return Result{
+		Status: Lost,
+		Error:  Fault(ClassAbandoned, "the process running it ended before it finished"),
+		Cost:   Cost{Source: CostUnknown},
+		Timing: Timing{StartedAt: startedAt},
+	}
 }

@@ -100,7 +100,24 @@ func TestCheckProbesEachAgentsRuntime(t *testing.T) {
 	}
 	h.runner.identity.Version = "9.0.0"
 	report, _ := checker.Check(context.Background(), true)
-	if !reflect.DeepEqual(report.Problems, []string{"agent a: runtime version 9.0.0 is not verified by mapping rt (verified: 1.)"}) {
+	if !reflect.DeepEqual(report.Problems, []string{"agent a: mapping rt verifies no primitive for runtime version 9.0.0"}) {
+		t.Fatalf("problems = %v", report.Problems)
+	}
+}
+
+// The installed version may verify some primitive, yet not the ones a process
+// needs.
+func TestCheckProbePlansEachProcessOnTheInstalledVersion(t *testing.T) {
+	h := newHarness()
+	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(h.defs.docs[definition.KindRuntime]["rt"], "Read: {grants: [repository.read], verified: [\"1.\"]}", "Read: {grants: [repository.read], verified: [\"2.\"]}", 1)
+	h.defs.docs[definition.KindProcess]["p"] += "tools: {require: [repository.read]}\n"
+	checker := &app.Checker{Definitions: h.defs, Validator: h.validator, Runtimes: h.runtimes, Sources: []string{"git.revision", "git.diff"}}
+	if report, _ := checker.Check(context.Background(), false); len(report.Problems) != 0 {
+		t.Fatalf("problems = %v", report.Problems)
+	}
+	report, _ := checker.Check(context.Background(), true)
+	if len(report.Problems) != 1 || !strings.HasPrefix(report.Problems[0], "process p: cannot run on agent a's runtime rt version 1.2.3: ") ||
+		!strings.Contains(report.Problems[0], "not verified for version 1.2.3: Read") {
 		t.Fatalf("problems = %v", report.Problems)
 	}
 }

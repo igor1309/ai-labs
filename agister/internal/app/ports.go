@@ -65,6 +65,13 @@ type TurnRequest struct {
 // EventSink receives a turn's events and raw runtime output.
 type EventSink interface {
 	Event(source, kind string, data map[string]any)
+	// ProcessStarted records the runtime's process as soon as it exists, as
+	// a reference only the runtime adapter can read (Processes.Reap takes
+	// it back). It may be reported again as more becomes known; the last
+	// report stands. An error means the process is not on record, so
+	// nobody could find it after a crash: the runtime adapter must end it
+	// and fail the turn.
+	ProcessStarted(ref string) error
 	Raw(line string)
 }
 
@@ -110,6 +117,32 @@ type Workspaces interface {
 	Changes(ctx context.Context, dir, revision string) ([]byte, error)
 }
 
+// CheckoutDiscarder removes checkouts whose owner ended without releasing
+// them.
+type CheckoutDiscarder interface {
+	// Discard removes a checkout that Checkout made. A checkout already
+	// gone is success; a directory Checkout could not have made is refused.
+	Discard(ctx context.Context, repository, dir string) error
+}
+
+// Reaping is what Reap found of a process.
+type Reaping string
+
+const (
+	ReapKilled Reaping = "killed" // the process was killed
+	ReapGone   Reaping = "gone"   // no such process
+	ReapLeft   Reaping = "left"   // not killed: it is not known to be the recorded one, or the reference is not understood
+)
+
+// Processes ends the runtime processes a dead owner left behind. What a
+// reference means is the adapter's own: the core only stores and returns it.
+type Processes interface {
+	// Reap ends the process the reference names, unless it may be another
+	// one by now. A reference the adapter did not make is ReapLeft, with an
+	// error.
+	Reap(ctx context.Context, ref string) (Reaping, error)
+}
+
 // Provenance returns the recorded writer of a revision, or nil.
 type Provenance interface {
 	Writer(ctx context.Context, revision string) (*constraint.Writer, error)
@@ -135,6 +168,18 @@ type RunHandle interface {
 	// Artifact stores a file the call produced beside its evidence.
 	Artifact(name string, data []byte) (run.Artifact, error)
 	Finish(record run.Record) error
+}
+
+// RunAdopter takes over runs whose owner ended.
+type RunAdopter interface {
+	// Abandoned lists the unfinished runs nobody owns that recorded effects.
+	Abandoned(ctx context.Context) ([]run.Record, error)
+	// LiveCheckouts lists the checkout directories that runs some process
+	// still owns record, so nobody removes them from under those runs.
+	LiveCheckouts(ctx context.Context) ([]string, error)
+	// Adopt takes ownership of an abandoned run, as its record is now. It
+	// fails if the run is owned by another process or finished.
+	Adopt(ctx context.Context, id string) (RunHandle, run.Record, error)
 }
 
 // RunLookup reads one run's evidence. A record that is not finished and no

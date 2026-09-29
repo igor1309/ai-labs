@@ -24,6 +24,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/claudecode"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/schema"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
 	"github.com/igor1309/ai-labs/agister/internal/app"
@@ -48,15 +49,27 @@ func shutdown(parent context.Context) (context.Context, context.CancelFunc) {
 }
 
 func compose(config cli.Config) (contract.Client, error) {
+	return newGated(config)
+}
+
+// newGated is the whole client behind the gate.
+func newGated(config cli.Config) (*app.Gated, error) {
+	gated, _, err := wire(config)
+	return gated, err
+}
+
+// wire builds newGated, and the background reaper every client it builds
+// shares, which submitting a call starts (tests wait on it).
+func wire(config cli.Config) (*app.Gated, *app.BackgroundReaper, error) {
 	log, err := diagnostics(config)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	global := fsdefs.Store{Dir: config.Home}
 	local, err := project(config, log)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	definitions := fsdefs.Layered{Global: global, Project: local}
 	evidence := fsruns.Store{Dir: filepath.Join(config.Home, "runs")}
@@ -77,35 +90,56 @@ func compose(config cli.Config) (contract.Client, error) {
 		"git.changed_files": git.ChangedFiles{},
 	}
 	hosted := app.NewHosted()
-	checker := &app.Checker{Definitions: definitions, Validator: schema.Validator{}, Runtimes: runtimes, Sources: names(sources)}
-	// Writes go to global settings, which must stay valid on their own and
-	// with the project in view.
-	scopes := []app.Scope{{Name: "global settings", Check: &app.Checker{Definitions: fsdefs.Layered{Global: global}, Validator: schema.Validator{}, Runtimes: runtimes, Sources: names(sources)}}}
-	if local != nil {
-		scopes = append(scopes, app.Scope{Name: "settings in " + filepath.Dir(local.Dir), Check: checker})
+	// Abandoned runs are reaped beside the calls, never inside one. A reap
+	// that fails has no caller to tell and no run record to say so: the
+	// log does.
+	reaping := &app.BackgroundReaper{
+		Reaper: &app.Reaper{
+			Adopter: evidence, Processes: supervisor.Processes{}, Discarder: git.Workspaces{}, Clock: system.Clock{},
+		},
+		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },
+	}
+	provenance := fsprovenance.Store{Dir: filepath.Join(config.Home, "provenance")}
+	checkerOn := func(definitions app.DefinitionSource) *app.Checker {
+		return &app.Checker{Definitions: definitions, Validator: schema.Validator{}, Runtimes: runtimes, Sources: names(sources)}
+	}
+	// build makes the whole client over the sources given: the layered
+	// settings and the global layer alone. The gate builds it on snapshots
+	// per operation, so every use case, including the scopes that validate a
+	// write, reads only the settings that operation checked; hosted runs and
+	// evidence are shared by every build.
+	build := func(layered, globalOnly app.DefinitionSource) contract.Client {
+		// Writes go to global settings, which must stay valid on their own
+		// and with the project in view.
+		scopes := []app.Scope{{Name: "global settings", Check: checkerOn(globalOnly)}}
+		if local != nil {
+			scopes = append(scopes, app.Scope{Name: "settings in " + filepath.Dir(local.Dir), Check: checkerOn(layered)})
+		}
+		host := &app.Host{
+			Settings:   &app.Settings{Definitions: layered, Writer: global, Examples: examples.Settings(), Scopes: scopes},
+			Checker:    checkerOn(layered),
+			Inspection: &app.Inspection{Definitions: layered, Runtimes: runtimes, Validator: schema.Validator{}},
+			Calls: &app.Calls{
+				Definitions: layered,
+				Runtimes:    runtimes,
+				Inputs:      sources,
+				Workspaces:  git.Workspaces{},
+				Provenance:  provenance,
+				Validator:   schema.Validator{},
+				Recorder:    evidence,
+				Runs:        evidence,
+				Clock:       system.Clock{},
+				IDs:         system.IDs{},
+				StateDir:    config.Home,
+				Hosted:      hosted,
+			},
+			Runs: &app.Runs{Reader: evidence, Hosted: hosted},
+		}
+		return app.ReapOnSubmit{Client: host, Background: reaping}
 	}
 
 	// Nothing but init and check works on settings that do not pass check.
-	return &app.Gated{Inner: &app.Host{
-		Settings:   &app.Settings{Definitions: definitions, Writer: global, Examples: examples.Settings(), Scopes: scopes},
-		Checker:    checker,
-		Inspection: &app.Inspection{Definitions: definitions, Runtimes: runtimes, Validator: schema.Validator{}},
-		Calls: &app.Calls{
-			Definitions: definitions,
-			Runtimes:    runtimes,
-			Inputs:      sources,
-			Workspaces:  git.Workspaces{},
-			Provenance:  fsprovenance.Store{Dir: filepath.Join(config.Home, "provenance")},
-			Validator:   schema.Validator{},
-			Recorder:    evidence,
-			Runs:        evidence,
-			Clock:       system.Clock{},
-			IDs:         system.IDs{},
-			StateDir:    config.Home,
-			Hosted:      hosted,
-		},
-		Runs: &app.Runs{Reader: evidence, Hosted: hosted},
-	}}, nil
+	return &app.Gated{Definitions: definitions, Global: fsdefs.Layered{Global: global}, Build: build}, reaping, nil
 }
 
 // project is the settings layer of the repository containing the working

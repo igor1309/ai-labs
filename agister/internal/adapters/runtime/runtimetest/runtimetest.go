@@ -48,15 +48,32 @@ func Binary(t testing.TB, name string) string {
 
 // Recorder is an EventSink that keeps everything.
 type Recorder struct {
-	mu     sync.Mutex
-	Events []run.Event
-	Lines  []string
+	mu        sync.Mutex
+	Events    []run.Event
+	Lines     []string
+	Processes []string // references, in the order reported
+	// ProcessErr is what ProcessStarted returns (after keeping the reference).
+	ProcessErr error
+	// OnEvent, when set before the run, is called with each event's kind
+	// after it is recorded, outside the lock.
+	OnEvent func(kind string)
 }
 
 func (r *Recorder) Event(source, kind string, data map[string]any) {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 	r.Events = append(r.Events, run.Event{Seq: len(r.Events) + 1, Source: source, Kind: kind, Data: data})
+	hook := r.OnEvent
+	r.mu.Unlock()
+	if hook != nil {
+		hook(kind)
+	}
+}
+
+func (r *Recorder) ProcessStarted(ref string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.Processes = append(r.Processes, ref)
+	return r.ProcessErr
 }
 
 func (r *Recorder) Raw(line string) {
@@ -90,6 +107,11 @@ type Subject struct {
 // Conformance checks the TurnRunner contract: identity, outcome precedence,
 // no upgrading of runtime failures, timeout and cancellation, spawn failure,
 // and raw output passthrough.
+//
+// Timer rule: a real timer in these tests fires only when the process can do
+// nothing else (the hang scenario), and no bound exceeds a minute. Anything
+// that must end some other way is event-driven, so machine load cannot flip
+// an outcome.
 func Conformance(t *testing.T, subject Subject) {
 	turn := func(t *testing.T, prompt string, mutate func(*app.TurnRequest), ctx context.Context) (run.Turn, *Recorder) {
 		request := subject.Request(prompt)
@@ -155,8 +177,17 @@ func Conformance(t *testing.T, subject Subject) {
 
 	t.Run("cancellation interrupts the turn", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
-		time.AfterFunc(300*time.Millisecond, cancel)
-		result, _ := turn(t, "SCENARIO:hang", nil, ctx)
+		defer cancel()
+		// Cancel when the process has started, not after a delay. The
+		// minute timeout only backstops a hang and never races the cancel.
+		request := subject.Request("SCENARIO:hang")
+		request.Timeout = 30 * time.Second
+		sink := &Recorder{OnEvent: func(kind string) {
+			if kind == "PROCESS_STARTED" {
+				cancel()
+			}
+		}}
+		result := subject.New(subject.Fake).RunTurn(ctx, request, sink)
 		if !is(result, run.Interrupted, run.ClassCancelled) {
 			t.Fatalf("turn = %+v", result)
 		}

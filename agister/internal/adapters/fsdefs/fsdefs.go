@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
@@ -23,6 +24,50 @@ var errNotFound = errors.New("not found")
 
 type Store struct {
 	Dir string
+
+	// at, when set, is called at the steps of Write that the lock must
+	// cover; tests use it to observe the lock there.
+	at func(point string)
+}
+
+// lockName is the writers' lock file, in Dir itself. Documents live in a
+// subdirectory per kind and List reads only those, so it is never listed
+// and never checked.
+const lockName = ".write.lock"
+
+func (s Store) point(name string) {
+	if s.at != nil {
+		s.at(name)
+	}
+}
+
+// lock takes the exclusive write lock of the store and returns its release,
+// which may be called more than once.
+func (s Store) lock() (func(), error) {
+	if err := os.MkdirAll(s.Dir, 0o700); err != nil {
+		return nil, err
+	}
+	file, err := os.OpenFile(filepath.Join(s.Dir, lockName), os.O_RDWR|os.O_CREATE, 0o600)
+	if err != nil {
+		return nil, err
+	}
+	for {
+		err = syscall.Flock(int(file.Fd()), syscall.LOCK_EX)
+		if err != syscall.EINTR {
+			break
+		}
+	}
+	if err != nil {
+		file.Close()
+		return nil, err
+	}
+	released := false
+	return func() {
+		if !released {
+			released = true
+			file.Close() // closing the descriptor drops the lock
+		}
+	}, nil
 }
 
 var extensions = map[definition.Kind]string{
@@ -102,8 +147,14 @@ func (s Store) Current(_ context.Context, kind definition.Kind, name string) (st
 // Write stores data over the document with digest expected, or where there
 // is none when expected is empty. A new document is created exclusively. A
 // replacement is written beside the document and renamed over it, so it is
-// never seen half-written; comparing and renaming are still two steps, and
-// an edit landing between them is lost.
+// never seen half-written.
+//
+// An exclusive lock on a file in Dir is held across the whole write, the
+// digest compare and the rename (or the exclusive create) included, so
+// Agister's own writers, in this process or another, are serialized. The
+// lock binds only them: a hand edit or another program's write landing
+// between the compare and the rename can still be lost. Guarding against
+// that is outside Agister's responsibility (README, Settings).
 func (s Store) Write(_ context.Context, kind definition.Kind, name string, data []byte, expected string) (string, bool, error) {
 	path, err := s.path(kind, name)
 	if err != nil {
@@ -112,7 +163,13 @@ func (s Store) Write(_ context.Context, kind definition.Kind, name string, data 
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return "", false, err
 	}
+	unlock, err := s.lock()
+	if err != nil {
+		return "", false, err
+	}
+	defer unlock()
 	if expected == "" {
+		s.point("create")
 		file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 		if errors.Is(err, fs.ErrExist) {
 			return path, false, nil
@@ -126,6 +183,7 @@ func (s Store) Write(_ context.Context, kind definition.Kind, name string, data 
 		}
 		return path, true, file.Close()
 	}
+	s.point("compare")
 	current, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return path, false, nil
@@ -148,6 +206,7 @@ func (s Store) Write(_ context.Context, kind definition.Kind, name string, data 
 	if err := temp.Close(); err != nil {
 		return "", false, err
 	}
+	s.point("rename")
 	if err := os.Rename(temp.Name(), path); err != nil {
 		return "", false, err
 	}
