@@ -149,30 +149,29 @@ before.
   directory, with a test that two calls from different repositories see
   their own settings.
 
-## 8. The settings gate and the use case read settings separately
+## 8. The settings gate and the use case read settings separately (partly done)
 
-- **Gap:** `app.Gated` checks the settings, then the use case reads them
-  again from disk; `Submit` resolves them later still, in the call's own
-  goroutine. A settings edit landing in between is used unchecked. Writes
-  have a similar window: `fsdefs.Store.Write` compares the expected digest,
-  then renames the new file over it, so an edit landing between those two
-  steps is lost.
-- **Why deferred:** a single user rarely edits settings while a call starts,
-  and resolution still refuses a definition that does not parse. The read
-  window is not bounded, though: a call is resolved in its goroutine after
-  its run is recorded, so it can open well after the check.
-  The window the user can actually hit, between being shown a plan and
-  typing yes, is closed: the write carries the approved digests and the
-  store refuses a file that changed.
+- **Done:** each gated operation reads the settings once into an immutable
+  snapshot (`app.Snapshot`, errors kept and replayed), builds its client on
+  it (`Gated.Build`), checks with that client and runs the operation on the
+  same client. `Calls.Submit` takes its snapshot before the run is recorded
+  and the call's goroutine resolves only from it. `fsdefs.Store.Write` holds
+  an exclusive lock on a file in the store's directory across the digest
+  compare, the rename and the exclusive create, so Agister's own writers
+  are serialized. Tests: a settings edit after the check does not reach the
+  operation; a call resolves from the settings read before its run was
+  recorded; the lock is held at each step of a write.
+- **Remains:** a lock binds only Agister's own writers. A hand edit (or
+  another program's write) landing between the compare and the rename can
+  still be lost, so the promise is serialized writes, not that no edit is
+  ever lost. The scope checkers that validate a write against global
+  settings still read live; a write is protected by its approved digests and
+  the serialized store, not by the snapshot.
 - **Trigger:** the service (ADR-001 rule 16), where other clients edit
   settings while calls run.
-- **Done when:** each operation loads one immutable settings snapshot,
-  checks it and hands that same snapshot to the use case (for a call,
-  before its run is recorded); writes are serialized under a lock. A lock
-  binds only Agister's own writers: a hand edit landing between compare
-  and rename can still be lost, so the promise is serialized writes, not
-  that no edit is ever lost. Tests change the settings between the check
-  and the use and assert that the checked snapshot is the one used.
+- **Done when (rest):** a writer that cannot be raced by hand edits (for
+  example, verifying the digest again after the rename and reporting a lost
+  edit), if the service needs it.
 
 ## 9. Process timers use real time in tests
 

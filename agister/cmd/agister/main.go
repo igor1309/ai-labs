@@ -86,29 +86,40 @@ func compose(config cli.Config) (contract.Client, error) {
 		scopes = append(scopes, app.Scope{Name: "settings in " + filepath.Dir(local.Dir), Check: checker})
 	}
 
+	provenance := fsprovenance.Store{Dir: filepath.Join(config.Home, "provenance")}
+	// build makes the whole client over one definitions source. The gate
+	// builds it on a snapshot per operation, so every use case reads only
+	// the settings that operation checked; hosted runs and evidence are
+	// shared by every build. The scopes above still read live: they only
+	// validate a write, which the approved digests and the store's
+	// serialized writes protect.
+	build := func(definitions app.DefinitionSource) contract.Client {
+		return &app.Host{
+			Settings:   &app.Settings{Definitions: definitions, Writer: global, Examples: examples.Settings(), Scopes: scopes},
+			Checker:    &app.Checker{Definitions: definitions, Validator: schema.Validator{}, Runtimes: runtimes, Sources: names(sources)},
+			Inspection: &app.Inspection{Definitions: definitions, Runtimes: runtimes, Validator: schema.Validator{}},
+			Calls: &app.Calls{
+				Definitions: definitions,
+				Runtimes:    runtimes,
+				Inputs:      sources,
+				Workspaces:  git.Workspaces{},
+				Provenance:  provenance,
+				Validator:   schema.Validator{},
+				Recorder:    evidence,
+				Adopter:     evidence,
+				Processes:   supervisor.Processes{},
+				Runs:        evidence,
+				Clock:       system.Clock{},
+				IDs:         system.IDs{},
+				StateDir:    config.Home,
+				Hosted:      hosted,
+			},
+			Runs: &app.Runs{Reader: evidence, Hosted: hosted},
+		}
+	}
+
 	// Nothing but init and check works on settings that do not pass check.
-	return &app.Gated{Inner: &app.Host{
-		Settings:   &app.Settings{Definitions: definitions, Writer: global, Examples: examples.Settings(), Scopes: scopes},
-		Checker:    checker,
-		Inspection: &app.Inspection{Definitions: definitions, Runtimes: runtimes, Validator: schema.Validator{}},
-		Calls: &app.Calls{
-			Definitions: definitions,
-			Runtimes:    runtimes,
-			Inputs:      sources,
-			Workspaces:  git.Workspaces{},
-			Provenance:  fsprovenance.Store{Dir: filepath.Join(config.Home, "provenance")},
-			Validator:   schema.Validator{},
-			Recorder:    evidence,
-			Adopter:     evidence,
-			Processes:   supervisor.Processes{},
-			Runs:        evidence,
-			Clock:       system.Clock{},
-			IDs:         system.IDs{},
-			StateDir:    config.Home,
-			Hosted:      hosted,
-		},
-		Runs: &app.Runs{Reader: evidence, Hosted: hosted},
-	}}, nil
+	return &app.Gated{Definitions: definitions, Build: build}, nil
 }
 
 // project is the settings layer of the repository containing the working

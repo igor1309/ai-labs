@@ -573,3 +573,36 @@ func TestWorkspaceIsReleasedBeforeTheRunFinishes(t *testing.T) {
 		t.Fatalf("released %d times when the run finished", h.recorder.releasedAtFinish)
 	}
 }
+
+// The call's settings are read before its run is recorded, and the call,
+// which resolves later in its own goroutine, uses exactly those: an edit
+// after Submit returns changes nothing, and the live source is not read again.
+func TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded(t *testing.T) {
+	h := newHarness()
+	readsAtCreate := -1
+	h.recorder.onCreate = func() { readsAtCreate = h.defs.readCount() }
+	h.recorder.hold = make(chan struct{})
+	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+		t.Fatal(err)
+	}
+	if readsAtCreate <= 0 {
+		t.Fatalf("settings were not read before the run was recorded (%d reads)", readsAtCreate)
+	}
+	readsAtSubmit := h.defs.readCount()
+	h.defs.set(definition.KindAgent, "a", strings.Replace(settingsDocs()[definition.KindAgent]["a"], "m1", "m2", 1))
+	h.defs.set(definition.KindProcess, "p", "not a process")
+	close(h.recorder.hold)
+	record := h.recorder.wait(t)
+	if class(record) != "" {
+		t.Fatalf("call failed: %s", message(record))
+	}
+	if got := h.defs.readCount(); got != readsAtSubmit {
+		t.Fatalf("the call read the live settings %d more times", got-readsAtSubmit)
+	}
+	want := sha(settingsDocs()[definition.KindAgent]["a"])
+	for _, source := range record.Definitions {
+		if source.Kind == definition.KindAgent && source.SHA256 != want {
+			t.Errorf("agent recorded %s, want %s", source.SHA256, want)
+		}
+	}
+}

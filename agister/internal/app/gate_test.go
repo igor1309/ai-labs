@@ -3,10 +3,12 @@ package app_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
+	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
 
 // clientFake answers every method and records which were reached.
@@ -67,7 +69,10 @@ func (c *clientFake) ListRuns(context.Context) ([]contract.Run, error) {
 func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
 	ctx := context.Background()
 	inner := &clientFake{}
-	gated := &app.Gated{Inner: inner}
+	gated := &app.Gated{
+		Definitions: &definitionsSpy{docs: settingsDocs()},
+		Build:       func(app.DefinitionSource) contract.Client { return inner },
+	}
 	id, err := gated.Submit(ctx, contract.CallRequest{})
 	if err != nil || id != "run-1" {
 		t.Fatalf("valid settings: %q, %v", id, err)
@@ -124,4 +129,102 @@ func join(list []string) string {
 		out += item
 	}
 	return out
+}
+
+// afterCheck runs f once, right after the check has answered.
+type afterCheck struct {
+	contract.Client
+	f func()
+}
+
+func (c *afterCheck) Check(ctx context.Context, probe bool) (contract.CheckReport, error) {
+	report, err := c.Client.Check(ctx, probe)
+	if f := c.f; f != nil {
+		c.f = nil
+		f()
+	}
+	return report, err
+}
+
+// An edit landing after the gate's check does not reach the operation: it
+// runs on the settings that were checked, and reads nothing from the live
+// source once they were read.
+func TestGatedOperationUsesTheCheckedSettings(t *testing.T) {
+	ctx := context.Background()
+	h := newHarness()
+	sources := []string{"git.revision", "git.diff", "param"}
+	readsAfterCheck := -1
+	edited := false
+	gated := &app.Gated{
+		Definitions: h.defs,
+		Build: func(src app.DefinitionSource) contract.Client {
+			return &afterCheck{
+				Client: &app.Host{
+					Checker:    &app.Checker{Definitions: src, Validator: h.validator, Runtimes: h.runtimes, Sources: sources},
+					Inspection: &app.Inspection{Definitions: src, Runtimes: h.runtimes, Validator: h.validator},
+				},
+				f: func() {
+					readsAfterCheck = h.defs.readCount()
+					h.defs.set(definition.KindProcess, "p", "not a process")
+					h.defs.set(definition.KindAgent, "a", "not an agent")
+					edited = true
+				},
+			}
+		},
+	}
+	view, err := gated.ShowProcess(ctx, "p", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !edited || readsAfterCheck == 0 {
+		t.Fatalf("the settings were not read before the check (edited %v, reads %d)", edited, readsAfterCheck)
+	}
+	if view.Name != "p" || view.Agent != "a" {
+		t.Fatalf("view = %+v, want the checked process p with agent a", view)
+	}
+	if got := h.defs.readCount(); got != readsAfterCheck {
+		t.Fatalf("the operation read the live settings %d more times", got-readsAfterCheck)
+	}
+}
+
+// A submitted call is recorded with the digests of the settings that passed
+// the gate, though they were edited before the call resolved.
+func TestGatedSubmitRecordsTheCheckedSettings(t *testing.T) {
+	ctx := context.Background()
+	h := newHarness()
+	h.recorder.hold = make(chan struct{})
+	original := map[string]string{}
+	for kind, docs := range settingsDocs() {
+		for name, text := range docs {
+			original[string(kind)+"/"+name] = sha(text)
+		}
+	}
+	gated := &app.Gated{
+		Definitions: h.defs,
+		Build: func(src app.DefinitionSource) contract.Client {
+			calls := *h.calls
+			calls.Definitions = src
+			return &app.Host{
+				Checker: &app.Checker{Definitions: src, Validator: h.validator, Runtimes: h.runtimes, Sources: []string{"git.revision", "git.diff", "param"}},
+				Calls:   &calls,
+			}
+		},
+	}
+	if _, err := gated.Submit(ctx, contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+		t.Fatal(err)
+	}
+	h.defs.set(definition.KindAgent, "a", strings.Replace(settingsDocs()[definition.KindAgent]["a"], "m1", "m2", 1))
+	close(h.recorder.hold)
+	record := h.recorder.wait(t)
+	if class(record) != "" {
+		t.Fatalf("call failed: %s", message(record))
+	}
+	for _, source := range record.Definitions {
+		if want := original[string(source.Kind)+"/"+source.Name]; source.SHA256 != want {
+			t.Errorf("%s/%s recorded %s, checked %s", source.Kind, source.Name, source.SHA256, want)
+		}
+	}
+	if len(record.Definitions) == 0 {
+		t.Fatal("no definitions recorded")
+	}
 }

@@ -83,7 +83,9 @@ Nothing works on settings that do not compose. The client itself
 problem: the CLI prints it and exits 64. `init` is exempt because it writes
 the settings, and `--help` needs none. Cancelling a run is never refused,
 and a run already started stays observable, so editing settings mid-run
-cannot strand it. Passing is silent. Every call also re-validates what it uses and refuses
+cannot strand it. Passing is silent. Each gated operation reads the settings
+once and checks that snapshot, then uses the same snapshot, so an edit landing
+in between changes neither. Every call also re-validates what it uses and refuses
 before the provider turn starts.
 
 `init` and `agent create --force` overwrite files, so each first lists what

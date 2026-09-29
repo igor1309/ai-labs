@@ -1,4 +1,4 @@
-# Deferred items 1, 2, 5 and 6: each mutation undoes one fix, and the
+# Deferred items 1, 2, 5, 6 and 8: each mutation undoes one fix, and the
 # listed tests must fail with it. Run: scripts/revert-check.py <this file>
 module: agister
 
@@ -151,3 +151,46 @@ file: internal/adapters/git/git.go
 find: resolved(filepath.Dir(parent)) != resolved(os.TempDir())
 replace: false
 test: ./internal/adapters/git TestDiscardRefusesOtherDirectories
+
+# Item 8: one settings snapshot per operation; serialized writes.
+[the gate builds the operation on live settings, not the checked snapshot]
+file: internal/app/gate.go
+find: client := g.Build(Snapshot(ctx, g.Definitions))
+replace: client := g.Build(g.Definitions)
+test: ./internal/app TestGatedOperationUsesTheCheckedSettings
+
+[a call resolves from live settings, not the snapshot it took at submit]
+file: internal/app/calls.go
+find: definitions := Snapshot(ctx, c.Definitions)
+replace: definitions := c.Definitions
+test: ./internal/app TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded
+
+[a call takes its snapshot after its run is recorded]
+file: internal/app/calls.go
+find: \tdefinitions := Snapshot(ctx, c.Definitions)\n\thandle, err := c.Recorder.Create(ctx, record)\n
+replace: \thandle, err := c.Recorder.Create(ctx, record)\n\tdefinitions := Snapshot(ctx, c.Definitions)\n
+test: ./internal/app TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded
+
+[the write lock is released before the digest compare]
+file: internal/adapters/fsdefs/fsdefs.go
+find: \ts.point("compare")
+replace: \tunlock()\n\ts.point("compare")
+test: ./internal/adapters/fsdefs TestWriteHoldsTheLockAtEachStep
+
+[the write lock is released before the rename]
+file: internal/adapters/fsdefs/fsdefs.go
+find: \ts.point("rename")
+replace: \tunlock()\n\ts.point("rename")
+test: ./internal/adapters/fsdefs TestWriteHoldsTheLockAtEachStep
+
+[the write lock is released before the exclusive create]
+file: internal/adapters/fsdefs/fsdefs.go
+find: \t\ts.point("create")
+replace: \t\tunlock()\n\t\ts.point("create")
+test: ./internal/adapters/fsdefs TestWriteHoldsTheLockAtEachStep
+
+[the lock file sits among the documents and is listed]
+file: internal/adapters/fsdefs/fsdefs.go
+find: const lockName = ".write.lock"
+replace: const lockName = "processes/.lock.yaml"
+test: ./internal/adapters/fsdefs TestLockFileIsNeverListed

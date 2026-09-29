@@ -40,7 +40,23 @@ func (s *definitionsSpy) Read(_ context.Context, kind definition.Kind, name stri
 	}, nil
 }
 
+// set replaces one document of the live settings.
+func (s *definitionsSpy) set(kind definition.Kind, name, text string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.docs[kind][name] = text
+}
+
+func (s *definitionsSpy) readCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.reads)
+}
+
 func (s *definitionsSpy) List(_ context.Context, kind definition.Kind) ([]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.reads = append(s.reads, "list "+string(kind))
 	var names []string
 	for name := range s.docs[kind] {
 		names = append(names, name)
@@ -209,13 +225,18 @@ type recorderSpy struct {
 	artifacts map[string][]byte
 	finished  chan run.Record
 
-	onFinish         func() int // observed state at finish time
+	onCreate         func()        // runs first in Create
+	hold             chan struct{} // when set, the first Append waits for it to close
+	onFinish         func() int    // observed state at finish time
 	releasedAtFinish int
 }
 
 func newRecorderSpy() *recorderSpy { return &recorderSpy{finished: make(chan run.Record, 1)} }
 
 func (s *recorderSpy) Create(_ context.Context, record run.Record) (app.RunHandle, error) {
+	if s.onCreate != nil {
+		s.onCreate()
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.created = append(s.created, record)
@@ -223,6 +244,9 @@ func (s *recorderSpy) Create(_ context.Context, record run.Record) (app.RunHandl
 }
 
 func (s *recorderSpy) Append(event run.Event) error {
+	if s.hold != nil {
+		<-s.hold
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.events = append(s.events, event)
@@ -382,4 +406,9 @@ func (s *adopterSpy) Adopt(_ context.Context, id string) (app.RunHandle, run.Rec
 		}
 	}
 	return nil, run.Record{}, fmt.Errorf("no run %s", id)
+}
+
+func sha(text string) string {
+	sum := sha256.Sum256([]byte(text))
+	return hex.EncodeToString(sum[:])
 }

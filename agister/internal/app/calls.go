@@ -92,6 +92,10 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 			Cwd:        request.Cwd,
 		},
 	}
+	// The settings this call resolves from are read now, before the run is
+	// recorded; the call's goroutine, which may open much later, uses this
+	// snapshot and never reads the live source.
+	definitions := Snapshot(ctx, c.Definitions)
 	handle, err := c.Recorder.Create(ctx, record)
 	if err != nil {
 		return "", err
@@ -102,14 +106,14 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 		defer c.Hosted.remove(record.ID)
 		defer cancel()
 		c.reapAbandoned(runCtx)
-		c.execute(runCtx, handle, record)
+		c.execute(runCtx, handle, record, definitions)
 	}()
 	return record.ID, nil
 }
 
 // execute runs one call. Every refusal happens before the runtime starts
 // and is recorded; every effect is released on every path.
-func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record) {
+func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record, definitions DefinitionSource) {
 	event := func(source, kind string, data map[string]any) {
 		_ = handle.Append(run.Event{At: c.Clock.Now(), Source: source, Kind: kind, Data: data})
 	}
@@ -171,7 +175,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	}
 
 	caller := overrides{timeout: record.Request.Timeout, maxCostUSD: record.Request.MaxCostUSD}
-	res, err := resolver{definitions: c.Definitions, runtimes: c.Runtimes, validator: c.Validator}.resolve(ctx, record.Request.Process, record.Request.Agent, caller)
+	res, err := resolver{definitions: definitions, runtimes: c.Runtimes, validator: c.Validator}.resolve(ctx, record.Request.Process, record.Request.Agent, caller)
 	record.Definitions = res.sources
 	if err != nil {
 		fail(err)
