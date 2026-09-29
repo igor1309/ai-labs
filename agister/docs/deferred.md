@@ -301,3 +301,16 @@ before.
 - **Done when:** each consumer's resolver interface uses result and
   argument types that consumer owns, and a resolver adapter translates
   into them.
+
+## 12. No test proves the reaper is wired to the supervisor's processes
+
+- **Gap:** `TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted` asserts
+  the supervisor's own `ParseRef` error among the reap's errors, but no
+  mutation shows that `main.go` wires `supervisor.Processes`: swapping it
+  for a nil-embedded double panics the test binary instead of failing a
+  test, so `revert-check.py` cannot count it.
+- **Evidence:** the round-2 implementer on 2026-09-29 dropped that mutation;
+  the remaining one only removes the error in `processes.go`.
+- **Trigger:** a change to the reaper's wiring in `main.go`.
+- **Done when:** a mutation replacing `supervisor.Processes{}` in `main.go`
+  with a well-formed double fails a test cleanly.
