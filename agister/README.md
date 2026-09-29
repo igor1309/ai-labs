@@ -64,7 +64,11 @@ settings.
   runtimes/*.yaml  schemas/*.json     same layout, higher priority
 ```
 
-Every call re-validates what it uses and refuses before the provider turn starts.
+Every command except `init` and `--help` runs `check` first (without
+`--probe`) and stops with exit 64 on any problem, so nothing works on
+settings that do not compose; `init` is exempt because it writes them.
+Passing is silent. Every call also re-validates what it uses and refuses
+before the provider turn starts.
 `examples/settings/` is what `init` installs. `examples/codex/` is opt-in;
 see its README.
 

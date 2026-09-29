@@ -38,7 +38,8 @@ const usage = `agister — run agent calls defined in settings
 
 Usage:
   agister init [--force]
-  agister check [--probe]            validate all settings (--probe: ask each runtime its version)
+  agister check [--probe]            validate all settings (--probe: ask each runtime its version);
+                                     every other command but init does this first and stops on problems
   agister agent create <name> --runtime <runtime> [--model <m>] [--model-family <f>] [--effort <e>] [--session fresh-only|resumable] [--command <path>] [--force]
   agister agent list
   agister process list
@@ -165,12 +166,9 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 	if err != nil {
 		return 0, err
 	}
-	if opts.help || len(positionals) == 0 {
+	if opts.help {
 		fmt.Fprintln(env.Stdout, usage)
-		if opts.help {
-			return 0, nil
-		}
-		return ExitUsage, nil
+		return 0, nil
 	}
 	config := Config{Home: home(opts.home, env), Cwd: env.Cwd}
 	if opts.debug {
@@ -180,7 +178,30 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 	if err != nil {
 		return 0, err
 	}
-	command, rest := positionals[0], positionals[1:]
+	var command string
+	var rest []string
+	if len(positionals) > 0 {
+		command, rest = positionals[0], positionals[1:]
+	}
+	// Every command but init, which writes the settings, first checks all
+	// of them and stops on any problem.
+	if command != "init" {
+		report, err := client.Check(ctx, command == "check" && opts.probe)
+		if err != nil {
+			return 0, err
+		}
+		if command == "check" {
+			return printCheck(env, report), nil
+		}
+		if len(report.Problems) > 0 {
+			printCheck(env, report)
+			return 0, &contract.InputError{Message: "settings have problems; fix them first (see `agister check`)"}
+		}
+	}
+	if command == "" {
+		fmt.Fprintln(env.Stdout, usage)
+		return ExitUsage, nil
+	}
 	arg := func(i int, what string) (string, error) {
 		if len(rest) <= i {
 			return "", usageError{command + " needs " + what}
@@ -200,29 +221,6 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 		for _, path := range result.Kept {
 			fmt.Fprintf(env.Stdout, "kept    %s (exists; --force replaces it)\n", path)
 		}
-		return 0, nil
-
-	case "check":
-		report, err := client.Check(ctx, opts.probe)
-		if err != nil {
-			return 0, err
-		}
-		for _, override := range report.Overrides {
-			fmt.Fprintln(env.Stdout, "override "+override)
-		}
-		for _, problem := range report.Problems {
-			fmt.Fprintln(env.Stderr, problem)
-		}
-		kinds := make([]string, 0, len(report.Checked))
-		for kind, count := range report.Checked {
-			kinds = append(kinds, fmt.Sprintf("%d %s", count, kind))
-		}
-		sort.Strings(kinds)
-		if len(report.Problems) > 0 {
-			fmt.Fprintf(env.Stderr, "%d problem(s) in %s\n", len(report.Problems), strings.Join(kinds, ", "))
-			return ExitUsage, nil
-		}
-		fmt.Fprintf(env.Stdout, "settings OK: %s\n", strings.Join(kinds, ", "))
 		return 0, nil
 
 	case "agent":
@@ -546,6 +544,28 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 	for _, line := range lines {
 		fmt.Fprintf(w, "%-12s %s\n", line[0], line[1])
 	}
+}
+
+// printCheck prints a check report and returns its exit code. Overrides
+// are listed either way: a problem is often caused by one.
+func printCheck(env IO, report contract.CheckReport) int {
+	for _, override := range report.Overrides {
+		fmt.Fprintln(env.Stdout, "override "+override)
+	}
+	kinds := make([]string, 0, len(report.Checked))
+	for kind, count := range report.Checked {
+		kinds = append(kinds, fmt.Sprintf("%d %s", count, kind))
+	}
+	sort.Strings(kinds)
+	if len(report.Problems) > 0 {
+		for _, problem := range report.Problems {
+			fmt.Fprintln(env.Stderr, problem)
+		}
+		fmt.Fprintf(env.Stderr, "%d problem(s) in %s\n", len(report.Problems), strings.Join(kinds, ", "))
+		return ExitUsage
+	}
+	fmt.Fprintf(env.Stdout, "settings OK: %s\n", strings.Join(kinds, ", "))
+	return 0
 }
 
 func limits(view contract.ProcessView) string {

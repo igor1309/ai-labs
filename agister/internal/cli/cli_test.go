@@ -261,6 +261,32 @@ func TestCheck(t *testing.T) {
 	}
 }
 
+// Every command but init and help checks all settings first, without
+// probing runtimes, and stops on any problem before it uses the client.
+func TestEveryCommandChecksSettingsFirst(t *testing.T) {
+	broken := contract.CheckReport{Checked: map[string]int{"agents": 1}, Problems: []string{"agent a: bad"}, Overrides: []string{"agent a: /p overrides /g"}}
+	for _, args := range [][]string{{}, {"run", "p"}, {"runs"}, {"runs", "show", "x"}, {"agent", "list"}, {"process", "show", "p"}} {
+		spy := &clientSpy{report: broken}
+		r := run(context.Background(), spy, args...)
+		if r.code != cli.ExitUsage || !reflect.DeepEqual(spy.checked, []bool{false}) || len(spy.submitted) != 0 ||
+			!strings.HasPrefix(r.stderr, "agent a: bad\n1 problem(s) in 1 agents\nagister: settings have problems") || r.stdout != "override agent a: /p overrides /g\n" {
+			t.Errorf("%v: %+v, checked %v", args, r, spy.checked)
+		}
+	}
+	// Passing is silent, so a command's own output (such as --json) is all
+	// there is.
+	spy := &clientSpy{run: finished("completed", ""), report: contract.CheckReport{Overrides: []string{"agent a: /p overrides /g"}}}
+	if r := run(context.Background(), spy, "run", "p", "--quiet", "--json"); r.code != 0 || !strings.HasPrefix(r.stdout, "{") || !reflect.DeepEqual(spy.checked, []bool{false}) {
+		t.Fatalf("passing: %+v, checked %v", r, spy.checked)
+	}
+	for _, args := range [][]string{{"--help"}, {"-h"}, {"run", "p", "--help"}} {
+		spy := &clientSpy{report: broken}
+		if r := run(context.Background(), spy, args...); r.code != 0 || len(spy.checked) != 0 {
+			t.Errorf("%v: %+v, checked %v", args, r, spy.checked)
+		}
+	}
+}
+
 func TestAgentCreatePayload(t *testing.T) {
 	spy := &clientSpy{}
 	r := run(context.Background(), spy, "--home", "rel", "agent", "create", "x", "--runtime", "rt", "--model", "m", "--model-family", "f", "--effort", "high", "--session", "resumable", "--command", "/bin/c")

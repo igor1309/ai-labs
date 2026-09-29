@@ -375,7 +375,8 @@ func TestProjectOverridesAreNoted(t *testing.T) {
 }
 
 // Overrides are verified as composed: a project service that global
-// policies exceed fails check and refuses the call.
+// policies exceed fails check, and every other command stops before it
+// does anything.
 func TestComposedSettingsAreVerified(t *testing.T) {
 	home, repo := setup(t, "approve")
 	write(t, filepath.Join(repo, ".agister", "service.toml"), strings.Replace(read(t, filepath.Join(home, "service.toml")), `max_timeout = "1h"`, `max_timeout = "5m"`, 1))
@@ -384,8 +385,35 @@ func TestComposedSettingsAreVerified(t *testing.T) {
 	if r.code != cli.ExitUsage || !strings.Contains(r.stdout, "override service service:") || !strings.Contains(r.stderr, "process adversarial_review") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if r := agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main"); r.code != cli.ExitRefused {
-		t.Fatalf("run: %d\n%s", r.code, r.stderr)
+	for _, args := range [][]string{{}, {"run", "adversarial_review", "--quiet", "--param", "base=main"}, {"runs"}, {"process", "list"}} {
+		r := agister(t, home, repo, args...)
+		if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "process adversarial_review") || !strings.Contains(r.stderr, "settings have problems") {
+			t.Fatalf("%v: %d\n%s%s", args, r.code, r.stdout, r.stderr)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(home, "runs")); err == nil {
+		t.Fatal("a call started despite invalid settings")
+	}
+	// Help needs no settings, and init is how settings are repaired.
+	if r := agister(t, home, repo, "--help"); r.code != 0 {
+		t.Fatalf("help: %d\n%s", r.code, r.stderr)
+	}
+	if r := agister(t, home, repo, "init"); r.code != 0 {
+		t.Fatalf("init: %d\n%s", r.code, r.stderr)
+	}
+}
+
+// On a fresh machine only init and help work; after init everything does.
+func TestFreshHomeNeedsInit(t *testing.T) {
+	home, dir := filepath.Join(t.TempDir(), "home"), t.TempDir()
+	if r := agister(t, home, dir, "process", "list"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, "service service: not found") {
+		t.Fatalf("before init: %d\n%s", r.code, r.stderr)
+	}
+	if r := agister(t, home, dir, "init"); r.code != 0 {
+		t.Fatalf("init: %d\n%s", r.code, r.stderr)
+	}
+	if r := agister(t, home, dir, "process", "list"); r.code != 0 {
+		t.Fatalf("after init: %d\n%s", r.code, r.stderr)
 	}
 }
 
