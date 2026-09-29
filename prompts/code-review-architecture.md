@@ -21,6 +21,8 @@ Architectural invariants
 * Components declare their own types even when another component has structurally similar types.
 * Boundary adapters translate between independently owned types.
 * Interfaces belong to the consuming component/subcomponent and express exactly the collaborator capabilities it requires.
+* A component's interfaces are cut by the roles its collaborators play for it, not by the seams of existing adapters or former shared interfaces. Signs of the latter: one interface per existing adapter or former shared interface, renamed; names that describe a mechanism rather than what the component needs; two interfaces always satisfied by one adapter and used together; one interface bundling unrelated needs because one adapter provides them.
+* A component that calls one collaborator only to pass the response to another, and uses neither otherwise, has the wrong interfaces and the wrong responsibility: the two calls are one role, and the hand-off belongs to a collaborator.
 * Required dependencies are explicit and supplied during construction.
 * Construction produces a valid component with its required collaborators present.
 * The application composition root assembles modules.
