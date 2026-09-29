@@ -26,3 +26,6 @@
   its fix reverted).
 - Have Codex review the result critically:
   `codex exec --sandbox read-only -m gpt-6-sol -c model_reasoning_effort="high" "<prompt>" < /dev/null`.
+- Keep the loop tight: at most 2 review rounds. Judge each finding; fix
+  what belongs to the issue, and record the rest in the project's deferred
+  work (for agister, `agister/docs/deferred.md`) instead of another round.
