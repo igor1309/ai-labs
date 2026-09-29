@@ -67,10 +67,29 @@ type ProcessSummary struct {
 }
 
 type CheckReport struct {
-	Checked  map[string]int // definitions checked, by kind
-	Problems []string
+	Checked  map[string]int `json:"checked"` // definitions checked, by kind
+	Problems []string       `json:"problems"`
 	// Project definitions that take priority over global ones.
-	Overrides []string
+	Overrides []string `json:"overrides"`
+	// Every definition read, in check order, with what it references.
+	Definitions []Definition `json:"definitions"`
+}
+
+// Definition is one settings document in the composed settings.
+type Definition struct {
+	Kind      string          `json:"kind"` // service, agents, processes, policies, runtimes, schemas
+	Name      string          `json:"name"`
+	Layer     string          `json:"layer"` // global or project
+	Path      string          `json:"path"`
+	Overrides string          `json:"overrides,omitempty"` // the global document this one replaces
+	Invalid   bool            `json:"invalid,omitempty"`   // did not parse; see problems
+	Uses      []DefinitionRef `json:"uses,omitempty"`      // whether or not they exist
+	UsedBy    []DefinitionRef `json:"used_by,omitempty"`
+}
+
+type DefinitionRef struct {
+	Kind string `json:"kind"`
+	Name string `json:"name"`
 }
 
 type Param struct {

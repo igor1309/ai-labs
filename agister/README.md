@@ -14,6 +14,9 @@ bin/agister init                  # example settings into ~/.agister ($AGISTER_H
                                   # (--force also replaces existing files; scripts: echo yes | ...)
 bin/agister check                 # validate all settings; report discovered problems
 bin/agister check --probe         # also ask each agent's runtime for its version
+bin/agister check --tree          # what defines what: each process, what it uses, which file
+                                  # (global or project, and what it overrides), unused definitions
+bin/agister check --json          # the whole report, including that graph, as JSON
 
 bin/agister process list
 bin/agister process show adversarial_review

@@ -22,6 +22,7 @@ type Checker struct {
 
 func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, error) {
 	report := contract.CheckReport{Checked: map[string]int{}}
+	index := map[contract.DefinitionRef]int{} // into report.Definitions
 	problem := func(subject, format string, args ...any) {
 		report.Problems = append(report.Problems, subject+": "+fmt.Sprintf(format, args...))
 	}
@@ -52,7 +53,14 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			if doc.Source.Overrides != "" {
 				report.Overrides = append(report.Overrides, fmt.Sprintf("%s %s: %s overrides %s", kind.Singular(), name, doc.Source.Path, doc.Source.Overrides))
 			}
+			layer := "global"
+			if doc.Source.Project {
+				layer = "project"
+			}
+			index[contract.DefinitionRef{Kind: string(kind), Name: name}] = len(report.Definitions)
+			report.Definitions = append(report.Definitions, contract.Definition{Kind: string(kind), Name: name, Layer: layer, Path: doc.Source.Path, Overrides: doc.Source.Overrides})
 			if err := parse(doc); err != nil {
+				report.Definitions[len(report.Definitions)-1].Invalid = true
 				var invalid *definition.InvalidError
 				if errors.As(err, &invalid) {
 					for _, p := range invalid.Problems {
@@ -117,6 +125,30 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			return report, err
 		}
 	}
+	// What each definition references, and the reverse.
+	link := func(from contract.DefinitionRef, kind definition.Kind, name string) {
+		source, ok := index[from]
+		if name == "" || !ok { // a name unlike its file is reported as a problem
+			return
+		}
+		to := contract.DefinitionRef{Kind: string(kind), Name: name}
+		report.Definitions[source].Uses = append(report.Definitions[source].Uses, to)
+		if i, ok := index[to]; ok {
+			report.Definitions[i].UsedBy = append(report.Definitions[i].UsedBy, from)
+		}
+	}
+	for _, name := range sortedNames(bundle.Agents) {
+		link(contract.DefinitionRef{Kind: string(definition.KindAgent), Name: name}, definition.KindRuntime, bundle.Agents[name].Runtime)
+	}
+	for _, name := range sortedNames(bundle.Processes) {
+		process, from := bundle.Processes[name], contract.DefinitionRef{Kind: string(definition.KindProcess), Name: name}
+		link(from, definition.KindAgent, process.Agent)
+		link(from, definition.KindPolicy, process.Policy)
+		if process.Output.Format == "json" {
+			link(from, definition.KindSchema, process.Output.Schema)
+		}
+	}
+
 	if bundle.Service == nil {
 		sort.Strings(report.Problems)
 		return report, nil

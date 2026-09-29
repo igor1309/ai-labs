@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 )
@@ -40,7 +41,9 @@ const usage = `agister — run agent calls defined in settings
 Usage:
   agister init [--force]             install example settings; shows the plan, writes only after "yes"
                                      (--force replaces existing files)
-  agister check [--probe]            validate all settings (--probe: ask each runtime its version);
+  agister check [--probe] [--tree] [--json]
+                                     validate all settings (--probe: ask each runtime its version;
+                                     --tree: what defines what, and where; --json: the report as JSON);
                                      every other command but init does this first and stops on problems
   agister agent create <name> --runtime <runtime> [--model <m>] [--model-family <f>] [--effort <e>] [--session fresh-only|resumable] [--command <path>] [--force]
   agister agent list
@@ -107,7 +110,7 @@ func Run(ctx context.Context, args []string, env IO, build Build) int {
 type options struct {
 	home, runtime, model, modelFamily, effort, session, command string
 	agent, timeout, maxCost, continueRun                        string
-	force, quiet, debug, json, help, probe                      bool
+	force, quiet, debug, json, help, probe, tree                bool
 	after                                                       int
 	params                                                      paramFlag
 }
@@ -144,6 +147,7 @@ func parse(args []string) (options, []string, error) {
 	set.BoolVar(&opts.debug, "debug", false, "")
 	set.BoolVar(&opts.json, "json", false, "")
 	set.BoolVar(&opts.probe, "probe", false, "")
+	set.BoolVar(&opts.tree, "tree", false, "")
 	set.BoolVar(&opts.help, "help", false, "")
 	set.BoolVar(&opts.help, "h", false, "")
 	set.IntVar(&opts.after, "after", 0, "")
@@ -193,7 +197,7 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 			return 0, err
 		}
 		if command == "check" {
-			return printCheck(env, report), nil
+			return printCheckAs(env, report, opts)
 		}
 		if len(report.Problems) > 0 {
 			printCheck(env, report)
@@ -581,6 +585,108 @@ func initSettings(ctx context.Context, client contract.Client, force bool, home 
 		fmt.Fprintf(env.Stdout, "kept     %s\n", path)
 	}
 	return 0, nil
+}
+
+// printCheckAs prints a check report as JSON, as a tree or as a list.
+func printCheckAs(env IO, report contract.CheckReport, opts options) (int, error) {
+	code := 0
+	if len(report.Problems) > 0 {
+		code = ExitUsage
+	}
+	if opts.json {
+		for _, list := range []*[]string{&report.Problems, &report.Overrides} {
+			if *list == nil {
+				*list = []string{}
+			}
+		}
+		if report.Definitions == nil {
+			report.Definitions = []contract.Definition{}
+		}
+		return code, printJSON(env.Stdout, report)
+	}
+	if opts.tree {
+		printTree(env.Stdout, report.Definitions)
+		report.Overrides = nil // shown in the tree
+	}
+	return printCheck(env, report), nil
+}
+
+var kindNames = map[string]string{
+	"service": "service", "agents": "agent", "processes": "process",
+	"policies": "policy", "runtimes": "runtime", "schemas": "schema",
+}
+
+// printTree prints the service and each process with what it uses, then
+// the definitions no process uses.
+func printTree(w io.Writer, definitions []contract.Definition) {
+	byRef := map[contract.DefinitionRef]contract.Definition{}
+	for _, d := range definitions {
+		byRef[contract.DefinitionRef{Kind: d.Kind, Name: d.Name}] = d
+	}
+	type line struct{ label, detail string }
+	var lines []line
+	describe := func(ref contract.DefinitionRef) string {
+		d, ok := byRef[ref]
+		if !ok {
+			return "MISSING"
+		}
+		text := fmt.Sprintf("%-7s %s", d.Layer, d.Path)
+		if d.Overrides != "" {
+			text += " (overrides " + d.Overrides + ")"
+		}
+		if d.Invalid {
+			text += " INVALID"
+		}
+		return text
+	}
+	var walk func(ref contract.DefinitionRef, prefix, branch string)
+	walk = func(ref contract.DefinitionRef, prefix, branch string) {
+		lines = append(lines, line{prefix + branch + kindNames[ref.Kind] + " " + ref.Name, describe(ref)})
+		children := byRef[ref].Uses
+		next := prefix
+		switch branch {
+		case "├─ ":
+			next += "│  "
+		case "└─ ":
+			next += "   "
+		}
+		for i, child := range children {
+			childBranch := "├─ "
+			if i == len(children)-1 {
+				childBranch = "└─ "
+			}
+			walk(child, next, childBranch)
+		}
+	}
+	var unused []contract.DefinitionRef
+	for _, d := range definitions {
+		ref := contract.DefinitionRef{Kind: d.Kind, Name: d.Name}
+		switch {
+		case d.Kind == "service" || d.Kind == "processes":
+			walk(ref, "", "")
+		case len(d.UsedBy) == 0:
+			unused = append(unused, ref)
+		}
+	}
+	if len(unused) > 0 {
+		lines = append(lines, line{"unused (no process uses these)", ""})
+		for _, ref := range unused {
+			lines = append(lines, line{"   " + kindNames[ref.Kind] + " " + ref.Name, describe(ref)})
+		}
+	}
+	width := 0
+	for _, l := range lines {
+		if l.detail != "" { // headings do not set the column
+			width = max(width, utf8.RuneCountInString(l.label))
+		}
+	}
+	for _, l := range lines {
+		if l.detail == "" {
+			fmt.Fprintln(w, l.label)
+			continue
+		}
+		fmt.Fprintf(w, "%s%s  %s\n", l.label, strings.Repeat(" ", width-utf8.RuneCountInString(l.label)), l.detail)
+	}
 }
 
 // printCheck prints a check report and returns its exit code. Overrides

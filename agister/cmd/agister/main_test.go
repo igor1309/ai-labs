@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -372,6 +373,20 @@ func TestProjectOverridesAreNoted(t *testing.T) {
 	r := agister(t, home, repo, "check")
 	if r.code != 0 || !strings.Contains(r.stdout, "override agent reviewer: "+project+" overrides "+global) || !strings.Contains(r.stdout, "settings OK") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	r = agister(t, home, repo, "check", "--tree")
+	if r.code != 0 || !regexp.MustCompile(`├─ agent reviewer +project `+regexp.QuoteMeta(project+" (overrides "+global+")")).MatchString(r.stdout) {
+		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	var report contract.CheckReport
+	r = agister(t, home, repo, "check", "--json")
+	if err := json.Unmarshal([]byte(r.stdout), &report); err != nil || r.code != 0 {
+		t.Fatalf("check --json: %d %v\n%s", r.code, err, r.stdout)
+	}
+	for _, d := range report.Definitions {
+		if d.Kind == "agents" && d.Name == "reviewer" && (d.Layer != "project" || d.Path != project || d.Overrides != global || len(d.UsedBy) == 0) {
+			t.Fatalf("reviewer = %+v", d)
+		}
 	}
 	r = agister(t, home, repo, "process", "show", "adversarial_review")
 	if r.code != 0 || !strings.Contains(r.stdout, "agent reviewer: project "+project+" (overrides "+global+")") {

@@ -47,6 +47,46 @@ func TestCheckReportsEveryProblemAcrossDocuments(t *testing.T) {
 	}
 }
 
+// The report lists every definition read and what each uses, including
+// references to definitions that do not exist and what nothing uses.
+func TestCheckReportsWhatDefinesWhat(t *testing.T) {
+	h := newHarness()
+	h.defs.docs[definition.KindPolicy]["spare"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "name: pol", "name: spare", 1)
+	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: q", 1), "agent:a", "agent:ghost", 1)
+	h.defs.docs[definition.KindAgent]["broken"] = "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\ncolour = \"red\"\n"
+	checker := &app.Checker{Definitions: h.defs, Validator: h.validator, Runtimes: h.runtimes, Sources: []string{"git.revision", "git.diff"}}
+	report, err := checker.Check(context.Background(), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref := func(kind, name string) contract.DefinitionRef { return contract.DefinitionRef{Kind: kind, Name: name} }
+	got := map[contract.DefinitionRef]contract.Definition{}
+	var order []string
+	for _, d := range report.Definitions {
+		got[ref(d.Kind, d.Name)] = d
+		order = append(order, d.Kind+"/"+d.Name)
+	}
+	if strings.Join(order, " ") != "service/service runtimes/rt agents/a agents/broken policies/pol policies/spare processes/p processes/q schemas/s" {
+		t.Fatalf("order = %v", order)
+	}
+	p, a := got[ref("processes", "p")], got[ref("agents", "a")]
+	if !reflect.DeepEqual(p.Uses, []contract.DefinitionRef{ref("agents", "a"), ref("policies", "pol"), ref("schemas", "s")}) || p.Layer != "global" || p.Path != "mem/processes/p" {
+		t.Fatalf("p = %+v", p)
+	}
+	if !reflect.DeepEqual(a.Uses, []contract.DefinitionRef{ref("runtimes", "rt")}) || !reflect.DeepEqual(a.UsedBy, []contract.DefinitionRef{ref("processes", "p")}) {
+		t.Fatalf("a = %+v", a)
+	}
+	if q := got[ref("processes", "q")]; q.Uses[0] != ref("agents", "ghost") {
+		t.Fatalf("q = %+v", q)
+	}
+	if spare := got[ref("policies", "spare")]; len(spare.UsedBy) != 0 {
+		t.Fatalf("spare = %+v", spare)
+	}
+	if broken := got[ref("agents", "broken")]; !broken.Invalid || len(broken.Uses) != 0 {
+		t.Fatalf("broken = %+v", broken)
+	}
+}
+
 func TestCheckProbesEachAgentsRuntime(t *testing.T) {
 	h := newHarness()
 	checker := &app.Checker{Definitions: h.defs, Validator: h.validator, Runtimes: h.runtimes, Sources: []string{"git.revision", "git.diff"}}

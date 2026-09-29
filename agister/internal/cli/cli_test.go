@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -284,6 +285,46 @@ func TestEveryCommandChecksSettingsFirst(t *testing.T) {
 		if r := run(context.Background(), spy, args...); r.code != 0 || len(spy.checked) != 0 {
 			t.Errorf("%v: %+v, checked %v", args, r, spy.checked)
 		}
+	}
+}
+
+func TestCheckTreeAndJSON(t *testing.T) {
+	ref := func(kind, name string) contract.DefinitionRef { return contract.DefinitionRef{Kind: kind, Name: name} }
+	report := contract.CheckReport{
+		Checked:   map[string]int{"processes": 1},
+		Overrides: []string{"agent a: /p/agents/a.toml overrides /g/agents/a.toml"},
+		Definitions: []contract.Definition{
+			{Kind: "service", Name: "service", Layer: "global", Path: "/g/service.toml"},
+			{Kind: "runtimes", Name: "rt", Layer: "global", Path: "/g/runtimes/rt.yaml", UsedBy: []contract.DefinitionRef{ref("agents", "a")}},
+			{Kind: "agents", Name: "a", Layer: "project", Path: "/p/agents/a.toml", Overrides: "/g/agents/a.toml", Uses: []contract.DefinitionRef{ref("runtimes", "rt")}, UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
+			{Kind: "policies", Name: "spare", Layer: "project", Path: "/p/policies/spare.yaml", Invalid: true},
+			{Kind: "processes", Name: "p", Layer: "global", Path: "/g/processes/p.yaml", Uses: []contract.DefinitionRef{ref("agents", "a"), ref("policies", "gone")}},
+		},
+	}
+	spy := &clientSpy{report: report}
+	r := run(context.Background(), spy, "check", "--tree")
+	want := `service service   global  /g/service.toml
+process p         global  /g/processes/p.yaml
+├─ agent a        project /p/agents/a.toml (overrides /g/agents/a.toml)
+│  └─ runtime rt  global  /g/runtimes/rt.yaml
+└─ policy gone    MISSING
+unused (no process uses these)
+   policy spare   project /p/policies/spare.yaml INVALID
+settings OK: 1 processes
+`
+	if r.code != 0 || r.stdout != want {
+		t.Fatalf("tree: %d\n%s", r.code, r.stdout)
+	}
+
+	spy = &clientSpy{report: contract.CheckReport{Checked: map[string]int{}, Problems: []string{"agent a: bad"}}}
+	r = run(context.Background(), spy, "check", "--json", "--tree")
+	var got map[string]any
+	if err := json.Unmarshal([]byte(r.stdout), &got); err != nil || r.code != cli.ExitUsage || r.stderr != "" {
+		t.Fatalf("json: %d %v\n%s%s", r.code, err, r.stdout, r.stderr)
+	}
+	// Empty lists are lists, so consumers need no null checks.
+	if fmt.Sprint(got["problems"]) != "[agent a: bad]" || fmt.Sprint(got["overrides"]) != "[]" || fmt.Sprint(got["definitions"]) != "[]" {
+		t.Fatalf("json = %v", got)
 	}
 }
 
