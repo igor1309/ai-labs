@@ -28,7 +28,12 @@ before.
   real runtime. Each primitive lists the versions it was verified against
   (`verified`), and a plan uses only primitives verified for the installed
   version; but the list is typed by hand, and nothing records what was
-  checked.
+  checked. The shipped lists also extrapolate: `"2.1."` vouches for every
+  2.1 patch, though `Read` and `Grep` were checked on 2.1.283 and `Glob` on
+  2.1.284. Pinning exact patches would refuse every call after each Claude
+  Code update until someone re-checked by hand; the live refusals all name
+  one `--restricted` check, which suggests one mechanism across the file
+  tools, but that is inference, not evidence.
 - **Verified so far (live, Claude Code 2.1.283):** Bash cannot be fenced by
   prefix rules; `Read` and `Grep` outside the working directory are
   refused, including through symlinks in the workspace; a project
