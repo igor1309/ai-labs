@@ -36,6 +36,12 @@ find: \t\t\terrs = append(errs, err)\n\t\t}\n\t}\n\treturn errors.Join(errs...)
 replace: \t\t\treturn err\n\t\t}\n\t}\n\treturn errors.Join(errs...)
 test: ./internal/app TestAReapThatCannotRecordARunFails
 
+[the reap returns every run's failure, not the first]
+file: internal/app/reap.go
+find: \t\t}\n\t}\n\treturn errors.Join(errs...)\n
+replace: \t\t}\n\t}\n\tif len(errs) > 0 {\n\t\treturn errs[0]\n\t}\n\treturn nil\n
+test: ./internal/app TestAReapThatCannotRecordARunFails
+
 [an unrecorded event's step failures are in the error]
 file: internal/app/reap.go
 find: \t\tif len(failures) > 0 {\n\t\t\terr = fmt.Errorf(
@@ -99,3 +105,9 @@ file: internal/app/calls.go
 find: \t\targs, err := value.Bind(params, texts)\n\t\tif err != nil {
 replace: \t\targs, err := value.Bind(params, texts)\n\t\tif false {
 test: ./internal/app TestRefusalsComeBeforeEffects
+
+[a shipped diff or changed-files value binds its revisions to the values resolved before it]
+file: ../.agister/processes/tests_review_codex.yaml
+find: diff: {source: git.diff, base: "${value.base_revision}", head: "${value.candidate_revision}"}
+replace: diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}
+test: ./internal/domain/definition TestShippedRevisionInputsUseTheValuesResolvedBeforeThem

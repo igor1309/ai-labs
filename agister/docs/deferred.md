@@ -116,6 +116,14 @@ before.
   future work. A tampered run record can point at a checkout-shaped
   directory Agister did not create; that is outside the single-user threat
   model, since whoever can write run records controls Agister's home.
+  A reap reports failing to list abandoned runs, to append
+  `EFFECTS_REAPED` or to finish a run, but not failing to adopt one or to
+  read its record: `fsruns` returns the expected refusals (owned,
+  finished, not found) and real I/O errors alike, and `List` and
+  `Abandoned` skip records they cannot read. Such a run stays unreaped
+  with nothing logged (trigger: the next change to the reaper or `fsruns`,
+  or such a run seen left behind; then `fsruns` returns sentinels for the
+  expected refusals and the reap reports the rest).
 - **Trigger for the rest:** the service (ADR-001 rule 16), or earlier if
   leftovers between calls become a nuisance.
 - **Done when (rest):** the service reaps on start and periodically, and

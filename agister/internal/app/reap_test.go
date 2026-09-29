@@ -304,16 +304,27 @@ func TestAReapThatCannotListRunsFails(t *testing.T) {
 // event would have recorded. The other runs are reaped all the same.
 func TestAReapThatCannotRecordARunFails(t *testing.T) {
 	for name, tc := range map[string]struct {
-		fail func(*recorderSpy)
-		want []string
+		fail    func(*recorderSpy)
+		failing []string
+		want    []string
+		blamed  string // a run the error must not name
 	}{
 		"event": {
-			fail: func(h *recorderSpy) { h.appendErr = errors.New("events full") },
-			want: []string{"reaping run a", "recording the reap: events full", "process 777 is alive"},
+			fail:    func(h *recorderSpy) { h.appendErr = errors.New("events full") },
+			failing: []string{"a"},
+			want:    []string{"reaping run a", "recording the reap: events full", "process 777 is alive"},
+			blamed:  "run b",
 		},
 		"end": {
-			fail: func(h *recorderSpy) { h.finishErr = errors.New("record full") },
-			want: []string{"reaping run a", "finishing the run: record full"},
+			fail:    func(h *recorderSpy) { h.finishErr = errors.New("record full") },
+			failing: []string{"a"},
+			want:    []string{"reaping run a", "finishing the run: record full"},
+			blamed:  "run b",
+		},
+		"several runs": {
+			fail:    func(h *recorderSpy) { h.appendErr = errors.New("events full") },
+			failing: []string{"a", "b"},
+			want:    []string{"reaping run a", "reaping run b"},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -322,7 +333,10 @@ func TestAReapThatCannotRecordARunFails(t *testing.T) {
 			b.Effects.Checkout.Dir = "/tmp/agister-checkout-b/workspace"
 			r := reaping(h, abandonedRun("a"), b)
 			r.processes.err = errors.New("process 777 is alive")
-			r.adopter.failing = map[string]func(*recorderSpy){"a": tc.fail}
+			r.adopter.failing = map[string]func(*recorderSpy){}
+			for _, id := range tc.failing {
+				r.adopter.failing[id] = tc.fail
+			}
 			err := r.reap()
 			if err == nil {
 				t.Fatal("the reap did not fail")
@@ -332,8 +346,8 @@ func TestAReapThatCannotRecordARunFails(t *testing.T) {
 					t.Errorf("missing %q in %v", want, err)
 				}
 			}
-			if strings.Contains(err.Error(), "run b") {
-				t.Errorf("run b is blamed: %v", err)
+			if tc.blamed != "" && strings.Contains(err.Error(), tc.blamed) {
+				t.Errorf("%s is blamed: %v", tc.blamed, err)
 			}
 			if !reflect.DeepEqual(r.adopter.adopted, []string{"a", "b"}) {
 				t.Fatalf("adopted = %v", r.adopter.adopted)

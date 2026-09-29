@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -83,6 +84,57 @@ func TestExamplesCarryNoConstraintThatAlwaysPasses(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// A diff or changed-files value takes both revisions from git.revision
+// values declared before it. Bound to ${param.*} instead, each would resolve
+// its revision again, and the two could name different commits.
+func TestShippedRevisionInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
+	settings := examples.Settings()
+	shipped := map[string]fs.FS{
+		"examples/settings": settings,
+		"examples/codex":    os.DirFS("../../../examples/codex"),
+		".agister":          os.DirFS("../../../../.agister"),
+	}
+	exact := regexp.MustCompile(`^\$\{value\.([^}]+)\}$`)
+	checked := 0
+	for root, files := range shipped {
+		entries, err := fs.ReadDir(files, string(definition.KindProcess))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, entry := range entries {
+			data, err := fs.ReadFile(files, string(definition.KindProcess)+"/"+entry.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+			name := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
+			process, err := definition.ParseProcess(doc(definition.KindProcess, name, string(data)))
+			if err != nil {
+				t.Errorf("%s/processes/%s: %v", root, entry.Name(), err)
+				continue
+			}
+			revisions := map[string]bool{}
+			for _, value := range process.Values {
+				switch value.Source {
+				case "git.revision":
+					revisions[value.Name] = true
+				case "git.diff", "git.changed_files":
+					checked++
+					for _, arg := range []string{"base", "head"} {
+						match := exact.FindStringSubmatch(value.Args[arg])
+						if match == nil || !revisions[match[1]] {
+							t.Errorf("%s/processes/%s: %s %s = %q, want ${value.<a git.revision value declared before it>}",
+								root, entry.Name(), value.Name, arg, value.Args[arg])
+						}
+					}
+				}
+			}
+		}
+	}
+	if checked == 0 {
+		t.Fatal("no git.diff or git.changed_files value was checked")
 	}
 }
 
