@@ -89,7 +89,8 @@ func setup(t *testing.T, scenario string) (home, repo string) {
 		{"agent", "create", "reviewer", "--force", "--runtime", "claude-code", "--model", "sonnet", "--model-family", "anthropic", "--effort", "high", "--command", claude},
 		{"agent", "create", "assistant", "--force", "--runtime", "claude-code", "--model-family", "anthropic", "--session", "resumable", "--command", claude},
 	} {
-		if r := agister(t, home, repo, args...); r.code != 0 {
+		// Both replace a shipped agent, so each asks.
+		if r := agisterInput(t, "yes\n", home, repo, args...); r.code != 0 {
 			t.Fatalf("%v: %d %s", args, r.code, r.stderr)
 		}
 	}
@@ -461,6 +462,34 @@ func TestInitAsksBeforeWriting(t *testing.T) {
 	}
 	if r := agisterInput(t, "yes\n", home, dir, "init", "--force"); r.code != 0 || !strings.Contains(r.stdout, "replaced "+edited) || strings.HasSuffix(read(t, edited), "# mine\n") {
 		t.Fatalf("force with yes: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+}
+
+// agent create asks for "yes" only when --force would replace an agent.
+func TestAgentCreateAsksBeforeReplacing(t *testing.T) {
+	home, dir := filepath.Join(t.TempDir(), "home"), t.TempDir()
+	if r := agisterInput(t, "yes\n", home, dir, "init"); r.code != 0 {
+		t.Fatalf("init: %d %s", r.code, r.stderr)
+	}
+	reviewer := filepath.Join(home, "agents", "reviewer.toml")
+	before := read(t, reviewer)
+	replace := []string{"agent", "create", "reviewer", "--force", "--runtime", "claude-code", "--model", "opus", "--model-family", "anthropic"}
+	for _, input := range []string{"", "y\n", "no\n"} {
+		r := agisterInput(t, input, home, dir, replace...)
+		if r.code != cli.ExitUsage || !strings.Contains(r.stdout, "will REPLACE "+reviewer) || !strings.Contains(r.stderr, "Type yes to replace agent reviewer") || read(t, reviewer) != before {
+			t.Fatalf("input %q: %d\n%s%s", input, r.code, r.stdout, r.stderr)
+		}
+	}
+	if r := agisterInput(t, "yes\n", home, dir, replace...); r.code != 0 || !strings.Contains(r.stdout, "replaced agent reviewer: "+reviewer) || !strings.Contains(read(t, reviewer), `model = "opus"`) {
+		t.Fatalf("yes: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	// A new agent replaces nothing, so --force or not, nothing is asked.
+	if r := agister(t, home, dir, "agent", "create", "fresh", "--force", "--runtime", "claude-code"); r.code != 0 || strings.Contains(r.stderr, "Type yes") || !strings.Contains(r.stdout, "created agent fresh") {
+		t.Fatalf("new agent: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	// Without --force an existing agent is refused, not asked about.
+	if r := agister(t, home, dir, "agent", "create", "fresh", "--runtime", "claude-code"); r.code != cli.ExitUsage || strings.Contains(r.stderr, "Type yes") || !strings.Contains(r.stderr, "already exists") {
+		t.Fatalf("existing without force: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 }
 

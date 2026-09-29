@@ -23,6 +23,7 @@ type clientSpy struct {
 	cancelled       []string
 	checked         []bool
 	agents          []contract.Agent
+	agentExists     bool
 
 	events   []contract.Event
 	onCancel chan string
@@ -68,9 +69,12 @@ func (s *clientSpy) Check(_ context.Context, probe bool) (contract.CheckReport, 
 	return s.report, nil
 }
 
-func (s *clientSpy) CreateAgent(_ context.Context, agent contract.Agent, _ bool) (string, error) {
-	s.agents = append(s.agents, agent)
-	return "/home/agents/" + agent.Name + ".toml", nil
+func (s *clientSpy) CreateAgent(_ context.Context, agent contract.Agent, overwrite, dryRun bool) (contract.AgentWrite, error) {
+	write := contract.AgentWrite{Path: "/home/agents/" + agent.Name + ".toml", Replaces: overwrite && s.agentExists}
+	if !dryRun {
+		s.agents = append(s.agents, agent)
+	}
+	return write, nil
 }
 
 type result struct {
@@ -325,6 +329,18 @@ settings OK: 1 processes
 	// Empty lists are lists, so consumers need no null checks.
 	if fmt.Sprint(got["problems"]) != "[agent a: bad]" || fmt.Sprint(got["overrides"]) != "[]" || fmt.Sprint(got["definitions"]) != "[]" {
 		t.Fatalf("json = %v", got)
+	}
+}
+
+func TestAgentCreateAsksOnlyToReplace(t *testing.T) {
+	spy := &clientSpy{agentExists: true}
+	r := run(context.Background(), spy, "agent", "create", "x", "--runtime", "rt", "--force")
+	if r.code != cli.ExitUsage || len(spy.agents) != 0 || r.stderr != "Type yes to replace agent x:\nagister: agent create cancelled; nothing was written\n" {
+		t.Fatalf("no answer: %+v, agents %v", r, spy.agents)
+	}
+	spy = &clientSpy{}
+	if r := run(context.Background(), spy, "agent", "create", "x", "--runtime", "rt", "--force"); r.code != 0 || r.stderr != "" || r.stdout != "created agent x: /home/agents/x.toml\n" || len(spy.agents) != 1 {
+		t.Fatalf("nothing to replace: %+v, agents %v", r, spy.agents)
 	}
 }
 

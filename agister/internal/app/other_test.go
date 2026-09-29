@@ -253,21 +253,44 @@ func TestInitSkipsHiddenFilesAndRejectsStrayRootFiles(t *testing.T) {
 	}
 }
 
+// A dry run validates and reports a replacement without writing; the real
+// run writes and reports the same.
+func TestCreateAgentDryRun(t *testing.T) {
+	h := newHarness()
+	writer := &writerSpy{existed: map[string]bool{"agents/b": true}}
+	settings := &app.Settings{Definitions: h.defs, Writer: writer}
+	spec := contract.Agent{Name: "b", Runtime: "rt"}
+	var input *contract.InputError
+	if _, err := settings.CreateAgent(context.Background(), spec, false, true); !errors.As(err, &input) {
+		t.Fatalf("existing without overwrite: %v", err)
+	}
+	if _, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "nope"}, true, true); !errors.As(err, &input) {
+		t.Fatalf("invalid in a dry run: %v", err)
+	}
+	plan, err := settings.CreateAgent(context.Background(), spec, true, true)
+	if err != nil || plan != (contract.AgentWrite{Path: "agents/b", Replaces: true}) || len(writer.writes) != 0 {
+		t.Fatalf("plan %+v, writes %v, %v", plan, writer.writes, err)
+	}
+	if written, err := settings.CreateAgent(context.Background(), spec, true, false); err != nil || written != plan || !reflect.DeepEqual(writer.writes, []string{"agents/b"}) {
+		t.Fatalf("written %+v, writes %v, %v", written, writer.writes, err)
+	}
+}
+
 func TestCreateAgentValidatesAgainstTheRuntimeMapping(t *testing.T) {
 	h := newHarness()
 	writer := &writerSpy{}
 	settings := &app.Settings{Definitions: h.defs, Writer: writer}
 	var input *contract.InputError
-	if _, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "nope"}, false); !errors.As(err, &input) {
+	if _, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "nope"}, false, false); !errors.As(err, &input) {
 		t.Fatalf("unknown runtime: %v", err)
 	}
-	if _, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "rt", Effort: "max"}, false); !errors.As(err, &input) {
+	if _, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "rt", Effort: "max"}, false, false); !errors.As(err, &input) {
 		t.Fatalf("unsupported effort: %v", err)
 	}
 	if len(writer.writes) != 0 {
 		t.Fatal("invalid agents were written")
 	}
-	if _, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "rt", Effort: "high"}, false); err != nil || !reflect.DeepEqual(writer.writes, []string{"agents/b"}) {
+	if _, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "rt", Effort: "high"}, false, false); err != nil || !reflect.DeepEqual(writer.writes, []string{"agents/b"}) {
 		t.Fatalf("writes %v, %v", writer.writes, err)
 	}
 }

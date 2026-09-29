@@ -15,7 +15,9 @@ type Client interface {
 	// Init installs the example settings. A dry run writes nothing and
 	// reports what a real run would do.
 	Init(ctx context.Context, overwrite, dryRun bool) (InitResult, error)
-	CreateAgent(ctx context.Context, agent Agent, overwrite bool) (string, error)
+	// CreateAgent writes an agent profile. A dry run validates it and
+	// reports what a real run would do, writing nothing.
+	CreateAgent(ctx context.Context, agent Agent, overwrite, dryRun bool) (AgentWrite, error)
 	ListAgents(ctx context.Context) ([]Agent, error)
 	ListProcesses(ctx context.Context) ([]ProcessSummary, error)
 	ShowProcess(ctx context.Context, name, agent string) (ProcessView, error)
@@ -41,6 +43,11 @@ type InputError struct{ Message string }
 func (e *InputError) Error() string { return e.Message }
 
 var ErrNotFound = errors.New("not found")
+
+type AgentWrite struct {
+	Path     string
+	Replaces bool // an existing agent is overwritten
+}
 
 type InitResult struct {
 	Created  []string

@@ -9,6 +9,8 @@ contracts are settings, not code. Architecture: [ADR-001](docs/adr/001-agister-c
 cd agister
 go build -o bin/agister ./cmd/agister
 
+bin/agister --help                # every command and option; needs no settings
+
 bin/agister init                  # example settings into ~/.agister ($AGISTER_HOME or --home);
                                   # shows what it writes and asks you to type "yes"
                                   # (--force also replaces existing files; scripts: echo yes | ...)
@@ -17,6 +19,11 @@ bin/agister check --probe         # also ask each agent's runtime for its versio
 bin/agister check --tree          # what defines what: each process, what it uses, which file
                                   # (global or project, and what it overrides), unused definitions
 bin/agister check --json          # the whole report, including that graph, as JSON
+
+bin/agister agent list
+bin/agister agent create reviewer --runtime claude-code --model opus --model-family anthropic --force
+                                  # --force replaces an existing agent after you type "yes";
+                                  # creating a new one asks nothing
 
 bin/agister process list
 bin/agister process show adversarial_review
@@ -37,7 +44,7 @@ have: `status` (`completed`, `failed`, `interrupted`, `lost`), an error
 `timing`, `artifacts` (changes made in a checkout) and `session`. A verdict
 in the output is output: routing on it is the caller's job.
 
-Exit codes: `0` completed, `1` failed, `2` interrupted, `3` refused, `4` lost, `64` usage or invalid settings, `130` stopped watching.
+Exit codes: `0` completed, `1` failed, `2` interrupted, `3` refused, `4` lost, `64` usage or invalid settings, `70` internal error, `130` stopped watching.
 
 ## Settings
 
@@ -74,6 +81,11 @@ Every command except `init` and `--help` runs `check` first (without
 settings that do not compose; `init` is exempt because it writes them.
 Passing is silent. Every call also re-validates what it uses and refuses
 before the provider turn starts.
+
+`init` and `agent create --force` overwrite files, so each first lists what
+it would write and waits for you to type `yes`; any other answer writes
+nothing. Scripts pipe the answer: `echo yes | agister init`.
+
 `examples/settings/` is what `init` installs. `examples/codex/` is opt-in;
 see its README.
 

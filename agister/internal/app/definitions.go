@@ -80,7 +80,7 @@ func (s *Settings) Init(ctx context.Context, overwrite, dryRun bool) (contract.I
 	return result, nil
 }
 
-func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwrite bool) (string, error) {
+func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwrite, dryRun bool) (contract.AgentWrite, error) {
 	agent := definition.Agent{
 		Name: spec.Name, Runtime: spec.Runtime, Model: spec.Model, ModelFamily: spec.ModelFamily,
 		Effort: spec.Effort, Command: spec.Command, Session: spec.Session,
@@ -89,35 +89,45 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 		agent.Session = definition.SessionFresh
 	}
 	if agent.Session != definition.SessionFresh && agent.Session != definition.SessionResumable {
-		return "", &contract.InputError{Message: fmt.Sprintf("invalid session mode %q (supported: %s, %s)", agent.Session, definition.SessionFresh, definition.SessionResumable)}
+		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("invalid session mode %q (supported: %s, %s)", agent.Session, definition.SessionFresh, definition.SessionResumable)}
 	}
 	if !definition.ValidName(agent.Name) {
-		return "", &contract.InputError{Message: fmt.Sprintf("invalid agent name %q", agent.Name)}
+		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("invalid agent name %q", agent.Name)}
 	}
 	doc, err := s.Definitions.Read(ctx, definition.KindRuntime, agent.Runtime)
 	if err != nil {
 		names, _ := s.Definitions.List(ctx, definition.KindRuntime)
-		return "", &contract.InputError{Message: fmt.Sprintf("unknown runtime %q (available: %s)", agent.Runtime, strings.Join(names, ", "))}
+		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("unknown runtime %q (available: %s)", agent.Runtime, strings.Join(names, ", "))}
 	}
 	mapping, err := definition.ParseMapping(doc)
 	if err != nil {
-		return "", err
+		return contract.AgentWrite{}, err
 	}
 	if agent.Effort != "" && !contains(mapping.Efforts, agent.Effort) {
-		return "", &contract.InputError{Message: fmt.Sprintf("unsupported %s effort %q (supported: %s)", mapping.Name, agent.Effort, strings.Join(mapping.Efforts, ", "))}
+		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("unsupported %s effort %q (supported: %s)", mapping.Name, agent.Effort, strings.Join(mapping.Efforts, ", "))}
 	}
 	data := definition.FormatAgent(agent)
 	if _, err := definition.ParseAgent(definition.Document{Source: definition.Source{Kind: definition.KindAgent, Name: agent.Name}, Bytes: data}); err != nil {
-		return "", err
+		return contract.AgentWrite{}, err
+	}
+	path, exists, err := s.Writer.Exists(ctx, definition.KindAgent, agent.Name)
+	if err != nil {
+		return contract.AgentWrite{}, err
+	}
+	if exists && !overwrite {
+		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("agent %s already exists at %s (overwrite to replace it)", agent.Name, path)}
+	}
+	if dryRun {
+		return contract.AgentWrite{Path: path, Replaces: exists}, nil
 	}
 	written, created, err := s.Writer.Write(ctx, definition.KindAgent, agent.Name, data, overwrite)
 	if err != nil {
-		return "", err
+		return contract.AgentWrite{}, err
 	}
 	if !created {
-		return "", &contract.InputError{Message: fmt.Sprintf("agent %s already exists at %s (overwrite to replace it)", agent.Name, written)}
+		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("agent %s already exists at %s (overwrite to replace it)", agent.Name, written)}
 	}
-	return written, nil
+	return contract.AgentWrite{Path: written, Replaces: exists}, nil
 }
 
 func (s *Settings) ListAgents(ctx context.Context) ([]contract.Agent, error) {

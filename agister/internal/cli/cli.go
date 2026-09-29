@@ -39,13 +39,17 @@ const (
 const usage = `agister — run agent calls defined in settings
 
 Usage:
-  agister init [--force]             install example settings; shows the plan, writes only after "yes"
-                                     (--force replaces existing files)
+  agister init [--force]             install the example settings in <home>: shows each file it would
+                                     create (and with --force replace), writes only after you type yes
   agister check [--probe] [--tree] [--json]
-                                     validate all settings (--probe: ask each runtime its version;
-                                     --tree: what defines what, and where; --json: the report as JSON);
-                                     every other command but init does this first and stops on problems
-  agister agent create <name> --runtime <runtime> [--model <m>] [--model-family <f>] [--effort <e>] [--session fresh-only|resumable] [--command <path>] [--force]
+                                     verify the composed settings (--probe: also ask each runtime its
+                                     version; --tree: what defines what, and in which file; --json: the
+                                     whole report); every other command except init runs check first
+                                     and stops on any problem
+  agister agent create <name> --runtime <runtime> [--model <m>] [--model-family <f>] [--effort <e>]
+                         [--session fresh-only|resumable] [--command <path>] [--force]
+                                     write an agent to <home>; --force replaces an existing one after
+                                     you type yes
   agister agent list
   agister process list
   agister process show <process> [--agent <name>]
@@ -56,13 +60,17 @@ Usage:
   agister runs watch <run-id> [--after <seq>]
 
 Options:
-  --home <dir>   Agister's state and settings (default: $AGISTER_HOME, else ~/.agister)
-                 <repository>/.agister takes priority over it, document by document;
-                 check verifies the composed settings and lists every override
+  --home <dir>   Agister's state and global settings (default: $AGISTER_HOME, else ~/.agister);
+                 <repository>/.agister takes priority over them, document by document
   --quiet        No progress on stderr
-  --debug        Diagnostics on stderr (always kept in <home>/logs/agister.jsonl)
+  --debug        Diagnostics on stderr (always kept in <home>/logs/agister.jsonl), including why
+                 no project settings apply
+  -h, --help     This help; needs no settings
 
-Exit codes: 0 completed, 1 failed, 2 interrupted, 3 refused, 4 lost, 64 usage, 130 stopped watching.`
+Scripts answer the yes prompts with: echo yes | agister ...
+
+Exit codes: 0 completed, 1 failed, 2 interrupted, 3 refused, 4 lost, 64 usage or invalid settings,
+70 internal error, 130 stopped watching.`
 
 // IO is the process environment the CLI works in.
 type IO struct {
@@ -129,6 +137,24 @@ func (p paramFlag) Set(value string) error {
 
 func parse(args []string) (options, []string, error) {
 	opts := options{params: paramFlag{}}
+	set := flags(&opts)
+	// Flags may appear anywhere among positionals.
+	var positionals []string
+	for {
+		if err := set.Parse(args); err != nil {
+			return opts, nil, usageError{err.Error()}
+		}
+		if set.NArg() == 0 {
+			break
+		}
+		positionals = append(positionals, set.Arg(0))
+		args = set.Args()[1:]
+	}
+	return opts, positionals, nil
+}
+
+// flags declares every option; usage must describe each one.
+func flags(opts *options) *flag.FlagSet {
 	set := flag.NewFlagSet("agister", flag.ContinueOnError)
 	set.SetOutput(io.Discard)
 	set.StringVar(&opts.home, "home", "", "")
@@ -152,19 +178,7 @@ func parse(args []string) (options, []string, error) {
 	set.BoolVar(&opts.help, "h", false, "")
 	set.IntVar(&opts.after, "after", 0, "")
 	set.Var(opts.params, "param", "")
-	// Flags may appear anywhere among positionals.
-	var positionals []string
-	for {
-		if err := set.Parse(args); err != nil {
-			return opts, nil, usageError{err.Error()}
-		}
-		if set.NArg() == 0 {
-			break
-		}
-		positionals = append(positionals, set.Arg(0))
-		args = set.Args()[1:]
-	}
-	return opts, positionals, nil
+	return set
 }
 
 func dispatch(ctx context.Context, args []string, env IO, build Build) (int, error) {
@@ -230,11 +244,26 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 			if opts.runtime == "" {
 				return 0, usageError{"agent create needs --runtime"}
 			}
-			path, err := client.CreateAgent(ctx, contract.Agent{Name: name, Runtime: opts.runtime, Model: opts.model, ModelFamily: opts.modelFamily, Effort: opts.effort, Session: opts.session, Command: opts.command}, opts.force)
+			agent := contract.Agent{Name: name, Runtime: opts.runtime, Model: opts.model, ModelFamily: opts.modelFamily, Effort: opts.effort, Session: opts.session, Command: opts.command}
+			plan, err := client.CreateAgent(ctx, agent, opts.force, true)
 			if err != nil {
 				return 0, err
 			}
-			fmt.Fprintf(env.Stdout, "created agent %s: %s\n", name, path)
+			if plan.Replaces {
+				fmt.Fprintf(env.Stdout, "will REPLACE %s (its current content is lost)\n", plan.Path)
+				if err := confirm(env, fmt.Sprintf("Type yes to replace agent %s:", name), "agent create cancelled; nothing was written"); err != nil {
+					return 0, err
+				}
+			}
+			written, err := client.CreateAgent(ctx, agent, opts.force, false)
+			if err != nil {
+				return 0, err
+			}
+			verb := "created"
+			if written.Replaces {
+				verb = "replaced"
+			}
+			fmt.Fprintf(env.Stdout, "%s agent %s: %s\n", verb, name, written.Path)
 			return 0, nil
 		case "list", "":
 			agents, err := client.ListAgents(ctx)
@@ -542,6 +571,20 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 	}
 }
 
+// confirm asks the user to type "yes" before a destructive write; any other
+// answer, or none, is the cancellation error.
+func confirm(env IO, question, cancelled string) error {
+	fmt.Fprintln(env.Stderr, question)
+	var answer string
+	if env.Stdin != nil {
+		answer, _ = bufio.NewReader(env.Stdin).ReadString('\n')
+	}
+	if strings.TrimSpace(answer) != "yes" {
+		return &contract.InputError{Message: cancelled}
+	}
+	return nil
+}
+
 // initSettings shows what init would write and writes only after the user
 // types "yes": it creates files and, with --force, replaces edited ones.
 func initSettings(ctx context.Context, client contract.Client, force bool, home string, env IO) (int, error) {
@@ -563,13 +606,8 @@ func initSettings(ctx context.Context, client contract.Client, force bool, home 
 		fmt.Fprintf(env.Stdout, "nothing to write in %s\n", home)
 		return 0, nil
 	}
-	fmt.Fprintf(env.Stderr, "Type yes to write %d file(s) in %s:\n", writes, home)
-	var answer string
-	if env.Stdin != nil {
-		answer, _ = bufio.NewReader(env.Stdin).ReadString('\n')
-	}
-	if strings.TrimSpace(answer) != "yes" {
-		return 0, &contract.InputError{Message: "init cancelled; nothing was written"}
+	if err := confirm(env, fmt.Sprintf("Type yes to write %d file(s) in %s:", writes, home), "init cancelled; nothing was written"); err != nil {
+		return 0, err
 	}
 	result, err := client.Init(ctx, force, false)
 	if err != nil {
