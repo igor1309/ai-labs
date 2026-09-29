@@ -1,0 +1,99 @@
+# Deferred items 1, 2, 5 and 6: each mutation undoes one fix, and the
+# listed tests must fail with it. Run: scripts/revert-check.py <this file>
+module: agister
+
+# Item 2: verification per primitive.
+[calls plan only from primitives verified for the runtime version]
+file: internal/app/resolve.go
+find: enforce.Make(res.effective.Permissions, verified, res.effective.Require
+replace: enforce.Make(res.effective.Permissions, res.mapping, res.effective.Require
+test: ./internal/app TestUnverifiedPrimitivesAreNeverGranted
+
+[static check needs one version that covers the process]
+file: internal/domain/settings/settings.go
+find: \t\tverified, unverified := mapping.ForVersion(version)\n\t\t_, err := enforce.Make(effective.Permissions, verified,
+replace: \t\t_, unverified := mapping.ForVersion(version)\n\t\tverified, _ := mapping.ForAnyVersion()\n\t\t_, err := enforce.Make(effective.Permissions, verified,
+test: ./internal/domain/settings TestRequirementsNeedOneVersionThatCoversThem
+
+[check --probe plans each process on the installed version]
+file: internal/app/check.go
+find: settings.PlanProblems(bundle, agent, identity.Version)
+replace: []settings.Problem(nil)
+test: ./internal/app TestCheckProbePlansEachProcessOnTheInstalledVersion
+
+[a mapping-wide verified_versions is refused]
+file: internal/domain/definition/documents.go
+find: \tif _, ok := values["verified_versions"]; ok {
+replace: \tif _, ok := values["verified_versions"]; ok && false {
+test: ./internal/domain/definition TestMappingWideVerificationIsRefused
+test: ./cmd/agister TestRefusedSettingsFieldsFailCheck
+
+# Item 5: fields Agister would not enforce.
+[resources and artifacts are refused]
+file: internal/domain/definition/limits.go
+find: \t\tif _, ok := values[field]; ok {
+replace: \t\tif _, ok := values[field]; ok && false {
+test: ./internal/domain/definition TestResearchPolicyParsesInPlace
+
+# Item 6: no constraint that always passes.
+[shipped examples carry no always-passing constraint]
+file: examples/settings/policies/static-review.yaml
+find: name: static-review\n
+replace: name: static-review\nconstraints:\n  agent.model_family:\n    not_equal: evidence.candidate(input.candidate_revision).provenance.writer.model_family\n    on_unsatisfied: fail\n    on_unknown: pass\n
+test: ./internal/domain/definition TestExamplesCarryNoConstraintThatAlwaysPasses
+
+# Item 1: effects of a killed run are reaped.
+[a call reaps abandoned runs when it starts]
+file: internal/app/calls.go
+find: c.reapAbandoned(runCtx)
+replace: _ = runCtx
+test: ./internal/app TestAbandonedRunIsReapedWhenACallStarts
+test: ./cmd/agister TestNextCallReapsWhatAKilledRunLeftBehind
+
+[the checkout is recorded before the runtime starts]
+file: internal/app/calls.go
+find: record.Effects = &run.Effects{Checkout: &run.Checkout{Repository: repository, Dir: workspace}}
+replace: _ = repository
+test: ./internal/app TestCallRecordsItsEffectsAsSoonAsTheyExist
+
+[the process group is recorded when it starts]
+file: internal/app/calls.go
+find: effects.Process = &run.Process{Group: group, Token: token}
+replace: _, _ = group, token
+test: ./internal/app TestCallRecordsItsEffectsAsSoonAsTheyExist
+
+[a failed reap step still finishes the run]
+file: internal/app/reap.go
+find: \t\tif err != nil {\n\t\t\tfailures = append(failures, fmt.Sprintf("checkout
+replace: \t\tif err != nil {\n\t\t\treturn\n\t\t\tfailures = append(failures, fmt.Sprintf("checkout
+test: ./internal/app TestFailedReapStepsStillFinishTheRunWithTheError
+
+[the reaper kills the recorded group]
+file: internal/adapters/runtime/supervisor/processes.go
+find: syscall.Kill(-group, syscall.SIGKILL)
+replace: syscall.Kill(-group, 0)
+test: ./internal/adapters/runtime/supervisor TestReapKillsTheGroupOfTheRecordedProcess
+
+[the reaper leaves a process it cannot identify]
+file: internal/adapters/runtime/supervisor/processes.go
+find: case err == nil && (token == "" || current != token):
+replace: case err == nil && (token == "" || current != current):
+test: ./internal/adapters/runtime/supervisor TestReapLeavesAProcessItCannotIdentify
+
+[adopting takes the owner lock]
+file: internal/adapters/fsruns/fsruns.go
+find: \tif err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {\n\t\tlock.Close()\n\t\treturn nil, record,
+replace: \tif err := error(nil); err != nil {\n\t\tlock.Close()\n\t\treturn nil, record,
+test: ./internal/adapters/fsruns TestAdoptTakesOnlyAnAbandonedRun
+
+[discard removes only agister checkouts]
+file: internal/adapters/git/git.go
+find: !strings.HasPrefix(filepath.Base(parent), "agister-checkout-")
+replace: !strings.HasPrefix(filepath.Base(parent), "")
+test: ./internal/adapters/git TestDiscardRefusesOtherDirectories
+
+[discard prunes the repository's worktree list]
+file: internal/adapters/git/git.go
+find: run(ctx, repository, "worktree", "prune")
+replace: run(ctx, repository, "status")
+test: ./internal/adapters/git TestDiscardPrunesACheckoutThatIsGone

@@ -17,13 +17,19 @@
   (`t.TempDir()`), put the bad input there, and assert the expected failure.
 - Do not verify by hand by planting broken files and running the binary;
   that is expensive, unreliable, and never runs again.
-- Check that the new test fails with the fix reverted.
+- Check that the new test fails with the fix reverted, deterministically:
+  write each revert as a mutation in a committed spec (for agister,
+  `agister/testdata/revert-checks/*.spec`) and run
+  `scripts/revert-check.py <spec>`. It checks the tests pass, applies each
+  mutation, requires them to fail (a mutation that does not build proves
+  nothing), and restores the file. Do not revert by hand.
 
 ## Implementation and review
 
 - Delegate implementation runs to a subagent on Sonnet 5.5. Brief it with
-  the plan; verify its result yourself (tests pass, each new test fails with
-  its fix reverted).
+  the plan; it delivers the tests and a revert-check spec with them. Verify
+  its result yourself: the tests pass and `scripts/revert-check.py` catches
+  every mutation; do not rely on the subagent's own report of revert checks.
 - Have Codex review the result critically:
   `codex exec --sandbox read-only -m gpt-6-sol -c model_reasoning_effort="high" "<prompt>" < /dev/null`.
 - Keep the loop tight: at most 2 review rounds. Judge each finding; fix
