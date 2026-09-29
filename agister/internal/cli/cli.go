@@ -245,7 +245,7 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 				return 0, usageError{"agent create needs --runtime"}
 			}
 			agent := contract.Agent{Name: name, Runtime: opts.runtime, Model: opts.model, ModelFamily: opts.modelFamily, Effort: opts.effort, Session: opts.session, Command: opts.command}
-			plan, err := client.CreateAgent(ctx, agent, opts.force, true)
+			plan, err := client.CreateAgent(ctx, agent, opts.force, nil)
 			if err != nil {
 				return 0, err
 			}
@@ -255,7 +255,7 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 					return 0, err
 				}
 			}
-			written, err := client.CreateAgent(ctx, agent, opts.force, false)
+			written, err := client.CreateAgent(ctx, agent, opts.force, &plan)
 			if err != nil {
 				return 0, err
 			}
@@ -588,7 +588,7 @@ func confirm(env IO, question, cancelled string) error {
 // initSettings shows what init would write and writes only after the user
 // types "yes": it creates files and, with --force, replaces edited ones.
 func initSettings(ctx context.Context, client contract.Client, force bool, home string, env IO) (int, error) {
-	plan, err := client.Init(ctx, force, true)
+	plan, err := client.Init(ctx, force, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -609,7 +609,7 @@ func initSettings(ctx context.Context, client contract.Client, force bool, home 
 	if err := confirm(env, fmt.Sprintf("Type yes to write %d file(s) in %s:", writes, home), "init cancelled; nothing was written"); err != nil {
 		return 0, err
 	}
-	result, err := client.Init(ctx, force, false)
+	result, err := client.Init(ctx, force, &plan)
 	if err != nil {
 		return 0, err
 	}
@@ -677,8 +677,10 @@ func printTree(w io.Writer, definitions []contract.Definition) {
 		}
 		return text
 	}
+	reached := map[contract.DefinitionRef]bool{}
 	var walk func(ref contract.DefinitionRef, prefix, branch string)
 	walk = func(ref contract.DefinitionRef, prefix, branch string) {
+		reached[ref] = true
 		lines = append(lines, line{prefix + branch + kindNames[ref.Kind] + " " + ref.Name, describe(ref)})
 		children := byRef[ref].Uses
 		next := prefix
@@ -696,13 +698,15 @@ func printTree(w io.Writer, definitions []contract.Definition) {
 			walk(child, next, childBranch)
 		}
 	}
+	for _, d := range definitions {
+		if d.Kind == "service" || d.Kind == "processes" {
+			walk(contract.DefinitionRef{Kind: d.Kind, Name: d.Name}, "", "")
+		}
+	}
+	// Unused is whatever no process reaches, even if an unused one uses it.
 	var unused []contract.DefinitionRef
 	for _, d := range definitions {
-		ref := contract.DefinitionRef{Kind: d.Kind, Name: d.Name}
-		switch {
-		case d.Kind == "service" || d.Kind == "processes":
-			walk(ref, "", "")
-		case len(d.UsedBy) == 0:
+		if ref := (contract.DefinitionRef{Kind: d.Kind, Name: d.Name}); !reached[ref] {
 			unused = append(unused, ref)
 		}
 	}

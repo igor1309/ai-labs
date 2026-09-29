@@ -12,12 +12,14 @@ import (
 )
 
 type Client interface {
-	// Init installs the example settings. A dry run writes nothing and
-	// reports what a real run would do.
-	Init(ctx context.Context, overwrite, dryRun bool) (InitResult, error)
-	// CreateAgent writes an agent profile. A dry run validates it and
-	// reports what a real run would do, writing nothing.
-	CreateAgent(ctx context.Context, agent Agent, overwrite, dryRun bool) (AgentWrite, error)
+	// Init installs the example settings. Without an approved plan it
+	// writes nothing and returns the plan; with one it writes, refusing if
+	// any file changed since that plan was made.
+	Init(ctx context.Context, overwrite bool, approved *InitResult) (InitResult, error)
+	// CreateAgent writes an agent profile. Without an approved plan it
+	// validates and returns the plan, writing nothing; with one it writes,
+	// refusing if the file changed since that plan was made.
+	CreateAgent(ctx context.Context, agent Agent, overwrite bool, approved *AgentWrite) (AgentWrite, error)
 	ListAgents(ctx context.Context) ([]Agent, error)
 	ListProcesses(ctx context.Context) ([]ProcessSummary, error)
 	ShowProcess(ctx context.Context, name, agent string) (ProcessView, error)
@@ -46,13 +48,15 @@ var ErrNotFound = errors.New("not found")
 
 type AgentWrite struct {
 	Path     string
-	Replaces bool // an existing agent is overwritten
+	Replaces bool   // an existing agent is overwritten
+	Digest   string // of the file as planned; empty when absent
 }
 
 type InitResult struct {
 	Created  []string
 	Replaced []string // existing files overwritten
 	Kept     []string
+	Digests  map[string]string // path: digest of the file as planned; empty when absent
 }
 
 type Agent struct {

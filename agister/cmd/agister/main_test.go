@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -36,9 +37,14 @@ func agister(t *testing.T, home, cwd string, args ...string) result {
 // agisterInput runs agister with input as what the user types.
 func agisterInput(t *testing.T, input, home, cwd string, args ...string) result {
 	t.Helper()
+	return agisterReading(t, strings.NewReader(input), home, cwd, args...)
+}
+
+func agisterReading(t *testing.T, stdin io.Reader, home, cwd string, args ...string) result {
+	t.Helper()
 	var stdout, stderr bytes.Buffer
 	code := cli.Run(context.Background(), append([]string{"--home", home}, args...), cli.IO{
-		Stdin: strings.NewReader(input), Stdout: &stdout, Stderr: &stderr, Cwd: cwd,
+		Stdin: stdin, Stdout: &stdout, Stderr: &stderr, Cwd: cwd,
 		Getenv: func(string) string { return "" },
 	}, compose)
 	return result{code, stdout.String(), stderr.String()}
@@ -487,7 +493,7 @@ func TestAgentCreateAsksBeforeReplacing(t *testing.T) {
 	// and every command still works afterwards.
 	current := read(t, reviewer)
 	r := agisterInput(t, "yes\n", home, dir, "agent", "create", "reviewer", "--force", "--runtime", "claude-code")
-	if r.code != cli.ExitUsage || strings.Contains(r.stderr, "Type yes") || !strings.Contains(r.stderr, "agent reviewer would break the settings") || read(t, reviewer) != current {
+	if r.code != cli.ExitUsage || strings.Contains(r.stderr, "Type yes") || !strings.Contains(r.stderr, "agent reviewer would break the global settings") || read(t, reviewer) != current {
 		t.Fatalf("breaking agent: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	if r := agister(t, home, dir, "check"); r.code != 0 {
@@ -500,6 +506,70 @@ func TestAgentCreateAsksBeforeReplacing(t *testing.T) {
 	// Without --force an existing agent is refused, not asked about.
 	if r := agister(t, home, dir, "agent", "create", "fresh", "--runtime", "claude-code"); r.code != cli.ExitUsage || strings.Contains(r.stderr, "Type yes") || !strings.Contains(r.stderr, "already exists") {
 		t.Fatalf("existing without force: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+}
+
+// agent create writes global settings, so it must keep them valid on their
+// own, not only as a project in view composes them.
+func TestAgentCreateKeepsEveryScopeValid(t *testing.T) {
+	home, repo := setup(t, "approve")
+	mapping := strings.Replace(read(t, filepath.Join(home, "runtimes", "claude-code.yaml")), "name: claude-code", "name: local-rt", 1)
+	write(t, filepath.Join(repo, ".agister", "runtimes", "local-rt.yaml"), mapping)
+
+	r := agister(t, home, repo, "agent", "create", "g", "--runtime", "local-rt", "--model-family", "anthropic")
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "agent g would break the global settings") || !strings.Contains(r.stderr, `runtime mapping "local-rt" does not exist`) {
+		t.Fatalf("inside the project: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if _, err := os.Stat(filepath.Join(home, "agents", "g.toml")); err == nil {
+		t.Fatal("an agent valid only in the project was written to global settings")
+	}
+	if r := agister(t, home, t.TempDir(), "check"); r.code != 0 {
+		t.Fatalf("outside the project: %d\n%s", r.code, r.stderr)
+	}
+
+	// Where the project defines the agent, the global one is shadowed there,
+	// so only the global scope judges it.
+	write(t, filepath.Join(repo, ".agister", "agents", "solo.toml"), "schema = \"agister.agent/v1alpha1\"\nname = \"solo\"\nruntime = \"claude-code\"\nmodel_family = \"anthropic\"\n")
+	process := strings.Replace(strings.Replace(read(t, filepath.Join(home, "processes", "adversarial_review.yaml")), "name: adversarial_review", "name: solo_review", 1), "agent:reviewer", "agent:solo", 1)
+	write(t, filepath.Join(repo, ".agister", "processes", "solo_review.yaml"), process)
+	if r := agister(t, home, repo, "agent", "create", "solo", "--runtime", "claude-code"); r.code != 0 {
+		t.Fatalf("shadowed agent: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+}
+
+// typedAfter answers the prompt, but only after something else happened
+// while the user was reading it.
+type typedAfter struct {
+	meanwhile func()
+	answer    io.Reader
+}
+
+func (r *typedAfter) Read(p []byte) (int, error) {
+	if r.meanwhile != nil {
+		r.meanwhile()
+		r.meanwhile = nil
+	}
+	return r.answer.Read(p)
+}
+
+// "yes" approves the plan that was shown, not whatever is on disk by then.
+func TestConfirmedWritesRefuseChangesMadeWhileAsking(t *testing.T) {
+	home, dir := filepath.Join(t.TempDir(), "home"), t.TempDir()
+	if r := agisterInput(t, "yes\n", home, dir, "init"); r.code != 0 {
+		t.Fatalf("init: %d %s", r.code, r.stderr)
+	}
+	reviewer := filepath.Join(home, "agents", "reviewer.toml")
+	edited := read(t, reviewer) + "# edited while asking\n"
+	editMeanwhile := func() { write(t, reviewer, edited) }
+
+	r := agisterReading(t, &typedAfter{editMeanwhile, strings.NewReader("yes\n")}, home, dir, "init", "--force")
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "changed since you confirmed") || read(t, reviewer) != edited {
+		t.Fatalf("init --force: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	r = agisterReading(t, &typedAfter{func() { write(t, reviewer, edited+"# again\n") }, strings.NewReader("yes\n")}, home, dir,
+		"agent", "create", "reviewer", "--force", "--runtime", "claude-code", "--model-family", "anthropic")
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "changed since you confirmed") || read(t, reviewer) != edited+"# again\n" {
+		t.Fatalf("agent create --force: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 }
 

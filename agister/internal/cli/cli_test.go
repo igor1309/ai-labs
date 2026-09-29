@@ -24,6 +24,7 @@ type clientSpy struct {
 	checked         []bool
 	agents          []contract.Agent
 	agentExists     bool
+	approved        []contract.AgentWrite
 
 	events   []contract.Event
 	onCancel chan string
@@ -69,10 +70,11 @@ func (s *clientSpy) Check(_ context.Context, probe bool) (contract.CheckReport, 
 	return s.report, nil
 }
 
-func (s *clientSpy) CreateAgent(_ context.Context, agent contract.Agent, overwrite, dryRun bool) (contract.AgentWrite, error) {
-	write := contract.AgentWrite{Path: "/home/agents/" + agent.Name + ".toml", Replaces: overwrite && s.agentExists}
-	if !dryRun {
+func (s *clientSpy) CreateAgent(_ context.Context, agent contract.Agent, overwrite bool, approved *contract.AgentWrite) (contract.AgentWrite, error) {
+	write := contract.AgentWrite{Path: "/home/agents/" + agent.Name + ".toml", Replaces: overwrite && s.agentExists, Digest: "d1"}
+	if approved != nil {
 		s.agents = append(s.agents, agent)
+		s.approved = append(s.approved, *approved)
 	}
 	return write, nil
 }
@@ -301,6 +303,9 @@ func TestCheckTreeAndJSON(t *testing.T) {
 			{Kind: "service", Name: "service", Layer: "global", Path: "/g/service.toml"},
 			{Kind: "runtimes", Name: "rt", Layer: "global", Path: "/g/runtimes/rt.yaml", UsedBy: []contract.DefinitionRef{ref("agents", "a")}},
 			{Kind: "agents", Name: "a", Layer: "project", Path: "/p/agents/a.toml", Overrides: "/g/agents/a.toml", Uses: []contract.DefinitionRef{ref("runtimes", "rt")}, UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
+			// b is used by no process, so neither is rt2, which only b uses.
+			{Kind: "runtimes", Name: "rt2", Layer: "global", Path: "/g/runtimes/rt2.yaml", UsedBy: []contract.DefinitionRef{ref("agents", "b")}},
+			{Kind: "agents", Name: "b", Layer: "global", Path: "/g/agents/b.toml", Uses: []contract.DefinitionRef{ref("runtimes", "rt2")}},
 			{Kind: "policies", Name: "spare", Layer: "project", Path: "/p/policies/spare.yaml", Invalid: true},
 			{Kind: "processes", Name: "p", Layer: "global", Path: "/g/processes/p.yaml", Uses: []contract.DefinitionRef{ref("agents", "a"), ref("policies", "gone")}},
 		},
@@ -313,6 +318,8 @@ process p         global  /g/processes/p.yaml
 │  └─ runtime rt  global  /g/runtimes/rt.yaml
 └─ policy gone    MISSING
 unused (no process uses these)
+   runtime rt2    global  /g/runtimes/rt2.yaml
+   agent b        global  /g/agents/b.toml
    policy spare   project /p/policies/spare.yaml INVALID
 settings OK: 1 processes
 `
@@ -339,7 +346,8 @@ func TestAgentCreateAsksOnlyToReplace(t *testing.T) {
 		t.Fatalf("no answer: %+v, agents %v", r, spy.agents)
 	}
 	spy = &clientSpy{}
-	if r := run(context.Background(), spy, "agent", "create", "x", "--runtime", "rt", "--force"); r.code != 0 || r.stderr != "" || r.stdout != "created agent x: /home/agents/x.toml\n" || len(spy.agents) != 1 {
+	// The write carries the plan it was shown, so a changed file is refused.
+	if r := run(context.Background(), spy, "agent", "create", "x", "--runtime", "rt", "--force"); r.code != 0 || r.stderr != "" || r.stdout != "created agent x: /home/agents/x.toml\n" || len(spy.agents) != 1 || spy.approved[0].Digest != "d1" {
 		t.Fatalf("nothing to replace: %+v, agents %v", r, spy.agents)
 	}
 }

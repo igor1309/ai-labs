@@ -85,7 +85,9 @@ before the provider turn starts.
 
 `init` and `agent create --force` overwrite files, so each first lists what
 it would write and waits for you to type `yes`; any other answer writes
-nothing. Scripts pipe the answer: `echo yes | agister init`.
+nothing. "yes" approves the plan that was shown: a file changed while you
+were asked is not overwritten, and nothing more is written. Scripts pipe
+the answer: `echo yes | agister init`.
 
 `examples/settings/` is what `init` installs. `examples/codex/` is opt-in;
 see its README.

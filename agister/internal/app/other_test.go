@@ -174,9 +174,29 @@ type writerSpy struct {
 	existed map[string]bool
 }
 
-func (s *writerSpy) Exists(_ context.Context, kind definition.Kind, name string) (string, bool, error) {
+func (s *writerSpy) Current(_ context.Context, kind definition.Kind, name string) (string, string, error) {
 	key := string(kind) + "/" + name
-	return key, s.existed[key], nil
+	if s.existed[key] {
+		return key, "d-" + key, nil
+	}
+	return key, "", nil
+}
+
+// initNow and createNow approve their own plan, as a user typing yes does.
+func initNow(settings *app.Settings, overwrite bool) (contract.InitResult, error) {
+	plan, err := settings.Init(context.Background(), overwrite, nil)
+	if err != nil {
+		return plan, err
+	}
+	return settings.Init(context.Background(), overwrite, &plan)
+}
+
+func createNow(settings *app.Settings, spec contract.Agent, overwrite bool) (contract.AgentWrite, error) {
+	plan, err := settings.CreateAgent(context.Background(), spec, overwrite, nil)
+	if err != nil {
+		return plan, err
+	}
+	return settings.CreateAgent(context.Background(), spec, overwrite, &plan)
 }
 
 func (s *writerSpy) Write(_ context.Context, kind definition.Kind, name string, data []byte, overwrite bool) (string, bool, error) {
@@ -195,11 +215,12 @@ func TestInitWritesEachExampleWithoutOverwriting(t *testing.T) {
 		"agents/a.toml":  {Data: []byte("x")},
 		"schemas/s.json": {Data: []byte("x")},
 	}
-	result, err := (&app.Settings{Writer: writer, Examples: examples}).Init(context.Background(), false, false)
+	result, err := initNow(&app.Settings{Writer: writer, Examples: examples}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(writer.writes, []string{"agents/a", "schemas/s", "service/service"}) ||
+	// A kept file is not written at all.
+	if !reflect.DeepEqual(writer.writes, []string{"schemas/s", "service/service"}) ||
 		!reflect.DeepEqual(result.Kept, []string{"agents/a"}) || len(result.Created) != 2 {
 		t.Fatalf("writes %v, result %+v", writer.writes, result)
 	}
@@ -215,21 +236,50 @@ func TestInitDryRunAndReplacement(t *testing.T) {
 	for _, overwrite := range []bool{false, true} {
 		writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
 		settings := &app.Settings{Writer: writer, Examples: examples}
-		plan, err := settings.Init(context.Background(), overwrite, true)
+		plan, err := settings.Init(context.Background(), overwrite, nil)
 		if err != nil || len(writer.writes) != 0 {
 			t.Fatalf("overwrite %v: dry run wrote %v, %v", overwrite, writer.writes, err)
 		}
-		result, err := settings.Init(context.Background(), overwrite, false)
+		result, err := settings.Init(context.Background(), overwrite, &plan)
 		if err != nil || !reflect.DeepEqual(plan, result) {
 			t.Fatalf("overwrite %v: plan %+v, result %+v, %v", overwrite, plan, result, err)
 		}
-		want := contract.InitResult{Created: []string{"service/service"}, Kept: []string{"agents/a"}}
+		digests := map[string]string{"agents/a": "d-agents/a", "service/service": ""}
+		want := contract.InitResult{Created: []string{"service/service"}, Kept: []string{"agents/a"}, Digests: digests}
 		if overwrite {
-			want = contract.InitResult{Created: []string{"service/service"}, Replaced: []string{"agents/a"}}
+			want = contract.InitResult{Created: []string{"service/service"}, Replaced: []string{"agents/a"}, Digests: digests}
 		}
 		if !reflect.DeepEqual(result, want) {
 			t.Fatalf("overwrite %v: result %+v", overwrite, result)
 		}
+	}
+}
+
+// A write carries the plan the user approved: a file that changed since,
+// including one created since, stops it before anything is written.
+func TestWritesRefuseFilesChangedSinceTheApprovedPlan(t *testing.T) {
+	examples := fstest.MapFS{"service.toml": {Data: []byte("x")}, "agents/a.toml": {Data: []byte("x")}}
+	writer := &writerSpy{existed: map[string]bool{}}
+	settings := &app.Settings{Writer: writer, Examples: examples}
+	plan, err := settings.Init(context.Background(), true, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writer.existed["agents/a"] = true // created while the user read the plan
+	var input *contract.InputError
+	if _, err := settings.Init(context.Background(), true, &plan); !errors.As(err, &input) || !strings.Contains(err.Error(), "changed since you confirmed") || len(writer.writes) != 0 {
+		t.Fatalf("init: %v, writes %v", err, writer.writes)
+	}
+
+	h := newHarness()
+	settings = &app.Settings{Definitions: h.defs, Writer: writer}
+	agent, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "rt"}, true, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writer.existed["agents/b"] = true
+	if _, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "rt"}, true, &agent); !errors.As(err, &input) || len(writer.writes) != 0 {
+		t.Fatalf("agent: %v, writes %v", err, writer.writes)
 	}
 }
 
@@ -241,14 +291,14 @@ func TestInitSkipsHiddenFilesAndRejectsStrayRootFiles(t *testing.T) {
 		"agents/a.toml":    {Data: []byte("x")},
 		"service.toml":     {Data: []byte("x")},
 	}
-	if _, err := (&app.Settings{Writer: writer, Examples: examples}).Init(context.Background(), false, false); err != nil {
+	if _, err := initNow(&app.Settings{Writer: writer, Examples: examples}, false); err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(writer.writes, []string{"agents/a", "service/service"}) {
 		t.Fatalf("writes %v", writer.writes)
 	}
 	stray := fstest.MapFS{"notes.txt": {Data: []byte("x")}}
-	if _, err := (&app.Settings{Writer: &writerSpy{}, Examples: stray}).Init(context.Background(), false, false); err == nil {
+	if _, err := initNow(&app.Settings{Writer: &writerSpy{}, Examples: stray}, false); err == nil {
 		t.Fatal("a stray root file was accepted")
 	}
 }
@@ -261,17 +311,17 @@ func TestCreateAgentDryRun(t *testing.T) {
 	settings := &app.Settings{Definitions: h.defs, Writer: writer}
 	spec := contract.Agent{Name: "b", Runtime: "rt"}
 	var input *contract.InputError
-	if _, err := settings.CreateAgent(context.Background(), spec, false, true); !errors.As(err, &input) {
+	if _, err := settings.CreateAgent(context.Background(), spec, false, nil); !errors.As(err, &input) {
 		t.Fatalf("existing without overwrite: %v", err)
 	}
-	if _, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "nope"}, true, true); !errors.As(err, &input) {
+	if _, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "nope"}, true, nil); !errors.As(err, &input) {
 		t.Fatalf("invalid in a dry run: %v", err)
 	}
-	plan, err := settings.CreateAgent(context.Background(), spec, true, true)
-	if err != nil || plan != (contract.AgentWrite{Path: "agents/b", Replaces: true}) || len(writer.writes) != 0 {
+	plan, err := settings.CreateAgent(context.Background(), spec, true, nil)
+	if err != nil || plan != (contract.AgentWrite{Path: "agents/b", Replaces: true, Digest: "d-agents/b"}) || len(writer.writes) != 0 {
 		t.Fatalf("plan %+v, writes %v, %v", plan, writer.writes, err)
 	}
-	if written, err := settings.CreateAgent(context.Background(), spec, true, false); err != nil || written != plan || !reflect.DeepEqual(writer.writes, []string{"agents/b"}) {
+	if written, err := settings.CreateAgent(context.Background(), spec, true, &plan); err != nil || written != plan || !reflect.DeepEqual(writer.writes, []string{"agents/b"}) {
 		t.Fatalf("written %+v, writes %v, %v", written, writer.writes, err)
 	}
 }
@@ -282,23 +332,23 @@ func TestCreateAgentKeepsSettingsValid(t *testing.T) {
 	h := newHarness()
 	writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
 	checker := &app.Checker{Definitions: h.defs, Validator: h.validator, Runtimes: h.runtimes, Sources: []string{"git.revision", "git.diff"}}
-	settings := &app.Settings{Definitions: h.defs, Writer: writer, Checker: checker}
+	settings := &app.Settings{Definitions: h.defs, Writer: writer, Scopes: []app.Scope{{Name: "global settings", Checker: checker}}}
 	var input *contract.InputError
-	for _, dryRun := range []bool{true, false} {
+	for _, approved := range []*contract.AgentWrite{nil, {Path: "agents/a", Replaces: true, Digest: "d-agents/a"}} {
 		// Policy pol constrains the model family; this a declares none.
-		_, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "a", Runtime: "rt"}, true, dryRun)
-		if !errors.As(err, &input) || !strings.Contains(err.Error(), "agent a would break the settings") || !strings.Contains(err.Error(), "constrains the model family, but agent a declares none") {
-			t.Fatalf("dry run %v: %v", dryRun, err)
+		_, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "a", Runtime: "rt"}, true, approved)
+		if !errors.As(err, &input) || !strings.Contains(err.Error(), "agent a would break the global settings") || !strings.Contains(err.Error(), "constrains the model family, but agent a declares none") {
+			t.Fatalf("approved %v: %v", approved, err)
 		}
 	}
 	if len(writer.writes) != 0 {
 		t.Fatalf("writes = %v", writer.writes)
 	}
-	if _, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "a", Runtime: "rt", ModelFamily: "other"}, true, false); err != nil {
+	if _, err := createNow(settings, contract.Agent{Name: "a", Runtime: "rt", ModelFamily: "other"}, true); err != nil {
 		t.Fatalf("valid replacement: %v", err)
 	}
 	h.defs.docs[definition.KindAgent]["broken"] = "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\n"
-	if _, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "c", Runtime: "rt"}, false, false); err != nil {
+	if _, err := createNow(settings, contract.Agent{Name: "c", Runtime: "rt"}, false); err != nil {
 		t.Fatalf("an existing problem blocked a valid new agent: %v", err)
 	}
 }
@@ -308,16 +358,16 @@ func TestCreateAgentValidatesAgainstTheRuntimeMapping(t *testing.T) {
 	writer := &writerSpy{}
 	settings := &app.Settings{Definitions: h.defs, Writer: writer}
 	var input *contract.InputError
-	if _, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "nope"}, false, false); !errors.As(err, &input) {
+	if _, err := createNow(settings, contract.Agent{Name: "b", Runtime: "nope"}, false); !errors.As(err, &input) {
 		t.Fatalf("unknown runtime: %v", err)
 	}
-	if _, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "rt", Effort: "max"}, false, false); !errors.As(err, &input) {
+	if _, err := createNow(settings, contract.Agent{Name: "b", Runtime: "rt", Effort: "max"}, false); !errors.As(err, &input) {
 		t.Fatalf("unsupported effort: %v", err)
 	}
 	if len(writer.writes) != 0 {
 		t.Fatal("invalid agents were written")
 	}
-	if _, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "rt", Effort: "high"}, false, false); err != nil || !reflect.DeepEqual(writer.writes, []string{"agents/b"}) {
+	if _, err := createNow(settings, contract.Agent{Name: "b", Runtime: "rt", Effort: "high"}, false); err != nil || !reflect.DeepEqual(writer.writes, []string{"agents/b"}) {
 		t.Fatalf("writes %v, %v", writer.writes, err)
 	}
 }

@@ -24,8 +24,9 @@ type DefinitionWriter interface {
 	// Write stores data; without overwrite an existing document is kept and
 	// created is false.
 	Write(ctx context.Context, kind definition.Kind, name string, data []byte, overwrite bool) (path string, created bool, err error)
-	// Exists reports where a document would be stored and whether one is.
-	Exists(ctx context.Context, kind definition.Kind, name string) (path string, exists bool, err error)
+	// Current reports where a document would be stored and a digest of the
+	// one there, empty when there is none.
+	Current(ctx context.Context, kind definition.Kind, name string) (path, digest string, err error)
 }
 
 // Examples are definitions shipped with Agister, laid out as kind/name.ext.

@@ -18,12 +18,19 @@ type Settings struct {
 	Definitions DefinitionSource
 	Writer      DefinitionWriter
 	Examples    Examples
-	// Checker verifies the settings an agent would leave behind; nil skips.
+	// Scopes are every settings view a write takes part in (global settings
+	// alone, and with the project in view); each must stay valid.
+	Scopes []Scope
+}
+
+// Scope is one view of the settings and its checker.
+type Scope struct {
+	Name    string // for messages, e.g. "global settings"
 	Checker *Checker
 }
 
-func (s *Settings) Init(ctx context.Context, overwrite, dryRun bool) (contract.InitResult, error) {
-	var result contract.InitResult
+func (s *Settings) Init(ctx context.Context, overwrite bool, approved *contract.InitResult) (contract.InitResult, error) {
+	result := contract.InitResult{Digests: map[string]string{}}
 	if s.Examples == nil {
 		return result, &contract.InputError{Message: "no example definitions are available"}
 	}
@@ -48,6 +55,13 @@ func (s *Settings) Init(ctx context.Context, overwrite, dryRun bool) (contract.I
 		return result, err
 	}
 	sort.Strings(files)
+	type file struct {
+		kind               definition.Kind
+		base, path, digest string
+		data               []byte
+	}
+	var plan []file
+	var changed []string
 	for _, name := range files {
 		kind, base := definition.KindService, "service"
 		if dir := path.Dir(name); dir != "." {
@@ -60,29 +74,46 @@ func (s *Settings) Init(ctx context.Context, overwrite, dryRun bool) (contract.I
 		if err != nil {
 			return result, err
 		}
-		path, existed, err := s.Writer.Exists(ctx, kind, base)
+		current, digest, err := s.Writer.Current(ctx, kind, base)
 		if err != nil {
 			return result, err
 		}
-		created := !existed || overwrite
-		if !dryRun {
-			if path, created, err = s.Writer.Write(ctx, kind, base, data, overwrite); err != nil {
+		if approved != nil && approved.Digests[current] != digest {
+			changed = append(changed, current)
+		}
+		plan = append(plan, file{kind, base, current, digest, data})
+	}
+	if len(changed) > 0 {
+		return result, changedSinceApproved(changed)
+	}
+	for _, f := range plan {
+		existed := f.digest != ""
+		write := !existed || overwrite
+		if approved != nil && write {
+			// Only an approved replacement overwrites: a file created since
+			// the plan is not replaced.
+			_, created, err := s.Writer.Write(ctx, f.kind, f.base, f.data, existed)
+			if err != nil {
 				return result, err
 			}
+			if !created {
+				return result, changedSinceApproved([]string{f.path})
+			}
 		}
+		result.Digests[f.path] = f.digest
 		switch {
-		case !created:
-			result.Kept = append(result.Kept, path)
+		case !write:
+			result.Kept = append(result.Kept, f.path)
 		case existed:
-			result.Replaced = append(result.Replaced, path)
+			result.Replaced = append(result.Replaced, f.path)
 		default:
-			result.Created = append(result.Created, path)
+			result.Created = append(result.Created, f.path)
 		}
 	}
 	return result, nil
 }
 
-func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwrite, dryRun bool) (contract.AgentWrite, error) {
+func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwrite bool, approved *contract.AgentWrite) (contract.AgentWrite, error) {
 	agent := definition.Agent{
 		Name: spec.Name, Runtime: spec.Runtime, Model: spec.Model, ModelFamily: spec.ModelFamily,
 		Effort: spec.Effort, Command: spec.Command, Session: spec.Session,
@@ -112,73 +143,87 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 	if _, err := definition.ParseAgent(definition.Document{Source: definition.Source{Kind: definition.KindAgent, Name: agent.Name}, Bytes: data}); err != nil {
 		return contract.AgentWrite{}, err
 	}
-	path, exists, err := s.Writer.Exists(ctx, definition.KindAgent, agent.Name)
+	path, digest, err := s.Writer.Current(ctx, definition.KindAgent, agent.Name)
 	if err != nil {
 		return contract.AgentWrite{}, err
 	}
+	exists := digest != ""
 	if exists && !overwrite {
 		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("agent %s already exists at %s (overwrite to replace it)", agent.Name, path)}
 	}
 	if err := s.keepsSettingsValid(ctx, definition.Document{Source: definition.Source{Kind: definition.KindAgent, Name: agent.Name, Path: path}, Bytes: data}); err != nil {
 		return contract.AgentWrite{}, err
 	}
-	if dryRun {
-		return contract.AgentWrite{Path: path, Replaces: exists}, nil
+	plan := contract.AgentWrite{Path: path, Replaces: exists, Digest: digest}
+	if approved == nil {
+		return plan, nil
 	}
-	written, created, err := s.Writer.Write(ctx, definition.KindAgent, agent.Name, data, overwrite)
-	if err != nil {
+	if *approved != plan {
+		return contract.AgentWrite{}, changedSinceApproved([]string{path})
+	}
+	// Only an approved replacement overwrites: a file created since the
+	// plan is not replaced.
+	if _, created, err := s.Writer.Write(ctx, definition.KindAgent, agent.Name, data, exists); err != nil {
 		return contract.AgentWrite{}, err
+	} else if !created {
+		return contract.AgentWrite{}, changedSinceApproved([]string{path})
 	}
-	if !created {
-		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("agent %s already exists at %s (overwrite to replace it)", agent.Name, written)}
-	}
-	return contract.AgentWrite{Path: written, Replaces: exists}, nil
+	return plan, nil
 }
 
-// keepsSettingsValid refuses a document that would add problems to the
-// settings: once written, every command would stop on them, including the
-// one that could repair them.
+// changedSinceApproved refuses a write whose files differ from the plan the
+// user approved.
+func changedSinceApproved(paths []string) error {
+	return &contract.InputError{Message: fmt.Sprintf("changed since you confirmed, so nothing more was written: %s", strings.Join(paths, ", "))}
+}
+
+// keepsSettingsValid refuses a document that would add problems to any
+// scope: once written, every command there would stop on them, including
+// the one that could repair them.
 func (s *Settings) keepsSettingsValid(ctx context.Context, doc definition.Document) error {
-	if s.Checker == nil {
-		return nil
-	}
-	before, err := s.Checker.Check(ctx, false)
-	if err != nil {
-		return err
-	}
-	after := *s.Checker
-	after.Definitions = withDocument{DefinitionSource: s.Checker.Definitions, doc: doc}
-	report, err := after.Check(ctx, false)
-	if err != nil {
-		return err
-	}
-	existing := map[string]bool{}
-	for _, problem := range before.Problems {
-		existing[problem] = true
-	}
-	var added []string
-	for _, problem := range report.Problems {
-		if !existing[problem] {
-			added = append(added, problem)
+	for _, scope := range s.Scopes {
+		before, err := scope.Checker.Check(ctx, false)
+		if err != nil {
+			return err
 		}
-	}
-	if len(added) > 0 {
-		return &contract.InputError{Message: fmt.Sprintf("%s %s would break the settings, so nothing was written:\n  %s", doc.Source.Kind.Singular(), doc.Source.Name, strings.Join(added, "\n  "))}
+		after := *scope.Checker
+		after.Definitions = withDocument{DefinitionSource: scope.Checker.Definitions, doc: doc}
+		report, err := after.Check(ctx, false)
+		if err != nil {
+			return err
+		}
+		existing := map[string]bool{}
+		for _, problem := range before.Problems {
+			existing[problem] = true
+		}
+		var added []string
+		for _, problem := range report.Problems {
+			if !existing[problem] {
+				added = append(added, problem)
+			}
+		}
+		if len(added) > 0 {
+			return &contract.InputError{Message: fmt.Sprintf("%s %s would break the %s, so nothing was written:\n  %s", doc.Source.Kind.Singular(), doc.Source.Name, scope.Name, strings.Join(added, "\n  "))}
+		}
 	}
 	return nil
 }
 
-// withDocument is a definitions source with one document added or replaced.
+// withDocument is a definitions source with one global document added or
+// replaced; a project document of the same name still takes priority.
 type withDocument struct {
 	DefinitionSource
 	doc definition.Document
 }
 
 func (w withDocument) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
-	if kind == w.doc.Source.Kind && name == w.doc.Source.Name {
-		return w.doc, nil
+	if kind != w.doc.Source.Kind || name != w.doc.Source.Name {
+		return w.DefinitionSource.Read(ctx, kind, name)
 	}
-	return w.DefinitionSource.Read(ctx, kind, name)
+	if current, err := w.DefinitionSource.Read(ctx, kind, name); err == nil && current.Source.Project {
+		return current, nil
+	}
+	return w.doc, nil
 }
 
 func (w withDocument) List(ctx context.Context, kind definition.Kind) ([]string, error) {
