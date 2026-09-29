@@ -1,0 +1,27 @@
+schema = "agister.service/v1alpha1"
+
+# Hard limits no policy may exceed. Retries are not supported yet.
+max_timeout = "1h"
+max_attempts = 1
+
+# The permission vocabulary. Policies and runtime mappings may use only these.
+permissions = [
+  "repository.read",
+  "repository.search",
+  "repository.diff",
+  "repository.history.read",
+  "repository.write",
+  "repository.history.write",
+  "process.execute",
+  "network",
+  "host.read",
+  "host.write",
+]
+
+# Permissions that change the workspace or its history. Read-only
+# workspace access withholds them.
+writing = ["repository.write", "repository.history.write"]
+
+# This repository: Codex read-only reads the host (host.read). We accept
+# that for reviews here, so nothing is treated as state-reaching.
+state_reaching = []

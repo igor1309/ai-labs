@@ -1,0 +1,30 @@
+# Clarity review of a candidate against prompts/code-review-clarity.md.
+schema: agister.process/v1alpha1
+name: clarity_review_codex
+
+type: process
+uses: agent:codex-sol
+policy: process-policy:codex-review
+
+input:
+  instruction: >-
+    Review the exact candidate against the diff from the base, following the
+    review prompt given as input review_prompt. Report material findings
+    only, with repository-relative paths and candidate line numbers.
+  params:
+    base: {default: origin/agister}
+    candidate: {default: HEAD}
+  values:
+    base_revision: {source: git.revision, rev: "${param.base}"}
+    candidate_revision: {source: git.revision, rev: "${param.candidate}"}
+    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}
+    changed_files: {source: git.changed_files, base: "${param.base}", head: "${param.candidate}"}
+    review_prompt: {source: file, path: prompts/code-review-clarity.md}
+
+workspace:
+  checkout: candidate_revision
+
+output:
+  format: json
+  schema: review-result
+  require_valid: true
