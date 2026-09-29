@@ -212,3 +212,36 @@ before.
 - **Done when:** definitions resolve per call from the call's working
   directory, with a test that two calls from different repositories see
   their own settings.
+
+## 9. A call's only life-cycle limit is its overall timeout
+
+- **Gap:** while a call runs, Agister tracks it by one wall-clock cap
+  (the policy's `timeout`) and the runtime's soft cost limit (item 5).
+  Nothing tells a slow call from a stuck one: a runtime that emits no event
+  for a long time, a single tool command that hangs (a `go test` with no
+  timeout of its own), an agent repeating the same failing step, and a turn
+  waiting out a rate limit all look alike until the cap fires. A cap long
+  enough for honest work (45 minutes for an implementer) is then the only
+  thing that ends a hang, and the time is lost.
+- **Evidence:** dogfooding on 2026-09-29: the `implement` policy needs
+  `timeout: 45m` for a batch a Sonnet subagent took about 17 minutes to do.
+  During the Opus run the runtime reported `RATE_LIMITED` with
+  `allowed_warning`; nothing in the run says whether a later silence is
+  that wait or a hang. `agister runs show` on the running Sonnet call
+  printed the raw record: no status, no last event, no time since it;
+  only `runs watch` (the event stream) showed what it was doing.
+- **Open:** which signals Agister owns or can read: the time since the last
+  runtime event (an idle limit), the duration of the current tool call
+  (a per-command limit, where the runtime reports tool start and end), the
+  runtime's own rate-limit and retry events, repetition of identical tool
+  calls, and the process group's CPU use as liveness. For each: how a policy
+  declares it, which failure class it ends in (a hang is not a timeout of
+  honest work), what the run record shows while the call is running
+  (a readable progress state, not only the event log), and which of them
+  diagnose without deciding (ADR-001 rule 13).
+- **Trigger:** calls that run unattended for longer than a review, such as
+  implementers, or the service.
+- **Done when:** a policy can bound a call by more than its overall
+  timeout; a stuck call (no event, or a hung tool command) ends early in a
+  class of its own, with tests using an injected clock; and a running
+  call's record says what it is doing and since when.

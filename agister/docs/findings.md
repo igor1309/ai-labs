@@ -12,7 +12,10 @@
   `host.read`, which is never granted, and it is not yet verified against a
   live Codex, so it ships opt-in (`examples/codex/`) and `check` refuses it.
 - **Claude Code rejects draft 2020-12 schemas** passed with `--json-schema`,
-  so example schemas declare no `$schema`.
+  so example schemas declare no `$schema`. `agister check` still accepts
+  one: on 2026-09-29 a project schema with the draft 2020-12 `$schema`
+  passed `check` and the call failed at the runtime's start (1.7s, no
+  cost).
 - **Schemas were compiled only after the agent ran.** A broken schema cost a
   full call before failing. They are now compiled before the call and by
   `agister check`.

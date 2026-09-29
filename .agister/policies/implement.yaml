@@ -1,0 +1,28 @@
+# Implementation in a checkout of the candidate. Claude Code gets Bash,
+# which grants everything its mapping lists (runtimes/claude-code.yaml), so
+# this policy allows all of it; Agister keeps the checkout's changes as a
+# patch artifact.
+schema: agister.process-policy/v1alpha1
+name: implement
+
+workspace:
+  access: read-write
+  scope: candidate
+
+tools:
+  allow:
+    - repository.read
+    - repository.search
+    - repository.diff
+    - repository.history.read
+    - repository.write
+    - repository.history.write
+    - process.execute
+    - network
+    - host.read
+    - host.write
+
+timeout: 45m
+max_cost_usd: 25
+retry:
+  max_attempts: 1
