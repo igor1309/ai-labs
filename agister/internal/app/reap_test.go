@@ -36,7 +36,7 @@ type reaper struct {
 func reaping(h *harness, runs ...run.Record) *reaper {
 	adopter, processes := &adopterSpy{runs: runs}, &processesSpy{}
 	return &reaper{
-		Reaper:    &app.Reaper{Adopter: adopter, Processes: processes, Workspaces: h.workspaces, Clock: fixedClock{}},
+		Reaper:    &app.Reaper{Adopter: adopter, Processes: processes, Discarder: h.workspaces, Clock: fixedClock{}},
 		adopter:   adopter,
 		processes: processes,
 	}
@@ -233,11 +233,10 @@ func TestNothingIsAdoptedAfterTheDeadline(t *testing.T) {
 func TestReapingHasADeadlineByDefault(t *testing.T) {
 	h := newHarness()
 	r := reaping(h, abandonedRun("a"))
-	r.ReapTimeout = time.Minute
 	var bounded bool
 	h.workspaces.discardHook = func(ctx context.Context, _ string) error {
 		deadline, ok := ctx.Deadline()
-		bounded = ok && time.Until(deadline) <= time.Minute
+		bounded = ok && time.Until(deadline) <= 30*time.Second
 		return nil
 	}
 	r.reap()

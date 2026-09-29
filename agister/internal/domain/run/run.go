@@ -229,9 +229,10 @@ type Checkout struct {
 }
 
 // Process is the runtime's process as an opaque reference, made and read
-// only by the runtime adapter that started it. Records of v1alpha2 held a
-// process group and token instead; they read here with an empty Ref, which
-// no adapter can reap, so what such a run left is not reaped.
+// only by the runtime adapter that started it. Records of v1alpha2 carry no
+// effects, so the reaper never lists them and what such a run left is not
+// reaped. Pre-release records that held a group and token read here with an
+// empty Ref, which no adapter can reap: it is left, with an error.
 type Process struct {
 	Ref string `json:"ref"`
 }

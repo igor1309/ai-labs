@@ -662,7 +662,7 @@ func TestCancelThroughTheContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	id, err := client.Submit(ctx, contract.CallRequest{Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "1m", Cwd: repo})
+	id, err := client.Submit(ctx, contract.CallRequest{Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "30s", Cwd: repo})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -695,7 +695,7 @@ func TestRunSurvivesSettingsBrokenMidRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	id, err := client.Submit(ctx, contract.CallRequest{Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "1m", Cwd: repo})
+	id, err := client.Submit(ctx, contract.CallRequest{Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "30s", Cwd: repo})
 	if err != nil {
 		t.Fatal(err)
 	}

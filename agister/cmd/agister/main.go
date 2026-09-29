@@ -92,7 +92,7 @@ func wire(config cli.Config) (*app.Gated, *app.BackgroundReaper, error) {
 	hosted := app.NewHosted()
 	// Abandoned runs are reaped beside the calls, never inside one.
 	reaping := &app.BackgroundReaper{Reaper: &app.Reaper{
-		Adopter: evidence, Processes: supervisor.Processes{}, Workspaces: git.Workspaces{}, Clock: system.Clock{},
+		Adopter: evidence, Processes: supervisor.Processes{}, Discarder: git.Workspaces{}, Clock: system.Clock{},
 	}}
 	provenance := fsprovenance.Store{Dir: filepath.Join(config.Home, "provenance")}
 	checkerOn := func(definitions app.DefinitionSource) *app.Checker {

@@ -16,10 +16,10 @@ const defaultReapTimeout = 30 * time.Second
 // finished, then finishes them. It is not part of any call: whoever
 // composes the client starts it (see BackgroundReaper).
 type Reaper struct {
-	Adopter    RunAdopter
-	Processes  Processes
-	Workspaces Workspaces
-	Clock      Clock
+	Adopter   RunAdopter
+	Processes Processes
+	Discarder CheckoutDiscarder
+	Clock     Clock
 	// ReapTimeout bounds one Reap; zero means 30s.
 	ReapTimeout time.Duration
 	// ReapContext, when set, replaces the timeout: it returns the context
@@ -101,7 +101,7 @@ func (c *Reaper) reap(ctx context.Context, handle RunHandle, record run.Record, 
 		case slices.Contains(live, checkout.Dir):
 			data["checkout"] = map[string]any{"dir": checkout.Dir, "removed": false, "skipped": "a running run uses it"}
 		default:
-			err := c.Workspaces.Discard(ctx, checkout.Repository, checkout.Dir)
+			err := c.Discarder.Discard(ctx, checkout.Repository, checkout.Dir)
 			data["checkout"] = map[string]any{"dir": checkout.Dir, "removed": err == nil}
 			if err != nil {
 				failures = append(failures, fmt.Sprintf("checkout %s: %v", checkout.Dir, err))

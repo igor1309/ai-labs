@@ -38,9 +38,9 @@ func TestMain(m *testing.M) {
 		os.Stdout.WriteString("started\n")
 		os.Exit(0)
 	case "sleep":
-		// Blocks until the test kills it (t.Cleanup); never ends by itself
-		// within any test's lifetime.
-		time.Sleep(2 * time.Minute)
+		// Blocks until the test kills it (t.Cleanup); the bound only keeps a
+		// leak from outliving the test run.
+		time.Sleep(30 * time.Second)
 		os.Exit(0)
 	}
 }
@@ -58,6 +58,9 @@ type events struct {
 	// fail.
 	failAt   int
 	startErr error
+	// onStart, when set, runs with each reference reported (under the lock,
+	// so it must not call back into the sink).
+	onStart func(ref string)
 }
 
 func (e *events) Event(_, kind string, _ map[string]any) {
@@ -70,6 +73,9 @@ func (e *events) ProcessStarted(ref string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.started = append(e.started, ref)
+	if e.onStart != nil {
+		e.onStart(ref)
+	}
 	if e.failAt > 0 && len(e.started) == e.failAt {
 		return e.startErr
 	}
@@ -108,16 +114,24 @@ func alive(pid int) bool { return syscall.Kill(pid, 0) == nil }
 func TestLeftoverProcessesAreKilledWhenTheRuntimeExits(t *testing.T) {
 	pidFile := filepath.Join(t.TempDir(), "pid")
 	sink := &events{}
+	// Killed on every path, including a failed Run: the PID file is read
+	// lazily and a missing one is ignored.
+	t.Cleanup(func() {
+		if data, err := os.ReadFile(pidFile); err == nil {
+			if pid, err := strconv.Atoi(strings.TrimSpace(string(data))); err == nil && pid > 1 {
+				_ = syscall.Kill(pid, syscall.SIGKILL)
+			}
+		}
+	})
 	evidence := supervisor.Run(context.Background(), supervisor.Spec{
 		Command: "/bin/sh",
-		Args:    []string{"-c", `sleep 120 >/dev/null 2>&1 & echo $! > "$0"; echo done`, pidFile},
-		Timeout: time.Minute,
+		Args:    []string{"-c", `sleep 30 >/dev/null 2>&1 & echo $! > "$0"; echo done`, pidFile},
+		Timeout: 30 * time.Second,
 	}, sink, func(string) {})
 	if evidence.Exit == nil || evidence.Exit.Code == nil || *evidence.Exit.Code != 0 {
 		t.Fatalf("evidence = %+v", evidence)
 	}
 	pid := pidFrom(t, pidFile)
-	t.Cleanup(func() { _ = syscall.Kill(pid, syscall.SIGKILL) })
 	deadline := time.Now().Add(10 * time.Second)
 	for alive(pid) && time.Now().Before(deadline) {
 		time.Sleep(10 * time.Millisecond)
@@ -179,11 +193,28 @@ func TestStdoutHeldOutsideTheGroupDoesNotHoldTheCall(t *testing.T) {
 // The group is reported the moment it exists, before the slower lookup of
 // its token, so a kill in between still leaves the group on record.
 func TestGroupIsReportedBeforeItsTokenIsKnown(t *testing.T) {
-	sink := &events{}
-	supervisor.Run(context.Background(), supervisor.Spec{
+	// The child outlives the test's need of it; the run ends when the sink
+	// sees the token-bearing report, so no delay orders anything.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	sink := &events{onStart: func(ref string) {
+		if _, token, err := supervisor.ParseRef(ref); err == nil && token != "" {
+			cancel()
+		}
+	}}
+	t.Cleanup(func() {
+		sink.mu.Lock()
+		defer sink.mu.Unlock()
+		if len(sink.started) > 0 {
+			if group, _, err := supervisor.ParseRef(sink.started[0]); err == nil && group > 1 {
+				_ = syscall.Kill(-group, syscall.SIGKILL)
+			}
+		}
+	})
+	supervisor.Run(ctx, supervisor.Spec{
 		Command: "/bin/sh",
-		Args:    []string{"-c", "sleep 1"},
-		Timeout: time.Minute,
+		Args:    []string{"-c", "sleep 30"},
+		Timeout: 30 * time.Second,
 	}, sink, func(string) {})
 	sink.mu.Lock()
 	defer sink.mu.Unlock()

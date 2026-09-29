@@ -181,7 +181,7 @@ func Conformance(t *testing.T, subject Subject) {
 		// Cancel when the process has started, not after a delay. The
 		// minute timeout only backstops a hang and never races the cancel.
 		request := subject.Request("SCENARIO:hang")
-		request.Timeout = time.Minute
+		request.Timeout = 30 * time.Second
 		sink := &Recorder{OnEvent: func(kind string) {
 			if kind == "PROCESS_STARTED" {
 				cancel()

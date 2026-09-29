@@ -74,10 +74,16 @@ def run_tests(module, tests):
         by_package.setdefault(package, []).append(test)
     for package, names in by_package.items():
         pattern = "^(" + "|".join(re.escape(n) for n in names) + ")$"
-        result = subprocess.run(
-            ["go", "test", "-count=1", "-v", "-run", pattern, package],
-            cwd=module, capture_output=True, text=True,
-        )
+        try:
+            result = subprocess.run(
+                ["go", "test", "-count=1", "-timeout", "1m", "-v", "-run", pattern, package],
+                cwd=module, capture_output=True, text=True, timeout=90,
+            )
+        except subprocess.TimeoutExpired:
+            # A hung run is a failed run, never a pass; check() reports it.
+            for name in names:
+                outcome[name] = "timeout"
+            continue
         output = result.stdout + result.stderr
         if "[build failed]" in output or "[setup failed]" in output:
             return None
@@ -101,6 +107,9 @@ def check(module, mutation):
     baseline = run_tests(module, mutation["tests"])
     if baseline is None:
         return f"{name}: does not build before mutating"
+    hung = [t for t, o in baseline.items() if o == "timeout"]
+    if hung:
+        return f"{name}: timed out before mutating: {', '.join(hung)}"
     failing = [t for t, o in baseline.items() if o != "pass"]
     if failing:
         return f"{name}: not passing before mutating: {', '.join(failing)}"
@@ -112,6 +121,9 @@ def check(module, mutation):
         path.write_text(original)
     if mutated is None:
         return f"{name}: the mutation does not build, so it proves nothing"
+    hung = [t for t, o in mutated.items() if o == "timeout"]
+    if hung:
+        return f"{name}: timed out with the fix undone, not a clean failure: {', '.join(hung)}"
     survivors = [t for t, o in mutated.items() if o != "fail"]
     if survivors:
         return f"{name}: still passing with the fix undone: {', '.join(survivors)}"

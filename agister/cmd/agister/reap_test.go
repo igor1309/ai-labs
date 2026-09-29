@@ -37,7 +37,7 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 	if out, err := exec.Command("go", "build", "-o", binary, ".").CombinedOutput(); err != nil {
 		t.Fatalf("build: %v\n%s", err, out)
 	}
-	victim := exec.Command(binary, "--home", home, "run", "adversarial_review", "--param", "base=main", "--quiet", "--timeout", "1m")
+	victim := exec.Command(binary, "--home", home, "run", "adversarial_review", "--param", "base=main", "--quiet", "--timeout", "30s")
 	victim.Dir = repo
 	// Its own process group: only it is killed below, not the test.
 	victim.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
@@ -50,6 +50,25 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 		_ = victim.Wait()
 		if group > 0 {
 			_ = syscall.Kill(-group, syscall.SIGKILL)
+			return
+		}
+		// The poll below failed before the record was read: whatever the
+		// record shows is still the test's to end.
+		paths, _ := filepath.Glob(filepath.Join(home, "runs", "*", "record.json"))
+		for _, path := range paths {
+			var left domain.Record
+			data, err := os.ReadFile(path)
+			if err != nil || json.Unmarshal(data, &left) != nil || left.Effects == nil {
+				continue
+			}
+			if left.Effects.Process != nil {
+				if g, _, err := supervisor.ParseRef(left.Effects.Process.Ref); err == nil && g > 1 {
+					_ = syscall.Kill(-g, syscall.SIGKILL)
+				}
+			}
+			if left.Effects.Checkout != nil {
+				_ = exec.Command("git", "-C", repo, "worktree", "remove", "--force", left.Effects.Checkout.Dir).Run()
+			}
 		}
 	})
 

@@ -16,7 +16,7 @@ import (
 // closed when it has been reaped by its parent.
 func sleeper(t *testing.T) (pid int, gone <-chan struct{}) {
 	t.Helper()
-	command := exec.Command("sleep", "60")
+	command := exec.Command("sleep", "30")
 	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if err := command.Start(); err != nil {
 		t.Fatal(err)

@@ -113,7 +113,7 @@ func TestBuiltClientSharesTheBackgroundReaper(t *testing.T) {
 	}
 	if reaper.Adopter != app.RunAdopter(fsruns.Store{Dir: filepath.Join(home, "runs")}) ||
 		reaper.Processes != app.Processes(supervisor.Processes{}) ||
-		reaper.Workspaces != app.Workspaces(git.Workspaces{}) ||
+		reaper.Discarder != app.CheckoutDiscarder(git.Workspaces{}) ||
 		reaper.Clock == nil {
 		t.Fatalf("reaper = %+v", reaper)
 	}

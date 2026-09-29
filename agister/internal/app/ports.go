@@ -115,9 +115,13 @@ type Workspaces interface {
 	// Changes returns everything in a checkout that differs from revision,
 	// committed or not, as a patch; empty when nothing does.
 	Changes(ctx context.Context, dir, revision string) ([]byte, error)
-	// Discard removes a checkout that Checkout made, whose owner ended
-	// without releasing it. A checkout already gone is success; a
-	// directory Checkout could not have made is refused.
+}
+
+// CheckoutDiscarder removes checkouts whose owner ended without releasing
+// them.
+type CheckoutDiscarder interface {
+	// Discard removes a checkout that Checkout made. A checkout already
+	// gone is success; a directory Checkout could not have made is refused.
 	Discard(ctx context.Context, repository, dir string) error
 }
 

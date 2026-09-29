@@ -22,8 +22,10 @@ before.
   be recorded is released and the call refused before the runtime starts
   (failed, internal); a process that cannot be recorded makes
   `EventSink.ProcessStarted` fail, the supervisor kills the group it just
-  started (`PROCESS_RECORD_FAILED`) and the turn fails saying so. Records of schema v1alpha2, which held a group and token, are not
-  reapable: their reference reads empty and is left, with an error. Submitting a call starts a reap beside it, in the
+  started (`PROCESS_RECORD_FAILED`) and the turn fails saying so. Records of schema v1alpha2 carry no effects, so the reaper never lists
+  them and what such a run left is not reaped (pre-release records that
+  held a group and token read with an empty reference and are left, with an
+  error). Submitting a call starts a reap beside it, in the
   background: `app.Reaper` adopts each abandoned run that recorded effects
   (taking its owner lock, so one process does it), kills the group, removes
   the checkout, prunes worktrees, appends `EFFECTS_REAPED` and finishes the
@@ -37,7 +39,11 @@ before.
   submitted, not when the run is read or at service start; until then they
   stay. The reap is not awaited: a CLI that exits before it ends leaves the
   run it was reaping adopted but unfinished, and the next reap does it
-  again (killing a gone group and removing a gone checkout succeed). A group
+  again (killing a gone group and removing a gone checkout succeed). A
+  Submit that arrives while a reap is running starts no further pass, so a
+  run abandoned after that reap's scan waits for a later call; this matters
+  for a long-lived client (trigger: the service; then a pending flag reruns
+  once after the active reap). A group
   whose leader is alive with a different or unknown token is left alone
   (the ID may be reused) and the event says so; the run is then finished
   anyway, so that leftover is not retried. A kill between creating the

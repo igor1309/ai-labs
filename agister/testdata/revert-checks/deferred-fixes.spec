@@ -347,3 +347,15 @@ file: cmd/agister/main.go
 find: Checker:    checkerOn(layered),
 replace: Checker:    checkerOn(definitions),
 test: ./cmd/agister TestBuiltClientReadsOnlyTheSourcesGiven
+
+[reaping has a deadline by default]
+file: internal/app/reap.go
+find: \t\ttimeout = defaultReapTimeout\n
+replace: \t\ttimeout = 10 * time.Minute\n
+test: ./internal/app TestReapingHasADeadlineByDefault
+
+[the group is reported before its token is known]
+file: internal/adapters/runtime/supervisor/supervisor.go
+find: \trecorded := sink.ProcessStarted(Ref(pid, ""))\n
+replace: \tvar recorded error\n
+test: ./internal/adapters/runtime/supervisor TestGroupIsReportedBeforeItsTokenIsKnown
