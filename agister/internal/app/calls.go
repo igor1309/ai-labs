@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/constraint"
@@ -25,15 +24,6 @@ type Calls struct {
 	Provenance  Provenance
 	Validator   OutputValidator
 	Recorder    RunRecorder
-	// Reap what runs killed before they finished left behind, when a call
-	// starts. Without both, nothing is reaped.
-	Adopter   RunAdopter
-	Processes Processes
-	// ReapTimeout bounds how long reaping may delay a call; zero means 30s.
-	ReapTimeout time.Duration
-	// ReapContext, when set, replaces the timeout: it returns the context
-	// that bounds reaping. Tests use it to drive the deadline.
-	ReapContext func(context.Context) (context.Context, context.CancelFunc)
 	// Earlier runs, read only to continue a session.
 	Runs  RunLookup
 	Clock Clock
@@ -105,7 +95,6 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 	go func() {
 		defer c.Hosted.remove(record.ID)
 		defer cancel()
-		c.reapAbandoned(runCtx)
 		c.execute(runCtx, handle, record, definitions)
 	}()
 	return record.ID, nil

@@ -2,15 +2,20 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
 	"testing"
+	"time"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
+	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 // marker is a definitions source told apart from every other by identity.
@@ -76,7 +81,11 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 			}
 			layered, global := &marker{"layered"}, &marker{"global"}
 			held := map[string]any{}
-			definitionsHeld(reflect.ValueOf(gated.Build(layered, global)), "", map[uintptr]bool{}, held)
+			built, ok := gated.Build(layered, global).(app.ReapOnSubmit)
+			if !ok {
+				t.Fatalf("the built client is not decorated to reap on submit")
+			}
+			definitionsHeld(reflect.ValueOf(built.Client), "", map[uintptr]bool{}, held)
 
 			want := map[string]*marker{
 				".Settings.Definitions":   layered,
@@ -105,4 +114,48 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Submitting a call on the built client reaps the runs a killed process
+// abandoned: here one that recorded a checkout and whose owner is gone.
+func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
+	home := t.TempDir()
+	gated, background, err := wire(cli.Config{Home: home})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// An unfinished run nobody holds the owner lock of.
+	dir := filepath.Join(home, "runs", "old")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	record := domain.Record{
+		Schema: domain.RecordSchema, ID: "old", Process: "p", CreatedAt: time.Now(),
+		Effects: &domain.Effects{Checkout: &domain.Checkout{Repository: "/repo", Dir: filepath.Join(t.TempDir(), "workspace")}},
+	}
+	data, _ := json.Marshal(record)
+	if err := os.WriteFile(filepath.Join(dir, "record.json"), data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "owner.lock"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	client := gated.Build(&marker{"layered"}, &marker{"global"})
+	id, err := client.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: home})
+	if err != nil {
+		t.Fatal(err)
+	}
+	background.Wait()
+
+	store := fsruns.Store{Dir: filepath.Join(home, "runs")}
+	got, state, err := store.Get(context.Background(), "old")
+	if err != nil || state != domain.StateFinished || got.Result == nil || got.Result.Status != domain.Lost {
+		t.Fatalf("old run: %+v, %s, %v", got.Result, state, err)
+	}
+	// The call that triggered it is its own run, and finishes on its own.
+	eventually(t, "the submitted call to finish", func() bool {
+		_, state, err := store.Get(context.Background(), id)
+		return err == nil && state == domain.StateFinished
+	})
 }

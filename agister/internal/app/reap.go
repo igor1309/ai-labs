@@ -9,22 +9,31 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// defaultReapTimeout bounds reaping when Calls.ReapTimeout is zero.
+// defaultReapTimeout bounds reaping when Reaper.ReapTimeout is zero.
 const defaultReapTimeout = 30 * time.Second
 
-// reapAbandoned undoes the effects of runs whose process was killed before
-// they finished, then finishes them. It runs when a call starts, never
-// fails that call, and leaves runs some process still owns alone. Runs
+// Reaper undoes the effects of runs whose process was killed before they
+// finished, then finishes them. It is not part of any call: whoever
+// composes the client starts it (see BackgroundReaper).
+type Reaper struct {
+	Adopter    RunAdopter
+	Processes  Processes
+	Workspaces Workspaces
+	Clock      Clock
+	// ReapTimeout bounds one Reap; zero means 30s.
+	ReapTimeout time.Duration
+	// ReapContext, when set, replaces the timeout: it returns the context
+	// that bounds reaping. Tests use it to drive the deadline.
+	ReapContext func(context.Context) (context.Context, context.CancelFunc)
+}
+
+// Reap leaves runs some process still owns alone and never fails. Runs
 // not reached by the reap deadline are not adopted and wait for the next
-// call, and the run being reaped when time runs out is finished with the
+// reap, and the run being reaped when time runs out is finished with the
 // steps that failed recorded. Only the git steps honour the deadline:
-// os.RemoveAll in Discard does not, so the call can be delayed past it.
-func (c *Calls) reapAbandoned(ctx context.Context) {
-	if c.Adopter == nil || c.Processes == nil {
-		return
-	}
-	// A cancelled call still leaves what it found in order, within the bound.
-	ctx, cancel := c.reapContext(context.WithoutCancel(ctx))
+// os.RemoveAll in Discard does not, so a reap can run past it.
+func (c *Reaper) Reap(ctx context.Context) {
+	ctx, cancel := c.reapContext(ctx)
 	defer cancel()
 	abandoned, err := c.Adopter.Abandoned(ctx)
 	if err != nil {
@@ -53,9 +62,9 @@ func (c *Calls) reapAbandoned(ctx context.Context) {
 	}
 }
 
-// reapContext bounds reaping: Calls.ReapContext when set, else the reap
+// reapContext bounds reaping: Reaper.ReapContext when set, else the reap
 // timeout.
-func (c *Calls) reapContext(ctx context.Context) (context.Context, context.CancelFunc) {
+func (c *Reaper) reapContext(ctx context.Context) (context.Context, context.CancelFunc) {
 	if c.ReapContext != nil {
 		return c.ReapContext(ctx)
 	}
@@ -70,7 +79,7 @@ func (c *Calls) reapContext(ctx context.Context) (context.Context, context.Cance
 // fails is recorded and does not stop the rest, so a run is reaped once. A
 // checkout that a run still owned records as its own is left in place, and
 // so is one whose users could not be listed.
-func (c *Calls) reap(ctx context.Context, handle RunHandle, record run.Record, live []string, liveErr error) {
+func (c *Reaper) reap(ctx context.Context, handle RunHandle, record run.Record, live []string, liveErr error) {
 	data := map[string]any{}
 	var failures []string
 	var effects run.Effects

@@ -54,15 +54,22 @@ func compose(config cli.Config) (contract.Client, error) {
 
 // newGated is the whole client behind the gate.
 func newGated(config cli.Config) (*app.Gated, error) {
+	gated, _, err := wire(config)
+	return gated, err
+}
+
+// wire builds newGated, and the background reaper every client it builds
+// shares, which submitting a call starts (tests wait on it).
+func wire(config cli.Config) (*app.Gated, *app.BackgroundReaper, error) {
 	log, err := diagnostics(config)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	global := fsdefs.Store{Dir: config.Home}
 	local, err := project(config, log)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	definitions := fsdefs.Layered{Global: global, Project: local}
 	evidence := fsruns.Store{Dir: filepath.Join(config.Home, "runs")}
@@ -83,6 +90,10 @@ func newGated(config cli.Config) (*app.Gated, error) {
 		"git.changed_files": git.ChangedFiles{},
 	}
 	hosted := app.NewHosted()
+	// Abandoned runs are reaped beside the calls, never inside one.
+	reaping := &app.BackgroundReaper{Reaper: &app.Reaper{
+		Adopter: evidence, Processes: supervisor.Processes{}, Workspaces: git.Workspaces{}, Clock: system.Clock{},
+	}}
 	provenance := fsprovenance.Store{Dir: filepath.Join(config.Home, "provenance")}
 	checkerOn := func(definitions app.DefinitionSource) *app.Checker {
 		return &app.Checker{Definitions: definitions, Validator: schema.Validator{}, Runtimes: runtimes, Sources: names(sources)}
@@ -99,7 +110,7 @@ func newGated(config cli.Config) (*app.Gated, error) {
 		if local != nil {
 			scopes = append(scopes, app.Scope{Name: "settings in " + filepath.Dir(local.Dir), Check: checkerOn(layered)})
 		}
-		return &app.Host{
+		host := &app.Host{
 			Settings:   &app.Settings{Definitions: layered, Writer: global, Examples: examples.Settings(), Scopes: scopes},
 			Checker:    checkerOn(layered),
 			Inspection: &app.Inspection{Definitions: layered, Runtimes: runtimes, Validator: schema.Validator{}},
@@ -111,8 +122,6 @@ func newGated(config cli.Config) (*app.Gated, error) {
 				Provenance:  provenance,
 				Validator:   schema.Validator{},
 				Recorder:    evidence,
-				Adopter:     evidence,
-				Processes:   supervisor.Processes{},
 				Runs:        evidence,
 				Clock:       system.Clock{},
 				IDs:         system.IDs{},
@@ -121,10 +130,11 @@ func newGated(config cli.Config) (*app.Gated, error) {
 			},
 			Runs: &app.Runs{Reader: evidence, Hosted: hosted},
 		}
+		return app.ReapOnSubmit{Client: host, Background: reaping}
 	}
 
 	// Nothing but init and check works on settings that do not pass check.
-	return &app.Gated{Definitions: definitions, Global: fsdefs.Layered{Global: global}, Build: build}, nil
+	return &app.Gated{Definitions: definitions, Global: fsdefs.Layered{Global: global}, Build: build}, reaping, nil
 }
 
 // project is the settings layer of the repository containing the working

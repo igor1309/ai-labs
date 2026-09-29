@@ -43,12 +43,44 @@ replace: name: static-review\nconstraints:\n  agent.model_family:\n    not_equal
 test: ./internal/domain/definition TestExamplesCarryNoConstraintThatAlwaysPasses
 
 # Item 1: effects of a killed run are reaped.
-[a call reaps abandoned runs when it starts]
-file: internal/app/calls.go
-find: c.reapAbandoned(runCtx)
-replace: _ = runCtx
-test: ./internal/app TestAbandonedRunIsReapedWhenACallStarts
+[submitting a call starts a reap]
+file: internal/app/background.go
+find: \t\tr.Background.Start(ctx)\n
+replace: 
+test: ./internal/app TestSubmittingStartsAReap
+test: ./cmd/agister TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted
 test: ./cmd/agister TestNextCallReapsWhatAKilledRunLeftBehind
+
+[the built client does not start reaps]
+file: cmd/agister/main.go
+find: return app.ReapOnSubmit{Client: host, Background: reaping}
+replace: return host
+test: ./cmd/agister TestBuiltClientReadsOnlyTheSourcesGiven
+test: ./cmd/agister TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted
+
+[a refused submit starts no reap]
+file: internal/app/background.go
+find: \tif err == nil {\n\t\tr.Background.Start(ctx)
+replace: \tif true {\n\t\tr.Background.Start(ctx)
+test: ./internal/app TestARefusedSubmitStartsNoReap
+
+[a reap does not delay the call]
+file: internal/app/background.go
+find: \tgo func() {\n\t\tdefer b.pending.Done()
+replace: \tfunc() {\n\t\tdefer b.pending.Done()
+test: ./internal/app TestABlockedReapDoesNotDelayTheCall
+
+[reaps do not run concurrently]
+file: internal/app/background.go
+find: \tif b.running {\n
+replace: \tif false {\n
+test: ./internal/app TestReapsNeverRunConcurrently
+
+[the reap is detached from the request's cancellation]
+file: internal/app/background.go
+find: \tctx = context.WithoutCancel(ctx)\n
+replace: 
+test: ./internal/app TestReapOutlivesTheRequestThatStartedIt
 
 [the checkout is recorded before the runtime starts]
 file: internal/app/calls.go
@@ -126,7 +158,7 @@ test: ./internal/app TestNothingIsAdoptedAfterTheDeadline
 file: internal/app/reap.go
 find: \t\tif ctx.Err() != nil {\n\t\t\treturn\n\t\t}\n\t\t// Read before
 replace: \t\t// Read before
-test: ./internal/app TestReapingIsBoundedAndTheCallStillRuns
+test: ./internal/app TestReapingIsBounded
 
 [a checkout a running run uses is not discarded]
 file: internal/app/reap.go

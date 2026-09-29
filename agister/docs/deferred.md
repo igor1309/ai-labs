@@ -15,15 +15,21 @@ before.
   remained.
 - **Done (2026-09-29):** a run records its checkout as soon as it exists and
   its process group, with the leader's start time as a token, as soon as the
-  runtime starts. When a call starts, it adopts each abandoned run that
-  recorded effects (taking its owner lock, so one process does it), kills
-  the group, removes the checkout, prunes worktrees, appends
-  `EFFECTS_REAPED` and finishes the run as lost (`abandoned`). A step that
-  fails is recorded and does not stop the call or the rest. Tests: app
+  runtime starts. Submitting a call starts a reap beside it, in the
+  background: `app.Reaper` adopts each abandoned run that recorded effects
+  (taking its owner lock, so one process does it), kills the group, removes
+  the checkout, prunes worktrees, appends `EFFECTS_REAPED` and finishes the
+  run as lost (`abandoned`). The call knows nothing of it and is never
+  delayed by it; the composition root wraps the client (`ReapOnSubmit`),
+  and at most one reap runs at a time in a process. A step that fails is
+  recorded and does not stop the call or the rest. Tests: app
   (spies), git, process, run store, and an end-to-end kill of a real
   `agister run`.
-- **Residual gap:** effects are reaped only when the next call starts, not
-  when the run is read or at service start; until then they stay. A group
+- **Residual gap:** effects are reaped only after the next call is
+  submitted, not when the run is read or at service start; until then they
+  stay. The reap is not awaited: a CLI that exits before it ends leaves the
+  run it was reaping adopted but unfinished, and the next reap does it
+  again (killing a gone group and removing a gone checkout succeed). A group
   whose leader is alive with a different or unknown token is left alone
   (the ID may be reused) and the event says so; the run is then finished
   anyway, so that leftover is not retried. A kill between creating the

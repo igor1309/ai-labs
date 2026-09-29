@@ -96,14 +96,14 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 	if lines := strings.Split(gitCmd(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
 		t.Fatalf("worktrees = %v", lines)
 	}
-	data, err := os.ReadFile(recordPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// Reaping runs beside the call that started it, so the run's end is
+	// awaited too.
 	var old domain.Record
-	if err := json.Unmarshal(data, &old); err != nil {
-		t.Fatal(err)
-	}
+	eventually(t, "the old run to be finished", func() bool {
+		data, err := os.ReadFile(recordPath)
+		old = domain.Record{}
+		return err == nil && json.Unmarshal(data, &old) == nil && old.FinishedAt != nil
+	})
 	if old.FinishedAt == nil || old.Result == nil || old.Result.Status != domain.Lost || old.Result.Error.Class != domain.ClassAbandoned {
 		t.Fatalf("old run = %+v", old.Result)
 	}
