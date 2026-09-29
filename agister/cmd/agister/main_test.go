@@ -51,7 +51,12 @@ func gitCmd(t *testing.T, dir string, args ...string) string {
 // repository has a base commit on main and a candidate on a branch whose
 // content carries the fake runtime's scenario marker.
 func repository(t *testing.T, scenario string) string {
-	dir := t.TempDir()
+	// Git reports the repository's real path (on macOS the temp dir sits
+	// behind the /var -> /private/var symlink); expectations use the same.
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	gitCmd(t, dir, "init", "--quiet", "--initial-branch=main")
 	gitCmd(t, dir, "config", "user.email", "test@example.com")
 	gitCmd(t, dir, "config", "user.name", "Test")
