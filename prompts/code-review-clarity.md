@@ -19,4 +19,5 @@ Definition of done:
 * Abstractions are earned: abstract shared meaning, not merely similar shape.
 * Deduplication does not introduce coupling between concepts that may evolve independently.
 * Indirection is minimized; boundaries exist because they clarify responsibility.
+* A change does not edit a recorded decision (an ADR, a design specification, a prompt, AGENTS.md or another agent instruction). Such an edit is a finding however accurate it is: decisions are the owner's, and code that departs from one is reported, not reconciled by rewriting the record. Quote the edit.
 * Stop once the code is clear.
