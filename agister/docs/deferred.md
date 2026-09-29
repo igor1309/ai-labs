@@ -3,7 +3,49 @@
 Known gaps accepted for the CLI stage. Each has a trigger: do it then, not
 before.
 
-## 1. Effects outlive a killed Agister process (partly done)
+## 1. Scripts cannot run through Agister
+
+- **Gap:** Agister runs only agent calls (ADR-001 rule 1). The node result
+  is shaped for future command and check nodes too (rule 6), and routing
+  belongs to a future workflow layer, but neither exists. A deterministic
+  check (gofmt, vet, the test suite, revert checks) cannot run through
+  Agister, leave evidence in a run record, or hand its result to the next
+  step, such as a judge. Wrapping a script in an agent call to run it would
+  waste a model turn and make a deterministic result depend on a model.
+- **Evidence:** dogfooding on 2026-09-29: reviewers and a judge ran through
+  Agister, but verifying the fixes they asked for (the tests pass, every
+  revert-check mutation is caught) had to run outside it. There it went
+  wrong in the ways a command node would prevent. `revert-check.py`
+  mutates files in place, in the tree the builder, the verifier and the
+  committer share; a run killed mid-mutation (a killed Python process runs
+  no `finally`) left `Kill(-group, 0)` in `processes.go`. The builder then
+  reported the suite green and 58/58 caught, about a tree state no one
+  could name, while leaving that file out of its list of changes; a commit
+  made meanwhile escaped a mutation only by staging paths explicitly; and
+  the candidate for the next review round would have carried it. What was
+  missing: a checkout of its own, a pinned revision, an effect owned and
+  undone on every exit (ADR-001 rule 12), and a recorded result instead of
+  a narrated one.
+- **Access:** running tests needs to execute commands and to write inside
+  its checkout (the Go build cache; revert checks mutate files). No agent
+  runtime can be granted that today: Codex read-only cannot run `go test`,
+  Claude Code's Bash cannot be fenced, and write confinement (Claude Code
+  `Edit` and `Write`, Codex `workspace-write`) is unverified (item 3). A
+  command run by Agister itself would be bounded by what Agister owns (the
+  checkout, the process group, the timeout), not by a runtime's
+  primitives.
+- **Open:** a new node type (command) the core runs beside agent calls, or
+  a workflow step that runs commands; the output contract (exit code, JSON
+  on stdout validated against a schema); how a policy states what a
+  command may do; and how a later process reads that result as input (no
+  input source reads another run's output today).
+- **Trigger:** now, first: test scripts are the first candidate, before a
+  dogfooding round needs a tester again.
+- **Done when:** a test script runs through Agister on a pinned candidate,
+  ends in a recorded node result with its evidence, and another process can
+  take that result as input.
+
+## 2. Effects outlive a killed Agister process (partly done)
 
 - **Gap:** ADR-001 rule 12 (every effect owned and cleaned up). If the CLI
   process is killed with SIGKILL during a call, the runtime's process group
@@ -66,7 +108,7 @@ before.
 - **Done when (rest):** the service reaps on start and periodically, and
   reads of a lost run may report what was left.
 
-## 2. Permission mappings carry no verification evidence
+## 3. Permission mappings carry no verification evidence
 
 - **Gap:** ADR-001 rule 4 trusts a mapping only once verified against the
   real runtime. Each primitive lists the versions it was verified against
@@ -101,7 +143,7 @@ before.
   grants happened; each mapping lists that evidence (suite run, date,
   runtime version) next to its `verified` versions.
 
-## 3. Failure classes seen only in field names
+## 4. Failure classes seen only in field names
 
 - **Gap:** ADR-001 rule 6 lets workflows route on a failure class. Only
   `budget_exhausted` (Claude `error_max_budget_usd`) and the transport
@@ -116,7 +158,7 @@ before.
   class.
 - **Done when:** each class has a fixture copied from real runtime output.
 
-## 4. The cost limit is the runtime's, and soft
+## 5. The cost limit is the runtime's, and soft
 
 - **Gap:** Claude Code checks `--max-budget-usd` between model requests, so
   a call can overshoot: live, a $0.0001 limit ended at $0.0010. The
@@ -128,7 +170,7 @@ before.
 - **Done when:** Agister tracks spend per budget across calls and stops
   submitting once it is spent.
 
-## 5. `resources` and `artifacts.retain` are refused
+## 6. `resources` and `artifacts.retain` are refused
 
 - **Gap:** the research `static-review` policy declares `resources` and
   `artifacts.retain`, but Agister cannot reserve a resource or retain an
@@ -142,7 +184,7 @@ before.
 - **Done when:** each field is accepted again with an effect a test
   observes.
 
-## 6. No provenance is recorded
+## 7. No provenance is recorded
 
 - **Gap:** constraints on a revision's writer read
   `<home>/provenance/<revision>.json`, but nothing writes it: Agister keeps
@@ -158,7 +200,7 @@ before.
   family and run for the new commit, and a test shows a same-family
   reviewer refused for it.
 
-## 7. The project layer is chosen per process, not per call
+## 8. The project layer is chosen per process, not per call
 
 - **Gap:** the composition root picks one project layer from the process's
   working directory, while each call carries its own `Cwd`.

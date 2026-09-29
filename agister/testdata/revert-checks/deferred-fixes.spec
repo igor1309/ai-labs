@@ -1,8 +1,9 @@
-# Deferred items 1, 2, 5, 6 and 8: each mutation undoes one fix, and the
-# listed tests must fail with it. Run: scripts/revert-check.py <this file>
+# Deferred items 2, 3, 6 and 7 and the settings snapshot: each mutation
+# undoes one fix, and the listed tests must fail with it.
+# Run: scripts/revert-check.py <this file>
 module: agister
 
-# Item 2: verification per primitive.
+# Item 3: verification per primitive.
 [calls plan only from primitives verified for the runtime version]
 file: internal/app/resolve.go
 find: enforce.Make(res.effective.Permissions, verified, res.effective.Require
@@ -28,21 +29,21 @@ replace: \tif _, ok := values["verified_versions"]; ok && false {
 test: ./internal/domain/definition TestMappingWideVerificationIsRefused
 test: ./cmd/agister TestRefusedSettingsFieldsFailCheck
 
-# Item 5: fields Agister would not enforce.
+# Item 6: fields Agister would not enforce.
 [resources and artifacts are refused]
 file: internal/domain/definition/limits.go
 find: \t\tif _, ok := values[field]; ok {
 replace: \t\tif _, ok := values[field]; ok && false {
 test: ./internal/domain/definition TestResearchPolicyParsesInPlace
 
-# Item 6: no constraint that always passes.
+# Item 7: no constraint that always passes.
 [shipped examples carry no always-passing constraint]
 file: examples/settings/policies/static-review.yaml
 find: name: static-review\n
 replace: name: static-review\nconstraints:\n  agent.model_family:\n    not_equal: evidence.candidate(input.candidate_revision).provenance.writer.model_family\n    on_unsatisfied: fail\n    on_unknown: pass\n
 test: ./internal/domain/definition TestExamplesCarryNoConstraintThatAlwaysPasses
 
-# Item 1: effects of a killed run are reaped.
+# Item 2: effects of a killed run are reaped.
 [submitting a call starts a reap]
 file: internal/app/background.go
 find: \t\tr.Background.Start(ctx)\n
@@ -262,7 +263,7 @@ find: resolved(filepath.Dir(parent)) != resolved(os.TempDir())
 replace: false
 test: ./internal/adapters/git TestDiscardRefusesOtherDirectories
 
-# Item 8: one settings snapshot per operation; serialized writes.
+# Settings snapshot: one per operation; serialized writes.
 [the gate builds the operation on live settings, not the checked snapshot]
 file: internal/app/gate.go
 find: layered := Snapshot(ctx, g.Definitions)
@@ -305,7 +306,7 @@ find: const lockName = ".write.lock"
 replace: const lockName = "processes/.lock.yaml"
 test: ./internal/adapters/fsdefs TestLockFileIsNeverListed
 
-# Item 8: write scopes and the wiring use the operation's snapshots.
+# Settings snapshot: write scopes and the wiring use the operation's snapshots.
 [the gate builds the global scope on the live global layer, not its snapshot]
 file: internal/app/gate.go
 find: client := g.Build(layered, Snapshot(ctx, g.Global))

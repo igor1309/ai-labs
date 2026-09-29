@@ -50,7 +50,7 @@ func TestExamplesParse(t *testing.T) {
 	}
 }
 
-// Agister records no writers yet (deferred item 6), so a shipped constraint
+// Agister records no writers yet (deferred item 7), so a shipped constraint
 // that passes on unknown provenance would always pass: it would look like a
 // guard against self-review and be none.
 func TestExamplesCarryNoConstraintThatAlwaysPasses(t *testing.T) {
