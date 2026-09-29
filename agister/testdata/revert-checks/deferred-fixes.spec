@@ -64,8 +64,8 @@ test: ./internal/app TestCallRecordsItsEffectsAsSoonAsTheyExist
 
 [a failed reap step still finishes the run]
 file: internal/app/reap.go
-find: \t\tif err != nil {\n\t\t\tfailures = append(failures, fmt.Sprintf("checkout
-replace: \t\tif err != nil {\n\t\t\treturn\n\t\t\tfailures = append(failures, fmt.Sprintf("checkout
+find: \t\t\tif err != nil {\n\t\t\t\tfailures = append(failures, fmt.Sprintf("checkout
+replace: \t\t\tif err != nil {\n\t\t\t\treturn\n\t\t\t\tfailures = append(failures, fmt.Sprintf("checkout
 test: ./internal/app TestFailedReapStepsStillFinishTheRunWithTheError
 
 [the reaper kills the recorded group]
@@ -97,3 +97,45 @@ file: internal/adapters/git/git.go
 find: run(ctx, repository, "worktree", "prune")
 replace: run(ctx, repository, "status")
 test: ./internal/adapters/git TestDiscardPrunesACheckoutThatIsGone
+
+[the process token includes the command name]
+file: internal/adapters/runtime/supervisor/processes.go
+find: "lstart=,comm="
+replace: "lstart="
+test: ./internal/adapters/runtime/supervisor TestReapKillsTheGroupOfTheRecordedProcess
+
+[the group is reported before its token is looked up]
+file: internal/adapters/runtime/supervisor/supervisor.go
+find: \tsink.ProcessStarted(pid, "")\n
+replace: 
+test: ./internal/adapters/runtime/supervisor TestGroupIsReportedBeforeItsTokenIsKnown
+
+[reaping is bounded by a timeout]
+file: internal/app/reap.go
+find: context.WithTimeout(context.WithoutCancel(ctx), timeout)
+replace: context.WithCancel(context.WithoutCancel(ctx)); _ = timeout
+test: ./internal/app TestReapingIsBoundedAndTheCallStillRuns
+
+[a checkout a running run uses is not discarded]
+file: internal/app/reap.go
+find: \t\tcase slices.Contains(live, checkout.Dir):
+replace: \t\tcase slices.Contains(live, "") :
+test: ./internal/app TestACheckoutARunningRunUsesIsNotDiscarded
+
+[live checkouts are those of owned runs]
+file: internal/adapters/fsruns/fsruns.go
+find: err != nil || state == run.StateRunning {
+replace: err != nil || state == run.StateFinished {
+test: ./internal/adapters/fsruns TestLiveCheckoutsAreThoseOfRunsSomeoneOwns
+
+[discard removes only a directory named workspace]
+file: internal/adapters/git/git.go
+find: filepath.Base(dir) != "workspace" ||
+replace: false ||
+test: ./internal/adapters/git TestDiscardRefusesOtherDirectories
+
+[discard removes only under the temp dir]
+file: internal/adapters/git/git.go
+find: resolved(filepath.Dir(parent)) != resolved(os.TempDir())
+replace: false
+test: ./internal/adapters/git TestDiscardRefusesOtherDirectories

@@ -82,8 +82,13 @@ func Run(ctx context.Context, spec Spec, events app.EventSink, onLine func(strin
 	}
 	pid := command.Process.Pid
 	// Recorded before anything else: from here on the group can outlive us.
-	token, _ := Token(pid)
-	sink.ProcessStarted(pid, token)
+	// Looking up the token takes a moment, so the group is reported first;
+	// a kill in between leaves a record that reaping refuses to act on
+	// blindly, but that still names the group.
+	sink.ProcessStarted(pid, "")
+	if token, err := Token(pid); err == nil {
+		sink.ProcessStarted(pid, token)
+	}
 	sink.Event(run.SourceProcess, "PROCESS_STARTED", map[string]any{"pid": pid, "command": spec.Command, "args": spec.Args})
 
 	// Signals go to the group only while it is known to exist: once the

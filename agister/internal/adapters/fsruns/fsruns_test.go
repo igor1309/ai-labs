@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -170,5 +171,29 @@ func TestAdoptTakesOnlyAnAbandonedRun(t *testing.T) {
 	}
 	if abandoned, _ := store.Abandoned(ctx); len(abandoned) != 0 {
 		t.Fatalf("finished run listed: %+v", abandoned)
+	}
+}
+
+func TestLiveCheckoutsAreThoseOfRunsSomeoneOwns(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	ctx := context.Background()
+	effects := func(dir string) *run.Effects {
+		return &run.Effects{Checkout: &run.Checkout{Repository: "/repo", Dir: dir}}
+	}
+	live, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "live", CreatedAt: time.Now(), Effects: effects("/tmp/agister-checkout-live/workspace")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = live.Append(run.Event{Kind: "E"})
+	dead, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "dead", CreatedAt: time.Now(), Effects: effects("/tmp/agister-checkout-dead/workspace")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = dead.Append(run.Event{Kind: "E"})
+	dead.(*handle).lock.Close()
+
+	dirs, err := store.LiveCheckouts(ctx)
+	if err != nil || !reflect.DeepEqual(dirs, []string{"/tmp/agister-checkout-live/workspace"}) {
+		t.Fatalf("live checkouts = %v, %v", dirs, err)
 	}
 }

@@ -13,10 +13,11 @@ import (
 
 var errNoProcess = errors.New("no such process")
 
-// Token identifies a process instance: its start time as ps reports it. A
-// process that reuses the ID starts at another time.
+// Token identifies a process instance: its start time and command name as
+// ps reports them. A process that reuses the ID starts at another time, or
+// within the same second runs another command.
 func Token(pid int) (string, error) {
-	command := exec.Command("ps", "-o", "lstart=", "-p", strconv.Itoa(pid))
+	command := exec.Command("ps", "-o", "lstart=,comm=", "-p", strconv.Itoa(pid))
 	command.Env = append(command.Environ(), "LC_ALL=C")
 	out, err := command.Output()
 	token := strings.TrimSpace(string(out))

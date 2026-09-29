@@ -2,6 +2,7 @@ package supervisor_test
 
 import (
 	"os/exec"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -30,6 +31,10 @@ func TestReapKillsTheGroupOfTheRecordedProcess(t *testing.T) {
 	token, err := supervisor.Token(pid)
 	if err != nil || token == "" {
 		t.Fatalf("token = %q, %v", token, err)
+	}
+	// The command name is part of it: the same start second is not enough.
+	if !strings.Contains(token, "sleep") {
+		t.Fatalf("token %q does not name the command", token)
 	}
 	reaping, err := supervisor.Processes{}.Reap(pid, token)
 	if err != nil || reaping != app.ReapKilled {

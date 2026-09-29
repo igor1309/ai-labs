@@ -107,3 +107,45 @@ func TestFailedReapStepsStillFinishTheRunWithTheError(t *testing.T) {
 		t.Fatalf("errors = %v", data["errors"])
 	}
 }
+
+func TestReapingIsBoundedAndTheCallStillRuns(t *testing.T) {
+	h := newHarness()
+	adopter, processes := reaping(h, abandonedRun("a"), abandonedRun("b"))
+	h.calls.ReapTimeout = 50 * time.Millisecond
+	h.workspaces.discardBlocks = true
+	record := h.call(t, contract.CallRequest{})
+	if record.Result == nil || record.Result.Status != run.Completed {
+		t.Fatalf("new call = %+v", record.Result)
+	}
+	// The run being reaped when time ran out is finished with the error;
+	// the one not reached is left, unadopted, for the next call.
+	if !reflect.DeepEqual(adopter.adopted, []string{"a"}) || len(processes.reaped) != 1 {
+		t.Fatalf("adopted %v, reaped %v", adopter.adopted, processes.reaped)
+	}
+	a := adopter.handles["a"].wait(t)
+	if a.Result == nil || a.Result.Error.Class != run.ClassAbandoned {
+		t.Fatalf("run a = %+v", a.Result)
+	}
+	if errs, _ := adopter.handles["a"].events[0].Data["errors"].([]string); len(errs) != 1 {
+		t.Fatalf("errors = %v", adopter.handles["a"].events[0].Data["errors"])
+	}
+}
+
+func TestACheckoutARunningRunUsesIsNotDiscarded(t *testing.T) {
+	h := newHarness()
+	adopter, processes := reaping(h, abandonedRun("old"))
+	adopter.live = []string{"/tmp/agister-checkout-1/workspace"}
+	h.call(t, contract.CallRequest{})
+	// The process is still ended and the run finished, but the directory stays.
+	if len(processes.reaped) != 1 || len(h.workspaces.discarded) != 0 {
+		t.Fatalf("reaped %v, discarded %v", processes.reaped, h.workspaces.discarded)
+	}
+	old := adopter.handles["old"].wait(t)
+	if old.Result == nil || old.Result.Error.Class != run.ClassAbandoned {
+		t.Fatalf("old run = %+v", old.Result)
+	}
+	checkout := adopter.handles["old"].events[0].Data["checkout"].(map[string]any)
+	if checkout["removed"] != false || checkout["skipped"] == nil {
+		t.Fatalf("checkout = %v", checkout)
+	}
+}

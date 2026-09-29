@@ -164,6 +164,9 @@ type RunHandle interface {
 type RunAdopter interface {
 	// Abandoned lists the unfinished runs nobody owns that recorded effects.
 	Abandoned(ctx context.Context) ([]run.Record, error)
+	// LiveCheckouts lists the checkout directories that runs some process
+	// still owns record, so nobody removes them from under those runs.
+	LiveCheckouts(ctx context.Context) ([]string, error)
 	// Adopt takes ownership of an abandoned run, as its record is now. It
 	// fails if the run is owned by another process or finished.
 	Adopt(ctx context.Context, id string) (RunHandle, run.Record, error)

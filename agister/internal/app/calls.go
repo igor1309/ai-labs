@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/constraint"
@@ -28,6 +29,8 @@ type Calls struct {
 	// starts. Without both, nothing is reaped.
 	Adopter   RunAdopter
 	Processes Processes
+	// ReapTimeout bounds how long reaping may delay a call; zero means 30s.
+	ReapTimeout time.Duration
 	// Earlier runs, read only to continue a session.
 	Runs  RunLookup
 	Clock Clock

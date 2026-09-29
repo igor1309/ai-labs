@@ -118,20 +118,25 @@ func (s *inputsSpy) Resolve(_ context.Context, spec app.InputSpec) (app.Resolved
 }
 
 type workspacesSpy struct {
-	mu         sync.Mutex
-	root       string
-	dir        string
-	checkouts  [][2]string
-	released   int
-	changed    [][2]string // dir, revision
-	changes    []byte
-	changeErr  error
-	panics     bool        // Changes panics
-	discarded  [][2]string // repository, dir
-	discardErr error
+	mu            sync.Mutex
+	root          string
+	dir           string
+	checkouts     [][2]string
+	released      int
+	changed       [][2]string // dir, revision
+	changes       []byte
+	changeErr     error
+	panics        bool        // Changes panics
+	discarded     [][2]string // repository, dir
+	discardErr    error
+	discardBlocks bool // Discard waits for its context to end
 }
 
-func (s *workspacesSpy) Discard(_ context.Context, repository, dir string) error {
+func (s *workspacesSpy) Discard(ctx context.Context, repository, dir string) error {
+	if s.discardBlocks {
+		<-ctx.Done()
+		return ctx.Err()
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.discarded = append(s.discarded, [2]string{repository, dir})
@@ -337,6 +342,13 @@ type adopterSpy struct {
 	adoptErr map[string]error
 	handles  map[string]*recorderSpy
 	adopted  []string
+	live     []string
+}
+
+func (s *adopterSpy) LiveCheckouts(context.Context) ([]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.live, nil
 }
 
 func (s *adopterSpy) Abandoned(context.Context) ([]run.Record, error) {

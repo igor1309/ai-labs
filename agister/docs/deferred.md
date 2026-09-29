@@ -5,7 +5,7 @@ before.
 
 ## 1. Effects outlive a killed Agister process (partly done)
 
-- **Gap:** ADR-001 rule 11 (every effect owned and cleaned up). If the CLI
+- **Gap:** ADR-001 rule 12 (every effect owned and cleaned up). If the CLI
   process is killed with SIGKILL during a call, the runtime's process group
   keeps running and the candidate checkout stays on disk and in
   `git worktree list` until something reaps them. SIGINT, SIGTERM and
@@ -27,7 +27,14 @@ before.
   whose leader is alive with a different or unknown token is left alone
   (the ID may be reused) and the event says so; the run is then finished
   anyway, so that leftover is not retried. A kill between creating the
-  checkout and recording it leaves an unrecorded checkout.
+  checkout and recording it leaves an unrecorded checkout. Reaping is
+  bounded (30s by default): runs not reached stay for the next call, and a
+  checkout that a running run records as its own is skipped and the event
+  says so. The token check and the kill are not atomic (macOS has no
+  pidfd), so a PID reused with the same start second and command between
+  them could be hit. A tampered run record can point at a checkout-shaped
+  directory Agister did not create; that is outside the single-user threat
+  model, since whoever can write run records controls Agister's home.
 - **Trigger for the rest:** the service (ADR-001 rule 16), or earlier if
   leftovers between calls become a nuisance.
 - **Done when (rest):** the service reaps on start and periodically, and

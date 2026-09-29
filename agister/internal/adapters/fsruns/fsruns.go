@@ -97,6 +97,25 @@ func (s Store) Abandoned(ctx context.Context) ([]run.Record, error) {
 	return abandoned, nil
 }
 
+// LiveCheckouts lists the checkout directories of unfinished runs that
+// some process still owns.
+func (s Store) LiveCheckouts(ctx context.Context) ([]string, error) {
+	records, err := s.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var dirs []string
+	for _, record := range records {
+		if record.Effects == nil || record.Effects.Checkout == nil || record.FinishedAt != nil {
+			continue
+		}
+		if _, state, err := s.Get(ctx, record.ID); err != nil || state == run.StateRunning {
+			dirs = append(dirs, record.Effects.Checkout.Dir)
+		}
+	}
+	return dirs, nil
+}
+
 // Adopt takes the owner lock of an unfinished run, so exactly one process
 // ends what its dead owner left.
 func (s Store) Adopt(ctx context.Context, id string) (app.RunHandle, run.Record, error) {

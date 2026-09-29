@@ -304,8 +304,9 @@ mechanisms; the service, its transport and lifecycle.
 11. Missing provenance is unknown, never satisfaction.
 12. Every effect is owned and bounded, and ordinary exits clean it up; an
     unfinished run is lost. After the CLI is killed with SIGKILL, the next
-    call that starts reaps the effects the run recorded; what that leaves
-    is tracked in [deferred work](../deferred.md).
+    call that starts attempts to reap the effects the run recorded; an
+    attempt can fail, is bounded in time and is recorded on the run; what
+    that leaves is tracked in [deferred work](../deferred.md).
     Only a deliberate continuation reads another run, and never changes it.
 13. Diagnostics never change behavior and are not evidence.
 14. Concrete implementations are connected only at the composition root.

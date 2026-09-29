@@ -42,8 +42,14 @@ func TestMain(m *testing.M) {
 }
 
 type events struct {
-	mu    sync.Mutex
-	kinds []string
+	mu      sync.Mutex
+	kinds   []string
+	started []startedProcess
+}
+
+type startedProcess struct {
+	group int
+	token string
 }
 
 func (e *events) Event(_, kind string, _ map[string]any) {
@@ -52,7 +58,11 @@ func (e *events) Event(_, kind string, _ map[string]any) {
 	e.kinds = append(e.kinds, kind)
 }
 
-func (e *events) ProcessStarted(int, string) {}
+func (e *events) ProcessStarted(group int, token string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.started = append(e.started, startedProcess{group, token})
+}
 
 func (e *events) Raw(string) {}
 
@@ -135,5 +145,25 @@ func TestStdoutHeldOutsideTheGroupDoesNotHoldTheCall(t *testing.T) {
 	}
 	if !sink.has("STDOUT_HELD_OPEN") {
 		t.Fatalf("events = %v", sink.kinds)
+	}
+}
+
+// The group is reported the moment it exists, before the slower lookup of
+// its token, so a kill in between still leaves the group on record.
+func TestGroupIsReportedBeforeItsTokenIsKnown(t *testing.T) {
+	sink := &events{}
+	supervisor.Run(context.Background(), supervisor.Spec{
+		Command: "/bin/sh",
+		Args:    []string{"-c", "sleep 1"},
+		Timeout: time.Hour,
+	}, sink, func(string) {})
+	sink.mu.Lock()
+	defer sink.mu.Unlock()
+	if len(sink.started) < 2 {
+		t.Fatalf("reports = %+v", sink.started)
+	}
+	first, last := sink.started[0], sink.started[len(sink.started)-1]
+	if first.group <= 1 || first.token != "" || last.group != first.group || last.token == "" {
+		t.Fatalf("reports = %+v", sink.started)
 	}
 }

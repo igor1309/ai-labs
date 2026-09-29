@@ -52,7 +52,7 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 		}
 	})
 
-	// Wait until the record shows both effects.
+	// Wait until the record shows both effects (the group is reported before its token).
 	var record domain.Record
 	var recordPath string
 	eventually(t, "the record to show the process and the checkout", func() bool {
@@ -66,7 +66,7 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 			return false
 		}
 		recordPath = paths[0]
-		return record.Effects != nil && record.Effects.Process != nil && record.Effects.Checkout != nil
+		return record.Effects != nil && record.Effects.Process != nil && record.Effects.Process.Token != "" && record.Effects.Checkout != nil
 	})
 	group, checkout := record.Effects.Process.Group, record.Effects.Checkout.Dir
 
