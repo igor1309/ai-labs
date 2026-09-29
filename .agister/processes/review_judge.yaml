@@ -1,0 +1,40 @@
+# Judges the findings of the review processes for one change against
+# prompts/code-review-judge.md: fix now, defer, or reject.
+schema: agister.process/v1alpha1
+name: review_judge
+
+type: process
+uses: agent:claude-judge
+policy: process-policy:static-review
+
+input:
+  instruction: >-
+    Judge the review findings given as input reviews, following the prompt
+    given as input judge_prompt. The change is the diff from the base to the
+    candidate; its scope is given as input scope. The standards each reviewer was given are
+    inputs architecture_prompt, clarity_prompt and tests_prompt. Verify each finding in the
+    candidate checkout before deciding.
+  params:
+    base: {default: origin/agister}
+    candidate: {default: HEAD}
+    reviews: {}
+    scope: {}
+  values:
+    base_revision: {source: git.revision, rev: "${param.base}"}
+    candidate_revision: {source: git.revision, rev: "${param.candidate}"}
+    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}
+    changed_files: {source: git.changed_files, base: "${param.base}", head: "${param.candidate}"}
+    reviews: {source: file, path: "${param.reviews}"}
+    scope: {source: param, name: scope}
+    judge_prompt: {source: file, path: prompts/code-review-judge.md}
+    architecture_prompt: {source: file, path: prompts/code-review-architecture.md}
+    clarity_prompt: {source: file, path: prompts/code-review-clarity.md}
+    tests_prompt: {source: file, path: prompts/code-review-tests.md}
+
+workspace:
+  checkout: candidate_revision
+
+output:
+  format: json
+  schema: judgement
+  require_valid: true
