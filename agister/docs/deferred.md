@@ -39,6 +39,18 @@ before.
   on stdout validated against a schema); how a policy states what a
   command may do; and how a later process reads that result as input (no
   input source reads another run's output today).
+- **Direction (2026-09-29):** runs tied to one agent call look reasonable
+  as hooks on that call's own checkout. A pre-hook prepares or gates (a
+  build cache, gofmt, vet). A post-hook verifies, normalises or delivers
+  what the agent left: the tests and revert checks on an implementer's
+  changes, gofmt over them, committing them (item 7). The post-hook is
+  necessary: without it an implementer's work is verified by hand, outside
+  any record. A standalone command node (no agent) is not proved yet.
+  Without an agent, a pinned checkout, owned effects and a record are what
+  a script with its own worktree already gives (`revert-check.py --rev`).
+  What only a node gives needs pieces that do not exist: one result
+  consumed by several calls (a hand-off) or a gate that stops a whole
+  round (a workflow).
 - **Trigger:** now, first: test scripts are the first candidate, before a
   dogfooding round needs a tester again.
 - **Done when:** a test script runs through Agister on a pinned candidate,
