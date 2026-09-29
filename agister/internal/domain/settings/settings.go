@@ -122,9 +122,8 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		if !ok {
 			continue // reported on the agent
 		}
-		verified, unverified := mapping.ForAnyVersion()
-		if _, err := enforce.Make(effective.Permissions, verified, effective.Require, b.Service.StateReaching); err != nil {
-			add(subject, "cannot run on agent %s's runtime %s: %v%s", agent.Name, mapping.Name, err, unverifiedNote(unverified))
+		if err := planOnSomeVersion(effective, mapping, b.Service.StateReaching); err != nil {
+			add(subject, "cannot run on agent %s's runtime %s: %v", agent.Name, mapping.Name, err)
 		}
 	}
 
@@ -132,12 +131,72 @@ func Check(b Bundle, m Mechanisms) []Problem {
 	return problems
 }
 
+// planOnSomeVersion succeeds if the plan can be made for at least one
+// version the mapping is verified for: a call runs on one version, so
+// primitives verified for different versions cannot be combined. Otherwise
+// it explains the failure on the version with the most verified primitives
+// (the first, when tied).
+func planOnSomeVersion(effective policy.Effective, mapping definition.Mapping, stateReaching []string) error {
+	versions := mapping.Versions()
+	if len(versions) == 0 {
+		versions = []string{""} // nothing verified: reported on the mapping
+	}
+	var closest error
+	most := -1
+	for _, version := range versions {
+		verified, unverified := mapping.ForVersion(version)
+		_, err := enforce.Make(effective.Permissions, verified, effective.Require, stateReaching)
+		if err == nil {
+			return nil
+		}
+		if len(verified.Primitives) > most {
+			most = len(verified.Primitives)
+			closest = fmt.Errorf("%v%s", err, unverifiedNote(unverified, version))
+		}
+	}
+	return closest
+}
+
+// PlanProblems reports the processes of the agent that cannot be planned on
+// the runtime version it was found to have. Composition problems are left
+// to Check.
+func PlanProblems(b Bundle, agent definition.Agent, version string) []Problem {
+	mapping, ok := b.Mappings[agent.Runtime]
+	if !ok || b.Service == nil {
+		return nil
+	}
+	verified, unverified := mapping.ForVersion(version)
+	var problems []Problem
+	for _, name := range sortedKeys(b.Processes) {
+		process := b.Processes[name]
+		if process.Agent != agent.Name {
+			continue
+		}
+		var pol *definition.Policy
+		if process.Policy != "" {
+			found, ok := b.Policies[process.Policy]
+			if !ok {
+				continue
+			}
+			pol = &found
+		}
+		effective, err := policy.Compose(*b.Service, pol, process, policy.Caller{})
+		if err != nil {
+			continue
+		}
+		if _, err := enforce.Make(effective.Permissions, verified, effective.Require, b.Service.StateReaching); err != nil {
+			problems = append(problems, Problem{Subject: "process " + name, Message: fmt.Sprintf("cannot run on agent %s's runtime %s version %s: %v%s", agent.Name, mapping.Name, version, err, unverifiedNote(unverified, version))})
+		}
+	}
+	return problems
+}
+
 // unverifiedNote names the primitives a refused plan could not use.
-func unverifiedNote(unverified []string) string {
+func unverifiedNote(unverified []string, version string) string {
 	if len(unverified) == 0 {
 		return ""
 	}
-	return " (verified for no runtime version: " + strings.Join(unverified, ", ") + ")"
+	return " (not verified for version " + version + ": " + strings.Join(unverified, ", ") + ")"
 }
 
 func sortedKeys[V any](m map[string]V) []string {

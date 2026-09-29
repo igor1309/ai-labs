@@ -607,6 +607,26 @@ func TestUnusableProjectSettingsFail(t *testing.T) {
 	}
 }
 
+// Fields that settings once accepted and ignored are refused, so a home
+// written for the old format fails check instead of running unverified.
+func TestRefusedSettingsFieldsFailCheck(t *testing.T) {
+	home, repo := setup(t, "approve")
+	mapping := filepath.Join(home, "runtimes", "claude-code.yaml")
+	original := read(t, mapping)
+	write(t, mapping, strings.Replace(original, "efforts:", "verified_versions: [\"2.1.\"]\nefforts:", 1))
+	r := agister(t, home, repo, "check")
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "verified_versions: no longer supported") {
+		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	write(t, mapping, original)
+
+	write(t, filepath.Join(home, "processes", "res.yaml"), strings.Replace(read(t, filepath.Join(home, "processes", "ask.yaml")), "name: ask", "name: res\nresources: [x]", 1))
+	r = agister(t, home, repo, "check")
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "resources: not supported yet") {
+		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+}
+
 func write(t *testing.T, path, text string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {

@@ -178,6 +178,10 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 				problem("agent "+name, "adapter implements %s, mapping %s describes %s", identity.Contract, mapping.Name, mapping.Contract)
 			case !mapping.Verified(identity.Version):
 				problem("agent "+name, "mapping %s verifies no primitive for runtime version %s", mapping.Name, identity.Version)
+			default:
+				for _, p := range settings.PlanProblems(bundle, agent, identity.Version) {
+					report.Problems = append(report.Problems, p.String())
+				}
 			}
 		}
 	}

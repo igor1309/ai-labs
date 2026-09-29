@@ -98,7 +98,34 @@ func TestUnverifiedPrimitivesCannotSatisfyARequirement(t *testing.T) {
 
 	problems := settings.Check(b, mechanisms)
 	if len(problems) != 1 || !strings.Contains(problems[0].String(), "process w: cannot run on agent a's runtime rt: ") ||
-		!strings.Contains(problems[0].String(), "(verified for no runtime version: Edit)") {
+		!strings.Contains(problems[0].String(), "(not verified for version 1: Edit)") {
+		t.Fatalf("problems = %v", problems)
+	}
+}
+
+// A call runs on one version, so primitives verified for different versions
+// cannot together satisfy a requirement.
+func TestRequirementsNeedOneVersionThatCoversThem(t *testing.T) {
+	b := bundle()
+	b.Mappings["rt"] = definition.Mapping{Name: "rt", Adapter: "claude-code", Efforts: []string{"high"}, Select: "any",
+		Primitives: []definition.Primitive{
+			{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}},
+			{Name: "Edit", Grants: []string{"write"}, Verified: []string{"2."}},
+		}}
+	b.Processes["w"] = definition.Process{Name: "w", Agent: "a", Output: definition.Output{Format: "text"},
+		Limits: definition.Limits{Timeout: timeout(time.Minute), Allow: []string{"read", "write"}, AllowSet: true}, Require: []string{"read", "write"}}
+
+	problems := settings.Check(b, mechanisms)
+	if len(problems) != 1 || !strings.Contains(problems[0].String(), "process w: cannot run on agent a's runtime rt: ") ||
+		!strings.Contains(problems[0].String(), "required permissions would be withheld") ||
+		!strings.Contains(problems[0].String(), "not verified for version") {
+		t.Fatalf("problems = %v", problems)
+	}
+
+	// One version that covers both is enough.
+	rt := b.Mappings["rt"]
+	rt.Primitives[1].Verified = []string{"1.", "2."}
+	if problems := settings.Check(b, mechanisms); len(problems) != 0 {
 		t.Fatalf("problems = %v", problems)
 	}
 }

@@ -2,6 +2,7 @@ package definition
 
 import (
 	"regexp"
+	"sort"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -277,6 +278,24 @@ func (m Mapping) Verified(version string) bool {
 // plan can use before the runtime's version is known.
 func (m Mapping) ForAnyVersion() (Mapping, []string) {
 	return m.keep(func(p Primitive) bool { return len(p.Verified) > 0 })
+}
+
+// Versions lists the distinct version prefixes some primitive is verified
+// for, sorted and without a trailing dot: each is a version a plan can be
+// made for.
+func (m Mapping) Versions() []string {
+	seen := map[string]bool{}
+	var versions []string
+	for _, primitive := range m.Primitives {
+		for _, prefix := range primitive.Verified {
+			if prefix = strings.TrimSuffix(prefix, "."); prefix != "" && !seen[prefix] {
+				seen[prefix] = true
+				versions = append(versions, prefix)
+			}
+		}
+	}
+	sort.Strings(versions)
+	return versions
 }
 
 func (m Mapping) keep(verified func(Primitive) bool) (Mapping, []string) {
