@@ -23,7 +23,8 @@ bin/agister check --json          # the whole report, including that graph, as J
 bin/agister agent list
 bin/agister agent create reviewer --runtime claude-code --model opus --model-family anthropic --force
                                   # --force replaces an existing agent after you type "yes";
-                                  # creating a new one asks nothing
+                                  # creating a new one asks nothing; an agent that would make
+                                  # the settings fail check is refused before anything is written
 
 bin/agister process list
 bin/agister process show adversarial_review

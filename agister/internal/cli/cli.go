@@ -48,8 +48,8 @@ Usage:
                                      and stops on any problem
   agister agent create <name> --runtime <runtime> [--model <m>] [--model-family <f>] [--effort <e>]
                          [--session fresh-only|resumable] [--command <path>] [--force]
-                                     write an agent to <home>; --force replaces an existing one after
-                                     you type yes
+                                     write an agent to <home>; refused if the settings would stop
+                                     passing check; --force replaces an existing one after you type yes
   agister agent list
   agister process list
   agister process show <process> [--agent <name>]

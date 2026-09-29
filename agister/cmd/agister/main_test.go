@@ -483,6 +483,16 @@ func TestAgentCreateAsksBeforeReplacing(t *testing.T) {
 	if r := agisterInput(t, "yes\n", home, dir, replace...); r.code != 0 || !strings.Contains(r.stdout, "replaced agent reviewer: "+reviewer) || !strings.Contains(read(t, reviewer), `model = "opus"`) {
 		t.Fatalf("yes: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
+	// An agent that would break the settings is refused before the question,
+	// and every command still works afterwards.
+	current := read(t, reviewer)
+	r := agisterInput(t, "yes\n", home, dir, "agent", "create", "reviewer", "--force", "--runtime", "claude-code")
+	if r.code != cli.ExitUsage || strings.Contains(r.stderr, "Type yes") || !strings.Contains(r.stderr, "agent reviewer would break the settings") || read(t, reviewer) != current {
+		t.Fatalf("breaking agent: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if r := agister(t, home, dir, "check"); r.code != 0 {
+		t.Fatalf("check after refusal: %d\n%s", r.code, r.stderr)
+	}
 	// A new agent replaces nothing, so --force or not, nothing is asked.
 	if r := agister(t, home, dir, "agent", "create", "fresh", "--force", "--runtime", "claude-code"); r.code != 0 || strings.Contains(r.stderr, "Type yes") || !strings.Contains(r.stdout, "created agent fresh") {
 		t.Fatalf("new agent: %d\n%s%s", r.code, r.stdout, r.stderr)

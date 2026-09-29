@@ -18,6 +18,8 @@ type Settings struct {
 	Definitions DefinitionSource
 	Writer      DefinitionWriter
 	Examples    Examples
+	// Checker verifies the settings an agent would leave behind; nil skips.
+	Checker *Checker
 }
 
 func (s *Settings) Init(ctx context.Context, overwrite, dryRun bool) (contract.InitResult, error) {
@@ -117,6 +119,9 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 	if exists && !overwrite {
 		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("agent %s already exists at %s (overwrite to replace it)", agent.Name, path)}
 	}
+	if err := s.keepsSettingsValid(ctx, definition.Document{Source: definition.Source{Kind: definition.KindAgent, Name: agent.Name, Path: path}, Bytes: data}); err != nil {
+		return contract.AgentWrite{}, err
+	}
 	if dryRun {
 		return contract.AgentWrite{Path: path, Replaces: exists}, nil
 	}
@@ -128,6 +133,62 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("agent %s already exists at %s (overwrite to replace it)", agent.Name, written)}
 	}
 	return contract.AgentWrite{Path: written, Replaces: exists}, nil
+}
+
+// keepsSettingsValid refuses a document that would add problems to the
+// settings: once written, every command would stop on them, including the
+// one that could repair them.
+func (s *Settings) keepsSettingsValid(ctx context.Context, doc definition.Document) error {
+	if s.Checker == nil {
+		return nil
+	}
+	before, err := s.Checker.Check(ctx, false)
+	if err != nil {
+		return err
+	}
+	after := *s.Checker
+	after.Definitions = withDocument{DefinitionSource: s.Checker.Definitions, doc: doc}
+	report, err := after.Check(ctx, false)
+	if err != nil {
+		return err
+	}
+	existing := map[string]bool{}
+	for _, problem := range before.Problems {
+		existing[problem] = true
+	}
+	var added []string
+	for _, problem := range report.Problems {
+		if !existing[problem] {
+			added = append(added, problem)
+		}
+	}
+	if len(added) > 0 {
+		return &contract.InputError{Message: fmt.Sprintf("%s %s would break the settings, so nothing was written:\n  %s", doc.Source.Kind.Singular(), doc.Source.Name, strings.Join(added, "\n  "))}
+	}
+	return nil
+}
+
+// withDocument is a definitions source with one document added or replaced.
+type withDocument struct {
+	DefinitionSource
+	doc definition.Document
+}
+
+func (w withDocument) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	if kind == w.doc.Source.Kind && name == w.doc.Source.Name {
+		return w.doc, nil
+	}
+	return w.DefinitionSource.Read(ctx, kind, name)
+}
+
+func (w withDocument) List(ctx context.Context, kind definition.Kind) ([]string, error) {
+	names, err := w.DefinitionSource.List(ctx, kind)
+	if err != nil || kind != w.doc.Source.Kind || contains(names, w.doc.Source.Name) {
+		return names, err
+	}
+	names = append(append([]string(nil), names...), w.doc.Source.Name)
+	sort.Strings(names)
+	return names, nil
 }
 
 func (s *Settings) ListAgents(ctx context.Context) ([]contract.Agent, error) {

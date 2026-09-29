@@ -276,6 +276,33 @@ func TestCreateAgentDryRun(t *testing.T) {
 	}
 }
 
+// An agent that is valid alone but breaks the settings is refused before
+// anything is written or asked; problems it did not add do not block it.
+func TestCreateAgentKeepsSettingsValid(t *testing.T) {
+	h := newHarness()
+	writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
+	checker := &app.Checker{Definitions: h.defs, Validator: h.validator, Runtimes: h.runtimes, Sources: []string{"git.revision", "git.diff"}}
+	settings := &app.Settings{Definitions: h.defs, Writer: writer, Checker: checker}
+	var input *contract.InputError
+	for _, dryRun := range []bool{true, false} {
+		// Policy pol constrains the model family; this a declares none.
+		_, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "a", Runtime: "rt"}, true, dryRun)
+		if !errors.As(err, &input) || !strings.Contains(err.Error(), "agent a would break the settings") || !strings.Contains(err.Error(), "constrains the model family, but agent a declares none") {
+			t.Fatalf("dry run %v: %v", dryRun, err)
+		}
+	}
+	if len(writer.writes) != 0 {
+		t.Fatalf("writes = %v", writer.writes)
+	}
+	if _, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "a", Runtime: "rt", ModelFamily: "other"}, true, false); err != nil {
+		t.Fatalf("valid replacement: %v", err)
+	}
+	h.defs.docs[definition.KindAgent]["broken"] = "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\n"
+	if _, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "c", Runtime: "rt"}, false, false); err != nil {
+		t.Fatalf("an existing problem blocked a valid new agent: %v", err)
+	}
+}
+
 func TestCreateAgentValidatesAgainstTheRuntimeMapping(t *testing.T) {
 	h := newHarness()
 	writer := &writerSpy{}

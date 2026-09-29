@@ -77,10 +77,11 @@ func compose(config cli.Config) (contract.Client, error) {
 		"git.changed_files": git.ChangedFiles{},
 	}
 	hosted := app.NewHosted()
+	checker := &app.Checker{Definitions: definitions, Validator: schema.Validator{}, Runtimes: runtimes, Sources: names(sources)}
 
 	return &app.Host{
-		Settings:   &app.Settings{Definitions: definitions, Writer: global, Examples: examples.Settings()},
-		Checker:    &app.Checker{Definitions: definitions, Validator: schema.Validator{}, Runtimes: runtimes, Sources: names(sources)},
+		Settings:   &app.Settings{Definitions: definitions, Writer: global, Examples: examples.Settings(), Checker: checker},
+		Checker:    checker,
 		Inspection: &app.Inspection{Definitions: definitions, Runtimes: runtimes, Validator: schema.Validator{}},
 		Calls: &app.Calls{
 			Definitions: definitions,
