@@ -141,10 +141,6 @@ func ParseAgent(doc Document) (Agent, error) {
 	if agent.Session != SessionFresh && agent.Session != SessionResumable {
 		p.add("session", "unsupported session mode %q (supported: %s, %s)", agent.Session, SessionFresh, SessionResumable)
 	}
-	if doc.Source.Project && agent.Command != "" {
-		// A repository must not choose the binary Agister runs.
-		p.add("command", "project settings may not set a runtime command; set it in a global agent")
-	}
 	checkName(agent.Name, doc.Source.Name, p)
 	return agent, p.err("agent " + subjectName(doc.Source))
 }

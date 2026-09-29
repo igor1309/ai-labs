@@ -97,29 +97,14 @@ before.
   family and run for the new commit, and a test shows a same-family
   reviewer refused for it.
 
-## 7. Project settings come from the working tree
-
-- **Gap:** project settings (`<repository>/.agister/`) are read from the
-  working tree, so whichever branch is checked out decides them. Global
-  settings cannot be replaced, and project agents cannot choose a command,
-  but a branch can still change the project's own processes, policies and
-  schemas, including those of a process that checks that same branch.
-- **Why deferred:** no repository keeps a process that checks its own
-  branches in `.agister/` yet; shipped processes live in global settings.
-- **Trigger:** the first repository that does.
-- **Done when:** project settings are read from a trusted revision (the base
-  input's revision, or one the user pins), not the checkout, and a test
-  shows a candidate's own `.agister` change has no effect on its call.
-
-## 8. The project layer is chosen per process, in an adapter
+## 7. The project layer is chosen per process, not per call
 
 - **Gap:** the composition root picks one project layer from the process's
-  working directory, while each call carries its own `Cwd`. The rules for
-  what a project may define live in the domain, but only the file adapter
-  enforces them.
-- **Why deferred:** the CLI serves one working directory per process and
-  has one definitions store, so both hold today.
-- **Trigger:** the service (ADR-001 rule 16), or a second definitions store.
+  working directory, while each call carries its own `Cwd`.
+- **Why deferred:** the CLI serves one working directory per process, so
+  the two always agree today.
+- **Trigger:** the service (ADR-001 rule 16), or any client that submits
+  calls from more than one working directory.
 - **Done when:** definitions resolve per call from the call's working
-  directory, and layering is enforced in the core over any store, with a
-  test that two calls from different repositories see their own settings.
+  directory, with a test that two calls from different repositories see
+  their own settings.

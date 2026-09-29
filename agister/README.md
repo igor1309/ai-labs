@@ -45,19 +45,23 @@ Exit codes: `0` completed, `1` failed, `2` interrupted, `3` refused, `4` lost, `
 ```
 
 A repository can keep its own settings in `<repository root>/.agister/`, the
-same way it keeps `.claude/` or `.agents/`. They apply wherever Agister runs
-inside that repository. A project may **add** definitions but never replace
-global ones, so a repository (or the branch checked out) cannot loosen the
-settings you trust. The same name in both places is refused. `service.toml`
-and `runtimes/` are global only, and project agents may not set `command`.
-Anything a project may not define is refused, never ignored. `check`
-validates both layers together, and `process show` and run records say which
-file each definition came from. With `--debug`, Agister says why no project
-settings apply. `init` and `agent create` still write global settings.
+same way it keeps `.claude/` or `.agents/`, and so can any branch of it. They
+apply wherever Agister runs inside that repository, and take priority over
+global settings document by document: a project `agents/reviewer.toml`
+replaces the global one, for any kind of setting. Neither layer is assumed
+safe; what is checked is the result. `agister check` verifies the composed
+settings (references, limits composing service ⊇ policy ⊇ process,
+enforcement on each runtime) and lists every override, and every call
+re-verifies what it uses. `process show` and run records name each
+definition's file and the global one it overrides. With `--debug`, Agister
+says why no project settings apply; a `.agister` that is not a usable
+directory fails the command. `init` and `agent create` write global
+settings.
 
 ```text
 <repository>/.agister/
-  agents/*.toml  processes/*.yaml  policies/*.yaml  schemas/*.json
+  service.toml  agents/*.toml  processes/*.yaml  policies/*.yaml
+  runtimes/*.yaml  schemas/*.json     same layout, higher priority
 ```
 
 Every call re-validates what it uses and refuses before the provider turn starts.

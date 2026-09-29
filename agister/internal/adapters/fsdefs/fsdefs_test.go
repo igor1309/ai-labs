@@ -58,31 +58,38 @@ func TestRejectsUnsafeNamesAndReportsMissing(t *testing.T) {
 	}
 }
 
-func TestLayeredProjectAddsButNeverReplaces(t *testing.T) {
+// A project document takes priority over the global one of the same kind
+// and name, whatever the kind, and says which one it overrides.
+func TestLayeredProjectTakesPriority(t *testing.T) {
 	ctx := context.Background()
 	global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
-	global.Write(ctx, definition.KindPolicy, "shared", []byte("global"), false)
+	for _, kind := range []definition.Kind{definition.KindService, definition.KindAgent, definition.KindProcess, definition.KindPolicy, definition.KindRuntime, definition.KindSchema} {
+		name := "shared"
+		if kind == definition.KindService {
+			name = "service"
+		}
+		globalPath, _, _ := global.Write(ctx, kind, name, []byte("global"), false)
+		projectPath, _, _ := project.Write(ctx, kind, name, []byte("project"), false)
+		layered := fsdefs.Layered{Global: global, Project: &project}
+		doc, err := layered.Read(ctx, kind, name)
+		if err != nil || string(doc.Bytes) != "project" || doc.Source.Path != projectPath || !doc.Source.Project || doc.Source.Overrides != globalPath {
+			t.Fatalf("%s = %+v, %v", kind, doc.Source, err)
+		}
+	}
 	global.Write(ctx, definition.KindPolicy, "global_only", []byte("global"), false)
-	project.Write(ctx, definition.KindPolicy, "shared", []byte("project"), false)
 	project.Write(ctx, definition.KindPolicy, "project_only", []byte("project"), false)
 	layered := fsdefs.Layered{Global: global, Project: &project}
 
-	if doc, err := layered.Read(ctx, definition.KindPolicy, "global_only"); err != nil || string(doc.Bytes) != "global" || doc.Source.Project {
-		t.Fatalf("global_only = %+v, %v", doc, err)
+	if doc, err := layered.Read(ctx, definition.KindPolicy, "global_only"); err != nil || string(doc.Bytes) != "global" || doc.Source.Project || doc.Source.Overrides != "" {
+		t.Fatalf("global_only = %+v, %v", doc.Source, err)
 	}
-	if doc, err := layered.Read(ctx, definition.KindPolicy, "project_only"); err != nil || string(doc.Bytes) != "project" || !doc.Source.Project || !strings.HasPrefix(doc.Source.Path, project.Dir) {
-		t.Fatalf("project_only = %+v, %v", doc, err)
+	if doc, err := layered.Read(ctx, definition.KindPolicy, "project_only"); err != nil || string(doc.Bytes) != "project" || !doc.Source.Project || doc.Source.Overrides != "" {
+		t.Fatalf("project_only = %+v, %v", doc.Source, err)
 	}
-	// A repository must not change settings the user trusts.
-	_, err := layered.Read(ctx, definition.KindPolicy, "shared")
-	if err == nil || !strings.Contains(err.Error(), "not replace them") || !strings.Contains(err.Error(), project.Dir) || !strings.Contains(err.Error(), global.Dir) {
-		t.Fatalf("shared = %v", err)
-	}
-	// Both stay listed, so check reports the conflict.
 	if names, err := layered.List(ctx, definition.KindPolicy); err != nil || !reflect.DeepEqual(names, []string{"global_only", "project_only", "shared"}) {
 		t.Fatalf("list = %v, %v", names, err)
 	}
-	_, err = layered.Read(ctx, definition.KindPolicy, "missing")
+	_, err := layered.Read(ctx, definition.KindPolicy, "missing")
 	if err == nil || !strings.Contains(err.Error(), "not found") || !strings.Contains(err.Error(), project.Dir) || !strings.Contains(err.Error(), global.Dir) {
 		t.Fatalf("missing = %v", err)
 	}
@@ -92,31 +99,5 @@ func TestLayeredProjectAddsButNeverReplaces(t *testing.T) {
 	outside := fsdefs.Layered{Global: global}
 	if doc, err := outside.Read(ctx, definition.KindPolicy, "shared"); err != nil || string(doc.Bytes) != "global" {
 		t.Fatalf("without project = %+v, %v", doc, err)
-	}
-}
-
-// A repository may not widen the limits and grants that bound its own
-// policies, so its service and runtime mappings are refused, not ignored.
-func TestLayeredRefusesProjectServiceAndRuntimes(t *testing.T) {
-	ctx := context.Background()
-	global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
-	for _, kind := range []definition.Kind{definition.KindService, definition.KindRuntime} {
-		global.Write(ctx, kind, "service", []byte("global"), false)
-		project.Write(ctx, kind, "service", []byte("project"), false)
-	}
-	project.Write(ctx, definition.KindRuntime, "project_only", []byte("project"), false)
-	layered := fsdefs.Layered{Global: global, Project: &project}
-
-	for _, read := range []struct {
-		kind definition.Kind
-		name string
-	}{{definition.KindService, "service"}, {definition.KindRuntime, "service"}, {definition.KindRuntime, "project_only"}} {
-		_, err := layered.Read(ctx, read.kind, read.name)
-		if err == nil || !strings.Contains(err.Error(), "only global settings") {
-			t.Fatalf("%s %s = %v", read.kind, read.name, err)
-		}
-	}
-	if names, _ := layered.List(ctx, definition.KindRuntime); !reflect.DeepEqual(names, []string{"project_only", "service"}) {
-		t.Fatalf("list = %v (a refused project runtime must stay visible to check)", names)
 	}
 }

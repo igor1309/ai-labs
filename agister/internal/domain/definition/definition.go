@@ -39,14 +39,6 @@ func (k Kind) Singular() string {
 	return string(k)
 }
 
-// ProjectDefinable reports whether a project's own settings may define this
-// kind. The service limits and permission vocabulary, and what each runtime
-// primitive grants, bound every policy, so only global settings define them:
-// a repository must not widen what its own policies may allow.
-func (k Kind) ProjectDefinable() bool {
-	return k != KindService && k != KindRuntime
-}
-
 // Source identifies where a definition came from, for attribution.
 type Source struct {
 	Kind   Kind   `json:"kind"`
@@ -55,6 +47,8 @@ type Source struct {
 	SHA256 string `json:"sha256"`
 	// From a project's own settings rather than the global ones.
 	Project bool `json:"project,omitempty"`
+	// The global definition this project one takes priority over.
+	Overrides string `json:"overrides,omitempty"`
 }
 
 // Document is a definition's raw bytes with their origin.

@@ -140,8 +140,7 @@ func (s *Settings) ListProcesses(ctx context.Context) ([]contract.ProcessSummary
 	for _, name := range names {
 		doc, err := s.Definitions.Read(ctx, definition.KindProcess, name)
 		if err != nil {
-			processes = append(processes, contract.ProcessSummary{Name: name, Problem: "unreadable (run `agister check`)"})
-			continue
+			return nil, err
 		}
 		process, err := definition.ParseProcess(doc)
 		if err != nil {
@@ -203,11 +202,14 @@ func (i *Inspection) ShowProcess(ctx context.Context, name, agent string) (contr
 		view.Constraints = append(view.Constraints, fmt.Sprintf("%s differs from the writer of input.%s (unknown: %s)", rule.Subject, rule.CandidateInput, rule.OnUnknown))
 	}
 	for _, source := range res.sources {
-		scope := "global"
+		text := fmt.Sprintf("%s %s: global %s", source.Kind.Singular(), source.Name, source.Path)
 		if source.Project {
-			scope = "project"
+			text = fmt.Sprintf("%s %s: project %s", source.Kind.Singular(), source.Name, source.Path)
 		}
-		view.Sources = append(view.Sources, fmt.Sprintf("%s %s: %s %s", source.Kind.Singular(), source.Name, scope, source.Path))
+		if source.Overrides != "" {
+			text += " (overrides " + source.Overrides + ")"
+		}
+		view.Sources = append(view.Sources, text)
 	}
 	if refusal != nil {
 		view.Refusal = refusal.Reason

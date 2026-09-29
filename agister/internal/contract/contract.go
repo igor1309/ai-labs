@@ -66,6 +66,8 @@ type ProcessSummary struct {
 type CheckReport struct {
 	Checked  map[string]int // definitions checked, by kind
 	Problems []string
+	// Project definitions that take priority over global ones.
+	Overrides []string
 }
 
 type Param struct {

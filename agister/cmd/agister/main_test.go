@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -349,44 +348,44 @@ func TestProjectSettingsAddToGlobal(t *testing.T) {
 	}
 }
 
-// A repository, or whichever branch is checked out, must not change the
-// settings the user trusts or choose the binary Agister runs.
-func TestProjectSettingsCannotReplaceGlobalOrChooseCommands(t *testing.T) {
+// A branch can swap the reviewer's family: the project agent takes priority
+// over the global one, and check, process show and the run record say so.
+func TestProjectOverridesAreNoted(t *testing.T) {
 	home, repo := setup(t, "approve")
-	policy := read(t, filepath.Join(home, "policies", "static-review.yaml"))
-	write(t, filepath.Join(repo, ".agister", "policies", "static-review.yaml"), strings.Replace(policy, "access: read-only", "access: read-write", 1))
+	global := filepath.Join(home, "agents", "reviewer.toml")
+	project := filepath.Join(repo, ".agister", "agents", "reviewer.toml")
+	write(t, project, strings.Replace(read(t, global), `model_family = "anthropic"`, `model_family = "experiment"`, 1))
 
-	r := agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main")
-	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, "a project may add definitions, not replace them") {
-		t.Fatalf("run with replaced policy: %d\n%s", r.code, r.stderr)
-	}
-	// A replaced process is one problem row, not a failed listing.
-	write(t, filepath.Join(repo, ".agister", "processes", "ask.yaml"), read(t, filepath.Join(home, "processes", "ask.yaml")))
-	if r := agister(t, home, repo, "process", "list"); r.code != 0 || !strings.Contains(r.stdout, "adversarial_review") || !regexp.MustCompile(`ask\s+unreadable`).MatchString(r.stdout) {
-		t.Fatalf("list with replaced settings: %d\n%s%s", r.code, r.stdout, r.stderr)
-	}
-	os.RemoveAll(filepath.Join(repo, ".agister"))
-
-	// A project agent's command is refused before anything runs it, even
-	// when only inspecting the process.
-	marker := filepath.Join(t.TempDir(), "ran")
-	script := filepath.Join(repo, "runtime.sh")
-	write(t, script, "#!/bin/sh\ntouch "+marker+"\necho 2.1.300\n")
-	os.Chmod(script, 0o700)
-	write(t, filepath.Join(repo, ".agister", "agents", "local.toml"), "schema = \"agister.agent/v1alpha1\"\nname = \"local\"\nruntime = \"claude-code\"\ncommand = \""+script+"\"\n")
-	r = agister(t, home, repo, "process", "show", "ask", "--agent", "local")
-	if r.code != 0 || !strings.Contains(r.stdout, "REFUSED") || !strings.Contains(r.stdout, "project settings may not set a runtime command") {
-		t.Fatalf("show with project command: %d\n%s%s", r.code, r.stdout, r.stderr)
-	}
-	if _, err := os.Stat(marker); err == nil {
-		t.Fatal("a project agent's command was executed")
-	}
-
-	// The limits and grants that bound every policy stay global.
-	write(t, filepath.Join(repo, ".agister", "service.toml"), read(t, filepath.Join(home, "service.toml")))
-	r = agister(t, home, repo, "check")
-	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "only global settings") || !strings.Contains(r.stderr, "agent local: command: project settings may not set a runtime command") {
+	r := agister(t, home, repo, "check")
+	if r.code != 0 || !strings.Contains(r.stdout, "override agent reviewer: "+project+" overrides "+global) || !strings.Contains(r.stdout, "settings OK") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	r = agister(t, home, repo, "process", "show", "adversarial_review")
+	if r.code != 0 || !strings.Contains(r.stdout, "agent reviewer: project "+project+" (overrides "+global+")") {
+		t.Fatalf("show: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if r := agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main"); r.code != cli.ExitCompleted {
+		t.Fatalf("run: %d\n%s", r.code, r.stderr)
+	}
+	for _, source := range lastRun(t, home).record["definitions"].([]any) {
+		if source := source.(map[string]any); source["kind"] == "agents" && (source["path"] != project || source["project"] != true || source["overrides"] != global) {
+			t.Fatalf("agent source = %v", source)
+		}
+	}
+}
+
+// Overrides are verified as composed: a project service that global
+// policies exceed fails check and refuses the call.
+func TestComposedSettingsAreVerified(t *testing.T) {
+	home, repo := setup(t, "approve")
+	write(t, filepath.Join(repo, ".agister", "service.toml"), strings.Replace(read(t, filepath.Join(home, "service.toml")), `max_timeout = "1h"`, `max_timeout = "5m"`, 1))
+
+	r := agister(t, home, repo, "check")
+	if r.code != cli.ExitUsage || !strings.Contains(r.stdout, "override service service:") || !strings.Contains(r.stderr, "process adversarial_review") {
+		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if r := agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main"); r.code != cli.ExitRefused {
+		t.Fatalf("run: %d\n%s", r.code, r.stderr)
 	}
 }
 

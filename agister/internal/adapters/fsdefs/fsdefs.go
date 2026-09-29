@@ -111,10 +111,10 @@ func (s Store) Write(_ context.Context, kind definition.Kind, name string, data 
 	return path, true, file.Close()
 }
 
-// Layered reads a project's settings beside the global ones. A project may
-// add definitions but not replace global ones, so the settings a user
-// trusts cannot be changed by a repository or by whichever branch is checked out.
-// What a project may not define is refused, never ignored.
+// Layered reads a project's settings over the global ones: a project
+// document takes priority over the global document of the same kind and
+// name, and says which one it overrides. Checking the composed result is
+// the core's job, not the store's.
 type Layered struct {
 	Global  Store
 	Project *Store // nil outside a project
@@ -137,17 +137,12 @@ func (l Layered) Read(ctx context.Context, kind definition.Kind, name string) (d
 	if err != nil {
 		return doc, err
 	}
-	if !kind.ProjectDefinable() {
-		return definition.Document{}, fmt.Errorf("defined in project settings (%s), but only global settings (%s) may define %s", doc.Source.Path, l.Global.Dir, kind)
-	}
-	global, err := l.Global.Read(ctx, kind, name)
-	if err == nil {
-		return definition.Document{}, fmt.Errorf("defined in both project settings (%s) and global settings (%s); a project may add definitions, not replace them", doc.Source.Path, global.Source.Path)
-	}
-	if !errors.Is(err, errNotFound) {
-		return definition.Document{}, err
-	}
 	doc.Source.Project = true
+	if globalPath, err := l.Global.path(kind, name); err == nil {
+		if _, err := os.Stat(globalPath); err == nil {
+			doc.Source.Overrides = globalPath
+		}
+	}
 	return doc, nil
 }
 

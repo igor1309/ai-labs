@@ -51,9 +51,8 @@ Usage:
 
 Options:
   --home <dir>   Agister's state and settings (default: $AGISTER_HOME, else ~/.agister)
-                 <repository>/.agister adds agents, processes, policies and schemas;
-                 it may not replace home settings, set agent commands, or define
-                 service.toml or runtimes
+                 <repository>/.agister takes priority over it, document by document;
+                 check verifies the composed settings and lists every override
   --quiet        No progress on stderr
   --debug        Diagnostics on stderr (always kept in <home>/logs/agister.jsonl)
 
@@ -207,6 +206,9 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 		report, err := client.Check(ctx, opts.probe)
 		if err != nil {
 			return 0, err
+		}
+		for _, override := range report.Overrides {
+			fmt.Fprintln(env.Stdout, "override "+override)
 		}
 		for _, problem := range report.Problems {
 			fmt.Fprintln(env.Stderr, problem)

@@ -49,6 +49,9 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 				continue
 			}
 			report.Checked[string(kind)]++
+			if doc.Source.Overrides != "" {
+				report.Overrides = append(report.Overrides, fmt.Sprintf("%s %s: %s overrides %s", kind.Singular(), name, doc.Source.Path, doc.Source.Overrides))
+			}
 			if err := parse(doc); err != nil {
 				var invalid *definition.InvalidError
 				if errors.As(err, &invalid) {
