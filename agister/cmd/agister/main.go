@@ -94,12 +94,16 @@ func wire(config cli.Config) (*app.Gated, *app.BackgroundReaper, error) {
 	// that fails has no caller to tell and no run record to say so: the
 	// log does.
 	reaping := &app.BackgroundReaper{
-		Reaper: app.NewReaper(evidence, supervisor.Processes{}, git.Workspaces{}, system.Clock{}),
+		Reaper: app.NewReaper(evidence, evidence, supervisor.Processes{}, git.Workspaces{}, system.Clock{}),
 		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },
 	}
 	provenance := fsprovenance.Store{Dir: filepath.Join(config.Home, "provenance")}
 	checkerOn := func(definitions app.GateDefinitions) *app.Checker {
-		return app.NewChecker(definitions, schema.Validator{}, runtimes, names(sources))
+		return app.NewChecker(definitions, schema.Validator{}, runtimes, runtimes, names(sources))
+	}
+	// Each use case that resolves a process gets a resolver of its own.
+	resolverOn := func(definitions app.GateDefinitions) *app.Resolver {
+		return app.NewResolver(definitions, runtimes, schema.Validator{})
 	}
 	// build makes the whole client over the sources given: the layered
 	// settings and the global layer alone. The gate builds it on snapshots
@@ -116,9 +120,9 @@ func wire(config cli.Config) (*app.Gated, *app.BackgroundReaper, error) {
 		host := &app.Host{
 			Settings:   app.NewSettings(layered, global, examples.Settings(), scopes),
 			Checker:    checkerOn(layered),
-			Inspection: app.NewInspection(layered, runtimes, schema.Validator{}),
+			Inspection: app.NewInspection(resolverOn(layered)),
 			Calls: app.NewCalls(
-				layered, runtimes, sources, git.Workspaces{}, provenance, schema.Validator{},
+				resolverOn(layered), sources, git.Workspaces{}, git.Workspaces{}, provenance, schema.Validator{},
 				evidence, evidence, system.Clock{}, system.IDs{}, config.Home, hosted,
 			),
 			Runs: app.NewRuns(evidence, hosted, 0),

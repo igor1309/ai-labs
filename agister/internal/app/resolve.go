@@ -34,28 +34,43 @@ type resolution struct {
 	plan      enforce.Plan
 }
 
-// resolver loads and checks definitions, composes limits, checks the
+// Resolver loads and checks definitions, composes limits, checks the
 // runtime and plans enforcement. Every failure is a refusal.
-type resolver struct {
-	definitions resolverDefinitions
-	runtimes    resolverRuntimes
-	validator   resolverValidator
+type Resolver struct {
+	definitions ResolverDefinitions
+	runners     ResolverRunners
+	validator   ResolverValidator
 }
 
-// resolverDefinitions supplies the documents a call or a view is resolved
+// ResolverDefinitions supplies the documents a call or a view is resolved
 // from.
-type resolverDefinitions interface {
+type ResolverDefinitions interface {
 	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
+	List(ctx context.Context, kind definition.Kind) ([]string, error)
 }
 
-// resolverRuntimes builds the runner for an adapter name and runtime command.
-type resolverRuntimes interface {
+// ResolverRunners builds the runner for an adapter name and runtime command.
+type ResolverRunners interface {
 	Runner(adapter, command string) (TurnRunner, error)
 }
 
-// resolverValidator compiles an output schema.
-type resolverValidator interface {
+// ResolverValidator compiles an output schema.
+type ResolverValidator interface {
 	Compile(schema []byte) error
+}
+
+// NewResolver returns the component that resolves a process into what a
+// call or a view needs. Every collaborator is required.
+func NewResolver(definitions ResolverDefinitions, runners ResolverRunners, validator ResolverValidator) *Resolver {
+	return &Resolver{definitions: definitions, runners: runners, validator: validator}
+}
+
+// Snapshot returns a resolver over the definitions as they are now, which
+// reads nothing else afterwards (see the package function Snapshot).
+func (r *Resolver) Snapshot(ctx context.Context) *Resolver {
+	frozen := *r
+	frozen.definitions = Snapshot(ctx, r.definitions)
+	return &frozen
 }
 
 // overrides are the caller's narrowing limits.
@@ -64,7 +79,7 @@ type overrides struct {
 	maxCostUSD *float64
 }
 
-func (r resolver) resolve(ctx context.Context, processName, agentOverride string, caller overrides) (*resolution, error) {
+func (r *Resolver) Resolve(ctx context.Context, processName, agentOverride string, caller overrides) (*resolution, error) {
 	res := &resolution{}
 	load := func(kind definition.Kind, name string) (definition.Document, error) {
 		doc, err := r.definitions.Read(ctx, kind, name)
@@ -153,7 +168,7 @@ func (r resolver) resolve(ctx context.Context, processName, agentOverride string
 		return res, refuse("%v", err)
 	}
 
-	if res.runner, err = r.runtimes.Runner(res.mapping.Adapter, res.agent.Command); err != nil {
+	if res.runner, err = r.runners.Runner(res.mapping.Adapter, res.agent.Command); err != nil {
 		return res, refuse("runtime mapping %s: %v", res.mapping.Name, err)
 	}
 	if res.identity, err = res.runner.Identity(ctx); err != nil {

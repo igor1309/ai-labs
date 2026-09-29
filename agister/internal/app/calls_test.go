@@ -91,6 +91,7 @@ type harness struct {
 	runtimes   *runtimesSpy
 	inputs     *inputsSpy
 	workspaces *workspacesSpy
+	changes    *changesSpy
 	provenance *provenanceSpy
 	validator  *validatorSpy
 	recorder   *recorderSpy
@@ -104,6 +105,7 @@ func newHarness() *harness {
 			turn:     run.Turn{Status: run.Completed, Output: json.RawMessage(`{"outcome":"no"}`), ProviderSessionID: "prov-1"},
 		},
 		workspaces: &workspacesSpy{root: "/repo", dir: "/work/checkout"},
+		changes:    &changesSpy{},
 		provenance: &provenanceSpy{},
 		validator:  &validatorSpy{},
 		recorder:   newRecorderSpy(),
@@ -125,11 +127,11 @@ func newHarness() *harness {
 }
 
 // callsOn is the harness's Calls reading its definitions from src.
-func (h *harness) callsOn(src app.CallDefinitions) *app.Calls {
+func (h *harness) callsOn(src app.ResolverDefinitions) *app.Calls {
 	return app.NewCalls(
-		src, h.runtimes,
+		app.NewResolver(src, h.runtimes, h.validator),
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
-		h.workspaces, h.provenance, h.validator, h.recorder, h.runs,
+		h.workspaces, h.changes, h.provenance, h.validator, h.recorder, h.runs,
 		h.clock, fixedIDs{}, "/state", h.hosted,
 	)
 }
@@ -373,11 +375,11 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 
 func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
 	h := newHarness()
-	h.workspaces.changes = []byte("diff --git a/x b/x\n")
+	h.changes.changes = []byte("diff --git a/x b/x\n")
 	h.recorder.onFinish = func() int { return h.workspaces.releases() }
 	record := h.call(t, contract.CallRequest{})
-	if !reflect.DeepEqual(h.workspaces.changed, [][2]string{{"/work/checkout", "sha-HEAD"}}) || string(h.recorder.artifacts["changes.patch"]) != "diff --git a/x b/x\n" {
-		t.Fatalf("changes asked %v, stored %v", h.workspaces.changed, h.recorder.artifacts)
+	if !reflect.DeepEqual(h.changes.changed, [][2]string{{"/work/checkout", "sha-HEAD"}}) || string(h.recorder.artifacts["changes.patch"]) != "diff --git a/x b/x\n" {
+		t.Fatalf("changes asked %v, stored %v", h.changes.changed, h.recorder.artifacts)
 	}
 	if len(record.Result.Artifacts) != 1 || record.Result.Artifacts[0].Path != "artifacts/changes.patch" || !contains(h.recorder.kinds(), "ARTIFACT_STORED") {
 		t.Fatalf("artifacts = %+v", record.Result.Artifacts)
@@ -390,7 +392,7 @@ func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
 		t.Fatalf("artifacts = %+v", record.Result.Artifacts)
 	}
 	h = newHarness()
-	h.workspaces.changeErr = errors.New("git broke")
+	h.changes.changeErr = errors.New("git broke")
 	if record := h.call(t, contract.CallRequest{}); record.Result.Status != run.Completed || !contains(h.recorder.kinds(), "ARTIFACT_FAILED") {
 		t.Fatalf("result %+v, events %v", record.Result, h.recorder.kinds())
 	}
@@ -399,9 +401,9 @@ func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
 	h = newHarness()
 	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n  checkout: candidate_revision\n", "", 1)
 	h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "scope: candidate", "scope: repository", 1)
-	h.workspaces.changes = []byte("x")
-	if record := h.call(t, contract.CallRequest{}); record.Result.Status != run.Completed || len(h.workspaces.changed) != 0 {
-		t.Fatalf("result %+v, changes asked %v", record.Result, h.workspaces.changed)
+	h.changes.changes = []byte("x")
+	if record := h.call(t, contract.CallRequest{}); record.Result.Status != run.Completed || len(h.changes.changed) != 0 {
+		t.Fatalf("result %+v, changes asked %v", record.Result, h.changes.changed)
 	}
 }
 
@@ -409,13 +411,13 @@ func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
 // still releases the workspace; collection is not retried.
 func TestPanicInChangeCollectionFinishesTheRecord(t *testing.T) {
 	h := newHarness()
-	h.workspaces.panics = true
+	h.changes.panics = true
 	record := h.call(t, contract.CallRequest{})
 	if class(record) != run.ClassInternal || !strings.Contains(message(record), "changes exploded") {
 		t.Fatalf("result = %+v", record.Result.Error)
 	}
-	if len(h.workspaces.changed) != 1 || h.workspaces.releases() != 1 {
-		t.Fatalf("changes asked %d times, released %d", len(h.workspaces.changed), h.workspaces.releases())
+	if len(h.changes.changed) != 1 || h.workspaces.releases() != 1 {
+		t.Fatalf("changes asked %d times, released %d", len(h.changes.changed), h.workspaces.releases())
 	}
 }
 
@@ -642,9 +644,11 @@ func TestInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 }
 
 // What a call resolved is recorded under the record's own types, field for
-// field: the definitions, the effective limits and the plan.
+// field: the definitions, the effective limits, the required permissions
+// among them, and the plan.
 func TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes(t *testing.T) {
 	h := newHarness()
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "uses: agent:a\n", "uses: agent:a\ntools: {require: [repository.read]}\n", 1)
 	record := h.call(t, contract.CallRequest{})
 	encode := func(v any) string {
 		data, err := json.Marshal(v)
@@ -659,7 +663,7 @@ func TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes(t *testing.T) {
 	}
 	wantEffective := `{"timeout":1200000000000,"max_attempts":1,` +
 		`"allow":["repository.read","repository.search","repository.diff"],"deny":[],` +
-		`"permissions":["repository.read","repository.search","repository.diff"],` +
+		`"permissions":["repository.read","repository.search","repository.diff"],"require":["repository.read"],` +
 		`"access":"read-only","scope":"candidate",` +
 		`"constraints":[{"subject":"agent.model_family","candidate_input":"candidate_revision","on_unknown":"pass"}]}`
 	if got := encode(record.Effective); got != wantEffective {

@@ -2,6 +2,9 @@
 package archtest
 
 import (
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -111,4 +114,21 @@ func TestCodeKnowsNoKindOfWork(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+// No interface is shared between components (ADR-001 rule 13): each use case
+// declares the interfaces it calls beside itself. ports.go holds data only.
+func TestSharedDataFileDeclaresNoInterface(t *testing.T) {
+	file, err := parser.ParseFile(token.NewFileSet(), "../app/ports.go", nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ast.Inspect(file, func(node ast.Node) bool {
+		if spec, ok := node.(*ast.TypeSpec); ok {
+			if _, isInterface := spec.Type.(*ast.InterfaceType); isInterface {
+				t.Errorf("ports.go declares the interface %s; declare it beside the component that calls it", spec.Name.Name)
+			}
+		}
+		return true
+	})
 }

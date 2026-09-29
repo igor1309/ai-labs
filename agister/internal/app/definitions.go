@@ -326,35 +326,22 @@ func (s *Settings) ListProcesses(ctx context.Context) ([]contract.ProcessSummary
 
 // Inspection shows a process as a call would see it, without effects.
 type Inspection struct {
-	definitions InspectionDefinitions
-	runtimes    InspectionRuntimes
-	validator   InspectionValidator
+	resolver InspectionResolver
 }
 
-// InspectionDefinitions supplies the documents a process is resolved from.
-type InspectionDefinitions interface {
-	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
-}
-
-// InspectionRuntimes builds the runner for an adapter name and runtime
-// command.
-type InspectionRuntimes interface {
-	Runner(adapter, command string) (TurnRunner, error)
-}
-
-// InspectionValidator compiles an output schema.
-type InspectionValidator interface {
-	Compile(schema []byte) error
+// InspectionResolver resolves a process the way a call would.
+type InspectionResolver interface {
+	Resolve(ctx context.Context, processName, agentOverride string, caller overrides) (*resolution, error)
 }
 
 // NewInspection returns the use case that shows a process as a call would
 // see it.
-func NewInspection(definitions InspectionDefinitions, runtimes InspectionRuntimes, validator InspectionValidator) *Inspection {
-	return &Inspection{definitions: definitions, runtimes: runtimes, validator: validator}
+func NewInspection(resolver InspectionResolver) *Inspection {
+	return &Inspection{resolver: resolver}
 }
 
 func (i *Inspection) ShowProcess(ctx context.Context, name, agent string) (contract.ProcessView, error) {
-	res, err := resolver{definitions: i.definitions, runtimes: i.runtimes, validator: i.validator}.resolve(ctx, name, agent, overrides{})
+	res, err := i.resolver.Resolve(ctx, name, agent, overrides{})
 	var refusal *Refusal
 	if err != nil && !errors.As(err, &refusal) {
 		return contract.ProcessView{}, err

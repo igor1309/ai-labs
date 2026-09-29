@@ -2,6 +2,7 @@
 package runtime
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -27,4 +28,13 @@ func (r Registry) Adapters() []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+// Identity is what the adapter's runner for command reports about itself.
+func (r Registry) Identity(ctx context.Context, adapter, command string) (app.RuntimeIdentity, error) {
+	runner, err := r.Runner(adapter, command)
+	if err != nil {
+		return app.RuntimeIdentity{}, err
+	}
+	return runner.Identity(ctx)
 }

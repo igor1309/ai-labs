@@ -38,6 +38,7 @@ type Store struct {
 var _ app.RunRecorder = Store{}
 var _ app.RunsReader = Store{}
 var _ app.RunAdopter = Store{}
+var _ app.CheckoutsInUse = Store{}
 
 func (s Store) runDir(id string) string { return filepath.Join(s.Dir, id) }
 
@@ -118,7 +119,7 @@ func (s Store) LiveCheckouts(ctx context.Context) ([]string, error) {
 
 // Adopt takes the owner lock of an unfinished run, so exactly one process
 // ends what its dead owner left.
-func (s Store) Adopt(ctx context.Context, id string) (app.RunHandle, run.Record, error) {
+func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record, error) {
 	var record run.Record
 	if err := checkID(id); err != nil {
 		return nil, record, err

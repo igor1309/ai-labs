@@ -271,15 +271,15 @@ replace: layered := g.Definitions
 test: ./internal/app TestGatedOperationUsesTheCheckedSettings
 
 [a call resolves from live settings, not the snapshot it took at submit]
-file: internal/app/calls.go
-find: definitions := Snapshot(ctx, c.definitions)
-replace: definitions := c.definitions
+file: internal/app/resolve.go
+find: frozen.definitions = Snapshot(ctx, r.definitions)
+replace: frozen.definitions = r.definitions
 test: ./internal/app TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded
 
 [a call takes its snapshot after its run is recorded]
 file: internal/app/calls.go
-find: \tdefinitions := Snapshot(ctx, c.definitions)\n\thandle, err := c.recorder.Create(ctx, record)\n
-replace: \thandle, err := c.recorder.Create(ctx, record)\n\tdefinitions := Snapshot(ctx, c.definitions)\n
+find: \tresolver := c.resolver.Snapshot(ctx)\n\thandle, err := c.recorder.Create(ctx, record)\n
+replace: \thandle, err := c.recorder.Create(ctx, record)\n\tresolver := c.resolver.Snapshot(ctx)\n
 test: ./internal/app TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded
 
 [the write lock is released before the digest compare]
@@ -327,14 +327,14 @@ test: ./cmd/agister TestBuiltClientReadsOnlyTheSourcesGiven
 
 [calls read live settings, not the given source]
 file: cmd/agister/main.go
-find: \t\t\t\tlayered, runtimes, sources, git.Workspaces{}
-replace: \t\t\t\tdefinitions, runtimes, sources, git.Workspaces{}
+find: resolverOn(layered), sources,
+replace: resolverOn(definitions), sources,
 test: ./cmd/agister TestBuiltClientReadsOnlyTheSourcesGiven
 
 [inspection reads live settings, not the given source]
 file: cmd/agister/main.go
-find: app.NewInspection(layered,
-replace: app.NewInspection(definitions,
+find: app.NewInspection(resolverOn(layered))
+replace: app.NewInspection(resolverOn(definitions))
 test: ./cmd/agister TestBuiltClientReadsOnlyTheSourcesGiven
 
 [settings read live settings, not the given source]

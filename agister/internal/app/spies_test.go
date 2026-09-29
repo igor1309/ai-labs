@@ -128,6 +128,14 @@ func (s *runtimesSpy) Runner(adapter, command string) (app.TurnRunner, error) {
 
 func (s *runtimesSpy) Adapters() []string { return []string{"spy"} }
 
+func (s *runtimesSpy) Identity(ctx context.Context, adapter, command string) (app.RuntimeIdentity, error) {
+	runner, err := s.Runner(adapter, command)
+	if err != nil {
+		return app.RuntimeIdentity{}, err
+	}
+	return runner.Identity(ctx)
+}
+
 type inputsSpy struct {
 	mu      sync.Mutex
 	specs   []app.InputSpec
@@ -147,10 +155,6 @@ type workspacesSpy struct {
 	dir         string
 	checkouts   [][2]string
 	released    int
-	changed     [][2]string // dir, revision
-	changes     []byte
-	changeErr   error
-	panics      bool        // Changes panics
 	discarded   [][2]string // repository, dir
 	discardErr  error
 	discardHook func(ctx context.Context, dir string) error // runs first; a non-nil result is returned
@@ -182,7 +186,22 @@ func (s *workspacesSpy) Checkout(_ context.Context, repository, revision string)
 	}, nil
 }
 
-func (s *workspacesSpy) Changes(_ context.Context, dir, revision string) ([]byte, error) {
+func (s *workspacesSpy) releases() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.released
+}
+
+// changesSpy captures what an agent left in its checkout.
+type changesSpy struct {
+	mu        sync.Mutex
+	changed   [][2]string // dir, revision
+	changes   []byte
+	changeErr error
+	panics    bool // Changes panics
+}
+
+func (s *changesSpy) Changes(_ context.Context, dir, revision string) ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.changed = append(s.changed, [2]string{dir, revision})
@@ -190,12 +209,6 @@ func (s *workspacesSpy) Changes(_ context.Context, dir, revision string) ([]byte
 		panic("changes exploded")
 	}
 	return s.changes, s.changeErr
-}
-
-func (s *workspacesSpy) releases() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.released
 }
 
 type provenanceSpy struct {
@@ -389,23 +402,15 @@ func (s *processesSpy) Reap(ctx context.Context, ref string) (app.Reaping, error
 	return app.ReapKilled, s.err
 }
 
-// adopterSpy offers abandoned runs; each adoption hands out its own handle.
-type adopterSpy struct {
+// checkoutsSpy tells which checkouts runs some process still owns use.
+type checkoutsSpy struct {
 	mu        sync.Mutex
-	runs      []run.Record
-	adoptErr  map[string]error
-	handles   map[string]*recorderSpy
-	adopted   []string
 	live      []string
 	liveReads int
 	onLive    func() // runs during LiveCheckouts
-	// listErr fails Abandoned; failing hands out, by run, handles set up
-	// to fail.
-	listErr error
-	failing map[string]func(*recorderSpy)
 }
 
-func (s *adopterSpy) LiveCheckouts(context.Context) ([]string, error) {
+func (s *checkoutsSpy) LiveCheckouts(context.Context) ([]string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.liveReads++
@@ -413,6 +418,28 @@ func (s *adopterSpy) LiveCheckouts(context.Context) ([]string, error) {
 		s.onLive()
 	}
 	return s.live, nil
+}
+
+// reapHandle is all a reap has of an adopted run: it appends and finishes,
+// and can do nothing else with it.
+type reapHandle struct{ spy *recorderSpy }
+
+var _ app.ReapHandle = reapHandle{}
+
+func (h reapHandle) Append(event run.Event) error   { return h.spy.Append(event) }
+func (h reapHandle) Finish(record run.Record) error { return h.spy.Finish(record) }
+
+// adopterSpy offers abandoned runs; each adoption hands out its own handle.
+type adopterSpy struct {
+	mu       sync.Mutex
+	runs     []run.Record
+	adoptErr map[string]error
+	handles  map[string]*recorderSpy
+	adopted  []string
+	// listErr fails Abandoned; failing hands out, by run, handles set up
+	// to fail.
+	listErr error
+	failing map[string]func(*recorderSpy)
 }
 
 func (s *adopterSpy) Abandoned(context.Context) ([]run.Record, error) {
@@ -424,7 +451,7 @@ func (s *adopterSpy) Abandoned(context.Context) ([]run.Record, error) {
 	return append([]run.Record(nil), s.runs...), nil
 }
 
-func (s *adopterSpy) Adopt(_ context.Context, id string) (app.RunHandle, run.Record, error) {
+func (s *adopterSpy) Adopt(_ context.Context, id string) (app.ReapHandle, run.Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.adopted = append(s.adopted, id)
@@ -441,7 +468,7 @@ func (s *adopterSpy) Adopt(_ context.Context, id string) (app.RunHandle, run.Rec
 	s.handles[id] = handle
 	for _, record := range s.runs {
 		if record.ID == id {
-			return handle, record, nil
+			return reapHandle{handle}, record, nil
 		}
 	}
 	return nil, run.Record{}, fmt.Errorf("no run %s", id)

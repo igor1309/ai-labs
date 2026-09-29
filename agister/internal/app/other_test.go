@@ -23,7 +23,7 @@ func TestCheckReportsEveryProblemAcrossDocuments(t *testing.T) {
 	h.defs.docs[definition.KindAgent]["broken"] = "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\ncolour = \"red\"\n"
 	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: q", 1) + "timeout: 2h\n"
 	h.validator.compileErr = errors.New("not a schema")
-	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
+	checker := app.NewChecker(h.defs, h.validator, h.runtimes, h.runtimes, []string{"git.revision", "git.diff"})
 
 	report, err := checker.Check(context.Background(), false)
 	if err != nil {
@@ -56,7 +56,7 @@ func TestCheckReportsWhatDefinesWhat(t *testing.T) {
 	h.defs.docs[definition.KindPolicy]["spare"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "name: pol", "name: spare", 1)
 	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: q", 1), "agent:a", "agent:ghost", 1)
 	h.defs.docs[definition.KindAgent]["broken"] = "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\ncolour = \"red\"\n"
-	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
+	checker := app.NewChecker(h.defs, h.validator, h.runtimes, h.runtimes, []string{"git.revision", "git.diff"})
 	report, err := checker.Check(context.Background(), false)
 	if err != nil {
 		t.Fatal(err)
@@ -91,7 +91,7 @@ func TestCheckReportsWhatDefinesWhat(t *testing.T) {
 
 func TestCheckProbesEachAgentsRuntime(t *testing.T) {
 	h := newHarness()
-	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
+	checker := app.NewChecker(h.defs, h.validator, h.runtimes, h.runtimes, []string{"git.revision", "git.diff"})
 	if report, _ := checker.Check(context.Background(), true); len(report.Problems) != 0 {
 		t.Fatalf("problems = %v", report.Problems)
 	}
@@ -105,13 +105,29 @@ func TestCheckProbesEachAgentsRuntime(t *testing.T) {
 	}
 }
 
+// Only an adapter the code provides is probed: the identity of one it does
+// not is never asked for, and its absence is reported once, as what it is.
+func TestCheckProbeAsksNoIdentityOfAnAdapterTheCodeDoesNotProvide(t *testing.T) {
+	h := newHarness()
+	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(h.defs.docs[definition.KindRuntime]["rt"], "adapter: spy", "adapter: ghost", 1)
+	checker := app.NewChecker(h.defs, h.validator, h.runtimes, h.runtimes, []string{"git.revision", "git.diff"})
+	without, _ := checker.Check(context.Background(), false)
+	report, _ := checker.Check(context.Background(), true)
+	if len(without.Problems) == 0 || !reflect.DeepEqual(report.Problems, without.Problems) {
+		t.Fatalf("problems without probe %v, with %v", without.Problems, report.Problems)
+	}
+	if len(h.runtimes.asked) != 0 {
+		t.Fatalf("identities asked for: %v", h.runtimes.asked)
+	}
+}
+
 // The installed version may verify some primitive, yet not the ones a process
 // needs.
 func TestCheckProbePlansEachProcessOnTheInstalledVersion(t *testing.T) {
 	h := newHarness()
 	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(h.defs.docs[definition.KindRuntime]["rt"], "Read: {grants: [repository.read], verified: [\"1.\"]}", "Read: {grants: [repository.read], verified: [\"2.\"]}", 1)
 	h.defs.docs[definition.KindProcess]["p"] += "tools: {require: [repository.read]}\n"
-	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
+	checker := app.NewChecker(h.defs, h.validator, h.runtimes, h.runtimes, []string{"git.revision", "git.diff"})
 	if report, _ := checker.Check(context.Background(), false); len(report.Problems) != 0 {
 		t.Fatalf("problems = %v", report.Problems)
 	}
@@ -388,7 +404,7 @@ func TestCreateAgentDryRun(t *testing.T) {
 func TestCreateAgentKeepsSettingsValid(t *testing.T) {
 	h := newHarness()
 	writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
-	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
+	checker := app.NewChecker(h.defs, h.validator, h.runtimes, h.runtimes, []string{"git.revision", "git.diff"})
 	settings := app.NewSettings(h.defs, writer, nil, []app.Scope{{Name: "global settings", Check: checker}})
 	var input *contract.InputError
 	for _, approved := range []*contract.AgentWrite{nil, {Path: "agents/a", Replaces: true, Digest: "d-agents/a"}} {
@@ -432,7 +448,7 @@ func TestCreateAgentValidatesAgainstTheRuntimeMapping(t *testing.T) {
 // A process view says where each definition comes from as data, not text.
 func TestShowProcessSourcesAreStructured(t *testing.T) {
 	h := newHarness()
-	view, err := (app.NewInspection(h.defs, h.runtimes, h.validator)).ShowProcess(context.Background(), "p", "")
+	view, err := (app.NewInspection(app.NewResolver(h.defs, h.runtimes, h.validator))).ShowProcess(context.Background(), "p", "")
 	if err != nil {
 		t.Fatal(err)
 	}

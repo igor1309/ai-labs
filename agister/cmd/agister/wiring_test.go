@@ -251,6 +251,62 @@ func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
 	})
 }
 
+// The built reaper asks the run store which checkouts runs some process
+// still owns use: an abandoned run's checkout that such a run also uses is
+// left in place, not discarded from under it.
+func TestBuiltReaperLeavesACheckoutARunningRunUses(t *testing.T) {
+	home := t.TempDir()
+	_, background, err := wire(cli.Config{Home: home})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	store := fsruns.Store{Dir: filepath.Join(home, "runs")}
+	shared := &domain.Checkout{Repository: "/repo", Dir: filepath.Join(t.TempDir(), "workspace")}
+	// An unfinished run this test owns, as a running process would.
+	owned, err := store.Create(ctx, domain.Record{
+		Schema: domain.RecordSchema, ID: "running", Process: "p", CreatedAt: time.Now(),
+		Effects: &domain.Effects{Checkout: shared},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owned.Finish(domain.Record{Schema: domain.RecordSchema, ID: "running", Process: "p", CreatedAt: time.Now(), FinishedAt: new(time.Time)})
+	// An unfinished run nobody owns, over the same checkout.
+	dir := filepath.Join(home, "runs", "old")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := json.Marshal(domain.Record{
+		Schema: domain.RecordSchema, ID: "old", Process: "p", CreatedAt: time.Now(),
+		Effects: &domain.Effects{Checkout: shared},
+	})
+	if err := os.WriteFile(filepath.Join(dir, "record.json"), data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "owner.lock"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	background.Start(ctx)
+	background.Wait()
+
+	events, _, err := store.Events(ctx, "old", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var reaped map[string]any
+	for _, event := range events {
+		if event.Kind == "EFFECTS_REAPED" {
+			reaped = event.Data
+		}
+	}
+	checkout, _ := reaped["checkout"].(map[string]any)
+	if checkout["removed"] != false || checkout["skipped"] != "a running run uses it" {
+		t.Fatalf("reap of the old run recorded %v", reaped)
+	}
+}
+
 // A reap that fails is logged: nobody waits for it, and no run record says
 // so. Here the run store cannot be listed.
 func TestBuiltReaperLogsAFailedReap(t *testing.T) {

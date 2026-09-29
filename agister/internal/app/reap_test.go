@@ -30,14 +30,16 @@ func abandonedRun(id string) run.Record {
 type reaper struct {
 	*app.Reaper
 	adopter   *adopterSpy
+	checkouts *checkoutsSpy
 	processes *processesSpy
 }
 
 func reaping(h *harness, runs ...run.Record) *reaper {
-	adopter, processes := &adopterSpy{runs: runs}, &processesSpy{}
+	adopter, checkouts, processes := &adopterSpy{runs: runs}, &checkoutsSpy{}, &processesSpy{}
 	return &reaper{
-		Reaper:    app.NewReaper(adopter, processes, h.workspaces, fixedClock{}),
+		Reaper:    app.NewReaper(adopter, checkouts, processes, h.workspaces, fixedClock{}),
 		adopter:   adopter,
+		checkouts: checkouts,
 		processes: processes,
 	}
 }
@@ -211,8 +213,8 @@ func TestReapingIsBounded(t *testing.T) {
 		t.Fatalf("adopted %v, reaped %v", adopter.adopted, processes.reaped)
 	}
 	// b was not even looked at: the loop stopped before reading live runs.
-	if adopter.liveReads != 1 {
-		t.Fatalf("live reads = %d", adopter.liveReads)
+	if r.checkouts.liveReads != 1 {
+		t.Fatalf("live reads = %d", r.checkouts.liveReads)
 	}
 	finished := adopter.handles["a"].wait(t)
 	if finished.Result == nil || finished.Result.Error.Class != run.ClassAbandoned {
@@ -228,7 +230,7 @@ func TestNothingIsAdoptedAfterTheDeadline(t *testing.T) {
 	h := newHarness()
 	r := reaping(h, abandonedRun("a"))
 	adopter, processes := r.adopter, r.processes
-	adopter.onLive = driven(r)
+	r.checkouts.onLive = driven(r)
 	r.reap()
 	if len(adopter.adopted) != 0 || len(processes.reaped) != 0 || len(h.workspaces.discarded) != 0 {
 		t.Fatalf("adopted %v, reaped %v, discarded %v", adopter.adopted, processes.reaped, h.workspaces.discarded)
@@ -268,7 +270,7 @@ func TestACheckoutARunningRunUsesIsNotDiscarded(t *testing.T) {
 	h := newHarness()
 	r := reaping(h, abandonedRun("old"))
 	adopter, processes := r.adopter, r.processes
-	adopter.live = []string{"/tmp/agister-checkout-1/workspace"}
+	r.checkouts.live = []string{"/tmp/agister-checkout-1/workspace"}
 	r.reap()
 	// The process is still ended and the run finished, but the directory stays.
 	if len(processes.reaped) != 1 || len(h.workspaces.discarded) != 0 {

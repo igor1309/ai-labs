@@ -162,8 +162,8 @@ func TestGatedOperationUsesTheCheckedSettings(t *testing.T) {
 		Build: func(src, _ app.GateDefinitions) contract.Client {
 			return &afterCheck{
 				Client: &app.Host{
-					Checker:    app.NewChecker(src, h.validator, h.runtimes, sources),
-					Inspection: app.NewInspection(src, h.runtimes, h.validator),
+					Checker:    app.NewChecker(src, h.validator, h.runtimes, h.runtimes, sources),
+					Inspection: app.NewInspection(app.NewResolver(src, h.runtimes, h.validator)),
 				},
 				f: func() {
 					readsAfterCheck = h.defs.readCount()
@@ -206,7 +206,7 @@ func TestGatedSubmitRecordsTheCheckedSettings(t *testing.T) {
 		Global:      h.defs,
 		Build: func(src, _ app.GateDefinitions) contract.Client {
 			return &app.Host{
-				Checker: app.NewChecker(src, h.validator, h.runtimes, []string{"git.revision", "git.diff", "param"}),
+				Checker: app.NewChecker(src, h.validator, h.runtimes, h.runtimes, []string{"git.revision", "git.diff", "param"}),
 				Calls:   h.callsOn(src),
 			}
 		},
@@ -248,7 +248,7 @@ func TestGatedSubmitRecordsWhatTheCheckRead(t *testing.T) {
 		Build: func(src, _ app.GateDefinitions) contract.Client {
 			return &afterCheck{
 				Client: &app.Host{
-					Checker: app.NewChecker(src, h.validator, h.runtimes, []string{"git.revision", "git.diff", "param"}),
+					Checker: app.NewChecker(src, h.validator, h.runtimes, h.runtimes, []string{"git.revision", "git.diff", "param"}),
 					Calls:   h.callsOn(src),
 				},
 				f: func() {
@@ -294,7 +294,7 @@ func TestGatedWriteScopeChecksTheGlobalSnapshot(t *testing.T) {
 		Global:      global,
 		Build: func(src, globalOnly app.GateDefinitions) contract.Client {
 			checker := func(defs app.GateDefinitions) *app.Checker {
-				return app.NewChecker(defs, h.validator, h.runtimes, []string{"git.revision", "git.diff", "param"})
+				return app.NewChecker(defs, h.validator, h.runtimes, h.runtimes, []string{"git.revision", "git.diff", "param"})
 			}
 			return &afterCheck{
 				Client: &app.Host{

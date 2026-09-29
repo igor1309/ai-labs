@@ -19,6 +19,7 @@ const defaultReapTimeout = 30 * time.Second
 // composes the client starts it (see BackgroundReaper).
 type Reaper struct {
 	adopter   RunAdopter
+	checkouts CheckoutsInUse
 	processes Processes
 	discarder CheckoutDiscarder
 	clock     ReapClock
@@ -59,12 +60,23 @@ type Processes interface {
 type RunAdopter interface {
 	// Abandoned lists the unfinished runs nobody owns that recorded effects.
 	Abandoned(ctx context.Context) ([]run.Record, error)
-	// LiveCheckouts lists the checkout directories that runs some process
-	// still owns record, so nobody removes them from under those runs.
-	LiveCheckouts(ctx context.Context) ([]string, error)
 	// Adopt takes ownership of an abandoned run, as its record is now. It
 	// fails if the run is owned by another process or finished.
-	Adopt(ctx context.Context, id string) (RunHandle, run.Record, error)
+	Adopt(ctx context.Context, id string) (ReapHandle, run.Record, error)
+}
+
+// ReapHandle records the end of an adopted run. Finish releases ownership.
+type ReapHandle interface {
+	Append(event run.Event) error
+	Finish(record run.Record) error
+}
+
+// CheckoutsInUse tells which checkouts runs that other processes still own
+// use, so nobody removes them from under those runs.
+type CheckoutsInUse interface {
+	// LiveCheckouts lists the checkout directories that runs some process
+	// still owns record.
+	LiveCheckouts(ctx context.Context) ([]string, error)
 }
 
 // ReapClock tells the time of a reap's events and of the end it records.
@@ -72,8 +84,8 @@ type ReapClock interface{ Now() time.Time }
 
 // NewReaper returns the use case that reaps abandoned runs. Every
 // collaborator is required; ReapTimeout and ReapContext are optional.
-func NewReaper(adopter RunAdopter, processes Processes, discarder CheckoutDiscarder, clock ReapClock) *Reaper {
-	return &Reaper{adopter: adopter, processes: processes, discarder: discarder, clock: clock}
+func NewReaper(adopter RunAdopter, checkouts CheckoutsInUse, processes Processes, discarder CheckoutDiscarder, clock ReapClock) *Reaper {
+	return &Reaper{adopter: adopter, checkouts: checkouts, processes: processes, discarder: discarder, clock: clock}
 }
 
 // Reap leaves runs some process still owns alone. Runs not reached by the
@@ -102,7 +114,7 @@ func (c *Reaper) Reap(ctx context.Context) error {
 		}
 		// Read before adopting: the run adopted next is owned by this
 		// process and would read as live.
-		live, liveErr := c.adopter.LiveCheckouts(ctx)
+		live, liveErr := c.checkouts.LiveCheckouts(ctx)
 		// The deadline may have arrived meanwhile: never adopt after it.
 		if ctx.Err() != nil {
 			break
@@ -138,7 +150,7 @@ func (c *Reaper) reapContext(ctx context.Context) (context.Context, context.Canc
 // so is one whose users could not be listed. It returns the failure to
 // record the reap or finish the run; with the event unrecorded, the error
 // carries the steps that failed.
-func (c *Reaper) reap(ctx context.Context, handle RunHandle, record run.Record, live []string, liveErr error) error {
+func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record, live []string, liveErr error) error {
 	data := map[string]any{}
 	var failures []string
 	var effects run.Effects

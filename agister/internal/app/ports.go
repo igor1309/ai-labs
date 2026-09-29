@@ -1,9 +1,8 @@
 // Package app implements Agister's use cases over the interfaces each of
 // them declares beside itself, with only the methods it calls. No interface
 // is shared between components. What is left here is data that crosses
-// them, and the contracts of what a call drives: the runtime turn, its
-// events and the run's evidence handle. It knows no concrete storage,
-// runtime, workspace or diagnostics mechanism.
+// them. It knows no concrete storage, runtime, workspace or diagnostics
+// mechanism.
 package app
 
 import (
@@ -11,8 +10,6 @@ import (
 	"encoding/json"
 	"io/fs"
 	"time"
-
-	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 // Examples are definitions shipped with Agister, laid out as kind/name.ext.
@@ -47,26 +44,6 @@ type TurnRequest struct {
 	OutputSchema    json.RawMessage
 }
 
-// EventSink receives a turn's events and raw runtime output.
-type EventSink interface {
-	Event(source, kind string, data map[string]any)
-	// ProcessStarted records the runtime's process as soon as it exists, as
-	// a reference only the runtime adapter can read (Processes.Reap takes
-	// it back). It may be reported again as more becomes known; the last
-	// report stands. An error means the process is not on record, so
-	// nobody could find it after a crash: the runtime adapter must end it
-	// and fail the turn.
-	ProcessStarted(ref string) error
-	Raw(line string)
-}
-
-// TurnRunner drives one runtime. It knows nothing of permissions, policies
-// or processes.
-type TurnRunner interface {
-	Identity(ctx context.Context) (RuntimeIdentity, error)
-	RunTurn(ctx context.Context, request TurnRequest, sink EventSink) run.Turn
-}
-
 // InputSpec asks one input source for a value.
 type InputSpec struct {
 	Source string
@@ -80,16 +57,6 @@ type Resolved struct {
 	Value    any    // string or []string
 	Identity string // commit, content digest, or the literal
 	Revision bool   // Identity is a commit that can be checked out
-}
-
-// RunHandle writes one run's evidence. Finish releases ownership.
-type RunHandle interface {
-	Append(event run.Event) error
-	Raw(line string) error
-	Update(record run.Record) error
-	// Artifact stores a file the call produced beside its evidence.
-	Artifact(name string, data []byte) (run.Artifact, error)
-	Finish(record run.Record) error
 }
 
 // correlation carries identifying fields for diagnostics through context.

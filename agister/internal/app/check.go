@@ -15,7 +15,8 @@ import (
 type Checker struct {
 	definitions CheckDefinitions
 	validator   CheckValidator
-	runtimes    CheckRuntimes
+	adapters    CheckAdapters
+	identities  CheckIdentities
 	sources     []string // input source kinds the code provides
 }
 
@@ -30,17 +31,21 @@ type CheckValidator interface {
 	Compile(schema []byte) error
 }
 
-// CheckRuntimes names the runtime adapters and builds their runners, to
-// probe them.
-type CheckRuntimes interface {
-	Runner(adapter, command string) (TurnRunner, error)
+// CheckAdapters names the runtime adapters the code provides.
+type CheckAdapters interface {
 	Adapters() []string
+}
+
+// CheckIdentities asks a runtime adapter what it reports about itself, to
+// probe it.
+type CheckIdentities interface {
+	Identity(ctx context.Context, adapter, command string) (RuntimeIdentity, error)
 }
 
 // NewChecker returns the use case that validates all settings. sources are
 // the input source kinds the code provides.
-func NewChecker(definitions CheckDefinitions, validator CheckValidator, runtimes CheckRuntimes, sources []string) *Checker {
-	return &Checker{definitions: definitions, validator: validator, runtimes: runtimes, sources: sources}
+func NewChecker(definitions CheckDefinitions, validator CheckValidator, adapters CheckAdapters, identities CheckIdentities, sources []string) *Checker {
+	return &Checker{definitions: definitions, validator: validator, adapters: adapters, identities: identities, sources: sources}
 }
 
 func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, error) {
@@ -178,7 +183,8 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 	}
 
 	// Across documents.
-	for _, p := range settings.Check(bundle, settings.Mechanisms{Sources: c.sources, Adapters: c.runtimes.Adapters()}) {
+	known := c.adapters.Adapters()
+	for _, p := range settings.Check(bundle, settings.Mechanisms{Sources: c.sources, Adapters: known}) {
 		report.Problems = append(report.Problems, p.String())
 	}
 
@@ -190,11 +196,10 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			if !ok {
 				continue
 			}
-			runner, err := c.runtimes.Runner(mapping.Adapter, agent.Command)
-			if err != nil {
+			if !contains(known, mapping.Adapter) {
 				continue // reported as an unknown adapter
 			}
-			identity, err := runner.Identity(ctx)
+			identity, err := c.identities.Identity(ctx, mapping.Adapter, agent.Command)
 			switch {
 			case err != nil:
 				problem("agent "+name, "runtime unavailable: %v", err)

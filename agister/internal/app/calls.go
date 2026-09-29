@@ -20,30 +20,54 @@ import (
 
 // Calls submits and executes agent calls.
 type Calls struct {
-	definitions CallDefinitions
-	runtimes    CallRuntimes
-	inputs      map[string]InputProvider
-	workspaces  Workspaces
-	provenance  Provenance
-	validator   CallValidator
-	recorder    RunRecorder
-	runs        CallRuns
-	clock       CallClock
-	ids         IDs
-	stateDir    string
-	hosted      *Hosted
+	resolver   CallResolver
+	inputs     map[string]InputProvider
+	workspaces CallWorkspaces
+	changes    CallChanges
+	provenance Provenance
+	validator  CallValidator
+	recorder   RunRecorder
+	runs       CallRuns
+	clock      CallClock
+	ids        IDs
+	stateDir   string
+	hosted     *Hosted
 }
 
-// CallDefinitions supplies the definitions a call is resolved from; they
-// are read once, at submit, into a snapshot.
-type CallDefinitions interface {
-	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
-	List(ctx context.Context, kind definition.Kind) ([]string, error)
+// CallResolver reads the settings a call is resolved from, once, at submit,
+// and resolves the call from exactly those.
+type CallResolver interface {
+	Snapshot(ctx context.Context) *Resolver
 }
 
-// CallRuntimes builds the runner for an adapter name and runtime command.
-type CallRuntimes interface {
-	Runner(adapter, command string) (TurnRunner, error)
+// TurnRunner drives one runtime. It knows nothing of permissions, policies
+// or processes.
+type TurnRunner interface {
+	Identity(ctx context.Context) (RuntimeIdentity, error)
+	RunTurn(ctx context.Context, request TurnRequest, sink EventSink) run.Turn
+}
+
+// EventSink receives a turn's events and raw runtime output.
+type EventSink interface {
+	Event(source, kind string, data map[string]any)
+	// ProcessStarted records the runtime's process as soon as it exists, as
+	// a reference only the runtime adapter can read (Processes.Reap takes
+	// it back). It may be reported again as more becomes known; the last
+	// report stands. An error means the process is not on record, so
+	// nobody could find it after a crash: the runtime adapter must end it
+	// and fail the turn.
+	ProcessStarted(ref string) error
+	Raw(line string)
+}
+
+// RunHandle writes one run's evidence. Finish releases ownership.
+type RunHandle interface {
+	Append(event run.Event) error
+	Raw(line string) error
+	Update(record run.Record) error
+	// Artifact stores a file the call produced beside its evidence.
+	Artifact(name string, data []byte) (run.Artifact, error)
+	Finish(record run.Record) error
 }
 
 // CallValidator compiles the output schema before the call and checks its
@@ -73,10 +97,15 @@ type InputProvider interface {
 	Resolve(ctx context.Context, spec InputSpec) (Resolved, error)
 }
 
-// Workspaces locates repositories and provides isolated checkouts.
-type Workspaces interface {
+// CallWorkspaces locates repositories and provides isolated checkouts, to
+// prepare where the agent works.
+type CallWorkspaces interface {
 	Root(ctx context.Context, cwd string) (string, error)
 	Checkout(ctx context.Context, repository, revision string) (dir string, release func() error, err error)
+}
+
+// CallChanges captures what the agent left in its checkout, as evidence.
+type CallChanges interface {
 	// Changes returns everything in a checkout that differs from revision,
 	// committed or not, as a patch; empty when nothing does.
 	Changes(ctx context.Context, dir, revision string) ([]byte, error)
@@ -96,10 +125,10 @@ type RunRecorder interface {
 // collaborator is required. stateDir is Agister's own state, which no agent
 // workspace may overlap.
 func NewCalls(
-	definitions CallDefinitions,
-	runtimes CallRuntimes,
+	resolver CallResolver,
 	inputs map[string]InputProvider,
-	workspaces Workspaces,
+	workspaces CallWorkspaces,
+	changes CallChanges,
 	provenance Provenance,
 	validator CallValidator,
 	recorder RunRecorder,
@@ -110,18 +139,18 @@ func NewCalls(
 	hosted *Hosted,
 ) *Calls {
 	return &Calls{
-		definitions: definitions,
-		runtimes:    runtimes,
-		inputs:      inputs,
-		workspaces:  workspaces,
-		provenance:  provenance,
-		validator:   validator,
-		recorder:    recorder,
-		runs:        runs,
-		clock:       clock,
-		ids:         ids,
-		stateDir:    stateDir,
-		hosted:      hosted,
+		resolver:   resolver,
+		inputs:     inputs,
+		workspaces: workspaces,
+		changes:    changes,
+		provenance: provenance,
+		validator:  validator,
+		recorder:   recorder,
+		runs:       runs,
+		clock:      clock,
+		ids:        ids,
+		stateDir:   stateDir,
+		hosted:     hosted,
 	}
 }
 
@@ -177,7 +206,7 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 	// The settings this call resolves from are read now, before the run is
 	// recorded; the call's goroutine, which may open much later, uses this
 	// snapshot and never reads the live source.
-	definitions := Snapshot(ctx, c.definitions)
+	resolver := c.resolver.Snapshot(ctx)
 	handle, err := c.recorder.Create(ctx, record)
 	if err != nil {
 		return "", err
@@ -187,14 +216,14 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 	go func() {
 		defer c.hosted.remove(record.ID)
 		defer cancel()
-		c.execute(runCtx, handle, record, definitions)
+		c.execute(runCtx, handle, record, resolver)
 	}()
 	return record.ID, nil
 }
 
 // execute runs one call. Every refusal happens before the runtime starts
 // and is recorded; every effect is released on every path.
-func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record, definitions CallDefinitions) {
+func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record, resolver *Resolver) {
 	event := func(source, kind string, data map[string]any) {
 		_ = handle.Append(run.Event{At: c.clock.Now(), Source: source, Kind: kind, Data: data})
 	}
@@ -256,7 +285,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	}
 
 	caller := overrides{timeout: record.Request.Timeout, maxCostUSD: record.Request.MaxCostUSD}
-	res, err := resolver{definitions: definitions, runtimes: c.runtimes, validator: c.validator}.resolve(ctx, record.Request.Process, record.Request.Agent, caller)
+	res, err := resolver.Resolve(ctx, record.Request.Process, record.Request.Agent, caller)
 	record.Definitions = recordSources(res.sources)
 	if err != nil {
 		fail(err)
@@ -413,7 +442,7 @@ func (c *Calls) continuation(ctx context.Context, res *resolution, runID string)
 // collectChanges keeps a call's changes to its own workspace as an
 // artifact. A failure is recorded; it does not change the call's status.
 func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revision string, event func(string, string, map[string]any)) []run.Artifact {
-	patch, err := c.workspaces.Changes(context.WithoutCancel(ctx), dir, revision)
+	patch, err := c.changes.Changes(context.WithoutCancel(ctx), dir, revision)
 	if err == nil && len(patch) == 0 {
 		return nil
 	}
