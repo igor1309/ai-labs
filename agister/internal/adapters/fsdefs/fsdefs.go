@@ -154,7 +154,7 @@ func (s Store) Current(_ context.Context, kind definition.Kind, name string) (st
 // Agister's own writers, in this process or another, are serialized. The
 // lock binds only them: a hand edit or another program's write landing
 // between the compare and the rename can still be lost. Guarding against
-// that is outside Agister's responsibility (docs/deferred.md item 8).
+// that is outside Agister's responsibility (README, Settings).
 func (s Store) Write(_ context.Context, kind definition.Kind, name string, data []byte, expected string) (string, bool, error) {
 	path, err := s.path(kind, name)
 	if err != nil {

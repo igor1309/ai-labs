@@ -149,45 +149,7 @@ before.
   directory, with a test that two calls from different repositories see
   their own settings.
 
-## 8. The settings gate and the use case read settings separately (done; outside races not handled)
-
-- **Done:** each gated operation reads the settings once into an immutable
-  snapshot (`app.Snapshot`, errors kept and replayed), builds its client on
-  it (`Gated.Build`), checks with that client and runs the operation on the
-  same client. `Calls.Submit` takes its snapshot before the run is recorded
-  and the call's goroutine resolves only from it. `fsdefs.Store.Write` holds
-  an exclusive lock on a file in the store's directory across the digest
-  compare, the rename and the exclusive create, so Agister's own writers
-  are serialized. Tests: a settings edit after the check does not reach the
-  operation; a call resolves from the settings read before its run was
-  recorded; the lock is held at each step of a write. The write scopes
-  (global alone, and layered) check snapshots taken in the same operation
-  (`Gated.Global`), and a test guards that the built client reads only the
-  sources it was given.
-- **Not handled, by decision (2026-09-29):** Agister does not handle races
-  between its own settings writes or reads and anything else changing the
-  files, and the README says so. The promise is serialized Agister writes
-  and one consistent read per operation, not that no edit is lost.
-  - A hand edit, or another program's write, landing between the compare
-    and the rename can be lost. The lock binds only Agister's writers, and
-    no small, portable compare-and-rename is safe against an editor that
-    saves by renaming a new file over the old one.
-  - A snapshot lists and reads files one after another, so `init --force`,
-    which replaces several files, can land in between. The snapshot may
-    then combine an old service with a new process, a state that never
-    existed on disk. The operation still uses that combination
-    consistently.
-- **Why:** Agister writes settings only on `init` and `agent create`, after
-  you approve a plan whose digests it re-checks. That closes the window you
-  can actually hit. What remains needs an outside write in the same
-  milliseconds, and in a single-user CLI that is you racing yourself.
-- **Revisit when:** the service (ADR-001 rule 16) lets other clients edit
-  settings while calls run. Direction for the `init --force` case: Init
-  holds the store's lock across all its writes, through a write path that
-  expects the lock already held, and a snapshot takes a shared lock across
-  its whole read, both layers included.
-
-## 9. Process timers use real time in tests
+## 8. Process timers use real time in tests
 
 - **Gap:** the supervisor's kill-grace and timeout timers (`time.AfterFunc`)
   are real, so their tests (KillGrace 200ms in the claudecode, codex,
@@ -196,7 +158,7 @@ before.
 - **Done when:** the supervisor takes an injected clock or timer and those
   tests drive it.
 
-## 10. Can an agent Agister runs change Agister's settings?
+## 9. Can an agent Agister runs change Agister's settings?
 
 - **Gap:** unverified. Settings decide what an agent may do: its
   permissions, its policy and the primitives it may use. If an agent
@@ -204,9 +166,9 @@ before.
   widen what later calls grant. That includes its own later calls. The
   runtime's tool restrictions and the checkout in a temp directory may
   already prevent it, but no test shows it.
-- **Why deferred:** found while deciding not to handle outside edits
-  (item 8). It is a question of reach, not of races, and needs its own
-  look.
+- **Why deferred:** found while deciding not to handle outside edits to
+  the settings (README, Settings). It is a question of reach, not of races,
+  and needs its own look.
 - **Trigger:** a process that grants a write primitive (`Edit`, `Write`,
   `NotebookEdit`, or `Bash` with writes). Or sooner, since this is the
   more serious of the two.
