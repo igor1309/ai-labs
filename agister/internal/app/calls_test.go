@@ -30,14 +30,13 @@ state_reaching = ["host.read"]
 name: rt
 adapter: spy
 contract: spy/1
-verified_versions: ["1."]
 efforts: [high]
 primitives:
   select: any
   items:
-    Read: {grants: [repository.read]}
-    Grep: {grants: [repository.search]}
-    Bash: {grants: [process.execute, repository.read, repository.search, repository.diff, host.read]}
+    Read: {grants: [repository.read], verified: ["1."]}
+    Grep: {grants: [repository.search], verified: ["1."]}
+    Bash: {grants: [process.execute, repository.read, repository.search, repository.diff, host.read], verified: ["1."]}
 `},
 		definition.KindAgent: {"a": `schema = "agister.agent/v1alpha1"
 name = "a"
@@ -432,7 +431,7 @@ func TestRefusalsComeBeforeEffects(t *testing.T) {
 		{"schema does not compile", func(h *harness) { h.validator.compileErr = errors.New("bad schema") }, contract.CallRequest{}, `schema "s": bad schema`, false},
 		{"runtime unavailable", func(h *harness) { h.runner.identityErr = errors.New("no binary") }, contract.CallRequest{}, "runtime rt is unavailable: no binary", false},
 		{"adapter contract mismatch", func(h *harness) { h.runner.identity.Contract = "spy/2" }, contract.CallRequest{}, "describes adapter contract spy/1, but the adapter implements spy/2", false},
-		{"unverified version", func(h *harness) { h.runner.identity.Version = "2.0.0" }, contract.CallRequest{}, "is not verified for spy version 2.0.0", false},
+		{"unverified version", func(h *harness) { h.runner.identity.Version = "2.0.0" }, contract.CallRequest{}, "verifies no primitive for spy version 2.0.0", false},
 		{"caller widens timeout", nil, contract.CallRequest{Timeout: "2h"}, "caller timeout 2h0m0s widens the effective 20m0s", false},
 		{"unknown param", nil, contract.CallRequest{Params: map[string]string{"focus": "x"}}, "takes no params: focus", false},
 		{"input fails", func(h *harness) {
@@ -476,6 +475,33 @@ func TestStateReachingPrimitivesAreNeverGranted(t *testing.T) {
 	h.call(t, contract.CallRequest{})
 	if primitives := h.runner.calls()[0].Primitives; contains(primitives, "Bash") {
 		t.Fatalf("Bash reaches host.read but was granted: %v", primitives)
+	}
+}
+
+// A primitive whose grants were never checked against the runtime's version
+// is not granted, even when everything it declares is allowed.
+func TestUnverifiedPrimitivesAreNeverGranted(t *testing.T) {
+	h := newHarness()
+	mapping := h.defs.docs[definition.KindRuntime]["rt"]
+	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", `  items:
+    Glob: {grants: [repository.read]}
+    Diff: {grants: [repository.diff], verified: ["2."]}
+`, 1)
+	h.call(t, contract.CallRequest{})
+	if primitives := h.runner.calls()[0].Primitives; !reflect.DeepEqual(primitives, []string{"Read", "Grep"}) {
+		t.Fatalf("primitives = %v, want only the ones verified for 1.2.3", primitives)
+	}
+
+	// Requiring what only an unverified primitive provides refuses, and says why.
+	h = newHarness()
+	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", "  items:\n    Diff: {grants: [repository.diff], verified: [\"2.\"]}\n", 1)
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "uses: agent:a\n", "uses: agent:a\ntools: {require: [repository.diff]}\n", 1)
+	record := h.call(t, contract.CallRequest{})
+	if class(record) != run.ClassRefused || !strings.Contains(message(record), "required permissions would be withheld: repository.diff (not verified for version 1.2.3: Diff)") {
+		t.Fatalf("result %+v", record.Result.Error)
+	}
+	if len(h.runner.calls()) != 0 {
+		t.Fatal("the runtime ran after a refusal")
 	}
 }
 

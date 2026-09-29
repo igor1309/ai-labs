@@ -31,5 +31,11 @@
   uncached input; cache reads and writes are reported separately and kept
   apart in the node result.
 
-Verified live against Claude Code 2.1.283. Codex is covered by protocol
+- **Glob is confined like Read and Grep.** With only Glob exposed under
+  `--restricted`, absolute, `..` and `~` paths, an absolute pattern and a
+  path through a symlink leaving the workspace were refused; `**/*`,
+  `../outside/*` and `linked/**/*` listed nothing outside the workspace,
+  and a symlinked file pointing outside was not listed (2.1.284).
+
+Verified live against Claude Code 2.1.283 (Glob: 2.1.284). Codex is covered by protocol
 fixtures only.

@@ -100,7 +100,7 @@ func TestCheckProbesEachAgentsRuntime(t *testing.T) {
 	}
 	h.runner.identity.Version = "9.0.0"
 	report, _ := checker.Check(context.Background(), true)
-	if !reflect.DeepEqual(report.Problems, []string{"agent a: runtime version 9.0.0 is not verified by mapping rt (verified: 1.)"}) {
+	if !reflect.DeepEqual(report.Problems, []string{"agent a: mapping rt verifies no primitive for runtime version 9.0.0"}) {
 		t.Fatalf("problems = %v", report.Problems)
 	}
 }

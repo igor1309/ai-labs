@@ -1,18 +1,22 @@
 # What each Claude Code tool actually grants under adapter contract
 # claude-code/1 (--permission-mode dontAsk, --restricted, --strict-mcp-config:
 # file tools confined to the working directory).
+#
+# verified lists the Claude Code versions a primitive's grants were checked
+# against live (docs/findings.md). A plan uses only primitives verified for
+# the installed version; an unverified one is never granted.
 schema: agister.runtime/v1alpha1
 name: claude-code
 adapter: claude-code
 contract: claude-code/1
-verified_versions: ["2.1."]
 efforts: [low, medium, high, xhigh, max]
 primitives:
   select: any
   items:
-    Read: {grants: [repository.read]}
-    Glob: {grants: [repository.read]}
-    Grep: {grants: [repository.search]}
+    Read: {grants: [repository.read], verified: ["2.1."]} # 2.1.283
+    Glob: {grants: [repository.read], verified: ["2.1."]} # 2.1.284
+    Grep: {grants: [repository.search], verified: ["2.1."]} # 2.1.283
+    # Not yet verified (deferred item 2).
     Edit: {grants: [repository.write]}
     Write: {grants: [repository.write]}
     NotebookEdit: {grants: [repository.write]}
@@ -20,8 +24,9 @@ primitives:
     WebSearch: {grants: [network]}
     # Exposed Bash auto-approves read-only commands (git show, git log, …)
     # whatever --allowedTools says (observed live), and can reach anything
-    # the user can. It grants everything.
+    # the user can. It grants everything. (2.1.283)
     Bash:
+      verified: ["2.1."]
       grants:
         - process.execute
         - repository.read

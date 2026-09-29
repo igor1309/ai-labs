@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
@@ -178,7 +177,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			case identity.Contract != mapping.Contract:
 				problem("agent "+name, "adapter implements %s, mapping %s describes %s", identity.Contract, mapping.Name, mapping.Contract)
 			case !mapping.Verified(identity.Version):
-				problem("agent "+name, "runtime version %s is not verified by mapping %s (verified: %s)", identity.Version, mapping.Name, strings.Join(mapping.VerifiedVersions, ", "))
+				problem("agent "+name, "mapping %s verifies no primitive for runtime version %s", mapping.Name, identity.Version)
 			}
 		}
 	}

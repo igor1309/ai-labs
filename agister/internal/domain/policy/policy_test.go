@@ -22,6 +22,8 @@ func researchPolicy(t *testing.T) definition.Policy {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Without the fields Agister refuses (deferred item 5).
+	data = withoutTopLevel(data, "resources", "artifacts")
 	pol, err := definition.ParsePolicy(definition.Document{Source: definition.Source{Name: "static-review"}, Bytes: data})
 	if err != nil {
 		t.Fatal(err)
@@ -237,4 +239,24 @@ func TestScopeFollowsTheCheckout(t *testing.T) {
 	if _, err := compose("workspace: {scope: candidate}"); err == nil || !strings.Contains(err.Error(), "candidate requires workspace.checkout") {
 		t.Errorf("candidate without checkout: %v", err)
 	}
+}
+
+// withoutTopLevel drops the named top-level YAML fields and their blocks.
+func withoutTopLevel(data []byte, keys ...string) []byte {
+	var out []string
+	skipping := false
+	for _, line := range strings.Split(string(data), "\n") {
+		if line != "" && line[0] != ' ' && line[0] != '#' {
+			skipping = false
+			for _, key := range keys {
+				if strings.HasPrefix(line, key+":") {
+					skipping = true
+				}
+			}
+		}
+		if !skipping {
+			out = append(out, line)
+		}
+	}
+	return []byte(strings.Join(out, "\n"))
 }

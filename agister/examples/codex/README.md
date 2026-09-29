@@ -2,7 +2,7 @@
 
 Not installed by `agister init`: `agister check` refuses them as shipped.
 
-- The mapping is not verified against a live Codex (`verified_versions: []`).
+- The mapping is not verified against a live Codex (no primitive lists a `verified` version).
 - Both sandbox modes read files outside the workspace (`host.read`), which
   Agister never grants.
 - Contract `codex/1` neither continues sessions nor limits cost, so calls

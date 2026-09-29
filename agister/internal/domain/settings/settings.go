@@ -58,8 +58,8 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		if unknown := mapping.UnknownPermissions(vocabulary); len(unknown) > 0 {
 			add(subject, "grants permissions not in the vocabulary: %s", strings.Join(unknown, ", "))
 		}
-		if len(mapping.VerifiedVersions) == 0 {
-			add(subject, "not verified against any runtime version; calls on it are refused")
+		if verified, _ := mapping.ForAnyVersion(); len(verified.Primitives) == 0 {
+			add(subject, "verifies no primitive against any runtime version; calls on it are refused")
 		}
 	}
 
@@ -122,13 +122,22 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		if !ok {
 			continue // reported on the agent
 		}
-		if _, err := enforce.Make(effective.Permissions, mapping, effective.Require, b.Service.StateReaching); err != nil {
-			add(subject, "cannot run on agent %s's runtime %s: %v", agent.Name, mapping.Name, err)
+		verified, unverified := mapping.ForAnyVersion()
+		if _, err := enforce.Make(effective.Permissions, verified, effective.Require, b.Service.StateReaching); err != nil {
+			add(subject, "cannot run on agent %s's runtime %s: %v%s", agent.Name, mapping.Name, err, unverifiedNote(unverified))
 		}
 	}
 
 	sort.SliceStable(problems, func(i, j int) bool { return problems[i].Subject < problems[j].Subject })
 	return problems
+}
+
+// unverifiedNote names the primitives a refused plan could not use.
+func unverifiedNote(unverified []string) string {
+	if len(unverified) == 0 {
+		return ""
+	}
+	return " (verified for no runtime version: " + strings.Join(unverified, ", ") + ")"
 }
 
 func sortedKeys[V any](m map[string]V) []string {

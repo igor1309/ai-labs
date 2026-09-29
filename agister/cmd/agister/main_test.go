@@ -290,12 +290,11 @@ writing = ["docs.write"]
 name: docs-runtime
 adapter: claude-code
 contract: claude-code/1
-verified_versions: ["2.1."]
 primitives:
   select: any
   items:
-    Read: {grants: [docs.read]}
-    Write: {grants: [docs.write]}
+    Read: {grants: [docs.read], verified: ["2.1."]}
+    Write: {grants: [docs.write], verified: ["2.1."]}
 `)
 	write(t, filepath.Join(home, "agents", "writer.toml"), `schema = "agister.agent/v1alpha1"
 name = "writer"
@@ -491,7 +490,17 @@ func TestAgentCreateAsksBeforeReplacing(t *testing.T) {
 		t.Fatalf("yes: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	// An agent that would break the settings is refused before the question,
-	// and every command still works afterwards.
+	// and every command still works afterwards. Here a process constrains
+	// its agent's model family, so the agent must declare one.
+	constrained := strings.Replace(read(t, filepath.Join(home, "processes", "adversarial_review.yaml")), "\ninput:\n", `
+constraints:
+  agent.model_family:
+    not_equal: evidence.candidate(input.candidate_revision).provenance.writer.model_family
+    on_unsatisfied: fail
+
+input:
+`, 1)
+	write(t, filepath.Join(home, "processes", "adversarial_review.yaml"), constrained)
 	current := read(t, reviewer)
 	r := agisterInput(t, "yes\n", home, dir, "agent", "create", "reviewer", "--force", "--runtime", "claude-code")
 	if r.code != cli.ExitUsage || strings.Contains(r.stderr, "Type yes") || !strings.Contains(r.stderr, "agent reviewer would break the global settings") || read(t, reviewer) != current {

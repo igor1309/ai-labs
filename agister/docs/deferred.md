@@ -25,23 +25,32 @@ before.
 ## 2. Permission mappings carry no verification evidence
 
 - **Gap:** ADR-001 rule 4 trusts a mapping only once verified against the
-  real runtime. `verified_versions` is a label typed by hand; nothing
-  records what was checked.
+  real runtime. Each primitive lists the versions it was verified against
+  (`verified`), and a plan uses only primitives verified for the installed
+  version; but the list is typed by hand, and nothing records what was
+  checked.
 - **Verified so far (live, Claude Code 2.1.283):** Bash cannot be fenced by
   prefix rules; `Read` and `Grep` outside the working directory are
   refused, including through symlinks in the workspace; a project
-  `CLAUDE.md` is not applied under `--restricted`.
+  `CLAUDE.md` is not applied under `--restricted`. On 2.1.284, `Glob` is
+  confined the same way: an absolute, `..` or `~` path, an absolute
+  pattern, and a path through a symlink that leaves the workspace are
+  refused; `**/*` and `../` or `linked/` patterns list nothing outside it,
+  and a symlinked file pointing outside is not listed.
 - **Unverified:** `Edit`, `Write` and `NotebookEdit` confinement; `WebFetch`
-  and `WebSearch` granting only `network`; `Glob` confinement; everything
-  about Codex (see `examples/codex/`).
-- **Why deferred:** every shipped policy is read-only and grants no network,
-  so no unverified primitive is ever granted.
+  and `WebSearch` granting only `network`; everything about Codex (see
+  `examples/codex/`).
+- **Why deferred:** an unverified primitive is never granted, so the gap is
+  one of evidence, not of exposure. Until 2026-09-29 a single
+  `verified_versions` list vouched for the whole mapping, and `select: any`
+  granted the then unverified `Glob` to every read-only policy; such a list
+  is now refused.
 - **Trigger:** the first policy that allows `repository.write` or `network`,
   or enabling Codex.
 - **Done when:** an opt-in live suite (build tag, real CLIs) exercises each
   primitive of a shipped mapping and asserts nothing outside its declared
   grants happened; each mapping lists that evidence (suite run, date,
-  runtime version) next to `verified_versions`.
+  runtime version) next to its `verified` versions.
 
 ## 3. Failure classes seen only in field names
 
@@ -70,26 +79,29 @@ before.
 - **Done when:** Agister tracks spend per budget across calls and stops
   submitting once it is spent.
 
-## 5. `resources` and `artifacts.retain` are accepted but not enforced
+## 5. `resources` and `artifacts.retain` are refused
 
-- **Gap:** policies and processes may declare `resources` and
-  `artifacts.retain` (the research `static-review` policy does). They are
-  parsed and validated, and then ignored: no call reserves a resource or
-  retains an artifact because of them.
+- **Gap:** the research `static-review` policy declares `resources` and
+  `artifacts.retain`, but Agister cannot reserve a resource or retain an
+  artifact. Until 2026-09-29 both were parsed and then ignored; a policy or
+  process that declares either is now refused, so the research policy
+  parses only without them.
 - **Why deferred:** both describe a service with shared resources and
-  artifact retention; the CLI stage has neither. The research policy keeps
-  parsing as written.
+  artifact retention; the CLI stage has neither.
 - **Trigger:** the service (ADR-001 rule 16), or the first caller that
-  relies on either field.
-- **Done when:** each field has an effect a test observes, or is rejected.
+  needs either field.
+- **Done when:** each field is accepted again with an effect a test
+  observes.
 
 ## 6. No provenance is recorded
 
 - **Gap:** constraints on a revision's writer read
   `<home>/provenance/<revision>.json`, but nothing writes it: Agister keeps
   an agent's changes as a patch artifact and never commits them. Every
-  writer is therefore unknown, so `on_unknown: pass` always passes (the
-  shipped `static-review`) and `on_unknown: fail` always refuses.
+  writer is therefore unknown, so `on_unknown: pass` always passes and
+  `on_unknown: fail` always refuses. The shipped policies carry no such
+  constraint (a test keeps it so): one that always passes would look like
+  a guard against self-review and be none.
 - **Why deferred:** there is no revision Agister produced to record.
 - **Trigger:** the first time Agister commits an agent's changes, or a
   workflow that must refuse self-review on evidence rather than trust.
@@ -117,8 +129,10 @@ before.
   have a similar window: `fsdefs.Store.Write` compares the expected digest,
   then renames the new file over it, so an edit landing between those two
   steps is lost.
-- **Why deferred:** each window is a few milliseconds on a single user's
-  machine, and resolution still refuses a definition that does not parse.
+- **Why deferred:** a single user rarely edits settings while a call starts,
+  and resolution still refuses a definition that does not parse. The read
+  window is not bounded, though: a call is resolved in its goroutine after
+  its run is recorded, so it can open well after the check.
   The window the user can actually hit, between being shown a plan and
   typing yes, is closed: the write carries the approved digests and the
   store refuses a file that changed.
@@ -126,6 +140,8 @@ before.
   settings while calls run.
 - **Done when:** each operation loads one immutable settings snapshot,
   checks it and hands that same snapshot to the use case (for a call,
-  before its run is recorded); writes are serialized under a lock. Tests
-  change the settings between the check and the use and assert that the
-  checked snapshot is the one used.
+  before its run is recorded); writes are serialized under a lock. A lock
+  binds only Agister's own writers: a hand edit landing between compare
+  and rename can still be lost, so the promise is serialized writes, not
+  that no edit is ever lost. Tests change the settings between the check
+  and the use and assert that the checked snapshot is the one used.

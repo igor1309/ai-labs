@@ -50,13 +50,55 @@ func TestExamplesParse(t *testing.T) {
 	}
 }
 
-// The research policy parses as written.
+// Agister records no writers yet (deferred item 6), so a shipped constraint
+// that passes on unknown provenance would always pass: it would look like a
+// guard against self-review and be none.
+func TestExamplesCarryNoConstraintThatAlwaysPasses(t *testing.T) {
+	settings := examples.Settings()
+	for _, dir := range []definition.Kind{definition.KindPolicy, definition.KindProcess} {
+		entries, err := fs.ReadDir(settings, string(dir))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, entry := range entries {
+			data, _ := fs.ReadFile(settings, string(dir)+"/"+entry.Name())
+			name := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
+			var limits definition.Limits
+			if dir == definition.KindPolicy {
+				policy, err := definition.ParsePolicy(doc(dir, name, string(data)))
+				if err != nil {
+					t.Fatal(err)
+				}
+				limits = policy.Limits
+			} else {
+				process, err := definition.ParseProcess(doc(dir, name, string(data)))
+				if err != nil {
+					t.Fatal(err)
+				}
+				limits = process.Limits
+			}
+			for _, constraint := range limits.Constraints {
+				if constraint.OnUnknown == "pass" {
+					t.Errorf("%s/%s: constraint %s always passes while no provenance is recorded", dir, entry.Name(), constraint.Subject)
+				}
+			}
+		}
+	}
+}
+
+// The research policy parses as written, except for the fields Agister
+// refuses because it would not enforce them.
 func TestResearchPolicyParsesInPlace(t *testing.T) {
 	data, err := os.ReadFile("../../../../research/agister/research/verger/policies/static-review.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
-	policy, err := definition.ParsePolicy(doc(definition.KindPolicy, "static-review", string(data)))
+	_, err = definition.ParsePolicy(doc(definition.KindPolicy, "static-review", string(data)))
+	var invalid *definition.InvalidError
+	if !errors.As(err, &invalid) || strings.Join(invalid.Problems, "; ") != "resources: not supported yet: Agister would not enforce it; artifacts: not supported yet: Agister would not enforce it" {
+		t.Fatalf("err = %v", err)
+	}
+	policy, err := definition.ParsePolicy(doc(definition.KindPolicy, "static-review", string(withoutTopLevel(data, "resources", "artifacts"))))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,8 +257,58 @@ func TestUnreadableDocumentsReportOneProblem(t *testing.T) {
 	}
 }
 
+// Verification is per primitive: a version vouches only for the primitives
+// that list it.
 func TestMappingVerification(t *testing.T) {
 	mapping, err := definition.ParseMapping(doc(definition.KindRuntime, "r", `
+schema: agister.runtime/v1alpha1
+name: r
+adapter: a
+contract: a/1
+primitives:
+  select: any
+  items:
+    X: {grants: [p.one, p.two], verified: ["2.1."]}
+    Y: {grants: [p.one]}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !mapping.Verified("2.1.283") || mapping.Verified("2.2.0") || mapping.Verified("12.1.0") {
+		t.Fatal("verified prefixes")
+	}
+	verified, unverified := mapping.ForVersion("2.1.283")
+	if len(verified.Primitives) != 1 || verified.Primitives[0].Name != "X" || strings.Join(unverified, ",") != "Y" {
+		t.Fatalf("for 2.1.283: %+v, unverified %v", verified.Primitives, unverified)
+	}
+	if verified, unverified := mapping.ForVersion("2.2.0"); len(verified.Primitives) != 0 || strings.Join(unverified, ",") != "X,Y" {
+		t.Fatalf("for 2.2.0: %+v, unverified %v", verified.Primitives, unverified)
+	}
+	if verified, unverified := mapping.ForAnyVersion(); len(verified.Primitives) != 1 || strings.Join(unverified, ",") != "Y" {
+		t.Fatalf("for any version: %+v, unverified %v", verified.Primitives, unverified)
+	}
+	// A prefix matches whole version components, with or without the dot.
+	for prefix, versions := range map[string]map[string]bool{
+		"2.1":  {"2.1.3": true, "2.1": true, "2.10.0": false, "2.11": false, "12.1.0": false},
+		"2.1.": {"2.1.3": true, "2.10.0": false},
+		"":     {"2.1.3": false},
+	} {
+		primitive := definition.Primitive{Verified: []string{prefix}}
+		for version, want := range versions {
+			if got := primitive.VerifiedFor(version); got != want {
+				t.Errorf("prefix %q, version %s: verified %v, want %v", prefix, version, got, want)
+			}
+		}
+	}
+	if unknown := mapping.UnknownPermissions([]string{"p.one"}); strings.Join(unknown, ",") != "p.two" {
+		t.Fatalf("unknown = %v", unknown)
+	}
+}
+
+// A version list for the whole mapping is refused, so no old settings
+// silently vouch for primitives nobody checked.
+func TestMappingWideVerificationIsRefused(t *testing.T) {
+	_, err := definition.ParseMapping(doc(definition.KindRuntime, "r", `
 schema: agister.runtime/v1alpha1
 name: r
 adapter: a
@@ -225,29 +317,10 @@ verified_versions: ["2.1."]
 primitives:
   select: any
   items:
-    X: {grants: [p.one, p.two]}
+    X: {grants: [p.one]}
 `))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !mapping.Verified("2.1.283") || mapping.Verified("2.2.0") || mapping.Verified("12.1.0") {
-		t.Fatal("verified prefixes")
-	}
-	// A prefix matches whole version components, with or without the dot.
-	for prefix, versions := range map[string]map[string]bool{
-		"2.1":  {"2.1.3": true, "2.1": true, "2.10.0": false, "2.11": false, "12.1.0": false},
-		"2.1.": {"2.1.3": true, "2.10.0": false},
-		"":     {"2.1.3": false},
-	} {
-		m := definition.Mapping{VerifiedVersions: []string{prefix}}
-		for version, want := range versions {
-			if got := m.Verified(version); got != want {
-				t.Errorf("prefix %q, version %s: verified %v, want %v", prefix, version, got, want)
-			}
-		}
-	}
-	if unknown := mapping.UnknownPermissions([]string{"p.one"}); strings.Join(unknown, ",") != "p.two" {
-		t.Fatalf("unknown = %v", unknown)
+	if err == nil || !strings.Contains(err.Error(), "verified_versions: no longer supported") {
+		t.Fatalf("err = %v", err)
 	}
 }
 
@@ -259,7 +332,6 @@ schema: agister.runtime/v1alpha1
 name: r
 adapter: a
 contract: a/1
-verified_versions: ["2.1."]
 primitives:
   select: any
   items:
@@ -285,4 +357,24 @@ func TestAgentRoundTrip(t *testing.T) {
 	if _, err := definition.ParseAgent(doc(definition.KindAgent, "r", "schema = \"agister.agent/v1alpha1\"\nname = \"r\"\nruntime = \"x\"\ncolour = \"red\"\n")); err == nil || !strings.Contains(err.Error(), "colour: unknown field") {
 		t.Fatalf("err = %v", err)
 	}
+}
+
+// withoutTopLevel drops the named top-level YAML fields and their blocks.
+func withoutTopLevel(data []byte, keys ...string) []byte {
+	var out []string
+	skipping := false
+	for _, line := range strings.Split(string(data), "\n") {
+		if line != "" && line[0] != ' ' && line[0] != '#' {
+			skipping = false
+			for _, key := range keys {
+				if strings.HasPrefix(line, key+":") {
+					skipping = true
+				}
+			}
+		}
+		if !skipping {
+			out = append(out, line)
+		}
+	}
+	return []byte(strings.Join(out, "\n"))
 }

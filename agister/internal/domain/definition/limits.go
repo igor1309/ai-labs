@@ -19,8 +19,6 @@ type Limits struct {
 	Deny        []string       `json:"deny,omitempty"`
 	Access      string         `json:"access,omitempty"` // read-only | read-write
 	Scope       string         `json:"scope,omitempty"`  // candidate | repository
-	Resources   []string       `json:"resources,omitempty"`
-	Retain      []string       `json:"retain,omitempty"`
 	Constraints []Constraint   `json:"constraints,omitempty"`
 }
 
@@ -90,10 +88,12 @@ func parseLimits(values map[string]*yaml.Node, toolKeys, workspaceKeys []string,
 			p.add("workspace.scope", `must be "candidate" or "repository"`)
 		}
 	}
-	limits.Resources = stringList(values["resources"], "resources", p)
-	if node, ok := values["artifacts"]; ok {
-		artifacts := fields(node, "artifacts", []string{"retain"}, p)
-		limits.Retain = stringList(artifacts["retain"], "artifacts.retain", p)
+	// Reserving resources and retaining artifacts need the service; a
+	// field Agister would silently ignore is refused (deferred item 5).
+	for _, field := range []string{"resources", "artifacts"} {
+		if _, ok := values[field]; ok {
+			p.add(field, "not supported yet: Agister would not enforce it")
+		}
 	}
 	for _, entry := range mapping(values["constraints"], "constraints", p) {
 		if constraint, ok := parseConstraint(entry, p); ok {
