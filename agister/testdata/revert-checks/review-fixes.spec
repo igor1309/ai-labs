@@ -111,3 +111,9 @@ file: ../.agister/processes/tests_review_codex.yaml
 find: diff: {source: git.diff, base: "${value.base_revision}", head: "${value.candidate_revision}"}
 replace: diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}
 test: ./internal/domain/definition TestShippedRevisionInputsUseTheValuesResolvedBeforeThem
+
+[a shipped diff value binds its head to the base revision's value]
+file: ../.agister/processes/tests_review_codex.yaml
+find: diff: {source: git.diff, base: "${value.base_revision}", head: "${value.candidate_revision}"}
+replace: diff: {source: git.diff, base: "${value.base_revision}", head: "${value.base_revision}"}
+test: ./internal/domain/definition TestShippedRevisionInputsUseTheValuesResolvedBeforeThem

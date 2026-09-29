@@ -117,6 +117,10 @@ function state(dir) {
 
 const run = (dir, ...args) => spawnSync('python3', [SCRIPT, ...args], { cwd: dir, encoding: 'utf8' });
 
+// Ends the run under the one-minute limit; revert-check.py cleans up on SIGTERM.
+const runBounded = (dir, ...args) =>
+  spawnSync('python3', [SCRIPT, ...args], { cwd: dir, encoding: 'utf8', timeout: 50_000, killSignal: 'SIGTERM' });
+
 it('catches, rejects survivors and non-building mutations, and leaves the tree untouched', () => {
   withRepo((dir) => {
     const before = state(dir);
@@ -186,7 +190,7 @@ func TestMain(m *testing.M) {
 
 it('rejects a baseline whose go test fails even though the listed tests pass', () => {
   withRepo((dir) => {
-    const result = run(dir, writeSpec(dir, CAUGHT));
+    const result = runBounded(dir, writeSpec(dir, CAUGHT));
     assert.equal(result.status, 1, result.stdout + result.stderr);
     assert.match(result.stdout, /^FAIL {2}caught: go test fails before mutating: \. \(exit 1\)$/m);
     assert.match(result.stdout, /0\/1 mutations caught/);
@@ -195,7 +199,7 @@ it('rejects a baseline whose go test fails even though the listed tests pass', (
 
 it('does not count a mutation caught when go test exits 0 despite a failing test', () => {
   withRepo((dir) => {
-    const result = run(dir, writeSpec(dir, CAUGHT));
+    const result = runBounded(dir, writeSpec(dir, CAUGHT));
     assert.equal(result.status, 1, result.stdout + result.stderr);
     assert.match(result.stdout, /^FAIL {2}caught: go test exits 0 with the fix undone: \.$/m);
     assert.match(result.stdout, /0\/1 mutations caught/);

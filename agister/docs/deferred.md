@@ -124,6 +124,11 @@ before.
   with nothing logged (trigger: the next change to the reaper or `fsruns`,
   or such a run seen left behind; then `fsruns` returns sentinels for the
   expected refusals and the reap reports the rest).
+  The error sink is optional: `BackgroundReaper` drops a reap's error when
+  its `Report` is nil. The one composition root sets it and a test pins
+  that (trigger: a second place that builds a `BackgroundReaper`, such as
+  the service; then a constructor requires the sink, or a logging decorator
+  supplies it at the composition root).
 - **Trigger for the rest:** the service (ADR-001 rule 16), or earlier if
   leftovers between calls become a nuisance.
 - **Done when (rest):** the service reaps on start and periodically, and
@@ -265,3 +270,18 @@ before.
   timeout; a stuck call (no event, or a hung tool command) ends early in a
   class of its own, with tests using an injected clock; and a running
   call's record says what it is doing and since when.
+
+## 10. The repository's own `.agister` processes are not tested
+
+- **Gap:** no test runs or checks the review, judge and implement
+  processes in the repository's `.agister/`. `main_test.go` builds
+  temporary settings trees only. `agister check` passing is the only
+  evidence, and `check` has missed a failure that only a run shows (the
+  `$schema` case in `findings.md`).
+- **Evidence:** review round 2 on 2026-09-29 (tests#2) noted that
+  `implement.yaml` has no execution test, though it ran for real several
+  times that day.
+- **Trigger:** a repository `.agister` process that passes `check` but fails
+  at run time, or a test that checks the repository's own settings.
+- **Done when:** a test composes the repository's `.agister` and runs each
+  process against a fake runtime, `implement` included.

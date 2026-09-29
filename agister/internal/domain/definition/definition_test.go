@@ -88,8 +88,9 @@ func TestExamplesCarryNoConstraintThatAlwaysPasses(t *testing.T) {
 }
 
 // A diff or changed-files value takes both revisions from git.revision
-// values declared before it. Bound to ${param.*} instead, each would resolve
-// its revision again, and the two could name different commits.
+// values declared before it: base from the one resolving ${param.base}, head
+// from the one resolving ${param.candidate}. Bound to ${param.*} instead, each
+// would resolve its revision again, and the two could name different commits.
 func TestShippedRevisionInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 	settings := examples.Settings()
 	shipped := map[string]fs.FS{
@@ -115,18 +116,19 @@ func TestShippedRevisionInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 				t.Errorf("%s/processes/%s: %v", root, entry.Name(), err)
 				continue
 			}
-			revisions := map[string]bool{}
+			revisions := map[string]string{} // git.revision value name -> its rev
 			for _, value := range process.Values {
 				switch value.Source {
 				case "git.revision":
-					revisions[value.Name] = true
+					revisions[value.Name] = value.Args["rev"]
 				case "git.diff", "git.changed_files":
 					checked++
-					for _, arg := range []string{"base", "head"} {
+					for _, want := range [][2]string{{"base", "${param.base}"}, {"head", "${param.candidate}"}} {
+						arg, wantRev := want[0], want[1]
 						match := exact.FindStringSubmatch(value.Args[arg])
-						if match == nil || !revisions[match[1]] {
-							t.Errorf("%s/processes/%s: %s %s = %q, want ${value.<a git.revision value declared before it>}",
-								root, entry.Name(), value.Name, arg, value.Args[arg])
+						if match == nil || revisions[match[1]] != wantRev {
+							t.Errorf("%s/processes/%s: %s %s = %q, want ${value.<a git.revision value declared before it, with rev %s>}",
+								root, entry.Name(), value.Name, arg, value.Args[arg], wantRev)
 						}
 					}
 				}
