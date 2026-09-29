@@ -57,3 +57,60 @@ func TestRejectsUnsafeNamesAndReportsMissing(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestLayeredProjectReplacesGlobalByName(t *testing.T) {
+	ctx := context.Background()
+	global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
+	global.Write(ctx, definition.KindProcess, "shared", []byte("global"), false)
+	global.Write(ctx, definition.KindProcess, "global_only", []byte("global"), false)
+	project.Write(ctx, definition.KindProcess, "shared", []byte("project"), false)
+	project.Write(ctx, definition.KindProcess, "project_only", []byte("project"), false)
+	layered := fsdefs.Layered{Global: global, Project: &project}
+
+	for name, want := range map[string]string{"shared": "project", "global_only": "global", "project_only": "project"} {
+		doc, err := layered.Read(ctx, definition.KindProcess, name)
+		if err != nil || string(doc.Bytes) != want || !strings.HasPrefix(doc.Source.Path, map[string]string{"global": global.Dir, "project": project.Dir}[want]) {
+			t.Fatalf("%s = %+v, %v", name, doc, err)
+		}
+	}
+	if names, err := layered.List(ctx, definition.KindProcess); err != nil || !reflect.DeepEqual(names, []string{"global_only", "project_only", "shared"}) {
+		t.Fatalf("list = %v, %v", names, err)
+	}
+	_, err := layered.Read(ctx, definition.KindProcess, "missing")
+	if err == nil || !strings.Contains(err.Error(), "not found") || !strings.Contains(err.Error(), project.Dir) || !strings.Contains(err.Error(), global.Dir) {
+		t.Fatalf("missing = %v", err)
+	}
+	if _, err := layered.Read(ctx, definition.KindAgent, "../escape"); err == nil {
+		t.Fatal("path traversal accepted")
+	}
+	outside := fsdefs.Layered{Global: global}
+	if doc, err := outside.Read(ctx, definition.KindProcess, "shared"); err != nil || string(doc.Bytes) != "global" {
+		t.Fatalf("without project = %+v, %v", doc, err)
+	}
+}
+
+// A repository may not widen the limits and grants that bound its own
+// policies, so its service and runtime mappings are refused, not ignored.
+func TestLayeredRefusesProjectServiceAndRuntimes(t *testing.T) {
+	ctx := context.Background()
+	global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
+	for _, kind := range []definition.Kind{definition.KindService, definition.KindRuntime} {
+		global.Write(ctx, kind, "service", []byte("global"), false)
+		project.Write(ctx, kind, "service", []byte("project"), false)
+	}
+	project.Write(ctx, definition.KindRuntime, "project_only", []byte("project"), false)
+	layered := fsdefs.Layered{Global: global, Project: &project}
+
+	for _, read := range []struct {
+		kind definition.Kind
+		name string
+	}{{definition.KindService, "service"}, {definition.KindRuntime, "service"}, {definition.KindRuntime, "project_only"}} {
+		_, err := layered.Read(ctx, read.kind, read.name)
+		if err == nil || !strings.Contains(err.Error(), "only global settings") {
+			t.Fatalf("%s %s = %v", read.kind, read.name, err)
+		}
+	}
+	if names, _ := layered.List(ctx, definition.KindRuntime); !reflect.DeepEqual(names, []string{"project_only", "service"}) {
+		t.Fatalf("list = %v (a refused project runtime must stay visible to check)", names)
+	}
+}

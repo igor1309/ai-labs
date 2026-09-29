@@ -51,6 +51,8 @@ Usage:
 
 Options:
   --home <dir>   Agister's state and settings (default: $AGISTER_HOME, else ~/.agister)
+                 <repository>/.agister settings replace home settings of the same name
+                 (not service.toml or runtimes, which stay global)
   --quiet        No progress on stderr
   --debug        Diagnostics on stderr (always kept in <home>/logs/agister.jsonl)
 
@@ -68,6 +70,7 @@ type IO struct {
 // Config is what the composition root needs to build a client.
 type Config struct {
 	Home  string
+	Cwd   string    // where the project's own settings are looked for
 	Debug io.Writer // non-nil when diagnostics go to the terminal too
 }
 
@@ -169,7 +172,7 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 		}
 		return ExitUsage, nil
 	}
-	config := Config{Home: home(opts.home, env)}
+	config := Config{Home: home(opts.home, env), Cwd: env.Cwd}
 	if opts.debug {
 		config.Debug = env.Stderr
 	}

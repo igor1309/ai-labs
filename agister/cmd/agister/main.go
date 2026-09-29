@@ -50,7 +50,8 @@ func compose(config cli.Config) (contract.Client, error) {
 		return nil, err
 	}
 
-	definitions := fsdefs.Store{Dir: config.Home}
+	global := fsdefs.Store{Dir: config.Home}
+	definitions := fsdefs.Layered{Global: global, Project: project(config)}
 	evidence := fsruns.Store{Dir: filepath.Join(config.Home, "runs")}
 	runtimes := runtime.Registry{
 		"claude-code": func(command string) app.TurnRunner {
@@ -71,7 +72,7 @@ func compose(config cli.Config) (contract.Client, error) {
 	hosted := app.NewHosted()
 
 	return &app.Host{
-		Settings:   &app.Settings{Definitions: definitions, Writer: definitions, Examples: examples.Settings()},
+		Settings:   &app.Settings{Definitions: definitions, Writer: global, Examples: examples.Settings()},
 		Checker:    &app.Checker{Definitions: definitions, Validator: schema.Validator{}, Runtimes: runtimes, Sources: names(sources)},
 		Inspection: &app.Inspection{Definitions: definitions, Runtimes: runtimes, Validator: schema.Validator{}},
 		Calls: &app.Calls{
@@ -90,6 +91,30 @@ func compose(config cli.Config) (contract.Client, error) {
 		},
 		Runs: &app.Runs{Reader: evidence, Hosted: hosted},
 	}, nil
+}
+
+// project is the settings layer of the repository containing the working
+// directory, like its .claude or .agents: <root>/.agister. None outside a
+// repository, without that directory, or when it is the home itself.
+func project(config cli.Config) *fsdefs.Store {
+	if config.Cwd == "" {
+		return nil
+	}
+	root, err := git.Workspaces{}.Root(context.Background(), config.Cwd)
+	if err != nil {
+		return nil
+	}
+	dir := filepath.Join(root, ".agister")
+	if info, err := os.Stat(dir); err != nil || !info.IsDir() || sameDir(dir, config.Home) {
+		return nil
+	}
+	return &fsdefs.Store{Dir: dir}
+}
+
+func sameDir(a, b string) bool {
+	infoA, errA := os.Stat(a)
+	infoB, errB := os.Stat(b)
+	return errA == nil && errB == nil && os.SameFile(infoA, infoB)
 }
 
 func names[V any](m map[string]V) []string {

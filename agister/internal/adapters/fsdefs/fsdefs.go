@@ -1,6 +1,7 @@
 // Package fsdefs stores definition documents as files under Agister's
 // state directory: service.toml, agents/*.toml, processes/*.yaml,
-// policies/*.yaml, runtimes/*.yaml, schemas/*.json.
+// policies/*.yaml, runtimes/*.yaml, schemas/*.json. Layered reads a
+// project's own settings over the global ones.
 package fsdefs
 
 import (
@@ -17,6 +18,8 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
+
+var errNotFound = errors.New("not found")
 
 type Store struct {
 	Dir string
@@ -52,7 +55,7 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 	}
 	data, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
-		return definition.Document{}, fmt.Errorf("not found (expected %s)", path)
+		return definition.Document{}, fmt.Errorf("%w (expected %s)", errNotFound, path)
 	}
 	if err != nil {
 		return definition.Document{}, err
@@ -106,4 +109,54 @@ func (s Store) Write(_ context.Context, kind definition.Kind, name string, data 
 		return "", false, err
 	}
 	return path, true, file.Close()
+}
+
+// Layered reads a project's settings over the global ones: a project
+// document replaces the global document of the same kind and name. Kinds a
+// project may not define are refused, not ignored, when the project has one.
+type Layered struct {
+	Global  Store
+	Project *Store // nil outside a project
+}
+
+func (l Layered) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	if l.Project == nil {
+		return l.Global.Read(ctx, kind, name)
+	}
+	doc, err := l.Project.Read(ctx, kind, name)
+	if err == nil && !kind.ProjectDefinable() {
+		return definition.Document{}, fmt.Errorf("defined in project settings (%s), but only global settings (%s) may define %s", doc.Source.Path, l.Global.Dir, kind)
+	}
+	if !errors.Is(err, errNotFound) {
+		return doc, err
+	}
+	doc, err = l.Global.Read(ctx, kind, name)
+	if errors.Is(err, errNotFound) {
+		projectPath, _ := l.Project.path(kind, name)
+		globalPath, _ := l.Global.path(kind, name)
+		return doc, fmt.Errorf("%w (expected %s or %s)", errNotFound, projectPath, globalPath)
+	}
+	return doc, err
+}
+
+// List names every document of kind in either layer.
+func (l Layered) List(ctx context.Context, kind definition.Kind) ([]string, error) {
+	names, err := l.Global.List(ctx, kind)
+	if err != nil || l.Project == nil {
+		return names, err
+	}
+	project, err := l.Project.List(ctx, kind)
+	if err != nil {
+		return nil, err
+	}
+	seen := map[string]bool{}
+	var all []string
+	for _, name := range append(names, project...) {
+		if !seen[name] {
+			seen[name] = true
+			all = append(all, name)
+		}
+	}
+	sort.Strings(all)
+	return all, nil
 }

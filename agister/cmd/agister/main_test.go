@@ -307,6 +307,56 @@ output:
 	}
 }
 
+// A repository's own .agister replaces global settings of the same name,
+// wherever in the repository Agister runs; outside it, only global ones apply.
+func TestProjectSettingsOverrideGlobal(t *testing.T) {
+	home, repo := setup(t, "approve")
+	ask := strings.Replace(read(t, filepath.Join(home, "processes", "ask.yaml")), "Answer the question", "PROJECT: answer the question", 1)
+	write(t, filepath.Join(repo, ".agister", "processes", "ask.yaml"), ask)
+	write(t, filepath.Join(repo, ".agister", "processes", "ask_here.yaml"), strings.Replace(ask, "name: ask", "name: ask_here", 1))
+	sub := filepath.Join(repo, "sub")
+	write(t, filepath.Join(sub, "keep"), "")
+
+	if r := agister(t, home, sub, "process", "list"); r.code != 0 || !strings.Contains(r.stdout, "ask_here") {
+		t.Fatalf("list in project: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if r := agister(t, home, sub, "run", "ask", "--quiet", "--param", "question=q"); r.code != cli.ExitCompleted {
+		t.Fatalf("run in project: %d\n%s", r.code, r.stderr)
+	}
+	last := lastRun(t, home)
+	var process string
+	for _, source := range last.record["definitions"].([]any) {
+		if source := source.(map[string]any); source["kind"] == "processes" {
+			process = source["path"].(string)
+		}
+	}
+	if !strings.Contains(strings.Join(last.argv(), " "), "PROJECT: answer") || process != filepath.Join(repo, ".agister", "processes", "ask.yaml") {
+		t.Fatalf("project process not used: path %s, argv %v", process, last.argv())
+	}
+
+	outside := t.TempDir()
+	// Run IDs have one-second resolution; keep the next run the only one.
+	if err := os.RemoveAll(filepath.Join(home, "runs")); err != nil {
+		t.Fatal(err)
+	}
+	if r := agister(t, home, outside, "process", "list"); r.code != 0 || strings.Contains(r.stdout, "ask_here") {
+		t.Fatalf("list outside project: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if r := agister(t, home, outside, "run", "ask", "--quiet", "--param", "question=q"); r.code != cli.ExitCompleted {
+		t.Fatalf("run outside project: %d\n%s", r.code, r.stderr)
+	}
+	if args := strings.Join(lastRun(t, home).argv(), " "); strings.Contains(args, "PROJECT") {
+		t.Fatalf("project settings leaked outside the project: %s", args)
+	}
+
+	// The limits and grants that bound the project's policies stay global.
+	write(t, filepath.Join(repo, ".agister", "service.toml"), read(t, filepath.Join(home, "service.toml")))
+	r := agister(t, home, sub, "check")
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "only global settings") {
+		t.Fatalf("check with project service: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+}
+
 func write(t *testing.T, path, text string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {

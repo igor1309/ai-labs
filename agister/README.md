@@ -44,6 +44,20 @@ Exit codes: `0` completed, `1` failed, `2` interrupted, `3` refused, `4` lost, `
   logs/  provenance/                  evidence and diagnostics
 ```
 
+A repository can keep its own settings in `<repository root>/.agister/`, the
+same way it keeps `.claude/` or `.agents/`. They apply wherever Agister runs
+inside that repository, and a project document replaces the global document
+of the same kind and name. `agister check` validates the merged set, and run
+records show which file each definition came from. `service.toml` and
+`runtimes/` are global only, because they bound what any policy may allow.
+A project that defines them is refused, never silently ignored. `init` and
+`agent create` still write global settings.
+
+```text
+<repository>/.agister/
+  agents/*.toml  processes/*.yaml  policies/*.yaml  schemas/*.json
+```
+
 Every call re-validates what it uses and refuses before the provider turn starts.
 `examples/settings/` is what `init` installs. `examples/codex/` is opt-in;
 see its README.
