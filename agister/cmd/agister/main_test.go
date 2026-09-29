@@ -151,7 +151,7 @@ func (r run) argv() []string {
 
 func TestAgentCallEndToEnd(t *testing.T) {
 	home, repo := setup(t, "approve")
-	r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main")
+	r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--timeout", "1m")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
@@ -268,7 +268,7 @@ func TestUnreadableServiceSettingsFailCheck(t *testing.T) {
 
 func TestRefusedCallIsRecorded(t *testing.T) {
 	home, repo := setup(t, "approve")
-	r := agister(t, home, repo, "run", "no_such_process", "--quiet")
+	r := agister(t, home, repo, "run", "no_such_process", "--quiet", "--timeout", "1m")
 	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, `process "no_such_process": not found`) {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
@@ -319,7 +319,7 @@ output:
   schema: verdict
   require_valid: true
 `)
-	r := agister(t, home, repo, "run", "check_docs", "--quiet")
+	r := agister(t, home, repo, "run", "check_docs", "--quiet", "--timeout", "1m")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
@@ -345,7 +345,7 @@ func TestProjectSettingsAddToGlobal(t *testing.T) {
 	if r.code != 0 || !strings.Contains(r.stdout, "process ask_here: project "+project) || !strings.Contains(r.stdout, "policy read-only: global "+filepath.Join(home, "policies", "read-only.yaml")) {
 		t.Fatalf("show in project: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if r := agister(t, home, sub, "run", "ask_here", "--quiet", "--param", "question=q"); r.code != cli.ExitCompleted {
+	if r := agister(t, home, sub, "run", "ask_here", "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("run in project: %d\n%s", r.code, r.stderr)
 	}
 	last := lastRun(t, home)
@@ -399,7 +399,7 @@ func TestProjectOverridesAreNoted(t *testing.T) {
 	if r.code != 0 || !strings.Contains(r.stdout, "agent reviewer: project "+project+" (overrides "+global+")") {
 		t.Fatalf("show: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if r := agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main"); r.code != cli.ExitCompleted {
+	if r := agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("run: %d\n%s", r.code, r.stderr)
 	}
 	for _, source := range lastRun(t, home).record["definitions"].([]any) {
@@ -420,7 +420,7 @@ func TestComposedSettingsAreVerified(t *testing.T) {
 	if r.code != cli.ExitUsage || !strings.Contains(r.stdout, "override service service:") || !strings.Contains(r.stderr, "process adversarial_review") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	for _, args := range [][]string{{}, {"run", "adversarial_review", "--quiet", "--param", "base=main"}, {"runs"}, {"process", "list"}} {
+	for _, args := range [][]string{{}, {"run", "adversarial_review", "--quiet", "--param", "base=main", "--timeout", "1m"}, {"runs"}, {"process", "list"}} {
 		r := agister(t, home, repo, args...)
 		if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "process adversarial_review") || !strings.Contains(r.stderr, "settings have problems") {
 			t.Fatalf("%v: %d\n%s%s", args, r.code, r.stdout, r.stderr)
@@ -662,7 +662,7 @@ func TestCancelThroughTheContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	id, err := client.Submit(ctx, contract.CallRequest{Process: "adversarial_review", Params: map[string]string{"base": "main"}, Cwd: repo})
+	id, err := client.Submit(ctx, contract.CallRequest{Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "1m", Cwd: repo})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -695,7 +695,7 @@ func TestRunSurvivesSettingsBrokenMidRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	id, err := client.Submit(ctx, contract.CallRequest{Process: "adversarial_review", Params: map[string]string{"base": "main"}, Cwd: repo})
+	id, err := client.Submit(ctx, contract.CallRequest{Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "1m", Cwd: repo})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -724,7 +724,7 @@ func TestRunSurvivesSettingsBrokenMidRun(t *testing.T) {
 // routing on it is the workflow's business.
 func TestVerdictIsOutputNotStatus(t *testing.T) {
 	home, repo := setup(t, "request_changes")
-	r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--json", "--quiet")
+	r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--json", "--quiet", "--timeout", "1m")
 	var result contract.Result
 	if err := json.Unmarshal([]byte(r.stdout), &result); err != nil || r.code != cli.ExitCompleted || result.Status != "completed" || !strings.Contains(string(result.Output), `"request_changes"`) {
 		t.Fatalf("exit %d, result %s, err %v", r.code, r.stdout, err)
@@ -753,8 +753,8 @@ func TestContinuationEndToEnd(t *testing.T) {
 		}
 		return inspected
 	}
-	first := finish(contract.CallRequest{Process: "ask", Params: map[string]string{"question": "What is a.txt?"}, Cwd: repo})
-	second := finish(contract.CallRequest{Process: "ask", Params: map[string]string{"question": "And b.txt?"}, Continue: first.ID, Cwd: repo})
+	first := finish(contract.CallRequest{Process: "ask", Params: map[string]string{"question": "What is a.txt?"}, Timeout: "1m", Cwd: repo})
+	second := finish(contract.CallRequest{Process: "ask", Params: map[string]string{"question": "And b.txt?"}, Continue: first.ID, Timeout: "1m", Cwd: repo})
 	if first.Result.Status != "completed" || second.Result.Status != "completed" {
 		t.Fatalf("first %+v, second %+v", first.Result, second.Result)
 	}
@@ -767,7 +767,7 @@ func TestContinuationEndToEnd(t *testing.T) {
 		t.Fatalf("earlier %s, later %s, argv %s", earlier, later, args)
 	}
 	// The reviewer is fresh-only: continuing with it is refused.
-	refused := finish(contract.CallRequest{Process: "adversarial_review", Params: map[string]string{"base": "main"}, Continue: first.ID, Cwd: repo})
+	refused := finish(contract.CallRequest{Process: "adversarial_review", Params: map[string]string{"base": "main"}, Continue: first.ID, Timeout: "1m", Cwd: repo})
 	if refused.Result.Error == nil || refused.Result.Error.Class != "refused" || !strings.Contains(refused.Result.Error.Message, "fresh-only") {
 		t.Fatalf("result = %+v", refused.Result)
 	}
@@ -777,7 +777,7 @@ func TestContinuationEndToEnd(t *testing.T) {
 // the checkout is released; the repository is untouched.
 func TestWorkspaceChangesAreKept(t *testing.T) {
 	home, repo := setup(t, "edit")
-	if r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--quiet"); r.code != cli.ExitCompleted {
+	if r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--quiet", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
 	last := lastRun(t, home)

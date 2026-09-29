@@ -164,7 +164,7 @@ func Conformance(t *testing.T, subject Subject) {
 	t.Run("timeout interrupts the process group", func(t *testing.T) {
 		started := time.Now()
 		result, sink := turn(t, "SCENARIO:hang", func(r *app.TurnRequest) { r.Timeout = 300 * time.Millisecond }, context.Background())
-		if !is(result, run.Interrupted, run.ClassTimeout) || time.Since(started) > time.Minute {
+		if !is(result, run.Interrupted, run.ClassTimeout) || time.Since(started) > 10*time.Second {
 			t.Fatalf("turn = %+v after %s", result, time.Since(started))
 		}
 		if !strings.Contains(strings.Join(sink.Kinds(), " "), "TIMEOUT") {

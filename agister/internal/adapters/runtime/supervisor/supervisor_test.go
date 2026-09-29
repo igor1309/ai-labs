@@ -43,7 +43,7 @@ func TestMain(m *testing.M) {
 	}
 }
 
-type model struct {
+type runResult struct {
 	evidence supervisor.Evidence
 	lines    []string
 }
@@ -105,7 +105,7 @@ func TestLeftoverProcessesAreKilledWhenTheRuntimeExits(t *testing.T) {
 	sink := &events{}
 	evidence := supervisor.Run(context.Background(), supervisor.Spec{
 		Command: "/bin/sh",
-		Args:    []string{"-c", `sleep 60 >/dev/null 2>&1 & echo $! > "$0"; echo done`, pidFile},
+		Args:    []string{"-c", `sleep 120 >/dev/null 2>&1 & echo $! > "$0"; echo done`, pidFile},
 		Timeout: time.Minute,
 	}, sink, func(string) {})
 	if evidence.Exit == nil || evidence.Exit.Code == nil || *evidence.Exit.Code != 0 {
@@ -134,10 +134,19 @@ func TestStdoutHeldOutsideTheGroupDoesNotHoldTheCall(t *testing.T) {
 	t.Setenv(helperEnv, "escape")
 	t.Setenv("PID_FILE", pidFile)
 	sink := &events{}
+	// Killed on every path, including a failed or hung Run: the PID file is
+	// read lazily and a missing one is ignored.
+	t.Cleanup(func() {
+		if data, err := os.ReadFile(pidFile); err == nil {
+			if pid, err := strconv.Atoi(strings.TrimSpace(string(data))); err == nil && pid > 1 {
+				_ = syscall.Kill(pid, syscall.SIGKILL)
+			}
+		}
+	})
 	// The escaped child never exits on its own, so Run returning at all,
-	// with STDOUT_HELD_OPEN, proves the grace ended the wait. The minute
-	// only backstops a hang.
-	done := make(chan model, 1)
+	// with STDOUT_HELD_OPEN, proves the grace ended the wait. The bound on
+	// Run is generous for a grace of 200ms and catches a grace regression.
+	done := make(chan runResult, 1)
 	go func() {
 		var lines []string
 		evidence := supervisor.Run(context.Background(), supervisor.Spec{
@@ -145,17 +154,15 @@ func TestStdoutHeldOutsideTheGroupDoesNotHoldTheCall(t *testing.T) {
 			Timeout:   time.Minute,
 			KillGrace: 200 * time.Millisecond,
 		}, sink, func(line string) { lines = append(lines, line) })
-		done <- model{evidence, lines}
+		done <- runResult{evidence, lines}
 	}()
-	var got model
+	var got runResult
 	select {
 	case got = <-done:
-	case <-time.After(time.Minute):
+	case <-time.After(10 * time.Second):
 		t.Fatal("Run did not return: stdout held outside the group held the call")
 	}
 	evidence, lines := got.evidence, got.lines
-	pid := pidFrom(t, pidFile)
-	t.Cleanup(func() { _ = syscall.Kill(pid, syscall.SIGKILL) })
 	if evidence.Exit == nil || evidence.Exit.Code == nil || *evidence.Exit.Code != 0 || strings.Join(lines, ",") != "started" {
 		t.Fatalf("evidence = %+v, lines %v", evidence, lines)
 	}

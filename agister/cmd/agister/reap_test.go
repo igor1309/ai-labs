@@ -36,7 +36,7 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 	if out, err := exec.Command("go", "build", "-o", binary, ".").CombinedOutput(); err != nil {
 		t.Fatalf("build: %v\n%s", err, out)
 	}
-	victim := exec.Command(binary, "--home", home, "run", "adversarial_review", "--param", "base=main", "--quiet")
+	victim := exec.Command(binary, "--home", home, "run", "adversarial_review", "--param", "base=main", "--quiet", "--timeout", "1m")
 	victim.Dir = repo
 	// Its own process group: only it is killed below, not the test.
 	victim.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
