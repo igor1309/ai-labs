@@ -2,16 +2,21 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/examples"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
@@ -19,24 +24,77 @@ import (
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// marker is a definitions source told apart from every other by identity.
-type marker struct{ name string }
+// marker is a definitions source told apart from every other by identity,
+// and counting what is asked of it. It serves the shipped examples, so the
+// use cases that read it get valid settings.
+type marker struct {
+	name string
 
-func (*marker) Read(context.Context, definition.Kind, string) (definition.Document, error) {
-	return definition.Document{}, nil
+	mu    sync.Mutex
+	reads map[definition.Kind]int
+	lists map[definition.Kind]int
 }
-func (*marker) List(context.Context, definition.Kind) ([]string, error) { return nil, nil }
+
+func newMarker(name string) *marker {
+	return &marker{name: name, reads: map[definition.Kind]int{}, lists: map[definition.Kind]int{}}
+}
+
+func (m *marker) Read(_ context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	m.mu.Lock()
+	m.reads[kind]++
+	m.mu.Unlock()
+	pattern := string(kind) + "/" + name + ".*"
+	if kind == definition.KindService {
+		pattern = "service.*"
+	}
+	matches, _ := fs.Glob(examples.Settings(), pattern)
+	if len(matches) != 1 {
+		return definition.Document{}, fmt.Errorf("%s has no %s %q", m.name, kind, name)
+	}
+	data, err := fs.ReadFile(examples.Settings(), matches[0])
+	sum := sha256.Sum256(data)
+	return definition.Document{
+		Source: definition.Source{Kind: kind, Name: name, Path: m.name + "/" + matches[0], SHA256: hex.EncodeToString(sum[:])},
+		Bytes:  data,
+	}, err
+}
+
+func (m *marker) List(_ context.Context, kind definition.Kind) ([]string, error) {
+	m.mu.Lock()
+	m.lists[kind]++
+	m.mu.Unlock()
+	entries, _ := fs.ReadDir(examples.Settings(), string(kind))
+	var names []string
+	for _, entry := range entries {
+		names = append(names, strings.TrimSuffix(entry.Name(), path.Ext(entry.Name())))
+	}
+	return names, nil
+}
+
+// asked is how often the source was asked to list or read anything.
+func (m *marker) asked() (lists, reads int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, n := range m.lists {
+		lists += n
+	}
+	for _, n := range m.reads {
+		reads += n
+	}
+	return lists, reads
+}
 
 // Every use case of the client the gate builds reads only the sources it
 // was given: the layered one everywhere, the global-only one for the global
 // write scope. Wiring any of them to the live settings would defeat the
-// snapshot. Each definitions dependency is asserted by name: a use case or
-// scope added later needs its own assertion here.
+// snapshot. Each is exercised by name, and what it asked of each source is
+// asserted: a use case or scope added later needs its own row here.
 func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 	project := repository(t, "x")
 	if err := os.MkdirAll(filepath.Join(project, ".agister"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	ctx := context.Background()
 	for name, tc := range map[string]struct {
 		cwd     string
 		project bool // a project settings layer, so a second write scope
@@ -45,50 +103,66 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 		"in project":  {cwd: project, project: true},
 	} {
 		t.Run(name, func(t *testing.T) {
-			gated, err := newGated(cli.Config{Home: t.TempDir(), Cwd: tc.cwd})
+			home := t.TempDir()
+			gated, background, err := wire(cli.Config{Home: home, Cwd: tc.cwd})
 			if err != nil {
 				t.Fatal(err)
 			}
-			layered, global := &marker{"layered"}, &marker{"global"}
-			decorated, ok := gated.Build(layered, global).(app.ReapOnSubmit)
-			if !ok {
-				t.Fatalf("the built client is not %T", app.ReapOnSubmit{})
+			// Each use case on a client of its own, so what one asked of a
+			// source is not taken for another's.
+			use := map[string]func(contract.Client) error{
+				"settings": func(c contract.Client) error { _, err := c.ListAgents(ctx); return err },
+				"check":    func(c contract.Client) error { _, err := c.Check(ctx, false); return err },
+				"inspection": func(c contract.Client) error {
+					_, err := c.ShowProcess(ctx, "ask", "")
+					return err
+				},
+				// Refused after its settings were read: no such process.
+				"calls": func(c contract.Client) error {
+					id, err := c.Submit(ctx, contract.CallRequest{Process: "missing", Cwd: home})
+					if err != nil {
+						return err
+					}
+					store := fsruns.Store{Dir: filepath.Join(home, "runs")}
+					eventually(t, "the submitted call to finish", func() bool {
+						_, state, err := store.Get(ctx, id)
+						return err == nil && state == domain.StateFinished
+					})
+					return nil
+				},
 			}
-			host, ok := decorated.Client.(*app.Host)
-			if !ok {
-				t.Fatalf("the decorated client is a %T, not a host", decorated.Client)
-			}
-
-			source := func(what string, got app.DefinitionSource, want *marker) {
-				t.Helper()
-				if got != app.DefinitionSource(want) {
-					t.Errorf("%s reads %v, not the %s source given", what, got, want.name)
-				}
-			}
-			source("settings", host.Settings.Definitions, layered)
-			source("check", host.Checker.Definitions, layered)
-			source("inspection", host.Inspection.Definitions, layered)
-			source("calls", host.Calls.Definitions, layered)
-
-			scopes := host.Settings.Scopes
-			wantScopes := 1
-			if tc.project {
-				wantScopes = 2
-			}
-			if len(scopes) != wantScopes {
-				t.Fatalf("write scopes = %d, want %d", len(scopes), wantScopes)
-			}
-			scopeChecker := func(scope app.Scope) *app.Checker {
-				t.Helper()
-				checker, ok := scope.Check.(*app.Checker)
+			for use, call := range use {
+				layered, global := newMarker("layered"), newMarker("global")
+				decorated, ok := gated.Build(layered, global).(app.ReapOnSubmit)
 				if !ok {
-					t.Fatalf("scope %q is checked by a %T", scope.Name, scope.Check)
+					t.Fatalf("the built client is not %T", app.ReapOnSubmit{})
 				}
-				return checker
+				if err := call(decorated.Client); err != nil {
+					t.Fatalf("%s: %v", use, err)
+				}
+				background.Wait()
+				if lists, reads := layered.asked(); lists+reads == 0 {
+					t.Errorf("%s did not read the layered source given", use)
+				}
+				if lists, reads := global.asked(); lists+reads != 0 {
+					t.Errorf("%s read the global-only source: %d lists, %d reads", use, lists, reads)
+				}
 			}
-			source("the global write scope", scopeChecker(scopes[0]).Definitions, global)
-			if tc.project {
-				source("the project write scope", scopeChecker(scopes[1]).Definitions, layered)
+
+			// A write must keep settings valid in every scope: the global
+			// settings alone, and with the project in view. Only scopes list
+			// every kind; the write itself reads a runtime.
+			layered, global := newMarker("layered"), newMarker("global")
+			decorated := gated.Build(layered, global).(app.ReapOnSubmit)
+			agent := contract.Agent{Name: "probe", Runtime: "claude-code"}
+			if _, err := decorated.Client.CreateAgent(ctx, agent, false, nil); err != nil {
+				t.Fatal(err)
+			}
+			if global.lists[definition.KindAgent] == 0 {
+				t.Error("the global write scope did not check the global-only source")
+			}
+			if got := layered.lists[definition.KindAgent] > 0; got != tc.project {
+				t.Errorf("the project write scope checks the layered source = %v, want %v", got, tc.project)
 			}
 		})
 	}
@@ -103,20 +177,13 @@ func TestBuiltClientSharesTheBackgroundReaper(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, build := range []int{1, 2} {
-		decorated, ok := gated.Build(&marker{"layered"}, &marker{"global"}).(app.ReapOnSubmit)
+		decorated, ok := gated.Build(newMarker("layered"), newMarker("global")).(app.ReapOnSubmit)
 		if !ok || decorated.Background != background {
 			t.Fatalf("build %d does not start the shared reaper: %+v", build, decorated)
 		}
 	}
-	reaper, ok := background.Reaper.(*app.Reaper)
-	if !ok {
+	if _, ok := background.Reaper.(*app.Reaper); !ok {
 		t.Fatalf("the background reaper runs a %T", background.Reaper)
-	}
-	if reaper.Adopter != app.RunAdopter(fsruns.Store{Dir: filepath.Join(home, "runs")}) ||
-		reaper.Processes != app.Processes(supervisor.Processes{}) ||
-		reaper.Discarder != app.CheckoutDiscarder(git.Workspaces{}) ||
-		reaper.Clock == nil {
-		t.Fatalf("reaper = %+v", reaper)
 	}
 }
 
@@ -135,7 +202,10 @@ func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
 	}
 	record := domain.Record{
 		Schema: domain.RecordSchema, ID: "old", Process: "p", CreatedAt: time.Now(),
-		Effects: &domain.Effects{Checkout: &domain.Checkout{Repository: "/repo", Dir: filepath.Join(t.TempDir(), "workspace")}},
+		Effects: &domain.Effects{
+			Checkout: &domain.Checkout{Repository: "/repo", Dir: filepath.Join(t.TempDir(), "workspace")},
+			Process:  &domain.Process{Ref: "not-a-reference"},
+		},
 	}
 	data, _ := json.Marshal(record)
 	if err := os.WriteFile(filepath.Join(dir, "record.json"), data, 0o600); err != nil {
@@ -145,7 +215,7 @@ func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client := gated.Build(&marker{"layered"}, &marker{"global"})
+	client := gated.Build(newMarker("layered"), newMarker("global"))
 	id, err := client.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: home})
 	if err != nil {
 		t.Fatal(err)
@@ -156,6 +226,23 @@ func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
 	got, state, err := store.Get(context.Background(), "old")
 	if err != nil || state != domain.StateFinished || got.Result == nil || got.Result.Status != domain.Lost {
 		t.Fatalf("old run: %+v, %s, %v", got.Result, state, err)
+	}
+	// Its effects were handed to the supervisor's processes and to the git
+	// workspaces, which refuse what they did not make; the reap said so.
+	events, _, err := store.Events(context.Background(), "old", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var reaped map[string]any
+	for _, event := range events {
+		if event.Kind == "EFFECTS_REAPED" {
+			reaped = event.Data
+		}
+	}
+	process, _ := reaped["process"].(map[string]any)
+	checkout, _ := reaped["checkout"].(map[string]any)
+	if process["outcome"] != "left" || checkout["removed"] != false || !strings.Contains(fmt.Sprint(reaped["errors"]), "is not a checkout Agister made") {
+		t.Fatalf("reap of the old run recorded %v", reaped)
 	}
 	// The call that triggered it is its own run, and finishes on its own.
 	eventually(t, "the submitted call to finish", func() bool {

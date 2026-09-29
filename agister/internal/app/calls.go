@@ -2,12 +2,14 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/constraint"
@@ -18,20 +20,109 @@ import (
 
 // Calls submits and executes agent calls.
 type Calls struct {
-	Definitions DefinitionSource
-	Runtimes    Runtimes
-	Inputs      map[string]InputProvider
-	Workspaces  Workspaces
-	Provenance  Provenance
-	Validator   OutputValidator
-	Recorder    RunRecorder
-	// Earlier runs, read only to continue a session.
-	Runs  RunLookup
-	Clock Clock
-	IDs   IDs
-	// Agister's own state; no agent workspace may overlap it.
-	StateDir string
-	Hosted   *Hosted
+	definitions CallDefinitions
+	runtimes    CallRuntimes
+	inputs      map[string]InputProvider
+	workspaces  Workspaces
+	provenance  Provenance
+	validator   CallValidator
+	recorder    RunRecorder
+	runs        CallRuns
+	clock       CallClock
+	ids         IDs
+	stateDir    string
+	hosted      *Hosted
+}
+
+// CallDefinitions supplies the definitions a call is resolved from; they
+// are read once, at submit, into a snapshot.
+type CallDefinitions interface {
+	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
+	List(ctx context.Context, kind definition.Kind) ([]string, error)
+}
+
+// CallRuntimes builds the runner for an adapter name and runtime command.
+type CallRuntimes interface {
+	Runner(adapter, command string) (TurnRunner, error)
+}
+
+// CallValidator compiles the output schema before the call and checks its
+// output after.
+type CallValidator interface {
+	Compile(schema []byte) error
+	Validate(schema []byte, output json.RawMessage) error
+}
+
+// CallRuns reads an earlier run's evidence, only to continue its session. A
+// record that is not finished and no longer owned reads as abandoned.
+type CallRuns interface {
+	Get(ctx context.Context, id string) (run.Record, run.State, error)
+}
+
+// CallClock tells the time of a call's record and events.
+type CallClock interface{ Now() time.Time }
+
+// IDs makes the identities a call needs.
+type IDs interface {
+	RunID(now time.Time) string
+	SessionID() string
+}
+
+// InputProvider resolves one kind of input source.
+type InputProvider interface {
+	Resolve(ctx context.Context, spec InputSpec) (Resolved, error)
+}
+
+// Workspaces locates repositories and provides isolated checkouts.
+type Workspaces interface {
+	Root(ctx context.Context, cwd string) (string, error)
+	Checkout(ctx context.Context, repository, revision string) (dir string, release func() error, err error)
+	// Changes returns everything in a checkout that differs from revision,
+	// committed or not, as a patch; empty when nothing does.
+	Changes(ctx context.Context, dir, revision string) ([]byte, error)
+}
+
+// Provenance returns the recorded writer of a revision, or nil.
+type Provenance interface {
+	Writer(ctx context.Context, revision string) (*constraint.Writer, error)
+}
+
+// RunRecorder creates run records owned by the calling process.
+type RunRecorder interface {
+	Create(ctx context.Context, record run.Record) (RunHandle, error)
+}
+
+// NewCalls returns the use case that submits and executes calls. Every
+// collaborator is required. stateDir is Agister's own state, which no agent
+// workspace may overlap.
+func NewCalls(
+	definitions CallDefinitions,
+	runtimes CallRuntimes,
+	inputs map[string]InputProvider,
+	workspaces Workspaces,
+	provenance Provenance,
+	validator CallValidator,
+	recorder RunRecorder,
+	runs CallRuns,
+	clock CallClock,
+	ids IDs,
+	stateDir string,
+	hosted *Hosted,
+) *Calls {
+	return &Calls{
+		definitions: definitions,
+		runtimes:    runtimes,
+		inputs:      inputs,
+		workspaces:  workspaces,
+		provenance:  provenance,
+		validator:   validator,
+		recorder:    recorder,
+		runs:        runs,
+		clock:       clock,
+		ids:         ids,
+		stateDir:    stateDir,
+		hosted:      hosted,
+	}
 }
 
 // Hosted tracks calls running in this process so they can be cancelled.
@@ -67,10 +158,10 @@ func (h *Hosted) cancel(id string) bool {
 const inlineInputChars = 2000
 
 func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (string, error) {
-	now := c.Clock.Now()
+	now := c.clock.Now()
 	record := run.Record{
 		Schema:    run.RecordSchema,
-		ID:        c.IDs.RunID(now),
+		ID:        c.ids.RunID(now),
 		Process:   request.Process,
 		CreatedAt: now,
 		Request: run.Request{
@@ -86,15 +177,15 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 	// The settings this call resolves from are read now, before the run is
 	// recorded; the call's goroutine, which may open much later, uses this
 	// snapshot and never reads the live source.
-	definitions := Snapshot(ctx, c.Definitions)
-	handle, err := c.Recorder.Create(ctx, record)
+	definitions := Snapshot(ctx, c.definitions)
+	handle, err := c.recorder.Create(ctx, record)
 	if err != nil {
 		return "", err
 	}
 	runCtx, cancel := context.WithCancel(WithCorrelation(context.WithoutCancel(ctx), "run_id", record.ID, "process", request.Process))
-	c.Hosted.add(record.ID, cancel)
+	c.hosted.add(record.ID, cancel)
 	go func() {
-		defer c.Hosted.remove(record.ID)
+		defer c.hosted.remove(record.ID)
 		defer cancel()
 		c.execute(runCtx, handle, record, definitions)
 	}()
@@ -103,9 +194,9 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 
 // execute runs one call. Every refusal happens before the runtime starts
 // and is recorded; every effect is released on every path.
-func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record, definitions DefinitionSource) {
+func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record, definitions CallDefinitions) {
 	event := func(source, kind string, data map[string]any) {
-		_ = handle.Append(run.Event{At: c.Clock.Now(), Source: source, Kind: kind, Data: data})
+		_ = handle.Append(run.Event{At: c.clock.Now(), Source: source, Kind: kind, Data: data})
 	}
 	result := run.Result{Cost: run.Cost{Source: run.CostUnknown}, Timing: run.Timing{StartedAt: record.CreatedAt}}
 	// Effects end before the record does: the workspace's changes are kept
@@ -122,7 +213,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 			event(run.SourceAgister, "WORKSPACE_RELEASE_FAILED", map[string]any{"error": err.Error()})
 		}
 		release = func() error { return nil }
-		now := c.Clock.Now()
+		now := c.clock.Now()
 		record.FinishedAt = &now
 		result.Status, result.Error = run.Completed, fault
 		if fault != nil {
@@ -138,7 +229,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		}
 		event(run.SourceAgister, "CALL_FINISHED", data)
 		// A finished run is no longer cancellable.
-		c.Hosted.remove(record.ID)
+		c.hosted.remove(record.ID)
 		_ = handle.Finish(record)
 	}
 	defer func() {
@@ -165,16 +256,16 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	}
 
 	caller := overrides{timeout: record.Request.Timeout, maxCostUSD: record.Request.MaxCostUSD}
-	res, err := resolver{definitions: definitions, runtimes: c.Runtimes, validator: c.Validator}.resolve(ctx, record.Request.Process, record.Request.Agent, caller)
-	record.Definitions = res.sources
+	res, err := resolver{definitions: definitions, runtimes: c.runtimes, validator: c.validator}.resolve(ctx, record.Request.Process, record.Request.Agent, caller)
+	record.Definitions = recordSources(res.sources)
 	if err != nil {
 		fail(err)
 		return
 	}
 	record.Agent = res.agent.Name
-	record.Effective = &res.effective
+	record.Effective = recordEffective(res.effective)
 	record.Runtime = &run.Runtime{Mapping: res.mapping.Name, Adapter: res.mapping.Adapter, Contract: res.identity.Contract, Version: res.identity.Version}
-	record.Plan = &res.plan
+	record.Plan = recordPlan(res.plan)
 	_ = handle.Update(record)
 	event(run.SourceAgister, "PLANNED", map[string]any{"primitives": res.plan.Primitives, "granted": res.plan.Granted, "withheld": res.plan.Withheld})
 	if len(res.plan.Withheld) > 0 {
@@ -208,7 +299,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 			fail(refuse("constraint %s: input %s is not a revision", rule.Subject, rule.CandidateInput))
 			return
 		}
-		writer, err := c.Provenance.Writer(ctx, revision)
+		writer, err := c.provenance.Writer(ctx, revision)
 		if err != nil {
 			fail(err)
 			return
@@ -256,14 +347,14 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		OutputSchema:    res.schema,
 	}
 	if res.identity.PresetSessionID {
-		request.SessionID = c.IDs.SessionID()
+		request.SessionID = c.ids.SessionID()
 		record.RequestedSessionID = request.SessionID
 	}
 	_ = handle.Update(record)
 
-	turnStart := c.Clock.Now()
-	turn := res.runner.RunTurn(ctx, request, &sink{handle: handle, clock: c.Clock, record: &record})
-	turnMS := c.Clock.Now().Sub(turnStart).Milliseconds()
+	turnStart := c.clock.Now()
+	turn := res.runner.RunTurn(ctx, request, &sink{handle: handle, clock: c.clock, record: &record})
+	turnMS := c.clock.Now().Sub(turnStart).Milliseconds()
 	record.Turn = &turn
 
 	result.Timing.TurnMS = &turnMS
@@ -279,7 +370,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 
 	var validation error
 	if turn.Status == run.Completed && res.process.Output.Format == "json" {
-		validation = c.Validator.Validate(res.schema, turn.Output)
+		validation = c.validator.Validate(res.schema, turn.Output)
 	}
 	_, fault := run.Conclude(turn, res.process.Output, validation)
 	if fault == nil && res.process.Output.Format == "json" {
@@ -302,7 +393,7 @@ func (c *Calls) continuation(ctx context.Context, res *resolution, runID string)
 	if !res.identity.Resume || !res.identity.PresetSessionID {
 		return "", refuse("runtime %s cannot continue sessions", res.mapping.Name)
 	}
-	prior, state, err := c.Runs.Get(ctx, runID)
+	prior, state, err := c.runs.Get(ctx, runID)
 	if err != nil {
 		return "", refuse("run %s: %v", runID, err)
 	}
@@ -322,7 +413,7 @@ func (c *Calls) continuation(ctx context.Context, res *resolution, runID string)
 // collectChanges keeps a call's changes to its own workspace as an
 // artifact. A failure is recorded; it does not change the call's status.
 func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revision string, event func(string, string, map[string]any)) []run.Artifact {
-	patch, err := c.Workspaces.Changes(context.WithoutCancel(ctx), dir, revision)
+	patch, err := c.workspaces.Changes(context.WithoutCancel(ctx), dir, revision)
 	if err == nil && len(patch) == 0 {
 		return nil
 	}
@@ -372,7 +463,7 @@ func (c *Calls) resolveInputs(ctx context.Context, process definition.Process, r
 	inputs := make([]run.Input, 0, len(process.Values))
 	texts := map[string]string{}
 	for _, value := range process.Values {
-		provider, ok := c.Inputs[value.Source]
+		provider, ok := c.inputs[value.Source]
 		if !ok {
 			return nil, refuse("input %s: unknown source %q", value.Name, value.Source)
 		}
@@ -407,12 +498,12 @@ type preparedWorkspace struct {
 // declared revision, or the repository. It must not overlap Agister's state.
 func (c *Calls) prepareWorkspace(ctx context.Context, process definition.Process, inputs []run.Input, cwd string) (preparedWorkspace, error) {
 	noop := func() error { return nil }
-	root, err := c.Workspaces.Root(ctx, cwd)
+	root, err := c.workspaces.Root(ctx, cwd)
 	if err != nil {
 		root = cwd
 	}
-	if overlaps(root, c.StateDir) {
-		return preparedWorkspace{}, refuse("workspace %s overlaps Agister's state %s", root, c.StateDir)
+	if overlaps(root, c.stateDir) {
+		return preparedWorkspace{}, refuse("workspace %s overlaps Agister's state %s", root, c.stateDir)
 	}
 	if process.Checkout == "" {
 		return preparedWorkspace{Dir: root, Repository: root, Release: noop}, nil
@@ -426,13 +517,13 @@ func (c *Calls) prepareWorkspace(ctx context.Context, process definition.Process
 	if revision == "" {
 		return preparedWorkspace{}, refuse("workspace.checkout: input %s is not a revision", process.Checkout)
 	}
-	dir, release, err := c.Workspaces.Checkout(ctx, root, revision)
+	dir, release, err := c.workspaces.Checkout(ctx, root, revision)
 	if err != nil {
 		return preparedWorkspace{}, err
 	}
-	if overlaps(dir, c.StateDir) {
+	if overlaps(dir, c.stateDir) {
 		_ = release()
-		return preparedWorkspace{}, refuse("workspace %s overlaps Agister's state %s", dir, c.StateDir)
+		return preparedWorkspace{}, refuse("workspace %s overlaps Agister's state %s", dir, c.stateDir)
 	}
 	return preparedWorkspace{Dir: dir, Repository: root, Release: release, Owned: true}, nil
 }
@@ -441,9 +532,12 @@ func (c *Calls) prepareWorkspace(ctx context.Context, process definition.Process
 // which the turn's caller leaves alone while the turn runs.
 type sink struct {
 	handle RunHandle
-	clock  Clock
+	clock  sinkClock
 	record *run.Record
 }
+
+// sinkClock tells the time of a turn's events.
+type sinkClock interface{ Now() time.Time }
 
 // ProcessStarted records the process on the run. A process that cannot be
 // recorded is not claimed by the record, and the error goes back to the

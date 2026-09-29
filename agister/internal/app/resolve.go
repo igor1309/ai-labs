@@ -37,9 +37,25 @@ type resolution struct {
 // resolver loads and checks definitions, composes limits, checks the
 // runtime and plans enforcement. Every failure is a refusal.
 type resolver struct {
-	definitions DefinitionSource
-	runtimes    Runtimes
-	validator   OutputValidator
+	definitions resolverDefinitions
+	runtimes    resolverRuntimes
+	validator   resolverValidator
+}
+
+// resolverDefinitions supplies the documents a call or a view is resolved
+// from.
+type resolverDefinitions interface {
+	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
+}
+
+// resolverRuntimes builds the runner for an adapter name and runtime command.
+type resolverRuntimes interface {
+	Runner(adapter, command string) (TurnRunner, error)
+}
+
+// resolverValidator compiles an output schema.
+type resolverValidator interface {
+	Compile(schema []byte) error
 }
 
 // overrides are the caller's narrowing limits.

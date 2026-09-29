@@ -18,15 +18,62 @@ const defaultReapTimeout = 30 * time.Second
 // finished, then finishes them. It is not part of any call: whoever
 // composes the client starts it (see BackgroundReaper).
 type Reaper struct {
-	Adopter   RunAdopter
-	Processes Processes
-	Discarder CheckoutDiscarder
-	Clock     Clock
+	adopter   RunAdopter
+	processes Processes
+	discarder CheckoutDiscarder
+	clock     ReapClock
 	// ReapTimeout bounds one Reap; zero means 30s.
 	ReapTimeout time.Duration
 	// ReapContext, when set, replaces the timeout: it returns the context
 	// that bounds reaping. Tests use it to drive the deadline.
 	ReapContext func(context.Context) (context.Context, context.CancelFunc)
+}
+
+// CheckoutDiscarder removes checkouts whose owner ended without releasing
+// them.
+type CheckoutDiscarder interface {
+	// Discard removes a checkout that Checkout made. A checkout already
+	// gone is success; a directory Checkout could not have made is refused.
+	Discard(ctx context.Context, repository, dir string) error
+}
+
+// Reaping is what Reap found of a process.
+type Reaping string
+
+const (
+	ReapKilled Reaping = "killed" // the process was killed
+	ReapGone   Reaping = "gone"   // no such process
+	ReapLeft   Reaping = "left"   // not killed: it is not known to be the recorded one, or the reference is not understood
+)
+
+// Processes ends the runtime processes a dead owner left behind. What a
+// reference means is the adapter's own: the core only stores and returns it.
+type Processes interface {
+	// Reap ends the process the reference names, unless it may be another
+	// one by now. A reference the adapter did not make is ReapLeft, with an
+	// error.
+	Reap(ctx context.Context, ref string) (Reaping, error)
+}
+
+// RunAdopter takes over runs whose owner ended.
+type RunAdopter interface {
+	// Abandoned lists the unfinished runs nobody owns that recorded effects.
+	Abandoned(ctx context.Context) ([]run.Record, error)
+	// LiveCheckouts lists the checkout directories that runs some process
+	// still owns record, so nobody removes them from under those runs.
+	LiveCheckouts(ctx context.Context) ([]string, error)
+	// Adopt takes ownership of an abandoned run, as its record is now. It
+	// fails if the run is owned by another process or finished.
+	Adopt(ctx context.Context, id string) (RunHandle, run.Record, error)
+}
+
+// ReapClock tells the time of a reap's events and of the end it records.
+type ReapClock interface{ Now() time.Time }
+
+// NewReaper returns the use case that reaps abandoned runs. Every
+// collaborator is required; ReapTimeout and ReapContext are optional.
+func NewReaper(adopter RunAdopter, processes Processes, discarder CheckoutDiscarder, clock ReapClock) *Reaper {
+	return &Reaper{adopter: adopter, processes: processes, discarder: discarder, clock: clock}
 }
 
 // Reap leaves runs some process still owns alone. Runs not reached by the
@@ -41,7 +88,7 @@ type Reaper struct {
 func (c *Reaper) Reap(ctx context.Context) error {
 	ctx, cancel := c.reapContext(ctx)
 	defer cancel()
-	abandoned, err := c.Adopter.Abandoned(ctx)
+	abandoned, err := c.adopter.Abandoned(ctx)
 	if err != nil {
 		return fmt.Errorf("listing abandoned runs: %w", err)
 	}
@@ -55,13 +102,13 @@ func (c *Reaper) Reap(ctx context.Context) error {
 		}
 		// Read before adopting: the run adopted next is owned by this
 		// process and would read as live.
-		live, liveErr := c.Adopter.LiveCheckouts(ctx)
+		live, liveErr := c.adopter.LiveCheckouts(ctx)
 		// The deadline may have arrived meanwhile: never adopt after it.
 		if ctx.Err() != nil {
 			break
 		}
 		// Someone else adopting it first is fine: they reap it.
-		handle, record, err := c.Adopter.Adopt(ctx, listed.ID)
+		handle, record, err := c.adopter.Adopt(ctx, listed.ID)
 		if err != nil {
 			continue
 		}
@@ -99,7 +146,7 @@ func (c *Reaper) reap(ctx context.Context, handle RunHandle, record run.Record, 
 		effects = *record.Effects
 	}
 	if process := effects.Process; process != nil {
-		reaping, err := c.Processes.Reap(ctx, process.Ref)
+		reaping, err := c.processes.Reap(ctx, process.Ref)
 		data["process"] = map[string]any{"ref": process.Ref, "outcome": string(reaping)}
 		if err != nil {
 			failures = append(failures, fmt.Sprintf("process %q: %v", process.Ref, err))
@@ -113,7 +160,7 @@ func (c *Reaper) reap(ctx context.Context, handle RunHandle, record run.Record, 
 		case slices.Contains(live, checkout.Dir):
 			data["checkout"] = map[string]any{"dir": checkout.Dir, "removed": false, "skipped": "a running run uses it"}
 		default:
-			err := c.Discarder.Discard(ctx, checkout.Repository, checkout.Dir)
+			err := c.discarder.Discard(ctx, checkout.Repository, checkout.Dir)
 			data["checkout"] = map[string]any{"dir": checkout.Dir, "removed": err == nil}
 			if err != nil {
 				failures = append(failures, fmt.Sprintf("checkout %s: %v", checkout.Dir, err))
@@ -124,7 +171,7 @@ func (c *Reaper) reap(ctx context.Context, handle RunHandle, record run.Record, 
 		data["errors"] = failures
 	}
 	var errs []error
-	now := c.Clock.Now()
+	now := c.clock.Now()
 	if err := handle.Append(run.Event{At: now, Source: run.SourceAgister, Kind: "EFFECTS_REAPED", Data: data}); err != nil {
 		if len(failures) > 0 {
 			err = fmt.Errorf("%w (unrecorded step failures: %s)", err, strings.Join(failures, "; "))

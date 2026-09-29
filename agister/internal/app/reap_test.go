@@ -36,7 +36,7 @@ type reaper struct {
 func reaping(h *harness, runs ...run.Record) *reaper {
 	adopter, processes := &adopterSpy{runs: runs}, &processesSpy{}
 	return &reaper{
-		Reaper:    &app.Reaper{Adopter: adopter, Processes: processes, Discarder: h.workspaces, Clock: fixedClock{}},
+		Reaper:    app.NewReaper(adopter, processes, h.workspaces, fixedClock{}),
 		adopter:   adopter,
 		processes: processes,
 	}

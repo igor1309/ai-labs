@@ -13,6 +13,13 @@ var allKinds = []definition.Kind{
 	definition.KindPolicy, definition.KindProcess, definition.KindSchema,
 }
 
+// SnapshotSource is what a snapshot reads and what it gives back: the
+// definition documents and their origin.
+type SnapshotSource interface {
+	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
+	List(ctx context.Context, kind definition.Kind) ([]string, error)
+}
+
 type snapshotRead struct {
 	doc definition.Document
 	err error
@@ -23,7 +30,7 @@ type snapshotList struct {
 	err   error
 }
 
-// snapshot is a DefinitionSource frozen in memory: what was read, and each
+// snapshot is a SnapshotSource frozen in memory: what was read, and each
 // error the read gave, replayed as it was.
 type snapshot struct {
 	reads map[definition.Kind]map[string]snapshotRead
@@ -37,7 +44,7 @@ type snapshot struct {
 // that reads the snapshot touches src afterwards, so one operation can check
 // settings and use exactly what it checked. A name that was not listed is
 // not found.
-func Snapshot(ctx context.Context, src DefinitionSource) DefinitionSource {
+func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 	s := &snapshot{
 		reads: map[definition.Kind]map[string]snapshotRead{},
 		lists: map[definition.Kind]snapshotList{},

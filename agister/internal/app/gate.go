@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
+	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
 
 // Gated refuses every use of the client while the settings have problems,
@@ -22,17 +23,24 @@ import (
 // compile here until it is decided whether it is gated.
 type Gated struct {
 	// Definitions is the live source, read once per gated operation.
-	Definitions DefinitionSource
+	Definitions GateDefinitions
 	// Global is the live global layer alone, snapshotted like Definitions for
 	// the write scope that checks global settings without the project.
-	Global DefinitionSource
+	Global GateDefinitions
 	// Build makes a client whose use cases read definitions only from the
 	// sources given: the layered settings and the global layer alone. It must
 	// share state (hosted runs, evidence) across builds.
-	Build func(layered, global DefinitionSource) contract.Client
+	Build func(layered, global GateDefinitions) contract.Client
 
 	mu       sync.Mutex
 	admitted map[string]bool
+}
+
+// GateDefinitions supplies the settings the gate checks and hands to the
+// client it builds.
+type GateDefinitions interface {
+	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
+	List(ctx context.Context, kind definition.Kind) ([]string, error)
 }
 
 var _ contract.Client = (*Gated)(nil)

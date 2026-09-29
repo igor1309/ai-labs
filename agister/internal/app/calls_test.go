@@ -83,6 +83,8 @@ output:
 
 type harness struct {
 	calls      *app.Calls
+	hosted     *app.Hosted
+	clock      app.CallClock
 	runs       *runsSpy
 	defs       *definitionsSpy
 	runner     *runnerSpy
@@ -116,21 +118,20 @@ func newHarness() *harness {
 			return app.Resolved{Value: "line one\nline two", Identity: "sha256:d"}, nil
 		}
 	}}
-	h.calls = &app.Calls{
-		Definitions: h.defs,
-		Runtimes:    h.runtimes,
-		Inputs:      map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
-		Workspaces:  h.workspaces,
-		Provenance:  h.provenance,
-		Validator:   h.validator,
-		Recorder:    h.recorder,
-		Runs:        h.runs,
-		Clock:       fixedClock{},
-		IDs:         fixedIDs{},
-		StateDir:    "/state",
-		Hosted:      app.NewHosted(),
-	}
+	h.hosted = app.NewHosted()
+	h.clock = fixedClock{}
+	h.calls = h.callsOn(h.defs)
 	return h
+}
+
+// callsOn is the harness's Calls reading its definitions from src.
+func (h *harness) callsOn(src app.CallDefinitions) *app.Calls {
+	return app.NewCalls(
+		src, h.runtimes,
+		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
+		h.workspaces, h.provenance, h.validator, h.recorder, h.runs,
+		h.clock, fixedIDs{}, "/state", h.hosted,
+	)
 }
 
 func (h *harness) call(t *testing.T, request contract.CallRequest) run.Record {
@@ -273,7 +274,8 @@ func TestNodeStatusFollowsTheResponses(t *testing.T) {
 func TestResultCarriesUsageCostTimingAndSession(t *testing.T) {
 	h := newHarness()
 	clock := &steppingClock{now: time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)}
-	h.calls.Clock = clock
+	h.clock = clock
+	h.calls = h.callsOn(h.defs)
 	tokens, cost, runtimeMS := int64(7), 0.25, int64(900)
 	h.runner.turn = run.Turn{Status: run.Completed, Output: json.RawMessage(`{}`), ProviderSessionID: "prov-1", CostUSD: &cost, RuntimeMS: &runtimeMS, Usage: &run.Usage{InputTokens: &tokens}}
 	record := h.call(t, contract.CallRequest{})
@@ -515,7 +517,7 @@ func TestCancelInterruptsAndReleases(t *testing.T) {
 	h := newHarness()
 	h.runner.block = true
 	h.runner.started = make(chan struct{})
-	runs := &app.Runs{Hosted: h.calls.Hosted}
+	runs := app.NewRuns(nil, h.hosted, 0)
 	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
@@ -537,7 +539,7 @@ func TestCancelInterruptsAndReleases(t *testing.T) {
 // fail; the call is cancelled, not refused.
 func TestCancelBeforeTheTurnIsCancelled(t *testing.T) {
 	h := newHarness()
-	runs := &app.Runs{Hosted: h.calls.Hosted}
+	runs := app.NewRuns(nil, h.hosted, 0)
 	h.inputs.respond = func(app.InputSpec) (app.Resolved, error) {
 		if err := runs.Cancel(context.Background(), "run-1"); err != nil {
 			t.Error(err)
@@ -607,7 +609,7 @@ func TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded(t *testing.T) {
 	}
 	want := sha(settingsDocs()[definition.KindAgent]["a"])
 	for _, source := range record.Definitions {
-		if source.Kind == definition.KindAgent && source.SHA256 != want {
+		if source.Kind == string(definition.KindAgent) && source.SHA256 != want {
 			t.Errorf("agent recorded %s, want %s", source.SHA256, want)
 		}
 	}
@@ -636,5 +638,35 @@ func TestInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 	}
 	if !reflect.DeepEqual(h.workspaces.checkouts, [][2]string{{"/repo", "sha-HEAD"}}) {
 		t.Fatalf("checkouts = %v", h.workspaces.checkouts)
+	}
+}
+
+// What a call resolved is recorded under the record's own types, field for
+// field: the definitions, the effective limits and the plan.
+func TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes(t *testing.T) {
+	h := newHarness()
+	record := h.call(t, contract.CallRequest{})
+	encode := func(v any) string {
+		data, err := json.Marshal(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(data)
+	}
+	wantService := `{"kind":"service","name":"service","path":"mem/service/service","sha256":"` + sha(settingsDocs()[definition.KindService]["service"]) + `"}`
+	if len(record.Definitions) != 6 || encode(record.Definitions[0]) != wantService {
+		t.Errorf("definitions = %s", encode(record.Definitions))
+	}
+	wantEffective := `{"timeout":1200000000000,"max_attempts":1,` +
+		`"allow":["repository.read","repository.search","repository.diff"],"deny":[],` +
+		`"permissions":["repository.read","repository.search","repository.diff"],` +
+		`"access":"read-only","scope":"candidate",` +
+		`"constraints":[{"subject":"agent.model_family","candidate_input":"candidate_revision","on_unknown":"pass"}]}`
+	if got := encode(record.Effective); got != wantEffective {
+		t.Errorf("effective\n got %s\nwant %s", got, wantEffective)
+	}
+	wantPlan := `{"primitives":["Read","Grep"],"granted":["repository.read","repository.search"],"withheld":["repository.diff"]}`
+	if got := encode(record.Plan); got != wantPlan {
+		t.Errorf("plan\n got %s\nwant %s", got, wantPlan)
 	}
 }

@@ -66,9 +66,9 @@ func TestSnapshotReplaysReadAndListErrors(t *testing.T) {
 	}
 
 	sources := []string{"git.revision", "git.diff", "param"}
-	check := func(src app.DefinitionSource) []string {
+	check := func(src app.SnapshotSource) []string {
 		// The list failure aborts a check, so compare with policies listable.
-		checker := &app.Checker{Definitions: src, Validator: &validatorSpy{}, Runtimes: &runtimesSpy{runner: &runnerSpy{}}, Sources: sources}
+		checker := app.NewChecker(src, &validatorSpy{}, &runtimesSpy{runner: &runnerSpy{}}, sources)
 		report, err := checker.Check(ctx, false)
 		if err != nil {
 			return []string{"error: " + err.Error()}

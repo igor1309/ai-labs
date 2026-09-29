@@ -36,7 +36,7 @@ type Store struct {
 }
 
 var _ app.RunRecorder = Store{}
-var _ app.RunReader = Store{}
+var _ app.RunsReader = Store{}
 var _ app.RunAdopter = Store{}
 
 func (s Store) runDir(id string) string { return filepath.Join(s.Dir, id) }

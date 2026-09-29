@@ -25,11 +25,11 @@ type Limits struct {
 // Constraint requires the agent's model family to differ from that of the
 // agent that wrote a revision, as recorded by Agister's own provenance.
 type Constraint struct {
-	Subject        string `json:"subject"`
-	CandidateInput string `json:"candidate_input"`
+	Subject        string
+	CandidateInput string
 	// OnUnknown decides the result when no provenance exists: "fail"
 	// (default) or "pass". Missing provenance is never satisfaction by itself.
-	OnUnknown string `json:"on_unknown"`
+	OnUnknown string
 }
 
 const ModelFamilySubject = "agent.model_family"
