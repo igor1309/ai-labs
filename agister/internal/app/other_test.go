@@ -199,13 +199,10 @@ func createNow(settings *app.Settings, spec contract.Agent, overwrite bool) (con
 	return settings.CreateAgent(context.Background(), spec, overwrite, &plan)
 }
 
-func (s *writerSpy) Write(_ context.Context, kind definition.Kind, name string, data []byte, overwrite bool) (string, bool, error) {
+func (s *writerSpy) Write(ctx context.Context, kind definition.Kind, name string, data []byte, expected string) (string, bool, error) {
 	s.writes = append(s.writes, string(kind)+"/"+name)
-	key := string(kind) + "/" + name
-	if s.existed[key] && !overwrite {
-		return key, false, nil
-	}
-	return key, true, nil
+	key, current, _ := s.Current(ctx, kind, name)
+	return key, current == expected, nil
 }
 
 func TestInitWritesEachExampleWithoutOverwriting(t *testing.T) {
@@ -283,6 +280,35 @@ func TestWritesRefuseFilesChangedSinceTheApprovedPlan(t *testing.T) {
 	}
 }
 
+// An approval is for the plan shown: a request that now plans something
+// else, such as another agent or replacing a file shown as kept, writes
+// nothing.
+func TestWritesRefuseAnythingButTheApprovedPlan(t *testing.T) {
+	examples := fstest.MapFS{"service.toml": {Data: []byte("x")}, "agents/a.toml": {Data: []byte("x")}}
+	writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
+	settings := &app.Settings{Writer: writer, Examples: examples}
+	keep, err := settings.Init(context.Background(), false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var input *contract.InputError
+	if _, err := settings.Init(context.Background(), true, &keep); !errors.As(err, &input) || !strings.Contains(err.Error(), "not the plan you confirmed, so nothing was written: agents/a") || len(writer.writes) != 0 {
+		t.Fatalf("init: %v, writes %v", err, writer.writes)
+	}
+
+	h := newHarness()
+	settings = &app.Settings{Definitions: h.defs, Writer: writer}
+	plan, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "rt"}, false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, other := range []contract.Agent{{Name: "b", Runtime: "rt", Model: "other"}, {Name: "c", Runtime: "rt"}} {
+		if _, err := settings.CreateAgent(context.Background(), other, false, &plan); !errors.As(err, &input) || !strings.Contains(err.Error(), "not the plan you confirmed") || len(writer.writes) != 0 {
+			t.Fatalf("agent %+v: %v, writes %v", other, err, writer.writes)
+		}
+	}
+}
+
 func TestInitSkipsHiddenFilesAndRejectsStrayRootFiles(t *testing.T) {
 	writer := &writerSpy{}
 	examples := fstest.MapFS{
@@ -318,7 +344,7 @@ func TestCreateAgentDryRun(t *testing.T) {
 		t.Fatalf("invalid in a dry run: %v", err)
 	}
 	plan, err := settings.CreateAgent(context.Background(), spec, true, nil)
-	if err != nil || plan != (contract.AgentWrite{Path: "agents/b", Replaces: true, Digest: "d-agents/b"}) || len(writer.writes) != 0 {
+	if err != nil || plan.Content == "" || plan != (contract.AgentWrite{Path: "agents/b", Replaces: true, Digest: "d-agents/b", Content: plan.Content}) || len(writer.writes) != 0 {
 		t.Fatalf("plan %+v, writes %v, %v", plan, writer.writes, err)
 	}
 	if written, err := settings.CreateAgent(context.Background(), spec, true, &plan); err != nil || written != plan || !reflect.DeepEqual(writer.writes, []string{"agents/b"}) {
@@ -369,5 +395,18 @@ func TestCreateAgentValidatesAgainstTheRuntimeMapping(t *testing.T) {
 	}
 	if _, err := createNow(settings, contract.Agent{Name: "b", Runtime: "rt", Effort: "high"}, false); err != nil || !reflect.DeepEqual(writer.writes, []string{"agents/b"}) {
 		t.Fatalf("writes %v, %v", writer.writes, err)
+	}
+}
+
+// A process view says where each definition comes from as data, not text.
+func TestShowProcessSourcesAreStructured(t *testing.T) {
+	h := newHarness()
+	view, err := (&app.Inspection{Definitions: h.defs, Runtimes: h.runtimes, Validator: h.validator}).ShowProcess(context.Background(), "p", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := contract.Definition{Kind: "processes", Name: "p", Layer: "global", Path: "mem/processes/p"}
+	if len(view.Sources) < 2 || !reflect.DeepEqual(view.Sources[1], want) {
+		t.Fatalf("sources = %+v", view.Sources)
 	}
 }

@@ -574,7 +574,11 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 		if i == 0 {
 			label = "sources"
 		}
-		lines = append(lines, [2]string{label, source})
+		text := fmt.Sprintf("%s %s: %s %s", kindNames[source.Kind], source.Name, source.Layer, source.Path)
+		if source.Overrides != "" {
+			text += " (overrides " + source.Overrides + ")"
+		}
+		lines = append(lines, [2]string{label, text})
 	}
 	for _, line := range lines {
 		fmt.Fprintf(w, "%-12s %s\n", line[0], line[1])

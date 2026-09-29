@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -61,7 +63,6 @@ func (s *Settings) Init(ctx context.Context, overwrite bool, approved *contract.
 		data               []byte
 	}
 	var plan []file
-	var changed []string
 	for _, name := range files {
 		kind, base := definition.KindService, "service"
 		if dir := path.Dir(name); dir != "." {
@@ -78,39 +79,82 @@ func (s *Settings) Init(ctx context.Context, overwrite bool, approved *contract.
 		if err != nil {
 			return result, err
 		}
-		if approved != nil && approved.Digests[current] != digest {
-			changed = append(changed, current)
-		}
 		plan = append(plan, file{kind, base, current, digest, data})
+		result.Digests[current] = digest
+		switch {
+		case digest == "":
+			result.Created = append(result.Created, current)
+		case overwrite:
+			result.Replaced = append(result.Replaced, current)
+		default:
+			result.Kept = append(result.Kept, current)
+		}
 	}
-	if len(changed) > 0 {
-		return result, changedSinceApproved(changed)
+	if approved == nil {
+		return result, nil
+	}
+	if err := initApproved(*approved, result); err != nil {
+		return contract.InitResult{}, err
 	}
 	for _, f := range plan {
-		existed := f.digest != ""
-		write := !existed || overwrite
-		if approved != nil && write {
-			// Only an approved replacement overwrites: a file created since
-			// the plan is not replaced.
-			_, created, err := s.Writer.Write(ctx, f.kind, f.base, f.data, existed)
-			if err != nil {
-				return result, err
-			}
-			if !created {
-				return result, changedSinceApproved([]string{f.path})
-			}
+		if f.digest != "" && !overwrite {
+			continue
 		}
-		result.Digests[f.path] = f.digest
-		switch {
-		case !write:
-			result.Kept = append(result.Kept, f.path)
-		case existed:
-			result.Replaced = append(result.Replaced, f.path)
-		default:
-			result.Created = append(result.Created, f.path)
+		// Only the file as planned is written over: one created, edited or
+		// removed since is left as it is.
+		if _, written, err := s.Writer.Write(ctx, f.kind, f.base, f.data, f.digest); err != nil {
+			return result, err
+		} else if !written {
+			return result, changedSinceApproved([]string{f.path})
 		}
 	}
 	return result, nil
+}
+
+// initApproved refuses a plan other than the one approved: a file changed
+// since, or the same files handled differently, such as a kept file now
+// replaced.
+func initApproved(approved, plan contract.InitResult) error {
+	actions := func(r contract.InitResult) map[string]string {
+		m := map[string]string{}
+		for _, p := range r.Created {
+			m[p] = "create"
+		}
+		for _, p := range r.Replaced {
+			m[p] = "replace"
+		}
+		for _, p := range r.Kept {
+			m[p] = "keep"
+		}
+		return m
+	}
+	want, got := actions(approved), actions(plan)
+	paths := make([]string, 0, len(want)+len(got))
+	for p := range want {
+		paths = append(paths, p)
+	}
+	for p := range got {
+		if _, ok := want[p]; !ok {
+			paths = append(paths, p)
+		}
+	}
+	sort.Strings(paths)
+	var changed, differ []string
+	for _, p := range paths {
+		switch {
+		case approved.Digests[p] != plan.Digests[p]:
+			changed = append(changed, p)
+		case want[p] != got[p]:
+			differ = append(differ, p)
+		}
+	}
+	if len(changed) > 0 {
+		return changedSinceApproved(changed)
+	}
+	if len(differ) > 0 {
+		return notApproved(differ)
+	}
+	return nil
 }
 
 func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwrite bool, approved *contract.AgentWrite) (contract.AgentWrite, error) {
@@ -154,18 +198,22 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 	if err := s.keepsSettingsValid(ctx, definition.Document{Source: definition.Source{Kind: definition.KindAgent, Name: agent.Name, Path: path}, Bytes: data}); err != nil {
 		return contract.AgentWrite{}, err
 	}
-	plan := contract.AgentWrite{Path: path, Replaces: exists, Digest: digest}
+	sum := sha256.Sum256(data)
+	plan := contract.AgentWrite{Path: path, Replaces: exists, Digest: digest, Content: hex.EncodeToString(sum[:])}
 	if approved == nil {
 		return plan, nil
+	}
+	if approved.Path != plan.Path || approved.Content != plan.Content {
+		return contract.AgentWrite{}, notApproved([]string{path})
 	}
 	if *approved != plan {
 		return contract.AgentWrite{}, changedSinceApproved([]string{path})
 	}
-	// Only an approved replacement overwrites: a file created since the
-	// plan is not replaced.
-	if _, created, err := s.Writer.Write(ctx, definition.KindAgent, agent.Name, data, exists); err != nil {
+	// Only the file as planned is written over: one created, edited or
+	// removed since is left as it is.
+	if _, written, err := s.Writer.Write(ctx, definition.KindAgent, agent.Name, data, digest); err != nil {
 		return contract.AgentWrite{}, err
-	} else if !created {
+	} else if !written {
 		return contract.AgentWrite{}, changedSinceApproved([]string{path})
 	}
 	return plan, nil
@@ -175,6 +223,11 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 // user approved.
 func changedSinceApproved(paths []string) error {
 	return &contract.InputError{Message: fmt.Sprintf("changed since you confirmed, so nothing more was written: %s", strings.Join(paths, ", "))}
+}
+
+// notApproved refuses a write other than the one the user approved.
+func notApproved(paths []string) error {
+	return &contract.InputError{Message: fmt.Sprintf("not the plan you confirmed, so nothing was written: %s", strings.Join(paths, ", "))}
 }
 
 // keepsSettingsValid refuses a document that would add problems to any
@@ -327,14 +380,11 @@ func (i *Inspection) ShowProcess(ctx context.Context, name, agent string) (contr
 		view.Constraints = append(view.Constraints, fmt.Sprintf("%s differs from the writer of input.%s (unknown: %s)", rule.Subject, rule.CandidateInput, rule.OnUnknown))
 	}
 	for _, source := range res.sources {
-		text := fmt.Sprintf("%s %s: global %s", source.Kind.Singular(), source.Name, source.Path)
+		layer := "global"
 		if source.Project {
-			text = fmt.Sprintf("%s %s: project %s", source.Kind.Singular(), source.Name, source.Path)
+			layer = "project"
 		}
-		if source.Overrides != "" {
-			text += " (overrides " + source.Overrides + ")"
-		}
-		view.Sources = append(view.Sources, text)
+		view.Sources = append(view.Sources, contract.Definition{Kind: string(source.Kind), Name: source.Name, Layer: layer, Path: source.Path, Overrides: source.Overrides})
 	}
 	if refusal != nil {
 		view.Refusal = refusal.Reason

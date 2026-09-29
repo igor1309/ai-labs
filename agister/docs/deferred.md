@@ -108,3 +108,24 @@ before.
 - **Done when:** definitions resolve per call from the call's working
   directory, with a test that two calls from different repositories see
   their own settings.
+
+## 8. The settings gate and the use case read settings separately
+
+- **Gap:** `app.Gated` checks the settings, then the use case reads them
+  again from disk; `Submit` resolves them later still, in the call's own
+  goroutine. A settings edit landing in between is used unchecked. Writes
+  have a similar window: `fsdefs.Store.Write` compares the expected digest,
+  then renames the new file over it, so an edit landing between those two
+  steps is lost.
+- **Why deferred:** each window is a few milliseconds on a single user's
+  machine, and resolution still refuses a definition that does not parse.
+  The window the user can actually hit, between being shown a plan and
+  typing yes, is closed: the write carries the approved digests and the
+  store refuses a file that changed.
+- **Trigger:** the service (ADR-001 rule 16), where other clients edit
+  settings while calls run.
+- **Done when:** each operation loads one immutable settings snapshot,
+  checks it and hands that same snapshot to the use case (for a call,
+  before its run is recorded); writes are serialized under a lock. Tests
+  change the settings between the check and the use and assert that the
+  checked snapshot is the one used.

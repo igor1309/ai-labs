@@ -21,9 +21,10 @@ type DefinitionSource interface {
 
 // DefinitionWriter stores definition documents.
 type DefinitionWriter interface {
-	// Write stores data; without overwrite an existing document is kept and
-	// created is false.
-	Write(ctx context.Context, kind definition.Kind, name string, data []byte, overwrite bool) (path string, created bool, err error)
+	// Write stores data only over the document with digest expected, or
+	// where there is none when expected is empty; otherwise it writes
+	// nothing and written is false.
+	Write(ctx context.Context, kind definition.Kind, name string, data []byte, expected string) (path string, written bool, err error)
 	// Current reports where a document would be stored and a digest of the
 	// one there, empty when there is none.
 	Current(ctx context.Context, kind definition.Kind, name string) (path, digest string, err error)

@@ -60,9 +60,8 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 	if err != nil {
 		return definition.Document{}, err
 	}
-	sum := sha256.Sum256(data)
 	return definition.Document{
-		Source: definition.Source{Kind: kind, Name: name, Path: path, SHA256: hex.EncodeToString(sum[:])},
+		Source: definition.Source{Kind: kind, Name: name, Path: path, SHA256: digest(data)},
 		Bytes:  data,
 	}, nil
 }
@@ -97,11 +96,15 @@ func (s Store) Current(_ context.Context, kind definition.Kind, name string) (st
 	if err != nil {
 		return "", "", err
 	}
-	sum := sha256.Sum256(data)
-	return path, hex.EncodeToString(sum[:]), nil
+	return path, digest(data), nil
 }
 
-func (s Store) Write(_ context.Context, kind definition.Kind, name string, data []byte, overwrite bool) (string, bool, error) {
+// Write stores data over the document with digest expected, or where there
+// is none when expected is empty. A new document is created exclusively. A
+// replacement is written beside the document and renamed over it, so it is
+// never seen half-written; comparing and renaming are still two steps, and
+// an edit landing between them is lost.
+func (s Store) Write(_ context.Context, kind definition.Kind, name string, data []byte, expected string) (string, bool, error) {
 	path, err := s.path(kind, name)
 	if err != nil {
 		return "", false, err
@@ -109,22 +112,51 @@ func (s Store) Write(_ context.Context, kind definition.Kind, name string, data 
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return "", false, err
 	}
-	flags := os.O_WRONLY | os.O_CREATE | os.O_TRUNC
-	if !overwrite {
-		flags = os.O_WRONLY | os.O_CREATE | os.O_EXCL
+	if expected == "" {
+		file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		if errors.Is(err, fs.ErrExist) {
+			return path, false, nil
+		}
+		if err != nil {
+			return "", false, err
+		}
+		defer file.Close()
+		if _, err := file.Write(data); err != nil {
+			return "", false, err
+		}
+		return path, true, file.Close()
 	}
-	file, err := os.OpenFile(path, flags, 0o600)
-	if errors.Is(err, fs.ErrExist) {
+	current, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
 		return path, false, nil
 	}
 	if err != nil {
 		return "", false, err
 	}
-	defer file.Close()
-	if _, err := file.Write(data); err != nil {
+	if digest(current) != expected {
+		return path, false, nil
+	}
+	temp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*")
+	if err != nil {
 		return "", false, err
 	}
-	return path, true, file.Close()
+	defer os.Remove(temp.Name())
+	if _, err := temp.Write(data); err != nil {
+		temp.Close()
+		return "", false, err
+	}
+	if err := temp.Close(); err != nil {
+		return "", false, err
+	}
+	if err := os.Rename(temp.Name(), path); err != nil {
+		return "", false, err
+	}
+	return path, true, nil
+}
+
+func digest(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
 }
 
 // Layered reads a project's settings over the global ones: a project

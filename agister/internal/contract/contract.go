@@ -24,11 +24,12 @@ func (e *SettingsError) Error() string {
 type Client interface {
 	// Init installs the example settings. Without an approved plan it
 	// writes nothing and returns the plan; with one it writes, refusing if
-	// any file changed since that plan was made.
+	// the request now plans anything else or any file changed since.
 	Init(ctx context.Context, overwrite bool, approved *InitResult) (InitResult, error)
 	// CreateAgent writes an agent profile. Without an approved plan it
 	// validates and returns the plan, writing nothing; with one it writes,
-	// refusing if the file changed since that plan was made.
+	// refusing if the request now plans anything else or the file changed
+	// since.
 	CreateAgent(ctx context.Context, agent Agent, overwrite bool, approved *AgentWrite) (AgentWrite, error)
 	ListAgents(ctx context.Context) ([]Agent, error)
 	ListProcesses(ctx context.Context) ([]ProcessSummary, error)
@@ -60,6 +61,7 @@ type AgentWrite struct {
 	Path     string
 	Replaces bool   // an existing agent is overwritten
 	Digest   string // of the file as planned; empty when absent
+	Content  string // digest of the agent to be written
 }
 
 type InitResult struct {
@@ -140,8 +142,9 @@ type ProcessView struct {
 	Primitives []string
 	Withheld   []string
 	Refusal    string
-	// Where each definition the call uses comes from.
-	Sources []string
+	// Where each definition the call uses comes from; Uses and UsedBy are
+	// not set.
+	Sources []Definition
 }
 
 type CallRequest struct {
