@@ -92,6 +92,13 @@ inputs, prepares the workspace, calls the runtime, validates the output and
 records the run. It knows no kind of work, no particular agent and no
 meaning of any output.
 
+It is a runner, not a guard. It does not judge whether settings are right,
+safe, trusted or suited to the task; they are the user's, and a project's
+settings override global ones unconditionally. Its checks are about
+whether settings compose and can be enforced as written, never about
+whether they should be. Reviewing settings before running them is the
+user's, and tooling for it belongs outside the core.
+
 ### 2. Definitions are settings
 
 Agents, processes, policies, output contracts, permission mappings, the
@@ -179,8 +186,11 @@ agent receives and what is recorded.
 
 ### 9. Agents cannot reach Agister's state
 
-Settings, evidence and provenance are outside every agent's workspace and
-permissions. They are reachable only through Agister's ports.
+Agister's state directory (global settings, evidence and provenance) is
+outside every agent's workspace and permissions, and reachable only through
+Agister's ports. A project's settings are files in the user's repository,
+like any other: an agent given write access to the repository can change
+them (rule 1).
 
 ### 10. Evidence is authoritative; diagnostics are cross-cutting
 

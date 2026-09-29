@@ -61,8 +61,9 @@ A repository can keep its own settings in `<repository root>/.agister/`, the
 same way it keeps `.claude/` or `.agents/`, and so can any branch of it. They
 apply wherever Agister runs inside that repository, and take priority over
 global settings document by document: a project `agents/reviewer.toml`
-replaces the global one, for any kind of setting. Neither layer is assumed
-safe; what is checked is the result. `agister check` verifies the composed
+replaces the global one, for any kind of setting, unconditionally: a project
+may set anything, looser or tighter than the global settings. What is checked
+is that the result composes. `agister check` verifies the composed
 settings (references, limits composing service ⊇ policy ⊇ process,
 enforcement on each runtime) and lists every override, and every call
 re-verifies what it uses. `process show` and run records name each
@@ -93,6 +94,15 @@ it would write and waits for you to type `yes`; any other answer writes
 nothing. "yes" approves the plan that was shown: a file changed while you
 were asked is not overwritten, and nothing more is written. Scripts pipe
 the answer: `echo yes | agister init`.
+
+Agister is a runner, not a guard. The settings are yours, and so is judging
+them: Agister does not decide whether they are right, safe, trusted, too
+expensive or too constrained for the task, and a project's settings are as
+authoritative as your global ones. Running Agister in a repository applies
+that repository's `.agister/`, including the commands its agents name, much
+as running its `Makefile` would, and an agent allowed to write the
+repository can change those settings for later calls. Review settings you
+did not write before you run them.
 
 Agister does not handle settings edited concurrently with its own writes or
 calls. It serializes its own writes and gives each operation one consistent
