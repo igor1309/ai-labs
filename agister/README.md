@@ -140,4 +140,4 @@ CI: `.github/workflows/agister-core.yml`, invoked from `ci.yml` for Agister
 Go, module and example changes, selected policy changes, or CI workflow changes.
 Documentation-only changes do not trigger it.
 
-Known gaps and their triggers: [docs/deferred.md](docs/deferred.md). Live observations: [docs/findings.md](docs/findings.md).
+Known gaps and their triggers: [docs/deferred.md](docs/deferred.md). Ideas not yet planned: [backlog/](backlog/README.md). Live observations: [docs/findings.md](docs/findings.md).
