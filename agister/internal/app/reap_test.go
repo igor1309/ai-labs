@@ -42,7 +42,7 @@ func reaping(h *harness, runs ...run.Record) *reaper {
 	}
 }
 
-func (r *reaper) reap() { r.Reap(context.Background()) }
+func (r *reaper) reap() error { return r.Reap(context.Background()) }
 
 func TestCallRecordsItsEffectsAsSoonAsTheyExist(t *testing.T) {
 	h := newHarness()
@@ -118,7 +118,9 @@ func TestAbandonedRunIsReaped(t *testing.T) {
 	h := newHarness()
 	r := reaping(h, abandonedRun("old"))
 	adopter, processes := r.adopter, r.processes
-	r.reap()
+	if err := r.reap(); err != nil {
+		t.Fatal(err)
+	}
 
 	if !reflect.DeepEqual(processes.reaped, []string{"ref-777"}) {
 		t.Fatalf("reaped = %v", processes.reaped)
@@ -159,7 +161,10 @@ func TestFailedReapStepsStillFinishTheRunWithTheError(t *testing.T) {
 	adopter, processes := r.adopter, r.processes
 	processes.err = errors.New("process 777 is alive")
 	h.workspaces.discardErr = errors.New("busy")
-	r.reap()
+	// The run records the failed steps: the reap itself did not fail.
+	if err := r.reap(); err != nil {
+		t.Fatalf("reap = %v", err)
+	}
 	// Both steps ran.
 	if len(processes.reaped) != 1 || len(h.workspaces.discarded) != 1 {
 		t.Fatalf("reaped %v, discarded %v", processes.reaped, h.workspaces.discarded)
@@ -276,5 +281,66 @@ func TestACheckoutARunningRunUsesIsNotDiscarded(t *testing.T) {
 	checkout := adopter.handles["old"].events[0].Data["checkout"].(map[string]any)
 	if checkout["removed"] != false || checkout["skipped"] == nil {
 		t.Fatalf("checkout = %v", checkout)
+	}
+}
+
+// Runs that cannot be listed leave their effects with nothing recorded
+// about the reap: the reap fails.
+func TestAReapThatCannotListRunsFails(t *testing.T) {
+	h := newHarness()
+	r := reaping(h, abandonedRun("old"))
+	r.adopter.listErr = errors.New("runs unreadable")
+	err := r.reap()
+	if !errors.Is(err, r.adopter.listErr) || !strings.Contains(err.Error(), "listing abandoned runs") {
+		t.Fatalf("reap = %v", err)
+	}
+	if len(r.adopter.adopted) != 0 || len(r.processes.reaped) != 0 {
+		t.Fatalf("adopted %v, reaped %v", r.adopter.adopted, r.processes.reaped)
+	}
+}
+
+// A reaped run whose event or end cannot be written has no durable word
+// of the reap: the reap fails, naming the run, and the step failures the
+// event would have recorded. The other runs are reaped all the same.
+func TestAReapThatCannotRecordARunFails(t *testing.T) {
+	for name, tc := range map[string]struct {
+		fail func(*recorderSpy)
+		want []string
+	}{
+		"event": {
+			fail: func(h *recorderSpy) { h.appendErr = errors.New("events full") },
+			want: []string{"reaping run a", "recording the reap: events full", "process 777 is alive"},
+		},
+		"end": {
+			fail: func(h *recorderSpy) { h.finishErr = errors.New("record full") },
+			want: []string{"reaping run a", "finishing the run: record full"},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			h := newHarness()
+			b := abandonedRun("b")
+			b.Effects.Checkout.Dir = "/tmp/agister-checkout-b/workspace"
+			r := reaping(h, abandonedRun("a"), b)
+			r.processes.err = errors.New("process 777 is alive")
+			r.adopter.failing = map[string]func(*recorderSpy){"a": tc.fail}
+			err := r.reap()
+			if err == nil {
+				t.Fatal("the reap did not fail")
+			}
+			for _, want := range tc.want {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("missing %q in %v", want, err)
+				}
+			}
+			if strings.Contains(err.Error(), "run b") {
+				t.Errorf("run b is blamed: %v", err)
+			}
+			if !reflect.DeepEqual(r.adopter.adopted, []string{"a", "b"}) {
+				t.Fatalf("adopted = %v", r.adopter.adopted)
+			}
+			if finished := r.adopter.handles["b"].wait(t); finished.Result == nil || finished.Result.Status != run.Lost {
+				t.Fatalf("run b = %+v", finished.Result)
+			}
+		})
 	}
 }

@@ -22,8 +22,8 @@ input:
   values:
     base_revision: {source: git.revision, rev: "${param.base}"}
     candidate_revision: {source: git.revision, rev: "${param.candidate}"}
-    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}
-    changed_files: {source: git.changed_files, base: "${param.base}", head: "${param.candidate}"}
+    diff: {source: git.diff, base: "${value.base_revision}", head: "${value.candidate_revision}"}
+    changed_files: {source: git.changed_files, base: "${value.base_revision}", head: "${value.candidate_revision}"}
     architecture_context: {source: file, path: "${param.architecture}"}
 
 workspace:

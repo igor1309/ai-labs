@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -161,4 +162,41 @@ func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
 		_, state, err := store.Get(context.Background(), id)
 		return err == nil && state == domain.StateFinished
 	})
+}
+
+// A reap that fails is logged: nobody waits for it, and no run record says
+// so. Here the run store cannot be listed.
+func TestBuiltReaperLogsAFailedReap(t *testing.T) {
+	home := t.TempDir()
+	if err := os.WriteFile(filepath.Join(home, "runs"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, background, err := wire(cli.Config{Home: home})
+	if err != nil {
+		t.Fatal(err)
+	}
+	background.Start(context.Background())
+	background.Wait()
+
+	data, err := os.ReadFile(filepath.Join(home, "logs", "agister.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var logged []map[string]any
+	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
+		var entry map[string]any
+		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			t.Fatalf("log line %q: %v", line, err)
+		}
+		if entry["msg"] == "reaping abandoned runs failed" {
+			logged = append(logged, entry)
+		}
+	}
+	if len(logged) != 1 {
+		t.Fatalf("reap failures logged = %d in:\n%s", len(logged), data)
+	}
+	message, _ := logged[0]["error"].(string)
+	if logged[0]["level"] != "ERROR" || !strings.Contains(message, "listing abandoned runs") || !strings.Contains(message, "not a directory") {
+		t.Fatalf("logged = %v", logged[0])
+	}
 }

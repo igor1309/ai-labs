@@ -1,6 +1,7 @@
 package definition
 
 import (
+	"fmt"
 	"regexp"
 	"sort"
 	"strings"
@@ -33,8 +34,11 @@ type Param struct {
 // Value is one input the agent receives, and where it comes from.
 type Value struct {
 	Name   string
-	Source string            // input source kind, e.g. "git.diff", "file", "param"
-	Args   map[string]string // source arguments; may reference ${param.<name>}
+	Source string // input source kind, e.g. "git.diff", "file", "param"
+	// Args are the source arguments. They may reference ${param.<name>} and
+	// ${value.<name>}, the resolved text of an input value declared before
+	// this one.
+	Args map[string]string
 }
 
 // Output is a process's output contract.
@@ -151,9 +155,15 @@ func ParseProcess(doc Document) (Process, error) {
 		if value.Source == "" {
 			p.add(field+".source", "is required")
 		}
-		for _, reference := range value.references() {
+		for _, reference := range value.references("param") {
 			if !hasParam(process.Params, reference) {
 				p.add(field, "refers to ${param.%s}, which is not declared in input.params", reference)
+			}
+		}
+		// Values resolve in order, so a value refers only to earlier ones.
+		for _, reference := range value.references("value") {
+			if !hasValue(process.Values, reference) {
+				p.add(field, "refers to ${value.%s}, which is not an input value declared before it", reference)
 			}
 		}
 		process.Values = append(process.Values, value)
@@ -312,27 +322,47 @@ func (m Mapping) keep(verified func(Primitive) bool) (Mapping, []string) {
 	return kept, unverified
 }
 
-var paramReference = regexp.MustCompile(`\$\{param\.([a-z_][a-z0-9_]*)\}`)
+var reference = regexp.MustCompile(`\$\{(param|value)\.([a-z_][a-z0-9_]*)\}`)
 
-func (v Value) references() []string {
+// references returns the names the value's arguments refer to as
+// ${<kind>.<name>}.
+func (v Value) references(kind string) []string {
 	var names []string
 	for _, arg := range v.Args {
-		for _, match := range paramReference.FindAllStringSubmatch(arg, -1) {
-			names = append(names, match[1])
+		for _, match := range reference.FindAllStringSubmatch(arg, -1) {
+			if match[1] == kind {
+				names = append(names, match[2])
+			}
 		}
 	}
 	return names
 }
 
-// Bind substitutes ${param.<name>} references in the value's arguments.
-func (v Value) Bind(params map[string]string) map[string]string {
+// Bind substitutes the references in the value's arguments, in one pass:
+// ${param.<name>} from params, ${value.<name>} from values, the text of the
+// input values resolved before this one. A value reference values lacks is
+// an error: that input has no text value.
+func (v Value) Bind(params, values map[string]string) (map[string]string, error) {
 	bound := make(map[string]string, len(v.Args))
+	var missing []string
 	for key, arg := range v.Args {
-		bound[key] = paramReference.ReplaceAllStringFunc(arg, func(reference string) string {
-			return params[paramReference.FindStringSubmatch(reference)[1]]
+		bound[key] = reference.ReplaceAllStringFunc(arg, func(text string) string {
+			match := reference.FindStringSubmatch(text)
+			if match[1] == "param" {
+				return params[match[2]]
+			}
+			value, ok := values[match[2]]
+			if !ok {
+				missing = append(missing, match[2])
+			}
+			return value
 		})
 	}
-	return bound
+	if len(missing) > 0 {
+		sort.Strings(missing)
+		return nil, fmt.Errorf("refers to ${value.%s}, which has no text value", missing[0])
+	}
+	return bound, nil
 }
 
 func hasParam(params []Param, name string) bool {

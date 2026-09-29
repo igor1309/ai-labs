@@ -143,8 +143,8 @@ output:
 	if process.Values[0].Name != "diff" || process.Values[1].Name != "focus" {
 		t.Fatalf("value order not preserved: %+v", process.Values)
 	}
-	if bound := process.Values[0].Bind(map[string]string{"base": "trunk"}); bound["base"] != "trunk" || bound["head"] != "HEAD" {
-		t.Fatalf("bound = %v", bound)
+	if bound, err := process.Values[0].Bind(map[string]string{"base": "trunk"}, nil); err != nil || bound["base"] != "trunk" || bound["head"] != "HEAD" {
+		t.Fatalf("bound = %v, %v", bound, err)
 	}
 	if process.Params[0].Default != "main" || process.Params[1].HasDefault || process.Require[0] != "repository.read" || process.Output.Schema != "s" {
 		t.Fatalf("process = %+v", process)
@@ -377,4 +377,60 @@ func withoutTopLevel(data []byte, keys ...string) []byte {
 		}
 	}
 	return []byte(strings.Join(out, "\n"))
+}
+
+// A value may use the resolved text of a value declared before it, never
+// of itself or of a later one: values resolve in order.
+func TestValuesReferToValuesDeclaredBeforeThem(t *testing.T) {
+	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", `
+schema: agister.process/v1alpha1
+name: p
+type: process
+uses: agent:a
+input:
+  instruction: Do it.
+  params:
+    base: {default: main}
+  values:
+    base_revision: {source: git.revision, rev: "${param.base}"}
+    diff: {source: git.diff, base: "${value.base_revision}", head: "${param.base}"}
+output:
+  format: text
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	diff := process.Values[1]
+	// One pass: a param whose text looks like a reference stays as it is.
+	bound, err := diff.Bind(map[string]string{"base": "${value.base_revision}"}, map[string]string{"base_revision": "abc123"})
+	if err != nil || !reflect.DeepEqual(bound, map[string]string{"base": "abc123", "head": "${value.base_revision}"}) {
+		t.Fatalf("bound = %v, %v", bound, err)
+	}
+	if _, err := diff.Bind(map[string]string{"base": "main"}, nil); err == nil || !strings.Contains(err.Error(), "refers to ${value.base_revision}, which has no text value") {
+		t.Fatalf("binding without the value's text: %v", err)
+	}
+
+	_, err = definition.ParseProcess(doc(definition.KindProcess, "p", `
+schema: agister.process/v1alpha1
+name: p
+type: process
+uses: agent:a
+input:
+  instruction: Do it.
+  values:
+    diff: {source: git.diff, base: "${value.base_revision}", head: "${value.diff}"}
+    base_revision: {source: git.revision, rev: HEAD}
+    notes: {source: file, path: "${value.missing}"}
+output:
+  format: text
+`))
+	for _, want := range []string{
+		"input.values.diff: refers to ${value.base_revision}, which is not an input value declared before it",
+		"input.values.diff: refers to ${value.diff}, which is not an input value declared before it",
+		"input.values.notes: refers to ${value.missing}, which is not an input value declared before it",
+	} {
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("missing %q in:\n%v", want, err)
+		}
+	}
 }

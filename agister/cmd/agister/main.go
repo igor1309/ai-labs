@@ -90,10 +90,15 @@ func wire(config cli.Config) (*app.Gated, *app.BackgroundReaper, error) {
 		"git.changed_files": git.ChangedFiles{},
 	}
 	hosted := app.NewHosted()
-	// Abandoned runs are reaped beside the calls, never inside one.
-	reaping := &app.BackgroundReaper{Reaper: &app.Reaper{
-		Adopter: evidence, Processes: supervisor.Processes{}, Discarder: git.Workspaces{}, Clock: system.Clock{},
-	}}
+	// Abandoned runs are reaped beside the calls, never inside one. A reap
+	// that fails has no caller to tell and no run record to say so: the
+	// log does.
+	reaping := &app.BackgroundReaper{
+		Reaper: &app.Reaper{
+			Adopter: evidence, Processes: supervisor.Processes{}, Discarder: git.Workspaces{}, Clock: system.Clock{},
+		},
+		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },
+	}
 	provenance := fsprovenance.Store{Dir: filepath.Join(config.Home, "provenance")}
 	checkerOn := func(definitions app.DefinitionSource) *app.Checker {
 		return &app.Checker{Definitions: definitions, Validator: schema.Validator{}, Runtimes: runtimes, Sources: names(sources)}

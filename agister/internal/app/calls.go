@@ -339,7 +339,8 @@ func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revis
 }
 
 // resolveInputs binds caller params and resolves every input value to an
-// immutable value through its source.
+// immutable value through its source, in order: a value's arguments may
+// use the text of the values resolved before it, such as a commit hash.
 func (c *Calls) resolveInputs(ctx context.Context, process definition.Process, request run.Request) ([]run.Input, error) {
 	params := map[string]string{}
 	var unknown []string
@@ -369,14 +370,22 @@ func (c *Calls) resolveInputs(ctx context.Context, process definition.Process, r
 	}
 
 	inputs := make([]run.Input, 0, len(process.Values))
+	texts := map[string]string{}
 	for _, value := range process.Values {
 		provider, ok := c.Inputs[value.Source]
 		if !ok {
 			return nil, refuse("input %s: unknown source %q", value.Name, value.Source)
 		}
-		resolved, err := provider.Resolve(ctx, InputSpec{Source: value.Source, Args: value.Bind(params), Params: params, Cwd: request.Cwd})
+		args, err := value.Bind(params, texts)
 		if err != nil {
 			return nil, refuse("input %s: %v", value.Name, err)
+		}
+		resolved, err := provider.Resolve(ctx, InputSpec{Source: value.Source, Args: args, Params: params, Cwd: request.Cwd})
+		if err != nil {
+			return nil, refuse("input %s: %v", value.Name, err)
+		}
+		if text, ok := resolved.Value.(string); ok {
+			texts[value.Name] = text
 		}
 		inputs = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: resolved.Identity, Revision: resolved.Revision, Value: resolved.Value})
 	}

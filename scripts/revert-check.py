@@ -19,9 +19,13 @@ A spec lists mutations, each one undoing a fix:
 
 For each mutation the script checks that its tests pass on the code as it
 is, applies the replacement, runs the tests, and restores the file whatever
-happens. A mutation fails the check when a test still passes, when the code
-no longer builds (the test proves nothing then), or when find does not
-match exactly once. Exit status is 0 only if every mutation is caught.
+happens. Passing takes every listed test's PASS line and a zero exit from
+`go test`; being caught takes every listed test's FAIL line and a nonzero
+exit. So a package that fails outside the tests (a TestMain exiting 1) is
+no baseline, and one that exits 0 despite a failing test catches nothing.
+A mutation fails the check when a test still passes, when the code no
+longer builds (the test proves nothing then), or when find does not match
+exactly once. Exit status is 0 only if every mutation is caught.
 
 The caller's working tree and index are never written. By default the script
 snapshots the current working tree (tracked changes and untracked, non-ignored
@@ -82,15 +86,16 @@ def parse(path):
 
 
 def run_group(cmd, cwd, timeout):
-    """Runs cmd in its own process group and returns its output. Whatever ends
-    the wait (timeout, signal), the whole group is killed, test binary included."""
+    """Runs cmd in its own process group and returns (exit status, output).
+    Whatever ends the wait (timeout, signal), the whole group is killed, test
+    binary included."""
     proc = subprocess.Popen(
         cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         text=True, start_new_session=True,
     )
     try:
         out, _ = proc.communicate(timeout=timeout)
-        return out
+        return proc.returncode, out
     except BaseException:
         try:
             os.killpg(proc.pid, signal.SIGKILL)
@@ -127,15 +132,16 @@ def snapshot(root):
 
 
 def run_tests(module, tests):
-    """Returns {test: 'pass' | 'fail' | 'missing'}, or None if the build failed."""
-    outcome = {}
+    """Returns ({test: 'pass' | 'fail' | 'missing' | 'timeout'}, {package: exit
+    status}), or None if the build failed. A hung package has no status."""
+    outcome, statuses = {}, {}
     by_package = {}
     for package, test in tests:
         by_package.setdefault(package, []).append(test)
     for package, names in by_package.items():
         pattern = "^(" + "|".join(re.escape(n) for n in names) + ")$"
         try:
-            output = run_group(
+            status, output = run_group(
                 ["go", "test", "-count=1", "-timeout", "45s", "-v", "-run", pattern, package],
                 module, 60,
             )
@@ -146,6 +152,7 @@ def run_tests(module, tests):
             continue
         if "[build failed]" in output or "[setup failed]" in output:
             return None
+        statuses[package] = status
         for name in names:
             if re.search(rf"^--- FAIL: {re.escape(name)} ", output, re.M):
                 outcome[name] = "fail"
@@ -153,7 +160,7 @@ def run_tests(module, tests):
                 outcome[name] = "pass"
             else:
                 outcome[name] = "missing"
-    return outcome
+    return outcome, statuses
 
 
 def check(module, mutation):
@@ -163,29 +170,37 @@ def check(module, mutation):
     if original.count(mutation["find"]) != 1:
         return f"{name}: find matches {original.count(mutation['find'])} times in {mutation['file']}, want 1"
 
-    baseline = run_tests(module, mutation["tests"])
-    if baseline is None:
+    result = run_tests(module, mutation["tests"])
+    if result is None:
         return f"{name}: does not build before mutating"
+    baseline, statuses = result
     hung = [t for t, o in baseline.items() if o == "timeout"]
     if hung:
         return f"{name}: timed out before mutating: {', '.join(hung)}"
     failing = [t for t, o in baseline.items() if o != "pass"]
     if failing:
         return f"{name}: not passing before mutating: {', '.join(failing)}"
+    red = [f"{p} (exit {s})" for p, s in statuses.items() if s != 0]
+    if red:
+        return f"{name}: go test fails before mutating: {', '.join(red)}"
 
     try:
         path.write_text(original.replace(mutation["find"], mutation["replace"], 1))
-        mutated = run_tests(module, mutation["tests"])
+        result = run_tests(module, mutation["tests"])
     finally:
         path.write_text(original)
-    if mutated is None:
+    if result is None:
         return f"{name}: the mutation does not build, so it proves nothing"
+    mutated, statuses = result
     hung = [t for t, o in mutated.items() if o == "timeout"]
     if hung:
         return f"{name}: timed out with the fix undone, not a clean failure: {', '.join(hung)}"
     survivors = [t for t, o in mutated.items() if o != "fail"]
     if survivors:
         return f"{name}: still passing with the fix undone: {', '.join(survivors)}"
+    green = [p for p, s in statuses.items() if s == 0]
+    if green:
+        return f"{name}: go test exits 0 with the fix undone: {', '.join(green)}"
     return None
 
 

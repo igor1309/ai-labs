@@ -7,8 +7,11 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 )
 
-// RunReaper is what BackgroundReaper starts; Reaper is one.
-type RunReaper interface{ Reap(ctx context.Context) }
+// RunReaper is what BackgroundReaper starts; Reaper is one. A reap
+// returns what failed in recovery itself, which no run record says.
+type RunReaper interface {
+	Reap(ctx context.Context) error
+}
 
 // BackgroundReaper runs a reap beside the calls, never inside one: it does
 // not delay the caller, is detached from the caller's cancellation (the
@@ -16,6 +19,9 @@ type RunReaper interface{ Reap(ctx context.Context) }
 // time in this process. One is shared by every client built.
 type BackgroundReaper struct {
 	Reaper RunReaper
+	// Report, when set, is given the error of each reap that fails. Nobody
+	// waits for a reap, so this is the only place its failure shows.
+	Report func(error)
 
 	mu      sync.Mutex
 	running bool
@@ -42,7 +48,9 @@ func (b *BackgroundReaper) Start(ctx context.Context) {
 			b.running = false
 			b.mu.Unlock()
 		}()
-		b.Reaper.Reap(ctx)
+		if err := b.Reaper.Reap(ctx); err != nil && b.Report != nil {
+			b.Report(err)
+		}
 	}()
 }
 

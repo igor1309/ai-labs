@@ -236,6 +236,8 @@ type recorderSpy struct {
 	// updateErr, when set, is asked about each Update; a non-nil result
 	// fails it and the record is not kept.
 	updateErr        func(record run.Record) error
+	appendErr        error         // when set, Append fails with it
+	finishErr        error         // when set, Finish fails with it
 	onCreate         func()        // runs first in Create
 	hold             chan struct{} // when set, the first Append waits for it to close
 	onFinish         func() int    // observed state at finish time
@@ -260,6 +262,9 @@ func (s *recorderSpy) Append(event run.Event) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.appendErr != nil {
+		return s.appendErr
+	}
 	s.events = append(s.events, event)
 	return nil
 }
@@ -294,6 +299,9 @@ func (s *recorderSpy) Artifact(name string, data []byte) (run.Artifact, error) {
 }
 
 func (s *recorderSpy) Finish(record run.Record) error {
+	if s.finishErr != nil {
+		return s.finishErr
+	}
 	if s.onFinish != nil {
 		s.releasedAtFinish = s.onFinish()
 	}
@@ -391,6 +399,10 @@ type adopterSpy struct {
 	live      []string
 	liveReads int
 	onLive    func() // runs during LiveCheckouts
+	// listErr fails Abandoned; failing hands out, by run, handles set up
+	// to fail.
+	listErr error
+	failing map[string]func(*recorderSpy)
 }
 
 func (s *adopterSpy) LiveCheckouts(context.Context) ([]string, error) {
@@ -406,6 +418,9 @@ func (s *adopterSpy) LiveCheckouts(context.Context) ([]string, error) {
 func (s *adopterSpy) Abandoned(context.Context) ([]run.Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.listErr != nil {
+		return nil, s.listErr
+	}
 	return append([]run.Record(nil), s.runs...), nil
 }
 
@@ -420,6 +435,9 @@ func (s *adopterSpy) Adopt(_ context.Context, id string) (app.RunHandle, run.Rec
 		s.handles = map[string]*recorderSpy{}
 	}
 	handle := newRecorderSpy()
+	if fail := s.failing[id]; fail != nil {
+		fail(handle)
+	}
 	s.handles[id] = handle
 	for _, record := range s.runs {
 		if record.ID == id {

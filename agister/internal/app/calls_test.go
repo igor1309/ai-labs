@@ -444,6 +444,12 @@ func TestRefusalsComeBeforeEffects(t *testing.T) {
 		{"constraint on an input that is not a revision", func(h *harness) {
 			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "{source: git.revision,", "{source: git.diff,", 1)
 		}, contract.CallRequest{}, "constraint agent.model_family: input candidate_revision is not a revision", false},
+		{"input uses a value with no text", func(h *harness) {
+			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], `head: "${param.candidate}"`, `head: "${value.candidate_revision}"`, 1)
+			h.inputs.respond = func(app.InputSpec) (app.Resolved, error) {
+				return app.Resolved{Value: []string{"a.go"}, Identity: "sha-x", Revision: true}, nil
+			}
+		}, contract.CallRequest{}, "input diff: refers to ${value.candidate_revision}, which has no text value", false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -604,5 +610,31 @@ func TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded(t *testing.T) {
 		if source.Kind == definition.KindAgent && source.SHA256 != want {
 			t.Errorf("agent recorded %s, want %s", source.SHA256, want)
 		}
+	}
+}
+
+// A value's arguments may use the text of the values resolved before it:
+// the diff is taken between the very commits the call resolved, one of
+// which it checks out, not between names that could move meanwhile.
+func TestInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
+	h := newHarness()
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`,
+		`    base_revision: {source: git.revision, rev: "${param.base}"}
+    diff: {source: git.diff, base: "${value.base_revision}", head: "${value.candidate_revision}"}`, 1)
+	record := h.call(t, contract.CallRequest{Params: map[string]string{"base": "trunk"}})
+	if record.Result.Status != run.Completed {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	var gotArgs []map[string]string
+	for _, spec := range h.inputs.specs {
+		gotArgs = append(gotArgs, spec.Args)
+	}
+	wantArgs := []map[string]string{{"rev": "HEAD"}, {"rev": "trunk"}, {"base": "sha-trunk", "head": "sha-HEAD"}}
+	if !reflect.DeepEqual(gotArgs, wantArgs) {
+		t.Fatalf("input args = %v", gotArgs)
+	}
+	if !reflect.DeepEqual(h.workspaces.checkouts, [][2]string{{"/repo", "sha-HEAD"}}) {
+		t.Fatalf("checkouts = %v", h.workspaces.checkouts)
 	}
 }

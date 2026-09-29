@@ -19,6 +19,7 @@ type blockingReap struct {
 	running  int
 	peak     int
 	ctxErrs  []error
+	err      error // what each reap returns
 	started  chan struct{}
 	release  chan struct{}
 	releaser sync.Once
@@ -28,7 +29,7 @@ func newBlockingReap() *blockingReap {
 	return &blockingReap{started: make(chan struct{}, 8), release: make(chan struct{})}
 }
 
-func (b *blockingReap) Reap(ctx context.Context) {
+func (b *blockingReap) Reap(ctx context.Context) error {
 	b.mu.Lock()
 	b.runs++
 	b.running++
@@ -40,6 +41,7 @@ func (b *blockingReap) Reap(ctx context.Context) {
 	b.running--
 	b.ctxErrs = append(b.ctxErrs, ctx.Err())
 	b.mu.Unlock()
+	return b.err
 }
 
 func (b *blockingReap) let() { b.releaser.Do(func() { close(b.release) }) }
@@ -183,5 +185,28 @@ func TestReapOutlivesTheRequestThatStartedIt(t *testing.T) {
 	background.Wait()
 	if len(reap.ctxErrs) != 1 || reap.ctxErrs[0] != nil {
 		t.Fatalf("reap context errors = %v", reap.ctxErrs)
+	}
+}
+
+// Nobody waits for a reap, so the report is where its failure shows: each
+// failed reap is reported with its error, and one that succeeds is not.
+func TestAFailedReapIsReported(t *testing.T) {
+	reap := newBlockingReap()
+	reap.let()
+	failure := errors.New("listing abandoned runs: disk gone")
+	reap.err = failure
+	var reported []error
+	background := &app.BackgroundReaper{Reaper: reap, Report: func(err error) { reported = append(reported, err) }}
+	background.Start(context.Background())
+	background.Wait()
+	if len(reported) != 1 || reported[0] != failure {
+		t.Fatalf("reported = %v", reported)
+	}
+
+	reap.err = nil
+	background.Start(context.Background())
+	background.Wait()
+	if reap.runs != 2 || len(reported) != 1 {
+		t.Fatalf("reaps = %d, reported = %v", reap.runs, reported)
 	}
 }

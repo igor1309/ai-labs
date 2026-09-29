@@ -51,12 +51,14 @@ function sh(cwd, ...args) {
   return execFileSync(args[0], args.slice(1), { cwd, encoding: 'utf8' });
 }
 
-function makeRepo() {
+// extra: more files for the module, by name.
+function makeRepo(extra = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'revert-check-test-'));
   mkdirSync(join(dir, 'mod'));
   writeFileSync(join(dir, 'mod', 'go.mod'), 'module example.com/mod\n\ngo 1.21\n');
   writeFileSync(join(dir, 'mod', 'mod.go'), GO_SOURCE);
   writeFileSync(join(dir, 'mod', 'mod_test.go'), GO_TEST);
+  for (const [name, text] of Object.entries(extra)) writeFileSync(join(dir, 'mod', name), text);
   sh(dir, 'git', 'init', '-q');
   sh(dir, 'git', 'config', 'user.email', 't@example.com');
   sh(dir, 'git', 'config', 'user.name', 't');
@@ -96,8 +98,8 @@ replace: const Mode = "blocked"
 test: . TestFixed
 `;
 
-function withRepo(fn) {
-  const dir = makeRepo();
+function withRepo(fn, extra) {
+  const dir = makeRepo(extra);
   try {
     return fn(dir);
   } finally {
@@ -165,6 +167,39 @@ test: . TestOther
     assert.match(pinned.stdout, new RegExp(`checking revision ${head}`));
     assert.match(pinned.stdout, /find matches 0 times/);
   });
+});
+
+// A TestMain that ends the package with its own exit status, whatever the
+// tests' PASS and FAIL lines say.
+const exitingWith = (code) => `package mod
+
+import (
+	"os"
+	"testing"
+)
+
+func TestMain(m *testing.M) {
+	m.Run()
+	os.Exit(${code})
+}
+`;
+
+it('rejects a baseline whose go test fails even though the listed tests pass', () => {
+  withRepo((dir) => {
+    const result = run(dir, writeSpec(dir, CAUGHT));
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stdout, /^FAIL {2}caught: go test fails before mutating: \. \(exit 1\)$/m);
+    assert.match(result.stdout, /0\/1 mutations caught/);
+  }, { 'main_test.go': exitingWith(1) });
+});
+
+it('does not count a mutation caught when go test exits 0 despite a failing test', () => {
+  withRepo((dir) => {
+    const result = run(dir, writeSpec(dir, CAUGHT));
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stdout, /^FAIL {2}caught: go test exits 0 with the fix undone: \.$/m);
+    assert.match(result.stdout, /0\/1 mutations caught/);
+  }, { 'main_test.go': exitingWith(0) });
 });
 
 function killed(signal) {

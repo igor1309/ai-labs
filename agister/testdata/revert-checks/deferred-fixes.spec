@@ -104,7 +104,7 @@ test: ./internal/app TestCallRecordsItsEffectsAsSoonAsTheyExist
 [a failed reap step still finishes the run]
 file: internal/app/reap.go
 find: \t\t\tif err != nil {\n\t\t\t\tfailures = append(failures, fmt.Sprintf("checkout
-replace: \t\t\tif err != nil {\n\t\t\t\treturn\n\t\t\t\tfailures = append(failures, fmt.Sprintf("checkout
+replace: \t\t\tif err != nil {\n\t\t\t\treturn nil\n\t\t\t\tfailures = append(failures, fmt.Sprintf("checkout
 test: ./internal/app TestFailedReapStepsStillFinishTheRunWithTheError
 
 [the supervisor's reference carries the token]
@@ -235,7 +235,7 @@ test: ./internal/app TestNothingIsAdoptedAfterTheDeadline
 
 [the deadline is checked before reading live runs]
 file: internal/app/reap.go
-find: \t\tif ctx.Err() != nil {\n\t\t\treturn\n\t\t}\n\t\t// Read before
+find: \t\tif ctx.Err() != nil {\n\t\t\tbreak\n\t\t}\n\t\t// Read before
 replace: \t\t// Read before
 test: ./internal/app TestReapingIsBounded
 
