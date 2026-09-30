@@ -21,6 +21,25 @@ it('reports docs-only components as regular LOC rows', () => {
   );
 });
 
+it('reports Agister as a Go component with code and tests', () => {
+  const output = execFileSync('bash', ['scripts/loc-dashboard.sh'], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+  });
+  const agisterCounts = projectRows(output)
+    .find((line) => /^agister\s/.test(line.trim()))
+    .trim()
+    .split(/\s+/)
+    .slice(1, 3)
+    .map(Number);
+
+  assert.deepEqual(
+    agisterCounts.map((count) => count > 0),
+    [true, true]
+  );
+  assert.doesNotMatch(output, /unknown top-level dirs/);
+});
+
 it('reports Reinix as a code component once implementation exists', () => {
   const output = execFileSync('bash', ['scripts/loc-dashboard.sh'], {
     cwd: process.cwd(),
