@@ -28,7 +28,6 @@ type Effective struct {
 	Require     []string
 	Access      string
 	Scope       string
-	Constraints []definition.Constraint
 }
 
 // InvalidError lists every composition problem.
@@ -149,20 +148,6 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 		add("workspace.scope repository conflicts with workspace.checkout, which works in a checkout")
 	}
 
-	constraints := append([]definition.Constraint(nil), base.Constraints...)
-	for _, constraint := range over.Constraints {
-		if hasSubject(constraints, constraint.Subject) {
-			add("constraints.%s: already set by %s; constraints can only be added", constraint.Subject, origin)
-			continue
-		}
-		constraints = append(constraints, constraint)
-	}
-	for _, constraint := range constraints {
-		if !hasValue(process.Values, constraint.CandidateInput) {
-			add("constraints.%s: refers to input.%s, which process %s does not declare", constraint.Subject, constraint.CandidateInput, process.Name)
-		}
-	}
-
 	deny := union(base.Deny, over.Deny)
 	if access == "read-only" {
 		deny = union(deny, service.Writing)
@@ -187,7 +172,6 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 		Require:     process.Require,
 		Access:      access,
 		Scope:       scope,
-		Constraints: constraints,
 	}, nil
 }
 
@@ -231,15 +215,6 @@ func narrowInt(add func(string, ...any), field string, base, over *int) *int {
 		return base
 	}
 	return over
-}
-
-func hasSubject(constraints []definition.Constraint, subject string) bool {
-	for _, constraint := range constraints {
-		if constraint.Subject == subject {
-			return true
-		}
-	}
-	return false
 }
 
 func hasValue(values []definition.Value, name string) bool {

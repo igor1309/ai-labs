@@ -11,7 +11,6 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/constraint"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -51,11 +50,6 @@ name: pol
 timeout: 20m
 tools: {allow: [repository.read, repository.search, repository.diff]}
 workspace: {access: read-only, scope: candidate}
-constraints:
-  agent.model_family:
-    not_equal: evidence.candidate(input.candidate_revision).provenance.writer.model_family
-    on_unsatisfied: fail
-    on_unknown: pass
 `},
 		definition.KindProcess: {"p": `schema: agister.process/v1alpha1
 name: p
@@ -92,7 +86,6 @@ type harness struct {
 	inputs     *inputsSpy
 	workspaces *workspacesSpy
 	changes    *changesSpy
-	provenance *provenanceSpy
 	validator  *validatorSpy
 	recorder   *recorderSpy
 }
@@ -106,7 +99,6 @@ func newHarness() *harness {
 		},
 		workspaces: &workspacesSpy{root: "/repo", dir: "/work/checkout"},
 		changes:    &changesSpy{},
-		provenance: &provenanceSpy{},
 		validator:  &validatorSpy{},
 		recorder:   newRecorderSpy(),
 	}
@@ -132,7 +124,7 @@ func (h *harness) callsOn(src app.ResolverDefinitions) *app.Calls {
 		app.NewResolver(src, h.runtimes, h.validator),
 		h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
-		h.workspaces, h.changes, h.provenance, h.validator, h.recorder, h.runs,
+		h.workspaces, h.changes, h.validator, h.recorder, h.runs,
 		h.clock, fixedIDs{}, "/state", h.hosted,
 	)
 }
@@ -185,10 +177,6 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 	if !reflect.DeepEqual(gotArgs, wantArgs) || h.inputs.specs[0].Cwd != "/repo" {
 		t.Fatalf("input specs = %+v", h.inputs.specs)
 	}
-	// Constraint looked up the candidate's resolved identity.
-	if !reflect.DeepEqual(h.provenance.revisions, []string{"sha-HEAD"}) {
-		t.Fatalf("provenance asked for %v", h.provenance.revisions)
-	}
 	// The checkout is of the resolved revision, and released once.
 	if !reflect.DeepEqual(h.workspaces.checkouts, [][2]string{{"/repo", "sha-HEAD"}}) || h.workspaces.releases() != 1 {
 		t.Fatalf("checkouts %v, released %d", h.workspaces.checkouts, h.workspaces.releases())
@@ -231,7 +219,7 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 		t.Fatalf("record = %+v", record)
 	}
 	order := strings.Join(h.recorder.kinds(), " ")
-	if order != "CALL_SUBMITTED PLANNED PERMISSIONS_WITHHELD CONSTRAINT_CHECKED PROCESS_STARTED CALL_FINISHED" {
+	if order != "CALL_SUBMITTED PLANNED PERMISSIONS_WITHHELD PROCESS_STARTED CALL_FINISHED" {
 		t.Fatalf("events = %s", order)
 	}
 	if !reflect.DeepEqual(h.recorder.raw, []string{`{"raw":true}`}) {
@@ -434,7 +422,7 @@ func TestCallsResolveThroughTheResolutionTheyDeclare(t *testing.T) {
 	h := newHarness()
 	double := &app.SnapshotCounter{Reason: "the double refuses"}
 	h.calls = app.NewCalls(
-		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes, h.provenance,
+		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes,
 		h.validator, h.recorder, h.runs, h.clock, fixedIDs{}, "/state", h.hosted,
 	)
 	record := h.call(t, contract.CallRequest{})
@@ -481,13 +469,7 @@ func TestRefusalsComeBeforeEffects(t *testing.T) {
 		{"input fails", func(h *harness) {
 			h.inputs.respond = func(app.InputSpec) (app.Resolved, error) { return app.Resolved{}, errors.New("not a commit") }
 		}, contract.CallRequest{}, "input candidate_revision: not a commit", false},
-		{"same model family wrote the candidate", func(h *harness) {
-			h.provenance.writer = &constraint.Writer{Agent: "w", ModelFamily: "fam", RunID: "r0"}
-		}, contract.CallRequest{}, "constraint agent.model_family unsatisfied: agent family fam, writer family fam (run r0)", false},
 		{"workspace overlaps state", func(h *harness) { h.workspaces.root = "/state/repo" }, contract.CallRequest{}, "workspace /state/repo overlaps Agister's state /state", false},
-		{"constraint on an input that is not a revision", func(h *harness) {
-			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "{source: git.revision,", "{source: git.diff,", 1)
-		}, contract.CallRequest{}, "constraint agent.model_family: input candidate_revision is not a revision", false},
 		{"input uses a value with no text", func(h *harness) {
 			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], `head: "${param.candidate}"`, `head: "${value.candidate_revision}"`, 1)
 			h.inputs.respond = func(app.InputSpec) (app.Resolved, error) {
@@ -704,8 +686,7 @@ func TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes(t *testing.T) {
 	wantEffective := `{"timeout":1200000000000,"max_attempts":1,` +
 		`"allow":["repository.read","repository.search","repository.diff"],"deny":[],` +
 		`"permissions":["repository.read","repository.search","repository.diff"],"require":["repository.read"],` +
-		`"access":"read-only","scope":"candidate",` +
-		`"constraints":[{"subject":"agent.model_family","candidate_input":"candidate_revision","on_unknown":"pass"}]}`
+		`"access":"read-only","scope":"candidate"}`
 	if got := encode(record.Effective); got != wantEffective {
 		t.Errorf("effective\n got %s\nwant %s", got, wantEffective)
 	}

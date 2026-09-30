@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/constraint"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/prompt"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
@@ -25,7 +24,6 @@ type Calls struct {
 	inputs     map[string]InputProvider
 	workspaces CallWorkspaces
 	changes    CallChanges
-	provenance Provenance
 	validator  CallValidator
 	recorder   RunRecorder
 	runs       CallRuns
@@ -125,11 +123,6 @@ type CallChanges interface {
 	Changes(ctx context.Context, dir, revision string) ([]byte, error)
 }
 
-// Provenance returns the recorded writer of a revision, or nil.
-type Provenance interface {
-	Writer(ctx context.Context, revision string) (*constraint.Writer, error)
-}
-
 // RunRecorder creates run records owned by the calling process.
 type RunRecorder interface {
 	Create(ctx context.Context, record run.Record) (RunHandle, error)
@@ -144,7 +137,6 @@ func NewCalls(
 	inputs map[string]InputProvider,
 	workspaces CallWorkspaces,
 	changes CallChanges,
-	provenance Provenance,
 	validator CallValidator,
 	recorder RunRecorder,
 	runs CallRuns,
@@ -159,7 +151,6 @@ func NewCalls(
 		inputs:     inputs,
 		workspaces: workspaces,
 		changes:    changes,
-		provenance: provenance,
 		validator:  validator,
 		recorder:   recorder,
 		runs:       runs,
@@ -335,32 +326,6 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	}
 	record.Inputs = summarize(inputs)
 	_ = handle.Update(record)
-
-	// Constraints are checked before any workspace or runtime exists.
-	for _, rule := range res.effective.Constraints {
-		if res.agent.ModelFamily == "" {
-			fail(refuse("process %s constrains %s, but agent %s declares no model_family", res.process.Name, rule.Subject, res.agent.Name))
-			return
-		}
-		// Provenance is keyed by commit: any other input would always be
-		// "unknown" and could pass the constraint silently.
-		revision, ok := revisionOf(inputs, rule.CandidateInput)
-		if !ok {
-			fail(refuse("constraint %s: input %s is not a revision", rule.Subject, rule.CandidateInput))
-			return
-		}
-		writer, err := c.provenance.Writer(ctx, revision)
-		if err != nil {
-			fail(err)
-			return
-		}
-		outcome := constraint.ModelFamily(rule, res.agent.ModelFamily, revision, writer)
-		event(run.SourceAgister, "CONSTRAINT_CHECKED", map[string]any{"subject": outcome.Subject, "satisfied": outcome.Satisfied, "unknown": outcome.Unknown, "basis": outcome.Basis})
-		if !outcome.Satisfied {
-			fail(refuse("constraint %s unsatisfied: %s", outcome.Subject, outcome.Basis))
-			return
-		}
-	}
 
 	workspace, err := c.prepareWorkspace(ctx, res.process, inputs, record.Request.Cwd)
 	if err != nil {

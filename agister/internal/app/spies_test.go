@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
-	"github.com/igor1309/ai-labs/agister/internal/domain/constraint"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -218,16 +217,6 @@ func (s *changesSpy) Changes(_ context.Context, dir, revision string) ([]byte, e
 		panic("changes exploded")
 	}
 	return s.changes, s.changeErr
-}
-
-type provenanceSpy struct {
-	writer    *constraint.Writer
-	revisions []string
-}
-
-func (s *provenanceSpy) Writer(_ context.Context, revision string) (*constraint.Writer, error) {
-	s.revisions = append(s.revisions, revision)
-	return s.writer, nil
 }
 
 type validatorSpy struct {

@@ -196,11 +196,6 @@ func ParseProcess(doc Document) (Process, error) {
 		p.add("output.format", `must be "json" or "text"`)
 	}
 
-	for _, constraint := range limits.Constraints {
-		if !hasValue(process.Values, constraint.CandidateInput) {
-			p.add("constraints."+constraint.Subject, "refers to input.%s, which is not an input value", constraint.CandidateInput)
-		}
-	}
 	return process, p.err("process " + subjectName(doc.Source))
 }
 

@@ -223,9 +223,9 @@ func TestAgentCallEndToEnd(t *testing.T) {
 	if !logged {
 		t.Fatal("turn not logged under its run ID")
 	}
-	// Constraints and plan come before any runtime process.
+	// The plan comes before any runtime process.
 	order := strings.Join(last.kinds(), " ")
-	if strings.Index(order, "CONSTRAINT_CHECKED") > strings.Index(order, "PROCESS_STARTED") || !strings.Contains(order, "PERMISSIONS_WITHHELD") {
+	if planned := strings.Index(order, "PLANNED"); planned < 0 || planned > strings.Index(order, "PROCESS_STARTED") || !strings.Contains(order, "PERMISSIONS_WITHHELD") {
 		t.Fatalf("events = %s", order)
 	}
 }
@@ -490,19 +490,21 @@ func TestAgentCreateAsksBeforeReplacing(t *testing.T) {
 		t.Fatalf("yes: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	// An agent that would break the settings is refused before the question,
-	// and every command still works afterwards. Here a process constrains
-	// its agent's model family, so the agent must declare one.
-	constrained := strings.Replace(read(t, filepath.Join(home, "processes", "adversarial_review.yaml")), "\ninput:\n", `
-constraints:
-  agent.model_family:
-    not_equal: evidence.candidate(input.candidate_revision).provenance.writer.model_family
-    on_unsatisfied: fail
-
-input:
-`, 1)
-	write(t, filepath.Join(home, "processes", "adversarial_review.yaml"), constrained)
+	// and every command still works afterwards. Here the agent's runtime is
+	// valid, but the reviewer's processes cannot run on it: its one
+	// primitive also grants what their policy does not allow.
+	write(t, filepath.Join(home, "runtimes", "narrow.yaml"), `schema: agister.runtime/v1alpha1
+name: narrow
+adapter: claude-code
+contract: claude-code/2
+efforts: [high]
+primitives:
+  select: one
+  items:
+    Bash: {grants: [process.execute, repository.read], verified: ["2.1."]}
+`)
 	current := read(t, reviewer)
-	r := agisterInput(t, "yes\n", home, dir, "agent", "create", "reviewer", "--force", "--runtime", "claude-code")
+	r := agisterInput(t, "yes\n", home, dir, "agent", "create", "reviewer", "--force", "--runtime", "narrow")
 	if r.code != cli.ExitUsage || strings.Contains(r.stderr, "Type yes") || !strings.Contains(r.stderr, "agent reviewer would break the global settings") || read(t, reviewer) != current {
 		t.Fatalf("breaking agent: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}

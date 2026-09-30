@@ -48,8 +48,7 @@ func TestEveryInconsistencyIsReported(t *testing.T) {
 	b.Policies["bad"] = definition.Policy{Name: "bad", Limits: definition.Limits{Allow: []string{"fly"}}}
 	b.Processes["p"] = definition.Process{Name: "p", Agent: "a", Policy: "pol",
 		Output: definition.Output{Format: "json", Schema: "gone"},
-		Values: []definition.Value{{Name: "v", Source: "http.get"}},
-		Limits: definition.Limits{Constraints: []definition.Constraint{{Subject: definition.ModelFamilySubject, CandidateInput: "v", OnUnknown: "fail"}}}}
+		Values: []definition.Value{{Name: "v", Source: "http.get"}}}
 	b.Processes["q"] = definition.Process{Name: "q", Agent: "a", Policy: "nope", Output: definition.Output{Format: "text"}}
 	b.Processes["r"] = definition.Process{Name: "r", Agent: "a", Output: definition.Output{Format: "text"},
 		Limits: definition.Limits{Timeout: timeout(time.Minute), Allow: []string{"write"}, AllowSet: true}, Require: []string{"write"}}
@@ -65,7 +64,6 @@ func TestEveryInconsistencyIsReported(t *testing.T) {
 		`policy bad: unknown permission "fly"`,
 		`process p: input v: unknown source "http.get"`,
 		`process p: output schema "gone" does not exist`,
-		`process p: constrains the model family, but agent a declares none`,
 		`process q: policy "nope" does not exist`,
 		`process r: cannot run on agent a's runtime rt`,
 		`runtime mapping rt2: unknown adapter "gemini"`,

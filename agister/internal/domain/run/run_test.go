@@ -80,7 +80,6 @@ func TestRecordJSONForDefinitionsPolicyAndPlanIsFixed(t *testing.T) {
 			Require:     []string{"repository.read"},
 			Access:      "read-only",
 			Scope:       "candidate",
-			Constraints: []run.Constraint{{Subject: "agent.model_family", CandidateInput: "candidate", OnUnknown: "fail"}},
 		},
 		Plan: &run.Plan{Primitives: []string{"Read"}, Granted: []string{"repository.read"}, Withheld: []string{"repository.diff"}},
 	}
@@ -96,8 +95,7 @@ func TestRecordJSONForDefinitionsPolicyAndPlanIsFixed(t *testing.T) {
 		"definitions": `[{"kind":"processes","name":"p","path":"/home/.agister/processes/p.yaml","sha256":"abc"},` +
 			`{"kind":"agents","name":"a","path":"/repo/.agister/agents/a.toml","sha256":"def","project":true,"overrides":"/home/.agister/agents/a.toml"}]`,
 		"effective": `{"timeout":1200000000000,"max_attempts":1,"max_cost_usd":0.5,"allow":["repository.read"],"deny":[],` +
-			`"permissions":["repository.read"],"require":["repository.read"],"access":"read-only","scope":"candidate",` +
-			`"constraints":[{"subject":"agent.model_family","candidate_input":"candidate","on_unknown":"fail"}]}`,
+			`"permissions":["repository.read"],"require":["repository.read"],"access":"read-only","scope":"candidate"}`,
 		"plan": `{"primitives":["Read"],"granted":["repository.read"],"withheld":["repository.diff"]}`,
 	}
 	for field, text := range want {
@@ -109,5 +107,22 @@ func TestRecordJSONForDefinitionsPolicyAndPlanIsFixed(t *testing.T) {
 	var back run.Record
 	if err := json.Unmarshal(data, &back); err != nil || !reflect.DeepEqual(back, record) {
 		t.Errorf("read back %+v, %v", back, err)
+	}
+}
+
+// A record written while policies could declare constraints still reads:
+// the constraints it recorded are ignored, and everything else is kept.
+func TestRecordWithConstraintsStillReads(t *testing.T) {
+	data := `{"id":"run-0","effective":{"timeout":1200000000000,"max_attempts":1,"allow":["repository.read"],"deny":[],` +
+		`"permissions":["repository.read"],"access":"read-only","scope":"candidate",` +
+		`"constraints":[{"subject":"agent.model_family","candidate_input":"candidate","on_unknown":"fail"}]}}`
+	var record run.Record
+	if err := json.Unmarshal([]byte(data), &record); err != nil {
+		t.Fatal(err)
+	}
+	want := run.EffectivePolicy{Timeout: 20 * time.Minute, MaxAttempts: 1, Allow: []string{"repository.read"}, Deny: []string{},
+		Permissions: []string{"repository.read"}, Access: "read-only", Scope: "candidate"}
+	if record.ID != "run-0" || record.Effective == nil || !reflect.DeepEqual(*record.Effective, want) {
+		t.Fatalf("record = %+v, effective %+v", record, record.Effective)
 	}
 }

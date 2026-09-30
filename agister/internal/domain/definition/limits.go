@@ -1,8 +1,6 @@
 package definition
 
 import (
-	"regexp"
-	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -19,24 +17,9 @@ type Limits struct {
 	Deny        []string       `json:"deny,omitempty"`
 	Access      string         `json:"access,omitempty"` // read-only | read-write
 	Scope       string         `json:"scope,omitempty"`  // candidate | repository
-	Constraints []Constraint   `json:"constraints,omitempty"`
 }
 
-// Constraint requires the agent's model family to differ from that of the
-// agent that wrote a revision, as recorded by Agister's own provenance.
-type Constraint struct {
-	Subject        string
-	CandidateInput string
-	// OnUnknown decides the result when no provenance exists: "fail"
-	// (default) or "pass". Missing provenance is never satisfaction by itself.
-	OnUnknown string
-}
-
-const ModelFamilySubject = "agent.model_family"
-
-var limitKeys = []string{"timeout", "max_cost_usd", "retry", "tools", "workspace", "isolation", "resources", "artifacts", "constraints"}
-
-var provenanceExpression = regexp.MustCompile(`^evidence\.candidate\(input\.([a-z_][a-z0-9_]*)\)\.provenance\.writer\.model_family$`)
+var limitKeys = []string{"timeout", "max_cost_usd", "retry", "tools", "workspace", "isolation", "resources", "artifacts"}
 
 func parseLimits(values map[string]*yaml.Node, toolKeys, workspaceKeys []string, p *problems) (Limits, map[string]*yaml.Node, map[string]*yaml.Node) {
 	var limits Limits
@@ -89,42 +72,11 @@ func parseLimits(values map[string]*yaml.Node, toolKeys, workspaceKeys []string,
 		}
 	}
 	// Reserving resources and retaining artifacts need the service; a
-	// field Agister would silently ignore is refused (deferred item 5).
+	// field Agister would silently ignore is refused.
 	for _, field := range []string{"resources", "artifacts"} {
 		if _, ok := values[field]; ok {
 			p.add(field, "not supported yet: Agister would not enforce it")
 		}
 	}
-	for _, entry := range mapping(values["constraints"], "constraints", p) {
-		if constraint, ok := parseConstraint(entry, p); ok {
-			limits.Constraints = append(limits.Constraints, constraint)
-		}
-	}
 	return limits, tools, workspace
-}
-
-func parseConstraint(entry pair, p *problems) (Constraint, bool) {
-	field := "constraints." + entry.key
-	if entry.key != ModelFamilySubject {
-		p.add(field, "unsupported constraint subject (supported: %s)", ModelFamilySubject)
-		return Constraint{}, false
-	}
-	rule := fields(entry.value, field, []string{"not_equal", "on_unsatisfied", "on_unknown"}, p)
-	expression, _ := scalar(rule["not_equal"], field+".not_equal", p)
-	match := provenanceExpression.FindStringSubmatch(strings.TrimSpace(expression))
-	if match == nil {
-		p.add(field+".not_equal", "supported form: evidence.candidate(input.<name>).provenance.writer.model_family")
-		return Constraint{}, false
-	}
-	if value, _ := scalar(rule["on_unsatisfied"], field+".on_unsatisfied", p); value != "fail" {
-		p.add(field+".on_unsatisfied", `must be "fail"`)
-	}
-	onUnknown := "fail"
-	if node, ok := rule["on_unknown"]; ok {
-		onUnknown, _ = scalar(node, field+".on_unknown", p)
-		if onUnknown != "fail" && onUnknown != "pass" {
-			p.add(field+".on_unknown", `must be "fail" or "pass"`)
-		}
-	}
-	return Constraint{Subject: ModelFamilySubject, CandidateInput: match[1], OnUnknown: onUnknown}, true
 }

@@ -288,7 +288,9 @@ func TestGatedSubmitRecordsWhatTheCheckRead(t *testing.T) {
 func TestGatedWriteScopeChecksTheGlobalSnapshot(t *testing.T) {
 	ctx := context.Background()
 	h := newHarness()
+	h.defs.docs[definition.KindRuntime]["narrow"] = narrowRuntime
 	global := &definitionsSpy{docs: settingsDocs()}
+	global.docs[definition.KindRuntime]["narrow"] = narrowRuntime
 	gated := &app.Gated{
 		Definitions: h.defs,
 		Global:      global,
@@ -302,15 +304,14 @@ func TestGatedWriteScopeChecksTheGlobalSnapshot(t *testing.T) {
 					Settings: app.NewSettings(src, &writerSpy{existed: map[string]bool{"agents/a": true}}, nil, []app.Scope{{Name: "global settings", Check: checker(globalOnly)}}),
 				},
 				f: func() {
-					// Live, the policy no longer constrains the model family.
-					policy := strings.Split(settingsDocs()[definition.KindPolicy]["pol"], "constraints:")[0]
-					global.set(definition.KindPolicy, "pol", policy)
+					// Live, process p can run on runtime narrow.
+					global.set(definition.KindRuntime, "narrow", strings.Replace(settingsDocs()[definition.KindRuntime]["rt"], "name: rt", "name: narrow", 1))
 				},
 			}
 		},
 	}
-	// Policy pol constrains the model family; this agent declares none.
-	_, err := gated.CreateAgent(ctx, contract.Agent{Name: "a", Runtime: "rt"}, true, nil)
+	// Process p uses agent a, and cannot run on runtime narrow as checked.
+	_, err := gated.CreateAgent(ctx, contract.Agent{Name: "a", Runtime: "narrow"}, true, nil)
 	var input *contract.InputError
 	if !errors.As(err, &input) || !strings.Contains(err.Error(), "would break the global settings") {
 		t.Fatalf("err = %v, want the write refused on the checked settings", err)

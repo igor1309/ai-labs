@@ -25,22 +25,10 @@ find: json:"withheld"
 replace: json:"not_granted"
 test: ./internal/domain/run TestRecordJSONForDefinitionsPolicyAndPlanIsFixed
 
-[a constraint's tags are the record's own]
-file: internal/domain/run/snapshots.go
-find: json:"on_unknown"
-replace: json:"onUnknown"
-test: ./internal/domain/run TestRecordJSONForDefinitionsPolicyAndPlanIsFixed
-
 # What a call resolved is translated into them field for field.
 [the recorded effective policy keeps the scope]
 file: internal/app/recording.go
 find: \t\tScope:       effective.Scope,\n
-replace: 
-test: ./internal/app TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes
-
-[the recorded effective policy keeps the constraints]
-file: internal/app/recording.go
-find: \t\tConstraints: constraints,\n
 replace: 
 test: ./internal/app TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes
 
@@ -151,14 +139,14 @@ test: ./cmd/agister TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted
 # Calls prepare the workspace and capture its changes through two roles.
 [the built calls prepare the workspace through the wired role]
 file: cmd/agister/main.go
-find: git.Workspaces{}, git.Workspaces{}, provenance
-replace: struct{ app.CallWorkspaces }{}, git.Workspaces{}, provenance
+find: git.Workspaces{}, git.Workspaces{}, schema.Validator{}
+replace: struct{ app.CallWorkspaces }{}, git.Workspaces{}, schema.Validator{}
 test: ./cmd/agister TestWorkspaceChangesAreKept
 
 [the built calls capture changes through the wired role]
 file: cmd/agister/main.go
-find: git.Workspaces{}, git.Workspaces{}, provenance
-replace: git.Workspaces{}, struct{ app.CallChanges }{}, provenance
+find: git.Workspaces{}, git.Workspaces{}, schema.Validator{}
+replace: git.Workspaces{}, struct{ app.CallChanges }{}, schema.Validator{}
 test: ./cmd/agister TestWorkspaceChangesAreKept
 
 # No interface is shared: ports.go holds data only.

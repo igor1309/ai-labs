@@ -115,9 +115,6 @@ func Check(b Bundle, m Mechanisms) []Problem {
 			add(subject, "agent %q does not exist", process.Agent)
 			continue
 		}
-		if len(effective.Constraints) > 0 && agent.ModelFamily == "" {
-			add(subject, "constrains the model family, but agent %s declares none", agent.Name)
-		}
 		mapping, ok := b.Mappings[agent.Runtime]
 		if !ok {
 			continue // reported on the agent

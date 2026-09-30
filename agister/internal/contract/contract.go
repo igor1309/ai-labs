@@ -147,7 +147,6 @@ type ProcessView struct {
 	Permissions []string
 	Access      string
 	Scope       string
-	Constraints []string
 	// Plan on the agent's runtime, or why none exists.
 	Primitives []string
 	Withheld   []string

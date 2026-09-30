@@ -375,9 +375,6 @@ func (i *Inspection) ShowProcess(ctx context.Context, name, agent string) (contr
 	for _, value := range res.process.Values {
 		view.Inputs = append(view.Inputs, value.Name+" <- "+value.Source)
 	}
-	for _, rule := range res.effective.Constraints {
-		view.Constraints = append(view.Constraints, fmt.Sprintf("%s differs from the writer of input.%s (unknown: %s)", rule.Subject, rule.CandidateInput, rule.OnUnknown))
-	}
 	for _, source := range res.sources {
 		layer := "global"
 		if source.Project {

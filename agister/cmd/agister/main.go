@@ -16,7 +16,6 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/examples"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/fsprovenance"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/inputs"
@@ -97,7 +96,6 @@ func wire(config cli.Config) (*app.Gated, *app.BackgroundReaper, error) {
 		Reaper: app.NewReaper(evidence, supervisor.Processes{}, git.Workspaces{}, system.Clock{}),
 		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },
 	}
-	provenance := fsprovenance.Store{Dir: filepath.Join(config.Home, "provenance")}
 	checkerOn := func(definitions app.GateDefinitions) *app.Checker {
 		return app.NewChecker(definitions, schema.Validator{}, runtimes, names(sources))
 	}
@@ -122,7 +120,7 @@ func wire(config cli.Config) (*app.Gated, *app.BackgroundReaper, error) {
 			Checker:    checkerOn(layered),
 			Inspection: app.NewInspection(resolverOn(layered)),
 			Calls: app.NewCalls(
-				resolverOn(layered), runtimes, sources, git.Workspaces{}, git.Workspaces{}, provenance, schema.Validator{},
+				resolverOn(layered), runtimes, sources, git.Workspaces{}, git.Workspaces{}, schema.Validator{},
 				evidence, evidence, system.Clock{}, system.IDs{}, config.Home, hosted,
 			),
 			Runs: app.NewRuns(evidence, hosted, 0),

@@ -51,42 +51,6 @@ func TestExamplesParse(t *testing.T) {
 	}
 }
 
-// Agister records no writers yet (deferred item 6), so a shipped constraint
-// that passes on unknown provenance would always pass: it would look like a
-// guard against self-review and be none.
-func TestExamplesCarryNoConstraintThatAlwaysPasses(t *testing.T) {
-	settings := examples.Settings()
-	for _, dir := range []definition.Kind{definition.KindPolicy, definition.KindProcess} {
-		entries, err := fs.ReadDir(settings, string(dir))
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, entry := range entries {
-			data, _ := fs.ReadFile(settings, string(dir)+"/"+entry.Name())
-			name := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
-			var limits definition.Limits
-			if dir == definition.KindPolicy {
-				policy, err := definition.ParsePolicy(doc(dir, name, string(data)))
-				if err != nil {
-					t.Fatal(err)
-				}
-				limits = policy.Limits
-			} else {
-				process, err := definition.ParseProcess(doc(dir, name, string(data)))
-				if err != nil {
-					t.Fatal(err)
-				}
-				limits = process.Limits
-			}
-			for _, constraint := range limits.Constraints {
-				if constraint.OnUnknown == "pass" {
-					t.Errorf("%s/%s: constraint %s always passes while no provenance is recorded", dir, entry.Name(), constraint.Subject)
-				}
-			}
-		}
-	}
-}
-
 // A diff or changed-files value takes both revisions from git.revision
 // values declared before it: base from the one resolving ${param.base}, head
 // from the one resolving ${param.candidate}. Bound to ${param.*} instead, each
@@ -141,7 +105,8 @@ func TestShippedRevisionInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 }
 
 // The research policy parses as written, except for the fields Agister
-// refuses because it would not enforce them.
+// refuses because it would not enforce them, and its constraints, which
+// Agister does not know.
 func TestResearchPolicyParsesInPlace(t *testing.T) {
 	data, err := os.ReadFile("../../../../research/agister/research/verger/policies/static-review.yaml")
 	if err != nil {
@@ -149,10 +114,10 @@ func TestResearchPolicyParsesInPlace(t *testing.T) {
 	}
 	_, err = definition.ParsePolicy(doc(definition.KindPolicy, "static-review", string(data)))
 	var invalid *definition.InvalidError
-	if !errors.As(err, &invalid) || strings.Join(invalid.Problems, "; ") != "resources: not supported yet: Agister would not enforce it; artifacts: not supported yet: Agister would not enforce it" {
+	if !errors.As(err, &invalid) || strings.Join(invalid.Problems, "; ") != "constraints: unknown field; resources: not supported yet: Agister would not enforce it; artifacts: not supported yet: Agister would not enforce it" {
 		t.Fatalf("err = %v", err)
 	}
-	policy, err := definition.ParsePolicy(doc(definition.KindPolicy, "static-review", string(withoutTopLevel(data, "resources", "artifacts"))))
+	policy, err := definition.ParsePolicy(doc(definition.KindPolicy, "static-review", string(withoutTopLevel(data, "constraints", "resources", "artifacts"))))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,10 +126,6 @@ func TestResearchPolicyParsesInPlace(t *testing.T) {
 		strings.Join(limits.Deny, ",") != "repository.write,repository.history.write,process.execute,network" ||
 		limits.Access != "read-only" || limits.Scope != "candidate" {
 		t.Fatalf("limits = %+v", limits)
-	}
-	// Without on_unknown, missing provenance fails: unknown is never satisfaction.
-	if len(limits.Constraints) != 1 || limits.Constraints[0].CandidateInput != "candidate_revision" || limits.Constraints[0].OnUnknown != "fail" {
-		t.Fatalf("constraints = %+v", limits.Constraints)
 	}
 }
 
@@ -241,7 +202,7 @@ constraints:
 		`output.require_valid: must be true`,
 		`output.result: unknown field`,
 		`max_cost_usd: must be positive`,
-		`supported form: evidence.candidate`,
+		`constraints: unknown field`,
 	} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("missing %q in:\n%v", want, err)

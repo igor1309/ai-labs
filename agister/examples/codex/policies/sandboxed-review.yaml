@@ -4,13 +4,6 @@
 schema: agister.process-policy/v1alpha1
 name: sandboxed-review
 
-constraints:
-  agent.model_family:
-    not_equal: >-
-      evidence.candidate(input.candidate_revision).provenance.writer.model_family
-    on_unsatisfied: fail
-    on_unknown: pass
-
 workspace:
   access: read-only
   scope: candidate

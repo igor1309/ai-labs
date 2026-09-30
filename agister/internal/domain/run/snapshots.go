@@ -32,15 +32,6 @@ type EffectivePolicy struct {
 	Require     []string      `json:"require,omitempty"`
 	Access      string        `json:"access"`
 	Scope       string        `json:"scope"`
-	Constraints []Constraint  `json:"constraints,omitempty"`
-}
-
-// Constraint is a rule the call had to satisfy before its runtime started.
-type Constraint struct {
-	Subject        string `json:"subject"`
-	CandidateInput string `json:"candidate_input"`
-	// What decides the result when no provenance exists: "fail" or "pass".
-	OnUnknown string `json:"on_unknown"`
 }
 
 // Plan is what the call was granted on its runtime.

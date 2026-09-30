@@ -54,7 +54,7 @@ Exit codes: `0` completed, `1` failed, `2` interrupted, `3` refused, `4` lost, `
   service.toml  agents/*.toml  processes/*.yaml  policies/*.yaml
   runtimes/*.yaml  schemas/*.json      settings (validated by `check`)
   runs/<id>/  record.json events.jsonl provider.jsonl artifacts/
-  logs/  provenance/                  evidence and diagnostics
+  logs/                               diagnostics
 ```
 
 A repository can keep its own settings in `<repository root>/.agister/`, the

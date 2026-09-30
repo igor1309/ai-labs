@@ -514,12 +514,6 @@ func describe(event contract.Event) string {
 		return fmt.Sprintf("· plan: %v", data["primitives"])
 	case "PERMISSIONS_WITHHELD":
 		return fmt.Sprintf("· withheld: %v", data["permissions"])
-	case "CONSTRAINT_CHECKED":
-		mark := "·"
-		if satisfied, _ := data["satisfied"].(bool); !satisfied {
-			mark = "!"
-		}
-		return fmt.Sprintf("%s constraint %v: %v", mark, data["subject"], data["basis"])
 	case "REFUSED":
 		return fmt.Sprintf("! refused: %v", data["reason"])
 	case "PROCESS_STARTED":
@@ -562,7 +556,6 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 		{"  denied", or(strings.Join(view.Denied, ", "), "(none)")},
 		{"workspace", view.Access + ", scope " + view.Scope},
 		{"limits", limits(view)},
-		{"constraints", or(strings.Join(view.Constraints, "; "), "(none)")},
 	}
 	if view.Refusal != "" {
 		lines = append(lines, [2]string{"plan", "REFUSED: " + view.Refusal})
