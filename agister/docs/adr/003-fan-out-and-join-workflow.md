@@ -64,9 +64,10 @@ receive the collection (rule 4).
 ### 2. Inputs are resolved once, before any node starts
 
 The workflow's params are resolved once, as a call's are (ADR-001 rule 8),
-and every node receives the same resolved values: a revision as its commit
-identity, content as its digest. Each node is then an ordinary call of its
-process with those values, its own limits, workspace and evidence.
+and every fan-out node receives the same resolved values: a revision as its
+commit identity, content as its digest. Each fan-out node is then an
+ordinary call of its process with those values, its own limits, workspace
+and evidence. The join never receives them (rule 4).
 
 ### 3. The barrier waits for every fan-out node
 
@@ -83,9 +84,10 @@ The join's collection input holds, for each fan-out node in declaration
 order, the node name, its process, its run ID and its recorded output,
 unchanged. Order never depends on completion order. The core transports
 the outputs without reading them (ADR-001 rule 1). The join's other inputs
-are only what its own process declares from its settings; nothing from
-whoever started the workflow reaches it beyond the workflow's params. The
-join is a fresh call, never a continuation of a fan-out node's session.
+are only fixed values its own process declares in settings; nothing from
+whoever started the workflow reaches it, workflow params included. `check`
+rejects a join process whose inputs take a caller-supplied param. The join
+is a fresh call, never a continuation of a fan-out node's session.
 
 ### 5. The workflow's result is the join's
 
@@ -98,8 +100,12 @@ the whole workflow. No field, status or class exists only for workflows.
 
 The workflow run is a record of its own: the exact workflow definition and
 input digests, each node's run ID, the barrier's state, timing and result.
-Each node's run records the workflow run it belongs to. Cancelling the
-workflow cancels every active node; a node's effects stay its own call's
+Each node's run records the workflow run it belongs to. Cancellation is
+terminal: once the workflow is cancelled, no node starts, the join
+included, even when every fan-out node has already completed; cancellation
+and starting a node are serialized, so one of them wins. Every active node
+is cancelled, and the workflow ends interrupted, class cancelled. A node's
+effects stay its own call's
 (ADR-001 rule 11), and a reap after a killed CLI treats the workflow run
 like any unfinished run.
 
