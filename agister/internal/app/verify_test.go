@@ -87,15 +87,16 @@ func TestAFailedRunIsRepairedInTheCallsSession(t *testing.T) {
 }
 
 // A repair resumes the call's session, so it costs what it added to the
-// session's total, which the turn before it reported; the first turn of a
-// continuation starts from the earlier run's total. The call's cost and
-// each repair's budget sum those own costs, and a repair after a turn
-// with no reported total costs an unknown amount.
+// session's total: the total less what the runtime had on record for the
+// session when the repair started, which here is the turn before it. The
+// call's cost and each repair's budget sum those own costs, and a repair
+// whose session the runtime had no total on record for costs an unknown
+// amount.
 func TestARepairCostsWhatItAddedToTheCallsSession(t *testing.T) {
 	usd := func(v float64) *float64 { return &v }
 	cases := []struct {
 		name      string
-		continues bool       // the call continues run-0, whose session had cost 7.75
+		continues bool       // the call continues run-0, whose session the runtime has at 7.75
 		totals    []*float64 // each turn's reported session total
 		limit     string
 		own       []*float64 // each turn's own cost
@@ -122,10 +123,18 @@ func TestARepairCostsWhatItAddedToTheCallsSession(t *testing.T) {
 					Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0"}}}
 				h.runs.states["run-0"] = run.StateFinished
 			}
+			// What the runtime has on record for the session before each
+			// resumed turn: the total the turn before it left.
+			var before *run.SessionTotals
+			if c.continues {
+				before = &run.SessionTotals{CostUSD: usd(7.75)}
+			}
 			for _, total := range c.totals {
-				turn := run.Turn{Status: run.Completed, Output: json.RawMessage(`{"outcome":"no"}`), ProviderSessionID: session}
+				turn := run.Turn{Status: run.Completed, Output: json.RawMessage(`{"outcome":"no"}`), ProviderSessionID: session, SessionBefore: before}
+				before = nil
 				if total != nil {
 					turn.Session = &run.SessionTotals{CostUSD: total}
+					before = turn.Session
 				}
 				h.runner.turns = append(h.runner.turns, turn)
 			}

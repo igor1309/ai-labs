@@ -368,31 +368,33 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 	}
 }
 
-// A continuation's turn costs what it added to its session's total, which
-// the earlier run's latest turn reported: unknown when that turn reported
-// none, as runs recorded before session totals did, or ran elsewhere.
+// A continuation's turn costs what it added to its session's total: the
+// total less what the runtime had on record for the session when the turn
+// started, not what the continued run recorded, which later continuations
+// of it have added to. Unknown when the runtime had nothing on record.
 func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
 	usd := func(v float64) *float64 { return &v }
 	cases := []struct {
 		name   string
-		latest *run.Turn // the earlier run's
+		before *run.SessionTotals // what the runtime had on record
 		want   *float64
 	}{
-		{"earlier total known", &run.Turn{ProviderSessionID: "prov-0", CostUSD: usd(7.75), Session: &run.SessionTotals{CostUSD: usd(7.75)}}, usd(4.75)},
-		{"earlier total unknown", &run.Turn{ProviderSessionID: "prov-0", CostUSD: usd(7.75)}, nil},
-		{"latest turn in another session", &run.Turn{ProviderSessionID: "prov-9", Session: &run.SessionTotals{CostUSD: usd(7.75)}}, nil},
-		{"no latest turn", nil, nil},
+		{"runtime's total known", &run.SessionTotals{CostUSD: usd(11.5)}, usd(1)},
+		{"runtime's total unknown", nil, nil},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			h := newHarness()
 			h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
-			h.runs.records["run-0"] = run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Turn: c.latest,
+			// run-0's own record of the session's total, since overtaken.
+			h.runs.records["run-0"] = run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"},
+				Turn:   &run.Turn{ProviderSessionID: "prov-0", CostUSD: usd(7.75), Session: &run.SessionTotals{CostUSD: usd(7.75)}},
 				Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0"}}}
 			h.runs.states["run-0"] = run.StateFinished
-			h.runner.turn = run.Turn{Status: run.Completed, Output: json.RawMessage(`{}`), ProviderSessionID: "prov-0", Session: &run.SessionTotals{CostUSD: usd(12.5)}}
+			h.runner.turn = run.Turn{Status: run.Completed, Output: json.RawMessage(`{}`), ProviderSessionID: "prov-0",
+				Session: &run.SessionTotals{CostUSD: usd(12.5)}, SessionBefore: c.before}
 			record := h.call(t, contract.CallRequest{Continue: "run-0"})
-			if record.Result.Status != run.Completed || *record.Turn.Session.CostUSD != 12.5 {
+			if record.Result.Status != run.Completed || *record.Turn.Session.CostUSD != 12.5 || !reflect.DeepEqual(record.Turn.SessionBefore, c.before) {
 				t.Fatalf("result %+v, turn %+v", record.Result, record.Turn)
 			}
 			if c.want == nil {

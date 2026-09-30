@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -737,8 +738,14 @@ func TestVerdictIsOutputNotStatus(t *testing.T) {
 }
 
 // A continuation resumes the earlier run's provider session in place, by the
-// ID the runtime reported.
+// ID the runtime reported, and costs what it added to the session's total.
 func TestContinuationEndToEnd(t *testing.T) {
+	// The fake runtime keeps its sessions' costs where the adapter looks
+	// for Claude Code's: each turn costs $0.0123, and the result reports
+	// the session's total.
+	config := t.TempDir()
+	t.Setenv("CLAUDE_CONFIG_DIR", config)
+	t.Setenv("FAKE_CLAUDE_CONFIG_DIR", config)
 	home, repo := setup(t, "approve")
 	client, err := compose(cli.Config{Home: home})
 	if err != nil {
@@ -778,6 +785,14 @@ func TestContinuationEndToEnd(t *testing.T) {
 	again := finish(contract.CallRequest{Process: "ask", Params: map[string]string{"question": "And c.txt?"}, Continue: first.ID, Timeout: "1m", Cwd: repo})
 	if again.Result.Status != "completed" || again.Result.Session.ProviderSessionID != earlier || again.Result.Session.Continues != first.ID {
 		t.Fatalf("result = %+v", again.Result)
+	}
+	// The session's total rose to 0.0246 with the second call, which the
+	// first never recorded: each call costs its own turn, the third
+	// included.
+	for _, call := range []contract.Run{first, second, again} {
+		if cost := call.Result.Cost; cost.Source != "runtime" || cost.USD == nil || math.Abs(*cost.USD-0.0123) > 1e-9 {
+			t.Fatalf("run %s cost %+v, usd %v", call.ID, cost, cost.USD)
+		}
 	}
 	// The reviewer is fresh-only: continuing with it is refused.
 	refused := finish(contract.CallRequest{Process: "adversarial_review", Params: map[string]string{"base": "main"}, Continue: first.ID, Timeout: "1m", Cwd: repo})

@@ -32,9 +32,15 @@ func runCommand(ctx context.Context, t *testing.T, dir, command string, timeout 
 	return result, refs
 }
 
+// hangBound is how long a command may run in these tests before the
+// watchdog ends it as a hang.
+const hangBound = 20 * time.Second
+
 // cleanUpGroup makes sure the group a reference names ends with the test,
 // whatever the runner did: it is killed, its leader reaped if the runner
-// did not, and the test waits until no member is left.
+// did not, and the test waits until no member is left. A group still there
+// after hangBound is a hang: the watchdog kills it and fails the test, so
+// the runner returns and the cleanup runs.
 func cleanUpGroup(t *testing.T, ref string) {
 	t.Helper()
 	group, _, err := supervisor.ParseRef(ref)
@@ -42,7 +48,12 @@ func cleanUpGroup(t *testing.T, ref string) {
 		t.Errorf("reference %q names no group: %v", ref, err)
 		return
 	}
+	watchdog := time.AfterFunc(hangBound, func() {
+		t.Errorf("group %d still ran after %s: killed as a hang", group, hangBound)
+		_ = syscall.Kill(-group, syscall.SIGKILL)
+	})
 	t.Cleanup(func() {
+		watchdog.Stop()
 		_ = syscall.Kill(-group, syscall.SIGKILL)
 		var status syscall.WaitStatus
 		_, _ = syscall.Wait4(group, &status, syscall.WNOHANG, nil)
@@ -114,9 +125,9 @@ func TestCommandGroupIsKilled(t *testing.T) {
 		timeout time.Duration
 		cancel  bool
 	}{
-		{"timeout", blocks + " & echo $$ > group; wait", 300 * time.Millisecond, false},
+		{"timeout", blocks + " & wait", 300 * time.Millisecond, false},
 		{"cancellation", blocks + " & echo $$ > group; wait", 30 * time.Second, true},
-		{"exit", blocks + " & echo $$ > group; exit 0", 30 * time.Second, false},
+		{"exit", blocks + " & exit 0", 30 * time.Second, false},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -125,17 +136,17 @@ func TestCommandGroupIsKilled(t *testing.T) {
 			if c.cancel {
 				go func() { groupOf(t, filepath.Join(dir, "group")); cancel() }()
 			}
-			started := time.Now()
-			result, _ := runCommand(ctx, t, dir, c.command, c.timeout, 64)
-			if result.TimedOut != (c.name == "timeout") || result.Cancelled != c.cancel {
-				t.Fatalf("result %+v", result)
+			result, refs := runCommand(ctx, t, dir, c.command, c.timeout, 64)
+			if result.TimedOut != (c.name == "timeout") || result.Cancelled != c.cancel || len(refs) == 0 {
+				t.Fatalf("result %+v, refs %q", result, refs)
 			}
-			// Only a guard against a hang: the outcome above is the verdict.
-			if elapsed := time.Since(started); elapsed > 20*time.Second {
-				t.Fatalf("after %s", elapsed)
+			// The group as the runner put it on record: a command killed
+			// before it ran a line wrote nothing.
+			group, _, err := supervisor.ParseRef(refs[0])
+			if err != nil {
+				t.Fatal(err)
 			}
 			// A killed child is gone once its new parent has reaped it.
-			group := groupOf(t, filepath.Join(dir, "group"))
 			deadline := time.Now().Add(5 * time.Second)
 			for !errors.Is(syscall.Kill(-group, 0), syscall.ESRCH) {
 				if time.Now().After(deadline) {
@@ -151,16 +162,11 @@ func TestCommandGroupIsKilled(t *testing.T) {
 // and the run fails.
 func TestUnrecordedCommandIsKilled(t *testing.T) {
 	dir := t.TempDir()
-	started := time.Now()
 	result := supervisor.Commands{}.Run(context.Background(), app.CommandRequest{Command: blocks, Dir: dir, Timeout: 30 * time.Second, Bound: 64}, func(ref string) error {
 		cleanUpGroup(t, ref)
 		return errors.New("disk full")
 	})
 	if result.Error != "disk full" || result.ExitCode != nil || result.Signal != "killed" || result.TimedOut || result.Cancelled {
 		t.Fatalf("result %+v", result)
-	}
-	// Only a guard against a hang: the outcome above is the verdict.
-	if elapsed := time.Since(started); elapsed > 20*time.Second {
-		t.Fatalf("after %s", elapsed)
 	}
 }

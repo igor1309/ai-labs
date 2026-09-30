@@ -1,6 +1,9 @@
 // Command fakeclaude stands in for `claude -p --output-format stream-json`.
 // The scenario is chosen by a SCENARIO:<name> marker in the prompt (stdin).
-// Its first line echoes argv, cwd and prompt for tests.
+// Its first line echoes argv, cwd and prompt for tests. Every turn costs
+// turnCost; with $FAKE_CLAUDE_CONFIG_DIR set, it keeps each session's cost
+// in a transcript there as Claude Code does in its configuration
+// directory, and reports the session's total.
 package main
 
 import (
@@ -8,7 +11,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeoutput"
@@ -78,7 +83,7 @@ func main() {
 		emit(map[string]any{"type": "result", "subtype": "error_during_execution", "is_error": true, "session_id": session, "errors": []string{"tool crashed"}})
 		return
 	}
-	result := map[string]any{"type": "result", "subtype": "success", "is_error": false, "session_id": session, "result": "All good.", "num_turns": 2, "total_cost_usd": 0.0123, "duration_ms": 3400, "permission_denials": []any{map[string]any{"tool_name": "Edit"}},
+	result := map[string]any{"type": "result", "subtype": "success", "is_error": false, "session_id": session, "result": "All good.", "num_turns": 2, "total_cost_usd": sessionCost(session, cwd), "duration_ms": 3400, "permission_denials": []any{map[string]any{"tool_name": "Edit"}},
 		"usage": map[string]any{"input_tokens": 100, "output_tokens": 50, "cache_read_input_tokens": 10, "cache_creation_input_tokens": 5}}
 	if flag("--json-schema") != "" && scenario != "no_structured_output" {
 		result["structured_output"] = outputs(scenario)
@@ -89,6 +94,44 @@ func main() {
 		}
 	}
 	emit(result)
+}
+
+const turnCost = 0.0123
+
+// sessionCost is the session's cost with this turn's: kept, as Claude Code
+// keeps it, as a cost-state entry appended to the session's transcript,
+// projects/<cwd>/<session>.jsonl, wherever the session started. Without
+// $FAKE_CLAUDE_CONFIG_DIR, only this turn's: the fake never writes to a
+// real configuration directory.
+func sessionCost(session, cwd string) float64 {
+	dir := os.Getenv("FAKE_CLAUDE_CONFIG_DIR")
+	if dir == "" {
+		return turnCost
+	}
+	path := filepath.Join(dir, "projects", regexp.MustCompile(`[^A-Za-z0-9]`).ReplaceAllString(cwd, "-"), session+".jsonl")
+	if found, _ := filepath.Glob(filepath.Join(dir, "projects", "*", session+".jsonl")); len(found) == 1 {
+		path = found[0]
+	}
+	total := turnCost
+	if data, err := os.ReadFile(path); err == nil {
+		for _, line := range strings.Split(string(data), "\n") {
+			var entry struct {
+				Type         string  `json:"type"`
+				TotalCostUSD float64 `json:"totalCostUSD"`
+			}
+			if json.Unmarshal([]byte(line), &entry) == nil && entry.Type == "cost-state" {
+				total = entry.TotalCostUSD + turnCost
+			}
+		}
+	}
+	entry, _ := json.Marshal(map[string]any{"type": "cost-state", "sessionId": session, "totalCostUSD": total})
+	_ = os.MkdirAll(filepath.Dir(path), 0o700)
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	if err == nil {
+		fmt.Fprintln(file, string(entry))
+		file.Close()
+	}
+	return total
 }
 
 func outputs(scenario string) any {

@@ -10,9 +10,11 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -57,6 +59,9 @@ type Recorder struct {
 	// OnEvent, when set before the run, is called with each event's kind
 	// after it is recorded, outside the lock.
 	OnEvent func(kind string)
+	// OnProcess, when set before the run, is called with each process
+	// reference after it is kept, outside the lock.
+	OnProcess func(ref string)
 }
 
 func (r *Recorder) Event(source, kind string, data map[string]any) {
@@ -71,9 +76,35 @@ func (r *Recorder) Event(source, kind string, data map[string]any) {
 
 func (r *Recorder) ProcessStarted(ref string) error {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 	r.Processes = append(r.Processes, ref)
-	return r.ProcessErr
+	hook, err := r.OnProcess, r.ProcessErr
+	r.mu.Unlock()
+	if hook != nil {
+		hook(ref)
+	}
+	return err
+}
+
+// hangBound is how long a turn that only a kill ends may run before the
+// watchdog ends it as a hang.
+const hangBound = 20 * time.Second
+
+// Watchdog guards a turn against a hang: once its process is on record,
+// a group still there after hangBound is killed and the test fails, so the
+// runner returns and the test ends instead of hanging.
+func Watchdog(t *testing.T) func(ref string) {
+	return func(ref string) {
+		group, _, err := supervisor.ParseRef(ref)
+		if err != nil || group <= 1 {
+			t.Errorf("reference %q names no group: %v", ref, err)
+			return
+		}
+		watchdog := time.AfterFunc(hangBound, func() {
+			t.Errorf("group %d still ran after %s: killed as a hang", group, hangBound)
+			_ = syscall.Kill(-group, syscall.SIGKILL)
+		})
+		t.Cleanup(func() { watchdog.Stop() })
+	}
 }
 
 func (r *Recorder) Raw(line string) {
@@ -165,15 +196,15 @@ func Conformance(t *testing.T, subject Subject) {
 	})
 
 	t.Run("timeout interrupts the process group", func(t *testing.T) {
-		started := time.Now()
-		result, sink := turn(t, "SCENARIO:hang", func(r *app.TurnRequest) { r.Timeout = 300 * time.Millisecond }, context.Background())
+		// The hang scenario never ends on its own: the watchdog guards
+		// against a timeout that never kills it, and the outcome is the
+		// verdict.
+		request := subject.Request("SCENARIO:hang")
+		request.Timeout = 300 * time.Millisecond
+		sink := &Recorder{OnProcess: Watchdog(t)}
+		result := subject.New(subject.Fake).RunTurn(context.Background(), request, sink)
 		if !is(result, run.Interrupted, run.ClassTimeout) {
 			t.Fatalf("turn = %+v", result)
-		}
-		// Only a guard against a hang: the hang scenario never ends on its
-		// own, so the outcome above is the verdict.
-		if elapsed := time.Since(started); elapsed > 20*time.Second {
-			t.Fatalf("after %s", elapsed)
 		}
 		if !strings.Contains(strings.Join(sink.Kinds(), " "), "TIMEOUT") {
 			t.Fatalf("events = %v", sink.Kinds())
@@ -187,7 +218,7 @@ func Conformance(t *testing.T, subject Subject) {
 		// minute timeout only backstops a hang and never races the cancel.
 		request := subject.Request("SCENARIO:hang")
 		request.Timeout = 30 * time.Second
-		sink := &Recorder{OnEvent: func(kind string) {
+		sink := &Recorder{OnProcess: Watchdog(t), OnEvent: func(kind string) {
 			if kind == "PROCESS_STARTED" {
 				cancel()
 			}

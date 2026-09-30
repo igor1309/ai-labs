@@ -16,8 +16,8 @@ import (
 const verifyOutputBound = 8 << 10
 
 // Verifier runs the verification loop of calls whose process declares
-// verify (ADR-002), through the contracts it declares here. Calls compose
-// one loop per call from it.
+// verify (ADR-002), through the contracts it declares here: one loop per
+// call (Verify).
 type Verifier struct {
 	content  VerifyContent
 	commands VerifyCommands
@@ -55,6 +55,48 @@ func NewVerifier(content VerifyContent, commands VerifyCommands, clock VerifyClo
 	return &Verifier{content: content, commands: commands, clock: clock}
 }
 
+// VerifyCall is what one call's verification loop checks, repairs with and
+// records to.
+type VerifyCall struct {
+	Record *run.Record
+	Result *run.Result
+	Event  func(source, kind string, data map[string]any)
+	// Update and Artifact write the run's evidence.
+	Update   func(run.Record) error
+	Artifact func(name string, data []byte) (run.Artifact, error)
+
+	Verify   definition.Verify
+	Limit    *float64  // the call's cost limit, one budget for every turn
+	Deadline time.Time // the call's timeout, for every turn and run
+	Dir      string    // the call's checkout
+	Base     string    // the revision it was checked out at
+	// Request is the call's first turn, which every repair repeats with
+	// the failure as its prompt.
+	Request TurnRequest
+	// Session is the provider session of the call's first turn, which
+	// every repair resumes.
+	Session string
+
+	// Take runs a turn and records it with the call; Conclude says whether
+	// a turn ended validly, and why not.
+	Take     func(TurnRequest) run.Turn
+	Conclude func(run.Turn) *run.Error
+}
+
+// Verify verifies the call's latest turn, which was valid, and repairs
+// until a run passes or the loop must stop. It returns the content the
+// passing run checked, and the fault that stopped the loop without a pass.
+func (v *Verifier) Verify(ctx context.Context, call VerifyCall) (verified string, fault *run.Error) {
+	loop := &verification{
+		content: v.content, commands: v.commands, clock: v.clock,
+		record: call.Record, result: call.Result, event: call.Event, update: call.Update, artifact: call.Artifact,
+		verify: call.Verify, limit: call.Limit, deadline: call.Deadline, dir: call.Dir, base: call.Base,
+		request: call.Request, session: call.Session, take: call.Take, conclude: call.Conclude,
+	}
+	fault = loop.run(ctx)
+	return loop.verified, fault
+}
+
 // verification is one call's verification loop: after a valid turn it runs
 // the process's command in the call's checkout, and on a failure with
 // attempts, time and budget left, resumes the call's session in place with
@@ -82,7 +124,7 @@ type verification struct {
 	// every repair resumes.
 	session string
 
-	take     func(TurnRequest, *run.SessionTotals) run.Turn
+	take     func(TurnRequest) run.Turn
 	conclude func(run.Turn) *run.Error
 
 	// verified names the content of the passing run, once one passed.
@@ -184,9 +226,7 @@ func (v *verification) run(ctx context.Context) *run.Error {
 		request.Timeout = remaining
 		request.MaxCostUSD = budget
 		v.event(run.SourceAgister, "REPAIR_STARTED", map[string]any{"attempt": number + 1, "session": v.session})
-		// The session's totals before the repair are what the turn before
-		// it reported.
-		repair := v.take(request, turn.Session)
+		repair := v.take(request)
 		fault = v.conclude(repair)
 		// A repair that reports no session confirms none: it is not in the
 		// call's session, whatever it did.

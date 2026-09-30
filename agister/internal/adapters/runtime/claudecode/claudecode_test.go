@@ -1,7 +1,10 @@
 package claudecode_test
 
 import (
+	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -235,5 +238,51 @@ func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
 	turn := stream.Reconcile(supervisor.Evidence{RecordError: "disk full"}, false)
 	if turn.Status != run.Failed || turn.Error == nil || turn.Error.Class != run.ClassInternal || !strings.Contains(turn.Error.Message, "disk full") {
 		t.Fatalf("turn = %+v", turn)
+	}
+}
+
+// A resumed session's cost counts on from the last cost-state entry of its
+// transcript, wherever the session started; a resumed turn records it as
+// the session's cost before it. No one transcript, or no entry, is no
+// cost on record.
+func TestSessionCostIsTheTranscriptsLastCostState(t *testing.T) {
+	dir := t.TempDir()
+	transcript := func(project, id string, lines ...string) {
+		path := filepath.Join(dir, "projects", project, id+".jsonl")
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	transcript("-tmp-first-checkout", session,
+		`{"type":"cost-state","sessionId":"`+session+`","totalCostUSD":7.830211}`,
+		`{"type":"user","message":{"content":"what is a \"cost-state\" entry?"}}`,
+		`{"type":"cost-state","sessionId":"`+session+`","totalCostUSD":12.6246154}`,
+		`{"type":"cost-state","sessionId":"another","totalCostUSD":99}`,
+		`{"type":"assistant","message":{"content":[]}}`)
+	transcript("-tmp-a", "twice", `{"type":"cost-state","sessionId":"twice","totalCostUSD":1}`)
+	transcript("-tmp-b", "twice", `{"type":"cost-state","sessionId":"twice","totalCostUSD":2}`)
+	transcript("-tmp-a", "bare", `{"type":"user","message":{"content":"hi"}}`)
+
+	if cost := claudecode.SessionCost(dir, session); cost == nil || *cost != 12.6246154 {
+		t.Fatalf("cost = %v", cost)
+	}
+	for _, id := range []string{"missing", "twice", "bare", "../-tmp-a/bare", "*"} {
+		if cost := claudecode.SessionCost(dir, id); cost != nil {
+			t.Fatalf("%s: cost = %v", id, *cost)
+		}
+	}
+
+	runner := &claudecode.Runner{Command: runtimetest.Binary(t, "fakeclaude"), ConfigDir: dir}
+	resumed := request("SCENARIO:approve")
+	resumed.ResumeSessionID = session
+	turn := runner.RunTurn(context.Background(), resumed, &runtimetest.Recorder{})
+	if turn.Status != run.Completed || turn.SessionBefore == nil || *turn.SessionBefore.CostUSD != 12.6246154 || *turn.Session.CostUSD != 0.0123 {
+		t.Fatalf("resumed turn = %+v", turn)
+	}
+	if fresh := runner.RunTurn(context.Background(), request("SCENARIO:approve"), &runtimetest.Recorder{}); fresh.Status != run.Completed || fresh.SessionBefore != nil {
+		t.Fatalf("fresh turn = %+v", fresh)
 	}
 }

@@ -177,6 +177,10 @@ type Turn struct {
 	// the turn, where it reports those instead of the turn's own cost or
 	// usage; the turn's own are derived from them (Own).
 	Session *SessionTotals `json:"session,omitempty"`
+	// SessionBefore is what the runtime had on record as the resumed
+	// session's totals when the turn started; unset for a fresh session,
+	// or when the runtime had none.
+	SessionBefore *SessionTotals `json:"session_before,omitempty"`
 }
 
 // Input is one resolved, immutable input.
