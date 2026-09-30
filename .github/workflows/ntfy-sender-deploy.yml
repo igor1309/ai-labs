@@ -1,7 +1,8 @@
 name: ntfy-sender Deploy
 
-# Static page, no build or tests: deploy on trunk push to the Cloudflare
-# Pages project, then verify the production URL serves the page.
+# Static page, no build: run the browser test (ntfy-sender-core.yml), then
+# deploy on trunk push to the Cloudflare Pages project and verify the
+# production URL serves the page.
 
 on:
   push:
@@ -9,7 +10,9 @@ on:
       - trunk
     paths:
       - "ntfy-sender/public/**"
+      - "ntfy-sender/tests/**"
       - "ntfy-sender/wrangler.toml"
+      - ".github/workflows/ntfy-sender-core.yml"
       - ".github/workflows/ntfy-sender-deploy.yml"
   workflow_dispatch:
 
@@ -24,7 +27,13 @@ env:
   PROJECT_NAME: ntfy-sender
 
 jobs:
+  core:
+    uses: ./.github/workflows/ntfy-sender-core.yml
+    with:
+      ref: ${{ github.sha }}
+
   deploy:
+    needs: [core]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -79,14 +88,15 @@ jobs:
           exit 1
 
   notify:
-    if: ${{ always() && !cancelled() && needs.deploy.result == 'failure' }}
-    needs: [deploy]
+    if: ${{ always() && !cancelled() && (needs.core.result == 'failure' || needs.deploy.result == 'failure') }}
+    needs: [core, deploy]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "ntfy-sender Deploy"
       ref_label: "branch"
       ref_value: ${{ github.ref_name }}
       job_results: |
+        core=${{ needs.core.result }}
         deploy=${{ needs.deploy.result }}
     secrets:
       CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
