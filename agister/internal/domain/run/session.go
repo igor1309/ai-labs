@@ -1,8 +1,9 @@
 package run
 
 // SessionTotals are a provider session's totals as its runtime has them,
-// counting every turn the session had: Claude Code's total_cost_usd and
-// Codex's turn.completed usage are such totals.
+// counting every turn the session had: Claude Code's total_cost_usd,
+// Codex's turn.completed usage and ccusage's cost of a Codex thread are
+// such totals.
 type SessionTotals struct {
 	CostUSD *float64 `json:"cost_usd,omitempty"`
 	Usage   *Usage   `json:"usage,omitempty"`

@@ -68,6 +68,10 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// ccusage fails: Codex turns cost unknown, and the real one never runs.
+	if err := os.WriteFile(filepath.Join(bin, "ccusage"), []byte("#!/bin/sh\nexit 1\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("FAKE_OUTPUT", "schema")
 	t.Setenv("FAKE_VERSION", "")

@@ -3,6 +3,8 @@ package codex_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -195,3 +197,81 @@ func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
 		t.Fatalf("turn = %+v", turn)
 	}
 }
+
+// ccusage lists sessions by rollout path; the fake's fresh thread is this
+// one (observed shape, ccusage 20.0.26).
+const fakeThread = "01a0e850-b808-71c2-8401-53ba16d8ae18"
+
+func listing(cost string) codex.Sessions {
+	return func(context.Context) ([]byte, error) {
+		return []byte(`{"sessions":[
+			{"sessionId":"2026/09/30/rollout-2026-09-30T10-00-00-01a0f1e9-210c-7853-b2dc-7abbe3cf6073","costUSD":0.318266},
+			{"sessionId":"2026/09/30/rollout-2026-09-30T11-00-00-` + fakeThread + `","costUSD":` + cost + `}
+		]}`), nil
+	}
+}
+
+// A turn's cost is the thread's, from ccusage, less what Agister recorded
+// for the thread before it: all of it for a fresh thread, the difference
+// for a resumed one.
+func TestTurnCostIsTheThreadsFromCCUsage(t *testing.T) {
+	runner := &codex.Runner{Command: runtimetest.Binary(t, "fakecodex"), KillGrace: 200 * time.Millisecond}
+	ctx := context.Background()
+
+	runner.Sessions = listing("0.25")
+	fresh := run.Own(runner.RunTurn(ctx, request("SCENARIO:approve"), &runtimetest.Recorder{}), false)
+	if fresh.Status != run.Completed || fresh.ProviderSessionID != fakeThread || fresh.CostUSD == nil || *fresh.CostUSD != 0.25 {
+		t.Fatalf("fresh turn = %+v", fresh)
+	}
+
+	created := time.Date(2026, 9, 30, 10, 0, 0, 0, time.UTC)
+	finished := created.Add(time.Minute)
+	records := []run.Record{{ID: "run-1", CreatedAt: created, FinishedAt: &finished, Turn: &fresh}}
+	resume := request("SCENARIO:approve")
+	resume.ResumeSessionID = fakeThread
+	runner.Sessions = listing("0.75")
+	turn := runner.RunTurn(ctx, resume, &runtimetest.Recorder{})
+	turn.SessionBefore = run.LatestTotals(records, fakeThread, "run-2")
+	resumed := run.Own(turn, true)
+	if resumed.Status != run.Completed || resumed.CostUSD == nil || *resumed.CostUSD != 0.5 {
+		t.Fatalf("resumed turn = %+v", resumed)
+	}
+}
+
+// Zero, a thread ccusage does not list, and ccusage failing or missing
+// leave the cost unknown.
+func TestTurnCostUnknownWithoutCCUsagesPrice(t *testing.T) {
+	for name, sessions := range map[string]codex.Sessions{
+		"zero":    listing("0"),
+		"missing": func(context.Context) ([]byte, error) { return []byte(`{"sessions":[]}`), nil },
+		"failing": func(context.Context) ([]byte, error) { return nil, errors.New("exit status 1") },
+		"absent":  codex.CCUsage(filepath.Join(t.TempDir(), "ccusage")),
+	} {
+		runner := &codex.Runner{Command: runtimetest.Binary(t, "fakecodex"), KillGrace: 200 * time.Millisecond, Sessions: sessions}
+		turn := run.Own(runner.RunTurn(context.Background(), request("SCENARIO:approve"), &runtimetest.Recorder{}), false)
+		if turn.Status != run.Completed || turn.CostUSD != nil || turn.Session != nil && turn.Session.CostUSD != nil {
+			t.Errorf("%s: turn = %+v", name, turn)
+		}
+	}
+}
+
+func TestThreadCost(t *testing.T) {
+	path := "2026/09/30/rollout-2026-09-30T11-00-00-01a0f1e9-210c-7853-b2dc-7abbe3cf6073"
+	for name, c := range map[string]struct {
+		listing string
+		want    *float64
+	}{
+		"listed":    {`{"sessions":[{"sessionId":"` + path + `","costUSD":0.318266}]}`, ptr(0.318266)},
+		"no cost":   {`{"sessions":[{"sessionId":"` + path + `"}]}`, nil},
+		"twice":     {`{"sessions":[{"sessionId":"` + path + `","costUSD":1},{"sessionId":"x/` + path + `","costUSD":2}]}`, nil},
+		"not json":  {`ccusage: error`, nil},
+		"other one": {`{"sessions":[{"sessionId":"rollout-01a0f1e9-210c-7853-b2dc-7abbe3cf6074","costUSD":1}]}`, nil},
+	} {
+		got := codex.ThreadCost([]byte(c.listing), "01a0f1e9-210c-7853-b2dc-7abbe3cf6073")
+		if (got == nil) != (c.want == nil) || got != nil && *got != *c.want {
+			t.Errorf("%s: cost = %v, want %v", name, got, c.want)
+		}
+	}
+}
+
+func ptr(v float64) *float64 { return &v }

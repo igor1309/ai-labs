@@ -14,6 +14,10 @@
 // limit cost. The usage turn.completed reports is the thread's, counting
 // the turns it resumed (observed live with codex-cli 0.159.2).
 //
+// Codex reports no cost. The thread's cost, every turn it had, is
+// ccusage's: `ccusage codex session --json` prices each session from its
+// rollout (observed with ccusage 20.0.26), read after the turn.
+//
 // Only turn.completed and turn.failed decide a turn. Top-level `error`
 // events and error items occur mid-turn (reconnects, transport fallback)
 // and are recorded, not terminal.
@@ -24,6 +28,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -41,13 +46,58 @@ var sandboxModes = []string{"read-only", "workspace-write"}
 type Runner struct {
 	Command   string
 	KillGrace time.Duration
+	// Sessions lists Codex sessions with their costs, as
+	// `ccusage codex session --json` does; nil: the cost is unknown.
+	Sessions Sessions
 }
+
+// Sessions returns the output of `ccusage codex session --json`.
+type Sessions func(ctx context.Context) ([]byte, error)
 
 func New(command string) *Runner {
 	if command == "" {
 		command = "codex"
 	}
-	return &Runner{Command: command}
+	return &Runner{Command: command, Sessions: CCUsage("ccusage")}
+}
+
+// CCUsage runs `<command> codex session --json`.
+func CCUsage(command string) Sessions {
+	return func(ctx context.Context) ([]byte, error) {
+		ctx, cancel := context.WithTimeout(ctx, time.Minute)
+		defer cancel()
+		return exec.CommandContext(ctx, command, "codex", "session", "--json").Output()
+	}
+}
+
+// ThreadCost is a thread's cost, every turn it had, from a sessions
+// listing: the costUSD of the one session whose sessionId, a rollout path,
+// ends in the thread ID. Unknown when there is no such session, or more
+// than one, or its cost is not above zero.
+func ThreadCost(listing []byte, threadID string) *float64 {
+	var sessions struct {
+		Sessions []struct {
+			SessionID string   `json:"sessionId"`
+			CostUSD   *float64 `json:"costUSD"`
+		} `json:"sessions"`
+	}
+	if threadID == "" || json.Unmarshal(listing, &sessions) != nil {
+		return nil
+	}
+	var cost *float64
+	for _, session := range sessions.Sessions {
+		if !strings.HasSuffix(session.SessionID, "-"+threadID) {
+			continue
+		}
+		if cost != nil {
+			return nil
+		}
+		cost = session.CostUSD
+		if cost == nil || *cost <= 0 {
+			return nil
+		}
+	}
+	return cost
 }
 
 var versionPattern = regexp.MustCompile(`\d+\.\d+\.\d+`)
@@ -133,7 +183,30 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 			sink.Event(event.Source, event.Kind, event.Data)
 		}
 	})
-	return state.Reconcile(evidence, schemaPath != "")
+	turn := state.Reconcile(evidence, schemaPath != "")
+	r.cost(ctx, &turn, request.ResumeSessionID)
+	return turn
+}
+
+// cost sets the thread's cost on a turn that reported the thread it ran
+// on; a failed read leaves it unknown.
+func (r *Runner) cost(ctx context.Context, turn *run.Turn, resumed string) {
+	thread := turn.ProviderSessionID
+	if r.Sessions == nil || thread == "" || resumed != "" && thread != resumed {
+		return
+	}
+	listing, err := r.Sessions(ctx)
+	if err != nil {
+		return
+	}
+	cost := ThreadCost(listing, thread)
+	if cost == nil {
+		return
+	}
+	if turn.Session == nil {
+		turn.Session = &run.SessionTotals{}
+	}
+	turn.Session.CostUSD = cost
 }
 
 type Event struct {
