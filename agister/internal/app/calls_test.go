@@ -373,7 +373,9 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 // A continuation's turn costs and uses what it added to its session's
 // totals: the totals less those of the session's latest turn Agister
 // recorded on any run, a later continuation of the run continued included.
-// Unknown when Agister recorded no totals for the session.
+// Unknown when Agister recorded no totals for the session, or when a later
+// continuation started its runtime process and was reaped before its turn
+// was saved; a refused continuation leaves them as they were.
 func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
 	usd := func(v float64) *float64 { return &v }
 	n := func(v int64) *int64 { return &v }
@@ -387,19 +389,42 @@ func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
 			CreatedAt: *at(created), FinishedAt: at(finished), Turn: &run.Turn{ProviderSessionID: "prov-0", Session: totals},
 			Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0", Continues: continues}}}
 	}
+	// run-0b continued run-0; it ran no turn, and either started its
+	// runtime process and was reaped, or was refused before it.
+	unturned := func(process bool) run.Record {
+		record := run.Record{ID: "run-0b", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Request: run.Request{Continue: "run-0"},
+			CreatedAt: *at(2), FinishedAt: at(3), Result: &run.Result{Status: run.Failed}}
+		if process {
+			result := run.AbandonedResult(record.CreatedAt)
+			record.Effects, record.Result = &run.Effects{Process: &run.Process{Ref: "ref-0b"}}, &result
+		}
+		return record
+	}
 	cases := []struct {
 		name    string
 		records []run.Record
+		before  *run.SessionTotals // recorded as the session's before the turn
 		want    *run.SessionTotals // the turn's own; nil: unknown
 	}{
 		{"continued run's own totals", []run.Record{
 			recorded("run-0", "", 0, 1, &run.SessionTotals{CostUSD: usd(7.75), Usage: &run.Usage{InputTokens: n(100)}}),
-		}, &run.SessionTotals{CostUSD: usd(4.75), Usage: &run.Usage{InputTokens: n(150)}}},
+		}, &run.SessionTotals{CostUSD: usd(7.75), Usage: &run.Usage{InputTokens: n(100)}},
+			&run.SessionTotals{CostUSD: usd(4.75), Usage: &run.Usage{InputTokens: n(150)}}},
 		{"a later continuation's totals", []run.Record{
 			recorded("run-0", "", 0, 1, &run.SessionTotals{CostUSD: usd(7.75), Usage: &run.Usage{InputTokens: n(100)}}),
 			recorded("run-0b", "run-0", 2, 3, &run.SessionTotals{CostUSD: usd(11.5), Usage: &run.Usage{InputTokens: n(200)}}),
-		}, &run.SessionTotals{CostUSD: usd(1), Usage: &run.Usage{InputTokens: n(50)}}},
-		{"no recorded totals", []run.Record{recorded("run-0", "", 0, 1, nil)}, nil},
+		}, &run.SessionTotals{CostUSD: usd(11.5), Usage: &run.Usage{InputTokens: n(200)}},
+			&run.SessionTotals{CostUSD: usd(1), Usage: &run.Usage{InputTokens: n(50)}}},
+		{"no recorded totals", []run.Record{recorded("run-0", "", 0, 1, nil)}, nil, nil},
+		{"a refused continuation", []run.Record{
+			recorded("run-0", "", 0, 1, &run.SessionTotals{CostUSD: usd(7.75), Usage: &run.Usage{InputTokens: n(100)}}),
+			unturned(false),
+		}, &run.SessionTotals{CostUSD: usd(7.75), Usage: &run.Usage{InputTokens: n(100)}},
+			&run.SessionTotals{CostUSD: usd(4.75), Usage: &run.Usage{InputTokens: n(150)}}},
+		{"a continuation reaped before its turn was saved", []run.Record{
+			recorded("run-0", "", 0, 1, &run.SessionTotals{CostUSD: usd(7.75), Usage: &run.Usage{InputTokens: n(100)}}),
+			unturned(true),
+		}, nil, nil},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -411,8 +436,7 @@ func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
 			h.runner.turn = run.Turn{Status: run.Completed, Output: json.RawMessage(`{}`), ProviderSessionID: "prov-0",
 				Session: &run.SessionTotals{CostUSD: usd(12.5), Usage: &run.Usage{InputTokens: n(250)}}}
 			record := h.call(t, contract.CallRequest{Continue: "run-0"})
-			latest := c.records[len(c.records)-1].Turn.Session
-			if record.Result.Status != run.Completed || *record.Turn.Session.CostUSD != 12.5 || !reflect.DeepEqual(record.Turn.SessionBefore, latest) {
+			if record.Result.Status != run.Completed || *record.Turn.Session.CostUSD != 12.5 || !reflect.DeepEqual(record.Turn.SessionBefore, c.before) {
 				t.Fatalf("result %+v, turn %+v", record.Result, record.Turn)
 			}
 			if c.want == nil {

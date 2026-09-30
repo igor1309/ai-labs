@@ -194,8 +194,9 @@ func TestOwnIsWhatTheTurnAddedToItsSession(t *testing.T) {
 // on any run: the run that started it, or one continuing it, at any
 // distance. Unknown, never a guess, while a run in it is unfinished, when
 // the last to finish overlapped another, or when its latest turn reported
-// no totals in the session. Runs in other sessions, runs that ran no turn,
-// and the run asking do not count.
+// no totals in the session, or when it started a runtime process and was
+// reaped before its turn was saved. Runs in other sessions, runs that
+// started no process and ran no turn, and the run asking do not count.
 func TestLatestTotalsAreTheSessionsLatestRecordedTurn(t *testing.T) {
 	usd := func(v float64) *float64 { return &v }
 	at := func(minute int) *time.Time {
@@ -223,6 +224,15 @@ func TestLatestTotalsAreTheSessionsLatestRecordedTurn(t *testing.T) {
 	refused := record("r", "a", "", 6, 7, nil)
 	refused.Turn = nil
 	other := record("o", "", "t", 8, 9, totals(9))
+	// Its runtime process started; its owner ended before the turn was
+	// saved, and the reaper finished it.
+	reaped := func(id, continues string, created, finished int) run.Record {
+		r := record(id, continues, "", created, finished, nil)
+		r.Turn, r.Effects = nil, &run.Effects{Process: &run.Process{Ref: "ref-" + id}}
+		result := run.AbandonedResult(r.CreatedAt)
+		r.Result = &result
+		return r
+	}
 
 	for _, test := range []struct {
 		name    string
@@ -240,6 +250,10 @@ func TestLatestTotalsAreTheSessionsLatestRecordedTurn(t *testing.T) {
 		{"no totals on the latest turn", []run.Record{a, record("b", "a", "s", 2, 3, nil)}, "", nil},
 		{"latest turn reported nothing", []run.Record{a, record("b", "a", "", 2, 3, nil)}, "", nil},
 		{"no run in the session", []run.Record{other}, "", nil},
+		{"a continuation reaped with no turn", []run.Record{a, reaped("x", "a", 2, 3)}, "", nil},
+		{"a reaped continuation of a continuation", []run.Record{a, b, reaped("x", "b", 4, 5)}, "", nil},
+		{"a continuation after a reaped one", []run.Record{a, reaped("x", "a", 2, 3), record("d", "x", "s", 4, 5, totals(4))}, "", usd(4)},
+		{"a reaped run in another session", []run.Record{a, b, reaped("x", "o", 10, 11), other}, "", usd(2)},
 	} {
 		got := run.LatestTotals(test.records, "s", test.exclude)
 		if test.want == nil && got != nil || test.want != nil && (got == nil || *got.CostUSD != *test.want) {
