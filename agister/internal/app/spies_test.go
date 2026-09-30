@@ -213,7 +213,7 @@ type changesSpy struct {
 	rebuilds  int
 }
 
-func (s *changesSpy) Identity(context.Context, string) (string, error) {
+func (s *changesSpy) Identity(context.Context, string, string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.identify != nil {

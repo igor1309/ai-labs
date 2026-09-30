@@ -110,13 +110,19 @@ func resolved(path string) string {
 	return filepath.Clean(path)
 }
 
-// Identity writes the checkout's content, its tracked and untracked files
-// that are not ignored, as a tree through an index of its own, and returns
-// the tree. The checkout's own index is neither read nor written: its
-// flags (assume-unchanged, skip-worktree) could hide content.
-func (Workspaces) Identity(ctx context.Context, dir string) (string, error) {
+// Identity writes the checkout's content as a tree through an index of its
+// own, and returns the tree: the files of revision as the checkout has them
+// now, whatever is committed, and its untracked files that are not ignored.
+// The checkout's own index is neither read nor written: its flags
+// (assume-unchanged, skip-worktree) could hide content.
+func (Workspaces) Identity(ctx context.Context, dir, revision string) (string, error) {
 	var tree string
 	err := scratchIndex(func(env []string) error {
+		// Seeded from revision, the files it tracks stay tracked whatever the
+		// ignore rules say.
+		if _, err := runWith(ctx, dir, env, nil, "read-tree", revision); err != nil {
+			return err
+		}
 		if _, err := runWith(ctx, dir, env, nil, "add", "--all", "--", "."); err != nil {
 			return err
 		}

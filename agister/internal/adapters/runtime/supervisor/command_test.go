@@ -23,10 +23,35 @@ func runCommand(ctx context.Context, t *testing.T, dir, command string, timeout 
 	t.Helper()
 	var refs []string
 	result := supervisor.Commands{}.Run(ctx, app.CommandRequest{Command: command, Dir: dir, Timeout: timeout, Bound: bound}, func(ref string) error {
+		if len(refs) == 0 {
+			cleanUpGroup(t, ref)
+		}
 		refs = append(refs, ref)
 		return nil
 	})
 	return result, refs
+}
+
+// cleanUpGroup makes sure the group a reference names ends with the test,
+// whatever the runner did: it is killed, its leader reaped if the runner
+// did not, and the test waits until no member is left.
+func cleanUpGroup(t *testing.T, ref string) {
+	t.Helper()
+	group, _, err := supervisor.ParseRef(ref)
+	if err != nil || group <= 1 {
+		t.Errorf("reference %q names no group: %v", ref, err)
+		return
+	}
+	t.Cleanup(func() {
+		_ = syscall.Kill(-group, syscall.SIGKILL)
+		var status syscall.WaitStatus
+		_, _ = syscall.Wait4(group, &status, syscall.WNOHANG, nil)
+		deadline := time.Now().Add(5 * time.Second)
+		for !errors.Is(syscall.Kill(-group, 0), syscall.ESRCH) && time.Now().Before(deadline) {
+			_, _ = syscall.Wait4(group, &status, syscall.WNOHANG, nil)
+			time.Sleep(20 * time.Millisecond)
+		}
+	})
 }
 
 // A command runs with bash in its directory; its combined output is kept
@@ -118,7 +143,8 @@ func TestCommandGroupIsKilled(t *testing.T) {
 func TestUnrecordedCommandIsKilled(t *testing.T) {
 	dir := t.TempDir()
 	started := time.Now()
-	result := supervisor.Commands{}.Run(context.Background(), app.CommandRequest{Command: "sleep 30", Dir: dir, Timeout: 30 * time.Second, Bound: 64}, func(string) error {
+	result := supervisor.Commands{}.Run(context.Background(), app.CommandRequest{Command: "sleep 30", Dir: dir, Timeout: 30 * time.Second, Bound: 64}, func(ref string) error {
+		cleanUpGroup(t, ref)
 		return errors.New("disk full")
 	})
 	if result.Error != "disk full" || result.ExitCode != nil || time.Since(started) > 10*time.Second {

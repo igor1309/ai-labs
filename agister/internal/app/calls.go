@@ -24,7 +24,7 @@ type Calls struct {
 	inputs     map[string]InputProvider
 	workspaces CallWorkspaces
 	changes    CallChanges
-	commands   CallCommands
+	verifier   *Verifier
 	validator  CallValidator
 	recorder   RunRecorder
 	runs       CallRuns
@@ -120,25 +120,16 @@ type CallWorkspaces interface {
 // CallChanges names the content of a call's checkout and captures what
 // changed in it, as evidence. It never writes the checkout's own index.
 type CallChanges interface {
-	// Identity names the checkout's content: its tracked and untracked
-	// files that are not ignored, whatever is committed.
-	Identity(ctx context.Context, dir string) (string, error)
+	// Identity names the checkout's content: the files of revision as the
+	// checkout has them, and its untracked files that are not ignored,
+	// whatever is committed.
+	Identity(ctx context.Context, dir, revision string) (string, error)
 	// Changes returns the patch from one content, a revision or an
 	// identity, to another; empty when they are the same.
 	Changes(ctx context.Context, dir, from, to string) ([]byte, error)
 	// Rebuild applies a patch to revision apart from the checkout and
 	// names the content that results.
 	Rebuild(ctx context.Context, dir, revision string, patch []byte) (string, error)
-}
-
-// CallCommands runs the verification command a process declares.
-type CallCommands interface {
-	// Run runs the command in a process group of its own until it exits,
-	// its timeout passes or ctx ends, and kills the whole group before it
-	// returns. started records the group as soon as it exists, and may be
-	// called again as more becomes known; an error from it means the group
-	// is not on record: Run kills it and the run fails.
-	Run(ctx context.Context, request CommandRequest, started func(ref string) error) CommandResult
 }
 
 // RunRecorder creates run records owned by the calling process.
@@ -155,7 +146,7 @@ func NewCalls(
 	inputs map[string]InputProvider,
 	workspaces CallWorkspaces,
 	changes CallChanges,
-	commands CallCommands,
+	verifier *Verifier,
 	validator CallValidator,
 	recorder RunRecorder,
 	runs CallRuns,
@@ -170,7 +161,7 @@ func NewCalls(
 		inputs:     inputs,
 		workspaces: workspaces,
 		changes:    changes,
-		commands:   commands,
+		verifier:   verifier,
 		validator:  validator,
 		recorder:   recorder,
 		runs:       runs,
@@ -430,7 +421,8 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	fault := conclude(turn)
 	if fault == nil && res.process.Verify != nil {
 		loop := &verification{
-			calls: c, record: &record, result: &result, event: event, update: handle.Update, artifact: handle.Artifact,
+			content: c.verifier.content, commands: c.verifier.commands, clock: c.verifier.clock,
+			record: &record, result: &result, event: event, update: handle.Update, artifact: handle.Artifact,
 			verify: *res.process.Verify, limit: res.effective.MaxCostUSD, deadline: deadline,
 			dir: workspace.Dir, base: revision, request: request, session: turn.ProviderSessionID,
 			take: take, conclude: conclude,
@@ -486,7 +478,7 @@ func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revis
 	identity := verified
 	var err error
 	if identity == "" {
-		identity, err = c.changes.Identity(ctx, dir)
+		identity, err = c.changes.Identity(ctx, dir, revision)
 	}
 	var patch []byte
 	if err == nil {

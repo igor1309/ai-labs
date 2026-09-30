@@ -1,6 +1,10 @@
 // Package prompt assembles what the agent receives. The words come from the
 // process definition; this package only arranges them with the resolved
-// inputs and the granted permissions.
+// inputs and the granted permissions, or with a verification run's failure.
+//
+// It depends on the run package's evidence types (run.Input, run.Output):
+// the agent receives exactly what the call records, so the prompt is built
+// from the recorded values rather than from copies of them.
 package prompt
 
 import (

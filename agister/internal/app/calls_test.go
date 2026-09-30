@@ -126,7 +126,7 @@ func (h *harness) callsOn(src app.ResolverDefinitions) *app.Calls {
 		app.NewResolver(src, h.runtimes, h.validator),
 		h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
-		h.workspaces, h.changes, h.commands, h.validator, h.recorder, h.runs,
+		h.workspaces, h.changes, app.NewVerifier(h.changes, h.commands, h.clock), h.validator, h.recorder, h.runs,
 		h.clock, fixedIDs{}, "/state", h.hosted,
 	)
 }
@@ -424,7 +424,7 @@ func TestCallsResolveThroughTheResolutionTheyDeclare(t *testing.T) {
 	h := newHarness()
 	double := &app.SnapshotCounter{Reason: "the double refuses"}
 	h.calls = app.NewCalls(
-		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes, h.commands,
+		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes, app.NewVerifier(h.changes, h.commands, h.clock),
 		h.validator, h.recorder, h.runs, h.clock, fixedIDs{}, "/state", h.hosted,
 	)
 	record := h.call(t, contract.CallRequest{})

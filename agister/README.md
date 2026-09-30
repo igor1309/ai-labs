@@ -70,8 +70,9 @@ of its own, with your environment. It never runs after a refusal, or after
 a turn that failed, was interrupted or lost, or returned invalid output:
 that turn's status ends the node. A run passes on exit status 0 when it
 left the checkout's content as it found it; a run that changes the content
-(tracked or untracked files that are not ignored) fails whatever its exit
-status. The node completes only when the latest run passes, and the
+(every file the checked-out revision tracks, even one matching
+`.gitignore`, and untracked files that are not ignored) fails whatever its
+exit status. The node completes only when the latest run passes, and the
 `changes.patch` it keeps, applied to the checked-out revision, rebuilds
 exactly the content that passed.
 

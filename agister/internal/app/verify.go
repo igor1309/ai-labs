@@ -15,13 +15,56 @@ import (
 // each end: the evidence and the repair turn get that head and tail.
 const verifyOutputBound = 8 << 10
 
-// verification is one call's verification loop (ADR-002): after a valid
-// turn it runs the process's command in the call's checkout, and on a
-// failure with attempts, time and budget left, resumes the call's session
-// in place with the failure and checks again. Every attempt is recorded
-// before the next turn starts.
+// Verifier runs the verification loop of calls whose process declares
+// verify (ADR-002), through the contracts it declares here. Calls compose
+// one loop per call from it.
+type Verifier struct {
+	content  VerifyContent
+	commands VerifyCommands
+	clock    VerifyClock
+}
+
+// VerifyContent names a checkout's content and diffs two contents, so every
+// checked state can be compared and rebuilt.
+type VerifyContent interface {
+	// Identity names the checkout's content: the files of revision as the
+	// checkout has them, and its untracked files that are not ignored.
+	Identity(ctx context.Context, dir, revision string) (string, error)
+	// Changes returns the patch from one content to another; empty when
+	// they are the same.
+	Changes(ctx context.Context, dir, from, to string) ([]byte, error)
+}
+
+// VerifyCommands runs the verification command.
+type VerifyCommands interface {
+	// Run runs the command in a process group of its own until it exits,
+	// its timeout passes or ctx ends, and kills the whole group before it
+	// returns. started records the group as soon as it exists, and may be
+	// called again as more becomes known; an error from it means the group
+	// is not on record: Run kills it and the run fails.
+	Run(ctx context.Context, request CommandRequest, started func(ref string) error) CommandResult
+}
+
+// VerifyClock tells how much of the call's time is left, and when each run
+// starts and ends.
+type VerifyClock interface{ Now() time.Time }
+
+// NewVerifier returns the component that runs verification loops. Every
+// collaborator is required.
+func NewVerifier(content VerifyContent, commands VerifyCommands, clock VerifyClock) *Verifier {
+	return &Verifier{content: content, commands: commands, clock: clock}
+}
+
+// verification is one call's verification loop: after a valid turn it runs
+// the process's command in the call's checkout, and on a failure with
+// attempts, time and budget left, resumes the call's session in place with
+// the failure and checks again. Every attempt is recorded before the next
+// turn starts.
 type verification struct {
-	calls  *Calls
+	content  VerifyContent
+	commands VerifyCommands
+	clock    VerifyClock
+
 	record *run.Record
 	result *run.Result
 	event  func(source, kind string, data map[string]any)
@@ -55,7 +98,7 @@ func (v *verification) run(ctx context.Context) *run.Error {
 	for number := 1; ; number++ {
 		turn := *v.record.Turn
 		attempt := run.Attempt{Number: number, Session: turn.ProviderSessionID, Turn: turn}
-		identity, err := v.calls.changes.Identity(ctx, v.dir)
+		identity, err := v.content.Identity(ctx, v.dir, v.base)
 		if err != nil {
 			return v.stop(attempt, v.failure(ctx, "naming the checkout's content", err))
 		}
@@ -71,7 +114,7 @@ func (v *verification) run(ctx context.Context) *run.Error {
 		if ctx.Err() != nil {
 			return v.stop(attempt, run.Fault(run.ClassCancelled, "cancelled before attempt %d's run", number))
 		}
-		remaining := v.deadline.Sub(v.calls.clock.Now())
+		remaining := v.deadline.Sub(v.clock.Now())
 		if remaining <= 0 {
 			return v.stop(attempt, run.Fault(run.ClassTimeout, "the call's timeout passed before attempt %d's run", number))
 		}
@@ -92,7 +135,7 @@ func (v *verification) run(ctx context.Context) *run.Error {
 		}
 
 		// Rule 7: a run that changes the content fails, whatever its exit.
-		after, err := v.calls.changes.Identity(ctx, v.dir)
+		after, err := v.content.Identity(ctx, v.dir, v.base)
 		if err != nil {
 			return v.stop(attempt, v.failure(ctx, "naming the checkout's content after the run", err))
 		}
@@ -114,14 +157,14 @@ func (v *verification) run(ctx context.Context) *run.Error {
 			return nil
 		}
 
-		if fault := v.exhausted(ran, previous, number, turn); fault != nil {
+		if fault := v.exhausted(ran, previous, number); fault != nil {
 			return v.stop(attempt, fault)
 		}
 		budget, fault := v.budget()
 		if fault != nil {
 			return v.stop(attempt, fault)
 		}
-		remaining = v.deadline.Sub(v.calls.clock.Now())
+		remaining = v.deadline.Sub(v.clock.Now())
 		if remaining <= 0 {
 			return v.stop(attempt, run.Fault(run.ClassTimeout, "the call's timeout passed after attempt %d's run", number))
 		}
@@ -143,8 +186,10 @@ func (v *verification) run(ctx context.Context) *run.Error {
 		v.event(run.SourceAgister, "REPAIR_STARTED", map[string]any{"attempt": number + 1, "session": v.session})
 		repair := v.take(request)
 		fault = v.conclude(repair)
-		if fault == nil && repair.ProviderSessionID != "" && repair.ProviderSessionID != v.session {
-			fault = run.Fault(run.ClassRuntimeError, "the repair turn resumed session %s, but the runtime reported session %s", v.session, repair.ProviderSessionID)
+		// A repair that reports no session confirms none: it is not in the
+		// call's session, whatever it did.
+		if fault == nil && repair.ProviderSessionID != v.session {
+			fault = run.Fault(run.ClassRuntimeError, "the repair turn resumed session %s, but the runtime reported session %q", v.session, repair.ProviderSessionID)
 		}
 		if fault != nil {
 			failed := run.Attempt{Number: number + 1, Session: repair.ProviderSessionID, Turn: repair}
@@ -154,15 +199,15 @@ func (v *verification) run(ctx context.Context) *run.Error {
 }
 
 // exhausted is why a failed run cannot be repaired, if it cannot: the same
-// failure as the run before (rule 6), the last attempt, or a turn with no
-// session to resume.
-func (v *verification) exhausted(ran run.CommandRun, previous *run.CommandRun, number int, turn run.Turn) *run.Error {
+// failure as the run before (rule 6), the last attempt, or no session to
+// resume (every repair reports the first turn's).
+func (v *verification) exhausted(ran run.CommandRun, previous *run.CommandRun, number int) *run.Error {
 	switch {
 	case previous != nil && sameExit(previous.Exit, ran.Exit) && previous.Output.SHA256 == ran.Output.SHA256:
 		return run.Fault(run.ClassBudgetExhausted, "no progress: attempt %d failed as attempt %d did, with the same exit status and output", number, number-1)
 	case number >= v.verify.MaxAttempts:
 		return run.Fault(run.ClassBudgetExhausted, "attempt %d of %d failed (%s)", number, v.verify.MaxAttempts, ended(ran))
-	case turn.ProviderSessionID == "" || v.session == "":
+	case v.session == "":
 		return run.Fault(run.ClassBudgetExhausted, "attempt %d failed and its turn reported no session to repair in", number)
 	}
 	return nil
@@ -190,9 +235,9 @@ func (v *verification) budget() (*float64, *run.Error) {
 // record as an effect of the call while it runs.
 func (v *verification) runCommand(ctx context.Context, number int, timeout time.Duration) run.CommandRun {
 	v.event(run.SourceAgister, "VERIFY_STARTED", map[string]any{"attempt": number, "command": v.verify.Command, "dir": v.dir, "timeout": timeout.String()})
-	started := v.calls.clock.Now()
-	result := v.calls.commands.Run(ctx, CommandRequest{Command: v.verify.Command, Dir: v.dir, Timeout: timeout, Bound: verifyOutputBound}, v.recordGroup)
-	finished := v.calls.clock.Now()
+	started := v.clock.Now()
+	result := v.commands.Run(ctx, CommandRequest{Command: v.verify.Command, Dir: v.dir, Timeout: timeout, Bound: verifyOutputBound}, v.recordGroup)
+	finished := v.clock.Now()
 	ran := run.CommandRun{
 		Command:    v.verify.Command,
 		Dir:        v.dir,
@@ -233,7 +278,7 @@ func (v *verification) recordGroup(ref string) error {
 // keep stores the patch from one content to another as an artifact; none
 // when they are the same.
 func (v *verification) keep(ctx context.Context, name, from, to string) (*run.Artifact, error) {
-	patch, err := v.calls.changes.Changes(ctx, v.dir, from, to)
+	patch, err := v.content.Changes(ctx, v.dir, from, to)
 	if err != nil || len(patch) == 0 {
 		return nil, err
 	}

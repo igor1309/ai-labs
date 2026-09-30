@@ -139,14 +139,14 @@ test: ./cmd/agister TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted
 # Calls prepare the workspace and capture its changes through two roles.
 [the built calls prepare the workspace through the wired role]
 file: cmd/agister/main.go
-find: git.Workspaces{}, git.Workspaces{}, supervisor.Commands{}
-replace: struct{ app.CallWorkspaces }{}, git.Workspaces{}, supervisor.Commands{}
+find: git.Workspaces{}, git.Workspaces{}, verifier
+replace: struct{ app.CallWorkspaces }{}, git.Workspaces{}, verifier
 test: ./cmd/agister TestWorkspaceChangesAreKept
 
 [the built calls capture changes through the wired role]
 file: cmd/agister/main.go
-find: git.Workspaces{}, git.Workspaces{}, supervisor.Commands{}
-replace: git.Workspaces{}, struct{ app.CallChanges }{}, supervisor.Commands{}
+find: git.Workspaces{}, git.Workspaces{}, verifier
+replace: git.Workspaces{}, struct{ app.CallChanges }{}, verifier
 test: ./cmd/agister TestWorkspaceChangesAreKept
 
 # No interface is shared: ports.go holds data only.

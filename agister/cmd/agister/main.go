@@ -89,6 +89,7 @@ func wire(config cli.Config) (*app.Gated, *app.BackgroundReaper, error) {
 		"git.changed_files": git.ChangedFiles{},
 	}
 	hosted := app.NewHosted()
+	verifier := app.NewVerifier(git.Workspaces{}, supervisor.Commands{}, system.Clock{})
 	// Abandoned runs are reaped beside the calls, never inside one. A reap
 	// that fails has no caller to tell and no run record to say so: the
 	// log does.
@@ -120,7 +121,7 @@ func wire(config cli.Config) (*app.Gated, *app.BackgroundReaper, error) {
 			Checker:    checkerOn(layered),
 			Inspection: app.NewInspection(resolverOn(layered)),
 			Calls: app.NewCalls(
-				resolverOn(layered), runtimes, sources, git.Workspaces{}, git.Workspaces{}, supervisor.Commands{}, schema.Validator{},
+				resolverOn(layered), runtimes, sources, git.Workspaces{}, git.Workspaces{}, verifier, schema.Validator{},
 				evidence, evidence, system.Clock{}, system.IDs{}, config.Home, hosted,
 			),
 			Runs: app.NewRuns(evidence, hosted, 0),

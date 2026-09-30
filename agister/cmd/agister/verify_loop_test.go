@@ -130,10 +130,12 @@ type loopHarness struct {
 // newLoop is a repository with a base commit, settings for process impl
 // with the verify given, and a Calls over them and the scripted steps.
 func newLoop(t *testing.T, settings verifySettings, steps ...step) *loopHarness {
-	return newLoopWith(t, git.Workspaces{}, settings, steps...)
+	return newLoopWith(t, git.Workspaces{}, system.Clock{}, settings, steps...)
 }
 
-func newLoopWith(t *testing.T, changes app.CallChanges, settings verifySettings, steps ...step) *loopHarness {
+// newLoopWith is newLoop capturing changes through changes and telling the
+// time by clock, for the call and its verification alike.
+func newLoopWith(t *testing.T, changes app.CallChanges, clock app.CallClock, settings verifySettings, steps ...step) *loopHarness {
 	t.Helper()
 	repo, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
@@ -228,8 +230,8 @@ verify:
 	h.calls = app.NewCalls(
 		app.NewResolver(fsdefs.Store{Dir: defs}, runtimes, schema.Validator{}), runtimes,
 		map[string]app.InputProvider{"git.revision": git.Revision{}},
-		git.Workspaces{}, changes, supervisor.Commands{}, schema.Validator{},
-		h.store, h.store, system.Clock{}, system.IDs{}, h.home, hosted,
+		git.Workspaces{}, changes, app.NewVerifier(changes, supervisor.Commands{}, clock), schema.Validator{},
+		h.store, h.store, clock, system.IDs{}, h.home, hosted,
 	)
 	h.runs = app.NewRuns(h.store, hosted, 10*time.Millisecond)
 	return h
@@ -432,17 +434,49 @@ func TestVerifyRunTimeout(t *testing.T) {
 // The call's timeout bounds the whole loop: a run gets only the time the
 // turns before it left.
 func TestVerifyCallTimeoutBoundsTheLoop(t *testing.T) {
+	// The turn uses 59 of the call's 60 seconds on the call's clock, which
+	// leaves the run one second of its 20.
+	clock := &manualClock{now: time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)}
 	slow := func(t *testing.T, request app.TurnRequest) domain.Turn {
-		time.Sleep(time.Second)
+		clock.advance(59 * time.Second)
 		return state("one")(t, request)
 	}
-	h := newLoop(t, verifySettings{command: "sleep 30", timeout: "2s"}, slow)
+	h := newLoopWith(t, git.Workspaces{}, clock, verifySettings{command: "sleep 30", timeout: "20s"}, slow)
 	started := time.Now()
-	record := h.call(contract.CallRequest{Timeout: "2s"})
+	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Interrupted, domain.ClassTimeout, "the call's timeout passed during attempt 1's run")
+	events, _, err := h.store.Events(context.Background(), record.ID, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, event := range events {
+		if event.Kind == "VERIFY_STARTED" && event.Data["timeout"] != "1s" {
+			t.Fatalf("the run was given %v", event.Data["timeout"])
+		}
+	}
+	// Only a guard against a hang: the command is killed after a second.
 	if elapsed := time.Since(started); elapsed > 15*time.Second {
 		t.Fatalf("after %s", elapsed)
 	}
+}
+
+// manualClock tells the time it is set to, so a test decides how much of
+// the call's time has passed.
+type manualClock struct {
+	mu  sync.Mutex
+	now time.Time
+}
+
+func (c *manualClock) Now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.now
+}
+
+func (c *manualClock) advance(by time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.now = c.now.Add(by)
 }
 
 // Cancelling the call during a run kills the command's whole process
@@ -457,6 +491,11 @@ func TestVerifyCancellationKillsTheCommandGroup(t *testing.T) {
 		group, _ = strconv.Atoi(strings.TrimSpace(string(data)))
 		return err == nil && strings.HasSuffix(string(data), "\n")
 	})
+	// Whatever the assertions below find, the command does not outlive the
+	// test.
+	if group > 1 {
+		t.Cleanup(func() { _ = syscall.Kill(-group, syscall.SIGKILL) })
+	}
 	running, _, err := h.store.Get(context.Background(), id)
 	if err != nil || running.Effects == nil || running.Effects.Command == nil {
 		t.Fatalf("record effects %+v, %v", running.Effects, err)
@@ -492,7 +531,11 @@ func TestVerifyRepairTurnThatFailsEndsTheNode(t *testing.T) {
 		{"invalid output", state("pass", func(turn *domain.Turn) { turn.Output = json.RawMessage(`{}`) }),
 			domain.Failed, domain.ClassInvalidOutput, "done"},
 		{"another session", state("pass", func(turn *domain.Turn) { turn.ProviderSessionID = "sess-2" }),
-			domain.Failed, domain.ClassRuntimeError, "resumed session sess-1, but the runtime reported session sess-2"},
+			domain.Failed, domain.ClassRuntimeError, `resumed session sess-1, but the runtime reported session "sess-2"`},
+		// A repair that reports no session is not known to be in the call's,
+		// though its content passes.
+		{"no session", state("pass", func(turn *domain.Turn) { turn.ProviderSessionID = "" }),
+			domain.Failed, domain.ClassRuntimeError, `resumed session sess-1, but the runtime reported session ""`},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -524,6 +567,21 @@ func TestVerifyUnknownCostBlocksRepair(t *testing.T) {
 	expect(t, h.call(contract.CallRequest{}), domain.Completed, "", "")
 	if turns := h.runner.turns(); len(turns) != 2 || *turns[0].MaxCostUSD != 5 || *turns[1].MaxCostUSD != 3.5 {
 		t.Fatalf("cost limits sent: %v, %v", *turns[0].MaxCostUSD, turns[1].MaxCostUSD)
+	}
+}
+
+// A cost limit already spent, exactly or beyond, leaves nothing for a repair
+// turn, though attempts are left.
+func TestVerifySpentBudgetBlocksRepair(t *testing.T) {
+	for _, usd := range []float64{5, 6} {
+		t.Run(fmt.Sprintf("$%g of $5", usd), func(t *testing.T) {
+			h := newLoop(t, verifySettings{policy: "max_cost_usd: 5\n"}, state("one", func(turn *domain.Turn) { turn.CostUSD = &usd }), state("pass"))
+			record := h.call(contract.CallRequest{})
+			expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "the cost limit 5 is spent")
+			if len(h.runner.turns()) != 1 || len(runsOf(record)) != 1 {
+				t.Fatalf("turns %d, attempts %+v", len(h.runner.turns()), record.Attempts)
+			}
+		})
 	}
 }
 
@@ -609,7 +667,7 @@ func TestVerifyCaptureReproducesThePassingContent(t *testing.T) {
 		t.Fatalf("the patch rebuilds %s, the passing content is %s", tree, record.Attempts[0].Identity)
 	}
 
-	h = newLoopWith(t, lossy{}, verifySettings{}, agent)
+	h = newLoopWith(t, lossy{}, system.Clock{}, verifySettings{}, agent)
 	record = h.call(contract.CallRequest{})
 	expect(t, record, domain.Failed, domain.ClassInternal, "the captured changes do not reproduce the content that passed verification")
 }

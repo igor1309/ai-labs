@@ -54,7 +54,7 @@ test: ./cmd/agister TestVerifyRepairTurnThatFailsEndsTheNode
 # Rule 4: a turn that reports no session cannot be repaired.
 [a turn without a session ends the node]
 file: internal/app/verify.go
-find: case turn.ProviderSessionID == "" || v.session == "":
+find: case v.session == "":
 replace: case false:
 test: ./cmd/agister TestVerifyTurnWithoutSessionCannotBeRepaired
 
@@ -237,6 +237,44 @@ test: ./cmd/agister TestNextCallReapsAKilledRunsVerifyCommand
 # command runner.
 [the built calls run the verification command through the wired role]
 file: cmd/agister/main.go
-find: git.Workspaces{}, git.Workspaces{}, supervisor.Commands{}
-replace: git.Workspaces{}, git.Workspaces{}, struct{ app.CallCommands }{}
+find: app.NewVerifier(git.Workspaces{}, supervisor.Commands{}, system.Clock{})
+replace: app.NewVerifier(git.Workspaces{}, struct{ app.VerifyCommands }{}, system.Clock{})
 test: ./cmd/agister TestVerifyDeclarationEndToEnd
+
+# Review fix 1: a repair that reports no session fails, though its content
+# would pass.
+[a repair that reports no session fails]
+file: internal/app/verify.go
+find: if fault == nil && repair.ProviderSessionID != v.session {
+replace: if fault == nil && repair.ProviderSessionID != "" && repair.ProviderSessionID != v.session {
+test: ./cmd/agister TestVerifyRepairTurnThatFailsEndsTheNode
+
+# Review fix 5: a passing attempt that cannot be recorded does not complete
+# the node.
+[a passing attempt that cannot be recorded fails the call]
+file: internal/app/verify.go
+find: // The node completes only once the passing attempt is recorded.\n\t\t\tif err := v.save(attempt); err != nil {
+replace: // The node completes only once the passing attempt is recorded.\n\t\t\tif err := v.save(attempt); err != nil && false {
+test: ./internal/app TestAnAttemptThatCannotBeRecordedStopsTheCall
+
+# Review fix 5: a failed attempt that cannot be recorded is not repaired.
+[a failed attempt that cannot be recorded stops the repair]
+file: internal/app/verify.go
+find: // Every checked state can be rebuilt before the next turn changes it.\n\t\tif err := v.save(attempt); err != nil {
+replace: // Every checked state can be rebuilt before the next turn changes it.\n\t\tif err := v.save(attempt); err != nil && false {
+test: ./internal/app TestAnAttemptThatCannotBeRecordedStopsTheCall
+
+# Review fix 6: a cost limit already spent, exactly or beyond, blocks repair.
+[a spent cost budget blocks repair]
+file: internal/app/verify.go
+find: if left <= 0 {
+replace: if false {
+test: ./cmd/agister TestVerifySpentBudgetBlocksRepair
+
+# Verification finding 7: files the revision tracks stay content though
+# they match .gitignore.
+[tracked files stay content whatever the ignore rules]
+file: internal/adapters/git/git.go
+find: runWith(ctx, dir, env, nil, "read-tree", revision); err != nil {\n\t\t\treturn err\n\t\t}\n\t\tif _, err := runWith(ctx, dir, env, nil, "add"
+replace: runWith(ctx, dir, env, nil, "read-tree", "--empty"); err != nil {\n\t\t\treturn err\n\t\t}\n\t\tif _, err := runWith(ctx, dir, env, nil, "add"
+test: ./internal/adapters/git TestTrackedIgnoredFilesStayContent

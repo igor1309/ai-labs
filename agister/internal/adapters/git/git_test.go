@@ -145,7 +145,7 @@ func TestChangesCoverEverythingSinceTheRevision(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer release()
-	untouched, err := workspaces.Identity(ctx, dir)
+	untouched, err := workspaces.Identity(ctx, dir, revision)
 	if err != nil || untouched != sh(t, repo, "rev-parse", revision+"^{tree}") {
 		t.Fatalf("untouched checkout: %q, %v", untouched, err)
 	}
@@ -166,7 +166,7 @@ func TestChangesCoverEverythingSinceTheRevision(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "b.txt"), []byte("hidden from the index\n"), 0o600)
 	status := sh(t, dir, "status", "--porcelain")
 
-	identity, err := workspaces.Identity(ctx, dir)
+	identity, err := workspaces.Identity(ctx, dir, revision)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -195,6 +195,47 @@ func TestChangesCoverEverythingSinceTheRevision(t *testing.T) {
 	}
 	if status := sh(t, repo, "status", "--porcelain"); status != "" {
 		t.Fatalf("repository changed: %s", status)
+	}
+}
+
+// Files the revision tracks stay content though they match .gitignore:
+// unchanged, they are not in the patch at all, and an edit to one is.
+// Untracked files that match stay out.
+func TestTrackedIgnoredFilesStayContent(t *testing.T) {
+	repo := repository(t)
+	ctx := context.Background()
+	workspaces := git.Workspaces{}
+	os.WriteFile(filepath.Join(repo, ".gitignore"), []byte("*.log\n"), 0o600)
+	os.WriteFile(filepath.Join(repo, "kept.log"), []byte("kept\n"), 0o600)
+	os.WriteFile(filepath.Join(repo, "edited.log"), []byte("before\n"), 0o600)
+	sh(t, repo, "add", "--force", ".gitignore", "kept.log", "edited.log")
+	sh(t, repo, "commit", "--quiet", "-m", "tracked, though ignored")
+	revision := sh(t, repo, "rev-parse", "HEAD")
+	dir, release, err := workspaces.Checkout(ctx, repo, revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	if untouched, err := workspaces.Identity(ctx, dir, revision); err != nil || untouched != sh(t, repo, "rev-parse", revision+"^{tree}") {
+		t.Fatalf("untouched checkout: %q, %v", untouched, err)
+	}
+
+	os.WriteFile(filepath.Join(dir, "edited.log"), []byte("after\n"), 0o600)
+	os.WriteFile(filepath.Join(dir, "new.log"), []byte("untracked\n"), 0o600)
+	identity, err := workspaces.Identity(ctx, dir, revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	patch, err := workspaces.Changes(ctx, dir, revision, identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if text := string(patch); !strings.Contains(text, "+++ b/edited.log") || !strings.Contains(text, "+after") ||
+		strings.Contains(text, "kept.log") || strings.Contains(text, "new.log") || strings.Contains(text, "deleted file") {
+		t.Fatalf("patch:\n%s", patch)
+	}
+	if rebuilt, err := workspaces.Rebuild(ctx, dir, revision, patch); err != nil || rebuilt != identity {
+		t.Fatalf("rebuilt %s, %v; want %s", rebuilt, err, identity)
 	}
 }
 

@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -81,6 +82,40 @@ func TestAFailedRunIsRepairedInTheCallsSession(t *testing.T) {
 	}
 	if *record.Result.Cost.USD != 1 || record.Attempts[1].Session != "prov-1" {
 		t.Fatalf("result %+v", record.Result)
+	}
+}
+
+// A node completes only once its attempts are recorded, and a repair starts
+// only once the failed attempt is: an attempt that cannot be recorded ends
+// the call as internal, with no completion and no repair turn.
+func TestAnAttemptThatCannotBeRecordedStopsTheCall(t *testing.T) {
+	cases := []struct {
+		name  string
+		exits []int
+		fails func(run.Attempt) bool // which attempt's update fails
+	}{
+		{"passing attempt", nil, func(a run.Attempt) bool { return a.Run != nil && a.Run.Passed }},
+		{"failed attempt before repair", []int{1}, func(a run.Attempt) bool { return a.Run != nil && !a.Run.Passed && a.Stopped == "" }},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			h := newHarness()
+			verifying(h)
+			h.commands.exits = c.exits
+			h.recorder.updateErr = func(record run.Record) error {
+				if n := len(record.Attempts); n > 0 && c.fails(record.Attempts[n-1]) {
+					return errors.New("disk full")
+				}
+				return nil
+			}
+			record := h.call(t, contract.CallRequest{})
+			if record.Result.Status != run.Failed || class(record) != run.ClassInternal || message(record) != "recording attempt 1 failed: disk full" {
+				t.Fatalf("result %+v", record.Result)
+			}
+			if len(h.runner.calls()) != 1 || len(h.commands.runs()) != 1 || h.changes.rebuilds != 0 || record.Result.Output != nil {
+				t.Fatalf("turns %d, runs %d, rebuilds %d", len(h.runner.calls()), len(h.commands.runs()), h.changes.rebuilds)
+			}
+		})
 	}
 }
 
