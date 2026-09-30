@@ -8,8 +8,10 @@ policy: process-policy:codex-review
 
 input:
   instruction: >-
-    Review the exact candidate against the diff from the base, following the
-    review prompt given as input review_prompt. Report material findings
+    Review the exact candidate, your working directory, against the base,
+    following the review prompt given as input review_prompt. Read the
+    change yourself: git diff <base_revision> <candidate_revision>, whole or
+    per file of changed_files. Report material findings
     only, with repository-relative paths and candidate line numbers.
     Each finding carries its evidence: the concrete case, the trace you
     verified and whether the change introduced it. A judge who never reads
@@ -20,7 +22,6 @@ input:
   values:
     base_revision: {source: git.revision, rev: "${param.base}"}
     candidate_revision: {source: git.revision, rev: "${param.candidate}"}
-    diff: {source: git.diff, base: "${value.base_revision}", head: "${value.candidate_revision}"}
     changed_files: {source: git.changed_files, base: "${value.base_revision}", head: "${value.candidate_revision}"}
     review_prompt: {source: file, path: prompts/code-review-architecture.md}
 
