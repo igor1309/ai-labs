@@ -119,13 +119,35 @@ type verifySettings struct {
 }
 
 type loopHarness struct {
-	t      *testing.T
-	repo   string
-	home   string
-	runner *scripted
-	calls  *app.Calls
-	runs   *app.Runs
-	store  fsruns.Store
+	t        *testing.T
+	repo     string
+	home     string
+	runner   *scripted
+	commands *recordingCommands
+	calls    *app.Calls
+	runs     *app.Runs
+	store    fsruns.Store
+}
+
+// recordingCommands is the real command runner, noting what each run was
+// asked for.
+type recordingCommands struct {
+	app.VerifyCommands
+	mu   sync.Mutex
+	seen []app.CommandRequest
+}
+
+func (c *recordingCommands) Run(ctx context.Context, request app.CommandRequest, started func(string) error) app.CommandResult {
+	c.mu.Lock()
+	c.seen = append(c.seen, request)
+	c.mu.Unlock()
+	return c.VerifyCommands.Run(ctx, request, started)
+}
+
+func (c *recordingCommands) requests() []app.CommandRequest {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]app.CommandRequest(nil), c.seen...)
 }
 
 // newLoop is a repository with a base commit, settings for process impl
@@ -224,14 +246,14 @@ verify:
 		write(t, filepath.Join(defs, name), text)
 	}
 
-	h := &loopHarness{t: t, repo: repo, home: t.TempDir(), runner: &scripted{t: t, steps: steps}}
+	h := &loopHarness{t: t, repo: repo, home: t.TempDir(), runner: &scripted{t: t, steps: steps}, commands: &recordingCommands{VerifyCommands: supervisor.Commands{}}}
 	h.store = fsruns.Store{Dir: filepath.Join(h.home, "runs")}
 	runtimes := fakeRuntimes{runner: h.runner}
 	hosted := app.NewHosted()
 	h.calls = app.NewCalls(
 		app.NewResolver(fsdefs.Store{Dir: defs}, runtimes, schema.Validator{}), runtimes,
 		map[string]app.InputProvider{"git.revision": git.Revision{}},
-		git.Workspaces{}, changes, app.NewVerifier(changes, git.Workspaces{}, supervisor.Commands{}, clock), schema.Validator{},
+		git.Workspaces{}, changes, app.NewVerifier(changes, git.Workspaces{}, h.commands, clock), schema.Validator{},
 		h.store, h.store, clock, system.IDs{}, h.home, hosted,
 	)
 	h.runs = app.NewRuns(h.store, hosted, 10*time.Millisecond)
@@ -429,15 +451,10 @@ const blocks = "tail -f /dev/null"
 // not the call's.
 func TestVerifyRunTimeout(t *testing.T) {
 	h := newLoop(t, verifySettings{command: blocks, timeout: "1s"}, state("one"))
-	started := time.Now()
 	record := h.call(contract.CallRequest{Timeout: "30s"})
 	expect(t, record, domain.Interrupted, domain.ClassTimeout, "attempt 1's run exceeded verify.timeout 1s")
 	if ran := runsOf(record); len(ran) != 1 || !ran[0].TimedOut {
 		t.Fatalf("attempts %+v", record.Attempts)
-	}
-	// Only a guard against a hang: the outcome above is the verdict.
-	if elapsed := time.Since(started); elapsed > 20*time.Second {
-		t.Fatalf("after %s", elapsed)
 	}
 }
 
@@ -452,7 +469,6 @@ func TestVerifyCallTimeoutBoundsTheLoop(t *testing.T) {
 		return state("one")(t, request)
 	}
 	h := newLoopWith(t, git.Workspaces{}, clock, verifySettings{command: blocks, timeout: "20s"}, slow)
-	started := time.Now()
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Interrupted, domain.ClassTimeout, "the call's timeout passed during attempt 1's run")
 	events, _, err := h.store.Events(context.Background(), record.ID, 0)
@@ -464,9 +480,9 @@ func TestVerifyCallTimeoutBoundsTheLoop(t *testing.T) {
 			t.Fatalf("the run was given %v", event.Data["timeout"])
 		}
 	}
-	// Only a guard against a hang: the command is killed after a second.
-	if elapsed := time.Since(started); elapsed > 15*time.Second {
-		t.Fatalf("after %s", elapsed)
+	// The command runner itself was given that second, not the run's 20.
+	if requests := h.commands.requests(); len(requests) != 1 || requests[0].Timeout != time.Second {
+		t.Fatalf("command requests %+v", requests)
 	}
 }
 
@@ -513,17 +529,13 @@ func TestVerifyCancellationKillsTheCommandGroup(t *testing.T) {
 	if recorded, _, err := supervisor.ParseRef(running.Effects.Command.Ref); err != nil || recorded != group {
 		t.Fatalf("recorded group %d (%v), the command's %d", recorded, err, group)
 	}
-	cancelled := time.Now()
 	if err := h.runs.Cancel(context.Background(), id); err != nil {
 		t.Fatal(err)
 	}
+	// The command never ends on its own, so the outcome and the group's end
+	// are the verdict.
 	record := h.wait(id)
 	expect(t, record, domain.Interrupted, domain.ClassCancelled, "cancelled during attempt 1's run")
-	// Only a guard against a hang: the command never ends on its own, so the
-	// outcome above and the group's end are the verdict.
-	if elapsed := time.Since(cancelled); elapsed > 20*time.Second {
-		t.Fatalf("the call ended %s after the cancel", elapsed)
-	}
 	eventually(t, "the command's group to be gone", func() bool { return errors.Is(syscall.Kill(-group, 0), syscall.ESRCH) })
 }
 
