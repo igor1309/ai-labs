@@ -1,7 +1,7 @@
-# Review of one change (ADR-003): the architecture and tests reviews of the
-# same candidate against the same base, concurrently, then the judge's
-# rulings on both. The judge starts only if both reviews completed, and
-# receives their recorded outputs as its collection and nothing else.
+# Review of one change (ADR-003): the architecture, tests and adversarial
+# reviews of the same candidate against the same base, concurrently, then the
+# judge's rulings on them. The judge starts only if every review completed,
+# and receives their recorded outputs as its collection and nothing else.
 #   agister run code_review --param base=<rev> --param candidate=<rev>
 schema: agister.workflow/v1alpha1
 name: code_review
@@ -20,5 +20,6 @@ input:
 fan_out:
   - {node: architecture, uses: process:architecture_review_codex}
   - {node: tests, uses: process:tests_review_codex}
+  - {node: adversarial, uses: process:adversarial_review_codex}
 
 join: {node: judge, uses: process:review_judge}
