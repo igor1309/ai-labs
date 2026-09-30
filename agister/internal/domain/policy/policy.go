@@ -90,6 +90,18 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 		}
 	}
 
+	// A verification run is bounded by its own timeout inside the call's,
+	// so the call's may not be the shorter; its attempts, by the service's
+	// ceiling. Either is invalid, never clamped.
+	if verify := process.Verify; verify != nil {
+		if verify.Timeout > *timeout {
+			add("verify.timeout %s exceeds the effective timeout %s", verify.Timeout, *timeout)
+		}
+		if verify.MaxAttempts > service.MaxVerifyAttempts {
+			add("verify.max_attempts %d exceeds the service limit max_verify_attempts %d", verify.MaxAttempts, service.MaxVerifyAttempts)
+		}
+	}
+
 	cost := narrowCost(add, service, origin, base.MaxCostUSD, over.MaxCostUSD, caller.MaxCostUSD)
 
 	attempts := 1

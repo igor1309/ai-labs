@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -47,6 +48,20 @@ type Output struct {
 	Schema string // name of a schema definition (json only)
 }
 
+// Verify is a process's verification command (ADR-002): run after a valid
+// turn, in the call's own checkout, with the operator's authority.
+type Verify struct {
+	Command     string        // one Bash command
+	Timeout     time.Duration // per run
+	MaxAttempts int           // runs, the first included
+	Instruction string        // what the agent is told when a run fails
+}
+
+// Repairs reports whether a failed run may be followed by a repair turn,
+// which resumes the call's session: an agent and runtime that cannot
+// continue sessions cannot run it.
+func (v *Verify) Repairs() bool { return v != nil && v.MaxAttempts > 1 }
+
 // Process is a named agent call.
 type Process struct {
 	Name        string
@@ -58,7 +73,8 @@ type Process struct {
 	Checkout    string   // name of the input whose revision is checked out
 	Require     []string // permissions the call cannot work without
 	Output      Output
-	Limits      Limits // narrowing overrides
+	Verify      *Verify // unset: no verification
+	Limits      Limits  // narrowing overrides
 	Source      Source
 }
 
@@ -107,7 +123,7 @@ func ParseProcess(doc Document) (Process, error) {
 	if root == nil {
 		return Process{Name: doc.Source.Name, Source: doc.Source}, p.err("process " + subjectName(doc.Source))
 	}
-	values := fields(root, "", append([]string{"schema", "name", "status", "type", "uses", "policy", "input", "output"}, limitKeys...), p)
+	values := fields(root, "", append([]string{"schema", "name", "status", "type", "uses", "policy", "input", "output", "verify"}, limitKeys...), p)
 	header(values, ProcessSchema, doc.Source.Name, p)
 	if value, _ := scalar(values["type"], "type", p); value != "process" {
 		p.add("type", `must be "process"`)
@@ -196,7 +212,42 @@ func ParseProcess(doc Document) (Process, error) {
 		p.add("output.format", `must be "json" or "text"`)
 	}
 
+	if node, ok := values["verify"]; ok {
+		process.Verify = parseVerify(node, p)
+		// Verifying a tree the call does not own would check content other
+		// calls can change and the call does not capture.
+		if process.Checkout == "" {
+			p.add("verify", "requires workspace.checkout: verification runs only in a checkout the call owns")
+		}
+	}
+
 	return process, p.err("process " + subjectName(doc.Source))
+}
+
+// parseVerify reads a verify block. Every field is required: there is no
+// default command, timeout, attempt count or instruction.
+func parseVerify(node *yaml.Node, p *problems) *Verify {
+	keys := []string{"command", "timeout", "max_attempts", "instruction"}
+	values := fields(node, "verify", keys, p)
+	for _, key := range keys {
+		if _, ok := values[key]; !ok {
+			p.add(join("verify", key), "is required")
+		}
+	}
+	verify := &Verify{
+		Command:     nonEmpty(values["command"], "verify.command", p),
+		Instruction: nonEmpty(values["instruction"], "verify.instruction", p),
+	}
+	if text, ok := scalar(values["timeout"], "verify.timeout", p); ok {
+		verify.Timeout, _ = duration(text, "verify.timeout", p)
+	}
+	if attempts, ok := integer(values["max_attempts"], "verify.max_attempts", p); ok {
+		if attempts < 1 {
+			p.add("verify.max_attempts", "must be at least 1")
+		}
+		verify.MaxAttempts = attempts
+	}
+	return verify
 }
 
 // ParseMapping parses a runtime permission mapping.

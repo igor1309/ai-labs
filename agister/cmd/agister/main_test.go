@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -799,5 +801,63 @@ func TestWorkspaceChangesAreKept(t *testing.T) {
 	}
 	if status := gitCmd(t, repo, "status", "--porcelain"); status != "" {
 		t.Fatalf("repository changed: %s", status)
+	}
+}
+
+// A process declaring verify, in settings on disk: check and process show
+// warn of it, a call records it under the process's digest and runs as
+// before, and a caller's timeout shorter than one run refuses the call.
+func TestVerifyDeclarationEndToEnd(t *testing.T) {
+	home, repo := setup(t, "approve")
+	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))
+	process := strings.Replace(shipped, "name: adversarial_review", "name: verified", 1) + `
+verify:
+  command: go test ./...
+  timeout: 2m
+  max_attempts: 1
+  instruction: The verification command failed. Fix the cause, not the check.
+`
+	write(t, filepath.Join(home, "processes", "verified.yaml"), process)
+
+	r := agister(t, home, repo, "check")
+	if r.code != 0 || strings.Count(r.stderr, "warning process verified: verify runs its command with the operator's authority") != 1 || strings.Contains(r.stderr, "adversarial_review") {
+		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	r = agister(t, home, repo, "process", "show", "verified")
+	if r.code != 0 || !strings.Contains(r.stdout, "verify       go test ./...\n") || !strings.Contains(r.stdout, "WARNING      verify runs its command with the operator's authority") {
+		t.Fatalf("show: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+
+	r = agister(t, home, repo, "run", "verified", "--param", "base=main", "--timeout", "5m")
+	if r.code != cli.ExitCompleted {
+		t.Fatalf("run: %d\n%s", r.code, r.stderr)
+	}
+	record := lastRun(t, home).record
+	verified := record["id"]
+	verify := record["verify"].(map[string]any)
+	if verify["command"] != "go test ./..." || verify["timeout"] != float64(2*60e9) || verify["max_attempts"] != 1.0 || !strings.HasPrefix(verify["instruction"].(string), "The verification command failed.") {
+		t.Fatalf("verify = %v", verify)
+	}
+	for _, source := range record["definitions"].([]any) {
+		source := source.(map[string]any)
+		if sum := sha256.Sum256([]byte(process)); source["kind"] == "processes" && source["sha256"] != hex.EncodeToString(sum[:]) {
+			t.Fatalf("process digest %v is not of the file as resolved", source["sha256"])
+		}
+	}
+
+	r = agister(t, home, repo, "run", "verified", "--param", "base=main", "--timeout", "1m")
+	// Two runs in one second need not list in the order they ran.
+	entries, _ := os.ReadDir(filepath.Join(home, "runs"))
+	var refused map[string]any
+	for _, entry := range entries {
+		var record map[string]any
+		readJSON(t, filepath.Join(home, "runs", entry.Name(), "record.json"), &record)
+		if record["id"] != verified {
+			refused = record["result"].(map[string]any)["error"].(map[string]any)
+		}
+	}
+	if r.code == cli.ExitCompleted || len(entries) != 2 || refused["class"] != "refused" ||
+		!strings.Contains(refused["message"].(string), "verify.timeout 2m0s exceeds the effective timeout 1m0s") {
+		t.Fatalf("run with a shorter timeout: %d, %v", r.code, refused)
 	}
 }

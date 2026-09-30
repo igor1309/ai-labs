@@ -557,6 +557,13 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 		{"workspace", view.Access + ", scope " + view.Scope},
 		{"limits", limits(view)},
 	}
+	if verify := view.Verify; verify != nil {
+		lines = append(lines,
+			[2]string{"verify", verify.Command},
+			[2]string{"  limits", fmt.Sprintf("timeout %s, attempts %d", verify.Timeout, verify.MaxAttempts)},
+			[2]string{"  on failure", verify.Instruction},
+		)
+	}
 	if view.Refusal != "" {
 		lines = append(lines, [2]string{"plan", "REFUSED: " + view.Refusal})
 	} else {
@@ -572,6 +579,9 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 			text += " (overrides " + source.Overrides + ")"
 		}
 		lines = append(lines, [2]string{label, text})
+	}
+	for _, warning := range view.Warnings {
+		lines = append(lines, [2]string{"WARNING", warning})
 	}
 	for _, line := range lines {
 		fmt.Fprintf(w, "%-12s %s\n", line[0], line[1])
@@ -639,7 +649,7 @@ func printCheckAs(env IO, report contract.CheckReport, opts options) (int, error
 		code = ExitUsage
 	}
 	if opts.json {
-		for _, list := range []*[]string{&report.Problems, &report.Overrides} {
+		for _, list := range []*[]string{&report.Problems, &report.Overrides, &report.Warnings} {
 			if *list == nil {
 				*list = []string{}
 			}
@@ -743,6 +753,9 @@ func printTree(w io.Writer, definitions []contract.Definition) {
 func printCheck(env IO, report contract.CheckReport) int {
 	for _, override := range report.Overrides {
 		fmt.Fprintln(env.Stdout, "override "+override)
+	}
+	for _, warning := range report.Warnings {
+		fmt.Fprintln(env.Stderr, "warning "+warning)
 	}
 	kinds := make([]string, 0, len(report.Checked))
 	for kind, count := range report.Checked {

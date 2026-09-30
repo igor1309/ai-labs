@@ -305,6 +305,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	}
 	record.Agent = res.agent.Name
 	record.Effective = recordEffective(res.effective)
+	record.Verify = recordVerify(res.process.Verify)
 	record.Runtime = &run.Runtime{Mapping: res.mapping.Name, Adapter: res.mapping.Adapter, Contract: res.identity.Contract, Version: res.identity.Version}
 	record.Plan = recordPlan(res.plan)
 	_ = handle.Update(record)

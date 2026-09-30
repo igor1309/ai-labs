@@ -203,6 +203,7 @@ type Record struct {
 	FinishedAt  *time.Time         `json:"finished_at,omitempty"`
 	Definitions []DefinitionSource `json:"definitions,omitempty"`
 	Effective   *EffectivePolicy   `json:"effective,omitempty"`
+	Verify      *Verify            `json:"verify,omitempty"`
 	Runtime     *Runtime           `json:"runtime,omitempty"`
 	Plan        *Plan              `json:"plan,omitempty"`
 	Inputs      []Input            `json:"inputs,omitempty"`

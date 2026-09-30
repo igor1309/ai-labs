@@ -172,6 +172,12 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 		}
 	}
 
+	for _, name := range sortedNames(bundle.Processes) {
+		if bundle.Processes[name].Verify != nil {
+			report.Warnings = append(report.Warnings, "process "+name+": "+VerifyWarning)
+		}
+	}
+
 	if bundle.Service == nil {
 		sort.Strings(report.Problems)
 		return report, nil
@@ -205,6 +211,13 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			default:
 				for _, p := range settings.PlanProblems(bundle, agent, identity.Version) {
 					report.Problems = append(report.Problems, p.String())
+				}
+				// Repairs resume the call's session, which only the
+				// runtime can say it supports.
+				for _, process := range sortedNames(bundle.Processes) {
+					if verify := bundle.Processes[process].Verify; bundle.Processes[process].Agent == name && verify.Repairs() && !identity.Resume {
+						problem("process "+process, "verify.max_attempts %d repairs in the call's session, but runtime %s cannot resume sessions", verify.MaxAttempts, mapping.Name)
+					}
 				}
 			}
 		}

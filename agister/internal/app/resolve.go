@@ -168,11 +168,19 @@ func (r *Resolver) Resolve(ctx context.Context, processName, agentOverride strin
 		return res, refuse("%v", err)
 	}
 
+	// A repair turn resumes the call's own session (ADR-002 rule 4).
+	if verify := res.process.Verify; verify.Repairs() && res.agent.Session != definition.SessionResumable {
+		return res, refuse("verify.max_attempts %d repairs in the call's session, but agent %s is %s", verify.MaxAttempts, res.agent.Name, res.agent.Session)
+	}
+
 	if res.identity, err = r.identities.Identity(ctx, res.mapping.Adapter, res.agent.Command); err != nil {
 		return res, refuse("runtime %s is unavailable: %v", res.mapping.Name, err)
 	}
 	if res.identity.Contract != res.mapping.Contract {
 		return res, refuse("runtime mapping %s describes adapter contract %s, but the adapter implements %s", res.mapping.Name, res.mapping.Contract, res.identity.Contract)
+	}
+	if verify := res.process.Verify; verify.Repairs() && !res.identity.Resume {
+		return res, refuse("verify.max_attempts %d repairs in the call's session, but runtime %s cannot resume sessions", verify.MaxAttempts, res.mapping.Name)
 	}
 	verified, unverified := res.mapping.ForVersion(res.identity.Version)
 	if len(verified.Primitives) == 0 {

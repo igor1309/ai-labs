@@ -324,6 +324,12 @@ func (s *Settings) ListProcesses(ctx context.Context) ([]contract.ProcessSummary
 	return processes, nil
 }
 
+// VerifyWarning is what check and process show say of a process whose
+// verification is in effect (ADR-002 rule 10): until verification is
+// confined, the command lends the operator's authority to the agent's code.
+const VerifyWarning = "verify runs its command with the operator's authority, not the agent's permissions, " +
+	"and the command can run code the agent wrote, with access to Agister's state"
+
 // Inspection shows a process as a call would see it, without effects.
 type Inspection struct {
 	resolver InspectionResolver
@@ -381,6 +387,13 @@ func (i *Inspection) ShowProcess(ctx context.Context, name, agent string) (contr
 			layer = "project"
 		}
 		view.Sources = append(view.Sources, contract.DefinitionOrigin{Kind: string(source.Kind), Name: source.Name, Layer: layer, Path: source.Path, Overrides: source.Overrides})
+	}
+	if verify := res.process.Verify; verify != nil {
+		view.Verify = &contract.Verify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}
+		// A refused call runs no command.
+		if refusal == nil {
+			view.Warnings = append(view.Warnings, VerifyWarning)
+		}
 	}
 	if refusal != nil {
 		view.Refusal = refusal.Reason

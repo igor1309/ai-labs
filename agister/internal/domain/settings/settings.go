@@ -115,6 +115,9 @@ func Check(b Bundle, m Mechanisms) []Problem {
 			add(subject, "agent %q does not exist", process.Agent)
 			continue
 		}
+		if process.Verify.Repairs() && agent.Session != definition.SessionResumable {
+			add(subject, "verify.max_attempts %d repairs in the call's session, but agent %s is %s", process.Verify.MaxAttempts, agent.Name, agent.Session)
+		}
 		mapping, ok := b.Mappings[agent.Runtime]
 		if !ok {
 			continue // reported on the agent

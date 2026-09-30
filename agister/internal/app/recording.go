@@ -44,6 +44,18 @@ func recordEffective(effective policy.Effective) *run.EffectivePolicy {
 	}
 }
 
+func recordVerify(verify *definition.Verify) *run.Verify {
+	if verify == nil {
+		return nil
+	}
+	return &run.Verify{
+		Command:     verify.Command,
+		Timeout:     verify.Timeout,
+		MaxAttempts: verify.MaxAttempts,
+		Instruction: verify.Instruction,
+	}
+}
+
 func recordPlan(plan enforce.Plan) *run.Plan {
 	return &run.Plan{
 		Primitives: slices.Clone(plan.Primitives),

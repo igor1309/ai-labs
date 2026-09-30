@@ -42,3 +42,13 @@ type Plan struct {
 	Granted    []string `json:"granted"`  // permissions the primitives provide
 	Withheld   []string `json:"withheld"` // allowed but not provided
 }
+
+// Verify is the verification command a call's process declared, as
+// resolved. It is part of the process definition, whose recorded digest
+// covers it.
+type Verify struct {
+	Command     string        `json:"command"`
+	Timeout     time.Duration `json:"timeout"`
+	MaxAttempts int           `json:"max_attempts"`
+	Instruction string        `json:"instruction"`
+}

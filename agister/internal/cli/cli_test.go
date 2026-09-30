@@ -31,7 +31,12 @@ type clientSpy struct {
 	onCancel chan string
 	run      contract.Run
 	report   contract.CheckReport
+	view     contract.ProcessView
 	observe  func(ctx context.Context) // runs during Observe
+}
+
+func (s *clientSpy) ShowProcess(context.Context, string, string) (contract.ProcessView, error) {
+	return s.view, nil
 }
 
 func (s *clientSpy) Submit(_ context.Context, request contract.CallRequest) (string, error) {
@@ -269,6 +274,46 @@ func TestCheck(t *testing.T) {
 	spy.report.Problems = nil
 	if r := run(context.Background(), spy, "check"); r.code != 0 || r.stdout != "settings OK: 2 agents\n" {
 		t.Fatalf("result %+v", r)
+	}
+}
+
+// Warnings are printed whether or not the settings have problems, and are
+// not problems themselves.
+func TestCheckPrintsWarnings(t *testing.T) {
+	spy := &clientSpy{report: contract.CheckReport{Checked: map[string]int{"processes": 1}, Warnings: []string{"process p: verify runs with the operator's authority"}}}
+	r := run(context.Background(), spy, "check")
+	if r.code != 0 || r.stdout != "settings OK: 1 processes\n" || r.stderr != "warning process p: verify runs with the operator's authority\n" {
+		t.Fatalf("result %+v", r)
+	}
+	r = run(context.Background(), spy, "check", "--json")
+	var got map[string]any
+	if err := json.Unmarshal([]byte(r.stdout), &got); err != nil || fmt.Sprint(got["warnings"]) != "[process p: verify runs with the operator's authority]" {
+		t.Fatalf("json: %v\n%s", err, r.stdout)
+	}
+	spy.report.Warnings = nil
+	r = run(context.Background(), spy, "check", "--json")
+	if err := json.Unmarshal([]byte(r.stdout), &got); err != nil || fmt.Sprint(got["warnings"]) != "[]" {
+		t.Fatalf("json without warnings: %v\n%s", err, r.stdout)
+	}
+}
+
+// process show prints the verify block and the warnings it is given.
+func TestShowProcessPrintsVerifyAndWarnings(t *testing.T) {
+	spy := &clientSpy{view: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Output: "text", Timeout: time.Hour, MaxAttempts: 1,
+		Verify:   &contract.Verify{Command: "go test ./...", Timeout: 10 * time.Minute, MaxAttempts: 3, Instruction: "Fix the cause."},
+		Warnings: []string{"verify runs with the operator's authority"}}}
+	r := run(context.Background(), spy, "process", "show", "p")
+	for _, want := range []string{
+		"verify       go test ./...\n  limits     timeout 10m0s, attempts 3\n  on failure Fix the cause.\n",
+		"WARNING      verify runs with the operator's authority\n",
+	} {
+		if r.code != 0 || !strings.Contains(r.stdout, want) {
+			t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+		}
+	}
+	spy.view.Verify, spy.view.Warnings = nil, nil
+	if r := run(context.Background(), spy, "process", "show", "p"); strings.Contains(r.stdout, "verify") || strings.Contains(r.stdout, "WARNING") {
+		t.Fatalf("without verify:\n%s", r.stdout)
 	}
 }
 

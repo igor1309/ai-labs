@@ -95,6 +95,10 @@ type CheckReport struct {
 	Problems []string       `json:"problems"`
 	// Project definitions that take priority over global ones.
 	Overrides []string `json:"overrides"`
+	// What the settings do that their user should know, such as a
+	// verification command that runs with the operator's authority. They
+	// are not problems: nothing is refused for them.
+	Warnings []string `json:"warnings"`
 	// Every definition read, in check order, with what it references.
 	Definitions []Definition `json:"definitions"`
 }
@@ -151,8 +155,20 @@ type ProcessView struct {
 	Primitives []string
 	Withheld   []string
 	Refusal    string
+	// The verification command the process declares; unset when none.
+	Verify *Verify
+	// What the user should know before calling it.
+	Warnings []string
 	// Where each definition the call uses comes from.
 	Sources []DefinitionOrigin
+}
+
+// Verify is a process's verification command.
+type Verify struct {
+	Command     string
+	Timeout     time.Duration
+	MaxAttempts int
+	Instruction string
 }
 
 type CallRequest struct {

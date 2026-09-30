@@ -9,8 +9,8 @@ module: agister
 # package, not by the packages that decide them.
 [the effective policy's tags are the record's own]
 file: internal/domain/run/snapshots.go
-find: json:"max_attempts"
-replace: json:"maxAttempts"
+find: json:"permissions"
+replace: json:"perms"
 test: ./internal/domain/run TestRecordJSONForDefinitionsPolicyAndPlanIsFixed
 
 [a definition source's tags are the record's own]
