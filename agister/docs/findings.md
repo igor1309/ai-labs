@@ -11,6 +11,11 @@
 - **Codex sandboxes read outside the workspace.** Its mapping declares
   `host.read`, which is never granted, and it is not yet verified against a
   live Codex, so it ships opt-in (`examples/codex/`) and `check` refuses it.
+- **Codex workspace-write, observed on codex-cli 0.159.2** (2026-09-30, a
+  scratch repository): writing in the workspace and under `/tmp` worked;
+  writing elsewhere in the home directory, `git commit` (`.git` stays
+  read-only) and network were refused. Its mapping grants
+  `repository.write` and `host.write`, not `repository.history.write`.
 - **Claude Code rejects draft 2020-12 schemas** passed with `--json-schema`,
   so example schemas declare no `$schema`. `agister check` still accepts
   one: on 2026-09-29 a project schema with the draft 2020-12 `$schema`
