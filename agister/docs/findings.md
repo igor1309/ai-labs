@@ -28,6 +28,10 @@
   <new>` resumes the earlier conversation in a new session and leaves the
   earlier one unchanged; a resumed session is found from another working
   directory.
+  Superseded 2026-09-30: continuation now resumes in place, by the ID the
+  runtime reported, because Codex can neither preset an ID nor fork in
+  `exec`; `--resume <id>` alone keeps the session ID (2.1.285). See
+  [session resume observations](../../research/agister/research/session-resume-observations.md).
 - **The cost limit overshoots.** `--max-budget-usd 0.0001` ended the turn
   with `error_max_budget_usd`, having spent $0.0010.
 - **Usage excludes cached input.** Claude's `input_tokens` counts only

@@ -80,7 +80,7 @@ no interface is shared between components (rule 13).
 | **Process** | A named agent call: instruction, inputs and their sources, workspace, output contract, references to an agent and a policy. |
 | **Policy** | Reusable limits: allowed and denied permissions, time, cost, attempts, constraints. |
 | **Permission** | A named right in Agister's vocabulary, e.g. read the repository, run commands. |
-| **Runtime feature** | What a runtime adapter supports, e.g. preset session identity, structured output. A property of the adapter, not a setting. |
+| **Runtime feature** | What a runtime adapter supports, e.g. session resume, structured output. A property of the adapter, not a setting. |
 | **Permission mapping** | For one runtime adapter: its restriction primitives (tools, sandbox modes, …) and every permission each primitive actually grants. |
 | **Enforcement plan** | For one call: primitives to grant and permissions withheld, or a refusal. |
 | **Run** | The record of one agent call. |
@@ -226,8 +226,15 @@ finished is read as lost, never as in progress.
 Concurrent calls share only settings, which they read, and evidence, which
 each writes only for its own run. No call depends on another's state, with
 one deliberate exception: a continuation reads a finished run's evidence to
-resume its session, in a new session that leaves the earlier one unchanged.
-Continuation is explicit per call, and only for agents that allow it.
+resume its session. Continuation is explicit per call, and only for agents
+that allow it.
+
+A continuation resumes the earlier run's provider session in place, by the
+session ID the runtime reported for that run; Agister never chooses a
+session ID and never forks. Only the latest finished run in a session's
+chain can be continued, so a session never gains two continuations and
+never continues from a stale point. The earlier run's record is not
+changed.
 
 ### 13. Every component collaborates through abstractions it defines
 
@@ -331,7 +338,9 @@ mechanisms; the service, its transport and lifecycle.
     undo the effects the run recorded; an
     attempt can fail, is bounded in time and is recorded on the run; what
     that leaves is tracked in [deferred work](../deferred.md).
-    Only a deliberate continuation reads another run, and never changes it.
+    Only a deliberate continuation reads another run, and never changes its
+    record; it resumes the run's session in place, only from the latest
+    finished run in that session's chain.
 13. Diagnostics never change behavior and are not evidence.
 14. Concrete implementations are connected only at the composition root.
 15. Humans and agents share one CLI surface that depends only on the

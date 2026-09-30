@@ -98,19 +98,20 @@ artifacts are captured and before the checkout is released. It never runs
 when the call is refused, or when a turn fails, is interrupted, is lost or
 returns invalid output: that turn's own status and class end the node.
 
-### 4. Repair continues the conversation through the continuation feature
+### 4. Repair resumes the call's own session in place
 
-A repair turn continues the conversation of the call's latest turn, in the
-same checkout, through the adapter's existing continuation feature (ADR-001
-rules 5 and 12): it resumes that session into a new one and leaves the
-earlier session unchanged. The turns of one call therefore form a chain of
-provider sessions; the evidence records each turn's session and the session
-it continued, and the node's session is the latest turn's. This is not a
+A repair turn resumes the provider session of the call's first turn, in the
+same checkout, by the session ID the runtime reported: the same resume
+mechanism as continuation (ADR-001 rules 5 and 12), with no preset ID and
+no fork. The node therefore has one session, and every turn appends to it.
+The evidence records the session each turn reported; a repair turn that
+reports a different session fails as a contract violation. This is not a
 continuation between calls: the call reads only its own state.
 
 It needs an agent whose sessions may be continued and an adapter that
-reports continuation; otherwise a `verify` with `max_attempts` above 1
-refuses the call before the first turn (ADR-001 rule 7). A fresh-context
+supports resume; otherwise a `verify` with `max_attempts` above 1 refuses
+the call before the first turn (ADR-001 rule 7). A turn that reports no
+session cannot be repaired, and the node ends as budget exhausted. A fresh-context
 attempt is not part of the node; it is an outer step's job
 ([deferred item 13](../deferred.md)).
 
@@ -149,6 +150,11 @@ changes the checkout's content is a failed run, whatever its exit status,
 and the evidence records what it changed. A passing run therefore leaves
 exactly the content it checked, and nothing runs between that pass and the
 capture of artifacts.
+
+The captured artifacts must reproduce the content that passed: applied to
+the pinned base, they rebuild the same content identity. A capture that
+omits content (an ignored new file, say), transforms it, or fails prevents
+completion.
 
 ### 8. The result shape does not change
 
@@ -208,7 +214,8 @@ process takes as input, stays open in [deferred item 1](../deferred.md).
   the node delivers, and a failing check cannot complete the node.
 - The common repair (a failing test) needs no retry node and no workflow.
 - Workflows keep routing on one result shape.
-- Continuation gets its first bounded consumer inside a call.
+- Repair and continuation share one mechanism: resuming a reported session
+  in place, on both runtimes.
 
 ### Negative
 
@@ -219,8 +226,6 @@ process takes as input, stays open in [deferred item 1](../deferred.md).
   ([deferred item 14](../deferred.md)).
 - Until item 15, the command lends the operator's authority to agent-written
   code.
-- Repair needs an adapter that reports continuation; the Codex adapter does
-  not yet, so Codex agents can verify but not repair.
 - Context grows with each attempt; the bound keeps it small but does not
   remove it.
 - The core now runs one kind of command besides agent calls.
@@ -262,3 +267,6 @@ commands; more than one command.
 - Multica LAB-7 and its discussion (2026-09-29)
 - Review round 1 (2026-09-30): Codex Sol 6 high and Sol 6.1 medium and high
   through `decision_review_codex`, and Sol 6 high through `codex exec`
+- Review round 2 (2026-09-30): Sol 6.1 high through `decision_review_codex`
+- [Session resume observations](../../../research/agister/research/session-resume-observations.md):
+  in-place resume on codex-cli 0.159.2 and Claude Code 2.1.285
