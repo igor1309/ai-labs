@@ -57,8 +57,10 @@ func main() {
 
 	switch scenario {
 	case "hang":
-		time.Sleep(50 * time.Second)
-		return
+		// Never ends on its own: only a kill ends it.
+		for {
+			time.Sleep(time.Hour)
+		}
 	case "exit_nonzero":
 		fmt.Fprintln(os.Stderr, "fatal: provider exploded")
 		os.Exit(3)

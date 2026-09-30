@@ -419,15 +419,24 @@ func TestVerifyRunThatChangesTheCheckoutFails(t *testing.T) {
 	expect(t, h.call(contract.CallRequest{}), domain.Completed, "", "")
 }
 
+// blocks never ends on its own: only a kill ends it, so a timeout or a
+// cancel is its one way out and no load can let it finish first.
+const blocks = "tail -f /dev/null"
+
 // A run that exceeds verify.timeout is killed and interrupts the node,
-// well before the call's own timeout.
+// well before the call's own timeout: the message names verify.timeout,
+// not the call's.
 func TestVerifyRunTimeout(t *testing.T) {
-	h := newLoop(t, verifySettings{command: "sleep 30", timeout: "1s"}, state("one"))
+	h := newLoop(t, verifySettings{command: blocks, timeout: "1s"}, state("one"))
 	started := time.Now()
-	record := h.call(contract.CallRequest{Timeout: "10s"})
+	record := h.call(contract.CallRequest{Timeout: "30s"})
 	expect(t, record, domain.Interrupted, domain.ClassTimeout, "attempt 1's run exceeded verify.timeout 1s")
-	if elapsed := time.Since(started); elapsed > 6*time.Second || !runsOf(record)[0].TimedOut {
-		t.Fatalf("after %s, attempts %+v", elapsed, record.Attempts)
+	if ran := runsOf(record); len(ran) != 1 || !ran[0].TimedOut {
+		t.Fatalf("attempts %+v", record.Attempts)
+	}
+	// Only a guard against a hang: the outcome above is the verdict.
+	if elapsed := time.Since(started); elapsed > 20*time.Second {
+		t.Fatalf("after %s", elapsed)
 	}
 }
 
@@ -441,7 +450,7 @@ func TestVerifyCallTimeoutBoundsTheLoop(t *testing.T) {
 		clock.advance(59 * time.Second)
 		return state("one")(t, request)
 	}
-	h := newLoopWith(t, git.Workspaces{}, clock, verifySettings{command: "sleep 30", timeout: "20s"}, slow)
+	h := newLoopWith(t, git.Workspaces{}, clock, verifySettings{command: blocks, timeout: "20s"}, slow)
 	started := time.Now()
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Interrupted, domain.ClassTimeout, "the call's timeout passed during attempt 1's run")
@@ -483,7 +492,7 @@ func (c *manualClock) advance(by time.Duration) {
 // group, which the record names while it runs.
 func TestVerifyCancellationKillsTheCommandGroup(t *testing.T) {
 	groupFile := filepath.Join(t.TempDir(), "group")
-	h := newLoop(t, verifySettings{command: "sleep 30 & echo $$ > " + groupFile + "; wait"}, state("one"))
+	h := newLoop(t, verifySettings{command: blocks + " & echo $$ > " + groupFile + "; wait"}, state("one"))
 	id := h.submit(contract.CallRequest{})
 	var group int
 	eventually(t, "the command to start", func() bool {
@@ -508,10 +517,12 @@ func TestVerifyCancellationKillsTheCommandGroup(t *testing.T) {
 		t.Fatal(err)
 	}
 	record := h.wait(id)
-	if elapsed := time.Since(cancelled); elapsed > 10*time.Second {
+	expect(t, record, domain.Interrupted, domain.ClassCancelled, "cancelled during attempt 1's run")
+	// Only a guard against a hang: the command never ends on its own, so the
+	// outcome above and the group's end are the verdict.
+	if elapsed := time.Since(cancelled); elapsed > 20*time.Second {
 		t.Fatalf("the call ended %s after the cancel", elapsed)
 	}
-	expect(t, record, domain.Interrupted, domain.ClassCancelled, "cancelled during attempt 1's run")
 	eventually(t, "the command's group to be gone", func() bool { return errors.Is(syscall.Kill(-group, 0), syscall.ESRCH) })
 }
 

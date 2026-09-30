@@ -84,6 +84,10 @@ func TestCommandRunsWithBoundedOutput(t *testing.T) {
 	}
 }
 
+// blocks never ends on its own: only a kill ends it, so a timeout or a
+// cancel is its one way out and no load can let it finish first.
+const blocks = "tail -f /dev/null"
+
 // groupOf reads the group a command wrote as $$ (bash leads its group).
 func groupOf(t *testing.T, path string) int {
 	t.Helper()
@@ -110,9 +114,9 @@ func TestCommandGroupIsKilled(t *testing.T) {
 		timeout time.Duration
 		cancel  bool
 	}{
-		{"timeout", "sleep 30 & echo $$ > group; wait", 300 * time.Millisecond, false},
-		{"cancellation", "sleep 30 & echo $$ > group; wait", 30 * time.Second, true},
-		{"exit", "sleep 30 & echo $$ > group; exit 0", 30 * time.Second, false},
+		{"timeout", blocks + " & echo $$ > group; wait", 300 * time.Millisecond, false},
+		{"cancellation", blocks + " & echo $$ > group; wait", 30 * time.Second, true},
+		{"exit", blocks + " & echo $$ > group; exit 0", 30 * time.Second, false},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -123,8 +127,12 @@ func TestCommandGroupIsKilled(t *testing.T) {
 			}
 			started := time.Now()
 			result, _ := runCommand(ctx, t, dir, c.command, c.timeout, 64)
-			if result.TimedOut != (c.name == "timeout") || result.Cancelled != c.cancel || time.Since(started) > 20*time.Second {
-				t.Fatalf("result %+v after %s", result, time.Since(started))
+			if result.TimedOut != (c.name == "timeout") || result.Cancelled != c.cancel {
+				t.Fatalf("result %+v", result)
+			}
+			// Only a guard against a hang: the outcome above is the verdict.
+			if elapsed := time.Since(started); elapsed > 20*time.Second {
+				t.Fatalf("after %s", elapsed)
 			}
 			// A killed child is gone once its new parent has reaped it.
 			group := groupOf(t, filepath.Join(dir, "group"))
@@ -139,15 +147,20 @@ func TestCommandGroupIsKilled(t *testing.T) {
 	}
 }
 
-// A group that cannot be recorded is killed at once and the run fails.
+// A group that cannot be recorded is killed at once, not by its timeout,
+// and the run fails.
 func TestUnrecordedCommandIsKilled(t *testing.T) {
 	dir := t.TempDir()
 	started := time.Now()
-	result := supervisor.Commands{}.Run(context.Background(), app.CommandRequest{Command: "sleep 30", Dir: dir, Timeout: 30 * time.Second, Bound: 64}, func(ref string) error {
+	result := supervisor.Commands{}.Run(context.Background(), app.CommandRequest{Command: blocks, Dir: dir, Timeout: 30 * time.Second, Bound: 64}, func(ref string) error {
 		cleanUpGroup(t, ref)
 		return errors.New("disk full")
 	})
-	if result.Error != "disk full" || result.ExitCode != nil || time.Since(started) > 10*time.Second {
-		t.Fatalf("result %+v after %s", result, time.Since(started))
+	if result.Error != "disk full" || result.ExitCode != nil || result.Signal != "killed" || result.TimedOut || result.Cancelled {
+		t.Fatalf("result %+v", result)
+	}
+	// Only a guard against a hang: the outcome above is the verdict.
+	if elapsed := time.Since(started); elapsed > 20*time.Second {
+		t.Fatalf("after %s", elapsed)
 	}
 }

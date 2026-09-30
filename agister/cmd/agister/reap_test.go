@@ -177,7 +177,7 @@ func TestNextCallReapsAKilledRunsVerifyCommand(t *testing.T) {
 	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))
 	write(t, filepath.Join(home, "processes", "verified.yaml"), strings.Replace(shipped, "name: adversarial_review", "name: verified", 1)+`
 verify:
-  command: `+strconv.Quote("sleep 50 & echo $$ > "+groupFile+"; wait")+`
+  command: `+strconv.Quote(blocks+" & echo $$ > "+groupFile+"; wait")+`
   timeout: 40s
   max_attempts: 1
   instruction: The verification command failed.
