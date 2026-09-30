@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -34,6 +35,96 @@ func eventually(t *testing.T, what string, check func() bool) {
 
 func groupAlive(group int) bool { return syscall.Kill(-group, 0) == nil }
 
+// endRecorded ends what every run under runs left on record, as it is
+// then: each runtime and command group is killed and each checkout and
+// clean copy removed, each effect on its own, whatever else a run has or
+// lacks. A test's cleanup calls it whatever point the test reached, so a
+// group recorded before its token is ended too.
+func endRecorded(runs string, kill func(group int), remove func(dir string)) {
+	paths, _ := filepath.Glob(filepath.Join(runs, "*", "record.json"))
+	for _, path := range paths {
+		var left domain.Record
+		data, err := os.ReadFile(path)
+		if err != nil || json.Unmarshal(data, &left) != nil || left.Effects == nil {
+			continue
+		}
+		for _, process := range []*domain.Process{left.Effects.Process, left.Effects.Command} {
+			if process == nil {
+				continue
+			}
+			// Group 1 and below would signal more than the test's own.
+			if group, _, err := supervisor.ParseRef(process.Ref); err == nil && group > 1 {
+				kill(group)
+			}
+		}
+		for _, checkout := range []*domain.Checkout{left.Effects.Checkout, left.Effects.Copy} {
+			if checkout != nil {
+				remove(checkout.Dir)
+			}
+		}
+	}
+}
+
+// cleanupRecorded makes the test's cleanup end, after its own steps, what
+// the runs under home left on record in repo.
+func cleanupRecorded(t *testing.T, home, repo string) {
+	t.Cleanup(func() {
+		endRecorded(filepath.Join(home, "runs"),
+			func(group int) { _ = syscall.Kill(-group, syscall.SIGKILL) },
+			func(dir string) {
+				_ = exec.Command("git", "-C", repo, "worktree", "remove", "--force", dir).Run()
+				if parent := filepath.Dir(dir); strings.HasPrefix(filepath.Base(parent), "agister-checkout-") {
+					_ = os.RemoveAll(parent)
+				}
+			})
+	})
+}
+
+// Cleanup ends every recorded group and checkout, a group recorded without
+// its token among them, and skips what cannot be read or would signal
+// beyond the test.
+func TestEndRecordedEndsEveryRecordedEffect(t *testing.T) {
+	runs := t.TempDir()
+	records := map[string]*domain.Effects{
+		// The command's group, recorded before its token lookup failed.
+		"verify": {
+			Checkout: &domain.Checkout{Dir: "/checkout/verify"},
+			Copy:     &domain.Checkout{Dir: "/copy/verify"},
+			Command:  &domain.Process{Ref: supervisor.Ref(4242, "")},
+		},
+		"runtime": {
+			Process:  &domain.Process{Ref: supervisor.Ref(4343, "token")},
+			Checkout: &domain.Checkout{Dir: "/checkout/runtime"},
+		},
+		"both": {
+			Process: &domain.Process{Ref: supervisor.Ref(4444, "")},
+			Command: &domain.Process{Ref: supervisor.Ref(4545, "token")},
+		},
+		"unsafe":  {Process: &domain.Process{Ref: supervisor.Ref(1, "")}, Command: &domain.Process{Ref: "other:7"}},
+		"nothing": nil,
+	}
+	for name, effects := range records {
+		data, err := json.Marshal(domain.Record{Effects: effects})
+		if err != nil {
+			t.Fatal(err)
+		}
+		write(t, filepath.Join(runs, name, "record.json"), string(data))
+	}
+	write(t, filepath.Join(runs, "torn", "record.json"), `{"effects":`)
+
+	var killed []int
+	var removed []string
+	endRecorded(runs, func(group int) { killed = append(killed, group) }, func(dir string) { removed = append(removed, dir) })
+	slices.Sort(killed)
+	slices.Sort(removed)
+	if want := []int{4242, 4343, 4444, 4545}; !slices.Equal(killed, want) {
+		t.Fatalf("killed %v, want %v", killed, want)
+	}
+	if want := []string{"/checkout/runtime", "/checkout/verify", "/copy/verify"}; !slices.Equal(removed, want) {
+		t.Fatalf("removed %v, want %v", removed, want)
+	}
+}
+
 // A run killed with SIGKILL leaves its runtime and its checkout behind; the
 // next call that starts reaps them and finishes the run as lost.
 func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
@@ -49,36 +140,12 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 	if err := victim.Start(); err != nil {
 		t.Fatal(err)
 	}
-	group, checkout := 0, ""
+	// Should the test fail first, the cleanup ends what the runs left on
+	// record, whatever point the test reached.
+	cleanupRecorded(t, home, repo)
 	t.Cleanup(func() {
 		_ = victim.Process.Kill()
 		_ = victim.Wait()
-		if group > 0 {
-			_ = syscall.Kill(-group, syscall.SIGKILL)
-			if checkout != "" {
-				_ = exec.Command("git", "-C", repo, "worktree", "remove", "--force", checkout).Run()
-				_ = os.RemoveAll(filepath.Dir(checkout))
-			}
-			return
-		}
-		// The poll below failed before the record was read: whatever the
-		// record shows is still the test's to end.
-		paths, _ := filepath.Glob(filepath.Join(home, "runs", "*", "record.json"))
-		for _, path := range paths {
-			var left domain.Record
-			data, err := os.ReadFile(path)
-			if err != nil || json.Unmarshal(data, &left) != nil || left.Effects == nil {
-				continue
-			}
-			if left.Effects.Process != nil {
-				if g, _, err := supervisor.ParseRef(left.Effects.Process.Ref); err == nil && g > 1 {
-					_ = syscall.Kill(-g, syscall.SIGKILL)
-				}
-			}
-			if left.Effects.Checkout != nil {
-				_ = exec.Command("git", "-C", repo, "worktree", "remove", "--force", left.Effects.Checkout.Dir).Run()
-			}
-		}
 	})
 
 	// Wait until the record shows both effects (the group is reported before its token).
@@ -101,12 +168,11 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 		_, token, err := supervisor.ParseRef(record.Effects.Process.Ref)
 		return err == nil && token != ""
 	})
-	var err error
-	group, _, err = supervisor.ParseRef(record.Effects.Process.Ref)
+	group, _, err := supervisor.ParseRef(record.Effects.Process.Ref)
 	if err != nil {
 		t.Fatal(err)
 	}
-	checkout = record.Effects.Checkout.Dir
+	checkout := record.Effects.Checkout.Dir
 
 	if err := victim.Process.Signal(syscall.SIGKILL); err != nil {
 		t.Fatal(err)
@@ -193,24 +259,13 @@ verify:
 	if err := victim.Start(); err != nil {
 		t.Fatal(err)
 	}
-	group := 0
+	// Should the test fail first, the cleanup ends what the runs left on
+	// record, the command's group among them, whatever point the test
+	// reached.
+	cleanupRecorded(t, home, repo)
 	t.Cleanup(func() {
 		_ = victim.Process.Kill()
 		_ = victim.Wait()
-		if group > 1 {
-			_ = syscall.Kill(-group, syscall.SIGKILL)
-		}
-		paths, _ := filepath.Glob(filepath.Join(home, "runs", "*", "record.json"))
-		for _, path := range paths {
-			var left domain.Record
-			if data, err := os.ReadFile(path); err == nil && json.Unmarshal(data, &left) == nil && left.Effects != nil {
-				for _, checkout := range []*domain.Checkout{left.Effects.Checkout, left.Effects.Copy} {
-					if checkout != nil {
-						_ = exec.Command("git", "-C", repo, "worktree", "remove", "--force", checkout.Dir).Run()
-					}
-				}
-			}
-		}
 	})
 
 	// Wait until the record names the command's group with its token.
@@ -230,8 +285,8 @@ verify:
 		_, token, err := supervisor.ParseRef(record.Effects.Command.Ref)
 		return err == nil && token != ""
 	})
-	var err error
-	if group, _, err = supervisor.ParseRef(record.Effects.Command.Ref); err != nil {
+	group, _, err := supervisor.ParseRef(record.Effects.Command.Ref)
+	if err != nil {
 		t.Fatal(err)
 	}
 	checkout := record.Effects.Checkout.Dir

@@ -494,6 +494,9 @@ func (c *manualClock) advance(by time.Duration) {
 func TestVerifyCancellationKillsTheCommandGroup(t *testing.T) {
 	groupFile := filepath.Join(t.TempDir(), "group")
 	h := newLoop(t, verifySettings{command: blocks + " & echo $$ > " + groupFile + "; wait"}, state("one"))
+	// Whatever the assertions below find, the command does not outlive the
+	// test: its group is on record before it writes it.
+	cleanupRecorded(t, h.home, h.repo)
 	id := h.submit(contract.CallRequest{})
 	var group int
 	eventually(t, "the command to start", func() bool {
@@ -501,11 +504,6 @@ func TestVerifyCancellationKillsTheCommandGroup(t *testing.T) {
 		group, _ = strconv.Atoi(strings.TrimSpace(string(data)))
 		return err == nil && strings.HasSuffix(string(data), "\n")
 	})
-	// Whatever the assertions below find, the command does not outlive the
-	// test.
-	if group > 1 {
-		t.Cleanup(func() { _ = syscall.Kill(-group, syscall.SIGKILL) })
-	}
 	running, _, err := h.store.Get(context.Background(), id)
 	if err != nil || running.Effects == nil || running.Effects.Command == nil {
 		t.Fatalf("record effects %+v, %v", running.Effects, err)
