@@ -15,8 +15,8 @@ still apply.
   touched, `-run <Test>` to narrow; the full check is
   `test -z "$(gofmt -l .)" && go vet ./... && go test -count=1 ./... &&
   go test -race -count=1 ./internal/app/...` (about 30 s).
-- Verify the result yourself as the root `AGENTS.md` says: red then green,
-  `scripts/handoff-check.py`, the tests. No mutation or revert checks.
+- Verify the result yourself as the root `AGENTS.md` says:
+  `scripts/handoff-check.py`, then the tests. No mutation or revert checks.
 - Review through Agister, on a committed candidate: a `*_review_codex`
   process for code, or `decision_review_codex --param prompt=<prompt file>`
   for decision documents (agent `codex-sol`: `gpt-6.1-sol`, effort high).

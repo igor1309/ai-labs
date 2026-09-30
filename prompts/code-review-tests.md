@@ -24,8 +24,7 @@ Definition of done:
 * A test asserts at the level the change claims. A change about what a
   record, report or log says is not proven by a test one layer below it.
 * An existing assertion weakened, removed or widened in the same change is
-  a finding unless the change says why. A reverted fix still fails a
-  loosened test, so a red commit does not catch this.
+  a finding unless the change says why.
 * A wait is not a finding by itself. Yielding to a loop's next tick, or
   polling for an event that surely comes, is fine. Judge each wait by what
   it waits for, how long, on which clock, and what it hides:
