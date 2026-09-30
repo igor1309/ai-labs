@@ -133,15 +133,13 @@ type CallChanges interface {
 	// Changes returns the patch from one content, a revision or an
 	// identity, to another; empty when they are the same.
 	Changes(ctx context.Context, dir, from, to string) ([]byte, error)
-	// Rebuild applies a patch to revision apart from the checkout and
-	// names the content that results.
-	Rebuild(ctx context.Context, dir, revision string, patch []byte) (string, error)
 }
 
 // CallVerifier runs the verification loop of a call whose process declares
 // verify (ADR-002), after its first turn was valid. It returns the content
-// a passing run checked, empty when none passed, and the fault that ended
-// the loop without a pass.
+// a passing run checked, on a clean copy of the base with the patch to that
+// content applied, empty when none passed, and the fault that ended the
+// loop without a pass.
 type CallVerifier interface {
 	Verify(ctx context.Context, call VerifyCall) (verified string, fault *run.Error)
 }
@@ -292,8 +290,8 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	}
 	result := run.Result{Cost: run.Cost{Source: run.CostUnknown}, Timing: run.Timing{StartedAt: record.CreatedAt}}
 	// Effects end before the record does: the workspace's changes are kept
-	// and the workspace released first. A capture that must reproduce
-	// verified content and does not fails the call.
+	// and the workspace released first. Verified changes that cannot be
+	// kept fail the call.
 	var collect func() *run.Error
 	release := func() error { return nil }
 	finish := func(fault *run.Error) {
@@ -396,8 +394,8 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	release = workspace.Release
 	record.Workspace = workspace.Dir
 	revision, _ := revisionOf(inputs, res.process.Checkout)
-	// The content a passing verification run checked, which the captured
-	// changes must rebuild (ADR-002 rule 7).
+	// The content a passing verification run checked, whose patch is what
+	// the call delivers (ADR-002 rule 7).
 	var verified string
 	if workspace.Owned {
 		// Recorded before the runtime starts: if this process is killed,
@@ -475,7 +473,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		verified, fault = c.verifier.Verify(ctx, VerifyCall{
 			Record: &record, Result: &result, Event: event, Update: handle.Update, Artifact: handle.Artifact,
 			Verify: *res.process.Verify, Limit: res.effective.MaxCostUSD, Deadline: deadline,
-			Dir: workspace.Dir, Base: revision, Request: request, Session: turn.ProviderSessionID,
+			Dir: workspace.Dir, Base: revision, Repository: workspace.Repository, Request: request, Session: turn.ProviderSessionID,
 			Take: take, Conclude: conclude,
 		})
 	}
@@ -781,10 +779,12 @@ func (c *Calls) continuation(ctx context.Context, res *resolution, self, runID s
 }
 
 // collectChanges keeps a call's changes to its own workspace as an
-// artifact: the patch from revision to the checkout's content. A failure is
-// recorded; it does not change the call's status, unless verified names the
-// content a verification run passed on: the patch must then rebuild exactly
-// that content from revision (ADR-002 rule 7), or the call fails.
+// artifact: the patch from revision to the checkout's content, or to
+// verified when it names the content a verification run passed on. That
+// run checked a clean copy of revision with this very patch applied, so the
+// patch delivers exactly what passed (ADR-002 rule 7). A failure is
+// recorded; it does not change the call's status, unless the changes were
+// verified: then the call fails.
 func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revision, verified string, event func(string, string, map[string]any)) ([]run.Artifact, *run.Error) {
 	ctx = context.WithoutCancel(ctx)
 	identity := verified
@@ -795,12 +795,6 @@ func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revis
 	var patch []byte
 	if err == nil {
 		patch, err = c.changes.Changes(ctx, dir, revision, identity)
-	}
-	if err == nil && verified != "" {
-		var rebuilt string
-		if rebuilt, err = c.changes.Rebuild(ctx, dir, revision, patch); err == nil && rebuilt != verified {
-			err = fmt.Errorf("applied to %s it rebuilds %s, not %s", revision, rebuilt, verified)
-		}
 	}
 	var artifacts []run.Artifact
 	if err == nil && len(patch) > 0 {
@@ -813,7 +807,7 @@ func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revis
 	if err != nil {
 		event(run.SourceAgister, "ARTIFACT_FAILED", map[string]any{"name": "changes.patch", "error": err.Error()})
 		if verified != "" {
-			return nil, run.Fault(run.ClassInternal, "the captured changes do not reproduce the content that passed verification: %v", err)
+			return nil, run.Fault(run.ClassInternal, "the changes that passed verification could not be kept: %v", err)
 		}
 		return nil, nil
 	}

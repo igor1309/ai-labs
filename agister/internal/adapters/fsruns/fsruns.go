@@ -97,8 +97,8 @@ func (s Store) Abandoned(ctx context.Context) ([]run.Record, error) {
 	return abandoned, nil
 }
 
-// LiveCheckouts lists the checkout directories of unfinished runs that
-// some process still owns.
+// LiveCheckouts lists the checkout directories, workspaces and clean
+// copies, of unfinished runs that some process still owns.
 func (s Store) LiveCheckouts(ctx context.Context) ([]string, error) {
 	records, err := s.List(ctx)
 	if err != nil {
@@ -106,11 +106,16 @@ func (s Store) LiveCheckouts(ctx context.Context) ([]string, error) {
 	}
 	var dirs []string
 	for _, record := range records {
-		if record.Effects == nil || record.Effects.Checkout == nil || record.FinishedAt != nil {
+		effects := record.Effects
+		if effects == nil || (effects.Checkout == nil && effects.Copy == nil) || record.FinishedAt != nil {
 			continue
 		}
 		if _, state, err := s.Get(ctx, record.ID); err != nil || state == run.StateRunning {
-			dirs = append(dirs, record.Effects.Checkout.Dir)
+			for _, checkout := range []*run.Checkout{effects.Checkout, effects.Copy} {
+				if checkout != nil {
+					dirs = append(dirs, checkout.Dir)
+				}
+			}
 		}
 	}
 	return dirs, nil

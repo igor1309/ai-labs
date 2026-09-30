@@ -6,7 +6,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -206,24 +208,36 @@ func (s *workspacesSpy) releases() int {
 }
 
 // changesSpy names a checkout's content and captures what an agent left
-// in it.
+// in it. A clean copy (see copiesSpy) has the content the checkout was last
+// named with, unless copied says otherwise.
 type changesSpy struct {
 	mu        sync.Mutex
 	changed   [][2]string   // dir, from
 	identity  string        // what Identity names; "tree" when empty
-	identify  func() string // when set, names the content instead
+	identify  func() string // when set, names the checkout's content instead
 	changes   []byte
 	changeErr error
 	panics    bool // Changes panics
-	rebuilds  int
+	// copied, when set, names a clean copy's content, given how many times
+	// that copy was named before: 0 before its run, 1 after.
+	copied func(dir string, named int) string
+	named  map[string]int
 }
 
-func (s *changesSpy) Identity(context.Context, string, string) (string, error) {
+func (s *changesSpy) Identity(_ context.Context, dir, _ string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.identify != nil {
+	if strings.HasPrefix(dir, copyDirs) {
+		if s.named == nil {
+			s.named = map[string]int{}
+		}
+		named := s.named[dir]
+		s.named[dir]++
+		if s.copied != nil {
+			return s.copied(dir, named), nil
+		}
+	} else if s.identify != nil {
 		s.identity = s.identify()
-		return s.identity, nil
 	}
 	if s.identity == "" {
 		return "tree", nil
@@ -241,22 +255,73 @@ func (s *changesSpy) Changes(_ context.Context, dir, from, _ string) ([]byte, er
 	return s.changes, s.changeErr
 }
 
-func (s *changesSpy) Rebuild(context.Context, string, string, []byte) (string, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.rebuilds++
-	if s.identity == "" {
-		return "tree", nil
-	}
-	return s.identity, nil
+// copyDirs is where copiesSpy makes its copies: copy-1, copy-2, ...
+const copyDirs = "/work/copy-"
+
+// madeCopy is one clean copy copiesSpy made.
+type madeCopy struct {
+	repository, revision, patch, dir string
 }
 
-// commandsSpy runs verification commands: each passes unless exits says
-// otherwise, in order.
+// copiesSpy makes clean copies, each in a directory of its own, and removes
+// them.
+type copiesSpy struct {
+	mu        sync.Mutex
+	made      []madeCopy
+	removed   []string
+	err       error // Copy fails with it
+	removeErr error // removing fails with it
+	// removing, when set, runs as a copy is removed.
+	removing func(dir string)
+}
+
+func (s *copiesSpy) Copy(_ context.Context, repository, revision string, patch []byte) (string, func() error, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.err != nil {
+		return "", nil, s.err
+	}
+	dir := fmt.Sprintf("%s%d", copyDirs, len(s.made)+1)
+	s.made = append(s.made, madeCopy{repository, revision, string(patch), dir})
+	return dir, func() error {
+		if s.removing != nil {
+			s.removing(dir)
+		}
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		s.removed = append(s.removed, dir)
+		return s.removeErr
+	}, nil
+}
+
+// left lists the copies made and not removed.
+func (s *copiesSpy) left() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var left []string
+	for _, made := range s.made {
+		if !slices.Contains(s.removed, made.dir) {
+			left = append(left, made.dir)
+		}
+	}
+	return left
+}
+
+func (s *copiesSpy) copies() []madeCopy {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]madeCopy(nil), s.made...)
+}
+
+// commandsSpy runs verification commands: each passes unless exits, in
+// order, or exitIn, by the directory it runs in, says otherwise.
 type commandsSpy struct {
 	mu       sync.Mutex
 	requests []app.CommandRequest
 	exits    []int
+	exitIn   func(dir string) int
+	// running, when set, runs while the command does.
+	running func(app.CommandRequest)
 }
 
 func (s *commandsSpy) Run(_ context.Context, request app.CommandRequest, started func(string) error) app.CommandResult {
@@ -266,9 +331,15 @@ func (s *commandsSpy) Run(_ context.Context, request app.CommandRequest, started
 	if err := started("ref-cmd"); err != nil {
 		return app.CommandResult{Error: err.Error()}
 	}
+	if s.running != nil {
+		s.running(request)
+	}
 	code := 0
 	if len(s.exits) > 0 {
 		code, s.exits = s.exits[0], s.exits[1:]
+	}
+	if s.exitIn != nil {
+		code = s.exitIn(request.Dir)
 	}
 	return app.CommandResult{ExitCode: &code, Head: []byte(fmt.Sprintf("exit %d", code)), Bytes: 6, SHA256: fmt.Sprintf("sha-%d-%d", code, len(s.requests))}
 }

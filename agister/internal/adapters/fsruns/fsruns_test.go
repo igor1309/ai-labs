@@ -192,8 +192,19 @@ func TestLiveCheckoutsAreThoseOfRunsSomeoneOwns(t *testing.T) {
 	_ = dead.Append(run.Event{Kind: "E"})
 	dead.(*handle).lock.Close()
 
+	// A clean copy verification checks is a checkout too.
+	copying, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "copying", CreatedAt: time.Now(), Effects: &run.Effects{
+		Checkout: &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-own/workspace"},
+		Copy:     &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-copy/workspace"},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = copying.Append(run.Event{Kind: "E"})
+
 	dirs, err := store.LiveCheckouts(ctx)
-	if err != nil || !reflect.DeepEqual(dirs, []string{"/tmp/agister-checkout-live/workspace"}) {
+	want := []string{"/tmp/agister-checkout-own/workspace", "/tmp/agister-checkout-copy/workspace", "/tmp/agister-checkout-live/workspace"}
+	if err != nil || !reflect.DeepEqual(dirs, want) {
 		t.Fatalf("live checkouts = %v, %v", dirs, err)
 	}
 }

@@ -235,6 +235,10 @@ type Effects struct {
 	// Command is the latest run of the verification command, as the process
 	// group that runs it; only one runs at a time.
 	Command *Process `json:"command,omitempty"`
+	// Copy is the clean copy the latest verification run checks: a checkout
+	// of the base with the attempt's changes applied, removed after the
+	// attempt; only one exists at a time.
+	Copy *Checkout `json:"copy,omitempty"`
 }
 
 // Checkout is a workspace the call created in Repository.

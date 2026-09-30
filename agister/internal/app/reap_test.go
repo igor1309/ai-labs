@@ -160,6 +160,39 @@ func TestAbandonedVerifyCommandIsReaped(t *testing.T) {
 	}
 }
 
+// A run killed while verification checked a clean copy left the copy on
+// record beside its checkout: both are removed, and a copy a running run
+// records is left in place.
+func TestAbandonedCleanCopyIsReaped(t *testing.T) {
+	h := newHarness()
+	abandoned := abandonedRun("old")
+	abandoned.Effects.Copy = &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-2/workspace"}
+	r := reaping(h, abandoned)
+	if err := r.reap(); err != nil {
+		t.Fatal(err)
+	}
+	want := [][2]string{{"/repo", "/tmp/agister-checkout-1/workspace"}, {"/repo", "/tmp/agister-checkout-2/workspace"}}
+	if !reflect.DeepEqual(h.workspaces.discarded, want) {
+		t.Fatalf("discarded = %v", h.workspaces.discarded)
+	}
+	if copied := r.adopter.handles["old"].events[0].Data["copy"].(map[string]any); copied["removed"] != true || copied["dir"] != "/tmp/agister-checkout-2/workspace" {
+		t.Fatalf("event data = %v", r.adopter.handles["old"].events[0].Data)
+	}
+
+	h = newHarness()
+	r = reaping(h, abandoned)
+	r.adopter.live = []string{"/tmp/agister-checkout-2/workspace"}
+	if err := r.reap(); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(h.workspaces.discarded, want[:1]) {
+		t.Fatalf("discarded = %v", h.workspaces.discarded)
+	}
+	if copied := r.adopter.handles["old"].events[0].Data["copy"].(map[string]any); copied["removed"] != false || copied["skipped"] == nil {
+		t.Fatalf("copy = %v", copied)
+	}
+}
+
 func TestRunsSomeoneElseOwnsAreSkipped(t *testing.T) {
 	h := newHarness()
 	r := reaping(h, abandonedRun("live"))

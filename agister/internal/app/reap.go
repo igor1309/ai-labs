@@ -59,8 +59,9 @@ type Processes interface {
 type RunAdopter interface {
 	// Abandoned lists the unfinished runs nobody owns that recorded effects.
 	Abandoned(ctx context.Context) ([]run.Record, error)
-	// LiveCheckouts lists the checkout directories that runs some process
-	// still owns record, so nobody removes them from under those runs. Read
+	// LiveCheckouts lists the checkout directories, workspaces and clean
+	// copies, that runs some process still owns record, so nobody removes
+	// them from under those runs. Read
 	// before Adopt: the run adopted is owned by this process and would read
 	// as live.
 	LiveCheckouts(ctx context.Context) ([]string, error)
@@ -142,8 +143,9 @@ func (c *Reaper) reapContext(ctx context.Context) (context.Context, context.Canc
 
 // reap ends one adopted run's effects and finishes it as lost. A step that
 // fails is recorded and does not stop the rest, so a run is reaped once. A
-// checkout that a run still owned records as its own is left in place, and
-// so is one whose users could not be listed. It returns the failure to
+// checkout, the call's own or verification's clean copy, that a run still
+// owned records as its own is left in place, and so is one whose users
+// could not be listed. It returns the failure to
 // record the reap or finish the run; with the event unrecorded, the error
 // carries the steps that failed.
 func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record, live []string, liveErr error) error {
@@ -168,18 +170,27 @@ func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record,
 			failures = append(failures, fmt.Sprintf("%s %q: %v", group.name, group.process.Ref, err))
 		}
 	}
-	if checkout := effects.Checkout; checkout != nil {
+	// The call's checkout and the clean copy a verification run checked
+	// (ADR-002 rule 10).
+	for _, dir := range []struct {
+		name     string
+		checkout *run.Checkout
+	}{{"checkout", effects.Checkout}, {"copy", effects.Copy}} {
+		checkout := dir.checkout
+		if checkout == nil {
+			continue
+		}
 		switch {
 		case liveErr != nil:
-			data["checkout"] = map[string]any{"dir": checkout.Dir, "removed": false, "skipped": "could not tell whether a running run uses it"}
-			failures = append(failures, fmt.Sprintf("checkout %s left: listing running runs: %v", checkout.Dir, liveErr))
+			data[dir.name] = map[string]any{"dir": checkout.Dir, "removed": false, "skipped": "could not tell whether a running run uses it"}
+			failures = append(failures, fmt.Sprintf("%s %s left: listing running runs: %v", dir.name, checkout.Dir, liveErr))
 		case slices.Contains(live, checkout.Dir):
-			data["checkout"] = map[string]any{"dir": checkout.Dir, "removed": false, "skipped": "a running run uses it"}
+			data[dir.name] = map[string]any{"dir": checkout.Dir, "removed": false, "skipped": "a running run uses it"}
 		default:
 			err := c.discarder.Discard(ctx, checkout.Repository, checkout.Dir)
-			data["checkout"] = map[string]any{"dir": checkout.Dir, "removed": err == nil}
+			data[dir.name] = map[string]any{"dir": checkout.Dir, "removed": err == nil}
 			if err != nil {
-				failures = append(failures, fmt.Sprintf("checkout %s: %v", checkout.Dir, err))
+				failures = append(failures, fmt.Sprintf("%s %s: %v", dir.name, checkout.Dir, err))
 			}
 		}
 	}

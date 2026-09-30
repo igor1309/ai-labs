@@ -133,8 +133,9 @@ func TestCheckoutIsDetachedAndReleased(t *testing.T) {
 }
 
 // The content identity covers what is committed, edited and untracked, but
-// not ignored; the patch from the revision to it rebuilds it exactly, and
-// neither touches the checkout's own index.
+// not ignored; the patch from the revision to it, applied to a copy of the
+// revision, makes that content exactly, and neither touches the checkout's
+// own index.
 func TestChangesCoverEverythingSinceTheRevision(t *testing.T) {
 	repo := repository(t)
 	ctx := context.Background()
@@ -182,12 +183,12 @@ func TestChangesCoverEverythingSinceTheRevision(t *testing.T) {
 	if strings.Contains(string(patch), "x.log") {
 		t.Fatalf("patch has the ignored file:\n%s", patch)
 	}
-	if rebuilt, err := workspaces.Rebuild(ctx, dir, revision, patch); err != nil || rebuilt != identity {
-		t.Fatalf("rebuilt %s, %v; want %s", rebuilt, err, identity)
+	if copied := copied(t, repo, revision, patch); copied != identity {
+		t.Fatalf("the copy has %s; want %s", copied, identity)
 	}
-	// A patch that leaves something out rebuilds other content.
-	if rebuilt, err := workspaces.Rebuild(ctx, dir, revision, nil); err != nil || rebuilt != untouched {
-		t.Fatalf("rebuilt %s, %v; want %s", rebuilt, err, untouched)
+	// A patch that leaves something out makes other content.
+	if copied := copied(t, repo, revision, nil); copied != untouched {
+		t.Fatalf("the copy has %s; want %s", copied, untouched)
 	}
 	// The checkout's own index and the repository are untouched.
 	if after := sh(t, dir, "status", "--porcelain"); after != status {
@@ -234,9 +235,35 @@ func TestTrackedIgnoredFilesStayContent(t *testing.T) {
 		strings.Contains(text, "kept.log") || strings.Contains(text, "new.log") || strings.Contains(text, "deleted file") {
 		t.Fatalf("patch:\n%s", patch)
 	}
-	if rebuilt, err := workspaces.Rebuild(ctx, dir, revision, patch); err != nil || rebuilt != identity {
-		t.Fatalf("rebuilt %s, %v; want %s", rebuilt, err, identity)
+	if copied := copied(t, repo, revision, patch); copied != identity {
+		t.Fatalf("the copy has %s; want %s", copied, identity)
 	}
+}
+
+// copied names the content of a copy of revision with patch applied, and
+// removes the copy, as a verification attempt does.
+func copied(t *testing.T, repo, revision string, patch []byte) string {
+	t.Helper()
+	ctx := context.Background()
+	workspaces := git.Workspaces{}
+	dir, remove, err := workspaces.Copy(ctx, repo, revision, patch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	identity, err := workspaces.Identity(ctx, dir, revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := remove(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+		t.Fatalf("copy %s left behind", dir)
+	}
+	if lines := strings.Split(sh(t, repo, "worktree", "list"), "\n"); len(lines) != 2 {
+		t.Fatalf("worktrees = %v", lines)
+	}
+	return identity
 }
 
 // A checkout its call never released (the process was killed) is removed

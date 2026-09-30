@@ -81,8 +81,26 @@ func (Workspaces) Checkout(ctx context.Context, repository, revision string) (st
 	return dir, release, nil
 }
 
+// Copy is a checkout of revision, as Checkout makes, with patch applied to
+// its files, not its index: where a verification run checks exactly what
+// the patch delivers.
+func (w Workspaces) Copy(ctx context.Context, repository, revision string, patch []byte) (string, func() error, error) {
+	dir, release, err := w.Checkout(ctx, repository, revision)
+	if err != nil {
+		return "", nil, err
+	}
+	if len(patch) > 0 {
+		if _, err := runWith(ctx, dir, nil, patch, "apply", "--binary", "--whitespace=nowarn", "-"); err != nil {
+			_ = release()
+			return "", nil, err
+		}
+	}
+	return dir, release, nil
+}
+
 // Discard removes a checkout whose call ended without releasing it. Only a
-// directory Checkout could have made is touched: <temp>/agister-checkout-*/workspace.
+// directory Checkout or Copy could have made is touched:
+// <temp>/agister-checkout-*/workspace.
 func (Workspaces) Discard(ctx context.Context, repository, dir string) error {
 	parent := filepath.Dir(dir)
 	if filepath.Base(dir) != "workspace" || !strings.HasPrefix(filepath.Base(parent), "agister-checkout-") ||
@@ -140,26 +158,6 @@ func (Workspaces) Changes(ctx context.Context, dir, from, to string) ([]byte, er
 	out, err := run(ctx, dir, "diff", "--binary", "--no-ext-diff", "--no-textconv", "--no-color",
 		"--src-prefix=a/", "--dst-prefix=b/", from, to, "--")
 	return []byte(out), err
-}
-
-// Rebuild applies a patch to revision in an index of its own, never the
-// checkout's files, and returns the tree that results.
-func (Workspaces) Rebuild(ctx context.Context, dir, revision string, patch []byte) (string, error) {
-	var tree string
-	err := scratchIndex(func(env []string) error {
-		if _, err := runWith(ctx, dir, env, nil, "read-tree", revision); err != nil {
-			return err
-		}
-		if len(patch) > 0 {
-			if _, err := runWith(ctx, dir, env, patch, "apply", "--cached", "--binary", "--whitespace=nowarn", "-"); err != nil {
-				return err
-			}
-		}
-		out, err := runWith(ctx, dir, env, nil, "write-tree")
-		tree = strings.TrimSpace(out)
-		return err
-	})
-	return tree, err
 }
 
 // scratchIndex gives do the environment of a temporary index, removed after.
