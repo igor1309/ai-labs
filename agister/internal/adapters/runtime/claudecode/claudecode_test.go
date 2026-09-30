@@ -117,6 +117,16 @@ func TestResumeReportingAnotherSessionFails(t *testing.T) {
 	if turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError || turn.ProviderSessionID != "other" || !strings.Contains(turn.Error.Message, session) {
 		t.Fatalf("turn = %+v", turn)
 	}
+	// A terminal result naming another session breaks it too, after an
+	// init that named the resumed one.
+	late := &claudecode.Stream{ResumedSessionID: session}
+	late.Reduce(`{"type":"system","subtype":"init","session_id":"` + session + `"}`)
+	if events := late.Reduce(`{"type":"result","subtype":"success","is_error":false,"session_id":"other"}`); len(events) != 2 || events[1].Kind != "SESSION_ID_MISMATCH" {
+		t.Fatalf("events = %+v", events)
+	}
+	if turn := late.Reconcile(supervisor.Evidence{Exit: &run.Exit{Code: &code}}, false); turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError || !strings.Contains(turn.Error.Message, `"other"`) {
+		t.Fatalf("turn = %+v", turn)
+	}
 	// A result that names no session does not confirm the resumed one.
 	silent := &claudecode.Stream{ResumedSessionID: session}
 	silent.Reduce(`{"type":"result","subtype":"success","is_error":false}`)

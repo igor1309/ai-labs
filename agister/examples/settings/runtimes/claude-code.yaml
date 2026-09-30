@@ -1,6 +1,8 @@
 # What each Claude Code tool actually grants under adapter contract
-# claude-code/1 (--permission-mode dontAsk, --restricted, --strict-mcp-config:
-# file tools confined to the working directory).
+# claude-code/2 (--permission-mode dontAsk, --restricted, --strict-mcp-config:
+# file tools confined to the working directory). claude-code/2 differs from
+# claude-code/1 only in continuation: it resumes the reported session in
+# place with --resume, where /1 forked it into a preset session ID.
 #
 # verified lists the Claude Code versions a primitive's grants were checked
 # against live (docs/findings.md). A plan uses only primitives verified for
@@ -8,7 +10,7 @@
 schema: agister.runtime/v1alpha1
 name: claude-code
 adapter: claude-code
-contract: claude-code/1
+contract: claude-code/2
 efforts: [low, medium, high, xhigh, max]
 primitives:
   select: any

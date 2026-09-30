@@ -358,10 +358,10 @@ type runsSpy struct {
 	records map[string]run.Record
 	states  map[string]run.State
 	asked   []string
-	listErr error // when set, List fails with it
+	listErr error // when set, Every fails with it
 }
 
-func (s *runsSpy) List(context.Context) ([]run.Record, error) {
+func (s *runsSpy) Every(context.Context) ([]run.Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.listErr != nil {

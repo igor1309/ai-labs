@@ -37,6 +37,7 @@ type Store struct {
 
 var _ app.RunRecorder = Store{}
 var _ app.RunsReader = Store{}
+var _ app.CallRuns = Store{}
 var _ app.RunAdopter = Store{}
 
 func (s Store) runDir(id string) string { return filepath.Join(s.Dir, id) }
@@ -266,30 +267,56 @@ func (s Store) Events(ctx context.Context, id string, afterSeq int) ([]run.Event
 	return events, status, scanner.Err()
 }
 
+// List returns the records it can read, skipping any it cannot.
 func (s Store) List(ctx context.Context) ([]run.Record, error) {
-	entries, err := os.ReadDir(s.Dir)
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil, nil
-	}
+	records, _, err := s.list(ctx)
+	return records, err
+}
+
+// Every returns every run's record, or an error naming each record that
+// exists and cannot be read, so nothing on record is missed. A run
+// directory with no record yet is one whose Create has not finished.
+func (s Store) Every(ctx context.Context) ([]run.Record, error) {
+	records, unreadable, err := s.list(ctx)
 	if err != nil {
 		return nil, err
 	}
+	if len(unreadable) > 0 {
+		return nil, fmt.Errorf("unreadable run records: %w", errors.Join(unreadable...))
+	}
+	return records, nil
+}
+
+// list reads the record of every run directory, returning apart the
+// errors of records that exist and cannot be read.
+func (s Store) list(ctx context.Context) (records []run.Record, unreadable []error, err error) {
+	entries, err := os.ReadDir(s.Dir)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil, nil
+	}
+	if err != nil {
+		return nil, nil, err
+	}
 	var ids []string
 	for _, entry := range entries {
-		if entry.IsDir() {
+		if entry.IsDir() && checkID(entry.Name()) == nil {
 			ids = append(ids, entry.Name())
 		}
 	}
 	sort.Strings(ids)
-	records := make([]run.Record, 0, len(ids))
+	records = make([]run.Record, 0, len(ids))
 	for _, id := range ids {
 		record, _, err := s.Get(ctx, id)
+		if errors.Is(err, contract.ErrNotFound) {
+			continue
+		}
 		if err != nil {
+			unreadable = append(unreadable, err)
 			continue
 		}
 		records = append(records, record)
 	}
-	return records, nil
+	return records, unreadable, nil
 }
 
 // status: finished if the record says so; otherwise running while some

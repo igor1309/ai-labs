@@ -93,11 +93,13 @@ type CallValidator interface {
 }
 
 // CallRuns reads an earlier run's evidence, only to continue its session,
-// and lists every run, to find what else continues that session. A record
-// that is not finished and no longer owned reads as abandoned.
+// and every run's record, to find what else continues that session. A
+// record that is not finished and no longer owned reads as abandoned.
 type CallRuns interface {
 	Get(ctx context.Context, id string) (run.Record, run.State, error)
-	List(ctx context.Context) ([]run.Record, error)
+	// Every fails when any record on file cannot be read: a continuation
+	// it hides could make the session stale.
+	Every(ctx context.Context) ([]run.Record, error)
 }
 
 // CallClock tells the time of a call's record and events.
@@ -456,7 +458,7 @@ func (c *Calls) continuation(ctx context.Context, res *resolution, self, runID s
 	case prior.Result == nil || prior.Result.Session == nil || prior.Result.Session.ProviderSessionID == "":
 		return "", refuse("run %s has no provider session", runID)
 	}
-	records, err := c.runs.List(ctx)
+	records, err := c.runs.Every(ctx)
 	if err != nil {
 		return "", fmt.Errorf("listing runs to continue run %s: %w", runID, err)
 	}
@@ -468,10 +470,10 @@ func (c *Calls) continuation(ctx context.Context, res *resolution, self, runID s
 
 // laterInChain returns a run, other than self, that moved prior's session
 // past prior: one that ran in that session and is not prior or a run prior
-// continues, or one that continues a run of the chain, finished or not.
-// Only a continuation that was refused, before any effect, does not count.
-// Each call's record, with what it continues, exists before its check, so
-// of two concurrent continuations of one run at least one sees the other;
+// continues, or one that continues a run of the chain, finished or not,
+// unless it finished having started no runtime turn (see noTurn). Each
+// call's record, with what it continues, exists before its check, so of
+// two concurrent continuations of one run at least one sees the other;
 // both may be refused, never both let through.
 func laterInChain(records []run.Record, prior run.Record, self string) string {
 	byID := map[string]run.Record{}
@@ -496,12 +498,21 @@ func laterInChain(records []run.Record, prior run.Record, self string) string {
 		if record.ID == self || earlier[record.ID] {
 			continue
 		}
-		refused := record.Result != nil && record.Result.Error != nil && record.Result.Error.Class == run.ClassRefused
-		if inSession(record) || record.Request.Continue != "" && inChain(record.Request.Continue) && !refused {
+		if inSession(record) || record.Request.Continue != "" && inChain(record.Request.Continue) && !noTurn(record) {
 			return record.ID
 		}
 	}
 	return ""
+}
+
+// noTurn reports a run its own call finished before any runtime turn:
+// execute records the turn whenever RunTurn returns, and a runtime process
+// as soon as it starts. A run that is not finished, or that a reaper
+// finished, may have left a runtime running unrecorded, so it is not one.
+func noTurn(record run.Record) bool {
+	return record.FinishedAt != nil && record.Turn == nil &&
+		(record.Effects == nil || record.Effects.Process == nil) &&
+		record.Result != nil && (record.Result.Error == nil || record.Result.Error.Class != run.ClassAbandoned)
 }
 
 // collectChanges keeps a call's changes to its own workspace as an

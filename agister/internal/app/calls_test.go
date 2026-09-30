@@ -337,11 +337,15 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 	resumable(h)
 	h.runs.records["run-0"], h.runs.states["run-0"] = earlier, run.StateFinished
 	// The run it continued, this call's own record, and a refused attempt
-	// to continue it leave it the latest in its chain.
+	// to continue it, which started no turn, leave it the latest in its
+	// chain.
 	h.runs.records["run-00"] = inSession("run-00", "")
 	h.runs.records["run-1"] = run.Record{ID: "run-1", Request: run.Request{Continue: "run-0"}}
-	h.runs.records["run-2"] = run.Record{ID: "run-2", Request: run.Request{Continue: "run-0"}, Result: &run.Result{Status: run.Failed, Error: run.Fault(run.ClassRefused, "no")}}
+	h.runs.records["run-2"] = finishedWithoutTurn("run-2", run.ClassRefused)
 	record := h.call(t, contract.CallRequest{Continue: "run-0"})
+	if len(h.runner.calls()) != 1 {
+		t.Fatalf("result %+v", record.Result.Error)
+	}
 	got := h.runner.calls()[0]
 	// The earlier session is resumed in place, by the ID it reported.
 	if got.ResumeSessionID != "prov-0" || record.Result.Session.Continues != "run-0" || record.Request.Continue != "run-0" {
@@ -377,6 +381,22 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 			resumable(h)
 			h.runs.records["run-2"] = run.Record{ID: "run-2", Request: run.Request{Continue: "run-0"}}
 		}, "run run-0 is not the latest in its session's chain: run run-2 continues the session"},
+		{"a continuation that ran a turn", func(h *harness) {
+			resumable(h)
+			ran := finishedWithoutTurn("run-2", run.ClassRuntimeError)
+			ran.Turn = &run.Turn{Status: run.Failed}
+			h.runs.records["run-2"] = ran
+		}, "run run-0 is not the latest in its session's chain: run run-2 continues the session"},
+		{"a continuation that started a runtime process", func(h *harness) {
+			resumable(h)
+			started := finishedWithoutTurn("run-2", run.ClassInternal)
+			started.Effects = &run.Effects{Process: &run.Process{Ref: "p"}}
+			h.runs.records["run-2"] = started
+		}, "run run-0 is not the latest in its session's chain: run run-2 continues the session"},
+		{"a continuation a reaper finished", func(h *harness) {
+			resumable(h)
+			h.runs.records["run-2"] = finishedWithoutTurn("run-2", run.ClassAbandoned)
+		}, "run run-0 is not the latest in its session's chain: run run-2 continues the session"},
 		{"a later run of its session", func(h *harness) {
 			resumable(h)
 			h.runs.records["run-2"] = inSession("run-2", "")
@@ -401,8 +421,17 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 	}
 }
 
+// finishedWithoutTurn is a continuation of run-0 that its own call
+// finished, with class, before starting any runtime turn.
+func finishedWithoutTurn(id string, class run.Class) run.Record {
+	finished := time.Date(2026, 9, 28, 11, 0, 0, 0, time.UTC)
+	return run.Record{ID: id, Agent: "a", Request: run.Request{Continue: "run-0"}, Runtime: &run.Runtime{Adapter: "spy"}, FinishedAt: &finished,
+		Result: &run.Result{Status: run.StatusOf(class), Error: run.Fault(class, "before the turn")}}
+}
+
 // A continuation that cannot tell whether its run is the latest in the
-// chain does not guess: it fails before the turn.
+// chain does not guess: it fails before the turn. The failed attempt
+// started no turn, so continuing the run again is allowed.
 func TestContinuationThatCannotListRunsFails(t *testing.T) {
 	h := newHarness()
 	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
@@ -412,6 +441,13 @@ func TestContinuationThatCannotListRunsFails(t *testing.T) {
 	record := h.call(t, contract.CallRequest{Continue: "run-0"})
 	if class(record) != run.ClassInternal || !strings.Contains(message(record), "disk gone") || len(h.runner.calls()) != 0 {
 		t.Fatalf("result %+v", record.Result.Error)
+	}
+
+	record.ID = "run-2"
+	h.runs.records["run-2"], h.runs.states["run-2"] = record, run.StateFinished
+	h.runs.listErr = nil
+	if again := h.call(t, contract.CallRequest{Continue: "run-0"}); again.Result.Status != run.Completed || len(h.runner.calls()) != 1 || h.runner.calls()[0].ResumeSessionID != "prov-0" {
+		t.Fatalf("result %+v", again.Result)
 	}
 }
 

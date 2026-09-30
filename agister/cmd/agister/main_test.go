@@ -289,7 +289,7 @@ writing = ["docs.write"]
 	write(t, filepath.Join(home, "runtimes", "docs-runtime.yaml"), `schema: agister.runtime/v1alpha1
 name: docs-runtime
 adapter: claude-code
-contract: claude-code/1
+contract: claude-code/2
 primitives:
   select: any
   items:
@@ -780,6 +780,44 @@ func TestContinuationEndToEnd(t *testing.T) {
 	refused := finish(contract.CallRequest{Process: "adversarial_review", Params: map[string]string{"base": "main"}, Continue: first.ID, Timeout: "1m", Cwd: repo})
 	if refused.Result.Error == nil || refused.Result.Error.Class != "refused" || !strings.Contains(refused.Result.Error.Message, "fresh-only") {
 		t.Fatalf("result = %+v", refused.Result)
+	}
+}
+
+// A continuation reads every run on file: a record it cannot read could be
+// a later continuation, so it fails before the turn instead of resuming a
+// stale session. Listing runs still shows the ones it can read.
+func TestContinuationFailsOnAnUnreadableRecord(t *testing.T) {
+	home, repo := setup(t, "approve")
+	client, err := compose(cli.Config{Home: home})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	finish := func(request contract.CallRequest) contract.Run {
+		id, err := client.Submit(ctx, request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := client.Observe(ctx, id, 0, func(contract.Event) error { return nil }); err != nil {
+			t.Fatal(err)
+		}
+		inspected, err := client.Inspect(ctx, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return inspected
+	}
+	first := finish(contract.CallRequest{Process: "ask", Params: map[string]string{"question": "What is a.txt?"}, Timeout: "1m", Cwd: repo})
+	write(t, filepath.Join(home, "runs", first.ID+"-later", "record.json"), `{"id": "`+first.ID+`-later", "request": {"continue": "`+first.ID)
+	failed := finish(contract.CallRequest{Process: "ask", Params: map[string]string{"question": "And b.txt?"}, Continue: first.ID, Timeout: "1m", Cwd: repo})
+	if failed.Result.Error == nil || failed.Result.Error.Class != "internal" || !strings.Contains(failed.Result.Error.Message, "unreadable run records") {
+		t.Fatalf("result = %+v", failed.Result)
+	}
+	if _, err := os.Stat(filepath.Join(home, "runs", failed.ID, "provider.jsonl")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("the runtime ran: %v", err)
+	}
+	if runs, err := client.ListRuns(ctx); err != nil || len(runs) != 2 {
+		t.Fatalf("runs %d, %v", len(runs), err)
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -195,5 +196,35 @@ func TestLiveCheckoutsAreThoseOfRunsSomeoneOwns(t *testing.T) {
 	dirs, err := store.LiveCheckouts(ctx)
 	if err != nil || !reflect.DeepEqual(dirs, []string{"/tmp/agister-checkout-live/workspace"}) {
 		t.Fatalf("live checkouts = %v, %v", dirs, err)
+	}
+}
+
+// Every misses nothing on record: a record that exists and cannot be read
+// is an error, which List skips. A run whose record is not written yet is
+// not on record.
+func TestEveryFailsOnAnUnreadableRecord(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	ctx := context.Background()
+	h, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "r1", Process: "p", CreatedAt: time.Now()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Finish(run.Record{Schema: run.RecordSchema, ID: "r1", Process: "p"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(store.Dir, "r2"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if records, err := store.Every(ctx); err != nil || len(records) != 1 || records[0].ID != "r1" {
+		t.Fatalf("records %+v, %v", records, err)
+	}
+	if err := os.WriteFile(filepath.Join(store.Dir, "r2", "record.json"), []byte("{broken"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if records, err := store.Every(ctx); err == nil || !strings.Contains(err.Error(), "run r2") {
+		t.Fatalf("records %+v, %v", records, err)
+	}
+	if records, err := store.List(ctx); err != nil || len(records) != 1 || records[0].ID != "r1" {
+		t.Fatalf("list %+v, %v", records, err)
 	}
 }
