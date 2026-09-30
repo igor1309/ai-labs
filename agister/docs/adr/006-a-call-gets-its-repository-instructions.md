@@ -1,8 +1,8 @@
-# ADR-006: A call gets its repository's instruction files
+# ADR-006: A call loads its repository's instructions and skills
 
 - **Status:** Accepted
 - **Date:** 2026-09-30
-- **Scope:** the instruction files an agent call receives
+- **Scope:** what an agent call loads from the repository it works in
 - **Decision type:** Architecture
 - **Amends:** [ADR-001](001-agister-cli-architecture.md): what a call is
   given besides its process's instruction and inputs
@@ -10,31 +10,21 @@
 ## Context
 
 A repository's `AGENTS.md` and `CLAUDE.md` hold its conventions: how to
-test, what is forbidden. An agent that does not see them breaks them.
-Agister starts Claude Code with `--restricted`, which ignores project
-settings and with them the instruction files. Codex loads the root
-`AGENTS.md` itself.
+test, what is forbidden. Its skills hold how its recurring work is done.
+An agent that does not see them breaks them. The runtimes load both
+themselves when they run in the repository, unless told not to.
 
 ## Decision
 
-### 1. Every call gets the instruction files of its working directory
-
-Each `AGENTS.md` and `CLAUDE.md` from the repository root down to the
-call's working directory, root first. Where the runtime does not load them
-itself under Agister's flags, Agister gives them to the model ahead of the
-process's instruction. A file that cannot be read fails the call before it
-starts.
-
-### 2. The run records what the call received
-
-Each instruction file's path and digest is on the run, so what an agent
-was told can be read back.
+A call runs its runtime so that the runtime loads the repository's
+instruction files and skills as it would for a person working in the same
+directory. Agister passes no flag that turns that loading off, and gives
+the agent the tool it needs to use a skill.
 
 ## Consequences
 
 - An agent follows the repository's conventions without the brief
   repeating them.
-- Confinement stays as it is: `--restricted` keeps ignoring settings and
-  hooks; only the instruction files come back.
-- A change to an instruction file changes every later call; the recorded
-  digests show which version a run had.
+- What a call loads is whatever its runtime loads; Agister does not copy
+  or filter it.
+- A change to an instruction file or a skill changes later calls.
