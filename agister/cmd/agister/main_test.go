@@ -3,11 +3,14 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -169,7 +172,7 @@ func TestAgentCallEndToEnd(t *testing.T) {
 	// The node result: usage and cost as the runtime reports them, timing as Agister measures it.
 	usage, cost, timing := result["usage"].(map[string]any), result["cost"].(map[string]any), result["timing"].(map[string]any)
 	if usage["input_tokens"] != 100.0 || usage["cache_write_tokens"] != 5.0 || cost["source"] != "runtime" || cost["usd"] != 0.0123 ||
-		timing["runtime_ms"] != 3400.0 || timing["turn_ms"] == nil || result["session"].(map[string]any)["provider_session_id"] != record["requested_session_id"] {
+		timing["runtime_ms"] != 3400.0 || timing["turn_ms"] == nil || result["session"].(map[string]any)["provider_session_id"] != "00000000-0000-4000-8000-000000000000" || record["requested_session_id"] != nil {
 		t.Fatalf("result = %v", result)
 	}
 	// Every definition used is attributed with its digest.
@@ -223,9 +226,9 @@ func TestAgentCallEndToEnd(t *testing.T) {
 	if !logged {
 		t.Fatal("turn not logged under its run ID")
 	}
-	// Constraints and plan come before any runtime process.
+	// The plan comes before any runtime process.
 	order := strings.Join(last.kinds(), " ")
-	if strings.Index(order, "CONSTRAINT_CHECKED") > strings.Index(order, "PROCESS_STARTED") || !strings.Contains(order, "PERMISSIONS_WITHHELD") {
+	if planned := strings.Index(order, "PLANNED"); planned < 0 || planned > strings.Index(order, "PROCESS_STARTED") || !strings.Contains(order, "PERMISSIONS_WITHHELD") {
 		t.Fatalf("events = %s", order)
 	}
 }
@@ -233,7 +236,8 @@ func TestAgentCallEndToEnd(t *testing.T) {
 func TestShippedExamplesPassCheck(t *testing.T) {
 	home, repo := setup(t, "approve")
 	r := agister(t, home, repo, "check", "--probe")
-	if r.code != 0 || !strings.HasPrefix(r.stdout, "settings OK:") {
+	if r.code != 0 || !strings.HasPrefix(r.stdout, "settings OK:") ||
+		!strings.Contains(r.stderr, "warning process implement: verify runs its command with the operator's authority") {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	// A broken setting is found before any call, with every problem listed.
@@ -261,7 +265,7 @@ func TestUnreadableServiceSettingsFailCheck(t *testing.T) {
 	}
 	write(t, filepath.Join(home, "service.toml"), "\x00\x00\x00\x01Bud1\x00\x00")
 	r := agister(t, home, repo, "check")
-	if r.code != cli.ExitUsage || !strings.HasPrefix(r.stderr, "service service: not a UTF-8 text file\n1 problem(s)") {
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "\nservice service: not a UTF-8 text file\n1 problem(s)") {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
 }
@@ -289,7 +293,7 @@ writing = ["docs.write"]
 	write(t, filepath.Join(home, "runtimes", "docs-runtime.yaml"), `schema: agister.runtime/v1alpha1
 name: docs-runtime
 adapter: claude-code
-contract: claude-code/1
+contract: claude-code/2
 primitives:
   select: any
   items:
@@ -490,19 +494,21 @@ func TestAgentCreateAsksBeforeReplacing(t *testing.T) {
 		t.Fatalf("yes: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	// An agent that would break the settings is refused before the question,
-	// and every command still works afterwards. Here a process constrains
-	// its agent's model family, so the agent must declare one.
-	constrained := strings.Replace(read(t, filepath.Join(home, "processes", "adversarial_review.yaml")), "\ninput:\n", `
-constraints:
-  agent.model_family:
-    not_equal: evidence.candidate(input.candidate_revision).provenance.writer.model_family
-    on_unsatisfied: fail
-
-input:
-`, 1)
-	write(t, filepath.Join(home, "processes", "adversarial_review.yaml"), constrained)
+	// and every command still works afterwards. Here the agent's runtime is
+	// valid, but the reviewer's processes cannot run on it: its one
+	// primitive also grants what their policy does not allow.
+	write(t, filepath.Join(home, "runtimes", "narrow.yaml"), `schema: agister.runtime/v1alpha1
+name: narrow
+adapter: claude-code
+contract: claude-code/2
+efforts: [high]
+primitives:
+  select: one
+  items:
+    Bash: {grants: [process.execute, repository.read], verified: ["2.1."]}
+`)
 	current := read(t, reviewer)
-	r := agisterInput(t, "yes\n", home, dir, "agent", "create", "reviewer", "--force", "--runtime", "claude-code")
+	r := agisterInput(t, "yes\n", home, dir, "agent", "create", "reviewer", "--force", "--runtime", "narrow")
 	if r.code != cli.ExitUsage || strings.Contains(r.stderr, "Type yes") || !strings.Contains(r.stderr, "agent reviewer would break the global settings") || read(t, reviewer) != current {
 		t.Fatalf("breaking agent: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -731,8 +737,12 @@ func TestVerdictIsOutputNotStatus(t *testing.T) {
 	}
 }
 
-// A continuation resumes the earlier run's provider session in a new one.
+// A continuation resumes the earlier run's provider session in place, by the
+// ID the runtime reported, and costs what it added to the session's total.
 func TestContinuationEndToEnd(t *testing.T) {
+	// The fake runtime keeps its sessions' costs here: each turn costs
+	// $0.0123, and the result reports the session's total.
+	t.Setenv("FAKE_CLAUDE_CONFIG_DIR", t.TempDir())
 	home, repo := setup(t, "approve")
 	client, err := compose(cli.Config{Home: home})
 	if err != nil {
@@ -763,8 +773,23 @@ func TestContinuationEndToEnd(t *testing.T) {
 	data, _ := os.ReadFile(filepath.Join(home, "runs", second.ID, "provider.jsonl"))
 	_ = json.Unmarshal([]byte(strings.SplitN(string(data), "\n", 2)[0]), &provider)
 	args := fmt.Sprint(provider["argv"])
-	if earlier == later || second.Result.Session.Continues != first.ID || !strings.Contains(args, "--resume "+earlier+" --fork-session --session-id "+later) {
+	if earlier != later || second.Result.Session.Continues != first.ID || !strings.Contains(args, "--resume "+earlier) ||
+		strings.Contains(args, "--fork-session") || strings.Contains(args, "--session-id") {
 		t.Fatalf("earlier %s, later %s, argv %s", earlier, later, args)
+	}
+	// A run that was already continued can be continued again: the same
+	// session is resumed.
+	again := finish(contract.CallRequest{Process: "ask", Params: map[string]string{"question": "And c.txt?"}, Continue: first.ID, Timeout: "1m", Cwd: repo})
+	if again.Result.Status != "completed" || again.Result.Session.ProviderSessionID != earlier || again.Result.Session.Continues != first.ID {
+		t.Fatalf("result = %+v", again.Result)
+	}
+	// The session's total rose to 0.0246 with the second call, which the
+	// first never recorded: each call costs its own turn, the third
+	// included.
+	for _, call := range []contract.Run{first, second, again} {
+		if cost := call.Result.Cost; cost.Source != "runtime" || cost.USD == nil || math.Abs(*cost.USD-0.0123) > 1e-9 {
+			t.Fatalf("run %s cost %+v, usd %v", call.ID, cost, cost.USD)
+		}
 	}
 	// The reviewer is fresh-only: continuing with it is refused.
 	refused := finish(contract.CallRequest{Process: "adversarial_review", Params: map[string]string{"base": "main"}, Continue: first.ID, Timeout: "1m", Cwd: repo})
@@ -789,5 +814,67 @@ func TestWorkspaceChangesAreKept(t *testing.T) {
 	}
 	if status := gitCmd(t, repo, "status", "--porcelain"); status != "" {
 		t.Fatalf("repository changed: %s", status)
+	}
+}
+
+// A process declaring verify, in settings on disk: check and process show
+// warn of it, a call records it under the process's digest and completes
+// once its fixture command passes in the checkout, and a caller's timeout
+// shorter than one run refuses the call.
+func TestVerifyDeclarationEndToEnd(t *testing.T) {
+	home, repo := setup(t, "approve")
+	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))
+	process := strings.Replace(shipped, "name: adversarial_review", "name: verified", 1) + `
+verify:
+  command: test -f a.txt
+  timeout: 20s
+  max_attempts: 1
+  instruction: The verification command failed. Fix the cause, not the check.
+`
+	write(t, filepath.Join(home, "processes", "verified.yaml"), process)
+
+	r := agister(t, home, repo, "check")
+	if r.code != 0 || strings.Count(r.stderr, "warning process verified: verify runs its command with the operator's authority") != 1 || strings.Contains(r.stderr, "adversarial_review") {
+		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	r = agister(t, home, repo, "process", "show", "verified")
+	if r.code != 0 || !strings.Contains(r.stdout, "verify       test -f a.txt\n") || !strings.Contains(r.stdout, "WARNING      verify runs its command with the operator's authority") {
+		t.Fatalf("show: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+
+	r = agister(t, home, repo, "run", "verified", "--param", "base=main", "--timeout", "30s")
+	if r.code != cli.ExitCompleted {
+		t.Fatalf("run: %d\n%s", r.code, r.stderr)
+	}
+	record := lastRun(t, home).record
+	verified := record["id"]
+	verify := record["verify"].(map[string]any)
+	if verify["command"] != "test -f a.txt" || verify["timeout"] != float64(20e9) || verify["max_attempts"] != 1.0 || !strings.HasPrefix(verify["instruction"].(string), "The verification command failed.") {
+		t.Fatalf("verify = %v", verify)
+	}
+	if attempts, _ := record["attempts"].([]any); len(attempts) != 1 || attempts[0].(map[string]any)["run"].(map[string]any)["passed"] != true {
+		t.Fatalf("attempts = %v", record["attempts"])
+	}
+	for _, source := range record["definitions"].([]any) {
+		source := source.(map[string]any)
+		if sum := sha256.Sum256([]byte(process)); source["kind"] == "processes" && source["sha256"] != hex.EncodeToString(sum[:]) {
+			t.Fatalf("process digest %v is not of the file as resolved", source["sha256"])
+		}
+	}
+
+	r = agister(t, home, repo, "run", "verified", "--param", "base=main", "--timeout", "10s")
+	// Two runs in one second need not list in the order they ran.
+	entries, _ := os.ReadDir(filepath.Join(home, "runs"))
+	var refused map[string]any
+	for _, entry := range entries {
+		var record map[string]any
+		readJSON(t, filepath.Join(home, "runs", entry.Name(), "record.json"), &record)
+		if record["id"] != verified {
+			refused = record["result"].(map[string]any)["error"].(map[string]any)
+		}
+	}
+	if r.code == cli.ExitCompleted || len(entries) != 2 || refused["class"] != "refused" ||
+		!strings.Contains(refused["message"].(string), "verify.timeout 20s exceeds the effective timeout 10s") {
+		t.Fatalf("run with a shorter timeout: %d, %v", r.code, refused)
 	}
 }

@@ -28,7 +28,6 @@ type Effective struct {
 	Require     []string
 	Access      string
 	Scope       string
-	Constraints []definition.Constraint
 }
 
 // InvalidError lists every composition problem.
@@ -91,6 +90,18 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 		}
 	}
 
+	// A verification run is bounded by its own timeout inside the call's,
+	// so the call's may not be the shorter; its attempts, by the service's
+	// ceiling. Either is invalid, never clamped.
+	if verify := process.Verify; verify != nil {
+		if verify.Timeout > *timeout {
+			add("verify.timeout %s exceeds the effective timeout %s", verify.Timeout, *timeout)
+		}
+		if verify.MaxAttempts > service.MaxVerifyAttempts {
+			add("verify.max_attempts %d exceeds the service limit max_verify_attempts %d", verify.MaxAttempts, service.MaxVerifyAttempts)
+		}
+	}
+
 	cost := narrowCost(add, service, origin, base.MaxCostUSD, over.MaxCostUSD, caller.MaxCostUSD)
 
 	attempts := 1
@@ -149,20 +160,6 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 		add("workspace.scope repository conflicts with workspace.checkout, which works in a checkout")
 	}
 
-	constraints := append([]definition.Constraint(nil), base.Constraints...)
-	for _, constraint := range over.Constraints {
-		if hasSubject(constraints, constraint.Subject) {
-			add("constraints.%s: already set by %s; constraints can only be added", constraint.Subject, origin)
-			continue
-		}
-		constraints = append(constraints, constraint)
-	}
-	for _, constraint := range constraints {
-		if !hasValue(process.Values, constraint.CandidateInput) {
-			add("constraints.%s: refers to input.%s, which process %s does not declare", constraint.Subject, constraint.CandidateInput, process.Name)
-		}
-	}
-
 	deny := union(base.Deny, over.Deny)
 	if access == "read-only" {
 		deny = union(deny, service.Writing)
@@ -187,7 +184,6 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 		Require:     process.Require,
 		Access:      access,
 		Scope:       scope,
-		Constraints: constraints,
 	}, nil
 }
 
@@ -231,15 +227,6 @@ func narrowInt(add func(string, ...any), field string, base, over *int) *int {
 		return base
 	}
 	return over
-}
-
-func hasSubject(constraints []definition.Constraint, subject string) bool {
-	for _, constraint := range constraints {
-		if constraint.Subject == subject {
-			return true
-		}
-	}
-	return false
 }
 
 func hasValue(values []definition.Value, name string) bool {

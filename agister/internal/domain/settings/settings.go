@@ -1,6 +1,6 @@
 // Package settings checks a whole set of parsed definitions for consistency:
 // references resolve, limits compose, every process can be enforced on its
-// agent's runtime. It reports every problem at once.
+// agent's runtime, every workflow's nodes can run as ADR-003 has them. It reports every problem at once.
 package settings
 
 import (
@@ -21,6 +21,7 @@ type Bundle struct {
 	Policies  map[string]definition.Policy
 	Mappings  map[string]definition.Mapping
 	Schemas   map[string]bool
+	Workflows map[string]definition.Workflow
 }
 
 // Mechanisms are what the code provides, named by settings.
@@ -115,8 +116,8 @@ func Check(b Bundle, m Mechanisms) []Problem {
 			add(subject, "agent %q does not exist", process.Agent)
 			continue
 		}
-		if len(effective.Constraints) > 0 && agent.ModelFamily == "" {
-			add(subject, "constrains the model family, but agent %s declares none", agent.Name)
+		if process.Verify.Repairs() && agent.Session != definition.SessionResumable {
+			add(subject, "verify.max_attempts %d repairs in the call's session, but agent %s is %s", process.Verify.MaxAttempts, agent.Name, agent.Session)
 		}
 		mapping, ok := b.Mappings[agent.Runtime]
 		if !ok {
@@ -124,6 +125,23 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		}
 		if err := planOnSomeVersion(effective, mapping, b.Service.StateReaching); err != nil {
 			add(subject, "cannot run on agent %s's runtime %s: %v", agent.Name, mapping.Name, err)
+		}
+	}
+
+	for _, name := range sortedKeys(b.Workflows) {
+		workflow := b.Workflows[name]
+		subject := "workflow " + name
+		// agister run <name> runs one or the other.
+		if _, ok := b.Processes[name]; ok {
+			add(subject, "a process has the same name; name one of them otherwise")
+		}
+		for _, value := range workflow.Values {
+			if !contains(m.Sources, value.Source) {
+				add(subject, "input %s: unknown source %q (available: %s)", value.Name, value.Source, strings.Join(m.Sources, ", "))
+			}
+		}
+		for _, problem := range WorkflowProblems(workflow, b.Processes) {
+			add(subject, "%s", problem)
 		}
 	}
 

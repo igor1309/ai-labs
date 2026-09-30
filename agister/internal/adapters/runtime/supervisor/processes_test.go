@@ -13,11 +13,12 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/app"
 )
 
-// sleeper starts a process leading its own group and returns a channel
-// closed when it has been reaped by its parent.
+// sleeper starts a process leading its own group, one that never ends on
+// its own, and returns a channel closed when it has been reaped by its
+// parent.
 func sleeper(t *testing.T) (pid int, gone <-chan struct{}) {
 	t.Helper()
-	command := exec.Command("sleep", "30")
+	command := exec.Command("tail", "-f", "/dev/null")
 	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if err := command.Start(); err != nil {
 		t.Fatal(err)
@@ -35,16 +36,18 @@ func TestReapKillsTheGroupOfTheRecordedProcess(t *testing.T) {
 		t.Fatalf("token = %q, %v", token, err)
 	}
 	// The command name is part of it: the same start second is not enough.
-	if !strings.Contains(token, "sleep") {
+	if !strings.Contains(token, "tail") {
 		t.Fatalf("token %q does not name the command", token)
 	}
 	reaping, err := supervisor.Processes{}.Reap(context.Background(), supervisor.Ref(pid, token))
 	if err != nil || reaping != app.ReapKilled {
 		t.Fatalf("reap = %s, %v", reaping, err)
 	}
+	// The process never ends on its own, so its end is the kill's; the bound
+	// is only a guard against a hang.
 	select {
 	case <-gone:
-	case <-time.After(5 * time.Second):
+	case <-time.After(20 * time.Second):
 		t.Fatal("the group survived")
 	}
 	// Nothing left: the group is simply gone, also for a reference that

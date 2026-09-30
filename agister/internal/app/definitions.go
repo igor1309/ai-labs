@@ -324,14 +324,47 @@ func (s *Settings) ListProcesses(ctx context.Context) ([]contract.ProcessSummary
 	return processes, nil
 }
 
+func (s *Settings) ListWorkflows(ctx context.Context) ([]contract.WorkflowSummary, error) {
+	names, err := s.definitions.List(ctx, definition.KindWorkflow)
+	if err != nil {
+		return nil, err
+	}
+	workflows := make([]contract.WorkflowSummary, 0, len(names))
+	for _, name := range names {
+		doc, err := s.definitions.Read(ctx, definition.KindWorkflow, name)
+		if err != nil {
+			return nil, err
+		}
+		workflow, err := definition.ParseWorkflow(doc)
+		if err != nil {
+			workflows = append(workflows, contract.WorkflowSummary{Name: name, Problem: "invalid (run `agister check`)"})
+			continue
+		}
+		summary := contract.WorkflowSummary{Name: workflow.Name, Join: workflow.Join.Name + ":" + workflow.Join.Process}
+		for _, node := range workflow.FanOut {
+			summary.FanOut = append(summary.FanOut, node.Name+":"+node.Process)
+		}
+		workflows = append(workflows, summary)
+	}
+	return workflows, nil
+}
+
+// VerifyWarning is what check and process show say of a process whose
+// verification is in effect (ADR-002 rule 10): until verification is
+// confined, the command lends the operator's authority to the agent's code.
+const VerifyWarning = "verify runs its command with the operator's authority, not the agent's permissions, " +
+	"and the command can run code the agent wrote, with access to Agister's state"
+
 // Inspection shows a process as a call would see it, without effects.
 type Inspection struct {
 	resolver InspectionResolver
 }
 
-// InspectionResolver resolves a process the way a call would.
+// InspectionResolver resolves a process the way a call would, and a
+// workflow the way a run of it would.
 type InspectionResolver interface {
 	Resolve(ctx context.Context, processName, agentOverride string, caller overrides) (*resolution, error)
+	Workflow(ctx context.Context, name string) (res *workflowResolution, found bool, err error)
 }
 
 // NewInspection returns the use case that shows a process as a call would
@@ -341,6 +374,71 @@ func NewInspection(resolver InspectionResolver) *Inspection {
 }
 
 func (i *Inspection) ShowProcess(ctx context.Context, name, agent string) (contract.ProcessView, error) {
+	return i.showProcess(ctx, name, agent)
+}
+
+// ShowWorkflow shows a workflow and each node's process as a run of it
+// would see them.
+func (i *Inspection) ShowWorkflow(ctx context.Context, name string) (contract.WorkflowView, error) {
+	res, found, err := i.resolver.Workflow(ctx, name)
+	var refusal *Refusal
+	switch {
+	case !found:
+		return contract.WorkflowView{}, &contract.InputError{Message: fmt.Sprintf("no workflow %q", name)}
+	case err != nil && !errors.As(err, &refusal):
+		return contract.WorkflowView{}, err
+	case err != nil && res.workflow.Name == "":
+		return contract.WorkflowView{}, &contract.InputError{Message: refusal.Reason}
+	}
+	workflow := res.workflow
+	view := contract.WorkflowView{Name: workflow.Name, Sources: origins(res.sources)}
+	if refusal != nil {
+		view.Refusal = refusal.Reason
+	}
+	for _, param := range workflow.Params {
+		view.Params = append(view.Params, contract.Param{Name: param.Name, Default: param.Default, Required: !param.HasDefault})
+	}
+	passed := map[string]bool{}
+	for _, value := range workflow.Values {
+		view.Inputs = append(view.Inputs, value.Name+" <- "+value.Source)
+		passed[value.Name] = true
+	}
+	node := func(node definition.Node, join bool) (contract.WorkflowNode, error) {
+		process, err := i.showProcess(ctx, node.Process, "")
+		var input *contract.InputError
+		if errors.As(err, &input) {
+			process, err = contract.ProcessView{Name: node.Process, Refusal: input.Message}, nil
+		}
+		shown := contract.WorkflowNode{Name: node.Name, Process: process}
+		for _, param := range res.processes[node.Process].Params {
+			if passed[param.Name] && !join {
+				shown.Params = append(shown.Params, param.Name)
+			}
+		}
+		return shown, err
+	}
+	for _, fanOut := range workflow.FanOut {
+		shown, err := node(fanOut, false)
+		if err != nil {
+			return contract.WorkflowView{}, err
+		}
+		view.FanOut = append(view.FanOut, shown)
+	}
+	if view.Join, err = node(workflow.Join, true); err != nil {
+		return contract.WorkflowView{}, err
+	}
+	if collects := res.processes[workflow.Join.Process].Collects(); len(collects) == 1 {
+		view.Collection = collects[0]
+	}
+	for _, shown := range append(append([]contract.WorkflowNode(nil), view.FanOut...), view.Join) {
+		for _, warning := range shown.Process.Warnings {
+			view.Warnings = append(view.Warnings, "node "+shown.Name+": "+warning)
+		}
+	}
+	return view, nil
+}
+
+func (i *Inspection) showProcess(ctx context.Context, name, agent string) (contract.ProcessView, error) {
 	res, err := i.resolver.Resolve(ctx, name, agent, overrides{})
 	var refusal *Refusal
 	if err != nil && !errors.As(err, &refusal) {
@@ -375,18 +473,29 @@ func (i *Inspection) ShowProcess(ctx context.Context, name, agent string) (contr
 	for _, value := range res.process.Values {
 		view.Inputs = append(view.Inputs, value.Name+" <- "+value.Source)
 	}
-	for _, rule := range res.effective.Constraints {
-		view.Constraints = append(view.Constraints, fmt.Sprintf("%s differs from the writer of input.%s (unknown: %s)", rule.Subject, rule.CandidateInput, rule.OnUnknown))
-	}
-	for _, source := range res.sources {
-		layer := "global"
-		if source.Project {
-			layer = "project"
+	view.Sources = origins(res.sources)
+	if verify := res.process.Verify; verify != nil {
+		view.Verify = &contract.Verify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}
+		// A refused call runs no command.
+		if refusal == nil {
+			view.Warnings = append(view.Warnings, VerifyWarning)
 		}
-		view.Sources = append(view.Sources, contract.DefinitionOrigin{Kind: string(source.Kind), Name: source.Name, Layer: layer, Path: source.Path, Overrides: source.Overrides})
 	}
 	if refusal != nil {
 		view.Refusal = refusal.Reason
 	}
 	return view, nil
+}
+
+// origins are where definitions come from, as a client sees it.
+func origins(sources []definition.Source) []contract.DefinitionOrigin {
+	var shown []contract.DefinitionOrigin
+	for _, source := range sources {
+		layer := "global"
+		if source.Project {
+			layer = "project"
+		}
+		shown = append(shown, contract.DefinitionOrigin{Kind: string(source.Kind), Name: source.Name, Layer: layer, Path: source.Path, Overrides: source.Overrides})
+	}
+	return shown
 }

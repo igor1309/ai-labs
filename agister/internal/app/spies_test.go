@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
-	"github.com/igor1309/ai-labs/agister/internal/domain/constraint"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -70,7 +69,8 @@ type runnerSpy struct {
 	identity    app.RuntimeIdentity
 	identityErr error
 	turn        run.Turn
-	block       bool // wait for cancellation
+	turns       []run.Turn // played first, one per turn; then turn
+	block       bool       // wait for cancellation
 	requests    []app.TurnRequest
 	started     chan struct{}
 	startErr    error // what ProcessStarted returned to the last turn
@@ -83,6 +83,10 @@ func (s *runnerSpy) Identity(context.Context) (app.RuntimeIdentity, error) {
 func (s *runnerSpy) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
 	s.mu.Lock()
 	s.requests = append(s.requests, request)
+	turn := s.turn
+	if n := len(s.requests); n <= len(s.turns) {
+		turn = s.turns[n-1]
+	}
 	s.mu.Unlock()
 	startErr := sink.ProcessStarted("ref-4242")
 	s.mu.Lock()
@@ -101,7 +105,7 @@ func (s *runnerSpy) RunTurn(ctx context.Context, request app.TurnRequest, sink a
 		<-ctx.Done()
 		return run.Turn{Status: run.Interrupted, Error: run.Fault(run.ClassCancelled, "")}
 	}
-	return s.turn
+	return turn
 }
 
 func (s *runnerSpy) calls() []app.TurnRequest {
@@ -201,33 +205,78 @@ func (s *workspacesSpy) releases() int {
 	return s.released
 }
 
-// changesSpy captures what an agent left in its checkout.
+// changesSpy names a checkout's content and captures what an agent left
+// in it.
 type changesSpy struct {
 	mu        sync.Mutex
-	changed   [][2]string // dir, revision
+	changed   [][2]string   // dir, from
+	identity  string        // what Identity names; "tree" when empty
+	identify  func() string // when set, names the content instead
 	changes   []byte
 	changeErr error
 	panics    bool // Changes panics
+	rebuilds  int
 }
 
-func (s *changesSpy) Changes(_ context.Context, dir, revision string) ([]byte, error) {
+func (s *changesSpy) Identity(context.Context, string, string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.changed = append(s.changed, [2]string{dir, revision})
+	if s.identify != nil {
+		s.identity = s.identify()
+		return s.identity, nil
+	}
+	if s.identity == "" {
+		return "tree", nil
+	}
+	return s.identity, nil
+}
+
+func (s *changesSpy) Changes(_ context.Context, dir, from, _ string) ([]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.changed = append(s.changed, [2]string{dir, from})
 	if s.panics {
 		panic("changes exploded")
 	}
 	return s.changes, s.changeErr
 }
 
-type provenanceSpy struct {
-	writer    *constraint.Writer
-	revisions []string
+func (s *changesSpy) Rebuild(context.Context, string, string, []byte) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.rebuilds++
+	if s.identity == "" {
+		return "tree", nil
+	}
+	return s.identity, nil
 }
 
-func (s *provenanceSpy) Writer(_ context.Context, revision string) (*constraint.Writer, error) {
-	s.revisions = append(s.revisions, revision)
-	return s.writer, nil
+// commandsSpy runs verification commands: each passes unless exits says
+// otherwise, in order.
+type commandsSpy struct {
+	mu       sync.Mutex
+	requests []app.CommandRequest
+	exits    []int
+}
+
+func (s *commandsSpy) Run(_ context.Context, request app.CommandRequest, started func(string) error) app.CommandResult {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.requests = append(s.requests, request)
+	if err := started("ref-cmd"); err != nil {
+		return app.CommandResult{Error: err.Error()}
+	}
+	code := 0
+	if len(s.exits) > 0 {
+		code, s.exits = s.exits[0], s.exits[1:]
+	}
+	return app.CommandResult{ExitCode: &code, Head: []byte(fmt.Sprintf("exit %d", code)), Bytes: 6, SHA256: fmt.Sprintf("sha-%d-%d", code, len(s.requests))}
+}
+
+func (s *commandsSpy) runs() []app.CommandRequest {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]app.CommandRequest(nil), s.requests...)
 }
 
 type validatorSpy struct {
@@ -371,6 +420,17 @@ func (s *runsSpy) Get(_ context.Context, id string) (run.Record, run.State, erro
 	return record, s.states[id], nil
 }
 
+func (s *runsSpy) List(context.Context) ([]run.Record, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	records := make([]run.Record, 0, len(s.records))
+	for _, record := range s.records {
+		records = append(records, record)
+	}
+	sort.Slice(records, func(i, j int) bool { return records[i].ID < records[j].ID })
+	return records, nil
+}
+
 // steppingClock advances a second on every reading.
 type steppingClock struct {
 	mu  sync.Mutex
@@ -391,7 +451,6 @@ func (fixedClock) Now() time.Time { return time.Date(2026, 9, 28, 12, 0, 0, 0, t
 type fixedIDs struct{}
 
 func (fixedIDs) RunID(time.Time) string { return "run-1" }
-func (fixedIDs) SessionID() string      { return "session-1" }
 
 type processesSpy struct {
 	mu     sync.Mutex

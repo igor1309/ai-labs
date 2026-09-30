@@ -6,6 +6,8 @@ import "time"
 // policy and enforcement packages decided for a call. The record is
 // evidence under a versioned schema: those packages may change their types
 // without changing what an earlier run said or what a later one writes.
+// A field removed from these types is dropped when an earlier record is
+// rewritten (a reap finishing it).
 
 // DefinitionSource is where a definition the call used came from, with the
 // digest of what was read.
@@ -32,15 +34,6 @@ type EffectivePolicy struct {
 	Require     []string      `json:"require,omitempty"`
 	Access      string        `json:"access"`
 	Scope       string        `json:"scope"`
-	Constraints []Constraint  `json:"constraints,omitempty"`
-}
-
-// Constraint is a rule the call had to satisfy before its runtime started.
-type Constraint struct {
-	Subject        string `json:"subject"`
-	CandidateInput string `json:"candidate_input"`
-	// What decides the result when no provenance exists: "fail" or "pass".
-	OnUnknown string `json:"on_unknown"`
 }
 
 // Plan is what the call was granted on its runtime.
@@ -48,4 +41,14 @@ type Plan struct {
 	Primitives []string `json:"primitives"`
 	Granted    []string `json:"granted"`  // permissions the primitives provide
 	Withheld   []string `json:"withheld"` // allowed but not provided
+}
+
+// Verify is the verification command a call's process declared, as
+// resolved. It is part of the process definition, whose recorded digest
+// covers it.
+type Verify struct {
+	Command     string        `json:"command"`
+	Timeout     time.Duration `json:"timeout"`
+	MaxAttempts int           `json:"max_attempts"`
+	Instruction string        `json:"instruction"`
 }

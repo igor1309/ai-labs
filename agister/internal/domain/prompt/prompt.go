@@ -1,6 +1,10 @@
 // Package prompt assembles what the agent receives. The words come from the
 // process definition; this package only arranges them with the resolved
-// inputs and the granted permissions.
+// inputs and the granted permissions, or with a verification run's failure.
+//
+// It depends on the run package's evidence types (run.Input, run.Output):
+// the agent receives exactly what the call records, so the prompt is built
+// from the recorded values rather than from copies of them.
 package prompt
 
 import (
@@ -45,8 +49,7 @@ func render(value any) string {
 		return strings.Join(lines, "\n")
 	case string:
 		if strings.Contains(v, "\n") {
-			fence := fence(v)
-			return fence + "\n" + strings.TrimRight(v, "\n") + "\n" + fence
+			return fenced(v)
 		}
 		return v
 	default:
@@ -67,4 +70,28 @@ func fence(text string) string {
 		}
 	}
 	return strings.Repeat("`", max(3, longest+1))
+}
+
+// Repair is what a repair turn receives (ADR-002 rule 4): the process's
+// verify instruction, then the command, how its run ended and its bounded
+// output.
+func Repair(instruction, command, ended string, output run.Output) string {
+	text := output.Head
+	if output.Omitted > 0 {
+		text += fmt.Sprintf("\n[… %d bytes omitted …]\n", output.Omitted)
+	}
+	text += output.Tail
+	sections := []string{
+		strings.TrimSpace(instruction),
+		"## command\n\n" + fenced(command),
+		"## exit status\n\n" + ended,
+		fmt.Sprintf("## output\n\n%d bytes, sha256 %s\n\n%s", output.Bytes, output.SHA256, fenced(text)),
+	}
+	return strings.Join(sections, "\n\n")
+}
+
+// fenced puts text in a code block it cannot close.
+func fenced(text string) string {
+	fence := fence(text)
+	return fence + "\n" + strings.TrimRight(text, "\n") + "\n" + fence
 }

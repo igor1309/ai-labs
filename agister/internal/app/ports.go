@@ -19,10 +19,8 @@ type Examples = fs.FS
 type RuntimeIdentity struct {
 	Contract string
 	Version  string
-	// The caller may choose the provider session ID before the turn.
-	PresetSessionID bool
-	// A turn may continue an earlier session in a new one, leaving the
-	// earlier session unchanged. Requires PresetSessionID.
+	// A turn may resume an earlier provider session in place, by the
+	// session ID the runtime reported for it; the session keeps that ID.
 	Resume bool
 	// The runtime stops a turn that reaches a cost limit.
 	CostLimit bool
@@ -33,8 +31,8 @@ type TurnRequest struct {
 	Prompt      string
 	Instruction string
 	Cwd         string
-	SessionID   string
-	// The provider session to continue in SessionID; empty for a fresh one.
+	// The provider session to resume in place, as the runtime reported it;
+	// empty for a fresh one.
 	ResumeSessionID string
 	MaxCostUSD      *float64
 	Model           string
@@ -42,6 +40,33 @@ type TurnRequest struct {
 	Primitives      []string
 	Timeout         time.Duration
 	OutputSchema    json.RawMessage
+}
+
+// CommandRequest is one run of a process's verification command.
+type CommandRequest struct {
+	Command string // run as bash -c Command
+	Dir     string
+	Timeout time.Duration
+	// Bound is how many bytes of the combined output are kept from each
+	// end.
+	Bound int
+}
+
+// CommandResult is how one run of a command ended. Whatever ended it, its
+// process group is gone by then.
+type CommandResult struct {
+	ExitCode  *int   // unset when a signal ended it or it never ran
+	Signal    string // the signal that ended it
+	TimedOut  bool   // its timeout passed and its group was killed
+	Cancelled bool   // the call was cancelled and its group was killed
+	// Error is why it could not run: it did not start, or its group could
+	// not be recorded and was killed at once.
+	Error string
+	// The first and last Bound bytes of the combined stdout and stderr;
+	// Tail starts after Head ends, so nothing is repeated.
+	Head, Tail []byte
+	Bytes      int64  // of the whole output
+	SHA256     string // hex digest of the whole output
 }
 
 // InputSpec asks one input source for a value.

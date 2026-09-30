@@ -31,13 +31,6 @@ func recordSources(sources []definition.Source) []run.DefinitionSource {
 }
 
 func recordEffective(effective policy.Effective) *run.EffectivePolicy {
-	var constraints []run.Constraint
-	if effective.Constraints != nil {
-		constraints = make([]run.Constraint, len(effective.Constraints))
-		for i, rule := range effective.Constraints {
-			constraints[i] = run.Constraint{Subject: rule.Subject, CandidateInput: rule.CandidateInput, OnUnknown: rule.OnUnknown}
-		}
-	}
 	return &run.EffectivePolicy{
 		Timeout:     effective.Timeout,
 		MaxAttempts: effective.MaxAttempts,
@@ -48,7 +41,18 @@ func recordEffective(effective policy.Effective) *run.EffectivePolicy {
 		Require:     slices.Clone(effective.Require),
 		Access:      effective.Access,
 		Scope:       effective.Scope,
-		Constraints: constraints,
+	}
+}
+
+func recordVerify(verify *definition.Verify) *run.Verify {
+	if verify == nil {
+		return nil
+	}
+	return &run.Verify{
+		Command:     verify.Command,
+		Timeout:     verify.Timeout,
+		MaxAttempts: verify.MaxAttempts,
+		Instruction: verify.Instruction,
 	}
 }
 

@@ -1,5 +1,6 @@
 // Package definition parses and validates Agister's settings documents:
-// agents, processes, policies, runtime permission mappings and the service.
+// agents, processes, workflows, policies, runtime permission mappings and
+// the service.
 // It owns the definition language; callers supply bytes and their origin.
 package definition
 
@@ -14,12 +15,13 @@ import (
 type Kind string
 
 const (
-	KindService Kind = "service"
-	KindAgent   Kind = "agents"
-	KindProcess Kind = "processes"
-	KindPolicy  Kind = "policies"
-	KindRuntime Kind = "runtimes"
-	KindSchema  Kind = "schemas"
+	KindService  Kind = "service"
+	KindAgent    Kind = "agents"
+	KindProcess  Kind = "processes"
+	KindPolicy   Kind = "policies"
+	KindRuntime  Kind = "runtimes"
+	KindSchema   Kind = "schemas"
+	KindWorkflow Kind = "workflows"
 )
 
 // Singular names one definition of this kind, for messages.
@@ -35,6 +37,8 @@ func (k Kind) Singular() string {
 		return "runtime mapping"
 	case KindSchema:
 		return "schema"
+	case KindWorkflow:
+		return "workflow"
 	}
 	return string(k)
 }

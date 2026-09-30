@@ -11,7 +11,6 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/constraint"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -51,11 +50,6 @@ name: pol
 timeout: 20m
 tools: {allow: [repository.read, repository.search, repository.diff]}
 workspace: {access: read-only, scope: candidate}
-constraints:
-  agent.model_family:
-    not_equal: evidence.candidate(input.candidate_revision).provenance.writer.model_family
-    on_unsatisfied: fail
-    on_unknown: pass
 `},
 		definition.KindProcess: {"p": `schema: agister.process/v1alpha1
 name: p
@@ -92,7 +86,7 @@ type harness struct {
 	inputs     *inputsSpy
 	workspaces *workspacesSpy
 	changes    *changesSpy
-	provenance *provenanceSpy
+	commands   *commandsSpy
 	validator  *validatorSpy
 	recorder   *recorderSpy
 }
@@ -101,12 +95,12 @@ func newHarness() *harness {
 	h := &harness{
 		defs: &definitionsSpy{docs: settingsDocs()},
 		runner: &runnerSpy{
-			identity: app.RuntimeIdentity{Contract: "spy/1", Version: "1.2.3", PresetSessionID: true, Resume: true, CostLimit: true},
+			identity: app.RuntimeIdentity{Contract: "spy/1", Version: "1.2.3", Resume: true, CostLimit: true},
 			turn:     run.Turn{Status: run.Completed, Output: json.RawMessage(`{"outcome":"no"}`), ProviderSessionID: "prov-1"},
 		},
 		workspaces: &workspacesSpy{root: "/repo", dir: "/work/checkout"},
 		changes:    &changesSpy{},
-		provenance: &provenanceSpy{},
+		commands:   &commandsSpy{},
 		validator:  &validatorSpy{},
 		recorder:   newRecorderSpy(),
 	}
@@ -132,7 +126,7 @@ func (h *harness) callsOn(src app.ResolverDefinitions) *app.Calls {
 		app.NewResolver(src, h.runtimes, h.validator),
 		h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
-		h.workspaces, h.changes, h.provenance, h.validator, h.recorder, h.runs,
+		h.workspaces, h.changes, app.NewVerifier(h.changes, h.commands, h.clock), h.validator, h.recorder, h.runs,
 		h.clock, fixedIDs{}, "/state", h.hosted,
 	)
 }
@@ -185,15 +179,12 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 	if !reflect.DeepEqual(gotArgs, wantArgs) || h.inputs.specs[0].Cwd != "/repo" {
 		t.Fatalf("input specs = %+v", h.inputs.specs)
 	}
-	// Constraint looked up the candidate's resolved identity.
-	if !reflect.DeepEqual(h.provenance.revisions, []string{"sha-HEAD"}) {
-		t.Fatalf("provenance asked for %v", h.provenance.revisions)
-	}
 	// The checkout is of the resolved revision, and released once.
 	if !reflect.DeepEqual(h.workspaces.checkouts, [][2]string{{"/repo", "sha-HEAD"}}) || h.workspaces.releases() != 1 {
 		t.Fatalf("checkouts %v, released %d", h.workspaces.checkouts, h.workspaces.releases())
 	}
-	// The turn request carries primitives, not permissions.
+	// The turn request carries primitives, not permissions, and a fresh
+	// call names no session: the runtime reports the one it starts.
 	requests := h.runner.calls()
 	if len(requests) != 1 {
 		t.Fatalf("runner called %d times", len(requests))
@@ -201,7 +192,7 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 	got := requests[0]
 	if !reflect.DeepEqual(got.Primitives, []string{"Read", "Grep"}) ||
 		got.Cwd != "/work/checkout" || got.Model != "m1" || got.Effort != "high" ||
-		got.Timeout != 20*time.Minute || got.SessionID != "session-1" || string(got.OutputSchema) != schema {
+		got.Timeout != 20*time.Minute || got.ResumeSessionID != "" || string(got.OutputSchema) != schema {
 		t.Fatalf("turn request = %+v", got)
 	}
 	if got.Instruction != "Inspect the change.\n\nGranted permissions: repository.read, repository.search\nWithheld permissions: repository.diff" {
@@ -225,12 +216,12 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 	if strings.Join(kinds, ",") != "service/service,processes/p,policies/pol,agents/a,runtimes/rt,schemas/s" {
 		t.Fatalf("definitions = %v", kinds)
 	}
-	if record.Plan == nil || !reflect.DeepEqual(record.Plan.Withheld, []string{"repository.diff"}) || record.RequestedSessionID != "session-1" ||
+	if record.Plan == nil || !reflect.DeepEqual(record.Plan.Withheld, []string{"repository.diff"}) ||
 		record.Runtime.Version != "1.2.3" || record.Inputs[0].Identity != "sha-HEAD" || !record.Inputs[0].Revision {
 		t.Fatalf("record = %+v", record)
 	}
 	order := strings.Join(h.recorder.kinds(), " ")
-	if order != "CALL_SUBMITTED PLANNED PERMISSIONS_WITHHELD CONSTRAINT_CHECKED PROCESS_STARTED CALL_FINISHED" {
+	if order != "CALL_SUBMITTED PLANNED PERMISSIONS_WITHHELD PROCESS_STARTED CALL_FINISHED" {
 		t.Fatalf("events = %s", order)
 	}
 	if !reflect.DeepEqual(h.recorder.raw, []string{`{"raw":true}`}) {
@@ -331,9 +322,12 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 	resumable(h)
 	h.runs.records["run-0"], h.runs.states["run-0"] = earlier, run.StateFinished
 	record := h.call(t, contract.CallRequest{Continue: "run-0"})
+	if len(h.runner.calls()) != 1 {
+		t.Fatalf("result %+v", record.Result.Error)
+	}
 	got := h.runner.calls()[0]
-	// The earlier session is continued in a new one.
-	if got.ResumeSessionID != "prov-0" || got.SessionID != "session-1" || record.Result.Session.Continues != "run-0" || record.Request.Continue != "run-0" {
+	// The earlier session is resumed in place, by the ID it reported.
+	if got.ResumeSessionID != "prov-0" || record.Result.Session.Continues != "run-0" || record.Request.Continue != "run-0" {
 		t.Fatalf("request %+v, session %+v", got, record.Result.Session)
 	}
 
@@ -369,6 +363,65 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 			}
 			if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
 				t.Fatal("effects before the refusal")
+			}
+		})
+	}
+}
+
+// A continuation's turn costs and uses what it added to its session's
+// totals: the totals less those of the session's latest turn Agister
+// recorded on any run, a later continuation of the run continued included.
+// Unknown when Agister recorded no totals for the session.
+func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
+	usd := func(v float64) *float64 { return &v }
+	n := func(v int64) *int64 { return &v }
+	at := func(minute int) *time.Time {
+		moment := time.Date(2026, 9, 28, 11, minute, 0, 0, time.UTC)
+		return &moment
+	}
+	// run-0 started prov-0; run-0b continued it, after it.
+	recorded := func(id, continues string, created, finished int, totals *run.SessionTotals) run.Record {
+		return run.Record{ID: id, Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Request: run.Request{Continue: continues},
+			CreatedAt: *at(created), FinishedAt: at(finished), Turn: &run.Turn{ProviderSessionID: "prov-0", Session: totals},
+			Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0", Continues: continues}}}
+	}
+	cases := []struct {
+		name    string
+		records []run.Record
+		want    *run.SessionTotals // the turn's own; nil: unknown
+	}{
+		{"continued run's own totals", []run.Record{
+			recorded("run-0", "", 0, 1, &run.SessionTotals{CostUSD: usd(7.75), Usage: &run.Usage{InputTokens: n(100)}}),
+		}, &run.SessionTotals{CostUSD: usd(4.75), Usage: &run.Usage{InputTokens: n(150)}}},
+		{"a later continuation's totals", []run.Record{
+			recorded("run-0", "", 0, 1, &run.SessionTotals{CostUSD: usd(7.75), Usage: &run.Usage{InputTokens: n(100)}}),
+			recorded("run-0b", "run-0", 2, 3, &run.SessionTotals{CostUSD: usd(11.5), Usage: &run.Usage{InputTokens: n(200)}}),
+		}, &run.SessionTotals{CostUSD: usd(1), Usage: &run.Usage{InputTokens: n(50)}}},
+		{"no recorded totals", []run.Record{recorded("run-0", "", 0, 1, nil)}, nil},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			h := newHarness()
+			h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+			for _, record := range c.records {
+				h.runs.records[record.ID], h.runs.states[record.ID] = record, run.StateFinished
+			}
+			h.runner.turn = run.Turn{Status: run.Completed, Output: json.RawMessage(`{}`), ProviderSessionID: "prov-0",
+				Session: &run.SessionTotals{CostUSD: usd(12.5), Usage: &run.Usage{InputTokens: n(250)}}}
+			record := h.call(t, contract.CallRequest{Continue: "run-0"})
+			latest := c.records[len(c.records)-1].Turn.Session
+			if record.Result.Status != run.Completed || *record.Turn.Session.CostUSD != 12.5 || !reflect.DeepEqual(record.Turn.SessionBefore, latest) {
+				t.Fatalf("result %+v, turn %+v", record.Result, record.Turn)
+			}
+			if c.want == nil {
+				if record.Turn.CostUSD != nil || record.Turn.Usage.InputTokens != nil || record.Result.Cost.Source != run.CostUnknown || record.Result.Cost.USD != nil {
+					t.Fatalf("turn cost %v, usage %+v, call cost %+v", record.Turn.CostUSD, record.Turn.Usage, record.Result.Cost)
+				}
+				return
+			}
+			if *record.Turn.CostUSD != *c.want.CostUSD || *record.Turn.Usage.InputTokens != *c.want.Usage.InputTokens ||
+				record.Result.Cost.Source != run.CostRuntime || *record.Result.Cost.USD != *c.want.CostUSD || *record.Result.Usage.InputTokens != *c.want.Usage.InputTokens {
+				t.Fatalf("turn cost %v, usage %+v, call cost %+v", *record.Turn.CostUSD, record.Turn.Usage, record.Result.Cost)
 			}
 		})
 	}
@@ -430,7 +483,7 @@ func TestCallsResolveThroughTheResolutionTheyDeclare(t *testing.T) {
 	h := newHarness()
 	double := &app.SnapshotCounter{Reason: "the double refuses"}
 	h.calls = app.NewCalls(
-		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes, h.provenance,
+		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes, app.NewVerifier(h.changes, h.commands, h.clock),
 		h.validator, h.recorder, h.runs, h.clock, fixedIDs{}, "/state", h.hosted,
 	)
 	record := h.call(t, contract.CallRequest{})
@@ -477,13 +530,7 @@ func TestRefusalsComeBeforeEffects(t *testing.T) {
 		{"input fails", func(h *harness) {
 			h.inputs.respond = func(app.InputSpec) (app.Resolved, error) { return app.Resolved{}, errors.New("not a commit") }
 		}, contract.CallRequest{}, "input candidate_revision: not a commit", false},
-		{"same model family wrote the candidate", func(h *harness) {
-			h.provenance.writer = &constraint.Writer{Agent: "w", ModelFamily: "fam", RunID: "r0"}
-		}, contract.CallRequest{}, "constraint agent.model_family unsatisfied: agent family fam, writer family fam (run r0)", false},
 		{"workspace overlaps state", func(h *harness) { h.workspaces.root = "/state/repo" }, contract.CallRequest{}, "workspace /state/repo overlaps Agister's state /state", false},
-		{"constraint on an input that is not a revision", func(h *harness) {
-			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "{source: git.revision,", "{source: git.diff,", 1)
-		}, contract.CallRequest{}, "constraint agent.model_family: input candidate_revision is not a revision", false},
 		{"input uses a value with no text", func(h *harness) {
 			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], `head: "${param.candidate}"`, `head: "${value.candidate_revision}"`, 1)
 			h.inputs.respond = func(app.InputSpec) (app.Resolved, error) {
@@ -700,8 +747,7 @@ func TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes(t *testing.T) {
 	wantEffective := `{"timeout":1200000000000,"max_attempts":1,` +
 		`"allow":["repository.read","repository.search","repository.diff"],"deny":[],` +
 		`"permissions":["repository.read","repository.search","repository.diff"],"require":["repository.read"],` +
-		`"access":"read-only","scope":"candidate",` +
-		`"constraints":[{"subject":"agent.model_family","candidate_input":"candidate_revision","on_unknown":"pass"}]}`
+		`"access":"read-only","scope":"candidate"}`
 	if got := encode(record.Effective); got != wantEffective {
 		t.Errorf("effective\n got %s\nwant %s", got, wantEffective)
 	}

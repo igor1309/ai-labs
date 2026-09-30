@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -47,6 +48,20 @@ type Output struct {
 	Schema string // name of a schema definition (json only)
 }
 
+// Verify is a process's verification command (ADR-002): run after a valid
+// turn, in the call's own checkout, with the operator's authority.
+type Verify struct {
+	Command     string        // one Bash command
+	Timeout     time.Duration // per run
+	MaxAttempts int           // runs, the first included
+	Instruction string        // what the agent is told when a run fails
+}
+
+// Repairs reports whether a failed run may be followed by a repair turn,
+// which resumes the call's session: an agent and runtime that cannot
+// continue sessions cannot run it.
+func (v *Verify) Repairs() bool { return v != nil && v.MaxAttempts > 1 }
+
 // Process is a named agent call.
 type Process struct {
 	Name        string
@@ -58,7 +73,8 @@ type Process struct {
 	Checkout    string   // name of the input whose revision is checked out
 	Require     []string // permissions the call cannot work without
 	Output      Output
-	Limits      Limits // narrowing overrides
+	Verify      *Verify // unset: no verification
+	Limits      Limits  // narrowing overrides
 	Source      Source
 }
 
@@ -107,7 +123,7 @@ func ParseProcess(doc Document) (Process, error) {
 	if root == nil {
 		return Process{Name: doc.Source.Name, Source: doc.Source}, p.err("process " + subjectName(doc.Source))
 	}
-	values := fields(root, "", append([]string{"schema", "name", "status", "type", "uses", "policy", "input", "output"}, limitKeys...), p)
+	values := fields(root, "", append([]string{"schema", "name", "status", "type", "uses", "policy", "input", "output", "verify"}, limitKeys...), p)
 	header(values, ProcessSchema, doc.Source.Name, p)
 	if value, _ := scalar(values["type"], "type", p); value != "process" {
 		p.add("type", `must be "process"`)
@@ -131,43 +147,7 @@ func ParseProcess(doc Document) (Process, error) {
 
 	input := fields(values["input"], "input", []string{"instruction", "params", "values"}, p)
 	process.Instruction = required(input, "instruction", "input", p)
-	for _, entry := range mapping(input["params"], "input.params", p) {
-		field := "input.params." + entry.key
-		param := Param{Name: entry.key}
-		spec := fields(entry.value, field, []string{"default"}, p)
-		if node, ok := spec["default"]; ok {
-			param.Default, _ = scalar(node, field+".default", p)
-			param.HasDefault = true
-		}
-		process.Params = append(process.Params, param)
-	}
-	for _, entry := range mapping(input["values"], "input.values", p) {
-		field := "input.values." + entry.key
-		value := Value{Name: entry.key, Args: map[string]string{}}
-		for _, arg := range mapping(entry.value, field, p) {
-			text, _ := scalar(arg.value, join(field, arg.key), p)
-			if arg.key == "source" {
-				value.Source = text
-			} else {
-				value.Args[arg.key] = text
-			}
-		}
-		if value.Source == "" {
-			p.add(field+".source", "is required")
-		}
-		for _, reference := range value.references("param") {
-			if !hasParam(process.Params, reference) {
-				p.add(field, "refers to ${param.%s}, which is not declared in input.params", reference)
-			}
-		}
-		// Values resolve in order, so a value refers only to earlier ones.
-		for _, reference := range value.references("value") {
-			if !hasValue(process.Values, reference) {
-				p.add(field, "refers to ${value.%s}, which is not an input value declared before it", reference)
-			}
-		}
-		process.Values = append(process.Values, value)
-	}
+	process.Params, process.Values = parseInputs(input, p)
 
 	limits, tools, workspace := parseLimits(values, []string{"allow", "require"}, []string{"access", "scope", "checkout"}, p)
 	process.Limits = limits
@@ -196,12 +176,87 @@ func ParseProcess(doc Document) (Process, error) {
 		p.add("output.format", `must be "json" or "text"`)
 	}
 
-	for _, constraint := range limits.Constraints {
-		if !hasValue(process.Values, constraint.CandidateInput) {
-			p.add("constraints."+constraint.Subject, "refers to input.%s, which is not an input value", constraint.CandidateInput)
+	if node, ok := values["verify"]; ok {
+		process.Verify = parseVerify(node, p)
+		// Verifying a tree the call does not own would check content other
+		// calls can change and the call does not capture.
+		if process.Checkout == "" {
+			p.add("verify", "requires workspace.checkout: verification runs only in a checkout the call owns")
 		}
 	}
+
 	return process, p.err("process " + subjectName(doc.Source))
+}
+
+// parseVerify reads a verify block. Every field is required: there is no
+// default command, timeout, attempt count or instruction.
+func parseVerify(node *yaml.Node, p *problems) *Verify {
+	keys := []string{"command", "timeout", "max_attempts", "instruction"}
+	values := fields(node, "verify", keys, p)
+	for _, key := range keys {
+		if _, ok := values[key]; !ok {
+			p.add(join("verify", key), "is required")
+		}
+	}
+	verify := &Verify{
+		Command:     nonEmpty(values["command"], "verify.command", p),
+		Instruction: nonEmpty(values["instruction"], "verify.instruction", p),
+	}
+	if text, ok := scalar(values["timeout"], "verify.timeout", p); ok {
+		verify.Timeout, _ = duration(text, "verify.timeout", p)
+	}
+	if attempts, ok := integer(values["max_attempts"], "verify.max_attempts", p); ok {
+		if attempts < 1 {
+			p.add("verify.max_attempts", "must be at least 1")
+		}
+		verify.MaxAttempts = attempts
+	}
+	return verify
+}
+
+// parseInputs reads input.params, the values a caller supplies, and
+// input.values, each input and its source, in declaration order.
+func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
+	var params []Param
+	for _, entry := range mapping(input["params"], "input.params", p) {
+		field := "input.params." + entry.key
+		param := Param{Name: entry.key}
+		spec := fields(entry.value, field, []string{"default"}, p)
+		if node, ok := spec["default"]; ok {
+			param.Default, _ = scalar(node, field+".default", p)
+			param.HasDefault = true
+		}
+		params = append(params, param)
+	}
+	var values []Value
+	for _, entry := range mapping(input["values"], "input.values", p) {
+		field := "input.values." + entry.key
+		value := Value{Name: entry.key, Args: map[string]string{}}
+		for _, arg := range mapping(entry.value, field, p) {
+			text, _ := scalar(arg.value, join(field, arg.key), p)
+			if arg.key == "source" {
+				value.Source = text
+			} else {
+				value.Args[arg.key] = text
+			}
+		}
+		if value.Source == "" {
+			p.add(field+".source", "is required")
+		}
+		for _, reference := range value.references("param") {
+			if !hasParam(params, reference) {
+				p.add(field, "refers to ${param.%s}, which is not declared in input.params", reference)
+			}
+		}
+		// Values resolve in order, so a value refers only to earlier ones.
+		for _, reference := range value.references("value") {
+			if !hasValue(values, reference) {
+				p.add(field, "refers to ${value.%s}, which is not an input value declared before it", reference)
+			}
+		}
+		values = append(values, value)
+	}
+	return params, values
 }
 
 // ParseMapping parses a runtime permission mapping.

@@ -38,10 +38,10 @@ func TestMain(m *testing.M) {
 		os.Stdout.WriteString("started\n")
 		os.Exit(0)
 	case "sleep":
-		// Blocks until the test kills it (t.Cleanup); the bound only keeps a
-		// leak from outliving the test run.
-		time.Sleep(30 * time.Second)
-		os.Exit(0)
+		// Never ends on its own: only the test's kill (t.Cleanup) ends it.
+		for {
+			time.Sleep(time.Hour)
+		}
 	}
 }
 
@@ -125,7 +125,7 @@ func TestLeftoverProcessesAreKilledWhenTheRuntimeExits(t *testing.T) {
 	})
 	evidence := supervisor.Run(context.Background(), supervisor.Spec{
 		Command: "/bin/sh",
-		Args:    []string{"-c", `sleep 30 >/dev/null 2>&1 & echo $! > "$0"; echo done`, pidFile},
+		Args:    []string{"-c", blocks + ` >/dev/null 2>&1 & echo $! > "$0"; echo done`, pidFile},
 		Timeout: 30 * time.Second,
 	}, sink, func(string) {})
 	if evidence.Exit == nil || evidence.Exit.Code == nil || *evidence.Exit.Code != 0 {
@@ -162,9 +162,10 @@ func TestStdoutHeldOutsideTheGroupDoesNotHoldTheCall(t *testing.T) {
 			}
 		}
 	})
-	// The escaped child never exits on its own, so Run returning at all,
-	// with STDOUT_HELD_OPEN, proves the grace ended the wait. The bound on
-	// Run is generous for a grace of 200ms and catches a grace regression.
+	// The escaped child never exits on its own, so Run returning, with
+	// STDOUT_HELD_OPEN, proves the grace ended the wait; without the grace
+	// only Run's minute timeout would end it. The bound below is only a
+	// guard against a hang.
 	done := make(chan runResult, 1)
 	go func() {
 		var lines []string
@@ -178,7 +179,7 @@ func TestStdoutHeldOutsideTheGroupDoesNotHoldTheCall(t *testing.T) {
 	var got runResult
 	select {
 	case got = <-done:
-	case <-time.After(10 * time.Second):
+	case <-time.After(30 * time.Second):
 		t.Fatal("Run did not return: stdout held outside the group held the call")
 	}
 	evidence, lines := got.evidence, got.lines
@@ -213,7 +214,7 @@ func TestGroupIsReportedBeforeItsTokenIsKnown(t *testing.T) {
 	})
 	supervisor.Run(ctx, supervisor.Spec{
 		Command: "/bin/sh",
-		Args:    []string{"-c", "sleep 30"},
+		Args:    []string{"-c", blocks},
 		Timeout: 30 * time.Second,
 	}, sink, func(string) {})
 	sink.mu.Lock()
@@ -243,12 +244,13 @@ func TestGroupThatCannotBeRecordedIsKilled(t *testing.T) {
 			sink := &events{failAt: failAt, startErr: errors.New("disk full")}
 			evidence := supervisor.Run(context.Background(), supervisor.Spec{
 				Command: "/bin/sh",
-				Args:    []string{"-c", "sleep 30"},
-				// Only a failure of the kill would ever reach it.
-				Timeout: 5 * time.Second,
+				Args:    []string{"-c", blocks},
+				// Only a failure of the kill would ever reach it, and the
+				// evidence would then say it timed out.
+				Timeout: 30 * time.Second,
 			}, sink, func(string) {})
 
-			if evidence.RecordError != "disk full" {
+			if evidence.RecordError != "disk full" || evidence.TimedOut {
 				t.Fatalf("evidence = %+v", evidence)
 			}
 			if evidence.Exit == nil || evidence.Exit.Signal != "killed" {

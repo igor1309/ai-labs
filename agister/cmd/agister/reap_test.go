@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -165,4 +166,112 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 	if !strings.Contains(string(events), `"EFFECTS_REAPED"`) {
 		t.Fatalf("no reap event:\n%s", events)
 	}
+}
+
+// A run killed with SIGKILL while its verification command runs leaves the
+// command's process group behind, on record; the next call that starts
+// reaps it with the checkout and finishes the run as lost.
+func TestNextCallReapsAKilledRunsVerifyCommand(t *testing.T) {
+	home, repo := setup(t, "approve")
+	groupFile := filepath.Join(t.TempDir(), "group")
+	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))
+	write(t, filepath.Join(home, "processes", "verified.yaml"), strings.Replace(shipped, "name: adversarial_review", "name: verified", 1)+`
+verify:
+  command: `+strconv.Quote(blocks+" & echo $$ > "+groupFile+"; wait")+`
+  timeout: 40s
+  max_attempts: 1
+  instruction: The verification command failed.
+`)
+	binary := filepath.Join(t.TempDir(), "agister")
+	if out, err := exec.Command("go", "build", "-o", binary, ".").CombinedOutput(); err != nil {
+		t.Fatalf("build: %v\n%s", err, out)
+	}
+	victim := exec.Command(binary, "--home", home, "run", "verified", "--param", "base=main", "--quiet", "--timeout", "45s")
+	victim.Dir = repo
+	victim.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if err := victim.Start(); err != nil {
+		t.Fatal(err)
+	}
+	group := 0
+	t.Cleanup(func() {
+		_ = victim.Process.Kill()
+		_ = victim.Wait()
+		if group > 1 {
+			_ = syscall.Kill(-group, syscall.SIGKILL)
+		}
+		paths, _ := filepath.Glob(filepath.Join(home, "runs", "*", "record.json"))
+		for _, path := range paths {
+			var left domain.Record
+			if data, err := os.ReadFile(path); err == nil && json.Unmarshal(data, &left) == nil && left.Effects != nil && left.Effects.Checkout != nil {
+				_ = exec.Command("git", "-C", repo, "worktree", "remove", "--force", left.Effects.Checkout.Dir).Run()
+			}
+		}
+	})
+
+	// Wait until the record names the command's group with its token.
+	var record domain.Record
+	var recordPath string
+	eventually(t, "the record to show the command's group", func() bool {
+		paths, _ := filepath.Glob(filepath.Join(home, "runs", "*", "record.json"))
+		if len(paths) != 1 {
+			return false
+		}
+		data, err := os.ReadFile(paths[0])
+		record = domain.Record{}
+		if err != nil || json.Unmarshal(data, &record) != nil || record.Effects == nil || record.Effects.Command == nil {
+			return false
+		}
+		recordPath = paths[0]
+		_, token, err := supervisor.ParseRef(record.Effects.Command.Ref)
+		return err == nil && token != ""
+	})
+	var err error
+	if group, _, err = supervisor.ParseRef(record.Effects.Command.Ref); err != nil {
+		t.Fatal(err)
+	}
+	checkout := record.Effects.Checkout.Dir
+	eventually(t, "the command to write its group", func() bool {
+		data, err := os.ReadFile(groupFile)
+		return err == nil && strings.TrimSpace(string(data)) == strconv.Itoa(group)
+	})
+
+	if err := victim.Process.Signal(syscall.SIGKILL); err != nil {
+		t.Fatal(err)
+	}
+	_ = victim.Wait()
+	if !groupAlive(group) {
+		t.Fatal("the command died with agister")
+	}
+
+	client, background, err := wire(cli.Config{Home: home, Cwd: repo})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Submit(context.Background(), contract.CallRequest{
+		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "30s", Cwd: repo,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	background.Wait()
+	eventually(t, "the command's group to be gone", func() bool { return !groupAlive(group) })
+	if _, err := os.Stat(checkout); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("checkout left behind: %v", err)
+	}
+	var old domain.Record
+	eventually(t, "the old run to be finished", func() bool {
+		data, err := os.ReadFile(recordPath)
+		old = domain.Record{}
+		return err == nil && json.Unmarshal(data, &old) == nil && old.FinishedAt != nil
+	})
+	if old.Result == nil || old.Result.Status != domain.Lost || old.Result.Error.Class != domain.ClassAbandoned {
+		t.Fatalf("old run = %+v", old.Result)
+	}
+	events, _ := os.ReadFile(filepath.Join(filepath.Dir(recordPath), "events.jsonl"))
+	if !strings.Contains(string(events), `"EFFECTS_REAPED"`) || !strings.Contains(string(events), `"command":{"outcome":"killed"`) {
+		t.Fatalf("no reap of the command:\n%s", events)
+	}
+	// The new call ends too, and its checkout goes with it.
+	eventually(t, "every checkout to be released", func() bool {
+		return len(strings.Split(gitCmd(t, repo, "worktree", "list"), "\n")) == 1
+	})
 }

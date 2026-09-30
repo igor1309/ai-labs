@@ -10,6 +10,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
+	"github.com/igor1309/ai-labs/agister/internal/domain/settings"
 )
 
 // Refusal is why a call cannot proceed. It is recorded as the run's outcome.
@@ -168,11 +169,19 @@ func (r *Resolver) Resolve(ctx context.Context, processName, agentOverride strin
 		return res, refuse("%v", err)
 	}
 
+	// A repair turn resumes the call's own session (ADR-002 rule 4).
+	if verify := res.process.Verify; verify.Repairs() && res.agent.Session != definition.SessionResumable {
+		return res, refuse("verify.max_attempts %d repairs in the call's session, but agent %s is %s", verify.MaxAttempts, res.agent.Name, res.agent.Session)
+	}
+
 	if res.identity, err = r.identities.Identity(ctx, res.mapping.Adapter, res.agent.Command); err != nil {
 		return res, refuse("runtime %s is unavailable: %v", res.mapping.Name, err)
 	}
 	if res.identity.Contract != res.mapping.Contract {
 		return res, refuse("runtime mapping %s describes adapter contract %s, but the adapter implements %s", res.mapping.Name, res.mapping.Contract, res.identity.Contract)
+	}
+	if verify := res.process.Verify; verify.Repairs() && !res.identity.Resume {
+		return res, refuse("verify.max_attempts %d repairs in the call's session, but runtime %s cannot resume sessions", verify.MaxAttempts, res.mapping.Name)
 	}
 	verified, unverified := res.mapping.ForVersion(res.identity.Version)
 	if len(verified.Primitives) == 0 {
@@ -185,6 +194,51 @@ func (r *Resolver) Resolve(ctx context.Context, processName, agentOverride strin
 		return res, refuse("runtime %s: %v%s", res.mapping.Name, err, unverifiedNote(unverified, "for version "+res.identity.Version))
 	}
 	return res, nil
+}
+
+// workflowResolution is a workflow and its nodes' processes, as a run of it
+// uses them. Each node's call resolves its own process again, fully.
+type workflowResolution struct {
+	workflow  definition.Workflow
+	processes map[string]definition.Process
+	sources   []definition.Source // the workflow's document
+}
+
+// Workflow resolves the workflow named name, refusing one whose nodes
+// cannot run as ADR-003 has them (settings.WorkflowProblems). found is
+// false when the settings list no workflow of that name.
+func (r *Resolver) Workflow(ctx context.Context, name string) (*workflowResolution, bool, error) {
+	names, err := r.definitions.List(ctx, definition.KindWorkflow)
+	if err != nil || !contains(names, name) {
+		return nil, false, nil
+	}
+	res := &workflowResolution{processes: map[string]definition.Process{}}
+	doc, err := r.definitions.Read(ctx, definition.KindWorkflow, name)
+	if err != nil {
+		return res, true, refuse("workflow %q: %v", name, err)
+	}
+	res.sources = append(res.sources, doc.Source)
+	if res.workflow, err = definition.ParseWorkflow(doc); err != nil {
+		return res, true, refuse("%v", err)
+	}
+	for _, node := range res.workflow.Nodes() {
+		if _, ok := res.processes[node.Process]; ok {
+			continue
+		}
+		doc, err := r.definitions.Read(ctx, definition.KindProcess, node.Process)
+		if err != nil {
+			continue // a process that does not exist is a workflow problem
+		}
+		process, err := definition.ParseProcess(doc)
+		if err != nil {
+			return res, true, refuse("node %s: %v", node.Name, err)
+		}
+		res.processes[node.Process] = process
+	}
+	if problems := settings.WorkflowProblems(res.workflow, res.processes); len(problems) > 0 {
+		return res, true, refuse("workflow %s: %s", name, strings.Join(problems, "; "))
+	}
+	return res, true, nil
 }
 
 // unverifiedNote names the primitives a refused plan could not use.

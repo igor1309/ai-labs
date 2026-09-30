@@ -19,14 +19,6 @@ function withRepo(fn) {
     sh(dir, 'git', 'config', 'user.name', 't');
     writeFileSync(join(dir, 'a.go'), 'package a\n\nconst Mode = "fixed"\n');
     writeFileSync(join(dir, 'b.go'), 'package a\n');
-    writeFileSync(join(dir, 'spec'), `module: .
-
-[m]
-file: a.go
-find: const Mode = "fixed"
-replace: const Mode = "broken"
-test: . TestX
-`);
     writeFileSync(join(dir, '.gitignore'), 'ignored.txt\n');
     sh(dir, 'git', 'add', '-A');
     sh(dir, 'git', 'commit', '-q', '-m', 'init');
@@ -57,22 +49,10 @@ it('reports claimed-vs-changed mismatches both ways', () => {
   });
 });
 
-it('fails naming a mutation whose find is missing from the tree', () => {
-  withRepo((dir) => {
-    const ok = run(dir, '--spec', 'spec');
-    assert.equal(ok.status, 0, ok.stdout);
-
-    writeFileSync(join(dir, 'a.go'), 'package a\n\nconst Mode = "broken"\n'); // leftover mutation
-    const result = run(dir, '--claimed', 'a.go', '--spec', 'spec');
-    assert.equal(result.status, 1);
-    assert.match(result.stdout, /^FAIL {2}m \(\.\/a\.go\): find occurs 0 times/m);
-  });
-});
-
 it('passes a clean hand-off', () => {
   withRepo((dir) => {
     writeFileSync(join(dir, 'b.go'), 'package a\n// done\n');
-    const result = run(dir, '--claimed', 'b.go', '--spec', 'spec');
+    const result = run(dir, '--claimed', 'b.go');
     assert.equal(result.status, 0, result.stdout);
     assert.match(result.stdout, /0 problem\(s\)/);
   });

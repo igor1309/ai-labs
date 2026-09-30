@@ -31,7 +31,12 @@ type clientSpy struct {
 	onCancel chan string
 	run      contract.Run
 	report   contract.CheckReport
+	view     contract.ProcessView
 	observe  func(ctx context.Context) // runs during Observe
+}
+
+func (s *clientSpy) ShowProcess(context.Context, string, string) (contract.ProcessView, error) {
+	return s.view, nil
 }
 
 func (s *clientSpy) Submit(_ context.Context, request contract.CallRequest) (string, error) {
@@ -232,6 +237,25 @@ func TestProgressDescribesEvents(t *testing.T) {
 	}
 }
 
+// Verification attempts show as they happen: each run, each repair turn,
+// and why the loop stopped.
+func TestProgressDescribesVerification(t *testing.T) {
+	spy := &clientSpy{run: finished("failed", "budget_exhausted"), events: []contract.Event{
+		{Kind: "VERIFY_STARTED", Data: map[string]any{"attempt": 1.0, "command": "make test"}},
+		{Kind: "VERIFY_FINISHED", Data: map[string]any{"attempt": 1.0, "code": 2.0, "bytes": 120.0}},
+		{Kind: "REPAIR_STARTED", Data: map[string]any{"attempt": 2.0, "session": "s-1"}},
+		{Kind: "VERIFY_FINISHED", Data: map[string]any{"attempt": 2.0, "code": nil, "timed_out": true, "bytes": 0.0}},
+		{Kind: "VERIFY_STOPPED", Data: map[string]any{"attempt": 2.0, "class": "timeout"}},
+		{Kind: "CALL_FINISHED"},
+	}}
+	r := run(context.Background(), spy, "run", "p")
+	want := "· verify attempt 1: make test\n· verify attempt 1: exit 2, 120 bytes of output\n· repair turn for attempt 2 in session s-1\n" +
+		"· verify attempt 2: timed out, 0 bytes of output\n! VERIFY_STOPPED {\"attempt\":2,\"class\":\"timeout\"}\n"
+	if !strings.Contains(r.stderr, want) {
+		t.Fatalf("stderr:\n%s", r.stderr)
+	}
+}
+
 // Text from the agent or the runtime reaches the terminal with its control
 // characters escaped.
 func TestProgressAndSummaryEscapeControlCharacters(t *testing.T) {
@@ -269,6 +293,60 @@ func TestCheck(t *testing.T) {
 	spy.report.Problems = nil
 	if r := run(context.Background(), spy, "check"); r.code != 0 || r.stdout != "settings OK: 2 agents\n" {
 		t.Fatalf("result %+v", r)
+	}
+}
+
+// Warnings are printed whether or not the settings have problems, and are
+// not problems themselves.
+func TestCheckPrintsWarnings(t *testing.T) {
+	spy := &clientSpy{report: contract.CheckReport{Checked: map[string]int{"processes": 1}, Warnings: []string{"process p: verify runs with the operator's authority"}}}
+	r := run(context.Background(), spy, "check")
+	if r.code != 0 || r.stdout != "settings OK: 1 processes\n" || r.stderr != "warning process p: verify runs with the operator's authority\n" {
+		t.Fatalf("result %+v", r)
+	}
+	r = run(context.Background(), spy, "check", "--json")
+	var got map[string]any
+	if err := json.Unmarshal([]byte(r.stdout), &got); err != nil || fmt.Sprint(got["warnings"]) != "[process p: verify runs with the operator's authority]" {
+		t.Fatalf("json: %v\n%s", err, r.stdout)
+	}
+	spy.report.Warnings = nil
+	r = run(context.Background(), spy, "check", "--json")
+	if err := json.Unmarshal([]byte(r.stdout), &got); err != nil || fmt.Sprint(got["warnings"]) != "[]" {
+		t.Fatalf("json without warnings: %v\n%s", err, r.stdout)
+	}
+}
+
+// Settings with problems still print their warnings, beside the problems,
+// and check exits with the usage code.
+func TestCheckPrintsWarningsBesideProblems(t *testing.T) {
+	spy := &clientSpy{report: contract.CheckReport{Checked: map[string]int{"processes": 1},
+		Problems: []string{"process q: agent \"ghost\" does not exist"},
+		Warnings: []string{"process p: verify runs with the operator's authority"}}}
+	r := run(context.Background(), spy, "check")
+	if r.code != cli.ExitUsage ||
+		!strings.Contains(r.stderr, "warning process p: verify runs with the operator's authority\n") ||
+		!strings.Contains(r.stderr, "process q: agent \"ghost\" does not exist\n1 problem(s) in 1 processes\n") {
+		t.Fatalf("result %+v", r)
+	}
+}
+
+// process show prints the verify block and the warnings it is given.
+func TestShowProcessPrintsVerifyAndWarnings(t *testing.T) {
+	spy := &clientSpy{view: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Output: "text", Timeout: time.Hour, MaxAttempts: 1,
+		Verify:   &contract.Verify{Command: "go test ./...", Timeout: 10 * time.Minute, MaxAttempts: 3, Instruction: "Fix the cause."},
+		Warnings: []string{"verify runs with the operator's authority"}}}
+	r := run(context.Background(), spy, "process", "show", "p")
+	for _, want := range []string{
+		"verify       go test ./...\n  limits     timeout 10m0s, attempts 3\n  on failure Fix the cause.\n",
+		"WARNING      verify runs with the operator's authority\n",
+	} {
+		if r.code != 0 || !strings.Contains(r.stdout, want) {
+			t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+		}
+	}
+	spy.view.Verify, spy.view.Warnings = nil, nil
+	if r := run(context.Background(), spy, "process", "show", "p"); strings.Contains(r.stdout, "verify") || strings.Contains(r.stdout, "WARNING") {
+		t.Fatalf("without verify:\n%s", r.stdout)
 	}
 }
 
@@ -379,5 +457,63 @@ func TestUsageErrorsNeverReachTheClient(t *testing.T) {
 		if r.code != cli.ExitUsage || len(spy.submitted) != 0 || len(spy.agents) != 0 {
 			t.Errorf("%v: %+v", args, r)
 		}
+	}
+}
+
+// workflowSpy answers the workflow commands.
+type workflowSpy struct {
+	clientSpy
+	summaries []contract.WorkflowSummary
+	shown     []string
+	workflow  contract.WorkflowView
+}
+
+func (s *workflowSpy) ListWorkflows(context.Context) ([]contract.WorkflowSummary, error) {
+	return s.summaries, nil
+}
+
+func (s *workflowSpy) ShowWorkflow(_ context.Context, name string) (contract.WorkflowView, error) {
+	s.shown = append(s.shown, name)
+	return s.workflow, nil
+}
+
+func TestWorkflowListAndShow(t *testing.T) {
+	spy := &workflowSpy{
+		summaries: []contract.WorkflowSummary{{Name: "w", FanOut: []string{"one:p", "two:q"}, Join: "merge:j"}, {Name: "broken", Problem: "invalid (run `agister check`)"}},
+		workflow: contract.WorkflowView{
+			Name:   "w",
+			Params: []contract.Param{{Name: "candidate", Default: "HEAD"}},
+			Inputs: []string{"candidate <- git.revision"},
+			FanOut: []contract.WorkflowNode{
+				{Name: "one", Process: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Primitives: []string{"Read"}}, Params: []string{"candidate"}},
+				{Name: "two", Process: contract.ProcessView{Name: "q", Refusal: "no agent"}},
+			},
+			Join:       contract.WorkflowNode{Name: "merge", Process: contract.ProcessView{Name: "j", Agent: "a", Runtime: "rt"}},
+			Collection: "gathered",
+		},
+	}
+	var stdout, stderr bytes.Buffer
+	build := func(cli.Config) (contract.Client, error) { return spy, nil }
+	code := cli.Run(context.Background(), []string{"workflow", "list"}, cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }}, build)
+	if code != 0 || stdout.String() != "w\tone:p,two:q\tjoin merge:j\nbroken\tinvalid (run `agister check`)\n" {
+		t.Fatalf("list: %d %q %q", code, stdout.String(), stderr.String())
+	}
+	stdout.Reset()
+	code = cli.Run(context.Background(), []string{"workflow", "show", "w"}, cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }}, build)
+	want := `workflow     w
+params       candidate=HEAD
+inputs       candidate <- git.revision
+fan-out      one: process p, agent a (runtime rt)
+  receives   params candidate
+  plan       Read
+             two: process q
+  receives   params (none)
+  plan       REFUSED: no agent
+join         merge: process j, agent a (runtime rt)
+  receives   the collection as input gathered, and nothing else
+  plan       (none)
+`
+	if code != 0 || stdout.String() != want || !reflect.DeepEqual(spy.shown, []string{"w"}) {
+		t.Fatalf("show: %d\n%s\nwant\n%s", code, stdout.String(), want)
 	}
 }

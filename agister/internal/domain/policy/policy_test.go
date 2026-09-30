@@ -22,8 +22,8 @@ func researchPolicy(t *testing.T) definition.Policy {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Without the fields Agister refuses (deferred item 6).
-	data = withoutTopLevel(data, "resources", "artifacts")
+	// Without the fields Agister refuses.
+	data = withoutTopLevel(data, "constraints", "resources", "artifacts")
 	pol, err := definition.ParsePolicy(definition.Document{Source: definition.Source{Name: "static-review"}, Bytes: data})
 	if err != nil {
 		t.Fatal(err)
@@ -73,8 +73,7 @@ func TestNarrowingIsEnforcedFieldByField(t *testing.T) {
 		"workspace: {access: read-write, checkout: candidate_revision}": "workspace.access: read-write widens",
 		"workspace: {scope: repository, checkout: candidate_revision}":  "scope cannot be overridden",
 		"retry: {max_attempts: 3}":                                      "retry.max_attempts: 3 widens",
-		"constraints:\n  agent.model_family: {not_equal: evidence.candidate(input.candidate_revision).provenance.writer.model_family, on_unsatisfied: fail}": "constraints can only be added",
-		"tools: {allow: [teleport]}": `unknown permission "teleport"`,
+		"tools: {allow: [teleport]}":                                    `unknown permission "teleport"`,
 	}
 	for extra, want := range cases {
 		var p definition.Process

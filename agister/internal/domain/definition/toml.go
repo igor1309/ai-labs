@@ -45,7 +45,9 @@ type Service struct {
 	MaxTimeout  time.Duration
 	MaxAttempts int
 	MaxCostUSD  *float64 // unset: no service-wide cost limit
-	Permissions []string
+	// The ceiling of a process's verify.max_attempts.
+	MaxVerifyAttempts int
+	Permissions       []string
 	// Permissions that change the workspace or its history. Read-only
 	// access withholds them.
 	Writing []string
@@ -171,14 +173,14 @@ func FormatAgent(agent Agent) []byte {
 // ParseService parses the service settings.
 func ParseService(doc Document) (Service, error) {
 	p := &problems{}
-	table := decodeTOML(doc.Bytes, doc.Source.Path, []string{"schema", "max_timeout", "max_attempts", "max_cost_usd", "permissions", "writing", "state_reaching"}, p)
+	table := decodeTOML(doc.Bytes, doc.Source.Path, []string{"schema", "max_timeout", "max_attempts", "max_verify_attempts", "max_cost_usd", "permissions", "writing", "state_reaching"}, p)
 	if table == nil {
 		return Service{Source: doc.Source}, p.err("service settings")
 	}
 	if table["schema"] != ServiceSchema {
 		p.add("schema", "must be %q", ServiceSchema)
 	}
-	service := Service{Source: doc.Source, MaxAttempts: 1}
+	service := Service{Source: doc.Source, MaxAttempts: 1, MaxVerifyAttempts: 1}
 	if text := tomlString(table, "max_timeout", true, p); text != "" {
 		service.MaxTimeout, _ = duration(text, "max_timeout", p)
 	}
@@ -188,6 +190,14 @@ func ParseService(doc Document) (Service, error) {
 			p.add("max_attempts", "must be a positive integer")
 		} else {
 			service.MaxAttempts = int(attempts)
+		}
+	}
+	if value, ok := table["max_verify_attempts"]; ok {
+		attempts, ok := value.(int64)
+		if !ok || attempts < 1 {
+			p.add("max_verify_attempts", "must be a positive integer")
+		} else {
+			service.MaxVerifyAttempts = int(attempts)
 		}
 	}
 	if value, ok := table["max_cost_usd"]; ok {

@@ -1,5 +1,5 @@
 # Read-only review under Codex's read-only sandbox, which runs commands and
-# reads the host. No cost limit: contract codex/1 cannot enforce one.
+# reads the host. No cost limit: contract codex/2 cannot enforce one.
 schema: agister.process-policy/v1alpha1
 name: codex-review
 

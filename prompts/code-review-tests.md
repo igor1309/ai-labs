@@ -3,7 +3,7 @@ date: 2026-09-29
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — tests
-version: 0.0.1
+version: 0.0.3
 type: prompt
 ---
 
@@ -14,20 +14,27 @@ Definition of done:
 
 * Each changed behaviour has a test that fails when the behaviour is
   reverted. Name any fix or guard with no such test.
+* Proof rests on normal tests only: deterministic, cheap, rerunnable. A
+  test's claim that rests on mutation or revert checks (plants, mutation
+  specs, reverting by hand) is a finding. So is a behaviour no normal test
+  can make fail: the code lacks a seam (an injected closure, spy, clock or
+  hook); name it.
 * A test asserts the outcome, not the implementation's incidental steps.
   Weak assertions (only "no error", only a length) are findings.
 * A test asserts at the level the change claims. A change about what a
   record, report or log says is not proven by a test one layer below it.
 * An existing assertion weakened, removed or widened in the same change is
-  a finding unless the change says why. A reverted fix still fails a
-  loosened test, so revert checks do not catch this.
+  a finding unless the change says why.
 * A wait is not a finding by itself. Yielding to a loop's next tick, or
   polling for an event that surely comes, is fine. Judge each wait by what
   it waits for, how long, on which clock, and what it hides:
   * **Its expiry decides the result.** A sleep that must outlast some
     logic, a timer that must fire before (or must not fire before)
-    something else, a negative check ("did not happen within N ms"). Mark
-    it **flaky** when machine load could flip it. A deadline may only
+    something else, a negative check ("did not happen within N ms"), an
+    assertion on elapsed wall time ("finished within N s"), or a timeout
+    test whose command could end on its own. Mark it **flaky** when
+    machine load could flip it. A timeout test is deterministic only when
+    the work never ends by itself, so the timer is its only way out. A deadline may only
     guard a hang; a test that reports a timeout as a finding about the
     product ("no response", "no report arrived") is a finding.
   * **It uses the wall clock where the code takes an injected one.** The

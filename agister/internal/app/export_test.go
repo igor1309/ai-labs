@@ -5,6 +5,10 @@ import (
 	"sync"
 )
 
+// OnCaptured sets the hook that runs between a cancel taking a run's
+// callback and calling it. Set it before any run is cancelled.
+func (h *Hosted) OnCaptured(hook func(id string)) { h.captured = hook }
+
 // SnapshotCounter is a CallResolver that is not a Resolver: it resolves
 // every call to a refusal, and counts the snapshots it was asked for and the
 // resolutions made from them.
@@ -29,6 +33,11 @@ func (r counted) Resolve(_ context.Context, process, _ string, _ overrides) (*re
 	defer r.counter.mu.Unlock()
 	r.counter.Resolved = append(r.counter.Resolved, process)
 	return &resolution{}, refuse("%s", r.counter.Reason)
+}
+
+// Workflow finds none: every name is a process's.
+func (r counted) Workflow(context.Context, string) (*workflowResolution, bool, error) {
+	return nil, false, nil
 }
 
 // Count returns the snapshots taken and the processes resolved.

@@ -18,8 +18,19 @@ import (
 )
 
 func run(ctx context.Context, dir string, args ...string) (string, error) {
+	return runWith(ctx, dir, nil, nil, args...)
+}
+
+// runWith runs git with extra environment and stdin.
+func runWith(ctx context.Context, dir string, env []string, stdin []byte, args ...string) (string, error) {
 	command := exec.CommandContext(ctx, "git", args...)
 	command.Dir = dir
+	if env != nil {
+		command.Env = append(os.Environ(), env...)
+	}
+	if stdin != nil {
+		command.Stdin = bytes.NewReader(stdin)
+	}
 	var stdout, stderr bytes.Buffer
 	command.Stdout, command.Stderr = &stdout, &stderr
 	if err := command.Run(); err != nil {
@@ -99,14 +110,66 @@ func resolved(path string) string {
 	return filepath.Clean(path)
 }
 
-// Changes stages everything in the checkout, in its own index, and diffs
-// it against revision.
-func (Workspaces) Changes(ctx context.Context, dir, revision string) ([]byte, error) {
-	if _, err := run(ctx, dir, "add", "--all"); err != nil {
-		return nil, err
-	}
-	out, err := run(ctx, dir, "diff", "--cached", "--binary", revision)
+// Identity writes the checkout's content as a tree through an index of its
+// own, and returns the tree: the files of revision as the checkout has them
+// now, whatever is committed, and its untracked files that are not ignored.
+// The checkout's own index is neither read nor written: its flags
+// (assume-unchanged, skip-worktree) could hide content.
+func (Workspaces) Identity(ctx context.Context, dir, revision string) (string, error) {
+	var tree string
+	err := scratchIndex(func(env []string) error {
+		// Seeded from revision, the files it tracks stay tracked whatever the
+		// ignore rules say.
+		if _, err := runWith(ctx, dir, env, nil, "read-tree", revision); err != nil {
+			return err
+		}
+		if _, err := runWith(ctx, dir, env, nil, "add", "--all", "--", "."); err != nil {
+			return err
+		}
+		out, err := runWith(ctx, dir, env, nil, "write-tree")
+		tree = strings.TrimSpace(out)
+		return err
+	})
+	return tree, err
+}
+
+// Changes is the binary patch from one tree or commit to another, as plain
+// git would apply it: no external diff, text conversion or colour, and the
+// standard prefixes, whatever the configuration says.
+func (Workspaces) Changes(ctx context.Context, dir, from, to string) ([]byte, error) {
+	out, err := run(ctx, dir, "diff", "--binary", "--no-ext-diff", "--no-textconv", "--no-color",
+		"--src-prefix=a/", "--dst-prefix=b/", from, to, "--")
 	return []byte(out), err
+}
+
+// Rebuild applies a patch to revision in an index of its own, never the
+// checkout's files, and returns the tree that results.
+func (Workspaces) Rebuild(ctx context.Context, dir, revision string, patch []byte) (string, error) {
+	var tree string
+	err := scratchIndex(func(env []string) error {
+		if _, err := runWith(ctx, dir, env, nil, "read-tree", revision); err != nil {
+			return err
+		}
+		if len(patch) > 0 {
+			if _, err := runWith(ctx, dir, env, patch, "apply", "--cached", "--binary", "--whitespace=nowarn", "-"); err != nil {
+				return err
+			}
+		}
+		out, err := runWith(ctx, dir, env, nil, "write-tree")
+		tree = strings.TrimSpace(out)
+		return err
+	})
+	return tree, err
+}
+
+// scratchIndex gives do the environment of a temporary index, removed after.
+func scratchIndex(do func(env []string) error) error {
+	scratch, err := os.MkdirTemp("", "agister-index-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(scratch)
+	return do([]string{"GIT_INDEX_FILE=" + filepath.Join(scratch, "index")})
 }
 
 // Revision resolves {rev} to a commit.

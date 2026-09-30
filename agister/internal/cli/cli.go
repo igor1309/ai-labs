@@ -36,7 +36,7 @@ const (
 	ExitStoppedWatch = 130
 )
 
-const usage = `agister — run agent calls defined in settings
+const usage = `agister — run agent calls and workflows defined in settings
 
 Usage:
   agister init [--force]             install the example settings in <home>: shows each file it would
@@ -53,8 +53,13 @@ Usage:
   agister agent list
   agister process list
   agister process show <process> [--agent <name>]
+  agister workflow list
+  agister workflow show <workflow>   its params, nodes, and each node's process as a call would see it
   agister run <process> [--param <name>=<value>]... [--agent <name>] [--timeout <d>] [--max-cost <usd>]
                          [--continue <run-id>] [--json]   (--json: print the node result)
+  agister run <workflow> [--param <name>=<value>]... [--json]
+                                     fan-out nodes run concurrently, the join only after all of them
+                                     completed; each node is a run of its own
   agister runs [list]
   agister runs show <run-id>
   agister runs watch <run-id> [--after <seq>]
@@ -320,8 +325,41 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 		}
 		return 0, usageError{"unknown process command: " + sub}
 
+	case "workflow":
+		sub, _ := arg(0, "a subcommand")
+		switch sub {
+		case "list", "":
+			workflows, err := client.ListWorkflows(ctx)
+			if err != nil {
+				return 0, err
+			}
+			for _, workflow := range workflows {
+				if workflow.Problem != "" {
+					fmt.Fprintf(env.Stdout, "%s\t%s\n", workflow.Name, workflow.Problem)
+					continue
+				}
+				fmt.Fprintf(env.Stdout, "%s\t%s\tjoin %s\n", workflow.Name, strings.Join(workflow.FanOut, ","), workflow.Join)
+			}
+			return 0, nil
+		case "show":
+			name, err := arg(1, "a workflow name")
+			if err != nil {
+				return 0, err
+			}
+			view, err := client.ShowWorkflow(ctx, name)
+			if err != nil {
+				return 0, err
+			}
+			if opts.json {
+				return 0, printJSON(env.Stdout, view)
+			}
+			showWorkflow(env.Stdout, view)
+			return 0, nil
+		}
+		return 0, usageError{"unknown workflow command: " + sub}
+
 	case "run":
-		name, err := arg(0, "a process name")
+		name, err := arg(0, "a process or workflow name")
 		if err != nil {
 			return 0, err
 		}
@@ -514,12 +552,6 @@ func describe(event contract.Event) string {
 		return fmt.Sprintf("· plan: %v", data["primitives"])
 	case "PERMISSIONS_WITHHELD":
 		return fmt.Sprintf("· withheld: %v", data["permissions"])
-	case "CONSTRAINT_CHECKED":
-		mark := "·"
-		if satisfied, _ := data["satisfied"].(bool); !satisfied {
-			mark = "!"
-		}
-		return fmt.Sprintf("%s constraint %v: %v", mark, data["subject"], data["basis"])
 	case "REFUSED":
 		return fmt.Sprintf("! refused: %v", data["reason"])
 	case "PROCESS_STARTED":
@@ -532,9 +564,39 @@ func describe(event contract.Event) string {
 		if isError, _ := data["is_error"].(bool); isError {
 			return "  ↳ tool error"
 		}
+	case "VERIFY_STARTED":
+		return fmt.Sprintf("· verify attempt %v: %v", data["attempt"], data["command"])
+	case "VERIFY_FINISHED":
+		ended := fmt.Sprintf("exit %v", data["code"])
+		switch {
+		case data["timed_out"] == true:
+			ended = "timed out"
+		case data["cancelled"] == true:
+			ended = "cancelled"
+		case data["error"] != nil && data["error"] != "":
+			ended = fmt.Sprintf("could not run: %v", data["error"])
+		case data["code"] == nil:
+			ended = fmt.Sprintf("killed by %v", data["signal"])
+		}
+		return fmt.Sprintf("· verify attempt %v: %s, %v bytes of output", data["attempt"], ended, data["bytes"])
+	case "NODE_STARTED":
+		return fmt.Sprintf("· node %v (%v): run %v", data["node"], data["process"], data["run"])
+	case "NODE_FINISHED":
+		ended := fmt.Sprint(data["status"])
+		if class, ok := data["class"]; ok {
+			ended += fmt.Sprintf("/%v", class)
+		}
+		return fmt.Sprintf("· node %v: %s", data["node"], ended)
+	case "BARRIER":
+		if blocker, ok := data["blocked_by"]; ok {
+			return fmt.Sprintf("! barrier %v by node %v: no join", data["state"], blocker)
+		}
+		return fmt.Sprintf("· barrier %v", data["state"])
+	case "REPAIR_STARTED":
+		return fmt.Sprintf("· repair turn for attempt %v in session %v", data["attempt"], data["session"])
 	case "PROVIDER_ERROR", "PROVIDER_RETRY", "RATE_LIMITED", "TIMEOUT", "ABORT_REQUESTED", "SPAWN_FAILED",
 		"STREAM_PARSE_ERROR", "SESSION_ID_MISMATCH", "TURN_FAILED", "WORKSPACE_RELEASE_FAILED", "ARTIFACT_FAILED",
-		"LEFTOVER_PROCESSES_KILLED", "STDOUT_HELD_OPEN":
+		"LEFTOVER_PROCESSES_KILLED", "STDOUT_HELD_OPEN", "VERIFY_CHANGED_CONTENT", "VERIFY_STOPPED", "NODE_NOT_STARTED":
 		encoded, _ := json.Marshal(data)
 		return fmt.Sprintf("! %s %s", event.Kind, encoded)
 	}
@@ -562,7 +624,13 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 		{"  denied", or(strings.Join(view.Denied, ", "), "(none)")},
 		{"workspace", view.Access + ", scope " + view.Scope},
 		{"limits", limits(view)},
-		{"constraints", or(strings.Join(view.Constraints, "; "), "(none)")},
+	}
+	if verify := view.Verify; verify != nil {
+		lines = append(lines,
+			[2]string{"verify", verify.Command},
+			[2]string{"  limits", fmt.Sprintf("timeout %s, attempts %d", verify.Timeout, verify.MaxAttempts)},
+			[2]string{"  on failure", verify.Instruction},
+		)
 	}
 	if view.Refusal != "" {
 		lines = append(lines, [2]string{"plan", "REFUSED: " + view.Refusal})
@@ -579,6 +647,66 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 			text += " (overrides " + source.Overrides + ")"
 		}
 		lines = append(lines, [2]string{label, text})
+	}
+	for _, warning := range view.Warnings {
+		lines = append(lines, [2]string{"WARNING", warning})
+	}
+	for _, line := range lines {
+		fmt.Fprintf(w, "%-12s %s\n", line[0], line[1])
+	}
+}
+
+func showWorkflow(w io.Writer, view contract.WorkflowView) {
+	var params []string
+	for _, param := range view.Params {
+		if param.Required {
+			params = append(params, param.Name+" (required)")
+		} else {
+			params = append(params, param.Name+"="+param.Default)
+		}
+	}
+	lines := [][2]string{
+		{"workflow", view.Name},
+		{"params", or(strings.Join(params, ", "), "(none)")},
+		{"inputs", or(strings.Join(view.Inputs, ", "), "(none)")},
+	}
+	node := func(label string, node contract.WorkflowNode, gets string) {
+		process := node.Process
+		text := fmt.Sprintf("%s: process %s", node.Name, process.Name)
+		if process.Agent != "" {
+			text += fmt.Sprintf(", agent %s (runtime %s)", process.Agent, process.Runtime)
+		}
+		lines = append(lines, [2]string{label, text}, [2]string{"  receives", gets})
+		if process.Refusal != "" {
+			lines = append(lines, [2]string{"  plan", "REFUSED: " + process.Refusal})
+		} else {
+			lines = append(lines, [2]string{"  plan", or(strings.Join(process.Primitives, ", "), "(none)")})
+		}
+	}
+	for i, fanOut := range view.FanOut {
+		label := ""
+		if i == 0 {
+			label = "fan-out"
+		}
+		node(label, fanOut, "params "+or(strings.Join(fanOut.Params, ", "), "(none)"))
+	}
+	node("join", view.Join, "the collection as input "+or(view.Collection, "(none)")+", and nothing else")
+	if view.Refusal != "" {
+		lines = append(lines, [2]string{"run", "REFUSED: " + view.Refusal})
+	}
+	for i, source := range view.Sources {
+		label := ""
+		if i == 0 {
+			label = "sources"
+		}
+		text := fmt.Sprintf("%s %s: %s %s", kindNames[source.Kind], source.Name, source.Layer, source.Path)
+		if source.Overrides != "" {
+			text += " (overrides " + source.Overrides + ")"
+		}
+		lines = append(lines, [2]string{label, text})
+	}
+	for _, warning := range view.Warnings {
+		lines = append(lines, [2]string{"WARNING", warning})
 	}
 	for _, line := range lines {
 		fmt.Fprintf(w, "%-12s %s\n", line[0], line[1])
@@ -646,7 +774,7 @@ func printCheckAs(env IO, report contract.CheckReport, opts options) (int, error
 		code = ExitUsage
 	}
 	if opts.json {
-		for _, list := range []*[]string{&report.Problems, &report.Overrides} {
+		for _, list := range []*[]string{&report.Problems, &report.Overrides, &report.Warnings} {
 			if *list == nil {
 				*list = []string{}
 			}
@@ -666,10 +794,11 @@ func printCheckAs(env IO, report contract.CheckReport, opts options) (int, error
 var kindNames = map[string]string{
 	"service": "service", "agents": "agent", "processes": "process",
 	"policies": "policy", "runtimes": "runtime", "schemas": "schema",
+	"workflows": "workflow",
 }
 
-// printTree prints the service and each process with what it uses, then
-// the definitions no process uses.
+// printTree prints the service, each process and each workflow with what
+// it uses, then the definitions none of them uses.
 func printTree(w io.Writer, definitions []contract.Definition) {
 	byRef := map[contract.DefinitionRef]contract.Definition{}
 	for _, d := range definitions {
@@ -713,7 +842,7 @@ func printTree(w io.Writer, definitions []contract.Definition) {
 		}
 	}
 	for _, d := range definitions {
-		if d.Kind == "service" || d.Kind == "processes" {
+		if d.Kind == "service" || d.Kind == "processes" || d.Kind == "workflows" {
 			walk(contract.DefinitionRef{Kind: d.Kind, Name: d.Name}, "", "")
 		}
 	}
@@ -750,6 +879,9 @@ func printTree(w io.Writer, definitions []contract.Definition) {
 func printCheck(env IO, report contract.CheckReport) int {
 	for _, override := range report.Overrides {
 		fmt.Fprintln(env.Stdout, "override "+override)
+	}
+	for _, warning := range report.Warnings {
+		fmt.Fprintln(env.Stderr, "warning "+warning)
 	}
 	kinds := make([]string, 0, len(report.Checked))
 	for kind, count := range report.Checked {

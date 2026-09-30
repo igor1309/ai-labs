@@ -1,0 +1,16 @@
+# A judge rules on the evidence it is given and reads nothing else: no
+# tools, no repository access.
+schema: agister.process-policy/v1alpha1
+name: judge
+
+workspace:
+  access: read-only
+
+tools:
+  allow: []
+
+timeout: 10m
+# Stops the runtime once the call has cost this much (USD).
+max_cost_usd: 2
+retry:
+  max_attempts: 1

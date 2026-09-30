@@ -1,11 +1,22 @@
 // Package codex drives Codex: one `codex exec --json` process per turn,
 // reading its JSONL thread events.
 //
-// Contract codex/1: exactly one primitive, the sandbox mode (read-only or
+// Contract codex/2: exactly one primitive, the sandbox mode (read-only or
 // workspace-write); approval_policy="never"; --ignore-user-config and
 // --ignore-rules; the prompt on stdin with the instruction prepended in an
 // <instructions> block; structured output constrained by an
 // --output-schema file and returned as the final agent message.
+//
+// Agister never chooses the thread ID; Codex reports it in thread.started.
+// A continuation runs `codex exec resume <thread_id>` with the same
+// settings, the sandbox mode as -c sandbox_mode (resume has no --sandbox),
+// and the turn must report that same thread, or it fails. Codex cannot
+// limit cost. The usage turn.completed reports is the thread's, counting
+// the turns it resumed (observed live with codex-cli 0.159.2).
+//
+// Codex reports no cost. The thread's cost, every turn it had, is
+// ccusage's: `ccusage codex session --json` prices each session from its
+// rollout (observed with ccusage 20.0.26), read after the turn.
 //
 // Only turn.completed and turn.failed decide a turn. Top-level `error`
 // events and error items occur mid-turn (reconnects, transport fallback)
@@ -17,6 +28,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -27,20 +39,65 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-const Contract = "codex/1"
+const Contract = "codex/2"
 
 var sandboxModes = []string{"read-only", "workspace-write"}
 
 type Runner struct {
 	Command   string
 	KillGrace time.Duration
+	// Sessions lists Codex sessions with their costs, as
+	// `ccusage codex session --json` does; nil: the cost is unknown.
+	Sessions Sessions
 }
+
+// Sessions returns the output of `ccusage codex session --json`.
+type Sessions func(ctx context.Context) ([]byte, error)
 
 func New(command string) *Runner {
 	if command == "" {
 		command = "codex"
 	}
-	return &Runner{Command: command}
+	return &Runner{Command: command, Sessions: CCUsage("ccusage")}
+}
+
+// CCUsage runs `<command> codex session --json`.
+func CCUsage(command string) Sessions {
+	return func(ctx context.Context) ([]byte, error) {
+		ctx, cancel := context.WithTimeout(ctx, time.Minute)
+		defer cancel()
+		return exec.CommandContext(ctx, command, "codex", "session", "--json").Output()
+	}
+}
+
+// ThreadCost is a thread's cost, every turn it had, from a sessions
+// listing: the costUSD of the one session whose sessionId, a rollout path,
+// ends in the thread ID. Unknown when there is no such session, or more
+// than one, or its cost is not above zero.
+func ThreadCost(listing []byte, threadID string) *float64 {
+	var sessions struct {
+		Sessions []struct {
+			SessionID string   `json:"sessionId"`
+			CostUSD   *float64 `json:"costUSD"`
+		} `json:"sessions"`
+	}
+	if threadID == "" || json.Unmarshal(listing, &sessions) != nil {
+		return nil
+	}
+	var cost *float64
+	for _, session := range sessions.Sessions {
+		if !strings.HasSuffix(session.SessionID, "-"+threadID) {
+			continue
+		}
+		if cost != nil {
+			return nil
+		}
+		cost = session.CostUSD
+		if cost == nil || *cost <= 0 {
+			return nil
+		}
+	}
+	return cost
 }
 
 var versionPattern = regexp.MustCompile(`\d+\.\d+\.\d+`)
@@ -54,7 +111,7 @@ func (r *Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
 	if version == "" {
 		return app.RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
 	}
-	return app.RuntimeIdentity{Contract: Contract, Version: version}, nil
+	return app.RuntimeIdentity{Contract: Contract, Version: version, Resume: true}, nil
 }
 
 // Arguments builds the command line for a turn.
@@ -62,18 +119,20 @@ func Arguments(request app.TurnRequest, schemaPath string) ([]string, error) {
 	if len(request.Primitives) != 1 || !contains(sandboxModes, request.Primitives[0]) {
 		return nil, fmt.Errorf("codex needs exactly one sandbox mode primitive (%s), got %v", strings.Join(sandboxModes, ", "), request.Primitives)
 	}
-	if request.SessionID != "" || request.ResumeSessionID != "" {
-		return nil, fmt.Errorf("codex/1 neither presets nor continues sessions")
-	}
 	if request.MaxCostUSD != nil {
-		return nil, fmt.Errorf("codex/1 cannot limit cost")
+		return nil, fmt.Errorf("codex/2 cannot limit cost")
 	}
-	args := []string{
-		"exec", "--json", "--skip-git-repo-check",
-		"--sandbox", request.Primitives[0],
+	args := []string{"exec", "--json", "--skip-git-repo-check", "--sandbox", request.Primitives[0]}
+	if request.ResumeSessionID != "" {
+		args = []string{
+			"exec", "resume", request.ResumeSessionID, "--json", "--skip-git-repo-check",
+			"--config", fmt.Sprintf("sandbox_mode=%q", request.Primitives[0]),
+		}
+	}
+	args = append(args,
 		"--config", `approval_policy="never"`,
 		"--ignore-user-config", "--ignore-rules",
-	}
+	)
 	if request.Model != "" {
 		args = append(args, "--model", request.Model)
 	}
@@ -111,7 +170,7 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 	if err != nil {
 		return supervisor.Failed(run.ClassInternal, err)
 	}
-	state := &Stream{}
+	state := &Stream{ResumedThreadID: request.ResumeSessionID}
 	evidence := supervisor.Run(ctx, supervisor.Spec{
 		Command:   r.Command,
 		Args:      args,
@@ -124,7 +183,30 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 			sink.Event(event.Source, event.Kind, event.Data)
 		}
 	})
-	return state.Reconcile(evidence, schemaPath != "")
+	turn := state.Reconcile(evidence, schemaPath != "")
+	r.cost(ctx, &turn, request.ResumeSessionID)
+	return turn
+}
+
+// cost sets the thread's cost on a turn that reported the thread it ran
+// on; a failed read leaves it unknown.
+func (r *Runner) cost(ctx context.Context, turn *run.Turn, resumed string) {
+	thread := turn.ProviderSessionID
+	if r.Sessions == nil || thread == "" || resumed != "" && thread != resumed {
+		return
+	}
+	listing, err := r.Sessions(ctx)
+	if err != nil {
+		return
+	}
+	cost := ThreadCost(listing, thread)
+	if cost == nil {
+		return
+	}
+	if turn.Session == nil {
+		turn.Session = &run.SessionTotals{}
+	}
+	turn.Session.CostUSD = cost
 }
 
 type Event struct {
@@ -135,12 +217,14 @@ type Event struct {
 
 // Stream reduces Codex JSONL events.
 type Stream struct {
-	ThreadID    string
-	LastMessage string
-	LastError   string
-	Completed   bool
-	Failed      string
-	Usage       map[string]any
+	// The thread a resume turn resumes; the turn must report it.
+	ResumedThreadID string
+	ThreadID        string
+	LastMessage     string
+	LastError       string
+	Completed       bool
+	Failed          string
+	Usage           map[string]any
 }
 
 func (s *Stream) Reduce(line string) []Event {
@@ -208,6 +292,10 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 		return failed
 	}
 	turn.ProviderSessionID = s.ThreadID
+	if s.resumedElsewhere() {
+		turn.Status, turn.Error = run.Failed, run.Fault(run.ClassRuntimeError, "resumed thread %s, but the runtime reported thread %q", s.ResumedThreadID, s.ThreadID)
+		return turn
+	}
 	if !s.Completed && s.Failed == "" {
 		return supervisor.WithoutTerminal(turn, evidence, s.LastError)
 	}
@@ -216,13 +304,14 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 		turn.Status, turn.Error = run.Failed, classify(s.Failed)
 		return turn
 	}
+	// The thread's usage, every turn it had; the turn's own is derived.
 	if s.Usage != nil {
-		turn.Usage = &run.Usage{
+		turn.Session = &run.SessionTotals{Usage: &run.Usage{
 			InputTokens:     count(s.Usage, "input_tokens"),
 			OutputTokens:    count(s.Usage, "output_tokens"),
 			CacheReadTokens: count(s.Usage, "cached_input_tokens"),
 			ReasoningTokens: count(s.Usage, "reasoning_output_tokens"),
-		}
+		}}
 	}
 	if schemaRequested {
 		if s.LastMessage == "" {
@@ -237,6 +326,14 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 	}
 	turn.Status = run.Completed
 	return turn
+}
+
+// resumedElsewhere reports a resume turn that started another thread, or
+// ended without reporting one, which breaks the contract of resuming in
+// place.
+func (s *Stream) resumedElsewhere() bool {
+	reported := s.ThreadID != "" || s.Completed || s.Failed != ""
+	return s.ResumedThreadID != "" && reported && s.ThreadID != s.ResumedThreadID
 }
 
 // classify maps a turn.failed message to a failure class. Codex reports

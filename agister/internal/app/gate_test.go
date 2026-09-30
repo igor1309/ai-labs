@@ -39,6 +39,14 @@ func (c *clientFake) ShowProcess(context.Context, string, string) (contract.Proc
 	c.hit("ShowProcess")
 	return contract.ProcessView{}, nil
 }
+func (c *clientFake) ListWorkflows(context.Context) ([]contract.WorkflowSummary, error) {
+	c.hit("ListWorkflows")
+	return nil, nil
+}
+func (c *clientFake) ShowWorkflow(context.Context, string) (contract.WorkflowView, error) {
+	c.hit("ShowWorkflow")
+	return contract.WorkflowView{}, nil
+}
 func (c *clientFake) Check(context.Context, bool) (contract.CheckReport, error) {
 	return c.report, nil
 }
@@ -86,6 +94,8 @@ func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
 	_, refused["ListAgents"] = gated.ListAgents(ctx)
 	_, refused["ListProcesses"] = gated.ListProcesses(ctx)
 	_, refused["ShowProcess"] = gated.ShowProcess(ctx, "p", "")
+	_, refused["ListWorkflows"] = gated.ListWorkflows(ctx)
+	_, refused["ShowWorkflow"] = gated.ShowWorkflow(ctx, "w")
 	_, refused["Submit"] = gated.Submit(ctx, contract.CallRequest{})
 	refused["Observe other"] = gated.Observe(ctx, "other", 0, nil)
 	_, refused["Inspect other"] = gated.Inspect(ctx, "other")
@@ -288,7 +298,9 @@ func TestGatedSubmitRecordsWhatTheCheckRead(t *testing.T) {
 func TestGatedWriteScopeChecksTheGlobalSnapshot(t *testing.T) {
 	ctx := context.Background()
 	h := newHarness()
+	h.defs.docs[definition.KindRuntime]["narrow"] = narrowRuntime
 	global := &definitionsSpy{docs: settingsDocs()}
+	global.docs[definition.KindRuntime]["narrow"] = narrowRuntime
 	gated := &app.Gated{
 		Definitions: h.defs,
 		Global:      global,
@@ -302,15 +314,14 @@ func TestGatedWriteScopeChecksTheGlobalSnapshot(t *testing.T) {
 					Settings: app.NewSettings(src, &writerSpy{existed: map[string]bool{"agents/a": true}}, nil, []app.Scope{{Name: "global settings", Check: checker(globalOnly)}}),
 				},
 				f: func() {
-					// Live, the policy no longer constrains the model family.
-					policy := strings.Split(settingsDocs()[definition.KindPolicy]["pol"], "constraints:")[0]
-					global.set(definition.KindPolicy, "pol", policy)
+					// Live, process p can run on runtime narrow.
+					global.set(definition.KindRuntime, "narrow", strings.Replace(settingsDocs()[definition.KindRuntime]["rt"], "name: rt", "name: narrow", 1))
 				},
 			}
 		},
 	}
-	// Policy pol constrains the model family; this agent declares none.
-	_, err := gated.CreateAgent(ctx, contract.Agent{Name: "a", Runtime: "rt"}, true, nil)
+	// Process p uses agent a, and cannot run on runtime narrow as checked.
+	_, err := gated.CreateAgent(ctx, contract.Agent{Name: "a", Runtime: "narrow"}, true, nil)
 	var input *contract.InputError
 	if !errors.As(err, &input) || !strings.Contains(err.Error(), "would break the global settings") {
 		t.Fatalf("err = %v, want the write refused on the checked settings", err)

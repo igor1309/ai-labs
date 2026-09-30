@@ -34,12 +34,18 @@ type Client interface {
 	ListAgents(ctx context.Context) ([]Agent, error)
 	ListProcesses(ctx context.Context) ([]ProcessSummary, error)
 	ShowProcess(ctx context.Context, name, agent string) (ProcessView, error)
+	ListWorkflows(ctx context.Context) ([]WorkflowSummary, error)
+	// ShowWorkflow shows a workflow as a run of it would see it: its
+	// params, inputs and nodes, and each node's process as a call of it
+	// would see it.
+	ShowWorkflow(ctx context.Context, name string) (WorkflowView, error)
 	// Check validates every setting and reports all problems. With probe,
 	// it also asks each agent's runtime for its identity.
 	Check(ctx context.Context, probe bool) (CheckReport, error)
 
-	// Submit records a call and starts it. Every call gets a run, including
-	// one that is refused.
+	// Submit records a call, or a workflow when the request names one, and
+	// starts it. Every call and workflow gets a run, including one that is
+	// refused; each node of a workflow gets its own.
 	Submit(ctx context.Context, request CallRequest) (string, error)
 	// Observe delivers the run's events after afterSeq, in order, until the
 	// run is no longer running. It can be resumed from any sequence.
@@ -95,6 +101,10 @@ type CheckReport struct {
 	Problems []string       `json:"problems"`
 	// Project definitions that take priority over global ones.
 	Overrides []string `json:"overrides"`
+	// What the settings do that their user should know, such as a
+	// verification command that runs with the operator's authority. They
+	// are not problems: nothing is refused for them.
+	Warnings []string `json:"warnings"`
 	// Every definition read, in check order, with what it references.
 	Definitions []Definition `json:"definitions"`
 }
@@ -147,15 +157,59 @@ type ProcessView struct {
 	Permissions []string
 	Access      string
 	Scope       string
-	Constraints []string
 	// Plan on the agent's runtime, or why none exists.
 	Primitives []string
 	Withheld   []string
 	Refusal    string
+	// The verification command the process declares; unset when none.
+	Verify *Verify
+	// What the user should know before calling it.
+	Warnings []string
 	// Where each definition the call uses comes from.
 	Sources []DefinitionOrigin
 }
 
+type WorkflowSummary struct {
+	Name    string
+	FanOut  []string // node:process, in declaration order
+	Join    string   // node:process
+	Problem string   // set when the definition is invalid
+}
+
+// WorkflowView is a workflow as a run of it would see it (ADR-003).
+type WorkflowView struct {
+	Name   string
+	Params []Param
+	Inputs []string // resolved once, before any node starts
+	FanOut []WorkflowNode
+	Join   WorkflowNode
+	// Collection is the join's input that receives the collection.
+	Collection string
+	// Why a run of it would be refused now; empty when it would run.
+	Refusal  string
+	Warnings []string
+	Sources  []DefinitionOrigin
+}
+
+// WorkflowNode is one node of a workflow, and its process as a call of it
+// would see it; Process.Refusal says why that call would be refused.
+type WorkflowNode struct {
+	Name    string
+	Process ProcessView
+	// The workflow's inputs it receives as params; none for a join.
+	Params []string
+}
+
+// Verify is a process's verification command.
+type Verify struct {
+	Command     string
+	Timeout     time.Duration
+	MaxAttempts int
+	Instruction string
+}
+
+// CallRequest asks for a call of a process, or a run of a workflow: Process
+// names either. A workflow takes Params and Cwd only.
 type CallRequest struct {
 	Process    string
 	Params     map[string]string
@@ -174,10 +228,10 @@ type Event struct {
 	Data   map[string]any
 }
 
-// Run is one call as a client sees it.
+// Run is one call, or one workflow, as a client sees it.
 type Run struct {
 	ID        string
-	Process   string
+	Process   string // the process called, or the workflow run
 	Agent     string
 	State     string  // running | finished | abandoned
 	Result    *Result // set unless running

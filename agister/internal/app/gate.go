@@ -112,6 +112,22 @@ func (g *Gated) ShowProcess(ctx context.Context, name, agent string) (contract.P
 	return client.ShowProcess(ctx, name, agent)
 }
 
+func (g *Gated) ListWorkflows(ctx context.Context) ([]contract.WorkflowSummary, error) {
+	client, err := g.gate(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return client.ListWorkflows(ctx)
+}
+
+func (g *Gated) ShowWorkflow(ctx context.Context, name string) (contract.WorkflowView, error) {
+	client, err := g.gate(ctx)
+	if err != nil {
+		return contract.WorkflowView{}, err
+	}
+	return client.ShowWorkflow(ctx, name)
+}
+
 func (g *Gated) Submit(ctx context.Context, request contract.CallRequest) (string, error) {
 	client, err := g.gate(ctx)
 	if err != nil {

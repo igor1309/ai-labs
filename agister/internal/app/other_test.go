@@ -400,18 +400,33 @@ func TestCreateAgentDryRun(t *testing.T) {
 	}
 }
 
+// narrowRuntime is a runtime mapping an agent can use alone, but on which
+// process p cannot run: its one primitive also grants a permission p's
+// policy does not allow.
+const narrowRuntime = `schema: agister.runtime/v1alpha1
+name: narrow
+adapter: spy
+contract: spy/1
+efforts: [high]
+primitives:
+  select: one
+  items:
+    Bash: {grants: [process.execute, repository.read], verified: ["1."]}
+`
+
 // An agent that is valid alone but breaks the settings is refused before
 // anything is written or asked; problems it did not add do not block it.
 func TestCreateAgentKeepsSettingsValid(t *testing.T) {
 	h := newHarness()
+	h.defs.docs[definition.KindRuntime]["narrow"] = narrowRuntime
 	writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 	settings := app.NewSettings(h.defs, writer, nil, []app.Scope{{Name: "global settings", Check: checker}})
 	var input *contract.InputError
 	for _, approved := range []*contract.AgentWrite{nil, {Path: "agents/a", Replaces: true, Digest: "d-agents/a"}} {
-		// Policy pol constrains the model family; this a declares none.
-		_, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "a", Runtime: "rt"}, true, approved)
-		if !errors.As(err, &input) || !strings.Contains(err.Error(), "agent a would break the global settings") || !strings.Contains(err.Error(), "constrains the model family, but agent a declares none") {
+		// Process p uses agent a, and cannot run on runtime narrow.
+		_, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "a", Runtime: "narrow"}, true, approved)
+		if !errors.As(err, &input) || !strings.Contains(err.Error(), "agent a would break the global settings") || !strings.Contains(err.Error(), "cannot run on agent a's runtime narrow") {
 			t.Fatalf("approved %v: %v", approved, err)
 		}
 	}

@@ -1,5 +1,5 @@
-// Package run models one agent call's record: identities, definitions,
-// plan, inputs, events and layered outcomes.
+// Package run models one agent call's record, or one workflow's:
+// identities, definitions, plan, inputs, events and layered outcomes.
 package run
 
 import (
@@ -173,6 +173,14 @@ type Turn struct {
 	PermissionDenials int             `json:"permission_denials,omitempty"`
 	Exit              *Exit           `json:"exit,omitempty"`
 	StderrTail        string          `json:"stderr_tail,omitempty"`
+	// Session is what the runtime reported as its session's totals after
+	// the turn, where it reports those instead of the turn's own cost or
+	// usage; the turn's own are derived from them (Own).
+	Session *SessionTotals `json:"session,omitempty"`
+	// SessionBefore is the resumed session's totals before the turn, as
+	// Agister recorded them on the session's latest turn before it (see
+	// LatestTotals); unset for a fresh session, or when Agister had none.
+	SessionBefore *SessionTotals `json:"session_before,omitempty"`
 }
 
 // Input is one resolved, immutable input.
@@ -194,23 +202,29 @@ type Runtime struct {
 
 // Record is the authoritative evidence of one call.
 type Record struct {
-	Schema             string             `json:"schema"`
-	ID                 string             `json:"id"`
-	Process            string             `json:"process"`
-	Agent              string             `json:"agent,omitempty"`
-	Request            Request            `json:"request"`
-	CreatedAt          time.Time          `json:"created_at"`
-	FinishedAt         *time.Time         `json:"finished_at,omitempty"`
-	Definitions        []DefinitionSource `json:"definitions,omitempty"`
-	Effective          *EffectivePolicy   `json:"effective,omitempty"`
-	Runtime            *Runtime           `json:"runtime,omitempty"`
-	Plan               *Plan              `json:"plan,omitempty"`
-	Inputs             []Input            `json:"inputs,omitempty"`
-	Workspace          string             `json:"workspace,omitempty"`
-	Effects            *Effects           `json:"effects,omitempty"`
-	RequestedSessionID string             `json:"requested_session_id,omitempty"`
-	Turn               *Turn              `json:"turn,omitempty"`
-	Result             *Result            `json:"result,omitempty"` // set when finished
+	Schema      string             `json:"schema"`
+	ID          string             `json:"id"`
+	Process     string             `json:"process"`
+	Agent       string             `json:"agent,omitempty"`
+	Request     Request            `json:"request"`
+	CreatedAt   time.Time          `json:"created_at"`
+	FinishedAt  *time.Time         `json:"finished_at,omitempty"`
+	Definitions []DefinitionSource `json:"definitions,omitempty"`
+	Effective   *EffectivePolicy   `json:"effective,omitempty"`
+	Verify      *Verify            `json:"verify,omitempty"`
+	Runtime     *Runtime           `json:"runtime,omitempty"`
+	Plan        *Plan              `json:"plan,omitempty"`
+	Inputs      []Input            `json:"inputs,omitempty"`
+	Workspace   string             `json:"workspace,omitempty"`
+	Effects     *Effects           `json:"effects,omitempty"`
+	// Turn is the latest turn; with verification, Attempts has every one.
+	Turn     *Turn     `json:"turn,omitempty"`
+	Attempts []Attempt `json:"attempts,omitempty"`
+	// Workflow is set on a workflow's own run (ADR-003): its nodes and
+	// barrier. Parent is set on a node's run: the workflow run it belongs to.
+	Workflow *Workflow `json:"workflow,omitempty"`
+	Parent   *Parent   `json:"parent,omitempty"`
+	Result   *Result   `json:"result,omitempty"` // set when finished
 }
 
 // Effects are what a call leaves outside its record, written down as soon
@@ -218,6 +232,9 @@ type Record struct {
 type Effects struct {
 	Checkout *Checkout `json:"checkout,omitempty"`
 	Process  *Process  `json:"process,omitempty"`
+	// Command is the latest run of the verification command, as the process
+	// group that runs it; only one runs at a time.
+	Command *Process `json:"command,omitempty"`
 }
 
 // Checkout is a workspace the call created in Repository.

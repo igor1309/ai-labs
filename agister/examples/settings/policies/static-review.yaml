@@ -4,10 +4,6 @@
 schema: agister.process-policy/v1alpha1
 name: static-review
 
-# No constraint on the candidate's writer: Agister records no writers yet
-# (deferred item 7), so such a constraint could only always pass or always
-# refuse.
-
 workspace:
   access: read-only
   scope: candidate
