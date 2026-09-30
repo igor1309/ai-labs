@@ -3,6 +3,7 @@ schema = "agister.service/v1alpha1"
 # Hard limits no policy may exceed. Retries are not supported yet.
 max_timeout = "1h"
 max_attempts = 1
+max_verify_attempts = 3
 
 # The permission vocabulary. Policies and runtime mappings may use only these.
 permissions = [

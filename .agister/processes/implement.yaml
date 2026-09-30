@@ -7,9 +7,10 @@ policy: process-policy:implement
 input:
   instruction: >-
     Implement the task given as input brief in this checkout of the
-    candidate. Do not commit; Agister keeps your changes. Run the checks the
-    brief asks for and report each with its exit code and final line; list
-    every file you changed, repository-relative.
+    candidate. Do not commit; Agister keeps your changes. Agister runs the
+    verification command after your turn; run any further checks the brief
+    asks for and report each with its exit code and final line; list every
+    file you changed, repository-relative.
   params:
     candidate: {default: HEAD}
     brief: {}
@@ -24,3 +25,15 @@ output:
   format: json
   schema: implementation
   require_valid: true
+
+# Agister's own checks, run in the checkout with the operator's authority
+# after each valid turn; the node completes only when they pass.
+verify:
+  command: >-
+    cd agister && test -z "$(gofmt -l .)" && go vet ./... &&
+    go test -count=1 ./... && go test -race -count=1 ./internal/app/...
+  timeout: 15m
+  max_attempts: 3
+  instruction: >-
+    The verification command failed on your changes. Fix the cause in the
+    code; do not weaken, skip or delete a check or a test.

@@ -14,6 +14,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/schema"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"gopkg.in/yaml.v3"
 )
 
 // repoParams are the values given to a process param that has no default,
@@ -27,6 +28,12 @@ var repoParams = map[string]string{
 
 const fallbackParam = "AGENTS.md"
 
+// verifyFixture is the verification command every process that declares
+// verify runs in the test's repository instead of its own: it passes in a
+// checkout of the candidate. The real command would run this module's own
+// tests, this one included.
+const verifyFixture = "grep -qx two change.txt"
+
 // Every process of this repository's own settings (<repository root>/.agister)
 // runs, as the CLI composes them over a global layer, on the fake runtimes,
 // and completes with output its schema accepts. A process that names a
@@ -39,7 +46,9 @@ const fallbackParam = "AGENTS.md"
 // this repository's working tree (settings and prompts as they are, edits
 // included), with a base and a candidate commit of its own: revisions, diffs
 // and checkouts are deterministic, and this repository's git state is never
-// read or written. Each base and candidate param is pointed at them.
+// read or written. Each base and candidate param is pointed at them. There,
+// a process that declares verify runs verifyFixture instead of its command
+// and completes with one passing verification attempt.
 func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -64,6 +73,7 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	t.Setenv("FAKE_VERSION", "")
 
 	repo := mirror(t, root)
+	fixVerify(t, root, repo)
 	home := filepath.Join(t.TempDir(), "home")
 	if r := agisterInput(t, "yes\n", home, t.TempDir(), "init"); r.code != 0 {
 		t.Fatalf("init: %d %s", r.code, r.stderr)
@@ -139,6 +149,15 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 			if result["status"] != "completed" {
 				t.Fatalf("result = %v", result)
 			}
+			if process.Verify != nil {
+				attempts, _ := record["attempts"].([]any)
+				if len(attempts) != 1 {
+					t.Fatalf("attempts = %v, want one", record["attempts"])
+				}
+				if run, _ := attempts[0].(map[string]any)["run"].(map[string]any); run["command"] != verifyFixture || run["passed"] != true {
+					t.Fatalf("verification run = %v, want %q passed", run, verifyFixture)
+				}
+			}
 			// The output is what the process's schema accepts.
 			var schemaPath string
 			for _, source := range record["definitions"].([]any) {
@@ -208,6 +227,82 @@ func mirror(t *testing.T, root string) string {
 		t.Fatalf("mirror not clean: %s %v", out, err)
 	}
 	return dir
+}
+
+// fixVerify makes repo's .agister a directory whose entries link to those of
+// root's, processes aside: there, a process that declares verify is written
+// with verifyFixture as its command, and every other links to its file.
+func fixVerify(t *testing.T, root, repo string) {
+	t.Helper()
+	settings := filepath.Join(repo, ".agister")
+	if err := os.Remove(settings); err != nil {
+		t.Fatal(err)
+	}
+	// link makes to a directory whose entries link to those of from, except
+	// aside.
+	link := func(from, to, except string) {
+		t.Helper()
+		entries, err := os.ReadDir(from)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Mkdir(to, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		for _, entry := range entries {
+			if entry.Name() == except {
+				continue
+			}
+			if err := os.Symlink(filepath.Join(from, entry.Name()), filepath.Join(to, entry.Name())); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	link(filepath.Join(root, ".agister"), settings, "processes")
+	link(filepath.Join(root, ".agister", "processes"), filepath.Join(settings, "processes"), "")
+
+	processes, err := filepath.Glob(filepath.Join(settings, "processes", "*.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range processes {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var document yaml.Node
+		if err := yaml.Unmarshal(data, &document); err != nil {
+			t.Fatalf("%s: %v", path, err)
+		}
+		command := valueOf(valueOf(document.Content[0], "verify"), "command")
+		if command == nil {
+			continue
+		}
+		command.SetString(verifyFixture)
+		fixed, err := yaml.Marshal(&document)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Remove(path); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, fixed, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// valueOf is the value of key in mapping, or nil.
+func valueOf(mapping *yaml.Node, key string) *yaml.Node {
+	if mapping == nil || mapping.Kind != yaml.MappingNode {
+		return nil
+	}
+	for i := 0; i+1 < len(mapping.Content); i += 2 {
+		if mapping.Content[i].Value == key {
+			return mapping.Content[i+1]
+		}
+	}
+	return nil
 }
 
 func readRuns(t *testing.T, home string) []os.DirEntry {

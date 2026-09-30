@@ -1,7 +1,7 @@
 # The repository's own settings (<repository root>/.agister) run on the fake
-# runtimes: each mutation breaks one settings file, and the test that runs
-# every process must fail with it. Files are relative to the module, so the
-# settings are under ../.agister.
+# runtimes: each mutation breaks one settings file, or drops the verification
+# a process declares, and the test that runs every process must fail with it.
+# Files are relative to the module, so the settings are under ../.agister.
 # Run: scripts/revert-check.py <this file>
 module: agister
 
@@ -63,4 +63,10 @@ test: ./cmd/agister TestRepositoryProcessesRunOnFakeRuntimes
 file: ../.agister/policies/implement.yaml
 find: max_cost_usd: 25\n
 replace: max_cost_usd: -1\n
+test: ./cmd/agister TestRepositoryProcessesRunOnFakeRuntimes
+
+[a process that declares verify completes without verification]
+file: internal/app/calls.go
+find: if fault == nil && res.process.Verify != nil {
+replace: if fault == nil && res.process.Verify != nil && false {
 test: ./cmd/agister TestRepositoryProcessesRunOnFakeRuntimes
