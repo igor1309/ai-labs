@@ -16,7 +16,11 @@
 //
 // Codex reports no cost. The thread's cost, every turn it had, is
 // ccusage's: `ccusage codex session --json` prices each session from its
-// rollout (observed with ccusage 20.0.26), read after the turn.
+// rollout (observed with ccusage 20.0.26), read after the turn within
+// what is left of the turn's timeout. The lookup is supervised as the
+// runtime process is: its group is on record, and ended on timeout or
+// cancellation. A lookup that fails leaves the cost unknown, and nothing
+// else about the turn.
 //
 // Only turn.completed and turn.failed decide a turn. Top-level `error`
 // events and error items occur mid-turn (reconnects, transport fallback)
@@ -29,11 +33,12 @@
 package codex
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -54,26 +59,60 @@ type Runner struct {
 	// Sessions lists Codex sessions with their costs, as
 	// `ccusage codex session --json` does; nil: the cost is unknown.
 	Sessions Sessions
+	// Now tells the time the turn's timeout is measured by; nil: time.Now.
+	Now func() time.Time
 }
 
-// Sessions returns the output of `ccusage codex session --json`.
-type Sessions func(ctx context.Context) ([]byte, error)
+// Sessions returns the output of `ccusage codex session --json`, ending
+// the lookup once timeout passes or ctx ends. It reports its process to
+// sink as the runtime's is reported.
+type Sessions func(ctx context.Context, timeout time.Duration, sink app.EventSink) ([]byte, error)
 
 func New(command string) *Runner {
 	if command == "" {
 		command = "codex"
 	}
-	return &Runner{Command: command, Sessions: CCUsage("ccusage")}
+	return &Runner{Command: command, Sessions: CCUsage("ccusage", 0)}
 }
 
-// CCUsage runs `<command> codex session --json`.
-func CCUsage(command string) Sessions {
-	return func(ctx context.Context) ([]byte, error) {
-		ctx, cancel := context.WithTimeout(ctx, time.Minute)
-		defer cancel()
-		return exec.CommandContext(ctx, command, "codex", "session", "--json").Output()
+// CCUsage runs `<command> codex session --json` under the supervisor, in a
+// process group of its own that is ended on timeout or cancellation;
+// killGrace bounds the wait for it as it does a runtime's (zero: the
+// supervisor's default). Anything but a clean exit is an error. Its output
+// is the listing, not the turn's raw output.
+func CCUsage(command string, killGrace time.Duration) Sessions {
+	return func(ctx context.Context, timeout time.Duration, sink app.EventSink) ([]byte, error) {
+		var listing bytes.Buffer
+		evidence := supervisor.Run(ctx, supervisor.Spec{
+			Command:   command,
+			Args:      []string{"codex", "session", "--json"},
+			Timeout:   timeout,
+			KillGrace: killGrace,
+		}, lookupSink{sink}, func(line string) {
+			listing.WriteString(line)
+			listing.WriteByte('\n')
+		})
+		switch exit := evidence.Exit; {
+		case evidence.SpawnError != "":
+			return nil, errors.New(evidence.SpawnError)
+		case evidence.RecordError != "":
+			return nil, fmt.Errorf("recording the lookup failed: %s", evidence.RecordError)
+		case evidence.TimedOut:
+			return nil, fmt.Errorf("timed out after %s", timeout)
+		case evidence.Aborted:
+			return nil, errors.New("cancelled")
+		case exit == nil || exit.Code == nil || *exit.Code != 0:
+			return nil, fmt.Errorf("%s exited without a listing: %s", command, supervisor.Reason(evidence))
+		}
+		return listing.Bytes(), nil
 	}
 }
+
+// lookupSink passes the lookup's process and events to the turn's sink,
+// but not its output, which is not the runtime's.
+type lookupSink struct{ app.EventSink }
+
+func (lookupSink) Raw(string) {}
 
 // ThreadCost is a thread's cost, every turn it had, from a sessions
 // listing: the costUSD of the one session whose sessionId, a rollout path,
@@ -159,6 +198,11 @@ func Prompt(request app.TurnRequest) string {
 }
 
 func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
+	now := r.Now
+	if now == nil {
+		now = time.Now
+	}
+	deadline := now().Add(request.Timeout)
 	var schemaPath string
 	if len(request.OutputSchema) > 0 {
 		dir, err := os.MkdirTemp("", "agister-codex-")
@@ -189,18 +233,20 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 		}
 	})
 	turn := state.Reconcile(evidence, schemaPath != "")
-	r.cost(ctx, &turn, request.ResumeSessionID)
+	r.cost(ctx, &turn, request.ResumeSessionID, deadline.Sub(now()), sink)
 	return turn
 }
 
 // cost sets the thread's cost on a turn that reported the thread it ran
-// on; a failed read leaves it unknown.
-func (r *Runner) cost(ctx context.Context, turn *run.Turn, resumed string) {
+// on, looking it up within left, what remains of the turn's timeout; a
+// failed, timed-out or cancelled lookup leaves it unknown, and none is
+// started once the turn's time is up or its call is cancelled.
+func (r *Runner) cost(ctx context.Context, turn *run.Turn, resumed string, left time.Duration, sink app.EventSink) {
 	thread := turn.ProviderSessionID
-	if r.Sessions == nil || thread == "" || resumed != "" && thread != resumed {
+	if r.Sessions == nil || thread == "" || resumed != "" && thread != resumed || left <= 0 || ctx.Err() != nil {
 		return
 	}
-	listing, err := r.Sessions(ctx)
+	listing, err := r.Sessions(ctx, left, sink)
 	if err != nil {
 		return
 	}

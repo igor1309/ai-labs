@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -202,13 +205,32 @@ func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
 // one (observed shape, ccusage 20.0.26).
 const fakeThread = "01a0e850-b808-71c2-8401-53ba16d8ae18"
 
+func listingJSON(cost string) string {
+	return `{"sessions":[
+		{"sessionId":"2026/09/30/rollout-2026-09-30T10-00-00-01a0f1e9-210c-7853-b2dc-7abbe3cf6073","costUSD":0.318266},
+		{"sessionId":"2026/09/30/rollout-2026-09-30T11-00-00-` + fakeThread + `","costUSD":` + cost + `}
+	]}`
+}
+
 func listing(cost string) codex.Sessions {
-	return func(context.Context) ([]byte, error) {
-		return []byte(`{"sessions":[
-			{"sessionId":"2026/09/30/rollout-2026-09-30T10-00-00-01a0f1e9-210c-7853-b2dc-7abbe3cf6073","costUSD":0.318266},
-			{"sessionId":"2026/09/30/rollout-2026-09-30T11-00-00-` + fakeThread + `","costUSD":` + cost + `}
-		]}`), nil
+	return func(context.Context, time.Duration, app.EventSink) ([]byte, error) {
+		return []byte(listingJSON(cost)), nil
 	}
+}
+
+// fakeCCUsage is a ccusage that runs script with /bin/sh.
+func fakeCCUsage(t *testing.T, script string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "ccusage")
+	if err := os.WriteFile(path, []byte("#!/bin/sh\n"+script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// printsListing is a ccusage script that prints a listing of cost.
+func printsListing(cost string) string {
+	return "cat <<'EOF'\n" + listingJSON(cost) + "\nEOF\n"
 }
 
 // A turn's cost is the thread's, from ccusage, less what Agister recorded
@@ -238,14 +260,140 @@ func TestTurnCostIsTheThreadsFromCCUsage(t *testing.T) {
 	}
 }
 
-// Zero, a thread ccusage does not list, and ccusage failing or missing
-// leave the cost unknown.
+// ccusage runs under the supervisor: its listing prices the thread, it is
+// not the turn's raw output, and its group goes on record as the
+// runtime's does.
+func TestTurnCostFromTheInstalledCCUsage(t *testing.T) {
+	command := fakeCCUsage(t, `[ "$*" = "codex session --json" ] || exit 3
+`+printsListing("0.25"))
+	runner := &codex.Runner{Command: runtimetest.Binary(t, "fakecodex"), KillGrace: 200 * time.Millisecond, Sessions: codex.CCUsage(command, 200*time.Millisecond)}
+	sink := &runtimetest.Recorder{}
+	turn := run.Own(runner.RunTurn(context.Background(), request("SCENARIO:approve"), sink), false)
+	if turn.Status != run.Completed || turn.CostUSD == nil || *turn.CostUSD != 0.25 {
+		t.Fatalf("turn = %+v", turn)
+	}
+	for _, line := range sink.Lines {
+		if strings.Contains(line, "sessions") {
+			t.Fatalf("the listing went into the turn's raw output: %q", line)
+		}
+	}
+	first, _, err := supervisor.ParseRef(sink.Processes[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	last, _, err := supervisor.ParseRef(sink.Processes[len(sink.Processes)-1])
+	if err != nil || last == first {
+		t.Fatalf("the lookup's group is not on record: %v, %v", sink.Processes, err)
+	}
+}
+
+// The lookup gets what is left of the turn's timeout, by the runner's
+// clock, and none once the turn has used it all, as a timed-out turn has.
+func TestTheLookupGetsOnlyWhatIsLeftOfTheTurnsTimeout(t *testing.T) {
+	start := time.Date(2026, 9, 30, 10, 0, 0, 0, time.UTC)
+	for name, c := range map[string]struct {
+		used time.Duration
+		want []time.Duration
+	}{
+		"time left": {20 * time.Second, []time.Duration{40 * time.Second}},
+		"time up":   {time.Minute, nil},
+		"overrun":   {time.Minute + time.Second, nil},
+	} {
+		readings := 0
+		var given []time.Duration
+		runner := &codex.Runner{
+			Command: runtimetest.Binary(t, "fakecodex"), KillGrace: 200 * time.Millisecond,
+			// The first reading starts the turn; by any later one the turn
+			// has used c.used.
+			Now: func() time.Time {
+				readings++
+				if readings == 1 {
+					return start
+				}
+				return start.Add(c.used)
+			},
+			Sessions: func(_ context.Context, timeout time.Duration, _ app.EventSink) ([]byte, error) {
+				given = append(given, timeout)
+				return []byte(listingJSON("0.25")), nil
+			},
+		}
+		turn := run.Own(runner.RunTurn(context.Background(), request("SCENARIO:approve"), &runtimetest.Recorder{}), false)
+		if !reflect.DeepEqual(given, c.want) {
+			t.Errorf("%s: lookups given %v, want %v", name, given, c.want)
+		}
+		if turn.Status != run.Completed || (turn.CostUSD != nil) != (c.want != nil) {
+			t.Errorf("%s: turn = %+v", name, turn)
+		}
+	}
+}
+
+// Cancelling the call during the lookup ends the lookup's group, so a
+// child of the launcher that holds its stdout cannot hold the turn; the
+// cost stays unknown and the turn is as the runtime ended it.
+func TestCancellingTheLookupReturnsWhenAChildHoldsItsStdout(t *testing.T) {
+	dir := t.TempDir()
+	started := filepath.Join(dir, "started")
+	if err := syscall.Mkfifo(started, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	pidFile := filepath.Join(dir, "child")
+	// The child inherits stdout and sleeps far past the test; it is killed
+	// on every path, the PID file read lazily.
+	command := fakeCCUsage(t, `sleep 600 &
+echo $! > "`+pidFile+`"
+echo started > "`+started+`"
+wait
+`)
+	t.Cleanup(func() {
+		if data, err := os.ReadFile(pidFile); err == nil {
+			if pid, err := strconv.Atoi(strings.TrimSpace(string(data))); err == nil && pid > 1 {
+				_ = syscall.Kill(pid, syscall.SIGKILL)
+			}
+		}
+	})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// Cancel once the child holds stdout: the launcher says so through the
+	// FIFO, whose open blocks until it writes.
+	go func() {
+		if data, err := os.ReadFile(started); err == nil && strings.TrimSpace(string(data)) == "started" {
+			cancel()
+		}
+	}()
+	runner := &codex.Runner{Command: runtimetest.Binary(t, "fakecodex"), KillGrace: 200 * time.Millisecond, Sessions: codex.CCUsage(command, 200*time.Millisecond)}
+	done := make(chan run.Turn, 1)
+	go func() {
+		done <- runner.RunTurn(ctx, request("SCENARIO:approve"), &runtimetest.Recorder{OnProcess: runtimetest.Watchdog(t)})
+	}()
+	// Only a hang reaches this bound: the child outlives it by far.
+	var turn run.Turn
+	select {
+	case turn = <-done:
+	case <-time.After(30 * time.Second):
+		t.Fatal("RunTurn did not return: the lookup's child held it")
+	}
+	if ctx.Err() == nil {
+		t.Fatal("the lookup never started, so nothing was cancelled")
+	}
+	turn = run.Own(turn, false)
+	if turn.Status != run.Completed || turn.Error != nil || turn.ProviderSessionID != fakeThread || turn.CostUSD != nil || turn.Session != nil && turn.Session.CostUSD != nil {
+		t.Fatalf("turn = %+v", turn)
+	}
+}
+
+// Zero, a thread ccusage does not list, and ccusage failing, exiting
+// non-zero or missing leave the cost unknown.
 func TestTurnCostUnknownWithoutCCUsagesPrice(t *testing.T) {
 	for name, sessions := range map[string]codex.Sessions{
-		"zero":    listing("0"),
-		"missing": func(context.Context) ([]byte, error) { return []byte(`{"sessions":[]}`), nil },
-		"failing": func(context.Context) ([]byte, error) { return nil, errors.New("exit status 1") },
-		"absent":  codex.CCUsage(filepath.Join(t.TempDir(), "ccusage")),
+		"zero": listing("0"),
+		"missing": func(context.Context, time.Duration, app.EventSink) ([]byte, error) {
+			return []byte(`{"sessions":[]}`), nil
+		},
+		"failing": func(context.Context, time.Duration, app.EventSink) ([]byte, error) {
+			return nil, errors.New("exit status 1")
+		},
+		"non-zero": codex.CCUsage(fakeCCUsage(t, printsListing("0.25")+"exit 1\n"), 200*time.Millisecond),
+		"absent":   codex.CCUsage(filepath.Join(t.TempDir(), "ccusage"), 200*time.Millisecond),
 	} {
 		runner := &codex.Runner{Command: runtimetest.Binary(t, "fakecodex"), KillGrace: 200 * time.Millisecond, Sessions: sessions}
 		turn := run.Own(runner.RunTurn(context.Background(), request("SCENARIO:approve"), &runtimetest.Recorder{}), false)
