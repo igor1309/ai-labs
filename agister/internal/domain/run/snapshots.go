@@ -6,6 +6,8 @@ import "time"
 // policy and enforcement packages decided for a call. The record is
 // evidence under a versioned schema: those packages may change their types
 // without changing what an earlier run said or what a later one writes.
+// A field removed from these types is dropped when an earlier record is
+// rewritten (a reap finishing it).
 
 // DefinitionSource is where a definition the call used came from, with the
 // digest of what was read.
