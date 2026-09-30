@@ -139,14 +139,11 @@ def codex_session(sessions, session_id):
     return model, effort, sorted(set(skills.values())), used
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--runs", default=os.path.expanduser("~/.agister/runs"))
-    parser.add_argument("--codex-sessions", default=os.path.expanduser("~/.codex/sessions"))
-    args = parser.parse_args()
-
+def collect(runs, codex_sessions):
+    """One row per call with a provider session under runs, and per runtime
+    the skills offered and how often each was used."""
     rows, had_by_runtime, used_by_runtime = [], {}, {}
-    for path in sorted(glob.glob(os.path.join(args.runs, "*", "record.json"))):
+    for path in sorted(glob.glob(os.path.join(runs, "*", "record.json"))):
         record = load_json(path)
         if not record or "workflow" in record:
             continue
@@ -159,7 +156,7 @@ def main():
             model, had, tools, used = claude_session(os.path.dirname(path))
             effort = agent_effort(record)
         elif adapter == "codex":
-            model, effort, had, used = codex_session(args.codex_sessions, session)
+            model, effort, had, used = codex_session(codex_sessions, session)
             tools = None
         else:
             continue
@@ -170,7 +167,16 @@ def main():
             model or "?", effort or "?", str(len(had or [])),
             ", ".join(f"{k}×{v}" for k, v in used.most_common()) or "-",
         ])
+    return rows, had_by_runtime, used_by_runtime
 
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--runs", default=os.path.expanduser("~/.agister/runs"))
+    parser.add_argument("--codex-sessions", default=os.path.expanduser("~/.codex/sessions"))
+    args = parser.parse_args(argv)
+
+    rows, had_by_runtime, used_by_runtime = collect(args.runs, args.codex_sessions)
     head = ["run", "process", "harness", "model", "effort", "skills offered", "skills used"]
     widths = [max(len(h), *(len(r[i]) for r in rows)) if rows else len(h) for i, h in enumerate(head)]
     print("  ".join(h.ljust(w) for h, w in zip(head, widths)))
