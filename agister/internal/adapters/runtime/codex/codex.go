@@ -66,7 +66,14 @@ type Runner struct {
 // Sessions returns the output of `ccusage codex session --json`, ending
 // the lookup once timeout passes or ctx ends. It reports its process to
 // sink as the runtime's is reported.
-type Sessions func(ctx context.Context, timeout time.Duration, sink app.EventSink) ([]byte, error)
+type Sessions func(ctx context.Context, timeout time.Duration, sink LookupSink) ([]byte, error)
+
+// LookupSink is what a lookup reports to: its events and its process, as
+// the turn's sink takes them. A lookup has no raw output to report.
+type LookupSink interface {
+	Event(source, kind string, data map[string]any)
+	ProcessStarted(ref string) error
+}
 
 func New(command string) *Runner {
 	if command == "" {
@@ -81,7 +88,7 @@ func New(command string) *Runner {
 // supervisor's default). Anything but a clean exit is an error. Its output
 // is the listing, not the turn's raw output.
 func CCUsage(command string, killGrace time.Duration) Sessions {
-	return func(ctx context.Context, timeout time.Duration, sink app.EventSink) ([]byte, error) {
+	return func(ctx context.Context, timeout time.Duration, sink LookupSink) ([]byte, error) {
 		var listing bytes.Buffer
 		evidence := supervisor.Run(ctx, supervisor.Spec{
 			Command:   command,
@@ -108,9 +115,9 @@ func CCUsage(command string, killGrace time.Duration) Sessions {
 	}
 }
 
-// lookupSink passes the lookup's process and events to the turn's sink,
-// but not its output, which is not the runtime's.
-type lookupSink struct{ app.EventSink }
+// lookupSink gives the supervisor a lookup's sink: its output is the
+// listing, not the runtime's raw output, so Raw drops it.
+type lookupSink struct{ LookupSink }
 
 func (lookupSink) Raw(string) {}
 
@@ -241,7 +248,7 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 // on, looking it up within left, what remains of the turn's timeout; a
 // failed, timed-out or cancelled lookup leaves it unknown, and none is
 // started once the turn's time is up or its call is cancelled.
-func (r *Runner) cost(ctx context.Context, turn *run.Turn, resumed string, left time.Duration, sink app.EventSink) {
+func (r *Runner) cost(ctx context.Context, turn *run.Turn, resumed string, left time.Duration, sink LookupSink) {
 	thread := turn.ProviderSessionID
 	if r.Sessions == nil || thread == "" || resumed != "" && thread != resumed || left <= 0 || ctx.Err() != nil {
 		return

@@ -1,6 +1,7 @@
 package codex_test
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -213,7 +214,7 @@ func listingJSON(cost string) string {
 }
 
 func listing(cost string) codex.Sessions {
-	return func(context.Context, time.Duration, app.EventSink) ([]byte, error) {
+	return func(context.Context, time.Duration, codex.LookupSink) ([]byte, error) {
 		return []byte(listingJSON(cost)), nil
 	}
 }
@@ -312,7 +313,7 @@ func TestTheLookupGetsOnlyWhatIsLeftOfTheTurnsTimeout(t *testing.T) {
 				}
 				return start.Add(c.used)
 			},
-			Sessions: func(_ context.Context, timeout time.Duration, _ app.EventSink) ([]byte, error) {
+			Sessions: func(_ context.Context, timeout time.Duration, _ codex.LookupSink) ([]byte, error) {
 				given = append(given, timeout)
 				return []byte(listingJSON("0.25")), nil
 			},
@@ -354,12 +355,25 @@ wait
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	// Cancel once the child holds stdout: the launcher says so through the
-	// FIFO, whose open blocks until it writes.
+	// FIFO. The test holds the FIFO for writing too, so neither end's open
+	// waits for the other, and cleanup releases a reader the launcher never
+	// wrote to, as when the runtime fails to start, then joins it.
+	fifo, err := os.OpenFile(started, os.O_RDWR, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	read := make(chan struct{})
 	go func() {
-		if data, err := os.ReadFile(started); err == nil && strings.TrimSpace(string(data)) == "started" {
+		defer close(read)
+		if line, err := bufio.NewReader(fifo).ReadString('\n'); err == nil && strings.TrimSpace(line) == "started" {
 			cancel()
 		}
 	}()
+	t.Cleanup(func() {
+		_, _ = fifo.WriteString("released\n")
+		<-read
+		_ = fifo.Close()
+	})
 	runner := &codex.Runner{Command: runtimetest.Binary(t, "fakecodex"), KillGrace: 200 * time.Millisecond, Sessions: codex.CCUsage(command, 200*time.Millisecond)}
 	done := make(chan run.Turn, 1)
 	go func() {
@@ -381,15 +395,92 @@ wait
 	}
 }
 
+// A lookup that never exits by itself is ended by what is left of the
+// turn's timeout: the cost stays unknown and the turn is as the runtime
+// ended it.
+func TestTheLookupEndsWhenTheTurnsTimeoutRunsOut(t *testing.T) {
+	command := fakeCCUsage(t, "exec sleep 600\n")
+	lookup := codex.CCUsage(command, 200*time.Millisecond)
+	start := time.Date(2026, 9, 30, 10, 0, 0, 0, time.UTC)
+	readings := 0
+	var lookupErr error
+	runner := &codex.Runner{
+		Command: runtimetest.Binary(t, "fakecodex"), KillGrace: 200 * time.Millisecond,
+		// The first reading starts the turn; by any later one only a moment
+		// of its minute is left.
+		Now: func() time.Time {
+			readings++
+			if readings == 1 {
+				return start
+			}
+			return start.Add(time.Minute - 100*time.Millisecond)
+		},
+		Sessions: func(ctx context.Context, timeout time.Duration, sink codex.LookupSink) ([]byte, error) {
+			listing, err := lookup(ctx, timeout, sink)
+			lookupErr = err
+			return listing, err
+		},
+	}
+	done := make(chan run.Turn, 1)
+	go func() {
+		done <- runner.RunTurn(context.Background(), request("SCENARIO:approve"), &runtimetest.Recorder{OnProcess: runtimetest.Watchdog(t)})
+	}()
+	// Only a hang reaches this bound: the lookup outlives it by far.
+	var turn run.Turn
+	select {
+	case turn = <-done:
+	case <-time.After(30 * time.Second):
+		t.Fatal("RunTurn did not return: the lookup outlived the turn's timeout")
+	}
+	if lookupErr == nil || lookupErr.Error() != "timed out after 100ms" {
+		t.Fatalf("the lookup was not ended by the timeout: %v", lookupErr)
+	}
+	turn = run.Own(turn, false)
+	if turn.Status != run.Completed || turn.Error != nil || turn.ProviderSessionID != fakeThread || turn.CostUSD != nil || turn.Session != nil && turn.Session.CostUSD != nil {
+		t.Fatalf("turn = %+v", turn)
+	}
+}
+
+// A call cancelled by the time the runtime has completed the turn starts
+// no lookup: the cost stays unknown and the turn is as the runtime ended
+// it.
+func TestNoLookupOnceTheCallIsCancelled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	lookups := 0
+	runner := &codex.Runner{
+		Command: runtimetest.Binary(t, "fakecodex"), KillGrace: 200 * time.Millisecond,
+		Sessions: func(context.Context, time.Duration, codex.LookupSink) ([]byte, error) {
+			lookups++
+			return []byte(listingJSON("0.25")), nil
+		},
+	}
+	sink := &runtimetest.Recorder{OnProcess: runtimetest.Watchdog(t), OnEvent: func(kind string) {
+		if kind == "TURN_COMPLETED" {
+			cancel()
+		}
+	}}
+	turn := run.Own(runner.RunTurn(ctx, request("SCENARIO:approve"), sink), false)
+	if ctx.Err() == nil {
+		t.Fatal("the runtime never completed the turn, so nothing was cancelled")
+	}
+	if lookups != 0 {
+		t.Fatalf("%d lookups after the call was cancelled", lookups)
+	}
+	if turn.Status != run.Completed || turn.Error != nil || turn.ProviderSessionID != fakeThread || turn.CostUSD != nil || turn.Session != nil && turn.Session.CostUSD != nil {
+		t.Fatalf("turn = %+v", turn)
+	}
+}
+
 // Zero, a thread ccusage does not list, and ccusage failing, exiting
 // non-zero or missing leave the cost unknown.
 func TestTurnCostUnknownWithoutCCUsagesPrice(t *testing.T) {
 	for name, sessions := range map[string]codex.Sessions{
 		"zero": listing("0"),
-		"missing": func(context.Context, time.Duration, app.EventSink) ([]byte, error) {
+		"missing": func(context.Context, time.Duration, codex.LookupSink) ([]byte, error) {
 			return []byte(`{"sessions":[]}`), nil
 		},
-		"failing": func(context.Context, time.Duration, app.EventSink) ([]byte, error) {
+		"failing": func(context.Context, time.Duration, codex.LookupSink) ([]byte, error) {
 			return nil, errors.New("exit status 1")
 		},
 		"non-zero": codex.CCUsage(fakeCCUsage(t, printsListing("0.25")+"exit 1\n"), 200*time.Millisecond),
