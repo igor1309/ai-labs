@@ -1,0 +1,30 @@
+# Two reviews of one candidate, then one summary of both (ADR-003).
+# The fan-out nodes run concurrently, each a call of its process over the
+# same commits, resolved once here. The join starts once both ended, if at
+# least one completed (ADR-004), and receives each one's outcome and, if it
+# completed, its output as its collection, and nothing else: no param
+# reaches it. Run it with:
+#   agister run review_panel --param architecture=<file>
+
+schema: agister.workflow/v1alpha1
+name: review_panel
+
+type: workflow
+
+input:
+  params:
+    base: {default: origin/HEAD}
+    candidate: {default: HEAD}
+    architecture: {}
+  # Each fan-out node receives, as its param of the same name, every value
+  # its process takes: a revision as its commit.
+  values:
+    base: {source: git.revision, rev: "${param.base}"}
+    candidate: {source: git.revision, rev: "${param.candidate}"}
+    architecture: {source: param, name: architecture}
+
+fan_out:
+  - {node: adversarial, uses: process:adversarial_review}
+  - {node: architecture, uses: process:architecture_review}
+
+join: {node: summary, uses: process:review_summary}

@@ -1,0 +1,14 @@
+schema: agister.process-policy/v1alpha1
+name: read-only
+
+workspace:
+  access: read-only
+  scope: repository
+
+tools:
+  allow:
+    - repository.read
+    - repository.search
+
+timeout: 10m
+max_cost_usd: 1

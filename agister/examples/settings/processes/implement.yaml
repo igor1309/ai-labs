@@ -1,0 +1,38 @@
+# Implementation in a checkout of the candidate, verified: the node
+# completes only once the verification command passes on the content it
+# delivers, and a failing run goes back to the agent in the same session.
+
+schema: agister.process/v1alpha1
+name: implement
+
+type: process
+uses: agent:assistant
+policy: process-policy:implement
+
+input:
+  instruction: >-
+    Implement the task given as input brief in this checkout of the
+    candidate. Do not commit; Agister keeps your changes.
+  params:
+    candidate: {default: HEAD}
+    brief: {}
+  values:
+    candidate_revision: {source: git.revision, rev: "${param.candidate}"}
+    brief: {source: file, path: "${param.brief}"}
+
+workspace:
+  checkout: candidate_revision
+
+output:
+  format: text
+
+# Runs in the checkout with your authority, not the agent's permissions,
+# and runs code the agent may have written. Replace the command with your
+# project's own check.
+verify:
+  command: make test
+  timeout: 10m
+  max_attempts: 3
+  instruction: >-
+    The verification command failed on your changes. Fix the cause in the
+    code; do not weaken, skip or delete the check.

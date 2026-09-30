@@ -1,0 +1,7 @@
+schema = "agister.agent/v1alpha1"
+name = "claude-implementer-sonnet"
+runtime = "claude-code"
+model = "sonnet"
+model_family = "anthropic"
+effort = "high"
+session = "resumable"

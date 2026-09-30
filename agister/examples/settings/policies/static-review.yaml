@@ -1,0 +1,30 @@
+# Shared execution-policy defaults for static, agent-backed review processes.
+# Concrete work and input/output contracts remain in each process.
+
+schema: agister.process-policy/v1alpha1
+name: static-review
+
+workspace:
+  access: read-only
+  scope: candidate
+
+tools:
+  # This allowlist controls exposed capabilities; isolation.deny removes
+  # permissions from it. Neither contains a runtime that bypasses its tools.
+  allow:
+    - repository.read
+    - repository.diff
+    - repository.search
+
+timeout: 20m
+# Stops the runtime once the call has cost this much (USD).
+max_cost_usd: 3
+retry:
+  max_attempts: 1
+
+isolation:
+  deny:
+    - repository.write
+    - repository.history.write
+    - process.execute
+    - network

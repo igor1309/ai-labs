@@ -1,0 +1,34 @@
+# Architecture review of a candidate against prompts/code-review-architecture.md.
+schema: agister.process/v1alpha1
+name: architecture_review_codex
+
+type: process
+uses: agent:codex-sol
+policy: process-policy:codex-review
+
+input:
+  instruction: >-
+    Review the exact candidate, your working directory, against the base,
+    following the review prompt given as input review_prompt. Read the
+    change yourself: git diff <base_revision> <candidate_revision>, whole or
+    per file of changed_files. Report material findings
+    only, with repository-relative paths and candidate line numbers.
+    Each finding carries its evidence: the concrete case, the trace you
+    verified and whether the change introduced it. A judge who never reads
+    the code rules on that evidence alone; a finding without it is rejected.
+  params:
+    base: {default: origin/agister}
+    candidate: {default: HEAD}
+  values:
+    base_revision: {source: git.revision, rev: "${param.base}"}
+    candidate_revision: {source: git.revision, rev: "${param.candidate}"}
+    changed_files: {source: git.changed_files, base: "${value.base_revision}", head: "${value.candidate_revision}"}
+    review_prompt: {source: file, path: prompts/code-review-architecture.md}
+
+workspace:
+  checkout: candidate_revision
+
+output:
+  format: json
+  schema: review-result
+  require_valid: true

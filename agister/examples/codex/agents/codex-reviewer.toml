@@ -1,0 +1,6 @@
+schema = "agister.agent/v1alpha1"
+name = "codex-reviewer"
+runtime = "codex"
+model_family = "openai"
+effort = "high"
+session = "fresh-only"

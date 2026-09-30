@@ -1,0 +1,114 @@
+# Minimal structured-review workflow derived from the Verger operating lessons.
+# Schema names are provisional.
+#
+# `review_suite` owns its parallel children and completes only after every child
+# succeeds. Child identity, synchronization and output collection are internal
+# to that stage rather than hand-wired by workflow authors.
+# Agent-backed review processes such as ../processes/adversarial-review.yaml and
+# ../processes/architecture-review.yaml use ../agents/reviewer.toml with their
+# own role and output contract plus shared execution-policy defaults.
+
+schema: agister.workflow/v1alpha1
+name: review-code
+status: example
+
+description: >-
+  Prepare one immutable candidate, run independent adversarial, lint, test, and
+  architecture checks in parallel, then synthesize one review outcome.
+
+inputs:
+  repository: task.repository
+  base_revision: task.base_revision
+  candidate_revision: task.candidate_revision
+
+start: prepare_diff
+
+defaults:
+  on_failure:
+    terminal: failed
+  on_exhausted:
+    terminal: failed
+
+stages:
+  prepare_diff:
+    process: process:prepare-diff
+  review_suite:
+    parallel:
+      completion: all
+      children:
+        adversarial_review:
+          process: process:adversarial_review
+        lint_review:
+          process: process:lint-review
+        test_review:
+          process: process:test-review
+        architecture_review:
+          process: process:architecture_review
+    on_failure:
+      terminal: failed
+  synthesize_review:
+    process: process:synthesize-review
+  publish_findings:
+    builtin: record-findings
+
+routes:
+  prepare_diff:
+    - to: review_suite
+
+  review_suite:
+    - to: synthesize_review
+
+  synthesize_review:
+    - when: 'output.status == "completed" && size(output.findings) > 0'
+      to: publish_findings
+    - when: 'output.status == "completed" && size(output.findings) == 0'
+      terminal: succeeded
+    - default: true
+      terminal: failed
+
+  publish_findings:
+    - terminal: succeeded
+
+# `publish_findings` performs the durable write before taking its explicit
+# success route. An invalid synthesis or failed child fails the workflow rather
+# than producing a partial review.
+
+data:
+  prepare_diff:
+    repository: inputs.repository
+    base_revision: inputs.base_revision
+    candidate_revision: inputs.candidate_revision
+
+  review_suite:
+    adversarial_review:
+      base_revision: inputs.base_revision
+      candidate_revision: inputs.candidate_revision
+      diff: prepare_diff.output.diff
+      changed_files: prepare_diff.output.changed_files
+    lint_review:
+      candidate_revision: inputs.candidate_revision
+      changed_files: prepare_diff.output.changed_files
+    test_review:
+      candidate_revision: inputs.candidate_revision
+      diff: prepare_diff.output.diff
+      test_changes: prepare_diff.output.test_changes
+      verification_summary: >-
+        evidence.candidate(inputs.candidate_revision).verification_summary
+    architecture_review:
+      base_revision: inputs.base_revision
+      candidate_revision: inputs.candidate_revision
+      diff: prepare_diff.output.diff
+      changed_files: prepare_diff.output.changed_files
+      architecture_context: task.architecture_context
+
+  synthesize_review:
+    candidate_revision: inputs.candidate_revision
+    adversarial: review_suite.output.adversarial_review
+    lint: review_suite.output.lint_review
+    tests: review_suite.output.test_review
+    architecture: review_suite.output.architecture_review
+
+  publish_findings:
+    task: task.current
+    candidate_revision: inputs.candidate_revision
+    findings: synthesize_review.output.findings

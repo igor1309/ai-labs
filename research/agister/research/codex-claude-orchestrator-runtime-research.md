@@ -48,6 +48,10 @@ The survey is representative, not a claim that every catalog entry was source-au
 
 ## Provider-native contracts
 
+Live observations of session IDs, in-place resume and the Codex read-only
+sandbox (codex-cli 0.159.2, Claude Code 2.1.285, 2026-09-30) are in
+[session resume observations](session-resume-observations.md).
+
 ### Codex
 
 Codex exposes three progressively richer local interfaces:

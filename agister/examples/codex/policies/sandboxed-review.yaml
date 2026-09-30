@@ -1,0 +1,34 @@
+# Review policy for runtimes that always run commands in an OS sandbox:
+# unlike static-review it allows process.execute and history reads.
+
+schema: agister.process-policy/v1alpha1
+name: sandboxed-review
+
+workspace:
+  access: read-only
+  scope: candidate
+
+tools:
+  allow:
+    - repository.read
+    - repository.diff
+    - repository.search
+    - repository.history.read
+    - process.execute
+
+timeout: 20m
+retry:
+  max_attempts: 1
+resources:
+  - reviews
+
+isolation:
+  deny:
+    - repository.write
+    - repository.history.write
+    - network
+
+artifacts:
+  retain:
+    - review_result
+    - run_log

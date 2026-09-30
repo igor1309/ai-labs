@@ -1,0 +1,27 @@
+# Rules on the findings of one change's reviews against
+# prompts/code-review-judge.md: fix, defer, owner or reject. The join of the
+# code_review workflow: the judge sees only the reviews, as the workflow's
+# collection, never the code, and nothing its caller supplies. It cannot be
+# run on its own (refused: the collection goes only to a workflow's join),
+# so no one can hand it a review; run agister run code_review instead.
+schema: agister.process/v1alpha1
+name: review_judge
+
+type: process
+uses: agent:claude-judge
+policy: process-policy:judge
+
+input:
+  instruction: >-
+    Rule on the review findings given as input reviews, following the prompt
+    given as input judge_prompt. Each review is numbered by its place in
+    reviews, from 1. They are all you have: rule on the evidence each
+    finding presents.
+  values:
+    reviews: {source: workflow.collection}
+    judge_prompt: {source: file, path: prompts/code-review-judge.md}
+
+output:
+  format: json
+  schema: judgement
+  require_valid: true

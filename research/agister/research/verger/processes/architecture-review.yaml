@@ -1,0 +1,29 @@
+# Architecture-focused role instantiated with the same reviewer agent profile.
+
+schema: agister.process/v1alpha1
+name: architecture_review
+status: example
+
+type: process
+uses: agent:reviewer
+policy: process-policy:static-review
+
+# A concrete process may narrow a numeric policy limit.
+timeout: 15m
+
+input:
+  instruction: >-
+    Review the exact candidate against the governing architecture and module
+    responsibilities. Report boundary drift, misplaced decisions, duplicated
+    responsibilities, dependency violations, and missing integration behavior.
+  required:
+    - base_revision
+    - candidate_revision
+    - diff
+    - changed_files
+    - architecture_context
+
+output:
+  format: json
+  schema: agister.review-result/v1alpha1
+  require_valid: true

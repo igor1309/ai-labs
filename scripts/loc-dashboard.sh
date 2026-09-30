@@ -4,7 +4,7 @@
 # Options: --sort=name (default) | --sort=total
 #
 # ROW PROJECTS (update the loop in main when adding a new project):
-#   agents, agonara, cairana, claude-insights, clipdeck, corpus-scout,
+#   agents, agister, agonara, cairana, claude-insights, clipdeck, corpus-scout,
 #   dashboard-sync-agent, debates, dev-skills, dragoman, foliotell, insights,
 #   loki, neris, nexum, nomos, noreta, notio, oracle, prompts, reading, reinix,
 #   sandbox, session-digest, tools, web-scout
@@ -64,19 +64,19 @@ EXCLUDES=( ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/build/*" ! -
 count_project() {
   local dir="$1"
 
-  # code: .js/.ts/.swift/.py/.svelte/.sql/.css/.html/.mjs/.sh, not test
+  # code: .js/.ts/.swift/.py/.go/.svelte/.sql/.css/.html/.mjs/.sh, not test
   local code
-  code=$(loc_find "$dir" \( -name "*.js" -o -name "*.ts" -o -name "*.swift" -o -name "*.py" -o -name "*.svelte" -o -name "*.sql" -o -name "*.css" -o -name "*.html" -o -name "*.mjs" -o -name "*.sh" \) \
-    ! -name "*.test.js" ! -name "*.test.ts" ! -name "*.test.swift" \
+  code=$(loc_find "$dir" \( -name "*.js" -o -name "*.ts" -o -name "*.swift" -o -name "*.py" -o -name "*.go" -o -name "*.svelte" -o -name "*.sql" -o -name "*.css" -o -name "*.html" -o -name "*.mjs" -o -name "*.sh" \) \
+    ! -name "*.test.js" ! -name "*.test.ts" ! -name "*.test.swift" ! -name "*_test.go" \
     ! -name "*Tests.swift" ! -path "*Tests/*" ! -path "*/tests/*" \
     ! -name "test_*.py" ! -name "*_test.py" \
     ! -name "conftest.py" \
     "${EXCLUDES[@]}")
 
-  # tests: .test.js/.test.ts, *Tests.swift, Tests/ dir, test_*.py, conftest.py
+  # tests: .test.js/.test.ts, *Tests.swift, Tests/ dir, test_*.py, conftest.py, *_test.go
   local tests
   tests=$(loc_find "$dir" \( \
-    -name "*.test.js" -o -name "*.test.ts" -o \
+    -name "*.test.js" -o -name "*.test.ts" -o -name "*_test.go" -o \
     -name "*.test.swift" -o -name "*Tests.swift" -o \
     -name "test_*.py" -o -name "*_test.py" -o -name "conftest.py" \
     \) "${EXCLUDES[@]}")
@@ -148,7 +148,7 @@ print_rows() {
 # ---------- drift detection ----------
 
 check_project_drift() {
-  local known=".claude .codex .git .github .lazyweb .wrangler agents agonara backlog cairana claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills docker docs dragoman foliotell img insights loki migrate-to-skills neris nexum node_modules nomos noreta notio oracle prompts reading reinix research sandbox scripts session-digest tests tools vendor web-scout worktrees _inbox"
+  local known=".claude .codex .git .github .lazyweb .wrangler agents agister agonara backlog cairana claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills docker docs dragoman foliotell img insights loki migrate-to-skills neris nexum node_modules nomos noreta notio oracle prompts reading reinix research sandbox scripts session-digest tests tools vendor web-scout worktrees _inbox"
   # Entries in `known` that may legitimately be absent (fresh clone, worktree, no active state, etc.).
   # Dotfile entries are tooling/config and skipped wholesale; the rest are explicit.
   local optional="node_modules vendor worktrees _inbox"
@@ -188,7 +188,7 @@ printf "╚%s╝\n" "$(printf '%0.s═' $(seq 1 $inner))"
 printf "  Generated: %s   sort: %s\n" "$(date '+%Y-%m-%d %H:%M')" "$SORT_BY"
 
 # per-project rows
-for proj in agents agonara cairana claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills dragoman foliotell insights loki neris nexum nomos noreta notio oracle prompts reading reinix sandbox session-digest tools web-scout; do
+for proj in agents agister agonara cairana claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills dragoman foliotell insights loki neris nexum nomos noreta notio oracle prompts reading reinix sandbox session-digest tools web-scout; do
   [[ -d "$proj" ]] || continue
   read c t x < <(count_project "$proj")
   emit_row "$proj" "$c" "$t" "$x"

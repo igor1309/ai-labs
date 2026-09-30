@@ -1,0 +1,30 @@
+# Concrete review role instantiated with the reusable reviewer agent profile.
+
+schema: agister.process/v1alpha1
+name: adversarial_review
+
+type: process
+uses: agent:reviewer
+policy: process-policy:static-review
+
+input:
+  instruction: >-
+    Review the exact candidate independently and adversarially. Report material
+    correctness, safety, contract, and maintainability findings. Do not assume a
+    suspected defect or focus supplied outside this process.
+  params:
+    base: {default: origin/HEAD}
+    candidate: {default: HEAD}
+  values:
+    base_revision: {source: git.revision, rev: "${param.base}"}
+    candidate_revision: {source: git.revision, rev: "${param.candidate}"}
+    diff: {source: git.diff, base: "${value.base_revision}", head: "${value.candidate_revision}"}
+    changed_files: {source: git.changed_files, base: "${value.base_revision}", head: "${value.candidate_revision}"}
+
+workspace:
+  checkout: candidate_revision
+
+output:
+  format: json
+  schema: review-result
+  require_valid: true

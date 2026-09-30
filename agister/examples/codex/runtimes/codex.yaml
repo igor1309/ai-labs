@@ -1,0 +1,17 @@
+# What each Codex sandbox mode grants under adapter contract codex/2.
+# Both modes always let the agent run commands, and both read files outside
+# the workspace (host.read), which Agister never grants: Codex is refused
+# until a mode confines reads. Not yet verified against a live runtime.
+schema: agister.runtime/v1alpha1
+name: codex
+adapter: codex
+contract: codex/2
+efforts: [minimal, low, medium, high, xhigh]
+primitives:
+  select: one
+  items:
+    read-only:
+      grants: [repository.read, repository.search, repository.diff, repository.history.read, process.execute, host.read]
+    workspace-write:
+      grants: [repository.read, repository.search, repository.diff, repository.history.read, process.execute, host.read,
+               repository.write, repository.history.write]

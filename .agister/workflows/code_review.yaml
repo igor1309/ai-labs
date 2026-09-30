@@ -1,0 +1,27 @@
+# Review of one change (ADR-003): the architecture, tests, adversarial and
+# clarity reviews of the same candidate against the same base, concurrently,
+# then the judge's rulings on them. The judge starts once every review ended,
+# if at least one completed (ADR-004), and receives each review's outcome and,
+# if it completed, its recorded output as its collection, and nothing else.
+#   agister run code_review --param base=<rev> --param candidate=<rev>
+schema: agister.workflow/v1alpha1
+name: code_review
+
+type: workflow
+
+input:
+  params:
+    base: {default: origin/agister}
+    candidate: {default: HEAD}
+  # Resolved once: every review gets the same two commits.
+  values:
+    base: {source: git.revision, rev: "${param.base}"}
+    candidate: {source: git.revision, rev: "${param.candidate}"}
+
+fan_out:
+  - {node: architecture, uses: process:architecture_review_codex}
+  - {node: tests, uses: process:tests_review_codex}
+  - {node: adversarial, uses: process:adversarial_review_codex}
+  - {node: clarity, uses: process:clarity_review_codex}
+
+join: {node: judge, uses: process:review_judge}

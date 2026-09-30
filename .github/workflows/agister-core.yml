@@ -1,0 +1,52 @@
+name: Agister Core
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to checkout."
+        required: false
+        type: string
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    runs-on: [self-hosted, local-mac]
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: agister
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: agister/go.mod
+          # Self-hosted: Go caches persist on the runner; uploading them hangs.
+          cache: false
+
+      - name: Format
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -race -timeout 1m -coverpkg=./internal/...,./cmd/... -coverprofile=cover.out ./...
+
+      - name: Coverage
+        run: go tool cover -func=cover.out | tail -1 | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Example settings pass check
+        run: |
+          go build -o bin/agister ./cmd/agister
+          home="$(mktemp -d)"
+          echo yes | bin/agister --home "$home" init
+          bin/agister --home "$home" check

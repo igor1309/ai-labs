@@ -1,0 +1,14 @@
+# Reusable reviewer agent profile.
+#
+# This file configures reusable runtime identity and capabilities, not review
+# behavior. See ../orchestrator.md for the normative configuration boundary.
+
+schema = "agister.agent/v1alpha1"
+name = "reviewer"
+status = "example"
+
+runtime = "llm"
+model = "reviewer-high"
+model_family = "example-family-b"
+reasoning_effort = "high"
+session = "fresh-only"

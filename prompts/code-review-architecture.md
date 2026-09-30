@@ -21,6 +21,8 @@ Architectural invariants
 * Components declare their own types even when another component has structurally similar types.
 * Boundary adapters translate between independently owned types.
 * Interfaces belong to the consuming component/subcomponent and express exactly the collaborator capabilities it requires.
+* A component's interfaces are cut by the roles its collaborators play for it, not by the seams of existing adapters or former shared interfaces. Signs of the latter: one interface per existing adapter or former shared interface, renamed; names that describe a mechanism rather than what the component needs; two interfaces always satisfied by one adapter and used together; one interface bundling unrelated needs because one adapter provides them.
+* A component that calls one collaborator only to pass the response to another, and uses neither otherwise, or receives collaborators only to hand them to another component, with no role of its own in the hand-off (ordering, consistency, translation, policy), has the wrong interfaces and the wrong responsibility: the two calls are one role, and the hand-off belongs to a collaborator.
 * Required dependencies are explicit and supplied during construction.
 * Construction produces a valid component with its required collaborators present.
 * The application composition root assembles modules.
@@ -38,7 +40,7 @@ Go-specific interpretation
 * Implementation details remain unexported or live under internal.
 * Exported identifiers form a deliberately small module surface.
 * Module entrypoints expose the capabilities and data required by callers.
-* Consumer interfaces are declared close to the component that consumes the collaborator.
+* Consumer interfaces are declared by the consuming component itself (its type or use case), not in a shared file or package of interfaces. An interface required by more than one component is a finding, even when they need the same capability; one adapter satisfying several components' interfaces is fine. A contract a module offers is not a required interface only where a recorded decision makes it one (ADR-001 rule 15, the client contract, which its decorators implement).
 * Interface shape follows the consumer’s required capability; interface size follows naturally from that responsibility.
 * Constructors such as NewX(...) receive all required dependencies explicitly.
 * main acts as the application composition root and connects module APIs.
@@ -71,5 +73,7 @@ For each meaningful architectural issue, report:
 3. Evidence — concrete dependency, type ownership, wiring, or boundary structure observed.
 4. Impact — how it affects isolation, coupling, ownership, testability, or change propagation.
 5. Improvement — the smallest structural change that restores the intended boundary.
+
+A change that extends an existing violation (a new user of a shared interface, a new method on a widened one) is a finding in the change, even though the violation predates it.
 
 Prioritize architectural consequences over stylistic preferences.
