@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -195,6 +196,10 @@ type storeSpy struct {
 	// failCreate, when set, is asked, by its node's name, whether creating a
 	// node's run fails, before anything is recorded.
 	failCreate func(node string) error
+	// failFinish, when set, is asked, by its node's name, whether saving a
+	// node's final record fails; the record kept is then the last one
+	// saved before it.
+	failFinish func(node string) error
 }
 
 type runSpy struct {
@@ -311,8 +316,13 @@ func (r *runSpy) Finish(record run.Record) error {
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	defer close(r.done)
+	if fail := r.store.failFinish; fail != nil && record.Parent != nil {
+		if err := fail(record.Parent.Node); err != nil {
+			return err
+		}
+	}
 	r.record = record
-	close(r.done)
 	return nil
 }
 
@@ -879,6 +889,89 @@ func TestWorkflowJoinsWithoutNodesThatNeverStarted(t *testing.T) {
 	}
 	if want := []string{"NODE_STARTED", "NODE_NOT_STARTED", "NODE_FINISHED", "NODE_STARTED", "NODE_FINISHED"}; !reflect.DeepEqual(kinds, want) {
 		t.Fatalf("node events = %v, want %v", kinds, want)
+	}
+}
+
+// failFinishing makes saving the named nodes' final records fail.
+func failFinishing(h *flowHarness, nodes ...string) {
+	h.store.failFinish = func(name string) error {
+		if slices.Contains(nodes, name) {
+			return fmt.Errorf("the run directory is read-only")
+		}
+		return nil
+	}
+}
+
+// A fan-out node that completed but whose final record could not be saved
+// did not complete: the workflow records it failed, internal, with its run,
+// and the join runs without its output, on the node that did complete.
+func TestWorkflowJoinsWithoutANodeWhoseFinalRecordWasNotSaved(t *testing.T) {
+	h := newFlowHarness()
+	failFinishing(h, "two")
+	id := h.submit(t, contract.CallRequest{})
+	record := h.store.wait(t, id)
+
+	if record.Result.Status != run.Completed || record.Result.Error != nil || string(record.Result.Output) != `{"joined":true}` {
+		t.Fatalf("result = %+v, want the join's", record.Result)
+	}
+	if barrier := record.Workflow.Barrier; !reflect.DeepEqual(barrier, run.Barrier{State: run.BarrierPassed, Incomplete: []string{"two"}}) {
+		t.Fatalf("barrier = %+v", barrier)
+	}
+	if two := record.Workflow.Nodes[1]; two.Run != "run-3" || two.Status != run.Failed || two.Error == nil || two.Error.Class != run.ClassInternal ||
+		!strings.Contains(two.Error.Message, "its final record could not be saved: the run directory is read-only; it would have ended completed") {
+		t.Fatalf("node two = %+v", two)
+	}
+	// The record kept is two's last before it finished.
+	if kept := h.store.wait(t, "run-3"); kept.FinishedAt != nil || kept.Result != nil {
+		t.Fatalf("node two's record = %+v, want its last unfinished one", kept)
+	}
+	want := []map[string]any{
+		{"node": "one", "process": "first", "run": "run-2", "status": "completed", "output": map[string]any{"from": "first"}},
+		{"node": "two", "process": "second", "run": "run-3", "status": "failed", "class": "internal"},
+	}
+	if entries := collectionOf(t, h.store.wait(t, "run-4")); !reflect.DeepEqual(entries, want) {
+		t.Fatalf("collection = %v", entries)
+	}
+	// What two spent still counts.
+	if record.Result.Cost.USD == nil || *record.Result.Cost.USD < 0.599 || *record.Result.Cost.USD > 0.601 {
+		t.Fatalf("cost = %+v, want every node's", record.Result.Cost)
+	}
+}
+
+// When no fan-out node's final record was saved, none completed: the barrier
+// blocks, no join starts, and the workflow fails, internal.
+func TestWorkflowNoJoinWhenNoNodesFinalRecordWasSaved(t *testing.T) {
+	h := newFlowHarness()
+	failFinishing(h, "one", "two")
+	id := h.submit(t, contract.CallRequest{})
+	record := h.store.wait(t, id)
+
+	if record.Result.Status != run.Failed || class(record) != run.ClassInternal ||
+		!strings.Contains(message(record), "fan-out node one (run run-2)") || !strings.Contains(message(record), "its final record could not be saved") {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	if barrier := record.Workflow.Barrier; !reflect.DeepEqual(barrier, run.Barrier{State: run.BarrierBlocked, BlockedBy: "one", Incomplete: []string{"one", "two"}}) {
+		t.Fatalf("barrier = %+v", barrier)
+	}
+	if join := record.Workflow.Nodes[2]; join.Run != "" || len(h.runner.turns("Join them.")) != 0 || record.Workflow.Collection != nil {
+		t.Fatalf("a join ran: node %+v, runs %v", join, h.store.ids())
+	}
+}
+
+// A join whose final record could not be saved did not complete: the
+// workflow fails, internal, with no output.
+func TestWorkflowFailsWhenTheJoinsFinalRecordWasNotSaved(t *testing.T) {
+	h := newFlowHarness()
+	failFinishing(h, "merge")
+	id := h.submit(t, contract.CallRequest{})
+	record := h.store.wait(t, id)
+
+	if record.Result.Status != run.Failed || class(record) != run.ClassInternal || len(record.Result.Output) != 0 ||
+		!strings.Contains(message(record), "its final record could not be saved") {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	if join := record.Workflow.Nodes[2]; join.Run != "run-4" || join.Status != run.Failed || join.Error == nil || join.Error.Class != run.ClassInternal {
+		t.Fatalf("join node = %+v", join)
 	}
 }
 

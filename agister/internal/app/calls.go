@@ -324,7 +324,20 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		event(run.SourceAgister, "CALL_FINISHED", data)
 		// A finished run is no longer cancellable.
 		c.hosted.remove(record.ID)
-		_ = handle.Finish(record)
+		if err := handle.Finish(record); err != nil {
+			// The record kept is not this one: ownership is released over
+			// the last one saved, unfinished, which reads as abandoned. The
+			// caller, a workflow, takes the call as failed, internal, as it
+			// takes any record that could not be saved.
+			ended := string(result.Status)
+			if fault != nil {
+				ended += "/" + string(fault.Class)
+			}
+			failed := result
+			failed.Status, failed.Output = run.Failed, nil
+			failed.Error = run.Fault(run.ClassInternal, "its final record could not be saved: %v; it would have ended %s", err, ended)
+			final.Result = &failed
+		}
 	}
 	defer func() {
 		if recovered := recover(); recovered != nil {
