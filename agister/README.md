@@ -3,7 +3,8 @@
 Runs **agent calls** whose agents, processes, permissions and output
 contracts are settings, not code, and **workflows** of them: fan-out then
 join. Architecture: [ADR-001](docs/adr/001-agister-cli-architecture.md),
-[ADR-003](docs/adr/003-fan-out-and-join-workflow.md).
+[ADR-003](docs/adr/003-fan-out-and-join-workflow.md),
+[ADR-004](docs/adr/004-join-on-completed-nodes.md).
 
 ## Build and try
 
@@ -178,32 +179,39 @@ is an ordinary call, a run of its own, with its own limits, checkout,
 evidence and exit path; each node's run records the workflow run it
 belongs to (`parent`).
 
-**The barrier.** The join starts only after every fan-out node has ended
-and all of them completed. If any did not (refused, failed, interrupted,
-lost), no join starts: the workflow ends with the status and class of the
-first such node **in declaration order**, and its message names that node
-and its run. There is no partial join.
+**The barrier** ([ADR-004](docs/adr/004-join-on-completed-nodes.md)). The
+join starts once every fan-out node has ended, if at least one of them
+completed; it runs on those that did, and a node that did not (refused,
+failed, interrupted, lost) costs only itself. If none completed, no join
+starts: the workflow ends with the status and class of the first node **in
+declaration order**, and its message names that node and its run.
 
 **The collection.** The join receives, as its `workflow.collection` input,
 a JSON list with one entry per fan-out node, in declaration order whatever
-order they finished in: `node`, `process`, `run` and the node's recorded
-`output`, unchanged (or its `text`, for a process whose output is text).
-That and the fixed values its own process declares are all the join
-receives: no workflow param or value, nothing from whoever started the
-workflow. The join is a fresh call, never a continuation of a fan-out
-node's session. The collection is kept with the workflow run
+order they finished in: `node`, `process`, `run`, `status` and, for a node
+that did not complete, `class`; only a completed node's entry carries its
+recorded `output`, unchanged (or its `text`, for a process whose output is
+text). A join's process must tell a missing output from an empty one: an
+entry without one is work that did not complete. That and the fixed values
+its own process declares are all the join receives: no workflow param or
+value, nothing from whoever started the workflow. The join is a fresh
+call, never a continuation of a fan-out node's session. The collection is kept with the workflow run
 (`artifacts/collection.json`).
 
 **The result.** The workflow ends in the same node result as a call: when
-the join ran, its status, class, output and text are the join's. Usage and
-cost sum every node that ran, and are unknown if any node's are. Timing
-covers the whole workflow. There is no status, class or result field of
-its own.
+the join ran, its status, class, output and text are the join's, so a
+workflow can end completed while a fan-out node failed; its record, not its
+status, says so. Usage and cost sum every node that ran, and are unknown if
+any node's are. Timing covers the whole workflow. There is no status, class
+or result field of its own.
 
 **The record.** The workflow run (`agister runs show <id>`) records the
 workflow definition's path and digest, its resolved inputs, each node's run
 and outcome (`workflow.nodes`), and the barrier (`waiting`, `passed`,
-`blocked` with `blocked_by`, or `cancelled`).
+`blocked` with `blocked_by`, or `cancelled`), whose `incomplete` names each
+fan-out node that did not complete. `agister run` says so as the barrier
+passes: `! barrier passed: the join runs without <nodes>, which did not
+complete`.
 
 **Cancellation** (Ctrl-C on `agister run`) is terminal. Once the workflow
 is cancelled, no node starts, the join included, even when every fan-out

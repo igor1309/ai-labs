@@ -651,27 +651,37 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 		cancelled("the workflow was cancelled; its join did not start")
 		return
 	}
+	// The join runs on the fan-out nodes that completed (ADR-004); the record
+	// names each that did not.
+	var incomplete []string
 	for i := range workflow.FanOut {
-		node := state.Nodes[i]
-		if node.Status == run.Completed {
-			continue
+		node := &state.Nodes[i]
+		if node.Status == "" {
+			node.Status, node.Error = run.Failed, run.Fault(run.ClassInternal, "it did not start: an earlier node could not")
 		}
-		state.Barrier = run.Barrier{State: run.BarrierBlocked, BlockedBy: node.Name}
-		event("BARRIER", map[string]any{"state": state.Barrier.State, "blocked_by": node.Name})
-		status, class, reason := node.Status, run.ClassInternal, "it did not start"
-		if node.Error != nil {
-			class, reason = node.Error.Class, node.Error.String()
+		if node.Status != run.Completed {
+			incomplete = append(incomplete, node.Name)
 		}
-		if status == "" {
-			status = run.StatusOf(class)
+	}
+	if len(incomplete) == len(workflow.FanOut) {
+		first := state.Nodes[0]
+		state.Barrier = run.Barrier{State: run.BarrierBlocked, BlockedBy: first.Name, Incomplete: incomplete}
+		event("BARRIER", map[string]any{"state": state.Barrier.State, "blocked_by": first.Name, "incomplete": incomplete})
+		class, reason := run.ClassInternal, string(first.Status)
+		if first.Error != nil {
+			class, reason = first.Error.Class, first.Error.String()
 		}
-		finish(status, run.Fault(class, "fan-out node %s (run %s) did not complete, so the join did not start: %s", node.Name, or(node.Run, "none"), reason))
+		finish(first.Status, run.Fault(class, "no fan-out node completed, so the join did not start; the first, fan-out node %s (run %s): %s", first.Name, or(first.Run, "none"), reason))
 		return
 	}
-	state.Barrier = run.Barrier{State: run.BarrierPassed}
-	event("BARRIER", map[string]any{"state": state.Barrier.State})
+	state.Barrier = run.Barrier{State: run.BarrierPassed, Incomplete: incomplete}
+	passed := map[string]any{"state": state.Barrier.State}
+	if len(incomplete) > 0 {
+		passed["incomplete"] = incomplete
+	}
+	event("BARRIER", passed)
 
-	collection, data, err := collect(workflow, outputs)
+	collection, data, err := collect(workflow, state.Nodes, outputs)
 	if err != nil {
 		finish(run.Failed, run.Fault(run.ClassInternal, "the collection: %v", err))
 		return

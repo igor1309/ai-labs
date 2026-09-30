@@ -1,6 +1,6 @@
 # The join of the review_panel workflow. Its only input is the workflow's
 # collection: for each review, in the workflow's order, its node, process,
-# run and output. Called on its own, it is refused: it has nothing to join.
+# run, status and class, and its output if it completed. Called on its own, it is refused: it has nothing to join.
 
 schema: agister.process/v1alpha1
 name: review_summary
@@ -12,7 +12,8 @@ policy: process-policy:read-only
 input:
   instruction: >-
     Summarize the reviews given as input reviews, each one reviewer's
-    output. Merge findings that make the same claim, keep each finding's
+    output; a review with no output did not complete, so say so and
+    summarize nothing for it. Merge findings that make the same claim, keep each finding's
     evidence and its source, and say where the reviewers disagree. Add no
     finding of your own.
   values:

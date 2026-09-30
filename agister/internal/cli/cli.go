@@ -588,8 +588,11 @@ func describe(event contract.Event) string {
 		}
 		return fmt.Sprintf("· node %v: %s", data["node"], ended)
 	case "BARRIER":
-		if blocker, ok := data["blocked_by"]; ok {
-			return fmt.Sprintf("! barrier %v by node %v: no join", data["state"], blocker)
+		if _, ok := data["blocked_by"]; ok {
+			return fmt.Sprintf("! barrier %v: no node completed (%s), no join", data["state"], names(data["incomplete"]))
+		}
+		if incomplete, ok := data["incomplete"]; ok {
+			return fmt.Sprintf("! barrier %v: the join runs without %s, which did not complete", data["state"], names(incomplete))
 		}
 		return fmt.Sprintf("· barrier %v", data["state"])
 	case "REPAIR_STARTED":
@@ -601,6 +604,21 @@ func describe(event contract.Event) string {
 		return fmt.Sprintf("! %s %s", event.Kind, encoded)
 	}
 	return ""
+}
+
+// names lists an event's node names, as the workflow recorded them or as
+// read back from its events.
+func names(value any) string {
+	var list []string
+	switch value := value.(type) {
+	case []string:
+		list = value
+	case []any:
+		for _, name := range value {
+			list = append(list, fmt.Sprint(name))
+		}
+	}
+	return strings.Join(list, ", ")
 }
 
 func showProcess(w io.Writer, view contract.ProcessView) {
