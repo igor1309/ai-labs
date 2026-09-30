@@ -1,7 +1,14 @@
 package claudecode_test
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"io/fs"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -40,7 +47,7 @@ func TestConformance(t *testing.T) {
 }
 
 func TestArgumentsCarryPrimitivesAndContractFlags(t *testing.T) {
-	args, err := claudecode.Arguments(request("hello"))
+	args, err := claudecode.Arguments(request("hello"), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,13 +70,13 @@ func TestArgumentsCarryPrimitivesAndContractFlags(t *testing.T) {
 func TestNoPrimitivesExposesNoTools(t *testing.T) {
 	r := request("x")
 	r.Primitives = nil
-	args, _ := claudecode.Arguments(r)
+	args, _ := claudecode.Arguments(r, nil)
 	joined := strings.Join(args, " ")
 	if !strings.Contains(joined, "--tools= ") || strings.Contains(joined, "--allowedTools") {
 		t.Fatalf("args = %v", args)
 	}
 	r.Primitives = []string{"Bash(git diff:*)"}
-	if _, err := claudecode.Arguments(r); err == nil {
+	if _, err := claudecode.Arguments(r, nil); err == nil {
 		t.Fatal("a primitive with spaces must be rejected")
 	}
 }
@@ -170,7 +177,7 @@ func TestResultPrecedence(t *testing.T) {
 // Agister chooses no session ID: a fresh turn names none, and a
 // continuation resumes the reported one in place, without forking.
 func TestContinuationResumesInPlaceAndCostLimitIsPassed(t *testing.T) {
-	fresh, err := claudecode.Arguments(request("x"))
+	fresh, err := claudecode.Arguments(request("x"), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,7 +188,7 @@ func TestContinuationResumesInPlaceAndCostLimitIsPassed(t *testing.T) {
 	r.ResumeSessionID = "earlier"
 	limit := 0.5
 	r.MaxCostUSD = &limit
-	args, err := claudecode.Arguments(r)
+	args, err := claudecode.Arguments(r, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -235,5 +242,184 @@ func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
 	turn := stream.Reconcile(supervisor.Evidence{RecordError: "disk full"}, false)
 	if turn.Status != run.Failed || turn.Error == nil || turn.Error.Class != run.ClassInternal || !strings.Contains(turn.Error.Message, "disk full") {
 		t.Fatalf("turn = %+v", turn)
+	}
+}
+
+// repository makes a git repository holding files, by path relative to it.
+func repository(t *testing.T, files map[string]string) string {
+	t.Helper()
+	dir := t.TempDir()
+	if out, err := exec.Command("git", "init", "--quiet", dir).CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
+	}
+	write(t, dir, files)
+	return dir
+}
+
+func write(t *testing.T, dir string, files map[string]string) {
+	t.Helper()
+	for path, content := range files {
+		full := filepath.Join(dir, filepath.FromSlash(path))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func paths(files []claudecode.InstructionFile) []string {
+	out := []string{}
+	for _, file := range files {
+		out = append(out, file.Path)
+	}
+	return out
+}
+
+// Claude Code loads AGENTS.md and CLAUDE.md along the path from the
+// repository root to the working directory, root first; a directory
+// beside or below that path gives nothing.
+func TestInstructionFilesFollowThePathFromTheRoot(t *testing.T) {
+	repo := repository(t, map[string]string{
+		"AGENTS.md":                  "root agents",
+		"CLAUDE.md":                  "root claude",
+		"pkg/AGENTS.md":              "pkg agents",
+		"pkg/sub/CLAUDE.md":          "sub claude",
+		"pkg/sub/deeper/AGENTS.md":   "below the working directory",
+		"other/AGENTS.md":            "sibling",
+		"pkg/sibling/CLAUDE.md":      "sibling below the root",
+		"pkg/sub/notes/instructions": "not an instruction file",
+	})
+	files, err := claudecode.InstructionFiles(context.Background(), filepath.Join(repo, "pkg", "sub"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"AGENTS.md", "CLAUDE.md", "pkg/AGENTS.md", "pkg/sub/CLAUDE.md"}
+	if got := paths(files); !reflect.DeepEqual(got, want) {
+		t.Fatalf("paths = %q, want %q", got, want)
+	}
+	if string(files[0].Content) != "root agents" || string(files[3].Content) != "sub claude" {
+		t.Fatalf("files = %+v", files)
+	}
+	// At the root, only the root's own.
+	files, err = claudecode.InstructionFiles(context.Background(), repo, nil)
+	if err != nil || !reflect.DeepEqual(paths(files), []string{"AGENTS.md", "CLAUDE.md"}) {
+		t.Fatalf("paths = %q, %v", paths(files), err)
+	}
+}
+
+// Outside any repository the working directory is the root: nothing
+// above it is read.
+func TestInstructionFilesOutsideARepositoryAreTheWorkingDirectorysOwn(t *testing.T) {
+	base, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GIT_CEILING_DIRECTORIES", base)
+	write(t, base, map[string]string{"AGENTS.md": "above", "work/AGENTS.md": "agents", "work/CLAUDE.md": "claude"})
+	files, err := claudecode.InstructionFiles(context.Background(), filepath.Join(base, "work"), nil)
+	if err != nil || !reflect.DeepEqual(paths(files), []string{"AGENTS.md", "CLAUDE.md"}) || string(files[0].Content) != "agents" {
+		t.Fatalf("files = %+v, %v", files, err)
+	}
+}
+
+// The turn's appended system prompt carries the files, root first, each
+// introduced by its path, before the instruction; an event records each
+// file's path and digest.
+func TestTurnIsGivenTheInstructionFilesAndRecordsThem(t *testing.T) {
+	repo := repository(t, map[string]string{
+		"AGENTS.md":     "root agents",
+		"pkg/CLAUDE.md": "pkg claude",
+		"lib/AGENTS.md": "sibling",
+	})
+	var read []string
+	runner := &claudecode.Runner{Command: runtimetest.Binary(t, "fakeclaude"), ReadFile: func(path string) ([]byte, error) {
+		read = append(read, path)
+		return os.ReadFile(path)
+	}}
+	r := request("SCENARIO:approve")
+	r.Cwd = filepath.Join(repo, "pkg")
+	sink := &runtimetest.Recorder{}
+	if turn := runner.RunTurn(context.Background(), r, sink); turn.Status != run.Completed {
+		t.Fatalf("turn = %+v", turn)
+	}
+	if len(read) == 0 {
+		t.Fatal("the files were not read through the seam")
+	}
+	var args []string
+	var recorded any
+	for _, event := range sink.Events {
+		switch event.Kind {
+		case "PROCESS_STARTED":
+			args, _ = event.Data["args"].([]string)
+		case "INSTRUCTION_FILES":
+			recorded = event.Data["files"]
+		}
+	}
+	prompt := ""
+	for i, arg := range args {
+		if arg == "--append-system-prompt" && i+1 < len(args) {
+			prompt = args[i+1]
+		}
+	}
+	root, pkg, instruction := strings.Index(prompt, "root agents"), strings.Index(prompt, "pkg claude"), strings.Index(prompt, "Do the thing.")
+	if root < 0 || pkg < root || instruction < pkg || strings.Contains(prompt, "sibling") ||
+		!strings.Contains(prompt[:root], "AGENTS.md") || !strings.Contains(prompt[root:pkg], "pkg/CLAUDE.md") {
+		t.Fatalf("appended system prompt = %q", prompt)
+	}
+	digest := func(content string) string {
+		sum := sha256.Sum256([]byte(content))
+		return hex.EncodeToString(sum[:])
+	}
+	want := []any{
+		map[string]any{"path": "AGENTS.md", "sha256": digest("root agents")},
+		map[string]any{"path": "pkg/CLAUDE.md", "sha256": digest("pkg claude")},
+	}
+	if !reflect.DeepEqual(recorded, want) {
+		t.Fatalf("recorded = %v, want %v", recorded, want)
+	}
+	if kinds := sink.Kinds(); kinds[0] != "PROCESS_STARTED" || kinds[1] != "INSTRUCTION_FILES" {
+		t.Fatalf("events = %v", kinds)
+	}
+}
+
+// A file that exists but cannot be read refuses the turn before any
+// process starts, naming the file.
+func TestUnreadableInstructionFileFailsTheTurnBeforeItStarts(t *testing.T) {
+	repo := repository(t, map[string]string{"AGENTS.md": "root", "pkg/AGENTS.md": "unreadable"})
+	runner := &claudecode.Runner{Command: runtimetest.Binary(t, "fakeclaude"), ReadFile: func(path string) ([]byte, error) {
+		if strings.HasSuffix(path, filepath.Join("pkg", "AGENTS.md")) {
+			return nil, &fs.PathError{Op: "open", Path: path, Err: fs.ErrPermission}
+		}
+		return os.ReadFile(path)
+	}}
+	r := request("SCENARIO:approve")
+	r.Cwd = filepath.Join(repo, "pkg")
+	sink := &runtimetest.Recorder{}
+	turn := runner.RunTurn(context.Background(), r, sink)
+	if turn.Status != run.Failed || turn.Error == nil || turn.Error.Class != run.ClassRefused || !strings.Contains(turn.Error.Message, "pkg/AGENTS.md") {
+		t.Fatalf("turn = %+v", turn)
+	}
+	if len(sink.Processes) != 0 || len(sink.Events) != 0 {
+		t.Fatalf("a process started: %v, %v", sink.Processes, sink.Kinds())
+	}
+}
+
+func TestArgumentsPutInstructionFilesBeforeTheInstruction(t *testing.T) {
+	files := []claudecode.InstructionFile{{Path: "AGENTS.md", Content: []byte("root\n")}, {Path: "a/CLAUDE.md", Content: []byte("a")}}
+	args, err := claudecode.Arguments(request("x"), files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := claudecode.SystemPrompt(files, "Do the thing.")
+	if !strings.Contains(strings.Join(args, "\x00"), "--append-system-prompt\x00"+want+"\x00") || !strings.HasSuffix(want, "\n\nDo the thing.") {
+		t.Fatalf("args = %q", args)
+	}
+	r := request("x")
+	r.Instruction = ""
+	args, _ = claudecode.Arguments(r, files)
+	if !strings.Contains(strings.Join(args, "\x00"), "--append-system-prompt\x00"+claudecode.SystemPrompt(files, "")+"\x00") {
+		t.Fatalf("args = %q", args)
 	}
 }
