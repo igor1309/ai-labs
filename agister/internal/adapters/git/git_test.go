@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -432,6 +433,7 @@ func TestDiscardRefusesOtherDirectories(t *testing.T) {
 	defer os.RemoveAll(otherParent)
 	for name, dir := range map[string]string{
 		"wrong name":           filepath.Join(parent, "other"),
+		"another's name":       filepath.Join(parent, "workspace-other"),
 		"wrong parent":         filepath.Join(otherParent, "workspace"),
 		"outside the temp dir": filepath.Join(t.TempDir(), "agister-checkout-x", "workspace"),
 		"the repository":       repo,
@@ -460,6 +462,73 @@ func TestDiscardPrunesACheckoutThatIsGone(t *testing.T) {
 	}
 	if err := (git.Workspaces{}).Discard(ctx, repo, checkout); err != nil {
 		t.Fatal(err)
+	}
+	if lines := strings.Split(sh(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
+		t.Fatalf("worktrees = %v", lines)
+	}
+}
+
+// Checkouts and copies made at the same time in one repository each get a
+// worktree admin directory of their own, named after their own path.
+func TestConcurrentCheckoutsAndCopiesHaveTheirOwnWorktrees(t *testing.T) {
+	repo := repository(t)
+	ctx := context.Background()
+	workspaces := git.Workspaces{}
+	revision := sh(t, repo, "rev-parse", "HEAD")
+	const each = 4
+	dirs := make([]string, 2*each)
+	errs := make([]error, 2*each)
+	var wg sync.WaitGroup
+	for i := range each {
+		dirs[each+i] = workspaces.Place(call())
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			var release func() error
+			dirs[i], release, errs[i] = workspaces.Checkout(ctx, repo, revision)
+			if release != nil {
+				t.Cleanup(func() { _ = release() })
+			}
+		}()
+		go func() {
+			defer wg.Done()
+			errs[each+i] = workspaces.Copy(ctx, repo, dirs[each+i], revision, nil)
+			t.Cleanup(func() { _ = workspaces.Discard(context.Background(), repo, dirs[each+i]) })
+		}()
+	}
+	wg.Wait()
+	admins := map[string]bool{}
+	for i, dir := range dirs {
+		if errs[i] != nil {
+			t.Fatalf("%s: %v", dir, errs[i])
+		}
+		admin := filepath.Base(sh(t, dir, "rev-parse", "--git-dir"))
+		if admin != filepath.Base(dir) || admins[admin] {
+			t.Fatalf("%s has admin directory %s; others have %v", dir, admin, admins)
+		}
+		admins[admin] = true
+	}
+	if lines := strings.Split(sh(t, repo, "worktree", "list"), "\n"); len(lines) != 1+len(dirs) {
+		t.Fatalf("worktrees = %v", lines)
+	}
+}
+
+// A checkout left behind under the name earlier versions gave every
+// checkout is still recognised and removed.
+func TestDiscardRemovesACheckoutUnderTheOldName(t *testing.T) {
+	repo := repository(t)
+	parent, err := os.MkdirTemp("", "agister-checkout-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(parent) })
+	checkout := filepath.Join(parent, "workspace")
+	sh(t, repo, "worktree", "add", "--detach", "--quiet", checkout, "HEAD")
+	if err := (git.Workspaces{}).Discard(context.Background(), repo, checkout); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(parent); !os.IsNotExist(err) {
+		t.Fatal("checkout left behind")
 	}
 	if lines := strings.Split(sh(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
 		t.Fatalf("worktrees = %v", lines)
