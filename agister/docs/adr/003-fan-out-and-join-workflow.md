@@ -6,7 +6,6 @@
   over their results
 - **Decision type:** Architecture
 - **Amends:** [ADR-001](001-agister-cli-architecture.md) rules 1 and 12
-- **Amended by:** [ADR-004](004-join-on-completed-nodes.md) (rules 3 and 4)
 
 ## Context
 
