@@ -42,9 +42,10 @@ Only a composition root may instantiate and connect concrete components.
 
 ## Decision
 
-A **ports-and-adapters core that performs generic agent calls, configured
-entirely by settings**, reached through a CLI that depends only on the core's
-client contract.
+A **core that performs generic agent calls, configured entirely by
+settings**, reached through a CLI that depends only on the core's client
+contract. Each component of the core declares the interfaces it requires;
+adapters satisfy them.
 
 ```text
  Human terminal        AI agent
@@ -55,18 +56,20 @@ client contract.
             Agister Core
   (resolve, compose, plan, call, validate, record)
                  │
+  each component declares the interfaces it requires
+                 │
   ┌──────────┬───┴──────┬───────────┬─────────────┐
-Definitions Runtime  Workspace  Input Source  Evidence
-  Port       Port      Port        Port         Port
-  │          │         │           │             │
 settings   provider  repository  git, files,   run records,
  store     runtimes  checkouts   caller values provenance
+                    (adapters)
 
-Composition Root: instantiates adapters, applies cross-cutting
-concerns (diagnostics) around ports, wires the core.
+Composition Root: instantiates adapters, wraps them in cross-cutting
+decorators (diagnostics), wires the core.
 ```
 
-The diagram shows dependency boundaries only.
+The diagram shows dependency direction only. Adapters are grouped by
+mechanism; each satisfies the interfaces of the components that use it, and
+no interface is shared between components (rule 13).
 
 ## Terms
 
@@ -107,7 +110,7 @@ rebuilding. What the agent is told is also a setting: the process defines it,
 and the core only assembles it with inputs and granted permissions.
 
 The core owns what definitions mean (schemas, versions, validation). The
-Definitions Port only supplies documents and their origin.
+interfaces that read definitions only supply documents and their origin.
 
 Code adds mechanisms only where settings cannot express them: runtimes,
 input source kinds, constraint kinds.
@@ -139,7 +142,7 @@ mapping is trusted only once it has been verified against the real runtime.
 
 ### 5. Runtime adapters are polymorphic and permission-blind
 
-Runtime-specific behavior sits behind the Runtime Port. An adapter receives
+Runtime-specific behavior sits in runtime adapters. An adapter receives
 primitives, not permissions, policies or processes, and returns a normalized
 turn (status, failure class, output, usage, cost) with ordered events. It
 declares the features it supports, such as continuing a session or limiting
@@ -188,7 +191,7 @@ agent receives and what is recorded.
 
 Agister's state directory (global settings, evidence and provenance) is
 outside every agent's workspace and permissions, and reachable only through
-Agister's ports. A project's settings are files in the user's repository,
+Agister itself. A project's settings are files in the user's repository,
 like any other: an agent given write access to the repository can change
 them (rule 1).
 
@@ -204,8 +207,8 @@ Missing provenance means unknown, never satisfied. Each constraint
 definition states how unknown is treated.
 
 Diagnostics describe Agister's own machinery. The composition root applies
-them around ports. They never change arguments, results or errors, and they
-are not evidence.
+them as decorators around adapters. They never change arguments, results
+or errors, and they are not evidence.
 
 ### 11. Every effect has an owner and an end
 
@@ -223,10 +226,14 @@ Continuation is explicit per call, and only for agents that allow it.
 
 ### 13. Every component collaborates through abstractions it defines
 
-Each component defines the interfaces it requires at its own boundary, and
-adapters satisfy them. Ports are narrow: a use case that only inspects
-definitions or runs has no access to anything that starts a runtime or writes
-a record. The rule applies recursively.
+Each component declares the interfaces it requires at its own boundary, with
+only the capabilities it uses, and adapters satisfy them. No interface is
+shared between components, even when two need the same capability; one
+adapter may satisfy several. The rule covers the interfaces a component
+requires, not a contract a module offers: the client contract (rule 15) is
+used by its callers and implemented by its decorators. A component that only inspects definitions or
+runs therefore has no access to anything that starts a runtime or writes a
+record. The rule applies recursively.
 
 ### 14. Composition is centralized
 
@@ -268,7 +275,8 @@ through the same contract, and in-process hosting is removed.
   they are trusted.
 - Coarse runtime primitives may leave permissions withheld.
 - The service-shaped contract is more than a CLI strictly needs today.
-- Ports and adapters add structure compared with a script.
+- Component-declared interfaces and adapters add structure compared with a
+  script.
 
 ## Alternatives considered
 
@@ -324,6 +332,8 @@ mechanisms; the service, its transport and lifecycle.
 15. Humans and agents share one CLI surface that depends only on the
     service-shaped client contract.
 16. When the service exists, it is the single operational authority.
+17. Each component declares the interfaces it requires; no required
+    interface is shared between components.
 
 ## Source basis
 

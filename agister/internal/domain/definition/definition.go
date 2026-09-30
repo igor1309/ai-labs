@@ -41,14 +41,14 @@ func (k Kind) Singular() string {
 
 // Source identifies where a definition came from, for attribution.
 type Source struct {
-	Kind   Kind   `json:"kind"`
-	Name   string `json:"name"`
-	Path   string `json:"path"`
-	SHA256 string `json:"sha256"`
+	Kind   Kind
+	Name   string
+	Path   string
+	SHA256 string
 	// From a project's own settings rather than the global ones.
-	Project bool `json:"project,omitempty"`
+	Project bool
 	// The global definition this project one takes priority over.
-	Overrides string `json:"overrides,omitempty"`
+	Overrides string
 }
 
 // Document is a definition's raw bytes with their origin.

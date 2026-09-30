@@ -19,16 +19,16 @@ type Caller struct {
 
 // Effective is a call's composed limits.
 type Effective struct {
-	Timeout     time.Duration           `json:"timeout"`
-	MaxAttempts int                     `json:"max_attempts"`
-	MaxCostUSD  *float64                `json:"max_cost_usd,omitempty"` // unset: no cost limit
-	Allow       []string                `json:"allow"`
-	Deny        []string                `json:"deny"`
-	Permissions []string                `json:"permissions"` // allowed and not denied
-	Require     []string                `json:"require,omitempty"`
-	Access      string                  `json:"access"`
-	Scope       string                  `json:"scope"`
-	Constraints []definition.Constraint `json:"constraints,omitempty"`
+	Timeout     time.Duration
+	MaxAttempts int
+	MaxCostUSD  *float64 // unset: no cost limit
+	Allow       []string
+	Deny        []string
+	Permissions []string // allowed and not denied
+	Require     []string
+	Access      string
+	Scope       string
+	Constraints []definition.Constraint
 }
 
 // InvalidError lists every composition problem.

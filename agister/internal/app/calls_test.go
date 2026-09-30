@@ -83,12 +83,15 @@ output:
 
 type harness struct {
 	calls      *app.Calls
+	hosted     *app.Hosted
+	clock      app.CallClock
 	runs       *runsSpy
 	defs       *definitionsSpy
 	runner     *runnerSpy
 	runtimes   *runtimesSpy
 	inputs     *inputsSpy
 	workspaces *workspacesSpy
+	changes    *changesSpy
 	provenance *provenanceSpy
 	validator  *validatorSpy
 	recorder   *recorderSpy
@@ -102,6 +105,7 @@ func newHarness() *harness {
 			turn:     run.Turn{Status: run.Completed, Output: json.RawMessage(`{"outcome":"no"}`), ProviderSessionID: "prov-1"},
 		},
 		workspaces: &workspacesSpy{root: "/repo", dir: "/work/checkout"},
+		changes:    &changesSpy{},
 		provenance: &provenanceSpy{},
 		validator:  &validatorSpy{},
 		recorder:   newRecorderSpy(),
@@ -116,21 +120,21 @@ func newHarness() *harness {
 			return app.Resolved{Value: "line one\nline two", Identity: "sha256:d"}, nil
 		}
 	}}
-	h.calls = &app.Calls{
-		Definitions: h.defs,
-		Runtimes:    h.runtimes,
-		Inputs:      map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
-		Workspaces:  h.workspaces,
-		Provenance:  h.provenance,
-		Validator:   h.validator,
-		Recorder:    h.recorder,
-		Runs:        h.runs,
-		Clock:       fixedClock{},
-		IDs:         fixedIDs{},
-		StateDir:    "/state",
-		Hosted:      app.NewHosted(),
-	}
+	h.hosted = app.NewHosted()
+	h.clock = fixedClock{}
+	h.calls = h.callsOn(h.defs)
 	return h
+}
+
+// callsOn is the harness's Calls reading its definitions from src.
+func (h *harness) callsOn(src app.ResolverDefinitions) *app.Calls {
+	return app.NewCalls(
+		app.NewResolver(src, h.runtimes, h.validator),
+		h.runtimes,
+		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
+		h.workspaces, h.changes, h.provenance, h.validator, h.recorder, h.runs,
+		h.clock, fixedIDs{}, "/state", h.hosted,
+	)
 }
 
 func (h *harness) call(t *testing.T, request contract.CallRequest) run.Record {
@@ -273,7 +277,8 @@ func TestNodeStatusFollowsTheResponses(t *testing.T) {
 func TestResultCarriesUsageCostTimingAndSession(t *testing.T) {
 	h := newHarness()
 	clock := &steppingClock{now: time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)}
-	h.calls.Clock = clock
+	h.clock = clock
+	h.calls = h.callsOn(h.defs)
 	tokens, cost, runtimeMS := int64(7), 0.25, int64(900)
 	h.runner.turn = run.Turn{Status: run.Completed, Output: json.RawMessage(`{}`), ProviderSessionID: "prov-1", CostUSD: &cost, RuntimeMS: &runtimeMS, Usage: &run.Usage{InputTokens: &tokens}}
 	record := h.call(t, contract.CallRequest{})
@@ -371,11 +376,11 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 
 func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
 	h := newHarness()
-	h.workspaces.changes = []byte("diff --git a/x b/x\n")
+	h.changes.changes = []byte("diff --git a/x b/x\n")
 	h.recorder.onFinish = func() int { return h.workspaces.releases() }
 	record := h.call(t, contract.CallRequest{})
-	if !reflect.DeepEqual(h.workspaces.changed, [][2]string{{"/work/checkout", "sha-HEAD"}}) || string(h.recorder.artifacts["changes.patch"]) != "diff --git a/x b/x\n" {
-		t.Fatalf("changes asked %v, stored %v", h.workspaces.changed, h.recorder.artifacts)
+	if !reflect.DeepEqual(h.changes.changed, [][2]string{{"/work/checkout", "sha-HEAD"}}) || string(h.recorder.artifacts["changes.patch"]) != "diff --git a/x b/x\n" {
+		t.Fatalf("changes asked %v, stored %v", h.changes.changed, h.recorder.artifacts)
 	}
 	if len(record.Result.Artifacts) != 1 || record.Result.Artifacts[0].Path != "artifacts/changes.patch" || !contains(h.recorder.kinds(), "ARTIFACT_STORED") {
 		t.Fatalf("artifacts = %+v", record.Result.Artifacts)
@@ -388,7 +393,7 @@ func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
 		t.Fatalf("artifacts = %+v", record.Result.Artifacts)
 	}
 	h = newHarness()
-	h.workspaces.changeErr = errors.New("git broke")
+	h.changes.changeErr = errors.New("git broke")
 	if record := h.call(t, contract.CallRequest{}); record.Result.Status != run.Completed || !contains(h.recorder.kinds(), "ARTIFACT_FAILED") {
 		t.Fatalf("result %+v, events %v", record.Result, h.recorder.kinds())
 	}
@@ -397,9 +402,9 @@ func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
 	h = newHarness()
 	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n  checkout: candidate_revision\n", "", 1)
 	h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "scope: candidate", "scope: repository", 1)
-	h.workspaces.changes = []byte("x")
-	if record := h.call(t, contract.CallRequest{}); record.Result.Status != run.Completed || len(h.workspaces.changed) != 0 {
-		t.Fatalf("result %+v, changes asked %v", record.Result, h.workspaces.changed)
+	h.changes.changes = []byte("x")
+	if record := h.call(t, contract.CallRequest{}); record.Result.Status != run.Completed || len(h.changes.changed) != 0 {
+		t.Fatalf("result %+v, changes asked %v", record.Result, h.changes.changed)
 	}
 }
 
@@ -407,13 +412,47 @@ func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
 // still releases the workspace; collection is not retried.
 func TestPanicInChangeCollectionFinishesTheRecord(t *testing.T) {
 	h := newHarness()
-	h.workspaces.panics = true
+	h.changes.panics = true
 	record := h.call(t, contract.CallRequest{})
 	if class(record) != run.ClassInternal || !strings.Contains(message(record), "changes exploded") {
 		t.Fatalf("result = %+v", record.Result.Error)
 	}
-	if len(h.workspaces.changed) != 1 || h.workspaces.releases() != 1 {
-		t.Fatalf("changes asked %d times, released %d", len(h.workspaces.changed), h.workspaces.releases())
+	if len(h.changes.changed) != 1 || h.workspaces.releases() != 1 {
+		t.Fatalf("changes asked %d times, released %d", len(h.changes.changed), h.workspaces.releases())
+	}
+}
+
+// A call is resolved through the resolution role it declares, not through
+// the concrete Resolver: a double that is no Resolver stands in for it, is
+// snapshotted once, at submit, and resolves the call from that snapshot. A
+// refusal it gives is recorded and no runtime is asked for.
+func TestCallsResolveThroughTheResolutionTheyDeclare(t *testing.T) {
+	h := newHarness()
+	double := &app.SnapshotCounter{Reason: "the double refuses"}
+	h.calls = app.NewCalls(
+		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes, h.provenance,
+		h.validator, h.recorder, h.runs, h.clock, fixedIDs{}, "/state", h.hosted,
+	)
+	record := h.call(t, contract.CallRequest{})
+	if class(record) != run.ClassRefused || message(record) != "the double refuses" {
+		t.Fatalf("result %+v", record.Result)
+	}
+	if snapshots, resolved := double.Count(); snapshots != 1 || !reflect.DeepEqual(resolved, []string{"p"}) {
+		t.Fatalf("snapshots %d, resolved %v", snapshots, resolved)
+	}
+	if len(h.runtimes.asked) != 0 || len(h.defs.reads) != 0 {
+		t.Fatalf("runtimes asked %v, definitions read %v", h.runtimes.asked, h.defs.reads)
+	}
+}
+
+// The runtime a call is resolved on is checked through the identity of its
+// adapter and command, and the runner for the same adapter and command is
+// asked for only when the call executes.
+func TestCallChecksAndRunsTheRuntimeOfItsAgent(t *testing.T) {
+	h := newHarness()
+	h.call(t, contract.CallRequest{})
+	if want := []string{"spy|/bin/spy"}; !reflect.DeepEqual(h.runtimes.identified, want) || !reflect.DeepEqual(h.runtimes.asked, want) {
+		t.Fatalf("identified %v, runner built for %v, want %v", h.runtimes.identified, h.runtimes.asked, want)
 	}
 }
 
@@ -430,6 +469,7 @@ func TestRefusalsComeBeforeEffects(t *testing.T) {
 		{"invalid definition", func(h *harness) { h.defs.docs[definition.KindProcess]["p"] += "surprise: 1\n" }, contract.CallRequest{}, "surprise: unknown field", false},
 		{"schema does not compile", func(h *harness) { h.validator.compileErr = errors.New("bad schema") }, contract.CallRequest{}, `schema "s": bad schema`, false},
 		{"runtime unavailable", func(h *harness) { h.runner.identityErr = errors.New("no binary") }, contract.CallRequest{}, "runtime rt is unavailable: no binary", false},
+		{"runner cannot be built", func(h *harness) { h.runtimes.runnerErr = errors.New("no such command") }, contract.CallRequest{}, "runtime mapping rt: no such command", false},
 		{"adapter contract mismatch", func(h *harness) { h.runner.identity.Contract = "spy/2" }, contract.CallRequest{}, "describes adapter contract spy/1, but the adapter implements spy/2", false},
 		{"unverified version", func(h *harness) { h.runner.identity.Version = "2.0.0" }, contract.CallRequest{}, "verifies no primitive for spy version 2.0.0", false},
 		{"caller widens timeout", nil, contract.CallRequest{Timeout: "2h"}, "caller timeout 2h0m0s widens the effective 20m0s", false},
@@ -515,7 +555,7 @@ func TestCancelInterruptsAndReleases(t *testing.T) {
 	h := newHarness()
 	h.runner.block = true
 	h.runner.started = make(chan struct{})
-	runs := &app.Runs{Hosted: h.calls.Hosted}
+	runs := app.NewRuns(nil, h.hosted, 0)
 	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
@@ -537,7 +577,7 @@ func TestCancelInterruptsAndReleases(t *testing.T) {
 // fail; the call is cancelled, not refused.
 func TestCancelBeforeTheTurnIsCancelled(t *testing.T) {
 	h := newHarness()
-	runs := &app.Runs{Hosted: h.calls.Hosted}
+	runs := app.NewRuns(nil, h.hosted, 0)
 	h.inputs.respond = func(app.InputSpec) (app.Resolved, error) {
 		if err := runs.Cancel(context.Background(), "run-1"); err != nil {
 			t.Error(err)
@@ -607,7 +647,7 @@ func TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded(t *testing.T) {
 	}
 	want := sha(settingsDocs()[definition.KindAgent]["a"])
 	for _, source := range record.Definitions {
-		if source.Kind == definition.KindAgent && source.SHA256 != want {
+		if source.Kind == string(definition.KindAgent) && source.SHA256 != want {
 			t.Errorf("agent recorded %s, want %s", source.SHA256, want)
 		}
 	}
@@ -636,5 +676,37 @@ func TestInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 	}
 	if !reflect.DeepEqual(h.workspaces.checkouts, [][2]string{{"/repo", "sha-HEAD"}}) {
 		t.Fatalf("checkouts = %v", h.workspaces.checkouts)
+	}
+}
+
+// What a call resolved is recorded under the record's own types, field for
+// field: the definitions, the effective limits, the required permissions
+// among them, and the plan.
+func TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes(t *testing.T) {
+	h := newHarness()
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "uses: agent:a\n", "uses: agent:a\ntools: {require: [repository.read]}\n", 1)
+	record := h.call(t, contract.CallRequest{})
+	encode := func(v any) string {
+		data, err := json.Marshal(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(data)
+	}
+	wantService := `{"kind":"service","name":"service","path":"mem/service/service","sha256":"` + sha(settingsDocs()[definition.KindService]["service"]) + `"}`
+	if len(record.Definitions) != 6 || encode(record.Definitions[0]) != wantService {
+		t.Errorf("definitions = %s", encode(record.Definitions))
+	}
+	wantEffective := `{"timeout":1200000000000,"max_attempts":1,` +
+		`"allow":["repository.read","repository.search","repository.diff"],"deny":[],` +
+		`"permissions":["repository.read","repository.search","repository.diff"],"require":["repository.read"],` +
+		`"access":"read-only","scope":"candidate",` +
+		`"constraints":[{"subject":"agent.model_family","candidate_input":"candidate_revision","on_unknown":"pass"}]}`
+	if got := encode(record.Effective); got != wantEffective {
+		t.Errorf("effective\n got %s\nwant %s", got, wantEffective)
+	}
+	wantPlan := `{"primitives":["Read","Grep"],"granted":["repository.read","repository.search"],"withheld":["repository.diff"]}`
+	if got := encode(record.Plan); got != wantPlan {
+		t.Errorf("plan\n got %s\nwant %s", got, wantPlan)
 	}
 }

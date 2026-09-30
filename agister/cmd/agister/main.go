@@ -94,21 +94,23 @@ func wire(config cli.Config) (*app.Gated, *app.BackgroundReaper, error) {
 	// that fails has no caller to tell and no run record to say so: the
 	// log does.
 	reaping := &app.BackgroundReaper{
-		Reaper: &app.Reaper{
-			Adopter: evidence, Processes: supervisor.Processes{}, Discarder: git.Workspaces{}, Clock: system.Clock{},
-		},
+		Reaper: app.NewReaper(evidence, supervisor.Processes{}, git.Workspaces{}, system.Clock{}),
 		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },
 	}
 	provenance := fsprovenance.Store{Dir: filepath.Join(config.Home, "provenance")}
-	checkerOn := func(definitions app.DefinitionSource) *app.Checker {
-		return &app.Checker{Definitions: definitions, Validator: schema.Validator{}, Runtimes: runtimes, Sources: names(sources)}
+	checkerOn := func(definitions app.GateDefinitions) *app.Checker {
+		return app.NewChecker(definitions, schema.Validator{}, runtimes, names(sources))
+	}
+	// Each use case that resolves a process gets a resolver of its own.
+	resolverOn := func(definitions app.GateDefinitions) *app.Resolver {
+		return app.NewResolver(definitions, runtimes, schema.Validator{})
 	}
 	// build makes the whole client over the sources given: the layered
 	// settings and the global layer alone. The gate builds it on snapshots
 	// per operation, so every use case, including the scopes that validate a
 	// write, reads only the settings that operation checked; hosted runs and
 	// evidence are shared by every build.
-	build := func(layered, globalOnly app.DefinitionSource) contract.Client {
+	build := func(layered, globalOnly app.GateDefinitions) contract.Client {
 		// Writes go to global settings, which must stay valid on their own
 		// and with the project in view.
 		scopes := []app.Scope{{Name: "global settings", Check: checkerOn(globalOnly)}}
@@ -116,24 +118,14 @@ func wire(config cli.Config) (*app.Gated, *app.BackgroundReaper, error) {
 			scopes = append(scopes, app.Scope{Name: "settings in " + filepath.Dir(local.Dir), Check: checkerOn(layered)})
 		}
 		host := &app.Host{
-			Settings:   &app.Settings{Definitions: layered, Writer: global, Examples: examples.Settings(), Scopes: scopes},
+			Settings:   app.NewSettings(layered, global, examples.Settings(), scopes),
 			Checker:    checkerOn(layered),
-			Inspection: &app.Inspection{Definitions: layered, Runtimes: runtimes, Validator: schema.Validator{}},
-			Calls: &app.Calls{
-				Definitions: layered,
-				Runtimes:    runtimes,
-				Inputs:      sources,
-				Workspaces:  git.Workspaces{},
-				Provenance:  provenance,
-				Validator:   schema.Validator{},
-				Recorder:    evidence,
-				Runs:        evidence,
-				Clock:       system.Clock{},
-				IDs:         system.IDs{},
-				StateDir:    config.Home,
-				Hosted:      hosted,
-			},
-			Runs: &app.Runs{Reader: evidence, Hosted: hosted},
+			Inspection: app.NewInspection(resolverOn(layered)),
+			Calls: app.NewCalls(
+				resolverOn(layered), runtimes, sources, git.Workspaces{}, git.Workspaces{}, provenance, schema.Validator{},
+				evidence, evidence, system.Clock{}, system.IDs{}, config.Home, hosted,
+			),
+			Runs: app.NewRuns(evidence, hosted, 0),
 		}
 		return app.ReapOnSubmit{Client: host, Background: reaping}
 	}

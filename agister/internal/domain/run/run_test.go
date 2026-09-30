@@ -1,8 +1,11 @@
 package run_test
 
 import (
+	"encoding/json"
 	"errors"
+	"reflect"
 	"testing"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
@@ -52,5 +55,59 @@ func TestEveryClassBelongsToOneStatus(t *testing.T) {
 		if got := run.StatusOf(class); got != status {
 			t.Errorf("%s: %s, want %s", class, got, status)
 		}
+	}
+}
+
+// The record is evidence under a versioned schema: what it writes for the
+// definitions, the effective limits and the plan is fixed here, whatever
+// the packages that decide them do with their own types.
+func TestRecordJSONForDefinitionsPolicyAndPlanIsFixed(t *testing.T) {
+	cost := 0.5
+	record := run.Record{
+		Schema: run.RecordSchema,
+		ID:     "r",
+		Definitions: []run.DefinitionSource{
+			{Kind: "processes", Name: "p", Path: "/home/.agister/processes/p.yaml", SHA256: "abc"},
+			{Kind: "agents", Name: "a", Path: "/repo/.agister/agents/a.toml", SHA256: "def", Project: true, Overrides: "/home/.agister/agents/a.toml"},
+		},
+		Effective: &run.EffectivePolicy{
+			Timeout:     20 * time.Minute,
+			MaxAttempts: 1,
+			MaxCostUSD:  &cost,
+			Allow:       []string{"repository.read"},
+			Deny:        []string{},
+			Permissions: []string{"repository.read"},
+			Require:     []string{"repository.read"},
+			Access:      "read-only",
+			Scope:       "candidate",
+			Constraints: []run.Constraint{{Subject: "agent.model_family", CandidateInput: "candidate", OnUnknown: "fail"}},
+		},
+		Plan: &run.Plan{Primitives: []string{"Read"}, Granted: []string{"repository.read"}, Withheld: []string{"repository.diff"}},
+	}
+	data, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]json.RawMessage
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"definitions": `[{"kind":"processes","name":"p","path":"/home/.agister/processes/p.yaml","sha256":"abc"},` +
+			`{"kind":"agents","name":"a","path":"/repo/.agister/agents/a.toml","sha256":"def","project":true,"overrides":"/home/.agister/agents/a.toml"}]`,
+		"effective": `{"timeout":1200000000000,"max_attempts":1,"max_cost_usd":0.5,"allow":["repository.read"],"deny":[],` +
+			`"permissions":["repository.read"],"require":["repository.read"],"access":"read-only","scope":"candidate",` +
+			`"constraints":[{"subject":"agent.model_family","candidate_input":"candidate","on_unknown":"fail"}]}`,
+		"plan": `{"primitives":["Read"],"granted":["repository.read"],"withheld":["repository.diff"]}`,
+	}
+	for field, text := range want {
+		if string(got[field]) != text {
+			t.Errorf("%s\n got %s\nwant %s", field, got[field], text)
+		}
+	}
+	// A record written so reads back as it was.
+	var back run.Record
+	if err := json.Unmarshal(data, &back); err != nil || !reflect.DeepEqual(back, record) {
+		t.Errorf("read back %+v, %v", back, err)
 	}
 }

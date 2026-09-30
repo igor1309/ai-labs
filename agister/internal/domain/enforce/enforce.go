@@ -12,9 +12,9 @@ import (
 
 // Plan is what one call grants on its runtime.
 type Plan struct {
-	Primitives []string `json:"primitives"`
-	Granted    []string `json:"granted"`  // permissions the primitives provide
-	Withheld   []string `json:"withheld"` // allowed but not provided
+	Primitives []string
+	Granted    []string // permissions the primitives provide
+	Withheld   []string // allowed but not provided
 }
 
 // RefusedError explains why no acceptable plan exists.

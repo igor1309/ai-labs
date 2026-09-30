@@ -17,12 +17,36 @@ import (
 
 // Settings manages definitions: examples, agents and process listings.
 type Settings struct {
-	Definitions DefinitionSource
-	Writer      DefinitionWriter
-	Examples    Examples
-	// Scopes are every settings view a write takes part in (global settings
-	// alone, and with the project in view); each must stay valid.
-	Scopes []Scope
+	definitions SettingsDefinitions
+	writer      DefinitionWriter
+	examples    Examples
+	// Every settings view a write takes part in (global settings alone, and
+	// with the project in view); each must stay valid.
+	scopes []Scope
+}
+
+// SettingsDefinitions supplies the definitions a listing or a write reads.
+type SettingsDefinitions interface {
+	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
+	List(ctx context.Context, kind definition.Kind) ([]string, error)
+}
+
+// DefinitionWriter stores definition documents.
+type DefinitionWriter interface {
+	// Write stores data only over the document with digest expected, or
+	// where there is none when expected is empty; otherwise it writes
+	// nothing and written is false.
+	Write(ctx context.Context, kind definition.Kind, name string, data []byte, expected string) (path string, written bool, err error)
+	// Current reports where a document would be stored and a digest of the
+	// one there, empty when there is none.
+	Current(ctx context.Context, kind definition.Kind, name string) (path, digest string, err error)
+}
+
+// NewSettings returns the use case that manages definitions. scopes are
+// every settings view a write takes part in (global settings alone, and
+// with the project in view); each must stay valid.
+func NewSettings(definitions SettingsDefinitions, writer DefinitionWriter, examples Examples, scopes []Scope) *Settings {
+	return &Settings{definitions: definitions, writer: writer, examples: examples, scopes: scopes}
 }
 
 // Scope is one view of the settings a write takes part in.
@@ -40,11 +64,11 @@ type ProposedCheck interface {
 
 func (s *Settings) Init(ctx context.Context, overwrite bool, approved *contract.InitResult) (contract.InitResult, error) {
 	result := contract.InitResult{Digests: map[string]string{}, Contents: map[string]string{}}
-	if s.Examples == nil {
+	if s.examples == nil {
 		return result, &contract.InputError{Message: "no example definitions are available"}
 	}
 	var files []string
-	err := fs.WalkDir(s.Examples, ".", func(name string, entry fs.DirEntry, err error) error {
+	err := fs.WalkDir(s.examples, ".", func(name string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -78,11 +102,11 @@ func (s *Settings) Init(ctx context.Context, overwrite bool, approved *contract.
 		} else if name != "service.toml" {
 			return result, fmt.Errorf("unexpected example file %q", name)
 		}
-		data, err := fs.ReadFile(s.Examples, name)
+		data, err := fs.ReadFile(s.examples, name)
 		if err != nil {
 			return result, err
 		}
-		current, digest, err := s.Writer.Current(ctx, kind, base)
+		current, digest, err := s.writer.Current(ctx, kind, base)
 		if err != nil {
 			return result, err
 		}
@@ -111,7 +135,7 @@ func (s *Settings) Init(ctx context.Context, overwrite bool, approved *contract.
 		}
 		// Only the file as planned is written over: one created, edited or
 		// removed since is left as it is.
-		if _, written, err := s.Writer.Write(ctx, f.kind, f.base, f.data, f.digest); err != nil {
+		if _, written, err := s.writer.Write(ctx, f.kind, f.base, f.data, f.digest); err != nil {
 			return result, err
 		} else if !written {
 			return result, changedSinceApproved([]string{f.path})
@@ -180,9 +204,9 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 	if !definition.ValidName(agent.Name) {
 		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("invalid agent name %q", agent.Name)}
 	}
-	doc, err := s.Definitions.Read(ctx, definition.KindRuntime, agent.Runtime)
+	doc, err := s.definitions.Read(ctx, definition.KindRuntime, agent.Runtime)
 	if err != nil {
-		names, _ := s.Definitions.List(ctx, definition.KindRuntime)
+		names, _ := s.definitions.List(ctx, definition.KindRuntime)
 		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("unknown runtime %q (available: %s)", agent.Runtime, strings.Join(names, ", "))}
 	}
 	mapping, err := definition.ParseMapping(doc)
@@ -196,7 +220,7 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 	if _, err := definition.ParseAgent(definition.Document{Source: definition.Source{Kind: definition.KindAgent, Name: agent.Name}, Bytes: data}); err != nil {
 		return contract.AgentWrite{}, err
 	}
-	path, digest, err := s.Writer.Current(ctx, definition.KindAgent, agent.Name)
+	path, digest, err := s.writer.Current(ctx, definition.KindAgent, agent.Name)
 	if err != nil {
 		return contract.AgentWrite{}, err
 	}
@@ -220,7 +244,7 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 	}
 	// Only the file as planned is written over: one created, edited or
 	// removed since is left as it is.
-	if _, written, err := s.Writer.Write(ctx, definition.KindAgent, agent.Name, data, digest); err != nil {
+	if _, written, err := s.writer.Write(ctx, definition.KindAgent, agent.Name, data, digest); err != nil {
 		return contract.AgentWrite{}, err
 	} else if !written {
 		return contract.AgentWrite{}, changedSinceApproved([]string{path})
@@ -243,7 +267,7 @@ func notApproved(paths []string) error {
 // scope: once written, every command there would stop on them, including
 // the one that could repair them.
 func (s *Settings) keepsSettingsValid(ctx context.Context, doc definition.Document) error {
-	for _, scope := range s.Scopes {
+	for _, scope := range s.scopes {
 		added, err := scope.Check.ProblemsAdded(ctx, doc)
 		if err != nil {
 			return err
@@ -256,13 +280,13 @@ func (s *Settings) keepsSettingsValid(ctx context.Context, doc definition.Docume
 }
 
 func (s *Settings) ListAgents(ctx context.Context) ([]contract.Agent, error) {
-	names, err := s.Definitions.List(ctx, definition.KindAgent)
+	names, err := s.definitions.List(ctx, definition.KindAgent)
 	if err != nil {
 		return nil, err
 	}
 	agents := make([]contract.Agent, 0, len(names))
 	for _, name := range names {
-		doc, err := s.Definitions.Read(ctx, definition.KindAgent, name)
+		doc, err := s.definitions.Read(ctx, definition.KindAgent, name)
 		if err != nil {
 			return nil, err
 		}
@@ -276,13 +300,13 @@ func (s *Settings) ListAgents(ctx context.Context) ([]contract.Agent, error) {
 }
 
 func (s *Settings) ListProcesses(ctx context.Context) ([]contract.ProcessSummary, error) {
-	names, err := s.Definitions.List(ctx, definition.KindProcess)
+	names, err := s.definitions.List(ctx, definition.KindProcess)
 	if err != nil {
 		return nil, err
 	}
 	processes := make([]contract.ProcessSummary, 0, len(names))
 	for _, name := range names {
-		doc, err := s.Definitions.Read(ctx, definition.KindProcess, name)
+		doc, err := s.definitions.Read(ctx, definition.KindProcess, name)
 		if err != nil {
 			return nil, err
 		}
@@ -302,13 +326,22 @@ func (s *Settings) ListProcesses(ctx context.Context) ([]contract.ProcessSummary
 
 // Inspection shows a process as a call would see it, without effects.
 type Inspection struct {
-	Definitions DefinitionSource
-	Runtimes    Runtimes
-	Validator   OutputValidator
+	resolver InspectionResolver
+}
+
+// InspectionResolver resolves a process the way a call would.
+type InspectionResolver interface {
+	Resolve(ctx context.Context, processName, agentOverride string, caller overrides) (*resolution, error)
+}
+
+// NewInspection returns the use case that shows a process as a call would
+// see it.
+func NewInspection(resolver InspectionResolver) *Inspection {
+	return &Inspection{resolver: resolver}
 }
 
 func (i *Inspection) ShowProcess(ctx context.Context, name, agent string) (contract.ProcessView, error) {
-	res, err := resolver{definitions: i.Definitions, runtimes: i.Runtimes, validator: i.Validator}.resolve(ctx, name, agent, overrides{})
+	res, err := i.resolver.Resolve(ctx, name, agent, overrides{})
 	var refusal *Refusal
 	if err != nil && !errors.As(err, &refusal) {
 		return contract.ProcessView{}, err

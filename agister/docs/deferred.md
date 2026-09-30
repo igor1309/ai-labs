@@ -285,3 +285,32 @@ before.
   at run time, or a test that checks the repository's own settings.
 - **Done when:** a test composes the repository's `.agister` and runs each
   process against a fake runtime, `implement` included.
+
+## 11. The resolution types are package-private
+
+- **Gap:** `Calls` and `Inspection` each declare their own resolver
+  interface, but its result and arguments (`resolution`, `overrides`) are
+  unexported. Only a double inside `internal/app` can stand in for the
+  resolver; a use case cannot be tested from another package against a
+  resolver of its own.
+- **Evidence:** the architecture audit's review round 2 on 2026-09-29
+  (architecture#1). The judge fixed the concrete `*Resolver` dependency and
+  deferred exporting the types.
+- **Trigger:** a test or a component outside `internal/app` that needs to
+  substitute resolution.
+- **Done when:** each consumer's resolver interface uses result and
+  argument types that consumer owns, and a resolver adapter translates
+  into them.
+
+## 12. No test proves the reaper is wired to the supervisor's processes
+
+- **Gap:** `TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted` asserts
+  the supervisor's own `ParseRef` error among the reap's errors, but no
+  mutation shows that `main.go` wires `supervisor.Processes`: swapping it
+  for a nil-embedded double panics the test binary instead of failing a
+  test, so `revert-check.py` cannot count it.
+- **Evidence:** the round-2 implementer on 2026-09-29 dropped that mutation;
+  the remaining one only removes the error in `processes.go`.
+- **Trigger:** a change to the reaper's wiring in `main.go`.
+- **Done when:** a mutation replacing `supervisor.Processes{}` in `main.go`
+  with a well-formed double fails a test cleanly.

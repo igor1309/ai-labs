@@ -13,10 +13,34 @@ import (
 
 // Checker validates all settings at once, before any call needs them.
 type Checker struct {
-	Definitions DefinitionSource
-	Validator   OutputValidator
-	Runtimes    Runtimes
-	Sources     []string // input source kinds the code provides
+	definitions CheckDefinitions
+	validator   CheckValidator
+	runtimes    CheckRuntimes
+	sources     []string // input source kinds the code provides
+}
+
+// CheckDefinitions supplies every definition document and its origin.
+type CheckDefinitions interface {
+	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
+	List(ctx context.Context, kind definition.Kind) ([]string, error)
+}
+
+// CheckValidator compiles output schemas.
+type CheckValidator interface {
+	Compile(schema []byte) error
+}
+
+// CheckRuntimes is the catalog of runtime adapters the code provides, and
+// what one of them reports about itself, to probe it.
+type CheckRuntimes interface {
+	Adapters() []string
+	Identity(ctx context.Context, adapter, command string) (RuntimeIdentity, error)
+}
+
+// NewChecker returns the use case that validates all settings. sources are
+// the input source kinds the code provides.
+func NewChecker(definitions CheckDefinitions, validator CheckValidator, runtimes CheckRuntimes, sources []string) *Checker {
+	return &Checker{definitions: definitions, validator: validator, runtimes: runtimes, sources: sources}
 }
 
 func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, error) {
@@ -38,12 +62,12 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 		names := []string{"service"}
 		if kind != definition.KindService {
 			var err error
-			if names, err = c.Definitions.List(ctx, kind); err != nil {
+			if names, err = c.definitions.List(ctx, kind); err != nil {
 				return err
 			}
 		}
 		for _, name := range names {
-			doc, err := c.Definitions.Read(ctx, kind, name)
+			doc, err := c.definitions.Read(ctx, kind, name)
 			if err != nil {
 				problem(kind.Singular()+" "+name, "%v", err)
 				continue
@@ -112,7 +136,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			return err
 		}},
 		{definition.KindSchema, func(d definition.Document) error {
-			if err := c.Validator.Compile(d.Bytes); err != nil {
+			if err := c.validator.Compile(d.Bytes); err != nil {
 				return err
 			}
 			bundle.Schemas[d.Source.Name] = true
@@ -154,7 +178,8 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 	}
 
 	// Across documents.
-	for _, p := range settings.Check(bundle, settings.Mechanisms{Sources: c.Sources, Adapters: c.Runtimes.Adapters()}) {
+	known := c.runtimes.Adapters()
+	for _, p := range settings.Check(bundle, settings.Mechanisms{Sources: c.sources, Adapters: known}) {
 		report.Problems = append(report.Problems, p.String())
 	}
 
@@ -166,11 +191,10 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			if !ok {
 				continue
 			}
-			runner, err := c.Runtimes.Runner(mapping.Adapter, agent.Command)
-			if err != nil {
+			if !contains(known, mapping.Adapter) {
 				continue // reported as an unknown adapter
 			}
-			identity, err := runner.Identity(ctx)
+			identity, err := c.runtimes.Identity(ctx, mapping.Adapter, agent.Command)
 			switch {
 			case err != nil:
 				problem("agent "+name, "runtime unavailable: %v", err)
@@ -208,7 +232,7 @@ func (c *Checker) ProblemsAdded(ctx context.Context, doc definition.Document) ([
 		return nil, err
 	}
 	after := *c
-	after.Definitions = withDocument{DefinitionSource: c.Definitions, doc: doc}
+	after.definitions = withDocument{CheckDefinitions: c.definitions, doc: doc}
 	report, err := after.Check(ctx, false)
 	if err != nil {
 		return nil, err
@@ -229,22 +253,22 @@ func (c *Checker) ProblemsAdded(ctx context.Context, doc definition.Document) ([
 // withDocument is a definitions source with one global document added or
 // replaced; a project document of the same name still takes priority.
 type withDocument struct {
-	DefinitionSource
+	CheckDefinitions
 	doc definition.Document
 }
 
 func (w withDocument) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
 	if kind != w.doc.Source.Kind || name != w.doc.Source.Name {
-		return w.DefinitionSource.Read(ctx, kind, name)
+		return w.CheckDefinitions.Read(ctx, kind, name)
 	}
-	if current, err := w.DefinitionSource.Read(ctx, kind, name); err == nil && current.Source.Project {
+	if current, err := w.CheckDefinitions.Read(ctx, kind, name); err == nil && current.Source.Project {
 		return current, nil
 	}
 	return w.doc, nil
 }
 
 func (w withDocument) List(ctx context.Context, kind definition.Kind) ([]string, error) {
-	names, err := w.DefinitionSource.List(ctx, kind)
+	names, err := w.CheckDefinitions.List(ctx, kind)
 	if err != nil || kind != w.doc.Source.Kind || contains(names, w.doc.Source.Name) {
 		return names, err
 	}

@@ -129,7 +129,7 @@ go test -coverpkg=./internal/...,./cmd/... -coverprofile=cover.out ./... && go t
 | Level | Where | Doubles |
 |---|---|---|
 | Domain rules | `internal/domain/*` | none (pure) |
-| Use cases | `internal/app` | spies on every port: payloads asserted, responses scripted |
+| Use cases | `internal/app` | spies on every interface a use case declares: payloads asserted, responses scripted |
 | CLI | `internal/cli` | spy client |
 | Adapters | `internal/adapters/*` | real files, git, subprocesses; fake runtime binaries |
 | Runtime conformance | `runtimetest.Conformance` | same suite for every runner and decorator |

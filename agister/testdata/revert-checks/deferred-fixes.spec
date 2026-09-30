@@ -61,9 +61,9 @@ test: ./cmd/agister TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted
 
 [the reaper reads the run store the calls write]
 file: cmd/agister/main.go
-find: Adopter: evidence,
-replace: Adopter: fsruns.Store{Dir: config.Home},
-test: ./cmd/agister TestBuiltClientSharesTheBackgroundReaper
+find: app.NewReaper(evidence,
+replace: app.NewReaper(fsruns.Store{Dir: config.Home},
+test: ./cmd/agister TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted
 
 [a refused submit starts no reap]
 file: internal/app/background.go
@@ -271,15 +271,15 @@ replace: layered := g.Definitions
 test: ./internal/app TestGatedOperationUsesTheCheckedSettings
 
 [a call resolves from live settings, not the snapshot it took at submit]
-file: internal/app/calls.go
-find: definitions := Snapshot(ctx, c.Definitions)
-replace: definitions := c.Definitions
+file: internal/app/resolve.go
+find: copied.definitions = Snapshot(ctx, r.definitions)
+replace: copied.definitions = r.definitions
 test: ./internal/app TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded
 
 [a call takes its snapshot after its run is recorded]
 file: internal/app/calls.go
-find: \tdefinitions := Snapshot(ctx, c.Definitions)\n\thandle, err := c.Recorder.Create(ctx, record)\n
-replace: \thandle, err := c.Recorder.Create(ctx, record)\n\tdefinitions := Snapshot(ctx, c.Definitions)\n
+find: \tresolver := c.resolver.Snapshot(ctx)\n\thandle, err := c.recorder.Create(ctx, record)\n
+replace: \thandle, err := c.recorder.Create(ctx, record)\n\tresolver := c.resolver.Snapshot(ctx)\n
 test: ./internal/app TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded
 
 [the write lock is released before the digest compare]
@@ -327,20 +327,20 @@ test: ./cmd/agister TestBuiltClientReadsOnlyTheSourcesGiven
 
 [calls read live settings, not the given source]
 file: cmd/agister/main.go
-find: \t\t\tCalls: &app.Calls{\n\t\t\t\tDefinitions: layered,
-replace: \t\t\tCalls: &app.Calls{\n\t\t\t\tDefinitions: definitions,
+find: resolverOn(layered), runtimes, sources,
+replace: resolverOn(definitions), runtimes, sources,
 test: ./cmd/agister TestBuiltClientReadsOnlyTheSourcesGiven
 
 [inspection reads live settings, not the given source]
 file: cmd/agister/main.go
-find: Inspection: &app.Inspection{Definitions: layered,
-replace: Inspection: &app.Inspection{Definitions: definitions,
+find: app.NewInspection(resolverOn(layered))
+replace: app.NewInspection(resolverOn(definitions))
 test: ./cmd/agister TestBuiltClientReadsOnlyTheSourcesGiven
 
 [settings read live settings, not the given source]
 file: cmd/agister/main.go
-find: Settings:   &app.Settings{Definitions: layered,
-replace: Settings:   &app.Settings{Definitions: definitions,
+find: app.NewSettings(layered,
+replace: app.NewSettings(definitions,
 test: ./cmd/agister TestBuiltClientReadsOnlyTheSourcesGiven
 
 [the checker reads live settings, not the given source]
@@ -363,6 +363,6 @@ test: ./internal/adapters/runtime/supervisor TestGroupIsReportedBeforeItsTokenIs
 
 [the process port gets the reap's context, with its deadline]
 file: internal/app/reap.go
-find: c.Processes.Reap(ctx, process.Ref)
-replace: c.Processes.Reap(context.Background(), process.Ref)
+find: c.processes.Reap(ctx, process.Ref)
+replace: c.processes.Reap(context.Background(), process.Ref)
 test: ./internal/app TestProcessReapingHasTheReapDeadline

@@ -12,19 +12,34 @@ import (
 
 // Runs reads evidence: observation, inspection, listing, cancellation.
 type Runs struct {
-	Reader RunReader
-	Hosted *Hosted
+	reader RunsReader
+	hosted *Hosted
 	// How often Observe polls a running record.
-	PollInterval time.Duration
+	pollInterval time.Duration
+}
+
+// RunsReader reads evidence. A record that is not finished and no longer
+// owned reads as abandoned.
+type RunsReader interface {
+	Get(ctx context.Context, id string) (run.Record, run.State, error)
+	Events(ctx context.Context, id string, afterSeq int) ([]run.Event, run.State, error)
+	List(ctx context.Context) ([]run.Record, error)
+}
+
+// NewRuns returns the use case that reads evidence and cancels the calls
+// hosted in this process. pollInterval is how often Observe polls a running
+// record; zero means 50ms.
+func NewRuns(reader RunsReader, hosted *Hosted, pollInterval time.Duration) *Runs {
+	return &Runs{reader: reader, hosted: hosted, pollInterval: pollInterval}
 }
 
 func (r *Runs) Observe(ctx context.Context, id string, afterSeq int, each func(contract.Event) error) error {
-	interval := r.PollInterval
+	interval := r.pollInterval
 	if interval == 0 {
 		interval = 50 * time.Millisecond
 	}
 	for {
-		events, status, err := r.Reader.Events(ctx, id, afterSeq)
+		events, status, err := r.reader.Events(ctx, id, afterSeq)
 		if err != nil {
 			return err
 		}
@@ -46,14 +61,14 @@ func (r *Runs) Observe(ctx context.Context, id string, afterSeq int, each func(c
 }
 
 func (r *Runs) Cancel(_ context.Context, id string) error {
-	if !r.Hosted.cancel(id) {
+	if !r.hosted.cancel(id) {
 		return &contract.InputError{Message: fmt.Sprintf("run %s is not running in this process", id)}
 	}
 	return nil
 }
 
 func (r *Runs) Inspect(ctx context.Context, id string) (contract.Run, error) {
-	record, status, err := r.Reader.Get(ctx, id)
+	record, status, err := r.reader.Get(ctx, id)
 	if err != nil {
 		return contract.Run{}, err
 	}
@@ -61,13 +76,13 @@ func (r *Runs) Inspect(ctx context.Context, id string) (contract.Run, error) {
 }
 
 func (r *Runs) ListRuns(ctx context.Context) ([]contract.Run, error) {
-	records, err := r.Reader.List(ctx)
+	records, err := r.reader.List(ctx)
 	if err != nil {
 		return nil, err
 	}
 	runs := make([]contract.Run, 0, len(records))
 	for _, record := range records {
-		_, status, err := r.Reader.Get(ctx, record.ID)
+		_, status, err := r.reader.Get(ctx, record.ID)
 		if err != nil {
 			return nil, err
 		}

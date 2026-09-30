@@ -72,7 +72,7 @@ func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
 	gated := &app.Gated{
 		Definitions: &definitionsSpy{docs: settingsDocs()},
 		Global:      &definitionsSpy{docs: settingsDocs()},
-		Build:       func(_, _ app.DefinitionSource) contract.Client { return inner },
+		Build:       func(_, _ app.GateDefinitions) contract.Client { return inner },
 	}
 	id, err := gated.Submit(ctx, contract.CallRequest{})
 	if err != nil || id != "run-1" {
@@ -159,11 +159,11 @@ func TestGatedOperationUsesTheCheckedSettings(t *testing.T) {
 	gated := &app.Gated{
 		Definitions: h.defs,
 		Global:      h.defs,
-		Build: func(src, _ app.DefinitionSource) contract.Client {
+		Build: func(src, _ app.GateDefinitions) contract.Client {
 			return &afterCheck{
 				Client: &app.Host{
-					Checker:    &app.Checker{Definitions: src, Validator: h.validator, Runtimes: h.runtimes, Sources: sources},
-					Inspection: &app.Inspection{Definitions: src, Runtimes: h.runtimes, Validator: h.validator},
+					Checker:    app.NewChecker(src, h.validator, h.runtimes, sources),
+					Inspection: app.NewInspection(app.NewResolver(src, h.runtimes, h.validator)),
 				},
 				f: func() {
 					readsAfterCheck = h.defs.readCount()
@@ -204,12 +204,10 @@ func TestGatedSubmitRecordsTheCheckedSettings(t *testing.T) {
 	gated := &app.Gated{
 		Definitions: h.defs,
 		Global:      h.defs,
-		Build: func(src, _ app.DefinitionSource) contract.Client {
-			calls := *h.calls
-			calls.Definitions = src
+		Build: func(src, _ app.GateDefinitions) contract.Client {
 			return &app.Host{
-				Checker: &app.Checker{Definitions: src, Validator: h.validator, Runtimes: h.runtimes, Sources: []string{"git.revision", "git.diff", "param"}},
-				Calls:   &calls,
+				Checker: app.NewChecker(src, h.validator, h.runtimes, []string{"git.revision", "git.diff", "param"}),
+				Calls:   h.callsOn(src),
 			}
 		},
 	}
@@ -247,13 +245,11 @@ func TestGatedSubmitRecordsWhatTheCheckRead(t *testing.T) {
 	gated := &app.Gated{
 		Definitions: h.defs,
 		Global:      h.defs,
-		Build: func(src, _ app.DefinitionSource) contract.Client {
-			calls := *h.calls
-			calls.Definitions = src
+		Build: func(src, _ app.GateDefinitions) contract.Client {
 			return &afterCheck{
 				Client: &app.Host{
-					Checker: &app.Checker{Definitions: src, Validator: h.validator, Runtimes: h.runtimes, Sources: []string{"git.revision", "git.diff", "param"}},
-					Calls:   &calls,
+					Checker: app.NewChecker(src, h.validator, h.runtimes, []string{"git.revision", "git.diff", "param"}),
+					Calls:   h.callsOn(src),
 				},
 				f: func() {
 					h.defs.set(definition.KindAgent, "a", strings.Replace(settingsDocs()[definition.KindAgent]["a"], "m1", "m2", 1))
@@ -274,7 +270,7 @@ func TestGatedSubmitRecordsWhatTheCheckRead(t *testing.T) {
 	}
 	seen := false
 	for _, source := range record.Definitions {
-		if source.Kind == definition.KindAgent && source.Name == "a" {
+		if source.Kind == string(definition.KindAgent) && source.Name == "a" {
 			seen = true
 		}
 		if want := original[string(source.Kind)+"/"+source.Name]; source.SHA256 != want {
@@ -296,18 +292,14 @@ func TestGatedWriteScopeChecksTheGlobalSnapshot(t *testing.T) {
 	gated := &app.Gated{
 		Definitions: h.defs,
 		Global:      global,
-		Build: func(src, globalOnly app.DefinitionSource) contract.Client {
-			checker := func(defs app.DefinitionSource) *app.Checker {
-				return &app.Checker{Definitions: defs, Validator: h.validator, Runtimes: h.runtimes, Sources: []string{"git.revision", "git.diff", "param"}}
+		Build: func(src, globalOnly app.GateDefinitions) contract.Client {
+			checker := func(defs app.GateDefinitions) *app.Checker {
+				return app.NewChecker(defs, h.validator, h.runtimes, []string{"git.revision", "git.diff", "param"})
 			}
 			return &afterCheck{
 				Client: &app.Host{
-					Checker: checker(src),
-					Settings: &app.Settings{
-						Definitions: src,
-						Writer:      &writerSpy{existed: map[string]bool{"agents/a": true}},
-						Scopes:      []app.Scope{{Name: "global settings", Check: checker(globalOnly)}},
-					},
+					Checker:  checker(src),
+					Settings: app.NewSettings(src, &writerSpy{existed: map[string]bool{"agents/a": true}}, nil, []app.Scope{{Name: "global settings", Check: checker(globalOnly)}}),
 				},
 				f: func() {
 					// Live, the policy no longer constrains the model family.

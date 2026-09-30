@@ -23,7 +23,7 @@ func TestCheckReportsEveryProblemAcrossDocuments(t *testing.T) {
 	h.defs.docs[definition.KindAgent]["broken"] = "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\ncolour = \"red\"\n"
 	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: q", 1) + "timeout: 2h\n"
 	h.validator.compileErr = errors.New("not a schema")
-	checker := &app.Checker{Definitions: h.defs, Validator: h.validator, Runtimes: h.runtimes, Sources: []string{"git.revision", "git.diff"}}
+	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 
 	report, err := checker.Check(context.Background(), false)
 	if err != nil {
@@ -44,7 +44,7 @@ func TestCheckReportsEveryProblemAcrossDocuments(t *testing.T) {
 	if report.Checked["processes"] != 2 || report.Checked["agents"] != 2 {
 		t.Fatalf("checked = %v", report.Checked)
 	}
-	if len(h.runner.calls()) != 0 || len(h.runtimes.asked) != 0 {
+	if len(h.runner.calls()) != 0 || len(h.runtimes.identified) != 0 {
 		t.Fatal("check without probe must not touch runtimes")
 	}
 }
@@ -56,7 +56,7 @@ func TestCheckReportsWhatDefinesWhat(t *testing.T) {
 	h.defs.docs[definition.KindPolicy]["spare"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "name: pol", "name: spare", 1)
 	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: q", 1), "agent:a", "agent:ghost", 1)
 	h.defs.docs[definition.KindAgent]["broken"] = "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\ncolour = \"red\"\n"
-	checker := &app.Checker{Definitions: h.defs, Validator: h.validator, Runtimes: h.runtimes, Sources: []string{"git.revision", "git.diff"}}
+	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 	report, err := checker.Check(context.Background(), false)
 	if err != nil {
 		t.Fatal(err)
@@ -91,17 +91,34 @@ func TestCheckReportsWhatDefinesWhat(t *testing.T) {
 
 func TestCheckProbesEachAgentsRuntime(t *testing.T) {
 	h := newHarness()
-	checker := &app.Checker{Definitions: h.defs, Validator: h.validator, Runtimes: h.runtimes, Sources: []string{"git.revision", "git.diff"}}
+	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 	if report, _ := checker.Check(context.Background(), true); len(report.Problems) != 0 {
 		t.Fatalf("problems = %v", report.Problems)
 	}
-	if !reflect.DeepEqual(h.runtimes.asked, []string{"spy|/bin/spy"}) {
-		t.Fatalf("asked = %v", h.runtimes.asked)
+	if !reflect.DeepEqual(h.runtimes.identified, []string{"spy|/bin/spy"}) {
+		t.Fatalf("identified = %v", h.runtimes.identified)
 	}
 	h.runner.identity.Version = "9.0.0"
 	report, _ := checker.Check(context.Background(), true)
 	if !reflect.DeepEqual(report.Problems, []string{"agent a: mapping rt verifies no primitive for runtime version 9.0.0"}) {
 		t.Fatalf("problems = %v", report.Problems)
+	}
+}
+
+// Only an adapter the code provides is probed: the identity of one it does
+// not is never asked for, and its absence is reported once, as what it is.
+func TestCheckProbeAsksNoIdentityOfAnAdapterTheCodeDoesNotProvide(t *testing.T) {
+	h := newHarness()
+	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(h.defs.docs[definition.KindRuntime]["rt"], "adapter: spy", "adapter: ghost", 1)
+	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
+	without, _ := checker.Check(context.Background(), false)
+	report, _ := checker.Check(context.Background(), true)
+	want := []string{`runtime mapping rt: unknown adapter "ghost" (available: spy)`}
+	if !reflect.DeepEqual(without.Problems, want) || !reflect.DeepEqual(report.Problems, without.Problems) {
+		t.Fatalf("problems without probe %q, with %q, want %q", without.Problems, report.Problems, want)
+	}
+	if len(h.runtimes.identified) != 0 {
+		t.Fatalf("identities asked for: %v", h.runtimes.identified)
 	}
 }
 
@@ -111,7 +128,7 @@ func TestCheckProbePlansEachProcessOnTheInstalledVersion(t *testing.T) {
 	h := newHarness()
 	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(h.defs.docs[definition.KindRuntime]["rt"], "Read: {grants: [repository.read], verified: [\"1.\"]}", "Read: {grants: [repository.read], verified: [\"2.\"]}", 1)
 	h.defs.docs[definition.KindProcess]["p"] += "tools: {require: [repository.read]}\n"
-	checker := &app.Checker{Definitions: h.defs, Validator: h.validator, Runtimes: h.runtimes, Sources: []string{"git.revision", "git.diff"}}
+	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 	if report, _ := checker.Check(context.Background(), false); len(report.Problems) != 0 {
 		t.Fatalf("problems = %v", report.Problems)
 	}
@@ -147,7 +164,7 @@ func TestObserveResumesAfterTheLastDeliveredEvent(t *testing.T) {
 		batches: [][]run.Event{{{Seq: 4}, {Seq: 5}}, {}, {{Seq: 6}}},
 		status:  []run.State{run.StateRunning, run.StateRunning, run.StateFinished},
 	}
-	runs := &app.Runs{Reader: reader, PollInterval: 1}
+	runs := app.NewRuns(reader, nil, 1)
 	var delivered []int
 	err := runs.Observe(context.Background(), "r", 3, func(event contract.Event) error {
 		delivered = append(delivered, event.Seq)
@@ -168,7 +185,7 @@ func TestInspectShowsTheNodeResultAsRecorded(t *testing.T) {
 		Session:   &run.Session{ProviderSessionID: "prov-1", Continues: "run-0"},
 	}
 	reader := &readerSpy{state: run.StateFinished, record: run.Record{ID: "r", Result: result, Turn: &run.Turn{StderrTail: "boom"}}}
-	view, err := (&app.Runs{Reader: reader}).Inspect(context.Background(), "r")
+	view, err := (app.NewRuns(reader, nil, 0)).Inspect(context.Background(), "r")
 	if err != nil || view.State != "finished" || view.StderrTail != "boom" {
 		t.Fatalf("view = %+v, %v", view, err)
 	}
@@ -182,7 +199,7 @@ func TestInspectShowsTheNodeResultAsRecorded(t *testing.T) {
 
 func TestAnAbandonedRunIsALostNode(t *testing.T) {
 	reader := &readerSpy{state: run.StateAbandoned, record: run.Record{ID: "r", CreatedAt: time.Unix(1, 0)}}
-	view, err := (&app.Runs{Reader: reader}).Inspect(context.Background(), "r")
+	view, err := (app.NewRuns(reader, nil, 0)).Inspect(context.Background(), "r")
 	if err != nil || view.State != "abandoned" || view.Result == nil || view.Result.Status != "lost" || view.Result.Error.Class != "abandoned" || view.Result.Cost.Source != "unknown" {
 		t.Fatalf("view = %+v, %v", view.Result, err)
 	}
@@ -231,7 +248,7 @@ func TestInitWritesEachExampleWithoutOverwriting(t *testing.T) {
 		"agents/a.toml":  {Data: []byte("x")},
 		"schemas/s.json": {Data: []byte("x")},
 	}
-	result, err := initNow(&app.Settings{Writer: writer, Examples: examples}, false)
+	result, err := initNow(app.NewSettings(nil, writer, examples, nil), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +268,7 @@ func TestInitDryRunAndReplacement(t *testing.T) {
 	}
 	for _, overwrite := range []bool{false, true} {
 		writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
-		settings := &app.Settings{Writer: writer, Examples: examples}
+		settings := app.NewSettings(nil, writer, examples, nil)
 		plan, err := settings.Init(context.Background(), overwrite, nil)
 		if err != nil || len(writer.writes) != 0 {
 			t.Fatalf("overwrite %v: dry run wrote %v, %v", overwrite, writer.writes, err)
@@ -278,7 +295,7 @@ func TestInitDryRunAndReplacement(t *testing.T) {
 func TestWritesRefuseFilesChangedSinceTheApprovedPlan(t *testing.T) {
 	examples := fstest.MapFS{"service.toml": {Data: []byte("x")}, "agents/a.toml": {Data: []byte("x")}}
 	writer := &writerSpy{existed: map[string]bool{}}
-	settings := &app.Settings{Writer: writer, Examples: examples}
+	settings := app.NewSettings(nil, writer, examples, nil)
 	plan, err := settings.Init(context.Background(), true, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -290,7 +307,7 @@ func TestWritesRefuseFilesChangedSinceTheApprovedPlan(t *testing.T) {
 	}
 
 	h := newHarness()
-	settings = &app.Settings{Definitions: h.defs, Writer: writer}
+	settings = app.NewSettings(h.defs, writer, nil, nil)
 	agent, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "rt"}, true, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -307,7 +324,7 @@ func TestWritesRefuseFilesChangedSinceTheApprovedPlan(t *testing.T) {
 func TestWritesRefuseAnythingButTheApprovedPlan(t *testing.T) {
 	examples := fstest.MapFS{"service.toml": {Data: []byte("x")}, "agents/a.toml": {Data: []byte("x")}}
 	writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
-	settings := &app.Settings{Writer: writer, Examples: examples}
+	settings := app.NewSettings(nil, writer, examples, nil)
 	keep, err := settings.Init(context.Background(), false, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -328,7 +345,7 @@ func TestWritesRefuseAnythingButTheApprovedPlan(t *testing.T) {
 	}
 
 	h := newHarness()
-	settings = &app.Settings{Definitions: h.defs, Writer: writer}
+	settings = app.NewSettings(h.defs, writer, nil, nil)
 	plan, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "rt"}, false, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -348,14 +365,14 @@ func TestInitSkipsHiddenFilesAndRejectsStrayRootFiles(t *testing.T) {
 		"agents/a.toml":    {Data: []byte("x")},
 		"service.toml":     {Data: []byte("x")},
 	}
-	if _, err := initNow(&app.Settings{Writer: writer, Examples: examples}, false); err != nil {
+	if _, err := initNow(app.NewSettings(nil, writer, examples, nil), false); err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(writer.writes, []string{"agents/a", "service/service"}) {
 		t.Fatalf("writes %v", writer.writes)
 	}
 	stray := fstest.MapFS{"notes.txt": {Data: []byte("x")}}
-	if _, err := initNow(&app.Settings{Writer: &writerSpy{}, Examples: stray}, false); err == nil {
+	if _, err := initNow(app.NewSettings(nil, &writerSpy{}, stray, nil), false); err == nil {
 		t.Fatal("a stray root file was accepted")
 	}
 }
@@ -365,7 +382,7 @@ func TestInitSkipsHiddenFilesAndRejectsStrayRootFiles(t *testing.T) {
 func TestCreateAgentDryRun(t *testing.T) {
 	h := newHarness()
 	writer := &writerSpy{existed: map[string]bool{"agents/b": true}}
-	settings := &app.Settings{Definitions: h.defs, Writer: writer}
+	settings := app.NewSettings(h.defs, writer, nil, nil)
 	spec := contract.Agent{Name: "b", Runtime: "rt"}
 	var input *contract.InputError
 	if _, err := settings.CreateAgent(context.Background(), spec, false, nil); !errors.As(err, &input) {
@@ -388,8 +405,8 @@ func TestCreateAgentDryRun(t *testing.T) {
 func TestCreateAgentKeepsSettingsValid(t *testing.T) {
 	h := newHarness()
 	writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
-	checker := &app.Checker{Definitions: h.defs, Validator: h.validator, Runtimes: h.runtimes, Sources: []string{"git.revision", "git.diff"}}
-	settings := &app.Settings{Definitions: h.defs, Writer: writer, Scopes: []app.Scope{{Name: "global settings", Check: checker}}}
+	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
+	settings := app.NewSettings(h.defs, writer, nil, []app.Scope{{Name: "global settings", Check: checker}})
 	var input *contract.InputError
 	for _, approved := range []*contract.AgentWrite{nil, {Path: "agents/a", Replaces: true, Digest: "d-agents/a"}} {
 		// Policy pol constrains the model family; this a declares none.
@@ -413,7 +430,7 @@ func TestCreateAgentKeepsSettingsValid(t *testing.T) {
 func TestCreateAgentValidatesAgainstTheRuntimeMapping(t *testing.T) {
 	h := newHarness()
 	writer := &writerSpy{}
-	settings := &app.Settings{Definitions: h.defs, Writer: writer}
+	settings := app.NewSettings(h.defs, writer, nil, nil)
 	var input *contract.InputError
 	if _, err := createNow(settings, contract.Agent{Name: "b", Runtime: "nope"}, false); !errors.As(err, &input) {
 		t.Fatalf("unknown runtime: %v", err)
@@ -432,13 +449,18 @@ func TestCreateAgentValidatesAgainstTheRuntimeMapping(t *testing.T) {
 // A process view says where each definition comes from as data, not text.
 func TestShowProcessSourcesAreStructured(t *testing.T) {
 	h := newHarness()
-	view, err := (&app.Inspection{Definitions: h.defs, Runtimes: h.runtimes, Validator: h.validator}).ShowProcess(context.Background(), "p", "")
+	// The resolver behind it is given nothing that can start a turn.
+	identities := struct{ app.ResolverIdentities }{h.runtimes}
+	view, err := (app.NewInspection(app.NewResolver(h.defs, identities, h.validator))).ShowProcess(context.Background(), "p", "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := contract.DefinitionOrigin{Kind: "processes", Name: "p", Layer: "global", Path: "mem/processes/p"}
 	if len(view.Sources) < 2 || !reflect.DeepEqual(view.Sources[1], want) {
 		t.Fatalf("sources = %+v", view.Sources)
+	}
+	if len(h.runtimes.asked) != 0 || len(h.runner.calls()) != 0 {
+		t.Fatalf("showing a process built runners %v and ran turns %v", h.runtimes.asked, h.runner.calls())
 	}
 }
 
@@ -459,7 +481,7 @@ func TestCreateAgentAsksEveryScope(t *testing.T) {
 	h := newHarness()
 	writer := &writerSpy{}
 	global, project := &proposedCheckSpy{}, &proposedCheckSpy{added: []string{"agent b: bad"}}
-	settings := &app.Settings{Definitions: h.defs, Writer: writer, Scopes: []app.Scope{{Name: "global settings", Check: global}, {Name: "project settings", Check: project}}}
+	settings := app.NewSettings(h.defs, writer, nil, []app.Scope{{Name: "global settings", Check: global}, {Name: "project settings", Check: project}})
 	var input *contract.InputError
 	if _, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "rt"}, false, nil); !errors.As(err, &input) || !strings.Contains(err.Error(), "agent b would break the project settings") || !strings.Contains(err.Error(), "agent b: bad") {
 		t.Fatalf("err = %v", err)
