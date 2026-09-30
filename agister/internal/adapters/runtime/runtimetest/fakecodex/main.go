@@ -11,6 +11,8 @@ import (
 	"os"
 	"regexp"
 	"time"
+
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeoutput"
 )
 
 func main() {
@@ -36,6 +38,11 @@ func main() {
 	scenario := "approve"
 	if match := regexp.MustCompile(`SCENARIO:([a-z_]+)`).FindStringSubmatch(prompt); match != nil {
 		scenario = match[1]
+	}
+	fromSchema := fakeoutput.Enabled(os.Getenv)
+	if fromSchema {
+		// The prompt carries real files then: no marker in them is a scenario.
+		scenario = "approve"
 	}
 	emit := func(message any) {
 		data, _ := json.Marshal(message)
@@ -76,6 +83,9 @@ func main() {
 			output = map[string]any{"verdict": "request_changes", "summary": "A real bug.", "findings": []any{map[string]any{"severity": "major", "file": "a.txt", "line": 2, "title": "Off by one", "detail": "Loop bound is wrong."}}}
 		}
 		data, _ := json.Marshal(output)
+		if fromSchema {
+			data, _ = json.Marshal(fakeoutput.Instance(schema))
+		}
 		text = string(data)
 	}
 	if scenario == "not_json" {

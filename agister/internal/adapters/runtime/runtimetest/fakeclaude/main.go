@@ -10,6 +10,8 @@ import (
 	"os"
 	"regexp"
 	"time"
+
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeoutput"
 )
 
 func main() {
@@ -33,8 +35,13 @@ func main() {
 	input, _ := io.ReadAll(os.Stdin)
 	prompt := string(input)
 	scenario := "approve"
+	fromSchema := fakeoutput.Enabled(os.Getenv)
 	if match := regexp.MustCompile(`SCENARIO:([a-z_]+)`).FindStringSubmatch(prompt); match != nil {
 		scenario = match[1]
+	}
+	if fromSchema {
+		// The prompt carries real files then: no marker in them is a scenario.
+		scenario = "approve"
 	}
 	// A resumed session keeps its ID; a fresh one gets the runtime's own.
 	session := flag("--resume")
@@ -73,6 +80,11 @@ func main() {
 		"usage": map[string]any{"input_tokens": 100, "output_tokens": 50, "cache_read_input_tokens": 10, "cache_creation_input_tokens": 5}}
 	if flag("--json-schema") != "" && scenario != "no_structured_output" {
 		result["structured_output"] = outputs(scenario)
+		if fromSchema {
+			var schema any
+			_ = json.Unmarshal([]byte(flag("--json-schema")), &schema)
+			result["structured_output"] = fakeoutput.Instance(schema)
+		}
 	}
 	emit(result)
 }
