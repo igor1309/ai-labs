@@ -48,6 +48,14 @@
   path through a symlink leaving the workspace were refused; `**/*`,
   `../outside/*` and `linked/**/*` listed nothing outside the workspace,
   and a symlinked file pointing outside was not listed (2.1.284).
+- **Without `--restricted`, the file tools reach the host.** Claude Code
+  2.1.285 under claude-code/3 (`--permission-mode dontAsk`, the tool in
+  `--tools` and `--allowedTools`, 2026-09-30, a scratch directory): Read,
+  Grep and Glob each read or listed a file in another temporary directory,
+  with no permission denial. Their mapping declares `host.read`, which is
+  never granted, so the shipped mapping grants a Claude call no file tool.
+  The same turn loaded the directory's `AGENTS.md` and offered Skill, which
+  used a project skill.
 
 Verified live against Claude Code 2.1.283 (Glob: 2.1.284). Codex is covered by protocol
 fixtures only.

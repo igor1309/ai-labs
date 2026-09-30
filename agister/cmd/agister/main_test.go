@@ -198,9 +198,11 @@ func TestAgentCallEndToEnd(t *testing.T) {
 			t.Fatalf("diff input = %v", input)
 		}
 	}
-	// Primitives, not permissions, reach the runtime.
+	// Primitives, not permissions, reach the runtime. Under claude-code/3
+	// the shipped file tools reach the host, so a review is granted none;
+	// Skill it always gets.
 	args := strings.Join(last.argv(), " ")
-	if !strings.Contains(args, "--tools=Read,Glob,Grep --allowedTools=Read,Glob,Grep") || strings.Contains(args, "Bash") || !strings.Contains(args, "--max-budget-usd 3") {
+	if !strings.Contains(args, "--tools=Skill --allowedTools=Skill") || strings.Contains(args, "Read") || strings.Contains(args, "Bash") || !strings.Contains(args, "--max-budget-usd 3") {
 		t.Fatalf("argv = %s", args)
 	}
 	prompt := last.first["prompt"].(string)
@@ -293,7 +295,7 @@ writing = ["docs.write"]
 	write(t, filepath.Join(home, "runtimes", "docs-runtime.yaml"), `schema: agister.runtime/v1alpha1
 name: docs-runtime
 adapter: claude-code
-contract: claude-code/2
+contract: claude-code/3
 primitives:
   select: any
   items:
@@ -327,7 +329,7 @@ output:
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
-	if args := strings.Join(lastRun(t, home).argv(), " "); !strings.Contains(args, "--tools=Read --allowedTools=Read") {
+	if args := strings.Join(lastRun(t, home).argv(), " "); !strings.Contains(args, "--tools=Read,Skill --allowedTools=Read,Skill") {
 		t.Fatalf("argv = %s", args)
 	}
 }
@@ -500,7 +502,7 @@ func TestAgentCreateAsksBeforeReplacing(t *testing.T) {
 	write(t, filepath.Join(home, "runtimes", "narrow.yaml"), `schema: agister.runtime/v1alpha1
 name: narrow
 adapter: claude-code
-contract: claude-code/2
+contract: claude-code/3
 efforts: [high]
 primitives:
   select: one

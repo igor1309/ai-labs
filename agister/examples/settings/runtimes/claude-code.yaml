@@ -1,8 +1,10 @@
 # What each Claude Code tool actually grants under adapter contract
-# claude-code/2 (--permission-mode dontAsk, --restricted, --strict-mcp-config:
-# file tools confined to the working directory). claude-code/2 differs from
-# claude-code/1 only in continuation: it resumes the reported session in
-# place with --resume, where /1 forked it into a preset session ID.
+# claude-code/3 (--permission-mode dontAsk, --strict-mcp-config, Skill on
+# every turn). claude-code/3 differs from claude-code/2 in dropping
+# --restricted (ADR-006): Claude Code loads the repository's instruction
+# files, settings and skills, and its file tools are no longer confined to
+# the working directory. /2 resumed like /3; /1 forked a continuation into a
+# preset session ID.
 #
 # verified lists the Claude Code versions a primitive's grants were checked
 # against live (docs/findings.md). A plan uses only primitives verified for
@@ -10,14 +12,16 @@
 schema: agister.runtime/v1alpha1
 name: claude-code
 adapter: claude-code
-contract: claude-code/2
+contract: claude-code/3
 efforts: [low, medium, high, xhigh, max]
 primitives:
   select: any
   items:
-    Read: {grants: [repository.read], verified: ["2.1."]} # 2.1.283
-    Glob: {grants: [repository.read], verified: ["2.1."]} # 2.1.284
-    Grep: {grants: [repository.search], verified: ["2.1."]} # 2.1.283
+    # Without --restricted, each read a file outside the working directory
+    # (observed live, 2.1.285): they reach the host.
+    Read: {grants: [repository.read, host.read], verified: ["2.1."]}
+    Glob: {grants: [repository.read, host.read], verified: ["2.1."]}
+    Grep: {grants: [repository.search, host.read], verified: ["2.1."]}
     # Not yet verified, so never granted.
     Edit: {grants: [repository.write]}
     Write: {grants: [repository.write]}
