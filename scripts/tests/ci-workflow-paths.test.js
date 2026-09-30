@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { matchesGlob } from "node:path";
 import test from "node:test";
 
 const workflow = readFileSync(new URL("../../.github/workflows/ci.yml", import.meta.url), "utf8");
@@ -16,8 +17,105 @@ test("ciPathFilters_shouldNotTreatDashboardScriptAsSharedInfrastructure", () => 
   assert.doesNotMatch(sharedFilter, /"scripts\/\*\*"/);
 });
 
+test("ciPathFilters_shouldRunAgisterCore_onAgisterProcessChangeOnly", () => {
+  const changedFiles = [".agister/processes/tests_review_codex.yaml"];
+
+  assert.equal(matchingFilters(changedFiles).has("agister"), true);
+  assert.equal(jobRuns("agister-core", changedFiles), true);
+});
+
+test("ciPathFilters_shouldRunAgisterCore_onCodeReviewPromptChangeOnly", () => {
+  const changedFiles = ["prompts/code-review-tests.md"];
+
+  assert.equal(matchingFilters(changedFiles).has("agister"), true);
+  assert.equal(jobRuns("agister-core", changedFiles), true);
+});
+
+test("ciPathFilters_shouldNotRunAgisterCore_onUnrelatedPromptChange", () => {
+  const changedFiles = ["prompts/other.md"];
+
+  assert.equal(matchingFilters(changedFiles).has("agister"), false);
+  assert.equal(jobRuns("agister-core", changedFiles), false);
+});
+
+test("ciJobs_shouldSelectAgisterCore_fromAgisterFilterOutputAlone", () => {
+  assert.equal(jobRunsForFilters("agister-core", new Set(["agister"])), true);
+  assert.equal(jobRunsForFilters("agister-core", new Set()), false);
+});
+
 function filterSection(filterName, nextFilterName) {
   const match = workflow.match(new RegExp(`\\n            ${filterName}:\\n([\\s\\S]*?)\\n            ${nextFilterName}:`));
   assert.ok(match, `missing ${filterName} filter`);
   return match[1];
+}
+
+// The dorny/paths-filter `filters` block: filter name -> glob patterns.
+function pathFilters() {
+  const block = workflow.match(/\n          filters: \|\n((?: {12}.*\n)+)/);
+  assert.ok(block, "missing paths-filter filters block");
+  const filters = new Map();
+  let current;
+  for (const line of block[1].split("\n")) {
+    const name = line.match(/^ {12}([\w-]+):$/);
+    const pattern = line.match(/^ {14}- "([^"]+)"$/);
+    if (name) {
+      current = name[1];
+      filters.set(current, []);
+    } else if (pattern && current) {
+      filters.get(current).push(pattern[1]);
+    } else if (line !== "") {
+      assert.fail(`unexpected filters line: ${line}`);
+    }
+  }
+  return filters;
+}
+
+// A filter matches when any changed file matches any of its patterns, as
+// paths-filter's default `predicate-quantifier: some` does.
+function matchingFilters(changedFiles) {
+  const matched = new Set();
+  for (const [name, patterns] of pathFilters()) {
+    if (changedFiles.some((file) => patterns.some((pattern) => matchesGlob(file, pattern)))) {
+      matched.add(name);
+    }
+  }
+  return matched;
+}
+
+function jobRuns(jobName, changedFiles) {
+  return jobRunsForFilters(jobName, matchingFilters(changedFiles));
+}
+
+// Evaluates the job's `if:` on a push, with the `changes` job outputs
+// wired from the matched filters.
+function jobRunsForFilters(jobName, matchedFilters) {
+  const job = workflow.match(new RegExp(`\\n  ${jobName}:\\n((?:    .*\\n)+)`));
+  assert.ok(job, `missing ${jobName} job`);
+  assert.match(job[1], /^    needs: \[changes\]$/m);
+  const condition = job[1].match(/^    if: \$\{\{ (.*) \}\}$/m);
+  assert.ok(condition, `missing ${jobName} condition`);
+
+  const outputs = changesOutputs(matchedFilters);
+  const context = { "github.event_name": "push" };
+  for (const [name, value] of Object.entries(outputs)) {
+    context[`needs.changes.outputs.${name}`] = value;
+  }
+  return condition[1].split(" || ").some((term) => {
+    const comparison = term.match(/^([\w.-]+) == '([^']*)'$/);
+    assert.ok(comparison, `unsupported condition term: ${term}`);
+    assert.ok(comparison[1] in context, `unknown context value: ${comparison[1]}`);
+    return context[comparison[1]] === comparison[2];
+  });
+}
+
+function changesOutputs(matchedFilters) {
+  const block = workflow.match(/\n  changes:\n[\s\S]*?\n    outputs:\n((?: {6}.*\n)+)/);
+  assert.ok(block, "missing changes job outputs");
+  const outputs = {};
+  for (const line of block[1].trimEnd().split("\n")) {
+    const output = line.match(/^ {6}([\w-]+): \$\{\{ steps\.filter\.outputs\.([\w-]+) \}\}$/);
+    assert.ok(output, `unexpected changes output: ${line}`);
+    outputs[output[1]] = matchedFilters.has(output[2]) ? "true" : "false";
+  }
+  return outputs;
 }

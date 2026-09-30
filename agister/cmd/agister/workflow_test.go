@@ -171,30 +171,11 @@ func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Should the test fail first, the cleanup ends what every run left on
-	// record, as it is then: each effect on its own, whatever else a run has
-	// or lacks.
+	// record, whatever point the test reached.
+	cleanupRecorded(t, home, repo)
 	t.Cleanup(func() {
 		_ = victim.Process.Kill()
 		_ = victim.Wait()
-		paths, _ := filepath.Glob(filepath.Join(home, "runs", "*", "record.json"))
-		for _, path := range paths {
-			var left domain.Record
-			data, err := os.ReadFile(path)
-			if err != nil || json.Unmarshal(data, &left) != nil || left.Effects == nil {
-				continue
-			}
-			for _, process := range []*domain.Process{left.Effects.Process, left.Effects.Command} {
-				if process == nil {
-					continue
-				}
-				if g, _, err := supervisor.ParseRef(process.Ref); err == nil && g > 1 {
-					_ = syscall.Kill(-g, syscall.SIGKILL)
-				}
-			}
-			if left.Effects.Checkout != nil {
-				_ = exec.Command("git", "-C", repo, "worktree", "remove", "--force", left.Effects.Checkout.Dir).Run()
-			}
-		}
 	})
 	var nodes []domain.Record
 

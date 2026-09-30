@@ -50,10 +50,13 @@ func Own(turn Turn, resumed bool) Turn {
 // and whatever it cost is counted again by the next turn Agister runs.
 //
 // A run is in the session when it reported it or continued a run that is;
-// one still running may be in a turn not yet recorded. The totals are
-// unknown, never a guess, when a run in the session has not
-// finished, when the last to finish overlapped another, or when its latest
-// turn did not report the session with totals.
+// one still running may be in a turn not yet recorded, and so may one the
+// reaper finished with a runtime process recorded, whether or not it saved
+// a turn: its owner ended, maybe after starting a process for a turn not
+// yet saved. The totals are unknown, never a guess, when a run in the
+// session has not finished, when the last to finish overlapped another or
+// was reaped with a process recorded, or when its latest turn did not
+// report the session with totals.
 func LatestTotals(records []Record, session, exclude string) *SessionTotals {
 	if session == "" {
 		return nil
@@ -64,9 +67,9 @@ func LatestTotals(records []Record, session, exclude string) *SessionTotals {
 	}
 	var in []Record
 	for _, record := range records {
-		// A finished run that ran no turn, a refused one, left the
-		// session as it was.
-		if record.ID == exclude || record.FinishedAt != nil && record.Turn == nil {
+		// A finished run that started no runtime process and ran no turn,
+		// a refused one, left the session as it was.
+		if record.ID == exclude || record.FinishedAt != nil && record.Turn == nil && !startedProcess(record) {
 			continue
 		}
 		if inSession(record, session, byID, len(records)) {
@@ -90,10 +93,23 @@ func LatestTotals(records []Record, session, exclude string) *SessionTotals {
 			return nil
 		}
 	}
+	if reaped(*latest) && startedProcess(*latest) {
+		return nil
+	}
 	if turn := latest.Turn; turn != nil && turn.ProviderSessionID == session {
 		return turn.Session
 	}
 	return nil
+}
+
+// startedProcess tells whether a run recorded its runtime's process.
+func startedProcess(record Record) bool {
+	return record.Effects != nil && record.Effects.Process != nil
+}
+
+// reaped tells whether the reaper finished a run: its owner ended first.
+func reaped(record Record) bool {
+	return record.Result != nil && record.Result.Error != nil && record.Result.Error.Class == ClassAbandoned
 }
 
 // inSession tells whether a run reported the session, on its result or any

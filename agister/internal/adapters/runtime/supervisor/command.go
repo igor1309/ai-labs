@@ -23,6 +23,10 @@ type Commands struct {
 	// KillGrace bounds reading output that something outside the group
 	// holds open after the group is gone; zero means 5s.
 	KillGrace time.Duration
+	// Timer starts the command's timeout: the run times out when the
+	// channel it returns delivers, and stop releases it. Nil is the wall
+	// clock.
+	Timer func(timeout time.Duration) (fired <-chan time.Time, stop func())
 }
 
 // Run runs the command until it exits, its timeout passes or ctx ends.
@@ -89,13 +93,13 @@ func (c Commands) Run(ctx context.Context, request app.CommandRequest, started f
 	}
 	exited, watched := make(chan struct{}), make(chan struct{})
 	var timedOut, cancelled bool
+	fired, stop := c.timer(request.Timeout)
 	go func() {
 		defer close(watched)
-		timer := time.NewTimer(request.Timeout)
-		defer timer.Stop()
+		defer stop()
 		select {
 		case <-exited:
-		case <-timer.C:
+		case <-fired:
 			timedOut = true
 			kill()
 		case <-ctx.Done():
@@ -134,6 +138,15 @@ func (c Commands) Run(ctx context.Context, request app.CommandRequest, started f
 		result.Signal = waitErr.Error()
 	}
 	return result
+}
+
+// timer starts the command's timeout on c.Timer, or on the wall clock.
+func (c Commands) timer(timeout time.Duration) (<-chan time.Time, func()) {
+	if c.Timer != nil {
+		return c.Timer(timeout)
+	}
+	timer := time.NewTimer(timeout)
+	return timer.C, func() { timer.Stop() }
 }
 
 // boundedOutput keeps the first bound bytes and the last bound bytes after
