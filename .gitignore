@@ -27,3 +27,5 @@ deno.lock
 test-results/
 playwright-report/
 
+# Local Go build output
+agister/bin/
