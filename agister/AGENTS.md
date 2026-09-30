@@ -16,6 +16,9 @@ still apply.
 - Review through Agister, on a committed candidate: a `*_review_codex`
   process for code, or `decision_review_codex --param prompt=<prompt file>`
   for decision documents (agent `codex-sol`: `gpt-6.1-sol`, effort high).
+  Findings are judged by the `review_judge` process, not by you:
+  `--param reviews=<review output file> --param scope=<what the change is>`.
+  Act on its judgement.
 - At most 2 review rounds. Deferred work is `agister/docs/deferred.md`:
   gap, trigger, done when, for real, observed gaps only.
 - ADRs reference only earlier ADRs.
