@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -328,6 +329,100 @@ func TestTheLookupGetsOnlyWhatIsLeftOfTheTurnsTimeout(t *testing.T) {
 	}
 }
 
+// runGuarded runs an approved turn in a worker and returns what the turn
+// returns. Past a 30-second hang guard the test fails, saying why the turn
+// hung; guarded's cleanup ends what the turn started.
+func runGuarded(t *testing.T, ctx context.Context, runner *codex.Runner, hang string) run.Turn {
+	t.Helper()
+	turn, ok := guarded(t, ctx, runner, time.After(30*time.Second))
+	if !ok {
+		t.Fatalf("RunTurn did not return: %s", hang)
+	}
+	return turn
+}
+
+// guarded runs an approved turn in a worker under a context of its own and
+// reports whether it returned before expired fired. When it did not, cleanup
+// cancels the call, kills every process group the turn recorded until the
+// worker returns, and joins it, so nothing the turn started outlives t.
+func guarded(t *testing.T, ctx context.Context, runner *codex.Runner, expired <-chan time.Time) (run.Turn, bool) {
+	ctx, cancel := context.WithCancel(ctx)
+	var mu sync.Mutex
+	var groups []int
+	watchdog := runtimetest.Watchdog(t)
+	sink := &runtimetest.Recorder{OnProcess: func(ref string) {
+		if group, _, err := supervisor.ParseRef(ref); err == nil && group > 1 {
+			mu.Lock()
+			groups = append(groups, group)
+			mu.Unlock()
+		}
+		watchdog(ref)
+	}}
+	done := make(chan run.Turn, 1)
+	go func() {
+		done <- runner.RunTurn(ctx, request("SCENARIO:approve"), sink)
+	}()
+	select {
+	case turn := <-done:
+		cancel()
+		return turn, true
+	case <-expired:
+	}
+	// Only on this path do the groups still run: a returned turn's groups
+	// are gone, and their IDs are not the test's to signal.
+	t.Cleanup(func() {
+		cancel()
+		for {
+			mu.Lock()
+			for _, group := range groups {
+				_ = syscall.Kill(-group, syscall.SIGKILL)
+			}
+			mu.Unlock()
+			select {
+			case <-done:
+				return
+			case <-time.After(100 * time.Millisecond):
+			}
+		}
+	})
+	return run.Turn{}, false
+}
+
+// When the hang guard fires, cleanup ends the lookup the turn is held in
+// and joins the worker before the test finishes.
+func TestTheHangGuardJoinsTheTurnItGaveUpOn(t *testing.T) {
+	lookup := codex.CCUsage(fakeCCUsage(t, "exec sleep 600\n"), 200*time.Millisecond)
+	var mu sync.Mutex
+	var lookupErr error
+	returned := false
+	// The guard fires once the lookup has started, so it gives up on a turn
+	// held in the lookup, whatever the machine's pace.
+	expired := make(chan time.Time)
+	runner := &codex.Runner{
+		Command: runtimetest.Binary(t, "fakecodex"), KillGrace: 200 * time.Millisecond,
+		Sessions: func(ctx context.Context, timeout time.Duration, sink codex.LookupSink) ([]byte, error) {
+			close(expired)
+			listing, err := lookup(ctx, timeout, sink)
+			mu.Lock()
+			lookupErr, returned = err, true
+			mu.Unlock()
+			return listing, err
+		},
+	}
+	var ok bool
+	t.Run("guarded", func(t *testing.T) {
+		_, ok = guarded(t, context.Background(), runner, expired)
+	})
+	if ok {
+		t.Fatal("the turn returned before its lookup started: the guard never fired")
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if !returned || lookupErr == nil {
+		t.Fatalf("the worker was not joined: lookup returned %v, %v", returned, lookupErr)
+	}
+}
+
 // Cancelling the call during the lookup ends the lookup's group, so a
 // child of the launcher that holds its stdout cannot hold the turn; the
 // cost stays unknown and the turn is as the runtime ended it.
@@ -375,17 +470,8 @@ wait
 		_ = fifo.Close()
 	})
 	runner := &codex.Runner{Command: runtimetest.Binary(t, "fakecodex"), KillGrace: 200 * time.Millisecond, Sessions: codex.CCUsage(command, 200*time.Millisecond)}
-	done := make(chan run.Turn, 1)
-	go func() {
-		done <- runner.RunTurn(ctx, request("SCENARIO:approve"), &runtimetest.Recorder{OnProcess: runtimetest.Watchdog(t)})
-	}()
-	// Only a hang reaches this bound: the child outlives it by far.
-	var turn run.Turn
-	select {
-	case turn = <-done:
-	case <-time.After(30 * time.Second):
-		t.Fatal("RunTurn did not return: the lookup's child held it")
-	}
+	// Only a hang reaches the guard: the child outlives it by far.
+	turn := runGuarded(t, ctx, runner, "the lookup's child held it")
 	if ctx.Err() == nil {
 		t.Fatal("the lookup never started, so nothing was cancelled")
 	}
@@ -421,17 +507,8 @@ func TestTheLookupEndsWhenTheTurnsTimeoutRunsOut(t *testing.T) {
 			return listing, err
 		},
 	}
-	done := make(chan run.Turn, 1)
-	go func() {
-		done <- runner.RunTurn(context.Background(), request("SCENARIO:approve"), &runtimetest.Recorder{OnProcess: runtimetest.Watchdog(t)})
-	}()
-	// Only a hang reaches this bound: the lookup outlives it by far.
-	var turn run.Turn
-	select {
-	case turn = <-done:
-	case <-time.After(30 * time.Second):
-		t.Fatal("RunTurn did not return: the lookup outlived the turn's timeout")
-	}
+	// Only a hang reaches the guard: the lookup outlives it by far.
+	turn := runGuarded(t, context.Background(), runner, "the lookup outlived the turn's timeout")
 	if lookupErr == nil || lookupErr.Error() != "timed out after 100ms" {
 		t.Fatalf("the lookup was not ended by the timeout: %v", lookupErr)
 	}
