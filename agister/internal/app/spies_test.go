@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -76,6 +75,8 @@ type runnerSpy struct {
 	requests    []app.TurnRequest
 	started     chan struct{}
 	startErr    error // what ProcessStarted returned to the last turn
+	// during, when set, runs while each turn does.
+	during func(app.TurnRequest)
 }
 
 func (s *runnerSpy) Identity(context.Context) (app.RuntimeIdentity, error) {
@@ -102,6 +103,9 @@ func (s *runnerSpy) RunTurn(ctx context.Context, request app.TurnRequest, sink a
 	sink.Raw(`{"raw":true}`)
 	if s.started != nil {
 		close(s.started)
+	}
+	if s.during != nil {
+		s.during(request)
 	}
 	if s.block {
 		<-ctx.Done()
@@ -219,7 +223,8 @@ type changesSpy struct {
 	changeErr error
 	panics    bool // Changes panics
 	// copied, when set, names a clean copy's content, given how many times
-	// that copy was named before: 0 before its run, 1 after.
+	// a copy in its directory was named before: 0 before the first
+	// attempt's run, 1 after.
 	copied func(dir string, named int) string
 	named  map[string]int
 }
@@ -255,7 +260,8 @@ func (s *changesSpy) Changes(_ context.Context, dir, from, _ string) ([]byte, er
 	return s.changes, s.changeErr
 }
 
-// copyDirs is where copiesSpy makes its copies: copy-1, copy-2, ...
+// copyDirs is where copiesSpy places the copies of its calls: copy-1,
+// copy-2, ...
 const copyDirs = "/work/copy-"
 
 // madeCopy is one clean copy copiesSpy made.
@@ -263,35 +269,62 @@ type madeCopy struct {
 	repository, revision, patch, dir string
 }
 
-// copiesSpy makes clean copies, each in a directory of its own, and removes
-// them.
+// copiesSpy places each call's clean copies in a directory of its own,
+// makes them there, and removes them. Like the real ones, it makes no copy
+// where one is.
 type copiesSpy struct {
 	mu        sync.Mutex
+	placed    []string // the calls whose copies were placed
 	made      []madeCopy
+	present   map[string]bool
 	removed   []string
 	err       error // Copy fails with it
 	removeErr error // removing fails with it
-	// removing, when set, runs as a copy is removed.
+	// copying, when set, runs as a copy is made; removing as one is
+	// removed.
+	copying  func(dir string)
 	removing func(dir string)
 }
 
-func (s *copiesSpy) Copy(_ context.Context, repository, revision string, patch []byte) (string, func() error, error) {
+func (s *copiesSpy) Place(call string) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.placed = append(s.placed, call)
+	return fmt.Sprintf("%s%d", copyDirs, len(s.placed))
+}
+
+func (s *copiesSpy) Copy(_ context.Context, repository, dir, revision string, patch []byte) error {
+	if s.copying != nil {
+		s.copying(dir)
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.err != nil {
-		return "", nil, s.err
+		return s.err
 	}
-	dir := fmt.Sprintf("%s%d", copyDirs, len(s.made)+1)
+	if s.present[dir] {
+		return fmt.Errorf("%s exists", dir)
+	}
+	if s.present == nil {
+		s.present = map[string]bool{}
+	}
+	s.present[dir] = true
 	s.made = append(s.made, madeCopy{repository, revision, string(patch), dir})
-	return dir, func() error {
-		if s.removing != nil {
-			s.removing(dir)
-		}
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		s.removed = append(s.removed, dir)
+	return nil
+}
+
+func (s *copiesSpy) Discard(_ context.Context, _, dir string) error {
+	if s.removing != nil {
+		s.removing(dir)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.removed = append(s.removed, dir)
+	if s.removeErr != nil {
 		return s.removeErr
-	}, nil
+	}
+	delete(s.present, dir)
+	return nil
 }
 
 // left lists the copies made and not removed.
@@ -299,11 +332,10 @@ func (s *copiesSpy) left() []string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var left []string
-	for _, made := range s.made {
-		if !slices.Contains(s.removed, made.dir) {
-			left = append(left, made.dir)
-		}
+	for dir := range s.present {
+		left = append(left, dir)
 	}
+	sort.Strings(left)
 	return left
 }
 
@@ -513,6 +545,24 @@ func (c *steppingClock) Now() time.Time {
 	defer c.mu.Unlock()
 	c.now = c.now.Add(time.Second)
 	return c.now
+}
+
+// settableClock tells the time it was last set to.
+type settableClock struct {
+	mu  sync.Mutex
+	now time.Time
+}
+
+func (c *settableClock) Now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.now
+}
+
+func (c *settableClock) advance(by time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.now = c.now.Add(by)
 }
 
 type fixedClock struct{}

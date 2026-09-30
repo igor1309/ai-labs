@@ -819,7 +819,7 @@ func TestWorkspaceChangesAreKept(t *testing.T) {
 
 // A process declaring verify, in settings on disk: check and process show
 // warn of it, a call records it under the process's digest and completes
-// once its fixture command passes in the checkout, and a caller's timeout
+// once its fixture command passes on the clean copy, and a caller's timeout
 // shorter than one run refuses the call.
 func TestVerifyDeclarationEndToEnd(t *testing.T) {
 	home, repo := setup(t, "approve")

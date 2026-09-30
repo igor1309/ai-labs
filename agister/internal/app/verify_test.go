@@ -267,6 +267,120 @@ func TestACleanCopyThatCannotBeRemovedStaysOnRecord(t *testing.T) {
 	}
 }
 
+// A call has one clean copy, at a path it names once and records before
+// the copy is made, so a CLI killed while the copy is made or patched
+// leaves one a reap finds; every attempt makes its copy there. A copy that
+// cannot be recorded is not made.
+func TestTheCleanCopyIsOnRecordBeforeItIsMade(t *testing.T) {
+	h := newHarness()
+	verifying(h)
+	h.commands.exits = []int{1}
+	identities := 0
+	h.changes.identify = func() string { identities++; return fmt.Sprintf("tree-%d", identities) }
+	var making []*run.Checkout
+	h.copies.copying = func(string) {
+		h.recorder.mu.Lock()
+		defer h.recorder.mu.Unlock()
+		making = append(making, h.recorder.updates[len(h.recorder.updates)-1].Effects.Copy)
+	}
+	record := h.call(t, contract.CallRequest{})
+	if record.Result.Status != run.Completed || len(record.Attempts) != 2 {
+		t.Fatalf("result %+v, attempts %+v", record.Result, record.Attempts)
+	}
+	if !reflect.DeepEqual(h.copies.placed, []string{"run-1"}) {
+		t.Fatalf("placed %v", h.copies.placed)
+	}
+	on := &run.Checkout{Repository: "/repo", Dir: "/work/copy-1"}
+	if !reflect.DeepEqual(making, []*run.Checkout{on, on}) {
+		t.Fatalf("on record while the copies were made: %+v", making)
+	}
+	for _, attempt := range record.Attempts {
+		if attempt.Run.Dir != "/work/copy-1" {
+			t.Fatalf("attempt %d ran in %s", attempt.Number, attempt.Run.Dir)
+		}
+	}
+
+	h = newHarness()
+	verifying(h)
+	h.recorder.updateErr = func(record run.Record) error {
+		if record.Effects != nil && record.Effects.Copy != nil {
+			return errors.New("disk full")
+		}
+		return nil
+	}
+	making = nil
+	h.copies.copying = func(dir string) { making = append(making, &run.Checkout{Dir: dir}) }
+	record = h.call(t, contract.CallRequest{})
+	if record.Result.Status != run.Failed || message(record) != "recording the clean copy failed: disk full" || len(making) != 0 {
+		t.Fatalf("result %+v, copies made %+v", record.Result.Error, making)
+	}
+}
+
+// Nothing overwrites a copy on record: attempt 1 fails and its copy cannot
+// be removed, so attempt 2 cannot make its own, and the call fails with the
+// copy still on record for a reap to remove.
+func TestACopyOnRecordIsNotOverwritten(t *testing.T) {
+	h := newHarness()
+	verifying(h)
+	h.commands.exits = []int{1}
+	h.copies.removeErr = errors.New("busy")
+	identities := 0
+	h.changes.identify = func() string { identities++; return fmt.Sprintf("tree-%d", identities) }
+	record := h.call(t, contract.CallRequest{})
+	want := "attempt 2 cannot make its clean copy: the copy at /work/copy-1 is still on record, not removed"
+	if record.Result.Status != run.Failed || class(record) != run.ClassInternal || message(record) != want {
+		t.Fatalf("result %+v", record.Result.Error)
+	}
+	if record.Effects == nil || !reflect.DeepEqual(record.Effects.Copy, &run.Checkout{Repository: "/repo", Dir: "/work/copy-1"}) {
+		t.Fatalf("effects = %+v", record.Effects)
+	}
+	if len(h.copies.copies()) != 1 || len(h.commands.runs()) != 1 || len(record.Attempts) != 2 || record.Attempts[1].Run != nil {
+		t.Fatalf("copies %+v, runs %d, attempts %+v", h.copies.copies(), len(h.commands.runs()), record.Attempts)
+	}
+}
+
+// Making the clean copy counts against the call's timeout, and the command
+// gets what is left after it, up to verify.timeout: a 60-second call whose
+// turn ends at second 59 and whose copy takes 2 seconds times out, and
+// one whose copy leaves it 10 seconds runs its command for 10.
+func TestMakingTheCleanCopyCountsAgainstTheCallsTimeout(t *testing.T) {
+	cases := []struct {
+		name       string
+		turn, copy time.Duration
+		timeout    time.Duration // the command's; zero when it never runs
+		status     run.Status
+		class      run.Class
+		message    string
+	}{
+		{"no time left", 59 * time.Second, 2 * time.Second, 0, run.Interrupted, run.ClassTimeout,
+			"the call's timeout passed while attempt 1's clean copy was made"},
+		{"some time left", 30 * time.Second, 20 * time.Second, 10 * time.Second, run.Completed, "", ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			h := newHarness()
+			clock := &settableClock{now: time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)}
+			h.clock = clock
+			h.calls = h.callsOn(h.defs)
+			verifying(h)
+			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "timeout: 10m", "timeout: 30s", 1)
+			h.runner.during = func(app.TurnRequest) { clock.advance(c.turn) }
+			h.copies.copying = func(string) { clock.advance(c.copy) }
+			record := h.call(t, contract.CallRequest{Timeout: "60s"})
+			if record.Result.Status != c.status || class(record) != c.class || message(record) != c.message {
+				t.Fatalf("result %+v", record.Result)
+			}
+			runs := h.commands.runs()
+			if c.timeout == 0 && len(runs) != 0 || c.timeout != 0 && (len(runs) != 1 || runs[0].Timeout != c.timeout) {
+				t.Fatalf("command runs = %+v", runs)
+			}
+			if len(h.copies.left()) != 0 || (record.Effects != nil && record.Effects.Copy != nil) {
+				t.Fatalf("copies left %v, effects %+v", h.copies.left(), record.Effects)
+			}
+		})
+	}
+}
+
 // A failed run is repaired in the call's session with the failure, and the
 // repair turn gets what is left of the call's time and cost.
 func TestAFailedRunIsRepairedInTheCallsSession(t *testing.T) {

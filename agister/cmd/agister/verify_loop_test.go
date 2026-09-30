@@ -28,11 +28,12 @@ import (
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// The verification loop (ADR-002) on real checkouts of temporary
-// repositories, with the real command runner, git and evidence store. The
-// runtime is a scripted fake whose turns write files in the checkout, and
-// the verification command is a fixture driven by those files: by default
-// it prints the file state and passes when it says "pass".
+// The verification loop (ADR-002; where the command runs, ADR-005) on real
+// checkouts of temporary repositories, with the real command runner, git
+// and evidence store. The runtime is a scripted fake whose turns write
+// files in the checkout, and the verification command is a fixture driven
+// by those files: by default it prints the file state and passes when it
+// says "pass".
 
 const passWhenStateSaysPass = "cat state; grep -qx pass state"
 

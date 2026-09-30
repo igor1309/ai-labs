@@ -33,8 +33,8 @@ type CommandRun struct {
 	WallMS     int64     `json:"wall_ms"`
 	Output     Output    `json:"output"`
 	// After names the content the run left when it differs from what it
-	// checked: a run that changes the clean copy it ran in fails (ADR-002
-	// rule 7), and AfterChanges is what it changed.
+	// checked: a run that changes the clean copy it ran in fails (ADR-005
+	// rule 1), and AfterChanges is what it changed.
 	After        string    `json:"after,omitempty"`
 	AfterChanges *Artifact `json:"after_changes,omitempty"`
 	Passed       bool      `json:"passed"`

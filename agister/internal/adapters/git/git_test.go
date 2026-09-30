@@ -2,11 +2,13 @@ package git_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
@@ -246,24 +248,75 @@ func copied(t *testing.T, repo, revision string, patch []byte) string {
 	t.Helper()
 	ctx := context.Background()
 	workspaces := git.Workspaces{}
-	dir, remove, err := workspaces.Copy(ctx, repo, revision, patch)
-	if err != nil {
+	dir := workspaces.Place(call())
+	if err := workspaces.Copy(ctx, repo, dir, revision, patch); err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = workspaces.Discard(context.Background(), repo, dir) })
 	identity, err := workspaces.Identity(ctx, dir, revision)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := remove(); err != nil {
+	if err := workspaces.Discard(ctx, repo, dir); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Dir(dir)); !os.IsNotExist(err) {
 		t.Fatalf("copy %s left behind", dir)
 	}
 	if lines := strings.Split(sh(t, repo, "worktree", "list"), "\n"); len(lines) != 2 {
 		t.Fatalf("worktrees = %v", lines)
 	}
 	return identity
+}
+
+// call names a call no other test's copies use.
+func call() string { return fmt.Sprintf("test-%d-%d", os.Getpid(), calls.Add(1)) }
+
+var calls atomic.Int64
+
+// A patch that does not apply fails the copy with git's error, and leaves
+// neither a directory nor a worktree registration behind.
+func TestACopyWhosePatchDoesNotApplyLeavesNothing(t *testing.T) {
+	repo := repository(t)
+	ctx := context.Background()
+	workspaces := git.Workspaces{}
+	dir := workspaces.Place(call())
+	err := workspaces.Copy(ctx, repo, dir, sh(t, repo, "rev-parse", "HEAD"), []byte("not a git patch\n"))
+	t.Cleanup(func() { _ = workspaces.Discard(context.Background(), repo, dir) })
+	if err == nil || !strings.Contains(err.Error(), "git apply") {
+		t.Fatalf("copy = %v", err)
+	}
+	if _, err := os.Stat(filepath.Dir(dir)); !os.IsNotExist(err) {
+		t.Fatalf("copy %s left behind: %v", dir, err)
+	}
+	if lines := strings.Split(sh(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
+		t.Fatalf("worktrees = %v", lines)
+	}
+}
+
+// A copy is never made over what is at its path already, which stays as
+// it was.
+func TestACopyIsNotMadeWhereSomethingIs(t *testing.T) {
+	repo := repository(t)
+	workspaces := git.Workspaces{}
+	dir := workspaces.Place(call())
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Dir(dir)) })
+	kept := filepath.Join(dir, "kept.txt")
+	if err := os.WriteFile(kept, []byte("kept\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := workspaces.Copy(context.Background(), repo, dir, sh(t, repo, "rev-parse", "HEAD"), nil); err == nil {
+		t.Fatal("copy made over an existing directory")
+	}
+	if data, err := os.ReadFile(kept); err != nil || string(data) != "kept\n" {
+		t.Fatalf("kept.txt = %q, %v", data, err)
+	}
+	if lines := strings.Split(sh(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
+		t.Fatalf("worktrees = %v", lines)
+	}
 }
 
 // A checkout its call never released (the process was killed) is removed

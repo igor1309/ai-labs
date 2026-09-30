@@ -81,32 +81,45 @@ func (Workspaces) Checkout(ctx context.Context, repository, revision string) (st
 	return dir, release, nil
 }
 
-// Copy is a checkout of revision, as Checkout makes, with patch applied to
-// its files, not its index: where a verification run checks exactly what
-// the patch delivers.
-func (w Workspaces) Copy(ctx context.Context, repository, revision string, patch []byte) (string, func() error, error) {
-	dir, release, err := w.Checkout(ctx, repository, revision)
-	if err != nil {
-		return "", nil, err
-	}
-	if len(patch) > 0 {
-		if _, err := runWith(ctx, dir, nil, patch, "apply", "--binary", "--whitespace=nowarn", "-"); err != nil {
-			_ = release()
-			return "", nil, err
-		}
-	}
-	return dir, release, nil
+// Place names the directory the clean copies of call are made in: the
+// same for every attempt of the call, one no other call's copies use, and
+// shaped as Discard removes it. Nothing is made there: the call records it
+// first, so a copy is never on disk before it is on record.
+func (Workspaces) Place(call string) string {
+	return filepath.Join(os.TempDir(), "agister-checkout-"+call+"-copy", "workspace")
 }
 
-// Discard removes a checkout whose call ended without releasing it. Only a
-// directory Checkout or Copy could have made is touched:
+// Copy checks revision out at dir, a directory Place named, as Checkout
+// does, and applies patch to its files, not its index: where a
+// verification run checks exactly what the patch delivers. Whatever is at
+// dir already is not this copy's, so Copy fails without touching it; a copy
+// it cannot finish, it removes.
+func (w Workspaces) Copy(ctx context.Context, repository, dir, revision string, patch []byte) error {
+	if err := made(dir); err != nil {
+		return err
+	}
+	if err := os.Mkdir(filepath.Dir(dir), 0o700); err != nil {
+		return err
+	}
+	_, err := run(ctx, repository, "worktree", "add", "--detach", "--quiet", dir, revision)
+	if err == nil && len(patch) > 0 {
+		_, err = runWith(ctx, dir, nil, patch, "apply", "--binary", "--whitespace=nowarn", "-")
+	}
+	if err != nil {
+		_ = w.Discard(context.WithoutCancel(ctx), repository, dir)
+		return err
+	}
+	return nil
+}
+
+// Discard removes a checkout whose call ended without releasing it, or a
+// clean copy. Only a directory Checkout or Copy could have made is touched:
 // <temp>/agister-checkout-*/workspace.
 func (Workspaces) Discard(ctx context.Context, repository, dir string) error {
-	parent := filepath.Dir(dir)
-	if filepath.Base(dir) != "workspace" || !strings.HasPrefix(filepath.Base(parent), "agister-checkout-") ||
-		resolved(filepath.Dir(parent)) != resolved(os.TempDir()) {
-		return fmt.Errorf("%s is not a checkout Agister made", dir)
+	if err := made(dir); err != nil {
+		return err
 	}
+	parent := filepath.Dir(dir)
 	_, err := run(ctx, repository, "worktree", "remove", "--force", dir)
 	if err != nil && strings.Contains(err.Error(), "is not a working tree") {
 		err = nil
@@ -119,6 +132,16 @@ func (Workspaces) Discard(ctx context.Context, repository, dir string) error {
 		err = pruneErr
 	}
 	return err
+}
+
+// made refuses a directory Checkout, Place and Copy could not have made.
+func made(dir string) error {
+	parent := filepath.Dir(dir)
+	if filepath.Base(dir) != "workspace" || !strings.HasPrefix(filepath.Base(parent), "agister-checkout-") ||
+		resolved(filepath.Dir(parent)) != resolved(os.TempDir()) {
+		return fmt.Errorf("%s is not a checkout Agister made", dir)
+	}
+	return nil
 }
 
 func resolved(path string) string {

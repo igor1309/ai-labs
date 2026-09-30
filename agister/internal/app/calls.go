@@ -136,10 +136,10 @@ type CallChanges interface {
 }
 
 // CallVerifier runs the verification loop of a call whose process declares
-// verify (ADR-002), after its first turn was valid. It returns the content
-// a passing run checked, on a clean copy of the base with the patch to that
-// content applied, empty when none passed, and the fault that ended the
-// loop without a pass.
+// verify (ADR-002; where the command runs, ADR-005), after its first turn
+// was valid. It returns the content a passing run checked, on a clean copy
+// of the base with the patch to that content applied, empty when none
+// passed, and the fault that ended the loop without a pass.
 type CallVerifier interface {
 	Verify(ctx context.Context, call VerifyCall) (verified string, fault *run.Error)
 }
@@ -395,7 +395,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	record.Workspace = workspace.Dir
 	revision, _ := revisionOf(inputs, res.process.Checkout)
 	// The content a passing verification run checked, whose patch is what
-	// the call delivers (ADR-002 rule 7).
+	// the call delivers (ADR-005 rule 1).
 	var verified string
 	if workspace.Owned {
 		// Recorded before the runtime starts: if this process is killed,
@@ -782,7 +782,7 @@ func (c *Calls) continuation(ctx context.Context, res *resolution, self, runID s
 // artifact: the patch from revision to the checkout's content, or to
 // verified when it names the content a verification run passed on. That
 // run checked a clean copy of revision with this very patch applied, so the
-// patch delivers exactly what passed (ADR-002 rule 7). A failure is
+// patch delivers exactly what passed (ADR-005 rule 1). A failure is
 // recorded; it does not change the call's status, unless the changes were
 // verified: then the call fails.
 func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revision, verified string, event func(string, string, map[string]any)) ([]run.Artifact, *run.Error) {
