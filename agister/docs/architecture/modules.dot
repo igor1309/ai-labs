@@ -1,0 +1,153 @@
+// Agister: module view (the architecture-diagramming skill's smallest view).
+//
+// Nodes are Go packages; boxes are their directories. Fill color is the
+// package's class in internal/archtest's dependency rule (ADR-001); the
+// names in parentheses are ADR-001's terms. Every edge is a row of the
+// relation table in README.md.
+//
+// Edges
+//   solid + standard arrow     uses: imports
+//   dashed + hollow triangle   realization; Go packages do not realize one
+//                              another, so none appear here
+//   solid + hollow triangle    platform: an effect outside the process
+//                              (files, exec, processes, signals)
+// Third-party modules are ordinary imports (solid + standard arrow).
+digraph AgisterModules {
+  graph [rankdir=TB, compound=true, newrank=true, nodesep=0.3, ranksep=0.65, pad=0.3,
+         fontname="Helvetica", fontsize=13, labeljust=l,
+         label="Agister: packages and imports", labelloc=t];
+  node  [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=12];
+  edge  [arrowsize=0.7, color="#444444", style=solid, arrowhead=normal];
+
+  cmd      [label="cmd/agister\n(composition root)", fillcolor="#F8C471"];
+  examples [label="examples", fillcolor="#E5E7E9"];
+  cli      [label="internal/cli", fillcolor="#D7BDE2"];
+  contract [label="internal/contract\n(client contract)", fillcolor="#AED6F1"];
+  app      [label="internal/app", fillcolor="#A9DFBF"];
+
+  subgraph cluster_domain {
+    label="internal/domain"; style=rounded; color="#999999"; fontsize=11;
+    node [fillcolor="#F9E79F"];
+    settings; prompt; constraint; run; enforce; policy; definition;
+  }
+
+  subgraph cluster_adapters {
+    label="internal/adapters"; style=rounded; color="#999999"; fontsize=11;
+    node [fillcolor="#FFFFFF"];
+    fsdefs; fsruns; fsprovenance; git; inputs; schema; system; logging;
+    subgraph cluster_runtime {
+      label="runtime"; style=rounded; color="#BBBBBB";
+      rtregistry [label="runtime"];
+      claudecode; codex; supervisor;
+    }
+    // Layout only: adapter packages on one row (codex and claudecode sit
+    // above it because they import supervisor).
+    { rank=same; fsdefs; fsruns; fsprovenance; git; inputs; schema; system; logging; rtregistry; supervisor; }
+  }
+
+  // Platform.
+  node [shape=box, style=filled, fillcolor="#EEEEEE", fontsize=11];
+  p_files [label="filesystem"];
+  p_git   [label="git\n(exec)"];
+  p_rt    [label="agent's runtime command\n(exec; e.g. claude, codex)"];
+  p_proc  [label="OS processes\n(exec ps, kill)"];
+  p_sig   [label="OS signals\n(SIGINT, SIGTERM, SIGHUP)"];
+  p_toml  [fillcolor=white, label="BurntSushi/toml"];
+  p_yaml  [fillcolor=white, label="gopkg.in/yaml.v3"];
+  p_jsch  [fillcolor=white, label="santhosh-tekuri/jsonschema/v6"];
+  p_text  [fillcolor=white, label="golang.org/x/text"];
+
+  // ---- uses (imports) ----
+  // cmd/agister imports all 12 adapter packages: drawn as one edge.
+  cmd -> fsruns [lhead=cluster_adapters, taillabel="imports all 12", labeldistance=5, labelangle=-10, labelfontsize=10, labelfontname="Helvetica", fontsize=10, fontname="Helvetica"];
+  cmd -> examples;
+  cmd -> cli;
+  cmd -> contract;
+  cmd -> app;
+
+  cli -> contract;
+
+  app -> contract;
+  // internal/app imports all 7 domain packages: drawn as one edge.
+  app -> constraint [lhead=cluster_domain, taillabel="imports all 7", labeldistance=5, labelangle=-15, labelfontsize=10, labelfontname="Helvetica", fontsize=10, fontname="Helvetica"];
+
+  settings   -> definition;
+  settings   -> enforce;
+  settings   -> policy;
+  prompt     -> run;
+  constraint -> definition;
+  run        -> definition;
+  run        -> enforce;
+  run        -> policy;
+  enforce    -> definition;
+  policy     -> definition;
+
+  fsdefs       -> definition;
+  fsprovenance -> constraint;
+  fsruns       -> app;
+  fsruns       -> contract;
+  fsruns       -> run;
+  git          -> app;
+  inputs       -> app;
+  logging      -> app;
+  logging      -> run;
+  rtregistry   -> app;
+  claudecode   -> app;
+  claudecode   -> run;
+  claudecode   -> supervisor;
+  codex        -> app;
+  codex        -> run;
+  codex        -> supervisor;
+  supervisor   -> app;
+  supervisor   -> run;
+  // schema, system and examples import no Agister package.
+
+  // ---- third-party modules: ordinary imports ----
+  definition   -> p_toml;
+  definition   -> p_yaml;
+  schema       -> p_jsch;
+  schema       -> p_text;
+
+  // ---- platform ----
+  edge [style=solid, arrowhead=empty, color="#888888"];
+  cmd          -> p_files;
+  cmd          -> p_sig;
+  app          -> p_files;
+  fsdefs       -> p_files;
+  fsruns       -> p_files;
+  fsprovenance -> p_files;
+  inputs       -> p_files;
+  git          -> p_files;
+  git          -> p_git;
+  codex        -> p_files;
+  supervisor   -> p_rt;
+  supervisor   -> p_proc;
+
+  // ---- legend ----
+  subgraph cluster_legend {
+    label="Legend"; style=rounded; color="#BBBBBB"; fontsize=11;
+    node [shape=plaintext, style="", fontsize=10, label=""];
+    l1a; l1b [label="uses (import)"];
+    l2a; l2b [label="realization\n(none between packages)"];
+    l3a; l3b [label="platform: effect outside\nthe process"];
+    l1a -> l1b [minlen=3, style=solid,  arrowhead=normal, color="#444444"];
+    l2a -> l2b [minlen=3, style=dashed, arrowhead=empty,  color="#1F5F99"];
+    l3a -> l3b [minlen=3, style=solid,  arrowhead=empty,  color="#888888"];
+    { rank=same; l1a; l1b; l2a; l2b; l3a; l3b; }
+    l1b -> l2a [style=invis, minlen=1]; l2b -> l3a [style=invis, minlen=1];
+    l2a -> k [style=invis];
+    k [shape=none, fontsize=10, label=<
+      <TABLE BORDER="0" CELLSPACING="3" CELLPADDING="3">
+        <TR><TD COLSPAN="2" ALIGN="LEFT">fill = class in internal/archtest</TD></TR>
+        <TR><TD BGCOLOR="#F8C471" WIDTH="18"></TD><TD ALIGN="LEFT">composition root: may import anything</TD></TR>
+        <TR><TD BGCOLOR="#D7BDE2"></TD><TD ALIGN="LEFT">cli: contract only</TD></TR>
+        <TR><TD BGCOLOR="#AED6F1"></TD><TD ALIGN="LEFT">contract: nothing</TD></TR>
+        <TR><TD BGCOLOR="#A9DFBF"></TD><TD ALIGN="LEFT">app: domain, contract</TD></TR>
+        <TR><TD BGCOLOR="#F9E79F"></TD><TD ALIGN="LEFT">domain: domain, toml, yaml</TD></TR>
+        <TR><TD BGCOLOR="#FFFFFF" BORDER="1"></TD><TD ALIGN="LEFT">adapters: domain, app, contract,<BR ALIGN="LEFT"/>runtime adapters each other, outside modules</TD></TR>
+        <TR><TD BGCOLOR="#E5E7E9"></TD><TD ALIGN="LEFT">examples: nothing</TD></TR>
+      </TABLE>>];
+  }
+  // Layout only: legend under internal/contract.
+  contract -> l1a [style=invis];
+}

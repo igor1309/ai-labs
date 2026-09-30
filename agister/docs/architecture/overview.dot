@@ -1,0 +1,96 @@
+// Agister: module view, one node per directory (the architecture-diagramming
+// skill's smallest view, grouped by directory to stay readable).
+//
+// A node is a directory; its label lists the Go packages in it. An edge is
+// drawn when any package in the source imports any package in the target;
+// the edge label names the importing packages when not all do. modules.dot
+// has the same facts package by package.
+//
+// Edges
+//   solid + standard arrow     uses: imports
+//   dashed + hollow triangle   realization; Go packages do not realize one
+//                              another, so none appear here
+//   solid + hollow triangle    platform: an effect outside the process
+digraph AgisterOverview {
+  graph [rankdir=TB, nodesep=0.5, ranksep=0.8, pad=0.3,
+         fontname="Helvetica", fontsize=16, labeljust=l, labelloc=t,
+         label="Agister: directories and imports (module view)"];
+  node  [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=14, margin="0.2,0.1"];
+  edge  [fontname="Helvetica", fontsize=12, color="#444444", arrowsize=0.8];
+
+  cmd      [label="cmd/agister\n(composition root)", fillcolor="#F8C471"];
+  examples [label="examples", fillcolor="#E5E7E9"];
+  cli      [label="internal/cli", fillcolor="#D7BDE2"];
+  contract [label="internal/contract\n(client contract)", fillcolor="#AED6F1"];
+  app      [label="internal/app", fillcolor="#A9DFBF"];
+  domain   [label="internal/domain\nsettings · prompt · run · constraint\nenforce · policy · definition", fillcolor="#F9E79F"];
+  adapters [label="internal/adapters\nfsdefs · fsruns · fsprovenance · git\ninputs · logging · schema · system", fillcolor="#FFFFFF"];
+  runtime  [label="internal/adapters/runtime\nruntime · claudecode · codex · supervisor", fillcolor="#FFFFFF"];
+
+  toml [label="BurntSushi/toml\ngopkg.in/yaml.v3", shape=box, style=filled, fillcolor=white, fontsize=12];
+  jsch [label="jsonschema/v6\ngolang.org/x/text", shape=box, style=filled, fillcolor=white, fontsize=12];
+
+  // ---- uses (imports) ----
+  cmd -> examples;
+  cmd -> cli;
+  cmd -> contract;
+  cmd -> app;
+  cmd -> adapters;
+  cmd -> runtime;
+  cli -> contract;
+  app -> contract;
+  app -> domain;
+  adapters -> app      [label="fsruns, git,\ninputs, logging"];
+  adapters -> contract [label="fsruns"];
+  adapters -> domain   [label="fsdefs, fsprovenance,\nfsruns, logging"];
+  runtime  -> app;
+  runtime  -> domain   [label="claudecode, codex,\nsupervisor"];
+  domain   -> toml     [label="definition"];
+  adapters -> jsch     [label="schema"];
+
+  // ---- platform ----
+  node [shape=box, style=filled, fillcolor="#EEEEEE", fontsize=12];
+  files [label="filesystem"];
+  gitx  [label="git (exec)"];
+  rtcmd [label="agent's runtime command\n(exec; e.g. claude, codex)"];
+  procs [label="OS processes\n(exec ps, kill)"];
+  sigs  [label="OS signals"];
+  edge [arrowhead=empty, color="#888888", fontcolor="#555555"];
+  cmd      -> files;
+  cmd      -> sigs;
+  app      -> files [label="EvalSymlinks"];
+  adapters -> files [label="fsdefs, fsruns, fsprovenance,\ninputs, git"];
+  adapters -> gitx  [label="git"];
+  runtime  -> files [label="codex"];
+  runtime  -> rtcmd [label="supervisor"];
+  runtime  -> procs [label="supervisor"];
+  { rank=sink; files; gitx; rtcmd; procs; }
+
+  // ---- legend ----
+  subgraph cluster_legend {
+    label="Legend"; style=rounded; color="#BBBBBB"; fontsize=12;
+    node [shape=plaintext, style="", fontsize=12, label=""];
+    l1a; l1b [label="uses (import)"];
+    l2a; l2b [label="realization\n(none here)"];
+    l3a; l3b [label="platform:\neffect outside\nthe process"];
+    l1a -> l1b [style=solid,  arrowhead=normal, color="#444444", label=""];
+    l2a -> l2b [style=dashed, arrowhead=empty,  color="#1F5F99", label=""];
+    l3a -> l3b [style=solid,  arrowhead=empty,  color="#888888", label=""];
+    { rank=same; l1a; l1b; l2a; l2b; l3a; l3b; }
+    l1b -> l2a [style=invis]; l2b -> l3a [style=invis];
+    l1a -> k [style=invis];
+    k [shape=none, fontsize=12, label=<
+      <TABLE BORDER="0" CELLSPACING="2" CELLPADDING="2">
+        <TR><TD COLSPAN="2" ALIGN="LEFT">fill = class in internal/archtest</TD></TR>
+        <TR><TD BGCOLOR="#F8C471" WIDTH="16"></TD><TD ALIGN="LEFT">composition root</TD></TR>
+        <TR><TD BGCOLOR="#D7BDE2"></TD><TD ALIGN="LEFT">cli</TD></TR>
+        <TR><TD BGCOLOR="#AED6F1"></TD><TD ALIGN="LEFT">contract</TD></TR>
+        <TR><TD BGCOLOR="#A9DFBF"></TD><TD ALIGN="LEFT">app</TD></TR>
+        <TR><TD BGCOLOR="#F9E79F"></TD><TD ALIGN="LEFT">domain</TD></TR>
+        <TR><TD BGCOLOR="#FFFFFF" BORDER="1"></TD><TD ALIGN="LEFT">adapters</TD></TR>
+        <TR><TD BGCOLOR="#E5E7E9"></TD><TD ALIGN="LEFT">examples</TD></TR>
+      </TABLE>>];
+  }
+  // Layout only: legend under examples.
+  examples -> l1a [style=invis, minlen=2];
+}
