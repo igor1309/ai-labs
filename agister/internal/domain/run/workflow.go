@@ -28,17 +28,21 @@ type Node struct {
 // Barrier states.
 const (
 	BarrierWaiting   = "waiting"   // fan-out nodes have not all ended
-	BarrierPassed    = "passed"    // every fan-out node completed; the join may start
-	BarrierBlocked   = "blocked"   // a fan-out node did not complete: no join
+	BarrierPassed    = "passed"    // every fan-out node ended and at least one completed; the join may start
+	BarrierBlocked   = "blocked"   // no fan-out node completed: no join
 	BarrierCancelled = "cancelled" // the workflow was cancelled before the join started
 )
 
-// Barrier is whether the join may start, and what kept it from starting.
+// Barrier is whether the join may start, what kept it from starting, and
+// which fan-out nodes it runs without (ADR-004).
 type Barrier struct {
 	State string `json:"state"`
-	// BlockedBy is the first fan-out node, in declaration order, that did
-	// not complete.
+	// BlockedBy is the first fan-out node in declaration order when none
+	// completed: the workflow's result takes its status and class.
 	BlockedBy string `json:"blocked_by,omitempty"`
+	// Incomplete names, in declaration order, each fan-out node that did not
+	// complete; the join, if it runs, receives no output of theirs.
+	Incomplete []string `json:"incomplete,omitempty"`
 }
 
 // Parent is the workflow run a node's run belongs to, and the node.

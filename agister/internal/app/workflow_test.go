@@ -17,7 +17,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// Workflow tests (ADR-003). Every node is a real call through Calls, over
+// Workflow tests (ADR-003, ADR-004). Every node is a real call through Calls, over
 // spies: a runner whose turns block on channels the test closes, so what
 // runs concurrently and in which order is decided by the test, never by
 // timing. Deadlines only guard against a hang.
@@ -192,6 +192,9 @@ type storeSpy struct {
 	onArtifact func(id, name string)
 	// onEvent, when set, runs after an event is appended to a run.
 	onEvent func(id string, event run.Event)
+	// failCreate, when set, is asked, by its node's name, whether creating a
+	// node's run fails, before anything is recorded.
+	failCreate func(node string) error
 }
 
 type runSpy struct {
@@ -206,6 +209,11 @@ type runSpy struct {
 func newStoreSpy() *storeSpy { return &storeSpy{runs: map[string]*runSpy{}} }
 
 func (s *storeSpy) Create(_ context.Context, record run.Record) (app.RunHandle, error) {
+	if s.failCreate != nil && record.Parent != nil {
+		if err := s.failCreate(record.Parent.Node); err != nil {
+			return nil, err
+		}
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	handle := s.entry(record.ID)
@@ -485,8 +493,8 @@ func TestWorkflowJoinReceivesEveryFanOutOutputOnce(t *testing.T) {
 	join := h.store.wait(t, "run-4")
 	entries := collectionOf(t, join)
 	want := []map[string]any{
-		{"node": "one", "process": "first", "run": "run-2", "output": map[string]any{"from": "first"}},
-		{"node": "two", "process": "second", "run": "run-3", "output": map[string]any{"from": "second"}},
+		{"node": "one", "process": "first", "run": "run-2", "status": "completed", "output": map[string]any{"from": "first"}},
+		{"node": "two", "process": "second", "run": "run-3", "status": "completed", "output": map[string]any{"from": "second"}},
 	}
 	if !reflect.DeepEqual(entries, want) {
 		t.Fatalf("collection = %v", entries)
@@ -635,9 +643,12 @@ func TestWorkflowJoinWaitsForTheBarrier(t *testing.T) {
 	}
 }
 
-// A fan-out node that did not complete blocks the join: the workflow takes
-// its status and class, and names it.
-func TestWorkflowNoJoinAfterAnUnsuccessfulNode(t *testing.T) {
+// A fan-out node that did not complete does not keep the join from running
+// on the one that did (ADR-004): the join receives the completed node's
+// output and the other's status and class, with no output; the workflow's
+// result is the join's, and its record names the node that did not
+// complete.
+func TestWorkflowJoinsWithoutAnUnsuccessfulNode(t *testing.T) {
 	for name, tc := range map[string]struct {
 		prepare func(h *flowHarness)
 		status  run.Status
@@ -652,13 +663,15 @@ func TestWorkflowNoJoinAfterAnUnsuccessfulNode(t *testing.T) {
 		},
 		"failed": {
 			prepare: func(h *flowHarness) {
-				h.script("Work as second.").turn = run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRuntimeError, "boom")}
+				h.script("Work as second.").turn = run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRuntimeError, "boom"),
+					Text: "second's unsuccessful text", Output: json.RawMessage(`{"from":"unsuccessful second"}`)}
 			},
 			status: run.Failed, class: run.ClassRuntimeError,
 		},
 		"interrupted": {
 			prepare: func(h *flowHarness) {
-				h.script("Work as second.").turn = run.Turn{Status: run.Interrupted, Error: run.Fault(run.ClassTimeout, "too slow")}
+				h.script("Work as second.").turn = run.Turn{Status: run.Interrupted, Error: run.Fault(run.ClassTimeout, "too slow"),
+					Text: "second's unsuccessful text", Output: json.RawMessage(`{"from":"unsuccessful second"}`)}
 			},
 			status: run.Interrupted, class: run.ClassTimeout,
 		},
@@ -668,48 +681,236 @@ func TestWorkflowNoJoinAfterAnUnsuccessfulNode(t *testing.T) {
 			tc.prepare(h)
 			id := h.submit(t, contract.CallRequest{})
 			record := h.store.wait(t, id)
-			if record.Result.Status != tc.status || class(record) != tc.class {
-				t.Fatalf("result = %+v, want %s/%s", record.Result, tc.status, tc.class)
+			if record.Result.Status != run.Completed || record.Result.Error != nil || string(record.Result.Output) != `{"joined":true}` {
+				t.Fatalf("result = %+v, want the join's", record.Result)
 			}
-			if !strings.Contains(message(record), "fan-out node two (run run-3) did not complete") {
-				t.Fatalf("message = %q", message(record))
-			}
-			if barrier := record.Workflow.Barrier; barrier.State != run.BarrierBlocked || barrier.BlockedBy != "two" {
+			if barrier := record.Workflow.Barrier; !reflect.DeepEqual(barrier, run.Barrier{State: run.BarrierPassed, Incomplete: []string{"two"}}) {
 				t.Fatalf("barrier = %+v", barrier)
-			}
-			join := record.Workflow.Nodes[2]
-			if join.Run != "" || join.Status != "" || len(h.runner.turns("Join them.")) != 0 || len(h.store.ids()) != 3 {
-				t.Fatalf("a join ran: node %+v, runs %v", join, h.store.ids())
 			}
 			if two := record.Workflow.Nodes[1]; two.Run != "run-3" || two.Status != tc.status || two.Error.Class != tc.class {
 				t.Fatalf("node two = %+v", two)
 			}
-			// Output is only a completed join's.
-			if len(record.Result.Output) != 0 {
-				t.Fatalf("output = %s", record.Result.Output)
+			want := []map[string]any{
+				{"node": "one", "process": "first", "run": "run-2", "status": "completed", "output": map[string]any{"from": "first"}},
+				{"node": "two", "process": "second", "run": "run-3", "status": string(tc.status), "class": string(tc.class)},
+			}
+			if entries := collectionOf(t, h.store.wait(t, "run-4")); !reflect.DeepEqual(entries, want) {
+				t.Fatalf("collection = %v", entries)
+			}
+			// What the unsuccessful node's turn produced, which its own record
+			// keeps, does not reach the join.
+			prompt := h.runner.turns("Join them.")[0].Prompt
+			for _, content := range []string{"second's unsuccessful text", "unsuccessful second"} {
+				if strings.Contains(prompt, content) {
+					t.Fatalf("the join's prompt carries %q:\n%s", content, prompt)
+				}
 			}
 		})
 	}
 }
 
-// With several unsuccessful nodes, the first in declaration order blocks
-// the join, even when it ends last.
-func TestWorkflowBlockedByTheFirstUnsuccessfulNodeInDeclarationOrder(t *testing.T) {
+// Of five fan-out nodes, one fails, one is rate-limited and one times out,
+// all before the first ends, while the other two complete: the join
+// receives the completed outputs and each other node's status and class, in
+// declaration order, and the workflow's record and events name the three.
+func TestWorkflowJoinsOnTheNodesThatCompleted(t *testing.T) {
 	h := newFlowHarness()
+	h.defs.set(definition.KindWorkflow, "w", strings.Replace(workflowDoc, "  - {node: two, uses: process:second}\n",
+		"  - {node: two, uses: process:second}\n  - {node: three, uses: process:third}\n  - {node: four, uses: process:fourth}\n  - {node: five, uses: process:fifth}\n", 1))
+	for _, name := range []string{"third", "fourth", "fifth"} {
+		h.defs.set(definition.KindProcess, name, nodeProcess(name, "Work as "+name+"."))
+	}
+	h.script("Work as second.").turn = run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRuntimeError, "boom"), Text: "second's text", Output: json.RawMessage(`{"from":"second"}`)}
+	h.runner.scripts["Work as third."] = &script{turn: run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "slow down"), Text: "third's text"}}
+	h.runner.scripts["Work as fourth."] = &script{turn: run.Turn{Status: run.Interrupted, Error: run.Fault(run.ClassTimeout, "too slow"), Text: "fourth's text", Output: json.RawMessage(`{"from":"fourth"}`)}}
+	h.runner.scripts["Work as fifth."] = &script{turn: completed(`{"from":"fifth"}`, 0.5, 5)}
+	// The first node ends last.
 	first := h.script("Work as first.")
-	first.turn = run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "slow down")}
 	first.release = make(chan struct{})
-	h.script("Work as second.").turn = run.Turn{Status: run.Failed, Error: run.Fault(run.ClassAuth, "denied")}
 	id := h.submit(t, contract.CallRequest{})
-	h.store.wait(t, "run-3")
+	h.stopOnCleanup(t, id)
+	for _, node := range []string{"run-3", "run-4", "run-5", "run-6"} {
+		h.store.wait(t, node)
+	}
 	close(first.release)
 	record := h.store.wait(t, id)
-	if class(record) != run.ClassRateLimited || record.Workflow.Barrier.BlockedBy != "one" || !strings.Contains(message(record), "fan-out node one (run run-2)") {
-		t.Fatalf("result = %+v, barrier %+v", record.Result, record.Workflow.Barrier)
+
+	if record.Result.Status != run.Completed || record.Result.Error != nil || string(record.Result.Output) != `{"joined":true}` {
+		t.Fatalf("result = %+v, want the join's", record.Result)
+	}
+	incomplete := []string{"two", "three", "four"}
+	if barrier := record.Workflow.Barrier; !reflect.DeepEqual(barrier, run.Barrier{State: run.BarrierPassed, Incomplete: incomplete}) {
+		t.Fatalf("barrier = %+v", barrier)
+	}
+	handle := h.store.handle(t, id)
+	var barrierEvent map[string]any
+	handle.mu.Lock()
+	for _, event := range handle.events {
+		if event.Kind == "BARRIER" {
+			barrierEvent = event.Data
+		}
+	}
+	handle.mu.Unlock()
+	if !reflect.DeepEqual(barrierEvent, map[string]any{"state": run.BarrierPassed, "incomplete": incomplete}) {
+		t.Fatalf("barrier event = %v", barrierEvent)
+	}
+	if join := record.Workflow.Nodes[5]; !join.Join || join.Run != "run-7" || join.Status != run.Completed {
+		t.Fatalf("join node = %+v", join)
+	}
+	want := []map[string]any{
+		{"node": "one", "process": "first", "run": "run-2", "status": "completed", "output": map[string]any{"from": "first"}},
+		{"node": "two", "process": "second", "run": "run-3", "status": "failed", "class": "runtime_error"},
+		{"node": "three", "process": "third", "run": "run-4", "status": "failed", "class": "rate_limited"},
+		{"node": "four", "process": "fourth", "run": "run-5", "status": "interrupted", "class": "timeout"},
+		{"node": "five", "process": "fifth", "run": "run-6", "status": "completed", "output": map[string]any{"from": "fifth"}},
+	}
+	if entries := collectionOf(t, h.store.wait(t, "run-7")); !reflect.DeepEqual(entries, want) {
+		t.Fatalf("collection = %v", entries)
 	}
 	// Cost is unknown when a node's is.
 	if record.Result.Cost.Source != run.CostUnknown || record.Result.Cost.USD != nil {
 		t.Fatalf("cost = %+v", record.Result.Cost)
+	}
+}
+
+// When no fan-out node completed, no join starts, and the workflow takes the
+// status and class of the first node in declaration order, even when it
+// ends last; the record names every node.
+func TestWorkflowNoJoinWhenNoNodeCompleted(t *testing.T) {
+	h := newFlowHarness()
+	first := h.script("Work as first.")
+	first.turn = run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "slow down")}
+	first.release = make(chan struct{})
+	h.script("Work as second.").turn = run.Turn{Status: run.Interrupted, Error: run.Fault(run.ClassTimeout, "too slow")}
+	id := h.submit(t, contract.CallRequest{})
+	h.stopOnCleanup(t, id)
+	h.store.wait(t, "run-3")
+	close(first.release)
+	record := h.store.wait(t, id)
+	if record.Result.Status != run.Failed || class(record) != run.ClassRateLimited || !strings.Contains(message(record), "fan-out node one (run run-2)") {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	if barrier := record.Workflow.Barrier; !reflect.DeepEqual(barrier, run.Barrier{State: run.BarrierBlocked, BlockedBy: "one", Incomplete: []string{"one", "two"}}) {
+		t.Fatalf("barrier = %+v", barrier)
+	}
+	join := record.Workflow.Nodes[2]
+	if join.Run != "" || join.Status != "" || len(h.runner.turns("Join them.")) != 0 || len(h.store.ids()) != 3 || record.Workflow.Collection != nil {
+		t.Fatalf("a join ran: node %+v, runs %v", join, h.store.ids())
+	}
+	// Output is only a completed join's.
+	if len(record.Result.Output) != 0 {
+		t.Fatalf("output = %s", record.Result.Output)
+	}
+}
+
+// threeNodes makes the workflow fan out to three nodes, the third a process
+// of its own.
+func threeNodes(h *flowHarness) {
+	h.defs.set(definition.KindWorkflow, "w", strings.Replace(workflowDoc, "  - {node: two, uses: process:second}\n",
+		"  - {node: two, uses: process:second}\n  - {node: three, uses: process:third}\n", 1))
+	h.defs.set(definition.KindProcess, "third", nodeProcess("third", "Work as third."))
+	h.runner.scripts["Work as third."] = &script{turn: completed(`{"from":"third"}`, 0.3, 3)}
+}
+
+// failCreating makes recording the named node's run fail.
+func failCreating(h *flowHarness, node string) {
+	h.store.failCreate = func(name string) error {
+		if name == node {
+			return fmt.Errorf("the disk is full")
+		}
+		return nil
+	}
+}
+
+// Of three fan-out nodes, the first completes, the second's run cannot be
+// recorded, and the third therefore never starts: the workflow records the
+// third failed, internal, with no run, and the join runs once, on the first,
+// receiving the other two's status and class with no run and no output.
+func TestWorkflowJoinsWithoutNodesThatNeverStarted(t *testing.T) {
+	h := newFlowHarness()
+	threeNodes(h)
+	failCreating(h, "two")
+	id := h.submit(t, contract.CallRequest{})
+	record := h.store.wait(t, id)
+
+	if record.Result.Status != run.Completed || record.Result.Error != nil || string(record.Result.Output) != `{"joined":true}` {
+		t.Fatalf("result = %+v, want the join's", record.Result)
+	}
+	incomplete := []string{"two", "three"}
+	if barrier := record.Workflow.Barrier; !reflect.DeepEqual(barrier, run.Barrier{State: run.BarrierPassed, Incomplete: incomplete}) {
+		t.Fatalf("barrier = %+v", barrier)
+	}
+	nodes := record.Workflow.Nodes
+	if one := nodes[0]; one.Run != "run-2" || one.Status != run.Completed || one.Error != nil {
+		t.Fatalf("node one = %+v", one)
+	}
+	if two := nodes[1]; two.Run != "" || two.Status != run.Failed || two.Error == nil || two.Error.Class != run.ClassInternal ||
+		!strings.Contains(two.Error.Message, "its run could not be recorded: the disk is full") {
+		t.Fatalf("node two = %+v", two)
+	}
+	if three := nodes[2]; three.Run != "" || three.Status != run.Failed ||
+		!reflect.DeepEqual(three.Error, run.Fault(run.ClassInternal, "it did not start: an earlier node could not")) {
+		t.Fatalf("node three = %+v", three)
+	}
+	// Run-3 was the id given to two's run, which was never recorded; the
+	// join is the only run after it.
+	if got := h.store.ids(); !reflect.DeepEqual(got, []string{"run-1", "run-2", "run-4"}) {
+		t.Fatalf("runs = %v", got)
+	}
+	if join := nodes[3]; !join.Join || join.Run != "run-4" || join.Status != run.Completed || len(h.runner.turns("Join them.")) != 1 {
+		t.Fatalf("join node = %+v, join turns %d", join, len(h.runner.turns("Join them.")))
+	}
+	if n := len(h.runner.turns("Work as second.")) + len(h.runner.turns("Work as third.")); n != 0 {
+		t.Fatalf("%d turns ran for nodes that never started", n)
+	}
+	want := []map[string]any{
+		{"node": "one", "process": "first", "run": "run-2", "status": "completed", "output": map[string]any{"from": "first"}},
+		{"node": "two", "process": "second", "status": "failed", "class": "internal"},
+		{"node": "three", "process": "third", "status": "failed", "class": "internal"},
+	}
+	if entries := collectionOf(t, h.store.wait(t, "run-4")); !reflect.DeepEqual(entries, want) {
+		t.Fatalf("collection = %v", entries)
+	}
+	var kinds []string
+	for _, kind := range h.store.handle(t, id).kinds() {
+		if strings.HasPrefix(kind, "NODE_") {
+			kinds = append(kinds, kind)
+		}
+	}
+	if want := []string{"NODE_STARTED", "NODE_NOT_STARTED", "NODE_FINISHED", "NODE_STARTED", "NODE_FINISHED"}; !reflect.DeepEqual(kinds, want) {
+		t.Fatalf("node events = %v, want %v", kinds, want)
+	}
+}
+
+// When the first fan-out node's run cannot be recorded, no later node
+// starts, each is recorded failed, internal, as one that did not start, and
+// no join starts: the workflow takes the first node's status and class.
+func TestWorkflowNoJoinWhenTheFirstNodeCannotStart(t *testing.T) {
+	h := newFlowHarness()
+	threeNodes(h)
+	failCreating(h, "one")
+	id := h.submit(t, contract.CallRequest{})
+	record := h.store.wait(t, id)
+
+	if record.Result.Status != run.Failed || class(record) != run.ClassInternal ||
+		!strings.Contains(message(record), "fan-out node one (run none): internal: its run could not be recorded: the disk is full") {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	if barrier := record.Workflow.Barrier; !reflect.DeepEqual(barrier, run.Barrier{State: run.BarrierBlocked, BlockedBy: "one", Incomplete: []string{"one", "two", "three"}}) {
+		t.Fatalf("barrier = %+v", barrier)
+	}
+	for _, node := range record.Workflow.Nodes[1:3] {
+		if node.Run != "" || node.Status != run.Failed ||
+			!reflect.DeepEqual(node.Error, run.Fault(run.ClassInternal, "it did not start: an earlier node could not")) {
+			t.Fatalf("node %s = %+v", node.Name, node)
+		}
+	}
+	join := record.Workflow.Nodes[3]
+	if join.Run != "" || join.Status != "" || len(h.runner.turns("Join them.")) != 0 || record.Workflow.Collection != nil {
+		t.Fatalf("a join ran: node %+v", join)
+	}
+	if got := h.store.ids(); !reflect.DeepEqual(got, []string{"run-1"}) {
+		t.Fatalf("runs = %v", got)
 	}
 }
 
@@ -817,6 +1018,16 @@ func TestWorkflowCancelledBeforeTheJoinStarts(t *testing.T) {
 				}
 			}
 		},
+		// As the last fan-out node (two, held until one finished)
+		// finishes, when one did not complete: still no join.
+		"at the last fan-out node's end, after one failed": func(h *flowHarness, t *testing.T) {
+			h.script("Work as first.").turn = run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRuntimeError, "boom")}
+			h.store.onFinish = func(record run.Record) {
+				if record.ID == "run-3" {
+					h.cancel(t, "run-1")
+				}
+			}
+		},
 		// After the barrier passed, as the collection is stored.
 		"after the barrier passed": func(h *flowHarness, t *testing.T) {
 			h.store.onArtifact = func(_, name string) {
@@ -838,10 +1049,8 @@ func TestWorkflowCancelledBeforeTheJoinStarts(t *testing.T) {
 			if record.Result.Status != run.Interrupted || class(record) != run.ClassCancelled {
 				t.Fatalf("result = %+v", record.Result)
 			}
-			for _, node := range record.Workflow.Nodes[:2] {
-				if node.Status != run.Completed {
-					t.Fatalf("fan-out node %+v did not complete", node)
-				}
+			if two := record.Workflow.Nodes[1]; two.Status != run.Completed {
+				t.Fatalf("fan-out node %+v did not complete", two)
 			}
 			if join := record.Workflow.Nodes[2]; join.Run != "" || len(h.runner.turns("Join them.")) != 0 || len(h.store.ids()) != 3 {
 				t.Fatalf("the join started: %+v, runs %v", join, h.store.ids())

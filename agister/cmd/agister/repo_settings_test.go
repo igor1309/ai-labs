@@ -258,9 +258,9 @@ func completedRun(t *testing.T, home, id string) map[string]any {
 	dir := filepath.Join(home, "runs", id)
 	var record, first map[string]any
 	readJSON(t, filepath.Join(dir, "record.json"), &record)
-	provider, _ := os.ReadFile(filepath.Join(dir, "provider.jsonl"))
+	provider, readErr := os.ReadFile(filepath.Join(dir, "provider.jsonl"))
 	if err := json.Unmarshal([]byte(strings.SplitN(string(provider), "\n", 2)[0]), &first); err != nil || first["argv"] == nil {
-		t.Fatalf("run %s: the runtime was not a fake: %s", id, provider)
+		t.Fatalf("run %s: the runtime was not a fake: provider.jsonl %q (read error: %v); result %v", id, provider, readErr, record["result"])
 	}
 	if result := record["result"].(map[string]any); result["status"] != "completed" {
 		t.Fatalf("run %s: result = %v", id, result)

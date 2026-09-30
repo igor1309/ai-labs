@@ -14,9 +14,9 @@ import (
 )
 
 // A workflow (ADR-003) runs its fan-out nodes, each an ordinary call of its
-// process over the same resolved values, and, once every one of them
-// completed, its join: a fresh call of its process given the collection of
-// their outputs and nothing else. The core transports the outputs without
+// process over the same resolved values, and, once every one of them ended
+// and at least one completed (ADR-004), its join: a fresh call of its process
+// given the collection of their outcomes and outputs and nothing else. The core transports the outputs without
 // reading them.
 
 // flow serializes a workflow's cancellation with the start of its nodes and
@@ -70,12 +70,15 @@ func (f *flow) cancelled() bool {
 	return f.stopped
 }
 
-// collected is one fan-out node's entry in the collection: its recorded
-// output, unchanged, or its text when its process's output is text.
+// collected is one fan-out node's entry in the collection: its outcome and,
+// only when it completed, its recorded output, unchanged, or its text when
+// its process's output is text.
 type collected struct {
 	Node    string          `json:"node"`
 	Process string          `json:"process"`
-	Run     string          `json:"run"`
+	Run     string          `json:"run,omitempty"`
+	Status  run.Status      `json:"status"`
+	Class   run.Class       `json:"class,omitempty"`
 	Output  json.RawMessage `json:"output,omitempty"`
 	Text    string          `json:"text,omitempty"`
 }
@@ -127,15 +130,20 @@ func passedValues(inputs []run.Input) (map[string]string, error) {
 	return values, nil
 }
 
-// collect builds the collection from the fan-out nodes' finished records:
-// for each node in declaration order, whatever order they finished in, its
-// name, process, run and recorded output. It returns the collection as the
-// join's input value, identified by its digest, and its bytes.
-func collect(workflow definition.Workflow, records []run.Record) (Resolved, []byte, error) {
+// collect builds the collection from the fan-out nodes' outcomes, nodes in
+// the workflow record, and their finished records: for each node in
+// declaration order, whatever order they finished in, its name, process, run,
+// status and class, and, only if it completed, its recorded output. It
+// returns the collection as the join's input value, identified by its
+// digest, and its bytes.
+func collect(workflow definition.Workflow, nodes []run.Node, records []run.Record) (Resolved, []byte, error) {
 	entries := make([]collected, len(workflow.FanOut))
 	for i, node := range workflow.FanOut {
-		entries[i] = collected{Node: node.Name, Process: node.Process, Run: records[i].ID}
-		if result := records[i].Result; result != nil {
+		entries[i] = collected{Node: node.Name, Process: node.Process, Run: nodes[i].Run, Status: nodes[i].Status}
+		if nodes[i].Error != nil {
+			entries[i].Class = nodes[i].Error.Class
+		}
+		if result := records[i].Result; result != nil && nodes[i].Status == run.Completed {
 			entries[i].Output = result.Output
 			if len(result.Output) == 0 {
 				entries[i].Text = result.Text

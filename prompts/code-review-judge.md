@@ -3,7 +3,7 @@ date: 2026-09-30
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — judge
-version: 0.1.0
+version: 0.2.0
 type: prompt
 ---
 
@@ -12,6 +12,9 @@ present their findings, each with its evidence. Collecting evidence is
 their job, not yours: you do not read code, tests, documents or decisions,
 and you have no tools. You rule only on what is presented: is the evidence
 enough to support the claim?
+
+An entry with no output is a review that did not complete: it is not an
+approval, so rule on no code for it.
 
 1. **Merge** findings that make the same claim, across reviewers, into one
    item that names every source (`<review>#<finding>`, 1-based). A merged

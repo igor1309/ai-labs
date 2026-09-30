@@ -99,6 +99,49 @@ func TestExampleWorkflowEndToEnd(t *testing.T) {
 	}
 }
 
+// A fan-out node that times out, its runtime never ending by itself, does
+// not keep the join from running on the node that completed (ADR-004): the
+// join receives the completed output and the other node's status and class,
+// the workflow's result is the join's, and both its record and its progress
+// lines name the node that did not complete.
+func TestExampleWorkflowJoinsWithoutATimedOutNode(t *testing.T) {
+	home, repo := setup(t, "approve")
+	// The adversarial review alone reads a file that makes the fake runtime
+	// hang, first among its inputs, under a one-second timeout.
+	path := filepath.Join(home, "processes", "adversarial_review.yaml")
+	process := strings.Replace(read(t, path), "  values:\n", "  values:\n    stall: {source: file, path: stall.txt}\n", 1)
+	write(t, path, strings.Replace(process, "workspace:\n", "timeout: 1s\n\nworkspace:\n", 1))
+	write(t, filepath.Join(repo, "stall.txt"), "SCENARIO:hang\n")
+
+	r := agister(t, home, repo, "run", "review_panel", "--param", "base=main", "--param", "architecture=a.txt")
+	if r.code != cli.ExitCompleted || r.stdout != "All good.\n" {
+		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	for _, line := range []string{"· node adversarial: interrupted/timeout", "· node architecture: completed",
+		"! barrier passed: the join runs without adversarial, which did not complete", "· node summary: completed"} {
+		if !strings.Contains(r.stderr, line) {
+			t.Fatalf("stderr lacks %q:\n%s", line, r.stderr)
+		}
+	}
+	_, record := workflowRun(t, home)
+	if record.Result.Status != domain.Completed || record.Workflow.Barrier.State != domain.BarrierPassed ||
+		strings.Join(record.Workflow.Barrier.Incomplete, ",") != "adversarial" {
+		t.Fatalf("workflow run: result %+v, barrier %+v", record.Result, record.Workflow.Barrier)
+	}
+	var collection []map[string]any
+	data, err := os.ReadFile(filepath.Join(home, "runs", record.ID, "artifacts", "collection.json"))
+	if err != nil || json.Unmarshal(data, &collection) != nil || len(collection) != 2 {
+		t.Fatalf("collection: %v\n%s", err, data)
+	}
+	adversarial, architecture := collection[0], collection[1]
+	if adversarial["node"] != "adversarial" || adversarial["status"] != "interrupted" || adversarial["class"] != "timeout" || adversarial["output"] != nil {
+		t.Fatalf("adversarial entry = %v", adversarial)
+	}
+	if architecture["node"] != "architecture" || architecture["status"] != "completed" || architecture["output"] == nil {
+		t.Fatalf("architecture entry = %v", architecture)
+	}
+}
+
 // lastRunIn reads one run's directory as lastRun does.
 func lastRunIn(t *testing.T, dir string) run {
 	t.Helper()

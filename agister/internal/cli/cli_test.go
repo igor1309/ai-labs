@@ -256,6 +256,34 @@ func TestProgressDescribesVerification(t *testing.T) {
 	}
 }
 
+// A workflow's progress says which fan-out nodes its join runs without, and
+// that no join ran when none completed (ADR-004).
+func TestProgressNamesTheNodesThatDidNotComplete(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		event contract.Event
+		want  string
+	}{
+		{"passed without some", contract.Event{Kind: "BARRIER", Data: map[string]any{"state": "passed", "incomplete": []any{"tests", "clarity"}}},
+			"! barrier passed: the join runs without tests, clarity, which did not complete\n"},
+		{"passed with all", contract.Event{Kind: "BARRIER", Data: map[string]any{"state": "passed"}}, "· barrier passed\n"},
+		{"blocked", contract.Event{Kind: "BARRIER", Data: map[string]any{"state": "blocked", "blocked_by": "one", "incomplete": []any{"one", "two"}}},
+			"! barrier blocked: no node completed (one, two), no join\n"},
+		// A run recorded before ADR-004 has no incomplete: its first node
+		// that did not complete blocked the join.
+		{"blocked, recorded before", contract.Event{Kind: "BARRIER", Data: map[string]any{"state": "blocked", "blocked_by": "two"}},
+			"! barrier blocked by node two: no join\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			spy := &clientSpy{run: finished("completed", ""), events: []contract.Event{tc.event, {Kind: "WORKFLOW_FINISHED"}}}
+			r := run(context.Background(), spy, "run", "w")
+			if !strings.Contains(r.stderr, tc.want) {
+				t.Fatalf("stderr:\n%s", r.stderr)
+			}
+		})
+	}
+}
+
 // Text from the agent or the runtime reaches the terminal with its control
 // characters escaped.
 func TestProgressAndSummaryEscapeControlCharacters(t *testing.T) {

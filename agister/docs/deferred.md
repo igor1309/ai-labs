@@ -60,3 +60,13 @@ Against trunk's merge-base (also covers #829 and #831):
   - minor: Register cleanup before asserting on blocked workflows (`agister/internal/app/workflow_test.go:614`)
 - `clarity_review_codex`, run `20260930T124840Z-ee2b26`:
   - major: Preserve existing recorded instructions (`prompts/code-review-architecture.md:43`)
+
+## 3. A repository-settings test failed once with no cause found
+
+- **Gap:** `TestRepositoryProcessesRunOnFakeRuntimes/workflow_code_review`
+  failed once (2026-09-30, LAB-11's implement run) with "the runtime was
+  not a fake" and an empty `provider.jsonl`; 12 reruns passed. The cause is
+  unknown.
+- **Trigger:** it fails again; the failure message then carries the read
+  error and the node's result.
+- **Done when:** the cause is found and a deterministic test covers it.
