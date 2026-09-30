@@ -813,7 +813,7 @@ func TestVerifyDeclarationEndToEnd(t *testing.T) {
 	process := strings.Replace(shipped, "name: adversarial_review", "name: verified", 1) + `
 verify:
   command: go test ./...
-  timeout: 2m
+  timeout: 20s
   max_attempts: 1
   instruction: The verification command failed. Fix the cause, not the check.
 `
@@ -828,14 +828,14 @@ verify:
 		t.Fatalf("show: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
-	r = agister(t, home, repo, "run", "verified", "--param", "base=main", "--timeout", "5m")
+	r = agister(t, home, repo, "run", "verified", "--param", "base=main", "--timeout", "30s")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("run: %d\n%s", r.code, r.stderr)
 	}
 	record := lastRun(t, home).record
 	verified := record["id"]
 	verify := record["verify"].(map[string]any)
-	if verify["command"] != "go test ./..." || verify["timeout"] != float64(2*60e9) || verify["max_attempts"] != 1.0 || !strings.HasPrefix(verify["instruction"].(string), "The verification command failed.") {
+	if verify["command"] != "go test ./..." || verify["timeout"] != float64(20e9) || verify["max_attempts"] != 1.0 || !strings.HasPrefix(verify["instruction"].(string), "The verification command failed.") {
 		t.Fatalf("verify = %v", verify)
 	}
 	for _, source := range record["definitions"].([]any) {
@@ -845,7 +845,7 @@ verify:
 		}
 	}
 
-	r = agister(t, home, repo, "run", "verified", "--param", "base=main", "--timeout", "1m")
+	r = agister(t, home, repo, "run", "verified", "--param", "base=main", "--timeout", "10s")
 	// Two runs in one second need not list in the order they ran.
 	entries, _ := os.ReadDir(filepath.Join(home, "runs"))
 	var refused map[string]any
@@ -857,7 +857,7 @@ verify:
 		}
 	}
 	if r.code == cli.ExitCompleted || len(entries) != 2 || refused["class"] != "refused" ||
-		!strings.Contains(refused["message"].(string), "verify.timeout 2m0s exceeds the effective timeout 1m0s") {
+		!strings.Contains(refused["message"].(string), "verify.timeout 20s exceeds the effective timeout 10s") {
 		t.Fatalf("run with a shorter timeout: %d, %v", r.code, refused)
 	}
 }

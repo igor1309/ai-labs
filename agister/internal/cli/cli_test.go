@@ -297,6 +297,20 @@ func TestCheckPrintsWarnings(t *testing.T) {
 	}
 }
 
+// Settings with problems still print their warnings, beside the problems,
+// and check exits with the usage code.
+func TestCheckPrintsWarningsBesideProblems(t *testing.T) {
+	spy := &clientSpy{report: contract.CheckReport{Checked: map[string]int{"processes": 1},
+		Problems: []string{"process q: agent \"ghost\" does not exist"},
+		Warnings: []string{"process p: verify runs with the operator's authority"}}}
+	r := run(context.Background(), spy, "check")
+	if r.code != cli.ExitUsage ||
+		!strings.Contains(r.stderr, "warning process p: verify runs with the operator's authority\n") ||
+		!strings.Contains(r.stderr, "process q: agent \"ghost\" does not exist\n1 problem(s) in 1 processes\n") {
+		t.Fatalf("result %+v", r)
+	}
+}
+
 // process show prints the verify block and the warnings it is given.
 func TestShowProcessPrintsVerifyAndWarnings(t *testing.T) {
 	spy := &clientSpy{view: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Output: "text", Timeout: time.Hour, MaxAttempts: 1,

@@ -54,3 +54,13 @@ replace: func (v *Verify) Repairs() bool { return false }
 test: ./internal/app TestVerifyRepairsWithoutResumableSessionsRefuseTheCall
 test: ./internal/domain/settings TestVerifyRepairsNeedAResumableAgent
 test: ./internal/app TestCheckWarnsOncePerProcessWithVerify
+
+# Review fix: check prints its warnings whether or not the settings have
+# problems. The mutation prints them only without problems, as the loop
+# would below the problems return: a find cannot span that block, whose Go
+# string holds a literal \n this format reads as a newline.
+[warnings are printed beside problems]
+file: internal/cli/cli.go
+find: \tfor _, warning := range report.Warnings {\n\t\tfmt.Fprintln(env.Stderr, "warning "+warning)\n\t}\n
+replace: \tfor _, warning := range report.Warnings {\n\t\tif len(report.Problems) > 0 {\n\t\t\tbreak\n\t\t}\n\t\tfmt.Fprintln(env.Stderr, "warning "+warning)\n\t}\n
+test: ./internal/cli TestCheckPrintsWarningsBesideProblems
