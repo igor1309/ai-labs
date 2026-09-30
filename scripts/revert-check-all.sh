@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 # Runs scripts/revert-check.py on every spec in agister/testdata/revert-checks,
-# in parallel, from the repository root. Prints each spec's output under its
+# at most REVERT_CHECK_JOBS (default 3) at a time, from the repository root:
+# more at once pushes Go tests past revert-check.py's 45s test timeout. Prints each spec's output under its
 # name and fails, listing the failing specs, if any spec fails.
 set -u
 cd "$(dirname "$0")/.."
 logs="$(mktemp -d)"
 trap 'rm -rf "$logs"' EXIT
 specs=(agister/testdata/revert-checks/*.spec)
+jobs_max="${REVERT_CHECK_JOBS:-3}"
 for spec in "${specs[@]}"; do
+  while [ "$(jobs -rp | wc -l)" -ge "$jobs_max" ]; do
+    wait -n
+  done
   (scripts/revert-check.py "$spec" > "$logs/${spec##*/}" 2>&1; echo $? > "$logs/${spec##*/}.exit") &
 done
 wait
