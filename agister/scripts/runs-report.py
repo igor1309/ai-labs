@@ -111,15 +111,17 @@ def codex_skills(text):
 def codex_session(sessions, session_id):
     """Model, effort, skills offered and skills used, from the Codex session.
     A skill is used when a command reads its SKILL.md (a parsed read of that
-    path; searches do not count), or when a $skill mention injects it."""
+    path, resolved against the session's working directory; searches do not
+    count), or when a $skill mention injects it."""
     files = glob.glob(os.path.join(sessions, "**", f"*{session_id}.jsonl"), recursive=True)
     if not files:
         return None, None, None, Counter()
-    model, effort, skills, used = None, None, {}, Counter()
+    model, effort, cwd, skills, used = None, None, "", {}, Counter()
     for event in jsonl(files[0]):
         payload = event.get("payload") or {}
         if event.get("type") == "turn_context" and model is None:
             model, effort = payload.get("model"), payload.get("effort")
+            cwd = payload.get("cwd") or ""
         if payload.get("type") == "message":
             for block in payload.get("content") or []:
                 text = block.get("text") or ""
@@ -131,8 +133,9 @@ def codex_session(sessions, session_id):
         item = payload.get("item") or {}
         if payload.get("type") == "item_completed" and item.get("type") == "CommandExecution":
             for part in item.get("parsed_cmd") or []:
-                if part.get("type") == "read" and part.get("path") in skills:
-                    used[skills[part["path"]]] += 1
+                path = os.path.normpath(os.path.join(cwd, part.get("path") or ""))
+                if part.get("type") == "read" and path in skills:
+                    used[skills[path]] += 1
     return model, effort, sorted(set(skills.values())), used
 
 
