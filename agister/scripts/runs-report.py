@@ -111,15 +111,17 @@ def codex_skills(text):
 def codex_session(sessions, session_id):
     """Model, effort, skills offered and skills used, from the Codex session.
     A skill is used when a command reads its SKILL.md (a parsed read of that
-    path; searches do not count), or when a $skill mention injects it."""
+    path, resolved against the session's working directory; searches do not
+    count), or when a $skill mention injects it."""
     files = glob.glob(os.path.join(sessions, "**", f"*{session_id}.jsonl"), recursive=True)
     if not files:
         return None, None, None, Counter()
-    model, effort, skills, used = None, None, {}, Counter()
+    model, effort, cwd, skills, used = None, None, "", {}, Counter()
     for event in jsonl(files[0]):
         payload = event.get("payload") or {}
         if event.get("type") == "turn_context" and model is None:
             model, effort = payload.get("model"), payload.get("effort")
+            cwd = payload.get("cwd") or ""
         if payload.get("type") == "message":
             for block in payload.get("content") or []:
                 text = block.get("text") or ""
@@ -131,19 +133,17 @@ def codex_session(sessions, session_id):
         item = payload.get("item") or {}
         if payload.get("type") == "item_completed" and item.get("type") == "CommandExecution":
             for part in item.get("parsed_cmd") or []:
-                if part.get("type") == "read" and part.get("path") in skills:
-                    used[skills[part["path"]]] += 1
+                path = os.path.normpath(os.path.join(cwd, part.get("path") or ""))
+                if part.get("type") == "read" and path in skills:
+                    used[skills[path]] += 1
     return model, effort, sorted(set(skills.values())), used
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--runs", default=os.path.expanduser("~/.agister/runs"))
-    parser.add_argument("--codex-sessions", default=os.path.expanduser("~/.codex/sessions"))
-    args = parser.parse_args()
-
+def collect(runs, codex_sessions):
+    """One row per call with a provider session under runs, and per runtime
+    the skills offered and how often each was used."""
     rows, had_by_runtime, used_by_runtime = [], {}, {}
-    for path in sorted(glob.glob(os.path.join(args.runs, "*", "record.json"))):
+    for path in sorted(glob.glob(os.path.join(runs, "*", "record.json"))):
         record = load_json(path)
         if not record or "workflow" in record:
             continue
@@ -156,7 +156,7 @@ def main():
             model, had, tools, used = claude_session(os.path.dirname(path))
             effort = agent_effort(record)
         elif adapter == "codex":
-            model, effort, had, used = codex_session(args.codex_sessions, session)
+            model, effort, had, used = codex_session(codex_sessions, session)
             tools = None
         else:
             continue
@@ -167,7 +167,16 @@ def main():
             model or "?", effort or "?", str(len(had or [])),
             ", ".join(f"{k}×{v}" for k, v in used.most_common()) or "-",
         ])
+    return rows, had_by_runtime, used_by_runtime
 
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--runs", default=os.path.expanduser("~/.agister/runs"))
+    parser.add_argument("--codex-sessions", default=os.path.expanduser("~/.codex/sessions"))
+    args = parser.parse_args(argv)
+
+    rows, had_by_runtime, used_by_runtime = collect(args.runs, args.codex_sessions)
     head = ["run", "process", "harness", "model", "effort", "skills offered", "skills used"]
     widths = [max(len(h), *(len(r[i]) for r in rows)) if rows else len(h) for i, h in enumerate(head)]
     print("  ".join(h.ljust(w) for h, w in zip(head, widths)))

@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeoutput"
@@ -55,8 +56,21 @@ func main() {
 	}
 	cwd, _ := os.Getwd()
 	emit(map[string]any{"type": "thread.started", "thread_id": thread, "argv": args, "cwd": cwd, "prompt": prompt, "schema": schema})
-	if scenario == "no_result" {
+	switch scenario {
+	case "no_result":
 		return
+	case "input_too_large":
+		// As codex-cli 0.159.2 fails a prompt over its limit: the reason on
+		// stderr only, none in the stream.
+		fmt.Fprintln(os.Stderr, `Error: turn/start: turn/start failed: Input exceeds the maximum length of 1048576 characters. (code -32602), data: {"input_error_code":"input_too_large","max_chars":1048576,"actual_chars":1100001}`)
+		os.Exit(1)
+	case "exit_silent":
+		os.Exit(1)
+	case "exit_flooded":
+		// More stderr than any bound keeps, then the reason.
+		fmt.Fprintln(os.Stderr, strings.Repeat("noise ", 4000))
+		fmt.Fprintln(os.Stderr, "Error: unauthorized")
+		os.Exit(1)
 	}
 	emit(map[string]any{"type": "turn.started"})
 	emit(map[string]any{"type": "error", "message": "Reconnecting... 2/5 (stream disconnected before completion)"})
