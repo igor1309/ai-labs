@@ -1,5 +1,5 @@
-# Review of one change (ADR-003): the architecture, tests and adversarial
-# reviews of the same candidate against the same base, concurrently, then the
+# Review of one change (ADR-003): the architecture, tests, adversarial and
+# clarity reviews of the same candidate against the same base, concurrently, then the
 # judge's rulings on them. The judge starts only if every review completed,
 # and receives their recorded outputs as its collection and nothing else.
 #   agister run code_review --param base=<rev> --param candidate=<rev>
@@ -21,5 +21,6 @@ fan_out:
   - {node: architecture, uses: process:architecture_review_codex}
   - {node: tests, uses: process:tests_review_codex}
   - {node: adversarial, uses: process:adversarial_review_codex}
+  - {node: clarity, uses: process:clarity_review_codex}
 
 join: {node: judge, uses: process:review_judge}
