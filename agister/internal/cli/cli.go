@@ -58,8 +58,8 @@ Usage:
   agister run <process> [--param <name>=<value>]... [--agent <name>] [--timeout <d>] [--max-cost <usd>]
                          [--continue <run-id>] [--json]   (--json: print the node result)
   agister run <workflow> [--param <name>=<value>]... [--json]
-                                     fan-out nodes run concurrently, the join only after all of them
-                                     completed; each node is a run of its own
+                                     fan-out nodes run concurrently, the join once all of them ended,
+                                     if at least one completed; each node is a run of its own
   agister runs [list]
   agister runs show <run-id>
   agister runs watch <run-id> [--after <seq>]

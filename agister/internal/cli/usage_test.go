@@ -3,6 +3,7 @@ package cli
 import (
 	"flag"
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -19,4 +20,13 @@ func TestUsageDescribesEveryFlag(t *testing.T) {
 			t.Errorf("usage does not mention %s", spelled)
 		}
 	})
+}
+
+// The help describes the join as ADR-004 does: once every fan-out node
+// ended, if at least one completed.
+func TestUsageDescribesTheJoin(t *testing.T) {
+	want := "fan-out nodes run concurrently, the join once all of them ended, if at least one completed;"
+	if !strings.Contains(strings.Join(strings.Fields(usage), " "), want) {
+		t.Errorf("usage does not say %q", want)
+	}
 }
