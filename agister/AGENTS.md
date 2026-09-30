@@ -10,9 +10,8 @@ still apply.
   `agister run implement --param candidate=<rev> --param brief=<file>`, and
   apply the run's `changes.patch`. Send review fixes as a continuation of
   that run (`--continue <run>`), so the implementer keeps its session.
-- Revert-check specs live in `agister/testdata/revert-checks/*.spec`.
-  Verify the result yourself: `scripts/handoff-check.py`, the tests, and
-  `scripts/revert-check.py` on the spec.
+- Verify the result yourself as the root `AGENTS.md` says: red then green,
+  `scripts/handoff-check.py`, the tests. No mutation or revert checks.
 - Review through Agister, on a committed candidate: a `*_review_codex`
   process for code, or `decision_review_codex --param prompt=<prompt file>`
   for decision documents (agent `codex-sol`: `gpt-6.1-sol`, effort high).

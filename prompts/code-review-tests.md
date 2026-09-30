@@ -3,7 +3,7 @@ date: 2026-09-29
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — tests
-version: 0.0.1
+version: 0.0.2
 type: prompt
 ---
 
@@ -14,13 +14,18 @@ Definition of done:
 
 * Each changed behaviour has a test that fails when the behaviour is
   reverted. Name any fix or guard with no such test.
+* Proof rests on normal tests only: deterministic, cheap, rerunnable. A
+  test's claim that rests on mutation or revert checks (plants, mutation
+  specs, reverting by hand) is a finding. So is a behaviour no normal test
+  can make fail: the code lacks a seam (an injected closure, spy, clock or
+  hook); name it.
 * A test asserts the outcome, not the implementation's incidental steps.
   Weak assertions (only "no error", only a length) are findings.
 * A test asserts at the level the change claims. A change about what a
   record, report or log says is not proven by a test one layer below it.
 * An existing assertion weakened, removed or widened in the same change is
   a finding unless the change says why. A reverted fix still fails a
-  loosened test, so revert checks do not catch this.
+  loosened test, so a red commit does not catch this.
 * A wait is not a finding by itself. Yielding to a loop's next tick, or
   polling for an event that surely comes, is fine. Judge each wait by what
   it waits for, how long, on which clock, and what it hides:

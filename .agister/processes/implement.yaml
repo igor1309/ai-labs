@@ -28,15 +28,12 @@ output:
   require_valid: true
 
 # Agister's own checks, run in the checkout with the operator's authority
-# after each valid turn, then every revert-check spec; the node completes
-# only when they pass.
+# after each valid turn; the node completes only when they pass.
 verify:
   command: >-
     cd agister && test -z "$(gofmt -l .)" && go vet ./... &&
-    go test -count=1 ./... && go test -race -count=1 ./internal/app/... &&
-    ../scripts/revert-check-all.sh
-  # About 6 minutes in all (2026-09-30), most of it the revert checks.
-  timeout: 15m
+    go test -count=1 ./... && go test -race -count=1 ./internal/app/...
+  timeout: 5m
   max_attempts: 3
   instruction: >-
     The verification command failed on your changes. Fix the cause in the

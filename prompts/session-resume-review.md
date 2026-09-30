@@ -28,9 +28,7 @@ Look for:
   flags changed is sound under ADR-001 rule 4, given `codex` was bumped;
 - ADR-001 rule 13 (narrow component interfaces) and rule 7 (refusals
   before the turn);
-- tests or revert-check mutations
-  (`agister/testdata/revert-checks/session-resume.spec`) that do not prove
-  what they claim.
+- tests that do not prove what they claim.
 
 For each finding give the file, candidate line, severity and a concrete
 fix. Material findings only; be concise; no praise.
