@@ -1,7 +1,8 @@
 # Review of one change (ADR-003): the architecture, tests, adversarial and
-# clarity reviews of the same candidate against the same base, concurrently, then the
-# judge's rulings on them. The judge starts only if every review completed,
-# and receives their recorded outputs as its collection and nothing else.
+# clarity reviews of the same candidate against the same base, concurrently,
+# then the judge's rulings on them. The judge starts only if every review
+# completed, and receives their recorded outputs as its collection and nothing
+# else.
 #   agister run code_review --param base=<rev> --param candidate=<rev>
 schema: agister.workflow/v1alpha1
 name: code_review
