@@ -68,7 +68,7 @@ func (Workspaces) Checkout(ctx context.Context, repository, revision string) (st
 	if err != nil {
 		return "", nil, err
 	}
-	dir := filepath.Join(parent, "workspace")
+	dir := filepath.Join(parent, workspace(filepath.Base(parent)))
 	if _, err := run(ctx, repository, "worktree", "add", "--detach", "--quiet", dir, revision); err != nil {
 		os.RemoveAll(parent)
 		return "", nil, err
@@ -88,7 +88,15 @@ func (Workspaces) Checkout(ctx context.Context, repository, revision string) (st
 // shaped as Discard removes it. Nothing is made there: the call records it
 // first, so a copy is never on disk before it is on record.
 func (Workspaces) Place(call string) string {
-	return filepath.Join(os.TempDir(), "agister-checkout-"+call+"-copy", "workspace")
+	parent := "agister-checkout-" + call + "-copy"
+	return filepath.Join(os.TempDir(), parent, workspace(parent))
+}
+
+// workspace names the checkout in parent after parent's own unique part:
+// git names a worktree's admin directory after its basename, so checkouts
+// made at the same time in one repository never race on one name.
+func workspace(parent string) string {
+	return "workspace-" + strings.TrimPrefix(parent, "agister-checkout-")
 }
 
 // Copy checks revision out at dir, a directory Place named, as Checkout
@@ -118,7 +126,8 @@ func (w Workspaces) Copy(ctx context.Context, repository, dir, revision string, 
 
 // Discard removes a checkout whose call ended without releasing it, or a
 // clean copy. Only a directory Checkout or Copy could have made is touched:
-// <temp>/agister-checkout-*/workspace.
+// <temp>/agister-checkout-<id>/workspace-<id>, or <temp>/agister-checkout-*/workspace
+// as earlier versions made them.
 func (Workspaces) Discard(ctx context.Context, repository, dir string) error {
 	if err := made(dir); err != nil {
 		return err
@@ -138,10 +147,12 @@ func (Workspaces) Discard(ctx context.Context, repository, dir string) error {
 	return err
 }
 
-// made refuses a directory Checkout, Place and Copy could not have made.
+// made refuses a directory Checkout, Place and Copy could not have made, now
+// or under the name "workspace" earlier versions gave every checkout.
 func made(dir string) error {
 	parent := filepath.Dir(dir)
-	if filepath.Base(dir) != "workspace" || !strings.HasPrefix(filepath.Base(parent), "agister-checkout-") ||
+	if base := filepath.Base(dir); base != "workspace" && base != workspace(filepath.Base(parent)) ||
+		!strings.HasPrefix(filepath.Base(parent), "agister-checkout-") ||
 		resolved(filepath.Dir(parent)) != resolved(os.TempDir()) {
 		return fmt.Errorf("%s is not a checkout Agister made", dir)
 	}

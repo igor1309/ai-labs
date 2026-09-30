@@ -1,12 +1,13 @@
 // Package claudecode drives Claude Code headless: one `claude -p` process
 // per turn, reading its stream-json protocol.
 //
-// Contract claude-code/2: the prompt goes on stdin; granted primitives are
-// tool names passed as both --tools and --allowedTools under
-// --permission-mode dontAsk; --restricted and --strict-mcp-config ignore
-// user/project settings and MCP servers and confine file tools to the
-// working directory. Permission mappings for this contract describe what
-// each tool grants under exactly these flags.
+// Contract claude-code/3: the prompt goes on stdin; granted primitives,
+// and Skill on every turn, are tool names passed as both --tools and
+// --allowedTools under --permission-mode dontAsk; --strict-mcp-config
+// ignores MCP servers. Claude Code loads the working directory's
+// instruction files, settings and skills as it would for a person there
+// (ADR-006). Permission mappings for this contract describe what each tool
+// grants under exactly these flags.
 //
 // Agister never chooses the session ID; Claude Code reports it. A
 // continuation resumes the reported session in place with --resume, and
@@ -25,6 +26,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -34,7 +36,10 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-const Contract = "claude-code/2"
+const Contract = "claude-code/3"
+
+// skill is the tool that uses the repository's skills; every turn gets it.
+const skill = "Skill"
 
 type Runner struct {
 	Command   string
@@ -69,16 +74,18 @@ func Arguments(request app.TurnRequest) ([]string, error) {
 			return nil, fmt.Errorf("invalid tool primitive %q", tool)
 		}
 	}
-	tools := strings.Join(request.Primitives, ",")
+	tools := request.Primitives
+	if !slices.Contains(tools, skill) {
+		tools = append(slices.Clip(tools), skill)
+	}
+	joined := strings.Join(tools, ",")
 	args := []string{
 		"-p",
 		"--output-format", "stream-json",
 		"--verbose",
 		"--permission-mode", "dontAsk",
-		"--tools=" + tools,
-	}
-	if tools != "" {
-		args = append(args, "--allowedTools="+tools)
+		"--tools=" + joined,
+		"--allowedTools=" + joined,
 	}
 	if request.ResumeSessionID != "" {
 		args = append(args, "--resume", request.ResumeSessionID)
@@ -86,7 +93,7 @@ func Arguments(request app.TurnRequest) ([]string, error) {
 	if request.MaxCostUSD != nil {
 		args = append(args, "--max-budget-usd", strconv.FormatFloat(*request.MaxCostUSD, 'f', -1, 64))
 	}
-	args = append(args, "--restricted", "--strict-mcp-config")
+	args = append(args, "--strict-mcp-config")
 	if request.Model != "" {
 		args = append(args, "--model", request.Model)
 	}

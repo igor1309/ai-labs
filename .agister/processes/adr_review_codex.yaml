@@ -1,5 +1,5 @@
-# Review of the architecture decisions a candidate adds or edits, and of the
-# code against them, per prompts/code-review-adr.md.
+# Review of the architecture decisions a candidate adds or edits, per
+# prompts/code-review-adr.md.
 schema: agister.process/v1alpha1
 name: adr_review_codex
 

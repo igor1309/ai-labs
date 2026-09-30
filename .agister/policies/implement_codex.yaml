@@ -1,0 +1,27 @@
+# Implementation on Codex in a checkout of the candidate: policy implement
+# without its cost limit, since Codex reports cost only after a turn and so
+# cannot enforce one; the timeout bounds the call. Codex's workspace-write
+# grants less than this allows (runtimes/codex.yaml): no commits, no network.
+schema: agister.process-policy/v1alpha1
+name: implement_codex
+
+workspace:
+  access: read-write
+  scope: candidate
+
+tools:
+  allow:
+    - repository.read
+    - repository.search
+    - repository.diff
+    - repository.history.read
+    - repository.write
+    - repository.history.write
+    - process.execute
+    - network
+    - host.read
+    - host.write
+
+timeout: 45m
+retry:
+  max_attempts: 1

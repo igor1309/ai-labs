@@ -11,6 +11,11 @@
 - **Codex sandboxes read outside the workspace.** Its mapping declares
   `host.read`, which is never granted, and it is not yet verified against a
   live Codex, so it ships opt-in (`examples/codex/`) and `check` refuses it.
+- **Codex workspace-write, observed on codex-cli 0.159.2** (2026-09-30, a
+  scratch repository): writing in the workspace and under `/tmp` worked;
+  writing elsewhere in the home directory, `git commit` (`.git` stays
+  read-only) and network were refused. Its mapping grants
+  `repository.write` and `host.write`, not `repository.history.write`.
 - **Claude Code rejects draft 2020-12 schemas** passed with `--json-schema`,
   so example schemas declare no `$schema`. `agister check` still accepts
   one: on 2026-09-29 a project schema with the draft 2020-12 `$schema`
@@ -43,6 +48,14 @@
   path through a symlink leaving the workspace were refused; `**/*`,
   `../outside/*` and `linked/**/*` listed nothing outside the workspace,
   and a symlinked file pointing outside was not listed (2.1.284).
+- **Without `--restricted`, the file tools reach the host.** Claude Code
+  2.1.285 under claude-code/3 (`--permission-mode dontAsk`, the tool in
+  `--tools` and `--allowedTools`, 2026-09-30, a scratch directory): Read,
+  Grep and Glob each read or listed a file in another temporary directory,
+  with no permission denial. Their mapping declares `host.read`, which is
+  never granted, so the shipped mapping grants a Claude call no file tool.
+  The same turn loaded the directory's `AGENTS.md` and offered Skill, which
+  used a project skill.
 
 Verified live against Claude Code 2.1.283 (Glob: 2.1.284). Codex is covered by protocol
 fixtures only.

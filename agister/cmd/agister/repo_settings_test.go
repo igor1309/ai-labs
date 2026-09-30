@@ -202,12 +202,51 @@ func onFakeRuntimes(t *testing.T) (root, repo, home string) {
 }
 
 // The judge of code_review rules on the collection of a fixed set of
-// reviews, the ADR review among them, and the ADR reviewer is given its
-// standing prompt, prompts/code-review-adr.md.
-func TestCodeReviewCollectsTheADRReview(t *testing.T) {
+// reviews: architecture, tests, adversarial and clarity, the ADR review not
+// among them.
+func TestCodeReviewCollectsItsFourReviews(t *testing.T) {
+	_, repo, home := onFakeRuntimes(t)
+	reviews, _ := judgedReviews(t, home, repo, "code_review")
+	want := map[string]string{
+		"architecture": "architecture_review_codex completed",
+		"tests":        "tests_review_codex completed",
+		"adversarial":  "adversarial_review_codex completed",
+		"clarity":      "clarity_review_codex completed",
+	}
+	if !reflect.DeepEqual(reviews, want) {
+		t.Fatalf("code_review's judge collected %v, want %v", reviews, want)
+	}
+}
+
+// The judge of adr_review rules on the collection of the ADR review alone,
+// and the ADR reviewer is given its standing prompt,
+// prompts/code-review-adr.md.
+func TestADRReviewCollectsTheADRReview(t *testing.T) {
 	root, repo, home := onFakeRuntimes(t)
-	created, _ := runRecorded(t, home, repo, []string{"run", "code_review", "--param", "base=main", "--param", "candidate=feature"})
-	records := map[string]map[string]any{} // the nodes' runs, by process
+	reviews, records := judgedReviews(t, home, repo, "adr_review")
+	want := map[string]string{"adr": "adr_review_codex completed"}
+	if !reflect.DeepEqual(reviews, want) {
+		t.Fatalf("adr_review's judge collected %v, want %v", reviews, want)
+	}
+
+	prompt, err := os.ReadFile(filepath.Join(root, "prompts", "code-review-adr.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(prompt)
+	digest := "sha256:" + hex.EncodeToString(sum[:])
+	if given := inputOf(t, records["adr_review_codex"], "review_prompt"); given["source"] != "file" || given["identity"] != digest {
+		t.Fatalf("adr_review_codex's review_prompt = %v, want prompts/code-review-adr.md (%s)", given, digest)
+	}
+}
+
+// judgedReviews runs a review workflow to completion and is its judge's
+// collection, as each node's process and status by node, and the nodes'
+// runs by process. It fails unless the judge received that collection.
+func judgedReviews(t *testing.T, home, repo, workflow string) (reviews map[string]string, records map[string]map[string]any) {
+	t.Helper()
+	created, _ := runRecorded(t, home, repo, []string{"run", workflow, "--param", "base=main", "--param", "candidate=feature"})
+	records = map[string]map[string]any{}
 	var flow map[string]any
 	var flowDir string
 	for _, id := range created {
@@ -232,34 +271,15 @@ func TestCodeReviewCollectsTheADRReview(t *testing.T) {
 	if err := json.Unmarshal(data, &collection); err != nil {
 		t.Fatal(err)
 	}
-	reviews := map[string]string{}
+	reviews = map[string]string{}
 	for _, entry := range collection {
 		reviews[entry.Node] = entry.Process + " " + entry.Status
-	}
-	want := map[string]string{
-		"architecture": "architecture_review_codex completed",
-		"tests":        "tests_review_codex completed",
-		"adversarial":  "adversarial_review_codex completed",
-		"clarity":      "clarity_review_codex completed",
-		"adr":          "adr_review_codex completed",
-	}
-	if !reflect.DeepEqual(reviews, want) {
-		t.Fatalf("the judge's collection = %v, want %v", reviews, want)
 	}
 	// What the judge received is that collection.
 	if got := inputOf(t, records["review_judge"], "reviews")["identity"]; got != artifact["digest"] {
 		t.Fatalf("the judge received %v, the collection is %v", got, artifact["digest"])
 	}
-
-	prompt, err := os.ReadFile(filepath.Join(root, "prompts", "code-review-adr.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	sum := sha256.Sum256(prompt)
-	digest := "sha256:" + hex.EncodeToString(sum[:])
-	if given := inputOf(t, records["adr_review_codex"], "review_prompt"); given["source"] != "file" || given["identity"] != digest {
-		t.Fatalf("adr_review_codex's review_prompt = %v, want prompts/code-review-adr.md (%s)", given, digest)
-	}
+	return reviews, records
 }
 
 // inputOf is a call's recorded input by name.

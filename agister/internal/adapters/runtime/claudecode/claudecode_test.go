@@ -3,6 +3,7 @@ package claudecode_test
 import (
 	"encoding/json"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -46,8 +47,8 @@ func TestArgumentsCarryPrimitivesAndContractFlags(t *testing.T) {
 	}
 	want := []string{
 		"-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "dontAsk",
-		"--tools=Read,Grep", "--allowedTools=Read,Grep",
-		"--restricted", "--strict-mcp-config", "--model", "sonnet", "--effort", "high",
+		"--tools=Read,Grep,Skill", "--allowedTools=Read,Grep,Skill",
+		"--strict-mcp-config", "--model", "sonnet", "--effort", "high",
 		"--append-system-prompt", "Do the thing.", "--json-schema", `{"type":"object"}`,
 	}
 	if !reflect.DeepEqual(args, want) {
@@ -60,14 +61,37 @@ func TestArgumentsCarryPrimitivesAndContractFlags(t *testing.T) {
 	}
 }
 
-func TestNoPrimitivesExposesNoTools(t *testing.T) {
-	r := request("x")
-	r.Primitives = nil
-	args, _ := claudecode.Arguments(r)
-	joined := strings.Join(args, " ")
-	if !strings.Contains(joined, "--tools= ") || strings.Contains(joined, "--allowedTools") {
-		t.Fatalf("args = %v", args)
+// A turn loads the repository's instructions and skills (ADR-006): nothing
+// turns that loading off, and every turn, fresh or resumed, whatever it is
+// granted, gets Skill to use a skill with.
+func TestEveryTurnLoadsTheRepositoryAndGetsSkill(t *testing.T) {
+	for _, c := range []struct {
+		name       string
+		primitives []string
+		resume     string
+		tools      string
+	}{
+		{"fresh, granted", []string{"Read", "Grep"}, "", "Read,Grep,Skill"},
+		{"resumed, granted", []string{"Read", "Grep"}, session, "Read,Grep,Skill"},
+		{"fresh, nothing granted", nil, "", "Skill"},
+		{"resumed, nothing granted", nil, session, "Skill"},
+		{"granted Skill itself", []string{"Skill", "Read"}, "", "Skill,Read"},
+	} {
+		r := request("x")
+		r.Primitives, r.ResumeSessionID = c.primitives, c.resume
+		args, err := claudecode.Arguments(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if slices.Contains(args, "--restricted") || !slices.Contains(args, "--tools="+c.tools) || !slices.Contains(args, "--allowedTools="+c.tools) ||
+			c.resume != "" && !strings.Contains(strings.Join(args, " "), "--resume "+c.resume) {
+			t.Errorf("%s: args = %q", c.name, args)
+		}
 	}
+}
+
+func TestInvalidPrimitiveIsRejected(t *testing.T) {
+	r := request("x")
 	r.Primitives = []string{"Bash(git diff:*)"}
 	if _, err := claudecode.Arguments(r); err == nil {
 		t.Fatal("a primitive with spaces must be rejected")
