@@ -23,38 +23,26 @@ before.
   next `code_review` of this code.
 - **Done when:** every finding below has a ruling and each fix ruling is
   applied.
+- **Moved:** the code majors are Multica issues LAB-13 to LAB-24 (the
+  elapsed-time minor went with LAB-24); what follows is what is left.
 
 Against `origin/agister` (the PR's range):
 
 - `architecture_review_codex`, run `20260930T130858Z-216be1`:
-  - major: Include cost lookup in the turn’s timeout boundary (`agister/internal/adapters/runtime/codex/codex.go:187`)
   - minor: Define the cost collaborator by its role (`agister/internal/adapters/runtime/codex/codex.go:55`)
 - `tests_review_codex`, run `20260930T130858Z-04fa42`:
-  - major: Kill recorded command groups when readiness fails (`agister/cmd/agister/reap_test.go:199`)
   - minor: Register cleanup for every workflow with held turns (`agister/internal/app/workflow_test.go:614`)
-  - minor: Remove elapsed-time verdicts from verification tests (`agister/cmd/agister/verify_loop_test.go:438`)
   - minor: Prove truncated output survives recording and repair (`agister/cmd/agister/verify_loop_test.go:764`)
   - minor: Test the new guards against Git diff configuration (`agister/internal/adapters/git/git.go:140`)
   - minor: Exercise successful ccusage invocation through the default runner (`agister/internal/adapters/runtime/codex/codex_test.go:221`)
-- `adversarial_review_codex`, run `20260930T130858Z-8f42dc`:
-  - major: Verification can depend on files omitted from the delivered patch (`agister/internal/app/verify.go:193`)
-  - major: The ccusage subprocess bypasses bounded cancellation and cleanup (`agister/internal/adapters/runtime/codex/codex.go:69`)
-  - major: Block the workflow when a child's final record cannot be persisted (`agister/internal/app/calls.go:329`)
-  - major: A reaped continuation must invalidate the session-cost baseline (`agister/internal/domain/run/session.go:69`)
 - `clarity_review_codex`, run `20260930T130858Z-6e937c`:
   - major: Preserve recorded decisions and report departures to the owner (`agister/docs/adr/001-agister-cli-architecture.md:232`)
 
 Against trunk's merge-base (also covers #829 and #831):
 
 - `architecture_review_codex`, run `20260930T124840Z-66d78a`:
-  - major: Give the core a local composition root (`agister/cmd/agister/main.go:112`)
-  - major: Remove private resolver implementation types from consumer contracts (`agister/internal/app/calls.go:46`)
-  - major: Depend on cancellation and registration roles instead of Hosted (`agister/internal/app/runs.go:32`)
   - minor: Give the event sink its own narrow recording interface (`agister/internal/app/calls.go:928`)
 - `tests_review_codex`, run `20260930T124840Z-e1af27`:
-  - major: Run the settings integration test when its inputs change (`.github/workflows/ci.yml:141`)
-  - major: Bound the cancellation test's startup wait (`agister/internal/app/calls_test.go:609`)
-  - major: Remove elapsed-wall-time verdicts from verification tests (`agister/cmd/agister/verify_loop_test.go:467`)
   - minor: Clean up cached fake-runtime build directories (`agister/internal/adapters/runtime/runtimetest/runtimetest.go:37`)
   - minor: Assert raw-output contents and ordering (`agister/internal/adapters/runtime/runtimetest/runtimetest.go:172`)
   - minor: Register cleanup before asserting on blocked workflows (`agister/internal/app/workflow_test.go:614`)
