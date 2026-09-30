@@ -28,11 +28,12 @@ import (
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// The verification loop (ADR-002) on real checkouts of temporary
-// repositories, with the real command runner, git and evidence store. The
-// runtime is a scripted fake whose turns write files in the checkout, and
-// the verification command is a fixture driven by those files: by default
-// it prints the file state and passes when it says "pass".
+// The verification loop (ADR-002; where the command runs, ADR-005) on real
+// checkouts of temporary repositories, with the real command runner, git
+// and evidence store. The runtime is a scripted fake whose turns write
+// files in the checkout, and the verification command is a fixture driven
+// by those files: by default it prints the file state and passes when it
+// says "pass".
 
 const passWhenStateSaysPass = "cat state; grep -qx pass state"
 
@@ -230,7 +231,7 @@ verify:
 	h.calls = app.NewCalls(
 		app.NewResolver(fsdefs.Store{Dir: defs}, runtimes, schema.Validator{}), runtimes,
 		map[string]app.InputProvider{"git.revision": git.Revision{}},
-		git.Workspaces{}, changes, app.NewVerifier(changes, supervisor.Commands{}, clock), schema.Validator{},
+		git.Workspaces{}, changes, app.NewVerifier(changes, git.Workspaces{}, supervisor.Commands{}, clock), schema.Validator{},
 		h.store, h.store, clock, system.IDs{}, h.home, hosted,
 	)
 	h.runs = app.NewRuns(h.store, hosted, 10*time.Millisecond)
@@ -247,8 +248,8 @@ func (h *loopHarness) submit(request contract.CallRequest) string {
 	return id
 }
 
-// wait returns the run's record once it is finished; the checkout is gone
-// by then.
+// wait returns the run's record once it is finished; the checkout and every
+// clean copy are gone by then.
 func (h *loopHarness) wait(id string) domain.Record {
 	h.t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
@@ -399,13 +400,13 @@ func TestVerifyStopsOnTheSameFailureTwice(t *testing.T) {
 	}
 }
 
-// A run that changes the checkout's content fails whatever its exit
-// status, and the evidence keeps what it changed; files it writes that
-// are ignored are not content.
-func TestVerifyRunThatChangesTheCheckoutFails(t *testing.T) {
+// A run that changes the content of the clean copy it runs in fails
+// whatever its exit status, and the evidence keeps what it changed; files
+// it writes that are ignored are not content.
+func TestVerifyRunThatChangesItsCleanCopyFails(t *testing.T) {
 	h := newLoop(t, verifySettings{command: "grep -qx pass state && echo ran > ran.txt", maxAttempts: 1}, state("pass"))
 	record := h.call(contract.CallRequest{})
-	expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "attempt 1 of 1 failed (exit code 0; the run changed the checkout's content")
+	expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "attempt 1 of 1 failed (exit code 0; the run changed the content it checked")
 	ran := runsOf(record)
 	if len(ran) != 1 || ran[0].Passed || ran[0].After == "" || ran[0].After == record.Attempts[0].Identity || ran[0].AfterChanges == nil {
 		t.Fatalf("attempts = %+v", record.Attempts)
@@ -722,7 +723,31 @@ func TestVerifyCaptureReproducesThePassingContent(t *testing.T) {
 
 	h = newLoopWith(t, lossy{}, system.Clock{}, verifySettings{}, agent)
 	record = h.call(contract.CallRequest{})
-	expect(t, record, domain.Failed, domain.ClassInternal, "the captured changes do not reproduce the content that passed verification")
+	expect(t, record, domain.Failed, domain.ClassInternal, "the captured changes do not reproduce attempt 1's content")
+	if len(runsOf(record)) != 0 {
+		t.Fatalf("the command ran: %+v", record.Attempts)
+	}
+}
+
+// The case of LAB-15: the base ignores *.log and has no new.log; the agent
+// creates new.log, and the check needs it. The patch cannot carry an
+// ignored file, so the check fails on the clean copy the patch makes,
+// though it would pass in the agent's checkout. A file the patch carries
+// passes the same check.
+func TestVerifyChecksWhatThePatchDelivers(t *testing.T) {
+	h := newLoop(t, verifySettings{command: "test -f new.log", maxAttempts: 1}, writes(map[string]string{"new.log": "made\n"}))
+	record := h.call(contract.CallRequest{})
+	expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "attempt 1 of 1 failed (exit code 1)")
+	if ran := runsOf(record); len(ran) != 1 || ran[0].Dir == record.Workspace || len(record.Result.Artifacts) != 0 {
+		t.Fatalf("attempts %+v, artifacts %+v", record.Attempts, record.Result.Artifacts)
+	}
+
+	h = newLoop(t, verifySettings{command: "test -f new.txt", maxAttempts: 1}, writes(map[string]string{"new.txt": "made\n"}))
+	record = h.call(contract.CallRequest{})
+	expect(t, record, domain.Completed, "", "")
+	if artifacts := record.Result.Artifacts; len(artifacts) != 1 || !strings.Contains(read(t, filepath.Join(h.home, "runs", record.ID, artifacts[0].Path)), "+++ b/new.txt") {
+		t.Fatalf("artifacts = %+v", artifacts)
+	}
 }
 
 // Every attempt is evidence: the command, where and how it ran, its
@@ -760,7 +785,7 @@ func TestVerifyEvidenceForEveryAttempt(t *testing.T) {
 		want := []string{"one", "two", "pass"}[i]
 		sum := sha256.Sum256([]byte(want + "\n"))
 		if attempt.Number != i+1 || attempt.Session != "sess-1" || attempt.Turn.ProviderSessionID != "sess-1" || attempt.Identity == "" || ran == nil ||
-			ran.Command != passWhenStateSaysPass || ran.Dir != record.Workspace || ran.Exit.Code == nil || (*ran.Exit.Code == 0) != (want == "pass") ||
+			ran.Command != passWhenStateSaysPass || ran.Dir == "" || ran.Dir == record.Workspace || ran.Exit.Code == nil || (*ran.Exit.Code == 0) != (want == "pass") ||
 			ran.Output.Head != want+"\n" || ran.Output.Bytes != int64(len(want)+1) || ran.Output.SHA256 != hex.EncodeToString(sum[:]) ||
 			ran.StartedAt.IsZero() || ran.FinishedAt.Before(ran.StartedAt) || ran.Passed != (want == "pass") {
 			t.Fatalf("attempt %d = %+v, run %+v", i+1, attempt, ran)

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -51,37 +53,10 @@ const verifyFixture = "grep -qx two change.txt"
 // a process that declares verify runs verifyFixture instead of its command
 // and completes with one passing verification attempt.
 func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatal(err)
-	}
+	root, repo, home := onFakeRuntimes(t)
 	entries, err := os.ReadDir(filepath.Join(root, ".agister", "processes"))
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	// The fakes answer as claude and codex, first on PATH, each with an
-	// output from the schema it is given, and report their default versions,
-	// which the mappings verify (claude-code 2.1.283, codex 0.158.0).
-	bin := t.TempDir()
-	for name, fake := range map[string]string{"claude": "fakeclaude", "codex": "fakecodex"} {
-		if err := os.Symlink(runtimetest.Binary(t, fake), filepath.Join(bin, name)); err != nil {
-			t.Fatal(err)
-		}
-	}
-	// ccusage fails: Codex turns cost unknown, and the real one never runs.
-	if err := os.WriteFile(filepath.Join(bin, "ccusage"), []byte("#!/bin/sh\nexit 1\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-	t.Setenv("FAKE_OUTPUT", "schema")
-	t.Setenv("FAKE_VERSION", "")
-
-	repo := mirror(t, root)
-	fixVerify(t, root, repo)
-	home := filepath.Join(t.TempDir(), "home")
-	if r := agisterInput(t, "yes\n", home, t.TempDir(), "init"); r.code != 0 {
-		t.Fatalf("init: %d %s", r.code, r.stderr)
 	}
 
 	var names []string
@@ -188,6 +163,116 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 			t.Errorf("process %s takes a workflow's collection, but no repository workflow joins with it", name)
 		}
 	}
+}
+
+// onFakeRuntimes is this repository's root, and a mirror of it (see mirror
+// and fixVerify) with an initialized Agister home, where the claude and
+// codex that run are fakes.
+func onFakeRuntimes(t *testing.T) (root, repo, home string) {
+	t.Helper()
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The fakes answer as claude and codex, first on PATH, each with an
+	// output from the schema it is given, and report their default versions,
+	// which the mappings verify (claude-code 2.1.283, codex 0.158.0).
+	bin := t.TempDir()
+	for name, fake := range map[string]string{"claude": "fakeclaude", "codex": "fakecodex"} {
+		if err := os.Symlink(runtimetest.Binary(t, fake), filepath.Join(bin, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// ccusage fails: Codex turns cost unknown, and the real one never runs.
+	if err := os.WriteFile(filepath.Join(bin, "ccusage"), []byte("#!/bin/sh\nexit 1\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("FAKE_OUTPUT", "schema")
+	t.Setenv("FAKE_VERSION", "")
+
+	repo = mirror(t, root)
+	fixVerify(t, root, repo)
+	home = filepath.Join(t.TempDir(), "home")
+	if r := agisterInput(t, "yes\n", home, t.TempDir(), "init"); r.code != 0 {
+		t.Fatalf("init: %d %s", r.code, r.stderr)
+	}
+	return root, repo, home
+}
+
+// The judge of code_review rules on the collection of a fixed set of
+// reviews, the ADR review among them, and the ADR reviewer is given its
+// standing prompt, prompts/code-review-adr.md.
+func TestCodeReviewCollectsTheADRReview(t *testing.T) {
+	root, repo, home := onFakeRuntimes(t)
+	created, _ := runRecorded(t, home, repo, []string{"run", "code_review", "--param", "base=main", "--param", "candidate=feature"})
+	records := map[string]map[string]any{} // the nodes' runs, by process
+	var flow map[string]any
+	var flowDir string
+	for _, id := range created {
+		var record map[string]any
+		readJSON(t, filepath.Join(home, "runs", id, "record.json"), &record)
+		if record["workflow"] != nil {
+			flow, flowDir = record, filepath.Join(home, "runs", id)
+			continue
+		}
+		records[record["process"].(string)] = record
+	}
+	if flow == nil || flow["result"].(map[string]any)["status"] != "completed" {
+		t.Fatalf("workflow run = %v among %v", flow, created)
+	}
+
+	artifact := flow["workflow"].(map[string]any)["collection"].(map[string]any)
+	data, err := os.ReadFile(filepath.Join(flowDir, artifact["path"].(string)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var collection []struct{ Node, Process, Status string }
+	if err := json.Unmarshal(data, &collection); err != nil {
+		t.Fatal(err)
+	}
+	reviews := map[string]string{}
+	for _, entry := range collection {
+		reviews[entry.Node] = entry.Process + " " + entry.Status
+	}
+	want := map[string]string{
+		"architecture": "architecture_review_codex completed",
+		"tests":        "tests_review_codex completed",
+		"adversarial":  "adversarial_review_codex completed",
+		"clarity":      "clarity_review_codex completed",
+		"adr":          "adr_review_codex completed",
+	}
+	if !reflect.DeepEqual(reviews, want) {
+		t.Fatalf("the judge's collection = %v, want %v", reviews, want)
+	}
+	// What the judge received is that collection.
+	if got := inputOf(t, records["review_judge"], "reviews")["identity"]; got != artifact["digest"] {
+		t.Fatalf("the judge received %v, the collection is %v", got, artifact["digest"])
+	}
+
+	prompt, err := os.ReadFile(filepath.Join(root, "prompts", "code-review-adr.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(prompt)
+	digest := "sha256:" + hex.EncodeToString(sum[:])
+	if given := inputOf(t, records["adr_review_codex"], "review_prompt"); given["source"] != "file" || given["identity"] != digest {
+		t.Fatalf("adr_review_codex's review_prompt = %v, want prompts/code-review-adr.md (%s)", given, digest)
+	}
+}
+
+// inputOf is a call's recorded input by name.
+func inputOf(t *testing.T, record map[string]any, name string) map[string]any {
+	t.Helper()
+	inputs, _ := record["inputs"].([]any)
+	for _, input := range inputs {
+		if input := input.(map[string]any); input["name"] == name {
+			return input
+		}
+	}
+	t.Fatalf("run %v has no input %s: %v", record["id"], name, inputs)
+	return nil
 }
 
 func parseProcess(t *testing.T, root, name string) definition.Process {

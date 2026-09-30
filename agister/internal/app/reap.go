@@ -15,7 +15,8 @@ import (
 const defaultReapTimeout = 30 * time.Second
 
 // Reaper undoes the effects of runs whose process was killed before they
-// finished, then finishes them. It is not part of any call: whoever
+// finished, then finishes them, and removes the clean copies finished runs
+// left on record (ADR-005 rule 2). It is not part of any call: whoever
 // composes the client starts it (see BackgroundReaper).
 type Reaper struct {
 	adopter   RunAdopter
@@ -57,15 +58,18 @@ type Processes interface {
 
 // RunAdopter takes over runs whose owner ended.
 type RunAdopter interface {
-	// Abandoned lists the unfinished runs nobody owns that recorded effects.
+	// Abandoned lists the unfinished runs nobody owns that recorded effects,
+	// and the finished runs whose record still names a clean copy.
 	Abandoned(ctx context.Context) ([]run.Record, error)
-	// LiveCheckouts lists the checkout directories that runs some process
-	// still owns record, so nobody removes them from under those runs. Read
+	// LiveCheckouts lists the checkout directories, workspaces and clean
+	// copies, that runs some process still owns record, so nobody removes
+	// them from under those runs. Read
 	// before Adopt: the run adopted is owned by this process and would read
 	// as live.
 	LiveCheckouts(ctx context.Context) ([]string, error)
-	// Adopt takes ownership of an abandoned run, as its record is now. It
-	// fails if the run is owned by another process or finished.
+	// Adopt takes ownership of a run Abandoned lists, as its record is now.
+	// It fails if the run is owned by another process, or finished with no
+	// clean copy on record.
 	Adopt(ctx context.Context, id string) (ReapHandle, run.Record, error)
 }
 
@@ -140,12 +144,15 @@ func (c *Reaper) reapContext(ctx context.Context) (context.Context, context.Canc
 	return context.WithTimeout(ctx, timeout)
 }
 
-// reap ends one adopted run's effects and finishes it as lost. A step that
-// fails is recorded and does not stop the rest, so a run is reaped once. A
-// checkout that a run still owned records as its own is left in place, and
-// so is one whose users could not be listed. It returns the failure to
-// record the reap or finish the run; with the event unrecorded, the error
-// carries the steps that failed.
+// reap ends one adopted run's effects and finishes it as lost; of a run
+// that finished, it removes only the clean copy its record names, and the
+// run keeps its end. A step that fails is recorded and does not stop the
+// rest, so a run is reaped once. A checkout, the call's own or
+// verification's clean copy, that a run still owned records as its own is
+// left in place, and so is one whose users could not be listed. A copy
+// removed is no longer on record. It returns the failure to record the
+// reap or finish the run; with the event unrecorded, the error carries the
+// steps that failed.
 func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record, live []string, liveErr error) error {
 	data := map[string]any{}
 	var failures []string
@@ -153,12 +160,23 @@ func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record,
 	if record.Effects != nil {
 		effects = *record.Effects
 	}
-	// The runtime's process and the verification command's (ADR-002 rule
-	// 10), each by the reference its runner recorded.
-	for _, group := range []struct {
+	// A finished run ended its processes and released its checkout: only a
+	// copy it could not remove is left.
+	finished := record.FinishedAt != nil
+	processes := []struct {
 		name    string
 		process *run.Process
-	}{{"process", effects.Process}, {"command", effects.Command}} {
+	}{{"process", effects.Process}, {"command", effects.Command}}
+	checkouts := []struct {
+		name     string
+		checkout *run.Checkout
+	}{{"checkout", effects.Checkout}, {"copy", effects.Copy}}
+	if finished {
+		processes, checkouts = nil, checkouts[1:]
+	}
+	// The runtime's process and the verification command's (ADR-002 rule
+	// 10), each by the reference its runner recorded.
+	for _, group := range processes {
 		if group.process == nil {
 			continue
 		}
@@ -168,18 +186,28 @@ func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record,
 			failures = append(failures, fmt.Sprintf("%s %q: %v", group.name, group.process.Ref, err))
 		}
 	}
-	if checkout := effects.Checkout; checkout != nil {
+	// The call's checkout (ADR-002 rule 10) and the clean copy a
+	// verification run checked (ADR-005 rule 2).
+	for _, dir := range checkouts {
+		checkout := dir.checkout
+		if checkout == nil {
+			continue
+		}
 		switch {
 		case liveErr != nil:
-			data["checkout"] = map[string]any{"dir": checkout.Dir, "removed": false, "skipped": "could not tell whether a running run uses it"}
-			failures = append(failures, fmt.Sprintf("checkout %s left: listing running runs: %v", checkout.Dir, liveErr))
+			data[dir.name] = map[string]any{"dir": checkout.Dir, "removed": false, "skipped": "could not tell whether a running run uses it"}
+			failures = append(failures, fmt.Sprintf("%s %s left: listing running runs: %v", dir.name, checkout.Dir, liveErr))
 		case slices.Contains(live, checkout.Dir):
-			data["checkout"] = map[string]any{"dir": checkout.Dir, "removed": false, "skipped": "a running run uses it"}
+			data[dir.name] = map[string]any{"dir": checkout.Dir, "removed": false, "skipped": "a running run uses it"}
 		default:
 			err := c.discarder.Discard(ctx, checkout.Repository, checkout.Dir)
-			data["checkout"] = map[string]any{"dir": checkout.Dir, "removed": err == nil}
+			data[dir.name] = map[string]any{"dir": checkout.Dir, "removed": err == nil}
 			if err != nil {
-				failures = append(failures, fmt.Sprintf("checkout %s: %v", checkout.Dir, err))
+				failures = append(failures, fmt.Sprintf("%s %s: %v", dir.name, checkout.Dir, err))
+			} else if dir.name == "copy" {
+				// Else every reap would find the run again.
+				effects.Copy = nil
+				record.Effects = &effects
 			}
 		}
 	}
@@ -194,11 +222,13 @@ func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record,
 		}
 		errs = append(errs, fmt.Errorf("recording the reap: %w", err))
 	}
-	result := run.AbandonedResult(record.CreatedAt)
-	result.Timing.FinishedAt = now
-	result.Timing.WallMS = now.Sub(record.CreatedAt).Milliseconds()
-	record.FinishedAt = &now
-	record.Result = &result
+	if !finished {
+		result := run.AbandonedResult(record.CreatedAt)
+		result.Timing.FinishedAt = now
+		result.Timing.WallMS = now.Sub(record.CreatedAt).Milliseconds()
+		record.FinishedAt = &now
+		record.Result = &result
+	}
 	if err := handle.Finish(record); err != nil {
 		errs = append(errs, fmt.Errorf("finishing the run: %w", err))
 	}

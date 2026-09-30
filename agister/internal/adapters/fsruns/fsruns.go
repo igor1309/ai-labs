@@ -79,7 +79,8 @@ func (s Store) Create(_ context.Context, record run.Record) (app.RunHandle, erro
 	return h, nil
 }
 
-// Abandoned lists the unfinished runs nobody owns that recorded effects.
+// Abandoned lists the unfinished runs nobody owns that recorded effects,
+// and the finished runs whose record still names a clean copy.
 func (s Store) Abandoned(ctx context.Context) ([]run.Record, error) {
 	records, err := s.List(ctx)
 	if err != nil {
@@ -87,7 +88,13 @@ func (s Store) Abandoned(ctx context.Context) ([]run.Record, error) {
 	}
 	var abandoned []run.Record
 	for _, record := range records {
-		if record.Effects == nil || record.FinishedAt != nil {
+		if record.Effects == nil {
+			continue
+		}
+		if record.FinishedAt != nil {
+			if record.Effects.Copy != nil {
+				abandoned = append(abandoned, record)
+			}
 			continue
 		}
 		if _, state, err := s.Get(ctx, record.ID); err == nil && state == run.StateAbandoned {
@@ -97,8 +104,8 @@ func (s Store) Abandoned(ctx context.Context) ([]run.Record, error) {
 	return abandoned, nil
 }
 
-// LiveCheckouts lists the checkout directories of unfinished runs that
-// some process still owns.
+// LiveCheckouts lists the checkout directories, workspaces and clean
+// copies, of unfinished runs that some process still owns.
 func (s Store) LiveCheckouts(ctx context.Context) ([]string, error) {
 	records, err := s.List(ctx)
 	if err != nil {
@@ -106,18 +113,24 @@ func (s Store) LiveCheckouts(ctx context.Context) ([]string, error) {
 	}
 	var dirs []string
 	for _, record := range records {
-		if record.Effects == nil || record.Effects.Checkout == nil || record.FinishedAt != nil {
+		effects := record.Effects
+		if effects == nil || (effects.Checkout == nil && effects.Copy == nil) || record.FinishedAt != nil {
 			continue
 		}
 		if _, state, err := s.Get(ctx, record.ID); err != nil || state == run.StateRunning {
-			dirs = append(dirs, record.Effects.Checkout.Dir)
+			for _, checkout := range []*run.Checkout{effects.Checkout, effects.Copy} {
+				if checkout != nil {
+					dirs = append(dirs, checkout.Dir)
+				}
+			}
 		}
 	}
 	return dirs, nil
 }
 
-// Adopt takes the owner lock of an unfinished run, so exactly one process
-// ends what its dead owner left.
+// Adopt takes the owner lock of an unfinished run, or of a finished one
+// whose record still names a clean copy, so exactly one process ends what
+// its dead owner left.
 func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record, error) {
 	var record run.Record
 	if err := checkID(id); err != nil {
@@ -136,7 +149,7 @@ func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record
 	}
 	// Read under the lock: the owner may have finished before it was released.
 	record, _, err = s.Get(ctx, id)
-	if err == nil && record.FinishedAt != nil {
+	if err == nil && record.FinishedAt != nil && (record.Effects == nil || record.Effects.Copy == nil) {
 		err = fmt.Errorf("run %s is finished", id)
 	}
 	if err != nil {

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -16,10 +17,11 @@ import (
 const verifyOutputBound = 8 << 10
 
 // Verifier runs the verification loop of calls whose process declares
-// verify (ADR-002), through the contracts it declares here: one loop per
-// call (Verify).
+// verify (ADR-002; where the command runs, ADR-005), through the contracts
+// it declares here: one loop per call (Verify).
 type Verifier struct {
 	content  VerifyContent
+	copies   VerifyCopies
 	commands VerifyCommands
 	clock    VerifyClock
 }
@@ -34,6 +36,27 @@ type VerifyContent interface {
 	// they are the same.
 	Changes(ctx context.Context, dir, from, to string) ([]byte, error)
 }
+
+// VerifyCopies makes the clean copies verification runs in: what a call
+// delivers is its patch, so the command checks the base with that patch
+// applied, not the checkout the agent works in (ADR-005).
+type VerifyCopies interface {
+	// Place names the directory the call's clean copies are made in, the
+	// same for every attempt; nothing is made there.
+	Place(call string) string
+	// Copy checks revision out of repository at dir, apart from every other
+	// checkout, and applies patch to its files. It refuses, with an error
+	// that wraps ErrPlaceTaken, if something is at dir already, which it
+	// leaves as it was; it removes a copy it made and cannot finish.
+	Copy(ctx context.Context, repository, dir, revision string, patch []byte) error
+	// Discard removes the copy at dir; one already gone is success.
+	Discard(ctx context.Context, repository, dir string) error
+}
+
+// ErrPlaceTaken is what a copy is refused with when something is at its
+// directory already: nothing was made there, and what is there is not the
+// call's to remove.
+var ErrPlaceTaken = errors.New("something is already there")
 
 // VerifyCommands runs the verification command.
 type VerifyCommands interface {
@@ -51,8 +74,8 @@ type VerifyClock interface{ Now() time.Time }
 
 // NewVerifier returns the component that runs verification loops. Every
 // collaborator is required.
-func NewVerifier(content VerifyContent, commands VerifyCommands, clock VerifyClock) *Verifier {
-	return &Verifier{content: content, commands: commands, clock: clock}
+func NewVerifier(content VerifyContent, copies VerifyCopies, commands VerifyCommands, clock VerifyClock) *Verifier {
+	return &Verifier{content: content, copies: copies, commands: commands, clock: clock}
 }
 
 // VerifyCall is what one call's verification loop checks, repairs with and
@@ -70,6 +93,9 @@ type VerifyCall struct {
 	Deadline time.Time // the call's timeout, for every turn and run
 	Dir      string    // the call's checkout
 	Base     string    // the revision it was checked out at
+	// Repository is the one Dir is a checkout of, where the clean copies
+	// are made.
+	Repository string
 	// Request is the call's first turn, which every repair repeats with
 	// the failure as its prompt.
 	Request TurnRequest
@@ -89,9 +115,9 @@ type VerifyCall struct {
 // passing run checked, and the fault that stopped the loop without a pass.
 func (v *Verifier) Verify(ctx context.Context, call VerifyCall) (verified string, fault *run.Error) {
 	loop := &verification{
-		content: v.content, commands: v.commands, clock: v.clock,
+		content: v.content, copies: v.copies, commands: v.commands, clock: v.clock,
 		record: call.Record, result: call.Result, event: call.Event, update: call.Update, artifact: call.Artifact,
-		verify: call.Verify, limit: call.Limit, deadline: call.Deadline, dir: call.Dir, base: call.Base,
+		verify: call.Verify, limit: call.Limit, deadline: call.Deadline, dir: call.Dir, base: call.Base, repository: call.Repository,
 		request: call.Request, session: call.Session, take: call.Take, conclude: call.Conclude,
 	}
 	fault = loop.run(ctx)
@@ -99,12 +125,13 @@ func (v *Verifier) Verify(ctx context.Context, call VerifyCall) (verified string
 }
 
 // verification is one call's verification loop: after a valid turn it runs
-// the process's command in the call's checkout, and on a failure with
-// attempts, time and budget left, resumes the call's session in place with
-// the failure and checks again. Every attempt is recorded before the next
-// turn starts.
+// the process's command in a clean copy of the base with the turn's changes
+// applied, and on a failure with attempts, time and budget left, resumes
+// the call's session in place with the failure and checks again. Every
+// attempt is recorded before the next turn starts.
 type verification struct {
 	content  VerifyContent
+	copies   VerifyCopies
 	commands VerifyCommands
 	clock    VerifyClock
 
@@ -120,7 +147,10 @@ type verification struct {
 	deadline time.Time // the call's timeout, for every turn and run
 	dir      string    // the call's checkout
 	base     string    // the revision it was checked out at
-	request  TurnRequest
+	// repository is the one dir is a checkout of, where the clean copies
+	// are made.
+	repository string
+	request    TurnRequest
 	// session is the provider session of the call's first turn, which
 	// every repair resumes.
 	session string
@@ -130,6 +160,8 @@ type verification struct {
 
 	// verified names the content of the passing run, once one passed.
 	verified string
+	// copy is where every attempt's clean copy is made, once named.
+	copy string
 }
 
 // run verifies the latest turn, which was valid, and repairs until a run
@@ -157,15 +189,16 @@ func (v *verification) run(ctx context.Context) *run.Error {
 		if ctx.Err() != nil {
 			return v.stop(attempt, run.Fault(run.ClassCancelled, "cancelled before attempt %d's run", number))
 		}
-		remaining := v.deadline.Sub(v.clock.Now())
-		if remaining <= 0 {
+		if v.deadline.Sub(v.clock.Now()) <= 0 {
 			return v.stop(attempt, run.Fault(run.ClassTimeout, "the call's timeout passed before attempt %d's run", number))
 		}
-		timeout := min(v.verify.Timeout, remaining)
 		checked = append(checked, identity)
 
-		ran := v.runCommand(ctx, number, timeout)
-		attempt.Run = &ran
+		ran, timeout, fault, kept := v.check(ctx, number, identity)
+		attempt.Run = ran
+		if fault != nil {
+			return v.stop(attempt, fault)
+		}
 		switch {
 		case ran.Cancelled:
 			return v.stop(attempt, run.Fault(run.ClassCancelled, "cancelled during attempt %d's run", number))
@@ -176,20 +209,9 @@ func (v *verification) run(ctx context.Context) *run.Error {
 		case ran.Error != "":
 			return v.stop(attempt, run.Fault(run.ClassInternal, "attempt %d's run: %s", number, ran.Error))
 		}
-
-		// Rule 7: a run that changes the content fails, whatever its exit.
-		after, err := v.content.Identity(ctx, v.dir, v.base)
-		if err != nil {
-			return v.stop(attempt, v.failure(ctx, "naming the checkout's content after the run", err))
-		}
-		if after != identity {
-			ran.After = after
-			v.event(run.SourceAgister, "VERIFY_CHANGED_CONTENT", map[string]any{"attempt": number, "checked": identity, "after": after})
-			if ran.AfterChanges, err = v.keep(ctx, fmt.Sprintf("attempt-%d-run.patch", number), identity, after); err != nil {
-				return v.stop(attempt, v.failure(ctx, "keeping the run's changes", err))
-			}
-		}
-		from = after
+		// The run was in its clean copy, not the checkout: a repair's changes
+		// are from the content checked.
+		from = identity
 		ran.Passed = ran.Exit.Code != nil && *ran.Exit.Code == 0 && ran.After == ""
 		if ran.Passed {
 			// The node completes only once the passing attempt is recorded.
@@ -199,15 +221,20 @@ func (v *verification) run(ctx context.Context) *run.Error {
 			v.verified = identity
 			return nil
 		}
+		// A copy that could not be removed stays on record, and no attempt
+		// makes its own over it: the call ends before a repair is paid for.
+		if kept != nil {
+			return v.stop(attempt, run.Fault(run.ClassInternal, "attempt %d failed and its clean copy at %s could not be removed: %v", number, v.copy, kept))
+		}
 
-		if fault := v.exhausted(ran, previous, number); fault != nil {
+		if fault := v.exhausted(*ran, previous, number); fault != nil {
 			return v.stop(attempt, fault)
 		}
 		budget, fault := v.budget()
 		if fault != nil {
 			return v.stop(attempt, fault)
 		}
-		remaining = v.deadline.Sub(v.clock.Now())
+		remaining := v.deadline.Sub(v.clock.Now())
 		if remaining <= 0 {
 			return v.stop(attempt, run.Fault(run.ClassTimeout, "the call's timeout passed after attempt %d's run", number))
 		}
@@ -218,11 +245,11 @@ func (v *verification) run(ctx context.Context) *run.Error {
 		if err := v.save(attempt); err != nil {
 			return run.Fault(run.ClassInternal, "recording attempt %d failed: %v", number, err)
 		}
-		previous = &ran
+		previous = ran
 
 		// Rule 4: the repair resumes the call's own session in place.
 		request := v.request
-		request.Prompt = prompt.Repair(v.verify.Instruction, v.verify.Command, ended(ran), ran.Output)
+		request.Prompt = prompt.Repair(v.verify.Instruction, v.verify.Command, ended(*ran), ran.Output)
 		request.ResumeSessionID = v.session
 		request.Timeout = remaining
 		request.MaxCostUSD = budget
@@ -276,16 +303,138 @@ func (v *verification) budget() (*float64, *run.Error) {
 	return &left, nil
 }
 
-// runCommand runs the verification command once, its process group on
-// record as an effect of the call while it runs.
-func (v *verification) runCommand(ctx context.Context, number int, timeout time.Duration) run.CommandRun {
-	v.event(run.SourceAgister, "VERIFY_STARTED", map[string]any{"attempt": number, "command": v.verify.Command, "dir": v.dir, "timeout": timeout.String()})
+// check runs the command once on a clean copy of the base with the
+// patch to identity applied, so it checks exactly what the call would
+// deliver; the copy must have that content, or the captured changes do not
+// reproduce it and the call fails. The copy is on record before it is made
+// and removed on every path (ADR-005 rule 2) but a refusal, where what is
+// at its place is not the call's to remove. Making it counts against the
+// call's timeout, and the command gets what is left, up to verify.timeout:
+// the timeout it got is returned. A run that ended, not killed or failed
+// to run, is compared with the content it checked (ADR-005 rule 1). The
+// run is nil when the command never ran; kept is why the copy could not be
+// removed, if it could not.
+func (v *verification) check(ctx context.Context, number int, identity string) (_ *run.CommandRun, _ time.Duration, _ *run.Error, kept error) {
+	remaining := v.deadline.Sub(v.clock.Now())
+	prepare, cancel := context.WithTimeout(ctx, remaining)
+	defer cancel()
+	patch, err := v.content.Changes(prepare, v.dir, v.base, identity)
+	if err != nil {
+		return nil, 0, v.preparing(ctx, prepare, number, "capturing the changes to check", err), nil
+	}
+	dir, fault := v.claimCopy(number)
+	if fault != nil {
+		return nil, 0, fault, nil
+	}
+	err = v.copies.Copy(prepare, v.repository, dir, v.base, patch)
+	// What was at the place already is not the call's: nothing of it is
+	// removed, and the record stops naming it as the call's copy.
+	if errors.Is(err, ErrPlaceTaken) {
+		v.forgetCopy(dir)
+		return nil, 0, run.Fault(run.ClassInternal, "attempt %d cannot make its clean copy: %v", number, err), nil
+	}
+	// Removed with ctx's values but not its end: a cancelled call's copy
+	// goes too.
+	defer func() { kept = v.removeCopy(context.WithoutCancel(ctx), number, dir) }()
+	if err != nil {
+		return nil, 0, v.preparing(ctx, prepare, number, "making the clean copy to check", err), nil
+	}
+	copied, err := v.content.Identity(prepare, dir, v.base)
+	if err != nil {
+		return nil, 0, v.preparing(ctx, prepare, number, "naming the clean copy's content", err), nil
+	}
+	if copied != identity {
+		return nil, 0, run.Fault(run.ClassInternal, "the captured changes do not reproduce attempt %d's content: applied to %s they make %s, not %s", number, v.base, copied, identity), nil
+	}
+	if ctx.Err() != nil {
+		return nil, 0, run.Fault(run.ClassCancelled, "cancelled before attempt %d's run", number), nil
+	}
+	// The command's time is what the copy left of the call's.
+	remaining = v.deadline.Sub(v.clock.Now())
+	if remaining <= 0 {
+		return nil, 0, run.Fault(run.ClassTimeout, "the call's timeout passed while attempt %d's clean copy was made", number), nil
+	}
+	timeout := min(v.verify.Timeout, remaining)
+
+	ran := v.runCommand(ctx, number, dir, timeout)
+	if ran.Cancelled || ran.TimedOut || ran.Error != "" {
+		return &ran, timeout, nil, nil
+	}
+	// ADR-005 rule 1: a run that changes the content fails, whatever its
+	// exit.
+	after, err := v.content.Identity(ctx, dir, v.base)
+	if err != nil {
+		return &ran, timeout, v.failure(ctx, "naming the clean copy's content after the run", err), nil
+	}
+	if after != identity {
+		ran.After = after
+		v.event(run.SourceAgister, "VERIFY_CHANGED_CONTENT", map[string]any{"attempt": number, "checked": identity, "after": after})
+		if ran.AfterChanges, err = v.keep(ctx, fmt.Sprintf("attempt-%d-run.patch", number), identity, after); err != nil {
+			return &ran, timeout, v.failure(ctx, "keeping the run's changes", err), nil
+		}
+	}
+	return &ran, timeout, nil, nil
+}
+
+// claimCopy records the call's clean copy on the run before it is made, so
+// a reap after a killed CLI finds whatever of it exists. A copy still on
+// record was not removed, and nothing replaces it: the attempt cannot make
+// its copy. A copy that cannot be recorded is not made.
+func (v *verification) claimCopy(number int) (string, *run.Error) {
+	previous := v.record.Effects
+	if previous != nil && previous.Copy != nil {
+		return "", run.Fault(run.ClassInternal, "attempt %d cannot make its clean copy: the copy at %s is still on record, not removed", number, previous.Copy.Dir)
+	}
+	if v.copy == "" {
+		v.copy = v.copies.Place(v.record.ID)
+	}
+	effects := run.Effects{}
+	if previous != nil {
+		effects = *previous
+	}
+	effects.Copy = &run.Checkout{Repository: v.repository, Dir: v.copy}
+	v.record.Effects = &effects
+	if err := v.update(*v.record); err != nil {
+		v.record.Effects = previous
+		return "", run.Fault(run.ClassInternal, "recording the clean copy failed: %v", err)
+	}
+	return v.copy, nil
+}
+
+// removeCopy removes the clean copy and, once it is gone, its record. One
+// that could not be removed stays on record, the failure is an event, and
+// it is returned.
+func (v *verification) removeCopy(ctx context.Context, number int, dir string) error {
+	if err := v.copies.Discard(ctx, v.repository, dir); err != nil {
+		v.event(run.SourceAgister, "VERIFY_COPY_REMOVE_FAILED", map[string]any{"attempt": number, "dir": dir, "error": err.Error()})
+		return err
+	}
+	// A record that still names a removed copy costs a reap nothing: a copy
+	// already gone is discarded as success.
+	v.forgetCopy(dir)
+	return nil
+}
+
+// forgetCopy drops the copy at dir from the record.
+func (v *verification) forgetCopy(dir string) {
+	if effects := v.record.Effects; effects != nil && effects.Copy != nil && effects.Copy.Dir == dir {
+		cleared := *effects
+		cleared.Copy = nil
+		v.record.Effects = &cleared
+		_ = v.update(*v.record)
+	}
+}
+
+// runCommand runs the verification command once in dir, its process group
+// on record as an effect of the call while it runs.
+func (v *verification) runCommand(ctx context.Context, number int, dir string, timeout time.Duration) run.CommandRun {
+	v.event(run.SourceAgister, "VERIFY_STARTED", map[string]any{"attempt": number, "command": v.verify.Command, "dir": dir, "timeout": timeout.String()})
 	started := v.clock.Now()
-	result := v.commands.Run(ctx, CommandRequest{Command: v.verify.Command, Dir: v.dir, Timeout: timeout, Bound: verifyOutputBound}, v.recordGroup)
+	result := v.commands.Run(ctx, CommandRequest{Command: v.verify.Command, Dir: dir, Timeout: timeout, Bound: verifyOutputBound}, v.recordGroup)
 	finished := v.clock.Now()
 	ran := run.CommandRun{
 		Command:    v.verify.Command,
-		Dir:        v.dir,
+		Dir:        dir,
 		Exit:       &run.Exit{Code: result.ExitCode, Signal: result.Signal},
 		TimedOut:   result.TimedOut,
 		Cancelled:  result.Cancelled,
@@ -350,6 +499,16 @@ func (v *verification) stop(attempt run.Attempt, fault *run.Error) *run.Error {
 	return fault
 }
 
+// preparing is the fault of a step that prepares attempt number's run
+// under prepare, the call's context bounded by its timeout: cancelled when
+// the call was, a timeout when its time ran out.
+func (v *verification) preparing(ctx, prepare context.Context, number int, step string, err error) *run.Error {
+	if ctx.Err() == nil && prepare.Err() != nil {
+		return run.Fault(run.ClassTimeout, "the call's timeout passed while %s for attempt %d: %v", step, number, err)
+	}
+	return v.failure(ctx, step, err)
+}
+
 // failure is the fault of a step that failed: cancelled when the call was.
 func (v *verification) failure(ctx context.Context, step string, err error) *run.Error {
 	if ctx.Err() != nil {
@@ -363,7 +522,7 @@ func ended(ran run.CommandRun) string {
 	if ran.Exit.Code != nil {
 		text := fmt.Sprintf("exit code %d", *ran.Exit.Code)
 		if ran.After != "" {
-			text += "; the run changed the checkout's content, which fails it whatever its exit code"
+			text += "; the run changed the content it checked, which fails it whatever its exit code"
 		}
 		return text
 	}

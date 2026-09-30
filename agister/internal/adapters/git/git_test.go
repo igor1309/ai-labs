@@ -2,15 +2,21 @@ package git_test
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
 	"github.com/igor1309/ai-labs/agister/internal/app"
+	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 func sh(t *testing.T, dir string, args ...string) string {
@@ -133,8 +139,9 @@ func TestCheckoutIsDetachedAndReleased(t *testing.T) {
 }
 
 // The content identity covers what is committed, edited and untracked, but
-// not ignored; the patch from the revision to it rebuilds it exactly, and
-// neither touches the checkout's own index.
+// not ignored; the patch from the revision to it, applied to a copy of the
+// revision, makes that content exactly, and neither touches the checkout's
+// own index.
 func TestChangesCoverEverythingSinceTheRevision(t *testing.T) {
 	repo := repository(t)
 	ctx := context.Background()
@@ -182,12 +189,12 @@ func TestChangesCoverEverythingSinceTheRevision(t *testing.T) {
 	if strings.Contains(string(patch), "x.log") {
 		t.Fatalf("patch has the ignored file:\n%s", patch)
 	}
-	if rebuilt, err := workspaces.Rebuild(ctx, dir, revision, patch); err != nil || rebuilt != identity {
-		t.Fatalf("rebuilt %s, %v; want %s", rebuilt, err, identity)
+	if copied := copied(t, repo, revision, patch); copied != identity {
+		t.Fatalf("the copy has %s; want %s", copied, identity)
 	}
-	// A patch that leaves something out rebuilds other content.
-	if rebuilt, err := workspaces.Rebuild(ctx, dir, revision, nil); err != nil || rebuilt != untouched {
-		t.Fatalf("rebuilt %s, %v; want %s", rebuilt, err, untouched)
+	// A patch that leaves something out makes other content.
+	if copied := copied(t, repo, revision, nil); copied != untouched {
+		t.Fatalf("the copy has %s; want %s", copied, untouched)
 	}
 	// The checkout's own index and the repository are untouched.
 	if after := sh(t, dir, "status", "--porcelain"); after != status {
@@ -234,10 +241,156 @@ func TestTrackedIgnoredFilesStayContent(t *testing.T) {
 		strings.Contains(text, "kept.log") || strings.Contains(text, "new.log") || strings.Contains(text, "deleted file") {
 		t.Fatalf("patch:\n%s", patch)
 	}
-	if rebuilt, err := workspaces.Rebuild(ctx, dir, revision, patch); err != nil || rebuilt != identity {
-		t.Fatalf("rebuilt %s, %v; want %s", rebuilt, err, identity)
+	if copied := copied(t, repo, revision, patch); copied != identity {
+		t.Fatalf("the copy has %s; want %s", copied, identity)
 	}
 }
+
+// copied names the content of a copy of revision with patch applied, and
+// removes the copy, as a verification attempt does.
+func copied(t *testing.T, repo, revision string, patch []byte) string {
+	t.Helper()
+	ctx := context.Background()
+	workspaces := git.Workspaces{}
+	dir := workspaces.Place(call())
+	if err := workspaces.Copy(ctx, repo, dir, revision, patch); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = workspaces.Discard(context.Background(), repo, dir) })
+	identity, err := workspaces.Identity(ctx, dir, revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := workspaces.Discard(ctx, repo, dir); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Dir(dir)); !os.IsNotExist(err) {
+		t.Fatalf("copy %s left behind", dir)
+	}
+	if lines := strings.Split(sh(t, repo, "worktree", "list"), "\n"); len(lines) != 2 {
+		t.Fatalf("worktrees = %v", lines)
+	}
+	return identity
+}
+
+// call names a call no other test's copies use.
+func call() string { return fmt.Sprintf("test-%d-%d", os.Getpid(), calls.Add(1)) }
+
+var calls atomic.Int64
+
+// A patch that does not apply fails the copy with git's error, and leaves
+// neither a directory nor a worktree registration behind.
+func TestACopyWhosePatchDoesNotApplyLeavesNothing(t *testing.T) {
+	repo := repository(t)
+	ctx := context.Background()
+	workspaces := git.Workspaces{}
+	dir := workspaces.Place(call())
+	err := workspaces.Copy(ctx, repo, dir, sh(t, repo, "rev-parse", "HEAD"), []byte("not a git patch\n"))
+	t.Cleanup(func() { _ = workspaces.Discard(context.Background(), repo, dir) })
+	if err == nil || !strings.Contains(err.Error(), "git apply") {
+		t.Fatalf("copy = %v", err)
+	}
+	if _, err := os.Stat(filepath.Dir(dir)); !os.IsNotExist(err) {
+		t.Fatalf("copy %s left behind: %v", dir, err)
+	}
+	if lines := strings.Split(sh(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
+		t.Fatalf("worktrees = %v", lines)
+	}
+}
+
+// A copy is never made over what is at its path already, which stays as
+// it was.
+func TestACopyIsNotMadeWhereSomethingIs(t *testing.T) {
+	repo := repository(t)
+	workspaces := git.Workspaces{}
+	dir := workspaces.Place(call())
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Dir(dir)) })
+	kept := filepath.Join(dir, "kept.txt")
+	if err := os.WriteFile(kept, []byte("kept\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := workspaces.Copy(context.Background(), repo, dir, sh(t, repo, "rev-parse", "HEAD"), nil); !errors.Is(err, app.ErrPlaceTaken) {
+		t.Fatalf("copy over an existing directory = %v", err)
+	}
+	if data, err := os.ReadFile(kept); err != nil || string(data) != "kept\n" {
+		t.Fatalf("kept.txt = %q, %v", data, err)
+	}
+	if lines := strings.Split(sh(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
+		t.Fatalf("worktrees = %v", lines)
+	}
+}
+
+// A verifying call whose copy's place is taken fails, and leaves what is
+// there as it was: it is not the call's, so nothing removes it, and the
+// record no longer names it as the call's copy.
+func TestAVerifierLeavesAnOccupiedPlaceAlone(t *testing.T) {
+	repo := repository(t)
+	ctx := context.Background()
+	workspaces := git.Workspaces{}
+	base := sh(t, repo, "rev-parse", "HEAD")
+	checkout, release, err := workspaces.Checkout(ctx, repo, base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = release() })
+	record := run.Record{ID: call(), Turn: &run.Turn{Status: run.Completed, ProviderSessionID: "session"}}
+	dir := workspaces.Place(record.ID)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Dir(dir)) })
+	kept := filepath.Join(dir, "kept.txt")
+	if err := os.WriteFile(kept, []byte("kept\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var copies []*run.Checkout // the copy on record at each update
+	var turns int
+	_, fault := app.NewVerifier(workspaces, workspaces, noCommands{t}, wallClock{}).Verify(ctx, app.VerifyCall{
+		Record: &record, Result: &run.Result{},
+		Event: func(string, string, map[string]any) {},
+		Update: func(updated run.Record) error {
+			var copy *run.Checkout
+			if updated.Effects != nil {
+				copy = updated.Effects.Copy
+			}
+			copies = append(copies, copy)
+			return nil
+		},
+		Artifact: func(name string, data []byte) (run.Artifact, error) { return run.Artifact{Name: name}, nil },
+		Verify:   definition.Verify{Command: "true", Timeout: time.Minute, MaxAttempts: 2},
+		Deadline: time.Now().Add(time.Minute), Dir: checkout, Base: base, Repository: repo, Session: "session",
+		Take:     func(app.TurnRequest, *run.SessionTotals) run.Turn { turns++; return run.Turn{} },
+		Conclude: func(run.Turn) *run.Error { return nil },
+	})
+	if fault == nil || fault.Class != run.ClassInternal || !strings.Contains(fault.Message, "attempt 1 cannot make its clean copy") || turns != 0 {
+		t.Fatalf("fault %v, repair turns %d", fault, turns)
+	}
+	if data, err := os.ReadFile(kept); err != nil || string(data) != "kept\n" {
+		t.Fatalf("kept.txt = %q, %v", data, err)
+	}
+	if len(copies) < 2 || !reflect.DeepEqual(copies[0], &run.Checkout{Repository: repo, Dir: dir}) || copies[len(copies)-1] != nil {
+		t.Fatalf("copies on record = %v", copies)
+	}
+	if record.Effects != nil && record.Effects.Copy != nil {
+		t.Fatalf("effects = %+v", record.Effects)
+	}
+}
+
+// noCommands fails a test that runs a verification command.
+type noCommands struct{ t *testing.T }
+
+func (c noCommands) Run(context.Context, app.CommandRequest, func(string) error) app.CommandResult {
+	c.t.Error("the verification command ran")
+	return app.CommandResult{Error: "not run"}
+}
+
+type wallClock struct{}
+
+func (wallClock) Now() time.Time { return time.Now() }
 
 // A checkout its call never released (the process was killed) is removed
 // from disk and from the repository's worktree list.

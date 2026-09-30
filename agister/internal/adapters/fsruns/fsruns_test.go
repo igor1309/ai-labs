@@ -174,6 +174,48 @@ func TestAdoptTakesOnlyAnAbandonedRun(t *testing.T) {
 	}
 }
 
+// A finished run whose record still names a clean copy is listed and
+// adopted, so a reap removes the copy; one with no copy on record is not.
+func TestAFinishedRunWithACleanCopyOnRecordIsAdopted(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	ctx := context.Background()
+	now := time.Now()
+	for id, copied := range map[string]*run.Checkout{"copy": {Repository: "/repo", Dir: "/tmp/agister-checkout-2/workspace"}, "none": nil} {
+		h, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: id, CreatedAt: now, Effects: &run.Effects{
+			Checkout: &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-1/workspace"}, Copy: copied,
+		}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		record, _, _ := store.Get(ctx, id)
+		record.FinishedAt = &now
+		record.Result = &run.Result{Status: run.Completed}
+		if err := h.Finish(record); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if abandoned, err := store.Abandoned(ctx); err != nil || len(abandoned) != 1 || abandoned[0].ID != "copy" {
+		t.Fatalf("abandoned = %+v, %v", abandoned, err)
+	}
+	if _, _, err := store.Adopt(ctx, "none"); err == nil {
+		t.Fatal("adopted a finished run with no copy on record")
+	}
+	adopted, record, err := store.Adopt(ctx, "copy")
+	if err != nil || record.FinishedAt == nil || record.Effects.Copy == nil {
+		t.Fatalf("adopt: %+v, %v", record, err)
+	}
+	record.Effects.Copy = nil
+	if err := adopted.Finish(record); err != nil {
+		t.Fatal(err)
+	}
+	if abandoned, _ := store.Abandoned(ctx); len(abandoned) != 0 {
+		t.Fatalf("abandoned after the reap = %+v", abandoned)
+	}
+	if got, status, _ := store.Get(ctx, "copy"); status != run.StateFinished || got.Result.Status != run.Completed {
+		t.Fatalf("run reads %s, %+v", status, got.Result)
+	}
+}
+
 func TestLiveCheckoutsAreThoseOfRunsSomeoneOwns(t *testing.T) {
 	store := Store{Dir: t.TempDir()}
 	ctx := context.Background()
@@ -192,8 +234,19 @@ func TestLiveCheckoutsAreThoseOfRunsSomeoneOwns(t *testing.T) {
 	_ = dead.Append(run.Event{Kind: "E"})
 	dead.(*handle).lock.Close()
 
+	// A clean copy verification checks is a checkout too.
+	copying, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "copying", CreatedAt: time.Now(), Effects: &run.Effects{
+		Checkout: &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-own/workspace"},
+		Copy:     &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-copy/workspace"},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = copying.Append(run.Event{Kind: "E"})
+
 	dirs, err := store.LiveCheckouts(ctx)
-	if err != nil || !reflect.DeepEqual(dirs, []string{"/tmp/agister-checkout-live/workspace"}) {
+	want := []string{"/tmp/agister-checkout-own/workspace", "/tmp/agister-checkout-copy/workspace", "/tmp/agister-checkout-live/workspace"}
+	if err != nil || !reflect.DeepEqual(dirs, want) {
 		t.Fatalf("live checkouts = %v, %v", dirs, err)
 	}
 }

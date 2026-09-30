@@ -169,8 +169,9 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 }
 
 // A run killed with SIGKILL while its verification command runs leaves the
-// command's process group behind, on record; the next call that starts
-// reaps it with the checkout and finishes the run as lost.
+// command's process group and the clean copy it runs in behind, on record;
+// the next call that starts reaps them with the checkout and finishes the
+// run as lost.
 func TestNextCallReapsAKilledRunsVerifyCommand(t *testing.T) {
 	home, repo := setup(t, "approve")
 	groupFile := filepath.Join(t.TempDir(), "group")
@@ -202,8 +203,12 @@ verify:
 		paths, _ := filepath.Glob(filepath.Join(home, "runs", "*", "record.json"))
 		for _, path := range paths {
 			var left domain.Record
-			if data, err := os.ReadFile(path); err == nil && json.Unmarshal(data, &left) == nil && left.Effects != nil && left.Effects.Checkout != nil {
-				_ = exec.Command("git", "-C", repo, "worktree", "remove", "--force", left.Effects.Checkout.Dir).Run()
+			if data, err := os.ReadFile(path); err == nil && json.Unmarshal(data, &left) == nil && left.Effects != nil {
+				for _, checkout := range []*domain.Checkout{left.Effects.Checkout, left.Effects.Copy} {
+					if checkout != nil {
+						_ = exec.Command("git", "-C", repo, "worktree", "remove", "--force", checkout.Dir).Run()
+					}
+				}
 			}
 		}
 	})
@@ -230,6 +235,10 @@ verify:
 		t.Fatal(err)
 	}
 	checkout := record.Effects.Checkout.Dir
+	if record.Effects.Copy == nil {
+		t.Fatalf("effects = %+v", record.Effects)
+	}
+	copied := record.Effects.Copy.Dir
 	eventually(t, "the command to write its group", func() bool {
 		data, err := os.ReadFile(groupFile)
 		return err == nil && strings.TrimSpace(string(data)) == strconv.Itoa(group)
@@ -256,6 +265,9 @@ verify:
 	eventually(t, "the command's group to be gone", func() bool { return !groupAlive(group) })
 	if _, err := os.Stat(checkout); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("checkout left behind: %v", err)
+	}
+	if _, err := os.Stat(copied); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("clean copy left behind: %v", err)
 	}
 	var old domain.Record
 	eventually(t, "the old run to be finished", func() bool {

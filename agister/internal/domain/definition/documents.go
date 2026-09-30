@@ -49,7 +49,8 @@ type Output struct {
 }
 
 // Verify is a process's verification command (ADR-002): run after a valid
-// turn, in the call's own checkout, with the operator's authority.
+// turn, on a clean copy of the base with the turn's patch applied
+// (ADR-005), with the operator's authority.
 type Verify struct {
 	Command     string        // one Bash command
 	Timeout     time.Duration // per run

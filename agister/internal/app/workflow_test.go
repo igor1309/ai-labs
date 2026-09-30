@@ -392,7 +392,7 @@ func newFlowHarness() *flowHarness {
 	h.calls = app.NewCalls(
 		app.NewResolver(h.defs, runtimes, okValidator{}), runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs},
-		h.workspaces, changes, app.NewVerifier(changes, &commandsSpy{}, fixedClock{}), okValidator{}, h.store,
+		h.workspaces, changes, app.NewVerifier(changes, &copiesSpy{}, &commandsSpy{}, fixedClock{}), okValidator{}, h.store,
 		&runsSpy{records: map[string]run.Record{}, states: map[string]run.State{}},
 		fixedClock{}, &seqIDs{}, "/state", h.hosted,
 	)

@@ -160,6 +160,81 @@ func TestAbandonedVerifyCommandIsReaped(t *testing.T) {
 	}
 }
 
+// A run killed while verification checked a clean copy left the copy on
+// record beside its checkout: both are removed, and a copy a running run
+// records is left in place.
+func TestAbandonedCleanCopyIsReaped(t *testing.T) {
+	h := newHarness()
+	abandoned := abandonedRun("old")
+	abandoned.Effects.Copy = &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-2/workspace"}
+	r := reaping(h, abandoned)
+	if err := r.reap(); err != nil {
+		t.Fatal(err)
+	}
+	want := [][2]string{{"/repo", "/tmp/agister-checkout-1/workspace"}, {"/repo", "/tmp/agister-checkout-2/workspace"}}
+	if !reflect.DeepEqual(h.workspaces.discarded, want) {
+		t.Fatalf("discarded = %v", h.workspaces.discarded)
+	}
+	if copied := r.adopter.handles["old"].events[0].Data["copy"].(map[string]any); copied["removed"] != true || copied["dir"] != "/tmp/agister-checkout-2/workspace" {
+		t.Fatalf("event data = %v", r.adopter.handles["old"].events[0].Data)
+	}
+
+	h = newHarness()
+	r = reaping(h, abandoned)
+	r.adopter.live = []string{"/tmp/agister-checkout-2/workspace"}
+	if err := r.reap(); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(h.workspaces.discarded, want[:1]) {
+		t.Fatalf("discarded = %v", h.workspaces.discarded)
+	}
+	if copied := r.adopter.handles["old"].events[0].Data["copy"].(map[string]any); copied["removed"] != false || copied["skipped"] == nil {
+		t.Fatalf("copy = %v", copied)
+	}
+}
+
+// A run that finished with its clean copy on record, its removal having
+// failed, has the copy reaped too (ADR-005 rule 2): only the copy, which
+// then leaves the record, while the run keeps its end. A copy that cannot
+// be removed stays on record for the next reap.
+func TestAFinishedRunsCleanCopyIsReaped(t *testing.T) {
+	finishedAt := time.Date(2026, 9, 28, 11, 30, 0, 0, time.UTC)
+	finished := abandonedRun("done")
+	finished.Effects.Command = &run.Process{Ref: "ref-cmd"}
+	finished.Effects.Copy = &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-2/workspace"}
+	finished.FinishedAt = &finishedAt
+	finished.Result = &run.Result{Status: run.Completed}
+
+	h := newHarness()
+	r := reaping(h, finished)
+	if err := r.reap(); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(h.workspaces.discarded, [][2]string{{"/repo", "/tmp/agister-checkout-2/workspace"}}) || len(r.processes.reaped) != 0 {
+		t.Fatalf("discarded %v, processes reaped %v", h.workspaces.discarded, r.processes.reaped)
+	}
+	handle := r.adopter.handles["done"]
+	if copied := handle.events[0].Data["copy"].(map[string]any); copied["removed"] != true || handle.events[0].Kind != "EFFECTS_REAPED" {
+		t.Fatalf("events = %+v", handle.events)
+	}
+	record := handle.wait(t)
+	if record.Result.Status != run.Completed || !record.FinishedAt.Equal(finishedAt) || record.Effects.Copy != nil ||
+		record.Effects.Checkout == nil || record.Effects.Command == nil {
+		t.Fatalf("record: result %+v, finished %v, effects %+v", record.Result, record.FinishedAt, record.Effects)
+	}
+
+	h = newHarness()
+	h.workspaces.discardErr = errors.New("busy")
+	r = reaping(h, finished)
+	if err := r.reap(); err != nil {
+		t.Fatal(err)
+	}
+	record = r.adopter.handles["done"].wait(t)
+	if record.Result.Status != run.Completed || !reflect.DeepEqual(record.Effects.Copy, finished.Effects.Copy) {
+		t.Fatalf("record: result %+v, effects %+v", record.Result, record.Effects)
+	}
+}
+
 func TestRunsSomeoneElseOwnsAreSkipped(t *testing.T) {
 	h := newHarness()
 	r := reaping(h, abandonedRun("live"))

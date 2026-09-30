@@ -29,8 +29,9 @@ output:
   schema: implementation
   require_valid: true
 
-# Agister's own checks, run in the checkout with the operator's authority
-# after each valid turn; the node completes only when they pass.
+# Agister's own checks, run with the operator's authority after each valid
+# turn, in a clean checkout of the candidate with the turn's patch applied;
+# the node completes only when they pass.
 verify:
   command: >-
     cd agister && test -z "$(gofmt -l .)" && go vet ./... &&

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -74,6 +75,8 @@ type runnerSpy struct {
 	requests    []app.TurnRequest
 	started     chan struct{}
 	startErr    error // what ProcessStarted returned to the last turn
+	// during, when set, runs while each turn does.
+	during func(app.TurnRequest)
 }
 
 func (s *runnerSpy) Identity(context.Context) (app.RuntimeIdentity, error) {
@@ -100,6 +103,9 @@ func (s *runnerSpy) RunTurn(ctx context.Context, request app.TurnRequest, sink a
 	sink.Raw(`{"raw":true}`)
 	if s.started != nil {
 		close(s.started)
+	}
+	if s.during != nil {
+		s.during(request)
 	}
 	if s.block {
 		<-ctx.Done()
@@ -206,24 +212,37 @@ func (s *workspacesSpy) releases() int {
 }
 
 // changesSpy names a checkout's content and captures what an agent left
-// in it.
+// in it. A clean copy (see copiesSpy) has the content the checkout was last
+// named with, unless copied says otherwise.
 type changesSpy struct {
 	mu        sync.Mutex
 	changed   [][2]string   // dir, from
 	identity  string        // what Identity names; "tree" when empty
-	identify  func() string // when set, names the content instead
+	identify  func() string // when set, names the checkout's content instead
 	changes   []byte
 	changeErr error
 	panics    bool // Changes panics
-	rebuilds  int
+	// copied, when set, names a clean copy's content, given how many times
+	// a copy in its directory was named before: 0 before the first
+	// attempt's run, 1 after.
+	copied func(dir string, named int) string
+	named  map[string]int
 }
 
-func (s *changesSpy) Identity(context.Context, string, string) (string, error) {
+func (s *changesSpy) Identity(_ context.Context, dir, _ string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.identify != nil {
+	if strings.HasPrefix(dir, copyDirs) {
+		if s.named == nil {
+			s.named = map[string]int{}
+		}
+		named := s.named[dir]
+		s.named[dir]++
+		if s.copied != nil {
+			return s.copied(dir, named), nil
+		}
+	} else if s.identify != nil {
 		s.identity = s.identify()
-		return s.identity, nil
 	}
 	if s.identity == "" {
 		return "tree", nil
@@ -241,22 +260,111 @@ func (s *changesSpy) Changes(_ context.Context, dir, from, _ string) ([]byte, er
 	return s.changes, s.changeErr
 }
 
-func (s *changesSpy) Rebuild(context.Context, string, string, []byte) (string, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.rebuilds++
-	if s.identity == "" {
-		return "tree", nil
-	}
-	return s.identity, nil
+// copyDirs is where copiesSpy places the copies of its calls: copy-1,
+// copy-2, ...
+const copyDirs = "/work/copy-"
+
+// madeCopy is one clean copy copiesSpy made.
+type madeCopy struct {
+	repository, revision, patch, dir string
 }
 
-// commandsSpy runs verification commands: each passes unless exits says
-// otherwise, in order.
+// copiesSpy places each call's clean copies in a directory of its own,
+// makes them there, and removes them. Like the real ones, it makes no copy
+// where one is.
+type copiesSpy struct {
+	mu        sync.Mutex
+	placed    []string // the calls whose copies were placed
+	made      []madeCopy
+	present   map[string]bool
+	removed   []string
+	err       error // Copy fails with it
+	removeErr error // removing fails with it
+	// block makes Copy make the copy, then wait for its context to end and
+	// fail with why; interrupted is that reason.
+	block       bool
+	interrupted error
+	// copying, when set, runs as a copy is made; removing as one is
+	// removed.
+	copying  func(dir string)
+	removing func(dir string)
+}
+
+func (s *copiesSpy) Place(call string) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.placed = append(s.placed, call)
+	return fmt.Sprintf("%s%d", copyDirs, len(s.placed))
+}
+
+func (s *copiesSpy) Copy(ctx context.Context, repository, dir, revision string, patch []byte) error {
+	if s.copying != nil {
+		s.copying(dir)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.err != nil {
+		return s.err
+	}
+	if s.present[dir] {
+		return fmt.Errorf("%s: %w", dir, app.ErrPlaceTaken)
+	}
+	if s.present == nil {
+		s.present = map[string]bool{}
+	}
+	s.present[dir] = true
+	s.made = append(s.made, madeCopy{repository, revision, string(patch), dir})
+	if s.block {
+		s.mu.Unlock()
+		<-ctx.Done()
+		s.mu.Lock()
+		s.interrupted = ctx.Err()
+		return s.interrupted
+	}
+	return nil
+}
+
+func (s *copiesSpy) Discard(_ context.Context, _, dir string) error {
+	if s.removing != nil {
+		s.removing(dir)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.removed = append(s.removed, dir)
+	if s.removeErr != nil {
+		return s.removeErr
+	}
+	delete(s.present, dir)
+	return nil
+}
+
+// left lists the copies made and not removed.
+func (s *copiesSpy) left() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var left []string
+	for dir := range s.present {
+		left = append(left, dir)
+	}
+	sort.Strings(left)
+	return left
+}
+
+func (s *copiesSpy) copies() []madeCopy {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]madeCopy(nil), s.made...)
+}
+
+// commandsSpy runs verification commands: each passes unless exits, in
+// order, or exitIn, by the directory it runs in, says otherwise.
 type commandsSpy struct {
 	mu       sync.Mutex
 	requests []app.CommandRequest
 	exits    []int
+	exitIn   func(dir string) int
+	// running, when set, runs while the command does.
+	running func(app.CommandRequest)
 }
 
 func (s *commandsSpy) Run(_ context.Context, request app.CommandRequest, started func(string) error) app.CommandResult {
@@ -266,9 +374,15 @@ func (s *commandsSpy) Run(_ context.Context, request app.CommandRequest, started
 	if err := started("ref-cmd"); err != nil {
 		return app.CommandResult{Error: err.Error()}
 	}
+	if s.running != nil {
+		s.running(request)
+	}
 	code := 0
 	if len(s.exits) > 0 {
 		code, s.exits = s.exits[0], s.exits[1:]
+	}
+	if s.exitIn != nil {
+		code = s.exitIn(request.Dir)
 	}
 	return app.CommandResult{ExitCode: &code, Head: []byte(fmt.Sprintf("exit %d", code)), Bytes: 6, SHA256: fmt.Sprintf("sha-%d-%d", code, len(s.requests))}
 }
@@ -442,6 +556,24 @@ func (c *steppingClock) Now() time.Time {
 	defer c.mu.Unlock()
 	c.now = c.now.Add(time.Second)
 	return c.now
+}
+
+// settableClock tells the time it was last set to.
+type settableClock struct {
+	mu  sync.Mutex
+	now time.Time
+}
+
+func (c *settableClock) Now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.now
+}
+
+func (c *settableClock) advance(by time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.now = c.now.Add(by)
 }
 
 type fixedClock struct{}
