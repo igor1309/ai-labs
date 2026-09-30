@@ -4,6 +4,7 @@
 - **Date:** 2026-09-28
 - **Scope:** Agister system architecture for the CLI stage (before the service)
 - **Decision type:** Architecture
+- **Amended by:** [ADR-002](002-verify-and-bounded-repair.md) (rule 1)
 
 ## Context
 
@@ -101,6 +102,10 @@ settings override global ones unconditionally. Its checks are about
 whether settings compose and can be enforced as written, never about
 whether they should be. Reviewing settings before running them is the
 user's, and tooling for it belongs outside the core.
+
+[ADR-002](002-verify-and-bounded-repair.md) adds one mechanism: the core also
+runs the verification command a process declares, and resumes the call's
+session to repair a failure. It still knows no meaning of the command.
 
 ### 2. Definitions are settings
 

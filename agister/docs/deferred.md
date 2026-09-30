@@ -51,6 +51,10 @@ before.
   What only a node gives needs pieces that do not exist: one result
   consumed by several calls (a hand-off) or a gate that stops a whole
   round (a workflow).
+- **Decided (2026-09-30):** the post-hook became a process's `verify`
+  command with bounded same-session repair
+  ([ADR-002](adr/002-verify-and-bounded-repair.md)). Pre-turn commands,
+  committing, and a result another process takes as input stay open here.
 - **Trigger:** now, first: test scripts are the first candidate, before a
   dogfooding round needs a tester again.
 - **Done when:** a test script runs through Agister on a pinned candidate,
@@ -314,3 +318,41 @@ before.
 - **Trigger:** a change to the reaper's wiring in `main.go`.
 - **Done when:** a mutation replacing `supervisor.Processes{}` in `main.go`
   with a well-formed double fails a test cleanly.
+
+## 13. No fresh-context attempt after verification is exhausted
+
+- **Gap:** ADR-002 repairs in the call's own session and fails the node when
+  its attempts run out or it makes no progress. An agent anchored on a wrong
+  approach does not get a clean start with the evidence of the failed one;
+  that needs an outer step, and no workflow layer exists.
+- **Evidence:** prior art separates the tiers: the-furnace's in-session
+  correction budget from its fresh-container phase attempts, X15's
+  `fixAttempts` from `runAttempts`
+  ([prior art](../../research/agister/research/verify-repair-prior-art.md)).
+- **Open:** where the outer attempt lives (a workflow step, or a process
+  policy); what it receives (the failed checkout, its diff, the last run's
+  output, or only the task); its own budget, apart from call and
+  verification attempts.
+- **Trigger:** the first node that fails verification where a fresh attempt
+  would plausibly have passed.
+- **Done when:** a node that exhausts verification can be retried once in a
+  fresh session with the failed attempt's evidence, under a budget of its
+  own, and the record links both attempts.
+
+## 14. Verification cannot tell a flake or a weakened check
+
+- **Gap:** ADR-002 sends every failing run to the agent, and the agent can
+  edit what the command reads (tests, `Makefile`, test data). A flaky
+  failure costs a repair turn on noise; a repair that deletes or weakens a
+  test passes. Changed paths are recorded, not refused.
+- **Evidence:** ImpossibleBench (arXiv 2510.20270) finds frontier models
+  cheat on impossible tasks often, Claude models mostly by editing tests.
+  Verger lessons #9 and L120: a flake is its own row, never rerun until
+  green.
+- **Open:** paths a repair turn may not change, as a setting; running the
+  command against a pinned copy of the checks; how a failure outside the
+  change is recognised without rerunning it.
+- **Trigger:** the first repair turn spent on a flake, or the first repair
+  that passed by changing a check.
+- **Done when:** a process can declare paths its repair turns may not
+  change, and a turn that changes one ends the node with that evidence.
