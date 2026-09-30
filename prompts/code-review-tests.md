@@ -3,7 +3,7 @@ date: 2026-09-29
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — tests
-version: 0.0.2
+version: 0.0.3
 type: prompt
 ---
 
@@ -31,8 +31,11 @@ Definition of done:
   it waits for, how long, on which clock, and what it hides:
   * **Its expiry decides the result.** A sleep that must outlast some
     logic, a timer that must fire before (or must not fire before)
-    something else, a negative check ("did not happen within N ms"). Mark
-    it **flaky** when machine load could flip it. A deadline may only
+    something else, a negative check ("did not happen within N ms"), an
+    assertion on elapsed wall time ("finished within N s"), or a timeout
+    test whose command could end on its own. Mark it **flaky** when
+    machine load could flip it. A timeout test is deterministic only when
+    the work never ends by itself, so the timer is its only way out. A deadline may only
     guard a hang; a test that reports a timeout as a finding about the
     product ("no response", "no report arrived") is a finding.
   * **It uses the wall clock where the code takes an injected one.** The
