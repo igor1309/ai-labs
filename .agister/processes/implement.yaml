@@ -11,7 +11,9 @@ input:
     verification command after your turn; run any further checks the brief
     asks for and report each with its exit code and final line; list every
     file you changed, repository-relative. Run commands in the foreground:
-    once your turn ends, nothing waits for a background command.
+    once your turn ends, nothing waits for a background command. Run tests
+    with the repository's recommended test command (its AGENTS.md) if it
+    has one; otherwise quietly, e.g. `go test` without -v for Go.
   params:
     candidate: {default: HEAD}
     brief: {}

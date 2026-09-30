@@ -10,6 +10,11 @@ still apply.
   `agister run implement --param candidate=<rev> --param brief=<file>`, and
   apply the run's `changes.patch`. Send review fixes as a continuation of
   that run (`--continue <run>`), so the implementer keeps its session.
+- Test commands, from `agister/`, quiet (never `-v`: one line per package,
+  details only for failures): `go test -count=1 ./<pkg>/...` for what you
+  touched, `-run <Test>` to narrow; the full check is
+  `test -z "$(gofmt -l .)" && go vet ./... && go test -count=1 ./... &&
+  go test -race -count=1 ./internal/app/...` (about 30 s).
 - Verify the result yourself as the root `AGENTS.md` says: red then green,
   `scripts/handoff-check.py`, the tests. No mutation or revert checks.
 - Review through Agister, on a committed candidate: a `*_review_codex`
