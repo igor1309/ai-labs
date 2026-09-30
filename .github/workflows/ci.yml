@@ -153,6 +153,8 @@ jobs:
               - "agister/go.sum"
               - "agister/examples/**"
               - "research/agister/research/verger/policies/**"
+              - ".agister/**"
+              - "prompts/code-review-*.md"
             agister-ci:
               - ".github/workflows/agister-core.yml"
             dev-skills:
