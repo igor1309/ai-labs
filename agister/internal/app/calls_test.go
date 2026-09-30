@@ -86,6 +86,7 @@ type harness struct {
 	inputs     *inputsSpy
 	workspaces *workspacesSpy
 	changes    *changesSpy
+	commands   *commandsSpy
 	validator  *validatorSpy
 	recorder   *recorderSpy
 }
@@ -99,6 +100,7 @@ func newHarness() *harness {
 		},
 		workspaces: &workspacesSpy{root: "/repo", dir: "/work/checkout"},
 		changes:    &changesSpy{},
+		commands:   &commandsSpy{},
 		validator:  &validatorSpy{},
 		recorder:   newRecorderSpy(),
 	}
@@ -124,7 +126,7 @@ func (h *harness) callsOn(src app.ResolverDefinitions) *app.Calls {
 		app.NewResolver(src, h.runtimes, h.validator),
 		h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
-		h.workspaces, h.changes, h.validator, h.recorder, h.runs,
+		h.workspaces, h.changes, h.commands, h.validator, h.recorder, h.runs,
 		h.clock, fixedIDs{}, "/state", h.hosted,
 	)
 }
@@ -422,7 +424,7 @@ func TestCallsResolveThroughTheResolutionTheyDeclare(t *testing.T) {
 	h := newHarness()
 	double := &app.SnapshotCounter{Reason: "the double refuses"}
 	h.calls = app.NewCalls(
-		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes,
+		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes, h.commands,
 		h.validator, h.recorder, h.runs, h.clock, fixedIDs{}, "/state", h.hosted,
 	)
 	record := h.call(t, contract.CallRequest{})

@@ -153,11 +153,19 @@ func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record,
 	if record.Effects != nil {
 		effects = *record.Effects
 	}
-	if process := effects.Process; process != nil {
-		reaping, err := c.processes.Reap(ctx, process.Ref)
-		data["process"] = map[string]any{"ref": process.Ref, "outcome": string(reaping)}
+	// The runtime's process and the verification command's (ADR-002 rule
+	// 10), each by the reference its runner recorded.
+	for _, group := range []struct {
+		name    string
+		process *run.Process
+	}{{"process", effects.Process}, {"command", effects.Command}} {
+		if group.process == nil {
+			continue
+		}
+		reaping, err := c.processes.Reap(ctx, group.process.Ref)
+		data[group.name] = map[string]any{"ref": group.process.Ref, "outcome": string(reaping)}
 		if err != nil {
-			failures = append(failures, fmt.Sprintf("process %q: %v", process.Ref, err))
+			failures = append(failures, fmt.Sprintf("%s %q: %v", group.name, group.process.Ref, err))
 		}
 	}
 	if checkout := effects.Checkout; checkout != nil {

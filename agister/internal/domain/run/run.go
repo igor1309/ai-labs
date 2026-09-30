@@ -209,8 +209,10 @@ type Record struct {
 	Inputs      []Input            `json:"inputs,omitempty"`
 	Workspace   string             `json:"workspace,omitempty"`
 	Effects     *Effects           `json:"effects,omitempty"`
-	Turn        *Turn              `json:"turn,omitempty"`
-	Result      *Result            `json:"result,omitempty"` // set when finished
+	// Turn is the latest turn; with verification, Attempts has every one.
+	Turn     *Turn     `json:"turn,omitempty"`
+	Attempts []Attempt `json:"attempts,omitempty"`
+	Result   *Result   `json:"result,omitempty"` // set when finished
 }
 
 // Effects are what a call leaves outside its record, written down as soon
@@ -218,6 +220,9 @@ type Record struct {
 type Effects struct {
 	Checkout *Checkout `json:"checkout,omitempty"`
 	Process  *Process  `json:"process,omitempty"`
+	// Command is the latest run of the verification command, as the process
+	// group that runs it; only one runs at a time.
+	Command *Process `json:"command,omitempty"`
 }
 
 // Checkout is a workspace the call created in Repository.

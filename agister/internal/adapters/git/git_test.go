@@ -132,34 +132,67 @@ func TestCheckoutIsDetachedAndReleased(t *testing.T) {
 	}
 }
 
+// The content identity covers what is committed, edited and untracked, but
+// not ignored; the patch from the revision to it rebuilds it exactly, and
+// neither touches the checkout's own index.
 func TestChangesCoverEverythingSinceTheRevision(t *testing.T) {
 	repo := repository(t)
 	ctx := context.Background()
+	workspaces := git.Workspaces{}
 	revision := sh(t, repo, "rev-parse", "HEAD")
-	dir, release, err := git.Workspaces{}.Checkout(ctx, repo, revision)
+	dir, release, err := workspaces.Checkout(ctx, repo, revision)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer release()
-	if patch, err := (git.Workspaces{}).Changes(ctx, dir, revision); err != nil || len(patch) != 0 {
+	untouched, err := workspaces.Identity(ctx, dir)
+	if err != nil || untouched != sh(t, repo, "rev-parse", revision+"^{tree}") {
+		t.Fatalf("untouched checkout: %q, %v", untouched, err)
+	}
+	if patch, err := workspaces.Changes(ctx, dir, revision, untouched); err != nil || len(patch) != 0 {
 		t.Fatalf("untouched checkout: %q, %v", patch, err)
 	}
-	// A commit in the checkout, an edit and an untracked file.
+	// A commit in the checkout, an edit, an untracked file, a binary one,
+	// an ignored one, and an edit its own index is told to overlook.
 	os.WriteFile(filepath.Join(dir, "c.txt"), []byte("committed\n"), 0o600)
 	sh(t, dir, "add", "c.txt")
 	sh(t, dir, "-c", "user.email=a@example.com", "-c", "user.name=A", "commit", "--quiet", "-m", "agent")
 	os.WriteFile(filepath.Join(dir, "a.txt"), []byte("edited\n"), 0o600)
 	os.WriteFile(filepath.Join(dir, "d.txt"), []byte("untracked\n"), 0o600)
-	patch, err := git.Workspaces{}.Changes(ctx, dir, revision)
+	os.WriteFile(filepath.Join(dir, "e.bin"), []byte{0, 1, 2, 0xff}, 0o600)
+	os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("*.log\n"), 0o600)
+	os.WriteFile(filepath.Join(dir, "x.log"), []byte("ignored\n"), 0o600)
+	sh(t, dir, "update-index", "--assume-unchanged", "b.txt")
+	os.WriteFile(filepath.Join(dir, "b.txt"), []byte("hidden from the index\n"), 0o600)
+	status := sh(t, dir, "status", "--porcelain")
+
+	identity, err := workspaces.Identity(ctx, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"b/a.txt", "b/c.txt", "b/d.txt", "+edited"} {
+	patch, err := workspaces.Changes(ctx, dir, revision, identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"b/a.txt", "b/b.txt", "b/c.txt", "b/d.txt", "b/e.bin", "GIT binary patch", "+edited"} {
 		if !strings.Contains(string(patch), want) {
 			t.Fatalf("patch misses %s:\n%s", want, patch)
 		}
 	}
-	// The repository itself is untouched.
+	if strings.Contains(string(patch), "x.log") {
+		t.Fatalf("patch has the ignored file:\n%s", patch)
+	}
+	if rebuilt, err := workspaces.Rebuild(ctx, dir, revision, patch); err != nil || rebuilt != identity {
+		t.Fatalf("rebuilt %s, %v; want %s", rebuilt, err, identity)
+	}
+	// A patch that leaves something out rebuilds other content.
+	if rebuilt, err := workspaces.Rebuild(ctx, dir, revision, nil); err != nil || rebuilt != untouched {
+		t.Fatalf("rebuilt %s, %v; want %s", rebuilt, err, untouched)
+	}
+	// The checkout's own index and the repository are untouched.
+	if after := sh(t, dir, "status", "--porcelain"); after != status {
+		t.Fatalf("checkout status %q, was %q", after, status)
+	}
 	if status := sh(t, repo, "status", "--porcelain"); status != "" {
 		t.Fatalf("repository changed: %s", status)
 	}

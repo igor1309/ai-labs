@@ -200,23 +200,78 @@ func (s *workspacesSpy) releases() int {
 	return s.released
 }
 
-// changesSpy captures what an agent left in its checkout.
+// changesSpy names a checkout's content and captures what an agent left
+// in it.
 type changesSpy struct {
 	mu        sync.Mutex
-	changed   [][2]string // dir, revision
+	changed   [][2]string   // dir, from
+	identity  string        // what Identity names; "tree" when empty
+	identify  func() string // when set, names the content instead
 	changes   []byte
 	changeErr error
 	panics    bool // Changes panics
+	rebuilds  int
 }
 
-func (s *changesSpy) Changes(_ context.Context, dir, revision string) ([]byte, error) {
+func (s *changesSpy) Identity(context.Context, string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.changed = append(s.changed, [2]string{dir, revision})
+	if s.identify != nil {
+		s.identity = s.identify()
+		return s.identity, nil
+	}
+	if s.identity == "" {
+		return "tree", nil
+	}
+	return s.identity, nil
+}
+
+func (s *changesSpy) Changes(_ context.Context, dir, from, _ string) ([]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.changed = append(s.changed, [2]string{dir, from})
 	if s.panics {
 		panic("changes exploded")
 	}
 	return s.changes, s.changeErr
+}
+
+func (s *changesSpy) Rebuild(context.Context, string, string, []byte) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.rebuilds++
+	if s.identity == "" {
+		return "tree", nil
+	}
+	return s.identity, nil
+}
+
+// commandsSpy runs verification commands: each passes unless exits says
+// otherwise, in order.
+type commandsSpy struct {
+	mu       sync.Mutex
+	requests []app.CommandRequest
+	exits    []int
+}
+
+func (s *commandsSpy) Run(_ context.Context, request app.CommandRequest, started func(string) error) app.CommandResult {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.requests = append(s.requests, request)
+	if err := started("ref-cmd"); err != nil {
+		return app.CommandResult{Error: err.Error()}
+	}
+	code := 0
+	if len(s.exits) > 0 {
+		code, s.exits = s.exits[0], s.exits[1:]
+	}
+	return app.CommandResult{ExitCode: &code, Head: []byte(fmt.Sprintf("exit %d", code)), Bytes: 6, SHA256: fmt.Sprintf("sha-%d-%d", code, len(s.requests))}
+}
+
+func (s *commandsSpy) runs() []app.CommandRequest {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]app.CommandRequest(nil), s.requests...)
 }
 
 type validatorSpy struct {

@@ -526,9 +526,26 @@ func describe(event contract.Event) string {
 		if isError, _ := data["is_error"].(bool); isError {
 			return "  ↳ tool error"
 		}
+	case "VERIFY_STARTED":
+		return fmt.Sprintf("· verify attempt %v: %v", data["attempt"], data["command"])
+	case "VERIFY_FINISHED":
+		ended := fmt.Sprintf("exit %v", data["code"])
+		switch {
+		case data["timed_out"] == true:
+			ended = "timed out"
+		case data["cancelled"] == true:
+			ended = "cancelled"
+		case data["error"] != nil && data["error"] != "":
+			ended = fmt.Sprintf("could not run: %v", data["error"])
+		case data["code"] == nil:
+			ended = fmt.Sprintf("killed by %v", data["signal"])
+		}
+		return fmt.Sprintf("· verify attempt %v: %s, %v bytes of output", data["attempt"], ended, data["bytes"])
+	case "REPAIR_STARTED":
+		return fmt.Sprintf("· repair turn for attempt %v in session %v", data["attempt"], data["session"])
 	case "PROVIDER_ERROR", "PROVIDER_RETRY", "RATE_LIMITED", "TIMEOUT", "ABORT_REQUESTED", "SPAWN_FAILED",
 		"STREAM_PARSE_ERROR", "SESSION_ID_MISMATCH", "TURN_FAILED", "WORKSPACE_RELEASE_FAILED", "ARTIFACT_FAILED",
-		"LEFTOVER_PROCESSES_KILLED", "STDOUT_HELD_OPEN":
+		"LEFTOVER_PROCESSES_KILLED", "STDOUT_HELD_OPEN", "VERIFY_CHANGED_CONTENT", "VERIFY_STOPPED":
 		encoded, _ := json.Marshal(data)
 		return fmt.Sprintf("! %s %s", event.Kind, encoded)
 	}

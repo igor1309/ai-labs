@@ -237,6 +237,25 @@ func TestProgressDescribesEvents(t *testing.T) {
 	}
 }
 
+// Verification attempts show as they happen: each run, each repair turn,
+// and why the loop stopped.
+func TestProgressDescribesVerification(t *testing.T) {
+	spy := &clientSpy{run: finished("failed", "budget_exhausted"), events: []contract.Event{
+		{Kind: "VERIFY_STARTED", Data: map[string]any{"attempt": 1.0, "command": "make test"}},
+		{Kind: "VERIFY_FINISHED", Data: map[string]any{"attempt": 1.0, "code": 2.0, "bytes": 120.0}},
+		{Kind: "REPAIR_STARTED", Data: map[string]any{"attempt": 2.0, "session": "s-1"}},
+		{Kind: "VERIFY_FINISHED", Data: map[string]any{"attempt": 2.0, "code": nil, "timed_out": true, "bytes": 0.0}},
+		{Kind: "VERIFY_STOPPED", Data: map[string]any{"attempt": 2.0, "class": "timeout"}},
+		{Kind: "CALL_FINISHED"},
+	}}
+	r := run(context.Background(), spy, "run", "p")
+	want := "· verify attempt 1: make test\n· verify attempt 1: exit 2, 120 bytes of output\n· repair turn for attempt 2 in session s-1\n" +
+		"· verify attempt 2: timed out, 0 bytes of output\n! VERIFY_STOPPED {\"attempt\":2,\"class\":\"timeout\"}\n"
+	if !strings.Contains(r.stderr, want) {
+		t.Fatalf("stderr:\n%s", r.stderr)
+	}
+}
+
 // Text from the agent or the runtime reaches the terminal with its control
 // characters escaped.
 func TestProgressAndSummaryEscapeControlCharacters(t *testing.T) {

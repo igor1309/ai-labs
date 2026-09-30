@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -29,14 +30,57 @@ func verifying(h *harness) {
 	h.defs.docs[definition.KindAgent]["f"] = strings.Replace(settingsDocs()[definition.KindAgent]["a"], `name = "a"`, `name = "f"`, 1)
 }
 
-// Declaring verify changes nothing yet about how the call runs: one turn,
-// completed, as without it.
-func TestAVerifyingCallRunsAsBefore(t *testing.T) {
+// A verifying call runs its command in the checkout after a valid turn,
+// bounded by verify.timeout, with its process group on record, and
+// completes on a pass whose content the captured changes rebuild.
+func TestAVerifyingCallRunsItsCommandAfterTheTurn(t *testing.T) {
 	h := newHarness()
 	verifying(h)
+	h.changes.changes = []byte("diff --git a/x b/x\n")
 	record := h.call(t, contract.CallRequest{})
 	if record.Result.Status != run.Completed || len(h.runner.calls()) != 1 || h.runner.calls()[0].ResumeSessionID != "" {
 		t.Fatalf("result %+v, turns %+v", record.Result, h.runner.calls())
+	}
+	want := []app.CommandRequest{{Command: "go test ./...", Dir: "/work/checkout", Timeout: 10 * time.Minute, Bound: 8 << 10}}
+	if got := h.commands.runs(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("command runs = %+v", got)
+	}
+	if record.Effects == nil || record.Effects.Command == nil || record.Effects.Command.Ref != "ref-cmd" {
+		t.Fatalf("effects = %+v", record.Effects)
+	}
+	if len(record.Attempts) != 1 || !record.Attempts[0].Run.Passed || record.Attempts[0].Identity != "tree" || h.changes.rebuilds != 1 {
+		t.Fatalf("attempts %+v, rebuilds %d", record.Attempts, h.changes.rebuilds)
+	}
+	if kinds := strings.Join(h.recorder.kinds(), " "); !strings.Contains(kinds, "VERIFY_STARTED VERIFY_FINISHED") {
+		t.Fatalf("events = %s", kinds)
+	}
+}
+
+// A failed run is repaired in the call's session with the failure, and the
+// repair turn gets what is left of the call's time and cost.
+func TestAFailedRunIsRepairedInTheCallsSession(t *testing.T) {
+	h := newHarness()
+	h.clock = &steppingClock{now: time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)}
+	h.calls = h.callsOn(h.defs)
+	verifying(h)
+	h.defs.docs[definition.KindPolicy]["pol"] += "max_cost_usd: 2\n"
+	cost := 0.5
+	h.runner.turn.CostUSD = &cost
+	h.commands.exits = []int{1}
+	// Each repair turn names content not checked before.
+	identities := 0
+	h.changes.identify = func() string { identities++; return fmt.Sprintf("tree-%d", (identities+1)/2) }
+	record := h.call(t, contract.CallRequest{})
+	if record.Result.Status != run.Completed || len(h.commands.runs()) != 2 || len(record.Attempts) != 2 {
+		t.Fatalf("result %+v, attempts %+v", record.Result, record.Attempts)
+	}
+	turns := h.runner.calls()
+	if len(turns) != 2 || turns[1].ResumeSessionID != "prov-1" || turns[1].Cwd != "/work/checkout" || *turns[1].MaxCostUSD != 1.5 || turns[1].Timeout >= 20*time.Minute || turns[1].Timeout < 19*time.Minute ||
+		!strings.HasPrefix(turns[1].Prompt, "The verification command failed. Fix the cause, not the check.\n\n## command\n\n```\ngo test ./...\n```\n\n## exit status\n\nexit code 1") {
+		t.Fatalf("repair turn = %+v", turns[1])
+	}
+	if *record.Result.Cost.USD != 1 || record.Attempts[1].Session != "prov-1" {
+		t.Fatalf("result %+v", record.Result)
 	}
 }
 

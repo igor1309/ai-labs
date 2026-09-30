@@ -24,6 +24,7 @@ type Calls struct {
 	inputs     map[string]InputProvider
 	workspaces CallWorkspaces
 	changes    CallChanges
+	commands   CallCommands
 	validator  CallValidator
 	recorder   RunRecorder
 	runs       CallRuns
@@ -116,11 +117,28 @@ type CallWorkspaces interface {
 	Checkout(ctx context.Context, repository, revision string) (dir string, release func() error, err error)
 }
 
-// CallChanges captures what the agent left in its checkout, as evidence.
+// CallChanges names the content of a call's checkout and captures what
+// changed in it, as evidence. It never writes the checkout's own index.
 type CallChanges interface {
-	// Changes returns everything in a checkout that differs from revision,
-	// committed or not, as a patch; empty when nothing does.
-	Changes(ctx context.Context, dir, revision string) ([]byte, error)
+	// Identity names the checkout's content: its tracked and untracked
+	// files that are not ignored, whatever is committed.
+	Identity(ctx context.Context, dir string) (string, error)
+	// Changes returns the patch from one content, a revision or an
+	// identity, to another; empty when they are the same.
+	Changes(ctx context.Context, dir, from, to string) ([]byte, error)
+	// Rebuild applies a patch to revision apart from the checkout and
+	// names the content that results.
+	Rebuild(ctx context.Context, dir, revision string, patch []byte) (string, error)
+}
+
+// CallCommands runs the verification command a process declares.
+type CallCommands interface {
+	// Run runs the command in a process group of its own until it exits,
+	// its timeout passes or ctx ends, and kills the whole group before it
+	// returns. started records the group as soon as it exists, and may be
+	// called again as more becomes known; an error from it means the group
+	// is not on record: Run kills it and the run fails.
+	Run(ctx context.Context, request CommandRequest, started func(ref string) error) CommandResult
 }
 
 // RunRecorder creates run records owned by the calling process.
@@ -137,6 +155,7 @@ func NewCalls(
 	inputs map[string]InputProvider,
 	workspaces CallWorkspaces,
 	changes CallChanges,
+	commands CallCommands,
 	validator CallValidator,
 	recorder RunRecorder,
 	runs CallRuns,
@@ -151,6 +170,7 @@ func NewCalls(
 		inputs:     inputs,
 		workspaces: workspaces,
 		changes:    changes,
+		commands:   commands,
 		validator:  validator,
 		recorder:   recorder,
 		runs:       runs,
@@ -236,14 +256,17 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	}
 	result := run.Result{Cost: run.Cost{Source: run.CostUnknown}, Timing: run.Timing{StartedAt: record.CreatedAt}}
 	// Effects end before the record does: the workspace's changes are kept
-	// and the workspace released first.
-	var collect func()
+	// and the workspace released first. A capture that must reproduce
+	// verified content and does not fails the call.
+	var collect func() *run.Error
 	release := func() error { return nil }
 	finish := func(fault *run.Error) {
 		// Cleared first: if it panics, the recovery calls finish again.
 		if pending := collect; pending != nil {
 			collect = nil
-			pending()
+			if failed := pending(); fault == nil {
+				fault = failed
+			}
 		}
 		if err := release(); err != nil {
 			event(run.SourceAgister, "WORKSPACE_RELEASE_FAILED", map[string]any{"error": err.Error()})
@@ -335,6 +358,10 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	}
 	release = workspace.Release
 	record.Workspace = workspace.Dir
+	revision, _ := revisionOf(inputs, res.process.Checkout)
+	// The content a passing verification run checked, which the captured
+	// changes must rebuild (ADR-002 rule 7).
+	var verified string
 	if workspace.Owned {
 		// Recorded before the runtime starts: if this process is killed,
 		// a later reap removes the checkout. A checkout that cannot be
@@ -346,8 +373,11 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 			fail(fmt.Errorf("recording the checkout failed: %w", err))
 			return
 		}
-		revision, _ := revisionOf(inputs, res.process.Checkout)
-		collect = func() { result.Artifacts = c.collectChanges(ctx, handle, workspace.Dir, revision, event) }
+		collect = func() *run.Error {
+			artifacts, fault := c.collectChanges(ctx, handle, workspace.Dir, revision, verified, event)
+			result.Artifacts = artifacts
+			return fault
+		}
 	}
 
 	request := TurnRequest{
@@ -364,29 +394,52 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	}
 	_ = handle.Update(record)
 
-	turnStart := c.clock.Now()
-	turn := runner.RunTurn(ctx, request, &sink{handle: handle, clock: c.clock, record: &record})
-	turnMS := c.clock.Now().Sub(turnStart).Milliseconds()
-	record.Turn = &turn
-
-	result.Timing.TurnMS = &turnMS
-	result.Timing.RuntimeMS = turn.RuntimeMS
-	result.Usage = turn.Usage
-	result.Text = turn.Text
-	if turn.CostUSD != nil {
-		result.Cost = run.Cost{USD: turn.CostUSD, Source: run.CostRuntime}
+	// The call's timeout bounds every turn and every verification run.
+	deadline := c.clock.Now().Add(res.effective.Timeout)
+	// Usage and cost sum every turn; the latest turn's text and output are
+	// the call's.
+	var turns []run.Turn
+	var turnMS int64
+	take := func(request TurnRequest) run.Turn {
+		turnStart := c.clock.Now()
+		turn := runner.RunTurn(ctx, request, &sink{handle: handle, clock: c.clock, record: &record})
+		turnMS += c.clock.Now().Sub(turnStart).Milliseconds()
+		turns = append(turns, turn)
+		record.Turn = &turn
+		totals := run.Sum(turns)
+		spent := turnMS
+		result.Timing.TurnMS = &spent
+		result.Timing.RuntimeMS = totals.RuntimeMS
+		result.Usage, result.Cost = totals.Usage, totals.Cost
+		result.Text = turn.Text
+		return turn
 	}
+	conclude := func(turn run.Turn) *run.Error {
+		var validation error
+		if turn.Status == run.Completed && res.process.Output.Format == "json" {
+			validation = c.validator.Validate(res.schema, turn.Output)
+		}
+		_, fault := run.Conclude(turn, res.process.Output, validation)
+		return fault
+	}
+
+	turn := take(request)
 	if turn.ProviderSessionID != "" {
 		result.Session = &run.Session{ProviderSessionID: turn.ProviderSessionID, Continues: record.Request.Continue}
 	}
-
-	var validation error
-	if turn.Status == run.Completed && res.process.Output.Format == "json" {
-		validation = c.validator.Validate(res.schema, turn.Output)
+	fault := conclude(turn)
+	if fault == nil && res.process.Verify != nil {
+		loop := &verification{
+			calls: c, record: &record, result: &result, event: event, update: handle.Update, artifact: handle.Artifact,
+			verify: *res.process.Verify, limit: res.effective.MaxCostUSD, deadline: deadline,
+			dir: workspace.Dir, base: revision, request: request, session: turn.ProviderSessionID,
+			take: take, conclude: conclude,
+		}
+		fault = loop.run(ctx)
+		verified = loop.verified
 	}
-	_, fault := run.Conclude(turn, res.process.Output, validation)
 	if fault == nil && res.process.Output.Format == "json" {
-		result.Output = turn.Output
+		result.Output = record.Turn.Output
 	}
 	finish(fault)
 }
@@ -424,22 +477,43 @@ func (c *Calls) continuation(ctx context.Context, res *resolution, runID string)
 }
 
 // collectChanges keeps a call's changes to its own workspace as an
-// artifact. A failure is recorded; it does not change the call's status.
-func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revision string, event func(string, string, map[string]any)) []run.Artifact {
-	patch, err := c.changes.Changes(context.WithoutCancel(ctx), dir, revision)
-	if err == nil && len(patch) == 0 {
-		return nil
+// artifact: the patch from revision to the checkout's content. A failure is
+// recorded; it does not change the call's status, unless verified names the
+// content a verification run passed on: the patch must then rebuild exactly
+// that content from revision (ADR-002 rule 7), or the call fails.
+func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revision, verified string, event func(string, string, map[string]any)) ([]run.Artifact, *run.Error) {
+	ctx = context.WithoutCancel(ctx)
+	identity := verified
+	var err error
+	if identity == "" {
+		identity, err = c.changes.Identity(ctx, dir)
 	}
-	var artifact run.Artifact
+	var patch []byte
 	if err == nil {
-		artifact, err = handle.Artifact("changes.patch", patch)
+		patch, err = c.changes.Changes(ctx, dir, revision, identity)
+	}
+	if err == nil && verified != "" {
+		var rebuilt string
+		if rebuilt, err = c.changes.Rebuild(ctx, dir, revision, patch); err == nil && rebuilt != verified {
+			err = fmt.Errorf("applied to %s it rebuilds %s, not %s", revision, rebuilt, verified)
+		}
+	}
+	var artifacts []run.Artifact
+	if err == nil && len(patch) > 0 {
+		var artifact run.Artifact
+		if artifact, err = handle.Artifact("changes.patch", patch); err == nil {
+			event(run.SourceAgister, "ARTIFACT_STORED", map[string]any{"name": artifact.Name, "digest": artifact.Digest, "bytes": artifact.Bytes})
+			artifacts = []run.Artifact{artifact}
+		}
 	}
 	if err != nil {
 		event(run.SourceAgister, "ARTIFACT_FAILED", map[string]any{"name": "changes.patch", "error": err.Error()})
-		return nil
+		if verified != "" {
+			return nil, run.Fault(run.ClassInternal, "the captured changes do not reproduce the content that passed verification: %v", err)
+		}
+		return nil, nil
 	}
-	event(run.SourceAgister, "ARTIFACT_STORED", map[string]any{"name": artifact.Name, "digest": artifact.Digest, "bytes": artifact.Bytes})
-	return []run.Artifact{artifact}
+	return artifacts, nil
 }
 
 // resolveInputs binds caller params and resolves every input value to an

@@ -235,7 +235,8 @@ func TestAgentCallEndToEnd(t *testing.T) {
 func TestShippedExamplesPassCheck(t *testing.T) {
 	home, repo := setup(t, "approve")
 	r := agister(t, home, repo, "check", "--probe")
-	if r.code != 0 || !strings.HasPrefix(r.stdout, "settings OK:") {
+	if r.code != 0 || !strings.HasPrefix(r.stdout, "settings OK:") ||
+		!strings.Contains(r.stderr, "warning process implement: verify runs its command with the operator's authority") {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	// A broken setting is found before any call, with every problem listed.
@@ -263,7 +264,7 @@ func TestUnreadableServiceSettingsFailCheck(t *testing.T) {
 	}
 	write(t, filepath.Join(home, "service.toml"), "\x00\x00\x00\x01Bud1\x00\x00")
 	r := agister(t, home, repo, "check")
-	if r.code != cli.ExitUsage || !strings.HasPrefix(r.stderr, "service service: not a UTF-8 text file\n1 problem(s)") {
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "\nservice service: not a UTF-8 text file\n1 problem(s)") {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
 }
@@ -805,14 +806,15 @@ func TestWorkspaceChangesAreKept(t *testing.T) {
 }
 
 // A process declaring verify, in settings on disk: check and process show
-// warn of it, a call records it under the process's digest and runs as
-// before, and a caller's timeout shorter than one run refuses the call.
+// warn of it, a call records it under the process's digest and completes
+// once its fixture command passes in the checkout, and a caller's timeout
+// shorter than one run refuses the call.
 func TestVerifyDeclarationEndToEnd(t *testing.T) {
 	home, repo := setup(t, "approve")
 	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))
 	process := strings.Replace(shipped, "name: adversarial_review", "name: verified", 1) + `
 verify:
-  command: go test ./...
+  command: test -f a.txt
   timeout: 20s
   max_attempts: 1
   instruction: The verification command failed. Fix the cause, not the check.
@@ -824,7 +826,7 @@ verify:
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	r = agister(t, home, repo, "process", "show", "verified")
-	if r.code != 0 || !strings.Contains(r.stdout, "verify       go test ./...\n") || !strings.Contains(r.stdout, "WARNING      verify runs its command with the operator's authority") {
+	if r.code != 0 || !strings.Contains(r.stdout, "verify       test -f a.txt\n") || !strings.Contains(r.stdout, "WARNING      verify runs its command with the operator's authority") {
 		t.Fatalf("show: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
@@ -835,8 +837,11 @@ verify:
 	record := lastRun(t, home).record
 	verified := record["id"]
 	verify := record["verify"].(map[string]any)
-	if verify["command"] != "go test ./..." || verify["timeout"] != float64(20e9) || verify["max_attempts"] != 1.0 || !strings.HasPrefix(verify["instruction"].(string), "The verification command failed.") {
+	if verify["command"] != "test -f a.txt" || verify["timeout"] != float64(20e9) || verify["max_attempts"] != 1.0 || !strings.HasPrefix(verify["instruction"].(string), "The verification command failed.") {
 		t.Fatalf("verify = %v", verify)
+	}
+	if attempts, _ := record["attempts"].([]any); len(attempts) != 1 || attempts[0].(map[string]any)["run"].(map[string]any)["passed"] != true {
+		t.Fatalf("attempts = %v", record["attempts"])
 	}
 	for _, source := range record["definitions"].([]any) {
 		source := source.(map[string]any)

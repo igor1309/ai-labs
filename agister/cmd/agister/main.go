@@ -120,7 +120,7 @@ func wire(config cli.Config) (*app.Gated, *app.BackgroundReaper, error) {
 			Checker:    checkerOn(layered),
 			Inspection: app.NewInspection(resolverOn(layered)),
 			Calls: app.NewCalls(
-				resolverOn(layered), runtimes, sources, git.Workspaces{}, git.Workspaces{}, schema.Validator{},
+				resolverOn(layered), runtimes, sources, git.Workspaces{}, git.Workspaces{}, supervisor.Commands{}, schema.Validator{},
 				evidence, evidence, system.Clock{}, system.IDs{}, config.Home, hosted,
 			),
 			Runs: app.NewRuns(evidence, hosted, 0),

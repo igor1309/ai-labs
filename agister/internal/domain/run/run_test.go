@@ -126,3 +126,24 @@ func TestRecordWithConstraintsStillReads(t *testing.T) {
 		t.Fatalf("record = %+v, effective %+v", record, record.Effective)
 	}
 }
+
+// Usage, cost and runtime sum every turn of a call; what some turn did not
+// report is unknown for the call, never a partial sum.
+func TestSumAddsUpEveryTurn(t *testing.T) {
+	n := func(v int64) *int64 { return &v }
+	usd := func(v float64) *float64 { return &v }
+	one := run.Turn{CostUSD: usd(0.25), RuntimeMS: n(100), Usage: &run.Usage{InputTokens: n(10), OutputTokens: n(5), CacheReadTokens: n(1)}}
+	two := run.Turn{CostUSD: usd(0.5), RuntimeMS: n(200), Usage: &run.Usage{InputTokens: n(20), OutputTokens: n(7)}}
+	totals := run.Sum([]run.Turn{one, two})
+	if totals.Cost.Source != run.CostRuntime || *totals.Cost.USD != 0.75 || *totals.RuntimeMS != 300 ||
+		*totals.Usage.InputTokens != 30 || *totals.Usage.OutputTokens != 12 || totals.Usage.CacheReadTokens != nil {
+		t.Fatalf("totals = %+v, usage %+v", totals, totals.Usage)
+	}
+	unknown := run.Sum([]run.Turn{one, {Usage: two.Usage}})
+	if unknown.Cost.Source != run.CostUnknown || unknown.Cost.USD != nil || unknown.RuntimeMS != nil || *unknown.Usage.InputTokens != 30 {
+		t.Fatalf("totals = %+v", unknown)
+	}
+	if single := run.Sum([]run.Turn{{}}); single.Cost.Source != run.CostUnknown || single.Usage != nil || single.RuntimeMS != nil {
+		t.Fatalf("totals = %+v", single)
+	}
+}

@@ -356,6 +356,6 @@ test: ./internal/adapters/runtime/supervisor TestGroupIsReportedBeforeItsTokenIs
 
 [the process port gets the reap's context, with its deadline]
 file: internal/app/reap.go
-find: c.processes.Reap(ctx, process.Ref)
-replace: c.processes.Reap(context.Background(), process.Ref)
+find: c.processes.Reap(ctx, group.process.Ref)
+replace: c.processes.Reap(context.Background(), group.process.Ref)
 test: ./internal/app TestProcessReapingHasTheReapDeadline

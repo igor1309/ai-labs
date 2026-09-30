@@ -42,6 +42,33 @@ type TurnRequest struct {
 	OutputSchema    json.RawMessage
 }
 
+// CommandRequest is one run of a process's verification command.
+type CommandRequest struct {
+	Command string // run as bash -c Command
+	Dir     string
+	Timeout time.Duration
+	// Bound is how many bytes of the combined output are kept from each
+	// end.
+	Bound int
+}
+
+// CommandResult is how one run of a command ended. Whatever ended it, its
+// process group is gone by then.
+type CommandResult struct {
+	ExitCode  *int   // unset when a signal ended it or it never ran
+	Signal    string // the signal that ended it
+	TimedOut  bool   // its timeout passed and its group was killed
+	Cancelled bool   // the call was cancelled and its group was killed
+	// Error is why it could not run: it did not start, or its group could
+	// not be recorded and was killed at once.
+	Error string
+	// The first and last Bound bytes of the combined stdout and stderr;
+	// Tail starts after Head ends, so nothing is repeated.
+	Head, Tail []byte
+	Bytes      int64  // of the whole output
+	SHA256     string // hex digest of the whole output
+}
+
 // InputSpec asks one input source for a value.
 type InputSpec struct {
 	Source string

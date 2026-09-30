@@ -38,3 +38,14 @@ func TestInputsCannotCloseTheirFence(t *testing.T) {
 		t.Fatalf("%q", got)
 	}
 }
+
+// A repair turn gets the instruction, the command, how its run ended and
+// its bounded output, with what was left out said.
+func TestRepairStatesTheFailure(t *testing.T) {
+	got := prompt.Repair(" Fix it. ", "make test", "exit code 2", run.Output{Head: "FAIL a\n", Tail: "```\nFAIL b\n", Bytes: 99, Omitted: 80, SHA256: "abc"})
+	want := "Fix it.\n\n## command\n\n```\nmake test\n```\n\n## exit status\n\nexit code 2\n\n## output\n\n99 bytes, sha256 abc\n\n" +
+		"````\nFAIL a\n\n[… 80 bytes omitted …]\n```\nFAIL b\n````"
+	if got != want {
+		t.Fatalf("got\n%s\nwant\n%s", got, want)
+	}
+}

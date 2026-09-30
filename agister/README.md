@@ -47,6 +47,77 @@ in the output is output: routing on it is the caller's job.
 
 Exit codes: `0` completed, `1` failed, `2` interrupted, `3` refused, `4` lost, `64` usage or invalid settings, `70` internal error, `130` stopped watching.
 
+## Verification
+
+A process may declare one verification command
+([ADR-002](docs/adr/002-verify-and-bounded-repair.md)); the shipped
+`implement` example does:
+
+```yaml
+workspace:
+  checkout: candidate_revision   # required: verify runs only in a checkout the call owns
+verify:
+  command: make test             # one Bash command
+  timeout: 10m                   # per run; required, at most the call's timeout
+  max_attempts: 3                # runs, the first included; at most the service's max_verify_attempts
+  instruction: >-                # what the agent is told when a run fails
+    The verification command failed on your changes. Fix the cause.
+```
+
+**What runs, and when.** After a turn whose output is contract-valid,
+Agister runs `bash -c <command>` in the call's checkout, in a process group
+of its own, with your environment. It never runs after a refusal, or after
+a turn that failed, was interrupted or lost, or returned invalid output:
+that turn's status ends the node. A run passes on exit status 0 when it
+left the checkout's content as it found it; a run that changes the content
+(tracked or untracked files that are not ignored) fails whatever its exit
+status. The node completes only when the latest run passes, and the
+`changes.patch` it keeps, applied to the checked-out revision, rebuilds
+exactly the content that passed.
+
+**Repair.** A failing run with attempts left goes back to the agent: the
+call's own provider session is resumed in place, in the same checkout, with
+the instruction, the command, its exit status and its output (the first and
+last 8 KiB, with the full size and SHA-256). The repair turn is validated
+like any turn, must report the same session, and the command runs again.
+Repairs need an agent with `session = "resumable"` and a runtime that
+resumes sessions, or a `max_attempts` above 1 refuses the call before its
+first turn.
+
+**Limits.** Each run is bounded by `verify.timeout`, and the call's timeout
+bounds everything: every turn and every run. When either fires, the
+command's whole process group is killed. The call's cost limit is one budget
+for all its turns: each repair gets only what is left, and a turn whose cost
+the runtime did not report blocks repair while a cost limit is in effect.
+A run never repeats on content already checked in the call (a repair that
+changed nothing, or went back to an earlier state), and a failure with the
+same exit status and output as the one before stops the loop too.
+
+| What happened | Status | Class |
+|---|---|---|
+| the latest run passed on unchanged content | `completed` | |
+| a run exceeded `verify.timeout`, or the call's timeout fired | `interrupted` | `timeout` |
+| the call was cancelled | `interrupted` | `cancelled` |
+| a repair turn failed, was lost or returned invalid output | that turn's own | that turn's own |
+| the last attempt failed | `failed` | `budget_exhausted` |
+| no progress, a turn with no session, or the cost budget cannot be enforced | `failed` | `budget_exhausted` |
+
+The result has the usual shape: the output is the latest turn's, usage and
+cost sum every turn, and timing covers the whole loop. The record's
+`attempts` (shown by `agister runs show`) keep, per attempt, the turn and
+the session it reported, the content identity checked, the diff the turn
+made (`artifacts/attempt-<n>.patch`, kept before the next turn starts),
+and the run: command, directory, exit status, timing, bounded output, full
+size and digest, and what the run changed if it did. The command's process
+group is on the record while it runs, so if Agister itself is killed, the
+next call's reap kills it with the checkout.
+
+**The command runs with your authority**, not the agent's permissions, and
+it can run code the agent wrote: a test, a `Makefile` target, a build
+script. A process with `verify` therefore lends your authority to the
+agent's code, including access to Agister's own state. `agister check` and
+`agister process show` say so for every process with `verify`.
+
 ## Settings
 
 ```text

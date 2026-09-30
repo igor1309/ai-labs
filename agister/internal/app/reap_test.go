@@ -141,6 +141,25 @@ func TestAbandonedRunIsReaped(t *testing.T) {
 	}
 }
 
+// A run killed while its verification command ran left the command's
+// process group on record beside the runtime's: both are reaped.
+func TestAbandonedVerifyCommandIsReaped(t *testing.T) {
+	h := newHarness()
+	abandoned := abandonedRun("old")
+	abandoned.Effects.Command = &run.Process{Ref: "ref-888"}
+	r := reaping(h, abandoned)
+	if err := r.reap(); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(r.processes.reaped, []string{"ref-777", "ref-888"}) {
+		t.Fatalf("reaped = %v", r.processes.reaped)
+	}
+	data := r.adopter.handles["old"].events[0].Data
+	if command := data["command"].(map[string]any); command["outcome"] != "killed" || command["ref"] != "ref-888" {
+		t.Fatalf("event data = %v", data)
+	}
+}
+
 func TestRunsSomeoneElseOwnsAreSkipped(t *testing.T) {
 	h := newHarness()
 	r := reaping(h, abandonedRun("live"))
