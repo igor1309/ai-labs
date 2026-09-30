@@ -8,8 +8,9 @@ still apply.
 - Implement through the `implement` process: commit the candidate, write
   the brief to a file, run
   `agister run implement --param candidate=<rev> --param brief=<file>`, and
-  apply the run's `changes.patch`. Send review fixes as a continuation of
-  that run (`--continue <run>`), so the implementer keeps its session.
+  apply the run's `changes.patch`. Review fixes go to a fresh `implement`
+  run with their own brief; only a failing verify goes back to the same
+  session, which Agister does itself.
 - Test commands, from `agister/`, quiet (never `-v`: one line per package,
   details only for failures): `go test -count=1 ./<pkg>/...` for what you
   touched, `-run <Test>` to narrow; the full check is
@@ -17,17 +18,12 @@ still apply.
   go test -race -count=1 ./internal/app/...` (about 30 s).
 - Verify the result yourself as the root `AGENTS.md` says:
   `scripts/handoff-check.py`, then the tests. No mutation or revert checks.
-- Review through Agister, on a committed candidate: a `*_review_codex`
-  process for code, or `decision_review_codex --param prompt=<prompt file>`
-  for decision documents (agent `codex-sol`: `gpt-6.1-sol`, effort high).
-  Reviewers collect the evidence; the `review_judge` process rules on it
-  and never reads the code. Bundle the review runs with
-  `scripts/review-bundle.py <run-id>... > <file>` and run
-  `agister run review_judge --param reviews=<file>`; pass it nothing else.
-  Act on the rulings as written, without judging them again: fix items go
-  to the implementer as a continuation, owner items to the owner, defer
-  items to `agister/docs/deferred.md`. Rejections for missing evidence are
-  feedback on the reviewers' prompts, not the judge's.
+- Review a committed candidate with
+  `agister run review --param base=<rev> --param candidate=<rev>`. Act on
+  the rulings as written, without judging them again: fix items go to a
+  fresh `implement` run, owner items to the owner, defer items to
+  `agister/docs/deferred.md`. Rejections for missing evidence are feedback
+  on the reviewers' prompts, not the judge's.
 - At most 2 review rounds. Deferred work is `agister/docs/deferred.md`:
   gap, trigger, done when, for real, observed gaps only.
 - ADRs reference only earlier ADRs.
