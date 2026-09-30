@@ -19,10 +19,8 @@ type Examples = fs.FS
 type RuntimeIdentity struct {
 	Contract string
 	Version  string
-	// The caller may choose the provider session ID before the turn.
-	PresetSessionID bool
-	// A turn may continue an earlier session in a new one, leaving the
-	// earlier session unchanged. Requires PresetSessionID.
+	// A turn may resume an earlier provider session in place, by the
+	// session ID the runtime reported for it; the session keeps that ID.
 	Resume bool
 	// The runtime stops a turn that reaches a cost limit.
 	CostLimit bool
@@ -33,8 +31,8 @@ type TurnRequest struct {
 	Prompt      string
 	Instruction string
 	Cwd         string
-	SessionID   string
-	// The provider session to continue in SessionID; empty for a fresh one.
+	// The provider session to resume in place, as the runtime reported it;
+	// empty for a fresh one.
 	ResumeSessionID string
 	MaxCostUSD      *float64
 	Model           string

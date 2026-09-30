@@ -21,7 +21,6 @@ func request(prompt string) app.TurnRequest {
 		Prompt:       prompt,
 		Instruction:  "Do the thing.",
 		Primitives:   []string{"Read", "Grep"},
-		SessionID:    session,
 		Model:        "sonnet",
 		Effort:       "high",
 		Timeout:      time.Minute,
@@ -47,7 +46,7 @@ func TestArgumentsCarryPrimitivesAndContractFlags(t *testing.T) {
 	}
 	want := []string{
 		"-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "dontAsk",
-		"--tools=Read,Grep", "--allowedTools=Read,Grep", "--session-id", session,
+		"--tools=Read,Grep", "--allowedTools=Read,Grep",
 		"--restricted", "--strict-mcp-config", "--model", "sonnet", "--effort", "high",
 		"--append-system-prompt", "Do the thing.", "--json-schema", `{"type":"object"}`,
 	}
@@ -76,7 +75,7 @@ func TestNoPrimitivesExposesNoTools(t *testing.T) {
 }
 
 func TestStreamReduction(t *testing.T) {
-	stream := &claudecode.Stream{RequestedSessionID: session}
+	stream := &claudecode.Stream{ResumedSessionID: session}
 	lines := []map[string]any{
 		{"type": "system", "subtype": "init", "session_id": session, "model": "claude-haiku-4-5", "tools": []string{"Read"}},
 		{"type": "stream_event", "event": map[string]any{"type": "message_start"}},
@@ -104,12 +103,30 @@ func TestStreamReduction(t *testing.T) {
 	}
 }
 
-func TestSessionMismatchAndGarbage(t *testing.T) {
-	stream := &claudecode.Stream{RequestedSessionID: session}
+// A resume turn must report the session it resumed: another one breaks
+// the contract of resuming in place, whatever the result says.
+func TestResumeReportingAnotherSessionFails(t *testing.T) {
+	stream := &claudecode.Stream{ResumedSessionID: session}
 	events := stream.Reduce(`{"type":"system","subtype":"init","session_id":"other"}`)
 	if len(events) != 2 || events[1].Kind != "SESSION_ID_MISMATCH" {
 		t.Fatalf("events = %+v", events)
 	}
+	stream.Reduce(`{"type":"result","subtype":"success","is_error":false,"session_id":"other"}`)
+	code := 0
+	turn := stream.Reconcile(supervisor.Evidence{Exit: &run.Exit{Code: &code}}, false)
+	if turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError || turn.ProviderSessionID != "other" || !strings.Contains(turn.Error.Message, session) {
+		t.Fatalf("turn = %+v", turn)
+	}
+	// A result that names no session does not confirm the resumed one.
+	silent := &claudecode.Stream{ResumedSessionID: session}
+	silent.Reduce(`{"type":"result","subtype":"success","is_error":false}`)
+	if turn := silent.Reconcile(supervisor.Evidence{Exit: &run.Exit{Code: &code}}, false); turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError {
+		t.Fatalf("turn = %+v", turn)
+	}
+}
+
+func TestGarbageIsRecorded(t *testing.T) {
+	stream := &claudecode.Stream{}
 	if events := stream.Reduce("{broken"); len(events) != 1 || events[0].Kind != "STREAM_PARSE_ERROR" {
 		t.Fatalf("events = %+v", events)
 	}
@@ -138,7 +155,16 @@ func TestResultPrecedence(t *testing.T) {
 	}
 }
 
-func TestContinuationForksAndCostLimitIsPassed(t *testing.T) {
+// Agister chooses no session ID: a fresh turn names none, and a
+// continuation resumes the reported one in place, without forking.
+func TestContinuationResumesInPlaceAndCostLimitIsPassed(t *testing.T) {
+	fresh, err := claudecode.Arguments(request("x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if joined := strings.Join(fresh, " "); strings.Contains(joined, "--session-id") || strings.Contains(joined, "--resume") {
+		t.Fatalf("fresh args = %v", fresh)
+	}
 	r := request("x")
 	r.ResumeSessionID = "earlier"
 	limit := 0.5
@@ -148,12 +174,8 @@ func TestContinuationForksAndCostLimitIsPassed(t *testing.T) {
 		t.Fatal(err)
 	}
 	joined := strings.Join(args, " ")
-	if !strings.Contains(joined, "--resume earlier --fork-session --session-id "+session) || !strings.Contains(joined, "--max-budget-usd 0.5") {
+	if !strings.Contains(joined, "--resume earlier --max-budget-usd 0.5") || strings.Contains(joined, "--fork-session") || strings.Contains(joined, "--session-id") {
 		t.Fatalf("args = %v", args)
-	}
-	r.SessionID = ""
-	if _, err := claudecode.Arguments(r); err == nil {
-		t.Fatal("continuing without a new session ID would change the earlier session")
 	}
 }
 

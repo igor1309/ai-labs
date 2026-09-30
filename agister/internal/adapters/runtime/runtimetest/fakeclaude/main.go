@@ -36,7 +36,8 @@ func main() {
 	if match := regexp.MustCompile(`SCENARIO:([a-z_]+)`).FindStringSubmatch(prompt); match != nil {
 		scenario = match[1]
 	}
-	session := flag("--session-id")
+	// A resumed session keeps its ID; a fresh one gets the runtime's own.
+	session := flag("--resume")
 	if scenario == "mismatch" || session == "" {
 		session = "00000000-0000-4000-8000-000000000000"
 	}

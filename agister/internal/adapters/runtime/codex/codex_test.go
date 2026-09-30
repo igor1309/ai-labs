@@ -1,6 +1,7 @@
 package codex_test
 
 import (
+	"context"
 	"encoding/json"
 	"reflect"
 	"strings"
@@ -58,6 +59,59 @@ func TestArguments(t *testing.T) {
 	}
 }
 
+// A continuation runs `exec resume` on the reported thread with every
+// setting of a fresh turn; resume has no --sandbox, so the sandbox mode
+// goes in as config.
+func TestResumeArguments(t *testing.T) {
+	r := request("hello")
+	r.ResumeSessionID = "thread-0"
+	args, err := codex.Arguments(r, "/tmp/schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		"exec", "resume", "thread-0", "--json", "--skip-git-repo-check", "--config", `sandbox_mode="read-only"`,
+		"--config", `approval_policy="never"`, "--ignore-user-config", "--ignore-rules",
+		"--model", "gpt-5.5", "--config", `model_reasoning_effort="high"`,
+		"--output-schema", "/tmp/schema.json", "-",
+	}
+	if !reflect.DeepEqual(args, want) {
+		t.Fatalf("args =\n%q\nwant\n%q", args, want)
+	}
+}
+
+func TestIdentityReportsResume(t *testing.T) {
+	identity, err := codex.New(runtimetest.Binary(t, "fakecodex")).Identity(context.Background())
+	if err != nil || identity.Contract != "codex/2" || !identity.Resume || identity.CostLimit {
+		t.Fatalf("identity = %+v, %v", identity, err)
+	}
+}
+
+// A resume turn must report the thread it resumed: another one, or none by
+// the end of the turn, breaks the contract of resuming in place.
+func TestResumeReportingAnotherThreadFails(t *testing.T) {
+	code := 0
+	clean := supervisor.Evidence{Exit: &run.Exit{Code: &code}}
+	for name, lines := range map[string][]string{
+		"another thread": {`{"type":"thread.started","thread_id":"t-2"}`, `{"type":"turn.completed"}`},
+		"no thread":      {`{"type":"turn.completed"}`},
+	} {
+		stream := &codex.Stream{ResumedThreadID: "t-1"}
+		for _, line := range lines {
+			stream.Reduce(line)
+		}
+		if turn := stream.Reconcile(clean, false); turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError || !strings.Contains(turn.Error.Message, "t-1") {
+			t.Errorf("%s: turn = %+v", name, turn)
+		}
+	}
+	stream := &codex.Stream{ResumedThreadID: "t-1"}
+	stream.Reduce(`{"type":"thread.started","thread_id":"t-1"}`)
+	stream.Reduce(`{"type":"turn.completed"}`)
+	if turn := stream.Reconcile(clean, false); turn.Status != run.Completed || turn.ProviderSessionID != "t-1" {
+		t.Fatalf("the same thread: turn = %+v", turn)
+	}
+}
+
 func TestRejectsWhatItCannotHonour(t *testing.T) {
 	for _, primitives := range [][]string{nil, {"read-only", "workspace-write"}, {"danger-full-access"}} {
 		r := request("x")
@@ -66,16 +120,11 @@ func TestRejectsWhatItCannotHonour(t *testing.T) {
 			t.Fatalf("primitives %v accepted", primitives)
 		}
 	}
-	for _, mutate := range []func(*app.TurnRequest){
-		func(r *app.TurnRequest) { r.SessionID = "preset" },
-		func(r *app.TurnRequest) { r.ResumeSessionID = "earlier" },
-		func(r *app.TurnRequest) { limit := 1.0; r.MaxCostUSD = &limit },
-	} {
-		r := request("x")
-		mutate(&r)
-		if _, err := codex.Arguments(r, ""); err == nil || !strings.Contains(err.Error(), "codex/1") {
-			t.Fatalf("err = %v", err)
-		}
+	r := request("x")
+	limit := 1.0
+	r.MaxCostUSD = &limit
+	if _, err := codex.Arguments(r, ""); err == nil || !strings.Contains(err.Error(), "cannot limit cost") {
+		t.Fatalf("err = %v", err)
 	}
 }
 

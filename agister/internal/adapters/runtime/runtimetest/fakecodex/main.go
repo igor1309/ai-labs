@@ -1,6 +1,7 @@
-// Command fakecodex stands in for `codex exec --json`, including the
-// non-terminal error events observed from the real CLI. The scenario is
-// chosen by a SCENARIO:<name> marker in the prompt (stdin).
+// Command fakecodex stands in for `codex exec --json` and `codex exec
+// resume --json`, including the non-terminal error events observed from the
+// real CLI. The scenario is chosen by a SCENARIO:<name> marker in the
+// prompt (stdin).
 package main
 
 import (
@@ -40,8 +41,13 @@ func main() {
 		data, _ := json.Marshal(message)
 		fmt.Println(string(data))
 	}
+	// `exec resume <thread_id>` keeps the thread; a fresh one gets its own.
+	thread := "01a0e850-b808-71c2-8401-53ba16d8ae18"
+	if len(args) > 2 && args[0] == "exec" && args[1] == "resume" && scenario != "mismatch" {
+		thread = args[2]
+	}
 	cwd, _ := os.Getwd()
-	emit(map[string]any{"type": "thread.started", "thread_id": "01a0e850-b808-71c2-8401-53ba16d8ae18", "argv": args, "cwd": cwd, "prompt": prompt, "schema": schema})
+	emit(map[string]any{"type": "thread.started", "thread_id": thread, "argv": args, "cwd": cwd, "prompt": prompt, "schema": schema})
 	if scenario == "no_result" {
 		return
 	}

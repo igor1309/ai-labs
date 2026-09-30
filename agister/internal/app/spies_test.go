@@ -352,12 +352,27 @@ func (s *recorderSpy) wait(t *testing.T) run.Record {
 	}
 }
 
-// runsSpy answers lookups of earlier runs.
+// runsSpy answers lookups and listings of earlier runs.
 type runsSpy struct {
 	mu      sync.Mutex
 	records map[string]run.Record
 	states  map[string]run.State
 	asked   []string
+	listErr error // when set, List fails with it
+}
+
+func (s *runsSpy) List(context.Context) ([]run.Record, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.listErr != nil {
+		return nil, s.listErr
+	}
+	records := make([]run.Record, 0, len(s.records))
+	for _, record := range s.records {
+		records = append(records, record)
+	}
+	sort.Slice(records, func(i, j int) bool { return records[i].ID < records[j].ID })
+	return records, nil
 }
 
 func (s *runsSpy) Get(_ context.Context, id string) (run.Record, run.State, error) {
@@ -391,7 +406,6 @@ func (fixedClock) Now() time.Time { return time.Date(2026, 9, 28, 12, 0, 0, 0, t
 type fixedIDs struct{}
 
 func (fixedIDs) RunID(time.Time) string { return "run-1" }
-func (fixedIDs) SessionID() string      { return "session-1" }
 
 type processesSpy struct {
 	mu     sync.Mutex

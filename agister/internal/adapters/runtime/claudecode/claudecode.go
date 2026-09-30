@@ -8,9 +8,10 @@
 // working directory. Permission mappings for this contract describe what
 // each tool grants under exactly these flags.
 //
-// A continuation resumes the earlier session with --fork-session into the
-// preset session ID, so the earlier session is never changed. A cost limit
-// is passed as --max-budget-usd; Claude Code checks it between model
+// Agister never chooses the session ID; Claude Code reports it. A
+// continuation resumes the reported session in place with --resume, and
+// the turn must report that same session, or it fails. A cost limit is
+// passed as --max-budget-usd; Claude Code checks it between model
 // requests, so the reported cost may exceed it.
 //
 // Turn status precedence: the runtime's `result` message, then Agister's
@@ -56,7 +57,7 @@ func (r *Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
 	if version == "" {
 		return app.RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
 	}
-	return app.RuntimeIdentity{Contract: Contract, Version: version, PresetSessionID: true, Resume: true, CostLimit: true}, nil
+	return app.RuntimeIdentity{Contract: Contract, Version: version, Resume: true, CostLimit: true}, nil
 }
 
 // Arguments builds the command line for a turn.
@@ -78,13 +79,7 @@ func Arguments(request app.TurnRequest) ([]string, error) {
 		args = append(args, "--allowedTools="+tools)
 	}
 	if request.ResumeSessionID != "" {
-		if request.SessionID == "" {
-			return nil, fmt.Errorf("a continuation needs a new session ID")
-		}
-		args = append(args, "--resume", request.ResumeSessionID, "--fork-session")
-	}
-	if request.SessionID != "" {
-		args = append(args, "--session-id", request.SessionID)
+		args = append(args, "--resume", request.ResumeSessionID)
 	}
 	if request.MaxCostUSD != nil {
 		args = append(args, "--max-budget-usd", strconv.FormatFloat(*request.MaxCostUSD, 'f', -1, 64))
@@ -110,7 +105,7 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 	if err != nil {
 		return supervisor.Failed(run.ClassInternal, err)
 	}
-	state := &Stream{RequestedSessionID: request.SessionID}
+	state := &Stream{ResumedSessionID: request.ResumeSessionID}
 	evidence := supervisor.Run(ctx, supervisor.Spec{
 		Command:   r.Command,
 		Args:      args,
@@ -135,12 +130,13 @@ type Event struct {
 
 // Stream reduces stream-json lines.
 type Stream struct {
-	RequestedSessionID string
-	ProviderSessionID  string
-	Model              string
-	LastText           string
-	Result             map[string]any
-	RateLimit          string // set when the provider rejected a request
+	// The session a resume turn resumes; the turn must report it.
+	ResumedSessionID  string
+	ProviderSessionID string
+	Model             string
+	LastText          string
+	Result            map[string]any
+	RateLimit         string // set when the provider rejected a request
 }
 
 func (s *Stream) Reduce(line string) []Event {
@@ -181,8 +177,8 @@ func (s *Stream) system(message map[string]any) []Event {
 		events := []Event{{run.SourceProtocol, "PROVIDER_SESSION_BOUND", map[string]any{
 			"provider_session_id": sessionID, "model": message["model"], "tools": message["tools"], "permission_mode": message["permissionMode"],
 		}}}
-		if s.RequestedSessionID != "" && sessionID != s.RequestedSessionID {
-			events = append(events, Event{run.SourceAgister, "SESSION_ID_MISMATCH", map[string]any{"requested": s.RequestedSessionID, "reported": sessionID}})
+		if s.ResumedSessionID != "" && sessionID != s.ResumedSessionID {
+			events = append(events, Event{run.SourceAgister, "SESSION_ID_MISMATCH", map[string]any{"resumed": s.ResumedSessionID, "reported": sessionID}})
 		}
 		return events
 	case "api_retry":
@@ -243,6 +239,10 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 	}
 	turn.ProviderSessionID = s.ProviderSessionID
 	turn.Model = s.Model
+	if s.resumedElsewhere() {
+		turn.Status, turn.Error = run.Failed, run.Fault(run.ClassRuntimeError, "resumed session %s, but the runtime reported session %q", s.ResumedSessionID, s.ProviderSessionID)
+		return turn
+	}
 	result := s.Result
 	if result == nil {
 		return supervisor.WithoutTerminal(turn, evidence, s.rejection())
@@ -311,6 +311,13 @@ func (s *Stream) classify(result map[string]any) *run.Error {
 		class = run.ClassContextOverflow
 	}
 	return run.Fault(class, "%s", message)
+}
+
+// resumedElsewhere reports a resume turn that reported another session,
+// or none by its result, which breaks the contract of resuming in place.
+func (s *Stream) resumedElsewhere() bool {
+	reported := s.ProviderSessionID != "" || s.Result != nil
+	return s.ResumedSessionID != "" && reported && s.ProviderSessionID != s.ResumedSessionID
 }
 
 // rejection describes a rate-limit refusal seen before the stream ended.

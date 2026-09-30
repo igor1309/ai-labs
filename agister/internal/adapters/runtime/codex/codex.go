@@ -1,11 +1,17 @@
 // Package codex drives Codex: one `codex exec --json` process per turn,
 // reading its JSONL thread events.
 //
-// Contract codex/1: exactly one primitive, the sandbox mode (read-only or
+// Contract codex/2: exactly one primitive, the sandbox mode (read-only or
 // workspace-write); approval_policy="never"; --ignore-user-config and
 // --ignore-rules; the prompt on stdin with the instruction prepended in an
 // <instructions> block; structured output constrained by an
 // --output-schema file and returned as the final agent message.
+//
+// Agister never chooses the thread ID; Codex reports it in thread.started.
+// A continuation runs `codex exec resume <thread_id>` with the same
+// settings, the sandbox mode as -c sandbox_mode (resume has no --sandbox),
+// and the turn must report that same thread, or it fails. Codex cannot
+// limit cost.
 //
 // Only turn.completed and turn.failed decide a turn. Top-level `error`
 // events and error items occur mid-turn (reconnects, transport fallback)
@@ -27,7 +33,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-const Contract = "codex/1"
+const Contract = "codex/2"
 
 var sandboxModes = []string{"read-only", "workspace-write"}
 
@@ -54,7 +60,7 @@ func (r *Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
 	if version == "" {
 		return app.RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
 	}
-	return app.RuntimeIdentity{Contract: Contract, Version: version}, nil
+	return app.RuntimeIdentity{Contract: Contract, Version: version, Resume: true}, nil
 }
 
 // Arguments builds the command line for a turn.
@@ -62,18 +68,20 @@ func Arguments(request app.TurnRequest, schemaPath string) ([]string, error) {
 	if len(request.Primitives) != 1 || !contains(sandboxModes, request.Primitives[0]) {
 		return nil, fmt.Errorf("codex needs exactly one sandbox mode primitive (%s), got %v", strings.Join(sandboxModes, ", "), request.Primitives)
 	}
-	if request.SessionID != "" || request.ResumeSessionID != "" {
-		return nil, fmt.Errorf("codex/1 neither presets nor continues sessions")
-	}
 	if request.MaxCostUSD != nil {
-		return nil, fmt.Errorf("codex/1 cannot limit cost")
+		return nil, fmt.Errorf("codex/2 cannot limit cost")
 	}
-	args := []string{
-		"exec", "--json", "--skip-git-repo-check",
-		"--sandbox", request.Primitives[0],
+	args := []string{"exec", "--json", "--skip-git-repo-check", "--sandbox", request.Primitives[0]}
+	if request.ResumeSessionID != "" {
+		args = []string{
+			"exec", "resume", request.ResumeSessionID, "--json", "--skip-git-repo-check",
+			"--config", fmt.Sprintf("sandbox_mode=%q", request.Primitives[0]),
+		}
+	}
+	args = append(args,
 		"--config", `approval_policy="never"`,
 		"--ignore-user-config", "--ignore-rules",
-	}
+	)
 	if request.Model != "" {
 		args = append(args, "--model", request.Model)
 	}
@@ -111,7 +119,7 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 	if err != nil {
 		return supervisor.Failed(run.ClassInternal, err)
 	}
-	state := &Stream{}
+	state := &Stream{ResumedThreadID: request.ResumeSessionID}
 	evidence := supervisor.Run(ctx, supervisor.Spec{
 		Command:   r.Command,
 		Args:      args,
@@ -135,12 +143,14 @@ type Event struct {
 
 // Stream reduces Codex JSONL events.
 type Stream struct {
-	ThreadID    string
-	LastMessage string
-	LastError   string
-	Completed   bool
-	Failed      string
-	Usage       map[string]any
+	// The thread a resume turn resumes; the turn must report it.
+	ResumedThreadID string
+	ThreadID        string
+	LastMessage     string
+	LastError       string
+	Completed       bool
+	Failed          string
+	Usage           map[string]any
 }
 
 func (s *Stream) Reduce(line string) []Event {
@@ -208,6 +218,10 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 		return failed
 	}
 	turn.ProviderSessionID = s.ThreadID
+	if s.resumedElsewhere() {
+		turn.Status, turn.Error = run.Failed, run.Fault(run.ClassRuntimeError, "resumed thread %s, but the runtime reported thread %q", s.ResumedThreadID, s.ThreadID)
+		return turn
+	}
 	if !s.Completed && s.Failed == "" {
 		return supervisor.WithoutTerminal(turn, evidence, s.LastError)
 	}
@@ -237,6 +251,14 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 	}
 	turn.Status = run.Completed
 	return turn
+}
+
+// resumedElsewhere reports a resume turn that started another thread, or
+// ended without reporting one, which breaks the contract of resuming in
+// place.
+func (s *Stream) resumedElsewhere() bool {
+	reported := s.ThreadID != "" || s.Completed || s.Failed != ""
+	return s.ResumedThreadID != "" && reported && s.ThreadID != s.ResumedThreadID
 }
 
 // classify maps a turn.failed message to a failure class. Codex reports

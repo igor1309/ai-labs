@@ -194,23 +194,22 @@ type Runtime struct {
 
 // Record is the authoritative evidence of one call.
 type Record struct {
-	Schema             string             `json:"schema"`
-	ID                 string             `json:"id"`
-	Process            string             `json:"process"`
-	Agent              string             `json:"agent,omitempty"`
-	Request            Request            `json:"request"`
-	CreatedAt          time.Time          `json:"created_at"`
-	FinishedAt         *time.Time         `json:"finished_at,omitempty"`
-	Definitions        []DefinitionSource `json:"definitions,omitempty"`
-	Effective          *EffectivePolicy   `json:"effective,omitempty"`
-	Runtime            *Runtime           `json:"runtime,omitempty"`
-	Plan               *Plan              `json:"plan,omitempty"`
-	Inputs             []Input            `json:"inputs,omitempty"`
-	Workspace          string             `json:"workspace,omitempty"`
-	Effects            *Effects           `json:"effects,omitempty"`
-	RequestedSessionID string             `json:"requested_session_id,omitempty"`
-	Turn               *Turn              `json:"turn,omitempty"`
-	Result             *Result            `json:"result,omitempty"` // set when finished
+	Schema      string             `json:"schema"`
+	ID          string             `json:"id"`
+	Process     string             `json:"process"`
+	Agent       string             `json:"agent,omitempty"`
+	Request     Request            `json:"request"`
+	CreatedAt   time.Time          `json:"created_at"`
+	FinishedAt  *time.Time         `json:"finished_at,omitempty"`
+	Definitions []DefinitionSource `json:"definitions,omitempty"`
+	Effective   *EffectivePolicy   `json:"effective,omitempty"`
+	Runtime     *Runtime           `json:"runtime,omitempty"`
+	Plan        *Plan              `json:"plan,omitempty"`
+	Inputs      []Input            `json:"inputs,omitempty"`
+	Workspace   string             `json:"workspace,omitempty"`
+	Effects     *Effects           `json:"effects,omitempty"`
+	Turn        *Turn              `json:"turn,omitempty"`
+	Result      *Result            `json:"result,omitempty"` // set when finished
 }
 
 // Effects are what a call leaves outside its record, written down as soon

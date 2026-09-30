@@ -92,10 +92,12 @@ type CallValidator interface {
 	Validate(schema []byte, output json.RawMessage) error
 }
 
-// CallRuns reads an earlier run's evidence, only to continue its session. A
-// record that is not finished and no longer owned reads as abandoned.
+// CallRuns reads an earlier run's evidence, only to continue its session,
+// and lists every run, to find what else continues that session. A record
+// that is not finished and no longer owned reads as abandoned.
 type CallRuns interface {
 	Get(ctx context.Context, id string) (run.Record, run.State, error)
+	List(ctx context.Context) ([]run.Record, error)
 }
 
 // CallClock tells the time of a call's record and events.
@@ -104,7 +106,6 @@ type CallClock interface{ Now() time.Time }
 // IDs makes the identities a call needs.
 type IDs interface {
 	RunID(now time.Time) string
-	SessionID() string
 }
 
 // InputProvider resolves one kind of input source.
@@ -323,7 +324,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		event(run.SourceAgister, "PERMISSIONS_WITHHELD", map[string]any{"permissions": res.plan.Withheld})
 	}
 
-	resumeSessionID, err := c.continuation(ctx, res, record.Request.Continue)
+	resumeSessionID, err := c.continuation(ctx, res, record.ID, record.Request.Continue)
 	if err != nil {
 		fail(err)
 		return
@@ -397,10 +398,6 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		Timeout:         res.effective.Timeout,
 		OutputSchema:    res.schema,
 	}
-	if res.identity.PresetSessionID {
-		request.SessionID = c.ids.SessionID()
-		record.RequestedSessionID = request.SessionID
-	}
 	_ = handle.Update(record)
 
 	turnStart := c.clock.Now()
@@ -431,17 +428,18 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 }
 
 // continuation checks a request to continue an earlier run's session and
-// returns that provider session. Continuing is deliberate: the agent must
-// allow it, the runtime must support it, and the earlier run must be
-// finished, by the same agent, with a session.
-func (c *Calls) continuation(ctx context.Context, res *resolution, runID string) (string, error) {
+// returns that provider session, which the runtime resumes in place.
+// Continuing is deliberate: the agent must allow it, the runtime must
+// support it, and the earlier run must be finished, by the same agent,
+// with a session, and be the latest run in that session's chain.
+func (c *Calls) continuation(ctx context.Context, res *resolution, self, runID string) (string, error) {
 	if runID == "" {
 		return "", nil
 	}
 	if res.agent.Session != definition.SessionResumable {
 		return "", refuse("agent %s is %s; it cannot continue run %s", res.agent.Name, res.agent.Session, runID)
 	}
-	if !res.identity.Resume || !res.identity.PresetSessionID {
+	if !res.identity.Resume {
 		return "", refuse("runtime %s cannot continue sessions", res.mapping.Name)
 	}
 	prior, state, err := c.runs.Get(ctx, runID)
@@ -458,7 +456,52 @@ func (c *Calls) continuation(ctx context.Context, res *resolution, runID string)
 	case prior.Result == nil || prior.Result.Session == nil || prior.Result.Session.ProviderSessionID == "":
 		return "", refuse("run %s has no provider session", runID)
 	}
+	records, err := c.runs.List(ctx)
+	if err != nil {
+		return "", fmt.Errorf("listing runs to continue run %s: %w", runID, err)
+	}
+	if later := laterInChain(records, prior, self); later != "" {
+		return "", refuse("run %s is not the latest in its session's chain: run %s continues the session", runID, later)
+	}
 	return prior.Result.Session.ProviderSessionID, nil
+}
+
+// laterInChain returns a run, other than self, that moved prior's session
+// past prior: one that ran in that session and is not prior or a run prior
+// continues, or one that continues a run of the chain, finished or not.
+// Only a continuation that was refused, before any effect, does not count.
+// Each call's record, with what it continues, exists before its check, so
+// of two concurrent continuations of one run at least one sees the other;
+// both may be refused, never both let through.
+func laterInChain(records []run.Record, prior run.Record, self string) string {
+	byID := map[string]run.Record{}
+	for _, record := range records {
+		byID[record.ID] = record
+	}
+	// prior and the runs it continues, back to the session's first.
+	earlier := map[string]bool{prior.ID: true}
+	for id := prior.Request.Continue; id != "" && !earlier[id]; id = byID[id].Request.Continue {
+		earlier[id] = true
+	}
+	session := prior.Result.Session.ProviderSessionID
+	inSession := func(record run.Record) bool {
+		return record.Runtime != nil && record.Runtime.Adapter == prior.Runtime.Adapter &&
+			record.Result != nil && record.Result.Session != nil && record.Result.Session.ProviderSessionID == session
+	}
+	inChain := func(id string) bool {
+		record, ok := byID[id]
+		return earlier[id] || ok && inSession(record)
+	}
+	for _, record := range records {
+		if record.ID == self || earlier[record.ID] {
+			continue
+		}
+		refused := record.Result != nil && record.Result.Error != nil && record.Result.Error.Class == run.ClassRefused
+		if inSession(record) || record.Request.Continue != "" && inChain(record.Request.Continue) && !refused {
+			return record.ID
+		}
+	}
+	return ""
 }
 
 // collectChanges keeps a call's changes to its own workspace as an

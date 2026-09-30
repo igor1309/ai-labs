@@ -193,6 +193,25 @@ func Conformance(t *testing.T, subject Subject) {
 		}
 	})
 
+	// A runtime that resumes sessions resumes the reported one in place,
+	// and a turn that reports another session breaks that contract.
+	t.Run("a resume turn keeps the resumed session", func(t *testing.T) {
+		identity, err := subject.New(subject.Fake).Identity(context.Background())
+		if err != nil || !identity.Resume {
+			t.Skipf("the runtime does not resume sessions: %+v, %v", identity, err)
+		}
+		const resumed = "7d1c2a4e-0000-4000-8000-000000000001"
+		resume := func(r *app.TurnRequest) { r.ResumeSessionID = resumed }
+		result, _ := turn(t, "SCENARIO:approve", resume, context.Background())
+		if result.Status != run.Completed || result.ProviderSessionID != resumed {
+			t.Fatalf("turn = %+v", result)
+		}
+		result, _ = turn(t, "SCENARIO:mismatch", resume, context.Background())
+		if !is(result, run.Failed, run.ClassRuntimeError) || result.ProviderSessionID == resumed {
+			t.Fatalf("turn = %+v", result)
+		}
+	})
+
 	t.Run("a missing runtime is a failed turn, not a crash", func(t *testing.T) {
 		request := subject.Request("x")
 		result := subject.New("/nonexistent/runtime").RunTurn(context.Background(), request, &Recorder{})

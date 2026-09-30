@@ -101,7 +101,7 @@ func newHarness() *harness {
 	h := &harness{
 		defs: &definitionsSpy{docs: settingsDocs()},
 		runner: &runnerSpy{
-			identity: app.RuntimeIdentity{Contract: "spy/1", Version: "1.2.3", PresetSessionID: true, Resume: true, CostLimit: true},
+			identity: app.RuntimeIdentity{Contract: "spy/1", Version: "1.2.3", Resume: true, CostLimit: true},
 			turn:     run.Turn{Status: run.Completed, Output: json.RawMessage(`{"outcome":"no"}`), ProviderSessionID: "prov-1"},
 		},
 		workspaces: &workspacesSpy{root: "/repo", dir: "/work/checkout"},
@@ -193,7 +193,8 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 	if !reflect.DeepEqual(h.workspaces.checkouts, [][2]string{{"/repo", "sha-HEAD"}}) || h.workspaces.releases() != 1 {
 		t.Fatalf("checkouts %v, released %d", h.workspaces.checkouts, h.workspaces.releases())
 	}
-	// The turn request carries primitives, not permissions.
+	// The turn request carries primitives, not permissions, and a fresh
+	// call names no session: the runtime reports the one it starts.
 	requests := h.runner.calls()
 	if len(requests) != 1 {
 		t.Fatalf("runner called %d times", len(requests))
@@ -201,7 +202,7 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 	got := requests[0]
 	if !reflect.DeepEqual(got.Primitives, []string{"Read", "Grep"}) ||
 		got.Cwd != "/work/checkout" || got.Model != "m1" || got.Effort != "high" ||
-		got.Timeout != 20*time.Minute || got.SessionID != "session-1" || string(got.OutputSchema) != schema {
+		got.Timeout != 20*time.Minute || got.ResumeSessionID != "" || string(got.OutputSchema) != schema {
 		t.Fatalf("turn request = %+v", got)
 	}
 	if got.Instruction != "Inspect the change.\n\nGranted permissions: repository.read, repository.search\nWithheld permissions: repository.diff" {
@@ -225,7 +226,7 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 	if strings.Join(kinds, ",") != "service/service,processes/p,policies/pol,agents/a,runtimes/rt,schemas/s" {
 		t.Fatalf("definitions = %v", kinds)
 	}
-	if record.Plan == nil || !reflect.DeepEqual(record.Plan.Withheld, []string{"repository.diff"}) || record.RequestedSessionID != "session-1" ||
+	if record.Plan == nil || !reflect.DeepEqual(record.Plan.Withheld, []string{"repository.diff"}) ||
 		record.Runtime.Version != "1.2.3" || record.Inputs[0].Identity != "sha-HEAD" || !record.Inputs[0].Revision {
 		t.Fatalf("record = %+v", record)
 	}
@@ -325,15 +326,25 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 	resumable := func(h *harness) {
 		h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
 	}
-	earlier := run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Result: &run.Result{Status: run.Interrupted, Session: &run.Session{ProviderSessionID: "prov-0"}}}
+	inSession := func(id, continues string) run.Record {
+		return run.Record{ID: id, Agent: "a", Request: run.Request{Continue: continues}, Runtime: &run.Runtime{Adapter: "spy"},
+			Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0", Continues: continues}}}
+	}
+	earlier := inSession("run-0", "run-00")
+	earlier.Result.Status = run.Interrupted
 
 	h := newHarness()
 	resumable(h)
 	h.runs.records["run-0"], h.runs.states["run-0"] = earlier, run.StateFinished
+	// The run it continued, this call's own record, and a refused attempt
+	// to continue it leave it the latest in its chain.
+	h.runs.records["run-00"] = inSession("run-00", "")
+	h.runs.records["run-1"] = run.Record{ID: "run-1", Request: run.Request{Continue: "run-0"}}
+	h.runs.records["run-2"] = run.Record{ID: "run-2", Request: run.Request{Continue: "run-0"}, Result: &run.Result{Status: run.Failed, Error: run.Fault(run.ClassRefused, "no")}}
 	record := h.call(t, contract.CallRequest{Continue: "run-0"})
 	got := h.runner.calls()[0]
-	// The earlier session is continued in a new one.
-	if got.ResumeSessionID != "prov-0" || got.SessionID != "session-1" || record.Result.Session.Continues != "run-0" || record.Request.Continue != "run-0" {
+	// The earlier session is resumed in place, by the ID it reported.
+	if got.ResumeSessionID != "prov-0" || record.Result.Session.Continues != "run-0" || record.Request.Continue != "run-0" {
 		t.Fatalf("request %+v, session %+v", got, record.Result.Session)
 	}
 
@@ -358,6 +369,22 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 			bare.Result = &run.Result{Status: run.Failed}
 			h.runs.records["run-0"] = bare
 		}, "run run-0 has no provider session"},
+		{"a later run continues it", func(h *harness) {
+			resumable(h)
+			h.runs.records["run-2"] = inSession("run-2", "run-0")
+		}, "run run-0 is not the latest in its session's chain: run run-2 continues the session"},
+		{"a running call continues it", func(h *harness) {
+			resumable(h)
+			h.runs.records["run-2"] = run.Record{ID: "run-2", Request: run.Request{Continue: "run-0"}}
+		}, "run run-0 is not the latest in its session's chain: run run-2 continues the session"},
+		{"a later run of its session", func(h *harness) {
+			resumable(h)
+			h.runs.records["run-2"] = inSession("run-2", "")
+		}, "run run-0 is not the latest in its session's chain: run run-2 continues the session"},
+		{"a run continues the one it continued", func(h *harness) {
+			resumable(h)
+			h.runs.records["run-3"] = run.Record{ID: "run-3", Request: run.Request{Continue: "run-00"}}
+		}, "run run-0 is not the latest in its session's chain: run run-3 continues the session"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			h := newHarness()
@@ -371,6 +398,20 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 				t.Fatal("effects before the refusal")
 			}
 		})
+	}
+}
+
+// A continuation that cannot tell whether its run is the latest in the
+// chain does not guess: it fails before the turn.
+func TestContinuationThatCannotListRunsFails(t *testing.T) {
+	h := newHarness()
+	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+	h.runs.records["run-0"] = run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Result: &run.Result{Session: &run.Session{ProviderSessionID: "prov-0"}}}
+	h.runs.states["run-0"] = run.StateFinished
+	h.runs.listErr = errors.New("disk gone")
+	record := h.call(t, contract.CallRequest{Continue: "run-0"})
+	if class(record) != run.ClassInternal || !strings.Contains(message(record), "disk gone") || len(h.runner.calls()) != 0 {
+		t.Fatalf("result %+v", record.Result.Error)
 	}
 }
 

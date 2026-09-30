@@ -169,7 +169,7 @@ func TestAgentCallEndToEnd(t *testing.T) {
 	// The node result: usage and cost as the runtime reports them, timing as Agister measures it.
 	usage, cost, timing := result["usage"].(map[string]any), result["cost"].(map[string]any), result["timing"].(map[string]any)
 	if usage["input_tokens"] != 100.0 || usage["cache_write_tokens"] != 5.0 || cost["source"] != "runtime" || cost["usd"] != 0.0123 ||
-		timing["runtime_ms"] != 3400.0 || timing["turn_ms"] == nil || result["session"].(map[string]any)["provider_session_id"] != record["requested_session_id"] {
+		timing["runtime_ms"] != 3400.0 || timing["turn_ms"] == nil || result["session"].(map[string]any)["provider_session_id"] != "00000000-0000-4000-8000-000000000000" || record["requested_session_id"] != nil {
 		t.Fatalf("result = %v", result)
 	}
 	// Every definition used is attributed with its digest.
@@ -731,7 +731,8 @@ func TestVerdictIsOutputNotStatus(t *testing.T) {
 	}
 }
 
-// A continuation resumes the earlier run's provider session in a new one.
+// A continuation resumes the earlier run's provider session in place, by the
+// ID the runtime reported, and only from the latest run of that session.
 func TestContinuationEndToEnd(t *testing.T) {
 	home, repo := setup(t, "approve")
 	client, err := compose(cli.Config{Home: home})
@@ -763,8 +764,17 @@ func TestContinuationEndToEnd(t *testing.T) {
 	data, _ := os.ReadFile(filepath.Join(home, "runs", second.ID, "provider.jsonl"))
 	_ = json.Unmarshal([]byte(strings.SplitN(string(data), "\n", 2)[0]), &provider)
 	args := fmt.Sprint(provider["argv"])
-	if earlier == later || second.Result.Session.Continues != first.ID || !strings.Contains(args, "--resume "+earlier+" --fork-session --session-id "+later) {
+	if earlier != later || second.Result.Session.Continues != first.ID || !strings.Contains(args, "--resume "+earlier) ||
+		strings.Contains(args, "--fork-session") || strings.Contains(args, "--session-id") {
 		t.Fatalf("earlier %s, later %s, argv %s", earlier, later, args)
+	}
+	// The first run is no longer the latest in its session's chain.
+	stale := finish(contract.CallRequest{Process: "ask", Params: map[string]string{"question": "And c.txt?"}, Continue: first.ID, Timeout: "1m", Cwd: repo})
+	if stale.Result.Error == nil || stale.Result.Error.Class != "refused" || !strings.Contains(stale.Result.Error.Message, "not the latest") {
+		t.Fatalf("result = %+v", stale.Result)
+	}
+	if third := finish(contract.CallRequest{Process: "ask", Params: map[string]string{"question": "And c.txt?"}, Continue: second.ID, Timeout: "1m", Cwd: repo}); third.Result.Status != "completed" || third.Result.Session.ProviderSessionID != earlier {
+		t.Fatalf("result = %+v", third.Result)
 	}
 	// The reviewer is fresh-only: continuing with it is refused.
 	refused := finish(contract.CallRequest{Process: "adversarial_review", Params: map[string]string{"base": "main"}, Continue: first.ID, Timeout: "1m", Cwd: repo})
