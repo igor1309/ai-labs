@@ -1,7 +1,7 @@
 # Critical review of a decision document (ADR, deferred work, research note)
 # against the prompt file given as param prompt.
 schema: agister.process/v1alpha1
-name: decision_review_codex
+name: adr_review_codex
 
 type: process
 uses: agent:codex-sol

@@ -2,9 +2,9 @@
 # same candidate against the same base, concurrently, then the judge's
 # rulings on both. The judge starts only if both reviews completed, and
 # receives their recorded outputs as its collection and nothing else.
-#   agister run review --param base=<rev> --param candidate=<rev>
+#   agister run code_review --param base=<rev> --param candidate=<rev>
 schema: agister.workflow/v1alpha1
-name: review
+name: code_review
 
 type: workflow
 

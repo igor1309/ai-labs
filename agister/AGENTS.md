@@ -19,7 +19,7 @@ still apply.
 - Verify the result yourself as the root `AGENTS.md` says:
   `scripts/handoff-check.py`, then the tests. No mutation or revert checks.
 - Review a committed candidate with
-  `agister run review --param base=<rev> --param candidate=<rev>`. Act on
+  `agister run code_review --param base=<rev> --param candidate=<rev>`. Act on
   the rulings as written, without judging them again: fix items go to a
   fresh `implement` run, owner items to the owner, defer items to
   `agister/docs/deferred.md`. Rejections for missing evidence are feedback
