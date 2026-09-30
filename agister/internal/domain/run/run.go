@@ -172,7 +172,11 @@ type Turn struct {
 	NumTurns          *int            `json:"num_turns,omitempty"`
 	PermissionDenials int             `json:"permission_denials,omitempty"`
 	Exit              *Exit           `json:"exit,omitempty"`
-	StderrTail        string          `json:"stderr_tail,omitempty"`
+	// StderrTail is the end of the runtime's stderr, bounded; when more was
+	// written, StderrOmitted counts the bytes cut before it, and the tail's
+	// first line says so.
+	StderrTail    string `json:"stderr_tail,omitempty"`
+	StderrOmitted int64  `json:"stderr_omitted,omitempty"`
 	// Session is what the runtime reported as its session's totals after
 	// the turn, where it reports those instead of the turn's own cost or
 	// usage; the turn's own are derived from them (Own).

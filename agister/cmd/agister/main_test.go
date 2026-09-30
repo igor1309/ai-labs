@@ -880,3 +880,42 @@ verify:
 		t.Fatalf("run with a shorter timeout: %d, %v", r.code, refused)
 	}
 }
+
+// A runtime that fails with a reason on stderr leaves it in the record: the
+// error message quotes it, and the turn keeps a bounded, marked stderr
+// tail; one that prints nothing says only its exit code.
+func TestARuntimesFailureReasonReachesTheRecord(t *testing.T) {
+	for _, c := range []struct {
+		scenario, message string
+		cut               bool
+	}{
+		{"exit_nonzero", "exit code 3: fatal: provider exploded", false},
+		{"exit_flooded", "exit code 3: fatal: provider exploded", true},
+		{"exit_silent", "exit code 3", false},
+	} {
+		t.Run(c.scenario, func(t *testing.T) {
+			home, repo := setup(t, c.scenario)
+			if r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitFailed {
+				t.Fatalf("exit %d\n%s", r.code, r.stderr)
+			}
+			record := lastRun(t, home).record
+			failure := record["result"].(map[string]any)["error"].(map[string]any)
+			if failure["class"] != "runtime_error" || failure["message"] != c.message {
+				t.Fatalf("error = %v", failure)
+			}
+			turn := record["turn"].(map[string]any)
+			tail, _ := turn["stderr_tail"].(string)
+			omitted, _ := turn["stderr_omitted"].(float64)
+			switch {
+			case c.message == "exit code 3":
+				if tail != "" || omitted != 0 {
+					t.Fatalf("turn = %v", turn)
+				}
+			case !strings.HasSuffix(tail, "\nfatal: provider exploded") && tail != "fatal: provider exploded":
+				t.Fatalf("stderr tail = %q", tail)
+			case c.cut != (omitted > 0) || c.cut != strings.HasPrefix(tail, fmt.Sprintf("[%d earlier bytes of stderr cut]\n", int64(omitted))):
+				t.Fatalf("omitted %v, tail starts %q", omitted, tail[:min(len(tail), 60)])
+			}
+		})
+	}
+}
