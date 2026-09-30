@@ -9,14 +9,19 @@
 // each tool grants under exactly these flags.
 //
 // --restricted also drops the repository's instruction files, so Agister
-// gives them itself: each AGENTS.md and CLAUDE.md from the repository root
-// (the working directory's git top level, or the working directory itself
-// outside any repository) down to the working directory, root first, go in
-// the appended system prompt before the process's instruction, each
-// introduced by its path relative to the root. A file that cannot be read
-// refuses the turn before it starts; a missing one is absent. Once the
-// process has started, an INSTRUCTION_FILES event records each file's path
-// and sha256.
+// gives them itself (ADR-006, ADR-007): each AGENTS.md and CLAUDE.md from
+// the repository root (the working directory's git top level) down to the
+// working directory, root first, as the request's InstructionCommit has
+// them, go in the appended system prompt before the process's instruction,
+// each introduced by its path relative to the root. Every turn of a call
+// carries the same commit, so what the agent commits or edits meanwhile
+// changes nothing; symbolic links are followed within that commit. A file
+// the commit lacks is absent; a working directory in no repository gets
+// none. Any other git failure, or a file that cannot be read, refuses the
+// turn before it starts, naming the cause. An empty or relative working
+// directory resolves as the process's does. Once the process has started,
+// an INSTRUCTION_FILES event records the commit and each file's path and
+// sha256.
 //
 // Agister never chooses the session ID; Claude Code reports it. A
 // continuation resumes the reported session in place with --resume, and
@@ -31,6 +36,7 @@
 package claudecode
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/sha256"
@@ -38,7 +44,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -57,8 +63,8 @@ const Contract = "claude-code/2"
 type Runner struct {
 	Command   string
 	KillGrace time.Duration // zero: the supervisor default
-	// ReadFile reads an instruction file; nil: os.ReadFile.
-	ReadFile func(path string) ([]byte, error)
+	// Git runs git to read the instruction files; nil: RunGit.
+	Git Git
 }
 
 func New(command string) *Runner {
@@ -88,66 +94,178 @@ type InstructionFile struct {
 	Content []byte
 }
 
+// Instructions are the instruction files given to a turn and the commit
+// they were read from; empty outside any repository.
+type Instructions struct {
+	Commit string
+	Files  []InstructionFile
+}
+
+// Git runs git in dir with args, stdin on its standard input, and returns
+// its standard output.
+type Git func(ctx context.Context, dir string, stdin []byte, args ...string) ([]byte, error)
+
+// GitError is git having failed to run or run and failed.
+type GitError struct {
+	Args   []string
+	Stderr string
+	Err    error
+}
+
+func (e *GitError) Error() string {
+	message := strings.TrimSpace(e.Stderr)
+	if message == "" {
+		message = e.Err.Error()
+	}
+	return "git " + strings.Join(e.Args, " ") + ": " + message
+}
+
+func (e *GitError) Unwrap() error { return e.Err }
+
+// RunGit runs the git on PATH, in the C locale so that its messages can be
+// recognized; a failure is a *GitError.
+func RunGit(ctx context.Context, dir string, stdin []byte, args ...string) ([]byte, error) {
+	command := exec.CommandContext(ctx, "git", args...)
+	command.Dir = dir
+	command.Env = append(os.Environ(), "LC_ALL=C")
+	if stdin != nil {
+		command.Stdin = bytes.NewReader(stdin)
+	}
+	var stdout, stderr bytes.Buffer
+	command.Stdout, command.Stderr = &stdout, &stderr
+	if err := command.Run(); err != nil {
+		return nil, &GitError{Args: args, Stderr: stderr.String(), Err: err}
+	}
+	return stdout.Bytes(), nil
+}
+
+// notRepository reports git saying that no directory from where it ran up
+// is a repository. A repository whose git directory is broken is not that.
+func notRepository(err error) bool {
+	var failed *GitError
+	return errors.As(err, &failed) && strings.Contains(failed.Stderr, "not a git repository (or any")
+}
+
 // instructionNames are the files read from each directory, in order.
 var instructionNames = []string{"AGENTS.md", "CLAUDE.md"}
 
-// InstructionFiles reads the instruction files Claude Code would load for
-// cwd (the process's working directory when empty): each AGENTS.md and
-// CLAUDE.md from the repository root down to cwd, root first. The root is
-// cwd's git top level, or cwd itself outside any repository. A missing
-// file is absent; any other read error fails, naming the file.
-func InstructionFiles(ctx context.Context, cwd string, readFile func(string) ([]byte, error)) ([]InstructionFile, error) {
-	if readFile == nil {
-		readFile = os.ReadFile
+// ReadInstructions reads the instruction files Claude Code would load for
+// cwd, as commit has them: each AGENTS.md and CLAUDE.md from the
+// repository root down to cwd, root first. cwd resolves as the process's
+// working directory does: empty is that directory, relative is below it.
+// Outside any repository there are none, and commit must be empty; in one,
+// commit is required. A file the commit lacks is absent; any other failure,
+// of git or of a file, fails, naming the cause.
+func ReadInstructions(ctx context.Context, cwd, commit string, git Git) (Instructions, error) {
+	if git == nil {
+		git = RunGit
 	}
-	if cwd == "" {
-		wd, err := os.Getwd()
-		if err != nil {
-			return nil, err
+	dir, err := filepath.Abs(cwd)
+	if err != nil {
+		return Instructions{}, err
+	}
+	out, err := git(ctx, dir, nil, "rev-parse", "--show-prefix")
+	if notRepository(err) {
+		if commit != "" {
+			return Instructions{}, fmt.Errorf("instruction files: commit %s was given, but %s is in no repository", commit, dir)
 		}
-		cwd = wd
+		return Instructions{}, nil
 	}
-	// Git reports the top level with symlinks resolved.
-	if resolved, err := filepath.EvalSymlinks(cwd); err == nil {
-		cwd = resolved
+	if err != nil {
+		return Instructions{}, fmt.Errorf("instruction files: locating the repository of %s: %w", dir, err)
 	}
-	root, below := cwd, []string(nil)
-	if top, ok := gitRoot(ctx, cwd); ok {
-		if rel, err := filepath.Rel(top, cwd); err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-			root = top
-			if rel != "." {
-				below = strings.Split(rel, string(filepath.Separator))
-			}
-		}
+	if commit == "" {
+		return Instructions{}, fmt.Errorf("instruction files: no commit to read them from was given for %s", dir)
 	}
-	var files []InstructionFile
+	prefix := strings.TrimSuffix(strings.TrimRight(string(out), "\n"), "/")
+	resolved, err := git(ctx, dir, nil, "rev-parse", "--verify", "--end-of-options", commit+"^{commit}")
+	if err != nil {
+		return Instructions{}, fmt.Errorf("instruction files: resolving commit %s: %w", commit, err)
+	}
+	instructions := Instructions{Commit: strings.TrimSpace(string(resolved))}
+	var below []string
+	if prefix != "" {
+		below = strings.Split(prefix, "/")
+	}
+	var paths []string
 	for depth := 0; depth <= len(below); depth++ {
-		dir := filepath.Join(below[:depth]...)
 		for _, name := range instructionNames {
-			rel := filepath.Join(dir, name)
-			content, err := readFile(filepath.Join(root, rel))
-			if errors.Is(err, fs.ErrNotExist) {
-				continue
-			}
-			if err != nil {
-				return nil, fmt.Errorf("reading instruction file %s: %w", filepath.ToSlash(rel), err)
-			}
-			files = append(files, InstructionFile{Path: filepath.ToSlash(rel), Content: content})
+			paths = append(paths, strings.Join(append(below[:depth:depth], name), "/"))
 		}
 	}
-	return files, nil
+	var stdin bytes.Buffer
+	for _, path := range paths {
+		if strings.Contains(path, "\n") {
+			return Instructions{}, fmt.Errorf("instruction files: path %q has a line break", path)
+		}
+		fmt.Fprintf(&stdin, "%s:%s\n", instructions.Commit, path)
+	}
+	// Paths after the colon are relative to the root; symbolic links are
+	// followed within the commit.
+	out, err = git(ctx, dir, stdin.Bytes(), "cat-file", "--batch", "--follow-symlinks")
+	if err != nil {
+		return Instructions{}, fmt.Errorf("instruction files: reading them from commit %s: %w", instructions.Commit, err)
+	}
+	reader := bufio.NewReader(bytes.NewReader(out))
+	for _, path := range paths {
+		content, found, err := batchEntry(reader)
+		if err != nil {
+			return Instructions{}, fmt.Errorf("instruction file %s at commit %s: %w", path, instructions.Commit, err)
+		}
+		if found {
+			instructions.Files = append(instructions.Files, InstructionFile{Path: path, Content: content})
+		}
+	}
+	return instructions, nil
 }
 
-// gitRoot is the git top level of dir; false when dir is in no repository.
-func gitRoot(ctx context.Context, dir string) (string, bool) {
-	command := exec.CommandContext(ctx, "git", "rev-parse", "--show-toplevel")
-	command.Dir = dir
-	out, err := command.Output()
+// batchEntry reads the next entry of `git cat-file --batch
+// --follow-symlinks`: a file's content, or found false when the commit
+// lacks it or its link leads nowhere in the commit.
+func batchEntry(reader *bufio.Reader) (content []byte, found bool, err error) {
+	header, err := reader.ReadString('\n')
 	if err != nil {
-		return "", false
+		return nil, false, fmt.Errorf("git cat-file ended early")
 	}
-	top := strings.TrimSpace(string(out))
-	return top, top != ""
+	header = strings.TrimSuffix(header, "\n")
+	if strings.HasSuffix(header, " missing") {
+		return nil, false, nil
+	}
+	if strings.HasSuffix(header, " ambiguous") {
+		return nil, false, fmt.Errorf("ambiguous")
+	}
+	fields := strings.Fields(header)
+	var kind, size string
+	switch len(fields) {
+	case 2: // symlink, dangling, loop or notdir, and its size
+		kind, size = fields[0], fields[1]
+	case 3: // object, type, size
+		kind, size = fields[1], fields[2]
+	default:
+		return nil, false, fmt.Errorf("unrecognized git cat-file output %q", header)
+	}
+	n, err := strconv.Atoi(size)
+	if err != nil || n < 0 {
+		return nil, false, fmt.Errorf("unrecognized git cat-file output %q", header)
+	}
+	body := make([]byte, n+1)
+	if _, err := io.ReadFull(reader, body); err != nil {
+		return nil, false, fmt.Errorf("git cat-file ended early")
+	}
+	body = body[:n]
+	switch kind {
+	case "blob":
+		return body, true, nil
+	case "dangling":
+		return nil, false, nil
+	case "symlink":
+		return nil, false, fmt.Errorf("a symbolic link out of the repository, to %s", body)
+	case "loop":
+		return nil, false, fmt.Errorf("a loop of symbolic links")
+	case "notdir":
+		return nil, false, fmt.Errorf("a symbolic link through a file")
+	}
+	return nil, false, fmt.Errorf("a %s, not a file", kind)
 }
 
 // SystemPrompt is what a turn appends to the system prompt: the
@@ -204,16 +322,16 @@ func Arguments(request app.TurnRequest, files []InstructionFile) ([]string, erro
 }
 
 func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
-	files, err := InstructionFiles(ctx, request.Cwd, r.ReadFile)
+	instructions, err := ReadInstructions(ctx, request.Cwd, request.InstructionCommit, r.Git)
 	if err != nil {
 		return supervisor.Failed(run.ClassRefused, err)
 	}
-	args, err := Arguments(request, files)
+	args, err := Arguments(request, instructions.Files)
 	if err != nil {
 		return supervisor.Failed(run.ClassInternal, err)
 	}
 	state := &Stream{ResumedSessionID: request.ResumeSessionID}
-	sink = given{EventSink: sink, files: files}
+	sink = given{EventSink: sink, instructions: instructions}
 	evidence := supervisor.Run(ctx, supervisor.Spec{
 		Command:   r.Command,
 		Args:      args,
@@ -229,11 +347,12 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 	return state.Reconcile(evidence, len(request.OutputSchema) > 0)
 }
 
-// given records the instruction files a turn was given once its process
-// has started, so the process's start stays the turn's first event.
+// given records the instruction files a turn was given, and their commit,
+// once its process has started, so the process's start stays the turn's
+// first event.
 type given struct {
 	app.EventSink
-	files []InstructionFile
+	instructions Instructions
 }
 
 func (g given) Event(source, kind string, data map[string]any) {
@@ -241,12 +360,16 @@ func (g given) Event(source, kind string, data map[string]any) {
 	if kind != "PROCESS_STARTED" {
 		return
 	}
-	files := make([]any, len(g.files))
-	for i, file := range g.files {
+	files := make([]any, len(g.instructions.Files))
+	for i, file := range g.instructions.Files {
 		digest := sha256.Sum256(file.Content)
 		files[i] = map[string]any{"path": file.Path, "sha256": hex.EncodeToString(digest[:])}
 	}
-	g.EventSink.Event(run.SourceAgister, "INSTRUCTION_FILES", map[string]any{"files": files})
+	recorded := map[string]any{"files": files}
+	if g.instructions.Commit != "" {
+		recorded["commit"] = g.instructions.Commit
+	}
+	g.EventSink.Event(run.SourceAgister, "INSTRUCTION_FILES", recorded)
 }
 
 // Event is a normalized observation from the stream.

@@ -2,7 +2,8 @@
 # clarity reviews of the same candidate against the same base, concurrently,
 # then the judge's rulings on them. The judge starts once every review ended,
 # if at least one completed (ADR-004), and receives each review's outcome and,
-# if it completed, its recorded output as its collection, and nothing else.
+# if it completed, its recorded output as its collection, and no other input;
+# like any call, it also gets the repository's instruction files (ADR-007).
 #   agister run code_review --param base=<rev> --param candidate=<rev>
 schema: agister.workflow/v1alpha1
 name: code_review

@@ -16,8 +16,9 @@ import (
 // A workflow (ADR-003) runs its fan-out nodes, each an ordinary call of its
 // process over the same resolved values, and, once every one of them ended
 // and at least one completed (ADR-004), its join: a fresh call of its process
-// given the collection of their outcomes and outputs and nothing else. The core transports the outputs without
-// reading them.
+// given the collection of their outcomes and outputs and no other input; like
+// any call, it also gets the repository's instruction files (ADR-007). The
+// core transports the outputs without reading them.
 
 // flow serializes a workflow's cancellation with the start of its nodes and
 // with its end (ADR-003 rule 6): once stopped, no node starts, a node started

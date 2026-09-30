@@ -39,7 +39,7 @@ func workflowRun(t *testing.T, home string) (string, domain.Record) {
 // node is a run of its own that names the workflow run.
 func TestExampleWorkflowEndToEnd(t *testing.T) {
 	home, repo := setup(t, "approve")
-	if r := agister(t, home, repo, "workflow", "show", "review_panel"); r.code != 0 || !strings.Contains(r.stdout, "the collection as input reviews, and nothing else") {
+	if r := agister(t, home, repo, "workflow", "show", "review_panel"); r.code != 0 || !strings.Contains(r.stdout, "the collection as input reviews, and no other input") {
 		t.Fatalf("workflow show: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	r := agister(t, home, repo, "run", "review_panel", "--param", "base=main", "--param", "architecture=a.txt")

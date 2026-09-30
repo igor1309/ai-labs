@@ -538,7 +538,7 @@ fan-out      one: process p, agent a (runtime rt)
   receives   params (none)
   plan       REFUSED: no agent
 join         merge: process j, agent a (runtime rt)
-  receives   the collection as input gathered, and nothing else
+  receives   the collection as input gathered, and no other input
   plan       (none)
 `
 	if code != 0 || stdout.String() != want || !reflect.DeepEqual(spy.shown, []string{"w"}) {

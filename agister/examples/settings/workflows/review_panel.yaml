@@ -2,8 +2,8 @@
 # The fan-out nodes run concurrently, each a call of its process over the
 # same commits, resolved once here. The join starts once both ended, if at
 # least one completed (ADR-004), and receives each one's outcome and, if it
-# completed, its output as its collection, and nothing else: no param
-# reaches it. Run it with:
+# completed, its output as its collection, and no other input: no param
+# reaches it. Like any call, it also gets the repository's instruction files. Run it with:
 #   agister run review_panel --param architecture=<file>
 
 schema: agister.workflow/v1alpha1

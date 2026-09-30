@@ -600,6 +600,30 @@ func TestWorkflowResolvesValuesOnceForEveryFanOutNode(t *testing.T) {
 	}
 }
 
+// A join gets the repository's instruction files as any call does
+// (ADR-007): with no checkout, from the repository's HEAD as it starts;
+// each fan-out node, from its checkout's commit.
+func TestAJoinReadsTheInstructionFilesAtHead(t *testing.T) {
+	h := newFlowHarness()
+	h.workspaces.heads = []string{"sha-at-head"}
+	record := h.store.wait(t, h.submit(t, contract.CallRequest{}))
+	if record.Result.Status != run.Completed {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	candidate := h.store.wait(t, "run-2").Inputs[0].Identity
+	for _, instruction := range []string{"Work as first.", "Work as second."} {
+		if turns := h.runner.turns(instruction); len(turns) != 1 || turns[0].InstructionCommit != candidate {
+			t.Fatalf("%s turns = %+v, want the instruction files of %s", instruction, turns, candidate)
+		}
+	}
+	if turns := h.runner.turns("Join them."); len(turns) != 1 || turns[0].Cwd != "/repo" || turns[0].InstructionCommit != "sha-at-head" {
+		t.Fatalf("join turns = %+v", turns)
+	}
+	if asked := h.workspaces.asked(); !reflect.DeepEqual(asked, []string{"/repo"}) {
+		t.Fatalf("HEAD resolved for %v, want the join's /repo once", asked)
+	}
+}
+
 // The join starts only once every fan-out node has ended: not while one is
 // still running, and when it starts, every fan-out run is finished.
 func TestWorkflowJoinWaitsForTheBarrier(t *testing.T) {

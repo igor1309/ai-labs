@@ -36,7 +36,11 @@ func runWith(ctx context.Context, dir string, env []string, stdin []byte, args .
 	var stdout, stderr bytes.Buffer
 	command.Stdout, command.Stderr = &stdout, &stderr
 	if err := command.Run(); err != nil {
-		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), strings.TrimSpace(stderr.String()))
+		message := strings.TrimSpace(stderr.String())
+		if message == "" {
+			message = err.Error()
+		}
+		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), message)
 	}
 	return stdout.String(), nil
 }
@@ -58,6 +62,23 @@ type Workspaces struct{}
 func (Workspaces) Root(ctx context.Context, cwd string) (string, error) {
 	out, err := run(ctx, cwd, "rev-parse", "--show-toplevel")
 	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(out), nil
+}
+
+// Head is the commit at HEAD of dir's repository; empty when dir is in no
+// repository. Git runs in the C locale, so that case can be told apart from
+// any other failure, which is an error: a broken repository, say, or one
+// without a commit.
+func (Workspaces) Head(ctx context.Context, dir string) (string, error) {
+	out, err := runWith(ctx, dir, []string{"LC_ALL=C"}, nil, "rev-parse", "--verify", "HEAD^{commit}")
+	if err != nil {
+		// Git's words when no directory from dir up is a repository; a
+		// repository whose git directory is broken is a failure.
+		if strings.Contains(err.Error(), "not a git repository (or any") {
+			return "", nil
+		}
 		return "", err
 	}
 	return strings.TrimSpace(out), nil
