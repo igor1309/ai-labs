@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -186,6 +187,32 @@ func Conformance(t *testing.T, subject Subject) {
 		if !is(result, run.Failed, run.ClassRuntimeError) || !strings.HasPrefix(result.Error.Message, "exit code") || result.StderrTail == "" {
 			t.Fatalf("turn = %+v", result)
 		}
+		if reason := lastLine(result.StderrTail); !strings.HasSuffix(result.Error.Message, reason) || result.StderrOmitted != 0 {
+			t.Fatalf("the message does not quote the reason %q: %+v", reason, result)
+		}
+	})
+
+	t.Run("a silent non-zero exit says only its exit code", func(t *testing.T) {
+		result, _ := turn(t, "SCENARIO:exit_silent", nil, context.Background())
+		if !is(result, run.Failed, run.ClassRuntimeError) || result.Exit == nil || result.Exit.Code == nil ||
+			result.Error.Message != "exit code "+strconv.Itoa(*result.Exit.Code) || result.StderrTail != "" {
+			t.Fatalf("turn = %+v", result)
+		}
+	})
+
+	t.Run("stderr beyond the bound is cut and marked, the reason kept", func(t *testing.T) {
+		result, _ := turn(t, "SCENARIO:exit_flooded", nil, context.Background())
+		if !is(result, run.Failed, run.ClassRuntimeError) || result.StderrOmitted <= 0 {
+			t.Fatalf("turn = %+v", result)
+		}
+		marker, rest, _ := strings.Cut(result.StderrTail, "\n")
+		if marker != "["+strconv.FormatInt(result.StderrOmitted, 10)+" earlier bytes of stderr cut]" || len(rest) > 4096 {
+			t.Fatalf("tail of %d bytes starts %q", len(result.StderrTail), marker)
+		}
+		// The fakes print their reason after the noise.
+		if reason := lastLine(result.StderrTail); strings.Contains(reason, "noise") || !strings.HasSuffix(result.Error.Message, ": "+reason) {
+			t.Fatalf("the message does not quote the reason %q: %q", reason, result.Error.Message)
+		}
 	})
 
 	t.Run("clean exit without a result is lost", func(t *testing.T) {
@@ -258,6 +285,11 @@ func Conformance(t *testing.T, subject Subject) {
 			t.Fatal("identity of a missing runtime succeeded")
 		}
 	})
+}
+
+// lastLine is the last line of text.
+func lastLine(text string) string {
+	return text[strings.LastIndex(text, "\n")+1:]
 }
 
 // is reports whether a turn ended with status and a fault of class.

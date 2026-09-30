@@ -19,6 +19,11 @@
 //
 // Turn status precedence: the runtime's `result` message, then Agister's
 // timeout or cancellation, then the process exit.
+//
+// Claude Code reports a failed turn's reason in the result's errors and
+// again on stderr (observed with 2.1.286 resuming an unknown session); a
+// command line it refuses gets no result, only its reason on stderr, which
+// the error message then quotes (supervisor.WithoutTerminal).
 package claudecode
 
 import (

@@ -21,6 +21,11 @@
 // Only turn.completed and turn.failed decide a turn. Top-level `error`
 // events and error items occur mid-turn (reconnects, transport fallback)
 // and are recorded, not terminal.
+//
+// A turn Codex refuses before it starts ends with a non-zero exit and its
+// reason on stderr only, as a prompt over the input limit does
+// (input_too_large, observed with codex-cli 0.159.2); the error message
+// quotes it (supervisor.WithoutTerminal).
 package codex
 
 import (

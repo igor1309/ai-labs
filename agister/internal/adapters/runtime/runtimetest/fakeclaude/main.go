@@ -69,6 +69,13 @@ func main() {
 	case "exit_nonzero":
 		fmt.Fprintln(os.Stderr, "fatal: provider exploded")
 		os.Exit(3)
+	case "exit_silent":
+		os.Exit(3)
+	case "exit_flooded":
+		// More stderr than any bound keeps, then the reason.
+		fmt.Fprintln(os.Stderr, strings.Repeat("noise ", 4000))
+		fmt.Fprintln(os.Stderr, "fatal: provider exploded")
+		os.Exit(3)
 	case "no_result":
 		return
 	case "edit":

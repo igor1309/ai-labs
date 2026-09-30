@@ -275,3 +275,16 @@ func TestThreadCost(t *testing.T) {
 }
 
 func ptr(v float64) *float64 { return &v }
+
+// Codex fails a prompt over its input limit with the reason on stderr and
+// none in the stream (observed with codex-cli 0.159.2); the message quotes
+// it.
+func TestAnOversizedPromptFailsWithCodexsReason(t *testing.T) {
+	runner := &codex.Runner{Command: runtimetest.Binary(t, "fakecodex"), KillGrace: 200 * time.Millisecond}
+	turn := runner.RunTurn(context.Background(), request("SCENARIO:input_too_large"), &runtimetest.Recorder{})
+	if turn.Status != run.Failed || turn.Error == nil || turn.Error.Class != run.ClassRuntimeError ||
+		!strings.HasPrefix(turn.Error.Message, "exit code 1: Error: turn/start: turn/start failed: Input exceeds the maximum length of 1048576 characters.") ||
+		!strings.Contains(turn.StderrTail, `"input_error_code":"input_too_large"`) {
+		t.Fatalf("turn = %+v", turn)
+	}
+}

@@ -288,3 +288,67 @@ func TestARecordedProcessIsNotAFailure(t *testing.T) {
 		t.Fatal("no record error, yet the turn was failed")
 	}
 }
+
+// A non-zero exit quotes the runtime's reasons, its stream's then its
+// stderr's last line, each once; with neither it says only the exit code.
+func TestANonZeroExitQuotesTheRuntimesReasons(t *testing.T) {
+	one := 1
+	failed := func(stderr, stream string) string {
+		evidence := supervisor.Evidence{Exit: &run.Exit{Code: &one}, StderrTail: stderr}
+		turn := supervisor.WithoutTerminal(supervisor.Base(evidence), evidence, stream)
+		if turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError {
+			t.Fatalf("turn = %+v", turn)
+		}
+		return turn.Error.Message
+	}
+	for _, c := range []struct{ stderr, stream, want string }{
+		{"", "", "exit code 1"},
+		{"warming up\nError: too large\n\n", "", "exit code 1: Error: too large"},
+		{"", "stream closed", "exit code 1: stream closed"},
+		{"Error: unauthorized", "401 Unauthorized", "exit code 1: 401 Unauthorized; Error: unauthorized"},
+		{"Error: 401 Unauthorized", "401 Unauthorized", "exit code 1: Error: 401 Unauthorized"},
+		{"Error: " + strings.Repeat("é", 400), "", "exit code 1: Error: " + strings.Repeat("é", 146) + "…"},
+	} {
+		if got := failed(c.stderr, c.stream); got != c.want {
+			t.Errorf("stderr %q, stream %q: message %q, want %q", c.stderr, c.stream, got, c.want)
+		}
+	}
+}
+
+// A runtime's stderr is kept to its last 4096 bytes, cut on a whole rune;
+// the tail's first line and the count say how much was cut, and the reason
+// after the flood is still quoted.
+func TestStderrBeyondTheBoundIsCutAndMarked(t *testing.T) {
+	// 5000 two-byte runes, then the reason: its odd length puts the cut
+	// inside a rune.
+	evidence := supervisor.Run(context.Background(), supervisor.Spec{
+		Command: "/bin/sh",
+		Args:    []string{"-c", `printf 'é%.0s' $(seq 5000) >&2; printf '\nError: too large!\n' >&2; exit 1`},
+		Timeout: 30 * time.Second,
+	}, &events{}, func(string) {})
+	marker, kept, _ := strings.Cut(evidence.StderrTail, "\n")
+	written := int64(5000*2 + len("\nError: too large!\n"))
+	if evidence.StderrOmitted != written-int64(len(kept))-1 || marker != "["+strconv.FormatInt(evidence.StderrOmitted, 10)+" earlier bytes of stderr cut]" {
+		t.Fatalf("omitted %d, marker %q, %d bytes kept", evidence.StderrOmitted, marker, len(kept))
+	}
+	if !strings.HasPrefix(kept, "é") || len(kept) != 4096-1-1 || !strings.HasSuffix(kept, "é\nError: too large!") {
+		t.Fatalf("kept %d bytes: %q…", len(kept), kept[:10])
+	}
+	turn := supervisor.WithoutTerminal(supervisor.Base(evidence), evidence, "")
+	if turn.Error.Message != "exit code 1: Error: too large!" || turn.StderrTail != evidence.StderrTail || turn.StderrOmitted != evidence.StderrOmitted {
+		t.Fatalf("turn = %+v", turn)
+	}
+}
+
+// A runtime that prints nothing to stderr leaves no tail and no cut.
+func TestASilentExitLeavesNoTail(t *testing.T) {
+	evidence := supervisor.Run(context.Background(), supervisor.Spec{
+		Command: "/bin/sh",
+		Args:    []string{"-c", "exit 2"},
+		Timeout: 30 * time.Second,
+	}, &events{}, func(string) {})
+	turn := supervisor.WithoutTerminal(supervisor.Base(evidence), evidence, "")
+	if evidence.StderrTail != "" || evidence.StderrOmitted != 0 || turn.Error.Message != "exit code 2" {
+		t.Fatalf("evidence = %+v, turn = %+v", evidence, turn)
+	}
+}
