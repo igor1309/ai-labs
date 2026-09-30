@@ -8,16 +8,6 @@
 // working directory. Permission mappings for this contract describe what
 // each tool grants under exactly these flags.
 //
-// --restricted also drops the repository's instruction files, so Agister
-// gives them itself: each AGENTS.md and CLAUDE.md from the repository root
-// (the working directory's git top level, or the working directory itself
-// outside any repository) down to the working directory, root first, go in
-// the appended system prompt before the process's instruction, each
-// introduced by its path relative to the root. A file that cannot be read
-// refuses the turn before it starts; a missing one is absent. Once the
-// process has started, an INSTRUCTION_FILES event records each file's path
-// and sha256.
-//
 // Agister never chooses the session ID; Claude Code reports it. A
 // continuation resumes the reported session in place with --resume, and
 // the turn must report that same session, or it fails. A cost limit is
@@ -31,17 +21,9 @@
 package claudecode
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io/fs"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -57,8 +39,6 @@ const Contract = "claude-code/2"
 type Runner struct {
 	Command   string
 	KillGrace time.Duration // zero: the supervisor default
-	// ReadFile reads an instruction file; nil: os.ReadFile.
-	ReadFile func(path string) ([]byte, error)
 }
 
 func New(command string) *Runner {
@@ -82,89 +62,8 @@ func (r *Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
 	return app.RuntimeIdentity{Contract: Contract, Version: version, Resume: true, CostLimit: true}, nil
 }
 
-// InstructionFile is a repository instruction file given to a turn.
-type InstructionFile struct {
-	Path    string // relative to the repository root, slash-separated
-	Content []byte
-}
-
-// instructionNames are the files read from each directory, in order.
-var instructionNames = []string{"AGENTS.md", "CLAUDE.md"}
-
-// InstructionFiles reads the instruction files Claude Code would load for
-// cwd (the process's working directory when empty): each AGENTS.md and
-// CLAUDE.md from the repository root down to cwd, root first. The root is
-// cwd's git top level, or cwd itself outside any repository. A missing
-// file is absent; any other read error fails, naming the file.
-func InstructionFiles(ctx context.Context, cwd string, readFile func(string) ([]byte, error)) ([]InstructionFile, error) {
-	if readFile == nil {
-		readFile = os.ReadFile
-	}
-	if cwd == "" {
-		wd, err := os.Getwd()
-		if err != nil {
-			return nil, err
-		}
-		cwd = wd
-	}
-	// Git reports the top level with symlinks resolved.
-	if resolved, err := filepath.EvalSymlinks(cwd); err == nil {
-		cwd = resolved
-	}
-	root, below := cwd, []string(nil)
-	if top, ok := gitRoot(ctx, cwd); ok {
-		if rel, err := filepath.Rel(top, cwd); err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-			root = top
-			if rel != "." {
-				below = strings.Split(rel, string(filepath.Separator))
-			}
-		}
-	}
-	var files []InstructionFile
-	for depth := 0; depth <= len(below); depth++ {
-		dir := filepath.Join(below[:depth]...)
-		for _, name := range instructionNames {
-			rel := filepath.Join(dir, name)
-			content, err := readFile(filepath.Join(root, rel))
-			if errors.Is(err, fs.ErrNotExist) {
-				continue
-			}
-			if err != nil {
-				return nil, fmt.Errorf("reading instruction file %s: %w", filepath.ToSlash(rel), err)
-			}
-			files = append(files, InstructionFile{Path: filepath.ToSlash(rel), Content: content})
-		}
-	}
-	return files, nil
-}
-
-// gitRoot is the git top level of dir; false when dir is in no repository.
-func gitRoot(ctx context.Context, dir string) (string, bool) {
-	command := exec.CommandContext(ctx, "git", "rev-parse", "--show-toplevel")
-	command.Dir = dir
-	out, err := command.Output()
-	if err != nil {
-		return "", false
-	}
-	top := strings.TrimSpace(string(out))
-	return top, top != ""
-}
-
-// SystemPrompt is what a turn appends to the system prompt: the
-// instruction files, each introduced by its path, then the instruction.
-func SystemPrompt(files []InstructionFile, instruction string) string {
-	var parts []string
-	for _, file := range files {
-		parts = append(parts, "Contents of "+file.Path+" (the repository's instructions; the path is relative to the repository root):\n\n"+string(bytes.TrimRight(file.Content, "\n")))
-	}
-	if instruction != "" {
-		parts = append(parts, instruction)
-	}
-	return strings.Join(parts, "\n\n")
-}
-
-// Arguments builds the command line for a turn given files.
-func Arguments(request app.TurnRequest, files []InstructionFile) ([]string, error) {
+// Arguments builds the command line for a turn.
+func Arguments(request app.TurnRequest) ([]string, error) {
 	for _, tool := range request.Primitives {
 		if tool == "" || strings.ContainsAny(tool, ", ") {
 			return nil, fmt.Errorf("invalid tool primitive %q", tool)
@@ -194,8 +93,8 @@ func Arguments(request app.TurnRequest, files []InstructionFile) ([]string, erro
 	if request.Effort != "" {
 		args = append(args, "--effort", request.Effort)
 	}
-	if prompt := SystemPrompt(files, request.Instruction); prompt != "" {
-		args = append(args, "--append-system-prompt", prompt)
+	if request.Instruction != "" {
+		args = append(args, "--append-system-prompt", request.Instruction)
 	}
 	if len(request.OutputSchema) > 0 {
 		args = append(args, "--json-schema", string(request.OutputSchema))
@@ -204,16 +103,11 @@ func Arguments(request app.TurnRequest, files []InstructionFile) ([]string, erro
 }
 
 func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
-	files, err := InstructionFiles(ctx, request.Cwd, r.ReadFile)
-	if err != nil {
-		return supervisor.Failed(run.ClassRefused, err)
-	}
-	args, err := Arguments(request, files)
+	args, err := Arguments(request)
 	if err != nil {
 		return supervisor.Failed(run.ClassInternal, err)
 	}
 	state := &Stream{ResumedSessionID: request.ResumeSessionID}
-	sink = given{EventSink: sink, files: files}
 	evidence := supervisor.Run(ctx, supervisor.Spec{
 		Command:   r.Command,
 		Args:      args,
@@ -227,26 +121,6 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 		}
 	})
 	return state.Reconcile(evidence, len(request.OutputSchema) > 0)
-}
-
-// given records the instruction files a turn was given once its process
-// has started, so the process's start stays the turn's first event.
-type given struct {
-	app.EventSink
-	files []InstructionFile
-}
-
-func (g given) Event(source, kind string, data map[string]any) {
-	g.EventSink.Event(source, kind, data)
-	if kind != "PROCESS_STARTED" {
-		return
-	}
-	files := make([]any, len(g.files))
-	for i, file := range g.files {
-		digest := sha256.Sum256(file.Content)
-		files[i] = map[string]any{"path": file.Path, "sha256": hex.EncodeToString(digest[:])}
-	}
-	g.EventSink.Event(run.SourceAgister, "INSTRUCTION_FILES", map[string]any{"files": files})
 }
 
 // Event is a normalized observation from the stream.
