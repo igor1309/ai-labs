@@ -411,6 +411,20 @@ func (h *flowHarness) submit(t *testing.T, request contract.CallRequest) string 
 	return id
 }
 
+// stopOnCleanup cancels the workflow id when the test ends, however it
+// ends, and waits for it to finish, so a failure leaves no node or workflow
+// running. A workflow that already finished refuses the cancel.
+func (h *flowHarness) stopOnCleanup(t *testing.T, id string) {
+	t.Cleanup(func() {
+		_ = app.NewRuns(nil, h.hosted, 0).Cancel(context.Background(), id)
+		select {
+		case <-h.store.handle(t, id).done:
+		case <-time.After(hangGuard):
+			t.Errorf("workflow %s never finished after the cleanup's cancel", id)
+		}
+	})
+}
+
 func (h *flowHarness) cancel(t *testing.T, id string) {
 	t.Helper()
 	if err := app.NewRuns(nil, h.hosted, 0).Cancel(context.Background(), id); err != nil {
@@ -502,6 +516,7 @@ func TestWorkflowCollectionOrderIgnoresCompletionOrder(t *testing.T) {
 	first.release = make(chan struct{})
 	twoFinished := h.store.nodeFinished("run-1", "two")
 	id := h.submit(t, contract.CallRequest{})
+	h.stopOnCleanup(t, id)
 
 	// Two completes, and the workflow records it, while one is held; then
 	// one is released.
@@ -1119,5 +1134,54 @@ func TestWorkflowTakesAnUnsuccessfulJoinsResult(t *testing.T) {
 				t.Fatalf("join node %+v, join run %+v", node, join.Result)
 			}
 		})
+	}
+}
+
+// A cancel that took the workflow's callback before the workflow ended,
+// but calls it only after, is refused, and the workflow's outcome stays as
+// it ended.
+func TestWorkflowRefusesACancelCapturedBeforeItEnded(t *testing.T) {
+	h := newFlowHarness()
+	join := h.script("Join them.")
+	join.started, join.release = make(chan struct{}), make(chan struct{})
+	captured, resume := make(chan struct{}), make(chan struct{})
+	var capture, resumed sync.Once
+	h.hosted.OnCaptured(func(id string) {
+		if id == "run-1" {
+			capture.Do(func() { close(captured) })
+			<-resume
+		}
+	})
+	id := h.submit(t, contract.CallRequest{})
+	h.stopOnCleanup(t, id)
+	// Registered last, so it runs first: nothing waits on resume after.
+	t.Cleanup(func() { resumed.Do(func() { close(resume) }) })
+
+	wait(t, join.started, "the join's turn")
+	result := make(chan error, 1)
+	go func() { result <- app.NewRuns(nil, h.hosted, 0).Cancel(context.Background(), id) }()
+	wait(t, captured, "the cancel taking the workflow's callback")
+	// The workflow ends while the cancel holds its callback.
+	close(join.release)
+	ended := h.store.wait(t, id)
+	if ended.Result.Status != run.Completed || string(ended.Result.Output) != `{"joined":true}` {
+		t.Fatalf("result = %+v", ended.Result)
+	}
+	eventsAtEnd := len(h.store.handle(t, id).kinds())
+	resumed.Do(func() { close(resume) })
+	select {
+	case err := <-result:
+		if err == nil {
+			t.Fatal("a cancel called after the workflow ended was accepted")
+		}
+	case <-time.After(hangGuard):
+		t.Fatal("the resumed cancel never returned")
+	}
+	handle := h.store.handle(t, id)
+	handle.mu.Lock()
+	after := handle.record
+	handle.mu.Unlock()
+	if !reflect.DeepEqual(after, ended) || len(h.store.handle(t, id).kinds()) != eventsAtEnd {
+		t.Fatalf("the refused cancel changed the workflow: %+v", after.Result)
 	}
 }

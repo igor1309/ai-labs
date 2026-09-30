@@ -192,6 +192,9 @@ func NewCalls(
 type Hosted struct {
 	mu      sync.Mutex
 	cancels map[string]func() bool
+	// captured, when set, runs after a cancel took a run's callback and
+	// before it calls it; tests use it to let the run end in between.
+	captured func(id string)
 }
 
 func NewHosted() *Hosted { return &Hosted{cancels: map[string]func() bool{}} }
@@ -222,6 +225,9 @@ func (h *Hosted) cancel(id string) bool {
 	h.mu.Lock()
 	cancel, ok := h.cancels[id]
 	h.mu.Unlock()
+	if ok && h.captured != nil {
+		h.captured(id)
+	}
 	return ok && cancel()
 }
 
