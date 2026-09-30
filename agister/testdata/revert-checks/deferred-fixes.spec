@@ -1,9 +1,9 @@
-# Deferred items 1, 2 and 5 and the settings snapshot: each mutation
+# Fixes from earlier deferred work and the settings snapshot: each mutation
 # undoes one fix, and the listed tests must fail with it.
 # Run: scripts/revert-check.py <this file>
 module: agister
 
-# Item 2: verification per primitive.
+# Verification per primitive.
 [calls plan only from primitives verified for the runtime version]
 file: internal/app/resolve.go
 find: enforce.Make(res.effective.Permissions, verified, res.effective.Require
@@ -29,14 +29,14 @@ replace: \tif _, ok := values["verified_versions"]; ok && false {
 test: ./internal/domain/definition TestMappingWideVerificationIsRefused
 test: ./cmd/agister TestRefusedSettingsFieldsFailCheck
 
-# Item 5: fields Agister would not enforce.
+# Fields Agister would not enforce.
 [resources and artifacts are refused]
 file: internal/domain/definition/limits.go
 find: \t\tif _, ok := values[field]; ok {
 replace: \t\tif _, ok := values[field]; ok && false {
 test: ./internal/domain/definition TestResearchPolicyParsesInPlace
 
-# Item 1: effects of a killed run are reaped.
+# Effects of a killed run are reaped.
 [submitting a call starts a reap]
 file: internal/app/background.go
 find: \t\tr.Background.Start(ctx)\n

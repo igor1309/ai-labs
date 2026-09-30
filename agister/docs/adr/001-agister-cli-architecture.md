@@ -59,8 +59,8 @@ adapters satisfy them.
   each component declares the interfaces it requires
                  │
   ┌──────────┬───┴──────┬───────────┬─────────────┐
-settings   provider  repository  git, files,   run records,
- store     runtimes  checkouts   caller values provenance
+settings   provider  repository  git, files,   run records
+ store     runtimes  checkouts   caller values
                     (adapters)
 
 Composition Root: instantiates adapters, wraps them in cross-cutting
@@ -77,7 +77,7 @@ no interface is shared between components (rule 13).
 |---|---|
 | **Agent** | Reusable runtime profile: runtime, model, model family, effort, whether its sessions may be continued. No task, no permissions. |
 | **Process** | A named agent call: instruction, inputs and their sources, workspace, output contract, references to an agent and a policy. |
-| **Policy** | Reusable limits: allowed and denied permissions, time, cost, attempts, constraints. |
+| **Policy** | Reusable limits: allowed and denied permissions, time, cost, attempts. |
 | **Permission** | A named right in Agister's vocabulary, e.g. read the repository, run commands. |
 | **Runtime feature** | What a runtime adapter supports, e.g. session resume, structured output. A property of the adapter, not a setting. |
 | **Permission mapping** | For one runtime adapter: its restriction primitives (tools, sandbox modes, …) and every permission each primitive actually grants. |
@@ -117,7 +117,7 @@ The core owns what definitions mean (schemas, versions, validation). The
 interfaces that read definitions only supply documents and their origin.
 
 Code adds mechanisms only where settings cannot express them: runtimes,
-input source kinds, constraint kinds.
+input source kinds.
 
 ### 3. Limits only narrow
 
@@ -193,7 +193,7 @@ agent receives and what is recorded.
 
 ### 9. Agents cannot reach Agister's state
 
-Agister's state directory (global settings, evidence and provenance) is
+Agister's state directory (global settings and evidence) is
 outside every agent's workspace and permissions, and reachable only through
 Agister itself. A project's settings are files in the user's repository,
 like any other: an agent given write access to the repository can change
@@ -205,10 +205,6 @@ Evidence records, per call, the Agister identity separately from the
 provider session, process and workspace identities, plus the exact definitions
 with digests, inputs, enforcement plan, ordered events, runtime output and
 outcome. Anything needed to understand a call is evidence.
-
-Constraints about a revision's origin use only provenance Agister recorded.
-Missing provenance means unknown, never satisfied. Each constraint
-definition states how unknown is treated.
 
 Diagnostics describe Agister's own machinery. The composition root applies
 them as decorators around adapters. They never change arguments, results
@@ -308,7 +304,7 @@ through the same contract, and in-process hosting is removed.
 ## Explicit non-decisions
 
 Implementation language and libraries; settings formats and layout; evidence
-storage; which runtimes, input sources and constraint kinds ship first; the
+storage; which runtimes and input sources ship first; the
 permission vocabulary's contents; how mappings are verified; retention and
 redaction of recorded output; diagnostics technology; OS isolation
 mechanisms; the service, its transport and lifecycle.
@@ -329,19 +325,18 @@ mechanisms; the service, its transport and lifecycle.
    upgraded; completed means contract-valid output, whatever it says.
 8. Every refusal happens before the provider turn starts and is recorded.
 9. Inputs are resolved to immutable values before the call.
-10. Agents cannot reach settings, evidence or provenance.
-11. Missing provenance is unknown, never satisfaction.
-12. Every effect is owned and bounded, and ordinary exits clean it up; an
+10. Agents cannot reach settings or evidence.
+11. Every effect is owned and bounded, and ordinary exits clean it up; an
     unfinished run is lost. After the CLI is killed with SIGKILL, a reap that
     the next submitted call starts beside it (never inside it) attempts to
     undo the effects the run recorded; an
     attempt can fail, is bounded in time and is recorded on the run.
     Only a deliberate continuation reads another run, and never changes its
     record; it resumes the run's session in place.
-13. Diagnostics never change behavior and are not evidence.
-14. Concrete implementations are connected only at the composition root.
-15. Humans and agents share one CLI surface that depends only on the
+12. Diagnostics never change behavior and are not evidence.
+13. Concrete implementations are connected only at the composition root.
+14. Humans and agents share one CLI surface that depends only on the
     service-shaped client contract.
-16. When the service exists, it is the single operational authority.
-17. Each component declares the interfaces it requires; no required
+15. When the service exists, it is the single operational authority.
+16. Each component declares the interfaces it requires; no required
     interface is shared between components.
