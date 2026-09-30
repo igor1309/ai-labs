@@ -1,0 +1,103 @@
+name: ntfy-sender Deploy
+
+# Static page, no build: run the browser test (ntfy-sender-core.yml), then
+# deploy on trunk push to the Cloudflare Pages project and verify the
+# production URL serves the page.
+
+on:
+  push:
+    branches:
+      - trunk
+    paths:
+      - "ntfy-sender/public/**"
+      - "ntfy-sender/tests/**"
+      - "ntfy-sender/wrangler.toml"
+      - ".github/workflows/ntfy-sender-core.yml"
+      - ".github/workflows/ntfy-sender-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ntfy-sender-deploy
+  cancel-in-progress: false
+
+env:
+  PROJECT_NAME: ntfy-sender
+
+jobs:
+  core:
+    uses: ./.github/workflows/ntfy-sender-core.yml
+    with:
+      ref: ${{ github.sha }}
+
+  deploy:
+    needs: [core]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Ensure Pages project exists
+        run: |
+          api="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${PROJECT_NAME}"
+          status="$(curl -sS -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" "${api}")"
+          echo "Project lookup HTTP status: ${status}"
+          if [ "${status}" = "404" ]; then
+            WRANGLER_LOG_PATH=.wrangler/logs npx wrangler pages project create "${PROJECT_NAME}" --production-branch trunk
+          elif [ "${status}" != "200" ]; then
+            echo "Unexpected status looking up Pages project"
+            exit 1
+          fi
+
+      - name: Deploy
+        run: WRANGLER_LOG_PATH=.wrangler/logs npx wrangler pages deploy public --project-name "${PROJECT_NAME}" --branch trunk --commit-dirty=true --cwd ntfy-sender
+
+      - name: Verify production URL
+        run: |
+          subdomain="$(curl -sS -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${PROJECT_NAME}" \
+            | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{console.log(JSON.parse(s).result.subdomain)})')"
+          url="https://${subdomain}/"
+          echo "Production URL: ${url}"
+          echo "Production URL: ${url}" >> "$GITHUB_STEP_SUMMARY"
+          # The pages.dev alias can take a moment to pick up a new deployment.
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if curl -sS --max-time 20 "${url}" | grep -q "<title>ntfy send</title>"; then
+              echo "Page verified"
+              exit 0
+            fi
+            echo "Attempt ${attempt}: page not served yet"
+            sleep 10
+          done
+          echo "Production URL did not serve the ntfy-sender page"
+          exit 1
+
+  notify:
+    if: ${{ always() && !cancelled() && (needs.core.result == 'failure' || needs.deploy.result == 'failure') }}
+    needs: [core, deploy]
+    uses: ./.github/workflows/notify-telegram-failure.yml
+    with:
+      title: "ntfy-sender Deploy"
+      ref_label: "branch"
+      ref_value: ${{ github.ref_name }}
+      job_results: |
+        core=${{ needs.core.result }}
+        deploy=${{ needs.deploy.result }}
+    secrets:
+      CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+      CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}

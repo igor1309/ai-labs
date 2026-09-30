@@ -63,6 +63,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | docker/langfuse | Observability | Shared Langfuse v4 instance for tracing and cost tracking |
 | dragoman | Editorial channel | "The Dragoman" Telegram channel |
 | clipdeck | Web App | iPhone copy library for private prompts and skills |
+| ntfy-sender | Static page | iPhone-friendly page for sending ntfy notifications, deployed to Cloudflare Pages |
 | dashboard-sync-agent | Agent definition | Dashboard and loc-script sync |
 | neris | Framework | Agentic execution layer in Swift |
 | cairana | Product (research) | AI assistant for psychologists. Turns sessions into structured notes, case context, and next steps; working name in naming-validation stage |

@@ -32,6 +32,8 @@ jobs:
       reinix-ci: ${{ steps.filter.outputs.reinix-ci }}
       clipdeck: ${{ steps.filter.outputs.clipdeck }}
       clipdeck-ci: ${{ steps.filter.outputs.clipdeck-ci }}
+      ntfy-sender: ${{ steps.filter.outputs.ntfy-sender }}
+      ntfy-sender-ci: ${{ steps.filter.outputs.ntfy-sender-ci }}
       noreta: ${{ steps.filter.outputs.noreta }}
       noreta-ci: ${{ steps.filter.outputs.noreta-ci }}
       agister: ${{ steps.filter.outputs.agister }}
@@ -131,6 +133,13 @@ jobs:
             clipdeck-ci:
               - ".github/workflows/clipdeck-core.yml"
               - ".github/workflows/clipdeck-deploy.yml"
+            ntfy-sender:
+              - "ntfy-sender/public/**"
+              - "ntfy-sender/tests/**"
+              - "ntfy-sender/wrangler.toml"
+            ntfy-sender-ci:
+              - ".github/workflows/ntfy-sender-core.yml"
+              - ".github/workflows/ntfy-sender-deploy.yml"
             noreta:
               - "noreta/src/**"
               - "noreta/tests/**"
@@ -218,6 +227,11 @@ jobs:
     needs: [changes]
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.clipdeck == 'true' || needs.changes.outputs.clipdeck-ci == 'true' || needs.changes.outputs.shared == 'true' }}
     uses: ./.github/workflows/clipdeck-core.yml
+
+  ntfy-sender-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.ntfy-sender == 'true' || needs.changes.outputs.ntfy-sender-ci == 'true' || needs.changes.outputs.shared == 'true' }}
+    uses: ./.github/workflows/ntfy-sender-core.yml
 
   noreta-core:
     needs: [changes]
@@ -326,7 +340,7 @@ jobs:
 
   report:
     if: ${{ always() }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, noreta-core, agister-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, ntfy-sender-core, noreta-core, agister-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs passed
@@ -337,8 +351,8 @@ jobs:
           done
 
   notify:
-    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.reinix-core.result == 'failure' || needs.clipdeck-core.result == 'failure' || needs.noreta-core.result == 'failure' || needs.agister-core.result == 'failure' || needs.agonara-core.result == 'failure' || needs.foliotell-core.result == 'failure' || needs.foliotell-android-core.result == 'failure' || needs.notio-core.result == 'failure' || needs.notio-frontend-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.dev-skills-validation.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, noreta-core, agister-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
+    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.reinix-core.result == 'failure' || needs.clipdeck-core.result == 'failure' || needs.ntfy-sender-core.result == 'failure' || needs.noreta-core.result == 'failure' || needs.agister-core.result == 'failure' || needs.agonara-core.result == 'failure' || needs.foliotell-core.result == 'failure' || needs.foliotell-android-core.result == 'failure' || needs.notio-core.result == 'failure' || needs.notio-frontend-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.dev-skills-validation.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, ntfy-sender-core, noreta-core, agister-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "CI"
@@ -352,6 +366,7 @@ jobs:
         corpus-scout-core=${{ needs.corpus-scout-core.result }}
         reinix-core=${{ needs.reinix-core.result }}
         clipdeck-core=${{ needs.clipdeck-core.result }}
+        ntfy-sender-core=${{ needs.ntfy-sender-core.result }}
         noreta-core=${{ needs.noreta-core.result }}
         agister-core=${{ needs.agister-core.result }}
         agonara-core=${{ needs.agonara-core.result }}
