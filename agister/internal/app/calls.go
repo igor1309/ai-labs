@@ -121,9 +121,6 @@ type InputProvider interface {
 type CallWorkspaces interface {
 	Root(ctx context.Context, cwd string) (string, error)
 	Checkout(ctx context.Context, repository, revision string) (dir string, release func() error, err error)
-	// Head is the commit at HEAD of dir's repository; empty when dir is in
-	// no repository. Any other failure is an error.
-	Head(ctx context.Context, dir string) (string, error)
 }
 
 // CallChanges names the content of a call's checkout and captures what
@@ -397,15 +394,6 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	release = workspace.Release
 	record.Workspace = workspace.Dir
 	revision, _ := revisionOf(inputs, res.process.Checkout)
-	// Every turn reads the instruction files from one commit (ADR-007): the
-	// checkout's, else the repository's HEAD as the call starts.
-	instructionCommit := revision
-	if !workspace.Owned {
-		if instructionCommit, err = c.workspaces.Head(ctx, workspace.Dir); err != nil {
-			fail(fmt.Errorf("resolving the commit of the instruction files: %w", err))
-			return
-		}
-	}
 	// The content a passing verification run checked, whose patch is what
 	// the call delivers (ADR-005 rule 1).
 	var verified string
@@ -428,17 +416,16 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	}
 
 	request := TurnRequest{
-		Prompt:            prompt.Inputs(inputs),
-		Instruction:       prompt.Instruction(res.process.Instruction, res.plan.Granted, res.plan.Withheld),
-		Cwd:               workspace.Dir,
-		InstructionCommit: instructionCommit,
-		ResumeSessionID:   resumeSessionID,
-		MaxCostUSD:        res.effective.MaxCostUSD,
-		Model:             res.agent.Model,
-		Effort:            res.agent.Effort,
-		Primitives:        res.plan.Primitives,
-		Timeout:           res.effective.Timeout,
-		OutputSchema:      res.schema,
+		Prompt:          prompt.Inputs(inputs),
+		Instruction:     prompt.Instruction(res.process.Instruction, res.plan.Granted, res.plan.Withheld),
+		Cwd:             workspace.Dir,
+		ResumeSessionID: resumeSessionID,
+		MaxCostUSD:      res.effective.MaxCostUSD,
+		Model:           res.agent.Model,
+		Effort:          res.agent.Effort,
+		Primitives:      res.plan.Primitives,
+		Timeout:         res.effective.Timeout,
+		OutputSchema:    res.schema,
 	}
 	_ = handle.Update(record)
 

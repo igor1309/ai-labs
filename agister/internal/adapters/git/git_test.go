@@ -138,36 +138,6 @@ func TestCheckoutIsDetachedAndReleased(t *testing.T) {
 	}
 }
 
-// Head is the commit at HEAD where a call without a checkout starts, from
-// any directory of the repository; outside any repository it is empty.
-// Any other failure is an error, never taken as no repository.
-func TestHeadIsTheCommitAtHead(t *testing.T) {
-	dir := repository(t)
-	os.Mkdir(filepath.Join(dir, "sub"), 0o700)
-	workspaces := git.Workspaces{}
-	for _, at := range []string{dir, filepath.Join(dir, "sub")} {
-		if head, err := workspaces.Head(context.Background(), at); err != nil || head != sh(t, dir, "rev-parse", "HEAD") {
-			t.Fatalf("head at %s = %q, %v", at, head, err)
-		}
-	}
-	outside, err := filepath.EvalSymlinks(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("GIT_CEILING_DIRECTORIES", outside)
-	if head, err := workspaces.Head(context.Background(), outside); err != nil || head != "" {
-		t.Fatalf("outside any repository: %q, %v", head, err)
-	}
-	unborn := filepath.Join(outside, "unborn")
-	sh(t, outside, "init", "--quiet", unborn)
-	if head, err := workspaces.Head(context.Background(), unborn); err == nil {
-		t.Fatalf("a repository without a commit: %q", head)
-	}
-	if head, err := workspaces.Head(context.Background(), filepath.Join(outside, "gone")); err == nil || !strings.Contains(err.Error(), "gone") {
-		t.Fatalf("a directory that is gone: %q, %v", head, err)
-	}
-}
-
 // The content identity covers what is committed, edited and untracked, but
 // not ignored; the patch from the revision to it, applied to a copy of the
 // revision, makes that content exactly, and neither touches the checkout's

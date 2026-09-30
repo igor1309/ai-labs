@@ -714,7 +714,7 @@ func showWorkflow(w io.Writer, view contract.WorkflowView) {
 		}
 		node(label, fanOut, "params "+or(strings.Join(fanOut.Params, ", "), "(none)"))
 	}
-	node("join", view.Join, "the collection as input "+or(view.Collection, "(none)")+", and no other input")
+	node("join", view.Join, "the collection as input "+or(view.Collection, "(none)")+", and nothing else")
 	if view.Refusal != "" {
 		lines = append(lines, [2]string{"run", "REFUSED: " + view.Refusal})
 	}

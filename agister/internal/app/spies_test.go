@@ -177,31 +177,6 @@ type workspacesSpy struct {
 	discarded   [][2]string // repository, dir
 	discardErr  error
 	discardHook func(ctx context.Context, dir string) error // runs first; a non-nil result is returned
-	// heads names the commit at HEAD, one per resolution, then the last
-	// again; headsAsked is the directories it was asked for.
-	heads      []string
-	headErr    error
-	headsAsked []string
-}
-
-func (s *workspacesSpy) Head(_ context.Context, dir string) (string, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.headsAsked = append(s.headsAsked, dir)
-	if s.headErr != nil || len(s.heads) == 0 {
-		return "", s.headErr
-	}
-	head := s.heads[0]
-	if len(s.heads) > 1 {
-		s.heads = s.heads[1:]
-	}
-	return head, nil
-}
-
-func (s *workspacesSpy) asked() []string {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return append([]string(nil), s.headsAsked...)
 }
 
 func (s *workspacesSpy) Discard(ctx context.Context, repository, dir string) error {

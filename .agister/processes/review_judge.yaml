@@ -1,8 +1,7 @@
 # Rules on the findings of one change's reviews against
 # prompts/code-review-judge.md: fix, defer, owner or reject. The join of the
-# code_review workflow: the judge sees the reviews, as the workflow's
-# collection, and the repository's instruction files, as any call does
-# (ADR-007); never the code, and nothing its caller supplies. It cannot be
+# code_review workflow: the judge sees only the reviews, as the workflow's
+# collection, never the code, and nothing its caller supplies. It cannot be
 # run on its own (refused: the collection goes only to a workflow's join),
 # so no one can hand it a review; run agister run code_review instead.
 schema: agister.process/v1alpha1

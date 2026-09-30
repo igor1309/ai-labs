@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -229,64 +228,6 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 	}
 	if !reflect.DeepEqual(h.recorder.raw, []string{`{"raw":true}`}) {
 		t.Fatalf("raw = %v", h.recorder.raw)
-	}
-}
-
-// withoutCheckout makes the harness's process p work in the repository
-// itself, without a checkout of its own.
-func withoutCheckout(h *harness) {
-	docs := h.defs.docs
-	docs[definition.KindProcess]["p"] = strings.Replace(docs[definition.KindProcess]["p"], "workspace:\n  checkout: candidate_revision\n", "", 1)
-	docs[definition.KindPolicy]["pol"] = strings.Replace(docs[definition.KindPolicy]["pol"], "scope: candidate", "scope: repository", 1)
-}
-
-// Every turn of a call reads the instruction files from one commit
-// (ADR-007): a call with a checkout, its checkout's, repair turns
-// included, without asking for HEAD; a call without one, the repository's
-// HEAD, resolved once as the call starts.
-func TestEveryTurnCarriesTheCommitOfItsInstructionFiles(t *testing.T) {
-	h := newHarness()
-	verifying(h)
-	h.commands.exits = []int{1, 0}
-	identities := 0
-	h.changes.identify = func() string { identities++; return fmt.Sprintf("tree-%d", identities) }
-	h.workspaces.heads = []string{"sha-at-head"}
-	record := h.call(t, contract.CallRequest{})
-	turns := h.runner.calls()
-	if record.Result.Status != run.Completed || len(turns) != 2 || turns[1].ResumeSessionID == "" {
-		t.Fatalf("result %+v, turns %+v", record.Result, turns)
-	}
-	for i, turn := range turns {
-		if turn.InstructionCommit != "sha-HEAD" {
-			t.Fatalf("turn %d reads the instruction files from %q, want the checkout's sha-HEAD", i+1, turn.InstructionCommit)
-		}
-	}
-	if asked := h.workspaces.asked(); len(asked) != 0 {
-		t.Fatalf("HEAD resolved for %v", asked)
-	}
-
-	h = newHarness()
-	withoutCheckout(h)
-	h.workspaces.heads = []string{"sha-at-start", "sha-later"}
-	record = h.call(t, contract.CallRequest{})
-	turns = h.runner.calls()
-	if record.Result.Status != run.Completed || len(turns) != 1 || turns[0].Cwd != "/repo" || turns[0].InstructionCommit != "sha-at-start" {
-		t.Fatalf("result %+v, turns %+v", record.Result, turns)
-	}
-	if asked := h.workspaces.asked(); !reflect.DeepEqual(asked, []string{"/repo"}) {
-		t.Fatalf("HEAD resolved for %v, want /repo once", asked)
-	}
-}
-
-// A HEAD that cannot be resolved fails the call before its turn, naming
-// the cause: it is not taken as no repository.
-func TestAHeadThatCannotBeResolvedFailsTheCallBeforeItsTurn(t *testing.T) {
-	h := newHarness()
-	withoutCheckout(h)
-	h.workspaces.headErr = errors.New("git rev-parse --verify HEAD^{commit}: fatal: bad object HEAD")
-	record := h.call(t, contract.CallRequest{})
-	if class(record) != run.ClassInternal || !strings.Contains(message(record), "bad object HEAD") || len(h.runner.calls()) != 0 {
-		t.Fatalf("result %+v, turns %d", record.Result, len(h.runner.calls()))
 	}
 }
 

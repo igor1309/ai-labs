@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
-	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -18,30 +17,8 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// requests makes turn requests as the core sends them: in a repository of
-// its own, reading the instruction files from its one commit.
-func requests(t *testing.T) func(prompt string) app.TurnRequest {
-	t.Helper()
-	dir := t.TempDir()
-	for _, args := range [][]string{
-		{"init", "--quiet"},
-		{"-c", "user.name=T", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false", "-c", "maintenance.auto=false", "commit", "--quiet", "--no-verify", "--allow-empty", "-m", "empty"},
-	} {
-		command := exec.Command("git", args...)
-		command.Dir = dir
-		if out, err := command.CombinedOutput(); err != nil {
-			t.Fatalf("git %v: %v\n%s", args, err, out)
-		}
-	}
-	command := exec.Command("git", "rev-parse", "HEAD")
-	command.Dir = dir
-	head, err := command.Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	return func(prompt string) app.TurnRequest {
-		return app.TurnRequest{Prompt: prompt, Cwd: dir, InstructionCommit: strings.TrimSpace(string(head)), Primitives: []string{"Read"}, Timeout: time.Minute, OutputSchema: json.RawMessage(`{"type":"object"}`)}
-	}
+func request(prompt string) app.TurnRequest {
+	return app.TurnRequest{Prompt: prompt, Primitives: []string{"Read"}, Timeout: time.Minute, OutputSchema: json.RawMessage(`{"type":"object"}`)}
 }
 
 // The decorator must be substitutable for what it wraps.
@@ -53,7 +30,7 @@ func TestDecoratorConformance(t *testing.T) {
 		},
 		Fake:     runtimetest.Binary(t, "fakeclaude"),
 		Contract: claudecode.Contract,
-		Request:  requests(t),
+		Request:  request,
 	})
 }
 
@@ -62,7 +39,7 @@ func TestLogsAreCorrelatedAndOmitPrompts(t *testing.T) {
 	log := slog.New(logging.Handler{Handler: slog.NewJSONHandler(&buffer, &slog.HandlerOptions{Level: slog.LevelInfo})})
 	runner := logging.Runner{Inner: claudecode.New(runtimetest.Binary(t, "fakeclaude")), Adapter: "claude-code", Log: log}
 	ctx := app.WithCorrelation(context.Background(), "run_id", "run-1", "process", "p")
-	runner.RunTurn(ctx, requests(t)("secret prompt SCENARIO:approve"), &runtimetest.Recorder{})
+	runner.RunTurn(ctx, request("secret prompt SCENARIO:approve"), &runtimetest.Recorder{})
 
 	var messages []string
 	for _, line := range strings.Split(strings.TrimSpace(buffer.String()), "\n") {
@@ -108,7 +85,7 @@ func TestFailureToRecordTheProcessReachesTheRuntime(t *testing.T) {
 	log := slog.New(slog.NewJSONHandler(&buffer, nil))
 	inner := &starter{}
 	failure := errors.New("disk full")
-	logging.Runner{Inner: inner, Adapter: "x", Log: log}.RunTurn(context.Background(), requests(t)("p"), &runtimetest.Recorder{ProcessErr: failure})
+	logging.Runner{Inner: inner, Adapter: "x", Log: log}.RunTurn(context.Background(), request("p"), &runtimetest.Recorder{ProcessErr: failure})
 	if !errors.Is(inner.got, failure) {
 		t.Fatalf("the runtime heard %v", inner.got)
 	}

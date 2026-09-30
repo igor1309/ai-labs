@@ -5,7 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -36,18 +36,13 @@ func request(prompt string) app.TurnRequest {
 }
 
 func TestConformance(t *testing.T) {
-	repo, head := repository(t, map[string]string{"AGENTS.md": "root agents"})
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {
 			return &claudecode.Runner{Command: command, KillGrace: 200 * time.Millisecond}
 		},
 		Fake:     runtimetest.Binary(t, "fakeclaude"),
 		Contract: claudecode.Contract,
-		Request: func(prompt string) app.TurnRequest {
-			r := request(prompt)
-			r.Cwd, r.InstructionCommit = repo, head
-			return r
-		},
+		Request:  request,
 	})
 }
 
@@ -250,35 +245,15 @@ func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
 	}
 }
 
-// git runs git in dir as a test's author, and returns its output.
-func git(t *testing.T, dir string, args ...string) string {
+// repository makes a git repository holding files, by path relative to it.
+func repository(t *testing.T, files map[string]string) string {
 	t.Helper()
-	config := []string{"-c", "user.name=T", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false", "-c", "maintenance.auto=false"}
-	command := exec.Command("git", append(config, args...)...)
-	command.Dir = dir
-	out, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("git %v: %v\n%s", args, err, out)
+	dir := t.TempDir()
+	if out, err := exec.Command("git", "init", "--quiet", dir).CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
 	}
-	return strings.TrimSpace(string(out))
-}
-
-// repository makes a git repository whose first commit holds files, by
-// path relative to it, and returns it and that commit.
-func repository(t *testing.T, files map[string]string) (dir, head string) {
-	t.Helper()
-	dir = t.TempDir()
-	git(t, dir, "init", "--quiet")
-	return dir, commit(t, dir, files)
-}
-
-// commit writes files into dir and commits every change there.
-func commit(t *testing.T, dir string, files map[string]string) string {
-	t.Helper()
 	write(t, dir, files)
-	git(t, dir, "add", "--all")
-	git(t, dir, "commit", "--quiet", "--no-verify", "--allow-empty", "-m", "change")
-	return git(t, dir, "rev-parse", "HEAD")
+	return dir
 }
 
 func write(t *testing.T, dir string, files map[string]string) {
@@ -302,22 +277,11 @@ func paths(files []claudecode.InstructionFile) []string {
 	return out
 }
 
-func contents(files []claudecode.InstructionFile) []string {
-	out := []string{}
-	for _, file := range files {
-		out = append(out, string(file.Content))
-	}
-	return out
-}
-
 // Claude Code loads AGENTS.md and CLAUDE.md along the path from the
 // repository root to the working directory, root first; a directory
-// beside or below that path gives nothing, and a symbolic link is followed
-// within the commit.
+// beside or below that path gives nothing.
 func TestInstructionFilesFollowThePathFromTheRoot(t *testing.T) {
-	repo := t.TempDir()
-	git(t, repo, "init", "--quiet")
-	write(t, repo, map[string]string{
+	repo := repository(t, map[string]string{
 		"AGENTS.md":                  "root agents",
 		"CLAUDE.md":                  "root claude",
 		"pkg/AGENTS.md":              "pkg agents",
@@ -327,195 +291,78 @@ func TestInstructionFilesFollowThePathFromTheRoot(t *testing.T) {
 		"pkg/sibling/CLAUDE.md":      "sibling below the root",
 		"pkg/sub/notes/instructions": "not an instruction file",
 	})
-	if err := os.Symlink("AGENTS.md", filepath.Join(repo, "pkg", "CLAUDE.md")); err != nil {
-		t.Fatal(err)
-	}
-	head := commit(t, repo, nil)
-	got, err := claudecode.ReadInstructions(context.Background(), filepath.Join(repo, "pkg", "sub"), head, nil)
+	files, err := claudecode.InstructionFiles(context.Background(), filepath.Join(repo, "pkg", "sub"), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantPaths := []string{"AGENTS.md", "CLAUDE.md", "pkg/AGENTS.md", "pkg/CLAUDE.md", "pkg/sub/CLAUDE.md"}
-	wantContents := []string{"root agents", "root claude", "pkg agents", "pkg agents", "sub claude"}
-	if got.Commit != head || !reflect.DeepEqual(paths(got.Files), wantPaths) || !reflect.DeepEqual(contents(got.Files), wantContents) {
-		t.Fatalf("instructions = %s %q %q, want %s %q %q", got.Commit, paths(got.Files), contents(got.Files), head, wantPaths, wantContents)
+	want := []string{"AGENTS.md", "CLAUDE.md", "pkg/AGENTS.md", "pkg/sub/CLAUDE.md"}
+	if got := paths(files); !reflect.DeepEqual(got, want) {
+		t.Fatalf("paths = %q, want %q", got, want)
+	}
+	if string(files[0].Content) != "root agents" || string(files[3].Content) != "sub claude" {
+		t.Fatalf("files = %+v", files)
 	}
 	// At the root, only the root's own.
-	got, err = claudecode.ReadInstructions(context.Background(), repo, head, nil)
-	if err != nil || !reflect.DeepEqual(paths(got.Files), []string{"AGENTS.md", "CLAUDE.md"}) {
-		t.Fatalf("paths = %q, %v", paths(got.Files), err)
+	files, err = claudecode.InstructionFiles(context.Background(), repo, nil)
+	if err != nil || !reflect.DeepEqual(paths(files), []string{"AGENTS.md", "CLAUDE.md"}) {
+		t.Fatalf("paths = %q, %v", paths(files), err)
 	}
 }
 
-// The files are the commit's: an uncommitted edit, a staged file and a
-// deletion from the working tree change nothing; a file the commit lacks
-// is absent.
-func TestInstructionFilesComeFromTheCommitNotTheWorkingTree(t *testing.T) {
-	repo, head := repository(t, map[string]string{"AGENTS.md": "committed", "CLAUDE.md": "committed claude", "pkg/x.go": "package x"})
-	write(t, repo, map[string]string{"AGENTS.md": "edited", "pkg/AGENTS.md": "staged", "pkg/CLAUDE.md": "untracked"})
-	git(t, repo, "add", "pkg/AGENTS.md")
-	if err := os.Remove(filepath.Join(repo, "CLAUDE.md")); err != nil {
-		t.Fatal(err)
-	}
-	got, err := claudecode.ReadInstructions(context.Background(), filepath.Join(repo, "pkg"), head, nil)
-	if err != nil || !reflect.DeepEqual(paths(got.Files), []string{"AGENTS.md", "CLAUDE.md"}) ||
-		!reflect.DeepEqual(contents(got.Files), []string{"committed", "committed claude"}) {
-		t.Fatalf("files = %q %q, %v", paths(got.Files), contents(got.Files), err)
-	}
-}
-
-// promptOf is the appended system prompt of the turn sink recorded, and
-// the INSTRUCTION_FILES event it recorded.
-func promptOf(t *testing.T, sink *runtimetest.Recorder) (string, map[string]any) {
-	t.Helper()
-	var args []string
-	var recorded map[string]any
-	for _, event := range sink.Events {
-		switch event.Kind {
-		case "PROCESS_STARTED":
-			args, _ = event.Data["args"].([]string)
-		case "INSTRUCTION_FILES":
-			recorded = event.Data
-		}
-	}
-	for i, arg := range args {
-		if arg == "--append-system-prompt" && i+1 < len(args) {
-			return args[i+1], recorded
-		}
-	}
-	return "", recorded
-}
-
-// The commit a call pinned is what every turn reads: a commit the agent
-// makes, or an edit, between turns does not change what a later turn gets.
-func TestALaterCommitDoesNotChangeWhatALaterTurnGets(t *testing.T) {
-	repo, pinned := repository(t, map[string]string{"AGENTS.md": "as the call started"})
-	runner := &claudecode.Runner{Command: runtimetest.Binary(t, "fakeclaude")}
-	r := request("SCENARIO:approve")
-	r.Cwd, r.InstructionCommit = repo, pinned
-	for turn := 1; turn <= 2; turn++ {
-		sink := &runtimetest.Recorder{}
-		if got := runner.RunTurn(context.Background(), r, sink); got.Status != run.Completed {
-			t.Fatalf("turn %d = %+v", turn, got)
-		}
-		prompt, recorded := promptOf(t, sink)
-		if !strings.Contains(prompt, "as the call started") || strings.Contains(prompt, "committed during the call") || recorded["commit"] != pinned {
-			t.Fatalf("turn %d: prompt %q, recorded %v", turn, prompt, recorded)
-		}
-		commit(t, repo, map[string]string{"AGENTS.md": "committed during the call"})
-	}
-}
-
-// Outside any repository there are none, even with instruction files in
-// the working directory, and no commit is recorded; a commit given for
-// such a directory is a mistake, not ignored.
-func TestNoRepositoryGivesNoInstructionFiles(t *testing.T) {
+// Outside any repository the working directory is the root: nothing
+// above it is read.
+func TestInstructionFilesOutsideARepositoryAreTheWorkingDirectorysOwn(t *testing.T) {
 	base, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("GIT_CEILING_DIRECTORIES", base)
-	write(t, base, map[string]string{"work/AGENTS.md": "agents", "work/CLAUDE.md": "claude"})
-	work := filepath.Join(base, "work")
-	got, err := claudecode.ReadInstructions(context.Background(), work, "", nil)
-	if err != nil || got.Commit != "" || len(got.Files) != 0 {
-		t.Fatalf("instructions = %+v, %v", got, err)
-	}
-	if _, err := claudecode.ReadInstructions(context.Background(), work, "abc123", nil); err == nil || !strings.Contains(err.Error(), "in no repository") {
-		t.Fatalf("a commit for no repository: %v", err)
-	}
-	r := request("SCENARIO:approve")
-	r.Cwd = work
-	sink := &runtimetest.Recorder{}
-	if turn := (&claudecode.Runner{Command: runtimetest.Binary(t, "fakeclaude")}).RunTurn(context.Background(), r, sink); turn.Status != run.Completed {
-		t.Fatalf("turn = %+v", turn)
-	}
-	if prompt, recorded := promptOf(t, sink); prompt != "Do the thing." || !reflect.DeepEqual(recorded, map[string]any{"files": []any{}}) {
-		t.Fatalf("prompt %q, recorded %v", prompt, recorded)
-	}
-}
-
-// failing is git that fails with fault when it would run command, and
-// runs otherwise.
-func failing(command string, fault error) claudecode.Git {
-	return func(ctx context.Context, dir string, stdin []byte, args ...string) ([]byte, error) {
-		if strings.Join(args, " ") == command || len(args) > 0 && args[0] == command {
-			return nil, fault
-		}
-		return claudecode.RunGit(ctx, dir, stdin, args...)
-	}
-}
-
-// A git failure other than "not a repository" refuses the turn before any
-// process starts, naming the cause; it is never taken as no repository.
-func TestAGitFailureFailsTheTurnBeforeItStarts(t *testing.T) {
-	repo, head := repository(t, map[string]string{"AGENTS.md": "root", "pkg/AGENTS.md": "pkg"})
-	broken := &claudecode.GitError{Args: []string{"rev-parse", "--show-prefix"}, Stderr: "fatal: not a git repository: /elsewhere/.git\n", Err: errors.New("exit status 128")}
-	for _, c := range []struct {
-		name, cwd, commit string
-		git               claudecode.Git
-		cause             string
-	}{
-		{"finding the repository fails", "pkg", head, failing("rev-parse --show-prefix", errors.New("permission denied")), "permission denied"},
-		{"a broken repository", "pkg", head, failing("rev-parse --show-prefix", broken), "/elsewhere/.git"},
-		{"reading the files fails", "pkg", head, failing("cat-file", errors.New("bad object")), "bad object"},
-		{"the commit is unknown", "pkg", "0123456789abcdef0123456789abcdef01234567", nil, "0123456789abcdef"},
-		{"no commit for a repository", "pkg", "", nil, "no commit"},
-		{"the working directory is gone", "gone", head, nil, "gone"},
-	} {
-		runner := &claudecode.Runner{Command: runtimetest.Binary(t, "fakeclaude"), Git: c.git}
-		r := request("SCENARIO:approve")
-		r.Cwd, r.InstructionCommit = filepath.Join(repo, c.cwd), c.commit
-		sink := &runtimetest.Recorder{}
-		turn := runner.RunTurn(context.Background(), r, sink)
-		if turn.Status != run.Failed || turn.Error == nil || turn.Error.Class != run.ClassRefused || !strings.Contains(turn.Error.Message, c.cause) {
-			t.Errorf("%s: turn = %+v", c.name, turn)
-		}
-		if len(sink.Processes) != 0 || len(sink.Events) != 0 {
-			t.Errorf("%s: a process started: %v, %v", c.name, sink.Processes, sink.Kinds())
-		}
-	}
-}
-
-// A relative working directory is below the process's, and an empty one is
-// the process's own, as for the runtime's process itself.
-func TestRelativeAndEmptyWorkingDirectoriesAreTheProcesss(t *testing.T) {
-	repo, head := repository(t, map[string]string{"AGENTS.md": "root", "pkg/CLAUDE.md": "pkg", "other/AGENTS.md": "sibling"})
-	want := []string{"AGENTS.md", "pkg/CLAUDE.md"}
-	t.Chdir(repo)
-	if got, err := claudecode.ReadInstructions(context.Background(), "pkg", head, nil); err != nil || !reflect.DeepEqual(paths(got.Files), want) {
-		t.Fatalf("relative: %q, %v", paths(got.Files), err)
-	}
-	t.Chdir(filepath.Join(repo, "pkg"))
-	if got, err := claudecode.ReadInstructions(context.Background(), "", head, nil); err != nil || !reflect.DeepEqual(paths(got.Files), want) {
-		t.Fatalf("empty: %q, %v", paths(got.Files), err)
+	write(t, base, map[string]string{"AGENTS.md": "above", "work/AGENTS.md": "agents", "work/CLAUDE.md": "claude"})
+	files, err := claudecode.InstructionFiles(context.Background(), filepath.Join(base, "work"), nil)
+	if err != nil || !reflect.DeepEqual(paths(files), []string{"AGENTS.md", "CLAUDE.md"}) || string(files[0].Content) != "agents" {
+		t.Fatalf("files = %+v, %v", files, err)
 	}
 }
 
 // The turn's appended system prompt carries the files, root first, each
-// introduced by its path, before the instruction; an event records the
-// commit and each file's path and digest. Git is reached through the seam.
+// introduced by its path, before the instruction; an event records each
+// file's path and digest.
 func TestTurnIsGivenTheInstructionFilesAndRecordsThem(t *testing.T) {
-	repo, head := repository(t, map[string]string{
+	repo := repository(t, map[string]string{
 		"AGENTS.md":     "root agents",
 		"pkg/CLAUDE.md": "pkg claude",
 		"lib/AGENTS.md": "sibling",
 	})
-	var ran []string
-	runner := &claudecode.Runner{Command: runtimetest.Binary(t, "fakeclaude"), Git: func(ctx context.Context, dir string, stdin []byte, args ...string) ([]byte, error) {
-		ran = append(ran, strings.Join(args, " "))
-		return claudecode.RunGit(ctx, dir, stdin, args...)
+	var read []string
+	runner := &claudecode.Runner{Command: runtimetest.Binary(t, "fakeclaude"), ReadFile: func(path string) ([]byte, error) {
+		read = append(read, path)
+		return os.ReadFile(path)
 	}}
 	r := request("SCENARIO:approve")
-	r.Cwd, r.InstructionCommit = filepath.Join(repo, "pkg"), head
+	r.Cwd = filepath.Join(repo, "pkg")
 	sink := &runtimetest.Recorder{}
 	if turn := runner.RunTurn(context.Background(), r, sink); turn.Status != run.Completed {
 		t.Fatalf("turn = %+v", turn)
 	}
-	if len(ran) == 0 {
-		t.Fatal("git was not run through the seam")
+	if len(read) == 0 {
+		t.Fatal("the files were not read through the seam")
 	}
-	prompt, recorded := promptOf(t, sink)
+	var args []string
+	var recorded any
+	for _, event := range sink.Events {
+		switch event.Kind {
+		case "PROCESS_STARTED":
+			args, _ = event.Data["args"].([]string)
+		case "INSTRUCTION_FILES":
+			recorded = event.Data["files"]
+		}
+	}
+	prompt := ""
+	for i, arg := range args {
+		if arg == "--append-system-prompt" && i+1 < len(args) {
+			prompt = args[i+1]
+		}
+	}
 	root, pkg, instruction := strings.Index(prompt, "root agents"), strings.Index(prompt, "pkg claude"), strings.Index(prompt, "Do the thing.")
 	if root < 0 || pkg < root || instruction < pkg || strings.Contains(prompt, "sibling") ||
 		!strings.Contains(prompt[:root], "AGENTS.md") || !strings.Contains(prompt[root:pkg], "pkg/CLAUDE.md") {
@@ -525,15 +372,37 @@ func TestTurnIsGivenTheInstructionFilesAndRecordsThem(t *testing.T) {
 		sum := sha256.Sum256([]byte(content))
 		return hex.EncodeToString(sum[:])
 	}
-	want := map[string]any{"commit": head, "files": []any{
+	want := []any{
 		map[string]any{"path": "AGENTS.md", "sha256": digest("root agents")},
 		map[string]any{"path": "pkg/CLAUDE.md", "sha256": digest("pkg claude")},
-	}}
+	}
 	if !reflect.DeepEqual(recorded, want) {
 		t.Fatalf("recorded = %v, want %v", recorded, want)
 	}
 	if kinds := sink.Kinds(); kinds[0] != "PROCESS_STARTED" || kinds[1] != "INSTRUCTION_FILES" {
 		t.Fatalf("events = %v", kinds)
+	}
+}
+
+// A file that exists but cannot be read refuses the turn before any
+// process starts, naming the file.
+func TestUnreadableInstructionFileFailsTheTurnBeforeItStarts(t *testing.T) {
+	repo := repository(t, map[string]string{"AGENTS.md": "root", "pkg/AGENTS.md": "unreadable"})
+	runner := &claudecode.Runner{Command: runtimetest.Binary(t, "fakeclaude"), ReadFile: func(path string) ([]byte, error) {
+		if strings.HasSuffix(path, filepath.Join("pkg", "AGENTS.md")) {
+			return nil, &fs.PathError{Op: "open", Path: path, Err: fs.ErrPermission}
+		}
+		return os.ReadFile(path)
+	}}
+	r := request("SCENARIO:approve")
+	r.Cwd = filepath.Join(repo, "pkg")
+	sink := &runtimetest.Recorder{}
+	turn := runner.RunTurn(context.Background(), r, sink)
+	if turn.Status != run.Failed || turn.Error == nil || turn.Error.Class != run.ClassRefused || !strings.Contains(turn.Error.Message, "pkg/AGENTS.md") {
+		t.Fatalf("turn = %+v", turn)
+	}
+	if len(sink.Processes) != 0 || len(sink.Events) != 0 {
+		t.Fatalf("a process started: %v, %v", sink.Processes, sink.Kinds())
 	}
 }
 

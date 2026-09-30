@@ -31,11 +31,6 @@ type TurnRequest struct {
 	Prompt      string
 	Instruction string
 	Cwd         string
-	// InstructionCommit is the commit the repository's instruction files
-	// are read from (ADR-007): the call's checkout's, else its repository's
-	// HEAD as the call started; empty when Cwd is in no repository. Every
-	// turn of a call carries the same one.
-	InstructionCommit string
 	// The provider session to resume in place, as the runtime reported it;
 	// empty for a fresh one.
 	ResumeSessionID string
