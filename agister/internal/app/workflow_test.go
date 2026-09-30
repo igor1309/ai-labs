@@ -190,6 +190,8 @@ type storeSpy struct {
 	// kept; onArtifact as an artifact is stored.
 	onFinish   func(record run.Record)
 	onArtifact func(id, name string)
+	// onEvent, when set, runs after an event is appended to a run.
+	onEvent func(id string, event run.Event)
 }
 
 type runSpy struct {
@@ -254,10 +256,26 @@ func (s *storeSpy) wait(t *testing.T, id string) run.Record {
 
 func (r *runSpy) Append(event run.Event) error {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 	event.Seq = len(r.events) + 1
 	r.events = append(r.events, event)
+	id := r.record.ID
+	r.mu.Unlock()
+	if hook := r.store.onEvent; hook != nil {
+		hook(id, event)
+	}
 	return nil
+}
+
+// nodeFinished is closed once the workflow run id records node's end.
+func (s *storeSpy) nodeFinished(id, node string) chan struct{} {
+	finished := make(chan struct{})
+	var once sync.Once
+	s.onEvent = func(run string, event run.Event) {
+		if run == id && event.Kind == "NODE_FINISHED" && event.Data["node"] == node {
+			once.Do(func() { close(finished) })
+		}
+	}
+	return finished
 }
 
 func (r *runSpy) Raw(string) error { return nil }
@@ -482,9 +500,12 @@ func TestWorkflowCollectionOrderIgnoresCompletionOrder(t *testing.T) {
 	h := newFlowHarness()
 	first := h.script("Work as first.")
 	first.release = make(chan struct{})
+	twoFinished := h.store.nodeFinished("run-1", "two")
 	id := h.submit(t, contract.CallRequest{})
 
-	// Two completes while one is held; then one is released.
+	// Two completes, and the workflow records it, while one is held; then
+	// one is released.
+	wait(t, twoFinished, "the workflow recording node two's end")
 	if two := h.store.wait(t, "run-3"); two.Result.Status != run.Completed {
 		t.Fatalf("two = %+v", two.Result)
 	}
@@ -1034,5 +1055,69 @@ func TestShowWorkflow(t *testing.T) {
 	h.defs.set(definition.KindWorkflow, "w", strings.Replace(workflowDoc, "process:joiner", "process:first", 1))
 	if view, err := inspection.ShowWorkflow(context.Background(), "w"); err != nil || !strings.Contains(view.Refusal, "cannot receive the collection") {
 		t.Fatalf("view %+v, %v", view, err)
+	}
+}
+
+// A cancel that comes while the join finishes wins: the workflow ends
+// interrupted, cancelled, though the join completed, and the join's run and
+// node keep its own outcome. Once the workflow ended, a cancel is refused.
+func TestWorkflowCancelledAsTheJoinFinishes(t *testing.T) {
+	h := newFlowHarness()
+	var mu sync.Mutex
+	var cancelErr error
+	cancelled := false
+	h.store.onFinish = func(record run.Record) {
+		if record.ID != "run-4" {
+			return
+		}
+		err := app.NewRuns(nil, h.hosted, 0).Cancel(context.Background(), "run-1")
+		mu.Lock()
+		cancelErr, cancelled = err, true
+		mu.Unlock()
+	}
+	id := h.submit(t, contract.CallRequest{})
+	record := h.store.wait(t, id)
+	mu.Lock()
+	if !cancelled || cancelErr != nil {
+		t.Fatalf("the cancel as the join finished: made %v, %v", cancelled, cancelErr)
+	}
+	mu.Unlock()
+	if record.Result.Status != run.Interrupted || class(record) != run.ClassCancelled || len(record.Result.Output) != 0 ||
+		!strings.Contains(message(record), "it would have ended completed") {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	if join := record.Workflow.Nodes[2]; join.Run != "run-4" || join.Status != run.Completed || join.Error != nil {
+		t.Fatalf("join node = %+v", join)
+	}
+	if join := h.store.wait(t, "run-4"); join.Result.Status != run.Completed || string(join.Result.Output) != `{"joined":true}` {
+		t.Fatalf("join run = %+v", join.Result)
+	}
+	if err := app.NewRuns(nil, h.hosted, 0).Cancel(context.Background(), id); err == nil {
+		t.Fatal("a finished workflow accepted a cancel")
+	}
+}
+
+// A join that did not complete gives the workflow its status and class.
+func TestWorkflowTakesAnUnsuccessfulJoinsResult(t *testing.T) {
+	for name, turn := range map[string]run.Turn{
+		"failed":      {Status: run.Failed, Error: run.Fault(run.ClassRuntimeError, "boom")},
+		"interrupted": {Status: run.Interrupted, Error: run.Fault(run.ClassTimeout, "too slow")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			h := newFlowHarness()
+			h.script("Join them.").turn = turn
+			id := h.submit(t, contract.CallRequest{})
+			record := h.store.wait(t, id)
+			if record.Result.Status != turn.Status || class(record) != turn.Error.Class || message(record) != turn.Error.Message || len(record.Result.Output) != 0 {
+				t.Fatalf("result = %+v, want %s/%s", record.Result, turn.Status, turn.Error.Class)
+			}
+			if record.Workflow.Barrier.State != run.BarrierPassed {
+				t.Fatalf("barrier = %+v", record.Workflow.Barrier)
+			}
+			join := h.store.wait(t, "run-4")
+			if node := record.Workflow.Nodes[2]; node.Run != "run-4" || node.Status != join.Result.Status || node.Error.Class != join.Result.Error.Class {
+				t.Fatalf("join node %+v, join run %+v", node, join.Result)
+			}
+		})
 	}
 }

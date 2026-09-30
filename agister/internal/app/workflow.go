@@ -19,20 +19,37 @@ import (
 // their outputs and nothing else. The core transports the outputs without
 // reading them.
 
-// flow serializes a workflow's cancellation with the start of its nodes
-// (ADR-003 rule 6): once stopped, no node starts, and a node started before
-// is cancelled with the workflow's context, from which its own derives.
+// flow serializes a workflow's cancellation with the start of its nodes and
+// with its end (ADR-003 rule 6): once stopped, no node starts, a node started
+// before is cancelled with the workflow's context, from which its own
+// derives, and the workflow ends cancelled.
 type flow struct {
 	mu      sync.Mutex
 	stopped bool
+	ended   bool
 	cancel  context.CancelFunc
 }
 
-func (f *flow) stop() {
+// stop cancels the workflow and reports whether it did: a workflow that
+// already ended is not stopped.
+func (f *flow) stop() bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.ended {
+		return false
+	}
 	f.stopped = true
 	f.cancel()
+	return true
+}
+
+// finish ends the workflow: done learns whether a stop came first, and no
+// stop is accepted after.
+func (f *flow) finish(done func(stopped bool)) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.ended = true
+	done(f.stopped)
 }
 
 // start runs begin unless the workflow was stopped, and reports whether it

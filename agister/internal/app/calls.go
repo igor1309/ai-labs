@@ -187,14 +187,24 @@ func NewCalls(
 }
 
 // Hosted tracks calls running in this process so they can be cancelled.
+// Each cancel reports whether it took effect: a workflow that already
+// finished refuses it (see flow.stop).
 type Hosted struct {
 	mu      sync.Mutex
-	cancels map[string]context.CancelFunc
+	cancels map[string]func() bool
 }
 
-func NewHosted() *Hosted { return &Hosted{cancels: map[string]context.CancelFunc{}} }
+func NewHosted() *Hosted { return &Hosted{cancels: map[string]func() bool{}} }
 
-func (h *Hosted) add(id string, cancel context.CancelFunc) {
+// cancelled is a call's cancel, which always takes effect.
+func cancelled(cancel context.CancelFunc) func() bool {
+	return func() bool {
+		cancel()
+		return true
+	}
+}
+
+func (h *Hosted) add(id string, cancel func() bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.cancels[id] = cancel
@@ -212,10 +222,7 @@ func (h *Hosted) cancel(id string) bool {
 	h.mu.Lock()
 	cancel, ok := h.cancels[id]
 	h.mu.Unlock()
-	if ok {
-		cancel()
-	}
-	return ok
+	return ok && cancel()
 }
 
 const inlineInputChars = 2000
@@ -260,7 +267,7 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 		return record.ID, nil
 	}
 	runCtx, cancel := context.WithCancel(WithCorrelation(context.WithoutCancel(ctx), "run_id", record.ID, "process", request.Process))
-	c.hosted.add(record.ID, cancel)
+	c.hosted.add(record.ID, cancelled(cancel))
 	go func() {
 		defer c.hosted.remove(record.ID)
 		defer cancel()
@@ -488,6 +495,22 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 			return
 		}
 		done = true
+		// Serialized with a cancel: one that came first wins, whatever the
+		// nodes' outcome, which their own records keep; one that comes
+		// after is refused, and the run is no longer cancellable.
+		flow.finish(func(stopped bool) {
+			if stopped && (fault == nil || fault.Class != run.ClassCancelled) {
+				ended := string(status)
+				if fault != nil {
+					ended += "/" + string(fault.Class)
+				}
+				status, fault = run.Interrupted, run.Fault(run.ClassCancelled, "the workflow was cancelled before it finished; it would have ended %s", ended)
+			}
+			c.hosted.remove(record.ID)
+		})
+		if fault != nil {
+			result.Output = nil
+		}
 		now := c.clock.Now()
 		record.FinishedAt = &now
 		result.Status, result.Error = status, fault
@@ -501,8 +524,6 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 			data["class"], data["message"] = string(fault.Class), fault.Message
 		}
 		event("WORKFLOW_FINISHED", data)
-		// A finished run is no longer cancellable.
-		c.hosted.remove(record.ID)
 		_ = handle.Finish(record)
 	}
 	defer func() {
@@ -691,7 +712,7 @@ func (c *Calls) startNode(ctx context.Context, parent string, node definition.No
 		return "", err
 	}
 	nodeCtx, cancel := context.WithCancel(WithCorrelation(ctx, "run_id", record.ID, "process", node.Process, "node", node.Name))
-	c.hosted.add(record.ID, cancel)
+	c.hosted.add(record.ID, cancelled(cancel))
 	go func() {
 		defer c.hosted.remove(record.ID)
 		defer cancel()

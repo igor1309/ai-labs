@@ -127,18 +127,33 @@ func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 	if err := victim.Start(); err != nil {
 		t.Fatal(err)
 	}
-	// What the node runs left, for the cleanup should the test fail first.
-	var nodes []domain.Record
+	// Should the test fail first, the cleanup ends what every run left on
+	// record, as it is then: each effect on its own, whatever else a run has
+	// or lacks.
 	t.Cleanup(func() {
 		_ = victim.Process.Kill()
 		_ = victim.Wait()
-		for _, node := range nodes {
-			if g, _, err := supervisor.ParseRef(node.Effects.Process.Ref); err == nil && g > 1 {
-				_ = syscall.Kill(-g, syscall.SIGKILL)
+		paths, _ := filepath.Glob(filepath.Join(home, "runs", "*", "record.json"))
+		for _, path := range paths {
+			var left domain.Record
+			data, err := os.ReadFile(path)
+			if err != nil || json.Unmarshal(data, &left) != nil || left.Effects == nil {
+				continue
 			}
-			_ = exec.Command("git", "-C", repo, "worktree", "remove", "--force", node.Effects.Checkout.Dir).Run()
+			for _, process := range []*domain.Process{left.Effects.Process, left.Effects.Command} {
+				if process == nil {
+					continue
+				}
+				if g, _, err := supervisor.ParseRef(process.Ref); err == nil && g > 1 {
+					_ = syscall.Kill(-g, syscall.SIGKILL)
+				}
+			}
+			if left.Effects.Checkout != nil {
+				_ = exec.Command("git", "-C", repo, "worktree", "remove", "--force", left.Effects.Checkout.Dir).Run()
+			}
 		}
 	})
+	var nodes []domain.Record
 
 	// Both fan-out nodes run, each with its runtime and checkout on record.
 	eventually(t, "both fan-out nodes to record their runtime and checkout", func() bool {

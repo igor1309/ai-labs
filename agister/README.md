@@ -208,7 +208,9 @@ and outcome (`workflow.nodes`), and the barrier (`waiting`, `passed`,
 **Cancellation** (Ctrl-C on `agister run`) is terminal. Once the workflow
 is cancelled, no node starts, the join included, even when every fan-out
 node has already completed; cancelling and starting a node are serialized,
-so exactly one of them wins. Every node still running is cancelled, and
+so exactly one of them wins, and so are cancelling and ending the workflow:
+a cancel that comes before the end wins even if the join completed (the
+join's own run keeps its outcome), and one after it is refused. Every node still running is cancelled, and
 the workflow waits for each to end and release its checkout, then ends
 `interrupted`, class `cancelled`, barrier `cancelled`. If Agister itself is
 killed, each node's run is reaped by the next call like any other run: its
