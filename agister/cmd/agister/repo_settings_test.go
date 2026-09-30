@@ -22,7 +22,7 @@ import (
 // file of the repository, so a param read as a file resolves.
 var repoParams = map[string]string{
 	"prompt": "prompts/code-review-architecture.md",
-	"brief":  "prompts/session-resume-review.md",
+	"brief":  "prompts/code-review-tests.md",
 }
 
 const fallbackParam = "AGENTS.md"
