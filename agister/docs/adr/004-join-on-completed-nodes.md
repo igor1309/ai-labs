@@ -1,6 +1,6 @@
 # ADR-004: The join runs on the nodes that completed
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-09-30
 - **Scope:** a workflow whose fan-out nodes do not all complete
 - **Decision type:** Architecture
