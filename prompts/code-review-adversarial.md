@@ -3,14 +3,13 @@ date: 2026-09-30
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — adversarial
-version: 0.1.0
+version: 0.1.1
 type: prompt
 ---
 
 Review the change as a skeptic: try to break it. Assume it is wrong until
 the code shows otherwise, and look for the input, state or ordering that
-makes it misbehave. Architecture and tests have their own reviews; leave
-them to those.
+makes it misbehave.
 
 Definition of done:
 
