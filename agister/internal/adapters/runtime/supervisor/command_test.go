@@ -170,3 +170,24 @@ func TestUnrecordedCommandIsKilled(t *testing.T) {
 		t.Fatalf("result %+v", result)
 	}
 }
+
+// The command's timeout is on the runner's Timer: started with the
+// request's timeout, it times the run out when it fires, and is stopped
+// once the run is over.
+func TestCommandTimesOutOnItsTimer(t *testing.T) {
+	fired := make(chan time.Time, 1)
+	fired <- time.Time{}
+	var timeout time.Duration
+	stopped := false
+	commands := supervisor.Commands{Timer: func(d time.Duration) (<-chan time.Time, func()) {
+		timeout = d
+		return fired, func() { stopped = true }
+	}}
+	result := commands.Run(context.Background(), app.CommandRequest{Command: blocks, Dir: t.TempDir(), Timeout: time.Hour, Bound: 64}, func(ref string) error {
+		cleanUpGroup(t, ref)
+		return nil
+	})
+	if !result.TimedOut || result.Cancelled || result.Error != "" || timeout != time.Hour || !stopped {
+		t.Fatalf("result %+v, timer started with %s, stopped %t", result, timeout, stopped)
+	}
+}

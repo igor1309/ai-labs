@@ -150,16 +150,41 @@ func (c *recordingCommands) requests() []app.CommandRequest {
 	return append([]app.CommandRequest(nil), c.seen...)
 }
 
+// seams are the harness's collaborators a test replaces; each left zero is
+// the real one.
+type seams struct {
+	// changes captures changes and names content, for the call and its
+	// verification alike.
+	changes app.CallChanges
+	// clock tells the time, for the call and its verification alike.
+	clock app.CallClock
+	// copies makes the verification's clean copies.
+	copies app.VerifyCopies
+	// commands runs the verification command.
+	commands app.VerifyCommands
+}
+
 // newLoop is a repository with a base commit, settings for process impl
 // with the verify given, and a Calls over them and the scripted steps.
 func newLoop(t *testing.T, settings verifySettings, steps ...step) *loopHarness {
-	return newLoopWith(t, git.Workspaces{}, system.Clock{}, settings, steps...)
+	return newLoopWith(t, seams{}, settings, steps...)
 }
 
-// newLoopWith is newLoop capturing changes through changes and telling the
-// time by clock, for the call and its verification alike.
-func newLoopWith(t *testing.T, changes app.CallChanges, clock app.CallClock, settings verifySettings, steps ...step) *loopHarness {
+// newLoopWith is newLoop with the seams given.
+func newLoopWith(t *testing.T, with seams, settings verifySettings, steps ...step) *loopHarness {
 	t.Helper()
+	if with.changes == nil {
+		with.changes = git.Workspaces{}
+	}
+	if with.clock == nil {
+		with.clock = system.Clock{}
+	}
+	if with.copies == nil {
+		with.copies = git.Workspaces{}
+	}
+	if with.commands == nil {
+		with.commands = supervisor.Commands{}
+	}
 	repo, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -246,15 +271,15 @@ verify:
 		write(t, filepath.Join(defs, name), text)
 	}
 
-	h := &loopHarness{t: t, repo: repo, home: t.TempDir(), runner: &scripted{t: t, steps: steps}, commands: &recordingCommands{VerifyCommands: supervisor.Commands{}}}
+	h := &loopHarness{t: t, repo: repo, home: t.TempDir(), runner: &scripted{t: t, steps: steps}, commands: &recordingCommands{VerifyCommands: with.commands}}
 	h.store = fsruns.Store{Dir: filepath.Join(h.home, "runs")}
 	runtimes := fakeRuntimes{runner: h.runner}
 	hosted := app.NewHosted()
 	h.calls = app.NewCalls(
 		app.NewResolver(fsdefs.Store{Dir: defs}, runtimes, schema.Validator{}), runtimes,
 		map[string]app.InputProvider{"git.revision": git.Revision{}},
-		git.Workspaces{}, changes, app.NewVerifier(changes, git.Workspaces{}, h.commands, clock), schema.Validator{},
-		h.store, h.store, clock, system.IDs{}, h.home, hosted,
+		git.Workspaces{}, with.changes, app.NewVerifier(with.changes, with.copies, h.commands, with.clock), schema.Validator{},
+		h.store, h.store, with.clock, system.IDs{}, h.home, hosted,
 	)
 	h.runs = app.NewRuns(h.store, hosted, 10*time.Millisecond)
 	return h
@@ -459,16 +484,15 @@ func TestVerifyRunTimeout(t *testing.T) {
 }
 
 // The call's timeout bounds the whole loop: a run gets only the time the
-// turns before it left.
+// turns and the preparation before it left.
 func TestVerifyCallTimeoutBoundsTheLoop(t *testing.T) {
-	// The turn uses 59 of the call's 60 seconds on the call's clock, which
-	// leaves the run one second of its 20.
+	// Making the clean copy uses 59 of the call's 60 seconds on the call's
+	// clock, which leaves the run one second of its 20. The clock moves
+	// only once the copy is made, so the real time Git takes decides
+	// nothing.
 	clock := &manualClock{now: time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)}
-	slow := func(t *testing.T, request app.TurnRequest) domain.Turn {
-		clock.advance(59 * time.Second)
-		return state("one")(t, request)
-	}
-	h := newLoopWith(t, git.Workspaces{}, clock, verifySettings{command: blocks, timeout: "20s"}, slow)
+	copies := slowCopies{after: func() { clock.advance(59 * time.Second) }}
+	h := newLoopWith(t, seams{clock: clock, copies: copies}, verifySettings{command: blocks, timeout: "20s"}, state("one"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Interrupted, domain.ClassTimeout, "the call's timeout passed during attempt 1's run")
 	events, _, err := h.store.Events(context.Background(), record.ID, 0)
@@ -484,6 +508,20 @@ func TestVerifyCallTimeoutBoundsTheLoop(t *testing.T) {
 	if requests := h.commands.requests(); len(requests) != 1 || requests[0].Timeout != time.Second {
 		t.Fatalf("command requests %+v", requests)
 	}
+}
+
+// slowCopies makes real clean copies and calls after once each is made.
+type slowCopies struct {
+	git.Workspaces
+	after func()
+}
+
+func (c slowCopies) Copy(ctx context.Context, repository, dir, revision string, patch []byte) error {
+	err := c.Workspaces.Copy(ctx, repository, dir, revision, patch)
+	if err == nil {
+		c.after()
+	}
+	return err
 }
 
 // manualClock tells the time it is set to, so a test decides how much of
@@ -509,7 +547,10 @@ func (c *manualClock) advance(by time.Duration) {
 // group, which the record names while it runs.
 func TestVerifyCancellationKillsTheCommandGroup(t *testing.T) {
 	groupFile := filepath.Join(t.TempDir(), "group")
-	h := newLoop(t, verifySettings{command: blocks + " & echo $$ > " + groupFile + "; wait"}, state("one"))
+	// The command's timer never fires, so only the cancellation can end the
+	// command; wait's own bound fails the test if nothing does.
+	unfired := supervisor.Commands{Timer: func(time.Duration) (<-chan time.Time, func()) { return nil, func() {} }}
+	h := newLoopWith(t, seams{commands: unfired}, verifySettings{command: blocks + " & echo $$ > " + groupFile + "; wait"}, state("one"))
 	// Whatever the assertions below find, the command does not outlive the
 	// test: its group is on record before it writes it.
 	cleanupRecorded(t, h.home, h.repo)
@@ -595,7 +636,7 @@ func TestContinuationsCountFromTheSessionsLatestRecordedTurn(t *testing.T) {
 			t.Fatalf("run %s: turn cost %v, usage %+v; call %+v, %+v", record.ID, *turn.CostUSD, turn.Usage, record.Result.Cost, record.Result.Usage)
 		}
 	}
-	h := newLoopWith(t, git.Workspaces{}, clock, verifySettings{}, totals(1, 10), totals(3, 30), totals(3.5, 45))
+	h := newLoopWith(t, seams{clock: clock}, verifySettings{}, totals(1, 10), totals(3, 30), totals(3.5, 45))
 	a := h.call(contract.CallRequest{})
 	own(t, a, 1, 10)
 	b := h.call(contract.CallRequest{Continue: a.ID})
@@ -607,7 +648,7 @@ func TestContinuationsCountFromTheSessionsLatestRecordedTurn(t *testing.T) {
 	}
 
 	// A's turn reported no running totals: nothing to count from.
-	h = newLoopWith(t, git.Workspaces{}, clock, verifySettings{}, state("pass"), totals(3, 30))
+	h = newLoopWith(t, seams{clock: clock}, verifySettings{}, state("pass"), totals(3, 30))
 	a = h.call(contract.CallRequest{})
 	b = h.call(contract.CallRequest{Continue: a.ID})
 	expect(t, b, domain.Completed, "", "")
@@ -731,7 +772,7 @@ func TestVerifyCaptureReproducesThePassingContent(t *testing.T) {
 		t.Fatalf("the patch rebuilds %s, the passing content is %s", tree, record.Attempts[0].Identity)
 	}
 
-	h = newLoopWith(t, lossy{}, system.Clock{}, verifySettings{}, agent)
+	h = newLoopWith(t, seams{changes: lossy{}}, verifySettings{}, agent)
 	record = h.call(contract.CallRequest{})
 	expect(t, record, domain.Failed, domain.ClassInternal, "the captured changes do not reproduce attempt 1's content")
 	if len(runsOf(record)) != 0 {
