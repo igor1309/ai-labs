@@ -10,11 +10,10 @@
 ## Context
 
 A repository's `AGENTS.md` and `CLAUDE.md` hold its conventions: how to
-test, what is forbidden. On 2026-09-30 two Claude implementers said they
-had seen none of them: Agister starts Claude Code with `--restricted`,
-which ignores project settings and with them the instruction files, and
-one implementer did what the root `AGENTS.md` forbids. Codex loads the
-root `AGENTS.md` itself.
+test, what is forbidden. An agent that does not see them breaks them.
+Agister starts Claude Code with `--restricted`, which ignores project
+settings and with them the instruction files. Codex loads the root
+`AGENTS.md` itself.
 
 ## Decision
 
