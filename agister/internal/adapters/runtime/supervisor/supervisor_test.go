@@ -307,6 +307,7 @@ func TestANonZeroExitQuotesTheRuntimesReasons(t *testing.T) {
 		{"", "stream closed", "exit code 1: stream closed"},
 		{"Error: unauthorized", "401 Unauthorized", "exit code 1: 401 Unauthorized; Error: unauthorized"},
 		{"Error: 401 Unauthorized", "401 Unauthorized", "exit code 1: Error: 401 Unauthorized"},
+		{"401 Unauthorized", "Error: 401 Unauthorized", "exit code 1: Error: 401 Unauthorized"},
 		{"Error: " + strings.Repeat("é", 400), "", "exit code 1: Error: " + strings.Repeat("é", 146) + "…"},
 	} {
 		if got := failed(c.stderr, c.stream); got != c.want {
