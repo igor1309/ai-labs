@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ntfy send">
+<meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="robots" content="noindex">
+<title>ntfy send</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --card: #ffffff;
+    --text: #1d1d1f;
+    --muted: #6e6e73;
+    --border: #d2d2d7;
+    --accent: #317f6f;
+    --accent-text: #ffffff;
+    --ok: #1a7f37;
+    --err: #c9302c;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #000000;
+      --card: #1c1c1e;
+      --text: #f5f5f7;
+      --muted: #98989d;
+      --border: #38383a;
+      --accent: #3fa38d;
+      --ok: #3fb950;
+      --err: #ff6b6b;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 17px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    padding: env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 24px);
+  }
+  main { max-width: 560px; margin: 0 auto; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 16px 0 8px; }
+  h1 { font-size: 28px; margin: 0; }
+  .card { background: var(--card); border-radius: 12px; padding: 12px 16px; margin: 12px 0; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  input, textarea, select {
+    width: 100%;
+    font: inherit;
+    font-size: 17px; /* >=16px prevents iOS zoom on focus */
+    color: var(--text);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  textarea { min-height: 120px; resize: vertical; }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .row { display: flex; gap: 12px; }
+  .row > * { flex: 1; min-width: 0; }
+  button {
+    font: inherit;
+    border: 0;
+    border-radius: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+  }
+  .primary { width: 100%; background: var(--accent); color: var(--accent-text); font-weight: 600; font-size: 17px; }
+  .primary:disabled { opacity: .5; }
+  .link { background: none; color: var(--accent); padding: 8px 0; font-size: 17px; }
+  #status { min-height: 1.4em; margin: 10px 2px; font-size: 15px; }
+  #status.ok { color: var(--ok); }
+  #status.err { color: var(--err); }
+  details summary { cursor: pointer; color: var(--accent); padding: 4px 0; list-style: none; }
+  details summary::-webkit-details-marker { display: none; }
+  .hint { font-size: 13px; color: var(--muted); margin: 6px 0 0; }
+  ul.history { list-style: none; padding: 0; margin: 0; }
+  ul.history li { padding: 10px 0; border-top: 1px solid var(--border); font-size: 15px; }
+  ul.history li:first-child { border-top: 0; }
+  ul.history .meta { color: var(--muted); font-size: 13px; }
+  .history-msg { white-space: pre-wrap; word-break: break-word; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>ntfy send</h1>
+    <button type="button" class="link" id="toggle-settings">Settings</button>
+  </header>
+
+  <section class="card" id="settings" hidden>
+    <label for="server">Server</label>
+    <input id="server" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://ntfy.sh">
+    <label for="topic">Topic</label>
+    <input id="topic" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="my-secret-topic">
+    <label for="token">Access token (optional)</label>
+    <input id="token" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="tk_…">
+    <p class="hint">Settings are saved only in this browser (localStorage). Anyone who knows a public ntfy.sh topic name can read it, so pick a hard-to-guess name.</p>
+    <button type="button" class="link" id="save-settings">Done</button>
+  </section>
+
+  <form id="send-form" class="card" autocomplete="off">
+    <label for="title">Title (optional)</label>
+    <input id="title" type="text" enterkeyhint="next">
+    <label for="message">Message</label>
+    <textarea id="message" required enterkeyhint="send"></textarea>
+
+    <details id="more">
+      <summary>More options</summary>
+      <div class="row">
+        <div>
+          <label for="priority">Priority</label>
+          <select id="priority">
+            <option value="1">1 · min</option>
+            <option value="2">2 · low</option>
+            <option value="3" selected>3 · default</option>
+            <option value="4">4 · high</option>
+            <option value="5">5 · urgent</option>
+          </select>
+        </div>
+        <div>
+          <label for="tags">Tags</label>
+          <input id="tags" type="text" autocapitalize="off" spellcheck="false" placeholder="warning,skull">
+        </div>
+      </div>
+      <label for="click">Click URL</label>
+      <input id="click" type="url" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="https://…">
+      <label><input id="markdown" type="checkbox" style="width:auto"> Markdown</label>
+    </details>
+
+    <div id="status" role="status" aria-live="polite"></div>
+    <button class="primary" id="send" type="submit">Send</button>
+  </form>
+
+  <section class="card" id="history-card" hidden>
+    <div class="row" style="align-items:center">
+      <strong>Recent</strong>
+      <button type="button" class="link" id="clear-history" style="text-align:right">Clear</button>
+    </div>
+    <ul class="history" id="history"></ul>
+  </section>
+</main>
+
+<script>
+(() => {
+  const KEY = "ntfy-sender:settings";
+  const HISTORY_KEY = "ntfy-sender:history";
+  const HISTORY_MAX = 20;
+  const $ = (id) => document.getElementById(id);
+
+  const store = {
+    get(key, fallback) {
+      try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+      catch { return fallback; }
+    },
+    set(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage unavailable */ }
+    },
+  };
+
+  function loadSettings() {
+    const s = store.get(KEY, {});
+    $("server").value = s.server || "https://ntfy.sh";
+    $("topic").value = s.topic || "";
+    $("token").value = s.token || "";
+    return s;
+  }
+
+  function saveSettings() {
+    store.set(KEY, {
+      server: $("server").value.trim(),
+      topic: $("topic").value.trim(),
+      token: $("token").value.trim(),
+    });
+  }
+
+  function showSettings(show) {
+    $("settings").hidden = !show;
+    $("toggle-settings").textContent = show ? "Close" : "Settings";
+  }
+
+  function setStatus(text, kind) {
+    const el = $("status");
+    el.textContent = text;
+    el.className = kind || "";
+  }
+
+  function renderHistory() {
+    const items = store.get(HISTORY_KEY, []);
+    $("history-card").hidden = items.length === 0;
+    const list = $("history");
+    list.replaceChildren();
+    for (const item of items) {
+      const li = document.createElement("li");
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent = `${new Date(item.at).toLocaleString()} · ${item.topic}${item.title ? " · " + item.title : ""}`;
+      const msg = document.createElement("div");
+      msg.className = "history-msg";
+      msg.textContent = item.message;
+      li.append(meta, msg);
+      li.addEventListener("click", () => {
+        $("title").value = item.title || "";
+        $("message").value = item.message;
+        $("message").focus();
+      });
+      list.append(li);
+    }
+  }
+
+  function pushHistory(entry) {
+    const items = store.get(HISTORY_KEY, []);
+    items.unshift(entry);
+    store.set(HISTORY_KEY, items.slice(0, HISTORY_MAX));
+    renderHistory();
+  }
+
+  async function send(event) {
+    event.preventDefault();
+    const server = ($("server").value.trim() || "https://ntfy.sh").replace(/\/+$/, "");
+    const topic = $("topic").value.trim();
+    const token = $("token").value.trim();
+    const message = $("message").value;
+    if (!topic) {
+      setStatus("Set a topic in Settings first.", "err");
+      showSettings(true);
+      $("topic").focus();
+      return;
+    }
+    if (!message.trim()) {
+      setStatus("Message is empty.", "err");
+      return;
+    }
+
+    // JSON publishing: POST to the server root with the topic in the body.
+    const body = { topic, message };
+    const title = $("title").value.trim();
+    if (title) body.title = title;
+    const priority = Number($("priority").value);
+    if (priority !== 3) body.priority = priority;
+    const tags = $("tags").value.split(",").map((t) => t.trim()).filter(Boolean);
+    if (tags.length) body.tags = tags;
+    const click = $("click").value.trim();
+    if (click) body.click = click;
+    if ($("markdown").checked) body.markdown = true;
+
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    $("send").disabled = true;
+    setStatus("Sending…");
+    try {
+      const res = await fetch(server + "/", { method: "POST", headers, body: JSON.stringify(body) });
+      if (!res.ok) {
+        let detail = "";
+        try { const j = await res.json(); detail = j.error || ""; } catch { /* non-JSON */ }
+        throw new Error(`HTTP ${res.status}${detail ? " – " + detail : ""}`);
+      }
+      setStatus("Sent ✓", "ok");
+      pushHistory({ at: Date.now(), topic, title, message });
+      $("message").value = "";
+      $("title").value = "";
+    } catch (err) {
+      setStatus(`Failed: ${err.message}`, "err");
+    } finally {
+      $("send").disabled = false;
+    }
+  }
+
+  const initial = loadSettings();
+  showSettings(!initial.topic);
+  renderHistory();
+
+  $("toggle-settings").addEventListener("click", () => {
+    saveSettings();
+    showSettings($("settings").hidden);
+  });
+  $("save-settings").addEventListener("click", () => { saveSettings(); showSettings(false); setStatus(""); });
+  ["server", "topic", "token"].forEach((id) => $(id).addEventListener("change", saveSettings));
+  $("send-form").addEventListener("submit", send);
+  $("clear-history").addEventListener("click", () => { store.set(HISTORY_KEY, []); renderHistory(); });
+  // Cmd/Ctrl+Enter sends from the textarea (hardware keyboards).
+  $("message").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) $("send-form").requestSubmit();
+  });
+})();
+</script>
+</body>
+</html>
