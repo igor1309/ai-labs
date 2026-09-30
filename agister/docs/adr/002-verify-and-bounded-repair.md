@@ -212,7 +212,8 @@ command node.
 ### Negative
 
 - The agent can edit what the command reads: tests, `Makefile`, test data.
-  Changes are recorded but not refused.
+  Changes are recorded but not refused; judging whether a repair weakened a
+  check is a reviewer's task, not the node's.
 - A flaky failure goes to the agent as if it were real.
 - Until verification is confined, the command lends the operator's
   authority to agent-written code.
