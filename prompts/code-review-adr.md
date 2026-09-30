@@ -3,7 +3,7 @@ date: 2026-09-30
 author: Igor Malyarov
 model: gpt-6.1
 name: Code review — architecture decisions
-version: 0.2.0
+version: 0.3.0
 type: prompt
 ---
 
@@ -16,6 +16,8 @@ For each ADR the change adds or edits:
   steps; it answers a real tension; a senior engineer understands why
   without other context. Restate it in one sentence; if you cannot, that is
   a finding.
+* Timelessness: the context states the problem, not the story of how it
+  was found. Dates, incidents, runs and who said what are findings.
 * Boundary: the scope is explicit, the text does not reach into adjacent
   decisions, and no policy hides in it.
 * Consistency: terms, assumptions and guarantees agree with every earlier
