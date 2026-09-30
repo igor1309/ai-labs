@@ -20,8 +20,8 @@ Checked against docs or source unless marked otherwise.
 | Claude Code Stop / SubagentStop hook | (c) runtime stop gate | same session (`decision: block`, `reason`) | overridden after 8 blocks in a row without progress (`CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`) | the agent stops |
 | Claude Code `/goal` | (c) prompt-based stop hook judged by a small model | same session | none fixed; the docs suggest writing "or stop after 20 turns" into the goal | stops after several turns with no tool use |
 | Ralph Wiggum plugin | (c) stop hook re-feeds the prompt | same session | `--max-iterations`, unlimited by default | context overflow after roughly 20–30 iterations |
-| OpenHands SDK iterative refinement | (a) critic scores the event stream | same conversation | `max_iterations`, default 3 | |
-| CrewAI task guardrail | (a) | same agent | `guardrail_max_retries`, default 3 | not documented |
+| OpenHands SDK iterative refinement | an LLM critic scores the result; a refactoring phase runs again below a threshold | new `Conversation` per iteration in the guide's example | `MAX_ITERATIONS`, 5 in the example | loop ends |
+| CrewAI task guardrail | (a) | same agent | `guardrail_max_retries`, default 3 | raises (`task.py`: "Task failed … validation after N retries") |
 | Pydantic-AI `ModelRetry` | (a) output validator | same run | output retries, default 1 | raises (not fully verified) |
 | Instructor | (a) validation re-ask | same messages list (checked in source) | `max_retries` | raises `InstructorRetryException` |
 | LangGraph | (b) conditional edge back to a node | depends on the state design | recursion limit (default 1000 since 1.0.6, 25 before) | `GraphRecursionError` |
@@ -96,14 +96,16 @@ From [the lessons](verger/lessons/):
 
 ## Synthesis
 
-- **Dominant pattern:** a deterministic check after the turn, its bounded
-  output sent back into the same session, with a small hard cap (1–3; Claude
-  Code 8). Graph-cycle repair is mostly found in general frameworks.
+- **Dominant pattern:** a check after the turn, its bounded output sent back
+  into the same session, with a small hard cap (1–3; Claude Code 8). Aider is
+  the closest to a deterministic test command; CrewAI, Instructor and
+  Pydantic-AI validate output rather than run tests. Graph-cycle repair is mostly found in general frameworks.
 - **Converging combination:** same-session repair up to N, then fail for good;
   a fresh-context attempt, if any, is an outer step's job.
-- **Where the design can be stricter than prior art:** Aider stops quietly at
-  its cap. Completing a node only when the latest check passes was not found
-  anywhere.
+- **At the cap:** systems differ. Aider stops quietly; CrewAI, Instructor and
+  LangGraph raise. Failing the node at the cap is established practice, not
+  new. (An earlier draft of this note called it novel; review round 1
+  corrected that, and the OpenHands row.)
 - **Failure modes to design for:** test tampering; unbounded loops (Claude
   Code issue #55754); retrying the same failure; flaky tests; hung checks;
   output bloating the context; a gate firing while background work runs.
@@ -122,6 +124,7 @@ From [the lessons](verger/lessons/):
 - https://developers.openai.com/codex/noninteractive
 - https://docs.openhands.dev/sdk/guides/iterative-refinement
 - https://docs.crewai.com/en/concepts/tasks
+- https://github.com/crewAIInc/crewAI/blob/main/lib/crewai/src/crewai/task.py
 - https://pydantic.dev/docs/ai/core-concepts/output/
 - https://github.com/567-labs/instructor
 - https://docs.langchain.com/oss/python/langgraph/graph-api

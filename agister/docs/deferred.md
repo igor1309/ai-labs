@@ -356,3 +356,24 @@ before.
   that passed by changing a check.
 - **Done when:** a process can declare paths its repair turns may not
   change, and a turn that changes one ends the node with that evidence.
+
+## 15. Verification lends the operator's authority to agent-written code
+
+- **Gap:** ADR-002's verification command runs with Agister's own authority,
+  not the agent's permissions, and what it runs (tests, `Makefile` targets,
+  build scripts) can be code the agent wrote in the same checkout. A repair
+  turn can therefore reach, through the command, what its permissions
+  withhold: writing outside the checkout, the network, Agister's state
+  (ADR-001 rule 9).
+- **Evidence:** review round 1 of ADR-002 (2026-09-30), Codex Sol 6 high.
+  The Codex read-only sandbox refuses writes for the agent itself
+  (`.agister/runtimes/codex.yaml`), but nothing confines the command.
+- **Open:** running the command under an OS confinement Agister owns (a
+  sandbox profile, a container, another user); which permissions a
+  confined command has, stated in Agister's vocabulary; refusing `verify`
+  where the confinement cannot be enforced.
+- **Trigger:** before verification runs unattended, or for an agent whose
+  output is not reviewed by a human before it lands.
+- **Done when:** the command runs confined to its checkout, a test shows a
+  command that writes outside it or reads Agister's state is refused, and
+  `check` reports the confinement a `verify` runs under.

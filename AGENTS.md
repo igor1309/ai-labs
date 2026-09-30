@@ -35,8 +35,12 @@
   changed file was claimed and no mutation is left in the tree. Then the
   tests pass and `scripts/revert-check.py` catches every mutation; do not
   rely on the subagent's own report of revert checks.
-- Have Codex review the result critically:
-  `codex exec --sandbox read-only -m gpt-6-sol -c model_reasoning_effort="high" "<prompt>" < /dev/null`.
+- Have Codex review the result critically through Agister, on a committed
+  candidate: a `*_review_codex` process for code, or
+  `decision_review_codex --param prompt=<prompt file>` for decision
+  documents (agent `codex-sol`: `gpt-6.1-sol`, effort high). Run from the
+  repository root. Only where Agister cannot run it:
+  `codex exec --sandbox read-only -m gpt-6.1-sol -c model_reasoning_effort="high" "<prompt>" < /dev/null`.
 - Keep the loop tight: at most 2 review rounds. Judge each finding; fix
   what belongs to the issue, and record the rest in the project's deferred
   work (for agister, `agister/docs/deferred.md`) instead of another round.
