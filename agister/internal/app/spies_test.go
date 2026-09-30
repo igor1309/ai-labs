@@ -280,6 +280,10 @@ type copiesSpy struct {
 	removed   []string
 	err       error // Copy fails with it
 	removeErr error // removing fails with it
+	// block makes Copy make the copy, then wait for its context to end and
+	// fail with why; interrupted is that reason.
+	block       bool
+	interrupted error
 	// copying, when set, runs as a copy is made; removing as one is
 	// removed.
 	copying  func(dir string)
@@ -293,7 +297,7 @@ func (s *copiesSpy) Place(call string) string {
 	return fmt.Sprintf("%s%d", copyDirs, len(s.placed))
 }
 
-func (s *copiesSpy) Copy(_ context.Context, repository, dir, revision string, patch []byte) error {
+func (s *copiesSpy) Copy(ctx context.Context, repository, dir, revision string, patch []byte) error {
 	if s.copying != nil {
 		s.copying(dir)
 	}
@@ -303,13 +307,20 @@ func (s *copiesSpy) Copy(_ context.Context, repository, dir, revision string, pa
 		return s.err
 	}
 	if s.present[dir] {
-		return fmt.Errorf("%s exists", dir)
+		return fmt.Errorf("%s: %w", dir, app.ErrPlaceTaken)
 	}
 	if s.present == nil {
 		s.present = map[string]bool{}
 	}
 	s.present[dir] = true
 	s.made = append(s.made, madeCopy{repository, revision, string(patch), dir})
+	if s.block {
+		s.mu.Unlock()
+		<-ctx.Done()
+		s.mu.Lock()
+		s.interrupted = ctx.Err()
+		return s.interrupted
+	}
 	return nil
 }
 

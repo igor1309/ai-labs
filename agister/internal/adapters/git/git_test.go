@@ -2,6 +2,7 @@ package git_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,9 +11,12 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
 	"github.com/igor1309/ai-labs/agister/internal/app"
+	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 func sh(t *testing.T, dir string, args ...string) string {
@@ -308,8 +312,8 @@ func TestACopyIsNotMadeWhereSomethingIs(t *testing.T) {
 	if err := os.WriteFile(kept, []byte("kept\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := workspaces.Copy(context.Background(), repo, dir, sh(t, repo, "rev-parse", "HEAD"), nil); err == nil {
-		t.Fatal("copy made over an existing directory")
+	if err := workspaces.Copy(context.Background(), repo, dir, sh(t, repo, "rev-parse", "HEAD"), nil); !errors.Is(err, app.ErrPlaceTaken) {
+		t.Fatalf("copy over an existing directory = %v", err)
 	}
 	if data, err := os.ReadFile(kept); err != nil || string(data) != "kept\n" {
 		t.Fatalf("kept.txt = %q, %v", data, err)
@@ -318,6 +322,75 @@ func TestACopyIsNotMadeWhereSomethingIs(t *testing.T) {
 		t.Fatalf("worktrees = %v", lines)
 	}
 }
+
+// A verifying call whose copy's place is taken fails, and leaves what is
+// there as it was: it is not the call's, so nothing removes it, and the
+// record no longer names it as the call's copy.
+func TestAVerifierLeavesAnOccupiedPlaceAlone(t *testing.T) {
+	repo := repository(t)
+	ctx := context.Background()
+	workspaces := git.Workspaces{}
+	base := sh(t, repo, "rev-parse", "HEAD")
+	checkout, release, err := workspaces.Checkout(ctx, repo, base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = release() })
+	record := run.Record{ID: call(), Turn: &run.Turn{Status: run.Completed, ProviderSessionID: "session"}}
+	dir := workspaces.Place(record.ID)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Dir(dir)) })
+	kept := filepath.Join(dir, "kept.txt")
+	if err := os.WriteFile(kept, []byte("kept\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var copies []*run.Checkout // the copy on record at each update
+	var turns int
+	_, fault := app.NewVerifier(workspaces, workspaces, noCommands{t}, wallClock{}).Verify(ctx, app.VerifyCall{
+		Record: &record, Result: &run.Result{},
+		Event: func(string, string, map[string]any) {},
+		Update: func(updated run.Record) error {
+			var copy *run.Checkout
+			if updated.Effects != nil {
+				copy = updated.Effects.Copy
+			}
+			copies = append(copies, copy)
+			return nil
+		},
+		Artifact: func(name string, data []byte) (run.Artifact, error) { return run.Artifact{Name: name}, nil },
+		Verify:   definition.Verify{Command: "true", Timeout: time.Minute, MaxAttempts: 2},
+		Deadline: time.Now().Add(time.Minute), Dir: checkout, Base: base, Repository: repo, Session: "session",
+		Take:     func(app.TurnRequest, *run.SessionTotals) run.Turn { turns++; return run.Turn{} },
+		Conclude: func(run.Turn) *run.Error { return nil },
+	})
+	if fault == nil || fault.Class != run.ClassInternal || !strings.Contains(fault.Message, "attempt 1 cannot make its clean copy") || turns != 0 {
+		t.Fatalf("fault %v, repair turns %d", fault, turns)
+	}
+	if data, err := os.ReadFile(kept); err != nil || string(data) != "kept\n" {
+		t.Fatalf("kept.txt = %q, %v", data, err)
+	}
+	if len(copies) < 2 || !reflect.DeepEqual(copies[0], &run.Checkout{Repository: repo, Dir: dir}) || copies[len(copies)-1] != nil {
+		t.Fatalf("copies on record = %v", copies)
+	}
+	if record.Effects != nil && record.Effects.Copy != nil {
+		t.Fatalf("effects = %+v", record.Effects)
+	}
+}
+
+// noCommands fails a test that runs a verification command.
+type noCommands struct{ t *testing.T }
+
+func (c noCommands) Run(context.Context, app.CommandRequest, func(string) error) app.CommandResult {
+	c.t.Error("the verification command ran")
+	return app.CommandResult{Error: "not run"}
+}
+
+type wallClock struct{}
+
+func (wallClock) Now() time.Time { return time.Now() }
 
 // A checkout its call never released (the process was killed) is removed
 // from disk and from the repository's worktree list.

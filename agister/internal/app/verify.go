@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -44,12 +45,18 @@ type VerifyCopies interface {
 	// same for every attempt; nothing is made there.
 	Place(call string) string
 	// Copy checks revision out of repository at dir, apart from every other
-	// checkout, and applies patch to its files. It fails if something is
-	// at dir already, and removes a copy it cannot finish.
+	// checkout, and applies patch to its files. It refuses, with an error
+	// that wraps ErrPlaceTaken, if something is at dir already, which it
+	// leaves as it was; it removes a copy it made and cannot finish.
 	Copy(ctx context.Context, repository, dir, revision string, patch []byte) error
 	// Discard removes the copy at dir; one already gone is success.
 	Discard(ctx context.Context, repository, dir string) error
 }
+
+// ErrPlaceTaken is what a copy is refused with when something is at its
+// directory already: nothing was made there, and what is there is not the
+// call's to remove.
+var ErrPlaceTaken = errors.New("something is already there")
 
 // VerifyCommands runs the verification command.
 type VerifyCommands interface {
@@ -187,7 +194,7 @@ func (v *verification) run(ctx context.Context) *run.Error {
 		}
 		checked = append(checked, identity)
 
-		ran, timeout, fault := v.check(ctx, number, identity)
+		ran, timeout, fault, kept := v.check(ctx, number, identity)
 		attempt.Run = ran
 		if fault != nil {
 			return v.stop(attempt, fault)
@@ -213,6 +220,11 @@ func (v *verification) run(ctx context.Context) *run.Error {
 			}
 			v.verified = identity
 			return nil
+		}
+		// A copy that could not be removed stays on record, and no attempt
+		// makes its own over it: the call ends before a repair is paid for.
+		if kept != nil {
+			return v.stop(attempt, run.Fault(run.ClassInternal, "attempt %d failed and its clean copy at %s could not be removed: %v", number, v.copy, kept))
 		}
 
 		if fault := v.exhausted(*ran, previous, number); fault != nil {
@@ -295,64 +307,73 @@ func (v *verification) budget() (*float64, *run.Error) {
 // patch to identity applied, so it checks exactly what the call would
 // deliver; the copy must have that content, or the captured changes do not
 // reproduce it and the call fails. The copy is on record before it is made
-// and removed on every path (ADR-005 rule 2). Making it counts against the
+// and removed on every path (ADR-005 rule 2) but a refusal, where what is
+// at its place is not the call's to remove. Making it counts against the
 // call's timeout, and the command gets what is left, up to verify.timeout:
 // the timeout it got is returned. A run that ended, not killed or failed
 // to run, is compared with the content it checked (ADR-005 rule 1). The
-// run is nil when the command never ran.
-func (v *verification) check(ctx context.Context, number int, identity string) (*run.CommandRun, time.Duration, *run.Error) {
+// run is nil when the command never ran; kept is why the copy could not be
+// removed, if it could not.
+func (v *verification) check(ctx context.Context, number int, identity string) (_ *run.CommandRun, _ time.Duration, _ *run.Error, kept error) {
 	remaining := v.deadline.Sub(v.clock.Now())
 	prepare, cancel := context.WithTimeout(ctx, remaining)
 	defer cancel()
 	patch, err := v.content.Changes(prepare, v.dir, v.base, identity)
 	if err != nil {
-		return nil, 0, v.preparing(ctx, prepare, number, "capturing the changes to check", err)
+		return nil, 0, v.preparing(ctx, prepare, number, "capturing the changes to check", err), nil
 	}
 	dir, fault := v.claimCopy(number)
 	if fault != nil {
-		return nil, 0, fault
+		return nil, 0, fault, nil
+	}
+	err = v.copies.Copy(prepare, v.repository, dir, v.base, patch)
+	// What was at the place already is not the call's: nothing of it is
+	// removed, and the record stops naming it as the call's copy.
+	if errors.Is(err, ErrPlaceTaken) {
+		v.forgetCopy(dir)
+		return nil, 0, run.Fault(run.ClassInternal, "attempt %d cannot make its clean copy: %v", number, err), nil
 	}
 	// Removed with ctx's values but not its end: a cancelled call's copy
 	// goes too.
-	defer v.removeCopy(context.WithoutCancel(ctx), number, dir)
-	if err := v.copies.Copy(prepare, v.repository, dir, v.base, patch); err != nil {
-		return nil, 0, v.preparing(ctx, prepare, number, "making the clean copy to check", err)
+	defer func() { kept = v.removeCopy(context.WithoutCancel(ctx), number, dir) }()
+	if err != nil {
+		return nil, 0, v.preparing(ctx, prepare, number, "making the clean copy to check", err), nil
 	}
 	copied, err := v.content.Identity(prepare, dir, v.base)
 	if err != nil {
-		return nil, 0, v.preparing(ctx, prepare, number, "naming the clean copy's content", err)
+		return nil, 0, v.preparing(ctx, prepare, number, "naming the clean copy's content", err), nil
 	}
 	if copied != identity {
-		return nil, 0, run.Fault(run.ClassInternal, "the captured changes do not reproduce attempt %d's content: applied to %s they make %s, not %s", number, v.base, copied, identity)
+		return nil, 0, run.Fault(run.ClassInternal, "the captured changes do not reproduce attempt %d's content: applied to %s they make %s, not %s", number, v.base, copied, identity), nil
 	}
 	if ctx.Err() != nil {
-		return nil, 0, run.Fault(run.ClassCancelled, "cancelled before attempt %d's run", number)
+		return nil, 0, run.Fault(run.ClassCancelled, "cancelled before attempt %d's run", number), nil
 	}
 	// The command's time is what the copy left of the call's.
 	remaining = v.deadline.Sub(v.clock.Now())
 	if remaining <= 0 {
-		return nil, 0, run.Fault(run.ClassTimeout, "the call's timeout passed while attempt %d's clean copy was made", number)
+		return nil, 0, run.Fault(run.ClassTimeout, "the call's timeout passed while attempt %d's clean copy was made", number), nil
 	}
 	timeout := min(v.verify.Timeout, remaining)
 
 	ran := v.runCommand(ctx, number, dir, timeout)
 	if ran.Cancelled || ran.TimedOut || ran.Error != "" {
-		return &ran, timeout, nil
+		return &ran, timeout, nil, nil
 	}
 	// ADR-005 rule 1: a run that changes the content fails, whatever its
 	// exit.
 	after, err := v.content.Identity(ctx, dir, v.base)
 	if err != nil {
-		return &ran, timeout, v.failure(ctx, "naming the clean copy's content after the run", err)
+		return &ran, timeout, v.failure(ctx, "naming the clean copy's content after the run", err), nil
 	}
 	if after != identity {
 		ran.After = after
 		v.event(run.SourceAgister, "VERIFY_CHANGED_CONTENT", map[string]any{"attempt": number, "checked": identity, "after": after})
 		if ran.AfterChanges, err = v.keep(ctx, fmt.Sprintf("attempt-%d-run.patch", number), identity, after); err != nil {
-			return &ran, timeout, v.failure(ctx, "keeping the run's changes", err)
+			return &ran, timeout, v.failure(ctx, "keeping the run's changes", err), nil
 		}
 	}
-	return &ran, timeout, nil
+	return &ran, timeout, nil, nil
 }
 
 // claimCopy records the call's clean copy on the run before it is made, so
@@ -381,18 +402,25 @@ func (v *verification) claimCopy(number int) (string, *run.Error) {
 }
 
 // removeCopy removes the clean copy and, once it is gone, its record. One
-// that could not be removed stays on record, and the failure is an event.
-func (v *verification) removeCopy(ctx context.Context, number int, dir string) {
+// that could not be removed stays on record, the failure is an event, and
+// it is returned.
+func (v *verification) removeCopy(ctx context.Context, number int, dir string) error {
 	if err := v.copies.Discard(ctx, v.repository, dir); err != nil {
 		v.event(run.SourceAgister, "VERIFY_COPY_REMOVE_FAILED", map[string]any{"attempt": number, "dir": dir, "error": err.Error()})
-		return
+		return err
 	}
+	// A record that still names a removed copy costs a reap nothing: a copy
+	// already gone is discarded as success.
+	v.forgetCopy(dir)
+	return nil
+}
+
+// forgetCopy drops the copy at dir from the record.
+func (v *verification) forgetCopy(dir string) {
 	if effects := v.record.Effects; effects != nil && effects.Copy != nil && effects.Copy.Dir == dir {
 		cleared := *effects
 		cleared.Copy = nil
 		v.record.Effects = &cleared
-		// A record that still names a removed copy costs a reap nothing: a
-		// copy already gone is discarded as success.
 		_ = v.update(*v.record)
 	}
 }

@@ -8,7 +8,9 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -92,13 +94,15 @@ func (Workspaces) Place(call string) string {
 // Copy checks revision out at dir, a directory Place named, as Checkout
 // does, and applies patch to its files, not its index: where a
 // verification run checks exactly what the patch delivers. Whatever is at
-// dir already is not this copy's, so Copy fails without touching it; a copy
-// it cannot finish, it removes.
+// dir already is not this copy's, so Copy refuses without touching it
+// (app.ErrPlaceTaken); a copy it cannot finish, it removes.
 func (w Workspaces) Copy(ctx context.Context, repository, dir, revision string, patch []byte) error {
 	if err := made(dir); err != nil {
 		return err
 	}
-	if err := os.Mkdir(filepath.Dir(dir), 0o700); err != nil {
+	if err := os.Mkdir(filepath.Dir(dir), 0o700); errors.Is(err, fs.ErrExist) {
+		return fmt.Errorf("%s: %w", filepath.Dir(dir), app.ErrPlaceTaken)
+	} else if err != nil {
 		return err
 	}
 	_, err := run(ctx, repository, "worktree", "add", "--detach", "--quiet", dir, revision)

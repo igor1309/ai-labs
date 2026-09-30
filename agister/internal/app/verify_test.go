@@ -316,26 +316,66 @@ func TestTheCleanCopyIsOnRecordBeforeItIsMade(t *testing.T) {
 	}
 }
 
-// Nothing overwrites a copy on record: attempt 1 fails and its copy cannot
-// be removed, so attempt 2 cannot make its own, and the call fails with the
-// copy still on record for a reap to remove.
-func TestACopyOnRecordIsNotOverwritten(t *testing.T) {
+// A failed run whose clean copy cannot be removed ends the call at once:
+// the copy stays on record and no attempt makes its own over it, so no
+// repair turn is paid for. The record keeps the failed attempt, with its
+// patch and run, the removal's error, and the copy for a reap to remove.
+func TestAFailedRunWhoseCopyCannotBeRemovedEndsTheCall(t *testing.T) {
 	h := newHarness()
 	verifying(h)
+	h.changes.changes = []byte("diff --git a/x b/x\n")
 	h.commands.exits = []int{1}
 	h.copies.removeErr = errors.New("busy")
-	identities := 0
-	h.changes.identify = func() string { identities++; return fmt.Sprintf("tree-%d", identities) }
 	record := h.call(t, contract.CallRequest{})
-	want := "attempt 2 cannot make its clean copy: the copy at /work/copy-1 is still on record, not removed"
+	want := "attempt 1 failed and its clean copy at /work/copy-1 could not be removed: busy"
 	if record.Result.Status != run.Failed || class(record) != run.ClassInternal || message(record) != want {
 		t.Fatalf("result %+v", record.Result.Error)
 	}
-	if record.Effects == nil || !reflect.DeepEqual(record.Effects.Copy, &run.Checkout{Repository: "/repo", Dir: "/work/copy-1"}) {
-		t.Fatalf("effects = %+v", record.Effects)
+	if turns := h.runner.calls(); len(turns) != 1 || contains(h.recorder.kinds(), "REPAIR_STARTED") {
+		t.Fatalf("turns %+v, events %v", turns, h.recorder.kinds())
 	}
-	if len(h.copies.copies()) != 1 || len(h.commands.runs()) != 1 || len(record.Attempts) != 2 || record.Attempts[1].Run != nil {
-		t.Fatalf("copies %+v, runs %d, attempts %+v", h.copies.copies(), len(h.commands.runs()), record.Attempts)
+	if len(record.Attempts) != 1 {
+		t.Fatalf("attempts %+v", record.Attempts)
+	}
+	failed := record.Attempts[0]
+	if failed.Run == nil || failed.Run.Passed || *failed.Run.Exit.Code != 1 || failed.Changes == nil || failed.Changes.Name != "attempt-1.patch" || !strings.Contains(failed.Stopped, want) {
+		t.Fatalf("attempt 1 = %+v, run %+v", failed, failed.Run)
+	}
+	if record.Effects == nil || !reflect.DeepEqual(record.Effects.Copy, &run.Checkout{Repository: "/repo", Dir: "/work/copy-1"}) || !reflect.DeepEqual(h.copies.left(), []string{"/work/copy-1"}) {
+		t.Fatalf("effects %+v, copies left %v", record.Effects, h.copies.left())
+	}
+}
+
+// Making the clean copy ends when the call's time does: a copy still being
+// made when the deadline passes is interrupted, the call ends as a timeout,
+// no command runs, and the part of the copy that was made is removed.
+func TestMakingTheCleanCopyIsInterruptedAtTheCallsDeadline(t *testing.T) {
+	h := newHarness()
+	clock := &settableClock{now: time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)}
+	h.clock = clock
+	h.calls = h.callsOn(h.defs)
+	verifying(h)
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "timeout: 10m", "timeout: 30s", 1)
+	// The turn leaves 200ms of the call's minute; the copy takes as long as
+	// it is given.
+	h.runner.during = func(app.TurnRequest) { clock.advance(time.Minute - 200*time.Millisecond) }
+	h.copies.block = true
+	record := h.call(t, contract.CallRequest{Timeout: "60s"})
+	want := "the call's timeout passed while making the clean copy to check for attempt 1: context deadline exceeded"
+	if record.Result.Status != run.Interrupted || class(record) != run.ClassTimeout || message(record) != want {
+		t.Fatalf("result %+v", record.Result)
+	}
+	h.copies.mu.Lock()
+	interrupted := h.copies.interrupted
+	h.copies.mu.Unlock()
+	if !errors.Is(interrupted, context.DeadlineExceeded) || len(h.copies.copies()) != 1 {
+		t.Fatalf("copy ended with %v, copies %+v", interrupted, h.copies.copies())
+	}
+	if len(h.commands.runs()) != 0 || len(h.runner.calls()) != 1 || len(record.Attempts) != 1 || record.Attempts[0].Run != nil {
+		t.Fatalf("runs %d, turns %d, attempts %+v", len(h.commands.runs()), len(h.runner.calls()), record.Attempts)
+	}
+	if len(h.copies.left()) != 0 || (record.Effects != nil && record.Effects.Copy != nil) {
+		t.Fatalf("copies left %v, effects %+v", h.copies.left(), record.Effects)
 	}
 }
 
