@@ -269,6 +269,10 @@ func TestProgressNamesTheNodesThatDidNotComplete(t *testing.T) {
 		{"passed with all", contract.Event{Kind: "BARRIER", Data: map[string]any{"state": "passed"}}, "· barrier passed\n"},
 		{"blocked", contract.Event{Kind: "BARRIER", Data: map[string]any{"state": "blocked", "blocked_by": "one", "incomplete": []any{"one", "two"}}},
 			"! barrier blocked: no node completed (one, two), no join\n"},
+		// A run recorded before ADR-004 has no incomplete: its first node
+		// that did not complete blocked the join.
+		{"blocked, recorded before", contract.Event{Kind: "BARRIER", Data: map[string]any{"state": "blocked", "blocked_by": "two"}},
+			"! barrier blocked by node two: no join\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			spy := &clientSpy{run: finished("completed", ""), events: []contract.Event{tc.event, {Kind: "WORKFLOW_FINISHED"}}}

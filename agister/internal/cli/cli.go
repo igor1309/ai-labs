@@ -588,10 +588,16 @@ func describe(event contract.Event) string {
 		}
 		return fmt.Sprintf("· node %v: %s", data["node"], ended)
 	case "BARRIER":
-		if _, ok := data["blocked_by"]; ok {
-			return fmt.Sprintf("! barrier %v: no node completed (%s), no join", data["state"], names(data["incomplete"]))
-		}
-		if incomplete, ok := data["incomplete"]; ok {
+		blocker, blocked := data["blocked_by"]
+		incomplete, ok := data["incomplete"]
+		switch {
+		case blocked && ok:
+			return fmt.Sprintf("! barrier %v: no node completed (%s), no join", data["state"], names(incomplete))
+		case blocked:
+			// Stored before ADR-004: the first node that did not complete
+			// blocked the join.
+			return fmt.Sprintf("! barrier %v by node %v: no join", data["state"], blocker)
+		case ok:
 			return fmt.Sprintf("! barrier %v: the join runs without %s, which did not complete", data["state"], names(incomplete))
 		}
 		return fmt.Sprintf("· barrier %v", data["state"])
