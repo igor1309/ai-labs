@@ -1,0 +1,96 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "verdict",
+    "summary",
+    "findings"
+  ],
+  "properties": {
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "approve",
+        "request_changes"
+      ],
+      "description": "request_changes when there is any blocker or major finding, otherwise approve."
+    },
+    "summary": {
+      "type": "string",
+      "description": "Two or three sentences on the change and its overall risk."
+    },
+    "findings": {
+      "type": "array",
+      "description": "Material findings only. Do not invent problems to fill the list.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "severity",
+          "file",
+          "line",
+          "title",
+          "detail",
+          "evidence"
+        ],
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": [
+              "blocker",
+              "major",
+              "minor",
+              "nit"
+            ],
+            "description": "blocker: must not merge. major: real defect or risk to fix. minor: worth fixing. nit: optional polish."
+          },
+          "file": {
+            "type": "string",
+            "description": "Repository-relative path."
+          },
+          "line": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "1-based line in the candidate, or null."
+          },
+          "title": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string",
+            "description": "What is wrong, why it matters and the smallest fix."
+          },
+          "evidence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "case",
+              "trace",
+              "introduced_by_change"
+            ],
+            "properties": {
+              "case": {
+                "type": "string",
+                "description": "The concrete case: an input, a sequence of events, or a use the project has now. Not 'could' or 'might'."
+              },
+              "trace": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string"
+                },
+                "description": "The steps you verified, each as path:line and what happens there."
+              },
+              "introduced_by_change": {
+                "type": "boolean",
+                "description": "true if the change introduced the problem or left it in code it touched; false if it lies outside the change."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

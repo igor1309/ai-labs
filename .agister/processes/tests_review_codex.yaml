@@ -11,6 +11,9 @@ input:
     Review the exact candidate against the diff from the base, following the
     review prompt given as input review_prompt. Report material findings
     only, with repository-relative paths and candidate line numbers.
+    Each finding carries its evidence: the concrete case, the trace you
+    verified and whether the change introduced it. A judge who never reads
+    the code rules on that evidence alone; a finding without it is rejected.
   params:
     base: {default: origin/agister}
     candidate: {default: HEAD}

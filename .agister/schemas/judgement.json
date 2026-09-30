@@ -1,23 +1,24 @@
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["summary", "decisions"],
+  "required": ["summary", "items"],
   "properties": {
-    "summary": {"type": "string", "description": "Two or three sentences: what to do now, and the overall risk."},
-    "decisions": {
+    "summary": {"type": "string", "description": "Two or three sentences: what the rulings add up to, and which reviewers' evidence fell short."},
+    "items": {
       "type": "array",
+      "description": "One item per distinct claim, duplicates merged, sorted by severity, highest first.",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["decision", "sources", "file", "line", "title", "reason", "action"],
+        "required": ["severity", "sources", "title", "ruling", "reason", "action", "missing_evidence"],
         "properties": {
-          "decision": {"type": "string", "enum": ["fix", "defer", "owner", "reject"]},
-          "sources": {"type": "array", "items": {"type": "string"}, "description": "Source findings as <review>#<index>, 1-based; \"judge\" for your own."},
-          "file": {"type": "string", "description": "Repository-relative path."},
-          "line": {"type": ["integer", "null"]},
+          "severity": {"type": "string", "enum": ["blocker", "major", "minor", "nit"], "description": "The highest severity among the sources."},
+          "sources": {"type": "array", "minItems": 1, "items": {"type": "string"}, "description": "Source findings as <review>#<finding>, 1-based."},
           "title": {"type": "string"},
-          "reason": {"type": "string", "description": "What you verified in the code and why this decision."},
-          "action": {"type": "string", "description": "fix: the smallest change. defer: its trigger. reject: empty."}
+          "ruling": {"type": "string", "enum": ["fix", "defer", "owner", "reject"]},
+          "reason": {"type": "string", "description": "Why the presented evidence does or does not support the claim."},
+          "action": {"type": "string", "description": "fix: the change the evidence calls for, as the reviewer stated it. defer: gap, trigger, done when. owner: the question and its options. reject: empty."},
+          "missing_evidence": {"type": "string", "description": "reject: what the reviewer should have shown. Otherwise empty."}
         }
       }
     }

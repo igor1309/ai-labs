@@ -16,9 +16,14 @@ still apply.
 - Review through Agister, on a committed candidate: a `*_review_codex`
   process for code, or `decision_review_codex --param prompt=<prompt file>`
   for decision documents (agent `codex-sol`: `gpt-6.1-sol`, effort high).
-  Findings are judged by the `review_judge` process, not by you:
-  `--param reviews=<review output file> --param scope=<what the change is>`.
-  Act on its judgement.
+  Reviewers collect the evidence; the `review_judge` process rules on it
+  and never reads the code. Bundle the review runs with
+  `scripts/review-bundle.py <run-id>... > <file>` and run
+  `agister run review_judge --param reviews=<file>`; pass it nothing else.
+  Act on the rulings as written, without judging them again: fix items go
+  to the implementer as a continuation, owner items to the owner, defer
+  items to `agister/docs/deferred.md`. Rejections for missing evidence are
+  feedback on the reviewers' prompts, not the judge's.
 - At most 2 review rounds. Deferred work is `agister/docs/deferred.md`:
   gap, trigger, done when, for real, observed gaps only.
 - ADRs reference only earlier ADRs.

@@ -25,8 +25,8 @@ test: ./cmd/agister TestRepositoryProcessesRunOnFakeRuntimes
 
 [a schema does not compile]
 file: ../.agister/schemas/judgement.json
-find: "type": "object",\n  "additionalProperties": false,\n  "required": ["summary", "decisions"],
-replace: "type": "objekt",\n  "additionalProperties": false,\n  "required": ["summary", "decisions"],
+find: "type": "object",\n  "additionalProperties": false,\n  "required": ["summary", "items"],
+replace: "type": "objekt",\n  "additionalProperties": false,\n  "required": ["summary", "items"],
 test: ./cmd/agister TestRepositoryProcessesRunOnFakeRuntimes
 
 [an input source is not one Agister provides]
