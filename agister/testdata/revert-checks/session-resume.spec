@@ -107,8 +107,8 @@ test: ./internal/app TestContinuationThatCannotListRunsFails
 
 [an unfinished continuation counts]
 file: internal/app/calls.go
-find: return record.FinishedAt != nil && record.Turn == nil &&\n\t\t(record.Effects == nil || record.Effects.Process == nil) &&\n\t\trecord.Result != nil && (record.Result.Error == nil
-replace: return record.Turn == nil &&\n\t\t(record.Effects == nil || record.Effects.Process == nil) &&\n\t\t(record.Result == nil || record.Result.Error == nil
+find: return record.FinishedAt != nil && (record.Turn == nil || neverSpawned(*record.Turn)) &&\n\t\t(record.Effects == nil || record.Effects.Process == nil) &&\n\t\trecord.Result != nil && (record.Result.Error == nil
+replace: return (record.Turn == nil || neverSpawned(*record.Turn)) &&\n\t\t(record.Effects == nil || record.Effects.Process == nil) &&\n\t\t(record.Result == nil || record.Result.Error == nil
 test: ./internal/app TestContinuationResumesAFinishedRunsSession
 
 [a continuation finished before its turn does not count]
@@ -120,8 +120,32 @@ test: ./internal/app TestContinuationThatCannotListRunsFails
 
 [a continuation that ran a turn counts]
 file: internal/app/calls.go
-find: return record.FinishedAt != nil && record.Turn == nil &&
-replace: return record.FinishedAt != nil &&
+find: (record.Turn == nil || neverSpawned(*record.Turn)) &&
+replace: true &&
+test: ./internal/app TestContinuationResumesAFinishedRunsSession
+
+[a continuation whose runtime could not be spawned started no turn]
+file: internal/app/calls.go
+find: (record.Turn == nil || neverSpawned(*record.Turn))
+replace: record.Turn == nil
+test: ./internal/app TestContinuationAfterASpawnFailureCanBeRetried
+
+[only a failed spawn is a turn that never started]
+file: internal/app/calls.go
+find: turn.Error.Class == run.ClassRuntimeUnavailable &&
+replace: turn.Error.Class != "" &&
+test: ./internal/app TestContinuationResumesAFinishedRunsSession
+
+[a turn whose runtime exited counts]
+file: internal/app/calls.go
+find: && turn.Exit == nil &&
+replace: &&
+test: ./internal/app TestContinuationResumesAFinishedRunsSession
+
+[a turn that reported a session counts]
+file: internal/app/calls.go
+find: && turn.ProviderSessionID == ""
+replace: && true
 test: ./internal/app TestContinuationResumesAFinishedRunsSession
 
 [a continuation that started a runtime process counts]

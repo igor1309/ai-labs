@@ -387,6 +387,25 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 			ran.Turn = &run.Turn{Status: run.Failed}
 			h.runs.records["run-2"] = ran
 		}, "run run-0 is not the latest in its session's chain: run run-2 continues the session"},
+		{"a continuation whose runtime exited", func(h *harness) {
+			resumable(h)
+			exited := finishedWithoutTurn("run-2", run.ClassRuntimeUnavailable)
+			code := 1
+			exited.Turn = &run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRuntimeUnavailable, "x"), Exit: &run.Exit{Code: &code}}
+			h.runs.records["run-2"] = exited
+		}, "run run-0 is not the latest in its session's chain: run run-2 continues the session"},
+		{"a continuation whose turn reported a session", func(h *harness) {
+			resumable(h)
+			reported := finishedWithoutTurn("run-2", run.ClassRuntimeUnavailable)
+			reported.Turn = &run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRuntimeUnavailable, "x"), ProviderSessionID: "prov-9"}
+			h.runs.records["run-2"] = reported
+		}, "run run-0 is not the latest in its session's chain: run run-2 continues the session"},
+		{"a continuation whose process could not be recorded", func(h *harness) {
+			resumable(h)
+			killed := finishedWithoutTurn("run-2", run.ClassInternal)
+			killed.Turn = &run.Turn{Status: run.Failed, Error: run.Fault(run.ClassInternal, "recording the runtime process failed, so it was killed")}
+			h.runs.records["run-2"] = killed
+		}, "run run-0 is not the latest in its session's chain: run run-2 continues the session"},
 		{"a continuation that started a runtime process", func(h *harness) {
 			resumable(h)
 			started := finishedWithoutTurn("run-2", run.ClassInternal)
@@ -418,6 +437,29 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 				t.Fatal("effects before the refusal")
 			}
 		})
+	}
+}
+
+// A continuation whose runtime could not be started ran nothing in the
+// session: continuing the same run again is allowed.
+func TestContinuationAfterASpawnFailureCanBeRetried(t *testing.T) {
+	h := newHarness()
+	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+	h.runs.records["run-0"] = run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Result: &run.Result{Session: &run.Session{ProviderSessionID: "prov-0"}}}
+	h.runs.states["run-0"] = run.StateFinished
+	succeeds := h.runner.turn
+	h.runner.turn = run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRuntimeUnavailable, "exec: no such file")}
+	h.runner.noProcess = true
+	failed := h.call(t, contract.CallRequest{Continue: "run-0"})
+	if class(failed) != run.ClassRuntimeUnavailable || failed.Turn == nil {
+		t.Fatalf("result %+v", failed.Result.Error)
+	}
+
+	failed.ID = "run-2"
+	h.runs.records["run-2"], h.runs.states["run-2"] = failed, run.StateFinished
+	h.runner.turn, h.runner.noProcess = succeeds, false
+	if again := h.call(t, contract.CallRequest{Continue: "run-0"}); again.Result.Status != run.Completed {
+		t.Fatalf("result %+v", again.Result.Error)
 	}
 }
 

@@ -505,14 +505,23 @@ func laterInChain(records []run.Record, prior run.Record, self string) string {
 	return ""
 }
 
-// noTurn reports a run its own call finished before any runtime turn:
-// execute records the turn whenever RunTurn returns, and a runtime process
-// as soon as it starts. A run that is not finished, or that a reaper
+// noTurn reports a run its own call finished before any runtime process
+// started: execute records the turn whenever RunTurn returns, and a
+// runtime process as soon as it starts. A turn counts as none only when
+// the runtime could not be started at all: runtime_unavailable comes only
+// from a failed spawn, with no exit and no session. Other turns count,
+// even with no process on record: one that could not be recorded was
+// started and then killed. A run that is not finished, or that a reaper
 // finished, may have left a runtime running unrecorded, so it is not one.
 func noTurn(record run.Record) bool {
-	return record.FinishedAt != nil && record.Turn == nil &&
+	return record.FinishedAt != nil && (record.Turn == nil || neverSpawned(*record.Turn)) &&
 		(record.Effects == nil || record.Effects.Process == nil) &&
 		record.Result != nil && (record.Result.Error == nil || record.Result.Error.Class != run.ClassAbandoned)
+}
+
+// neverSpawned reports a turn whose runtime process could not be started.
+func neverSpawned(turn run.Turn) bool {
+	return turn.Error != nil && turn.Error.Class == run.ClassRuntimeUnavailable && turn.Exit == nil && turn.ProviderSessionID == ""
 }
 
 // collectChanges keeps a call's changes to its own workspace as an

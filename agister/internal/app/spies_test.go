@@ -74,6 +74,7 @@ type runnerSpy struct {
 	requests    []app.TurnRequest
 	started     chan struct{}
 	startErr    error // what ProcessStarted returned to the last turn
+	noProcess   bool  // the runtime could not be started: no process, s.turn
 }
 
 func (s *runnerSpy) Identity(context.Context) (app.RuntimeIdentity, error) {
@@ -83,7 +84,11 @@ func (s *runnerSpy) Identity(context.Context) (app.RuntimeIdentity, error) {
 func (s *runnerSpy) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
 	s.mu.Lock()
 	s.requests = append(s.requests, request)
+	noProcess := s.noProcess
 	s.mu.Unlock()
+	if noProcess {
+		return s.turn
+	}
 	startErr := sink.ProcessStarted("ref-4242")
 	s.mu.Lock()
 	s.startErr = startErr
