@@ -1,8 +1,10 @@
 # Codex for this repository's reviews. read-only is observed, in the Codex
 # reviews run for the agister-deferred-fixes branch (codex-cli 0.158.0):
 # the agent reads the repository and the host, runs commands such as
-# git show, and cannot write. workspace-write stays unverified, so it is
-# never granted.
+# git show, and cannot write. Re-observed on codex-cli 0.159.2
+# (2026-09-30): it read a file and ran git show; creating a file in the
+# repository and writing under /tmp were refused. workspace-write stays
+# unverified, so it is never granted.
 schema: agister.runtime/v1alpha1
 name: codex
 adapter: codex
@@ -13,7 +15,7 @@ primitives:
   items:
     read-only:
       grants: [repository.read, repository.search, repository.diff, repository.history.read, process.execute, host.read]
-      verified: ["0.158."]
+      verified: ["0.158.", "0.159."]
     workspace-write:
       grants: [repository.read, repository.search, repository.diff, repository.history.read, process.execute, host.read,
                repository.write, repository.history.write]
