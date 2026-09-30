@@ -40,6 +40,8 @@ func TestExamplesParse(t *testing.T) {
 			_, parseErr = definition.ParsePolicy(doc(kind, name, string(data)))
 		case definition.KindRuntime:
 			_, parseErr = definition.ParseMapping(doc(kind, name, string(data)))
+		case definition.KindWorkflow:
+			_, parseErr = definition.ParseWorkflow(doc(kind, name, string(data)))
 		}
 		if parseErr != nil {
 			t.Errorf("%s: %v", path, parseErr)

@@ -39,6 +39,14 @@ func (c *clientFake) ShowProcess(context.Context, string, string) (contract.Proc
 	c.hit("ShowProcess")
 	return contract.ProcessView{}, nil
 }
+func (c *clientFake) ListWorkflows(context.Context) ([]contract.WorkflowSummary, error) {
+	c.hit("ListWorkflows")
+	return nil, nil
+}
+func (c *clientFake) ShowWorkflow(context.Context, string) (contract.WorkflowView, error) {
+	c.hit("ShowWorkflow")
+	return contract.WorkflowView{}, nil
+}
 func (c *clientFake) Check(context.Context, bool) (contract.CheckReport, error) {
 	return c.report, nil
 }
@@ -86,6 +94,8 @@ func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
 	_, refused["ListAgents"] = gated.ListAgents(ctx)
 	_, refused["ListProcesses"] = gated.ListProcesses(ctx)
 	_, refused["ShowProcess"] = gated.ShowProcess(ctx, "p", "")
+	_, refused["ListWorkflows"] = gated.ListWorkflows(ctx)
+	_, refused["ShowWorkflow"] = gated.ShowWorkflow(ctx, "w")
 	_, refused["Submit"] = gated.Submit(ctx, contract.CallRequest{})
 	refused["Observe other"] = gated.Observe(ctx, "other", 0, nil)
 	_, refused["Inspect other"] = gated.Inspect(ctx, "other")

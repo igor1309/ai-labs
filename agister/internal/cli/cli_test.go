@@ -459,3 +459,61 @@ func TestUsageErrorsNeverReachTheClient(t *testing.T) {
 		}
 	}
 }
+
+// workflowSpy answers the workflow commands.
+type workflowSpy struct {
+	clientSpy
+	summaries []contract.WorkflowSummary
+	shown     []string
+	workflow  contract.WorkflowView
+}
+
+func (s *workflowSpy) ListWorkflows(context.Context) ([]contract.WorkflowSummary, error) {
+	return s.summaries, nil
+}
+
+func (s *workflowSpy) ShowWorkflow(_ context.Context, name string) (contract.WorkflowView, error) {
+	s.shown = append(s.shown, name)
+	return s.workflow, nil
+}
+
+func TestWorkflowListAndShow(t *testing.T) {
+	spy := &workflowSpy{
+		summaries: []contract.WorkflowSummary{{Name: "w", FanOut: []string{"one:p", "two:q"}, Join: "merge:j"}, {Name: "broken", Problem: "invalid (run `agister check`)"}},
+		workflow: contract.WorkflowView{
+			Name:   "w",
+			Params: []contract.Param{{Name: "candidate", Default: "HEAD"}},
+			Inputs: []string{"candidate <- git.revision"},
+			FanOut: []contract.WorkflowNode{
+				{Name: "one", Process: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Primitives: []string{"Read"}}, Params: []string{"candidate"}},
+				{Name: "two", Process: contract.ProcessView{Name: "q", Refusal: "no agent"}},
+			},
+			Join:       contract.WorkflowNode{Name: "merge", Process: contract.ProcessView{Name: "j", Agent: "a", Runtime: "rt"}},
+			Collection: "gathered",
+		},
+	}
+	var stdout, stderr bytes.Buffer
+	build := func(cli.Config) (contract.Client, error) { return spy, nil }
+	code := cli.Run(context.Background(), []string{"workflow", "list"}, cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }}, build)
+	if code != 0 || stdout.String() != "w\tone:p,two:q\tjoin merge:j\nbroken\tinvalid (run `agister check`)\n" {
+		t.Fatalf("list: %d %q %q", code, stdout.String(), stderr.String())
+	}
+	stdout.Reset()
+	code = cli.Run(context.Background(), []string{"workflow", "show", "w"}, cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }}, build)
+	want := `workflow     w
+params       candidate=HEAD
+inputs       candidate <- git.revision
+fan-out      one: process p, agent a (runtime rt)
+  receives   params candidate
+  plan       Read
+             two: process q
+  receives   params (none)
+  plan       REFUSED: no agent
+join         merge: process j, agent a (runtime rt)
+  receives   the collection as input gathered, and nothing else
+  plan       (none)
+`
+	if code != 0 || stdout.String() != want || !reflect.DeepEqual(spy.shown, []string{"w"}) {
+		t.Fatalf("show: %d\n%s\nwant\n%s", code, stdout.String(), want)
+	}
+}

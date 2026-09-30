@@ -119,6 +119,11 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 					_, err := c.ShowProcess(ctx, "ask", "")
 					return err
 				},
+				"settings workflows": func(c contract.Client) error { _, err := c.ListWorkflows(ctx); return err },
+				"inspection workflow": func(c contract.Client) error {
+					_, err := c.ShowWorkflow(ctx, "review_panel")
+					return err
+				},
 				// Refused after its settings were read: no such process.
 				"calls": func(c contract.Client) error {
 					id, err := c.Submit(ctx, contract.CallRequest{Process: "missing", Cwd: home})

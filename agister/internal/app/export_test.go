@@ -31,6 +31,11 @@ func (r counted) Resolve(_ context.Context, process, _ string, _ overrides) (*re
 	return &resolution{}, refuse("%s", r.counter.Reason)
 }
 
+// Workflow finds none: every name is a process's.
+func (r counted) Workflow(context.Context, string) (*workflowResolution, bool, error) {
+	return nil, false, nil
+}
+
 // Count returns the snapshots taken and the processes resolved.
 func (c *SnapshotCounter) Count() (int, []string) {
 	c.mu.Lock()

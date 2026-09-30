@@ -1,7 +1,9 @@
 # Agister CLI
 
 Runs **agent calls** whose agents, processes, permissions and output
-contracts are settings, not code. Architecture: [ADR-001](docs/adr/001-agister-cli-architecture.md).
+contracts are settings, not code, and **workflows** of them: fan-out then
+join. Architecture: [ADR-001](docs/adr/001-agister-cli-architecture.md),
+[ADR-003](docs/adr/003-fan-out-and-join-workflow.md).
 
 ## Build and try
 
@@ -32,6 +34,10 @@ bin/agister run adversarial_review --param base=main
 bin/agister run ask --param question="What does cmd/agister do?"
 bin/agister run ask --continue <run-id> --param question="And cmd/agister/main_test.go?"
 bin/agister run ask --max-cost 0.25 --json       # print the node result as JSON
+
+bin/agister workflow list
+bin/agister workflow show review_panel
+bin/agister run review_panel --param base=main --param architecture=docs/adr/001-agister-cli-architecture.md
 
 bin/agister runs
 bin/agister runs show <run-id>
@@ -119,12 +125,113 @@ script. A process with `verify` therefore lends your authority to the
 agent's code, including access to Agister's own state. `agister check` and
 `agister process show` say so for every process with `verify`.
 
+## Workflows
+
+A workflow ([ADR-003](docs/adr/003-fan-out-and-join-workflow.md)) runs
+several processes over the same inputs, then one process over their
+results. It has one fixed shape: **fan-out** nodes, each a call of its
+process, and one **join** node. The shipped example,
+`workflows/review_panel.yaml`:
+
+```yaml
+schema: agister.workflow/v1alpha1
+name: review_panel
+type: workflow
+input:
+  params:                        # what the caller gives, as a process's params
+    base: {default: origin/HEAD}
+    candidate: {default: HEAD}
+    architecture: {}
+  values:                        # resolved once, before any node starts
+    base: {source: git.revision, rev: "${param.base}"}
+    candidate: {source: git.revision, rev: "${param.candidate}"}
+    architecture: {source: param, name: architecture}
+fan_out:                         # at least one; node names unique
+  - {node: adversarial, uses: process:adversarial_review}
+  - {node: architecture, uses: process:architecture_review}
+join: {node: summary, uses: process:review_summary}
+```
+
+and its join, `processes/review_summary.yaml`, whose only input is the
+collection:
+
+```yaml
+input:
+  values:
+    reviews: {source: workflow.collection}
+```
+
+`agister run <name>` runs a workflow or a process, whichever the name is;
+`agister workflow show <name>` shows its nodes, what each receives, and
+each node's process as a call would see it.
+
+**Inputs.** The workflow's values are resolved once, before any node
+starts. Each fan-out node receives, as its process's param of the same
+name, every value its process takes a param for: a revision as its commit,
+anything else as its text. So every fan-out node reviews the same commits,
+even if a branch moves meanwhile. A workflow takes `--param` only: an
+`--agent`, `--timeout`, `--max-cost` or `--continue` is refused, since
+each node runs with its own process's agent and limits.
+
+**Fan-out.** The fan-out nodes start together and run concurrently. Each
+is an ordinary call, a run of its own, with its own limits, checkout,
+evidence and exit path; each node's run records the workflow run it
+belongs to (`parent`).
+
+**The barrier.** The join starts only after every fan-out node has ended
+and all of them completed. If any did not (refused, failed, interrupted,
+lost), no join starts: the workflow ends with the status and class of the
+first such node **in declaration order**, and its message names that node
+and its run. There is no partial join.
+
+**The collection.** The join receives, as its `workflow.collection` input,
+a JSON list with one entry per fan-out node, in declaration order whatever
+order they finished in: `node`, `process`, `run` and the node's recorded
+`output`, unchanged (or its `text`, for a process whose output is text).
+That and the fixed values its own process declares are all the join
+receives: no workflow param or value, nothing from whoever started the
+workflow. The join is a fresh call, never a continuation of a fan-out
+node's session. The collection is kept with the workflow run
+(`artifacts/collection.json`).
+
+**The result.** The workflow ends in the same node result as a call: when
+the join ran, its status, class, output and text are the join's. Usage and
+cost sum every node that ran, and are unknown if any node's are. Timing
+covers the whole workflow. There is no status, class or result field of
+its own.
+
+**The record.** The workflow run (`agister runs show <id>`) records the
+workflow definition's path and digest, its resolved inputs, each node's run
+and outcome (`workflow.nodes`), and the barrier (`waiting`, `passed`,
+`blocked` with `blocked_by`, or `cancelled`).
+
+**Cancellation** (Ctrl-C on `agister run`) is terminal. Once the workflow
+is cancelled, no node starts, the join included, even when every fan-out
+node has already completed; cancelling and starting a node are serialized,
+so exactly one of them wins. Every node still running is cancelled, and
+the workflow waits for each to end and release its checkout, then ends
+`interrupted`, class `cancelled`, barrier `cancelled`. If Agister itself is
+killed, each node's run is reaped by the next call like any other run: its
+runtime and checkout are ended and it finishes `lost`. The workflow run,
+which has no effects of its own, is left unfinished and reads `lost`
+(`abandoned`), like any unfinished run.
+
+**`check`** rejects a workflow with no fan-out node, a missing or duplicate
+node name, a node whose process does not exist, a join process that cannot
+receive the collection (no input with source `workflow.collection`, or more
+than one), a join process whose inputs take a caller-supplied param (any
+`input.params`, or an input with source `param`), a fan-out process that
+takes the collection or needs a param the workflow does not pass, a value
+no fan-out process takes, and a workflow named like a process. A process
+that takes the collection, run on its own, is refused: only a join has one.
+
 ## Settings
 
 ```text
 ~/.agister/
   service.toml  agents/*.toml  processes/*.yaml  policies/*.yaml
-  runtimes/*.yaml  schemas/*.json      settings (validated by `check`)
+  runtimes/*.yaml  schemas/*.json  workflows/*.yaml
+                                      settings (validated by `check`)
   runs/<id>/  record.json events.jsonl provider.jsonl artifacts/
   logs/                               diagnostics
 ```
@@ -147,7 +254,8 @@ settings.
 ```text
 <repository>/.agister/
   service.toml  agents/*.toml  processes/*.yaml  policies/*.yaml
-  runtimes/*.yaml  schemas/*.json     same layout, higher priority
+  runtimes/*.yaml  schemas/*.json  workflows/*.yaml
+                                      same layout, higher priority
 ```
 
 Nothing works on settings that do not compose. The client itself

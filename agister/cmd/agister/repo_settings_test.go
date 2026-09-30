@@ -21,9 +21,8 @@ import (
 // by param name; any other such param gets fallbackParam. Each is a real
 // file of the repository, so a param read as a file resolves.
 var repoParams = map[string]string{
-	"prompt":  "prompts/code-review-architecture.md",
-	"brief":   "prompts/session-resume-review.md",
-	"reviews": "prompts/code-review-judge.md",
+	"prompt": "prompts/code-review-architecture.md",
+	"brief":  "prompts/session-resume-review.md",
 }
 
 const fallbackParam = "AGENTS.md"
@@ -34,9 +33,11 @@ const fallbackParam = "AGENTS.md"
 // tests, this one included.
 const verifyFixture = "grep -qx two change.txt"
 
-// Every process of this repository's own settings (<repository root>/.agister)
-// runs, as the CLI composes them over a global layer, on the fake runtimes,
-// and completes with output its schema accepts. A process that names a
+// Every process and workflow of this repository's own settings
+// (<repository root>/.agister) runs, as the CLI composes them over a global
+// layer, on the fake runtimes, and completes with output its schema
+// accepts. A process that takes a workflow's collection runs only as a
+// join: it is run through the workflows, and each must be one's join. A process that names a
 // missing agent, policy or schema, a schema that does not compile, an
 // unknown input source or a prompt path that does not resolve from the
 // repository root fails it. Processes are read from the directory, so a new
@@ -93,66 +94,21 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	if len(names) == 0 {
 		t.Fatal("the repository has no processes")
 	}
+	// Processes that take a workflow's collection, to be run as a join.
+	joins := map[string]bool{}
 	for _, name := range names {
+		process := parseProcess(t, root, name)
+		if len(process.Collects()) > 0 {
+			joins[name] = true
+			continue
+		}
 		t.Run(name, func(t *testing.T) {
-			data, err := os.ReadFile(filepath.Join(root, ".agister", "processes", name+".yaml"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			process, err := definition.ParseProcess(definition.Document{
-				Source: definition.Source{Kind: definition.KindProcess, Name: name, Path: name + ".yaml"}, Bytes: data,
-			})
-			if err != nil {
-				t.Fatal(err)
-			}
-			args := []string{"run", name}
-			for _, param := range process.Params {
-				value, set := "", true
-				switch {
-				case param.Name == "base":
-					value = "main"
-				case param.Name == "candidate":
-					value = "feature"
-				case !param.HasDefault && repoParams[param.Name] != "":
-					value = repoParams[param.Name]
-				case !param.HasDefault:
-					value = fallbackParam
-				default:
-					set = false
-				}
-				if set {
-					args = append(args, "--param", param.Name+"="+value)
-				}
-			}
-
-			before := map[string]bool{}
-			for _, entry := range readRuns(t, home) {
-				before[entry.Name()] = true
-			}
-			r := agister(t, home, repo, args...)
-			if r.code != cli.ExitCompleted {
-				t.Fatalf("%v: exit %d\n%s%s", args, r.code, r.stdout, r.stderr)
-			}
-			var created []string
-			for _, entry := range readRuns(t, home) {
-				if !before[entry.Name()] {
-					created = append(created, entry.Name())
-				}
-			}
+			args := append([]string{"run", name}, paramArgs(process.Params)...)
+			created, r := runRecorded(t, home, repo, args)
 			if len(created) != 1 {
 				t.Fatalf("runs recorded: %v, want one", created)
 			}
-			dir := filepath.Join(home, "runs", created[0])
-			var record, first map[string]any
-			readJSON(t, filepath.Join(dir, "record.json"), &record)
-			provider, _ := os.ReadFile(filepath.Join(dir, "provider.jsonl"))
-			if err := json.Unmarshal([]byte(strings.SplitN(string(provider), "\n", 2)[0]), &first); err != nil || first["argv"] == nil {
-				t.Fatalf("the runtime was not a fake: %s", provider)
-			}
-			result := record["result"].(map[string]any)
-			if result["status"] != "completed" {
-				t.Fatalf("result = %v", result)
-			}
+			record := completedRun(t, home, created[0])
 			if process.Verify != nil {
 				attempts, _ := record["attempts"].([]any)
 				if len(attempts) != 1 {
@@ -162,29 +118,178 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 					t.Fatalf("verification run = %v, want %q passed", run, verifyFixture)
 				}
 			}
-			// The output is what the process's schema accepts.
-			var schemaPath string
-			for _, source := range record["definitions"].([]any) {
-				source := source.(map[string]any)
-				if source["kind"] == string(definition.KindSchema) {
-					schemaPath = source["path"].(string)
-				}
-			}
 			if process.Output.Format == "json" {
-				document, err := os.ReadFile(schemaPath)
-				if err != nil {
-					t.Fatalf("schema of %s: %v", name, err)
-				}
-				output, _ := json.Marshal(result["output"])
-				if err := (schema.Validator{}).Validate(document, output); err != nil {
-					t.Fatalf("output %s: %v", output, err)
-				}
-				var printed any
-				if err := json.Unmarshal([]byte(r.stdout), &printed); err != nil || !reflect.DeepEqual(printed, result["output"]) {
-					t.Fatalf("stdout %s, recorded output %s: %v", r.stdout, output, err)
-				}
+				schemaAccepts(t, record, record["result"].(map[string]any)["output"], r.stdout)
 			}
 		})
+	}
+
+	// Every workflow runs its nodes and completes with its join's output.
+	workflows, err := filepath.Glob(filepath.Join(root, ".agister", "workflows", "*.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := map[string]bool{}
+	for _, path := range workflows {
+		name := strings.TrimSuffix(filepath.Base(path), ".yaml")
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		workflow, err := definition.ParseWorkflow(definition.Document{
+			Source: definition.Source{Kind: definition.KindWorkflow, Name: name, Path: path}, Bytes: data,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		joined[workflow.Join.Process] = true
+		t.Run("workflow "+name, func(t *testing.T) {
+			args := append([]string{"run", name}, paramArgs(workflow.Params)...)
+			created, r := runRecorded(t, home, repo, args)
+			if len(created) != len(workflow.FanOut)+2 {
+				t.Fatalf("runs recorded: %v, want the workflow's and one per node", created)
+			}
+			var record map[string]any
+			for _, id := range created {
+				var candidate map[string]any
+				readJSON(t, filepath.Join(home, "runs", id, "record.json"), &candidate)
+				if candidate["workflow"] != nil {
+					record = candidate
+				}
+			}
+			if record == nil {
+				t.Fatalf("no workflow run among %v", created)
+			}
+			result := record["result"].(map[string]any)
+			if result["status"] != "completed" {
+				t.Fatalf("result = %v", result)
+			}
+			nodes := record["workflow"].(map[string]any)["nodes"].([]any)
+			var join map[string]any
+			for i, node := range nodes {
+				node := node.(map[string]any)
+				child := completedRun(t, home, node["run"].(string))
+				if parent := child["parent"].(map[string]any); parent["run"] != record["id"] || parent["node"] != node["name"] {
+					t.Fatalf("node %v: parent %v", node["name"], parent)
+				}
+				if i == len(nodes)-1 {
+					join = child
+				}
+			}
+			// The workflow's output is its join's, which its schema accepts.
+			if !reflect.DeepEqual(result["output"], join["result"].(map[string]any)["output"]) {
+				t.Fatalf("output %v, join's %v", result["output"], join["result"])
+			}
+			schemaAccepts(t, join, result["output"], r.stdout)
+		})
+	}
+	for name := range joins {
+		if !joined[name] {
+			t.Errorf("process %s takes a workflow's collection, but no repository workflow joins with it", name)
+		}
+	}
+}
+
+func parseProcess(t *testing.T, root, name string) definition.Process {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(root, ".agister", "processes", name+".yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	process, err := definition.ParseProcess(definition.Document{
+		Source: definition.Source{Kind: definition.KindProcess, Name: name, Path: name + ".yaml"}, Bytes: data,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return process
+}
+
+// paramArgs gives base and candidate the test repository's revisions, and
+// every other param without a default a file of the repository.
+func paramArgs(params []definition.Param) []string {
+	var args []string
+	for _, param := range params {
+		value, set := "", true
+		switch {
+		case param.Name == "base":
+			value = "main"
+		case param.Name == "candidate":
+			value = "feature"
+		case !param.HasDefault && repoParams[param.Name] != "":
+			value = repoParams[param.Name]
+		case !param.HasDefault:
+			value = fallbackParam
+		default:
+			set = false
+		}
+		if set {
+			args = append(args, "--param", param.Name+"="+value)
+		}
+	}
+	return args
+}
+
+// runRecorded runs agister, requires it to complete, and returns the runs
+// it recorded.
+func runRecorded(t *testing.T, home, repo string, args []string) ([]string, result) {
+	t.Helper()
+	before := map[string]bool{}
+	for _, entry := range readRuns(t, home) {
+		before[entry.Name()] = true
+	}
+	r := agister(t, home, repo, args...)
+	if r.code != cli.ExitCompleted {
+		t.Fatalf("%v: exit %d\n%s%s", args, r.code, r.stdout, r.stderr)
+	}
+	var created []string
+	for _, entry := range readRuns(t, home) {
+		if !before[entry.Name()] {
+			created = append(created, entry.Name())
+		}
+	}
+	return created, r
+}
+
+// completedRun is a call's record, which ran on a fake runtime and
+// completed.
+func completedRun(t *testing.T, home, id string) map[string]any {
+	t.Helper()
+	dir := filepath.Join(home, "runs", id)
+	var record, first map[string]any
+	readJSON(t, filepath.Join(dir, "record.json"), &record)
+	provider, _ := os.ReadFile(filepath.Join(dir, "provider.jsonl"))
+	if err := json.Unmarshal([]byte(strings.SplitN(string(provider), "\n", 2)[0]), &first); err != nil || first["argv"] == nil {
+		t.Fatalf("run %s: the runtime was not a fake: %s", id, provider)
+	}
+	if result := record["result"].(map[string]any); result["status"] != "completed" {
+		t.Fatalf("run %s: result = %v", id, result)
+	}
+	return record
+}
+
+// schemaAccepts checks that the schema the call's record names accepts
+// output, and that the CLI printed it.
+func schemaAccepts(t *testing.T, record map[string]any, output any, stdout string) {
+	t.Helper()
+	var schemaPath string
+	for _, source := range record["definitions"].([]any) {
+		source := source.(map[string]any)
+		if source["kind"] == string(definition.KindSchema) {
+			schemaPath = source["path"].(string)
+		}
+	}
+	document, err := os.ReadFile(schemaPath)
+	if err != nil {
+		t.Fatalf("schema of %s: %v", record["process"], err)
+	}
+	data, _ := json.Marshal(output)
+	if err := (schema.Validator{}).Validate(document, data); err != nil {
+		t.Fatalf("output %s: %v", data, err)
+	}
+	var printed any
+	if err := json.Unmarshal([]byte(stdout), &printed); err != nil || !reflect.DeepEqual(printed, output) {
+		t.Fatalf("stdout %s, recorded output %s: %v", stdout, data, err)
 	}
 }
 

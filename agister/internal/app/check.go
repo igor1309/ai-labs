@@ -55,6 +55,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 		Policies:  map[string]definition.Policy{},
 		Mappings:  map[string]definition.Mapping{},
 		Schemas:   map[string]bool{},
+		Workflows: map[string]definition.Workflow{},
 	}
 
 	// Each document on its own.
@@ -142,6 +143,13 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			bundle.Schemas[d.Source.Name] = true
 			return nil
 		}},
+		{definition.KindWorkflow, func(d definition.Document) error {
+			w, err := definition.ParseWorkflow(d)
+			if err == nil {
+				bundle.Workflows[w.Name] = w
+			}
+			return err
+		}},
 	}
 	for _, step := range steps {
 		if err := each(step.kind, step.parse); err != nil {
@@ -171,6 +179,12 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			link(from, definition.KindSchema, process.Output.Schema)
 		}
 	}
+	for _, name := range sortedNames(bundle.Workflows) {
+		from := contract.DefinitionRef{Kind: string(definition.KindWorkflow), Name: name}
+		for _, node := range bundle.Workflows[name].Nodes() {
+			link(from, definition.KindProcess, node.Process)
+		}
+	}
 
 	for _, name := range sortedNames(bundle.Processes) {
 		if bundle.Processes[name].Verify != nil {
@@ -185,7 +199,9 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 
 	// Across documents.
 	known := c.runtimes.Adapters()
-	for _, p := range settings.Check(bundle, settings.Mechanisms{Sources: c.sources, Adapters: known}) {
+	// The core itself supplies a join's collection (ADR-003 rule 4).
+	sources := append(append([]string(nil), c.sources...), definition.CollectionSource)
+	for _, p := range settings.Check(bundle, settings.Mechanisms{Sources: sources, Adapters: known}) {
 		report.Problems = append(report.Problems, p.String())
 	}
 

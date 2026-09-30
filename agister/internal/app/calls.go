@@ -17,7 +17,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// Calls submits and executes agent calls.
+// Calls submits and executes agent calls, and workflows of them (ADR-003).
 type Calls struct {
 	resolver   CallResolver
 	runners    CallRunners
@@ -40,9 +40,13 @@ type CallResolver interface {
 	Snapshot(ctx context.Context) CallResolution
 }
 
-// CallResolution resolves a call from the settings it was taken over.
+// CallResolution resolves a call, or a workflow, from the settings it was
+// taken over.
 type CallResolution interface {
 	Resolve(ctx context.Context, processName, agentOverride string, caller overrides) (*resolution, error)
+	// Workflow resolves the workflow of that name; found is false when the
+	// settings have none, and the name is a process's.
+	Workflow(ctx context.Context, name string) (res *workflowResolution, found bool, err error)
 }
 
 // Snapshot returns the resolver over the definitions as they are now (see
@@ -202,10 +206,12 @@ func (h *Hosted) remove(id string) {
 	delete(h.cancels, id)
 }
 
+// cancel calls the run's cancel outside the lock: a workflow's takes a lock
+// of its own, under which it adds the nodes it starts here.
 func (h *Hosted) cancel(id string) bool {
 	h.mu.Lock()
-	defer h.mu.Unlock()
 	cancel, ok := h.cancels[id]
+	h.mu.Unlock()
 	if ok {
 		cancel()
 	}
@@ -233,25 +239,41 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 	}
 	// The settings this call resolves from are read now, before the run is
 	// recorded; the call's goroutine, which may open much later, uses this
-	// snapshot and never reads the live source.
+	// snapshot and never reads the live source. A workflow's nodes use it
+	// too.
 	resolver := c.resolver.Snapshot(ctx)
+	workflow, isWorkflow, workflowErr := resolver.Workflow(ctx, request.Process)
 	handle, err := c.recorder.Create(ctx, record)
 	if err != nil {
 		return "", err
+	}
+	if isWorkflow {
+		runCtx, cancel := context.WithCancel(WithCorrelation(context.WithoutCancel(ctx), "workflow_run", record.ID, "workflow", request.Process))
+		// Cancelling the workflow is serialized with starting its nodes.
+		flow := &flow{cancel: cancel}
+		c.hosted.add(record.ID, flow.stop)
+		go func() {
+			defer c.hosted.remove(record.ID)
+			defer cancel()
+			c.runWorkflow(runCtx, handle, record, resolver, workflow, workflowErr, flow)
+		}()
+		return record.ID, nil
 	}
 	runCtx, cancel := context.WithCancel(WithCorrelation(context.WithoutCancel(ctx), "run_id", record.ID, "process", request.Process))
 	c.hosted.add(record.ID, cancel)
 	go func() {
 		defer c.hosted.remove(record.ID)
 		defer cancel()
-		c.execute(runCtx, handle, record, resolver)
+		c.execute(runCtx, handle, record, resolver, nil)
 	}()
 	return record.ID, nil
 }
 
-// execute runs one call. Every refusal happens before the runtime starts
-// and is recorded; every effect is released on every path.
-func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record, resolver CallResolution) {
+// execute runs one call and returns its record as finished. Every refusal
+// happens before the runtime starts and is recorded; every effect is
+// released on every path. collection is what a workflow's join receives
+// through its collection input; nil for any other call.
+func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record, resolver CallResolution, collection *Resolved) (final run.Record) {
 	event := func(source, kind string, data map[string]any) {
 		_ = handle.Append(run.Event{At: c.clock.Now(), Source: source, Kind: kind, Data: data})
 	}
@@ -283,6 +305,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		result.Timing.FinishedAt = now
 		result.Timing.WallMS = now.Sub(result.Timing.StartedAt).Milliseconds()
 		record.Result = &result
+		final = record
 		data := map[string]any{"status": string(result.Status)}
 		if fault != nil {
 			data["class"], data["message"] = string(fault.Class), fault.Message
@@ -344,7 +367,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return
 	}
 
-	inputs, err := c.resolveInputs(ctx, res.process, record.Request)
+	inputs, err := c.resolveValues(ctx, "process "+res.process.Name, res.process.Params, res.process.Values, record.Request, collection)
 	if err != nil {
 		fail(err)
 		return
@@ -447,6 +470,234 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		result.Output = record.Turn.Output
 	}
 	finish(fault)
+	return final
+}
+
+// runWorkflow runs one workflow and finishes its run. res and resErr are the
+// workflow as the settings snapshot resolved it.
+func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Record, resolver CallResolution, res *workflowResolution, resErr error, flow *flow) {
+	event := func(kind string, data map[string]any) {
+		_ = handle.Append(run.Event{At: c.clock.Now(), Source: run.SourceAgister, Kind: kind, Data: data})
+	}
+	result := run.Result{Cost: run.Cost{Source: run.CostUnknown}, Timing: run.Timing{StartedAt: record.CreatedAt}}
+	// The results of every node that ran: usage and cost sum them.
+	var ran []run.Result
+	done := false
+	finish := func(status run.Status, fault *run.Error) {
+		if done {
+			return
+		}
+		done = true
+		now := c.clock.Now()
+		record.FinishedAt = &now
+		result.Status, result.Error = status, fault
+		totals := nodeTotals(ran)
+		result.Usage, result.Cost = totals.Usage, totals.Cost
+		result.Timing.FinishedAt = now
+		result.Timing.WallMS = now.Sub(result.Timing.StartedAt).Milliseconds()
+		record.Result = &result
+		data := map[string]any{"status": string(status)}
+		if fault != nil {
+			data["class"], data["message"] = string(fault.Class), fault.Message
+		}
+		event("WORKFLOW_FINISHED", data)
+		// A finished run is no longer cancellable.
+		c.hosted.remove(record.ID)
+		_ = handle.Finish(record)
+	}
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			finish(run.Failed, run.Fault(run.ClassInternal, "%v", recovered))
+		}
+	}()
+	// Before any node starts, a refusal is the workflow's own.
+	refused := func(err error) {
+		if ctx.Err() != nil {
+			finish(run.Interrupted, run.Fault(run.ClassCancelled, "cancelled before any node started: %v", err))
+			return
+		}
+		var refusal *Refusal
+		if errors.As(err, &refusal) {
+			event("REFUSED", map[string]any{"reason": refusal.Reason})
+			finish(run.Failed, run.Fault(run.ClassRefused, "%s", refusal.Reason))
+			return
+		}
+		finish(run.Failed, run.Fault(run.ClassInternal, "%v", err))
+	}
+	event("WORKFLOW_SUBMITTED", map[string]any{"workflow": record.Process})
+
+	if res != nil {
+		record.Definitions = recordSources(res.sources)
+	}
+	if resErr != nil {
+		refused(resErr)
+		return
+	}
+	if err := workflowRequest(record.Request); err != nil {
+		refused(err)
+		return
+	}
+	workflow := res.workflow
+	state := &run.Workflow{Barrier: run.Barrier{State: run.BarrierWaiting}}
+	for _, node := range workflow.FanOut {
+		state.Nodes = append(state.Nodes, run.Node{Name: node.Name, Process: node.Process})
+	}
+	state.Nodes = append(state.Nodes, run.Node{Name: workflow.Join.Name, Process: workflow.Join.Process, Join: true})
+	record.Workflow = state
+	_ = handle.Update(record)
+
+	// Resolved once, before any node starts; every fan-out node receives the
+	// same values.
+	inputs, err := c.resolveValues(ctx, "workflow "+workflow.Name, workflow.Params, workflow.Values, record.Request, nil)
+	if err != nil {
+		refused(err)
+		return
+	}
+	record.Inputs = summarize(inputs)
+	_ = handle.Update(record)
+	values, err := passedValues(inputs)
+	if err != nil {
+		refused(err)
+		return
+	}
+
+	ends := make(chan nodeEnd, len(workflow.FanOut))
+	start := func(index int, node definition.Node, params map[string]string, collection *Resolved) (started bool, err error) {
+		started = flow.start(func() {
+			state.Nodes[index].Run, err = c.startNode(ctx, record.ID, node, params, collection, record.Request.Cwd, resolver, func(final run.Record) {
+				ends <- nodeEnd{index, final}
+			})
+		})
+		switch {
+		case !started:
+		case err != nil:
+			state.Nodes[index].Status, state.Nodes[index].Error = run.Failed, run.Fault(run.ClassInternal, "its run could not be recorded: %v", err)
+			event("NODE_NOT_STARTED", map[string]any{"node": node.Name, "process": node.Process, "error": err.Error()})
+		default:
+			event("NODE_STARTED", map[string]any{"node": node.Name, "process": node.Process, "run": state.Nodes[index].Run})
+		}
+		_ = handle.Update(record)
+		return started, err
+	}
+	ended := func(end nodeEnd) {
+		node := &state.Nodes[end.index]
+		node.Status = end.record.Result.Status
+		node.Error = end.record.Result.Error
+		ran = append(ran, *end.record.Result)
+		data := map[string]any{"node": node.Name, "run": node.Run, "status": string(node.Status)}
+		if node.Error != nil {
+			data["class"] = string(node.Error.Class)
+		}
+		event("NODE_FINISHED", data)
+		_ = handle.Update(record)
+	}
+
+	// Fan out: a node that cannot start stops the rest from starting.
+	running := 0
+	for i, node := range workflow.FanOut {
+		params := map[string]string{}
+		for _, param := range res.processes[node.Process].Params {
+			if value, ok := values[param.Name]; ok {
+				params[param.Name] = value
+			}
+		}
+		started, err := start(i, node, params, nil)
+		if !started || err != nil {
+			break
+		}
+		running++
+	}
+	outputs := make([]run.Record, len(workflow.FanOut))
+	for ; running > 0; running-- {
+		end := <-ends
+		outputs[end.index] = end.record
+		ended(end)
+	}
+
+	// The barrier. Cancellation is terminal: it wins over any node's outcome.
+	cancelled := func(message string) {
+		state.Barrier = run.Barrier{State: run.BarrierCancelled}
+		event("BARRIER", map[string]any{"state": state.Barrier.State})
+		finish(run.Interrupted, run.Fault(run.ClassCancelled, "%s", message))
+	}
+	if flow.cancelled() {
+		cancelled("the workflow was cancelled; its join did not start")
+		return
+	}
+	for i := range workflow.FanOut {
+		node := state.Nodes[i]
+		if node.Status == run.Completed {
+			continue
+		}
+		state.Barrier = run.Barrier{State: run.BarrierBlocked, BlockedBy: node.Name}
+		event("BARRIER", map[string]any{"state": state.Barrier.State, "blocked_by": node.Name})
+		status, class, reason := node.Status, run.ClassInternal, "it did not start"
+		if node.Error != nil {
+			class, reason = node.Error.Class, node.Error.String()
+		}
+		if status == "" {
+			status = run.StatusOf(class)
+		}
+		finish(status, run.Fault(class, "fan-out node %s (run %s) did not complete, so the join did not start: %s", node.Name, or(node.Run, "none"), reason))
+		return
+	}
+	state.Barrier = run.Barrier{State: run.BarrierPassed}
+	event("BARRIER", map[string]any{"state": state.Barrier.State})
+
+	collection, data, err := collect(workflow, outputs)
+	if err != nil {
+		finish(run.Failed, run.Fault(run.ClassInternal, "the collection: %v", err))
+		return
+	}
+	if artifact, err := handle.Artifact("collection.json", data); err == nil {
+		state.Collection = &artifact
+	} else {
+		event("ARTIFACT_FAILED", map[string]any{"name": "collection.json", "error": err.Error()})
+	}
+	join := len(state.Nodes) - 1
+	// The join is a fresh call that receives the collection and no param.
+	started, err := start(join, workflow.Join, nil, &collection)
+	if !started {
+		cancelled("the workflow was cancelled before its join started")
+		return
+	}
+	if err != nil {
+		finish(run.Failed, state.Nodes[join].Error)
+		return
+	}
+	end := <-ends
+	ended(end)
+	joined := end.record.Result
+	result.Output, result.Text = joined.Output, joined.Text
+	finish(joined.Status, joined.Error)
+}
+
+// startNode records a node's run, a call of its process that belongs to the
+// workflow run parent, and starts it under the workflow's context, so
+// cancelling the workflow cancels it. ended receives its record as it
+// finished.
+func (c *Calls) startNode(ctx context.Context, parent string, node definition.Node, params map[string]string, collection *Resolved, cwd string, resolver CallResolution, ended func(run.Record)) (string, error) {
+	now := c.clock.Now()
+	record := run.Record{
+		Schema:    run.RecordSchema,
+		ID:        c.ids.RunID(now),
+		Process:   node.Process,
+		CreatedAt: now,
+		Parent:    &run.Parent{Run: parent, Node: node.Name},
+		Request:   run.Request{Process: node.Process, Params: params, Cwd: cwd},
+	}
+	handle, err := c.recorder.Create(ctx, record)
+	if err != nil {
+		return "", err
+	}
+	nodeCtx, cancel := context.WithCancel(WithCorrelation(ctx, "run_id", record.ID, "process", node.Process, "node", node.Name))
+	c.hosted.add(record.ID, cancel)
+	go func() {
+		defer c.hosted.remove(record.ID)
+		defer cancel()
+		ended(c.execute(nodeCtx, handle, record, resolver, collection))
+	}()
+	return record.ID, nil
 }
 
 // continuation checks a request to continue an earlier run's session and
@@ -532,23 +783,26 @@ func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revis
 	return artifacts, nil
 }
 
-// resolveInputs binds caller params and resolves every input value to an
-// immutable value through its source, in order: a value's arguments may
-// use the text of the values resolved before it, such as a commit hash.
-func (c *Calls) resolveInputs(ctx context.Context, process definition.Process, request run.Request) ([]run.Input, error) {
+// resolveValues binds caller params to the params declared and resolves
+// every input value to an immutable value through its source, in order: a
+// value's arguments may use the text of the values resolved before it,
+// such as a commit hash. subject names the definition, e.g. "process p".
+// Only a join has a collection to receive; a collection input of any other
+// call is refused.
+func (c *Calls) resolveValues(ctx context.Context, subject string, declared []definition.Param, values []definition.Value, request run.Request, collection *Resolved) ([]run.Input, error) {
 	params := map[string]string{}
 	var unknown []string
 	for name := range request.Params {
-		if !hasParam(process.Params, name) {
+		if !hasParam(declared, name) {
 			unknown = append(unknown, name)
 		}
 	}
 	if len(unknown) > 0 {
 		sort.Strings(unknown)
-		return nil, refuse("process %s takes no params: %s", process.Name, strings.Join(unknown, ", "))
+		return nil, refuse("%s takes no params: %s", subject, strings.Join(unknown, ", "))
 	}
 	var missing []string
-	for _, param := range process.Params {
+	for _, param := range declared {
 		value, ok := request.Params[param.Name]
 		switch {
 		case ok:
@@ -560,12 +814,22 @@ func (c *Calls) resolveInputs(ctx context.Context, process definition.Process, r
 		}
 	}
 	if len(missing) > 0 {
-		return nil, refuse("process %s is missing params: %s", process.Name, strings.Join(missing, ", "))
+		return nil, refuse("%s is missing params: %s", subject, strings.Join(missing, ", "))
 	}
 
-	inputs := make([]run.Input, 0, len(process.Values))
+	inputs := make([]run.Input, 0, len(values))
 	texts := map[string]string{}
-	for _, value := range process.Values {
+	for _, value := range values {
+		if value.Source == definition.CollectionSource {
+			if collection == nil {
+				return nil, refuse("input %s: %s is given only to a workflow's join", value.Name, definition.CollectionSource)
+			}
+			if text, ok := collection.Value.(string); ok {
+				texts[value.Name] = text
+			}
+			inputs = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: collection.Identity, Value: collection.Value})
+			continue
+		}
 		provider, ok := c.inputs[value.Source]
 		if !ok {
 			return nil, refuse("input %s: unknown source %q", value.Name, value.Source)

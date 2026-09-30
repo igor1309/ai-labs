@@ -147,43 +147,7 @@ func ParseProcess(doc Document) (Process, error) {
 
 	input := fields(values["input"], "input", []string{"instruction", "params", "values"}, p)
 	process.Instruction = required(input, "instruction", "input", p)
-	for _, entry := range mapping(input["params"], "input.params", p) {
-		field := "input.params." + entry.key
-		param := Param{Name: entry.key}
-		spec := fields(entry.value, field, []string{"default"}, p)
-		if node, ok := spec["default"]; ok {
-			param.Default, _ = scalar(node, field+".default", p)
-			param.HasDefault = true
-		}
-		process.Params = append(process.Params, param)
-	}
-	for _, entry := range mapping(input["values"], "input.values", p) {
-		field := "input.values." + entry.key
-		value := Value{Name: entry.key, Args: map[string]string{}}
-		for _, arg := range mapping(entry.value, field, p) {
-			text, _ := scalar(arg.value, join(field, arg.key), p)
-			if arg.key == "source" {
-				value.Source = text
-			} else {
-				value.Args[arg.key] = text
-			}
-		}
-		if value.Source == "" {
-			p.add(field+".source", "is required")
-		}
-		for _, reference := range value.references("param") {
-			if !hasParam(process.Params, reference) {
-				p.add(field, "refers to ${param.%s}, which is not declared in input.params", reference)
-			}
-		}
-		// Values resolve in order, so a value refers only to earlier ones.
-		for _, reference := range value.references("value") {
-			if !hasValue(process.Values, reference) {
-				p.add(field, "refers to ${value.%s}, which is not an input value declared before it", reference)
-			}
-		}
-		process.Values = append(process.Values, value)
-	}
+	process.Params, process.Values = parseInputs(input, p)
 
 	limits, tools, workspace := parseLimits(values, []string{"allow", "require"}, []string{"access", "scope", "checkout"}, p)
 	process.Limits = limits
@@ -248,6 +212,51 @@ func parseVerify(node *yaml.Node, p *problems) *Verify {
 		verify.MaxAttempts = attempts
 	}
 	return verify
+}
+
+// parseInputs reads input.params, the values a caller supplies, and
+// input.values, each input and its source, in declaration order.
+func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
+	var params []Param
+	for _, entry := range mapping(input["params"], "input.params", p) {
+		field := "input.params." + entry.key
+		param := Param{Name: entry.key}
+		spec := fields(entry.value, field, []string{"default"}, p)
+		if node, ok := spec["default"]; ok {
+			param.Default, _ = scalar(node, field+".default", p)
+			param.HasDefault = true
+		}
+		params = append(params, param)
+	}
+	var values []Value
+	for _, entry := range mapping(input["values"], "input.values", p) {
+		field := "input.values." + entry.key
+		value := Value{Name: entry.key, Args: map[string]string{}}
+		for _, arg := range mapping(entry.value, field, p) {
+			text, _ := scalar(arg.value, join(field, arg.key), p)
+			if arg.key == "source" {
+				value.Source = text
+			} else {
+				value.Args[arg.key] = text
+			}
+		}
+		if value.Source == "" {
+			p.add(field+".source", "is required")
+		}
+		for _, reference := range value.references("param") {
+			if !hasParam(params, reference) {
+				p.add(field, "refers to ${param.%s}, which is not declared in input.params", reference)
+			}
+		}
+		// Values resolve in order, so a value refers only to earlier ones.
+		for _, reference := range value.references("value") {
+			if !hasValue(values, reference) {
+				p.add(field, "refers to ${value.%s}, which is not an input value declared before it", reference)
+			}
+		}
+		values = append(values, value)
+	}
+	return params, values
 }
 
 // ParseMapping parses a runtime permission mapping.

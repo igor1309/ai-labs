@@ -1,5 +1,5 @@
-// Package run models one agent call's record: identities, definitions,
-// plan, inputs, events and layered outcomes.
+// Package run models one agent call's record, or one workflow's:
+// identities, definitions, plan, inputs, events and layered outcomes.
 package run
 
 import (
@@ -220,6 +220,10 @@ type Record struct {
 	// Turn is the latest turn; with verification, Attempts has every one.
 	Turn     *Turn     `json:"turn,omitempty"`
 	Attempts []Attempt `json:"attempts,omitempty"`
+	// Workflow is set on a workflow's own run (ADR-003): its nodes and
+	// barrier. Parent is set on a node's run: the workflow run it belongs to.
+	Workflow *Workflow `json:"workflow,omitempty"`
+	Parent   *Parent   `json:"parent,omitempty"`
 	Result   *Result   `json:"result,omitempty"` // set when finished
 }
 
