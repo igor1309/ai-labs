@@ -1,33 +1,26 @@
-# LAB-26: a Codex call gets its repository's instruction files
+# LAB-26: a Codex call loads the repository's instructions and skills
 
-ADR-006 and ADR-007 (`agister/docs/adr/`): every call gets each
-`AGENTS.md` and `CLAUDE.md` from the repository root down to its working
-directory, root first, read from a commit pinned once per call (its
-checkout's commit, else `HEAD` when the call starts), and the run records
-the commit and each file's path and digest. The Claude Code adapter does
-this already (`agister/internal/adapters/runtime/claudecode`, event
-`INSTRUCTION_FILES`).
+ADR-006 (`agister/docs/adr/006-a-call-gets-its-repository-instructions.md`):
+a call runs its runtime so that it loads the repository's instruction
+files and skills as it would for a person working in the same directory;
+Agister passes no flag that turns that loading off, and gives the agent
+the tool it needs to use a skill.
 
-The Codex adapter (`agister/internal/adapters/runtime/codex`) does not.
-Codex loads `AGENTS.md` files itself, from the working tree, but not
-`CLAUDE.md`, only up to its own size limit, and Agister records none of
-it.
+The Codex adapter (`agister/internal/adapters/runtime/codex`) starts
+`codex exec` with flags of its own, among them `--ignore-user-config` and
+`--ignore-rules`. Find out, with the installed `codex` (codex-cli 0.159.2)
+in a `t.TempDir()` repository holding an `AGENTS.md`, a nested
+`AGENTS.md` and a skill, what a turn started with the adapter's arguments
+loads, and what a plain `codex exec` in the same directory loads. Where
+the adapter's flags turn off loading of instruction files or skills,
+change them so they do not, keeping whatever else those flags are there
+for. Say how you confirmed each point.
 
-Make the Codex adapter follow ADR-006 and ADR-007 the way the Claude
-adapter does: the same files from the same pinned commit, put in the
-prompt's instructions ahead of the process's instruction, the same
-`INSTRUCTION_FILES` event, the same failures. Codex's own loading of
-`AGENTS.md` is turned off, so the model gets each file once and what the
-run records is exactly what it got. Find the Codex setting that turns its
-loading off in the installed `codex` (codex-cli 0.159.2) and say how you
-confirmed it. Share the file reading with the Claude adapter if both need
-exactly the same thing; do not make one adapter depend on the other's
-package.
-
-Tests as for the Claude adapter, with a `t.TempDir()` repository, plus the
-argument that turns Codex's own loading off, on a fresh and on a resumed
-turn. Update the package comment's contract text. Do not change ADR files.
-Skills are out of scope.
+Regular tests prove the arguments on a fresh and a resumed turn. Update
+the package comment's contract text, and the contract version and
+anything keyed to it, as the code base does for a contract change. Do not
+change ADR files. If nothing needs to change, change nothing and report
+what you found.
 
 Use the quiet test commands from `agister/AGENTS.md`; report each with its
 exit code and final line, and list every file you changed.
