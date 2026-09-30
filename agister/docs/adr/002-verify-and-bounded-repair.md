@@ -10,17 +10,12 @@
 
 An implementer's claim that its work is done is not evidence. Today the
 tests and revert checks on an implementer's changes run outside Agister, by
-hand, in a tree no record names ([deferred item 1](../deferred.md)). Without
+hand, in a tree no record names (dogfooding, 2026-09-29). Without
 repair, a failing check can only end the node, and giving the failure back
 to the implementer would take a retry node and a workflow layer that do not
 exist.
 
-Multica LAB-7 first proposed a "post-hook". That name was a mental
-reference, never a design choice: what the process declares is its
-verification, not a general lifecycle hook.
-
-Prior art ([verify and repair: prior art](../../../research/agister/research/verify-repair-prior-art.md))
-converges on one shape: a check after the agent's turn, its bounded output
+Prior art converges on one shape: a check after the agent's turn, its bounded output
 sent back into the same conversation, with a small hard cap (Aider 3, CrewAI
 3, Instructor and Pydantic-AI configurable). A fresh-context attempt, where
 one exists, is an outer step (the-furnace, X15, SWE-agent). At the cap,
@@ -34,7 +29,7 @@ CrewAI raises and Aider stops quietly.
   failing test.
 - The same result shape for every node (ADR-001 rule 6).
 - A FAIL is final for the tree state it ran on; never rerun a check until it
-  passes (Verger lessons L120, L121).
+  passes.
 - Every effect owned and bounded (ADR-001 rule 11), including a check that
   hangs or never ends; limits only narrow (ADR-001 rule 3), across all turns.
 - Context growth stays small: repair is a few turns inside one step, not
@@ -111,9 +106,8 @@ continuation between calls: the call reads only its own state.
 It needs an agent whose sessions may be continued and an adapter that
 supports resume; otherwise a `verify` with `max_attempts` above 1 refuses
 the call before the first turn (ADR-001 rule 7). A turn that reports no
-session cannot be repaired, and the node ends as budget exhausted. A fresh-context
-attempt is not part of the node; it is an outer step's job
-([deferred item 13](../deferred.md)).
+session cannot be repaired, and the node ends as budget exhausted. A
+fresh-context attempt is not part of the node; it is an outer step's job.
 
 ### 5. Every limit covers the whole call
 
@@ -196,15 +190,13 @@ permissions, and what it runs can be code the agent wrote: a test, a
 `Makefile` target, a build script. Until verification is confined, a
 process with `verify` in effect lends that authority to the agent's code,
 including access to Agister's state (ADR-001 rule 9). `check` and
-`process show` say so; confining it is
-[deferred item 15](../deferred.md).
+`process show` say so.
 
 ## Amendment to ADR-001
 
 Rule 1 becomes: the core performs agent calls and runs the verification
 command a process declares; nothing more specific. This does not add a
-command node. A command that runs without an agent, or whose result another
-process takes as input, stays open in [deferred item 1](../deferred.md).
+command node.
 
 ## Consequences
 
@@ -220,12 +212,10 @@ process takes as input, stays open in [deferred item 1](../deferred.md).
 ### Negative
 
 - The agent can edit what the command reads: tests, `Makefile`, test data.
-  Changes are recorded but not refused
-  ([deferred item 14](../deferred.md)).
-- A flaky failure goes to the agent as if it were real
-  ([deferred item 14](../deferred.md)).
-- Until item 15, the command lends the operator's authority to agent-written
-  code.
+  Changes are recorded but not refused.
+- A flaky failure goes to the agent as if it were real.
+- Until verification is confined, the command lends the operator's
+  authority to agent-written code.
 - Context grows with each attempt; the bound keeps it small but does not
   remove it.
 - The core now runs one kind of command besides agent calls.
@@ -245,7 +235,7 @@ process takes as input, stays open in [deferred item 1](../deferred.md).
   diagnosis and costs a full restatement; it belongs to the outer step when
   same-conversation repair is exhausted.
 - **Rerunning the command until it passes, or once on failure to filter
-  flakes:** rejected (Verger lessons L120, L121).
+  flakes:** rejected: a failure is final for the content it ran on.
 - **A failure class of its own:** rejected. It would give verification a
   result shape of its own.
 
@@ -258,15 +248,3 @@ predates verification; whether a failing check in a future standalone check
 node needs a class all nodes share (if `budget exhausted` does not fit it,
 the answer is one shared class, never a verification-only one); pre-turn
 commands; more than one command.
-
-## Source basis
-
-- [Verify and repair: prior art](../../../research/agister/research/verify-repair-prior-art.md)
-- [Agister orchestrator](../../../research/agister/research/verger/orchestrator.md)
-- [Verger lessons](../../../research/agister/research/verger/lessons/)
-- Multica LAB-7 and its discussion (2026-09-29)
-- Review round 1 (2026-09-30): Codex Sol 6 high and Sol 6.1 medium and high
-  through `decision_review_codex`, and Sol 6 high through `codex exec`
-- Review round 2 (2026-09-30): Sol 6.1 high through `decision_review_codex`
-- [Session resume observations](../../../research/agister/research/session-resume-observations.md):
-  in-place resume on codex-cli 0.159.2 and Claude Code 2.1.285

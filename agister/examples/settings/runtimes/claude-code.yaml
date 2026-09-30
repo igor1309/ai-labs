@@ -18,7 +18,7 @@ primitives:
     Read: {grants: [repository.read], verified: ["2.1."]} # 2.1.283
     Glob: {grants: [repository.read], verified: ["2.1."]} # 2.1.284
     Grep: {grants: [repository.search], verified: ["2.1."]} # 2.1.283
-    # Not yet verified (deferred item 3).
+    # Not yet verified (deferred item 2).
     Edit: {grants: [repository.write]}
     Write: {grants: [repository.write]}
     NotebookEdit: {grants: [repository.write]}

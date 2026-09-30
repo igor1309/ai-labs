@@ -22,7 +22,7 @@ func researchPolicy(t *testing.T) definition.Policy {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Without the fields Agister refuses (deferred item 6).
+	// Without the fields Agister refuses (deferred item 5).
 	data = withoutTopLevel(data, "resources", "artifacts")
 	pol, err := definition.ParsePolicy(definition.Document{Source: definition.Source{Name: "static-review"}, Bytes: data})
 	if err != nil {

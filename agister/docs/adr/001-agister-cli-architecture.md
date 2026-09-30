@@ -8,9 +8,8 @@
 
 ## Context
 
-Agister orchestrates work done by AI agents. The long-term design
-([orchestrator](../../../research/agister/research/verger/orchestrator.md))
-is a durable local service. Agister is built in small steps, each testing a
+Agister orchestrates work done by AI agents. The long-term design is a
+durable local service. Agister is built in small steps, each testing a
 hypothesis. The first steps built one capability: **calling an agent through
 a provider runtime** (Claude Code, Codex) from a CLI, and recording what
 happened.
@@ -336,8 +335,7 @@ mechanisms; the service, its transport and lifecycle.
     unfinished run is lost. After the CLI is killed with SIGKILL, a reap that
     the next submitted call starts beside it (never inside it) attempts to
     undo the effects the run recorded; an
-    attempt can fail, is bounded in time and is recorded on the run; what
-    that leaves is tracked in [deferred work](../deferred.md).
+    attempt can fail, is bounded in time and is recorded on the run.
     Only a deliberate continuation reads another run, and never changes its
     record; it resumes the run's session in place.
 13. Diagnostics never change behavior and are not evidence.
@@ -347,11 +345,3 @@ mechanisms; the service, its transport and lifecycle.
 16. When the service exists, it is the single operational authority.
 17. Each component declares the interfaces it requires; no required
     interface is shared between components.
-
-## Source basis
-
-- [Agister orchestrator](../../../research/agister/research/verger/orchestrator.md)
-- [Functional requirements](../../../research/agister/research/verger/functional-requirements.md)
-- [Runtime research](../../../research/agister/research/codex-claude-orchestrator-runtime-research.md)
-- [Runtime discussions](../../../research/agister/research/verger/runtime-discussions.md)
-- Prototype evidence in the [README](../../README.md)

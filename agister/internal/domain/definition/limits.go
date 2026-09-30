@@ -89,7 +89,7 @@ func parseLimits(values map[string]*yaml.Node, toolKeys, workspaceKeys []string,
 		}
 	}
 	// Reserving resources and retaining artifacts need the service; a
-	// field Agister would silently ignore is refused (deferred item 6).
+	// field Agister would silently ignore is refused (deferred item 5).
 	for _, field := range []string{"resources", "artifacts"} {
 		if _, ok := values[field]; ok {
 			p.add(field, "not supported yet: Agister would not enforce it")
