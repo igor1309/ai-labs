@@ -1,8 +1,7 @@
 # Session resume in place (ADR-001 rule 12): Agister chooses no session ID,
-# a continuation resumes the reported session without forking, the runtime
-# must report the session it resumed, and only the latest run of a
-# session's chain can be continued, judged on every record on file. Each mutation undoes one part, and the
-# listed tests must fail with it.
+# a continuation resumes the reported session without forking, and the
+# runtime must report the session it resumed. Each mutation undoes one
+# part, and the listed tests must fail with it.
 # Run: scripts/revert-check.py <this file>
 module: agister
 
@@ -90,121 +89,6 @@ file: internal/adapters/runtime/codex/codex.go
 find: reported := s.ThreadID != "" || s.Completed || s.Failed != ""
 replace: reported := s.ThreadID != ""
 test: ./internal/adapters/runtime/codex TestResumeReportingAnotherThreadFails
-
-# Only the latest run of a session's chain can be continued.
-[a run that is not the latest in its chain is refused]
-file: internal/app/calls.go
-find: if later := laterInChain(records, prior, self); later != "" {
-replace: if later := laterInChain(records, prior, self); later == "never" {
-test: ./internal/app TestContinuationResumesAFinishedRunsSession
-test: ./cmd/agister TestContinuationEndToEnd
-
-[a call that cannot list runs does not continue]
-file: internal/app/calls.go
-find: return "", fmt.Errorf("listing runs to continue run %s: %w", runID, err)
-replace: records = nil
-test: ./internal/app TestContinuationThatCannotListRunsFails
-
-[an unfinished continuation counts]
-file: internal/app/calls.go
-find: return record.FinishedAt != nil && (record.Turn == nil || neverSpawned(*record.Turn)) &&\n\t\t(record.Effects == nil || record.Effects.Process == nil) &&\n\t\trecord.Result != nil && (record.Result.Error == nil
-replace: return (record.Turn == nil || neverSpawned(*record.Turn)) &&\n\t\t(record.Effects == nil || record.Effects.Process == nil) &&\n\t\t(record.Result == nil || record.Result.Error == nil
-test: ./internal/app TestContinuationResumesAFinishedRunsSession
-
-[a continuation finished before its turn does not count]
-file: internal/app/calls.go
-find: inChain(record.Request.Continue) && !noTurn(record) {
-replace: inChain(record.Request.Continue) {
-test: ./internal/app TestContinuationResumesAFinishedRunsSession
-test: ./internal/app TestContinuationThatCannotListRunsFails
-
-[a continuation that ran a turn counts]
-file: internal/app/calls.go
-find: (record.Turn == nil || neverSpawned(*record.Turn)) &&
-replace: true &&
-test: ./internal/app TestContinuationResumesAFinishedRunsSession
-
-[a continuation whose runtime could not be spawned started no turn]
-file: internal/app/calls.go
-find: (record.Turn == nil || neverSpawned(*record.Turn))
-replace: record.Turn == nil
-test: ./internal/app TestContinuationAfterASpawnFailureCanBeRetried
-
-[only a failed spawn is a turn that never started]
-file: internal/app/calls.go
-find: turn.Error.Class == run.ClassRuntimeUnavailable &&
-replace: turn.Error.Class != "" &&
-test: ./internal/app TestContinuationResumesAFinishedRunsSession
-
-[a turn whose runtime exited counts]
-file: internal/app/calls.go
-find: && turn.Exit == nil &&
-replace: &&
-test: ./internal/app TestContinuationResumesAFinishedRunsSession
-
-[a turn that reported a session counts]
-file: internal/app/calls.go
-find: && turn.ProviderSessionID == ""
-replace: && true
-test: ./internal/app TestContinuationResumesAFinishedRunsSession
-
-[a continuation that started a runtime process counts]
-file: internal/app/calls.go
-find: \t\t(record.Effects == nil || record.Effects.Process == nil) &&\n
-replace: \n
-test: ./internal/app TestContinuationResumesAFinishedRunsSession
-
-[a continuation a reaper finished counts]
-file: internal/app/calls.go
-find: (record.Result.Error == nil || record.Result.Error.Class != run.ClassAbandoned)
-replace: true
-test: ./internal/app TestContinuationResumesAFinishedRunsSession
-
-[the call's own record does not count]
-file: internal/app/calls.go
-find: if record.ID == self || earlier[record.ID] {
-replace: if earlier[record.ID] {
-test: ./internal/app TestContinuationResumesAFinishedRunsSession
-
-[the runs it continued do not count]
-file: internal/app/calls.go
-find: if record.ID == self || earlier[record.ID] {
-replace: if record.ID == self {
-test: ./internal/app TestContinuationResumesAFinishedRunsSession
-test: ./cmd/agister TestContinuationEndToEnd
-
-[the runs it continued are found back to the first]
-file: internal/app/calls.go
-find: for id := prior.Request.Continue;
-replace: for id := "";
-test: ./internal/app TestContinuationResumesAFinishedRunsSession
-test: ./cmd/agister TestContinuationEndToEnd
-
-[a later run of the session counts]
-file: internal/app/calls.go
-find: if inSession(record) || record.Request.Continue
-replace: if record.Request.Continue
-test: ./internal/app TestContinuationResumesAFinishedRunsSession
-
-[a run continuing an earlier run of the chain counts]
-file: internal/app/calls.go
-find: return earlier[id] || ok && inSession(record)
-replace: return ok && inSession(record)
-test: ./internal/app TestContinuationResumesAFinishedRunsSession
-
-# Nothing on record is missed.
-[a record that cannot be read fails the enumeration]
-file: internal/adapters/fsruns/fsruns.go
-find: if len(unreadable) > 0 {
-replace: if len(unreadable) > 1000 {
-test: ./internal/adapters/fsruns TestEveryFailsOnAnUnreadableRecord
-test: ./cmd/agister TestContinuationFailsOnAnUnreadableRecord
-
-[a run with no record yet is not on record]
-file: internal/adapters/fsruns/fsruns.go
-find: if errors.Is(err, contract.ErrNotFound) {\n\t\t\tcontinue
-replace: if errors.Is(err, fs.ErrNotExist) {\n\t\t\tcontinue
-test: ./internal/adapters/fsruns TestEveryFailsOnAnUnreadableRecord
 
 # Every session ID Claude Code reports is checked.
 [a Claude Code result naming another session fails]

@@ -92,14 +92,10 @@ type CallValidator interface {
 	Validate(schema []byte, output json.RawMessage) error
 }
 
-// CallRuns reads an earlier run's evidence, only to continue its session,
-// and every run's record, to find what else continues that session. A
+// CallRuns reads an earlier run's evidence, only to continue its session. A
 // record that is not finished and no longer owned reads as abandoned.
 type CallRuns interface {
 	Get(ctx context.Context, id string) (run.Record, run.State, error)
-	// Every fails when any record on file cannot be read: a continuation
-	// it hides could make the session stale.
-	Every(ctx context.Context) ([]run.Record, error)
 }
 
 // CallClock tells the time of a call's record and events.
@@ -326,7 +322,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		event(run.SourceAgister, "PERMISSIONS_WITHHELD", map[string]any{"permissions": res.plan.Withheld})
 	}
 
-	resumeSessionID, err := c.continuation(ctx, res, record.ID, record.Request.Continue)
+	resumeSessionID, err := c.continuation(ctx, res, record.Request.Continue)
 	if err != nil {
 		fail(err)
 		return
@@ -433,8 +429,8 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 // returns that provider session, which the runtime resumes in place.
 // Continuing is deliberate: the agent must allow it, the runtime must
 // support it, and the earlier run must be finished, by the same agent,
-// with a session, and be the latest run in that session's chain.
-func (c *Calls) continuation(ctx context.Context, res *resolution, self, runID string) (string, error) {
+// with a session.
+func (c *Calls) continuation(ctx context.Context, res *resolution, runID string) (string, error) {
 	if runID == "" {
 		return "", nil
 	}
@@ -458,70 +454,7 @@ func (c *Calls) continuation(ctx context.Context, res *resolution, self, runID s
 	case prior.Result == nil || prior.Result.Session == nil || prior.Result.Session.ProviderSessionID == "":
 		return "", refuse("run %s has no provider session", runID)
 	}
-	records, err := c.runs.Every(ctx)
-	if err != nil {
-		return "", fmt.Errorf("listing runs to continue run %s: %w", runID, err)
-	}
-	if later := laterInChain(records, prior, self); later != "" {
-		return "", refuse("run %s is not the latest in its session's chain: run %s continues the session", runID, later)
-	}
 	return prior.Result.Session.ProviderSessionID, nil
-}
-
-// laterInChain returns a run, other than self, that moved prior's session
-// past prior: one that ran in that session and is not prior or a run prior
-// continues, or one that continues a run of the chain, finished or not,
-// unless it finished having started no runtime turn (see noTurn). Each
-// call's record, with what it continues, exists before its check, so of
-// two concurrent continuations of one run at least one sees the other;
-// both may be refused, never both let through.
-func laterInChain(records []run.Record, prior run.Record, self string) string {
-	byID := map[string]run.Record{}
-	for _, record := range records {
-		byID[record.ID] = record
-	}
-	// prior and the runs it continues, back to the session's first.
-	earlier := map[string]bool{prior.ID: true}
-	for id := prior.Request.Continue; id != "" && !earlier[id]; id = byID[id].Request.Continue {
-		earlier[id] = true
-	}
-	session := prior.Result.Session.ProviderSessionID
-	inSession := func(record run.Record) bool {
-		return record.Runtime != nil && record.Runtime.Adapter == prior.Runtime.Adapter &&
-			record.Result != nil && record.Result.Session != nil && record.Result.Session.ProviderSessionID == session
-	}
-	inChain := func(id string) bool {
-		record, ok := byID[id]
-		return earlier[id] || ok && inSession(record)
-	}
-	for _, record := range records {
-		if record.ID == self || earlier[record.ID] {
-			continue
-		}
-		if inSession(record) || record.Request.Continue != "" && inChain(record.Request.Continue) && !noTurn(record) {
-			return record.ID
-		}
-	}
-	return ""
-}
-
-// noTurn reports a run its own call finished before any runtime process
-// started: execute records the turn whenever RunTurn returns, and a
-// runtime process as soon as it starts. A turn counts as none only when
-// the runtime could not be started at all: runtime_unavailable comes only
-// from a failed spawn, with no exit and no session. Other turns count,
-// even with no process on record: one that could not be recorded was
-// started and then killed. A run that is not finished, or that a reaper
-// finished, may have left a runtime running unrecorded, so it is not one.
-func noTurn(record run.Record) bool {
-	return record.FinishedAt != nil && (record.Turn == nil || neverSpawned(*record.Turn)) &&
-		(record.Effects == nil || record.Effects.Process == nil) &&
-		record.Result != nil && (record.Result.Error == nil || record.Result.Error.Class != run.ClassAbandoned)
-}
-
-// neverSpawned reports a turn whose runtime process could not be started.
-func neverSpawned(turn run.Turn) bool {
-	return turn.Error != nil && turn.Error.Class == run.ClassRuntimeUnavailable && turn.Exit == nil && turn.ProviderSessionID == ""
 }
 
 // collectChanges keeps a call's changes to its own workspace as an

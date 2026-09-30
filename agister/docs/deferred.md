@@ -378,27 +378,17 @@ before.
   command that writes outside it or reads Agister's state is refused, and
   `check` reports the confinement a `verify` runs under.
 
-## 16. The "latest in chain" check is local and conservative
+## 16. Nothing stops two continuations of one session at once
 
-- **Gap:** a continuation is refused unless the run it continues is the
-  latest in its session's chain (ADR-001 rule 12), judged from the run
-  records in one state directory. Calls on another state directory, or on
-  a binary older than the check, are not coordinated with it. A
-  continuation that is abandoned or reaped keeps blocking the run it
-  continued, because it may have left a live runtime appending to the
-  session; that session can then only be left for a fresh one. So does a
-  continuation whose runtime started but could not be recorded (it was
-  killed at once); only a failed spawn is known to have run nothing. If Agister
-  panics after the supervisor starts a runtime but before the process is
-  recorded, the run looks as if it started no turn and does not block.
-- **Evidence:** the session-resume change and its review rounds
-  (2026-09-30, Codex Sol 6.1 high through Agister).
-- **Open:** a record field that marks a turn as begun before the runtime
-  starts; a lock per provider session rather than a scan of records; a way
-  to release a session held by an abandoned continuation once its runtime
-  is proved gone.
-- **Trigger:** a second state directory or host sharing provider sessions,
-  or the first session blocked by an abandoned continuation.
-- **Done when:** a session's chain is coordinated by one owned lock, and a
-  test shows a session released after its abandoned continuation's
-  runtime is proved gone.
+- **Gap:** a continuation resumes a provider session in place (ADR-001
+  rule 12). Two calls continuing runs of the same session at the same time
+  both append to it, as two `claude --resume` in two terminals would; the
+  runtimes do not prevent it either.
+- **Evidence:** the session-resume change (2026-09-30). A scan of run
+  records for a later run in the chain was built and removed: it needed
+  complete, readable records and a proof that a failed continuation
+  touched nothing, and it covered one state directory only.
+- **Trigger:** anything that continues runs automatically, such as a
+  workflow.
+- **Done when:** concurrent continuations of one session are prevented by
+  an owned lock on the session, with a test.

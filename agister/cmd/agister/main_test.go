@@ -732,7 +732,7 @@ func TestVerdictIsOutputNotStatus(t *testing.T) {
 }
 
 // A continuation resumes the earlier run's provider session in place, by the
-// ID the runtime reported, and only from the latest run of that session.
+// ID the runtime reported.
 func TestContinuationEndToEnd(t *testing.T) {
 	home, repo := setup(t, "approve")
 	client, err := compose(cli.Config{Home: home})
@@ -768,56 +768,16 @@ func TestContinuationEndToEnd(t *testing.T) {
 		strings.Contains(args, "--fork-session") || strings.Contains(args, "--session-id") {
 		t.Fatalf("earlier %s, later %s, argv %s", earlier, later, args)
 	}
-	// The first run is no longer the latest in its session's chain.
-	stale := finish(contract.CallRequest{Process: "ask", Params: map[string]string{"question": "And c.txt?"}, Continue: first.ID, Timeout: "1m", Cwd: repo})
-	if stale.Result.Error == nil || stale.Result.Error.Class != "refused" || !strings.Contains(stale.Result.Error.Message, "not the latest") {
-		t.Fatalf("result = %+v", stale.Result)
-	}
-	if third := finish(contract.CallRequest{Process: "ask", Params: map[string]string{"question": "And c.txt?"}, Continue: second.ID, Timeout: "1m", Cwd: repo}); third.Result.Status != "completed" || third.Result.Session.ProviderSessionID != earlier {
-		t.Fatalf("result = %+v", third.Result)
+	// A run that was already continued can be continued again: the same
+	// session is resumed.
+	again := finish(contract.CallRequest{Process: "ask", Params: map[string]string{"question": "And c.txt?"}, Continue: first.ID, Timeout: "1m", Cwd: repo})
+	if again.Result.Status != "completed" || again.Result.Session.ProviderSessionID != earlier || again.Result.Session.Continues != first.ID {
+		t.Fatalf("result = %+v", again.Result)
 	}
 	// The reviewer is fresh-only: continuing with it is refused.
 	refused := finish(contract.CallRequest{Process: "adversarial_review", Params: map[string]string{"base": "main"}, Continue: first.ID, Timeout: "1m", Cwd: repo})
 	if refused.Result.Error == nil || refused.Result.Error.Class != "refused" || !strings.Contains(refused.Result.Error.Message, "fresh-only") {
 		t.Fatalf("result = %+v", refused.Result)
-	}
-}
-
-// A continuation reads every run on file: a record it cannot read could be
-// a later continuation, so it fails before the turn instead of resuming a
-// stale session. Listing runs still shows the ones it can read.
-func TestContinuationFailsOnAnUnreadableRecord(t *testing.T) {
-	home, repo := setup(t, "approve")
-	client, err := compose(cli.Config{Home: home})
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx := context.Background()
-	finish := func(request contract.CallRequest) contract.Run {
-		id, err := client.Submit(ctx, request)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := client.Observe(ctx, id, 0, func(contract.Event) error { return nil }); err != nil {
-			t.Fatal(err)
-		}
-		inspected, err := client.Inspect(ctx, id)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return inspected
-	}
-	first := finish(contract.CallRequest{Process: "ask", Params: map[string]string{"question": "What is a.txt?"}, Timeout: "1m", Cwd: repo})
-	write(t, filepath.Join(home, "runs", first.ID+"-later", "record.json"), `{"id": "`+first.ID+`-later", "request": {"continue": "`+first.ID)
-	failed := finish(contract.CallRequest{Process: "ask", Params: map[string]string{"question": "And b.txt?"}, Continue: first.ID, Timeout: "1m", Cwd: repo})
-	if failed.Result.Error == nil || failed.Result.Error.Class != "internal" || !strings.Contains(failed.Result.Error.Message, "unreadable run records") {
-		t.Fatalf("result = %+v", failed.Result)
-	}
-	if _, err := os.Stat(filepath.Join(home, "runs", failed.ID, "provider.jsonl")); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("the runtime ran: %v", err)
-	}
-	if runs, err := client.ListRuns(ctx); err != nil || len(runs) != 2 {
-		t.Fatalf("runs %d, %v", len(runs), err)
 	}
 }
 

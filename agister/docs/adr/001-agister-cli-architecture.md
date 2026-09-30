@@ -231,10 +231,10 @@ that allow it.
 
 A continuation resumes the earlier run's provider session in place, by the
 session ID the runtime reported for that run; Agister never chooses a
-session ID and never forks. Only the latest finished run in a session's
-chain can be continued, so a session never gains two continuations and
-never continues from a stale point. The earlier run's record is not
-changed.
+session ID and never forks. The session is resumed as it is now: if the
+run was already continued, the new turn follows those later turns too. The
+continuing run records which run it continued; the earlier run's record is
+not changed.
 
 ### 13. Every component collaborates through abstractions it defines
 
@@ -339,8 +339,7 @@ mechanisms; the service, its transport and lifecycle.
     attempt can fail, is bounded in time and is recorded on the run; what
     that leaves is tracked in [deferred work](../deferred.md).
     Only a deliberate continuation reads another run, and never changes its
-    record; it resumes the run's session in place, only from the latest
-    finished run in that session's chain.
+    record; it resumes the run's session in place.
 13. Diagnostics never change behavior and are not evidence.
 14. Concrete implementations are connected only at the composition root.
 15. Humans and agents share one CLI surface that depends only on the

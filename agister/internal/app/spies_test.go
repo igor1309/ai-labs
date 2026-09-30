@@ -74,7 +74,6 @@ type runnerSpy struct {
 	requests    []app.TurnRequest
 	started     chan struct{}
 	startErr    error // what ProcessStarted returned to the last turn
-	noProcess   bool  // the runtime could not be started: no process, s.turn
 }
 
 func (s *runnerSpy) Identity(context.Context) (app.RuntimeIdentity, error) {
@@ -84,11 +83,7 @@ func (s *runnerSpy) Identity(context.Context) (app.RuntimeIdentity, error) {
 func (s *runnerSpy) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
 	s.mu.Lock()
 	s.requests = append(s.requests, request)
-	noProcess := s.noProcess
 	s.mu.Unlock()
-	if noProcess {
-		return s.turn
-	}
 	startErr := sink.ProcessStarted("ref-4242")
 	s.mu.Lock()
 	s.startErr = startErr
@@ -357,27 +352,12 @@ func (s *recorderSpy) wait(t *testing.T) run.Record {
 	}
 }
 
-// runsSpy answers lookups and listings of earlier runs.
+// runsSpy answers lookups of earlier runs.
 type runsSpy struct {
 	mu      sync.Mutex
 	records map[string]run.Record
 	states  map[string]run.State
 	asked   []string
-	listErr error // when set, Every fails with it
-}
-
-func (s *runsSpy) Every(context.Context) ([]run.Record, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.listErr != nil {
-		return nil, s.listErr
-	}
-	records := make([]run.Record, 0, len(s.records))
-	for _, record := range s.records {
-		records = append(records, record)
-	}
-	sort.Slice(records, func(i, j int) bool { return records[i].ID < records[j].ID })
-	return records, nil
 }
 
 func (s *runsSpy) Get(_ context.Context, id string) (run.Record, run.State, error) {

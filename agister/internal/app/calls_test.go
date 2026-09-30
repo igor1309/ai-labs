@@ -326,22 +326,11 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 	resumable := func(h *harness) {
 		h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
 	}
-	inSession := func(id, continues string) run.Record {
-		return run.Record{ID: id, Agent: "a", Request: run.Request{Continue: continues}, Runtime: &run.Runtime{Adapter: "spy"},
-			Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0", Continues: continues}}}
-	}
-	earlier := inSession("run-0", "run-00")
-	earlier.Result.Status = run.Interrupted
+	earlier := run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Result: &run.Result{Status: run.Interrupted, Session: &run.Session{ProviderSessionID: "prov-0"}}}
 
 	h := newHarness()
 	resumable(h)
 	h.runs.records["run-0"], h.runs.states["run-0"] = earlier, run.StateFinished
-	// The run it continued, this call's own record, and a refused attempt
-	// to continue it, which started no turn, leave it the latest in its
-	// chain.
-	h.runs.records["run-00"] = inSession("run-00", "")
-	h.runs.records["run-1"] = run.Record{ID: "run-1", Request: run.Request{Continue: "run-0"}}
-	h.runs.records["run-2"] = finishedWithoutTurn("run-2", run.ClassRefused)
 	record := h.call(t, contract.CallRequest{Continue: "run-0"})
 	if len(h.runner.calls()) != 1 {
 		t.Fatalf("result %+v", record.Result.Error)
@@ -373,57 +362,6 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 			bare.Result = &run.Result{Status: run.Failed}
 			h.runs.records["run-0"] = bare
 		}, "run run-0 has no provider session"},
-		{"a later run continues it", func(h *harness) {
-			resumable(h)
-			h.runs.records["run-2"] = inSession("run-2", "run-0")
-		}, "run run-0 is not the latest in its session's chain: run run-2 continues the session"},
-		{"a running call continues it", func(h *harness) {
-			resumable(h)
-			h.runs.records["run-2"] = run.Record{ID: "run-2", Request: run.Request{Continue: "run-0"}}
-		}, "run run-0 is not the latest in its session's chain: run run-2 continues the session"},
-		{"a continuation that ran a turn", func(h *harness) {
-			resumable(h)
-			ran := finishedWithoutTurn("run-2", run.ClassRuntimeError)
-			ran.Turn = &run.Turn{Status: run.Failed}
-			h.runs.records["run-2"] = ran
-		}, "run run-0 is not the latest in its session's chain: run run-2 continues the session"},
-		{"a continuation whose runtime exited", func(h *harness) {
-			resumable(h)
-			exited := finishedWithoutTurn("run-2", run.ClassRuntimeUnavailable)
-			code := 1
-			exited.Turn = &run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRuntimeUnavailable, "x"), Exit: &run.Exit{Code: &code}}
-			h.runs.records["run-2"] = exited
-		}, "run run-0 is not the latest in its session's chain: run run-2 continues the session"},
-		{"a continuation whose turn reported a session", func(h *harness) {
-			resumable(h)
-			reported := finishedWithoutTurn("run-2", run.ClassRuntimeUnavailable)
-			reported.Turn = &run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRuntimeUnavailable, "x"), ProviderSessionID: "prov-9"}
-			h.runs.records["run-2"] = reported
-		}, "run run-0 is not the latest in its session's chain: run run-2 continues the session"},
-		{"a continuation whose process could not be recorded", func(h *harness) {
-			resumable(h)
-			killed := finishedWithoutTurn("run-2", run.ClassInternal)
-			killed.Turn = &run.Turn{Status: run.Failed, Error: run.Fault(run.ClassInternal, "recording the runtime process failed, so it was killed")}
-			h.runs.records["run-2"] = killed
-		}, "run run-0 is not the latest in its session's chain: run run-2 continues the session"},
-		{"a continuation that started a runtime process", func(h *harness) {
-			resumable(h)
-			started := finishedWithoutTurn("run-2", run.ClassInternal)
-			started.Effects = &run.Effects{Process: &run.Process{Ref: "p"}}
-			h.runs.records["run-2"] = started
-		}, "run run-0 is not the latest in its session's chain: run run-2 continues the session"},
-		{"a continuation a reaper finished", func(h *harness) {
-			resumable(h)
-			h.runs.records["run-2"] = finishedWithoutTurn("run-2", run.ClassAbandoned)
-		}, "run run-0 is not the latest in its session's chain: run run-2 continues the session"},
-		{"a later run of its session", func(h *harness) {
-			resumable(h)
-			h.runs.records["run-2"] = inSession("run-2", "")
-		}, "run run-0 is not the latest in its session's chain: run run-2 continues the session"},
-		{"a run continues the one it continued", func(h *harness) {
-			resumable(h)
-			h.runs.records["run-3"] = run.Record{ID: "run-3", Request: run.Request{Continue: "run-00"}}
-		}, "run run-0 is not the latest in its session's chain: run run-3 continues the session"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			h := newHarness()
@@ -437,59 +375,6 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 				t.Fatal("effects before the refusal")
 			}
 		})
-	}
-}
-
-// A continuation whose runtime could not be started ran nothing in the
-// session: continuing the same run again is allowed.
-func TestContinuationAfterASpawnFailureCanBeRetried(t *testing.T) {
-	h := newHarness()
-	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
-	h.runs.records["run-0"] = run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Result: &run.Result{Session: &run.Session{ProviderSessionID: "prov-0"}}}
-	h.runs.states["run-0"] = run.StateFinished
-	succeeds := h.runner.turn
-	h.runner.turn = run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRuntimeUnavailable, "exec: no such file")}
-	h.runner.noProcess = true
-	failed := h.call(t, contract.CallRequest{Continue: "run-0"})
-	if class(failed) != run.ClassRuntimeUnavailable || failed.Turn == nil {
-		t.Fatalf("result %+v", failed.Result.Error)
-	}
-
-	failed.ID = "run-2"
-	h.runs.records["run-2"], h.runs.states["run-2"] = failed, run.StateFinished
-	h.runner.turn, h.runner.noProcess = succeeds, false
-	if again := h.call(t, contract.CallRequest{Continue: "run-0"}); again.Result.Status != run.Completed {
-		t.Fatalf("result %+v", again.Result.Error)
-	}
-}
-
-// finishedWithoutTurn is a continuation of run-0 that its own call
-// finished, with class, before starting any runtime turn.
-func finishedWithoutTurn(id string, class run.Class) run.Record {
-	finished := time.Date(2026, 9, 28, 11, 0, 0, 0, time.UTC)
-	return run.Record{ID: id, Agent: "a", Request: run.Request{Continue: "run-0"}, Runtime: &run.Runtime{Adapter: "spy"}, FinishedAt: &finished,
-		Result: &run.Result{Status: run.StatusOf(class), Error: run.Fault(class, "before the turn")}}
-}
-
-// A continuation that cannot tell whether its run is the latest in the
-// chain does not guess: it fails before the turn. The failed attempt
-// started no turn, so continuing the run again is allowed.
-func TestContinuationThatCannotListRunsFails(t *testing.T) {
-	h := newHarness()
-	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
-	h.runs.records["run-0"] = run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Result: &run.Result{Session: &run.Session{ProviderSessionID: "prov-0"}}}
-	h.runs.states["run-0"] = run.StateFinished
-	h.runs.listErr = errors.New("disk gone")
-	record := h.call(t, contract.CallRequest{Continue: "run-0"})
-	if class(record) != run.ClassInternal || !strings.Contains(message(record), "disk gone") || len(h.runner.calls()) != 0 {
-		t.Fatalf("result %+v", record.Result.Error)
-	}
-
-	record.ID = "run-2"
-	h.runs.records["run-2"], h.runs.states["run-2"] = record, run.StateFinished
-	h.runs.listErr = nil
-	if again := h.call(t, contract.CallRequest{Continue: "run-0"}); again.Result.Status != run.Completed || len(h.runner.calls()) != 1 || h.runner.calls()[0].ResumeSessionID != "prov-0" {
-		t.Fatalf("result %+v", again.Result)
 	}
 }
 
