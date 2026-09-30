@@ -195,7 +195,7 @@ func TestOwnIsWhatTheTurnAddedToItsSession(t *testing.T) {
 // distance. Unknown, never a guess, while a run in it is unfinished, when
 // the last to finish overlapped another, or when its latest turn reported
 // no totals in the session, or when it started a runtime process and was
-// reaped before its turn was saved. Runs in other sessions, runs that
+// reaped, whether or not it saved a turn. Runs in other sessions, runs that
 // started no process and ran no turn, and the run asking do not count.
 func TestLatestTotalsAreTheSessionsLatestRecordedTurn(t *testing.T) {
 	usd := func(v float64) *float64 { return &v }
@@ -233,6 +233,14 @@ func TestLatestTotalsAreTheSessionsLatestRecordedTurn(t *testing.T) {
 		r.Result = &result
 		return r
 	}
+	// It saved a turn in the session, then started another runtime process
+	// (a repair turn after verification); its owner ended before that
+	// turn was saved, and the reaper finished it.
+	reapedAfterTurn := func(id, continues string, created, finished int) run.Record {
+		r := reaped(id, continues, created, finished)
+		r.Turn = &run.Turn{ProviderSessionID: "s", Session: totals(5)}
+		return r
+	}
 
 	for _, test := range []struct {
 		name    string
@@ -253,6 +261,8 @@ func TestLatestTotalsAreTheSessionsLatestRecordedTurn(t *testing.T) {
 		{"a continuation reaped with no turn", []run.Record{a, reaped("x", "a", 2, 3)}, "", nil},
 		{"a reaped continuation of a continuation", []run.Record{a, b, reaped("x", "b", 4, 5)}, "", nil},
 		{"a continuation after a reaped one", []run.Record{a, reaped("x", "a", 2, 3), record("d", "x", "s", 4, 5, totals(4))}, "", usd(4)},
+		{"a continuation reaped after saving a turn", []run.Record{a, reapedAfterTurn("x", "a", 2, 3)}, "", nil},
+		{"a continuation after one reaped after saving a turn", []run.Record{a, reapedAfterTurn("x", "a", 2, 3), record("d", "x", "s", 4, 5, totals(4))}, "", usd(4)},
 		{"a reaped run in another session", []run.Record{a, b, reaped("x", "o", 10, 11), other}, "", usd(2)},
 	} {
 		got := run.LatestTotals(test.records, "s", test.exclude)
