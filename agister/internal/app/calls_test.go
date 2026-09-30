@@ -608,7 +608,15 @@ func TestCancelInterruptsAndReleases(t *testing.T) {
 	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
-	<-h.runner.started
+	// However the test ends, the blocked turn does not outlive it.
+	t.Cleanup(func() { _ = runs.Cancel(context.Background(), "run-1") })
+	select {
+	case <-h.runner.started:
+	case record := <-h.recorder.finished:
+		t.Fatalf("the call ended before its turn started: %+v", record.Result)
+	case <-time.After(hangGuard):
+		t.Fatal("the turn never started")
+	}
 	if err := runs.Cancel(context.Background(), "run-1"); err != nil {
 		t.Fatal(err)
 	}
