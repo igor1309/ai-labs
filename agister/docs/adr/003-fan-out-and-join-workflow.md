@@ -1,6 +1,6 @@
 # ADR-003: A fan-out and join workflow
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-09-30
 - **Scope:** running several processes over the same inputs and one process
   over their results

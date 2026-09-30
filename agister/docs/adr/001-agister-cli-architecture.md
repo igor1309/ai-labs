@@ -4,7 +4,8 @@
 - **Date:** 2026-09-28
 - **Scope:** Agister system architecture for the CLI stage (before the service)
 - **Decision type:** Architecture
-- **Amended by:** [ADR-002](002-verify-and-bounded-repair.md) (rule 1)
+- **Amended by:** [ADR-002](002-verify-and-bounded-repair.md) (rule 1),
+  [ADR-003](003-fan-out-and-join-workflow.md) (rules 1 and 12)
 
 ## Context
 
@@ -105,6 +106,10 @@ user's, and tooling for it belongs outside the core.
 [ADR-002](002-verify-and-bounded-repair.md) adds one mechanism: the core also
 runs the verification command a process declares, and resumes the call's
 session to repair a failure. It still knows no meaning of the command.
+
+[ADR-003](003-fan-out-and-join-workflow.md) adds one more: the core runs a
+workflow of one fixed shape, fan-out then join, and still knows no meaning
+of any node's output.
 
 ### 2. Definitions are settings
 
@@ -230,6 +235,10 @@ session ID and never forks. The session is resumed as it is now: if the
 run was already continued, the new turn follows those later turns too. The
 continuing run records which run it continued; the earlier run's record is
 not changed.
+
+[ADR-003](003-fan-out-and-join-workflow.md) adds a second deliberate
+exception: a workflow's join receives the recorded outputs of its own
+workflow's fan-out nodes.
 
 ### 13. Every component collaborates through abstractions it defines
 
