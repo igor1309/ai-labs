@@ -368,6 +368,46 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 	}
 }
 
+// A continuation's turn costs what it added to its session's total, which
+// the earlier run's latest turn reported: unknown when that turn reported
+// none, as runs recorded before session totals did, or ran elsewhere.
+func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
+	usd := func(v float64) *float64 { return &v }
+	cases := []struct {
+		name   string
+		latest *run.Turn // the earlier run's
+		want   *float64
+	}{
+		{"earlier total known", &run.Turn{ProviderSessionID: "prov-0", CostUSD: usd(7.75), Session: &run.SessionTotals{CostUSD: usd(7.75)}}, usd(4.75)},
+		{"earlier total unknown", &run.Turn{ProviderSessionID: "prov-0", CostUSD: usd(7.75)}, nil},
+		{"latest turn in another session", &run.Turn{ProviderSessionID: "prov-9", Session: &run.SessionTotals{CostUSD: usd(7.75)}}, nil},
+		{"no latest turn", nil, nil},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			h := newHarness()
+			h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+			h.runs.records["run-0"] = run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Turn: c.latest,
+				Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0"}}}
+			h.runs.states["run-0"] = run.StateFinished
+			h.runner.turn = run.Turn{Status: run.Completed, Output: json.RawMessage(`{}`), ProviderSessionID: "prov-0", Session: &run.SessionTotals{CostUSD: usd(12.5)}}
+			record := h.call(t, contract.CallRequest{Continue: "run-0"})
+			if record.Result.Status != run.Completed || *record.Turn.Session.CostUSD != 12.5 {
+				t.Fatalf("result %+v, turn %+v", record.Result, record.Turn)
+			}
+			if c.want == nil {
+				if record.Turn.CostUSD != nil || record.Result.Cost.Source != run.CostUnknown || record.Result.Cost.USD != nil {
+					t.Fatalf("turn cost %v, call cost %+v", record.Turn.CostUSD, record.Result.Cost)
+				}
+				return
+			}
+			if *record.Turn.CostUSD != *c.want || record.Result.Cost.Source != run.CostRuntime || *record.Result.Cost.USD != *c.want {
+				t.Fatalf("turn cost %v, call cost %+v", *record.Turn.CostUSD, record.Result.Cost)
+			}
+		})
+	}
+}
+
 func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
 	h := newHarness()
 	h.changes.changes = []byte("diff --git a/x b/x\n")

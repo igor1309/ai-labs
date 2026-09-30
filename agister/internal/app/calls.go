@@ -328,7 +328,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		event(run.SourceAgister, "PERMISSIONS_WITHHELD", map[string]any{"permissions": res.plan.Withheld})
 	}
 
-	resumeSessionID, err := c.continuation(ctx, res, record.Request.Continue)
+	resumeSessionID, sessionBefore, err := c.continuation(ctx, res, record.Request.Continue)
 	if err != nil {
 		fail(err)
 		return
@@ -387,13 +387,15 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 
 	// The call's timeout bounds every turn and every verification run.
 	deadline := c.clock.Now().Add(res.effective.Timeout)
-	// Usage and cost sum every turn; the latest turn's text and output are
-	// the call's.
+	// Usage and cost sum every turn's own; the latest turn's text and
+	// output are the call's. before is the resumed session's totals before
+	// the turn, as its previous turn reported them; nil when unknown.
 	var turns []run.Turn
 	var turnMS int64
-	take := func(request TurnRequest) run.Turn {
+	take := func(request TurnRequest, before *run.SessionTotals) run.Turn {
 		turnStart := c.clock.Now()
 		turn := runner.RunTurn(ctx, request, &sink{handle: handle, clock: c.clock, record: &record})
+		turn = run.Own(turn, request.ResumeSessionID != "", before)
 		turnMS += c.clock.Now().Sub(turnStart).Milliseconds()
 		turns = append(turns, turn)
 		record.Turn = &turn
@@ -414,7 +416,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return fault
 	}
 
-	turn := take(request)
+	turn := take(request, sessionBefore)
 	if turn.ProviderSessionID != "" {
 		result.Session = &run.Session{ProviderSessionID: turn.ProviderSessionID, Continues: record.Request.Continue}
 	}
@@ -437,35 +439,42 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 }
 
 // continuation checks a request to continue an earlier run's session and
-// returns that provider session, which the runtime resumes in place.
+// returns that provider session, which the runtime resumes in place, and
+// the session's totals the earlier run's latest turn reported in it: nil
+// when that turn reported none, or was not in the session.
 // Continuing is deliberate: the agent must allow it, the runtime must
 // support it, and the earlier run must be finished, by the same agent,
 // with a session.
-func (c *Calls) continuation(ctx context.Context, res *resolution, runID string) (string, error) {
+func (c *Calls) continuation(ctx context.Context, res *resolution, runID string) (string, *run.SessionTotals, error) {
 	if runID == "" {
-		return "", nil
+		return "", nil, nil
 	}
 	if res.agent.Session != definition.SessionResumable {
-		return "", refuse("agent %s is %s; it cannot continue run %s", res.agent.Name, res.agent.Session, runID)
+		return "", nil, refuse("agent %s is %s; it cannot continue run %s", res.agent.Name, res.agent.Session, runID)
 	}
 	if !res.identity.Resume {
-		return "", refuse("runtime %s cannot continue sessions", res.mapping.Name)
+		return "", nil, refuse("runtime %s cannot continue sessions", res.mapping.Name)
 	}
 	prior, state, err := c.runs.Get(ctx, runID)
 	if err != nil {
-		return "", refuse("run %s: %v", runID, err)
+		return "", nil, refuse("run %s: %v", runID, err)
 	}
 	switch {
 	case state != run.StateFinished:
-		return "", refuse("run %s is %s, not finished", runID, state)
+		return "", nil, refuse("run %s is %s, not finished", runID, state)
 	case prior.Agent != res.agent.Name:
-		return "", refuse("run %s ran agent %s; only agent %s's own runs can be continued by it", runID, prior.Agent, res.agent.Name)
+		return "", nil, refuse("run %s ran agent %s; only agent %s's own runs can be continued by it", runID, prior.Agent, res.agent.Name)
 	case prior.Runtime == nil || prior.Runtime.Adapter != res.mapping.Adapter:
-		return "", refuse("run %s did not run on %s", runID, res.mapping.Adapter)
+		return "", nil, refuse("run %s did not run on %s", runID, res.mapping.Adapter)
 	case prior.Result == nil || prior.Result.Session == nil || prior.Result.Session.ProviderSessionID == "":
-		return "", refuse("run %s has no provider session", runID)
+		return "", nil, refuse("run %s has no provider session", runID)
 	}
-	return prior.Result.Session.ProviderSessionID, nil
+	session := prior.Result.Session.ProviderSessionID
+	var before *run.SessionTotals
+	if latest := prior.Turn; latest != nil && latest.ProviderSessionID == session {
+		before = latest.Session
+	}
+	return session, before, nil
 }
 
 // collectChanges keeps a call's changes to its own workspace as an

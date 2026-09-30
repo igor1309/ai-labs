@@ -98,7 +98,9 @@ func TestStreamReduction(t *testing.T) {
 	}
 	code := 0
 	turn := stream.Reconcile(supervisor.Evidence{Exit: &run.Exit{Code: &code}}, true)
-	if turn.Status != run.Completed || string(turn.Output) != `{"answer":"vm"}` || turn.Text != "The hostname is vm." || *turn.CostUSD != 0.06 {
+	if turn.Status != run.Completed || string(turn.Output) != `{"answer":"vm"}` || turn.Text != "The hostname is vm." ||
+		// The session's cost; the turn's own is the call's to derive.
+		turn.CostUSD != nil || *turn.Session.CostUSD != 0.06 || turn.Session.Usage != nil {
 		t.Fatalf("turn = %+v", turn)
 	}
 }

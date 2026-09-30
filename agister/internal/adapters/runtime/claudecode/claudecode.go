@@ -12,7 +12,9 @@
 // continuation resumes the reported session in place with --resume, and
 // the turn must report that same session, or it fails. A cost limit is
 // passed as --max-budget-usd; Claude Code checks it between model
-// requests, so the reported cost may exceed it.
+// requests, so the reported cost may exceed it. The result's
+// total_cost_usd is the session's cost, counting the turns it resumed; its
+// usage is the turn's own.
 //
 // Turn status precedence: the runtime's `result` message, then Agister's
 // timeout or cancellation, then the process exit.
@@ -252,8 +254,9 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 	if result == nil {
 		return supervisor.WithoutTerminal(turn, evidence, s.rejection())
 	}
+	// The session's cost, every turn it had; the turn's own is derived.
 	if cost, ok := result["total_cost_usd"].(float64); ok {
-		turn.CostUSD = &cost
+		turn.Session = &run.SessionTotals{CostUSD: &cost}
 	}
 	if duration, ok := result["duration_ms"].(float64); ok {
 		ms := int64(duration)

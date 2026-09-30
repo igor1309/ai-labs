@@ -82,7 +82,7 @@ type verification struct {
 	// every repair resumes.
 	session string
 
-	take     func(TurnRequest) run.Turn
+	take     func(TurnRequest, *run.SessionTotals) run.Turn
 	conclude func(run.Turn) *run.Error
 
 	// verified names the content of the passing run, once one passed.
@@ -184,7 +184,9 @@ func (v *verification) run(ctx context.Context) *run.Error {
 		request.Timeout = remaining
 		request.MaxCostUSD = budget
 		v.event(run.SourceAgister, "REPAIR_STARTED", map[string]any{"attempt": number + 1, "session": v.session})
-		repair := v.take(request)
+		// The session's totals before the repair are what the turn before
+		// it reported.
+		repair := v.take(request, turn.Session)
 		fault = v.conclude(repair)
 		// A repair that reports no session confirms none: it is not in the
 		// call's session, whatever it did.
@@ -214,7 +216,7 @@ func (v *verification) exhausted(ran run.CommandRun, previous *run.CommandRun, n
 }
 
 // budget is what a repair turn may spend: the call's cost limit less what
-// every turn so far reported (rule 5). With a limit and a cost unknown, the
+// every turn so far cost on its own (rule 5). With a limit and a cost unknown, the
 // limit cannot be enforced, and no repair starts.
 func (v *verification) budget() (*float64, *run.Error) {
 	if v.limit == nil {

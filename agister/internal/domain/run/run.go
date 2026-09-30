@@ -173,6 +173,10 @@ type Turn struct {
 	PermissionDenials int             `json:"permission_denials,omitempty"`
 	Exit              *Exit           `json:"exit,omitempty"`
 	StderrTail        string          `json:"stderr_tail,omitempty"`
+	// Session is what the runtime reported as its session's totals after
+	// the turn, where it reports those instead of the turn's own cost or
+	// usage; the turn's own are derived from them (Own).
+	Session *SessionTotals `json:"session,omitempty"`
 }
 
 // Input is one resolved, immutable input.

@@ -11,7 +11,8 @@
 // A continuation runs `codex exec resume <thread_id>` with the same
 // settings, the sandbox mode as -c sandbox_mode (resume has no --sandbox),
 // and the turn must report that same thread, or it fails. Codex cannot
-// limit cost.
+// limit cost. The usage turn.completed reports is the thread's, counting
+// the turns it resumed (observed live with codex-cli 0.159.2).
 //
 // Only turn.completed and turn.failed decide a turn. Top-level `error`
 // events and error items occur mid-turn (reconnects, transport fallback)
@@ -230,13 +231,14 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 		turn.Status, turn.Error = run.Failed, classify(s.Failed)
 		return turn
 	}
+	// The thread's usage, every turn it had; the turn's own is derived.
 	if s.Usage != nil {
-		turn.Usage = &run.Usage{
+		turn.Session = &run.SessionTotals{Usage: &run.Usage{
 			InputTokens:     count(s.Usage, "input_tokens"),
 			OutputTokens:    count(s.Usage, "output_tokens"),
 			CacheReadTokens: count(s.Usage, "cached_input_tokens"),
 			ReasoningTokens: count(s.Usage, "reasoning_output_tokens"),
-		}
+		}}
 	}
 	if schemaRequested {
 		if s.LastMessage == "" {

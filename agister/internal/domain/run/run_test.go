@@ -147,3 +147,42 @@ func TestSumAddsUpEveryTurn(t *testing.T) {
 		t.Fatalf("totals = %+v", single)
 	}
 }
+
+// A turn's own cost and usage are the session totals it reported less the
+// session's before it: all of them for a fresh session, unknown for a
+// resumed one whose earlier totals are unknown. Figures reported only as
+// the turn's own are kept.
+func TestOwnIsWhatTheTurnAddedToItsSession(t *testing.T) {
+	n := func(v int64) *int64 { return &v }
+	usd := func(v float64) *float64 { return &v }
+	reported := run.Turn{Usage: &run.Usage{InputTokens: n(7)}, Session: &run.SessionTotals{CostUSD: usd(13.625)}}
+
+	if fresh := run.Own(reported, false, nil); *fresh.CostUSD != 13.625 || *fresh.Usage.InputTokens != 7 || *fresh.Session.CostUSD != 13.625 {
+		t.Fatalf("fresh = %+v", fresh)
+	}
+	if resumed := run.Own(reported, true, &run.SessionTotals{CostUSD: usd(12.5)}); *resumed.CostUSD != 1.125 || *resumed.Usage.InputTokens != 7 || *resumed.Session.CostUSD != 13.625 {
+		t.Fatalf("resumed = %+v", resumed)
+	}
+	for name, before := range map[string]*run.SessionTotals{
+		"no earlier totals":      nil,
+		"no earlier cost":        {Usage: &run.Usage{InputTokens: n(1)}},
+		"earlier cost is higher": {CostUSD: usd(14)},
+	} {
+		if unknown := run.Own(reported, true, before); unknown.CostUSD != nil || *unknown.Session.CostUSD != 13.625 {
+			t.Fatalf("%s: %+v", name, unknown)
+		}
+	}
+
+	threads := run.Turn{Session: &run.SessionTotals{Usage: &run.Usage{InputTokens: n(36332), CacheReadTokens: n(31104), OutputTokens: n(10)}}}
+	before := &run.SessionTotals{Usage: &run.Usage{InputTokens: n(18069), CacheReadTokens: n(13184)}}
+	own := run.Own(threads, true, before).Usage
+	if *own.InputTokens != 18263 || *own.CacheReadTokens != 17920 || own.OutputTokens != nil || own.ReasoningTokens != nil {
+		t.Fatalf("usage = %+v", own)
+	}
+	if own := run.Own(threads, false, nil).Usage; *own.InputTokens != 36332 || *own.OutputTokens != 10 {
+		t.Fatalf("fresh usage = %+v", own)
+	}
+	if kept := run.Own(run.Turn{CostUSD: usd(0.5)}, true, nil); *kept.CostUSD != 0.5 {
+		t.Fatalf("kept = %+v", kept)
+	}
+}

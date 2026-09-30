@@ -69,7 +69,8 @@ type runnerSpy struct {
 	identity    app.RuntimeIdentity
 	identityErr error
 	turn        run.Turn
-	block       bool // wait for cancellation
+	turns       []run.Turn // played first, one per turn; then turn
+	block       bool       // wait for cancellation
 	requests    []app.TurnRequest
 	started     chan struct{}
 	startErr    error // what ProcessStarted returned to the last turn
@@ -82,6 +83,10 @@ func (s *runnerSpy) Identity(context.Context) (app.RuntimeIdentity, error) {
 func (s *runnerSpy) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
 	s.mu.Lock()
 	s.requests = append(s.requests, request)
+	turn := s.turn
+	if n := len(s.requests); n <= len(s.turns) {
+		turn = s.turns[n-1]
+	}
 	s.mu.Unlock()
 	startErr := sink.ProcessStarted("ref-4242")
 	s.mu.Lock()
@@ -100,7 +105,7 @@ func (s *runnerSpy) RunTurn(ctx context.Context, request app.TurnRequest, sink a
 		<-ctx.Done()
 		return run.Turn{Status: run.Interrupted, Error: run.Fault(run.ClassCancelled, "")}
 	}
-	return s.turn
+	return turn
 }
 
 func (s *runnerSpy) calls() []app.TurnRequest {

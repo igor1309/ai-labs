@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -83,6 +84,79 @@ func TestAFailedRunIsRepairedInTheCallsSession(t *testing.T) {
 	if *record.Result.Cost.USD != 1 || record.Attempts[1].Session != "prov-1" {
 		t.Fatalf("result %+v", record.Result)
 	}
+}
+
+// A repair resumes the call's session, so it costs what it added to the
+// session's total, which the turn before it reported; the first turn of a
+// continuation starts from the earlier run's total. The call's cost and
+// each repair's budget sum those own costs, and a repair after a turn
+// with no reported total costs an unknown amount.
+func TestARepairCostsWhatItAddedToTheCallsSession(t *testing.T) {
+	usd := func(v float64) *float64 { return &v }
+	cases := []struct {
+		name      string
+		continues bool       // the call continues run-0, whose session had cost 7.75
+		totals    []*float64 // each turn's reported session total
+		limit     string
+		own       []*float64 // each turn's own cost
+		budgets   []*float64 // each turn's cost limit
+		cost      *float64   // the call's
+	}{
+		{"fresh session", false, []*float64{usd(0.5), usd(0.75), usd(1.25)}, "max_cost_usd: 2\n",
+			[]*float64{usd(0.5), usd(0.25), usd(0.5)}, []*float64{usd(2), usd(1.5), usd(1.25)}, usd(1.25)},
+		{"continuation", true, []*float64{usd(12.5), usd(13.625), usd(14)}, "max_cost_usd: 10\n",
+			[]*float64{usd(4.75), usd(1.125), usd(0.375)}, []*float64{usd(10), usd(5.25), usd(4.125)}, usd(6.25)},
+		{"earlier total unknown", false, []*float64{nil, usd(0.75), usd(1.25)}, "",
+			[]*float64{nil, nil, usd(0.5)}, []*float64{nil, nil, nil}, nil},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			h := newHarness()
+			verifying(h)
+			h.defs.docs[definition.KindPolicy]["pol"] += c.limit
+			session, request := "prov-1", contract.CallRequest{}
+			if c.continues {
+				session, request.Continue = "prov-0", "run-0"
+				h.runs.records["run-0"] = run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"},
+					Turn:   &run.Turn{ProviderSessionID: "prov-0", Session: &run.SessionTotals{CostUSD: usd(7.75)}},
+					Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0"}}}
+				h.runs.states["run-0"] = run.StateFinished
+			}
+			for _, total := range c.totals {
+				turn := run.Turn{Status: run.Completed, Output: json.RawMessage(`{"outcome":"no"}`), ProviderSessionID: session}
+				if total != nil {
+					turn.Session = &run.SessionTotals{CostUSD: total}
+				}
+				h.runner.turns = append(h.runner.turns, turn)
+			}
+			h.commands.exits = []int{1, 1}
+			identities := 0
+			h.changes.identify = func() string { identities++; return fmt.Sprintf("tree-%d", (identities+1)/2) }
+			record := h.call(t, request)
+			if record.Result.Status != run.Completed || len(record.Attempts) != 3 {
+				t.Fatalf("result %+v, attempts %+v", record.Result, record.Attempts)
+			}
+			for i, attempt := range record.Attempts {
+				if got := attempt.Turn.CostUSD; !reflect.DeepEqual(got, c.own[i]) || !reflect.DeepEqual(attempt.Turn.Session, h.runner.turns[i].Session) {
+					t.Fatalf("attempt %d: cost %v, want %v; session %+v", i+1, deref(got), deref(c.own[i]), attempt.Turn.Session)
+				}
+				if got := h.runner.calls()[i].MaxCostUSD; !reflect.DeepEqual(got, c.budgets[i]) {
+					t.Fatalf("turn %d: cost limit %v, want %v", i+1, deref(got), deref(c.budgets[i]))
+				}
+			}
+			if !reflect.DeepEqual(record.Result.Cost.USD, c.cost) || (c.cost == nil) != (record.Result.Cost.Source == run.CostUnknown) {
+				t.Fatalf("call cost %+v, want %v", record.Result.Cost, deref(c.cost))
+			}
+		})
+	}
+}
+
+// deref shows an optional figure.
+func deref(v *float64) any {
+	if v == nil {
+		return nil
+	}
+	return *v
 }
 
 // A node completes only once its attempts are recorded, and a repair starts

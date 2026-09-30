@@ -151,7 +151,8 @@ func TestErrorEventsAreNotTerminal(t *testing.T) {
 	if turn.Status != run.Completed || string(turn.Output) != `{"answer":"vm"}` || turn.ProviderSessionID != "t-1" || turn.CostUSD != nil {
 		t.Fatalf("turn = %+v", turn)
 	}
-	if u := turn.Usage; *u.InputTokens != 10 || *u.CacheReadTokens != 4 || *u.OutputTokens != 5 || *u.ReasoningTokens != 3 || u.CacheWriteTokens != nil {
+	// The thread's usage; the turn's own is the call's to derive.
+	if u := turn.Session.Usage; turn.Usage != nil || turn.Session.CostUSD != nil || *u.InputTokens != 10 || *u.CacheReadTokens != 4 || *u.OutputTokens != 5 || *u.ReasoningTokens != 3 || u.CacheWriteTokens != nil {
 		t.Fatalf("turn = %+v", turn)
 	}
 }
