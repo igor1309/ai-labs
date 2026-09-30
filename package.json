@@ -23,6 +23,7 @@
     "test:agonara": "npm test --workspace agonara",
     "test:clipdeck": "npm test --workspace clipdeck",
     "test:noreta": "node --import tsx --test noreta/tests/*.test.ts",
+    "test:ntfy-sender": "RUN_NTFY_SENDER_E2E=1 node --test ntfy-sender/tests/*.test.js",
     "test:session-digest": "node --import tsx --test session-digest/tests/*.test.ts",
     "typecheck": "npm run typecheck:clipdeck && npm run typecheck:noreta && npm run typecheck:notio-frontend && npm run typecheck:session-digest",
     "typecheck:clipdeck": "npm run typecheck --workspace clipdeck",
