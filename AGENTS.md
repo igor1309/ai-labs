@@ -28,7 +28,7 @@
 
 ## Implementation and review
 
-- Delegate implementation runs to a subagent on Sonnet 5.5. Brief it with
+- Delegate implementation runs to a subagent on Opus 5.5. Brief it with
   the plan; it delivers the tests and a revert-check spec with them. Verify
   its result yourself, starting with
   `scripts/handoff-check.py --claimed <files it lists> --spec <spec>`: every
