@@ -3,7 +3,7 @@ date: 2026-09-23
 author: Igor Malyarov
 model: gpt-6
 name: Code review — architecture
-version: 0.0.1
+version: 0.0.2
 type: prompt
 ---
 
@@ -12,6 +12,8 @@ Architecture Review
 Review the codebase for maintainability, change isolation, clear ownership, dependency direction, composition, and SOLID design quality.
 
 Use architectural judgment. Treat the architectural invariants below as authoritative; use the Go-specific section to interpret how they should appear in Go.
+
+The recorded decisions (ADRs) are given. Code that departs from one is a finding: quote both. Do not review the decisions themselves.
 
 Architectural invariants
 
