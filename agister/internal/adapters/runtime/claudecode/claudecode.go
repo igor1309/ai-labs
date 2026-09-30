@@ -14,23 +14,16 @@
 // passed as --max-budget-usd; Claude Code checks it between model
 // requests, so the reported cost may exceed it. The result's
 // total_cost_usd is the session's cost, counting the turns it resumed; its
-// usage is the turn's own. A resumed session's cost counts on from the last
-// cost-state entry of its transcript, which the turn records as the
-// session's cost before it (SessionCost).
+// usage is the turn's own.
 //
 // Turn status precedence: the runtime's `result` message, then Agister's
 // timeout or cancellation, then the process exit.
 package claudecode
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -46,10 +39,6 @@ const Contract = "claude-code/2"
 type Runner struct {
 	Command   string
 	KillGrace time.Duration // zero: the supervisor default
-	// ConfigDir is Claude Code's configuration directory, which holds the
-	// session transcripts; empty: $CLAUDE_CONFIG_DIR, else ~/.claude, as
-	// Claude Code itself finds it.
-	ConfigDir string
 }
 
 func New(command string) *Runner {
@@ -118,13 +107,6 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 	if err != nil {
 		return supervisor.Failed(run.ClassInternal, err)
 	}
-	// Read before the turn appends to the transcript.
-	var before *run.SessionTotals
-	if request.ResumeSessionID != "" {
-		if cost := SessionCost(r.configDir(), request.ResumeSessionID); cost != nil {
-			before = &run.SessionTotals{CostUSD: cost}
-		}
-	}
 	state := &Stream{ResumedSessionID: request.ResumeSessionID}
 	evidence := supervisor.Run(ctx, supervisor.Spec{
 		Command:   r.Command,
@@ -138,64 +120,7 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 			sink.Event(event.Source, event.Kind, event.Data)
 		}
 	})
-	turn := state.Reconcile(evidence, len(request.OutputSchema) > 0)
-	turn.SessionBefore = before
-	return turn
-}
-
-func (r *Runner) configDir() string {
-	if r.ConfigDir != "" {
-		return r.ConfigDir
-	}
-	if dir := os.Getenv("CLAUDE_CONFIG_DIR"); dir != "" {
-		return dir
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".claude")
-}
-
-// SessionCost is the cost Claude Code has on record for a session: the
-// totalCostUSD of the last cost-state entry in its transcript,
-// projects/*/<session>.jsonl under configDir, which a resume counts on
-// from. Unset when there is no one such transcript, or no such entry in
-// it.
-func SessionCost(configDir, sessionID string) *float64 {
-	if configDir == "" || sessionID == "" || strings.ContainsAny(sessionID, `/\*?[`) {
-		return nil
-	}
-	paths, err := filepath.Glob(filepath.Join(configDir, "projects", "*", sessionID+".jsonl"))
-	if err != nil || len(paths) != 1 {
-		return nil
-	}
-	file, err := os.Open(paths[0])
-	if err != nil {
-		return nil
-	}
-	defer file.Close()
-	var cost *float64
-	reader := bufio.NewReader(file)
-	for {
-		line, err := reader.ReadBytes('\n')
-		if bytes.Contains(line, []byte(`"cost-state"`)) {
-			var entry struct {
-				Type         string   `json:"type"`
-				SessionID    string   `json:"sessionId"`
-				TotalCostUSD *float64 `json:"totalCostUSD"`
-			}
-			if json.Unmarshal(line, &entry) == nil && entry.Type == "cost-state" && entry.SessionID == sessionID && entry.TotalCostUSD != nil {
-				cost = entry.TotalCostUSD
-			}
-		}
-		if err == io.EOF {
-			return cost
-		}
-		if err != nil {
-			return nil
-		}
-	}
+	return state.Reconcile(evidence, len(request.OutputSchema) > 0)
 }
 
 // Event is a normalized observation from the stream.

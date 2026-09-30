@@ -563,6 +563,48 @@ func TestVerifyRepairTurnThatFailsEndsTheNode(t *testing.T) {
 	}
 }
 
+// A resumed turn costs and uses what it added to its session's running
+// totals, from the totals Agister recorded on the session's latest turn on
+// any run: in A, then B continues A, then C continues A, C's baseline is
+// B's turn, not A's. A session with no recorded totals leaves them unknown.
+func TestContinuationsCountFromTheSessionsLatestRecordedTurn(t *testing.T) {
+	// Each turn reports the session's running totals, as Claude Code does
+	// for cost and Codex for usage, a second after it started.
+	clock := &manualClock{now: time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)}
+	totals := func(usd float64, in int64) step {
+		return state("pass", func(turn *domain.Turn) {
+			clock.advance(time.Second)
+			turn.Session = &domain.SessionTotals{CostUSD: &usd, Usage: &domain.Usage{InputTokens: &in}}
+		})
+	}
+	own := func(t *testing.T, record domain.Record, usd float64, in int64) {
+		t.Helper()
+		expect(t, record, domain.Completed, "", "")
+		if turn := record.Turn; *turn.CostUSD != usd || *turn.Usage.InputTokens != in || *record.Result.Cost.USD != usd || *record.Result.Usage.InputTokens != in {
+			t.Fatalf("run %s: turn cost %v, usage %+v; call %+v, %+v", record.ID, *turn.CostUSD, turn.Usage, record.Result.Cost, record.Result.Usage)
+		}
+	}
+	h := newLoopWith(t, git.Workspaces{}, clock, verifySettings{}, totals(1, 10), totals(3, 30), totals(3.5, 45))
+	a := h.call(contract.CallRequest{})
+	own(t, a, 1, 10)
+	b := h.call(contract.CallRequest{Continue: a.ID})
+	own(t, b, 2, 20)
+	c := h.call(contract.CallRequest{Continue: a.ID})
+	own(t, c, 0.5, 15)
+	if c.Turn.SessionBefore == nil || *c.Turn.SessionBefore.CostUSD != 3 || *c.Turn.SessionBefore.Usage.InputTokens != 30 {
+		t.Fatalf("C's baseline = %+v", c.Turn.SessionBefore)
+	}
+
+	// A's turn reported no running totals: nothing to count from.
+	h = newLoopWith(t, git.Workspaces{}, clock, verifySettings{}, state("pass"), totals(3, 30))
+	a = h.call(contract.CallRequest{})
+	b = h.call(contract.CallRequest{Continue: a.ID})
+	expect(t, b, domain.Completed, "", "")
+	if b.Turn.SessionBefore != nil || b.Turn.CostUSD != nil || b.Turn.Usage.InputTokens != nil || b.Result.Cost.Source != domain.CostUnknown {
+		t.Fatalf("turn %+v, cost %+v", b.Turn, b.Result.Cost)
+	}
+}
+
 // Every turn shares the call's cost limit: a repair gets what is left, and
 // an earlier turn with an unknown cost blocks repair.
 func TestVerifyUnknownCostBlocksRepair(t *testing.T) {

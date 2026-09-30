@@ -189,3 +189,61 @@ func TestOwnIsWhatTheTurnAddedToItsSession(t *testing.T) {
 		t.Fatalf("kept = %+v", kept)
 	}
 }
+
+// A session's latest totals are those Agister recorded on its latest turn,
+// on any run: the run that started it, or one continuing it, at any
+// distance. Unknown, never a guess, while a run in it is unfinished, when
+// the last to finish overlapped another, or when its latest turn reported
+// no totals in the session. Runs in other sessions, runs that ran no turn,
+// and the run asking do not count.
+func TestLatestTotalsAreTheSessionsLatestRecordedTurn(t *testing.T) {
+	usd := func(v float64) *float64 { return &v }
+	at := func(minute int) *time.Time {
+		moment := time.Date(2026, 9, 30, 9, minute, 0, 0, time.UTC)
+		return &moment
+	}
+	totals := func(cost float64) *run.SessionTotals { return &run.SessionTotals{CostUSD: usd(cost)} }
+	// A run from created to finished (minutes; -1: unfinished) whose latest
+	// turn reported session with totals.
+	record := func(id, continues, session string, created, finished int, latest *run.SessionTotals) run.Record {
+		r := run.Record{ID: id, Request: run.Request{Continue: continues}, CreatedAt: *at(created),
+			Turn: &run.Turn{ProviderSessionID: session, Session: latest}}
+		if finished >= 0 {
+			r.FinishedAt = at(finished)
+			r.Result = &run.Result{}
+			if session != "" && continues == "" {
+				r.Result.Session = &run.Session{ProviderSessionID: session}
+			}
+		}
+		return r
+	}
+	a := record("a", "", "s", 0, 1, totals(1))
+	b := record("b", "a", "s", 2, 3, totals(2))
+	c := record("c", "b", "s", 4, 5, totals(3)) // continues a continuation
+	refused := record("r", "a", "", 6, 7, nil)
+	refused.Turn = nil
+	other := record("o", "", "t", 8, 9, totals(9))
+
+	for _, test := range []struct {
+		name    string
+		records []run.Record
+		exclude string
+		want    *float64
+	}{
+		{"the only run", []run.Record{a}, "", usd(1)},
+		{"a later continuation", []run.Record{a, b}, "", usd(2)},
+		{"a continuation of a continuation", []run.Record{c, a, b}, "", usd(3)},
+		{"runs that ran no turn or another session", []run.Record{a, b, refused, other}, "", usd(2)},
+		{"the run asking", []run.Record{a, b, record("me", "a", "", 4, -1, nil)}, "me", usd(2)},
+		{"a run still in a turn", []run.Record{a, b, record("x", "a", "", 4, -1, nil)}, "", nil},
+		{"overlapping runs", []run.Record{a, record("b", "a", "s", 0, 3, totals(2))}, "", nil},
+		{"no totals on the latest turn", []run.Record{a, record("b", "a", "s", 2, 3, nil)}, "", nil},
+		{"latest turn reported nothing", []run.Record{a, record("b", "a", "", 2, 3, nil)}, "", nil},
+		{"no run in the session", []run.Record{other}, "", nil},
+	} {
+		got := run.LatestTotals(test.records, "s", test.exclude)
+		if test.want == nil && got != nil || test.want != nil && (got == nil || *got.CostUSD != *test.want) {
+			t.Fatalf("%s: got %+v, want %v", test.name, got, test.want)
+		}
+	}
+}

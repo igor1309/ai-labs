@@ -3,9 +3,6 @@ package codex_test
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -196,55 +193,5 @@ func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
 	turn := stream.Reconcile(supervisor.Evidence{RecordError: "disk full"}, false)
 	if turn.Status != run.Failed || turn.Error == nil || turn.Error.Class != run.ClassInternal || !strings.Contains(turn.Error.Message, "disk full") {
 		t.Fatalf("turn = %+v", turn)
-	}
-}
-
-// A resumed thread's usage counts on from the last token_count event of
-// its rollout; a resumed turn records it as the thread's usage before it.
-// No one rollout, or no such event, is no usage on record.
-func TestThreadUsageIsTheRolloutsLastTokenCount(t *testing.T) {
-	const thread = "01a0f1e2-f7cd-7430-adfa-aaec6170ee47"
-	home := t.TempDir()
-	rollout := func(day, id string, lines ...string) {
-		path := filepath.Join(home, "sessions", "2026", "09", day, "rollout-2026-09-"+day+"T13-36-19-"+id+".jsonl")
-		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	count := func(input, cached, output int) string {
-		return fmt.Sprintf(`{"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":%d,"cached_input_tokens":%d,"output_tokens":%d,"reasoning_output_tokens":0},"last_token_usage":{"input_tokens":1}}}}`, input, cached, output)
-	}
-	rollout("30", thread,
-		`{"type":"session_meta","payload":{"id":"`+thread+`"}}`,
-		count(18069, 13184, 5),
-		`{"type":"event_msg","payload":{"type":"token_count","info":null}}`,
-		count(36332, 31104, 10),
-		`{"type":"response_item","payload":{"type":"message","content":"a \"token_count\" event"}}`)
-	rollout("29", "twice", count(1, 0, 1))
-	rollout("30", "twice", count(2, 0, 2))
-	rollout("30", "bare", `{"type":"session_meta","payload":{}}`)
-
-	usage := codex.ThreadUsage(home, thread)
-	if usage == nil || *usage.InputTokens != 36332 || *usage.CacheReadTokens != 31104 || *usage.OutputTokens != 10 || *usage.ReasoningTokens != 0 {
-		t.Fatalf("usage = %+v", usage)
-	}
-	for _, id := range []string{"missing", "twice", "bare", "*", "../30/x"} {
-		if usage := codex.ThreadUsage(home, id); usage != nil {
-			t.Fatalf("%s: usage = %+v", id, usage)
-		}
-	}
-
-	runner := &codex.Runner{Command: runtimetest.Binary(t, "fakecodex"), Home: home}
-	resumed := request("SCENARIO:approve")
-	resumed.ResumeSessionID = thread
-	turn := runner.RunTurn(context.Background(), resumed, &runtimetest.Recorder{})
-	if turn.Status != run.Completed || turn.SessionBefore == nil || !reflect.DeepEqual(turn.SessionBefore.Usage, usage) {
-		t.Fatalf("resumed turn = %+v", turn)
-	}
-	if fresh := runner.RunTurn(context.Background(), request("SCENARIO:approve"), &runtimetest.Recorder{}); fresh.Status != run.Completed || fresh.SessionBefore != nil {
-		t.Fatalf("fresh turn = %+v", fresh)
 	}
 }

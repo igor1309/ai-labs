@@ -91,10 +91,12 @@ type CallValidator interface {
 	Validate(schema []byte, output json.RawMessage) error
 }
 
-// CallRuns reads an earlier run's evidence, only to continue its session. A
+// CallRuns reads earlier runs' evidence, only to continue a session: the
+// run continued, and every run's record for the session's latest totals. A
 // record that is not finished and no longer owned reads as abandoned.
 type CallRuns interface {
 	Get(ctx context.Context, id string) (run.Record, run.State, error)
+	List(ctx context.Context) ([]run.Record, error)
 }
 
 // CallClock tells the time of a call's record and events.
@@ -336,7 +338,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		event(run.SourceAgister, "PERMISSIONS_WITHHELD", map[string]any{"permissions": res.plan.Withheld})
 	}
 
-	resumeSessionID, err := c.continuation(ctx, res, record.Request.Continue)
+	resumeSessionID, sessionBefore, err := c.continuation(ctx, res, record.ID, record.Request.Continue)
 	if err != nil {
 		fail(err)
 		return
@@ -396,13 +398,18 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	// The call's timeout bounds every turn and every verification run.
 	deadline := c.clock.Now().Add(res.effective.Timeout)
 	// Usage and cost sum every turn's own; the latest turn's text and
-	// output are the call's.
+	// output are the call's. before is the resumed session's totals before
+	// the turn, recorded with it; nil when unknown.
 	var turns []run.Turn
 	var turnMS int64
-	take := func(request TurnRequest) run.Turn {
+	take := func(request TurnRequest, before *run.SessionTotals) run.Turn {
 		turnStart := c.clock.Now()
 		turn := runner.RunTurn(ctx, request, &sink{handle: handle, clock: c.clock, record: &record})
-		turn = run.Own(turn, request.ResumeSessionID != "")
+		resumed := request.ResumeSessionID != ""
+		if resumed {
+			turn.SessionBefore = before
+		}
+		turn = run.Own(turn, resumed)
 		turnMS += c.clock.Now().Sub(turnStart).Milliseconds()
 		turns = append(turns, turn)
 		record.Turn = &turn
@@ -423,7 +430,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return fault
 	}
 
-	turn := take(request)
+	turn := take(request, sessionBefore)
 	if turn.ProviderSessionID != "" {
 		result.Session = &run.Session{ProviderSessionID: turn.ProviderSessionID, Continues: record.Request.Continue}
 	}
@@ -443,35 +450,46 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 }
 
 // continuation checks a request to continue an earlier run's session and
-// returns that provider session, which the runtime resumes in place.
-// Continuing is deliberate: the agent must allow it, the runtime must
-// support it, and the earlier run must be finished, by the same agent,
-// with a session.
-func (c *Calls) continuation(ctx context.Context, res *resolution, runID string) (string, error) {
+// returns that provider session, which the runtime resumes in place, and
+// its totals before the call's first turn. Continuing is deliberate: the
+// agent must allow it, the runtime must support it, and the earlier run
+// must be finished, by the same agent, with a session. self is the
+// asking run.
+func (c *Calls) continuation(ctx context.Context, res *resolution, self, runID string) (string, *run.SessionTotals, error) {
 	if runID == "" {
-		return "", nil
+		return "", nil, nil
 	}
 	if res.agent.Session != definition.SessionResumable {
-		return "", refuse("agent %s is %s; it cannot continue run %s", res.agent.Name, res.agent.Session, runID)
+		return "", nil, refuse("agent %s is %s; it cannot continue run %s", res.agent.Name, res.agent.Session, runID)
 	}
 	if !res.identity.Resume {
-		return "", refuse("runtime %s cannot continue sessions", res.mapping.Name)
+		return "", nil, refuse("runtime %s cannot continue sessions", res.mapping.Name)
 	}
 	prior, state, err := c.runs.Get(ctx, runID)
 	if err != nil {
-		return "", refuse("run %s: %v", runID, err)
+		return "", nil, refuse("run %s: %v", runID, err)
 	}
 	switch {
 	case state != run.StateFinished:
-		return "", refuse("run %s is %s, not finished", runID, state)
+		return "", nil, refuse("run %s is %s, not finished", runID, state)
 	case prior.Agent != res.agent.Name:
-		return "", refuse("run %s ran agent %s; only agent %s's own runs can be continued by it", runID, prior.Agent, res.agent.Name)
+		return "", nil, refuse("run %s ran agent %s; only agent %s's own runs can be continued by it", runID, prior.Agent, res.agent.Name)
 	case prior.Runtime == nil || prior.Runtime.Adapter != res.mapping.Adapter:
-		return "", refuse("run %s did not run on %s", runID, res.mapping.Adapter)
+		return "", nil, refuse("run %s did not run on %s", runID, res.mapping.Adapter)
 	case prior.Result == nil || prior.Result.Session == nil || prior.Result.Session.ProviderSessionID == "":
-		return "", refuse("run %s has no provider session", runID)
+		return "", nil, refuse("run %s has no provider session", runID)
 	}
-	return prior.Result.Session.ProviderSessionID, nil
+	session := prior.Result.Session.ProviderSessionID
+	// The baseline is the session's latest turn on any run Agister has
+	// recorded, which may be a later continuation of the run continued, not
+	// that run's own. Turns made on the session outside Agister are not
+	// seen: what they cost is counted again. Runs that cannot be read leave
+	// it unknown.
+	records, err := c.runs.List(ctx)
+	if err != nil {
+		return session, nil, nil
+	}
+	return session, run.LatestTotals(records, session, self), nil
 }
 
 // collectChanges keeps a call's changes to its own workspace as an

@@ -77,9 +77,10 @@ type VerifyCall struct {
 	// every repair resumes.
 	Session string
 
-	// Take runs a turn and records it with the call; Conclude says whether
-	// a turn ended validly, and why not.
-	Take     func(TurnRequest) run.Turn
+	// Take runs a turn and records it with the call, given the resumed
+	// session's totals before it; Conclude says whether a turn ended
+	// validly, and why not.
+	Take     func(TurnRequest, *run.SessionTotals) run.Turn
 	Conclude func(run.Turn) *run.Error
 }
 
@@ -124,7 +125,7 @@ type verification struct {
 	// every repair resumes.
 	session string
 
-	take     func(TurnRequest) run.Turn
+	take     func(TurnRequest, *run.SessionTotals) run.Turn
 	conclude func(run.Turn) *run.Error
 
 	// verified names the content of the passing run, once one passed.
@@ -226,7 +227,9 @@ func (v *verification) run(ctx context.Context) *run.Error {
 		request.Timeout = remaining
 		request.MaxCostUSD = budget
 		v.event(run.SourceAgister, "REPAIR_STARTED", map[string]any{"attempt": number + 1, "session": v.session})
-		repair := v.take(request)
+		// The session's totals before the repair are what the call's turn
+		// before it reported.
+		repair := v.take(request, turn.Session)
 		fault = v.conclude(repair)
 		// A repair that reports no session confirms none: it is not in the
 		// call's session, whatever it did.

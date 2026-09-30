@@ -420,6 +420,17 @@ func (s *runsSpy) Get(_ context.Context, id string) (run.Record, run.State, erro
 	return record, s.states[id], nil
 }
 
+func (s *runsSpy) List(context.Context) ([]run.Record, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	records := make([]run.Record, 0, len(s.records))
+	for _, record := range s.records {
+		records = append(records, record)
+	}
+	sort.Slice(records, func(i, j int) bool { return records[i].ID < records[j].ID })
+	return records, nil
+}
+
 // steppingClock advances a second on every reading.
 type steppingClock struct {
 	mu  sync.Mutex

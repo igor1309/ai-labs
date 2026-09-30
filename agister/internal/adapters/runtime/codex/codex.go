@@ -12,9 +12,7 @@
 // settings, the sandbox mode as -c sandbox_mode (resume has no --sandbox),
 // and the turn must report that same thread, or it fails. Codex cannot
 // limit cost. The usage turn.completed reports is the thread's, counting
-// the turns it resumed (observed live with codex-cli 0.159.2): it counts on
-// from the last token_count event of the thread's rollout, which the turn
-// records as the thread's usage before it (ThreadUsage).
+// the turns it resumed (observed live with codex-cli 0.159.2).
 //
 // Only turn.completed and turn.failed decide a turn. Top-level `error`
 // events and error items occur mid-turn (reconnects, transport fallback)
@@ -22,12 +20,9 @@
 package codex
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -46,9 +41,6 @@ var sandboxModes = []string{"read-only", "workspace-write"}
 type Runner struct {
 	Command   string
 	KillGrace time.Duration
-	// Home is Codex's home directory, which holds the thread rollouts;
-	// empty: $CODEX_HOME, else ~/.codex, as Codex itself finds it.
-	Home string
 }
 
 func New(command string) *Runner {
@@ -128,13 +120,6 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 	if err != nil {
 		return supervisor.Failed(run.ClassInternal, err)
 	}
-	// Read before the turn appends to the rollout.
-	var before *run.SessionTotals
-	if request.ResumeSessionID != "" {
-		if usage := ThreadUsage(r.home(), request.ResumeSessionID); usage != nil {
-			before = &run.SessionTotals{Usage: usage}
-		}
-	}
 	state := &Stream{ResumedThreadID: request.ResumeSessionID}
 	evidence := supervisor.Run(ctx, supervisor.Spec{
 		Command:   r.Command,
@@ -148,79 +133,7 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 			sink.Event(event.Source, event.Kind, event.Data)
 		}
 	})
-	turn := state.Reconcile(evidence, schemaPath != "")
-	turn.SessionBefore = before
-	return turn
-}
-
-func (r *Runner) home() string {
-	if r.Home != "" {
-		return r.Home
-	}
-	if dir := os.Getenv("CODEX_HOME"); dir != "" {
-		return dir
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".codex")
-}
-
-// ThreadUsage is the usage Codex has on record for a thread: the
-// total_token_usage of the last token_count event in its rollout,
-// sessions/*/*/*/rollout-*-<thread>.jsonl under home, which a resume counts
-// on from. Unset when there is no one such rollout, or no such event in
-// it.
-func ThreadUsage(home, threadID string) *run.Usage {
-	if home == "" || threadID == "" || strings.ContainsAny(threadID, `/\*?[`) {
-		return nil
-	}
-	paths, err := filepath.Glob(filepath.Join(home, "sessions", "*", "*", "*", "rollout-*-"+threadID+".jsonl"))
-	if err != nil || len(paths) != 1 {
-		return nil
-	}
-	file, err := os.Open(paths[0])
-	if err != nil {
-		return nil
-	}
-	defer file.Close()
-	var total *run.Usage
-	reader := bufio.NewReader(file)
-	for {
-		line, err := reader.ReadBytes('\n')
-		if bytes.Contains(line, []byte(`"token_count"`)) {
-			var entry struct {
-				Type    string `json:"type"`
-				Payload struct {
-					Type string `json:"type"`
-					Info *struct {
-						Total map[string]any `json:"total_token_usage"`
-					} `json:"info"`
-				} `json:"payload"`
-			}
-			if json.Unmarshal(line, &entry) == nil && entry.Type == "event_msg" && entry.Payload.Type == "token_count" &&
-				entry.Payload.Info != nil && entry.Payload.Info.Total != nil {
-				total = usage(entry.Payload.Info.Total)
-			}
-		}
-		if err == io.EOF {
-			return total
-		}
-		if err != nil {
-			return nil
-		}
-	}
-}
-
-// usage normalizes Codex's token usage.
-func usage(source map[string]any) *run.Usage {
-	return &run.Usage{
-		InputTokens:     count(source, "input_tokens"),
-		OutputTokens:    count(source, "output_tokens"),
-		CacheReadTokens: count(source, "cached_input_tokens"),
-		ReasoningTokens: count(source, "reasoning_output_tokens"),
-	}
+	return state.Reconcile(evidence, schemaPath != "")
 }
 
 type Event struct {
@@ -320,7 +233,12 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 	}
 	// The thread's usage, every turn it had; the turn's own is derived.
 	if s.Usage != nil {
-		turn.Session = &run.SessionTotals{Usage: usage(s.Usage)}
+		turn.Session = &run.SessionTotals{Usage: &run.Usage{
+			InputTokens:     count(s.Usage, "input_tokens"),
+			OutputTokens:    count(s.Usage, "output_tokens"),
+			CacheReadTokens: count(s.Usage, "cached_input_tokens"),
+			ReasoningTokens: count(s.Usage, "reasoning_output_tokens"),
+		}}
 	}
 	if schemaRequested {
 		if s.LastMessage == "" {

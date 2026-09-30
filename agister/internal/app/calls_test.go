@@ -368,43 +368,60 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 	}
 }
 
-// A continuation's turn costs what it added to its session's total: the
-// total less what the runtime had on record for the session when the turn
-// started, not what the continued run recorded, which later continuations
-// of it have added to. Unknown when the runtime had nothing on record.
+// A continuation's turn costs and uses what it added to its session's
+// totals: the totals less those of the session's latest turn Agister
+// recorded on any run, a later continuation of the run continued included.
+// Unknown when Agister recorded no totals for the session.
 func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
 	usd := func(v float64) *float64 { return &v }
+	n := func(v int64) *int64 { return &v }
+	at := func(minute int) *time.Time {
+		moment := time.Date(2026, 9, 28, 11, minute, 0, 0, time.UTC)
+		return &moment
+	}
+	// run-0 started prov-0; run-0b continued it, after it.
+	recorded := func(id, continues string, created, finished int, totals *run.SessionTotals) run.Record {
+		return run.Record{ID: id, Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Request: run.Request{Continue: continues},
+			CreatedAt: *at(created), FinishedAt: at(finished), Turn: &run.Turn{ProviderSessionID: "prov-0", Session: totals},
+			Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0", Continues: continues}}}
+	}
 	cases := []struct {
-		name   string
-		before *run.SessionTotals // what the runtime had on record
-		want   *float64
+		name    string
+		records []run.Record
+		want    *run.SessionTotals // the turn's own; nil: unknown
 	}{
-		{"runtime's total known", &run.SessionTotals{CostUSD: usd(11.5)}, usd(1)},
-		{"runtime's total unknown", nil, nil},
+		{"continued run's own totals", []run.Record{
+			recorded("run-0", "", 0, 1, &run.SessionTotals{CostUSD: usd(7.75), Usage: &run.Usage{InputTokens: n(100)}}),
+		}, &run.SessionTotals{CostUSD: usd(4.75), Usage: &run.Usage{InputTokens: n(150)}}},
+		{"a later continuation's totals", []run.Record{
+			recorded("run-0", "", 0, 1, &run.SessionTotals{CostUSD: usd(7.75), Usage: &run.Usage{InputTokens: n(100)}}),
+			recorded("run-0b", "run-0", 2, 3, &run.SessionTotals{CostUSD: usd(11.5), Usage: &run.Usage{InputTokens: n(200)}}),
+		}, &run.SessionTotals{CostUSD: usd(1), Usage: &run.Usage{InputTokens: n(50)}}},
+		{"no recorded totals", []run.Record{recorded("run-0", "", 0, 1, nil)}, nil},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			h := newHarness()
 			h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
-			// run-0's own record of the session's total, since overtaken.
-			h.runs.records["run-0"] = run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"},
-				Turn:   &run.Turn{ProviderSessionID: "prov-0", CostUSD: usd(7.75), Session: &run.SessionTotals{CostUSD: usd(7.75)}},
-				Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0"}}}
-			h.runs.states["run-0"] = run.StateFinished
+			for _, record := range c.records {
+				h.runs.records[record.ID], h.runs.states[record.ID] = record, run.StateFinished
+			}
 			h.runner.turn = run.Turn{Status: run.Completed, Output: json.RawMessage(`{}`), ProviderSessionID: "prov-0",
-				Session: &run.SessionTotals{CostUSD: usd(12.5)}, SessionBefore: c.before}
+				Session: &run.SessionTotals{CostUSD: usd(12.5), Usage: &run.Usage{InputTokens: n(250)}}}
 			record := h.call(t, contract.CallRequest{Continue: "run-0"})
-			if record.Result.Status != run.Completed || *record.Turn.Session.CostUSD != 12.5 || !reflect.DeepEqual(record.Turn.SessionBefore, c.before) {
+			latest := c.records[len(c.records)-1].Turn.Session
+			if record.Result.Status != run.Completed || *record.Turn.Session.CostUSD != 12.5 || !reflect.DeepEqual(record.Turn.SessionBefore, latest) {
 				t.Fatalf("result %+v, turn %+v", record.Result, record.Turn)
 			}
 			if c.want == nil {
-				if record.Turn.CostUSD != nil || record.Result.Cost.Source != run.CostUnknown || record.Result.Cost.USD != nil {
-					t.Fatalf("turn cost %v, call cost %+v", record.Turn.CostUSD, record.Result.Cost)
+				if record.Turn.CostUSD != nil || record.Turn.Usage.InputTokens != nil || record.Result.Cost.Source != run.CostUnknown || record.Result.Cost.USD != nil {
+					t.Fatalf("turn cost %v, usage %+v, call cost %+v", record.Turn.CostUSD, record.Turn.Usage, record.Result.Cost)
 				}
 				return
 			}
-			if *record.Turn.CostUSD != *c.want || record.Result.Cost.Source != run.CostRuntime || *record.Result.Cost.USD != *c.want {
-				t.Fatalf("turn cost %v, call cost %+v", *record.Turn.CostUSD, record.Result.Cost)
+			if *record.Turn.CostUSD != *c.want.CostUSD || *record.Turn.Usage.InputTokens != *c.want.Usage.InputTokens ||
+				record.Result.Cost.Source != run.CostRuntime || *record.Result.Cost.USD != *c.want.CostUSD || *record.Result.Usage.InputTokens != *c.want.Usage.InputTokens {
+				t.Fatalf("turn cost %v, usage %+v, call cost %+v", *record.Turn.CostUSD, record.Turn.Usage, record.Result.Cost)
 			}
 		})
 	}

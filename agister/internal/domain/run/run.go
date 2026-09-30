@@ -177,9 +177,9 @@ type Turn struct {
 	// the turn, where it reports those instead of the turn's own cost or
 	// usage; the turn's own are derived from them (Own).
 	Session *SessionTotals `json:"session,omitempty"`
-	// SessionBefore is what the runtime had on record as the resumed
-	// session's totals when the turn started; unset for a fresh session,
-	// or when the runtime had none.
+	// SessionBefore is the resumed session's totals before the turn, as
+	// Agister recorded them on the session's latest turn before it (see
+	// LatestTotals); unset for a fresh session, or when Agister had none.
 	SessionBefore *SessionTotals `json:"session_before,omitempty"`
 }
 

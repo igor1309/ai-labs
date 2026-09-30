@@ -740,12 +740,9 @@ func TestVerdictIsOutputNotStatus(t *testing.T) {
 // A continuation resumes the earlier run's provider session in place, by the
 // ID the runtime reported, and costs what it added to the session's total.
 func TestContinuationEndToEnd(t *testing.T) {
-	// The fake runtime keeps its sessions' costs where the adapter looks
-	// for Claude Code's: each turn costs $0.0123, and the result reports
-	// the session's total.
-	config := t.TempDir()
-	t.Setenv("CLAUDE_CONFIG_DIR", config)
-	t.Setenv("FAKE_CLAUDE_CONFIG_DIR", config)
+	// The fake runtime keeps its sessions' costs here: each turn costs
+	// $0.0123, and the result reports the session's total.
+	t.Setenv("FAKE_CLAUDE_CONFIG_DIR", t.TempDir())
 	home, repo := setup(t, "approve")
 	client, err := compose(cli.Config{Home: home})
 	if err != nil {
