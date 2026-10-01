@@ -73,7 +73,8 @@
   .intro { margin: 0 0 8px; color: var(--fg2); font-size: 13px; max-width: 760px; }
   h2.group { margin: 28px 0 2px; font-size: 18px; font-weight: 600; }
   .group-note { margin: 0 0 12px; color: var(--dim); font-size: 13px; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 16px; }
+  /* Two columns while both fit, one below that; never wider than the page. */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(440px, 100%), 1fr)); gap: 16px; }
   .cards.wide { grid-template-columns: 1fr; }
   article.run { padding: 16px 18px; min-width: 0; }
   .run-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
@@ -122,6 +123,18 @@
   .access-read-only { color: var(--low); }
   .access-read-write { color: var(--mid); }
   td .access-read-only, td .access-read-write { white-space: nowrap; }
+  /* A narrow screen stacks each row: the name, then label and value lines. */
+  @media (max-width: 900px) {
+    table, tbody, tr, td { display: block; }
+    thead { display: none; }
+    tr { padding: 10px 0; border-bottom: 1px solid var(--line); }
+    tr:last-child { border-bottom: none; }
+    td { padding: 1px 0; border: none; }
+    td[data-label] { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 10px; }
+    td[data-label]::before { content: attr(data-label); color: var(--fg3); }
+    td[data-label] > * { justify-self: start; }
+    td.name { white-space: normal; margin-bottom: 2px; }
+  }
 </style>
 </head>
 <body>
@@ -164,8 +177,9 @@
   let renderToken = 0;
 
   const $ = (id) => document.getElementById(id);
-  const el = (tag, props = {}, ...children) => {
+  const el = (tag, { dataset, ...props } = {}, ...children) => {
     const node = Object.assign(document.createElement(tag), props);
+    if (dataset) Object.assign(node.dataset, dataset);
     node.append(...children.filter((c) => c != null && c !== false));
     return node;
   };
@@ -460,8 +474,10 @@
             return el('tr', {}, el('td', { className: 'name', textContent: item.name }),
               el('td', { colSpan: head.length - 1, className: 'error', textContent: `${item.file}: ${item.error}` }));
           }
-          const row = [el('td', { className: 'name', textContent: item.name }), ...cells(item).map((c) => el('td', {}, c ?? '—'))];
-          if (composed) row.push(el('td', {}, sourceChip(item)));
+          // data-label names the column where a narrow screen stacks the row.
+          const row = [el('td', { className: 'name', textContent: item.name }),
+            ...cells(item).map((c, i) => el('td', { dataset: { label: head[i + 1] } }, c ?? '—'))];
+          if (composed) row.push(el('td', { dataset: { label: 'From' } }, sourceChip(item)));
           return el('tr', { id: `${title}-${item.name}` }, ...row);
         }))));
   }
@@ -513,7 +529,9 @@
       el('table', {},
         el('thead', {}, el('tr', {}, ...['Limit', 'Value', 'Meaning'].map((c) => el('th', { textContent: c })))),
         el('tbody', {}, ...rows.map(([name, value, meaning]) => el('tr', {},
-          el('td', { className: 'name', textContent: name }), el('td', { textContent: String(value) }), el('td', { textContent: meaning }))))));
+          el('td', { className: 'name', textContent: name }),
+          el('td', { textContent: String(value), dataset: { label: 'Value' } }),
+          el('td', { textContent: meaning, dataset: { label: 'Meaning' } }))))));
   }
 
   // --- start ---
