@@ -17,7 +17,6 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -52,12 +51,21 @@ type Evidence struct {
 	RecordError string
 }
 
+// Sink is what Run reports to: the process's events, its reference as soon
+// as it exists (an error means it is not on record, and Run kills it), and
+// each line of its stdout.
+type Sink interface {
+	Event(source, kind string, data map[string]any)
+	ProcessStarted(ref string) error
+	Raw(line string)
+}
+
 // Run starts the process, feeds stdin, passes each stdout line to onLine and
 // the raw sink, and returns once the process has exited. Whatever the
 // process leaves running in its group is killed then, and stdout is read
 // for at most the grace period after the exit, so a descendant that keeps
 // it open cannot hold the call.
-func Run(ctx context.Context, spec Spec, events app.EventSink, onLine func(string)) Evidence {
+func Run(ctx context.Context, spec Spec, events Sink, onLine func(string)) Evidence {
 	// The watcher and the reader both report; the sink sees one at a time.
 	sink := &serialSink{inner: events}
 	var evidence Evidence
@@ -322,7 +330,7 @@ func Version(ctx context.Context, command string) (string, error) {
 // onLine produces for a line.
 type serialSink struct {
 	mu    sync.Mutex
-	inner app.EventSink
+	inner Sink
 }
 
 func (s *serialSink) Event(source, kind string, data map[string]any) {

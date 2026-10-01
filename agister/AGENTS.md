@@ -21,9 +21,17 @@ still apply.
 - Review a committed candidate with
   `agister run code_review --param base=<rev> --param candidate=<rev>`. Act on
   the rulings as written, without judging them again: fix items go to a
-  fresh `implement` run, owner items to the owner, defer items to
+  fresh `implement` run, owner items to the advisor (below), defer items to
   `agister/docs/deferred.md`. Rejections for missing evidence are feedback
   on the reviewers' prompts, not the judge's.
+- For an owner item, write the question file: who asked (the workflow run
+  and item), the question and the options (the item's `action`, unedited),
+  nothing else. Commit what the question is about and run
+  `agister run advisor --param question=<file> --param revision=<rev>`.
+  Append its decision to `agister/docs/decisions.md` as a record, unedited,
+  with status `Provisional (advisor)` and the run ID, and list the
+  provisional records in the pull request description. Only an `owner`
+  answer goes to the owner.
 - Review a change that adds or edits an ADR with
   `agister run adr_review --param base=<rev> --param candidate=<rev>`,
   before the code that follows it; its rulings are acted on the same way.

@@ -8,7 +8,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -23,11 +25,28 @@ import (
 // by param name; any other such param gets fallbackParam. Each is a real
 // file of the repository, so a param read as a file resolves.
 var repoParams = map[string]string{
-	"prompt": "prompts/code-review-architecture.md",
-	"brief":  "prompts/code-review-tests.md",
+	"prompt":   "prompts/code-review-architecture.md",
+	"brief":    "prompts/code-review-tests.md",
+	"question": "prompts/code-review-tests.md",
 }
 
 const fallbackParam = "AGENTS.md"
+
+// testTimeouts are the test's own timeouts for a process run, by process
+// name, in place of its policy's: the advisor's policy allows 20 minutes.
+var testTimeouts = map[string]string{"advisor": "1m"}
+
+// codexAgents is the agent recorded for each process that runs on Codex, by
+// process: each agent is named after its model version.
+var codexAgents = map[string]string{
+	"adr_review_codex":          "codex-sol-61",
+	"adversarial_review_codex":  "codex-sol-61",
+	"advisor":                   "codex-sol-61",
+	"architecture_review_codex": "codex-sol-61",
+	"clarity_review_codex":      "codex-sol-61",
+	"tests_review_codex":        "codex-sol-61",
+	"implement_codex":           "codex-implementer-sol-61",
+}
 
 // verifyFixture is the verification command every process that declares
 // verify runs in the test's repository instead of its own: it passes in a
@@ -43,7 +62,8 @@ const verifyFixture = "grep -qx two change.txt"
 // missing agent, policy or schema, a schema that does not compile, an
 // unknown input source or a prompt path that does not resolve from the
 // repository root fails it. Processes are read from the directory, so a new
-// one is tested without listing it here.
+// one is tested without listing it here. Each process of codexAgents
+// exists, and its run records that agent.
 //
 // The test works in a repository of its own whose top-level entries link to
 // this repository's working tree (settings and prompts as they are, edits
@@ -69,6 +89,11 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	if len(names) == 0 {
 		t.Fatal("the repository has no processes")
 	}
+	for name := range codexAgents {
+		if !slices.Contains(names, name) {
+			t.Errorf("process %s, which runs on Codex, is not among the repository's processes", name)
+		}
+	}
 	// Processes that take a workflow's collection, to be run as a join.
 	joins := map[string]bool{}
 	for _, name := range names {
@@ -79,11 +104,17 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			args := append([]string{"run", name}, paramArgs(process.Params)...)
+			if timeout := testTimeouts[name]; timeout != "" {
+				args = append(args, "--timeout", timeout)
+			}
 			created, r := runRecorded(t, home, repo, args)
 			if len(created) != 1 {
 				t.Fatalf("runs recorded: %v, want one", created)
 			}
 			record := completedRun(t, home, created[0])
+			if want, ok := codexAgents[name]; ok && record["agent"] != want {
+				t.Fatalf("agent = %v, want %s", record["agent"], want)
+			}
 			if process.Verify != nil {
 				attempts, _ := record["attempts"].([]any)
 				if len(attempts) != 1 {
@@ -240,6 +271,326 @@ func TestADRReviewCollectsTheADRReview(t *testing.T) {
 	}
 }
 
+// The advisor answers a question file on the Codex agent, a model family
+// other than the judge's, in a checkout of the revision, and is given the
+// question and its standing prompt, prompts/advisor.md. Its output is of
+// the advice schema.
+func TestAdvisorAnswersAQuestionFile(t *testing.T) {
+	root, repo, home := onFakeRuntimes(t)
+	question := filepath.Join(t.TempDir(), "question.md")
+	write(t, question, "Asked by: workflow run 1, item 2.\nQuestion: which?\nOptions: (a) one; (b) two.\n")
+	// The timeout is the test's own: the process's policy allows 20 minutes.
+	created, r := runRecorded(t, home, repo, []string{"run", "advisor", "--param", "question=" + question, "--param", "revision=feature", "--timeout", "1m"})
+	if len(created) != 1 {
+		t.Fatalf("runs recorded: %v, want one", created)
+	}
+	record := completedRun(t, home, created[0])
+	// Its output is the one property advice, which the advice schema
+	// accepts: the fake answers with the first variant, owner.
+	output := record["result"].(map[string]any)["output"]
+	schemaAccepts(t, record, output, r.stdout)
+	if want := map[string]any{"advice": map[string]any{"kind": "owner", "reason": "fake"}}; !reflect.DeepEqual(output, want) {
+		t.Fatalf("the advisor's output = %v, want %v", output, want)
+	}
+	// The runtime worked in a checkout of the revision, not in the
+	// caller's repository.
+	if workspace, _ := record["workspace"].(string); workspace == "" || runtimeCwd(t, home, created[0]) != workspace || workspace == repo {
+		t.Fatalf("the advisor's workspace %q, runtime cwd %q, the caller's repository %s", workspace, runtimeCwd(t, home, created[0]), repo)
+	}
+	// The runtime was started under its read-only sandbox.
+	if argv := runtimeArgv(t, home, created[0]); !follows(argv, "--sandbox", "read-only") {
+		t.Fatalf("the advisor's runtime argv = %v, want --sandbox read-only", argv)
+	}
+	if record["agent"] != "codex-sol-61" {
+		t.Fatalf("the advisor's agent = %v, want codex-sol-61", record["agent"])
+	}
+	if advisor, judge := modelFamily(t, root, "codex-sol-61"), modelFamily(t, root, "claude-judge"); advisor == "" || advisor == judge {
+		t.Fatalf("the advisor's model family %q, the judge's %q: want another", advisor, judge)
+	}
+	for name, path := range map[string]string{"question": question, "advisor_prompt": filepath.Join(root, "prompts", "advisor.md")} {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sum := sha256.Sum256(data)
+		digest := "sha256:" + hex.EncodeToString(sum[:])
+		if given := inputOf(t, record, name); given["source"] != "file" || given["identity"] != digest {
+			t.Fatalf("advisor's %s = %v, want %s (%s)", name, given, path, digest)
+		}
+	}
+	feature := gitCmd(t, repo, "rev-parse", "feature")
+	if given := inputOf(t, record, "revision"); given["identity"] != feature {
+		t.Fatalf("advisor's revision = %v, want feature (%s)", given, feature)
+	}
+}
+
+// runtimeArgv is the command line a call's fake runtime was started with,
+// as the first line of the call's provider.jsonl captures it.
+func runtimeArgv(t *testing.T, home, id string) []string {
+	t.Helper()
+	first := runtimeStart(t, home, id)
+	if len(first.Argv) == 0 {
+		t.Fatalf("run %s: no argv in provider.jsonl", id)
+	}
+	return first.Argv
+}
+
+// runtimeCwd is the directory a call's fake runtime was started in, as the
+// first line of the call's provider.jsonl captures it.
+func runtimeCwd(t *testing.T, home, id string) string {
+	t.Helper()
+	first := runtimeStart(t, home, id)
+	if first.Cwd == "" {
+		t.Fatalf("run %s: no cwd in provider.jsonl", id)
+	}
+	return first.Cwd
+}
+
+// runtimeStart is the first line of a call's provider.jsonl, which a fake
+// runtime writes with its argv and cwd.
+func runtimeStart(t *testing.T, home, id string) (first struct {
+	Argv []string
+	Cwd  string
+}) {
+	t.Helper()
+	provider, err := os.ReadFile(filepath.Join(home, "runs", id, "provider.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal([]byte(strings.SplitN(string(provider), "\n", 2)[0]), &first); err != nil {
+		t.Fatalf("run %s: provider.jsonl %q: %v", id, provider, err)
+	}
+	return first
+}
+
+// follows reports whether value is the argument right after flag in argv.
+func follows(argv []string, flag, value string) bool {
+	for i := 0; i+1 < len(argv); i++ {
+		if argv[i] == flag && argv[i+1] == value {
+			return true
+		}
+	}
+	return false
+}
+
+// The repository's advice schema accepts an owner answer with its reason,
+// and a decision with its record; it refuses an answer whose payload is the
+// other's, a missing field and an unexpected one. The payloads are fixed,
+// not built from the schema.
+func TestAdviceSchemaTiesTheAnswerToItsPayload(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := os.ReadFile(filepath.Join(root, ".agister", "schemas", "advice.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const record = `"asked_by":"workflow run 1, item 2","question":"which?","options":["one","two"],"chosen":"one",` +
+		`"excluded":[{"option":"two","why":"D-3 excludes it"}],"rests_on":["D-3"],"follow_ups":[]`
+	const recordWithoutChosen = `"asked_by":"workflow run 1, item 2","question":"which?","options":["one","two"],` +
+		`"excluded":[{"option":"two","why":"D-3 excludes it"}],"rests_on":["D-3"],"follow_ups":[]`
+	const reason = `"reason":"option (b) changes ADR-001 rule 9"`
+	cases := []struct {
+		name, output string
+		valid        bool
+	}{
+		{"a decision", `{"advice":{"kind":"decision",` + record + `}}`, true},
+		{"owner", `{"advice":{"kind":"owner",` + reason + `}}`, true},
+		{"a decision without its record", `{"advice":{"kind":"decision"}}`, false},
+		{"a decision with a reason", `{"advice":{"kind":"decision",` + reason + `,` + record + `}}`, false},
+		{"a decision with a reason for a record", `{"advice":{"kind":"decision",` + reason + `}}`, false},
+		{"owner with a record", `{"advice":{"kind":"owner",` + reason + `,` + record + `}}`, false},
+		{"owner with a record for a reason", `{"advice":{"kind":"owner",` + record + `}}`, false},
+		{"owner with an empty reason", `{"advice":{"kind":"owner","reason":""}}`, false},
+		{"owner with a blank reason", `{"advice":{"kind":"owner","reason":" "}}`, false},
+		{"owner without a reason", `{"advice":{"kind":"owner"}}`, false},
+		{"an unknown kind", `{"advice":{"kind":"maybe",` + reason + `}}`, false},
+		{"no kind, a reason", `{"advice":{` + reason + `}}`, false},
+		{"no kind, a record", `{"advice":{` + record + `}}`, false},
+		{"no advice", `{}`, false},
+		{"null advice", `{"advice":null}`, false},
+		{"an answer at the root", `{"kind":"owner",` + reason + `}`, false},
+		{"a record without its chosen option", `{"advice":{"kind":"decision",` + recordWithoutChosen + `}}`, false},
+		{"an excluded option without its why", `{"advice":{"kind":"decision",` + strings.Replace(record, `,"why":"D-3 excludes it"`, "", 1) + `}}`, false},
+		{"an unexpected field", `{"advice":{"kind":"owner",` + reason + `},"note":"x"}`, false},
+		{"an unexpected field in an owner answer", `{"advice":{"kind":"owner",` + reason + `,"note":"x"}}`, false},
+		{"an unexpected field in the record", `{"advice":{"kind":"decision",` + record + `,"status":"final"}}`, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			err := (schema.Validator{}).Validate(document, []byte(c.output))
+			if c.valid && err != nil {
+				t.Fatalf("%s refused: %v", c.output, err)
+			}
+			if !c.valid && err == nil {
+				t.Fatalf("%s accepted", c.output)
+			}
+		})
+	}
+}
+
+// No schema this repository gives to Codex uses a combinator Codex's
+// strict structured outputs refuse before the turn starts: oneOf and allOf
+// anywhere, anyOf at the root. The schemas are those of the processes whose
+// agent runs on the codex runtime, read from the directory, so a new one is
+// checked without listing it here.
+func TestSchemasGivenToCodexUseNoRefusedCombinator(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	processes, err := filepath.Glob(filepath.Join(root, ".agister", "processes", "*.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	checked := map[string]bool{}
+	for _, path := range processes {
+		process := parseProcess(t, root, strings.TrimSuffix(filepath.Base(path), ".yaml"))
+		name := process.Output.Schema
+		if name == "" || checked[name] || agentRuntime(t, root, strings.TrimPrefix(process.Agent, "agent:")) != "codex" {
+			continue
+		}
+		checked[name] = true
+		data, err := os.ReadFile(filepath.Join(root, ".agister", "schemas", name+".json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var document any
+		if err := json.Unmarshal(data, &document); err != nil {
+			t.Fatalf("schema %s: %v", name, err)
+		}
+		if refused := refusedCombinators(document); len(refused) > 0 {
+			t.Errorf("schema %s, given to Codex by process %s, uses %v", name, process.Name, refused)
+		}
+	}
+	if !checked["advice"] {
+		t.Fatalf("schemas checked: %v, want the advisor's among them", checked)
+	}
+}
+
+// refusedCombinators finds a root-level oneOf, anyOf and allOf, and a
+// oneOf or allOf at any depth; a nested anyOf is none.
+func TestRefusedCombinators(t *testing.T) {
+	cases := []struct {
+		name, document string
+		want           []string
+	}{
+		{"none", `{"type":"object","properties":{"a":{"type":"string"}}}`, nil},
+		{"a nested anyOf", `{"type":"object","properties":{"a":{"anyOf":[{"type":"string"},{"type":"null"}]}}}`, nil},
+		{"a nested allOf", `{"type":"object","properties":{"a":{"allOf":[{"type":"string"}]}}}`, []string{"allOf at /properties/a"}},
+		{"a root oneOf", `{"type":"object","oneOf":[{"required":["a"]}]}`, []string{"oneOf at /"}},
+		{"a root anyOf", `{"anyOf":[{"type":"object"}]}`, []string{"anyOf at /"}},
+		{"a root allOf", `{"allOf":[{"type":"object"}]}`, []string{"allOf at /"}},
+		{"a oneOf in a property", `{"type":"object","properties":{"a":{"oneOf":[{"type":"string"}]}}}`, []string{"oneOf at /properties/a"}},
+		{"a oneOf in an array's items", `{"type":"object","properties":{"a":{"type":"array","items":{"oneOf":[{"type":"string"}]}}}}`, []string{"oneOf at /properties/a/items"}},
+		{"a oneOf in an anyOf's variant", `{"type":"object","properties":{"a":{"anyOf":[{"type":"null"},{"oneOf":[{"type":"string"}]}]}}}`, []string{"oneOf at /properties/a/anyOf/1"}},
+		{"several", `{"allOf":[{"oneOf":[{"type":"object"}]}],"anyOf":[{"type":"object"}]}`, []string{"allOf at /", "anyOf at /", "oneOf at /allOf/0"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var document any
+			if err := json.Unmarshal([]byte(c.document), &document); err != nil {
+				t.Fatal(err)
+			}
+			if got := refusedCombinators(document); !reflect.DeepEqual(got, c.want) {
+				t.Fatalf("refused = %v, want %v", got, c.want)
+			}
+		})
+	}
+}
+
+// refusedCombinators are the combinators of a JSON Schema document that
+// Codex refuses, each with the place it stands at, sorted: oneOf and allOf
+// anywhere, anyOf at the root.
+func refusedCombinators(document any) []string {
+	var refused []string
+	var walk func(node any, at string)
+	walk = func(node any, at string) {
+		switch node := node.(type) {
+		case map[string]any:
+			place := at
+			if place == "" {
+				place = "/"
+			}
+			for key, value := range node {
+				if key == "oneOf" || key == "allOf" || at == "" && key == "anyOf" {
+					refused = append(refused, key+" at "+place)
+				}
+				walk(value, at+"/"+key)
+			}
+		case []any:
+			for i, value := range node {
+				walk(value, at+"/"+strconv.Itoa(i))
+			}
+		}
+	}
+	walk(document, "")
+	sort.Strings(refused)
+	return refused
+}
+
+// agentRuntime is the runtime of a repository agent.
+func agentRuntime(t *testing.T, root, agent string) string {
+	t.Helper()
+	return parseAgent(t, root, agent).Runtime
+}
+
+// modelFamily is the model family of a repository agent.
+func modelFamily(t *testing.T, root, agent string) string {
+	t.Helper()
+	return parseAgent(t, root, agent).ModelFamily
+}
+
+// parseAgent parses a repository agent.
+func parseAgent(t *testing.T, root, agent string) definition.Agent {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(root, ".agister", "agents", agent+".toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := definition.ParseAgent(definition.Document{
+		Source: definition.Source{Kind: definition.KindAgent, Name: agent, Path: agent + ".toml"}, Bytes: data,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return parsed
+}
+
+// The judge runs under no cost limit: its policy sets none, so its call's
+// effective limits carry none.
+func TestTheJudgeHasNoCostLimit(t *testing.T) {
+	_, repo, home := onFakeRuntimes(t)
+	_, records := judgedReviews(t, home, repo, "code_review")
+	effective, ok := records["review_judge"]["effective"].(map[string]any)
+	if !ok {
+		t.Fatalf("the judge's run records no effective limits: %v", records["review_judge"])
+	}
+	if limit, set := effective["max_cost_usd"]; set {
+		t.Fatalf("the judge's effective cost limit is %v, want none", limit)
+	}
+}
+
+// The repository's implement runs under no cost limit: its policy sets
+// none, so its call's effective limits carry none.
+func TestImplementHasNoCostLimit(t *testing.T) {
+	root, repo, home := onFakeRuntimes(t)
+	args := append([]string{"run", "implement"}, paramArgs(parseProcess(t, root, "implement").Params)...)
+	created, _ := runRecorded(t, home, repo, args)
+	if len(created) != 1 {
+		t.Fatalf("runs recorded: %v, want one", created)
+	}
+	record := completedRun(t, home, created[0])
+	effective, ok := record["effective"].(map[string]any)
+	if !ok {
+		t.Fatalf("the implement run records no effective limits: %v", record)
+	}
+	if limit, set := effective["max_cost_usd"]; set {
+		t.Fatalf("implement's effective cost limit is %v, want none", limit)
+	}
+}
+
 // judgedReviews runs a review workflow to completion and is its judge's
 // collection, as each node's process and status by node, and the nodes'
 // runs by process. It fails unless the judge received that collection.
@@ -310,7 +661,8 @@ func parseProcess(t *testing.T, root, name string) definition.Process {
 	return process
 }
 
-// paramArgs gives base and candidate the test repository's revisions, and
+// paramArgs gives base, candidate and revision the test repository's
+// revisions, and
 // every other param without a default a file of the repository.
 func paramArgs(params []definition.Param) []string {
 	var args []string
@@ -319,7 +671,7 @@ func paramArgs(params []definition.Param) []string {
 		switch {
 		case param.Name == "base":
 			value = "main"
-		case param.Name == "candidate":
+		case param.Name == "candidate", param.Name == "revision":
 			value = "feature"
 		case !param.HasDefault && repoParams[param.Name] != "":
 			value = repoParams[param.Name]

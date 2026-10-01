@@ -185,6 +185,8 @@ type Turn struct {
 	// Agister recorded them on the session's latest turn before it (see
 	// LatestTotals); unset for a fresh session, or when Agister had none.
 	SessionBefore *SessionTotals `json:"session_before,omitempty"`
+	// Stale is set when Agister ended the turn at a staleness limit.
+	Stale *Stale `json:"stale,omitempty"`
 }
 
 // Input is one resolved, immutable input.

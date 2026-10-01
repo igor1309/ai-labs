@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 )
@@ -52,8 +53,110 @@ func commit(ctx context.Context, dir, revision string) (string, error) {
 	return strings.TrimSpace(out), nil
 }
 
-// Workspaces locates repositories and makes detached checkouts.
-type Workspaces struct{}
+// Worktrees runs Agister's worktree changes in one repository one at a
+// time: git worktree add reads each .git/worktrees/*/commondir, and dies on
+// one a parallel add has created and not yet written. It holds one lock per
+// repository, keyed by its git common directory: two paths into a
+// repository, or two of its worktrees, share one. A process builds one and
+// gives it to every Workspaces value it makes. Only this process is held
+// back, and nothing is written to the repository for it.
+type Worktrees struct {
+	// Git, when set, runs the worktree command in place of git, under the
+	// repository's lock: tests hold a command there.
+	Git func(ctx context.Context, dir string, args ...string) (string, error)
+	// Waits, when set, is told that a command found the lock held, before
+	// it waits.
+	Waits func()
+
+	mu    sync.Mutex
+	locks map[string]chan struct{}
+}
+
+func NewWorktrees() *Worktrees { return &Worktrees{} }
+
+// worktree runs git worktree args in repository once no other worktree
+// command of the repository runs. A context that ends while it waits ends
+// the wait with the context's error. started says the command was run:
+// one that was not has changed nothing in the repository.
+func (s *Worktrees) worktree(ctx context.Context, repository string, args ...string) (started bool, err error) {
+	if s == nil {
+		return false, errNoWorktrees
+	}
+	out, err := run(ctx, repository, "rev-parse", "--git-common-dir")
+	if err != nil {
+		if ctx.Err() != nil {
+			return false, ctx.Err()
+		}
+		return false, err
+	}
+	common := strings.TrimSpace(out)
+	if !filepath.IsAbs(common) {
+		common = filepath.Join(repository, common)
+	}
+	// A relative repository gives a relative common directory: made
+	// absolute, it is the key an absolute path to the repository gives.
+	common, err = filepath.Abs(common)
+	if err != nil {
+		return false, err
+	}
+	lock := s.lock(resolved(common))
+	select {
+	case lock <- struct{}{}:
+	default:
+		if s.Waits != nil {
+			s.Waits()
+		}
+		select {
+		case lock <- struct{}{}:
+		case <-ctx.Done():
+			return false, ctx.Err()
+		}
+	}
+	defer func() { <-lock }()
+	git := s.Git
+	if git == nil {
+		git = run
+	}
+	_, err = git(ctx, repository, append([]string{"worktree"}, args...)...)
+	return true, err
+}
+
+func (s *Worktrees) lock(common string) chan struct{} {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.locks == nil {
+		s.locks = map[string]chan struct{}{}
+	}
+	if s.locks[common] == nil {
+		s.locks[common] = make(chan struct{}, 1)
+	}
+	return s.locks[common]
+}
+
+// worktreeCommands is what Workspaces needs to change a repository's
+// worktrees: git worktree args run in repository, in its turn among the
+// repository's worktree commands. started says the command was run.
+type worktreeCommands interface {
+	worktree(ctx context.Context, repository string, args ...string) (started bool, err error)
+}
+
+var errNoWorktrees = errors.New("git worktree: Workspaces built without NewWorkspaces")
+
+// Workspaces locates repositories and makes detached checkouts. Its
+// worktree changes go through worktrees: the zero value makes none.
+type Workspaces struct{ worktrees worktreeCommands }
+
+// NewWorkspaces makes Workspaces whose worktree changes take their turn in
+// worktrees, the one of the process.
+func NewWorkspaces(worktrees worktreeCommands) Workspaces { return Workspaces{worktrees: worktrees} }
+
+// worktree runs a worktree command in its turn; the zero value runs none.
+func (w Workspaces) worktree(ctx context.Context, repository string, args ...string) (started bool, err error) {
+	if w.worktrees == nil {
+		return false, errNoWorktrees
+	}
+	return w.worktrees.worktree(ctx, repository, args...)
+}
 
 func (Workspaces) Root(ctx context.Context, cwd string) (string, error) {
 	out, err := run(ctx, cwd, "rev-parse", "--show-toplevel")
@@ -63,18 +166,18 @@ func (Workspaces) Root(ctx context.Context, cwd string) (string, error) {
 	return strings.TrimSpace(out), nil
 }
 
-func (Workspaces) Checkout(ctx context.Context, repository, revision string) (string, func() error, error) {
+func (w Workspaces) Checkout(ctx context.Context, repository, revision string) (string, func() error, error) {
 	parent, err := os.MkdirTemp("", "agister-checkout-")
 	if err != nil {
 		return "", nil, err
 	}
 	dir := filepath.Join(parent, workspace(filepath.Base(parent)))
-	if _, err := run(ctx, repository, "worktree", "add", "--detach", "--quiet", dir, revision); err != nil {
+	if _, err := w.worktree(ctx, repository, "add", "--detach", "--quiet", dir, revision); err != nil {
 		os.RemoveAll(parent)
 		return "", nil, err
 	}
 	release := func() error {
-		_, err := run(context.WithoutCancel(ctx), repository, "worktree", "remove", "--force", dir)
+		_, err := w.worktree(context.WithoutCancel(ctx), repository, "remove", "--force", dir)
 		if removeErr := os.RemoveAll(parent); err == nil {
 			err = removeErr
 		}
@@ -103,7 +206,11 @@ func workspace(parent string) string {
 // does, and applies patch to its files, not its index: where a
 // verification run checks exactly what the patch delivers. Whatever is at
 // dir already is not this copy's, so Copy refuses without touching it
-// (app.ErrPlaceTaken); a copy it cannot finish, it removes.
+// (app.ErrPlaceTaken); a copy it cannot finish, it removes. A copy whose
+// worktree add never started, as when ctx ends while it waits its turn,
+// left nothing in the repository: only the directory made for it is
+// removed, with no second wait, and the error says that nothing is left
+// to discard (app.ErrCopyNotStarted).
 func (w Workspaces) Copy(ctx context.Context, repository, dir, revision string, patch []byte) error {
 	if err := made(dir); err != nil {
 		return err
@@ -113,7 +220,13 @@ func (w Workspaces) Copy(ctx context.Context, repository, dir, revision string, 
 	} else if err != nil {
 		return err
 	}
-	_, err := run(ctx, repository, "worktree", "add", "--detach", "--quiet", dir, revision)
+	started, err := w.worktree(ctx, repository, "add", "--detach", "--quiet", dir, revision)
+	if !started {
+		if removeErr := os.Remove(filepath.Dir(dir)); removeErr != nil {
+			return errors.Join(err, removeErr)
+		}
+		return fmt.Errorf("%w: %w", app.ErrCopyNotStarted, err)
+	}
 	if err == nil && len(patch) > 0 {
 		_, err = runWith(ctx, dir, nil, patch, "apply", "--binary", "--whitespace=nowarn", "-")
 	}
@@ -128,7 +241,7 @@ func (w Workspaces) Copy(ctx context.Context, repository, dir, revision string, 
 // clean copy. Only a directory Checkout or Copy could have made is touched:
 // <temp>/agister-checkout-<id>/workspace-<id>, or <temp>/agister-checkout-*/workspace
 // as earlier versions made them.
-func (Workspaces) Discard(ctx context.Context, repository, dir string) error {
+func (w Workspaces) Discard(ctx context.Context, repository, dir string) error {
 	if err := made(dir); err != nil {
 		return err
 	}
@@ -139,7 +252,7 @@ func (Workspaces) Discard(ctx context.Context, repository, dir string) error {
 	// records the real path, and cannot resolve a symlinked temp directory
 	// (/var on macOS) under a parent that is gone, so it is given resolved.
 	recorded := filepath.Join(resolved(filepath.Dir(parent)), filepath.Base(parent), filepath.Base(dir))
-	_, err := run(ctx, repository, "worktree", "remove", "--force", recorded)
+	_, err := w.worktree(ctx, repository, "remove", "--force", recorded)
 	if err != nil && strings.Contains(err.Error(), "is not a working tree") {
 		err = nil
 	}

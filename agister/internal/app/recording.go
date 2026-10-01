@@ -28,6 +28,15 @@ func recordSources(sources []CallSource) []run.DefinitionSource {
 }
 
 func recordEffective(effective CallLimits) *run.EffectivePolicy {
+	var stale *run.StaleLimits
+	if effective.Stale != (CallStale{}) {
+		stale = &run.StaleLimits{
+			NoEvent:           effective.Stale.NoEvent,
+			NoOutput:          effective.Stale.NoOutput,
+			ToolCommand:       effective.Stale.ToolCommand,
+			RepeatedToolCalls: effective.Stale.RepeatedToolCalls,
+		}
+	}
 	return &run.EffectivePolicy{
 		Timeout:     effective.Timeout,
 		MaxAttempts: effective.MaxAttempts,
@@ -38,6 +47,7 @@ func recordEffective(effective CallLimits) *run.EffectivePolicy {
 		Require:     slices.Clone(effective.Require),
 		Access:      effective.Access,
 		Scope:       effective.Scope,
+		Stale:       stale,
 	}
 }
 

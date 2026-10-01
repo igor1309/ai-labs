@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"slices"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/examples"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
@@ -383,5 +385,118 @@ func TestBuiltReaperLogsAFailedReap(t *testing.T) {
 	message, _ := logged[0]["error"].(string)
 	if logged[0]["level"] != "ERROR" || !strings.Contains(message, "listing abandoned runs") || !strings.Contains(message, "not a directory") {
 		t.Fatalf("logged = %v", logged[0])
+	}
+}
+
+// The adapters the composition builds share its worktree coordinator:
+// while a caller's checkout holds a repository, the verifier's copy and the
+// reaper's discard there wait for it. What waits is decided by the held
+// command, never by timing: the deadline only guards against a hang.
+func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
+	repo := repository(t, "x")
+	const runs, waits = "runs", "waits"
+	// Until released, every worktree command reports that it runs, and
+	// stays there under its repository's lock, or that it waits for it.
+	events, released := make(chan string, 3), make(chan struct{})
+	adapters := composition{worktrees: &git.Worktrees{
+		Git: func(ctx context.Context, dir string, args ...string) (string, error) {
+			select {
+			case <-released:
+			default:
+				events <- runs
+				<-released
+			}
+			command := exec.CommandContext(ctx, "git", args...)
+			command.Dir = dir
+			out, err := command.CombinedOutput()
+			if err != nil {
+				return "", fmt.Errorf("git %v: %s", args, out)
+			}
+			return string(out), nil
+		},
+		Waits: func() {
+			select {
+			case <-released:
+			default:
+				events <- waits
+			}
+		},
+	}}.workspaces()
+
+	ctx := context.Background()
+	var workers sync.WaitGroup
+	start := func(do func() error) <-chan error {
+		done := make(chan error, 1)
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			done <- do()
+		}()
+		return done
+	}
+	// reports fails the test unless worker's worktree command reports want
+	// next; a worker that ends first did not meet the held checkout.
+	reports := func(worker <-chan error, want, what string) {
+		t.Helper()
+		select {
+		case got := <-events:
+			if got != want {
+				t.Fatalf("%s %s, not %s", what, got, want)
+			}
+		case err := <-worker:
+			t.Fatalf("%s ended without meeting the held checkout: %v", what, err)
+		case <-time.After(time.Minute):
+			t.Fatalf("%s did not reach the coordinator", what)
+		}
+	}
+	var release func() error
+	copied := adapters.copies.Place(fmt.Sprintf("wiring-%d", os.Getpid()))
+	// Whatever point the test reached: the held command is let through and
+	// every worker joined, then the checkout and the copy are removed.
+	pass := sync.OnceFunc(func() { close(released) })
+	t.Cleanup(func() {
+		pass()
+		joined := make(chan struct{})
+		go func() { workers.Wait(); close(joined) }()
+		select {
+		case <-joined:
+		case <-time.After(time.Minute):
+			t.Error("a worker still runs with its command released")
+			return
+		}
+		if release != nil {
+			if err := release(); err != nil {
+				t.Errorf("releasing the checkout: %v", err)
+			}
+		}
+		if err := adapters.discarder.Discard(ctx, repo, copied); err != nil {
+			t.Errorf("discarding the copy: %v", err)
+		}
+	})
+
+	checkout := start(func() (err error) {
+		_, release, err = adapters.calls.Checkout(ctx, repo, "main")
+		return err
+	})
+	reports(checkout, runs, "the caller's checkout")
+	copying := start(func() error { return adapters.copies.Copy(ctx, repo, copied, "main", nil) })
+	reports(copying, waits, "the verifier's copy")
+	// A checkout already gone is discarded as success, once it had its turn.
+	gone := adapters.copies.Place(fmt.Sprintf("wiring-%d-gone", os.Getpid()))
+	discarding := start(func() error { return adapters.discarder.Discard(ctx, repo, gone) })
+	reports(discarding, waits, "the reaper's discard")
+
+	pass()
+	for what, worker := range map[string]<-chan error{
+		"the caller's checkout": checkout, "the verifier's copy": copying, "the reaper's discard": discarding,
+	} {
+		select {
+		case err := <-worker:
+			if err != nil {
+				t.Errorf("%s: %v", what, err)
+			}
+		case <-time.After(time.Minute):
+			t.Fatalf("%s did not end", what)
+		}
 	}
 }

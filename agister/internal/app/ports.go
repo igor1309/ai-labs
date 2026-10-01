@@ -24,6 +24,22 @@ type RuntimeIdentity struct {
 	Resume bool
 	// The runtime stops a turn that reaches a cost limit.
 	CostLimit bool
+	// The adapter reports the agent's tool calls as they start and finish
+	// (EventSink.ToolStarted), which the staleness limits on tool calls need.
+	ToolCalls bool
+}
+
+// ToolCall is a tool call the agent started, as the runtime adapter reports
+// it, in no runtime's own format.
+type ToolCall struct {
+	// ID is the runtime's name for the call; its end is reported by it.
+	ID   string
+	Name string
+	// Input is the whole input, the same text for the same input: two calls
+	// are identical when their Name and Input are.
+	Input string
+	// Command is true when the tool runs a command.
+	Command bool
 }
 
 // TurnRequest is one runtime turn, expressed in primitives, not permissions.
@@ -47,6 +63,9 @@ type CommandRequest struct {
 	Command string // run as bash -c Command
 	Dir     string
 	Timeout time.Duration
+	// NoOutput is how long the command may go without output before it is
+	// stale; zero: no such limit.
+	NoOutput time.Duration
 	// Bound is how many bytes of the combined output are kept from each
 	// end.
 	Bound int
@@ -59,6 +78,7 @@ type CommandResult struct {
 	Signal    string // the signal that ended it
 	TimedOut  bool   // its timeout passed and its group was killed
 	Cancelled bool   // the call was cancelled and its group was killed
+	Stale     bool   // it produced no output for NoOutput and its group was killed
 	// Error is why it could not run: it did not start, or its group could
 	// not be recorded and was killed at once.
 	Error string

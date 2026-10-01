@@ -404,7 +404,7 @@ func newFlowHarness() *flowHarness {
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs},
 		h.workspaces, changes, app.NewVerifier(changes, &copiesSpy{}, &commandsSpy{}, fixedClock{}), okValidator{}, h.store,
 		&runsSpy{records: map[string]run.Record{}, states: map[string]run.State{}},
-		fixedClock{}, &seqIDs{}, "/state", h.hosted,
+		fixedClock{}, unfired, &seqIDs{}, "/state", h.hosted,
 	)
 	return h
 }

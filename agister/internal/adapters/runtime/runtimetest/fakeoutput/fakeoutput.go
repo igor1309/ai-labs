@@ -8,8 +8,9 @@ func Enabled(getenv func(string) string) bool { return getenv("FAKE_OUTPUT") == 
 
 // Instance is a small value the schema accepts: the first enum value or
 // const, an object with each required property, an array of one item, and
-// otherwise a zero value of the first listed type. It covers the keywords
-// Agister's schemas use, not JSON Schema at large.
+// otherwise a zero value of the first listed type. An anyOf is answered by
+// its first variant. It covers the keywords Agister's schemas use, not JSON
+// Schema at large.
 func Instance(schema any) any {
 	s, ok := schema.(map[string]any)
 	if !ok {
@@ -20,6 +21,9 @@ func Instance(schema any) any {
 	}
 	if values, ok := s["enum"].([]any); ok && len(values) > 0 {
 		return values[0]
+	}
+	if variants, ok := s["anyOf"].([]any); ok && len(variants) > 0 {
+		return Instance(variants[0])
 	}
 	kind, _ := s["type"].(string)
 	if kinds, ok := s["type"].([]any); ok && len(kinds) > 0 {

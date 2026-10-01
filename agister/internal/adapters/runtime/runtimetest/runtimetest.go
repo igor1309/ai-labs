@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -55,6 +56,15 @@ type Recorder struct {
 	Events    []run.Event
 	Lines     []string
 	Processes []string // references, in the order reported
+	// Tools are the tool calls reported started, in order, and Finished the
+	// IDs of those reported finished.
+	Tools    []app.ToolCall
+	Finished []string
+	// Trace is every event and tool call reported, in the order they
+	// arrived: an event as its kind, followed by the tool call it names if
+	// any ("TOOL_RESULT toolu_1"), a tool call as "ToolStarted <id>" or
+	// "ToolFinished <id>".
+	Trace []string
 	// ProcessErr is what ProcessStarted returns (after keeping the reference).
 	ProcessErr error
 	// OnEvent, when set before the run, is called with each event's kind
@@ -68,11 +78,30 @@ type Recorder struct {
 func (r *Recorder) Event(source, kind string, data map[string]any) {
 	r.mu.Lock()
 	r.Events = append(r.Events, run.Event{Seq: len(r.Events) + 1, Source: source, Kind: kind, Data: data})
+	entry := kind
+	if id, ok := data["tool_use_id"].(string); ok {
+		entry += " " + id
+	}
+	r.Trace = append(r.Trace, entry)
 	hook := r.OnEvent
 	r.mu.Unlock()
 	if hook != nil {
 		hook(kind)
 	}
+}
+
+func (r *Recorder) ToolStarted(call app.ToolCall) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.Tools = append(r.Tools, call)
+	r.Trace = append(r.Trace, "ToolStarted "+call.ID)
+}
+
+func (r *Recorder) ToolFinished(id string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.Finished = append(r.Finished, id)
+	r.Trace = append(r.Trace, "ToolFinished "+id)
 }
 
 func (r *Recorder) ProcessStarted(ref string) error {
@@ -132,6 +161,9 @@ type Subject struct {
 	Fake string
 	// Contract the runner must report.
 	Contract string
+	// ToolCalls is whether the runner must report the agent's tool calls,
+	// and say so in its identity.
+	ToolCalls bool
 	// Request returns a valid request carrying prompt.
 	Request func(prompt string) app.TurnRequest
 }
@@ -156,7 +188,7 @@ func Conformance(t *testing.T, subject Subject) {
 
 	t.Run("identity", func(t *testing.T) {
 		identity, err := subject.New(subject.Fake).Identity(context.Background())
-		if err != nil || identity.Contract != subject.Contract || identity.Version == "" {
+		if err != nil || identity.Contract != subject.Contract || identity.Version == "" || identity.ToolCalls != subject.ToolCalls {
 			t.Fatalf("identity = %+v, %v", identity, err)
 		}
 	})
@@ -172,6 +204,29 @@ func Conformance(t *testing.T, subject Subject) {
 		}
 		if len(sink.Lines) < 3 {
 			t.Fatalf("raw lines not passed through: %d", len(sink.Lines))
+		}
+	})
+
+	// What the core's staleness limits on tool calls are enforced on.
+	t.Run("a tool call is reported as it starts and as it finishes", func(t *testing.T) {
+		_, sink := turn(t, "SCENARIO:approve", nil, context.Background())
+		if !subject.ToolCalls {
+			if len(sink.Tools) != 0 || len(sink.Finished) != 0 {
+				t.Fatalf("tool calls its identity does not declare: started %+v, finished %q", sink.Tools, sink.Finished)
+			}
+			return
+		}
+		if len(sink.Tools) != 1 || sink.Tools[0].ID == "" || sink.Tools[0].Name == "" || sink.Tools[0].Input == "" ||
+			len(sink.Finished) != 1 || sink.Finished[0] != sink.Tools[0].ID {
+			t.Fatalf("tool calls started %+v, finished %q", sink.Tools, sink.Finished)
+		}
+		// During the turn, in order: the call is started before its result
+		// is reported, and finished before the turn completes.
+		id := sink.Tools[0].ID
+		started, result := slices.Index(sink.Trace, "ToolStarted "+id), slices.Index(sink.Trace, "TOOL_RESULT "+id)
+		finished, completed := slices.Index(sink.Trace, "ToolFinished "+id), slices.Index(sink.Trace, "TURN_COMPLETED")
+		if started < 0 || result < 0 || started > result || finished < 0 || completed < 0 || finished > completed {
+			t.Fatalf("trace = %q", sink.Trace)
 		}
 	})
 

@@ -47,7 +47,9 @@ type VerifyCopies interface {
 	// Copy checks revision out of repository at dir, apart from every other
 	// checkout, and applies patch to its files. It refuses, with an error
 	// that wraps ErrPlaceTaken, if something is at dir already, which it
-	// leaves as it was; it removes a copy it made and cannot finish.
+	// leaves as it was; it removes a copy it made and cannot finish. One it
+	// never started fails with an error that wraps ErrCopyNotStarted:
+	// nothing is at dir, and nothing is left to discard.
 	Copy(ctx context.Context, repository, dir, revision string, patch []byte) error
 	// Discard removes the copy at dir; one already gone is success.
 	Discard(ctx context.Context, repository, dir string) error
@@ -57,6 +59,11 @@ type VerifyCopies interface {
 // directory already: nothing was made there, and what is there is not the
 // call's to remove.
 var ErrPlaceTaken = errors.New("something is already there")
+
+// ErrCopyNotStarted is what a copy fails with when it ended before its
+// checkout started, as a cancelled wait does: nothing is at its directory,
+// so there is nothing to discard.
+var ErrCopyNotStarted = errors.New("the copy was not started")
 
 // VerifyCommands runs the verification command.
 type VerifyCommands interface {
@@ -99,8 +106,11 @@ type VerifyCall struct {
 	Verify   definition.Verify
 	Limit    *float64  // the call's cost limit, one budget for every turn
 	Deadline time.Time // the call's timeout, for every turn and run
-	Dir      string    // the call's checkout
-	Base     string    // the revision it was checked out at
+	// NoOutput is the call's staleness limit for a run: how long the
+	// command may go without output; zero: no such limit.
+	NoOutput time.Duration
+	Dir      string // the call's checkout
+	Base     string // the revision it was checked out at
 	// Repository is the one Dir is a checkout of, where the clean copies
 	// are made.
 	Repository string
@@ -125,7 +135,7 @@ func (v *Verifier) Verify(ctx context.Context, call VerifyCall) (verified string
 	loop := &verification{
 		content: v.content, copies: v.copies, commands: v.commands, clock: v.clock,
 		record: call.Record, result: call.Result, event: call.Event, update: call.Update, artifact: call.Artifact,
-		verify: call.Verify, limit: call.Limit, deadline: call.Deadline, dir: call.Dir, base: call.Base, repository: call.Repository,
+		verify: call.Verify, limit: call.Limit, deadline: call.Deadline, noOutput: call.NoOutput, dir: call.Dir, base: call.Base, repository: call.Repository,
 		request: call.Request, session: call.Session, take: call.Take, conclude: call.Conclude,
 	}
 	fault = loop.run(ctx)
@@ -153,8 +163,10 @@ type verification struct {
 	verify   definition.Verify
 	limit    *float64  // the call's cost limit, one budget for every turn
 	deadline time.Time // the call's timeout, for every turn and run
-	dir      string    // the call's checkout
-	base     string    // the revision it was checked out at
+	// noOutput is how long a run may go without output; zero: no limit.
+	noOutput time.Duration
+	dir      string // the call's checkout
+	base     string // the revision it was checked out at
 	// repository is the one dir is a checkout of, where the clean copies
 	// are made.
 	repository string
@@ -210,6 +222,8 @@ func (v *verification) run(ctx context.Context) *run.Error {
 		switch {
 		case ran.Cancelled:
 			return v.stop(attempt, run.Fault(run.ClassCancelled, "cancelled during attempt %d's run", number))
+		case ran.Stale != nil:
+			return v.stop(attempt, run.Fault(run.ClassTimeout, "stale: attempt %d's run produced no output for %s (stale.no_output)", number, ran.Stale.After))
 		case ran.TimedOut && timeout < v.verify.Timeout:
 			return v.stop(attempt, run.Fault(run.ClassTimeout, "the call's timeout passed during attempt %d's run", number))
 		case ran.TimedOut:
@@ -316,7 +330,8 @@ func (v *verification) budget() (*float64, *run.Error) {
 // deliver; the copy must have that content, or the captured changes do not
 // reproduce it and the call fails. The copy is on record before it is made
 // and removed on every path (ADR-005 rule 2) but a refusal, where what is
-// at its place is not the call's to remove. Making it counts against the
+// at its place is not the call's to remove, and a copy never started,
+// where nothing is. Making it counts against the
 // call's timeout, and the command gets what is left, up to verify.timeout:
 // the timeout it got is returned. A run that ended, not killed or failed
 // to run, is compared with the content it checked (ADR-005 rule 1). The
@@ -340,6 +355,12 @@ func (v *verification) check(ctx context.Context, number int, identity string) (
 	if errors.Is(err, ErrPlaceTaken) {
 		v.forgetCopy(dir)
 		return nil, 0, run.Fault(run.ClassInternal, "attempt %d cannot make its clean copy: %v", number, err), nil
+	}
+	// Nothing was made, so nothing is discarded: a discard would wait for
+	// the repository again, past the call's end.
+	if errors.Is(err, ErrCopyNotStarted) {
+		v.forgetCopy(dir)
+		return nil, 0, v.preparing(ctx, prepare, number, "making the clean copy to check", err), nil
 	}
 	// Removed with ctx's values but not its end: a cancelled call's copy
 	// goes too.
@@ -365,7 +386,7 @@ func (v *verification) check(ctx context.Context, number int, identity string) (
 	timeout := min(v.verify.Timeout, remaining)
 
 	ran := v.runCommand(ctx, number, dir, timeout)
-	if ran.Cancelled || ran.TimedOut || ran.Error != "" {
+	if ran.Cancelled || ran.TimedOut || ran.Stale != nil || ran.Error != "" {
 		return &ran, timeout, nil, nil
 	}
 	// ADR-005 rule 1: a run that changes the content fails, whatever its
@@ -438,7 +459,7 @@ func (v *verification) forgetCopy(dir string) {
 func (v *verification) runCommand(ctx context.Context, number int, dir string, timeout time.Duration) run.CommandRun {
 	v.event(run.SourceAgister, "VERIFY_STARTED", map[string]any{"attempt": number, "command": v.verify.Command, "dir": dir, "timeout": timeout.String()})
 	started := v.clock.Now()
-	result := v.commands.Run(ctx, CommandRequest{Command: v.verify.Command, Dir: dir, Timeout: timeout, Bound: verifyOutputBound}, v.recordGroup)
+	result := v.commands.Run(ctx, CommandRequest{Command: v.verify.Command, Dir: dir, Timeout: timeout, NoOutput: v.noOutput, Bound: verifyOutputBound}, v.recordGroup)
 	finished := v.clock.Now()
 	ran := run.CommandRun{
 		Command:    v.verify.Command,
@@ -452,10 +473,15 @@ func (v *verification) runCommand(ctx context.Context, number int, dir string, t
 		WallMS:     finished.Sub(started).Milliseconds(),
 		Output:     bounded(result),
 	}
-	v.event(run.SourceAgister, "VERIFY_FINISHED", map[string]any{
+	data := map[string]any{
 		"attempt": number, "code": ran.Exit.Code, "signal": ran.Exit.Signal, "timed_out": ran.TimedOut, "cancelled": ran.Cancelled,
 		"error": ran.Error, "bytes": ran.Output.Bytes, "sha256": ran.Output.SHA256, "wall_ms": ran.WallMS,
-	})
+	}
+	if result.Stale {
+		ran.Stale = &run.Stale{Limit: run.StaleNoOutput, After: v.noOutput, At: finished}
+		data["stale"], data["stale_after"] = run.StaleNoOutput, v.noOutput.String()
+	}
+	v.event(run.SourceAgister, "VERIFY_FINISHED", data)
 	return ran
 }
 

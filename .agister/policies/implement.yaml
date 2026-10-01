@@ -23,6 +23,5 @@ tools:
     - host.write
 
 timeout: 45m
-max_cost_usd: 25
 retry:
   max_attempts: 1

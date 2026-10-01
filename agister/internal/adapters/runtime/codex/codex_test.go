@@ -41,9 +41,10 @@ func TestConformance(t *testing.T) {
 		New: func(command string) app.TurnRunner {
 			return &codex.Runner{Command: command, KillGrace: 200 * time.Millisecond}
 		},
-		Fake:     runtimetest.Binary(t, "fakecodex"),
-		Contract: codex.Contract,
-		Request:  request,
+		Fake:      runtimetest.Binary(t, "fakecodex"),
+		Contract:  codex.Contract,
+		ToolCalls: true,
+		Request:   request,
 	})
 }
 
@@ -602,5 +603,55 @@ func TestAnOversizedPromptFailsWithCodexsReason(t *testing.T) {
 		!strings.HasPrefix(turn.Error.Message, "exit code 1: Error: turn/start: turn/start failed: Input exceeds the maximum length of 1048576 characters.") ||
 		!strings.Contains(turn.StderrTail, `"input_error_code":"input_too_large"`) {
 		t.Fatalf("turn = %+v", turn)
+	}
+}
+
+// The stream's tool calls are reported for the core to watch: each with its
+// whole input and whether it runs a command; a completed item ends the call
+// of its ID, and an item that is no tool call is not one.
+func TestStreamReportsToolCalls(t *testing.T) {
+	stream := &codex.Stream{}
+	long := "echo " + strings.Repeat("x", 1000)
+	command, _ := json.Marshal(long)
+	for _, line := range []string{
+		`{"type":"item.started","item":{"id":"item_1","type":"command_execution","command":` + string(command) + `}}`,
+		`{"type":"item.completed","item":{"id":"item_1","type":"command_execution","exit_code":0,"status":"completed"}}`,
+		`{"type":"item.started","item":{"id":"item_2","type":"web_search","query":"agister"}}`,
+		`{"type":"item.completed","item":{"id":"item_3","type":"agent_message","text":"done"}}`,
+	} {
+		stream.Reduce(line)
+	}
+	tools := stream.TakeTools()
+	if len(tools) != 3 || tools[0].Started == nil || tools[1].Finished != "item_1" || tools[2].Started == nil {
+		t.Fatalf("tools = %+v", tools)
+	}
+	if first := *tools[0].Started; first.ID != "item_1" || first.Name == "" || first.Input != long || !first.Command {
+		t.Fatalf("command = %+v", first)
+	}
+	if search := *tools[2].Started; search.ID != "item_2" || search.Input != "agister" || search.Command {
+		t.Fatalf("search = %+v", search)
+	}
+	if again := stream.TakeTools(); len(again) != 0 {
+		t.Fatalf("taken twice: %+v", again)
+	}
+}
+
+// Two calls of one tool whose inputs differ only in a large integer are
+// distinct calls, not one repeated: the input keeps its numbers as written.
+func TestLargeIntegerInputsAreNotRepeatedCalls(t *testing.T) {
+	stream := &codex.Stream{}
+	for _, line := range []string{
+		`{"type":"item.started","item":{"id":"item_1","type":"mcp_tool_call","server":"s","tool":"read","arguments":{"offset":9007199254740993}}}`,
+		`{"type":"item.started","item":{"id":"item_2","type":"mcp_tool_call","server":"s","tool":"read","arguments":{"offset":9007199254740992}}}`,
+	} {
+		stream.Reduce(line)
+	}
+	tools := stream.TakeTools()
+	if len(tools) != 2 || tools[0].Started == nil || tools[1].Started == nil {
+		t.Fatalf("tools = %+v", tools)
+	}
+	first, second := *tools[0].Started, *tools[1].Started
+	if first.Name != second.Name || first.Input != `{"offset":9007199254740993}` || second.Input != `{"offset":9007199254740992}` {
+		t.Fatalf("calls = %+v, %+v", first, second)
 	}
 }

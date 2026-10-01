@@ -28,6 +28,23 @@ type Effective struct {
 	Require     []string
 	Access      string
 	Scope       string
+	// Stale are the staleness limits; each unset one ends nothing.
+	Stale Stale
+}
+
+// Stale are a call's composed staleness limits: what ends it before its
+// timeout because it stopped moving. Each is unset unless a layer declares
+// it.
+type Stale struct {
+	// NoEvent is how long an agent turn may go without a runtime event.
+	NoEvent *time.Duration
+	// NoOutput is how long a verification run may go without output.
+	NoOutput *time.Duration
+	// ToolCommand is how long one command an agent's tool runs may take.
+	ToolCommand *time.Duration
+	// RepeatedToolCalls is how many identical tool calls in a row end the
+	// turn.
+	RepeatedToolCalls *int
 }
 
 // InvalidError lists every composition problem.
@@ -81,6 +98,18 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 	}
 	if *timeout > service.MaxTimeout {
 		add("timeout %s exceeds the service limit %s", *timeout, service.MaxTimeout)
+	}
+	// A staleness limit ends a call before its timeout, so one above the
+	// timeout the settings declare is invalid. A caller's shorter timeout
+	// only leaves it without effect.
+	stale := narrowStale(add, base.Stale, over.Stale)
+	for _, limit := range []struct {
+		field string
+		value *time.Duration
+	}{{"stale.no_event", stale.NoEvent}, {"stale.no_output", stale.NoOutput}, {"stale.tool_command", stale.ToolCommand}} {
+		if limit.value != nil && *limit.value > *timeout {
+			add("%s %s exceeds the timeout %s", limit.field, *limit.value, *timeout)
+		}
 	}
 	if caller.Timeout != nil {
 		if *caller.Timeout > *timeout {
@@ -184,7 +213,20 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 		Require:     process.Require,
 		Access:      access,
 		Scope:       scope,
+		Stale:       stale,
 	}, nil
+}
+
+// narrowStale composes the staleness limits the definitions declare into
+// the call's own. Each may stay unset; one the policy sets, the process may
+// only lower.
+func narrowStale(add func(string, ...any), base, over definition.Stale) Stale {
+	return Stale{
+		NoEvent:           narrowDuration(add, "stale.no_event", base.NoEvent, over.NoEvent),
+		NoOutput:          narrowDuration(add, "stale.no_output", base.NoOutput, over.NoOutput),
+		ToolCommand:       narrowDuration(add, "stale.tool_command", base.ToolCommand, over.ToolCommand),
+		RepeatedToolCalls: narrowInt(add, "stale.repeated_tool_calls", base.RepeatedToolCalls, over.RepeatedToolCalls),
+	}
 }
 
 func narrowDuration(add func(string, ...any), field string, base, over *time.Duration) *time.Duration {

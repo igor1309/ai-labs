@@ -28,9 +28,10 @@ func TestDecoratorConformance(t *testing.T) {
 		New: func(command string) app.TurnRunner {
 			return logging.Runner{Inner: &claudecode.Runner{Command: command, KillGrace: 200 * time.Millisecond}, Adapter: "claude-code", Log: log}
 		},
-		Fake:     runtimetest.Binary(t, "fakeclaude"),
-		Contract: claudecode.Contract,
-		Request:  request,
+		Fake:      runtimetest.Binary(t, "fakeclaude"),
+		Contract:  claudecode.Contract,
+		ToolCalls: true,
+		Request:   request,
 	})
 }
 

@@ -79,11 +79,40 @@ func compose(config cli.Config) (contract.Client, error) {
 	return client, err
 }
 
+// wire wires the client over the process's own worktree coordinator.
+func wire(config cli.Config) (contract.Client, *app.BackgroundReaper, error) {
+	return composition{worktrees: git.NewWorktrees()}.wire(config)
+}
+
+// composition is what one process wires its client over: the one worktree
+// coordinator every adapter that changes a repository's worktrees takes
+// its turn in. Tests wire over a coordinator they hold.
+type composition struct{ worktrees *git.Worktrees }
+
+// workspaceAdapters are the adapters that change a repository's worktrees,
+// each as the component that requires it gets it.
+type workspaceAdapters struct {
+	// calls makes and releases the checkouts calls work in.
+	calls app.CallWorkspaces
+	// copies makes and removes the verifier's clean copies.
+	copies app.VerifyCopies
+	// discarder removes what the reaper finds abandoned.
+	discarder app.CheckoutDiscarder
+}
+
+// workspaces builds the adapters that change worktrees, all over the
+// composition's coordinator: a caller's checkout, the verifier's copy and
+// the reaper's discard in one repository run one at a time.
+func (c composition) workspaces() workspaceAdapters {
+	shared := git.NewWorkspaces(c.worktrees)
+	return workspaceAdapters{calls: shared, copies: shared, discarder: shared}
+}
+
 // wire builds the infrastructure, chooses the decorators and has the core
 // assemble the whole client behind the gate over them. It also returns the
 // background reaper every client the gate builds shares, which submitting a
 // call starts (tests wait on it).
-func wire(config cli.Config) (contract.Client, *app.BackgroundReaper, error) {
+func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundReaper, error) {
 	log, err := diagnostics(config)
 	if err != nil {
 		return nil, nil, err
@@ -107,11 +136,16 @@ func wire(config cli.Config) (contract.Client, *app.BackgroundReaper, error) {
 			return logging.Runner{Inner: codex.New(command), Adapter: "codex", Log: log}
 		},
 	}
+	// Over the one coordinator of the process: every workspace adapter's
+	// worktree changes in a repository take their turn in it.
+	workspaces := c.workspaces()
+	// Naming and diffing content changes no worktree.
+	content := git.Workspaces{}
 	// Abandoned runs are reaped beside the calls, never inside one. A reap
 	// that fails has no caller to tell and no run record to say so: the
 	// log does.
 	reaping := &app.BackgroundReaper{
-		Reaper: app.NewReaper(evidence, supervisor.Processes{}, git.Workspaces{}, system.Clock{}),
+		Reaper: app.NewReaper(evidence, supervisor.Processes{}, workspaces.discarder, system.Clock{}),
 		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },
 	}
 	client := app.NewClient(app.Infrastructure{
@@ -131,16 +165,17 @@ func wire(config cli.Config) (contract.Client, *app.BackgroundReaper, error) {
 				"git.diff":          git.Diff{},
 				"git.changed_files": git.ChangedFiles{},
 			},
-			Workspaces: git.Workspaces{},
-			Changes:    git.Workspaces{},
+			Workspaces: workspaces.calls,
+			Changes:    content,
 			Validator:  schema.Validator{},
 			Recorder:   evidence,
 			Runs:       evidence,
 			Clock:      system.Clock{},
+			Timer:      system.Timer,
 			IDs:        system.IDs{},
 			StateDir:   config.Home,
 		},
-		Verifier: app.VerifyAdapters{Content: git.Workspaces{}, Copies: git.Workspaces{}, Commands: supervisor.Commands{}, Clock: system.Clock{}},
+		Verifier: app.VerifyAdapters{Content: content, Copies: workspaces.copies, Commands: supervisor.Commands{}, Clock: system.Clock{}},
 		Runs:     app.RunsAdapters{Reader: evidence},
 		Decorate: func(client contract.Client) contract.Client {
 			return app.ReapOnSubmit{Client: client, Background: reaping}

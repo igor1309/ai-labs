@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"reflect"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/examples"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
@@ -80,6 +82,7 @@ type harness struct {
 	calls      *app.Calls
 	hosted     *app.Hosted
 	clock      app.CallClock
+	timer      app.CallTimer
 	runs       *runsSpy
 	defs       *definitionsSpy
 	runner     *runnerSpy
@@ -119,6 +122,7 @@ func newHarness() *harness {
 	}}
 	h.hosted = app.NewHosted()
 	h.clock = fixedClock{}
+	h.timer = unfired
 	h.calls = h.callsOn(h.defs)
 	return h
 }
@@ -128,9 +132,9 @@ func (h *harness) callsOn(src app.ResolverDefinitions) *app.Calls {
 	return app.NewCalls(
 		app.NewResolver(src, h.runtimes, h.validator),
 		h.runtimes,
-		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
+		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "git.changed_files": h.inputs, "file": h.inputs, "param": h.inputs},
 		h.workspaces, h.changes, app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
-		h.clock, fixedIDs{}, "/state", h.hosted,
+		h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
 	)
 }
 
@@ -313,6 +317,145 @@ func TestCostLimitReachesTheRuntimeOrRefuses(t *testing.T) {
 	if record := h.call(t, contract.CallRequest{}); class(record) != run.ClassRefused || !strings.Contains(message(record), "cannot enforce the cost limit 2") {
 		t.Fatalf("result = %+v", record.Result)
 	}
+}
+
+// The shipped ask, review and implement processes and their read-only,
+// static-review and implement policies set no cost limit, so a runtime that
+// cannot enforce one runs them.
+func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
+	for _, c := range []struct {
+		process, policy, agent string
+		params                 map[string]string
+		output                 string
+	}{
+		{"ask", "read-only", "assistant", map[string]string{"question": "What is a.txt?"}, `"an answer"`},
+		{"adversarial_review", "static-review", "reviewer", nil, `{"outcome":"no"}`},
+		{"architecture_review", "static-review", "reviewer", map[string]string{"architecture": "docs/architecture.md"}, `{"outcome":"no"}`},
+		{"implement", "implement", "assistant", map[string]string{"brief": "brief.md"}, `"done"`},
+	} {
+		t.Run(c.process, func(t *testing.T) {
+			h := newHarness()
+			for kind, name := range map[definition.Kind]string{definition.KindProcess: c.process, definition.KindPolicy: c.policy} {
+				data, err := fs.ReadFile(examples.Settings(), string(kind)+"/"+name+".yaml")
+				if err != nil {
+					t.Fatal(err)
+				}
+				h.defs.docs[kind][name] = string(data)
+			}
+			service, err := fs.ReadFile(examples.Settings(), "service.toml")
+			if err != nil {
+				t.Fatal(err)
+			}
+			h.defs.docs[definition.KindService]["service"] = string(service)
+			h.defs.docs[definition.KindAgent][c.agent] = strings.Replace(h.defs.docs[definition.KindAgent]["a"], `name = "a"`, `name = "`+c.agent+`"`, 1)
+			if c.agent == "assistant" {
+				// Resumable, as the shipped assistant is: implement's
+				// verification repairs in the call's session.
+				h.defs.docs[definition.KindAgent][c.agent] += "session = \"resumable\"\n"
+			}
+			h.defs.docs[definition.KindSchema]["review-result"] = schema
+			h.runner.identity.CostLimit = false
+			h.runner.turn.Output = json.RawMessage(c.output)
+			record := h.call(t, contract.CallRequest{Process: c.process, Params: c.params})
+			if record.Result.Status != run.Completed || record.Effective.MaxCostUSD != nil || h.runner.calls()[0].MaxCostUSD != nil {
+				t.Fatalf("result %+v, effective cost limit %v", record.Result, record.Effective.MaxCostUSD)
+			}
+		})
+	}
+}
+
+// The shipped read-only policy allows everything Codex's read-only sandbox
+// grants under contract codex/2, but the shipped service treats reading the
+// host as state-reaching, so the shipped ask is refused on a Codex agent,
+// naming host.read. A service configured to accept host reads, as a
+// repository that runs Codex must, lets it complete.
+func TestShippedAskRunsOnACodexRuntime(t *testing.T) {
+	const shipped = `state_reaching = ["host.read", "host.write"]`
+
+	t.Run("shipped service", func(t *testing.T) {
+		h, record := askOnCodex(t, func(service string) string {
+			if !strings.Contains(service, shipped) {
+				t.Fatal("the shipped service's state_reaching line was not found")
+			}
+			return service
+		})
+		if record.Result.Status != run.Failed || class(record) != run.ClassRefused || !strings.Contains(message(record), "host.read") {
+			t.Fatalf("result = %+v, error %q", record.Result, message(record))
+		}
+		if calls := h.runner.calls(); len(calls) != 0 {
+			t.Fatalf("the runtime was called: %+v", calls)
+		}
+	})
+
+	t.Run("configured service", func(t *testing.T) {
+		h, record := askOnCodex(t, func(service string) string {
+			accepting := strings.Replace(service, shipped, `state_reaching = []`, 1)
+			if accepting == service {
+				t.Fatal("the shipped service's state_reaching line was not found")
+			}
+			return accepting
+		})
+		if record.Result.Status != run.Completed {
+			t.Fatalf("result = %+v, error %q", record.Result, message(record))
+		}
+		if !reflect.DeepEqual(h.runtimes.asked, []string{"spy|/bin/codex"}) {
+			t.Fatalf("runtimes asked = %v", h.runtimes.asked)
+		}
+		if got := h.runner.calls()[0].Primitives; !reflect.DeepEqual(got, []string{"read-only"}) {
+			t.Fatalf("primitives = %v", got)
+		}
+		if len(record.Plan.Withheld) != 0 {
+			t.Fatalf("withheld = %v", record.Plan.Withheld)
+		}
+	})
+}
+
+// askOnCodex runs the shipped ask under the shipped read-only policy on a
+// Codex agent, with the shipped service as configure returns it, and
+// returns the harness and the call's record.
+func askOnCodex(t *testing.T, configure func(service string) string) (*harness, run.Record) {
+	t.Helper()
+	h := newHarness()
+	for kind, name := range map[definition.Kind]string{definition.KindProcess: "ask", definition.KindPolicy: "read-only"} {
+		data, err := fs.ReadFile(examples.Settings(), string(kind)+"/"+name+".yaml")
+		if err != nil {
+			t.Fatal(err)
+		}
+		h.defs.docs[kind][name] = string(data)
+	}
+	service, err := fs.ReadFile(examples.Settings(), "service.toml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.defs.docs[definition.KindService]["service"] = configure(string(service))
+	h.defs.docs[definition.KindRuntime]["codex"] = `schema: agister.runtime/v1alpha1
+name: codex
+adapter: spy
+contract: codex/2
+efforts: [high]
+primitives:
+  select: one
+  items:
+    read-only:
+      grants: [repository.read, repository.search, repository.diff, repository.history.read, process.execute, host.read]
+      verified: ["0.159."]
+    workspace-write:
+      grants: [repository.read, repository.search, repository.diff, repository.history.read, process.execute, host.read,
+               repository.write, host.write]
+      verified: ["0.159."]
+`
+	h.defs.docs[definition.KindAgent]["codex-agent"] = `schema = "agister.agent/v1alpha1"
+name = "codex-agent"
+runtime = "codex"
+model = "m1"
+model_family = "openai"
+effort = "high"
+command = "/bin/codex"
+`
+	h.runner.identity = app.RuntimeIdentity{Contract: "codex/2", Version: "0.159.2", Resume: true}
+	h.runner.turn.Output = json.RawMessage(`"an answer"`)
+
+	return h, h.call(t, contract.CallRequest{Process: "ask", Agent: "codex-agent", Params: map[string]string{"question": "What is a.txt?"}})
 }
 
 func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
@@ -511,7 +654,7 @@ func TestCallsResolveThroughTheResolutionTheyDeclare(t *testing.T) {
 	double := &snapshotCounter{reason: "the double refuses"}
 	h.calls = app.NewCalls(
 		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes, app.NewVerifier(h.changes, h.copies, h.commands, h.clock),
-		h.validator, h.recorder, h.runs, h.clock, fixedIDs{}, "/state", h.hosted,
+		h.validator, h.recorder, h.runs, h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
 	)
 	record := h.call(t, contract.CallRequest{})
 	if class(record) != run.ClassRefused || message(record) != "the double refuses" {
@@ -728,7 +871,7 @@ func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
 		app.NewResolver(h.defs, h.runtimes, h.validator), h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
 		h.workspaces, h.changes, app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
-		h.clock, fixedIDs{}, "/state", cancels,
+		h.clock, h.timer, fixedIDs{}, "/state", cancels,
 	)
 	// However the test ends, the blocked turn is released and the call
 	// joined, even when no cancel was added for it.

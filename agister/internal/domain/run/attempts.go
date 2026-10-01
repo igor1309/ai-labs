@@ -22,11 +22,14 @@ type Attempt struct {
 
 // CommandRun is one run of the verification command.
 type CommandRun struct {
-	Command    string    `json:"command"`
-	Dir        string    `json:"dir"`
-	Exit       *Exit     `json:"exit,omitempty"`
-	TimedOut   bool      `json:"timed_out,omitempty"`
-	Cancelled  bool      `json:"cancelled,omitempty"`
+	Command   string `json:"command"`
+	Dir       string `json:"dir"`
+	Exit      *Exit  `json:"exit,omitempty"`
+	TimedOut  bool   `json:"timed_out,omitempty"`
+	Cancelled bool   `json:"cancelled,omitempty"`
+	// Stale is set when the run was killed at a staleness limit: it stopped
+	// producing output.
+	Stale      *Stale    `json:"stale,omitempty"`
 	Error      string    `json:"error,omitempty"` // it could not run
 	StartedAt  time.Time `json:"started_at"`
 	FinishedAt time.Time `json:"finished_at"`
