@@ -6,6 +6,7 @@ import (
 	"errors"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -507,7 +508,7 @@ func TestPanicInChangeCollectionFinishesTheRecord(t *testing.T) {
 // refusal it gives is recorded and no runtime is asked for.
 func TestCallsResolveThroughTheResolutionTheyDeclare(t *testing.T) {
 	h := newHarness()
-	double := &app.SnapshotCounter{Reason: "the double refuses"}
+	double := &snapshotCounter{reason: "the double refuses"}
 	h.calls = app.NewCalls(
 		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes, app.NewVerifier(h.changes, h.copies, h.commands, h.clock),
 		h.validator, h.recorder, h.runs, h.clock, fixedIDs{}, "/state", h.hosted,
@@ -516,12 +517,50 @@ func TestCallsResolveThroughTheResolutionTheyDeclare(t *testing.T) {
 	if class(record) != run.ClassRefused || message(record) != "the double refuses" {
 		t.Fatalf("result %+v", record.Result)
 	}
-	if snapshots, resolved := double.Count(); snapshots != 1 || !reflect.DeepEqual(resolved, []string{"p"}) {
+	if snapshots, resolved := double.count(); snapshots != 1 || !reflect.DeepEqual(resolved, []string{"p"}) {
 		t.Fatalf("snapshots %d, resolved %v", snapshots, resolved)
 	}
 	if len(h.runtimes.asked) != 0 || len(h.defs.reads) != 0 {
 		t.Fatalf("runtimes asked %v, definitions read %v", h.runtimes.asked, h.defs.reads)
 	}
+}
+
+// snapshotCounter is a CallResolver that is not a Resolver: it resolves
+// every call to a refusal, and counts the snapshots it was asked for and the
+// resolutions made from them.
+type snapshotCounter struct {
+	mu        sync.Mutex
+	reason    string
+	snapshots int
+	resolved  []string // process names
+}
+
+func (c *snapshotCounter) Snapshot(context.Context) app.CallResolution {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.snapshots++
+	return counted{c}
+}
+
+// count returns the snapshots taken and the processes resolved.
+func (c *snapshotCounter) count() (int, []string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.snapshots, append([]string(nil), c.resolved...)
+}
+
+type counted struct{ counter *snapshotCounter }
+
+func (r counted) Resolve(_ context.Context, request app.CallResolveRequest) (*app.ResolvedCall, error) {
+	r.counter.mu.Lock()
+	defer r.counter.mu.Unlock()
+	r.counter.resolved = append(r.counter.resolved, request.Process)
+	return &app.ResolvedCall{}, &app.Refusal{Reason: r.counter.reason}
+}
+
+// Workflow finds none: every name is a process's.
+func (r counted) Workflow(context.Context, string) (*app.ResolvedWorkflow, bool, error) {
+	return nil, false, nil
 }
 
 // The runtime a call is resolved on is checked through the identity of its
@@ -675,6 +714,94 @@ func TestCancelBeforeTheTurnIsCancelled(t *testing.T) {
 	if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
 		t.Fatal("the call went on after the cancel")
 	}
+}
+
+// Calls hold each running call's cancellation in the CallCancels they
+// declare: the cancel added for a call cancels it, and a call that ended is
+// no longer held.
+func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
+	h := newHarness()
+	h.runner.block = true
+	h.runner.started = make(chan struct{})
+	cancels := &cancelsSpy{held: map[string]func() bool{}}
+	h.calls = app.NewCalls(
+		app.NewResolver(h.defs, h.runtimes, h.validator), h.runtimes,
+		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
+		h.workspaces, h.changes, app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
+		h.clock, fixedIDs{}, "/state", cancels,
+	)
+	// However the test ends, the blocked turn is released and the call
+	// joined, even when no cancel was added for it.
+	release := make(chan struct{})
+	h.runner.release = release
+	joined := false
+	t.Cleanup(func() {
+		close(release)
+		if !joined {
+			h.recorder.wait(t)
+		}
+	})
+	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+		joined = true // nothing was started
+		t.Fatal(err)
+	}
+	cancel := cancels.cancel("run-1")
+	if cancel == nil {
+		t.Fatal("the call added no cancel")
+	}
+	select {
+	case <-h.runner.started:
+	case record := <-h.recorder.finished:
+		joined = true
+		t.Fatalf("the call ended before its turn started: %+v", record.Result)
+	case <-time.After(hangGuard):
+		t.Fatal("the turn never started")
+	}
+	if !cancel() {
+		t.Fatal("the call's cancel did not take effect")
+	}
+	record := h.recorder.wait(t)
+	joined = true
+	if record.Result.Status != run.Interrupted || class(record) != run.ClassCancelled {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	if cancels.cancel("run-1") != nil || !contains(cancels.removals(), "run-1") {
+		t.Fatalf("the ended call is still held; removed %v", cancels.removals())
+	}
+}
+
+// cancelsSpy is a CallCancels that is not Hosted: it holds the cancel each
+// call adds until the call removes it, and records the removals.
+type cancelsSpy struct {
+	mu      sync.Mutex
+	held    map[string]func() bool
+	removed []string
+}
+
+func (s *cancelsSpy) Add(id string, cancel func() bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.held[id] = cancel
+}
+
+func (s *cancelsSpy) Remove(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.held, id)
+	s.removed = append(s.removed, id)
+}
+
+// cancel is the cancel held for id; nil when none is.
+func (s *cancelsSpy) cancel(id string) func() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.held[id]
+}
+
+func (s *cancelsSpy) removals() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.removed...)
 }
 
 func contains(list []string, value string) bool {

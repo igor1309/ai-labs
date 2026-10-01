@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"sort"
 	"sync"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
@@ -44,6 +45,75 @@ type GateDefinitions interface {
 }
 
 var _ contract.Client = (*Gated)(nil)
+
+// Infrastructure is what the core runs on, by the component that uses it:
+// the adapters, stores and runtimes the composition root builds, and the
+// decorator it chooses. One adapter may serve several components.
+type Infrastructure struct {
+	// Definitions is the live layered settings; Global the live global
+	// layer alone (see Gated).
+	Definitions GateDefinitions
+	Global      GateDefinitions
+	// Project names the repository whose settings are layered over the
+	// global ones, for messages; empty when there are none.
+	Project  string
+	Settings SettingsAdapters
+	Checker  CheckAdapters
+	Resolver ResolverAdapters
+	Calls    CallAdapters
+	Verifier VerifyAdapters
+	Runs     RunsAdapters
+	// Decorate wraps every client the gate builds.
+	Decorate func(contract.Client) contract.Client
+}
+
+// NewClient assembles the core over infra and returns it behind the gate:
+// nothing but init and check works on settings that do not pass check.
+// Every field of infra is required.
+func NewClient(infra Infrastructure) contract.Client {
+	// The calls hosted in this process and the verifier are shared by every
+	// client the gate builds.
+	hosted := NewHosted()
+	verifier := NewVerifier(infra.Verifier.Content, infra.Verifier.Copies, infra.Verifier.Commands, infra.Verifier.Clock)
+	sources := make([]string, 0, len(infra.Calls.Inputs))
+	for name := range infra.Calls.Inputs {
+		sources = append(sources, name)
+	}
+	sort.Strings(sources)
+	checkerOn := func(definitions GateDefinitions) *Checker {
+		return NewChecker(definitions, infra.Checker.Validator, infra.Checker.Runtimes, sources)
+	}
+	// Each use case that resolves a process gets a resolver of its own.
+	resolverOn := func(definitions GateDefinitions) *Resolver {
+		return NewResolver(definitions, infra.Resolver.Identities, infra.Resolver.Validator)
+	}
+	// build makes the whole client over the sources given: the layered
+	// settings and the global layer alone. The gate builds it on snapshots
+	// per operation, so every use case, including the scopes that validate a
+	// write, reads only the settings that operation checked; hosted runs and
+	// evidence are shared by every build.
+	build := func(layered, globalOnly GateDefinitions) contract.Client {
+		// Writes go to global settings, which must stay valid on their own
+		// and with the project in view.
+		scopes := []Scope{{Name: "global settings", Check: checkerOn(globalOnly)}}
+		if infra.Project != "" {
+			scopes = append(scopes, Scope{Name: "settings in " + infra.Project, Check: checkerOn(layered)})
+		}
+		calls := infra.Calls
+		host := &Host{
+			Settings:   NewSettings(layered, infra.Settings.Writer, infra.Settings.Examples, scopes),
+			Checker:    checkerOn(layered),
+			Inspection: NewInspection(resolverOn(layered)),
+			Calls: NewCalls(
+				resolverOn(layered), calls.Runners, calls.Inputs, calls.Workspaces, calls.Changes, verifier, calls.Validator,
+				calls.Recorder, calls.Runs, calls.Clock, calls.IDs, calls.StateDir, hosted,
+			),
+			Runs: NewRuns(infra.Runs.Reader, hosted, 0),
+		}
+		return infra.Decorate(host)
+	}
+	return &Gated{Definitions: infra.Definitions, Global: infra.Global, Build: build}
+}
 
 func (g *Gated) live() contract.Client { return g.Build(g.Definitions, g.Global) }
 

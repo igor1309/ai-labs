@@ -20,7 +20,9 @@ func (r *Refusal) Error() string { return r.Reason }
 
 func refuse(format string, args ...any) error { return &Refusal{Reason: fmt.Sprintf(format, args...)} }
 
-// resolution is everything a call needs before inputs and effects.
+// resolution is everything a call needs before inputs and effects. Each
+// consumer is given its own translation of it (see Resolver.Snapshot and
+// Resolver.InspectProcess).
 type resolution struct {
 	service   definition.Service
 	process   definition.Process
@@ -60,6 +62,13 @@ type ResolverValidator interface {
 	Compile(schema []byte) error
 }
 
+// ResolverAdapters are what a Resolver runs on besides the settings it
+// resolves from.
+type ResolverAdapters struct {
+	Identities ResolverIdentities
+	Validator  ResolverValidator
+}
+
 // NewResolver returns the component that resolves a process into what a
 // call or a view needs. Every collaborator is required.
 func NewResolver(definitions ResolverDefinitions, identities ResolverIdentities, validator ResolverValidator) *Resolver {
@@ -80,7 +89,9 @@ type overrides struct {
 	maxCostUSD *float64
 }
 
-func (r *Resolver) Resolve(ctx context.Context, processName, agentOverride string, caller overrides) (*resolution, error) {
+// resolve resolves the process named processName. A refused one's
+// resolution has what was resolved before the refusal.
+func (r *Resolver) resolve(ctx context.Context, processName, agentOverride string, caller overrides) (*resolution, error) {
 	res := &resolution{}
 	load := func(kind definition.Kind, name string) (definition.Document, error) {
 		doc, err := r.definitions.Read(ctx, kind, name)
@@ -204,10 +215,10 @@ type workflowResolution struct {
 	sources   []definition.Source // the workflow's document
 }
 
-// Workflow resolves the workflow named name, refusing one whose nodes
+// workflow resolves the workflow named name, refusing one whose nodes
 // cannot run as ADR-003 has them (settings.WorkflowProblems). found is
 // false when the settings list no workflow of that name.
-func (r *Resolver) Workflow(ctx context.Context, name string) (*workflowResolution, bool, error) {
+func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResolution, bool, error) {
 	names, err := r.definitions.List(ctx, definition.KindWorkflow)
 	if err != nil || !contains(names, name) {
 		return nil, false, nil

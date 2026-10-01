@@ -106,10 +106,11 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			home := t.TempDir()
-			gated, background, err := wire(cli.Config{Home: home, Cwd: tc.cwd})
+			client, background, err := wire(cli.Config{Home: home, Cwd: tc.cwd})
 			if err != nil {
 				t.Fatal(err)
 			}
+			gated := gatedOf(t, client)
 			// Each use case on a client of its own, so what one asked of a
 			// source is not taken for another's.
 			use := map[string]func(contract.Client) error{
@@ -175,14 +176,26 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 	}
 }
 
+// gatedOf is the client wire built, as the gate it is, to build clients on
+// sources of the test's own.
+func gatedOf(t *testing.T, client contract.Client) *app.Gated {
+	t.Helper()
+	gated, ok := client.(*app.Gated)
+	if !ok {
+		t.Fatalf("the client is a %T, not the gate", client)
+	}
+	return gated
+}
+
 // The built client starts the one background reaper every build shares,
 // over the run store, the supervisor's processes and the git workspaces.
 func TestBuiltClientSharesTheBackgroundReaper(t *testing.T) {
 	home := t.TempDir()
-	gated, background, err := wire(cli.Config{Home: home})
+	client, background, err := wire(cli.Config{Home: home})
 	if err != nil {
 		t.Fatal(err)
 	}
+	gated := gatedOf(t, client)
 	for _, build := range []int{1, 2} {
 		decorated, ok := gated.Build(newMarker("layered"), newMarker("global")).(app.ReapOnSubmit)
 		if !ok || decorated.Background != background {
@@ -210,10 +223,11 @@ func errorsOf(reaped map[string]any) []string {
 // abandoned: here one that recorded a checkout and whose owner is gone.
 func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
 	home := t.TempDir()
-	gated, background, err := wire(cli.Config{Home: home})
+	client, background, err := wire(cli.Config{Home: home})
 	if err != nil {
 		t.Fatal(err)
 	}
+	gated := gatedOf(t, client)
 	// An unfinished run nobody holds the owner lock of.
 	dir := filepath.Join(home, "runs", "old")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
@@ -234,8 +248,8 @@ func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client := gated.Build(newMarker("layered"), newMarker("global"))
-	id, err := client.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: home})
+	built := gated.Build(newMarker("layered"), newMarker("global"))
+	id, err := built.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: home})
 	if err != nil {
 		t.Fatal(err)
 	}

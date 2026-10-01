@@ -342,6 +342,9 @@ jobs:
       LLM_API_KEY: ${{ secrets.NOMOS_ORACLE_TOKEN }}
 
   report:
+    # Only a PR's own run satisfies the required `report` check: a push
+    # run of the same commit reports under another name.
+    name: ${{ github.event_name == 'pull_request' && 'report' || format('report ({0})', github.event_name) }}
     if: ${{ always() }}
     needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, ntfy-sender-core, noreta-core, agister-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
     runs-on: ubuntu-latest

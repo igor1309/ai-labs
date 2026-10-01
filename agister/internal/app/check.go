@@ -37,6 +37,12 @@ type CheckRuntimes interface {
 	Identity(ctx context.Context, adapter, command string) (RuntimeIdentity, error)
 }
 
+// CheckAdapters are what a Checker runs on besides the settings it checks.
+type CheckAdapters struct {
+	Validator CheckValidator
+	Runtimes  CheckRuntimes
+}
+
 // NewChecker returns the use case that validates all settings. sources are
 // the input source kinds the code provides.
 func NewChecker(definitions CheckDefinitions, validator CheckValidator, runtimes CheckRuntimes, sources []string) *Checker {
