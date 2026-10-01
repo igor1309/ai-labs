@@ -15,7 +15,12 @@ bin/agister init            # example settings into ~/.agister
 bin/agister check           # validate the settings
 bin/agister run ask --param question="What does cmd/agister do?"
 bin/agister runs show <run-id>
+bin/agister pages           # a page of what the settings can run
 ```
+
+`agister pages` serves a local page that shows the workflows and processes
+a repository's settings can run and what they are made of:
+[pages/README.md](pages/README.md).
 
 ## Settings
 

@@ -152,6 +152,7 @@ jobs:
               - "agister/go.mod"
               - "agister/go.sum"
               - "agister/examples/**"
+              - "agister/pages/**"
               - "research/agister/research/verger/policies/**"
               - ".agister/**"
               - "prompts/code-review-*.md"

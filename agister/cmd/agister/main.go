@@ -4,12 +4,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"syscall"
@@ -29,6 +31,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
+	"github.com/igor1309/ai-labs/agister/pages"
 )
 
 func main() {
@@ -38,7 +41,31 @@ func main() {
 	if err != nil {
 		cwd = "."
 	}
+	// agister pages serves the settings page; it needs no client.
+	if len(os.Args) > 1 && os.Args[1] == "pages" {
+		os.Exit(pages.Main(ctx, os.Args[2:], pagesEnv()))
+	}
 	os.Exit(cli.Run(ctx, os.Args[1:], cli.IO{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Cwd: cwd, Getenv: os.Getenv}, compose))
+}
+
+// pagesEnv is agister pages' process environment; macOS open shows the page.
+func pagesEnv() pages.Env {
+	return pages.Env{
+		Stdout:   os.Stdout,
+		Stderr:   os.Stderr,
+		Getenv:   os.Getenv,
+		UserHome: os.UserHomeDir,
+		Open:     func(url string) error { return exec.Command("open", url).Run() },
+		Choose:   pages.MacDialog(runCommand),
+	}
+}
+
+func runCommand(ctx context.Context, name string, args ...string) ([]byte, []byte, error) {
+	var stdout, stderr bytes.Buffer
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	err := cmd.Run()
+	return stdout.Bytes(), stderr.Bytes(), err
 }
 
 // shutdown is cancelled by Ctrl-C, by kill, and by closing the terminal, so
