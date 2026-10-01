@@ -265,11 +265,6 @@ it, supports cancelling and inspecting by run identity, and delivers events
 as a stream that can be resumed. It therefore works unchanged whether the
 core runs in-process or in a service.
 
-`agister pages` is outside this rule (owner, 2026-10-01). It is a local,
-read-only viewer: it reads the settings files and the run records under
-Agister home directly, submits, cancels and changes nothing, and is not a
-client of the core.
-
 ### 16. No service yet; the service will replace the host, not add a path
 
 In this stage the core runs inside the CLI process. When the service arrives,
