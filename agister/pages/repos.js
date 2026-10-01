@@ -7,6 +7,11 @@
   const RECENT_KEY = 'agister-pages:recent';
   const SETTINGS_KEY = 'agister-pages:settings:';
   const SETTINGS_FILE_CAP = 256 * 1024;
+  const CURRENT_KEY = 'agister-pages:current';
+  // Agister's home, ~/.agister: picked as the .agister folder itself.
+  const HOME_ID = '~';
+  // What .agister holds as settings; runs/ and logs/ are not settings.
+  const SETTINGS_ENTRIES = new Set(['agents', 'policies', 'processes', 'runtimes', 'schemas', 'workflows', 'service.toml']);
   const RECENT_CAP = 10;
   const AGISTER_DIR = '.agister';
 
@@ -155,11 +160,13 @@
   // each recent repo's .agister in storage and shows that until the folder
   // is opened again.
 
-  // { 'agents/a.toml': text, ... } for the files under agister, at most
-  // SETTINGS_FILE_CAP bytes each; larger files are left out.
+  // { 'agents/a.toml': text, ... } for the settings files under agister
+  // (SETTINGS_ENTRIES), at most SETTINGS_FILE_CAP bytes each; larger files
+  // are left out.
   async function readSettings(agister, prefix = '') {
     const out = {};
     for await (const [name, handle] of agister.entries()) {
+      if (!prefix && !SETTINGS_ENTRIES.has(name)) continue;
       const path = prefix + name;
       if (handle.kind === 'directory') {
         Object.assign(out, await readSettings(handle, `${path}/`));
@@ -198,12 +205,33 @@
     }
   }
 
+  // A picked folder named .agister is Agister's home, ~/.agister: a repo
+  // is picked as the folder that holds its .agister.
+  function isAgisterHome(folder) {
+    return folder.name === AGISTER_DIR;
+  }
+
+  // The id last shown, or null.
+  function readCurrent(storage) {
+    try {
+      const id = storage.getItem(CURRENT_KEY);
+      return typeof id === 'string' && id ? id : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeCurrent(storage, id) {
+    try { storage.setItem(CURRENT_KEY, id); } catch { /* the page still shows it */ }
+  }
+
   function dropSettings(storage, id) {
     try { storage.removeItem(SETTINGS_KEY + id); } catch { /* a stray copy is harmless */ }
   }
 
   globalThis.AgisterRepos = {
-    RECENT_KEY, RECENT_CAP, AGISTER_DIR, SETTINGS_KEY,
+    RECENT_KEY, RECENT_CAP, AGISTER_DIR, SETTINGS_KEY, CURRENT_KEY, HOME_ID,
+    isAgisterHome, readCurrent, writeCurrent,
     isAgisterRepo,
     readRecent, writeRecent, addRecent, removeRecent, rememberRepo, forgetRepo,
     dirFromFiles, readSettings, dirFromSettings, saveSettings, loadSettings, dropSettings,

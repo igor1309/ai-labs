@@ -1,8 +1,9 @@
 # Agister pages
 
-`index.html` is a static page for Agister: no build step, no server. Open a
-repo with the picker at the top right; the page shows the repo's
-`.agister` settings as tables, one row per item:
+`index.html` is a static page for Agister: no build step, no server. It
+shows Agister settings as tables, one row per item. `~` in the picker at
+the top right is Agister home, `~/.agister`; the picker also opens repos
+and lists recent ones, each showing its `.agister`:
 
 - **Workflows**: the processes run together, the one that then collects
   their results, and the parameters.
@@ -24,10 +25,12 @@ the browser asks for the folder again.
 
 Open `agister/pages/index.html` from disk in Safari, Chrome or any current
 browser (`open agister/pages/index.html`). "Open folder…" uses the
-browser's folder upload (`<input type="file" webkitdirectory>`): pick the
-repo folder itself, since the browser reads every file under the folder
-you pick, so a large folder such as `~` takes long. The page only reads;
-nothing leaves the browser.
+browser's folder upload (`<input type="file" webkitdirectory>`): pick a
+repo folder, or `~/.agister` itself for Agister home (⌘⇧. shows hidden
+folders in the macOS dialog). Only the settings are read: `agents`,
+`policies`, `processes`, `runtimes`, `schemas`, `workflows` and
+`service.toml`; `runs/` and `logs/` are skipped. Nothing leaves the
+browser.
 
 The page code is in `index.html`; the logic that does not touch the DOM is
 in `repos.js` (the picker) and `config.js` (reading the settings; its YAML
@@ -41,7 +44,9 @@ Everything stays in the browser's localStorage, per page origin:
 
 - `agister-pages:recent`: the recent repos (name, last opened), most recent
   first, at most 10. A repo is known by its folder name.
-- `agister-pages:settings:<name>`: a saved copy of each recent repo's
+- `agister-pages:current`: what was shown last (`~` or a repo name); the
+  page opens on it.
+- `agister-pages:settings:<name>`: a saved copy of home's (`~`) and each recent repo's
   `.agister` files (each at most 256 KB). The browser cannot reopen a
   folder by itself, so a recent repo shows this copy, with the time it was
   saved, until you open its folder again.

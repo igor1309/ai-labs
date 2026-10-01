@@ -95,19 +95,23 @@
 <header>
   <h1>Agister</h1>
   <div class="header-right">
-  <button id="refresh" type="button" title="Refresh: pick the repo folder again to re-read its .agister" aria-label="Refresh" hidden>↻</button>
+  <button id="refresh" type="button" title="Refresh: pick the repo folder again to re-read its .agister" aria-label="Refresh">↻</button>
   <div id="picker" class="picker">
     <button id="picker-button" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="picker-menu">
       <span id="picker-label" class="mono">~</span>
     </button>
     <div id="picker-menu" class="menu card" hidden>
+      <ul><li><button id="open-home" class="item" type="button">
+        <span class="name mono">~</span><span class="when">Agister home, ~/.agister</span>
+      </button></li></ul>
+      <hr>
       <h2>Recent repos</h2>
       <ul id="recent-list"></ul>
       <p id="recent-empty" class="empty dim" hidden>No recent repos.</p>
       <p id="picker-status" class="status error" role="status" hidden></p>
       <hr>
       <ul><li><button id="open-folder" class="item" type="button">Open folder…</button></li></ul>
-      <p class="note">Pick the repo folder itself: the browser reads every file under the folder you pick.</p>
+      <p class="note">Pick a repo folder, or <code>~/.agister</code> for Agister home (⌘⇧. shows hidden folders in the dialog).</p>
       <input id="folder-input" type="file" webkitdirectory hidden>
     </div>
   </div>
@@ -116,7 +120,7 @@
 <main>
   <p id="status" class="error" role="status" hidden></p>
   <p id="saved-note" hidden></p>
-  <p id="empty">Open a repo with Agister installed (a folder with <code>.agister</code>) from the picker at the top right.</p>
+  <p id="empty">To see Agister home, press ↻ and pick <code>~/.agister</code> (⌘⇧. shows hidden folders in the dialog). For a repo, use the picker at the top right.</p>
   <div id="dashboard" hidden></div>
 </main>
 <script src="repos.js"></script>
@@ -175,17 +179,18 @@
     $('recent-empty').hidden = list.length > 0;
   }
 
-  // Records folder (a directory handle with .agister) as a recent repo and
-  // saves its .agister. A full storage still opens the folder; it says so.
-  async function remember(folder) {
-    const id = folder.name;
-    state.repo = { id, name: folder.name };
-    R.rememberRepo(localStorage, { id, name: folder.name, lastOpened: Date.now() });
-    const files = await R.readSettings(await folder.getDirectoryHandle(R.AGISTER_DIR));
+  // Reads and saves the settings in agister (a .agister folder) as id and
+  // shows them. Repos go on the recent list; home has its own item. A full
+  // storage still shows them; it says so.
+  async function show(id, agister) {
+    const files = await R.readSettings(agister);
+    Object.assign(state, { root: R.dirFromSettings(id, files), repo: { id, name: id }, savedAt: null });
+    R.writeCurrent(localStorage, id);
+    if (id !== R.HOME_ID) R.rememberRepo(localStorage, { id, name: id, lastOpened: Date.now() });
     try {
       R.saveSettings(localStorage, id, files, Date.now());
     } catch (err) {
-      say('status', `Could not save a copy of ${folder.name}/.agister: ${err.message}`);
+      say('status', `Could not save a copy of ${id === R.HOME_ID ? '~' : id}/.agister: ${err.message}`);
     }
   }
 
@@ -200,11 +205,13 @@
     const root = R.dirFromFiles($('folder-input').files);
     if (!root) return say('status', 'That folder has no files.');
     try {
-      if (!(await R.isAgisterRepo(root))) {
+      if (R.isAgisterHome(root)) {
+        await show(R.HOME_ID, root);
+      } else if (await R.isAgisterRepo(root)) {
+        await show(root.name, await root.getDirectoryHandle(R.AGISTER_DIR));
+      } else {
         return say('status', `${root.name} has no .agister folder: Agister is not installed there.`);
       }
-      Object.assign(state, { root, repo: null, savedAt: null });
-      await remember(root);
     } catch (err) {
       say('status', `Could not read ${root.name}: ${err.message}`);
     }
@@ -223,12 +230,28 @@
     return true;
   }
 
+  // Home: its saved copy, or the folder dialog to pick ~/.agister.
+  function openHome() {
+    if (!showSaved({ id: R.HOME_ID, name: R.HOME_ID })) {
+      Object.assign(state, { root: null, repo: null, savedAt: null });
+      R.writeCurrent(localStorage, R.HOME_ID);
+      setMenu(false);
+      render();
+      return openFolder();
+    }
+    R.writeCurrent(localStorage, R.HOME_ID);
+    say('status', '');
+    setMenu(false);
+    render();
+  }
+
   function openRecent(entry) {
     say('picker-status', '');
     if (!showSaved(entry)) {
       return say('picker-status', `No saved copy of ${entry.name}; open its folder again.`);
     }
     R.rememberRepo(localStorage, { ...entry, lastOpened: Date.now() });
+    R.writeCurrent(localStorage, entry.id);
     say('status', '');
     setMenu(false);
     render();
@@ -245,7 +268,6 @@
     const token = ++renderToken;
     $('picker-label').textContent = state.repo ? state.repo.name : '~';
     $('empty').hidden = !!state.repo;
-    $('refresh').hidden = !state.repo;
     $('refresh').classList.toggle('stale', !!state.savedAt);
     say('saved-note', state.savedAt
       ? `Saved copy from ${when(state.savedAt)}. Press ↻ to read the folder again.`
@@ -370,7 +392,7 @@
   }
 
   function runtimes(items) {
-    return section('Runtimes', 'defined in this repo; others come from Agister', 'runtime',
+    return section('Runtimes', 'defined here; others are built into Agister', 'runtime',
       ['Runtime', 'Adapter', 'Contract', 'Checked on', 'Used by'], items, (r) => [
         r.adapter ? text(r.adapter) : none(),
         r.contract ? code(r.contract) : none(),
@@ -410,6 +432,7 @@
   $('picker-button').addEventListener('click', () => setMenu($('picker-menu').hidden));
   $('open-folder').addEventListener('click', openFolder);
   $('refresh').addEventListener('click', openFolder);
+  $('open-home').addEventListener('click', openHome);
   $('folder-input').addEventListener('change', folderPicked);
   document.addEventListener('click', (e) => {
     // The path, not e.target: a removed recent row is detached by now.
@@ -422,9 +445,10 @@
     }
   });
 
-  // Start on the most recent repo's saved copy, if there is one.
-  const [latest] = R.readRecent(localStorage);
-  if (latest) showSaved(latest);
+  // Start where the page was left; with nothing chosen yet, at home.
+  const currentId = R.readCurrent(localStorage) ?? R.HOME_ID;
+  const entry = R.readRecent(localStorage).find((e) => e.id === currentId);
+  showSaved(entry ?? { id: R.HOME_ID, name: R.HOME_ID });
   render();
 </script>
 </body>

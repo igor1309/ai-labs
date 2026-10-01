@@ -198,3 +198,26 @@ test('removing a repo or pushing it out of the list drops its saved copy', () =>
   assert.equal(R.loadSettings(storage, 'r5'), null);
   assert.ok(R.loadSettings(storage, 'r6'));
 });
+
+test('only the settings under .agister are read, not runs or logs', async () => {
+  const home = R.dirFromFiles([
+    picked('.agister/service.toml', 'max_attempts = 1'),
+    picked('.agister/agents/a.toml', 'name = "a"'),
+    picked('.agister/runs/20260101T000000Z-abc/record.json', '{}'),
+    picked('.agister/logs/agister.jsonl', '{}'),
+    picked('.agister/notes.md', 'x'),
+  ]);
+  assert.equal(R.isAgisterHome(home), true);
+  assert.deepEqual(await R.readSettings(home), { 'service.toml': 'max_attempts = 1', 'agents/a.toml': 'name = "a"' });
+  assert.equal(R.isAgisterHome(R.dirFromFiles([picked('repo/.agister/service.toml')])), false);
+});
+
+test('the id last shown is kept; missing or failing storage reads as none', () => {
+  const storage = fakeStorage();
+  assert.equal(R.readCurrent(storage), null);
+  R.writeCurrent(storage, R.HOME_ID);
+  assert.equal(R.readCurrent(storage), '~');
+  assert.equal(storage.raw(R.CURRENT_KEY), '~');
+  assert.equal(R.readCurrent({ getItem() { throw new Error('blocked'); } }), null);
+  R.writeCurrent({ setItem() { throw new Error('full'); } }, 'x');
+});
