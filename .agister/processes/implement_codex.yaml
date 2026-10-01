@@ -1,8 +1,8 @@
-# implement on Codex (agent codex-implementer-sol, policy implement_codex).
+# implement on Codex (agent codex-implementer-sol-61, policy implement_codex).
 schema: agister.process/v1alpha1
 name: implement_codex
 type: process
-uses: agent:codex-implementer-sol
+uses: agent:codex-implementer-sol-61
 policy: process-policy:implement_codex
 
 input:
