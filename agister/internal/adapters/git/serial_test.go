@@ -397,18 +397,62 @@ func TestWorkspacesWithoutWorktreesMakeNoWorktreeChange(t *testing.T) {
 // turns records the worktree commands of coordinators that stand for
 // processes of their own, each over its own Worktrees and one lock
 // directory: every command logs that it entered git, says so on entered,
-// stays there until release is closed, and logs that it left.
+// stays there until release is closed, and logs that it left. Workers
+// started through it are its to end: see newTurns.
 type turns struct {
 	locks   string
 	release chan struct{}
 	entered chan string
+	freed   sync.Once
 
-	mu  sync.Mutex
-	log []string
+	workers sync.WaitGroup
+	mu      sync.Mutex
+	log     []string
+	cancels []context.CancelFunc
 }
 
+// newTurns makes the turns of a test. Its cleanup, registered before any
+// worker starts and run before its lock directory is removed, cancels the
+// workers' contexts, closes release and joins the workers: whatever a
+// failed test left running.
 func newTurns(t *testing.T) *turns {
-	return &turns{locks: t.TempDir(), release: make(chan struct{}), entered: make(chan string, 4)}
+	t.Helper()
+	l := &turns{locks: t.TempDir(), release: make(chan struct{}), entered: make(chan string, 4)}
+	t.Cleanup(func() {
+		l.mu.Lock()
+		for _, cancel := range l.cancels {
+			cancel()
+		}
+		l.mu.Unlock()
+		l.free()
+		joined := make(chan struct{})
+		go func() { l.workers.Wait(); close(joined) }()
+		select {
+		case <-joined:
+		case <-time.After(hangGuard):
+			t.Error("workers still run with their contexts cancelled and release closed")
+		}
+	})
+	return l
+}
+
+// free closes release, once.
+func (l *turns) free() { l.freed.Do(func() { close(l.release) }) }
+
+// start runs do aside, under a context of ctx that the cleanup cancels,
+// and gives the channel its error arrives on.
+func (l *turns) start(ctx context.Context, do func(ctx context.Context) error) <-chan error {
+	ctx, cancel := context.WithCancel(ctx)
+	l.mu.Lock()
+	l.cancels = append(l.cancels, cancel)
+	l.mu.Unlock()
+	done := make(chan error, 1)
+	l.workers.Add(1)
+	go func() {
+		defer l.workers.Done()
+		done <- do(ctx)
+	}()
+	return done
 }
 
 func (l *turns) add(entry string) {
@@ -436,7 +480,10 @@ func (l *turns) coordinator(name string) *coordinator {
 	c := &coordinator{Worktrees: NewWorktrees(l.locks), waits: make(chan struct{}, 4)}
 	c.Git = func(ctx context.Context, dir string, args ...string) (string, error) {
 		l.add(name + " in")
-		l.entered <- name
+		select {
+		case l.entered <- name:
+		case <-ctx.Done():
+		}
 		<-l.release
 		l.add(name + " out")
 		return "", nil
@@ -446,17 +493,16 @@ func (l *turns) coordinator(name string) *coordinator {
 	return c
 }
 
-// command runs a worktree command of c in repository aside.
-func (c *coordinator) command(ctx context.Context, repository string) <-chan error {
-	done := make(chan error, 1)
-	go func() {
+// command runs a worktree command of c in repository aside, as a worker
+// of l.
+func (l *turns) command(ctx context.Context, c *coordinator, repository string) <-chan error {
+	return l.start(ctx, func(ctx context.Context) error {
 		started, err := c.worktree(ctx, repository, "list")
 		if err == nil && !started {
 			err = errors.New("the command did not start")
 		}
-		done <- err
-	}()
-	return done
+		return err
+	})
 }
 
 // receive is the next value of ch, or fails the test after the hang guard.
@@ -478,7 +524,7 @@ func TestWorktreeCommandsOfTwoProcessesInOneRepositoryNeverOverlap(t *testing.T)
 	one, two := l.coordinator("one"), l.coordinator("two")
 	ctx := context.Background()
 
-	ones, twos := one.command(ctx, repo), two.command(ctx, repo)
+	ones, twos := l.command(ctx, one, repo), l.command(ctx, two, repo)
 	// One holds the repository in git; the other has found its lock file
 	// held: neither process's own lock stands in its way.
 	first := receive(t, l.entered, "a command entering git")
@@ -487,7 +533,7 @@ func TestWorktreeCommandsOfTwoProcessesInOneRepositoryNeverOverlap(t *testing.T)
 		waiting = one
 	}
 	receive(t, waiting.waits, "the other command waiting")
-	close(l.release)
+	l.free()
 	if err := receive(t, ones, "the first process's command ending"); err != nil {
 		t.Fatal(err)
 	}
@@ -518,13 +564,13 @@ func TestTwoProcessesInDifferentRepositoriesDoNotShareALockFile(t *testing.T) {
 	one, two := l.coordinator("one"), l.coordinator("two")
 	ctx := context.Background()
 
-	held := one.command(ctx, busy)
+	held := l.command(ctx, one, busy)
 	receive(t, l.entered, "the held command entering git")
-	free := two.command(ctx, other)
+	free := l.command(ctx, two, other)
 	if got := receive(t, l.entered, "the other repository's command entering git"); got != "two" {
 		t.Fatalf("%s entered git", got)
 	}
-	close(l.release)
+	l.free()
 	for _, worker := range []<-chan error{held, free} {
 		if err := receive(t, worker, "a command ending"); err != nil {
 			t.Fatal(err)
@@ -540,28 +586,86 @@ func TestACancelledContextStopsTheWaitForTheLockFile(t *testing.T) {
 	l := newTurns(t)
 	one, two := l.coordinator("one"), l.coordinator("two")
 
-	held := one.command(context.Background(), repo)
+	held := l.command(context.Background(), one, repo)
 	receive(t, l.entered, "the held command entering git")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	waiting := make(chan error, 1)
 	var started bool
-	go func() {
+	waiting := l.start(ctx, func(ctx context.Context) error {
 		var err error
 		started, err = two.worktree(ctx, repo, "list")
-		waiting <- err
-	}()
+		return err
+	})
 	receive(t, two.waits, "the second process's command waiting")
 	cancel()
 	if err := receive(t, waiting, "the cancelled command ending"); !errors.Is(err, context.Canceled) || started {
 		t.Fatalf("a command cancelled while it waited: started %v, %v", started, err)
 	}
 
-	close(l.release)
+	l.free()
 	if err := receive(t, held, "the held command ending"); err != nil {
 		t.Fatal(err)
 	}
 	if got, want := l.entries(), []string{"one in", "one out"}; fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("commands ran as %v, not %v", got, want)
+	}
+}
+
+// expiry is a cleanup context whose deadline passes when the test closes
+// passed.
+type expiry struct {
+	context.Context
+	passed chan struct{}
+}
+
+func (e *expiry) Done() <-chan struct{} { return e.passed }
+
+func (e *expiry) Err() error {
+	select {
+	case <-e.passed:
+		return context.DeadlineExceeded
+	default:
+		return nil
+	}
+}
+
+func TestACheckoutReleaseStopsWaitingForTheLockFileAtTheCleanupDeadline(t *testing.T) {
+	repo := emptyRepository(t)
+	l := newTurns(t)
+	one, two := l.coordinator("one"), l.coordinator("two")
+	// The second process's checkout is real: its release has a worktree to
+	// remove.
+	two.Git = nil
+	deadline := &expiry{passed: make(chan struct{})}
+	workspaces := NewWorkspaces(two.Worktrees)
+	workspaces.Cleanup = func(ctx context.Context) (context.Context, context.CancelFunc) {
+		deadline.Context = ctx
+		return deadline, func() {}
+	}
+	_, release, err := workspaces.Checkout(context.Background(), repo, "main")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	held := l.command(context.Background(), one, repo)
+	receive(t, l.entered, "the held command entering git")
+	released := l.start(context.Background(), func(context.Context) error { return release() })
+	receive(t, two.waits, "the release waiting for the lock file")
+	close(deadline.passed)
+	if err := receive(t, released, "the release ending at its deadline"); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("a release whose cleanup deadline passed while it waited: %v", err)
+	}
+	select {
+	case err := <-held:
+		t.Fatalf("the holder ended before the release returned: %v", err)
+	default:
+	}
+	if got, want := l.entries(), []string{"one in"}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("commands ran as %v, not %v", got, want)
+	}
+
+	l.free()
+	if err := receive(t, held, "the held command ending"); err != nil {
+		t.Fatal(err)
 	}
 }

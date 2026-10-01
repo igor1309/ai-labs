@@ -240,11 +240,6 @@ not changed.
 exception: a workflow's join receives the recorded outputs of its own
 workflow's fan-out nodes.
 
-A third deliberate exception: concurrent calls in one repository take
-turns, through a lock file per repository under Agister's state directory,
-for the git worktree commands that add and remove their checkouts. The lock
-file holds no state, and no call reads another's.
-
 ### 13. Every component collaborates through abstractions it defines
 
 Each component declares the interfaces it requires at its own boundary, with

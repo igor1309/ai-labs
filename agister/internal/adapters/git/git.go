@@ -215,7 +215,26 @@ var errNoWorktrees = errors.New("git worktree: Workspaces built without NewWorks
 
 // Workspaces locates repositories and makes detached checkouts. Its
 // worktree changes go through worktrees: the zero value makes none.
-type Workspaces struct{ worktrees worktreeCommands }
+type Workspaces struct {
+	// Cleanup, when set, gives the bounded context a checkout's release or
+	// a removal runs under, in place of a deadline of cleanupDeadline from
+	// now: tests make it pass at will.
+	Cleanup func(ctx context.Context) (context.Context, context.CancelFunc)
+
+	worktrees worktreeCommands
+}
+
+// cleanupDeadline bounds a release or removal, waits for the lock another
+// process holds included.
+const cleanupDeadline = time.Minute
+
+// cleanup bounds ctx for a release or removal.
+func (w Workspaces) cleanup(ctx context.Context) (context.Context, context.CancelFunc) {
+	if w.Cleanup != nil {
+		return w.Cleanup(ctx)
+	}
+	return context.WithTimeout(ctx, cleanupDeadline)
+}
 
 // NewWorkspaces makes Workspaces whose worktree changes take their turn in
 // worktrees, the one of the process.
@@ -248,7 +267,10 @@ func (w Workspaces) Checkout(ctx context.Context, repository, revision string) (
 		return "", nil, err
 	}
 	release := func() error {
-		_, err := w.worktree(context.WithoutCancel(ctx), repository, "remove", "--force", dir)
+		// Independent of the call's cancellation, but bounded.
+		ctx, cancel := w.cleanup(context.WithoutCancel(ctx))
+		defer cancel()
+		_, err := w.worktree(ctx, repository, "remove", "--force", dir)
 		if removeErr := os.RemoveAll(parent); err == nil {
 			err = removeErr
 		}
@@ -311,11 +333,14 @@ func (w Workspaces) Copy(ctx context.Context, repository, dir, revision string, 
 // Discard removes a checkout whose call ended without releasing it, or a
 // clean copy. Only a directory Checkout or Copy could have made is touched:
 // <temp>/agister-checkout-<id>/workspace-<id>, or <temp>/agister-checkout-*/workspace
-// as earlier versions made them.
+// as earlier versions made them. The removal is bounded by a deadline of
+// its own, as well as by ctx.
 func (w Workspaces) Discard(ctx context.Context, repository, dir string) error {
 	if err := made(dir); err != nil {
 		return err
 	}
+	ctx, cancel := w.cleanup(ctx)
+	defer cancel()
 	parent := filepath.Dir(dir)
 	// Removes this checkout's record even when its directory is already
 	// gone; a checkout with no record left is already discarded. Other
