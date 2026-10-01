@@ -28,19 +28,19 @@ func run(ctx context.Context, dir string, args ...string) (string, error) {
 
 // runWith runs git with extra environment and stdin.
 func runWith(ctx context.Context, dir string, env []string, stdin []byte, args ...string) (string, error) {
-	return runFiles(ctx, dir, env, stdin, nil, args...)
+	return runCommand(exec.CommandContext(ctx, "git", args...), dir, env, stdin, nil)
 }
 
-// runHolding runs git holding lock, a locked lock file: git shares its
-// descriptor, so the lock lasts until both this process and git have
-// exited.
-func runHolding(ctx context.Context, dir string, lock *os.File, args ...string) (string, error) {
-	return runFiles(ctx, dir, nil, nil, []*os.File{lock}, args...)
+// runHolding runs command, git or what stands in for it, holding lock, a
+// locked lock file: the command shares its descriptor, so the lock lasts
+// until both this process and the command have exited.
+func runHolding(command *exec.Cmd, dir string, lock *os.File) (string, error) {
+	return runCommand(command, dir, nil, nil, []*os.File{lock})
 }
 
-// runFiles runs git with extra environment, stdin and open files.
-func runFiles(ctx context.Context, dir string, env []string, stdin []byte, files []*os.File, args ...string) (string, error) {
-	command := exec.CommandContext(ctx, "git", args...)
+// runCommand runs command in dir with extra environment, stdin and open
+// files.
+func runCommand(command *exec.Cmd, dir string, env []string, stdin []byte, files []*os.File) (string, error) {
 	command.Dir = dir
 	command.ExtraFiles = files
 	if env != nil {
@@ -52,7 +52,7 @@ func runFiles(ctx context.Context, dir string, env []string, stdin []byte, files
 	var stdout, stderr bytes.Buffer
 	command.Stdout, command.Stderr = &stdout, &stderr
 	if err := command.Run(); err != nil {
-		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), strings.TrimSpace(stderr.String()))
+		return "", fmt.Errorf("%s: %s", strings.Join(command.Args, " "), strings.TrimSpace(stderr.String()))
 	}
 	return stdout.String(), nil
 }
@@ -85,6 +85,10 @@ type Worktrees struct {
 	// lock file: a command started with it (exec.Cmd.ExtraFiles) keeps the
 	// lock while it runs, should this process be killed first.
 	Git func(ctx context.Context, dir string, lock *os.File, args ...string) (string, error)
+	// Command, when set, makes the command the default Git runs for git
+	// args, in place of git: it is run as git is, holding the lock. Tests
+	// run a process of their own there.
+	Command func(ctx context.Context, args ...string) *exec.Cmd
 	// Waits, when set, is told that a command found a lock held, before it
 	// waits: once per command, whichever lock it is.
 	Waits func()
@@ -159,7 +163,7 @@ func (s *Worktrees) worktree(ctx context.Context, repository string, args ...str
 	defer file.Close()
 	git := s.Git
 	if git == nil {
-		git = runHolding
+		git = s.holding
 	}
 	_, err = git(ctx, repository, file, append([]string{"worktree"}, args...)...)
 	return true, err
@@ -209,6 +213,16 @@ func (s *Worktrees) lockFile(ctx context.Context, common string, waits func()) (
 		}
 	}
 	return file, nil
+}
+
+// holding is the default Git: it runs git args, or the command Command
+// makes for them, in dir holding lock.
+func (s *Worktrees) holding(ctx context.Context, dir string, lock *os.File, args ...string) (string, error) {
+	command := s.Command
+	if command == nil {
+		command = func(ctx context.Context, args ...string) *exec.Cmd { return exec.CommandContext(ctx, "git", args...) }
+	}
+	return runHolding(command(ctx, args...), dir, lock)
 }
 
 func (s *Worktrees) lock(common string) chan struct{} {

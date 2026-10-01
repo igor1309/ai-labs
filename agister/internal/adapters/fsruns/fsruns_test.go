@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -288,5 +289,74 @@ func TestLiveCheckoutsAreThoseOfRunsSomeoneOwns(t *testing.T) {
 	want := []string{"/tmp/agister-checkout-own/workspace", "/tmp/agister-checkout-copy/workspace", "/tmp/agister-checkout-live/workspace"}
 	if err != nil || !reflect.DeepEqual(dirs, want) {
 		t.Fatalf("live checkouts = %v, %v", dirs, err)
+	}
+}
+
+// reapSpies are the reaper's other collaborators: no process is left, the
+// clock stands still, and discard runs as the test says.
+type reapSpies struct {
+	discard func(ctx context.Context, dir string) error
+}
+
+func (reapSpies) Reap(context.Context, string) (app.Reaping, error) { return app.ReapGone, nil }
+
+func (reapSpies) Now() time.Time { return time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC) }
+
+func (s reapSpies) Discard(ctx context.Context, _, dir string) error { return s.discard(ctx, dir) }
+
+// An abandoned run's checkout that a reap could not remove, as when the
+// reap deadline passes while another process holds the worktree lock, is
+// left on record as unreleased: a later reap lists the finished run,
+// removes the checkout and clears the marker.
+func TestACheckoutAReapCouldNotRemoveIsReapedLater(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	ctx := context.Background()
+	checkout := &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-1/workspace-1"}
+	h, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "killed", Process: "p", CreatedAt: time.Now(), Effects: &run.Effects{Checkout: checkout}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Its owner is killed.
+	h.(*handle).lock.Close()
+
+	var discarded []string
+	spies := &reapSpies{}
+	reaper := app.NewReaper(store, spies, spies, spies)
+	// The deadline passes while the first removal waits.
+	var deadline context.CancelFunc
+	reaper.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) {
+		ctx, deadline = context.WithCancel(ctx)
+		return ctx, deadline
+	}
+	spies.discard = func(ctx context.Context, dir string) error {
+		discarded = append(discarded, dir)
+		deadline()
+		return ctx.Err()
+	}
+	if err := reaper.Reap(ctx); err != nil {
+		t.Fatal(err)
+	}
+	record, state, err := store.Get(ctx, "killed")
+	if err != nil || state != run.StateFinished || len(discarded) != 1 ||
+		record.Effects == nil || !reflect.DeepEqual(record.Effects.Unreleased, checkout) {
+		t.Fatalf("after the first reap: %s, discarded %v, effects %+v, %v", state, discarded, record.Effects, err)
+	}
+	finished := *record.FinishedAt
+
+	spies.discard = func(ctx context.Context, dir string) error {
+		discarded = append(discarded, dir)
+		return ctx.Err()
+	}
+	if err := reaper.Reap(ctx); err != nil {
+		t.Fatal(err)
+	}
+	record, _, err = store.Get(ctx, "killed")
+	if err != nil || !reflect.DeepEqual(discarded, []string{checkout.Dir, checkout.Dir}) ||
+		record.Effects == nil || record.Effects.Unreleased != nil || !reflect.DeepEqual(record.Effects.Checkout, checkout) ||
+		!record.FinishedAt.Equal(finished) {
+		t.Fatalf("after the second reap: discarded %v, finished %v, effects %+v, %v", discarded, record.FinishedAt, record.Effects, err)
+	}
+	if abandoned, err := store.Abandoned(ctx); err != nil || len(abandoned) != 0 {
+		t.Fatalf("abandoned after the second reap = %+v, %v", abandoned, err)
 	}
 }

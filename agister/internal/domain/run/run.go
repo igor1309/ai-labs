@@ -246,8 +246,9 @@ type Effects struct {
 	// attempt; only one exists at a time.
 	Copy *Checkout `json:"copy,omitempty"`
 	// Unreleased is the call's checkout when its release failed, as at the
-	// cleanup deadline: still to be removed, by a later reap, which clears
-	// it once removed. Checkout stays on record either way.
+	// cleanup deadline, or when the reap of the abandoned run could not
+	// remove it: still to be removed, by a later reap, which clears it once
+	// removed. Checkout stays on record either way.
 	Unreleased *Checkout `json:"unreleased,omitempty"`
 }
 

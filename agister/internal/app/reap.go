@@ -153,7 +153,8 @@ func (c *Reaper) reapContext(ctx context.Context) (context.Context, context.Canc
 // checkout, the call's own or verification's clean copy, that a run still
 // owned records as its own is left in place, and so is one whose users
 // could not be listed. A copy or unreleased checkout removed is no longer
-// on record. It returns the failure to record the reap or finish the run;
+// on record; the checkout of an unfinished run that could not be removed
+// is put on record as unreleased. It returns the failure to record the reap or finish the run;
 // with the event unrecorded, the error carries the steps that failed.
 func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record, live []string, liveErr error) error {
 	data := map[string]any{}
@@ -171,15 +172,20 @@ func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record,
 		process *run.Process
 	}{{"process", effects.Process}, {"command", effects.Command}}
 	// forget, when set, drops a removed checkout from the record: else
-	// every reap would find the run again.
+	// every reap would find the run again. keep, when set, puts one that
+	// could not be removed on record as unreleased: else no reap would
+	// find the finished run again.
 	checkouts := []struct {
-		name     string
-		checkout *run.Checkout
-		forget   func()
-	}{{"checkout", effects.Checkout, nil}, {"copy", effects.Copy, func() { effects.Copy = nil }}}
+		name         string
+		checkout     *run.Checkout
+		forget, keep func()
+	}{
+		{"checkout", effects.Checkout, nil, func() { effects.Unreleased = effects.Checkout }},
+		{"copy", effects.Copy, func() { effects.Copy = nil }, nil},
+	}
 	if finished {
 		processes = nil
-		checkouts[0].checkout, checkouts[0].forget = effects.Unreleased, func() { effects.Unreleased = nil }
+		checkouts[0].checkout, checkouts[0].forget, checkouts[0].keep = effects.Unreleased, func() { effects.Unreleased = nil }, nil
 	}
 	// The runtime's process and the verification command's (ADR-002 rule
 	// 10), each by the reference its runner recorded.
@@ -200,10 +206,12 @@ func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record,
 		if checkout == nil {
 			continue
 		}
+		left := false
 		switch {
 		case liveErr != nil:
 			data[dir.name] = map[string]any{"dir": checkout.Dir, "removed": false, "skipped": "could not tell whether a running run uses it"}
 			failures = append(failures, fmt.Sprintf("%s %s left: listing running runs: %v", dir.name, checkout.Dir, liveErr))
+			left = true
 		case slices.Contains(live, checkout.Dir):
 			data[dir.name] = map[string]any{"dir": checkout.Dir, "removed": false, "skipped": "a running run uses it"}
 		default:
@@ -211,10 +219,18 @@ func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record,
 			data[dir.name] = map[string]any{"dir": checkout.Dir, "removed": err == nil}
 			if err != nil {
 				failures = append(failures, fmt.Sprintf("%s %s: %v", dir.name, checkout.Dir, err))
+				left = true
 			} else if dir.forget != nil {
 				dir.forget()
 				record.Effects = &effects
 			}
+		}
+		// A checkout that could not be removed, as when the cleanup deadline
+		// passes while another process holds the worktree lock, stays for a
+		// later reap (ADR-008 rule 6).
+		if left && dir.keep != nil {
+			dir.keep()
+			record.Effects = &effects
 		}
 	}
 	if len(failures) > 0 {

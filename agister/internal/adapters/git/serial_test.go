@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -99,19 +100,18 @@ func (c *checkout) run() error {
 func gated(t *testing.T, held string) *gate {
 	t.Helper()
 	g := &gate{held: held, events: make(chan event, 16), proceed: make(chan struct{}), open: make(chan struct{})}
-	g.workspaces = NewWorkspaces(&Worktrees{
-		locks: t.TempDir(),
-		Git: func(ctx context.Context, dir string, lock *os.File, args ...string) (string, error) {
-			if g.report(event{dir: dir}) && (g.held == "" || dir == g.held) {
-				select {
-				case <-g.proceed:
-				case <-g.open:
-				}
+	worktrees := NewWorktrees(t.TempDir())
+	worktrees.Git = func(ctx context.Context, dir string, lock *os.File, args ...string) (string, error) {
+		if g.report(event{dir: dir}) && (g.held == "" || dir == g.held) {
+			select {
+			case <-g.proceed:
+			case <-g.open:
 			}
-			return runHolding(ctx, dir, lock, args...)
-		},
-		Waits: func() { g.report(event{waited: true}) },
-	})
+		}
+		return worktrees.holding(ctx, dir, lock, args...)
+	}
+	worktrees.Waits = func() { g.report(event{waited: true}) }
+	g.workspaces = NewWorkspaces(worktrees)
 	t.Cleanup(func() {
 		close(g.open)
 		joined := make(chan struct{})
@@ -784,8 +784,12 @@ func TestHelperProcess(t *testing.T) {
 	case "holder":
 		holdTheLock()
 	case "child":
-		// The lock is fd 3; fd 4 reads until the test closes its other end.
-		io.Copy(io.Discard, os.NewFile(4, "signal"))
+		// The lock is fd 3, if git is given it. Its stdin is the test's
+		// socket: it says it runs there, and reads until the test closes it.
+		if _, err := os.Stdin.WriteString("held\n"); err != nil {
+			os.Exit(1)
+		}
+		io.Copy(io.Discard, os.Stdin)
 	default:
 		return
 	}
@@ -793,47 +797,54 @@ func TestHelperProcess(t *testing.T) {
 }
 
 // holdTheLock takes the repository's lock and runs its worktree command as
-// a child, which gets the lock and the test's signal (fd 3 here): once
-// the child runs, it says so on stdout, and waits for it.
+// git is run, holding the lock: in place of git, the child, whose stdin is
+// the test's socket (fd 3 here).
 func holdTheLock() {
 	worktrees := NewWorktrees(os.Getenv(helperLocks))
-	worktrees.Git = func(ctx context.Context, dir string, lock *os.File, args ...string) (string, error) {
+	worktrees.Command = func(ctx context.Context, args ...string) *exec.Cmd {
 		child := helper("child")
-		child.ExtraFiles = []*os.File{lock, os.NewFile(3, "signal")}
-		if err := child.Start(); err != nil {
-			return "", err
-		}
-		fmt.Println("held")
-		return "", child.Wait()
+		child.Stdin = os.NewFile(3, "socket")
+		return child
 	}
 	_, err := worktrees.worktree(context.Background(), os.Getenv(helperRepo), "list")
 	fmt.Fprintln(os.Stderr, "the holder's command ended:", err)
 	os.Exit(1)
 }
 
+// socketPair is a connected pair of sockets, neither inherited by a
+// process started but as one of its files.
+func socketPair(t *testing.T) (*os.File, *os.File) {
+	t.Helper()
+	syscall.ForkLock.RLock()
+	fds, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_STREAM, 0)
+	if err == nil {
+		syscall.CloseOnExec(fds[0])
+		syscall.CloseOnExec(fds[1])
+	}
+	syscall.ForkLock.RUnlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return os.NewFile(uintptr(fds[0]), "test"), os.NewFile(uintptr(fds[1]), "child")
+}
+
 // A process killed while its git command runs leaves the lock to git: a
-// command of another process waits for it until git exits.
+// command of another process waits for it until git exits. The held
+// command is started as production starts git, the lock handed to it.
 func TestAKilledHoldersLockLastsAsLongAsItsGitChild(t *testing.T) {
 	repo, locks := emptyRepository(t), t.TempDir()
-	// The child ends when the test closes signal: the pipe's write end is
-	// the test's alone.
-	read, signal, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { signal.Close() })
+	// The child ends when the test closes its end: the other end is the
+	// child's alone once the holder is killed.
+	socket, child := socketPair(t)
+	t.Cleanup(func() { socket.Close() })
 	holder := helper("holder", helperLocks+"="+locks, helperRepo+"="+repo)
-	holder.ExtraFiles = []*os.File{read}
-	stdout, err := holder.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
+	holder.ExtraFiles = []*os.File{child}
 	var stderr bytes.Buffer
 	holder.Stderr = &stderr
 	if err := holder.Start(); err != nil {
 		t.Fatal(err)
 	}
-	read.Close()
+	child.Close()
 	var killed sync.Once
 	kill := func() {
 		killed.Do(func() {
@@ -845,12 +856,12 @@ func TestAKilledHoldersLockLastsAsLongAsItsGitChild(t *testing.T) {
 
 	said := make(chan string, 1)
 	go func() {
-		line, _ := bufio.NewReader(stdout).ReadString('\n')
+		line, _ := bufio.NewReader(socket).ReadString('\n')
 		said <- line
 	}()
 	if line := receive(t, said, "the holder's child starting"); line != "held\n" {
 		kill()
-		t.Fatalf("the holder said %q: %s", line, stderr.String())
+		t.Fatalf("the child said %q: %s", line, stderr.String())
 	}
 	kill()
 
@@ -878,7 +889,7 @@ func TestAKilledHoldersLockLastsAsLongAsItsGitChild(t *testing.T) {
 	case <-time.After(hangGuard):
 		t.Fatal("another process's command did not wait")
 	}
-	signal.Close()
+	socket.Close()
 	receive(t, entered, "another process's command getting the lock once the child exited")
 	if err := receive(t, done, "another process's command ending"); err != nil {
 		t.Fatal(err)
