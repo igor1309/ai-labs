@@ -31,6 +31,10 @@ var repoParams = map[string]string{
 
 const fallbackParam = "AGENTS.md"
 
+// testTimeouts are the test's own timeouts for a process run, by process
+// name, in place of its policy's: the advisor's policy allows 20 minutes.
+var testTimeouts = map[string]string{"advisor": "1m"}
+
 // verifyFixture is the verification command every process that declares
 // verify runs in the test's repository instead of its own: it passes in a
 // checkout of the candidate. The real command would run this module's own
@@ -81,6 +85,9 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			args := append([]string{"run", name}, paramArgs(process.Params)...)
+			if timeout := testTimeouts[name]; timeout != "" {
+				args = append(args, "--timeout", timeout)
+			}
 			created, r := runRecorded(t, home, repo, args)
 			if len(created) != 1 {
 				t.Fatalf("runs recorded: %v, want one", created)
@@ -263,6 +270,11 @@ func TestAdvisorAnswersAQuestionFile(t *testing.T) {
 	if want := map[string]any{"advice": map[string]any{"kind": "owner", "reason": "fake"}}; !reflect.DeepEqual(output, want) {
 		t.Fatalf("the advisor's output = %v, want %v", output, want)
 	}
+	// The runtime worked in a checkout of the revision, not in the
+	// caller's repository.
+	if workspace, _ := record["workspace"].(string); workspace == "" || runtimeCwd(t, home, created[0]) != workspace || workspace == repo {
+		t.Fatalf("the advisor's workspace %q, runtime cwd %q, the caller's repository %s", workspace, runtimeCwd(t, home, created[0]), repo)
+	}
 	// The runtime was started under its read-only sandbox.
 	if argv := runtimeArgv(t, home, created[0]); !follows(argv, "--sandbox", "read-only") {
 		t.Fatalf("the advisor's runtime argv = %v, want --sandbox read-only", argv)
@@ -294,15 +306,39 @@ func TestAdvisorAnswersAQuestionFile(t *testing.T) {
 // as the first line of the call's provider.jsonl captures it.
 func runtimeArgv(t *testing.T, home, id string) []string {
 	t.Helper()
+	first := runtimeStart(t, home, id)
+	if len(first.Argv) == 0 {
+		t.Fatalf("run %s: no argv in provider.jsonl", id)
+	}
+	return first.Argv
+}
+
+// runtimeCwd is the directory a call's fake runtime was started in, as the
+// first line of the call's provider.jsonl captures it.
+func runtimeCwd(t *testing.T, home, id string) string {
+	t.Helper()
+	first := runtimeStart(t, home, id)
+	if first.Cwd == "" {
+		t.Fatalf("run %s: no cwd in provider.jsonl", id)
+	}
+	return first.Cwd
+}
+
+// runtimeStart is the first line of a call's provider.jsonl, which a fake
+// runtime writes with its argv and cwd.
+func runtimeStart(t *testing.T, home, id string) (first struct {
+	Argv []string
+	Cwd  string
+}) {
+	t.Helper()
 	provider, err := os.ReadFile(filepath.Join(home, "runs", id, "provider.jsonl"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var first struct{ Argv []string }
-	if err := json.Unmarshal([]byte(strings.SplitN(string(provider), "\n", 2)[0]), &first); err != nil || len(first.Argv) == 0 {
-		t.Fatalf("run %s: no argv in provider.jsonl %q: %v", id, provider, err)
+	if err := json.Unmarshal([]byte(strings.SplitN(string(provider), "\n", 2)[0]), &first); err != nil {
+		t.Fatalf("run %s: provider.jsonl %q: %v", id, provider, err)
 	}
-	return first.Argv
+	return first
 }
 
 // follows reports whether value is the argument right after flag in argv.
@@ -373,8 +409,8 @@ func TestAdviceSchemaTiesTheAnswerToItsPayload(t *testing.T) {
 }
 
 // No schema this repository gives to Codex uses a combinator Codex's
-// strict structured outputs refuse before the turn starts: oneOf anywhere,
-// anyOf or allOf at the root. The schemas are those of the processes whose
+// strict structured outputs refuse before the turn starts: oneOf and allOf
+// anywhere, anyOf at the root. The schemas are those of the processes whose
 // agent runs on the codex runtime, read from the directory, so a new one is
 // checked without listing it here.
 func TestSchemasGivenToCodexUseNoRefusedCombinator(t *testing.T) {
@@ -412,7 +448,7 @@ func TestSchemasGivenToCodexUseNoRefusedCombinator(t *testing.T) {
 }
 
 // refusedCombinators finds a root-level oneOf, anyOf and allOf, and a
-// oneOf at any depth; a nested anyOf or allOf is none.
+// oneOf or allOf at any depth; a nested anyOf is none.
 func TestRefusedCombinators(t *testing.T) {
 	cases := []struct {
 		name, document string
@@ -420,7 +456,7 @@ func TestRefusedCombinators(t *testing.T) {
 	}{
 		{"none", `{"type":"object","properties":{"a":{"type":"string"}}}`, nil},
 		{"a nested anyOf", `{"type":"object","properties":{"a":{"anyOf":[{"type":"string"},{"type":"null"}]}}}`, nil},
-		{"a nested allOf", `{"type":"object","properties":{"a":{"allOf":[{"type":"string"}]}}}`, nil},
+		{"a nested allOf", `{"type":"object","properties":{"a":{"allOf":[{"type":"string"}]}}}`, []string{"allOf at /properties/a"}},
 		{"a root oneOf", `{"type":"object","oneOf":[{"required":["a"]}]}`, []string{"oneOf at /"}},
 		{"a root anyOf", `{"anyOf":[{"type":"object"}]}`, []string{"anyOf at /"}},
 		{"a root allOf", `{"allOf":[{"type":"object"}]}`, []string{"allOf at /"}},
@@ -443,8 +479,8 @@ func TestRefusedCombinators(t *testing.T) {
 }
 
 // refusedCombinators are the combinators of a JSON Schema document that
-// Codex refuses, each with the place it stands at, sorted: oneOf anywhere,
-// anyOf and allOf at the root.
+// Codex refuses, each with the place it stands at, sorted: oneOf and allOf
+// anywhere, anyOf at the root.
 func refusedCombinators(document any) []string {
 	var refused []string
 	var walk func(node any, at string)
@@ -456,7 +492,7 @@ func refusedCombinators(document any) []string {
 				place = "/"
 			}
 			for key, value := range node {
-				if key == "oneOf" || at == "" && (key == "anyOf" || key == "allOf") {
+				if key == "oneOf" || key == "allOf" || at == "" && key == "anyOf" {
 					refused = append(refused, key+" at "+place)
 				}
 				walk(value, at+"/"+key)
