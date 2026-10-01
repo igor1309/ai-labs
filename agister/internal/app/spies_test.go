@@ -729,6 +729,7 @@ type adopterSpy struct {
 	runs      []run.Record
 	live      []string
 	liveReads int
+	liveErr   error  // fails LiveCheckouts
 	onLive    func() // runs during LiveCheckouts
 	// order lists LiveCheckouts as "live" and each Adopt as "adopt:<id>".
 	order    []string
@@ -757,6 +758,9 @@ func (s *adopterSpy) LiveCheckouts(context.Context) ([]string, error) {
 	s.order = append(s.order, "live")
 	if s.onLive != nil {
 		s.onLive()
+	}
+	if s.liveErr != nil {
+		return nil, s.liveErr
 	}
 	return s.live, nil
 }

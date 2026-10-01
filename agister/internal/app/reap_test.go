@@ -451,6 +451,45 @@ func TestACheckoutARunningRunUsesIsNotDiscarded(t *testing.T) {
 	}
 }
 
+// A checkout whose users cannot be listed is left in place, though the
+// reap's context is still active: the run is adopted and finished, its
+// record keeping the checkout as unreleased, and a later reap that can list
+// them removes it and clears it.
+func TestACheckoutLeftWhenRunningRunsCannotBeListedIsReapedLater(t *testing.T) {
+	h := newHarness()
+	r := reaping(h, abandonedRun("old"))
+	r.adopter.liveErr = errors.New("runs unreadable")
+	if err := r.reap(); err != nil {
+		t.Fatalf("reap = %v", err)
+	}
+	if !reflect.DeepEqual(r.adopter.adopted, []string{"old"}) || len(h.workspaces.discarded) != 0 {
+		t.Fatalf("adopted %v, discarded %v", r.adopter.adopted, h.workspaces.discarded)
+	}
+	handle := r.adopter.handles["old"]
+	if left := handle.events[0].Data["checkout"].(map[string]any); left["removed"] != false || left["skipped"] == nil {
+		t.Fatalf("events = %+v", handle.events)
+	}
+	finished := handle.wait(t)
+	checkout := &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-1/workspace"}
+	if finished.FinishedAt == nil || finished.Result == nil || finished.Result.Status != run.Lost ||
+		finished.Effects == nil || !reflect.DeepEqual(finished.Effects.Unreleased, checkout) {
+		t.Fatalf("finished %v, result %+v, effects %+v", finished.FinishedAt, finished.Result, finished.Effects)
+	}
+
+	r = reaping(h, finished)
+	if err := r.reap(); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(h.workspaces.discarded, [][2]string{{checkout.Repository, checkout.Dir}}) {
+		t.Fatalf("discarded = %v", h.workspaces.discarded)
+	}
+	record := r.adopter.handles["old"].wait(t)
+	if record.Result.Status != run.Lost || !record.FinishedAt.Equal(*finished.FinishedAt) ||
+		record.Effects.Unreleased != nil || !reflect.DeepEqual(record.Effects.Checkout, checkout) {
+		t.Fatalf("record: result %+v, finished %v, effects %+v", record.Result, record.FinishedAt, record.Effects)
+	}
+}
+
 // The checkouts running runs use are read before the abandoned run is
 // adopted: the adopted run is this process's own and would read as live.
 func TestLiveCheckoutsAreReadBeforeTheRunIsAdopted(t *testing.T) {

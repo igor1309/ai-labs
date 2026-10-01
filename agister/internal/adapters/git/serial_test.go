@@ -876,10 +876,21 @@ func TestAKilledHoldersLockLastsAsLongAsItsGitChild(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	done := make(chan error, 1)
+	joined := make(chan struct{})
 	go func() {
+		defer close(joined)
 		_, err := second.worktree(ctx, repo, "list")
 		done <- err
 	}()
+	// However the test ends, the worker is cancelled and joined.
+	t.Cleanup(func() {
+		cancel()
+		select {
+		case <-joined:
+		case <-time.After(hangGuard):
+			t.Error("another process's command still runs with its context cancelled")
+		}
+	})
 	select {
 	case <-waited:
 	case <-entered:
