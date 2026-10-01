@@ -65,6 +65,60 @@ func TestExamplePiSettingsPassCheck(t *testing.T) {
 	}
 }
 
+// Pi's sessions are kept under the home, never in ~/.pi or the temporary
+// directory: a call's session directory is under <home>/pi/sessions, named
+// by the session Pi reported, and a continuation resumes that session
+// there.
+func TestPiSessionsAreKeptUnderTheHome(t *testing.T) {
+	home, repo := examplePiSettings(t)
+	sessions := filepath.Join(home, "pi", "sessions")
+	sessionDir := func(r run) string {
+		t.Helper()
+		args := r.argv()
+		for i, arg := range args[:len(args)-1] {
+			if arg == "--session-dir" {
+				return args[i+1]
+			}
+		}
+		t.Fatalf("no --session-dir in %q", args)
+		return ""
+	}
+
+	r := agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?")
+	if r.code != cli.ExitCompleted {
+		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	first := lastRun(t, home)
+	if dir := sessionDir(first); filepath.Dir(dir) != sessions {
+		t.Fatalf("session dir %s is not under %s", dir, sessions)
+	}
+	id, _ := first.first["id"].(string)
+	kept, _ := filepath.Glob(filepath.Join(sessions, id, "*.jsonl"))
+	if entries, _ := os.ReadDir(sessions); id == "" || len(entries) != 1 || entries[0].Name() != id || len(kept) != 1 {
+		t.Fatalf("session %q: %s holds %v, session files %v", id, sessions, entries, kept)
+	}
+
+	r = agister(t, home, repo, "run", "ask_pi", "--param", "question=And its tests?", "--continue", filepath.Base(first.dir))
+	if r.code != cli.ExitCompleted {
+		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	second := lastRun(t, home)
+	if second.dir == first.dir {
+		t.Fatal("the continuation made no run")
+	}
+	args := strings.Join(second.argv(), " ")
+	if sessionDir(second) != filepath.Join(sessions, id) || !strings.Contains(args, "--session "+id) || second.first["id"] != id {
+		t.Fatalf("continuation reported session %v, argv %s", second.first["id"], args)
+	}
+	session := second.record["result"].(map[string]any)["session"].(map[string]any)
+	if session["provider_session_id"] != id || session["continues"] != filepath.Base(first.dir) {
+		t.Fatalf("session = %v", session)
+	}
+	if entries, _ := os.ReadDir(sessions); len(entries) != 1 {
+		t.Fatalf("%s holds %v", sessions, entries)
+	}
+}
+
 // Even when every grant is allowed, unverified write tools and bash cannot
 // satisfy a required permission. The bad settings live only in a temp home.
 func TestExamplePiSettingsRefuseUnverifiedTools(t *testing.T) {

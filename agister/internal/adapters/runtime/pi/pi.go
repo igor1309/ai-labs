@@ -42,14 +42,18 @@
 // Tool calls are reported as they start and finish: tool_execution_start
 // with the tool's whole arguments, and tool_execution_end. bash is the
 // tool that runs commands. Usage and cost are the turn's own: the token
-// counts and cost.total of each message it ended (message_end), summed; a
-// figure some assistant message does not report is unknown.
+// counts and cost.total of each message it ended (message_end), summed,
+// and of each automatic compaction's summary (compaction_end's
+// result.usage, docs/rpc.md); a figure some assistant message or
+// compaction does not report is unknown.
 //
-// Only agent_end decides a turn, unless Pi will retry it (willRetry). Pi
-// reports a failed turn in its final assistant message, whose stopReason
-// is not "stop", and exits 0 all the same; a turn that ends without
-// agent_end is decided by the transport, quoting stderr
-// (supervisor.WithoutTerminal).
+// Only agent_end decides a turn, unless Pi will retry it (willRetry) or
+// goes on after it: one agent_end ends one agent run, and Pi may still
+// compact the context and continue the turn (docs/rpc.md), which
+// compaction_end's willRetry and the next agent_start say. Pi reports a
+// failed turn in its final assistant message, whose stopReason is not
+// "stop", and exits 0 all the same; a turn that ends without agent_end is
+// decided by the transport, quoting stderr (supervisor.WithoutTerminal).
 package pi
 
 import (
@@ -320,7 +324,9 @@ type Stream struct {
 	LastText string
 	// LastError is the latest error the stream reported.
 	LastError string
-	// Ended is set by an agent_end Pi will not retry.
+	// Ended is set by an agent_end Pi will not retry, and cleared when Pi
+	// goes on after it: the turn is decided only by the agent_end of its
+	// last agent run.
 	Ended bool
 	usage tally
 	// tools are the tool calls reduced and not yet taken (TakeTools).
@@ -362,6 +368,8 @@ func (s *Stream) Reduce(line string) []Event {
 		s.SessionID, _ = message["id"].(string)
 		return []Event{{run.SourceProtocol, "PROVIDER_SESSION_BOUND", map[string]any{"provider_session_id": s.SessionID, "cwd": message["cwd"]}}}
 	case "agent_start":
+		// Another agent run: the one before did not end the turn.
+		s.Ended = false
 		return []Event{{run.SourceProtocol, "TURN_STARTED", nil}}
 	case "message_end":
 		inner, _ := message["message"].(map[string]any)
@@ -400,8 +408,25 @@ func (s *Stream) Reduce(line string) []Event {
 			kind = "TURN_FAILED"
 		}
 		return []Event{{run.SourceProtocol, kind, data}}
+	case "compaction_end":
+		s.compactionEnd(message)
 	}
 	return nil
+}
+
+// compactionEnd counts what a compaction's summary cost and, when Pi will
+// retry the turn after it (overflow recovery), takes back the agent_end
+// that came before: the turn has not ended.
+func (s *Stream) compactionEnd(message map[string]any) {
+	if result, compacted := message["result"].(map[string]any); compacted {
+		// The summary is model work whoever made it: one that reports no
+		// usage leaves the turn's figures unknown.
+		usage, _ := result["usage"].(map[string]any)
+		s.usage.add(usage)
+	}
+	if retry, _ := message["willRetry"].(bool); retry {
+		s.Ended = false
+	}
 }
 
 func (s *Stream) messageEnd(message map[string]any) []Event {
@@ -522,8 +547,8 @@ func classify(stopReason, message string) *run.Error {
 	return run.Fault(class, "%s", text)
 }
 
-// tally sums the usage of the messages a turn ended. A figure is known
-// only if every message counted reported it.
+// tally sums the usage of the messages a turn ended and of its
+// compactions. A figure is known only if every one counted reported it.
 type tally struct {
 	input, output, cacheRead, cacheWrite, cost sum
 	messages                                   int
@@ -552,7 +577,7 @@ func (t *tally) add(usage map[string]any) {
 	t.cost.add(cost["total"])
 }
 
-// totals is the turn's usage and cost; nil when no message reported any.
+// totals is the turn's usage and cost; nil when nothing was counted.
 func (t *tally) totals() (*run.Usage, *float64) {
 	if t.messages == 0 {
 		return nil, nil

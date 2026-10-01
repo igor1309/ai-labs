@@ -451,6 +451,113 @@ func TestOnlyTheLastAgentEndDecides(t *testing.T) {
 	}
 }
 
+const (
+	overflowed = `{"type":"message_end","message":{"role":"assistant","content":[],"provider":"opencode-go","model":"minimax-m3","usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"cost":{"total":0}},"stopReason":"error","errorMessage":"prompt is too long: 210000 tokens > 200000 maximum"}}`
+	// The compaction of an overflow recovery: Pi retries the turn after it.
+	recovering = `{"type":"compaction_end","reason":"overflow","result":{"summary":"So far.","firstKeptEntryId":"e1","tokensBefore":210000,"estimatedTokensAfter":32000,"usage":{"input":3000,"output":120,"cacheRead":30,"cacheWrite":10,"totalTokens":3160,"cost":{"total":0.5}},"details":{}},"aborted":false,"willRetry":true}`
+)
+
+// An agent_end Pi follows with a compaction and a retry of the turn did
+// not end it: the recovery's own agent_end does. A recovery interrupted
+// before it is decided by the transport, whatever its messages said.
+func TestAnAgentEndBeforeARecoveryDoesNotEndTheTurn(t *testing.T) {
+	overflow := []string{
+		`{"type":"session","version":3,"id":"s-1","cwd":"/w"}`,
+		`{"type":"agent_start"}`,
+		overflowed,
+		agentEnd,
+		`{"type":"compaction_start","reason":"overflow"}`,
+		recovering,
+	}
+	timedOut := supervisor.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "killed"}}
+	for name, rest := range map[string][]string{
+		"after the compaction":         nil,
+		"after the recovery started":   {`{"type":"agent_start"}`},
+		"after the recovery's message": {`{"type":"agent_start"}`, stopped},
+	} {
+		stream := &pi.Stream{}
+		reduce(stream, append(overflow, rest...)...)
+		if stream.Ended {
+			t.Errorf("%s: the turn ended", name)
+		}
+		if turn := stream.Reconcile(timedOut, true); turn.Status == run.Completed || turn.Error == nil || turn.Error.Class != run.ClassTimeout || turn.Output != nil {
+			t.Errorf("%s, timed out: turn = %+v", name, turn)
+		}
+		if turn := stream.Reconcile(clean, true); turn.Status != run.Lost || turn.Error.Class != run.ClassNoResult {
+			t.Errorf("%s, exited: turn = %+v", name, turn)
+		}
+	}
+	// The recovery's agent_end decides the turn.
+	stream := &pi.Stream{}
+	reduce(stream, append(overflow, `{"type":"agent_start"}`, stopped, agentEnd)...)
+	if turn := stream.Reconcile(clean, true); turn.Status != run.Completed || string(turn.Output) != `{"answer":"vm"}` {
+		t.Fatalf("recovered: turn = %+v", turn)
+	}
+}
+
+// Any agent run that starts after an agent_end takes it back, and a
+// compaction Pi does not retry after leaves the turn ended.
+func TestOnlyTheLastAgentRunEndsTheTurn(t *testing.T) {
+	stream := &pi.Stream{}
+	reduce(stream, stopped, agentEnd, `{"type":"agent_start"}`)
+	if turn := stream.Reconcile(clean, false); turn.Status != run.Lost || turn.Error.Class != run.ClassNoResult {
+		t.Fatalf("another agent run: turn = %+v", turn)
+	}
+	stream = &pi.Stream{}
+	reduce(stream, stopped, agentEnd,
+		`{"type":"compaction_start","reason":"threshold"}`,
+		`{"type":"compaction_end","reason":"threshold","result":{"summary":"So far.","usage":{"input":1,"output":1,"cacheRead":0,"cacheWrite":0,"cost":{"total":0.5}}},"aborted":false,"willRetry":false}`,
+	)
+	if turn := stream.Reconcile(clean, false); turn.Status != run.Completed {
+		t.Fatalf("compacted after the end: turn = %+v", turn)
+	}
+}
+
+// What an automatic compaction's summary cost is the turn's too: usage and
+// cost are summed over the assistant messages and the compaction.
+func TestCompactionUsageAndCostAreCounted(t *testing.T) {
+	stream := &pi.Stream{}
+	reduce(stream, `{"type":"agent_start"}`, overflowed, agentEnd, recovering, `{"type":"agent_start"}`, stopped, agentEnd)
+	turn := stream.Reconcile(clean, true)
+	if turn.Status != run.Completed {
+		t.Fatalf("turn = %+v", turn)
+	}
+	u := turn.Usage
+	if u == nil || *u.InputTokens != 3010 || *u.OutputTokens != 125 || *u.CacheReadTokens != 34 || *u.CacheWriteTokens != 12 {
+		t.Fatalf("usage = %+v", u)
+	}
+	if turn.CostUSD == nil || *turn.CostUSD != 0.75 {
+		t.Fatalf("cost = %v", turn.CostUSD)
+	}
+}
+
+// A compaction that reports no usage, or lacks a figure, leaves that
+// figure unknown for the turn, never the assistant messages' partial sum;
+// one that made no summary counts nothing.
+func TestACompactionWithoutUsageLeavesTheFiguresUnknown(t *testing.T) {
+	stream := &pi.Stream{}
+	reduce(stream, stopped, agentEnd, `{"type":"compaction_end","reason":"threshold","result":{"summary":"So far."},"aborted":false,"willRetry":false}`)
+	if turn := stream.Reconcile(clean, false); turn.Status != run.Completed || turn.Usage != nil || turn.CostUSD != nil {
+		t.Fatalf("no usage: turn = %+v, usage %+v", turn, turn.Usage)
+	}
+	stream = &pi.Stream{}
+	reduce(stream, stopped, agentEnd, `{"type":"compaction_end","reason":"threshold","result":{"summary":"So far.","usage":{"input":90,"output":7}},"aborted":false,"willRetry":false}`)
+	turn := stream.Reconcile(clean, false)
+	if u := turn.Usage; u == nil || *u.InputTokens != 100 || *u.OutputTokens != 12 || u.CacheReadTokens != nil || u.CacheWriteTokens != nil || turn.CostUSD != nil {
+		t.Fatalf("some figures: turn = %+v, usage %+v", turn, u)
+	}
+	for name, line := range map[string]string{
+		"aborted": `{"type":"compaction_end","reason":"threshold","result":null,"aborted":true,"willRetry":false}`,
+		"failed":  `{"type":"compaction_end","reason":"overflow","aborted":false,"willRetry":false,"errorMessage":"Context overflow recovery failed: quota"}`,
+	} {
+		stream := &pi.Stream{}
+		reduce(stream, stopped, agentEnd, line)
+		if turn := stream.Reconcile(clean, false); turn.Status != run.Completed || turn.CostUSD == nil || *turn.CostUSD != 0.25 || *turn.Usage.InputTokens != 10 {
+			t.Errorf("%s: turn = %+v, usage %+v", name, turn, turn.Usage)
+		}
+	}
+}
+
 // Tool executions are reported as they start, with their whole arguments,
 // numbers as written, and as they finish; bash runs commands.
 func TestToolCallsAreReported(t *testing.T) {
