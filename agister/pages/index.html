@@ -75,7 +75,6 @@
   .group-note { margin: 0 0 12px; color: var(--dim); font-size: 13px; }
   /* Two columns while both fit, one below that; never wider than the page. */
   .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(440px, 100%), 1fr)); gap: 16px; }
-  .cards.wide { grid-template-columns: 1fr; }
   article.run { padding: 16px 18px; min-width: 0; }
   .run-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
   .run-head h3 { margin: 0; font: 600 15px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--fg); }
@@ -90,7 +89,7 @@
     display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 6px 6px 6px 10px;
     background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
   }
-  .cmd code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; color: var(--fg); }
+  .cmd code { flex: 1; min-width: 0; overflow-wrap: anywhere; color: var(--fg); }
   .cmd code::before { content: '$ '; color: var(--fg3); }
   .copy { font-size: 12px; color: var(--fg3); padding: 1px 8px; border: 1px solid var(--line); border-radius: 4px; }
   .copy:hover { color: var(--fg); border-color: var(--dim); }
@@ -321,11 +320,11 @@
         ? 'What Agister uses in this repo: Agister home’s settings (~/.agister) with this repo’s .agister over them. A repo file replaces the home file of the same kind and name.'
         : 'Agister home, ~/.agister: the settings every repo starts from. A repo’s .agister goes over them.'),
       runnable ? null : el('p', { className: 'intro' }, 'Nothing to run here: no workflows or processes.'),
-      group('Workflows', 'several agent calls at once, then one that brings their results together', 'wide',
+      group('Workflows', 'several agent calls at once, then one that brings their results together',
         model.workflows.map((w) => workflowCard(w, ix, chip))),
       group('Processes', steps.size
         ? 'one agent call each; the workflow steps above also run alone'
-        : 'one agent call each', '',
+        : 'one agent call each',
       alone.map((p) => processCard(p, ix, chip))),
       model.agents.length || model.policies.length || model.runtimes.length || model.service
         ? el('h2', { className: 'group', textContent: 'Building blocks' }) : null,
@@ -336,12 +335,12 @@
     ].filter(Boolean);
   }
 
-  function group(title, note, kind, cards) {
+  function group(title, note, cards) {
     if (!cards.length) return null;
     return el('section', { className: 'group' },
       el('h2', { className: 'group', textContent: title }),
       el('p', { className: 'group-note', textContent: note }),
-      el('div', { className: `cards ${kind}` }, ...cards));
+      el('div', { className: 'cards' }, ...cards));
   }
 
   function sourceChip(item) {
