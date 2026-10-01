@@ -101,7 +101,9 @@ The server writes nothing and answers these endpoints:
 A run summary holds, from the record:
 
 - the run's ID, process, agent, created and finished time, and status:
-  the result's, or `running` when there is none;
+  the result's; with none, `running` while the process running it holds
+  its `owner.lock`, and `lost` once none does (ADR-001 rule 11). The run
+  store `agister run` writes is what tells;
 - `implementor`: the runtime adapter and version, the model (the one the
   call asked for, else the one the runtime reported), the reported model,
   and the effort the call asked for. Runs recorded before the agent profile
@@ -128,8 +130,10 @@ It listens on loopback only and refuses a request whose Host is not
 
 The page itself is `index.html`, embedded in the binary with `repos.js`
 (the picker and the calls to the server), `config.js` (reading the
-settings; its YAML and TOML parsers cover what Agister settings use) and
-`runs.js` (the Runs view's formatting, filters and compare tables).
+settings; its YAML and TOML parsers cover what Agister settings use),
+`runs.js` (the Runs view's formatting, filters and compare tables) and
+`page.js` (the page's views and controls, started over the browser's
+document, fetch and storage, which its tests replace with fakes).
 `serve.go` is the server; `runs.go` summarises the runs.
 
 ## Data

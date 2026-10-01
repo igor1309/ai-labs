@@ -2,6 +2,7 @@ package pages
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,7 +34,8 @@ type RunSummary struct {
 	Agent      string     `json:"agent,omitempty"`
 	CreatedAt  time.Time  `json:"created_at"`
 	FinishedAt *time.Time `json:"finished_at,omitempty"`
-	// Status is the result's, or running when there is none.
+	// Status is the result's; without one, running while the run's owner
+	// holds it and lost once it does not.
 	Status      string       `json:"status"`
 	Implementor *Implementor `json:"implementor,omitempty"`
 	Policy      *RunPolicy   `json:"policy,omitempty"`
@@ -141,8 +143,15 @@ type RunDetail struct {
 	Record  json.RawMessage `json:"record"`
 }
 
-// ListRuns summarises the runs under dir, newest first, at most limit.
-func ListRuns(dir string, limit int) (RunList, error) {
+// RunObserver reads a run as the run store sees it: its record and its
+// state, abandoned when it never finished and no process owns it any more.
+type RunObserver interface {
+	Get(ctx context.Context, id string) (run.Record, run.State, error)
+}
+
+// ListRuns summarises the runs under dir, newest first, at most limit;
+// runs tells which unfinished runs are still owned.
+func ListRuns(ctx context.Context, dir string, runs RunObserver, limit int) (RunList, error) {
 	if limit < 1 {
 		return RunList{}, badRequest("limit must be a positive number")
 	}
@@ -160,7 +169,7 @@ func ListRuns(dir string, limit int) (RunList, error) {
 		return a.ID > b.ID
 	})
 	for _, stored := range records[:min(limit, len(records))] {
-		summary := Summarise(stored.Record)
+		summary := summarise(observe(ctx, runs, stored.dir, stored.Record))
 		addEvents(&summary, filepath.Join(dir, stored.dir, "events.jsonl"))
 		list.Runs = append(list.Runs, summary)
 	}
@@ -170,25 +179,75 @@ func ListRuns(dir string, limit int) (RunList, error) {
 // runID is a plain run directory name, as the run store makes them.
 var runID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
 
-// ReadRun is the summary and record of the run id under dir.
-func ReadRun(dir, id string) (RunDetail, error) {
+// ReadRun is the summary and record of the run id under dir; runs tells
+// whether an unfinished run is still owned.
+func ReadRun(ctx context.Context, dir string, runs RunObserver, id string) (RunDetail, error) {
 	if !runID.MatchString(id) {
 		return RunDetail{}, badRequest(fmt.Sprintf("%q is not a run ID", id))
 	}
-	data, err := os.ReadFile(filepath.Join(dir, id, "record.json"))
-	if errors.Is(err, fs.ErrNotExist) {
-		return RunDetail{}, notFound("no run " + id)
-	}
+	data, record, err := readRecord(dir, id)
 	if err != nil {
 		return RunDetail{}, err
 	}
-	var record run.Record
-	if err := json.Unmarshal(data, &record); err != nil {
-		return RunDetail{}, fmt.Errorf("run %s: record does not parse: %w", id, err)
+	observed, state := observe(ctx, runs, id, record)
+	if record.Result == nil && observed.Result != nil {
+		// It finished after the first read: the record as it now stands.
+		if latest, latestRecord, err := readRecord(dir, id); err == nil && latestRecord.Result != nil {
+			data, observed = latest, latestRecord
+		}
 	}
-	summary := Summarise(record)
+	summary := summarise(observed, state)
 	addEvents(&summary, filepath.Join(dir, id, "events.jsonl"))
 	return RunDetail{Summary: summary, Record: json.RawMessage(data)}, nil
+}
+
+// readRecord is the run id's record.json under dir, as stored and parsed.
+func readRecord(dir, id string) ([]byte, run.Record, error) {
+	var record run.Record
+	data, err := os.ReadFile(filepath.Join(dir, id, "record.json"))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, record, notFound("no run " + id)
+	}
+	if err != nil {
+		return nil, record, err
+	}
+	if err := json.Unmarshal(data, &record); err != nil {
+		return nil, record, fmt.Errorf("run %s: record does not parse: %w", id, err)
+	}
+	return data, record, nil
+}
+
+// observe is the run id's record and state, from runs when record, as
+// read, has no result: abandoned when no process owns the run any more,
+// finished with the store's newer record when it finished since. When the
+// store cannot tell, the run is running.
+func observe(ctx context.Context, runs RunObserver, id string, record run.Record) (run.Record, run.State) {
+	if record.Result != nil {
+		return record, run.StateFinished
+	}
+	latest, state, err := runs.Get(ctx, id)
+	switch {
+	case err != nil:
+		return record, run.StateRunning
+	case state == run.StateFinished && latest.Result != nil:
+		if latest.ID == "" {
+			latest.ID = record.ID
+		}
+		return latest, state
+	case state == run.StateAbandoned:
+		return record, state
+	}
+	return record, run.StateRunning
+}
+
+// summarise is Summarise of a record observed in state: an abandoned run
+// reads as lost (ADR-001 rule 11).
+func summarise(record run.Record, state run.State) RunSummary {
+	summary := Summarise(record)
+	if state == run.StateAbandoned {
+		summary.Status = string(run.Lost)
+	}
+	return summary
 }
 
 // storedRecord is a run's record and the directory it was read from.

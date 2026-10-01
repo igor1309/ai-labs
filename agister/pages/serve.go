@@ -25,7 +25,7 @@ import (
 	"time"
 )
 
-//go:embed index.html repos.js config.js runs.js
+//go:embed index.html repos.js config.js runs.js page.js
 var assets embed.FS
 
 // The .agister entries that hold settings; runs and logs are not settings.
@@ -49,9 +49,14 @@ type Choose func(ctx context.Context) (string, error)
 // only this page can pop the dialog.
 const ChooseHeader = "X-Agister-Pages"
 
+// Observe is the run store over the runs in runsDir, which tells whether
+// an unfinished run is still owned.
+type Observe func(runsDir string) RunObserver
+
 // Handler serves the page and its endpoints. agisterHome is Agister's home
-// (what ~ names); choose asks the user for a folder.
-func Handler(agisterHome string, choose Choose) http.Handler {
+// (what ~ names); choose asks the user for a folder; observe reads the
+// runs' owners.
+func Handler(agisterHome string, choose Choose, observe Observe) http.Handler {
 	mux := http.NewServeMux()
 	var dialog sync.Mutex
 	mux.Handle("GET /", http.FileServerFS(assets))
@@ -96,6 +101,7 @@ func Handler(agisterHome string, choose Choose) http.Handler {
 		reply(w, body, err)
 	})
 	runs := filepath.Join(agisterHome, "runs")
+	owners := observe(runs)
 	mux.HandleFunc("GET /api/runs", func(w http.ResponseWriter, r *http.Request) {
 		limit := DefaultRunLimit
 		if text := r.URL.Query().Get("limit"); text != "" {
@@ -106,7 +112,7 @@ func Handler(agisterHome string, choose Choose) http.Handler {
 			}
 			limit = n
 		}
-		list, err := ListRuns(runs, limit)
+		list, err := ListRuns(r.Context(), runs, owners, limit)
 		reply(w, list, err)
 	})
 	mux.HandleFunc("GET /api/runs/compare", func(w http.ResponseWriter, r *http.Request) {
@@ -114,7 +120,7 @@ func Handler(agisterHome string, choose Choose) http.Handler {
 		reply(w, comparison, err)
 	})
 	mux.HandleFunc("GET /api/runs/{id...}", func(w http.ResponseWriter, r *http.Request) {
-		detail, err := ReadRun(runs, r.PathValue("id"))
+		detail, err := ReadRun(r.Context(), runs, owners, r.PathValue("id"))
 		reply(w, detail, err)
 	})
 	return loopbackOnly(mux)
@@ -230,6 +236,8 @@ type Env struct {
 	Choose Choose
 	// Listen opens the server's socket; net.Listen when nil.
 	Listen func(network, address string) (net.Listener, error)
+	// Observe is the run store the runs' owners are read from.
+	Observe Observe
 }
 
 // Usage is the help for agister pages.
@@ -283,6 +291,10 @@ func Main(ctx context.Context, args []string, env Env) int {
 		agisterHome = abs
 	}
 
+	if env.Observe == nil {
+		fmt.Fprintln(env.Stderr, "agister pages: no run store to read the runs from")
+		return 70
+	}
 	listen := env.Listen
 	if listen == nil {
 		listen = net.Listen
@@ -296,7 +308,7 @@ func Main(ctx context.Context, args []string, env Env) int {
 	if choose == nil {
 		choose = func(context.Context) (string, error) { return "", errors.New("no folder dialog on this system") }
 	}
-	server := &http.Server{Handler: Handler(agisterHome, choose), ReadHeaderTimeout: 10 * time.Second}
+	server := &http.Server{Handler: Handler(agisterHome, choose, env.Observe), ReadHeaderTimeout: 10 * time.Second}
 	url := "http://" + listener.Addr().String() + "/"
 	fmt.Fprintf(env.Stdout, "Agister pages at %s (Ctrl-C stops)\n", url)
 	if env.Open != nil && !*noOpen {
