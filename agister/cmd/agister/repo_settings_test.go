@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -29,6 +30,17 @@ var repoParams = map[string]string{
 
 const fallbackParam = "AGENTS.md"
 
+// codexAgents is the agent recorded for each process that runs on Codex, by
+// process: each agent is named after its model version.
+var codexAgents = map[string]string{
+	"adr_review_codex":          "codex-sol-61",
+	"adversarial_review_codex":  "codex-sol-61",
+	"architecture_review_codex": "codex-sol-61",
+	"clarity_review_codex":      "codex-sol-61",
+	"tests_review_codex":        "codex-sol-61",
+	"implement_codex":           "codex-implementer-sol-61",
+}
+
 // verifyFixture is the verification command every process that declares
 // verify runs in the test's repository instead of its own: it passes in a
 // checkout of the candidate. The real command would run this module's own
@@ -43,7 +55,8 @@ const verifyFixture = "grep -qx two change.txt"
 // missing agent, policy or schema, a schema that does not compile, an
 // unknown input source or a prompt path that does not resolve from the
 // repository root fails it. Processes are read from the directory, so a new
-// one is tested without listing it here.
+// one is tested without listing it here. Each process of codexAgents
+// exists, and its run records that agent.
 //
 // The test works in a repository of its own whose top-level entries link to
 // this repository's working tree (settings and prompts as they are, edits
@@ -69,6 +82,11 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	if len(names) == 0 {
 		t.Fatal("the repository has no processes")
 	}
+	for name := range codexAgents {
+		if !slices.Contains(names, name) {
+			t.Errorf("process %s, which runs on Codex, is not among the repository's processes", name)
+		}
+	}
 	// Processes that take a workflow's collection, to be run as a join.
 	joins := map[string]bool{}
 	for _, name := range names {
@@ -84,6 +102,9 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 				t.Fatalf("runs recorded: %v, want one", created)
 			}
 			record := completedRun(t, home, created[0])
+			if want, ok := codexAgents[name]; ok && record["agent"] != want {
+				t.Fatalf("agent = %v, want %s", record["agent"], want)
+			}
 			if process.Verify != nil {
 				attempts, _ := record["attempts"].([]any)
 				if len(attempts) != 1 {
