@@ -471,7 +471,7 @@
   function workflowCard(w, ix, chip) {
     if (w.error) return errorCard(w);
     return card('workflow', w, chip, command(w.name, w.params), facts([['defaults', defaults(w.params)]]),
-      w.fanOut.length ? stage(`Runs at once (${w.fanOut.length})`, w.fanOut.map((n) => step(n, ix))) : null,
+      w.fanOut.length ? stage(w.fanOut.length > 1 ? `${w.fanOut.length} at once` : 'First', w.fanOut.map((n) => step(n, ix))) : null,
       w.join ? stage('Then', [step(w.join, ix)]) : null);
   }
 
