@@ -17,8 +17,6 @@ tools:
     - repository.search
 
 timeout: 20m
-# Stops the runtime once the call has cost this much (USD).
-max_cost_usd: 3
 retry:
   max_attempts: 1
 

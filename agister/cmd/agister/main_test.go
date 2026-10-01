@@ -200,9 +200,9 @@ func TestAgentCallEndToEnd(t *testing.T) {
 	}
 	// Primitives, not permissions, reach the runtime. Under claude-code/3
 	// the shipped file tools reach the host, so a review is granted none;
-	// Skill it always gets.
+	// Skill it always gets. The review sets no cost limit, so none is sent.
 	args := strings.Join(last.argv(), " ")
-	if !strings.Contains(args, "--tools=Skill --allowedTools=Skill") || strings.Contains(args, "Read") || strings.Contains(args, "Bash") || !strings.Contains(args, "--max-budget-usd 3") {
+	if !strings.Contains(args, "--tools=Skill --allowedTools=Skill") || strings.Contains(args, "Read") || strings.Contains(args, "Bash") || strings.Contains(args, "--max-budget-usd") {
 		t.Fatalf("argv = %s", args)
 	}
 	prompt := last.first["prompt"].(string)
