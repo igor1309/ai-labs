@@ -137,6 +137,7 @@ func wire(config cli.Config) (contract.Client, *app.BackgroundReaper, error) {
 			Recorder:   evidence,
 			Runs:       evidence,
 			Clock:      system.Clock{},
+			Timer:      system.Timer,
 			IDs:        system.IDs{},
 			StateDir:   config.Home,
 		},

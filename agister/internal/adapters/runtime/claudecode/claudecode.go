@@ -17,6 +17,10 @@
 // total_cost_usd is the session's cost, counting the turns it resumed; its
 // usage is the turn's own.
 //
+// Tool calls are reported as they start and finish: a tool_use block with
+// its whole input, and the tool_result that answers it. Bash is the tool
+// that runs commands.
+//
 // Turn status precedence: the runtime's `result` message, then Agister's
 // timeout or cancellation, then the process exit.
 //
@@ -46,6 +50,9 @@ const Contract = "claude-code/3"
 // skill is the tool that uses the repository's skills; every turn gets it.
 const skill = "Skill"
 
+// commandTool is the tool that runs commands.
+const commandTool = "Bash"
+
 type Runner struct {
 	Command   string
 	KillGrace time.Duration // zero: the supervisor default
@@ -69,7 +76,7 @@ func (r *Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
 	if version == "" {
 		return app.RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
 	}
-	return app.RuntimeIdentity{Contract: Contract, Version: version, Resume: true, CostLimit: true}, nil
+	return app.RuntimeIdentity{Contract: Contract, Version: version, Resume: true, CostLimit: true, ToolCalls: true}, nil
 }
 
 // Arguments builds the command line for a turn.
@@ -131,6 +138,13 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 		for _, event := range state.Reduce(line) {
 			sink.Event(event.Source, event.Kind, event.Data)
 		}
+		for _, tool := range state.TakeTools() {
+			if tool.Started != nil {
+				sink.ToolStarted(*tool.Started)
+			} else {
+				sink.ToolFinished(tool.Finished)
+			}
+		}
 	})
 	return state.Reconcile(evidence, len(request.OutputSchema) > 0)
 }
@@ -153,6 +167,23 @@ type Stream struct {
 	LastText          string
 	Result            map[string]any
 	RateLimit         string // set when the provider rejected a request
+	// tools are the tool calls reduced and not yet taken (TakeTools).
+	tools []Tool
+}
+
+// Tool is a tool call the stream reported: its start, or the ID of the one
+// that finished.
+type Tool struct {
+	Started  *app.ToolCall
+	Finished string
+}
+
+// TakeTools returns the tool calls reduced since it was last called, in
+// order.
+func (s *Stream) TakeTools() []Tool {
+	tools := s.tools
+	s.tools = nil
+	return tools
 }
 
 func (s *Stream) Reduce(line string) []Event {
@@ -206,6 +237,9 @@ func (s *Stream) assistant(message map[string]any) []Event {
 		switch block["type"] {
 		case "tool_use":
 			input, _ := json.Marshal(block["input"])
+			id, _ := block["id"].(string)
+			name, _ := block["name"].(string)
+			s.tools = append(s.tools, Tool{Started: &app.ToolCall{ID: id, Name: name, Input: string(input), Command: name == commandTool}})
 			events = append(events, Event{run.SourceProtocol, "TOOL_REQUESTED", map[string]any{"tool_use_id": block["id"], "name": block["name"], "input": truncate(string(input), 300)}})
 		case "text":
 			if text, _ := block["text"].(string); strings.TrimSpace(text) != "" {
@@ -222,6 +256,9 @@ func (s *Stream) user(message map[string]any) []Event {
 	for _, block := range blocks(message) {
 		if block["type"] == "tool_result" {
 			isError, _ := block["is_error"].(bool)
+			if id, _ := block["tool_use_id"].(string); id != "" {
+				s.tools = append(s.tools, Tool{Finished: id})
+			}
 			events = append(events, Event{run.SourceProtocol, "TOOL_RESULT", map[string]any{"tool_use_id": block["tool_use_id"], "is_error": isError}})
 		}
 	}

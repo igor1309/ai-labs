@@ -604,3 +604,33 @@ func TestAnOversizedPromptFailsWithCodexsReason(t *testing.T) {
 		t.Fatalf("turn = %+v", turn)
 	}
 }
+
+// The stream's tool calls are reported for the core to watch: each with its
+// whole input and whether it runs a command; a completed item ends the call
+// of its ID, and an item that is no tool call is not one.
+func TestStreamReportsToolCalls(t *testing.T) {
+	stream := &codex.Stream{}
+	long := "echo " + strings.Repeat("x", 1000)
+	command, _ := json.Marshal(long)
+	for _, line := range []string{
+		`{"type":"item.started","item":{"id":"item_1","type":"command_execution","command":` + string(command) + `}}`,
+		`{"type":"item.completed","item":{"id":"item_1","type":"command_execution","exit_code":0,"status":"completed"}}`,
+		`{"type":"item.started","item":{"id":"item_2","type":"web_search","query":"agister"}}`,
+		`{"type":"item.completed","item":{"id":"item_3","type":"agent_message","text":"done"}}`,
+	} {
+		stream.Reduce(line)
+	}
+	tools := stream.TakeTools()
+	if len(tools) != 3 || tools[0].Started == nil || tools[1].Finished != "item_1" || tools[2].Started == nil {
+		t.Fatalf("tools = %+v", tools)
+	}
+	if first := *tools[0].Started; first.ID != "item_1" || first.Name == "" || first.Input != long || !first.Command {
+		t.Fatalf("command = %+v", first)
+	}
+	if search := *tools[2].Started; search.ID != "item_2" || search.Input != "agister" || search.Command {
+		t.Fatalf("search = %+v", search)
+	}
+	if again := stream.TakeTools(); len(again) != 0 {
+		t.Fatalf("taken twice: %+v", again)
+	}
+}

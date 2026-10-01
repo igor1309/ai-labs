@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/examples"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
@@ -448,6 +449,54 @@ output:
 	} {
 		if err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("missing %q in:\n%v", want, err)
+		}
+	}
+}
+
+const stalePolicy = `schema: agister.process-policy/v1alpha1
+name: pol
+timeout: 20m
+`
+
+// A policy declares its staleness limits in a stale block; each is
+// optional, and unset when the block is.
+func TestPolicyDeclaresStalenessLimits(t *testing.T) {
+	policy, err := definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy))
+	if err != nil || policy.Limits.Stale != (definition.Stale{}) {
+		t.Fatalf("without the block: %+v, %v", policy.Limits.Stale, err)
+	}
+	policy, err = definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy+`stale:
+  no_event: 5m
+  no_output: 2m
+  tool_command: 20m
+  repeated_tool_calls: 5
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	stale := policy.Limits.Stale
+	if *stale.NoEvent != 5*time.Minute || *stale.NoOutput != 2*time.Minute || *stale.ToolCommand != 20*time.Minute || *stale.RepeatedToolCalls != 5 {
+		t.Fatalf("stale = %+v", stale)
+	}
+	policy, err = definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy+"stale: {no_event: 5m}\n"))
+	if err != nil || *policy.Limits.Stale.NoEvent != 5*time.Minute || policy.Limits.Stale.NoOutput != nil || policy.Limits.Stale.RepeatedToolCalls != nil {
+		t.Fatalf("one limit: %+v, %v", policy.Limits.Stale, err)
+	}
+}
+
+func TestStalenessLimitProblems(t *testing.T) {
+	for block, want := range map[string]string{
+		"stale: {no_event: soon}":           `stale.no_event: invalid duration "soon"`,
+		"stale: {no_event: 30m}":            "stale.no_event: 30m0s exceeds timeout 20m0s",
+		"stale: {no_output: 21m}":           "stale.no_output: 21m0s exceeds timeout 20m0s",
+		"stale: {tool_command: 1h}":         "stale.tool_command: 1h0m0s exceeds timeout 20m0s",
+		"stale: {repeated_tool_calls: 1}":   "stale.repeated_tool_calls: must be at least 2",
+		"stale: {repeated_tool_calls: two}": "stale.repeated_tool_calls: ",
+		"stale: {idle: 5m}":                 "stale.idle: unknown field",
+	} {
+		_, err := definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy+block+"\n"))
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: err = %v, want %q", block, err, want)
 		}
 	}
 }

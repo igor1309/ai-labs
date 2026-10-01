@@ -652,6 +652,9 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 		{"workspace", view.Access + ", scope " + view.Scope},
 		{"limits", limits(view)},
 	}
+	if text := stale(view.Stale); text != "" {
+		lines = append(lines, [2]string{"  stale", text})
+	}
 	if verify := view.Verify; verify != nil {
 		lines = append(lines,
 			[2]string{"verify", verify.Command},
@@ -932,6 +935,23 @@ func limits(view contract.ProcessView) string {
 		text += fmt.Sprintf(", cost $%g", *view.MaxCostUSD)
 	}
 	return text
+}
+
+// stale lists the staleness limits in effect; empty when there are none.
+func stale(limits contract.Stale) string {
+	var parts []string
+	for _, limit := range []struct {
+		name  string
+		value time.Duration
+	}{{"no event", limits.NoEvent}, {"no output", limits.NoOutput}, {"tool command", limits.ToolCommand}} {
+		if limit.value > 0 {
+			parts = append(parts, limit.name+" "+limit.value.String())
+		}
+	}
+	if limits.RepeatedToolCalls > 0 {
+		parts = append(parts, fmt.Sprintf("repeated tool calls %d", limits.RepeatedToolCalls))
+	}
+	return strings.Join(parts, ", ")
 }
 
 func printJSON(w io.Writer, value any) error {

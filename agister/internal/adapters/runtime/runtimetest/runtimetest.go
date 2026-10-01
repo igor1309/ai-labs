@@ -55,6 +55,10 @@ type Recorder struct {
 	Events    []run.Event
 	Lines     []string
 	Processes []string // references, in the order reported
+	// Tools are the tool calls reported started, in order, and Finished the
+	// IDs of those reported finished.
+	Tools    []app.ToolCall
+	Finished []string
 	// ProcessErr is what ProcessStarted returns (after keeping the reference).
 	ProcessErr error
 	// OnEvent, when set before the run, is called with each event's kind
@@ -73,6 +77,18 @@ func (r *Recorder) Event(source, kind string, data map[string]any) {
 	if hook != nil {
 		hook(kind)
 	}
+}
+
+func (r *Recorder) ToolStarted(call app.ToolCall) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.Tools = append(r.Tools, call)
+}
+
+func (r *Recorder) ToolFinished(id string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.Finished = append(r.Finished, id)
 }
 
 func (r *Recorder) ProcessStarted(ref string) error {
@@ -172,6 +188,19 @@ func Conformance(t *testing.T, subject Subject) {
 		}
 		if len(sink.Lines) < 3 {
 			t.Fatalf("raw lines not passed through: %d", len(sink.Lines))
+		}
+	})
+
+	// What the core's staleness limits on tool calls are enforced on.
+	t.Run("a tool call is reported as it starts and as it finishes", func(t *testing.T) {
+		identity, err := subject.New(subject.Fake).Identity(context.Background())
+		if err != nil || !identity.ToolCalls {
+			t.Skipf("the runtime does not report tool calls: %+v, %v", identity, err)
+		}
+		_, sink := turn(t, "SCENARIO:approve", nil, context.Background())
+		if len(sink.Tools) != 1 || sink.Tools[0].ID == "" || sink.Tools[0].Name == "" || sink.Tools[0].Input == "" ||
+			len(sink.Finished) != 1 || sink.Finished[0] != sink.Tools[0].ID {
+			t.Fatalf("tool calls started %+v, finished %q", sink.Tools, sink.Finished)
 		}
 	})
 

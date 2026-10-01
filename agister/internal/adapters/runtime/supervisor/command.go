@@ -23,21 +23,34 @@ type Commands struct {
 	// KillGrace bounds reading output that something outside the group
 	// holds open after the group is gone; zero means 5s.
 	KillGrace time.Duration
-	// Timer starts the command's timeout: the run times out when the
-	// channel it returns delivers, and stop releases it. Nil is the wall
-	// clock.
+	// Timer starts the command's timeout, and its wait for output when the
+	// request limits one (started again at each output): the wait has
+	// passed when the channel it returns delivers, and stop releases it.
+	// Nil is the wall clock.
 	Timer func(timeout time.Duration) (fired <-chan time.Time, stop func())
 }
 
-// Run runs the command until it exits, its timeout passes or ctx ends.
-// On a timeout or cancellation the whole group is killed; after an exit,
-// whatever the command left running in its group is killed too.
+// Run runs the command until it exits, its timeout passes, it goes without
+// output for the request's NoOutput, or ctx ends. On a timeout, staleness
+// or cancellation the whole group is killed; after an exit, whatever the
+// command left running in its group is killed too.
 func (c Commands) Run(ctx context.Context, request app.CommandRequest, started func(ref string) error) (result app.CommandResult) {
 	grace := c.KillGrace
 	if grace == 0 {
 		grace = defaultKillGrace
 	}
 	output := &boundedOutput{bound: request.Bound, digest: sha256.New()}
+	// Each output restarts the wait for the next; one pending restart is
+	// enough for any number of writes.
+	wrote := make(chan struct{}, 1)
+	if request.NoOutput > 0 {
+		output.wrote = func() {
+			select {
+			case wrote <- struct{}{}:
+			default:
+			}
+		}
+	}
 	defer func() {
 		result.Head, result.Tail, result.Bytes, result.SHA256 = output.result()
 	}()
@@ -92,19 +105,35 @@ func (c Commands) Run(ctx context.Context, request app.CommandRequest, started f
 		}
 	}
 	exited, watched := make(chan struct{}), make(chan struct{})
-	var timedOut, cancelled bool
+	var timedOut, cancelled, stale bool
 	fired, stop := c.timer(request.Timeout)
+	var quiet <-chan time.Time
+	stopQuiet := func() {}
+	if request.NoOutput > 0 {
+		quiet, stopQuiet = c.timer(request.NoOutput)
+	}
 	go func() {
 		defer close(watched)
 		defer stop()
-		select {
-		case <-exited:
-		case <-fired:
-			timedOut = true
-			kill()
-		case <-ctx.Done():
-			cancelled = true
-			kill()
+		defer func() { stopQuiet() }()
+		for {
+			select {
+			case <-exited:
+			case <-fired:
+				timedOut = true
+				kill()
+			case <-ctx.Done():
+				cancelled = true
+				kill()
+			case <-quiet:
+				stale = true
+				kill()
+			case <-wrote:
+				stopQuiet()
+				quiet, stopQuiet = c.timer(request.NoOutput)
+				continue
+			}
+			return
 		}
 	}()
 
@@ -117,7 +146,7 @@ func (c Commands) Run(ctx context.Context, request app.CommandRequest, started f
 	mu.Unlock()
 	close(exited)
 	<-watched
-	result.TimedOut, result.Cancelled = timedOut, cancelled
+	result.TimedOut, result.Cancelled, result.Stale = timedOut, cancelled, stale
 
 	select {
 	case <-read:
@@ -158,9 +187,14 @@ type boundedOutput struct {
 	tail   []byte
 	bytes  int64
 	digest hash.Hash
+	// wrote, when set, is told of each write.
+	wrote func()
 }
 
 func (b *boundedOutput) Write(p []byte) (int, error) {
+	if b.wrote != nil && len(p) > 0 {
+		defer b.wrote()
+	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.digest.Write(p)

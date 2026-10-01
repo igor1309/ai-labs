@@ -261,3 +261,35 @@ func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
 		t.Fatalf("turn = %+v", turn)
 	}
 }
+
+// The stream's tool calls are reported for the core to watch: each with its
+// whole input, the same text for the same input, and whether it runs a
+// command; each result ends the call of its ID.
+func TestStreamReportsToolCalls(t *testing.T) {
+	stream := &claudecode.Stream{}
+	long := strings.Repeat("x", 1000)
+	use := func(id, name string, input map[string]any) map[string]any {
+		return map[string]any{"type": "assistant", "message": map[string]any{"content": []any{map[string]any{"type": "tool_use", "id": id, "name": name, "input": input}}}}
+	}
+	for _, line := range []map[string]any{
+		use("t1", "Bash", map[string]any{"command": "go test ./...", "description": long}),
+		{"type": "user", "message": map[string]any{"content": []any{map[string]any{"type": "tool_result", "tool_use_id": "t1"}}}},
+		use("t2", "Read", map[string]any{"file_path": "a.go"}),
+	} {
+		data, _ := json.Marshal(line)
+		stream.Reduce(string(data))
+	}
+	bash, _ := json.Marshal(map[string]any{"command": "go test ./...", "description": long})
+	started := func(call app.ToolCall) claudecode.Tool { return claudecode.Tool{Started: &call} }
+	want := []claudecode.Tool{
+		started(app.ToolCall{ID: "t1", Name: "Bash", Input: string(bash), Command: true}),
+		{Finished: "t1"},
+		started(app.ToolCall{ID: "t2", Name: "Read", Input: `{"file_path":"a.go"}`}),
+	}
+	if got := stream.TakeTools(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("tools = %+v", got)
+	}
+	if again := stream.TakeTools(); len(again) != 0 {
+		t.Fatalf("taken twice: %+v", again)
+	}
+}

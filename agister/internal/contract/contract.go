@@ -157,6 +157,8 @@ type ProcessView struct {
 	Permissions []string
 	Access      string
 	Scope       string
+	// The staleness limits a call of it would run under.
+	Stale Stale
 	// Plan on the agent's runtime, or why none exists.
 	Primitives []string
 	Withheld   []string
@@ -198,6 +200,15 @@ type WorkflowNode struct {
 	Process ProcessView
 	// The workflow's inputs it receives as params; none for a join.
 	Params []string
+}
+
+// Stale are a call's staleness limits: what ends an agent turn or a
+// verification run before its timeout. A zero one is not set.
+type Stale struct {
+	NoEvent           time.Duration // an agent turn without a runtime event
+	NoOutput          time.Duration // a verification run without output
+	ToolCommand       time.Duration // one command an agent's tool runs
+	RepeatedToolCalls int           // identical tool calls in a row
 }
 
 // Verify is a process's verification command.

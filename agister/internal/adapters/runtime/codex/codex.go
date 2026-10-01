@@ -22,6 +22,11 @@
 // cancellation. A lookup that fails leaves the cost unknown, and nothing
 // else about the turn.
 //
+// Tool calls are reported as they start and finish: item.started and
+// item.completed of a command execution, file change, MCP call or web
+// search, with the item's whole input. A command execution is the tool that
+// runs commands.
+//
 // Only turn.completed and turn.failed decide a turn. Top-level `error`
 // events and error items occur mid-turn (reconnects, transport fallback)
 // and are recorded, not terminal.
@@ -121,6 +126,11 @@ type lookupSink struct{ LookupSink }
 
 func (lookupSink) Raw(string) {}
 
+// A lookup calls no tools.
+func (lookupSink) ToolStarted(app.ToolCall) {}
+
+func (lookupSink) ToolFinished(string) {}
+
 // ThreadCost is a thread's cost, every turn it had, from a sessions
 // listing: the costUSD of the one session whose sessionId, a rollout path,
 // ends in the thread ID. Unknown when there is no such session, or more
@@ -162,7 +172,7 @@ func (r *Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
 	if version == "" {
 		return app.RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
 	}
-	return app.RuntimeIdentity{Contract: Contract, Version: version, Resume: true}, nil
+	return app.RuntimeIdentity{Contract: Contract, Version: version, Resume: true, ToolCalls: true}, nil
 }
 
 // Arguments builds the command line for a turn.
@@ -238,6 +248,13 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 		for _, event := range state.Reduce(line) {
 			sink.Event(event.Source, event.Kind, event.Data)
 		}
+		for _, tool := range state.TakeTools() {
+			if tool.Started != nil {
+				sink.ToolStarted(*tool.Started)
+			} else {
+				sink.ToolFinished(tool.Finished)
+			}
+		}
 	})
 	turn := state.Reconcile(evidence, schemaPath != "")
 	r.cost(ctx, &turn, request.ResumeSessionID, deadline.Sub(now()), sink)
@@ -283,6 +300,23 @@ type Stream struct {
 	Completed       bool
 	Failed          string
 	Usage           map[string]any
+	// tools are the tool calls reduced and not yet taken (TakeTools).
+	tools []Tool
+}
+
+// Tool is a tool call the stream reported: its start, or the ID of the one
+// that finished.
+type Tool struct {
+	Started  *app.ToolCall
+	Finished string
+}
+
+// TakeTools returns the tool calls reduced since it was last called, in
+// order.
+func (s *Stream) TakeTools() []Tool {
+	tools := s.tools
+	s.tools = nil
+	return tools
 }
 
 func (s *Stream) Reduce(line string) []Event {
@@ -302,6 +336,8 @@ func (s *Stream) Reduce(line string) []Event {
 	case "item.started":
 		item, _ := message["item"].(map[string]any)
 		if name := toolName(item); name != "" {
+			id, _ := item["id"].(string)
+			s.tools = append(s.tools, Tool{Started: &app.ToolCall{ID: id, Name: name, Input: wholeInput(item), Command: item["type"] == "command_execution"}})
 			return []Event{{run.SourceProtocol, "TOOL_REQUESTED", map[string]any{"tool_use_id": item["id"], "name": name, "input": toolInput(item)}}}
 		}
 	case "item.completed":
@@ -334,6 +370,9 @@ func (s *Stream) itemCompleted(item map[string]any) []Event {
 	case "error":
 		return []Event{{run.SourceProtocol, "PROVIDER_ERROR", map[string]any{"message": truncate(fmt.Sprint(item["message"]), 300)}}}
 	case "command_execution", "file_change", "mcp_tool_call", "web_search":
+		if id, _ := item["id"].(string); id != "" {
+			s.tools = append(s.tools, Tool{Finished: id})
+		}
 		failed := item["status"] == "failed"
 		if code, ok := item["exit_code"].(float64); ok && code != 0 {
 			failed = true
@@ -433,14 +472,20 @@ func toolName(item map[string]any) string {
 	return ""
 }
 
+// toolInput is the item's input, bounded, as an event quotes it.
 func toolInput(item map[string]any) string {
+	return truncate(wholeInput(item), 300)
+}
+
+// wholeInput is the item's input: the same text for the same input.
+func wholeInput(item map[string]any) string {
 	for _, key := range []string{"command", "query", "changes", "arguments"} {
 		if value, ok := item[key]; ok {
 			if text, ok := value.(string); ok {
-				return truncate(text, 300)
+				return text
 			}
 			data, _ := json.Marshal(value)
-			return truncate(string(data), 300)
+			return string(data)
 		}
 	}
 	return ""

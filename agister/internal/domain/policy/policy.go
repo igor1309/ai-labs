@@ -28,6 +28,8 @@ type Effective struct {
 	Require     []string
 	Access      string
 	Scope       string
+	// Stale are the staleness limits; each unset one ends nothing.
+	Stale definition.Stale
 }
 
 // InvalidError lists every composition problem.
@@ -81,6 +83,15 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 	}
 	if *timeout > service.MaxTimeout {
 		add("timeout %s exceeds the service limit %s", *timeout, service.MaxTimeout)
+	}
+	// A staleness limit ends a call before its timeout, so one above the
+	// timeout the settings declare is invalid. A caller's shorter timeout
+	// only leaves it without effect.
+	stale := narrowStale(add, base.Stale, over.Stale)
+	for _, limit := range stale.Durations() {
+		if limit.Value != nil && *limit.Value > *timeout {
+			add("%s %s exceeds the timeout %s", limit.Field, *limit.Value, *timeout)
+		}
 	}
 	if caller.Timeout != nil {
 		if *caller.Timeout > *timeout {
@@ -184,7 +195,19 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 		Require:     process.Require,
 		Access:      access,
 		Scope:       scope,
+		Stale:       stale,
 	}, nil
+}
+
+// narrowStale composes the staleness limits. Each may stay unset; one the
+// policy sets, the process may only lower.
+func narrowStale(add func(string, ...any), base, over definition.Stale) definition.Stale {
+	return definition.Stale{
+		NoEvent:           narrowDuration(add, "stale.no_event", base.NoEvent, over.NoEvent),
+		NoOutput:          narrowDuration(add, "stale.no_output", base.NoOutput, over.NoOutput),
+		ToolCommand:       narrowDuration(add, "stale.tool_command", base.ToolCommand, over.ToolCommand),
+		RepeatedToolCalls: narrowInt(add, "stale.repeated_tool_calls", base.RepeatedToolCalls, over.RepeatedToolCalls),
+	}
 }
 
 func narrowDuration(add func(string, ...any), field string, base, over *time.Duration) *time.Duration {

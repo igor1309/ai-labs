@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -189,5 +190,121 @@ func TestCommandTimesOutOnItsTimer(t *testing.T) {
 	})
 	if !result.TimedOut || result.Cancelled || result.Error != "" || timeout != time.Hour || !stopped {
 		t.Fatalf("result %+v, timer started with %s, stopped %t", result, timeout, stopped)
+	}
+}
+
+// quietTimers is a Commands.Timer that tells the wait for output from the
+// timeout by its length: the timeout never passes, and the n-th wait for
+// output is waits[n], called as it starts.
+type quietTimers struct {
+	mu      sync.Mutex
+	timeout time.Duration
+	waits   []func() <-chan time.Time
+	started int
+	stopped int
+}
+
+func (q *quietTimers) timer(wait time.Duration) (<-chan time.Time, func()) {
+	if wait == q.timeout {
+		return nil, func() {}
+	}
+	q.mu.Lock()
+	n := q.started
+	q.started++
+	q.mu.Unlock()
+	var fired <-chan time.Time
+	if n < len(q.waits) {
+		fired = q.waits[n]()
+	}
+	return fired, func() {
+		q.mu.Lock()
+		defer q.mu.Unlock()
+		q.stopped++
+	}
+}
+
+func (q *quietTimers) counts() (started, stopped int) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	return q.started, q.stopped
+}
+
+func passed() <-chan time.Time {
+	fired := make(chan time.Time, 1)
+	fired <- time.Time{}
+	return fired
+}
+
+func never() <-chan time.Time { return nil }
+
+// A command that goes without output for the request's NoOutput is killed
+// as stale, before its timeout and not as a timeout.
+func TestCommandWithoutOutputIsKilledAsStale(t *testing.T) {
+	timers := &quietTimers{timeout: time.Hour, waits: []func() <-chan time.Time{passed}}
+	commands := supervisor.Commands{Timer: timers.timer}
+	request := app.CommandRequest{Command: blocks, Dir: t.TempDir(), Timeout: time.Hour, NoOutput: 2 * time.Minute, Bound: 64}
+	result := commands.Run(context.Background(), request, func(ref string) error {
+		cleanUpGroup(t, ref)
+		return nil
+	})
+	if !result.Stale || result.TimedOut || result.Cancelled || result.Error != "" || result.ExitCode != nil || result.Signal != "killed" {
+		t.Fatalf("result %+v", result)
+	}
+	if started, stopped := timers.counts(); started != 1 || stopped != 1 {
+		t.Fatalf("waits for output: %d started, %d stopped", started, stopped)
+	}
+}
+
+// Each output starts the wait again: the wait is for the time since the
+// last output, so a command that keeps writing is live, and one that stops
+// is stale from its last line.
+func TestCommandOutputRestartsTheWaitForOutput(t *testing.T) {
+	t.Run("live", func(t *testing.T) {
+		dir := t.TempDir()
+		// The command ends only once its first line restarted the wait.
+		restarted := func() <-chan time.Time {
+			if err := os.WriteFile(filepath.Join(dir, "restarted"), nil, 0o600); err != nil {
+				t.Error(err)
+			}
+			return nil
+		}
+		timers := &quietTimers{timeout: time.Hour, waits: []func() <-chan time.Time{never, restarted}}
+		commands := supervisor.Commands{Timer: timers.timer}
+		request := app.CommandRequest{Command: "echo one; until [ -e restarted ]; do sleep 0.02; done", Dir: dir, Timeout: time.Hour, NoOutput: 2 * time.Minute, Bound: 64}
+		result := commands.Run(context.Background(), request, func(ref string) error {
+			cleanUpGroup(t, ref)
+			return nil
+		})
+		if result.Stale || result.TimedOut || result.ExitCode == nil || *result.ExitCode != 0 || string(result.Head) != "one\n" {
+			t.Fatalf("result %+v", result)
+		}
+		if started, stopped := timers.counts(); started != 2 || stopped != 2 {
+			t.Fatalf("waits for output: %d started, %d stopped", started, stopped)
+		}
+	})
+	t.Run("stale after its last output", func(t *testing.T) {
+		timers := &quietTimers{timeout: time.Hour, waits: []func() <-chan time.Time{never, passed}}
+		commands := supervisor.Commands{Timer: timers.timer}
+		request := app.CommandRequest{Command: "echo one; " + blocks, Dir: t.TempDir(), Timeout: time.Hour, NoOutput: 2 * time.Minute, Bound: 64}
+		result := commands.Run(context.Background(), request, func(ref string) error {
+			cleanUpGroup(t, ref)
+			return nil
+		})
+		if !result.Stale || result.TimedOut || string(result.Head) != "one\n" {
+			t.Fatalf("result %+v", result)
+		}
+	})
+}
+
+// Without a NoOutput only the timeout is started.
+func TestCommandWithoutANoOutputLimitStartsNoWaitForOutput(t *testing.T) {
+	timers := &quietTimers{timeout: time.Hour}
+	commands := supervisor.Commands{Timer: timers.timer}
+	result := commands.Run(context.Background(), app.CommandRequest{Command: "echo one", Dir: t.TempDir(), Timeout: time.Hour, Bound: 64}, func(ref string) error {
+		cleanUpGroup(t, ref)
+		return nil
+	})
+	if started, _ := timers.counts(); started != 0 || result.Stale || result.ExitCode == nil {
+		t.Fatalf("result %+v, waits for output started %d", result, started)
 	}
 }

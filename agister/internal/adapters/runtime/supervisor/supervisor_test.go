@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -83,6 +84,10 @@ func (e *events) ProcessStarted(ref string) error {
 }
 
 func (e *events) Raw(string) {}
+
+func (e *events) ToolStarted(app.ToolCall) {}
+
+func (e *events) ToolFinished(string) {}
 
 func (e *events) has(kind string) bool {
 	e.mu.Lock()

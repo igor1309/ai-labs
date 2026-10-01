@@ -78,6 +78,9 @@ type runnerSpy struct {
 	startErr    error // what ProcessStarted returned to the last turn
 	// during, when set, runs while each turn does.
 	during func(app.TurnRequest)
+	// acting, when set, runs while each turn does, with the turn's context
+	// and sink: what the runtime reports of the turn.
+	acting func(context.Context, app.EventSink)
 }
 
 func (s *runnerSpy) Identity(context.Context) (app.RuntimeIdentity, error) {
@@ -107,6 +110,9 @@ func (s *runnerSpy) RunTurn(ctx context.Context, request app.TurnRequest, sink a
 	}
 	if s.during != nil {
 		s.during(request)
+	}
+	if s.acting != nil {
+		s.acting(ctx, sink)
 	}
 	if s.block {
 		select {
@@ -369,6 +375,8 @@ type commandsSpy struct {
 	exitIn   func(dir string) int
 	// running, when set, runs while the command does.
 	running func(app.CommandRequest)
+	// stale, when set, ends each run as one killed for its silence.
+	stale bool
 }
 
 func (s *commandsSpy) Run(_ context.Context, request app.CommandRequest, started func(string) error) app.CommandResult {
@@ -380,6 +388,9 @@ func (s *commandsSpy) Run(_ context.Context, request app.CommandRequest, started
 	}
 	if s.running != nil {
 		s.running(request)
+	}
+	if s.stale {
+		return app.CommandResult{Stale: true, Signal: "killed"}
 	}
 	code := 0
 	if len(s.exits) > 0 {
@@ -578,6 +589,58 @@ func (c *settableClock) advance(by time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.now = c.now.Add(by)
+}
+
+// unfired is a timer whose wait never passes.
+func unfired(time.Duration) (<-chan time.Time, func()) { return nil, func() {} }
+
+// timersSpy starts waits on a settableClock: a wait passes when the clock
+// is advanced to its end, never by wall time.
+type timersSpy struct {
+	clock *settableClock
+	mu    sync.Mutex
+	waits []*timerWait
+	// started lists every wait asked for, in order.
+	started []time.Duration
+}
+
+type timerWait struct {
+	until   time.Time
+	fired   chan time.Time
+	settled bool // fired or stopped
+}
+
+func (s *timersSpy) start(wait time.Duration) (<-chan time.Time, func()) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	w := &timerWait{until: s.clock.Now().Add(wait), fired: make(chan time.Time, 1)}
+	s.waits = append(s.waits, w)
+	s.started = append(s.started, wait)
+	return w.fired, func() {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		w.settled = true
+	}
+}
+
+// advance moves the clock on and passes every wait that ends by then.
+func (s *timersSpy) advance(by time.Duration) {
+	s.clock.advance(by)
+	now := s.clock.Now()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, w := range s.waits {
+		if !w.settled && !w.until.After(now) {
+			w.settled = true
+			w.fired <- now
+		}
+	}
+}
+
+func (s *timersSpy) asked() []time.Duration {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]time.Duration(nil), s.started...)
 }
 
 type fixedClock struct{}
