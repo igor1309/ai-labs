@@ -35,18 +35,6 @@ type Stale struct {
 	RepeatedToolCalls *int `json:"repeated_tool_calls,omitempty"`
 }
 
-// Durations are the limits that are spans of time, by field name, in
-// declaration order; unset ones included.
-func (s Stale) Durations() []StaleDuration {
-	return []StaleDuration{{"stale.no_event", s.NoEvent}, {"stale.no_output", s.NoOutput}, {"stale.tool_command", s.ToolCommand}}
-}
-
-// StaleDuration is one staleness limit that is a span of time.
-type StaleDuration struct {
-	Field string
-	Value *time.Duration
-}
-
 var limitKeys = []string{"timeout", "max_cost_usd", "retry", "stale", "tools", "workspace", "isolation", "resources", "artifacts"}
 
 func parseLimits(values map[string]*yaml.Node, toolKeys, workspaceKeys []string, p *problems) (Limits, map[string]*yaml.Node, map[string]*yaml.Node) {

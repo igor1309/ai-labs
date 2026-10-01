@@ -13,6 +13,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 	"github.com/igor1309/ai-labs/agister/internal/domain/prompt"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -253,7 +254,7 @@ func (c callResolution) Workflow(ctx context.Context, name string) (*ResolvedWor
 
 // callStale is the composed staleness limits as a call reads them: a zero
 // one was not set.
-func callStale(stale definition.Stale) CallStale {
+func callStale(stale policy.Stale) CallStale {
 	var limits CallStale
 	for _, limit := range []struct {
 		to   *time.Duration
@@ -743,12 +744,14 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		// The turn runs under a context of its own, which a staleness limit
 		// cancels: the runtime ends as on any cancellation, and the turn is
 		// decided as stale only if that is what ended it.
+		// Both are ended however the turn returns, a panic included: nothing
+		// is watched, and nothing recorded, once it has.
 		turnCtx, end := context.WithCancel(ctx)
+		defer end()
 		watch := watchTurn(&sink{handle: handle, clock: c.clock, record: &record}, res.Effective.Stale, c.timer, c.clock, end)
+		defer watch.end()
 		turn := runner.RunTurn(turnCtx, request, watch)
-		stale := watch.end()
-		end()
-		if stale != nil {
+		if stale := watch.end(); stale != nil {
 			turn.Stale = stale
 			if ctx.Err() == nil && turn.Error != nil && turn.Error.Class == run.ClassCancelled {
 				turn.Error = staleFault(*stale)

@@ -126,11 +126,6 @@ type lookupSink struct{ LookupSink }
 
 func (lookupSink) Raw(string) {}
 
-// A lookup calls no tools.
-func (lookupSink) ToolStarted(app.ToolCall) {}
-
-func (lookupSink) ToolFinished(string) {}
-
 // ThreadCost is a thread's cost, every turn it had, from a sessions
 // listing: the costUSD of the one session whose sessionId, a rollout path,
 // ends in the thread ID. Unknown when there is no such session, or more

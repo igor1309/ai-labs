@@ -148,6 +148,9 @@ type Subject struct {
 	Fake string
 	// Contract the runner must report.
 	Contract string
+	// ToolCalls is whether the runner must report the agent's tool calls,
+	// and say so in its identity.
+	ToolCalls bool
 	// Request returns a valid request carrying prompt.
 	Request func(prompt string) app.TurnRequest
 }
@@ -172,7 +175,7 @@ func Conformance(t *testing.T, subject Subject) {
 
 	t.Run("identity", func(t *testing.T) {
 		identity, err := subject.New(subject.Fake).Identity(context.Background())
-		if err != nil || identity.Contract != subject.Contract || identity.Version == "" {
+		if err != nil || identity.Contract != subject.Contract || identity.Version == "" || identity.ToolCalls != subject.ToolCalls {
 			t.Fatalf("identity = %+v, %v", identity, err)
 		}
 	})
@@ -193,11 +196,13 @@ func Conformance(t *testing.T, subject Subject) {
 
 	// What the core's staleness limits on tool calls are enforced on.
 	t.Run("a tool call is reported as it starts and as it finishes", func(t *testing.T) {
-		identity, err := subject.New(subject.Fake).Identity(context.Background())
-		if err != nil || !identity.ToolCalls {
-			t.Skipf("the runtime does not report tool calls: %+v, %v", identity, err)
-		}
 		_, sink := turn(t, "SCENARIO:approve", nil, context.Background())
+		if !subject.ToolCalls {
+			if len(sink.Tools) != 0 || len(sink.Finished) != 0 {
+				t.Fatalf("tool calls its identity does not declare: started %+v, finished %q", sink.Tools, sink.Finished)
+			}
+			return
+		}
 		if len(sink.Tools) != 1 || sink.Tools[0].ID == "" || sink.Tools[0].Name == "" || sink.Tools[0].Input == "" ||
 			len(sink.Finished) != 1 || sink.Finished[0] != sink.Tools[0].ID {
 			t.Fatalf("tool calls started %+v, finished %q", sink.Tools, sink.Finished)

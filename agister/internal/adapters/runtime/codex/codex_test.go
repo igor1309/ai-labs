@@ -41,9 +41,10 @@ func TestConformance(t *testing.T) {
 		New: func(command string) app.TurnRunner {
 			return &codex.Runner{Command: command, KillGrace: 200 * time.Millisecond}
 		},
-		Fake:     runtimetest.Binary(t, "fakecodex"),
-		Contract: codex.Contract,
-		Request:  request,
+		Fake:      runtimetest.Binary(t, "fakecodex"),
+		Contract:  codex.Contract,
+		ToolCalls: true,
+		Request:   request,
 	})
 }
 

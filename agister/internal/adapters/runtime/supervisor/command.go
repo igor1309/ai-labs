@@ -40,16 +40,8 @@ func (c Commands) Run(ctx context.Context, request app.CommandRequest, started f
 		grace = defaultKillGrace
 	}
 	output := &boundedOutput{bound: request.Bound, digest: sha256.New()}
-	// Each output restarts the wait for the next; one pending restart is
-	// enough for any number of writes.
-	wrote := make(chan struct{}, 1)
 	if request.NoOutput > 0 {
-		output.wrote = func() {
-			select {
-			case wrote <- struct{}{}:
-			default:
-			}
-		}
+		output.wrote = make(chan struct{}, 1)
 	}
 	defer func() {
 		result.Head, result.Tail, result.Bytes, result.SHA256 = output.result()
@@ -107,34 +99,10 @@ func (c Commands) Run(ctx context.Context, request app.CommandRequest, started f
 	exited, watched := make(chan struct{}), make(chan struct{})
 	var timedOut, cancelled, stale bool
 	fired, stop := c.timer(request.Timeout)
-	var quiet <-chan time.Time
-	stopQuiet := func() {}
-	if request.NoOutput > 0 {
-		quiet, stopQuiet = c.timer(request.NoOutput)
-	}
 	go func() {
 		defer close(watched)
 		defer stop()
-		defer func() { stopQuiet() }()
-		for {
-			select {
-			case <-exited:
-			case <-fired:
-				timedOut = true
-				kill()
-			case <-ctx.Done():
-				cancelled = true
-				kill()
-			case <-quiet:
-				stale = true
-				kill()
-			case <-wrote:
-				stopQuiet()
-				quiet, stopQuiet = c.timer(request.NoOutput)
-				continue
-			}
-			return
-		}
+		timedOut, cancelled, stale = c.watch(ctx, exited, fired, request.NoOutput, output, kill)
 	}()
 
 	waitErr := command.Wait()
@@ -169,6 +137,50 @@ func (c Commands) Run(ctx context.Context, request app.CommandRequest, started f
 	return result
 }
 
+// watch waits for what ends the command and says which did: its exit, its
+// timeout (fired), ctx, or going without output for noOutput, when that is
+// set. All but the exit kill it.
+func (c Commands) watch(ctx context.Context, exited <-chan struct{}, fired <-chan time.Time, noOutput time.Duration, output *boundedOutput, kill func()) (timedOut, cancelled, stale bool) {
+	// The wait for output is for the time since the last one: each output
+	// starts it again. since is how many writes there were when it started.
+	var quiet <-chan time.Time
+	var since int64
+	stopQuiet := func() {}
+	defer func() { stopQuiet() }()
+	wait := func() {
+		stopQuiet()
+		since = output.count()
+		quiet, stopQuiet = c.timer(noOutput)
+	}
+	if noOutput > 0 {
+		wait()
+	}
+	for {
+		select {
+		case <-exited:
+		case <-fired:
+			timedOut = true
+			kill()
+		case <-ctx.Done():
+			cancelled = true
+			kill()
+		case <-quiet:
+			// A wait that passed beside an output it has not been told of
+			// yet is not silence: the command wrote since it started.
+			if output.count() != since {
+				wait()
+				continue
+			}
+			stale = true
+			kill()
+		case <-output.wrote:
+			wait()
+			continue
+		}
+		return timedOut, cancelled, stale
+	}
+}
+
 // timer starts the command's timeout on c.Timer, or on the wall clock.
 func (c Commands) timer(timeout time.Duration) (<-chan time.Time, func()) {
 	if c.Timer != nil {
@@ -187,16 +199,22 @@ type boundedOutput struct {
 	tail   []byte
 	bytes  int64
 	digest hash.Hash
-	// wrote, when set, is told of each write.
-	wrote func()
+	// writes counts the writes that carried output.
+	writes int64
+	// wrote, when set, is told of each of them; one pending is enough for
+	// any number.
+	wrote chan struct{}
 }
 
 func (b *boundedOutput) Write(p []byte) (int, error) {
-	if b.wrote != nil && len(p) > 0 {
-		defer b.wrote()
+	if len(p) > 0 {
+		defer b.told()
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	if len(p) > 0 {
+		b.writes++
+	}
 	b.digest.Write(p)
 	b.bytes += int64(len(p))
 	rest := p
@@ -210,6 +228,21 @@ func (b *boundedOutput) Write(p []byte) (int, error) {
 		b.tail = append(b.tail[:0:0], b.tail[len(b.tail)-b.bound:]...)
 	}
 	return len(p), nil
+}
+
+// told tells wrote of a write, after it is counted.
+func (b *boundedOutput) told() {
+	select {
+	case b.wrote <- struct{}{}:
+	default:
+	}
+}
+
+// count is how many writes carried output so far.
+func (b *boundedOutput) count() int64 {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.writes
 }
 
 func (b *boundedOutput) result() (head, tail []byte, size int64, digest string) {

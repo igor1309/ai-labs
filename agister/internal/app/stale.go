@@ -31,6 +31,14 @@ type CallTimer func(wait time.Duration) (fired <-chan time.Time, stop func())
 // staleClock tells when a turn last moved and when it was found stale.
 type staleClock interface{ Now() time.Time }
 
+// turnSink is what a turn's watcher passes the turn's events on to, and
+// records the limit reached on.
+type turnSink interface {
+	Event(source, kind string, data map[string]any)
+	Raw(line string)
+	ProcessStarted(ref string) error
+}
+
 // turnWatch is the sink of one turn. It passes the turn's events on, one at
 // a time, and watches them against the call's staleness limits: the first
 // limit reached is recorded and ends the turn, by cancelling the context
@@ -38,7 +46,7 @@ type staleClock interface{ Now() time.Time }
 // any cancellation. Without limits it only passes events on.
 type turnWatch struct {
 	mu     sync.Mutex
-	inner  *sink
+	inner  turnSink
 	limits CallStale
 	timer  CallTimer
 	clock  staleClock
@@ -63,7 +71,7 @@ type turnWatch struct {
 
 // watchTurn returns the sink of a turn that starts now. cancel ends the
 // turn's runtime.
-func watchTurn(inner *sink, limits CallStale, timer CallTimer, clock staleClock, cancel context.CancelFunc) *turnWatch {
+func watchTurn(inner turnSink, limits CallStale, timer CallTimer, clock staleClock, cancel context.CancelFunc) *turnWatch {
 	w := &turnWatch{inner: inner, limits: limits, timer: timer, clock: clock, cancel: cancel, commands: map[string]func(){}}
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -164,7 +172,8 @@ func (w *turnWatch) moved() {
 
 // arm starts a wait and returns what disarms it; reached runs under the
 // lock if the wait passes first. The caller holds the lock, and disarms a
-// wait once, under it.
+// wait once, under it. The wait's stop is called once nothing more comes of
+// it: it was disarmed, or it passed and what it reached is done.
 func (w *turnWatch) arm(wait time.Duration, reached func()) (disarm func()) {
 	fired, stop := w.timer(wait)
 	disarmed := make(chan struct{})

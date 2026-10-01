@@ -265,7 +265,7 @@ func withoutTopLevel(data []byte, keys ...string) []byte {
 // stay unset.
 func TestStalenessLimitsOnlyNarrow(t *testing.T) {
 	pol := researchPolicy(t)
-	if effective, err := policy.Compose(service, &pol, process(t, ""), policy.Caller{}); err != nil || effective.Stale != (definition.Stale{}) {
+	if effective, err := policy.Compose(service, &pol, process(t, ""), policy.Caller{}); err != nil || effective.Stale != (policy.Stale{}) {
 		t.Fatalf("without limits: %+v, %v", effective.Stale, err)
 	}
 
