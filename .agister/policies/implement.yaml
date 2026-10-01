@@ -25,3 +25,9 @@ tools:
 timeout: 45m
 retry:
   max_attempts: 1
+
+# 2x+ implement runs' longest event gap (604 s) and command (400 s), 09-30..10-01; no_output unset: verify is quiet until it ends.
+stale:
+  no_event: 21m
+  tool_command: 15m
+  repeated_tool_calls: 5

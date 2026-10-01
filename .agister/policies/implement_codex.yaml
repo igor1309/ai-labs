@@ -26,3 +26,9 @@ tools:
 timeout: 45m
 retry:
   max_attempts: 1
+
+# implement's limits, the same work (its own 2 runs: event gap 158 s, command 34 s); no_output unset as there.
+stale:
+  no_event: 21m
+  tool_command: 15m
+  repeated_tool_calls: 5
