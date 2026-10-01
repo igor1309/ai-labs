@@ -482,6 +482,7 @@ func TestDiscardLeavesOtherStaleWorktreesAlone(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Dir(checkout)) })
 	if err := (git.Workspaces{}).Discard(ctx, repo, checkout); err != nil {
 		t.Fatal(err)
 	}
