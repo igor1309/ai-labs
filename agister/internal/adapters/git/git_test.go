@@ -116,7 +116,7 @@ func TestInputErrors(t *testing.T) {
 func TestCheckoutIsDetachedAndReleased(t *testing.T) {
 	dir := repository(t)
 	base := sh(t, dir, "rev-parse", "main")
-	workspaces := git.Workspaces{}
+	workspaces := git.NewWorkspaces(git.NewWorktrees())
 	root, err := workspaces.Root(context.Background(), filepath.Join(dir))
 	if err != nil {
 		t.Fatal(err)
@@ -146,7 +146,7 @@ func TestCheckoutIsDetachedAndReleased(t *testing.T) {
 func TestChangesCoverEverythingSinceTheRevision(t *testing.T) {
 	repo := repository(t)
 	ctx := context.Background()
-	workspaces := git.Workspaces{}
+	workspaces := git.NewWorkspaces(git.NewWorktrees())
 	revision := sh(t, repo, "rev-parse", "HEAD")
 	dir, release, err := workspaces.Checkout(ctx, repo, revision)
 	if err != nil {
@@ -212,7 +212,7 @@ func TestChangesCoverEverythingSinceTheRevision(t *testing.T) {
 func TestTrackedIgnoredFilesStayContent(t *testing.T) {
 	repo := repository(t)
 	ctx := context.Background()
-	workspaces := git.Workspaces{}
+	workspaces := git.NewWorkspaces(git.NewWorktrees())
 	os.WriteFile(filepath.Join(repo, ".gitignore"), []byte("*.log\n"), 0o600)
 	os.WriteFile(filepath.Join(repo, "kept.log"), []byte("kept\n"), 0o600)
 	os.WriteFile(filepath.Join(repo, "edited.log"), []byte("before\n"), 0o600)
@@ -252,7 +252,7 @@ func TestTrackedIgnoredFilesStayContent(t *testing.T) {
 func copied(t *testing.T, repo, revision string, patch []byte) string {
 	t.Helper()
 	ctx := context.Background()
-	workspaces := git.Workspaces{}
+	workspaces := git.NewWorkspaces(git.NewWorktrees())
 	dir := workspaces.Place(call())
 	if err := workspaces.Copy(ctx, repo, dir, revision, patch); err != nil {
 		t.Fatal(err)
@@ -284,7 +284,7 @@ var calls atomic.Int64
 func TestACopyWhosePatchDoesNotApplyLeavesNothing(t *testing.T) {
 	repo := repository(t)
 	ctx := context.Background()
-	workspaces := git.Workspaces{}
+	workspaces := git.NewWorkspaces(git.NewWorktrees())
 	dir := workspaces.Place(call())
 	err := workspaces.Copy(ctx, repo, dir, sh(t, repo, "rev-parse", "HEAD"), []byte("not a git patch\n"))
 	t.Cleanup(func() { _ = workspaces.Discard(context.Background(), repo, dir) })
@@ -303,7 +303,7 @@ func TestACopyWhosePatchDoesNotApplyLeavesNothing(t *testing.T) {
 // it was.
 func TestACopyIsNotMadeWhereSomethingIs(t *testing.T) {
 	repo := repository(t)
-	workspaces := git.Workspaces{}
+	workspaces := git.NewWorkspaces(git.NewWorktrees())
 	dir := workspaces.Place(call())
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
@@ -330,7 +330,7 @@ func TestACopyIsNotMadeWhereSomethingIs(t *testing.T) {
 func TestAVerifierLeavesAnOccupiedPlaceAlone(t *testing.T) {
 	repo := repository(t)
 	ctx := context.Background()
-	workspaces := git.Workspaces{}
+	workspaces := git.NewWorkspaces(git.NewWorktrees())
 	base := sh(t, repo, "rev-parse", "HEAD")
 	checkout, release, err := workspaces.Checkout(ctx, repo, base)
 	if err != nil {
@@ -398,11 +398,11 @@ func (wallClock) Now() time.Time { return time.Now() }
 func TestDiscardRemovesAnUnreleasedCheckout(t *testing.T) {
 	repo := repository(t)
 	ctx := context.Background()
-	checkout, _, err := git.Workspaces{}.Checkout(ctx, repo, sh(t, repo, "rev-parse", "HEAD"))
+	checkout, _, err := git.NewWorkspaces(git.NewWorktrees()).Checkout(ctx, repo, sh(t, repo, "rev-parse", "HEAD"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := (git.Workspaces{}).Discard(ctx, repo, checkout); err != nil {
+	if err := git.NewWorkspaces(git.NewWorktrees()).Discard(ctx, repo, checkout); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Dir(checkout)); !os.IsNotExist(err) {
@@ -412,7 +412,7 @@ func TestDiscardRemovesAnUnreleasedCheckout(t *testing.T) {
 		t.Fatalf("worktrees = %v", lines)
 	}
 	// Already gone is success.
-	if err := (git.Workspaces{}).Discard(ctx, repo, checkout); err != nil {
+	if err := git.NewWorkspaces(git.NewWorktrees()).Discard(ctx, repo, checkout); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -439,7 +439,7 @@ func TestDiscardRefusesOtherDirectories(t *testing.T) {
 		"the repository":       repo,
 	} {
 		os.MkdirAll(dir, 0o700)
-		if err := (git.Workspaces{}).Discard(context.Background(), repo, dir); err == nil {
+		if err := git.NewWorkspaces(git.NewWorktrees()).Discard(context.Background(), repo, dir); err == nil {
 			t.Errorf("%s: discard succeeded", name)
 		}
 		if _, err := os.Stat(dir); err != nil {
@@ -453,14 +453,14 @@ func TestDiscardRefusesOtherDirectories(t *testing.T) {
 func TestDiscardDropsACheckoutThatIsGone(t *testing.T) {
 	repo := repository(t)
 	ctx := context.Background()
-	checkout, _, err := git.Workspaces{}.Checkout(ctx, repo, sh(t, repo, "rev-parse", "HEAD"))
+	checkout, _, err := git.NewWorkspaces(git.NewWorktrees()).Checkout(ctx, repo, sh(t, repo, "rev-parse", "HEAD"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := os.RemoveAll(filepath.Dir(checkout)); err != nil {
 		t.Fatal(err)
 	}
-	if err := (git.Workspaces{}).Discard(ctx, repo, checkout); err != nil {
+	if err := git.NewWorkspaces(git.NewWorktrees()).Discard(ctx, repo, checkout); err != nil {
 		t.Fatal(err)
 	}
 	if lines := strings.Split(sh(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
@@ -478,12 +478,12 @@ func TestDiscardLeavesOtherStaleWorktreesAlone(t *testing.T) {
 	if err := os.RemoveAll(other); err != nil {
 		t.Fatal(err)
 	}
-	checkout, _, err := git.Workspaces{}.Checkout(ctx, repo, sh(t, repo, "rev-parse", "HEAD"))
+	checkout, _, err := git.NewWorkspaces(git.NewWorktrees()).Checkout(ctx, repo, sh(t, repo, "rev-parse", "HEAD"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(filepath.Dir(checkout)) })
-	if err := (git.Workspaces{}).Discard(ctx, repo, checkout); err != nil {
+	if err := git.NewWorkspaces(git.NewWorktrees()).Discard(ctx, repo, checkout); err != nil {
 		t.Fatal(err)
 	}
 	list := sh(t, repo, "worktree", "list")
@@ -498,7 +498,7 @@ func TestDiscardLeavesOtherStaleWorktreesAlone(t *testing.T) {
 func TestConcurrentCheckoutsAndCopiesHaveTheirOwnWorktrees(t *testing.T) {
 	repo := repository(t)
 	ctx := context.Background()
-	workspaces := git.Workspaces{}
+	workspaces := git.NewWorkspaces(git.NewWorktrees())
 	revision := sh(t, repo, "rev-parse", "HEAD")
 	const each = 4
 	dirs := make([]string, 2*each)
@@ -549,7 +549,7 @@ func TestDiscardRemovesACheckoutUnderTheOldName(t *testing.T) {
 	t.Cleanup(func() { _ = os.RemoveAll(parent) })
 	checkout := filepath.Join(parent, "workspace")
 	sh(t, repo, "worktree", "add", "--detach", "--quiet", checkout, "HEAD")
-	if err := (git.Workspaces{}).Discard(context.Background(), repo, checkout); err != nil {
+	if err := git.NewWorkspaces(git.NewWorktrees()).Discard(context.Background(), repo, checkout); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(parent); !os.IsNotExist(err) {

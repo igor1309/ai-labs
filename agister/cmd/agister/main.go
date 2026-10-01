@@ -107,11 +107,14 @@ func wire(config cli.Config) (contract.Client, *app.BackgroundReaper, error) {
 			return logging.Runner{Inner: codex.New(command), Adapter: "codex", Log: log}
 		},
 	}
+	// One for the process: every workspace adapter's worktree changes in a
+	// repository take their turn in it.
+	workspaces := git.NewWorkspaces(git.NewWorktrees())
 	// Abandoned runs are reaped beside the calls, never inside one. A reap
 	// that fails has no caller to tell and no run record to say so: the
 	// log does.
 	reaping := &app.BackgroundReaper{
-		Reaper: app.NewReaper(evidence, supervisor.Processes{}, git.Workspaces{}, system.Clock{}),
+		Reaper: app.NewReaper(evidence, supervisor.Processes{}, workspaces, system.Clock{}),
 		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },
 	}
 	client := app.NewClient(app.Infrastructure{
@@ -131,8 +134,8 @@ func wire(config cli.Config) (contract.Client, *app.BackgroundReaper, error) {
 				"git.diff":          git.Diff{},
 				"git.changed_files": git.ChangedFiles{},
 			},
-			Workspaces: git.Workspaces{},
-			Changes:    git.Workspaces{},
+			Workspaces: workspaces,
+			Changes:    workspaces,
 			Validator:  schema.Validator{},
 			Recorder:   evidence,
 			Runs:       evidence,
@@ -140,7 +143,7 @@ func wire(config cli.Config) (contract.Client, *app.BackgroundReaper, error) {
 			IDs:        system.IDs{},
 			StateDir:   config.Home,
 		},
-		Verifier: app.VerifyAdapters{Content: git.Workspaces{}, Copies: git.Workspaces{}, Commands: supervisor.Commands{}, Clock: system.Clock{}},
+		Verifier: app.VerifyAdapters{Content: workspaces, Copies: workspaces, Commands: supervisor.Commands{}, Clock: system.Clock{}},
 		Runs:     app.RunsAdapters{Reader: evidence},
 		Decorate: func(client contract.Client) contract.Client {
 			return app.ReapOnSubmit{Client: client, Background: reaping}

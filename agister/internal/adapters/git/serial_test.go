@@ -7,9 +7,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
+
+// What runs when is decided by the gate, never by timing: the deadline
+// only guards against a hang.
+const hangGuard = 10 * time.Second
 
 func emptyRepository(t *testing.T) string {
 	t.Helper()
@@ -28,60 +34,217 @@ func emptyRepository(t *testing.T) string {
 	return dir
 }
 
-// gate is the worktree runner of a test: every worktree command reports the
-// directory it runs in on entered, and one in the held directory (any, when
-// held is empty) then stays under its lock until proceed lets it run.
-type gate struct {
-	held    string
-	entered chan string
-	proceed chan struct{}
-	waited  chan struct{}
+// event is what a worktree command tells the gate: that it found the lock
+// held and waits, or that it has the lock and runs in dir.
+type event struct {
+	waited bool
+	dir    string
 }
 
-// gated replaces the process's worktree lock with one whose commands pass
-// through a gate, for the test.
+// gate is the worktree runner of a test's own Worktrees: every worktree
+// command reports the directory it runs in, and one in the held directory
+// (any, when held is empty) then stays under its lock until pass lets it
+// run. Workers, checkouts and copies started through the gate are its to
+// end: see gated.
+type gate struct {
+	workspaces Workspaces
+	held       string
+	events     chan event
+	proceed    chan struct{}
+	// open, once closed, lets every command through unreported.
+	open chan struct{}
+
+	workers   sync.WaitGroup
+	checkouts []*checkout
+	copies    [][2]string
+}
+
+// checkout is a checkout's release, from the moment it succeeds until it
+// is run.
+type checkout struct {
+	mu      sync.Mutex
+	release func() error
+}
+
+func (c *checkout) made(release func() error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.release = release
+}
+
+// run releases the checkout, once: nothing is left to do for one that
+// failed or is released already.
+func (c *checkout) run() error {
+	c.mu.Lock()
+	release := c.release
+	c.release = nil
+	c.mu.Unlock()
+	if release == nil {
+		return nil
+	}
+	return release()
+}
+
+// gated makes Workspaces whose worktree commands pass through a gate. Its
+// cleanup, which runs before the cleanup of every repository made before
+// it, opens the gate and joins the workers, and only then releases the
+// checkouts not released yet and discards the copies: whatever a failed
+// test left running or on disk.
 func gated(t *testing.T, held string) *gate {
-	g := &gate{held: held, entered: make(chan string, 16), proceed: make(chan struct{}), waited: make(chan struct{}, 16)}
-	real := worktrees
-	worktrees = &serial{
+	t.Helper()
+	g := &gate{held: held, events: make(chan event, 16), proceed: make(chan struct{}), open: make(chan struct{})}
+	g.workspaces = NewWorkspaces(&Worktrees{
 		git: func(ctx context.Context, dir string, args ...string) (string, error) {
-			g.entered <- dir
-			if g.held == "" || dir == g.held {
-				<-g.proceed
+			if g.report(event{dir: dir}) && (g.held == "" || dir == g.held) {
+				select {
+				case <-g.proceed:
+				case <-g.open:
+				}
 			}
 			return run(ctx, dir, args...)
 		},
-		waits: func() { g.waited <- struct{}{} },
-	}
+		waits: func() { g.report(event{waited: true}) },
+	})
 	t.Cleanup(func() {
-		close(g.proceed) // a command a failed test left at the gate
-		worktrees = real
+		close(g.open)
+		joined := make(chan struct{})
+		go func() { g.workers.Wait(); close(joined) }()
+		select {
+		case <-joined:
+		case <-time.After(hangGuard):
+			t.Error("workers still run with the gate open: their checkouts are not released")
+			return
+		}
+		for _, made := range g.checkouts {
+			if err := made.run(); err != nil {
+				t.Errorf("releasing a checkout: %v", err)
+			}
+		}
+		for _, copy := range g.copies {
+			if err := g.workspaces.Discard(context.Background(), copy[0], copy[1]); err != nil {
+				t.Errorf("discarding a copy: %v", err)
+			}
+		}
 	})
 	return g
 }
 
+// report gives the test an event, unless the gate is open.
+func (g *gate) report(e event) bool {
+	select {
+	case <-g.open:
+		return false
+	default:
+	}
+	select {
+	case g.events <- e:
+		return true
+	case <-g.open:
+		return false
+	}
+}
+
 // start runs do aside and gives the channel its error arrives on.
-func start(do func() error) <-chan error {
+func (g *gate) start(do func() error) <-chan error {
 	done := make(chan error, 1)
-	go func() { done <- do() }()
+	g.workers.Add(1)
+	go func() {
+		defer g.workers.Done()
+		done <- do()
+	}()
 	return done
 }
 
-// queued fails the test unless a command started while another holds the
-// lock waits for it: it must report waiting, not enter.
-func (g *gate) queued(t *testing.T) {
-	t.Helper()
-	select {
-	case <-g.waited:
-	case dir := <-g.entered:
-		t.Fatalf("a worktree command in %s ran while another held the lock", dir)
-	}
+// checkout starts a checkout of main at path aside. From the moment it
+// succeeds its release is the gate's to run at cleanup, unless the test
+// runs the release it is given first.
+func (g *gate) checkout(ctx context.Context, path string) (<-chan error, func() error) {
+	made := &checkout{}
+	g.checkouts = append(g.checkouts, made)
+	return g.start(func() error {
+		_, release, err := g.workspaces.Checkout(ctx, path, "main")
+		if err == nil {
+			made.made(release)
+		}
+		return err
+	}), made.run
 }
 
 var places atomic.Int64
 
-func place() string {
-	return Workspaces{}.Place(fmt.Sprintf("serial-%d-%d", os.Getpid(), places.Add(1)))
+// place names the directory of a copy in repository, which the gate
+// discards at cleanup.
+func (g *gate) place(repository string) string {
+	dir := g.workspaces.Place(fmt.Sprintf("serial-%d-%d", os.Getpid(), places.Add(1)))
+	g.copies = append(g.copies, [2]string{repository, dir})
+	return dir
+}
+
+// next is the next event of the gate. A worker (up to three are watched)
+// that ends while the event is awaited fails the test at once, with its
+// error.
+func (g *gate) next(t *testing.T, workers ...<-chan error) event {
+	t.Helper()
+	var ended [3]<-chan error
+	copy(ended[:], workers)
+	var err error
+	select {
+	case e := <-g.events:
+		return e
+	case err = <-ended[0]:
+	case err = <-ended[1]:
+	case err = <-ended[2]:
+	case <-time.After(hangGuard):
+		t.Fatal("no worktree command reached the lock")
+	}
+	t.Fatalf("a worker ended where its worktree command was awaited: %v", err)
+	return event{}
+}
+
+// enters fails the test unless the next command has the lock and runs.
+func (g *gate) enters(t *testing.T, workers ...<-chan error) {
+	t.Helper()
+	if g.next(t, workers...).waited {
+		t.Fatal("a worktree command waited for a lock that should be free")
+	}
+}
+
+// queues fails the test unless a command started while another holds the
+// lock waits for it: it must report waiting, not enter.
+func (g *gate) queues(t *testing.T, workers ...<-chan error) {
+	t.Helper()
+	if e := g.next(t, workers...); !e.waited {
+		t.Fatalf("a worktree command in %s ran while another held the lock", e.dir)
+	}
+}
+
+// pass lets the command held at the gate run.
+func (g *gate) pass(t *testing.T) {
+	t.Helper()
+	select {
+	case g.proceed <- struct{}{}:
+	case <-time.After(hangGuard):
+		t.Fatal("no worktree command is held at the gate")
+	}
+}
+
+// result is the error worker ended with.
+func result(t *testing.T, worker <-chan error) error {
+	t.Helper()
+	select {
+	case err := <-worker:
+		return err
+	case <-time.After(hangGuard):
+		t.Fatal("a worker did not end")
+		return nil
+	}
+}
+
+func done(t *testing.T, worker <-chan error) {
+	t.Helper()
+	if err := result(t, worker); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestWorktreeCommandsOfOneRepositoryNeverOverlap(t *testing.T) {
@@ -91,71 +254,54 @@ func TestWorktreeCommandsOfOneRepositoryNeverOverlap(t *testing.T) {
 
 	// first is held under the lock; second, started then, has to wait for
 	// it, and runs only once first is done.
-	inTurn := func(first, second func() error) {
+	inTurn := func(first, second func() <-chan error) {
 		t.Helper()
-		one := start(first)
-		<-g.entered
-		two := start(second)
-		g.queued(t)
-		g.proceed <- struct{}{}
-		if err := <-one; err != nil {
-			t.Fatal(err)
-		}
-		<-g.entered
-		g.proceed <- struct{}{}
-		if err := <-two; err != nil {
-			t.Fatal(err)
-		}
+		one := first()
+		g.enters(t, one)
+		two := second()
+		g.queues(t, one, two)
+		g.pass(t)
+		done(t, one)
+		g.enters(t, two)
+		g.pass(t)
+		done(t, two)
 	}
 
 	var release func() error
-	checkout := func() (err error) {
-		_, release, err = Workspaces{}.Checkout(ctx, repo, "main")
-		return err
+	checkout := func() (worker <-chan error) {
+		worker, release = g.checkout(ctx, repo)
+		return worker
 	}
-	dir := place()
-	t.Cleanup(func() { os.RemoveAll(filepath.Dir(dir)) })
-	copy := func() error { return Workspaces{}.Copy(ctx, repo, dir, "main", nil) }
-	discard := func() error { return Workspaces{}.Discard(ctx, repo, dir) }
+	dir := g.place(repo)
+	copy := func() <-chan error {
+		return g.start(func() error { return g.workspaces.Copy(ctx, repo, dir, "main", nil) })
+	}
+	discard := func() <-chan error {
+		return g.start(func() error { return g.workspaces.Discard(ctx, repo, dir) })
+	}
+	released := func() <-chan error { return g.start(release) }
 
 	inTurn(checkout, copy)
-	inTurn(func() error { return release() }, discard)
+	inTurn(released, discard)
 	inTurn(copy, checkout)
-	inTurn(discard, func() error { return release() })
+	inTurn(discard, released)
 }
 
 func TestDifferentRepositoriesDoNotWaitOnEachOther(t *testing.T) {
 	busy, other := emptyRepository(t), emptyRepository(t)
 	g := gated(t, busy)
 
-	var release func() error
-	held := start(func() (err error) {
-		_, release, err = Workspaces{}.Checkout(context.Background(), busy, "main")
-		return err
-	})
-	<-g.entered
+	held, _ := g.checkout(context.Background(), busy)
+	g.enters(t, held)
 
-	// A command that waited would never get the lock: its wait is cancelled
-	// instead, and fails the test.
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	worktrees.waits = cancel
-	_, releaseOther, err := Workspaces{}.Checkout(ctx, other, "main")
-	if err != nil {
-		t.Fatalf("a checkout in another repository, while one is busy: %v", err)
+	free, _ := g.checkout(context.Background(), other)
+	if g.next(t, held, free).waited {
+		t.Fatal("a checkout in another repository waited for the busy one")
 	}
-	if err := releaseOther(); err != nil {
-		t.Fatal(err)
-	}
+	done(t, free)
 
-	g.proceed <- struct{}{}
-	if err := <-held; err != nil {
-		t.Fatal(err)
-	}
-	worktrees.git = run
-	if err := release(); err != nil {
-		t.Fatal(err)
-	}
+	g.pass(t)
+	done(t, held)
 }
 
 func TestTwoPathsOfOneRepositoryShareTheLock(t *testing.T) {
@@ -168,34 +314,33 @@ func TestTwoPathsOfOneRepositoryShareTheLock(t *testing.T) {
 	if err := os.Symlink(repo, link); err != nil {
 		t.Fatal(err)
 	}
-	g := gated(t, repo)
-
-	releases := make(chan func() error, 3)
-	checkout := func(path string) <-chan error {
-		return start(func() error {
-			_, release, err := Workspaces{}.Checkout(context.Background(), path, "main")
-			releases <- release
-			return err
-		})
+	// Between real paths, so each ".." is the parent the kernel sees.
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
 	}
-	held := checkout(repo)
-	<-g.entered
-	fromWorktree := checkout(linked)
-	g.queued(t)
-	fromLink := checkout(link)
-	g.queued(t)
-
-	g.proceed <- struct{}{}
-	for _, done := range []<-chan error{held, fromWorktree, fromLink} {
-		if err := <-done; err != nil {
-			t.Fatal(err)
-		}
+	relative, err := filepath.Rel(resolved(cwd), resolved(repo))
+	if err != nil {
+		t.Fatal(err)
 	}
-	worktrees.git = run
-	for range 3 {
-		if err := (<-releases)(); err != nil {
-			t.Fatal(err)
-		}
+	absolute, err := filepath.Abs(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := gated(t, absolute)
+
+	held, _ := g.checkout(context.Background(), absolute)
+	g.enters(t, held)
+	workers := []<-chan error{held}
+	for _, path := range []string{relative, linked, link} {
+		waiting, _ := g.checkout(context.Background(), path)
+		g.queues(t, held, waiting)
+		workers = append(workers, waiting)
+	}
+
+	g.pass(t)
+	for _, worker := range workers {
+		done(t, worker)
 	}
 }
 
@@ -203,33 +348,30 @@ func TestACancelledContextStopsTheWait(t *testing.T) {
 	repo := emptyRepository(t)
 	g := gated(t, "")
 
-	var release func() error
-	held := start(func() (err error) {
-		_, release, err = Workspaces{}.Checkout(context.Background(), repo, "main")
-		return err
-	})
-	<-g.entered
+	held, _ := g.checkout(context.Background(), repo)
+	g.enters(t, held)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	waiting := start(func() error {
-		_, _, err := Workspaces{}.Checkout(ctx, repo, "main")
-		return err
-	})
-	g.queued(t)
+	defer cancel()
+	waiting, _ := g.checkout(ctx, repo)
+	g.queues(t, held, waiting)
 	cancel()
-	if err := <-waiting; !errors.Is(err, context.Canceled) {
+	if err := result(t, waiting); !errors.Is(err, context.Canceled) {
 		t.Fatalf("a checkout cancelled while it waited: %v", err)
 	}
-	if len(g.entered) != 0 {
+	if len(g.events) != 0 {
 		t.Fatal("the cancelled checkout ran its worktree command")
 	}
 
-	g.proceed <- struct{}{}
-	if err := <-held; err != nil {
-		t.Fatal(err)
-	}
-	worktrees.git = run
-	if err := release(); err != nil {
-		t.Fatal(err)
+	g.pass(t)
+	done(t, held)
+}
+
+func TestWorkspacesWithoutWorktreesMakeNoWorktreeChange(t *testing.T) {
+	repo := emptyRepository(t)
+	dir, release, err := Workspaces{}.Checkout(context.Background(), repo, "main")
+	if err == nil {
+		release()
+		t.Fatalf("a checkout outside the process's Worktrees was made at %s", dir)
 	}
 }
