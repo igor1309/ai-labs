@@ -1,9 +1,12 @@
 # Agister pages
 
 `agister pages` serves a page that shows what Agister can run with a
-repo's settings and what that is made of. `~` in the picker at the top
-right is Agister home, `~/.agister`; the picker also opens repos and lists
-recent ones.
+repo's settings and what that is made of, and how its runs went. `~` in
+the picker at the top right is Agister home, `~/.agister`; the picker also
+opens repos and lists recent ones. **Settings** and **Runs** at the top
+left switch between the two views; the page opens on the one shown last.
+
+## Settings
 
 For a repo the page shows what Agister uses there: Agister home's settings
 with the repo's `.agister` over them. As in Agister, a repo file replaces
@@ -32,6 +35,32 @@ and value lines.
 A name the settings do not define shows in red as missing: Agister refuses
 such a call. A file that does not parse shows its error. ↻ reads the
 settings again.
+
+## Runs
+
+The runs are Agister home's, whatever the picker shows. ↻ reads them
+again.
+
+- **Compare**: a table per process, a row per runtime adapter, model and
+  effort (`-` when the call asked for none): runs, completed, pass rate,
+  mean verify attempts, median wall time and cost per completed run, with
+  the count of runs of unknown cost when there are any. Workflows are not
+  compared; their steps are.
+- **Runs**, newest first: when it started, the process, the implementor
+  (`adapter model effort`; the model the runtime reported shows on hover
+  when it differs), status, verify (`2 ✓`: the attempts used and whether
+  the last passed; empty without verify), wall time, cost, the skills used
+  (`name×n`) and the tool calls. A workflow's row shows its node count and
+  its judge's rulings instead of implementor and skills. Process and status
+  filter the list. Runs whose record does not parse are counted under it.
+- Clicking a run opens it below the list: implementor, policy, outcome
+  (verify as `2/3 ✓`, out of the process's most), skills, the workflow it
+  belongs to, and for a workflow its nodes and its judge's items by
+  ruling, by severity and per source review. A link opens that run. The
+  record as stored is folded at the bottom.
+
+Durations read `1m 47s` or `412ms`, costs `$0.50`, times in local time. A
+failed or interrupted run shows in red.
 
 ## Run it
 
@@ -98,8 +127,9 @@ It listens on loopback only and refuses a request whose Host is not
 `localhost` or a loopback address, so another site cannot read through it.
 
 The page itself is `index.html`, embedded in the binary with `repos.js`
-(the picker and the calls to the server) and `config.js` (reading the
-settings; its YAML and TOML parsers cover what Agister settings use).
+(the picker and the calls to the server), `config.js` (reading the
+settings; its YAML and TOML parsers cover what Agister settings use) and
+`runs.js` (the Runs view's formatting, filters and compare tables).
 `serve.go` is the server; `runs.go` summarises the runs.
 
 ## Data
@@ -109,6 +139,8 @@ The browser's localStorage keeps, for the page's address:
 - `agister-pages:recent`: the recent repos (path, name, last opened), most
   recent first, at most 10.
 - `agister-pages:current`: what was shown last (`~` or a repo path); the
+  page opens on it.
+- `agister-pages:view`: the view shown last, `settings` or `runs`; the
   page opens on it.
 
 ## Test

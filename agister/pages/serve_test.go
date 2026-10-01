@@ -288,7 +288,7 @@ func TestOnlyRequestsAddressedToThisMachineAreServed(t *testing.T) {
 
 func TestThePageIsServed(t *testing.T) {
 	h := Handler("/unused", noChoose(t))
-	for _, path := range []string{"/", "/repos.js", "/config.js"} {
+	for _, path := range []string{"/", "/repos.js", "/config.js", "/runs.js"} {
 		req := httptest.NewRequest(http.MethodGet, path, nil)
 		req.Host = "127.0.0.1:7465"
 		rec := httptest.NewRecorder()

@@ -33,7 +33,16 @@
   .dim { color: var(--dim); }
   .error { color: var(--high); }
 
-  .header-right { display: flex; align-items: center; gap: 8px; }
+  .header-left, .header-right { display: flex; align-items: center; gap: 8px; }
+  .header-left { gap: 16px; }
+  .views { display: flex; }
+  .views button {
+    padding: 4px 12px; border: 1px solid var(--line); background: var(--card); font-size: 13px; color: var(--fg3);
+  }
+  .views button:first-child { border-radius: 8px 0 0 8px; }
+  .views button:last-child { border-radius: 0 8px 8px 0; border-left: 0; }
+  .views button:hover { color: var(--fg); }
+  .views button[aria-pressed="true"] { color: var(--fg); background: var(--line); }
   #refresh {
     width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 8px; background: var(--card);
     font-size: 17px; line-height: 1; color: var(--fg2);
@@ -135,6 +144,26 @@
   /* Only a workspace that can be written is marked; read-only is the usual case. */
   .access-read-write { color: var(--mid); }
   td .access-read-only, td .access-read-write { white-space: nowrap; }
+
+  /* Runs: a failed or interrupted run is red; the others are not marked. */
+  .failed { color: var(--high); }
+  td.short { white-space: nowrap; }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0 0 12px; font-size: 13px; color: var(--fg3); }
+  .filters label { display: flex; align-items: center; gap: 6px; }
+  .filters select {
+    font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px;
+  }
+  tr.pick { cursor: pointer; }
+  tr.pick:hover td, tr.pick.chosen td { background: var(--line); }
+  tr.pick:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  #run-detail { margin-top: 16px; }
+  #run-detail .facts a { color: var(--accent); }
+  .record { margin-top: 14px; }
+  .record summary { cursor: pointer; color: var(--fg3); font-size: 12px; }
+  .record pre {
+    margin: 8px 0 0; padding: 10px; max-height: 480px; overflow: auto;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 6px; color: var(--fg2);
+  }
   /* A narrow screen stacks each row: the name, then label and value lines. */
   @media (max-width: 900px) {
     table, tbody, tr, td { display: block; }
@@ -146,12 +175,19 @@
     td[data-label]::before { content: attr(data-label); color: var(--fg3); }
     td[data-label] > * { justify-self: start; }
     td.name { white-space: normal; margin-bottom: 2px; }
+    td[data-label]:empty { display: none; }
   }
 </style>
 </head>
 <body>
 <header>
+  <div class="header-left">
   <h1>Agister</h1>
+  <div class="views" role="group" aria-label="View">
+    <button id="view-settings" type="button" aria-pressed="true">Settings</button>
+    <button id="view-runs" type="button" aria-pressed="false">Runs</button>
+  </div>
+  </div>
   <div class="header-right">
   <span id="read-at" class="read-at"></span>
   <button id="refresh" type="button" title="Refresh: read the settings again" aria-label="Refresh"><span class="glyph">↻</span></button>
@@ -177,15 +213,18 @@
 <main>
   <p id="status" class="error" role="status" hidden></p>
   <div id="dashboard" hidden></div>
+  <div id="runs" hidden></div>
 </main>
 <script src="repos.js"></script>
 <script src="config.js"></script>
+<script src="runs.js"></script>
 <script type="module">
   const R = globalThis.AgisterRepos;
   const C = globalThis.AgisterConfig;
+  const U = globalThis.AgisterRuns;
 
-  // current: the path shown, ~ for Agister home.
-  const state = { current: null };
+  // current: the path shown, ~ for Agister home; view: settings or runs.
+  const state = { current: null, view: U.readView(localStorage) };
   let renderToken = 0;
 
   const $ = (id) => document.getElementById(id);
@@ -288,9 +327,7 @@
   async function render(token, files, homeFiles) {
     $('picker-label').textContent = label(state.current);
     $('picker-button').title = state.current === R.HOME_ID ? 'Agister home, ~/.agister' : state.current;
-    const now = new Date();
-    $('read-at').textContent = `read ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
-    $('read-at').title = `Settings read from disk at ${now.toLocaleString()}`;
+    if (state.view === 'settings') stamp('Settings');
     let model;
     try {
       model = homeFiles
@@ -302,7 +339,14 @@
     }
     if (token !== renderToken) return;
     $('dashboard').replaceChildren(...dashboard(model, !!homeFiles));
-    $('dashboard').hidden = false;
+    $('dashboard').hidden = state.view !== 'settings';
+  }
+
+  // "read 10:42:07": when what is shown was read.
+  function stamp(what) {
+    const now = new Date();
+    $('read-at').textContent = `read ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+    $('read-at').title = `${what} read from disk at ${now.toLocaleString()}`;
   }
 
   const text = (value, className = '') => el('span', { className, textContent: value });
@@ -570,18 +614,259 @@
           el('td', { textContent: meaning, dataset: { label: 'Meaning' } }))))));
   }
 
+  // --- runs ---
+
+  // filter: the process and status shown; chosen: the run opened below the
+  // table; list and compare: what the server sent last.
+  const runs = { list: null, compare: null, filter: { process: '', status: '' }, chosen: null };
+  let runsToken = 0;
+  let detailToken = 0;
+
+  // Reads the runs and their comparison again and shows them, with the run
+  // opened before.
+  async function loadRuns() {
+    const token = ++runsToken;
+    let list, compare;
+    try {
+      [list, compare] = await Promise.all([R.fetchRuns(fetch), R.fetchCompare(fetch)]);
+    } catch (err) {
+      if (token === runsToken) say('status', err.message);
+      return;
+    }
+    if (token !== runsToken) return;
+    say('status', '');
+    Object.assign(runs, { list, compare });
+    stamp('Runs');
+    renderRuns();
+    if (runs.chosen) openRun(runs.chosen, false);
+  }
+
+  function renderRuns() {
+    const { list, compare } = runs;
+    $('runs').replaceChildren(
+      el('p', { className: 'intro', textContent: 'Runs in Agister home, ~/.agister/runs, whatever the picker shows.' }),
+      el('h2', { className: 'group', textContent: 'Compare' }),
+      el('p', { className: 'group-note', textContent: 'completed and failed calls, not workflows: per process, a row per runtime, model and effort' }),
+      ...compareSections(compare.groups),
+      el('h2', { className: 'group', textContent: 'Runs' }),
+      el('p', { className: 'group-note', textContent: 'newest first; click a run to open it below' }),
+      filters(list.runs),
+      el('div', { id: 'run-list' }),
+      el('div', { id: 'run-detail' }));
+    renderRunList();
+  }
+
+  function compareSections(groups) {
+    const tables = U.compareTables(groups);
+    if (!tables.length) return [el('p', { className: 'intro', textContent: 'No completed or failed calls yet.' })];
+    const head = ['Runtime', 'Model', 'Effort', 'Runs', 'Completed', 'Pass rate', 'Verify attempts', 'Median wall', 'Cost / completed'];
+    const keys = ['model', 'effort', 'runs', 'completed', 'passRate', 'verifyAttempts', 'medianWall', 'costPerCompleted'];
+    return tables.map((t) => el('section', { className: 'card' },
+      el('header', { className: 'section-head' }, el('h3', { className: 'mono', textContent: t.process })),
+      el('table', {},
+        el('thead', {}, el('tr', {}, ...head.map((c) => el('th', { textContent: c })))),
+        el('tbody', {}, ...t.rows.map((row) => el('tr', {},
+          el('td', { className: 'name', textContent: row.adapter }),
+          ...keys.map((k, i) => el('td', { className: 'short', textContent: row[k], dataset: { label: head[i + 1] } }))))))));
+  }
+
+  function select(name, all, values, chosen) {
+    const node = el('select', { name },
+      el('option', { value: '', textContent: all }),
+      ...values.map((v) => el('option', { value: v, textContent: v, selected: v === chosen })));
+    node.addEventListener('change', () => {
+      runs.filter[name] = node.value;
+      renderRunList();
+    });
+    return el('label', {}, name, node);
+  }
+
+  // The filters offer what is present; a choice no longer present is let go.
+  function filters(list) {
+    const processes = U.processes(list);
+    const statuses = U.statuses(list);
+    if (!processes.includes(runs.filter.process)) runs.filter.process = '';
+    if (!statuses.includes(runs.filter.status)) runs.filter.status = '';
+    return el('div', { className: 'filters' },
+      select('process', 'all processes', processes, runs.filter.process),
+      select('status', 'all statuses', statuses, runs.filter.status));
+  }
+
+  // "Oct 1, 10:42" in local time; the full time in its title.
+  function at(iso) {
+    const d = new Date(iso);
+    if (!iso || Number.isNaN(d.getTime())) return text('');
+    const node = text(d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }));
+    node.title = d.toLocaleString();
+    return node;
+  }
+
+  const status = (value) => text(value, U.failed(value) ? 'failed' : '');
+
+  function implementorCell(r) {
+    if (r.workflow) return text(U.nodes(r.workflow));
+    const node = text(U.implementor(r.implementor));
+    const reported = U.reportedModel(r.implementor);
+    if (reported) node.title = `the runtime reported ${reported}`;
+    return node;
+  }
+
+  function renderRunList() {
+    const { list } = runs;
+    const shown = U.filterRuns(list.runs, runs.filter);
+    const head = ['Started', 'Process', 'Implementor', 'Status', 'Verify', 'Wall', 'Cost', 'Skills', 'Tool calls'];
+    const notes = [];
+    if (list.total > list.runs.length) notes.push(`The newest ${list.runs.length} of ${list.total} runs.`);
+    if (list.skipped) notes.push(`${list.skipped} ${list.skipped === 1 ? 'run is' : 'runs are'} left out: the record does not parse.`);
+    $('run-list').replaceChildren(
+      shown.length
+        ? el('section', { className: 'card' }, el('table', {},
+          el('thead', {}, el('tr', {}, ...head.map((c) => el('th', { textContent: c })))),
+          el('tbody', {}, ...shown.map(runRow))))
+        : el('p', { className: 'intro', textContent: list.runs.length ? 'No runs match the filters.' : 'No runs yet.' }),
+      notes.length ? el('p', { className: 'group-note', textContent: notes.join(' ') }) : null);
+  }
+
+  function runRow(r) {
+    const cells = [
+      r.process,
+      implementorCell(r),
+      status(r.status),
+      U.verify(r.outcome?.verify),
+      U.duration(r.outcome?.wall_ms),
+      U.cost(r.outcome?.cost_usd),
+      r.workflow ? U.counts(r.workflow.items?.by_ruling) : U.skills(r.skills),
+      r.tool_calls != null ? String(r.tool_calls) : '',
+    ];
+    const row = el('tr', { className: `pick${r.id === runs.chosen ? ' chosen' : ''}`, tabIndex: 0, title: r.id },
+      el('td', { className: 'name' }, at(r.created_at)),
+      ...cells.map((c, i) => el('td', { className: i >= 2 && i <= 5 ? 'short' : '', dataset: { label: ['Process', 'Implementor', 'Status', 'Verify', 'Wall', 'Cost', r.workflow ? 'Rulings' : 'Skills', 'Tool calls'][i] } }, c)));
+    const open = () => (runs.chosen === r.id ? closeRun() : openRun(r.id));
+    row.addEventListener('click', open);
+    row.addEventListener('keydown', (e) => { if (e.key === 'Enter') open(); });
+    return row;
+  }
+
+  function markChosen() {
+    for (const row of document.querySelectorAll('#run-list tr.pick')) row.classList.toggle('chosen', row.title === runs.chosen);
+  }
+
+  function closeRun() {
+    detailToken++;
+    runs.chosen = null;
+    markChosen();
+    $('run-detail').replaceChildren();
+  }
+
+  // Opens the run id below the table, from the server; scroll brings it
+  // into sight.
+  async function openRun(id, scroll = true) {
+    const token = ++detailToken;
+    runs.chosen = id;
+    markChosen();
+    let detail;
+    try {
+      detail = await R.fetchRun(fetch, id);
+    } catch (err) {
+      if (token === detailToken) $('run-detail').replaceChildren(el('p', { className: 'error', textContent: `${id}: ${err.message}` }));
+      return;
+    }
+    if (token !== detailToken) return;
+    $('run-detail').replaceChildren(runCard(detail.summary, detail.record));
+    if (scroll) $('run-detail').scrollIntoView({ block: 'nearest' });
+  }
+
+  // A link that opens the run id.
+  function runLink(id, label = id) {
+    const link = el('a', { href: `#${id}`, textContent: label });
+    link.addEventListener('click', (e) => { e.preventDefault(); openRun(id); });
+    return link;
+  }
+
+  const line = (...parts) => el('div', {}, ...parts);
+  const joined = (parts) => parts.filter(Boolean).join(' · ');
+
+  function runCard(s, record) {
+    const impl = s.implementor;
+    const policy = s.policy;
+    const outcome = s.outcome ?? {};
+    const items = s.workflow?.items;
+    const close = el('button', { type: 'button', className: 'copy', textContent: 'Close' });
+    close.addEventListener('click', closeRun);
+    return el('article', { className: 'card run' },
+      el('header', { className: 'run-head' }, el('h3', { textContent: s.id }), close),
+      facts([
+        ['process', line(text(s.process, 'name'), s.agent ? ` — agent ${s.agent}` : '')],
+        ['started', at(s.created_at)],
+        ['finished', s.finished_at ? at(s.finished_at) : null],
+        ['implementor', impl ? el('div', {},
+          line(joined([impl.adapter && [impl.adapter, impl.version].filter(Boolean).join(' '), impl.model, impl.effort && `${impl.effort} effort`])),
+          U.reportedModel(impl) ? el('div', { className: 'sub' }, `the runtime reported ${impl.reported_model}`) : null) : null],
+        ['policy', policy ? line(
+          policy.access ? text(`${policy.access} workspace`, `access-${policy.access}`) : '',
+          policy.access ? ' · ' : '',
+          joined([policy.timeout_ms ? U.duration(policy.timeout_ms) : '', policy.max_cost_usd != null ? `${U.cost(policy.max_cost_usd)} cap` : '', policy.scope && `scope ${policy.scope}`])) : null],
+        ['outcome', el('div', {},
+          line(status(s.status), outcome.verify ? ` · verify ${U.verify(outcome.verify, record?.verify?.max_attempts)}` : ''),
+          line(joined([outcome.wall_ms != null && `wall ${U.duration(outcome.wall_ms)}`, outcome.turn_ms != null && `turn ${U.duration(outcome.turn_ms)}`,
+            outcome.runtime_ms != null && `runtime ${U.duration(outcome.runtime_ms)}`])),
+          outcome.cost_usd != null ? line(`${U.cost(outcome.cost_usd)}${outcome.cost_source ? ` (${outcome.cost_source})` : ''}`) : null)],
+        ['skills', U.skills(s.skills) || null],
+        ['tool calls', s.tool_calls != null ? String(s.tool_calls) : null],
+        ['workflow', s.parent ? runLink(s.parent) : null],
+        ['nodes', s.workflow?.nodes.length ? el('div', {}, ...s.workflow.nodes.map((n) => line(
+          n.run ? runLink(n.run, n.name) : text(n.name, 'name'),
+          ` — ${n.process}${n.join ? ', join' : ''}`,
+          n.status ? ' · ' : '', n.status ? status(n.status) : null))) : null],
+        ['rulings', items ? `${U.counts(items.by_ruling) || 'none'} (${items.total} ${items.total === 1 ? 'item' : 'items'})` : null],
+        ['severities', items ? U.counts(items.by_severity) || null : null],
+        ['by source', items?.by_source.length ? el('div', {}, ...items.by_source.map((src) => line(
+          `${src.source} `, src.node ? (src.run ? runLink(src.run, src.node) : text(src.node, 'name')) : '',
+          `: ${U.counts(src.by_ruling)}`))) : null],
+      ]),
+      el('details', { className: 'record' },
+        el('summary', { textContent: 'Record as stored' }),
+        el('pre', { className: 'mono', textContent: JSON.stringify(record, null, 2) })));
+  }
+
+  // --- views ---
+
+  // Shows view, remembered for the next visit.
+  function setView(view) {
+    state.view = view;
+    U.writeView(localStorage, view);
+    for (const v of U.VIEWS) $(`view-${v}`).setAttribute('aria-pressed', String(v === view));
+    $('dashboard').hidden = view !== 'settings' || !$('dashboard').hasChildNodes();
+    $('runs').hidden = view !== 'runs';
+    $('refresh').title = `Refresh: read the ${view} again`;
+  }
+
+  // Shows view and reads what it shows.
+  function showView(view) {
+    setView(view);
+    say('status', '');
+    return reload();
+  }
+
+  // Reads the shown view again.
+  function reload() {
+    if (location.protocol === 'file:') return say('status', R.NO_SERVER);
+    return state.view === 'runs' ? loadRuns() : open_(state.current ?? R.HOME_ID);
+  }
+
   // --- start ---
 
   $('picker-button').addEventListener('click', () => setMenu($('picker-menu').hidden));
   $('open-home').addEventListener('click', () => open_(R.HOME_ID));
   $('add-folder').addEventListener('click', addFolder);
-  // ↻ spins while the settings are read, at least one turn so a fast read
+  for (const v of U.VIEWS) $(`view-${v}`).addEventListener('click', () => { if (state.view !== v) showView(v); });
+  // ↻ spins while the shown view is read, at least one turn so a fast read
   // is still seen.
   $('refresh').addEventListener('click', async () => {
     const button = $('refresh');
     if (button.classList.contains('spinning')) return;
     button.classList.add('spinning');
-    await Promise.all([open_(state.current ?? R.HOME_ID), new Promise((r) => setTimeout(r, 600))]);
+    await Promise.all([reload(), new Promise((r) => setTimeout(r, 600))]);
     button.classList.remove('spinning');
   });
   document.addEventListener('click', (e) => {
@@ -595,9 +880,14 @@
     }
   });
 
-  // Start where the page was left; with nothing chosen yet, at home.
+  // Start where the page was left: the view, and the folder in the picker;
+  // with nothing chosen yet, settings at home.
+  setView(state.view);
   if (location.protocol === 'file:') say('status', R.NO_SERVER);
-  else open_(R.readCurrent(localStorage) ?? R.HOME_ID);
+  else {
+    open_(R.readCurrent(localStorage) ?? R.HOME_ID);
+    if (state.view === 'runs') loadRuns();
+  }
 </script>
 </body>
 </html>
