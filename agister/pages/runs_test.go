@@ -397,9 +397,10 @@ func TestRunEndpoints(t *testing.T) {
 			t.Fatalf("%s: code %d", target, code)
 		}
 	}
-	// A bare .. is cleaned away by the router, a redirect, before any
-	// handler sees it.
-	if code := get(t, h, "localhost:7465", "/api/runs/..", nil); code != http.StatusTemporaryRedirect {
+	// A bare .. is cleaned away by the router before any handler sees
+	// it: a redirect, never served. The redirect code differs across Go
+	// versions (301, later 307), so any 3xx holds.
+	if code := get(t, h, "localhost:7465", "/api/runs/..", nil); code < 300 || code > 399 {
 		t.Fatalf("/api/runs/..: code %d", code)
 	}
 	for _, id := range []string{"..", "a/b", "", "."} {
