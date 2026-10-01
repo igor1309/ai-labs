@@ -23,28 +23,29 @@ file that does not parse shows as unreadable, with its error.
 
 ## Open it
 
-Open `agister/pages/index.html` from disk in Chrome or Edge (drag it into
-a window, or `open -a "Google Chrome" agister/pages/index.html`). Folder
-access uses the File System Access API, which Safari and Firefox lack;
-there the page renders but cannot open folders.
+Open `agister/pages/index.html` from disk in Safari, Chrome or any current
+browser (`open agister/pages/index.html`). "Open folder…" uses the
+browser's folder upload (`<input type="file" webkitdirectory>`): pick the
+repo folder itself, since the browser reads every file under the folder
+you pick, so a large folder such as `~` takes long. The page only reads;
+nothing leaves the browser.
 
 The page code is in `index.html`; the logic that does not touch the DOM is
 in `repos.js` (the picker) and `config.js` (reading the settings; its YAML
 and TOML parsers cover what Agister settings use). Both are classic scripts
-rather than ES modules, because Chrome does not load module scripts from
+rather than ES modules, because browsers block module scripts from
 `file://`.
 
 ## Data
 
-Everything stays in the browser, per page origin:
+Everything stays in the browser's localStorage, per page origin:
 
-- IndexedDB database `agister-pages`, store `repos`: the folder handles,
-  keyed by folder name plus an id.
-- localStorage key `agister-pages:recent`: the recent list (name, last
-  opened), most recent first, at most 10.
-
-The browser grants access only to the folder you choose and what is under
-it; reopening a recent repo may ask for read access again.
+- `agister-pages:recent`: the recent repos (name, last opened), most recent
+  first, at most 10. A repo is known by its folder name.
+- `agister-pages:settings:<name>`: a saved copy of each recent repo's
+  `.agister` files (each at most 256 KB). The browser cannot reopen a
+  folder by itself, so a recent repo shows this copy, with the time it was
+  saved, until you open its folder again.
 
 ## Test
 

@@ -1,7 +1,7 @@
 // Agister pages: reads a repo's .agister settings into the few fields the
 // dashboard shows. No DOM here.
 //
-// A classic script that sets globalThis.AgisterConfig, like repos.js: Chrome
+// A classic script that sets globalThis.AgisterConfig, like repos.js: browsers
 // refuses module scripts from file://. The parsers cover the YAML and TOML
 // that Agister settings use (block maps and lists, flow maps and lists, folded
 // and literal scalars, comments), not the whole of either language.

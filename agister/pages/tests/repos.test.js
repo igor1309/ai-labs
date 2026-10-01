@@ -37,6 +37,7 @@ function fakeStorage(initial = {}) {
   return {
     getItem: (k) => (data.has(k) ? data.get(k) : null),
     setItem: (k, v) => data.set(k, String(v)),
+    removeItem: (k) => data.delete(k),
     raw: (k) => data.get(k),
   };
 }
@@ -157,34 +158,81 @@ test('a failing storage reads as empty', () => {
   assert.deepEqual(R.readRecent(storage), []);
 });
 
-test('repo ids are the name plus a unique part', () => {
-  assert.equal(R.makeRepoId('ai-labs', () => 'u1'), 'ai-labs:u1');
-  assert.notEqual(R.makeRepoId('x'), R.makeRepoId('x'));
+// A picked file as Safari and Chrome give it.
+function picked(path, text = '') {
+  return { name: path.split('/').pop(), webkitRelativePath: path, size: text.length, text: async () => text };
+}
+
+test('a picked folder becomes a tree the listing and detection read', async () => {
+  const root = R.dirFromFiles([
+    picked('repo/README.md'),
+    picked('repo/.agister/agents/a.toml', 'name = "a"'),
+    picked('repo/src/main.go'),
+    picked('repo/src/inner/.agister/service.toml'),
+  ]);
+  assert.equal(root.name, 'repo');
+  assert.equal(await R.isAgisterRepo(root), true);
+  const listed = await R.listFolder(root);
+  assert.deepEqual(listed.map((e) => [e.name, e.kind]), [['.agister', 'directory'], ['src', 'directory'], ['README.md', 'file']]);
+  const src = listed[1].handle;
+  assert.deepEqual((await R.listFolder(src)).map((e) => [e.name, e.agister]), [['inner', true], ['main.go', false]]);
+  const agents = await (await root.getDirectoryHandle('.agister')).getDirectoryHandle('agents');
+  assert.equal(await (await (await agents.getFileHandle('a.toml')).getFile()).text(), 'name = "a"');
 });
 
-test('a folder picked again reuses its stored id', async () => {
-  const a = dir('a');
-  const b = dir('b');
-  const records = [{ id: 'a:1', handle: a }, { id: 'b:1', handle: b }];
-  assert.equal(await R.findKnownId(records, b), 'b:1');
-  assert.equal(await R.findKnownId(records, dir('b')), null);
+test('a picked tree throws NotFoundError and TypeMismatchError like real handles', async () => {
+  const root = R.dirFromFiles([picked('repo/file.txt')]);
+  await assert.rejects(root.getDirectoryHandle('missing'), { name: 'NotFoundError' });
+  await assert.rejects(root.getDirectoryHandle('file.txt'), { name: 'TypeMismatchError' });
+  await assert.rejects(root.getFileHandle('missing'), { name: 'NotFoundError' });
+  assert.equal(await R.isAgisterRepo(root), false);
 });
 
-test('read permission: granted, requested, denied or failing', async () => {
-  const handle = (query, request) => ({
-    requests: 0,
-    async queryPermission(opts) { assert.deepEqual(opts, { mode: 'read' }); return query; },
-    async requestPermission(opts) {
-      assert.deepEqual(opts, { mode: 'read' });
-      this.requests++;
-      if (request instanceof Error) throw request;
-      return request;
-    },
+test('an empty pick has no folder', () => {
+  assert.equal(R.dirFromFiles([]), null);
+});
+
+test('the saved copy of .agister round-trips through storage', async () => {
+  const root = R.dirFromFiles([
+    picked('repo/.agister/service.toml', 'max_attempts = 1'),
+    picked('repo/.agister/agents/a.toml', 'name = "a"'),
+    picked('repo/.agister/big.json', 'x'.repeat(256 * 1024 + 1)),
+  ]);
+  const files = await R.readSettings(await root.getDirectoryHandle('.agister'));
+  assert.deepEqual(files, { 'service.toml': 'max_attempts = 1', 'agents/a.toml': 'name = "a"' });
+  const storage = fakeStorage();
+  R.saveSettings(storage, 'repo', files, 42);
+  const saved = R.loadSettings(storage, 'repo');
+  assert.deepEqual(saved, { savedAt: 42, files });
+  const copy = R.dirFromSettings('repo', saved.files);
+  assert.equal(copy.name, 'repo');
+  assert.equal(await R.isAgisterRepo(copy), true);
+  assert.deepEqual(await R.readSettings(await copy.getDirectoryHandle('.agister')), files);
+});
+
+test('a repo saved with no settings files still reads as a repo', async () => {
+  assert.equal(await R.isAgisterRepo(R.dirFromSettings('repo', {})), true);
+});
+
+test('a missing or corrupt saved copy reads as none', () => {
+  const key = (id) => R.SETTINGS_KEY + id;
+  const storage = fakeStorage({
+    [key('bad')]: '{not json',
+    [key('shape')]: JSON.stringify({ savedAt: 1, files: { a: 3 } }),
+    [key('time')]: JSON.stringify({ files: {} }),
   });
-  const granted = handle('granted', 'denied');
-  assert.equal(await R.ensureReadPermission(granted), true);
-  assert.equal(granted.requests, 0);
-  assert.equal(await R.ensureReadPermission(handle('prompt', 'granted')), true);
-  assert.equal(await R.ensureReadPermission(handle('prompt', 'denied')), false);
-  assert.equal(await R.ensureReadPermission(handle('prompt', domError('SecurityError'))), false);
+  for (const id of ['missing', 'bad', 'shape', 'time']) assert.equal(R.loadSettings(storage, id), null, id);
+});
+
+test('removing a repo or pushing it out of the list drops its saved copy', () => {
+  const storage = fakeStorage();
+  for (let i = 0; i < 11; i++) {
+    R.rememberRepo(storage, entry(`r${i}`, i));
+    R.saveSettings(storage, `r${i}`, {}, i);
+  }
+  assert.equal(R.loadSettings(storage, 'r0'), null);
+  assert.ok(R.loadSettings(storage, 'r1'));
+  R.forgetRepo(storage, 'r5');
+  assert.equal(R.loadSettings(storage, 'r5'), null);
+  assert.ok(R.loadSettings(storage, 'r6'));
 });
