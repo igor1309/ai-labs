@@ -261,6 +261,20 @@ func TestADRReviewCollectsTheADRReview(t *testing.T) {
 	}
 }
 
+// The judge runs under no cost limit: its policy sets none, so its call's
+// effective limits carry none.
+func TestTheJudgeHasNoCostLimit(t *testing.T) {
+	_, repo, home := onFakeRuntimes(t)
+	_, records := judgedReviews(t, home, repo, "code_review")
+	effective, ok := records["review_judge"]["effective"].(map[string]any)
+	if !ok {
+		t.Fatalf("the judge's run records no effective limits: %v", records["review_judge"])
+	}
+	if limit, set := effective["max_cost_usd"]; set {
+		t.Fatalf("the judge's effective cost limit is %v, want none", limit)
+	}
+}
+
 // judgedReviews runs a review workflow to completion and is its judge's
 // collection, as each node's process and status by node, and the nodes'
 // runs by process. It fails unless the judge received that collection.
