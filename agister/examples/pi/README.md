@@ -2,9 +2,11 @@
 
 [Pi](https://pi.dev) is the coding agent CLI of the npm package
 `@earendil-works/pi-coding-agent`; adapter `pi`, contract `pi/1`, written
-against 0.85.1. These settings are not installed by `agister init`:
-`agister check` refuses them as shipped, because the mapping is not
-verified against a live Pi (no primitive lists a `verified` version).
+against 0.85.1. These settings are not installed by `agister init`.
+The read tools (`read`, `grep`, `find` and `ls`) are verified for 0.85;
+`agister check` accepts the example. A policy requiring `edit`, `write`
+or `bash` is still refused: those tools have not been checked live and
+are never granted.
 
 ## Install and authenticate
 
@@ -54,13 +56,18 @@ provider's environment variable (`OPENCODE_API_KEY` for `opencode-go`;
 
 ## Use
 
-Verify what each tool grants on your Pi version, add the `verified`
-versions to `runtimes/pi.yaml` (and record the check in
-`docs/findings.md`), copy these files into `$AGISTER_HOME`, or into one
-repository's `.agister/` to try them there only, and run
-`agister check --probe`. Every command runs `check` first, so until these
-files pass it, every command in that scope stops. Then:
+With Pi 0.85 installed and authenticated, and Agister's home initialized,
+opt in to host reads in the repository's `service.toml` as described above.
+From the repository root, copy the example into your Agister home, then
+ask a question:
 
 ```sh
+cp -R agister/examples/pi/. "${AGISTER_HOME:-$HOME/.agister}/"
 agister run ask_pi --param question="What does this repository do?"
 ```
+
+You can instead copy the settings into one repository's `.agister/` to
+try them there only. `agister check --probe` checks the installed runtime;
+every command runs `check` first. For other Pi versions or the unverified
+tools, check their grants live, add the `verified` versions to
+`runtimes/pi.yaml`, and record the check in `docs/findings.md`.

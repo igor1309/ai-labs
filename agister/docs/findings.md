@@ -16,6 +16,26 @@
   writing elsewhere in the home directory, `git commit` (`.git` stays
   read-only) and network were refused. Its mapping grants
   `repository.write` and `host.write`, not `repository.history.write`.
+- **Pi's read tools reach both the repository and the host.** Pi 0.85.1
+  under `pi/1`, checked live through Agister on 2026-10-01 with agent
+  `pi-minimax`, model `opencode-go/minimax-m3`, process `ask_pi` and policy
+  `read-only`, in a throwaway Agister home with `read`, `grep`, `find` and
+  `ls` marked verified for the check:
+  - Run `20261001T141844Z-77906d` completed ($0.0040, 23.7 s). The plan
+    granted `[read grep find ls]` and withheld `repository.diff`,
+    `repository.history.read` and `process.execute`. `read` read
+    `agister/internal/adapters/runtime/pi/pi.go` in the checkout and
+    `/etc/hosts` outside it. The record holds runtime `pi`, contract
+    `pi/1`, version `0.85.1`, the profile's model, the reported session
+    and the cost with source `runtime`.
+  - Run `20261001T141916Z-879ab7` completed ($0.0017, 11.2 s). `ls`
+    listed `/etc/ssh` and `agister/examples/pi`; `find` found `hosts`
+    under `/etc`; `grep` matched in `/etc/hosts` and under
+    `agister/internal/adapters/runtime`.
+  Each of the four tools read or searched the repository and the host,
+  as the mapping declares; they are now verified for `0.85.` in
+  `examples/pi/runtimes/pi.yaml`. `edit`, `write` and `bash` were not
+  checked and remain unverified, so never granted.
 - **Claude Code rejects draft 2020-12 schemas** passed with `--json-schema`,
   so example schemas declare no `$schema`. `agister check` still accepts
   one: on 2026-09-29 a project schema with the draft 2020-12 `$schema`

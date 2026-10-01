@@ -2,9 +2,10 @@
 # with extensions, prompt templates and themes off, --approve, the tools
 # granted as the --tools allowlist). Pi has no sandbox: its file tools are
 # not confined to the working directory, so they read the host, and bash
-# runs anything the user can. Not yet verified against a live Pi
-# (docs/findings.md), so check refuses it until a live check adds each
-# primitive's verified versions.
+# runs anything the user can. read, grep, find and ls are verified live
+# against Pi 0.85.1 (docs/findings.md). edit, write and bash are not yet
+# verified, so never granted. A plan uses only primitives verified for
+# the installed version.
 schema: agister.runtime/v1alpha1
 name: pi
 adapter: pi
@@ -13,10 +14,10 @@ efforts: [off, minimal, low, medium, high, xhigh, max]
 primitives:
   select: any
   items:
-    read: {grants: [repository.read, host.read]}
-    grep: {grants: [repository.search, host.read]}
-    find: {grants: [repository.read, host.read]}
-    ls: {grants: [repository.read, host.read]}
+    read: {grants: [repository.read, host.read], verified: ["0.85."]}
+    grep: {grants: [repository.search, host.read], verified: ["0.85."]}
+    find: {grants: [repository.read, host.read], verified: ["0.85."]}
+    ls: {grants: [repository.read, host.read], verified: ["0.85."]}
     edit: {grants: [repository.write]}
     write: {grants: [repository.write]}
     # Like Claude Code's Bash, it grants everything.
