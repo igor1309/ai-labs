@@ -47,7 +47,9 @@ type VerifyCopies interface {
 	// Copy checks revision out of repository at dir, apart from every other
 	// checkout, and applies patch to its files. It refuses, with an error
 	// that wraps ErrPlaceTaken, if something is at dir already, which it
-	// leaves as it was; it removes a copy it made and cannot finish.
+	// leaves as it was; it removes a copy it made and cannot finish. One it
+	// never started fails with an error that wraps ErrCopyNotStarted:
+	// nothing is at dir, and nothing is left to discard.
 	Copy(ctx context.Context, repository, dir, revision string, patch []byte) error
 	// Discard removes the copy at dir; one already gone is success.
 	Discard(ctx context.Context, repository, dir string) error
@@ -57,6 +59,11 @@ type VerifyCopies interface {
 // directory already: nothing was made there, and what is there is not the
 // call's to remove.
 var ErrPlaceTaken = errors.New("something is already there")
+
+// ErrCopyNotStarted is what a copy fails with when it ended before its
+// checkout started, as a cancelled wait does: nothing is at its directory,
+// so there is nothing to discard.
+var ErrCopyNotStarted = errors.New("the copy was not started")
 
 // VerifyCommands runs the verification command.
 type VerifyCommands interface {
@@ -316,7 +323,8 @@ func (v *verification) budget() (*float64, *run.Error) {
 // deliver; the copy must have that content, or the captured changes do not
 // reproduce it and the call fails. The copy is on record before it is made
 // and removed on every path (ADR-005 rule 2) but a refusal, where what is
-// at its place is not the call's to remove. Making it counts against the
+// at its place is not the call's to remove, and a copy never started,
+// where nothing is. Making it counts against the
 // call's timeout, and the command gets what is left, up to verify.timeout:
 // the timeout it got is returned. A run that ended, not killed or failed
 // to run, is compared with the content it checked (ADR-005 rule 1). The
@@ -340,6 +348,12 @@ func (v *verification) check(ctx context.Context, number int, identity string) (
 	if errors.Is(err, ErrPlaceTaken) {
 		v.forgetCopy(dir)
 		return nil, 0, run.Fault(run.ClassInternal, "attempt %d cannot make its clean copy: %v", number, err), nil
+	}
+	// Nothing was made, so nothing is discarded: a discard would wait for
+	// the repository again, past the call's end.
+	if errors.Is(err, ErrCopyNotStarted) {
+		v.forgetCopy(dir)
+		return nil, 0, v.preparing(ctx, prepare, number, "making the clean copy to check", err), nil
 	}
 	// Removed with ctx's values but not its end: a cancelled call's copy
 	// goes too.
