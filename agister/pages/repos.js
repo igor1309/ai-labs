@@ -97,12 +97,14 @@
     return body;
   }
 
-  // { id, files: { 'agents/a.toml': text, ... } }: the settings files of the
-  // repo at path, or of Agister's home for ~. id is path, or ~ when the
-  // folder's .agister is Agister's home (the user's home folder).
+  // { id, files: { 'agents/a.toml': text, ... }, homeFiles }: the settings
+  // files of the repo at path, or of Agister's home for ~. id is path, or ~
+  // when the folder's .agister is Agister's home (the user's home folder).
+  // homeFiles, Agister home's files that the repo's go over, is null for ~.
   async function fetchSettings(fetchFn, path) {
     const body = await getJson(fetchFn, `api/settings?path=${encodeURIComponent(path)}`);
-    return { id: body.home ? HOME_ID : path, files: body.files || {} };
+    const home = body.home || !body.homeFiles;
+    return { id: body.home ? HOME_ID : path, files: body.files || {}, homeFiles: home ? null : body.homeFiles };
   }
 
   // The folder the user chose in the Mac's folder dialog, or null when they

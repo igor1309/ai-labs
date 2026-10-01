@@ -240,6 +240,31 @@ test('a file that does not parse becomes an error item; the rest still load', as
   assert.equal(m.policies.length, 2);
 });
 
+test('a repo goes over Agister home: same kind and file name replaces, the rest adds up', async () => {
+  const home = memDir('.agister', {
+    'service.toml': 'max_attempts = 2\n',
+    agents: { 'opus.toml': 'name = "opus"\nmodel = "opus-old"\n', 'haiku.toml': 'name = "haiku"\nruntime = "claude-code"\n' },
+    runtimes: { 'claude-code.yaml': 'name: claude-code\nadapter: claude-code\n' },
+    policies: { 'review.yaml': 'name: review\n' },
+  });
+  const repo = memDir('.agister', {
+    agents: { 'opus.toml': 'name = "opus"\nmodel = "opus"\nruntime = "claude-code"\n' },
+    processes: { 'p.yaml': 'name: p\nuses: agent:opus\npolicy: process-policy:review\noutput: {schema: missing}\n' },
+  });
+  const m = await C.loadComposed(home, repo);
+  assert.deepEqual(m.agents.map((a) => [a.name, a.model, a.source, !!a.overrides]),
+    [['haiku', null, 'home', false], ['opus', 'opus', 'repo', true]]);
+  assert.deepEqual(m.service, { maxTimeout: null, maxAttempts: 2, maxVerifyAttempts: null, permissions: 0, source: 'home' });
+  const p = m.processes[0];
+  assert.deepEqual([p.source, p.agentOutside, p.policyOutside, p.outputOutside], ['repo', false, false, true]);
+  assert.deepEqual(m.agents.find((a) => a.name === 'opus').runtimeOutside, false);
+  assert.deepEqual(m.policies[0].usedBy, ['p']);
+
+  const own = await C.loadComposed(memDir('.agister', { 'service.toml': 'max_attempts = 2\n' }),
+    memDir('.agister', { 'service.toml': 'max_attempts = 1\n' }));
+  assert.deepEqual([own.service.maxAttempts, own.service.source, own.service.overrides], [1, 'repo', true]);
+});
+
 test('missing folders and service.toml read as empty', async () => {
   const m = await C.loadAgister(memDir('.agister', {}));
   assert.deepEqual(m, { service: null, workflows: [], processes: [], agents: [], policies: [], runtimes: [], schemas: [] });

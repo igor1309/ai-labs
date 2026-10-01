@@ -81,7 +81,17 @@ func Handler(agisterHome string, choose Choose) http.Handler {
 		// home: dir is Agister's home, asked as ~ or as the folder holding
 		// it (the user's home), so the page shows it as ~.
 		home := filepath.Clean(dir) == filepath.Clean(agisterHome)
-		reply(w, map[string]any{"path": path, "dir": dir, "home": home, "files": files}, err)
+		body := map[string]any{"path": path, "dir": dir, "home": home, "files": files}
+		// A repo's settings go over Agister home's, so the page gets both:
+		// homeFiles, empty when there is no home.
+		if err == nil && !home {
+			homeFiles, homeErr := settings(agisterHome)
+			if homeErr != nil {
+				homeFiles = map[string]string{}
+			}
+			body["homeFiles"] = homeFiles
+		}
+		reply(w, body, err)
 	})
 	return loopbackOnly(mux)
 }

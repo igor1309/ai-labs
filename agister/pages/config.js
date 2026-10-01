@@ -395,6 +395,36 @@
 
   // The dashboard model of the .agister folder agister.
   async function loadAgister(agister) {
+    return link(await readAgister(agister));
+  }
+
+  const KINDS = ['workflows', 'processes', 'agents', 'policies', 'runtimes', 'schemas'];
+
+  // What Agister uses in a repo: Agister home's settings with the repo's
+  // over them. As in Agister, a repo file replaces the home file of the
+  // same kind and name, and the repo's service.toml replaces home's. Each
+  // item says where it comes from: source 'repo' or 'home', and overrides
+  // when a repo item replaces a home one.
+  async function loadComposed(home, repo) {
+    return link(compose(await readAgister(home), await readAgister(repo)));
+  }
+
+  function compose(home, repo) {
+    const model = {};
+    for (const kind of KINDS) {
+      const byFile = new Map(home[kind].map((x) => [stem(x.file), { ...x, source: 'home' }]));
+      for (const x of repo[kind]) {
+        byFile.set(stem(x.file), { ...x, source: 'repo', overrides: byFile.has(stem(x.file)) });
+      }
+      model[kind] = [...byFile.values()].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    }
+    model.service = repo.service
+      ? { ...repo.service, source: 'repo', overrides: !!home.service }
+      : home.service && { ...home.service, source: 'home' };
+    return model;
+  }
+
+  async function readAgister(agister) {
     const [workflows, processes, agents, policies, runtimes, schemas, service] = await Promise.all([
       readFolder(agister, 'workflows', ['.yaml', '.yml']),
       readFolder(agister, 'processes', ['.yaml', '.yml']),
@@ -404,7 +434,7 @@
       readFolder(agister, 'schemas', ['.json']),
       loadService(agister),
     ]);
-    return link({
+    return {
       service,
       workflows: each(workflows, parseYaml, workflowItem),
       processes: each(processes, parseYaml, processItem),
@@ -412,7 +442,7 @@
       policies: each(policies, parseYaml, policyItem),
       runtimes: each(runtimes, parseYaml, (file, _src, doc) => runtimeItem(file, doc)),
       schemas: schemas.map(({ file }) => ({ file, name: stem(file) })),
-    });
+    };
   }
 
   // Adds the cross-references: who uses each item, and which names point
@@ -456,6 +486,6 @@
 
   globalThis.AgisterConfig = {
     parseYaml, parseToml, parseFlow, stripComment,
-    leadingComment, firstSentence, loadAgister,
+    leadingComment, firstSentence, loadAgister, loadComposed,
   };
 })();

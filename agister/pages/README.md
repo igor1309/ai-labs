@@ -1,24 +1,30 @@
 # Agister pages
 
-`agister pages` serves a page that shows Agister settings as tables, one
-row per item. `~` in the picker at the top right is Agister home,
-`~/.agister`; the picker also opens repos and lists recent ones, each
-showing its `.agister`:
+`agister pages` serves a page that shows what Agister can run with a
+repo's settings and what that is made of. `~` in the picker at the top
+right is Agister home, `~/.agister`; the picker also opens repos and lists
+recent ones.
 
-- **Workflows**: the processes run together, the one that then collects
-  their results, and the parameters.
-- **Processes**: agent, policy, output schema, verify attempts, parameters
-  (required ones marked) and the workflows that use it.
-- **Agents**: runtime, model, effort, session and the processes that use it.
-- **Policies**: workspace access, timeout, cost cap, how many permissions it
-  allows and denies (the lists show on hover) and the processes that use it.
-- **Runtimes** and **Output schemas** defined in the repo, with their users.
-- **Service limits** from `service.toml`, each with what it caps.
+For a repo the page shows what Agister uses there: Agister home's settings
+with the repo's `.agister` over them. As in Agister, a repo file replaces
+the home file of the same kind and name, and the repo's `service.toml`
+replaces home's. Each item is marked `repo`, `home` or `repo, replaces
+home`.
 
-A file's purpose, its leading comment, shows on hover over its name. Names
-link to their rows. A name not defined in the repo's `.agister` (Agister's
-home or built in, such as the `claude-code` runtime) is marked ↗ in amber;
-a file that does not parse shows its error in its row. ↻ reads the
+- **Workflows** and **Processes**, as cards: what each does (its leading
+  comment), the `agister run` command with its required params (Copy puts
+  it on the clipboard), the defaults, and then:
+  - for a process, its agent (runtime, model, effort, session), its policy
+    (workspace, timeout, cost cap, what it allows and denies) and its output
+    schema and verify attempts;
+  - for a workflow, the steps run at once and the one run after them, each
+    with its agent and policy in one line. Steps are not repeated under
+    Processes; they still run alone.
+- **Building blocks**, as tables: agents, policies, runtimes and the service
+  limits, each with what it means.
+
+A name the settings do not define shows in red as missing: Agister refuses
+such a call. A file that does not parse shows its error. ↻ reads the
 settings again.
 
 ## Run it

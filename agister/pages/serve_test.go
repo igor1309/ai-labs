@@ -215,6 +215,36 @@ func TestSettingsOfTildeReadAgisterHome(t *testing.T) {
 	}
 }
 
+func TestSettingsOfARepoCarryAgisterHomes(t *testing.T) {
+	user := t.TempDir()
+	home := filepath.Join(user, ".agister")
+	write(t, filepath.Join(home, "agents", "h.toml"), `name = "h"`)
+	write(t, filepath.Join(home, "runs", "r", "record.json"), "{}")
+	repo := filepath.Join(user, "repo")
+	write(t, filepath.Join(repo, ".agister", "agents", "r.toml"), `name = "r"`)
+
+	var got struct{ Files, HomeFiles map[string]string }
+	if code := get(t, Handler(home, noChoose(t)), "127.0.0.1", "/api/settings?path="+q(repo), &got); code != 200 {
+		t.Fatalf("status %d", code)
+	}
+	if !reflect.DeepEqual(got.Files, map[string]string{"agents/r.toml": `name = "r"`}) ||
+		!reflect.DeepEqual(got.HomeFiles, map[string]string{"agents/h.toml": `name = "h"`}) {
+		t.Errorf("got %+v", got)
+	}
+
+	var tilde map[string]any
+	get(t, Handler(home, noChoose(t)), "127.0.0.1", "/api/settings?path=~", &tilde)
+	if _, ok := tilde["homeFiles"]; ok {
+		t.Errorf("~ carries homeFiles: %v", tilde)
+	}
+
+	var noHome struct{ HomeFiles map[string]string }
+	get(t, Handler(filepath.Join(user, "missing"), noChoose(t)), "127.0.0.1", "/api/settings?path="+q(repo), &noHome)
+	if noHome.HomeFiles == nil || len(noHome.HomeFiles) != 0 {
+		t.Errorf("without a home: %v", noHome.HomeFiles)
+	}
+}
+
 func TestSettingsMarkAgisterHomeHoweverAsked(t *testing.T) {
 	user := t.TempDir()
 	home := filepath.Join(user, ".agister")
