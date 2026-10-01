@@ -173,7 +173,7 @@ func newLoop(t *testing.T, settings verifySettings, steps ...step) *loopHarness 
 // newLoopWith is newLoop with the seams given.
 func newLoopWith(t *testing.T, with seams, settings verifySettings, steps ...step) *loopHarness {
 	t.Helper()
-	workspaces := git.NewWorkspaces(git.NewWorktrees())
+	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
 	if with.changes == nil {
 		with.changes = workspaces
 	}
@@ -401,13 +401,14 @@ func TestVerifyFailingRunIsRepairedInTheSameSessionAndCheckout(t *testing.T) {
 	}
 }
 
-// The last attempt failing ends the node as budget exhausted.
+// The last attempt failing ends the node as budget exhausted, with the
+// latest turn's valid output on record (LAB-39).
 func TestVerifyAttemptsRunOut(t *testing.T) {
 	h := newLoop(t, verifySettings{}, state("one"), state("two"), state("three"), state("pass"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "attempt 3 of 3 failed (exit code 1)")
-	if len(h.runner.turns()) != 3 || len(runsOf(record)) != 3 || record.Result.Output != nil {
-		t.Fatalf("turns %d, attempts %+v", len(h.runner.turns()), record.Attempts)
+	if len(h.runner.turns()) != 3 || len(runsOf(record)) != 3 || compact(record.Result.Output) != `{"done":true}` {
+		t.Fatalf("turns %d, output %s, attempts %+v", len(h.runner.turns()), record.Result.Output, record.Attempts)
 	}
 }
 
@@ -492,7 +493,7 @@ func TestVerifyCallTimeoutBoundsTheLoop(t *testing.T) {
 	// only once the copy is made, so the real time Git takes decides
 	// nothing.
 	clock := &manualClock{now: time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)}
-	copies := slowCopies{Workspaces: git.NewWorkspaces(git.NewWorktrees()), after: func() { clock.advance(59 * time.Second) }}
+	copies := slowCopies{Workspaces: git.NewWorkspaces(git.NewWorktrees(t.TempDir())), after: func() { clock.advance(59 * time.Second) }}
 	h := newLoopWith(t, seams{clock: clock, copies: copies}, verifySettings{command: blocks, timeout: "20s"}, state("one"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Interrupted, domain.ClassTimeout, "the call's timeout passed during attempt 1's run")

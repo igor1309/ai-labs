@@ -3,6 +3,7 @@ package app_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -85,6 +86,26 @@ func TestCheckoutThatCannotBeRecordedIsReleasedAndTheCallRefused(t *testing.T) {
 	}
 	// The record does not claim a checkout it could not write down.
 	if record.Effects != nil {
+		t.Fatalf("effects = %+v", record.Effects)
+	}
+}
+
+// A checkout that could not be recorded and then could not be released is
+// still left for a reap: the finished record names it as unreleased.
+func TestACheckoutThatCannotBeRecordedNorReleasedIsLeftForAReap(t *testing.T) {
+	h := newHarness()
+	h.recorder.updateErr = func(record run.Record) error {
+		if record.Effects != nil && record.Effects.Checkout != nil {
+			return errors.New("disk full")
+		}
+		return nil
+	}
+	h.workspaces.releaseErr = context.DeadlineExceeded
+	record := h.call(t, contract.CallRequest{})
+	if h.workspaces.releases() != 1 || record.FinishedAt == nil || class(record) != run.ClassInternal {
+		t.Fatalf("releases = %d, finished %v, result %+v", h.workspaces.releases(), record.FinishedAt, record.Result)
+	}
+	if checkout := (&run.Checkout{Repository: "/repo", Dir: "/work/checkout"}); record.Effects == nil || !reflect.DeepEqual(record.Effects.Unreleased, checkout) {
 		t.Fatalf("effects = %+v", record.Effects)
 	}
 }
@@ -235,6 +256,58 @@ func TestAFinishedRunsCleanCopyIsReaped(t *testing.T) {
 	}
 }
 
+// A call whose release fails at its cleanup deadline leaves a finished run
+// that names the checkout as unreleased (ADR-008 rule 6). A reap leaves it
+// while a running run records the directory, and once the lock is free
+// removes it and clears it, while the run keeps its end and its Checkout.
+func TestACheckoutWhoseReleaseHitTheDeadlineIsReapedLater(t *testing.T) {
+	h := newHarness()
+	h.workspaces.releaseErr = fmt.Errorf("git worktree remove: %w", context.DeadlineExceeded)
+	finished := h.call(t, contract.CallRequest{})
+	checkout := &run.Checkout{Repository: "/repo", Dir: "/work/checkout"}
+	if finished.FinishedAt == nil || finished.Effects == nil ||
+		!reflect.DeepEqual(finished.Effects.Unreleased, checkout) || !reflect.DeepEqual(finished.Effects.Checkout, checkout) {
+		t.Fatalf("finished %v, effects %+v", finished.FinishedAt, finished.Effects)
+	}
+
+	r := reaping(h, finished)
+	r.adopter.live = []string{checkout.Dir}
+	if err := r.reap(); err != nil {
+		t.Fatal(err)
+	}
+	if len(h.workspaces.discarded) != 0 {
+		t.Fatalf("discarded %v, which a running run records", h.workspaces.discarded)
+	}
+	if record := r.adopter.handles[finished.ID].wait(t); !reflect.DeepEqual(record.Effects.Unreleased, checkout) {
+		t.Fatalf("effects = %+v", record.Effects)
+	}
+
+	r = reaping(h, finished)
+	if err := r.reap(); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(h.workspaces.discarded, [][2]string{{"/repo", "/work/checkout"}}) || len(r.processes.reaped) != 0 {
+		t.Fatalf("discarded %v, processes reaped %v", h.workspaces.discarded, r.processes.reaped)
+	}
+	handle := r.adopter.handles[finished.ID]
+	if removed := handle.events[0].Data["checkout"].(map[string]any); removed["removed"] != true || removed["dir"] != checkout.Dir {
+		t.Fatalf("events = %+v", handle.events)
+	}
+	record := handle.wait(t)
+	if record.Result.Status != finished.Result.Status || !record.FinishedAt.Equal(*finished.FinishedAt) ||
+		record.Effects.Unreleased != nil || !reflect.DeepEqual(record.Effects.Checkout, checkout) {
+		t.Fatalf("record: result %+v, finished %v, effects %+v", record.Result, record.FinishedAt, record.Effects)
+	}
+}
+
+// A release that succeeds records nothing for a reap.
+func TestAReleasedCheckoutIsNotLeftForAReap(t *testing.T) {
+	h := newHarness()
+	if record := h.call(t, contract.CallRequest{}); record.Effects == nil || record.Effects.Unreleased != nil {
+		t.Fatalf("effects = %+v", record.Effects)
+	}
+}
+
 func TestRunsSomeoneElseOwnsAreSkipped(t *testing.T) {
 	h := newHarness()
 	r := reaping(h, abandonedRun("live"))
@@ -375,6 +448,45 @@ func TestACheckoutARunningRunUsesIsNotDiscarded(t *testing.T) {
 	checkout := adopter.handles["old"].events[0].Data["checkout"].(map[string]any)
 	if checkout["removed"] != false || checkout["skipped"] == nil {
 		t.Fatalf("checkout = %v", checkout)
+	}
+}
+
+// A checkout whose users cannot be listed is left in place, though the
+// reap's context is still active: the run is adopted and finished, its
+// record keeping the checkout as unreleased, and a later reap that can list
+// them removes it and clears it.
+func TestACheckoutLeftWhenRunningRunsCannotBeListedIsReapedLater(t *testing.T) {
+	h := newHarness()
+	r := reaping(h, abandonedRun("old"))
+	r.adopter.liveErr = errors.New("runs unreadable")
+	if err := r.reap(); err != nil {
+		t.Fatalf("reap = %v", err)
+	}
+	if !reflect.DeepEqual(r.adopter.adopted, []string{"old"}) || len(h.workspaces.discarded) != 0 {
+		t.Fatalf("adopted %v, discarded %v", r.adopter.adopted, h.workspaces.discarded)
+	}
+	handle := r.adopter.handles["old"]
+	if left := handle.events[0].Data["checkout"].(map[string]any); left["removed"] != false || left["skipped"] == nil {
+		t.Fatalf("events = %+v", handle.events)
+	}
+	finished := handle.wait(t)
+	checkout := &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-1/workspace"}
+	if finished.FinishedAt == nil || finished.Result == nil || finished.Result.Status != run.Lost ||
+		finished.Effects == nil || !reflect.DeepEqual(finished.Effects.Unreleased, checkout) {
+		t.Fatalf("finished %v, result %+v, effects %+v", finished.FinishedAt, finished.Result, finished.Effects)
+	}
+
+	r = reaping(h, finished)
+	if err := r.reap(); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(h.workspaces.discarded, [][2]string{{checkout.Repository, checkout.Dir}}) {
+		t.Fatalf("discarded = %v", h.workspaces.discarded)
+	}
+	record := r.adopter.handles["old"].wait(t)
+	if record.Result.Status != run.Lost || !record.FinishedAt.Equal(*finished.FinishedAt) ||
+		record.Effects.Unreleased != nil || !reflect.DeepEqual(record.Effects.Checkout, checkout) {
+		t.Fatalf("record: result %+v, finished %v, effects %+v", record.Result, record.FinishedAt, record.Effects)
 	}
 }
 

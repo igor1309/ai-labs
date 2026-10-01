@@ -582,6 +582,9 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	// kept fail the call.
 	var collect func() *run.Error
 	release := func() error { return nil }
+	// owned is the checkout the call made, whether or not its record took
+	// it: a failed release leaves it for a reap either way.
+	var owned *run.Checkout
 	finish := func(fault *run.Error) {
 		// Cleared first: if it panics, the recovery calls finish again.
 		if pending := collect; pending != nil {
@@ -592,6 +595,16 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		}
 		if err := release(); err != nil {
 			event(run.SourceAgister, "WORKSPACE_RELEASE_FAILED", map[string]any{"error": err.Error()})
+			// The finished run names the checkout for a later reap to
+			// remove (ADR-008 rule 6).
+			if owned != nil {
+				var unreleased run.Effects
+				if record.Effects != nil {
+					unreleased = *record.Effects
+				}
+				unreleased.Unreleased = owned
+				record.Effects = &unreleased
+			}
 		}
 		release = func() error { return nil }
 		now := c.clock.Now()
@@ -599,7 +612,6 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		result.Status, result.Error = run.Completed, fault
 		if fault != nil {
 			result.Status = run.StatusOf(fault.Class)
-			result.Output = nil
 		}
 		result.Timing.FinishedAt = now
 		result.Timing.WallMS = now.Sub(result.Timing.StartedAt).Milliseconds()
@@ -705,7 +717,8 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		// a later reap removes the checkout. A checkout that cannot be
 		// recorded is one nobody could find, so it is released and the
 		// call refused.
-		record.Effects = &run.Effects{Checkout: &run.Checkout{Repository: workspace.Repository, Dir: workspace.Dir}}
+		owned = &run.Checkout{Repository: workspace.Repository, Dir: workspace.Dir}
+		record.Effects = &run.Effects{Checkout: owned}
 		if err := handle.Update(record); err != nil {
 			record.Effects = nil
 			fail(fmt.Errorf("recording the checkout failed: %w", err))
@@ -740,6 +753,8 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	var turns []run.Turn
 	var turnMS int64
 	take := func(request TurnRequest, before *run.SessionTotals) run.Turn {
+		// Whatever output an earlier turn had is not the call's any more.
+		result.Output = nil
 		turnStart := c.clock.Now()
 		// The turn runs under a context of its own, which a staleness limit
 		// cancels: the runtime ends as on any cancellation, and the turn is
@@ -780,6 +795,11 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 			validation = c.validator.Validate(res.Schema, turn.Output)
 		}
 		_, fault := run.Conclude(turn, definition.Output{Format: res.Process.Output}, validation)
+		// A contract-valid output is kept whatever then ends the call: a
+		// failed verification is still the call's status and class.
+		if fault == nil && res.Process.Output == "json" {
+			result.Output = turn.Output
+		}
 		return fault
 	}
 
@@ -795,9 +815,6 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 			Dir: workspace.Dir, Base: revision, Repository: workspace.Repository, Request: request, Session: turn.ProviderSessionID,
 			Take: take, Conclude: conclude,
 		})
-	}
-	if fault == nil && res.Process.Output == "json" {
-		result.Output = record.Turn.Output
 	}
 	finish(fault)
 	return final

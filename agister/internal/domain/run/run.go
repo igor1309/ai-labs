@@ -127,7 +127,7 @@ type Session struct {
 type Result struct {
 	Status    Status          `json:"status"`
 	Error     *Error          `json:"error,omitempty"`
-	Output    json.RawMessage `json:"output,omitempty"` // contract-valid, completed only
+	Output    json.RawMessage `json:"output,omitempty"` // the latest turn's, when contract-valid, whatever then ended the node
 	Text      string          `json:"text,omitempty"`
 	Usage     *Usage          `json:"usage,omitempty"`
 	Cost      Cost            `json:"cost"`
@@ -245,6 +245,11 @@ type Effects struct {
 	// of the base with the attempt's changes applied, removed after the
 	// attempt; only one exists at a time.
 	Copy *Checkout `json:"copy,omitempty"`
+	// Unreleased is the call's checkout when its release failed, as at the
+	// cleanup deadline, or when the reap of the abandoned run could not
+	// remove it: still to be removed, by a later reap, which clears it once
+	// removed. Checkout stays on record either way.
+	Unreleased *Checkout `json:"unreleased,omitempty"`
 }
 
 // Checkout is a workspace the call created in Repository.

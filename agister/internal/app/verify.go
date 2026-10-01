@@ -284,6 +284,8 @@ func (v *verification) run(ctx context.Context) *run.Error {
 		// call's session, whatever it did.
 		if fault == nil && repair.ProviderSessionID != v.session {
 			fault = run.Fault(run.ClassRuntimeError, "the repair turn resumed session %s, but the runtime reported session %q", v.session, repair.ProviderSessionID)
+			// Nor is its output the call's.
+			v.result.Output = nil
 		}
 		if fault != nil {
 			failed := run.Attempt{Number: number + 1, Session: repair.ProviderSessionID, Turn: repair}

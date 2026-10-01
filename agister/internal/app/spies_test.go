@@ -184,6 +184,7 @@ type workspacesSpy struct {
 	dir         string
 	checkouts   [][2]string
 	released    int
+	releaseErr  error       // what each release returns
 	discarded   [][2]string // repository, dir
 	discardErr  error
 	discardHook func(ctx context.Context, dir string) error // runs first; a non-nil result is returned
@@ -211,7 +212,7 @@ func (s *workspacesSpy) Checkout(_ context.Context, repository, revision string)
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.released++
-		return nil
+		return s.releaseErr
 	}, nil
 }
 
@@ -728,6 +729,7 @@ type adopterSpy struct {
 	runs      []run.Record
 	live      []string
 	liveReads int
+	liveErr   error  // fails LiveCheckouts
 	onLive    func() // runs during LiveCheckouts
 	// order lists LiveCheckouts as "live" and each Adopt as "adopt:<id>".
 	order    []string
@@ -756,6 +758,9 @@ func (s *adopterSpy) LiveCheckouts(context.Context) ([]string, error) {
 	s.order = append(s.order, "live")
 	if s.onLive != nil {
 		s.onLive()
+	}
+	if s.liveErr != nil {
+		return nil, s.liveErr
 	}
 	return s.live, nil
 }

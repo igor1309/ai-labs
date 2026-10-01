@@ -13,11 +13,13 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/schema"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 	"gopkg.in/yaml.v3"
 )
 
@@ -48,6 +50,25 @@ var codexAgents = map[string]string{
 	"implement_codex":           "codex-implementer-sol-61",
 }
 
+// staleLimits are the effective staleness limits recorded for each process's
+// run, by process, as its policy sets them; a process not listed records
+// none.
+var staleLimits = func() map[string]domain.StaleLimits {
+	implement := domain.StaleLimits{NoEvent: 21 * time.Minute, ToolCommand: 15 * time.Minute, RepeatedToolCalls: 5}
+	review := domain.StaleLimits{NoEvent: 10 * time.Minute, ToolCommand: 8 * time.Minute, RepeatedToolCalls: 5}
+	return map[string]domain.StaleLimits{
+		"implement":                 implement,
+		"implement_codex":           implement,
+		"adr_review_codex":          review,
+		"adversarial_review_codex":  review,
+		"advisor":                   review,
+		"architecture_review_codex": review,
+		"clarity_review_codex":      review,
+		"tests_review_codex":        review,
+		"review_judge":              {NoEvent: 3 * time.Minute},
+	}
+}()
+
 // verifyFixture is the verification command every process that declares
 // verify runs in the test's repository instead of its own: it passes in a
 // checkout of the candidate. The real command would run this module's own
@@ -63,7 +84,8 @@ const verifyFixture = "grep -qx two change.txt"
 // unknown input source or a prompt path that does not resolve from the
 // repository root fails it. Processes are read from the directory, so a new
 // one is tested without listing it here. Each process of codexAgents
-// exists, and its run records that agent.
+// exists, and its run records that agent. Each process's run, a join's
+// included, records its staleLimits.
 //
 // The test works in a repository of its own whose top-level entries link to
 // this repository's working tree (settings and prompts as they are, edits
@@ -115,6 +137,7 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 			if want, ok := codexAgents[name]; ok && record["agent"] != want {
 				t.Fatalf("agent = %v, want %s", record["agent"], want)
 			}
+			recordsStaleLimits(t, record)
 			if process.Verify != nil {
 				attempts, _ := record["attempts"].([]any)
 				if len(attempts) != 1 {
@@ -175,6 +198,7 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 			for i, node := range nodes {
 				node := node.(map[string]any)
 				child := completedRun(t, home, node["run"].(string))
+				recordsStaleLimits(t, child)
 				if parent := child["parent"].(map[string]any); parent["run"] != record["id"] || parent["node"] != node["name"] {
 					t.Fatalf("node %v: parent %v", node["name"], parent)
 				}
@@ -193,6 +217,35 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 		if !joined[name] {
 			t.Errorf("process %s takes a workflow's collection, but no repository workflow joins with it", name)
 		}
+	}
+	for name := range staleLimits {
+		if !slices.Contains(names, name) {
+			t.Errorf("process %s, which has stale limits, is not among the repository's processes", name)
+		}
+	}
+}
+
+// recordsStaleLimits checks that a process's run recorded the effective
+// staleness limits staleLimits lists for its process, or none.
+func recordsStaleLimits(t *testing.T, record map[string]any) {
+	t.Helper()
+	process, _ := record["process"].(string)
+	effective, ok := record["effective"].(map[string]any)
+	if !ok {
+		t.Fatalf("%s: no effective limits recorded: %v", process, record)
+	}
+	var got domain.StaleLimits
+	if recorded, set := effective["stale"]; set {
+		data, err := json.Marshal(recorded)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(data, &got); err != nil {
+			t.Fatalf("%s: stale %s: %v", process, data, err)
+		}
+	}
+	if want := staleLimits[process]; got != want {
+		t.Fatalf("%s: effective stale limits %+v, want %+v", process, got, want)
 	}
 }
 

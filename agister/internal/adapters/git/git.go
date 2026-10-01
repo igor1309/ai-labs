@@ -16,6 +16,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 )
@@ -26,8 +28,21 @@ func run(ctx context.Context, dir string, args ...string) (string, error) {
 
 // runWith runs git with extra environment and stdin.
 func runWith(ctx context.Context, dir string, env []string, stdin []byte, args ...string) (string, error) {
-	command := exec.CommandContext(ctx, "git", args...)
+	return runCommand(exec.CommandContext(ctx, "git", args...), dir, env, stdin, nil)
+}
+
+// runHolding runs command, git or what stands in for it, holding lock, a
+// locked lock file: the command shares its descriptor, so the lock lasts
+// until both this process and the command have exited.
+func runHolding(command *exec.Cmd, dir string, lock *os.File) (string, error) {
+	return runCommand(command, dir, nil, nil, []*os.File{lock})
+}
+
+// runCommand runs command in dir with extra environment, stdin and open
+// files.
+func runCommand(command *exec.Cmd, dir string, env []string, stdin []byte, files []*os.File) (string, error) {
 	command.Dir = dir
+	command.ExtraFiles = files
 	if env != nil {
 		command.Env = append(os.Environ(), env...)
 	}
@@ -37,7 +52,7 @@ func runWith(ctx context.Context, dir string, env []string, stdin []byte, args .
 	var stdout, stderr bytes.Buffer
 	command.Stdout, command.Stderr = &stdout, &stderr
 	if err := command.Run(); err != nil {
-		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), strings.TrimSpace(stderr.String()))
+		return "", fmt.Errorf("%s: %s", strings.Join(command.Args, " "), strings.TrimSpace(stderr.String()))
 	}
 	return stdout.String(), nil
 }
@@ -58,28 +73,49 @@ func commit(ctx context.Context, dir, revision string) (string, error) {
 // one a parallel add has created and not yet written. It holds one lock per
 // repository, keyed by its git common directory: two paths into a
 // repository, or two of its worktrees, share one. A process builds one and
-// gives it to every Workspaces value it makes. Only this process is held
-// back, and nothing is written to the repository for it.
+// gives it to every Workspaces value it makes. Other processes are held
+// back too, through a lock file per repository in Agister's own state
+// directory, named by a digest of the same key: empty, it holds no state.
+// git shares the locked descriptor, so a process killed while git runs
+// leaves the lock held until git exits. Nothing is written to the
+// repository for it.
 type Worktrees struct {
 	// Git, when set, runs the worktree command in place of git, under the
-	// repository's lock: tests hold a command there.
-	Git func(ctx context.Context, dir string, args ...string) (string, error)
-	// Waits, when set, is told that a command found the lock held, before
-	// it waits.
+	// repository's locks: tests hold a command there. lock is the locked
+	// lock file: a command started with it (exec.Cmd.ExtraFiles) keeps the
+	// lock while it runs, should this process be killed first.
+	Git func(ctx context.Context, dir string, lock *os.File, args ...string) (string, error)
+	// Command, when set, makes the command the default Git runs for git
+	// args, in place of git: it is run as git is, holding the lock. Tests
+	// run a process of their own there.
+	Command func(ctx context.Context, args ...string) *exec.Cmd
+	// Waits, when set, is told that a command found a lock held, before it
+	// waits: once per command, whichever lock it is.
 	Waits func()
+	// Pause, when set, is the wait between attempts at a lock file another
+	// process holds, in place of a short sleep; it may return early when
+	// ctx ends. Tests make it immediate.
+	Pause func(ctx context.Context)
 
+	locks string
 	mu    sync.Mutex
-	locks map[string]chan struct{}
+	held  map[string]chan struct{}
 }
 
-func NewWorktrees() *Worktrees { return &Worktrees{} }
+// NewWorktrees makes the process's Worktrees, which keeps its lock files in
+// locks, made when missing.
+func NewWorktrees(locks string) *Worktrees { return &Worktrees{locks: locks} }
+
+// retry is the default wait between attempts at a lock file.
+const retry = 20 * time.Millisecond
 
 // worktree runs git worktree args in repository once no other worktree
-// command of the repository runs. A context that ends while it waits ends
-// the wait with the context's error. started says the command was run:
-// one that was not has changed nothing in the repository.
+// command of the repository runs, in this process or another. A context
+// that ends while it waits ends the wait with the context's error. started
+// says the command was run: one that was not has changed nothing in the
+// repository.
 func (s *Worktrees) worktree(ctx context.Context, repository string, args ...string) (started bool, err error) {
-	if s == nil {
+	if s == nil || s.locks == "" {
 		return false, errNoWorktrees
 	}
 	out, err := run(ctx, repository, "rev-parse", "--git-common-dir")
@@ -99,13 +135,19 @@ func (s *Worktrees) worktree(ctx context.Context, repository string, args ...str
 	if err != nil {
 		return false, err
 	}
-	lock := s.lock(resolved(common))
+	common = resolved(common)
+	waited := false
+	waits := func() {
+		if !waited && s.Waits != nil {
+			s.Waits()
+		}
+		waited = true
+	}
+	lock := s.lock(common)
 	select {
 	case lock <- struct{}{}:
 	default:
-		if s.Waits != nil {
-			s.Waits()
-		}
+		waits()
 		select {
 		case lock <- struct{}{}:
 		case <-ctx.Done():
@@ -113,24 +155,86 @@ func (s *Worktrees) worktree(ctx context.Context, repository string, args ...str
 		}
 	}
 	defer func() { <-lock }()
+	file, err := s.lockFile(ctx, common, waits)
+	if err != nil {
+		return false, err
+	}
+	// Closing the descriptor drops this process's hold; the file stays.
+	defer file.Close()
 	git := s.Git
 	if git == nil {
-		git = run
+		git = s.holding
 	}
-	_, err = git(ctx, repository, append([]string{"worktree"}, args...)...)
+	_, err = git(ctx, repository, file, append([]string{"worktree"}, args...)...)
 	return true, err
+}
+
+// lockFile takes the exclusive lock on the lock file of the repository
+// whose git common directory is common, trying again after each pause
+// while another process holds it and ctx lasts, and returns the file
+// locked. The lock is the open file's: it lasts until every descriptor of
+// it, this process's and any a child shares, is closed.
+func (s *Worktrees) lockFile(ctx context.Context, common string, waits func()) (*os.File, error) {
+	if err := os.MkdirAll(s.locks, 0o700); err != nil {
+		return nil, err
+	}
+	sum := sha256.Sum256([]byte(common))
+	file, err := os.OpenFile(filepath.Join(s.locks, hex.EncodeToString(sum[:])+".lock"), os.O_RDWR|os.O_CREATE, 0o600)
+	if err != nil {
+		return nil, err
+	}
+	pause := s.Pause
+	if pause == nil {
+		pause = func(ctx context.Context) {
+			timer := time.NewTimer(retry)
+			defer timer.Stop()
+			select {
+			case <-timer.C:
+			case <-ctx.Done():
+			}
+		}
+	}
+	for {
+		err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+		if err == nil {
+			break
+		}
+		if !errors.Is(err, syscall.EWOULDBLOCK) && !errors.Is(err, syscall.EINTR) {
+			file.Close()
+			return nil, fmt.Errorf("locking %s: %w", file.Name(), err)
+		}
+		if errors.Is(err, syscall.EWOULDBLOCK) {
+			waits()
+			pause(ctx)
+		}
+		if ctx.Err() != nil {
+			file.Close()
+			return nil, ctx.Err()
+		}
+	}
+	return file, nil
+}
+
+// holding is the default Git: it runs git args, or the command Command
+// makes for them, in dir holding lock.
+func (s *Worktrees) holding(ctx context.Context, dir string, lock *os.File, args ...string) (string, error) {
+	command := s.Command
+	if command == nil {
+		command = func(ctx context.Context, args ...string) *exec.Cmd { return exec.CommandContext(ctx, "git", args...) }
+	}
+	return runHolding(command(ctx, args...), dir, lock)
 }
 
 func (s *Worktrees) lock(common string) chan struct{} {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.locks == nil {
-		s.locks = map[string]chan struct{}{}
+	if s.held == nil {
+		s.held = map[string]chan struct{}{}
 	}
-	if s.locks[common] == nil {
-		s.locks[common] = make(chan struct{}, 1)
+	if s.held[common] == nil {
+		s.held[common] = make(chan struct{}, 1)
 	}
-	return s.locks[common]
+	return s.held[common]
 }
 
 // worktreeCommands is what Workspaces needs to change a repository's
@@ -140,11 +244,30 @@ type worktreeCommands interface {
 	worktree(ctx context.Context, repository string, args ...string) (started bool, err error)
 }
 
-var errNoWorktrees = errors.New("git worktree: Workspaces built without NewWorkspaces")
+var errNoWorktrees = errors.New("git worktree: Workspaces built without NewWorkspaces over NewWorktrees")
 
 // Workspaces locates repositories and makes detached checkouts. Its
 // worktree changes go through worktrees: the zero value makes none.
-type Workspaces struct{ worktrees worktreeCommands }
+type Workspaces struct {
+	// Cleanup, when set, gives the bounded context a checkout's release or
+	// a removal runs under, in place of a deadline of cleanupDeadline from
+	// now: tests make it pass at will.
+	Cleanup func(ctx context.Context) (context.Context, context.CancelFunc)
+
+	worktrees worktreeCommands
+}
+
+// cleanupDeadline bounds a release or removal, waits for the lock another
+// process holds included.
+const cleanupDeadline = time.Minute
+
+// cleanup bounds ctx for a release or removal.
+func (w Workspaces) cleanup(ctx context.Context) (context.Context, context.CancelFunc) {
+	if w.Cleanup != nil {
+		return w.Cleanup(ctx)
+	}
+	return context.WithTimeout(ctx, cleanupDeadline)
+}
 
 // NewWorkspaces makes Workspaces whose worktree changes take their turn in
 // worktrees, the one of the process.
@@ -177,7 +300,10 @@ func (w Workspaces) Checkout(ctx context.Context, repository, revision string) (
 		return "", nil, err
 	}
 	release := func() error {
-		_, err := w.worktree(context.WithoutCancel(ctx), repository, "remove", "--force", dir)
+		// Independent of the call's cancellation, but bounded.
+		ctx, cancel := w.cleanup(context.WithoutCancel(ctx))
+		defer cancel()
+		_, err := w.worktree(ctx, repository, "remove", "--force", dir)
 		if removeErr := os.RemoveAll(parent); err == nil {
 			err = removeErr
 		}
@@ -240,11 +366,14 @@ func (w Workspaces) Copy(ctx context.Context, repository, dir, revision string, 
 // Discard removes a checkout whose call ended without releasing it, or a
 // clean copy. Only a directory Checkout or Copy could have made is touched:
 // <temp>/agister-checkout-<id>/workspace-<id>, or <temp>/agister-checkout-*/workspace
-// as earlier versions made them.
+// as earlier versions made them. The removal is bounded by a deadline of
+// its own, as well as by ctx.
 func (w Workspaces) Discard(ctx context.Context, repository, dir string) error {
 	if err := made(dir); err != nil {
 		return err
 	}
+	ctx, cancel := w.cleanup(ctx)
+	defer cancel()
 	parent := filepath.Dir(dir)
 	// Removes this checkout's record even when its directory is already
 	// gone; a checkout with no record left is already discarded. Other
