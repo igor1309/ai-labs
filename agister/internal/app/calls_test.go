@@ -363,34 +363,55 @@ func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
 }
 
 // The shipped read-only policy allows everything Codex's read-only sandbox
-// grants under contract codex/2, and the shipped service does not treat
-// reading the host as state-reaching, so the shipped ask runs on a Codex
-// agent instead of being refused: with the service as shipped, and with one
-// configured to treat nothing as state-reaching.
+// grants under contract codex/2, but the shipped service treats reading the
+// host as state-reaching, so the shipped ask is refused on a Codex agent,
+// naming host.read. A service configured to accept host reads, as a
+// repository that runs Codex must, lets it complete.
 func TestShippedAskRunsOnACodexRuntime(t *testing.T) {
-	const shipped = `state_reaching = ["host.write"]`
-	for _, c := range []struct {
-		name          string
-		stateReaching string
-	}{
-		{"shipped service", shipped},
-		{"configured service", `state_reaching = []`},
-	} {
-		t.Run(c.name, func(t *testing.T) {
-			askOnCodex(t, func(service string) string {
-				if !strings.Contains(service, shipped) {
-					t.Fatal("the shipped service's state_reaching line was not found")
-				}
-				return strings.Replace(service, shipped, c.stateReaching, 1)
-			})
+	const shipped = `state_reaching = ["host.read", "host.write"]`
+
+	t.Run("shipped service", func(t *testing.T) {
+		h, record := askOnCodex(t, func(service string) string {
+			if !strings.Contains(service, shipped) {
+				t.Fatal("the shipped service's state_reaching line was not found")
+			}
+			return service
 		})
-	}
+		if record.Result.Status != run.Failed || class(record) != run.ClassRefused || !strings.Contains(message(record), "host.read") {
+			t.Fatalf("result = %+v, error %q", record.Result, message(record))
+		}
+		if calls := h.runner.calls(); len(calls) != 0 {
+			t.Fatalf("the runtime was called: %+v", calls)
+		}
+	})
+
+	t.Run("configured service", func(t *testing.T) {
+		h, record := askOnCodex(t, func(service string) string {
+			accepting := strings.Replace(service, shipped, `state_reaching = []`, 1)
+			if accepting == service {
+				t.Fatal("the shipped service's state_reaching line was not found")
+			}
+			return accepting
+		})
+		if record.Result.Status != run.Completed {
+			t.Fatalf("result = %+v, error %q", record.Result, message(record))
+		}
+		if !reflect.DeepEqual(h.runtimes.asked, []string{"spy|/bin/codex"}) {
+			t.Fatalf("runtimes asked = %v", h.runtimes.asked)
+		}
+		if got := h.runner.calls()[0].Primitives; !reflect.DeepEqual(got, []string{"read-only"}) {
+			t.Fatalf("primitives = %v", got)
+		}
+		if len(record.Plan.Withheld) != 0 {
+			t.Fatalf("withheld = %v", record.Plan.Withheld)
+		}
+	})
 }
 
 // askOnCodex runs the shipped ask under the shipped read-only policy on a
 // Codex agent, with the shipped service as configure returns it, and
-// asserts it completes on the read-only sandbox with nothing withheld.
-func askOnCodex(t *testing.T, configure func(service string) string) {
+// returns the harness and the call's record.
+func askOnCodex(t *testing.T, configure func(service string) string) (*harness, run.Record) {
 	t.Helper()
 	h := newHarness()
 	for kind, name := range map[definition.Kind]string{definition.KindProcess: "ask", definition.KindPolicy: "read-only"} {
@@ -432,19 +453,7 @@ command = "/bin/codex"
 	h.runner.identity = app.RuntimeIdentity{Contract: "codex/2", Version: "0.159.2", Resume: true}
 	h.runner.turn.Output = json.RawMessage(`"an answer"`)
 
-	record := h.call(t, contract.CallRequest{Process: "ask", Agent: "codex-agent", Params: map[string]string{"question": "What is a.txt?"}})
-	if record.Result.Status != run.Completed {
-		t.Fatalf("result = %+v, error %q", record.Result, message(record))
-	}
-	if !reflect.DeepEqual(h.runtimes.asked, []string{"spy|/bin/codex"}) {
-		t.Fatalf("runtimes asked = %v", h.runtimes.asked)
-	}
-	if got := h.runner.calls()[0].Primitives; !reflect.DeepEqual(got, []string{"read-only"}) {
-		t.Fatalf("primitives = %v", got)
-	}
-	if len(record.Plan.Withheld) != 0 {
-		t.Fatalf("withheld = %v", record.Plan.Withheld)
-	}
+	return h, h.call(t, contract.CallRequest{Process: "ask", Agent: "codex-agent", Params: map[string]string{"question": "What is a.txt?"}})
 }
 
 func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
