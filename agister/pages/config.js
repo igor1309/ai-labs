@@ -411,7 +411,7 @@
       agents: each(agents, parseToml, (file, _src, doc) => agentItem(file, doc)),
       policies: each(policies, parseYaml, policyItem),
       runtimes: each(runtimes, parseYaml, (file, _src, doc) => runtimeItem(file, doc)),
-      schemas: schemas.map(({ file }) => stem(file)),
+      schemas: schemas.map(({ file }) => ({ file, name: stem(file) })),
     });
   }
 
@@ -423,6 +423,7 @@
     const agents = names(model.agents);
     const policies = names(model.policies);
     const runtimes = names(model.runtimes);
+    const schemas = new Set(model.schemas.map((s) => s.name));
     const usedBy = (items, key, name) => items.filter((x) => !x.error && x[key] === name).map((x) => x.name);
 
     for (const w of model.workflows) {
@@ -433,6 +434,7 @@
       if (p.error) continue;
       p.agentOutside = !!p.agent && !agents.has(p.agent);
       p.policyOutside = !!p.policy && !policies.has(p.policy);
+      p.outputOutside = !!p.output && !schemas.has(p.output);
       p.usedBy = model.workflows
         .filter((w) => !w.error && [...w.fanOut, ...(w.join ? [w.join] : [])].some((n) => n.process === p.name))
         .map((w) => w.name);
@@ -445,6 +447,10 @@
     for (const p of model.policies) {
       if (!p.error) p.usedBy = usedBy(model.processes, 'policy', p.name);
     }
+    for (const r of model.runtimes) {
+      if (!r.error) r.usedBy = usedBy(model.agents, 'runtime', r.name);
+    }
+    for (const s of model.schemas) s.usedBy = usedBy(model.processes, 'output', s.name);
     return model;
   }
 

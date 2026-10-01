@@ -10,19 +10,6 @@
   const RECENT_CAP = 10;
   const AGISTER_DIR = '.agister';
 
-  const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
-
-  // Dotfiles stay hidden, except .agister.
-  function isVisibleName(name) {
-    return !name.startsWith('.') || name === AGISTER_DIR;
-  }
-
-  // Directories first, then by name.
-  function compareEntries(a, b) {
-    if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
-    return collator.compare(a.name, b.name) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
-  }
-
   // A folder is an Agister repo when .agister at its root is a directory.
   // A missing entry or a file of that name means no; other errors propagate.
   async function isAgisterRepo(dir) {
@@ -33,21 +20,6 @@
       if (err && (err.name === 'NotFoundError' || err.name === 'TypeMismatchError')) return false;
       throw err;
     }
-  }
-
-  // The visible entries of dir, sorted; each subfolder carries `agister`.
-  async function listFolder(dir) {
-    const entries = [];
-    for await (const [name, handle] of dir.entries()) {
-      if (isVisibleName(name)) entries.push({ name, kind: handle.kind, handle, agister: false });
-    }
-    entries.sort(compareEntries);
-    await Promise.all(entries.map(async (entry) => {
-      if (entry.kind === 'directory' && entry.name !== AGISTER_DIR) {
-        entry.agister = await isAgisterRepo(entry.handle);
-      }
-    }));
-    return entries;
   }
 
   function isRecentEntry(e) {
@@ -232,7 +204,7 @@
 
   globalThis.AgisterRepos = {
     RECENT_KEY, RECENT_CAP, AGISTER_DIR, SETTINGS_KEY,
-    isVisibleName, compareEntries, isAgisterRepo, listFolder,
+    isAgisterRepo,
     readRecent, writeRecent, addRecent, removeRecent, rememberRepo, forgetRepo,
     dirFromFiles, readSettings, dirFromSettings, saveSettings, loadSettings, dropSettings,
   };

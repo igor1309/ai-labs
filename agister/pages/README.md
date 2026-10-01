@@ -1,25 +1,24 @@
 # Agister pages
 
-`index.html` is a static page for Agister: no build step, no server. A
-repo picker chooses a folder, browses its subfolders and keeps a list of
-recent repos (folders with a `.agister` directory at their root).
+`index.html` is a static page for Agister: no build step, no server. Open a
+repo with the picker at the top right; the page shows the repo's
+`.agister` settings as tables, one row per item:
 
-When the current folder is a repo, the page shows its `.agister` settings
-in a few lines each, not the whole files:
-
-- **Workflows**: the purpose (the first sentence of the file's leading
-  comment), the flow from fan-out processes to the join, and the parameters.
-- **Processes**: the purpose, agent, policy, output schema, parameters
-  (bold when required), verify attempts and the workflows that use it; the
-  instruction stays folded.
+- **Workflows**: the processes run together, the one that then collects
+  their results, and the parameters.
+- **Processes**: agent, policy, output schema, verify attempts, parameters
+  (required ones marked) and the workflows that use it.
 - **Agents**: runtime, model, effort, session and the processes that use it.
-- **Policies**: access, timeout, cost limit and the processes that use it;
-  the permission lists stay folded.
-- A line of service limits on top, and runtimes and schemas at the bottom.
+- **Policies**: workspace access, timeout, cost cap, how many permissions it
+  allows and denies (the lists show on hover) and the processes that use it.
+- **Runtimes** and **Output schemas** defined in the repo, with their users.
+- **Service limits** from `service.toml`, each with what it caps.
 
-Names link to their items. A name defined outside the repo (in Agister's
-home or built in, such as the `claude-code` runtime) is marked in amber; a
-file that does not parse shows as unreadable, with its error.
+A file's purpose, its leading comment, shows on hover over its name. Names
+link to their rows. A name not defined in the repo's `.agister` (Agister's
+home or built in, such as the `claude-code` runtime) is marked ↗ in amber;
+a file that does not parse shows its error in its row. ↻ re-reads the repo:
+the browser asks for the folder again.
 
 ## Open it
 

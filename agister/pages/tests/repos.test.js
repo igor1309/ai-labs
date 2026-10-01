@@ -64,42 +64,6 @@ test('detection passes on errors other than a missing or mistyped entry', async 
   await assert.rejects(R.isAgisterRepo(denied), { name: 'NotAllowedError' });
 });
 
-test('listing puts directories first, by name, and hides dotfiles except .agister', async () => {
-  const root = dir('root', {
-    'b.txt': file('b.txt'),
-    zeta: dir('zeta'),
-    '.git': dir('.git'),
-    '.env': file('.env'),
-    'A.md': file('A.md'),
-    alpha: dir('alpha', { '.agister': dir('.agister') }),
-    '.agister': dir('.agister', { '.agister': dir('.agister') }),
-    item10: dir('item10'),
-    item2: dir('item2'),
-    Beta: dir('Beta', { '.agister': file('.agister') }),
-  });
-  const listed = await R.listFolder(root);
-  assert.deepEqual(
-    listed.map((e) => [e.name, e.kind, e.agister]),
-    [
-      ['.agister', 'directory', false],
-      ['alpha', 'directory', true],
-      ['Beta', 'directory', false],
-      ['item2', 'directory', false],
-      ['item10', 'directory', false],
-      ['zeta', 'directory', false],
-      ['A.md', 'file', false],
-      ['b.txt', 'file', false],
-    ],
-  );
-  assert.equal(listed[1].handle.name, 'alpha');
-});
-
-test('dotfile rule', () => {
-  assert.equal(R.isVisibleName('.agister'), true);
-  assert.equal(R.isVisibleName('.git'), false);
-  assert.equal(R.isVisibleName('src'), true);
-});
-
 test('the recent list puts the newest first and moves a reopened repo to the front', () => {
   let list = [];
   list = R.addRecent(list, entry('a:1'));
@@ -163,19 +127,17 @@ function picked(path, text = '') {
   return { name: path.split('/').pop(), webkitRelativePath: path, size: text.length, text: async () => text };
 }
 
-test('a picked folder becomes a tree the listing and detection read', async () => {
+test('a picked folder becomes a tree that detection and reading use', async () => {
   const root = R.dirFromFiles([
     picked('repo/README.md'),
     picked('repo/.agister/agents/a.toml', 'name = "a"'),
     picked('repo/src/main.go'),
-    picked('repo/src/inner/.agister/service.toml'),
   ]);
   assert.equal(root.name, 'repo');
   assert.equal(await R.isAgisterRepo(root), true);
-  const listed = await R.listFolder(root);
-  assert.deepEqual(listed.map((e) => [e.name, e.kind]), [['.agister', 'directory'], ['src', 'directory'], ['README.md', 'file']]);
-  const src = listed[1].handle;
-  assert.deepEqual((await R.listFolder(src)).map((e) => [e.name, e.agister]), [['inner', true], ['main.go', false]]);
+  const names = [];
+  for await (const [name, handle] of root.entries()) names.push([name, handle.kind]);
+  assert.deepEqual(names, [['README.md', 'file'], ['.agister', 'directory'], ['src', 'directory']]);
   const agents = await (await root.getDirectoryHandle('.agister')).getDirectoryHandle('agents');
   assert.equal(await (await (await agents.getFileHandle('a.toml')).getFile()).text(), 'name = "a"');
 });

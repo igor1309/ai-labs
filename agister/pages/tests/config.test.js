@@ -214,7 +214,7 @@ test('loadAgister reads each kind into its dashboard fields', async () => {
     ['Read-only review.', 'read-only', '20m', ['repository.read'], ['network']]);
   assert.deepEqual(m.runtimes[0].verified, ['0.158.', '0.159.']);
   assert.equal(m.workflows[0].purpose, 'A panel.');
-  assert.deepEqual(m.schemas, ['implementation']);
+  assert.deepEqual(m.schemas.map((x) => x.name), ['implementation']);
 });
 
 test('loadAgister links users and marks names defined outside the folder', async () => {
@@ -223,7 +223,9 @@ test('loadAgister links users and marks names defined outside the folder', async
   assert.deepEqual([agent('opus').runtimeOutside, agent('sol').runtimeOutside], [true, false]);
   assert.deepEqual(agent('sol').usedBy, ['review']);
   const impl = m.processes.find((p) => p.name === 'implement');
-  assert.deepEqual([impl.agentOutside, impl.policyOutside], [false, true]);
+  assert.deepEqual([impl.agentOutside, impl.policyOutside, impl.outputOutside], [false, true, false]);
+  assert.deepEqual(m.schemas[0].usedBy, ['implement']);
+  assert.deepEqual(m.runtimes[0].usedBy, ['sol']);
   assert.deepEqual(m.processes.find((p) => p.name === 'review').usedBy, ['panel']);
   assert.deepEqual(m.policies.find((p) => p.name === 'review').usedBy, ['review']);
   assert.deepEqual(m.workflows[0].fanOut, [{ node: 'r', process: 'review', outside: false }]);

@@ -6,6 +6,7 @@
 <title>Agister</title>
 <style>
   :root {
+    color-scheme: dark;
     --bg:#14161a; --card:#1c1f26; --line:#2b2f38; --fg:#e6e8ec;
     --fg2:#bec0c4; --fg3:#999ca1; --dim:#9aa1ad; --low:#3fb950;
     --mid:#d29922; --high:#f85149; --accent:#58a6ff; --active:#00e5ff;
@@ -16,41 +17,44 @@
     margin: 0; background: var(--bg); color: var(--fg);
     font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   }
-  code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  code, .mono { font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
   button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
-  button:disabled { cursor: default; color: var(--fg3); }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  a { color: inherit; text-decoration: none; }
+  a:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
   body > header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 12px 20px; border-bottom: 1px solid var(--line);
   }
   h1 { margin: 0; font-size: 16px; font-weight: 600; }
-  main { padding: 20px; max-width: 1080px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
-  .badge {
-    display: inline-block; font-size: 10px; line-height: 1; text-transform: uppercase;
-    letter-spacing: .04em; padding: 3px 6px; border-radius: 4px; background: #2b2f38; color: var(--active);
-  }
-  button.badge:hover { color: var(--fg); }
+  main { padding: 24px 20px 64px; max-width: 1080px; margin: 0 auto; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
   .dim { color: var(--dim); }
   .error { color: var(--high); }
 
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  #refresh {
+    width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 8px; background: var(--card);
+    font-size: 17px; line-height: 1; color: var(--fg2);
+  }
+  #refresh:hover { border-color: var(--dim); color: var(--fg); }
+  #refresh.stale { color: var(--mid); border-color: var(--mid); }
   .picker { position: relative; }
   #picker-button {
     display: flex; align-items: center; gap: 8px; max-width: 420px;
     padding: 5px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card);
   }
   #picker-button:hover { border-color: var(--dim); }
-  #picker-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #picker-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
   .menu {
     position: absolute; right: 0; top: calc(100% + 6px); z-index: 10; width: 320px;
     padding: 6px 0;
   }
-  .menu h2 { margin: 4px 14px 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--fg3); }
+  .menu h2 { margin: 4px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--fg3); }
   .menu ul { list-style: none; margin: 0; padding: 0; }
   .menu li { display: flex; align-items: center; }
   .menu .item { flex: 1; min-width: 0; text-align: left; padding: 6px 14px; display: flex; justify-content: space-between; gap: 8px; }
-  .menu .item:hover:not(:disabled), .menu .remove:hover { background: var(--line); }
+  .menu .item:hover, .menu .remove:hover { background: var(--line); }
   .menu .item .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .menu .item .when { color: var(--fg3); font-size: 12px; white-space: nowrap; }
   .menu .remove { padding: 6px 12px; color: var(--fg3); }
@@ -59,56 +63,41 @@
   .menu .note { color: var(--fg3); }
   .menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; }
 
-  .crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 10px; }
-  .crumbs button { color: var(--accent); }
-  .crumbs button:hover { text-decoration: underline; }
-  .crumbs .sep { color: var(--fg3); }
-  .crumbs .here { color: var(--fg); }
-  #listing { list-style: none; margin: 0; padding: 0; }
-  #listing li { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-top: 1px solid var(--line); }
-  #listing li:first-child { border-top: 0; }
-  #listing .folder { color: var(--fg); text-align: left; }
-  #listing .folder:hover { color: var(--accent); }
-  #listing .file { color: var(--fg3); }
+  #status { margin: 0 0 16px; }
+  #saved-note { margin: 0 0 16px; color: var(--mid); font-size: 13px; }
+  #empty { color: var(--dim); }
 
-  #dashboard { display: grid; gap: 18px; margin-bottom: 18px; }
-  #saved-note { margin-bottom: 10px; color: var(--mid); }
-  .limits { margin: 0; font-size: 13px; color: var(--dim); }
-  .limits strong { color: var(--fg); font-weight: 600; }
-  .section-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  section.card { padding: 16px 20px; margin-bottom: 20px; }
+  .section-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
   .section-head h2 { margin: 0; font-size: 16px; }
-  .section-head .count { color: var(--dim); font-size: 12px; }
-  .items { list-style: none; margin: 0; padding: 0; }
-  .items > li { padding: 10px 0; border-top: 1px solid var(--line); }
-  .items > li:first-child { border-top: 0; }
-  .items > li:target { background: #1f3b57; margin: 0 -16px; padding: 10px 16px; }
-  .item-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-  .item-name { font-weight: 600; }
-  .purpose { margin: 2px 0 0; color: var(--fg2); font-size: 13px; }
-  .facts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; color: var(--dim); }
-  .chip {
-    font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 1px 6px; border-radius: 4px;
-    background: #252a33; color: var(--fg2); text-decoration: none;
+  .section-head .note { color: var(--dim); font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--dim); font-weight: 600; padding: 0 12px 8px 0; border-bottom: 1px solid var(--line);
+    white-space: nowrap;
   }
-  a.chip { color: var(--accent); }
-  a.chip:hover { background: #39404d; }
-  .chip.outside { color: var(--mid); }
-  .chip.param-required { color: var(--fg); }
-  .arrow { color: var(--fg3); }
-  .badge.read-only { color: var(--low); background: #16361f; }
-  .badge.read-write { color: var(--mid); background: #3a2d12; }
-  .badge.warn { color: #ff9b91; background: #41231f; }
-  details { margin-top: 6px; font-size: 12px; color: var(--fg3); }
-  details summary { cursor: pointer; width: max-content; }
-  details p { margin: 4px 0 0; white-space: pre-wrap; max-width: 80ch; }
+  td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--fg2); }
+  tr:last-child td { border-bottom: none; }
+  td:first-child code { color: var(--fg); font-weight: 600; }
+  tr:target td { background: #1f3b57; }
+  td.num { white-space: nowrap; }
+  .list { display: flex; flex-direction: column; gap: 2px; }
+  .muted { color: var(--fg3); }
+  .outside { color: var(--mid); }
+  .required { color: var(--fg); }
+  .unused { color: var(--fg3); font-style: italic; }
+  .access-read-only { color: var(--low); }
+  .access-read-write { color: var(--mid); }
 </style>
 </head>
 <body>
 <header>
   <h1>Agister</h1>
+  <div class="header-right">
+  <button id="refresh" type="button" title="Refresh: pick the repo folder again to re-read its .agister" aria-label="Refresh" hidden>↻</button>
   <div id="picker" class="picker">
     <button id="picker-button" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="picker-menu">
-      <span id="picker-badge" class="badge" hidden>agister</span>
       <span id="picker-label" class="mono">~</span>
     </button>
     <div id="picker-menu" class="menu card" hidden>
@@ -122,16 +111,13 @@
       <input id="folder-input" type="file" webkitdirectory hidden>
     </div>
   </div>
+  </div>
 </header>
 <main>
-  <p id="saved-note" class="limits" hidden></p>
+  <p id="status" class="error" role="status" hidden></p>
+  <p id="saved-note" hidden></p>
+  <p id="empty">Open a repo with Agister installed (a folder with <code>.agister</code>) from the picker at the top right.</p>
   <div id="dashboard" hidden></div>
-  <section class="card">
-    <nav id="crumbs" class="crumbs mono" aria-label="Location"></nav>
-    <p id="browse-status" class="error" role="status" hidden></p>
-    <p id="browse-empty" class="dim">Choose a folder with the picker at the top right.</p>
-    <ul id="listing"></ul>
-  </section>
 </main>
 <script src="repos.js"></script>
 <script src="config.js"></script>
@@ -139,10 +125,10 @@
   const R = globalThis.AgisterRepos;
   const C = globalThis.AgisterConfig;
 
-  // root: the folder shown; stack: the folders entered below it;
-  // repo: the current Agister repo ({ id, name }), or null; savedAt: when
-  // root is a saved copy of a recent repo's .agister, the time it was saved.
-  const state = { root: null, stack: [], repo: null, savedAt: null };
+  // root: the repo folder shown, or null; repo: { id, name } when root is
+  // an Agister repo; savedAt: set when root is a saved copy of a recent
+  // repo's .agister, the time it was saved.
+  const state = { root: null, repo: null, savedAt: null };
   let renderToken = 0;
 
   const $ = (id) => document.getElementById(id);
@@ -151,8 +137,6 @@
     node.append(...children.filter((c) => c != null && c !== false));
     return node;
   };
-
-  // --- messages ---
 
   function say(id, text) {
     const node = $(id);
@@ -191,13 +175,6 @@
     $('recent-empty').hidden = list.length > 0;
   }
 
-  function renderLabel() {
-    const names = state.root ? [state.root.name, ...state.stack.map((f) => f.name)] : [];
-    $('picker-label').textContent = names.length ? names.join('/') : '~';
-    $('picker-button').title = state.repo ? `Repo: ${state.repo.name}` : '';
-    $('picker-badge').hidden = !state.repo;
-  }
-
   // Records folder (a directory handle with .agister) as a recent repo and
   // saves its .agister. A full storage still opens the folder; it says so.
   async function remember(folder) {
@@ -208,7 +185,7 @@
     try {
       R.saveSettings(localStorage, id, files, Date.now());
     } catch (err) {
-      say('browse-status', `Could not save a copy of ${folder.name}/.agister: ${err.message}`);
+      say('status', `Could not save a copy of ${folder.name}/.agister: ${err.message}`);
     }
   }
 
@@ -219,14 +196,17 @@
   }
 
   async function folderPicked() {
+    say('status', '');
     const root = R.dirFromFiles($('folder-input').files);
-    if (!root) return say('browse-status', 'That folder has no files to show.');
-    Object.assign(state, { root, stack: [], repo: null, savedAt: null });
-    say('browse-status', '');
+    if (!root) return say('status', 'That folder has no files.');
     try {
-      if (await R.isAgisterRepo(root)) await remember(root);
+      if (!(await R.isAgisterRepo(root))) {
+        return say('status', `${root.name} has no .agister folder: Agister is not installed there.`);
+      }
+      Object.assign(state, { root, repo: null, savedAt: null });
+      await remember(root);
     } catch (err) {
-      say('browse-status', `Could not record ${root.name}: ${err.message}`);
+      say('status', `Could not read ${root.name}: ${err.message}`);
     }
     render();
   }
@@ -237,7 +217,6 @@
     if (!saved) return false;
     Object.assign(state, {
       root: R.dirFromSettings(entry.name, saved.files),
-      stack: [],
       repo: { id: entry.id, name: entry.name },
       savedAt: saved.savedAt,
     });
@@ -250,245 +229,187 @@
       return say('picker-status', `No saved copy of ${entry.name}; open its folder again.`);
     }
     R.rememberRepo(localStorage, { ...entry, lastOpened: Date.now() });
+    say('status', '');
     setMenu(false);
     render();
   }
 
   function removeRecent(entry) {
     R.forgetRepo(localStorage, entry.id);
-    if (state.repo?.id === entry.id) state.repo = null;
     renderRecent();
-    renderLabel();
   }
 
-  // --- browsing ---
-
-  function current() {
-    return state.stack.length ? state.stack[state.stack.length - 1].handle : state.root;
-  }
-
-  function renderCrumbs() {
-    const crumbs = $('crumbs');
-    if (!state.root) return crumbs.replaceChildren();
-    const trail = [{ name: state.root.name }, ...state.stack];
-    crumbs.replaceChildren(...trail.flatMap((folder, i) => {
-      const last = i === trail.length - 1;
-      const part = last
-        ? el('span', { className: 'here', textContent: folder.name })
-        : el('button', { type: 'button', textContent: folder.name });
-      if (!last) part.addEventListener('click', () => { state.stack = state.stack.slice(0, i); say('browse-status', ''); render(); });
-      if (last) part.setAttribute('aria-current', 'location');
-      return i ? [el('span', { className: 'sep', textContent: '/' }), part] : [part];
-    }));
-  }
+  // --- dashboard ---
 
   async function render() {
     const token = ++renderToken;
-    renderLabel();
-    renderCrumbs();
-    $('browse-empty').hidden = !!state.root;
-    $('saved-note').hidden = !state.savedAt;
-    if (state.savedAt) {
-      $('saved-note').textContent = `Saved copy of ${state.repo.name}/.agister from ${when(state.savedAt)}. ` +
-        'Open the folder again to refresh it.';
-    }
-    $('listing').replaceChildren();
+    $('picker-label').textContent = state.repo ? state.repo.name : '~';
+    $('empty').hidden = !!state.repo;
+    $('refresh').hidden = !state.repo;
+    $('refresh').classList.toggle('stale', !!state.savedAt);
+    say('saved-note', state.savedAt
+      ? `Saved copy from ${when(state.savedAt)}. Press ↻ to read the folder again.`
+      : '');
     $('dashboard').hidden = true;
-    $('dashboard').replaceChildren();
     if (!state.root) return;
-    renderDashboard(token);
-    let entries;
-    try {
-      entries = await R.listFolder(current());
-    } catch (err) {
-      if (token === renderToken) say('browse-status', `Could not read this folder: ${err.message}`);
-      return;
-    }
-    if (token !== renderToken) return;
-    if (!entries.length) {
-      $('listing').append(el('li', { className: 'dim', textContent: 'Empty folder.' }));
-      return;
-    }
-    $('listing').replaceChildren(...entries.map((entry) => {
-      if (entry.kind !== 'directory') {
-        return el('li', {}, el('span', { className: 'file mono', textContent: entry.name }));
-      }
-      const open = el('button', { type: 'button', className: 'folder mono', textContent: `${entry.name}/` });
-      open.addEventListener('click', () => { state.stack.push(entry); say('browse-status', ''); render(); });
-      const row = el('li', {}, open);
-      if (entry.agister) {
-        const badge = el('button', { type: 'button', className: 'badge', textContent: 'agister' });
-        badge.title = `Make ${entry.name} the current repo`;
-        badge.addEventListener('click', () => adopt(entry));
-        row.append(badge);
-      }
-      return row;
-    }));
-  }
-
-  // --- dashboard: the current folder's .agister settings ---
-
-  async function renderDashboard(token) {
     let model;
     try {
-      const folder = current();
-      if (!(await R.isAgisterRepo(folder))) return;
-      model = await C.loadAgister(await folder.getDirectoryHandle(R.AGISTER_DIR));
+      model = await C.loadAgister(await state.root.getDirectoryHandle(R.AGISTER_DIR));
     } catch (err) {
-      if (token === renderToken) say('browse-status', `Could not read .agister: ${err.message}`);
+      if (token === renderToken) say('status', `Could not read .agister: ${err.message}`);
       return;
     }
     if (token !== renderToken) return;
     $('dashboard').replaceChildren(...[
-      limits(model),
-      section('Workflows', 'workflow', model.workflows, workflowItem),
-      section('Processes', 'process', model.processes, processItem),
-      section('Agents', 'agent', model.agents, agentItem),
-      section('Policies', 'policy', model.policies, policyItem),
-      footer(model),
+      workflows(model.workflows),
+      processes(model.processes),
+      agents(model.agents),
+      policies(model.policies),
+      runtimes(model.runtimes),
+      schemas(model.schemas),
+      limits(model.service),
     ].filter(Boolean));
     $('dashboard').hidden = false;
   }
 
   const anchor = (kind, name) => `${kind}-${name}`;
+  const code = (text, className = '') => el('code', { className, textContent: text });
+  const text = (value, className = '') => el('span', { className, textContent: value });
+  const none = () => text('—', 'muted');
 
-  // A link to the item it names, or a marked chip when the name is defined
-  // outside this folder (Agister's home or built in).
+  // A name that links to its row, or is marked when defined outside the repo.
   function ref(kind, name, outside) {
-    if (!name) return el('span', { className: 'chip dim', textContent: 'none' });
+    if (!name) return none();
     if (outside) {
-      return el('span', { className: 'chip outside', textContent: name, title: `${kind} defined outside this repo` });
+      return el('span', { className: 'outside', title: `Not in this repo's .agister: defined in Agister's home or built in` },
+        code(name, 'outside'), text(' ↗'));
     }
-    return el('a', { className: 'chip', href: `#${anchor(kind, name)}`, textContent: name });
+    return el('a', { href: `#${anchor(kind, name)}` }, code(name));
   }
 
-  const label = (text) => el('span', { textContent: text });
-  const chip = (text, className = '') => el('span', { className: `chip ${className}`, textContent: text });
-  const badge = (text, className = '') => el('span', { className: `badge ${className}`, textContent: text });
-
-  function params(list) {
-    if (!list.length) return [];
-    return [label('params'), ...list.map((p) => (p.default === undefined
-      ? chip(p.name, 'param-required')
-      : chip(`${p.name}=${p.default}`)))];
+  function refs(kind, names) {
+    if (!names?.length) return text('unused', 'unused');
+    return el('div', { className: 'list' }, ...names.map((n) => ref(kind, n, false)));
   }
 
-  // unused marks an agent or policy no process names; a process with no
-  // workflow is still run on its own, so it gets no mark.
-  function usedBy(kind, names, markUnused = true) {
-    if (!names?.length) return markUnused ? [badge('unused')] : [];
-    return [label('used by'), ...names.map((n) => ref(kind, n, false))];
+  // The row's name cell; the file's purpose shows on hover.
+  function nameCell(kind, item) {
+    return el('td', { title: item.purpose || '' }, code(item.name));
   }
 
-  function folded(summary, text) {
-    if (!text) return null;
-    return el('details', {}, el('summary', { textContent: summary }), el('p', { textContent: text }));
-  }
-
-  function section(title, kind, items, build) {
+  // A table section; build(item) returns the cells after the name.
+  function section(title, note, kind, columns, items, build) {
     if (!items.length) return null;
     return el('section', { className: 'card' },
       el('header', { className: 'section-head' },
         el('h2', { textContent: title }),
-        el('span', { className: 'count', textContent: String(items.length) })),
-      el('ul', { className: 'items' }, ...items.map((item) => {
-        const li = el('li', { id: anchor(kind, item.name) });
-        const name = el('code', { className: 'item-name', textContent: item.name });
-        if (item.error) {
-          li.append(el('div', { className: 'item-head' }, name, badge('unreadable', 'warn')),
-            el('p', { className: 'purpose error', textContent: `${item.file}: ${item.error}` }));
-        } else {
-          li.append(...build(item, name).filter(Boolean));
-        }
-        return li;
-      })));
+        note ? el('span', { className: 'note', textContent: note }) : null),
+      el('table', {},
+        el('thead', {}, el('tr', {}, ...columns.map((c) => el('th', { textContent: c })))),
+        el('tbody', {}, ...items.map((item) => {
+          const row = el('tr', { id: anchor(kind, item.name) });
+          if (item.error) {
+            row.append(el('td', {}, code(item.name)),
+              el('td', { colSpan: columns.length - 1, className: 'error', textContent: `${item.file}: ${item.error}` }));
+          } else {
+            row.append(nameCell(kind, item), ...build(item).map((c) => el('td', {}, c)));
+          }
+          return row;
+        }))));
   }
 
-  const head = (name, ...badges) => el('div', { className: 'item-head' }, name, ...badges);
-  const purpose = (text) => (text ? el('p', { className: 'purpose', textContent: text }) : null);
-  const facts = (...parts) => el('div', { className: 'facts' }, ...parts.flat().filter(Boolean));
-
-  function workflowItem(w, name) {
-    const nodes = w.fanOut.map((n) => ref('process', n.process, n.outside));
-    const flow = w.join
-      ? [...nodes, el('span', { className: 'arrow', textContent: '→' }), ref('process', w.join.process, w.join.outside)]
-      : nodes;
-    return [head(name), purpose(w.purpose), facts(flow), w.params.length ? facts(params(w.params)) : null];
+  function params(list) {
+    if (!list.length) return none();
+    return el('div', { className: 'list' }, ...list.map((p) => (p.default === undefined
+      ? el('span', {}, code(p.name, 'required'), text(' required', 'muted'))
+      : el('span', {}, code(p.name), text(` = ${p.default}`, 'muted')))));
   }
 
-  function processItem(p, name) {
-    return [
-      head(name, p.verify ? badge(`verify ×${p.verify.maxAttempts ?? '?'}`) : null),
-      purpose(p.purpose),
-      facts(label('agent'), ref('agent', p.agent, p.agentOutside),
-        label('policy'), ref('policy', p.policy, p.policyOutside),
-        p.output ? [label('output'), chip(p.output)] : null),
-      facts(params(p.params), usedBy('workflow', p.usedBy, false)),
-      folded('instruction', p.instruction),
-    ];
+  function workflows(items) {
+    return section('Workflows', 'run several processes, then one that collects their results', 'workflow',
+      ['Workflow', 'Runs together', 'Then', 'Params'], items, (w) => [
+        w.fanOut.length ? el('div', { className: 'list' }, ...w.fanOut.map((n) => ref('process', n.process, n.outside))) : none(),
+        w.join ? ref('process', w.join.process, w.join.outside) : none(),
+        params(w.params),
+      ]);
   }
 
-  function agentItem(a, name) {
-    const runtime = a.runtimeOutside
-      ? chip(a.runtime, 'outside')
-      : el('a', { className: 'chip', href: '#footer', textContent: a.runtime ?? '?' });
-    if (a.runtimeOutside) runtime.title = 'runtime defined outside this repo';
-    return [
-      head(name, a.session ? badge(a.session) : null),
-      facts(runtime, chip(a.model ?? '?'), a.effort ? chip(a.effort) : null),
-      facts(usedBy('process', a.usedBy)),
-    ];
+  function processes(items) {
+    return section('Processes', 'one agent call each', 'process',
+      ['Process', 'Agent', 'Policy', 'Output', 'Verify', 'Params', 'In workflows'], items, (p) => [
+        ref('agent', p.agent, p.agentOutside),
+        ref('policy', p.policy, p.policyOutside),
+        p.output ? ref('schema', p.output, p.outputOutside) : none(),
+        p.verify ? text(`up to ${p.verify.maxAttempts ?? '?'}×`) : none(),
+        params(p.params),
+        p.usedBy.length ? refs('workflow', p.usedBy) : none(),
+      ]);
   }
 
-  function policyItem(p, name) {
-    const parts = [p.timeout && `timeout ${p.timeout}`, p.maxCostUsd != null && `max $${p.maxCostUsd}`]
-      .filter(Boolean).join(' · ');
-    const perms = [p.allow.length && `allow: ${p.allow.join(', ')}`, p.deny.length && `deny: ${p.deny.join(', ')}`]
-      .filter(Boolean).join('\n');
-    return [
-      head(name, p.access ? badge(p.access, p.access) : null),
-      purpose(p.purpose),
-      facts(parts ? label(parts) : null, usedBy('process', p.usedBy)),
-      folded(`permissions (${p.allow.length} allowed, ${p.deny.length} denied)`, perms),
-    ];
+  function agents(items) {
+    return section('Agents', null, 'agent',
+      ['Agent', 'Runtime', 'Model', 'Effort', 'Session', 'Used by'], items, (a) => [
+        ref('runtime', a.runtime, a.runtimeOutside),
+        a.model ? code(a.model) : none(),
+        a.effort ? text(a.effort) : none(),
+        a.session ? text(a.session) : none(),
+        refs('process', a.usedBy),
+      ]);
   }
 
-  function limits(model) {
-    const s = model.service;
-    if (!s) return null;
-    if (s.error) return el('p', { className: 'limits error', textContent: `service.toml: ${s.error}` });
-    const part = (name, v) => (v == null ? [] : [`${name} `, el('strong', { textContent: String(v) }), ' · ']);
-    const p = el('p', { className: 'limits' }, 'Limits: ',
-      ...part('timeout', s.maxTimeout), ...part('attempts', s.maxAttempts),
-      ...part('verify attempts', s.maxVerifyAttempts), `${s.permissions} permissions`);
-    return p;
+  function policies(items) {
+    return section('Policies', 'what a process may do', 'policy',
+      ['Policy', 'Workspace', 'Timeout', 'Cost cap', 'Allows', 'Denies', 'Used by'], items, (p) => [
+        p.access ? text(p.access, `access-${p.access}`) : none(),
+        p.timeout ? text(p.timeout) : none(),
+        p.maxCostUsd != null ? text(`$${p.maxCostUsd}`) : none(),
+        el('span', { title: p.allow.join('\n') }, text(p.allow.length ? `${p.allow.length} permissions` : 'nothing')),
+        p.deny.length ? el('span', { title: p.deny.join('\n') }, text(`${p.deny.length} permissions`)) : none(),
+        refs('process', p.usedBy),
+      ]);
   }
 
-  function footer(model) {
-    const runtimes = model.runtimes.map((r) => (r.error
-      ? chip(`${r.name}: unreadable`, 'outside')
-      : chip([r.name, r.contract, r.verified.length ? `checked ${r.verified.join(' ')}` : null]
-        .filter(Boolean).join(' · '))));
-    return el('p', { id: 'footer', className: 'limits facts' },
-      label('runtimes'), ...(runtimes.length ? runtimes : [chip('none in this repo')]),
-      label('schemas'), ...(model.schemas.length ? model.schemas.map((n) => chip(n)) : [chip('none')]));
+  function runtimes(items) {
+    return section('Runtimes', 'defined in this repo; others come from Agister', 'runtime',
+      ['Runtime', 'Adapter', 'Contract', 'Checked on', 'Used by'], items, (r) => [
+        r.adapter ? text(r.adapter) : none(),
+        r.contract ? code(r.contract) : none(),
+        r.verified.length ? text(r.verified.map((v) => v.replace(/\.$/, '.x')).join(', ')) : none(),
+        refs('agent', r.usedBy),
+      ]);
   }
 
-  // A subfolder's agister badge: enter it and make it the current repo.
-  async function adopt(entry) {
-    state.stack.push(entry);
-    try {
-      await remember(entry.handle);
-    } catch (err) {
-      say('browse-status', `Could not record ${entry.name}: ${err.message}`);
+  function schemas(items) {
+    return section('Output schemas', null, 'schema', ['Schema', 'Used by'], items, (s) => [refs('process', s.usedBy)]);
+  }
+
+  // service.toml: the caps no policy or process may go past.
+  function limits(service) {
+    if (!service) return null;
+    const head = el('header', { className: 'section-head' },
+      el('h2', { textContent: 'Service limits' }),
+      el('span', { className: 'note', textContent: 'service.toml: caps no policy or process may go past' }));
+    if (service.error) {
+      return el('section', { className: 'card' }, head, el('p', { className: 'error', textContent: service.error }));
     }
-    render();
+    const rows = [
+      ['Longest timeout', service.maxTimeout, 'no policy may set a longer timeout'],
+      ['Attempts per call', service.maxAttempts, 'how many times an agent call may be tried; 1 means no retries'],
+      ['Verify attempts', service.maxVerifyAttempts, 'how many times a process may fix its work after the verify command fails'],
+      ['Permissions', service.permissions, 'the words policies may use to allow or deny access'],
+    ].filter(([, v]) => v != null);
+    return el('section', { className: 'card' }, head,
+      el('table', {},
+        el('thead', {}, el('tr', {}, ...['Limit', 'Value', 'Meaning'].map((c) => el('th', { textContent: c })))),
+        el('tbody', {}, ...rows.map(([name, value, meaning]) => el('tr', {},
+          el('td', {}, text(name)), el('td', { className: 'num' }, code(String(value))), el('td', {}, text(meaning)))))));
   }
 
   // --- start ---
 
   $('picker-button').addEventListener('click', () => setMenu($('picker-menu').hidden));
   $('open-folder').addEventListener('click', openFolder);
+  $('refresh').addEventListener('click', openFolder);
   $('folder-input').addEventListener('change', folderPicked);
   document.addEventListener('click', (e) => {
     // The path, not e.target: a removed recent row is detached by now.
