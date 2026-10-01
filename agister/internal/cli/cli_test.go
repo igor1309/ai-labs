@@ -545,3 +545,22 @@ join         merge: process j, agent a (runtime rt)
 		t.Fatalf("show: %d\n%s\nwant\n%s", code, stdout.String(), want)
 	}
 }
+
+// process show prints the effective staleness limits, and no line for them
+// when there are none.
+func TestShowProcessPrintsTheStalenessLimits(t *testing.T) {
+	spy := &clientSpy{view: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Output: "text", Timeout: time.Hour, MaxAttempts: 1,
+		Stale: contract.Stale{NoEvent: 5 * time.Minute, NoOutput: 2 * time.Minute, ToolCommand: 10 * time.Minute, RepeatedToolCalls: 5}}}
+	r := run(context.Background(), spy, "process", "show", "p")
+	if want := "  stale      no event 5m0s, no output 2m0s, tool command 10m0s, repeated tool calls 5\n"; r.code != 0 || !strings.Contains(r.stdout, want) {
+		t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+	}
+	spy.view.Stale = contract.Stale{NoEvent: 5 * time.Minute}
+	if r := run(context.Background(), spy, "process", "show", "p"); !strings.Contains(r.stdout, "  stale      no event 5m0s\n") {
+		t.Fatalf("one limit:\n%s", r.stdout)
+	}
+	spy.view.Stale = contract.Stale{}
+	if r := run(context.Background(), spy, "process", "show", "p"); strings.Contains(r.stdout, "stale") {
+		t.Fatalf("without limits:\n%s", r.stdout)
+	}
+}

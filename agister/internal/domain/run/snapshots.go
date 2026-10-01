@@ -34,6 +34,17 @@ type EffectivePolicy struct {
 	Require     []string      `json:"require,omitempty"`
 	Access      string        `json:"access"`
 	Scope       string        `json:"scope"`
+	// Stale are the staleness limits; unset when the call had none.
+	Stale *StaleLimits `json:"stale,omitempty"`
+}
+
+// StaleLimits are the staleness limits a call ran under; a zero one was
+// not set and ended nothing.
+type StaleLimits struct {
+	NoEvent           time.Duration `json:"no_event,omitempty"`
+	NoOutput          time.Duration `json:"no_output,omitempty"`
+	ToolCommand       time.Duration `json:"tool_command,omitempty"`
+	RepeatedToolCalls int           `json:"repeated_tool_calls,omitempty"`
 }
 
 // Plan is what the call was granted on its runtime.

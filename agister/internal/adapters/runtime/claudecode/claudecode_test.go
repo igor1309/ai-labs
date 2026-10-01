@@ -34,9 +34,10 @@ func TestConformance(t *testing.T) {
 		New: func(command string) app.TurnRunner {
 			return &claudecode.Runner{Command: command, KillGrace: 200 * time.Millisecond}
 		},
-		Fake:     runtimetest.Binary(t, "fakeclaude"),
-		Contract: claudecode.Contract,
-		Request:  request,
+		Fake:      runtimetest.Binary(t, "fakeclaude"),
+		Contract:  claudecode.Contract,
+		ToolCalls: true,
+		Request:   request,
 	})
 }
 
@@ -259,5 +260,57 @@ func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
 	turn := stream.Reconcile(supervisor.Evidence{RecordError: "disk full"}, false)
 	if turn.Status != run.Failed || turn.Error == nil || turn.Error.Class != run.ClassInternal || !strings.Contains(turn.Error.Message, "disk full") {
 		t.Fatalf("turn = %+v", turn)
+	}
+}
+
+// The stream's tool calls are reported for the core to watch: each with its
+// whole input, the same text for the same input, and whether it runs a
+// command; each result ends the call of its ID.
+func TestStreamReportsToolCalls(t *testing.T) {
+	stream := &claudecode.Stream{}
+	long := strings.Repeat("x", 1000)
+	use := func(id, name string, input map[string]any) map[string]any {
+		return map[string]any{"type": "assistant", "message": map[string]any{"content": []any{map[string]any{"type": "tool_use", "id": id, "name": name, "input": input}}}}
+	}
+	for _, line := range []map[string]any{
+		use("t1", "Bash", map[string]any{"command": "go test ./...", "description": long}),
+		{"type": "user", "message": map[string]any{"content": []any{map[string]any{"type": "tool_result", "tool_use_id": "t1"}}}},
+		use("t2", "Read", map[string]any{"file_path": "a.go"}),
+	} {
+		data, _ := json.Marshal(line)
+		stream.Reduce(string(data))
+	}
+	bash, _ := json.Marshal(map[string]any{"command": "go test ./...", "description": long})
+	started := func(call app.ToolCall) claudecode.Tool { return claudecode.Tool{Started: &call} }
+	want := []claudecode.Tool{
+		started(app.ToolCall{ID: "t1", Name: "Bash", Input: string(bash), Command: true}),
+		{Finished: "t1"},
+		started(app.ToolCall{ID: "t2", Name: "Read", Input: `{"file_path":"a.go"}`}),
+	}
+	if got := stream.TakeTools(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("tools = %+v", got)
+	}
+	if again := stream.TakeTools(); len(again) != 0 {
+		t.Fatalf("taken twice: %+v", again)
+	}
+}
+
+// Two calls of one tool whose inputs differ only in a large integer are
+// distinct calls, not one repeated: the input keeps its numbers as written.
+func TestLargeIntegerInputsAreNotRepeatedCalls(t *testing.T) {
+	stream := &claudecode.Stream{}
+	for _, line := range []string{
+		`{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Read","input":{"offset":9007199254740993}}]}}`,
+		`{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t2","name":"Read","input":{"offset":9007199254740992}}]}}`,
+	} {
+		stream.Reduce(line)
+	}
+	tools := stream.TakeTools()
+	if len(tools) != 2 || tools[0].Started == nil || tools[1].Started == nil {
+		t.Fatalf("tools = %+v", tools)
+	}
+	first, second := *tools[0].Started, *tools[1].Started
+	if first.Name != second.Name || first.Input != `{"offset":9007199254740993}` || second.Input != `{"offset":9007199254740992}` {
+		t.Fatalf("calls = %+v, %+v", first, second)
 	}
 }

@@ -13,6 +13,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 	"github.com/igor1309/ai-labs/agister/internal/domain/prompt"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -29,6 +30,7 @@ type Calls struct {
 	recorder   RunRecorder
 	runs       CallRuns
 	clock      CallClock
+	timer      CallTimer
 	ids        IDs
 	stateDir   string
 	cancels    CallCancels
@@ -143,6 +145,7 @@ type CallLimits struct {
 	Require     []string
 	Access      string
 	Scope       string
+	Stale       CallStale
 }
 
 // CallRuntime is what a call reads of what its runtime reported about
@@ -215,7 +218,7 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 		Effective: CallLimits{
 			Timeout: effective.Timeout, MaxAttempts: effective.MaxAttempts, MaxCostUSD: effective.MaxCostUSD,
 			Allow: effective.Allow, Deny: effective.Deny, Permissions: effective.Permissions, Require: effective.Require,
-			Access: effective.Access, Scope: effective.Scope,
+			Access: effective.Access, Scope: effective.Scope, Stale: callStale(effective.Stale),
 		},
 		Identity: CallRuntime{Contract: res.identity.Contract, Version: res.identity.Version, Resume: res.identity.Resume},
 		Plan:     CallPlan{Primitives: res.plan.Primitives, Granted: res.plan.Granted, Withheld: res.plan.Withheld},
@@ -247,6 +250,24 @@ func (c callResolution) Workflow(ctx context.Context, name string) (*ResolvedWor
 		}
 	}
 	return resolved, found, err
+}
+
+// callStale is the composed staleness limits as a call reads them: a zero
+// one was not set.
+func callStale(stale policy.Stale) CallStale {
+	var limits CallStale
+	for _, limit := range []struct {
+		to   *time.Duration
+		from *time.Duration
+	}{{&limits.NoEvent, stale.NoEvent}, {&limits.NoOutput, stale.NoOutput}, {&limits.ToolCommand, stale.ToolCommand}} {
+		if limit.from != nil {
+			*limit.to = *limit.from
+		}
+	}
+	if stale.RepeatedToolCalls != nil {
+		limits.RepeatedToolCalls = *stale.RepeatedToolCalls
+	}
+	return limits
 }
 
 func callParams(params []definition.Param) []CallParam {
@@ -302,9 +323,16 @@ type TurnRunner interface {
 	RunTurn(ctx context.Context, request TurnRequest, sink EventSink) run.Turn
 }
 
-// EventSink receives a turn's events and raw runtime output.
+// EventSink receives a turn's events, the agent's tool calls and raw runtime
+// output.
 type EventSink interface {
 	Event(source, kind string, data map[string]any)
+	// ToolStarted reports a tool call the agent started, and ToolFinished
+	// the end of the call of that ID, each beside the event that records it.
+	// An adapter that reports them says so in its identity
+	// (RuntimeIdentity.ToolCalls).
+	ToolStarted(call ToolCall)
+	ToolFinished(id string)
 	// ProcessStarted records the runtime's process as soon as it exists, as
 	// a reference only the runtime adapter can read (Processes.Reap takes
 	// it back). It may be reported again as more becomes known; the last
@@ -398,14 +426,15 @@ type CallAdapters struct {
 	Recorder   RunRecorder
 	Runs       CallRuns
 	Clock      CallClock
+	Timer      CallTimer
 	IDs        IDs
 	StateDir   string
 }
 
 // NewCalls returns the use case that submits and executes calls. Every
-// collaborator is required. stateDir is Agister's own state, which no agent
-// workspace may overlap. cancels is where each running call's cancellation
-// is held.
+// collaborator is required. timer starts the waits of a call's staleness
+// limits. stateDir is Agister's own state, which no agent workspace may
+// overlap. cancels is where each running call's cancellation is held.
 func NewCalls(
 	resolver CallResolver,
 	runners CallRunners,
@@ -417,6 +446,7 @@ func NewCalls(
 	recorder RunRecorder,
 	runs CallRuns,
 	clock CallClock,
+	timer CallTimer,
 	ids IDs,
 	stateDir string,
 	cancels CallCancels,
@@ -432,6 +462,7 @@ func NewCalls(
 		recorder:   recorder,
 		runs:       runs,
 		clock:      clock,
+		timer:      timer,
 		ids:        ids,
 		stateDir:   stateDir,
 		cancels:    cancels,
@@ -710,7 +741,23 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	var turnMS int64
 	take := func(request TurnRequest, before *run.SessionTotals) run.Turn {
 		turnStart := c.clock.Now()
-		turn := runner.RunTurn(ctx, request, &sink{handle: handle, clock: c.clock, record: &record})
+		// The turn runs under a context of its own, which a staleness limit
+		// cancels: the runtime ends as on any cancellation, and the turn is
+		// decided as stale only if that is what ended it.
+		// Both are ended however the turn returns, a panic included: nothing
+		// is watched, and nothing recorded, once it has.
+		turnCtx, end := context.WithCancel(ctx)
+		defer end()
+		watch := watchTurn(&sink{handle: handle, clock: c.clock, record: &record}, res.Effective.Stale, c.timer, c.clock, end)
+		defer watch.end()
+		turn := runner.RunTurn(turnCtx, request, watch)
+		if stale := watch.end(); stale != nil {
+			turn.Stale = stale
+			if ctx.Err() == nil && turn.Error != nil && turn.Error.Class == run.ClassCancelled {
+				turn.Error = staleFault(*stale)
+				turn.Status = run.StatusOf(turn.Error.Class)
+			}
+		}
 		resumed := request.ResumeSessionID != ""
 		if resumed {
 			turn.SessionBefore = before
@@ -744,7 +791,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	if verify := res.Process.Verify; fault == nil && verify != nil {
 		verified, fault = c.verifier.Verify(ctx, VerifyCall{
 			Record: &record, Result: &result, Event: event, Update: handle.Update, Artifact: handle.Artifact,
-			Verify: definition.Verify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}, Limit: res.Effective.MaxCostUSD, Deadline: deadline,
+			Verify: definition.Verify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}, Limit: res.Effective.MaxCostUSD, Deadline: deadline, NoOutput: res.Effective.Stale.NoOutput,
 			Dir: workspace.Dir, Base: revision, Repository: workspace.Repository, Request: request, Session: turn.ProviderSessionID,
 			Take: take, Conclude: conclude,
 		})

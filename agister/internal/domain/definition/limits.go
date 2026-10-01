@@ -17,9 +17,25 @@ type Limits struct {
 	Deny        []string       `json:"deny,omitempty"`
 	Access      string         `json:"access,omitempty"` // read-only | read-write
 	Scope       string         `json:"scope,omitempty"`  // candidate | repository
+	Stale       Stale          `json:"stale"`
 }
 
-var limitKeys = []string{"timeout", "max_cost_usd", "retry", "tools", "workspace", "isolation", "resources", "artifacts"}
+// Stale are the staleness limits: what ends a call before its timeout
+// because it stopped moving, not because it is slow. Each is unset unless
+// declared; an unset one ends nothing.
+type Stale struct {
+	// NoEvent is how long an agent turn may go without a runtime event.
+	NoEvent *time.Duration `json:"no_event,omitempty"`
+	// NoOutput is how long a verification run may go without output.
+	NoOutput *time.Duration `json:"no_output,omitempty"`
+	// ToolCommand is how long one command an agent's tool runs may take.
+	ToolCommand *time.Duration `json:"tool_command,omitempty"`
+	// RepeatedToolCalls is how many identical tool calls in a row end the
+	// turn; at least 2.
+	RepeatedToolCalls *int `json:"repeated_tool_calls,omitempty"`
+}
+
+var limitKeys = []string{"timeout", "max_cost_usd", "retry", "stale", "tools", "workspace", "isolation", "resources", "artifacts"}
 
 func parseLimits(values map[string]*yaml.Node, toolKeys, workspaceKeys []string, p *problems) (Limits, map[string]*yaml.Node, map[string]*yaml.Node) {
 	var limits Limits
@@ -48,6 +64,9 @@ func parseLimits(values map[string]*yaml.Node, toolKeys, workspaceKeys []string,
 				limits.MaxAttempts = &attempts
 			}
 		}
+	}
+	if node, ok := values["stale"]; ok {
+		limits.Stale = parseStale(node, limits.Timeout, p)
 	}
 	tools := fields(values["tools"], "tools", toolKeys, p)
 	if node, ok := tools["allow"]; ok {
@@ -79,4 +98,35 @@ func parseLimits(values map[string]*yaml.Node, toolKeys, workspaceKeys []string,
 		}
 	}
 	return limits, tools, workspace
+}
+
+// parseStale reads a stale block. A limit that is a span of time may not
+// exceed the timeout declared beside it: it would never end anything.
+func parseStale(node *yaml.Node, timeout *time.Duration, p *problems) Stale {
+	var stale Stale
+	values := fields(node, "stale", []string{"no_event", "no_output", "tool_command", "repeated_tool_calls"}, p)
+	span := func(key string) *time.Duration {
+		field := join("stale", key)
+		text, ok := scalar(values[key], field, p)
+		if !ok {
+			return nil
+		}
+		value, ok := duration(text, field, p)
+		if !ok {
+			return nil
+		}
+		if timeout != nil && value > *timeout {
+			p.add(field, "%s exceeds timeout %s", value, *timeout)
+		}
+		return &value
+	}
+	stale.NoEvent, stale.NoOutput, stale.ToolCommand = span("no_event"), span("no_output"), span("tool_command")
+	if calls, ok := integer(values["repeated_tool_calls"], "stale.repeated_tool_calls", p); ok {
+		if calls < 2 {
+			p.add("stale.repeated_tool_calls", "must be at least 2")
+		} else {
+			stale.RepeatedToolCalls = &calls
+		}
+	}
+	return stale
 }

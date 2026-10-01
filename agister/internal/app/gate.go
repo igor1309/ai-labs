@@ -106,7 +106,7 @@ func NewClient(infra Infrastructure) contract.Client {
 			Inspection: NewInspection(resolverOn(layered)),
 			Calls: NewCalls(
 				resolverOn(layered), calls.Runners, calls.Inputs, calls.Workspaces, calls.Changes, verifier, calls.Validator,
-				calls.Recorder, calls.Runs, calls.Clock, calls.IDs, calls.StateDir, hosted,
+				calls.Recorder, calls.Runs, calls.Clock, calls.Timer, calls.IDs, calls.StateDir, hosted,
 			),
 			Runs: NewRuns(infra.Runs.Reader, hosted, 0),
 		}

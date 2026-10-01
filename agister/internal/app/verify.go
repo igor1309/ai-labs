@@ -106,8 +106,11 @@ type VerifyCall struct {
 	Verify   definition.Verify
 	Limit    *float64  // the call's cost limit, one budget for every turn
 	Deadline time.Time // the call's timeout, for every turn and run
-	Dir      string    // the call's checkout
-	Base     string    // the revision it was checked out at
+	// NoOutput is the call's staleness limit for a run: how long the
+	// command may go without output; zero: no such limit.
+	NoOutput time.Duration
+	Dir      string // the call's checkout
+	Base     string // the revision it was checked out at
 	// Repository is the one Dir is a checkout of, where the clean copies
 	// are made.
 	Repository string
@@ -132,7 +135,7 @@ func (v *Verifier) Verify(ctx context.Context, call VerifyCall) (verified string
 	loop := &verification{
 		content: v.content, copies: v.copies, commands: v.commands, clock: v.clock,
 		record: call.Record, result: call.Result, event: call.Event, update: call.Update, artifact: call.Artifact,
-		verify: call.Verify, limit: call.Limit, deadline: call.Deadline, dir: call.Dir, base: call.Base, repository: call.Repository,
+		verify: call.Verify, limit: call.Limit, deadline: call.Deadline, noOutput: call.NoOutput, dir: call.Dir, base: call.Base, repository: call.Repository,
 		request: call.Request, session: call.Session, take: call.Take, conclude: call.Conclude,
 	}
 	fault = loop.run(ctx)
@@ -160,8 +163,10 @@ type verification struct {
 	verify   definition.Verify
 	limit    *float64  // the call's cost limit, one budget for every turn
 	deadline time.Time // the call's timeout, for every turn and run
-	dir      string    // the call's checkout
-	base     string    // the revision it was checked out at
+	// noOutput is how long a run may go without output; zero: no limit.
+	noOutput time.Duration
+	dir      string // the call's checkout
+	base     string // the revision it was checked out at
 	// repository is the one dir is a checkout of, where the clean copies
 	// are made.
 	repository string
@@ -217,6 +222,8 @@ func (v *verification) run(ctx context.Context) *run.Error {
 		switch {
 		case ran.Cancelled:
 			return v.stop(attempt, run.Fault(run.ClassCancelled, "cancelled during attempt %d's run", number))
+		case ran.Stale != nil:
+			return v.stop(attempt, run.Fault(run.ClassTimeout, "stale: attempt %d's run produced no output for %s (stale.no_output)", number, ran.Stale.After))
 		case ran.TimedOut && timeout < v.verify.Timeout:
 			return v.stop(attempt, run.Fault(run.ClassTimeout, "the call's timeout passed during attempt %d's run", number))
 		case ran.TimedOut:
@@ -379,7 +386,7 @@ func (v *verification) check(ctx context.Context, number int, identity string) (
 	timeout := min(v.verify.Timeout, remaining)
 
 	ran := v.runCommand(ctx, number, dir, timeout)
-	if ran.Cancelled || ran.TimedOut || ran.Error != "" {
+	if ran.Cancelled || ran.TimedOut || ran.Stale != nil || ran.Error != "" {
 		return &ran, timeout, nil, nil
 	}
 	// ADR-005 rule 1: a run that changes the content fails, whatever its
@@ -452,7 +459,7 @@ func (v *verification) forgetCopy(dir string) {
 func (v *verification) runCommand(ctx context.Context, number int, dir string, timeout time.Duration) run.CommandRun {
 	v.event(run.SourceAgister, "VERIFY_STARTED", map[string]any{"attempt": number, "command": v.verify.Command, "dir": dir, "timeout": timeout.String()})
 	started := v.clock.Now()
-	result := v.commands.Run(ctx, CommandRequest{Command: v.verify.Command, Dir: dir, Timeout: timeout, Bound: verifyOutputBound}, v.recordGroup)
+	result := v.commands.Run(ctx, CommandRequest{Command: v.verify.Command, Dir: dir, Timeout: timeout, NoOutput: v.noOutput, Bound: verifyOutputBound}, v.recordGroup)
 	finished := v.clock.Now()
 	ran := run.CommandRun{
 		Command:    v.verify.Command,
@@ -466,10 +473,15 @@ func (v *verification) runCommand(ctx context.Context, number int, dir string, t
 		WallMS:     finished.Sub(started).Milliseconds(),
 		Output:     bounded(result),
 	}
-	v.event(run.SourceAgister, "VERIFY_FINISHED", map[string]any{
+	data := map[string]any{
 		"attempt": number, "code": ran.Exit.Code, "signal": ran.Exit.Signal, "timed_out": ran.TimedOut, "cancelled": ran.Cancelled,
 		"error": ran.Error, "bytes": ran.Output.Bytes, "sha256": ran.Output.SHA256, "wall_ms": ran.WallMS,
-	})
+	}
+	if result.Stale {
+		ran.Stale = &run.Stale{Limit: run.StaleNoOutput, After: v.noOutput, At: finished}
+		data["stale"], data["stale_after"] = run.StaleNoOutput, v.noOutput.String()
+	}
+	v.event(run.SourceAgister, "VERIFY_FINISHED", data)
 	return ran
 }
 

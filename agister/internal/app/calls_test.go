@@ -82,6 +82,7 @@ type harness struct {
 	calls      *app.Calls
 	hosted     *app.Hosted
 	clock      app.CallClock
+	timer      app.CallTimer
 	runs       *runsSpy
 	defs       *definitionsSpy
 	runner     *runnerSpy
@@ -121,6 +122,7 @@ func newHarness() *harness {
 	}}
 	h.hosted = app.NewHosted()
 	h.clock = fixedClock{}
+	h.timer = unfired
 	h.calls = h.callsOn(h.defs)
 	return h
 }
@@ -132,7 +134,7 @@ func (h *harness) callsOn(src app.ResolverDefinitions) *app.Calls {
 		h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "git.changed_files": h.inputs, "file": h.inputs, "param": h.inputs},
 		h.workspaces, h.changes, app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
-		h.clock, fixedIDs{}, "/state", h.hosted,
+		h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
 	)
 }
 
@@ -652,7 +654,7 @@ func TestCallsResolveThroughTheResolutionTheyDeclare(t *testing.T) {
 	double := &snapshotCounter{reason: "the double refuses"}
 	h.calls = app.NewCalls(
 		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes, app.NewVerifier(h.changes, h.copies, h.commands, h.clock),
-		h.validator, h.recorder, h.runs, h.clock, fixedIDs{}, "/state", h.hosted,
+		h.validator, h.recorder, h.runs, h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
 	)
 	record := h.call(t, contract.CallRequest{})
 	if class(record) != run.ClassRefused || message(record) != "the double refuses" {
@@ -869,7 +871,7 @@ func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
 		app.NewResolver(h.defs, h.runtimes, h.validator), h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
 		h.workspaces, h.changes, app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
-		h.clock, fixedIDs{}, "/state", cancels,
+		h.clock, h.timer, fixedIDs{}, "/state", cancels,
 	)
 	// However the test ends, the blocked turn is released and the call
 	// joined, even when no cancel was added for it.

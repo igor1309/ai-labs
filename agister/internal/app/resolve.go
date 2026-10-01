@@ -201,6 +201,15 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 	if res.effective.MaxCostUSD != nil && !res.identity.CostLimit {
 		return res, refuse("runtime %s cannot enforce the cost limit %g", res.mapping.Name, *res.effective.MaxCostUSD)
 	}
+	// The staleness limits on tool calls need the adapter to report them.
+	if stale := res.effective.Stale; !res.identity.ToolCalls {
+		switch {
+		case stale.ToolCommand != nil:
+			return res, refuse("runtime %s does not report tool calls, so it cannot enforce stale.tool_command %s", res.mapping.Name, *stale.ToolCommand)
+		case stale.RepeatedToolCalls != nil:
+			return res, refuse("runtime %s does not report tool calls, so it cannot enforce stale.repeated_tool_calls %d", res.mapping.Name, *stale.RepeatedToolCalls)
+		}
+	}
 	if res.plan, err = enforce.Make(res.effective.Permissions, verified, res.effective.Require, res.service.StateReaching); err != nil {
 		return res, refuse("runtime %s: %v%s", res.mapping.Name, err, unverifiedNote(unverified, "for version "+res.identity.Version))
 	}

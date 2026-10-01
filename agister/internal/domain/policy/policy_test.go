@@ -259,3 +259,44 @@ func withoutTopLevel(data []byte, keys ...string) []byte {
 	}
 	return []byte(strings.Join(out, "\n"))
 }
+
+// Staleness limits come from the policy; a process may only lower them,
+// and one above the timeout the settings declare is invalid. Unset, they
+// stay unset.
+func TestStalenessLimitsOnlyNarrow(t *testing.T) {
+	pol := researchPolicy(t)
+	if effective, err := policy.Compose(service, &pol, process(t, ""), policy.Caller{}); err != nil || effective.Stale != (policy.Stale{}) {
+		t.Fatalf("without limits: %+v, %v", effective.Stale, err)
+	}
+
+	minutes := func(n int) *time.Duration { d := time.Duration(n) * time.Minute; return &d }
+	calls := 5
+	pol.Limits.Stale = definition.Stale{NoEvent: minutes(5), NoOutput: minutes(2), ToolCommand: minutes(10), RepeatedToolCalls: &calls}
+	effective, err := policy.Compose(service, &pol, process(t, "stale: {no_event: 3m, repeated_tool_calls: 4}"), policy.Caller{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := effective.Stale; *got.NoEvent != 3*time.Minute || *got.NoOutput != 2*time.Minute || *got.ToolCommand != 10*time.Minute || *got.RepeatedToolCalls != 4 {
+		t.Fatalf("stale = %+v", got)
+	}
+
+	for extra, want := range map[string]string{
+		"stale: {no_event: 6m}":           "stale.no_event: 6m0s widens the policy's 5m0s",
+		"stale: {no_output: 3m}":          "stale.no_output: 3m0s widens the policy's 2m0s",
+		"stale: {tool_command: 11m}":      "stale.tool_command: 11m0s widens the policy's 10m0s",
+		"stale: {repeated_tool_calls: 6}": "stale.repeated_tool_calls: 6 widens the policy's 5",
+		// The process narrows the timeout below a limit its policy sets.
+		"timeout: 4m": "stale.no_event 5m0s exceeds the timeout 4m0s",
+	} {
+		if _, err := policy.Compose(service, &pol, process(t, extra), policy.Caller{}); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: err = %v, want %q", extra, err, want)
+		}
+	}
+
+	// A caller's shorter timeout leaves a limit without effect, not invalid.
+	short := time.Minute
+	effective, err = policy.Compose(service, &pol, process(t, ""), policy.Caller{Timeout: &short})
+	if err != nil || effective.Timeout != time.Minute || *effective.Stale.NoEvent != 5*time.Minute {
+		t.Fatalf("caller timeout below the limits: %+v, %v", effective, err)
+	}
+}

@@ -280,7 +280,7 @@ verify:
 		app.NewResolver(fsdefs.Store{Dir: defs}, runtimes, schema.Validator{}), runtimes,
 		map[string]app.InputProvider{"git.revision": git.Revision{}},
 		workspaces, with.changes, app.NewVerifier(with.changes, with.copies, h.commands, with.clock), schema.Validator{},
-		h.store, h.store, with.clock, system.IDs{}, h.home, hosted,
+		h.store, h.store, with.clock, system.Timer, system.IDs{}, h.home, hosted,
 	)
 	h.runs = app.NewRuns(h.store, hosted, 10*time.Millisecond)
 	return h
@@ -856,4 +856,43 @@ func TestVerifyEvidenceForEveryAttempt(t *testing.T) {
 	if r.code != 0 || !strings.Contains(r.stdout, `"attempts":[{"number":1,"session":"sess-1"`) || strings.Count(r.stdout, `"passed":`) != 3 {
 		t.Fatalf("runs show: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
+}
+
+// A run that produces no output for the policy's stale.no_output is killed,
+// group and all, before verify.timeout: the node is interrupted as a
+// timeout, and the attempt's run says what went stale.
+func TestVerifyRunWithoutOutputIsKilledAsStale(t *testing.T) {
+	// Only the wait for output passes, as soon as it starts: the command
+	// never ends on its own and its timeout never fires.
+	const noOutput = 7 * time.Second
+	stale := supervisor.Commands{Timer: func(wait time.Duration) (<-chan time.Time, func()) {
+		if wait != noOutput {
+			return nil, func() {}
+		}
+		fired := make(chan time.Time, 1)
+		fired <- time.Time{}
+		return fired, func() {}
+	}}
+	h := newLoopWith(t, seams{commands: stale}, verifySettings{command: blocks + " & wait", policy: "stale: {no_output: 7s}\n"}, state("one"))
+	cleanupRecorded(t, h.home, h.repo)
+	record := h.wait(h.submit(contract.CallRequest{}))
+
+	expect(t, record, domain.Interrupted, domain.ClassTimeout, "stale: attempt 1's run produced no output for 7s (stale.no_output)")
+	if record.Effective == nil || record.Effective.Stale == nil || record.Effective.Stale.NoOutput != noOutput {
+		t.Fatalf("effective %+v", record.Effective)
+	}
+	if len(record.Attempts) != 1 || record.Attempts[0].Run == nil || record.Attempts[0].Run.Stale == nil {
+		t.Fatalf("attempts %+v", record.Attempts)
+	}
+	if ran := record.Attempts[0].Run; ran.Passed || ran.Stale.Limit != domain.StaleNoOutput || ran.Stale.After != noOutput || ran.Stale.At.IsZero() {
+		t.Fatalf("run %+v, stale %+v", ran, ran.Stale)
+	}
+	if record.Effects == nil || record.Effects.Command == nil {
+		t.Fatalf("effects %+v", record.Effects)
+	}
+	group, _, err := supervisor.ParseRef(record.Effects.Command.Ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, "the command's group to be gone", func() bool { return errors.Is(syscall.Kill(-group, 0), syscall.ESRCH) })
 }

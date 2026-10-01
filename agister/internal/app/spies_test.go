@@ -78,6 +78,9 @@ type runnerSpy struct {
 	startErr    error // what ProcessStarted returned to the last turn
 	// during, when set, runs while each turn does.
 	during func(app.TurnRequest)
+	// acting, when set, runs while each turn does, with the turn's context
+	// and sink: what the runtime reports of the turn.
+	acting func(context.Context, app.EventSink)
 }
 
 func (s *runnerSpy) Identity(context.Context) (app.RuntimeIdentity, error) {
@@ -107,6 +110,9 @@ func (s *runnerSpy) RunTurn(ctx context.Context, request app.TurnRequest, sink a
 	}
 	if s.during != nil {
 		s.during(request)
+	}
+	if s.acting != nil {
+		s.acting(ctx, sink)
 	}
 	if s.block {
 		select {
@@ -369,6 +375,8 @@ type commandsSpy struct {
 	exitIn   func(dir string) int
 	// running, when set, runs while the command does.
 	running func(app.CommandRequest)
+	// stale, when set, ends each run as one killed for its silence.
+	stale bool
 }
 
 func (s *commandsSpy) Run(_ context.Context, request app.CommandRequest, started func(string) error) app.CommandResult {
@@ -380,6 +388,9 @@ func (s *commandsSpy) Run(_ context.Context, request app.CommandRequest, started
 	}
 	if s.running != nil {
 		s.running(request)
+	}
+	if s.stale {
+		return app.CommandResult{Stale: true, Signal: "killed"}
 	}
 	code := 0
 	if len(s.exits) > 0 {
@@ -421,6 +432,7 @@ type recorderSpy struct {
 	raw       []string
 	artifacts map[string][]byte
 	finished  chan run.Record
+	taken     int // finished records wait returned
 
 	// updateErr, when set, is asked about each Update; a non-nil result
 	// fails it and the record is not kept.
@@ -512,11 +524,22 @@ func (s *recorderSpy) wait(t *testing.T) run.Record {
 	t.Helper()
 	select {
 	case record := <-s.finished:
+		s.mu.Lock()
+		s.taken++
+		s.mu.Unlock()
 		return record
 	case <-time.After(5 * time.Second):
 		t.Fatal("the call never finished")
 		return run.Record{}
 	}
+}
+
+// running is whether a run was created whose finished record wait has not
+// returned.
+func (s *recorderSpy) running() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.created) > s.taken
 }
 
 // runsSpy answers lookups of earlier runs.
@@ -578,6 +601,89 @@ func (c *settableClock) advance(by time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.now = c.now.Add(by)
+}
+
+// unfired is a timer whose wait never passes.
+func unfired(time.Duration) (<-chan time.Time, func()) { return nil, func() {} }
+
+// timersSpy starts waits on a settableClock: a wait passes when the clock
+// is advanced to its end, never by wall time. A wait's stop is its
+// watcher's word that nothing more comes of it.
+type timersSpy struct {
+	t     *testing.T
+	clock *settableClock
+	mu    sync.Mutex
+	waits []*timerWait
+	// started lists every wait asked for, in order.
+	started []time.Duration
+}
+
+type timerWait struct {
+	until   time.Time
+	fired   chan time.Time
+	settled bool // fired or stopped
+	// stopped closes when the wait is stopped.
+	stopped chan struct{}
+	once    sync.Once
+}
+
+func (s *timersSpy) start(wait time.Duration) (<-chan time.Time, func()) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	w := &timerWait{until: s.clock.Now().Add(wait), fired: make(chan time.Time, 1), stopped: make(chan struct{})}
+	s.waits = append(s.waits, w)
+	s.started = append(s.started, wait)
+	return w.fired, func() {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		w.settled = true
+		w.once.Do(func() { close(w.stopped) })
+	}
+}
+
+// advance moves the clock on and passes every wait that ends by then, and
+// returns once the watcher of each has dealt with it: what a passed wait
+// ends has ended.
+func (s *timersSpy) advance(by time.Duration) {
+	s.clock.advance(by)
+	now := s.clock.Now()
+	s.mu.Lock()
+	var passed []*timerWait
+	for _, w := range s.waits {
+		if !w.settled && !w.until.After(now) {
+			w.settled = true
+			w.fired <- now
+			passed = append(passed, w)
+		}
+	}
+	s.mu.Unlock()
+	s.stopped(passed, "a wait that passed was never dealt with")
+}
+
+// released fails the test unless every wait asked for is stopped.
+func (s *timersSpy) released() {
+	s.mu.Lock()
+	waits := append([]*timerWait(nil), s.waits...)
+	s.mu.Unlock()
+	s.stopped(waits, "a wait was never released")
+}
+
+// stopped waits for each wait's stop.
+func (s *timersSpy) stopped(waits []*timerWait, otherwise string) {
+	for _, w := range waits {
+		select {
+		case <-w.stopped:
+		case <-time.After(hangGuard):
+			s.t.Error(otherwise)
+			return
+		}
+	}
+}
+
+func (s *timersSpy) asked() []time.Duration {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]time.Duration(nil), s.started...)
 }
 
 type fixedClock struct{}

@@ -11,6 +11,13 @@ type Clock struct{}
 
 func (Clock) Now() time.Time { return time.Now().UTC() }
 
+// Timer starts a wall-clock wait: fired delivers once it has passed, and
+// stop releases it.
+func Timer(wait time.Duration) (fired <-chan time.Time, stop func()) {
+	timer := time.NewTimer(wait)
+	return timer.C, func() { timer.Stop() }
+}
+
 type IDs struct{}
 
 // RunID is sortable by time and human-scannable.

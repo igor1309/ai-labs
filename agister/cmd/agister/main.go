@@ -171,6 +171,7 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 			Recorder:   evidence,
 			Runs:       evidence,
 			Clock:      system.Clock{},
+			Timer:      system.Timer,
 			IDs:        system.IDs{},
 			StateDir:   config.Home,
 		},
