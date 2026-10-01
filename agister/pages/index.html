@@ -60,12 +60,6 @@
   .menu .remove:hover { color: var(--high); }
   .menu .empty, .menu .note, .menu .status { margin: 4px 14px; font-size: 12px; }
   .menu .note { color: var(--fg3); }
-  .menu .badge { font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--low); }
-  .browse-head { display: flex; align-items: center; gap: 4px; padding: 0 14px 4px 2px; }
-  .browse-head .remove:disabled { opacity: .3; cursor: default; }
-  #browse-path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; color: var(--fg3); }
-  .browse-list { max-height: 360px; overflow-y: auto; }
-  .browse-list .empty { padding: 4px 14px; font-size: 12px; }
   .menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; }
 
   #status { margin: 0 0 16px; }
@@ -104,27 +98,15 @@
       <span id="picker-label" class="mono">~</span>
     </button>
     <div id="picker-menu" class="menu card" hidden>
-      <div id="menu-main">
-        <ul><li><button id="open-home" class="item" type="button">
-          <span class="name mono">~</span><span class="when">Agister home, ~/.agister</span>
-        </button></li></ul>
-        <hr>
-        <h2>Recent repos</h2>
-        <ul id="recent-list"></ul>
-        <p id="recent-empty" class="empty dim" hidden>No recent repos.</p>
-        <hr>
-        <ul><li><button id="browse" class="item" type="button">Browse folders…</button></li></ul>
-      </div>
-      <div id="menu-browse" hidden>
-        <div class="browse-head">
-          <button id="browse-up" class="remove" type="button" title="Up one folder" aria-label="Up one folder">↑</button>
-          <span id="browse-path" class="mono"></span>
-        </div>
-        <ul id="browse-list" class="browse-list"></ul>
-        <p class="note">A folder marked <span class="badge">.agister</span> opens; others list their folders.</p>
-        <hr>
-        <ul><li><button id="browse-back" class="item" type="button">← Back</button></li></ul>
-      </div>
+      <ul><li><button id="open-home" class="item" type="button">
+        <span class="name mono">~</span><span class="when">Agister home, ~/.agister</span>
+      </button></li></ul>
+      <hr>
+      <h2>Recent repos</h2>
+      <ul id="recent-list"></ul>
+      <p id="recent-empty" class="empty dim" hidden>No recent repos.</p>
+      <hr>
+      <ul><li><button id="add-folder" class="item" type="button">Add folder…</button></li></ul>
       <p id="picker-status" class="status error" role="status" hidden></p>
     </div>
   </div>
@@ -164,8 +146,6 @@
   function setMenu(open) {
     $('picker-menu').hidden = !open;
     $('picker-button').setAttribute('aria-expanded', String(open));
-    $('menu-main').hidden = false;
-    $('menu-browse').hidden = true;
     say('picker-status', '');
     if (open) renderRecent();
   }
@@ -215,32 +195,17 @@
     await render(token, files);
   }
 
-  // --- browsing ---
-
-  async function browse(path) {
+  // Asks for a folder in the Mac's own dialog and opens it; cancelling
+  // changes nothing.
+  async function addFolder() {
     say('picker-status', '');
-    let listing;
+    let path;
     try {
-      listing = await R.fetchFolders(fetch, path);
+      path = await R.chooseFolder(fetch);
     } catch (err) {
       return say('picker-status', err.message);
     }
-    $('menu-main').hidden = true;
-    $('menu-browse').hidden = false;
-    // The marks keep the leading / in place in the right-to-left box that
-    // cuts long paths at the start.
-    $('browse-path').textContent = `\u200e${listing.path}\u200e`;
-    $('browse-path').title = listing.path;
-    $('browse-up').disabled = !listing.parent;
-    $('browse-up').onclick = () => browse(listing.parent);
-    $('browse-list').replaceChildren(...listing.folders.map((f) => {
-      const item = el('button', { type: 'button', className: 'item', title: f.path },
-        el('span', { className: 'name mono', textContent: f.name }),
-        f.agister ? el('span', { className: 'badge', textContent: '.agister' }) : null);
-      item.addEventListener('click', () => (f.agister ? open_(f.path) : browse(f.path)));
-      return el('li', {}, item);
-    }));
-    if (!listing.folders.length) $('browse-list').append(el('li', { className: 'empty dim', textContent: 'No folders.' }));
+    if (path) open_(path);
   }
 
   // --- dashboard ---
@@ -407,8 +372,7 @@
 
   $('picker-button').addEventListener('click', () => setMenu($('picker-menu').hidden));
   $('open-home').addEventListener('click', () => open_(R.HOME_ID));
-  $('browse').addEventListener('click', () => browse(''));
-  $('browse-back').addEventListener('click', () => setMenu(true));
+  $('add-folder').addEventListener('click', addFolder);
   $('refresh').addEventListener('click', () => open_(state.current ?? R.HOME_ID));
   document.addEventListener('click', (e) => {
     // The path, not e.target: a replaced row is detached by now.

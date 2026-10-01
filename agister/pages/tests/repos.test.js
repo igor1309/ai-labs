@@ -87,8 +87,8 @@ test('the path last shown is kept; missing, foreign or failing storage reads as 
 // fails like a stopped server.
 function fakeFetch(routes) {
   const calls = [];
-  const fn = async (url) => {
-    calls.push(url);
+  const fn = async (url, init = {}) => {
+    calls.push([init.method || 'GET', url, init.headers]);
     if (!(url in routes)) throw new TypeError('Load failed');
     const [status, body] = routes[url];
     return { ok: status < 300, status, json: async () => (typeof body === 'string' ? JSON.parse(body) : body) };
@@ -109,18 +109,19 @@ test('settings come from the server by path; ~ asks for Agister home', async () 
 test('a server error carries its message; no server says to run agister pages', async () => {
   const fetch = fakeFetch({
     'api/settings?path=%2Fplain': [404, { error: 'no .agister folder at /plain/.agister' }],
-    'api/folders?path=%2Fbroken': [500, '{not json'],
+    'api/choose': [500, '{not json'],
   });
   await assert.rejects(R.fetchSettings(fetch, '/plain'), { message: 'no .agister folder at /plain/.agister' });
   await assert.rejects(R.fetchSettings(fetch, '/elsewhere'), { message: R.NO_SERVER });
-  await assert.rejects(R.fetchFolders(fetch, '/broken'), { message: R.NO_SERVER });
+  await assert.rejects(R.chooseFolder(fetch), { message: R.NO_SERVER });
   assert.match(R.NO_SERVER, /agister pages/);
 });
 
-test('folders come from the server; no path lists the home folder', async () => {
-  const listing = { path: '/u', parent: '/', agister: false, folders: [{ name: 'repo', path: '/u/repo', agister: true }] };
-  const fetch = fakeFetch({ 'api/folders?path=': [200, listing] });
-  assert.deepEqual(await R.fetchFolders(fetch), listing);
+test('a chosen folder comes from the server; a cancelled dialog is null', async () => {
+  const chosen = fakeFetch({ 'api/choose': [200, { path: '/u/repo' }] });
+  assert.equal(await R.chooseFolder(chosen), '/u/repo');
+  assert.deepEqual(chosen.calls, [['POST', 'api/choose', { 'X-Agister-Pages': '1' }]]);
+  assert.equal(await R.chooseFolder(fakeFetch({ 'api/choose': [200, { path: '' }] })), null);
 });
 
 test('settings files read as a .agister folder', async () => {

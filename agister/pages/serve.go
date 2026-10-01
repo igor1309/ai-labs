@@ -1,7 +1,7 @@
 // Package pages serves the Agister settings page on this machine: the
-// page itself, embedded, and two read-only JSON endpoints it calls, one
-// listing a folder's subfolders and one returning a .agister folder's
-// settings files. It listens on the loopback address only and answers
+// page itself, embedded, and two JSON endpoints it calls, one asking the
+// user to choose a folder in the Mac's own dialog and one returning a
+// .agister folder's settings files. It listens on the loopback address only and answers
 // requests addressed to it by name, so no other site can read through it.
 package pages
 
@@ -18,7 +18,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 )
@@ -38,18 +37,30 @@ const fileCap = 256 << 10
 // Home is the path the page names ~: Agister's home.
 const Home = "~"
 
+// Choose shows the user a folder dialog and returns the chosen folder's
+// path, or "" when the user cancels.
+type Choose func(ctx context.Context) (string, error)
+
+// ChooseHeader must be on a request to /api/choose. A page on another site
+// cannot send it without the server's consent, which it never gives, so
+// only this page can pop the dialog.
+const ChooseHeader = "X-Agister-Pages"
+
 // Handler serves the page and its endpoints. agisterHome is Agister's home
-// (what ~ names); userHome is where browsing starts.
-func Handler(agisterHome, userHome string) http.Handler {
+// (what ~ names); choose asks the user for a folder.
+func Handler(agisterHome string, choose Choose) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /", http.FileServerFS(assets))
-	mux.HandleFunc("GET /api/folders", func(w http.ResponseWriter, r *http.Request) {
-		path := r.URL.Query().Get("path")
-		if path == "" {
-			path = userHome
+	mux.HandleFunc("POST /api/choose", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get(ChooseHeader) == "" {
+			reply(w, nil, statusError{http.StatusForbidden, "refused: " + ChooseHeader + " header missing"})
+			return
 		}
-		listing, err := folders(path)
-		reply(w, listing, err)
+		path, err := choose(r.Context())
+		if err == nil && path != "" {
+			path = filepath.Clean(path)
+		}
+		reply(w, map[string]string{"path": path}, err)
 	})
 	mux.HandleFunc("GET /api/settings", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Query().Get("path")
@@ -83,52 +94,6 @@ func loopbackOnly(next http.Handler) http.Handler {
 func isLoopbackIP(host string) bool {
 	ip := net.ParseIP(strings.Trim(host, "[]"))
 	return ip != nil && ip.IsLoopback()
-}
-
-// Folder is one subfolder in a listing.
-type Folder struct {
-	Name    string `json:"name"`
-	Path    string `json:"path"`
-	Agister bool   `json:"agister"` // it holds a .agister folder
-}
-
-// Listing is a folder's subfolders, by name; hidden ones are left out.
-type Listing struct {
-	Path    string   `json:"path"`
-	Parent  string   `json:"parent,omitempty"` // empty at the root
-	Agister bool     `json:"agister"`
-	Folders []Folder `json:"folders"`
-}
-
-func folders(path string) (Listing, error) {
-	if !filepath.IsAbs(path) {
-		return Listing{}, badRequest("path must be absolute: " + path)
-	}
-	path = filepath.Clean(path)
-	entries, err := os.ReadDir(path)
-	if err != nil {
-		return Listing{}, err
-	}
-	listing := Listing{Path: path, Agister: isDir(filepath.Join(path, ".agister")), Folders: []Folder{}}
-	if parent := filepath.Dir(path); parent != path {
-		listing.Parent = parent
-	}
-	for _, entry := range entries {
-		name := entry.Name()
-		if strings.HasPrefix(name, ".") {
-			continue
-		}
-		full := filepath.Join(path, name)
-		// A symlink to a folder counts as a folder.
-		if !entry.IsDir() && !(entry.Type()&fs.ModeSymlink != 0 && isDir(full)) {
-			continue
-		}
-		listing.Folders = append(listing.Folders, Folder{Name: name, Path: full, Agister: isDir(filepath.Join(full, ".agister"))})
-	}
-	sort.Slice(listing.Folders, func(i, j int) bool {
-		return strings.ToLower(listing.Folders[i].Name) < strings.ToLower(listing.Folders[j].Name)
-	})
-	return listing, nil
 }
 
 // settings returns the settings files under dir, a .agister folder, by
@@ -214,6 +179,9 @@ type Env struct {
 	UserHome       func() (string, error)
 	// Open shows url in the default browser; nil leaves it to the user.
 	Open func(url string) error
+	// Choose asks the user for a folder; nil answers every request with
+	// an error.
+	Choose Choose
 	// Listen opens the server's socket; net.Listen when nil.
 	Listen func(network, address string) (net.Listener, error)
 }
@@ -278,7 +246,11 @@ func Main(ctx context.Context, args []string, env Env) int {
 		fmt.Fprintf(env.Stderr, "agister pages: %v\n", err)
 		return 70
 	}
-	server := &http.Server{Handler: Handler(agisterHome, userHome), ReadHeaderTimeout: 10 * time.Second}
+	choose := env.Choose
+	if choose == nil {
+		choose = func(context.Context) (string, error) { return "", errors.New("no folder dialog on this system") }
+	}
+	server := &http.Server{Handler: Handler(agisterHome, choose), ReadHeaderTimeout: 10 * time.Second}
 	url := "http://" + listener.Addr().String() + "/"
 	fmt.Fprintf(env.Stdout, "Agister pages at %s (Ctrl-C stops)\n", url)
 	if env.Open != nil && !*noOpen {
@@ -297,5 +269,26 @@ func Main(ctx context.Context, args []string, env Env) int {
 		defer cancel()
 		_ = server.Shutdown(shutdown)
 		return 0
+	}
+}
+
+// Command runs name with args and returns its standard output and error.
+type Command func(ctx context.Context, name string, args ...string) (stdout, stderr []byte, err error)
+
+// MacDialog chooses a folder in the Mac's own folder dialog, run through
+// osascript; cancelling it chooses nothing.
+func MacDialog(run Command) Choose {
+	return func(ctx context.Context) (string, error) {
+		stdout, stderr, err := run(ctx, "osascript",
+			"-e", "activate",
+			"-e", `POSIX path of (choose folder with prompt "Choose a repo with Agister settings (.agister)")`)
+		if err != nil {
+			// osascript reports a cancelled dialog as error -128.
+			if strings.Contains(string(stderr), "(-128)") {
+				return "", nil
+			}
+			return "", fmt.Errorf("folder dialog: %v: %s", err, strings.TrimSpace(string(stderr)))
+		}
+		return strings.TrimSpace(string(stdout)), nil
 	}
 }

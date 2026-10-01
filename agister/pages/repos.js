@@ -80,10 +80,10 @@
 
   // The JSON at url; throws an Error with the server's message, or NO_SERVER
   // when there is no server to ask.
-  async function getJson(fetchFn, url) {
+  async function getJson(fetchFn, url, init = {}) {
     let res;
     try {
-      res = await fetchFn(url, { cache: 'no-store' });
+      res = await fetchFn(url, { cache: 'no-store', ...init });
     } catch {
       throw new Error(NO_SERVER);
     }
@@ -104,10 +104,11 @@
     return body.files || {};
   }
 
-  // { path, parent, agister, folders: [{ name, path, agister }] }; an empty
-  // path lists the user's home.
-  async function fetchFolders(fetchFn, path) {
-    return getJson(fetchFn, `api/folders?path=${encodeURIComponent(path || '')}`);
+  // The folder the user chose in the Mac's folder dialog, or null when they
+  // cancelled it. The server asks only for this page's header.
+  async function chooseFolder(fetchFn) {
+    const body = await getJson(fetchFn, 'api/choose', { method: 'POST', headers: { 'X-Agister-Pages': '1' } });
+    return body.path || null;
   }
 
   // --- settings files as a folder ---
@@ -178,6 +179,6 @@
     RECENT_KEY, RECENT_CAP, CURRENT_KEY, HOME_ID, NO_SERVER,
     readRecent, writeRecent, addRecent, removeRecent, rememberRepo, forgetRepo, baseName,
     readCurrent, writeCurrent,
-    fetchSettings, fetchFolders, agisterFromFiles,
+    fetchSettings, chooseFolder, agisterFromFiles,
   };
 })();

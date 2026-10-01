@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -55,7 +56,16 @@ func pagesEnv() pages.Env {
 		Getenv:   os.Getenv,
 		UserHome: os.UserHomeDir,
 		Open:     func(url string) error { return exec.Command("open", url).Run() },
+		Choose:   pages.MacDialog(runCommand),
 	}
+}
+
+func runCommand(ctx context.Context, name string, args ...string) ([]byte, []byte, error) {
+	var stdout, stderr bytes.Buffer
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	err := cmd.Run()
+	return stdout.Bytes(), stderr.Bytes(), err
 }
 
 // shutdown is cancelled by Ctrl-C, by kill, and by closing the terminal, so

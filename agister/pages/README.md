@@ -28,16 +28,17 @@ in the default browser; Ctrl-C stops it. `--addr` takes another loopback
 address, `--home` another Agister home (default `$AGISTER_HOME`, else
 `~/.agister`), `--no-open` leaves the browser alone.
 
-"Browse folders…" starts at your home folder and lists subfolders, hidden
-ones left out; a folder marked `.agister` opens, others list their
-folders. Opening a repo asks the server for that folder's `.agister` only:
-when it is there, the page shows it and puts the repo on the recent list;
-when not, the page says so and the list stays as it was.
+The picker lists `~`, the repos opened before (× removes one) and "Add
+folder…", which shows the Mac's own folder dialog. Opening a folder asks
+the server for that folder's `.agister` only: when it is there, the page
+shows it and puts the repo on the recent list; when not, the page says so
+and the list stays as it was.
 
-The server reads, never writes, and answers two endpoints:
+The server writes nothing and answers two endpoints:
 
-- `GET /api/folders?path=<absolute path>`: the folder's subfolders, each
-  marked when it holds `.agister`; no path means your home folder.
+- `POST /api/choose`: shows the folder dialog (`osascript`, `choose
+  folder`) and returns the chosen path, empty when cancelled. It needs the
+  `X-Agister-Pages` header, which a page on another site cannot send.
 - `GET /api/settings?path=<absolute repo path | ~>`: the settings files of
   `<path>/.agister`, or of Agister home for `~`: `agents`, `policies`,
   `processes`, `runtimes`, `schemas`, `workflows` and `service.toml`, each

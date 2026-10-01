@@ -52,51 +52,97 @@ func get(t *testing.T, h http.Handler, host, target string, out any) int {
 
 func q(path string) string { return url.QueryEscape(path) }
 
-func TestFoldersListsSubfoldersAndMarksAgisterRepos(t *testing.T) {
-	root := t.TempDir()
-	mkdir(t, filepath.Join(root, "beta", ".agister"))
-	mkdir(t, filepath.Join(root, "Alpha"))
-	mkdir(t, filepath.Join(root, ".hidden"))
-	write(t, filepath.Join(root, "file.txt"), "x")
-	write(t, filepath.Join(root, "gamma", ".agister"), "a file, not a folder")
-	if err := os.Symlink(filepath.Join(root, "beta"), filepath.Join(root, "link")); err != nil {
-		t.Fatal(err)
-	}
-	mkdir(t, filepath.Join(root, ".agister"))
-
-	var got Listing
-	if code := get(t, Handler("/unused", root), "127.0.0.1:7465", "/api/folders?path="+q(root), &got); code != 200 {
-		t.Fatalf("status %d", code)
-	}
-	want := Listing{Path: root, Parent: filepath.Dir(root), Agister: true, Folders: []Folder{
-		{Name: "Alpha", Path: filepath.Join(root, "Alpha")},
-		{Name: "beta", Path: filepath.Join(root, "beta"), Agister: true},
-		{Name: "gamma", Path: filepath.Join(root, "gamma")},
-		{Name: "link", Path: filepath.Join(root, "link"), Agister: true},
-	}}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("got %+v\nwant %+v", got, want)
+// noChoose fails the test when the dialog is asked for.
+func noChoose(t *testing.T) Choose {
+	return func(context.Context) (string, error) {
+		t.Error("the folder dialog was shown")
+		return "", nil
 	}
 }
 
-func TestFoldersStartsAtTheUserHome(t *testing.T) {
-	home := t.TempDir()
-	mkdir(t, filepath.Join(home, "repo"))
-	var got Listing
-	get(t, Handler("/unused", home), "localhost:7465", "/api/folders", &got)
-	if got.Path != home || len(got.Folders) != 1 {
-		t.Errorf("got %+v", got)
+// post sends a POST to h from this machine, with header when it is set.
+func post(t *testing.T, h http.Handler, target, header string, out any) int {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, target, nil)
+	req.Host = "127.0.0.1:7465"
+	if header != "" {
+		req.Header.Set(header, "1")
+	}
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if out != nil {
+		if err := json.Unmarshal(rec.Body.Bytes(), out); err != nil {
+			t.Fatalf("%s: %v: %s", target, err, rec.Body.String())
+		}
+	}
+	return rec.Code
+}
+
+func TestChooseReturnsTheChosenFolder(t *testing.T) {
+	h := Handler("/unused", func(context.Context) (string, error) { return "/Users/u/src/repo/", nil })
+	var got map[string]string
+	if code := post(t, h, "/api/choose", ChooseHeader, &got); code != 200 || got["path"] != "/Users/u/src/repo" {
+		t.Errorf("%d %v", code, got)
 	}
 }
 
-func TestFoldersRefusesRelativeAndMissingPaths(t *testing.T) {
-	h := Handler("/unused", t.TempDir())
-	var body map[string]string
-	if code := get(t, h, "127.0.0.1", "/api/folders?path=relative", &body); code != 400 || body["error"] == "" {
-		t.Errorf("relative: %d %v", code, body)
+func TestChooseCancelledReturnsNoPath(t *testing.T) {
+	h := Handler("/unused", func(context.Context) (string, error) { return "", nil })
+	var got map[string]string
+	if code := post(t, h, "/api/choose", ChooseHeader, &got); code != 200 || got["path"] != "" {
+		t.Errorf("%d %v", code, got)
 	}
-	if code := get(t, h, "127.0.0.1", "/api/folders?path="+q(filepath.Join(t.TempDir(), "missing")), &body); code != 404 {
-		t.Errorf("missing: %d %v", code, body)
+}
+
+func TestChooseFailureIsReported(t *testing.T) {
+	h := Handler("/unused", func(context.Context) (string, error) { return "", errors.New("no dialog") })
+	var got map[string]string
+	if code := post(t, h, "/api/choose", ChooseHeader, &got); code != 500 || got["error"] != "no dialog" {
+		t.Errorf("%d %v", code, got)
+	}
+}
+
+func TestChooseNeedsThePagesHeaderAndPost(t *testing.T) {
+	h := Handler("/unused", noChoose(t))
+	if code := post(t, h, "/api/choose", "", nil); code != 403 {
+		t.Errorf("no header: %d", code)
+	}
+	if code := get(t, h, "127.0.0.1", "/api/choose", nil); code == 200 {
+		t.Errorf("GET: %d", code)
+	}
+}
+
+func TestMacDialogRunsOsascriptAndTrimsThePath(t *testing.T) {
+	var name string
+	var args []string
+	choose := MacDialog(func(_ context.Context, n string, a ...string) ([]byte, []byte, error) {
+		name, args = n, a
+		return []byte("/Users/u/src/repo/\n"), nil, nil
+	})
+	path, err := choose(context.Background())
+	if err != nil || path != "/Users/u/src/repo/" {
+		t.Errorf("%q %v", path, err)
+	}
+	if name != "osascript" || !strings.Contains(strings.Join(args, " "), "choose folder") {
+		t.Errorf("ran %s %v", name, args)
+	}
+}
+
+func TestMacDialogCancelledChoosesNothing(t *testing.T) {
+	choose := MacDialog(func(context.Context, string, ...string) ([]byte, []byte, error) {
+		return nil, []byte("0:84: execution error: User canceled. (-128)\n"), errors.New("exit status 1")
+	})
+	if path, err := choose(context.Background()); path != "" || err != nil {
+		t.Errorf("%q %v", path, err)
+	}
+}
+
+func TestMacDialogFailureCarriesItsMessage(t *testing.T) {
+	choose := MacDialog(func(context.Context, string, ...string) ([]byte, []byte, error) {
+		return nil, []byte("not allowed\n"), errors.New("exit status 1")
+	})
+	if _, err := choose(context.Background()); err == nil || !strings.Contains(err.Error(), "not allowed") {
+		t.Errorf("%v", err)
 	}
 }
 
@@ -115,7 +161,7 @@ func TestSettingsReturnsOnlySettingsFiles(t *testing.T) {
 		Path, Dir string
 		Files     map[string]string
 	}
-	if code := get(t, Handler("/unused", "/unused"), "127.0.0.1", "/api/settings?path="+q(repo), &got); code != 200 {
+	if code := get(t, Handler("/unused", noChoose(t)), "127.0.0.1", "/api/settings?path="+q(repo), &got); code != 200 {
 		t.Fatalf("status %d", code)
 	}
 	want := map[string]string{
@@ -132,7 +178,7 @@ func TestSettingsOfTildeReadAgisterHome(t *testing.T) {
 	home := t.TempDir()
 	write(t, filepath.Join(home, "agents", "h.toml"), `name = "h"`)
 	var got struct{ Files map[string]string }
-	if code := get(t, Handler(home, "/unused"), "127.0.0.1", "/api/settings?path=~", &got); code != 200 {
+	if code := get(t, Handler(home, noChoose(t)), "127.0.0.1", "/api/settings?path=~", &got); code != 200 {
 		t.Fatalf("status %d", code)
 	}
 	if !reflect.DeepEqual(got.Files, map[string]string{"agents/h.toml": `name = "h"`}) {
@@ -141,7 +187,7 @@ func TestSettingsOfTildeReadAgisterHome(t *testing.T) {
 }
 
 func TestSettingsWithoutAgisterIsNotFound(t *testing.T) {
-	h := Handler(filepath.Join(t.TempDir(), "missing"), "/unused")
+	h := Handler(filepath.Join(t.TempDir(), "missing"), noChoose(t))
 	var body map[string]string
 	if code := get(t, h, "127.0.0.1", "/api/settings?path="+q(t.TempDir()), &body); code != 404 || !strings.Contains(body["error"], ".agister") {
 		t.Errorf("repo: %d %v", code, body)
@@ -155,19 +201,19 @@ func TestSettingsWithoutAgisterIsNotFound(t *testing.T) {
 }
 
 func TestOnlyRequestsAddressedToThisMachineAreServed(t *testing.T) {
-	h := Handler(t.TempDir(), t.TempDir())
+	h := Handler(t.TempDir(), noChoose(t))
 	for host, want := range map[string]int{
 		"127.0.0.1:7465": 200, "localhost:7465": 200, "[::1]:7465": 200, "localhost": 200,
 		"evil.example:7465": 403, "192.168.1.5:7465": 403, "localhost.evil.example": 403,
 	} {
-		if code := get(t, h, host, "/api/folders", nil); code != want {
+		if code := get(t, h, host, "/api/settings?path=~", nil); code != want {
 			t.Errorf("Host %s: status %d, want %d", host, code, want)
 		}
 	}
 }
 
 func TestThePageIsServed(t *testing.T) {
-	h := Handler("/unused", "/unused")
+	h := Handler("/unused", noChoose(t))
 	for _, path := range []string{"/", "/repos.js", "/config.js"} {
 		req := httptest.NewRequest(http.MethodGet, path, nil)
 		req.Host = "127.0.0.1:7465"
