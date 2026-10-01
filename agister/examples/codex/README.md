@@ -3,8 +3,11 @@
 Not installed by `agister init`: `agister check` refuses them as shipped.
 
 - The mapping is not verified against a live Codex (no primitive lists a `verified` version).
-- Both sandbox modes read files outside the workspace (`host.read`), which
-  Agister never grants.
+- Both sandbox modes read files outside the workspace (`host.read`), so
+  Codex runs only under a policy that allows it. The shipped `read-only`
+  policy does, so the shipped `ask` runs on a Codex agent; the
+  `sandboxed-review` policy here does not, so its review is refused until
+  the policy allows `host.read`.
 - Contract `codex/2` continues a session in place (`codex exec resume`),
   for agents that allow it, but cannot limit cost, so calls under a cost
   limit are refused.

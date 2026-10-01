@@ -9,8 +9,9 @@
   arrive as `error` events mid-turn; only `turn.completed` or `turn.failed`
   decide a turn.
 - **Codex sandboxes read outside the workspace.** Its mapping declares
-  `host.read`, which is never granted, and it is not yet verified against a
-  live Codex, so it ships opt-in (`examples/codex/`) and `check` refuses it.
+  `host.read`, which is granted only where a policy allows it (the shipped
+  `read-only` policy does), and it is not yet verified against a live
+  Codex, so it ships opt-in (`examples/codex/`) and `check` refuses it.
 - **Codex workspace-write, observed on codex-cli 0.159.2** (2026-09-30, a
   scratch repository): writing in the workspace and under `/tmp` worked;
   writing elsewhere in the home directory, `git commit` (`.git` stays
@@ -52,8 +53,9 @@
   2.1.285 under claude-code/3 (`--permission-mode dontAsk`, the tool in
   `--tools` and `--allowedTools`, 2026-09-30, a scratch directory): Read,
   Grep and Glob each read or listed a file in another temporary directory,
-  with no permission denial. Their mapping declares `host.read`, which is
-  never granted, so the shipped mapping grants a Claude call no file tool.
+  with no permission denial. Their mapping declares `host.read`, so the
+  shipped mapping grants a Claude call a file tool only under a policy that
+  allows `host.read` (the shipped `read-only` policy does).
   The same turn loaded the directory's `AGENTS.md` and offered Skill, which
   used a project skill.
 

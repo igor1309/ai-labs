@@ -18,4 +18,3 @@ tools:
     - process.execute
 
 timeout: 30m
-max_cost_usd: 5

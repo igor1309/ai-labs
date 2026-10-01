@@ -357,10 +357,35 @@ func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
 }
 
 // The shipped read-only policy allows everything Codex's read-only sandbox
-// grants under contract codex/2, so the shipped ask runs on a Codex agent
-// instead of being refused. The service accepts host reads, as a service
-// that runs Codex must: the sandbox reads the host.
+// grants under contract codex/2, and the shipped service does not treat
+// reading the host as state-reaching, so the shipped ask runs on a Codex
+// agent instead of being refused: with the service as shipped, and with one
+// configured to treat nothing as state-reaching.
 func TestShippedAskRunsOnACodexRuntime(t *testing.T) {
+	const shipped = `state_reaching = ["host.write"]`
+	for _, c := range []struct {
+		name          string
+		stateReaching string
+	}{
+		{"shipped service", shipped},
+		{"configured service", `state_reaching = []`},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			askOnCodex(t, func(service string) string {
+				if !strings.Contains(service, shipped) {
+					t.Fatal("the shipped service's state_reaching line was not found")
+				}
+				return strings.Replace(service, shipped, c.stateReaching, 1)
+			})
+		})
+	}
+}
+
+// askOnCodex runs the shipped ask under the shipped read-only policy on a
+// Codex agent, with the shipped service as configure returns it, and
+// asserts it completes on the read-only sandbox with nothing withheld.
+func askOnCodex(t *testing.T, configure func(service string) string) {
+	t.Helper()
 	h := newHarness()
 	for kind, name := range map[definition.Kind]string{definition.KindProcess: "ask", definition.KindPolicy: "read-only"} {
 		data, err := fs.ReadFile(examples.Settings(), string(kind)+"/"+name+".yaml")
@@ -373,11 +398,7 @@ func TestShippedAskRunsOnACodexRuntime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	accepting := strings.Replace(string(service), `state_reaching = ["host.read", "host.write"]`, `state_reaching = []`, 1)
-	if accepting == string(service) {
-		t.Fatal("the shipped service's state_reaching line was not found")
-	}
-	h.defs.docs[definition.KindService]["service"] = accepting
+	h.defs.docs[definition.KindService]["service"] = configure(string(service))
 	h.defs.docs[definition.KindRuntime]["codex"] = `schema: agister.runtime/v1alpha1
 name: codex
 adapter: spy
