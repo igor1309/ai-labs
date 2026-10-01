@@ -130,6 +130,19 @@ test('a chosen folder comes from the server; a cancelled dialog is null', async 
   assert.equal(await R.chooseFolder(fakeFetch({ 'api/choose': [200, { path: '' }] })), null);
 });
 
+test('runs, one run and the comparison come from the server', async () => {
+  const fetch = fakeFetch({
+    'api/runs': [200, { runs: [{ id: 'r1' }], total: 1, skipped: 0 }],
+    'api/runs/r1': [200, { summary: { id: 'r1' }, record: { id: 'r1' } }],
+    'api/runs/compare': [200, { groups: [], skipped: 0 }],
+    'api/runs/a%2Fb': [400, { error: '"a/b" is not a run ID' }],
+  });
+  assert.deepEqual(await R.fetchRuns(fetch), { runs: [{ id: 'r1' }], total: 1, skipped: 0 });
+  assert.deepEqual(await R.fetchRun(fetch, 'r1'), { summary: { id: 'r1' }, record: { id: 'r1' } });
+  assert.deepEqual(await R.fetchCompare(fetch), { groups: [], skipped: 0 });
+  await assert.rejects(R.fetchRun(fetch, 'a/b'), { message: '"a/b" is not a run ID' });
+});
+
 test('settings files read as a .agister folder', async () => {
   const agister = R.agisterFromFiles({
     'service.toml': 'max_attempts = 1',

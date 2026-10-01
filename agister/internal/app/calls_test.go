@@ -228,6 +228,11 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 		record.Runtime.Version != "1.2.3" || record.Inputs[0].Identity != "sha-HEAD" || !record.Inputs[0].Revision {
 		t.Fatalf("record = %+v", record)
 	}
+	// The agent profile the call ran as: what the agent asked for, kept
+	// apart from the model the runtime reports.
+	if record.Profile == nil || *record.Profile != (run.Profile{Model: "m1", Effort: "high", Session: definition.SessionFresh}) {
+		t.Fatalf("profile = %+v", record.Profile)
+	}
 	order := strings.Join(h.recorder.kinds(), " ")
 	if order != "CALL_SUBMITTED PLANNED PERMISSIONS_WITHHELD PROCESS_STARTED CALL_FINISHED" {
 		t.Fatalf("events = %s", order)

@@ -57,6 +57,8 @@ func pagesEnv() pages.Env {
 		UserHome: os.UserHomeDir,
 		Open:     func(url string) error { return exec.Command("open", url).Run() },
 		Choose:   pages.MacDialog(runCommand),
+		// The run store reads the runs' owners as agister run leaves them.
+		Observe: func(dir string) pages.RunObserver { return fsruns.Store{Dir: dir} },
 	}
 }
 

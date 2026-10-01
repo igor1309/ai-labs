@@ -2,7 +2,7 @@
 //
 // A classic script that sets globalThis.AgisterRepos, so the tests can
 // import this file for that side effect. The page runs under agister pages,
-// which serves it and answers the two endpoints called here.
+// which serves it and answers the endpoints called here.
 (() => {
   const RECENT_KEY = 'agister-pages:recent';
   const CURRENT_KEY = 'agister-pages:current';
@@ -114,6 +114,22 @@
     return body.path || null;
   }
 
+  // The runs in Agister home, newest first: { runs, total, skipped }.
+  async function fetchRuns(fetchFn) {
+    return getJson(fetchFn, 'api/runs');
+  }
+
+  // One run: { summary, record }.
+  async function fetchRun(fetchFn, id) {
+    return getJson(fetchFn, `api/runs/${encodeURIComponent(id)}`);
+  }
+
+  // The completed and failed calls grouped by process and configuration:
+  // { groups, skipped }.
+  async function fetchCompare(fetchFn) {
+    return getJson(fetchFn, 'api/runs/compare');
+  }
+
   // --- settings files as a folder ---
   //
   // config.js reads a .agister folder through directory-handle methods:
@@ -182,6 +198,6 @@
     RECENT_KEY, RECENT_CAP, CURRENT_KEY, HOME_ID, NO_SERVER,
     readRecent, writeRecent, addRecent, removeRecent, rememberRepo, forgetRepo, baseName,
     readCurrent, writeCurrent,
-    fetchSettings, chooseFolder, agisterFromFiles,
+    fetchSettings, chooseFolder, fetchRuns, fetchRun, fetchCompare, agisterFromFiles,
   };
 })();
