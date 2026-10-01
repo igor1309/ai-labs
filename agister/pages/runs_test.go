@@ -3,6 +3,7 @@ package pages
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"path/filepath"
 	"reflect"
@@ -10,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -210,18 +212,43 @@ func (f finishing) Get(ctx context.Context, id string) (run.Record, run.State, e
 	return f.fakeRuns.Get(ctx, id)
 }
 
+// finishedBetween is a run store over dir whose run finishes between its
+// two reads, as fsruns.Store's can: Get reads the record unfinished, the
+// owner then finishes it, and the owner check finds it finished.
+type finishedBetween struct{ finishing }
+
+func (f finishedBetween) Get(_ context.Context, id string) (run.Record, run.State, error) {
+	_, record, err := readRecord(f.dir, id)
+	runRecord(f.t, f.dir, id, f.finished)
+	return record, run.StateFinished, err
+}
+
 func TestARunThatFinishesWhileReadReadsAsFinished(t *testing.T) {
 	runs := t.TempDir()
-	runRecord(t, runs, "run-1", call("run-1", "implement", "2026-10-01T10:00:00Z", ""))
+	unfinished := call("run-1", "implement", "2026-10-01T10:00:00Z", "")
 	finished := call("run-1", "implement", "2026-10-01T10:00:00Z",
 		`,"finished_at":"2026-10-01T10:00:09Z","result":{"status":"completed","cost":{"source":"unknown"},"timing":{"started_at":"2026-10-01T10:00:00Z","finished_at":"2026-10-01T10:00:09Z","wall_ms":9000}}`)
-
-	detail, err := ReadRun(context.Background(), runs, finishing{fakeRuns{dir: runs}, t, finished}, "run-1")
-	if err != nil {
-		t.Fatal(err)
+	stores := map[string]RunObserver{
+		"before the store reads it": finishing{fakeRuns{dir: runs}, t, finished},
+		"between the store's reads": finishedBetween{finishing{fakeRuns{dir: runs}, t, finished}},
 	}
-	if detail.Summary.Status != "completed" || *detail.Summary.Outcome.WallMS != 9000 || string(detail.Record) != finished {
-		t.Fatalf("summary = %+v, record %s", detail.Summary, detail.Record)
+	for name, store := range stores {
+		runRecord(t, runs, "run-1", unfinished)
+		detail, err := ReadRun(context.Background(), runs, store, "run-1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if detail.Summary.Status != "completed" || *detail.Summary.Outcome.WallMS != 9000 || string(detail.Record) != finished {
+			t.Fatalf("%s: summary = %+v, record %s", name, detail.Summary, detail.Record)
+		}
+		runRecord(t, runs, "run-1", unfinished)
+		list, err := ListRuns(context.Background(), runs, store, DefaultRunLimit)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if listed := list.Runs[0]; listed.Status != "completed" || *listed.Outcome.WallMS != 9000 {
+			t.Fatalf("%s: listed = %+v", name, listed)
+		}
 	}
 }
 
@@ -306,6 +333,43 @@ func TestListSkipsUnparseableRecordsNewestFirstWithinLimit(t *testing.T) {
 	}
 }
 
+func TestRunListLimitsDefaultAndCap(t *testing.T) {
+	home := t.TempDir()
+	runs := filepath.Join(home, "runs")
+	// One more run than the cap; run-i started i seconds in, so the newest
+	// have the highest numbers.
+	start := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	for i := range MaxRunLimit + 1 {
+		id := fmt.Sprintf("run-%04d", i)
+		runRecord(t, runs, id, call(id, "p", start.Add(time.Duration(i)*time.Second).Format(time.RFC3339), ""))
+	}
+	newest := func(n int) []string {
+		var ids []string
+		for i := MaxRunLimit; i > MaxRunLimit-n; i-- {
+			ids = append(ids, fmt.Sprintf("run-%04d", i))
+		}
+		return ids
+	}
+	h := Handler(home, noChoose(t), owners())
+	for target, want := range map[string][]string{
+		"/api/runs":            newest(200),
+		"/api/runs?limit=1001": newest(1000),
+		"/api/runs?limit=5000": newest(1000),
+	} {
+		var list RunList
+		if code := get(t, h, "localhost:7465", target, &list); code != http.StatusOK {
+			t.Fatalf("%s: code %d", target, code)
+		}
+		var ids []string
+		for _, summary := range list.Runs {
+			ids = append(ids, summary.ID)
+		}
+		if !reflect.DeepEqual(ids, want) || list.Total != 1001 {
+			t.Fatalf("%s: %d runs from %v, total %d", target, len(ids), ids[:min(3, len(ids))], list.Total)
+		}
+	}
+}
+
 func TestRunEndpoints(t *testing.T) {
 	home := t.TempDir()
 	runs := filepath.Join(home, "runs")
@@ -370,17 +434,26 @@ func TestCompareGroupsByConfiguration(t *testing.T) {
 	}
 	opus := configuration("claude-code", "opus", "high")
 	sol := `,"profile":{"effort":"medium"},"runtime":{"mapping":"m","adapter":"codex","contract":"c","version":"1"},"turn":{"status":"completed","model":"gpt-6.1-sol"},`
-	verify := `"verify":{"command":"t","timeout":0,"max_attempts":3,"instruction":""},"attempts":[{"number":1,"turn":{"status":"completed"}},{"number":2,"turn":{"status":"completed"}}],`
+	attempts := func(n int) string {
+		var each []string
+		for i := 1; i <= n; i++ {
+			each = append(each, `{"number":`+strconv.Itoa(i)+`,"turn":{"status":"completed"}}`)
+		}
+		return `"verify":{"command":"t","timeout":0,"max_attempts":3,"instruction":""},"attempts":[` + strings.Join(each, ",") + `],`
+	}
 	// Each run costs its own power of two, so a group's total names its
 	// members. The wall times 100, 900 and 200 have a median of 200 and a
-	// mean of 400.
-	runRecord(t, runs, "o-1", call("o-1", "implement", "2026-10-01T10:00:01Z", opus+verify+finished("completed", 100, "1")))
-	runRecord(t, runs, "o-2", call("o-2", "implement", "2026-10-01T10:00:02Z", opus+finished("completed", 900, "2")))
+	// mean of 400. Two of the three used verify, 2 and 1 attempts: a mean
+	// of 1.5 over those two, 1 over all three.
+	runRecord(t, runs, "o-1", call("o-1", "implement", "2026-10-01T10:00:01Z", opus+attempts(2)+finished("completed", 100, "1")))
+	runRecord(t, runs, "o-2", call("o-2", "implement", "2026-10-01T10:00:02Z", opus+attempts(1)+finished("completed", 900, "2")))
 	runRecord(t, runs, "o-3", call("o-3", "implement", "2026-10-01T10:00:03Z", opus+finished("failed", 200, "4")))
-	// Each differs from opus in one dimension only: effort, model, process.
+	// Each differs from opus in one dimension only: effort, model, process,
+	// adapter.
 	runRecord(t, runs, "e-1", call("e-1", "implement", "2026-10-01T10:00:04Z", configuration("claude-code", "opus", "low")+finished("failed", 30, "8")))
 	runRecord(t, runs, "m-1", call("m-1", "implement", "2026-10-01T10:00:05Z", configuration("claude-code", "sonnet", "high")+finished("completed", 70, "16")))
 	runRecord(t, runs, "p-1", call("p-1", "plan", "2026-10-01T10:00:06Z", opus+finished("completed", 40, "32")))
+	runRecord(t, runs, "a-1", call("a-1", "implement", "2026-10-01T10:00:12Z", configuration("codex", "opus", "high")+finished("completed", 300, "256")))
 	runRecord(t, runs, "s-1", call("s-1", "implement", "2026-10-01T10:00:07Z", sol+finished("completed", 50, "")))
 	runRecord(t, runs, "s-2", call("s-2", "implement", "2026-10-01T10:00:08Z", sol+finished("failed", 70, "0.5")))
 	// Neither an interrupted call, one still running, nor a workflow is compared.
@@ -395,13 +468,15 @@ func TestCompareGroupsByConfiguration(t *testing.T) {
 	f := func(v float64) *float64 { return &v }
 	want := []CompareGroup{
 		{Process: "implement", Adapter: "claude-code", Model: "opus", Effort: "high", Runs: 3, Completed: 2, PassRate: 2.0 / 3,
-			MeanVerifyAttempts: f(2), MedianWallMS: f(200), TotalCostUSD: 7, CostPerCompletedUSD: f(3.5)},
+			MeanVerifyAttempts: f(1.5), MedianWallMS: f(200), TotalCostUSD: 7, CostPerCompletedUSD: f(3.5)},
 		{Process: "implement", Adapter: "claude-code", Model: "opus", Effort: "low", Runs: 1, Completed: 0, PassRate: 0,
 			MedianWallMS: f(30), TotalCostUSD: 8},
 		{Process: "implement", Adapter: "claude-code", Model: "sonnet", Effort: "high", Runs: 1, Completed: 1, PassRate: 1,
 			MedianWallMS: f(70), TotalCostUSD: 16, CostPerCompletedUSD: f(16)},
 		{Process: "implement", Adapter: "codex", Model: "gpt-6.1-sol", Effort: "medium", Runs: 2, Completed: 1, PassRate: 0.5,
 			MedianWallMS: f(60), TotalCostUSD: 0.5, CostUnknown: 1, CostPerCompletedUSD: f(0.5)},
+		{Process: "implement", Adapter: "codex", Model: "opus", Effort: "high", Runs: 1, Completed: 1, PassRate: 1,
+			MedianWallMS: f(300), TotalCostUSD: 256, CostPerCompletedUSD: f(256)},
 		{Process: "plan", Adapter: "claude-code", Model: "opus", Effort: "high", Runs: 1, Completed: 1, PassRate: 1,
 			MedianWallMS: f(40), TotalCostUSD: 32, CostPerCompletedUSD: f(32)},
 	}

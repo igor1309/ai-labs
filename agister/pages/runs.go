@@ -169,7 +169,7 @@ func ListRuns(ctx context.Context, dir string, runs RunObserver, limit int) (Run
 		return a.ID > b.ID
 	})
 	for _, stored := range records[:min(limit, len(records))] {
-		summary := summarise(observe(ctx, runs, stored.dir, stored.Record))
+		summary := summarise(observe(ctx, runs, dir, stored.dir, stored.Record))
 		addEvents(&summary, filepath.Join(dir, stored.dir, "events.jsonl"))
 		list.Runs = append(list.Runs, summary)
 	}
@@ -189,7 +189,7 @@ func ReadRun(ctx context.Context, dir string, runs RunObserver, id string) (RunD
 	if err != nil {
 		return RunDetail{}, err
 	}
-	observed, state := observe(ctx, runs, id, record)
+	observed, state := observe(ctx, runs, dir, id, record)
 	if record.Result == nil && observed.Result != nil {
 		// It finished after the first read: the record as it now stands.
 		if latest, latestRecord, err := readRecord(dir, id); err == nil && latestRecord.Result != nil {
@@ -219,13 +219,20 @@ func readRecord(dir, id string) ([]byte, run.Record, error) {
 
 // observe is the run id's record and state, from runs when record, as
 // read, has no result: abandoned when no process owns the run any more,
-// finished with the store's newer record when it finished since. When the
-// store cannot tell, the run is running.
-func observe(ctx context.Context, runs RunObserver, id string, record run.Record) (run.Record, run.State) {
+// finished with the newer record when it finished since. When the store
+// cannot tell, the run is running.
+func observe(ctx context.Context, runs RunObserver, dir, id string, record run.Record) (run.Record, run.State) {
 	if record.Result != nil {
 		return record, run.StateFinished
 	}
 	latest, state, err := runs.Get(ctx, id)
+	if err == nil && state == run.StateFinished && latest.Result == nil {
+		// The store read the record before the owner finished it and found
+		// it finished after: the record as it now stands, under dir.
+		if _, again, err := readRecord(dir, id); err == nil {
+			latest = again
+		}
+	}
 	switch {
 	case err != nil:
 		return record, run.StateRunning

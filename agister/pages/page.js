@@ -64,6 +64,8 @@
     // them. Only a repo whose .agister was found goes on the recent list; on
     // failure the page says why and keeps what it showed. The user's home
     // folder holds Agister's home, so it shows as ~ and leaves the list.
+    // The status is the shown view's: while Runs is shown, a read of the
+    // settings leaves it alone.
     async function open_(path) {
       const token = ++renderToken;
       let id, files, homeFiles;
@@ -73,7 +75,7 @@
       } catch (err) {
         if (token !== renderToken) return;
         if (!$('picker-menu').hidden) say('picker-status', err.message);
-        else say('status', err.message);
+        else if (state.view === 'settings') say('status', err.message);
         return;
       }
       if (token !== renderToken) return;
@@ -81,7 +83,7 @@
       R.writeCurrent(localStorage, id);
       state.current = id;
       setMenu(false);
-      say('status', '');
+      if (state.view === 'settings') say('status', '');
       await render(token, files, homeFiles);
     }
 
@@ -120,7 +122,7 @@
           ? await C.loadComposed(R.agisterFromFiles(homeFiles), R.agisterFromFiles(files))
           : await C.loadAgister(R.agisterFromFiles(files));
       } catch (err) {
-        if (token === renderToken) say('status', `Could not read .agister: ${err.message}`);
+        if (token === renderToken && state.view === 'settings') say('status', `Could not read .agister: ${err.message}`);
         return;
       }
       if (token !== renderToken) return;
