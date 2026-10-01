@@ -102,8 +102,13 @@ test('settings come from the server by path; ~ asks for Agister home', async () 
     'api/settings?path=~': [200, { path: '~', dir: '/u/.agister', files: { 'service.toml': 'x' } }],
     'api/settings?path=%2Fsrc%2Frepo': [200, { files: { 'agents/a.toml': 'y' } }],
   });
-  assert.deepEqual(await R.fetchSettings(fetch, '~'), { 'service.toml': 'x' });
-  assert.deepEqual(await R.fetchSettings(fetch, '/src/repo'), { 'agents/a.toml': 'y' });
+  assert.deepEqual(await R.fetchSettings(fetch, '~'), { id: '~', files: { 'service.toml': 'x' } });
+  assert.deepEqual(await R.fetchSettings(fetch, '/src/repo'), { id: '/src/repo', files: { 'agents/a.toml': 'y' } });
+});
+
+test('the folder holding Agister home reads as ~', async () => {
+  const fetch = fakeFetch({ 'api/settings?path=%2FUsers%2Fu': [200, { home: true, files: { 'service.toml': 'x' } }] });
+  assert.deepEqual(await R.fetchSettings(fetch, '/Users/u'), { id: '~', files: { 'service.toml': 'x' } });
 });
 
 test('a server error carries its message; no server says to run agister pages', async () => {

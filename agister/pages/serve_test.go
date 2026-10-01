@@ -215,6 +215,21 @@ func TestSettingsOfTildeReadAgisterHome(t *testing.T) {
 	}
 }
 
+func TestSettingsMarkAgisterHomeHoweverAsked(t *testing.T) {
+	user := t.TempDir()
+	home := filepath.Join(user, ".agister")
+	mkdir(t, home)
+	repo := filepath.Join(user, "repo")
+	mkdir(t, filepath.Join(repo, ".agister"))
+	h := Handler(home, noChoose(t))
+	for path, want := range map[string]bool{"~": true, user: true, user + "/": true, repo: false} {
+		var got struct{ Home bool }
+		if code := get(t, h, "127.0.0.1", "/api/settings?path="+q(path), &got); code != 200 || got.Home != want {
+			t.Errorf("%s: %d home=%v, want %v", path, code, got.Home, want)
+		}
+	}
+}
+
 func TestSettingsWithoutAgisterIsNotFound(t *testing.T) {
 	h := Handler(filepath.Join(t.TempDir(), "missing"), noChoose(t))
 	var body map[string]string

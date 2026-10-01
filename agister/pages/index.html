@@ -175,12 +175,14 @@
 
   // Asks the server for the settings at id (a repo path, or ~) and shows
   // them. Only a repo whose .agister was found goes on the recent list; on
-  // failure the page says why and keeps what it showed.
-  async function open_(id) {
+  // failure the page says why and keeps what it showed. The user's home
+  // folder holds Agister's home, so it shows as ~ and leaves the list.
+  async function open_(path) {
     const token = ++renderToken;
-    let files;
+    let id, files;
     try {
-      files = await R.fetchSettings(fetch, id);
+      ({ id, files } = await R.fetchSettings(fetch, path));
+      if (id !== path) R.forgetRepo(localStorage, path);
     } catch (err) {
       if (token !== renderToken) return;
       if (!$('picker-menu').hidden) say('picker-status', err.message);

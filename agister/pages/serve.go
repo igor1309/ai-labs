@@ -78,7 +78,10 @@ func Handler(agisterHome string, choose Choose) http.Handler {
 			dir = agisterHome
 		}
 		files, err := settings(dir)
-		reply(w, map[string]any{"path": path, "dir": dir, "files": files}, err)
+		// home: dir is Agister's home, asked as ~ or as the folder holding
+		// it (the user's home), so the page shows it as ~.
+		home := filepath.Clean(dir) == filepath.Clean(agisterHome)
+		reply(w, map[string]any{"path": path, "dir": dir, "home": home, "files": files}, err)
 	})
 	return loopbackOnly(mux)
 }
