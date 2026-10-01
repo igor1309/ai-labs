@@ -16,6 +16,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 )
@@ -58,28 +60,41 @@ func commit(ctx context.Context, dir, revision string) (string, error) {
 // one a parallel add has created and not yet written. It holds one lock per
 // repository, keyed by its git common directory: two paths into a
 // repository, or two of its worktrees, share one. A process builds one and
-// gives it to every Workspaces value it makes. Only this process is held
-// back, and nothing is written to the repository for it.
+// gives it to every Workspaces value it makes. Other processes are held
+// back too, through a lock file per repository in Agister's own state
+// directory, named by a digest of the same key: empty, it holds no state.
+// Nothing is written to the repository for it.
 type Worktrees struct {
 	// Git, when set, runs the worktree command in place of git, under the
-	// repository's lock: tests hold a command there.
+	// repository's locks: tests hold a command there.
 	Git func(ctx context.Context, dir string, args ...string) (string, error)
-	// Waits, when set, is told that a command found the lock held, before
-	// it waits.
+	// Waits, when set, is told that a command found a lock held, before it
+	// waits: once per command, whichever lock it is.
 	Waits func()
+	// Pause, when set, is the wait between attempts at a lock file another
+	// process holds, in place of a short sleep; it may return early when
+	// ctx ends. Tests make it immediate.
+	Pause func(ctx context.Context)
 
+	locks string
 	mu    sync.Mutex
-	locks map[string]chan struct{}
+	held  map[string]chan struct{}
 }
 
-func NewWorktrees() *Worktrees { return &Worktrees{} }
+// NewWorktrees makes the process's Worktrees, which keeps its lock files in
+// locks, made when missing.
+func NewWorktrees(locks string) *Worktrees { return &Worktrees{locks: locks} }
+
+// retry is the default wait between attempts at a lock file.
+const retry = 20 * time.Millisecond
 
 // worktree runs git worktree args in repository once no other worktree
-// command of the repository runs. A context that ends while it waits ends
-// the wait with the context's error. started says the command was run:
-// one that was not has changed nothing in the repository.
+// command of the repository runs, in this process or another. A context
+// that ends while it waits ends the wait with the context's error. started
+// says the command was run: one that was not has changed nothing in the
+// repository.
 func (s *Worktrees) worktree(ctx context.Context, repository string, args ...string) (started bool, err error) {
-	if s == nil {
+	if s == nil || s.locks == "" {
 		return false, errNoWorktrees
 	}
 	out, err := run(ctx, repository, "rev-parse", "--git-common-dir")
@@ -99,13 +114,19 @@ func (s *Worktrees) worktree(ctx context.Context, repository string, args ...str
 	if err != nil {
 		return false, err
 	}
-	lock := s.lock(resolved(common))
+	common = resolved(common)
+	waited := false
+	waits := func() {
+		if !waited && s.Waits != nil {
+			s.Waits()
+		}
+		waited = true
+	}
+	lock := s.lock(common)
 	select {
 	case lock <- struct{}{}:
 	default:
-		if s.Waits != nil {
-			s.Waits()
-		}
+		waits()
 		select {
 		case lock <- struct{}{}:
 		case <-ctx.Done():
@@ -113,6 +134,11 @@ func (s *Worktrees) worktree(ctx context.Context, repository string, args ...str
 		}
 	}
 	defer func() { <-lock }()
+	unlock, err := s.lockFile(ctx, common, waits)
+	if err != nil {
+		return false, err
+	}
+	defer unlock()
 	git := s.Git
 	if git == nil {
 		git = run
@@ -121,16 +147,61 @@ func (s *Worktrees) worktree(ctx context.Context, repository string, args ...str
 	return true, err
 }
 
+// lockFile takes the exclusive lock on the lock file of the repository
+// whose git common directory is common, trying again after each pause
+// while another process holds it and ctx lasts, and returns its release.
+func (s *Worktrees) lockFile(ctx context.Context, common string, waits func()) (func(), error) {
+	if err := os.MkdirAll(s.locks, 0o700); err != nil {
+		return nil, err
+	}
+	sum := sha256.Sum256([]byte(common))
+	file, err := os.OpenFile(filepath.Join(s.locks, hex.EncodeToString(sum[:])+".lock"), os.O_RDWR|os.O_CREATE, 0o600)
+	if err != nil {
+		return nil, err
+	}
+	pause := s.Pause
+	if pause == nil {
+		pause = func(ctx context.Context) {
+			timer := time.NewTimer(retry)
+			defer timer.Stop()
+			select {
+			case <-timer.C:
+			case <-ctx.Done():
+			}
+		}
+	}
+	for {
+		err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+		if err == nil {
+			break
+		}
+		if !errors.Is(err, syscall.EWOULDBLOCK) && !errors.Is(err, syscall.EINTR) {
+			file.Close()
+			return nil, fmt.Errorf("locking %s: %w", file.Name(), err)
+		}
+		if errors.Is(err, syscall.EWOULDBLOCK) {
+			waits()
+			pause(ctx)
+		}
+		if ctx.Err() != nil {
+			file.Close()
+			return nil, ctx.Err()
+		}
+	}
+	// Closing the descriptor drops the lock; the file stays.
+	return func() { file.Close() }, nil
+}
+
 func (s *Worktrees) lock(common string) chan struct{} {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.locks == nil {
-		s.locks = map[string]chan struct{}{}
+	if s.held == nil {
+		s.held = map[string]chan struct{}{}
 	}
-	if s.locks[common] == nil {
-		s.locks[common] = make(chan struct{}, 1)
+	if s.held[common] == nil {
+		s.held[common] = make(chan struct{}, 1)
 	}
-	return s.locks[common]
+	return s.held[common]
 }
 
 // worktreeCommands is what Workspaces needs to change a repository's
@@ -140,7 +211,7 @@ type worktreeCommands interface {
 	worktree(ctx context.Context, repository string, args ...string) (started bool, err error)
 }
 
-var errNoWorktrees = errors.New("git worktree: Workspaces built without NewWorkspaces")
+var errNoWorktrees = errors.New("git worktree: Workspaces built without NewWorkspaces over NewWorktrees")
 
 // Workspaces locates repositories and makes detached checkouts. Its
 // worktree changes go through worktrees: the zero value makes none.

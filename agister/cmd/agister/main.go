@@ -81,7 +81,13 @@ func compose(config cli.Config) (contract.Client, error) {
 
 // wire wires the client over the process's own worktree coordinator.
 func wire(config cli.Config) (contract.Client, *app.BackgroundReaper, error) {
-	return composition{worktrees: git.NewWorktrees()}.wire(config)
+	return process(config).wire(config)
+}
+
+// process is the composition of the process: its worktree coordinator
+// keeps the lock files other processes take turns through under the home.
+func process(config cli.Config) composition {
+	return composition{worktrees: git.NewWorktrees(filepath.Join(config.Home, "locks", "worktrees"))}
 }
 
 // composition is what one process wires its client over: the one worktree
