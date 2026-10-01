@@ -38,6 +38,11 @@
     font-size: 17px; line-height: 1; color: var(--fg2);
   }
   #refresh:hover { border-color: var(--dim); color: var(--fg); }
+  #refresh.spinning { color: var(--accent); border-color: var(--accent); cursor: progress; }
+  #refresh .glyph { display: inline-block; }
+  #refresh.spinning .glyph { animation: spin .6s linear infinite; }
+  .read-at { color: var(--fg3); font-size: 12px; font-variant-numeric: tabular-nums; }
+  @keyframes spin { to { transform: rotate(360deg); } }
   .picker { position: relative; }
   #picker-button {
     display: flex; align-items: center; gap: 8px; max-width: 420px;
@@ -93,7 +98,8 @@
 <header>
   <h1>Agister</h1>
   <div class="header-right">
-  <button id="refresh" type="button" title="Refresh: read the settings again" aria-label="Refresh">↻</button>
+  <span id="read-at" class="read-at"></span>
+  <button id="refresh" type="button" title="Refresh: read the settings again" aria-label="Refresh"><span class="glyph">↻</span></button>
   <div id="picker" class="picker">
     <button id="picker-button" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="picker-menu">
       <span id="picker-label" class="mono">~</span>
@@ -224,6 +230,9 @@
   async function render(token, files) {
     $('picker-label').textContent = label(state.current);
     $('picker-button').title = state.current === R.HOME_ID ? 'Agister home, ~/.agister' : state.current;
+    const now = new Date();
+    $('read-at').textContent = `read ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+    $('read-at').title = `Settings read from disk at ${now.toLocaleString()}`;
     let model;
     try {
       model = await C.loadAgister(R.agisterFromFiles(files));
@@ -384,7 +393,15 @@
   $('picker-button').addEventListener('click', () => setMenu($('picker-menu').hidden));
   $('open-home').addEventListener('click', () => open_(R.HOME_ID));
   $('add-folder').addEventListener('click', addFolder);
-  $('refresh').addEventListener('click', () => open_(state.current ?? R.HOME_ID));
+  // ↻ spins while the settings are read, at least one turn so a fast read
+  // is still seen.
+  $('refresh').addEventListener('click', async () => {
+    const button = $('refresh');
+    if (button.classList.contains('spinning')) return;
+    button.classList.add('spinning');
+    await Promise.all([open_(state.current ?? R.HOME_ID), new Promise((r) => setTimeout(r, 600))]);
+    button.classList.remove('spinning');
+  });
   document.addEventListener('click', (e) => {
     // The path, not e.target: a replaced row is detached by now.
     if (!$('picker-menu').hidden && !e.composedPath().includes($('picker'))) setMenu(false);
