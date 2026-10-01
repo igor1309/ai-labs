@@ -19,6 +19,8 @@ Workflows are organized into four categories:
 
 This ensures the `report` job (a required status check for branch protection) always runs — even on doc-only or non-code changes — while expensive test/build jobs are skipped when their project files are unchanged.
 
+The `report` job is named `report` only on `pull_request` runs (`report (push)` and `report (workflow_dispatch)` otherwise), so the required check is satisfied only by the PR's own run, never by the push run of the same commit.
+
 Per-project workflows do not need their own path filters — the dispatcher's `changes` job already prevents them from running on unrelated changes.
 
 Each project's filter in the `changes` job is an **allowlist of build/test inputs** — source, tests, manifests, lockfiles, and build/deploy descriptors (e.g. `Dockerfile`, `compose`, `Caddyfile`, `wrangler.*`). It deliberately **excludes documentation** (`<project>/docs/**`, `README.md`, `TODO.md`, landing/`*.html`, research notes) so a docs-only change skips the expensive core job while the required `report` check still runs. Do **not** use a blanket `<project>/**` glob: it pulls `docs/**` into the trigger set and runs the full core pipeline (tests, and for some projects a Docker build + container smoke) on documentation edits. When adding a project, list its code paths explicitly, as `clipdeck` and `agonara` do.

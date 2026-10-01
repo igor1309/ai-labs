@@ -449,8 +449,8 @@ func TestDiscardRefusesOtherDirectories(t *testing.T) {
 }
 
 // A checkout whose directory is already gone is still dropped from the
-// worktree list.
-func TestDiscardPrunesACheckoutThatIsGone(t *testing.T) {
+// worktree list, and discarding it succeeds.
+func TestDiscardDropsACheckoutThatIsGone(t *testing.T) {
 	repo := repository(t)
 	ctx := context.Background()
 	checkout, _, err := git.Workspaces{}.Checkout(ctx, repo, sh(t, repo, "rev-parse", "HEAD"))
@@ -464,6 +464,31 @@ func TestDiscardPrunesACheckoutThatIsGone(t *testing.T) {
 		t.Fatal(err)
 	}
 	if lines := strings.Split(sh(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
+		t.Fatalf("worktrees = %v", lines)
+	}
+}
+
+// Discard removes only its own checkout: another worktree's stale record
+// in the repository is the repository's, and survives.
+func TestDiscardLeavesOtherStaleWorktreesAlone(t *testing.T) {
+	repo := repository(t)
+	ctx := context.Background()
+	other := filepath.Join(t.TempDir(), "other")
+	sh(t, repo, "worktree", "add", "--detach", "--quiet", other, "HEAD")
+	if err := os.RemoveAll(other); err != nil {
+		t.Fatal(err)
+	}
+	checkout, _, err := git.Workspaces{}.Checkout(ctx, repo, sh(t, repo, "rev-parse", "HEAD"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Dir(checkout)) })
+	if err := (git.Workspaces{}).Discard(ctx, repo, checkout); err != nil {
+		t.Fatal(err)
+	}
+	list := sh(t, repo, "worktree", "list")
+	if lines := strings.Split(list, "\n"); len(lines) != 2 || !strings.HasSuffix(lines[1], "prunable") ||
+		!strings.Contains(lines[1], filepath.Base(other)) {
 		t.Fatalf("worktrees = %v", lines)
 	}
 }
