@@ -154,6 +154,8 @@ type CallRuntime struct {
 	Contract string
 	Version  string
 	Resume   bool // a turn may resume an earlier provider session in place
+	// A session resumes only in the working directory it ran in.
+	ResumeWhereItRan bool
 }
 
 // CallPlan is what a call grants on its runtime.
@@ -220,7 +222,7 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 			Allow: effective.Allow, Deny: effective.Deny, Permissions: effective.Permissions, Require: effective.Require,
 			Access: effective.Access, Scope: effective.Scope, Stale: callStale(effective.Stale),
 		},
-		Identity: CallRuntime{Contract: res.identity.Contract, Version: res.identity.Version, Resume: res.identity.Resume},
+		Identity: CallRuntime{Contract: res.identity.Contract, Version: res.identity.Version, Resume: res.identity.Resume, ResumeWhereItRan: res.identity.ResumeWhereItRan},
 		Plan:     CallPlan{Primitives: res.plan.Primitives, Granted: res.plan.Granted, Withheld: res.plan.Withheld},
 	}
 	if verify := process.Verify; verify != nil {
@@ -688,7 +690,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		event(run.SourceAgister, "PERMISSIONS_WITHHELD", map[string]any{"permissions": res.Plan.Withheld})
 	}
 
-	resumeSessionID, sessionBefore, err := c.continuation(ctx, res, record.ID, record.Request.Continue)
+	resumeSessionID, sessionBefore, err := c.continuation(ctx, res, record.ID, record.Request.Continue, record.Request.Cwd)
 	if err != nil {
 		fail(err)
 		return
@@ -1078,7 +1080,7 @@ func (c *Calls) startNode(ctx context.Context, parent string, node CallNode, par
 // agent must allow it, the runtime must support it, and the earlier run
 // must be finished, by the same agent, with a session. self is the
 // asking run.
-func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID string) (string, *run.SessionTotals, error) {
+func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID, cwd string) (string, *run.SessionTotals, error) {
 	if runID == "" {
 		return "", nil, nil
 	}
@@ -1102,6 +1104,11 @@ func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID
 	case prior.Result == nil || prior.Result.Session == nil || prior.Result.Session.ProviderSessionID == "":
 		return "", nil, refuse("run %s has no provider session", runID)
 	}
+	if res.Identity.ResumeWhereItRan {
+		if err := c.whereItRan(ctx, res, prior, cwd); err != nil {
+			return "", nil, err
+		}
+	}
 	session := prior.Result.Session.ProviderSessionID
 	// The baseline is the session's latest turn on any run Agister has
 	// recorded, which may be a later continuation of the run continued, not
@@ -1113,6 +1120,24 @@ func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID
 		return session, nil, nil
 	}
 	return session, run.LatestTotals(records, session, self), nil
+}
+
+// whereItRan refuses a continuation of run prior, on a runtime that
+// resumes a session only in the directory it ran in, that would work
+// anywhere else: in a checkout of its own, made for the call, or in
+// another directory than prior worked in. It makes no workspace.
+func (c *Calls) whereItRan(ctx context.Context, res *ResolvedCall, prior run.Record, cwd string) error {
+	if res.Process.Checkout != "" {
+		return refuse("runtime %s resumes a session only in the directory it ran in, and process %s works in a checkout of its own; it cannot continue run %s",
+			res.Mapping.Name, res.Process.Name, prior.ID)
+	}
+	if prior.Workspace == "" {
+		return refuse("runtime %s resumes a session only in the directory it ran in, and run %s recorded none", res.Mapping.Name, prior.ID)
+	}
+	if here := c.workspaceRoot(ctx, cwd); filepath.Clean(here) != filepath.Clean(prior.Workspace) {
+		return refuse("runtime %s resumes a session only in the directory it ran in: run %s worked in %s, not %s", res.Mapping.Name, prior.ID, prior.Workspace, here)
+	}
+	return nil
 }
 
 // collectChanges keeps a call's changes to its own workspace as an
@@ -1229,15 +1254,22 @@ type preparedWorkspace struct {
 	Owned bool
 }
 
+// workspaceRoot is the repository of cwd, or cwd outside one: the
+// directory a call without a checkout works in.
+func (c *Calls) workspaceRoot(ctx context.Context, cwd string) string {
+	root, err := c.workspaces.Root(ctx, cwd)
+	if err != nil {
+		return cwd
+	}
+	return root
+}
+
 // prepareWorkspace returns the agent's working directory: a checkout of the
 // revision of the input checkout names, or, when it names none, the
 // repository. It must not overlap Agister's state.
 func (c *Calls) prepareWorkspace(ctx context.Context, checkout string, inputs []run.Input, cwd string) (preparedWorkspace, error) {
 	noop := func() error { return nil }
-	root, err := c.workspaces.Root(ctx, cwd)
-	if err != nil {
-		root = cwd
-	}
+	root := c.workspaceRoot(ctx, cwd)
 	if overlaps(root, c.stateDir) {
 		return preparedWorkspace{}, refuse("workspace %s overlaps Agister's state %s", root, c.stateDir)
 	}

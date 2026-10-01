@@ -25,6 +25,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/claudecode"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/pi"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/schema"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
@@ -142,6 +143,11 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		},
 		"codex": func(command string) app.TurnRunner {
 			return logging.Runner{Inner: codex.New(command), Adapter: "codex", Log: log}
+		},
+		// Pi's sessions are kept under the home, where a continuation
+		// finds them, not in ~/.pi.
+		"pi": func(command string) app.TurnRunner {
+			return logging.Runner{Inner: pi.New(command, filepath.Join(config.Home, "pi", "sessions")), Adapter: "pi", Log: log}
 		},
 	}
 	// Over the one coordinator of the process: every workspace adapter's

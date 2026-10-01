@@ -22,11 +22,19 @@ type RuntimeIdentity struct {
 	// A turn may resume an earlier provider session in place, by the
 	// session ID the runtime reported for it; the session keeps that ID.
 	Resume bool
+	// A session resumes only in the working directory it ran in, so a
+	// continuation that would work anywhere else is refused before its
+	// workspace is made.
+	ResumeWhereItRan bool
 	// The runtime stops a turn that reaches a cost limit.
 	CostLimit bool
 	// The adapter reports the agent's tool calls as they start and finish
 	// (EventSink.ToolStarted), which the staleness limits on tool calls need.
 	ToolCalls bool
+	// SkillTools are the primitives a call needs one of to use the
+	// repository's skills, which are used by reading them (ADR-006); none
+	// when the runtime reads them without a granted tool.
+	SkillTools []string
 }
 
 // ToolCall is a tool call the agent started, as the runtime adapter reports
