@@ -60,6 +60,21 @@
     tests passed) and touched nothing else that was left. Provider
     timeouts again.
   The work was discarded; LAB-45 went to another model.
+- **GLM-5.3 on Pi ran into the OpenCode Go usage limit twice on LAB-45.**
+  Process `implement_pi_glm`, agent `pi-implementer-glm-53` (Pi 0.85.1,
+  model `opencode-go/glm-5.3`, effort `high`), the same brief and
+  45-minute limit, on 2026-10-01:
+  - Run `20261001T170918Z-310efe` failed `rate_limited` after 24m6s
+    ($2.5615, 185k in / 52k out tokens): `429 GoUsageLimitError`. It
+    read the code and built a fake model server outside the checkout to
+    probe OpenCode; it wrote nothing in the checkout, so no patch.
+  - Run `20261001T192109Z-2228ea`, started when the rolling limit
+    cleared, failed the same way after 18m48s ($3.0066, 170k in / 54k
+    out tokens), leaving a first draft of the adapter and `Spec.Env` in
+    the supervisor (547 added lines), no tests.
+  One rolling window of the Go plan holds about $3 of GLM-5.3, less than
+  this task needs. Agister classified both as `rate_limited` and kept
+  the second run's patch.
 - **Claude Code rejects draft 2020-12 schemas** passed with `--json-schema`,
   so example schemas declare no `$schema`. `agister check` still accepts
   one: on 2026-09-29 a project schema with the draft 2020-12 `$schema`
