@@ -401,13 +401,14 @@ func TestVerifyFailingRunIsRepairedInTheSameSessionAndCheckout(t *testing.T) {
 	}
 }
 
-// The last attempt failing ends the node as budget exhausted.
+// The last attempt failing ends the node as budget exhausted, with the
+// latest turn's valid output on record (LAB-39).
 func TestVerifyAttemptsRunOut(t *testing.T) {
 	h := newLoop(t, verifySettings{}, state("one"), state("two"), state("three"), state("pass"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "attempt 3 of 3 failed (exit code 1)")
-	if len(h.runner.turns()) != 3 || len(runsOf(record)) != 3 || record.Result.Output != nil {
-		t.Fatalf("turns %d, attempts %+v", len(h.runner.turns()), record.Attempts)
+	if len(h.runner.turns()) != 3 || len(runsOf(record)) != 3 || compact(record.Result.Output) != `{"done":true}` {
+		t.Fatalf("turns %d, output %s, attempts %+v", len(h.runner.turns()), record.Result.Output, record.Attempts)
 	}
 }
 

@@ -127,7 +127,7 @@ type Session struct {
 type Result struct {
 	Status    Status          `json:"status"`
 	Error     *Error          `json:"error,omitempty"`
-	Output    json.RawMessage `json:"output,omitempty"` // contract-valid, completed only
+	Output    json.RawMessage `json:"output,omitempty"` // the latest turn's, when contract-valid, whatever then ended the node
 	Text      string          `json:"text,omitempty"`
 	Usage     *Usage          `json:"usage,omitempty"`
 	Cost      Cost            `json:"cost"`

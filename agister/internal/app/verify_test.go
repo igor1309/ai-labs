@@ -570,8 +570,8 @@ func TestAnAttemptThatCannotBeRecordedStopsTheCall(t *testing.T) {
 			if record.Result.Status != run.Failed || class(record) != run.ClassInternal || message(record) != "recording attempt 1 failed: disk full" {
 				t.Fatalf("result %+v", record.Result)
 			}
-			if len(h.runner.calls()) != 1 || len(h.commands.runs()) != 1 || len(h.copies.left()) != 0 || record.Result.Output != nil {
-				t.Fatalf("turns %d, runs %d, copies left %v", len(h.runner.calls()), len(h.commands.runs()), h.copies.left())
+			if len(h.runner.calls()) != 1 || len(h.commands.runs()) != 1 || len(h.copies.left()) != 0 || string(record.Result.Output) != `{"outcome":"no"}` {
+				t.Fatalf("turns %d, runs %d, copies left %v, output %s", len(h.runner.calls()), len(h.commands.runs()), h.copies.left(), record.Result.Output)
 			}
 		})
 	}
@@ -594,6 +594,42 @@ func TestVerifyTimeoutAboveTheCallersTimeoutRefusesTheCall(t *testing.T) {
 	}
 	if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
 		t.Fatalf("turns %d, checkouts %v after the refusal", len(h.runner.calls()), h.workspaces.checkouts)
+	}
+}
+
+// LAB-39: a call its verification fails keeps the output of its latest
+// turn, when that turn's output was valid, and the failure stays its status
+// and class; a latest turn that failed leaves no output, not an earlier
+// turn's.
+func TestAFailedVerificationKeepsTheLatestValidOutput(t *testing.T) {
+	cases := []struct {
+		name   string
+		repair run.Turn
+		class  run.Class
+		output string
+	}{
+		{"last attempt failed", run.Turn{Status: run.Completed, Output: json.RawMessage(`{"outcome":"yes"}`), ProviderSessionID: "prov-1"},
+			run.ClassBudgetExhausted, `{"outcome":"yes"}`},
+		{"repair turn failed", run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRuntimeError, "boom"), Output: json.RawMessage(`{"outcome":"yes"}`), ProviderSessionID: "prov-1"},
+			run.ClassRuntimeError, ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			h := newHarness()
+			verifying(h)
+			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "max_attempts: 3", "max_attempts: 2", 1)
+			h.runner.turns = []run.Turn{h.runner.turn, c.repair}
+			h.commands.exits = []int{1, 1}
+			identities := 0
+			h.changes.identify = func() string { identities++; return fmt.Sprintf("tree-%d", identities) }
+			record := h.call(t, contract.CallRequest{})
+			if record.Result.Status != run.Failed || class(record) != c.class || len(h.runner.calls()) != 2 {
+				t.Fatalf("result %+v, turns %d", record.Result, len(h.runner.calls()))
+			}
+			if string(record.Result.Output) != c.output {
+				t.Fatalf("output %s, want %q", record.Result.Output, c.output)
+			}
+		})
 	}
 }
 

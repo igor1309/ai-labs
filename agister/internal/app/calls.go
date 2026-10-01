@@ -599,7 +599,6 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		result.Status, result.Error = run.Completed, fault
 		if fault != nil {
 			result.Status = run.StatusOf(fault.Class)
-			result.Output = nil
 		}
 		result.Timing.FinishedAt = now
 		result.Timing.WallMS = now.Sub(result.Timing.StartedAt).Milliseconds()
@@ -740,6 +739,8 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	var turns []run.Turn
 	var turnMS int64
 	take := func(request TurnRequest, before *run.SessionTotals) run.Turn {
+		// Whatever output an earlier turn had is not the call's any more.
+		result.Output = nil
 		turnStart := c.clock.Now()
 		// The turn runs under a context of its own, which a staleness limit
 		// cancels: the runtime ends as on any cancellation, and the turn is
@@ -780,6 +781,11 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 			validation = c.validator.Validate(res.Schema, turn.Output)
 		}
 		_, fault := run.Conclude(turn, definition.Output{Format: res.Process.Output}, validation)
+		// A contract-valid output is kept whatever then ends the call: a
+		// failed verification is still the call's status and class.
+		if fault == nil && res.Process.Output == "json" {
+			result.Output = turn.Output
+		}
 		return fault
 	}
 
@@ -795,9 +801,6 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 			Dir: workspace.Dir, Base: revision, Repository: workspace.Repository, Request: request, Session: turn.ProviderSessionID,
 			Take: take, Conclude: conclude,
 		})
-	}
-	if fault == nil && res.Process.Output == "json" {
-		result.Output = record.Turn.Output
 	}
 	finish(fault)
 	return final
