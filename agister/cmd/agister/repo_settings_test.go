@@ -35,8 +35,13 @@ var repoParams = map[string]string{
 const fallbackParam = "AGENTS.md"
 
 // testTimeouts are the test's own timeouts for a process run, by process
-// name, in place of its policy's: the advisor's policy allows 20 minutes.
-var testTimeouts = map[string]string{"advisor": "1m"}
+// name, in place of its policy's: the advisor's policy allows 20 minutes,
+// implement_pi's 45.
+var testTimeouts = map[string]string{
+	"advisor":          "1m",
+	"implement_pi":     "1m",
+	"implement_pi_glm": "1m",
+}
 
 // codexAgents is the agent recorded for each process that runs on Codex, by
 // process: each agent is named after its model version.
@@ -76,6 +81,10 @@ var staleLimits = func() map[string]domain.StaleLimits {
 // checkout of the candidate. The real command would run this module's own
 // tests, this one included.
 const verifyFixture = "grep -qx two change.txt"
+
+// verifyFixtureTimeout is the timeout verifyFixture runs with in place of
+// the process's own.
+const verifyFixtureTimeout = "30s"
 
 // Every process and workflow of this repository's own settings
 // (<repository root>/.agister) runs, as the CLI composes them over a global
@@ -853,7 +862,8 @@ func mirror(t *testing.T, root string) string {
 
 // fixVerify makes repo's .agister a directory whose entries link to those of
 // root's, processes aside: there, a process that declares verify is written
-// with verifyFixture as its command, and every other links to its file.
+// with verifyFixture as its command and verifyFixtureTimeout as its timeout,
+// and every other links to its file.
 func fixVerify(t *testing.T, root, repo string) {
 	t.Helper()
 	settings := filepath.Join(repo, ".agister")
@@ -896,11 +906,19 @@ func fixVerify(t *testing.T, root, repo string) {
 		if err := yaml.Unmarshal(data, &document); err != nil {
 			t.Fatalf("%s: %v", path, err)
 		}
-		command := valueOf(valueOf(document.Content[0], "verify"), "command")
+		verify := valueOf(document.Content[0], "verify")
+		command := valueOf(verify, "command")
 		if command == nil {
 			continue
 		}
 		command.SetString(verifyFixture)
+		if timeout := valueOf(verify, "timeout"); timeout != nil {
+			timeout.SetString(verifyFixtureTimeout)
+		} else {
+			verify.Content = append(verify.Content,
+				&yaml.Node{Kind: yaml.ScalarNode, Value: "timeout"},
+				&yaml.Node{Kind: yaml.ScalarNode, Value: verifyFixtureTimeout})
+		}
 		fixed, err := yaml.Marshal(&document)
 		if err != nil {
 			t.Fatal(err)

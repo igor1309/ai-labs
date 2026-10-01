@@ -170,6 +170,26 @@ func TestOpenCodeCallUnderACostLimitIsRefused(t *testing.T) {
 	}
 }
 
+// OpenCode's stream reports a tool call only once it has ended, so the
+// adapter does not report tool calls: a call under a stale.tool_command
+// limit, which a command still running could outlast unseen, is refused
+// before OpenCode starts.
+func TestOpenCodeCallUnderAToolCommandLimitIsRefused(t *testing.T) {
+	home, repo := exampleOpenCodeSettings(t)
+	verifyOpenCodeTools(t, home, "read", "grep", "glob", "skill")
+	allowHostReads(t, home, repo)
+	policy := filepath.Join(home, "policies", "read-only.yaml")
+	write(t, policy, read(t, policy)+"\nstale: {tool_command: 10m}\n")
+	const reason = "runtime opencode does not report tool calls, so it cannot enforce stale.tool_command 10m0s"
+	r := agister(t, home, repo, "run", "ask_opencode", "--param", "question=What does this repository do?", "--timeout", "30s")
+	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, reason) {
+		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if last := lastRun(t, home); last.first != nil {
+		t.Fatalf("OpenCode started: %v", last.first)
+	}
+}
+
 // Even when every grant is allowed, the unverified edit and bash cannot
 // satisfy a required permission. The bad settings live only in a temp home.
 func TestExampleOpenCodeSettingsRefuseUnverifiedTools(t *testing.T) {

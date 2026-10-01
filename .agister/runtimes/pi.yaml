@@ -17,8 +17,10 @@ primitives:
     grep: {grants: [repository.search, host.read], verified: ["0.85."]}
     find: {grants: [repository.read, host.read], verified: ["0.85."]}
     ls: {grants: [repository.read, host.read], verified: ["0.85."]}
-    edit: {grants: [repository.write], verified: ["0.85."]}
-    write: {grants: [repository.write], verified: ["0.85."]}
+    # Neither is confined to the checkout: edit reads and writes its
+    # target, write writes it, wherever it is.
+    edit: {grants: [repository.write, host.read, host.write], verified: ["0.85."]}
+    write: {grants: [repository.write, host.write], verified: ["0.85."]}
     # Like Claude Code's Bash, it grants everything.
     bash:
       verified: ["0.85."]

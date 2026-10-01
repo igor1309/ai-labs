@@ -60,9 +60,12 @@
 // elsewhere works on has not been checked, so a session resumes only where
 // it ran (RuntimeIdentity.ResumeWhereItRan).
 //
-// Tool calls are reported from tool_use, which carries a call with its
-// state: one event for a call that has ended, so its start and finish are
-// reported together. bash is the tool that runs commands. Usage and cost
+// Tool calls are read from tool_use, which carries a call with its state:
+// one event for a call that has ended, so its start and finish are read
+// together. That is too late for the staleness limits on tool calls, so
+// until timely starts are established the adapter does not report tool
+// calls (reportsToolCalls) and calls under those limits are refused; the
+// events still record each call. bash is the tool that runs commands. Usage and cost
 // are the turn's own: the tokens and cost of each step_finish, summed; a
 // figure some step does not report is unknown.
 //
@@ -71,7 +74,8 @@
 // a failure the runtime reported, as is any error event; a stream that ends
 // after a "tool-calls" step, or without a step_finish, is decided by the
 // transport, quoting stderr (supervisor.WithoutTerminal), and so is a
-// non-zero exit after a "stop". OpenCode runs its default agent, which
+// non-zero exit, a timeout, a cancellation or a signal after a "stop".
+// OpenCode runs its default agent, which
 // allows everything, when it does not find the one named ("Falling back to
 // default agent" on stderr): such a turn fails.
 package opencode
@@ -132,6 +136,11 @@ func New(command string) *Runner {
 
 var versionPattern = regexp.MustCompile(`\d+\.\d+\.\d+`)
 
+// reportsToolCalls is whether the adapter reports tool calls as they start
+// and finish (app.RuntimeIdentity.ToolCalls): not while the stream is seen
+// to report a call only once it has ended.
+const reportsToolCalls = false
+
 func (r *Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
 	out, err := supervisor.Version(ctx, r.Command)
 	if err != nil {
@@ -141,7 +150,7 @@ func (r *Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
 	if version == "" {
 		return app.RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
 	}
-	return app.RuntimeIdentity{Contract: Contract, Version: version, Resume: true, ResumeWhereItRan: true, ToolCalls: true, SkillTools: slices.Clone(SkillTools)}, nil
+	return app.RuntimeIdentity{Contract: Contract, Version: version, Resume: true, ResumeWhereItRan: true, ToolCalls: reportsToolCalls, SkillTools: slices.Clone(SkillTools)}, nil
 }
 
 // Arguments builds the command line for a turn that runs as the generated
@@ -243,9 +252,13 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 		for _, event := range state.Reduce(line) {
 			switch {
 			case event.Started != nil:
-				sink.ToolStarted(*event.Started)
+				if reportsToolCalls {
+					sink.ToolStarted(*event.Started)
+				}
 			case event.Finished != "":
-				sink.ToolFinished(event.Finished)
+				if reportsToolCalls {
+					sink.ToolFinished(event.Finished)
+				}
 			default:
 				sink.Event(event.Source, event.Kind, event.Data)
 			}
@@ -417,7 +430,10 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 	if evidence.Exit != nil && evidence.Exit.Code != nil {
 		code = *evidence.Exit.Code
 	}
-	if !s.Ended || (s.Reason == "stop" && code != 0) {
+	// A process Agister timed out, cancelled or that a signal ended did
+	// not end cleanly, whatever its last step reported.
+	interrupted := evidence.TimedOut || evidence.Aborted || (evidence.Exit != nil && evidence.Exit.Signal != "")
+	if !s.Ended || (s.Reason == "stop" && (code != 0 || interrupted)) {
 		return supervisor.WithoutTerminal(turn, evidence, "")
 	}
 	if s.Reason != "stop" {

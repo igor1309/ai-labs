@@ -40,10 +40,9 @@ func TestConformance(t *testing.T) {
 		New: func(command string) app.TurnRunner {
 			return &opencode.Runner{Command: command, KillGrace: 200 * time.Millisecond}
 		},
-		Fake:      runtimetest.Binary(t, "fakeopencode"),
-		Contract:  opencode.Contract,
-		ToolCalls: true,
-		Request:   request,
+		Fake:     runtimetest.Binary(t, "fakeopencode"),
+		Contract: opencode.Contract,
+		Request:  request,
 	})
 }
 
@@ -270,7 +269,7 @@ func TestSystemPrompt(t *testing.T) {
 
 func TestIdentity(t *testing.T) {
 	identity, err := opencode.New(runtimetest.Binary(t, "fakeopencode")).Identity(context.Background())
-	want := app.RuntimeIdentity{Contract: "opencode/1", Version: "1.18.33", Resume: true, ResumeWhereItRan: true, ToolCalls: true, SkillTools: []string{"skill"}}
+	want := app.RuntimeIdentity{Contract: "opencode/1", Version: "1.18.33", Resume: true, ResumeWhereItRan: true, SkillTools: []string{"skill"}}
 	if err != nil || !reflect.DeepEqual(identity, want) {
 		t.Fatalf("identity = %+v, %v", identity, err)
 	}
@@ -475,6 +474,22 @@ func TestOnlyAFinalStopCompletesTheTurn(t *testing.T) {
 	evidence.StderrTail = "Error: database is locked\n"
 	if turn := stream.Reconcile(evidence, false); turn.Status != run.Failed || turn.Error.Message != "exit code 1: Error: database is locked" {
 		t.Fatalf("exit 1 after a stop: turn = %+v", turn)
+	}
+	// So is a process timed out, cancelled or ended by a signal after a
+	// stop, whose exit code is unknown.
+	for name, c := range map[string]struct {
+		evidence supervisor.Evidence
+		class    run.Class
+	}{
+		"timed out":         {supervisor.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "SIGTERM"}}, run.ClassTimeout},
+		"cancelled":         {supervisor.Evidence{Aborted: true, Exit: &run.Exit{Signal: "SIGTERM"}}, run.ClassCancelled},
+		"ended by a signal": {supervisor.Evidence{Exit: &run.Exit{Signal: "SIGTERM"}}, run.ClassKilled},
+	} {
+		stream := &opencode.Stream{}
+		reduce(stream, stepStart, `{"type":"text","timestamp":3,"sessionID":"ses_1","part":{"type":"text","text":"{}"}}`, stopped)
+		if turn := stream.Reconcile(c.evidence, true); turn.Status == run.Completed || turn.Error == nil || turn.Error.Class != c.class || turn.Output != nil {
+			t.Errorf("%s after a stop: turn = %+v", name, turn)
+		}
 	}
 }
 

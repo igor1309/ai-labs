@@ -53,11 +53,11 @@ provider's environment variable, never in Agister's settings.
   `host.read`; a home from `agister init` does not allow `host.read` (its
   service lists it as state-reaching), so there `ask_opencode` is refused
   until host reads are opted in to (below).
-- Tool-call events: each tool call is reported when OpenCode's stream
-  reports it (`tool_use`), so the staleness limit on repeated tool calls
-  applies. The stream seen so far reports a call once it has ended; if
-  that is all it does, a command still running is not seen, and
-  `stale.tool_command` cannot stop one.
+- Tool-call events: each tool call is recorded when OpenCode's stream
+  reports it (`tool_use`). The stream seen so far reports a call once it
+  has ended, so a command still running is not seen: the adapter does not
+  report tool calls, and a call under `stale.tool_command` or
+  `stale.repeated_tool_calls` is refused.
 - Cost reporting: the turn's tokens and OpenCode's own cost, summed over
   the steps of the turn.
 
