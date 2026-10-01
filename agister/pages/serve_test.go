@@ -102,6 +102,35 @@ func TestChooseFailureIsReported(t *testing.T) {
 	}
 }
 
+func TestChooseOpensOneDialogAtATime(t *testing.T) {
+	opened := make(chan struct{})
+	release := make(chan struct{})
+	shown := 0
+	h := Handler("/unused", func(context.Context) (string, error) {
+		shown++
+		if shown == 1 {
+			close(opened)
+			<-release
+		}
+		return "/repo", nil
+	})
+	first := make(chan int, 1)
+	go func() { first <- post(t, h, "/api/choose", ChooseHeader, nil) }()
+	<-opened
+
+	var got map[string]string
+	if code := post(t, h, "/api/choose", ChooseHeader, &got); code != 409 || !strings.Contains(got["error"], "already open") {
+		t.Errorf("while open: %d %v", code, got)
+	}
+	close(release)
+	if code := <-first; code != 200 {
+		t.Errorf("first: %d", code)
+	}
+	if code := post(t, h, "/api/choose", ChooseHeader, nil); code != 200 || shown != 2 {
+		t.Errorf("after close: %d, dialogs shown %d", code, shown)
+	}
+}
+
 func TestChooseNeedsThePagesHeaderAndPost(t *testing.T) {
 	h := Handler("/unused", noChoose(t))
 	if code := post(t, h, "/api/choose", "", nil); code != 403 {

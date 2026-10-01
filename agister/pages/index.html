@@ -54,6 +54,7 @@
   .menu li { display: flex; align-items: center; }
   .menu .item { flex: 1; min-width: 0; text-align: left; padding: 6px 14px; display: flex; justify-content: space-between; gap: 8px; }
   .menu .item:hover, .menu .remove:hover { background: var(--line); }
+  .menu .item:disabled { color: var(--fg3); cursor: progress; background: none; }
   .menu .item .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .menu .item .when { color: var(--fg3); font-size: 12px; white-space: nowrap; }
   .menu .remove { padding: 6px 12px; color: var(--fg3); }
@@ -196,14 +197,22 @@
   }
 
   // Asks for a folder in the Mac's own dialog and opens it; cancelling
-  // changes nothing.
+  // changes nothing. The button waits while the dialog is open; the server
+  // also refuses a second dialog.
   async function addFolder() {
+    const button = $('add-folder');
+    if (button.disabled) return;
     say('picker-status', '');
+    button.disabled = true;
+    button.textContent = 'Choosing a folder…';
     let path;
     try {
       path = await R.chooseFolder(fetch);
     } catch (err) {
       return say('picker-status', err.message);
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Add folder…';
     }
     if (path) open_(path);
   }

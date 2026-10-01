@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -50,12 +51,20 @@ const ChooseHeader = "X-Agister-Pages"
 // (what ~ names); choose asks the user for a folder.
 func Handler(agisterHome string, choose Choose) http.Handler {
 	mux := http.NewServeMux()
+	var dialog sync.Mutex
 	mux.Handle("GET /", http.FileServerFS(assets))
 	mux.HandleFunc("POST /api/choose", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get(ChooseHeader) == "" {
 			reply(w, nil, statusError{http.StatusForbidden, "refused: " + ChooseHeader + " header missing"})
 			return
 		}
+		// One dialog at a time: a second request while one is open is
+		// refused rather than opening another window.
+		if !dialog.TryLock() {
+			reply(w, nil, statusError{http.StatusConflict, "a folder dialog is already open"})
+			return
+		}
+		defer dialog.Unlock()
 		path, err := choose(r.Context())
 		if err == nil && path != "" {
 			path = filepath.Clean(path)
