@@ -79,7 +79,7 @@
   article.run { padding: 16px 18px; min-width: 0; }
   .run-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
   .run-head h3 { margin: 0; font: 600 15px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--fg); }
-  .purpose { margin: 6px 0 12px; color: var(--fg2); }
+  .purpose { margin: 6px 0 12px; color: var(--fg2); max-width: 760px; }
   .chip {
     font: 11px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 0 7px; border-radius: 4px;
     border: 1px solid var(--line); color: var(--fg3); white-space: nowrap;
@@ -102,7 +102,19 @@
   .facts .label { color: var(--fg3); }
   .facts .name { color: var(--fg); }
   .sub { color: var(--fg3); }
-  .step + .step { margin-top: 8px; }
+  /* A workflow's stages: each step a block with a rule on its left; the
+     name and settings in monospace, what it does as a sentence. */
+  .stage { margin-top: 16px; }
+  .stage h4 {
+    margin: 0 0 8px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--dim);
+  }
+  .step { padding: 2px 0 2px 12px; border-left: 2px solid var(--line); max-width: 760px; }
+  .step + .step { margin-top: 12px; }
+  .step-name { font: 600 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--fg); }
+  .step-purpose { margin: 2px 0 4px; color: var(--fg2); font-size: 13px; }
+  .step-meta { font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--fg2); }
+  .step-meta .label { color: var(--fg3); white-space: pre; }
   .missing { color: var(--high); }
 
   section.card { padding: 16px 20px; margin-bottom: 16px; }
@@ -374,8 +386,7 @@
   function defaults(params) {
     const set = params.filter((p) => p.default !== undefined);
     if (!set.length) return null;
-    return el('div', {}, set.map((p) => `${p.name} = ${p.default}`).join(', '),
-      text(`  (--param ${set[0].name}=… changes one)`, 'sub'));
+    return el('div', {}, set.map((p) => `${p.name} = ${p.default}`).join(', '));
   }
 
   const SESSION = { resumable: 'can be continued (--continue)', 'fresh-only': 'starts fresh every call' };
@@ -436,29 +447,32 @@
     ]));
   }
 
-  // One step of a workflow: the process, what it does, and its agent and
-  // policy in one line.
+  // One step of a workflow: the process, what it does in a sentence, and
+  // its agent and policy each on a line.
   function step(n, ix) {
     const p = ix.process.get(n.process);
     if (!p) return el('div', { className: 'step' }, missing('process', n.process));
     const a = ix.agent.get(p.agent);
     const pol = ix.policy.get(p.policy);
-    const how = [
-      a ? [p.agent, a.model, a.effort].filter(Boolean).join(' ') : `${p.agent} (missing)`,
-      pol ? `${p.policy}: ${policySummary(pol)}` : `${p.policy} (missing)`,
-    ].join(' · ');
     return el('div', { className: 'step' },
-      el('div', {}, text(p.name, 'name'), p.purpose ? text(` — ${p.purpose}`, 'sub') : null),
-      el('div', { className: (a && pol) ? 'sub' : 'missing' }, how));
+      el('div', { className: 'step-name', textContent: p.name }),
+      p.purpose ? el('p', { className: 'step-purpose', textContent: p.purpose }) : null,
+      el('div', { className: 'step-meta' },
+        el('div', {}, text('agent  ', 'label'),
+          a ? [p.agent, a.model, a.effort && `${a.effort} effort`].filter(Boolean).join(' · ') : missing('agent', p.agent)),
+        el('div', {}, text('policy ', 'label'),
+          pol ? el('span', {}, `${p.policy} · `, text(policySummary(pol), `access-${pol.access}`)) : missing('policy', p.policy))));
+  }
+
+  function stage(title, steps) {
+    return el('section', { className: 'stage' }, el('h4', { textContent: title }), ...steps);
   }
 
   function workflowCard(w, ix, chip) {
     if (w.error) return errorCard(w);
-    return card('workflow', w, chip, command(w.name, w.params), facts([
-      ['defaults', defaults(w.params)],
-      ['at once', w.fanOut.length ? el('div', {}, ...w.fanOut.map((n) => step(n, ix))) : null],
-      ['then', w.join ? step(w.join, ix) : null],
-    ]));
+    return card('workflow', w, chip, command(w.name, w.params), facts([['defaults', defaults(w.params)]]),
+      w.fanOut.length ? stage(`Runs at once (${w.fanOut.length})`, w.fanOut.map((n) => step(n, ix))) : null,
+      w.join ? stage('Then', [step(w.join, ix)]) : null);
   }
 
   // A reference table; the first cell is the name, then cells(item), then
