@@ -25,7 +25,8 @@ provider's environment variable (`OPENCODE_API_KEY` for `opencode-go`;
 - Model and thinking: the agent's `model` as Pi takes it, `provider/id`
   (`--model`); its `effort` as `--thinking` (`off` to `max`).
 - Tools: the granted primitives are Pi's tool names, passed as the
-  `--tools` allowlist; none granted is `--no-tools`.
+  `--tools` allowlist. A call needs `read` or `bash` (see below), so
+  `--no-tools` is never passed.
 - Resume: Agister keeps Pi's sessions under its home
   (`$AGISTER_HOME/pi/sessions`, `--session-dir`), not in `~/.pi`. A call's
   later turns, and a continuation (`--continue`) from the directory the
@@ -35,7 +36,12 @@ provider's environment variable (`OPENCODE_API_KEY` for `opencode-go`;
 - Instructions and skills: the process's instruction goes in the system
   prompt; Pi loads the repository's `AGENTS.md` and, as each turn trusts
   the project (`--approve`), its `.agents/skills` (ADR-006). A skill is
-  used by reading it, so only an agent granted `read` or `bash` can.
+  used by reading it, and Pi reads with `read` or `bash` only, so a call
+  granted neither is refused before Pi starts. The process's policy and
+  the service must therefore allow `read`'s permissions,
+  `repository.read` and `host.read`; a home from `agister init` does not
+  allow `host.read` (its service lists it as state-reaching), so there
+  `ask_pi` is refused until host reads are opted in to (below).
 - Tool-call events: each tool execution is reported as it starts and
   finishes, so the staleness limits on tool calls apply.
 - Cost reporting: the turn's tokens and Pi's own `cost.total`, summed over

@@ -35,6 +35,14 @@ func examplePiSettings(t *testing.T) (home, repo string) {
 	return home, repo
 }
 
+// allowHostReads opts the repository in to host reads, which every Pi read
+// tool grants, in its own service.toml.
+func allowHostReads(t *testing.T, home, repo string) {
+	t.Helper()
+	service := read(t, filepath.Join(home, "service.toml"))
+	write(t, filepath.Join(repo, ".agister", "service.toml"), strings.Replace(service, `state_reaching = ["host.read", "host.write"]`, `state_reaching = ["host.write"]`, 1))
+}
+
 // The example passes check and probe with its shipped verification flags.
 // With host reads opted in, a 0.85.1 call grants only the four read tools.
 func TestExamplePiSettingsPassCheck(t *testing.T) {
@@ -48,8 +56,7 @@ func TestExamplePiSettingsPassCheck(t *testing.T) {
 	if r.code != 0 || !strings.HasPrefix(r.stdout, "settings OK:") {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	service := read(t, filepath.Join(home, "service.toml"))
-	write(t, filepath.Join(repo, ".agister", "service.toml"), strings.Replace(service, `state_reaching = ["host.read", "host.write"]`, `state_reaching = ["host.write"]`, 1))
+	allowHostReads(t, home, repo)
 	r = agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
@@ -65,12 +72,34 @@ func TestExamplePiSettingsPassCheck(t *testing.T) {
 	}
 }
 
+// With the service of an `agister init` home, which withholds host.read,
+// no Pi tool that reads a skill can be granted, so ask_pi is refused before
+// Pi starts and the refusal recorded (ADR-006).
+func TestExamplePiCallWithoutASkillToolIsRefused(t *testing.T) {
+	home, repo := examplePiSettings(t)
+	const reason = "runtime pi needs read or bash to use the repository's skills (ADR-006), and the plan grants no such tool: " +
+		"read needs host.read, which the plan withholds; bash is not verified for version 0.85.1"
+	r := agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?")
+	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, reason) {
+		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	last := lastRun(t, home)
+	fault := last.record["result"].(map[string]any)["error"].(map[string]any)
+	if fault["class"] != "refused" || fault["message"] != reason {
+		t.Fatalf("error = %v", fault)
+	}
+	if last.first != nil {
+		t.Fatalf("Pi started: %v", last.first)
+	}
+}
+
 // Pi's sessions are kept under the home, never in ~/.pi or the temporary
 // directory: a call's session directory is under <home>/pi/sessions, named
 // by the session Pi reported, and a continuation resumes that session
 // there.
 func TestPiSessionsAreKeptUnderTheHome(t *testing.T) {
 	home, repo := examplePiSettings(t)
+	allowHostReads(t, home, repo)
 	sessions := filepath.Join(home, "pi", "sessions")
 	sessionDir := func(r run) string {
 		t.Helper()
@@ -102,10 +131,17 @@ func TestPiSessionsAreKeptUnderTheHome(t *testing.T) {
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	second := lastRun(t, home)
-	if second.dir == first.dir {
-		t.Fatal("the continuation made no run")
+	// Run IDs sort only to the second, so the continuation is the run that
+	// is not the first.
+	runs, _ := os.ReadDir(filepath.Join(home, "runs"))
+	if len(runs) != 2 {
+		t.Fatalf("runs = %v, want the first and its continuation", runs)
 	}
+	next := runs[0].Name()
+	if next == filepath.Base(first.dir) {
+		next = runs[1].Name()
+	}
+	second := lastRunIn(t, filepath.Join(home, "runs", next))
 	args := strings.Join(second.argv(), " ")
 	if sessionDir(second) != filepath.Join(sessions, id) || !strings.Contains(args, "--session "+id) || second.first["id"] != id {
 		t.Fatalf("continuation reported session %v, argv %s", second.first["id"], args)

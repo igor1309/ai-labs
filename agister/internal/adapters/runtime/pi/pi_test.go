@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -104,19 +105,50 @@ func TestResumeArguments(t *testing.T) {
 	}
 }
 
-// No primitive granted is no tool at all; no model, effort or system
-// prompt leaves Pi's own.
-func TestNoToolsAndDefaults(t *testing.T) {
-	args, err := pi.Arguments(app.TurnRequest{Prompt: "x"}, "/sessions/new-1", "")
+// No model, effort or system prompt leaves Pi's own; the tools are always
+// an allowlist.
+func TestDefaults(t *testing.T) {
+	args, err := pi.Arguments(app.TurnRequest{Prompt: "x", Primitives: []string{"read"}}, "/sessions/new-1", "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := []string{
 		"-p", "--mode", "json", "--no-extensions", "--no-prompt-templates", "--no-themes", "--approve",
-		"--session-dir", "/sessions/new-1", "--no-tools",
+		"--session-dir", "/sessions/new-1", "--tools", "read",
 	}
 	if !reflect.DeepEqual(args, want) {
 		t.Fatalf("args =\n%q\nwant\n%q", args, want)
+	}
+}
+
+// A skill is used by reading it, and Pi reads with read or bash only: a
+// turn granted neither is refused before Pi starts, so --no-tools, with
+// which Pi leaves skills out, is never passed.
+func TestRefusesATurnThatCannotReadASkill(t *testing.T) {
+	for _, primitives := range [][]string{nil, {}, {"grep", "find", "ls"}, {"edit", "write"}} {
+		r := request("x")
+		r.Primitives = primitives
+		if args, err := pi.Arguments(r, "/s", ""); err == nil || err.Error() != "pi/1 needs read or bash to use the repository's skills (ADR-006)" {
+			t.Errorf("primitives %q: args %q, err = %v", primitives, args, err)
+		}
+	}
+	for _, primitives := range [][]string{{"read"}, {"bash"}, {"grep", "read"}, {"ls", "bash"}} {
+		r := request("x")
+		r.Primitives = primitives
+		if args, err := pi.Arguments(r, "/s", ""); err != nil || slices.Contains(args, "--no-tools") || !follows(args, "--tools", strings.Join(primitives, ",")) {
+			t.Errorf("primitives %q: args %q, err = %v", primitives, args, err)
+		}
+	}
+	root := t.TempDir()
+	r := request("x")
+	r.Primitives = []string{"grep"}
+	sink := &runtimetest.Recorder{}
+	turn := (&pi.Runner{Command: runtimetest.Binary(t, "fakepi"), Sessions: root}).RunTurn(context.Background(), r, sink)
+	if turn.Status != run.Failed || turn.Error.Class != run.ClassInternal || len(sink.Processes) != 0 {
+		t.Fatalf("turn = %+v, processes %v", turn, sink.Processes)
+	}
+	if entries, _ := os.ReadDir(root); len(entries) != 0 {
+		t.Fatalf("root holds %v", entries)
 	}
 }
 
@@ -124,8 +156,8 @@ func TestNoToolsAndDefaults(t *testing.T) {
 func TestToolsAndThinkingLevels(t *testing.T) {
 	for _, tool := range pi.Tools {
 		r := request("x")
-		r.Primitives = []string{tool}
-		if args, err := pi.Arguments(r, "/s", ""); err != nil || !follows(args, "--tools", tool) {
+		r.Primitives = []string{"read", tool}
+		if args, err := pi.Arguments(r, "/s", ""); err != nil || !follows(args, "--tools", "read,"+tool) {
 			t.Errorf("tool %s: %q, %v", tool, args, err)
 		}
 	}
@@ -212,7 +244,8 @@ func TestInstructionAndSchemaGoInTheSystemPrompt(t *testing.T) {
 
 func TestIdentity(t *testing.T) {
 	identity, err := pi.New(runtimetest.Binary(t, "fakepi"), t.TempDir()).Identity(context.Background())
-	if err != nil || identity != (app.RuntimeIdentity{Contract: "pi/1", Version: "0.85.1", Resume: true, ToolCalls: true}) {
+	want := app.RuntimeIdentity{Contract: "pi/1", Version: "0.85.1", Resume: true, ToolCalls: true, SkillTools: []string{"read", "bash"}}
+	if err != nil || !reflect.DeepEqual(identity, want) {
 		t.Fatalf("identity = %+v, %v", identity, err)
 	}
 }

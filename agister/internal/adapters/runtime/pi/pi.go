@@ -13,11 +13,12 @@
 // the checkout's skills reach the call as they would for a person who
 // trusts the repository (ADR-006). That also trusts the checkout's
 // .pi/settings.json; its extensions still do not load. A skill is used by
-// reading it, so an agent granted neither read nor bash sees only the
-// skills' descriptions.
+// reading it, and Pi reads with read or bash only; with no tool, Pi leaves
+// skills out. So a turn granted neither is refused before Pi starts
+// (SkillTools), and --no-tools is never passed.
 //
 // Granted primitives are Pi tool names (read, bash, edit, write, grep,
-// find, ls), passed as the --tools allowlist; none granted is --no-tools.
+// find, ls), passed as the --tools allowlist.
 // Pi has no sandbox: its file tools are not confined to the working
 // directory, and bash reaches whatever the user can. The model goes as
 // --model (provider/id) and the effort as --thinking. The instruction, and
@@ -85,6 +86,9 @@ var ThinkingLevels = []string{"off", "minimal", "low", "medium", "high", "xhigh"
 // commandTool is the tool that runs commands.
 const commandTool = "bash"
 
+// SkillTools are the tools Pi reads a skill with; a turn needs one of them.
+var SkillTools = []string{"read", commandTool}
+
 type Runner struct {
 	Command   string
 	KillGrace time.Duration // zero: the supervisor default
@@ -112,7 +116,7 @@ func (r *Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
 	if version == "" {
 		return app.RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
 	}
-	return app.RuntimeIdentity{Contract: Contract, Version: version, Resume: true, ToolCalls: true}, nil
+	return app.RuntimeIdentity{Contract: Contract, Version: version, Resume: true, ToolCalls: true, SkillTools: slices.Clone(SkillTools)}, nil
 }
 
 // Arguments builds the command line for a turn whose sessions are kept in
@@ -126,6 +130,9 @@ func Arguments(request app.TurnRequest, sessionDir, systemPrompt string) ([]stri
 		if !slices.Contains(Tools, tool) {
 			return nil, fmt.Errorf("pi/1 has no tool %q (tools: %s)", tool, strings.Join(Tools, ", "))
 		}
+	}
+	if !slices.ContainsFunc(SkillTools, func(tool string) bool { return slices.Contains(request.Primitives, tool) }) {
+		return nil, errors.New("pi/1 needs read or bash to use the repository's skills (ADR-006)")
 	}
 	if request.Effort != "" && !slices.Contains(ThinkingLevels, request.Effort) {
 		return nil, fmt.Errorf("pi/1 has no thinking level %q (levels: %s)", request.Effort, strings.Join(ThinkingLevels, ", "))
@@ -145,11 +152,7 @@ func Arguments(request app.TurnRequest, sessionDir, systemPrompt string) ([]stri
 	if request.Effort != "" {
 		args = append(args, "--thinking", request.Effort)
 	}
-	if len(request.Primitives) == 0 {
-		args = append(args, "--no-tools")
-	} else {
-		args = append(args, "--tools", strings.Join(request.Primitives, ","))
-	}
+	args = append(args, "--tools", strings.Join(request.Primitives, ","))
 	if systemPrompt != "" {
 		args = append(args, "--append-system-prompt", systemPrompt)
 	}

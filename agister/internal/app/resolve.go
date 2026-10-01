@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -213,7 +214,55 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 	if res.plan, err = enforce.Make(res.effective.Permissions, verified, res.effective.Require, res.service.StateReaching); err != nil {
 		return res, refuse("runtime %s: %v%s", res.mapping.Name, err, unverifiedNote(unverified, "for version "+res.identity.Version))
 	}
+	if tools := res.identity.SkillTools; len(tools) > 0 && !slices.ContainsFunc(tools, func(tool string) bool { return contains(res.plan.Primitives, tool) }) {
+		return res, refuse("runtime %s needs %s to use the repository's skills (ADR-006), and the plan grants no such tool: %s",
+			res.mapping.Name, strings.Join(tools, " or "), withoutSkillTools(res, tools, verified, unverified))
+	}
 	return res, nil
+}
+
+// withoutSkillTools says why the plan grants none of tools: each is
+// unverified for the version, absent from the mapping, or needs
+// permissions the plan withholds or the effective permissions do not
+// allow.
+func withoutSkillTools(res *resolution, tools []string, verified definition.Mapping, unverified []string) string {
+	// What a primitive may grant: the effective permissions, less the
+	// state-reaching ones, which the plan withholds (enforce.Make).
+	allowed := slices.DeleteFunc(slices.Clone(res.effective.Permissions), func(p string) bool { return contains(res.service.StateReaching, p) })
+	var reasons []string
+	for _, tool := range tools {
+		i := slices.IndexFunc(verified.Primitives, func(p definition.Primitive) bool { return p.Name == tool })
+		switch {
+		case i >= 0:
+			var withheld, disallowed []string
+			for _, grant := range verified.Primitives[i].Grants {
+				switch {
+				case contains(allowed, grant):
+				case contains(res.plan.Withheld, grant):
+					withheld = append(withheld, grant)
+				default:
+					disallowed = append(disallowed, grant)
+				}
+			}
+			var parts []string
+			if len(withheld) > 0 {
+				parts = append(parts, strings.Join(withheld, ", ")+", which the plan withholds")
+			}
+			if len(disallowed) > 0 {
+				parts = append(parts, strings.Join(disallowed, ", ")+", which the effective permissions do not allow")
+			}
+			if len(parts) == 0 {
+				reasons = append(reasons, "the plan does not grant "+tool)
+			} else {
+				reasons = append(reasons, tool+" needs "+strings.Join(parts, ", and "))
+			}
+		case contains(unverified, tool):
+			reasons = append(reasons, tool+" is not verified for version "+res.identity.Version)
+		default:
+			reasons = append(reasons, "runtime mapping "+res.mapping.Name+" has no "+tool)
+		}
+	}
+	return strings.Join(reasons, "; ")
 }
 
 // workflowResolution is a workflow and its nodes' processes, as a run of it

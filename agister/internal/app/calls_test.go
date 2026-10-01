@@ -892,6 +892,60 @@ func TestUnverifiedPrimitivesAreNeverGranted(t *testing.T) {
 	}
 }
 
+// A runtime that reads skills only with some primitives refuses, before any
+// effect, a call whose plan grants none of them, and says why each is
+// missing (ADR-006).
+func TestACallThatCannotReadASkillIsRefused(t *testing.T) {
+	widen := func(h *harness) {
+		policy := h.defs.docs[definition.KindPolicy]["pol"]
+		h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(policy, "repository.diff]", "repository.diff, process.execute, host.read]", 1)
+	}
+	unverified := func(h *harness) {
+		mapping := h.defs.docs[definition.KindRuntime]["rt"]
+		h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", "  items:\n    Cat: {grants: [repository.read], verified: [\"2.\"]}\n", 1)
+	}
+	cases := []struct {
+		name    string
+		arrange func(*harness)
+		tools   []string
+		reason  string
+	}{
+		{"not allowed", nil, []string{"Bash"},
+			"runtime rt needs Bash to use the repository's skills (ADR-006), and the plan grants no such tool: Bash needs process.execute, host.read, which the effective permissions do not allow"},
+		{"withheld", widen, []string{"Bash"},
+			"runtime rt needs Bash to use the repository's skills (ADR-006), and the plan grants no such tool: Bash needs host.read, which the plan withholds"},
+		{"unverified or unknown", unverified, []string{"Cat", "Bash", "Head"},
+			"runtime rt needs Cat or Bash or Head to use the repository's skills (ADR-006), and the plan grants no such tool: " +
+				"Cat is not verified for version 1.2.3; Bash needs process.execute, host.read, which the effective permissions do not allow; runtime mapping rt has no Head"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			h := newHarness()
+			if c.arrange != nil {
+				c.arrange(h)
+			}
+			h.runner.identity.SkillTools = c.tools
+			record := h.call(t, contract.CallRequest{})
+			if class(record) != run.ClassRefused || message(record) != c.reason {
+				t.Fatalf("result %+v\nwant refused: %s", record.Result.Error, c.reason)
+			}
+			if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
+				t.Fatal("the call went on after the refusal")
+			}
+			if kinds := h.recorder.kinds(); !contains(kinds, "REFUSED") {
+				t.Fatalf("events = %v", kinds)
+			}
+		})
+	}
+
+	// One of them granted is enough.
+	h := newHarness()
+	h.runner.identity.SkillTools = []string{"Read", "Bash"}
+	if record := h.call(t, contract.CallRequest{}); record.Result.Status != run.Completed {
+		t.Fatalf("result %+v", record.Result)
+	}
+}
+
 func TestCancelInterruptsAndReleases(t *testing.T) {
 	h := newHarness()
 	h.runner.block = true
