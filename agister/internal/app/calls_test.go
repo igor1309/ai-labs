@@ -356,6 +356,70 @@ func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
 	}
 }
 
+// The shipped read-only policy allows everything Codex's read-only sandbox
+// grants under contract codex/2, so the shipped ask runs on a Codex agent
+// instead of being refused. The service accepts host reads, as a service
+// that runs Codex must: the sandbox reads the host.
+func TestShippedAskRunsOnACodexRuntime(t *testing.T) {
+	h := newHarness()
+	for kind, name := range map[definition.Kind]string{definition.KindProcess: "ask", definition.KindPolicy: "read-only"} {
+		data, err := fs.ReadFile(examples.Settings(), string(kind)+"/"+name+".yaml")
+		if err != nil {
+			t.Fatal(err)
+		}
+		h.defs.docs[kind][name] = string(data)
+	}
+	service, err := fs.ReadFile(examples.Settings(), "service.toml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	accepting := strings.Replace(string(service), `state_reaching = ["host.read", "host.write"]`, `state_reaching = []`, 1)
+	if accepting == string(service) {
+		t.Fatal("the shipped service's state_reaching line was not found")
+	}
+	h.defs.docs[definition.KindService]["service"] = accepting
+	h.defs.docs[definition.KindRuntime]["codex"] = `schema: agister.runtime/v1alpha1
+name: codex
+adapter: spy
+contract: codex/2
+efforts: [high]
+primitives:
+  select: one
+  items:
+    read-only:
+      grants: [repository.read, repository.search, repository.diff, repository.history.read, process.execute, host.read]
+      verified: ["0.159."]
+    workspace-write:
+      grants: [repository.read, repository.search, repository.diff, repository.history.read, process.execute, host.read,
+               repository.write, host.write]
+      verified: ["0.159."]
+`
+	h.defs.docs[definition.KindAgent]["codex-agent"] = `schema = "agister.agent/v1alpha1"
+name = "codex-agent"
+runtime = "codex"
+model = "m1"
+model_family = "openai"
+effort = "high"
+command = "/bin/codex"
+`
+	h.runner.identity = app.RuntimeIdentity{Contract: "codex/2", Version: "0.159.2", Resume: true}
+	h.runner.turn.Output = json.RawMessage(`"an answer"`)
+
+	record := h.call(t, contract.CallRequest{Process: "ask", Agent: "codex-agent", Params: map[string]string{"question": "What is a.txt?"}})
+	if record.Result.Status != run.Completed {
+		t.Fatalf("result = %+v, error %q", record.Result, message(record))
+	}
+	if !reflect.DeepEqual(h.runtimes.asked, []string{"spy|/bin/codex"}) {
+		t.Fatalf("runtimes asked = %v", h.runtimes.asked)
+	}
+	if got := h.runner.calls()[0].Primitives; !reflect.DeepEqual(got, []string{"read-only"}) {
+		t.Fatalf("primitives = %v", got)
+	}
+	if len(record.Plan.Withheld) != 0 {
+		t.Fatalf("withheld = %v", record.Plan.Withheld)
+	}
+}
+
 func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 	resumable := func(h *harness) {
 		h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
