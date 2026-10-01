@@ -72,6 +72,14 @@ type VerifyCommands interface {
 // starts and ends.
 type VerifyClock interface{ Now() time.Time }
 
+// VerifyAdapters are what a Verifier runs on.
+type VerifyAdapters struct {
+	Content  VerifyContent
+	Copies   VerifyCopies
+	Commands VerifyCommands
+	Clock    VerifyClock
+}
+
 // NewVerifier returns the component that runs verification loops. Every
 // collaborator is required.
 func NewVerifier(content VerifyContent, copies VerifyCopies, commands VerifyCommands, clock VerifyClock) *Verifier {

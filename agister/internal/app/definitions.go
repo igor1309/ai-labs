@@ -13,6 +13,8 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
+	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 )
 
 // Settings manages definitions: examples, agents and process listings.
@@ -40,6 +42,12 @@ type DefinitionWriter interface {
 	// Current reports where a document would be stored and a digest of the
 	// one there, empty when there is none.
 	Current(ctx context.Context, kind definition.Kind, name string) (path, digest string, err error)
+}
+
+// SettingsAdapters are what Settings runs on besides the settings it reads.
+type SettingsAdapters struct {
+	Writer   DefinitionWriter
+	Examples Examples
 }
 
 // NewSettings returns the use case that manages definitions. scopes are
@@ -361,10 +369,52 @@ type Inspection struct {
 }
 
 // InspectionResolver resolves a process the way a call would, and a
-// workflow the way a run of it would.
+// workflow the way a run of it would (Resolver is one).
 type InspectionResolver interface {
-	Resolve(ctx context.Context, processName, agentOverride string, caller overrides) (*resolution, error)
-	Workflow(ctx context.Context, name string) (res *workflowResolution, found bool, err error)
+	// InspectProcess resolves the process named name, with agent, when set,
+	// in place of its own, and no limits of a caller. A refused one's view
+	// has what was resolved before the refusal, never nil.
+	InspectProcess(ctx context.Context, name, agent string) (*InspectedProcess, error)
+	// InspectWorkflow resolves the workflow of that name; found is false
+	// when the settings have none.
+	InspectWorkflow(ctx context.Context, name string) (res *InspectedWorkflow, found bool, err error)
+}
+
+// InspectedProcess is a process as a call would resolve it.
+type InspectedProcess struct {
+	Process   definition.Process
+	Agent     definition.Agent
+	Mapping   definition.Mapping
+	Effective policy.Effective
+	Plan      enforce.Plan
+	Sources   []definition.Source
+}
+
+// InspectedWorkflow is a workflow and its nodes' processes, as a run of it
+// would resolve them.
+type InspectedWorkflow struct {
+	Workflow      definition.Workflow
+	NodeProcesses map[string]definition.Process // by name
+	Sources       []definition.Source           // the workflow's document
+}
+
+// InspectProcess translates the Resolver's resolution into the view's.
+func (r *Resolver) InspectProcess(ctx context.Context, name, agent string) (*InspectedProcess, error) {
+	res, err := r.resolve(ctx, name, agent, overrides{})
+	return &InspectedProcess{
+		Process: res.process, Agent: res.agent, Mapping: res.mapping,
+		Effective: res.effective, Plan: res.plan, Sources: res.sources,
+	}, err
+}
+
+// InspectWorkflow translates the Resolver's workflow resolution into the
+// view's.
+func (r *Resolver) InspectWorkflow(ctx context.Context, name string) (*InspectedWorkflow, bool, error) {
+	res, found, err := r.workflow(ctx, name)
+	if res == nil {
+		return nil, found, err
+	}
+	return &InspectedWorkflow{Workflow: res.workflow, NodeProcesses: res.processes, Sources: res.sources}, found, err
 }
 
 // NewInspection returns the use case that shows a process as a call would
@@ -380,18 +430,18 @@ func (i *Inspection) ShowProcess(ctx context.Context, name, agent string) (contr
 // ShowWorkflow shows a workflow and each node's process as a run of it
 // would see them.
 func (i *Inspection) ShowWorkflow(ctx context.Context, name string) (contract.WorkflowView, error) {
-	res, found, err := i.resolver.Workflow(ctx, name)
+	res, found, err := i.resolver.InspectWorkflow(ctx, name)
 	var refusal *Refusal
 	switch {
 	case !found:
 		return contract.WorkflowView{}, &contract.InputError{Message: fmt.Sprintf("no workflow %q", name)}
 	case err != nil && !errors.As(err, &refusal):
 		return contract.WorkflowView{}, err
-	case err != nil && res.workflow.Name == "":
+	case err != nil && res.Workflow.Name == "":
 		return contract.WorkflowView{}, &contract.InputError{Message: refusal.Reason}
 	}
-	workflow := res.workflow
-	view := contract.WorkflowView{Name: workflow.Name, Sources: origins(res.sources)}
+	workflow := res.Workflow
+	view := contract.WorkflowView{Name: workflow.Name, Sources: origins(res.Sources)}
 	if refusal != nil {
 		view.Refusal = refusal.Reason
 	}
@@ -410,7 +460,7 @@ func (i *Inspection) ShowWorkflow(ctx context.Context, name string) (contract.Wo
 			process, err = contract.ProcessView{Name: node.Process, Refusal: input.Message}, nil
 		}
 		shown := contract.WorkflowNode{Name: node.Name, Process: process}
-		for _, param := range res.processes[node.Process].Params {
+		for _, param := range res.NodeProcesses[node.Process].Params {
 			if passed[param.Name] && !join {
 				shown.Params = append(shown.Params, param.Name)
 			}
@@ -427,7 +477,7 @@ func (i *Inspection) ShowWorkflow(ctx context.Context, name string) (contract.Wo
 	if view.Join, err = node(workflow.Join, true); err != nil {
 		return contract.WorkflowView{}, err
 	}
-	if collects := res.processes[workflow.Join.Process].Collects(); len(collects) == 1 {
+	if collects := res.NodeProcesses[workflow.Join.Process].Collects(); len(collects) == 1 {
 		view.Collection = collects[0]
 	}
 	for _, shown := range append(append([]contract.WorkflowNode(nil), view.FanOut...), view.Join) {
@@ -439,42 +489,42 @@ func (i *Inspection) ShowWorkflow(ctx context.Context, name string) (contract.Wo
 }
 
 func (i *Inspection) showProcess(ctx context.Context, name, agent string) (contract.ProcessView, error) {
-	res, err := i.resolver.Resolve(ctx, name, agent, overrides{})
+	res, err := i.resolver.InspectProcess(ctx, name, agent)
 	var refusal *Refusal
 	if err != nil && !errors.As(err, &refusal) {
 		return contract.ProcessView{}, err
 	}
-	if err != nil && res.process.Name == "" {
+	if err != nil && res.Process.Name == "" {
 		return contract.ProcessView{}, &contract.InputError{Message: refusal.Reason}
 	}
 	view := contract.ProcessView{
-		Name:        res.process.Name,
-		Agent:       res.agent.Name,
-		Runtime:     res.mapping.Name,
-		Policy:      res.process.Policy,
-		Output:      res.process.Output.Format,
-		Timeout:     res.effective.Timeout,
-		MaxAttempts: res.effective.MaxAttempts,
-		MaxCostUSD:  res.effective.MaxCostUSD,
-		Allowed:     res.effective.Allow,
-		Denied:      res.effective.Deny,
-		Permissions: res.effective.Permissions,
-		Access:      res.effective.Access,
-		Scope:       res.effective.Scope,
-		Primitives:  res.plan.Primitives,
-		Withheld:    res.plan.Withheld,
+		Name:        res.Process.Name,
+		Agent:       res.Agent.Name,
+		Runtime:     res.Mapping.Name,
+		Policy:      res.Process.Policy,
+		Output:      res.Process.Output.Format,
+		Timeout:     res.Effective.Timeout,
+		MaxAttempts: res.Effective.MaxAttempts,
+		MaxCostUSD:  res.Effective.MaxCostUSD,
+		Allowed:     res.Effective.Allow,
+		Denied:      res.Effective.Deny,
+		Permissions: res.Effective.Permissions,
+		Access:      res.Effective.Access,
+		Scope:       res.Effective.Scope,
+		Primitives:  res.Plan.Primitives,
+		Withheld:    res.Plan.Withheld,
 	}
-	if res.process.Output.Schema != "" {
-		view.Output += ":" + res.process.Output.Schema
+	if res.Process.Output.Schema != "" {
+		view.Output += ":" + res.Process.Output.Schema
 	}
-	for _, param := range res.process.Params {
+	for _, param := range res.Process.Params {
 		view.Params = append(view.Params, contract.Param{Name: param.Name, Default: param.Default, Required: !param.HasDefault})
 	}
-	for _, value := range res.process.Values {
+	for _, value := range res.Process.Values {
 		view.Inputs = append(view.Inputs, value.Name+" <- "+value.Source)
 	}
-	view.Sources = origins(res.sources)
-	if verify := res.process.Verify; verify != nil {
+	view.Sources = origins(res.Sources)
+	if verify := res.Process.Verify; verify != nil {
 		view.Verify = &contract.Verify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}
 		// A refused call runs no command.
 		if refusal == nil {

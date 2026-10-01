@@ -12,8 +12,8 @@ import (
 
 // Runs reads evidence: observation, inspection, listing, cancellation.
 type Runs struct {
-	reader RunsReader
-	hosted *Hosted
+	reader    RunsReader
+	canceller RunsCanceller
 	// How often Observe polls a running record.
 	pollInterval time.Duration
 }
@@ -26,11 +26,22 @@ type RunsReader interface {
 	List(ctx context.Context) ([]run.Record, error)
 }
 
+// RunsCanceller cancels a call running in this process (Hosted is one). It
+// reports whether the call was running here and the cancel took effect.
+type RunsCanceller interface {
+	Cancel(id string) bool
+}
+
+// RunsAdapters are what Runs run on besides the calls hosted here.
+type RunsAdapters struct {
+	Reader RunsReader
+}
+
 // NewRuns returns the use case that reads evidence and cancels the calls
 // hosted in this process. pollInterval is how often Observe polls a running
 // record; zero means 50ms.
-func NewRuns(reader RunsReader, hosted *Hosted, pollInterval time.Duration) *Runs {
-	return &Runs{reader: reader, hosted: hosted, pollInterval: pollInterval}
+func NewRuns(reader RunsReader, canceller RunsCanceller, pollInterval time.Duration) *Runs {
+	return &Runs{reader: reader, canceller: canceller, pollInterval: pollInterval}
 }
 
 func (r *Runs) Observe(ctx context.Context, id string, afterSeq int, each func(contract.Event) error) error {
@@ -61,7 +72,7 @@ func (r *Runs) Observe(ctx context.Context, id string, afterSeq int, each func(c
 }
 
 func (r *Runs) Cancel(_ context.Context, id string) error {
-	if !r.hosted.cancel(id) {
+	if !r.canceller.Cancel(id) {
 		return &contract.InputError{Message: fmt.Sprintf("run %s is not running in this process", id)}
 	}
 	return nil

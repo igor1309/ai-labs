@@ -6,6 +6,7 @@ import (
 	"errors"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -507,7 +508,7 @@ func TestPanicInChangeCollectionFinishesTheRecord(t *testing.T) {
 // refusal it gives is recorded and no runtime is asked for.
 func TestCallsResolveThroughTheResolutionTheyDeclare(t *testing.T) {
 	h := newHarness()
-	double := &app.SnapshotCounter{Reason: "the double refuses"}
+	double := &snapshotCounter{reason: "the double refuses"}
 	h.calls = app.NewCalls(
 		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes, app.NewVerifier(h.changes, h.copies, h.commands, h.clock),
 		h.validator, h.recorder, h.runs, h.clock, fixedIDs{}, "/state", h.hosted,
@@ -516,12 +517,50 @@ func TestCallsResolveThroughTheResolutionTheyDeclare(t *testing.T) {
 	if class(record) != run.ClassRefused || message(record) != "the double refuses" {
 		t.Fatalf("result %+v", record.Result)
 	}
-	if snapshots, resolved := double.Count(); snapshots != 1 || !reflect.DeepEqual(resolved, []string{"p"}) {
+	if snapshots, resolved := double.count(); snapshots != 1 || !reflect.DeepEqual(resolved, []string{"p"}) {
 		t.Fatalf("snapshots %d, resolved %v", snapshots, resolved)
 	}
 	if len(h.runtimes.asked) != 0 || len(h.defs.reads) != 0 {
 		t.Fatalf("runtimes asked %v, definitions read %v", h.runtimes.asked, h.defs.reads)
 	}
+}
+
+// snapshotCounter is a CallResolver that is not a Resolver: it resolves
+// every call to a refusal, and counts the snapshots it was asked for and the
+// resolutions made from them.
+type snapshotCounter struct {
+	mu        sync.Mutex
+	reason    string
+	snapshots int
+	resolved  []string // process names
+}
+
+func (c *snapshotCounter) Snapshot(context.Context) app.CallResolution {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.snapshots++
+	return counted{c}
+}
+
+// count returns the snapshots taken and the processes resolved.
+func (c *snapshotCounter) count() (int, []string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.snapshots, append([]string(nil), c.resolved...)
+}
+
+type counted struct{ counter *snapshotCounter }
+
+func (r counted) Resolve(_ context.Context, request app.CallResolveRequest) (*app.ResolvedCall, error) {
+	r.counter.mu.Lock()
+	defer r.counter.mu.Unlock()
+	r.counter.resolved = append(r.counter.resolved, request.Process)
+	return &app.ResolvedCall{}, &app.Refusal{Reason: r.counter.reason}
+}
+
+// Workflow finds none: every name is a process's.
+func (r counted) Workflow(context.Context, string) (*app.ResolvedWorkflow, bool, error) {
+	return nil, false, nil
 }
 
 // The runtime a call is resolved on is checked through the identity of its

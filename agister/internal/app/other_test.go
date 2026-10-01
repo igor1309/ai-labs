@@ -175,6 +175,35 @@ func TestObserveResumesAfterTheLastDeliveredEvent(t *testing.T) {
 	}
 }
 
+// cancellerSpy is the role Runs cancels through; it takes effect for the
+// runs it hosts.
+type cancellerSpy struct {
+	hosts     map[string]bool
+	cancelled []string
+}
+
+func (s *cancellerSpy) Cancel(id string) bool {
+	s.cancelled = append(s.cancelled, id)
+	return s.hosts[id]
+}
+
+// Cancelling a run asks the canceller Runs declares; one it does not take
+// effect for is refused as not running in this process.
+func TestRunsCancelThroughTheCancellerTheyDeclare(t *testing.T) {
+	canceller := &cancellerSpy{hosts: map[string]bool{"live": true}}
+	runs := app.NewRuns(nil, canceller, 0)
+	if err := runs.Cancel(context.Background(), "live"); err != nil {
+		t.Fatal(err)
+	}
+	var input *contract.InputError
+	if err := runs.Cancel(context.Background(), "gone"); !errors.As(err, &input) || input.Message != "run gone is not running in this process" {
+		t.Fatalf("cancelling a run not hosted: %v", err)
+	}
+	if want := []string{"live", "gone"}; !reflect.DeepEqual(canceller.cancelled, want) {
+		t.Fatalf("cancelled %v, want %v", canceller.cancelled, want)
+	}
+}
+
 func TestInspectShowsTheNodeResultAsRecorded(t *testing.T) {
 	cost, ms, tokens := 0.1, int64(5), int64(3)
 	result := &run.Result{

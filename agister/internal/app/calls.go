@@ -13,6 +13,8 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
+	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 	"github.com/igor1309/ai-labs/agister/internal/domain/prompt"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -31,7 +33,7 @@ type Calls struct {
 	clock      CallClock
 	ids        IDs
 	stateDir   string
-	hosted     *Hosted
+	cancels    CallCancels
 }
 
 // CallResolver reads the settings a call is resolved from, once, at submit,
@@ -43,15 +45,76 @@ type CallResolver interface {
 // CallResolution resolves a call, or a workflow, from the settings it was
 // taken over.
 type CallResolution interface {
-	Resolve(ctx context.Context, processName, agentOverride string, caller overrides) (*resolution, error)
+	// Resolve resolves a call's process. A refused call's resolution has
+	// what was resolved before the refusal, never nil.
+	Resolve(ctx context.Context, request CallResolveRequest) (*ResolvedCall, error)
 	// Workflow resolves the workflow of that name; found is false when the
 	// settings have none, and the name is a process's.
-	Workflow(ctx context.Context, name string) (res *workflowResolution, found bool, err error)
+	Workflow(ctx context.Context, name string) (res *ResolvedWorkflow, found bool, err error)
+}
+
+// CallResolveRequest is what a call is resolved from: its process, the
+// agent that overrides the process's, and the caller's narrowing limits.
+type CallResolveRequest struct {
+	Process    string
+	Agent      string
+	Timeout    string
+	MaxCostUSD *float64
+}
+
+// ResolvedCall is everything a call needs before inputs and effects.
+type ResolvedCall struct {
+	Process   definition.Process
+	Agent     definition.Agent
+	Mapping   definition.Mapping
+	Schema    []byte
+	Sources   []definition.Source
+	Effective policy.Effective
+	Identity  RuntimeIdentity
+	Plan      enforce.Plan
+}
+
+// ResolvedWorkflow is a workflow and its nodes' processes, as a run of it
+// uses them. Each node's call resolves its own process again, fully.
+type ResolvedWorkflow struct {
+	Workflow      definition.Workflow
+	NodeProcesses map[string]definition.Process // by name
+	Sources       []definition.Source           // the workflow's document
 }
 
 // Snapshot returns the resolver over the definitions as they are now (see
 // Resolver.frozen), as the resolution a call is executed with.
-func (r *Resolver) Snapshot(ctx context.Context) CallResolution { return r.frozen(ctx) }
+func (r *Resolver) Snapshot(ctx context.Context) CallResolution {
+	return callResolution{resolver: r.frozen(ctx)}
+}
+
+// callResolution is a Resolver in the role a call resolves through: it
+// translates the Resolver's results into the call's own.
+type callResolution struct{ resolver *Resolver }
+
+func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest) (*ResolvedCall, error) {
+	res, err := c.resolver.resolve(ctx, request.Process, request.Agent, overrides{timeout: request.Timeout, maxCostUSD: request.MaxCostUSD})
+	return &ResolvedCall{
+		Process: res.process, Agent: res.agent, Mapping: res.mapping, Schema: res.schema, Sources: res.sources,
+		Effective: res.effective, Identity: res.identity, Plan: res.plan,
+	}, err
+}
+
+func (c callResolution) Workflow(ctx context.Context, name string) (*ResolvedWorkflow, bool, error) {
+	res, found, err := c.resolver.workflow(ctx, name)
+	if res == nil {
+		return nil, found, err
+	}
+	return &ResolvedWorkflow{Workflow: res.workflow, NodeProcesses: res.processes, Sources: res.sources}, found, err
+}
+
+// CallCancels holds the cancellation of every call running in this
+// process, so it can be cancelled from outside the call (Hosted is one).
+// The cancel added reports whether it took effect.
+type CallCancels interface {
+	Add(id string, cancel func() bool)
+	Remove(id string)
+}
 
 // CallRunners builds the runner of the runtime a call resolved to.
 type CallRunners interface {
@@ -149,9 +212,26 @@ type RunRecorder interface {
 	Create(ctx context.Context, record run.Record) (RunHandle, error)
 }
 
+// CallAdapters are what Calls run on besides their resolver, verifier and
+// cancellations. StateDir is Agister's own state, which no agent workspace
+// may overlap.
+type CallAdapters struct {
+	Runners    CallRunners
+	Inputs     map[string]InputProvider
+	Workspaces CallWorkspaces
+	Changes    CallChanges
+	Validator  CallValidator
+	Recorder   RunRecorder
+	Runs       CallRuns
+	Clock      CallClock
+	IDs        IDs
+	StateDir   string
+}
+
 // NewCalls returns the use case that submits and executes calls. Every
 // collaborator is required. stateDir is Agister's own state, which no agent
-// workspace may overlap.
+// workspace may overlap. cancels is where each running call's cancellation
+// is held.
 func NewCalls(
 	resolver CallResolver,
 	runners CallRunners,
@@ -165,7 +245,7 @@ func NewCalls(
 	clock CallClock,
 	ids IDs,
 	stateDir string,
-	hosted *Hosted,
+	cancels CallCancels,
 ) *Calls {
 	return &Calls{
 		resolver:   resolver,
@@ -180,13 +260,15 @@ func NewCalls(
 		clock:      clock,
 		ids:        ids,
 		stateDir:   stateDir,
-		hosted:     hosted,
+		cancels:    cancels,
 	}
 }
 
 // Hosted tracks calls running in this process so they can be cancelled.
 // Each cancel reports whether it took effect: a workflow that already
 // finished refuses it (see flow.stop).
+// It is attached at composition as the CallCancels of Calls and the
+// RunsCanceller of Runs.
 type Hosted struct {
 	mu      sync.Mutex
 	cancels map[string]func() bool
@@ -205,21 +287,22 @@ func cancelled(cancel context.CancelFunc) func() bool {
 	}
 }
 
-func (h *Hosted) add(id string, cancel func() bool) {
+func (h *Hosted) Add(id string, cancel func() bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.cancels[id] = cancel
 }
 
-func (h *Hosted) remove(id string) {
+func (h *Hosted) Remove(id string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	delete(h.cancels, id)
 }
 
-// cancel calls the run's cancel outside the lock: a workflow's takes a lock
-// of its own, under which it adds the nodes it starts here.
-func (h *Hosted) cancel(id string) bool {
+// Cancel calls the run's cancel outside the lock: a workflow's takes a lock
+// of its own, under which it adds the nodes it starts here. It reports
+// whether the run was hosted and the cancel took effect.
+func (h *Hosted) Cancel(id string) bool {
 	h.mu.Lock()
 	cancel, ok := h.cancels[id]
 	h.mu.Unlock()
@@ -262,18 +345,18 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 		runCtx, cancel := context.WithCancel(WithCorrelation(context.WithoutCancel(ctx), "workflow_run", record.ID, "workflow", request.Process))
 		// Cancelling the workflow is serialized with starting its nodes.
 		flow := &flow{cancel: cancel}
-		c.hosted.add(record.ID, flow.stop)
+		c.cancels.Add(record.ID, flow.stop)
 		go func() {
-			defer c.hosted.remove(record.ID)
+			defer c.cancels.Remove(record.ID)
 			defer cancel()
 			c.runWorkflow(runCtx, handle, record, resolver, workflow, workflowErr, flow)
 		}()
 		return record.ID, nil
 	}
 	runCtx, cancel := context.WithCancel(WithCorrelation(context.WithoutCancel(ctx), "run_id", record.ID, "process", request.Process))
-	c.hosted.add(record.ID, cancelled(cancel))
+	c.cancels.Add(record.ID, cancelled(cancel))
 	go func() {
-		defer c.hosted.remove(record.ID)
+		defer c.cancels.Remove(record.ID)
 		defer cancel()
 		c.execute(runCtx, handle, record, resolver, nil)
 	}()
@@ -323,7 +406,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		}
 		event(run.SourceAgister, "CALL_FINISHED", data)
 		// A finished run is no longer cancellable.
-		c.hosted.remove(record.ID)
+		c.cancels.Remove(record.ID)
 		if err := handle.Finish(record); err != nil {
 			// The record kept is not this one: ownership is released over
 			// the last one saved, unfinished, which reads as abandoned. The
@@ -362,27 +445,29 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		finish(run.Fault(run.ClassInternal, "%v", err))
 	}
 
-	caller := overrides{timeout: record.Request.Timeout, maxCostUSD: record.Request.MaxCostUSD}
-	res, err := resolver.Resolve(ctx, record.Request.Process, record.Request.Agent, caller)
-	record.Definitions = recordSources(res.sources)
+	res, err := resolver.Resolve(ctx, CallResolveRequest{
+		Process: record.Request.Process, Agent: record.Request.Agent,
+		Timeout: record.Request.Timeout, MaxCostUSD: record.Request.MaxCostUSD,
+	})
+	record.Definitions = recordSources(res.Sources)
 	if err != nil {
 		fail(err)
 		return
 	}
-	runner, err := c.runners.Runner(res.mapping.Adapter, res.agent.Command)
+	runner, err := c.runners.Runner(res.Mapping.Adapter, res.Agent.Command)
 	if err != nil {
-		fail(refuse("runtime mapping %s: %v", res.mapping.Name, err))
+		fail(refuse("runtime mapping %s: %v", res.Mapping.Name, err))
 		return
 	}
-	record.Agent = res.agent.Name
-	record.Effective = recordEffective(res.effective)
-	record.Verify = recordVerify(res.process.Verify)
-	record.Runtime = &run.Runtime{Mapping: res.mapping.Name, Adapter: res.mapping.Adapter, Contract: res.identity.Contract, Version: res.identity.Version}
-	record.Plan = recordPlan(res.plan)
+	record.Agent = res.Agent.Name
+	record.Effective = recordEffective(res.Effective)
+	record.Verify = recordVerify(res.Process.Verify)
+	record.Runtime = &run.Runtime{Mapping: res.Mapping.Name, Adapter: res.Mapping.Adapter, Contract: res.Identity.Contract, Version: res.Identity.Version}
+	record.Plan = recordPlan(res.Plan)
 	_ = handle.Update(record)
-	event(run.SourceAgister, "PLANNED", map[string]any{"primitives": res.plan.Primitives, "granted": res.plan.Granted, "withheld": res.plan.Withheld})
-	if len(res.plan.Withheld) > 0 {
-		event(run.SourceAgister, "PERMISSIONS_WITHHELD", map[string]any{"permissions": res.plan.Withheld})
+	event(run.SourceAgister, "PLANNED", map[string]any{"primitives": res.Plan.Primitives, "granted": res.Plan.Granted, "withheld": res.Plan.Withheld})
+	if len(res.Plan.Withheld) > 0 {
+		event(run.SourceAgister, "PERMISSIONS_WITHHELD", map[string]any{"permissions": res.Plan.Withheld})
 	}
 
 	resumeSessionID, sessionBefore, err := c.continuation(ctx, res, record.ID, record.Request.Continue)
@@ -391,7 +476,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return
 	}
 
-	inputs, err := c.resolveValues(ctx, "process "+res.process.Name, res.process.Params, res.process.Values, record.Request, collection)
+	inputs, err := c.resolveValues(ctx, "process "+res.Process.Name, res.Process.Params, res.Process.Values, record.Request, collection)
 	if err != nil {
 		fail(err)
 		return
@@ -399,14 +484,14 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	record.Inputs = summarize(inputs)
 	_ = handle.Update(record)
 
-	workspace, err := c.prepareWorkspace(ctx, res.process, inputs, record.Request.Cwd)
+	workspace, err := c.prepareWorkspace(ctx, res.Process, inputs, record.Request.Cwd)
 	if err != nil {
 		fail(err)
 		return
 	}
 	release = workspace.Release
 	record.Workspace = workspace.Dir
-	revision, _ := revisionOf(inputs, res.process.Checkout)
+	revision, _ := revisionOf(inputs, res.Process.Checkout)
 	// The content a passing verification run checked, whose patch is what
 	// the call delivers (ADR-005 rule 1).
 	var verified string
@@ -430,20 +515,20 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 
 	request := TurnRequest{
 		Prompt:          prompt.Inputs(inputs),
-		Instruction:     prompt.Instruction(res.process.Instruction, res.plan.Granted, res.plan.Withheld),
+		Instruction:     prompt.Instruction(res.Process.Instruction, res.Plan.Granted, res.Plan.Withheld),
 		Cwd:             workspace.Dir,
 		ResumeSessionID: resumeSessionID,
-		MaxCostUSD:      res.effective.MaxCostUSD,
-		Model:           res.agent.Model,
-		Effort:          res.agent.Effort,
-		Primitives:      res.plan.Primitives,
-		Timeout:         res.effective.Timeout,
-		OutputSchema:    res.schema,
+		MaxCostUSD:      res.Effective.MaxCostUSD,
+		Model:           res.Agent.Model,
+		Effort:          res.Agent.Effort,
+		Primitives:      res.Plan.Primitives,
+		Timeout:         res.Effective.Timeout,
+		OutputSchema:    res.Schema,
 	}
 	_ = handle.Update(record)
 
 	// The call's timeout bounds every turn and every verification run.
-	deadline := c.clock.Now().Add(res.effective.Timeout)
+	deadline := c.clock.Now().Add(res.Effective.Timeout)
 	// Usage and cost sum every turn's own; the latest turn's text and
 	// output are the call's. before is the resumed session's totals before
 	// the turn, recorded with it; nil when unknown.
@@ -470,10 +555,10 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	}
 	conclude := func(turn run.Turn) *run.Error {
 		var validation error
-		if turn.Status == run.Completed && res.process.Output.Format == "json" {
-			validation = c.validator.Validate(res.schema, turn.Output)
+		if turn.Status == run.Completed && res.Process.Output.Format == "json" {
+			validation = c.validator.Validate(res.Schema, turn.Output)
 		}
-		_, fault := run.Conclude(turn, res.process.Output, validation)
+		_, fault := run.Conclude(turn, res.Process.Output, validation)
 		return fault
 	}
 
@@ -482,15 +567,15 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		result.Session = &run.Session{ProviderSessionID: turn.ProviderSessionID, Continues: record.Request.Continue}
 	}
 	fault := conclude(turn)
-	if fault == nil && res.process.Verify != nil {
+	if fault == nil && res.Process.Verify != nil {
 		verified, fault = c.verifier.Verify(ctx, VerifyCall{
 			Record: &record, Result: &result, Event: event, Update: handle.Update, Artifact: handle.Artifact,
-			Verify: *res.process.Verify, Limit: res.effective.MaxCostUSD, Deadline: deadline,
+			Verify: *res.Process.Verify, Limit: res.Effective.MaxCostUSD, Deadline: deadline,
 			Dir: workspace.Dir, Base: revision, Repository: workspace.Repository, Request: request, Session: turn.ProviderSessionID,
 			Take: take, Conclude: conclude,
 		})
 	}
-	if fault == nil && res.process.Output.Format == "json" {
+	if fault == nil && res.Process.Output.Format == "json" {
 		result.Output = record.Turn.Output
 	}
 	finish(fault)
@@ -499,7 +584,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 
 // runWorkflow runs one workflow and finishes its run. res and resErr are the
 // workflow as the settings snapshot resolved it.
-func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Record, resolver CallResolution, res *workflowResolution, resErr error, flow *flow) {
+func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Record, resolver CallResolution, res *ResolvedWorkflow, resErr error, flow *flow) {
 	event := func(kind string, data map[string]any) {
 		_ = handle.Append(run.Event{At: c.clock.Now(), Source: run.SourceAgister, Kind: kind, Data: data})
 	}
@@ -523,7 +608,7 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 				}
 				status, fault = run.Interrupted, run.Fault(run.ClassCancelled, "the workflow was cancelled before it finished; it would have ended %s", ended)
 			}
-			c.hosted.remove(record.ID)
+			c.cancels.Remove(record.ID)
 		})
 		if fault != nil {
 			result.Output = nil
@@ -565,7 +650,7 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 	event("WORKFLOW_SUBMITTED", map[string]any{"workflow": record.Process})
 
 	if res != nil {
-		record.Definitions = recordSources(res.sources)
+		record.Definitions = recordSources(res.Sources)
 	}
 	if resErr != nil {
 		refused(resErr)
@@ -575,7 +660,7 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 		refused(err)
 		return
 	}
-	workflow := res.workflow
+	workflow := res.Workflow
 	state := &run.Workflow{Barrier: run.Barrier{State: run.BarrierWaiting}}
 	for _, node := range workflow.FanOut {
 		state.Nodes = append(state.Nodes, run.Node{Name: node.Name, Process: node.Process})
@@ -634,7 +719,7 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 	running := 0
 	for i, node := range workflow.FanOut {
 		params := map[string]string{}
-		for _, param := range res.processes[node.Process].Params {
+		for _, param := range res.NodeProcesses[node.Process].Params {
 			if value, ok := values[param.Name]; ok {
 				params[param.Name] = value
 			}
@@ -739,9 +824,9 @@ func (c *Calls) startNode(ctx context.Context, parent string, node definition.No
 		return "", err
 	}
 	nodeCtx, cancel := context.WithCancel(WithCorrelation(ctx, "run_id", record.ID, "process", node.Process, "node", node.Name))
-	c.hosted.add(record.ID, cancelled(cancel))
+	c.cancels.Add(record.ID, cancelled(cancel))
 	go func() {
-		defer c.hosted.remove(record.ID)
+		defer c.cancels.Remove(record.ID)
 		defer cancel()
 		ended(c.execute(nodeCtx, handle, record, resolver, collection))
 	}()
@@ -754,15 +839,15 @@ func (c *Calls) startNode(ctx context.Context, parent string, node definition.No
 // agent must allow it, the runtime must support it, and the earlier run
 // must be finished, by the same agent, with a session. self is the
 // asking run.
-func (c *Calls) continuation(ctx context.Context, res *resolution, self, runID string) (string, *run.SessionTotals, error) {
+func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID string) (string, *run.SessionTotals, error) {
 	if runID == "" {
 		return "", nil, nil
 	}
-	if res.agent.Session != definition.SessionResumable {
-		return "", nil, refuse("agent %s is %s; it cannot continue run %s", res.agent.Name, res.agent.Session, runID)
+	if res.Agent.Session != definition.SessionResumable {
+		return "", nil, refuse("agent %s is %s; it cannot continue run %s", res.Agent.Name, res.Agent.Session, runID)
 	}
-	if !res.identity.Resume {
-		return "", nil, refuse("runtime %s cannot continue sessions", res.mapping.Name)
+	if !res.Identity.Resume {
+		return "", nil, refuse("runtime %s cannot continue sessions", res.Mapping.Name)
 	}
 	prior, state, err := c.runs.Get(ctx, runID)
 	if err != nil {
@@ -771,10 +856,10 @@ func (c *Calls) continuation(ctx context.Context, res *resolution, self, runID s
 	switch {
 	case state != run.StateFinished:
 		return "", nil, refuse("run %s is %s, not finished", runID, state)
-	case prior.Agent != res.agent.Name:
-		return "", nil, refuse("run %s ran agent %s; only agent %s's own runs can be continued by it", runID, prior.Agent, res.agent.Name)
-	case prior.Runtime == nil || prior.Runtime.Adapter != res.mapping.Adapter:
-		return "", nil, refuse("run %s did not run on %s", runID, res.mapping.Adapter)
+	case prior.Agent != res.Agent.Name:
+		return "", nil, refuse("run %s ran agent %s; only agent %s's own runs can be continued by it", runID, prior.Agent, res.Agent.Name)
+	case prior.Runtime == nil || prior.Runtime.Adapter != res.Mapping.Adapter:
+		return "", nil, refuse("run %s did not run on %s", runID, res.Mapping.Adapter)
 	case prior.Result == nil || prior.Result.Session == nil || prior.Result.Session.ProviderSessionID == "":
 		return "", nil, refuse("run %s has no provider session", runID)
 	}
