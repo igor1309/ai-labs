@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/igor1309/ai-labs/agister/internal/app"
 )
 
 // What runs when is decided by the gate, never by timing: the deadline
@@ -94,7 +96,7 @@ func gated(t *testing.T, held string) *gate {
 	t.Helper()
 	g := &gate{held: held, events: make(chan event, 16), proceed: make(chan struct{}), open: make(chan struct{})}
 	g.workspaces = NewWorkspaces(&Worktrees{
-		git: func(ctx context.Context, dir string, args ...string) (string, error) {
+		Git: func(ctx context.Context, dir string, args ...string) (string, error) {
 			if g.report(event{dir: dir}) && (g.held == "" || dir == g.held) {
 				select {
 				case <-g.proceed:
@@ -103,7 +105,7 @@ func gated(t *testing.T, held string) *gate {
 			}
 			return run(ctx, dir, args...)
 		},
-		waits: func() { g.report(event{waited: true}) },
+		Waits: func() { g.report(event{waited: true}) },
 	})
 	t.Cleanup(func() {
 		close(g.open)
@@ -289,8 +291,10 @@ func TestWorktreeCommandsOfOneRepositoryNeverOverlap(t *testing.T) {
 
 func TestDifferentRepositoriesDoNotWaitOnEachOther(t *testing.T) {
 	busy, other := emptyRepository(t), emptyRepository(t)
-	g := gated(t, busy)
+	g := gated(t, "")
 
+	// Both stay at the gate, each under its repository's lock, until both
+	// are seen there: neither worker can end while an event is awaited.
 	held, _ := g.checkout(context.Background(), busy)
 	g.enters(t, held)
 
@@ -298,10 +302,11 @@ func TestDifferentRepositoriesDoNotWaitOnEachOther(t *testing.T) {
 	if g.next(t, held, free).waited {
 		t.Fatal("a checkout in another repository waited for the busy one")
 	}
-	done(t, free)
 
 	g.pass(t)
+	g.pass(t)
 	done(t, held)
+	done(t, free)
 }
 
 func TestTwoPathsOfOneRepositoryShareTheLock(t *testing.T) {
@@ -355,12 +360,23 @@ func TestACancelledContextStopsTheWait(t *testing.T) {
 	defer cancel()
 	waiting, _ := g.checkout(ctx, repo)
 	g.queues(t, held, waiting)
+	dir := g.place(repo)
+	copying := g.start(func() error { return g.workspaces.Copy(ctx, repo, dir, "main", nil) })
+	g.queues(t, held, waiting, copying)
 	cancel()
 	if err := result(t, waiting); !errors.Is(err, context.Canceled) {
 		t.Fatalf("a checkout cancelled while it waited: %v", err)
 	}
+	// The copy returns while the lock is still held: it does not wait a
+	// second time, without cancellation, to remove what it never added.
+	if err := result(t, copying); !errors.Is(err, context.Canceled) || !errors.Is(err, app.ErrCopyNotStarted) {
+		t.Fatalf("a copy cancelled while it waited: %v", err)
+	}
 	if len(g.events) != 0 {
-		t.Fatal("the cancelled checkout ran its worktree command")
+		t.Fatal("a cancelled checkout or copy reached the lock again")
+	}
+	if _, err := os.Stat(filepath.Dir(dir)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("the cancelled copy left its directory: %v", err)
 	}
 
 	g.pass(t)

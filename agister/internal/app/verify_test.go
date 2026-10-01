@@ -166,6 +166,26 @@ func TestACleanCopyThatCannotBeCheckedFailsTheCall(t *testing.T) {
 	}
 }
 
+// A clean copy that was never started left nothing to remove: the call
+// fails without a discard, which would wait for the repository again, and
+// the record stops naming the copy.
+func TestACleanCopyNeverStartedIsNotDiscarded(t *testing.T) {
+	h := newHarness()
+	verifying(h)
+	h.copies.err = fmt.Errorf("%w: %w", app.ErrCopyNotStarted, context.Canceled)
+	record := h.call(t, contract.CallRequest{})
+	if record.Result.Status != run.Failed || class(record) != run.ClassInternal ||
+		message(record) != "making the clean copy to check: the copy was not started: context canceled" {
+		t.Fatalf("result %+v", record.Result.Error)
+	}
+	if len(h.copies.removed) != 0 {
+		t.Fatalf("discarded %v", h.copies.removed)
+	}
+	if len(h.commands.runs()) != 0 || (record.Effects != nil && record.Effects.Copy != nil) {
+		t.Fatalf("runs %d, effects %+v", len(h.commands.runs()), record.Effects)
+	}
+}
+
 // Rule 7 on the clean copy: a run that changes the copy's content fails
 // whatever its exit, and the evidence keeps what it changed. The run never
 // touched the checkout, so a repair that changes nothing there has made no
