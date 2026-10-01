@@ -24,7 +24,8 @@
   a:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
   body > header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 20px; border-bottom: 1px solid var(--line);
+    /* The header lines up with main: 1080px wide with 20px padding. */
+    padding: 12px max(20px, calc((100% - 1080px) / 2 + 20px)); border-bottom: 1px solid var(--line);
   }
   h1 { margin: 0; font-size: 16px; font-weight: 600; }
   main { padding: 24px 20px 64px; max-width: 1080px; margin: 0 auto; }
@@ -131,7 +132,7 @@
     font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
   tr:last-child td { border-bottom: none; }
   td.name { color: var(--fg); font-weight: 600; white-space: nowrap; }
-  .access-read-only { color: var(--low); }
+  /* Only a workspace that can be written is marked; read-only is the usual case. */
   .access-read-write { color: var(--mid); }
   td .access-read-only, td .access-read-write { white-space: nowrap; }
   /* A narrow screen stacks each row: the name, then label and value lines. */
