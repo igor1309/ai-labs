@@ -468,9 +468,28 @@
     return el('section', { className: 'stage' }, el('h4', { textContent: title }), ...steps);
   }
 
+  // The models a set of steps runs on: "4 × gpt-6.1-sol", "sonnet + opus".
+  function models(steps, ix) {
+    const count = new Map();
+    for (const n of steps) {
+      const model = ix.agent.get(ix.process.get(n.process)?.agent)?.model ?? 'unknown model';
+      count.set(model, (count.get(model) ?? 0) + 1);
+    }
+    return [...count].map(([model, k]) => (k > 1 ? `${k} × ${model}` : model)).join(' + ');
+  }
+
+  // A workflow in one line: "4 × gpt-6.1-sol at once, then opus".
+  function calls(w, ix) {
+    const parts = [];
+    if (w.fanOut.length) parts.push(`${models(w.fanOut, ix)}${w.fanOut.length > 1 ? ' at once' : ''}`);
+    if (w.join) parts.push(`${parts.length ? 'then ' : ''}${models([w.join], ix)}`);
+    return parts.length ? text(parts.join(', '), 'name') : null;
+  }
+
   function workflowCard(w, ix, chip) {
     if (w.error) return errorCard(w);
-    return card('workflow', w, chip, command(w.name, w.params), facts([['defaults', defaults(w.params)]]),
+    return card('workflow', w, chip, command(w.name, w.params),
+      facts([['calls', calls(w, ix)], ['defaults', defaults(w.params)]]),
       w.fanOut.length ? stage(w.fanOut.length > 1 ? `${w.fanOut.length} at once` : 'First', w.fanOut.map((n) => step(n, ix))) : null,
       w.join ? stage('Then', [step(w.join, ix)]) : null);
   }
