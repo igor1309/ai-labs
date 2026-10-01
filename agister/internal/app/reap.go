@@ -15,9 +15,10 @@ import (
 const defaultReapTimeout = 30 * time.Second
 
 // Reaper undoes the effects of runs whose process was killed before they
-// finished, then finishes them, and removes the clean copies finished runs
-// left on record (ADR-005 rule 2). It is not part of any call: whoever
-// composes the client starts it (see BackgroundReaper).
+// finished, then finishes them, and removes the clean copies (ADR-005 rule
+// 2) and the unreleased checkouts (ADR-008 rule 6) finished runs left on
+// record. It is not part of any call: whoever composes the client starts
+// it (see BackgroundReaper).
 type Reaper struct {
 	adopter   RunAdopter
 	processes Processes
@@ -59,7 +60,8 @@ type Processes interface {
 // RunAdopter takes over runs whose owner ended.
 type RunAdopter interface {
 	// Abandoned lists the unfinished runs nobody owns that recorded effects,
-	// and the finished runs whose record still names a clean copy.
+	// and the finished runs whose record still names a clean copy or an
+	// unreleased checkout.
 	Abandoned(ctx context.Context) ([]run.Record, error)
 	// LiveCheckouts lists the checkout directories, workspaces and clean
 	// copies, that runs some process still owns record, so nobody removes
@@ -69,7 +71,7 @@ type RunAdopter interface {
 	LiveCheckouts(ctx context.Context) ([]string, error)
 	// Adopt takes ownership of a run Abandoned lists, as its record is now.
 	// It fails if the run is owned by another process, or finished with no
-	// clean copy on record.
+	// clean copy or unreleased checkout on record.
 	Adopt(ctx context.Context, id string) (ReapHandle, run.Record, error)
 }
 
@@ -145,14 +147,14 @@ func (c *Reaper) reapContext(ctx context.Context) (context.Context, context.Canc
 }
 
 // reap ends one adopted run's effects and finishes it as lost; of a run
-// that finished, it removes only the clean copy its record names, and the
-// run keeps its end. A step that fails is recorded and does not stop the
-// rest, so a run is reaped once. A checkout, the call's own or
-// verification's clean copy, that a run still owned records as its own is
-// left in place, and so is one whose users could not be listed. A copy
-// removed is no longer on record. It returns the failure to record the
-// reap or finish the run; with the event unrecorded, the error carries the
-// steps that failed.
+// that finished, it removes only the clean copy and the unreleased
+// checkout its record names, and the run keeps its end. A step that fails
+// is recorded and does not stop the rest, so a run is reaped once. A
+// checkout, the call's own or verification's clean copy, that a run still
+// owned records as its own is left in place, and so is one whose users
+// could not be listed. A copy or unreleased checkout removed is no longer
+// on record. It returns the failure to record the reap or finish the run;
+// with the event unrecorded, the error carries the steps that failed.
 func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record, live []string, liveErr error) error {
 	data := map[string]any{}
 	var failures []string
@@ -160,19 +162,24 @@ func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record,
 	if record.Effects != nil {
 		effects = *record.Effects
 	}
-	// A finished run ended its processes and released its checkout: only a
-	// copy it could not remove is left.
+	// A finished run ended its processes: only a checkout whose release
+	// failed and a copy it could not remove are left. Its Checkout stays
+	// on record whether released or not.
 	finished := record.FinishedAt != nil
 	processes := []struct {
 		name    string
 		process *run.Process
 	}{{"process", effects.Process}, {"command", effects.Command}}
+	// forget, when set, drops a removed checkout from the record: else
+	// every reap would find the run again.
 	checkouts := []struct {
 		name     string
 		checkout *run.Checkout
-	}{{"checkout", effects.Checkout}, {"copy", effects.Copy}}
+		forget   func()
+	}{{"checkout", effects.Checkout, nil}, {"copy", effects.Copy, func() { effects.Copy = nil }}}
 	if finished {
-		processes, checkouts = nil, checkouts[1:]
+		processes = nil
+		checkouts[0].checkout, checkouts[0].forget = effects.Unreleased, func() { effects.Unreleased = nil }
 	}
 	// The runtime's process and the verification command's (ADR-002 rule
 	// 10), each by the reference its runner recorded.
@@ -186,8 +193,8 @@ func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record,
 			failures = append(failures, fmt.Sprintf("%s %q: %v", group.name, group.process.Ref, err))
 		}
 	}
-	// The call's checkout (ADR-002 rule 10) and the clean copy a
-	// verification run checked (ADR-005 rule 2).
+	// The call's checkout (ADR-002 rule 10; ADR-008 rule 6 once finished)
+	// and the clean copy a verification run checked (ADR-005 rule 2).
 	for _, dir := range checkouts {
 		checkout := dir.checkout
 		if checkout == nil {
@@ -204,9 +211,8 @@ func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record,
 			data[dir.name] = map[string]any{"dir": checkout.Dir, "removed": err == nil}
 			if err != nil {
 				failures = append(failures, fmt.Sprintf("%s %s: %v", dir.name, checkout.Dir, err))
-			} else if dir.name == "copy" {
-				// Else every reap would find the run again.
-				effects.Copy = nil
+			} else if dir.forget != nil {
+				dir.forget()
 				record.Effects = &effects
 			}
 		}

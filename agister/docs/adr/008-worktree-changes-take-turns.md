@@ -24,6 +24,8 @@ process or in several.
 3. The lock file holds no state, and no call reads another's.
 4. Nothing is written in the repository or its `.git` for the turns.
 5. A cleanup's wait on the lock is bounded.
+6. A release that does not get the lock within the cleanup bound is
+   recorded on its run, and a later reap removes it.
 
 ## Amendments to ADR-001
 
@@ -35,7 +37,8 @@ process or in several.
 - Checkouts of one repository made and removed at the same time no longer
   fail on each other.
 - A call waits while another holds its repository's lock; a cleanup whose
-  wait reaches its bound ends with an error.
+  wait reaches its bound ends with an error, and a release's checkout is
+  left on its finished run for a later reap.
 
 ## Limitation
 

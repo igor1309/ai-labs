@@ -592,6 +592,13 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		}
 		if err := release(); err != nil {
 			event(run.SourceAgister, "WORKSPACE_RELEASE_FAILED", map[string]any{"error": err.Error()})
+			// The finished run names the checkout for a later reap to
+			// remove (ADR-008 rule 6).
+			if effects := record.Effects; effects != nil && effects.Checkout != nil {
+				unreleased := *effects
+				unreleased.Unreleased = effects.Checkout
+				record.Effects = &unreleased
+			}
 		}
 		release = func() error { return nil }
 		now := c.clock.Now()

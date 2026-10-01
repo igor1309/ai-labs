@@ -412,28 +412,31 @@ type turns struct {
 }
 
 // newTurns makes the turns of a test. Its cleanup, registered before any
-// worker starts and run before its lock directory is removed, cancels the
-// workers' contexts, closes release and joins the workers: whatever a
-// failed test left running.
+// worker starts and run before its lock directory is removed, ends the
+// workers: whatever a failed test left running.
 func newTurns(t *testing.T) *turns {
 	t.Helper()
 	l := &turns{locks: t.TempDir(), release: make(chan struct{}), entered: make(chan string, 4)}
-	t.Cleanup(func() {
-		l.mu.Lock()
-		for _, cancel := range l.cancels {
-			cancel()
-		}
-		l.mu.Unlock()
-		l.free()
-		joined := make(chan struct{})
-		go func() { l.workers.Wait(); close(joined) }()
-		select {
-		case <-joined:
-		case <-time.After(hangGuard):
-			t.Error("workers still run with their contexts cancelled and release closed")
-		}
-	})
+	t.Cleanup(func() { l.end(t) })
 	return l
+}
+
+// end cancels the workers' contexts, closes release and joins the workers.
+func (l *turns) end(t *testing.T) {
+	t.Helper()
+	l.mu.Lock()
+	for _, cancel := range l.cancels {
+		cancel()
+	}
+	l.mu.Unlock()
+	l.free()
+	joined := make(chan struct{})
+	go func() { l.workers.Wait(); close(joined) }()
+	select {
+	case <-joined:
+	case <-time.After(hangGuard):
+		t.Error("workers still run with their contexts cancelled and release closed")
+	}
 }
 
 // free closes release, once.
@@ -532,7 +535,19 @@ func TestWorktreeCommandsOfTwoProcessesInOneRepositoryNeverOverlap(t *testing.T)
 	if first == "two" {
 		waiting = one
 	}
-	receive(t, waiting.waits, "the other command waiting")
+	// Until the other command says it waits, a second entry or a command
+	// that ends is a failure, seen as it happens.
+	select {
+	case <-waiting.waits:
+	case name := <-l.entered:
+		t.Fatalf("%s entered git while %s held it", name, first)
+	case err := <-ones:
+		t.Fatalf("the first process's command ended while one held git: %v", err)
+	case err := <-twos:
+		t.Fatalf("the second process's command ended while one held git: %v", err)
+	case <-time.After(hangGuard):
+		t.Fatal("the other command did not wait")
+	}
 	l.free()
 	if err := receive(t, ones, "the first process's command ending"); err != nil {
 		t.Fatal(err)
@@ -611,12 +626,26 @@ func TestACancelledContextStopsTheWaitForTheLockFile(t *testing.T) {
 	}
 }
 
-// expiry is a cleanup context whose deadline passes when the test closes
-// passed.
+// expiry is a cleanup context whose deadline passes when the test calls
+// pass.
 type expiry struct {
 	context.Context
 	passed chan struct{}
+	once   sync.Once
 }
+
+// expiring makes an expiry whose deadline passes at the test's cleanup at
+// the latest, before the turns' workers are joined: a worker that waits
+// under it ends.
+func expiring(t *testing.T) *expiry {
+	t.Helper()
+	e := &expiry{passed: make(chan struct{})}
+	t.Cleanup(e.pass)
+	return e
+}
+
+// pass lets the deadline pass, once.
+func (e *expiry) pass() { e.once.Do(func() { close(e.passed) }) }
 
 func (e *expiry) Done() <-chan struct{} { return e.passed }
 
@@ -636,22 +665,32 @@ func TestACheckoutReleaseStopsWaitingForTheLockFileAtTheCleanupDeadline(t *testi
 	// The second process's checkout is real: its release has a worktree to
 	// remove.
 	two.Git = nil
-	deadline := &expiry{passed: make(chan struct{})}
+	deadline := expiring(t)
 	workspaces := NewWorkspaces(two.Worktrees)
 	workspaces.Cleanup = func(ctx context.Context) (context.Context, context.CancelFunc) {
 		deadline.Context = ctx
 		return deadline, func() {}
 	}
-	_, release, err := workspaces.Checkout(context.Background(), repo, "main")
+	dir, release, err := workspaces.Checkout(context.Background(), repo, "main")
 	if err != nil {
 		t.Fatal(err)
 	}
+	// However the test ends, the deadline passes and the holders end
+	// first, and the checkout is then discarded under a fresh cleanup
+	// context, not the one that passed.
+	t.Cleanup(func() {
+		deadline.pass()
+		l.end(t)
+		if err := NewWorkspaces(two.Worktrees).Discard(context.Background(), repo, dir); err != nil {
+			t.Errorf("discarding the checkout: %v", err)
+		}
+	})
 
 	held := l.command(context.Background(), one, repo)
 	receive(t, l.entered, "the held command entering git")
 	released := l.start(context.Background(), func(context.Context) error { return release() })
 	receive(t, two.waits, "the release waiting for the lock file")
-	close(deadline.passed)
+	deadline.pass()
 	if err := receive(t, released, "the release ending at its deadline"); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("a release whose cleanup deadline passed while it waited: %v", err)
 	}
@@ -667,5 +706,54 @@ func TestACheckoutReleaseStopsWaitingForTheLockFileAtTheCleanupDeadline(t *testi
 	l.free()
 	if err := receive(t, held, "the held command ending"); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestDiscardStopsWaitingForTheLockFileAtTheCleanupDeadline(t *testing.T) {
+	repo := emptyRepository(t)
+	l := newTurns(t)
+	one, two := l.coordinator("one"), l.coordinator("two")
+	deadline := expiring(t)
+	workspaces := NewWorkspaces(two.Worktrees)
+	workspaces.Cleanup = func(ctx context.Context) (context.Context, context.CancelFunc) {
+		deadline.Context = ctx
+		return deadline, func() {}
+	}
+	dir := workspaces.Place(fmt.Sprintf("serial-%d-%d", os.Getpid(), places.Add(1)))
+
+	held := l.command(context.Background(), one, repo)
+	receive(t, l.entered, "the held command entering git")
+	// Unbounded but for the cleanup deadline Discard sets itself.
+	discarded := l.start(context.Background(), func(context.Context) error {
+		return workspaces.Discard(context.Background(), repo, dir)
+	})
+	receive(t, two.waits, "the discard waiting for the lock file")
+	select {
+	case err := <-discarded:
+		t.Fatalf("the discard ended before its deadline: %v", err)
+	default:
+	}
+	deadline.pass()
+	if err := receive(t, discarded, "the discard ending at its deadline"); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("a discard whose cleanup deadline passed while it waited: %v", err)
+	}
+	if got, want := l.entries(), []string{"one in"}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("commands ran as %v, not %v", got, want)
+	}
+
+	l.free()
+	if err := receive(t, held, "the held command ending"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestTheDefaultCleanupContextHasADeadlineOfOneMinute(t *testing.T) {
+	before := time.Now()
+	ctx, cancel := Workspaces{}.cleanup(context.Background())
+	defer cancel()
+	after := time.Now()
+	deadline, ok := ctx.Deadline()
+	if !ok || deadline.Before(before.Add(time.Minute)) || deadline.After(after.Add(time.Minute)) {
+		t.Fatalf("deadline %v (set %v), want one minute from between %v and %v", deadline, ok, before, after)
 	}
 }
