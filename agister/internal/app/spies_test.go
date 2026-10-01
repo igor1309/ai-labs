@@ -184,6 +184,7 @@ type workspacesSpy struct {
 	dir         string
 	checkouts   [][2]string
 	released    int
+	releaseErr  error       // what each release returns
 	discarded   [][2]string // repository, dir
 	discardErr  error
 	discardHook func(ctx context.Context, dir string) error // runs first; a non-nil result is returned
@@ -211,7 +212,7 @@ func (s *workspacesSpy) Checkout(_ context.Context, repository, revision string)
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.released++
-		return nil
+		return s.releaseErr
 	}, nil
 }
 

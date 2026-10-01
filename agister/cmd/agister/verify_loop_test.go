@@ -173,7 +173,7 @@ func newLoop(t *testing.T, settings verifySettings, steps ...step) *loopHarness 
 // newLoopWith is newLoop with the seams given.
 func newLoopWith(t *testing.T, with seams, settings verifySettings, steps ...step) *loopHarness {
 	t.Helper()
-	workspaces := git.NewWorkspaces(git.NewWorktrees())
+	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
 	if with.changes == nil {
 		with.changes = workspaces
 	}
@@ -493,7 +493,7 @@ func TestVerifyCallTimeoutBoundsTheLoop(t *testing.T) {
 	// only once the copy is made, so the real time Git takes decides
 	// nothing.
 	clock := &manualClock{now: time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)}
-	copies := slowCopies{Workspaces: git.NewWorkspaces(git.NewWorktrees()), after: func() { clock.advance(59 * time.Second) }}
+	copies := slowCopies{Workspaces: git.NewWorkspaces(git.NewWorktrees(t.TempDir())), after: func() { clock.advance(59 * time.Second) }}
 	h := newLoopWith(t, seams{clock: clock, copies: copies}, verifySettings{command: blocks, timeout: "20s"}, state("one"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Interrupted, domain.ClassTimeout, "the call's timeout passed during attempt 1's run")

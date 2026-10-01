@@ -80,7 +80,8 @@ func (s Store) Create(_ context.Context, record run.Record) (app.RunHandle, erro
 }
 
 // Abandoned lists the unfinished runs nobody owns that recorded effects,
-// and the finished runs whose record still names a clean copy.
+// and the finished runs whose record still names a clean copy or an
+// unreleased checkout.
 func (s Store) Abandoned(ctx context.Context) ([]run.Record, error) {
 	records, err := s.List(ctx)
 	if err != nil {
@@ -92,7 +93,7 @@ func (s Store) Abandoned(ctx context.Context) ([]run.Record, error) {
 			continue
 		}
 		if record.FinishedAt != nil {
-			if record.Effects.Copy != nil {
+			if reapable(record.Effects) {
 				abandoned = append(abandoned, record)
 			}
 			continue
@@ -129,8 +130,8 @@ func (s Store) LiveCheckouts(ctx context.Context) ([]string, error) {
 }
 
 // Adopt takes the owner lock of an unfinished run, or of a finished one
-// whose record still names a clean copy, so exactly one process ends what
-// its dead owner left.
+// whose record still names a clean copy or an unreleased checkout, so
+// exactly one process ends what its dead owner left.
 func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record, error) {
 	var record run.Record
 	if err := checkID(id); err != nil {
@@ -149,7 +150,7 @@ func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record
 	}
 	// Read under the lock: the owner may have finished before it was released.
 	record, _, err = s.Get(ctx, id)
-	if err == nil && record.FinishedAt != nil && (record.Effects == nil || record.Effects.Copy == nil) {
+	if err == nil && record.FinishedAt != nil && !reapable(record.Effects) {
 		err = fmt.Errorf("run %s is finished", id)
 	}
 	if err != nil {
@@ -161,6 +162,13 @@ func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record
 		seq = events[len(events)-1].Seq
 	}
 	return &handle{dir: s.runDir(id), lock: lock, seq: seq}, record, nil
+}
+
+// reapable says a finished run's effects leave something to remove: a
+// clean copy or an unreleased checkout. Its Checkout alone does not, as
+// every finished record before Unreleased keeps it.
+func reapable(effects *run.Effects) bool {
+	return effects != nil && (effects.Copy != nil || effects.Unreleased != nil)
 }
 
 type handle struct {

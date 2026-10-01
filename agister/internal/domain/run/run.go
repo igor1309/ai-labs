@@ -245,6 +245,10 @@ type Effects struct {
 	// of the base with the attempt's changes applied, removed after the
 	// attempt; only one exists at a time.
 	Copy *Checkout `json:"copy,omitempty"`
+	// Unreleased is the call's checkout when its release failed, as at the
+	// cleanup deadline: still to be removed, by a later reap, which clears
+	// it once removed. Checkout stays on record either way.
+	Unreleased *Checkout `json:"unreleased,omitempty"`
 }
 
 // Checkout is a workspace the call created in Repository.

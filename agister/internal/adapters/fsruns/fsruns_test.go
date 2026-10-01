@@ -216,6 +216,46 @@ func TestAFinishedRunWithACleanCopyOnRecordIsAdopted(t *testing.T) {
 	}
 }
 
+// A finished run whose record names an unreleased checkout is listed and
+// adopted, so a reap removes it; one with only its Checkout on record, as
+// every finished record before Unreleased has, is not.
+func TestAFinishedRunWithAnUnreleasedCheckoutOnRecordIsAdopted(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	ctx := context.Background()
+	now := time.Now()
+	checkout := &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-1/workspace"}
+	for id, unreleased := range map[string]*run.Checkout{"unreleased": checkout, "released": nil} {
+		h, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: id, CreatedAt: now, Effects: &run.Effects{Checkout: checkout}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		record, _, _ := store.Get(ctx, id)
+		record.Effects.Unreleased = unreleased
+		record.FinishedAt = &now
+		record.Result = &run.Result{Status: run.Completed}
+		if err := h.Finish(record); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if abandoned, err := store.Abandoned(ctx); err != nil || len(abandoned) != 1 || abandoned[0].ID != "unreleased" {
+		t.Fatalf("abandoned = %+v, %v", abandoned, err)
+	}
+	if _, _, err := store.Adopt(ctx, "released"); err == nil {
+		t.Fatal("adopted a finished run with only its Checkout on record")
+	}
+	adopted, record, err := store.Adopt(ctx, "unreleased")
+	if err != nil || record.FinishedAt == nil || !reflect.DeepEqual(record.Effects.Unreleased, checkout) {
+		t.Fatalf("adopt: %+v, %v", record, err)
+	}
+	record.Effects.Unreleased = nil
+	if err := adopted.Finish(record); err != nil {
+		t.Fatal(err)
+	}
+	if abandoned, _ := store.Abandoned(ctx); len(abandoned) != 0 {
+		t.Fatalf("abandoned after the reap = %+v", abandoned)
+	}
+}
+
 func TestLiveCheckoutsAreThoseOfRunsSomeoneOwns(t *testing.T) {
 	store := Store{Dir: t.TempDir()}
 	ctx := context.Background()

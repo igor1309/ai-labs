@@ -3,6 +3,7 @@ package app_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -232,6 +233,58 @@ func TestAFinishedRunsCleanCopyIsReaped(t *testing.T) {
 	record = r.adopter.handles["done"].wait(t)
 	if record.Result.Status != run.Completed || !reflect.DeepEqual(record.Effects.Copy, finished.Effects.Copy) {
 		t.Fatalf("record: result %+v, effects %+v", record.Result, record.Effects)
+	}
+}
+
+// A call whose release fails at its cleanup deadline leaves a finished run
+// that names the checkout as unreleased (ADR-008 rule 6). A reap leaves it
+// while a running run records the directory, and once the lock is free
+// removes it and clears it, while the run keeps its end and its Checkout.
+func TestACheckoutWhoseReleaseHitTheDeadlineIsReapedLater(t *testing.T) {
+	h := newHarness()
+	h.workspaces.releaseErr = fmt.Errorf("git worktree remove: %w", context.DeadlineExceeded)
+	finished := h.call(t, contract.CallRequest{})
+	checkout := &run.Checkout{Repository: "/repo", Dir: "/work/checkout"}
+	if finished.FinishedAt == nil || finished.Effects == nil ||
+		!reflect.DeepEqual(finished.Effects.Unreleased, checkout) || !reflect.DeepEqual(finished.Effects.Checkout, checkout) {
+		t.Fatalf("finished %v, effects %+v", finished.FinishedAt, finished.Effects)
+	}
+
+	r := reaping(h, finished)
+	r.adopter.live = []string{checkout.Dir}
+	if err := r.reap(); err != nil {
+		t.Fatal(err)
+	}
+	if len(h.workspaces.discarded) != 0 {
+		t.Fatalf("discarded %v, which a running run records", h.workspaces.discarded)
+	}
+	if record := r.adopter.handles[finished.ID].wait(t); !reflect.DeepEqual(record.Effects.Unreleased, checkout) {
+		t.Fatalf("effects = %+v", record.Effects)
+	}
+
+	r = reaping(h, finished)
+	if err := r.reap(); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(h.workspaces.discarded, [][2]string{{"/repo", "/work/checkout"}}) || len(r.processes.reaped) != 0 {
+		t.Fatalf("discarded %v, processes reaped %v", h.workspaces.discarded, r.processes.reaped)
+	}
+	handle := r.adopter.handles[finished.ID]
+	if removed := handle.events[0].Data["checkout"].(map[string]any); removed["removed"] != true || removed["dir"] != checkout.Dir {
+		t.Fatalf("events = %+v", handle.events)
+	}
+	record := handle.wait(t)
+	if record.Result.Status != finished.Result.Status || !record.FinishedAt.Equal(*finished.FinishedAt) ||
+		record.Effects.Unreleased != nil || !reflect.DeepEqual(record.Effects.Checkout, checkout) {
+		t.Fatalf("record: result %+v, finished %v, effects %+v", record.Result, record.FinishedAt, record.Effects)
+	}
+}
+
+// A release that succeeds records nothing for a reap.
+func TestAReleasedCheckoutIsNotLeftForAReap(t *testing.T) {
+	h := newHarness()
+	if record := h.call(t, contract.CallRequest{}); record.Effects == nil || record.Effects.Unreleased != nil {
+		t.Fatalf("effects = %+v", record.Effects)
 	}
 }
 

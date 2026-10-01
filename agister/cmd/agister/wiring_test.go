@@ -398,30 +398,30 @@ func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
 	// Until released, every worktree command reports that it runs, and
 	// stays there under its repository's lock, or that it waits for it.
 	events, released := make(chan string, 3), make(chan struct{})
-	adapters := composition{worktrees: &git.Worktrees{
-		Git: func(ctx context.Context, dir string, args ...string) (string, error) {
-			select {
-			case <-released:
-			default:
-				events <- runs
-				<-released
-			}
-			command := exec.CommandContext(ctx, "git", args...)
-			command.Dir = dir
-			out, err := command.CombinedOutput()
-			if err != nil {
-				return "", fmt.Errorf("git %v: %s", args, out)
-			}
-			return string(out), nil
-		},
-		Waits: func() {
-			select {
-			case <-released:
-			default:
-				events <- waits
-			}
-		},
-	}}.workspaces()
+	worktrees := git.NewWorktrees(t.TempDir())
+	worktrees.Git = func(ctx context.Context, dir string, args ...string) (string, error) {
+		select {
+		case <-released:
+		default:
+			events <- runs
+			<-released
+		}
+		command := exec.CommandContext(ctx, "git", args...)
+		command.Dir = dir
+		out, err := command.CombinedOutput()
+		if err != nil {
+			return "", fmt.Errorf("git %v: %s", args, out)
+		}
+		return string(out), nil
+	}
+	worktrees.Waits = func() {
+		select {
+		case <-released:
+		default:
+			events <- waits
+		}
+	}
+	adapters := composition{worktrees: worktrees}.workspaces()
 
 	ctx := context.Background()
 	var workers sync.WaitGroup
@@ -498,5 +498,30 @@ func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
 		case <-time.After(time.Minute):
 			t.Fatalf("%s did not end", what)
 		}
+	}
+}
+
+// The process's worktree coordinator keeps its lock files under the home:
+// a checkout and its release leave one there, empty.
+func TestTheProcessWorktreeCoordinatorLocksUnderTheHome(t *testing.T) {
+	home, repo := t.TempDir(), repository(t, "x")
+	adapters := process(cli.Config{Home: home}).workspaces()
+	_, release, err := adapters.calls.Checkout(context.Background(), repo, "main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := release(); err != nil {
+		t.Fatal(err)
+	}
+	locks := filepath.Join(home, "locks", "worktrees")
+	entries, err := os.ReadDir(locks)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("lock files under %s = %v", locks, entries)
+	}
+	if info, err := entries[0].Info(); err != nil || !info.Mode().IsRegular() || info.Size() != 0 {
+		t.Fatalf("lock file %s: %v, %v", entries[0].Name(), info, err)
 	}
 }
