@@ -11,12 +11,9 @@
 The review judge rules `owner` on an item whose evidence holds but whose
 answer is a trade-off, and each such item stops the work until the owner
 answers. Many are build questions that the recorded decisions already
-answer. Observed: "may this change also change the agent instructions it
-depends on?", which [ADR-004](004-join-on-completed-nodes.md) implies.
-The judge cannot see that: it reads no decisions and has
-no tools. Verger ran the same loop with an advisor that decided build
-questions and recorded each decision, and an owner who ruled on policy
-only (LAB-12).
+answer. The judge cannot see that: it reads no decisions and has no
+tools. So a question the recorded decisions already answer still stops
+the work for the owner's input.
 
 ## Decision
 
