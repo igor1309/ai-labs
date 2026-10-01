@@ -34,8 +34,15 @@
     `agister/internal/adapters/runtime`.
   Each of the four tools read or searched the repository and the host,
   as the mapping declares; they are now verified for `0.85.` in
-  `examples/pi/runtimes/pi.yaml`. `edit`, `write` and `bash` were not
-  checked and remain unverified, so never granted.
+  `examples/pi/runtimes/pi.yaml`.
+  - Run `20261001T153224Z-96ad8f` completed ($0.0044, 20.9 s), process
+    `write_pi`, policy allowing everything, with `edit`, `write` and
+    `bash` also marked verified. `write` created a file and `edit`
+    changed one in the checkout; both are in the run's `changes.patch`.
+    `bash` ran in the checkout (`pwd`, `git status`) and wrote
+    `/tmp/agister-pi-bashcheck` outside it.
+  `edit` and `write` write the repository and `bash` reaches everything,
+  as the mapping declares; they are now verified for `0.85.` as well.
 - **Claude Code rejects draft 2020-12 schemas** passed with `--json-schema`,
   so example schemas declare no `$schema`. `agister check` still accepts
   one: on 2026-09-29 a project schema with the draft 2020-12 `$schema`
