@@ -582,6 +582,9 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	// kept fail the call.
 	var collect func() *run.Error
 	release := func() error { return nil }
+	// owned is the checkout the call made, whether or not its record took
+	// it: a failed release leaves it for a reap either way.
+	var owned *run.Checkout
 	finish := func(fault *run.Error) {
 		// Cleared first: if it panics, the recovery calls finish again.
 		if pending := collect; pending != nil {
@@ -594,9 +597,12 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 			event(run.SourceAgister, "WORKSPACE_RELEASE_FAILED", map[string]any{"error": err.Error()})
 			// The finished run names the checkout for a later reap to
 			// remove (ADR-008 rule 6).
-			if effects := record.Effects; effects != nil && effects.Checkout != nil {
-				unreleased := *effects
-				unreleased.Unreleased = effects.Checkout
+			if owned != nil {
+				var unreleased run.Effects
+				if record.Effects != nil {
+					unreleased = *record.Effects
+				}
+				unreleased.Unreleased = owned
 				record.Effects = &unreleased
 			}
 		}
@@ -711,7 +717,8 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		// a later reap removes the checkout. A checkout that cannot be
 		// recorded is one nobody could find, so it is released and the
 		// call refused.
-		record.Effects = &run.Effects{Checkout: &run.Checkout{Repository: workspace.Repository, Dir: workspace.Dir}}
+		owned = &run.Checkout{Repository: workspace.Repository, Dir: workspace.Dir}
+		record.Effects = &run.Effects{Checkout: owned}
 		if err := handle.Update(record); err != nil {
 			record.Effects = nil
 			fail(fmt.Errorf("recording the checkout failed: %w", err))

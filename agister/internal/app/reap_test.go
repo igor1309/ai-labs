@@ -90,6 +90,26 @@ func TestCheckoutThatCannotBeRecordedIsReleasedAndTheCallRefused(t *testing.T) {
 	}
 }
 
+// A checkout that could not be recorded and then could not be released is
+// still left for a reap: the finished record names it as unreleased.
+func TestACheckoutThatCannotBeRecordedNorReleasedIsLeftForAReap(t *testing.T) {
+	h := newHarness()
+	h.recorder.updateErr = func(record run.Record) error {
+		if record.Effects != nil && record.Effects.Checkout != nil {
+			return errors.New("disk full")
+		}
+		return nil
+	}
+	h.workspaces.releaseErr = context.DeadlineExceeded
+	record := h.call(t, contract.CallRequest{})
+	if h.workspaces.releases() != 1 || record.FinishedAt == nil || class(record) != run.ClassInternal {
+		t.Fatalf("releases = %d, finished %v, result %+v", h.workspaces.releases(), record.FinishedAt, record.Result)
+	}
+	if checkout := (&run.Checkout{Repository: "/repo", Dir: "/work/checkout"}); record.Effects == nil || !reflect.DeepEqual(record.Effects.Unreleased, checkout) {
+		t.Fatalf("effects = %+v", record.Effects)
+	}
+}
+
 // A process that cannot be recorded is reported to the runtime, which ends
 // it; the run does not claim it.
 func TestProcessThatCannotBeRecordedIsReportedToTheRuntime(t *testing.T) {

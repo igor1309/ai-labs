@@ -399,7 +399,7 @@ func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
 	// stays there under its repository's lock, or that it waits for it.
 	events, released := make(chan string, 3), make(chan struct{})
 	worktrees := git.NewWorktrees(t.TempDir())
-	worktrees.Git = func(ctx context.Context, dir string, args ...string) (string, error) {
+	worktrees.Git = func(ctx context.Context, dir string, lock *os.File, args ...string) (string, error) {
 		select {
 		case <-released:
 		default:
@@ -407,7 +407,7 @@ func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
 			<-released
 		}
 		command := exec.CommandContext(ctx, "git", args...)
-		command.Dir = dir
+		command.Dir, command.ExtraFiles = dir, []*os.File{lock}
 		out, err := command.CombinedOutput()
 		if err != nil {
 			return "", fmt.Errorf("git %v: %s", args, out)

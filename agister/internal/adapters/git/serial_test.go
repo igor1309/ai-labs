@@ -1,9 +1,12 @@
 package git
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -98,14 +101,14 @@ func gated(t *testing.T, held string) *gate {
 	g := &gate{held: held, events: make(chan event, 16), proceed: make(chan struct{}), open: make(chan struct{})}
 	g.workspaces = NewWorkspaces(&Worktrees{
 		locks: t.TempDir(),
-		Git: func(ctx context.Context, dir string, args ...string) (string, error) {
+		Git: func(ctx context.Context, dir string, lock *os.File, args ...string) (string, error) {
 			if g.report(event{dir: dir}) && (g.held == "" || dir == g.held) {
 				select {
 				case <-g.proceed:
 				case <-g.open:
 				}
 			}
-			return run(ctx, dir, args...)
+			return runHolding(ctx, dir, lock, args...)
 		},
 		Waits: func() { g.report(event{waited: true}) },
 	})
@@ -481,7 +484,7 @@ type coordinator struct {
 
 func (l *turns) coordinator(name string) *coordinator {
 	c := &coordinator{Worktrees: NewWorktrees(l.locks), waits: make(chan struct{}, 4)}
-	c.Git = func(ctx context.Context, dir string, args ...string) (string, error) {
+	c.Git = func(ctx context.Context, dir string, lock *os.File, args ...string) (string, error) {
 		l.add(name + " in")
 		select {
 		case l.entered <- name:
@@ -755,5 +758,129 @@ func TestTheDefaultCleanupContextHasADeadlineOfOneMinute(t *testing.T) {
 	deadline, ok := ctx.Deadline()
 	if !ok || deadline.Before(before.Add(time.Minute)) || deadline.After(after.Add(time.Minute)) {
 		t.Fatalf("deadline %v (set %v), want one minute from between %v and %v", deadline, ok, before, after)
+	}
+}
+
+// The environment of a test binary re-executed as one of
+// TestAKilledHoldersLockLastsAsLongAsItsGitChild's processes: its role,
+// and the holder's lock directory and repository.
+const (
+	helperRole  = "AGISTER_GIT_HELPER_ROLE"
+	helperLocks = "AGISTER_GIT_HELPER_LOCKS"
+	helperRepo  = "AGISTER_GIT_HELPER_REPO"
+)
+
+// helper is the test binary re-executed in role.
+func helper(role string, env ...string) *exec.Cmd {
+	command := exec.Command(os.Args[0], "-test.run=^TestHelperProcess$")
+	command.Env = append(append(os.Environ(), helperRole+"="+role), env...)
+	return command
+}
+
+// TestHelperProcess is no test but a process of another: in a re-executed
+// test binary, the holder of a repository's lock or its held git child.
+func TestHelperProcess(t *testing.T) {
+	switch os.Getenv(helperRole) {
+	case "holder":
+		holdTheLock()
+	case "child":
+		// The lock is fd 3; fd 4 reads until the test closes its other end.
+		io.Copy(io.Discard, os.NewFile(4, "signal"))
+	default:
+		return
+	}
+	os.Exit(0)
+}
+
+// holdTheLock takes the repository's lock and runs its worktree command as
+// a child, which gets the lock and the test's signal (fd 3 here): once
+// the child runs, it says so on stdout, and waits for it.
+func holdTheLock() {
+	worktrees := NewWorktrees(os.Getenv(helperLocks))
+	worktrees.Git = func(ctx context.Context, dir string, lock *os.File, args ...string) (string, error) {
+		child := helper("child")
+		child.ExtraFiles = []*os.File{lock, os.NewFile(3, "signal")}
+		if err := child.Start(); err != nil {
+			return "", err
+		}
+		fmt.Println("held")
+		return "", child.Wait()
+	}
+	_, err := worktrees.worktree(context.Background(), os.Getenv(helperRepo), "list")
+	fmt.Fprintln(os.Stderr, "the holder's command ended:", err)
+	os.Exit(1)
+}
+
+// A process killed while its git command runs leaves the lock to git: a
+// command of another process waits for it until git exits.
+func TestAKilledHoldersLockLastsAsLongAsItsGitChild(t *testing.T) {
+	repo, locks := emptyRepository(t), t.TempDir()
+	// The child ends when the test closes signal: the pipe's write end is
+	// the test's alone.
+	read, signal, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { signal.Close() })
+	holder := helper("holder", helperLocks+"="+locks, helperRepo+"="+repo)
+	holder.ExtraFiles = []*os.File{read}
+	stdout, err := holder.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stderr bytes.Buffer
+	holder.Stderr = &stderr
+	if err := holder.Start(); err != nil {
+		t.Fatal(err)
+	}
+	read.Close()
+	var killed sync.Once
+	kill := func() {
+		killed.Do(func() {
+			holder.Process.Kill()
+			holder.Wait()
+		})
+	}
+	t.Cleanup(kill)
+
+	said := make(chan string, 1)
+	go func() {
+		line, _ := bufio.NewReader(stdout).ReadString('\n')
+		said <- line
+	}()
+	if line := receive(t, said, "the holder's child starting"); line != "held\n" {
+		kill()
+		t.Fatalf("the holder said %q: %s", line, stderr.String())
+	}
+	kill()
+
+	second := NewWorktrees(locks)
+	waited, entered := make(chan struct{}), make(chan struct{}, 1)
+	second.Waits = func() { close(waited) }
+	second.Pause = func(context.Context) { runtime.Gosched() }
+	second.Git = func(ctx context.Context, dir string, lock *os.File, args ...string) (string, error) {
+		entered <- struct{}{}
+		return "", nil
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		_, err := second.worktree(ctx, repo, "list")
+		done <- err
+	}()
+	select {
+	case <-waited:
+	case <-entered:
+		t.Fatal("another process got the lock while the killed holder's git child ran")
+	case err := <-done:
+		t.Fatalf("another process's command ended while the child ran: %v", err)
+	case <-time.After(hangGuard):
+		t.Fatal("another process's command did not wait")
+	}
+	signal.Close()
+	receive(t, entered, "another process's command getting the lock once the child exited")
+	if err := receive(t, done, "another process's command ending"); err != nil {
+		t.Fatal(err)
 	}
 }

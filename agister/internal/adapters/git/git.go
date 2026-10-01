@@ -28,8 +28,21 @@ func run(ctx context.Context, dir string, args ...string) (string, error) {
 
 // runWith runs git with extra environment and stdin.
 func runWith(ctx context.Context, dir string, env []string, stdin []byte, args ...string) (string, error) {
+	return runFiles(ctx, dir, env, stdin, nil, args...)
+}
+
+// runHolding runs git holding lock, a locked lock file: git shares its
+// descriptor, so the lock lasts until both this process and git have
+// exited.
+func runHolding(ctx context.Context, dir string, lock *os.File, args ...string) (string, error) {
+	return runFiles(ctx, dir, nil, nil, []*os.File{lock}, args...)
+}
+
+// runFiles runs git with extra environment, stdin and open files.
+func runFiles(ctx context.Context, dir string, env []string, stdin []byte, files []*os.File, args ...string) (string, error) {
 	command := exec.CommandContext(ctx, "git", args...)
 	command.Dir = dir
+	command.ExtraFiles = files
 	if env != nil {
 		command.Env = append(os.Environ(), env...)
 	}
@@ -63,11 +76,15 @@ func commit(ctx context.Context, dir, revision string) (string, error) {
 // gives it to every Workspaces value it makes. Other processes are held
 // back too, through a lock file per repository in Agister's own state
 // directory, named by a digest of the same key: empty, it holds no state.
-// Nothing is written to the repository for it.
+// git shares the locked descriptor, so a process killed while git runs
+// leaves the lock held until git exits. Nothing is written to the
+// repository for it.
 type Worktrees struct {
 	// Git, when set, runs the worktree command in place of git, under the
-	// repository's locks: tests hold a command there.
-	Git func(ctx context.Context, dir string, args ...string) (string, error)
+	// repository's locks: tests hold a command there. lock is the locked
+	// lock file: a command started with it (exec.Cmd.ExtraFiles) keeps the
+	// lock while it runs, should this process be killed first.
+	Git func(ctx context.Context, dir string, lock *os.File, args ...string) (string, error)
 	// Waits, when set, is told that a command found a lock held, before it
 	// waits: once per command, whichever lock it is.
 	Waits func()
@@ -134,23 +151,26 @@ func (s *Worktrees) worktree(ctx context.Context, repository string, args ...str
 		}
 	}
 	defer func() { <-lock }()
-	unlock, err := s.lockFile(ctx, common, waits)
+	file, err := s.lockFile(ctx, common, waits)
 	if err != nil {
 		return false, err
 	}
-	defer unlock()
+	// Closing the descriptor drops this process's hold; the file stays.
+	defer file.Close()
 	git := s.Git
 	if git == nil {
-		git = run
+		git = runHolding
 	}
-	_, err = git(ctx, repository, append([]string{"worktree"}, args...)...)
+	_, err = git(ctx, repository, file, append([]string{"worktree"}, args...)...)
 	return true, err
 }
 
 // lockFile takes the exclusive lock on the lock file of the repository
 // whose git common directory is common, trying again after each pause
-// while another process holds it and ctx lasts, and returns its release.
-func (s *Worktrees) lockFile(ctx context.Context, common string, waits func()) (func(), error) {
+// while another process holds it and ctx lasts, and returns the file
+// locked. The lock is the open file's: it lasts until every descriptor of
+// it, this process's and any a child shares, is closed.
+func (s *Worktrees) lockFile(ctx context.Context, common string, waits func()) (*os.File, error) {
 	if err := os.MkdirAll(s.locks, 0o700); err != nil {
 		return nil, err
 	}
@@ -188,8 +208,7 @@ func (s *Worktrees) lockFile(ctx context.Context, common string, waits func()) (
 			return nil, ctx.Err()
 		}
 	}
-	// Closing the descriptor drops the lock; the file stays.
-	return func() { file.Close() }, nil
+	return file, nil
 }
 
 func (s *Worktrees) lock(common string) chan struct{} {
