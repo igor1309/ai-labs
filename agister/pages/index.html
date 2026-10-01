@@ -383,10 +383,13 @@
   function agentLine(name, ix) {
     const a = ix.agent.get(name);
     if (!a) return missing('agent', name);
-    const parts = [a.model, a.effort && `${a.effort} effort`, SESSION[a.session] ?? a.session].filter(Boolean);
-    return el('div', {}, text(name, 'name'), ' — ',
-      a.runtimeOutside ? missing('runtime', a.runtime) : text(a.runtime ?? 'no runtime'),
-      parts.length ? `, ${parts.join(', ')}` : '');
+    const parts = [a.model, a.effort && `${a.effort} effort`].filter(Boolean);
+    const session = SESSION[a.session] ?? a.session;
+    return el('div', {},
+      el('div', {}, text(name, 'name'), ' — ',
+        a.runtimeOutside ? missing('runtime', a.runtime) : text(a.runtime ?? 'no runtime'),
+        parts.length ? `, ${parts.join(', ')}` : ''),
+      session ? el('div', { className: 'sub' }, session) : null);
   }
 
   // "read-only workspace, 20m, $2 cap"
