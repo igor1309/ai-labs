@@ -79,7 +79,8 @@ func TestExamplePiSettingsPassCheck(t *testing.T) {
 func TestExamplePiCallWithoutASkillToolIsRefused(t *testing.T) {
 	home, repo := examplePiSettings(t)
 	const reason = "runtime pi needs read or bash to use the repository's skills (ADR-006), and the plan grants no such tool: " +
-		"read needs host.read, which the plan withholds; bash is not verified for version 0.85.1"
+		"read needs host.read, which the plan withholds; bash needs host.read, which the plan withholds, " +
+		"and repository.write, repository.history.write, network, host.write, which the effective permissions do not allow"
 	r := agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?")
 	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, reason) {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
@@ -202,9 +203,9 @@ func TestPiInstallsNoPackageTheProjectLists(t *testing.T) {
 	}
 }
 
-// Even when every grant is allowed, unverified write tools and bash cannot
-// satisfy a required permission. The bad settings live only in a temp home.
-func TestExamplePiSettingsRefuseUnverifiedTools(t *testing.T) {
+// edit, write and bash are verified for 0.85: when every grant is allowed,
+// they satisfy a required permission. The settings live only in a temp home.
+func TestExamplePiSettingsGrantTheVerifiedWriteToolsAndBash(t *testing.T) {
 	for _, permission := range []string{"repository.write", "process.execute"} {
 		t.Run(permission, func(t *testing.T) {
 			home, repo := examplePiSettings(t)
@@ -220,9 +221,7 @@ timeout: 10m
 			process := filepath.Join(home, "processes", "ask_pi.yaml")
 			write(t, process, strings.Replace(read(t, process), "process-policy:read-only", "process-policy:pi-all", 1)+"\ntools: {require: ["+permission+"]}\n")
 			r := agister(t, home, repo, "check")
-			if r.code != cli.ExitUsage ||
-				!strings.Contains(r.stderr, "required permissions would be withheld: "+permission) ||
-				!strings.Contains(r.stderr, "not verified for version 0.85: edit, write, bash") {
+			if r.code != 0 || !strings.HasPrefix(r.stdout, "settings OK:") {
 				t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 			}
 		})

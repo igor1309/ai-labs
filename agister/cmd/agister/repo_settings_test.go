@@ -59,6 +59,8 @@ var staleLimits = func() map[string]domain.StaleLimits {
 	return map[string]domain.StaleLimits{
 		"implement":                 implement,
 		"implement_codex":           implement,
+		"implement_pi":              implement,
+		"implement_pi_glm":          implement,
 		"adr_review_codex":          review,
 		"adversarial_review_codex":  review,
 		"advisor":                   review,
@@ -259,11 +261,12 @@ func onFakeRuntimes(t *testing.T) (root, repo, home string) {
 		t.Fatal(err)
 	}
 
-	// The fakes answer as claude and codex, first on PATH, each with an
+	// The fakes answer as claude, codex and pi, first on PATH, each with an
 	// output from the schema it is given, and report their default versions,
-	// which the mappings verify (claude-code 2.1.283, codex 0.158.0).
+	// which the mappings verify (claude-code 2.1.283, codex 0.158.0, pi
+	// 0.85.1). No real runtime ever runs.
 	bin := t.TempDir()
-	for name, fake := range map[string]string{"claude": "fakeclaude", "codex": "fakecodex"} {
+	for name, fake := range map[string]string{"claude": "fakeclaude", "codex": "fakecodex", "pi": "fakepi"} {
 		if err := os.Symlink(runtimetest.Binary(t, fake), filepath.Join(bin, name)); err != nil {
 			t.Fatal(err)
 		}

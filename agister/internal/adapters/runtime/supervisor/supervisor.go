@@ -28,9 +28,12 @@ const (
 )
 
 type Spec struct {
-	Command   string
-	Args      []string
-	Dir       string
+	Command string
+	Args    []string
+	Dir     string
+	// Env is added to the environment the process inherits, as "KEY=value";
+	// an entry replaces an inherited variable of the same name.
+	Env       []string
 	Stdin     string
 	Timeout   time.Duration
 	KillGrace time.Duration
@@ -84,6 +87,9 @@ func Run(ctx context.Context, spec Spec, events Sink, onLine func(string)) Evide
 	defer stdout.Close()
 	command := exec.Command(spec.Command, spec.Args...)
 	command.Dir = spec.Dir
+	if len(spec.Env) > 0 {
+		command.Env = append(command.Environ(), spec.Env...)
+	}
 	command.Stdin = strings.NewReader(spec.Stdin)
 	command.Stdout = stdoutWriter
 	stderr := &tail{limit: stderrTailBytes}

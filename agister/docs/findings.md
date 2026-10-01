@@ -43,6 +43,42 @@
     `/tmp/agister-pi-bashcheck` outside it.
   `edit` and `write` write the repository and `bash` reaches everything,
   as the mapping declares; they are now verified for `0.85.` as well.
+- **OpenCode 1.18.33, checked without a model provider** (2026-10-01,
+  LAB-45; a scratch repository, `opencode debug` and `opencode run` with a
+  model that does not exist). What contract `opencode/1` rests on:
+  - `opencode debug agent <name>` with the agent given inline
+    (`OPENCODE_CONFIG_CONTENT`) lists the built-in tools: `bash`, `read`,
+    `glob`, `grep`, `edit`, `write`, `task`, `webfetch`, `todowrite`,
+    `websearch`, `skill`, `question` (and `invalid`). There is no `list`
+    tool. An agent's permission `{"*": "deny", "read": "allow"}` leaves
+    only `read` enabled. `write` is no permission: `"write": "allow"`
+    enables nothing, and `"edit": "allow"` enables both `edit` and `write`
+    (the docs add `apply_patch`).
+  - Permission rules keep the order of the config's keys and the last
+    matching rule decides: `{"read": "allow", "*": "deny"}` denies `read`.
+    The `tools` option becomes permission keys placed before the
+    permission's own: with `"tools": {"write": false}`,
+    `{"*": "deny", "edit": "allow"}` enabled nothing.
+  - Global rules (the config's `permission`, `OPENCODE_PERMISSION`) come
+    before the agent's, so they do not widen an agent that denies `*`. An
+    agent of the same name in the checkout's `opencode.json` does: its
+    `"bash": "allow"` was merged after the inline agent's `"*": "deny"` and
+    enabled `bash`. So the generated agent's name is random per call.
+  - An agent that is not found is replaced: `agent "x" not found. Falling
+    back to default agent`, and the run goes on as the default agent.
+  - `opencode debug skill` lists a checkout's `.agents/skills`,
+    `.claude/skills` and `.opencode/skills` beside the user's own.
+  - `run` reads stdin as the message (`You must provide a message or a
+    command` without one and without an argument), and appends it to a
+    message argument, which it quotes when it holds a space.
+  - `run -s <id>` reported the same `sessionID`, from the session's
+    directory and from another one; an unknown ID gave `Session not found`
+    and exit 1. An unknown model gave an `error` event and exit 1.
+  Not checked, as no model ran: that a denied tool is refused in a turn,
+  that `external_directory` confines the file tools, what a session
+  resumed elsewhere works on, and whether `tool_use` is written only for
+  a call that has ended. No tool of `examples/opencode/runtimes/opencode.yaml`
+  is verified.
 - **MiniMax M3 on Pi did not finish LAB-45 in two 45-minute runs.**
   Process `implement_pi`, agent `pi-implementer-m3` (Pi 0.85.1, model
   `opencode-go/minimax-m3`, effort `high`), brief

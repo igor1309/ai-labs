@@ -25,6 +25,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/claudecode"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/opencode"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/pi"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/schema"
@@ -146,6 +147,10 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		},
 		// Pi's sessions are kept under the home, where a continuation
 		// finds them, not in ~/.pi.
+		// OpenCode keeps its sessions in its own store.
+		"opencode": func(command string) app.TurnRunner {
+			return logging.Runner{Inner: opencode.New(command), Adapter: "opencode", Log: log}
+		},
 		"pi": func(command string) app.TurnRunner {
 			return logging.Runner{Inner: pi.New(command, filepath.Join(config.Home, "pi", "sessions")), Adapter: "pi", Log: log}
 		},
