@@ -17,11 +17,17 @@ home`.
   - for a process, its agent (runtime, model, effort, session), its policy
     (workspace, timeout, cost cap, what it allows and denies) and its output
     schema and verify attempts;
-  - for a workflow, the steps run at once and the one run after them, each
-    with its agent and policy in one line. Steps are not repeated under
+  - for a workflow, its calls in one line (`4 × gpt-6.1-sol at once, then
+    opus`), then the steps: the ones run at once (`First` when there is
+    one) and the one run after them. Each step shows its name, what it
+    does, its agent and its policy. Steps are not repeated under
     Processes; they still run alone.
 - **Building blocks**, as tables: agents, policies, runtimes and the service
   limits, each with what it means.
+
+A workspace that can be written shows in amber; read-only is not marked. On
+a narrow screen the cards go to one column and each table row becomes label
+and value lines.
 
 A name the settings do not define shows in red as missing: Agister refuses
 such a call. A file that does not parse shows its error. ↻ reads the
