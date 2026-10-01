@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agister</title>
+<style>
+  :root {
+    --bg:#14161a; --card:#1c1f26; --line:#2b2f38; --fg:#e6e8ec;
+    --fg2:#bec0c4; --fg3:#999ca1; --dim:#9aa1ad; --low:#3fb950;
+    --mid:#d29922; --high:#f85149; --accent:#58a6ff; --active:#00e5ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  button:disabled { cursor: default; color: var(--fg3); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 20px; border-bottom: 1px solid var(--line);
+  }
+  h1 { margin: 0; font-size: 16px; font-weight: 600; }
+  main { padding: 20px; max-width: 960px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .badge {
+    display: inline-block; font-size: 10px; line-height: 1; text-transform: uppercase;
+    letter-spacing: .04em; padding: 3px 6px; border-radius: 4px; background: #2b2f38; color: var(--active);
+  }
+  button.badge:hover { color: var(--fg); }
+  .dim { color: var(--dim); }
+  .error { color: var(--high); }
+
+  .picker { position: relative; }
+  #picker-button {
+    display: flex; align-items: center; gap: 8px; max-width: 420px;
+    padding: 5px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card);
+  }
+  #picker-button:hover { border-color: var(--dim); }
+  #picker-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .menu {
+    position: absolute; right: 0; top: calc(100% + 6px); z-index: 10; width: 320px;
+    padding: 6px 0;
+  }
+  .menu h2 { margin: 4px 14px 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--fg3); }
+  .menu ul { list-style: none; margin: 0; padding: 0; }
+  .menu li { display: flex; align-items: center; }
+  .menu .item { flex: 1; min-width: 0; text-align: left; padding: 6px 14px; display: flex; justify-content: space-between; gap: 8px; }
+  .menu .item:hover:not(:disabled), .menu .remove:hover { background: var(--line); }
+  .menu .item .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .menu .item .when { color: var(--fg3); font-size: 12px; white-space: nowrap; }
+  .menu .remove { padding: 6px 12px; color: var(--fg3); }
+  .menu .remove:hover { color: var(--high); }
+  .menu .empty, .menu .note, .menu .status { margin: 4px 14px; font-size: 12px; }
+  .menu .note { color: var(--fg3); }
+  .menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; }
+
+  .crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 10px; }
+  .crumbs button { color: var(--accent); }
+  .crumbs button:hover { text-decoration: underline; }
+  .crumbs .sep { color: var(--fg3); }
+  .crumbs .here { color: var(--fg); }
+  #listing { list-style: none; margin: 0; padding: 0; }
+  #listing li { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-top: 1px solid var(--line); }
+  #listing li:first-child { border-top: 0; }
+  #listing .folder { color: var(--fg); text-align: left; }
+  #listing .folder:hover { color: var(--accent); }
+  #listing .file { color: var(--fg3); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Agister</h1>
+  <div id="picker" class="picker">
+    <button id="picker-button" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="picker-menu">
+      <span id="picker-badge" class="badge" hidden>agister</span>
+      <span id="picker-label" class="mono">~</span>
+    </button>
+    <div id="picker-menu" class="menu card" hidden>
+      <h2>Recent repos</h2>
+      <ul id="recent-list"></ul>
+      <p id="recent-empty" class="empty dim" hidden>No recent repos.</p>
+      <p id="picker-status" class="status error" role="status" hidden></p>
+      <hr>
+      <ul><li><button id="open-folder" class="item" type="button">Open folder…</button></li></ul>
+      <p id="no-fsa" class="note" hidden>Folder access needs Chrome or Edge.</p>
+    </div>
+  </div>
+</header>
+<main>
+  <section class="card">
+    <nav id="crumbs" class="crumbs mono" aria-label="Location"></nav>
+    <p id="browse-status" class="error" role="status" hidden></p>
+    <p id="browse-empty" class="dim">Choose a folder with the picker at the top right.</p>
+    <ul id="listing"></ul>
+  </section>
+</main>
+<script src="repos.js"></script>
+<script type="module">
+  const R = globalThis.AgisterRepos;
+  const supported = typeof window.showDirectoryPicker === 'function';
+
+  // root: the chosen folder; stack: the folders entered below it;
+  // repo: the current Agister repo ({ id, name }), or null.
+  const state = { root: null, stack: [], repo: null };
+  let renderToken = 0;
+
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, props = {}, ...children) => {
+    const node = Object.assign(document.createElement(tag), props);
+    node.append(...children);
+    return node;
+  };
+
+  // --- IndexedDB: the directory handles, keyed by repo id ---
+
+  let dbPromise = null;
+  function db() {
+    dbPromise ??= new Promise((resolve, reject) => {
+      const req = indexedDB.open('agister-pages', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('repos');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return dbPromise;
+  }
+  async function store(mode, work) {
+    const conn = await db();
+    return new Promise((resolve, reject) => {
+      const tx = conn.transaction('repos', mode);
+      const req = work(tx.objectStore('repos'));
+      tx.oncomplete = () => resolve(req.result);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  }
+  const getRecord = (id) => store('readonly', (s) => s.get(id));
+  const allRecords = () => store('readonly', (s) => s.getAll());
+  const putRecord = (record) => store('readwrite', (s) => s.put(record, record.id));
+  const deleteRecord = (id) => store('readwrite', (s) => s.delete(id));
+
+  // --- messages ---
+
+  function say(id, text) {
+    const node = $(id);
+    node.textContent = text || '';
+    node.hidden = !text;
+  }
+
+  // --- picker ---
+
+  function setMenu(open) {
+    $('picker-menu').hidden = !open;
+    $('picker-button').setAttribute('aria-expanded', String(open));
+    if (open) renderRecent();
+    else say('picker-status', '');
+  }
+
+  function when(ms) {
+    const d = new Date(ms);
+    return d.toDateString() === new Date().toDateString()
+      ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
+
+  function renderRecent() {
+    const list = R.readRecent(localStorage);
+    $('recent-list').replaceChildren(...list.map((entry) => {
+      const open = el('button', { type: 'button', className: 'item', title: entry.name },
+        el('span', { className: 'name mono', textContent: entry.name }),
+        el('span', { className: 'when', textContent: when(entry.lastOpened) }));
+      open.addEventListener('click', () => openRecent(entry));
+      const remove = el('button', { type: 'button', className: 'remove', textContent: '×' });
+      remove.setAttribute('aria-label', `Remove ${entry.name}`);
+      remove.addEventListener('click', () => removeRecent(entry));
+      return el('li', {}, open, remove);
+    }));
+    $('recent-empty').hidden = list.length > 0;
+  }
+
+  function renderLabel() {
+    const names = state.root ? [state.root.name, ...state.stack.map((f) => f.name)] : [];
+    $('picker-label').textContent = names.length ? names.join('/') : '~';
+    $('picker-button').title = state.repo ? `Repo: ${state.repo.name}` : '';
+    $('picker-badge').hidden = !state.repo;
+  }
+
+  // Records handle as a recent repo, reusing the id of the same folder.
+  async function remember(handle) {
+    const id = (await R.findKnownId(await allRecords(), handle)) ?? R.makeRepoId(handle.name);
+    await putRecord({ id, name: handle.name, handle });
+    const { dropped } = R.rememberRepo(localStorage, { id, name: handle.name, lastOpened: Date.now() });
+    await Promise.all(dropped.map((e) => deleteRecord(e.id)));
+    state.repo = { id, name: handle.name };
+  }
+
+  async function openFolder() {
+    let handle;
+    try {
+      handle = await window.showDirectoryPicker({ id: 'agister', startIn: 'documents' });
+    } catch (err) {
+      if (err.name !== 'AbortError') say('picker-status', `Could not open the folder: ${err.message}`);
+      return;
+    }
+    Object.assign(state, { root: handle, stack: [], repo: null });
+    setMenu(false);
+    try {
+      if (await R.isAgisterRepo(handle)) await remember(handle);
+    } catch (err) {
+      say('browse-status', `Could not record ${handle.name}: ${err.message}`);
+    }
+    render();
+  }
+
+  async function openRecent(entry) {
+    say('picker-status', '');
+    if (!supported) return say('picker-status', 'Folder access needs Chrome or Edge.');
+    try {
+      const record = await getRecord(entry.id);
+      if (!record) return say('picker-status', `${entry.name} is no longer stored; open its folder again.`);
+      if (!(await R.ensureReadPermission(record.handle))) {
+        return say('picker-status', `Read access to ${entry.name} was denied.`);
+      }
+      R.rememberRepo(localStorage, { ...entry, lastOpened: Date.now() });
+      Object.assign(state, { root: record.handle, stack: [], repo: { id: entry.id, name: entry.name } });
+    } catch (err) {
+      return say('picker-status', `Could not open ${entry.name}: ${err.message}`);
+    }
+    setMenu(false);
+    render();
+  }
+
+  async function removeRecent(entry) {
+    R.forgetRepo(localStorage, entry.id);
+    if (state.repo?.id === entry.id) state.repo = null;
+    renderRecent();
+    renderLabel();
+    try { await deleteRecord(entry.id); } catch { /* the list entry is gone; a stray handle is harmless */ }
+  }
+
+  // --- browsing ---
+
+  function current() {
+    return state.stack.length ? state.stack[state.stack.length - 1].handle : state.root;
+  }
+
+  function renderCrumbs() {
+    const crumbs = $('crumbs');
+    if (!state.root) return crumbs.replaceChildren();
+    const trail = [{ name: state.root.name }, ...state.stack];
+    crumbs.replaceChildren(...trail.flatMap((folder, i) => {
+      const last = i === trail.length - 1;
+      const part = last
+        ? el('span', { className: 'here', textContent: folder.name })
+        : el('button', { type: 'button', textContent: folder.name });
+      if (!last) part.addEventListener('click', () => { state.stack = state.stack.slice(0, i); render(); });
+      if (last) part.setAttribute('aria-current', 'location');
+      return i ? [el('span', { className: 'sep', textContent: '/' }), part] : [part];
+    }));
+  }
+
+  async function render() {
+    const token = ++renderToken;
+    renderLabel();
+    renderCrumbs();
+    say('browse-status', '');
+    $('browse-empty').hidden = !!state.root;
+    $('listing').replaceChildren();
+    if (!state.root) return;
+    let entries;
+    try {
+      entries = await R.listFolder(current());
+    } catch (err) {
+      if (token === renderToken) say('browse-status', `Could not read this folder: ${err.message}`);
+      return;
+    }
+    if (token !== renderToken) return;
+    if (!entries.length) {
+      $('listing').append(el('li', { className: 'dim', textContent: 'Empty folder.' }));
+      return;
+    }
+    $('listing').replaceChildren(...entries.map((entry) => {
+      if (entry.kind !== 'directory') {
+        return el('li', {}, el('span', { className: 'file mono', textContent: entry.name }));
+      }
+      const open = el('button', { type: 'button', className: 'folder mono', textContent: `${entry.name}/` });
+      open.addEventListener('click', () => { state.stack.push(entry); render(); });
+      const row = el('li', {}, open);
+      if (entry.agister) {
+        const badge = el('button', { type: 'button', className: 'badge', textContent: 'agister' });
+        badge.title = `Make ${entry.name} the current repo`;
+        badge.addEventListener('click', () => adopt(entry));
+        row.append(badge);
+      }
+      return row;
+    }));
+  }
+
+  // A subfolder's agister badge: enter it and make it the current repo.
+  async function adopt(entry) {
+    state.stack.push(entry);
+    try {
+      await remember(entry.handle);
+    } catch (err) {
+      say('browse-status', `Could not record ${entry.name}: ${err.message}`);
+    }
+    render();
+  }
+
+  // --- start ---
+
+  $('picker-button').addEventListener('click', () => setMenu($('picker-menu').hidden));
+  $('open-folder').addEventListener('click', openFolder);
+  document.addEventListener('click', (e) => {
+    // The path, not e.target: a removed recent row is detached by now.
+    if (!$('picker-menu').hidden && !e.composedPath().includes($('picker'))) setMenu(false);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !$('picker-menu').hidden) {
+      setMenu(false);
+      $('picker-button').focus();
+    }
+  });
+
+  if (!supported) {
+    $('open-folder').disabled = true;
+    $('no-fsa').hidden = false;
+  }
+  render();
+
+  // Reopen the most recent repo when its read access still holds; asking
+  // for access needs a click, so a repo without it waits in the list.
+  if (supported) {
+    const [latest] = R.readRecent(localStorage);
+    if (latest) {
+      try {
+        const record = await getRecord(latest.id);
+        if (record && !state.root && await record.handle.queryPermission({ mode: 'read' }) === 'granted') {
+          Object.assign(state, { root: record.handle, stack: [], repo: { id: latest.id, name: latest.name } });
+          render();
+        }
+      } catch { /* stays at ~ */ }
+    }
+  }
+</script>
+</body>
+</html>

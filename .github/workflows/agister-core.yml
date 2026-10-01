@@ -32,6 +32,11 @@ jobs:
           # Self-hosted: Go caches persist on the runner; uploading them hangs.
           cache: false
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+
       - name: Format
         run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
 
@@ -40,6 +45,9 @@ jobs:
 
       - name: Test
         run: go test -race -timeout 1m -coverpkg=./internal/...,./cmd/... -coverprofile=cover.out ./...
+
+      - name: Pages tests
+        run: node --test pages/tests/*.test.js
 
       - name: Coverage
         run: go tool cover -func=cover.out | tail -1 | tee -a "$GITHUB_STEP_SUMMARY"
