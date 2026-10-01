@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"reflect"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/examples"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
@@ -128,7 +130,7 @@ func (h *harness) callsOn(src app.ResolverDefinitions) *app.Calls {
 	return app.NewCalls(
 		app.NewResolver(src, h.runtimes, h.validator),
 		h.runtimes,
-		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
+		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "param": h.inputs},
 		h.workspaces, h.changes, app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
 		h.clock, fixedIDs{}, "/state", h.hosted,
 	)
@@ -312,6 +314,26 @@ func TestCostLimitReachesTheRuntimeOrRefuses(t *testing.T) {
 	h.runner.identity.CostLimit = false
 	if record := h.call(t, contract.CallRequest{}); class(record) != run.ClassRefused || !strings.Contains(message(record), "cannot enforce the cost limit 2") {
 		t.Fatalf("result = %+v", record.Result)
+	}
+}
+
+// The shipped ask process and its read-only policy set no cost limit, so a
+// runtime that cannot enforce one runs it.
+func TestShippedAskRunsOnARuntimeWithoutACostLimit(t *testing.T) {
+	h := newHarness()
+	for kind, name := range map[definition.Kind]string{definition.KindProcess: "ask", definition.KindPolicy: "read-only"} {
+		data, err := fs.ReadFile(examples.Settings(), string(kind)+"/"+name+".yaml")
+		if err != nil {
+			t.Fatal(err)
+		}
+		h.defs.docs[kind][name] = string(data)
+	}
+	h.defs.docs[definition.KindAgent]["assistant"] = strings.Replace(h.defs.docs[definition.KindAgent]["a"], `name = "a"`, `name = "assistant"`, 1)
+	h.runner.identity.CostLimit = false
+	h.runner.turn.Output = json.RawMessage(`"an answer"`)
+	record := h.call(t, contract.CallRequest{Process: "ask", Params: map[string]string{"question": "What is a.txt?"}})
+	if record.Result.Status != run.Completed || record.Effective.MaxCostUSD != nil || h.runner.calls()[0].MaxCostUSD != nil {
+		t.Fatalf("result %+v, effective cost limit %v", record.Result, record.Effective.MaxCostUSD)
 	}
 }
 
