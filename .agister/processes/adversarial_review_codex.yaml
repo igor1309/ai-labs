@@ -3,7 +3,7 @@ schema: agister.process/v1alpha1
 name: adversarial_review_codex
 
 type: process
-uses: agent:codex-sol
+uses: agent:codex-sol-61
 policy: process-policy:codex-review
 
 input:

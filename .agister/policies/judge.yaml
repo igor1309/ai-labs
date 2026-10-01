@@ -10,7 +10,5 @@ tools:
   allow: []
 
 timeout: 10m
-# Stops the runtime once the call has cost this much (USD).
-max_cost_usd: 2
 retry:
   max_attempts: 1
