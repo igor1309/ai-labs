@@ -198,7 +198,7 @@ func (s *Stream) Reduce(line string) []Event {
 	case "system":
 		return s.system(message)
 	case "assistant":
-		return s.assistant(message)
+		return s.assistant(exactly(line))
 	case "user":
 		return s.user(message)
 	case "result":
@@ -213,6 +213,17 @@ func (s *Stream) Reduce(line string) []Event {
 		}
 	}
 	return nil
+}
+
+// exactly decodes a line Reduce has decoded, keeping its numbers as
+// written: a tool's input is the same text only for the same input, so a
+// large integer must not round into another.
+func exactly(line string) map[string]any {
+	decoder := json.NewDecoder(strings.NewReader(line))
+	decoder.UseNumber()
+	var message map[string]any
+	_ = decoder.Decode(&message)
+	return message
 }
 
 func (s *Stream) system(message map[string]any) []Event {

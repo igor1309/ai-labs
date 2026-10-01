@@ -635,3 +635,23 @@ func TestStreamReportsToolCalls(t *testing.T) {
 		t.Fatalf("taken twice: %+v", again)
 	}
 }
+
+// Two calls of one tool whose inputs differ only in a large integer are
+// distinct calls, not one repeated: the input keeps its numbers as written.
+func TestLargeIntegerInputsAreNotRepeatedCalls(t *testing.T) {
+	stream := &codex.Stream{}
+	for _, line := range []string{
+		`{"type":"item.started","item":{"id":"item_1","type":"mcp_tool_call","server":"s","tool":"read","arguments":{"offset":9007199254740993}}}`,
+		`{"type":"item.started","item":{"id":"item_2","type":"mcp_tool_call","server":"s","tool":"read","arguments":{"offset":9007199254740992}}}`,
+	} {
+		stream.Reduce(line)
+	}
+	tools := stream.TakeTools()
+	if len(tools) != 2 || tools[0].Started == nil || tools[1].Started == nil {
+		t.Fatalf("tools = %+v", tools)
+	}
+	first, second := *tools[0].Started, *tools[1].Started
+	if first.Name != second.Name || first.Input != `{"offset":9007199254740993}` || second.Input != `{"offset":9007199254740992}` {
+		t.Fatalf("calls = %+v, %+v", first, second)
+	}
+}

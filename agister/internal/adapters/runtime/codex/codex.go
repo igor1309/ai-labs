@@ -329,7 +329,7 @@ func (s *Stream) Reduce(line string) []Event {
 	case "turn.started":
 		return []Event{{run.SourceProtocol, "TURN_STARTED", nil}}
 	case "item.started":
-		item, _ := message["item"].(map[string]any)
+		item, _ := exactly(line)["item"].(map[string]any)
 		if name := toolName(item); name != "" {
 			id, _ := item["id"].(string)
 			s.tools = append(s.tools, Tool{Started: &app.ToolCall{ID: id, Name: name, Input: wholeInput(item), Command: item["type"] == "command_execution"}})
@@ -354,6 +354,17 @@ func (s *Stream) Reduce(line string) []Event {
 		return []Event{{run.SourceProtocol, "TURN_FAILED", map[string]any{"error": s.Failed}}}
 	}
 	return nil
+}
+
+// exactly decodes a line Reduce has decoded, keeping its numbers as
+// written: a tool's input is the same text only for the same input, so a
+// large integer must not round into another.
+func exactly(line string) map[string]any {
+	decoder := json.NewDecoder(strings.NewReader(line))
+	decoder.UseNumber()
+	var message map[string]any
+	_ = decoder.Decode(&message)
+	return message
 }
 
 func (s *Stream) itemCompleted(item map[string]any) []Event {

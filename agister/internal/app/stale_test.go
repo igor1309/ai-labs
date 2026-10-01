@@ -230,6 +230,10 @@ func TestTheWatcherReportsToTheSinkItDeclares(t *testing.T) {
 	spy := &turnSinkSpy{err: errors.New("not recorded")}
 	cancels := 0
 	watch := app.WatchTurn(spy, app.CallStale{NoEvent: 5 * time.Minute}, timers.start, clock, func() { cancels++ })
+	t.Cleanup(func() {
+		watch.End()
+		timers.released()
+	})
 
 	if err := watch.ProcessStarted("ref-1"); err != spy.err {
 		t.Fatalf("ProcessStarted = %v", err)
@@ -253,7 +257,6 @@ func TestTheWatcherReportsToTheSinkItDeclares(t *testing.T) {
 	if stale == nil || stale.Limit != run.StaleNoEvent || stale.After != 5*time.Minute {
 		t.Fatalf("stale = %+v", stale)
 	}
-	timers.released()
 }
 
 // turnSinkSpy is what a turn's watcher reports to: it keeps what it is
