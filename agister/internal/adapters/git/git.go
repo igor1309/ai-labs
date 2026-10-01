@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 )
@@ -52,6 +53,70 @@ func commit(ctx context.Context, dir, revision string) (string, error) {
 	return strings.TrimSpace(out), nil
 }
 
+// worktrees runs Agister's worktree changes in one repository one at a
+// time, for every Workspaces value of the process: git worktree add reads
+// each .git/worktrees/*/commondir, and dies on one a parallel add has
+// created and not yet written. Only this process is held back, and nothing
+// is written to the repository for it.
+var worktrees = &serial{git: run}
+
+// serial holds one lock per repository, keyed by its git common directory:
+// two paths into a repository, or two of its worktrees, share one.
+type serial struct {
+	// git runs the worktree command, under the repository's lock.
+	git func(ctx context.Context, dir string, args ...string) (string, error)
+	// waits, when set, is told that a command found the lock held, before
+	// it waits.
+	waits func()
+
+	mu    sync.Mutex
+	locks map[string]chan struct{}
+}
+
+// worktree runs git worktree args in repository once no other worktree
+// command of the repository runs. A context that ends while it waits ends
+// the wait with the context's error.
+func (s *serial) worktree(ctx context.Context, repository string, args ...string) (string, error) {
+	out, err := run(ctx, repository, "rev-parse", "--git-common-dir")
+	if err != nil {
+		if ctx.Err() != nil {
+			return "", ctx.Err()
+		}
+		return "", err
+	}
+	common := strings.TrimSpace(out)
+	if !filepath.IsAbs(common) {
+		common = filepath.Join(repository, common)
+	}
+	lock := s.lock(resolved(common))
+	select {
+	case lock <- struct{}{}:
+	default:
+		if s.waits != nil {
+			s.waits()
+		}
+		select {
+		case lock <- struct{}{}:
+		case <-ctx.Done():
+			return "", ctx.Err()
+		}
+	}
+	defer func() { <-lock }()
+	return s.git(ctx, repository, append([]string{"worktree"}, args...)...)
+}
+
+func (s *serial) lock(common string) chan struct{} {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.locks == nil {
+		s.locks = map[string]chan struct{}{}
+	}
+	if s.locks[common] == nil {
+		s.locks[common] = make(chan struct{}, 1)
+	}
+	return s.locks[common]
+}
+
 // Workspaces locates repositories and makes detached checkouts.
 type Workspaces struct{}
 
@@ -69,12 +134,12 @@ func (Workspaces) Checkout(ctx context.Context, repository, revision string) (st
 		return "", nil, err
 	}
 	dir := filepath.Join(parent, workspace(filepath.Base(parent)))
-	if _, err := run(ctx, repository, "worktree", "add", "--detach", "--quiet", dir, revision); err != nil {
+	if _, err := worktrees.worktree(ctx, repository, "add", "--detach", "--quiet", dir, revision); err != nil {
 		os.RemoveAll(parent)
 		return "", nil, err
 	}
 	release := func() error {
-		_, err := run(context.WithoutCancel(ctx), repository, "worktree", "remove", "--force", dir)
+		_, err := worktrees.worktree(context.WithoutCancel(ctx), repository, "remove", "--force", dir)
 		if removeErr := os.RemoveAll(parent); err == nil {
 			err = removeErr
 		}
@@ -113,7 +178,7 @@ func (w Workspaces) Copy(ctx context.Context, repository, dir, revision string, 
 	} else if err != nil {
 		return err
 	}
-	_, err := run(ctx, repository, "worktree", "add", "--detach", "--quiet", dir, revision)
+	_, err := worktrees.worktree(ctx, repository, "add", "--detach", "--quiet", dir, revision)
 	if err == nil && len(patch) > 0 {
 		_, err = runWith(ctx, dir, nil, patch, "apply", "--binary", "--whitespace=nowarn", "-")
 	}
@@ -139,7 +204,7 @@ func (Workspaces) Discard(ctx context.Context, repository, dir string) error {
 	// records the real path, and cannot resolve a symlinked temp directory
 	// (/var on macOS) under a parent that is gone, so it is given resolved.
 	recorded := filepath.Join(resolved(filepath.Dir(parent)), filepath.Base(parent), filepath.Base(dir))
-	_, err := run(ctx, repository, "worktree", "remove", "--force", recorded)
+	_, err := worktrees.worktree(ctx, repository, "remove", "--force", recorded)
 	if err != nil && strings.Contains(err.Error(), "is not a working tree") {
 		err = nil
 	}
