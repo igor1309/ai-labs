@@ -23,8 +23,9 @@ import (
 // by param name; any other such param gets fallbackParam. Each is a real
 // file of the repository, so a param read as a file resolves.
 var repoParams = map[string]string{
-	"prompt": "prompts/code-review-architecture.md",
-	"brief":  "prompts/code-review-tests.md",
+	"prompt":   "prompts/code-review-architecture.md",
+	"brief":    "prompts/code-review-tests.md",
+	"question": "prompts/code-review-tests.md",
 }
 
 const fallbackParam = "AGENTS.md"
@@ -240,6 +241,57 @@ func TestADRReviewCollectsTheADRReview(t *testing.T) {
 	}
 }
 
+// The advisor answers a question file on the Codex agent, a model family
+// other than the judge's, in a checkout of the revision, and is given the
+// question and its standing prompt, prompts/advisor.md.
+func TestAdvisorAnswersAQuestionFile(t *testing.T) {
+	root, repo, home := onFakeRuntimes(t)
+	question := filepath.Join(t.TempDir(), "question.md")
+	write(t, question, "Asked by: workflow run 1, item 2.\nQuestion: which?\nOptions: (a) one; (b) two.\n")
+	created, _ := runRecorded(t, home, repo, []string{"run", "advisor", "--param", "question=" + question, "--param", "revision=feature"})
+	if len(created) != 1 {
+		t.Fatalf("runs recorded: %v, want one", created)
+	}
+	record := completedRun(t, home, created[0])
+	if record["agent"] != "codex-sol" {
+		t.Fatalf("the advisor's agent = %v, want codex-sol", record["agent"])
+	}
+	if advisor, judge := modelFamily(t, root, "codex-sol"), modelFamily(t, root, "claude-judge"); advisor == "" || advisor == judge {
+		t.Fatalf("the advisor's model family %q, the judge's %q: want another", advisor, judge)
+	}
+	for name, path := range map[string]string{"question": question, "advisor_prompt": filepath.Join(root, "prompts", "advisor.md")} {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sum := sha256.Sum256(data)
+		digest := "sha256:" + hex.EncodeToString(sum[:])
+		if given := inputOf(t, record, name); given["source"] != "file" || given["identity"] != digest {
+			t.Fatalf("advisor's %s = %v, want %s (%s)", name, given, path, digest)
+		}
+	}
+	feature := gitCmd(t, repo, "rev-parse", "feature")
+	if given := inputOf(t, record, "revision"); given["identity"] != feature {
+		t.Fatalf("advisor's revision = %v, want feature (%s)", given, feature)
+	}
+}
+
+// modelFamily is the model family of a repository agent.
+func modelFamily(t *testing.T, root, agent string) string {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(root, ".agister", "agents", agent+".toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := definition.ParseAgent(definition.Document{
+		Source: definition.Source{Kind: definition.KindAgent, Name: agent, Path: agent + ".toml"}, Bytes: data,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return parsed.ModelFamily
+}
+
 // judgedReviews runs a review workflow to completion and is its judge's
 // collection, as each node's process and status by node, and the nodes'
 // runs by process. It fails unless the judge received that collection.
@@ -310,7 +362,8 @@ func parseProcess(t *testing.T, root, name string) definition.Process {
 	return process
 }
 
-// paramArgs gives base and candidate the test repository's revisions, and
+// paramArgs gives base, candidate and revision the test repository's
+// revisions, and
 // every other param without a default a file of the repository.
 func paramArgs(params []definition.Param) []string {
 	var args []string
@@ -319,7 +372,7 @@ func paramArgs(params []definition.Param) []string {
 		switch {
 		case param.Name == "base":
 			value = "main"
-		case param.Name == "candidate":
+		case param.Name == "candidate", param.Name == "revision":
 			value = "feature"
 		case !param.HasDefault && repoParams[param.Name] != "":
 			value = repoParams[param.Name]
