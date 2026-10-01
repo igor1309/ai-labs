@@ -3,7 +3,10 @@
 // turn, message and tool execution events. It keeps sessions as Pi does,
 // one JSONL file per session under --session-dir whose first line is the
 // header, and resumes one by --session <id> only from the directory it
-// ran in. The scenario is chosen by a SCENARIO:<name> marker in the prompt
+// ran in. As Pi does at startup, unless it is offline (--offline or
+// PI_OFFLINE), it installs each npm package the working directory's
+// .pi/settings.json lists and .pi/npm lacks, running `npm install` from
+// PATH. The scenario is chosen by a SCENARIO:<name> marker in the prompt
 // (stdin).
 package main
 
@@ -13,8 +16,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -74,6 +79,10 @@ func main() {
 	}
 
 	cwd, _ := os.Getwd()
+	offline := slices.Contains(args, "--offline") || slices.Contains([]string{"1", "true", "yes"}, strings.ToLower(os.Getenv("PI_OFFLINE")))
+	if !offline {
+		installPackages(cwd)
+	}
 	dir := flags["--session-dir"]
 	header := map[string]any{"type": "session", "version": 3, "id": FreshSession, "timestamp": time.Now().UTC().Format(time.RFC3339Nano), "cwd": cwd}
 	if id := flags["--session"]; id != "" {
@@ -191,11 +200,43 @@ func save(dir string, header map[string]any) {
 	_ = os.WriteFile(filepath.Join(dir, name), append(data, '\n'), 0o600)
 }
 
-// find is the header of session id under dir, when it ran in cwd.
+// installPackages installs, as Pi's package manager does, each npm
+// package of the project's settings that is not installed yet.
+func installPackages(cwd string) {
+	data, err := os.ReadFile(filepath.Join(cwd, ".pi", "settings.json"))
+	if err != nil {
+		return
+	}
+	var settings struct{ Packages []json.RawMessage }
+	_ = json.Unmarshal(data, &settings)
+	root := filepath.Join(cwd, ".pi", "npm")
+	for _, raw := range settings.Packages {
+		var source string
+		if json.Unmarshal(raw, &source) != nil {
+			var object struct{ Source string }
+			_ = json.Unmarshal(raw, &object)
+			source = object.Source
+		}
+		spec, ok := strings.CutPrefix(source, "npm:")
+		if !ok {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(root, "node_modules", spec)); err == nil {
+			continue
+		}
+		_ = exec.Command("npm", "install", spec, "--prefix", root, "--legacy-peer-deps").Run()
+	}
+}
+
+// find is the header of session id under dir, when it ran in cwd. dir is
+// a literal path, whatever it holds.
 func find(dir, id, cwd string) (map[string]any, bool) {
-	files, _ := filepath.Glob(filepath.Join(dir, "*.jsonl"))
-	for _, path := range files {
-		file, err := os.Open(path)
+	entries, _ := os.ReadDir(dir)
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".jsonl" {
+			continue
+		}
+		file, err := os.Open(filepath.Join(dir, entry.Name()))
 		if err != nil {
 			continue
 		}

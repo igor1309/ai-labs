@@ -73,7 +73,7 @@ func TestArguments(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{
-		"-p", "--mode", "json", "--no-extensions", "--no-prompt-templates", "--no-themes", "--approve",
+		"-p", "--mode", "json", "--no-extensions", "--no-prompt-templates", "--no-themes", "--approve", "--offline",
 		"--session-dir", "/sessions/new-1",
 		"--model", "opencode-go/minimax-m3", "--thinking", "high",
 		"--tools", "read,bash",
@@ -94,7 +94,7 @@ func TestResumeArguments(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{
-		"-p", "--mode", "json", "--no-extensions", "--no-prompt-templates", "--no-themes", "--approve",
+		"-p", "--mode", "json", "--no-extensions", "--no-prompt-templates", "--no-themes", "--approve", "--offline",
 		"--session-dir", "/sessions/s-1", "--session", "s-1",
 		"--model", "opencode-go/minimax-m3", "--thinking", "high",
 		"--tools", "read,bash",
@@ -113,7 +113,7 @@ func TestDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{
-		"-p", "--mode", "json", "--no-extensions", "--no-prompt-templates", "--no-themes", "--approve",
+		"-p", "--mode", "json", "--no-extensions", "--no-prompt-templates", "--no-themes", "--approve", "--offline",
 		"--session-dir", "/sessions/new-1", "--tools", "read",
 	}
 	if !reflect.DeepEqual(args, want) {
@@ -244,16 +244,17 @@ func TestInstructionAndSchemaGoInTheSystemPrompt(t *testing.T) {
 
 func TestIdentity(t *testing.T) {
 	identity, err := pi.New(runtimetest.Binary(t, "fakepi"), t.TempDir()).Identity(context.Background())
-	want := app.RuntimeIdentity{Contract: "pi/1", Version: "0.85.1", Resume: true, ToolCalls: true, SkillTools: []string{"read", "bash"}}
+	want := app.RuntimeIdentity{Contract: "pi/1", Version: "0.85.1", Resume: true, ResumeWhereItRan: true, ToolCalls: true, SkillTools: []string{"read", "bash"}}
 	if err != nil || !reflect.DeepEqual(identity, want) {
 		t.Fatalf("identity = %+v, %v", identity, err)
 	}
 }
 
 // A fresh turn's session is kept under the root, named by the ID Pi
-// reported, and a later turn of the call resumes it in place there.
+// reported, and a later turn of the call resumes it in place there. The
+// root is a literal path: brackets in it are no pattern.
 func TestSessionsAreKeptForTheCallsLaterTurns(t *testing.T) {
-	root, cwd := t.TempDir(), t.TempDir()
+	root, cwd := filepath.Join(t.TempDir(), "sessions[1]"), t.TempDir()
 	runner := &pi.Runner{Command: runtimetest.Binary(t, "fakepi"), KillGrace: 200 * time.Millisecond, Sessions: root}
 	first := request("SCENARIO:approve")
 	first.Cwd = cwd
@@ -592,15 +593,18 @@ func TestACompactionWithoutUsageLeavesTheFiguresUnknown(t *testing.T) {
 }
 
 // Tool executions are reported as they start, with their whole arguments,
-// numbers as written, and as they finish; bash runs commands.
+// numbers as written and however long, and as they finish; bash runs
+// commands. Only the event's preview is cut.
 func TestToolCallsAreReported(t *testing.T) {
 	stream := &pi.Stream{}
-	events := stream.Reduce(`{"type":"tool_execution_start","toolCallId":"c1","toolName":"bash","args":{"command":"ls","timeout":12345678901234567890}}`)
+	long := strings.Repeat("x", 1000)
+	input := `{"command":"ls ` + long + `","timeout":12345678901234567890}`
+	events := stream.Reduce(`{"type":"tool_execution_start","toolCallId":"c1","toolName":"bash","args":` + input + `}`)
 	tools := stream.TakeTools()
-	if len(tools) != 1 || *tools[0].Started != (app.ToolCall{ID: "c1", Name: "bash", Input: `{"command":"ls","timeout":12345678901234567890}`, Command: true}) {
+	if len(tools) != 1 || *tools[0].Started != (app.ToolCall{ID: "c1", Name: "bash", Input: input, Command: true}) {
 		t.Fatalf("tools = %+v", tools)
 	}
-	if len(events) != 1 || events[0].Kind != "TOOL_REQUESTED" || events[0].Data["tool_use_id"] != "c1" {
+	if len(events) != 1 || events[0].Kind != "TOOL_REQUESTED" || events[0].Data["tool_use_id"] != "c1" || events[0].Data["input"] == input {
 		t.Fatalf("events = %+v", events)
 	}
 	stream.Reduce(`{"type":"tool_execution_start","toolCallId":"c2","toolName":"read","args":{"path":"a.txt"}}`)
@@ -613,6 +617,27 @@ func TestToolCallsAreReported(t *testing.T) {
 	}
 	if events[0].Kind != "TOOL_RESULT" || events[0].Data["is_error"] != true {
 		t.Fatalf("events = %+v", events)
+	}
+}
+
+// A completed turn's text is its final assistant message's, never the
+// commentary of an earlier one, even when the final one says nothing.
+func TestACompletedTurnsTextIsTheFinalMessages(t *testing.T) {
+	commentary := `{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"Let me look at the tests."},{"type":"toolCall","id":"c1","name":"read","arguments":{"path":"a_test.go"}}],"stopReason":"toolUse"}}`
+	for name, final := range map[string]string{"empty": "", "whitespace": " \n"} {
+		content, _ := json.Marshal([]any{map[string]any{"type": "text", "text": final}})
+		stream := &pi.Stream{}
+		reduce(stream,
+			`{"type":"agent_start"}`,
+			commentary,
+			`{"type":"tool_execution_start","toolCallId":"c1","toolName":"read","args":{"path":"a_test.go"}}`,
+			`{"type":"tool_execution_end","toolCallId":"c1","toolName":"read","result":{},"isError":false}`,
+			`{"type":"message_end","message":{"role":"assistant","content":`+string(content)+`,"stopReason":"stop"}}`,
+			agentEnd,
+		)
+		if turn := stream.Reconcile(clean, false); turn.Status != run.Completed || turn.Text != final {
+			t.Errorf("%s: turn = %+v", name, turn)
+		}
 	}
 }
 

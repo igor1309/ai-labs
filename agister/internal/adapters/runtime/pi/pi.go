@@ -12,10 +12,14 @@
 // (docs/security.md, docs/settings.md). So every turn passes --approve:
 // the checkout's skills reach the call as they would for a person who
 // trusts the repository (ADR-006). That also trusts the checkout's
-// .pi/settings.json; its extensions still do not load. A skill is used by
-// reading it, and Pi reads with read or bash only; with no tool, Pi leaves
-// skills out. So a turn granted neither is refused before Pi starts
-// (SkillTools), and --no-tools is never passed.
+// .pi/settings.json; its extensions still do not load, and Pi starts
+// offline (--offline, as PI_OFFLINE=1): at startup Pi installs a package
+// that file lists and is missing (npm install into .pi/npm), extensions
+// off or not, unless it is offline. Context files and skills load offline
+// as they do online. A skill is used by reading it, and Pi reads with read
+// or bash only; with no tool, Pi leaves skills out. So a turn granted
+// neither is refused before Pi starts (SkillTools), and --no-tools is
+// never passed.
 //
 // Granted primitives are Pi tool names (read, bash, edit, write, grep,
 // find, ls), passed as the --tools allowlist.
@@ -26,7 +30,9 @@
 // from a file (--append-system-prompt reads a path that exists as the
 // file's text); the prompt goes on stdin, which print mode reads as the
 // message (docs/usage.md). Pi has no structured output: the final
-// assistant text is the output, and must be JSON when a schema is given.
+// assistant text is the output, and must be JSON when a schema is given;
+// a completed turn's text is the final message's, never earlier
+// commentary.
 // Pi cannot limit cost.
 //
 // Sessions are kept in a directory Agister chooses (--session-dir), never
@@ -36,9 +42,11 @@
 // session in place (--session <id>, with the same --session-dir), and the
 // turn must report that same session, or it fails. Pi finds a session by
 // ID only among those of its working directory; from another one it asks
-// on stdin whether to fork it. So a resume turn is refused before Pi
-// starts unless its working directory is the session's: a call's later
-// turns resume it, and so does a continuation from the same directory.
+// on stdin whether to fork it. So a session resumes only where it ran
+// (RuntimeIdentity.ResumeWhereItRan): a call's later turns resume it, and
+// so does a continuation from the same directory; the core refuses any
+// other continuation before it makes a workspace, and a resume turn
+// elsewhere still fails before Pi starts.
 //
 // Tool calls are reported as they start and finish: tool_execution_start
 // with the tool's whole arguments, and tool_execution_end. bash is the
@@ -116,7 +124,7 @@ func (r *Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
 	if version == "" {
 		return app.RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
 	}
-	return app.RuntimeIdentity{Contract: Contract, Version: version, Resume: true, ToolCalls: true, SkillTools: slices.Clone(SkillTools)}, nil
+	return app.RuntimeIdentity{Contract: Contract, Version: version, Resume: true, ResumeWhereItRan: true, ToolCalls: true, SkillTools: slices.Clone(SkillTools)}, nil
 }
 
 // Arguments builds the command line for a turn whose sessions are kept in
@@ -140,7 +148,7 @@ func Arguments(request app.TurnRequest, sessionDir, systemPrompt string) ([]stri
 	args := []string{
 		"-p", "--mode", "json",
 		"--no-extensions", "--no-prompt-templates", "--no-themes",
-		"--approve",
+		"--approve", "--offline",
 		"--session-dir", sessionDir,
 	}
 	if request.ResumeSessionID != "" {
@@ -275,11 +283,14 @@ var idPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
 func validID(id string) bool { return idPattern.MatchString(id) }
 
 // sessionCwd is the working directory of session id, as the header of its
-// file in dir records it.
+// file in dir records it. dir is a literal path, whatever it holds.
 func sessionCwd(dir, id string) (string, bool) {
-	files, _ := filepath.Glob(filepath.Join(dir, "*.jsonl"))
-	for _, path := range files {
-		file, err := os.Open(path)
+	entries, _ := os.ReadDir(dir)
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".jsonl" {
+			continue
+		}
+		file, err := os.Open(filepath.Join(dir, entry.Name()))
 		if err != nil {
 			continue
 		}
@@ -321,8 +332,9 @@ type Stream struct {
 	SessionID string
 	// Model is the provider/id of the latest assistant message.
 	Model string
-	// Final is the latest assistant message; LastText the latest
-	// non-empty assistant text.
+	// Final is the latest assistant message, whose text a completed turn
+	// returns; LastText the latest non-empty assistant text, which a
+	// failed one does.
 	Final    *Message
 	LastText string
 	// LastError is the latest error the stream reported.
@@ -513,6 +525,7 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 		}
 		turn.Output = json.RawMessage(text)
 	}
+	turn.Text = s.Final.Text
 	turn.Status = run.Completed
 	return turn
 }

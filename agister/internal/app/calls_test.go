@@ -600,6 +600,59 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 	}
 }
 
+// A runtime that resumes a session only in the directory it ran in cannot
+// continue a run anywhere else: not in a checkout made for the call, nor
+// from another directory. Each is refused before any workspace is made;
+// from the directory the run worked in, the session is resumed there.
+func TestContinuationWhereTheSessionDidNotRunIsRefused(t *testing.T) {
+	// run-0 left its session's evidence: it worked in checkout A.
+	earlier := run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Workspace: "/work/checkout-a",
+		Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0"}}}
+	arrange := func(workspace string, checkout bool) *harness {
+		h := newHarness()
+		h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+		h.runner.identity.ResumeWhereItRan = true
+		if !checkout {
+			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n  checkout: candidate_revision\n", "", 1)
+			h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "scope: candidate", "scope: repository", 1)
+		}
+		prior := earlier
+		prior.Workspace = workspace
+		h.runs.records["run-0"], h.runs.states["run-0"] = prior, run.StateFinished
+		return h
+	}
+	for _, c := range []struct {
+		name      string
+		workspace string
+		checkout  bool
+		reason    string
+	}{
+		{"a checkout of its own", "/work/checkout-a", true, "runtime rt resumes a session only in the directory it ran in, and process p works in a checkout of its own; it cannot continue run run-0"},
+		{"another directory", "/elsewhere", false, "runtime rt resumes a session only in the directory it ran in: run run-0 worked in /elsewhere, not /repo"},
+		{"no directory recorded", "", false, "run run-0 recorded none"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			h := arrange(c.workspace, c.checkout)
+			record := h.call(t, contract.CallRequest{Continue: "run-0"})
+			if class(record) != run.ClassRefused || !strings.Contains(message(record), c.reason) {
+				t.Fatalf("result %+v, want refusal %q", record.Result.Error, c.reason)
+			}
+			if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
+				t.Fatalf("turns %d, checkouts %v before the refusal", len(h.runner.calls()), h.workspaces.checkouts)
+			}
+		})
+	}
+
+	h := arrange("/repo", false)
+	record := h.call(t, contract.CallRequest{Continue: "run-0"})
+	if len(h.runner.calls()) != 1 {
+		t.Fatalf("result %+v", record.Result.Error)
+	}
+	if got := h.runner.calls()[0]; got.ResumeSessionID != "prov-0" || got.Cwd != "/repo" || len(h.workspaces.checkouts) != 0 {
+		t.Fatalf("request %+v, checkouts %v", got, h.workspaces.checkouts)
+	}
+}
+
 // A continuation's turn costs and uses what it added to its session's
 // totals: the totals less those of the session's latest turn Agister
 // recorded on any run, a later continuation of the run continued included.

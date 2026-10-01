@@ -31,8 +31,9 @@ provider's environment variable (`OPENCODE_API_KEY` for `opencode-go`;
   (`$AGISTER_HOME/pi/sessions`, `--session-dir`), not in `~/.pi`. A call's
   later turns, and a continuation (`--continue`) from the directory the
   run worked in, resume the session in place by the ID Pi reported. Pi
-  finds a session only from its own working directory, so continuing a run
-  that worked in a checkout of its own is refused.
+  finds a session only from its own working directory, so a continuation
+  from another directory, or of a process that works in a checkout of its
+  own, is refused before any workspace is made.
 - Instructions and skills: the process's instruction goes in the system
   prompt; Pi loads the repository's `AGENTS.md` and, as each turn trusts
   the project (`--approve`), its `.agents/skills` (ADR-006). A skill is
@@ -58,7 +59,9 @@ provider's environment variable (`OPENCODE_API_KEY` for `opencode-go`;
   final assistant text is the output, and anything but JSON fails the call.
 - Extensions, prompt templates and themes are off in every call, so no
   Pi package of yours runs inside one; trusting the project also loads its
-  `.pi/settings.json`.
+  `.pi/settings.json`. Every call starts Pi offline (`--offline`), so Pi
+  installs no package that file lists; instructions and skills still
+  load.
 
 ## Use
 

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -57,7 +58,7 @@ func TestExamplePiSettingsPassCheck(t *testing.T) {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	allowHostReads(t, home, repo)
-	r = agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?")
+	r = agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?", "--timeout", "30s")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -96,9 +97,24 @@ func TestExamplePiCallWithoutASkillToolIsRefused(t *testing.T) {
 // Pi's sessions are kept under the home, never in ~/.pi or the temporary
 // directory: a call's session directory is under <home>/pi/sessions, named
 // by the session Pi reported, and a continuation resumes that session
-// there.
+// there, whatever the home's path holds: brackets in it are no pattern.
 func TestPiSessionsAreKeptUnderTheHome(t *testing.T) {
-	home, repo := examplePiSettings(t)
+	t.Run("plain home", func(t *testing.T) {
+		home, repo := examplePiSettings(t)
+		piSessionsAreKeptUnder(t, home, repo)
+	})
+	t.Run("home with brackets", func(t *testing.T) {
+		home, repo := examplePiSettings(t)
+		bracketed := filepath.Join(t.TempDir(), "agister[1]")
+		if err := os.Rename(home, bracketed); err != nil {
+			t.Fatal(err)
+		}
+		piSessionsAreKeptUnder(t, bracketed, repo)
+	})
+}
+
+func piSessionsAreKeptUnder(t *testing.T, home, repo string) {
+	t.Helper()
 	allowHostReads(t, home, repo)
 	sessions := filepath.Join(home, "pi", "sessions")
 	sessionDir := func(r run) string {
@@ -113,7 +129,7 @@ func TestPiSessionsAreKeptUnderTheHome(t *testing.T) {
 		return ""
 	}
 
-	r := agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?")
+	r := agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?", "--timeout", "30s")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -122,12 +138,12 @@ func TestPiSessionsAreKeptUnderTheHome(t *testing.T) {
 		t.Fatalf("session dir %s is not under %s", dir, sessions)
 	}
 	id, _ := first.first["id"].(string)
-	kept, _ := filepath.Glob(filepath.Join(sessions, id, "*.jsonl"))
-	if entries, _ := os.ReadDir(sessions); id == "" || len(entries) != 1 || entries[0].Name() != id || len(kept) != 1 {
+	kept, _ := os.ReadDir(filepath.Join(sessions, id))
+	if entries, _ := os.ReadDir(sessions); id == "" || len(entries) != 1 || entries[0].Name() != id || len(kept) != 1 || filepath.Ext(kept[0].Name()) != ".jsonl" {
 		t.Fatalf("session %q: %s holds %v, session files %v", id, sessions, entries, kept)
 	}
 
-	r = agister(t, home, repo, "run", "ask_pi", "--param", "question=And its tests?", "--continue", filepath.Base(first.dir))
+	r = agister(t, home, repo, "run", "ask_pi", "--param", "question=And its tests?", "--continue", filepath.Base(first.dir), "--timeout", "30s")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -152,6 +168,37 @@ func TestPiSessionsAreKeptUnderTheHome(t *testing.T) {
 	}
 	if entries, _ := os.ReadDir(sessions); len(entries) != 1 {
 		t.Fatalf("%s holds %v", sessions, entries)
+	}
+}
+
+// A project's .pi/settings.json, which every call trusts, may list a Pi
+// package that is not installed. Pi starts offline in a call, so it
+// installs nothing: npm, a spy on PATH, never runs, and .pi/npm is never
+// made.
+func TestPiInstallsNoPackageTheProjectLists(t *testing.T) {
+	home, repo := examplePiSettings(t)
+	allowHostReads(t, home, repo)
+	write(t, filepath.Join(repo, ".pi", "settings.json"), `{"packages": ["npm:@example/pi-tracer", {"source": "npm:pi-extras"}]}`)
+	spy := t.TempDir()
+	installs := filepath.Join(spy, "installs.log")
+	write(t, filepath.Join(spy, "npm"), "#!/bin/sh\necho \"$*\" >> '"+installs+"'\n")
+	if err := os.Chmod(filepath.Join(spy, "npm"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", spy+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	r := agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?", "--timeout", "30s")
+	if r.code != cli.ExitCompleted {
+		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if args := lastRun(t, home).argv(); !slices.Contains(args, "--offline") {
+		t.Fatalf("Pi argv = %q", args)
+	}
+	if data, err := os.ReadFile(installs); err == nil || !os.IsNotExist(err) {
+		t.Fatalf("npm ran: %s (%v)", data, err)
+	}
+	if _, err := os.Stat(filepath.Join(repo, ".pi", "npm")); !os.IsNotExist(err) {
+		t.Fatalf(".pi/npm: %v", err)
 	}
 }
 
