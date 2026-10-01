@@ -38,7 +38,6 @@
     font-size: 17px; line-height: 1; color: var(--fg2);
   }
   #refresh:hover { border-color: var(--dim); color: var(--fg); }
-  #refresh.stale { color: var(--mid); border-color: var(--mid); }
   .picker { position: relative; }
   #picker-button {
     display: flex; align-items: center; gap: 8px; max-width: 420px;
@@ -61,11 +60,15 @@
   .menu .remove:hover { color: var(--high); }
   .menu .empty, .menu .note, .menu .status { margin: 4px 14px; font-size: 12px; }
   .menu .note { color: var(--fg3); }
+  .menu .badge { font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--low); }
+  .browse-head { display: flex; align-items: center; gap: 4px; padding: 0 14px 4px 2px; }
+  .browse-head .remove:disabled { opacity: .3; cursor: default; }
+  #browse-path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; color: var(--fg3); }
+  .browse-list { max-height: 360px; overflow-y: auto; }
+  .browse-list .empty { padding: 4px 14px; font-size: 12px; }
   .menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; }
 
   #status { margin: 0 0 16px; }
-  #saved-note { margin: 0 0 16px; color: var(--mid); font-size: 13px; }
-  #empty { color: var(--dim); }
 
   section.card { padding: 16px 20px; margin-bottom: 20px; }
   .section-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
@@ -95,32 +98,40 @@
 <header>
   <h1>Agister</h1>
   <div class="header-right">
-  <button id="refresh" type="button" title="Refresh: pick the repo folder again to re-read its .agister" aria-label="Refresh">↻</button>
+  <button id="refresh" type="button" title="Refresh: read the settings again" aria-label="Refresh">↻</button>
   <div id="picker" class="picker">
     <button id="picker-button" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="picker-menu">
       <span id="picker-label" class="mono">~</span>
     </button>
     <div id="picker-menu" class="menu card" hidden>
-      <ul><li><button id="open-home" class="item" type="button">
-        <span class="name mono">~</span><span class="when">Agister home, ~/.agister</span>
-      </button></li></ul>
-      <hr>
-      <h2>Recent repos</h2>
-      <ul id="recent-list"></ul>
-      <p id="recent-empty" class="empty dim" hidden>No recent repos.</p>
+      <div id="menu-main">
+        <ul><li><button id="open-home" class="item" type="button">
+          <span class="name mono">~</span><span class="when">Agister home, ~/.agister</span>
+        </button></li></ul>
+        <hr>
+        <h2>Recent repos</h2>
+        <ul id="recent-list"></ul>
+        <p id="recent-empty" class="empty dim" hidden>No recent repos.</p>
+        <hr>
+        <ul><li><button id="browse" class="item" type="button">Browse folders…</button></li></ul>
+      </div>
+      <div id="menu-browse" hidden>
+        <div class="browse-head">
+          <button id="browse-up" class="remove" type="button" title="Up one folder" aria-label="Up one folder">↑</button>
+          <span id="browse-path" class="mono"></span>
+        </div>
+        <ul id="browse-list" class="browse-list"></ul>
+        <p class="note">A folder marked <span class="badge">.agister</span> opens; others list their folders.</p>
+        <hr>
+        <ul><li><button id="browse-back" class="item" type="button">← Back</button></li></ul>
+      </div>
       <p id="picker-status" class="status error" role="status" hidden></p>
-      <hr>
-      <ul><li><button id="open-folder" class="item" type="button">Open folder…</button></li></ul>
-      <p class="note">Pick a repo folder, or <code>~/.agister</code> for Agister home (⌘⇧. shows hidden folders in the dialog).</p>
-      <input id="folder-input" type="file" webkitdirectory hidden>
     </div>
   </div>
   </div>
 </header>
 <main>
   <p id="status" class="error" role="status" hidden></p>
-  <p id="saved-note" hidden></p>
-  <p id="empty">To see Agister home, press ↻ and pick <code>~/.agister</code> (⌘⇧. shows hidden folders in the dialog). For a repo, use the picker at the top right.</p>
   <div id="dashboard" hidden></div>
 </main>
 <script src="repos.js"></script>
@@ -129,10 +140,8 @@
   const R = globalThis.AgisterRepos;
   const C = globalThis.AgisterConfig;
 
-  // root: the repo folder shown, or null; repo: { id, name } when root is
-  // an Agister repo; savedAt: set when root is a saved copy of a recent
-  // repo's .agister, the time it was saved.
-  const state = { root: null, repo: null, savedAt: null };
+  // current: the path shown, ~ for Agister home.
+  const state = { current: null };
   let renderToken = 0;
 
   const $ = (id) => document.getElementById(id);
@@ -148,13 +157,17 @@
     node.hidden = !text;
   }
 
+  const label = (id) => (id === R.HOME_ID ? '~' : R.baseName(id));
+
   // --- picker ---
 
   function setMenu(open) {
     $('picker-menu').hidden = !open;
     $('picker-button').setAttribute('aria-expanded', String(open));
+    $('menu-main').hidden = false;
+    $('menu-browse').hidden = true;
+    say('picker-status', '');
     if (open) renderRecent();
-    else say('picker-status', '');
   }
 
   function when(ms) {
@@ -167,122 +180,83 @@
   function renderRecent() {
     const list = R.readRecent(localStorage);
     $('recent-list').replaceChildren(...list.map((entry) => {
-      const open = el('button', { type: 'button', className: 'item', title: entry.name },
+      const open = el('button', { type: 'button', className: 'item', title: entry.id },
         el('span', { className: 'name mono', textContent: entry.name }),
         el('span', { className: 'when', textContent: when(entry.lastOpened) }));
-      open.addEventListener('click', () => openRecent(entry));
+      open.addEventListener('click', () => open_(entry.id));
       const remove = el('button', { type: 'button', className: 'remove', textContent: '×' });
       remove.setAttribute('aria-label', `Remove ${entry.name}`);
-      remove.addEventListener('click', () => removeRecent(entry));
+      remove.addEventListener('click', () => { R.forgetRepo(localStorage, entry.id); renderRecent(); });
       return el('li', {}, open, remove);
     }));
     $('recent-empty').hidden = list.length > 0;
   }
 
-  // Reads and saves the settings in agister (a .agister folder) as id and
-  // shows them. Repos go on the recent list; home has its own item. A full
-  // storage still shows them; it says so.
-  async function show(id, agister) {
-    const files = await R.readSettings(agister);
-    Object.assign(state, { root: R.dirFromSettings(id, files), repo: { id, name: id }, savedAt: null });
+  // Asks the server for the settings at id (a repo path, or ~) and shows
+  // them. Only a repo whose .agister was found goes on the recent list; on
+  // failure the page says why and keeps what it showed.
+  async function open_(id) {
+    const token = ++renderToken;
+    let files;
+    try {
+      files = await R.fetchSettings(fetch, id);
+    } catch (err) {
+      if (token !== renderToken) return;
+      if (!$('picker-menu').hidden) say('picker-status', err.message);
+      else say('status', err.message);
+      return;
+    }
+    if (token !== renderToken) return;
+    if (id !== R.HOME_ID) R.rememberRepo(localStorage, id, Date.now());
     R.writeCurrent(localStorage, id);
-    if (id !== R.HOME_ID) R.rememberRepo(localStorage, { id, name: id, lastOpened: Date.now() });
-    try {
-      R.saveSettings(localStorage, id, files, Date.now());
-    } catch (err) {
-      say('status', `Could not save a copy of ${id === R.HOME_ID ? '~' : id}/.agister: ${err.message}`);
-    }
-  }
-
-  function openFolder() {
+    state.current = id;
     setMenu(false);
-    $('folder-input').value = '';
-    $('folder-input').click();
-  }
-
-  async function folderPicked() {
     say('status', '');
-    const root = R.dirFromFiles($('folder-input').files);
-    if (!root) return say('status', 'That folder has no files.');
-    try {
-      if (R.isAgisterHome(root)) {
-        await show(R.HOME_ID, root);
-      } else if (await R.isAgisterRepo(root)) {
-        await show(root.name, await root.getDirectoryHandle(R.AGISTER_DIR));
-      } else {
-        return say('status', `${root.name} has no .agister folder: Agister is not installed there.`);
-      }
-    } catch (err) {
-      say('status', `Could not read ${root.name}: ${err.message}`);
-    }
-    render();
+    await render(token, files);
   }
 
-  // Shows the saved copy of a recent repo; false when there is none.
-  function showSaved(entry) {
-    const saved = R.loadSettings(localStorage, entry.id);
-    if (!saved) return false;
-    Object.assign(state, {
-      root: R.dirFromSettings(entry.name, saved.files),
-      repo: { id: entry.id, name: entry.name },
-      savedAt: saved.savedAt,
-    });
-    return true;
-  }
+  // --- browsing ---
 
-  // Home: its saved copy, or the folder dialog to pick ~/.agister.
-  function openHome() {
-    if (!showSaved({ id: R.HOME_ID, name: R.HOME_ID })) {
-      Object.assign(state, { root: null, repo: null, savedAt: null });
-      R.writeCurrent(localStorage, R.HOME_ID);
-      setMenu(false);
-      render();
-      return openFolder();
-    }
-    R.writeCurrent(localStorage, R.HOME_ID);
-    say('status', '');
-    setMenu(false);
-    render();
-  }
-
-  function openRecent(entry) {
+  async function browse(path) {
     say('picker-status', '');
-    if (!showSaved(entry)) {
-      return say('picker-status', `No saved copy of ${entry.name}; open its folder again.`);
+    let listing;
+    try {
+      listing = await R.fetchFolders(fetch, path);
+    } catch (err) {
+      return say('picker-status', err.message);
     }
-    R.rememberRepo(localStorage, { ...entry, lastOpened: Date.now() });
-    R.writeCurrent(localStorage, entry.id);
-    say('status', '');
-    setMenu(false);
-    render();
-  }
-
-  function removeRecent(entry) {
-    R.forgetRepo(localStorage, entry.id);
-    renderRecent();
+    $('menu-main').hidden = true;
+    $('menu-browse').hidden = false;
+    // The marks keep the leading / in place in the right-to-left box that
+    // cuts long paths at the start.
+    $('browse-path').textContent = `\u200e${listing.path}\u200e`;
+    $('browse-path').title = listing.path;
+    $('browse-up').disabled = !listing.parent;
+    $('browse-up').onclick = () => browse(listing.parent);
+    $('browse-list').replaceChildren(...listing.folders.map((f) => {
+      const item = el('button', { type: 'button', className: 'item', title: f.path },
+        el('span', { className: 'name mono', textContent: f.name }),
+        f.agister ? el('span', { className: 'badge', textContent: '.agister' }) : null);
+      item.addEventListener('click', () => (f.agister ? open_(f.path) : browse(f.path)));
+      return el('li', {}, item);
+    }));
+    if (!listing.folders.length) $('browse-list').append(el('li', { className: 'empty dim', textContent: 'No folders.' }));
   }
 
   // --- dashboard ---
 
-  async function render() {
-    const token = ++renderToken;
-    $('picker-label').textContent = state.repo ? state.repo.name : '~';
-    $('empty').hidden = !!state.repo;
-    $('refresh').classList.toggle('stale', !!state.savedAt);
-    say('saved-note', state.savedAt
-      ? `Saved copy from ${when(state.savedAt)}. Press ↻ to read the folder again.`
-      : '');
-    $('dashboard').hidden = true;
-    if (!state.root) return;
+  async function render(token, files) {
+    $('picker-label').textContent = label(state.current);
+    $('picker-button').title = state.current === R.HOME_ID ? 'Agister home, ~/.agister' : state.current;
     let model;
     try {
-      model = await C.loadAgister(await state.root.getDirectoryHandle(R.AGISTER_DIR));
+      model = await C.loadAgister(R.agisterFromFiles(files));
     } catch (err) {
       if (token === renderToken) say('status', `Could not read .agister: ${err.message}`);
       return;
     }
     if (token !== renderToken) return;
-    $('dashboard').replaceChildren(...[
+    const sections = [
       workflows(model.workflows),
       processes(model.processes),
       agents(model.agents),
@@ -290,8 +264,10 @@
       runtimes(model.runtimes),
       schemas(model.schemas),
       limits(model.service),
-    ].filter(Boolean));
+    ].filter(Boolean);
+    $('dashboard').replaceChildren(...sections);
     $('dashboard').hidden = false;
+    if (!sections.length) say('status', `${label(state.current)}: .agister holds no settings.`);
   }
 
   const anchor = (kind, name) => `${kind}-${name}`;
@@ -430,12 +406,12 @@
   // --- start ---
 
   $('picker-button').addEventListener('click', () => setMenu($('picker-menu').hidden));
-  $('open-folder').addEventListener('click', openFolder);
-  $('refresh').addEventListener('click', openFolder);
-  $('open-home').addEventListener('click', openHome);
-  $('folder-input').addEventListener('change', folderPicked);
+  $('open-home').addEventListener('click', () => open_(R.HOME_ID));
+  $('browse').addEventListener('click', () => browse(''));
+  $('browse-back').addEventListener('click', () => setMenu(true));
+  $('refresh').addEventListener('click', () => open_(state.current ?? R.HOME_ID));
   document.addEventListener('click', (e) => {
-    // The path, not e.target: a removed recent row is detached by now.
+    // The path, not e.target: a replaced row is detached by now.
     if (!$('picker-menu').hidden && !e.composedPath().includes($('picker'))) setMenu(false);
   });
   document.addEventListener('keydown', (e) => {
@@ -446,10 +422,8 @@
   });
 
   // Start where the page was left; with nothing chosen yet, at home.
-  const currentId = R.readCurrent(localStorage) ?? R.HOME_ID;
-  const entry = R.readRecent(localStorage).find((e) => e.id === currentId);
-  showSaved(entry ?? { id: R.HOME_ID, name: R.HOME_ID });
-  render();
+  if (location.protocol === 'file:') say('status', R.NO_SERVER);
+  else open_(R.readCurrent(localStorage) ?? R.HOME_ID);
 </script>
 </body>
 </html>

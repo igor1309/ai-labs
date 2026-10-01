@@ -1,34 +1,20 @@
 // Agister pages: the repo picker's logic that does not touch the DOM.
 //
-// A classic script that sets globalThis.AgisterRepos, not an ES module with
-// exports: browsers refuse module scripts from file:// (CORS), and the page
-// must open from disk. The tests import this file for that side effect.
+// A classic script that sets globalThis.AgisterRepos, so the tests can
+// import this file for that side effect. The page runs under agister pages,
+// which serves it and answers the two endpoints called here.
 (() => {
   const RECENT_KEY = 'agister-pages:recent';
-  const SETTINGS_KEY = 'agister-pages:settings:';
-  const SETTINGS_FILE_CAP = 256 * 1024;
   const CURRENT_KEY = 'agister-pages:current';
-  // Agister's home, ~/.agister: picked as the .agister folder itself.
+  // Agister's home, ~/.agister; the server reads it for this path.
   const HOME_ID = '~';
-  // What .agister holds as settings; runs/ and logs/ are not settings.
-  const SETTINGS_ENTRIES = new Set(['agents', 'policies', 'processes', 'runtimes', 'schemas', 'workflows', 'service.toml']);
   const RECENT_CAP = 10;
-  const AGISTER_DIR = '.agister';
+  const NO_SERVER = 'The page cannot reach agister pages. Run `agister pages` in a terminal; it serves this page and reads the folders.';
 
-  // A folder is an Agister repo when .agister at its root is a directory.
-  // A missing entry or a file of that name means no; other errors propagate.
-  async function isAgisterRepo(dir) {
-    try {
-      await dir.getDirectoryHandle(AGISTER_DIR);
-      return true;
-    } catch (err) {
-      if (err && (err.name === 'NotFoundError' || err.name === 'TypeMismatchError')) return false;
-      throw err;
-    }
-  }
-
+  // A recent repo is { id: its absolute path, name: the folder's name,
+  // lastOpened }.
   function isRecentEntry(e) {
-    return e !== null && typeof e === 'object' && typeof e.id === 'string' &&
+    return e !== null && typeof e === 'object' && typeof e.id === 'string' && e.id.startsWith('/') &&
       typeof e.name === 'string' && typeof e.lastOpened === 'number';
   }
 
@@ -45,7 +31,7 @@
   }
 
   function writeRecent(storage, list) {
-    storage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, RECENT_CAP)));
+    try { storage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, RECENT_CAP))); } catch { /* the page still works */ }
   }
 
   // entry goes to the front, replacing any entry with its id; later
@@ -59,32 +45,76 @@
     return list.filter((e) => e.id !== id);
   }
 
-  // Adds entry to the stored list; the saved settings of the entries the cap
-  // pushed out go too. dropped holds those entries.
-  function rememberRepo(storage, entry) {
-    const before = readRecent(storage);
-    const list = addRecent(before, entry);
+  // The repo at path goes to the front of the stored list.
+  function rememberRepo(storage, path, now) {
+    const list = addRecent(readRecent(storage), { id: path, name: baseName(path), lastOpened: now });
     writeRecent(storage, list);
-    const kept = new Set(list.map((e) => e.id));
-    const dropped = before.filter((e) => !kept.has(e.id));
-    for (const e of dropped) dropSettings(storage, e.id);
-    return { list, dropped };
+    return list;
   }
 
   function forgetRepo(storage, id) {
     const list = removeRecent(readRecent(storage), id);
     writeRecent(storage, list);
-    dropSettings(storage, id);
     return list;
   }
 
-  // --- folders picked with <input type=file webkitdirectory> ---
+  function baseName(path) {
+    return path.split('/').filter(Boolean).pop() || '/';
+  }
+
+  // The path last shown, or null.
+  function readCurrent(storage) {
+    try {
+      const id = storage.getItem(CURRENT_KEY);
+      return typeof id === 'string' && (id === HOME_ID || id.startsWith('/')) ? id : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeCurrent(storage, id) {
+    try { storage.setItem(CURRENT_KEY, id); } catch { /* the page still shows it */ }
+  }
+
+  // --- the server ---
+
+  // The JSON at url; throws an Error with the server's message, or NO_SERVER
+  // when there is no server to ask.
+  async function getJson(fetchFn, url) {
+    let res;
+    try {
+      res = await fetchFn(url, { cache: 'no-store' });
+    } catch {
+      throw new Error(NO_SERVER);
+    }
+    let body;
+    try {
+      body = await res.json();
+    } catch {
+      throw new Error(res.ok ? `${url}: not JSON` : NO_SERVER);
+    }
+    if (!res.ok) throw new Error(body?.error || `${url}: HTTP ${res.status}`);
+    return body;
+  }
+
+  // { 'agents/a.toml': text, ... }: the settings files of the repo at path,
+  // or of Agister's home for ~.
+  async function fetchSettings(fetchFn, path) {
+    const body = await getJson(fetchFn, `api/settings?path=${encodeURIComponent(path)}`);
+    return body.files || {};
+  }
+
+  // { path, parent, agister, folders: [{ name, path, agister }] }; an empty
+  // path lists the user's home.
+  async function fetchFolders(fetchFn, path) {
+    return getJson(fetchFn, `api/folders?path=${encodeURIComponent(path || '')}`);
+  }
+
+  // --- settings files as a folder ---
   //
-  // Safari has no folder handles: picking a folder yields its files, each
-  // with a webkitRelativePath that starts with the folder's name. These build
-  // a read-only tree over them with the handle methods the page and
-  // config.js use: entries(), getDirectoryHandle(), getFileHandle() and a
-  // file's getFile().
+  // config.js reads a .agister folder through directory-handle methods:
+  // entries(), getDirectoryHandle(), getFileHandle() and a file's getFile().
+  // These build that over the files the server sent.
 
   function notFound(name) {
     const err = new Error(`${name} not found`);
@@ -98,7 +128,6 @@
     return err;
   }
 
-  // A folder node: name plus children, a Map of name to folder or file node.
   function folderNode(name) {
     return { kind: 'directory', name, children: new Map() };
   }
@@ -128,112 +157,27 @@
     };
   }
 
-  // Adds file under root at the slash-separated path parts.
-  function place(root, parts, file) {
-    let node = root;
-    for (const part of parts.slice(0, -1)) {
-      let next = node.children.get(part);
-      if (!next) node.children.set(part, (next = folderNode(part)));
-      if (next.kind !== 'directory') return;
-      node = next;
-    }
-    const name = parts[parts.length - 1];
-    if (name) node.children.set(name, { kind: 'file', name, file });
-  }
-
-  // The picked folder as a directory handle, or null when files is empty
-  // (an empty folder picks no files, so it cannot be told apart).
-  function dirFromFiles(files) {
-    let root = null;
-    for (const file of files) {
-      const parts = (file.webkitRelativePath || file.name).split('/').filter(Boolean);
-      if (parts.length < 2) continue;
-      root ??= folderNode(parts[0]);
-      if (parts[0] === root.name) place(root, parts.slice(1), file);
-    }
-    return root && asHandle(root);
-  }
-
-  // --- the saved copy of a repo's .agister ---
-  //
-  // Without handles the page cannot reopen a folder, so it keeps the text of
-  // each recent repo's .agister in storage and shows that until the folder
-  // is opened again.
-
-  // { 'agents/a.toml': text, ... } for the settings files under agister
-  // (SETTINGS_ENTRIES), at most SETTINGS_FILE_CAP bytes each; larger files
-  // are left out.
-  async function readSettings(agister, prefix = '') {
-    const out = {};
-    for await (const [name, handle] of agister.entries()) {
-      if (!prefix && !SETTINGS_ENTRIES.has(name)) continue;
-      const path = prefix + name;
-      if (handle.kind === 'directory') {
-        Object.assign(out, await readSettings(handle, `${path}/`));
-      } else {
-        const file = await handle.getFile();
-        if (file.size === undefined || file.size <= SETTINGS_FILE_CAP) out[path] = await file.text();
-      }
-    }
-    return out;
-  }
-
-  // A repo folder holding only .agister with the saved files.
-  function dirFromSettings(name, files) {
-    const root = folderNode(name);
+  // The .agister folder holding files, { 'agents/a.toml': text, ... }.
+  function agisterFromFiles(files) {
+    const root = folderNode('.agister');
     for (const [path, text] of Object.entries(files)) {
-      place(root, [AGISTER_DIR, ...path.split('/').filter(Boolean)], { text: async () => text, size: text.length });
+      const parts = path.split('/').filter(Boolean);
+      const name = parts.pop();
+      let node = root;
+      for (const part of parts) {
+        if (!node.children.has(part)) node.children.set(part, folderNode(part));
+        node = node.children.get(part);
+        if (node.kind !== 'directory') break;
+      }
+      if (name && node.kind === 'directory') node.children.set(name, { kind: 'file', name, file: { text: async () => text } });
     }
-    if (!root.children.has(AGISTER_DIR)) root.children.set(AGISTER_DIR, folderNode(AGISTER_DIR));
     return asHandle(root);
   }
 
-  // Throws when storage is full; the caller says so.
-  function saveSettings(storage, id, files, savedAt) {
-    storage.setItem(SETTINGS_KEY + id, JSON.stringify({ savedAt, files }));
-  }
-
-  // { savedAt, files } or null when missing or unreadable.
-  function loadSettings(storage, id) {
-    try {
-      const data = JSON.parse(storage.getItem(SETTINGS_KEY + id));
-      if (!data || typeof data.savedAt !== 'number' || !data.files || typeof data.files !== 'object') return null;
-      if (!Object.values(data.files).every((t) => typeof t === 'string')) return null;
-      return data;
-    } catch {
-      return null;
-    }
-  }
-
-  // A picked folder named .agister is Agister's home, ~/.agister: a repo
-  // is picked as the folder that holds its .agister.
-  function isAgisterHome(folder) {
-    return folder.name === AGISTER_DIR;
-  }
-
-  // The id last shown, or null.
-  function readCurrent(storage) {
-    try {
-      const id = storage.getItem(CURRENT_KEY);
-      return typeof id === 'string' && id ? id : null;
-    } catch {
-      return null;
-    }
-  }
-
-  function writeCurrent(storage, id) {
-    try { storage.setItem(CURRENT_KEY, id); } catch { /* the page still shows it */ }
-  }
-
-  function dropSettings(storage, id) {
-    try { storage.removeItem(SETTINGS_KEY + id); } catch { /* a stray copy is harmless */ }
-  }
-
   globalThis.AgisterRepos = {
-    RECENT_KEY, RECENT_CAP, AGISTER_DIR, SETTINGS_KEY, CURRENT_KEY, HOME_ID,
-    isAgisterHome, readCurrent, writeCurrent,
-    isAgisterRepo,
-    readRecent, writeRecent, addRecent, removeRecent, rememberRepo, forgetRepo,
-    dirFromFiles, readSettings, dirFromSettings, saveSettings, loadSettings, dropSettings,
+    RECENT_KEY, RECENT_CAP, CURRENT_KEY, HOME_ID, NO_SERVER,
+    readRecent, writeRecent, addRecent, removeRecent, rememberRepo, forgetRepo, baseName,
+    readCurrent, writeCurrent,
+    fetchSettings, fetchFolders, agisterFromFiles,
   };
 })();

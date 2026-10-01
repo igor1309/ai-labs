@@ -63,6 +63,9 @@ Usage:
   agister runs [list]
   agister runs show <run-id>
   agister runs watch <run-id> [--after <seq>]
+  agister pages [--addr <host:port>] [--home <dir>] [--no-open]
+                                     serve the settings page on this machine and open it; see
+                                     agister pages --help
 
 Options:
   --home <dir>   Agister's state and global settings (default: $AGISTER_HOME, else ~/.agister);

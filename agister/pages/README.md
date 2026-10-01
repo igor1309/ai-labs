@@ -1,9 +1,9 @@
 # Agister pages
 
-`index.html` is a static page for Agister: no build step, no server. It
-shows Agister settings as tables, one row per item. `~` in the picker at
-the top right is Agister home, `~/.agister`; the picker also opens repos
-and lists recent ones, each showing its `.agister`:
+`agister pages` serves a page that shows Agister settings as tables, one
+row per item. `~` in the picker at the top right is Agister home,
+`~/.agister`; the picker also opens repos and lists recent ones, each
+showing its `.agister`:
 
 - **Workflows**: the processes run together, the one that then collects
   their results, and the parameters.
@@ -18,39 +18,48 @@ and lists recent ones, each showing its `.agister`:
 A file's purpose, its leading comment, shows on hover over its name. Names
 link to their rows. A name not defined in the repo's `.agister` (Agister's
 home or built in, such as the `claude-code` runtime) is marked ↗ in amber;
-a file that does not parse shows its error in its row. ↻ re-reads the repo:
-the browser asks for the folder again.
+a file that does not parse shows its error in its row. ↻ reads the
+settings again.
 
-## Open it
+## Run it
 
-Open `agister/pages/index.html` from disk in Safari, Chrome or any current
-browser (`open agister/pages/index.html`). "Open folder…" uses the
-browser's folder upload (`<input type="file" webkitdirectory>`): pick a
-repo folder, or `~/.agister` itself for Agister home (⌘⇧. shows hidden
-folders in the macOS dialog). Only the settings are read: `agents`,
-`policies`, `processes`, `runtimes`, `schemas`, `workflows` and
-`service.toml`; `runs/` and `logs/` are skipped. Nothing leaves the
-browser.
+`agister pages` listens on `127.0.0.1:7465`, prints the address and opens it
+in the default browser; Ctrl-C stops it. `--addr` takes another loopback
+address, `--home` another Agister home (default `$AGISTER_HOME`, else
+`~/.agister`), `--no-open` leaves the browser alone.
 
-The page code is in `index.html`; the logic that does not touch the DOM is
-in `repos.js` (the picker) and `config.js` (reading the settings; its YAML
-and TOML parsers cover what Agister settings use). Both are classic scripts
-rather than ES modules, because browsers block module scripts from
-`file://`.
+"Browse folders…" starts at your home folder and lists subfolders, hidden
+ones left out; a folder marked `.agister` opens, others list their
+folders. Opening a repo asks the server for that folder's `.agister` only:
+when it is there, the page shows it and puts the repo on the recent list;
+when not, the page says so and the list stays as it was.
+
+The server reads, never writes, and answers two endpoints:
+
+- `GET /api/folders?path=<absolute path>`: the folder's subfolders, each
+  marked when it holds `.agister`; no path means your home folder.
+- `GET /api/settings?path=<absolute repo path | ~>`: the settings files of
+  `<path>/.agister`, or of Agister home for `~`: `agents`, `policies`,
+  `processes`, `runtimes`, `schemas`, `workflows` and `service.toml`, each
+  at most 256 KB. `runs/` and `logs/` are skipped.
+
+It listens on loopback only and refuses a request whose Host is not
+`localhost` or a loopback address, so another site cannot read through it.
+
+The page itself is `index.html`, embedded in the binary with `repos.js`
+(the picker and the calls to the server) and `config.js` (reading the
+settings; its YAML and TOML parsers cover what Agister settings use).
+`serve.go` is the server.
 
 ## Data
 
-Everything stays in the browser's localStorage, per page origin:
+The browser's localStorage keeps, for the page's address:
 
-- `agister-pages:recent`: the recent repos (name, last opened), most recent
-  first, at most 10. A repo is known by its folder name.
-- `agister-pages:current`: what was shown last (`~` or a repo name); the
+- `agister-pages:recent`: the recent repos (path, name, last opened), most
+  recent first, at most 10.
+- `agister-pages:current`: what was shown last (`~` or a repo path); the
   page opens on it.
-- `agister-pages:settings:<name>`: a saved copy of home's (`~`) and each recent repo's
-  `.agister` files (each at most 256 KB). The browser cannot reopen a
-  folder by itself, so a recent repo shows this copy, with the time it was
-  saved, until you open its folder again.
 
 ## Test
 
-From the repository root: `node --test agister/pages/tests/*.test.js`.
+From `agister/`: `go test ./pages/` and `node --test pages/tests/*.test.js`.
