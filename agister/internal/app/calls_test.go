@@ -317,9 +317,9 @@ func TestCostLimitReachesTheRuntimeOrRefuses(t *testing.T) {
 	}
 }
 
-// The shipped ask and review processes and their read-only and
-// static-review policies set no cost limit, so a runtime that cannot
-// enforce one runs them.
+// The shipped ask, review and implement processes and their read-only,
+// static-review and implement policies set no cost limit, so a runtime that
+// cannot enforce one runs them.
 func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
 	for _, c := range []struct {
 		process, policy, agent string
@@ -329,6 +329,7 @@ func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
 		{"ask", "read-only", "assistant", map[string]string{"question": "What is a.txt?"}, `"an answer"`},
 		{"adversarial_review", "static-review", "reviewer", nil, `{"outcome":"no"}`},
 		{"architecture_review", "static-review", "reviewer", map[string]string{"architecture": "docs/architecture.md"}, `{"outcome":"no"}`},
+		{"implement", "implement", "assistant", map[string]string{"brief": "brief.md"}, `"done"`},
 	} {
 		t.Run(c.process, func(t *testing.T) {
 			h := newHarness()
@@ -345,6 +346,11 @@ func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
 			}
 			h.defs.docs[definition.KindService]["service"] = string(service)
 			h.defs.docs[definition.KindAgent][c.agent] = strings.Replace(h.defs.docs[definition.KindAgent]["a"], `name = "a"`, `name = "`+c.agent+`"`, 1)
+			if c.agent == "assistant" {
+				// Resumable, as the shipped assistant is: implement's
+				// verification repairs in the call's session.
+				h.defs.docs[definition.KindAgent][c.agent] += "session = \"resumable\"\n"
+			}
 			h.defs.docs[definition.KindSchema]["review-result"] = schema
 			h.runner.identity.CostLimit = false
 			h.runner.turn.Output = json.RawMessage(c.output)

@@ -275,6 +275,25 @@ func TestTheJudgeHasNoCostLimit(t *testing.T) {
 	}
 }
 
+// The repository's implement runs under no cost limit: its policy sets
+// none, so its call's effective limits carry none.
+func TestImplementHasNoCostLimit(t *testing.T) {
+	root, repo, home := onFakeRuntimes(t)
+	args := append([]string{"run", "implement"}, paramArgs(parseProcess(t, root, "implement").Params)...)
+	created, _ := runRecorded(t, home, repo, args)
+	if len(created) != 1 {
+		t.Fatalf("runs recorded: %v, want one", created)
+	}
+	record := completedRun(t, home, created[0])
+	effective, ok := record["effective"].(map[string]any)
+	if !ok {
+		t.Fatalf("the implement run records no effective limits: %v", record)
+	}
+	if limit, set := effective["max_cost_usd"]; set {
+		t.Fatalf("implement's effective cost limit is %v, want none", limit)
+	}
+}
+
 // judgedReviews runs a review workflow to completion and is its judge's
 // collection, as each node's process and status by node, and the nodes'
 // runs by process. It fails unless the judge received that collection.
