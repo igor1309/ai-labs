@@ -8,21 +8,17 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeoutput"
 )
 
-// An object's oneOf is answered by its first variant: each property takes
-// the variant's keywords over the object's own, and a property the variant
-// leaves out keeps the object's.
-func TestInstanceAnswersAOneOfByItsFirstVariant(t *testing.T) {
+// A property's anyOf is answered by its first variant, whole: its constant
+// and each of its required properties, and nothing of the other variants.
+func TestInstanceAnswersAnAnyOfByItsFirstVariant(t *testing.T) {
 	const document = `{
 		"type": "object",
-		"required": ["answer", "reason", "decision", "note"],
-		"oneOf": [
-			{"properties": {"answer": {"const": "owner"}, "reason": {"const": ""}, "decision": {"type": "null"}}},
-			{"properties": {"answer": {"const": "decision"}, "decision": {"type": "object"}}}
-		],
+		"required": ["advice", "note"],
 		"properties": {
-			"answer": {"type": "string", "enum": ["decision", "owner"]},
-			"reason": {"type": "string"},
-			"decision": {"type": ["object", "null"], "required": ["chosen"], "properties": {"chosen": {"type": "string"}}},
+			"advice": {"anyOf": [
+				{"type": "object", "required": ["kind", "reason"], "properties": {"kind": {"type": "string", "enum": ["owner"]}, "reason": {"type": "string"}}},
+				{"type": "object", "required": ["kind", "chosen"], "properties": {"kind": {"const": "decision"}, "chosen": {"type": "string"}}}
+			]},
 			"note": {"type": "string"}
 		}
 	}`
@@ -30,7 +26,7 @@ func TestInstanceAnswersAOneOfByItsFirstVariant(t *testing.T) {
 	if err := json.Unmarshal([]byte(document), &schema); err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]any{"answer": "owner", "reason": "", "decision": nil, "note": "fake"}
+	want := map[string]any{"advice": map[string]any{"kind": "owner", "reason": "fake"}, "note": "fake"}
 	if got := fakeoutput.Instance(schema); !reflect.DeepEqual(got, want) {
 		t.Fatalf("instance = %v, want %v", got, want)
 	}

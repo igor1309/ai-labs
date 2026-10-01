@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -243,17 +244,25 @@ func TestADRReviewCollectsTheADRReview(t *testing.T) {
 
 // The advisor answers a question file on the Codex agent, a model family
 // other than the judge's, in a checkout of the revision, and is given the
-// question and its standing prompt, prompts/advisor.md.
+// question and its standing prompt, prompts/advisor.md. Its output is of
+// the advice schema.
 func TestAdvisorAnswersAQuestionFile(t *testing.T) {
 	root, repo, home := onFakeRuntimes(t)
 	question := filepath.Join(t.TempDir(), "question.md")
 	write(t, question, "Asked by: workflow run 1, item 2.\nQuestion: which?\nOptions: (a) one; (b) two.\n")
 	// The timeout is the test's own: the process's policy allows 20 minutes.
-	created, _ := runRecorded(t, home, repo, []string{"run", "advisor", "--param", "question=" + question, "--param", "revision=feature", "--timeout", "1m"})
+	created, r := runRecorded(t, home, repo, []string{"run", "advisor", "--param", "question=" + question, "--param", "revision=feature", "--timeout", "1m"})
 	if len(created) != 1 {
 		t.Fatalf("runs recorded: %v, want one", created)
 	}
 	record := completedRun(t, home, created[0])
+	// Its output is the one property advice, which the advice schema
+	// accepts: the fake answers with the first variant, owner.
+	output := record["result"].(map[string]any)["output"]
+	schemaAccepts(t, record, output, r.stdout)
+	if want := map[string]any{"advice": map[string]any{"kind": "owner", "reason": "fake"}}; !reflect.DeepEqual(output, want) {
+		t.Fatalf("the advisor's output = %v, want %v", output, want)
+	}
 	// The runtime was started under its read-only sandbox.
 	if argv := runtimeArgv(t, home, created[0]); !follows(argv, "--sandbox", "read-only") {
 		t.Fatalf("the advisor's runtime argv = %v, want --sandbox read-only", argv)
@@ -306,10 +315,10 @@ func follows(argv []string, flag, value string) bool {
 	return false
 }
 
-// The repository's advice schema accepts a decision with its record and an
-// empty reason, and an owner answer with a reason and no record; it refuses
-// an answer whose payload is the other's, a missing field and an unexpected
-// one. The payloads are fixed, not built from the schema.
+// The repository's advice schema accepts an owner answer with its reason,
+// and a decision with its record; it refuses an answer whose payload is the
+// other's, a missing field and an unexpected one. The payloads are fixed,
+// not built from the schema.
 func TestAdviceSchemaTiesTheAnswerToItsPayload(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -319,29 +328,36 @@ func TestAdviceSchemaTiesTheAnswerToItsPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const record = `{"asked_by":"workflow run 1, item 2","question":"which?","options":["one","two"],"chosen":"one",` +
-		`"excluded":[{"option":"two","why":"D-3 excludes it"}],"rests_on":["D-3"],"follow_ups":[]}`
-	const unknownInRecord = `{"asked_by":"workflow run 1, item 2","question":"which?","options":["one","two"],"chosen":"one",` +
-		`"excluded":[{"option":"two","why":"D-3 excludes it"}],"rests_on":["D-3"],"follow_ups":[],"status":"final"}`
-	const recordWithoutChosen = `{"asked_by":"workflow run 1, item 2","question":"which?","options":["one","two"],` +
-		`"excluded":[{"option":"two","why":"D-3 excludes it"}],"rests_on":["D-3"],"follow_ups":[]}`
+	const record = `"asked_by":"workflow run 1, item 2","question":"which?","options":["one","two"],"chosen":"one",` +
+		`"excluded":[{"option":"two","why":"D-3 excludes it"}],"rests_on":["D-3"],"follow_ups":[]`
+	const recordWithoutChosen = `"asked_by":"workflow run 1, item 2","question":"which?","options":["one","two"],` +
+		`"excluded":[{"option":"two","why":"D-3 excludes it"}],"rests_on":["D-3"],"follow_ups":[]`
+	const reason = `"reason":"option (b) changes ADR-001 rule 9"`
 	cases := []struct {
 		name, output string
 		valid        bool
 	}{
-		{"a decision", `{"answer":"decision","reason":"","decision":` + record + `}`, true},
-		{"owner", `{"answer":"owner","reason":"option (b) changes ADR-001 rule 9","decision":null}`, true},
-		{"a decision without its record", `{"answer":"decision","reason":"","decision":null}`, false},
-		{"a decision with a reason", `{"answer":"decision","reason":"it is a build question","decision":` + record + `}`, false},
-		{"owner with a record", `{"answer":"owner","reason":"option (b) changes ADR-001 rule 9","decision":` + record + `}`, false},
-		{"owner without a reason", `{"answer":"owner","reason":"","decision":null}`, false},
-		{"an unknown answer", `{"answer":"maybe","reason":"","decision":null}`, false},
-		{"no answer", `{"reason":"","decision":` + record + `}`, false},
-		{"no reason", `{"answer":"decision","decision":` + record + `}`, false},
-		{"no decision", `{"answer":"owner","reason":"option (b) changes ADR-001 rule 9"}`, false},
-		{"a record without its chosen option", `{"answer":"decision","reason":"","decision":` + recordWithoutChosen + `}`, false},
-		{"an unexpected field", `{"answer":"owner","reason":"option (b) changes ADR-001 rule 9","decision":null,"note":"x"}`, false},
-		{"an unexpected field in the record", `{"answer":"decision","reason":"","decision":` + unknownInRecord + `}`, false},
+		{"a decision", `{"advice":{"kind":"decision",` + record + `}}`, true},
+		{"owner", `{"advice":{"kind":"owner",` + reason + `}}`, true},
+		{"a decision without its record", `{"advice":{"kind":"decision"}}`, false},
+		{"a decision with a reason", `{"advice":{"kind":"decision",` + reason + `,` + record + `}}`, false},
+		{"a decision with a reason for a record", `{"advice":{"kind":"decision",` + reason + `}}`, false},
+		{"owner with a record", `{"advice":{"kind":"owner",` + reason + `,` + record + `}}`, false},
+		{"owner with a record for a reason", `{"advice":{"kind":"owner",` + record + `}}`, false},
+		{"owner with an empty reason", `{"advice":{"kind":"owner","reason":""}}`, false},
+		{"owner with a blank reason", `{"advice":{"kind":"owner","reason":" "}}`, false},
+		{"owner without a reason", `{"advice":{"kind":"owner"}}`, false},
+		{"an unknown kind", `{"advice":{"kind":"maybe",` + reason + `}}`, false},
+		{"no kind, a reason", `{"advice":{` + reason + `}}`, false},
+		{"no kind, a record", `{"advice":{` + record + `}}`, false},
+		{"no advice", `{}`, false},
+		{"null advice", `{"advice":null}`, false},
+		{"an answer at the root", `{"kind":"owner",` + reason + `}`, false},
+		{"a record without its chosen option", `{"advice":{"kind":"decision",` + recordWithoutChosen + `}}`, false},
+		{"an excluded option without its why", `{"advice":{"kind":"decision",` + strings.Replace(record, `,"why":"D-3 excludes it"`, "", 1) + `}}`, false},
+		{"an unexpected field", `{"advice":{"kind":"owner",` + reason + `},"note":"x"}`, false},
+		{"an unexpected field in an owner answer", `{"advice":{"kind":"owner",` + reason + `,"note":"x"}}`, false},
+		{"an unexpected field in the record", `{"advice":{"kind":"decision",` + record + `,"status":"final"}}`, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -356,8 +372,120 @@ func TestAdviceSchemaTiesTheAnswerToItsPayload(t *testing.T) {
 	}
 }
 
+// No schema this repository gives to Codex uses a combinator Codex's
+// strict structured outputs refuse before the turn starts: oneOf anywhere,
+// anyOf or allOf at the root. The schemas are those of the processes whose
+// agent runs on the codex runtime, read from the directory, so a new one is
+// checked without listing it here.
+func TestSchemasGivenToCodexUseNoRefusedCombinator(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	processes, err := filepath.Glob(filepath.Join(root, ".agister", "processes", "*.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	checked := map[string]bool{}
+	for _, path := range processes {
+		process := parseProcess(t, root, strings.TrimSuffix(filepath.Base(path), ".yaml"))
+		name := process.Output.Schema
+		if name == "" || checked[name] || agentRuntime(t, root, strings.TrimPrefix(process.Agent, "agent:")) != "codex" {
+			continue
+		}
+		checked[name] = true
+		data, err := os.ReadFile(filepath.Join(root, ".agister", "schemas", name+".json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var document any
+		if err := json.Unmarshal(data, &document); err != nil {
+			t.Fatalf("schema %s: %v", name, err)
+		}
+		if refused := refusedCombinators(document); len(refused) > 0 {
+			t.Errorf("schema %s, given to Codex by process %s, uses %v", name, process.Name, refused)
+		}
+	}
+	if !checked["advice"] {
+		t.Fatalf("schemas checked: %v, want the advisor's among them", checked)
+	}
+}
+
+// refusedCombinators finds a root-level oneOf, anyOf and allOf, and a
+// oneOf at any depth; a nested anyOf or allOf is none.
+func TestRefusedCombinators(t *testing.T) {
+	cases := []struct {
+		name, document string
+		want           []string
+	}{
+		{"none", `{"type":"object","properties":{"a":{"type":"string"}}}`, nil},
+		{"a nested anyOf", `{"type":"object","properties":{"a":{"anyOf":[{"type":"string"},{"type":"null"}]}}}`, nil},
+		{"a nested allOf", `{"type":"object","properties":{"a":{"allOf":[{"type":"string"}]}}}`, nil},
+		{"a root oneOf", `{"type":"object","oneOf":[{"required":["a"]}]}`, []string{"oneOf at /"}},
+		{"a root anyOf", `{"anyOf":[{"type":"object"}]}`, []string{"anyOf at /"}},
+		{"a root allOf", `{"allOf":[{"type":"object"}]}`, []string{"allOf at /"}},
+		{"a oneOf in a property", `{"type":"object","properties":{"a":{"oneOf":[{"type":"string"}]}}}`, []string{"oneOf at /properties/a"}},
+		{"a oneOf in an array's items", `{"type":"object","properties":{"a":{"type":"array","items":{"oneOf":[{"type":"string"}]}}}}`, []string{"oneOf at /properties/a/items"}},
+		{"a oneOf in an anyOf's variant", `{"type":"object","properties":{"a":{"anyOf":[{"type":"null"},{"oneOf":[{"type":"string"}]}]}}}`, []string{"oneOf at /properties/a/anyOf/1"}},
+		{"several", `{"allOf":[{"oneOf":[{"type":"object"}]}],"anyOf":[{"type":"object"}]}`, []string{"allOf at /", "anyOf at /", "oneOf at /allOf/0"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var document any
+			if err := json.Unmarshal([]byte(c.document), &document); err != nil {
+				t.Fatal(err)
+			}
+			if got := refusedCombinators(document); !reflect.DeepEqual(got, c.want) {
+				t.Fatalf("refused = %v, want %v", got, c.want)
+			}
+		})
+	}
+}
+
+// refusedCombinators are the combinators of a JSON Schema document that
+// Codex refuses, each with the place it stands at, sorted: oneOf anywhere,
+// anyOf and allOf at the root.
+func refusedCombinators(document any) []string {
+	var refused []string
+	var walk func(node any, at string)
+	walk = func(node any, at string) {
+		switch node := node.(type) {
+		case map[string]any:
+			place := at
+			if place == "" {
+				place = "/"
+			}
+			for key, value := range node {
+				if key == "oneOf" || at == "" && (key == "anyOf" || key == "allOf") {
+					refused = append(refused, key+" at "+place)
+				}
+				walk(value, at+"/"+key)
+			}
+		case []any:
+			for i, value := range node {
+				walk(value, at+"/"+strconv.Itoa(i))
+			}
+		}
+	}
+	walk(document, "")
+	sort.Strings(refused)
+	return refused
+}
+
+// agentRuntime is the runtime of a repository agent.
+func agentRuntime(t *testing.T, root, agent string) string {
+	t.Helper()
+	return parseAgent(t, root, agent).Runtime
+}
+
 // modelFamily is the model family of a repository agent.
 func modelFamily(t *testing.T, root, agent string) string {
+	t.Helper()
+	return parseAgent(t, root, agent).ModelFamily
+}
+
+// parseAgent parses a repository agent.
+func parseAgent(t *testing.T, root, agent string) definition.Agent {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(root, ".agister", "agents", agent+".toml"))
 	if err != nil {
@@ -369,7 +497,7 @@ func modelFamily(t *testing.T, root, agent string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return parsed.ModelFamily
+	return parsed
 }
 
 // judgedReviews runs a review workflow to completion and is its judge's

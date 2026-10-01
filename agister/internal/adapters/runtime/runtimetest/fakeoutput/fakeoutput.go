@@ -8,10 +8,9 @@ func Enabled(getenv func(string) string) bool { return getenv("FAKE_OUTPUT") == 
 
 // Instance is a small value the schema accepts: the first enum value or
 // const, an object with each required property, an array of one item, and
-// otherwise a zero value of the first listed type. An object's oneOf is
-// answered by its first variant: a property takes what the variant states
-// for it over what the object states. It covers the keywords Agister's
-// schemas use, not JSON Schema at large.
+// otherwise a zero value of the first listed type. An anyOf is answered by
+// its first variant. It covers the keywords Agister's schemas use, not JSON
+// Schema at large.
 func Instance(schema any) any {
 	s, ok := schema.(map[string]any)
 	if !ok {
@@ -23,6 +22,9 @@ func Instance(schema any) any {
 	if values, ok := s["enum"].([]any); ok && len(values) > 0 {
 		return values[0]
 	}
+	if variants, ok := s["anyOf"].([]any); ok && len(variants) > 0 {
+		return Instance(variants[0])
+	}
 	kind, _ := s["type"].(string)
 	if kinds, ok := s["type"].([]any); ok && len(kinds) > 0 {
 		kind, _ = kinds[0].(string)
@@ -32,14 +34,9 @@ func Instance(schema any) any {
 		object := map[string]any{}
 		properties, _ := s["properties"].(map[string]any)
 		required, _ := s["required"].([]any)
-		var variant map[string]any
-		if variants, ok := s["oneOf"].([]any); ok && len(variants) > 0 {
-			first, _ := variants[0].(map[string]any)
-			variant, _ = first["properties"].(map[string]any)
-		}
 		for _, name := range required {
 			if name, ok := name.(string); ok {
-				object[name] = Instance(narrowed(properties[name], variant[name]))
+				object[name] = Instance(properties[name])
 			}
 		}
 		return object
@@ -57,23 +54,4 @@ func Instance(schema any) any {
 	default:
 		return nil
 	}
-}
-
-// narrowed is a property's schema with each keyword a oneOf variant states
-// for the property in place of the object's own.
-func narrowed(property, variant any) any {
-	stated, ok := variant.(map[string]any)
-	if !ok {
-		return property
-	}
-	merged := map[string]any{}
-	if own, ok := property.(map[string]any); ok {
-		for keyword, value := range own {
-			merged[keyword] = value
-		}
-	}
-	for keyword, value := range stated {
-		merged[keyword] = value
-	}
-	return merged
 }

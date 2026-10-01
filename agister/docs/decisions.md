@@ -20,7 +20,11 @@ overrides. Each is a record, appended:
 ```
 
 - A record is the advisor's output, unedited, numbered from D-1 in the
-  order appended.
+  order appended. The output is one property, `advice`, of `kind`
+  `decision` or `owner`: a decision's other fields are the record's
+  (`asked_by`, `question`, `options`, `chosen` for **Decision**,
+  `excluded`, `rests_on`, `follow_ups`); an `owner` answer has only its
+  `reason`.
 - Its status is `Provisional (advisor)` until the owner rules. The owner
   confirms it by setting the status to `Confirmed`.
 - Records are not edited otherwise. A later decision on the same question

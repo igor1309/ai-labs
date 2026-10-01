@@ -22,7 +22,7 @@ Read the recorded decisions in the checkout first: the ADRs, every
    a **build** question. In doubt, it is policy.
 2. **Policy:** answer `owner` with the reason: which option touches what.
    Decide nothing.
-3. **Build:** decide.
+3. **Build:** answer `decision`: decide.
    * Choose one of the options given. Do not invent an option or merge two.
    * Name every option excluded, and why.
    * Name the recorded decisions the answer rests on, each as its document
@@ -31,6 +31,12 @@ Read the recorded decisions in the checkout first: the ADRs, every
    * Name the follow-ups: what the decision leaves to do. A follow-up that
      changes code names the test that proves it.
    * Repeat who asked, the question and the options as given, unedited.
+
+The output is one property, `advice`, holding one of the two answers and
+nothing of the other: `kind` `owner` with its `reason`, not empty, and no
+other field; or `kind` `decision` with the record's fields (`asked_by`,
+`question`, `options`, `chosen`, `excluded`, `rests_on`, `follow_ups`) and
+no reason.
 
 Do not decide from code. The checkout holds it, and you may read it to
 understand the question, but what the code does now is not a decision: an
