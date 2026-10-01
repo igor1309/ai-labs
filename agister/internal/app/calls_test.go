@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
+	"os"
 	"reflect"
 	"strings"
 	"sync"
@@ -456,6 +457,86 @@ command = "/bin/codex"
 	h.runner.turn.Output = json.RawMessage(`"an answer"`)
 
 	return h, h.call(t, contract.CallRequest{Process: "ask", Agent: "codex-agent", Params: map[string]string{"question": "What is a.txt?"}})
+}
+
+// The example Codex review's sandboxed-review policy allows everything
+// Codex's read-only sandbox grants under contract codex/2, so, as with the
+// shipped ask, the shipped service refuses it on the example agent, naming
+// host.read, and a service that opts in to host reads, as its README
+// documents, lets it complete in the read-only sandbox.
+func TestExampleCodexReviewRunsOnACodexRuntime(t *testing.T) {
+	const shipped = `state_reaching = ["host.read", "host.write"]`
+
+	t.Run("shipped service", func(t *testing.T) {
+		h, record := reviewOnCodex(t, func(service string) string {
+			if !strings.Contains(service, shipped) {
+				t.Fatal("the shipped service's state_reaching line was not found")
+			}
+			return service
+		})
+		if record.Result.Status != run.Failed || class(record) != run.ClassRefused || !strings.Contains(message(record), "host.read") {
+			t.Fatalf("result = %+v, error %q", record.Result, message(record))
+		}
+		if calls := h.runner.calls(); len(calls) != 0 {
+			t.Fatalf("the runtime was called: %+v", calls)
+		}
+	})
+
+	t.Run("opted-in service", func(t *testing.T) {
+		h, record := reviewOnCodex(t, func(service string) string {
+			accepting := strings.Replace(service, shipped, `state_reaching = []`, 1)
+			if accepting == service {
+				t.Fatal("the shipped service's state_reaching line was not found")
+			}
+			return accepting
+		})
+		if record.Result.Status != run.Completed {
+			t.Fatalf("result = %+v, error %q", record.Result, message(record))
+		}
+		if got := h.runner.calls()[0].Primitives; !reflect.DeepEqual(got, []string{"read-only"}) {
+			t.Fatalf("primitives = %v", got)
+		}
+		if len(record.Plan.Withheld) != 0 {
+			t.Fatalf("withheld = %v", record.Plan.Withheld)
+		}
+	})
+}
+
+// reviewOnCodex runs the example adversarial_review_sandboxed with its
+// policy, agent and runtime from examples/codex, the runtime on the spy
+// adapter and verified for the spy's version, under the shipped service as
+// configure returns it, and returns the harness and the call's record.
+func reviewOnCodex(t *testing.T, configure func(service string) string) (*harness, run.Record) {
+	t.Helper()
+	h := newHarness()
+	codex := os.DirFS("../../examples/codex")
+	read := func(files fs.FS, path string) string {
+		data, err := fs.ReadFile(files, path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(data)
+	}
+	h.defs.docs[definition.KindProcess]["adversarial_review_sandboxed"] = read(codex, "processes/adversarial_review_sandboxed.yaml")
+	h.defs.docs[definition.KindPolicy]["sandboxed-review"] = read(codex, "policies/sandboxed-review.yaml")
+	h.defs.docs[definition.KindAgent]["codex-reviewer"] = read(codex, "agents/codex-reviewer.toml")
+	h.defs.docs[definition.KindSchema]["review-result"] = schema
+	h.defs.docs[definition.KindService]["service"] = configure(read(examples.Settings(), "service.toml"))
+
+	runtime := read(codex, "runtimes/codex.yaml")
+	for _, edit := range [][2]string{
+		{"adapter: codex\n", "adapter: spy\n"},
+		{"\n    workspace-write:", "\n      verified: [\"0.159.\"]\n    workspace-write:"},
+	} {
+		if !strings.Contains(runtime, edit[0]) {
+			t.Fatalf("%q was not found in the example runtime", edit[0])
+		}
+		runtime = strings.Replace(runtime, edit[0], edit[1], 1)
+	}
+	h.defs.docs[definition.KindRuntime]["codex"] = runtime + "      verified: [\"0.159.\"]\n"
+
+	h.runner.identity = app.RuntimeIdentity{Contract: "codex/2", Version: "0.159.2", Resume: true}
+	return h, h.call(t, contract.CallRequest{Process: "adversarial_review_sandboxed"})
 }
 
 func TestContinuationResumesAFinishedRunsSession(t *testing.T) {

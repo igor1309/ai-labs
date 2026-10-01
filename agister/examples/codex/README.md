@@ -7,7 +7,9 @@ Not installed by `agister init`: `agister check` refuses them as shipped.
   Agister never grants. A repository opts in for Codex in its own
   `service.toml`, by not listing `host.read` as state-reaching (as this
   repository's `.agister/service.toml` does), knowing agents can then read
-  Agister's state there.
+  Agister's state there. The `sandboxed-review` policy here allows
+  `host.read`, as the shipped `read-only` policy does, so with that opt-in
+  the example review runs in Codex's read-only sandbox.
 - Contract `codex/2` continues a session in place (`codex exec resume`),
   for agents that allow it, but cannot limit cost, so calls under a cost
   limit are refused.
