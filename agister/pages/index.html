@@ -80,7 +80,11 @@
     color: var(--dim); font-weight: 600; padding: 0 12px 8px 0; border-bottom: 1px solid var(--line);
     white-space: nowrap;
   }
-  td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--fg2); }
+  /* One font in every cell: names and values alike. */
+  td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--fg2);
+    font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  td code { font: inherit; }
+  td .list > span { white-space: nowrap; }
   tr:last-child td { border-bottom: none; }
   td:first-child code { color: var(--fg); font-weight: 600; }
   tr:target td { background: #1f3b57; }
