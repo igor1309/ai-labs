@@ -43,6 +43,25 @@ test("ciJobs_shouldSelectAgisterCore_fromAgisterFilterOutputAlone", () => {
   assert.equal(jobRunsForFilters("agister-core", new Set()), false);
 });
 
+test("ciReport_shouldBeNamedReport_onlyForPullRequest", () => {
+  assert.equal(reportCheckName("pull_request"), "report");
+  assert.notEqual(reportCheckName("push"), "report");
+  assert.notEqual(reportCheckName("workflow_dispatch"), "report");
+});
+
+// Evaluates the `report` job's `name:`, the check name the required
+// status check matches, for a run triggered by eventName.
+function reportCheckName(eventName) {
+  const job = workflow.match(/\n  report:\n((?:    .*\n)+)/);
+  assert.ok(job, "missing report job");
+  const name = job[1].match(
+    /^    name: \$\{\{ github\.event_name == '([\w-]+)' && '([^']*)' \|\| format\('([^']*)', github\.event_name\) \}\}$/m,
+  );
+  assert.ok(name, "unsupported report job name");
+  const [, event, matched, otherwise] = name;
+  return eventName === event ? matched : otherwise.replace("{0}", eventName);
+}
+
 function filterSection(filterName, nextFilterName) {
   const match = workflow.match(new RegExp(`\\n            ${filterName}:\\n([\\s\\S]*?)\\n            ${nextFilterName}:`));
   assert.ok(match, `missing ${filterName} filter`);

@@ -133,16 +133,18 @@ func (Workspaces) Discard(ctx context.Context, repository, dir string) error {
 		return err
 	}
 	parent := filepath.Dir(dir)
-	_, err := run(ctx, repository, "worktree", "remove", "--force", dir)
+	// Removes this checkout's record even when its directory is already
+	// gone; a checkout with no record left is already discarded. Other
+	// worktrees' records are the repository's, never pruned here. Git
+	// records the real path, and cannot resolve a symlinked temp directory
+	// (/var on macOS) under a parent that is gone, so it is given resolved.
+	recorded := filepath.Join(resolved(filepath.Dir(parent)), filepath.Base(parent), filepath.Base(dir))
+	_, err := run(ctx, repository, "worktree", "remove", "--force", recorded)
 	if err != nil && strings.Contains(err.Error(), "is not a working tree") {
 		err = nil
 	}
 	if removeErr := os.RemoveAll(parent); err == nil {
 		err = removeErr
-	}
-	// Drops the record of a checkout whose directory was already gone.
-	if _, pruneErr := run(ctx, repository, "worktree", "prune"); err == nil {
-		err = pruneErr
 	}
 	return err
 }
