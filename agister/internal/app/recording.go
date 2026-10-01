@@ -3,23 +3,20 @@ package app
 import (
 	"slices"
 
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
-	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
-	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 // The run record owns its types (see run.DefinitionSource); these translate
 // what a call resolved into them.
 
-func recordSources(sources []definition.Source) []run.DefinitionSource {
+func recordSources(sources []CallSource) []run.DefinitionSource {
 	if sources == nil {
 		return nil
 	}
 	recorded := make([]run.DefinitionSource, len(sources))
 	for i, source := range sources {
 		recorded[i] = run.DefinitionSource{
-			Kind:      string(source.Kind),
+			Kind:      source.Kind,
 			Name:      source.Name,
 			Path:      source.Path,
 			SHA256:    source.SHA256,
@@ -30,7 +27,7 @@ func recordSources(sources []definition.Source) []run.DefinitionSource {
 	return recorded
 }
 
-func recordEffective(effective policy.Effective) *run.EffectivePolicy {
+func recordEffective(effective CallLimits) *run.EffectivePolicy {
 	return &run.EffectivePolicy{
 		Timeout:     effective.Timeout,
 		MaxAttempts: effective.MaxAttempts,
@@ -44,7 +41,7 @@ func recordEffective(effective policy.Effective) *run.EffectivePolicy {
 	}
 }
 
-func recordVerify(verify *definition.Verify) *run.Verify {
+func recordVerify(verify *CallVerify) *run.Verify {
 	if verify == nil {
 		return nil
 	}
@@ -56,7 +53,7 @@ func recordVerify(verify *definition.Verify) *run.Verify {
 	}
 }
 
-func recordPlan(plan enforce.Plan) *run.Plan {
+func recordPlan(plan CallPlan) *run.Plan {
 	return &run.Plan{
 		Primitives: slices.Clone(plan.Primitives),
 		Granted:    slices.Clone(plan.Granted),

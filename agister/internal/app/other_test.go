@@ -15,8 +15,6 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
-	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
-	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -515,51 +513,54 @@ func TestShowProcessSourcesAreStructured(t *testing.T) {
 // process.
 func TestInspectionShowsThroughTheResolverItDeclares(t *testing.T) {
 	cost := 0.5
-	source := func(kind definition.Kind, name string) definition.Source {
-		return definition.Source{Kind: kind, Name: name, Path: "/project/" + string(kind) + "/" + name, Project: true}
+	source := func(kind definition.Kind, name string) app.InspectedSource {
+		return app.InspectedSource{Kind: string(kind), Name: name, Path: "/project/" + string(kind) + "/" + name, Project: true}
 	}
 	origin := func(kind definition.Kind, name string) contract.DefinitionOrigin {
 		return contract.DefinitionOrigin{Kind: string(kind), Name: name, Layer: "project", Path: "/project/" + string(kind) + "/" + name}
 	}
 	review := &app.InspectedProcess{
-		Process: definition.Process{
+		Process: app.InspectedDefinition{
 			Name: "review", Policy: "strict",
-			Params: []definition.Param{{Name: "diff"}},
-			Values: []definition.Value{{Name: "diff", Source: "param"}},
-			Output: definition.Output{Format: "json", Schema: "s"},
-			Verify: &definition.Verify{Command: "go test ./...", Timeout: time.Minute, MaxAttempts: 2, Instruction: "fix it"},
+			Params:       []app.InspectedParam{{Name: "diff"}},
+			Values:       []app.InspectedValue{{Name: "diff", Source: "param"}},
+			OutputFormat: "json", OutputSchema: "s",
+			Verify: &app.InspectedVerify{Command: "go test ./...", Timeout: time.Minute, MaxAttempts: 2, Instruction: "fix it"},
 		},
-		Agent:   definition.Agent{Name: "b"},
-		Mapping: definition.Mapping{Name: "rt"},
-		Effective: policy.Effective{
+		Agent:   "b",
+		Runtime: "rt",
+		Effective: app.InspectedLimits{
 			Timeout: 5 * time.Minute, MaxAttempts: 2, MaxCostUSD: &cost,
 			Allow: []string{"repository.read", "repository.diff"}, Deny: []string{"repository.diff"}, Permissions: []string{"repository.read"},
 			Access: "read", Scope: "repository",
 		},
-		Plan:    enforce.Plan{Primitives: []string{"Read"}, Withheld: []string{"repository.search"}},
-		Sources: []definition.Source{source(definition.KindAgent, "b"), source(definition.KindProcess, "review")},
+		Primitives: []string{"Read"}, Withheld: []string{"repository.search"},
+		Sources: []app.InspectedSource{source(definition.KindAgent, "b"), source(definition.KindProcess, "review")},
 	}
 	summarize := &app.InspectedProcess{
-		Process: definition.Process{
-			Name:   "summarize",
-			Values: []definition.Value{{Name: "findings", Source: definition.CollectionSource}},
-			Output: definition.Output{Format: "text"},
+		Process: app.InspectedDefinition{
+			Name:         "summarize",
+			Values:       []app.InspectedValue{{Name: "findings", Source: definition.CollectionSource}},
+			OutputFormat: "text",
 		},
-		Agent:   definition.Agent{Name: "a"},
-		Mapping: definition.Mapping{Name: "rt"},
+		Agent:   "a",
+		Runtime: "rt",
 	}
 	resolver := &inspectionDouble{
 		processes: map[string]*app.InspectedProcess{"review": review, "summarize": summarize},
 		workflow: &app.InspectedWorkflow{
-			Workflow: definition.Workflow{
+			Workflow: app.InspectedWorkflowDefinition{
 				Name:   "w",
-				Params: []definition.Param{{Name: "base", Default: "main", HasDefault: true}},
-				Values: []definition.Value{{Name: "diff", Source: "git.diff"}},
-				FanOut: []definition.Node{{Name: "n1", Process: "review"}},
-				Join:   definition.Node{Name: "j", Process: "summarize"},
+				Params: []app.InspectedParam{{Name: "base", Default: "main", HasDefault: true}},
+				Values: []app.InspectedValue{{Name: "diff", Source: "git.diff"}},
+				FanOut: []app.InspectedNode{{Name: "n1", Process: "review"}},
+				Join:   app.InspectedNode{Name: "j", Process: "summarize"},
 			},
-			NodeProcesses: map[string]definition.Process{"review": review.Process, "summarize": summarize.Process},
-			Sources:       []definition.Source{source(definition.KindWorkflow, "w")},
+			NodeProcesses: map[string]app.InspectedNodeProcess{
+				"review":    {Params: []string{"diff"}},
+				"summarize": {Collects: []string{"findings"}},
+			},
+			Sources: []app.InspectedSource{source(definition.KindWorkflow, "w")},
 		},
 	}
 	inspection := app.NewInspection(resolver)

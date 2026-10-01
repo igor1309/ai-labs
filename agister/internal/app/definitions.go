@@ -10,11 +10,10 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
-	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
-	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 )
 
 // Settings manages definitions: examples, agents and process listings.
@@ -380,31 +379,129 @@ type InspectionResolver interface {
 	InspectWorkflow(ctx context.Context, name string) (res *InspectedWorkflow, found bool, err error)
 }
 
-// InspectedProcess is a process as a call would resolve it.
+// InspectedProcess is a process as a call would resolve it, as far as its
+// view shows it.
 type InspectedProcess struct {
-	Process   definition.Process
-	Agent     definition.Agent
-	Mapping   definition.Mapping
-	Effective policy.Effective
-	Plan      enforce.Plan
-	Sources   []definition.Source
+	Process    InspectedDefinition
+	Agent      string // the agent's name
+	Runtime    string // the runtime mapping's name
+	Effective  InspectedLimits
+	Primitives []string // the plan's
+	Withheld   []string // allowed but not provided
+	Sources    []InspectedSource
+}
+
+// InspectedDefinition is what the view shows of a process's definition.
+type InspectedDefinition struct {
+	Name         string
+	Policy       string
+	OutputFormat string // "json" or "text"
+	OutputSchema string // name of a schema definition (json only)
+	Params       []InspectedParam
+	Values       []InspectedValue
+	Verify       *InspectedVerify // unset: no verification
+}
+
+// InspectedParam is a param a process or workflow declares.
+type InspectedParam struct {
+	Name       string
+	Default    string
+	HasDefault bool
+}
+
+// InspectedValue is an input a process or workflow declares, and its
+// source kind.
+type InspectedValue struct {
+	Name   string
+	Source string
+}
+
+// InspectedVerify is a process's verification command.
+type InspectedVerify struct {
+	Command     string
+	Timeout     time.Duration
+	MaxAttempts int
+	Instruction string
+}
+
+// InspectedLimits are a call's composed limits.
+type InspectedLimits struct {
+	Timeout     time.Duration
+	MaxAttempts int
+	MaxCostUSD  *float64 // unset: no cost limit
+	Allow       []string
+	Deny        []string
+	Permissions []string // allowed and not denied
+	Access      string
+	Scope       string
+}
+
+// InspectedSource is where a definition came from.
+type InspectedSource struct {
+	Kind    string
+	Name    string
+	Path    string
+	Project bool
+	// The global definition this project one takes priority over.
+	Overrides string
 }
 
 // InspectedWorkflow is a workflow and its nodes' processes, as a run of it
 // would resolve them.
 type InspectedWorkflow struct {
-	Workflow      definition.Workflow
-	NodeProcesses map[string]definition.Process // by name
-	Sources       []definition.Source           // the workflow's document
+	Workflow      InspectedWorkflowDefinition
+	NodeProcesses map[string]InspectedNodeProcess // by name
+	Sources       []InspectedSource               // the workflow's document
+}
+
+// InspectedWorkflowDefinition is what the view shows of a workflow's
+// definition.
+type InspectedWorkflowDefinition struct {
+	Name   string
+	Params []InspectedParam
+	Values []InspectedValue
+	FanOut []InspectedNode
+	Join   InspectedNode
+}
+
+// InspectedNode is one node of a workflow and the process it calls.
+type InspectedNode struct {
+	Name    string
+	Process string
+}
+
+// InspectedNodeProcess is what the view reads of a node's process: the
+// params it declares and the inputs that receive the workflow's collection.
+type InspectedNodeProcess struct {
+	Params   []string
+	Collects []string
 }
 
 // InspectProcess translates the Resolver's resolution into the view's.
 func (r *Resolver) InspectProcess(ctx context.Context, name, agent string) (*InspectedProcess, error) {
 	res, err := r.resolve(ctx, name, agent, overrides{})
-	return &InspectedProcess{
-		Process: res.process, Agent: res.agent, Mapping: res.mapping,
-		Effective: res.effective, Plan: res.plan, Sources: res.sources,
-	}, err
+	process := res.process
+	inspected := &InspectedProcess{
+		Process: InspectedDefinition{
+			Name: process.Name, Policy: process.Policy,
+			OutputFormat: process.Output.Format, OutputSchema: process.Output.Schema,
+			Params: inspectedParams(process.Params), Values: inspectedValues(process.Values),
+		},
+		Agent:   res.agent.Name,
+		Runtime: res.mapping.Name,
+		Effective: InspectedLimits{
+			Timeout: res.effective.Timeout, MaxAttempts: res.effective.MaxAttempts, MaxCostUSD: res.effective.MaxCostUSD,
+			Allow: res.effective.Allow, Deny: res.effective.Deny, Permissions: res.effective.Permissions,
+			Access: res.effective.Access, Scope: res.effective.Scope,
+		},
+		Primitives: res.plan.Primitives,
+		Withheld:   res.plan.Withheld,
+		Sources:    inspectedSources(res.sources),
+	}
+	if verify := process.Verify; verify != nil {
+		inspected.Process.Verify = &InspectedVerify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}
+	}
+	return inspected, err
 }
 
 // InspectWorkflow translates the Resolver's workflow resolution into the
@@ -414,7 +511,41 @@ func (r *Resolver) InspectWorkflow(ctx context.Context, name string) (*Inspected
 	if res == nil {
 		return nil, found, err
 	}
-	return &InspectedWorkflow{Workflow: res.workflow, NodeProcesses: res.processes, Sources: res.sources}, found, err
+	workflow := res.workflow
+	node := func(node definition.Node) InspectedNode { return InspectedNode{Name: node.Name, Process: node.Process} }
+	inspected := &InspectedWorkflow{
+		Workflow: InspectedWorkflowDefinition{
+			Name: workflow.Name, Params: inspectedParams(workflow.Params), Values: inspectedValues(workflow.Values),
+			FanOut: translated(workflow.FanOut, node), Join: node(workflow.Join),
+		},
+		NodeProcesses: make(map[string]InspectedNodeProcess, len(res.processes)),
+		Sources:       inspectedSources(res.sources),
+	}
+	for name, process := range res.processes {
+		inspected.NodeProcesses[name] = InspectedNodeProcess{
+			Params:   translated(process.Params, func(param definition.Param) string { return param.Name }),
+			Collects: process.Collects(),
+		}
+	}
+	return inspected, found, err
+}
+
+func inspectedParams(params []definition.Param) []InspectedParam {
+	return translated(params, func(param definition.Param) InspectedParam {
+		return InspectedParam{Name: param.Name, Default: param.Default, HasDefault: param.HasDefault}
+	})
+}
+
+func inspectedValues(values []definition.Value) []InspectedValue {
+	return translated(values, func(value definition.Value) InspectedValue {
+		return InspectedValue{Name: value.Name, Source: value.Source}
+	})
+}
+
+func inspectedSources(sources []definition.Source) []InspectedSource {
+	return translated(sources, func(source definition.Source) InspectedSource {
+		return InspectedSource{Kind: string(source.Kind), Name: source.Name, Path: source.Path, Project: source.Project, Overrides: source.Overrides}
+	})
 }
 
 // NewInspection returns the use case that shows a process as a call would
@@ -453,7 +584,7 @@ func (i *Inspection) ShowWorkflow(ctx context.Context, name string) (contract.Wo
 		view.Inputs = append(view.Inputs, value.Name+" <- "+value.Source)
 		passed[value.Name] = true
 	}
-	node := func(node definition.Node, join bool) (contract.WorkflowNode, error) {
+	node := func(node InspectedNode, join bool) (contract.WorkflowNode, error) {
 		process, err := i.showProcess(ctx, node.Process, "")
 		var input *contract.InputError
 		if errors.As(err, &input) {
@@ -461,8 +592,8 @@ func (i *Inspection) ShowWorkflow(ctx context.Context, name string) (contract.Wo
 		}
 		shown := contract.WorkflowNode{Name: node.Name, Process: process}
 		for _, param := range res.NodeProcesses[node.Process].Params {
-			if passed[param.Name] && !join {
-				shown.Params = append(shown.Params, param.Name)
+			if passed[param] && !join {
+				shown.Params = append(shown.Params, param)
 			}
 		}
 		return shown, err
@@ -477,7 +608,7 @@ func (i *Inspection) ShowWorkflow(ctx context.Context, name string) (contract.Wo
 	if view.Join, err = node(workflow.Join, true); err != nil {
 		return contract.WorkflowView{}, err
 	}
-	if collects := res.NodeProcesses[workflow.Join.Process].Collects(); len(collects) == 1 {
+	if collects := res.NodeProcesses[workflow.Join.Process].Collects; len(collects) == 1 {
 		view.Collection = collects[0]
 	}
 	for _, shown := range append(append([]contract.WorkflowNode(nil), view.FanOut...), view.Join) {
@@ -499,10 +630,10 @@ func (i *Inspection) showProcess(ctx context.Context, name, agent string) (contr
 	}
 	view := contract.ProcessView{
 		Name:        res.Process.Name,
-		Agent:       res.Agent.Name,
-		Runtime:     res.Mapping.Name,
+		Agent:       res.Agent,
+		Runtime:     res.Runtime,
 		Policy:      res.Process.Policy,
-		Output:      res.Process.Output.Format,
+		Output:      res.Process.OutputFormat,
 		Timeout:     res.Effective.Timeout,
 		MaxAttempts: res.Effective.MaxAttempts,
 		MaxCostUSD:  res.Effective.MaxCostUSD,
@@ -511,11 +642,11 @@ func (i *Inspection) showProcess(ctx context.Context, name, agent string) (contr
 		Permissions: res.Effective.Permissions,
 		Access:      res.Effective.Access,
 		Scope:       res.Effective.Scope,
-		Primitives:  res.Plan.Primitives,
-		Withheld:    res.Plan.Withheld,
+		Primitives:  res.Primitives,
+		Withheld:    res.Withheld,
 	}
-	if res.Process.Output.Schema != "" {
-		view.Output += ":" + res.Process.Output.Schema
+	if res.Process.OutputSchema != "" {
+		view.Output += ":" + res.Process.OutputSchema
 	}
 	for _, param := range res.Process.Params {
 		view.Params = append(view.Params, contract.Param{Name: param.Name, Default: param.Default, Required: !param.HasDefault})
@@ -538,14 +669,14 @@ func (i *Inspection) showProcess(ctx context.Context, name, agent string) (contr
 }
 
 // origins are where definitions come from, as a client sees it.
-func origins(sources []definition.Source) []contract.DefinitionOrigin {
+func origins(sources []InspectedSource) []contract.DefinitionOrigin {
 	var shown []contract.DefinitionOrigin
 	for _, source := range sources {
 		layer := "global"
 		if source.Project {
 			layer = "project"
 		}
-		shown = append(shown, contract.DefinitionOrigin{Kind: string(source.Kind), Name: source.Name, Layer: layer, Path: source.Path, Overrides: source.Overrides})
+		shown = append(shown, contract.DefinitionOrigin{Kind: source.Kind, Name: source.Name, Layer: layer, Path: source.Path, Overrides: source.Overrides})
 	}
 	return shown
 }

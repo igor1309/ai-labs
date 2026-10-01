@@ -13,8 +13,6 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
-	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
-	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 	"github.com/igor1309/ai-labs/agister/internal/domain/prompt"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -64,22 +62,123 @@ type CallResolveRequest struct {
 
 // ResolvedCall is everything a call needs before inputs and effects.
 type ResolvedCall struct {
-	Process   definition.Process
-	Agent     definition.Agent
-	Mapping   definition.Mapping
+	Process   CallProcess
+	Agent     CallAgent
+	Mapping   CallMapping
 	Schema    []byte
-	Sources   []definition.Source
-	Effective policy.Effective
+	Sources   []CallSource
+	Effective CallLimits
 	Identity  RuntimeIdentity
-	Plan      enforce.Plan
+	Plan      CallPlan
+}
+
+// CallProcess is what a call reads of its process's definition.
+type CallProcess struct {
+	Name        string
+	Instruction string
+	Params      []CallParam
+	Values      []CallValue
+	Checkout    string      // name of the input whose revision is checked out
+	Output      string      // the output format, "json" or "text"
+	Verify      *CallVerify // unset: no verification
+}
+
+// CallParam is a param a process or workflow declares.
+type CallParam struct {
+	Name       string
+	Default    string
+	HasDefault bool
+}
+
+// CallValue is an input a process or workflow declares, and where it comes
+// from: its source kind and the source's arguments, which may reference
+// ${param.<name>} and ${value.<name>}.
+type CallValue struct {
+	Name   string
+	Source string
+	Args   map[string]string
+}
+
+// CallVerify is a process's verification command (ADR-002).
+type CallVerify struct {
+	Command     string
+	Timeout     time.Duration // per run
+	MaxAttempts int           // runs, the first included
+	Instruction string        // what the agent is told when a run fails
+}
+
+// CallAgent is the runtime profile a call runs as.
+type CallAgent struct {
+	Name    string
+	Command string
+	Model   string
+	Effort  string
+	Session string // definition.SessionFresh or definition.SessionResumable
+}
+
+// CallMapping is the runtime permission mapping a call runs on.
+type CallMapping struct {
+	Name    string
+	Adapter string
+}
+
+// CallSource is where a definition a call resolved came from.
+type CallSource struct {
+	Kind      string
+	Name      string
+	Path      string
+	SHA256    string
+	Project   bool
+	Overrides string // the global definition this project one takes priority over
+}
+
+// CallLimits are a call's composed limits.
+type CallLimits struct {
+	Timeout     time.Duration
+	MaxAttempts int
+	MaxCostUSD  *float64 // unset: no cost limit
+	Allow       []string
+	Deny        []string
+	Permissions []string // allowed and not denied
+	Require     []string
+	Access      string
+	Scope       string
+}
+
+// CallPlan is what a call grants on its runtime.
+type CallPlan struct {
+	Primitives []string
+	Granted    []string // permissions the primitives provide
+	Withheld   []string // allowed but not provided
 }
 
 // ResolvedWorkflow is a workflow and its nodes' processes, as a run of it
 // uses them. Each node's call resolves its own process again, fully.
 type ResolvedWorkflow struct {
-	Workflow      definition.Workflow
-	NodeProcesses map[string]definition.Process // by name
-	Sources       []definition.Source           // the workflow's document
+	Workflow      CallWorkflow
+	NodeProcesses map[string]CallNodeProcess // by name
+	Sources       []CallSource               // the workflow's document
+}
+
+// CallWorkflow is what a run reads of its workflow's definition.
+type CallWorkflow struct {
+	Name   string
+	Params []CallParam
+	Values []CallValue
+	FanOut []CallNode
+	Join   CallNode
+}
+
+// CallNode is one node of a workflow and the process it calls.
+type CallNode struct {
+	Name    string
+	Process string
+}
+
+// CallNodeProcess is what a run of a workflow reads of a node's process:
+// the names of the params it declares.
+type CallNodeProcess struct {
+	Params []string
 }
 
 // Snapshot returns the resolver over the definitions as they are now (see
@@ -94,10 +193,29 @@ type callResolution struct{ resolver *Resolver }
 
 func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest) (*ResolvedCall, error) {
 	res, err := c.resolver.resolve(ctx, request.Process, request.Agent, overrides{timeout: request.Timeout, maxCostUSD: request.MaxCostUSD})
-	return &ResolvedCall{
-		Process: res.process, Agent: res.agent, Mapping: res.mapping, Schema: res.schema, Sources: res.sources,
-		Effective: res.effective, Identity: res.identity, Plan: res.plan,
-	}, err
+	process, agent, effective := res.process, res.agent, res.effective
+	resolved := &ResolvedCall{
+		Process: CallProcess{
+			Name: process.Name, Instruction: process.Instruction,
+			Params: callParams(process.Params), Values: callValues(process.Values),
+			Checkout: process.Checkout, Output: process.Output.Format,
+		},
+		Agent:   CallAgent{Name: agent.Name, Command: agent.Command, Model: agent.Model, Effort: agent.Effort, Session: agent.Session},
+		Mapping: CallMapping{Name: res.mapping.Name, Adapter: res.mapping.Adapter},
+		Schema:  res.schema,
+		Sources: callSources(res.sources),
+		Effective: CallLimits{
+			Timeout: effective.Timeout, MaxAttempts: effective.MaxAttempts, MaxCostUSD: effective.MaxCostUSD,
+			Allow: effective.Allow, Deny: effective.Deny, Permissions: effective.Permissions, Require: effective.Require,
+			Access: effective.Access, Scope: effective.Scope,
+		},
+		Identity: res.identity,
+		Plan:     CallPlan{Primitives: res.plan.Primitives, Granted: res.plan.Granted, Withheld: res.plan.Withheld},
+	}
+	if verify := process.Verify; verify != nil {
+		resolved.Process.Verify = &CallVerify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}
+	}
+	return resolved, err
 }
 
 func (c callResolution) Workflow(ctx context.Context, name string) (*ResolvedWorkflow, bool, error) {
@@ -105,7 +223,55 @@ func (c callResolution) Workflow(ctx context.Context, name string) (*ResolvedWor
 	if res == nil {
 		return nil, found, err
 	}
-	return &ResolvedWorkflow{Workflow: res.workflow, NodeProcesses: res.processes, Sources: res.sources}, found, err
+	workflow := res.workflow
+	node := func(node definition.Node) CallNode { return CallNode{Name: node.Name, Process: node.Process} }
+	resolved := &ResolvedWorkflow{
+		Workflow: CallWorkflow{
+			Name: workflow.Name, Params: callParams(workflow.Params), Values: callValues(workflow.Values),
+			FanOut: translated(workflow.FanOut, node), Join: node(workflow.Join),
+		},
+		NodeProcesses: make(map[string]CallNodeProcess, len(res.processes)),
+		Sources:       callSources(res.sources),
+	}
+	for name, process := range res.processes {
+		resolved.NodeProcesses[name] = CallNodeProcess{
+			Params: translated(process.Params, func(param definition.Param) string { return param.Name }),
+		}
+	}
+	return resolved, found, err
+}
+
+func callParams(params []definition.Param) []CallParam {
+	return translated(params, func(param definition.Param) CallParam {
+		return CallParam{Name: param.Name, Default: param.Default, HasDefault: param.HasDefault}
+	})
+}
+
+func callValues(values []definition.Value) []CallValue {
+	return translated(values, func(value definition.Value) CallValue {
+		return CallValue{Name: value.Name, Source: value.Source, Args: value.Args}
+	})
+}
+
+func callSources(sources []definition.Source) []CallSource {
+	return translated(sources, func(source definition.Source) CallSource {
+		return CallSource{
+			Kind: string(source.Kind), Name: source.Name, Path: source.Path, SHA256: source.SHA256,
+			Project: source.Project, Overrides: source.Overrides,
+		}
+	})
+}
+
+// translated is items, each translated; nil when items is.
+func translated[T, U any](items []T, translate func(T) U) []U {
+	if items == nil {
+		return nil
+	}
+	out := make([]U, len(items))
+	for i, item := range items {
+		out[i] = translate(item)
+	}
+	return out
 }
 
 // CallCancels holds the cancellation of every call running in this
@@ -484,7 +650,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	record.Inputs = summarize(inputs)
 	_ = handle.Update(record)
 
-	workspace, err := c.prepareWorkspace(ctx, res.Process, inputs, record.Request.Cwd)
+	workspace, err := c.prepareWorkspace(ctx, res.Process.Checkout, inputs, record.Request.Cwd)
 	if err != nil {
 		fail(err)
 		return
@@ -555,10 +721,10 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	}
 	conclude := func(turn run.Turn) *run.Error {
 		var validation error
-		if turn.Status == run.Completed && res.Process.Output.Format == "json" {
+		if turn.Status == run.Completed && res.Process.Output == "json" {
 			validation = c.validator.Validate(res.Schema, turn.Output)
 		}
-		_, fault := run.Conclude(turn, res.Process.Output, validation)
+		_, fault := run.Conclude(turn, definition.Output{Format: res.Process.Output}, validation)
 		return fault
 	}
 
@@ -567,15 +733,15 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		result.Session = &run.Session{ProviderSessionID: turn.ProviderSessionID, Continues: record.Request.Continue}
 	}
 	fault := conclude(turn)
-	if fault == nil && res.Process.Verify != nil {
+	if verify := res.Process.Verify; fault == nil && verify != nil {
 		verified, fault = c.verifier.Verify(ctx, VerifyCall{
 			Record: &record, Result: &result, Event: event, Update: handle.Update, Artifact: handle.Artifact,
-			Verify: *res.Process.Verify, Limit: res.Effective.MaxCostUSD, Deadline: deadline,
+			Verify: definition.Verify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}, Limit: res.Effective.MaxCostUSD, Deadline: deadline,
 			Dir: workspace.Dir, Base: revision, Repository: workspace.Repository, Request: request, Session: turn.ProviderSessionID,
 			Take: take, Conclude: conclude,
 		})
 	}
-	if fault == nil && res.Process.Output.Format == "json" {
+	if fault == nil && res.Process.Output == "json" {
 		result.Output = record.Turn.Output
 	}
 	finish(fault)
@@ -685,7 +851,7 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 	}
 
 	ends := make(chan nodeEnd, len(workflow.FanOut))
-	start := func(index int, node definition.Node, params map[string]string, collection *Resolved) (started bool, err error) {
+	start := func(index int, node CallNode, params map[string]string, collection *Resolved) (started bool, err error) {
 		started = flow.start(func() {
 			state.Nodes[index].Run, err = c.startNode(ctx, record.ID, node, params, collection, record.Request.Cwd, resolver, func(final run.Record) {
 				ends <- nodeEnd{index, final}
@@ -720,8 +886,8 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 	for i, node := range workflow.FanOut {
 		params := map[string]string{}
 		for _, param := range res.NodeProcesses[node.Process].Params {
-			if value, ok := values[param.Name]; ok {
-				params[param.Name] = value
+			if value, ok := values[param]; ok {
+				params[param] = value
 			}
 		}
 		started, err := start(i, node, params, nil)
@@ -809,7 +975,7 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 // workflow run parent, and starts it under the workflow's context, so
 // cancelling the workflow cancels it. ended receives its record as it
 // finished.
-func (c *Calls) startNode(ctx context.Context, parent string, node definition.Node, params map[string]string, collection *Resolved, cwd string, resolver CallResolution, ended func(run.Record)) (string, error) {
+func (c *Calls) startNode(ctx context.Context, parent string, node CallNode, params map[string]string, collection *Resolved, cwd string, resolver CallResolution, ended func(run.Record)) (string, error) {
 	now := c.clock.Now()
 	record := run.Record{
 		Schema:    run.RecordSchema,
@@ -918,7 +1084,7 @@ func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revis
 // such as a commit hash. subject names the definition, e.g. "process p".
 // Only a join has a collection to receive; a collection input of any other
 // call is refused.
-func (c *Calls) resolveValues(ctx context.Context, subject string, declared []definition.Param, values []definition.Value, request run.Request, collection *Resolved) ([]run.Input, error) {
+func (c *Calls) resolveValues(ctx context.Context, subject string, declared []CallParam, values []CallValue, request run.Request, collection *Resolved) ([]run.Input, error) {
 	params := map[string]string{}
 	var unknown []string
 	for name := range request.Params {
@@ -963,7 +1129,7 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []de
 		if !ok {
 			return nil, refuse("input %s: unknown source %q", value.Name, value.Source)
 		}
-		args, err := value.Bind(params, texts)
+		args, err := definition.Value{Name: value.Name, Source: value.Source, Args: value.Args}.Bind(params, texts)
 		if err != nil {
 			return nil, refuse("input %s: %v", value.Name, err)
 		}
@@ -991,8 +1157,9 @@ type preparedWorkspace struct {
 }
 
 // prepareWorkspace returns the agent's working directory: a checkout of the
-// declared revision, or the repository. It must not overlap Agister's state.
-func (c *Calls) prepareWorkspace(ctx context.Context, process definition.Process, inputs []run.Input, cwd string) (preparedWorkspace, error) {
+// revision of the input checkout names, or, when it names none, the
+// repository. It must not overlap Agister's state.
+func (c *Calls) prepareWorkspace(ctx context.Context, checkout string, inputs []run.Input, cwd string) (preparedWorkspace, error) {
 	noop := func() error { return nil }
 	root, err := c.workspaces.Root(ctx, cwd)
 	if err != nil {
@@ -1001,17 +1168,17 @@ func (c *Calls) prepareWorkspace(ctx context.Context, process definition.Process
 	if overlaps(root, c.stateDir) {
 		return preparedWorkspace{}, refuse("workspace %s overlaps Agister's state %s", root, c.stateDir)
 	}
-	if process.Checkout == "" {
+	if checkout == "" {
 		return preparedWorkspace{Dir: root, Repository: root, Release: noop}, nil
 	}
 	var revision string
 	for _, input := range inputs {
-		if input.Name == process.Checkout && input.Revision {
+		if input.Name == checkout && input.Revision {
 			revision = input.Identity
 		}
 	}
 	if revision == "" {
-		return preparedWorkspace{}, refuse("workspace.checkout: input %s is not a revision", process.Checkout)
+		return preparedWorkspace{}, refuse("workspace.checkout: input %s is not a revision", checkout)
 	}
 	dir, release, err := c.workspaces.Checkout(ctx, root, revision)
 	if err != nil {
@@ -1079,7 +1246,7 @@ func revisionOf(inputs []run.Input, name string) (string, bool) {
 	return "", false
 }
 
-func hasParam(params []definition.Param, name string) bool {
+func hasParam(params []CallParam, name string) bool {
 	for _, param := range params {
 		if param.Name == name {
 			return true
