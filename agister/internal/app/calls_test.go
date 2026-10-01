@@ -730,18 +730,29 @@ func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
 		h.workspaces, h.changes, app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
 		h.clock, fixedIDs{}, "/state", cancels,
 	)
+	// However the test ends, the blocked turn is released and the call
+	// joined, even when no cancel was added for it.
+	release := make(chan struct{})
+	h.runner.release = release
+	joined := false
+	t.Cleanup(func() {
+		close(release)
+		if !joined {
+			h.recorder.wait(t)
+		}
+	})
 	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+		joined = true // nothing was started
 		t.Fatal(err)
 	}
 	cancel := cancels.cancel("run-1")
 	if cancel == nil {
 		t.Fatal("the call added no cancel")
 	}
-	// However the test ends, the blocked turn does not outlive it.
-	t.Cleanup(func() { cancel() })
 	select {
 	case <-h.runner.started:
 	case record := <-h.recorder.finished:
+		joined = true
 		t.Fatalf("the call ended before its turn started: %+v", record.Result)
 	case <-time.After(hangGuard):
 		t.Fatal("the turn never started")
@@ -750,6 +761,7 @@ func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
 		t.Fatal("the call's cancel did not take effect")
 	}
 	record := h.recorder.wait(t)
+	joined = true
 	if record.Result.Status != run.Interrupted || class(record) != run.ClassCancelled {
 		t.Fatalf("result = %+v", record.Result)
 	}

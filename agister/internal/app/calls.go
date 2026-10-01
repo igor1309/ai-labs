@@ -68,7 +68,7 @@ type ResolvedCall struct {
 	Schema    []byte
 	Sources   []CallSource
 	Effective CallLimits
-	Identity  RuntimeIdentity
+	Identity  CallRuntime
 	Plan      CallPlan
 }
 
@@ -145,6 +145,14 @@ type CallLimits struct {
 	Scope       string
 }
 
+// CallRuntime is what a call reads of what its runtime reported about
+// itself.
+type CallRuntime struct {
+	Contract string
+	Version  string
+	Resume   bool // a turn may resume an earlier provider session in place
+}
+
 // CallPlan is what a call grants on its runtime.
 type CallPlan struct {
 	Primitives []string
@@ -209,7 +217,7 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 			Allow: effective.Allow, Deny: effective.Deny, Permissions: effective.Permissions, Require: effective.Require,
 			Access: effective.Access, Scope: effective.Scope,
 		},
-		Identity: res.identity,
+		Identity: CallRuntime{Contract: res.identity.Contract, Version: res.identity.Version, Resume: res.identity.Resume},
 		Plan:     CallPlan{Primitives: res.plan.Primitives, Granted: res.plan.Granted, Withheld: res.plan.Withheld},
 	}
 	if verify := process.Verify; verify != nil {

@@ -508,6 +508,32 @@ func TestShowProcessSourcesAreStructured(t *testing.T) {
 	}
 }
 
+// A process view shows the limits the resolver composes for the process:
+// its policy's timeout and permissions, and what its runtime grants of
+// them.
+func TestShowProcessLimitsThroughTheResolver(t *testing.T) {
+	h := newHarness()
+	identities := struct{ app.ResolverIdentities }{h.runtimes}
+	view, err := app.NewInspection(app.NewResolver(h.defs, identities, h.validator)).ShowProcess(context.Background(), "p", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.Timeout != 20*time.Minute {
+		t.Fatalf("timeout = %v", view.Timeout)
+	}
+	if want := []string{"repository.read", "repository.search", "repository.diff"}; !reflect.DeepEqual(view.Permissions, want) {
+		t.Fatalf("permissions = %v, want %v", view.Permissions, want)
+	}
+	// Read and Grep grant repository.read and repository.search; Bash,
+	// which would grant repository.diff, also grants what is not allowed.
+	if want := []string{"Read", "Grep"}; !reflect.DeepEqual(view.Primitives, want) {
+		t.Fatalf("primitives = %v, want %v", view.Primitives, want)
+	}
+	if want := []string{"repository.diff"}; !reflect.DeepEqual(view.Withheld, want) {
+		t.Fatalf("withheld = %v, want %v", view.Withheld, want)
+	}
+}
+
 // Inspection shows what the InspectionResolver it declares resolves: a
 // process with the agent asked for, and a workflow with each node's
 // process.

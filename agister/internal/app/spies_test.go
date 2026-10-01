@@ -70,8 +70,9 @@ type runnerSpy struct {
 	identity    app.RuntimeIdentity
 	identityErr error
 	turn        run.Turn
-	turns       []run.Turn // played first, one per turn; then turn
-	block       bool       // wait for cancellation
+	turns       []run.Turn    // played first, one per turn; then turn
+	block       bool          // wait for cancellation
+	release     chan struct{} // when set, a blocked turn also ends when it closes
 	requests    []app.TurnRequest
 	started     chan struct{}
 	startErr    error // what ProcessStarted returned to the last turn
@@ -108,7 +109,10 @@ func (s *runnerSpy) RunTurn(ctx context.Context, request app.TurnRequest, sink a
 		s.during(request)
 	}
 	if s.block {
-		<-ctx.Done()
+		select {
+		case <-ctx.Done():
+		case <-s.release:
+		}
 		return run.Turn{Status: run.Interrupted, Error: run.Fault(run.ClassCancelled, "")}
 	}
 	return turn
