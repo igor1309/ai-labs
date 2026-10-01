@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -136,7 +135,7 @@ func passedValues(inputs []run.Input) (map[string]string, error) {
 // status and class, and, only if it completed, its recorded output. It
 // returns the collection as the join's input value, identified by its
 // digest, and its bytes.
-func collect(workflow definition.Workflow, nodes []run.Node, records []run.Record) (Resolved, []byte, error) {
+func collect(workflow CallWorkflow, nodes []run.Node, records []run.Record) (Resolved, []byte, error) {
 	entries := make([]collected, len(workflow.FanOut))
 	for i, node := range workflow.FanOut {
 		entries[i] = collected{Node: node.Name, Process: node.Process, Run: nodes[i].Run, Status: nodes[i].Status}

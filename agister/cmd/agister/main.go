@@ -1,5 +1,6 @@
 // Command agister is the composition root: the only place that
-// instantiates concrete adapters, decorates them and wires the core.
+// instantiates concrete adapters, decorates them and hands them to the core,
+// which assembles itself over them (app.NewClient).
 package main
 
 import (
@@ -11,7 +12,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"sort"
 	"syscall"
 
 	"github.com/igor1309/ai-labs/agister/examples"
@@ -48,18 +48,15 @@ func shutdown(parent context.Context) (context.Context, context.CancelFunc) {
 }
 
 func compose(config cli.Config) (contract.Client, error) {
-	return newGated(config)
+	client, _, err := wire(config)
+	return client, err
 }
 
-// newGated is the whole client behind the gate.
-func newGated(config cli.Config) (*app.Gated, error) {
-	gated, _, err := wire(config)
-	return gated, err
-}
-
-// wire builds newGated, and the background reaper every client it builds
-// shares, which submitting a call starts (tests wait on it).
-func wire(config cli.Config) (*app.Gated, *app.BackgroundReaper, error) {
+// wire builds the infrastructure, chooses the decorators and has the core
+// assemble the whole client behind the gate over them. It also returns the
+// background reaper every client the gate builds shares, which submitting a
+// call starts (tests wait on it).
+func wire(config cli.Config) (contract.Client, *app.BackgroundReaper, error) {
 	log, err := diagnostics(config)
 	if err != nil {
 		return nil, nil, err
@@ -70,7 +67,10 @@ func wire(config cli.Config) (*app.Gated, *app.BackgroundReaper, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	definitions := fsdefs.Layered{Global: global, Project: local}
+	var projectRoot string
+	if local != nil {
+		projectRoot = filepath.Dir(local.Dir)
+	}
 	evidence := fsruns.Store{Dir: filepath.Join(config.Home, "runs")}
 	runtimes := runtime.Registry{
 		"claude-code": func(command string) app.TurnRunner {
@@ -80,16 +80,6 @@ func wire(config cli.Config) (*app.Gated, *app.BackgroundReaper, error) {
 			return logging.Runner{Inner: codex.New(command), Adapter: "codex", Log: log}
 		},
 	}
-	sources := map[string]app.InputProvider{
-		"param":             inputs.Param{},
-		"file":              inputs.File{},
-		"git.revision":      git.Revision{},
-		"git.merge_base":    git.MergeBase{},
-		"git.diff":          git.Diff{},
-		"git.changed_files": git.ChangedFiles{},
-	}
-	hosted := app.NewHosted()
-	verifier := app.NewVerifier(git.Workspaces{}, git.Workspaces{}, supervisor.Commands{}, system.Clock{})
 	// Abandoned runs are reaped beside the calls, never inside one. A reap
 	// that fails has no caller to tell and no run record to say so: the
 	// log does.
@@ -97,40 +87,39 @@ func wire(config cli.Config) (*app.Gated, *app.BackgroundReaper, error) {
 		Reaper: app.NewReaper(evidence, supervisor.Processes{}, git.Workspaces{}, system.Clock{}),
 		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },
 	}
-	checkerOn := func(definitions app.GateDefinitions) *app.Checker {
-		return app.NewChecker(definitions, schema.Validator{}, runtimes, names(sources))
-	}
-	// Each use case that resolves a process gets a resolver of its own.
-	resolverOn := func(definitions app.GateDefinitions) *app.Resolver {
-		return app.NewResolver(definitions, runtimes, schema.Validator{})
-	}
-	// build makes the whole client over the sources given: the layered
-	// settings and the global layer alone. The gate builds it on snapshots
-	// per operation, so every use case, including the scopes that validate a
-	// write, reads only the settings that operation checked; hosted runs and
-	// evidence are shared by every build.
-	build := func(layered, globalOnly app.GateDefinitions) contract.Client {
-		// Writes go to global settings, which must stay valid on their own
-		// and with the project in view.
-		scopes := []app.Scope{{Name: "global settings", Check: checkerOn(globalOnly)}}
-		if local != nil {
-			scopes = append(scopes, app.Scope{Name: "settings in " + filepath.Dir(local.Dir), Check: checkerOn(layered)})
-		}
-		host := &app.Host{
-			Settings:   app.NewSettings(layered, global, examples.Settings(), scopes),
-			Checker:    checkerOn(layered),
-			Inspection: app.NewInspection(resolverOn(layered)),
-			Calls: app.NewCalls(
-				resolverOn(layered), runtimes, sources, git.Workspaces{}, git.Workspaces{}, verifier, schema.Validator{},
-				evidence, evidence, system.Clock{}, system.IDs{}, config.Home, hosted,
-			),
-			Runs: app.NewRuns(evidence, hosted, 0),
-		}
-		return app.ReapOnSubmit{Client: host, Background: reaping}
-	}
-
-	// Nothing but init and check works on settings that do not pass check.
-	return &app.Gated{Definitions: definitions, Global: fsdefs.Layered{Global: global}, Build: build}, reaping, nil
+	client := app.NewClient(app.Infrastructure{
+		Definitions: fsdefs.Layered{Global: global, Project: local},
+		Global:      fsdefs.Layered{Global: global},
+		Project:     projectRoot,
+		Settings:    app.SettingsAdapters{Writer: global, Examples: examples.Settings()},
+		Checker:     app.CheckAdapters{Validator: schema.Validator{}, Runtimes: runtimes},
+		Resolver:    app.ResolverAdapters{Identities: runtimes, Validator: schema.Validator{}},
+		Calls: app.CallAdapters{
+			Runners: runtimes,
+			Inputs: map[string]app.InputProvider{
+				"param":             inputs.Param{},
+				"file":              inputs.File{},
+				"git.revision":      git.Revision{},
+				"git.merge_base":    git.MergeBase{},
+				"git.diff":          git.Diff{},
+				"git.changed_files": git.ChangedFiles{},
+			},
+			Workspaces: git.Workspaces{},
+			Changes:    git.Workspaces{},
+			Validator:  schema.Validator{},
+			Recorder:   evidence,
+			Runs:       evidence,
+			Clock:      system.Clock{},
+			IDs:        system.IDs{},
+			StateDir:   config.Home,
+		},
+		Verifier: app.VerifyAdapters{Content: git.Workspaces{}, Copies: git.Workspaces{}, Commands: supervisor.Commands{}, Clock: system.Clock{}},
+		Runs:     app.RunsAdapters{Reader: evidence},
+		Decorate: func(client contract.Client) contract.Client {
+			return app.ReapOnSubmit{Client: client, Background: reaping}
+		},
+	})
+	return client, reaping, nil
 }
 
 // project is the settings layer of the repository containing the working
@@ -169,15 +158,6 @@ func sameDir(a, b string) bool {
 	infoA, errA := os.Stat(a)
 	infoB, errB := os.Stat(b)
 	return errA == nil && errB == nil && os.SameFile(infoA, infoB)
-}
-
-func names[V any](m map[string]V) []string {
-	out := make([]string, 0, len(m))
-	for name := range m {
-		out = append(out, name)
-	}
-	sort.Strings(out)
-	return out
 }
 
 // diagnostics: info and above to <home>/logs/agister.jsonl; with --debug,
