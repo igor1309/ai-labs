@@ -43,6 +43,23 @@
     `/tmp/agister-pi-bashcheck` outside it.
   `edit` and `write` write the repository and `bash` reaches everything,
   as the mapping declares; they are now verified for `0.85.` as well.
+- **MiniMax M3 on Pi did not finish LAB-45 in two 45-minute runs.**
+  Process `implement_pi`, agent `pi-implementer-m3` (Pi 0.85.1, model
+  `opencode-go/minimax-m3`, effort `high`), brief
+  `testdata/briefs/lab-45-opencode-runtime.md`, on 2026-10-01:
+  - Run `20261001T153433Z-59b597` timed out ($1.2166, 415k in / 75k out
+    tokens). It wrote the adapter, a fake binary and unit tests (about
+    1,160 lines) with three tests failing, left a built binary in the
+    checkout, and did not reach the wiring, settings test or examples.
+    The provider timed out at least once ("Request timed out.").
+  - Agister refused `--continue` of that run before any checkout, as
+    designed: Pi resumes only in the directory it ran in.
+  - A fresh run `20261001T162155Z-d44714` on the committed partial work,
+    with a short brief of what was left, timed out too ($0.5547, 200k in
+    / 119k out tokens). It fixed the three tests (all runtime adapter
+    tests passed) and touched nothing else that was left. Provider
+    timeouts again.
+  The work was discarded; LAB-45 went to another model.
 - **Claude Code rejects draft 2020-12 schemas** passed with `--json-schema`,
   so example schemas declare no `$schema`. `agister check` still accepts
   one: on 2026-09-29 a project schema with the draft 2020-12 `$schema`
