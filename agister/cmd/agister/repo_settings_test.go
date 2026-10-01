@@ -248,11 +248,16 @@ func TestAdvisorAnswersAQuestionFile(t *testing.T) {
 	root, repo, home := onFakeRuntimes(t)
 	question := filepath.Join(t.TempDir(), "question.md")
 	write(t, question, "Asked by: workflow run 1, item 2.\nQuestion: which?\nOptions: (a) one; (b) two.\n")
-	created, _ := runRecorded(t, home, repo, []string{"run", "advisor", "--param", "question=" + question, "--param", "revision=feature"})
+	// The timeout is the test's own: the process's policy allows 20 minutes.
+	created, _ := runRecorded(t, home, repo, []string{"run", "advisor", "--param", "question=" + question, "--param", "revision=feature", "--timeout", "1m"})
 	if len(created) != 1 {
 		t.Fatalf("runs recorded: %v, want one", created)
 	}
 	record := completedRun(t, home, created[0])
+	// The runtime was started under its read-only sandbox.
+	if argv := runtimeArgv(t, home, created[0]); !follows(argv, "--sandbox", "read-only") {
+		t.Fatalf("the advisor's runtime argv = %v, want --sandbox read-only", argv)
+	}
 	if record["agent"] != "codex-sol" {
 		t.Fatalf("the advisor's agent = %v, want codex-sol", record["agent"])
 	}
@@ -273,6 +278,81 @@ func TestAdvisorAnswersAQuestionFile(t *testing.T) {
 	feature := gitCmd(t, repo, "rev-parse", "feature")
 	if given := inputOf(t, record, "revision"); given["identity"] != feature {
 		t.Fatalf("advisor's revision = %v, want feature (%s)", given, feature)
+	}
+}
+
+// runtimeArgv is the command line a call's fake runtime was started with,
+// as the first line of the call's provider.jsonl captures it.
+func runtimeArgv(t *testing.T, home, id string) []string {
+	t.Helper()
+	provider, err := os.ReadFile(filepath.Join(home, "runs", id, "provider.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var first struct{ Argv []string }
+	if err := json.Unmarshal([]byte(strings.SplitN(string(provider), "\n", 2)[0]), &first); err != nil || len(first.Argv) == 0 {
+		t.Fatalf("run %s: no argv in provider.jsonl %q: %v", id, provider, err)
+	}
+	return first.Argv
+}
+
+// follows reports whether value is the argument right after flag in argv.
+func follows(argv []string, flag, value string) bool {
+	for i := 0; i+1 < len(argv); i++ {
+		if argv[i] == flag && argv[i+1] == value {
+			return true
+		}
+	}
+	return false
+}
+
+// The repository's advice schema accepts a decision with its record and an
+// empty reason, and an owner answer with a reason and no record; it refuses
+// an answer whose payload is the other's, a missing field and an unexpected
+// one. The payloads are fixed, not built from the schema.
+func TestAdviceSchemaTiesTheAnswerToItsPayload(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := os.ReadFile(filepath.Join(root, ".agister", "schemas", "advice.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const record = `{"asked_by":"workflow run 1, item 2","question":"which?","options":["one","two"],"chosen":"one",` +
+		`"excluded":[{"option":"two","why":"D-3 excludes it"}],"rests_on":["D-3"],"follow_ups":[]}`
+	const unknownInRecord = `{"asked_by":"workflow run 1, item 2","question":"which?","options":["one","two"],"chosen":"one",` +
+		`"excluded":[{"option":"two","why":"D-3 excludes it"}],"rests_on":["D-3"],"follow_ups":[],"status":"final"}`
+	const recordWithoutChosen = `{"asked_by":"workflow run 1, item 2","question":"which?","options":["one","two"],` +
+		`"excluded":[{"option":"two","why":"D-3 excludes it"}],"rests_on":["D-3"],"follow_ups":[]}`
+	cases := []struct {
+		name, output string
+		valid        bool
+	}{
+		{"a decision", `{"answer":"decision","reason":"","decision":` + record + `}`, true},
+		{"owner", `{"answer":"owner","reason":"option (b) changes ADR-001 rule 9","decision":null}`, true},
+		{"a decision without its record", `{"answer":"decision","reason":"","decision":null}`, false},
+		{"a decision with a reason", `{"answer":"decision","reason":"it is a build question","decision":` + record + `}`, false},
+		{"owner with a record", `{"answer":"owner","reason":"option (b) changes ADR-001 rule 9","decision":` + record + `}`, false},
+		{"owner without a reason", `{"answer":"owner","reason":"","decision":null}`, false},
+		{"an unknown answer", `{"answer":"maybe","reason":"","decision":null}`, false},
+		{"no answer", `{"reason":"","decision":` + record + `}`, false},
+		{"no reason", `{"answer":"decision","decision":` + record + `}`, false},
+		{"no decision", `{"answer":"owner","reason":"option (b) changes ADR-001 rule 9"}`, false},
+		{"a record without its chosen option", `{"answer":"decision","reason":"","decision":` + recordWithoutChosen + `}`, false},
+		{"an unexpected field", `{"answer":"owner","reason":"option (b) changes ADR-001 rule 9","decision":null,"note":"x"}`, false},
+		{"an unexpected field in the record", `{"answer":"decision","reason":"","decision":` + unknownInRecord + `}`, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			err := (schema.Validator{}).Validate(document, []byte(c.output))
+			if c.valid && err != nil {
+				t.Fatalf("%s refused: %v", c.output, err)
+			}
+			if !c.valid && err == nil {
+				t.Fatalf("%s accepted", c.output)
+			}
+		})
 	}
 }
 

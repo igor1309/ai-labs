@@ -2,6 +2,10 @@
   "type": "object",
   "additionalProperties": false,
   "required": ["answer", "reason", "decision"],
+  "oneOf": [
+    {"properties": {"answer": {"const": "decision"}, "reason": {"const": ""}, "decision": {"type": "object"}}},
+    {"properties": {"answer": {"const": "owner"}, "reason": {"minLength": 1}, "decision": {"type": "null"}}}
+  ],
   "properties": {
     "answer": {"type": "string", "enum": ["decision", "owner"], "description": "owner: a policy question, or in doubt; nothing is decided. decision: a build question, decided."},
     "reason": {"type": "string", "description": "owner: what makes the question policy, naming the ADR, rule, scope, security boundary or cost limit an option touches. decision: empty."},
