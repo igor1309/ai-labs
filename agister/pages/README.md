@@ -46,7 +46,7 @@ the server for that folder's `.agister` only: when it is there, the page
 shows it and puts the repo on the recent list; when not, the page says so
 and the list stays as it was.
 
-The server writes nothing and answers two endpoints:
+The server writes nothing and answers these endpoints:
 
 - `POST /api/choose`: shows the folder dialog (`osascript`, `choose
   folder`) and returns the chosen path, empty when cancelled. It needs the
@@ -55,6 +55,44 @@ The server writes nothing and answers two endpoints:
   `<path>/.agister`, or of Agister home for `~`: `agents`, `policies`,
   `processes`, `runtimes`, `schemas`, `workflows` and `service.toml`, each
   at most 256 KB. `runs/` and `logs/` are skipped.
+- `GET /api/runs?limit=<n>`: a summary of each run in Agister home's
+  `runs/`, newest first, at most `limit` (default 200, at most 1000).
+  A run whose `record.json` does not parse is left out and counted in
+  `skipped`; `total` counts the ones that parse.
+- `GET /api/runs/<run-id>`: one run's `summary` and its `record` as
+  stored. An ID that is not a plain run directory name is refused (400);
+  a run that is not there is a 404.
+- `GET /api/runs/compare`: the completed and failed calls (not
+  workflows), grouped by process, then by runtime adapter, model and
+  effort. Each group has its runs, completed runs, pass rate (completed
+  over runs), mean verify attempts among the runs with verify, median wall
+  time, the total cost of the runs with a known cost (`cost_unknown` counts
+  the others) and the cost per completed run.
+
+A run summary holds, from the record:
+
+- the run's ID, process, agent, created and finished time, and status:
+  the result's, or `running` when there is none;
+- `implementor`: the runtime adapter and version, the model (the one the
+  call asked for, else the one the runtime reported), the reported model,
+  and the effort the call asked for. Runs recorded before the agent profile
+  was have no effort; the agent file is never read again for it;
+- `policy`: the effective timeout, cost cap, access and scope;
+- `outcome`: the verify attempts used and whether the last one passed
+  (none when the process has no verify), wall, turn and runtime ms, and the
+  cost in USD with its source;
+- `parent`: the workflow run a node's run belongs to;
+- `workflow`, for a workflow run: its nodes (name, process, run, status)
+  and, when its output has judge `items`, their count by ruling and by
+  severity, and per source review (`by_source`: `<review>` in the
+  sources' `<review>#<finding>`, counting the nodes other than the join
+  from 1) the items it contributed to, by ruling;
+
+and, from `events.jsonl` (left out when it cannot be read):
+
+- `skills`: each skill used and how often: a `Skill` tool call, or a tool
+  call whose input reads a `SKILL.md` (the skill is its folder's name);
+- `tool_calls`: the number of tool calls.
 
 It listens on loopback only and refuses a request whose Host is not
 `localhost` or a loopback address, so another site cannot read through it.
@@ -62,7 +100,7 @@ It listens on loopback only and refuses a request whose Host is not
 The page itself is `index.html`, embedded in the binary with `repos.js`
 (the picker and the calls to the server) and `config.js` (reading the
 settings; its YAML and TOML parsers cover what Agister settings use).
-`serve.go` is the server.
+`serve.go` is the server; `runs.go` summarises the runs.
 
 ## Data
 

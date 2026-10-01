@@ -1,7 +1,8 @@
 // Package pages serves the Agister settings page on this machine: the
-// page itself, embedded, and two JSON endpoints it calls, one asking the
-// user to choose a folder in the Mac's own dialog and one returning a
-// .agister folder's settings files. It listens on the loopback address only and answers
+// page itself, embedded, and the JSON endpoints it calls: one asking the
+// user to choose a folder in the Mac's own dialog, one returning a
+// .agister folder's settings files, and three summarising the runs in
+// Agister's home. It listens on the loopback address only and answers
 // requests addressed to it by name, so no other site can read through it.
 package pages
 
@@ -18,6 +19,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -92,6 +94,28 @@ func Handler(agisterHome string, choose Choose) http.Handler {
 			body["homeFiles"] = homeFiles
 		}
 		reply(w, body, err)
+	})
+	runs := filepath.Join(agisterHome, "runs")
+	mux.HandleFunc("GET /api/runs", func(w http.ResponseWriter, r *http.Request) {
+		limit := DefaultRunLimit
+		if text := r.URL.Query().Get("limit"); text != "" {
+			n, err := strconv.Atoi(text)
+			if err != nil {
+				reply(w, nil, badRequest("limit must be a positive number: "+text))
+				return
+			}
+			limit = n
+		}
+		list, err := ListRuns(runs, limit)
+		reply(w, list, err)
+	})
+	mux.HandleFunc("GET /api/runs/compare", func(w http.ResponseWriter, r *http.Request) {
+		comparison, err := Compare(runs)
+		reply(w, comparison, err)
+	})
+	mux.HandleFunc("GET /api/runs/{id...}", func(w http.ResponseWriter, r *http.Request) {
+		detail, err := ReadRun(runs, r.PathValue("id"))
+		reply(w, detail, err)
 	})
 	return loopbackOnly(mux)
 }

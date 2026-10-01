@@ -206,12 +206,24 @@ type Runtime struct {
 	Version  string `json:"version"`
 }
 
+// Profile is the agent profile a call ran as: the model and effort it asked
+// for, each empty when the agent left it to the runtime, and the session
+// mode. The model the runtime reports is the turn's.
+type Profile struct {
+	Model   string `json:"model,omitempty"`
+	Effort  string `json:"effort,omitempty"`
+	Session string `json:"session,omitempty"`
+}
+
 // Record is the authoritative evidence of one call.
 type Record struct {
-	Schema      string             `json:"schema"`
-	ID          string             `json:"id"`
-	Process     string             `json:"process"`
-	Agent       string             `json:"agent,omitempty"`
+	Schema  string `json:"schema"`
+	ID      string `json:"id"`
+	Process string `json:"process"`
+	Agent   string `json:"agent,omitempty"`
+	// Profile is what the call asked of its agent; unset on records
+	// written before it was recorded.
+	Profile     *Profile           `json:"profile,omitempty"`
 	Request     Request            `json:"request"`
 	CreatedAt   time.Time          `json:"created_at"`
 	FinishedAt  *time.Time         `json:"finished_at,omitempty"`
