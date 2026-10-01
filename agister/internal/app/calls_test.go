@@ -716,6 +716,82 @@ func TestCancelBeforeTheTurnIsCancelled(t *testing.T) {
 	}
 }
 
+// Calls hold each running call's cancellation in the CallCancels they
+// declare: the cancel added for a call cancels it, and a call that ended is
+// no longer held.
+func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
+	h := newHarness()
+	h.runner.block = true
+	h.runner.started = make(chan struct{})
+	cancels := &cancelsSpy{held: map[string]func() bool{}}
+	h.calls = app.NewCalls(
+		app.NewResolver(h.defs, h.runtimes, h.validator), h.runtimes,
+		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
+		h.workspaces, h.changes, app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
+		h.clock, fixedIDs{}, "/state", cancels,
+	)
+	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+		t.Fatal(err)
+	}
+	cancel := cancels.cancel("run-1")
+	if cancel == nil {
+		t.Fatal("the call added no cancel")
+	}
+	// However the test ends, the blocked turn does not outlive it.
+	t.Cleanup(func() { cancel() })
+	select {
+	case <-h.runner.started:
+	case record := <-h.recorder.finished:
+		t.Fatalf("the call ended before its turn started: %+v", record.Result)
+	case <-time.After(hangGuard):
+		t.Fatal("the turn never started")
+	}
+	if !cancel() {
+		t.Fatal("the call's cancel did not take effect")
+	}
+	record := h.recorder.wait(t)
+	if record.Result.Status != run.Interrupted || class(record) != run.ClassCancelled {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	if cancels.cancel("run-1") != nil || !contains(cancels.removals(), "run-1") {
+		t.Fatalf("the ended call is still held; removed %v", cancels.removals())
+	}
+}
+
+// cancelsSpy is a CallCancels that is not Hosted: it holds the cancel each
+// call adds until the call removes it, and records the removals.
+type cancelsSpy struct {
+	mu      sync.Mutex
+	held    map[string]func() bool
+	removed []string
+}
+
+func (s *cancelsSpy) Add(id string, cancel func() bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.held[id] = cancel
+}
+
+func (s *cancelsSpy) Remove(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.held, id)
+	s.removed = append(s.removed, id)
+}
+
+// cancel is the cancel held for id; nil when none is.
+func (s *cancelsSpy) cancel(id string) func() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.held[id]
+}
+
+func (s *cancelsSpy) removals() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.removed...)
+}
+
 func contains(list []string, value string) bool {
 	for _, item := range list {
 		if item == value {

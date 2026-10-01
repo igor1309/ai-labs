@@ -15,6 +15,8 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
+	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -506,6 +508,132 @@ func TestShowProcessSourcesAreStructured(t *testing.T) {
 	if len(h.runtimes.asked) != 0 || len(h.runner.calls()) != 0 {
 		t.Fatalf("showing a process built runners %v and ran turns %v", h.runtimes.asked, h.runner.calls())
 	}
+}
+
+// Inspection shows what the InspectionResolver it declares resolves: a
+// process with the agent asked for, and a workflow with each node's
+// process.
+func TestInspectionShowsThroughTheResolverItDeclares(t *testing.T) {
+	cost := 0.5
+	source := func(kind definition.Kind, name string) definition.Source {
+		return definition.Source{Kind: kind, Name: name, Path: "/project/" + string(kind) + "/" + name, Project: true}
+	}
+	origin := func(kind definition.Kind, name string) contract.DefinitionOrigin {
+		return contract.DefinitionOrigin{Kind: string(kind), Name: name, Layer: "project", Path: "/project/" + string(kind) + "/" + name}
+	}
+	review := &app.InspectedProcess{
+		Process: definition.Process{
+			Name: "review", Policy: "strict",
+			Params: []definition.Param{{Name: "diff"}},
+			Values: []definition.Value{{Name: "diff", Source: "param"}},
+			Output: definition.Output{Format: "json", Schema: "s"},
+			Verify: &definition.Verify{Command: "go test ./...", Timeout: time.Minute, MaxAttempts: 2, Instruction: "fix it"},
+		},
+		Agent:   definition.Agent{Name: "b"},
+		Mapping: definition.Mapping{Name: "rt"},
+		Effective: policy.Effective{
+			Timeout: 5 * time.Minute, MaxAttempts: 2, MaxCostUSD: &cost,
+			Allow: []string{"repository.read", "repository.diff"}, Deny: []string{"repository.diff"}, Permissions: []string{"repository.read"},
+			Access: "read", Scope: "repository",
+		},
+		Plan:    enforce.Plan{Primitives: []string{"Read"}, Withheld: []string{"repository.search"}},
+		Sources: []definition.Source{source(definition.KindAgent, "b"), source(definition.KindProcess, "review")},
+	}
+	summarize := &app.InspectedProcess{
+		Process: definition.Process{
+			Name:   "summarize",
+			Values: []definition.Value{{Name: "findings", Source: definition.CollectionSource}},
+			Output: definition.Output{Format: "text"},
+		},
+		Agent:   definition.Agent{Name: "a"},
+		Mapping: definition.Mapping{Name: "rt"},
+	}
+	resolver := &inspectionDouble{
+		processes: map[string]*app.InspectedProcess{"review": review, "summarize": summarize},
+		workflow: &app.InspectedWorkflow{
+			Workflow: definition.Workflow{
+				Name:   "w",
+				Params: []definition.Param{{Name: "base", Default: "main", HasDefault: true}},
+				Values: []definition.Value{{Name: "diff", Source: "git.diff"}},
+				FanOut: []definition.Node{{Name: "n1", Process: "review"}},
+				Join:   definition.Node{Name: "j", Process: "summarize"},
+			},
+			NodeProcesses: map[string]definition.Process{"review": review.Process, "summarize": summarize.Process},
+			Sources:       []definition.Source{source(definition.KindWorkflow, "w")},
+		},
+	}
+	inspection := app.NewInspection(resolver)
+
+	reviewView := contract.ProcessView{
+		Name: "review", Agent: "b", Runtime: "rt", Policy: "strict",
+		Params: []contract.Param{{Name: "diff", Required: true}}, Inputs: []string{"diff <- param"},
+		Output: "json:s", Timeout: 5 * time.Minute, MaxAttempts: 2, MaxCostUSD: &cost,
+		Allowed: []string{"repository.read", "repository.diff"}, Denied: []string{"repository.diff"}, Permissions: []string{"repository.read"},
+		Access: "read", Scope: "repository",
+		Primitives: []string{"Read"}, Withheld: []string{"repository.search"},
+		Verify:   &contract.Verify{Command: "go test ./...", Timeout: time.Minute, MaxAttempts: 2, Instruction: "fix it"},
+		Warnings: []string{app.VerifyWarning},
+		Sources:  []contract.DefinitionOrigin{origin(definition.KindAgent, "b"), origin(definition.KindProcess, "review")},
+	}
+	view, err := inspection.ShowProcess(context.Background(), "review", "b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(view, reviewView) {
+		t.Fatalf("process view\n got %+v\nwant %+v", view, reviewView)
+	}
+	if want := []string{"process review|b"}; !reflect.DeepEqual(resolver.asked, want) {
+		t.Fatalf("asked %v, want %v", resolver.asked, want)
+	}
+
+	resolver.asked = nil
+	workflowView, err := inspection.ShowWorkflow(context.Background(), "w")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := contract.WorkflowView{
+		Name:   "w",
+		Params: []contract.Param{{Name: "base", Default: "main"}},
+		Inputs: []string{"diff <- git.diff"},
+		FanOut: []contract.WorkflowNode{{Name: "n1", Process: reviewView, Params: []string{"diff"}}},
+		Join: contract.WorkflowNode{Name: "j", Process: contract.ProcessView{
+			Name: "summarize", Agent: "a", Runtime: "rt", Output: "text", Inputs: []string{"findings <- " + definition.CollectionSource},
+		}},
+		Collection: "findings",
+		Warnings:   []string{"node n1: " + app.VerifyWarning},
+		Sources:    []contract.DefinitionOrigin{origin(definition.KindWorkflow, "w")},
+	}
+	if !reflect.DeepEqual(workflowView, want) {
+		t.Fatalf("workflow view\n got %+v\nwant %+v", workflowView, want)
+	}
+	// Each node's process is resolved with its own agent.
+	if want := []string{"workflow w", "process review|", "process summarize|"}; !reflect.DeepEqual(resolver.asked, want) {
+		t.Fatalf("asked %v, want %v", resolver.asked, want)
+	}
+}
+
+// inspectionDouble is an InspectionResolver that is not a Resolver: it
+// gives the resolutions it was set up with, and records what it was asked.
+type inspectionDouble struct {
+	processes map[string]*app.InspectedProcess
+	workflow  *app.InspectedWorkflow
+	asked     []string // "process <name>|<agent>" or "workflow <name>"
+}
+
+func (d *inspectionDouble) InspectProcess(_ context.Context, name, agent string) (*app.InspectedProcess, error) {
+	d.asked = append(d.asked, "process "+name+"|"+agent)
+	if res, ok := d.processes[name]; ok {
+		return res, nil
+	}
+	return &app.InspectedProcess{}, &app.Refusal{Reason: "no process " + name}
+}
+
+func (d *inspectionDouble) InspectWorkflow(_ context.Context, name string) (*app.InspectedWorkflow, bool, error) {
+	d.asked = append(d.asked, "workflow "+name)
+	if d.workflow == nil || d.workflow.Workflow.Name != name {
+		return nil, false, nil
+	}
+	return d.workflow, true, nil
 }
 
 // proposedCheckSpy reports scripted problems and records what it was asked.
