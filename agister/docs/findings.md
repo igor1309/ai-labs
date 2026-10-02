@@ -108,8 +108,13 @@
     cleared, failed the same way after 18m48s ($3.0066, 170k in / 54k
     out tokens), leaving a first draft of the adapter and `Spec.Env` in
     the supervisor (547 added lines), no tests.
+  - Run `20261002T002411Z-70a4ce`, started 4 h 40 min after the first
+    limit in a worktree of its own, failed the same way after 12m31s
+    ($1.5401, 125k in / 32k out tokens), with nothing written in the
+    checkout.
   One rolling window of the Go plan holds about $3 of GLM-5.3, less than
-  this task needs. Agister classified both as `rate_limited` and kept
+  this task needs; the three runs cost $7.1082 and delivered no usable
+  work. Agister classified both as `rate_limited` and kept
   the second run's patch.
 - **Claude Code rejects draft 2020-12 schemas** passed with `--json-schema`,
   so example schemas declare no `$schema`. `agister check` still accepts
