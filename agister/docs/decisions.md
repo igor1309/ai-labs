@@ -21,3 +21,25 @@
 - **Decision:** 1. No assignment concept: an agent's configured skills are the skills its runtime would load in that repo (repo skill folders per runtime, e.g. `.claude/skills`, `.agents/skills`, plus home folders), shown per runtime; "editing an assignment" is out of scope and the tab says so. Observed usage comes from run events.
 - **Rests on:** none
 - **Follow-ups:** the Knowledge tab lists, per agent, the skills its runtime would load and, apart from them, the skills its runs used.
+
+## D-3: Whether ADR-010 rule 9 holds against a skill file replaced or grown mid-read
+
+- **Status:** Owner
+- **Asked by:** code_review workflow run 20261002T100435Z-97deae, judge item 3 (sources 3#1); advisor run 20261002T101256Z-d911e9 answered `owner`
+- **Question:** must ADR-010 rule 9 hold against a file replaced or grown while a request is reading it?
+- **Options:** (a) yes: read through a directory-confined handle, validate that handle and bound the read, keep the reader seam, and add committed replacement and growth tests built with a hook; (b) no: accept the race for a local read-only viewer and record that limit in ADR-010.
+- **Excluded:** (a): only someone who can already write the user's skill folders can race the read; a local read-only viewer does not need a confined-handle mechanism for that.
+- **Decision:** (b) no: accept the race for a local read-only viewer and record that limit in ADR-010.
+- **Rests on:** ADR-009, ADR-010
+- **Follow-ups:** ADR-010's Limitation names the race.
+
+## D-4: The Knowledge tab renders Markdown with markdown-it
+
+- **Status:** Owner
+- **Asked by:** Orchestrator, after code_review runs 20261002T094525Z-b624bc and 20261002T100435Z-97deae found four defects in the hand-written Markdown renderer
+- **Question:** keep the hand-written Markdown renderer in `pages/knowledge.js`, or reuse an established, maintained one?
+- **Options:** 1. markdown-it, vendored as one file and run in the page; its tokens are turned into elements by the page, never into an HTML string. 2. Keep the hand-written renderer.
+- **Excluded:** 2: an established parser (500+ stars, maintained within two months) beats ours on edge cases; goldmark on the server was the runner-up but needs innerHTML in the page and has an open quadratic-emphasis issue in v2.1.6.
+- **Decision:** 1. markdown-it, vendored as one file and run in the page; its tokens are turned into elements by the page, never into an HTML string.
+- **Rests on:** ADR-009, ADR-010
+- **Follow-ups:** the hand-written parser in `knowledge.js` is replaced; tests show raw HTML as text, unsafe links as text, tables and nested lists, and bounded work on worst-case input.
