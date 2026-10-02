@@ -148,7 +148,10 @@ The server writes nothing and answers these endpoints:
   `SKILL.md` is a link that does not resolve, or loops), `not_a_file`.
   Only `SKILL.md` is read. A folder and each entry in it are resolved to
   their real path; `synced/` and `.system/` are folders of their own and,
-  being below a folder's top level, are not followed when symlinks. The
+  being below a folder's top level, are not followed when symlinks. In
+  `~/.claude/skills/synced`, which OpenCode reads with `~/.claude/skills`
+  too, the skills sit one level down in groups (`synced/<id>/<name>`); a
+  group that is a symlink is not followed. The
   home folders come from pages' own `HOME`, `CODEX_HOME` and
   `PI_CODING_AGENT_DIR`.
 - `GET /api/runs?limit=<n>`: a summary of each run in Agister home's

@@ -118,6 +118,9 @@ type folderSpec struct {
 	// nested: the folder sits in another (synced/, .system/), whose
 	// listing leaves it out.
 	nested bool
+	// grouped: the skills sit one level down, in groups
+	// (synced/<id>/<name>/SKILL.md).
+	grouped bool
 }
 
 // skillFolderSpecs are the folders adapter loads, in the repo at repo
@@ -132,17 +135,22 @@ func skillFolderSpecs(adapter, repo string, homes SkillHomes) []folderSpec {
 			specs = append(specs, folderSpec{scope: "repo", name: r, path: filepath.Join(repo, filepath.FromSlash(r))})
 		}
 	}
-	inHome := func(name, path string, nested bool) {
+	inHome := func(name, path string, nested, grouped bool) {
 		if filepath.IsAbs(homes.Home) && filepath.IsAbs(path) {
-			specs = append(specs, folderSpec{scope: "home", name: name, path: path, nested: nested})
+			specs = append(specs, folderSpec{scope: "home", name: name, path: path, nested: nested, grouped: grouped})
 		}
 	}
-	user := func(rel string) { inHome("~/"+rel, filepath.Join(homes.Home, filepath.FromSlash(rel)), false) }
+	user := func(rel string) { inHome("~/"+rel, filepath.Join(homes.Home, filepath.FromSlash(rel)), false, false) }
+	// Claude Code's synced skills, which OpenCode was seen to load with the
+	// rest of ~/.claude/skills.
+	synced := func() {
+		inHome("~/.claude/skills/synced", filepath.Join(homes.Home, ".claude", "skills", "synced"), true, true)
+	}
 	switch adapter {
 	case "claude-code":
 		inRepo(".claude/skills")
 		user(".claude/skills")
-		inHome("~/.claude/skills/synced", filepath.Join(homes.Home, ".claude", "skills", "synced"), true)
+		synced()
 	case "codex":
 		inRepo(".agents/skills", ".codex/skills")
 		user(".agents/skills")
@@ -150,8 +158,8 @@ func skillFolderSpecs(adapter, repo string, homes SkillHomes) []folderSpec {
 		if homes.CodexHome != "" {
 			name, dir = "$CODEX_HOME/skills", filepath.Join(homes.CodexHome, "skills")
 		}
-		inHome(name, dir, false)
-		inHome(name+"/.system", filepath.Join(dir, ".system"), true)
+		inHome(name, dir, false, false)
+		inHome(name+"/.system", filepath.Join(dir, ".system"), true, false)
 	case "pi":
 		inRepo(".agents/skills", ".pi/skills")
 		user(".agents/skills")
@@ -159,11 +167,12 @@ func skillFolderSpecs(adapter, repo string, homes SkillHomes) []folderSpec {
 		if homes.PiAgentDir != "" {
 			name, dir = "$PI_CODING_AGENT_DIR/skills", filepath.Join(homes.PiAgentDir, "skills")
 		}
-		inHome(name, dir, false)
+		inHome(name, dir, false, false)
 	case "opencode":
 		inRepo(".agents/skills", ".claude/skills", ".opencode/skills")
 		user(".agents/skills")
 		user(".claude/skills")
+		synced()
 		user(".config/opencode/skills")
 	}
 	return specs
@@ -173,9 +182,15 @@ func skillFolderSpecs(adapter, repo string, homes SkillHomes) []folderSpec {
 // (home folders only when repo is empty) and in homes: repo folders first,
 // each folder once with every adapter that loads it.
 func ReadSkills(repo string, adapters []string, homes SkillHomes) []SkillFolder {
+	return readSkills(repo, adapters, homes, os.ReadFile)
+}
+
+// readSkills is ReadSkills reading each SKILL.md with read, the only file
+// contents it reads.
+func readSkills(repo string, adapters []string, homes SkillHomes, read func(string) ([]byte, error)) []SkillFolder {
 	var order []string
 	byPath := map[string]*SkillFolder{}
-	nested := map[string]bool{}
+	specs := map[string]folderSpec{}
 	for _, scope := range []string{"repo", "home"} {
 		for _, adapter := range adapters {
 			for _, spec := range skillFolderSpecs(adapter, repo, homes) {
@@ -187,7 +202,7 @@ func ReadSkills(repo string, adapters []string, homes SkillHomes) []SkillFolder 
 					f = &SkillFolder{Scope: spec.scope, Folder: spec.name, Path: spec.path}
 					byPath[spec.path] = f
 					order = append(order, spec.path)
-					nested[spec.path] = spec.nested
+					specs[spec.path] = spec
 				}
 				if !contains(f.Adapters, adapter) {
 					f.Adapters = append(f.Adapters, adapter)
@@ -198,7 +213,7 @@ func ReadSkills(repo string, adapters []string, homes SkillHomes) []SkillFolder 
 	folders := make([]SkillFolder, 0, len(order))
 	for _, path := range order {
 		f := byPath[path]
-		readFolder(f, nested[path], byPath)
+		readFolder(f, specs[path], byPath, read)
 		folders = append(folders, *f)
 	}
 	return folders
@@ -215,8 +230,9 @@ func contains(list []string, s string) bool {
 
 // readFolder lists f's skills. A nested folder (synced/, .system/) is not
 // followed when it is a symlink; entries that are folders of their own
-// are left to their own listing.
-func readFolder(f *SkillFolder, nested bool, folders map[string]*SkillFolder) {
+// are left to their own listing. A grouped folder's skills are read from
+// its groups.
+func readFolder(f *SkillFolder, spec folderSpec, folders map[string]*SkillFolder, read func(string) ([]byte, error)) {
 	f.Skills = []Skill{}
 	info, err := os.Lstat(f.Path)
 	if err != nil {
@@ -225,7 +241,7 @@ func readFolder(f *SkillFolder, nested bool, folders map[string]*SkillFolder) {
 	}
 	if info.Mode()&fs.ModeSymlink != 0 {
 		f.Link, _ = os.Readlink(f.Path)
-		if nested {
+		if spec.nested {
 			f.State = FolderNotFollowed
 			return
 		}
@@ -252,15 +268,46 @@ func readFolder(f *SkillFolder, nested bool, folders map[string]*SkillFolder) {
 		if strings.HasPrefix(name, ".") || folders[filepath.Join(f.Path, name)] != nil {
 			continue
 		}
-		if skill, ok := readSkill(filepath.Join(f.Path, name), filepath.Join(real, name), name); ok {
+		if spec.grouped {
+			f.Skills = append(f.Skills, readGroup(filepath.Join(f.Path, name), filepath.Join(real, name), read)...)
+			continue
+		}
+		if skill, ok := readSkill(filepath.Join(f.Path, name), filepath.Join(real, name), name, read); ok {
 			f.Skills = append(f.Skills, skill)
 		}
 	}
 }
 
+// readGroup reads the skills of a group (synced/<id>), at path as the
+// folder names it and at inReal inside the folder's real path. A group
+// that is a symlinked directory is below the folder's top level and is not
+// followed; a plain file is no group.
+func readGroup(path, inReal string, read func(string) ([]byte, error)) []Skill {
+	info, err := os.Lstat(inReal)
+	if err != nil || !info.IsDir() {
+		return nil
+	}
+	entries, err := os.ReadDir(inReal)
+	if err != nil {
+		return nil
+	}
+	var skills []Skill
+	for _, entry := range entries {
+		name := entry.Name()
+		if strings.HasPrefix(name, ".") {
+			continue
+		}
+		if skill, ok := readSkill(filepath.Join(path, name), filepath.Join(inReal, name), name, read); ok {
+			skills = append(skills, skill)
+		}
+	}
+	return skills
+}
+
 // readSkill reads the skill entry name, at path as the folder names it and
-// at inReal inside the folder's real path. A plain file is no skill.
-func readSkill(path, inReal, name string) (Skill, bool) {
+// at inReal inside the folder's real path, its SKILL.md with read. A plain
+// file is no skill.
+func readSkill(path, inReal, name string, read func(string) ([]byte, error)) (Skill, bool) {
 	s := Skill{Name: name, Path: path}
 	info, err := os.Lstat(inReal)
 	if err != nil {
@@ -300,7 +347,7 @@ func readSkill(path, inReal, name string) (Skill, bool) {
 	if fileInfo.Size() > fileCap {
 		return failed(s, SkillTooLarge, "SKILL.md is over 256 KB"), true
 	}
-	data, err := os.ReadFile(realFile)
+	data, err := read(realFile)
 	if err != nil {
 		return failed(s, SkillMissing, "SKILL.md cannot be read"), true
 	}
@@ -371,33 +418,31 @@ func frontMatter(data []byte) (map[string]any, error) {
 
 // runtimeAdapters are the adapters of the runtimes the settings in dirs
 // define, a later dir's runtime file replacing an earlier one's of the same
-// name, as the page composes them.
+// name, as the page composes them: only the files settings admits, so a
+// file the page never gets replaces nothing; one that does not parse still
+// does.
 func runtimeAdapters(dirs ...string) []string {
 	byStem := map[string]string{}
 	for _, dir := range dirs {
-		entries, err := os.ReadDir(filepath.Join(dir, "runtimes"))
+		files, err := settings(dir)
 		if err != nil {
 			continue
 		}
-		for _, entry := range entries {
-			ext := filepath.Ext(entry.Name())
-			if ext != ".yaml" && ext != ".yml" {
-				continue
+		var names []string
+		for rel := range files {
+			name, ok := strings.CutPrefix(rel, "runtimes/")
+			if ext := filepath.Ext(name); ok && !strings.Contains(name, "/") && (ext == ".yaml" || ext == ".yml") {
+				names = append(names, name)
 			}
-			stem := strings.TrimSuffix(entry.Name(), ext)
+		}
+		sort.Strings(names)
+		for _, name := range names {
+			stem := strings.TrimSuffix(name, filepath.Ext(name))
 			byStem[stem] = ""
-			info, err := entry.Info()
-			if err != nil || !info.Mode().IsRegular() || info.Size() > fileCap {
-				continue
-			}
-			data, err := os.ReadFile(filepath.Join(dir, "runtimes", entry.Name()))
-			if err != nil {
-				continue
-			}
 			var doc struct {
 				Adapter string `yaml:"adapter"`
 			}
-			if yaml.Unmarshal(data, &doc) == nil {
+			if yaml.Unmarshal([]byte(files["runtimes/"+name]), &doc) == nil {
 				byStem[stem] = doc.Adapter
 			}
 		}

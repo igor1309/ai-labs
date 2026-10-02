@@ -638,10 +638,12 @@
 
     // Reads the skills of the shown settings and the runs, and shows them
     // with what was opened before. As with Runs, a read that ends after the
-    // user left Knowledge, or after a newer read, leaves the page alone.
+    // user left Knowledge, after a newer read, or after the settings were
+    // asked for again (open_), leaves the page alone.
     async function loadKnowledge() {
       const token = ++knowledgeToken;
-      const current = () => token === knowledgeToken && state.view === 'knowledge';
+      const opened = renderToken;
+      const current = () => token === knowledgeToken && opened === renderToken && state.view === 'knowledge';
       const settings = state.model;
       let skills, list;
       try {

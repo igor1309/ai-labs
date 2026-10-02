@@ -84,7 +84,8 @@ func TestSkillFoldersAreTheTablesPerAdapter(t *testing.T) {
 			"home ~/.agents/skills /h/.agents/skills", "home ~/.pi/agent/skills /h/.pi/agent/skills"},
 		"opencode": {"repo .agents/skills /r/.agents/skills", "repo .claude/skills /r/.claude/skills",
 			"repo .opencode/skills /r/.opencode/skills", "home ~/.agents/skills /h/.agents/skills",
-			"home ~/.claude/skills /h/.claude/skills", "home ~/.config/opencode/skills /h/.config/opencode/skills"},
+			"home ~/.claude/skills /h/.claude/skills", "home ~/.claude/skills/synced /h/.claude/skills/synced",
+			"home ~/.config/opencode/skills /h/.config/opencode/skills"},
 		"unknown": nil,
 	} {
 		if got := names(adapter, plain); !reflect.DeepEqual(got, want) {
@@ -176,6 +177,22 @@ func TestASymlinkedFolderIsReadAtItsRealPath(t *testing.T) {
 	}
 }
 
+// readsIn is skillsIn with the SKILL.md reader spied on: it returns the
+// folders and every file read.
+func readsIn(t *testing.T, repo, home string, adapters ...string) (map[string]SkillFolder, []string) {
+	t.Helper()
+	var reads []string
+	read := func(path string) ([]byte, error) {
+		reads = append(reads, path)
+		return os.ReadFile(path)
+	}
+	folders := map[string]SkillFolder{}
+	for _, f := range readSkills(repo, adapters, SkillHomes{Home: home}, read) {
+		folders[f.Folder] = f
+	}
+	return folders, reads
+}
+
 func TestASkillMDOutsideItsSkillIsNotRead(t *testing.T) {
 	repo := realDir(t, t.TempDir())
 	write(t, filepath.Join(repo, "secret.md"), skillMD("leak", "Not a skill's file."))
@@ -187,7 +204,13 @@ func TestASkillMDOutsideItsSkillIsNotRead(t *testing.T) {
 	write(t, filepath.Join(repo, ".claude", "skills", "c", "docs", "skill.md"), skillMD("c", "C."))
 	symlink(t, "docs/skill.md", filepath.Join(repo, ".claude", "skills", "c", "SKILL.md"))
 
-	f := skillsIn(t, repo, "", "claude-code")[".claude/skills"]
+	folders, reads := readsIn(t, repo, "", "claude-code")
+	f := folders[".claude/skills"]
+	// Only a's and c's files are read: not secret.md, and a's file not
+	// again for b.
+	if want := []string{filepath.Join(repo, ".claude", "skills", "a", "SKILL.md"), filepath.Join(repo, ".claude", "skills", "c", "docs", "skill.md")}; !reflect.DeepEqual(reads, want) {
+		t.Errorf("read %q, want %q", reads, want)
+	}
 	for _, name := range []string{"leak", "b"} {
 		s := skillNamed(t, f, name)
 		if s.State != SkillOutside || s.Content != "" || s.Description != "" || s.Checks.Passed || !reflect.DeepEqual(s.Checks.Failed, []string{"SKILL.md is outside its skill"}) {
@@ -237,7 +260,11 @@ func TestATooLargeSkillMDIsNotReadNorChecked(t *testing.T) {
 	write(t, filepath.Join(repo, ".claude", "skills", "big", "SKILL.md"), "---\nname: other\n---\n"+strings.Repeat("x", fileCap))
 	write(t, filepath.Join(repo, ".claude", "skills", "edge", "SKILL.md"), skillMD("edge", "E.")+strings.Repeat("x", fileCap-len(skillMD("edge", "E."))))
 
-	f := skillsIn(t, repo, "", "claude-code")[".claude/skills"]
+	folders, reads := readsIn(t, repo, "", "claude-code")
+	f := folders[".claude/skills"]
+	if want := []string{filepath.Join(repo, ".claude", "skills", "edge", "SKILL.md")}; !reflect.DeepEqual(reads, want) {
+		t.Errorf("read %q, want %q", reads, want)
+	}
 	if s := skillNamed(t, f, "big"); s.State != SkillTooLarge || s.Content != "" || !reflect.DeepEqual(s.Checks.Failed, []string{"SKILL.md is over 256 KB"}) {
 		t.Errorf("big: %+v", s.Checks)
 	}
@@ -334,15 +361,50 @@ func TestBelowTheTopLevelSymlinkedDirectoriesAreNotFollowed(t *testing.T) {
 		t.Errorf("synced: %+v", synced)
 	}
 
-	// A real synced/ is read as its own folder, not as a skill of its parent.
+	// A group in synced/ that is a symlinked directory is not followed.
 	other := filepath.Join(root, "other")
-	write(t, filepath.Join(other, ".claude", "skills", "synced", "s", "SKILL.md"), skillMD("s", "S."))
-	folders = skillsIn(t, "", other, "claude-code")
-	if s := skillNamed(t, folders["~/.claude/skills/synced"], "s"); !s.Checks.Passed {
-		t.Errorf("synced skill: %+v", s)
+	symlink(t, elsewhere, filepath.Join(other, ".claude", "skills", "synced", "linked"))
+	if synced := skillsIn(t, "", other, "claude-code")["~/.claude/skills/synced"]; synced.State != "" || len(synced.Skills) != 0 {
+		t.Errorf("linked group: %+v", synced)
 	}
-	if n := len(folders["~/.claude/skills"].Skills); n != 0 {
-		t.Errorf("synced listed as a skill of its parent: %+v", folders["~/.claude/skills"].Skills)
+}
+
+func TestSyncedSkillsAreReadFromTheirGroups(t *testing.T) {
+	root := realDir(t, t.TempDir())
+	home := filepath.Join(root, "home")
+	synced := filepath.Join(home, ".claude", "skills", "synced")
+	text := skillMD("docx", "Word files.")
+	write(t, filepath.Join(synced, "a1b2", "docx", "SKILL.md"), text)
+	write(t, filepath.Join(synced, "a1b2", "README.md"), "a file, not a skill")
+	mkdir(t, filepath.Join(synced, "a1b2", "empty"))
+	write(t, filepath.Join(synced, "c3d4", "pdf", "SKILL.md"), skillMD("pdf", "PDF files."))
+	write(t, filepath.Join(synced, "notes.md"), "a file, not a group")
+	mkdir(t, filepath.Join(synced, ".cache", "hidden"))
+
+	// OpenCode reads the same ~/.claude/skills, synced/ included.
+	for _, adapter := range []string{"claude-code", "opencode"} {
+		folders := skillsIn(t, "", home, adapter)
+		f := folders["~/.claude/skills/synced"]
+		var names []string
+		for _, s := range f.Skills {
+			names = append(names, s.Name)
+		}
+		if f.State != "" || !reflect.DeepEqual(names, []string{"docx", "empty", "pdf"}) {
+			t.Fatalf("%s: synced %+v", adapter, f)
+		}
+		want := Skill{
+			Name: "docx", Path: filepath.Join(synced, "a1b2", "docx"), Real: filepath.Join(synced, "a1b2", "docx"),
+			Content: text, Description: "Word files.", Checks: Checks{Passed: true},
+		}
+		if got := skillNamed(t, f, "docx"); !reflect.DeepEqual(got, want) {
+			t.Errorf("%s:\n got %+v\nwant %+v", adapter, got, want)
+		}
+		if s := skillNamed(t, f, "empty"); s.State != SkillMissing {
+			t.Errorf("%s: empty %+v", adapter, s)
+		}
+		if n := len(folders["~/.claude/skills"].Skills); n != 0 {
+			t.Errorf("%s: synced listed as a skill of its parent: %+v", adapter, folders["~/.claude/skills"].Skills)
+		}
 	}
 }
 
@@ -405,6 +467,42 @@ func TestSkillsEndpointReadsTheFoldersOfTheSettingsRuntimes(t *testing.T) {
 			"home ~/.claude/skills", "home ~/.claude/skills/synced", "home ~/.agents/skills", "home ~/.pi/agent/skills",
 		}) {
 			t.Errorf("%s: home=%v adapters=%v folders=%q", path, tilde.Home, tilde.Adapters, folders)
+		}
+	}
+}
+
+func TestARepoRuntimeSettingsLeavesOutReplacesNothing(t *testing.T) {
+	root := realDir(t, t.TempDir())
+	user := filepath.Join(root, "user")
+	home := filepath.Join(user, ".agister")
+	write(t, filepath.Join(home, "runtimes", "main.yaml"), "adapter: pi\n")
+	repo := filepath.Join(root, "repo")
+	write(t, filepath.Join(repo, ".agister", "runtimes", "main.yaml"), "adapter: codex\n"+strings.Repeat("#", fileCap))
+	// A file Settings admits that does not parse still replaces home's.
+	write(t, filepath.Join(home, "runtimes", "other.yaml"), "adapter: claude-code\n")
+	write(t, filepath.Join(repo, ".agister", "runtimes", "other.yaml"), "adapter: [\n")
+	write(t, filepath.Join(user, ".pi", "agent", "skills", "p", "SKILL.md"), skillMD("p", "P."))
+	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user})
+
+	var settings struct {
+		Files, HomeFiles map[string]string
+	}
+	if code := get(t, h, "127.0.0.1", "/api/settings?path="+q(repo), &settings); code != 200 {
+		t.Fatalf("settings: status %d", code)
+	}
+	if _, ok := settings.Files["runtimes/main.yaml"]; ok || settings.HomeFiles["runtimes/main.yaml"] != "adapter: pi\n" {
+		t.Fatalf("settings: %+v", settings)
+	}
+	var skills SkillsReply
+	if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(repo), &skills); code != 200 {
+		t.Fatalf("skills: status %d", code)
+	}
+	if !reflect.DeepEqual(skills.Adapters, []string{"pi"}) {
+		t.Fatalf("adapters %v, want home's pi", skills.Adapters)
+	}
+	for _, f := range skills.Folders {
+		if f.Folder == "~/.pi/agent/skills" && (len(f.Skills) != 1 || f.Skills[0].Name != "p") {
+			t.Errorf("pi skills: %+v", f.Skills)
 		}
 	}
 }

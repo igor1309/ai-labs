@@ -116,6 +116,23 @@ test('Markdown inline: code, emphasis and links, with what is not markup left as
   ]);
 });
 
+test('a run of unmatched brackets is read in linear time', () => {
+  // A SKILL.md just under the 256 KB cap: read quadratically, each of
+  // these took about a minute.
+  const n = 262052;
+  for (const src of ['['.repeat(n), `${'['.repeat(n)}](${'x'.repeat(n)}`, '[]'.repeat(n / 2)]) {
+    const start = performance.now();
+    assert.deepEqual(K.inline(src), [t(src)]);
+    const ms = performance.now() - start;
+    assert.ok(ms < 2000, `${src.slice(0, 4)}…: ${Math.round(ms)} ms`);
+  }
+  // The text runs from the first [ to the first ], as before.
+  assert.deepEqual(K.inline('[[a [b](https://x) c] [d] [e](https://y)'), [
+    { type: 'link', href: 'https://x', children: [t('[a [b')] }, t(' c] [d] '),
+    { type: 'link', href: 'https://y', children: [t('e')] },
+  ]);
+});
+
 test('a link that is not http(s) is its text, and HTML is text', () => {
   for (const target of ['javascript:alert(1)', 'data:text/html,x', '/etc/passwd', 'file:///x', ' javascript:alert(1)', 'JaVaScRiPt:alert(1)']) {
     assert.deepEqual(K.inline(`see [here](${target}).`), [t('see here.')], target);

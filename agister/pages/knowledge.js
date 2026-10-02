@@ -174,8 +174,9 @@
     return blocks;
   }
 
-  // [text](target "title"); the target may hold one level of brackets.
-  const LINK = /^\[([^\]]*)\]\(\s*((?:[^()\s]|\([^()\s]*\))*)(?:\s+"[^"]*")?\s*\)/;
+  // [text](target "title"): the text runs to the first ], and the target
+  // after it may hold one level of brackets.
+  const TARGET = /^\(\s*((?:[^()\s]|\([^()\s]*\))*)(?:\s+"[^"]*")?\s*\)/;
   const ESCAPABLE = /[\\`*_[\]()#+\-.!<>]/;
 
   // Inline: { type: text, text } | { type: code, text } | { type: strong
@@ -193,17 +194,20 @@
         else out.push(n);
       }
     };
+    // The first ] after a [ and the target after it, found once for all
+    // the [ before it, so a run of unmatched [ stays linear.
+    let close = -1;
+    let target = null;
     let i = 0;
     while (i < src.length) {
       const c = src[i];
-      const rest = src.slice(i);
       if (c === '\\' && ESCAPABLE.test(src[i + 1] ?? '')) {
         pending += src[i + 1];
         i += 2;
         continue;
       }
       if (c === '`') {
-        const ticks = /^`+/.exec(rest)[0];
+        const ticks = /^`+/.exec(src.slice(i))[0];
         const end = src.indexOf(ticks, i + ticks.length);
         if (end > 0) {
           add({ type: 'code', text: src.slice(i + ticks.length, end) });
@@ -214,12 +218,16 @@
         i += ticks.length;
         continue;
       }
-      const link = c === '[' && LINK.exec(rest);
-      if (link) {
-        const children = inline(link[1]);
-        if (/^https?:\/\//i.test(link[2])) add({ type: 'link', href: link[2], children });
+      if (c === '[' && close <= i) {
+        close = src.indexOf(']', i + 1);
+        if (close < 0) close = src.length;
+        target = close < src.length ? TARGET.exec(src.slice(close + 1)) : null;
+      }
+      if (c === '[' && target) {
+        const children = inline(src.slice(i + 1, close));
+        if (/^https?:\/\//i.test(target[1])) add({ type: 'link', href: target[1], children });
         else add(...children);
-        i += link[0].length;
+        i = close + 1 + target[0].length;
         continue;
       }
       if (c === '*' || c === '_') {

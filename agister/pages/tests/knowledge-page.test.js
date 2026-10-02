@@ -110,6 +110,26 @@ function page({ storage = fakeStorage({ [VIEW_KEY]: 'knowledge', 'agister-pages:
   };
 }
 
+// What a refresh reads the second time: opus on another model, one new
+// skill in place of the others, and a third run that used it.
+const later = (first, second) => (n) => respond(n === 1 ? first : second);
+const refreshed = {
+  'api/settings': later(
+    { path: '/r', dir: '/r/.agister', home: false, files, homeFiles: {} },
+    { path: '/r', dir: '/r/.agister', home: false, files: { ...files, 'agents/opus.toml': 'name = "opus"\nruntime = "claude-code"\nmodel = "opus-5"\neffort = "low"\n' }, homeFiles: {} }),
+  'api/skills': later(skills, {
+    ...skills,
+    folders: [{
+      scope: 'repo', folder: '.claude/skills', path: '/r/.claude/skills', real: '/r/.claude/skills', adapters: ['claude-code'],
+      skills: [{ name: 'fresh', path: '/r/.claude/skills/fresh', real: '/r/.claude/skills/fresh', content: '---\nname: fresh\ndescription: New.\n---\nFresh text.\n', description: 'New.', checks: { passed: true } }],
+    }],
+  }),
+  'api/runs': later({ runs, total: runs.length, skipped: 0 }, {
+    runs: [{ id: 'run-3', process: 'implement', agent: 'opus', created_at: '2026-10-01T12:00:00Z', status: 'completed', outcome: {}, skills: [{ name: 'fresh', count: 5 }] }, ...runs],
+    total: runs.length + 1, skipped: 0,
+  }),
+};
+
 test('Knowledge is a third view, remembered, read from the settings, their skills and the runs', async () => {
   const storage = fakeStorage({ 'agister-pages:current': '/r' });
   const p = page({ storage });
@@ -127,16 +147,29 @@ test('Knowledge is a third view, remembered, read from the settings, their skill
   assert.match(p.$('read-at').title, /^Knowledge read/);
 
   // The next visit opens on Knowledge.
-  const next = page({ storage });
+  const next = page({ storage, answers: refreshed });
   await next.started;
   assert.deepEqual(next.shown(), ['knowledge']);
   assert.ok(next.$('knowledge-overview'));
 
-  // Refresh reads the settings, the skills and the runs again.
+  // Refresh reads the settings, the skills and the runs again, and shows
+  // what they hold now.
   const before = next.calls.length;
   next.$('refresh').click();
   await settle();
   assert.deepEqual(next.calls.slice(before).map((u) => u.split('?')[0]).sort(), ['api/runs', 'api/settings', 'api/skills']);
+  assert.deepEqual(next.columns()[1], ['opus', 'claude-code', 'opus-5 · low']);
+  assert.deepEqual(next.matrix(), { fresh: ['', '●', ''] });
+  next.open('fresh');
+  assert.match(next.$('skill-detail').textContent, /Fresh text\./);
+  next.open('opus');
+  assert.deepEqual(next.table('agent-loads'), [['fresh', 'repo', '.claude/skills', 'checks passed']]);
+  assert.match(next.$('agent-observed').querySelector('p').textContent, /^observed: what the 3 runs of this agent/);
+  assert.deepEqual(next.table('agent-observed'), [
+    ['fresh', '5', '1', 'run-3'],
+    ['go', '3', '2', 'run-2, run-1'],
+    ['review', '3', '1', 'run-2'],
+  ]);
 });
 
 test('the overview is a matrix of skills and agents, with shared names marked', async () => {
@@ -321,4 +354,28 @@ test('a Knowledge read that fails says why; one that ends after the user left le
   assert.equal(slow.$('status').hidden, true);
   assert.match(slow.$('read-at').title, /^Settings read/);
   assert.deepEqual(slow.shown(), ['dashboard']);
+});
+
+test('a Knowledge read that ends after a newer settings read failed leaves the error shown', async () => {
+  let answer;
+  const p = page({
+    answers: {
+      'api/settings': (n) => (n === 1
+        ? respond({ path: '/r', dir: '/r/.agister', home: false, files, homeFiles: {} })
+        : respond({ error: 'settings unreadable' }, 500)),
+      'api/skills': () => new Promise((r) => { answer = r; }),
+    },
+  });
+  await settle();
+  p.$('refresh').click();
+  await settle();
+  assert.equal(p.$('status').textContent, 'settings unreadable');
+
+  answer(respond(skills));
+  await p.started;
+  await settle();
+  assert.equal(p.$('status').textContent, 'settings unreadable');
+  assert.equal(p.$('status').hidden, false);
+  assert.doesNotMatch(p.$('read-at').title, /^Knowledge read/);
+  assert.equal(p.$('knowledge-overview'), null);
 });
