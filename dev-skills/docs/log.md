@@ -4,6 +4,14 @@ instructions: Keep entries concise, outcome-focused. Don't mirror git commits. L
 
 # Log
 
+## 2026-10-02
+
+- **worktree v0.2.2 (marketplace v1.67.0)**: new branches no longer track their
+  base. A branch cut from `origin/trunk` used to get it as upstream, which made a
+  plain first `git push` fail (names differ) and kept `push.autoSetupRemote`
+  from creating the same-named remote branch. Now, with
+  `push.autoSetupRemote=true`, the first `git push` does that.
+
 ## 2026-08-28
 
 - **doc-discipline v1.1.0 (marketplace v1.66.0)**: the prose-economy test that
