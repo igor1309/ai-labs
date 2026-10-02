@@ -274,7 +274,7 @@ func onFakeRuntimes(t *testing.T) (root, repo, home string) {
 	// output from the schema it is given, and report their default versions,
 	// which the mappings verify (claude-code 2.1.283, codex 0.158.0, pi
 	// 0.85.1). No real runtime ever runs.
-	bin := t.TempDir()
+	bin := tempDir(t)
 	for name, fake := range map[string]string{"claude": "fakeclaude", "codex": "fakecodex", "pi": "fakepi"} {
 		if err := os.Symlink(runtimetest.Binary(t, fake), filepath.Join(bin, name)); err != nil {
 			t.Fatal(err)
@@ -290,8 +290,8 @@ func onFakeRuntimes(t *testing.T) (root, repo, home string) {
 
 	repo = mirror(t, root)
 	fixVerify(t, root, repo)
-	home = filepath.Join(t.TempDir(), "home")
-	if r := agisterInput(t, "yes\n", home, t.TempDir(), "init"); r.code != 0 {
+	home = filepath.Join(tempDir(t), "home")
+	if r := agisterInput(t, "yes\n", home, tempDir(t), "init"); r.code != 0 {
 		t.Fatalf("init: %d %s", r.code, r.stderr)
 	}
 	return root, repo, home
@@ -342,7 +342,7 @@ func TestADRReviewCollectsTheADRReview(t *testing.T) {
 // the advice schema.
 func TestAdvisorAnswersAQuestionFile(t *testing.T) {
 	root, repo, home := onFakeRuntimes(t)
-	question := filepath.Join(t.TempDir(), "question.md")
+	question := filepath.Join(tempDir(t), "question.md")
 	write(t, question, "Asked by: workflow run 1, item 2.\nQuestion: which?\nOptions: (a) one; (b) two.\n")
 	// The timeout is the test's own: the process's policy allows 20 minutes.
 	created, r := runRecorded(t, home, repo, []string{"run", "advisor", "--param", "question=" + question, "--param", "revision=feature", "--timeout", "1m"})
@@ -820,7 +820,7 @@ func schemaAccepts(t *testing.T, record map[string]any, output any, stdout strin
 // aside.
 func mirror(t *testing.T, root string) string {
 	t.Helper()
-	dir, err := filepath.EvalSymlinks(t.TempDir())
+	dir, err := filepath.EvalSymlinks(tempDir(t))
 	if err != nil {
 		t.Fatal(err)
 	}

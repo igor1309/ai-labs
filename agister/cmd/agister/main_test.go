@@ -70,7 +70,7 @@ func gitCmd(t *testing.T, dir string, args ...string) string {
 func repository(t *testing.T, scenario string) string {
 	// Git reports the repository's real path (on macOS the temp dir sits
 	// behind the /var -> /private/var symlink); expectations use the same.
-	dir, err := filepath.EvalSymlinks(t.TempDir())
+	dir, err := filepath.EvalSymlinks(tempDir(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func repository(t *testing.T, scenario string) string {
 
 // setup: example settings with agents pointed at the fakes.
 func setup(t *testing.T, scenario string) (home, repo string) {
-	home, repo = t.TempDir(), repository(t, scenario)
+	home, repo = tempDir(t), repository(t, scenario)
 	claude := runtimetest.Binary(t, "fakeclaude")
 	if r := agisterInput(t, "yes\n", home, repo, "init"); r.code != 0 {
 		t.Fatalf("init: %d %s", r.code, r.stderr)
@@ -254,7 +254,7 @@ func TestShippedExamplesPassCheck(t *testing.T) {
 // init writes the shipped service settings, and a binary file in their
 // place (a Finder .DS_Store once landed there) is reported as one problem.
 func TestUnreadableServiceSettingsFailCheck(t *testing.T) {
-	home, repo := t.TempDir(), t.TempDir()
+	home, repo := tempDir(t), tempDir(t)
 	if r := agisterInput(t, "yes\n", home, repo, "init"); r.code != 0 {
 		t.Fatalf("init: %d %s", r.code, r.stderr)
 	}
@@ -286,7 +286,7 @@ func TestRefusedCallIsRecorded(t *testing.T) {
 // New kinds of work, contracts and permissions need no code: this call uses
 // a vocabulary, runtime mapping, schema and process that exist only here.
 func TestSettingsOnlyExtension(t *testing.T) {
-	home, repo := t.TempDir(), repository(t, "approve")
+	home, repo := tempDir(t), repository(t, "approve")
 	write(t, filepath.Join(home, "service.toml"), `schema = "agister.service/v1alpha1"
 max_timeout = "5m"
 permissions = ["docs.read", "docs.write"]
@@ -365,7 +365,7 @@ func TestProjectSettingsAddToGlobal(t *testing.T) {
 		t.Fatalf("project process not used or not attributed: %v, argv %v", process, last.argv())
 	}
 
-	outside := t.TempDir()
+	outside := tempDir(t)
 	if r := agister(t, home, outside, "process", "list"); r.code != 0 || strings.Contains(r.stdout, "ask_here") {
 		t.Fatalf("list outside project: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -447,7 +447,7 @@ func TestComposedSettingsAreVerified(t *testing.T) {
 // init writes nothing until the user types "yes", and --force says which
 // existing files it would replace before asking.
 func TestInitAsksBeforeWriting(t *testing.T) {
-	home, dir := filepath.Join(t.TempDir(), "home"), t.TempDir()
+	home, dir := filepath.Join(tempDir(t), "home"), tempDir(t)
 	for _, input := range []string{"", "\n", "y\n", "no\n", "YES please\n"} {
 		r := agisterInput(t, input, home, dir, "init")
 		if r.code != cli.ExitUsage || !strings.Contains(r.stdout, "will create  "+filepath.Join(home, "service.toml")) || !strings.Contains(r.stderr, "Type yes to write") || !strings.Contains(r.stderr, "nothing was written") {
@@ -479,7 +479,7 @@ func TestInitAsksBeforeWriting(t *testing.T) {
 
 // agent create asks for "yes" only when --force would replace an agent.
 func TestAgentCreateAsksBeforeReplacing(t *testing.T) {
-	home, dir := filepath.Join(t.TempDir(), "home"), t.TempDir()
+	home, dir := filepath.Join(tempDir(t), "home"), tempDir(t)
 	if r := agisterInput(t, "yes\n", home, dir, "init"); r.code != 0 {
 		t.Fatalf("init: %d %s", r.code, r.stderr)
 	}
@@ -541,7 +541,7 @@ func TestAgentCreateKeepsEveryScopeValid(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(home, "agents", "g.toml")); err == nil {
 		t.Fatal("an agent valid only in the project was written to global settings")
 	}
-	if r := agister(t, home, t.TempDir(), "check"); r.code != 0 {
+	if r := agister(t, home, tempDir(t), "check"); r.code != 0 {
 		t.Fatalf("outside the project: %d\n%s", r.code, r.stderr)
 	}
 
@@ -572,7 +572,7 @@ func (r *typedAfter) Read(p []byte) (int, error) {
 
 // "yes" approves the plan that was shown, not whatever is on disk by then.
 func TestConfirmedWritesRefuseChangesMadeWhileAsking(t *testing.T) {
-	home, dir := filepath.Join(t.TempDir(), "home"), t.TempDir()
+	home, dir := filepath.Join(tempDir(t), "home"), tempDir(t)
 	if r := agisterInput(t, "yes\n", home, dir, "init"); r.code != 0 {
 		t.Fatalf("init: %d %s", r.code, r.stderr)
 	}
@@ -593,7 +593,7 @@ func TestConfirmedWritesRefuseChangesMadeWhileAsking(t *testing.T) {
 
 // On a fresh machine only init and help work; after init everything does.
 func TestFreshHomeNeedsInit(t *testing.T) {
-	home, dir := filepath.Join(t.TempDir(), "home"), t.TempDir()
+	home, dir := filepath.Join(tempDir(t), "home"), tempDir(t)
 	if r := agister(t, home, dir, "process", "list"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, "service service: not found") {
 		t.Fatalf("before init: %d\n%s", r.code, r.stderr)
 	}
@@ -744,7 +744,7 @@ func TestVerdictIsOutputNotStatus(t *testing.T) {
 func TestContinuationEndToEnd(t *testing.T) {
 	// The fake runtime keeps its sessions' costs here: each turn costs
 	// $0.0123, and the result reports the session's total.
-	t.Setenv("FAKE_CLAUDE_CONFIG_DIR", t.TempDir())
+	t.Setenv("FAKE_CLAUDE_CONFIG_DIR", tempDir(t))
 	home, repo := setup(t, "approve")
 	client, err := compose(cli.Config{Home: home})
 	if err != nil {

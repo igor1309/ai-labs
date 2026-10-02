@@ -107,7 +107,7 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 		"in project":  {cwd: project, project: true},
 	} {
 		t.Run(name, func(t *testing.T) {
-			home := t.TempDir()
+			home := tempDir(t)
 			client, background, err := wire(cli.Config{Home: home, Cwd: tc.cwd})
 			if err != nil {
 				t.Fatal(err)
@@ -192,7 +192,7 @@ func gatedOf(t *testing.T, client contract.Client) *app.Gated {
 // The built client starts the one background reaper every build shares,
 // over the run store, the supervisor's processes and the git workspaces.
 func TestBuiltClientSharesTheBackgroundReaper(t *testing.T) {
-	home := t.TempDir()
+	home := tempDir(t)
 	client, background, err := wire(cli.Config{Home: home})
 	if err != nil {
 		t.Fatal(err)
@@ -224,7 +224,7 @@ func errorsOf(reaped map[string]any) []string {
 // Submitting a call on the built client reaps the runs a killed process
 // abandoned: here one that recorded a checkout and whose owner is gone.
 func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
-	home := t.TempDir()
+	home := tempDir(t)
 	client, background, err := wire(cli.Config{Home: home})
 	if err != nil {
 		t.Fatal(err)
@@ -238,7 +238,7 @@ func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
 	record := domain.Record{
 		Schema: domain.RecordSchema, ID: "old", Process: "p", CreatedAt: time.Now(),
 		Effects: &domain.Effects{
-			Checkout: &domain.Checkout{Repository: "/repo", Dir: filepath.Join(t.TempDir(), "workspace")},
+			Checkout: &domain.Checkout{Repository: "/repo", Dir: filepath.Join(tempDir(t), "workspace")},
 			Process:  &domain.Process{Ref: "not-a-reference"},
 		},
 	}
@@ -299,14 +299,14 @@ func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
 // still owns use: an abandoned run's checkout that such a run also uses is
 // left in place, not discarded from under it.
 func TestBuiltReaperLeavesACheckoutARunningRunUses(t *testing.T) {
-	home := t.TempDir()
+	home := tempDir(t)
 	_, background, err := wire(cli.Config{Home: home})
 	if err != nil {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
 	store := fsruns.Store{Dir: filepath.Join(home, "runs")}
-	shared := &domain.Checkout{Repository: "/repo", Dir: filepath.Join(t.TempDir(), "workspace")}
+	shared := &domain.Checkout{Repository: "/repo", Dir: filepath.Join(tempDir(t), "workspace")}
 	// An unfinished run this test owns, as a running process would.
 	owned, err := store.Create(ctx, domain.Record{
 		Schema: domain.RecordSchema, ID: "running", Process: "p", CreatedAt: time.Now(),
@@ -354,7 +354,7 @@ func TestBuiltReaperLeavesACheckoutARunningRunUses(t *testing.T) {
 // A reap that fails is logged: nobody waits for it, and no run record says
 // so. Here the run store cannot be listed.
 func TestBuiltReaperLogsAFailedReap(t *testing.T) {
-	home := t.TempDir()
+	home := tempDir(t)
 	if err := os.WriteFile(filepath.Join(home, "runs"), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -398,7 +398,7 @@ func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
 	// Until released, every worktree command reports that it runs, and
 	// stays there under its repository's lock, or that it waits for it.
 	events, released := make(chan string, 3), make(chan struct{})
-	worktrees := git.NewWorktrees(t.TempDir())
+	worktrees := git.NewWorktrees(tempDir(t))
 	worktrees.Git = func(ctx context.Context, dir string, lock *os.File, args ...string) (string, error) {
 		select {
 		case <-released:
@@ -504,7 +504,7 @@ func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
 // The process's worktree coordinator keeps its lock files under the home:
 // a checkout and its release leave one there, empty.
 func TestTheProcessWorktreeCoordinatorLocksUnderTheHome(t *testing.T) {
-	home, repo := t.TempDir(), repository(t, "x")
+	home, repo := tempDir(t), repository(t, "x")
 	adapters := process(cli.Config{Home: home}).workspaces()
 	_, release, err := adapters.calls.Checkout(context.Background(), repo, "main")
 	if err != nil {

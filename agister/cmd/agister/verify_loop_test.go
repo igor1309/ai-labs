@@ -174,7 +174,7 @@ func newLoop(t *testing.T, settings verifySettings, steps ...step) *loopHarness 
 // newLoopWith is newLoop with the seams given.
 func newLoopWith(t *testing.T, with seams, settings verifySettings, steps ...step) *loopHarness {
 	t.Helper()
-	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
+	workspaces := git.NewWorkspaces(git.NewWorktrees(tempDir(t)))
 	if with.changes == nil {
 		with.changes = workspaces
 	}
@@ -187,7 +187,7 @@ func newLoopWith(t *testing.T, with seams, settings verifySettings, steps ...ste
 	if with.commands == nil {
 		with.commands = runtimecomposition.Commands{Supervisor: supervisor.Commands{}}
 	}
-	repo, err := filepath.EvalSymlinks(t.TempDir())
+	repo, err := filepath.EvalSymlinks(tempDir(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +209,7 @@ func newLoopWith(t *testing.T, with seams, settings verifySettings, steps ...ste
 	if settings.maxAttempts == 0 {
 		settings.maxAttempts = 3
 	}
-	defs := t.TempDir()
+	defs := tempDir(t)
 	for name, text := range map[string]string{
 		"service.toml": `schema = "agister.service/v1alpha1"
 max_timeout = "1h"
@@ -273,7 +273,7 @@ verify:
 		write(t, filepath.Join(defs, name), text)
 	}
 
-	h := &loopHarness{t: t, repo: repo, home: t.TempDir(), runner: &scripted{t: t, steps: steps}, commands: &recordingCommands{VerifyCommands: with.commands}}
+	h := &loopHarness{t: t, repo: repo, home: tempDir(t), runner: &scripted{t: t, steps: steps}, commands: &recordingCommands{VerifyCommands: with.commands}}
 	h.store = fsruns.Store{Dir: filepath.Join(h.home, "runs")}
 	runtimes := fakeRuntimes{runner: h.runner}
 	hosted := app.NewHosted()
@@ -494,7 +494,7 @@ func TestVerifyCallTimeoutBoundsTheLoop(t *testing.T) {
 	// only once the copy is made, so the real time Git takes decides
 	// nothing.
 	clock := &manualClock{now: time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)}
-	copies := slowCopies{Workspaces: git.NewWorkspaces(git.NewWorktrees(t.TempDir())), after: func() { clock.advance(59 * time.Second) }}
+	copies := slowCopies{Workspaces: git.NewWorkspaces(git.NewWorktrees(tempDir(t))), after: func() { clock.advance(59 * time.Second) }}
 	h := newLoopWith(t, seams{clock: clock, copies: copies}, verifySettings{command: blocks, timeout: "20s"}, state("one"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Interrupted, domain.ClassTimeout, "the call's timeout passed during attempt 1's run")
@@ -549,7 +549,7 @@ func (c *manualClock) advance(by time.Duration) {
 // Cancelling the call during a run kills the command's whole process
 // group, which the record names while it runs.
 func TestVerifyCancellationKillsTheCommandGroup(t *testing.T) {
-	groupFile := filepath.Join(t.TempDir(), "group")
+	groupFile := filepath.Join(tempDir(t), "group")
 	// The command's timer never fires, so only the cancellation can end the
 	// command; wait's own bound fails the test if nothing does.
 	unfired := supervisor.Commands{Timer: func(time.Duration) (<-chan time.Time, func()) { return nil, func() {} }}
@@ -709,7 +709,7 @@ func TestVerifyNeverRunsAfterAFailedOrInvalidTurn(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			marker := filepath.Join(t.TempDir(), "ran")
+			marker := filepath.Join(tempDir(t), "ran")
 			h := newLoop(t, verifySettings{command: "touch " + marker}, c.turn)
 			record := h.call(contract.CallRequest{})
 			expect(t, record, domain.Failed, c.class, "")
@@ -766,7 +766,7 @@ func TestVerifyCaptureReproducesThePassingContent(t *testing.T) {
 	if len(artifacts) != 1 || artifacts[0].Name != "changes.patch" {
 		t.Fatalf("artifacts = %+v", artifacts)
 	}
-	rebuild := filepath.Join(t.TempDir(), "rebuild")
+	rebuild := filepath.Join(tempDir(t), "rebuild")
 	gitCmd(t, h.repo, "worktree", "add", "--quiet", "--detach", rebuild, "main")
 	defer gitCmd(t, h.repo, "worktree", "remove", "--force", rebuild)
 	gitCmd(t, rebuild, "apply", "--binary", filepath.Join(h.home, "runs", record.ID, artifacts[0].Path))
