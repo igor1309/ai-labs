@@ -27,7 +27,7 @@
 // Claude Code reports a failed turn's reason in the result's errors and
 // again on stderr (observed with 2.1.286 resuming an unknown session); a
 // command line it refuses gets no result, only its reason on stderr, which
-// the error message then quotes (supervisor.WithoutTerminal).
+// the error message then quotes (withoutTerminal).
 package claudecode
 
 import (
@@ -39,10 +39,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/app"
-	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 const Contract = "claude-code/3"
@@ -53,34 +49,78 @@ const skill = "Skill"
 // commandTool is the tool that runs commands.
 const commandTool = "Bash"
 
-type Runner struct {
+// Transport is what the runner needs of a process supervisor: to run the
+// runtime to its exit, passing each line of its stdout to onLine, and to
+// read the runtime's version.
+type Transport interface {
+	Run(ctx context.Context, spec Spec, sink Sink, onLine func(string)) Evidence
+	Version(ctx context.Context, command string) (string, error)
+}
+
+// Spec is the process a turn runs.
+type Spec struct {
 	Command   string
+	Args      []string
+	Dir       string
+	Stdin     string
+	Timeout   time.Duration
+	KillGrace time.Duration // zero: the transport's default
+}
+
+// Sink is what the transport reports to: the process's events, its
+// reference as soon as it exists (an error means it is not on record, and
+// the transport kills it), and each line of its stdout.
+type Sink interface {
+	Event(source, kind string, data map[string]any)
+	ProcessStarted(ref string) error
+	Raw(line string)
+}
+
+// Evidence is what the process left, the stream reconciles: its exit, how
+// it ended, and the end of its stderr.
+type Evidence struct {
+	Exit          *Exit
+	SpawnError    string
+	TimedOut      bool
+	Aborted       bool
+	StderrTail    string
+	StderrOmitted int64
+	// RecordError is why the process could not be recorded; it was killed
+	// at once, and the turn fails.
+	RecordError string
+}
+
+type Runner struct {
+	Command string
+	// Transport runs the runtime; the composition root wires the
+	// supervisor.
+	Transport Transport
 	KillGrace time.Duration // zero: the supervisor default
 }
 
-func New(command string) *Runner {
+func New(command string, transport Transport) *Runner {
 	if command == "" {
 		command = "claude"
 	}
-	return &Runner{Command: command}
+	return &Runner{Command: command, Transport: transport}
 }
 
 var versionPattern = regexp.MustCompile(`\d+\.\d+\.\d+`)
 
-func (r *Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
-	out, err := supervisor.Version(ctx, r.Command)
+func (r *Runner) Identity(ctx context.Context) (RuntimeIdentity, error) {
+	out, err := r.Transport.Version(ctx, r.Command)
 	if err != nil {
-		return app.RuntimeIdentity{}, err
+		return RuntimeIdentity{}, err
 	}
 	version := versionPattern.FindString(out)
 	if version == "" {
-		return app.RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
+		return RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
 	}
-	return app.RuntimeIdentity{Contract: Contract, Version: version, Resume: true, CostLimit: true, ToolCalls: true}, nil
+	return RuntimeIdentity{Contract: Contract, Version: version, Resume: true, CostLimit: true, ToolCalls: true}, nil
 }
 
 // Arguments builds the command line for a turn.
-func Arguments(request app.TurnRequest) ([]string, error) {
+func Arguments(request TurnRequest) ([]string, error) {
 	for _, tool := range request.Primitives {
 		if tool == "" || strings.ContainsAny(tool, ", ") {
 			return nil, fmt.Errorf("invalid tool primitive %q", tool)
@@ -121,13 +161,13 @@ func Arguments(request app.TurnRequest) ([]string, error) {
 	return args, nil
 }
 
-func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
+func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSink) Turn {
 	args, err := Arguments(request)
 	if err != nil {
-		return supervisor.Failed(run.ClassInternal, err)
+		return failedTurn(ClassInternal, err)
 	}
 	state := &Stream{ResumedSessionID: request.ResumeSessionID}
-	evidence := supervisor.Run(ctx, supervisor.Spec{
+	evidence := r.Transport.Run(ctx, Spec{
 		Command:   r.Command,
 		Args:      args,
 		Dir:       request.Cwd,
@@ -174,7 +214,7 @@ type Stream struct {
 // Tool is a tool call the stream reported: its start, or the ID of the one
 // that finished.
 type Tool struct {
-	Started  *app.ToolCall
+	Started  *ToolCall
 	Finished string
 }
 
@@ -192,7 +232,7 @@ func (s *Stream) Reduce(line string) []Event {
 	}
 	var message map[string]any
 	if err := json.Unmarshal([]byte(line), &message); err != nil {
-		return []Event{{run.SourceAgister, "STREAM_PARSE_ERROR", map[string]any{"line": truncate(line, 200)}}}
+		return []Event{{SourceAgister, "STREAM_PARSE_ERROR", map[string]any{"line": truncate(line, 200)}}}
 	}
 	switch message["type"] {
 	case "system":
@@ -209,7 +249,7 @@ func (s *Stream) Reduce(line string) []Event {
 			if status == "rejected" {
 				s.RateLimit = status
 			}
-			return []Event{{run.SourceProtocol, "RATE_LIMITED", map[string]any{"status": status, "resets_at": info["resetsAt"]}}}
+			return []Event{{SourceProtocol, "RATE_LIMITED", map[string]any{"status": status, "resets_at": info["resetsAt"]}}}
 		}
 	}
 	return nil
@@ -232,12 +272,12 @@ func (s *Stream) system(message map[string]any) []Event {
 		sessionID, _ := message["session_id"].(string)
 		s.ProviderSessionID = sessionID
 		s.Model, _ = message["model"].(string)
-		events := []Event{{run.SourceProtocol, "PROVIDER_SESSION_BOUND", map[string]any{
+		events := []Event{{SourceProtocol, "PROVIDER_SESSION_BOUND", map[string]any{
 			"provider_session_id": sessionID, "model": message["model"], "tools": message["tools"], "permission_mode": message["permissionMode"],
 		}}}
 		return append(events, s.check(sessionID)...)
 	case "api_retry":
-		return []Event{{run.SourceProtocol, "PROVIDER_RETRY", pick(message, "attempt", "max_retries", "error_status", "error")}}
+		return []Event{{SourceProtocol, "PROVIDER_RETRY", pick(message, "attempt", "max_retries", "error_status", "error")}}
 	}
 	return nil
 }
@@ -250,12 +290,12 @@ func (s *Stream) assistant(message map[string]any) []Event {
 			input, _ := json.Marshal(block["input"])
 			id, _ := block["id"].(string)
 			name, _ := block["name"].(string)
-			s.tools = append(s.tools, Tool{Started: &app.ToolCall{ID: id, Name: name, Input: string(input), Command: name == commandTool}})
-			events = append(events, Event{run.SourceProtocol, "TOOL_REQUESTED", map[string]any{"tool_use_id": block["id"], "name": block["name"], "input": truncate(string(input), 300)}})
+			s.tools = append(s.tools, Tool{Started: &ToolCall{ID: id, Name: name, Input: string(input), Command: name == commandTool}})
+			events = append(events, Event{SourceProtocol, "TOOL_REQUESTED", map[string]any{"tool_use_id": block["id"], "name": block["name"], "input": truncate(string(input), 300)}})
 		case "text":
 			if text, _ := block["text"].(string); strings.TrimSpace(text) != "" {
 				s.LastText = text
-				events = append(events, Event{run.SourceProtocol, "ASSISTANT_TEXT", map[string]any{"text": truncate(text, 500)}})
+				events = append(events, Event{SourceProtocol, "ASSISTANT_TEXT", map[string]any{"text": truncate(text, 500)}})
 			}
 		}
 	}
@@ -270,7 +310,7 @@ func (s *Stream) user(message map[string]any) []Event {
 			if id, _ := block["tool_use_id"].(string); id != "" {
 				s.tools = append(s.tools, Tool{Finished: id})
 			}
-			events = append(events, Event{run.SourceProtocol, "TOOL_RESULT", map[string]any{"tool_use_id": block["tool_use_id"], "is_error": isError}})
+			events = append(events, Event{SourceProtocol, "TOOL_RESULT", map[string]any{"tool_use_id": block["tool_use_id"], "is_error": isError}})
 		}
 	}
 	return events
@@ -291,13 +331,13 @@ func (s *Stream) result(message map[string]any) []Event {
 	if denials, ok := message["permission_denials"].([]any); ok {
 		data["permission_denials"] = len(denials)
 	}
-	return append([]Event{{run.SourceProtocol, kind, data}}, mismatch...)
+	return append([]Event{{SourceProtocol, kind, data}}, mismatch...)
 }
 
 // Reconcile decides the turn status from the stream and the transport.
-func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) run.Turn {
-	turn := supervisor.Base(evidence)
-	if failed, ok := supervisor.RecordFailure(turn, evidence); ok {
+func (s *Stream) Reconcile(evidence Evidence, schemaRequested bool) Turn {
+	turn := baseTurn(evidence)
+	if failed, ok := recordFailure(turn, evidence); ok {
 		return failed
 	}
 	turn.ProviderSessionID = s.ProviderSessionID
@@ -307,16 +347,16 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 		if reported == "" {
 			reported = s.ProviderSessionID
 		}
-		turn.Status, turn.Error = run.Failed, run.Fault(run.ClassRuntimeError, "resumed session %s, but the runtime reported session %q", s.ResumedSessionID, reported)
+		turn.Status, turn.Error = Failed, Fault(ClassRuntimeError, "resumed session %s, but the runtime reported session %q", s.ResumedSessionID, reported)
 		return turn
 	}
 	result := s.Result
 	if result == nil {
-		return supervisor.WithoutTerminal(turn, evidence, s.rejection())
+		return withoutTerminal(turn, evidence, s.rejection())
 	}
 	// The session's cost, every turn it had; the turn's own is derived.
 	if cost, ok := result["total_cost_usd"].(float64); ok {
-		turn.Session = &run.SessionTotals{CostUSD: &cost}
+		turn.Session = &SessionTotals{CostUSD: &cost}
 	}
 	if duration, ok := result["duration_ms"].(float64); ok {
 		ms := int64(duration)
@@ -327,7 +367,7 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 		turn.NumTurns = &n
 	}
 	if usage, ok := result["usage"].(map[string]any); ok {
-		turn.Usage = &run.Usage{
+		turn.Usage = &Usage{
 			InputTokens:      count(usage, "input_tokens"),
 			OutputTokens:     count(usage, "output_tokens"),
 			CacheReadTokens:  count(usage, "cache_read_input_tokens"),
@@ -345,20 +385,20 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 		turn.Output, _ = json.Marshal(output)
 	}
 	if !succeeded(result) {
-		turn.Status, turn.Error = run.Failed, s.classify(result)
+		turn.Status, turn.Error = Failed, s.classify(result)
 		return turn
 	}
 	if schemaRequested && len(turn.Output) == 0 {
-		turn.Status, turn.Error = run.Failed, run.Fault(run.ClassInvalidOutput, "no structured output")
+		turn.Status, turn.Error = Failed, Fault(ClassInvalidOutput, "no structured output")
 		return turn
 	}
-	turn.Status = run.Completed
+	turn.Status = Completed
 	return turn
 }
 
 // classify maps a failed result to a failure class. Only the budget
 // subtype has been observed live; the rest follow the result's fields.
-func (s *Stream) classify(result map[string]any) *run.Error {
+func (s *Stream) classify(result map[string]any) *Error {
 	message := fmt.Sprintf("runtime reported %v", result["subtype"])
 	if errors, ok := result["errors"].([]any); ok && len(errors) > 0 {
 		message += ": " + fmt.Sprint(errors...)
@@ -367,18 +407,18 @@ func (s *Stream) classify(result map[string]any) *run.Error {
 	}
 	status, _ := result["api_error_status"].(float64)
 	lower := strings.ToLower(message)
-	class := run.ClassRuntimeError
+	class := ClassRuntimeError
 	switch {
 	case result["subtype"] == "error_max_budget_usd":
-		class = run.ClassBudgetExhausted
+		class = ClassBudgetExhausted
 	case status == 429 || s.RateLimit != "":
-		class = run.ClassRateLimited
+		class = ClassRateLimited
 	case status == 401 || status == 403:
-		class = run.ClassAuth
+		class = ClassAuth
 	case status == 413 || strings.Contains(lower, "prompt is too long") || strings.Contains(lower, "context window"):
-		class = run.ClassContextOverflow
+		class = ClassContextOverflow
 	}
-	return run.Fault(class, "%s", message)
+	return Fault(class, "%s", message)
 }
 
 // check keeps a session ID reported on a resume turn other than the
@@ -390,7 +430,7 @@ func (s *Stream) check(sessionID string) []Event {
 	if s.OtherSessionID == "" {
 		s.OtherSessionID = sessionID
 	}
-	return []Event{{run.SourceAgister, "SESSION_ID_MISMATCH", map[string]any{"resumed": s.ResumedSessionID, "reported": sessionID}}}
+	return []Event{{SourceAgister, "SESSION_ID_MISMATCH", map[string]any{"resumed": s.ResumedSessionID, "reported": sessionID}}}
 }
 
 // resumedElsewhere reports a resume turn that reported another session

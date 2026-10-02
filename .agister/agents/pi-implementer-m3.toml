@@ -1,0 +1,7 @@
+schema = "agister.agent/v1alpha1"
+name = "pi-implementer-m3"
+runtime = "pi"
+model = "opencode-go/minimax-m3"
+model_family = "minimax"
+effort = "high"
+session = "resumable"
