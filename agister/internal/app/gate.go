@@ -86,11 +86,11 @@ func NewClient(infra Infrastructure) contract.Client {
 		sources = append(sources, name)
 	}
 	sort.Strings(sources)
-	// An install checks its result as checkerOn's checkers check home's.
-	installer := NewInstaller(infra.Installer, infra.Checker, sources)
 	checkerOn := func(definitions GateDefinitions) *Checker {
 		return NewChecker(definitions, infra.Checker.Validator, infra.Checker.Runtimes, sources)
 	}
+	// An install checks its result as checkerOn's checkers check home's.
+	installer := NewInstaller(infra.Installer, installCheck(checkerOn))
 	// Each use case that resolves a process gets a resolver of its own.
 	resolverOn := func(definitions GateDefinitions) *Resolver {
 		return NewResolver(definitions, infra.Resolver.Identities, infra.Resolver.Validator)
@@ -122,6 +122,13 @@ func NewClient(infra Infrastructure) contract.Client {
 		return infra.Decorate(host)
 	}
 	return &Gated{Definitions: infra.Definitions, Global: infra.Global, Build: build}
+}
+
+// installCheck checks an install's staged result with the checker on it.
+type installCheck func(GateDefinitions) *Checker
+
+func (on installCheck) Check(ctx context.Context, staged InstallStaged) (contract.CheckReport, error) {
+	return on(staged).Check(ctx, false)
 }
 
 func (g *Gated) live() contract.Client { return g.Build(g.Definitions, g.Global) }

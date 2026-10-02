@@ -26,9 +26,7 @@ type Installer struct {
 	clock       InstallClock
 	stamps      InstallStamps
 	beforeWrite func(path string) error
-	// What checks a staged result, as the gate's checker does.
-	checker CheckAdapters
-	sources []string
+	check       InstallCheck
 }
 
 // InstallSource reads the folder installed into home.
@@ -65,6 +63,14 @@ type InstallHome interface {
 type InstallSettings interface {
 	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
 	List(ctx context.Context, kind definition.Kind) ([]string, error)
+}
+
+// InstallStaged is an install's result, staged in a folder of its own.
+type InstallStaged struct{ InstallSettings }
+
+// InstallCheck checks an install's staged result as global settings alone.
+type InstallCheck interface {
+	Check(ctx context.Context, staged InstallStaged) (contract.CheckReport, error)
 }
 
 // InstallBackups keeps one backup per install, by its stamp.
@@ -121,12 +127,11 @@ type InstallManifestEntry struct {
 }
 
 // NewInstaller returns the use case that installs folders of settings
-// into home. checker and sources check the staged result as the gate's
-// checker checks home's.
-func NewInstaller(adapters InstallAdapters, checker CheckAdapters, sources []string) *Installer {
+// into home. check checks the staged result of each.
+func NewInstaller(adapters InstallAdapters, check InstallCheck) *Installer {
 	return &Installer{
 		source: adapters.Source, home: adapters.Home, backups: adapters.Backups, clock: adapters.Clock, stamps: adapters.Stamps,
-		beforeWrite: adapters.BeforeWrite, checker: checker, sources: sources,
+		beforeWrite: adapters.BeforeWrite, check: check,
 	}
 }
 
@@ -285,7 +290,7 @@ func (i *Installer) checkStaged(ctx context.Context, docs []definition.Document)
 		return contract.CheckReport{}, err
 	}
 	defer remove()
-	return NewChecker(staged, i.checker.Validator, i.checker.Runtimes, i.sources).Check(ctx, false)
+	return i.check.Check(ctx, InstallStaged{staged})
 }
 
 // installApproved refuses a plan other than the one approved: home's
