@@ -122,16 +122,27 @@ const ConfigVariable = "OPENCODE_CONFIG_CONTENT"
 // agentPrefix starts the name of every generated agent.
 const agentPrefix = "agister-"
 
+// Transport is what the runner needs of a process supervisor: to run the
+// runtime to its exit, passing each line of its stdout to onLine, and to
+// read the runtime's version.
+type Transport interface {
+	Run(ctx context.Context, spec supervisor.Spec, sink supervisor.Sink, onLine func(string)) supervisor.Evidence
+	Version(ctx context.Context, command string) (string, error)
+}
+
 type Runner struct {
-	Command   string
+	Command string
+	// Transport runs the runtime; the composition root wires the
+	// supervisor.
+	Transport Transport
 	KillGrace time.Duration // zero: the supervisor default
 }
 
-func New(command string) *Runner {
+func New(command string, transport Transport) *Runner {
 	if command == "" {
 		command = "opencode"
 	}
-	return &Runner{Command: command}
+	return &Runner{Command: command, Transport: transport}
 }
 
 var versionPattern = regexp.MustCompile(`\d+\.\d+\.\d+`)
@@ -142,7 +153,7 @@ var versionPattern = regexp.MustCompile(`\d+\.\d+\.\d+`)
 const reportsToolCalls = false
 
 func (r *Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
-	out, err := supervisor.Version(ctx, r.Command)
+	out, err := r.Transport.Version(ctx, r.Command)
 	if err != nil {
 		return app.RuntimeIdentity{}, err
 	}
@@ -240,7 +251,7 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 		return supervisor.Failed(run.ClassInternal, err)
 	}
 	state := &Stream{ResumedSessionID: request.ResumeSessionID}
-	evidence := supervisor.Run(ctx, supervisor.Spec{
+	evidence := r.Transport.Run(ctx, supervisor.Spec{
 		Command:   r.Command,
 		Args:      args,
 		Dir:       request.Cwd,

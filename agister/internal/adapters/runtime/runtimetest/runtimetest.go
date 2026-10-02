@@ -351,3 +351,55 @@ func lastLine(text string) string {
 func is(turn run.Turn, status run.Status, class run.Class) bool {
 	return turn.Status == status && turn.Error != nil && turn.Error.Class == class
 }
+
+// Transport is a spy process transport: it keeps each spec it is handed
+// and answers it without starting a process.
+type Transport struct {
+	// Answer is what a run of spec prints on stdout, line by line, and the
+	// evidence it ends with; nil prints nothing and exits 0. It runs while
+	// the run does, so it sees the files the runner made for it.
+	Answer func(spec supervisor.Spec) (lines []string, evidence supervisor.Evidence)
+	// Output and Err are what Version returns.
+	Output string
+	Err    error
+
+	mu       sync.Mutex
+	specs    []supervisor.Spec
+	versions []string
+}
+
+func (t *Transport) Run(_ context.Context, spec supervisor.Spec, _ supervisor.Sink, onLine func(string)) supervisor.Evidence {
+	t.mu.Lock()
+	t.specs = append(t.specs, spec)
+	t.mu.Unlock()
+	if t.Answer == nil {
+		code := 0
+		return supervisor.Evidence{Exit: &run.Exit{Code: &code}}
+	}
+	lines, evidence := t.Answer(spec)
+	for _, line := range lines {
+		onLine(line)
+	}
+	return evidence
+}
+
+func (t *Transport) Version(_ context.Context, command string) (string, error) {
+	t.mu.Lock()
+	t.versions = append(t.versions, command)
+	t.mu.Unlock()
+	return t.Output, t.Err
+}
+
+// Specs are the specs Run was handed, in order.
+func (t *Transport) Specs() []supervisor.Spec {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return slices.Clone(t.specs)
+}
+
+// Versions are the commands Version was asked about, in order.
+func (t *Transport) Versions() []string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return slices.Clone(t.versions)
+}

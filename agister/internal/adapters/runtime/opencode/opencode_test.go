@@ -34,13 +34,13 @@ func request(prompt string) app.TurnRequest {
 }
 
 func runner(t *testing.T) *opencode.Runner {
-	return &opencode.Runner{Command: runtimetest.Binary(t, "fakeopencode"), KillGrace: 200 * time.Millisecond}
+	return &opencode.Runner{Transport: supervisor.Runtimes{}, Command: runtimetest.Binary(t, "fakeopencode"), KillGrace: 200 * time.Millisecond}
 }
 
 func TestConformance(t *testing.T) {
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {
-			return &opencode.Runner{Command: command, KillGrace: 200 * time.Millisecond}
+			return &opencode.Runner{Transport: supervisor.Runtimes{}, Command: command, KillGrace: 200 * time.Millisecond}
 		},
 		Fake:     runtimetest.Binary(t, "fakeopencode"),
 		Contract: opencode.Contract,
@@ -270,7 +270,7 @@ func TestSystemPrompt(t *testing.T) {
 }
 
 func TestIdentity(t *testing.T) {
-	identity, err := opencode.New(runtimetest.Binary(t, "fakeopencode")).Identity(context.Background())
+	identity, err := opencode.New(runtimetest.Binary(t, "fakeopencode"), supervisor.Runtimes{}).Identity(context.Background())
 	want := app.RuntimeIdentity{Contract: "opencode/1", Version: "1.18.33", Resume: true, ResumeWhereItRan: true, SkillTools: []string{"skill"}}
 	if err != nil || !reflect.DeepEqual(identity, want) {
 		t.Fatalf("identity = %+v, %v", identity, err)

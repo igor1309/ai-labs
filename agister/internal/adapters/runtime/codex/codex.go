@@ -58,8 +58,19 @@ const Contract = "codex/2"
 
 var sandboxModes = []string{"read-only", "workspace-write"}
 
+// Transport is what the runner needs of a process supervisor: to run the
+// runtime to its exit, passing each line of its stdout to onLine, and to
+// read the runtime's version.
+type Transport interface {
+	Run(ctx context.Context, spec supervisor.Spec, sink supervisor.Sink, onLine func(string)) supervisor.Evidence
+	Version(ctx context.Context, command string) (string, error)
+}
+
 type Runner struct {
-	Command   string
+	Command string
+	// Transport runs the runtime; the composition root wires the
+	// supervisor.
+	Transport Transport
 	KillGrace time.Duration
 	// Sessions lists Codex sessions with their costs, as
 	// `ccusage codex session --json` does; nil: the cost is unknown.
@@ -80,22 +91,22 @@ type LookupSink interface {
 	ProcessStarted(ref string) error
 }
 
-func New(command string) *Runner {
+func New(command string, transport Transport) *Runner {
 	if command == "" {
 		command = "codex"
 	}
-	return &Runner{Command: command, Sessions: CCUsage("ccusage", 0)}
+	return &Runner{Command: command, Transport: transport, Sessions: CCUsage(transport, "ccusage", 0)}
 }
 
-// CCUsage runs `<command> codex session --json` under the supervisor, in a
+// CCUsage runs `<command> codex session --json` through transport, in a
 // process group of its own that is ended on timeout or cancellation;
 // killGrace bounds the wait for it as it does a runtime's (zero: the
 // supervisor's default). Anything but a clean exit is an error. Its output
 // is the listing, not the turn's raw output.
-func CCUsage(command string, killGrace time.Duration) Sessions {
+func CCUsage(transport Transport, command string, killGrace time.Duration) Sessions {
 	return func(ctx context.Context, timeout time.Duration, sink LookupSink) ([]byte, error) {
 		var listing bytes.Buffer
-		evidence := supervisor.Run(ctx, supervisor.Spec{
+		evidence := transport.Run(ctx, supervisor.Spec{
 			Command:   command,
 			Args:      []string{"codex", "session", "--json"},
 			Timeout:   timeout,
@@ -159,7 +170,7 @@ func ThreadCost(listing []byte, threadID string) *float64 {
 var versionPattern = regexp.MustCompile(`\d+\.\d+\.\d+`)
 
 func (r *Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
-	out, err := supervisor.Version(ctx, r.Command)
+	out, err := r.Transport.Version(ctx, r.Command)
 	if err != nil {
 		return app.RuntimeIdentity{}, err
 	}
@@ -232,7 +243,7 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 		return supervisor.Failed(run.ClassInternal, err)
 	}
 	state := &Stream{ResumedThreadID: request.ResumeSessionID}
-	evidence := supervisor.Run(ctx, supervisor.Spec{
+	evidence := r.Transport.Run(ctx, supervisor.Spec{
 		Command:   r.Command,
 		Args:      args,
 		Dir:       request.Cwd,

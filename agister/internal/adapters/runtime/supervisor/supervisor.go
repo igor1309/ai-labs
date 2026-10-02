@@ -63,6 +63,18 @@ type Sink interface {
 	Raw(line string)
 }
 
+// Runtimes runs runtime CLIs for the adapters that declare what they need
+// of it: Run and Version, as the functions of the same names.
+type Runtimes struct{}
+
+func (Runtimes) Run(ctx context.Context, spec Spec, events Sink, onLine func(string)) Evidence {
+	return Run(ctx, spec, events, onLine)
+}
+
+func (Runtimes) Version(ctx context.Context, command string) (string, error) {
+	return Version(ctx, command)
+}
+
 // Run starts the process, feeds stdin, passes each stdout line to onLine and
 // the raw sink, and returns once the process has exited. Whatever the
 // process leaves running in its group is killed then, and stdout is read

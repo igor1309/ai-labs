@@ -32,7 +32,7 @@ func request(prompt string) app.TurnRequest {
 func TestConformance(t *testing.T) {
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {
-			return &claudecode.Runner{Command: command, KillGrace: 200 * time.Millisecond}
+			return &claudecode.Runner{Transport: supervisor.Runtimes{}, Command: command, KillGrace: 200 * time.Millisecond}
 		},
 		Fake:      runtimetest.Binary(t, "fakeclaude"),
 		Contract:  claudecode.Contract,

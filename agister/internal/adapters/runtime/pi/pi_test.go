@@ -54,7 +54,7 @@ func TestConformance(t *testing.T) {
 	session(t, root, "7d1c2a4e-0000-4000-8000-000000000001", cwd)
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {
-			return &pi.Runner{Command: command, KillGrace: 200 * time.Millisecond, Sessions: root}
+			return &pi.Runner{Transport: supervisor.Runtimes{}, Command: command, KillGrace: 200 * time.Millisecond, Sessions: root}
 		},
 		Fake:      runtimetest.Binary(t, "fakepi"),
 		Contract:  pi.Contract,
@@ -143,7 +143,7 @@ func TestRefusesATurnThatCannotReadASkill(t *testing.T) {
 	r := request("x")
 	r.Primitives = []string{"grep"}
 	sink := &runtimetest.Recorder{}
-	turn := (&pi.Runner{Command: runtimetest.Binary(t, "fakepi"), Sessions: root}).RunTurn(context.Background(), r, sink)
+	turn := (&pi.Runner{Transport: supervisor.Runtimes{}, Command: runtimetest.Binary(t, "fakepi"), Sessions: root}).RunTurn(context.Background(), r, sink)
 	if turn.Status != run.Failed || turn.Error.Class != run.ClassInternal || len(sink.Processes) != 0 {
 		t.Fatalf("turn = %+v, processes %v", turn, sink.Processes)
 	}
@@ -202,7 +202,7 @@ func TestRejectsWhatItCannotHonour(t *testing.T) {
 	r = request("x")
 	r.MaxCostUSD = &limit
 	sink := &runtimetest.Recorder{}
-	turn := (&pi.Runner{Command: runtimetest.Binary(t, "fakepi"), Sessions: t.TempDir()}).RunTurn(context.Background(), r, sink)
+	turn := (&pi.Runner{Transport: supervisor.Runtimes{}, Command: runtimetest.Binary(t, "fakepi"), Sessions: t.TempDir()}).RunTurn(context.Background(), r, sink)
 	if turn.Status != run.Failed || turn.Error.Class != run.ClassInternal || len(sink.Processes) != 0 {
 		t.Fatalf("turn = %+v, processes %v", turn, sink.Processes)
 	}
@@ -218,7 +218,7 @@ func TestInstructionAndSchemaGoInTheSystemPrompt(t *testing.T) {
 	if got := pi.SystemPrompt(app.TurnRequest{}); got != "" {
 		t.Fatalf("neither: %q", got)
 	}
-	runner := &pi.Runner{Command: runtimetest.Binary(t, "fakepi"), KillGrace: 200 * time.Millisecond, Sessions: t.TempDir()}
+	runner := &pi.Runner{Transport: supervisor.Runtimes{}, Command: runtimetest.Binary(t, "fakepi"), KillGrace: 200 * time.Millisecond, Sessions: t.TempDir()}
 	sink := &runtimetest.Recorder{}
 	turn := runner.RunTurn(context.Background(), request("hello SCENARIO:approve"), sink)
 	if turn.Status != run.Completed {
@@ -243,7 +243,7 @@ func TestInstructionAndSchemaGoInTheSystemPrompt(t *testing.T) {
 }
 
 func TestIdentity(t *testing.T) {
-	identity, err := pi.New(runtimetest.Binary(t, "fakepi"), t.TempDir()).Identity(context.Background())
+	identity, err := pi.New(runtimetest.Binary(t, "fakepi"), t.TempDir(), supervisor.Runtimes{}).Identity(context.Background())
 	want := app.RuntimeIdentity{Contract: "pi/1", Version: "0.85.1", Resume: true, ResumeWhereItRan: true, ToolCalls: true, SkillTools: []string{"read", "bash"}}
 	if err != nil || !reflect.DeepEqual(identity, want) {
 		t.Fatalf("identity = %+v, %v", identity, err)
@@ -255,7 +255,7 @@ func TestIdentity(t *testing.T) {
 // root is a literal path: brackets in it are no pattern.
 func TestSessionsAreKeptForTheCallsLaterTurns(t *testing.T) {
 	root, cwd := filepath.Join(t.TempDir(), "sessions[1]"), t.TempDir()
-	runner := &pi.Runner{Command: runtimetest.Binary(t, "fakepi"), KillGrace: 200 * time.Millisecond, Sessions: root}
+	runner := &pi.Runner{Transport: supervisor.Runtimes{}, Command: runtimetest.Binary(t, "fakepi"), KillGrace: 200 * time.Millisecond, Sessions: root}
 	first := request("SCENARIO:approve")
 	first.Cwd = cwd
 	sink := &runtimetest.Recorder{}
@@ -287,7 +287,7 @@ func TestSessionsAreKeptForTheCallsLaterTurns(t *testing.T) {
 // A turn that reported no session leaves nothing to resume behind.
 func TestATurnWithoutASessionLeavesNoDirectory(t *testing.T) {
 	root := t.TempDir()
-	runner := &pi.Runner{Command: "/nonexistent/pi", Sessions: root}
+	runner := &pi.Runner{Transport: supervisor.Runtimes{}, Command: "/nonexistent/pi", Sessions: root}
 	if turn := runner.RunTurn(context.Background(), request("x"), &runtimetest.Recorder{}); turn.Status != run.Failed {
 		t.Fatalf("turn = %+v", turn)
 	}
@@ -312,7 +312,7 @@ func TestResumeIsRefusedWhereItCannotResumeInPlace(t *testing.T) {
 		r := request("SCENARIO:approve")
 		r.Cwd, r.ResumeSessionID = c.cwd, c.id
 		sink := &runtimetest.Recorder{}
-		turn := (&pi.Runner{Command: runtimetest.Binary(t, "fakepi"), Sessions: root}).RunTurn(context.Background(), r, sink)
+		turn := (&pi.Runner{Transport: supervisor.Runtimes{}, Command: runtimetest.Binary(t, "fakepi"), Sessions: root}).RunTurn(context.Background(), r, sink)
 		if turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError || !strings.Contains(turn.Error.Message, c.reason) || len(sink.Processes) != 0 {
 			t.Errorf("%s: turn = %+v, processes %v", name, turn, sink.Processes)
 		}
