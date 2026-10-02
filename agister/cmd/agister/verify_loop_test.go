@@ -24,6 +24,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/schema"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
 	"github.com/igor1309/ai-labs/agister/internal/app"
+	runtimecomposition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -184,7 +185,7 @@ func newLoopWith(t *testing.T, with seams, settings verifySettings, steps ...ste
 		with.copies = workspaces
 	}
 	if with.commands == nil {
-		with.commands = supervisor.Commands{}
+		with.commands = runtimecomposition.Commands{Supervisor: supervisor.Commands{}}
 	}
 	repo, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
@@ -552,7 +553,7 @@ func TestVerifyCancellationKillsTheCommandGroup(t *testing.T) {
 	// The command's timer never fires, so only the cancellation can end the
 	// command; wait's own bound fails the test if nothing does.
 	unfired := supervisor.Commands{Timer: func(time.Duration) (<-chan time.Time, func()) { return nil, func() {} }}
-	h := newLoopWith(t, seams{commands: unfired}, verifySettings{command: blocks + " & echo $$ > " + groupFile + "; wait"}, state("one"))
+	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: unfired}}, verifySettings{command: blocks + " & echo $$ > " + groupFile + "; wait"}, state("one"))
 	// Whatever the assertions below find, the command does not outlive the
 	// test: its group is on record before it writes it.
 	cleanupRecorded(t, h.home, h.repo)
@@ -874,7 +875,7 @@ func TestVerifyRunWithoutOutputIsKilledAsStale(t *testing.T) {
 		fired <- time.Time{}
 		return fired, func() {}
 	}}
-	h := newLoopWith(t, seams{commands: stale}, verifySettings{command: blocks + " & wait", policy: "stale: {no_output: 7s}\n"}, state("one"))
+	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: stale}}, verifySettings{command: blocks + " & wait", policy: "stale: {no_output: 7s}\n"}, state("one"))
 	cleanupRecorded(t, h.home, h.repo)
 	record := h.wait(h.submit(contract.CallRequest{}))
 

@@ -15,15 +15,14 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/app"
 )
 
 // runCommand runs a command in dir and returns its result and the
 // references it reported.
-func runCommand(ctx context.Context, t *testing.T, dir, command string, timeout time.Duration, bound int) (app.CommandResult, []string) {
+func runCommand(ctx context.Context, t *testing.T, dir, command string, timeout time.Duration, bound int) (supervisor.CommandResult, []string) {
 	t.Helper()
 	var refs []string
-	result := supervisor.Commands{}.Run(ctx, app.CommandRequest{Command: command, Dir: dir, Timeout: timeout, Bound: bound}, func(ref string) error {
+	result := supervisor.Commands{}.Run(ctx, supervisor.CommandRequest{Command: command, Dir: dir, Timeout: timeout, Bound: bound}, func(ref string) error {
 		if len(refs) == 0 {
 			cleanUpGroup(t, ref)
 		}
@@ -163,7 +162,7 @@ func TestCommandGroupIsKilled(t *testing.T) {
 // and the run fails.
 func TestUnrecordedCommandIsKilled(t *testing.T) {
 	dir := t.TempDir()
-	result := supervisor.Commands{}.Run(context.Background(), app.CommandRequest{Command: blocks, Dir: dir, Timeout: 30 * time.Second, Bound: 64}, func(ref string) error {
+	result := supervisor.Commands{}.Run(context.Background(), supervisor.CommandRequest{Command: blocks, Dir: dir, Timeout: 30 * time.Second, Bound: 64}, func(ref string) error {
 		cleanUpGroup(t, ref)
 		return errors.New("disk full")
 	})
@@ -184,7 +183,7 @@ func TestCommandTimesOutOnItsTimer(t *testing.T) {
 		timeout = d
 		return fired, func() { stopped = true }
 	}}
-	result := commands.Run(context.Background(), app.CommandRequest{Command: blocks, Dir: t.TempDir(), Timeout: time.Hour, Bound: 64}, func(ref string) error {
+	result := commands.Run(context.Background(), supervisor.CommandRequest{Command: blocks, Dir: t.TempDir(), Timeout: time.Hour, Bound: 64}, func(ref string) error {
 		cleanUpGroup(t, ref)
 		return nil
 	})
@@ -242,7 +241,7 @@ func never() <-chan time.Time { return nil }
 func TestCommandWithoutOutputIsKilledAsStale(t *testing.T) {
 	timers := &quietTimers{timeout: time.Hour, waits: []func() <-chan time.Time{passed}}
 	commands := supervisor.Commands{Timer: timers.timer}
-	request := app.CommandRequest{Command: blocks, Dir: t.TempDir(), Timeout: time.Hour, NoOutput: 2 * time.Minute, Bound: 64}
+	request := supervisor.CommandRequest{Command: blocks, Dir: t.TempDir(), Timeout: time.Hour, NoOutput: 2 * time.Minute, Bound: 64}
 	result := commands.Run(context.Background(), request, func(ref string) error {
 		cleanUpGroup(t, ref)
 		return nil
@@ -270,7 +269,7 @@ func TestCommandOutputRestartsTheWaitForOutput(t *testing.T) {
 		}
 		timers := &quietTimers{timeout: time.Hour, waits: []func() <-chan time.Time{never, restarted}}
 		commands := supervisor.Commands{Timer: timers.timer}
-		request := app.CommandRequest{Command: "echo one; until [ -e restarted ]; do sleep 0.02; done", Dir: dir, Timeout: time.Hour, NoOutput: 2 * time.Minute, Bound: 64}
+		request := supervisor.CommandRequest{Command: "echo one; until [ -e restarted ]; do sleep 0.02; done", Dir: dir, Timeout: time.Hour, NoOutput: 2 * time.Minute, Bound: 64}
 		result := commands.Run(context.Background(), request, func(ref string) error {
 			cleanUpGroup(t, ref)
 			return nil
@@ -285,7 +284,7 @@ func TestCommandOutputRestartsTheWaitForOutput(t *testing.T) {
 	t.Run("stale after its last output", func(t *testing.T) {
 		timers := &quietTimers{timeout: time.Hour, waits: []func() <-chan time.Time{never, passed}}
 		commands := supervisor.Commands{Timer: timers.timer}
-		request := app.CommandRequest{Command: "echo one; " + blocks, Dir: t.TempDir(), Timeout: time.Hour, NoOutput: 2 * time.Minute, Bound: 64}
+		request := supervisor.CommandRequest{Command: "echo one; " + blocks, Dir: t.TempDir(), Timeout: time.Hour, NoOutput: 2 * time.Minute, Bound: 64}
 		result := commands.Run(context.Background(), request, func(ref string) error {
 			cleanUpGroup(t, ref)
 			return nil
@@ -300,7 +299,7 @@ func TestCommandOutputRestartsTheWaitForOutput(t *testing.T) {
 func TestCommandWithoutANoOutputLimitStartsNoWaitForOutput(t *testing.T) {
 	timers := &quietTimers{timeout: time.Hour}
 	commands := supervisor.Commands{Timer: timers.timer}
-	result := commands.Run(context.Background(), app.CommandRequest{Command: "echo one", Dir: t.TempDir(), Timeout: time.Hour, Bound: 64}, func(ref string) error {
+	result := commands.Run(context.Background(), supervisor.CommandRequest{Command: "echo one", Dir: t.TempDir(), Timeout: time.Hour, Bound: 64}, func(ref string) error {
 		cleanUpGroup(t, ref)
 		return nil
 	})

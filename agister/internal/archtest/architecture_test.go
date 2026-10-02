@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -78,13 +79,29 @@ func TestDependencyRule(t *testing.T) {
 // Only the composition root instantiates adapters.
 func TestOnlyTheCompositionRootImportsAdapters(t *testing.T) {
 	for pkg, imported := range packages(t) {
-		if pkg == "cmd/agister" || under(pkg, "internal/adapters") {
+		if pkg == "cmd/agister" || pkg == "internal/composition/runtime" || under(pkg, "internal/adapters") {
 			continue
 		}
 		for _, dep := range imported {
 			if under(dep, "internal/adapters") || dep == "examples" {
 				t.Errorf("%s imports %s", pkg, dep)
 			}
+		}
+	}
+}
+
+// A runtime adapter declares the process transport it takes in its own
+// types (ADR-001 rule 13), and the composition root translates them to the
+// supervisor's: no runtime adapter imports the supervisor. The test kit
+// does, to read process references.
+func TestRuntimeAdaptersDoNotImportTheSupervisor(t *testing.T) {
+	const supervisor = "internal/adapters/runtime/supervisor"
+	for pkg, imported := range packages(t) {
+		if !under(pkg, "internal/adapters/runtime") || pkg == supervisor || under(pkg, "internal/adapters/runtime/runtimetest") {
+			continue
+		}
+		if slices.Contains(imported, supervisor) {
+			t.Errorf("%s imports %s", pkg, supervisor)
 		}
 	}
 }
