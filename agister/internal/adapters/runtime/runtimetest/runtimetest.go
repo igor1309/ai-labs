@@ -46,14 +46,12 @@ func Binary(t testing.TB, name string) string {
 	return path
 }
 
-// Build builds a test fixture using a cache owned by this test. Nested go
-// builds must not depend on host cache artifacts that can disappear while
-// the test is running. The caller owns the output and its lifetime.
+// Build builds target from dir into output, with the inherited environment
+// and so the host's Go cache. The caller owns the output and its lifetime.
 func Build(t testing.TB, dir, output, target string) {
 	t.Helper()
 	command := exec.Command("go", "build", "-o", output, target)
 	command.Dir = dir
-	command.Env = append(command.Environ(), "GOCACHE="+t.TempDir())
 	if out, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("building %s: %v\n%s", target, err, out)
 	}
