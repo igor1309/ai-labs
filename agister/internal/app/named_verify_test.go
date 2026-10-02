@@ -168,14 +168,38 @@ func TestAnInvalidVerificationIsAProblemOfItsOwn(t *testing.T) {
 	if !reflect.DeepEqual(report.Problems, want) || len(report.Warnings) != 0 {
 		t.Fatalf("problems %q, warnings %q", report.Problems, report.Warnings)
 	}
+	found := false
 	for _, d := range report.Definitions {
-		if d.Kind == "verifies" && !d.Invalid {
-			t.Fatalf("verification = %+v", d)
+		if d.Kind == "verifies" && d.Name == "repo" {
+			found = true
+			if !d.Invalid {
+				t.Fatalf("verification = %+v", d)
+			}
 		}
+	}
+	if !found {
+		t.Fatalf("verifies/repo is not among %+v", report.Definitions)
 	}
 	record := h.call(t, contract.CallRequest{})
 	if class(record) != run.ClassRefused || !strings.Contains(message(record), "command: is required") || len(h.runner.calls()) != 0 {
 		t.Fatalf("result %+v: %q", record.Result, message(record))
+	}
+}
+
+// A verification that is listed but cannot be read is a problem of that
+// document: the process naming it is not warned that it does not exist.
+func TestAnUnreadableListedVerificationIsAProblemNotAMissingOne(t *testing.T) {
+	h := newHarness()
+	named(h, verification)
+	unreadable := errors.New("cannot read verification repo")
+	live := failingSource{definitionsSpy: h.defs, readErr: map[string]error{"verifies/repo": unreadable}}
+	report, err := app.NewChecker(live, h.validator, h.runtimes, []string{"git.revision", "git.diff"}).Check(context.Background(), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"verification repo: cannot read verification repo"}
+	if !reflect.DeepEqual(report.Problems, want) || len(report.Warnings) != 0 {
+		t.Fatalf("problems %q, warnings %q, want problems %q and no warnings", report.Problems, report.Warnings, want)
 	}
 }
 
