@@ -156,3 +156,25 @@ func TestAnUnreadablePromptIsAProblemOfItsOwn(t *testing.T) {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 }
+
+// ADR-011 rule 5: settings that read a file in prompts/ through source:
+// file keep working, whatever the file's name. One whose name breaks the
+// naming rule is not a prompt document, so check has nothing to say of it,
+// and the call gets the file's text.
+func TestAFileInPromptsReadThroughSourceFileKeepsWorking(t *testing.T) {
+	home, repo := setup(t, "approve")
+	path, text := filepath.Join(home, "prompts", "Review.md"), "Legacy review rules.\n"
+	write(t, path, text)
+	write(t, filepath.Join(home, "processes", "reviewed.yaml"), strings.Replace(promptingProcess,
+		"{source: prompt, name: review}", "{source: file, path: "+path+"}", 1))
+	if r := agister(t, home, repo, "check"); r.code != 0 || strings.Contains(r.stderr, "problem") {
+		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	input, source, given := promptRun(t, home, repo)
+	if input["name"] != "rules" || input["source"] != "file" || input["value"] != text || source != nil {
+		t.Fatalf("input = %v, prompt source = %v", input, source)
+	}
+	if !strings.Contains(given, text) {
+		t.Fatalf("the agent was given:\n%s", given)
+	}
+}

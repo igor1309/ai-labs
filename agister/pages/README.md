@@ -21,8 +21,9 @@ home`.
     (workspace, timeout, cost cap, what it allows and denies) and its output
     schema and verify attempts (of the verification it names, when it
     names one; marked missing when these settings have none of that name),
-    and the prompts it names, each marked missing when these settings have
-    none of that name;
+    and the prompts it names, each once, marked missing when these
+    settings have none of that name, and for a repo with the layer it
+    comes from;
   - for a workflow, its calls in one line (`4 × gpt-6.1-sol at once, then
     opus`), then the steps: the ones run at once (`First` when there is
     one) and the one run after them. Each step shows its name, what it

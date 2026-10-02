@@ -125,9 +125,17 @@ func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 	}
 	var names []string
 	for _, entry := range entries {
-		if name, ok := strings.CutSuffix(entry.Name(), extensions[kind]); ok && !entry.IsDir() {
-			names = append(names, name)
+		name, ok := strings.CutSuffix(entry.Name(), extensions[kind])
+		if !ok || entry.IsDir() {
+			continue
 		}
+		// A file in prompts/ whose name breaks the naming rule is not a
+		// prompt: settings may still read it through source: file (ADR-011
+		// rule 5).
+		if kind == definition.KindPrompt && !definition.ValidName(name) {
+			continue
+		}
+		names = append(names, name)
 	}
 	sort.Strings(names)
 	return names, nil

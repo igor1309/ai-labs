@@ -164,9 +164,12 @@ func TestPromptsAreMarkdownFiles(t *testing.T) {
 	if err != nil || path != filepath.Join(global.Dir, "prompts", "review.md") {
 		t.Fatalf("write = %q, %v", path, err)
 	}
-	// Another extension in the folder is not a prompt.
-	if err := os.WriteFile(filepath.Join(global.Dir, "prompts", "notes.txt"), []byte("x"), 0o600); err != nil {
-		t.Fatal(err)
+	// Another extension in the folder is not a prompt, nor is a file whose
+	// name breaks the naming rule, which source: file may still read.
+	for _, other := range []string{"notes.txt", "Style Guide.md"} {
+		if err := os.WriteFile(filepath.Join(global.Dir, "prompts", other), []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
 	}
 	layered := fsdefs.Layered{Global: global, Project: &project}
 	if names, err := layered.List(ctx, definition.KindPrompt); err != nil || !reflect.DeepEqual(names, []string{"review"}) {

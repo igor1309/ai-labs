@@ -474,7 +474,7 @@
     const policies = names(model.policies);
     const runtimes = names(model.runtimes);
     const schemas = new Set(model.schemas.map((s) => s.name));
-    const prompts = new Set(model.prompts.map((s) => s.name));
+    const prompts = new Map(model.prompts.map((s) => [s.name, s]));
     const usedBy = (items, key, name) => items.filter((x) => !x.error && x[key] === name).map((x) => x.name);
 
     for (const w of model.workflows) {
@@ -486,7 +486,11 @@
       p.agentOutside = !!p.agent && !agents.has(p.agent);
       p.policyOutside = !!p.policy && !policies.has(p.policy);
       p.outputOutside = !!p.output && !schemas.has(p.output);
-      p.prompts = p.prompts.map((x) => ({ ...x, outside: !prompts.has(x.name) }));
+      // Each prompt found, with the layer it comes from when composed (ADR-011).
+      p.prompts = p.prompts.map((x) => {
+        const found = prompts.get(x.name);
+        return { ...x, outside: !found, ...(found?.source && { source: found.source, overrides: !!found.overrides }) };
+      });
       // A named verification, resolved: its attempts, or outside these settings.
       if (p.verify?.ref) {
         const named = model.verifies.find((v) => !v.error && v.name === p.verify.ref);

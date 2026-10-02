@@ -258,10 +258,14 @@
     }
 
     // The prompts a process names, each marked missing when these settings
-    // have none of that name.
-    function promptsLine(p) {
+    // have none of that name, or with the chip of the layer it comes from.
+    function promptsLine(p, chip) {
       if (!p.prompts?.length) return null;
-      return el('div', {}, ...p.prompts.flatMap((x, i) => [i ? ', ' : '', x.outside ? missing('prompt', x.name) : x.name]));
+      return el('div', {}, ...p.prompts.flatMap((x, i) => {
+        if (x.outside) return [i ? ', ' : '', missing('prompt', x.name)];
+        const origin = chip(x);
+        return [i ? ', ' : '', x.name, origin ? ' ' : '', origin];
+      }));
     }
 
     function errorCard(item) {
@@ -283,7 +287,7 @@
         ['defaults', defaults(p.params)],
         ['agent', agentLine(p.agent, ix)],
         ['policy', policyLines(p.policy, ix)],
-        ['prompts', promptsLine(p)],
+        ['prompts', promptsLine(p, chip)],
         ['output', outputLine(p)],
       ]));
     }
