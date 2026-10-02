@@ -4,6 +4,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -77,7 +79,7 @@ var staleLimits = func() map[string]domain.StaleLimits {
 }()
 
 // verifyFixture is the verification command every process that declares
-// verify runs in the test's repository instead of its own: it passes in a
+// verify, inline or by name, runs in the test's repository instead of its own: it passes in a
 // checkout of the candidate. The real command would run this module's own
 // tests, this one included.
 const verifyFixture = "grep -qx two change.txt"
@@ -103,8 +105,9 @@ const verifyFixtureTimeout = "30s"
 // included), with a base and a candidate commit of its own: revisions, diffs
 // and checkouts are deterministic, and this repository's git state is never
 // read or written. Each base and candidate param is pointed at them. There,
-// a process that declares verify runs verifyFixture instead of its command
-// and completes with one passing verification attempt.
+// a process that declares verify, inline or by name, runs verifyFixture
+// instead of its command and completes with one passing verification
+// attempt.
 func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	root, repo, home := onFakeRuntimes(t)
 	entries, err := os.ReadDir(filepath.Join(root, ".agister", "processes"))
@@ -861,9 +864,12 @@ func mirror(t *testing.T, root string) string {
 }
 
 // fixVerify makes repo's .agister a directory whose entries link to those of
-// root's, processes aside: there, a process that declares verify is written
-// with verifyFixture as its command and verifyFixtureTimeout as its timeout,
-// and every other links to its file.
+// root's, processes and verifies aside. Each of those two is a directory
+// whose entries link to root's, and every file with a verification command
+// is written with verifyFixture as its command and verifyFixtureTimeout as
+// its timeout: a process that declares verify inline, and every verify a
+// process names (ADR-010), whose command and timeout are top-level keys. A
+// root without verifies has none in repo either.
 func fixVerify(t *testing.T, root, repo string) {
 	t.Helper()
 	settings := filepath.Join(repo, ".agister")
@@ -871,8 +877,8 @@ func fixVerify(t *testing.T, root, repo string) {
 		t.Fatal(err)
 	}
 	// link makes to a directory whose entries link to those of from, except
-	// aside.
-	link := func(from, to, except string) {
+	// those of aside.
+	link := func(from, to string, aside ...string) {
 		t.Helper()
 		entries, err := os.ReadDir(from)
 		if err != nil {
@@ -882,7 +888,7 @@ func fixVerify(t *testing.T, root, repo string) {
 			t.Fatal(err)
 		}
 		for _, entry := range entries {
-			if entry.Name() == except {
+			if slices.Contains(aside, entry.Name()) {
 				continue
 			}
 			if err := os.Symlink(filepath.Join(from, entry.Name()), filepath.Join(to, entry.Name())); err != nil {
@@ -890,46 +896,67 @@ func fixVerify(t *testing.T, root, repo string) {
 			}
 		}
 	}
-	link(filepath.Join(root, ".agister"), settings, "processes")
-	link(filepath.Join(root, ".agister", "processes"), filepath.Join(settings, "processes"), "")
+	// fix writes, in place of each link of dir's *.yaml, its file with the
+	// command and timeout of the mapping verification picks from its
+	// document set to the fixture's; a file whose mapping has no command
+	// stays a link.
+	fix := func(dir string, verification func(document *yaml.Node) *yaml.Node) {
+		t.Helper()
+		paths, err := filepath.Glob(filepath.Join(dir, "*.yaml"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, path := range paths {
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var document yaml.Node
+			if err := yaml.Unmarshal(data, &document); err != nil {
+				t.Fatalf("%s: %v", path, err)
+			}
+			verify := verification(document.Content[0])
+			command := valueOf(verify, "command")
+			if command == nil {
+				continue
+			}
+			command.SetString(verifyFixture)
+			if timeout := valueOf(verify, "timeout"); timeout != nil {
+				timeout.SetString(verifyFixtureTimeout)
+			} else {
+				verify.Content = append(verify.Content,
+					&yaml.Node{Kind: yaml.ScalarNode, Value: "timeout"},
+					&yaml.Node{Kind: yaml.ScalarNode, Value: verifyFixtureTimeout})
+			}
+			fixed, err := yaml.Marshal(&document)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Remove(path); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, fixed, 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
 
-	processes, err := filepath.Glob(filepath.Join(settings, "processes", "*.yaml"))
-	if err != nil {
+	link(filepath.Join(root, ".agister"), settings, "processes", "verifies")
+	link(filepath.Join(root, ".agister", "processes"), filepath.Join(settings, "processes"))
+	fix(filepath.Join(settings, "processes"), func(process *yaml.Node) *yaml.Node {
+		return valueOf(process, "verify")
+	})
+
+	verifies := filepath.Join(root, ".agister", "verifies")
+	if _, err := os.Stat(verifies); errors.Is(err, fs.ErrNotExist) {
+		return
+	} else if err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range processes {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		var document yaml.Node
-		if err := yaml.Unmarshal(data, &document); err != nil {
-			t.Fatalf("%s: %v", path, err)
-		}
-		verify := valueOf(document.Content[0], "verify")
-		command := valueOf(verify, "command")
-		if command == nil {
-			continue
-		}
-		command.SetString(verifyFixture)
-		if timeout := valueOf(verify, "timeout"); timeout != nil {
-			timeout.SetString(verifyFixtureTimeout)
-		} else {
-			verify.Content = append(verify.Content,
-				&yaml.Node{Kind: yaml.ScalarNode, Value: "timeout"},
-				&yaml.Node{Kind: yaml.ScalarNode, Value: verifyFixtureTimeout})
-		}
-		fixed, err := yaml.Marshal(&document)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := os.Remove(path); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, fixed, 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
+	link(verifies, filepath.Join(settings, "verifies"))
+	fix(filepath.Join(settings, "verifies"), func(verify *yaml.Node) *yaml.Node {
+		return verify
+	})
 }
 
 // valueOf is the value of key in mapping, or nil.
