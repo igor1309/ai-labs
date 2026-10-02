@@ -10,15 +10,17 @@ import (
 )
 
 // Gated refuses every use of the client while the settings have problems,
-// except Init, which writes them, and Check, which reports them. Stopping a
-// run is never refused, and a run it admitted stays observable, so editing
-// settings mid-run cannot strand a call that already started.
+// except Init, Install and Restore, which write them, and Check, which
+// reports them. Stopping a run is never refused, and a run it admitted stays
+// observable, so editing settings mid-run cannot strand a call that already
+// started.
 //
 // Each gated operation reads the settings (layered, and the global layer
 // alone) once into snapshots, builds its client on them, checks with that client and then runs the
 // operation on the same client, so what was checked is what is used and an
-// edit landing in between changes neither. Init, Check, Cancel and following
-// an admitted run use a client built on the live source.
+// edit landing in between changes neither. Init, Install, Restore, Check,
+// Cancel and following an admitted run use a client built on the live
+// source.
 //
 // Each method is spelled out, so a method added to the contract does not
 // compile here until it is decided whether it is gated.
@@ -64,6 +66,8 @@ type Infrastructure struct {
 	Preparer SetupAdapters
 	Verifier VerifyAdapters
 	Runs     RunsAdapters
+	// Installer works on home's settings and their backups.
+	Installer InstallAdapters
 	// Decorate wraps every client the gate builds.
 	Decorate func(contract.Client) contract.Client
 }
@@ -82,6 +86,8 @@ func NewClient(infra Infrastructure) contract.Client {
 		sources = append(sources, name)
 	}
 	sort.Strings(sources)
+	// An install checks its result as checkerOn's checkers check home's.
+	installer := NewInstaller(infra.Installer, infra.Checker, sources)
 	checkerOn := func(definitions GateDefinitions) *Checker {
 		return NewChecker(definitions, infra.Checker.Validator, infra.Checker.Runtimes, sources)
 	}
@@ -110,7 +116,8 @@ func NewClient(infra Infrastructure) contract.Client {
 				resolverOn(layered), calls.Runners, calls.Inputs, calls.Workspaces, calls.Changes, preparer, verifier, calls.Validator,
 				calls.Recorder, calls.Runs, calls.Clock, calls.Timer, calls.IDs, calls.StateDir, hosted,
 			),
-			Runs: NewRuns(infra.Runs.Reader, hosted, 0),
+			Runs:      NewRuns(infra.Runs.Reader, hosted, 0),
+			Installer: installer,
 		}
 		return infra.Decorate(host)
 	}
@@ -146,6 +153,16 @@ func (g *Gated) gateUnlessAdmitted(ctx context.Context, runID string) (contract.
 
 func (g *Gated) Init(ctx context.Context, overwrite bool, approved *contract.InitResult) (contract.InitResult, error) {
 	return g.live().Init(ctx, overwrite, approved)
+}
+
+// Install and Restore are not gated (ADR-016 rule 9): a home whose
+// settings fail check can still be repaired or restored.
+func (g *Gated) Install(ctx context.Context, source string, approved *contract.InstallPlan) (contract.InstallPlan, error) {
+	return g.live().Install(ctx, source, approved)
+}
+
+func (g *Gated) Restore(ctx context.Context, stamp string, approved *contract.RestorePlan) (contract.RestorePlan, error) {
+	return g.live().Restore(ctx, stamp, approved)
 }
 
 func (g *Gated) Check(ctx context.Context, probe bool) (contract.CheckReport, error) {

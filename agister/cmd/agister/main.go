@@ -121,7 +121,12 @@ func process(config cli.Config) composition {
 // composition is what one process wires its client over: the one worktree
 // coordinator every adapter that changes a repository's worktrees takes
 // its turn in. Tests wire over a coordinator they hold.
-type composition struct{ worktrees *git.Worktrees }
+type composition struct {
+	worktrees *git.Worktrees
+	// installing, when set, adjusts what installs run on: tests fix the
+	// clock and the stamps, and stop an install between its writes.
+	installing func(*app.InstallAdapters)
+}
 
 // workspaceAdapters are the adapters that change a repository's worktrees,
 // each as the component that requires it gets it.
@@ -191,6 +196,11 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		Reaper: app.NewReaper(evidence, runtimecomposition.Processes{Supervisor: supervisor.Processes{}}, workspaces.discarder, system.Clock{}),
 		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },
 	}
+	// Installs write the global settings, backed up beside them.
+	installing := app.InstallAdapters{Home: global, Backups: fsdefs.Backups{Dir: filepath.Join(config.Home, "backups")}, Clock: system.Clock{}, Stamps: system.IDs{}}
+	if c.installing != nil {
+		c.installing(&installing)
+	}
 	client := app.NewClient(app.Infrastructure{
 		Definitions: fsdefs.Layered{Global: global, Project: local, Absent: absent},
 		Global:      fsdefs.Layered{Global: global},
@@ -218,9 +228,10 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 			IDs:        system.IDs{},
 			StateDir:   config.Home,
 		},
-		Preparer: app.SetupAdapters{Content: content, Commands: runtimecomposition.SetupCommands{Supervisor: supervisor.Commands{}}, Clock: system.Clock{}},
-		Verifier: app.VerifyAdapters{Content: content, Copies: workspaces.copies, Commands: runtimecomposition.Commands{Supervisor: supervisor.Commands{}}, Clock: system.Clock{}},
-		Runs:     app.RunsAdapters{Reader: evidence},
+		Preparer:  app.SetupAdapters{Content: content, Commands: runtimecomposition.SetupCommands{Supervisor: supervisor.Commands{}}, Clock: system.Clock{}},
+		Verifier:  app.VerifyAdapters{Content: content, Copies: workspaces.copies, Commands: runtimecomposition.Commands{Supervisor: supervisor.Commands{}}, Clock: system.Clock{}},
+		Runs:      app.RunsAdapters{Reader: evidence},
+		Installer: installing,
 		Decorate: func(client contract.Client) contract.Client {
 			return app.ReapOnSubmit{Client: client, Background: reaping}
 		},

@@ -41,11 +41,18 @@ const usage = `agister — run agent calls and workflows defined in settings
 Usage:
   agister init [--force]             install the example settings in <home>: shows each file it would
                                      create (and with --force replace), writes only after you type yes
+  agister install <dir> [--json]     install a folder of settings, such as a repository's .agister, into
+                                     <home>, document by document: shows what it would create, replace
+                                     (with a diff) and keep, checks the result, writes only after you
+                                     type yes, and backs up what it replaces (--json: print the result)
+  agister install --restore <stamp> [--json]
+                                     undo that install: put back what it replaced, remove what it
+                                     created, after you type yes; the last five installs are kept
   agister check [--probe] [--tree] [--json]
                                      verify the composed settings (--probe: also ask each runtime its
                                      version; --tree: what defines what, and in which file; --json: the
-                                     whole report); every other command except init runs check first
-                                     and stops on any problem
+                                     whole report); every other command except init and install runs
+                                     check first and stops on any problem
   agister agent create <name> --runtime <runtime> [--model <m>] [--model-family <f>] [--effort <e>]
                          [--session fresh-only|resumable] [--command <path>] [--force]
                                      write an agent to <home>; refused if the settings would stop
@@ -140,7 +147,7 @@ func Run(ctx context.Context, args []string, env IO, build Build) int {
 
 type options struct {
 	home, runtime, model, modelFamily, effort, session, command string
-	agent, timeout, maxCost, continueRun                        string
+	agent, timeout, maxCost, continueRun, restore               string
 	force, quiet, debug, json, help, probe, tree, version       bool
 	after                                                       int
 	params                                                      paramFlag
@@ -191,6 +198,7 @@ func flags(opts *options) *flag.FlagSet {
 	set.StringVar(&opts.session, "session", "", "")
 	set.StringVar(&opts.maxCost, "max-cost", "", "")
 	set.StringVar(&opts.continueRun, "continue", "", "")
+	set.StringVar(&opts.restore, "restore", "", "")
 	set.BoolVar(&opts.force, "force", false, "")
 	set.BoolVar(&opts.quiet, "quiet", false, "")
 	set.BoolVar(&opts.debug, "debug", false, "")
@@ -233,8 +241,8 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 	if len(positionals) > 0 {
 		command, rest = positionals[0], positionals[1:]
 	}
-	// The client refuses everything but init and check while the settings
-	// have problems; check prints its own report, and a bare agister checks
+	// The client refuses everything but init, install and check while the
+	// settings have problems; check prints its own report, and a bare agister checks
 	// before it shows the usage.
 	if command == "check" {
 		report, err := client.Check(ctx, opts.probe)
@@ -266,6 +274,19 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 	switch command {
 	case "init":
 		return initSettings(ctx, client, opts.force, config.Home, env)
+
+	case "install":
+		if opts.restore != "" {
+			if len(rest) > 0 {
+				return 0, usageError{"install --restore takes a stamp, not a folder"}
+			}
+			return restoreSettings(ctx, client, opts.restore, config.Home, env, opts.json)
+		}
+		dir, err := arg(0, "a folder of settings")
+		if err != nil {
+			return 0, err
+		}
+		return installSettings(ctx, client, absolute(dir, env.Cwd), config.Home, env, opts.json)
 
 	case "agent":
 		sub, _ := arg(0, "a subcommand")
@@ -827,6 +848,124 @@ func initSettings(ctx context.Context, client contract.Client, force bool, home 
 	}
 	for _, path := range result.Kept {
 		fmt.Fprintf(env.Stdout, "kept     %s\n", path)
+	}
+	return 0, nil
+}
+
+// installSettings shows what installing the folder dir would do, and
+// installs it only after the user types "yes". With asJSON the plan is
+// shown on stderr and the result printed as JSON.
+func installSettings(ctx context.Context, client contract.Client, dir, home string, env IO, asJSON bool) (int, error) {
+	plan, err := client.Install(ctx, dir, nil)
+	if err != nil {
+		return 0, err
+	}
+	shown := env.Stdout
+	if asJSON {
+		shown = env.Stderr
+	}
+	for _, doc := range plan.Documents {
+		switch doc.Action {
+		case contract.InstallCreate:
+			fmt.Fprintf(shown, "will create  %s\n", doc.Path)
+		case contract.InstallReplace:
+			fmt.Fprintf(shown, "will REPLACE %s\n", doc.Path)
+			fmt.Fprint(shown, printable(doc.Diff))
+		default:
+			fmt.Fprintf(shown, "unchanged    %s\n", doc.Path)
+		}
+	}
+	for _, path := range plan.Kept {
+		fmt.Fprintf(shown, "home only, kept %s\n", path)
+	}
+	for _, file := range plan.Ignored {
+		fmt.Fprintf(shown, "not settings, not installed: %s\n", printable(file))
+	}
+	for _, warning := range plan.Warnings {
+		fmt.Fprintln(env.Stderr, "warning "+warning)
+	}
+	writes := plan.Writes()
+	if writes == 0 {
+		fmt.Fprintf(shown, "nothing to install into %s\n", home)
+		if asJSON {
+			return 0, printJSON(env.Stdout, plan)
+		}
+		return 0, nil
+	}
+	if err := confirm(env, fmt.Sprintf("Type yes to install %d document(s) into %s:", writes, home), "install cancelled; nothing was written"); err != nil {
+		return 0, err
+	}
+	result, err := client.Install(ctx, dir, &plan)
+	// An install that wrote its backup can be undone, even one that stopped.
+	if result.Stamp != "" && err != nil {
+		fmt.Fprintf(env.Stderr, "restore with: agister install --restore %s\n", result.Stamp)
+	}
+	if err != nil {
+		return 0, err
+	}
+	if asJSON {
+		fmt.Fprintf(env.Stderr, "restore with: agister install --restore %s\n", result.Stamp)
+		return 0, printJSON(env.Stdout, result)
+	}
+	for _, doc := range result.Documents {
+		switch doc.Action {
+		case contract.InstallCreate:
+			fmt.Fprintf(env.Stdout, "created  %s\n", doc.Path)
+		case contract.InstallReplace:
+			fmt.Fprintf(env.Stdout, "replaced %s\n", doc.Path)
+		}
+	}
+	fmt.Fprintf(env.Stdout, "restore with: agister install --restore %s\n", result.Stamp)
+	return 0, nil
+}
+
+// restoreSettings shows what undoing the install stamp would do, and does
+// it only after the user types "yes".
+func restoreSettings(ctx context.Context, client contract.Client, stamp, home string, env IO, asJSON bool) (int, error) {
+	plan, err := client.Restore(ctx, stamp, nil)
+	if err != nil {
+		return 0, err
+	}
+	shown := env.Stdout
+	if asJSON {
+		shown = env.Stderr
+	}
+	for _, doc := range plan.Documents {
+		switch doc.Action {
+		case contract.RestorePutBack:
+			fmt.Fprintf(shown, "will put back %s\n", doc.Path)
+			fmt.Fprint(shown, printable(doc.Diff))
+		case contract.RestoreRemove:
+			fmt.Fprintf(shown, "will remove   %s (the install created it)\n", doc.Path)
+		default:
+			fmt.Fprintf(shown, "unchanged     %s\n", doc.Path)
+		}
+	}
+	writes := plan.Writes()
+	if writes == 0 {
+		fmt.Fprintf(shown, "nothing to restore in %s\n", home)
+		if asJSON {
+			return 0, printJSON(env.Stdout, plan)
+		}
+		return 0, nil
+	}
+	if err := confirm(env, fmt.Sprintf("Type yes to restore %d document(s) in %s as they were before install %s:", writes, home, stamp), "restore cancelled; nothing was written"); err != nil {
+		return 0, err
+	}
+	result, err := client.Restore(ctx, stamp, &plan)
+	if err != nil {
+		return 0, err
+	}
+	if asJSON {
+		return 0, printJSON(env.Stdout, result)
+	}
+	for _, doc := range result.Documents {
+		switch doc.Action {
+		case contract.RestorePutBack:
+			fmt.Fprintf(env.Stdout, "put back %s\n", doc.Path)
+		case contract.RestoreRemove:
+			fmt.Fprintf(env.Stdout, "removed  %s\n", doc.Path)
+		}
 	}
 	return 0, nil
 }

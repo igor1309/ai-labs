@@ -10,6 +10,7 @@ type Host struct {
 	*Inspection
 	*Calls
 	*Runs
+	*Installer
 }
 
 var _ contract.Client = (*Host)(nil)

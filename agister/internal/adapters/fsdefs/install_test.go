@@ -1,0 +1,173 @@
+package fsdefs_test
+
+import (
+	"context"
+	"errors"
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
+	"github.com/igor1309/ai-labs/agister/internal/app"
+	"github.com/igor1309/ai-labs/agister/internal/contract"
+	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+)
+
+func put(t *testing.T, path, text string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// A source folder's settings documents are what the store lists; every
+// other file is named, and a folder that is not a kind's is not read.
+func TestSourceReadsSettingsAndNamesTheRest(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{
+		"service.toml", "workspace.yaml", "agents/a.toml", "prompts/p.md", "verifies/repo.yaml",
+		"notes.txt", ".DS_Store", "agents/a.yaml", "agents/old/b.toml", "prompts/Not A Name.md", "runs/r1/record.json",
+	} {
+		put(t, filepath.Join(dir, name), name)
+	}
+	// The folder may be reached through a link.
+	link := filepath.Join(t.TempDir(), "settings")
+	if err := os.Symlink(dir, link); err != nil {
+		t.Fatal(err)
+	}
+	docs, ignored, err := fsdefs.Store{Dir: t.TempDir()}.Source(context.Background(), link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var read []string
+	for _, doc := range docs {
+		read = append(read, string(doc.Source.Kind)+"/"+doc.Source.Name+"="+string(doc.Bytes))
+		if !strings.HasPrefix(doc.Source.Path, link+string(filepath.Separator)) {
+			t.Errorf("path %s not in the folder as named", doc.Source.Path)
+		}
+	}
+	wantRead := []string{"agents/a=agents/a.toml", "prompts/p=prompts/p.md", "service/service=service.toml", "verifies/repo=verifies/repo.yaml", "workspace/workspace=workspace.yaml"}
+	if !reflect.DeepEqual(read, wantRead) {
+		t.Fatalf("read %v", read)
+	}
+	wantIgnored := []string{".DS_Store", "agents/a.yaml", "agents/old/", "notes.txt", "prompts/Not A Name.md", "runs/"}
+	if !reflect.DeepEqual(ignored, wantIgnored) {
+		t.Fatalf("ignored %v", ignored)
+	}
+}
+
+// A symbolic link in the folder refuses it, wherever it points.
+func TestSourceRefusesASymbolicLink(t *testing.T) {
+	for _, name := range []string{"agents/a.toml", "agents", "notes"} {
+		dir := t.TempDir()
+		put(t, filepath.Join(dir, "service.toml"), "s")
+		target := filepath.Join(t.TempDir(), "target")
+		put(t, filepath.Join(target, "x"), "x")
+		os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), 0o700)
+		if err := os.Symlink(target, filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+		var input *contract.InputError
+		if _, _, err := (fsdefs.Store{Dir: t.TempDir()}).Source(context.Background(), dir); !errors.As(err, &input) || !strings.Contains(err.Error(), "is a symbolic link") {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	var input *contract.InputError
+	if _, _, err := (fsdefs.Store{Dir: t.TempDir()}).Source(context.Background(), filepath.Join(t.TempDir(), "none")); !errors.As(err, &input) {
+		t.Errorf("missing folder: %v", err)
+	}
+}
+
+// A stage is read as the store it stages: paths, and where a document not
+// found was expected, are the store's.
+func TestStageReadsAsTheStore(t *testing.T) {
+	home := fsdefs.Store{Dir: t.TempDir()}
+	ctx := context.Background()
+	staged, remove, err := home.Stage(ctx, []definition.Document{{Source: definition.Source{Kind: definition.KindAgent, Name: "a"}, Bytes: []byte("x")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := staged.Read(ctx, definition.KindAgent, "a")
+	if err != nil || doc.Source.Path != filepath.Join(home.Dir, "agents", "a.toml") || string(doc.Bytes) != "x" {
+		t.Fatalf("read %+v, %v", doc, err)
+	}
+	if _, err := staged.Read(ctx, definition.KindAgent, "b"); err == nil || !strings.Contains(err.Error(), filepath.Join(home.Dir, "agents", "b.toml")) {
+		t.Fatalf("missing: %v", err)
+	}
+	if names, _ := staged.List(ctx, definition.KindAgent); !reflect.DeepEqual(names, []string{"a"}) {
+		t.Fatalf("list %v", names)
+	}
+	remove()
+	if entries, _ := os.ReadDir(home.Dir); len(entries) != 0 {
+		t.Fatalf("staging wrote into the store: %v", entries)
+	}
+}
+
+// Put replaces a document whole, leaving nothing beside it; Remove takes it
+// away, and a missing one is no error.
+func TestPutAndRemove(t *testing.T) {
+	store := fsdefs.Store{Dir: t.TempDir()}
+	ctx := context.Background()
+	for _, text := range []string{"one", "two"} {
+		if err := store.Put(ctx, definition.KindPrompt, "p", []byte(text)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	entries, _ := os.ReadDir(filepath.Join(store.Dir, "prompts"))
+	if doc, err := store.Read(ctx, definition.KindPrompt, "p"); err != nil || string(doc.Bytes) != "two" || len(entries) != 1 {
+		t.Fatalf("read %q, %v, entries %v", doc.Bytes, err, entries)
+	}
+	for range 2 {
+		if err := store.Remove(ctx, definition.KindPrompt, "p"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, digest, _ := store.Current(ctx, definition.KindPrompt, "p"); digest != "" {
+		t.Fatal("not removed")
+	}
+}
+
+// A backup holds the replaced documents laid out like the store, and its
+// manifest; it is never written over, and a stamp is one name.
+func TestBackups(t *testing.T) {
+	backups := fsdefs.Backups{Dir: filepath.Join(t.TempDir(), "backups")}
+	ctx := context.Background()
+	manifest := app.InstallManifest{Stamp: "s1", Source: "/repo/.agister", Installed: time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC),
+		Documents: []app.InstallManifestEntry{{Path: "/home/service.toml", Kind: "service", Name: "service", Action: "replace", Before: "b", After: "a"}}}
+	saved := []definition.Document{{Source: definition.Source{Kind: definition.KindService, Name: "service"}, Bytes: []byte("old")}}
+	if err := backups.Save(ctx, "s1", manifest, saved); err != nil {
+		t.Fatal(err)
+	}
+	if err := backups.Save(ctx, "s1", manifest, nil); err == nil {
+		t.Fatal("wrote over a backup")
+	}
+	if got, err := backups.Manifest(ctx, "s1"); err != nil || !reflect.DeepEqual(got, manifest) {
+		t.Fatalf("manifest %+v, %v", got, err)
+	}
+	if data, err := backups.Saved(ctx, "s1", definition.KindService, "service"); err != nil || string(data) != "old" {
+		t.Fatalf("saved %q, %v", data, err)
+	}
+	if err := backups.Save(ctx, "s0", app.InstallManifest{}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if stamps, err := backups.List(ctx); err != nil || !reflect.DeepEqual(stamps, []string{"s0", "s1"}) {
+		t.Fatalf("list %v, %v", stamps, err)
+	}
+	for _, stamp := range []string{"", "..", "../x", "a/b", ".hidden"} {
+		if _, err := backups.Manifest(ctx, stamp); err == nil || !strings.Contains(err.Error(), "invalid backup stamp") {
+			t.Errorf("stamp %q: %v", stamp, err)
+		}
+	}
+	if err := backups.Remove(ctx, "s0"); err != nil {
+		t.Fatal(err)
+	}
+	if stamps, _ := backups.List(ctx); !reflect.DeepEqual(stamps, []string{"s1"}) {
+		t.Fatalf("after remove %v", stamps)
+	}
+}

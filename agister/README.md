@@ -12,6 +12,7 @@ cd agister
 go build -o bin/agister ./cmd/agister
 bin/agister --help          # every command and option
 bin/agister init            # example settings into ~/.agister
+bin/agister install .agister # a repository's settings into ~/.agister
 bin/agister check           # validate the settings
 bin/agister run ask --param question="What does cmd/agister do?"
 bin/agister runs show <run-id>
@@ -26,11 +27,24 @@ a repository's settings can run and what they are made of:
 
 Global settings live in `~/.agister/` (`$AGISTER_HOME` or `--home`); a
 repository's own `.agister/` takes priority, document by document. Every
-command except `init` checks the composed settings first and stops on any
-problem. When a problem names a field, adapter, input source or schema
+command except `init` and `install` checks the composed settings first and
+stops on any problem. When a problem names a field, adapter, input source or schema
 version this binary does not know, the check adds a line saying the
 settings may need a newer binary, and `agister --version` names the binary
 that is running. Runs are recorded under `~/.agister/runs/<id>/`.
+
+`agister init` installs the example settings. `agister install <dir>`
+installs a folder laid out like the settings, such as a repository's
+`.agister/`, into home, document by document
+([ADR-016](docs/adr/016-settings-are-installed-into-home-with-a-backup.md)).
+It shows what it would create, replace (with a diff), leave unchanged and
+keep (documents only home has), checks the result on a staged copy, and
+writes only after you type yes, and only if home's settings are still as
+shown. It backs up what it replaces under `~/.agister/backups/<stamp>/`
+first, and prints the command that undoes it, `agister install --restore
+<stamp>`. The last five backups are kept. Files that are not settings are
+listed and not installed; a symbolic link in the folder refuses it. Like
+`init`, both work on settings that fail check.
 
 A process declares its verification command inline, or names a document
 that holds it: `verify: verify:repo` is `verifies/repo.yaml`, found like any
