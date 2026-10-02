@@ -75,7 +75,7 @@ type Verification struct {
 }
 
 // Setup is the command that prepares a call's checkout before its first
-// turn (ADR-011): run once, in the checkout, with the operator's authority.
+// turn (ADR-012): run once, in the checkout, with the operator's authority.
 type Setup struct {
 	Command string        // one Bash command
 	Timeout time.Duration // of its one run

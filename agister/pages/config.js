@@ -306,7 +306,7 @@
     };
   }
 
-  // A setup block (ADR-011) as { command, timeout }; null when none.
+  // A setup block (ADR-012) as { command, timeout }; null when none.
   function setupOf(setup) {
     return setup && typeof setup === 'object' ? { command: setup.command ?? null, timeout: setup.timeout ?? null } : null;
   }
@@ -408,7 +408,7 @@
   }
 
   // workspace.yaml: the setup every process with a checkout and none of its
-  // own runs (ADR-011). null when the folder has none.
+  // own runs (ADR-012). null when the folder has none.
   async function loadWorkspace(agister) {
     let handle;
     try {

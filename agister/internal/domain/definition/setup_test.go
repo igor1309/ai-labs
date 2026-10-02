@@ -42,7 +42,7 @@ func TestSetupIsParsedAsDeclared(t *testing.T) {
 	}
 }
 
-// ADR-011 rule 1: both fields are required, there is no default, and a
+// ADR-012 rule 1: both fields are required, there is no default, and a
 // setup prepares only a checkout.
 func TestSetupProblems(t *testing.T) {
 	cases := map[string]struct{ workspace, want string }{
@@ -105,7 +105,7 @@ setup:
 	}
 }
 
-// ADR-011 rule 2: the workspace's setup applies to a process with a
+// ADR-012 rule 2: the workspace's setup applies to a process with a
 // checkout and none of its own; its own replaces it whole; without a
 // checkout there is none.
 func TestEffectiveSetup(t *testing.T) {

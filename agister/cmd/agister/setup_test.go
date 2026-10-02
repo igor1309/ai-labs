@@ -54,7 +54,7 @@ func TestSetupThroughProductionComposition(t *testing.T) {
 	}
 }
 
-// A checkout's setup (ADR-011) on real checkouts of temporary
+// A checkout's setup (ADR-012) on real checkouts of temporary
 // repositories, with the real command runner and git. The base ignores
 // *.log, so what a setup makes there is ignored.
 
@@ -116,7 +116,7 @@ func TestSetupPreparesTheCheckoutOnceBeforeTheFirstTurn(t *testing.T) {
 	}
 }
 
-// ADR-011 rules 4 and 5: a setup that exits non-zero, runs out of time,
+// ADR-012 rules 4 and 5: a setup that exits non-zero, runs out of time,
 // changes a tracked file or adds a file that is not ignored fails the call
 // before any turn; its run is on record, and the checkout is released
 // (wait checks that).
@@ -179,7 +179,7 @@ func TestAFailedSetupFailsTheCallWithNoTurn(t *testing.T) {
 	}
 }
 
-// ADR-011 rule 4: the checkout's content after its setup is the
+// ADR-012 rule 4: the checkout's content after its setup is the
 // revision's, not what the checkout was made with: a post-checkout hook
 // that changes a tracked file fails the call though the setup changes
 // nothing, and no turn runs on it.
@@ -201,7 +201,7 @@ func TestACheckoutHookThatChangesATrackedFileFailsTheSetup(t *testing.T) {
 	}
 }
 
-// ADR-011 rule 2: workspace.yaml's setup applies to a process with a
+// ADR-012 rule 2: workspace.yaml's setup applies to a process with a
 // checkout and none of its own; the repository's takes priority over the
 // global one, and the record names the document it came from.
 func TestTheWorkspaceSetupIsTheDefaultAndTheRepositorysWins(t *testing.T) {

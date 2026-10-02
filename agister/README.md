@@ -43,7 +43,7 @@ settings you did not write.
 
 A process with `workspace.checkout` runs in a fresh worktree, which holds
 only what the repository tracks. `workspace.setup` prepares it before the
-agent's first turn ([ADR-011](docs/adr/011-a-checkout-runs-its-setup.md)):
+agent's first turn ([ADR-012](docs/adr/012-a-checkout-runs-its-setup.md)):
 a command run with your authority in the checkout, once per call. Both
 fields are required. What it makes must be ignored by git; if it fails, runs
 out of time or changes the checkout's content, the call fails before any

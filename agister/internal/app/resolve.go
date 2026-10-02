@@ -36,7 +36,7 @@ type resolution struct {
 	effective policy.Effective
 	identity  RuntimeIdentity
 	plan      enforce.Plan
-	// setup is the setup the call's checkout runs (ADR-011); nil when none.
+	// setup is the setup the call's checkout runs (ADR-012); nil when none.
 	setup *resolvedSetup
 }
 
@@ -248,7 +248,7 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 
 // resolveSetup fixes the setup a call's checkout runs: the process's own,
 // or the workspace settings' default, read only when it applies, so the
-// call's definitions name the document its setup came from (ADR-011).
+// call's definitions name the document its setup came from (ADR-012).
 func (r *Resolver) resolveSetup(ctx context.Context, res *resolution, load func(definition.Kind, string) (definition.Document, error), parsed func(error) error) error {
 	process := res.process
 	var workspace *definition.Workspace

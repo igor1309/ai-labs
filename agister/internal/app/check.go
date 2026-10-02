@@ -206,7 +206,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			link(from, definition.KindSchema, process.Output.Schema)
 		}
 		// The workspace's setup is the default of a checkout without one of
-		// its own (ADR-011); a missing document is no default, not a
+		// its own (ADR-012); a missing document is no default, not a
 		// missing reference.
 		if _, fromWorkspace := process.EffectiveSetup(workspace); fromWorkspace {
 			link(from, definition.KindWorkspace, string(definition.KindWorkspace))

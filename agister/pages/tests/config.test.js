@@ -265,7 +265,7 @@ test('a repo goes over Agister home: same kind and file name replaces, the rest 
   assert.deepEqual([own.service.maxAttempts, own.service.source, own.service.overrides], [1, 'repo', true]);
 });
 
-// ADR-011: a process with a checkout runs its own setup, or else the
+// ADR-012: a process with a checkout runs its own setup, or else the
 // workspace's; a repo's workspace.yaml replaces home's; without a checkout
 // there is none.
 test('each process shows the setup its checkout runs, as Agister resolves it', async () => {

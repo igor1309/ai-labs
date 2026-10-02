@@ -39,7 +39,7 @@ const (
 	ClassRuntimeError       Class = "runtime_error"       // the runtime reported another failure
 	ClassRuntimeUnavailable Class = "runtime_unavailable" // the runtime could not be started
 	ClassInternal           Class = "internal"            // Agister's own failure
-	ClassSetupFailed        Class = "setup_failed"        // the checkout's setup command failed (ADR-011)
+	ClassSetupFailed        Class = "setup_failed"        // the checkout's setup command failed (ADR-012)
 	// interrupted
 	ClassTimeout   Class = "timeout"
 	ClassCancelled Class = "cancelled"
@@ -231,7 +231,7 @@ type Record struct {
 	Definitions []DefinitionSource `json:"definitions,omitempty"`
 	Effective   *EffectivePolicy   `json:"effective,omitempty"`
 	Verify      *Verify            `json:"verify,omitempty"`
-	// Setup is the setup command the call's checkout runs (ADR-011), as
+	// Setup is the setup command the call's checkout runs (ADR-012), as
 	// resolved; SetupRun is its one run, once it ran.
 	Setup     *Setup      `json:"setup,omitempty"`
 	SetupRun  *CommandRun `json:"setup_run,omitempty"`
