@@ -49,49 +49,15 @@ func Own(turn Turn, resumed bool) Turn {
 // Agister ran are seen: a turn made on the session outside Agister is not,
 // and whatever it cost is counted again by the next turn Agister runs.
 //
-// A run is in the session when it reported it or continued a run that is;
-// one still running may be in a turn not yet recorded, and so may one the
-// reaper finished with a runtime process recorded, whether or not it saved
-// a turn: its owner ended, maybe after starting a process for a turn not
-// yet saved. The totals are unknown, never a guess, when a run in the
-// session has not finished, when the last to finish overlapped another or
-// was reaped with a process recorded, or when its latest turn did not
-// report the session with totals.
+// The totals are unknown, never a guess, when the session's latest run is
+// (see Latest), when that run was reaped with a process recorded, or when
+// its latest turn did not report the session with totals: a run the reaper
+// finished with a runtime process recorded may have been in a turn not yet
+// saved, whether or not it saved one, as its owner ended.
 func LatestTotals(records []Record, session, exclude string) *SessionTotals {
-	if session == "" {
+	latest, known := Latest(records, session, exclude)
+	if !known || latest == nil {
 		return nil
-	}
-	byID := make(map[string]Record, len(records))
-	for _, record := range records {
-		byID[record.ID] = record
-	}
-	var in []Record
-	for _, record := range records {
-		// A finished run that started no runtime process and ran no turn,
-		// a refused one, left the session as it was.
-		if record.ID == exclude || record.FinishedAt != nil && record.Turn == nil && !startedProcess(record) {
-			continue
-		}
-		if inSession(record, session, byID, len(records)) {
-			in = append(in, record)
-		}
-	}
-	var latest *Record
-	for i, record := range in {
-		if record.FinishedAt == nil {
-			return nil
-		}
-		if latest == nil || record.FinishedAt.After(*latest.FinishedAt) {
-			latest = &in[i]
-		}
-	}
-	if latest == nil {
-		return nil
-	}
-	for _, record := range in {
-		if record.ID != latest.ID && record.FinishedAt.After(latest.CreatedAt) {
-			return nil
-		}
 	}
 	if reaped(*latest) && startedProcess(*latest) {
 		return nil
@@ -100,6 +66,52 @@ func LatestTotals(records []Record, session, exclude string) *SessionTotals {
 		return turn.Session
 	}
 	return nil
+}
+
+// Latest is a provider session's latest run, the one in it that finished
+// last, from records of every run in the store; the run excluded is the one
+// asking. It is nil when no run is in the session.
+//
+// A run is in the session when it reported it or continued a run that is;
+// one still running may be in a turn not yet recorded. A finished run that
+// started no runtime process and ran no turn, a refused one, left the
+// session as it was and is not in it. known is false when the latest run
+// cannot be told: a run in the session has not finished, or the last to
+// finish overlapped another.
+func Latest(records []Record, session, exclude string) (latest *Record, known bool) {
+	if session == "" {
+		return nil, true
+	}
+	byID := make(map[string]Record, len(records))
+	for _, record := range records {
+		byID[record.ID] = record
+	}
+	var in []Record
+	for _, record := range records {
+		if record.ID == exclude || record.FinishedAt != nil && record.Turn == nil && !startedProcess(record) {
+			continue
+		}
+		if inSession(record, session, byID, len(records)) {
+			in = append(in, record)
+		}
+	}
+	for i, record := range in {
+		if record.FinishedAt == nil {
+			return nil, false
+		}
+		if latest == nil || record.FinishedAt.After(*latest.FinishedAt) {
+			latest = &in[i]
+		}
+	}
+	if latest == nil {
+		return nil, true
+	}
+	for _, record := range in {
+		if record.ID != latest.ID && record.FinishedAt.After(latest.CreatedAt) {
+			return nil, false
+		}
+	}
+	return latest, true
 }
 
 // startedProcess tells whether a run recorded its runtime's process.

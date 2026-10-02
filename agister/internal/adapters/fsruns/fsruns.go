@@ -38,6 +38,7 @@ type Store struct {
 var _ app.RunRecorder = Store{}
 var _ app.RunsReader = Store{}
 var _ app.RunAdopter = Store{}
+var _ app.CallRuns = Store{}
 
 func (s Store) runDir(id string) string { return filepath.Join(s.Dir, id) }
 
@@ -258,6 +259,23 @@ func (s Store) Get(_ context.Context, id string) (run.Record, run.State, error) 
 	return record, s.status(id, record), nil
 }
 
+// Artifact reads back the bytes of an artifact run id stored, as its record
+// names it: only a file in the run's artifacts directory is read.
+func (s Store) Artifact(_ context.Context, id string, artifact run.Artifact) ([]byte, error) {
+	if err := checkID(id); err != nil {
+		return nil, err
+	}
+	name, ok := strings.CutPrefix(artifact.Path, "artifacts/")
+	if !ok || name == "" || name != filepath.Base(name) || strings.HasPrefix(name, ".") {
+		return nil, fmt.Errorf("run %s: invalid artifact path %q", id, artifact.Path)
+	}
+	data, err := os.ReadFile(filepath.Join(s.runDir(id), "artifacts", name))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, fmt.Errorf("run %s: artifact %s: %w", id, name, contract.ErrNotFound)
+	}
+	return data, err
+}
+
 func (s Store) Events(ctx context.Context, id string, afterSeq int) ([]run.Event, run.State, error) {
 	// Status first: events written before the run finished are then all on disk.
 	_, status, err := s.Get(ctx, id)
@@ -288,6 +306,16 @@ func (s Store) Events(ctx context.Context, id string, afterSeq int) ([]run.Event
 }
 
 func (s Store) List(ctx context.Context) ([]run.Record, error) {
+	return s.list(ctx, false)
+}
+
+// ListStrict returns every run's record or an error: a partial listing
+// cannot establish which run last changed a continued session.
+func (s Store) ListStrict(ctx context.Context) ([]run.Record, error) {
+	return s.list(ctx, true)
+}
+
+func (s Store) list(ctx context.Context, strict bool) ([]run.Record, error) {
 	entries, err := os.ReadDir(s.Dir)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
@@ -306,6 +334,9 @@ func (s Store) List(ctx context.Context) ([]run.Record, error) {
 	for _, id := range ids {
 		record, _, err := s.Get(ctx, id)
 		if err != nil {
+			if strict {
+				return nil, fmt.Errorf("listing run %s: %w", id, err)
+			}
 			continue
 		}
 		records = append(records, record)

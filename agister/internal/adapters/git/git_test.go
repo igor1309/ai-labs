@@ -139,6 +139,44 @@ func TestCheckoutIsDetachedAndReleased(t *testing.T) {
 	}
 }
 
+func TestRepositoryEquivalenceUsesCanonicalCommonDirectories(t *testing.T) {
+	ctx := context.Background()
+	repo := repository(t)
+	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
+	checkout, release, err := workspaces.Checkout(ctx, repo, sh(t, repo, "rev-parse", "HEAD"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := release(); err != nil {
+			t.Error(err)
+		}
+	})
+	link := filepath.Join(t.TempDir(), "repository")
+	if err := os.Symlink(repo, link); err != nil {
+		t.Fatal(err)
+	}
+	other := repository(t)
+	missing := t.TempDir()
+	for _, c := range []struct {
+		name, first, second string
+		same, fails         bool
+	}{
+		{"main and worktree", repo, checkout, true, false},
+		{"worktree and symlink", checkout, link, true, false},
+		{"distinct repositories", repo, other, false, false},
+		{"invalid first", missing, repo, false, true},
+		{"invalid second", repo, missing, false, true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			same, err := workspaces.SameRepository(ctx, c.first, c.second)
+			if (err != nil) != c.fails || same != c.same {
+				t.Fatalf("SameRepository = %v, %v", same, err)
+			}
+		})
+	}
+}
+
 // The content identity covers what is committed, edited and untracked, but
 // not ignored; the patch from the revision to it, applied to a copy of the
 // revision, makes that content exactly, and neither touches the checkout's
@@ -296,6 +334,83 @@ func TestACopyWhosePatchDoesNotApplyLeavesNothing(t *testing.T) {
 	}
 	if lines := strings.Split(sh(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
 		t.Fatalf("worktrees = %v", lines)
+	}
+}
+
+// A checkout's changes, kept as a patch, apply to another checkout of the
+// same revision, a binary file included: to its files, not its index. A
+// check changes nothing.
+func TestApplyCarriesAPatchIntoACheckout(t *testing.T) {
+	repo := repository(t)
+	ctx := context.Background()
+	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
+	head := sh(t, repo, "rev-parse", "HEAD")
+	from, releaseFrom, err := workspaces.Checkout(ctx, repo, head)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = releaseFrom() })
+	os.WriteFile(filepath.Join(from, "a.txt"), []byte("one\ntwo\nthree\n"), 0o600)
+	os.WriteFile(filepath.Join(from, "blob.bin"), []byte{0, 1, 2, 0xff, 0}, 0o600)
+	identity, err := workspaces.Identity(ctx, from, head)
+	if err != nil {
+		t.Fatal(err)
+	}
+	patch, err := workspaces.Changes(ctx, from, head, identity)
+	if err != nil || !strings.Contains(string(patch), "GIT binary patch") {
+		t.Fatalf("patch %q, %v", patch, err)
+	}
+
+	to, releaseTo, err := workspaces.Checkout(ctx, repo, head)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = releaseTo() })
+	if err := workspaces.Apply(ctx, to, patch, true); err != nil {
+		t.Fatal(err)
+	}
+	if status := sh(t, to, "status", "--porcelain"); status != "" {
+		t.Fatalf("a check changed the checkout: %q", status)
+	}
+	if err := workspaces.Apply(ctx, to, patch, false); err != nil {
+		t.Fatal(err)
+	}
+	if data, _ := os.ReadFile(filepath.Join(to, "a.txt")); string(data) != "one\ntwo\nthree\n" {
+		t.Fatalf("a.txt = %q", data)
+	}
+	if data, _ := os.ReadFile(filepath.Join(to, "blob.bin")); string(data) != string([]byte{0, 1, 2, 0xff, 0}) {
+		t.Fatalf("blob.bin = %v", data)
+	}
+	if again, err := workspaces.Identity(ctx, to, head); err != nil || again != identity {
+		t.Fatalf("content %s, want %s: %v", again, identity, err)
+	}
+	if staged := sh(t, to, "diff", "--cached", "--name-only"); staged != "" {
+		t.Fatalf("staged %q", staged)
+	}
+}
+
+// A patch that conflicts with the checkout fails its check and leaves the
+// checkout as it was; applying it changes nothing either.
+func TestApplyOfAConflictingPatchLeavesTheCheckoutAsItWas(t *testing.T) {
+	repo := repository(t)
+	ctx := context.Background()
+	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
+	head := sh(t, repo, "rev-parse", "HEAD")
+	dir, release, err := workspaces.Checkout(ctx, repo, head)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = release() })
+	// b.txt applies; a.txt does not: its context is not the checkout's.
+	patch := []byte("diff --git a/b.txt b/b.txt\n--- a/b.txt\n+++ b/b.txt\n@@ -1 +1 @@\n-new\n+newer\n" +
+		"diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,2 +1,2 @@\n-uno\n+eins\n two\n")
+	for _, check := range []bool{true, false} {
+		if err := workspaces.Apply(ctx, dir, patch, check); err == nil || !strings.Contains(err.Error(), "git apply") {
+			t.Fatalf("apply, check %v = %v", check, err)
+		}
+		if status := sh(t, dir, "status", "--porcelain"); status != "" {
+			t.Fatalf("check %v changed the checkout: %q", check, status)
+		}
 	}
 }
 

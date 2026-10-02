@@ -16,6 +16,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/prompt"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -134,12 +135,20 @@ func newHarness() *harness {
 
 // callsOn is the harness's Calls reading its definitions from src.
 func (h *harness) callsOn(src app.ResolverDefinitions) *app.Calls {
+	return h.callsWith(src, h.workspaces, h.changes, h.runs)
+}
+
+func (h *harness) callsWith(src app.ResolverDefinitions, workspaces app.CallWorkspaces, changes app.CallChanges, runs app.CallRuns) *app.Calls {
+	return h.callsRecordedWith(src, workspaces, changes, runs, h.recorder, fixedIDs{})
+}
+
+func (h *harness) callsRecordedWith(src app.ResolverDefinitions, workspaces app.CallWorkspaces, changes app.CallChanges, runs app.CallRuns, recorder app.RunRecorder, ids app.IDs) *app.Calls {
 	return app.NewCalls(
 		app.NewResolver(src, h.runtimes, h.validator),
 		h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "git.changed_files": h.inputs, "file": h.inputs, "param": h.inputs},
-		h.workspaces, h.changes, app.NewPreparer(h.changes, h.setup, h.clock), app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
-		h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
+		workspaces, changes, app.NewPreparer(changes, h.setup, h.clock), app.NewVerifier(changes, h.copies, h.commands, h.clock), h.validator, recorder, runs,
+		h.clock, h.timer, ids, "/state", h.hosted,
 	)
 }
 
@@ -558,7 +567,9 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 	resumable := func(h *harness) {
 		h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
 	}
-	earlier := run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Result: &run.Result{Status: run.Interrupted, Session: &run.Session{ProviderSessionID: "prov-0"}}}
+	finished := time.Date(2026, 9, 28, 11, 0, 0, 0, time.UTC)
+	earlier := run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, FinishedAt: &finished,
+		Result: &run.Result{Status: run.Interrupted, Session: &run.Session{ProviderSessionID: "prov-0"}}}
 
 	h := newHarness()
 	resumable(h)
@@ -616,7 +627,9 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 // from the directory the run worked in, the session is resumed there.
 func TestContinuationWhereTheSessionDidNotRunIsRefused(t *testing.T) {
 	// run-0 left its session's evidence: it worked in checkout A.
+	ended := fixedClock{}.Now()
 	earlier := run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Workspace: "/work/checkout-a",
+		FinishedAt: &ended, Turn: &run.Turn{ProviderSessionID: "prov-0"},
 		Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0"}}}
 	arrange := func(workspace string, checkout bool) *harness {
 		h := newHarness()
@@ -741,6 +754,244 @@ func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
 			if *record.Turn.CostUSD != *c.want.CostUSD || *record.Turn.Usage.InputTokens != *c.want.Usage.InputTokens ||
 				record.Result.Cost.Source != run.CostRuntime || *record.Result.Cost.USD != *c.want.CostUSD || *record.Result.Usage.InputTokens != *c.want.Usage.InputTokens {
 				t.Fatalf("turn cost %v, usage %+v, call cost %+v", *record.Turn.CostUSD, record.Turn.Usage, record.Result.Cost)
+			}
+		})
+	}
+}
+
+// carrying is a harness whose agent resumes sessions and whose process p
+// runs a setup in its checkout, with an empty order of what happened.
+func carrying() (*harness, *[]string) {
+	h := newHarness()
+	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+	ownSetup(h)
+	order := new([]string)
+	h.changes.applying = func(check bool) error {
+		*order = append(*order, map[bool]string{true: "check", false: "apply"}[check])
+		return nil
+	}
+	h.setup.running = func(app.SetupCommandRequest) { *order = append(*order, "setup") }
+	h.runner.during = func(app.TurnRequest) { *order = append(*order, "turn") }
+	return h, order
+}
+
+// patchedRun records a finished run of p in session prov-0, created and
+// finished at those minutes, that hit a rate limit in a checkout of /repo
+// at sha-HEAD and kept patch as its changes; none when patch is empty.
+func patchedRun(h *harness, id, continues string, created, finished int, patch string) run.Record {
+	at := func(minute int) time.Time { return time.Date(2026, 9, 28, 11, minute, 0, 0, time.UTC) }
+	end := at(finished)
+	record := run.Record{ID: id, Process: "p", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"},
+		Request:   run.Request{Process: "p", Continue: continues, Cwd: "/repo"},
+		CreatedAt: at(created), FinishedAt: &end,
+		Inputs:  []run.Input{{Name: "candidate_revision", Source: "git.revision", Identity: "sha-HEAD", Revision: true}},
+		Effects: &run.Effects{Checkout: &run.Checkout{Repository: "/repo", Dir: "/work/checkout-" + id, Revision: "sha-HEAD"}},
+		Turn:    &run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "429"), ProviderSessionID: "prov-0"},
+		Result: &run.Result{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "429"),
+			Session: &run.Session{ProviderSessionID: "prov-0", Continues: continues}},
+	}
+	record.Definitions = []run.DefinitionSource{{Kind: string(definition.KindProcess), Name: "p", SHA256: sha(h.defs.docs[definition.KindProcess]["p"])}}
+	if patch != "" {
+		record.Result.Artifacts = []run.Artifact{h.runs.store(id, "changes.patch", []byte(patch))}
+	}
+	h.runs.records[id], h.runs.states[id] = record, run.StateFinished
+	return record
+}
+
+// A continuation with a checkout carries the changes.patch of its session's
+// latest run (ADR-013): checked before the setup, applied after it, before
+// the first turn, whose prompt says so; the run's events record it. The
+// call's own patch is still from the revision.
+func TestAContinuationCarriesTheLatestRunsChanges(t *testing.T) {
+	h, order := carrying()
+	patchedRun(h, "run-0", "", 0, 1, "diff A\n")
+	record := h.call(t, contract.CallRequest{Continue: "run-0"})
+	if record.Result.Status != run.Completed || len(h.runner.calls()) != 1 {
+		t.Fatalf("result %+v", record.Result)
+	}
+	if want := []string{"check", "setup", "apply", "turn"}; !reflect.DeepEqual(*order, want) {
+		t.Fatalf("order %v, want %v", *order, want)
+	}
+	if want := []appliedPatch{{"/work/checkout", "diff A\n", true}, {"/work/checkout", "diff A\n", false}}; !reflect.DeepEqual(h.changes.applies(), want) {
+		t.Fatalf("applied %+v", h.changes.applies())
+	}
+	got := h.runner.calls()[0]
+	notice := prompt.Continues("run-0", "run-0", "/work/checkout", "sha-HEAD")
+	if got.ResumeSessionID != "prov-0" || !strings.HasPrefix(got.Prompt, notice+"\n\n## candidate_revision") || strings.Contains(got.Instruction, "continues") {
+		t.Fatalf("request %+v", got)
+	}
+	var carried *run.Event
+	for i, event := range h.recorder.events {
+		if event.Kind == "CHANGES_CARRIED" {
+			carried = &h.recorder.events[i]
+		}
+	}
+	artifact := h.runs.records["run-0"].Result.Artifacts[0]
+	if carried == nil || carried.Data["run"] != "run-0" || carried.Data["digest"] != artifact.Digest || carried.Data["bytes"] != artifact.Bytes {
+		t.Fatalf("events %+v", h.recorder.events)
+	}
+	// The call's own changes, asked last, after the setup's, are from the
+	// revision: they hold the carried ones once.
+	if changed := h.changes.changed; changed[len(changed)-1] != [2]string{"/work/checkout", "sha-HEAD"} {
+		t.Fatalf("changes asked %v", changed)
+	}
+
+	// An older record names no revision: the input its process checked out
+	// does, when it ran the same process.
+	h, order = carrying()
+	legacy := patchedRun(h, "run-0", "", 0, 1, "diff A\n")
+	legacy.Effects.Checkout.Revision = ""
+	h.runs.records["run-0"] = legacy
+	if record := h.call(t, contract.CallRequest{Continue: "run-0"}); record.Result.Status != run.Completed || len(h.changes.applies()) != 2 {
+		t.Fatalf("result %+v, applied %+v", record.Result, h.changes.applies())
+	}
+}
+
+// The changes carried are the session's latest run's: continuing a
+// continuation carries that run's patch alone, which holds the earlier
+// one's; continuing the first run again, after the session moved on,
+// carries the later run's too (D-6).
+func TestAContinuationCarriesTheSessionsLatestPatch(t *testing.T) {
+	for _, continued := range []string{"run-0b", "run-0"} {
+		t.Run(continued, func(t *testing.T) {
+			h, _ := carrying()
+			patchedRun(h, "run-0", "", 0, 1, "diff A\n")
+			patchedRun(h, "run-0b", "run-0", 2, 3, "diff AB\n")
+			record := h.call(t, contract.CallRequest{Continue: continued})
+			if record.Result.Status != run.Completed {
+				t.Fatalf("result %+v", record.Result)
+			}
+			if want := []appliedPatch{{"/work/checkout", "diff AB\n", true}, {"/work/checkout", "diff AB\n", false}}; !reflect.DeepEqual(h.changes.applies(), want) {
+				t.Fatalf("applied %+v", h.changes.applies())
+			}
+			if !reflect.DeepEqual(h.runs.read, []string{"run-0b/artifacts/changes.patch"}) {
+				t.Fatalf("read %v", h.runs.read)
+			}
+			if notice := prompt.Continues(continued, "run-0b", "/work/checkout", "sha-HEAD"); !strings.HasPrefix(h.runner.calls()[0].Prompt, notice) {
+				t.Fatalf("prompt %q", h.runner.calls()[0].Prompt)
+			}
+		})
+	}
+}
+
+// A latest run that worked in no checkout, or kept no patch, carries
+// nothing: the call runs on the revision, and is told so.
+func TestAContinuationWithNothingToCarryRuns(t *testing.T) {
+	for _, c := range []struct {
+		name    string
+		arrange func(*harness)
+	}{
+		{"no checkout", func(h *harness) {
+			prior := patchedRun(h, "run-0", "", 0, 1, "diff A\n")
+			prior.Effects = nil
+			h.runs.records["run-0"] = prior
+		}},
+		{"no patch", func(h *harness) { patchedRun(h, "run-0", "", 0, 1, "") }},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			h, order := carrying()
+			c.arrange(h)
+			record := h.call(t, contract.CallRequest{Continue: "run-0"})
+			if record.Result.Status != run.Completed || len(h.changes.applies()) != 0 || !reflect.DeepEqual(*order, []string{"setup", "turn"}) {
+				t.Fatalf("result %+v, applied %+v, order %v", record.Result, h.changes.applies(), *order)
+			}
+			if notice := prompt.Continues("run-0", "", "/work/checkout", "sha-HEAD"); !strings.HasPrefix(h.runner.calls()[0].Prompt, notice) {
+				t.Fatalf("prompt %q", h.runner.calls()[0].Prompt)
+			}
+			if contains(h.recorder.kinds(), "CHANGES_CARRIED") {
+				t.Fatalf("events %v", h.recorder.kinds())
+			}
+		})
+	}
+}
+
+// Changes that cannot be carried refuse the call before any turn, and
+// before the checkout is made where that can be told without it; a patch
+// that does not apply costs no setup. The checkout is released either way.
+func TestAContinuationWhoseChangesCannotBeCarriedIsRefused(t *testing.T) {
+	failing := func(when bool) func(*harness) {
+		return func(h *harness) {
+			patchedRun(h, "run-0", "", 0, 1, "diff A\n")
+			applying := h.changes.applying
+			h.changes.applying = func(check bool) error {
+				if err := applying(check); err != nil || check != when {
+					return err
+				}
+				return errors.New("patch failed: a.txt:1")
+			}
+		}
+	}
+	prior := func(change func(*run.Record)) func(*harness) {
+		return func(h *harness) {
+			record := patchedRun(h, "run-0", "", 0, 1, "diff A\n")
+			change(&record)
+			h.runs.records["run-0"] = record
+		}
+	}
+	for _, c := range []struct {
+		name    string
+		arrange func(*harness)
+		reason  string
+		order   []string // what happened; a checkout was made when set
+	}{
+		{"a patch that does not apply", failing(true),
+			"run run-0's changes do not apply to revision sha-HEAD: patch failed: a.txt:1", []string{"check"}},
+		{"a patch that fails to apply", failing(false),
+			"run run-0's changes could not be applied to revision sha-HEAD: patch failed: a.txt:1", []string{"check", "setup", "apply"}},
+		{"another revision", prior(func(r *run.Record) { r.Effects.Checkout.Revision = "sha-other" }),
+			"run run-0's changes are from revision sha-other, not sha-HEAD", nil},
+		{"another repository", prior(func(r *run.Record) { r.Effects.Checkout.Repository = "/other" }),
+			"run run-0's changes are of repository /other, not /repo", nil},
+		{"another stored repository identity", prior(func(r *run.Record) { r.Effects.Checkout.RepositoryIdentity = "/other" }),
+			"run run-0's changes are of repository /other, not /repo", nil},
+		{"an older record of another process", prior(func(r *run.Record) {
+			r.Effects.Checkout.Revision, r.Request.Process, r.Process = "", "q", "q"
+		}), "the revision run run-0 worked on is unknown", nil},
+		{"a patch whose digest does not match", prior(func(r *run.Record) { r.Result.Artifacts[0].Digest = "sha256:recorded" }),
+			"run run-0's changes.patch is sha256:" + sha("diff A\n") + ", not sha256:recorded as recorded", nil},
+		{"a patch that cannot be read", prior(func(r *run.Record) { r.Result.Artifacts[0].Path = "artifacts/gone.patch" }),
+			"run run-0's changes.patch cannot be read: no artifact artifacts/gone.patch", nil},
+		{"latest run has another revision", func(h *harness) {
+			patchedRun(h, "run-0", "", 0, 1, "diff A\n")
+			later := patchedRun(h, "run-0b", "run-0", 2, 3, "diff AB\n")
+			later.Effects.Checkout.Revision = "sha-other"
+			h.runs.records[later.ID] = later
+		}, "run run-0b's changes are from revision sha-other, not sha-HEAD", nil},
+		{"latest run has another repository", func(h *harness) {
+			patchedRun(h, "run-0", "", 0, 1, "diff A\n")
+			later := patchedRun(h, "run-0b", "run-0", 2, 3, "diff AB\n")
+			later.Effects.Checkout.Repository = "/other"
+			h.runs.records[later.ID] = later
+		}, "run run-0b's changes are of repository /other, not /repo", nil},
+		{"overlapping finished runs", func(h *harness) {
+			patchedRun(h, "run-0", "", 0, 3, "diff A\n")
+			patchedRun(h, "run-0b", "run-0", 2, 4, "diff AB\n")
+		}, "the latest run of run run-0's session is unknown", nil},
+		{"a run of the session still running", func(h *harness) {
+			patchedRun(h, "run-0", "", 0, 1, "diff A\n")
+			later := patchedRun(h, "run-0b", "run-0", 2, 3, "diff AB\n")
+			later.FinishedAt, later.Result = nil, nil
+			h.runs.records["run-0b"], h.runs.states["run-0b"] = later, run.StateRunning
+		}, "the latest run of run run-0's session is unknown", nil},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			h, order := carrying()
+			c.arrange(h)
+			record := h.call(t, contract.CallRequest{Continue: "run-0"})
+			if class(record) != run.ClassRefused || !strings.Contains(message(record), c.reason) || !contains(h.recorder.kinds(), "REFUSED") {
+				t.Fatalf("result %+v, want refusal %q", record.Result.Error, c.reason)
+			}
+			if len(h.runner.calls()) != 0 || !reflect.DeepEqual(*order, c.order) {
+				t.Fatalf("turns %d, order %v, want %v", len(h.runner.calls()), *order, c.order)
+			}
+			if checkouts := len(h.workspaces.checkouts); checkouts != h.workspaces.releases() || (checkouts == 1) != (c.order != nil) {
+				t.Fatalf("checkouts %v, released %d", h.workspaces.checkouts, h.workspaces.releases())
+			}
+			if c.order == nil && (len(h.workspaces.checkouts) != 0 || len(h.setup.runs()) != 0 || len(h.changes.applies()) != 0) {
+				t.Fatalf("checkouts %v, setup %v, applied %v", h.workspaces.checkouts, h.setup.runs(), h.changes.applies())
+			}
+			if len(record.Result.Artifacts) != 0 || contains(h.recorder.kinds(), "CHANGES_CARRIED") {
+				t.Fatalf("artifacts %+v, events %v", record.Result.Artifacts, h.recorder.kinds())
 			}
 		})
 	}
