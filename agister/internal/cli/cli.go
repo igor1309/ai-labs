@@ -897,14 +897,17 @@ func installSettings(ctx context.Context, client contract.Client, dir, home stri
 	}
 	result, err := client.Install(ctx, dir, &plan)
 	// An install that wrote its backup can be undone, even one that stopped.
-	if result.Stamp != "" && err != nil {
-		fmt.Fprintf(env.Stderr, "restore with: agister install --restore %s\n", result.Stamp)
+	if result.Stamp != "" {
+		hint := env.Stdout
+		if asJSON || err != nil {
+			hint = env.Stderr
+		}
+		fmt.Fprintf(hint, "restore with: agister install --restore %s\n", result.Stamp)
 	}
 	if err != nil {
 		return 0, err
 	}
 	if asJSON {
-		fmt.Fprintf(env.Stderr, "restore with: agister install --restore %s\n", result.Stamp)
 		return 0, printJSON(env.Stdout, result)
 	}
 	for _, doc := range result.Documents {
@@ -915,7 +918,6 @@ func installSettings(ctx context.Context, client contract.Client, dir, home stri
 			fmt.Fprintf(env.Stdout, "replaced %s\n", doc.Path)
 		}
 	}
-	fmt.Fprintf(env.Stdout, "restore with: agister install --restore %s\n", result.Stamp)
 	return 0, nil
 }
 

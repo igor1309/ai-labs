@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
-	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
@@ -32,7 +31,7 @@ func TestSourceReadsSettingsAndNamesTheRest(t *testing.T) {
 	dir := t.TempDir()
 	for _, name := range []string{
 		"service.toml", "workspace.yaml", "agents/a.toml", "prompts/p.md", "verifies/repo.yaml",
-		"notes.txt", ".DS_Store", "agents/a.yaml", "agents/old/b.toml", "prompts/Not A Name.md", "runs/r1/record.json",
+		"notes.txt", ".DS_Store", "agents/a.yaml", "agents/old/b.toml", "agents/Bad.toml", "prompts/Not A Name.md", "runs/r1/record.json",
 	} {
 		put(t, filepath.Join(dir, name), name)
 	}
@@ -56,7 +55,7 @@ func TestSourceReadsSettingsAndNamesTheRest(t *testing.T) {
 	if !reflect.DeepEqual(read, wantRead) {
 		t.Fatalf("read %v", read)
 	}
-	wantIgnored := []string{".DS_Store", "agents/a.yaml", "agents/old/", "notes.txt", "prompts/Not A Name.md", "runs/"}
+	wantIgnored := []string{".DS_Store", "agents/Bad.toml", "agents/a.yaml", "agents/old/", "notes.txt", "prompts/Not A Name.md", "runs/"}
 	if !reflect.DeepEqual(ignored, wantIgnored) {
 		t.Fatalf("ignored %v", ignored)
 	}
@@ -84,14 +83,39 @@ func TestSourceRefusesASymbolicLink(t *testing.T) {
 	}
 }
 
+// A store's documents are what List names, but for a file whose name
+// breaks the naming rule, which is no document and is not read.
+func TestDocumentsSkipsInvalidNames(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"service.toml", "agents/a.toml", "agents/Bad.toml", "verifies/Not A Name.yaml"} {
+		put(t, filepath.Join(dir, name), name)
+	}
+	docs, err := fsdefs.Store{Dir: dir}.Documents(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var read []string
+	for _, doc := range docs {
+		read = append(read, string(doc.Source.Kind)+"/"+doc.Source.Name)
+	}
+	if !reflect.DeepEqual(read, []string{"agents/a", "service/service"}) {
+		t.Fatalf("read %v", read)
+	}
+}
+
 // A stage is read as the store it stages: paths, and where a document not
-// found was expected, are the store's.
+// found was expected, are the store's. Its removal removes it.
 func TestStageReadsAsTheStore(t *testing.T) {
-	home := fsdefs.Store{Dir: t.TempDir()}
+	root := t.TempDir()
+	home := fsdefs.Store{Dir: t.TempDir()}.StagingIn(root)
 	ctx := context.Background()
 	staged, remove, err := home.Stage(ctx, []definition.Document{{Source: definition.Source{Kind: definition.KindAgent, Name: "a"}, Bytes: []byte("x")}})
 	if err != nil {
 		t.Fatal(err)
+	}
+	t.Cleanup(remove)
+	if entries, _ := os.ReadDir(root); len(entries) != 1 {
+		t.Fatalf("stages %v, want one", entries)
 	}
 	doc, err := staged.Read(ctx, definition.KindAgent, "a")
 	if err != nil || doc.Source.Path != filepath.Join(home.Dir, "agents", "a.toml") || string(doc.Bytes) != "x" {
@@ -104,6 +128,9 @@ func TestStageReadsAsTheStore(t *testing.T) {
 		t.Fatalf("list %v", names)
 	}
 	remove()
+	if entries, _ := os.ReadDir(root); len(entries) != 0 {
+		t.Fatalf("the stage is left after its removal: %v", entries)
+	}
 	if entries, _ := os.ReadDir(home.Dir); len(entries) != 0 {
 		t.Fatalf("staging wrote into the store: %v", entries)
 	}
@@ -138,8 +165,8 @@ func TestPutAndRemove(t *testing.T) {
 func TestBackups(t *testing.T) {
 	backups := fsdefs.Backups{Dir: filepath.Join(t.TempDir(), "backups")}
 	ctx := context.Background()
-	manifest := app.InstallManifest{Stamp: "s1", Source: "/repo/.agister", Installed: time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC),
-		Documents: []app.InstallManifestEntry{{Path: "/home/service.toml", Kind: "service", Name: "service", Action: "replace", Before: "b", After: "a"}}}
+	manifest := fsdefs.Manifest{Stamp: "s1", Source: "/repo/.agister", Installed: time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC),
+		Documents: []fsdefs.ManifestEntry{{Path: "/home/service.toml", Kind: "service", Name: "service", Action: "replace", Before: "b", After: "a"}}}
 	saved := []definition.Document{{Source: definition.Source{Kind: definition.KindService, Name: "service"}, Bytes: []byte("old")}}
 	if err := backups.Save(ctx, "s1", manifest, saved); err != nil {
 		t.Fatal(err)
@@ -153,7 +180,7 @@ func TestBackups(t *testing.T) {
 	if data, err := backups.Saved(ctx, "s1", definition.KindService, "service"); err != nil || string(data) != "old" {
 		t.Fatalf("saved %q, %v", data, err)
 	}
-	if err := backups.Save(ctx, "s0", app.InstallManifest{}, nil); err != nil {
+	if err := backups.Save(ctx, "s0", fsdefs.Manifest{}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if stamps, err := backups.List(ctx); err != nil || !reflect.DeepEqual(stamps, []string{"s0", "s1"}) {
@@ -169,5 +196,30 @@ func TestBackups(t *testing.T) {
 	}
 	if stamps, _ := backups.List(ctx); !reflect.DeepEqual(stamps, []string{"s1"}) {
 		t.Fatalf("after remove %v", stamps)
+	}
+}
+
+// A backup whose write fails is removed whole: no folder is left to be
+// taken for a backup.
+func TestBackupsSaveLeavesNothingWhenAWriteFails(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "backups")
+	full := errors.New("disk full")
+	var written []string
+	backups := fsdefs.Backups{Dir: dir}.Writing(func(path string, data []byte) error {
+		if filepath.Base(path) == "manifest.json" {
+			return full
+		}
+		written = append(written, path)
+		return os.WriteFile(path, data, 0o600)
+	})
+	saved := []definition.Document{{Source: definition.Source{Kind: definition.KindService, Name: "service"}, Bytes: []byte("old")}}
+	if err := backups.Save(context.Background(), "s1", fsdefs.Manifest{Stamp: "s1"}, saved); !errors.Is(err, full) {
+		t.Fatalf("save: %v", err)
+	}
+	if len(written) != 1 {
+		t.Fatalf("written %v, want the saved document before the manifest failed", written)
+	}
+	if entries, err := os.ReadDir(dir); err != nil || len(entries) != 0 {
+		t.Fatalf("left %v, %v", entries, err)
 	}
 }

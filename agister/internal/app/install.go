@@ -20,6 +20,7 @@ const keepBackups = 5
 // Installer merges a folder of settings into home's, and undoes one such
 // install from its backup (ADR-016).
 type Installer struct {
+	source      InstallSource
 	home        InstallHome
 	backups     InstallBackups
 	clock       InstallClock
@@ -30,13 +31,16 @@ type Installer struct {
 	sources []string
 }
 
-// InstallHome is home's settings store, and the reader of the folder
-// installed into it.
-type InstallHome interface {
+// InstallSource reads the folder installed into home.
+type InstallSource interface {
 	// Source reads the settings documents of the folder dir, laid out like
 	// home, and names its files that are not settings documents. A symbolic
 	// link in it, or a path that leaves it, is an error.
 	Source(ctx context.Context, dir string) (docs []definition.Document, ignored []string, err error)
+}
+
+// InstallHome is home's settings store.
+type InstallHome interface {
 	// Documents reads every settings document in home.
 	Documents(ctx context.Context) ([]definition.Document, error)
 	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
@@ -87,6 +91,7 @@ type InstallStamps interface {
 
 // InstallAdapters are what an Installer runs on.
 type InstallAdapters struct {
+	Source  InstallSource
 	Home    InstallHome
 	Backups InstallBackups
 	Clock   InstallClock
@@ -99,20 +104,20 @@ type InstallAdapters struct {
 // InstallManifest records what one install changes, before it changes
 // anything, so a restore can undo it even where it stopped halfway.
 type InstallManifest struct {
-	Stamp     string                 `json:"stamp"`
-	Source    string                 `json:"source"`
-	Installed time.Time              `json:"installed"`
-	Documents []InstallManifestEntry `json:"documents"`
+	Stamp     string
+	Source    string
+	Installed time.Time
+	Documents []InstallManifestEntry
 }
 
 // InstallManifestEntry is one document an install creates or replaces.
 type InstallManifestEntry struct {
-	Path   string `json:"path"`
-	Kind   string `json:"kind"`
-	Name   string `json:"name"`
-	Action string `json:"action"`           // create | replace
-	Before string `json:"before,omitempty"` // digest; empty for a create
-	After  string `json:"after"`            // digest
+	Path   string
+	Kind   string
+	Name   string
+	Action string // create | replace
+	Before string // digest; empty for a create
+	After  string // digest
 }
 
 // NewInstaller returns the use case that installs folders of settings
@@ -120,7 +125,7 @@ type InstallManifestEntry struct {
 // checker checks home's.
 func NewInstaller(adapters InstallAdapters, checker CheckAdapters, sources []string) *Installer {
 	return &Installer{
-		home: adapters.Home, backups: adapters.Backups, clock: adapters.Clock, stamps: adapters.Stamps,
+		source: adapters.Source, home: adapters.Home, backups: adapters.Backups, clock: adapters.Clock, stamps: adapters.Stamps,
 		beforeWrite: adapters.BeforeWrite, checker: checker, sources: sources,
 	}
 }
@@ -195,7 +200,7 @@ func (i *Installer) Install(ctx context.Context, source string, approved *contra
 // staged copy: a problem refuses it, and warnings are the plan's.
 func (i *Installer) plan(ctx context.Context, source string) (contract.InstallPlan, []installWrite, error) {
 	plan := contract.InstallPlan{Source: source, Inventory: map[string]string{}}
-	docs, ignored, err := i.home.Source(ctx, source)
+	docs, ignored, err := i.source.Source(ctx, source)
 	if err != nil {
 		return contract.InstallPlan{}, nil, err
 	}
@@ -412,8 +417,11 @@ func (i *Installer) restorePlan(ctx context.Context, stamp string) (contract.Res
 		switch entry.Action {
 		case contract.InstallReplace:
 			data, err := i.backups.Saved(ctx, stamp, kind, entry.Name)
-			if err != nil || digestOf(data) != entry.Before {
-				return contract.RestorePlan{}, nil, fmt.Errorf("install backup %s does not hold %s as it was before the install: %v", stamp, path, err)
+			if err != nil {
+				return contract.RestorePlan{}, nil, fmt.Errorf("install backup %s: reading %s as it was before the install: %w", stamp, path, err)
+			}
+			if digestOf(data) != entry.Before {
+				return contract.RestorePlan{}, nil, fmt.Errorf("install backup %s does not hold %s as it was before the install: its digest differs", stamp, path)
 			}
 			if current == entry.Before {
 				break

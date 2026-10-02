@@ -196,8 +196,15 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		Reaper: app.NewReaper(evidence, runtimecomposition.Processes{Supervisor: supervisor.Processes{}}, workspaces.discarder, system.Clock{}),
 		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },
 	}
-	// Installs write the global settings, backed up beside them.
-	installing := app.InstallAdapters{Home: global, Backups: fsdefs.Backups{Dir: filepath.Join(config.Home, "backups")}, Clock: system.Clock{}, Stamps: system.IDs{}}
+	// Installs read a folder laid out like the global settings, and write
+	// the global settings, backed up beside them.
+	installing := app.InstallAdapters{
+		Source:  global,
+		Home:    installHome{global},
+		Backups: installBackups{fsdefs.Backups{Dir: filepath.Join(config.Home, "backups")}},
+		Clock:   system.Clock{},
+		Stamps:  system.IDs{},
+	}
 	if c.installing != nil {
 		c.installing(&installing)
 	}

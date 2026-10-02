@@ -11,10 +11,12 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
@@ -31,37 +33,79 @@ func (s countedStamps) Stamp(now time.Time) string {
 	return fmt.Sprintf("%s-%03d", now.UTC().Format("20060102T150405Z"), *s.n)
 }
 
-// stageCounter counts how often home's settings were staged to check an
-// install's result.
-type stageCounter struct {
+// homeSpy counts how often home's settings were staged to check an
+// install's result, and records, in order, taking and releasing the lock
+// and reading and writing home's settings.
+type homeSpy struct {
 	app.InstallHome
 	staged *int
+	events *[]string
 }
 
-func (s stageCounter) Stage(ctx context.Context, docs []definition.Document) (app.InstallSettings, func(), error) {
+func (s homeSpy) Stage(ctx context.Context, docs []definition.Document) (app.InstallSettings, func(), error) {
 	*s.staged++
 	return s.InstallHome.Stage(ctx, docs)
 }
 
+func (s homeSpy) Lock(ctx context.Context) (func(), error) {
+	*s.events = append(*s.events, "Lock")
+	unlock, err := s.InstallHome.Lock(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return func() {
+		*s.events = append(*s.events, "unlock")
+		unlock()
+	}, nil
+}
+
+func (s homeSpy) Documents(ctx context.Context) ([]definition.Document, error) {
+	*s.events = append(*s.events, "Documents")
+	return s.InstallHome.Documents(ctx)
+}
+
+func (s homeSpy) Current(ctx context.Context, kind definition.Kind, name string) (string, string, error) {
+	*s.events = append(*s.events, "Current "+string(kind)+"/"+name)
+	return s.InstallHome.Current(ctx, kind, name)
+}
+
+func (s homeSpy) Put(ctx context.Context, kind definition.Kind, name string, data []byte) error {
+	*s.events = append(*s.events, "Put "+string(kind)+"/"+name)
+	return s.InstallHome.Put(ctx, kind, name, data)
+}
+
+func (s homeSpy) Remove(ctx context.Context, kind definition.Kind, name string) error {
+	*s.events = append(*s.events, "Remove "+string(kind)+"/"+name)
+	return s.InstallHome.Remove(ctx, kind, name)
+}
+
 // installing is the production client over home, its installs on a fixed
-// clock and counted stamps, staging counted, and beforeWrite, when set,
+// clock and counted stamps, home spied on, and beforeWrite, when set,
 // called before each document an install writes.
 type installing struct {
 	client contract.Client
 	staged int
+	events []string
 }
 
 func installClient(t *testing.T, home string, beforeWrite func(path string) error) *installing {
+	t.Helper()
+	return installClientAdjusted(t, home, func(adapters *app.InstallAdapters) { adapters.BeforeWrite = beforeWrite })
+}
+
+// installClientAdjusted is installClient with what its installs run on
+// adjusted further by adjust.
+func installClientAdjusted(t *testing.T, home string, adjust func(*app.InstallAdapters)) *installing {
 	t.Helper()
 	in := &installing{}
 	stamps := 0
 	compose := composition{
 		worktrees: git.NewWorktrees(filepath.Join(home, "locks", "worktrees")),
 		installing: func(adapters *app.InstallAdapters) {
-			adapters.Home = stageCounter{InstallHome: adapters.Home, staged: &in.staged}
+			adapters.Home = homeSpy{InstallHome: adapters.Home, staged: &in.staged, events: &in.events}
 			adapters.Clock = &manualClock{now: time.Date(2026, 10, 2, 12, 0, 0, 0, time.UTC)}
 			adapters.Stamps = countedStamps{&stamps}
-			adapters.BeforeWrite = beforeWrite
+			adjust(adapters)
 		},
 	}
 	client, _, err := compose.wire(cli.Config{Home: home, Cwd: tempDir(t)})
@@ -236,9 +280,9 @@ func TestInstallBacksUpBeforeWriting(t *testing.T) {
 			if read(t, filepath.Join(backup, "agents", "reviewer.toml")) != before[filepath.Join("agents", "reviewer.toml")] {
 				t.Fatal("the backup does not hold the replaced document")
 			}
-			var manifest app.InstallManifest
+			var manifest fsdefs.Manifest
 			readJSON(t, filepath.Join(backup, "manifest.json"), &manifest)
-			want := []app.InstallManifestEntry{
+			want := []fsdefs.ManifestEntry{
 				{Path: reviewer, Kind: "agents", Name: "reviewer", Action: "replace", Before: digestText(before[filepath.Join("agents", "reviewer.toml")]), After: digestText(read(t, filepath.Join(src, "agents", "reviewer.toml")))},
 				{Path: filepath.Join(home, "prompts", "house.md"), Kind: "prompts", Name: "house", Action: "create", After: digestText("Follow the house style.\n")},
 			}
@@ -294,17 +338,22 @@ func TestInstallRefusesAResultThatFailsCheck(t *testing.T) {
 	}
 }
 
-// The yes binds home's whole inventory: a document changed, added, or
-// created at a planned path since the plan refuses the install, with
-// nothing written.
+// The yes binds home's whole inventory and the source's documents: a
+// document changed, added, or created at a planned path since the plan, in
+// home or in the source, refuses the install, with nothing written.
 func TestInstallRefusesAnInventoryChangedSinceThePlan(t *testing.T) {
-	for name, change := range map[string]func(home string){
-		"changed": func(home string) {
+	for name, change := range map[string]func(home, src string){
+		"changed": func(home, _ string) {
 			path := filepath.Join(home, "agents", "assistant.toml")
 			write(t, path, read(t, path)+"# edited\n")
 		},
-		"added":        func(home string) { write(t, filepath.Join(home, "prompts", "extra.md"), "extra\n") },
-		"planned path": func(home string) { write(t, filepath.Join(home, "prompts", "house.md"), "mine\n") },
+		"added":        func(home, _ string) { write(t, filepath.Join(home, "prompts", "extra.md"), "extra\n") },
+		"planned path": func(home, _ string) { write(t, filepath.Join(home, "prompts", "house.md"), "mine\n") },
+		"source changed": func(_, src string) {
+			path := filepath.Join(src, "agents", "reviewer.toml")
+			write(t, path, read(t, path)+"# retuned\n")
+		},
+		"source added": func(_, src string) { write(t, filepath.Join(src, "prompts", "extra.md"), "extra\n") },
 	} {
 		t.Run(name, func(t *testing.T) {
 			home := initedHome(t)
@@ -314,7 +363,7 @@ func TestInstallRefusesAnInventoryChangedSinceThePlan(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			change(home)
+			change(home, src)
 			before := files(t, home)
 			var input *contract.InputError
 			if _, err := in.client.Install(context.Background(), src, &plan); !errors.As(err, &input) || !strings.Contains(err.Error(), "changed since you confirmed, so nothing was installed") {
@@ -355,6 +404,168 @@ func TestRestoreUndoesAnInstall(t *testing.T) {
 	if after := files(t, home); !reflect.DeepEqual(after, before) {
 		t.Fatalf("after restore:\n%v\nwant\n%v", after, before)
 	}
+}
+
+// The yes binds the restore plan: a document it touches changed since, or
+// one the install created already removed, refuses the restore, with
+// nothing written.
+func TestRestoreRefusesAStateChangedSinceThePlan(t *testing.T) {
+	for name, change := range map[string]func(home string){
+		"changed": func(home string) {
+			path := filepath.Join(home, "agents", "reviewer.toml")
+			write(t, path, read(t, path)+"# edited\n")
+		},
+		"created removed": func(home string) {
+			if err := os.Remove(filepath.Join(home, "prompts", "house.md")); err != nil {
+				t.Fatal(err)
+			}
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			home := initedHome(t)
+			src := repoSettings(t, home)
+			in := installClient(t, home, nil)
+			result, err := in.installNow(t, src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			plan, err := in.client.Restore(context.Background(), result.Stamp, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			change(home)
+			before := files(t, home)
+			var input *contract.InputError
+			if _, err := in.client.Restore(context.Background(), result.Stamp, &plan); !errors.As(err, &input) || !strings.Contains(err.Error(), "changed since you confirmed, so nothing was restored") {
+				t.Fatalf("approved: %v", err)
+			}
+			if !reflect.DeepEqual(files(t, home), before) {
+				t.Fatal("wrote after the state changed")
+			}
+		})
+	}
+}
+
+// An install and a restore plan again under home's lock, and write and
+// release it only after: what is compared with the approved plan is what
+// is written.
+func TestInstallAndRestoreWriteUnderTheLock(t *testing.T) {
+	home := initedHome(t)
+	src := repoSettings(t, home)
+	in := installClient(t, home, nil)
+	ctx := context.Background()
+	plan, err := in.client.Install(ctx, src, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in.events = nil
+	result, err := in.client.Install(ctx, src, &plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"Lock", "Documents", "Current prompts/house", "Put agents/reviewer", "Put prompts/house", "unlock"}
+	if !reflect.DeepEqual(in.events, want) {
+		t.Fatalf("install:\n%q\nwant\n%q", in.events, want)
+	}
+	restore, err := in.client.Restore(ctx, result.Stamp, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in.events = nil
+	if _, err := in.client.Restore(ctx, result.Stamp, &restore); err != nil {
+		t.Fatal(err)
+	}
+	want = []string{"Lock", "Current agents/reviewer", "Current prompts/house", "Put agents/reviewer", "Remove prompts/house", "unlock"}
+	if !reflect.DeepEqual(in.events, want) {
+		t.Fatalf("restore:\n%q\nwant\n%q", in.events, want)
+	}
+}
+
+// failingBackups fails every backup it is asked to save.
+type failingBackups struct {
+	app.InstallBackups
+	err error
+}
+
+func (b failingBackups) Save(context.Context, string, app.InstallManifest, []definition.Document) error {
+	return b.err
+}
+
+// A backup that fails stops the install before anything is written.
+func TestInstallWritesNothingWhenTheBackupFails(t *testing.T) {
+	home := initedHome(t)
+	src := repoSettings(t, home)
+	before := files(t, home)
+	full := errors.New("disk full")
+	in := installClientAdjusted(t, home, func(adapters *app.InstallAdapters) {
+		adapters.Backups = failingBackups{InstallBackups: adapters.Backups, err: full}
+		adapters.BeforeWrite = func(string) error { t.Fatal("a document was written"); return nil }
+	})
+	result, err := in.installNow(t, src)
+	if !errors.Is(err, full) || !strings.Contains(err.Error(), "nothing was installed") || result.Stamp != "" {
+		t.Fatalf("%+v, %v", result, err)
+	}
+	for _, event := range in.events {
+		if strings.HasPrefix(event, "Put ") {
+			t.Fatalf("written after the backup failed: %q", in.events)
+		}
+	}
+	if !reflect.DeepEqual(files(t, home), before) {
+		t.Fatal("home changed after the backup failed")
+	}
+}
+
+// A backup whose saved document was changed is refused: a restore never
+// puts back what the install did not replace.
+func TestRestoreRefusesATamperedBackup(t *testing.T) {
+	home := initedHome(t)
+	src := repoSettings(t, home)
+	in := installClient(t, home, nil)
+	result, err := in.installNow(t, src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(home, "backups", result.Stamp, "agents", "reviewer.toml"), "tampered\n")
+	installed := files(t, home)
+	if _, err := in.client.Restore(context.Background(), result.Stamp, nil); err == nil || !strings.Contains(err.Error(), "does not hold "+filepath.Join(home, "agents", "reviewer.toml")+" as it was before the install") {
+		t.Fatalf("restore of a tampered backup: %v", err)
+	}
+	if !reflect.DeepEqual(files(t, home), installed) {
+		t.Fatal("a refused restore wrote")
+	}
+}
+
+// A file whose name breaks the naming rule is no document: in home it
+// neither stops an install nor is touched by it, and in the source it is
+// named as not installed.
+func TestInstallLeavesFilesWithInvalidNamesAlone(t *testing.T) {
+	t.Run("home", func(t *testing.T) {
+		home := initedHome(t)
+		src := repoSettings(t, home)
+		bad := filepath.Join(home, "agents", "Bad.toml")
+		write(t, bad, "not = \"an agent\"\n")
+		in := installClient(t, home, nil)
+		result, err := in.installNow(t, src)
+		if err != nil || result.Writes() != 2 {
+			t.Fatalf("%+v, %v", result, err)
+		}
+		if read(t, bad) != "not = \"an agent\"\n" || slices.Contains(result.Kept, bad) {
+			t.Fatalf("Bad.toml touched or planned: kept %v", result.Kept)
+		}
+	})
+	t.Run("source", func(t *testing.T) {
+		home := initedHome(t)
+		src := repoSettings(t, home)
+		write(t, filepath.Join(src, "agents", "Bad.toml"), "not = \"an agent\"\n")
+		in := installClient(t, home, nil)
+		result, err := in.installNow(t, src)
+		if err != nil || result.Writes() != 2 || !slices.Contains(result.Ignored, "agents/Bad.toml") {
+			t.Fatalf("%+v, %v", result, err)
+		}
+		if _, err := os.Stat(filepath.Join(home, "agents", "Bad.toml")); !errors.Is(err, fs.ErrNotExist) {
+			t.Fatalf("Bad.toml installed: %v", err)
+		}
+	})
 }
 
 // An install stopped between its writes is undone by its restore too.
@@ -436,7 +647,7 @@ func TestInstallAndRestoreThroughTheCLI(t *testing.T) {
 	}
 	r := agisterInput(t, "yes\n", home, dir, "install", src)
 	match := regexp.MustCompile(`restore with: agister install --restore (\S+)\n`).FindStringSubmatch(r.stdout)
-	if r.code != 0 || match == nil || !strings.Contains(r.stdout, "replaced "+filepath.Join(home, "agents", "reviewer.toml")) {
+	if r.code != 0 || match == nil || !strings.Contains(r.stdout, "replaced "+filepath.Join(home, "agents", "reviewer.toml")) || strings.Count(r.stdout+r.stderr, "restore with:") != 1 {
 		t.Fatalf("yes: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	if r := agister(t, home, dir, "install", src); r.code != 0 || !strings.Contains(r.stdout, "nothing to install into "+home) || strings.Contains(r.stderr, "Type yes") {

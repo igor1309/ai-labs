@@ -29,6 +29,9 @@ type Store struct {
 	// at, when set, is called at the steps of Write that the lock must
 	// cover; tests use it to observe the lock there.
 	at func(point string)
+	// temp, when set, is the folder Stage makes its stages in, in place of
+	// the system's temporary folder.
+	temp string
 }
 
 // lockName is the writers' lock file, in Dir itself. Documents live in a
@@ -90,7 +93,7 @@ func (s Store) path(kind definition.Kind, name string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("unknown definition kind %q", kind)
 	}
-	if kind == definition.KindService || kind == definition.KindWorkspace {
+	if singleton(kind) {
 		return filepath.Join(s.Dir, string(kind)+extension), nil
 	}
 	if !definition.ValidName(name) {

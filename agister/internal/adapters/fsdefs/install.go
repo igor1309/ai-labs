@@ -10,14 +10,11 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
-
-var _ app.InstallHome = Store{}
-var _ app.InstallBackups = Backups{}
 
 // kinds is every kind the store holds, in a fixed order.
 func kinds() []definition.Kind {
@@ -35,7 +32,8 @@ func singleton(kind definition.Kind) bool {
 }
 
 // Documents reads every settings document of the store: those List names,
-// and the service when there is one.
+// and the service when there is one. A file whose name breaks the naming
+// rule is no document, so it is not read.
 func (s Store) Documents(ctx context.Context) ([]definition.Document, error) {
 	var docs []definition.Document
 	for _, kind := range kinds() {
@@ -57,6 +55,9 @@ func (s Store) Documents(ctx context.Context) ([]definition.Document, error) {
 			}
 		}
 		for _, name := range names {
+			if !singleton(kind) && !definition.ValidName(name) {
+				continue
+			}
 			doc, err := s.Read(ctx, kind, name)
 			if err != nil {
 				return nil, err
@@ -136,30 +137,30 @@ func (s Store) Source(ctx context.Context, dir string) ([]definition.Document, [
 // Stage writes docs into a new temporary folder laid out like the store.
 // What is read from it is described as the store's: each document's path,
 // and where one not found was expected, are the store's.
-func (s Store) Stage(ctx context.Context, docs []definition.Document) (app.InstallSettings, func(), error) {
-	dir, err := os.MkdirTemp("", "agister-install-")
+func (s Store) Stage(ctx context.Context, docs []definition.Document) (Staged, func(), error) {
+	dir, err := os.MkdirTemp(s.temp, "agister-install-")
 	if err != nil {
-		return nil, nil, err
+		return Staged{}, nil, err
 	}
 	remove := func() { os.RemoveAll(dir) }
 	stage := Store{Dir: dir}
 	for _, doc := range docs {
 		if _, written, err := stage.Write(ctx, doc.Source.Kind, doc.Source.Name, doc.Bytes, ""); err != nil || !written {
 			remove()
-			return nil, nil, fmt.Errorf("staging %s %s: written %v: %v", doc.Source.Kind.Singular(), doc.Source.Name, written, err)
+			return Staged{}, nil, fmt.Errorf("staging %s %s: written %v: %v", doc.Source.Kind.Singular(), doc.Source.Name, written, err)
 		}
 	}
-	return staged{Store: stage, home: s}, remove, nil
+	return Staged{stage: stage, home: s}, remove, nil
 }
 
-// staged is a stage, described as the store it stages.
-type staged struct {
-	Store
-	home Store
+// Staged is a stage, described as the store it stages.
+type Staged struct {
+	stage Store
+	home  Store
 }
 
-func (s staged) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
-	doc, err := s.Store.Read(ctx, kind, name)
+func (s Staged) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	doc, err := s.stage.Read(ctx, kind, name)
 	path, pathErr := s.home.path(kind, name)
 	switch {
 	case pathErr != nil:
@@ -170,6 +171,10 @@ func (s staged) Read(ctx context.Context, kind definition.Kind, name string) (de
 		doc.Source.Path = path
 	}
 	return doc, err
+}
+
+func (s Staged) List(ctx context.Context, kind definition.Kind) ([]string, error) {
+	return s.stage.List(ctx, kind)
 }
 
 // Lock takes the store's write lock, the one Write takes, and returns its
@@ -242,9 +247,41 @@ func syncDir(dir string) error {
 // Backups keeps install backups (ADR-016), a folder each, named by its
 // stamp: the bytes of each document the install replaced, laid out like
 // the store, and its manifest.
-type Backups struct{ Dir string }
+type Backups struct {
+	Dir string
+
+	// write, when set, writes each file of a backup in writeFile's place;
+	// tests use it to fail a write.
+	write func(path string, data []byte) error
+}
 
 const manifestName = "manifest.json"
+
+// Manifest is a backup's manifest.json: what one install changes, recorded
+// before it changes anything.
+type Manifest struct {
+	Stamp     string          `json:"stamp"`
+	Source    string          `json:"source"`
+	Installed time.Time       `json:"installed"`
+	Documents []ManifestEntry `json:"documents"`
+}
+
+// ManifestEntry is one document an install creates or replaces.
+type ManifestEntry struct {
+	Path   string `json:"path"`
+	Kind   string `json:"kind"`
+	Name   string `json:"name"`
+	Action string `json:"action"`           // create | replace
+	Before string `json:"before,omitempty"` // digest; empty for a create
+	After  string `json:"after"`            // digest
+}
+
+func (b Backups) writeFile(path string, data []byte) error {
+	if b.write != nil {
+		return b.write(path, data)
+	}
+	return writeFile(path, data)
+}
 
 // folder is the backup's folder; a stamp that is not one name is refused.
 func (b Backups) folder(stamp string) (string, error) {
@@ -257,7 +294,7 @@ func (b Backups) folder(stamp string) (string, error) {
 // Save writes each saved document, then the manifest, each durably. The
 // backup's folder is new: Save never writes into another backup, and
 // removes its own when it fails.
-func (b Backups) Save(_ context.Context, stamp string, manifest app.InstallManifest, saved []definition.Document) (err error) {
+func (b Backups) Save(_ context.Context, stamp string, manifest Manifest, saved []definition.Document) (err error) {
 	dir, err := b.folder(stamp)
 	if err != nil {
 		return err
@@ -279,7 +316,7 @@ func (b Backups) Save(_ context.Context, stamp string, manifest app.InstallManif
 		if err != nil {
 			return err
 		}
-		if err := writeFile(path, doc.Bytes); err != nil {
+		if err := b.writeFile(path, doc.Bytes); err != nil {
 			return err
 		}
 	}
@@ -287,7 +324,7 @@ func (b Backups) Save(_ context.Context, stamp string, manifest app.InstallManif
 	if err != nil {
 		return err
 	}
-	if err := writeFile(filepath.Join(dir, manifestName), append(data, '\n')); err != nil {
+	if err := b.writeFile(filepath.Join(dir, manifestName), append(data, '\n')); err != nil {
 		return err
 	}
 	return syncDir(b.Dir)
@@ -311,18 +348,18 @@ func (b Backups) List(context.Context) ([]string, error) {
 	return stamps, nil
 }
 
-func (b Backups) Manifest(_ context.Context, stamp string) (app.InstallManifest, error) {
+func (b Backups) Manifest(_ context.Context, stamp string) (Manifest, error) {
 	dir, err := b.folder(stamp)
 	if err != nil {
-		return app.InstallManifest{}, err
+		return Manifest{}, err
 	}
 	data, err := os.ReadFile(filepath.Join(dir, manifestName))
 	if err != nil {
-		return app.InstallManifest{}, err
+		return Manifest{}, err
 	}
-	var manifest app.InstallManifest
+	var manifest Manifest
 	if err := json.Unmarshal(data, &manifest); err != nil {
-		return app.InstallManifest{}, fmt.Errorf("%s: %w", filepath.Join(dir, manifestName), err)
+		return Manifest{}, fmt.Errorf("%s: %w", filepath.Join(dir, manifestName), err)
 	}
 	return manifest, nil
 }
