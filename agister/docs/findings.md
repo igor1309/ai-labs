@@ -20,25 +20,26 @@
   under `pi/1`, checked live through Agister on 2026-10-01 with agent
   `pi-minimax`, model `opencode-go/minimax-m3`, process `ask_pi` and policy
   `read-only`, in a throwaway Agister home with `read`, `grep`, `find` and
-  `ls` marked verified for the check:
-  - Run `20261001T141844Z-77906d` completed ($0.0040, 23.7 s). The plan
+  `ls` marked verified for the check (the home and its run records
+  are gone):
+  - One run completed ($0.0040, 23.7 s). The plan
     granted `[read grep find ls]` and withheld `repository.diff`,
     `repository.history.read` and `process.execute`. `read` read
     `agister/internal/adapters/runtime/pi/pi.go` in the checkout and
     `/etc/hosts` outside it. The record holds runtime `pi`, contract
     `pi/1`, version `0.85.1`, the profile's model, the reported session
     and the cost with source `runtime`.
-  - Run `20261001T141916Z-879ab7` completed ($0.0017, 11.2 s). `ls`
+  - Another completed ($0.0017, 11.2 s). `ls`
     listed `/etc/ssh` and `agister/examples/pi`; `find` found `hosts`
     under `/etc`; `grep` matched in `/etc/hosts` and under
     `agister/internal/adapters/runtime`.
   Each of the four tools read or searched the repository and the host,
   as the mapping declares; they are now verified for `0.85.` in
   `examples/pi/runtimes/pi.yaml`.
-  - Run `20261001T153224Z-96ad8f` completed ($0.0044, 20.9 s), process
+  - A third completed ($0.0044, 20.9 s), process
     `write_pi`, policy allowing everything, with `edit`, `write` and
     `bash` also marked verified. `write` created a file and `edit`
-    changed one in the checkout; both are in the run's `changes.patch`.
+    changed one in the checkout; both were in the call's patch.
     `bash` ran in the checkout (`pwd`, `git status`) and wrote
     `/tmp/agister-pi-bashcheck` outside it.
   `edit` and `write` write the repository and `bash` reaches everything,
