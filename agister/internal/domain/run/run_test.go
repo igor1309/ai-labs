@@ -47,7 +47,7 @@ func TestEveryClassBelongsToOneStatus(t *testing.T) {
 	want := map[run.Class]run.Status{
 		run.ClassRefused: run.Failed, run.ClassInvalidOutput: run.Failed, run.ClassBudgetExhausted: run.Failed,
 		run.ClassRateLimited: run.Failed, run.ClassAuth: run.Failed, run.ClassContextOverflow: run.Failed,
-		run.ClassRuntimeError: run.Failed, run.ClassRuntimeUnavailable: run.Failed, run.ClassInternal: run.Failed,
+		run.ClassRuntimeError: run.Failed, run.ClassRuntimeUnavailable: run.Failed, run.ClassInternal: run.Failed, run.ClassSetupFailed: run.Failed,
 		run.ClassTimeout: run.Interrupted, run.ClassCancelled: run.Interrupted,
 		run.ClassNoResult: run.Lost, run.ClassKilled: run.Lost, run.ClassAbandoned: run.Lost,
 	}

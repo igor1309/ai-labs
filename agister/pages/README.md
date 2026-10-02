@@ -19,9 +19,11 @@ home`.
   comment), the `agister run` command with its required params (Copy puts
   it on the clipboard), the defaults, and then:
   - for a process, its agent (runtime, model, effort, session), its policy
-    (workspace, timeout, cost cap, what it allows and denies) and its output
+    (workspace, timeout, cost cap, what it allows and denies), its output
     schema and verify attempts (of the verification it names, when it
-    names one; marked missing when these settings have none of that name);
+    names one; marked missing when these settings have none of that name),
+    and the setup its checkout runs: its own, or `workspace.yaml`'s, the
+    repo's over home's (ADR-012);
   - for a workflow, its calls in one line (`4 × gpt-6.1-sol at once, then
     opus`), then the steps: the ones run at once (`First` when there is
     one) and the one run after them. Each step shows its name, what it
@@ -131,8 +133,8 @@ The server writes nothing and answers these endpoints:
   `X-Agister-Pages` header, which a page on another site cannot send.
 - `GET /api/settings?path=<absolute repo path | ~>`: the settings files of
   `<path>/.agister`, or of Agister home for `~`: `agents`, `policies`,
-  `processes`, `runtimes`, `schemas`, `verifies`, `workflows` and
-  `service.toml`, each
+  `processes`, `runtimes`, `schemas`, `verifies`, `workflows`,
+  `service.toml` and `workspace.yaml`, each
   at most 256 KB. `runs/` and `logs/` are skipped.
 - `GET /api/skills?path=<absolute repo path | ~>`: the skill folders of
   ADR-011's table for the runtime adapters the settings at that path

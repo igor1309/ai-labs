@@ -63,3 +63,20 @@ type Verify struct {
 	MaxAttempts int           `json:"max_attempts"`
 	Instruction string        `json:"instruction"`
 }
+
+// Setup is the setup command a call's checkout runs (ADR-012), as
+// resolved: the process's own, or its workspace settings' default. From
+// says which, and Path is the document it came from, whose recorded digest
+// covers it.
+type Setup struct {
+	Command string        `json:"command"`
+	Timeout time.Duration `json:"timeout"`
+	From    string        `json:"from"` // SetupFromProcess or SetupFromWorkspace
+	Path    string        `json:"path"`
+}
+
+// Where a call's setup comes from.
+const (
+	SetupFromProcess   = "process"
+	SetupFromWorkspace = "workspace"
+)

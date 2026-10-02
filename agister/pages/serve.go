@@ -33,6 +33,7 @@ var assets embed.FS
 var settingsEntries = map[string]bool{
 	"agents": true, "policies": true, "processes": true, "runtimes": true,
 	"schemas": true, "verifies": true, "workflows": true, "service.toml": true,
+	"workspace.yaml": true,
 }
 
 // fileCap bounds each settings file sent to the page.

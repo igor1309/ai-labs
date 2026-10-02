@@ -171,12 +171,13 @@
           ? 'one agent call each; the workflow steps above also run alone'
           : 'one agent call each',
         alone.map((p) => processCard(p, ix, chip))),
-        model.agents.length || model.policies.length || model.runtimes.length || model.service
+        model.agents.length || model.policies.length || model.runtimes.length || model.service || model.workspace?.error
           ? el('h2', { className: 'group', textContent: 'Building blocks' }) : null,
         agentsTable(model.agents, composed),
         policiesTable(model.policies, composed),
         runtimesTable(model.runtimes, composed),
         limitsTable(model.service, composed),
+        workspaceError(model.workspace, composed),
       ].filter(Boolean);
     }
 
@@ -269,6 +270,15 @@
       return parts.length ? el('div', {}, ...parts) : null;
     }
 
+    // The setup its checkout runs before the agent starts, and whether it
+    // is the workspace's default.
+    function setupLine(p) {
+      const s = p.effectiveSetup;
+      if (!s) return null;
+      return el('div', {}, el('code', { textContent: s.command ?? '?' }),
+        ` within ${s.timeout ?? '?'}${s.from === 'workspace' ? ', from workspace.yaml' : ''}`);
+    }
+
     function errorCard(item) {
       return el('article', { className: 'card run' },
         el('header', { className: 'run-head' }, el('h3', { textContent: item.name })),
@@ -289,6 +299,7 @@
         ['agent', agentLine(p.agent, ix)],
         ['policy', policyLines(p.policy, ix)],
         ['output', outputLine(p)],
+        ['setup', setupLine(p)],
       ]));
     }
 
@@ -388,6 +399,17 @@
           r.adapter, r.contract,
           r.verified.length ? r.verified.map((v) => v.replace(/\.$/, '.x')).join(', ') : null,
         ], composed);
+    }
+
+    // A broken workspace document blocks calls that inherit its setup.
+    function workspaceError(workspace, composed) {
+      if (!workspace?.error) return null;
+      const from = composed
+        ? (workspace.source === 'repo' ? 'this repo’s workspace.yaml' : 'Agister home’s workspace.yaml')
+        : 'workspace.yaml';
+      return el('section', { className: 'card' },
+        el('header', { className: 'section-head' }, el('h3', { textContent: 'Workspace settings' })),
+        el('p', { className: 'error', textContent: `${from}: ${workspace.error}` }));
     }
 
     // service.toml: the caps no policy or process may go past.

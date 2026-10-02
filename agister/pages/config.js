@@ -299,9 +299,16 @@
       verify: typeof doc.verify === 'string'
         ? { ref: refName(doc.verify), maxAttempts: null }
         : doc.verify ? { maxAttempts: doc.verify.max_attempts ?? null } : null,
+      checkout: doc.workspace?.checkout ?? null,
+      setup: setupOf(doc.workspace?.setup),
       output: doc.output?.schema ?? null,
       instruction,
     };
+  }
+
+  // A setup block (ADR-012) as { command, timeout }; null when none.
+  function setupOf(setup) {
+    return setup && typeof setup === 'object' ? { command: setup.command ?? null, timeout: setup.timeout ?? null } : null;
   }
 
   function verifyItem(file, doc) {
@@ -400,6 +407,24 @@
     }
   }
 
+  // workspace.yaml: the setup every process with a checkout and none of its
+  // own runs (ADR-012). null when the folder has none.
+  async function loadWorkspace(agister) {
+    let handle;
+    try {
+      handle = await agister.getFileHandle('workspace.yaml');
+    } catch (err) {
+      if (err && (err.name === 'NotFoundError' || err.name === 'TypeMismatchError')) return null;
+      throw err;
+    }
+    try {
+      const doc = parseYaml(await readText(handle));
+      return { setup: setupOf(doc?.setup) };
+    } catch (err) {
+      return { error: err.message };
+    }
+  }
+
   // The dashboard model of the .agister folder agister.
   async function loadAgister(agister) {
     return link(await readAgister(agister));
@@ -428,11 +453,14 @@
     model.service = repo.service
       ? { ...repo.service, source: 'repo', overrides: !!home.service }
       : home.service && { ...home.service, source: 'home' };
+    model.workspace = repo.workspace
+      ? { ...repo.workspace, source: 'repo', overrides: !!home.workspace }
+      : home.workspace && { ...home.workspace, source: 'home' };
     return model;
   }
 
   async function readAgister(agister) {
-    const [workflows, processes, agents, policies, runtimes, schemas, verifies, service] = await Promise.all([
+    const [workflows, processes, agents, policies, runtimes, schemas, verifies, service, workspace] = await Promise.all([
       readFolder(agister, 'workflows', ['.yaml', '.yml']),
       readFolder(agister, 'processes', ['.yaml', '.yml']),
       readFolder(agister, 'agents', ['.toml']),
@@ -441,9 +469,11 @@
       readFolder(agister, 'schemas', ['.json']),
       readFolder(agister, 'verifies', ['.yaml', '.yml']),
       loadService(agister),
+      loadWorkspace(agister),
     ]);
     return {
       service,
+      workspace,
       workflows: each(workflows, parseYaml, workflowItem),
       processes: each(processes, parseYaml, processItem),
       agents: each(agents, parseToml, (file, _src, doc) => agentItem(file, doc)),
@@ -474,6 +504,12 @@
       p.agentOutside = !!p.agent && !agents.has(p.agent);
       p.policyOutside = !!p.policy && !policies.has(p.policy);
       p.outputOutside = !!p.output && !schemas.has(p.output);
+      // As Agister resolves it: the process's own setup, or the
+      // workspace's for a checkout without one; none without a checkout.
+      const defaultSetup = model.workspace?.setup;
+      p.effectiveSetup = !p.checkout ? null
+        : p.setup ? { ...p.setup, from: 'process' }
+          : defaultSetup ? { ...defaultSetup, from: 'workspace' } : null;
       // A named verification, resolved: its attempts, or outside these settings.
       if (p.verify?.ref) {
         const named = model.verifies.find((v) => !v.error && v.name === p.verify.ref);

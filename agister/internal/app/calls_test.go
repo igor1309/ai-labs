@@ -92,9 +92,12 @@ type harness struct {
 	workspaces *workspacesSpy
 	changes    *changesSpy
 	copies     *copiesSpy
-	commands   *commandsSpy
-	validator  *validatorSpy
-	recorder   *recorderSpy
+	// setup runs the checkout's setup commands; commands the
+	// verification's.
+	setup     *setupCommandsSpy
+	commands  *commandsSpy
+	validator *validatorSpy
+	recorder  *recorderSpy
 }
 
 func newHarness() *harness {
@@ -107,6 +110,7 @@ func newHarness() *harness {
 		workspaces: &workspacesSpy{root: "/repo", dir: "/work/checkout"},
 		changes:    &changesSpy{},
 		copies:     &copiesSpy{},
+		setup:      &setupCommandsSpy{},
 		commands:   &commandsSpy{},
 		validator:  &validatorSpy{},
 		recorder:   newRecorderSpy(),
@@ -134,7 +138,7 @@ func (h *harness) callsOn(src app.ResolverDefinitions) *app.Calls {
 		app.NewResolver(src, h.runtimes, h.validator),
 		h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "git.changed_files": h.inputs, "file": h.inputs, "param": h.inputs},
-		h.workspaces, h.changes, app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
+		h.workspaces, h.changes, app.NewPreparer(h.changes, h.setup, h.clock), app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
 		h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
 	)
 }
@@ -798,7 +802,7 @@ func TestCallsResolveThroughTheResolutionTheyDeclare(t *testing.T) {
 	h := newHarness()
 	double := &snapshotCounter{reason: "the double refuses"}
 	h.calls = app.NewCalls(
-		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes, app.NewVerifier(h.changes, h.copies, h.commands, h.clock),
+		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes, app.NewPreparer(h.changes, h.setup, h.clock), app.NewVerifier(h.changes, h.copies, h.commands, h.clock),
 		h.validator, h.recorder, h.runs, h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
 	)
 	record := h.call(t, contract.CallRequest{})
@@ -1069,7 +1073,7 @@ func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
 	h.calls = app.NewCalls(
 		app.NewResolver(h.defs, h.runtimes, h.validator), h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
-		h.workspaces, h.changes, app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
+		h.workspaces, h.changes, app.NewPreparer(h.changes, h.setup, h.clock), app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
 		h.clock, h.timer, fixedIDs{}, "/state", cancels,
 	)
 	// However the test ends, the blocked turn is released and the call

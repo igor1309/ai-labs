@@ -117,6 +117,12 @@ type verifySettings struct {
 	timeout     string // verify.timeout; 20s when empty
 	maxAttempts int    // 3 when zero
 	policy      string // appended to the policy
+	// setup is the process's workspace.setup, in flow style; none when
+	// empty.
+	setup string
+	// workspace and globalWorkspace are the workspace.yaml of the
+	// settings and of a global layer under them; none when empty.
+	workspace, globalWorkspace string
 }
 
 type loopHarness struct {
@@ -125,6 +131,7 @@ type loopHarness struct {
 	home     string
 	runner   *scripted
 	commands *recordingCommands
+	setup    *recordingSetupCommands
 	calls    *app.Calls
 	runs     *app.Runs
 	store    fsruns.Store
@@ -151,6 +158,25 @@ func (c *recordingCommands) requests() []app.CommandRequest {
 	return append([]app.CommandRequest(nil), c.seen...)
 }
 
+// recordingSetupCommands keeps setup requests while preserving command injection.
+type recordingSetupCommands struct {
+	app.SetupCommands
+	mu   sync.Mutex
+	seen []app.SetupCommandRequest
+}
+
+func (c *recordingSetupCommands) Run(ctx context.Context, request app.SetupCommandRequest, started func(string) error) app.SetupCommandResult {
+	c.mu.Lock()
+	c.seen = append(c.seen, request)
+	c.mu.Unlock()
+	return c.SetupCommands.Run(ctx, request, started)
+}
+func (c *recordingSetupCommands) requests() []app.SetupCommandRequest {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]app.SetupCommandRequest(nil), c.seen...)
+}
+
 // seams are the harness's collaborators a test replaces; each left zero is
 // the real one.
 type seams struct {
@@ -163,6 +189,8 @@ type seams struct {
 	copies app.VerifyCopies
 	// commands runs the verification command.
 	commands app.VerifyCommands
+	// setupCommands runs the checkout setup command.
+	setupCommands app.SetupCommands
 }
 
 // newLoop is a repository with a base commit, settings for process impl
@@ -186,6 +214,9 @@ func newLoopWith(t *testing.T, with seams, settings verifySettings, steps ...ste
 	}
 	if with.commands == nil {
 		with.commands = runtimecomposition.Commands{Supervisor: supervisor.Commands{}}
+	}
+	if with.setupCommands == nil {
+		with.setupCommands = runtimecomposition.SetupCommands{Supervisor: supervisor.Commands{}}
 	}
 	repo, err := filepath.EvalSymlinks(tempDir(t))
 	if err != nil {
@@ -256,7 +287,7 @@ input:
     candidate_revision: {source: git.revision, rev: "${param.candidate}"}
 workspace:
   checkout: candidate_revision
-output:
+%soutput:
   format: json
   schema: done
   require_valid: true
@@ -265,26 +296,45 @@ verify:
   timeout: %s
   max_attempts: %d
   instruction: The check failed. Fix the cause, not the check.
-`, strconv.Quote(settings.command), settings.timeout, settings.maxAttempts),
+`, setupLine(settings.setup), strconv.Quote(settings.command), settings.timeout, settings.maxAttempts),
+		"workspace.yaml": settings.workspace,
 	} {
+		if text == "" {
+			continue
+		}
 		if err := os.MkdirAll(filepath.Dir(filepath.Join(defs, name)), 0o700); err != nil {
 			t.Fatal(err)
 		}
 		write(t, filepath.Join(defs, name), text)
 	}
 
-	h := &loopHarness{t: t, repo: repo, home: tempDir(t), runner: &scripted{t: t, steps: steps}, commands: &recordingCommands{VerifyCommands: with.commands}}
+	h := &loopHarness{t: t, repo: repo, home: tempDir(t), runner: &scripted{t: t, steps: steps}, commands: &recordingCommands{VerifyCommands: with.commands}, setup: &recordingSetupCommands{SetupCommands: with.setupCommands}}
 	h.store = fsruns.Store{Dir: filepath.Join(h.home, "runs")}
 	runtimes := fakeRuntimes{runner: h.runner}
 	hosted := app.NewHosted()
+	var definitions app.ResolverDefinitions = fsdefs.Store{Dir: defs}
+	if settings.globalWorkspace != "" {
+		global := fsdefs.Store{Dir: tempDir(t)}
+		write(t, filepath.Join(global.Dir, "workspace.yaml"), settings.globalWorkspace)
+		definitions = fsdefs.Layered{Global: global, Project: &fsdefs.Store{Dir: defs}}
+	}
 	h.calls = app.NewCalls(
-		app.NewResolver(fsdefs.Store{Dir: defs}, runtimes, schema.Validator{}), runtimes,
+		app.NewResolver(definitions, runtimes, schema.Validator{}), runtimes,
 		map[string]app.InputProvider{"git.revision": git.Revision{}},
-		workspaces, with.changes, app.NewVerifier(with.changes, with.copies, h.commands, with.clock), schema.Validator{},
+		workspaces, with.changes, app.NewPreparer(with.changes, h.setup, with.clock), app.NewVerifier(with.changes, with.copies, h.commands, with.clock), schema.Validator{},
 		h.store, h.store, with.clock, system.Timer, system.IDs{}, h.home, hosted,
 	)
 	h.runs = app.NewRuns(h.store, hosted, 10*time.Millisecond)
 	return h
+}
+
+// setupLine is the process's workspace.setup line for setup, in flow
+// style; none when empty.
+func setupLine(setup string) string {
+	if setup == "" {
+		return ""
+	}
+	return "  setup: " + setup + "\n"
 }
 
 func (h *loopHarness) submit(request contract.CallRequest) string {
