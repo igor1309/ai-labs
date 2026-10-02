@@ -73,7 +73,7 @@
 // One with another reason that is not followed by a step (length, say) is
 // a failure the runtime reported, as is any error event; a stream that ends
 // after a "tool-calls" step, or without a step_finish, is decided by the
-// transport, quoting stderr (supervisor.WithoutTerminal), and so is a
+// transport, quoting stderr (withoutTerminal), and so is a
 // non-zero exit, a timeout, a cancellation or a signal after a "stop".
 // OpenCode runs its default agent, which
 // allows everything, when it does not find the one named ("Falling back to
@@ -91,10 +91,6 @@ import (
 	"slices"
 	"strings"
 	"time"
-
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/app"
-	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 const Contract = "opencode/1"
@@ -122,40 +118,88 @@ const ConfigVariable = "OPENCODE_CONFIG_CONTENT"
 // agentPrefix starts the name of every generated agent.
 const agentPrefix = "agister-"
 
+// Transport is what the runner needs of a process supervisor: to run the
+// runtime to its exit, passing each line of its stdout to onLine, and to
+// read the runtime's version.
+type Transport interface {
+	Run(ctx context.Context, spec Spec, sink Sink, onLine func(string)) Evidence
+	Version(ctx context.Context, command string) (string, error)
+}
+
+// Spec is the process a turn runs.
+type Spec struct {
+	Command string
+	Args    []string
+	Dir     string
+	// Env is added to the environment the process inherits, as
+	// "KEY=value"; an entry replaces an inherited variable of the same
+	// name.
+	Env       []string
+	Stdin     string
+	Timeout   time.Duration
+	KillGrace time.Duration // zero: the transport's default
+}
+
+// Sink is what the transport reports to: the process's events, its
+// reference as soon as it exists (an error means it is not on record, and
+// the transport kills it), and each line of its stdout.
+type Sink interface {
+	Event(source, kind string, data map[string]any)
+	ProcessStarted(ref string) error
+	Raw(line string)
+}
+
+// Evidence is what the process left, the stream reconciles: its exit, how
+// it ended, and the end of its stderr.
+type Evidence struct {
+	Exit          *Exit
+	SpawnError    string
+	TimedOut      bool
+	Aborted       bool
+	StderrTail    string
+	StderrOmitted int64
+	// RecordError is why the process could not be recorded; it was killed
+	// at once, and the turn fails.
+	RecordError string
+}
+
 type Runner struct {
-	Command   string
+	Command string
+	// Transport runs the runtime; the composition root wires the
+	// supervisor.
+	Transport Transport
 	KillGrace time.Duration // zero: the supervisor default
 }
 
-func New(command string) *Runner {
+func New(command string, transport Transport) *Runner {
 	if command == "" {
 		command = "opencode"
 	}
-	return &Runner{Command: command}
+	return &Runner{Command: command, Transport: transport}
 }
 
 var versionPattern = regexp.MustCompile(`\d+\.\d+\.\d+`)
 
 // reportsToolCalls is whether the adapter reports tool calls as they start
-// and finish (app.RuntimeIdentity.ToolCalls): not while the stream is seen
+// and finish (RuntimeIdentity.ToolCalls): not while the stream is seen
 // to report a call only once it has ended.
 const reportsToolCalls = false
 
-func (r *Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
-	out, err := supervisor.Version(ctx, r.Command)
+func (r *Runner) Identity(ctx context.Context) (RuntimeIdentity, error) {
+	out, err := r.Transport.Version(ctx, r.Command)
 	if err != nil {
-		return app.RuntimeIdentity{}, err
+		return RuntimeIdentity{}, err
 	}
 	version := versionPattern.FindString(out)
 	if version == "" {
-		return app.RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
+		return RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
 	}
-	return app.RuntimeIdentity{Contract: Contract, Version: version, Resume: true, ResumeWhereItRan: true, ToolCalls: reportsToolCalls, SkillTools: slices.Clone(SkillTools)}, nil
+	return RuntimeIdentity{Contract: Contract, Version: version, Resume: true, ResumeWhereItRan: true, ToolCalls: reportsToolCalls, SkillTools: slices.Clone(SkillTools)}, nil
 }
 
 // Arguments builds the command line for a turn that runs as the generated
 // agent named agent.
-func Arguments(request app.TurnRequest, agent string) ([]string, error) {
+func Arguments(request TurnRequest, agent string) ([]string, error) {
 	if request.MaxCostUSD != nil {
 		return nil, errors.New("opencode/1 cannot limit cost")
 	}
@@ -186,7 +230,7 @@ func Arguments(request app.TurnRequest, agent string) ([]string, error) {
 // Config is the inline config of a turn: the generated agent named agent,
 // and nothing else. Its permission denies everything, then allows each
 // granted primitive; the order of the keys is the order of the rules.
-func Config(request app.TurnRequest, agent string) string {
+func Config(request TurnRequest, agent string) string {
 	var permission strings.Builder
 	permission.WriteString(`{"*":"deny"`)
 	for _, tool := range request.Primitives {
@@ -209,7 +253,7 @@ func Config(request app.TurnRequest, agent string) string {
 
 // SystemPrompt is the generated agent's prompt: the instruction, then the
 // output schema the final answer must meet; empty when there is neither.
-func SystemPrompt(request app.TurnRequest) string {
+func SystemPrompt(request TurnRequest) string {
 	var parts []string
 	if request.Instruction != "" {
 		parts = append(parts, request.Instruction)
@@ -230,17 +274,17 @@ func agentName() (string, error) {
 	return agentPrefix + hex.EncodeToString(random), nil
 }
 
-func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
+func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSink) Turn {
 	agent, err := agentName()
 	if err != nil {
-		return supervisor.Failed(run.ClassInternal, err)
+		return failedTurn(ClassInternal, err)
 	}
 	args, err := Arguments(request, agent)
 	if err != nil {
-		return supervisor.Failed(run.ClassInternal, err)
+		return failedTurn(ClassInternal, err)
 	}
 	state := &Stream{ResumedSessionID: request.ResumeSessionID}
-	evidence := supervisor.Run(ctx, supervisor.Spec{
+	evidence := r.Transport.Run(ctx, Spec{
 		Command:   r.Command,
 		Args:      args,
 		Dir:       request.Cwd,
@@ -275,7 +319,7 @@ type Event struct {
 	Kind   string
 	Data   map[string]any
 
-	Started  *app.ToolCall
+	Started  *ToolCall
 	Finished string
 }
 
@@ -331,19 +375,19 @@ func (s *Stream) Reduce(line string) []Event {
 	}
 	var message map[string]any
 	if err := json.Unmarshal([]byte(line), &message); err != nil {
-		return []Event{{Source: run.SourceAgister, Kind: "STREAM_PARSE_ERROR", Data: map[string]any{"line": truncate(line, 200)}}}
+		return []Event{{Source: SourceAgister, Kind: "STREAM_PARSE_ERROR", Data: map[string]any{"line": truncate(line, 200)}}}
 	}
 	var events []Event
 	if id, _ := message["sessionID"].(string); id != "" && s.SessionID == "" {
 		s.SessionID = id
-		events = append(events, Event{Source: run.SourceProtocol, Kind: "PROVIDER_SESSION_BOUND", Data: map[string]any{"provider_session_id": id}})
+		events = append(events, Event{Source: SourceProtocol, Kind: "PROVIDER_SESSION_BOUND", Data: map[string]any{"provider_session_id": id}})
 	}
 	part, _ := message["part"].(map[string]any)
 	switch message["type"] {
 	case "step_start":
 		// Another step: the one before did not end the turn.
 		s.Ended, s.text = false, ""
-		events = append(events, Event{Source: run.SourceProtocol, Kind: "TURN_STARTED"})
+		events = append(events, Event{Source: SourceProtocol, Kind: "TURN_STARTED"})
 	case "tool_use":
 		exact, _ := exactly(line)["part"].(map[string]any)
 		events = append(events, s.toolUse(exact)...)
@@ -352,7 +396,7 @@ func (s *Stream) Reduce(line string) []Event {
 			s.text += text
 			if strings.TrimSpace(text) != "" {
 				s.LastText = text
-				events = append(events, Event{Source: run.SourceProtocol, Kind: "ASSISTANT_TEXT", Data: map[string]any{"text": truncate(text, 500)}})
+				events = append(events, Event{Source: SourceProtocol, Kind: "ASSISTANT_TEXT", Data: map[string]any{"text": truncate(text, 500)}})
 			}
 		}
 	case "step_finish":
@@ -367,7 +411,7 @@ func (s *Stream) Reduce(line string) []Event {
 		if s.Reason != "stop" {
 			kind = "TURN_FAILED"
 		}
-		events = append(events, Event{Source: run.SourceProtocol, Kind: kind, Data: map[string]any{"stop_reason": s.Reason}})
+		events = append(events, Event{Source: SourceProtocol, Kind: kind, Data: map[string]any{"stop_reason": s.Reason}})
 	case "error":
 		reported, _ := message["error"].(map[string]any)
 		data, _ := reported["data"].(map[string]any)
@@ -381,7 +425,7 @@ func (s *Stream) Reduce(line string) []Event {
 		if failure.StatusCode != 0 {
 			fields["status_code"] = failure.StatusCode
 		}
-		events = append(events, Event{Source: run.SourceProtocol, Kind: "PROVIDER_ERROR", Data: fields})
+		events = append(events, Event{Source: SourceProtocol, Kind: "PROVIDER_ERROR", Data: fields})
 	}
 	return events
 }
@@ -397,15 +441,15 @@ func (s *Stream) toolUse(part map[string]any) []Event {
 	if !s.started[id] {
 		input := wholeInput(state["input"])
 		events = append(events,
-			Event{Source: run.SourceProtocol, Kind: "TOOL_REQUESTED", Data: map[string]any{"tool_use_id": id, "name": name, "input": truncate(input, 300)}},
-			Event{Started: &app.ToolCall{ID: id, Name: name, Input: input, Command: name == commandTool}})
+			Event{Source: SourceProtocol, Kind: "TOOL_REQUESTED", Data: map[string]any{"tool_use_id": id, "name": name, "input": truncate(input, 300)}},
+			Event{Started: &ToolCall{ID: id, Name: name, Input: input, Command: name == commandTool}})
 		if s.started == nil {
 			s.started = map[string]bool{}
 		}
 		s.started[id] = true
 	}
 	if (status == "completed" || status == "error") && !s.finished[id] {
-		events = append(events, Event{Source: run.SourceProtocol, Kind: "TOOL_RESULT", Data: map[string]any{"tool_use_id": id, "is_error": status == "error"}})
+		events = append(events, Event{Source: SourceProtocol, Kind: "TOOL_RESULT", Data: map[string]any{"tool_use_id": id, "is_error": status == "error"}})
 		if id != "" {
 			events = append(events, Event{Finished: id})
 		}
@@ -422,9 +466,9 @@ func (s *Stream) toolUse(part map[string]any) []Event {
 const fallback = "Falling back to default agent"
 
 // Reconcile decides the turn outcome from the stream and the transport.
-func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) run.Turn {
-	turn := supervisor.Base(evidence)
-	if failed, ok := supervisor.RecordFailure(turn, evidence); ok {
+func (s *Stream) Reconcile(evidence Evidence, schemaRequested bool) Turn {
+	turn := baseTurn(evidence)
+	if failed, ok := recordFailure(turn, evidence); ok {
 		return failed
 	}
 	turn.ProviderSessionID = s.SessionID
@@ -432,12 +476,12 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 	// reported another session included.
 	turn.Usage, turn.CostUSD = s.usage.totals()
 	if s.resumedElsewhere() {
-		turn.Status, turn.Error = run.Failed, run.Fault(run.ClassRuntimeError, "resumed session %s, but the runtime reported session %q", s.ResumedSessionID, s.SessionID)
+		turn.Status, turn.Error = Failed, Fault(ClassRuntimeError, "resumed session %s, but the runtime reported session %q", s.ResumedSessionID, s.SessionID)
 		return turn
 	}
 	turn.Text = s.LastText
 	if strings.Contains(evidence.StderrTail, fallback) {
-		turn.Status, turn.Error = run.Failed, run.Fault(run.ClassRuntimeError, "the runtime did not find the generated agent and ran its default agent, which the grants do not bound")
+		turn.Status, turn.Error = Failed, Fault(ClassRuntimeError, "the runtime did not find the generated agent and ran its default agent, which the grants do not bound")
 		return turn
 	}
 	if len(s.Errors) > 0 {
@@ -445,9 +489,9 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 		// timeout or cancellation comes first.
 		last := s.Errors[len(s.Errors)-1]
 		if evidence.TimedOut || evidence.Aborted {
-			return supervisor.WithoutTerminal(turn, evidence, last.Text())
+			return withoutTerminal(turn, evidence, last.Text())
 		}
-		turn.Status, turn.Error = run.Failed, classify("error", last)
+		turn.Status, turn.Error = Failed, classify("error", last)
 		return turn
 	}
 	code := 0
@@ -458,26 +502,26 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 	// not end cleanly, whatever its last step reported.
 	interrupted := evidence.TimedOut || evidence.Aborted || (evidence.Exit != nil && evidence.Exit.Signal != "")
 	if !s.Ended || (s.Reason == "stop" && (code != 0 || interrupted)) {
-		return supervisor.WithoutTerminal(turn, evidence, "")
+		return withoutTerminal(turn, evidence, "")
 	}
 	if s.Reason != "stop" {
-		turn.Status, turn.Error = run.Failed, classify(s.Reason, Failure{})
+		turn.Status, turn.Error = Failed, classify(s.Reason, Failure{})
 		return turn
 	}
 	if schemaRequested {
 		text := strings.TrimSpace(s.Final)
 		if text == "" {
-			turn.Status, turn.Error = run.Failed, run.Fault(run.ClassInvalidOutput, "no structured output")
+			turn.Status, turn.Error = Failed, Fault(ClassInvalidOutput, "no structured output")
 			return turn
 		}
 		if !json.Valid([]byte(text)) {
-			turn.Status, turn.Error = run.Failed, run.Fault(run.ClassInvalidOutput, "structured output is not JSON")
+			turn.Status, turn.Error = Failed, Fault(ClassInvalidOutput, "structured output is not JSON")
 			return turn
 		}
 		turn.Output = json.RawMessage(text)
 	}
 	turn.Text = s.Final
-	turn.Status = run.Completed
+	turn.Status = Completed
 	return turn
 }
 
@@ -493,7 +537,7 @@ func (s *Stream) resumedElsewhere() bool {
 // step that did not stop normally, to a failure class: by the error's
 // status and name, then by its text. Only the error of an unknown model has
 // been observed live.
-func classify(reason string, failure Failure) *run.Error {
+func classify(reason string, failure Failure) *Error {
 	text := "runtime reported " + reason
 	if reason == "" {
 		text = "runtime reported no stop reason"
@@ -503,21 +547,21 @@ func classify(reason string, failure Failure) *run.Error {
 		text += ": " + truncate(message, 300)
 	}
 	lower := strings.ToLower(message)
-	class := run.ClassRuntimeError
+	class := ClassRuntimeError
 	switch {
 	case failure.StatusCode == 429:
-		class = run.ClassRateLimited
+		class = ClassRateLimited
 	case failure.StatusCode == 401 || failure.StatusCode == 403 || failure.Name == "ProviderAuthError":
-		class = run.ClassAuth
+		class = ClassAuth
 	case strings.Contains(lower, "rate limit") || strings.Contains(lower, "usage limit") || strings.Contains(lower, "quota") || strings.Contains(lower, "429"):
-		class = run.ClassRateLimited
+		class = ClassRateLimited
 	case strings.Contains(lower, "unauthorized") || strings.Contains(lower, "401") || strings.Contains(lower, "403") ||
 		strings.Contains(lower, "api key") || strings.Contains(lower, "authentication"):
-		class = run.ClassAuth
+		class = ClassAuth
 	case strings.Contains(lower, "context window") || strings.Contains(lower, "context length") || strings.Contains(lower, "prompt is too long"):
-		class = run.ClassContextOverflow
+		class = ClassContextOverflow
 	}
-	return run.Fault(class, "%s", text)
+	return Fault(class, "%s", text)
 }
 
 // tally sums the usage of the steps a turn finished. A figure is known
@@ -552,7 +596,7 @@ func (t *tally) add(tokens map[string]any, cost any) {
 }
 
 // totals is the turn's usage and cost; nil when no step finished.
-func (t *tally) totals() (*run.Usage, *float64) {
+func (t *tally) totals() (*Usage, *float64) {
 	if t.steps == 0 {
 		return nil, nil
 	}
@@ -563,14 +607,14 @@ func (t *tally) totals() (*run.Usage, *float64) {
 		n := int64(s.value)
 		return &n
 	}
-	usage := &run.Usage{
+	usage := &Usage{
 		InputTokens:      count(t.input),
 		OutputTokens:     count(t.output),
 		CacheReadTokens:  count(t.cacheRead),
 		CacheWriteTokens: count(t.cacheWrite),
 		ReasoningTokens:  count(t.reasoning),
 	}
-	if *usage == (run.Usage{}) {
+	if *usage == (Usage{}) {
 		usage = nil
 	}
 	var cost *float64
