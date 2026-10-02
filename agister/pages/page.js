@@ -16,10 +16,15 @@
     let renderToken = 0;
 
     const $ = (id) => document.getElementById(id);
+    // children: nodes, text or arrays of them. They are appended in batches:
+    // spread at once, a skill's thousands of inline nodes overflow the
+    // stack.
+    const BATCH = 1000;
     const el = (tag, { dataset, ...props } = {}, ...children) => {
       const node = Object.assign(document.createElement(tag), props);
       if (dataset) Object.assign(node.dataset, dataset);
-      node.append(...children.filter((c) => c != null && c !== false));
+      const list = children.flat().filter((c) => c != null && c !== false);
+      for (let i = 0; i < list.length; i += BATCH) node.append(...list.slice(i, i + BATCH));
       return node;
     };
 
@@ -85,6 +90,7 @@
       if (id !== R.HOME_ID) R.rememberRepo(localStorage, id, Date.now());
       R.writeCurrent(localStorage, id);
       state.current = id;
+      if (knowledge.path !== id) forgetKnowledge();
       setMenu(false);
       if (state.view !== 'runs') say('status', '');
       const shown = await render(token, files, homeFiles);
@@ -628,11 +634,19 @@
 
     // --- knowledge ---
 
-    // data: the view's model; chosen: the agent or skill opened below the
-    // overview, { kind, name }; source: a skill shows its SKILL.md as
-    // stored instead of rendered.
-    const knowledge = { data: null, chosen: null, source: false };
+    // data: the view's model, read for path; chosen: the agent or skill
+    // opened below the overview, { kind, name }; source: a skill shows its
+    // SKILL.md as stored instead of rendered.
+    const knowledge = { data: null, path: null, chosen: null, source: false };
     let knowledgeToken = 0;
+
+    // Another folder is shown: its Knowledge is not the last one read, so
+    // that one goes, and a failed read leaves nothing under the new label.
+    function forgetKnowledge() {
+      knowledge.data = null;
+      knowledge.path = null;
+      $('knowledge').replaceChildren();
+    }
 
     const NO_ASSIGNMENT = 'Agister does not choose an agent’s skills: a call loads what its runtime loads in the repo and the home (ADR-006). This page only reads them; editing is not part of it.';
 
@@ -645,9 +659,10 @@
       const opened = renderToken;
       const current = () => token === knowledgeToken && opened === renderToken && state.view === 'knowledge';
       const settings = state.model;
+      const path = state.current;
       let skills, list;
       try {
-        [skills, list] = await Promise.all([R.fetchSkills(fetch, state.current), R.fetchRuns(fetch)]);
+        [skills, list] = await Promise.all([R.fetchSkills(fetch, path), R.fetchRuns(fetch)]);
       } catch (err) {
         if (current()) say('status', err.message);
         return;
@@ -655,6 +670,7 @@
       if (!current()) return;
       say('status', '');
       knowledge.data = K.model(settings, skills, list.runs);
+      knowledge.path = path;
       stamp('Knowledge');
       renderKnowledge();
     }
@@ -824,7 +840,7 @@
             : 'no agent’s runtime in these settings'],
         ]),
         el('div', { className: 'views', role: 'group', id: 'skill-source' }, toggle(false, 'Rendered'), toggle(true, 'Source')),
-        ...s.entries.map((e) => el('section', { className: 'stage' },
+        s.entries.map((e) => el('section', { className: 'stage' },
           el('h4', {}, `${e.folder.scope} · ${e.folder.folder}`),
           facts([
             ['path', paths(e)],
@@ -839,25 +855,27 @@
     function skillText(e) {
       if (e.state) return el('p', { className: 'group-note', textContent: K.skillState(e.state) });
       if (knowledge.source) return el('pre', { className: 'mono source', textContent: e.content ?? '' });
-      return el('div', { className: 'markdown' }, ...K.markdown(K.body(e.content)).map(block));
+      return el('div', { className: 'markdown' }, K.markdown(K.body(e.content)).map(block));
     }
 
-    // Markdown as elements and text nodes: a skill's HTML stays text.
+    // Markdown as elements and text nodes: a skill's HTML stays text. The
+    // lists go to el as arrays, never spread: a skill can hold more nodes
+    // than a call takes arguments.
     function block(b) {
-      if (b.type === 'heading') return el(`h${Math.min(6, b.level + 2)}`, {}, ...inlines(b.inline));
+      if (b.type === 'heading') return el(`h${Math.min(6, b.level + 2)}`, {}, inlines(b.inline));
       if (b.type === 'code') return el('pre', { className: 'mono' }, el('code', { textContent: b.text }));
-      if (b.type === 'list') return el(b.ordered ? 'ol' : 'ul', {}, ...b.items.map((item) => el('li', {}, ...inlines(item))));
-      if (b.type === 'quote') return el('blockquote', {}, ...inlines(b.inline));
+      if (b.type === 'list') return el(b.ordered ? 'ol' : 'ul', {}, b.items.map((item) => el('li', {}, inlines(item))));
+      if (b.type === 'quote') return el('blockquote', {}, inlines(b.inline));
       if (b.type === 'rule') return el('hr');
-      return el('p', {}, ...inlines(b.inline));
+      return el('p', {}, inlines(b.inline));
     }
 
     function inlines(list) {
       return list.map((n) => {
         if (n.type === 'text') return n.text;
         if (n.type === 'code') return el('code', { textContent: n.text });
-        if (n.type === 'link') return el('a', { href: n.href, target: '_blank', rel: 'noopener noreferrer' }, ...inlines(n.children));
-        return el(n.type === 'strong' ? 'strong' : 'em', {}, ...inlines(n.children));
+        if (n.type === 'link') return el('a', { href: n.href, target: '_blank', rel: 'noopener noreferrer' }, inlines(n.children));
+        return el(n.type === 'strong' ? 'strong' : 'em', {}, inlines(n.children));
       });
     }
 

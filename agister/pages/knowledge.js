@@ -114,6 +114,8 @@
   // quotes, rules, and inline code, emphasis and links. It returns a tree
   // the page builds from elements and text nodes, so HTML in a skill is
   // shown as text and never parsed. Links keep http(s) targets only.
+  // tally(n), when given, is told of each n lines or characters read, so a
+  // test can bound the work.
 
   const LIST_ITEM = /^\s*([-*+]|\d+[.)])\s+/;
   const FENCE = /^\s*(```|~~~)/;
@@ -123,11 +125,13 @@
   // Blocks: { type: heading, level, inline } | { type: paragraph, inline }
   // | { type: list, ordered, items: [inline] } | { type: code, text }
   // | { type: quote, inline } | { type: rule }.
-  function markdown(src) {
+  function markdown(src, tally = () => {}) {
     const lines = String(src ?? '').replace(/\r\n?/g, '\n').split('\n');
     const blocks = [];
+    const inline_ = (text) => inline(text, tally);
     let i = 0;
     while (i < lines.length) {
+      tally(1);
       const line = lines[i];
       if (!line.trim()) {
         i++;
@@ -143,7 +147,7 @@
       }
       const heading = /^(#{1,6})\s+(.*?)\s*#*\s*$/.exec(line);
       if (heading) {
-        blocks.push({ type: 'heading', level: heading[1].length, inline: inline(heading[2]) });
+        blocks.push({ type: 'heading', level: heading[1].length, inline: inline_(heading[2]) });
         i++;
         continue;
       }
@@ -155,7 +159,7 @@
       if (/^\s*>/.test(line)) {
         const quote = [];
         for (; i < lines.length && /^\s*>/.test(lines[i]); i++) quote.push(lines[i].replace(/^\s*>\s?/, ''));
-        blocks.push({ type: 'quote', inline: inline(quote.join(' ')) });
+        blocks.push({ type: 'quote', inline: inline_(quote.join(' ')) });
         continue;
       }
       if (LIST_ITEM.test(line)) {
@@ -164,12 +168,12 @@
           if (LIST_ITEM.test(lines[i])) items.push(lines[i].replace(LIST_ITEM, ''));
           else items[items.length - 1] += ` ${lines[i].trim()}`;
         }
-        blocks.push({ type: 'list', ordered: /^\s*\d/.test(line), items: items.map(inline) });
+        blocks.push({ type: 'list', ordered: /^\s*\d/.test(line), items: items.map(inline_) });
         continue;
       }
       const para = [];
       for (; i < lines.length && lines[i].trim() && (!para.length || !startsBlock(lines[i])); i++) para.push(lines[i].trim());
-      blocks.push({ type: 'paragraph', inline: inline(para.join(' ')) });
+      blocks.push({ type: 'paragraph', inline: inline_(para.join(' ')) });
     }
     return blocks;
   }
@@ -182,7 +186,7 @@
   // Inline: { type: text, text } | { type: code, text } | { type: strong
   // | em, children } | { type: link, href, children }; a link whose target
   // is not http(s) is its text alone.
-  function inline(src) {
+  function inline(src, tally = () => {}) {
     const out = [];
     let pending = '';
     const add = (...nodes) => {
@@ -198,8 +202,18 @@
     // the [ before it, so a run of unmatched [ stays linear.
     let close = -1;
     let target = null;
+    // Where each emphasis mark closes, found once for the whole text and
+    // read from a cursor that only moves on, so a run of unmatched marks
+    // stays linear too.
+    const marks = {};
+    const closing = (mark, from) => {
+      const m = (marks[mark] ??= { at: closers(src, mark, tally), next: 0 });
+      for (; m.next < m.at.length && m.at[m.next] <= from; m.next++) tally(1);
+      return m.next < m.at.length ? m.at[m.next] : -1;
+    };
     let i = 0;
     while (i < src.length) {
+      tally(1);
       const c = src[i];
       if (c === '\\' && ESCAPABLE.test(src[i + 1] ?? '')) {
         pending += src[i + 1];
@@ -209,6 +223,7 @@
       if (c === '`') {
         const ticks = /^`+/.exec(src.slice(i))[0];
         const end = src.indexOf(ticks, i + ticks.length);
+        tally((end > 0 ? end : src.length) - i);
         if (end > 0) {
           add({ type: 'code', text: src.slice(i + ticks.length, end) });
           i = end + ticks.length;
@@ -222,9 +237,10 @@
         close = src.indexOf(']', i + 1);
         if (close < 0) close = src.length;
         target = close < src.length ? TARGET.exec(src.slice(close + 1)) : null;
+        tally(close - i + (target?.[0].length ?? 0));
       }
       if (c === '[' && target) {
-        const children = inline(src.slice(i + 1, close));
+        const children = inline(src.slice(i + 1, close), tally);
         if (/^https?:\/\//i.test(target[1])) add({ type: 'link', href: target[1], children });
         else add(...children);
         i = close + 1 + target[0].length;
@@ -235,9 +251,9 @@
         const opens = c === '*' || !/\w/.test(src[i - 1] ?? '');
         const double = src[i + 1] === c;
         const from = i + (double ? 2 : 1);
-        const end = opens && src[from] && !/\s/.test(src[from]) ? closing(src, double ? c + c : c, from) : -1;
+        const end = opens && src[from] && !/\s/.test(src[from]) ? closing(double ? c + c : c, from) : -1;
         if (end > from) {
-          add({ type: double ? 'strong' : 'em', children: inline(src.slice(from, end)) });
+          add({ type: double ? 'strong' : 'em', children: inline(src.slice(from, end), tally) });
           i = end + (double ? 2 : 1);
           continue;
         }
@@ -249,15 +265,17 @@
     return out;
   }
 
-  // Where mark closes the emphasis begun before from, or -1: after a
-  // non-space and, for _, not inside a word.
-  function closing(src, mark, from) {
-    for (let end = src.indexOf(mark, from + 1); end > 0; end = src.indexOf(mark, end + 1)) {
+  // Where mark can close emphasis in src, in order: after a non-space and,
+  // for _, not inside a word.
+  function closers(src, mark, tally) {
+    tally(src.length);
+    const at = [];
+    for (let end = src.indexOf(mark, 1); end > 0; end = src.indexOf(mark, end + 1)) {
       if (/\s/.test(src[end - 1])) continue;
       if (mark[0] === '_' && /\w/.test(src[end + mark.length] ?? '')) continue;
-      return end;
+      at.push(end);
     }
-    return -1;
+    return at;
   }
 
   globalThis.AgisterKnowledge = {

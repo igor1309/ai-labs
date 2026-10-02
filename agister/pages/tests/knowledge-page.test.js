@@ -379,3 +379,51 @@ test('a Knowledge read that ends after a newer settings read failed leaves the e
   assert.doesNotMatch(p.$('read-at').title, /^Knowledge read/);
   assert.equal(p.$('knowledge-overview'), null);
 });
+
+test('a skill of 130,000 inline nodes opens, and Source and Rendered switch', async () => {
+  // Just under the 256 KB cap: spread into one call, its nodes overflowed
+  // the stack and no card was shown.
+  const content = `---\nname: wide\ndescription: Wide.\n---\n${'x`a`'.repeat(65000)}`;
+  const wide = { name: 'wide', path: '/r/.claude/skills/wide', real: '/r/.claude/skills/wide', content, description: 'Wide.', checks: { passed: true } };
+  const p = page({ answers: { 'api/skills': () => respond({ ...skills, folders: [{ ...skills.folders[0], skills: [wide] }] }) } });
+  await p.started;
+  p.open('wide');
+  const md = () => p.$('skill-detail').querySelector('div.markdown');
+  assert.equal(p.detail(), 'wide');
+  assert.equal(md().querySelector('p').childNodes.length, 130000);
+  assert.equal(md().querySelector('p').textContent, 'xa'.repeat(65000));
+
+  p.button(p.$('skill-source'), 'Source').click();
+  assert.equal(md(), null);
+  assert.equal(p.$('skill-detail').querySelector('pre.source').textContent, content);
+  p.button(p.$('skill-source'), 'Rendered').click();
+  assert.equal(md().querySelectorAll('code').length, 65000);
+});
+
+test('Knowledge read for one folder is not shown under another: a failed read after a switch leaves none', async () => {
+  const home = { path: '~', dir: '/u/.agister', home: true, files };
+  const p = page({
+    answers: {
+      'api/settings': (n) => respond(n <= 2 ? { path: '/r', dir: '/r/.agister', home: false, files, homeFiles: {} } : home),
+      'api/skills': (n) => (n === 1 ? respond(skills) : respond({ error: 'skills unreadable' }, 500)),
+    },
+  });
+  await p.started;
+  assert.deepEqual(Object.keys(p.matrix()), ['big', 'plan shared ×2', 'ship', 'torn']);
+
+  // A refresh of the same folder that fails keeps what was read.
+  p.$('refresh').click();
+  await settle();
+  assert.equal(p.$('status').textContent, 'skills unreadable');
+  assert.equal(p.$('picker-label').textContent, 'r');
+  assert.deepEqual(Object.keys(p.matrix()), ['big', 'plan shared ×2', 'ship', 'torn']);
+
+  // Switched to ~, a failed read shows nothing of /r under ~.
+  p.$('open-home').click();
+  await settle();
+  assert.ok(p.calls.includes('api/skills?path=~'));
+  assert.equal(p.$('picker-label').textContent, '~');
+  assert.equal(p.$('status').textContent, 'skills unreadable');
+  assert.equal(p.$('knowledge-overview'), null);
+  assert.equal(p.$('knowledge').textContent, '');
+});

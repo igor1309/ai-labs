@@ -116,21 +116,50 @@ test('Markdown inline: code, emphasis and links, with what is not markup left as
   ]);
 });
 
-test('a run of unmatched brackets is read in linear time', () => {
-  // A SKILL.md just under the 256 KB cap: read quadratically, each of
-  // these took about a minute.
-  const n = 262052;
+// The work inline does for src, as its tally counts it.
+function work(src) {
+  let steps = 0;
+  const out = K.inline(src, (n) => { steps += n; });
+  return { out, steps };
+}
+
+// A SKILL.md just under the 256 KB cap: read quadratically, each of these
+// took a minute or more. The work is counted, not timed; the timeout only
+// stops a hang.
+const n = 262052;
+
+test('a run of unmatched brackets is read in linear time', { timeout: 60_000 }, () => {
   for (const src of ['['.repeat(n), `${'['.repeat(n)}](${'x'.repeat(n)}`, '[]'.repeat(n / 2)]) {
-    const start = performance.now();
-    assert.deepEqual(K.inline(src), [t(src)]);
-    const ms = performance.now() - start;
-    assert.ok(ms < 2000, `${src.slice(0, 4)}…: ${Math.round(ms)} ms`);
+    const { out, steps } = work(src);
+    assert.ok(out.length === 1 && out[0].text === src, `${src.slice(0, 4)}…: not one text`);
+    assert.ok(steps <= 4 * src.length, `${src.slice(0, 4)}…: ${steps} steps for ${src.length} characters`);
   }
   // The text runs from the first [ to the first ], as before.
   assert.deepEqual(K.inline('[[a [b](https://x) c] [d] [e](https://y)'), [
     { type: 'link', href: 'https://x', children: [t('[a [b')] }, t(' c] [d] '),
     { type: 'link', href: 'https://y', children: [t('e')] },
   ]);
+});
+
+test('a run of unmatched emphasis marks is read in linear time', { timeout: 60_000 }, () => {
+  // Each * or _ here is unmatched and its text stays text; in **a a lone *
+  // still closes after the * before it.
+  for (const [unit, text] of [['*a ', true], ['_a ', true], ['__a ', true], ['**a ', false], ['*a _b **c __d ', false]]) {
+    const src = unit.repeat(Math.floor(n / unit.length));
+    const { out, steps } = work(src);
+    if (text) assert.ok(out.length === 1 && out[0].text === src, `${unit}…: not one text`);
+    assert.ok(steps <= 8 * src.length, `${unit}…: ${steps} steps for ${src.length} characters`);
+  }
+  // Each mark still closes at the first place it can.
+  assert.deepEqual(K.inline('*a *b* c* **d **e** f** _g h_i j_'), [
+    { type: 'em', children: [t('a *b')] }, t(' c* '),
+    { type: 'strong', children: [t('d **e')] }, t(' f** '),
+    { type: 'em', children: [t('g h_i j')] },
+  ]);
+  // markdown passes the tally on to every inline it reads.
+  let steps = 0;
+  K.markdown('# *a*\n\n- *b*\n\n> *c*\n\n*d*', (k) => { steps += k; });
+  assert.ok(steps > 0);
 });
 
 test('a link that is not http(s) is its text, and HTML is text', () => {
