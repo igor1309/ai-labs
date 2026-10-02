@@ -16,15 +16,15 @@ global ones a whole document at a time (ADR-001 rule 1). So a repository
 that wants its own check copies the whole process. ai-labs keeps copies of
 `implement`, `implement_codex`, `implement_pi` and `implement_pi_glm` that
 differ from the global ones only in `verify` and one sentence of the
-instruction, and the copies drift (LAB-49, observed 2026-10-02).
+instruction, and the copies drift (LAB-49).
 
-Prior art (researched 2026-10-02) separates the two the same way: the
-reusable definition belongs to the tool or to global settings, and the
-repository fills a named slot (pre-commit's hook definitions and per-repo
-config, Symphony's `WORKFLOW.md`, Conductor's script slots). Tools that
-merge fields instead (GitLab `extends`, Compose overrides) each carry
-special rules for lists and for removing a value. A missing gate refuses
-(pre-commit, Symphony); only a missing setup step is skipped.
+Prior art separates the two the same way: the reusable definition belongs
+to the tool or to global settings, and the repository fills a named slot
+(pre-commit's hook definitions and per-repo config, Symphony's
+`WORKFLOW.md`, Conductor's script slots). Tools that merge fields instead
+(GitLab `extends`, Compose overrides) each carry special rules for lists
+and for removing a value. A missing gate refuses (pre-commit, Symphony);
+only a missing setup step is skipped.
 
 ## Decision drivers
 
@@ -81,12 +81,17 @@ node as any refused call is.
 A named document that exists but is invalid is a problem, as any invalid
 document is.
 
-### 5. Global processes name a verification and carry no command
+### 5. A global process that declares verification names it and carries no command
 
-A process meant for every repository names `verify:repo`. The repository
-supplies `.agister/verifies/repo.yaml`. Global settings supply none, unless
-the operator chooses a fallback for repositories that declare nothing; a
+A process meant for every repository that declares verification names
+`verify:repo` instead of carrying a command. The repository supplies
+`.agister/verifies/repo.yaml`. Global settings supply none, unless the
+operator chooses a fallback for repositories that declare nothing; a
 project's document replaces it.
+
+The rule does not make a process declare verification: that stays the
+process's choice (ADR-002). A global process without `verify`, such as
+`ask`, stays as it is and needs no checkout.
 
 ## Consequences
 
