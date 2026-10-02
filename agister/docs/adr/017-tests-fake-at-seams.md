@@ -1,4 +1,4 @@
-# ADR-016: Tests fake at seams, not with real machinery or the wall clock
+# ADR-017: Tests fake at seams, not with real machinery or the wall clock
 
 - **Status:** Proposed
 - **Date:** 2026-10-02
