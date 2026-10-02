@@ -1,6 +1,8 @@
 // A fake DOM, just enough of one for page.js: the page's own markup from
 // index.html, elements made by createElement, text, classes, attributes,
-// events that bubble, and selectors of tags, IDs and classes.
+// events that bubble, and selectors of tags, IDs and classes. It parses no
+// HTML: setting innerHTML or outerHTML is recorded in the document's
+// markup and throws.
 import { readFileSync } from 'node:fs';
 
 const VOID = new Set(['br', 'hr', 'img', 'input', 'link', 'meta']);
@@ -105,6 +107,16 @@ class Element extends Target {
     return this.childNodes.map((n) => n.textContent).join('');
   }
 
+  set innerHTML(value) {
+    this.ownerDocument.markup.push(String(value));
+    throw new Error('the page set innerHTML');
+  }
+
+  set outerHTML(value) {
+    this.ownerDocument.markup.push(String(value));
+    throw new Error('the page set outerHTML');
+  }
+
   set textContent(value) {
     this.replaceChildren(...(value === '' || value == null ? [] : [String(value)]));
   }
@@ -192,6 +204,8 @@ class Document extends Target {
     this.body.parentNode = this;
     this.activeElement = null;
     this.scrolledTo = null;
+    // What the page tried to set as HTML: nothing, ever.
+    this.markup = [];
   }
 
   createElement(tag) {

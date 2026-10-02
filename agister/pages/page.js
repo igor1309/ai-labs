@@ -1,5 +1,5 @@
-// The page: the folder picker, the Settings and Runs views and what reads
-// them again. start runs it over what it is given in place of the
+// The page: the folder picker, the Settings, Runs and Knowledge views and
+// what reads them again. start runs it over what it is given in place of the
 // browser's document, fetch, localStorage, location, navigator and
 // setTimeout, so a test can run it over fakes.
 (() => {
@@ -8,16 +8,23 @@
     const R = globalThis.AgisterRepos;
     const C = globalThis.AgisterConfig;
     const U = globalThis.AgisterRuns;
+    const K = globalThis.AgisterKnowledge;
 
-    // current: the path shown, ~ for Agister home; view: settings or runs.
-    const state = { current: null, view: U.readView(localStorage) };
+    // current: the path shown, ~ for Agister home; view: settings, runs or
+    // knowledge; model: the settings shown, as config.js reads them.
+    const state = { current: null, view: U.readView(localStorage), model: null };
     let renderToken = 0;
 
     const $ = (id) => document.getElementById(id);
+    // children: nodes, text or arrays of them. They are appended in batches:
+    // spread at once, a skill's thousands of inline nodes overflow the
+    // stack.
+    const BATCH = 1000;
     const el = (tag, { dataset, ...props } = {}, ...children) => {
       const node = Object.assign(document.createElement(tag), props);
       if (dataset) Object.assign(node.dataset, dataset);
-      node.append(...children.filter((c) => c != null && c !== false));
+      const list = children.flat().filter((c) => c != null && c !== false);
+      for (let i = 0; i < list.length; i += BATCH) node.append(...list.slice(i, i + BATCH));
       return node;
     };
 
@@ -65,7 +72,8 @@
     // failure the page says why and keeps what it showed. The user's home
     // folder holds Agister's home, so it shows as ~ and leaves the list.
     // The status is the shown view's: while Runs is shown, a read of the
-    // settings leaves it alone.
+    // settings leaves it alone. Knowledge shows the settings' agents, so it
+    // is read after them.
     async function open_(path) {
       const token = ++renderToken;
       let id, files, homeFiles;
@@ -75,16 +83,18 @@
       } catch (err) {
         if (token !== renderToken) return;
         if (!$('picker-menu').hidden) say('picker-status', err.message);
-        else if (state.view === 'settings') say('status', err.message);
+        else if (state.view !== 'runs') say('status', err.message);
         return;
       }
       if (token !== renderToken) return;
       if (id !== R.HOME_ID) R.rememberRepo(localStorage, id, Date.now());
       R.writeCurrent(localStorage, id);
       state.current = id;
+      if (knowledge.path !== id) forgetKnowledge();
       setMenu(false);
-      if (state.view === 'settings') say('status', '');
-      await render(token, files, homeFiles);
+      if (state.view !== 'runs') say('status', '');
+      const shown = await render(token, files, homeFiles);
+      if (shown && state.view === 'knowledge') await loadKnowledge();
     }
 
     // Asks for a folder in the Mac's own dialog and opens it; cancelling
@@ -111,7 +121,7 @@
     // --- dashboard ---
 
     // files: the shown folder's settings; homeFiles: Agister home's, which a
-    // repo's go over, or null for ~ itself.
+    // repo's go over, or null for ~ itself. Says whether they were shown.
     async function render(token, files, homeFiles) {
       $('picker-label').textContent = label(state.current);
       $('picker-button').title = state.current === R.HOME_ID ? 'Agister home, ~/.agister' : state.current;
@@ -122,12 +132,14 @@
           ? await C.loadComposed(R.agisterFromFiles(homeFiles), R.agisterFromFiles(files))
           : await C.loadAgister(R.agisterFromFiles(files));
       } catch (err) {
-        if (token === renderToken && state.view === 'settings') say('status', `Could not read .agister: ${err.message}`);
-        return;
+        if (token === renderToken && state.view !== 'runs') say('status', `Could not read .agister: ${err.message}`);
+        return false;
       }
-      if (token !== renderToken) return;
+      if (token !== renderToken) return false;
+      state.model = model;
       $('dashboard').replaceChildren(...dashboard(model, !!homeFiles));
       $('dashboard').hidden = state.view !== 'settings';
+      return true;
     }
 
     // "read 10:42:07": when what is shown was read.
@@ -621,6 +633,245 @@
           el('pre', { className: 'mono', textContent: JSON.stringify(record, null, 2) })));
     }
 
+    // --- knowledge ---
+
+    // data: the view's model, read for path; chosen: the agent or skill
+    // opened below the overview, { kind, name }; source: a skill shows its
+    // SKILL.md as stored instead of rendered.
+    const knowledge = { data: null, path: null, chosen: null, source: false };
+    let knowledgeToken = 0;
+
+    // Another folder is shown: its Knowledge is not the last one read, so
+    // that one goes, and a failed read leaves nothing under the new label.
+    function forgetKnowledge() {
+      knowledge.data = null;
+      knowledge.path = null;
+      $('knowledge').replaceChildren();
+    }
+
+    const NO_ASSIGNMENT = 'Agister does not choose an agent’s skills: a call loads what its runtime loads in the repo and the home (ADR-006). This page only reads them; editing is not part of it.';
+
+    // Reads the skills of the shown settings and the runs, and shows them
+    // with what was opened before. As with Runs, a read that ends after the
+    // user left Knowledge, after a newer read, or after the settings were
+    // asked for again (open_), leaves the page alone.
+    async function loadKnowledge() {
+      const token = ++knowledgeToken;
+      const opened = renderToken;
+      const current = () => token === knowledgeToken && opened === renderToken && state.view === 'knowledge';
+      const settings = state.model;
+      const path = state.current;
+      let skills, list;
+      try {
+        [skills, list] = await Promise.all([R.fetchSkills(fetch, path), R.fetchRuns(fetch)]);
+      } catch (err) {
+        if (current()) say('status', err.message);
+        return;
+      }
+      if (!current()) return;
+      say('status', '');
+      knowledge.data = K.model(settings, skills, list.runs);
+      knowledge.path = path;
+      stamp('Knowledge');
+      renderKnowledge();
+    }
+
+    function renderKnowledge() {
+      const d = knowledge.data;
+      $('knowledge').replaceChildren(
+        el('p', { className: 'intro' }, d.home
+          ? 'Agister home, no repo: the skills each agent’s runtime would load from the home folders.'
+          : 'The skills each agent’s runtime would load in this repo’s working tree and from the home folders. A call on a checkout loads what that checkout holds, which can differ.'),
+        el('p', { className: 'intro', textContent: NO_ASSIGNMENT }),
+        el('h2', { className: 'group', textContent: 'Overview' }),
+        el('p', { className: 'group-note', textContent: 'a row per skill name, a column per agent; ● the agent’s runtime loads a skill of that name; shared: the name is in several folders. Click an agent or a skill to open it below.' }),
+        overview(d),
+        el('div', { id: 'knowledge-detail' }),
+        foldersCard(d.folders));
+      renderChosen();
+    }
+
+    // A button that opens the agent or skill name below the overview; again
+    // closes it.
+    function pick(kind, name) {
+      const button = el('button', { type: 'button', className: 'link', textContent: name, title: `Open the ${kind} ${name}` });
+      button.addEventListener('click', () => {
+        const { chosen } = knowledge;
+        knowledge.chosen = chosen?.kind === kind && chosen.name === name ? null : { kind, name };
+        renderChosen();
+        if (knowledge.chosen) $('knowledge-detail').scrollIntoView({ block: 'nearest' });
+      });
+      return button;
+    }
+
+    const sharedChip = (skill) => (skill.shared
+      ? el('span', { className: 'chip replaces', title: 'The same name in several folders; which one a runtime uses is not decided here', textContent: `shared ×${skill.entries.length}` })
+      : null);
+    const scopeChip = (folder) => text(folder.scope, folder.scope === 'repo' ? 'chip repo' : 'chip');
+
+    // The matrix: which agent's runtime loads a skill of which name.
+    function overview(d) {
+      if (!d.agents.length) return el('p', { className: 'intro', textContent: 'No agents in these settings.' });
+      const head = el('tr', {}, el('th', { textContent: 'Skill' }), ...d.agents.map((a) => el('th', {}, pick('agent', a.name),
+        el('span', { className: 'sub' }, a.runtimeMissing ? missing('runtime', a.runtime) : a.adapter ?? 'no adapter'),
+        el('span', { className: 'sub' }, [a.model, a.effort].filter(Boolean).join(' · ') || '—'))));
+      const rows = d.skills.map((s) => el('tr', {},
+        el('td', { className: 'name' }, pick('skill', s.name), s.shared ? ' ' : null, sharedChip(s)),
+        ...d.agents.map((a) => {
+          const n = a.loads.filter((e) => e.name === s.name).length;
+          return el('td', { className: 'short', dataset: { label: a.name } }, n ? `●${n > 1 ? ` ×${n}` : ''}` : '');
+        })));
+      return el('section', { className: 'card matrix', id: 'knowledge-overview' },
+        el('table', {}, el('thead', {}, head), el('tbody', {}, ...rows)),
+        d.skills.length ? null : el('p', { className: 'group-note', textContent: 'No skills in the folders read.' }));
+    }
+
+    // The folders read, each as named: a call started with another HOME,
+    // CODEX_HOME or PI_CODING_AGENT_DIR loads others.
+    function foldersCard(folders) {
+      if (!folders.length) return el('p', { className: 'intro', textContent: 'No skill folders read: no runtime of these settings has an adapter whose folders are known.' });
+      const head = ['Folder', 'From', 'Path', 'Loaded by', 'Skills'];
+      return el('section', { className: 'card', id: 'knowledge-folders' },
+        el('header', { className: 'section-head' }, el('h3', { textContent: 'Folders read' }),
+          el('span', { className: 'note', textContent: 'home folders as pages’ own environment names them; a call started with another loads others' })),
+        el('table', {},
+          el('thead', {}, el('tr', {}, ...head.map((c) => el('th', { textContent: c })))),
+          el('tbody', {}, ...folders.map((f) => el('tr', {},
+            el('td', { className: 'name', textContent: f.folder }),
+            el('td', { dataset: { label: 'From' } }, scopeChip(f)),
+            el('td', { dataset: { label: 'Path' } }, paths(f)),
+            el('td', { dataset: { label: 'Loaded by' } }, (f.adapters ?? []).join(', ')),
+            el('td', { dataset: { label: 'Skills' } }, f.state ? K.folderState(f.state) : String(f.skills.length)))))));
+    }
+
+    // A folder's or a skill's path, and its real path beside it when a link
+    // leads elsewhere.
+    function paths(item) {
+      return el('div', {},
+        el('div', { textContent: item.path }),
+        item.real && item.real !== item.path ? el('div', { className: 'sub', textContent: `→ ${item.real}` }) : null,
+        item.link && !item.real ? el('div', { className: 'sub', textContent: `→ ${item.link}` }) : null);
+    }
+
+    function renderChosen() {
+      const { data, chosen } = knowledge;
+      const found = chosen && (chosen.kind === 'agent' ? data.agents : data.skills).find((x) => x.name === chosen.name);
+      if (!found) knowledge.chosen = null;
+      $('knowledge-detail').replaceChildren(...(found ? [chosen.kind === 'agent' ? agentCard(found, data) : skillCard(found)] : []));
+    }
+
+    function detailCard(id, name, chip, ...body) {
+      const close = el('button', { type: 'button', className: 'copy', textContent: 'Close' });
+      close.addEventListener('click', () => { knowledge.chosen = null; renderChosen(); });
+      return el('article', { className: 'card run', id },
+        el('header', { className: 'run-head' }, el('div', { className: 'skill-head' }, el('h3', { textContent: name }), chip), close),
+        ...body);
+    }
+
+    const checksLine = (skill) => text(K.checks(skill.checks), skill.checks?.passed ? '' : 'failed');
+
+    function simpleTable(head, rows) {
+      return el('table', {},
+        el('thead', {}, el('tr', {}, ...head.map((c) => el('th', { textContent: c })))),
+        el('tbody', {}, ...rows.map(([first, ...cells]) => el('tr', {},
+          el('td', { className: 'name' }, first),
+          ...cells.map((c, i) => el('td', { dataset: { label: head[i + 1] } }, c))))));
+    }
+
+    // A link that shows Runs with the run id opened.
+    function runInRuns(id) {
+      const link = el('a', { href: `#${id}`, textContent: id });
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        runs.chosen = id;
+        showView('runs');
+      });
+      return link;
+    }
+
+    // An agent: what its runtime loads and, apart from that and labelled
+    // observed, what its runs used. A skill no run used says nothing of use.
+    function agentCard(a, d) {
+      const shared = new Set(d.skills.filter((s) => s.shared).map((s) => s.name));
+      const used = a.observed.skills;
+      return detailCard('agent-detail', a.name, null,
+        facts([
+          ['runtime', a.runtimeMissing ? missing('runtime', a.runtime) : `${a.runtime} — adapter ${a.adapter ?? 'not set'}`],
+          ['model', a.model],
+          ['effort', a.effort],
+        ]),
+        el('p', { className: 'purpose', textContent: NO_ASSIGNMENT }),
+        el('section', { className: 'stage', id: 'agent-loads' },
+          el('h4', { textContent: 'Its runtime would load' }),
+          a.loads.length
+            ? simpleTable(['Skill', 'From', 'Folder', 'Checks'], a.loads.map((e) => [
+              el('span', {}, pick('skill', e.name), shared.has(e.name) ? ' ' : null, shared.has(e.name) ? text('shared', 'chip replaces') : null),
+              scopeChip(e.folder),
+              el('span', { title: e.path, textContent: e.folder.folder }),
+              checksLine(e),
+            ]))
+            : el('p', { className: 'group-note', textContent: a.folders.length
+              ? `No skills in the folders ${a.adapter} loads: ${a.folders.map((f) => f.folder).join(', ')}.`
+              : 'No skill folders are known for this agent’s runtime.' })),
+        a.adapter ? el('section', { className: 'stage', id: 'agent-left-out' },
+          el('h4', { textContent: `Not in this list: what ${a.adapter} loads from elsewhere` }),
+          el('ul', {}, ...K.leftOut(a.adapter).map((line) => el('li', { textContent: line })))) : null,
+        used.length ? el('section', { className: 'stage', id: 'agent-observed' },
+          el('h4', { textContent: 'Observed in runs' }),
+          el('p', { className: 'group-note', textContent: `observed: what the ${a.observed.runs} ${a.observed.runs === 1 ? 'run' : 'runs'} of this agent among the runs read from Agister home used, whatever the picker shows; not what the runtime loads` }),
+          simpleTable(['Skill', 'Uses', 'Runs', 'In'], used.map((u) => [
+            u.name, String(u.count), String(u.runs.length),
+            el('span', {}, ...u.runs.flatMap((id, i) => (i ? [', ', runInRuns(id)] : [runInRuns(id)]))),
+          ]))) : null);
+    }
+
+    // A skill name: the agents whose runtime loads it, and each folder's
+    // entry with its checks and its SKILL.md, rendered or as stored.
+    function skillCard(s) {
+      const toggle = (source, label) => {
+        const button = el('button', { type: 'button', textContent: label });
+        button.setAttribute('aria-pressed', String(knowledge.source === source));
+        button.addEventListener('click', () => { knowledge.source = source; renderChosen(); });
+        return button;
+      };
+      return detailCard('skill-detail', s.name, sharedChip(s),
+        facts([
+          ['loaded by', s.agents.length
+            ? el('div', {}, ...s.agents.flatMap((name, i) => (i ? [', ', pick('agent', name)] : [pick('agent', name)])))
+            : 'no agent’s runtime in these settings'],
+        ]),
+        el('div', { className: 'views', role: 'group', id: 'skill-source' }, toggle(false, 'Rendered'), toggle(true, 'Source')),
+        s.entries.map((e) => el('section', { className: 'stage' },
+          el('h4', {}, `${e.folder.scope} · ${e.folder.folder}`),
+          facts([
+            ['path', paths(e)],
+            ['link', e.link ? `→ ${e.link}` : null],
+            ['loaded by', (e.folder.adapters ?? []).join(', ')],
+            ['description', e.description || null],
+            ['checks', checksLine(e)],
+          ]),
+          skillText(e))));
+    }
+
+    function skillText(e) {
+      if (e.state) return el('p', { className: 'group-note', textContent: K.skillState(e.state) });
+      if (knowledge.source) return el('pre', { className: 'mono source', textContent: e.content ?? '' });
+      return el('div', { className: 'markdown' }, K.markdown(K.body(e.content)).map(block));
+    }
+
+    // knowledge.js's Markdown tree as elements and text nodes: a skill's
+    // HTML stays text. The lists go to el as arrays, never spread: a skill
+    // can hold more nodes than a call takes arguments.
+    function block(n) {
+      if (typeof n === 'string') return n;
+      const props = {};
+      if (n.tag === 'a') Object.assign(props, { href: n.href, target: '_blank', rel: 'noopener noreferrer' });
+      if (n.tag === 'pre') props.className = 'mono';
+      if (n.start != null) props.start = n.start;
+      if (n.align) props.className = `align-${n.align}`;
+      return el(n.tag, props, n.children.map(block));
+    }
+
     // --- views ---
 
     // Shows view, remembered for the next visit.
@@ -630,6 +881,7 @@
       for (const v of U.VIEWS) $(`view-${v}`).setAttribute('aria-pressed', String(v === view));
       $('dashboard').hidden = view !== 'settings' || !$('dashboard').hasChildNodes();
       $('runs').hidden = view !== 'runs';
+      $('knowledge').hidden = view !== 'knowledge';
       $('refresh').title = `Refresh: read the ${view} again`;
     }
 
@@ -640,7 +892,7 @@
       return reload();
     }
 
-    // Reads the shown view again.
+    // Reads the shown view again; Knowledge is read after its settings.
     function reload() {
       if (location.protocol === 'file:') return say('status', R.NO_SERVER);
       return state.view === 'runs' ? loadRuns() : open_(state.current ?? R.HOME_ID);

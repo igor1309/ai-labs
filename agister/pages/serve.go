@@ -1,8 +1,9 @@
 // Package pages serves the Agister settings page on this machine: the
 // page itself, embedded, and the JSON endpoints it calls: one asking the
 // user to choose a folder in the Mac's own dialog, one returning a
-// .agister folder's settings files, and three summarising the runs in
-// Agister's home. It listens on the loopback address only and answers
+// .agister folder's settings files, one returning the skills the
+// settings' runtimes load, and three summarising the runs in Agister's
+// home. It listens on the loopback address only and answers
 // requests addressed to it by name, so no other site can read through it.
 package pages
 
@@ -25,7 +26,7 @@ import (
 	"time"
 )
 
-//go:embed index.html repos.js config.js runs.js page.js
+//go:embed index.html repos.js config.js runs.js markdown-it.min.js knowledge.js page.js
 var assets embed.FS
 
 // The .agister entries that hold settings; runs and logs are not settings.
@@ -55,8 +56,8 @@ type Observe func(runsDir string) RunObserver
 
 // Handler serves the page and its endpoints. agisterHome is Agister's home
 // (what ~ names); choose asks the user for a folder; observe reads the
-// runs' owners.
-func Handler(agisterHome string, choose Choose, observe Observe) http.Handler {
+// runs' owners; homes are where the home skill folders are.
+func Handler(agisterHome string, choose Choose, observe Observe, homes SkillHomes) http.Handler {
 	mux := http.NewServeMux()
 	var dialog sync.Mutex
 	mux.Handle("GET /", http.FileServerFS(assets))
@@ -99,6 +100,10 @@ func Handler(agisterHome string, choose Choose, observe Observe) http.Handler {
 			body["homeFiles"] = homeFiles
 		}
 		reply(w, body, err)
+	})
+	mux.HandleFunc("GET /api/skills", func(w http.ResponseWriter, r *http.Request) {
+		skills, err := skillsAt(r.URL.Query().Get("path"), agisterHome, homes)
+		reply(w, skills, err)
 	})
 	runs := filepath.Join(agisterHome, "runs")
 	owners := observe(runs)
@@ -308,7 +313,8 @@ func Main(ctx context.Context, args []string, env Env) int {
 	if choose == nil {
 		choose = func(context.Context) (string, error) { return "", errors.New("no folder dialog on this system") }
 	}
-	server := &http.Server{Handler: Handler(agisterHome, choose, env.Observe), ReadHeaderTimeout: 10 * time.Second}
+	homes := SkillHomesFrom(env.Getenv, userHome)
+	server := &http.Server{Handler: Handler(agisterHome, choose, env.Observe, homes), ReadHeaderTimeout: 10 * time.Second}
 	url := "http://" + listener.Addr().String() + "/"
 	fmt.Fprintf(env.Stdout, "Agister pages at %s (Ctrl-C stops)\n", url)
 	if env.Open != nil && !*noOpen {
