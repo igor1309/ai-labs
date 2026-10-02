@@ -296,7 +296,7 @@ verify:
 	h.calls = app.NewCalls(
 		app.NewResolver(definitions, runtimes, schema.Validator{}), runtimes,
 		map[string]app.InputProvider{"git.revision": git.Revision{}},
-		workspaces, with.changes, app.NewVerifier(with.changes, with.copies, h.commands, with.clock), schema.Validator{},
+		workspaces, with.changes, app.NewPreparer(with.changes, h.commands, with.clock), app.NewVerifier(with.changes, with.copies, h.commands, with.clock), schema.Validator{},
 		h.store, h.store, with.clock, system.Timer, system.IDs{}, h.home, hosted,
 	)
 	h.runs = app.NewRuns(h.store, hosted, 10*time.Millisecond)

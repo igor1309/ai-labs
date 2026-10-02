@@ -226,11 +226,14 @@ func (s *workspacesSpy) releases() int {
 // in it. A clean copy (see copiesSpy) has the content the checkout was last
 // named with, unless copied says otherwise.
 type changesSpy struct {
-	mu        sync.Mutex
-	changed   [][2]string   // dir, from
-	identity  string        // what Identity names; "tree" when empty
-	identify  func() string // when set, names the checkout's content instead
-	changes   []byte
+	mu       sync.Mutex
+	changed  [][2]string   // dir, from
+	identity string        // what Identity names; "tree" when empty
+	identify func() string // when set, names the checkout's content instead
+	changes  []byte
+	// patch, when set, is the patch from one content to another, instead
+	// of changes.
+	patch     func(from, to string) []byte
 	changeErr error
 	panics    bool // Changes panics
 	// copied, when set, names a clean copy's content, given how many times
@@ -261,12 +264,15 @@ func (s *changesSpy) Identity(_ context.Context, dir, _ string) (string, error) 
 	return s.identity, nil
 }
 
-func (s *changesSpy) Changes(_ context.Context, dir, from, _ string) ([]byte, error) {
+func (s *changesSpy) Changes(_ context.Context, dir, from, to string) ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.changed = append(s.changed, [2]string{dir, from})
 	if s.panics {
 		panic("changes exploded")
+	}
+	if s.patch != nil {
+		return s.patch(from, to), s.changeErr
 	}
 	return s.changes, s.changeErr
 }
@@ -380,9 +386,14 @@ type commandsSpy struct {
 	stale bool
 	// timedOut, when set, ends each run as one killed at its timeout.
 	timedOut bool
+	// block makes each run wait for its context to end and end as one
+	// killed for it; started, when set, is closed once the first is on
+	// record.
+	block   bool
+	started chan struct{}
 }
 
-func (s *commandsSpy) Run(_ context.Context, request app.CommandRequest, started func(string) error) app.CommandResult {
+func (s *commandsSpy) Run(ctx context.Context, request app.CommandRequest, started func(string) error) app.CommandResult {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.requests = append(s.requests, request)
@@ -391,6 +402,16 @@ func (s *commandsSpy) Run(_ context.Context, request app.CommandRequest, started
 	}
 	if s.running != nil {
 		s.running(request)
+	}
+	if s.block {
+		if s.started != nil {
+			close(s.started)
+			s.started = nil
+		}
+		s.mu.Unlock()
+		<-ctx.Done()
+		s.mu.Lock()
+		return app.CommandResult{Cancelled: true, Signal: "killed"}
 	}
 	if s.stale {
 		return app.CommandResult{Stale: true, Signal: "killed"}

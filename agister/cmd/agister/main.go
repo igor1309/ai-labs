@@ -191,6 +191,7 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 			IDs:        system.IDs{},
 			StateDir:   config.Home,
 		},
+		Preparer: app.SetupAdapters{Content: content, Commands: runtimecomposition.Commands{Supervisor: supervisor.Commands{}}, Clock: system.Clock{}},
 		Verifier: app.VerifyAdapters{Content: content, Copies: workspaces.copies, Commands: runtimecomposition.Commands{Supervisor: supervisor.Commands{}}, Clock: system.Clock{}},
 		Runs:     app.RunsAdapters{Reader: evidence},
 		Decorate: func(client contract.Client) contract.Client {

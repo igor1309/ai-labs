@@ -7,7 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/app"
+	runtimecomposition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -79,27 +81,40 @@ func TestSetupPreparesTheCheckoutOnceBeforeTheFirstTurn(t *testing.T) {
 // before any turn; its run is on record, and the checkout is released
 // (wait checks that).
 func TestAFailedSetupFailsTheCallWithNoTurn(t *testing.T) {
+	// The timeout is the command runner's timer, which fires for the
+	// setup's timeout only; the command never ends on its own, so only the
+	// timer can end it, and wait's own bound fails the test if nothing does.
+	const timeout = 13 * time.Second
+	timesOut := supervisor.Commands{Timer: func(wait time.Duration) (<-chan time.Time, func()) {
+		if wait != timeout {
+			return nil, func() {}
+		}
+		fired := make(chan time.Time, 1)
+		fired <- time.Time{}
+		return fired, func() {}
+	}}
 	cases := map[string]struct {
 		setup string
+		with  seams
 		want  string
 		check func(t *testing.T, ran *domain.CommandRun)
 	}{
-		"non-zero exit": {`{command: "echo broken; exit 3", timeout: 20s}`, "the setup command exited with code 3", func(t *testing.T, ran *domain.CommandRun) {
+		"non-zero exit": {setup: `{command: "echo broken; exit 3", timeout: 20s}`, want: "the setup command exited with code 3", check: func(t *testing.T, ran *domain.CommandRun) {
 			if ran.Exit.Code == nil || *ran.Exit.Code != 3 || ran.Output.Head != "broken\n" {
 				t.Fatalf("setup run = %+v", ran)
 			}
 		}},
-		"timeout": {`{command: "sleep 30", timeout: 200ms}`, "the setup command exceeded its timeout 200ms", func(t *testing.T, ran *domain.CommandRun) {
-			if !ran.TimedOut {
+		"timeout": {setup: `{command: "` + blocks + `", timeout: 13s}`, with: seams{commands: runtimecomposition.Commands{Supervisor: timesOut}}, want: "the setup command exceeded its timeout 13s", check: func(t *testing.T, ran *domain.CommandRun) {
+			if !ran.TimedOut || ran.Exit.Code != nil {
 				t.Fatalf("setup run = %+v", ran)
 			}
 		}},
-		"tracked file changed": {`{command: "echo changed > state", timeout: 20s}`, "the setup command changed the checkout's content", func(t *testing.T, ran *domain.CommandRun) {
+		"tracked file changed": {setup: `{command: "echo changed > state", timeout: 20s}`, want: "the setup command changed the checkout's content", check: func(t *testing.T, ran *domain.CommandRun) {
 			if ran.After == "" || ran.AfterChanges == nil {
 				t.Fatalf("setup run = %+v", ran)
 			}
 		}},
-		"unignored file added": {`{command: "echo made > new.txt", timeout: 20s}`, "the setup command changed the checkout's content", func(t *testing.T, ran *domain.CommandRun) {
+		"unignored file added": {setup: `{command: "echo made > new.txt", timeout: 20s}`, want: "the setup command changed the checkout's content", check: func(t *testing.T, ran *domain.CommandRun) {
 			if ran.After == "" || ran.AfterChanges == nil {
 				t.Fatalf("setup run = %+v", ran)
 			}
@@ -107,7 +122,10 @@ func TestAFailedSetupFailsTheCallWithNoTurn(t *testing.T) {
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
-			h := newLoop(t, verifySettings{setup: c.setup}, state("pass"))
+			h := newLoopWith(t, c.with, verifySettings{setup: c.setup}, state("pass"))
+			// Whatever the assertions find, no setup command outlives the
+			// test: its group is on record while it runs.
+			cleanupRecorded(t, h.home, h.repo)
 			record := h.call(contract.CallRequest{})
 			expect(t, record, domain.Failed, domain.ClassSetupFailed, c.want)
 			if len(h.runner.turns()) != 0 || record.Turn != nil || len(record.Attempts) != 0 || len(record.Result.Artifacts) != 0 {
@@ -118,6 +136,28 @@ func TestAFailedSetupFailsTheCallWithNoTurn(t *testing.T) {
 			}
 			c.check(t, record.SetupRun)
 		})
+	}
+}
+
+// ADR-010 rule 4: the checkout's content after its setup is the
+// revision's, not what the checkout was made with: a post-checkout hook
+// that changes a tracked file fails the call though the setup changes
+// nothing, and no turn runs on it.
+func TestACheckoutHookThatChangesATrackedFileFailsTheSetup(t *testing.T) {
+	h := newLoop(t, verifySettings{setup: `{command: "true", timeout: 20s}`}, state("pass"))
+	hook := filepath.Join(h.repo, ".git", "hooks", "post-checkout")
+	write(t, hook, "#!/bin/sh\necho hooked > state\n")
+	if err := os.Chmod(hook, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	record := h.call(contract.CallRequest{})
+
+	expect(t, record, domain.Failed, domain.ClassSetupFailed, "the checkout's content is not the revision's before its setup")
+	if len(h.runner.turns()) != 0 || record.Turn != nil || len(setupRunsOf(h, record)) != 0 || record.SetupRun != nil || len(record.Result.Artifacts) != 0 {
+		t.Fatalf("turns %d, setup runs %+v, setup run %+v, artifacts %+v", len(h.runner.turns()), setupRunsOf(h, record), record.SetupRun, record.Result.Artifacts)
+	}
+	if patch := read(t, filepath.Join(h.home, "runs", record.ID, "artifacts", "checkout.patch")); !strings.Contains(patch, "+hooked") {
+		t.Fatalf("checkout.patch = %q", patch)
 	}
 }
 

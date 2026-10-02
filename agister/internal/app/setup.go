@@ -2,10 +2,62 @@ package app
 
 import (
 	"context"
+	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
+
+// Preparer runs the setup of calls whose checkout declares one (ADR-010),
+// through the contracts it declares here: one setup per call (Setup).
+type Preparer struct {
+	content  SetupContent
+	commands SetupCommands
+	clock    SetupClock
+}
+
+// SetupContent names a checkout's content and diffs two contents, so the
+// setup is held to the revision's content.
+type SetupContent interface {
+	// Identity names the checkout's content: the files of revision as the
+	// checkout has them, and its untracked files that are not ignored.
+	Identity(ctx context.Context, dir, revision string) (string, error)
+	// Changes returns the patch from one content, a revision or an
+	// identity, to another; empty when they are the same.
+	Changes(ctx context.Context, dir, from, to string) ([]byte, error)
+}
+
+// SetupCommands runs the setup command.
+type SetupCommands interface {
+	// Run runs the command in a process group of its own until it exits,
+	// its timeout passes or ctx ends, and kills the whole group before it
+	// returns. started records the group as soon as it exists, and may be
+	// called again as more becomes known; an error from it means the group
+	// is not on record: Run kills it and the run fails.
+	Run(ctx context.Context, request CommandRequest, started func(ref string) error) CommandResult
+}
+
+// SetupClock tells when the setup's run starts and ends.
+type SetupClock interface{ Now() time.Time }
+
+// SetupAdapters are what a Preparer runs on.
+type SetupAdapters struct {
+	Content  SetupContent
+	Commands SetupCommands
+	Clock    SetupClock
+}
+
+// NewPreparer returns the component that runs checkouts' setups. Every
+// collaborator is required.
+func NewPreparer(content SetupContent, commands SetupCommands, clock SetupClock) *Preparer {
+	return &Preparer{content: content, commands: commands, clock: clock}
+}
+
+// SetupCommand is the command that prepares a checkout, and how long it
+// may run.
+type SetupCommand struct {
+	Command string
+	Timeout time.Duration
+}
 
 // SetupCall is the setup one call's checkout runs (ADR-010), where, and
 // what it records to.
@@ -16,48 +68,57 @@ type SetupCall struct {
 	Update   func(run.Record) error
 	Artifact func(name string, data []byte) (run.Artifact, error)
 
-	Setup definition.Setup
+	Setup SetupCommand
 	Dir   string // the call's checkout, fresh
 	Base  string // the revision it was checked out at
 }
 
 // Setup runs the call's setup command once in its checkout, before the
 // first turn, with the operator's authority, its process group on record
-// while it runs. It fails the call if the command does not exit zero
-// within its timeout, or leaves the checkout's content other than the
-// revision's: what it makes must be ignored (ADR-010 rule 4). The run is
-// on record either way.
-func (v *Verifier) Setup(ctx context.Context, call SetupCall) *run.Error {
+// while it runs. It fails the call if the checkout's content is not the
+// revision's before the command, as when a checkout hook changed it, if
+// the command does not exit zero within its timeout, or if it leaves the
+// checkout's content other than it found it: what it makes must be ignored
+// (ADR-010 rule 4). The run is on record either way.
+func (p *Preparer) Setup(ctx context.Context, call SetupCall) *run.Error {
 	failure := func(step string, err error) *run.Error {
 		if ctx.Err() != nil {
 			return run.Fault(run.ClassCancelled, "cancelled while %s: %v", step, err)
 		}
 		return run.Fault(run.ClassInternal, "%s: %v", step, err)
 	}
-	// The checkout is fresh, so its content is the revision's.
-	before, err := v.content.Identity(ctx, call.Dir, call.Base)
+	before, err := p.content.Identity(ctx, call.Dir, call.Base)
 	if err != nil {
 		return failure("naming the checkout's content before its setup", err)
 	}
+	// The checkout is fresh, but what made it may have changed it: its
+	// hooks run as it is made. The setup starts on the revision's content
+	// or not at all.
+	if drift, err := keepChanges(ctx, p.content.Changes, call.Dir, call.Base, before, "checkout.patch", call.Artifact, call.Event); err != nil {
+		return failure("comparing the checkout's content with its revision before its setup", err)
+	} else if drift != nil {
+		call.Event(run.SourceAgister, "CHECKOUT_CHANGED_CONTENT", map[string]any{"revision": call.Base, "content": before})
+		return run.Fault(run.ClassSetupFailed, "the checkout's content is not the revision's before its setup (tracked files changed or unignored files added as it was made, as by a checkout hook)")
+	}
 	setup := call.Setup
 	call.Event(run.SourceAgister, "SETUP_STARTED", map[string]any{"command": setup.Command, "dir": call.Dir, "timeout": setup.Timeout.String()})
-	started := v.clock.Now()
-	result := v.commands.Run(ctx, CommandRequest{Command: setup.Command, Dir: call.Dir, Timeout: setup.Timeout, Bound: verifyOutputBound},
+	started := p.clock.Now()
+	result := p.commands.Run(ctx, CommandRequest{Command: setup.Command, Dir: call.Dir, Timeout: setup.Timeout, Bound: verifyOutputBound},
 		func(ref string) error { return recordGroup(call.Record, call.Update, "the setup command", ref) })
-	ran := commandRun(setup.Command, call.Dir, result, started, v.clock.Now())
+	ran := commandRun(setup.Command, call.Dir, result, started, p.clock.Now())
 
 	fault := setupEnded(ran, setup)
 	// A run that ended on its own is held to the content it started on,
 	// whatever its exit.
 	if !ran.Cancelled && !ran.TimedOut && ran.Error == "" {
-		after, err := v.content.Identity(ctx, call.Dir, call.Base)
+		after, err := p.content.Identity(ctx, call.Dir, call.Base)
 		switch {
 		case err != nil:
 			fault = failure("naming the checkout's content after its setup", err)
 		case after != before:
 			ran.After = after
 			call.Event(run.SourceAgister, "SETUP_CHANGED_CONTENT", map[string]any{"before": before, "after": after})
-			if ran.AfterChanges, err = keepChanges(ctx, v.content.Changes, call.Dir, before, after, "setup.patch", call.Artifact, call.Event); err != nil {
+			if ran.AfterChanges, err = keepChanges(ctx, p.content.Changes, call.Dir, before, after, "setup.patch", call.Artifact, call.Event); err != nil {
 				fault = failure("keeping the setup's changes", err)
 			} else if fault == nil {
 				fault = run.Fault(run.ClassSetupFailed, "the setup command changed the checkout's content (tracked files changed or unignored files added): what it makes must be ignored")
@@ -78,7 +139,7 @@ func (v *Verifier) Setup(ctx context.Context, call SetupCall) *run.Error {
 
 // setupEnded is why the setup's run fails the call by how it ended, if it
 // does.
-func setupEnded(ran run.CommandRun, setup definition.Setup) *run.Error {
+func setupEnded(ran run.CommandRun, setup SetupCommand) *run.Error {
 	switch {
 	case ran.Cancelled:
 		return run.Fault(run.ClassCancelled, "cancelled during the checkout's setup")

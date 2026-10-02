@@ -25,6 +25,7 @@ type Calls struct {
 	inputs     map[string]InputProvider
 	workspaces CallWorkspaces
 	changes    CallChanges
+	preparer   CallPreparer
 	verifier   CallVerifier
 	validator  CallValidator
 	recorder   RunRecorder
@@ -417,16 +418,19 @@ type CallChanges interface {
 	Changes(ctx context.Context, dir, from, to string) ([]byte, error)
 }
 
-// CallVerifier runs the commands a call's settings name, with the
-// operator's authority. Setup runs its checkout's setup once, before its
-// first turn (ADR-010), and returns why the call fails, if it does. Verify
-// runs the verification loop of a call whose process declares verify
-// (ADR-002; where the command runs, ADR-005), after its first turn was
-// valid. It returns the content a passing run checked, on a clean copy of
-// the base with the patch to that content applied, empty when none passed,
-// and the fault that ended the loop without a pass.
-type CallVerifier interface {
+// CallPreparer runs a call's checkout's setup once, with the operator's
+// authority, before its first turn (ADR-010), and returns why the call
+// fails, if it does.
+type CallPreparer interface {
 	Setup(ctx context.Context, call SetupCall) *run.Error
+}
+
+// CallVerifier runs the verification loop of a call whose process declares
+// verify (ADR-002; where the command runs, ADR-005), after its first turn
+// was valid. It returns the content a passing run checked, on a clean copy
+// of the base with the patch to that content applied, empty when none
+// passed, and the fault that ended the loop without a pass.
+type CallVerifier interface {
 	Verify(ctx context.Context, call VerifyCall) (verified string, fault *run.Error)
 }
 
@@ -435,9 +439,9 @@ type RunRecorder interface {
 	Create(ctx context.Context, record run.Record) (RunHandle, error)
 }
 
-// CallAdapters are what Calls run on besides their resolver, verifier and
-// cancellations. StateDir is Agister's own state, which no agent workspace
-// may overlap.
+// CallAdapters are what Calls run on besides their resolver, preparer,
+// verifier and cancellations. StateDir is Agister's own state, which no
+// agent workspace may overlap.
 type CallAdapters struct {
 	Runners    CallRunners
 	Inputs     map[string]InputProvider
@@ -462,6 +466,7 @@ func NewCalls(
 	inputs map[string]InputProvider,
 	workspaces CallWorkspaces,
 	changes CallChanges,
+	preparer CallPreparer,
 	verifier CallVerifier,
 	validator CallValidator,
 	recorder RunRecorder,
@@ -478,6 +483,7 @@ func NewCalls(
 		inputs:     inputs,
 		workspaces: workspaces,
 		changes:    changes,
+		preparer:   preparer,
 		verifier:   verifier,
 		validator:  validator,
 		recorder:   recorder,
@@ -752,9 +758,9 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		// ends the call before any turn, and leaves no changes of the
 		// call's to keep.
 		if setup := res.Process.Setup; setup != nil {
-			if fault := c.verifier.Setup(ctx, SetupCall{
+			if fault := c.preparer.Setup(ctx, SetupCall{
 				Record: &record, Event: event, Update: handle.Update, Artifact: handle.Artifact,
-				Setup: definition.Setup{Command: setup.Command, Timeout: setup.Timeout}, Dir: workspace.Dir, Base: revision,
+				Setup: SetupCommand{Command: setup.Command, Timeout: setup.Timeout}, Dir: workspace.Dir, Base: revision,
 			}); fault != nil {
 				finish(fault)
 				return
