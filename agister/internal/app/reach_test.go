@@ -19,6 +19,12 @@ import (
 // clientOn is the whole client over the harness, both settings layers read
 // from defs.
 func (h *harness) clientOn(defs app.GateDefinitions) contract.Client {
+	return h.clientWith(defs, nil)
+}
+
+// clientWith is clientOn whose resolver and listings read what the problems
+// refuse from checks in place of the Checker; nil is the Checker.
+func (h *harness) clientWith(defs app.GateDefinitions, checks func(app.GateDefinitions) app.GateCheck) contract.Client {
 	return app.NewClient(app.Infrastructure{
 		Definitions: defs,
 		Global:      defs,
@@ -35,8 +41,15 @@ func (h *harness) clientOn(defs app.GateDefinitions) contract.Client {
 		Verifier: app.VerifyAdapters{Content: h.changes, Copies: h.copies, Commands: h.commands, Clock: h.clock},
 		Runs:     app.RunsAdapters{Reader: &readerSpy{record: run.Record{ID: "earlier"}, state: run.StateFinished}},
 		Decorate: func(client contract.Client) contract.Client { return client },
+		Checks:   checks,
 	})
 }
+
+// checkStub stands in for the checker the resolver and the listings
+// read: it finds what it is given.
+type checkStub struct{ found app.CheckResult }
+
+func (s checkStub) Checked(context.Context) (app.CheckResult, error) { return s.found, nil }
 
 // submit submits a call through client and waits for its record.
 func (h *harness) submit(t *testing.T, client contract.Client, request contract.CallRequest) run.Record {
@@ -126,8 +139,8 @@ func TestACallOnABrokenDocumentIsRefusedBeforeItsFirstTurn(t *testing.T) {
 	if kinds := strings.Join(h.recorder.kinds(), " "); !strings.Contains(kinds, "REFUSED") || strings.Contains(kinds, "PLANNED") {
 		t.Fatalf("events = %s", kinds)
 	}
-	if len(h.runner.calls()) != 0 || len(h.runtimes.asked) != 0 {
-		t.Fatalf("the runtime was reached: %d turns, asked %v", len(h.runner.calls()), h.runtimes.asked)
+	if len(h.runner.calls()) != 0 || len(h.runtimes.asked) != 0 || len(h.runtimes.identified) != 0 {
+		t.Fatalf("the runtime was reached: %d turns, asked %v, identified %v", len(h.runner.calls()), h.runtimes.asked, h.runtimes.identified)
 	}
 
 	if record := h.submit(t, client, contract.CallRequest{Process: "q", Agent: "a"}); class(record) != "" || record.Agent != "a" {
@@ -174,6 +187,42 @@ func TestAProblemOfTheAgentIsJudgedOnTheCallsAgent(t *testing.T) {
 	}
 	if record := h.submit(t, client, contract.CallRequest{Process: "p", Agent: "a"}); class(record) != "" {
 		t.Fatalf("call of p as agent a: %s %s", class(record), message(record))
+	}
+}
+
+// NewClient gives the resolver and the listings what the checker found,
+// each as it reads them: every document's path and uses, every problem's
+// message, and, to the resolver, the agent a problem depends on. A problem
+// that stops every command is the gate's, not theirs.
+func TestNewClientTranslatesWhatTheCheckerFound(t *testing.T) {
+	ctx := context.Background()
+	h := newHarness()
+	process := app.DocumentRef{Kind: definition.KindProcess, Name: "p"}
+	agent := app.DocumentRef{Kind: definition.KindAgent, Name: "a"}
+	stub := checkStub{found: app.CheckResult{
+		Documents: []app.CheckedDocument{
+			{Ref: process, Path: "stub/processes/p", Uses: []app.DocumentRef{agent}},
+			{Ref: agent, Path: "stub/agents/a"},
+		},
+		Problems: []app.CheckedProblem{
+			{Text: "process p: needs ghost", About: &process, Message: "needs ghost", Agent: "ghost"},
+			{Text: "agent a: is stubbed", About: &agent, Message: "is stubbed"},
+			{Text: "settings directory policies: stops", Message: "stops"},
+		},
+	}}
+	client := h.clientWith(h.defs, func(app.GateDefinitions) app.GateCheck { return stub })
+
+	both := "process p (stub/processes/p): needs ghost; process p uses agent a (stub/agents/a): is stubbed"
+	if view, err := client.ShowProcess(ctx, "p", ""); err != nil || view.Refusal != both {
+		t.Fatalf("show p: %q, %v; want %q", view.Refusal, err, both)
+	}
+	// The process's problem depends on agent ghost; a call as agent a does
+	// not have it.
+	if view, err := client.ShowProcess(ctx, "p", "a"); err != nil || view.Refusal != "process p uses agent a (stub/agents/a): is stubbed" {
+		t.Fatalf("show p as agent a: %q, %v", view.Refusal, err)
+	}
+	if processes, err := client.ListProcesses(ctx); err != nil || len(processes) != 1 || processes[0].Refusal != both {
+		t.Fatalf("processes = %+v, %v", processes, err)
 	}
 }
 

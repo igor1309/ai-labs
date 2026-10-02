@@ -118,18 +118,19 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 }
 
 // List names the documents of kind. The workspace settings are listed when
-// the one document exists, so a missing one reads as none.
+// the one document exists, so a missing one reads as none. One that exists
+// but cannot be followed, such as a symlink loop, is listed, so reading it
+// fails as that document's problem.
 func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 	if kind == definition.KindWorkspace {
 		path, _ := s.path(kind, string(kind))
-		info, err := os.Stat(path)
-		if errors.Is(err, fs.ErrNotExist) {
+		if _, err := os.Lstat(path); errors.Is(err, fs.ErrNotExist) {
 			return nil, nil
-		}
-		if err != nil {
+		} else if err != nil {
 			return nil, err
 		}
-		if info.IsDir() {
+		info, err := os.Stat(path)
+		if errors.Is(err, fs.ErrNotExist) || err == nil && info.IsDir() {
 			return nil, nil
 		}
 		return []string{string(kind)}, nil

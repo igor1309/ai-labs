@@ -52,55 +52,63 @@ func NewChecker(definitions CheckDefinitions, validator CheckValidator, runtimes
 
 func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, error) {
 	found, err := c.check(ctx, probe)
-	return found.report, err
+	return found.Report, err
 }
 
-// checked is what a check finds: its report, and each document and problem
-// as the components that refuse what depends on a problem read them.
-type checked struct {
-	report    contract.CheckReport
-	documents []checkedDocument
-	problems  []checkedProblem
+// Checked checks the settings, without asking the runtimes, and returns
+// what it found: its report, and each document and problem as the
+// components that refuse what depends on a problem read them.
+func (c *Checker) Checked(ctx context.Context) (CheckResult, error) {
+	return c.check(ctx, false)
 }
 
-// checkedDocument is one document the settings list.
-type checkedDocument struct {
-	ref  DocumentRef
-	path string
-	uses []DocumentRef // whether or not they exist
+// CheckResult is what a check finds: its report, and each document and
+// problem as the components that refuse what depends on a problem read
+// them.
+type CheckResult struct {
+	Report    contract.CheckReport
+	Documents []CheckedDocument
+	Problems  []CheckedProblem
 }
 
-// checkedProblem is one problem, as reported and as found.
-type checkedProblem struct {
-	text string // as reported, naming its document
+// CheckedDocument is one document the settings list.
+type CheckedDocument struct {
+	Ref  DocumentRef
+	Path string
+	Uses []DocumentRef // whether or not they exist
+}
+
+// CheckedProblem is one problem, as reported and as found.
+type CheckedProblem struct {
+	Text string // as reported, naming its document
 	// The document it is about; nil on one that stops every command
 	// (ADR-014 rule 4).
-	about   *DocumentRef
-	message string // without its document's name
+	About   *DocumentRef
+	Message string // without its document's name
 	// The agent it depends on, on a process's problem (ADR-014 rule 2).
-	agent string
+	Agent string
 }
 
-func (c *Checker) check(ctx context.Context, probe bool) (checked, error) {
+func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 	report := contract.CheckReport{Checked: map[string]int{}}
 	index := map[DocumentRef]int{}   // into report.Definitions and documents
-	var documents []checkedDocument  // as report.Definitions
+	var documents []CheckedDocument  // as report.Definitions
 	listed := map[DocumentRef]bool{} // in the settings, read or not
 	// Every problem, with the document it is about (ADR-014).
-	var found []checkedProblem
+	var found []CheckedProblem
 	about := func(ref DocumentRef, subject, message, agent string) {
 		text := subject + ": " + message
 		if ref == serviceRef {
 			// Every call depends on it, and every check on its vocabulary
 			// and limits (ADR-014 rule 4).
-			found = append(found, checkedProblem{text: text, message: message})
+			found = append(found, CheckedProblem{Text: text, Message: message})
 			return
 		}
-		found = append(found, checkedProblem{text: text, about: &ref, message: message, agent: agent})
+		found = append(found, CheckedProblem{Text: text, About: &ref, Message: message, Agent: agent})
 	}
 	stops := func(subject, format string, args ...any) {
 		message := fmt.Sprintf(format, args...)
-		found = append(found, checkedProblem{text: subject + ": " + message, message: message})
+		found = append(found, CheckedProblem{Text: subject + ": " + message, Message: message})
 	}
 	problem := func(subject, format string, args ...any) {
 		ref, ok := subjectRef(subject)
@@ -156,7 +164,7 @@ func (c *Checker) check(ctx context.Context, probe bool) (checked, error) {
 			}
 			index[DocumentRef{Kind: kind, Name: name}] = len(report.Definitions)
 			report.Definitions = append(report.Definitions, contract.Definition{Kind: string(kind), Name: name, Layer: layer, Path: doc.Source.Path, Overrides: doc.Source.Overrides})
-			documents = append(documents, checkedDocument{ref: DocumentRef{Kind: kind, Name: name}, path: doc.Source.Path})
+			documents = append(documents, CheckedDocument{Ref: DocumentRef{Kind: kind, Name: name}, Path: doc.Source.Path})
 			if err != nil {
 				report.Definitions[len(report.Definitions)-1].Invalid = true
 				problem(kind.Singular()+" "+name, "%v", err)
@@ -245,7 +253,7 @@ func (c *Checker) check(ctx context.Context, probe bool) (checked, error) {
 	}
 	for _, step := range steps {
 		if err := each(step.kind, step.parse); err != nil {
-			return checked{report: report}, err
+			return CheckResult{Report: report}, err
 		}
 	}
 	// File names define the run namespace even when their documents cannot
@@ -261,11 +269,11 @@ func (c *Checker) check(ctx context.Context, probe bool) (checked, error) {
 		}
 	}
 	// What each problem refuses, once every problem is known.
-	finish := func() checked {
-		sort.SliceStable(found, func(i, j int) bool { return found[i].text < found[j].text })
+	finish := func() CheckResult {
+		sort.SliceStable(found, func(i, j int) bool { return found[i].Text < found[j].Text })
 		reached := newReach()
 		for _, document := range documents {
-			reached.documents[document.ref] = reachDocument{path: document.path, uses: document.uses}
+			reached.documents[document.Ref] = reachDocument{path: document.Path, uses: document.Uses}
 		}
 		var processes, workflows []DocumentRef
 		for ref := range listed {
@@ -282,17 +290,17 @@ func (c *Checker) check(ctx context.Context, probe bool) (checked, error) {
 		byName(processes)
 		byName(workflows)
 		for _, problem := range found {
-			report.Problems = append(report.Problems, problem.text)
-			item := contract.ProblemReach{Problem: problem.text, Stops: problem.about == nil}
-			if subject := problem.about; subject != nil {
+			report.Problems = append(report.Problems, problem.Text)
+			item := contract.ProblemReach{Problem: problem.Text, Stops: problem.About == nil}
+			if subject := problem.About; subject != nil {
 				item.Subject = &contract.DefinitionRef{Kind: string(subject.Kind), Name: subject.Name}
-				item.Agent = problem.agent
+				item.Agent = problem.Agent
 				item.Processes = reached.refuses(*subject, processes)
 				item.Workflows = reached.refuses(*subject, workflows)
 			}
 			report.Reach = append(report.Reach, item)
 		}
-		return checked{report: report, documents: documents, problems: found}
+		return CheckResult{Report: report, Documents: documents, Problems: found}
 	}
 	// What each definition references, and the reverse.
 	link := func(from DocumentRef, kind definition.Kind, name string) {
@@ -301,7 +309,7 @@ func (c *Checker) check(ctx context.Context, probe bool) (checked, error) {
 			return
 		}
 		to := DocumentRef{Kind: kind, Name: name}
-		documents[source].uses = append(documents[source].uses, to)
+		documents[source].Uses = append(documents[source].Uses, to)
 		report.Definitions[source].Uses = append(report.Definitions[source].Uses, contract.DefinitionRef{Kind: string(to.Kind), Name: to.Name})
 		if i, ok := index[to]; ok {
 			report.Definitions[i].UsedBy = append(report.Definitions[i].UsedBy, contract.DefinitionRef{Kind: string(from.Kind), Name: from.Name})
