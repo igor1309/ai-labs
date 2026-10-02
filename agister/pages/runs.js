@@ -5,7 +5,7 @@
 // serves at api/runs and api/runs/compare; pages/runs.go writes them.
 (() => {
   const VIEW_KEY = 'agister-pages:view';
-  const VIEWS = ['settings', 'runs'];
+  const VIEWS = ['settings', 'runs', 'knowledge'];
 
   // The view shown last, or settings.
   function readView(storage) {

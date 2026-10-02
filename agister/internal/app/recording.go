@@ -63,6 +63,13 @@ func recordVerify(verify *CallVerify) *run.Verify {
 	}
 }
 
+func recordSetup(setup *CallSetup) *run.Setup {
+	if setup == nil {
+		return nil
+	}
+	return &run.Setup{Command: setup.Command, Timeout: setup.Timeout, From: setup.From, Path: setup.Path}
+}
+
 func recordPlan(plan CallPlan) *run.Plan {
 	return &run.Plan{
 		Primitives: slices.Clone(plan.Primitives),

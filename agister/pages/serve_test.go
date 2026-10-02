@@ -79,7 +79,7 @@ func post(t *testing.T, h http.Handler, target, header string, out any) int {
 }
 
 func TestChooseReturnsTheChosenFolder(t *testing.T) {
-	h := Handler("/unused", func(context.Context) (string, error) { return "/Users/u/src/repo/", nil }, owners())
+	h := Handler("/unused", func(context.Context) (string, error) { return "/Users/u/src/repo/", nil }, owners(), SkillHomes{})
 	var got map[string]string
 	if code := post(t, h, "/api/choose", ChooseHeader, &got); code != 200 || got["path"] != "/Users/u/src/repo" {
 		t.Errorf("%d %v", code, got)
@@ -87,7 +87,7 @@ func TestChooseReturnsTheChosenFolder(t *testing.T) {
 }
 
 func TestChooseCancelledReturnsNoPath(t *testing.T) {
-	h := Handler("/unused", func(context.Context) (string, error) { return "", nil }, owners())
+	h := Handler("/unused", func(context.Context) (string, error) { return "", nil }, owners(), SkillHomes{})
 	var got map[string]string
 	if code := post(t, h, "/api/choose", ChooseHeader, &got); code != 200 || got["path"] != "" {
 		t.Errorf("%d %v", code, got)
@@ -95,7 +95,7 @@ func TestChooseCancelledReturnsNoPath(t *testing.T) {
 }
 
 func TestChooseFailureIsReported(t *testing.T) {
-	h := Handler("/unused", func(context.Context) (string, error) { return "", errors.New("no dialog") }, owners())
+	h := Handler("/unused", func(context.Context) (string, error) { return "", errors.New("no dialog") }, owners(), SkillHomes{})
 	var got map[string]string
 	if code := post(t, h, "/api/choose", ChooseHeader, &got); code != 500 || got["error"] != "no dialog" {
 		t.Errorf("%d %v", code, got)
@@ -113,7 +113,7 @@ func TestChooseOpensOneDialogAtATime(t *testing.T) {
 			<-release
 		}
 		return "/repo", nil
-	}, owners())
+	}, owners(), SkillHomes{})
 	first := make(chan int, 1)
 	go func() { first <- post(t, h, "/api/choose", ChooseHeader, nil) }()
 	<-opened
@@ -132,7 +132,7 @@ func TestChooseOpensOneDialogAtATime(t *testing.T) {
 }
 
 func TestChooseNeedsThePagesHeaderAndPost(t *testing.T) {
-	h := Handler("/unused", noChoose(t), owners())
+	h := Handler("/unused", noChoose(t), owners(), SkillHomes{})
 	if code := post(t, h, "/api/choose", "", nil); code != 403 {
 		t.Errorf("no header: %d", code)
 	}
@@ -179,6 +179,7 @@ func TestSettingsReturnsOnlySettingsFiles(t *testing.T) {
 	repo := t.TempDir()
 	dir := filepath.Join(repo, ".agister")
 	write(t, filepath.Join(dir, "service.toml"), "max_attempts = 1")
+	write(t, filepath.Join(dir, "workspace.yaml"), "setup: {}")
 	write(t, filepath.Join(dir, "agents", "a.toml"), `name = "a"`)
 	write(t, filepath.Join(dir, "verifies", "repo.yaml"), "name: repo")
 	write(t, filepath.Join(dir, "prompts", "review.md"), "Review it.")
@@ -192,11 +193,12 @@ func TestSettingsReturnsOnlySettingsFiles(t *testing.T) {
 		Path, Dir string
 		Files     map[string]string
 	}
-	if code := get(t, Handler("/unused", noChoose(t), owners()), "127.0.0.1", "/api/settings?path="+q(repo), &got); code != 200 {
+	if code := get(t, Handler("/unused", noChoose(t), owners(), SkillHomes{}), "127.0.0.1", "/api/settings?path="+q(repo), &got); code != 200 {
 		t.Fatalf("status %d", code)
 	}
 	want := map[string]string{
 		"service.toml":            "max_attempts = 1",
+		"workspace.yaml":          "setup: {}",
 		"agents/a.toml":           `name = "a"`,
 		"verifies/repo.yaml":      "name: repo",
 		"prompts/review.md":       "Review it.",
@@ -211,7 +213,7 @@ func TestSettingsOfTildeReadAgisterHome(t *testing.T) {
 	home := t.TempDir()
 	write(t, filepath.Join(home, "agents", "h.toml"), `name = "h"`)
 	var got struct{ Files map[string]string }
-	if code := get(t, Handler(home, noChoose(t), owners()), "127.0.0.1", "/api/settings?path=~", &got); code != 200 {
+	if code := get(t, Handler(home, noChoose(t), owners(), SkillHomes{}), "127.0.0.1", "/api/settings?path=~", &got); code != 200 {
 		t.Fatalf("status %d", code)
 	}
 	if !reflect.DeepEqual(got.Files, map[string]string{"agents/h.toml": `name = "h"`}) {
@@ -228,7 +230,7 @@ func TestSettingsOfARepoCarryAgisterHomes(t *testing.T) {
 	write(t, filepath.Join(repo, ".agister", "agents", "r.toml"), `name = "r"`)
 
 	var got struct{ Files, HomeFiles map[string]string }
-	if code := get(t, Handler(home, noChoose(t), owners()), "127.0.0.1", "/api/settings?path="+q(repo), &got); code != 200 {
+	if code := get(t, Handler(home, noChoose(t), owners(), SkillHomes{}), "127.0.0.1", "/api/settings?path="+q(repo), &got); code != 200 {
 		t.Fatalf("status %d", code)
 	}
 	if !reflect.DeepEqual(got.Files, map[string]string{"agents/r.toml": `name = "r"`}) ||
@@ -237,13 +239,13 @@ func TestSettingsOfARepoCarryAgisterHomes(t *testing.T) {
 	}
 
 	var tilde map[string]any
-	get(t, Handler(home, noChoose(t), owners()), "127.0.0.1", "/api/settings?path=~", &tilde)
+	get(t, Handler(home, noChoose(t), owners(), SkillHomes{}), "127.0.0.1", "/api/settings?path=~", &tilde)
 	if _, ok := tilde["homeFiles"]; ok {
 		t.Errorf("~ carries homeFiles: %v", tilde)
 	}
 
 	var noHome struct{ HomeFiles map[string]string }
-	get(t, Handler(filepath.Join(user, "missing"), noChoose(t), owners()), "127.0.0.1", "/api/settings?path="+q(repo), &noHome)
+	get(t, Handler(filepath.Join(user, "missing"), noChoose(t), owners(), SkillHomes{}), "127.0.0.1", "/api/settings?path="+q(repo), &noHome)
 	if noHome.HomeFiles == nil || len(noHome.HomeFiles) != 0 {
 		t.Errorf("without a home: %v", noHome.HomeFiles)
 	}
@@ -255,7 +257,7 @@ func TestSettingsMarkAgisterHomeHoweverAsked(t *testing.T) {
 	mkdir(t, home)
 	repo := filepath.Join(user, "repo")
 	mkdir(t, filepath.Join(repo, ".agister"))
-	h := Handler(home, noChoose(t), owners())
+	h := Handler(home, noChoose(t), owners(), SkillHomes{})
 	for path, want := range map[string]bool{"~": true, user: true, user + "/": true, repo: false} {
 		var got struct{ Home bool }
 		if code := get(t, h, "127.0.0.1", "/api/settings?path="+q(path), &got); code != 200 || got.Home != want {
@@ -265,7 +267,7 @@ func TestSettingsMarkAgisterHomeHoweverAsked(t *testing.T) {
 }
 
 func TestSettingsWithoutAgisterIsNotFound(t *testing.T) {
-	h := Handler(filepath.Join(t.TempDir(), "missing"), noChoose(t), owners())
+	h := Handler(filepath.Join(t.TempDir(), "missing"), noChoose(t), owners(), SkillHomes{})
 	var body map[string]string
 	if code := get(t, h, "127.0.0.1", "/api/settings?path="+q(t.TempDir()), &body); code != 404 || !strings.Contains(body["error"], ".agister") {
 		t.Errorf("repo: %d %v", code, body)
@@ -279,7 +281,7 @@ func TestSettingsWithoutAgisterIsNotFound(t *testing.T) {
 }
 
 func TestOnlyRequestsAddressedToThisMachineAreServed(t *testing.T) {
-	h := Handler(t.TempDir(), noChoose(t), owners())
+	h := Handler(t.TempDir(), noChoose(t), owners(), SkillHomes{})
 	for host, want := range map[string]int{
 		"127.0.0.1:7465": 200, "localhost:7465": 200, "[::1]:7465": 200, "localhost": 200,
 		"evil.example:7465": 403, "192.168.1.5:7465": 403, "localhost.evil.example": 403,
@@ -291,8 +293,8 @@ func TestOnlyRequestsAddressedToThisMachineAreServed(t *testing.T) {
 }
 
 func TestThePageIsServed(t *testing.T) {
-	h := Handler("/unused", noChoose(t), owners())
-	for _, path := range []string{"/", "/repos.js", "/config.js", "/runs.js", "/page.js"} {
+	h := Handler("/unused", noChoose(t), owners(), SkillHomes{})
+	for _, path := range []string{"/", "/repos.js", "/config.js", "/runs.js", "/markdown-it.min.js", "/knowledge.js", "/page.js"} {
 		req := httptest.NewRequest(http.MethodGet, path, nil)
 		req.Host = "127.0.0.1:7465"
 		rec := httptest.NewRecorder()

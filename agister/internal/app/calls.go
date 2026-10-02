@@ -25,6 +25,7 @@ type Calls struct {
 	inputs     map[string]InputProvider
 	workspaces CallWorkspaces
 	changes    CallChanges
+	preparer   CallPreparer
 	verifier   CallVerifier
 	validator  CallValidator
 	recorder   RunRecorder
@@ -84,6 +85,9 @@ type CallProcess struct {
 	Checkout    string      // name of the input whose revision is checked out
 	Output      string      // the output format, "json" or "text"
 	Verify      *CallVerify // unset: no verification
+	// Setup is the setup its checkout runs (ADR-012), the process's own or
+	// the workspace's; unset: none.
+	Setup *CallSetup
 }
 
 // CallParam is a param a process or workflow declares.
@@ -108,6 +112,15 @@ type CallVerify struct {
 	Timeout     time.Duration // per run
 	MaxAttempts int           // runs, the first included
 	Instruction string        // what the agent is told when a run fails
+}
+
+// CallSetup is the command that prepares a call's checkout before its
+// first turn (ADR-012), and where it came from.
+type CallSetup struct {
+	Command string
+	Timeout time.Duration
+	From    string // run.SetupFromProcess or run.SetupFromWorkspace
+	Path    string // the document it came from
 }
 
 // CallAgent is the runtime profile a call runs as.
@@ -234,6 +247,9 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 			resolved.Prompts = map[string]Resolved{}
 		}
 		resolved.Prompts[name] = Resolved{Value: prompt.Text, Identity: "sha256:" + prompt.Source.SHA256}
+	}
+	if setup := res.setup; setup != nil {
+		resolved.Process.Setup = &CallSetup{Command: setup.Command, Timeout: setup.Timeout, From: setup.from, Path: setup.path}
 	}
 	return resolved, err
 }
@@ -409,6 +425,13 @@ type CallChanges interface {
 	Changes(ctx context.Context, dir, from, to string) ([]byte, error)
 }
 
+// CallPreparer runs a call's checkout's setup once, with the operator's
+// authority, before its first turn (ADR-012), and returns why the call
+// fails, if it does.
+type CallPreparer interface {
+	Setup(ctx context.Context, call SetupCall) *run.Error
+}
+
 // CallVerifier runs the verification loop of a call whose process declares
 // verify (ADR-002; where the command runs, ADR-005), after its first turn
 // was valid. It returns the content a passing run checked, on a clean copy
@@ -423,9 +446,9 @@ type RunRecorder interface {
 	Create(ctx context.Context, record run.Record) (RunHandle, error)
 }
 
-// CallAdapters are what Calls run on besides their resolver, verifier and
-// cancellations. StateDir is Agister's own state, which no agent workspace
-// may overlap.
+// CallAdapters are what Calls run on besides their resolver, preparer,
+// verifier and cancellations. StateDir is Agister's own state, which no
+// agent workspace may overlap.
 type CallAdapters struct {
 	Runners    CallRunners
 	Inputs     map[string]InputProvider
@@ -450,6 +473,7 @@ func NewCalls(
 	inputs map[string]InputProvider,
 	workspaces CallWorkspaces,
 	changes CallChanges,
+	preparer CallPreparer,
 	verifier CallVerifier,
 	validator CallValidator,
 	recorder RunRecorder,
@@ -466,6 +490,7 @@ func NewCalls(
 		inputs:     inputs,
 		workspaces: workspaces,
 		changes:    changes,
+		preparer:   preparer,
 		verifier:   verifier,
 		validator:  validator,
 		recorder:   recorder,
@@ -689,6 +714,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	record.Profile = &run.Profile{Model: res.Agent.Model, Effort: res.Agent.Effort, Session: res.Agent.Session}
 	record.Effective = recordEffective(res.Effective)
 	record.Verify = recordVerify(res.Process.Verify)
+	record.Setup = recordSetup(res.Process.Setup)
 	record.Runtime = &run.Runtime{Mapping: res.Mapping.Name, Adapter: res.Mapping.Adapter, Contract: res.Identity.Contract, Version: res.Identity.Version}
 	record.Plan = recordPlan(res.Plan)
 	_ = handle.Update(record)
@@ -733,6 +759,19 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 			record.Effects = nil
 			fail(fmt.Errorf("recording the checkout failed: %w", err))
 			return
+		}
+		// The setup prepares the checkout before the runtime reads it, once:
+		// repair turns continue in the same checkout (ADR-012). A failed one
+		// ends the call before any turn, and leaves no changes of the
+		// call's to keep.
+		if setup := res.Process.Setup; setup != nil {
+			if fault := c.preparer.Setup(ctx, SetupCall{
+				Record: &record, Event: event, Update: handle.Update, Artifact: handle.Artifact,
+				Setup: SetupCommand{Command: setup.Command, Timeout: setup.Timeout}, Dir: workspace.Dir, Base: revision,
+			}); fault != nil {
+				finish(fault)
+				return
+			}
 		}
 		collect = func() *run.Error {
 			artifacts, fault := c.collectChanges(ctx, handle, workspace.Dir, revision, verified, event)

@@ -456,6 +456,7 @@ func TestCheckTreeAndJSON(t *testing.T) {
 		Overrides: []string{"agent a: /p/agents/a.toml overrides /g/agents/a.toml"},
 		Definitions: []contract.Definition{
 			{Kind: "service", Name: "service", Layer: "global", Path: "/g/service.toml"},
+			{Kind: "workspace", Name: "workspace", Layer: "project", Path: "/p/workspace.yaml", UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
 			{Kind: "runtimes", Name: "rt", Layer: "global", Path: "/g/runtimes/rt.yaml", UsedBy: []contract.DefinitionRef{ref("agents", "a")}},
 			{Kind: "agents", Name: "a", Layer: "project", Path: "/p/agents/a.toml", Overrides: "/g/agents/a.toml", Uses: []contract.DefinitionRef{ref("runtimes", "rt")}, UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
 			// b is used by no process, so neither is rt2, which only b uses.
@@ -464,28 +465,29 @@ func TestCheckTreeAndJSON(t *testing.T) {
 			{Kind: "policies", Name: "spare", Layer: "project", Path: "/p/policies/spare.yaml", Invalid: true},
 			{Kind: "verifies", Name: "repo", Layer: "project", Path: "/p/verifies/repo.yaml", UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
 			{Kind: "verifies", Name: "spare", Layer: "global", Path: "/g/verifies/spare.yaml"},
-			{Kind: "processes", Name: "p", Layer: "global", Path: "/g/processes/p.yaml", Uses: []contract.DefinitionRef{ref("agents", "a"), ref("policies", "gone"), ref("verifies", "repo")}},
+			{Kind: "processes", Name: "p", Layer: "global", Path: "/g/processes/p.yaml", Uses: []contract.DefinitionRef{ref("agents", "a"), ref("policies", "gone"), ref("verifies", "repo"), ref("workspace", "workspace")}},
 			{Kind: "prompts", Name: "rules", Layer: "project", Path: "/p/prompts/rules.md", UsedBy: []contract.DefinitionRef{ref("processes", "q")}},
 			{Kind: "processes", Name: "q", Layer: "global", Path: "/g/processes/q.yaml", Uses: []contract.DefinitionRef{ref("verifies", "gone"), ref("prompts", "rules"), ref("prompts", "lost")}},
 		},
 	}
 	spy := &clientSpy{report: report}
 	r := run(context.Background(), spy, "check", "--tree")
-	want := `service service        global  /g/service.toml
-process p              global  /g/processes/p.yaml
-├─ agent a             project /p/agents/a.toml (overrides /g/agents/a.toml)
-│  └─ runtime rt       global  /g/runtimes/rt.yaml
-├─ policy gone         MISSING
-└─ verification repo   project /p/verifies/repo.yaml
-process q              global  /g/processes/q.yaml
-├─ verification gone   MISSING
-├─ prompt rules        project /p/prompts/rules.md
-└─ prompt lost         MISSING
+	want := `service service         global  /g/service.toml
+process p               global  /g/processes/p.yaml
+├─ agent a              project /p/agents/a.toml (overrides /g/agents/a.toml)
+│  └─ runtime rt        global  /g/runtimes/rt.yaml
+├─ policy gone          MISSING
+├─ verification repo    project /p/verifies/repo.yaml
+└─ workspace workspace  project /p/workspace.yaml
+process q               global  /g/processes/q.yaml
+├─ verification gone    MISSING
+├─ prompt rules         project /p/prompts/rules.md
+└─ prompt lost          MISSING
 unused (no process uses these)
-   runtime rt2         global  /g/runtimes/rt2.yaml
-   agent b             global  /g/agents/b.toml
-   policy spare        project /p/policies/spare.yaml INVALID
-   verification spare  global  /g/verifies/spare.yaml
+   runtime rt2          global  /g/runtimes/rt2.yaml
+   agent b              global  /g/agents/b.toml
+   policy spare         project /p/policies/spare.yaml INVALID
+   verification spare   global  /g/verifies/spare.yaml
 settings OK: 1 processes
 `
 	if r.code != 0 || r.stdout != want {

@@ -463,18 +463,7 @@ func (v *verification) runCommand(ctx context.Context, number int, dir string, t
 	started := v.clock.Now()
 	result := v.commands.Run(ctx, CommandRequest{Command: v.verify.Command, Dir: dir, Timeout: timeout, NoOutput: v.noOutput, Bound: verifyOutputBound}, v.recordGroup)
 	finished := v.clock.Now()
-	ran := run.CommandRun{
-		Command:    v.verify.Command,
-		Dir:        dir,
-		Exit:       &run.Exit{Code: result.ExitCode, Signal: result.Signal},
-		TimedOut:   result.TimedOut,
-		Cancelled:  result.Cancelled,
-		Error:      result.Error,
-		StartedAt:  started,
-		FinishedAt: finished,
-		WallMS:     finished.Sub(started).Milliseconds(),
-		Output:     bounded(result),
-	}
+	ran := commandRun(v.verify.Command, dir, result, started, finished)
 	data := map[string]any{
 		"attempt": number, "code": ran.Exit.Code, "signal": ran.Exit.Signal, "timed_out": ran.TimedOut, "cancelled": ran.Cancelled,
 		"error": ran.Error, "bytes": ran.Output.Bytes, "sha256": ran.Output.SHA256, "wall_ms": ran.WallMS,
@@ -491,33 +480,48 @@ func (v *verification) runCommand(ctx context.Context, number int, dir string, t
 // after a killed CLI finds it (rule 10). A group that cannot be recorded
 // is not claimed by the record, and the error makes the runner kill it.
 func (v *verification) recordGroup(ref string) error {
-	previous := v.record.Effects
+	return recordGroup(v.record, v.update, "the verification command", ref)
+}
+
+// recordGroup records the process group of a command, named what, on
+// record as an effect of the call. A group that cannot be recorded is not
+// claimed by the record, and the error makes the runner kill it.
+func recordGroup(record *run.Record, update func(run.Record) error, what, ref string) error {
+	previous := record.Effects
 	effects := run.Effects{}
 	if previous != nil {
 		effects = *previous
 	}
 	effects.Command = &run.Process{Ref: ref}
-	v.record.Effects = &effects
-	if err := v.update(*v.record); err != nil {
-		v.record.Effects = previous
-		return fmt.Errorf("recording the verification command's process failed: %w", err)
+	record.Effects = &effects
+	if err := update(*record); err != nil {
+		record.Effects = previous
+		return fmt.Errorf("recording %s's process failed: %w", what, err)
 	}
 	return nil
+}
+
+// commandRun is how one run of command in dir ended, as the record keeps
+// it.
+func commandRun(command, dir string, result CommandResult, started, finished time.Time) run.CommandRun {
+	return run.CommandRun{
+		Command:    command,
+		Dir:        dir,
+		Exit:       &run.Exit{Code: result.ExitCode, Signal: result.Signal},
+		TimedOut:   result.TimedOut,
+		Cancelled:  result.Cancelled,
+		Error:      result.Error,
+		StartedAt:  started,
+		FinishedAt: finished,
+		WallMS:     finished.Sub(started).Milliseconds(),
+		Output:     bounded(result),
+	}
 }
 
 // keep stores the patch from one content to another as an artifact; none
 // when they are the same.
 func (v *verification) keep(ctx context.Context, name, from, to string) (*run.Artifact, error) {
-	patch, err := v.content.Changes(ctx, v.dir, from, to)
-	if err != nil || len(patch) == 0 {
-		return nil, err
-	}
-	artifact, err := v.artifact(name, patch)
-	if err != nil {
-		return nil, err
-	}
-	v.event(run.SourceAgister, "ARTIFACT_STORED", map[string]any{"name": artifact.Name, "digest": artifact.Digest, "bytes": artifact.Bytes})
-	return &artifact, nil
+	return keepChanges(ctx, v.content.Changes, v.dir, from, to, name, v.artifact, v.event)
 }
 
 // save records an attempt with the run.

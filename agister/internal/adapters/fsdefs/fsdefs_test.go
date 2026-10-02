@@ -277,3 +277,34 @@ func TestConcurrentWritesWithOneDigestLandOnce(t *testing.T) {
 		t.Fatalf("%d writes landed, want 1", wins.Load())
 	}
 }
+
+// The workspace settings are one optional document, workspace.yaml: listed
+// only when it exists, and a project's takes priority over the global one.
+func TestWorkspaceSettingsAreAnOptionalSingleton(t *testing.T) {
+	ctx := context.Background()
+	global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
+	layered := fsdefs.Layered{Global: global, Project: &project}
+	if names, err := layered.List(ctx, definition.KindWorkspace); err != nil || len(names) != 0 {
+		t.Fatalf("none = %v, %v", names, err)
+	}
+
+	globalPath, _, err := global.Write(ctx, definition.KindWorkspace, "workspace", []byte("global"), "")
+	if err != nil || globalPath != filepath.Join(global.Dir, "workspace.yaml") {
+		t.Fatalf("written at %s, %v", globalPath, err)
+	}
+	if names, err := layered.List(ctx, definition.KindWorkspace); err != nil || !reflect.DeepEqual(names, []string{"workspace"}) {
+		t.Fatalf("global = %v, %v", names, err)
+	}
+	if doc, err := layered.Read(ctx, definition.KindWorkspace, "workspace"); err != nil || string(doc.Bytes) != "global" || doc.Source.Project {
+		t.Fatalf("global = %+v, %v", doc.Source, err)
+	}
+
+	projectPath, _, _ := project.Write(ctx, definition.KindWorkspace, "workspace", []byte("project"), "")
+	if names, err := layered.List(ctx, definition.KindWorkspace); err != nil || !reflect.DeepEqual(names, []string{"workspace"}) {
+		t.Fatalf("both = %v, %v", names, err)
+	}
+	doc, err := layered.Read(ctx, definition.KindWorkspace, "workspace")
+	if err != nil || string(doc.Bytes) != "project" || doc.Source.Path != projectPath || !doc.Source.Project || doc.Source.Overrides != globalPath {
+		t.Fatalf("project = %+v, %v", doc.Source, err)
+	}
+}

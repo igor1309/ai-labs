@@ -130,6 +130,12 @@
     return getJson(fetchFn, 'api/runs/compare');
   }
 
+  // The skill folders the runtimes of the settings at path load, in the
+  // repo and the home, each with its skills: { home, adapters, folders }.
+  async function fetchSkills(fetchFn, path) {
+    return getJson(fetchFn, `api/skills?path=${encodeURIComponent(path)}`);
+  }
+
   // --- settings files as a folder ---
   //
   // config.js reads a .agister folder through directory-handle methods:
@@ -198,6 +204,6 @@
     RECENT_KEY, RECENT_CAP, CURRENT_KEY, HOME_ID, NO_SERVER,
     readRecent, writeRecent, addRecent, removeRecent, rememberRepo, forgetRepo, baseName,
     readCurrent, writeCurrent,
-    fetchSettings, chooseFolder, fetchRuns, fetchRun, fetchCompare, agisterFromFiles,
+    fetchSettings, chooseFolder, fetchRuns, fetchRun, fetchCompare, fetchSkills, agisterFromFiles,
   };
 })();

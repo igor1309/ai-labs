@@ -398,6 +398,38 @@ test('a Settings read that fails while Runs is shown says why only once Settings
   assert.equal(p.$('status').textContent, 'no .agister folder at /gone/.agister');
 });
 
+test('malformed workspace settings show their filename and parse error on the dashboard', async () => {
+  const files = {
+    ...agent,
+    'workspace.yaml': 'schema: agister.workspace/v1alpha1\nsetup: {command: [}\n',
+    'processes/fix.yaml': 'name: fix\nuses: agent:opus\nworkspace:\n  checkout: rev\n',
+  };
+  const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
+  await p.started;
+  assert.deepEqual(p.shown(), { settings: true, runs: false });
+  assert.ok(p.$('process-fix'));
+  const errors = p.$('dashboard').querySelectorAll('.error');
+  assert.equal(errors.length, 1);
+  assert.match(errors[0].textContent, /^workspace\.yaml: .+/);
+  assert.match(errors[0].textContent, /column/);
+  assert.match(errors[0].parentNode.textContent, /Workspace settings/);
+});
+
+test('a process card shows the setup its checkout runs, and where it comes from', async () => {
+  const files = {
+    ...agent,
+    'workspace.yaml': 'schema: agister.workspace/v1alpha1\nsetup:\n  command: ./link-config.sh\n  timeout: 2m\n',
+    'processes/fix.yaml': 'name: fix\nuses: agent:opus\nworkspace:\n  checkout: rev\n',
+    'processes/own.yaml': 'name: own\nuses: agent:opus\nworkspace:\n  checkout: rev\n  setup: {command: ./own.sh, timeout: 30s}\n',
+  };
+  const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
+  await p.started;
+  const card = (name) => p.$(`process-${name}`).textContent;
+  assert.match(card('fix'), /setup\.\/link-config\.sh within 2m, from workspace\.yaml/);
+  assert.match(card('own'), /setup\.\/own\.sh within 30s/);
+  assert.doesNotMatch(card('own'), /workspace\.yaml/);
+});
+
 // README, Settings: a process card shows the attempts of the verification
 // the process names, or marks it missing when these settings have none.
 test('a process card shows the verification its process names, or marks it missing', async () => {
