@@ -54,12 +54,12 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 	report := contract.CheckReport{Checked: map[string]int{}}
 	index := map[contract.DefinitionRef]int{}   // into report.Definitions
 	listed := map[contract.DefinitionRef]bool{} // in the settings, read or not
-	// Every problem, with the document it is about (ADR-012).
+	// Every problem, with the document it is about (ADR-013).
 	var found []contract.ProblemReach
 	about := func(ref contract.DefinitionRef, text string) {
 		if ref == serviceRef {
 			// Every call depends on it, and every check on its vocabulary
-			// and limits (ADR-012 rule 4).
+			// and limits (ADR-013 rule 4).
 			found = append(found, contract.ProblemReach{Problem: text, Stops: true})
 			return
 		}
@@ -105,7 +105,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 		if kind != definition.KindService {
 			var err error
 			if names, err = c.definitions.List(ctx, kind); err != nil {
-				// Nothing can name what it holds (ADR-012 rule 4).
+				// Nothing can name what it holds (ADR-013 rule 4).
 				stops("settings directory "+string(kind), "cannot be listed: %v", err)
 				return nil
 			}
@@ -113,7 +113,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 		for _, name := range names {
 			listed[contract.DefinitionRef{Kind: string(kind), Name: name}] = true
 			if kind != definition.KindService && !definition.ValidName(name) {
-				// Nothing can name such a document (ADR-012 rule 4).
+				// Nothing can name such a document (ADR-013 rule 4).
 				stops(kind.Singular()+" "+name, "%q is not a valid name; rename the file", name)
 				continue
 			}

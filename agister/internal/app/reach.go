@@ -7,7 +7,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
 
-// reach is what the problems of a check report refuse (ADR-012): a problem
+// reach is what the problems of a check report refuse (ADR-013): a problem
 // of one document refuses the calls that depend on it, through any chain of
 // uses, and a problem that depends on the agent refuses only the calls that
 // select that agent. What depends on what is the report's uses.

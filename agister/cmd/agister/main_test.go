@@ -423,7 +423,7 @@ func TestProjectOverridesAreNoted(t *testing.T) {
 // Overrides are verified as composed: a project service that global
 // policies exceed fails check, and refuses the calls of the processes whose
 // limits no longer compose, each recorded; every other command still runs
-// and shows what is refused (ADR-012).
+// and shows what is refused (ADR-013).
 func TestComposedSettingsAreVerified(t *testing.T) {
 	home, repo := setup(t, "approve")
 	write(t, filepath.Join(repo, ".agister", "service.toml"), strings.Replace(read(t, filepath.Join(home, "service.toml")), `max_timeout = "1h"`, `max_timeout = "5m"`, 1))
@@ -707,7 +707,7 @@ func TestCancelThroughTheContract(t *testing.T) {
 
 // Settings broken mid-run do not strand the run: it stays cancellable,
 // observable and inspectable, while other uses are refused when the
-// problem stops every command (ADR-012 rule 4).
+// problem stops every command (ADR-013 rule 4).
 func TestRunSurvivesSettingsBrokenMidRun(t *testing.T) {
 	home, repo := setup(t, "hang")
 	client, err := compose(cli.Config{Home: home})

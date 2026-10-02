@@ -75,7 +75,7 @@ func (c *clientFake) ListRuns(context.Context) ([]contract.Run, error) {
 // reach the report does not say, every use is refused before it reaches the
 // core, except writing them (Init), reporting them (Check), stopping a run,
 // and following a run the gate itself admitted. A problem of one document
-// passes the gate: the core refuses what depends on it (ADR-012).
+// passes the gate: the core refuses what depends on it (ADR-013).
 func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
 	ctx := context.Background()
 	inner := &clientFake{}

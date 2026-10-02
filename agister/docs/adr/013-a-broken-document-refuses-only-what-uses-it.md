@@ -1,4 +1,4 @@
-# ADR-012: A broken document refuses only what uses it
+# ADR-013: A broken document refuses only what uses it
 
 - **Status:** Accepted
 - **Date:** 2026-10-02

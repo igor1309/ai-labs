@@ -10,7 +10,7 @@ import (
 )
 
 // Gated refuses every use of the client while the settings have a problem
-// that stops every command (ADR-012 rule 4), except Init, which writes
+// that stops every command (ADR-013 rule 4), except Init, which writes
 // them, and Check, which reports them. Stopping a run is never refused, and
 // a run it admitted stays observable, so editing settings mid-run cannot
 // strand a call that already started. Any other problem refuses only the
@@ -74,7 +74,7 @@ type Infrastructure struct {
 // NewClient assembles the core over infra and returns it behind the gate:
 // nothing but init and check works on settings with a problem that stops
 // every command, and what depends on a document with any other problem is
-// refused (ADR-012). Every field of infra is required.
+// refused (ADR-013). Every field of infra is required.
 func NewClient(infra Infrastructure) contract.Client {
 	// The calls hosted in this process, the preparer and the verifier are
 	// shared by every client the gate builds.
