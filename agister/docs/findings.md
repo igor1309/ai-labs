@@ -8,6 +8,14 @@
 - **Codex emits non-terminal errors.** Reconnects and transport fallbacks
   arrive as `error` events mid-turn; only `turn.completed` or `turn.failed`
   decide a turn.
+- **Claude Code can report an error with subtype `success`.** On
+  2026-10-02, run `20261002T055359Z-38363e` ended at the session limit
+  with a result containing `subtype: "success"`, `is_error: true`,
+  `api_error_status: 429` and `stop_reason: "stop_sequence"`. Its text was
+  "You've hit your session limit · resets 12:30pm (Europe/Moscow)".
+  The adapter correctly classified it as `rate_limited`, but its message
+  said "runtime reported success". It now says "runtime reported an error
+  (429)" and keeps the result text; named error subtypes remain in messages.
 - **Codex sandboxes read outside the workspace.** Its mapping declares
   `host.read`, which is never granted, and it is not yet verified against a
   live Codex, so it ships opt-in (`examples/codex/`) and `check` refuses it.

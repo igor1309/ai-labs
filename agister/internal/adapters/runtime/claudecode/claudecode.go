@@ -357,15 +357,22 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 }
 
 // classify maps a failed result to a failure class. Only the budget
-// subtype has been observed live; the rest follow the result's fields.
+// subtype and a session-limit HTTP 429 have been observed live; the rest
+// follow the result's fields.
 func (s *Stream) classify(result map[string]any) *run.Error {
 	message := fmt.Sprintf("runtime reported %v", result["subtype"])
+	if result["subtype"] == "success" && result["is_error"] == true {
+		message = "runtime reported an error"
+	}
+	status, _ := result["api_error_status"].(float64)
+	if status > 0 {
+		message += fmt.Sprintf(" (%g)", status)
+	}
 	if errors, ok := result["errors"].([]any); ok && len(errors) > 0 {
 		message += ": " + fmt.Sprint(errors...)
 	} else if text, ok := result["result"].(string); ok && text != "" {
 		message += ": " + truncate(text, 300)
 	}
-	status, _ := result["api_error_status"].(float64)
 	lower := strings.ToLower(message)
 	class := run.ClassRuntimeError
 	switch {
