@@ -289,6 +289,38 @@ func (Workspaces) Root(ctx context.Context, cwd string) (string, error) {
 	return strings.TrimSpace(out), nil
 }
 
+// SameRepository compares the canonical Git common directories, shared
+// by all worktrees of a repository.
+func (Workspaces) SameRepository(ctx context.Context, first, second string) (bool, error) {
+	a, err := commonDirectory(ctx, first)
+	if err != nil {
+		return false, err
+	}
+	b, err := commonDirectory(ctx, second)
+	return a == b, err
+}
+
+// RepositoryIdentity names a repository independently of its worktrees.
+func (Workspaces) RepositoryIdentity(ctx context.Context, repository string) (string, error) {
+	return commonDirectory(ctx, repository)
+}
+
+func commonDirectory(ctx context.Context, repository string) (string, error) {
+	out, err := run(ctx, repository, "rev-parse", "--git-common-dir")
+	if err != nil {
+		return "", err
+	}
+	common := strings.TrimSpace(out)
+	if !filepath.IsAbs(common) {
+		common = filepath.Join(repository, common)
+	}
+	common, err = filepath.Abs(common)
+	if err != nil {
+		return "", err
+	}
+	return filepath.EvalSymlinks(common)
+}
+
 func (w Workspaces) Checkout(ctx context.Context, repository, revision string) (string, func() error, error) {
 	parent, err := os.MkdirTemp("", "agister-checkout-")
 	if err != nil {
@@ -354,13 +386,25 @@ func (w Workspaces) Copy(ctx context.Context, repository, dir, revision string, 
 		return fmt.Errorf("%w: %w", app.ErrCopyNotStarted, err)
 	}
 	if err == nil && len(patch) > 0 {
-		_, err = runWith(ctx, dir, nil, patch, "apply", "--binary", "--whitespace=nowarn", "-")
+		err = w.Apply(ctx, dir, patch, false)
 	}
 	if err != nil {
 		_ = w.Discard(context.WithoutCancel(ctx), repository, dir)
 		return err
 	}
 	return nil
+}
+
+// Apply applies patch, as Changes makes it, to dir's files, not its index;
+// with check, it only checks that the whole patch applies and changes
+// nothing. A patch that does not apply changes nothing either.
+func (Workspaces) Apply(ctx context.Context, dir string, patch []byte, check bool) error {
+	args := []string{"apply", "--binary", "--whitespace=nowarn"}
+	if check {
+		args = append(args, "--check")
+	}
+	_, err := runWith(ctx, dir, nil, patch, append(args, "-")...)
+	return err
 }
 
 // Discard removes a checkout whose call ended without releasing it, or a

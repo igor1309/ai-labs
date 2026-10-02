@@ -49,3 +49,20 @@ func TestRepairStatesTheFailure(t *testing.T) {
 		t.Fatalf("got\n%s\nwant\n%s", got, want)
 	}
 }
+
+// A continued call with a checkout is told which run it continues, where it
+// works now, and whose changes, if any, are applied there.
+func TestContinuesStatesTheCheckoutAndTheChangesCarried(t *testing.T) {
+	got := prompt.Continues("run-a", "run-b", "/tmp/co", "abc123")
+	want := "## continuation\n\nThis call continues run run-a. It works in a new checkout at /tmp/co, at revision abc123." +
+		" The changes of run run-b, the latest run of the session, are applied there, uncommitted. The directory the earlier run worked in is gone."
+	if got != want {
+		t.Fatalf("got\n%s\nwant\n%s", got, want)
+	}
+	got = prompt.Continues("run-a", "", "/tmp/co", "abc123")
+	want = "## continuation\n\nThis call continues run run-a. It works in a new checkout at /tmp/co, at revision abc123." +
+		" No changes were carried: the checkout holds the revision as committed. The directory the earlier run worked in is gone."
+	if got != want {
+		t.Fatalf("got\n%s\nwant\n%s", got, want)
+	}
+}
