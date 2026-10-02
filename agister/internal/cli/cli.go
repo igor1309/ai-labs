@@ -661,6 +661,11 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 			[2]string{"  limits", fmt.Sprintf("timeout %s, attempts %d", verify.Timeout, verify.MaxAttempts)},
 			[2]string{"  on failure", verify.Instruction},
 		)
+		if view.VerifyName != "" {
+			lines = append(lines, [2]string{"  from", "verify:" + view.VerifyName})
+		}
+	} else if view.VerifyName != "" {
+		lines = append(lines, [2]string{"verify", "verify:" + view.VerifyName + " (not resolved)"})
 	}
 	if view.Refusal != "" {
 		lines = append(lines, [2]string{"plan", "REFUSED: " + view.Refusal})
@@ -824,7 +829,7 @@ func printCheckAs(env IO, report contract.CheckReport, opts options) (int, error
 var kindNames = map[string]string{
 	"service": "service", "agents": "agent", "processes": "process",
 	"policies": "policy", "runtimes": "runtime", "schemas": "schema",
-	"workflows": "workflow", "workspace": "workspace",
+	"workflows": "workflow", "verifies": "verification", "workspace": "workspace",
 }
 
 // printTree prints the service, each process and each workflow with what

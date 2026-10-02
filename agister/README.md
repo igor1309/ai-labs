@@ -29,13 +29,21 @@ repository's own `.agister/` takes priority, document by document. Every
 command except `init` checks the composed settings first and stops on any
 problem. Runs are recorded under `~/.agister/runs/<id>/`.
 
+A process declares its verification command inline, or names a document
+that holds it: `verify: verify:repo` is `verifies/repo.yaml`, found like any
+other document, the repository's before the global one. So a process shared
+by every repository carries no command, and each repository states its own
+once. A process whose named verification exists in neither place is not a
+problem of the settings: `check` warns, and only calls of that process are
+refused ([ADR-010](docs/adr/010-a-process-names-its-verification.md)).
+
 Agister is a runner, not a guard: running it in a repository applies that
 repository's `.agister/`, including the commands its agents run. Review
 settings you did not write.
 
 A process with `workspace.checkout` runs in a fresh worktree, which holds
 only what the repository tracks. `workspace.setup` prepares it before the
-agent's first turn ([ADR-010](docs/adr/010-a-checkout-runs-its-setup.md)):
+agent's first turn ([ADR-011](docs/adr/011-a-checkout-runs-its-setup.md)):
 a command run with your authority in the checkout, once per call. Both
 fields are required. What it makes must be ignored by git; if it fails, runs
 out of time or changes the checkout's content, the call fails before any

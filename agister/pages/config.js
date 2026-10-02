@@ -295,7 +295,10 @@
       agent: refName(doc.uses),
       policy: refName(doc.policy),
       params: params(doc.input),
-      verify: doc.verify ? { maxAttempts: doc.verify.max_attempts ?? null } : null,
+      // Inline fields, or the name of a verification (verify:<name>).
+      verify: typeof doc.verify === 'string'
+        ? { ref: refName(doc.verify), maxAttempts: null }
+        : doc.verify ? { maxAttempts: doc.verify.max_attempts ?? null } : null,
       checkout: doc.workspace?.checkout ?? null,
       setup: setupOf(doc.workspace?.setup),
       output: doc.output?.schema ?? null,
@@ -303,9 +306,13 @@
     };
   }
 
-  // A setup block (ADR-010) as { command, timeout }; null when none.
+  // A setup block (ADR-011) as { command, timeout }; null when none.
   function setupOf(setup) {
     return setup && typeof setup === 'object' ? { command: setup.command ?? null, timeout: setup.timeout ?? null } : null;
+  }
+
+  function verifyItem(file, doc) {
+    return { file, name: doc.name ?? stem(file), maxAttempts: doc.max_attempts ?? null };
   }
 
   function agentItem(file, doc) {
@@ -401,7 +408,7 @@
   }
 
   // workspace.yaml: the setup every process with a checkout and none of its
-  // own runs (ADR-010). null when the folder has none.
+  // own runs (ADR-011). null when the folder has none.
   async function loadWorkspace(agister) {
     let handle;
     try {
@@ -423,7 +430,7 @@
     return link(await readAgister(agister));
   }
 
-  const KINDS = ['workflows', 'processes', 'agents', 'policies', 'runtimes', 'schemas'];
+  const KINDS = ['workflows', 'processes', 'agents', 'policies', 'runtimes', 'schemas', 'verifies'];
 
   // What Agister uses in a repo: Agister home's settings with the repo's
   // over them. As in Agister, a repo file replaces the home file of the
@@ -453,13 +460,14 @@
   }
 
   async function readAgister(agister) {
-    const [workflows, processes, agents, policies, runtimes, schemas, service, workspace] = await Promise.all([
+    const [workflows, processes, agents, policies, runtimes, schemas, verifies, service, workspace] = await Promise.all([
       readFolder(agister, 'workflows', ['.yaml', '.yml']),
       readFolder(agister, 'processes', ['.yaml', '.yml']),
       readFolder(agister, 'agents', ['.toml']),
       readFolder(agister, 'policies', ['.yaml', '.yml']),
       readFolder(agister, 'runtimes', ['.yaml', '.yml']),
       readFolder(agister, 'schemas', ['.json']),
+      readFolder(agister, 'verifies', ['.yaml', '.yml']),
       loadService(agister),
       loadWorkspace(agister),
     ]);
@@ -472,6 +480,7 @@
       policies: each(policies, parseYaml, policyItem),
       runtimes: each(runtimes, parseYaml, (file, _src, doc) => runtimeItem(file, doc)),
       schemas: schemas.map(({ file }) => ({ file, name: stem(file) })),
+      verifies: each(verifies, parseYaml, (file, _src, doc) => verifyItem(file, doc)),
     };
   }
 
@@ -501,6 +510,11 @@
       p.effectiveSetup = !p.checkout ? null
         : p.setup ? { ...p.setup, from: 'process' }
           : defaultSetup ? { ...defaultSetup, from: 'workspace' } : null;
+      // A named verification, resolved: its attempts, or outside these settings.
+      if (p.verify?.ref) {
+        const named = model.verifies.find((v) => !v.error && v.name === p.verify.ref);
+        p.verify = { ...p.verify, maxAttempts: named?.maxAttempts ?? null, outside: !named };
+      }
       p.usedBy = model.workflows
         .filter((w) => !w.error && [...w.fanOut, ...(w.join ? [w.join] : [])].some((n) => n.process === p.name))
         .map((w) => w.name);
@@ -517,6 +531,9 @@
       if (!r.error) r.usedBy = usedBy(model.agents, 'runtime', r.name);
     }
     for (const s of model.schemas) s.usedBy = usedBy(model.processes, 'output', s.name);
+    for (const v of model.verifies) {
+      if (!v.error) v.usedBy = model.processes.filter((p) => !p.error && p.verify?.ref === v.name).map((p) => p.name);
+    }
     return model;
   }
 

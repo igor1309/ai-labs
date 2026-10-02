@@ -21,7 +21,7 @@ type Attempt struct {
 }
 
 // CommandRun is one run of the verification command, or of the setup
-// command (ADR-010).
+// command (ADR-011).
 type CommandRun struct {
 	Command   string `json:"command"`
 	Dir       string `json:"dir"`
@@ -38,7 +38,7 @@ type CommandRun struct {
 	Output     Output    `json:"output"`
 	// After names the content the run left when it differs from what it
 	// checked: a run that changes the clean copy it ran in fails (ADR-005
-	// rule 1), as a setup that changes the checkout does (ADR-010 rule 4),
+	// rule 1), as a setup that changes the checkout does (ADR-011 rule 4),
 	// and AfterChanges is what it changed.
 	After        string    `json:"after,omitempty"`
 	AfterChanges *Artifact `json:"after_changes,omitempty"`

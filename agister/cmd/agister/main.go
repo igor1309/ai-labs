@@ -126,7 +126,7 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	}
 
 	global := fsdefs.Store{Dir: config.Home}
-	local, err := project(config, log)
+	local, absent, err := project(config, log)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -165,7 +165,7 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },
 	}
 	client := app.NewClient(app.Infrastructure{
-		Definitions: fsdefs.Layered{Global: global, Project: local},
+		Definitions: fsdefs.Layered{Global: global, Project: local, Absent: absent},
 		Global:      fsdefs.Layered{Global: global},
 		Project:     projectRoot,
 		Settings:    app.SettingsAdapters{Writer: global, Examples: examples.Settings()},
@@ -205,32 +205,33 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 // directory, like its .claude or .agents: <root>/.agister. None outside a
 // repository, without that directory, or when it is the home itself; why
 // is logged. A .agister that exists but cannot be used is an error, so
-// project settings never silently stop applying.
-func project(config cli.Config, log *slog.Logger) (*fsdefs.Store, error) {
+// project settings never silently stop applying. absent is the directory
+// of a repository without one, where a document not found was expected.
+func project(config cli.Config, log *slog.Logger) (local *fsdefs.Store, absent string, err error) {
 	if config.Cwd == "" {
-		return nil, nil
+		return nil, "", nil
 	}
 	root, err := git.Workspaces{}.Root(context.Background(), config.Cwd)
 	if err != nil {
 		log.Debug("no project settings: not in a usable git repository", "cwd", config.Cwd, "error", err.Error())
-		return nil, nil
+		return nil, "", nil
 	}
 	dir := filepath.Join(root, ".agister")
 	info, err := os.Stat(dir)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		log.Debug("no project settings: directory absent", "dir", dir)
-		return nil, nil
+		return nil, dir, nil
 	case err != nil:
-		return nil, fmt.Errorf("project settings %s: %w", dir, err)
+		return nil, "", fmt.Errorf("project settings %s: %w", dir, err)
 	case !info.IsDir():
-		return nil, fmt.Errorf("project settings %s: not a directory", dir)
+		return nil, "", fmt.Errorf("project settings %s: not a directory", dir)
 	case sameDir(dir, config.Home):
 		log.Debug("no project settings: the repository's .agister is the home", "dir", dir)
-		return nil, nil
+		return nil, "", nil
 	}
 	log.Debug("project settings", "dir", dir)
-	return &fsdefs.Store{Dir: dir}, nil
+	return &fsdefs.Store{Dir: dir}, "", nil
 }
 
 func sameDir(a, b string) bool {

@@ -36,7 +36,7 @@ type resolution struct {
 	effective policy.Effective
 	identity  RuntimeIdentity
 	plan      enforce.Plan
-	// setup is the setup the call's checkout runs (ADR-010); nil when none.
+	// setup is the setup the call's checkout runs (ADR-011); nil when none.
 	setup *resolvedSetup
 }
 
@@ -178,6 +178,18 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 			return res, refuse("schema %q: %v", res.process.Output.Schema, err)
 		}
 	}
+	// The verification a process names is the call's from here on
+	// (ADR-010 rule 3); without it the call is refused, never run unverified.
+	if name := res.process.VerifyName; name != "" {
+		if doc, err = load(definition.KindVerify, name); err != nil {
+			return res, refuse("process %s names verify:%s: %v", res.process.Name, name, err)
+		}
+		verification, err := definition.ParseVerify(doc)
+		if err != nil {
+			return res, parsed(err)
+		}
+		res.process.Verify = &verification.Verify
+	}
 
 	limits := policy.Caller{MaxCostUSD: caller.maxCostUSD}
 	if caller.timeout != "" {
@@ -236,7 +248,7 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 
 // resolveSetup fixes the setup a call's checkout runs: the process's own,
 // or the workspace settings' default, read only when it applies, so the
-// call's definitions name the document its setup came from (ADR-010).
+// call's definitions name the document its setup came from (ADR-011).
 func (r *Resolver) resolveSetup(ctx context.Context, res *resolution, load func(definition.Kind, string) (definition.Document, error), parsed func(error) error) error {
 	process := res.process
 	var workspace *definition.Workspace

@@ -1,4 +1,4 @@
-# ADR-010: A checkout runs its setup before the agent starts
+# ADR-011: A checkout runs its setup before the agent starts
 
 - **Status:** Accepted
 - **Date:** 2026-10-02

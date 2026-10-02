@@ -14,7 +14,7 @@ import (
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// A checkout's setup (ADR-010) on real checkouts of temporary
+// A checkout's setup (ADR-011) on real checkouts of temporary
 // repositories, with the real command runner and git. The base ignores
 // *.log, so what a setup makes there is ignored.
 
@@ -76,7 +76,7 @@ func TestSetupPreparesTheCheckoutOnceBeforeTheFirstTurn(t *testing.T) {
 	}
 }
 
-// ADR-010 rules 4 and 5: a setup that exits non-zero, runs out of time,
+// ADR-011 rules 4 and 5: a setup that exits non-zero, runs out of time,
 // changes a tracked file or adds a file that is not ignored fails the call
 // before any turn; its run is on record, and the checkout is released
 // (wait checks that).
@@ -139,7 +139,7 @@ func TestAFailedSetupFailsTheCallWithNoTurn(t *testing.T) {
 	}
 }
 
-// ADR-010 rule 4: the checkout's content after its setup is the
+// ADR-011 rule 4: the checkout's content after its setup is the
 // revision's, not what the checkout was made with: a post-checkout hook
 // that changes a tracked file fails the call though the setup changes
 // nothing, and no turn runs on it.
@@ -161,7 +161,7 @@ func TestACheckoutHookThatChangesATrackedFileFailsTheSetup(t *testing.T) {
 	}
 }
 
-// ADR-010 rule 2: workspace.yaml's setup applies to a process with a
+// ADR-011 rule 2: workspace.yaml's setup applies to a process with a
 // checkout and none of its own; the repository's takes priority over the
 // global one, and the record names the document it came from.
 func TestTheWorkspaceSetupIsTheDefaultAndTheRepositorysWins(t *testing.T) {

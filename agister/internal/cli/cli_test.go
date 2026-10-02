@@ -378,6 +378,24 @@ func TestShowProcessPrintsVerifyAndWarnings(t *testing.T) {
 	}
 }
 
+// process show says which verification the verify fields come from, and of
+// one that was not resolved, that it was not, beside the refusal.
+func TestShowProcessPrintsTheNamedVerification(t *testing.T) {
+	spy := &clientSpy{view: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Output: "text", Timeout: time.Hour, MaxAttempts: 1,
+		Verify: &contract.Verify{Command: "go test ./...", Timeout: 10 * time.Minute, MaxAttempts: 3, Instruction: "Fix the cause."}, VerifyName: "repo"}}
+	r := run(context.Background(), spy, "process", "show", "p")
+	want := "verify       go test ./...\n  limits     timeout 10m0s, attempts 3\n  on failure Fix the cause.\n  from       verify:repo\n"
+	if r.code != 0 || !strings.Contains(r.stdout, want) {
+		t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+	}
+	spy.view.Verify, spy.view.Refusal = nil, `process p names verify:repo: verification "repo": not found (expected /r/.agister/verifies/repo.yaml or /h/verifies/repo.yaml)`
+	r = run(context.Background(), spy, "process", "show", "p")
+	want = "verify       verify:repo (not resolved)\nplan         REFUSED: " + spy.view.Refusal + "\n"
+	if r.code != 0 || !strings.Contains(r.stdout, want) {
+		t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+	}
+}
+
 // A client refusal over broken settings prints their report, then the
 // refusal, and exits 64; a bare agister checks before it shows the usage.
 func TestSettingsRefusalPrintsTheReport(t *testing.T) {
@@ -416,20 +434,27 @@ func TestCheckTreeAndJSON(t *testing.T) {
 			{Kind: "runtimes", Name: "rt2", Layer: "global", Path: "/g/runtimes/rt2.yaml", UsedBy: []contract.DefinitionRef{ref("agents", "b")}},
 			{Kind: "agents", Name: "b", Layer: "global", Path: "/g/agents/b.toml", Uses: []contract.DefinitionRef{ref("runtimes", "rt2")}},
 			{Kind: "policies", Name: "spare", Layer: "project", Path: "/p/policies/spare.yaml", Invalid: true},
-			{Kind: "processes", Name: "p", Layer: "global", Path: "/g/processes/p.yaml", Uses: []contract.DefinitionRef{ref("agents", "a"), ref("policies", "gone")}},
+			{Kind: "verifies", Name: "repo", Layer: "project", Path: "/p/verifies/repo.yaml", UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
+			{Kind: "verifies", Name: "spare", Layer: "global", Path: "/g/verifies/spare.yaml"},
+			{Kind: "processes", Name: "p", Layer: "global", Path: "/g/processes/p.yaml", Uses: []contract.DefinitionRef{ref("agents", "a"), ref("policies", "gone"), ref("verifies", "repo")}},
+			{Kind: "processes", Name: "q", Layer: "global", Path: "/g/processes/q.yaml", Uses: []contract.DefinitionRef{ref("verifies", "gone")}},
 		},
 	}
 	spy := &clientSpy{report: report}
 	r := run(context.Background(), spy, "check", "--tree")
-	want := `service service   global  /g/service.toml
-process p         global  /g/processes/p.yaml
-├─ agent a        project /p/agents/a.toml (overrides /g/agents/a.toml)
-│  └─ runtime rt  global  /g/runtimes/rt.yaml
-└─ policy gone    MISSING
+	want := `service service        global  /g/service.toml
+process p              global  /g/processes/p.yaml
+├─ agent a             project /p/agents/a.toml (overrides /g/agents/a.toml)
+│  └─ runtime rt       global  /g/runtimes/rt.yaml
+├─ policy gone         MISSING
+└─ verification repo   project /p/verifies/repo.yaml
+process q              global  /g/processes/q.yaml
+└─ verification gone   MISSING
 unused (no process uses these)
-   runtime rt2    global  /g/runtimes/rt2.yaml
-   agent b        global  /g/agents/b.toml
-   policy spare   project /p/policies/spare.yaml INVALID
+   runtime rt2         global  /g/runtimes/rt2.yaml
+   agent b             global  /g/agents/b.toml
+   policy spare        project /p/policies/spare.yaml INVALID
+   verification spare  global  /g/verifies/spare.yaml
 settings OK: 1 processes
 `
 	if r.code != 0 || r.stdout != want {

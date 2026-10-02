@@ -51,7 +51,8 @@ func NewChecker(definitions CheckDefinitions, validator CheckValidator, runtimes
 
 func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, error) {
 	report := contract.CheckReport{Checked: map[string]int{}}
-	index := map[contract.DefinitionRef]int{} // into report.Definitions
+	index := map[contract.DefinitionRef]int{}   // into report.Definitions
+	listed := map[contract.DefinitionRef]bool{} // in the settings, read or not
 	problem := func(subject, format string, args ...any) {
 		report.Problems = append(report.Problems, subject+": "+fmt.Sprintf(format, args...))
 	}
@@ -62,6 +63,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 		Mappings:  map[string]definition.Mapping{},
 		Schemas:   map[string]bool{},
 		Workflows: map[string]definition.Workflow{},
+		Verifies:  map[string]definition.Verification{},
 	}
 
 	var workspace *definition.Workspace // unset: none, or invalid
@@ -76,6 +78,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			}
 		}
 		for _, name := range names {
+			listed[contract.DefinitionRef{Kind: string(kind), Name: name}] = true
 			doc, err := c.definitions.Read(ctx, kind, name)
 			if err != nil {
 				problem(kind.Singular()+" "+name, "%v", err)
@@ -137,6 +140,13 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			}
 			return err
 		}},
+		{definition.KindVerify, func(d definition.Document) error {
+			v, err := definition.ParseVerify(d)
+			if err == nil {
+				bundle.Verifies[v.Name] = v
+			}
+			return err
+		}},
 		{definition.KindProcess, func(d definition.Document) error {
 			p, err := definition.ParseProcess(d)
 			if err == nil {
@@ -191,11 +201,12 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 		process, from := bundle.Processes[name], contract.DefinitionRef{Kind: string(definition.KindProcess), Name: name}
 		link(from, definition.KindAgent, process.Agent)
 		link(from, definition.KindPolicy, process.Policy)
+		link(from, definition.KindVerify, process.VerifyName)
 		if process.Output.Format == "json" {
 			link(from, definition.KindSchema, process.Output.Schema)
 		}
 		// The workspace's setup is the default of a checkout without one of
-		// its own (ADR-010); a missing document is no default, not a
+		// its own (ADR-011); a missing document is no default, not a
 		// missing reference.
 		if _, fromWorkspace := process.EffectiveSetup(workspace); fromWorkspace {
 			link(from, definition.KindWorkspace, string(definition.KindWorkspace))
@@ -209,8 +220,14 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 	}
 
 	for _, name := range sortedNames(bundle.Processes) {
-		if bundle.Processes[name].Verify != nil {
+		process := bundle.Resolved(name)
+		switch {
+		case process.Verify != nil:
 			report.Warnings = append(report.Warnings, "process "+name+": "+VerifyWarning)
+		case process.VerifyName != "" && !listed[contract.DefinitionRef{Kind: string(definition.KindVerify), Name: process.VerifyName}]:
+			// Not a problem: every other process and workflow still runs
+			// (ADR-010 rule 4). An invalid one is a problem of its own.
+			report.Warnings = append(report.Warnings, fmt.Sprintf("process %s: names verify:%s, which does not exist; calls of it are refused until verifies/%s.yaml exists", name, process.VerifyName, process.VerifyName))
 		}
 	}
 
@@ -253,7 +270,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 				// Repairs resume the call's session, which only the
 				// runtime can say it supports.
 				for _, process := range sortedNames(bundle.Processes) {
-					if verify := bundle.Processes[process].Verify; bundle.Processes[process].Agent == name && verify.Repairs() && !identity.Resume {
+					if verify := bundle.Resolved(process).Verify; bundle.Processes[process].Agent == name && verify.Repairs() && !identity.Resume {
 						problem("process "+process, "verify.max_attempts %d repairs in the call's session, but runtime %s cannot resume sessions", verify.MaxAttempts, mapping.Name)
 					}
 				}

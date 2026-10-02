@@ -40,7 +40,7 @@ func definitionKinds(record run.Record) []string {
 	return kinds
 }
 
-// ADR-010 rules 2 and 3: the workspace's setup runs for a process with a
+// ADR-011 rules 2 and 3: the workspace's setup runs for a process with a
 // checkout and none of its own, once, in the checkout, before the runtime's
 // first turn, its process group on record; the record names the setup,
 // the document it came from and that document's digest.
@@ -136,7 +136,7 @@ func TestInvalidWorkspaceSettingsRefuseTheCall(t *testing.T) {
 	}
 }
 
-// ADR-010 rules 4 and 5: a setup that exits non-zero, runs out of time or
+// ADR-011 rules 4 and 5: a setup that exits non-zero, runs out of time or
 // changes the checkout's content fails the call before any turn; the run
 // is on record and the checkout is released.
 func TestAFailedSetupFailsTheCallBeforeAnyTurn(t *testing.T) {
@@ -222,7 +222,7 @@ func TestAFailedSetupFailsTheCallBeforeAnyTurn(t *testing.T) {
 	}
 }
 
-// ADR-010 rules 3 and 6: repair turns continue in the prepared checkout
+// ADR-011 rules 3 and 6: repair turns continue in the prepared checkout
 // and run no setup again, and the verification command's clean copies
 // run none.
 func TestSetupRunsOnceAndNotInTheVerificationCopy(t *testing.T) {

@@ -84,7 +84,7 @@ type CallProcess struct {
 	Checkout    string      // name of the input whose revision is checked out
 	Output      string      // the output format, "json" or "text"
 	Verify      *CallVerify // unset: no verification
-	// Setup is the setup its checkout runs (ADR-010), the process's own or
+	// Setup is the setup its checkout runs (ADR-011), the process's own or
 	// the workspace's; unset: none.
 	Setup *CallSetup
 }
@@ -114,7 +114,7 @@ type CallVerify struct {
 }
 
 // CallSetup is the command that prepares a call's checkout before its
-// first turn (ADR-010), and where it came from.
+// first turn (ADR-011), and where it came from.
 type CallSetup struct {
 	Command string
 	Timeout time.Duration
@@ -419,7 +419,7 @@ type CallChanges interface {
 }
 
 // CallPreparer runs a call's checkout's setup once, with the operator's
-// authority, before its first turn (ADR-010), and returns why the call
+// authority, before its first turn (ADR-011), and returns why the call
 // fails, if it does.
 type CallPreparer interface {
 	Setup(ctx context.Context, call SetupCall) *run.Error
@@ -754,7 +754,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 			return
 		}
 		// The setup prepares the checkout before the runtime reads it, once:
-		// repair turns continue in the same checkout (ADR-010). A failed one
+		// repair turns continue in the same checkout (ADR-011). A failed one
 		// ends the call before any turn, and leaves no changes of the
 		// call's to keep.
 		if setup := res.Process.Setup; setup != nil {

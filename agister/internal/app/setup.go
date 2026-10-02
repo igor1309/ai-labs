@@ -7,7 +7,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// Preparer runs the setup of calls whose checkout declares one (ADR-010),
+// Preparer runs the setup of calls whose checkout declares one (ADR-011),
 // through the contracts it declares here: one setup per call (Setup).
 type Preparer struct {
 	content  SetupContent
@@ -59,7 +59,7 @@ type SetupCommand struct {
 	Timeout time.Duration
 }
 
-// SetupCall is the setup one call's checkout runs (ADR-010), where, and
+// SetupCall is the setup one call's checkout runs (ADR-011), where, and
 // what it records to.
 type SetupCall struct {
 	Record *run.Record
@@ -79,7 +79,7 @@ type SetupCall struct {
 // revision's before the command, as when a checkout hook changed it, if
 // the command does not exit zero within its timeout, or if it leaves the
 // checkout's content other than it found it: what it makes must be ignored
-// (ADR-010 rule 4). The run is on record either way.
+// (ADR-011 rule 4). The run is on record either way.
 func (p *Preparer) Setup(ctx context.Context, call SetupCall) *run.Error {
 	failure := func(step string, err error) *run.Error {
 		if ctx.Err() != nil {

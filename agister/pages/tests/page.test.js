@@ -412,3 +412,25 @@ test('a process card shows the setup its checkout runs, and where it comes from'
   assert.match(card('own'), /setup\.\/own\.sh within 30s/);
   assert.doesNotMatch(card('own'), /workspace\.yaml/);
 });
+
+// README, Settings: a process card shows the attempts of the verification
+// the process names, or marks it missing when these settings have none.
+test('a process card shows the verification its process names, or marks it missing', async () => {
+  const naming = { ...agent, 'processes/implement.yaml': 'name: implement\nuses: agent:opus\nverify: verify:repo\n' };
+  const output = async (files) => {
+    const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
+    await p.started;
+    const facts = p.$('dashboard').querySelector('article#process-implement div.facts').children;
+    return facts[facts.findIndex((n) => n.textContent === 'output') + 1];
+  };
+
+  const found = await output({ ...naming, 'verifies/repo.yaml': 'name: repo\ncommand: make test\nmax_attempts: 2\n' });
+  assert.equal(found.textContent, 'a failed verify (repo) is fixed up to 2×');
+  assert.equal(found.querySelector('span.missing'), null);
+
+  const absent = await output(naming);
+  assert.equal(absent.textContent, 'repo (missing verify)');
+  const marker = absent.querySelector('span.missing');
+  assert.equal(marker.textContent, 'repo (missing verify)');
+  assert.equal(marker.title, 'No verify named repo in these settings: Agister refuses the call');
+});

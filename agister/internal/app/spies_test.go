@@ -47,6 +47,13 @@ func (s *definitionsSpy) set(kind definition.Kind, name, text string) {
 	s.docs[kind][name] = text
 }
 
+// record counts a read the spy did not answer.
+func (s *definitionsSpy) record(read string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.reads = append(s.reads, read)
+}
+
 func (s *definitionsSpy) readCount() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()

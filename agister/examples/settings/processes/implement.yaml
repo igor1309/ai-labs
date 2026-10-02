@@ -31,14 +31,8 @@ workspace:
 output:
   format: text
 
-# Runs with your authority, not the agent's permissions, in a clean
-# checkout of the candidate with the agent's patch applied, and runs code
-# the agent may have written. Replace the command with your project's own
-# check.
-verify:
-  command: make test
-  timeout: 10m
-  max_attempts: 3
-  instruction: >-
-    The verification command failed on your changes. Fix the cause in the
-    code; do not weaken, skip or delete the check.
+# The repository's verification, verifies/repo.yaml: the command, its
+# limits and what the agent is told when it fails. A repository supplies its
+# own in .agister/verifies/repo.yaml; without one in either place a call
+# of this process is refused.
+verify: verify:repo

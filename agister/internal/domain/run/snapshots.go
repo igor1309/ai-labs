@@ -64,7 +64,7 @@ type Verify struct {
 	Instruction string        `json:"instruction"`
 }
 
-// Setup is the setup command a call's checkout runs (ADR-010), as
+// Setup is the setup command a call's checkout runs (ADR-011), as
 // resolved: the process's own, or its workspace settings' default. From
 // says which, and Path is the document it came from, whose recorded digest
 // covers it.
