@@ -14,14 +14,16 @@ briefs where they differ):
   its events, its identity) towards its caller.
 - **The supervisor** (`internal/adapters/runtime/supervisor`) has its own
   domain language and imports nothing from this repository.
-- **The composition root** builds the CLI dependency on the supervisor
+- **A composition root** builds the CLI dependency on the supervisor
   and creates each wrapper with it, then adapts the wrapper to what
   Agister's core takes (`app.TurnRunner`: `app.TurnRequest`,
   `app.EventSink`, `run.Turn`, `app.RuntimeIdentity`). These adapters
-  are the only code that knows both sides. Each is thin, lives in
-  `cmd/agister` (package `main`), depends on interfaces, not concrete
-  types (the wrapper's API as an interface it declares, the supervisor's
-  likewise), and is tested there.
+  are the only code that knows both sides. Each is thin, belongs to a
+  composition root, depends on interfaces, not concrete types (the
+  wrapper's API as an interface it declares, the supervisor's likewise),
+  and is tested with it. A composition root is a role, not a place: it
+  may be `main` or a package that builds a runtime from a wrapper, the
+  supervisor and the adapters, so `main` stays thin. Choose and say why.
 
 ## Change
 
@@ -30,16 +32,16 @@ briefs where they differ):
   `domain/run` and `outcome` becomes their own types and their own
   logic, or moves into the composition root's translation, whichever
   keeps the wrapper's behaviour in the wrapper.
-- The adapters (wrapper ↔ supervisor, wrapper ↔ app) live in
-  `cmd/agister` and are tested by `cmd/agister` tests through stand-ins
-  for the interfaces they take. No other package holds an adapter.
+- The adapters (wrapper ↔ supervisor, wrapper ↔ app) live with their
+  composition root and are tested there through stand-ins for the
+  interfaces they take. No wrapper's or the supervisor's package holds
+  an adapter.
   Delete the `supervised_test.go` copies and the Codex `run` hook in
   `cmd/agister/transports.go`; no test keeps its own copy of an adapter.
   A wrapper's own tests use a stand-in for the CLI dependency it
   declares.
 - `runtimetest` conformance and the CLI tests run each wrapper as the
-  composition root composes it (conformance moves to `cmd/agister` if it
-  needs the adapters). `logging.Runner` stays at the app level,
+  composition root composes it. `logging.Runner` stays at the app level,
   wrapping the adapted runner.
 - Behaviour is unchanged: same command lines, events, classifications,
   usage and cost, sessions, refusals, timeouts and cleanup. Existing
@@ -50,7 +52,7 @@ briefs where they differ):
 - A normal test that fails if any of the four wrappers or the supervisor
   imports a package of this module (`go list -deps` or `go/build`, from
   a test).
-- `cmd/agister` tests of each adapter, the shipped code with stand-ins
+- Tests of each adapter, the shipped code with stand-ins
   for its interfaces: the spec a wrapper's run becomes on the
   supervisor, and a wrapper's result, events and failures as `app`
   receives them.

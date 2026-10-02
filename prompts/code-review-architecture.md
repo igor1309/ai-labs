@@ -24,7 +24,7 @@ Architectural invariants
 * Boundary adapters translate between independently owned types.
 * A component never imports its consumers or their types; the composition root adapts its API to theirs.
 * A component never imports the implementations of its collaborators or their types; the composition root adapts them to its own dependency contracts.
-* Adapters between components are thin, live in the composition root, depend on interfaces rather than concrete types, and are tested there.
+* Adapters between components are thin, belong to a composition root, depend on interfaces rather than concrete types, and are tested with it. A composition root is a role, not a place: main, or a package that builds a component from other components so main stays thin.
 * Interfaces belong to the consuming component/subcomponent and express exactly the collaborator capabilities it requires.
 * A component's interfaces are cut by the roles its collaborators play for it, not by the seams of existing adapters or former shared interfaces. Signs of the latter: one interface per existing adapter or former shared interface, renamed; names that describe a mechanism rather than what the component needs; two interfaces always satisfied by one adapter and used together; one interface bundling unrelated needs because one adapter provides them.
 * A component that calls one collaborator only to pass the response to another, and uses neither otherwise, or receives collaborators only to hand them to another component, with no role of its own in the hand-off (ordering, consistency, translation, policy), has the wrong interfaces and the wrong responsibility: the two calls are one role, and the hand-off belongs to a collaborator.
@@ -52,8 +52,8 @@ Go-specific interpretation
 * Module construction functions act as local composition roots and hide internal wiring.
 * Database implementations, external clients, queues, storage, clocks, and similar infrastructure are connected through adapters implementing consumer-owned interfaces.
 * Boundary adapters perform translation between the caller’s types and the callee’s API types.
-* An adapter inside a component's package that imports another component (the application core, its domain, an infrastructure module) to implement or call it is a finding: it belongs in main.
-* Adapters in main are tested by main's tests with stand-ins for the interfaces they take. A test that keeps its own copy of an adapter is a finding.
+* An adapter inside a component's own package that imports another component (the application core, its domain, an infrastructure module) to implement or call it is a finding: it belongs to a composition root.
+* Adapters are tested where their composition root is, with stand-ins for the interfaces they take. A test that keeps its own copy of an adapter is a finding.
 * Decorators wrap specific collaborators or module entrypoints at wiring locations.
 * Generic helpers, adapters, or decorators are appropriate when the abstraction represents the same semantic role across usages.
 
