@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"context"
+	"debug/buildinfo"
 	"encoding/json"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"runtime/debug"
@@ -40,6 +42,28 @@ func TestVersion(t *testing.T) {
 	} {
 		if got := version(c.info); got != c.want {
 			t.Errorf("%s: version = %q, want %q", c.name, got, c.want)
+		}
+	}
+}
+
+// The built binary names itself by the build information it carries: main
+// reads it and hands it to the CLI, for --version and for version alike.
+func TestBinaryNamesItsBuild(t *testing.T) {
+	binary := filepath.Join(tempDir(t), "agister")
+	if out, err := exec.Command("go", "build", "-o", binary, ".").CombinedOutput(); err != nil {
+		t.Fatalf("build: %v\n%s", err, out)
+	}
+	info, err := buildinfo.ReadFile(binary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "agister " + version(info) + "\n"
+	for _, args := range [][]string{{"--version"}, {"version"}} {
+		command := exec.Command(binary, args...)
+		command.Dir = tempDir(t)
+		out, err := command.Output()
+		if err != nil || string(out) != want {
+			t.Errorf("%v: %q, %v; want %q", args, out, err, want)
 		}
 	}
 }
