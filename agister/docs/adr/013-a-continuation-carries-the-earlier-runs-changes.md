@@ -70,9 +70,13 @@ definition's, because only Agister knows them.
 ### 5. The new patch is still from the revision
 
 The call's own `changes.patch` stays cumulative from the revision. It
-includes the carried changes, so it alone delivers everything the
-session's runs have done in Agister's checkouts. Verification on a clean copy (ADR-005) is unchanged:
-the copy is the revision with that patch applied.
+includes the carried changes, so for a session whose continuations all
+followed this ADR it alone delivers everything the session's runs have
+done in Agister's checkouts. A continuation made before this ADR started
+clean, so its patch holds only its own changes. A session that has one
+carries only its latest run's patch, and an earlier run's changes may be
+missing (D-7). Verification on a clean copy (ADR-005) is unchanged: the
+copy is the revision with that patch applied.
 
 ## Amendments to earlier ADRs
 

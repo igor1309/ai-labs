@@ -65,3 +65,14 @@
 - **Decision:** (b). A continuation carries the `changes.patch` of the session's latest run, which matches the session it resumes. The base checks apply to that run.
 - **Rests on:** none
 - **Follow-ups:** ADR-013 rules 1, 2, 3 and 5 name the session's latest run; a test continues run A after B continued it and asserts B's patch is carried.
+
+## D-7: How ADR-013 handles continuation chains made before it
+
+- **Status:** Owner
+- **Asked by:** workflow run 20261002T123937Z-f648c5 (adr_review), judge item "ADR-013's whole-session preservation guarantee does not hold for the legacy continuation chains it accepts"; advisor run 20261002T124413Z-f6d4fe answered owner
+- **Question:** ADR-013 promises to carry the whole session's changes, but restoring the latest legacy patch (a pre-ADR run) can lose earlier runs' changes. How should the ADR handle legacy continuation chains?
+- **Options:** (a) keep accepting legacy records, narrow the guarantee at line 73 to the latest run's captured checkout state, and document the legacy limitation; (b) refuse to continue legacy chains whose cumulative preservation cannot be established, so the whole-session guarantee holds as written; (c) restrict the whole-session guarantee to chains made entirely after this ADR, and state plainly that legacy chains carry only their latest run's patch.
+- **Excluded:** (a): it weakens the guarantee for every session, not only the legacy ones. (b): it stops sessions that can still be continued usefully, and D-6 keeps repeat continuation.
+- **Decision:** (c). The whole-session guarantee holds for chains made entirely after ADR-013. A legacy chain carries only its latest run's patch, and ADR-013 says so.
+- **Rests on:** D-6
+- **Follow-ups:** none
