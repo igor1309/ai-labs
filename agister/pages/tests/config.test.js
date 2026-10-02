@@ -305,9 +305,28 @@ test('a named verification is resolved from the composed settings, or marked out
   assert.deepEqual(alone.processes[0].verify, { ref: 'repo', maxAttempts: null, outside: true });
 });
 
+// ADR-014: a process names its prompts, each once, found in the repo
+// before home.
+test('a process\'s prompts are found in the composed settings, or marked outside', async () => {
+  const home = {
+    processes: { 'review.yaml': 'name: review\nuses: agent:opus\ninput:\n  instruction: Review.\n  values:\n    rules: {source: prompt, name: review}\n    again: {source: prompt, name: review}\n    style: {source: prompt, name: style}\n    diff: {source: git.diff}\n' },
+    prompts: { 'review.md': 'Home review.\n', 'style.md': 'Home style.\n' },
+  };
+  const repo = { prompts: { 'review.md': 'Repo review.\n' } };
+  const m = await C.loadComposed(memDir('.agister', home), memDir('.agister', repo));
+  assert.deepEqual(m.processes[0].prompts, [
+    { name: 'review', outside: false, source: 'repo', overrides: true },
+    { name: 'style', outside: false, source: 'home', overrides: false },
+  ]);
+  assert.deepEqual([m.prompts[0].name, m.prompts[0].source, m.prompts[0].overrides, m.prompts[0].usedBy], ['review', 'repo', true, ['review']]);
+
+  const alone = await C.loadAgister(memDir('.agister', { processes: home.processes }));
+  assert.deepEqual(alone.processes[0].prompts, [{ name: 'review', outside: true }, { name: 'style', outside: true }]);
+});
+
 test('missing folders, service.toml and workspace.yaml read as empty', async () => {
   const m = await C.loadAgister(memDir('.agister', {}));
-  assert.deepEqual(m, { service: null, workspace: null, workflows: [], processes: [], agents: [], policies: [], runtimes: [], schemas: [], verifies: [] });
+  assert.deepEqual(m, { service: null, workspace: null, workflows: [], processes: [], agents: [], policies: [], runtimes: [], schemas: [], verifies: [], prompts: [] });
 });
 
 for (const path of ['.agister', 'agister/examples/settings']) {

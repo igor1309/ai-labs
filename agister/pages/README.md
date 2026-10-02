@@ -22,7 +22,9 @@ home`.
     (workspace, timeout, cost cap, what it allows and denies), its output
     schema and verify attempts (of the verification it names, when it
     names one; marked missing when these settings have none of that name),
-    and the setup its checkout runs: its own, or `workspace.yaml`'s, the
+    and the prompts it names, each once, marked missing when these
+    settings have none of that name, and for a repo with the layer it
+    comes from, and the setup its checkout runs: its own, or `workspace.yaml`'s, the
     repo's over home's (ADR-012);
   - for a workflow, its calls in one line (`4 × gpt-6.1-sol at once, then
     opus`), then the steps: the ones run at once (`First` when there is
@@ -133,7 +135,7 @@ The server writes nothing and answers these endpoints:
   `X-Agister-Pages` header, which a page on another site cannot send.
 - `GET /api/settings?path=<absolute repo path | ~>`: the settings files of
   `<path>/.agister`, or of Agister home for `~`: `agents`, `policies`,
-  `processes`, `runtimes`, `schemas`, `verifies`, `workflows`,
+  `processes`, `runtimes`, `schemas`, `verifies`, `prompts`, `workflows`,
   `service.toml` and `workspace.yaml`, each
   at most 256 KB. `runs/` and `logs/` are skipped.
 - `GET /api/skills?path=<absolute repo path | ~>`: the skill folders of

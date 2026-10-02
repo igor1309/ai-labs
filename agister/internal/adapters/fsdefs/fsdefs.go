@@ -1,8 +1,8 @@
 // Package fsdefs stores definition documents as files under Agister's
 // state directory: service.toml, workspace.yaml, agents/*.toml, processes/*.yaml,
 // policies/*.yaml, runtimes/*.yaml, schemas/*.json, workflows/*.yaml,
-// verifies/*.yaml. Layered reads a project's own settings over the global
-// ones.
+// verifies/*.yaml, prompts/*.md. Layered reads a project's own settings over
+// the global ones.
 package fsdefs
 
 import (
@@ -80,6 +80,7 @@ var extensions = map[definition.Kind]string{
 	definition.KindSchema:   ".json",
 	definition.KindWorkflow: ".yaml",
 	definition.KindVerify:   ".yaml",
+	definition.KindPrompt:   ".md",
 	// A singleton, like the service.
 	definition.KindWorkspace: ".yaml",
 }
@@ -142,9 +143,17 @@ func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 	}
 	var names []string
 	for _, entry := range entries {
-		if name, ok := strings.CutSuffix(entry.Name(), extensions[kind]); ok && !entry.IsDir() {
-			names = append(names, name)
+		name, ok := strings.CutSuffix(entry.Name(), extensions[kind])
+		if !ok || entry.IsDir() {
+			continue
 		}
+		// A file in prompts/ whose name breaks the naming rule is not a
+		// prompt: settings may still read it through source: file (ADR-014
+		// rule 5).
+		if kind == definition.KindPrompt && !definition.ValidName(name) {
+			continue
+		}
+		names = append(names, name)
 	}
 	sort.Strings(names)
 	return names, nil

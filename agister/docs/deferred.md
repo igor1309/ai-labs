@@ -89,3 +89,15 @@ Against trunk's merge-base (also covers #829 and #831):
 - **Done when:** the Codex implementer can run the full check, or the
   process's verification runs it outside the agent's sandbox and its
   result is what the call reports.
+
+## 6. Resolver builds the Calls and Inspection result types
+
+- **Gap:** `Resolver.Snapshot` builds `callResolution` around a concrete
+  `*Resolver`, and `NewClient` passes the Resolver straight to its
+  consumers, against ADR-001 rule 14. The prompt loop added in LAB-50
+  follows the same pattern.
+- **Trigger:** the next change to the Resolver, Calls and Inspection
+  boundary, or a refactor issue of its own.
+- **Done when:** the Resolver exposes its own result API, `NewClient`
+  builds the interface-based Calls and Inspection adapters, and those are
+  tested with stand-ins.

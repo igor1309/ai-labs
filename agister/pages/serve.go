@@ -32,7 +32,8 @@ var assets embed.FS
 // The .agister entries that hold settings; runs and logs are not settings.
 var settingsEntries = map[string]bool{
 	"agents": true, "policies": true, "processes": true, "runtimes": true,
-	"schemas": true, "verifies": true, "workflows": true, "service.toml": true,
+	"schemas": true, "verifies": true, "prompts": true, "workflows": true,
+	"service.toml":   true,
 	"workspace.yaml": true,
 }
 

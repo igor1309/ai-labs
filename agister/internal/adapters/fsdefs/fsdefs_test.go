@@ -154,6 +154,36 @@ func TestLayeredProjectTakesPriority(t *testing.T) {
 	}
 }
 
+// A prompt is prompts/<name>.md, its bytes unchanged (ADR-014); one in
+// neither layer names both places it was expected.
+func TestPromptsAreMarkdownFiles(t *testing.T) {
+	ctx := context.Background()
+	global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
+	text := "# Review\n\nRead the diff.\n"
+	path, _, err := global.Write(ctx, definition.KindPrompt, "review", []byte(text), "")
+	if err != nil || path != filepath.Join(global.Dir, "prompts", "review.md") {
+		t.Fatalf("write = %q, %v", path, err)
+	}
+	// Another extension in the folder is not a prompt, nor is a file whose
+	// name breaks the naming rule, which source: file may still read.
+	for _, other := range []string{"notes.txt", "Style Guide.md"} {
+		if err := os.WriteFile(filepath.Join(global.Dir, "prompts", other), []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	layered := fsdefs.Layered{Global: global, Project: &project}
+	if names, err := layered.List(ctx, definition.KindPrompt); err != nil || !reflect.DeepEqual(names, []string{"review"}) {
+		t.Fatalf("list = %v, %v", names, err)
+	}
+	if doc, err := layered.Read(ctx, definition.KindPrompt, "review"); err != nil || string(doc.Bytes) != text || doc.Source.Path != path || doc.Source.Project {
+		t.Fatalf("read = %+v, %v", doc.Source, err)
+	}
+	want := "not found (expected " + filepath.Join(project.Dir, "prompts", "style.md") + " or " + filepath.Join(global.Dir, "prompts", "style.md") + ")"
+	if _, err := layered.Read(ctx, definition.KindPrompt, "style"); err == nil || err.Error() != want {
+		t.Fatalf("missing = %v, want %q", err, want)
+	}
+}
+
 // held reports whether another descriptor cannot take the store's write lock
 // right now, without waiting.
 func held(t *testing.T, dir string) bool {
