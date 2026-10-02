@@ -1,6 +1,6 @@
 // Package definition parses and validates Agister's settings documents:
-// agents, processes, workflows, policies, verifications, runtime permission
-// mappings, the service and the workspace.
+// agents, processes, workflows, policies, verifications, prompts, runtime
+// permission mappings, the service and the workspace.
 // It owns the definition language; callers supply bytes and their origin.
 package definition
 
@@ -23,6 +23,7 @@ const (
 	KindSchema   Kind = "schemas"
 	KindWorkflow Kind = "workflows"
 	KindVerify   Kind = "verifies"
+	KindPrompt   Kind = "prompts"
 	// KindWorkspace is a singleton, like the service, and optional: a
 	// missing document means no workspace settings.
 	KindWorkspace Kind = "workspace"
@@ -45,6 +46,8 @@ func (k Kind) Singular() string {
 		return "workflow"
 	case KindVerify:
 		return "verification"
+	case KindPrompt:
+		return "prompt"
 	}
 	return string(k)
 }
@@ -70,11 +73,28 @@ type Document struct {
 // InvalidError lists every problem found in one definition.
 type InvalidError struct {
 	Subject  string
-	Problems []string
+	Problems []Problem
 }
 
 func (e *InvalidError) Error() string {
-	return fmt.Sprintf("%s is invalid:\n  %s", e.Subject, strings.Join(e.Problems, "\n  "))
+	return fmt.Sprintf("%s is invalid:\n  %s", e.Subject, strings.Join(e.Messages(), "\n  "))
+}
+
+// Messages are the problems' messages, in order.
+func (e *InvalidError) Messages() []string {
+	messages := make([]string, len(e.Problems))
+	for i, problem := range e.Problems {
+		messages[i] = problem.Message
+	}
+	return messages
+}
+
+// Problem is one problem found in a definition.
+type Problem struct {
+	Message string
+	// Unknown: the problem names something this code does not know, as
+	// settings written for a newer Agister would.
+	Unknown bool
 }
 
 // readable reports whether data can be a settings document at all. Binary
@@ -90,15 +110,24 @@ func readable(data []byte, p *problems) bool {
 
 // problems collects field-path problems while reading one document.
 type problems struct {
-	list []string
+	list []Problem
 }
 
 func (p *problems) add(field, format string, args ...any) {
+	p.list = append(p.list, Problem{Message: fieldMessage(field, format, args...)})
+}
+
+// unknown adds a problem that names something this code does not know.
+func (p *problems) unknown(field, format string, args ...any) {
+	p.list = append(p.list, Problem{Message: fieldMessage(field, format, args...), Unknown: true})
+}
+
+func fieldMessage(field, format string, args ...any) string {
 	message := fmt.Sprintf(format, args...)
 	if field != "" {
 		message = field + ": " + message
 	}
-	p.list = append(p.list, message)
+	return message
 }
 
 func (p *problems) err(subject string) error {

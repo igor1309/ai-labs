@@ -419,7 +419,7 @@ func TestCheckRejectsAStalenessLimitAboveTheTimeout(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		return report.Problems
+		return messages(report.Problems)
 	}
 	h, _ := staleHarness(t, "no_event: 5m, no_output: 2m, tool_command: 10m, repeated_tool_calls: 5")
 	if problems := check(h); len(problems) != 0 {

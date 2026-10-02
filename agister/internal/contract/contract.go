@@ -14,7 +14,7 @@ import (
 // SettingsError refuses a use of the client while the settings have a
 // problem that stops every command (ProblemReach.Stops); the report says
 // which. Any other problem refuses only what depends on the document it is
-// about (ADR-014).
+// about (ADR-015).
 type SettingsError struct {
 	Report CheckReport
 }
@@ -105,7 +105,7 @@ type ProcessSummary struct {
 
 type CheckReport struct {
 	Checked  map[string]int `json:"checked"` // definitions checked, by kind
-	Problems []string       `json:"problems"`
+	Problems []Problem      `json:"problems"`
 	// Project definitions that take priority over global ones.
 	Overrides []string `json:"overrides"`
 	// What the settings do that their user should know, such as a
@@ -118,7 +118,7 @@ type CheckReport struct {
 	Reach []ProblemReach `json:"reach"`
 }
 
-// ProblemReach is what one problem refuses (ADR-014): every command, or the
+// ProblemReach is what one problem refuses (ADR-015): every command, or the
 // calls of the processes and workflows that depend on the document it is
 // about, and nothing else.
 type ProblemReach struct {
@@ -126,10 +126,10 @@ type ProblemReach struct {
 	// The document it is about; unset on one that stops every command.
 	Subject *DefinitionRef `json:"subject,omitempty"`
 	// Set on a process's problem that depends on the agent it names: a call
-	// that selects another agent does not have it (ADR-014 rule 2).
+	// that selects another agent does not have it (ADR-015 rule 2).
 	Agent string `json:"agent,omitempty"`
 	// It stops every command but init, check, cancelling a run and
-	// following an admitted run (ADR-014 rule 4).
+	// following an admitted run (ADR-015 rule 4).
 	Stops bool `json:"stops,omitempty"`
 	// The processes and workflows whose calls it refuses, as they are
 	// called without --agent.
@@ -137,9 +137,18 @@ type ProblemReach struct {
 	Workflows []string `json:"workflows,omitempty"`
 }
 
+// Problem is one thing that keeps the settings from passing check.
+type Problem struct {
+	Message string `json:"message"`
+	// Unknown: it names something this binary does not know (a field, an
+	// adapter, an input source, a schema version), as settings written for
+	// a newer binary would.
+	Unknown bool `json:"unknown,omitempty"`
+}
+
 // Definition is one settings document in the composed settings.
 type Definition struct {
-	Kind      string          `json:"kind"` // service, agents, processes, policies, runtimes, schemas, workflows, verifies
+	Kind      string          `json:"kind"` // service, agents, processes, policies, runtimes, schemas, workflows, verifies, prompts
 	Name      string          `json:"name"`
 	Layer     string          `json:"layer"` // global or project
 	Path      string          `json:"path"`
@@ -151,7 +160,7 @@ type Definition struct {
 
 // DefinitionOrigin is where one definition a call uses comes from.
 type DefinitionOrigin struct {
-	Kind      string // agents, processes, policies, runtimes, schemas, verifies or service
+	Kind      string // agents, processes, policies, runtimes, schemas, verifies, prompts or service
 	Name      string
 	Layer     string // global or project
 	Path      string
@@ -197,6 +206,9 @@ type ProcessView struct {
 	Verify *Verify
 	// The verification the process names; empty for an inline block.
 	VerifyName string
+	// The prompts its inputs name (ADR-014); Sources says where each
+	// resolved one comes from.
+	Prompts []string
 	// What the user should know before calling it.
 	Warnings []string
 	// Where each definition the call uses comes from.

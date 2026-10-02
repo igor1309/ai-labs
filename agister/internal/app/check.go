@@ -82,11 +82,14 @@ type CheckedDocument struct {
 type CheckedProblem struct {
 	Text string // as reported, naming its document
 	// The document it is about; nil on one that stops every command
-	// (ADR-014 rule 4).
+	// (ADR-015 rule 4).
 	About   *DocumentRef
 	Message string // without its document's name
-	// The agent it depends on, on a process's problem (ADR-014 rule 2).
+	// The agent it depends on, on a process's problem (ADR-015 rule 2).
 	Agent string
+	// Unknown: it names a mechanism the code does not provide, as settings
+	// written for a newer Agister would.
+	Unknown bool
 }
 
 func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
@@ -94,37 +97,31 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 	index := map[DocumentRef]int{}   // into report.Definitions and documents
 	var documents []CheckedDocument  // as report.Definitions
 	listed := map[DocumentRef]bool{} // in the settings, read or not
-	// Every problem, with the document it is about (ADR-014).
+	// Every problem, with the document it is about (ADR-015).
 	var found []CheckedProblem
-	about := func(ref DocumentRef, subject, message, agent string) {
-		text := subject + ": " + message
+	about := func(ref DocumentRef, p settings.Problem) {
 		if ref == serviceRef {
 			// Every call depends on it, and every check on its vocabulary
-			// and limits (ADR-014 rule 4).
-			found = append(found, CheckedProblem{Text: text, Message: message})
+			// and limits (ADR-015 rule 4).
+			found = append(found, CheckedProblem{Text: p.String(), Message: p.Message, Unknown: p.Unknown})
 			return
 		}
-		found = append(found, CheckedProblem{Text: text, About: &ref, Message: message, Agent: agent})
+		found = append(found, CheckedProblem{Text: p.String(), About: &ref, Message: p.Message, Agent: p.Agent, Unknown: p.Unknown})
 	}
 	stops := func(subject, format string, args ...any) {
 		message := fmt.Sprintf(format, args...)
 		found = append(found, CheckedProblem{Text: subject + ": " + message, Message: message})
 	}
-	problem := func(subject, format string, args ...any) {
-		ref, ok := subjectRef(subject)
-		if !ok {
-			stops(subject, format, args...)
-			return
-		}
-		about(ref, subject, fmt.Sprintf(format, args...), "")
-	}
 	settingsProblem := func(p settings.Problem) {
 		ref, ok := subjectRef(p.Subject)
 		if p.Unattributed || !ok {
-			stops(p.Subject, "%s", p.Message)
+			found = append(found, CheckedProblem{Text: p.String(), Message: p.Message, Unknown: p.Unknown})
 			return
 		}
-		about(ref, p.Subject, p.Message, p.Agent)
+		about(ref, p)
+	}
+	problem := func(subject, format string, args ...any) {
+		settingsProblem(settings.Problem{Subject: subject, Message: fmt.Sprintf(format, args...)})
 	}
 	bundle := settings.Bundle{
 		Agents:    map[string]definition.Agent{},
@@ -134,6 +131,7 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		Schemas:   map[string]bool{},
 		Workflows: map[string]definition.Workflow{},
 		Verifies:  map[string]definition.Verification{},
+		Prompts:   map[string]bool{},
 	}
 
 	// Each document on its own.
@@ -142,15 +140,21 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		if kind != definition.KindService {
 			var err error
 			if names, err = c.definitions.List(ctx, kind); err != nil {
-				// Nothing can name what it holds (ADR-014 rule 4).
+				// Nothing can name what it holds (ADR-015 rule 4).
 				stops("settings directory "+string(kind), "cannot be listed: %v", err)
 				return nil
 			}
 		}
 		for _, name := range names {
 			listed[DocumentRef{Kind: kind, Name: name}] = true
+			if kind == definition.KindPrompt {
+				// One that cannot be read or parsed is a problem of its
+				// own (ADR-014 rule 1); the processes that name it still
+				// find it.
+				bundle.Prompts[name] = true
+			}
 			if kind != definition.KindService && !definition.ValidName(name) {
-				// Nothing can name such a document (ADR-014 rule 4).
+				// Nothing can name such a document (ADR-015 rule 4).
 				stops(kind.Singular()+" "+name, "%q is not a valid name; rename the file", name)
 				continue
 			}
@@ -176,7 +180,7 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 				var invalid *definition.InvalidError
 				if errors.As(err, &invalid) {
 					for _, p := range invalid.Problems {
-						problem(kind.Singular()+" "+name, "%s", p)
+						settingsProblem(settings.Problem{Subject: kind.Singular() + " " + name, Message: p.Message, Unknown: p.Unknown})
 					}
 				} else {
 					problem(kind.Singular()+" "+name, "%v", err)
@@ -222,6 +226,10 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 			if err == nil {
 				bundle.Verifies[v.Name] = v
 			}
+			return err
+		}},
+		{definition.KindPrompt, func(d definition.Document) error {
+			_, err := definition.ParsePrompt(d)
 			return err
 		}},
 		{definition.KindProcess, func(d definition.Document) error {
@@ -290,7 +298,7 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		byName(processes)
 		byName(workflows)
 		for _, problem := range found {
-			report.Problems = append(report.Problems, problem.Text)
+			report.Problems = append(report.Problems, contract.Problem{Message: problem.Text, Unknown: problem.Unknown})
 			item := contract.ProblemReach{Problem: problem.Text, Stops: problem.About == nil}
 			if subject := problem.About; subject != nil {
 				item.Subject = &contract.DefinitionRef{Kind: string(subject.Kind), Name: subject.Name}
@@ -323,6 +331,9 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		link(from, definition.KindAgent, process.Agent)
 		link(from, definition.KindPolicy, process.Policy)
 		link(from, definition.KindVerify, process.VerifyName)
+		for _, prompt := range process.Prompts() {
+			link(from, definition.KindPrompt, prompt)
+		}
 		if process.Output.Format == "json" {
 			link(from, definition.KindSchema, process.Output.Schema)
 		}
@@ -359,8 +370,9 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 
 	// Across documents.
 	known := c.runtimes.Adapters()
-	// The core itself supplies a join's collection (ADR-003 rule 4).
-	sources := append(append([]string(nil), c.sources...), definition.CollectionSource)
+	// The core itself supplies a join's collection (ADR-003 rule 4) and the
+	// prompts a process names, which it reads from the settings (ADR-014).
+	sources := append(append([]string(nil), c.sources...), definition.CollectionSource, definition.PromptSource)
 	for _, p := range settings.Check(bundle, settings.Mechanisms{Sources: sources, Adapters: known}) {
 		settingsProblem(p)
 	}
@@ -444,12 +456,12 @@ func (c *Checker) ProblemsAdded(ctx context.Context, doc definition.Document) ([
 	}
 	existing := map[string]bool{}
 	for _, problem := range before.Problems {
-		existing[problem] = true
+		existing[problem.Message] = true
 	}
 	var added []string
 	for _, problem := range report.Problems {
-		if !existing[problem] {
-			added = append(added, problem)
+		if !existing[problem.Message] {
+			added = append(added, problem.Message)
 		}
 	}
 	return added, nil

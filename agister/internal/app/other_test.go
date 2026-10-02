@@ -29,7 +29,7 @@ func TestCheckReportsEveryProblemAcrossDocuments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	joined := strings.Join(report.Problems, "\n")
+	joined := strings.Join(messages(report.Problems), "\n")
 	for _, want := range []string{
 		"agent broken: colour: unknown field",
 		"agent broken: runtime: is required",
@@ -92,16 +92,16 @@ func TestCheckReportsWhatDefinesWhat(t *testing.T) {
 func TestCheckProbesEachAgentsRuntime(t *testing.T) {
 	h := newHarness()
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
-	if report, _ := checker.Check(context.Background(), true); len(report.Problems) != 0 {
-		t.Fatalf("problems = %v", report.Problems)
+	if report, _ := checker.Check(context.Background(), true); len(messages(report.Problems)) != 0 {
+		t.Fatalf("problems = %v", messages(report.Problems))
 	}
 	if !reflect.DeepEqual(h.runtimes.identified, []string{"spy|/bin/spy"}) {
 		t.Fatalf("identified = %v", h.runtimes.identified)
 	}
 	h.runner.identity.Version = "9.0.0"
 	report, _ := checker.Check(context.Background(), true)
-	if !reflect.DeepEqual(report.Problems, []string{"agent a: mapping rt verifies no primitive for runtime version 9.0.0"}) {
-		t.Fatalf("problems = %v", report.Problems)
+	if !reflect.DeepEqual(messages(report.Problems), []string{"agent a: mapping rt verifies no primitive for runtime version 9.0.0"}) {
+		t.Fatalf("problems = %v", messages(report.Problems))
 	}
 }
 
@@ -114,8 +114,8 @@ func TestCheckProbeAsksNoIdentityOfAnAdapterTheCodeDoesNotProvide(t *testing.T) 
 	without, _ := checker.Check(context.Background(), false)
 	report, _ := checker.Check(context.Background(), true)
 	want := []string{`runtime mapping rt: unknown adapter "ghost" (available: spy)`}
-	if !reflect.DeepEqual(without.Problems, want) || !reflect.DeepEqual(report.Problems, without.Problems) {
-		t.Fatalf("problems without probe %q, with %q, want %q", without.Problems, report.Problems, want)
+	if !reflect.DeepEqual(messages(without.Problems), want) || !reflect.DeepEqual(messages(report.Problems), messages(without.Problems)) {
+		t.Fatalf("problems without probe %q, with %q, want %q", messages(without.Problems), messages(report.Problems), want)
 	}
 	if len(h.runtimes.identified) != 0 {
 		t.Fatalf("identities asked for: %v", h.runtimes.identified)
@@ -129,13 +129,13 @@ func TestCheckProbePlansEachProcessOnTheInstalledVersion(t *testing.T) {
 	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(h.defs.docs[definition.KindRuntime]["rt"], "Read: {grants: [repository.read], verified: [\"1.\"]}", "Read: {grants: [repository.read], verified: [\"2.\"]}", 1)
 	h.defs.docs[definition.KindProcess]["p"] += "tools: {require: [repository.read]}\n"
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
-	if report, _ := checker.Check(context.Background(), false); len(report.Problems) != 0 {
-		t.Fatalf("problems = %v", report.Problems)
+	if report, _ := checker.Check(context.Background(), false); len(messages(report.Problems)) != 0 {
+		t.Fatalf("problems = %v", messages(report.Problems))
 	}
 	report, _ := checker.Check(context.Background(), true)
-	if len(report.Problems) != 1 || !strings.HasPrefix(report.Problems[0], "process p: cannot run on agent a's runtime rt version 1.2.3: ") ||
-		!strings.Contains(report.Problems[0], "not verified for version 1.2.3: Read") {
-		t.Fatalf("problems = %v", report.Problems)
+	if len(messages(report.Problems)) != 1 || !strings.HasPrefix(messages(report.Problems)[0], "process p: cannot run on agent a's runtime rt version 1.2.3: ") ||
+		!strings.Contains(messages(report.Problems)[0], "not verified for version 1.2.3: Read") {
+		t.Fatalf("problems = %v", messages(report.Problems))
 	}
 }
 

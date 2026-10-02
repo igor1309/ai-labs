@@ -64,7 +64,7 @@ func fields(node *yaml.Node, field string, allowed []string, p *problems) map[st
 	out := map[string]*yaml.Node{}
 	for _, entry := range mapping(node, field, p) {
 		if !contains(allowed, entry.key) {
-			p.add(join(field, entry.key), "unknown field")
+			p.unknown(join(field, entry.key), "unknown field")
 			continue
 		}
 		out[entry.key] = entry.value

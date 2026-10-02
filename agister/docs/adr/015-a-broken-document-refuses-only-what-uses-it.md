@@ -1,4 +1,4 @@
-# ADR-014: A broken document refuses only what uses it
+# ADR-015: A broken document refuses only what uses it
 
 - **Status:** Accepted
 - **Date:** 2026-10-02
@@ -57,8 +57,9 @@ every command, as today.
 A process call depends on the service settings, its process, and what the
 process uses as the call resolves it (ADR-010 rule 3): its agent (the
 caller's `--agent` when given), that agent's runtime mapping, its policy,
-its output schema and its named verification. A workflow run depends on
-its workflow and on what each of its nodes' calls depends on.
+its output schema, its named verification and the prompts its inputs name
+([ADR-014](014-prompts-are-settings.md)). A workflow run depends on its
+workflow and on what each of its nodes' calls depends on.
 
 A document depends on what it uses in the same way, so a problem reaches
 every call through any chain of uses: a broken runtime mapping refuses the

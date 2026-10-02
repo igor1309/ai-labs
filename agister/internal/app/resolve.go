@@ -32,6 +32,7 @@ type resolution struct {
 	agent     definition.Agent
 	mapping   definition.Mapping
 	schema    []byte
+	prompts   map[string]definition.Prompt // by name
 	sources   []definition.Source
 	effective policy.Effective
 	identity  RuntimeIdentity
@@ -55,7 +56,7 @@ type Resolver struct {
 	validator   ResolverValidator
 	// check checks the definitions the resolver reads, which must not
 	// change under it (a snapshot), so a call that depends on a document
-	// with a problem is refused (ADR-014).
+	// with a problem is refused (ADR-015).
 	check ResolverCheck
 	// checked is what the problems refuse, checked once when the
 	// definitions were frozen.
@@ -89,7 +90,7 @@ type ResolverProblem struct {
 	About   DocumentRef
 	Message string // without the document's name
 	// Set on a process's problem that depends on the agent it names: a
-	// call that selects another agent does not have it (ADR-014 rule 2).
+	// call that selects another agent does not have it (ADR-015 rule 2).
 	Agent string
 }
 
@@ -175,7 +176,7 @@ type overrides struct {
 // resolve resolves the process named processName. A refused one's
 // resolution has what was resolved before the refusal. A call that depends
 // on a document with a problem is refused for it, naming each, before its
-// runtime is asked anything (ADR-014).
+// runtime is asked anything (ADR-015).
 func (r *Resolver) resolve(ctx context.Context, processName, agentOverride string, caller overrides) (*resolution, error) {
 	reached, err := r.reach(ctx)
 	if err != nil {
@@ -202,7 +203,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	defer func() {
 		// Static problems already carry their document and chain. Problems
 		// discovered while resolving an override or probing its runtime
-		// need the same attribution (ADR-014 rules 2 and 3).
+		// need the same attribution (ADR-015 rules 2 and 3).
 		if settingsOnly || err == nil {
 			return
 		}
@@ -314,6 +315,25 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 			}
 			res.process.Verify = &verification.Verify
 		}
+	}
+	// Each prompt a process names is read with the call, from the same
+	// settings, and recorded among its sources (ADR-014 rule 3).
+	for _, value := range res.process.Values {
+		name := value.Args["name"]
+		if _, ok := res.prompts[name]; ok || value.Source != definition.PromptSource {
+			continue
+		}
+		if doc, err = load(definition.KindPrompt, name); err != nil {
+			return res, refuse("input %s: %v", value.Name, err)
+		}
+		prompt, err := definition.ParsePrompt(doc)
+		if err != nil {
+			return res, parsed(err)
+		}
+		if res.prompts == nil {
+			res.prompts = map[string]definition.Prompt{}
+		}
+		res.prompts[name] = prompt
 	}
 
 	subject = root
@@ -469,7 +489,7 @@ type workflowResolution struct {
 
 // workflow resolves the workflow named name, refusing one whose nodes
 // cannot run as ADR-003 has them (settings.WorkflowProblems), and one that
-// depends on a document with a problem (ADR-014). found is false when the
+// depends on a document with a problem (ADR-015). found is false when the
 // settings list no workflow of that name.
 func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResolution, bool, error) {
 	names, err := r.definitions.List(ctx, definition.KindWorkflow)
@@ -482,7 +502,7 @@ func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResoluti
 	}
 	res, err := r.resolveWorkflow(ctx, name)
 	// Refused before any node runs, for a problem in what the workflow or
-	// any node's call depends on (ADR-014 rule 3).
+	// any node's call depends on (ADR-015 rule 3).
 	if refused := reached.workflow(name); refused != nil {
 		return res, true, refused
 	}

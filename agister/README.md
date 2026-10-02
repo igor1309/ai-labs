@@ -26,16 +26,19 @@ a repository's settings can run and what they are made of:
 
 Global settings live in `~/.agister/` (`$AGISTER_HOME` or `--home`); a
 repository's own `.agister/` takes priority, document by document. Commands
-check the composed settings before use. A problem refuses
-only what uses the document it is in: a call whose process, agent, runtime
-mapping, policy, schema or named verification is broken is refused before
+check the composed settings before use. A problem refuses only what uses
+the document it is in: a call whose process, agent, runtime mapping,
+policy, schema, prompt or named verification is broken is refused before
 its first turn and recorded, and a workflow with such a node is refused
 before any node runs; everything else keeps running. Only broken service
 settings, a file name that is not a name, a settings directory that cannot
 be listed, or a workflow named like a process stop every command except
 `init`, `check`, cancelling a run and following an admitted run. `check`
-reports every problem and says what each refuses. Runs are recorded under
-`~/.agister/runs/<id>/`.
+reports every problem and says what each refuses. When a problem names a
+field, adapter, input source or schema version this binary does not know,
+the check adds a line saying the settings may need a newer binary, and
+`agister --version` names the binary that is running. Runs are recorded
+under `~/.agister/runs/<id>/`.
 
 Listings and shows display refused items. An agent selected with `--agent`
 is checked in place of the process's default agent. A write is refused if
@@ -48,6 +51,16 @@ by every repository carries no command, and each repository states its own
 once. A process whose named verification exists in neither place is not a
 problem of the settings: `check` warns, and only calls of that process are
 refused ([ADR-010](docs/adr/010-a-process-names-its-verification.md)).
+
+A prompt the settings fix, such as a reviewer's instructions, is a document
+too: `prompts/review.md`, the whole file its text, no header. A process
+gives it to its agent as an input, `{source: prompt, name: review}`; the
+name is literal, never interpolated. It is found like any other document,
+so a repository replaces one prompt with `.agister/prompts/review.md`
+without copying the processes that use it. A process naming a prompt that
+exists in neither place is a problem of the settings
+([ADR-014](docs/adr/014-prompts-are-settings.md)). A text the caller names
+stays a `source: file` input, read relative to the caller's directory.
 
 Agister is a runner, not a guard: running it in a repository applies that
 repository's `.agister/`, including the commands its agents run. Review

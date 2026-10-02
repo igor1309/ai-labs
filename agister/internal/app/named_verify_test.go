@@ -86,8 +86,8 @@ func TestAMissingVerificationRefusesTheCallNotTheSettings(t *testing.T) {
 
 	report := checkOf(t, h, true)
 	warning := "process p: names verify:repo, which does not exist; calls of it are refused until verifies/repo.yaml exists"
-	if len(report.Problems) != 0 || !reflect.DeepEqual(report.Warnings, []string{warning}) {
-		t.Fatalf("problems %q, warnings %q", report.Problems, report.Warnings)
+	if len(messages(report.Problems)) != 0 || !reflect.DeepEqual(report.Warnings, []string{warning}) {
+		t.Fatalf("problems %q, warnings %q", messages(report.Problems), report.Warnings)
 	}
 
 	record := h.call(t, contract.CallRequest{})
@@ -132,8 +132,8 @@ func TestANamedVerificationIsHeldToTheLimits(t *testing.T) {
 			h := newHarness()
 			named(h, verification)
 			c.change(h)
-			if report := checkOf(t, h, c.probe); !reflect.DeepEqual(report.Problems, []string{c.problem}) {
-				t.Fatalf("problems = %q, want %q", report.Problems, c.problem)
+			if report := checkOf(t, h, c.probe); !reflect.DeepEqual(messages(report.Problems), []string{c.problem}) {
+				t.Fatalf("problems = %q, want %q", messages(report.Problems), c.problem)
 			}
 			record := h.call(t, contract.CallRequest{})
 			if class(record) != run.ClassRefused || !strings.Contains(message(record), strings.TrimPrefix(c.problem, "process p: ")) || len(h.runner.calls()) != 0 {
@@ -149,8 +149,8 @@ func TestCheckWarnsOfAResolvedNamedVerification(t *testing.T) {
 	h := newHarness()
 	named(h, verification)
 	report := checkOf(t, h, true)
-	if len(report.Problems) != 0 || !reflect.DeepEqual(report.Warnings, []string{"process p: " + app.VerifyWarning}) {
-		t.Fatalf("problems %q, warnings %q", report.Problems, report.Warnings)
+	if len(messages(report.Problems)) != 0 || !reflect.DeepEqual(report.Warnings, []string{"process p: " + app.VerifyWarning}) {
+		t.Fatalf("problems %q, warnings %q", messages(report.Problems), report.Warnings)
 	}
 	if report.Checked["verifies"] != 1 {
 		t.Fatalf("checked = %v", report.Checked)
@@ -165,8 +165,8 @@ func TestAnInvalidVerificationIsAProblemOfItsOwn(t *testing.T) {
 	named(h, strings.Replace(verification, "command: go test ./...\n", "", 1)+"on_failure: stop\n")
 	report := checkOf(t, h, false)
 	want := []string{"verification repo: command: is required", "verification repo: on_failure: unknown field"}
-	if !reflect.DeepEqual(report.Problems, want) || len(report.Warnings) != 0 {
-		t.Fatalf("problems %q, warnings %q", report.Problems, report.Warnings)
+	if !reflect.DeepEqual(messages(report.Problems), want) || len(report.Warnings) != 0 {
+		t.Fatalf("problems %q, warnings %q", messages(report.Problems), report.Warnings)
 	}
 	found := false
 	for _, d := range report.Definitions {
@@ -198,8 +198,8 @@ func TestAnUnreadableListedVerificationIsAProblemNotAMissingOne(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{"verification repo: cannot read verification repo"}
-	if !reflect.DeepEqual(report.Problems, want) || len(report.Warnings) != 0 {
-		t.Fatalf("problems %q, warnings %q, want problems %q and no warnings", report.Problems, report.Warnings, want)
+	if !reflect.DeepEqual(messages(report.Problems), want) || len(report.Warnings) != 0 {
+		t.Fatalf("problems %q, warnings %q, want problems %q and no warnings", messages(report.Problems), report.Warnings, want)
 	}
 }
 
@@ -338,8 +338,8 @@ func TestSnapshotListsANamedVerificationWrittenAfterItsList(t *testing.T) {
 	}
 	problem := "process p: verify.timeout 30m0s exceeds the effective timeout 20m0s"
 	report, err := app.NewChecker(snap, h.validator, h.runtimes, []string{"git.revision", "git.diff"}).Check(ctx, false)
-	if err != nil || !reflect.DeepEqual(report.Problems, []string{problem}) {
-		t.Fatalf("problems = %q, %v, want %q", report.Problems, err, problem)
+	if err != nil || !reflect.DeepEqual(messages(report.Problems), []string{problem}) {
+		t.Fatalf("problems = %q, %v, want %q", messages(report.Problems), err, problem)
 	}
 	view, err := app.NewInspection(app.NewResolver(snap, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{})).ShowProcess(ctx, "p", "")
 	if err != nil || !strings.Contains(view.Refusal, strings.TrimPrefix(problem, "process p: ")) {

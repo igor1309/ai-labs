@@ -93,9 +93,12 @@ type result struct {
 	stdout, stderr string
 }
 
+// testVersion is the version the composition root would read from the build.
+const testVersion = "v1.2.3 143e31f8 2026-10-02T11:31:17Z"
+
 func run(ctx context.Context, spy *clientSpy, args ...string) result {
 	var stdout, stderr bytes.Buffer
-	code := cli.Run(ctx, args, cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(key string) string {
+	code := cli.Run(ctx, args, cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Version: testVersion, Getenv: func(key string) string {
 		if key == "AGISTER_HOME" {
 			return "/env-home"
 		}
@@ -313,7 +316,7 @@ func TestWatchResumesFromTheGivenSequence(t *testing.T) {
 }
 
 func TestCheck(t *testing.T) {
-	spy := &clientSpy{report: contract.CheckReport{Checked: map[string]int{"agents": 2}, Problems: []string{"agent a: bad"}}}
+	spy := &clientSpy{report: contract.CheckReport{Checked: map[string]int{"agents": 2}, Problems: []contract.Problem{{Message: "agent a: bad"}}}}
 	r := run(context.Background(), spy, "check", "--probe")
 	if r.code != cli.ExitUsage || r.stderr != "agent a: bad\n1 problem(s) in 2 agents\n" || !reflect.DeepEqual(spy.checked, []bool{true}) {
 		t.Fatalf("result %+v, checked %v", r, spy.checked)
@@ -321,6 +324,68 @@ func TestCheck(t *testing.T) {
 	spy.report.Problems = nil
 	if r := run(context.Background(), spy, "check"); r.code != 0 || r.stdout != "settings OK: 2 agents\n" {
 		t.Fatalf("result %+v", r)
+	}
+}
+
+// A problem that names something this binary does not know may mean the
+// settings were written for a newer one: after the problems, a line says
+// so and names the binary. Each problem's own message is unchanged.
+func TestCheckHintsAtANewerBinary(t *testing.T) {
+	hint := "1 problem(s) name something this binary does not know; the settings may need one newer than agister " + testVersion + ".\n"
+	report := contract.CheckReport{Checked: map[string]int{"runtimes": 1}, Problems: []contract.Problem{
+		{Message: "runtime mapping rt: unknown adapter \"opencode\" (available: claude-code, codex)", Unknown: true},
+		{Message: "runtime mapping rt: verifies no primitive against any runtime version; calls on it are refused"},
+	}}
+	spy := &clientSpy{report: report}
+	r := run(context.Background(), spy, "check")
+	want := report.Problems[0].Message + "\n" + report.Problems[1].Message + "\n2 problem(s) in 1 runtimes\n" + hint
+	if r.code != cli.ExitUsage || r.stderr != want {
+		t.Fatalf("check: %d\n%s", r.code, r.stderr)
+	}
+
+	// The refusal of any other command prints the same report.
+	spy = &clientSpy{refuse: &contract.SettingsError{Report: report}}
+	r = run(context.Background(), spy, "run", "p")
+	if r.code != cli.ExitUsage || !strings.HasPrefix(r.stderr, want+"agister: ") {
+		t.Fatalf("refused run: %d\n%s", r.code, r.stderr)
+	}
+
+	// In JSON, the marker is on the problem.
+	spy = &clientSpy{report: report}
+	r = run(context.Background(), spy, "check", "--json")
+	var got struct {
+		Problems []map[string]any `json:"problems"`
+	}
+	if err := json.Unmarshal([]byte(r.stdout), &got); err != nil || r.code != cli.ExitUsage || len(got.Problems) != 2 ||
+		got.Problems[0]["unknown"] != true || got.Problems[0]["message"] != report.Problems[0].Message {
+		t.Fatalf("json: %d %v\n%s", r.code, err, r.stdout)
+	}
+	if _, ok := got.Problems[1]["unknown"]; ok {
+		t.Fatalf("json marks an unmarked problem: %v", got.Problems[1])
+	}
+
+	// Without a marked problem, no such line.
+	spy = &clientSpy{report: contract.CheckReport{Checked: map[string]int{"runtimes": 1}, Problems: report.Problems[1:]}}
+	r = run(context.Background(), spy, "check")
+	if r.code != cli.ExitUsage || r.stderr != report.Problems[1].Message+"\n1 problem(s) in 1 runtimes\n" {
+		t.Fatalf("unmarked: %d\n%s", r.code, r.stderr)
+	}
+}
+
+// agister --version and agister version print the version the composition
+// root gives, and need no settings: the client is never built.
+func TestVersionNeedsNoSettings(t *testing.T) {
+	for _, args := range [][]string{{"--version"}, {"version"}, {"--home", "/nowhere", "--version"}} {
+		var stdout, stderr bytes.Buffer
+		built := 0
+		code := cli.Run(context.Background(), args, cli.IO{Stdout: &stdout, Stderr: &stderr, Version: testVersion, Getenv: func(string) string { return "" }},
+			func(cli.Config) (contract.Client, error) {
+				built++
+				return nil, fmt.Errorf("no settings")
+			})
+		if code != 0 || stdout.String() != "agister "+testVersion+"\n" || stderr.Len() != 0 || built != 0 {
+			t.Errorf("%v: %d, built %d times, stdout %q, stderr %q", args, code, built, stdout.String(), stderr.String())
+		}
 	}
 }
 
@@ -348,7 +413,7 @@ func TestCheckPrintsWarnings(t *testing.T) {
 // and check exits with the usage code.
 func TestCheckPrintsWarningsBesideProblems(t *testing.T) {
 	spy := &clientSpy{report: contract.CheckReport{Checked: map[string]int{"processes": 1},
-		Problems: []string{"process q: agent \"ghost\" does not exist"},
+		Problems: []contract.Problem{{Message: "process q: agent \"ghost\" does not exist"}},
 		Warnings: []string{"process p: verify runs with the operator's authority"}}}
 	r := run(context.Background(), spy, "check")
 	if r.code != cli.ExitUsage ||
@@ -396,10 +461,38 @@ func TestShowProcessPrintsTheNamedVerification(t *testing.T) {
 	}
 }
 
+// process show lists the prompts the process names, each with the layer
+// and path it comes from, or as not resolved beside the refusal.
+func TestShowProcessPrintsThePrompts(t *testing.T) {
+	spy := &clientSpy{view: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Output: "text", Timeout: time.Hour, MaxAttempts: 1,
+		Inputs: []string{"rules <- prompt", "style <- prompt"}, Prompts: []string{"rules", "style"},
+		Sources: []contract.DefinitionOrigin{
+			{Kind: "processes", Name: "p", Layer: "global", Path: "/h/processes/p.yaml"},
+			{Kind: "prompts", Name: "rules", Layer: "project", Path: "/r/.agister/prompts/rules.md", Overrides: "/h/prompts/rules.md"},
+			{Kind: "prompts", Name: "style", Layer: "global", Path: "/h/prompts/style.md"},
+		}}}
+	r := run(context.Background(), spy, "process", "show", "p")
+	for _, want := range []string{
+		"prompts      rules: project /r/.agister/prompts/rules.md\n             style: global /h/prompts/style.md\nplan ",
+		"             prompt rules: project /r/.agister/prompts/rules.md (overrides /h/prompts/rules.md)\n",
+	} {
+		if r.code != 0 || !strings.Contains(r.stdout, want) {
+			t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+		}
+	}
+	spy.view.Sources = spy.view.Sources[:2]
+	spy.view.Refusal = `input style: prompt "style": not found (expected /r/.agister/prompts/style.md or /h/prompts/style.md)`
+	r = run(context.Background(), spy, "process", "show", "p")
+	want := "             style (not resolved)\nplan         REFUSED: " + spy.view.Refusal + "\n"
+	if r.code != 0 || !strings.Contains(r.stdout, want) {
+		t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+	}
+}
+
 // A client refusal over broken settings prints their report, then the
 // refusal, and exits 64; a bare agister checks before it shows the usage.
 func TestSettingsRefusalPrintsTheReport(t *testing.T) {
-	broken := contract.CheckReport{Checked: map[string]int{"agents": 1}, Problems: []string{"agent a: bad"}, Overrides: []string{"agent a: /p overrides /g"}}
+	broken := contract.CheckReport{Checked: map[string]int{"agents": 1}, Problems: []contract.Problem{{Message: "agent a: bad"}}, Overrides: []string{"agent a: /p overrides /g"}}
 	spy := &clientSpy{refuse: &contract.SettingsError{Report: broken}}
 	r := run(context.Background(), spy, "run", "p")
 	if r.code != cli.ExitUsage || r.stderr != "agent a: bad\n1 problem(s) in 1 agents\nagister: settings have problems that stop every command; fix them first (see `agister check`)\n" || r.stdout != "override agent a: /p overrides /g\n" {
@@ -413,7 +506,7 @@ func TestSettingsRefusalPrintsTheReport(t *testing.T) {
 	if r := run(context.Background(), spy); r.code != cli.ExitUsage || !strings.Contains(r.stdout, "Usage:") {
 		t.Fatalf("bare: %+v", r)
 	}
-	// A problem of one document stops nothing but what uses it (ADR-014).
+	// A problem of one document stops nothing but what uses it (ADR-015).
 	attributed := broken
 	attributed.Reach = []contract.ProblemReach{{Problem: "agent a: bad", Subject: &contract.DefinitionRef{Kind: "agents", Name: "a"}}}
 	spy = &clientSpy{report: attributed}
@@ -442,13 +535,13 @@ func (s *listingSpy) ListProcesses(context.Context) ([]contract.ProcessSummary, 
 }
 
 // Check says, below each problem, what it refuses; listings show each
-// broken agent and each refused process (ADR-014).
+// broken agent and each refused process (ADR-015).
 func TestCheckAndListingsSayWhatIsRefused(t *testing.T) {
 	ref := &contract.DefinitionRef{Kind: "runtimes", Name: "rt"}
 	spy := &listingSpy{
 		clientSpy: clientSpy{report: contract.CheckReport{
 			Checked:  map[string]int{"runtimes": 2},
-			Problems: []string{"runtime mapping rt: bad", "runtime mapping unused: bad", "workflow p: a process has the same name"},
+			Problems: []contract.Problem{{Message: "runtime mapping rt: bad"}, {Message: "runtime mapping unused: bad"}, {Message: "workflow p: a process has the same name"}},
 			Reach: []contract.ProblemReach{
 				{Problem: "runtime mapping rt: bad", Subject: ref, Processes: []string{"p", "q"}, Workflows: []string{"w"}},
 				{Problem: "runtime mapping unused: bad", Subject: &contract.DefinitionRef{Kind: "runtimes", Name: "unused"}},
@@ -507,7 +600,8 @@ func TestCheckTreeAndJSON(t *testing.T) {
 			{Kind: "verifies", Name: "repo", Layer: "project", Path: "/p/verifies/repo.yaml", UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
 			{Kind: "verifies", Name: "spare", Layer: "global", Path: "/g/verifies/spare.yaml"},
 			{Kind: "processes", Name: "p", Layer: "global", Path: "/g/processes/p.yaml", Uses: []contract.DefinitionRef{ref("agents", "a"), ref("policies", "gone"), ref("verifies", "repo"), ref("workspace", "workspace")}},
-			{Kind: "processes", Name: "q", Layer: "global", Path: "/g/processes/q.yaml", Uses: []contract.DefinitionRef{ref("verifies", "gone")}},
+			{Kind: "prompts", Name: "rules", Layer: "project", Path: "/p/prompts/rules.md", UsedBy: []contract.DefinitionRef{ref("processes", "q")}},
+			{Kind: "processes", Name: "q", Layer: "global", Path: "/g/processes/q.yaml", Uses: []contract.DefinitionRef{ref("verifies", "gone"), ref("prompts", "rules"), ref("prompts", "lost")}},
 		},
 	}
 	spy := &clientSpy{report: report}
@@ -520,7 +614,9 @@ process p               global  /g/processes/p.yaml
 ├─ verification repo    project /p/verifies/repo.yaml
 └─ workspace workspace  project /p/workspace.yaml
 process q               global  /g/processes/q.yaml
-└─ verification gone    MISSING
+├─ verification gone    MISSING
+├─ prompt rules         project /p/prompts/rules.md
+└─ prompt lost          MISSING
 unused (no process uses these)
    runtime rt2          global  /g/runtimes/rt2.yaml
    agent b              global  /g/agents/b.toml
@@ -532,14 +628,14 @@ settings OK: 1 processes
 		t.Fatalf("tree: %d\n%s", r.code, r.stdout)
 	}
 
-	spy = &clientSpy{report: contract.CheckReport{Checked: map[string]int{}, Problems: []string{"agent a: bad"}}}
+	spy = &clientSpy{report: contract.CheckReport{Checked: map[string]int{}, Problems: []contract.Problem{{Message: "agent a: bad"}}}}
 	r = run(context.Background(), spy, "check", "--json", "--tree")
 	var got map[string]any
 	if err := json.Unmarshal([]byte(r.stdout), &got); err != nil || r.code != cli.ExitUsage || r.stderr != "" {
 		t.Fatalf("json: %d %v\n%s%s", r.code, err, r.stdout, r.stderr)
 	}
 	// Empty lists are lists, so consumers need no null checks.
-	if fmt.Sprint(got["problems"]) != "[agent a: bad]" || fmt.Sprint(got["overrides"]) != "[]" || fmt.Sprint(got["definitions"]) != "[]" {
+	if fmt.Sprint(got["problems"]) != "[map[message:agent a: bad]]" || fmt.Sprint(got["overrides"]) != "[]" || fmt.Sprint(got["definitions"]) != "[]" {
 		t.Fatalf("json = %v", got)
 	}
 }

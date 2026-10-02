@@ -13,7 +13,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// What a problem in the settings refuses (ADR-014), through the client as
+// What a problem in the settings refuses (ADR-015), through the client as
 // NewClient assembles it behind its gate, over the harness's spies.
 
 // clientOn is the whole client over the harness, both settings layers read
@@ -79,14 +79,14 @@ func reachOf(t *testing.T, report contract.CheckReport, problem string) contract
 		t.Fatalf("reach %d of %d problems", len(report.Reach), len(report.Problems))
 	}
 	for i, reach := range report.Reach {
-		if reach.Problem != report.Problems[i] {
-			t.Fatalf("reach %d is of %q, not %q", i, reach.Problem, report.Problems[i])
+		if reach.Problem != report.Problems[i].Message {
+			t.Fatalf("reach %d is of %q, not %q", i, reach.Problem, report.Problems[i].Message)
 		}
 		if reach.Problem == problem {
 			return reach
 		}
 	}
-	t.Fatalf("no problem %q in %v", problem, report.Problems)
+	t.Fatalf("no problem %q in %v", problem, messages(report.Problems))
 	return contract.ProblemReach{}
 }
 
@@ -341,7 +341,7 @@ func TestProblemsNoDocumentOwnsStopEveryCommand(t *testing.T) {
 			}
 			stops := false
 			for i, reach := range report.Reach {
-				if strings.HasPrefix(report.Problems[i], tc.problem) {
+				if strings.HasPrefix(report.Problems[i].Message, tc.problem) {
 					stops = reach.Stops && reach.Subject == nil && reach.Processes == nil
 				}
 			}

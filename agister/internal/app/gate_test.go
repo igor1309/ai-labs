@@ -75,7 +75,7 @@ func (c *clientFake) ListRuns(context.Context) ([]contract.Run, error) {
 // reach the report does not say, every use is refused before it reaches the
 // core, except writing them (Init), reporting them (Check), stopping a run,
 // and following a run the gate itself admitted. A problem of one document
-// passes the gate: the core refuses what depends on it (ADR-014).
+// passes the gate: the core refuses what depends on it (ADR-015).
 func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
 	ctx := context.Background()
 	inner := &clientFake{}
@@ -89,7 +89,7 @@ func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
 		t.Fatalf("valid settings: %q, %v", id, err)
 	}
 
-	inner.report = contract.CheckReport{Problems: []string{"agent a: bad"}}
+	inner.report = contract.CheckReport{Problems: []contract.Problem{{Message: "agent a: bad"}}}
 	inner.reached = nil
 	refused := map[string]error{}
 	_, refused["CreateAgent"] = gated.CreateAgent(ctx, contract.Agent{}, false, nil)
@@ -104,7 +104,7 @@ func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
 	_, refused["ListRuns"] = gated.ListRuns(ctx)
 	for name, err := range refused {
 		var settings *contract.SettingsError
-		if !errors.As(err, &settings) || settings.Report.Problems[0] != "agent a: bad" {
+		if !errors.As(err, &settings) || settings.Report.Problems[0].Message != "agent a: bad" {
 			t.Errorf("%s: %v", name, err)
 		}
 	}
