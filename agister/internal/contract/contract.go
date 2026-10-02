@@ -98,7 +98,7 @@ type ProcessSummary struct {
 
 type CheckReport struct {
 	Checked  map[string]int `json:"checked"` // definitions checked, by kind
-	Problems []string       `json:"problems"`
+	Problems []Problem      `json:"problems"`
 	// Project definitions that take priority over global ones.
 	Overrides []string `json:"overrides"`
 	// What the settings do that their user should know, such as a
@@ -109,9 +109,18 @@ type CheckReport struct {
 	Definitions []Definition `json:"definitions"`
 }
 
+// Problem is one thing that keeps the settings from passing check.
+type Problem struct {
+	Message string `json:"message"`
+	// Unknown: it names something this binary does not know (a field, an
+	// adapter, an input source, a schema version), as settings written for
+	// a newer binary would.
+	Unknown bool `json:"unknown,omitempty"`
+}
+
 // Definition is one settings document in the composed settings.
 type Definition struct {
-	Kind      string          `json:"kind"` // service, agents, processes, policies, runtimes, schemas
+	Kind      string          `json:"kind"` // service, agents, processes, policies, runtimes, schemas, workflows, verifies, prompts
 	Name      string          `json:"name"`
 	Layer     string          `json:"layer"` // global or project
 	Path      string          `json:"path"`
@@ -123,7 +132,7 @@ type Definition struct {
 
 // DefinitionOrigin is where one definition a call uses comes from.
 type DefinitionOrigin struct {
-	Kind      string // agents, processes, policies, runtimes, schemas or service
+	Kind      string // agents, processes, policies, runtimes, schemas, verifies, prompts or service
 	Name      string
 	Layer     string // global or project
 	Path      string
@@ -163,8 +172,15 @@ type ProcessView struct {
 	Primitives []string
 	Withheld   []string
 	Refusal    string
-	// The verification command the process declares; unset when none.
+	// The verification command the process declares, inline or by naming
+	// a verification; unset when none, or when the named one is not
+	// resolved (Refusal says why).
 	Verify *Verify
+	// The verification the process names; empty for an inline block.
+	VerifyName string
+	// The prompts its inputs name (ADR-014); Sources says where each
+	// resolved one comes from.
+	Prompts []string
 	// What the user should know before calling it.
 	Warnings []string
 	// Where each definition the call uses comes from.

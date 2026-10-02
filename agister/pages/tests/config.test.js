@@ -265,15 +265,74 @@ test('a repo goes over Agister home: same kind and file name replaces, the rest 
   assert.deepEqual([own.service.maxAttempts, own.service.source, own.service.overrides], [1, 'repo', true]);
 });
 
-test('missing folders and service.toml read as empty', async () => {
+// ADR-012: a process with a checkout runs its own setup, or else the
+// workspace's; a repo's workspace.yaml replaces home's; without a checkout
+// there is none.
+test('each process shows the setup its checkout runs, as Agister resolves it', async () => {
+  const process = (name, workspace) => `name: ${name}\nuses: agent:a\nworkspace:\n${workspace}`;
+  const processes = {
+    'default.yaml': process('default', '  checkout: rev\n'),
+    'own.yaml': process('own', '  checkout: rev\n  setup: {command: ./own.sh, timeout: 30s}\n'),
+    'none.yaml': process('none', '  access: read-only\n'),
+  };
+  const workspace = (command) => `schema: agister.workspace/v1alpha1\nsetup:\n  command: ${command}\n  timeout: 2m\n`;
+  const m = await C.loadComposed(
+    memDir('.agister', { 'workspace.yaml': workspace('./home.sh') }),
+    memDir('.agister', { 'workspace.yaml': workspace('./repo.sh'), processes }));
+  assert.deepEqual([m.workspace.setup, m.workspace.source, m.workspace.overrides], [{ command: './repo.sh', timeout: '2m' }, 'repo', true]);
+  const setup = (name) => m.processes.find((p) => p.name === name).effectiveSetup;
+  assert.deepEqual(setup('default'), { command: './repo.sh', timeout: '2m', from: 'workspace' });
+  assert.deepEqual(setup('own'), { command: './own.sh', timeout: '30s', from: 'process' });
+  assert.equal(setup('none'), null);
+
+  const homeOnly = await C.loadComposed(memDir('.agister', { 'workspace.yaml': workspace('./home.sh') }), memDir('.agister', { processes }));
+  assert.deepEqual(homeOnly.processes.find((p) => p.name === 'default').effectiveSetup, { command: './home.sh', timeout: '2m', from: 'workspace' });
+  const without = await C.loadComposed(memDir('.agister', {}), memDir('.agister', { processes }));
+  assert.equal(without.processes.find((p) => p.name === 'default').effectiveSetup, null);
+});
+
+// ADR-010: a process names its verification, found in the repo before home.
+test('a named verification is resolved from the composed settings, or marked outside', async () => {
+  const home = {
+    processes: { 'implement.yaml': 'name: implement\nuses: agent:opus\nverify: verify:repo\n' },
+  };
+  const repo = { verifies: { 'repo.yaml': 'name: repo\ncommand: make test\nmax_attempts: 2\n' } };
+  const m = await C.loadComposed(memDir('.agister', home), memDir('.agister', repo));
+  assert.deepEqual(m.processes[0].verify, { ref: 'repo', maxAttempts: 2, outside: false });
+  assert.deepEqual([m.verifies[0].name, m.verifies[0].source, m.verifies[0].usedBy], ['repo', 'repo', ['implement']]);
+
+  const alone = await C.loadAgister(memDir('.agister', home));
+  assert.deepEqual(alone.processes[0].verify, { ref: 'repo', maxAttempts: null, outside: true });
+});
+
+// ADR-014: a process names its prompts, each once, found in the repo
+// before home.
+test('a process\'s prompts are found in the composed settings, or marked outside', async () => {
+  const home = {
+    processes: { 'review.yaml': 'name: review\nuses: agent:opus\ninput:\n  instruction: Review.\n  values:\n    rules: {source: prompt, name: review}\n    again: {source: prompt, name: review}\n    style: {source: prompt, name: style}\n    diff: {source: git.diff}\n' },
+    prompts: { 'review.md': 'Home review.\n', 'style.md': 'Home style.\n' },
+  };
+  const repo = { prompts: { 'review.md': 'Repo review.\n' } };
+  const m = await C.loadComposed(memDir('.agister', home), memDir('.agister', repo));
+  assert.deepEqual(m.processes[0].prompts, [
+    { name: 'review', outside: false, source: 'repo', overrides: true },
+    { name: 'style', outside: false, source: 'home', overrides: false },
+  ]);
+  assert.deepEqual([m.prompts[0].name, m.prompts[0].source, m.prompts[0].overrides, m.prompts[0].usedBy], ['review', 'repo', true, ['review']]);
+
+  const alone = await C.loadAgister(memDir('.agister', { processes: home.processes }));
+  assert.deepEqual(alone.processes[0].prompts, [{ name: 'review', outside: true }, { name: 'style', outside: true }]);
+});
+
+test('missing folders, service.toml and workspace.yaml read as empty', async () => {
   const m = await C.loadAgister(memDir('.agister', {}));
-  assert.deepEqual(m, { service: null, workflows: [], processes: [], agents: [], policies: [], runtimes: [], schemas: [] });
+  assert.deepEqual(m, { service: null, workspace: null, workflows: [], processes: [], agents: [], policies: [], runtimes: [], schemas: [], verifies: [], prompts: [] });
 });
 
 for (const path of ['.agister', 'agister/examples/settings']) {
   test(`the settings in ${path} load without errors`, async () => {
     const m = await C.loadAgister(diskDir(join(repoRoot, path)));
-    const items = [...m.workflows, ...m.processes, ...m.agents, ...m.policies, ...m.runtimes];
+    const items = [...m.workflows, ...m.processes, ...m.agents, ...m.policies, ...m.runtimes, ...m.verifies];
     assert.ok(items.length > 0);
     assert.deepEqual(items.filter((x) => x.error).map((x) => `${x.file}: ${x.error}`), []);
     assert.ok(!m.service?.error, m.service?.error);

@@ -10,12 +10,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Hierarchical documents (process, policy, runtime mapping) are YAML.
+// Hierarchical documents (process, policy, verification, runtime mapping)
+// are YAML.
 
 const (
-	ProcessSchema = "agister.process/v1alpha1"
-	PolicySchema  = "agister.process-policy/v1alpha1"
-	RuntimeSchema = "agister.runtime/v1alpha1"
+	ProcessSchema   = "agister.process/v1alpha1"
+	PolicySchema    = "agister.process-policy/v1alpha1"
+	RuntimeSchema   = "agister.runtime/v1alpha1"
+	VerifySchema    = "agister.verify/v1alpha1"
+	WorkspaceSchema = "agister.workspace/v1alpha1"
 )
 
 // Policy is a reusable set of execution defaults.
@@ -63,6 +66,28 @@ type Verify struct {
 // continue sessions cannot run it.
 func (v *Verify) Repairs() bool { return v != nil && v.MaxAttempts > 1 }
 
+// Verification is a verification command as a document of its own, which
+// a process names (ADR-010).
+type Verification struct {
+	Name   string
+	Verify Verify
+	Source Source
+}
+
+// Setup is the command that prepares a call's checkout before its first
+// turn (ADR-012): run once, in the checkout, with the operator's authority.
+type Setup struct {
+	Command string        // one Bash command
+	Timeout time.Duration // of its one run
+}
+
+// Workspace is a repository's workspace settings: the setup every process
+// that checks out a revision and declares none of its own runs.
+type Workspace struct {
+	Setup  *Setup // unset: no default
+	Source Source
+}
+
 // Process is a named agent call.
 type Process struct {
 	Name        string
@@ -72,11 +97,15 @@ type Process struct {
 	Params      []Param
 	Values      []Value
 	Checkout    string   // name of the input whose revision is checked out
+	Setup       *Setup   // its own setup; unset: the workspace's, if any
 	Require     []string // permissions the call cannot work without
 	Output      Output
-	Verify      *Verify // unset: no verification
-	Limits      Limits  // narrowing overrides
-	Source      Source
+	// Verify is the inline block, or the named verification once it is
+	// resolved; unset: no verification, or a named one not resolved.
+	Verify     *Verify
+	VerifyName string // name of a verification definition, in place of the inline block
+	Limits     Limits // narrowing overrides
+	Source     Source
 }
 
 // Primitive is one restriction primitive a runtime offers.
@@ -98,10 +127,26 @@ type Mapping struct {
 }
 
 func header(values map[string]*yaml.Node, schema, expected string, p *problems) {
-	if value, _ := scalar(values["schema"], "schema", p); value != schema {
+	value, _ := scalar(values["schema"], "schema", p)
+	checkSchema(value, schema, p)
+	checkName(required(values, "name", "", p), expected, p)
+}
+
+// schemaShape is what every schema Agister declares looks like:
+// agister.<kind>/<version>.
+var schemaShape = regexp.MustCompile(`^agister\.[a-z][a-z0-9-]*/v[0-9][a-z0-9]*$`)
+
+// checkSchema reports a document's schema other than the one this code
+// reads. One of Agister's shape names a schema this code does not know,
+// as a document written for a newer Agister would; any other is a mistake.
+func checkSchema(value, schema string, p *problems) {
+	switch {
+	case value == schema:
+	case schemaShape.MatchString(value):
+		p.unknown("schema", "must be %q", schema)
+	default:
 		p.add("schema", "must be %q", schema)
 	}
-	checkName(required(values, "name", "", p), expected, p)
 }
 
 // ParsePolicy parses a process policy.
@@ -123,6 +168,12 @@ func ParseProcess(doc Document) (Process, error) {
 	root := parseYAML(doc.Bytes, p)
 	if root == nil {
 		return Process{Name: doc.Source.Name, Source: doc.Source}, p.err("process " + subjectName(doc.Source))
+	}
+	// Read by key, a second verify would replace the first, so a process
+	// could declare both forms (ADR-010 rule 2) and run the one it names
+	// last.
+	if declared(root, "verify") > 1 {
+		p.add("verify", "is declared more than once: the inline fields or one reference, not both")
 	}
 	values := fields(root, "", append([]string{"schema", "name", "status", "type", "uses", "policy", "input", "output", "verify"}, limitKeys...), p)
 	header(values, ProcessSchema, doc.Source.Name, p)
@@ -150,13 +201,21 @@ func ParseProcess(doc Document) (Process, error) {
 	process.Instruction = required(input, "instruction", "input", p)
 	process.Params, process.Values = parseInputs(input, p)
 
-	limits, tools, workspace := parseLimits(values, []string{"allow", "require"}, []string{"access", "scope", "checkout"}, p)
+	limits, tools, workspace := parseLimits(values, []string{"allow", "require"}, []string{"access", "scope", "checkout", "setup"}, p)
 	process.Limits = limits
 	process.Require = stringList(tools["require"], "tools.require", p)
 	if node, ok := workspace["checkout"]; ok {
 		process.Checkout, _ = scalar(node, "workspace.checkout", p)
 		if !hasValue(process.Values, process.Checkout) {
 			p.add("workspace.checkout", "%q is not an input value", process.Checkout)
+		}
+	}
+	if node, ok := workspace["setup"]; ok {
+		process.Setup = parseSetup(node, "workspace.setup", p)
+		// Without a checkout the agent works in the repository itself,
+		// which is prepared already.
+		if process.Checkout == "" {
+			p.add("workspace.setup", "requires workspace.checkout: setup prepares a checkout the call owns")
 		}
 	}
 
@@ -178,7 +237,15 @@ func ParseProcess(doc Document) (Process, error) {
 	}
 
 	if node, ok := values["verify"]; ok {
-		process.Verify = parseVerify(node, p)
+		if node.Kind == yaml.ScalarNode && node.Tag != "!!null" {
+			if name, ok := strings.CutPrefix(node.Value, "verify:"); ok && ValidName(name) {
+				process.VerifyName = name
+			} else {
+				p.add("verify", `must be "verify:<name>" or the inline fields`)
+			}
+		} else {
+			process.Verify = parseVerify(fields(node, "verify", verifyKeys, p), "verify", p)
+		}
 		// Verifying a tree the call does not own would check content other
 		// calls can change and the call does not capture.
 		if process.Checkout == "" {
@@ -189,30 +256,95 @@ func ParseProcess(doc Document) (Process, error) {
 	return process, p.err("process " + subjectName(doc.Source))
 }
 
-// parseVerify reads a verify block. Every field is required: there is no
-// default command, timeout, attempt count or instruction.
-func parseVerify(node *yaml.Node, p *problems) *Verify {
-	keys := []string{"command", "timeout", "max_attempts", "instruction"}
-	values := fields(node, "verify", keys, p)
-	for _, key := range keys {
+// ParseVerify parses a verification: the fields of a process's inline
+// verify block, as a document a process names.
+func ParseVerify(doc Document) (Verification, error) {
+	p := &problems{}
+	verification := Verification{Name: doc.Source.Name, Source: doc.Source}
+	root := parseYAML(doc.Bytes, p)
+	if root == nil {
+		return verification, p.err("verification " + subjectName(doc.Source))
+	}
+	values := fields(root, "", append([]string{"schema", "name"}, verifyKeys...), p)
+	header(values, VerifySchema, doc.Source.Name, p)
+	verification.Verify = *parseVerify(values, "", p)
+	return verification, p.err("verification " + subjectName(doc.Source))
+}
+
+var verifyKeys = []string{"command", "timeout", "max_attempts", "instruction"}
+
+// parseVerify reads the fields of a verify block, or of a verification
+// document, under field. Every one is required: there is no default
+// command, timeout, attempt count or instruction.
+func parseVerify(values map[string]*yaml.Node, field string, p *problems) *Verify {
+	for _, key := range verifyKeys {
 		if _, ok := values[key]; !ok {
-			p.add(join("verify", key), "is required")
+			p.add(join(field, key), "is required")
 		}
 	}
 	verify := &Verify{
-		Command:     nonEmpty(values["command"], "verify.command", p),
-		Instruction: nonEmpty(values["instruction"], "verify.instruction", p),
+		Command:     nonEmpty(values["command"], join(field, "command"), p),
+		Instruction: nonEmpty(values["instruction"], join(field, "instruction"), p),
 	}
-	if text, ok := scalar(values["timeout"], "verify.timeout", p); ok {
-		verify.Timeout, _ = duration(text, "verify.timeout", p)
+	if text, ok := scalar(values["timeout"], join(field, "timeout"), p); ok {
+		verify.Timeout, _ = duration(text, join(field, "timeout"), p)
 	}
-	if attempts, ok := integer(values["max_attempts"], "verify.max_attempts", p); ok {
+	if attempts, ok := integer(values["max_attempts"], join(field, "max_attempts"), p); ok {
 		if attempts < 1 {
-			p.add("verify.max_attempts", "must be at least 1")
+			p.add(join(field, "max_attempts"), "must be at least 1")
 		}
 		verify.MaxAttempts = attempts
 	}
 	return verify
+}
+
+// parseSetup reads a setup block. Both fields are required: there is no
+// default command or timeout.
+func parseSetup(node *yaml.Node, field string, p *problems) *Setup {
+	keys := []string{"command", "timeout"}
+	values := fields(node, field, keys, p)
+	for _, key := range keys {
+		if _, ok := values[key]; !ok {
+			p.add(join(field, key), "is required")
+		}
+	}
+	setup := &Setup{Command: nonEmpty(values["command"], join(field, "command"), p)}
+	if text, ok := scalar(values["timeout"], join(field, "timeout"), p); ok {
+		setup.Timeout, _ = duration(text, join(field, "timeout"), p)
+	}
+	return setup
+}
+
+// ParseWorkspace parses a repository's workspace settings.
+func ParseWorkspace(doc Document) (Workspace, error) {
+	p := &problems{}
+	workspace := Workspace{Source: doc.Source}
+	root := parseYAML(doc.Bytes, p)
+	if root == nil {
+		return workspace, p.err("workspace settings")
+	}
+	values := fields(root, "", []string{"schema", "setup"}, p)
+	value, _ := scalar(values["schema"], "schema", p)
+	checkSchema(value, WorkspaceSchema, p)
+	if node, ok := values["setup"]; ok {
+		workspace.Setup = parseSetup(node, "setup", p)
+	}
+	return workspace, p.err("workspace settings")
+}
+
+// EffectiveSetup is the setup a call of the process runs: its own, or the
+// workspace's default when it checks out a revision and declares none.
+// fromWorkspace says the workspace's applies; nil when none does.
+func (p Process) EffectiveSetup(workspace *Workspace) (setup *Setup, fromWorkspace bool) {
+	switch {
+	case p.Checkout == "":
+		return nil, false
+	case p.Setup != nil:
+		return p.Setup, false
+	case workspace != nil && workspace.Setup != nil:
+		return workspace.Setup, true
+	}
+	return nil, false
 }
 
 // parseInputs reads input.params, the values a caller supplies, and
@@ -243,6 +375,12 @@ func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
 		}
 		if value.Source == "" {
 			p.add(field+".source", "is required")
+		}
+		if value.Source == PromptSource {
+			// A literal document name, which nothing is substituted in.
+			promptArgs(value, field, p)
+			values = append(values, value)
+			continue
 		}
 		for _, reference := range value.references("param") {
 			if !hasParam(params, reference) {

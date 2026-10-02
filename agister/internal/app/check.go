@@ -51,9 +51,10 @@ func NewChecker(definitions CheckDefinitions, validator CheckValidator, runtimes
 
 func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, error) {
 	report := contract.CheckReport{Checked: map[string]int{}}
-	index := map[contract.DefinitionRef]int{} // into report.Definitions
+	index := map[contract.DefinitionRef]int{}   // into report.Definitions
+	listed := map[contract.DefinitionRef]bool{} // in the settings, read or not
 	problem := func(subject, format string, args ...any) {
-		report.Problems = append(report.Problems, subject+": "+fmt.Sprintf(format, args...))
+		report.Problems = append(report.Problems, contract.Problem{Message: subject + ": " + fmt.Sprintf(format, args...)})
 	}
 	bundle := settings.Bundle{
 		Agents:    map[string]definition.Agent{},
@@ -62,7 +63,11 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 		Mappings:  map[string]definition.Mapping{},
 		Schemas:   map[string]bool{},
 		Workflows: map[string]definition.Workflow{},
+		Verifies:  map[string]definition.Verification{},
+		Prompts:   map[string]bool{},
 	}
+
+	var workspace *definition.Workspace // unset: none, or invalid
 
 	// Each document on its own.
 	each := func(kind definition.Kind, parse func(definition.Document) error) error {
@@ -74,6 +79,13 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			}
 		}
 		for _, name := range names {
+			listed[contract.DefinitionRef{Kind: string(kind), Name: name}] = true
+			if kind == definition.KindPrompt {
+				// One that cannot be read or parsed is a problem of its
+				// own (ADR-014 rule 1); the processes that name it still
+				// find it.
+				bundle.Prompts[name] = true
+			}
 			doc, err := c.definitions.Read(ctx, kind, name)
 			if err != nil {
 				problem(kind.Singular()+" "+name, "%v", err)
@@ -94,7 +106,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 				var invalid *definition.InvalidError
 				if errors.As(err, &invalid) {
 					for _, p := range invalid.Problems {
-						problem(kind.Singular()+" "+name, "%s", p)
+						report.Problems = append(report.Problems, contract.Problem{Message: kind.Singular() + " " + name + ": " + p.Message, Unknown: p.Unknown})
 					}
 				} else {
 					problem(kind.Singular()+" "+name, "%v", err)
@@ -135,6 +147,17 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			}
 			return err
 		}},
+		{definition.KindVerify, func(d definition.Document) error {
+			v, err := definition.ParseVerify(d)
+			if err == nil {
+				bundle.Verifies[v.Name] = v
+			}
+			return err
+		}},
+		{definition.KindPrompt, func(d definition.Document) error {
+			_, err := definition.ParsePrompt(d)
+			return err
+		}},
 		{definition.KindProcess, func(d definition.Document) error {
 			p, err := definition.ParseProcess(d)
 			if err == nil {
@@ -153,6 +176,14 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			w, err := definition.ParseWorkflow(d)
 			if err == nil {
 				bundle.Workflows[w.Name] = w
+			}
+			return err
+		}},
+		// Optional: listed only when the document exists.
+		{definition.KindWorkspace, func(d definition.Document) error {
+			parsed, err := definition.ParseWorkspace(d)
+			if err == nil {
+				workspace = &parsed
 			}
 			return err
 		}},
@@ -181,8 +212,18 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 		process, from := bundle.Processes[name], contract.DefinitionRef{Kind: string(definition.KindProcess), Name: name}
 		link(from, definition.KindAgent, process.Agent)
 		link(from, definition.KindPolicy, process.Policy)
+		link(from, definition.KindVerify, process.VerifyName)
+		for _, prompt := range process.Prompts() {
+			link(from, definition.KindPrompt, prompt)
+		}
 		if process.Output.Format == "json" {
 			link(from, definition.KindSchema, process.Output.Schema)
+		}
+		// The workspace's setup is the default of a checkout without one of
+		// its own (ADR-012); a missing document is no default, not a
+		// missing reference.
+		if _, fromWorkspace := process.EffectiveSetup(workspace); fromWorkspace {
+			link(from, definition.KindWorkspace, string(definition.KindWorkspace))
 		}
 	}
 	for _, name := range sortedNames(bundle.Workflows) {
@@ -193,22 +234,29 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 	}
 
 	for _, name := range sortedNames(bundle.Processes) {
-		if bundle.Processes[name].Verify != nil {
+		process := bundle.Resolved(name)
+		switch {
+		case process.Verify != nil:
 			report.Warnings = append(report.Warnings, "process "+name+": "+VerifyWarning)
+		case process.VerifyName != "" && !listed[contract.DefinitionRef{Kind: string(definition.KindVerify), Name: process.VerifyName}]:
+			// Not a problem: every other process and workflow still runs
+			// (ADR-010 rule 4). An invalid one is a problem of its own.
+			report.Warnings = append(report.Warnings, fmt.Sprintf("process %s: names verify:%s, which does not exist; calls of it are refused until verifies/%s.yaml exists", name, process.VerifyName, process.VerifyName))
 		}
 	}
 
 	if bundle.Service == nil {
-		sort.Strings(report.Problems)
+		sortProblems(report.Problems)
 		return report, nil
 	}
 
 	// Across documents.
 	known := c.runtimes.Adapters()
-	// The core itself supplies a join's collection (ADR-003 rule 4).
-	sources := append(append([]string(nil), c.sources...), definition.CollectionSource)
+	// The core itself supplies a join's collection (ADR-003 rule 4) and the
+	// prompts a process names, which it reads from the settings (ADR-014).
+	sources := append(append([]string(nil), c.sources...), definition.CollectionSource, definition.PromptSource)
 	for _, p := range settings.Check(bundle, settings.Mechanisms{Sources: sources, Adapters: known}) {
-		report.Problems = append(report.Problems, p.String())
+		report.Problems = append(report.Problems, fromSettings(p))
 	}
 
 	// Against the runtimes themselves.
@@ -232,20 +280,30 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 				problem("agent "+name, "mapping %s verifies no primitive for runtime version %s", mapping.Name, identity.Version)
 			default:
 				for _, p := range settings.PlanProblems(bundle, agent, identity.Version) {
-					report.Problems = append(report.Problems, p.String())
+					report.Problems = append(report.Problems, fromSettings(p))
 				}
 				// Repairs resume the call's session, which only the
 				// runtime can say it supports.
 				for _, process := range sortedNames(bundle.Processes) {
-					if verify := bundle.Processes[process].Verify; bundle.Processes[process].Agent == name && verify.Repairs() && !identity.Resume {
+					if verify := bundle.Resolved(process).Verify; bundle.Processes[process].Agent == name && verify.Repairs() && !identity.Resume {
 						problem("process "+process, "verify.max_attempts %d repairs in the call's session, but runtime %s cannot resume sessions", verify.MaxAttempts, mapping.Name)
 					}
 				}
 			}
 		}
 	}
-	sort.Strings(report.Problems)
+	sortProblems(report.Problems)
 	return report, nil
+}
+
+// sortProblems orders problems by message.
+func sortProblems(problems []contract.Problem) {
+	sort.SliceStable(problems, func(i, j int) bool { return problems[i].Message < problems[j].Message })
+}
+
+// fromSettings is a settings problem as the report has it.
+func fromSettings(p settings.Problem) contract.Problem {
+	return contract.Problem{Message: p.String(), Unknown: p.Unknown}
 }
 
 func sortedNames[V any](m map[string]V) []string {
@@ -274,12 +332,12 @@ func (c *Checker) ProblemsAdded(ctx context.Context, doc definition.Document) ([
 	}
 	existing := map[string]bool{}
 	for _, problem := range before.Problems {
-		existing[problem] = true
+		existing[problem.Message] = true
 	}
 	var added []string
 	for _, problem := range report.Problems {
-		if !existing[problem] {
-			added = append(added, problem)
+		if !existing[problem.Message] {
+			added = append(added, problem.Message)
 		}
 	}
 	return added, nil

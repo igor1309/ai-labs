@@ -79,7 +79,8 @@ func TestExamplePiSettingsPassCheck(t *testing.T) {
 func TestExamplePiCallWithoutASkillToolIsRefused(t *testing.T) {
 	home, repo := examplePiSettings(t)
 	const reason = "runtime pi needs read or bash to use the repository's skills (ADR-006), and the plan grants no such tool: " +
-		"read needs host.read, which the plan withholds; bash is not verified for version 0.85.1"
+		"read needs host.read, which the plan withholds; bash needs host.read, which the plan withholds, " +
+		"and repository.write, repository.history.write, network, host.write, which the effective permissions do not allow"
 	r := agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?")
 	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, reason) {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
@@ -105,7 +106,7 @@ func TestPiSessionsAreKeptUnderTheHome(t *testing.T) {
 	})
 	t.Run("home with brackets", func(t *testing.T) {
 		home, repo := examplePiSettings(t)
-		bracketed := filepath.Join(t.TempDir(), "agister[1]")
+		bracketed := filepath.Join(tempDir(t), "agister[1]")
 		if err := os.Rename(home, bracketed); err != nil {
 			t.Fatal(err)
 		}
@@ -179,7 +180,7 @@ func TestPiInstallsNoPackageTheProjectLists(t *testing.T) {
 	home, repo := examplePiSettings(t)
 	allowHostReads(t, home, repo)
 	write(t, filepath.Join(repo, ".pi", "settings.json"), `{"packages": ["npm:@example/pi-tracer", {"source": "npm:pi-extras"}]}`)
-	spy := t.TempDir()
+	spy := tempDir(t)
 	installs := filepath.Join(spy, "installs.log")
 	write(t, filepath.Join(spy, "npm"), "#!/bin/sh\necho \"$*\" >> '"+installs+"'\n")
 	if err := os.Chmod(filepath.Join(spy, "npm"), 0o755); err != nil {
@@ -202,29 +203,58 @@ func TestPiInstallsNoPackageTheProjectLists(t *testing.T) {
 	}
 }
 
-// Even when every grant is allowed, unverified write tools and bash cannot
-// satisfy a required permission. The bad settings live only in a temp home.
-func TestExamplePiSettingsRefuseUnverifiedTools(t *testing.T) {
-	for _, permission := range []string{"repository.write", "process.execute"} {
-		t.Run(permission, func(t *testing.T) {
-			home, repo := examplePiSettings(t)
-			service := filepath.Join(home, "service.toml")
-			write(t, service, strings.Replace(read(t, service), `state_reaching = ["host.read", "host.write"]`, `state_reaching = []`, 1))
-			write(t, filepath.Join(home, "policies", "pi-all.yaml"), `schema: agister.process-policy/v1alpha1
+// piAllPolicy points ask_pi at a policy that allows every permission and
+// makes the call require permission. The settings live only in a temp home.
+func piAllPolicy(t *testing.T, home, permission string) {
+	t.Helper()
+	write(t, filepath.Join(home, "policies", "pi-all.yaml"), `schema: agister.process-policy/v1alpha1
 name: pi-all
 workspace: {access: read-write, scope: repository}
 tools:
   allow: [repository.read, repository.search, repository.diff, repository.history.read, repository.write, repository.history.write, process.execute, network, host.read, host.write]
 timeout: 10m
 `)
-			process := filepath.Join(home, "processes", "ask_pi.yaml")
-			write(t, process, strings.Replace(read(t, process), "process-policy:read-only", "process-policy:pi-all", 1)+"\ntools: {require: ["+permission+"]}\n")
-			r := agister(t, home, repo, "check")
-			if r.code != cli.ExitUsage ||
-				!strings.Contains(r.stderr, "required permissions would be withheld: "+permission) ||
-				!strings.Contains(r.stderr, "not verified for version 0.85: edit, write, bash") {
+	process := filepath.Join(home, "processes", "ask_pi.yaml")
+	write(t, process, strings.Replace(read(t, process), "process-policy:read-only", "process-policy:pi-all", 1)+"\ntools: {require: ["+permission+"]}\n")
+}
+
+// edit, write and bash are verified for 0.85: when every grant is allowed,
+// a call requiring a permission they grant is planned with all three, and
+// Pi is started with them in its --tools allowlist.
+func TestExamplePiSettingsGrantTheVerifiedWriteToolsAndBash(t *testing.T) {
+	for _, permission := range []string{"repository.write", "process.execute"} {
+		t.Run(permission, func(t *testing.T) {
+			home, repo := examplePiSettings(t)
+			service := filepath.Join(home, "service.toml")
+			write(t, service, strings.Replace(read(t, service), `state_reaching = ["host.read", "host.write"]`, `state_reaching = []`, 1))
+			piAllPolicy(t, home, permission)
+			r := agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?", "--timeout", "30s")
+			if r.code != cli.ExitCompleted {
 				t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 			}
+			last := lastRun(t, home)
+			plan := last.record["plan"].(map[string]any)
+			if !reflect.DeepEqual(plan["primitives"], []any{"read", "grep", "find", "ls", "edit", "write", "bash"}) {
+				t.Fatalf("plan = %v", plan)
+			}
+			if args := strings.Join(last.argv(), " "); !strings.Contains(args, "--tools read,grep,find,ls,edit,write,bash") {
+				t.Fatalf("Pi argv = %s", args)
+			}
 		})
+	}
+}
+
+// edit and write reach outside the checkout, so they grant host.write
+// beside repository.write: with host.write withheld, as bash is, no Pi tool
+// can write the repository, and check refuses a call requiring repository
+// writes.
+func TestExamplePiCallRequiringWritesWithoutHostWritesIsRefused(t *testing.T) {
+	home, repo := examplePiSettings(t)
+	allowHostReads(t, home, repo)
+	piAllPolicy(t, home, "repository.write")
+	const reason = "process ask_pi: cannot run on agent pi-minimax's runtime pi: cannot enforce the effective permissions: required permissions would be withheld: repository.write"
+	r := agister(t, home, repo, "check")
+	if r.code == 0 || !strings.Contains(r.stdout+r.stderr, reason) {
+		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 }

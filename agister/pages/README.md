@@ -3,8 +3,9 @@
 `agister pages` serves a page that shows what Agister can run with a
 repo's settings and what that is made of, and how its runs went. `~` in
 the picker at the top right is Agister home, `~/.agister`; the picker also
-opens repos and lists recent ones. **Settings** and **Runs** at the top
-left switch between the two views; the page opens on the one shown last.
+opens repos and lists recent ones. **Settings**, **Runs** and **Knowledge**
+at the top left switch between the three views; the page opens on the one
+shown last.
 
 ## Settings
 
@@ -18,8 +19,13 @@ home`.
   comment), the `agister run` command with its required params (Copy puts
   it on the clipboard), the defaults, and then:
   - for a process, its agent (runtime, model, effort, session), its policy
-    (workspace, timeout, cost cap, what it allows and denies) and its output
-    schema and verify attempts;
+    (workspace, timeout, cost cap, what it allows and denies), its output
+    schema and verify attempts (of the verification it names, when it
+    names one; marked missing when these settings have none of that name),
+    and the prompts it names, each once, marked missing when these
+    settings have none of that name, and for a repo with the layer it
+    comes from, and the setup its checkout runs: its own, or `workspace.yaml`'s, the
+    repo's over home's (ADR-012);
   - for a workflow, its calls in one line (`4 × gpt-6.1-sol at once, then
     opus`), then the steps: the ones run at once (`First` when there is
     one) and the one run after them. Each step shows its name, what it
@@ -62,6 +68,53 @@ again.
 Durations read `1m 47s` or `412ms`, costs `$0.50`, times in local time. A
 failed or interrupted run shows in red.
 
+## Knowledge
+
+The skills each agent works with, read-only (ADR-011). Agister does not
+choose an agent's skills: a call loads what its runtime loads in the repo
+and the home (ADR-006), so an agent's skills are the skill folders of its
+runtime's adapter, and the view says so. Nothing is edited, reviewed or
+approved here. ↻ reads the settings, the skills and the runs again.
+
+- **Overview**: a matrix, a row per skill name and a column per agent
+  (its runtime adapter, model and effort, from the settings); `●` where
+  the agent's runtime loads a skill of that name, `● ×2` where it loads
+  two. A name in several folders is marked `shared ×n`; all are shown, and
+  the page does not decide which one a runtime uses. Clicking an agent or
+  a skill opens it below; clicking it again closes it.
+- **An agent**: its runtime, adapter, model and effort; the skills its
+  runtime would load, each with `repo` or `home`, its folder and its
+  checks; what that runtime loads from elsewhere and the list leaves out
+  (built-in, plugin and package skills, and per runtime: Claude Code's
+  managed-settings skills, `.claude/commands/` and a `.claude/skills`
+  below the repo's root; Codex's `/etc/codex/skills`; Pi's skill paths and
+  packages from its settings files). Apart from that and labelled
+  *observed*: the skills its runs used, each with its uses, the number of
+  runs and links that open them in Runs. These are the runs read from
+  Agister home, whatever the picker shows. A skill no run used shows
+  nothing about use.
+- **A skill**: the agents whose runtime loads it and, per folder it is in,
+  its path with the real path beside a link, its description and its
+  checks, then its `SKILL.md`: rendered Markdown, or as stored with
+  **Source**. The Markdown is read by markdown-it 15.0.2 (vendored as
+  `markdown-it.min.js`, with `html`, `linkify` and `typographer` off):
+  headings, paragraphs, emphasis, strikethrough, code, quotes, nested
+  lists, tables, rules and line breaks. Its tokens become elements, never
+  an HTML string: HTML in a skill shows as text, a link that is not
+  `http(s)` shows its text, an image its alt text.
+- **Folders read**: each folder as ADR-011 names it, its path (and real
+  path), the adapters that load it and its skill count, or why it lists
+  none (`not there`, a broken link, a symlinked `synced/` or `.system/`).
+
+The checks are of structure only: `SKILL.md` is there, is a file of at
+most 256 KB, its front matter parses, `name` and `description` are there
+and not empty, and `name` is the folder's name. They read `checks passed`
+or `checks failed: …` with each failed check. A failed check does not mean
+the runtime refuses the skill.
+
+For a repo the view shows its working tree; a call on a checkout loads
+what that checkout holds. For `~` it shows the home folders only.
+
 ## Run it
 
 `agister pages` listens on `127.0.0.1:7465`, prints the address and opens it
@@ -82,8 +135,35 @@ The server writes nothing and answers these endpoints:
   `X-Agister-Pages` header, which a page on another site cannot send.
 - `GET /api/settings?path=<absolute repo path | ~>`: the settings files of
   `<path>/.agister`, or of Agister home for `~`: `agents`, `policies`,
-  `processes`, `runtimes`, `schemas`, `workflows` and `service.toml`, each
+  `processes`, `runtimes`, `schemas`, `verifies`, `prompts`, `workflows`,
+  `service.toml` and `workspace.yaml`, each
   at most 256 KB. `runs/` and `logs/` are skipped.
+- `GET /api/skills?path=<absolute repo path | ~>`: the skill folders of
+  ADR-011's table for the runtime adapters the settings at that path
+  define (the `adapter` of each `runtimes/` file, the repo's over Agister
+  home's of the same name), in the repo and in the home; for `~` the home
+  folders only. No request names a file. It answers `home`, `adapters` and
+  `folders`, repo folders first, each folder once: its `scope` (`repo` or
+  `home`), `folder` (as named: `.claude/skills`, `~/.codex/skills`,
+  `$CODEX_HOME/skills` when that is set), `path`, `real` path, `link`
+  target when it is a symlink, the `adapters` that load it, a `state` when
+  it lists nothing (`missing`, `broken_link`, `not_a_directory`,
+  `not_followed`) and its `skills`. A skill is a directory at the folder's
+  top level whose name does not start with a dot: its `name`, `path`,
+  `real` path, `link` target, `content` (its `SKILL.md`), `description`
+  and `checks` (`passed`, and `failed` with each failed check), or a
+  `state` when the `SKILL.md` was not read: `missing`, `too_large` (over
+  256 KB; the other checks are not run), `outside_skill` (its real path is
+  not inside the skill's real path), `broken_link` (the entry or its
+  `SKILL.md` is a link that does not resolve, or loops), `not_a_file`.
+  Only `SKILL.md` is read. A folder and each entry in it are resolved to
+  their real path; `synced/` and `.system/` are folders of their own and,
+  being below a folder's top level, are not followed when symlinks. In
+  `~/.claude/skills/synced`, which OpenCode reads with `~/.claude/skills`
+  too, the skills sit one level down in groups (`synced/<id>/<name>`); a
+  group that is a symlink is not followed. The
+  home folders come from pages' own `HOME`, `CODEX_HOME` and
+  `PI_CODING_AGENT_DIR`.
 - `GET /api/runs?limit=<n>`: a summary of each run in Agister home's
   `runs/`, newest first, at most `limit` (default 200, at most 1000).
   A run whose `record.json` does not parse is left out and counted in
@@ -131,10 +211,36 @@ It listens on loopback only and refuses a request whose Host is not
 The page itself is `index.html`, embedded in the binary with `repos.js`
 (the picker and the calls to the server), `config.js` (reading the
 settings; its YAML and TOML parsers cover what Agister settings use),
-`runs.js` (the Runs view's formatting, filters and compare tables) and
-`page.js` (the page's views and controls, started over the browser's
+`runs.js` (the Runs view's formatting, filters and compare tables),
+`markdown-it.min.js` (markdown-it 15.0.2, the package's
+`dist/browser/markdown-it.umd.min.js` unchanged under a header with its
+source, checksum and MIT license; no npm dependency, no build step),
+`knowledge.js` (the Knowledge view's model, checks wording and the tree
+it makes of markdown-it's tokens) and `page.js` (the page's views and controls, started over the browser's
 document, fetch and storage, which its tests replace with fakes).
-`serve.go` is the server; `runs.go` summarises the runs.
+`serve.go` is the server; `runs.go` summarises the runs; `skills.go`
+reads the skill folders.
+
+## Always running
+
+`deploy/` holds a per-user LaunchAgent, `com.igormalyarov.agister-pages`,
+that runs `~/.local/bin/agister pages --no-open` at login and restarts it
+when it exits. Build Agister and copy it to `~/.local/bin/agister`, then,
+from `agister/`:
+
+- `deploy/install.sh` writes
+  `~/Library/LaunchAgents/com.igormalyarov.agister-pages.plist`, with the
+  PATH of the shell that runs it, and loads it; the page is at
+  `http://127.0.0.1:7465/`. If loading fails, it puts back the plist that
+  was there before, or removes its own. It refuses when `~/.local/bin/agister` is not
+  an executable file or the job is already loaded.
+- `deploy/uninstall.sh` stops the job and removes the plist; the logs and
+  the binary stay.
+
+The server logs to `~/Library/Logs/agister/pages.out.log` and
+`pages.err.log`. After replacing `~/.local/bin/agister`, the running server
+keeps the old binary until
+`launchctl kickstart -k gui/$(id -u)/com.igormalyarov.agister-pages`.
 
 ## Data
 
@@ -144,9 +250,11 @@ The browser's localStorage keeps, for the page's address:
   recent first, at most 10.
 - `agister-pages:current`: what was shown last (`~` or a repo path); the
   page opens on it.
-- `agister-pages:view`: the view shown last, `settings` or `runs`; the
-  page opens on it.
+- `agister-pages:view`: the view shown last, `settings`, `runs` or
+  `knowledge`; the page opens on it.
 
 ## Test
 
-From `agister/`: `go test ./pages/` and `node --test pages/tests/*.test.js`.
+From `agister/`: `go test ./pages/` and `node --test pages/tests/*.test.js`;
+`go test ./deploy/` runs the LaunchAgent scripts against a temporary HOME
+and a fake `launchctl`.

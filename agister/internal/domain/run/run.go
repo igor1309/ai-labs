@@ -39,6 +39,7 @@ const (
 	ClassRuntimeError       Class = "runtime_error"       // the runtime reported another failure
 	ClassRuntimeUnavailable Class = "runtime_unavailable" // the runtime could not be started
 	ClassInternal           Class = "internal"            // Agister's own failure
+	ClassSetupFailed        Class = "setup_failed"        // the checkout's setup command failed (ADR-012)
 	// interrupted
 	ClassTimeout   Class = "timeout"
 	ClassCancelled Class = "cancelled"
@@ -230,11 +231,15 @@ type Record struct {
 	Definitions []DefinitionSource `json:"definitions,omitempty"`
 	Effective   *EffectivePolicy   `json:"effective,omitempty"`
 	Verify      *Verify            `json:"verify,omitempty"`
-	Runtime     *Runtime           `json:"runtime,omitempty"`
-	Plan        *Plan              `json:"plan,omitempty"`
-	Inputs      []Input            `json:"inputs,omitempty"`
-	Workspace   string             `json:"workspace,omitempty"`
-	Effects     *Effects           `json:"effects,omitempty"`
+	// Setup is the setup command the call's checkout runs (ADR-012), as
+	// resolved; SetupRun is its one run, once it ran.
+	Setup     *Setup      `json:"setup,omitempty"`
+	SetupRun  *CommandRun `json:"setup_run,omitempty"`
+	Runtime   *Runtime    `json:"runtime,omitempty"`
+	Plan      *Plan       `json:"plan,omitempty"`
+	Inputs    []Input     `json:"inputs,omitempty"`
+	Workspace string      `json:"workspace,omitempty"`
+	Effects   *Effects    `json:"effects,omitempty"`
 	// Turn is the latest turn; with verification, Attempts has every one.
 	Turn     *Turn     `json:"turn,omitempty"`
 	Attempts []Attempt `json:"attempts,omitempty"`
@@ -250,8 +255,8 @@ type Record struct {
 type Effects struct {
 	Checkout *Checkout `json:"checkout,omitempty"`
 	Process  *Process  `json:"process,omitempty"`
-	// Command is the latest run of the verification command, as the process
-	// group that runs it; only one runs at a time.
+	// Command is the latest run of the setup or the verification command,
+	// as the process group that runs it; only one runs at a time.
 	Command *Process `json:"command,omitempty"`
 	// Copy is the clean copy the latest verification run checks: a checkout
 	// of the base with the attempt's changes applied, removed after the
@@ -264,10 +269,16 @@ type Effects struct {
 	Unreleased *Checkout `json:"unreleased,omitempty"`
 }
 
-// Checkout is a workspace the call created in Repository.
+// Checkout is a workspace the call created in Repository, of Revision:
+// the commit it was checked out at, empty on records made before it was
+// recorded and on clean copies.
 type Checkout struct {
 	Repository string `json:"repository"`
-	Dir        string `json:"dir"`
+	// RepositoryIdentity is the canonical Git common directory. Older records
+	// leave it empty and compare Repository paths instead.
+	RepositoryIdentity string `json:"repository_identity,omitempty"`
+	Dir                string `json:"dir"`
+	Revision           string `json:"revision,omitempty"`
 }
 
 // Process is the runtime's process as an opaque reference, made and read

@@ -24,6 +24,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/schema"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
 	"github.com/igor1309/ai-labs/agister/internal/app"
+	runtimecomposition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -116,6 +117,12 @@ type verifySettings struct {
 	timeout     string // verify.timeout; 20s when empty
 	maxAttempts int    // 3 when zero
 	policy      string // appended to the policy
+	// setup is the process's workspace.setup, in flow style; none when
+	// empty.
+	setup string
+	// workspace and globalWorkspace are the workspace.yaml of the
+	// settings and of a global layer under them; none when empty.
+	workspace, globalWorkspace string
 }
 
 type loopHarness struct {
@@ -124,6 +131,7 @@ type loopHarness struct {
 	home     string
 	runner   *scripted
 	commands *recordingCommands
+	setup    *recordingSetupCommands
 	calls    *app.Calls
 	runs     *app.Runs
 	store    fsruns.Store
@@ -150,6 +158,25 @@ func (c *recordingCommands) requests() []app.CommandRequest {
 	return append([]app.CommandRequest(nil), c.seen...)
 }
 
+// recordingSetupCommands keeps setup requests while preserving command injection.
+type recordingSetupCommands struct {
+	app.SetupCommands
+	mu   sync.Mutex
+	seen []app.SetupCommandRequest
+}
+
+func (c *recordingSetupCommands) Run(ctx context.Context, request app.SetupCommandRequest, started func(string) error) app.SetupCommandResult {
+	c.mu.Lock()
+	c.seen = append(c.seen, request)
+	c.mu.Unlock()
+	return c.SetupCommands.Run(ctx, request, started)
+}
+func (c *recordingSetupCommands) requests() []app.SetupCommandRequest {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]app.SetupCommandRequest(nil), c.seen...)
+}
+
 // seams are the harness's collaborators a test replaces; each left zero is
 // the real one.
 type seams struct {
@@ -162,6 +189,8 @@ type seams struct {
 	copies app.VerifyCopies
 	// commands runs the verification command.
 	commands app.VerifyCommands
+	// setupCommands runs the checkout setup command.
+	setupCommands app.SetupCommands
 }
 
 // newLoop is a repository with a base commit, settings for process impl
@@ -173,7 +202,7 @@ func newLoop(t *testing.T, settings verifySettings, steps ...step) *loopHarness 
 // newLoopWith is newLoop with the seams given.
 func newLoopWith(t *testing.T, with seams, settings verifySettings, steps ...step) *loopHarness {
 	t.Helper()
-	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
+	workspaces := git.NewWorkspaces(git.NewWorktrees(tempDir(t)))
 	if with.changes == nil {
 		with.changes = workspaces
 	}
@@ -184,9 +213,12 @@ func newLoopWith(t *testing.T, with seams, settings verifySettings, steps ...ste
 		with.copies = workspaces
 	}
 	if with.commands == nil {
-		with.commands = supervisor.Commands{}
+		with.commands = runtimecomposition.Commands{Supervisor: supervisor.Commands{}}
 	}
-	repo, err := filepath.EvalSymlinks(t.TempDir())
+	if with.setupCommands == nil {
+		with.setupCommands = runtimecomposition.SetupCommands{Supervisor: supervisor.Commands{}}
+	}
+	repo, err := filepath.EvalSymlinks(tempDir(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,7 +240,7 @@ func newLoopWith(t *testing.T, with seams, settings verifySettings, steps ...ste
 	if settings.maxAttempts == 0 {
 		settings.maxAttempts = 3
 	}
-	defs := t.TempDir()
+	defs := tempDir(t)
 	for name, text := range map[string]string{
 		"service.toml": `schema = "agister.service/v1alpha1"
 max_timeout = "1h"
@@ -255,7 +287,7 @@ input:
     candidate_revision: {source: git.revision, rev: "${param.candidate}"}
 workspace:
   checkout: candidate_revision
-output:
+%soutput:
   format: json
   schema: done
   require_valid: true
@@ -264,26 +296,45 @@ verify:
   timeout: %s
   max_attempts: %d
   instruction: The check failed. Fix the cause, not the check.
-`, strconv.Quote(settings.command), settings.timeout, settings.maxAttempts),
+`, setupLine(settings.setup), strconv.Quote(settings.command), settings.timeout, settings.maxAttempts),
+		"workspace.yaml": settings.workspace,
 	} {
+		if text == "" {
+			continue
+		}
 		if err := os.MkdirAll(filepath.Dir(filepath.Join(defs, name)), 0o700); err != nil {
 			t.Fatal(err)
 		}
 		write(t, filepath.Join(defs, name), text)
 	}
 
-	h := &loopHarness{t: t, repo: repo, home: t.TempDir(), runner: &scripted{t: t, steps: steps}, commands: &recordingCommands{VerifyCommands: with.commands}}
+	h := &loopHarness{t: t, repo: repo, home: tempDir(t), runner: &scripted{t: t, steps: steps}, commands: &recordingCommands{VerifyCommands: with.commands}, setup: &recordingSetupCommands{SetupCommands: with.setupCommands}}
 	h.store = fsruns.Store{Dir: filepath.Join(h.home, "runs")}
 	runtimes := fakeRuntimes{runner: h.runner}
 	hosted := app.NewHosted()
+	var definitions app.ResolverDefinitions = fsdefs.Store{Dir: defs}
+	if settings.globalWorkspace != "" {
+		global := fsdefs.Store{Dir: tempDir(t)}
+		write(t, filepath.Join(global.Dir, "workspace.yaml"), settings.globalWorkspace)
+		definitions = fsdefs.Layered{Global: global, Project: &fsdefs.Store{Dir: defs}}
+	}
 	h.calls = app.NewCalls(
-		app.NewResolver(fsdefs.Store{Dir: defs}, runtimes, schema.Validator{}), runtimes,
+		app.NewResolver(definitions, runtimes, schema.Validator{}), runtimes,
 		map[string]app.InputProvider{"git.revision": git.Revision{}},
-		workspaces, with.changes, app.NewVerifier(with.changes, with.copies, h.commands, with.clock), schema.Validator{},
+		workspaces, with.changes, app.NewPreparer(with.changes, h.setup, with.clock), app.NewVerifier(with.changes, with.copies, h.commands, with.clock), schema.Validator{},
 		h.store, h.store, with.clock, system.Timer, system.IDs{}, h.home, hosted,
 	)
 	h.runs = app.NewRuns(h.store, hosted, 10*time.Millisecond)
 	return h
+}
+
+// setupLine is the process's workspace.setup line for setup, in flow
+// style; none when empty.
+func setupLine(setup string) string {
+	if setup == "" {
+		return ""
+	}
+	return "  setup: " + setup + "\n"
 }
 
 func (h *loopHarness) submit(request contract.CallRequest) string {
@@ -493,7 +544,7 @@ func TestVerifyCallTimeoutBoundsTheLoop(t *testing.T) {
 	// only once the copy is made, so the real time Git takes decides
 	// nothing.
 	clock := &manualClock{now: time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)}
-	copies := slowCopies{Workspaces: git.NewWorkspaces(git.NewWorktrees(t.TempDir())), after: func() { clock.advance(59 * time.Second) }}
+	copies := slowCopies{Workspaces: git.NewWorkspaces(git.NewWorktrees(tempDir(t))), after: func() { clock.advance(59 * time.Second) }}
 	h := newLoopWith(t, seams{clock: clock, copies: copies}, verifySettings{command: blocks, timeout: "20s"}, state("one"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Interrupted, domain.ClassTimeout, "the call's timeout passed during attempt 1's run")
@@ -548,11 +599,11 @@ func (c *manualClock) advance(by time.Duration) {
 // Cancelling the call during a run kills the command's whole process
 // group, which the record names while it runs.
 func TestVerifyCancellationKillsTheCommandGroup(t *testing.T) {
-	groupFile := filepath.Join(t.TempDir(), "group")
+	groupFile := filepath.Join(tempDir(t), "group")
 	// The command's timer never fires, so only the cancellation can end the
 	// command; wait's own bound fails the test if nothing does.
 	unfired := supervisor.Commands{Timer: func(time.Duration) (<-chan time.Time, func()) { return nil, func() {} }}
-	h := newLoopWith(t, seams{commands: unfired}, verifySettings{command: blocks + " & echo $$ > " + groupFile + "; wait"}, state("one"))
+	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: unfired}}, verifySettings{command: blocks + " & echo $$ > " + groupFile + "; wait"}, state("one"))
 	// Whatever the assertions below find, the command does not outlive the
 	// test: its group is on record before it writes it.
 	cleanupRecorded(t, h.home, h.repo)
@@ -708,7 +759,7 @@ func TestVerifyNeverRunsAfterAFailedOrInvalidTurn(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			marker := filepath.Join(t.TempDir(), "ran")
+			marker := filepath.Join(tempDir(t), "ran")
 			h := newLoop(t, verifySettings{command: "touch " + marker}, c.turn)
 			record := h.call(contract.CallRequest{})
 			expect(t, record, domain.Failed, c.class, "")
@@ -765,7 +816,7 @@ func TestVerifyCaptureReproducesThePassingContent(t *testing.T) {
 	if len(artifacts) != 1 || artifacts[0].Name != "changes.patch" {
 		t.Fatalf("artifacts = %+v", artifacts)
 	}
-	rebuild := filepath.Join(t.TempDir(), "rebuild")
+	rebuild := filepath.Join(tempDir(t), "rebuild")
 	gitCmd(t, h.repo, "worktree", "add", "--quiet", "--detach", rebuild, "main")
 	defer gitCmd(t, h.repo, "worktree", "remove", "--force", rebuild)
 	gitCmd(t, rebuild, "apply", "--binary", filepath.Join(h.home, "runs", record.ID, artifacts[0].Path))
@@ -874,7 +925,7 @@ func TestVerifyRunWithoutOutputIsKilledAsStale(t *testing.T) {
 		fired <- time.Time{}
 		return fired, func() {}
 	}}
-	h := newLoopWith(t, seams{commands: stale}, verifySettings{command: blocks + " & wait", policy: "stale: {no_output: 7s}\n"}, state("one"))
+	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: stale}}, verifySettings{command: blocks + " & wait", policy: "stale: {no_output: 7s}\n"}, state("one"))
 	cleanupRecorded(t, h.home, h.repo)
 	record := h.wait(h.submit(contract.CallRequest{}))
 

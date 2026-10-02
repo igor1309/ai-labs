@@ -11,6 +11,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
+	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 	"github.com/igor1309/ai-labs/agister/internal/domain/settings"
 )
 
@@ -31,10 +32,20 @@ type resolution struct {
 	agent     definition.Agent
 	mapping   definition.Mapping
 	schema    []byte
+	prompts   map[string]definition.Prompt // by name
 	sources   []definition.Source
 	effective policy.Effective
 	identity  RuntimeIdentity
 	plan      enforce.Plan
+	// setup is the setup the call's checkout runs (ADR-012); nil when none.
+	setup *resolvedSetup
+}
+
+// resolvedSetup is a call's effective setup and the document it came from.
+type resolvedSetup struct {
+	definition.Setup
+	from string // run.SetupFromProcess or run.SetupFromWorkspace
+	path string
 }
 
 // Resolver loads and checks definitions, composes limits, checks the
@@ -123,6 +134,9 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 	if res.process, err = definition.ParseProcess(doc); err != nil {
 		return res, parsed(err)
 	}
+	if err := r.resolveSetup(ctx, res, load, parsed); err != nil {
+		return res, err
+	}
 	if res.process.Policy != "" {
 		if doc, err = load(definition.KindPolicy, res.process.Policy); err != nil {
 			return res, err
@@ -164,6 +178,37 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 		if err := r.validator.Compile(res.schema); err != nil {
 			return res, refuse("schema %q: %v", res.process.Output.Schema, err)
 		}
+	}
+	// The verification a process names is the call's from here on
+	// (ADR-010 rule 3); without it the call is refused, never run unverified.
+	if name := res.process.VerifyName; name != "" {
+		if doc, err = load(definition.KindVerify, name); err != nil {
+			return res, refuse("process %s names verify:%s: %v", res.process.Name, name, err)
+		}
+		verification, err := definition.ParseVerify(doc)
+		if err != nil {
+			return res, parsed(err)
+		}
+		res.process.Verify = &verification.Verify
+	}
+	// Each prompt a process names is read with the call, from the same
+	// settings, and recorded among its sources (ADR-014 rule 3).
+	for _, value := range res.process.Values {
+		name := value.Args["name"]
+		if _, ok := res.prompts[name]; ok || value.Source != definition.PromptSource {
+			continue
+		}
+		if doc, err = load(definition.KindPrompt, name); err != nil {
+			return res, refuse("input %s: %v", value.Name, err)
+		}
+		prompt, err := definition.ParsePrompt(doc)
+		if err != nil {
+			return res, parsed(err)
+		}
+		if res.prompts == nil {
+			res.prompts = map[string]definition.Prompt{}
+		}
+		res.prompts[name] = prompt
 	}
 
 	limits := policy.Caller{MaxCostUSD: caller.maxCostUSD}
@@ -219,6 +264,40 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 			res.mapping.Name, strings.Join(tools, " or "), withoutSkillTools(res, tools, verified, unverified))
 	}
 	return res, nil
+}
+
+// resolveSetup fixes the setup a call's checkout runs: the process's own,
+// or the workspace settings' default, read only when it applies, so the
+// call's definitions name the document its setup came from (ADR-012).
+func (r *Resolver) resolveSetup(ctx context.Context, res *resolution, load func(definition.Kind, string) (definition.Document, error), parsed func(error) error) error {
+	process := res.process
+	var workspace *definition.Workspace
+	if process.Checkout != "" && process.Setup == nil {
+		names, err := r.definitions.List(ctx, definition.KindWorkspace)
+		if err != nil {
+			return refuse("workspace settings: %v", err)
+		}
+		if contains(names, string(definition.KindWorkspace)) {
+			doc, err := load(definition.KindWorkspace, string(definition.KindWorkspace))
+			if err != nil {
+				return err
+			}
+			parsedWorkspace, err := definition.ParseWorkspace(doc)
+			if err != nil {
+				return parsed(err)
+			}
+			workspace = &parsedWorkspace
+		}
+	}
+	setup, fromWorkspace := process.EffectiveSetup(workspace)
+	switch {
+	case setup == nil:
+	case fromWorkspace:
+		res.setup = &resolvedSetup{Setup: *setup, from: run.SetupFromWorkspace, path: workspace.Source.Path}
+	default:
+		res.setup = &resolvedSetup{Setup: *setup, from: run.SetupFromProcess, path: process.Source.Path}
+	}
+	return nil
 }
 
 // withoutSkillTools says why the plan grants none of tools: each is

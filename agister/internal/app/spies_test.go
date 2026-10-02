@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
+	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -45,6 +46,13 @@ func (s *definitionsSpy) set(kind definition.Kind, name, text string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.docs[kind][name] = text
+}
+
+// record counts a read the spy did not answer.
+func (s *definitionsSpy) record(read string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.reads = append(s.reads, read)
 }
 
 func (s *definitionsSpy) readCount() int {
@@ -204,6 +212,14 @@ func (s *workspacesSpy) Discard(ctx context.Context, repository, dir string) err
 
 func (s *workspacesSpy) Root(context.Context, string) (string, error) { return s.root, nil }
 
+func (s *workspacesSpy) RepositoryIdentity(_ context.Context, repository string) (string, error) {
+	return repository, nil
+}
+
+func (s *workspacesSpy) SameRepository(_ context.Context, first, second string) (bool, error) {
+	return first == second, nil
+}
+
 func (s *workspacesSpy) Checkout(_ context.Context, repository, revision string) (string, func() error, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -226,11 +242,14 @@ func (s *workspacesSpy) releases() int {
 // in it. A clean copy (see copiesSpy) has the content the checkout was last
 // named with, unless copied says otherwise.
 type changesSpy struct {
-	mu        sync.Mutex
-	changed   [][2]string   // dir, from
-	identity  string        // what Identity names; "tree" when empty
-	identify  func() string // when set, names the checkout's content instead
-	changes   []byte
+	mu       sync.Mutex
+	changed  [][2]string   // dir, from
+	identity string        // what Identity names; "tree" when empty
+	identify func() string // when set, names the checkout's content instead
+	changes  []byte
+	// patch, when set, is the patch from one content to another, instead
+	// of changes.
+	patch     func(from, to string) []byte
 	changeErr error
 	panics    bool // Changes panics
 	// copied, when set, names a clean copy's content, given how many times
@@ -238,6 +257,33 @@ type changesSpy struct {
 	// attempt's run, 1 after.
 	copied func(dir string, named int) string
 	named  map[string]int
+	// applied lists every patch applied or checked, in order; applying,
+	// when set, runs first and fails the apply with what it returns.
+	applied  []appliedPatch
+	applying func(check bool) error
+}
+
+// appliedPatch is one Apply: the checkout, the patch, and whether it was
+// only checked.
+type appliedPatch struct {
+	dir, patch string
+	check      bool
+}
+
+func (s *changesSpy) Apply(_ context.Context, dir string, patch []byte, check bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.applied = append(s.applied, appliedPatch{dir, string(patch), check})
+	if s.applying != nil {
+		return s.applying(check)
+	}
+	return nil
+}
+
+func (s *changesSpy) applies() []appliedPatch {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]appliedPatch(nil), s.applied...)
 }
 
 func (s *changesSpy) Identity(_ context.Context, dir, _ string) (string, error) {
@@ -261,12 +307,15 @@ func (s *changesSpy) Identity(_ context.Context, dir, _ string) (string, error) 
 	return s.identity, nil
 }
 
-func (s *changesSpy) Changes(_ context.Context, dir, from, _ string) ([]byte, error) {
+func (s *changesSpy) Changes(_ context.Context, dir, from, to string) ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.changed = append(s.changed, [2]string{dir, from})
 	if s.panics {
 		panic("changes exploded")
+	}
+	if s.patch != nil {
+		return s.patch(from, to), s.changeErr
 	}
 	return s.changes, s.changeErr
 }
@@ -378,9 +427,16 @@ type commandsSpy struct {
 	running func(app.CommandRequest)
 	// stale, when set, ends each run as one killed for its silence.
 	stale bool
+	// timedOut, when set, ends each run as one killed at its timeout.
+	timedOut bool
+	// block makes each run wait for its context to end and end as one
+	// killed for it; started, when set, is closed once the first is on
+	// record.
+	block   bool
+	started chan struct{}
 }
 
-func (s *commandsSpy) Run(_ context.Context, request app.CommandRequest, started func(string) error) app.CommandResult {
+func (s *commandsSpy) Run(ctx context.Context, request app.CommandRequest, started func(string) error) app.CommandResult {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.requests = append(s.requests, request)
@@ -390,8 +446,21 @@ func (s *commandsSpy) Run(_ context.Context, request app.CommandRequest, started
 	if s.running != nil {
 		s.running(request)
 	}
+	if s.block {
+		if s.started != nil {
+			close(s.started)
+			s.started = nil
+		}
+		s.mu.Unlock()
+		<-ctx.Done()
+		s.mu.Lock()
+		return app.CommandResult{Cancelled: true, Signal: "killed"}
+	}
 	if s.stale {
 		return app.CommandResult{Stale: true, Signal: "killed"}
+	}
+	if s.timedOut {
+		return app.CommandResult{TimedOut: true, Signal: "killed"}
 	}
 	code := 0
 	if len(s.exits) > 0 {
@@ -407,6 +476,57 @@ func (s *commandsSpy) runs() []app.CommandRequest {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return append([]app.CommandRequest(nil), s.requests...)
+}
+
+type setupCommandsSpy struct {
+	mu       sync.Mutex
+	requests []app.SetupCommandRequest
+	exits    []int
+	// running, when set, runs while the command does.
+	running func(app.SetupCommandRequest)
+	// timedOut, when set, ends each run as one killed at its timeout.
+	timedOut bool
+	// block makes each run wait for its context to end and end as one
+	// killed for it; started, when set, is closed once the first is on
+	// record.
+	block   bool
+	started chan struct{}
+}
+
+func (s *setupCommandsSpy) Run(ctx context.Context, request app.SetupCommandRequest, started func(string) error) app.SetupCommandResult {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.requests = append(s.requests, request)
+	if err := started("ref-cmd"); err != nil {
+		return app.SetupCommandResult{Error: err.Error()}
+	}
+	if s.running != nil {
+		s.running(request)
+	}
+	if s.block {
+		if s.started != nil {
+			close(s.started)
+			s.started = nil
+		}
+		s.mu.Unlock()
+		<-ctx.Done()
+		s.mu.Lock()
+		return app.SetupCommandResult{Cancelled: true, Signal: "killed"}
+	}
+	if s.timedOut {
+		return app.SetupCommandResult{TimedOut: true, Signal: "killed"}
+	}
+	code := 0
+	if len(s.exits) > 0 {
+		code, s.exits = s.exits[0], s.exits[1:]
+	}
+	return app.SetupCommandResult{ExitCode: &code, Head: []byte(fmt.Sprintf("exit %d", code)), Bytes: 6, SHA256: fmt.Sprintf("sha-%d-%d", code, len(s.requests))}
+}
+
+func (s *setupCommandsSpy) runs() []app.SetupCommandRequest {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]app.SetupCommandRequest(nil), s.requests...)
 }
 
 type validatorSpy struct {
@@ -543,12 +663,40 @@ func (s *recorderSpy) running() bool {
 	return len(s.created) > s.taken
 }
 
-// runsSpy answers lookups of earlier runs.
+// runsSpy answers lookups of earlier runs, and reads back the artifacts
+// they stored, by run ID and path.
 type runsSpy struct {
-	mu      sync.Mutex
-	records map[string]run.Record
-	states  map[string]run.State
-	asked   []string
+	mu        sync.Mutex
+	records   map[string]run.Record
+	states    map[string]run.State
+	asked     []string
+	artifacts map[string][]byte // by "<run>/<path>"
+	read      []string          // the artifacts read, as "<run>/<path>"
+	listErr   error
+}
+
+// store keeps data as an artifact of run id and returns it as the run's
+// record names it.
+func (s *runsSpy) store(id, name string, data []byte) run.Artifact {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	artifact := run.Artifact{Name: name, Path: "artifacts/" + name, Digest: "sha256:" + sha(string(data)), Bytes: int64(len(data))}
+	if s.artifacts == nil {
+		s.artifacts = map[string][]byte{}
+	}
+	s.artifacts[id+"/"+artifact.Path] = data
+	return artifact
+}
+
+func (s *runsSpy) Artifact(_ context.Context, id string, artifact run.Artifact) ([]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.read = append(s.read, id+"/"+artifact.Path)
+	data, ok := s.artifacts[id+"/"+artifact.Path]
+	if !ok {
+		return nil, fmt.Errorf("no artifact %s", artifact.Path)
+	}
+	return data, nil
 }
 
 func (s *runsSpy) Get(_ context.Context, id string) (run.Record, run.State, error) {
@@ -562,7 +710,7 @@ func (s *runsSpy) Get(_ context.Context, id string) (run.Record, run.State, erro
 	return record, s.states[id], nil
 }
 
-func (s *runsSpy) List(context.Context) ([]run.Record, error) {
+func (s *runsSpy) ListStrict(context.Context) ([]run.Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	records := make([]run.Record, 0, len(s.records))
@@ -570,7 +718,7 @@ func (s *runsSpy) List(context.Context) ([]run.Record, error) {
 		records = append(records, record)
 	}
 	sort.Slice(records, func(i, j int) bool { return records[i].ID < records[j].ID })
-	return records, nil
+	return records, s.listErr
 }
 
 // steppingClock advances a second on every reading.
@@ -792,4 +940,13 @@ func (s *adopterSpy) Adopt(_ context.Context, id string) (app.ReapHandle, run.Re
 func sha(text string) string {
 	sum := sha256.Sum256([]byte(text))
 	return hex.EncodeToString(sum[:])
+}
+
+// messages are the problems' messages, in order.
+func messages(problems []contract.Problem) []string {
+	list := make([]string, 0, len(problems))
+	for _, problem := range problems {
+		list = append(list, problem.Message)
+	}
+	return list
 }

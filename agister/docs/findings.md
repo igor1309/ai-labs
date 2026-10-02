@@ -8,6 +8,14 @@
 - **Codex emits non-terminal errors.** Reconnects and transport fallbacks
   arrive as `error` events mid-turn; only `turn.completed` or `turn.failed`
   decide a turn.
+- **Claude Code can report an error with subtype `success`.** On
+  2026-10-02, run `20261002T055359Z-38363e` ended at the session limit
+  with a result containing `subtype: "success"`, `is_error: true`,
+  `api_error_status: 429` and `stop_reason: "stop_sequence"`. Its text was
+  "You've hit your session limit · resets 12:30pm (Europe/Moscow)".
+  The adapter correctly classified it as `rate_limited`, but its message
+  said "runtime reported success". It now says "runtime reported an error
+  (429)" and keeps the result text; named error subtypes remain in messages.
 - **Codex sandboxes read outside the workspace.** Its mapping declares
   `host.read`, which is never granted, and it is not yet verified against a
   live Codex, so it ships opt-in (`examples/codex/`) and `check` refuses it.
@@ -20,22 +28,137 @@
   under `pi/1`, checked live through Agister on 2026-10-01 with agent
   `pi-minimax`, model `opencode-go/minimax-m3`, process `ask_pi` and policy
   `read-only`, in a throwaway Agister home with `read`, `grep`, `find` and
-  `ls` marked verified for the check:
-  - Run `20261001T141844Z-77906d` completed ($0.0040, 23.7 s). The plan
+  `ls` marked verified for the check (the home and its run records
+  are gone):
+  - One run completed ($0.0040, 23.7 s). The plan
     granted `[read grep find ls]` and withheld `repository.diff`,
     `repository.history.read` and `process.execute`. `read` read
     `agister/internal/adapters/runtime/pi/pi.go` in the checkout and
     `/etc/hosts` outside it. The record holds runtime `pi`, contract
     `pi/1`, version `0.85.1`, the profile's model, the reported session
     and the cost with source `runtime`.
-  - Run `20261001T141916Z-879ab7` completed ($0.0017, 11.2 s). `ls`
+  - Another completed ($0.0017, 11.2 s). `ls`
     listed `/etc/ssh` and `agister/examples/pi`; `find` found `hosts`
     under `/etc`; `grep` matched in `/etc/hosts` and under
     `agister/internal/adapters/runtime`.
   Each of the four tools read or searched the repository and the host,
   as the mapping declares; they are now verified for `0.85.` in
-  `examples/pi/runtimes/pi.yaml`. `edit`, `write` and `bash` were not
-  checked and remain unverified, so never granted.
+  `examples/pi/runtimes/pi.yaml`.
+  - A third completed ($0.0044, 20.9 s), process
+    `write_pi`, policy allowing everything, with `edit`, `write` and
+    `bash` also marked verified. `write` created a file and `edit`
+    changed one in the checkout; both were in the call's patch.
+    `bash` ran in the checkout (`pwd`, `git status`) and wrote
+    `/tmp/agister-pi-bashcheck` outside it.
+  `edit` and `write` write the repository and `bash` reaches everything,
+  as the mapping declares; they are now verified for `0.85.` as well.
+- **OpenCode 1.18.33, checked without a model provider** (2026-10-01,
+  LAB-45; a scratch repository, `opencode debug` and `opencode run` with a
+  model that does not exist). What contract `opencode/1` rests on:
+  - `opencode debug agent <name>` with the agent given inline
+    (`OPENCODE_CONFIG_CONTENT`) lists the built-in tools: `bash`, `read`,
+    `glob`, `grep`, `edit`, `write`, `task`, `webfetch`, `todowrite`,
+    `websearch`, `skill`, `question` (and `invalid`). There is no `list`
+    tool. An agent's permission `{"*": "deny", "read": "allow"}` leaves
+    only `read` enabled. `write` is no permission: `"write": "allow"`
+    enables nothing, and `"edit": "allow"` enables both `edit` and `write`
+    (the docs add `apply_patch`).
+  - Permission rules keep the order of the config's keys and the last
+    matching rule decides: `{"read": "allow", "*": "deny"}` denies `read`.
+    The `tools` option becomes permission keys placed before the
+    permission's own: with `"tools": {"write": false}`,
+    `{"*": "deny", "edit": "allow"}` enabled nothing.
+  - Global rules (the config's `permission`, `OPENCODE_PERMISSION`) come
+    before the agent's, so they do not widen an agent that denies `*`. An
+    agent of the same name in the checkout's `opencode.json` does: its
+    `"bash": "allow"` was merged after the inline agent's `"*": "deny"` and
+    enabled `bash`. So the generated agent's name is random per call.
+  - An agent that is not found is replaced: `agent "x" not found. Falling
+    back to default agent`, and the run goes on as the default agent.
+  - `opencode debug skill` lists a checkout's `.agents/skills`,
+    `.claude/skills` and `.opencode/skills` beside the user's own.
+  - `run` reads stdin as the message (`You must provide a message or a
+    command` without one and without an argument), and appends it to a
+    message argument, which it quotes when it holds a space.
+  - `run -s <id>` reported the same `sessionID`, from the session's
+    directory and from another one; an unknown ID gave `Session not found`
+    and exit 1. An unknown model gave an `error` event and exit 1.
+  Not checked, as no model ran: that a denied tool is refused in a turn,
+  that `external_directory` confines the file tools, what a session
+  resumed elsewhere works on, and whether `tool_use` is written only for
+  a call that has ended. No tool of `examples/opencode/runtimes/opencode.yaml`
+  is verified.
+- **MiniMax M3 on Pi did not finish LAB-45 in two 45-minute runs.**
+  Process `implement_pi`, agent `pi-implementer-m3` (Pi 0.85.1, model
+  `opencode-go/minimax-m3`, effort `high`), brief
+  `testdata/briefs/lab-45-opencode-runtime.md`, on 2026-10-01:
+  - Run `20261001T153433Z-59b597` timed out ($1.2166, 415k in / 75k out
+    tokens). It wrote the adapter, a fake binary and unit tests (about
+    1,160 lines) with three tests failing, left a built binary in the
+    checkout, and did not reach the wiring, settings test or examples.
+    The provider timed out at least once ("Request timed out.").
+  - Agister refused `--continue` of that run before any checkout, as
+    designed: Pi resumes only in the directory it ran in.
+  - A fresh run `20261001T162155Z-d44714` on the committed partial work,
+    with a short brief of what was left, timed out too ($0.5547, 200k in
+    / 119k out tokens). It fixed the three tests (all runtime adapter
+    tests passed) and touched nothing else that was left. Provider
+    timeouts again.
+  The work was discarded; LAB-45 went to another model.
+- **GLM-5.3 on Pi ran into the OpenCode Go usage limit twice on LAB-45.**
+  Process `implement_pi_glm`, agent `pi-implementer-glm-53` (Pi 0.85.1,
+  model `opencode-go/glm-5.3`, effort `high`), the same brief and
+  45-minute limit, on 2026-10-01:
+  - Run `20261001T170918Z-310efe` failed `rate_limited` after 24m6s
+    ($2.5615, 185k in / 52k out tokens): `429 GoUsageLimitError`. It
+    read the code and built a fake model server outside the checkout to
+    probe OpenCode; it wrote nothing in the checkout, so no patch.
+  - Run `20261001T192109Z-2228ea`, started when the rolling limit
+    cleared, failed the same way after 18m48s ($3.0066, 170k in / 54k
+    out tokens), leaving a first draft of the adapter and `Spec.Env` in
+    the supervisor (547 added lines), no tests.
+  - Run `20261002T002411Z-70a4ce`, started 4 h 40 min after the first
+    limit in a worktree of its own, failed the same way after 12m31s
+    ($1.5401, 125k in / 32k out tokens), with nothing written in the
+    checkout.
+  One rolling window of the Go plan holds about $3 of GLM-5.3, less than
+  this task needs; the three runs cost $7.1082 and delivered no usable
+  work. Agister classified both as `rate_limited` and kept
+  the second run's patch.
+- **Where each runtime loads skills from, under the adapter's flags.**
+  Checked on 2026-10-02 for ADR-011 in a scratch repository holding a
+  probe skill in `.agents/skills`, `.claude/skills`, `.codex/skills`,
+  `.pi/skills` and `sub/.agents/skills`, and one in `.agents/skills`
+  that is a symlink to a folder outside it. Each runtime ran with its
+  adapter's flags against a local server that recorded the request and
+  answered 400, so no model ran:
+  - Codex 0.159.2 (`exec` with `--ignore-user-config --ignore-rules`,
+    a provider set with `-c`): skill roots the repo's `.codex/skills`
+    and `.agents/skills`, `~/.codex/skills`, its `.system`, and
+    `~/.agents/skills`; the symlinked skill was listed. The repo's
+    `.codex/skills` is not on Codex's skills page. `codex debug
+    prompt-input`, which loads `config.toml`, also listed two plugin
+    roots under `~/.codex/plugins/cache`; the call's request had none.
+    Run from `sub/`, it added `sub/.agents/skills`.
+  - Claude Code 2.1.287 (`-p` with `--permission-mode dontAsk`,
+    `--tools=Read,Skill`, `--strict-mcp-config`, `ANTHROPIC_BASE_URL`):
+    the repo's `.claude/skills` and the `~/.claude/skills/synced`
+    skills (as `anthropic-skills:<name>`), and a built-in skill; not
+    `.agents/skills`. In a linked worktree of a commit without
+    `.claude/skills`, it listed the main checkout's untracked one.
+  - Pi 0.85.1 (`-p --mode json --no-extensions --no-prompt-templates
+    --no-themes --approve --offline --tools read`, a provider in
+    `models.json` under a throwaway `PI_CODING_AGENT_DIR`): the repo's
+    `.pi/skills` and `.agents/skills`, the symlinked skill, and
+    `~/.agents/skills`; not `.claude/skills` or `.codex/skills`. Its
+    agent folder's `skills` was not observed: the probe replaced that
+    folder.
+  - OpenCode 1.18.33, `opencode debug skill` only (not a call's
+    `--pure` and inline configuration): the repo's `.agents/skills` and
+    `.claude/skills`, `~/.agents/skills`, `~/.claude/skills` (its
+    `synced` skills), `~/.config/opencode/skills`, and built-in skills.
+  Claude Code's synced skills sit at
+  `~/.claude/skills/synced/<id>/<name>/SKILL.md`.
 - **Claude Code rejects draft 2020-12 schemas** passed with `--json-schema`,
   so example schemas declare no `$schema`. `agister check` still accepts
   one: on 2026-09-29 a project schema with the draft 2020-12 `$schema`

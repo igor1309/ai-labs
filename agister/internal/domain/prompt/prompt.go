@@ -1,6 +1,8 @@
 // Package prompt assembles what the agent receives. The words come from the
 // process definition; this package only arranges them with the resolved
 // inputs and the granted permissions, or with a verification run's failure.
+// The one exception is a continuation's notice (Continues), whose facts
+// only Agister knows.
 //
 // It depends on the run package's evidence types (run.Input, run.Output):
 // the agent receives exactly what the call records, so the prompt is built
@@ -37,6 +39,21 @@ func Inputs(inputs []run.Input) string {
 		sections = append(sections, fmt.Sprintf("## %s\n\n%s", input.Name, render(input.Value)))
 	}
 	return strings.Join(sections, "\n\n")
+}
+
+// Continues is Agister's notice to a continued call that works in a
+// checkout of its own (ADR-013 rule 4): the run it continues, the checkout
+// at dir, of revision, and whose changes are applied there. carriedFrom is
+// the session's latest run whose changes were carried, often the run
+// continued; empty when none were.
+func Continues(continued, carriedFrom, dir, revision string) string {
+	text := fmt.Sprintf("This call continues run %s. It works in a new checkout at %s, at revision %s.", continued, dir, revision)
+	if carriedFrom == "" {
+		text += " No changes were carried: the checkout holds the revision as committed."
+	} else {
+		text += fmt.Sprintf(" The changes of run %s, the latest run of the session, are applied there, uncommitted.", carriedFrom)
+	}
+	return "## continuation\n\n" + text + " The directory the earlier run worked in is gone."
 }
 
 func render(value any) string {

@@ -402,7 +402,7 @@ func newFlowHarness() *flowHarness {
 	h.calls = app.NewCalls(
 		app.NewResolver(h.defs, runtimes, okValidator{}), runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs},
-		h.workspaces, changes, app.NewVerifier(changes, &copiesSpy{}, &commandsSpy{}, fixedClock{}), okValidator{}, h.store,
+		h.workspaces, changes, app.NewPreparer(changes, &setupCommandsSpy{}, fixedClock{}), app.NewVerifier(changes, &copiesSpy{}, &commandsSpy{}, fixedClock{}), okValidator{}, h.store,
 		&runsSpy{records: map[string]run.Record{}, states: map[string]run.State{}},
 		fixedClock{}, unfired, &seqIDs{}, "/state", h.hosted,
 	)
@@ -1328,9 +1328,9 @@ func TestCheckRejectsWorkflowsThatCannotRun(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			joined := strings.Join(report.Problems, "\n")
+			joined := strings.Join(messages(report.Problems), "\n")
 			if tc.want == "" {
-				if len(report.Problems) != 0 {
+				if len(messages(report.Problems)) != 0 {
 					t.Fatalf("problems:\n%s", joined)
 				}
 				if report.Checked["workflows"] != 1 {

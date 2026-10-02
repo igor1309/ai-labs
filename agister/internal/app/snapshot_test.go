@@ -10,7 +10,8 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
 
-// failingSource answers from docs, except where told to fail.
+// failingSource answers from docs, except where told to fail. A call that
+// fails is counted among the spy's reads as one that succeeds is.
 type failingSource struct {
 	*definitionsSpy
 	listErr map[definition.Kind]error
@@ -19,6 +20,7 @@ type failingSource struct {
 
 func (s failingSource) List(ctx context.Context, kind definition.Kind) ([]string, error) {
 	if err := s.listErr[kind]; err != nil {
+		s.record("list " + string(kind))
 		return nil, err
 	}
 	return s.definitionsSpy.List(ctx, kind)
@@ -26,6 +28,7 @@ func (s failingSource) List(ctx context.Context, kind definition.Kind) ([]string
 
 func (s failingSource) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
 	if err := s.readErr[string(kind)+"/"+name]; err != nil {
+		s.record(string(kind) + "/" + name)
 		return definition.Document{}, err
 	}
 	return s.definitionsSpy.Read(ctx, kind, name)
@@ -74,7 +77,7 @@ func TestSnapshotReplaysReadAndListErrors(t *testing.T) {
 		if err != nil {
 			return []string{"error: " + err.Error()}
 		}
-		return report.Problems
+		return messages(report.Problems)
 	}
 	if got, want := check(snap), check(live); !reflect.DeepEqual(got, want) {
 		t.Errorf("check on snapshot = %v, on source = %v", got, want)

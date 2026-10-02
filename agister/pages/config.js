@@ -295,10 +295,33 @@
       agent: refName(doc.uses),
       policy: refName(doc.policy),
       params: params(doc.input),
-      verify: doc.verify ? { maxAttempts: doc.verify.max_attempts ?? null } : null,
+      // Inline fields, or the name of a verification (verify:<name>).
+      verify: typeof doc.verify === 'string'
+        ? { ref: refName(doc.verify), maxAttempts: null }
+        : doc.verify ? { maxAttempts: doc.verify.max_attempts ?? null } : null,
+      checkout: doc.workspace?.checkout ?? null,
+      setup: setupOf(doc.workspace?.setup),
       output: doc.output?.schema ?? null,
+      prompts: prompts(doc.input),
       instruction,
     };
+  }
+
+  // The prompts a process's inputs name ({source: prompt, name: <name>}),
+  // each once (ADR-014).
+  function prompts(input) {
+    const values = input && typeof input.values === 'object' && input.values ? Object.values(input.values) : [];
+    const names = values.filter((v) => v?.source === 'prompt' && typeof v.name === 'string').map((v) => v.name);
+    return [...new Set(names)].map((name) => ({ name }));
+  }
+
+  // A setup block (ADR-012) as { command, timeout }; null when none.
+  function setupOf(setup) {
+    return setup && typeof setup === 'object' ? { command: setup.command ?? null, timeout: setup.timeout ?? null } : null;
+  }
+
+  function verifyItem(file, doc) {
+    return { file, name: doc.name ?? stem(file), maxAttempts: doc.max_attempts ?? null };
   }
 
   function agentItem(file, doc) {
@@ -393,12 +416,30 @@
     }
   }
 
+  // workspace.yaml: the setup every process with a checkout and none of its
+  // own runs (ADR-012). null when the folder has none.
+  async function loadWorkspace(agister) {
+    let handle;
+    try {
+      handle = await agister.getFileHandle('workspace.yaml');
+    } catch (err) {
+      if (err && (err.name === 'NotFoundError' || err.name === 'TypeMismatchError')) return null;
+      throw err;
+    }
+    try {
+      const doc = parseYaml(await readText(handle));
+      return { setup: setupOf(doc?.setup) };
+    } catch (err) {
+      return { error: err.message };
+    }
+  }
+
   // The dashboard model of the .agister folder agister.
   async function loadAgister(agister) {
     return link(await readAgister(agister));
   }
 
-  const KINDS = ['workflows', 'processes', 'agents', 'policies', 'runtimes', 'schemas'];
+  const KINDS = ['workflows', 'processes', 'agents', 'policies', 'runtimes', 'schemas', 'verifies', 'prompts'];
 
   // What Agister uses in a repo: Agister home's settings with the repo's
   // over them. As in Agister, a repo file replaces the home file of the
@@ -421,27 +462,36 @@
     model.service = repo.service
       ? { ...repo.service, source: 'repo', overrides: !!home.service }
       : home.service && { ...home.service, source: 'home' };
+    model.workspace = repo.workspace
+      ? { ...repo.workspace, source: 'repo', overrides: !!home.workspace }
+      : home.workspace && { ...home.workspace, source: 'home' };
     return model;
   }
 
   async function readAgister(agister) {
-    const [workflows, processes, agents, policies, runtimes, schemas, service] = await Promise.all([
+    const [workflows, processes, agents, policies, runtimes, schemas, verifies, prompts, service, workspace] = await Promise.all([
       readFolder(agister, 'workflows', ['.yaml', '.yml']),
       readFolder(agister, 'processes', ['.yaml', '.yml']),
       readFolder(agister, 'agents', ['.toml']),
       readFolder(agister, 'policies', ['.yaml', '.yml']),
       readFolder(agister, 'runtimes', ['.yaml', '.yml']),
       readFolder(agister, 'schemas', ['.json']),
+      readFolder(agister, 'verifies', ['.yaml', '.yml']),
+      readFolder(agister, 'prompts', ['.md']),
       loadService(agister),
+      loadWorkspace(agister),
     ]);
     return {
       service,
+      workspace,
       workflows: each(workflows, parseYaml, workflowItem),
       processes: each(processes, parseYaml, processItem),
       agents: each(agents, parseToml, (file, _src, doc) => agentItem(file, doc)),
       policies: each(policies, parseYaml, policyItem),
       runtimes: each(runtimes, parseYaml, (file, _src, doc) => runtimeItem(file, doc)),
       schemas: schemas.map(({ file }) => ({ file, name: stem(file) })),
+      verifies: each(verifies, parseYaml, (file, _src, doc) => verifyItem(file, doc)),
+      prompts: prompts.map(({ file }) => ({ file, name: stem(file) })),
     };
   }
 
@@ -454,6 +504,7 @@
     const policies = names(model.policies);
     const runtimes = names(model.runtimes);
     const schemas = new Set(model.schemas.map((s) => s.name));
+    const prompts = new Map(model.prompts.map((s) => [s.name, s]));
     const usedBy = (items, key, name) => items.filter((x) => !x.error && x[key] === name).map((x) => x.name);
 
     for (const w of model.workflows) {
@@ -465,6 +516,22 @@
       p.agentOutside = !!p.agent && !agents.has(p.agent);
       p.policyOutside = !!p.policy && !policies.has(p.policy);
       p.outputOutside = !!p.output && !schemas.has(p.output);
+      // Each prompt found, with the layer it comes from when composed (ADR-014).
+      p.prompts = p.prompts.map((x) => {
+        const found = prompts.get(x.name);
+        return { ...x, outside: !found, ...(found?.source && { source: found.source, overrides: !!found.overrides }) };
+      });
+      // As Agister resolves it: the process's own setup, or the
+      // workspace's for a checkout without one; none without a checkout.
+      const defaultSetup = model.workspace?.setup;
+      p.effectiveSetup = !p.checkout ? null
+        : p.setup ? { ...p.setup, from: 'process' }
+          : defaultSetup ? { ...defaultSetup, from: 'workspace' } : null;
+      // A named verification, resolved: its attempts, or outside these settings.
+      if (p.verify?.ref) {
+        const named = model.verifies.find((v) => !v.error && v.name === p.verify.ref);
+        p.verify = { ...p.verify, maxAttempts: named?.maxAttempts ?? null, outside: !named };
+      }
       p.usedBy = model.workflows
         .filter((w) => !w.error && [...w.fanOut, ...(w.join ? [w.join] : [])].some((n) => n.process === p.name))
         .map((w) => w.name);
@@ -481,6 +548,12 @@
       if (!r.error) r.usedBy = usedBy(model.agents, 'runtime', r.name);
     }
     for (const s of model.schemas) s.usedBy = usedBy(model.processes, 'output', s.name);
+    for (const s of model.prompts) {
+      s.usedBy = model.processes.filter((p) => !p.error && p.prompts.some((x) => x.name === s.name)).map((p) => p.name);
+    }
+    for (const v of model.verifies) {
+      if (!v.error) v.usedBy = model.processes.filter((p) => !p.error && p.verify?.ref === v.name).map((p) => p.name);
+    }
     return model;
   }
 

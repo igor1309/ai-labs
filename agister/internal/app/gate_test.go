@@ -87,7 +87,7 @@ func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
 		t.Fatalf("valid settings: %q, %v", id, err)
 	}
 
-	inner.report = contract.CheckReport{Problems: []string{"agent a: bad"}}
+	inner.report = contract.CheckReport{Problems: []contract.Problem{{Message: "agent a: bad"}}}
 	inner.reached = nil
 	refused := map[string]error{}
 	_, refused["CreateAgent"] = gated.CreateAgent(ctx, contract.Agent{}, false, nil)
@@ -102,7 +102,7 @@ func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
 	_, refused["ListRuns"] = gated.ListRuns(ctx)
 	for name, err := range refused {
 		var settings *contract.SettingsError
-		if !errors.As(err, &settings) || settings.Report.Problems[0] != "agent a: bad" {
+		if !errors.As(err, &settings) || settings.Report.Problems[0].Message != "agent a: bad" {
 			t.Errorf("%s: %v", name, err)
 		}
 	}

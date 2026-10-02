@@ -1,7 +1,8 @@
 // Package fsdefs stores definition documents as files under Agister's
-// state directory: service.toml, agents/*.toml, processes/*.yaml,
-// policies/*.yaml, runtimes/*.yaml, schemas/*.json, workflows/*.yaml. Layered reads a
-// project's own settings over the global ones.
+// state directory: service.toml, workspace.yaml, agents/*.toml, processes/*.yaml,
+// policies/*.yaml, runtimes/*.yaml, schemas/*.json, workflows/*.yaml,
+// verifies/*.yaml, prompts/*.md. Layered reads a project's own settings over
+// the global ones.
 package fsdefs
 
 import (
@@ -78,6 +79,10 @@ var extensions = map[definition.Kind]string{
 	definition.KindRuntime:  ".yaml",
 	definition.KindSchema:   ".json",
 	definition.KindWorkflow: ".yaml",
+	definition.KindVerify:   ".yaml",
+	definition.KindPrompt:   ".md",
+	// A singleton, like the service.
+	definition.KindWorkspace: ".yaml",
 }
 
 func (s Store) path(kind definition.Kind, name string) (string, error) {
@@ -85,8 +90,8 @@ func (s Store) path(kind definition.Kind, name string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("unknown definition kind %q", kind)
 	}
-	if kind == definition.KindService {
-		return filepath.Join(s.Dir, "service"+extension), nil
+	if kind == definition.KindService || kind == definition.KindWorkspace {
+		return filepath.Join(s.Dir, string(kind)+extension), nil
 	}
 	if !definition.ValidName(name) {
 		return "", fmt.Errorf("invalid name %q", name)
@@ -112,7 +117,23 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 	}, nil
 }
 
+// List names the documents of kind. The workspace settings are listed when
+// the one document exists, so a missing one reads as none.
 func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
+	if kind == definition.KindWorkspace {
+		path, _ := s.path(kind, string(kind))
+		info, err := os.Stat(path)
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		if info.IsDir() {
+			return nil, nil
+		}
+		return []string{string(kind)}, nil
+	}
 	entries, err := os.ReadDir(filepath.Join(s.Dir, string(kind)))
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
@@ -122,9 +143,17 @@ func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 	}
 	var names []string
 	for _, entry := range entries {
-		if name, ok := strings.CutSuffix(entry.Name(), extensions[kind]); ok && !entry.IsDir() {
-			names = append(names, name)
+		name, ok := strings.CutSuffix(entry.Name(), extensions[kind])
+		if !ok || entry.IsDir() {
+			continue
 		}
+		// A file in prompts/ whose name breaks the naming rule is not a
+		// prompt: settings may still read it through source: file (ADR-014
+		// rule 5).
+		if kind == definition.KindPrompt && !definition.ValidName(name) {
+			continue
+		}
+		names = append(names, name)
 	}
 	sort.Strings(names)
 	return names, nil
@@ -226,19 +255,25 @@ func digest(data []byte) string {
 type Layered struct {
 	Global  Store
 	Project *Store // nil outside a project
+	// Absent, when Project is nil, is the settings directory of the
+	// repository that has none: a document found in neither layer names
+	// where it was expected there too.
+	Absent string
 }
 
 func (l Layered) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
 	if l.Project == nil {
-		return l.Global.Read(ctx, kind, name)
+		doc, err := l.Global.Read(ctx, kind, name)
+		if errors.Is(err, errNotFound) && l.Absent != "" {
+			return doc, l.notFound(Store{Dir: l.Absent}, kind, name)
+		}
+		return doc, err
 	}
 	doc, err := l.Project.Read(ctx, kind, name)
 	if errors.Is(err, errNotFound) {
 		doc, err = l.Global.Read(ctx, kind, name)
 		if errors.Is(err, errNotFound) {
-			projectPath, _ := l.Project.path(kind, name)
-			globalPath, _ := l.Global.path(kind, name)
-			return doc, fmt.Errorf("%w (expected %s or %s)", errNotFound, projectPath, globalPath)
+			return doc, l.notFound(*l.Project, kind, name)
 		}
 		return doc, err
 	}
@@ -252,6 +287,14 @@ func (l Layered) Read(ctx context.Context, kind definition.Kind, name string) (d
 		}
 	}
 	return doc, nil
+}
+
+// notFound says that a document is in neither project nor the global store,
+// and where each would hold it.
+func (l Layered) notFound(project Store, kind definition.Kind, name string) error {
+	projectPath, _ := project.path(kind, name)
+	globalPath, _ := l.Global.path(kind, name)
+	return fmt.Errorf("%w (expected %s or %s)", errNotFound, projectPath, globalPath)
 }
 
 // List names every document of kind in either layer.

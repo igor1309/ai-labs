@@ -1,5 +1,10 @@
 # AGENTS
 
+## Issues
+
+- `LAB-*` issues live in the Multica workspace `ai-labs`, which is not the
+  CLI default: `multica --workspace-id 4bffb154-c309-4416-917d-22a9fb2b5950 issue get LAB-<n>`.
+
 ## Pull request merge workflow
 
 - For the `pr-merge` workflow, use `scripts/watch-pr.sh` to monitor CI and

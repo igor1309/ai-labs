@@ -397,3 +397,101 @@ test('a Settings read that fails while Runs is shown says why only once Settings
   await settle();
   assert.equal(p.$('status').textContent, 'no .agister folder at /gone/.agister');
 });
+
+test('malformed workspace settings show their filename and parse error on the dashboard', async () => {
+  const files = {
+    ...agent,
+    'workspace.yaml': 'schema: agister.workspace/v1alpha1\nsetup: {command: [}\n',
+    'processes/fix.yaml': 'name: fix\nuses: agent:opus\nworkspace:\n  checkout: rev\n',
+  };
+  const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
+  await p.started;
+  assert.deepEqual(p.shown(), { settings: true, runs: false });
+  assert.ok(p.$('process-fix'));
+  const errors = p.$('dashboard').querySelectorAll('.error');
+  assert.equal(errors.length, 1);
+  assert.match(errors[0].textContent, /^workspace\.yaml: .+/);
+  assert.match(errors[0].textContent, /column/);
+  assert.match(errors[0].parentNode.textContent, /Workspace settings/);
+});
+
+test('a process card shows the setup its checkout runs, and where it comes from', async () => {
+  const files = {
+    ...agent,
+    'workspace.yaml': 'schema: agister.workspace/v1alpha1\nsetup:\n  command: ./link-config.sh\n  timeout: 2m\n',
+    'processes/fix.yaml': 'name: fix\nuses: agent:opus\nworkspace:\n  checkout: rev\n',
+    'processes/own.yaml': 'name: own\nuses: agent:opus\nworkspace:\n  checkout: rev\n  setup: {command: ./own.sh, timeout: 30s}\n',
+  };
+  const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
+  await p.started;
+  const card = (name) => p.$(`process-${name}`).textContent;
+  assert.match(card('fix'), /setup\.\/link-config\.sh within 2m, from workspace\.yaml/);
+  assert.match(card('own'), /setup\.\/own\.sh within 30s/);
+  assert.doesNotMatch(card('own'), /workspace\.yaml/);
+});
+
+// README, Settings: a process card shows the attempts of the verification
+// the process names, or marks it missing when these settings have none.
+test('a process card shows the verification its process names, or marks it missing', async () => {
+  const naming = { ...agent, 'processes/implement.yaml': 'name: implement\nuses: agent:opus\nverify: verify:repo\n' };
+  const output = async (files) => {
+    const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
+    await p.started;
+    const facts = p.$('dashboard').querySelector('article#process-implement div.facts').children;
+    return facts[facts.findIndex((n) => n.textContent === 'output') + 1];
+  };
+
+  const found = await output({ ...naming, 'verifies/repo.yaml': 'name: repo\ncommand: make test\nmax_attempts: 2\n' });
+  assert.equal(found.textContent, 'a failed verify (repo) is fixed up to 2×');
+  assert.equal(found.querySelector('span.missing'), null);
+
+  const absent = await output(naming);
+  assert.equal(absent.textContent, 'repo (missing verify)');
+  const marker = absent.querySelector('span.missing');
+  assert.equal(marker.textContent, 'repo (missing verify)');
+  assert.equal(marker.title, 'No verify named repo in these settings: Agister refuses the call');
+});
+
+// README, Settings: a process card shows the prompts its process names,
+// each marked missing when these settings have none of that name.
+test('a process card shows the prompts its process names, and marks a missing one', async () => {
+  const naming = { ...agent, 'processes/review.yaml': 'name: review\nuses: agent:opus\ninput:\n  instruction: Review.\n  values:\n    rules: {source: prompt, name: rules}\n    style: {source: prompt, name: style}\n' };
+  const prompts = async (files) => {
+    const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
+    await p.started;
+    const facts = p.$('dashboard').querySelector('article#process-review div.facts').children;
+    return facts[facts.findIndex((n) => n.textContent === 'prompts') + 1];
+  };
+
+  const found = await prompts({ ...naming, 'prompts/rules.md': 'Rules.\n', 'prompts/style.md': 'Style.\n' });
+  assert.equal(found.textContent, 'rules, style');
+  assert.equal(found.querySelector('span.missing'), null);
+
+  const absent = await prompts({ ...naming, 'prompts/rules.md': 'Rules.\n' });
+  assert.equal(absent.textContent, 'rules, style (missing prompt)');
+  const marker = absent.querySelector('span.missing');
+  assert.equal(marker.textContent, 'style (missing prompt)');
+  assert.equal(marker.title, 'No prompt named style in these settings: Agister refuses the call');
+});
+
+// ADR-014: pages show which layer each prompt comes from. In a repo, a
+// prompt of its own replaces home's and says so; one only home has says
+// home. A prompt two inputs name is listed once.
+test('a process card in a repo shows the layer each prompt comes from, each prompt once', async () => {
+  const homeFiles = {
+    ...agent,
+    'processes/review.yaml': 'name: review\nuses: agent:opus\ninput:\n  instruction: Review.\n  values:\n    rules: {source: prompt, name: rules}\n    again: {source: prompt, name: rules}\n    style: {source: prompt, name: style}\n',
+    'prompts/rules.md': 'Home rules.\n',
+    'prompts/style.md': 'Home style.\n',
+  };
+  const files = { 'prompts/rules.md': 'Repo rules.\n' };
+  const p = page({
+    storage: fakeStorage({ 'agister-pages:current': '/r' }),
+    answers: { 'api/settings': () => respond({ path: '/r', dir: '/r/.agister', files, homeFiles }) },
+  });
+  await p.started;
+  const facts = p.$('dashboard').querySelector('article#process-review div.facts').children;
+  const line = facts[facts.findIndex((n) => n.textContent === 'prompts') + 1];
+  assert.equal(line.textContent, 'rules repo, replaces home, style home');
+  assert.deepEqual(line.querySelectorAll('span.chip').map((c) => c.textContent), ['repo, replaces home', 'home']);
+});

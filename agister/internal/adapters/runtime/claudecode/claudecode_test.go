@@ -2,47 +2,18 @@ package claudecode_test
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/claudecode"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/app"
-	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-const session = "5145d89d-470e-4b56-a78c-da035d5de49b"
-
-func request(prompt string) app.TurnRequest {
-	return app.TurnRequest{
-		Prompt:       prompt,
-		Instruction:  "Do the thing.",
-		Primitives:   []string{"Read", "Grep"},
-		Model:        "sonnet",
-		Effort:       "high",
-		Timeout:      time.Minute,
-		OutputSchema: json.RawMessage(`{"type":"object"}`),
-	}
-}
-
-func TestConformance(t *testing.T) {
-	runtimetest.Conformance(t, runtimetest.Subject{
-		New: func(command string) app.TurnRunner {
-			return &claudecode.Runner{Command: command, KillGrace: 200 * time.Millisecond}
-		},
-		Fake:      runtimetest.Binary(t, "fakeclaude"),
-		Contract:  claudecode.Contract,
-		ToolCalls: true,
-		Request:   request,
-	})
-}
-
 func TestArgumentsCarryPrimitivesAndContractFlags(t *testing.T) {
-	args, err := claudecode.Arguments(request("hello"))
+	args, err := claudecode.Arguments(claudecode.TurnRequest(request("hello")))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +51,7 @@ func TestEveryTurnLoadsTheRepositoryAndGetsSkill(t *testing.T) {
 	} {
 		r := request("x")
 		r.Primitives, r.ResumeSessionID = c.primitives, c.resume
-		args, err := claudecode.Arguments(r)
+		args, err := claudecode.Arguments(claudecode.TurnRequest(r))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -94,7 +65,7 @@ func TestEveryTurnLoadsTheRepositoryAndGetsSkill(t *testing.T) {
 func TestInvalidPrimitiveIsRejected(t *testing.T) {
 	r := request("x")
 	r.Primitives = []string{"Bash(git diff:*)"}
-	if _, err := claudecode.Arguments(r); err == nil {
+	if _, err := claudecode.Arguments(claudecode.TurnRequest(r)); err == nil {
 		t.Fatal("a primitive with spaces must be rejected")
 	}
 }
@@ -122,8 +93,8 @@ func TestStreamReduction(t *testing.T) {
 		t.Fatalf("kinds = %v", kinds)
 	}
 	code := 0
-	turn := stream.Reconcile(supervisor.Evidence{Exit: &run.Exit{Code: &code}}, true)
-	if turn.Status != run.Completed || string(turn.Output) != `{"answer":"vm"}` || turn.Text != "The hostname is vm." ||
+	turn := stream.Reconcile(claudecode.Evidence{Exit: &claudecode.Exit{Code: &code}}, true)
+	if string(turn.Status) != string(claudecode.Completed) || string(turn.Output) != `{"answer":"vm"}` || turn.Text != "The hostname is vm." ||
 		// The session's cost; the turn's own is the call's to derive.
 		turn.CostUSD != nil || *turn.Session.CostUSD != 0.06 || turn.Session.Usage != nil {
 		t.Fatalf("turn = %+v", turn)
@@ -140,8 +111,8 @@ func TestResumeReportingAnotherSessionFails(t *testing.T) {
 	}
 	stream.Reduce(`{"type":"result","subtype":"success","is_error":false,"session_id":"other"}`)
 	code := 0
-	turn := stream.Reconcile(supervisor.Evidence{Exit: &run.Exit{Code: &code}}, false)
-	if turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError || turn.ProviderSessionID != "other" || !strings.Contains(turn.Error.Message, session) {
+	turn := stream.Reconcile(claudecode.Evidence{Exit: &claudecode.Exit{Code: &code}}, false)
+	if string(turn.Status) != string(claudecode.Failed) || string(turn.Error.Class) != string(claudecode.ClassRuntimeError) || turn.ProviderSessionID != "other" || !strings.Contains(turn.Error.Message, session) {
 		t.Fatalf("turn = %+v", turn)
 	}
 	// A terminal result naming another session breaks it too, after an
@@ -151,13 +122,13 @@ func TestResumeReportingAnotherSessionFails(t *testing.T) {
 	if events := late.Reduce(`{"type":"result","subtype":"success","is_error":false,"session_id":"other"}`); len(events) != 2 || events[1].Kind != "SESSION_ID_MISMATCH" {
 		t.Fatalf("events = %+v", events)
 	}
-	if turn := late.Reconcile(supervisor.Evidence{Exit: &run.Exit{Code: &code}}, false); turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError || !strings.Contains(turn.Error.Message, `"other"`) {
+	if turn := late.Reconcile(claudecode.Evidence{Exit: &claudecode.Exit{Code: &code}}, false); string(turn.Status) != string(claudecode.Failed) || string(turn.Error.Class) != string(claudecode.ClassRuntimeError) || !strings.Contains(turn.Error.Message, `"other"`) {
 		t.Fatalf("turn = %+v", turn)
 	}
 	// A result that names no session does not confirm the resumed one.
 	silent := &claudecode.Stream{ResumedSessionID: session}
 	silent.Reduce(`{"type":"result","subtype":"success","is_error":false}`)
-	if turn := silent.Reconcile(supervisor.Evidence{Exit: &run.Exit{Code: &code}}, false); turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError {
+	if turn := silent.Reconcile(claudecode.Evidence{Exit: &claudecode.Exit{Code: &code}}, false); string(turn.Status) != string(claudecode.Failed) || string(turn.Error.Class) != string(claudecode.ClassRuntimeError) {
 		t.Fatalf("turn = %+v", turn)
 	}
 }
@@ -174,20 +145,20 @@ func TestGarbageIsRecorded(t *testing.T) {
 
 func TestResultPrecedence(t *testing.T) {
 	code := 0
-	clean := supervisor.Evidence{Exit: &run.Exit{Code: &code}}
+	clean := claudecode.Evidence{Exit: &claudecode.Exit{Code: &code}}
 	with := func(result string) *claudecode.Stream {
 		stream := &claudecode.Stream{}
 		stream.Reduce(result)
 		return stream
 	}
-	if turn := with(`{"type":"result","subtype":"success","is_error":true}`).Reconcile(clean, false); turn.Status != run.Failed {
+	if turn := with(`{"type":"result","subtype":"success","is_error":true}`).Reconcile(clean, false); string(turn.Status) != string(claudecode.Failed) {
 		t.Fatalf("success with is_error must fail: %+v", turn)
 	}
-	if turn := with(`{"type":"result","subtype":"success","is_error":false}`).Reconcile(clean, true); turn.Status != run.Failed || turn.Error.Class != run.ClassInvalidOutput {
+	if turn := with(`{"type":"result","subtype":"success","is_error":false}`).Reconcile(clean, true); string(turn.Status) != string(claudecode.Failed) || string(turn.Error.Class) != string(claudecode.ClassInvalidOutput) {
 		t.Fatalf("missing structured output must fail: %+v", turn)
 	}
-	timedOut := supervisor.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "terminated"}}
-	if turn := with(`{"type":"result","subtype":"success","is_error":false}`).Reconcile(timedOut, false); turn.Status != run.Completed {
+	timedOut := claudecode.Evidence{TimedOut: true, Exit: &claudecode.Exit{Signal: "terminated"}}
+	if turn := with(`{"type":"result","subtype":"success","is_error":false}`).Reconcile(timedOut, false); string(turn.Status) != string(claudecode.Completed) {
 		t.Fatalf("a result before the timeout decides the turn: %+v", turn)
 	}
 }
@@ -195,7 +166,7 @@ func TestResultPrecedence(t *testing.T) {
 // Agister chooses no session ID: a fresh turn names none, and a
 // continuation resumes the reported one in place, without forking.
 func TestContinuationResumesInPlaceAndCostLimitIsPassed(t *testing.T) {
-	fresh, err := claudecode.Arguments(request("x"))
+	fresh, err := claudecode.Arguments(claudecode.TurnRequest(request("x")))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +177,7 @@ func TestContinuationResumesInPlaceAndCostLimitIsPassed(t *testing.T) {
 	r.ResumeSessionID = "earlier"
 	limit := 0.5
 	r.MaxCostUSD = &limit
-	args, err := claudecode.Arguments(r)
+	args, err := claudecode.Arguments(claudecode.TurnRequest(r))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +191,7 @@ func TestUsageIsNormalized(t *testing.T) {
 	stream := &claudecode.Stream{}
 	stream.Reduce(`{"type":"result","subtype":"success","is_error":false,"duration_ms":1200,"usage":{"input_tokens":10,"output_tokens":20,"cache_read_input_tokens":30,"cache_creation_input_tokens":40}}`)
 	code := 0
-	turn := stream.Reconcile(supervisor.Evidence{Exit: &run.Exit{Code: &code}}, false)
+	turn := stream.Reconcile(claudecode.Evidence{Exit: &claudecode.Exit{Code: &code}}, false)
 	u := turn.Usage
 	if u == nil || *u.InputTokens != 10 || *u.OutputTokens != 20 || *u.CacheReadTokens != 30 || *u.CacheWriteTokens != 40 || u.ReasoningTokens != nil || *turn.RuntimeMS != 1200 {
 		t.Fatalf("usage %+v, turn %+v", u, turn)
@@ -229,26 +200,84 @@ func TestUsageIsNormalized(t *testing.T) {
 
 func TestFailuresAreClassified(t *testing.T) {
 	code := 0
-	clean := supervisor.Evidence{Exit: &run.Exit{Code: &code}}
+	clean := claudecode.Evidence{Exit: &claudecode.Exit{Code: &code}}
 	for _, c := range []struct {
 		name  string
 		lines []string
-		class run.Class
+		class claudecode.Class
 	}{
-		{"budget (observed live)", []string{`{"type":"result","subtype":"error_max_budget_usd","is_error":true,"errors":["Reached maximum budget ($0.0001)"]}`}, run.ClassBudgetExhausted},
-		{"http 429", []string{`{"type":"result","subtype":"success","is_error":true,"api_error_status":429}`}, run.ClassRateLimited},
-		{"rejected by the rate limiter", []string{`{"type":"rate_limit_event","rate_limit_info":{"status":"rejected"}}`, `{"type":"result","subtype":"success","is_error":true}`}, run.ClassRateLimited},
-		{"http 401", []string{`{"type":"result","subtype":"success","is_error":true,"api_error_status":401}`}, run.ClassAuth},
-		{"prompt too long", []string{`{"type":"result","subtype":"success","is_error":true,"result":"Prompt is too long"}`}, run.ClassContextOverflow},
-		{"anything else", []string{`{"type":"result","subtype":"error_max_turns","is_error":true}`}, run.ClassRuntimeError},
+		{"budget (observed live)", []string{`{"type":"result","subtype":"error_max_budget_usd","is_error":true,"errors":["Reached maximum budget ($0.0001)"]}`}, claudecode.ClassBudgetExhausted},
+		{"http 429", []string{`{"type":"result","subtype":"success","is_error":true,"api_error_status":429}`}, claudecode.ClassRateLimited},
+		{"rejected by the rate limiter", []string{`{"type":"rate_limit_event","rate_limit_info":{"status":"rejected"}}`, `{"type":"result","subtype":"success","is_error":true}`}, claudecode.ClassRateLimited},
+		{"http 401", []string{`{"type":"result","subtype":"success","is_error":true,"api_error_status":401}`}, claudecode.ClassAuth},
+		{"prompt too long", []string{`{"type":"result","subtype":"success","is_error":true,"result":"Prompt is too long"}`}, claudecode.ClassContextOverflow},
+		{"anything else", []string{`{"type":"result","subtype":"error_max_turns","is_error":true}`}, claudecode.ClassRuntimeError},
 	} {
 		stream := &claudecode.Stream{}
 		for _, line := range c.lines {
 			stream.Reduce(line)
 		}
-		if turn := stream.Reconcile(clean, false); turn.Status != run.Failed || turn.Error.Class != c.class {
+		if turn := stream.Reconcile(clean, false); string(turn.Status) != string(claudecode.Failed) || string(turn.Error.Class) != string(c.class) {
 			t.Errorf("%s: %+v", c.name, turn.Error)
 		}
+	}
+}
+
+func TestErrorResultMessages(t *testing.T) {
+	const limit = "You've hit your session limit · resets 12:30pm (Europe/Moscow)"
+	for _, c := range []struct {
+		name    string
+		result  string
+		class   claudecode.Class
+		message string
+	}{
+		{
+			name:    "session limit observed 2026-10-02",
+			result:  `{"type":"result","subtype":"success","is_error":true,"result":"You've hit your session limit · resets 12:30pm (Europe/Moscow)","api_error_status":429,"stop_reason":"stop_sequence"}`,
+			class:   claudecode.ClassRateLimited,
+			message: "runtime reported an error (429): " + limit,
+		},
+		{
+			name:    "error without status",
+			result:  `{"type":"result","subtype":"success","is_error":true,"result":"Something went wrong"}`,
+			class:   claudecode.ClassRuntimeError,
+			message: "runtime reported an error: Something went wrong",
+		},
+		{
+			name:    "named error",
+			result:  `{"type":"result","subtype":"error_max_turns","is_error":true}`,
+			class:   claudecode.ClassRuntimeError,
+			message: "runtime reported error_max_turns",
+		},
+		{
+			name:    "budget error",
+			result:  `{"type":"result","subtype":"error_max_budget_usd","is_error":true,"errors":["Reached maximum budget ($0.0001)"]}`,
+			class:   claudecode.ClassBudgetExhausted,
+			message: "runtime reported error_max_budget_usd: Reached maximum budget ($0.0001)",
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "result.json")
+			if err := os.WriteFile(path, []byte(c.result), 0600); err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			stream := &claudecode.Stream{}
+			if events := stream.Reduce(string(data)); len(events) != 1 || events[0].Kind != "TURN_FAILED" {
+				t.Fatalf("events = %+v", events)
+			}
+			code := 0
+			turn := stream.Reconcile(claudecode.Evidence{Exit: &claudecode.Exit{Code: &code}}, false)
+			if turn.Status != claudecode.Failed || turn.Error == nil || turn.Error.Class != c.class {
+				t.Fatalf("turn = %+v", turn)
+			}
+			if turn.Error.Message != c.message || strings.Contains(turn.Error.Message, "success") {
+				t.Fatalf("message = %q, want %q without success", turn.Error.Message, c.message)
+			}
+		})
 	}
 }
 
@@ -257,8 +286,8 @@ func TestFailuresAreClassified(t *testing.T) {
 func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
 	stream := &claudecode.Stream{}
 	stream.Reduce(`{"type":"result","subtype":"success","is_error":false}`)
-	turn := stream.Reconcile(supervisor.Evidence{RecordError: "disk full"}, false)
-	if turn.Status != run.Failed || turn.Error == nil || turn.Error.Class != run.ClassInternal || !strings.Contains(turn.Error.Message, "disk full") {
+	turn := stream.Reconcile(claudecode.Evidence{RecordError: "disk full"}, false)
+	if string(turn.Status) != string(claudecode.Failed) || turn.Error == nil || string(turn.Error.Class) != string(claudecode.ClassInternal) || !strings.Contains(turn.Error.Message, "disk full") {
 		t.Fatalf("turn = %+v", turn)
 	}
 }
@@ -281,11 +310,11 @@ func TestStreamReportsToolCalls(t *testing.T) {
 		stream.Reduce(string(data))
 	}
 	bash, _ := json.Marshal(map[string]any{"command": "go test ./...", "description": long})
-	started := func(call app.ToolCall) claudecode.Tool { return claudecode.Tool{Started: &call} }
+	started := func(call claudecode.ToolCall) claudecode.Tool { return claudecode.Tool{Started: &call} }
 	want := []claudecode.Tool{
-		started(app.ToolCall{ID: "t1", Name: "Bash", Input: string(bash), Command: true}),
+		started(claudecode.ToolCall{ID: "t1", Name: "Bash", Input: string(bash), Command: true}),
 		{Finished: "t1"},
-		started(app.ToolCall{ID: "t2", Name: "Read", Input: `{"file_path":"a.go"}`}),
+		started(claudecode.ToolCall{ID: "t2", Name: "Read", Input: `{"file_path":"a.go"}`}),
 	}
 	if got := stream.TakeTools(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("tools = %+v", got)

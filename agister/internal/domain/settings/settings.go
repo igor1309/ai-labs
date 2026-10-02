@@ -22,6 +22,21 @@ type Bundle struct {
 	Mappings  map[string]definition.Mapping
 	Schemas   map[string]bool
 	Workflows map[string]definition.Workflow
+	Verifies  map[string]definition.Verification
+	// Prompts are the prompt documents the settings have; an unreadable
+	// one is a problem of its own, not of the processes that name it.
+	Prompts map[string]bool
+}
+
+// Resolved returns the process named name with the verification it names
+// as its verify, as a call resolves it (ADR-010 rule 3). One that names a
+// verification the bundle lacks is returned without verify values.
+func (b Bundle) Resolved(name string) definition.Process {
+	process := b.Processes[name]
+	if verification, ok := b.Verifies[process.VerifyName]; ok && process.VerifyName != "" {
+		process.Verify = &verification.Verify
+	}
+	return process
 }
 
 // Mechanisms are what the code provides, named by settings.
@@ -34,6 +49,9 @@ type Mechanisms struct {
 type Problem struct {
 	Subject string
 	Message string
+	// Unknown: it names a mechanism the code does not provide, as settings
+	// written for a newer Agister would.
+	Unknown bool
 }
 
 func (p Problem) String() string { return p.Subject + ": " + p.Message }
@@ -43,6 +61,9 @@ func Check(b Bundle, m Mechanisms) []Problem {
 	var problems []Problem
 	add := func(subject, format string, args ...any) {
 		problems = append(problems, Problem{Subject: subject, Message: fmt.Sprintf(format, args...)})
+	}
+	unknown := func(subject, format string, args ...any) {
+		problems = append(problems, Problem{Subject: subject, Message: fmt.Sprintf(format, args...), Unknown: true})
 	}
 	if b.Service == nil {
 		add("service", "service settings are missing")
@@ -54,7 +75,7 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		mapping := b.Mappings[name]
 		subject := "runtime mapping " + name
 		if !contains(m.Adapters, mapping.Adapter) {
-			add(subject, "unknown adapter %q (available: %s)", mapping.Adapter, strings.Join(m.Adapters, ", "))
+			unknown(subject, "unknown adapter %q (available: %s)", mapping.Adapter, strings.Join(m.Adapters, ", "))
 		}
 		if unknown := mapping.UnknownPermissions(vocabulary); len(unknown) > 0 {
 			add(subject, "grants permissions not in the vocabulary: %s", strings.Join(unknown, ", "))
@@ -87,11 +108,15 @@ func Check(b Bundle, m Mechanisms) []Problem {
 	}
 
 	for _, name := range sortedKeys(b.Processes) {
-		process := b.Processes[name]
+		process := b.Resolved(name)
 		subject := "process " + name
 		for _, value := range process.Values {
 			if !contains(m.Sources, value.Source) {
-				add(subject, "input %s: unknown source %q (available: %s)", value.Name, value.Source, strings.Join(m.Sources, ", "))
+				unknown(subject, "input %s: unknown source %q (available: %s)", value.Name, value.Source, strings.Join(m.Sources, ", "))
+			}
+			// A prompt is part of the process (ADR-014 rule 4).
+			if name := value.Args["name"]; value.Source == definition.PromptSource && name != "" && !b.Prompts[name] {
+				add(subject, "input %s: prompt %q does not exist", value.Name, name)
 			}
 		}
 		if process.Output.Format == "json" && !b.Schemas[process.Output.Schema] {
@@ -137,7 +162,7 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		}
 		for _, value := range workflow.Values {
 			if !contains(m.Sources, value.Source) {
-				add(subject, "input %s: unknown source %q (available: %s)", value.Name, value.Source, strings.Join(m.Sources, ", "))
+				unknown(subject, "input %s: unknown source %q (available: %s)", value.Name, value.Source, strings.Join(m.Sources, ", "))
 			}
 		}
 		for _, problem := range WorkflowProblems(workflow, b.Processes) {
@@ -186,7 +211,7 @@ func PlanProblems(b Bundle, agent definition.Agent, version string) []Problem {
 	verified, unverified := mapping.ForVersion(version)
 	var problems []Problem
 	for _, name := range sortedKeys(b.Processes) {
-		process := b.Processes[name]
+		process := b.Resolved(name)
 		if process.Agent != agent.Name {
 			continue
 		}

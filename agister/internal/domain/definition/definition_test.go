@@ -43,6 +43,10 @@ func TestExamplesParse(t *testing.T) {
 			_, parseErr = definition.ParseMapping(doc(kind, name, string(data)))
 		case definition.KindWorkflow:
 			_, parseErr = definition.ParseWorkflow(doc(kind, name, string(data)))
+		case definition.KindVerify:
+			_, parseErr = definition.ParseVerify(doc(kind, name, string(data)))
+		case definition.KindPrompt:
+			_, parseErr = definition.ParsePrompt(doc(kind, name, string(data)))
 		}
 		if parseErr != nil {
 			t.Errorf("%s: %v", path, parseErr)
@@ -64,6 +68,7 @@ func TestShippedRevisionInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 		"examples/settings": settings,
 		"examples/codex":    os.DirFS("../../../examples/codex"),
 		"examples/pi":       os.DirFS("../../../examples/pi"),
+		"examples/opencode": os.DirFS("../../../examples/opencode"),
 		".agister":          os.DirFS("../../../../.agister"),
 	}
 	exact := regexp.MustCompile(`^\$\{value\.([^}]+)\}$`)
@@ -118,7 +123,7 @@ func TestResearchPolicyParsesInPlace(t *testing.T) {
 	}
 	_, err = definition.ParsePolicy(doc(definition.KindPolicy, "static-review", string(data)))
 	var invalid *definition.InvalidError
-	if !errors.As(err, &invalid) || strings.Join(invalid.Problems, "; ") != "constraints: unknown field; resources: not supported yet: Agister would not enforce it; artifacts: not supported yet: Agister would not enforce it" {
+	if !errors.As(err, &invalid) || strings.Join(invalid.Messages(), "; ") != "constraints: unknown field; resources: not supported yet: Agister would not enforce it; artifacts: not supported yet: Agister would not enforce it" {
 		t.Fatalf("err = %v", err)
 	}
 	policy, err := definition.ParsePolicy(doc(definition.KindPolicy, "static-review", string(withoutTopLevel(data, "constraints", "resources", "artifacts"))))
@@ -264,7 +269,7 @@ func TestUnreadableDocumentsReportOneProblem(t *testing.T) {
 		for _, text := range []string{dsStore, utf16} {
 			var invalid *definition.InvalidError
 			if err := parse(text); !errors.As(err, &invalid) ||
-				!reflect.DeepEqual(invalid.Problems, []string{"not a UTF-8 text file"}) {
+				!reflect.DeepEqual(invalid.Messages(), []string{"not a UTF-8 text file"}) {
 				t.Errorf("%s %q: %v", kind, text, err)
 			}
 		}
@@ -358,7 +363,7 @@ primitives:
     `+item+`
 `))
 		var invalid *definition.InvalidError
-		if !errors.As(err, &invalid) || strings.Join(invalid.Problems, "; ") != "primitives.items.X.grants: must grant at least one permission" {
+		if !errors.As(err, &invalid) || strings.Join(invalid.Messages(), "; ") != "primitives.items.X.grants: must grant at least one permission" {
 			t.Errorf("%s: %v", item, err)
 		}
 	}
@@ -498,6 +503,47 @@ func TestStalenessLimitProblems(t *testing.T) {
 		_, err := definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy+block+"\n"))
 		if err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("%s: err = %v, want %q", block, err, want)
+		}
+	}
+}
+
+// A problem that names something this code does not know, as a document
+// written for a newer Agister would, is marked: an unknown field, and a
+// schema of Agister's shape this code does not read. Any other mistake,
+// a schema of another shape included, is not.
+func TestProblemsNamingTheUnknownAreMarked(t *testing.T) {
+	process := func(schema, extra string) string {
+		return "schema: " + schema + "\nname: p\ntype: process\nuses: agent:a\n" + extra +
+			"input:\n  instruction: x\noutput:\n  format: text\n"
+	}
+	agent := func(schema, extra string) string {
+		return "schema = \"" + schema + "\"\nname = \"a\"\n" + extra
+	}
+	parsers := map[string]func(string) error{
+		"process": func(text string) error {
+			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", text))
+			return err
+		},
+		"agent": func(text string) error {
+			_, err := definition.ParseAgent(doc(definition.KindAgent, "a", text))
+			return err
+		},
+	}
+	for _, c := range []struct {
+		name, kind, text string
+		want             definition.Problem
+	}{
+		{"unknown field", "process", process("agister.process/v1alpha1", "future: 1\n"), definition.Problem{Message: "future: unknown field", Unknown: true}},
+		{"newer schema", "process", process("agister.process/v2", ""), definition.Problem{Message: `schema: must be "agister.process/v1alpha1"`, Unknown: true}},
+		{"another schema", "process", process("banana", ""), definition.Problem{Message: `schema: must be "agister.process/v1alpha1"`}},
+		{"unknown TOML field", "agent", agent("agister.agent/v1alpha1", "runtime = \"rt\"\nfuture = 1\n"), definition.Problem{Message: "future: unknown field", Unknown: true}},
+		{"newer TOML schema", "agent", agent("agister.agent/v2", "runtime = \"rt\"\n"), definition.Problem{Message: `schema: must be "agister.agent/v1alpha1"`, Unknown: true}},
+		{"another TOML schema", "agent", agent("banana", "runtime = \"rt\"\n"), definition.Problem{Message: `schema: must be "agister.agent/v1alpha1"`}},
+		{"missing field", "agent", agent("agister.agent/v1alpha1", ""), definition.Problem{Message: "runtime: is required"}},
+	} {
+		var invalid *definition.InvalidError
+		if err := parsers[c.kind](c.text); !errors.As(err, &invalid) || !reflect.DeepEqual(invalid.Problems, []definition.Problem{c.want}) {
+			t.Errorf("%s: %#v, want %#v", c.name, err, c.want)
 		}
 	}
 }

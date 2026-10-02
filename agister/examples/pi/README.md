@@ -3,10 +3,8 @@
 [Pi](https://pi.dev) is the coding agent CLI of the npm package
 `@earendil-works/pi-coding-agent`; adapter `pi`, contract `pi/1`, written
 against 0.85.1. These settings are not installed by `agister init`.
-The read tools (`read`, `grep`, `find` and `ls`) are verified for 0.85;
-`agister check` accepts the example. A policy requiring `edit`, `write`
-or `bash` is still refused: those tools have not been checked live and
-are never granted.
+Every tool (`read`, `grep`, `find`, `ls`, `edit`, `write` and `bash`) is
+verified for 0.85; `agister check` accepts the example.
 
 ## Install and authenticate
 
@@ -51,8 +49,9 @@ provider's environment variable (`OPENCODE_API_KEY` for `opencode-go`;
 ## Limitations
 
 - No sandbox: Pi's file tools read outside the working directory
-  (`host.read`, which the shipped service never grants), and `bash` grants
-  everything, like Claude Code's `Bash`. A repository opts in to host
+  (`host.read`, which the shipped service never grants), `edit` and
+  `write` write there too (`host.write`), and `bash` grants everything,
+  like Claude Code's `Bash`. A repository opts in to host
   reads in its own `service.toml`, as `examples/codex/README.md` describes.
 - No cost limit: calls under a cost limit are refused.
 - No native structured output: the schema goes in the system prompt, the

@@ -22,7 +22,7 @@ import (
 )
 
 // eventually polls until check holds.
-func eventually(t *testing.T, what string, check func() bool) {
+func eventually(t testing.TB, what string, check func() bool) {
 	t.Helper()
 	deadline := time.Now().Add(15 * time.Second)
 	for !check() {
@@ -31,6 +31,31 @@ func eventually(t *testing.T, what string, check func() bool) {
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
+}
+
+// canceller cancels a run hosted in the test's process.
+type canceller interface {
+	Cancel(ctx context.Context, runID string) error
+}
+
+// cancelAndWait cancels the run and waits until it is finished; its
+// goroutine writes nothing under the home after that. A run already
+// finished is no longer hosted, so its cancel fails and only the wait is
+// left.
+func cancelAndWait(t testing.TB, runs canceller, store fsruns.Store, id string) {
+	t.Helper()
+	_ = runs.Cancel(context.Background(), id)
+	eventually(t, "run "+id+" to finish", func() bool {
+		_, state, err := store.Get(context.Background(), id)
+		return err == nil && state == domain.StateFinished
+	})
+}
+
+// cleanupRun makes the test's cleanup cancel the run and wait for it,
+// whatever point the test reached. Registered once the run is submitted,
+// after its home's tempDir and cleanupRecorded, it runs before both.
+func cleanupRun(t testing.TB, runs canceller, store fsruns.Store, id string) {
+	t.Cleanup(func() { cancelAndWait(t, runs, store, id) })
 }
 
 func groupAlive(group int) bool { return syscall.Kill(-group, 0) == nil }
@@ -84,7 +109,7 @@ func cleanupRecorded(t *testing.T, home, repo string) {
 // its token among them, and skips what cannot be read or would signal
 // beyond the test.
 func TestEndRecordedEndsEveryRecordedEffect(t *testing.T) {
-	runs := t.TempDir()
+	runs := tempDir(t)
 	records := map[string]*domain.Effects{
 		// The command's group, recorded before its token lookup failed.
 		"verify": {
@@ -129,7 +154,7 @@ func TestEndRecordedEndsEveryRecordedEffect(t *testing.T) {
 // next call that starts reaps them and finishes the run as lost.
 func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 	home, repo := setup(t, "hang")
-	binary := filepath.Join(t.TempDir(), "agister")
+	binary := filepath.Join(tempDir(t), "agister")
 	if out, err := exec.Command("go", "build", "-o", binary, ".").CombinedOutput(); err != nil {
 		t.Fatalf("build: %v\n%s", err, out)
 	}
@@ -240,7 +265,7 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 // run as lost.
 func TestNextCallReapsAKilledRunsVerifyCommand(t *testing.T) {
 	home, repo := setup(t, "approve")
-	groupFile := filepath.Join(t.TempDir(), "group")
+	groupFile := filepath.Join(tempDir(t), "group")
 	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))
 	write(t, filepath.Join(home, "processes", "verified.yaml"), strings.Replace(shipped, "name: adversarial_review", "name: verified", 1)+`
 verify:
@@ -249,7 +274,7 @@ verify:
   max_attempts: 1
   instruction: The verification command failed.
 `)
-	binary := filepath.Join(t.TempDir(), "agister")
+	binary := filepath.Join(tempDir(t), "agister")
 	if out, err := exec.Command("go", "build", "-o", binary, ".").CombinedOutput(); err != nil {
 		t.Fatalf("build: %v\n%s", err, out)
 	}
@@ -311,11 +336,16 @@ verify:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.Submit(context.Background(), contract.CallRequest{
+	id, err := client.Submit(context.Background(), contract.CallRequest{
 		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "30s", Cwd: repo,
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
+	// Should the test fail while the new call runs, the cleanup ends it
+	// before the recorded effects and the home are removed.
+	store := fsruns.Store{Dir: filepath.Join(home, "runs")}
+	cleanupRun(t, client, store, id)
 	background.Wait()
 	eventually(t, "the command's group to be gone", func() bool { return !groupAlive(group) })
 	if _, err := os.Stat(checkout); !errors.Is(err, os.ErrNotExist) {
@@ -337,8 +367,69 @@ verify:
 	if !strings.Contains(string(events), `"EFFECTS_REAPED"`) || !strings.Contains(string(events), `"command":{"outcome":"killed"`) {
 		t.Fatalf("no reap of the command:\n%s", events)
 	}
-	// The new call ends too, and its checkout goes with it.
+	// The new call ends too, and its checkout goes with it. Until it ends,
+	// it may not have made its checkout yet, and would take its worktree
+	// turn under the home while the test's cleanup removes it.
+	eventually(t, "the new call to finish", func() bool {
+		_, state, err := store.Get(context.Background(), id)
+		return err == nil && state == domain.StateFinished
+	})
 	eventually(t, "every checkout to be released", func() bool {
 		return len(strings.Split(gitCmd(t, repo, "worktree", "list"), "\n")) == 1
 	})
+}
+
+// A call still running when its test ends is cancelled and drained by the
+// cleanup registered for it: the call here blocks in its verification
+// command until released, and the test never releases it. Once the
+// cleanup returns, the run is finished and its command, checkout and clean
+// copy are gone.
+func TestCleanupRunCancelsAndDrainsABlockedCall(t *testing.T) {
+	release := filepath.Join(tempDir(t), "release")
+	if err := syscall.Mkfifo(release, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// Opening the fifo blocks until a writer releases it.
+	h := newLoop(t, verifySettings{command: "cat " + strconv.Quote(release)}, state("one"))
+	cleanupRecorded(t, h.home, h.repo)
+	id := h.submit(contract.CallRequest{})
+	// The cleanup is registered on a recording TB, drained below; should
+	// the test fail first, the real one drains what is left.
+	fake := &recordingTB{TB: t, name: t.Name()}
+	t.Cleanup(fake.runCleanups)
+	cleanupRun(fake, h.runs, h.store, id)
+
+	var running domain.Record
+	eventually(t, "the call to block in its command", func() bool {
+		var err error
+		running, _, err = h.store.Get(context.Background(), id)
+		if err != nil || running.Effects == nil || running.Effects.Command == nil || running.Effects.Checkout == nil || running.Effects.Copy == nil {
+			return false
+		}
+		_, token, err := supervisor.ParseRef(running.Effects.Command.Ref)
+		return err == nil && token != ""
+	})
+	group, _, err := supervisor.ParseRef(running.Effects.Command.Ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fake.runCleanups()
+	if len(fake.errors) != 0 {
+		t.Fatalf("cleanup: %q", fake.errors)
+	}
+	record, state, err := h.store.Get(context.Background(), id)
+	if err != nil || state != domain.StateFinished {
+		t.Fatalf("run %s: %s, %v", id, state, err)
+	}
+	expect(t, record, domain.Interrupted, domain.ClassCancelled, "cancelled during attempt 1's run")
+	eventually(t, "the command's group to be gone", func() bool { return !groupAlive(group) })
+	for _, dir := range []string{running.Effects.Checkout.Dir, running.Effects.Copy.Dir} {
+		if _, err := os.Stat(dir); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("%s left behind: %v", dir, err)
+		}
+	}
+	if lines := strings.Split(gitCmd(t, h.repo, "worktree", "list"), "\n"); len(lines) != 1 {
+		t.Fatalf("worktrees = %v", lines)
+	}
 }

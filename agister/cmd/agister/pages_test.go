@@ -15,7 +15,7 @@ import (
 // once none does or there is no lock at all.
 func TestPagesReadTheRunsOwnersFromTheRunStore(t *testing.T) {
 	ctx := context.Background()
-	runs := t.TempDir()
+	runs := tempDir(t)
 	unfinished := func(id string) {
 		t.Helper()
 		if err := os.MkdirAll(filepath.Join(runs, id), 0o700); err != nil {

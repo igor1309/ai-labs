@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Rendered by deploy/install.sh; @HOME@ and @PATH@ are XML-escaped on substitution. -->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.igormalyarov.agister-pages</string>
+	<!-- No browser window at every login. -->
+	<key>ProgramArguments</key>
+	<array>
+		<string>@HOME@/.local/bin/agister</string>
+		<string>pages</string>
+		<string>--no-open</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<!-- No ExitTimeOut: the server stops within 2 s of SIGTERM. PATH only: launchd supplies
+	     HOME. -->
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>@PATH@</string>
+	</dict>
+	<key>StandardOutPath</key>
+	<string>@HOME@/Library/Logs/agister/pages.out.log</string>
+	<key>StandardErrorPath</key>
+	<string>@HOME@/Library/Logs/agister/pages.err.log</string>
+</dict>
+</plist>

@@ -61,6 +61,7 @@ type Infrastructure struct {
 	Checker  CheckAdapters
 	Resolver ResolverAdapters
 	Calls    CallAdapters
+	Preparer SetupAdapters
 	Verifier VerifyAdapters
 	Runs     RunsAdapters
 	// Decorate wraps every client the gate builds.
@@ -71,9 +72,10 @@ type Infrastructure struct {
 // nothing but init and check works on settings that do not pass check.
 // Every field of infra is required.
 func NewClient(infra Infrastructure) contract.Client {
-	// The calls hosted in this process and the verifier are shared by every
-	// client the gate builds.
+	// The calls hosted in this process, the preparer and the verifier are
+	// shared by every client the gate builds.
 	hosted := NewHosted()
+	preparer := NewPreparer(infra.Preparer.Content, infra.Preparer.Commands, infra.Preparer.Clock)
 	verifier := NewVerifier(infra.Verifier.Content, infra.Verifier.Copies, infra.Verifier.Commands, infra.Verifier.Clock)
 	sources := make([]string, 0, len(infra.Calls.Inputs))
 	for name := range infra.Calls.Inputs {
@@ -105,7 +107,7 @@ func NewClient(infra Infrastructure) contract.Client {
 			Checker:    checkerOn(layered),
 			Inspection: NewInspection(resolverOn(layered)),
 			Calls: NewCalls(
-				resolverOn(layered), calls.Runners, calls.Inputs, calls.Workspaces, calls.Changes, verifier, calls.Validator,
+				resolverOn(layered), calls.Runners, calls.Inputs, calls.Workspaces, calls.Changes, preparer, verifier, calls.Validator,
 				calls.Recorder, calls.Runs, calls.Clock, calls.Timer, calls.IDs, calls.StateDir, hosted,
 			),
 			Runs: NewRuns(infra.Runs.Reader, hosted, 0),

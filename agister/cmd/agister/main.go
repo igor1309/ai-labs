@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime/debug"
 	"syscall"
 
 	"github.com/igor1309/ai-labs/agister/examples"
@@ -23,14 +24,12 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/inputs"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/logging"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/claudecode"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/pi"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/schema"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
+	runtimecomposition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/pages"
 )
@@ -46,7 +45,33 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "pages" {
 		os.Exit(pages.Main(ctx, os.Args[2:], pagesEnv()))
 	}
-	os.Exit(cli.Run(ctx, os.Args[1:], cli.IO{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Cwd: cwd, Getenv: os.Getenv}, compose))
+	info, _ := debug.ReadBuildInfo()
+	os.Exit(cli.Run(ctx, os.Args[1:], cli.IO{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Cwd: cwd, Getenv: os.Getenv, Version: version(info)}, compose))
+}
+
+// version names the build: its module version, its revision (short, with
+// +dirty when the tree had uncommitted changes) and its commit time. What
+// the build does not record, as go test and go run outside a checkout do
+// not, is unknown.
+func version(info *debug.BuildInfo) string {
+	module, revision, committed, dirty := "unknown", "unknown", "unknown", ""
+	if info == nil {
+		return module + " " + revision + " " + committed
+	}
+	if info.Main.Version != "" {
+		module = info.Main.Version
+	}
+	for _, setting := range info.Settings {
+		switch {
+		case setting.Key == "vcs.revision" && setting.Value != "":
+			revision = setting.Value[:min(8, len(setting.Value))]
+		case setting.Key == "vcs.time" && setting.Value != "":
+			committed = setting.Value
+		case setting.Key == "vcs.modified" && setting.Value == "true":
+			dirty = "+dirty"
+		}
+	}
+	return module + " " + revision + dirty + " " + committed
 }
 
 // pagesEnv is agister pages' process environment; macOS open shows the page.
@@ -128,7 +153,7 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	}
 
 	global := fsdefs.Store{Dir: config.Home}
-	local, err := project(config, log)
+	local, absent, err := project(config, log)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -139,15 +164,19 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	evidence := fsruns.Store{Dir: filepath.Join(config.Home, "runs")}
 	runtimes := runtime.Registry{
 		"claude-code": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: claudecode.New(command), Adapter: "claude-code", Log: log}
+			return logging.Runner{Inner: runtimecomposition.NewClaudeCode(command), Adapter: "claude-code", Log: log}
 		},
 		"codex": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: codex.New(command), Adapter: "codex", Log: log}
+			return logging.Runner{Inner: runtimecomposition.NewCodex(command), Adapter: "codex", Log: log}
 		},
 		// Pi's sessions are kept under the home, where a continuation
 		// finds them, not in ~/.pi.
+		// OpenCode keeps its sessions in its own store.
+		"opencode": func(command string) app.TurnRunner {
+			return logging.Runner{Inner: runtimecomposition.NewOpenCode(command), Adapter: "opencode", Log: log}
+		},
 		"pi": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: pi.New(command, filepath.Join(config.Home, "pi", "sessions")), Adapter: "pi", Log: log}
+			return logging.Runner{Inner: runtimecomposition.NewPi(command, filepath.Join(config.Home, "pi", "sessions")), Adapter: "pi", Log: log}
 		},
 	}
 	// Over the one coordinator of the process: every workspace adapter's
@@ -159,11 +188,11 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	// that fails has no caller to tell and no run record to say so: the
 	// log does.
 	reaping := &app.BackgroundReaper{
-		Reaper: app.NewReaper(evidence, supervisor.Processes{}, workspaces.discarder, system.Clock{}),
+		Reaper: app.NewReaper(evidence, runtimecomposition.Processes{Supervisor: supervisor.Processes{}}, workspaces.discarder, system.Clock{}),
 		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },
 	}
 	client := app.NewClient(app.Infrastructure{
-		Definitions: fsdefs.Layered{Global: global, Project: local},
+		Definitions: fsdefs.Layered{Global: global, Project: local, Absent: absent},
 		Global:      fsdefs.Layered{Global: global},
 		Project:     projectRoot,
 		Settings:    app.SettingsAdapters{Writer: global, Examples: examples.Settings()},
@@ -189,7 +218,8 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 			IDs:        system.IDs{},
 			StateDir:   config.Home,
 		},
-		Verifier: app.VerifyAdapters{Content: content, Copies: workspaces.copies, Commands: supervisor.Commands{}, Clock: system.Clock{}},
+		Preparer: app.SetupAdapters{Content: content, Commands: runtimecomposition.SetupCommands{Supervisor: supervisor.Commands{}}, Clock: system.Clock{}},
+		Verifier: app.VerifyAdapters{Content: content, Copies: workspaces.copies, Commands: runtimecomposition.Commands{Supervisor: supervisor.Commands{}}, Clock: system.Clock{}},
 		Runs:     app.RunsAdapters{Reader: evidence},
 		Decorate: func(client contract.Client) contract.Client {
 			return app.ReapOnSubmit{Client: client, Background: reaping}
@@ -202,32 +232,33 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 // directory, like its .claude or .agents: <root>/.agister. None outside a
 // repository, without that directory, or when it is the home itself; why
 // is logged. A .agister that exists but cannot be used is an error, so
-// project settings never silently stop applying.
-func project(config cli.Config, log *slog.Logger) (*fsdefs.Store, error) {
+// project settings never silently stop applying. absent is the directory
+// of a repository without one, where a document not found was expected.
+func project(config cli.Config, log *slog.Logger) (local *fsdefs.Store, absent string, err error) {
 	if config.Cwd == "" {
-		return nil, nil
+		return nil, "", nil
 	}
 	root, err := git.Workspaces{}.Root(context.Background(), config.Cwd)
 	if err != nil {
 		log.Debug("no project settings: not in a usable git repository", "cwd", config.Cwd, "error", err.Error())
-		return nil, nil
+		return nil, "", nil
 	}
 	dir := filepath.Join(root, ".agister")
 	info, err := os.Stat(dir)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		log.Debug("no project settings: directory absent", "dir", dir)
-		return nil, nil
+		return nil, dir, nil
 	case err != nil:
-		return nil, fmt.Errorf("project settings %s: %w", dir, err)
+		return nil, "", fmt.Errorf("project settings %s: %w", dir, err)
 	case !info.IsDir():
-		return nil, fmt.Errorf("project settings %s: not a directory", dir)
+		return nil, "", fmt.Errorf("project settings %s: not a directory", dir)
 	case sameDir(dir, config.Home):
 		log.Debug("no project settings: the repository's .agister is the home", "dir", dir)
-		return nil, nil
+		return nil, "", nil
 	}
 	log.Debug("project settings", "dir", dir)
-	return &fsdefs.Store{Dir: dir}, nil
+	return &fsdefs.Store{Dir: dir}, "", nil
 }
 
 func sameDir(a, b string) bool {

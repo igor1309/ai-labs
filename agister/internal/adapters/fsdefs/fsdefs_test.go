@@ -137,6 +137,51 @@ func TestLayeredProjectTakesPriority(t *testing.T) {
 	if doc, err := outside.Read(ctx, definition.KindPolicy, "shared"); err != nil || string(doc.Bytes) != "global" {
 		t.Fatalf("without project = %+v, %v", doc, err)
 	}
+	if _, err := outside.Read(ctx, definition.KindPolicy, "missing"); err == nil || strings.Contains(err.Error(), " or ") {
+		t.Fatalf("missing without project = %v", err)
+	}
+
+	// A repository without settings of its own: a document found nowhere
+	// names where the repository would hold it too.
+	absent := filepath.Join(t.TempDir(), ".agister")
+	unset := fsdefs.Layered{Global: global, Absent: absent}
+	if doc, err := unset.Read(ctx, definition.KindPolicy, "shared"); err != nil || string(doc.Bytes) != "global" || doc.Source.Project {
+		t.Fatalf("with an absent project = %+v, %v", doc, err)
+	}
+	want := "not found (expected " + filepath.Join(absent, "policies", "missing.yaml") + " or " + filepath.Join(global.Dir, "policies", "missing.yaml") + ")"
+	if _, err := unset.Read(ctx, definition.KindPolicy, "missing"); err == nil || err.Error() != want {
+		t.Fatalf("missing with an absent project = %v, want %q", err, want)
+	}
+}
+
+// A prompt is prompts/<name>.md, its bytes unchanged (ADR-014); one in
+// neither layer names both places it was expected.
+func TestPromptsAreMarkdownFiles(t *testing.T) {
+	ctx := context.Background()
+	global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
+	text := "# Review\n\nRead the diff.\n"
+	path, _, err := global.Write(ctx, definition.KindPrompt, "review", []byte(text), "")
+	if err != nil || path != filepath.Join(global.Dir, "prompts", "review.md") {
+		t.Fatalf("write = %q, %v", path, err)
+	}
+	// Another extension in the folder is not a prompt, nor is a file whose
+	// name breaks the naming rule, which source: file may still read.
+	for _, other := range []string{"notes.txt", "Style Guide.md"} {
+		if err := os.WriteFile(filepath.Join(global.Dir, "prompts", other), []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	layered := fsdefs.Layered{Global: global, Project: &project}
+	if names, err := layered.List(ctx, definition.KindPrompt); err != nil || !reflect.DeepEqual(names, []string{"review"}) {
+		t.Fatalf("list = %v, %v", names, err)
+	}
+	if doc, err := layered.Read(ctx, definition.KindPrompt, "review"); err != nil || string(doc.Bytes) != text || doc.Source.Path != path || doc.Source.Project {
+		t.Fatalf("read = %+v, %v", doc.Source, err)
+	}
+	want := "not found (expected " + filepath.Join(project.Dir, "prompts", "style.md") + " or " + filepath.Join(global.Dir, "prompts", "style.md") + ")"
+	if _, err := layered.Read(ctx, definition.KindPrompt, "style"); err == nil || err.Error() != want {
+		t.Fatalf("missing = %v, want %q", err, want)
+	}
 }
 
 // held reports whether another descriptor cannot take the store's write lock
@@ -230,5 +275,36 @@ func TestConcurrentWritesWithOneDigestLandOnce(t *testing.T) {
 	wg.Wait()
 	if wins.Load() != 1 {
 		t.Fatalf("%d writes landed, want 1", wins.Load())
+	}
+}
+
+// The workspace settings are one optional document, workspace.yaml: listed
+// only when it exists, and a project's takes priority over the global one.
+func TestWorkspaceSettingsAreAnOptionalSingleton(t *testing.T) {
+	ctx := context.Background()
+	global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
+	layered := fsdefs.Layered{Global: global, Project: &project}
+	if names, err := layered.List(ctx, definition.KindWorkspace); err != nil || len(names) != 0 {
+		t.Fatalf("none = %v, %v", names, err)
+	}
+
+	globalPath, _, err := global.Write(ctx, definition.KindWorkspace, "workspace", []byte("global"), "")
+	if err != nil || globalPath != filepath.Join(global.Dir, "workspace.yaml") {
+		t.Fatalf("written at %s, %v", globalPath, err)
+	}
+	if names, err := layered.List(ctx, definition.KindWorkspace); err != nil || !reflect.DeepEqual(names, []string{"workspace"}) {
+		t.Fatalf("global = %v, %v", names, err)
+	}
+	if doc, err := layered.Read(ctx, definition.KindWorkspace, "workspace"); err != nil || string(doc.Bytes) != "global" || doc.Source.Project {
+		t.Fatalf("global = %+v, %v", doc.Source, err)
+	}
+
+	projectPath, _, _ := project.Write(ctx, definition.KindWorkspace, "workspace", []byte("project"), "")
+	if names, err := layered.List(ctx, definition.KindWorkspace); err != nil || !reflect.DeepEqual(names, []string{"workspace"}) {
+		t.Fatalf("both = %v, %v", names, err)
+	}
+	doc, err := layered.Read(ctx, definition.KindWorkspace, "workspace")
+	if err != nil || string(doc.Bytes) != "project" || doc.Source.Path != projectPath || !doc.Source.Project || doc.Source.Overrides != globalPath {
+		t.Fatalf("project = %+v, %v", doc.Source, err)
 	}
 }

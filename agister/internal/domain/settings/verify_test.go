@@ -49,3 +49,83 @@ func TestVerifyRepairsNeedAResumableAgent(t *testing.T) {
 		})
 	}
 }
+
+// naming is the bundle with max_verify_attempts 3, process p naming
+// verify:repo and that verification as given.
+func naming(verify definition.Verify) settings.Bundle {
+	b := bundle()
+	b.Service.MaxVerifyAttempts = 3
+	agent := b.Agents["a"]
+	agent.Session = definition.SessionResumable
+	b.Agents["a"] = agent
+	p := b.Processes["p"]
+	p.Checkout = "v"
+	p.VerifyName = "repo"
+	b.Processes["p"] = p
+	b.Verifies = map[string]definition.Verification{"repo": {Name: "repo", Verify: verify}}
+	return b
+}
+
+// ADR-010 rule 3: the checks that depend on a verification's values are
+// made on the named one's, as on an inline block's.
+func TestANamedVerificationIsCheckedWithTheProcessThatNamesIt(t *testing.T) {
+	fine := definition.Verify{Command: "go test ./...", Timeout: time.Minute, MaxAttempts: 3, Instruction: "Fix it."}
+	cases := []struct {
+		name   string
+		change func(*settings.Bundle)
+		want   string // the one problem; empty for none
+	}{
+		{"within the limits", func(*settings.Bundle) {}, ""},
+		{"timeout above the process's", func(b *settings.Bundle) {
+			v := b.Verifies["repo"]
+			v.Verify.Timeout = 2 * time.Minute
+			b.Verifies["repo"] = v
+		}, "process p: verify.timeout 2m0s exceeds the effective timeout 1m0s"},
+		{"attempts above the service ceiling", func(b *settings.Bundle) {
+			v := b.Verifies["repo"]
+			v.Verify.MaxAttempts = 4
+			b.Verifies["repo"] = v
+		}, "process p: verify.max_attempts 4 exceeds the service limit max_verify_attempts 3"},
+		{"repairs on a fresh-only agent", func(b *settings.Bundle) {
+			agent := b.Agents["a"]
+			agent.Session = definition.SessionFresh
+			b.Agents["a"] = agent
+		}, "process p: verify.max_attempts 3 repairs in the call's session, but agent a is fresh-only"},
+		// Rule 4: the other checks of the process run, without verify values.
+		{"no such verification", func(b *settings.Bundle) {
+			b.Verifies = nil
+			agent := b.Agents["a"]
+			agent.Session = definition.SessionFresh
+			b.Agents["a"] = agent
+		}, ""},
+		{"no such verification, another problem", func(b *settings.Bundle) {
+			b.Verifies = nil
+			delete(b.Schemas, "s")
+		}, `process p: output schema "s" does not exist`},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			b := naming(fine)
+			c.change(&b)
+			var got []string
+			for _, problem := range settings.Check(b, mechanisms) {
+				got = append(got, problem.String())
+			}
+			if c.want == "" && len(got) != 0 || c.want != "" && (len(got) != 1 || got[0] != c.want) {
+				t.Fatalf("problems = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+func TestResolvedLeavesAnInlineVerifyAndTheBundleAsTheyAre(t *testing.T) {
+	b := naming(definition.Verify{Command: "true", Timeout: time.Minute, MaxAttempts: 1, Instruction: "Fix it."})
+	if got := b.Resolved("p").Verify; got == nil || got.Command != "true" || b.Processes["p"].Verify != nil {
+		t.Fatalf("resolved verify %+v, the bundle's %+v", got, b.Processes["p"].Verify)
+	}
+	inline := &definition.Verify{Command: "inline"}
+	b.Processes["q"] = definition.Process{Name: "q", Verify: inline}
+	if got := b.Resolved("q").Verify; got != inline {
+		t.Fatalf("inline verify = %+v", got)
+	}
+}
