@@ -30,10 +30,17 @@ func (claudeCodeTransport) Version(ctx context.Context, command string) (string,
 	return supervisor.Version(ctx, command)
 }
 
-type codexTransport struct{}
+type codexTransport struct {
+	// run runs the translated process; nil: supervisor.Run.
+	run func(ctx context.Context, spec supervisor.Spec, sink supervisor.Sink, onLine func(string)) supervisor.Evidence
+}
 
-func (codexTransport) Run(ctx context.Context, spec codex.Spec, sink codex.Sink, onLine func(string)) codex.Evidence {
-	return codex.Evidence(supervisor.Run(ctx, supervisor.Spec{
+func (t codexTransport) Run(ctx context.Context, spec codex.Spec, sink codex.Sink, onLine func(string)) codex.Evidence {
+	run := t.run
+	if run == nil {
+		run = supervisor.Run
+	}
+	return codex.Evidence(run(ctx, supervisor.Spec{
 		Command:   spec.Command,
 		Args:      spec.Args,
 		Dir:       spec.Dir,
