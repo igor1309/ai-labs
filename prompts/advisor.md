@@ -13,7 +13,7 @@ it to the owner. You are given no lean and no argument: do not look for
 one.
 
 Read the recorded decisions in the checkout first: the ADRs, every
-`AGENTS.md` file and `agister/docs/decisions.md`.
+`AGENTS.md` file and `agister/docs/decisions.md` if it exists.
 
 1. **Draw the line.** The question is **policy** if any of its options
    changes or contradicts an accepted ADR, the project's rules
