@@ -59,6 +59,16 @@ own:
 #   timeout: 1m
 ```
 
+To continue a run of such a process, run from the repository the checkout
+is of, and pin its revision param: a default like `HEAD` resolves in the
+directory you launch from. `--continue <run-id>` resumes the run's session
+and carries the session's latest run's `changes.patch` into the new checkout,
+uncommitted, on the same revision
+([ADR-013](docs/adr/013-a-continuation-carries-the-earlier-runs-changes.md)).
+Whichever run of the session you name, its latest run's changes are
+carried. A finished run's changes are
+`~/.agister/runs/<id>/artifacts/changes.patch`, applied with `git apply`.
+
 `examples/settings/` is what `init` installs; `examples/codex/`,
 `examples/pi/` and `examples/opencode/` are opt-in.
 
