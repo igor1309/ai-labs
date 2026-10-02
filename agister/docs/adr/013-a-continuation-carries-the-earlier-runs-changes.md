@@ -4,8 +4,9 @@
 - **Date:** 2026-10-02
 - **Scope:** continued calls whose process checks out a revision
 - **Decision type:** Architecture
-- **Amends:** [ADR-001](001-agister-cli-architecture.md) rule 12: what a
-  continuation reads of the earlier run;
+- **Amends:** [ADR-001](001-agister-cli-architecture.md) rule 2: what
+  the agent is told; rule 12: what a continuation reads of the earlier
+  run;
   [ADR-012](012-a-checkout-runs-its-setup.md) rule 4: what a checkout
   holds before the first turn
 
@@ -70,6 +71,10 @@ the copy is the revision with that patch applied.
 
 ## Amendments to earlier ADRs
 
+- ADR-001 rule 2: besides what the process defines, a continued call's
+  prompt carries Agister's own notice of the continuation (rule 4). It
+  states only facts of the call: the run continued, the checkout and
+  whether changes were carried.
 - ADR-001 rule 12: a continuation reads the earlier run's session and,
   for a call with a checkout, its `changes.patch`.
 - ADR-012 rule 4: the setup sees the revision's content. A continuation's
