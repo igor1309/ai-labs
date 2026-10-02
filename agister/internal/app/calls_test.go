@@ -144,7 +144,7 @@ func (h *harness) callsWith(src app.ResolverDefinitions, workspaces app.CallWork
 
 func (h *harness) callsRecordedWith(src app.ResolverDefinitions, workspaces app.CallWorkspaces, changes app.CallChanges, runs app.CallRuns, recorder app.RunRecorder, ids app.IDs) *app.Calls {
 	return app.NewCalls(
-		app.NewResolver(src, h.runtimes, h.validator),
+		app.NewResolver(src, h.runtimes, h.validator, resolverCheckStub{}),
 		h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "git.changed_files": h.inputs, "file": h.inputs, "param": h.inputs},
 		workspaces, changes, app.NewPreparer(changes, h.setup, h.clock), app.NewVerifier(changes, h.copies, h.commands, h.clock), h.validator, recorder, runs,
@@ -1225,11 +1225,11 @@ func TestACallThatCannotReadASkillIsRefused(t *testing.T) {
 		reason  string
 	}{
 		{"not allowed", nil, []string{"Bash"},
-			"runtime rt needs Bash to use the repository's skills (ADR-006), and the plan grants no such tool: Bash needs process.execute, host.read, which the effective permissions do not allow"},
+			"process p: runtime rt needs Bash to use the repository's skills (ADR-006), and the plan grants no such tool: Bash needs process.execute, host.read, which the effective permissions do not allow"},
 		{"withheld", widen, []string{"Bash"},
-			"runtime rt needs Bash to use the repository's skills (ADR-006), and the plan grants no such tool: Bash needs host.read, which the plan withholds"},
+			"process p: runtime rt needs Bash to use the repository's skills (ADR-006), and the plan grants no such tool: Bash needs host.read, which the plan withholds"},
 		{"unverified or unknown", unverified, []string{"Cat", "Bash", "Head"},
-			"runtime rt needs Cat or Bash or Head to use the repository's skills (ADR-006), and the plan grants no such tool: " +
+			"process p: runtime rt needs Cat or Bash or Head to use the repository's skills (ADR-006), and the plan grants no such tool: " +
 				"Cat is not verified for version 1.2.3; Bash needs process.execute, host.read, which the effective permissions do not allow; runtime mapping rt has no Head"},
 	}
 	for _, c := range cases {
@@ -1322,7 +1322,7 @@ func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
 	h.runner.started = make(chan struct{})
 	cancels := &cancelsSpy{held: map[string]func() bool{}}
 	h.calls = app.NewCalls(
-		app.NewResolver(h.defs, h.runtimes, h.validator), h.runtimes,
+		app.NewResolver(h.defs, h.runtimes, h.validator, resolverCheckStub{}), h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
 		h.workspaces, h.changes, app.NewPreparer(h.changes, h.setup, h.clock), app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
 		h.clock, h.timer, fixedIDs{}, "/state", cancels,

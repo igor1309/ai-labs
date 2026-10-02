@@ -175,7 +175,7 @@ func TestAPromptNotResolvedWithTheCallRefusesIt(t *testing.T) {
 	h := newHarness()
 	prompted(h, reviewPrompt)
 	h.calls = app.NewCalls(
-		withoutPrompts{app.NewResolver(h.defs, h.runtimes, h.validator)}, h.runtimes,
+		withoutPrompts{app.NewResolver(h.defs, h.runtimes, h.validator, resolverCheckStub{})}, h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
 		h.workspaces, h.changes, app.NewPreparer(h.changes, h.setup, h.clock), app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
 		h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
@@ -229,7 +229,7 @@ func TestCheckLinksAProcessToItsPrompts(t *testing.T) {
 func TestShowProcessShowsItsPrompts(t *testing.T) {
 	h := newHarness()
 	prompted(h, reviewPrompt)
-	inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator))
+	inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
 	view, err := inspection.ShowProcess(context.Background(), "p", "")
 	if err != nil || !reflect.DeepEqual(view.Prompts, []string{"review"}) || view.Refusal != "" {
 		t.Fatalf("prompts %q, refusal %q, %v", view.Prompts, view.Refusal, err)
@@ -297,7 +297,7 @@ func TestSnapshotKeepsTheReadOfAMissingPrompt(t *testing.T) {
 	if _, err := snap.Read(ctx, definition.KindPrompt, "review"); err != missing {
 		t.Fatalf("read error = %v", err)
 	}
-	view, err := app.NewInspection(app.NewResolver(snap, struct{ app.ResolverIdentities }{h.runtimes}, h.validator)).ShowProcess(ctx, "p", "")
+	view, err := app.NewInspection(app.NewResolver(snap, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{})).ShowProcess(ctx, "p", "")
 	if want := `input rules: prompt "review": ` + missing.Error(); err != nil || view.Refusal != want {
 		t.Fatalf("refusal = %q, %v, want %q", view.Refusal, err, want)
 	}

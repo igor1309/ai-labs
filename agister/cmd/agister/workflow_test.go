@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
@@ -161,9 +162,7 @@ func lastRunIn(t *testing.T, dir string) run {
 func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 	home, repo := setup(t, "hang")
 	binary := filepath.Join(tempDir(t), "agister")
-	if out, err := exec.Command("go", "build", "-o", binary, ".").CombinedOutput(); err != nil {
-		t.Fatalf("build: %v\n%s", err, out)
-	}
+	runtimetest.Build(t, ".", binary, ".")
 	victim := exec.Command(binary, "--home", home, "run", "review_panel", "--param", "base=main", "--param", "architecture=a.txt", "--quiet")
 	victim.Dir = repo
 	victim.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}

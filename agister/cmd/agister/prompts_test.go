@@ -132,28 +132,47 @@ func TestAPromptIsFoundInTheSettingsNotTheCallersDirectory(t *testing.T) {
 }
 
 // A prompt in neither layer is a problem of the settings, on the process
-// that names it, and nothing runs.
+// that names it, and a call of it is refused before its first turn
+// (ADR-015).
 func TestAPromptInNeitherLayerIsAProblemOfTheProcess(t *testing.T) {
 	home, repo := setup(t, "approve")
-	write(t, filepath.Join(home, "processes", "reviewed.yaml"), promptingProcess)
+	process := filepath.Join(home, "processes", "reviewed.yaml")
+	write(t, process, promptingProcess)
 	problem := `process reviewed: input rules: prompt "review" does not exist`
 	r := agister(t, home, repo, "check", "--tree")
-	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem+"\n") || !regexp.MustCompile(`└─ prompt review +MISSING\n`).MatchString(r.stdout) {
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem+"\n  refuses process reviewed\n") || !regexp.MustCompile(`└─ prompt review +MISSING\n`).MatchString(r.stdout) {
 		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if r := agister(t, home, repo, "run", "reviewed", "--quiet", "--timeout", "1m"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem) {
-		t.Fatalf("run: %d\n%s%s", r.code, r.stdout, r.stderr)
+	runs := &newRuns{home: home}
+	runs.take(t)
+	want := `process reviewed (` + process + `): input rules: prompt "review" does not exist`
+	if r := agister(t, home, repo, "run", "reviewed", "--quiet", "--timeout", "1m"); r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
+		t.Fatalf("run: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
+	}
+	if refused := runs.one(t); refused.first != nil {
+		t.Fatalf("the refused call reached the runtime: %v", refused.first)
 	}
 }
 
-// A prompt that is not readable text is a problem of that document alone.
+// A prompt that is not readable text is a problem of that document alone;
+// it refuses the process that uses it (ADR-015).
 func TestAnUnreadablePromptIsAProblemOfItsOwn(t *testing.T) {
 	home, repo := setup(t, "approve")
 	write(t, filepath.Join(home, "processes", "reviewed.yaml"), promptingProcess)
-	write(t, filepath.Join(repo, ".agister", "prompts", "review.md"), "\x00\xff")
+	prompt := filepath.Join(repo, ".agister", "prompts", "review.md")
+	write(t, prompt, "\x00\xff")
 	r := agister(t, home, repo, "check")
-	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "prompt review: not a UTF-8 text file\n1 problem(s) in ") || strings.Contains(r.stderr, "process reviewed") {
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "prompt review: not a UTF-8 text file\n  refuses process reviewed\n1 problem(s) in ") || strings.Contains(r.stderr, "process reviewed:") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	runs := &newRuns{home: home}
+	runs.take(t)
+	want := "process reviewed uses prompt review (" + prompt + "): not a UTF-8 text file"
+	if r := agister(t, home, repo, "run", "reviewed", "--quiet", "--timeout", "1m"); r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
+		t.Fatalf("run: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
+	}
+	if refused := runs.one(t); refused.first != nil {
+		t.Fatalf("the refused call reached the runtime: %v", refused.first)
 	}
 }
 

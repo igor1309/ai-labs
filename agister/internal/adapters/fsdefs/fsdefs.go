@@ -105,11 +105,12 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 		return definition.Document{}, err
 	}
 	data, err := os.ReadFile(path)
+	doc := definition.Document{Source: definition.Source{Kind: kind, Name: name, Path: path}}
 	if errors.Is(err, fs.ErrNotExist) {
-		return definition.Document{}, fmt.Errorf("%w (expected %s)", errNotFound, path)
+		return doc, fmt.Errorf("%w (expected %s)", errNotFound, path)
 	}
 	if err != nil {
-		return definition.Document{}, err
+		return doc, err
 	}
 	return definition.Document{
 		Source: definition.Source{Kind: kind, Name: name, Path: path, SHA256: digest(data)},
@@ -118,18 +119,19 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 }
 
 // List names the documents of kind. The workspace settings are listed when
-// the one document exists, so a missing one reads as none.
+// the one document exists, so a missing one reads as none. One that exists
+// but cannot be followed, such as a symlink loop, is listed, so reading it
+// fails as that document's problem.
 func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 	if kind == definition.KindWorkspace {
 		path, _ := s.path(kind, string(kind))
-		info, err := os.Stat(path)
-		if errors.Is(err, fs.ErrNotExist) {
+		if _, err := os.Lstat(path); errors.Is(err, fs.ErrNotExist) {
 			return nil, nil
-		}
-		if err != nil {
+		} else if err != nil {
 			return nil, err
 		}
-		if info.IsDir() {
+		info, err := os.Stat(path)
+		if errors.Is(err, fs.ErrNotExist) || err == nil && info.IsDir() {
 			return nil, nil
 		}
 		return []string{string(kind)}, nil
@@ -277,10 +279,10 @@ func (l Layered) Read(ctx context.Context, kind definition.Kind, name string) (d
 		}
 		return doc, err
 	}
+	doc.Source.Project = true
 	if err != nil {
 		return doc, err
 	}
-	doc.Source.Project = true
 	if globalPath, err := l.Global.path(kind, name); err == nil {
 		if _, err := os.Stat(globalPath); err == nil {
 			doc.Source.Overrides = globalPath

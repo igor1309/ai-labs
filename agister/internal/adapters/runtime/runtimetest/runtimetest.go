@@ -41,13 +41,20 @@ func Binary(t testing.TB, name string) string {
 		t.Fatal(err)
 	}
 	path := filepath.Join(dir, name)
-	command := exec.Command("go", "build", "-o", path, "./"+name)
-	command.Dir = filepath.Dir(file)
-	if out, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("building %s: %v\n%s", name, err, out)
-	}
+	Build(t, filepath.Dir(file), path, "./"+name)
 	built[name] = path
 	return path
+}
+
+// Build builds target from dir into output, with the inherited environment
+// and so the host's Go cache. The caller owns the output and its lifetime.
+func Build(t testing.TB, dir, output, target string) {
+	t.Helper()
+	command := exec.Command("go", "build", "-o", output, target)
+	command.Dir = dir
+	if out, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("building %s: %v\n%s", target, err, out)
+	}
 }
 
 // Recorder is an EventSink that keeps everything.
