@@ -22,6 +22,11 @@ input:
 
 workspace:
   checkout: candidate_revision
+  # A fresh checkout holds only tracked files. If the agent needs untracked
+  # configuration, a setup command prepares it before the first turn; what
+  # it makes must be ignored by git. `.agister/workspace.yaml` can give one
+  # setup for every process with a checkout.
+  # setup: {command: ./scripts/link-local-config, timeout: 1m}
 
 output:
   format: text

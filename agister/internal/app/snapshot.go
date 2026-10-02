@@ -12,7 +12,7 @@ import (
 var allKinds = []definition.Kind{
 	definition.KindService, definition.KindRuntime, definition.KindAgent,
 	definition.KindPolicy, definition.KindVerify, definition.KindProcess,
-	definition.KindSchema, definition.KindWorkflow,
+	definition.KindSchema, definition.KindWorkflow, definition.KindWorkspace,
 }
 
 // SnapshotSource is what a snapshot reads and what it gives back: the

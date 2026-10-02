@@ -179,6 +179,7 @@ func TestSettingsReturnsOnlySettingsFiles(t *testing.T) {
 	repo := t.TempDir()
 	dir := filepath.Join(repo, ".agister")
 	write(t, filepath.Join(dir, "service.toml"), "max_attempts = 1")
+	write(t, filepath.Join(dir, "workspace.yaml"), "setup: {}")
 	write(t, filepath.Join(dir, "agents", "a.toml"), `name = "a"`)
 	write(t, filepath.Join(dir, "verifies", "repo.yaml"), "name: repo")
 	write(t, filepath.Join(dir, "processes", "nested", "p.yaml"), "name: p")
@@ -196,6 +197,7 @@ func TestSettingsReturnsOnlySettingsFiles(t *testing.T) {
 	}
 	want := map[string]string{
 		"service.toml":            "max_attempts = 1",
+		"workspace.yaml":          "setup: {}",
 		"agents/a.toml":           `name = "a"`,
 		"verifies/repo.yaml":      "name: repo",
 		"processes/nested/p.yaml": "name: p",
