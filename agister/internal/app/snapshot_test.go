@@ -77,7 +77,7 @@ func TestSnapshotReplaysReadAndListErrors(t *testing.T) {
 		if err != nil {
 			return []string{"error: " + err.Error()}
 		}
-		return report.Problems
+		return messages(report.Problems)
 	}
 	if got, want := check(snap), check(live); !reflect.DeepEqual(got, want) {
 		t.Errorf("check on snapshot = %v, on source = %v", got, want)

@@ -443,8 +443,8 @@ func TestCheckValidatesWorkspaceSettingsAndSetups(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := []string{"process q: workspace.setup: requires workspace.checkout: setup prepares a checkout the call owns"}; !reflect.DeepEqual(report.Problems, want) {
-		t.Fatalf("problems = %v", report.Problems)
+	if want := []string{"process q: workspace.setup: requires workspace.checkout: setup prepares a checkout the call owns"}; !reflect.DeepEqual(messages(report.Problems), want) {
+		t.Fatalf("problems = %v", messages(report.Problems))
 	}
 	if report.Checked["workspace"] != 1 {
 		t.Fatalf("checked = %v", report.Checked)
@@ -463,8 +463,8 @@ func TestCheckValidatesWorkspaceSettingsAndSetups(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !contains(report.Problems, "workspace workspace: setup.command: is required") {
-		t.Fatalf("problems = %v", report.Problems)
+	if !contains(messages(report.Problems), "workspace workspace: setup.command: is required") {
+		t.Fatalf("problems = %v", messages(report.Problems))
 	}
 }
 

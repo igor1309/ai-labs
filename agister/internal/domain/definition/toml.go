@@ -73,7 +73,7 @@ func decodeTOML(data []byte, subject string, allowed []string, p *problems) map[
 	sort.Strings(keys)
 	for _, key := range keys {
 		if !contains(allowed, key) {
-			p.add(key, "unknown field")
+			p.unknown(key, "unknown field")
 		}
 	}
 	return table
@@ -124,9 +124,8 @@ func ParseAgent(doc Document) (Agent, error) {
 	if table == nil {
 		return Agent{Source: doc.Source}, p.err("agent " + subjectName(doc.Source))
 	}
-	if table["schema"] != AgentSchema {
-		p.add("schema", "must be %q", AgentSchema)
-	}
+	value, _ := table["schema"].(string)
+	checkSchema(value, AgentSchema, p)
 	agent := Agent{
 		Name:        tomlString(table, "name", true, p),
 		Runtime:     tomlString(table, "runtime", true, p),
@@ -177,9 +176,8 @@ func ParseService(doc Document) (Service, error) {
 	if table == nil {
 		return Service{Source: doc.Source}, p.err("service settings")
 	}
-	if table["schema"] != ServiceSchema {
-		p.add("schema", "must be %q", ServiceSchema)
-	}
+	value, _ := table["schema"].(string)
+	checkSchema(value, ServiceSchema, p)
 	service := Service{Source: doc.Source, MaxAttempts: 1, MaxVerifyAttempts: 1}
 	if text := tomlString(table, "max_timeout", true, p); text != "" {
 		service.MaxTimeout, _ = duration(text, "max_timeout", p)

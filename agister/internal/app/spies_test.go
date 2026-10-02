@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
+	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -939,4 +940,13 @@ func (s *adopterSpy) Adopt(_ context.Context, id string) (app.ReapHandle, run.Re
 func sha(text string) string {
 	sum := sha256.Sum256([]byte(text))
 	return hex.EncodeToString(sum[:])
+}
+
+// messages are the problems' messages, in order.
+func messages(problems []contract.Problem) []string {
+	list := make([]string, 0, len(problems))
+	for _, problem := range problems {
+		list = append(list, problem.Message)
+	}
+	return list
 }

@@ -1328,9 +1328,9 @@ func TestCheckRejectsWorkflowsThatCannotRun(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			joined := strings.Join(report.Problems, "\n")
+			joined := strings.Join(messages(report.Problems), "\n")
 			if tc.want == "" {
-				if len(report.Problems) != 0 {
+				if len(messages(report.Problems)) != 0 {
 					t.Fatalf("problems:\n%s", joined)
 				}
 				if report.Checked["workflows"] != 1 {

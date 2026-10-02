@@ -127,3 +127,31 @@ func TestRequirementsNeedOneVersionThatCoversThem(t *testing.T) {
 		t.Fatalf("problems = %v", problems)
 	}
 }
+
+// A problem that names a mechanism the code does not provide, an adapter
+// or an input source, is marked: settings written for a newer Agister
+// name ones this code lacks. Other problems are not.
+func TestProblemsNamingUnknownMechanismsAreMarked(t *testing.T) {
+	b := bundle()
+	b.Mappings["rt2"] = definition.Mapping{Name: "rt2", Adapter: "opencode", Select: "any", Primitives: []definition.Primitive{{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}}}}
+	b.Processes["p"] = definition.Process{Name: "p", Agent: "a", Policy: "pol",
+		Output: definition.Output{Format: "json", Schema: "gone"},
+		Values: []definition.Value{{Name: "v", Source: "git.future"}}}
+	b.Workflows = map[string]definition.Workflow{"w": {Name: "w", Values: []definition.Value{{Name: "v", Source: "git.future"}},
+		FanOut: []definition.Node{{Name: "n", Process: "p"}}, Join: definition.Node{Name: "j", Process: "p"}}}
+
+	unknown := map[string]bool{}
+	for _, p := range settings.Check(b, mechanisms) {
+		unknown[p.String()] = p.Unknown
+	}
+	for problem, want := range map[string]bool{
+		`runtime mapping rt2: unknown adapter "opencode" (available: claude-code)`: true,
+		`process p: input v: unknown source "git.future" (available: param)`:       true,
+		`workflow w: input v: unknown source "git.future" (available: param)`:      true,
+		`process p: output schema "gone" does not exist`:                           false,
+	} {
+		if got, ok := unknown[problem]; !ok || got != want {
+			t.Errorf("%s: reported %t, marked %t, want marked %t; problems: %v", problem, ok, got, want, unknown)
+		}
+	}
+}

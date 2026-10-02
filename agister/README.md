@@ -27,7 +27,10 @@ a repository's settings can run and what they are made of:
 Global settings live in `~/.agister/` (`$AGISTER_HOME` or `--home`); a
 repository's own `.agister/` takes priority, document by document. Every
 command except `init` checks the composed settings first and stops on any
-problem. Runs are recorded under `~/.agister/runs/<id>/`.
+problem. When a problem names a field, adapter, input source or schema
+version this binary does not know, the check adds a line saying the
+settings may need a newer binary, and `agister --version` names the binary
+that is running. Runs are recorded under `~/.agister/runs/<id>/`.
 
 A process declares its verification command inline, or names a document
 that holds it: `verify: verify:repo` is `verifies/repo.yaml`, found like any

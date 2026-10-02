@@ -98,7 +98,7 @@ type ProcessSummary struct {
 
 type CheckReport struct {
 	Checked  map[string]int `json:"checked"` // definitions checked, by kind
-	Problems []string       `json:"problems"`
+	Problems []Problem      `json:"problems"`
 	// Project definitions that take priority over global ones.
 	Overrides []string `json:"overrides"`
 	// What the settings do that their user should know, such as a
@@ -107,6 +107,15 @@ type CheckReport struct {
 	Warnings []string `json:"warnings"`
 	// Every definition read, in check order, with what it references.
 	Definitions []Definition `json:"definitions"`
+}
+
+// Problem is one thing that keeps the settings from passing check.
+type Problem struct {
+	Message string `json:"message"`
+	// Unknown: it names something this binary does not know (a field, an
+	// adapter, an input source, a schema version), as settings written for
+	// a newer binary would.
+	Unknown bool `json:"unknown,omitempty"`
 }
 
 // Definition is one settings document in the composed settings.

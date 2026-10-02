@@ -49,6 +49,9 @@ type Mechanisms struct {
 type Problem struct {
 	Subject string
 	Message string
+	// Unknown: it names a mechanism the code does not provide, as settings
+	// written for a newer Agister would.
+	Unknown bool
 }
 
 func (p Problem) String() string { return p.Subject + ": " + p.Message }
@@ -58,6 +61,9 @@ func Check(b Bundle, m Mechanisms) []Problem {
 	var problems []Problem
 	add := func(subject, format string, args ...any) {
 		problems = append(problems, Problem{Subject: subject, Message: fmt.Sprintf(format, args...)})
+	}
+	unknown := func(subject, format string, args ...any) {
+		problems = append(problems, Problem{Subject: subject, Message: fmt.Sprintf(format, args...), Unknown: true})
 	}
 	if b.Service == nil {
 		add("service", "service settings are missing")
@@ -69,7 +75,7 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		mapping := b.Mappings[name]
 		subject := "runtime mapping " + name
 		if !contains(m.Adapters, mapping.Adapter) {
-			add(subject, "unknown adapter %q (available: %s)", mapping.Adapter, strings.Join(m.Adapters, ", "))
+			unknown(subject, "unknown adapter %q (available: %s)", mapping.Adapter, strings.Join(m.Adapters, ", "))
 		}
 		if unknown := mapping.UnknownPermissions(vocabulary); len(unknown) > 0 {
 			add(subject, "grants permissions not in the vocabulary: %s", strings.Join(unknown, ", "))
@@ -106,7 +112,7 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		subject := "process " + name
 		for _, value := range process.Values {
 			if !contains(m.Sources, value.Source) {
-				add(subject, "input %s: unknown source %q (available: %s)", value.Name, value.Source, strings.Join(m.Sources, ", "))
+				unknown(subject, "input %s: unknown source %q (available: %s)", value.Name, value.Source, strings.Join(m.Sources, ", "))
 			}
 			// A prompt is part of the process (ADR-014 rule 4).
 			if name := value.Args["name"]; value.Source == definition.PromptSource && name != "" && !b.Prompts[name] {
@@ -156,7 +162,7 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		}
 		for _, value := range workflow.Values {
 			if !contains(m.Sources, value.Source) {
-				add(subject, "input %s: unknown source %q (available: %s)", value.Name, value.Source, strings.Join(m.Sources, ", "))
+				unknown(subject, "input %s: unknown source %q (available: %s)", value.Name, value.Source, strings.Join(m.Sources, ", "))
 			}
 		}
 		for _, problem := range WorkflowProblems(workflow, b.Processes) {
