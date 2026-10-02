@@ -1,4 +1,4 @@
-package main
+package runtime
 
 import (
 	"context"
@@ -19,14 +19,14 @@ import (
 func TestCodexTransportForwardsWhatIsLeftOfTheTurnsTimeout(t *testing.T) {
 	fake := runtimetest.Binary(t, "fakecodex")
 	var specs []supervisor.Spec
-	transport := codexTransport{run: func(ctx context.Context, spec supervisor.Spec, sink supervisor.Sink, onLine func(string)) supervisor.Evidence {
+	transport := CodexTransport{Supervisor: supervisorStandIn{run: func(ctx context.Context, spec supervisor.Spec, sink supervisor.Sink, onLine func(string)) supervisor.Evidence {
 		specs = append(specs, spec)
 		if spec.Command == fake {
 			return supervisor.Run(ctx, spec, sink, onLine)
 		}
 		// The lookup never runs: it is ended by its timeout.
 		return supervisor.Evidence{TimedOut: true}
-	}}
+	}}}
 	runner := codex.New(fake, transport)
 	runner.KillGrace = 200 * time.Millisecond
 	start := time.Date(2026, 9, 30, 10, 0, 0, 0, time.UTC)
@@ -40,7 +40,7 @@ func TestCodexTransportForwardsWhatIsLeftOfTheTurnsTimeout(t *testing.T) {
 		}
 		return start.Add(time.Minute - 100*time.Millisecond)
 	}
-	turn := domain.Own(runner.RunTurn(context.Background(), app.TurnRequest{
+	turn := domain.Own(AdaptCodex(runner).RunTurn(context.Background(), app.TurnRequest{
 		Prompt:       "SCENARIO:approve",
 		Instruction:  "Do the thing.",
 		Primitives:   []string{"read-only"},

@@ -11,7 +11,6 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/opencode"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 // spyTransport and spyRuns are the runtimetest spies over the transport types opencode
@@ -32,7 +31,7 @@ func TestTheTransportIsHandedTheTurn(t *testing.T) {
 		r := request("hello")
 		r.Cwd = "/work"
 		r.ResumeSessionID = resume
-		runner.RunTurn(context.Background(), r, &runtimetest.Recorder{})
+		runner.RunTurn(context.Background(), r, &sink{})
 
 		specs := spy.Specs()
 		if len(specs) != 1 {
@@ -66,15 +65,15 @@ func TestTheTransportIsHandedTheTurn(t *testing.T) {
 func TestATurnIsDecidedByTheTransportsEvidence(t *testing.T) {
 	for name, c := range map[string]struct {
 		evidence opencode.Evidence
-		status   run.Status
-		class    run.Class
+		status   opencode.Status
+		class    opencode.Class
 	}{
-		"timeout": {opencode.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "signal: terminated"}}, run.Interrupted, run.ClassTimeout},
-		"signal":  {opencode.Evidence{Exit: &run.Exit{Signal: "signal: killed"}}, run.Lost, run.ClassKilled},
+		"timeout": {opencode.Evidence{TimedOut: true, Exit: &opencode.Exit{Signal: "signal: terminated"}}, opencode.Interrupted, opencode.ClassTimeout},
+		"signal":  {opencode.Evidence{Exit: &opencode.Exit{Signal: "signal: killed"}}, opencode.Lost, opencode.ClassKilled},
 	} {
 		spy := &spyTransport{Runs: spyRuns{Answer: func(opencode.Spec) ([]string, opencode.Evidence) { return nil, c.evidence }}}
 		runner := &opencode.Runner{Transport: spy, Command: "opencode"}
-		turn := runner.RunTurn(context.Background(), request("hello"), &runtimetest.Recorder{})
+		turn := runner.RunTurn(context.Background(), request("hello"), &sink{})
 		if turn.Status != c.status || turn.Error == nil || turn.Error.Class != c.class {
 			t.Errorf("%s: turn = %+v", name, turn)
 		}
@@ -93,5 +92,28 @@ func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
 	failing := &spyTransport{Err: errors.New("not found")}
 	if _, err := opencode.New("opencode", failing).Identity(context.Background()); err == nil {
 		t.Fatal("a failed version check must fail identity")
+	}
+}
+
+// Classification still quotes the process's bounded stderr, including a tail
+// with a cut marker, and preserves the full retained tail as evidence.
+func TestTheTransportStderrDecidesASilentFailure(t *testing.T) {
+	for _, c := range []struct {
+		code    int
+		tail    string
+		omitted int64
+		message string
+	}{
+		{1, "[100 earlier bytes of stderr cut]\nolder line\nError: too large!", 100, "exit code 1: Error: too large!"},
+		{2, "", 0, "exit code 2"},
+	} {
+		spy := &spyTransport{Runs: spyRuns{Answer: func(opencode.Spec) ([]string, opencode.Evidence) {
+			return nil, opencode.Evidence{Exit: &opencode.Exit{Code: &c.code}, StderrTail: c.tail, StderrOmitted: c.omitted}
+		}}}
+		runner := &opencode.Runner{Transport: spy, Command: "opencode"}
+		result := runner.RunTurn(context.Background(), request("hello"), &sink{})
+		if result.Status != opencode.Failed || result.Error == nil || result.Error.Class != opencode.ClassRuntimeError || result.Error.Message != c.message || result.StderrTail != c.tail || result.StderrOmitted != c.omitted {
+			t.Fatalf("turn = %+v", result)
+		}
 	}
 }

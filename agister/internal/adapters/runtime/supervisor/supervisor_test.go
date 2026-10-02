@@ -13,9 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/outcome"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 // The test binary doubles as the runtime's descendants: with helperEnv set
@@ -276,10 +274,8 @@ func TestGroupThatCannotBeRecordedIsKilled(t *testing.T) {
 				t.Fatalf("group %d still has members", group)
 			}
 
-			ended := outcome.Evidence(evidence)
-			turn, failed := outcome.RecordFailure(outcome.Base(ended), ended)
-			if !failed || turn.Status != run.Failed || turn.Error == nil || !strings.Contains(turn.Error.Message, "recording the runtime process failed") || !strings.Contains(turn.Error.Message, "disk full") {
-				t.Fatalf("turn = %+v", turn)
+			if evidence.RecordError != "disk full" {
+				t.Fatalf("evidence = %+v", evidence)
 			}
 		})
 	}
@@ -304,11 +300,6 @@ func TestStderrBeyondTheBoundIsCutAndMarked(t *testing.T) {
 	if !strings.HasPrefix(kept, "é") || len(kept) != 4096-1-1 || !strings.HasSuffix(kept, "é\nError: too large!") {
 		t.Fatalf("kept %d bytes: %q…", len(kept), kept[:10])
 	}
-	ended := outcome.Evidence(evidence)
-	turn := outcome.WithoutTerminal(outcome.Base(ended), ended, "")
-	if turn.Error.Message != "exit code 1: Error: too large!" || turn.StderrTail != evidence.StderrTail || turn.StderrOmitted != evidence.StderrOmitted {
-		t.Fatalf("turn = %+v", turn)
-	}
 }
 
 // A runtime that prints nothing to stderr leaves no tail and no cut.
@@ -318,10 +309,8 @@ func TestASilentExitLeavesNoTail(t *testing.T) {
 		Args:    []string{"-c", "exit 2"},
 		Timeout: 30 * time.Second,
 	}, &events{}, func(string) {})
-	ended := outcome.Evidence(evidence)
-	turn := outcome.WithoutTerminal(outcome.Base(ended), ended, "")
-	if evidence.StderrTail != "" || evidence.StderrOmitted != 0 || turn.Error.Message != "exit code 2" {
-		t.Fatalf("evidence = %+v, turn = %+v", evidence, turn)
+	if evidence.StderrTail != "" || evidence.StderrOmitted != 0 {
+		t.Fatalf("evidence = %+v", evidence)
 	}
 }
 

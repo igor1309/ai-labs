@@ -11,8 +11,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
-	"github.com/igor1309/ai-labs/agister/internal/app"
 )
 
 // Commands runs verification commands: `bash -c <command>` in the call's
@@ -34,7 +32,7 @@ type Commands struct {
 // output for the request's NoOutput, or ctx ends. On a timeout, staleness
 // or cancellation the whole group is killed; after an exit, whatever the
 // command left running in its group is killed too.
-func (c Commands) Run(ctx context.Context, request app.CommandRequest, started func(ref string) error) (result app.CommandResult) {
+func (c Commands) Run(ctx context.Context, request CommandRequest, started func(ref string) error) (result CommandResult) {
 	grace := c.KillGrace
 	if grace == 0 {
 		grace = defaultKillGrace

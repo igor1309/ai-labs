@@ -23,15 +23,12 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/inputs"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/logging"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/claudecode"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/opencode"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/pi"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/schema"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
+	runtimecomposition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/pages"
 )
@@ -140,19 +137,19 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	evidence := fsruns.Store{Dir: filepath.Join(config.Home, "runs")}
 	runtimes := runtime.Registry{
 		"claude-code": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: claudecode.New(command, claudeCodeTransport{}), Adapter: "claude-code", Log: log}
+			return logging.Runner{Inner: runtimecomposition.NewClaudeCode(command), Adapter: "claude-code", Log: log}
 		},
 		"codex": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: codex.New(command, codexTransport{}), Adapter: "codex", Log: log}
+			return logging.Runner{Inner: runtimecomposition.NewCodex(command), Adapter: "codex", Log: log}
 		},
 		// Pi's sessions are kept under the home, where a continuation
 		// finds them, not in ~/.pi.
 		// OpenCode keeps its sessions in its own store.
 		"opencode": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: opencode.New(command, openCodeTransport{}), Adapter: "opencode", Log: log}
+			return logging.Runner{Inner: runtimecomposition.NewOpenCode(command), Adapter: "opencode", Log: log}
 		},
 		"pi": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: pi.New(command, filepath.Join(config.Home, "pi", "sessions"), piTransport{}), Adapter: "pi", Log: log}
+			return logging.Runner{Inner: runtimecomposition.NewPi(command, filepath.Join(config.Home, "pi", "sessions")), Adapter: "pi", Log: log}
 		},
 	}
 	// Over the one coordinator of the process: every workspace adapter's
@@ -164,7 +161,7 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	// that fails has no caller to tell and no run record to say so: the
 	// log does.
 	reaping := &app.BackgroundReaper{
-		Reaper: app.NewReaper(evidence, supervisor.Processes{}, workspaces.discarder, system.Clock{}),
+		Reaper: app.NewReaper(evidence, runtimecomposition.Processes{Supervisor: supervisor.Processes{}}, workspaces.discarder, system.Clock{}),
 		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },
 	}
 	client := app.NewClient(app.Infrastructure{
@@ -194,7 +191,7 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 			IDs:        system.IDs{},
 			StateDir:   config.Home,
 		},
-		Verifier: app.VerifyAdapters{Content: content, Copies: workspaces.copies, Commands: supervisor.Commands{}, Clock: system.Clock{}},
+		Verifier: app.VerifyAdapters{Content: content, Copies: workspaces.copies, Commands: runtimecomposition.Commands{Supervisor: supervisor.Commands{}}, Clock: system.Clock{}},
 		Runs:     app.RunsAdapters{Reader: evidence},
 		Decorate: func(client contract.Client) contract.Client {
 			return app.ReapOnSubmit{Client: client, Background: reaping}

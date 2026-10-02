@@ -12,7 +12,6 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 // spyTransport and spyRuns are the runtimetest spies over the transport types codex
@@ -33,7 +32,7 @@ func TestTheTransportIsHandedTheTurn(t *testing.T) {
 		r.OutputSchema = nil
 		r.Cwd = "/work"
 		r.ResumeSessionID = resume
-		runner.RunTurn(context.Background(), r, &runtimetest.Recorder{})
+		runner.RunTurn(context.Background(), r, &sink{})
 
 		args, err := codex.Arguments(r, "")
 		if err != nil {
@@ -59,7 +58,7 @@ func TestTheSchemaFileIsThereWhileTheTurnRuns(t *testing.T) {
 		}
 		return nil, codex.Evidence{}
 	}}}
-	(&codex.Runner{Transport: spy, Command: "codex"}).RunTurn(context.Background(), request("hello"), &runtimetest.Recorder{})
+	(&codex.Runner{Transport: spy, Command: "codex"}).RunTurn(context.Background(), request("hello"), &sink{})
 	if schema != `{"type":"object"}` {
 		t.Fatalf("schema = %q", schema)
 	}
@@ -70,15 +69,15 @@ func TestTheSchemaFileIsThereWhileTheTurnRuns(t *testing.T) {
 func TestATurnIsDecidedByTheTransportsEvidence(t *testing.T) {
 	for name, c := range map[string]struct {
 		evidence codex.Evidence
-		status   run.Status
-		class    run.Class
+		status   codex.Status
+		class    codex.Class
 	}{
-		"timeout": {codex.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "signal: terminated"}}, run.Interrupted, run.ClassTimeout},
-		"signal":  {codex.Evidence{Exit: &run.Exit{Signal: "signal: killed"}}, run.Lost, run.ClassKilled},
+		"timeout": {codex.Evidence{TimedOut: true, Exit: &codex.Exit{Signal: "signal: terminated"}}, codex.Interrupted, codex.ClassTimeout},
+		"signal":  {codex.Evidence{Exit: &codex.Exit{Signal: "signal: killed"}}, codex.Lost, codex.ClassKilled},
 	} {
 		spy := &spyTransport{Runs: spyRuns{Answer: func(codex.Spec) ([]string, codex.Evidence) { return nil, c.evidence }}}
 		runner := &codex.Runner{Transport: spy, Command: "codex"}
-		turn := runner.RunTurn(context.Background(), request("hello"), &runtimetest.Recorder{})
+		turn := runner.RunTurn(context.Background(), request("hello"), &sink{})
 		if turn.Status != c.status || turn.Error == nil || turn.Error.Class != c.class {
 			t.Errorf("%s: turn = %+v", name, turn)
 		}
@@ -89,7 +88,7 @@ func TestATurnIsDecidedByTheTransportsEvidence(t *testing.T) {
 // lookup is ccusage's listing, within what is left of the turn's timeout.
 func TestTheCostLookupGoesThroughTheTransport(t *testing.T) {
 	code := 0
-	clean := codex.Evidence{Exit: &run.Exit{Code: &code}}
+	clean := codex.Evidence{Exit: &codex.Exit{Code: &code}}
 	spy := &spyTransport{Runs: spyRuns{Answer: func(spec codex.Spec) ([]string, codex.Evidence) {
 		if spec.Command == "ccusage" {
 			return strings.Split(listingJSON("0.25"), "\n"), clean
@@ -98,8 +97,8 @@ func TestTheCostLookupGoesThroughTheTransport(t *testing.T) {
 	}}}
 	r := request("hello")
 	r.OutputSchema = nil
-	turn := codex.New("/opt/codex", spy).RunTurn(context.Background(), r, &runtimetest.Recorder{})
-	if turn.Status != run.Completed || turn.Session == nil || turn.Session.CostUSD == nil || *turn.Session.CostUSD != 0.25 {
+	turn := codex.New("/opt/codex", spy).RunTurn(context.Background(), r, &sink{})
+	if turn.Status != codex.Completed || turn.Session == nil || turn.Session.CostUSD == nil || *turn.Session.CostUSD != 0.25 {
 		t.Fatalf("turn = %+v", turn)
 	}
 	specs := spy.Specs()
@@ -117,13 +116,13 @@ func TestTheCostLookupGoesThroughTheTransport(t *testing.T) {
 // lookup only runs a process: its spy has no Version.
 func TestALookupThatDidNotExitCleanlyFails(t *testing.T) {
 	for name, evidence := range map[string]codex.Evidence{
-		"timeout": {TimedOut: true, Exit: &run.Exit{Signal: "signal: terminated"}},
-		"signal":  {Exit: &run.Exit{Signal: "signal: killed"}},
+		"timeout": {TimedOut: true, Exit: &codex.Exit{Signal: "signal: terminated"}},
+		"signal":  {Exit: &codex.Exit{Signal: "signal: killed"}},
 	} {
 		spy := &spyRuns{Answer: func(codex.Spec) ([]string, codex.Evidence) {
 			return strings.Split(listingJSON("0.25"), "\n"), evidence
 		}}
-		listing, err := codex.CCUsage(spy, "ccusage", 2*time.Second)(context.Background(), time.Minute, &runtimetest.Recorder{})
+		listing, err := codex.CCUsage(spy, "ccusage", 2*time.Second)(context.Background(), time.Minute, &sink{})
 		if err == nil || listing != nil {
 			t.Errorf("%s: listing %q, err %v", name, listing, err)
 		}
@@ -145,5 +144,28 @@ func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
 	failing := &spyTransport{Err: errors.New("not found")}
 	if _, err := codex.New("codex", failing).Identity(context.Background()); err == nil {
 		t.Fatal("a failed version check must fail identity")
+	}
+}
+
+// Classification still quotes the process's bounded stderr, including a tail
+// with a cut marker, and preserves the full retained tail as evidence.
+func TestTheTransportStderrDecidesASilentFailure(t *testing.T) {
+	for _, c := range []struct {
+		code    int
+		tail    string
+		omitted int64
+		message string
+	}{
+		{1, "[100 earlier bytes of stderr cut]\nolder line\nError: too large!", 100, "exit code 1: Error: too large!"},
+		{2, "", 0, "exit code 2"},
+	} {
+		spy := &spyTransport{Runs: spyRuns{Answer: func(codex.Spec) ([]string, codex.Evidence) {
+			return nil, codex.Evidence{Exit: &codex.Exit{Code: &c.code}, StderrTail: c.tail, StderrOmitted: c.omitted}
+		}}}
+		runner := &codex.Runner{Transport: spy, Command: "codex"}
+		result := runner.RunTurn(context.Background(), request("hello"), &sink{})
+		if result.Status != codex.Failed || result.Error == nil || result.Error.Class != codex.ClassRuntimeError || result.Error.Message != c.message || result.StderrTail != c.tail || result.StderrOmitted != c.omitted {
+			t.Fatalf("turn = %+v", result)
+		}
 	}
 }

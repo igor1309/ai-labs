@@ -1,54 +1,20 @@
 package opencode_test
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"math"
+
 	"reflect"
-	"regexp"
+
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/opencode"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/app"
-	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+	// fresh is the session the fake starts.
 )
 
-// fresh is the session the fake starts.
-const fresh = "ses_f06fe64c3ffeLyBkwYK7e1GfJs"
-
-func request(prompt string) app.TurnRequest {
-	return app.TurnRequest{
-		Prompt:       prompt,
-		Instruction:  "Do the thing.",
-		Primitives:   []string{"read", "skill", "bash"},
-		Model:        "opencode-go/minimax-m3",
-		Effort:       "high",
-		Timeout:      time.Minute,
-		OutputSchema: json.RawMessage(`{"type":"object"}`),
-	}
-}
-
-func runner(t *testing.T) *opencode.Runner {
-	return &opencode.Runner{Transport: supervised{}, Command: runtimetest.Binary(t, "fakeopencode"), KillGrace: 200 * time.Millisecond}
-}
-
-func TestConformance(t *testing.T) {
-	runtimetest.Conformance(t, runtimetest.Subject{
-		New: func(command string) app.TurnRunner {
-			return &opencode.Runner{Transport: supervised{}, Command: command, KillGrace: 200 * time.Millisecond}
-		},
-		Fake:     runtimetest.Binary(t, "fakeopencode"),
-		Contract: opencode.Contract,
-		Request:  request,
-	})
-}
-
 func TestArguments(t *testing.T) {
-	args, err := opencode.Arguments(request("hello"), "agister-1")
+	args, err := opencode.Arguments(opencode.TurnRequest(request("hello")), "agister-1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +29,7 @@ func TestArguments(t *testing.T) {
 func TestResumeArguments(t *testing.T) {
 	r := request("hello")
 	r.ResumeSessionID = "ses_1"
-	args, err := opencode.Arguments(r, "agister-1")
+	args, err := opencode.Arguments(opencode.TurnRequest(r), "agister-1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +42,7 @@ func TestResumeArguments(t *testing.T) {
 // No model or effort leaves OpenCode's own; the agent is always the
 // generated one, and no flag approves what it does not allow.
 func TestDefaults(t *testing.T) {
-	args, err := opencode.Arguments(app.TurnRequest{Prompt: "x", Primitives: []string{"skill"}}, "agister-1")
+	args, err := opencode.Arguments(opencode.TurnRequest(opencode.TurnRequest{Prompt: "x", Primitives: []string{"skill"}}), "agister-1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,18 +61,18 @@ func TestConfigIsTheGeneratedAgent(t *testing.T) {
 		"with no other text and no Markdown fence.\n<output-schema>\n{\"type\":\"object\"}\n</output-schema>"
 	prompt, _ := json.Marshal("Do the thing.\n\n" + schema)
 	want := `{"agent":{"agister-1":{"mode":"primary","prompt":` + string(prompt) + `,"permission":{"*":"deny","read":"allow","skill":"allow","bash":"allow"}}}}`
-	if got := opencode.Config(request("hello"), "agister-1"); got != want {
+	if got := opencode.Config(opencode.TurnRequest(request("hello")), "agister-1"); got != want {
 		t.Fatalf("config =\n%s\nwant\n%s", got, want)
 	}
 	// Neither an instruction nor a schema: no prompt, the same denial.
 	want = `{"agent":{"agister-2":{"mode":"primary","permission":{"*":"deny","skill":"allow"}}}}`
-	if got := opencode.Config(app.TurnRequest{Prompt: "x", Primitives: []string{"skill"}}, "agister-2"); got != want {
+	if got := opencode.Config(opencode.TurnRequest(opencode.TurnRequest{Prompt: "x", Primitives: []string{"skill"}}), "agister-2"); got != want {
 		t.Fatalf("config =\n%s\nwant\n%s", got, want)
 	}
 	// A resumed turn's config is a fresh turn's.
 	r := request("hello")
 	r.ResumeSessionID = "ses_1"
-	if opencode.Config(r, "agister-1") != opencode.Config(request("hello"), "agister-1") {
+	if opencode.Config(opencode.TurnRequest(r), "agister-1") != opencode.Config(opencode.TurnRequest(request("hello")), "agister-1") {
 		t.Fatal("a resumed turn's config differs")
 	}
 }
@@ -117,13 +83,13 @@ func TestToolsAndVariants(t *testing.T) {
 	for _, tool := range opencode.Tools {
 		r := request("x")
 		r.Primitives = []string{"skill", tool}
-		if _, err := opencode.Arguments(r, "a"); err != nil {
+		if _, err := opencode.Arguments(opencode.TurnRequest(r), "a"); err != nil {
 			t.Errorf("tool %s: %v", tool, err)
 		}
 		var config struct {
 			Agent map[string]map[string]json.RawMessage
 		}
-		if err := json.Unmarshal([]byte(opencode.Config(r, "a")), &config); err != nil {
+		if err := json.Unmarshal([]byte(opencode.Config(opencode.TurnRequest(r), "a")), &config); err != nil {
 			t.Fatal(err)
 		}
 		agent := config.Agent["a"]
@@ -137,19 +103,10 @@ func TestToolsAndVariants(t *testing.T) {
 	for _, variant := range []string{"none", "minimal", "low", "medium", "high", "xhigh", "max"} {
 		r := request("x")
 		r.Effort = variant
-		if args, err := opencode.Arguments(r, "a"); err != nil || !follows(args, "--variant", variant) {
+		if args, err := opencode.Arguments(opencode.TurnRequest(r), "a"); err != nil || !follows(args, "--variant", variant) {
 			t.Errorf("effort %s: %q, %v", variant, args, err)
 		}
 	}
-}
-
-func follows(args []string, flag, value string) bool {
-	for i := range args[:len(args)-1] {
-		if args[i] == flag && args[i+1] == value {
-			return true
-		}
-	}
-	return false
 }
 
 // echo is the fake's first line: what it was given.
@@ -159,142 +116,17 @@ type echo struct {
 	Permission             json.RawMessage
 }
 
-func echoed(t *testing.T, sink *runtimetest.Recorder) echo {
-	t.Helper()
-	var e echo
-	if err := json.Unmarshal([]byte(sink.Lines[0]), &e); err != nil {
-		t.Fatal(err)
-	}
-	return e
-}
-
-// A turn gives OpenCode the generated agent in OPENCODE_CONFIG_CONTENT and
-// names it with --agent; the prompt goes on stdin. The agent's name is the
-// turn's own, so no agent a config defines can merge with it.
-func TestATurnRunsAsItsOwnGeneratedAgent(t *testing.T) {
-	name := regexp.MustCompile(`^agister-[0-9a-f]{16}$`)
-	var names []string
-	for range 2 {
-		sink := &runtimetest.Recorder{}
-		r := request("hello SCENARIO:approve")
-		if turn := runner(t).RunTurn(context.Background(), r, sink); turn.Status != run.Completed {
-			t.Fatalf("turn = %+v", turn)
-		}
-		e := echoed(t, sink)
-		agent := e.Argv[5]
-		if e.Argv[4] != "--agent" || !name.MatchString(agent) || e.Config != opencode.Config(r, agent) {
-			t.Fatalf("argv %q, config %s", e.Argv, e.Config)
-		}
-		if e.Prompt != "hello SCENARIO:approve" || !strings.HasPrefix(e.System, "Do the thing.\n\n") ||
-			!strings.Contains(e.System, "<output-schema>\n{\"type\":\"object\"}\n</output-schema>") ||
-			string(e.Permission) != `{"*":"deny","read":"allow","skill":"allow","bash":"allow"}` {
-			t.Fatalf("echo = %+v", e)
-		}
-		names = append(names, agent)
-	}
-	if names[0] == names[1] {
-		t.Fatalf("two turns ran as the same agent %s", names[0])
-	}
-}
-
-// A turn's inline config replaces one the environment already holds.
-func TestTheConfigReplacesAnInheritedOne(t *testing.T) {
-	t.Setenv(opencode.ConfigVariable, `{"agent":{"build":{"permission":{"*":"allow"}}}}`)
-	sink := &runtimetest.Recorder{}
-	if turn := runner(t).RunTurn(context.Background(), request("SCENARIO:approve"), sink); turn.Status != run.Completed {
-		t.Fatalf("turn = %+v", turn)
-	}
-	if e := echoed(t, sink); strings.Contains(e.Config, "build") || !strings.Contains(e.Config, e.Argv[5]) {
-		t.Fatalf("config = %s", e.Config)
-	}
-}
-
-// OpenCode lists and loads a skill with its skill tool only: a turn not
-// granted it is refused before OpenCode starts.
-func TestRefusesATurnThatCannotUseASkill(t *testing.T) {
-	for _, primitives := range [][]string{nil, {}, {"read", "grep", "glob"}, {"bash"}, {"edit"}} {
-		r := request("x")
-		r.Primitives = primitives
-		if args, err := opencode.Arguments(r, "a"); err == nil || err.Error() != "opencode/1 needs skill to use the repository's skills (ADR-006)" {
-			t.Errorf("primitives %q: args %q, err = %v", primitives, args, err)
-		}
-	}
-	r := request("x")
-	r.Primitives = []string{"read"}
-	sink := &runtimetest.Recorder{}
-	turn := runner(t).RunTurn(context.Background(), r, sink)
-	if turn.Status != run.Failed || turn.Error.Class != run.ClassInternal || len(sink.Processes) != 0 {
-		t.Fatalf("turn = %+v, processes %v", turn, sink.Processes)
-	}
-}
-
-func TestRejectsWhatItCannotHonour(t *testing.T) {
-	r := request("x")
-	limit := 1.0
-	r.MaxCostUSD = &limit
-	if _, err := opencode.Arguments(r, "a"); err == nil || err.Error() != "opencode/1 cannot limit cost" {
-		t.Fatalf("cost limit: err = %v", err)
-	}
-	// write is no permission of its own, list no tool of 1.18.33, and the
-	// rest are tools a call is never given.
-	for _, primitives := range [][]string{{"Bash"}, {"skill", "write"}, {"skill", "list"}, {"skill", "task"}, {"skill", "todowrite"}, {"skill", "question"}, {"skill", "*"}, {""}} {
-		r := request("x")
-		r.Primitives = primitives
-		if _, err := opencode.Arguments(r, "a"); err == nil || !strings.Contains(err.Error(), "opencode/1 has no tool") {
-			t.Errorf("primitives %q: err = %v", primitives, err)
-		}
-	}
-	r = request("x")
-	r.Effort = "extreme"
-	if _, err := opencode.Arguments(r, "a"); err == nil || !strings.Contains(err.Error(), "opencode/1 has no variant") {
-		t.Fatalf("an unknown variant: err = %v", err)
-	}
-	// Refused before OpenCode starts.
-	r = request("x")
-	r.MaxCostUSD = &limit
-	sink := &runtimetest.Recorder{}
-	turn := runner(t).RunTurn(context.Background(), r, sink)
-	if turn.Status != run.Failed || turn.Error.Class != run.ClassInternal || len(sink.Processes) != 0 {
-		t.Fatalf("turn = %+v, processes %v", turn, sink.Processes)
-	}
-}
-
 func TestSystemPrompt(t *testing.T) {
-	if got := opencode.SystemPrompt(app.TurnRequest{Instruction: "Do the thing."}); got != "Do the thing." {
+	if got := opencode.SystemPrompt(opencode.TurnRequest(opencode.TurnRequest{Instruction: "Do the thing."})); got != "Do the thing." {
 		t.Fatalf("instruction only: %q", got)
 	}
-	if got := opencode.SystemPrompt(app.TurnRequest{}); got != "" {
+	if got := opencode.SystemPrompt(opencode.TurnRequest(opencode.TurnRequest{})); got != "" {
 		t.Fatalf("neither: %q", got)
 	}
 }
 
-func TestIdentity(t *testing.T) {
-	identity, err := opencode.New(runtimetest.Binary(t, "fakeopencode"), supervised{}).Identity(context.Background())
-	want := app.RuntimeIdentity{Contract: "opencode/1", Version: "1.18.33", Resume: true, ResumeWhereItRan: true, SkillTools: []string{"skill"}}
-	if err != nil || !reflect.DeepEqual(identity, want) {
-		t.Fatalf("identity = %+v, %v", identity, err)
-	}
-}
-
-// A fresh turn reports the session OpenCode started, and a later turn of
-// the call resumes it by that ID.
-func TestALaterTurnResumesTheSession(t *testing.T) {
-	sink := &runtimetest.Recorder{}
-	turn := runner(t).RunTurn(context.Background(), request("SCENARIO:approve"), sink)
-	if turn.Status != run.Completed || turn.ProviderSessionID != fresh {
-		t.Fatalf("fresh turn = %+v", turn)
-	}
-	next := request("SCENARIO:approve")
-	next.ResumeSessionID = turn.ProviderSessionID
-	sink = &runtimetest.Recorder{}
-	turn = runner(t).RunTurn(context.Background(), next, sink)
-	if turn.Status != run.Completed || turn.ProviderSessionID != fresh || !follows(echoed(t, sink).Argv, "-s", fresh) {
-		t.Fatalf("resumed turn = %+v", turn)
-	}
-}
-
 func exited(code int) opencode.Evidence {
-	return opencode.Evidence{Exit: &run.Exit{Code: &code}}
+	return opencode.Evidence{Exit: &opencode.Exit{Code: &code}}
 }
 
 var clean = exited(0)
@@ -316,58 +148,22 @@ func step(session, reason string) string {
 	return `{"type":"step_finish","timestamp":4,"sessionID":"` + session + `","part":{"type":"step-finish","reason":"` + reason + `","cost":0,"tokens":{"total":0,"input":0,"output":0,"reasoning":0,"cache":{"write":0,"read":0}}}}`
 }
 
-// A resume turn must report the session it resumed: another one, or none
-// by the end of the turn, breaks the contract of resuming in place. The
-// steps it finished have still cost what they reported.
-func TestResumeReportingAnotherSessionFails(t *testing.T) {
-	for name, lines := range map[string][]string{
-		"another session": {`{"type":"step_start","sessionID":"ses_2","part":{"type":"step-start"}}`, strings.ReplaceAll(stopped, "ses_1", "ses_2")},
-		"no session":      {`{"type":"step_finish","part":{"type":"step-finish","reason":"stop","cost":0.25,"tokens":{"input":10,"output":5}}}`},
-	} {
-		stream := &opencode.Stream{ResumedSessionID: "ses_1"}
-		reduce(stream, lines...)
-		turn := stream.Reconcile(clean, false)
-		if turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError || !strings.Contains(turn.Error.Message, "resumed session ses_1") {
-			t.Errorf("%s: turn = %+v", name, turn)
-		}
-		if u := turn.Usage; u == nil || *u.InputTokens != 10 || *u.OutputTokens != 5 || turn.CostUSD == nil || *turn.CostUSD != 0.25 {
-			t.Errorf("%s: usage %+v, cost %v", name, u, turn.CostUSD)
-		}
-	}
-	stream := &opencode.Stream{ResumedSessionID: "ses_1"}
-	reduce(stream, stepStart, answer, stopped)
-	if turn := stream.Reconcile(clean, false); turn.Status != run.Completed || turn.ProviderSessionID != "ses_1" {
-		t.Fatalf("the same session: turn = %+v", turn)
-	}
-
-	// OpenCode reporting another session on resume: its two steps are kept.
-	next := request("SCENARIO:mismatch")
-	next.ResumeSessionID = "ses_1"
-	turn := runner(t).RunTurn(context.Background(), next, &runtimetest.Recorder{})
-	if turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError || turn.ProviderSessionID == "ses_1" {
-		t.Fatalf("mismatch: turn = %+v", turn)
-	}
-	if u := turn.Usage; u == nil || *u.InputTokens != 2200 || *u.OutputTokens != 120 || turn.CostUSD == nil || math.Abs(*turn.CostUSD-0.0033) > 1e-9 {
-		t.Fatalf("mismatch: usage %+v, cost %v", u, turn.CostUSD)
-	}
-}
-
 func TestStructuredOutputMustBeJSON(t *testing.T) {
 	for _, text := range []string{"not json", "```json\n{}\n```", ""} {
 		stream := &opencode.Stream{}
 		data, _ := json.Marshal(map[string]any{"type": "text", "sessionID": "ses_1", "part": map[string]any{"type": "text", "text": text}})
 		reduce(stream, stepStart, string(data), stopped)
-		if turn := stream.Reconcile(clean, true); turn.Status != run.Failed || turn.Error.Class != run.ClassInvalidOutput {
+		if turn := stream.Reconcile(clean, true); string(turn.Status) != string(opencode.Failed) || string(turn.Error.Class) != string(opencode.ClassInvalidOutput) {
 			t.Errorf("%q: turn = %+v", text, turn)
 		}
 		// Without a schema, text is text.
-		if turn := stream.Reconcile(clean, false); turn.Status != run.Completed || turn.Output != nil || turn.Text != text {
+		if turn := stream.Reconcile(clean, false); string(turn.Status) != string(opencode.Completed) || turn.Output != nil || turn.Text != text {
 			t.Errorf("%q without a schema: turn = %+v", text, turn)
 		}
 	}
 	stream := &opencode.Stream{}
 	reduce(stream, stepStart, answer, stopped)
-	if turn := stream.Reconcile(clean, true); turn.Status != run.Completed || string(turn.Output) != `{"answer":"vm"}` || turn.Text != `{"answer":"vm"}` {
+	if turn := stream.Reconcile(clean, true); string(turn.Status) != string(opencode.Completed) || string(turn.Output) != `{"answer":"vm"}` || turn.Text != `{"answer":"vm"}` {
 		t.Fatalf("turn = %+v", turn)
 	}
 }
@@ -382,7 +178,7 @@ func TestUsageAndCostAreSummedOverTheTurn(t *testing.T) {
 		stepStart, answer, stopped,
 	)
 	turn := stream.Reconcile(clean, true)
-	if turn.Status != run.Completed || turn.ProviderSessionID != "ses_1" {
+	if string(turn.Status) != string(opencode.Completed) || turn.ProviderSessionID != "ses_1" {
 		t.Fatalf("turn = %+v", turn)
 	}
 	u := turn.Usage
@@ -395,7 +191,7 @@ func TestUsageAndCostAreSummedOverTheTurn(t *testing.T) {
 	// A turn that fails after a step has still cost that step.
 	stream = &opencode.Stream{}
 	reduce(stream, stepStart, stopped, failed)
-	if turn := stream.Reconcile(exited(1), false); turn.Status != run.Failed || turn.CostUSD == nil || *turn.CostUSD != 0.25 || *turn.Usage.InputTokens != 10 {
+	if turn := stream.Reconcile(exited(1), false); string(turn.Status) != string(opencode.Failed) || turn.CostUSD == nil || *turn.CostUSD != 0.25 || *turn.Usage.InputTokens != 10 {
 		t.Fatalf("failed turn = %+v, usage %+v", turn, turn.Usage)
 	}
 }
@@ -409,7 +205,7 @@ func TestAFigureSomeStepLacksIsUnknown(t *testing.T) {
 		`{"type":"step_finish","sessionID":"ses_1","part":{"type":"step-finish","reason":"tool-calls","tokens":{"input":100,"output":3}}}`,
 		stepStart, answer, stopped)
 	turn := stream.Reconcile(clean, false)
-	if u := turn.Usage; turn.Status != run.Completed || u == nil || *u.InputTokens != 110 || *u.OutputTokens != 8 || u.CacheReadTokens != nil || u.ReasoningTokens != nil || turn.CostUSD != nil {
+	if u := turn.Usage; string(turn.Status) != string(opencode.Completed) || u == nil || *u.InputTokens != 110 || *u.OutputTokens != 8 || u.CacheReadTokens != nil || u.ReasoningTokens != nil || turn.CostUSD != nil {
 		t.Fatalf("turn = %+v, usage %+v", turn, u)
 	}
 }
@@ -419,23 +215,23 @@ func TestAFigureSomeStepLacksIsUnknown(t *testing.T) {
 func TestFailuresAreClassified(t *testing.T) {
 	for _, c := range []struct {
 		name, message string
-		class         run.Class
+		class         opencode.Class
 	}{
-		{"APIError", "429 Too Many Requests: rate limit exceeded", run.ClassRateLimited},
-		{"APIError", "You exceeded your current quota", run.ClassRateLimited},
-		{"ProviderAuthError", "401 Unauthorized", run.ClassAuth},
-		{"ProviderAuthError", "No API key found for opencode-go", run.ClassAuth},
-		{"APIError", "prompt exceeds the context window", run.ClassContextOverflow},
-		{"ProviderAuthError", "Invalid credentials for opencode-go", run.ClassAuth},
-		{"UnknownError", "Unexpected server error. Check server logs for details.", run.ClassRuntimeError},
-		{"MessageAbortedError", "", run.ClassRuntimeError},
+		{"APIError", "429 Too Many Requests: rate limit exceeded", opencode.ClassRateLimited},
+		{"APIError", "You exceeded your current quota", opencode.ClassRateLimited},
+		{"ProviderAuthError", "401 Unauthorized", opencode.ClassAuth},
+		{"ProviderAuthError", "No API key found for opencode-go", opencode.ClassAuth},
+		{"APIError", "prompt exceeds the context window", opencode.ClassContextOverflow},
+		{"ProviderAuthError", "Invalid credentials for opencode-go", opencode.ClassAuth},
+		{"UnknownError", "Unexpected server error. Check server logs for details.", opencode.ClassRuntimeError},
+		{"MessageAbortedError", "", opencode.ClassRuntimeError},
 	} {
 		data, _ := json.Marshal(map[string]any{"type": "error", "sessionID": "ses_1", "error": map[string]any{"name": c.name, "data": map[string]any{"message": c.message}}})
 		for _, evidence := range []opencode.Evidence{exited(1), clean} {
 			stream := &opencode.Stream{}
 			reduce(stream, stepStart, string(data))
 			turn := stream.Reconcile(evidence, false)
-			if turn.Status != run.Failed || turn.Error.Class != c.class || !strings.HasPrefix(turn.Error.Message, "runtime reported error: "+c.name) || !strings.HasSuffix(turn.Error.Message, c.message) {
+			if string(turn.Status) != string(opencode.Failed) || string(turn.Error.Class) != string(c.class) || !strings.HasPrefix(turn.Error.Message, "runtime reported error: "+c.name) || !strings.HasSuffix(turn.Error.Message, c.message) {
 				t.Errorf("%s %q: %+v", c.name, c.message, turn.Error)
 			}
 		}
@@ -445,31 +241,31 @@ func TestFailuresAreClassified(t *testing.T) {
 	for _, c := range []struct {
 		status  int
 		message string
-		class   run.Class
+		class   opencode.Class
 	}{
-		{429, "Too Many Requests", run.ClassRateLimited},
-		{401, "Invalid token", run.ClassAuth},
-		{403, "Forbidden", run.ClassAuth},
-		{500, "Internal Server Error", run.ClassRuntimeError},
+		{429, "Too Many Requests", opencode.ClassRateLimited},
+		{401, "Invalid token", opencode.ClassAuth},
+		{403, "Forbidden", opencode.ClassAuth},
+		{500, "Internal Server Error", opencode.ClassRuntimeError},
 	} {
 		data, _ := json.Marshal(map[string]any{"type": "error", "sessionID": "ses_1", "error": map[string]any{"name": "APIError", "data": map[string]any{"message": c.message, "statusCode": c.status, "isRetryable": false}}})
 		stream := &opencode.Stream{}
 		reduce(stream, stepStart, string(data))
 		turn := stream.Reconcile(exited(1), false)
-		if want := fmt.Sprintf("runtime reported error: APIError %d: %s", c.status, c.message); turn.Status != run.Failed || turn.Error.Class != c.class || turn.Error.Message != want {
+		if want := fmt.Sprintf("runtime reported error: APIError %d: %s", c.status, c.message); string(turn.Status) != string(opencode.Failed) || string(turn.Error.Class) != string(c.class) || turn.Error.Message != want {
 			t.Errorf("%d %q: %+v", c.status, c.message, turn.Error)
 		}
 	}
 	// A step that stopped does not undo an error reported before it.
 	stream := &opencode.Stream{}
 	reduce(stream, stepStart, failed, stepStart, answer, stopped)
-	if turn := stream.Reconcile(clean, false); turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError {
+	if turn := stream.Reconcile(clean, false); string(turn.Status) != string(opencode.Failed) || string(turn.Error.Class) != string(opencode.ClassRuntimeError) {
 		t.Fatalf("an error, then a stop: turn = %+v", turn)
 	}
 	// Agister's own timeout comes before the error it caused.
 	stream = &opencode.Stream{}
 	reduce(stream, stepStart, failed)
-	if turn := stream.Reconcile(opencode.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "killed"}}, false); turn.Error == nil || turn.Error.Class != run.ClassTimeout {
+	if turn := stream.Reconcile(opencode.Evidence{TimedOut: true, Exit: &opencode.Exit{Signal: "killed"}}, false); turn.Error == nil || string(turn.Error.Class) != string(opencode.ClassTimeout) {
 		t.Fatalf("timed out: turn = %+v", turn)
 	}
 }
@@ -500,11 +296,11 @@ func TestOnlyAFinalStopCompletesTheTurn(t *testing.T) {
 	for _, reason := range []string{"length", "content-filter", "error", "other", ""} {
 		stream := &opencode.Stream{}
 		reduce(stream, stepStart, answer, step("ses_1", reason))
-		if turn := stream.Reconcile(clean, false); turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError || !strings.HasPrefix(turn.Error.Message, "runtime reported ") {
+		if turn := stream.Reconcile(clean, false); string(turn.Status) != string(opencode.Failed) || string(turn.Error.Class) != string(opencode.ClassRuntimeError) || !strings.HasPrefix(turn.Error.Message, "runtime reported ") {
 			t.Errorf("reason %q: turn = %+v", reason, turn)
 		}
 	}
-	timedOut := opencode.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "killed"}}
+	timedOut := opencode.Evidence{TimedOut: true, Exit: &opencode.Exit{Signal: "killed"}}
 	for name, lines := range map[string][]string{
 		"no step":                 nil,
 		"inside the first step":   {stepStart, answer},
@@ -513,13 +309,13 @@ func TestOnlyAFinalStopCompletesTheTurn(t *testing.T) {
 	} {
 		stream := &opencode.Stream{}
 		reduce(stream, lines...)
-		if turn := stream.Reconcile(clean, true); turn.Status != run.Lost || turn.Error.Class != run.ClassNoResult || turn.Output != nil {
+		if turn := stream.Reconcile(clean, true); string(turn.Status) != string(opencode.Lost) || string(turn.Error.Class) != string(opencode.ClassNoResult) || turn.Output != nil {
 			t.Errorf("%s, exited: turn = %+v", name, turn)
 		}
-		if turn := stream.Reconcile(timedOut, true); turn.Status == run.Completed || turn.Error == nil || turn.Error.Class != run.ClassTimeout {
+		if turn := stream.Reconcile(timedOut, true); string(turn.Status) == string(opencode.Completed) || turn.Error == nil || string(turn.Error.Class) != string(opencode.ClassTimeout) {
 			t.Errorf("%s, timed out: turn = %+v", name, turn)
 		}
-		if turn := stream.Reconcile(exited(1), true); turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError || turn.Error.Message != "exit code 1" {
+		if turn := stream.Reconcile(exited(1), true); string(turn.Status) != string(opencode.Failed) || string(turn.Error.Class) != string(opencode.ClassRuntimeError) || turn.Error.Message != "exit code 1" {
 			t.Errorf("%s, exit 1: turn = %+v", name, turn)
 		}
 	}
@@ -528,22 +324,22 @@ func TestOnlyAFinalStopCompletesTheTurn(t *testing.T) {
 	reduce(stream, stepStart, answer, stopped)
 	evidence := exited(1)
 	evidence.StderrTail = "Error: database is locked\n"
-	if turn := stream.Reconcile(evidence, false); turn.Status != run.Failed || turn.Error.Message != "exit code 1: Error: database is locked" {
+	if turn := stream.Reconcile(evidence, false); string(turn.Status) != string(opencode.Failed) || turn.Error.Message != "exit code 1: Error: database is locked" {
 		t.Fatalf("exit 1 after a stop: turn = %+v", turn)
 	}
 	// So is a process timed out, cancelled or ended by a signal after a
 	// stop, whose exit code is unknown.
 	for name, c := range map[string]struct {
 		evidence opencode.Evidence
-		class    run.Class
+		class    opencode.Class
 	}{
-		"timed out":         {opencode.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "SIGTERM"}}, run.ClassTimeout},
-		"cancelled":         {opencode.Evidence{Aborted: true, Exit: &run.Exit{Signal: "SIGTERM"}}, run.ClassCancelled},
-		"ended by a signal": {opencode.Evidence{Exit: &run.Exit{Signal: "SIGTERM"}}, run.ClassKilled},
+		"timed out":         {opencode.Evidence{TimedOut: true, Exit: &opencode.Exit{Signal: "SIGTERM"}}, opencode.ClassTimeout},
+		"cancelled":         {opencode.Evidence{Aborted: true, Exit: &opencode.Exit{Signal: "SIGTERM"}}, opencode.ClassCancelled},
+		"ended by a signal": {opencode.Evidence{Exit: &opencode.Exit{Signal: "SIGTERM"}}, opencode.ClassKilled},
 	} {
 		stream := &opencode.Stream{}
 		reduce(stream, stepStart, `{"type":"text","timestamp":3,"sessionID":"ses_1","part":{"type":"text","text":"{}"}}`, stopped)
-		if turn := stream.Reconcile(c.evidence, true); turn.Status == run.Completed || turn.Error == nil || turn.Error.Class != c.class || turn.Output != nil {
+		if turn := stream.Reconcile(c.evidence, true); string(turn.Status) == string(opencode.Completed) || turn.Error == nil || string(turn.Error.Class) != string(c.class) || turn.Output != nil {
 			t.Errorf("%s after a stop: turn = %+v", name, turn)
 		}
 	}
@@ -557,7 +353,7 @@ func TestATurnThatRanAsTheDefaultAgentFails(t *testing.T) {
 	evidence := clean
 	evidence.StderrTail = "! agent \"agister-1\" not found. Falling back to default agent\n"
 	turn := stream.Reconcile(evidence, false)
-	if turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError || !strings.Contains(turn.Error.Message, "default agent") || turn.Output != nil {
+	if string(turn.Status) != string(opencode.Failed) || string(turn.Error.Class) != string(opencode.ClassRuntimeError) || !strings.Contains(turn.Error.Message, "default agent") || turn.Output != nil {
 		t.Fatalf("turn = %+v", turn)
 	}
 }
@@ -578,7 +374,7 @@ func TestToolCallsAreReported(t *testing.T) {
 	for _, event := range events {
 		switch {
 		case event.Started != nil:
-			if *event.Started != (app.ToolCall{ID: "c1", Name: "bash", Input: input, Command: true}) {
+			if *event.Started != (opencode.ToolCall{ID: "c1", Name: "bash", Input: input, Command: true}) {
 				t.Fatalf("started = %+v", event.Started)
 			}
 			trace = append(trace, "started")
@@ -620,13 +416,13 @@ func TestACompletedTurnsTextIsTheFinalSteps(t *testing.T) {
 		stepStart,
 		step("ses_1", "stop"),
 	)
-	if turn := stream.Reconcile(clean, false); turn.Status != run.Completed || turn.Text != "" {
+	if turn := stream.Reconcile(clean, false); string(turn.Status) != string(opencode.Completed) || turn.Text != "" {
 		t.Fatalf("turn = %+v", turn)
 	}
 	// A turn that did not complete keeps the last thing it said.
 	stream = &opencode.Stream{}
 	reduce(stream, stepStart, `{"type":"text","sessionID":"ses_1","part":{"type":"text","text":"Let me look at the tests."}}`, step("ses_1", "tool-calls"))
-	if turn := stream.Reconcile(clean, false); turn.Status != run.Lost || turn.Text != "Let me look at the tests." {
+	if turn := stream.Reconcile(clean, false); string(turn.Status) != string(opencode.Lost) || turn.Text != "Let me look at the tests." {
 		t.Fatalf("turn = %+v", turn)
 	}
 }
@@ -638,7 +434,7 @@ func TestALineThatIsNotJSONIsReported(t *testing.T) {
 		t.Fatalf("events = %+v", events)
 	}
 	reduce(stream, stepStart, answer, stopped)
-	if turn := stream.Reconcile(clean, false); turn.Status != run.Completed {
+	if turn := stream.Reconcile(clean, false); string(turn.Status) != string(opencode.Completed) {
 		t.Fatalf("turn = %+v", turn)
 	}
 }
@@ -649,7 +445,7 @@ func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
 	stream := &opencode.Stream{}
 	reduce(stream, stepStart, answer, stopped)
 	turn := stream.Reconcile(opencode.Evidence{RecordError: "disk full"}, false)
-	if turn.Status != run.Failed || turn.Error == nil || turn.Error.Class != run.ClassInternal || !strings.Contains(turn.Error.Message, "disk full") {
+	if string(turn.Status) != string(opencode.Failed) || turn.Error == nil || string(turn.Error.Class) != string(opencode.ClassInternal) || !strings.Contains(turn.Error.Message, "disk full") {
 		t.Fatalf("turn = %+v", turn)
 	}
 }

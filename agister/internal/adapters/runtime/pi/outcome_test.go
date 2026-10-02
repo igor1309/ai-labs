@@ -1,15 +1,12 @@
-package outcome_test
+package pi
 
 import (
 	"strings"
 	"testing"
-
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/outcome"
-	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 func TestARecordedProcessIsNotAFailure(t *testing.T) {
-	if _, failed := outcome.RecordFailure(run.Turn{}, outcome.Evidence{}); failed {
+	if _, failed := recordFailure(Turn{}, Evidence{}); failed {
 		t.Fatal("no record error, yet the turn was failed")
 	}
 }
@@ -19,9 +16,9 @@ func TestARecordedProcessIsNotAFailure(t *testing.T) {
 func TestANonZeroExitQuotesTheRuntimesReasons(t *testing.T) {
 	one := 1
 	failed := func(stderr, stream string) string {
-		evidence := outcome.Evidence{Exit: &run.Exit{Code: &one}, StderrTail: stderr}
-		turn := outcome.WithoutTerminal(outcome.Base(evidence), evidence, stream)
-		if turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError {
+		evidence := Evidence{Exit: &Exit{Code: &one}, StderrTail: stderr}
+		turn := withoutTerminal(baseTurn(evidence), evidence, stream)
+		if turn.Status != Failed || turn.Error.Class != ClassRuntimeError {
 			t.Fatalf("turn = %+v", turn)
 		}
 		return turn.Error.Message

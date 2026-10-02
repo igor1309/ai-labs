@@ -79,7 +79,7 @@ func TestDependencyRule(t *testing.T) {
 // Only the composition root instantiates adapters.
 func TestOnlyTheCompositionRootImportsAdapters(t *testing.T) {
 	for pkg, imported := range packages(t) {
-		if pkg == "cmd/agister" || under(pkg, "internal/adapters") {
+		if pkg == "cmd/agister" || pkg == "internal/composition/runtime" || under(pkg, "internal/adapters") {
 			continue
 		}
 		for _, dep := range imported {

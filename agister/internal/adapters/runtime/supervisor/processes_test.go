@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/app"
 )
 
 // sleeper starts a process leading its own group, one that never ends on
@@ -40,7 +39,7 @@ func TestReapKillsTheGroupOfTheRecordedProcess(t *testing.T) {
 		t.Fatalf("token %q does not name the command", token)
 	}
 	reaping, err := supervisor.Processes{}.Reap(context.Background(), supervisor.Ref(pid, token))
-	if err != nil || reaping != app.ReapKilled {
+	if err != nil || reaping != supervisor.ReapKilled {
 		t.Fatalf("reap = %s, %v", reaping, err)
 	}
 	// The process never ends on its own, so its end is the kill's; the bound
@@ -52,10 +51,10 @@ func TestReapKillsTheGroupOfTheRecordedProcess(t *testing.T) {
 	}
 	// Nothing left: the group is simply gone, also for a reference that
 	// never learned the token (no process holds the ID, so nothing to spare).
-	if reaping, err := (supervisor.Processes{}).Reap(context.Background(), supervisor.Ref(pid, "")); err != nil || reaping != app.ReapGone {
+	if reaping, err := (supervisor.Processes{}).Reap(context.Background(), supervisor.Ref(pid, "")); err != nil || reaping != supervisor.ReapGone {
 		t.Fatalf("reap of a dead group without a token = %s, %v", reaping, err)
 	}
-	if reaping, err := (supervisor.Processes{}).Reap(context.Background(), supervisor.Ref(pid, token)); err != nil || reaping != app.ReapGone {
+	if reaping, err := (supervisor.Processes{}).Reap(context.Background(), supervisor.Ref(pid, token)); err != nil || reaping != supervisor.ReapGone {
 		t.Fatalf("reap of a dead group = %s, %v", reaping, err)
 	}
 }
@@ -66,7 +65,7 @@ func TestReapLeavesAProcessItCannotIdentify(t *testing.T) {
 	pid, _ := sleeper(t)
 	for name, token := range map[string]string{"another token": "Thu Jan  1 00:00:00 1970", "no token": ""} {
 		reaping, err := supervisor.Processes{}.Reap(context.Background(), supervisor.Ref(pid, token))
-		if err == nil || reaping != app.ReapLeft {
+		if err == nil || reaping != supervisor.ReapLeft {
 			t.Fatalf("%s: reap = %s, %v", name, reaping, err)
 		}
 	}
@@ -110,7 +109,7 @@ func TestReapLeavesAReferenceItDoesNotUnderstand(t *testing.T) {
 		"not a number":              "pgid:abc:token",
 	} {
 		reaping, err := supervisor.Processes{}.Reap(context.Background(), ref)
-		if err == nil || reaping != app.ReapLeft {
+		if err == nil || reaping != supervisor.ReapLeft {
 			t.Fatalf("%s: reap = %s, %v", name, reaping, err)
 		}
 	}

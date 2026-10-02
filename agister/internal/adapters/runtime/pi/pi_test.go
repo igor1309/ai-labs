@@ -1,73 +1,19 @@
 package pi_test
 
 import (
-	"context"
 	"encoding/json"
-	"os"
-	"path/filepath"
+
 	"reflect"
-	"slices"
+
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/pi"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/app"
-	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+	// fresh is the session the fake starts.
 )
 
-// fresh is the session the fake starts.
-const fresh = "3b0c9a52-6f1e-4d8a-9c47-0e2f5d8b1a63"
-
-func request(prompt string) app.TurnRequest {
-	return app.TurnRequest{
-		Prompt:       prompt,
-		Instruction:  "Do the thing.",
-		Primitives:   []string{"read", "bash"},
-		Model:        "opencode-go/minimax-m3",
-		Effort:       "high",
-		Timeout:      time.Minute,
-		OutputSchema: json.RawMessage(`{"type":"object"}`),
-	}
-}
-
-// session writes, under root, session id's file as Pi keeps it: in a
-// directory of its own, its header recording cwd.
-func session(t *testing.T, root, id, cwd string) {
-	t.Helper()
-	dir := filepath.Join(root, id)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	header, _ := json.Marshal(map[string]any{"type": "session", "version": 3, "id": id, "timestamp": "2026-10-01T10:00:00Z", "cwd": cwd})
-	if err := os.WriteFile(filepath.Join(dir, "2026-10-01T10-00-00Z_"+id+".jsonl"), append(header, '\n'), 0o600); err != nil {
-		t.Fatal(err)
-	}
-}
-
-// The suite's resume turn resumes a session that ran in the request's
-// working directory, kept as a fresh turn keeps it.
-func TestConformance(t *testing.T) {
-	root, cwd := t.TempDir(), t.TempDir()
-	session(t, root, "7d1c2a4e-0000-4000-8000-000000000001", cwd)
-	runtimetest.Conformance(t, runtimetest.Subject{
-		New: func(command string) app.TurnRunner {
-			return &pi.Runner{Transport: supervised{}, Command: command, KillGrace: 200 * time.Millisecond, Sessions: root}
-		},
-		Fake:      runtimetest.Binary(t, "fakepi"),
-		Contract:  pi.Contract,
-		ToolCalls: true,
-		Request: func(prompt string) app.TurnRequest {
-			r := request(prompt)
-			r.Cwd = cwd
-			return r
-		},
-	})
-}
-
 func TestArguments(t *testing.T) {
-	args, err := pi.Arguments(request("hello"), "/sessions/new-1", "/tmp/system-prompt.md")
+	args, err := pi.Arguments(pi.TurnRequest(request("hello")), "/sessions/new-1", "/tmp/system-prompt.md")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +34,7 @@ func TestArguments(t *testing.T) {
 func TestResumeArguments(t *testing.T) {
 	r := request("hello")
 	r.ResumeSessionID = "s-1"
-	args, err := pi.Arguments(r, "/sessions/s-1", "/tmp/system-prompt.md")
+	args, err := pi.Arguments(pi.TurnRequest(r), "/sessions/s-1", "/tmp/system-prompt.md")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +53,7 @@ func TestResumeArguments(t *testing.T) {
 // No model, effort or system prompt leaves Pi's own; the tools are always
 // an allowlist.
 func TestDefaults(t *testing.T) {
-	args, err := pi.Arguments(app.TurnRequest{Prompt: "x", Primitives: []string{"read"}}, "/sessions/new-1", "")
+	args, err := pi.Arguments(pi.TurnRequest(pi.TurnRequest{Prompt: "x", Primitives: []string{"read"}}), "/sessions/new-1", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,50 +66,19 @@ func TestDefaults(t *testing.T) {
 	}
 }
 
-// A skill is used by reading it, and Pi reads with read or bash only: a
-// turn granted neither is refused before Pi starts, so --no-tools, with
-// which Pi leaves skills out, is never passed.
-func TestRefusesATurnThatCannotReadASkill(t *testing.T) {
-	for _, primitives := range [][]string{nil, {}, {"grep", "find", "ls"}, {"edit", "write"}} {
-		r := request("x")
-		r.Primitives = primitives
-		if args, err := pi.Arguments(r, "/s", ""); err == nil || err.Error() != "pi/1 needs read or bash to use the repository's skills (ADR-006)" {
-			t.Errorf("primitives %q: args %q, err = %v", primitives, args, err)
-		}
-	}
-	for _, primitives := range [][]string{{"read"}, {"bash"}, {"grep", "read"}, {"ls", "bash"}} {
-		r := request("x")
-		r.Primitives = primitives
-		if args, err := pi.Arguments(r, "/s", ""); err != nil || slices.Contains(args, "--no-tools") || !follows(args, "--tools", strings.Join(primitives, ",")) {
-			t.Errorf("primitives %q: args %q, err = %v", primitives, args, err)
-		}
-	}
-	root := t.TempDir()
-	r := request("x")
-	r.Primitives = []string{"grep"}
-	sink := &runtimetest.Recorder{}
-	turn := (&pi.Runner{Transport: supervised{}, Command: runtimetest.Binary(t, "fakepi"), Sessions: root}).RunTurn(context.Background(), r, sink)
-	if turn.Status != run.Failed || turn.Error.Class != run.ClassInternal || len(sink.Processes) != 0 {
-		t.Fatalf("turn = %+v, processes %v", turn, sink.Processes)
-	}
-	if entries, _ := os.ReadDir(root); len(entries) != 0 {
-		t.Fatalf("root holds %v", entries)
-	}
-}
-
 // Every Pi tool is a primitive, and every thinking level an effort.
 func TestToolsAndThinkingLevels(t *testing.T) {
 	for _, tool := range pi.Tools {
 		r := request("x")
 		r.Primitives = []string{"read", tool}
-		if args, err := pi.Arguments(r, "/s", ""); err != nil || !follows(args, "--tools", "read,"+tool) {
+		if args, err := pi.Arguments(pi.TurnRequest(r), "/s", ""); err != nil || !follows(args, "--tools", "read,"+tool) {
 			t.Errorf("tool %s: %q, %v", tool, args, err)
 		}
 	}
 	for _, level := range []string{"off", "minimal", "low", "medium", "high", "xhigh", "max"} {
 		r := request("x")
 		r.Effort = level
-		if args, err := pi.Arguments(r, "/s", ""); err != nil || !follows(args, "--thinking", level) {
+		if args, err := pi.Arguments(pi.TurnRequest(r), "/s", ""); err != nil || !follows(args, "--thinking", level) {
 			t.Errorf("effort %s: %q, %v", level, args, err)
 		}
 	}
@@ -178,164 +93,9 @@ func follows(args []string, flag, value string) bool {
 	return false
 }
 
-func TestRejectsWhatItCannotHonour(t *testing.T) {
-	r := request("x")
-	limit := 1.0
-	r.MaxCostUSD = &limit
-	if _, err := pi.Arguments(r, "/s", ""); err == nil || err.Error() != "pi/1 cannot limit cost" {
-		t.Fatalf("cost limit: err = %v", err)
-	}
-	for _, primitives := range [][]string{{"Bash"}, {"read", "web_fetch"}, {""}} {
-		r := request("x")
-		r.Primitives = primitives
-		if _, err := pi.Arguments(r, "/s", ""); err == nil || !strings.Contains(err.Error(), "pi/1 has no tool") {
-			t.Errorf("primitives %q: err = %v", primitives, err)
-		}
-	}
-	r = request("x")
-	r.Effort = "extreme"
-	if _, err := pi.Arguments(r, "/s", ""); err == nil {
-		t.Fatal("an unknown thinking level was accepted")
-	}
-	// Refused before Pi starts.
-	r = request("x")
-	r.MaxCostUSD = &limit
-	sink := &runtimetest.Recorder{}
-	turn := (&pi.Runner{Transport: supervised{}, Command: runtimetest.Binary(t, "fakepi"), Sessions: t.TempDir()}).RunTurn(context.Background(), r, sink)
-	if turn.Status != run.Failed || turn.Error.Class != run.ClassInternal || len(sink.Processes) != 0 {
-		t.Fatalf("turn = %+v, processes %v", turn, sink.Processes)
-	}
-}
-
-// The instruction and the schema the output must meet go in the system
-// prompt, which the fake echoes, read from the file passed; the prompt
-// goes on stdin.
-func TestInstructionAndSchemaGoInTheSystemPrompt(t *testing.T) {
-	if got := pi.SystemPrompt(app.TurnRequest{Instruction: "Do the thing."}); got != "Do the thing." {
-		t.Fatalf("instruction only: %q", got)
-	}
-	if got := pi.SystemPrompt(app.TurnRequest{}); got != "" {
-		t.Fatalf("neither: %q", got)
-	}
-	runner := &pi.Runner{Transport: supervised{}, Command: runtimetest.Binary(t, "fakepi"), KillGrace: 200 * time.Millisecond, Sessions: t.TempDir()}
-	sink := &runtimetest.Recorder{}
-	turn := runner.RunTurn(context.Background(), request("hello SCENARIO:approve"), sink)
-	if turn.Status != run.Completed {
-		t.Fatalf("turn = %+v", turn)
-	}
-	var echo struct {
-		Prompt, System string
-		Argv           []string
-	}
-	if err := json.Unmarshal([]byte(sink.Lines[0]), &echo); err != nil {
-		t.Fatal(err)
-	}
-	if echo.Prompt != "hello SCENARIO:approve" || !strings.HasPrefix(echo.System, "Do the thing.\n\n") ||
-		!strings.Contains(echo.System, "<output-schema>\n{\"type\":\"object\"}\n</output-schema>") {
-		t.Fatalf("echo = %+v", echo)
-	}
-	// The file is the turn's own, gone once it returns.
-	path := echo.Argv[len(echo.Argv)-1]
-	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		t.Fatalf("system prompt file %s: %v", path, err)
-	}
-}
-
-func TestIdentity(t *testing.T) {
-	identity, err := pi.New(runtimetest.Binary(t, "fakepi"), t.TempDir(), supervised{}).Identity(context.Background())
-	want := app.RuntimeIdentity{Contract: "pi/1", Version: "0.85.1", Resume: true, ResumeWhereItRan: true, ToolCalls: true, SkillTools: []string{"read", "bash"}}
-	if err != nil || !reflect.DeepEqual(identity, want) {
-		t.Fatalf("identity = %+v, %v", identity, err)
-	}
-}
-
-// A fresh turn's session is kept under the root, named by the ID Pi
-// reported, and a later turn of the call resumes it in place there. The
-// root is a literal path: brackets in it are no pattern.
-func TestSessionsAreKeptForTheCallsLaterTurns(t *testing.T) {
-	root, cwd := filepath.Join(t.TempDir(), "sessions[1]"), t.TempDir()
-	runner := &pi.Runner{Transport: supervised{}, Command: runtimetest.Binary(t, "fakepi"), KillGrace: 200 * time.Millisecond, Sessions: root}
-	first := request("SCENARIO:approve")
-	first.Cwd = cwd
-	sink := &runtimetest.Recorder{}
-	turn := runner.RunTurn(context.Background(), first, sink)
-	if turn.Status != run.Completed || turn.ProviderSessionID != fresh {
-		t.Fatalf("fresh turn = %+v", turn)
-	}
-	entries, _ := os.ReadDir(root)
-	if len(entries) != 1 || entries[0].Name() != fresh {
-		t.Fatalf("root holds %v", entries)
-	}
-	sessionDir := argAfter(t, sink, "--session-dir")
-	if filepath.Dir(sessionDir) != root || filepath.Base(sessionDir) == fresh {
-		t.Fatalf("fresh turn's session dir %s", sessionDir)
-	}
-
-	next := request("SCENARIO:approve")
-	next.Cwd, next.ResumeSessionID = cwd, fresh
-	sink = &runtimetest.Recorder{}
-	turn = runner.RunTurn(context.Background(), next, sink)
-	if turn.Status != run.Completed || turn.ProviderSessionID != fresh {
-		t.Fatalf("resumed turn = %+v", turn)
-	}
-	if got := argAfter(t, sink, "--session-dir"); got != filepath.Join(root, fresh) || argAfter(t, sink, "--session") != fresh {
-		t.Fatalf("resumed turn's session dir %s", got)
-	}
-}
-
-// A turn that reported no session leaves nothing to resume behind.
-func TestATurnWithoutASessionLeavesNoDirectory(t *testing.T) {
-	root := t.TempDir()
-	runner := &pi.Runner{Transport: supervised{}, Command: "/nonexistent/pi", Sessions: root}
-	if turn := runner.RunTurn(context.Background(), request("x"), &runtimetest.Recorder{}); turn.Status != run.Failed {
-		t.Fatalf("turn = %+v", turn)
-	}
-	if entries, _ := os.ReadDir(root); len(entries) != 0 {
-		t.Fatalf("root holds %v", entries)
-	}
-}
-
-// Pi finds a session by ID only among its working directory's, and asks on
-// stdin whether to fork one from another: a resume turn elsewhere, or of a
-// session not kept, is refused before Pi starts.
-func TestResumeIsRefusedWhereItCannotResumeInPlace(t *testing.T) {
-	root, cwd, elsewhere := t.TempDir(), t.TempDir(), t.TempDir()
-	session(t, root, "s-1", cwd)
-	for name, c := range map[string]struct {
-		id, cwd, reason string
-	}{
-		"another directory": {"s-1", elsewhere, "only in the directory it ran in"},
-		"no such session":   {"s-2", cwd, "it is not under"},
-		"not an ID":         {"../s-1", cwd, "not a session ID"},
-	} {
-		r := request("SCENARIO:approve")
-		r.Cwd, r.ResumeSessionID = c.cwd, c.id
-		sink := &runtimetest.Recorder{}
-		turn := (&pi.Runner{Transport: supervised{}, Command: runtimetest.Binary(t, "fakepi"), Sessions: root}).RunTurn(context.Background(), r, sink)
-		if turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError || !strings.Contains(turn.Error.Message, c.reason) || len(sink.Processes) != 0 {
-			t.Errorf("%s: turn = %+v, processes %v", name, turn, sink.Processes)
-		}
-	}
-}
-
-func argAfter(t *testing.T, sink *runtimetest.Recorder, flag string) string {
-	t.Helper()
-	var echo struct{ Argv []string }
-	if err := json.Unmarshal([]byte(sink.Lines[0]), &echo); err != nil {
-		t.Fatal(err)
-	}
-	for i, arg := range echo.Argv[:len(echo.Argv)-1] {
-		if arg == flag {
-			return echo.Argv[i+1]
-		}
-	}
-	t.Fatalf("no %s in %q", flag, echo.Argv)
-	return ""
-}
-
 var clean = func() pi.Evidence {
 	code := 0
-	return pi.Evidence{Exit: &run.Exit{Code: &code}}
+	return pi.Evidence{Exit: &pi.Exit{Code: &code}}
 }()
 
 func reduce(stream *pi.Stream, lines ...string) {
@@ -358,70 +118,34 @@ func TestResumeReportingAnotherSessionFails(t *testing.T) {
 	} {
 		stream := &pi.Stream{ResumedSessionID: "s-1"}
 		reduce(stream, lines...)
-		if turn := stream.Reconcile(clean, false); turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError || !strings.Contains(turn.Error.Message, "s-1") {
+		if turn := stream.Reconcile(clean, false); string(turn.Status) != string(pi.Failed) || string(turn.Error.Class) != string(pi.ClassRuntimeError) || !strings.Contains(turn.Error.Message, "s-1") {
 			t.Errorf("%s: turn = %+v", name, turn)
 		}
 	}
 	stream := &pi.Stream{ResumedSessionID: "s-1"}
 	reduce(stream, `{"type":"session","version":3,"id":"s-1","cwd":"/w"}`, stopped, agentEnd)
-	if turn := stream.Reconcile(clean, false); turn.Status != run.Completed || turn.ProviderSessionID != "s-1" {
+	if turn := stream.Reconcile(clean, false); string(turn.Status) != string(pi.Completed) || turn.ProviderSessionID != "s-1" {
 		t.Fatalf("the same session: turn = %+v", turn)
 	}
 }
 
 func TestStructuredOutputMustBeJSON(t *testing.T) {
-	for text, class := range map[string]run.Class{"not json": run.ClassInvalidOutput, "": run.ClassInvalidOutput} {
+	for text, class := range map[string]pi.Class{"not json": pi.ClassInvalidOutput, "": pi.ClassInvalidOutput} {
 		stream := &pi.Stream{}
 		data, _ := json.Marshal(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant", "content": []any{map[string]any{"type": "text", "text": text}}, "stopReason": "stop"}})
 		reduce(stream, string(data), agentEnd)
-		if turn := stream.Reconcile(clean, true); turn.Status != run.Failed || turn.Error.Class != class {
+		if turn := stream.Reconcile(clean, true); string(turn.Status) != string(pi.Failed) || string(turn.Error.Class) != string(class) {
 			t.Errorf("%q: turn = %+v", text, turn)
 		}
 		// Without a schema, text is text.
-		if turn := stream.Reconcile(clean, false); turn.Status != run.Completed || turn.Output != nil {
+		if turn := stream.Reconcile(clean, false); string(turn.Status) != string(pi.Completed) || turn.Output != nil {
 			t.Errorf("%q without a schema: turn = %+v", text, turn)
 		}
 	}
 	stream := &pi.Stream{}
 	reduce(stream, stopped, agentEnd)
-	if turn := stream.Reconcile(clean, true); turn.Status != run.Completed || string(turn.Output) != `{"answer":"vm"}` || turn.Text != `{"answer":"vm"}` {
+	if turn := stream.Reconcile(clean, true); string(turn.Status) != string(pi.Completed) || string(turn.Output) != `{"answer":"vm"}` || turn.Text != `{"answer":"vm"}` {
 		t.Fatalf("turn = %+v", turn)
-	}
-}
-
-// Usage and cost are the turn's own, summed over every message it ended,
-// a failed attempt Pi retried and a tool's own model work included; the
-// user's message counts nothing.
-func TestUsageAndCostAreSummedOverTheTurn(t *testing.T) {
-	stream := &pi.Stream{}
-	reduce(stream,
-		`{"type":"session","version":3,"id":"s-1","cwd":"/w"}`,
-		`{"type":"agent_start"}`,
-		`{"type":"message_end","message":{"role":"user","content":"hi"}}`,
-		`{"type":"message_end","message":{"role":"assistant","content":[],"usage":{"input":100,"output":0,"cacheRead":0,"cacheWrite":0,"cost":{"total":0.01}},"stopReason":"error","errorMessage":"overloaded"}}`,
-		`{"type":"auto_retry_start","attempt":1,"maxAttempts":3,"delayMs":2000,"errorMessage":"overloaded"}`,
-		`{"type":"agent_end","messages":[],"willRetry":true}`,
-		`{"type":"agent_start"}`,
-		`{"type":"message_end","message":{"role":"assistant","content":[{"type":"toolCall","id":"c1","name":"read","arguments":{"path":"a.txt"}}],"usage":{"input":1000,"output":40,"cacheRead":500,"cacheWrite":20,"cost":{"total":0.5}},"stopReason":"toolUse"}}`,
-		`{"type":"message_end","message":{"role":"toolResult","toolCallId":"c1","toolName":"read","content":[],"isError":false}}`,
-		`{"type":"message_end","message":{"role":"toolResult","toolCallId":"c2","toolName":"subagent","content":[],"usage":{"input":7,"output":3,"cacheRead":0,"cacheWrite":0,"cost":{"total":0.125}},"isError":false}}`,
-		stopped,
-		agentEnd,
-	)
-	turn := stream.Reconcile(clean, true)
-	if turn.Status != run.Completed || turn.ProviderSessionID != "s-1" || turn.Model != "opencode-go/minimax-m3" || turn.Session != nil {
-		t.Fatalf("turn = %+v", turn)
-	}
-	u := turn.Usage
-	if u == nil || *u.InputTokens != 1117 || *u.OutputTokens != 48 || *u.CacheReadTokens != 504 || *u.CacheWriteTokens != 22 || u.ReasoningTokens != nil {
-		t.Fatalf("usage = %+v", u)
-	}
-	if turn.CostUSD == nil || *turn.CostUSD != 0.885 {
-		t.Fatalf("cost = %v", turn.CostUSD)
-	}
-	// What the call derives from it is the same: it is the turn's own.
-	if own := run.Own(turn, true); *own.CostUSD != 0.885 || *own.Usage.InputTokens != 1117 {
-		t.Fatalf("own = %+v", own)
 	}
 }
 
@@ -441,28 +165,28 @@ func TestAFigureSomeMessageLacksIsUnknown(t *testing.T) {
 func TestFailuresAreClassified(t *testing.T) {
 	for _, c := range []struct {
 		stopReason, message string
-		class               run.Class
+		class               pi.Class
 	}{
-		{"error", "429 Too Many Requests: rate limit exceeded", run.ClassRateLimited},
-		{"error", "You exceeded your current quota", run.ClassRateLimited},
-		{"error", "401 Unauthorized", run.ClassAuth},
-		{"error", "No API key found for opencode-go", run.ClassAuth},
-		{"error", "prompt exceeds the context window", run.ClassContextOverflow},
-		{"error", "terminated", run.ClassRuntimeError},
-		{"aborted", "", run.ClassRuntimeError},
-		{"length", "", run.ClassRuntimeError},
+		{"error", "429 Too Many Requests: rate limit exceeded", pi.ClassRateLimited},
+		{"error", "You exceeded your current quota", pi.ClassRateLimited},
+		{"error", "401 Unauthorized", pi.ClassAuth},
+		{"error", "No API key found for opencode-go", pi.ClassAuth},
+		{"error", "prompt exceeds the context window", pi.ClassContextOverflow},
+		{"error", "terminated", pi.ClassRuntimeError},
+		{"aborted", "", pi.ClassRuntimeError},
+		{"length", "", pi.ClassRuntimeError},
 	} {
 		stream := &pi.Stream{}
 		data, _ := json.Marshal(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant", "content": []any{}, "stopReason": c.stopReason, "errorMessage": c.message}})
 		reduce(stream, string(data), agentEnd)
 		turn := stream.Reconcile(clean, false)
-		if turn.Status != run.Failed || turn.Error.Class != c.class || !strings.HasPrefix(turn.Error.Message, "runtime reported "+c.stopReason) {
+		if string(turn.Status) != string(pi.Failed) || string(turn.Error.Class) != string(c.class) || !strings.HasPrefix(turn.Error.Message, "runtime reported "+c.stopReason) {
 			t.Errorf("%s %q: %+v", c.stopReason, c.message, turn.Error)
 		}
 	}
 	stream := &pi.Stream{}
 	reduce(stream, agentEnd)
-	if turn := stream.Reconcile(clean, false); turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError {
+	if turn := stream.Reconcile(clean, false); string(turn.Status) != string(pi.Failed) || string(turn.Error.Class) != string(pi.ClassRuntimeError) {
 		t.Fatalf("no assistant message: %+v", turn)
 	}
 }
@@ -475,11 +199,11 @@ func TestOnlyTheLastAgentEndDecides(t *testing.T) {
 		`{"type":"message_end","message":{"role":"assistant","content":[],"stopReason":"error","errorMessage":"overloaded"}}`,
 		`{"type":"agent_end","messages":[],"willRetry":true}`,
 	)
-	if turn := stream.Reconcile(clean, false); turn.Status != run.Lost || turn.Error.Class != run.ClassNoResult || turn.Error.Message != "exited without a result: overloaded" {
+	if turn := stream.Reconcile(clean, false); string(turn.Status) != string(pi.Lost) || string(turn.Error.Class) != string(pi.ClassNoResult) || turn.Error.Message != "exited without a result: overloaded" {
 		t.Fatalf("turn = %+v", turn)
 	}
 	reduce(stream, stopped, agentEnd)
-	if turn := stream.Reconcile(clean, false); turn.Status != run.Completed {
+	if turn := stream.Reconcile(clean, false); string(turn.Status) != string(pi.Completed) {
 		t.Fatalf("turn = %+v", turn)
 	}
 }
@@ -502,7 +226,7 @@ func TestAnAgentEndBeforeARecoveryDoesNotEndTheTurn(t *testing.T) {
 		`{"type":"compaction_start","reason":"overflow"}`,
 		recovering,
 	}
-	timedOut := pi.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "killed"}}
+	timedOut := pi.Evidence{TimedOut: true, Exit: &pi.Exit{Signal: "killed"}}
 	for name, rest := range map[string][]string{
 		"after the compaction":         nil,
 		"after the recovery started":   {`{"type":"agent_start"}`},
@@ -513,17 +237,17 @@ func TestAnAgentEndBeforeARecoveryDoesNotEndTheTurn(t *testing.T) {
 		if stream.Ended {
 			t.Errorf("%s: the turn ended", name)
 		}
-		if turn := stream.Reconcile(timedOut, true); turn.Status == run.Completed || turn.Error == nil || turn.Error.Class != run.ClassTimeout || turn.Output != nil {
+		if turn := stream.Reconcile(timedOut, true); string(turn.Status) == string(pi.Completed) || turn.Error == nil || string(turn.Error.Class) != string(pi.ClassTimeout) || turn.Output != nil {
 			t.Errorf("%s, timed out: turn = %+v", name, turn)
 		}
-		if turn := stream.Reconcile(clean, true); turn.Status != run.Lost || turn.Error.Class != run.ClassNoResult {
+		if turn := stream.Reconcile(clean, true); string(turn.Status) != string(pi.Lost) || string(turn.Error.Class) != string(pi.ClassNoResult) {
 			t.Errorf("%s, exited: turn = %+v", name, turn)
 		}
 	}
 	// The recovery's agent_end decides the turn.
 	stream := &pi.Stream{}
 	reduce(stream, append(overflow, `{"type":"agent_start"}`, stopped, agentEnd)...)
-	if turn := stream.Reconcile(clean, true); turn.Status != run.Completed || string(turn.Output) != `{"answer":"vm"}` {
+	if turn := stream.Reconcile(clean, true); string(turn.Status) != string(pi.Completed) || string(turn.Output) != `{"answer":"vm"}` {
 		t.Fatalf("recovered: turn = %+v", turn)
 	}
 }
@@ -533,7 +257,7 @@ func TestAnAgentEndBeforeARecoveryDoesNotEndTheTurn(t *testing.T) {
 func TestOnlyTheLastAgentRunEndsTheTurn(t *testing.T) {
 	stream := &pi.Stream{}
 	reduce(stream, stopped, agentEnd, `{"type":"agent_start"}`)
-	if turn := stream.Reconcile(clean, false); turn.Status != run.Lost || turn.Error.Class != run.ClassNoResult {
+	if turn := stream.Reconcile(clean, false); string(turn.Status) != string(pi.Lost) || string(turn.Error.Class) != string(pi.ClassNoResult) {
 		t.Fatalf("another agent run: turn = %+v", turn)
 	}
 	stream = &pi.Stream{}
@@ -541,7 +265,7 @@ func TestOnlyTheLastAgentRunEndsTheTurn(t *testing.T) {
 		`{"type":"compaction_start","reason":"threshold"}`,
 		`{"type":"compaction_end","reason":"threshold","result":{"summary":"So far.","usage":{"input":1,"output":1,"cacheRead":0,"cacheWrite":0,"cost":{"total":0.5}}},"aborted":false,"willRetry":false}`,
 	)
-	if turn := stream.Reconcile(clean, false); turn.Status != run.Completed {
+	if turn := stream.Reconcile(clean, false); string(turn.Status) != string(pi.Completed) {
 		t.Fatalf("compacted after the end: turn = %+v", turn)
 	}
 }
@@ -552,7 +276,7 @@ func TestCompactionUsageAndCostAreCounted(t *testing.T) {
 	stream := &pi.Stream{}
 	reduce(stream, `{"type":"agent_start"}`, overflowed, agentEnd, recovering, `{"type":"agent_start"}`, stopped, agentEnd)
 	turn := stream.Reconcile(clean, true)
-	if turn.Status != run.Completed {
+	if string(turn.Status) != string(pi.Completed) {
 		t.Fatalf("turn = %+v", turn)
 	}
 	u := turn.Usage
@@ -570,7 +294,7 @@ func TestCompactionUsageAndCostAreCounted(t *testing.T) {
 func TestACompactionWithoutUsageLeavesTheFiguresUnknown(t *testing.T) {
 	stream := &pi.Stream{}
 	reduce(stream, stopped, agentEnd, `{"type":"compaction_end","reason":"threshold","result":{"summary":"So far."},"aborted":false,"willRetry":false}`)
-	if turn := stream.Reconcile(clean, false); turn.Status != run.Completed || turn.Usage != nil || turn.CostUSD != nil {
+	if turn := stream.Reconcile(clean, false); string(turn.Status) != string(pi.Completed) || turn.Usage != nil || turn.CostUSD != nil {
 		t.Fatalf("no usage: turn = %+v, usage %+v", turn, turn.Usage)
 	}
 	stream = &pi.Stream{}
@@ -585,7 +309,7 @@ func TestACompactionWithoutUsageLeavesTheFiguresUnknown(t *testing.T) {
 	} {
 		stream := &pi.Stream{}
 		reduce(stream, stopped, agentEnd, line)
-		if turn := stream.Reconcile(clean, false); turn.Status != run.Completed || turn.CostUSD == nil || *turn.CostUSD != 0.25 || *turn.Usage.InputTokens != 10 {
+		if turn := stream.Reconcile(clean, false); string(turn.Status) != string(pi.Completed) || turn.CostUSD == nil || *turn.CostUSD != 0.25 || *turn.Usage.InputTokens != 10 {
 			t.Errorf("%s: turn = %+v, usage %+v", name, turn, turn.Usage)
 		}
 	}
@@ -600,7 +324,7 @@ func TestToolCallsAreReported(t *testing.T) {
 	input := `{"command":"ls ` + long + `","timeout":12345678901234567890}`
 	events := stream.Reduce(`{"type":"tool_execution_start","toolCallId":"c1","toolName":"bash","args":` + input + `}`)
 	tools := stream.TakeTools()
-	if len(tools) != 1 || *tools[0].Started != (app.ToolCall{ID: "c1", Name: "bash", Input: input, Command: true}) {
+	if len(tools) != 1 || *tools[0].Started != (pi.ToolCall{ID: "c1", Name: "bash", Input: input, Command: true}) {
 		t.Fatalf("tools = %+v", tools)
 	}
 	if len(events) != 1 || events[0].Kind != "TOOL_REQUESTED" || events[0].Data["tool_use_id"] != "c1" || events[0].Data["input"] == input {
@@ -634,7 +358,7 @@ func TestACompletedTurnsTextIsTheFinalMessages(t *testing.T) {
 			`{"type":"message_end","message":{"role":"assistant","content":`+string(content)+`,"stopReason":"stop"}}`,
 			agentEnd,
 		)
-		if turn := stream.Reconcile(clean, false); turn.Status != run.Completed || turn.Text != final {
+		if turn := stream.Reconcile(clean, false); string(turn.Status) != string(pi.Completed) || turn.Text != final {
 			t.Errorf("%s: turn = %+v", name, turn)
 		}
 	}
@@ -646,7 +370,7 @@ func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
 	stream := &pi.Stream{}
 	reduce(stream, stopped, agentEnd)
 	turn := stream.Reconcile(pi.Evidence{RecordError: "disk full"}, false)
-	if turn.Status != run.Failed || turn.Error == nil || turn.Error.Class != run.ClassInternal || !strings.Contains(turn.Error.Message, "disk full") {
+	if string(turn.Status) != string(pi.Failed) || turn.Error == nil || string(turn.Error.Class) != string(pi.ClassInternal) || !strings.Contains(turn.Error.Message, "disk full") {
 		t.Fatalf("turn = %+v", turn)
 	}
 }

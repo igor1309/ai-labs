@@ -16,8 +16,6 @@ import (
 	"syscall"
 	"time"
 	"unicode/utf8"
-
-	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 const (
@@ -38,7 +36,7 @@ type Spec struct {
 }
 
 type Evidence struct {
-	Exit       *run.Exit
+	Exit       *Exit
 	SpawnError string
 	TimedOut   bool
 	Aborted    bool
@@ -99,7 +97,7 @@ func Run(ctx context.Context, spec Spec, events Sink, onLine func(string)) Evide
 	stdoutWriter.Close()
 	if err != nil {
 		evidence.SpawnError = err.Error()
-		sink.Event(run.SourceProcess, "SPAWN_FAILED", map[string]any{"error": err.Error()})
+		sink.Event(SourceProcess, "SPAWN_FAILED", map[string]any{"error": err.Error()})
 		return evidence
 	}
 	pid := command.Process.Pid
@@ -115,11 +113,11 @@ func Run(ctx context.Context, spec Spec, events Sink, onLine func(string)) Evide
 			recorded = sink.ProcessStarted(Ref(pid, token))
 		}
 	}
-	sink.Event(run.SourceProcess, "PROCESS_STARTED", map[string]any{"pid": pid, "command": spec.Command, "args": spec.Args})
+	sink.Event(SourceProcess, "PROCESS_STARTED", map[string]any{"pid": pid, "command": spec.Command, "args": spec.Args})
 	if recorded != nil {
 		evidence.RecordError = recorded.Error()
 		_ = syscall.Kill(-pid, syscall.SIGKILL)
-		sink.Event(run.SourceAgister, "PROCESS_RECORD_FAILED", map[string]any{"group": pid, "error": recorded.Error(), "killed": true})
+		sink.Event(SourceAgister, "PROCESS_RECORD_FAILED", map[string]any{"group": pid, "error": recorded.Error(), "killed": true})
 	}
 
 	// Signals go to the group only while it is known to exist: once the
@@ -155,13 +153,13 @@ func Run(ctx context.Context, spec Spec, events Sink, onLine func(string)) Evide
 			mu.Lock()
 			evidence.TimedOut = true
 			mu.Unlock()
-			sink.Event(run.SourceAgister, "TIMEOUT", map[string]any{"timeout": spec.Timeout.String()})
+			sink.Event(SourceAgister, "TIMEOUT", map[string]any{"timeout": spec.Timeout.String()})
 			terminate()
 		case <-ctx.Done():
 			mu.Lock()
 			evidence.Aborted = true
 			mu.Unlock()
-			sink.Event(run.SourceAgister, "ABORT_REQUESTED", nil)
+			sink.Event(SourceAgister, "ABORT_REQUESTED", nil)
 			terminate()
 		}
 	}()
@@ -177,7 +175,7 @@ func Run(ctx context.Context, spec Spec, events Sink, onLine func(string)) Evide
 			}
 			if err != nil {
 				if !errors.Is(err, io.EOF) && !errors.Is(err, os.ErrClosed) {
-					sink.Event(run.SourceProcess, "STDOUT_READ_FAILED", map[string]any{"error": err.Error()})
+					sink.Event(SourceProcess, "STDOUT_READ_FAILED", map[string]any{"error": err.Error()})
 				}
 				return
 			}
@@ -197,21 +195,21 @@ func Run(ctx context.Context, spec Spec, events Sink, onLine func(string)) Evide
 	leftovers := syscall.Kill(-pid, syscall.SIGKILL) == nil
 	mu.Unlock()
 	if leftovers {
-		sink.Event(run.SourceProcess, "LEFTOVER_PROCESSES_KILLED", map[string]any{"group": pid})
+		sink.Event(SourceProcess, "LEFTOVER_PROCESSES_KILLED", map[string]any{"group": pid})
 	}
 
 	select {
 	case <-read:
 	case <-time.After(grace):
 		// Something outside the group still holds stdout open.
-		sink.Event(run.SourceProcess, "STDOUT_HELD_OPEN", map[string]any{"grace": grace.String()})
+		sink.Event(SourceProcess, "STDOUT_HELD_OPEN", map[string]any{"grace": grace.String()})
 		stdout.Close()
 		<-read
 	}
 
 	mu.Lock()
 	defer mu.Unlock()
-	exit := &run.Exit{}
+	exit := &Exit{}
 	if state := command.ProcessState; state != nil {
 		if status, ok := state.Sys().(syscall.WaitStatus); ok && status.Signaled() {
 			exit.Signal = status.Signal().String()
@@ -224,7 +222,7 @@ func Run(ctx context.Context, spec Spec, events Sink, onLine func(string)) Evide
 	}
 	evidence.Exit = exit
 	evidence.StderrTail, evidence.StderrOmitted = stderr.kept()
-	sink.Event(run.SourceProcess, "PROCESS_EXITED", map[string]any{"code": exit.Code, "signal": exit.Signal})
+	sink.Event(SourceProcess, "PROCESS_EXITED", map[string]any{"code": exit.Code, "signal": exit.Signal})
 	return evidence
 }
 

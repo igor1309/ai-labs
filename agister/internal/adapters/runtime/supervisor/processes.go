@@ -8,8 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-
-	"github.com/igor1309/ai-labs/agister/internal/app"
 )
 
 var errNoProcess = errors.New("no such process")
@@ -63,34 +61,32 @@ func ParseRef(ref string) (group int, token string, err error) {
 // Processes ends process groups their owner left behind.
 type Processes struct{}
 
-var _ app.Processes = Processes{}
-
 // Reap kills the group a reference (see Ref) names unless a live process
 // holds that ID and is not the one its token names; with no token, unless
 // any live process holds it. With no such process the group is killed
 // anyway: its ID cannot be reused while any member remains. A reference
 // Ref did not make is left, with an error.
-func (Processes) Reap(ctx context.Context, ref string) (app.Reaping, error) {
+func (Processes) Reap(ctx context.Context, ref string) (Reaping, error) {
 	group, token, err := ParseRef(ref)
 	if err != nil {
-		return app.ReapLeft, err
+		return ReapLeft, err
 	}
 	if group <= 1 {
-		return app.ReapLeft, fmt.Errorf("%d is not a process group", group)
+		return ReapLeft, fmt.Errorf("%d is not a process group", group)
 	}
 	current, err := Token(ctx, group)
 	switch {
 	case err == nil && (token == "" || current != token):
-		return app.ReapLeft, fmt.Errorf("process %d is alive and is not known to be the recorded one; left alone", group)
+		return ReapLeft, fmt.Errorf("process %d is alive and is not known to be the recorded one; left alone", group)
 	case err != nil && !errors.Is(err, errNoProcess):
-		return app.ReapLeft, fmt.Errorf("checking process %d: %w", group, err)
+		return ReapLeft, fmt.Errorf("checking process %d: %w", group, err)
 	}
 	switch err := syscall.Kill(-group, syscall.SIGKILL); {
 	case err == nil:
-		return app.ReapKilled, nil
+		return ReapKilled, nil
 	case errors.Is(err, syscall.ESRCH):
-		return app.ReapGone, nil
+		return ReapGone, nil
 	default:
-		return app.ReapLeft, err
+		return ReapLeft, err
 	}
 }

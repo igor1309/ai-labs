@@ -12,7 +12,6 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/pi"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 // spyTransport and spyRuns are the runtimetest spies over the transport types pi
@@ -49,7 +48,7 @@ func TestTheTransportIsHandedTheTurn(t *testing.T) {
 		r := request("hello")
 		r.Cwd = cwd
 		r.ResumeSessionID = resume
-		runner.RunTurn(context.Background(), r, &runtimetest.Recorder{})
+		runner.RunTurn(context.Background(), r, &sink{})
 
 		specs := spy.Specs()
 		if len(specs) != 1 {
@@ -82,16 +81,16 @@ func TestTheTransportIsHandedTheTurn(t *testing.T) {
 func TestATurnIsDecidedByTheTransportsEvidence(t *testing.T) {
 	for name, c := range map[string]struct {
 		evidence pi.Evidence
-		status   run.Status
-		class    run.Class
+		status   pi.Status
+		class    pi.Class
 	}{
-		"timeout": {pi.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "signal: terminated"}}, run.Interrupted, run.ClassTimeout},
-		"signal":  {pi.Evidence{Exit: &run.Exit{Signal: "signal: killed"}}, run.Lost, run.ClassKilled},
+		"timeout": {pi.Evidence{TimedOut: true, Exit: &pi.Exit{Signal: "signal: terminated"}}, pi.Interrupted, pi.ClassTimeout},
+		"signal":  {pi.Evidence{Exit: &pi.Exit{Signal: "signal: killed"}}, pi.Lost, pi.ClassKilled},
 	} {
 		root := t.TempDir()
 		spy := &spyTransport{Runs: spyRuns{Answer: func(pi.Spec) ([]string, pi.Evidence) { return nil, c.evidence }}}
 		runner := &pi.Runner{Transport: spy, Command: "pi", Sessions: root}
-		turn := runner.RunTurn(context.Background(), request("hello"), &runtimetest.Recorder{})
+		turn := runner.RunTurn(context.Background(), request("hello"), &sink{})
 		if turn.Status != c.status || turn.Error == nil || turn.Error.Class != c.class {
 			t.Errorf("%s: turn = %+v", name, turn)
 		}
@@ -107,12 +106,12 @@ func TestAReportedSessionIsKeptWhateverTheEvidence(t *testing.T) {
 	root, cwd := t.TempDir(), t.TempDir()
 	spy := &spyTransport{Runs: spyRuns{Answer: func(pi.Spec) ([]string, pi.Evidence) {
 		return []string{`{"type":"session","version":3,"id":"` + fresh + `","cwd":"` + cwd + `"}`},
-			pi.Evidence{Exit: &run.Exit{Signal: "signal: killed"}}
+			pi.Evidence{Exit: &pi.Exit{Signal: "signal: killed"}}
 	}}}
 	r := request("hello")
 	r.Cwd = cwd
-	turn := (&pi.Runner{Transport: spy, Command: "pi", Sessions: root}).RunTurn(context.Background(), r, &runtimetest.Recorder{})
-	if turn.Error == nil || turn.Error.Class != run.ClassKilled {
+	turn := (&pi.Runner{Transport: spy, Command: "pi", Sessions: root}).RunTurn(context.Background(), r, &sink{})
+	if turn.Error == nil || turn.Error.Class != pi.ClassKilled {
 		t.Fatalf("turn = %+v", turn)
 	}
 	if entries, _ := os.ReadDir(root); len(entries) != 1 || entries[0].Name() != fresh {
@@ -132,5 +131,28 @@ func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
 	failing := &spyTransport{Err: errors.New("not found")}
 	if _, err := pi.New("pi", t.TempDir(), failing).Identity(context.Background()); err == nil {
 		t.Fatal("a failed version check must fail identity")
+	}
+}
+
+// Classification still quotes the process's bounded stderr, including a tail
+// with a cut marker, and preserves the full retained tail as evidence.
+func TestTheTransportStderrDecidesASilentFailure(t *testing.T) {
+	for _, c := range []struct {
+		code    int
+		tail    string
+		omitted int64
+		message string
+	}{
+		{1, "[100 earlier bytes of stderr cut]\nolder line\nError: too large!", 100, "exit code 1: Error: too large!"},
+		{2, "", 0, "exit code 2"},
+	} {
+		spy := &spyTransport{Runs: spyRuns{Answer: func(pi.Spec) ([]string, pi.Evidence) {
+			return nil, pi.Evidence{Exit: &pi.Exit{Code: &c.code}, StderrTail: c.tail, StderrOmitted: c.omitted}
+		}}}
+		runner := &pi.Runner{Transport: spy, Command: "pi", Sessions: t.TempDir()}
+		result := runner.RunTurn(context.Background(), request("hello"), &sink{})
+		if result.Status != pi.Failed || result.Error == nil || result.Error.Class != pi.ClassRuntimeError || result.Error.Message != c.message || result.StderrTail != c.tail || result.StderrOmitted != c.omitted {
+			t.Fatalf("turn = %+v", result)
+		}
 	}
 }

@@ -62,7 +62,7 @@
 // compaction_end's willRetry and the next agent_start say. Pi reports a
 // failed turn in its final assistant message, whose stopReason is not
 // "stop", and exits 0 all the same; a turn that ends without agent_end is
-// decided by the transport, quoting stderr (outcome.WithoutTerminal).
+// decided by the transport, quoting stderr (withoutTerminal).
 package pi
 
 import (
@@ -77,10 +77,6 @@ import (
 	"slices"
 	"strings"
 	"time"
-
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/outcome"
-	"github.com/igor1309/ai-labs/agister/internal/app"
-	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 const Contract = "pi/1"
@@ -124,10 +120,10 @@ type Sink interface {
 	Raw(line string)
 }
 
-// Evidence is what the process left, as outcome takes it: its exit, how
+// Evidence is what the process left, the stream reconciles: its exit, how
 // it ended, and the end of its stderr.
 type Evidence struct {
-	Exit          *run.Exit
+	Exit          *Exit
 	SpawnError    string
 	TimedOut      bool
 	Aborted       bool
@@ -159,22 +155,22 @@ func New(command, sessions string, transport Transport) *Runner {
 
 var versionPattern = regexp.MustCompile(`\d+\.\d+\.\d+`)
 
-func (r *Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
+func (r *Runner) Identity(ctx context.Context) (RuntimeIdentity, error) {
 	out, err := r.Transport.Version(ctx, r.Command)
 	if err != nil {
-		return app.RuntimeIdentity{}, err
+		return RuntimeIdentity{}, err
 	}
 	version := versionPattern.FindString(out)
 	if version == "" {
-		return app.RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
+		return RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
 	}
-	return app.RuntimeIdentity{Contract: Contract, Version: version, Resume: true, ResumeWhereItRan: true, ToolCalls: true, SkillTools: slices.Clone(SkillTools)}, nil
+	return RuntimeIdentity{Contract: Contract, Version: version, Resume: true, ResumeWhereItRan: true, ToolCalls: true, SkillTools: slices.Clone(SkillTools)}, nil
 }
 
 // Arguments builds the command line for a turn whose sessions are kept in
 // sessionDir and whose system prompt addition is the file systemPrompt
 // (none when empty).
-func Arguments(request app.TurnRequest, sessionDir, systemPrompt string) ([]string, error) {
+func Arguments(request TurnRequest, sessionDir, systemPrompt string) ([]string, error) {
 	if request.MaxCostUSD != nil {
 		return nil, errors.New("pi/1 cannot limit cost")
 	}
@@ -214,7 +210,7 @@ func Arguments(request app.TurnRequest, sessionDir, systemPrompt string) ([]stri
 // SystemPrompt is what a turn appends to Pi's system prompt: the
 // instruction, then the output schema the final answer must meet; empty
 // when there is neither.
-func SystemPrompt(request app.TurnRequest) string {
+func SystemPrompt(request TurnRequest) string {
 	var parts []string
 	if request.Instruction != "" {
 		parts = append(parts, request.Instruction)
@@ -226,25 +222,25 @@ func SystemPrompt(request app.TurnRequest) string {
 	return strings.Join(parts, "\n\n")
 }
 
-func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
+func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSink) Turn {
 	root := r.Sessions
 	if root == "" {
 		root = filepath.Join(os.TempDir(), "agister-pi-sessions")
 	}
 	sessionDir, err := r.sessionDir(root, request)
 	if err != nil {
-		return outcome.Failed(run.ClassRuntimeError, err)
+		return failedTurn(ClassRuntimeError, err)
 	}
 	var systemPrompt string
 	if text := SystemPrompt(request); text != "" {
 		dir, err := os.MkdirTemp("", "agister-pi-")
 		if err != nil {
-			return outcome.Failed(run.ClassInternal, err)
+			return failedTurn(ClassInternal, err)
 		}
 		defer os.RemoveAll(dir)
 		systemPrompt = filepath.Join(dir, "system-prompt.md")
 		if err := os.WriteFile(systemPrompt, []byte(text), 0o600); err != nil {
-			return outcome.Failed(run.ClassInternal, err)
+			return failedTurn(ClassInternal, err)
 		}
 	}
 	args, err := Arguments(request, sessionDir, systemPrompt)
@@ -252,7 +248,7 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 		if request.ResumeSessionID == "" {
 			os.RemoveAll(sessionDir)
 		}
-		return outcome.Failed(run.ClassInternal, err)
+		return failedTurn(ClassInternal, err)
 	}
 	state := &Stream{ResumedSessionID: request.ResumeSessionID}
 	evidence := r.Transport.Run(ctx, Spec{
@@ -283,7 +279,7 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 // sessionDir is the directory a turn's session is kept in: a new one
 // under root for a fresh session, the session's own for a resumed one,
 // which must hold that session, started in the turn's working directory.
-func (r *Runner) sessionDir(root string, request app.TurnRequest) (string, error) {
+func (r *Runner) sessionDir(root string, request TurnRequest) (string, error) {
 	if request.ResumeSessionID == "" {
 		if err := os.MkdirAll(root, 0o700); err != nil {
 			return "", err
@@ -385,7 +381,7 @@ type Stream struct {
 	LastError string
 	// Ended is set by an agent_end Pi will not retry, and cleared when Pi
 	// goes on after it: the turn is decided only by the agent_end of its
-	// last agent run.
+	// last agent
 	Ended bool
 	usage tally
 	// tools are the tool calls reduced and not yet taken (TakeTools).
@@ -402,7 +398,7 @@ type Message struct {
 // Tool is a tool call the stream reported: its start, or the ID of the one
 // that finished.
 type Tool struct {
-	Started  *app.ToolCall
+	Started  *ToolCall
 	Finished string
 }
 
@@ -420,16 +416,16 @@ func (s *Stream) Reduce(line string) []Event {
 	}
 	var message map[string]any
 	if err := json.Unmarshal([]byte(line), &message); err != nil {
-		return []Event{{run.SourceAgister, "STREAM_PARSE_ERROR", map[string]any{"line": truncate(line, 200)}}}
+		return []Event{{SourceAgister, "STREAM_PARSE_ERROR", map[string]any{"line": truncate(line, 200)}}}
 	}
 	switch message["type"] {
 	case "session":
 		s.SessionID, _ = message["id"].(string)
-		return []Event{{run.SourceProtocol, "PROVIDER_SESSION_BOUND", map[string]any{"provider_session_id": s.SessionID, "cwd": message["cwd"]}}}
+		return []Event{{SourceProtocol, "PROVIDER_SESSION_BOUND", map[string]any{"provider_session_id": s.SessionID, "cwd": message["cwd"]}}}
 	case "agent_start":
 		// Another agent run: the one before did not end the turn.
 		s.Ended = false
-		return []Event{{run.SourceProtocol, "TURN_STARTED", nil}}
+		return []Event{{SourceProtocol, "TURN_STARTED", nil}}
 	case "message_end":
 		inner, _ := message["message"].(map[string]any)
 		return s.messageEnd(inner)
@@ -438,18 +434,18 @@ func (s *Stream) Reduce(line string) []Event {
 		id, _ := exact["toolCallId"].(string)
 		name, _ := exact["toolName"].(string)
 		input := wholeInput(exact["args"])
-		s.tools = append(s.tools, Tool{Started: &app.ToolCall{ID: id, Name: name, Input: input, Command: name == commandTool}})
-		return []Event{{run.SourceProtocol, "TOOL_REQUESTED", map[string]any{"tool_use_id": id, "name": name, "input": truncate(input, 300)}}}
+		s.tools = append(s.tools, Tool{Started: &ToolCall{ID: id, Name: name, Input: input, Command: name == commandTool}})
+		return []Event{{SourceProtocol, "TOOL_REQUESTED", map[string]any{"tool_use_id": id, "name": name, "input": truncate(input, 300)}}}
 	case "tool_execution_end":
 		id, _ := message["toolCallId"].(string)
 		if id != "" {
 			s.tools = append(s.tools, Tool{Finished: id})
 		}
 		isError, _ := message["isError"].(bool)
-		return []Event{{run.SourceProtocol, "TOOL_RESULT", map[string]any{"tool_use_id": id, "is_error": isError}}}
+		return []Event{{SourceProtocol, "TOOL_RESULT", map[string]any{"tool_use_id": id, "is_error": isError}}}
 	case "auto_retry_start":
 		s.LastError, _ = message["errorMessage"].(string)
-		return []Event{{run.SourceProtocol, "PROVIDER_RETRY", pick(message, "attempt", "maxAttempts", "delayMs", "errorMessage")}}
+		return []Event{{SourceProtocol, "PROVIDER_RETRY", pick(message, "attempt", "maxAttempts", "delayMs", "errorMessage")}}
 	case "agent_end":
 		if retry, _ := message["willRetry"].(bool); retry {
 			return nil
@@ -466,7 +462,7 @@ func (s *Stream) Reduce(line string) []Event {
 		if s.Final == nil || s.Final.StopReason != "stop" {
 			kind = "TURN_FAILED"
 		}
-		return []Event{{run.SourceProtocol, kind, data}}
+		return []Event{{SourceProtocol, kind, data}}
 	case "compaction_end":
 		s.compactionEnd(message)
 	}
@@ -515,11 +511,11 @@ func (s *Stream) messageEnd(message map[string]any) []Event {
 		var events []Event
 		if strings.TrimSpace(final.Text) != "" {
 			s.LastText = final.Text
-			events = append(events, Event{run.SourceProtocol, "ASSISTANT_TEXT", map[string]any{"text": truncate(final.Text, 500)}})
+			events = append(events, Event{SourceProtocol, "ASSISTANT_TEXT", map[string]any{"text": truncate(final.Text, 500)}})
 		}
 		if final.StopReason == "error" || final.ErrorMessage != "" {
 			s.LastError = final.ErrorMessage
-			events = append(events, Event{run.SourceProtocol, "PROVIDER_ERROR", map[string]any{"stop_reason": final.StopReason, "message": truncate(final.ErrorMessage, 300)}})
+			events = append(events, Event{SourceProtocol, "PROVIDER_ERROR", map[string]any{"stop_reason": final.StopReason, "message": truncate(final.ErrorMessage, 300)}})
 		}
 		return events
 	case "toolResult":
@@ -532,46 +528,45 @@ func (s *Stream) messageEnd(message map[string]any) []Event {
 }
 
 // Reconcile decides the turn outcome from the stream and the transport.
-func (s *Stream) Reconcile(evidence Evidence, schemaRequested bool) run.Turn {
-	ended := outcome.Evidence(evidence)
-	turn := outcome.Base(ended)
-	if failed, ok := outcome.RecordFailure(turn, ended); ok {
+func (s *Stream) Reconcile(evidence Evidence, schemaRequested bool) Turn {
+	turn := baseTurn(evidence)
+	if failed, ok := recordFailure(turn, evidence); ok {
 		return failed
 	}
 	turn.ProviderSessionID = s.SessionID
 	turn.Model = s.Model
 	if s.resumedElsewhere() {
-		turn.Status, turn.Error = run.Failed, run.Fault(run.ClassRuntimeError, "resumed session %s, but the runtime reported session %q", s.ResumedSessionID, s.SessionID)
+		turn.Status, turn.Error = Failed, Fault(ClassRuntimeError, "resumed session %s, but the runtime reported session %q", s.ResumedSessionID, s.SessionID)
 		return turn
 	}
 	// What the turn's model work cost, however the turn ends.
 	turn.Usage, turn.CostUSD = s.usage.totals()
 	if !s.Ended {
-		return outcome.WithoutTerminal(turn, ended, s.LastError)
+		return withoutTerminal(turn, evidence, s.LastError)
 	}
 	turn.Text = s.LastText
 	if s.Final == nil {
-		turn.Status, turn.Error = run.Failed, run.Fault(run.ClassRuntimeError, "runtime reported agent_end without an assistant message")
+		turn.Status, turn.Error = Failed, Fault(ClassRuntimeError, "runtime reported agent_end without an assistant message")
 		return turn
 	}
 	if s.Final.StopReason != "stop" {
-		turn.Status, turn.Error = run.Failed, classify(s.Final.StopReason, s.Final.ErrorMessage)
+		turn.Status, turn.Error = Failed, classify(s.Final.StopReason, s.Final.ErrorMessage)
 		return turn
 	}
 	if schemaRequested {
 		text := strings.TrimSpace(s.Final.Text)
 		if text == "" {
-			turn.Status, turn.Error = run.Failed, run.Fault(run.ClassInvalidOutput, "no structured output")
+			turn.Status, turn.Error = Failed, Fault(ClassInvalidOutput, "no structured output")
 			return turn
 		}
 		if !json.Valid([]byte(text)) {
-			turn.Status, turn.Error = run.Failed, run.Fault(run.ClassInvalidOutput, "structured output is not JSON")
+			turn.Status, turn.Error = Failed, Fault(ClassInvalidOutput, "structured output is not JSON")
 			return turn
 		}
 		turn.Output = json.RawMessage(text)
 	}
 	turn.Text = s.Final.Text
-	turn.Status = run.Completed
+	turn.Status = Completed
 	return turn
 }
 
@@ -586,7 +581,7 @@ func (s *Stream) resumedElsewhere() bool {
 // classify maps a final assistant message that did not stop normally to a
 // failure class, by its stop reason and error message. None of these has
 // been observed live.
-func classify(stopReason, message string) *run.Error {
+func classify(stopReason, message string) *Error {
 	text := "runtime reported " + stopReason
 	if stopReason == "" {
 		text = "runtime reported no stop reason"
@@ -595,17 +590,17 @@ func classify(stopReason, message string) *run.Error {
 		text += ": " + truncate(message, 300)
 	}
 	lower := strings.ToLower(message)
-	class := run.ClassRuntimeError
+	class := ClassRuntimeError
 	switch {
 	case strings.Contains(lower, "rate limit") || strings.Contains(lower, "usage limit") || strings.Contains(lower, "quota") || strings.Contains(lower, "429"):
-		class = run.ClassRateLimited
+		class = ClassRateLimited
 	case strings.Contains(lower, "unauthorized") || strings.Contains(lower, "401") || strings.Contains(lower, "403") ||
 		strings.Contains(lower, "api key") || strings.Contains(lower, "authentication"):
-		class = run.ClassAuth
+		class = ClassAuth
 	case strings.Contains(lower, "context window") || strings.Contains(lower, "context length") || strings.Contains(lower, "prompt is too long"):
-		class = run.ClassContextOverflow
+		class = ClassContextOverflow
 	}
-	return run.Fault(class, "%s", text)
+	return Fault(class, "%s", text)
 }
 
 // tally sums the usage of the messages a turn ended and of its
@@ -639,7 +634,7 @@ func (t *tally) add(usage map[string]any) {
 }
 
 // totals is the turn's usage and cost; nil when nothing was counted.
-func (t *tally) totals() (*run.Usage, *float64) {
+func (t *tally) totals() (*Usage, *float64) {
 	if t.messages == 0 {
 		return nil, nil
 	}
@@ -650,13 +645,13 @@ func (t *tally) totals() (*run.Usage, *float64) {
 		n := int64(s.value)
 		return &n
 	}
-	usage := &run.Usage{
+	usage := &Usage{
 		InputTokens:      count(t.input),
 		OutputTokens:     count(t.output),
 		CacheReadTokens:  count(t.cacheRead),
 		CacheWriteTokens: count(t.cacheWrite),
 	}
-	if *usage == (run.Usage{}) {
+	if *usage == (Usage{}) {
 		usage = nil
 	}
 	var cost *float64
