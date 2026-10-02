@@ -1,9 +1,9 @@
 ---
-date: 2026-09-29
+date: 2026-10-02
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — tests
-version: 0.0.3
+version: 0.0.4
 type: prompt
 ---
 
@@ -25,29 +25,33 @@ Definition of done:
   record, report or log says is not proven by a test one layer below it.
 * An existing assertion weakened, removed or widened in the same change is
   a finding unless the change says why.
-* A wait is not a finding by itself. Yielding to a loop's next tick, or
-  polling for an event that surely comes, is fine. Judge each wait by what
-  it waits for, how long, on which clock, and what it hides:
+* Real machinery standing in for a fake is a finding: building binaries,
+  starting processes, real network, real time, or a shared cache, home or
+  global state, where a port, spy, stub or injected seam would do. Name the
+  seam. The only exception is a test whose claim is about that machinery
+  itself, such as an adapter's contract test against the real thing. Such a
+  test must say so.
+* The wall clock is a finding: any sleep, poll or real timer in a test.
+  Name the clock, hook or event to inject so the test drives time itself.
+  If the product has no event, hook or result that says "done", the seam
+  is missing from the product, not only the test; say which. A wall-clock
+  wait the exception above allows follows these rules:
   * **Its expiry decides the result.** A sleep that must outlast some
     logic, a timer that must fire before (or must not fire before)
     something else, a negative check ("did not happen within N ms"), an
     assertion on elapsed wall time ("finished within N s"), or a timeout
     test whose command could end on its own. Mark it **flaky** when
     machine load could flip it. A timeout test is deterministic only when
-    the work never ends by itself, so the timer is its only way out. A deadline may only
-    guard a hang; a test that reports a timeout as a finding about the
-    product ("no response", "no report arrived") is a finding.
-  * **It uses the wall clock where the code takes an injected one.** The
-    test should drive the clock it controls, not wait for real time to
-    pass.
-  * **It hides a missing synchronization.** A wait that papers over the
-    product having no way to say "done" (no event, hook or result to wait
-    on) points at the product, not only the test. Say which.
+    the work never ends by itself, so the timer is its only way out.
+  * **A deadline may only guard a hang.** A test that reports a timeout as
+    a finding about the product ("no response", "no report arrived") is a
+    finding.
   * **It is long.** No test timeout, bound, poll deadline or test-process
     lifetime exceeds 1 minute. Longer waits bury real bugs: a hang reads
     as slowness, nobody waits for it, and the feedback loop becomes too
     long to use. Report each one with its value.
-  A wait none of these apply to is fine; leave it alone.
+* Cost is a finding: a test slow for what it claims, or one that rebuilds
+  or restarts what another test already built. Report its rough cost.
 * Tests clean up what they start (processes, temp dirs, goroutines) on
   every path, failure paths included.
 * No state outlives its test: package variables, environment, working
