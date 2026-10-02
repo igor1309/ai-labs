@@ -226,6 +226,19 @@ func TestInstallRendersAndBootstrapsOnce(t *testing.T) {
 		t.Errorf("HOME and PATH are not XML-escaped:\n%s", data)
 	}
 	b.assertLogsMode()
+	b.assertPlistMode()
+}
+
+// assertPlistMode checks the installed plist is 0644.
+func (b *box) assertPlistMode() {
+	b.t.Helper()
+	info, err := os.Stat(b.plist())
+	if err != nil {
+		b.t.Fatal(err)
+	}
+	if perm := info.Mode().Perm(); perm != 0o644 {
+		b.t.Errorf("%s mode %o, want 644", b.plist(), perm)
+	}
 }
 
 // assertRendered checks the installed plist lints and holds the paths from
@@ -293,6 +306,21 @@ func TestInstallSetsAnExistingLogDirTo0700(t *testing.T) {
 		t.Fatalf("install exit %d, stderr %q", code, stderr)
 	}
 	b.assertLogsMode()
+}
+
+func TestInstallOverAPlistWhoseJobIsNotLoadedReplacesIt(t *testing.T) {
+	b := newBox(t)
+	b.installBinary()
+	b.writePlist("previous")
+	if _, stderr, code := b.run("install.sh"); code != 0 {
+		t.Fatalf("install exit %d, stderr %q", code, stderr)
+	}
+	if got, want := b.calls(), []string{call("print", b.job()), b.bootstrapCall()}; !reflect.DeepEqual(got, want) {
+		t.Errorf("launchctl calls %q, want %q", got, want)
+	}
+	b.assertRendered()
+	b.assertPlistMode()
+	b.assertOnlyPlist()
 }
 
 func TestInstallLogSetupFailureKeepsThePreviousPlist(t *testing.T) {
@@ -388,10 +416,20 @@ func TestUninstallBootsOutAndRemovesPlist(t *testing.T) {
 	if _, stderr, code := b.run("install.sh"); code != 0 {
 		t.Fatalf("install exit %d, stderr %q", code, stderr)
 	}
-	outLog := filepath.Join(b.home, "Library", "Logs", "agister", "pages.out.log")
-	if err := os.WriteFile(outLog, []byte("served\n"), 0o600); err != nil {
+	kept := map[string][]byte{
+		filepath.Join(b.logs(), "pages.out.log"): []byte("served\n"),
+		filepath.Join(b.logs(), "pages.err.log"): []byte("warned\n"),
+	}
+	for path, data := range kept {
+		if err := os.WriteFile(path, data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	bin, err := os.ReadFile(b.agister())
+	if err != nil {
 		t.Fatal(err)
 	}
+	kept[b.agister()] = bin
 	if err := os.Remove(filepath.Join(b.shim, "calls.log")); err != nil {
 		t.Fatal(err)
 	}
@@ -404,11 +442,31 @@ func TestUninstallBootsOutAndRemovesPlist(t *testing.T) {
 		t.Errorf("launchctl calls %q, want %q", got, want)
 	}
 	b.assertNotExist(b.plist())
-	for _, kept := range []string{outLog, b.agister()} {
-		if _, err := os.Stat(kept); err != nil {
-			t.Errorf("%s not left in place: %v", kept, err)
+	for path, want := range kept {
+		got, err := os.ReadFile(path)
+		if err != nil {
+			t.Errorf("%s not left in place: %v", path, err)
+		} else if string(got) != string(want) {
+			t.Errorf("%s holds %q, want %q", path, got, want)
 		}
 	}
+	if info, err := os.Stat(b.agister()); err != nil {
+		t.Error(err)
+	} else if !info.Mode().IsRegular() || info.Mode().Perm()&0o111 == 0 {
+		t.Errorf("%s mode %v, want an executable file", b.agister(), info.Mode())
+	}
+}
+
+func TestUninstallRemovesAPlistWhoseJobIsNotLoaded(t *testing.T) {
+	b := newBox(t)
+	b.writePlist("installed")
+	if _, stderr, code := b.run("uninstall.sh"); code != 0 {
+		t.Fatalf("uninstall exit %d, stderr %q", code, stderr)
+	}
+	if got, want := b.calls(), []string{call("print", b.job())}; !reflect.DeepEqual(got, want) {
+		t.Errorf("launchctl calls %q, want %q", got, want)
+	}
+	b.assertNotExist(b.plist())
 }
 
 func TestUninstallBootoutFailureKeepsThePlist(t *testing.T) {
