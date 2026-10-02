@@ -3,72 +3,54 @@ package app
 import (
 	"strings"
 
-	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
 
-// reach is what the problems of a check report refuse (ADR-013): a problem
-// of one document refuses the calls that depend on it, through any chain of
+// DocumentRef names one settings document.
+type DocumentRef struct {
+	Kind definition.Kind
+	Name string
+}
+
+// reach is what the problems of the settings refuse (ADR-013): a problem of
+// one document refuses the calls that depend on it, through any chain of
 // uses, and a problem that depends on the agent refuses only the calls that
-// select that agent. What depends on what is the report's uses.
+// select that agent.
 type reach struct {
-	definitions map[contract.DefinitionRef]contract.Definition
-	// The problems of each document itself.
-	about map[contract.DefinitionRef][]reachProblem
-	// The problems of each process that depend on its agent, by process.
-	withAgent map[string][]reachProblem
-	// The problems that stop every command.
-	stops []string
+	documents map[DocumentRef]reachDocument
+	// The problems of each document, in the order found.
+	about map[DocumentRef][]reachProblem
+}
+
+// reachDocument is one document listed in the settings.
+type reachDocument struct {
+	path string
+	uses []DocumentRef // whether or not they exist
 }
 
 type reachProblem struct {
-	message string // without its subject
+	message string // without its document's name
 	agent   string // the agent it depends on, if it does
 }
 
-var serviceRef = contract.DefinitionRef{Kind: string(definition.KindService), Name: "service"}
+var (
+	serviceRef   = DocumentRef{Kind: definition.KindService, Name: "service"}
+	workspaceRef = DocumentRef{Kind: definition.KindWorkspace, Name: string(definition.KindWorkspace)}
+)
 
-// newReach reads what report's problems refuse. A problem whose reach the
-// report does not say stops every command: where it cannot be said what a
-// problem stops, it stops everything.
-func newReach(report contract.CheckReport) *reach {
-	r := &reach{
-		definitions: map[contract.DefinitionRef]contract.Definition{},
-		about:       map[contract.DefinitionRef][]reachProblem{},
-		withAgent:   map[string][]reachProblem{},
-	}
-	for _, d := range report.Definitions {
-		r.definitions[contract.DefinitionRef{Kind: d.Kind, Name: d.Name}] = d
-	}
-	if len(report.Reach) != len(report.Problems) {
-		r.stops = append(r.stops, report.Problems...)
-		return r
-	}
-	for _, item := range report.Reach {
-		if item.Stops || item.Subject == nil {
-			r.stops = append(r.stops, item.Problem)
-			continue
-		}
-		subject := *item.Subject
-		problem := reachProblem{message: strings.TrimPrefix(item.Problem, label(subject)+": "), agent: item.Agent}
-		if item.Agent != "" && subject.Kind == string(definition.KindProcess) {
-			r.withAgent[subject.Name] = append(r.withAgent[subject.Name], problem)
-			continue
-		}
-		r.about[subject] = append(r.about[subject], problem)
-	}
-	return r
+func newReach() *reach {
+	return &reach{documents: map[DocumentRef]reachDocument{}, about: map[DocumentRef][]reachProblem{}}
 }
 
 // label names a document as check's problems do.
-func label(ref contract.DefinitionRef) string {
-	return definition.Kind(ref.Kind).Singular() + " " + ref.Name
+func label(ref DocumentRef) string {
+	return ref.Kind.Singular() + " " + ref.Name
 }
 
 // step is one document a call depends on, and the one that uses it; from
 // is nil for the call's own document and the service settings.
 type step struct {
-	ref  contract.DefinitionRef
+	ref  DocumentRef
 	from *step
 }
 
@@ -94,24 +76,24 @@ func (s *step) chain() string {
 // shortest chain of uses: root itself, the service settings, then what
 // they use. agent, when set, is the agent a call of the process root
 // selects in place of its own.
-func (r *reach) walk(root contract.DefinitionRef, agent string) []*step {
+func (r *reach) walk(root DocumentRef, agent string) []*step {
 	steps := []*step{{ref: root}}
-	seen := map[contract.DefinitionRef]bool{root: true}
+	seen := map[DocumentRef]bool{root: true}
 	if root != serviceRef {
 		steps = append(steps, &step{ref: serviceRef})
 		seen[serviceRef] = true
 	}
 	for i := 0; i < len(steps); i++ {
 		current := steps[i]
-		uses := r.definitions[current.ref].Uses
-		if i == 0 && agent != "" && root.Kind == string(definition.KindProcess) {
-			var selected []contract.DefinitionRef
+		uses := r.documents[current.ref].uses
+		if i == 0 && agent != "" && root.Kind == definition.KindProcess {
+			var selected []DocumentRef
 			for _, used := range uses {
-				if used.Kind != string(definition.KindAgent) {
+				if used.Kind != definition.KindAgent {
 					selected = append(selected, used)
 				}
 			}
-			uses = append(selected, contract.DefinitionRef{Kind: string(definition.KindAgent), Name: agent})
+			uses = append(selected, DocumentRef{Kind: definition.KindAgent, Name: agent})
 		}
 		for _, used := range uses {
 			if !seen[used] {
@@ -123,63 +105,61 @@ func (r *reach) walk(root contract.DefinitionRef, agent string) []*step {
 	return steps
 }
 
+// listed says the settings list the document ref.
+func (r *reach) listed(ref DocumentRef) bool {
+	_, ok := r.documents[ref]
+	return ok
+}
+
 // call is the refusal of a call of process, with agent in place of its own
 // when set; nil when nothing it depends on has a problem.
 func (r *reach) call(process, agent string) error {
-	return r.refusal(contract.DefinitionRef{Kind: string(definition.KindProcess), Name: process}, agent)
+	return r.refusal(DocumentRef{Kind: definition.KindProcess, Name: process}, agent)
 }
 
 // workflow is the refusal of a run of the workflow name, for a problem in
 // it or in what any node's call depends on; nil when there is none.
 func (r *reach) workflow(name string) error {
-	return r.refusal(contract.DefinitionRef{Kind: string(definition.KindWorkflow), Name: name}, "")
+	return r.refusal(DocumentRef{Kind: definition.KindWorkflow, Name: name}, "")
 }
 
 // explain gives a problem discovered during resolution the same document,
 // path and use chain as a problem found by check.
-func (r *reach) explain(root contract.DefinitionRef, agent string, subject contract.DefinitionRef, message string) error {
+func (r *reach) explain(root DocumentRef, agent string, subject DocumentRef, message string) error {
 	for _, s := range r.walk(root, agent) {
 		if s.ref != subject {
 			continue
 		}
-		where := ""
-		if path := r.definitions[subject].Path; path != "" {
-			where = " (" + path + ")"
-		}
-		return refuse("%s%s: %s", s.chain(), where, message)
+		return refuse("%s%s: %s", s.chain(), r.where(subject), message)
 	}
 	return refuse("%s", message)
 }
 
+// where is the document's path, as a refusal shows it after its chain.
+func (r *reach) where(ref DocumentRef) string {
+	if path := r.documents[ref].path; path != "" {
+		return " (" + path + ")"
+	}
+	return ""
+}
+
 // refusal names each document with problems a call of root depends on, its
 // path, its problems and the chain that reaches it.
-func (r *reach) refusal(root contract.DefinitionRef, agent string) error {
-	if r == nil {
-		return nil
-	}
+func (r *reach) refusal(root DocumentRef, agent string) error {
 	var parts []string
 	for _, s := range r.walk(root, agent) {
 		var messages []string
 		for _, problem := range r.about[s.ref] {
-			messages = append(messages, problem.message)
-		}
-		if s.ref.Kind == string(definition.KindProcess) {
-			for _, problem := range r.withAgent[s.ref.Name] {
-				// A call that selects another agent is judged on that one.
-				if s.ref == root && agent != "" && agent != problem.agent {
-					continue
-				}
-				messages = append(messages, problem.message)
+			// A call that selects another agent is judged on that one.
+			if problem.agent != "" && s.ref == root && agent != "" && agent != problem.agent {
+				continue
 			}
+			messages = append(messages, problem.message)
 		}
 		if len(messages) == 0 {
 			continue
 		}
-		where := ""
-		if path := r.definitions[s.ref].Path; path != "" {
-			where = " (" + path + ")"
-		}
-		parts = append(parts, s.chain()+where+": "+strings.Join(messages, "; "))
+		parts = append(parts, s.chain()+r.where(s.ref)+": "+strings.Join(messages, "; "))
 	}
 	if len(parts) == 0 {
 		return nil
@@ -189,7 +169,7 @@ func (r *reach) refusal(root contract.DefinitionRef, agent string) error {
 
 // refuses is the roots among roots whose calls, without --agent, depend on
 // subject.
-func (r *reach) refuses(subject contract.DefinitionRef, roots []contract.DefinitionRef) []string {
+func (r *reach) refuses(subject DocumentRef, roots []DocumentRef) []string {
 	var names []string
 	for _, root := range roots {
 		for _, s := range r.walk(root, "") {

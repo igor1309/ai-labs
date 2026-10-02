@@ -400,7 +400,7 @@ func newFlowHarness() *flowHarness {
 	runtimes := nodeRuntimes{runner: h.runner}
 	changes := &changesSpy{}
 	h.calls = app.NewCalls(
-		app.NewResolver(h.defs, runtimes, okValidator{}), runtimes,
+		app.NewResolver(h.defs, runtimes, okValidator{}, resolverCheckStub{}), runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs},
 		h.workspaces, changes, app.NewPreparer(changes, &setupCommandsSpy{}, fixedClock{}), app.NewVerifier(changes, &copiesSpy{}, &commandsSpy{}, fixedClock{}), okValidator{}, h.store,
 		&runsSpy{records: map[string]run.Record{}, states: map[string]run.State{}},
@@ -1349,7 +1349,7 @@ func TestCheckRejectsWorkflowsThatCannotRun(t *testing.T) {
 // it would see it, what each receives, and where the workflow comes from.
 func TestShowWorkflow(t *testing.T) {
 	h := newFlowHarness()
-	inspection := app.NewInspection(app.NewResolver(h.defs, nodeRuntimes{runner: h.runner}, okValidator{}))
+	inspection := app.NewInspection(app.NewResolver(h.defs, nodeRuntimes{runner: h.runner}, okValidator{}, resolverCheckStub{}))
 	view, err := inspection.ShowWorkflow(context.Background(), "w")
 	if err != nil {
 		t.Fatal(err)

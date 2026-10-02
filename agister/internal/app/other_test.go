@@ -277,7 +277,7 @@ func TestInitWritesEachExampleWithoutOverwriting(t *testing.T) {
 		"agents/a.toml":  {Data: []byte("x")},
 		"schemas/s.json": {Data: []byte("x")},
 	}
-	result, err := initNow(app.NewSettings(nil, writer, examples, nil), false)
+	result, err := initNow(app.NewSettings(nil, writer, examples, nil, settingsCheckStub{}), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -297,7 +297,7 @@ func TestInitDryRunAndReplacement(t *testing.T) {
 	}
 	for _, overwrite := range []bool{false, true} {
 		writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
-		settings := app.NewSettings(nil, writer, examples, nil)
+		settings := app.NewSettings(nil, writer, examples, nil, settingsCheckStub{})
 		plan, err := settings.Init(context.Background(), overwrite, nil)
 		if err != nil || len(writer.writes) != 0 {
 			t.Fatalf("overwrite %v: dry run wrote %v, %v", overwrite, writer.writes, err)
@@ -324,7 +324,7 @@ func TestInitDryRunAndReplacement(t *testing.T) {
 func TestWritesRefuseFilesChangedSinceTheApprovedPlan(t *testing.T) {
 	examples := fstest.MapFS{"service.toml": {Data: []byte("x")}, "agents/a.toml": {Data: []byte("x")}}
 	writer := &writerSpy{existed: map[string]bool{}}
-	settings := app.NewSettings(nil, writer, examples, nil)
+	settings := app.NewSettings(nil, writer, examples, nil, settingsCheckStub{})
 	plan, err := settings.Init(context.Background(), true, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -336,7 +336,7 @@ func TestWritesRefuseFilesChangedSinceTheApprovedPlan(t *testing.T) {
 	}
 
 	h := newHarness()
-	settings = app.NewSettings(h.defs, writer, nil, nil)
+	settings = app.NewSettings(h.defs, writer, nil, nil, settingsCheckStub{})
 	agent, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "rt"}, true, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -353,7 +353,7 @@ func TestWritesRefuseFilesChangedSinceTheApprovedPlan(t *testing.T) {
 func TestWritesRefuseAnythingButTheApprovedPlan(t *testing.T) {
 	examples := fstest.MapFS{"service.toml": {Data: []byte("x")}, "agents/a.toml": {Data: []byte("x")}}
 	writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
-	settings := app.NewSettings(nil, writer, examples, nil)
+	settings := app.NewSettings(nil, writer, examples, nil, settingsCheckStub{})
 	keep, err := settings.Init(context.Background(), false, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -374,7 +374,7 @@ func TestWritesRefuseAnythingButTheApprovedPlan(t *testing.T) {
 	}
 
 	h := newHarness()
-	settings = app.NewSettings(h.defs, writer, nil, nil)
+	settings = app.NewSettings(h.defs, writer, nil, nil, settingsCheckStub{})
 	plan, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "rt"}, false, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -394,14 +394,14 @@ func TestInitSkipsHiddenFilesAndRejectsStrayRootFiles(t *testing.T) {
 		"agents/a.toml":    {Data: []byte("x")},
 		"service.toml":     {Data: []byte("x")},
 	}
-	if _, err := initNow(app.NewSettings(nil, writer, examples, nil), false); err != nil {
+	if _, err := initNow(app.NewSettings(nil, writer, examples, nil, settingsCheckStub{}), false); err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(writer.writes, []string{"agents/a", "service/service"}) {
 		t.Fatalf("writes %v", writer.writes)
 	}
 	stray := fstest.MapFS{"notes.txt": {Data: []byte("x")}}
-	if _, err := initNow(app.NewSettings(nil, &writerSpy{}, stray, nil), false); err == nil {
+	if _, err := initNow(app.NewSettings(nil, &writerSpy{}, stray, nil, settingsCheckStub{}), false); err == nil {
 		t.Fatal("a stray root file was accepted")
 	}
 }
@@ -411,7 +411,7 @@ func TestInitSkipsHiddenFilesAndRejectsStrayRootFiles(t *testing.T) {
 func TestCreateAgentDryRun(t *testing.T) {
 	h := newHarness()
 	writer := &writerSpy{existed: map[string]bool{"agents/b": true}}
-	settings := app.NewSettings(h.defs, writer, nil, nil)
+	settings := app.NewSettings(h.defs, writer, nil, nil, settingsCheckStub{})
 	spec := contract.Agent{Name: "b", Runtime: "rt"}
 	var input *contract.InputError
 	if _, err := settings.CreateAgent(context.Background(), spec, false, nil); !errors.As(err, &input) {
@@ -450,7 +450,7 @@ func TestCreateAgentKeepsSettingsValid(t *testing.T) {
 	h.defs.docs[definition.KindRuntime]["narrow"] = narrowRuntime
 	writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
-	settings := app.NewSettings(h.defs, writer, nil, []app.Scope{{Name: "global settings", Check: checker}})
+	settings := app.NewSettings(h.defs, writer, nil, []app.Scope{{Name: "global settings", Check: checker}}, settingsCheckStub{})
 	var input *contract.InputError
 	for _, approved := range []*contract.AgentWrite{nil, {Path: "agents/a", Replaces: true, Digest: "d-agents/a"}} {
 		// Process p uses agent a, and cannot run on runtime narrow.
@@ -474,7 +474,7 @@ func TestCreateAgentKeepsSettingsValid(t *testing.T) {
 func TestCreateAgentValidatesAgainstTheRuntimeMapping(t *testing.T) {
 	h := newHarness()
 	writer := &writerSpy{}
-	settings := app.NewSettings(h.defs, writer, nil, nil)
+	settings := app.NewSettings(h.defs, writer, nil, nil, settingsCheckStub{})
 	var input *contract.InputError
 	if _, err := createNow(settings, contract.Agent{Name: "b", Runtime: "nope"}, false); !errors.As(err, &input) {
 		t.Fatalf("unknown runtime: %v", err)
@@ -495,7 +495,7 @@ func TestShowProcessSourcesAreStructured(t *testing.T) {
 	h := newHarness()
 	// The resolver behind it is given nothing that can start a turn.
 	identities := struct{ app.ResolverIdentities }{h.runtimes}
-	view, err := (app.NewInspection(app.NewResolver(h.defs, identities, h.validator))).ShowProcess(context.Background(), "p", "")
+	view, err := (app.NewInspection(app.NewResolver(h.defs, identities, h.validator, resolverCheckStub{}))).ShowProcess(context.Background(), "p", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -514,7 +514,7 @@ func TestShowProcessSourcesAreStructured(t *testing.T) {
 func TestShowProcessLimitsThroughTheResolver(t *testing.T) {
 	h := newHarness()
 	identities := struct{ app.ResolverIdentities }{h.runtimes}
-	view, err := app.NewInspection(app.NewResolver(h.defs, identities, h.validator)).ShowProcess(context.Background(), "p", "")
+	view, err := app.NewInspection(app.NewResolver(h.defs, identities, h.validator, resolverCheckStub{})).ShowProcess(context.Background(), "p", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -680,7 +680,7 @@ func TestCreateAgentAsksEveryScope(t *testing.T) {
 	h := newHarness()
 	writer := &writerSpy{}
 	global, project := &proposedCheckSpy{}, &proposedCheckSpy{added: []string{"agent b: bad"}}
-	settings := app.NewSettings(h.defs, writer, nil, []app.Scope{{Name: "global settings", Check: global}, {Name: "project settings", Check: project}})
+	settings := app.NewSettings(h.defs, writer, nil, []app.Scope{{Name: "global settings", Check: global}, {Name: "project settings", Check: project}}, settingsCheckStub{})
 	var input *contract.InputError
 	if _, err := settings.CreateAgent(context.Background(), contract.Agent{Name: "b", Runtime: "rt"}, false, nil); !errors.As(err, &input) || !strings.Contains(err.Error(), "agent b would break the project settings") || !strings.Contains(err.Error(), "agent b: bad") {
 		t.Fatalf("err = %v", err)

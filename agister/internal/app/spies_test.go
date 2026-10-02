@@ -886,3 +886,19 @@ func sha(text string) string {
 	sum := sha256.Sum256([]byte(text))
 	return hex.EncodeToString(sum[:])
 }
+
+// resolverCheckStub is the check a component test's resolver reads: what
+// it finds, by default no problem in any document.
+type resolverCheckStub struct{ checked app.ResolverChecked }
+
+func (s resolverCheckStub) Check(context.Context) (app.ResolverChecked, error) {
+	return s.checked, nil
+}
+
+// settingsCheckStub is the check a component test's listings read: what it
+// finds, by default no problem in any document.
+type settingsCheckStub struct{ checked app.SettingsChecked }
+
+func (s settingsCheckStub) Check(context.Context) (app.SettingsChecked, error) {
+	return s.checked, nil
+}

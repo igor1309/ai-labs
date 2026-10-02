@@ -51,32 +51,64 @@ func NewChecker(definitions CheckDefinitions, validator CheckValidator, runtimes
 }
 
 func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, error) {
+	found, err := c.check(ctx, probe)
+	return found.report, err
+}
+
+// checked is what a check finds: its report, and each document and problem
+// as the components that refuse what depends on a problem read them.
+type checked struct {
+	report    contract.CheckReport
+	documents []checkedDocument
+	problems  []checkedProblem
+}
+
+// checkedDocument is one document the settings list.
+type checkedDocument struct {
+	ref  DocumentRef
+	path string
+	uses []DocumentRef // whether or not they exist
+}
+
+// checkedProblem is one problem, as reported and as found.
+type checkedProblem struct {
+	text string // as reported, naming its document
+	// The document it is about; nil on one that stops every command
+	// (ADR-013 rule 4).
+	about   *DocumentRef
+	message string // without its document's name
+	// The agent it depends on, on a process's problem (ADR-013 rule 2).
+	agent string
+}
+
+func (c *Checker) check(ctx context.Context, probe bool) (checked, error) {
 	report := contract.CheckReport{Checked: map[string]int{}}
-	index := map[contract.DefinitionRef]int{}   // into report.Definitions
-	listed := map[contract.DefinitionRef]bool{} // in the settings, read or not
+	index := map[DocumentRef]int{}   // into report.Definitions and documents
+	var documents []checkedDocument  // as report.Definitions
+	listed := map[DocumentRef]bool{} // in the settings, read or not
 	// Every problem, with the document it is about (ADR-013).
-	var found []contract.ProblemReach
-	about := func(ref contract.DefinitionRef, text string) {
+	var found []checkedProblem
+	about := func(ref DocumentRef, subject, message, agent string) {
+		text := subject + ": " + message
 		if ref == serviceRef {
 			// Every call depends on it, and every check on its vocabulary
 			// and limits (ADR-013 rule 4).
-			found = append(found, contract.ProblemReach{Problem: text, Stops: true})
+			found = append(found, checkedProblem{text: text, message: message})
 			return
 		}
-		subject := ref
-		found = append(found, contract.ProblemReach{Problem: text, Subject: &subject})
-	}
-	problem := func(subject, format string, args ...any) {
-		text := subject + ": " + fmt.Sprintf(format, args...)
-		ref, ok := subjectRef(subject)
-		if !ok {
-			found = append(found, contract.ProblemReach{Problem: text, Stops: true})
-			return
-		}
-		about(ref, text)
+		found = append(found, checkedProblem{text: text, about: &ref, message: message, agent: agent})
 	}
 	stops := func(subject, format string, args ...any) {
-		found = append(found, contract.ProblemReach{Problem: subject + ": " + fmt.Sprintf(format, args...), Stops: true})
+		message := fmt.Sprintf(format, args...)
+		found = append(found, checkedProblem{text: subject + ": " + message, message: message})
+	}
+	problem := func(subject, format string, args ...any) {
+		ref, ok := subjectRef(subject)
+		if !ok {
+			stops(subject, format, args...)
+			return
+		}
+		about(ref, subject, fmt.Sprintf(format, args...), "")
 	}
 	settingsProblem := func(p settings.Problem) {
 		ref, ok := subjectRef(p.Subject)
@@ -84,8 +116,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			stops(p.Subject, "%s", p.Message)
 			return
 		}
-		about(ref, p.String())
-		found[len(found)-1].Agent = p.Agent
+		about(ref, p.Subject, p.Message, p.Agent)
 	}
 	bundle := settings.Bundle{
 		Agents:    map[string]definition.Agent{},
@@ -96,8 +127,6 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 		Workflows: map[string]definition.Workflow{},
 		Verifies:  map[string]definition.Verification{},
 	}
-
-	var workspace *definition.Workspace // unset: none, or invalid
 
 	// Each document on its own.
 	each := func(kind definition.Kind, parse func(definition.Document) error) error {
@@ -111,7 +140,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			}
 		}
 		for _, name := range names {
-			listed[contract.DefinitionRef{Kind: string(kind), Name: name}] = true
+			listed[DocumentRef{Kind: kind, Name: name}] = true
 			if kind != definition.KindService && !definition.ValidName(name) {
 				// Nothing can name such a document (ADR-013 rule 4).
 				stops(kind.Singular()+" "+name, "%q is not a valid name; rename the file", name)
@@ -125,8 +154,9 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			if doc.Source.Project {
 				layer = "project"
 			}
-			index[contract.DefinitionRef{Kind: string(kind), Name: name}] = len(report.Definitions)
+			index[DocumentRef{Kind: kind, Name: name}] = len(report.Definitions)
 			report.Definitions = append(report.Definitions, contract.Definition{Kind: string(kind), Name: name, Layer: layer, Path: doc.Source.Path, Overrides: doc.Source.Overrides})
+			documents = append(documents, checkedDocument{ref: DocumentRef{Kind: kind, Name: name}, path: doc.Source.Path})
 			if err != nil {
 				report.Definitions[len(report.Definitions)-1].Invalid = true
 				problem(kind.Singular()+" "+name, "%v", err)
@@ -209,22 +239,19 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 		}},
 		// Optional: listed only when the document exists.
 		{definition.KindWorkspace, func(d definition.Document) error {
-			parsed, err := definition.ParseWorkspace(d)
-			if err == nil {
-				workspace = &parsed
-			}
+			_, err := definition.ParseWorkspace(d)
 			return err
 		}},
 	}
 	for _, step := range steps {
 		if err := each(step.kind, step.parse); err != nil {
-			return report, err
+			return checked{report: report}, err
 		}
 	}
 	// File names define the run namespace even when their documents cannot
 	// be parsed. settings.Check handles the pair when both parsed.
 	for ref := range listed {
-		if ref.Kind != string(definition.KindWorkflow) || !listed[contract.DefinitionRef{Kind: string(definition.KindProcess), Name: ref.Name}] {
+		if ref.Kind != definition.KindWorkflow || !listed[DocumentRef{Kind: definition.KindProcess, Name: ref.Name}] {
 			continue
 		}
 		_, processOK := bundle.Processes[ref.Name]
@@ -234,68 +261,73 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 		}
 	}
 	// What each problem refuses, once every problem is known.
-	finish := func() contract.CheckReport {
-		sort.SliceStable(found, func(i, j int) bool { return found[i].Problem < found[j].Problem })
-		var processes, workflows []contract.DefinitionRef
-		for _, kind := range []definition.Kind{definition.KindProcess, definition.KindWorkflow} {
-			for ref := range listed {
-				switch {
-				case ref.Kind != string(kind):
-				case kind == definition.KindProcess:
-					processes = append(processes, ref)
-				default:
-					workflows = append(workflows, ref)
-				}
+	finish := func() checked {
+		sort.SliceStable(found, func(i, j int) bool { return found[i].text < found[j].text })
+		reached := newReach()
+		for _, document := range documents {
+			reached.documents[document.ref] = reachDocument{path: document.path, uses: document.uses}
+		}
+		var processes, workflows []DocumentRef
+		for ref := range listed {
+			switch ref.Kind {
+			case definition.KindProcess:
+				processes = append(processes, ref)
+			case definition.KindWorkflow:
+				workflows = append(workflows, ref)
 			}
 		}
-		byName := func(refs []contract.DefinitionRef) {
+		byName := func(refs []DocumentRef) {
 			sort.Slice(refs, func(i, j int) bool { return refs[i].Name < refs[j].Name })
 		}
 		byName(processes)
 		byName(workflows)
-		reached := newReach(contract.CheckReport{Definitions: report.Definitions})
-		for i := range found {
-			report.Problems = append(report.Problems, found[i].Problem)
-			if subject := found[i].Subject; subject != nil {
-				found[i].Processes = reached.refuses(*subject, processes)
-				found[i].Workflows = reached.refuses(*subject, workflows)
+		for _, problem := range found {
+			report.Problems = append(report.Problems, problem.text)
+			item := contract.ProblemReach{Problem: problem.text, Stops: problem.about == nil}
+			if subject := problem.about; subject != nil {
+				item.Subject = &contract.DefinitionRef{Kind: string(subject.Kind), Name: subject.Name}
+				item.Agent = problem.agent
+				item.Processes = reached.refuses(*subject, processes)
+				item.Workflows = reached.refuses(*subject, workflows)
 			}
+			report.Reach = append(report.Reach, item)
 		}
-		report.Reach = found
-		return report
+		return checked{report: report, documents: documents, problems: found}
 	}
 	// What each definition references, and the reverse.
-	link := func(from contract.DefinitionRef, kind definition.Kind, name string) {
+	link := func(from DocumentRef, kind definition.Kind, name string) {
 		source, ok := index[from]
 		if name == "" || !ok { // a name unlike its file is reported as a problem
 			return
 		}
-		to := contract.DefinitionRef{Kind: string(kind), Name: name}
-		report.Definitions[source].Uses = append(report.Definitions[source].Uses, to)
+		to := DocumentRef{Kind: kind, Name: name}
+		documents[source].uses = append(documents[source].uses, to)
+		report.Definitions[source].Uses = append(report.Definitions[source].Uses, contract.DefinitionRef{Kind: string(to.Kind), Name: to.Name})
 		if i, ok := index[to]; ok {
-			report.Definitions[i].UsedBy = append(report.Definitions[i].UsedBy, from)
+			report.Definitions[i].UsedBy = append(report.Definitions[i].UsedBy, contract.DefinitionRef{Kind: string(from.Kind), Name: from.Name})
 		}
 	}
 	for _, name := range sortedNames(bundle.Agents) {
-		link(contract.DefinitionRef{Kind: string(definition.KindAgent), Name: name}, definition.KindRuntime, bundle.Agents[name].Runtime)
+		link(DocumentRef{Kind: definition.KindAgent, Name: name}, definition.KindRuntime, bundle.Agents[name].Runtime)
 	}
 	for _, name := range sortedNames(bundle.Processes) {
-		process, from := bundle.Processes[name], contract.DefinitionRef{Kind: string(definition.KindProcess), Name: name}
+		process, from := bundle.Processes[name], DocumentRef{Kind: definition.KindProcess, Name: name}
 		link(from, definition.KindAgent, process.Agent)
 		link(from, definition.KindPolicy, process.Policy)
 		link(from, definition.KindVerify, process.VerifyName)
 		if process.Output.Format == "json" {
 			link(from, definition.KindSchema, process.Output.Schema)
 		}
-		// The workspace's setup is the default of a checkout without one of
-		// its own (ADR-012); a missing document is no default, not a
-		// missing reference.
-		if _, fromWorkspace := process.EffectiveSetup(workspace); fromWorkspace {
-			link(from, definition.KindWorkspace, string(definition.KindWorkspace))
+		// A call of a checkout without a setup of its own reads the
+		// workspace settings for their default (ADR-012), whether or not
+		// they parse; a missing document is no default, not a missing
+		// reference.
+		if process.Checkout != "" && process.Setup == nil && listed[workspaceRef] {
+			link(from, definition.KindWorkspace, workspaceRef.Name)
 		}
 	}
 	for _, name := range sortedNames(bundle.Workflows) {
-		from := contract.DefinitionRef{Kind: string(definition.KindWorkflow), Name: name}
+		from := DocumentRef{Kind: definition.KindWorkflow, Name: name}
 		for _, node := range bundle.Workflows[name].Nodes() {
 			link(from, definition.KindProcess, node.Process)
 		}
@@ -306,7 +338,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 		switch {
 		case process.Verify != nil:
 			report.Warnings = append(report.Warnings, "process "+name+": "+VerifyWarning)
-		case process.VerifyName != "" && !listed[contract.DefinitionRef{Kind: string(definition.KindVerify), Name: process.VerifyName}]:
+		case process.VerifyName != "" && !listed[DocumentRef{Kind: definition.KindVerify, Name: process.VerifyName}]:
 			// Not a problem: every other process and workflow still runs
 			// (ADR-010 rule 4). An invalid one is a problem of its own.
 			report.Warnings = append(report.Warnings, fmt.Sprintf("process %s: names verify:%s, which does not exist; calls of it are refused until verifies/%s.yaml exists", name, process.VerifyName, process.VerifyName))
@@ -366,16 +398,16 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 
 // subjectRef is the document a problem's subject names, as check names it:
 // "agent a", "runtime mapping rt", "service".
-func subjectRef(subject string) (contract.DefinitionRef, bool) {
+func subjectRef(subject string) (DocumentRef, bool) {
 	if subject == "service" {
 		return serviceRef, true
 	}
 	for _, kind := range allKinds {
 		if name, ok := strings.CutPrefix(subject, kind.Singular()+" "); ok {
-			return contract.DefinitionRef{Kind: string(kind), Name: name}, true
+			return DocumentRef{Kind: kind, Name: name}, true
 		}
 	}
-	return contract.DefinitionRef{}, false
+	return DocumentRef{}, false
 }
 
 func sortedNames[V any](m map[string]V) []string {

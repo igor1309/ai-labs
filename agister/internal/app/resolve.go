@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
@@ -56,7 +55,7 @@ type Resolver struct {
 	validator   ResolverValidator
 	// check checks the definitions the resolver reads, which must not
 	// change under it (a snapshot), so a call that depends on a document
-	// with a problem is refused (ADR-013); nil refuses none for that.
+	// with a problem is refused (ADR-013).
 	check ResolverCheck
 	// checked is what the problems refuse, checked once when the
 	// definitions were frozen.
@@ -64,9 +63,45 @@ type Resolver struct {
 }
 
 // ResolverCheck checks the settings a call resolves from, to refuse one
-// that depends on a document with a problem (Checker is one).
+// that depends on a document with a problem.
 type ResolverCheck interface {
-	Check(ctx context.Context, probe bool) (contract.CheckReport, error)
+	Check(ctx context.Context) (ResolverChecked, error)
+}
+
+// ResolverChecked is what a check of the settings tells a call: each
+// document listed, what it uses, and the problems that refuse what depends
+// on it. A problem that stops every command is not here: the gate refuses
+// every command for it first.
+type ResolverChecked struct {
+	Documents []ResolverDocument
+	Problems  []ResolverProblem
+}
+
+// ResolverDocument is one document the settings list.
+type ResolverDocument struct {
+	Ref  DocumentRef
+	Path string
+	Uses []DocumentRef // whether or not they exist
+}
+
+// ResolverProblem is one problem of a document.
+type ResolverProblem struct {
+	About   DocumentRef
+	Message string // without the document's name
+	// Set on a process's problem that depends on the agent it names: a
+	// call that selects another agent does not have it (ADR-013 rule 2).
+	Agent string
+}
+
+func (f ResolverChecked) reach() *reach {
+	r := newReach()
+	for _, d := range f.Documents {
+		r.documents[d.Ref] = reachDocument{path: d.Path, uses: d.Uses}
+	}
+	for _, p := range f.Problems {
+		r.about[p.About] = append(r.about[p.About], reachProblem{message: p.Message, agent: p.Agent})
+	}
+	return r
 }
 
 type checkedReach struct {
@@ -100,9 +135,10 @@ type ResolverAdapters struct {
 }
 
 // NewResolver returns the component that resolves a process into what a
-// call or a view needs. Every collaborator is required.
-func NewResolver(definitions ResolverDefinitions, identities ResolverIdentities, validator ResolverValidator) *Resolver {
-	return &Resolver{definitions: definitions, identities: identities, validator: validator}
+// call or a view needs. check checks definitions; every collaborator is
+// required.
+func NewResolver(definitions ResolverDefinitions, identities ResolverIdentities, validator ResolverValidator, check ResolverCheck) *Resolver {
+	return &Resolver{definitions: definitions, identities: identities, validator: validator, check: check}
 }
 
 // frozen returns a resolver over the definitions as they are now, which
@@ -116,20 +152,16 @@ func (r *Resolver) frozen(ctx context.Context) *Resolver {
 	return &copied
 }
 
-// reach is what the problems of the resolver's definitions refuse; nil
-// when it checks none.
+// reach is what the problems of the resolver's definitions refuse.
 func (r *Resolver) reach(ctx context.Context) (*reach, error) {
 	if r.checked != nil {
 		return r.checked.reach, r.checked.err
 	}
-	if r.check == nil {
-		return nil, nil
-	}
-	report, err := r.check.Check(ctx, false)
+	found, err := r.check.Check(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return newReach(report), nil
+	return found.reach(), nil
 }
 
 // overrides are the caller's narrowing limits.
@@ -153,7 +185,7 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 	res, err := r.resolveCall(ctx, processName, agentOverride, caller, refused != nil)
 	if refused != nil {
 		// A listed but unreadable process still has an identity for its view.
-		if _, listed := reached.definitions[contract.DefinitionRef{Kind: string(definition.KindProcess), Name: processName}]; listed && res.process.Name == "" {
+		if reached.listed(DocumentRef{Kind: definition.KindProcess, Name: processName}) && res.process.Name == "" {
 			res.process.Name = processName
 		}
 		return res, refused
@@ -165,12 +197,13 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 // is asked anything.
 func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride string, caller overrides, settingsOnly bool) (res *resolution, err error) {
 	res = &resolution{}
-	subject := contract.DefinitionRef{Kind: string(definition.KindProcess), Name: processName}
+	root := DocumentRef{Kind: definition.KindProcess, Name: processName}
+	subject := root
 	defer func() {
 		// Static problems already carry their document and chain. Problems
 		// discovered while resolving an override or probing its runtime
 		// need the same attribution (ADR-013 rules 2 and 3).
-		if r.check == nil || settingsOnly || err == nil {
+		if settingsOnly || err == nil {
 			return
 		}
 		var refusal *Refusal
@@ -179,18 +212,18 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		}
 		reached, checkErr := r.reach(ctx)
 		if checkErr == nil {
-			if subject.Kind == string(definition.KindVerify) {
-				if _, listed := reached.definitions[subject]; !listed {
+			if subject.Kind == definition.KindVerify {
+				if !reached.listed(subject) {
 					// ADR-010's missing-verification refusal already names
 					// the process, reference and both expected paths.
 					return
 				}
 			}
-			err = reached.explain(contract.DefinitionRef{Kind: string(definition.KindProcess), Name: processName}, agentOverride, subject, refusal.Reason)
+			err = reached.explain(root, agentOverride, subject, refusal.Reason)
 		}
 	}()
 	load := func(kind definition.Kind, name string) (definition.Document, error) {
-		subject = contract.DefinitionRef{Kind: string(kind), Name: name}
+		subject = DocumentRef{Kind: kind, Name: name}
 		doc, err := r.definitions.Read(ctx, kind, name)
 		if err != nil {
 			return doc, refuse("%s %q: %v", kind.Singular(), name, err)
@@ -283,7 +316,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		}
 	}
 
-	subject = contract.DefinitionRef{Kind: string(definition.KindProcess), Name: processName}
+	subject = root
 	limits := policy.Caller{MaxCostUSD: caller.maxCostUSD}
 	if caller.timeout != "" {
 		timeout, err := time.ParseDuration(caller.timeout)
@@ -307,16 +340,16 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	if settingsOnly {
 		return res, nil
 	}
-	subject = contract.DefinitionRef{Kind: string(definition.KindRuntime), Name: res.mapping.Name}
+	subject = DocumentRef{Kind: definition.KindRuntime, Name: res.mapping.Name}
 	if res.identity, err = r.identities.Identity(ctx, res.mapping.Adapter, res.agent.Command); err != nil {
-		subject = contract.DefinitionRef{Kind: string(definition.KindAgent), Name: res.agent.Name}
+		subject = DocumentRef{Kind: definition.KindAgent, Name: res.agent.Name}
 		return res, refuse("runtime %s is unavailable: %v", res.mapping.Name, err)
 	}
 	if res.identity.Contract != res.mapping.Contract {
 		return res, refuse("runtime mapping %s describes adapter contract %s, but the adapter implements %s", res.mapping.Name, res.mapping.Contract, res.identity.Contract)
 	}
 	if verify := res.process.Verify; verify.Repairs() && !res.identity.Resume {
-		subject = contract.DefinitionRef{Kind: string(definition.KindProcess), Name: processName}
+		subject = root
 		return res, refuse("verify.max_attempts %d repairs in the call's session, but runtime %s cannot resume sessions", verify.MaxAttempts, res.mapping.Name)
 	}
 	verified, unverified := res.mapping.ForVersion(res.identity.Version)
@@ -324,12 +357,12 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		return res, refuse("runtime mapping %s verifies no primitive for %s version %s", res.mapping.Name, res.mapping.Adapter, res.identity.Version)
 	}
 	if res.effective.MaxCostUSD != nil && !res.identity.CostLimit {
-		subject = contract.DefinitionRef{Kind: string(definition.KindProcess), Name: processName}
+		subject = root
 		return res, refuse("runtime %s cannot enforce the cost limit %g", res.mapping.Name, *res.effective.MaxCostUSD)
 	}
 	// The staleness limits on tool calls need the adapter to report them.
 	if stale := res.effective.Stale; !res.identity.ToolCalls {
-		subject = contract.DefinitionRef{Kind: string(definition.KindProcess), Name: processName}
+		subject = root
 		switch {
 		case stale.ToolCommand != nil:
 			return res, refuse("runtime %s does not report tool calls, so it cannot enforce stale.tool_command %s", res.mapping.Name, *stale.ToolCommand)
@@ -337,7 +370,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 			return res, refuse("runtime %s does not report tool calls, so it cannot enforce stale.repeated_tool_calls %d", res.mapping.Name, *stale.RepeatedToolCalls)
 		}
 	}
-	subject = contract.DefinitionRef{Kind: string(definition.KindProcess), Name: processName}
+	subject = root
 	if res.plan, err = enforce.Make(res.effective.Permissions, verified, res.effective.Require, res.service.StateReaching); err != nil {
 		return res, refuse("runtime %s: %v%s", res.mapping.Name, err, unverifiedNote(unverified, "for version "+res.identity.Version))
 	}
@@ -453,7 +486,7 @@ func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResoluti
 	if refused := reached.workflow(name); refused != nil {
 		return res, true, refused
 	}
-	if err == nil && r.check != nil {
+	if err == nil {
 		// Resolve every node, including the join, before any turn. Only a
 		// missing named verification remains a refusal at its node.
 		var problems []string

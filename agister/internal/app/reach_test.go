@@ -31,6 +31,7 @@ func (h *harness) clientOn(defs app.GateDefinitions) contract.Client {
 			Workspaces: h.workspaces, Changes: h.changes, Validator: h.validator, Recorder: h.recorder, Runs: h.runs,
 			Clock: h.clock, Timer: h.timer, IDs: fixedIDs{}, StateDir: "/state",
 		},
+		Preparer: app.SetupAdapters{Content: h.changes, Commands: h.setup, Clock: h.clock},
 		Verifier: app.VerifyAdapters{Content: h.changes, Copies: h.copies, Commands: h.commands, Clock: h.clock},
 		Runs:     app.RunsAdapters{Reader: &readerSpy{record: run.Record{ID: "earlier"}, state: run.StateFinished}},
 		Decorate: func(client contract.Client) contract.Client { return client },
@@ -142,7 +143,9 @@ func TestACallOnABrokenDocumentIsRefusedBeforeItsFirstTurn(t *testing.T) {
 
 // A problem that depends on the agent is judged on the agent the call
 // selects: the agent a process names does not exist, and --agent selects
-// one that does.
+// one that does. NewClient gives the resolver the agent the problem
+// depends on, and the listings the problem as a call without --agent has
+// it, each with the document's path and its problem without its name.
 func TestAProblemOfTheAgentIsJudgedOnTheCallsAgent(t *testing.T) {
 	ctx := context.Background()
 	h := newHarness()
@@ -161,6 +164,10 @@ func TestAProblemOfTheAgentIsJudgedOnTheCallsAgent(t *testing.T) {
 	}
 	if view, err := client.ShowProcess(ctx, "p", "a"); err != nil || view.Refusal != "" || view.Agent != "a" {
 		t.Fatalf("show p as agent a: %+v, %v", view, err)
+	}
+	// A listing shows the call without --agent, on the agent p names.
+	if processes, err := client.ListProcesses(ctx); err != nil || len(processes) != 1 || processes[0].Refusal != `process p (mem/processes/p): agent "ghost" does not exist` {
+		t.Fatalf("processes = %+v, %v", processes, err)
 	}
 	if record := h.submit(t, client, contract.CallRequest{Process: "p"}); class(record) != run.ClassRefused {
 		t.Fatalf("call of p: %s %s", class(record), message(record))

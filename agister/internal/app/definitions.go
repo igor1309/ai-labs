@@ -25,13 +25,48 @@ type Settings struct {
 	// with the project in view); each must stay valid.
 	scopes []Scope
 	// check checks the definitions the listings read, to show what their
-	// problems refuse (ADR-013); nil shows none.
+	// problems refuse (ADR-013).
 	check SettingsCheck
 }
 
-// SettingsCheck checks the settings a listing reads (Checker is one).
+// SettingsCheck checks the settings a listing reads.
 type SettingsCheck interface {
-	Check(ctx context.Context, probe bool) (contract.CheckReport, error)
+	Check(ctx context.Context) (SettingsChecked, error)
+}
+
+// SettingsChecked is what a check of the settings tells a listing: each
+// document listed, what it uses, and the problems that refuse what depends
+// on it. A problem that stops every command is not here: the gate refuses
+// every command for it first.
+type SettingsChecked struct {
+	Documents []SettingsDocument
+	Problems  []SettingsProblem
+}
+
+// SettingsDocument is one document the settings list.
+type SettingsDocument struct {
+	Ref  DocumentRef
+	Path string
+	Uses []DocumentRef // whether or not they exist
+}
+
+// SettingsProblem is one problem of a document. A listing shows what a
+// call without --agent would be refused, so every problem of a process
+// counts, whichever agent it depends on.
+type SettingsProblem struct {
+	About   DocumentRef
+	Message string // without the document's name
+}
+
+func (f SettingsChecked) reach() *reach {
+	r := newReach()
+	for _, d := range f.Documents {
+		r.documents[d.Ref] = reachDocument{path: d.Path, uses: d.Uses}
+	}
+	for _, p := range f.Problems {
+		r.about[p.About] = append(r.about[p.About], reachProblem{message: p.Message})
+	}
+	return r
 }
 
 // SettingsDefinitions supplies the definitions a listing or a write reads.
@@ -59,9 +94,10 @@ type SettingsAdapters struct {
 
 // NewSettings returns the use case that manages definitions. scopes are
 // every settings view a write takes part in (global settings alone, and
-// with the project in view); each must stay valid.
-func NewSettings(definitions SettingsDefinitions, writer DefinitionWriter, examples Examples, scopes []Scope) *Settings {
-	return &Settings{definitions: definitions, writer: writer, examples: examples, scopes: scopes}
+// with the project in view); each must stay valid. check checks
+// definitions, for the listings.
+func NewSettings(definitions SettingsDefinitions, writer DefinitionWriter, examples Examples, scopes []Scope, check SettingsCheck) *Settings {
+	return &Settings{definitions: definitions, writer: writer, examples: examples, scopes: scopes, check: check}
 }
 
 // Scope is one view of the settings a write takes part in.
@@ -306,7 +342,7 @@ func (s *Settings) ListAgents(ctx context.Context) ([]contract.Agent, error) {
 	}
 	agents := make([]contract.Agent, 0, len(names))
 	for _, name := range names {
-		refusal := refusalOf(reached.refusal(contract.DefinitionRef{Kind: string(definition.KindAgent), Name: name}, ""))
+		refusal := refusalOf(reached.refusal(DocumentRef{Kind: definition.KindAgent, Name: name}, ""))
 		// A broken agent is listed as such: it refuses only what uses it.
 		doc, err := s.definitions.Read(ctx, definition.KindAgent, name)
 		if err != nil {
@@ -354,17 +390,13 @@ func (s *Settings) ListProcesses(ctx context.Context) ([]contract.ProcessSummary
 	return processes, nil
 }
 
-// reach is what the problems of the settings refuse; nil when the listing
-// checks none.
+// reach is what the problems of the settings refuse.
 func (s *Settings) reach(ctx context.Context) (*reach, error) {
-	if s.check == nil {
-		return nil, nil
-	}
-	report, err := s.check.Check(ctx, false)
+	found, err := s.check.Check(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return newReach(report), nil
+	return found.reach(), nil
 }
 
 // refusalOf is a refusal's reason; empty for none.

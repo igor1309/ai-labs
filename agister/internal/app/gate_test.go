@@ -191,7 +191,7 @@ func TestGatedOperationUsesTheCheckedSettings(t *testing.T) {
 			return &afterCheck{
 				Client: &app.Host{
 					Checker:    app.NewChecker(src, h.validator, h.runtimes, sources),
-					Inspection: app.NewInspection(app.NewResolver(src, h.runtimes, h.validator)),
+					Inspection: app.NewInspection(app.NewResolver(src, h.runtimes, h.validator, resolverCheckStub{})),
 				},
 				f: func() {
 					readsAfterCheck = h.defs.readCount()
@@ -329,7 +329,7 @@ func TestGatedWriteScopeChecksTheGlobalSnapshot(t *testing.T) {
 			return &afterCheck{
 				Client: &app.Host{
 					Checker:  checker(src),
-					Settings: app.NewSettings(src, &writerSpy{existed: map[string]bool{"agents/a": true}}, nil, []app.Scope{{Name: "global settings", Check: checker(globalOnly)}}),
+					Settings: app.NewSettings(src, &writerSpy{existed: map[string]bool{"agents/a": true}}, nil, []app.Scope{{Name: "global settings", Check: checker(globalOnly)}}, settingsCheckStub{}),
 				},
 				f: func() {
 					// Live, process p can run on runtime narrow.

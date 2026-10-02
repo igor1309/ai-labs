@@ -71,6 +71,13 @@ func (s *scripted) turns() []app.TurnRequest {
 	return append([]app.TurnRequest(nil), s.requests...)
 }
 
+// noProblems is the check the resolver reads: no document has a problem.
+type noProblems struct{}
+
+func (noProblems) Check(context.Context) (app.ResolverChecked, error) {
+	return app.ResolverChecked{}, nil
+}
+
 // fakeRuntimes builds the scripted runtime for the fake adapter.
 type fakeRuntimes struct{ runner *scripted }
 
@@ -319,7 +326,7 @@ verify:
 		definitions = fsdefs.Layered{Global: global, Project: &fsdefs.Store{Dir: defs}}
 	}
 	h.calls = app.NewCalls(
-		app.NewResolver(definitions, runtimes, schema.Validator{}), runtimes,
+		app.NewResolver(definitions, runtimes, schema.Validator{}, noProblems{}), runtimes,
 		map[string]app.InputProvider{"git.revision": git.Revision{}},
 		workspaces, with.changes, app.NewPreparer(with.changes, h.setup, with.clock), app.NewVerifier(with.changes, with.copies, h.commands, with.clock), schema.Validator{},
 		h.store, h.store, with.clock, system.Timer, system.IDs{}, h.home, hosted,

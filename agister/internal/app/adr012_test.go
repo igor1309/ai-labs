@@ -316,6 +316,7 @@ func TestADR012EveryDocumentKindRefusesOnlyItsDependents(t *testing.T) {
 		{definition.KindVerify, "repo"},
 		{definition.KindProcess, "second"},
 		{definition.KindWorkflow, "w"},
+		{definition.KindWorkspace, "workspace"},
 	} {
 		t.Run(string(tc.kind), func(t *testing.T) {
 			h := newHarness()
@@ -331,6 +332,11 @@ func TestADR012EveryDocumentKindRefusesOnlyItsDependents(t *testing.T) {
 				docs[definition.KindProcess]["second"] = strings.Replace(docs[definition.KindProcess]["second"], "schema: s", "schema: broken", 1)
 			case definition.KindVerify:
 				docs[definition.KindProcess]["second"] += "verify: verify:repo\n"
+			case definition.KindWorkspace:
+				// first runs a setup of its own, so it does not read the
+				// workspace settings.
+				docs[definition.KindProcess]["first"] = strings.Replace(docs[definition.KindProcess]["first"],
+					"  checkout: candidate_revision\n", "  checkout: candidate_revision\n  setup: {command: ./own.sh, timeout: 30s}\n", 1)
 			}
 			if docs[tc.kind] == nil {
 				docs[tc.kind] = map[string]string{}
@@ -397,5 +403,54 @@ func TestADR012AgentListingsShowBrokenDependencies(t *testing.T) {
 	}
 	if !reflect.DeepEqual(refused, map[string]bool{"a": false, "b": true}) {
 		t.Fatalf("refused agents: %v", refused)
+	}
+}
+
+// A checkout without a setup of its own reads the workspace settings, so
+// workspace settings that do not parse refuse its calls and the workflows
+// on it, and check, listings and the refusal say so, with the document's
+// path and the chain of uses (ADR-012, ADR-013 rules 3 and 5).
+func TestInvalidWorkspaceSettingsRefuseWhatReadsThem(t *testing.T) {
+	ctx := context.Background()
+	h := newHarness()
+	docs := workflowDocs()
+	docs[definition.KindWorkspace] = map[string]string{"workspace": "schema: agister.workspace/v1alpha1\nsetup: {command: ./link-config.sh}\n"}
+	s := settingsFiles(t, docs)
+	path := filepath.Join(s.Dir, "workspace.yaml")
+	client := h.clientOn(s)
+
+	report, err := client.Check(ctx, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reach := reachOf(t, report, "workspace workspace: setup.timeout: is required")
+	if reach.Stops || *reach.Subject != (contract.DefinitionRef{Kind: "workspace", Name: "workspace"}) ||
+		!reflect.DeepEqual(reach.Processes, []string{"first", "second"}) || !reflect.DeepEqual(reach.Workflows, []string{"w"}) {
+		t.Fatalf("reach = %+v", reach)
+	}
+
+	want := "process first uses workspace workspace (" + path + "): setup.timeout: is required"
+	processes, err := client.ListProcesses(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refusals := map[string]string{}
+	for _, process := range processes {
+		refusals[process.Name] = process.Refusal
+	}
+	if refusals["first"] != want || refusals["second"] == "" || refusals["joiner"] != "" {
+		t.Fatalf("refusals = %q", refusals)
+	}
+
+	record := h.submit(t, client, contract.CallRequest{Process: "first"})
+	if class(record) != run.ClassRefused || message(record) != want {
+		t.Fatalf("call of first: %s %q, want %q", class(record), message(record), want)
+	}
+	if len(h.workspaces.checkouts)+len(h.runner.calls())+len(h.setup.runs()) != 0 {
+		t.Fatalf("checkouts %v, turns %d, setup runs %d", h.workspaces.checkouts, len(h.runner.calls()), len(h.setup.runs()))
+	}
+	workflow := h.submit(t, client, contract.CallRequest{Process: "w", Params: map[string]string{"candidate": "HEAD"}})
+	if wantWorkflow := "workflow w uses process first, which uses workspace workspace (" + path + "): setup.timeout: is required"; class(workflow) != run.ClassRefused || message(workflow) != wantWorkflow {
+		t.Fatalf("workflow: %s %q, want %q", class(workflow), message(workflow), wantWorkflow)
 	}
 }
