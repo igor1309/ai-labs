@@ -207,7 +207,6 @@ else:
                 0,
                 "claude-session-1",
                 [
-                    "--bare",
                     "--print",
                     "--output-format",
                     "json",

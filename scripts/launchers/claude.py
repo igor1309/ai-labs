@@ -68,7 +68,6 @@ def _command(
 ) -> list[str]:
     command = [
         config["executable"],
-        "--bare",
         "--print",
         "--output-format",
         "json",
