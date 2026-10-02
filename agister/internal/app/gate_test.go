@@ -79,9 +79,12 @@ func (c *clientFake) ListRuns(context.Context) ([]contract.Run, error) {
 	return nil, nil
 }
 
-// While the settings have problems every use is refused before it reaches
-// the core, except writing them (Init, Install, Restore), reporting them
-// (Check), stopping a run, and following a run the gate itself admitted.
+// While the settings have a problem that stops every command, or one whose
+// reach the report does not say, every use is refused before it reaches the
+// core, except writing them (Init, Install, Restore), reporting them
+// (Check), stopping a run, and following a run the gate itself admitted. A
+// problem of one document passes the gate: the core refuses what depends on
+// it (ADR-015).
 func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
 	ctx := context.Background()
 	inner := &clientFake{}
@@ -143,6 +146,22 @@ func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
 	if got := join(inner.reached); got != want {
 		t.Fatalf("reached %q, want %q", got, want)
 	}
+
+	inner.report.Reach = []contract.ProblemReach{{Problem: "agent a: bad", Stops: true}}
+	inner.reached = nil
+	if _, err := gated.ListRuns(ctx); !errors.As(err, new(*contract.SettingsError)) || len(inner.reached) != 0 {
+		t.Fatalf("a problem that stops every command: %v, reached %v", err, inner.reached)
+	}
+	inner.report.Reach = []contract.ProblemReach{{Problem: "agent a: bad", Subject: &contract.DefinitionRef{Kind: "agents", Name: "a"}, Processes: []string{"p"}}}
+	if _, err := gated.Submit(ctx, contract.CallRequest{}); err != nil {
+		t.Fatalf("a problem of one document: %v", err)
+	}
+	if _, err := gated.ListRuns(ctx); err != nil {
+		t.Fatalf("a problem of one document: %v", err)
+	}
+	if got := join(inner.reached); got != "Submit ListRuns" {
+		t.Fatalf("reached %q", got)
+	}
 }
 
 func join(list []string) string {
@@ -187,7 +206,7 @@ func TestGatedOperationUsesTheCheckedSettings(t *testing.T) {
 			return &afterCheck{
 				Client: &app.Host{
 					Checker:    app.NewChecker(src, h.validator, h.runtimes, sources),
-					Inspection: app.NewInspection(app.NewResolver(src, h.runtimes, h.validator)),
+					Inspection: app.NewInspection(app.NewResolver(src, h.runtimes, h.validator, resolverCheckStub{})),
 				},
 				f: func() {
 					readsAfterCheck = h.defs.readCount()
@@ -325,7 +344,7 @@ func TestGatedWriteScopeChecksTheGlobalSnapshot(t *testing.T) {
 			return &afterCheck{
 				Client: &app.Host{
 					Checker:  checker(src),
-					Settings: app.NewSettings(src, &writerSpy{existed: map[string]bool{"agents/a": true}}, nil, []app.Scope{{Name: "global settings", Check: checker(globalOnly)}}),
+					Settings: app.NewSettings(src, &writerSpy{existed: map[string]bool{"agents/a": true}}, nil, []app.Scope{{Name: "global settings", Check: checker(globalOnly)}}, settingsCheckStub{}),
 				},
 				f: func() {
 					// Live, process p can run on runtime narrow.

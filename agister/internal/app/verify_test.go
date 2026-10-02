@@ -644,9 +644,9 @@ func TestVerifyRepairsWithoutResumableSessionsRefuseTheCall(t *testing.T) {
 		reason  string
 	}{
 		{"fresh-only agent", nil, contract.CallRequest{Agent: "f"},
-			"verify.max_attempts 3 repairs in the call's session, but agent f is fresh-only"},
+			"process p: verify.max_attempts 3 repairs in the call's session, but agent f is fresh-only"},
 		{"runtime without resume", func(h *harness) { h.runner.identity.Resume = false }, contract.CallRequest{},
-			"verify.max_attempts 3 repairs in the call's session, but runtime rt cannot resume sessions"},
+			"process p: verify.max_attempts 3 repairs in the call's session, but runtime rt cannot resume sessions"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -707,7 +707,7 @@ func TestRecordedVerifyIsTheResolvedOneUnderTheProcessDigest(t *testing.T) {
 // while verification is in effect: not for a call that would be refused.
 func TestShowProcessShowsVerifyAndItsWarning(t *testing.T) {
 	h := newHarness()
-	inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator))
+	inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
 	view, err := inspection.ShowProcess(context.Background(), "p", "")
 	if err != nil || view.Verify != nil || len(view.Warnings) != 0 {
 		t.Fatalf("without verify: %+v, %v, %v", view.Verify, view.Warnings, err)

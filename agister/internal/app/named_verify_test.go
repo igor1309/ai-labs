@@ -241,7 +241,7 @@ func TestCheckLinksAProcessToItsVerification(t *testing.T) {
 func TestShowProcessShowsTheNamedVerification(t *testing.T) {
 	h := newHarness()
 	named(h, verification)
-	inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator))
+	inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
 	view, err := inspection.ShowProcess(context.Background(), "p", "")
 	want := contract.Verify{Command: "go test ./...", Timeout: 10 * time.Minute, MaxAttempts: 3, Instruction: "The verification command failed. Fix the cause, not the check."}
 	if err != nil || view.Verify == nil || *view.Verify != want || view.VerifyName != "repo" || view.Refusal != "" {
@@ -294,7 +294,7 @@ func TestSnapshotKeepsTheReadOfAMissingNamedVerification(t *testing.T) {
 	if names, err := snap.List(ctx, definition.KindVerify); err != nil || len(names) != 0 {
 		t.Fatalf("verifies = %v, %v", names, err)
 	}
-	view, err := app.NewInspection(app.NewResolver(snap, struct{ app.ResolverIdentities }{h.runtimes}, h.validator)).ShowProcess(ctx, "p", "")
+	view, err := app.NewInspection(app.NewResolver(snap, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{})).ShowProcess(ctx, "p", "")
 	want := `process p names verify:repo: verification "repo": ` + missing.Error()
 	if err != nil || view.Refusal != want {
 		t.Fatalf("refusal = %q, %v, want %q", view.Refusal, err, want)
@@ -341,7 +341,7 @@ func TestSnapshotListsANamedVerificationWrittenAfterItsList(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(messages(report.Problems), []string{problem}) {
 		t.Fatalf("problems = %q, %v, want %q", messages(report.Problems), err, problem)
 	}
-	view, err := app.NewInspection(app.NewResolver(snap, struct{ app.ResolverIdentities }{h.runtimes}, h.validator)).ShowProcess(ctx, "p", "")
+	view, err := app.NewInspection(app.NewResolver(snap, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{})).ShowProcess(ctx, "p", "")
 	if err != nil || !strings.Contains(view.Refusal, strings.TrimPrefix(problem, "process p: ")) {
 		t.Fatalf("refusal = %q, %v", view.Refusal, err)
 	}

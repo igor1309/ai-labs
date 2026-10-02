@@ -180,12 +180,25 @@ func TestARepositoryVerificationReplacesAGlobalOne(t *testing.T) {
 	}
 }
 
-// An invalid verification is a problem of the settings, on that document.
+// An invalid verification is a problem of the settings, on that document;
+// it refuses the calls of the processes that name it, and nothing else
+// (ADR-015, amending ADR-010 rule 4).
 func TestAnInvalidRepositoryVerificationFailsCheck(t *testing.T) {
 	home, repo := namingHome(t)
-	write(t, filepath.Join(repo, ".agister", "verifies", "repo.yaml"), strings.Replace(repoVerification, "timeout: 7m\n", "", 1))
+	path := filepath.Join(repo, ".agister", "verifies", "repo.yaml")
+	write(t, path, strings.Replace(repoVerification, "timeout: 7m\n", "", 1))
 	r := agister(t, home, repo, "check")
-	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "verification repo: timeout: is required\n1 problem(s) in ") || strings.Contains(r.stderr, "process implement") {
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "verification repo: timeout: is required\n  refuses process implement\n1 problem(s) in ") || strings.Contains(r.stderr, "\nprocess implement") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	r = agister(t, home, repo, "run", "implement", "--quiet", "--param", "candidate=HEAD", "--param", "brief=b.md")
+	if want := "process implement uses verification repo (" + path + "): timeout: is required"; r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
+		t.Fatalf("run: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
+	}
+	if last := lastRun(t, home); last.record["result"].(map[string]any)["error"].(map[string]any)["class"] != "refused" || len(last.events) == 0 {
+		t.Fatalf("record = %v", last.record)
+	}
+	if r := agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
+		t.Fatalf("a process that does not name it: %d\n%s", r.code, r.stderr)
 	}
 }

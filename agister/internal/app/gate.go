@@ -9,11 +9,14 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
 
-// Gated refuses every use of the client while the settings have problems,
-// except Init, Install and Restore, which write them, and Check, which
-// reports them. Stopping a run is never refused, and a run it admitted stays
-// observable, so editing settings mid-run cannot strand a call that already
-// started.
+// Gated refuses every use of the client while the settings have a problem
+// that stops every command (ADR-015 rule 4), except Init, Install and
+// Restore, which write them, and Check, which reports them. Stopping a run
+// is never refused, and a run it admitted stays observable, so editing
+// settings mid-run cannot strand a call that already started. Any other
+// problem refuses only the calls that depend on the document it is about,
+// which the client it builds refuses and its listings and views show
+// refused.
 //
 // Each gated operation reads the settings (layered, and the global layer
 // alone) once into snapshots, builds its client on them, checks with that client and then runs the
@@ -70,11 +73,22 @@ type Infrastructure struct {
 	Installer InstallAdapters
 	// Decorate wraps every client the gate builds.
 	Decorate func(contract.Client) contract.Client
+	// Checks makes the checker whose result the resolver and the listings
+	// refuse what depends on a problem from, over the settings given; nil
+	// makes the Checker over them. Optional: a seam for tests.
+	Checks func(GateDefinitions) GateCheck
+}
+
+// GateCheck is a checker as the components NewClient assembles read it:
+// what a check of the settings finds.
+type GateCheck interface {
+	Checked(ctx context.Context) (CheckResult, error)
 }
 
 // NewClient assembles the core over infra and returns it behind the gate:
-// nothing but init and check works on settings that do not pass check.
-// Every field of infra is required.
+// nothing but init and check works on settings with a problem that stops
+// every command, and what depends on a document with any other problem is
+// refused (ADR-015). Every field of infra is required but Checks.
 func NewClient(infra Infrastructure) contract.Client {
 	// The calls hosted in this process, the preparer and the verifier are
 	// shared by every client the gate builds.
@@ -91,9 +105,14 @@ func NewClient(infra Infrastructure) contract.Client {
 	}
 	// An install checks its result as checkerOn's checkers check home's.
 	installer := NewInstaller(infra.Installer, installCheck(checkerOn))
-	// Each use case that resolves a process gets a resolver of its own.
+	checksOn := infra.Checks
+	if checksOn == nil {
+		checksOn = func(definitions GateDefinitions) GateCheck { return checkerOn(definitions) }
+	}
+	// Each use case that resolves a process gets a resolver of its own,
+	// which refuses a call that depends on a document with a problem.
 	resolverOn := func(definitions GateDefinitions) *Resolver {
-		return NewResolver(definitions, infra.Resolver.Identities, infra.Resolver.Validator)
+		return NewResolver(definitions, infra.Resolver.Identities, infra.Resolver.Validator, resolverCheck{checksOn(definitions)})
 	}
 	// build makes the whole client over the sources given: the layered
 	// settings and the global layer alone. The gate builds it on snapshots
@@ -109,7 +128,7 @@ func NewClient(infra Infrastructure) contract.Client {
 		}
 		calls := infra.Calls
 		host := &Host{
-			Settings:   NewSettings(layered, infra.Settings.Writer, infra.Settings.Examples, scopes),
+			Settings:   NewSettings(layered, infra.Settings.Writer, infra.Settings.Examples, scopes, settingsCheck{checksOn(layered)}),
 			Checker:    checkerOn(layered),
 			Inspection: NewInspection(resolverOn(layered)),
 			Calls: NewCalls(
@@ -134,7 +153,7 @@ func (on installCheck) Check(ctx context.Context, staged InstallStaged) (contrac
 func (g *Gated) live() contract.Client { return g.Build(g.Definitions, g.Global) }
 
 // gate snapshots the settings, checks them and returns the client built on
-// that snapshot, or the refusal.
+// that snapshot, or the refusal when a problem stops every command.
 func (g *Gated) gate(ctx context.Context) (contract.Client, error) {
 	layered := Snapshot(ctx, g.Definitions)
 	client := g.Build(layered, Snapshot(ctx, g.Global))
@@ -142,10 +161,76 @@ func (g *Gated) gate(ctx context.Context) (contract.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(report.Problems) > 0 {
+	if stopsEveryCommand(report) {
 		return nil, &contract.SettingsError{Report: report}
 	}
 	return client, nil
+}
+
+// stopsEveryCommand says report has a problem that stops every command
+// (ADR-015 rule 4). A problem whose reach the report does not say stops
+// every command: where it cannot be said what a problem stops, it stops
+// everything.
+func stopsEveryCommand(report contract.CheckReport) bool {
+	if len(report.Reach) != len(report.Problems) {
+		return len(report.Problems) > 0
+	}
+	for _, item := range report.Reach {
+		if item.Stops || item.Subject == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// resolverCheck is a checker as a Resolver reads it.
+type resolverCheck struct{ checker resolverChecker }
+
+// resolverChecker is the checker a resolverCheck translates.
+type resolverChecker interface {
+	Checked(ctx context.Context) (CheckResult, error)
+}
+
+func (c resolverCheck) Check(ctx context.Context) (ResolverChecked, error) {
+	found, err := c.checker.Checked(ctx)
+	if err != nil {
+		return ResolverChecked{}, err
+	}
+	var result ResolverChecked
+	for _, d := range found.Documents {
+		result.Documents = append(result.Documents, ResolverDocument{Ref: d.Ref, Path: d.Path, Uses: d.Uses})
+	}
+	for _, p := range found.Problems {
+		if p.About != nil {
+			result.Problems = append(result.Problems, ResolverProblem{About: *p.About, Message: p.Message, Agent: p.Agent})
+		}
+	}
+	return result, nil
+}
+
+// settingsCheck is a checker as Settings reads it.
+type settingsCheck struct{ checker settingsChecker }
+
+// settingsChecker is the checker a settingsCheck translates.
+type settingsChecker interface {
+	Checked(ctx context.Context) (CheckResult, error)
+}
+
+func (c settingsCheck) Check(ctx context.Context) (SettingsChecked, error) {
+	found, err := c.checker.Checked(ctx)
+	if err != nil {
+		return SettingsChecked{}, err
+	}
+	var result SettingsChecked
+	for _, d := range found.Documents {
+		result.Documents = append(result.Documents, SettingsDocument{Ref: d.Ref, Path: d.Path, Uses: d.Uses})
+	}
+	for _, p := range found.Problems {
+		if p.About != nil {
+			result.Problems = append(result.Problems, SettingsProblem{About: *p.About, Message: p.Message})
+		}
+	}
+	return result, nil
 }
 
 func (g *Gated) gateUnlessAdmitted(ctx context.Context, runID string) (contract.Client, error) {

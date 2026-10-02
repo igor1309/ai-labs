@@ -24,6 +24,49 @@ type Settings struct {
 	// Every settings view a write takes part in (global settings alone, and
 	// with the project in view); each must stay valid.
 	scopes []Scope
+	// check checks the definitions the listings read, to show what their
+	// problems refuse (ADR-015).
+	check SettingsCheck
+}
+
+// SettingsCheck checks the settings a listing reads.
+type SettingsCheck interface {
+	Check(ctx context.Context) (SettingsChecked, error)
+}
+
+// SettingsChecked is what a check of the settings tells a listing: each
+// document listed, what it uses, and the problems that refuse what depends
+// on it. A problem that stops every command is not here: the gate refuses
+// every command for it first.
+type SettingsChecked struct {
+	Documents []SettingsDocument
+	Problems  []SettingsProblem
+}
+
+// SettingsDocument is one document the settings list.
+type SettingsDocument struct {
+	Ref  DocumentRef
+	Path string
+	Uses []DocumentRef // whether or not they exist
+}
+
+// SettingsProblem is one problem of a document. A listing shows what a
+// call without --agent would be refused, so every problem of a process
+// counts, whichever agent it depends on.
+type SettingsProblem struct {
+	About   DocumentRef
+	Message string // without the document's name
+}
+
+func (f SettingsChecked) reach() *reach {
+	r := newReach()
+	for _, d := range f.Documents {
+		r.documents[d.Ref] = reachDocument{path: d.Path, uses: d.Uses}
+	}
+	for _, p := range f.Problems {
+		r.about[p.About] = append(r.about[p.About], reachProblem{message: p.Message})
+	}
+	return r
 }
 
 // SettingsDefinitions supplies the definitions a listing or a write reads.
@@ -51,9 +94,10 @@ type SettingsAdapters struct {
 
 // NewSettings returns the use case that manages definitions. scopes are
 // every settings view a write takes part in (global settings alone, and
-// with the project in view); each must stay valid.
-func NewSettings(definitions SettingsDefinitions, writer DefinitionWriter, examples Examples, scopes []Scope) *Settings {
-	return &Settings{definitions: definitions, writer: writer, examples: examples, scopes: scopes}
+// with the project in view); each must stay valid. check checks
+// definitions, for the listings.
+func NewSettings(definitions SettingsDefinitions, writer DefinitionWriter, examples Examples, scopes []Scope, check SettingsCheck) *Settings {
+	return &Settings{definitions: definitions, writer: writer, examples: examples, scopes: scopes, check: check}
 }
 
 // Scope is one view of the settings a write takes part in.
@@ -271,8 +315,9 @@ func notApproved(paths []string) error {
 }
 
 // keepsSettingsValid refuses a document that would add problems to any
-// scope: once written, every command there would stop on them, including
-// the one that could repair them.
+// scope: once written, they would refuse what depends on it, or stop every
+// command there, including the one that could repair them. Problems that
+// are there already do not stop it.
 func (s *Settings) keepsSettingsValid(ctx context.Context, doc definition.Document) error {
 	for _, scope := range s.scopes {
 		added, err := scope.Check.ProblemsAdded(ctx, doc)
@@ -291,17 +336,25 @@ func (s *Settings) ListAgents(ctx context.Context) ([]contract.Agent, error) {
 	if err != nil {
 		return nil, err
 	}
+	reached, err := s.reach(ctx)
+	if err != nil {
+		return nil, err
+	}
 	agents := make([]contract.Agent, 0, len(names))
 	for _, name := range names {
+		refusal := refusalOf(reached.refusal(DocumentRef{Kind: definition.KindAgent, Name: name}, ""))
+		// A broken agent is listed as such: it refuses only what uses it.
 		doc, err := s.definitions.Read(ctx, definition.KindAgent, name)
 		if err != nil {
-			return nil, err
+			agents = append(agents, contract.Agent{Name: name, Problem: fmt.Sprintf("unreadable: %v (run `agister check`)", err), Refusal: refusal})
+			continue
 		}
 		agent, err := definition.ParseAgent(doc)
 		if err != nil {
-			return nil, err
+			agents = append(agents, contract.Agent{Name: name, Problem: "invalid (run `agister check`)", Refusal: refusal})
+			continue
 		}
-		agents = append(agents, contract.Agent{Name: agent.Name, Runtime: agent.Runtime, Model: agent.Model, ModelFamily: agent.ModelFamily, Effort: agent.Effort, Session: agent.Session, Command: agent.Command})
+		agents = append(agents, contract.Agent{Name: agent.Name, Runtime: agent.Runtime, Model: agent.Model, ModelFamily: agent.ModelFamily, Effort: agent.Effort, Session: agent.Session, Command: agent.Command, Refusal: refusal})
 	}
 	return agents, nil
 }
@@ -311,24 +364,47 @@ func (s *Settings) ListProcesses(ctx context.Context) ([]contract.ProcessSummary
 	if err != nil {
 		return nil, err
 	}
+	reached, err := s.reach(ctx)
+	if err != nil {
+		return nil, err
+	}
 	processes := make([]contract.ProcessSummary, 0, len(names))
 	for _, name := range names {
+		refusal := refusalOf(reached.call(name, ""))
 		doc, err := s.definitions.Read(ctx, definition.KindProcess, name)
 		if err != nil {
-			return nil, err
+			processes = append(processes, contract.ProcessSummary{Name: name, Problem: fmt.Sprintf("unreadable: %v (run `agister check`)", err), Refusal: refusal})
+			continue
 		}
 		process, err := definition.ParseProcess(doc)
 		if err != nil {
-			processes = append(processes, contract.ProcessSummary{Name: name, Problem: "invalid (run `agister check`)"})
+			processes = append(processes, contract.ProcessSummary{Name: name, Problem: "invalid (run `agister check`)", Refusal: refusal})
 			continue
 		}
 		output := process.Output.Format
 		if process.Output.Schema != "" {
 			output += ":" + process.Output.Schema
 		}
-		processes = append(processes, contract.ProcessSummary{Name: process.Name, Agent: process.Agent, Policy: process.Policy, Output: output})
+		processes = append(processes, contract.ProcessSummary{Name: process.Name, Agent: process.Agent, Policy: process.Policy, Output: output, Refusal: refusal})
 	}
 	return processes, nil
+}
+
+// reach is what the problems of the settings refuse.
+func (s *Settings) reach(ctx context.Context) (*reach, error) {
+	found, err := s.check.Check(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return found.reach(), nil
+}
+
+// refusalOf is a refusal's reason; empty for none.
+func refusalOf(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
 }
 
 func (s *Settings) ListWorkflows(ctx context.Context) ([]contract.WorkflowSummary, error) {
@@ -336,18 +412,24 @@ func (s *Settings) ListWorkflows(ctx context.Context) ([]contract.WorkflowSummar
 	if err != nil {
 		return nil, err
 	}
+	reached, err := s.reach(ctx)
+	if err != nil {
+		return nil, err
+	}
 	workflows := make([]contract.WorkflowSummary, 0, len(names))
 	for _, name := range names {
+		refusal := refusalOf(reached.workflow(name))
 		doc, err := s.definitions.Read(ctx, definition.KindWorkflow, name)
 		if err != nil {
-			return nil, err
+			workflows = append(workflows, contract.WorkflowSummary{Name: name, Problem: fmt.Sprintf("unreadable: %v (run `agister check`)", err), Refusal: refusal})
+			continue
 		}
 		workflow, err := definition.ParseWorkflow(doc)
 		if err != nil {
-			workflows = append(workflows, contract.WorkflowSummary{Name: name, Problem: "invalid (run `agister check`)"})
+			workflows = append(workflows, contract.WorkflowSummary{Name: name, Problem: "invalid (run `agister check`)", Refusal: refusal})
 			continue
 		}
-		summary := contract.WorkflowSummary{Name: workflow.Name, Join: workflow.Join.Name + ":" + workflow.Join.Process}
+		summary := contract.WorkflowSummary{Name: workflow.Name, Join: workflow.Join.Name + ":" + workflow.Join.Process, Refusal: refusal}
 		for _, node := range workflow.FanOut {
 			summary.FanOut = append(summary.FanOut, node.Name+":"+node.Process)
 		}

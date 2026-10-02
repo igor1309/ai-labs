@@ -54,20 +54,22 @@ func verifyOpenCodeTools(t *testing.T, home string, tools ...string) {
 
 // The example verifies no tool: nothing about OpenCode's tools has been
 // checked live. So, as shipped, the settings do not pass check, which says
-// why, and no call starts; with a tool verified they pass check and probe.
+// why and what it refuses, and a call on it is refused before its runtime
+// starts; with a tool verified they pass check and probe.
 func TestExampleOpenCodeSettingsVerifyNoTool(t *testing.T) {
 	home, repo := exampleOpenCodeSettings(t)
-	const problem = "runtime mapping opencode: verifies no primitive against any runtime version; calls on it are refused"
+	const problem = "verifies no primitive against any runtime version; calls on it are refused"
 	r := agister(t, home, repo, "check")
-	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem) || !strings.Contains(r.stderr, "1 problem(s)") {
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "runtime mapping opencode: "+problem+"\n  refuses process ask_opencode\n") || !strings.Contains(r.stderr, "1 problem(s)") {
 		t.Fatalf("check: exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	r = agister(t, home, repo, "run", "ask_opencode", "--param", "question=What does this repository do?")
-	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem) {
-		t.Fatalf("run: exit %d\n%s%s", r.code, r.stdout, r.stderr)
+	want := "process ask_opencode uses agent opencode-minimax, which uses runtime mapping opencode (" + filepath.Join(home, "runtimes", "opencode.yaml") + "): " + problem
+	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
+		t.Fatalf("run: exit %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
 	}
-	if runs, _ := os.ReadDir(filepath.Join(home, "runs")); len(runs) != 0 {
-		t.Fatalf("runs = %v", runs)
+	if last := lastRun(t, home); last.record["result"].(map[string]any)["error"].(map[string]any)["class"] != "refused" || last.first != nil {
+		t.Fatalf("record = %v, runtime = %v", last.record, last.first)
 	}
 
 	verifyOpenCodeTools(t, home, "read", "grep", "glob", "skill")
@@ -169,7 +171,8 @@ func TestOpenCodeCallWithoutTheSkillToolIsRefused(t *testing.T) {
 	}
 	last := lastRun(t, home)
 	fault := last.record["result"].(map[string]any)["error"].(map[string]any)
-	if fault["class"] != "refused" || fault["message"] != reason || last.first != nil {
+	want := "process ask_opencode (" + filepath.Join(home, "processes", "ask_opencode.yaml") + "): " + reason
+	if fault["class"] != "refused" || fault["message"] != want || last.first != nil {
 		t.Fatalf("error = %v, OpenCode's first line %v", fault, last.first)
 	}
 }

@@ -530,17 +530,26 @@ func (s *setupCommandsSpy) runs() []app.SetupCommandRequest {
 }
 
 type validatorSpy struct {
+	mu                      sync.Mutex
 	compileErr, validateErr error
+	compileFor              func([]byte) error
 	compiled                [][]byte
 	validated               []json.RawMessage
 }
 
 func (s *validatorSpy) Compile(schema []byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.compiled = append(s.compiled, schema)
+	if s.compileFor != nil {
+		return s.compileFor(schema)
+	}
 	return s.compileErr
 }
 
 func (s *validatorSpy) Validate(_ []byte, output json.RawMessage) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.validated = append(s.validated, output)
 	return s.validateErr
 }
@@ -940,6 +949,22 @@ func (s *adopterSpy) Adopt(_ context.Context, id string) (app.ReapHandle, run.Re
 func sha(text string) string {
 	sum := sha256.Sum256([]byte(text))
 	return hex.EncodeToString(sum[:])
+}
+
+// resolverCheckStub is the check a component test's resolver reads: what
+// it finds, by default no problem in any document.
+type resolverCheckStub struct{ checked app.ResolverChecked }
+
+func (s resolverCheckStub) Check(context.Context) (app.ResolverChecked, error) {
+	return s.checked, nil
+}
+
+// settingsCheckStub is the check a component test's listings read: what it
+// finds, by default no problem in any document.
+type settingsCheckStub struct{ checked app.SettingsChecked }
+
+func (s settingsCheckStub) Check(context.Context) (app.SettingsChecked, error) {
+	return s.checked, nil
 }
 
 // messages are the problems' messages, in order.

@@ -495,7 +495,7 @@ func TestSettingsRefusalPrintsTheReport(t *testing.T) {
 	broken := contract.CheckReport{Checked: map[string]int{"agents": 1}, Problems: []contract.Problem{{Message: "agent a: bad"}}, Overrides: []string{"agent a: /p overrides /g"}}
 	spy := &clientSpy{refuse: &contract.SettingsError{Report: broken}}
 	r := run(context.Background(), spy, "run", "p")
-	if r.code != cli.ExitUsage || r.stderr != "agent a: bad\n1 problem(s) in 1 agents\nagister: settings have problems; fix them first (see `agister check`)\n" || r.stdout != "override agent a: /p overrides /g\n" {
+	if r.code != cli.ExitUsage || r.stderr != "agent a: bad\n1 problem(s) in 1 agents\nagister: settings have problems that stop every command; fix them first (see `agister check`)\n" || r.stdout != "override agent a: /p overrides /g\n" {
 		t.Fatalf("refused run: %+v", r)
 	}
 	spy = &clientSpy{report: broken}
@@ -506,11 +506,80 @@ func TestSettingsRefusalPrintsTheReport(t *testing.T) {
 	if r := run(context.Background(), spy); r.code != cli.ExitUsage || !strings.Contains(r.stdout, "Usage:") {
 		t.Fatalf("bare: %+v", r)
 	}
+	// A problem of one document stops nothing but what uses it (ADR-015).
+	attributed := broken
+	attributed.Reach = []contract.ProblemReach{{Problem: "agent a: bad", Subject: &contract.DefinitionRef{Kind: "agents", Name: "a"}}}
+	spy = &clientSpy{report: attributed}
+	if r := run(context.Background(), spy); r.code != cli.ExitUsage || !strings.Contains(r.stdout, "Usage:") || r.stderr != "" {
+		t.Fatalf("bare with a problem of one document: %+v", r)
+	}
 	for _, args := range [][]string{{"--help"}, {"-h"}, {"run", "p", "--help"}} {
 		spy := &clientSpy{report: broken}
 		if r := run(context.Background(), spy, args...); r.code != 0 || len(spy.checked) != 0 {
 			t.Errorf("%v: %+v, checked %v", args, r, spy.checked)
 		}
+	}
+}
+
+// listingSpy answers the agent and process listings.
+type listingSpy struct {
+	clientSpy
+	agentList   []contract.Agent
+	processList []contract.ProcessSummary
+}
+
+func (s *listingSpy) ListAgents(context.Context) ([]contract.Agent, error) { return s.agentList, nil }
+
+func (s *listingSpy) ListProcesses(context.Context) ([]contract.ProcessSummary, error) {
+	return s.processList, nil
+}
+
+// Check says, below each problem, what it refuses; listings show each
+// broken agent and each refused process (ADR-015).
+func TestCheckAndListingsSayWhatIsRefused(t *testing.T) {
+	ref := &contract.DefinitionRef{Kind: "runtimes", Name: "rt"}
+	spy := &listingSpy{
+		clientSpy: clientSpy{report: contract.CheckReport{
+			Checked:  map[string]int{"runtimes": 2},
+			Problems: []contract.Problem{{Message: "runtime mapping rt: bad"}, {Message: "runtime mapping unused: bad"}, {Message: "workflow p: a process has the same name"}},
+			Reach: []contract.ProblemReach{
+				{Problem: "runtime mapping rt: bad", Subject: ref, Processes: []string{"p", "q"}, Workflows: []string{"w"}},
+				{Problem: "runtime mapping unused: bad", Subject: &contract.DefinitionRef{Kind: "runtimes", Name: "unused"}},
+				{Problem: "workflow p: a process has the same name", Stops: true},
+			},
+		}},
+		agentList: []contract.Agent{
+			{Name: "a", Runtime: "rt", Model: "m"},
+			{Name: "b", Runtime: "broken", Refusal: "agent b uses runtime mapping broken (/broken.yaml): bad"},
+			{Name: "z", Problem: "invalid (run `agister check`)"},
+		},
+		processList: []contract.ProcessSummary{
+			{Name: "p", Agent: "a", Output: "text", Refusal: "process p uses agent a, which uses runtime mapping rt (/rt.yaml): bad"},
+			{Name: "s", Agent: "a", Output: "text"},
+		},
+	}
+	r := run(context.Background(), &spy.clientSpy, "check")
+	want := "runtime mapping rt: bad\n  refuses process p, process q, workflow w\n" +
+		"runtime mapping unused: bad\n  refuses nothing\n" +
+		"workflow p: a process has the same name\n  stops every command\n" +
+		"3 problem(s) in 2 runtimes\n"
+	if r.code != cli.ExitUsage || r.stderr != want {
+		t.Fatalf("check: %d\n%s\nwant\n%s", r.code, r.stderr, want)
+	}
+	if r := run(context.Background(), &spy.clientSpy, "check", "--json"); r.code != cli.ExitUsage || !strings.Contains(r.stdout, `"stops": true`) || !strings.Contains(r.stdout, `"processes": [`) {
+		t.Fatalf("check --json: %d\n%s", r.code, r.stdout)
+	}
+
+	var stdout, stderr bytes.Buffer
+	build := func(cli.Config) (contract.Client, error) { return spy, nil }
+	io := cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }}
+	if code := cli.Run(context.Background(), []string{"agent", "list"}, io, build); code != 0 || stdout.String() != "a\trt\tm\t-\t-\nb\tbroken\t(default model)\t-\t-\tREFUSED: agent b uses runtime mapping broken (/broken.yaml): bad\nz\tinvalid (run `agister check`)\n" {
+		t.Fatalf("agent list: %d %q %q", code, stdout.String(), stderr.String())
+	}
+	stdout.Reset()
+	if code := cli.Run(context.Background(), []string{"process", "list"}, io, build); code != 0 ||
+		stdout.String() != "p\tagent:a\t-\ttext\tREFUSED: process p uses agent a, which uses runtime mapping rt (/rt.yaml): bad\ns\tagent:a\t-\ttext\n" {
+		t.Fatalf("process list: %d %q %q", code, stdout.String(), stderr.String())
 	}
 }
 
@@ -630,7 +699,11 @@ func (s *workflowSpy) ShowWorkflow(_ context.Context, name string) (contract.Wor
 
 func TestWorkflowListAndShow(t *testing.T) {
 	spy := &workflowSpy{
-		summaries: []contract.WorkflowSummary{{Name: "w", FanOut: []string{"one:p", "two:q"}, Join: "merge:j"}, {Name: "broken", Problem: "invalid (run `agister check`)"}},
+		summaries: []contract.WorkflowSummary{
+			{Name: "w", FanOut: []string{"one:p", "two:q"}, Join: "merge:j"},
+			{Name: "broken", Problem: "invalid (run `agister check`)", Refusal: "workflow broken (/w/broken.yaml): bad"},
+			{Name: "stranded", FanOut: []string{"one:q"}, Join: "merge:j", Refusal: "workflow stranded uses process q (/p/q.yaml): bad"},
+		},
 		workflow: contract.WorkflowView{
 			Name:   "w",
 			Params: []contract.Param{{Name: "candidate", Default: "HEAD"}},
@@ -646,7 +719,8 @@ func TestWorkflowListAndShow(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	build := func(cli.Config) (contract.Client, error) { return spy, nil }
 	code := cli.Run(context.Background(), []string{"workflow", "list"}, cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }}, build)
-	if code != 0 || stdout.String() != "w\tone:p,two:q\tjoin merge:j\nbroken\tinvalid (run `agister check`)\n" {
+	if code != 0 || stdout.String() != "w\tone:p,two:q\tjoin merge:j\nbroken\tinvalid (run `agister check`)\tREFUSED: workflow broken (/w/broken.yaml): bad\n"+
+		"stranded\tone:q\tjoin merge:j\tREFUSED: workflow stranded uses process q (/p/q.yaml): bad\n" {
 		t.Fatalf("list: %d %q %q", code, stdout.String(), stderr.String())
 	}
 	stdout.Reset()

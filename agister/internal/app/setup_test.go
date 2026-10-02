@@ -386,7 +386,7 @@ func TestCallsPrepareAndVerifyThroughTheirOwnCollaborators(t *testing.T) {
 	withWorkspace(h, workspaceSetup)
 	preparer, verifier := &preparerSpy{runner: h.runner}, &verifierSpy{runner: h.runner}
 	h.calls = app.NewCalls(
-		app.NewResolver(h.defs, h.runtimes, h.validator), h.runtimes,
+		app.NewResolver(h.defs, h.runtimes, h.validator, resolverCheckStub{}), h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
 		h.workspaces, h.changes, preparer, verifier, h.validator, h.recorder, h.runs,
 		h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
