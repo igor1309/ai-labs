@@ -50,14 +50,22 @@ Against trunk's merge-base (also covers #829 and #831):
 - `clarity_review_codex`, run `20260930T124840Z-ee2b26`:
   - major: Preserve existing recorded instructions (`prompts/code-review-architecture.md:43`)
 
-## 3. A reap test leaves a run record behind
+## 3. Check reports "needs a newer agister" as a class of its own
 
-- **Gap:** `TestNextCallReapsAKilledRunsVerifyCommand`
-  (`cmd/agister/reap_test.go:241`) fails about 1 run in 10, on trunk
-  `c5cd41fd` as on the LAB-49 branch: the temporary-directory check finds
-  `<home>/runs/<id>/record.json` written after the test's cleanup removed
-  the home (observed 2026-10-02, `go test -count=10 -run` that test).
-- **Trigger:** the next change to the reap path or its tests, or a
-  full-suite run it fails.
-- **Done when:** the test passes `-count=20` with no leftover, and the
-  writer of that record is ended or waited for before the cleanup.
+- **Gap:** a problem naming something this binary does not know is only
+  marked (`unknown` in `--json`) and followed by a one-line hint; nothing
+  sums it up as one verdict, and a settings folder this binary does not
+  know is still skipped without a word (LAB-52 took the lighter option).
+- **Trigger:** pages or a script reads the check report, or an unknown
+  folder hides a mistake that no field or source points at.
+- **Done when:** check reports these problems as their own class with one
+  verdict line naming the installed binary, and lists unknown settings
+  folders.
+
+## 4. Settings declare the binary they need
+
+- **Gap:** settings cannot say which agister they need, so an old binary
+  can only guess that they are newer than it (LAB-52).
+- **Trigger:** agister gets tagged releases with ordered versions.
+- **Done when:** settings may declare a minimum version, and check refuses
+  them on an older binary, naming both versions.
