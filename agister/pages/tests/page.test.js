@@ -451,3 +451,47 @@ test('a process card shows the verification its process names, or marks it missi
   assert.equal(marker.textContent, 'repo (missing verify)');
   assert.equal(marker.title, 'No verify named repo in these settings: Agister refuses the call');
 });
+
+// README, Settings: a process card shows the prompts its process names,
+// each marked missing when these settings have none of that name.
+test('a process card shows the prompts its process names, and marks a missing one', async () => {
+  const naming = { ...agent, 'processes/review.yaml': 'name: review\nuses: agent:opus\ninput:\n  instruction: Review.\n  values:\n    rules: {source: prompt, name: rules}\n    style: {source: prompt, name: style}\n' };
+  const prompts = async (files) => {
+    const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
+    await p.started;
+    const facts = p.$('dashboard').querySelector('article#process-review div.facts').children;
+    return facts[facts.findIndex((n) => n.textContent === 'prompts') + 1];
+  };
+
+  const found = await prompts({ ...naming, 'prompts/rules.md': 'Rules.\n', 'prompts/style.md': 'Style.\n' });
+  assert.equal(found.textContent, 'rules, style');
+  assert.equal(found.querySelector('span.missing'), null);
+
+  const absent = await prompts({ ...naming, 'prompts/rules.md': 'Rules.\n' });
+  assert.equal(absent.textContent, 'rules, style (missing prompt)');
+  const marker = absent.querySelector('span.missing');
+  assert.equal(marker.textContent, 'style (missing prompt)');
+  assert.equal(marker.title, 'No prompt named style in these settings: Agister refuses the call');
+});
+
+// ADR-014: pages show which layer each prompt comes from. In a repo, a
+// prompt of its own replaces home's and says so; one only home has says
+// home. A prompt two inputs name is listed once.
+test('a process card in a repo shows the layer each prompt comes from, each prompt once', async () => {
+  const homeFiles = {
+    ...agent,
+    'processes/review.yaml': 'name: review\nuses: agent:opus\ninput:\n  instruction: Review.\n  values:\n    rules: {source: prompt, name: rules}\n    again: {source: prompt, name: rules}\n    style: {source: prompt, name: style}\n',
+    'prompts/rules.md': 'Home rules.\n',
+    'prompts/style.md': 'Home style.\n',
+  };
+  const files = { 'prompts/rules.md': 'Repo rules.\n' };
+  const p = page({
+    storage: fakeStorage({ 'agister-pages:current': '/r' }),
+    answers: { 'api/settings': () => respond({ path: '/r', dir: '/r/.agister', files, homeFiles }) },
+  });
+  await p.started;
+  const facts = p.$('dashboard').querySelector('article#process-review div.facts').children;
+  const line = facts[facts.findIndex((n) => n.textContent === 'prompts') + 1];
+  assert.equal(line.textContent, 'rules repo, replaces home, style home');
+  assert.deepEqual(line.querySelectorAll('span.chip').map((c) => c.textContent), ['repo, replaces home', 'home']);
+});

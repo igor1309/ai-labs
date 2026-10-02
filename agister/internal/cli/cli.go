@@ -683,6 +683,19 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 	} else if view.VerifyName != "" {
 		lines = append(lines, [2]string{"verify", "verify:" + view.VerifyName + " (not resolved)"})
 	}
+	for i, name := range view.Prompts {
+		label := ""
+		if i == 0 {
+			label = "prompts"
+		}
+		text := name + " (not resolved)"
+		for _, source := range view.Sources {
+			if source.Kind == "prompts" && source.Name == name {
+				text = name + ": " + source.Layer + " " + source.Path
+			}
+		}
+		lines = append(lines, [2]string{label, text})
+	}
 	if view.Refusal != "" {
 		lines = append(lines, [2]string{"plan", "REFUSED: " + view.Refusal})
 	} else {
@@ -848,7 +861,8 @@ func printCheckAs(env IO, report contract.CheckReport, opts options) (int, error
 var kindNames = map[string]string{
 	"service": "service", "agents": "agent", "processes": "process",
 	"policies": "policy", "runtimes": "runtime", "schemas": "schema",
-	"workflows": "workflow", "verifies": "verification", "workspace": "workspace",
+	"workflows": "workflow", "verifies": "verification", "prompts": "prompt",
+	"workspace": "workspace",
 }
 
 // printTree prints the service, each process and each workflow with what

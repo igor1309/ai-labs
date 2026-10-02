@@ -23,6 +23,9 @@ type Bundle struct {
 	Schemas   map[string]bool
 	Workflows map[string]definition.Workflow
 	Verifies  map[string]definition.Verification
+	// Prompts are the prompt documents the settings have; an unreadable
+	// one is a problem of its own, not of the processes that name it.
+	Prompts map[string]bool
 }
 
 // Resolved returns the process named name with the verification it names
@@ -110,6 +113,10 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		for _, value := range process.Values {
 			if !contains(m.Sources, value.Source) {
 				unknown(subject, "input %s: unknown source %q (available: %s)", value.Name, value.Source, strings.Join(m.Sources, ", "))
+			}
+			// A prompt is part of the process (ADR-014 rule 4).
+			if name := value.Args["name"]; value.Source == definition.PromptSource && name != "" && !b.Prompts[name] {
+				add(subject, "input %s: prompt %q does not exist", value.Name, name)
 			}
 		}
 		if process.Output.Format == "json" && !b.Schemas[process.Output.Schema] {

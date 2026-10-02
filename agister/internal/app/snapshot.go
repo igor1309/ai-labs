@@ -11,8 +11,9 @@ import (
 // allKinds is every kind of definition a snapshot covers.
 var allKinds = []definition.Kind{
 	definition.KindService, definition.KindRuntime, definition.KindAgent,
-	definition.KindPolicy, definition.KindVerify, definition.KindProcess,
-	definition.KindSchema, definition.KindWorkflow, definition.KindWorkspace,
+	definition.KindPolicy, definition.KindVerify, definition.KindPrompt,
+	definition.KindProcess, definition.KindSchema, definition.KindWorkflow,
+	definition.KindWorkspace,
 }
 
 // SnapshotSource is what a snapshot reads and what it gives back: the
@@ -45,10 +46,11 @@ type snapshot struct {
 // check against the snapshot reports what a check against src would. Nothing
 // that reads the snapshot touches src afterwards, so one operation can check
 // settings and use exactly what it checked. A name that was not listed is
-// not found, except the verification a process names: check lets a missing
-// one pass (ADR-010 rule 4), so its read is kept too, and the call's refusal
-// says where it was expected. One that is found there after all, written
-// since the list, is added to the list, so check checks what the call uses.
+// not found, except the verification and the prompts a process names: their
+// reads are kept too, so the refusal of a call or view that lacks one says
+// where it was expected (check lets a missing verification pass, ADR-010
+// rule 4). One that is found there after all, written since the list, is
+// added to the list, so check checks what the call uses.
 func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 	s := &snapshot{
 		reads: map[definition.Kind]map[string]snapshotRead{},
@@ -70,20 +72,26 @@ func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 			s.reads[kind][name] = snapshotRead{doc: cloneDocument(doc), err: err}
 		}
 	}
+	named := func(kind definition.Kind, name string) {
+		if _, ok := s.reads[kind][name]; ok || name == "" {
+			return
+		}
+		doc, err := src.Read(ctx, kind, name)
+		s.reads[kind][name] = snapshotRead{doc: cloneDocument(doc), err: err}
+		if list := s.lists[kind]; err == nil && list.err == nil {
+			list.names = append(list.names, name)
+			sort.Strings(list.names)
+			s.lists[kind] = list
+		}
+	}
 	for _, read := range s.reads[definition.KindProcess] {
 		if read.err != nil {
 			continue
 		}
 		process, _ := definition.ParseProcess(read.doc)
-		if _, ok := s.reads[definition.KindVerify][process.VerifyName]; ok || process.VerifyName == "" {
-			continue
-		}
-		doc, err := src.Read(ctx, definition.KindVerify, process.VerifyName)
-		s.reads[definition.KindVerify][process.VerifyName] = snapshotRead{doc: cloneDocument(doc), err: err}
-		if list := s.lists[definition.KindVerify]; err == nil && list.err == nil {
-			list.names = append(list.names, process.VerifyName)
-			sort.Strings(list.names)
-			s.lists[definition.KindVerify] = list
+		named(definition.KindVerify, process.VerifyName)
+		for _, name := range process.Prompts() {
+			named(definition.KindPrompt, name)
 		}
 	}
 	return s

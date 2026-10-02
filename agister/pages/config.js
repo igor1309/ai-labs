@@ -302,8 +302,17 @@
       checkout: doc.workspace?.checkout ?? null,
       setup: setupOf(doc.workspace?.setup),
       output: doc.output?.schema ?? null,
+      prompts: prompts(doc.input),
       instruction,
     };
+  }
+
+  // The prompts a process's inputs name ({source: prompt, name: <name>}),
+  // each once (ADR-014).
+  function prompts(input) {
+    const values = input && typeof input.values === 'object' && input.values ? Object.values(input.values) : [];
+    const names = values.filter((v) => v?.source === 'prompt' && typeof v.name === 'string').map((v) => v.name);
+    return [...new Set(names)].map((name) => ({ name }));
   }
 
   // A setup block (ADR-012) as { command, timeout }; null when none.
@@ -430,7 +439,7 @@
     return link(await readAgister(agister));
   }
 
-  const KINDS = ['workflows', 'processes', 'agents', 'policies', 'runtimes', 'schemas', 'verifies'];
+  const KINDS = ['workflows', 'processes', 'agents', 'policies', 'runtimes', 'schemas', 'verifies', 'prompts'];
 
   // What Agister uses in a repo: Agister home's settings with the repo's
   // over them. As in Agister, a repo file replaces the home file of the
@@ -460,7 +469,7 @@
   }
 
   async function readAgister(agister) {
-    const [workflows, processes, agents, policies, runtimes, schemas, verifies, service, workspace] = await Promise.all([
+    const [workflows, processes, agents, policies, runtimes, schemas, verifies, prompts, service, workspace] = await Promise.all([
       readFolder(agister, 'workflows', ['.yaml', '.yml']),
       readFolder(agister, 'processes', ['.yaml', '.yml']),
       readFolder(agister, 'agents', ['.toml']),
@@ -468,6 +477,7 @@
       readFolder(agister, 'runtimes', ['.yaml', '.yml']),
       readFolder(agister, 'schemas', ['.json']),
       readFolder(agister, 'verifies', ['.yaml', '.yml']),
+      readFolder(agister, 'prompts', ['.md']),
       loadService(agister),
       loadWorkspace(agister),
     ]);
@@ -481,6 +491,7 @@
       runtimes: each(runtimes, parseYaml, (file, _src, doc) => runtimeItem(file, doc)),
       schemas: schemas.map(({ file }) => ({ file, name: stem(file) })),
       verifies: each(verifies, parseYaml, (file, _src, doc) => verifyItem(file, doc)),
+      prompts: prompts.map(({ file }) => ({ file, name: stem(file) })),
     };
   }
 
@@ -493,6 +504,7 @@
     const policies = names(model.policies);
     const runtimes = names(model.runtimes);
     const schemas = new Set(model.schemas.map((s) => s.name));
+    const prompts = new Map(model.prompts.map((s) => [s.name, s]));
     const usedBy = (items, key, name) => items.filter((x) => !x.error && x[key] === name).map((x) => x.name);
 
     for (const w of model.workflows) {
@@ -504,6 +516,11 @@
       p.agentOutside = !!p.agent && !agents.has(p.agent);
       p.policyOutside = !!p.policy && !policies.has(p.policy);
       p.outputOutside = !!p.output && !schemas.has(p.output);
+      // Each prompt found, with the layer it comes from when composed (ADR-014).
+      p.prompts = p.prompts.map((x) => {
+        const found = prompts.get(x.name);
+        return { ...x, outside: !found, ...(found?.source && { source: found.source, overrides: !!found.overrides }) };
+      });
       // As Agister resolves it: the process's own setup, or the
       // workspace's for a checkout without one; none without a checkout.
       const defaultSetup = model.workspace?.setup;
@@ -531,6 +548,9 @@
       if (!r.error) r.usedBy = usedBy(model.agents, 'runtime', r.name);
     }
     for (const s of model.schemas) s.usedBy = usedBy(model.processes, 'output', s.name);
+    for (const s of model.prompts) {
+      s.usedBy = model.processes.filter((p) => !p.error && p.prompts.some((x) => x.name === s.name)).map((p) => p.name);
+    }
     for (const v of model.verifies) {
       if (!v.error) v.usedBy = model.processes.filter((p) => !p.error && p.verify?.ref === v.name).map((p) => p.name);
     }
