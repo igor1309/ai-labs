@@ -13,9 +13,10 @@ import (
 // Hierarchical documents (process, policy, runtime mapping) are YAML.
 
 const (
-	ProcessSchema = "agister.process/v1alpha1"
-	PolicySchema  = "agister.process-policy/v1alpha1"
-	RuntimeSchema = "agister.runtime/v1alpha1"
+	ProcessSchema   = "agister.process/v1alpha1"
+	PolicySchema    = "agister.process-policy/v1alpha1"
+	RuntimeSchema   = "agister.runtime/v1alpha1"
+	WorkspaceSchema = "agister.workspace/v1alpha1"
 )
 
 // Policy is a reusable set of execution defaults.
@@ -63,6 +64,20 @@ type Verify struct {
 // continue sessions cannot run it.
 func (v *Verify) Repairs() bool { return v != nil && v.MaxAttempts > 1 }
 
+// Setup is the command that prepares a call's checkout before its first
+// turn (ADR-010): run once, in the checkout, with the operator's authority.
+type Setup struct {
+	Command string        // one Bash command
+	Timeout time.Duration // of its one run
+}
+
+// Workspace is a repository's workspace settings: the setup every process
+// that checks out a revision and declares none of its own runs.
+type Workspace struct {
+	Setup  *Setup // unset: no default
+	Source Source
+}
+
 // Process is a named agent call.
 type Process struct {
 	Name        string
@@ -72,6 +87,7 @@ type Process struct {
 	Params      []Param
 	Values      []Value
 	Checkout    string   // name of the input whose revision is checked out
+	Setup       *Setup   // its own setup; unset: the workspace's, if any
 	Require     []string // permissions the call cannot work without
 	Output      Output
 	Verify      *Verify // unset: no verification
@@ -150,13 +166,21 @@ func ParseProcess(doc Document) (Process, error) {
 	process.Instruction = required(input, "instruction", "input", p)
 	process.Params, process.Values = parseInputs(input, p)
 
-	limits, tools, workspace := parseLimits(values, []string{"allow", "require"}, []string{"access", "scope", "checkout"}, p)
+	limits, tools, workspace := parseLimits(values, []string{"allow", "require"}, []string{"access", "scope", "checkout", "setup"}, p)
 	process.Limits = limits
 	process.Require = stringList(tools["require"], "tools.require", p)
 	if node, ok := workspace["checkout"]; ok {
 		process.Checkout, _ = scalar(node, "workspace.checkout", p)
 		if !hasValue(process.Values, process.Checkout) {
 			p.add("workspace.checkout", "%q is not an input value", process.Checkout)
+		}
+	}
+	if node, ok := workspace["setup"]; ok {
+		process.Setup = parseSetup(node, "workspace.setup", p)
+		// Without a checkout the agent works in the repository itself,
+		// which is prepared already.
+		if process.Checkout == "" {
+			p.add("workspace.setup", "requires workspace.checkout: setup prepares a checkout the call owns")
 		}
 	}
 
@@ -213,6 +237,56 @@ func parseVerify(node *yaml.Node, p *problems) *Verify {
 		verify.MaxAttempts = attempts
 	}
 	return verify
+}
+
+// parseSetup reads a setup block. Both fields are required: there is no
+// default command or timeout.
+func parseSetup(node *yaml.Node, field string, p *problems) *Setup {
+	keys := []string{"command", "timeout"}
+	values := fields(node, field, keys, p)
+	for _, key := range keys {
+		if _, ok := values[key]; !ok {
+			p.add(join(field, key), "is required")
+		}
+	}
+	setup := &Setup{Command: nonEmpty(values["command"], join(field, "command"), p)}
+	if text, ok := scalar(values["timeout"], join(field, "timeout"), p); ok {
+		setup.Timeout, _ = duration(text, join(field, "timeout"), p)
+	}
+	return setup
+}
+
+// ParseWorkspace parses a repository's workspace settings.
+func ParseWorkspace(doc Document) (Workspace, error) {
+	p := &problems{}
+	workspace := Workspace{Source: doc.Source}
+	root := parseYAML(doc.Bytes, p)
+	if root == nil {
+		return workspace, p.err("workspace settings")
+	}
+	values := fields(root, "", []string{"schema", "setup"}, p)
+	if value, _ := scalar(values["schema"], "schema", p); value != WorkspaceSchema {
+		p.add("schema", "must be %q", WorkspaceSchema)
+	}
+	if node, ok := values["setup"]; ok {
+		workspace.Setup = parseSetup(node, "setup", p)
+	}
+	return workspace, p.err("workspace settings")
+}
+
+// EffectiveSetup is the setup a call of the process runs: its own, or the
+// workspace's default when it checks out a revision and declares none.
+// fromWorkspace says the workspace's applies; nil when none does.
+func (p Process) EffectiveSetup(workspace *Workspace) (setup *Setup, fromWorkspace bool) {
+	switch {
+	case p.Checkout == "":
+		return nil, false
+	case p.Setup != nil:
+		return p.Setup, false
+	case workspace != nil && workspace.Setup != nil:
+		return workspace.Setup, true
+	}
+	return nil, false
 }
 
 // parseInputs reads input.params, the values a caller supplies, and

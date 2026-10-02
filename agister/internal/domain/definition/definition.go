@@ -1,6 +1,6 @@
 // Package definition parses and validates Agister's settings documents:
-// agents, processes, workflows, policies, runtime permission mappings and
-// the service.
+// agents, processes, workflows, policies, runtime permission mappings, the
+// service and the workspace.
 // It owns the definition language; callers supply bytes and their origin.
 package definition
 
@@ -22,6 +22,9 @@ const (
 	KindRuntime  Kind = "runtimes"
 	KindSchema   Kind = "schemas"
 	KindWorkflow Kind = "workflows"
+	// KindWorkspace is a singleton, like the service, and optional: a
+	// missing document means no workspace settings.
+	KindWorkspace Kind = "workspace"
 )
 
 // Singular names one definition of this kind, for messages.

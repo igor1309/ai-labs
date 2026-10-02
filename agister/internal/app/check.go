@@ -64,6 +64,8 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 		Workflows: map[string]definition.Workflow{},
 	}
 
+	var workspace *definition.Workspace // unset: none, or invalid
+
 	// Each document on its own.
 	each := func(kind definition.Kind, parse func(definition.Document) error) error {
 		names := []string{"service"}
@@ -156,6 +158,14 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			}
 			return err
 		}},
+		// Optional: listed only when the document exists.
+		{definition.KindWorkspace, func(d definition.Document) error {
+			parsed, err := definition.ParseWorkspace(d)
+			if err == nil {
+				workspace = &parsed
+			}
+			return err
+		}},
 	}
 	for _, step := range steps {
 		if err := each(step.kind, step.parse); err != nil {
@@ -183,6 +193,12 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 		link(from, definition.KindPolicy, process.Policy)
 		if process.Output.Format == "json" {
 			link(from, definition.KindSchema, process.Output.Schema)
+		}
+		// The workspace's setup is the default of a checkout without one of
+		// its own (ADR-010); a missing document is no default, not a
+		// missing reference.
+		if _, fromWorkspace := process.EffectiveSetup(workspace); fromWorkspace {
+			link(from, definition.KindWorkspace, string(definition.KindWorkspace))
 		}
 	}
 	for _, name := range sortedNames(bundle.Workflows) {

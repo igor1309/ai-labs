@@ -378,6 +378,8 @@ type commandsSpy struct {
 	running func(app.CommandRequest)
 	// stale, when set, ends each run as one killed for its silence.
 	stale bool
+	// timedOut, when set, ends each run as one killed at its timeout.
+	timedOut bool
 }
 
 func (s *commandsSpy) Run(_ context.Context, request app.CommandRequest, started func(string) error) app.CommandResult {
@@ -392,6 +394,9 @@ func (s *commandsSpy) Run(_ context.Context, request app.CommandRequest, started
 	}
 	if s.stale {
 		return app.CommandResult{Stale: true, Signal: "killed"}
+	}
+	if s.timedOut {
+		return app.CommandResult{TimedOut: true, Signal: "killed"}
 	}
 	code := 0
 	if len(s.exits) > 0 {

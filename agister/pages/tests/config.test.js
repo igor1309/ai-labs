@@ -265,9 +265,35 @@ test('a repo goes over Agister home: same kind and file name replaces, the rest 
   assert.deepEqual([own.service.maxAttempts, own.service.source, own.service.overrides], [1, 'repo', true]);
 });
 
-test('missing folders and service.toml read as empty', async () => {
+test('missing folders, service.toml and workspace.yaml read as empty', async () => {
   const m = await C.loadAgister(memDir('.agister', {}));
-  assert.deepEqual(m, { service: null, workflows: [], processes: [], agents: [], policies: [], runtimes: [], schemas: [] });
+  assert.deepEqual(m, { service: null, workspace: null, workflows: [], processes: [], agents: [], policies: [], runtimes: [], schemas: [] });
+});
+
+// ADR-010: a process with a checkout runs its own setup, or else the
+// workspace's; a repo's workspace.yaml replaces home's; without a checkout
+// there is none.
+test('each process shows the setup its checkout runs, as Agister resolves it', async () => {
+  const process = (name, workspace) => `name: ${name}\nuses: agent:a\nworkspace:\n${workspace}`;
+  const processes = {
+    'default.yaml': process('default', '  checkout: rev\n'),
+    'own.yaml': process('own', '  checkout: rev\n  setup: {command: ./own.sh, timeout: 30s}\n'),
+    'none.yaml': process('none', '  access: read-only\n'),
+  };
+  const workspace = (command) => `schema: agister.workspace/v1alpha1\nsetup:\n  command: ${command}\n  timeout: 2m\n`;
+  const m = await C.loadComposed(
+    memDir('.agister', { 'workspace.yaml': workspace('./home.sh') }),
+    memDir('.agister', { 'workspace.yaml': workspace('./repo.sh'), processes }));
+  assert.deepEqual([m.workspace.setup, m.workspace.source, m.workspace.overrides], [{ command: './repo.sh', timeout: '2m' }, 'repo', true]);
+  const setup = (name) => m.processes.find((p) => p.name === name).effectiveSetup;
+  assert.deepEqual(setup('default'), { command: './repo.sh', timeout: '2m', from: 'workspace' });
+  assert.deepEqual(setup('own'), { command: './own.sh', timeout: '30s', from: 'process' });
+  assert.equal(setup('none'), null);
+
+  const homeOnly = await C.loadComposed(memDir('.agister', { 'workspace.yaml': workspace('./home.sh') }), memDir('.agister', { processes }));
+  assert.deepEqual(homeOnly.processes.find((p) => p.name === 'default').effectiveSetup, { command: './home.sh', timeout: '2m', from: 'workspace' });
+  const without = await C.loadComposed(memDir('.agister', {}), memDir('.agister', { processes }));
+  assert.equal(without.processes.find((p) => p.name === 'default').effectiveSetup, null);
 });
 
 for (const path of ['.agister', 'agister/examples/settings']) {

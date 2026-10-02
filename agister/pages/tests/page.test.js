@@ -397,3 +397,18 @@ test('a Settings read that fails while Runs is shown says why only once Settings
   await settle();
   assert.equal(p.$('status').textContent, 'no .agister folder at /gone/.agister');
 });
+
+test('a process card shows the setup its checkout runs, and where it comes from', async () => {
+  const files = {
+    ...agent,
+    'workspace.yaml': 'schema: agister.workspace/v1alpha1\nsetup:\n  command: ./link-config.sh\n  timeout: 2m\n',
+    'processes/fix.yaml': 'name: fix\nuses: agent:opus\nworkspace:\n  checkout: rev\n',
+    'processes/own.yaml': 'name: own\nuses: agent:opus\nworkspace:\n  checkout: rev\n  setup: {command: ./own.sh, timeout: 30s}\n',
+  };
+  const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
+  await p.started;
+  const card = (name) => p.$(`process-${name}`).textContent;
+  assert.match(card('fix'), /setup\.\/link-config\.sh within 2m, from workspace\.yaml/);
+  assert.match(card('own'), /setup\.\/own\.sh within 30s/);
+  assert.doesNotMatch(card('own'), /workspace\.yaml/);
+});

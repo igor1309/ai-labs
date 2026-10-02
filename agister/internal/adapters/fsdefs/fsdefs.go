@@ -1,5 +1,5 @@
 // Package fsdefs stores definition documents as files under Agister's
-// state directory: service.toml, agents/*.toml, processes/*.yaml,
+// state directory: service.toml, workspace.yaml, agents/*.toml, processes/*.yaml,
 // policies/*.yaml, runtimes/*.yaml, schemas/*.json, workflows/*.yaml. Layered reads a
 // project's own settings over the global ones.
 package fsdefs
@@ -78,6 +78,8 @@ var extensions = map[definition.Kind]string{
 	definition.KindRuntime:  ".yaml",
 	definition.KindSchema:   ".json",
 	definition.KindWorkflow: ".yaml",
+	// A singleton, like the service.
+	definition.KindWorkspace: ".yaml",
 }
 
 func (s Store) path(kind definition.Kind, name string) (string, error) {
@@ -85,8 +87,8 @@ func (s Store) path(kind definition.Kind, name string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("unknown definition kind %q", kind)
 	}
-	if kind == definition.KindService {
-		return filepath.Join(s.Dir, "service"+extension), nil
+	if kind == definition.KindService || kind == definition.KindWorkspace {
+		return filepath.Join(s.Dir, string(kind)+extension), nil
 	}
 	if !definition.ValidName(name) {
 		return "", fmt.Errorf("invalid name %q", name)
@@ -112,7 +114,23 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 	}, nil
 }
 
+// List names the documents of kind. The workspace settings are listed when
+// the one document exists, so a missing one reads as none.
 func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
+	if kind == definition.KindWorkspace {
+		path, _ := s.path(kind, string(kind))
+		info, err := os.Stat(path)
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		if info.IsDir() {
+			return nil, nil
+		}
+		return []string{string(kind)}, nil
+	}
 	entries, err := os.ReadDir(filepath.Join(s.Dir, string(kind)))
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil

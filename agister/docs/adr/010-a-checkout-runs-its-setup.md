@@ -1,6 +1,6 @@
 # ADR-010: A checkout runs its setup before the agent starts
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-02
 - **Scope:** calls whose process checks out a revision
 - **Decision type:** Architecture
@@ -13,12 +13,11 @@
 
 A call whose process declares `workspace.checkout` runs in a fresh git
 worktree of the revision. A worktree holds only what the repository
-tracks. Some repositories keep their agent configuration untracked: a
-sibling `<repo>.config` directory whose entries are linked into each
-worktree root by a script the owner runs after `git worktree add` (iFora:
-`AGENTS.md`, `CLAUDE.md`, `.claude/` with its skills, `.codex/`,
-`.mcp.json`). In an Agister checkout those links are missing, so the
-runtime loads none of them, and ADR-006 silently does not hold (LAB-55).
+tracks, so it leaves out untracked configuration that a runtime needs
+when it starts: for example, entries in a sibling configuration
+directory that the owner links into each worktree after creating it. In
+an Agister checkout that configuration is missing, so the runtime starts
+without it, and ADR-006 silently does not hold.
 
 Only the repository's owner knows how its worktrees are prepared, and the
 runtime reads its instructions, skills and MCP configuration when it

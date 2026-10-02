@@ -256,6 +256,15 @@
       return parts.length ? el('div', {}, ...parts) : null;
     }
 
+    // The setup its checkout runs before the agent starts, and whether it
+    // is the workspace's default.
+    function setupLine(p) {
+      const s = p.effectiveSetup;
+      if (!s) return null;
+      return el('div', {}, el('code', { textContent: s.command ?? '?' }),
+        ` within ${s.timeout ?? '?'}${s.from === 'workspace' ? ', from workspace.yaml' : ''}`);
+    }
+
     function errorCard(item) {
       return el('article', { className: 'card run' },
         el('header', { className: 'run-head' }, el('h3', { textContent: item.name })),
@@ -276,6 +285,7 @@
         ['agent', agentLine(p.agent, ix)],
         ['policy', policyLines(p.policy, ix)],
         ['output', outputLine(p)],
+        ['setup', setupLine(p)],
       ]));
     }
 

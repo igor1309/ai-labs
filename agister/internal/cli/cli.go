@@ -824,7 +824,7 @@ func printCheckAs(env IO, report contract.CheckReport, opts options) (int, error
 var kindNames = map[string]string{
 	"service": "service", "agents": "agent", "processes": "process",
 	"policies": "policy", "runtimes": "runtime", "schemas": "schema",
-	"workflows": "workflow",
+	"workflows": "workflow", "workspace": "workspace",
 }
 
 // printTree prints the service, each process and each workflow with what

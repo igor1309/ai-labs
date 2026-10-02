@@ -117,6 +117,12 @@ type verifySettings struct {
 	timeout     string // verify.timeout; 20s when empty
 	maxAttempts int    // 3 when zero
 	policy      string // appended to the policy
+	// setup is the process's workspace.setup, in flow style; none when
+	// empty.
+	setup string
+	// workspace and globalWorkspace are the workspace.yaml of the
+	// settings and of a global layer under them; none when empty.
+	workspace, globalWorkspace string
 }
 
 type loopHarness struct {
@@ -256,7 +262,7 @@ input:
     candidate_revision: {source: git.revision, rev: "${param.candidate}"}
 workspace:
   checkout: candidate_revision
-output:
+%soutput:
   format: json
   schema: done
   require_valid: true
@@ -265,8 +271,12 @@ verify:
   timeout: %s
   max_attempts: %d
   instruction: The check failed. Fix the cause, not the check.
-`, strconv.Quote(settings.command), settings.timeout, settings.maxAttempts),
+`, setupLine(settings.setup), strconv.Quote(settings.command), settings.timeout, settings.maxAttempts),
+		"workspace.yaml": settings.workspace,
 	} {
+		if text == "" {
+			continue
+		}
 		if err := os.MkdirAll(filepath.Dir(filepath.Join(defs, name)), 0o700); err != nil {
 			t.Fatal(err)
 		}
@@ -277,14 +287,29 @@ verify:
 	h.store = fsruns.Store{Dir: filepath.Join(h.home, "runs")}
 	runtimes := fakeRuntimes{runner: h.runner}
 	hosted := app.NewHosted()
+	var definitions app.ResolverDefinitions = fsdefs.Store{Dir: defs}
+	if settings.globalWorkspace != "" {
+		global := fsdefs.Store{Dir: tempDir(t)}
+		write(t, filepath.Join(global.Dir, "workspace.yaml"), settings.globalWorkspace)
+		definitions = fsdefs.Layered{Global: global, Project: &fsdefs.Store{Dir: defs}}
+	}
 	h.calls = app.NewCalls(
-		app.NewResolver(fsdefs.Store{Dir: defs}, runtimes, schema.Validator{}), runtimes,
+		app.NewResolver(definitions, runtimes, schema.Validator{}), runtimes,
 		map[string]app.InputProvider{"git.revision": git.Revision{}},
 		workspaces, with.changes, app.NewVerifier(with.changes, with.copies, h.commands, with.clock), schema.Validator{},
 		h.store, h.store, with.clock, system.Timer, system.IDs{}, h.home, hosted,
 	)
 	h.runs = app.NewRuns(h.store, hosted, 10*time.Millisecond)
 	return h
+}
+
+// setupLine is the process's workspace.setup line for setup, in flow
+// style; none when empty.
+func setupLine(setup string) string {
+	if setup == "" {
+		return ""
+	}
+	return "  setup: " + setup + "\n"
 }
 
 func (h *loopHarness) submit(request contract.CallRequest) string {

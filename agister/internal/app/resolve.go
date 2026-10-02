@@ -11,6 +11,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
+	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 	"github.com/igor1309/ai-labs/agister/internal/domain/settings"
 )
 
@@ -35,6 +36,15 @@ type resolution struct {
 	effective policy.Effective
 	identity  RuntimeIdentity
 	plan      enforce.Plan
+	// setup is the setup the call's checkout runs (ADR-010); nil when none.
+	setup *resolvedSetup
+}
+
+// resolvedSetup is a call's effective setup and the document it came from.
+type resolvedSetup struct {
+	definition.Setup
+	from string // run.SetupFromProcess or run.SetupFromWorkspace
+	path string
 }
 
 // Resolver loads and checks definitions, composes limits, checks the
@@ -122,6 +132,9 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 	}
 	if res.process, err = definition.ParseProcess(doc); err != nil {
 		return res, parsed(err)
+	}
+	if err := r.resolveSetup(ctx, res, load, parsed); err != nil {
+		return res, err
 	}
 	if res.process.Policy != "" {
 		if doc, err = load(definition.KindPolicy, res.process.Policy); err != nil {
@@ -219,6 +232,40 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 			res.mapping.Name, strings.Join(tools, " or "), withoutSkillTools(res, tools, verified, unverified))
 	}
 	return res, nil
+}
+
+// resolveSetup fixes the setup a call's checkout runs: the process's own,
+// or the workspace settings' default, read only when it applies, so the
+// call's definitions name the document its setup came from (ADR-010).
+func (r *Resolver) resolveSetup(ctx context.Context, res *resolution, load func(definition.Kind, string) (definition.Document, error), parsed func(error) error) error {
+	process := res.process
+	var workspace *definition.Workspace
+	if process.Checkout != "" && process.Setup == nil {
+		names, err := r.definitions.List(ctx, definition.KindWorkspace)
+		if err != nil {
+			return refuse("workspace settings: %v", err)
+		}
+		if contains(names, string(definition.KindWorkspace)) {
+			doc, err := load(definition.KindWorkspace, string(definition.KindWorkspace))
+			if err != nil {
+				return err
+			}
+			parsedWorkspace, err := definition.ParseWorkspace(doc)
+			if err != nil {
+				return parsed(err)
+			}
+			workspace = &parsedWorkspace
+		}
+	}
+	setup, fromWorkspace := process.EffectiveSetup(workspace)
+	switch {
+	case setup == nil:
+	case fromWorkspace:
+		res.setup = &resolvedSetup{Setup: *setup, from: run.SetupFromWorkspace, path: workspace.Source.Path}
+	default:
+		res.setup = &resolvedSetup{Setup: *setup, from: run.SetupFromProcess, path: process.Source.Path}
+	}
+	return nil
 }
 
 // withoutSkillTools says why the plan grants none of tools: each is
