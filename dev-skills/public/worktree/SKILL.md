@@ -1,7 +1,7 @@
 ---
 name: worktree
 author: Igor Malyarov
-version: "0.2.1"
+version: "0.2.2"
 description: >
   Create a new git worktree, sync shared config into it via the bundled sync
   script (never replicate config by hand or hand-author symlinks), and verify
@@ -27,7 +27,9 @@ when the skill loads. Run the commands from **inside the target git repository**
 Always call the bundled creator by its path — it works regardless of `PATH` and
 needs nothing installed. It creates a **new** branch in its own worktree at
 `<parent>/<repo>.worktrees/<safe-branch>` — create-only (never checks out an
-existing branch), local refs only, base defaults to `HEAD`.
+existing branch), local refs only, base defaults to `HEAD`. The new branch has
+no upstream, even from a remote base such as `origin/trunk`, so a plain first
+`git push` cannot target the base branch.
 
 ```bash
 "<skill-dir>/scripts/git-worktree-create" <branch> [<base-branch>]
