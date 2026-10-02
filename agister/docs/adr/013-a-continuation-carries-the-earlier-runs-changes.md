@@ -28,27 +28,32 @@ record of the work.
 
 ## Decision
 
-### 1. A continuation brings the earlier run's patch into its checkout
+### 1. A continuation brings the session's latest changes into its checkout
 
-When a call with a checkout continues a run that kept a `changes.patch`,
-that patch is applied to the call's checkout, uncommitted, before the
-first turn. The run continued is the only source: its patch is already
-cumulative from the revision, so continuing a continuation needs no
-earlier patch. An earlier run that kept no patch, or worked without a
-checkout, carries nothing.
+A continuation resumes the session as it is now, after any later turns
+(ADR-001 rule 12). The changes it carries therefore match that state:
+they are those of the session's latest run, the run in the session that
+finished last, which is the run named or a later continuation of it
+(D-6). When a call with a checkout continues, that run's `changes.patch`
+is applied to the call's checkout, uncommitted, before the first turn.
+The patch is cumulative from the revision, so no earlier run's patch is
+needed. A latest run that kept no patch, or worked without a checkout,
+carries nothing. When the latest run cannot be known, because a run in
+the session has not finished or the last to finish overlapped another,
+the call is refused.
 
 ### 2. Only onto the same base
 
 The patch is carried only into a checkout of the same revision in the
-same repository as the earlier run's. Otherwise the call is refused: the
+same repository as the latest run's. Otherwise the call is refused: the
 patch and the session's memory both describe that base. The checkout's
 record names its revision. For a record made before this ADR, the
-revision is the earlier run's input that its process checked out, when
+revision is that run's input that its process checked out, when
 the call runs the same process. Otherwise the call is refused.
 
 ### 3. The patch is checked before the setup and applied after it
 
-The patch read must match the digest the earlier run recorded, and must
+The patch read must match the digest the latest run recorded, and must
 apply to the revision. Both are checked before the setup runs, so a
 patch that cannot be carried costs no setup. The setup still runs on the
 revision's own content (ADR-012 rule 4). The patch is applied after it.
@@ -57,7 +62,7 @@ turn. A continuation never silently starts clean.
 
 ### 4. The agent is told
 
-The call's prompt says which run it continues, that its changes are
+The call's prompt says which run it continues, which run's changes are
 applied, uncommitted, in this new checkout, and that the earlier
 directory is gone. These words are Agister's, not the process
 definition's, because only Agister knows them.
@@ -66,7 +71,7 @@ definition's, because only Agister knows them.
 
 The call's own `changes.patch` stays cumulative from the revision. It
 includes the carried changes, so it alone delivers everything the
-session has done. Verification on a clean copy (ADR-005) is unchanged:
+session's runs have done in Agister's checkouts. Verification on a clean copy (ADR-005) is unchanged:
 the copy is the revision with that patch applied.
 
 ## Amendments to earlier ADRs
@@ -76,7 +81,8 @@ the copy is the revision with that patch applied.
   states only facts of the call: the run continued, the checkout and
   whether changes were carried.
 - ADR-001 rule 12: a continuation reads the earlier run's session and,
-  for a call with a checkout, its `changes.patch`.
+  for a call with a checkout, the `changes.patch` of the session's latest
+  run.
 - ADR-012 rule 4: the setup sees the revision's content. A continuation's
   carried changes are applied after it, before the first turn.
 

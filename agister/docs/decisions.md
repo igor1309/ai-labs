@@ -54,3 +54,14 @@
 - **Decision:** (a). An ADR stays a draft until its branch merges to trunk, so it may be edited on that branch. The history is kept by the pull request's merge commit, not by squashing.
 - **Rests on:** none
 - **Follow-ups:** none
+
+## D-6: Which run's changes a continuation of a session that has moved on carries
+
+- **Status:** Owner
+- **Asked by:** workflow run 20261002T122745Z-ee8d5b (adr_review), judge item "The named run's patch can lag behind the resumed session"; advisor run 20261002T123105Z-e8dad6 answered owner
+- **Question:** how should ADR-013 handle a checkout continuation of a run whose session has since moved on?
+- **Options:** (a) as the reviewer proposes, refuse such continuations and amend ADR-001 rule 12's repeat-continuation allowance, along with the test at main_test.go:782; (b) keep repeat continuation and restore the patch of the session's latest run rather than the named run, rewording ADR-013 rules 34 and 66 to match. Either way, ADR-013 must stop claiming at line 66 that the patch delivers everything the session has done unless the chosen rule makes that true.
+- **Excluded:** (a): it removes the repeat continuation ADR-001 rule 12 allows and its tests check, while the changes can follow the session instead.
+- **Decision:** (b). A continuation carries the `changes.patch` of the session's latest run, which matches the session it resumes. The base checks apply to that run.
+- **Rests on:** none
+- **Follow-ups:** ADR-013 rules 1, 2, 3 and 5 name the session's latest run; a test continues run A after B continued it and asserts B's patch is carried.
