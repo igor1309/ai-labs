@@ -136,6 +136,26 @@ settings; its YAML and TOML parsers cover what Agister settings use),
 document, fetch and storage, which its tests replace with fakes).
 `serve.go` is the server; `runs.go` summarises the runs.
 
+## Always running
+
+`deploy/` holds a per-user LaunchAgent, `com.igormalyarov.agister-pages`,
+that runs `~/.local/bin/agister pages --no-open` at login and restarts it
+when it exits. Build Agister and copy it to `~/.local/bin/agister`, then,
+from `agister/`:
+
+- `deploy/install.sh` writes
+  `~/Library/LaunchAgents/com.igormalyarov.agister-pages.plist`, with the
+  PATH of the shell that runs it, and loads it; the page is at
+  `http://127.0.0.1:7465/`. It refuses when `~/.local/bin/agister` is not
+  an executable file or the job is already loaded.
+- `deploy/uninstall.sh` stops the job and removes the plist; the logs and
+  the binary stay.
+
+The server logs to `~/Library/Logs/agister/pages.out.log` and
+`pages.err.log`. After replacing `~/.local/bin/agister`, the running server
+keeps the old binary until
+`launchctl kickstart -k gui/$(id -u)/com.igormalyarov.agister-pages`.
+
 ## Data
 
 The browser's localStorage keeps, for the page's address:
@@ -149,4 +169,6 @@ The browser's localStorage keeps, for the page's address:
 
 ## Test
 
-From `agister/`: `go test ./pages/` and `node --test pages/tests/*.test.js`.
+From `agister/`: `go test ./pages/` and `node --test pages/tests/*.test.js`;
+`go test ./deploy/` runs the LaunchAgent scripts against a temporary HOME
+and a fake `launchctl`.
