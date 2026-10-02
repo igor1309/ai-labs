@@ -252,7 +252,8 @@
     function outputLine(p) {
       const parts = [];
       if (p.output) parts.push(p.outputOutside ? missing('schema', p.output) : `${p.output} schema`);
-      if (p.verify) parts.push(`${parts.length ? '; ' : ''}a failed verify is fixed up to ${p.verify.maxAttempts ?? '?'}×`);
+      if (p.verify?.outside) parts.push(parts.length ? '; ' : '', missing('verify', p.verify.ref));
+      else if (p.verify) parts.push(`${parts.length ? '; ' : ''}a failed verify${p.verify.ref ? ` (${p.verify.ref})` : ''} is fixed up to ${p.verify.maxAttempts ?? '?'}×`);
       return parts.length ? el('div', {}, ...parts) : null;
     }
 

@@ -10,8 +10,8 @@ import (
 // allKinds is every kind of definition a snapshot covers.
 var allKinds = []definition.Kind{
 	definition.KindService, definition.KindRuntime, definition.KindAgent,
-	definition.KindPolicy, definition.KindProcess, definition.KindSchema,
-	definition.KindWorkflow,
+	definition.KindPolicy, definition.KindVerify, definition.KindProcess,
+	definition.KindSchema, definition.KindWorkflow,
 }
 
 // SnapshotSource is what a snapshot reads and what it gives back: the
@@ -44,7 +44,9 @@ type snapshot struct {
 // check against the snapshot reports what a check against src would. Nothing
 // that reads the snapshot touches src afterwards, so one operation can check
 // settings and use exactly what it checked. A name that was not listed is
-// not found.
+// not found, except the verification a process names: check lets a missing
+// one pass (ADR-010 rule 4), so its read is kept too, and the call's refusal
+// says where it was expected.
 func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 	s := &snapshot{
 		reads: map[definition.Kind]map[string]snapshotRead{},
@@ -65,6 +67,17 @@ func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 			doc, err := src.Read(ctx, kind, name)
 			s.reads[kind][name] = snapshotRead{doc: cloneDocument(doc), err: err}
 		}
+	}
+	for _, read := range s.reads[definition.KindProcess] {
+		if read.err != nil {
+			continue
+		}
+		process, _ := definition.ParseProcess(read.doc)
+		if _, ok := s.reads[definition.KindVerify][process.VerifyName]; ok || process.VerifyName == "" {
+			continue
+		}
+		doc, err := src.Read(ctx, definition.KindVerify, process.VerifyName)
+		s.reads[definition.KindVerify][process.VerifyName] = snapshotRead{doc: cloneDocument(doc), err: err}
 	}
 	return s
 }

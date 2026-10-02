@@ -1,7 +1,8 @@
 // Package fsdefs stores definition documents as files under Agister's
 // state directory: service.toml, agents/*.toml, processes/*.yaml,
-// policies/*.yaml, runtimes/*.yaml, schemas/*.json, workflows/*.yaml. Layered reads a
-// project's own settings over the global ones.
+// policies/*.yaml, runtimes/*.yaml, schemas/*.json, workflows/*.yaml,
+// verifies/*.yaml. Layered reads a project's own settings over the global
+// ones.
 package fsdefs
 
 import (
@@ -78,6 +79,7 @@ var extensions = map[definition.Kind]string{
 	definition.KindRuntime:  ".yaml",
 	definition.KindSchema:   ".json",
 	definition.KindWorkflow: ".yaml",
+	definition.KindVerify:   ".yaml",
 }
 
 func (s Store) path(kind definition.Kind, name string) (string, error) {

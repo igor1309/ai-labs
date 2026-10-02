@@ -19,7 +19,8 @@ home`.
   it on the clipboard), the defaults, and then:
   - for a process, its agent (runtime, model, effort, session), its policy
     (workspace, timeout, cost cap, what it allows and denies) and its output
-    schema and verify attempts;
+    schema and verify attempts (of the verification it names, when it
+    names one; marked missing when these settings have none of that name);
   - for a workflow, its calls in one line (`4 × gpt-6.1-sol at once, then
     opus`), then the steps: the ones run at once (`First` when there is
     one) and the one run after them. Each step shows its name, what it
@@ -82,7 +83,8 @@ The server writes nothing and answers these endpoints:
   `X-Agister-Pages` header, which a page on another site cannot send.
 - `GET /api/settings?path=<absolute repo path | ~>`: the settings files of
   `<path>/.agister`, or of Agister home for `~`: `agents`, `policies`,
-  `processes`, `runtimes`, `schemas`, `workflows` and `service.toml`, each
+  `processes`, `runtimes`, `schemas`, `verifies`, `workflows` and
+  `service.toml`, each
   at most 256 KB. `runs/` and `logs/` are skipped.
 - `GET /api/runs?limit=<n>`: a summary of each run in Agister home's
   `runs/`, newest first, at most `limit` (default 200, at most 1000).

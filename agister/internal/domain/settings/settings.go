@@ -22,6 +22,18 @@ type Bundle struct {
 	Mappings  map[string]definition.Mapping
 	Schemas   map[string]bool
 	Workflows map[string]definition.Workflow
+	Verifies  map[string]definition.Verification
+}
+
+// Resolved returns the process named name with the verification it names
+// as its verify, as a call resolves it (ADR-010 rule 3). One that names a
+// verification the bundle lacks is returned without verify values.
+func (b Bundle) Resolved(name string) definition.Process {
+	process := b.Processes[name]
+	if verification, ok := b.Verifies[process.VerifyName]; ok && process.VerifyName != "" {
+		process.Verify = &verification.Verify
+	}
+	return process
 }
 
 // Mechanisms are what the code provides, named by settings.
@@ -87,7 +99,7 @@ func Check(b Bundle, m Mechanisms) []Problem {
 	}
 
 	for _, name := range sortedKeys(b.Processes) {
-		process := b.Processes[name]
+		process := b.Resolved(name)
 		subject := "process " + name
 		for _, value := range process.Values {
 			if !contains(m.Sources, value.Source) {
@@ -186,7 +198,7 @@ func PlanProblems(b Bundle, agent definition.Agent, version string) []Problem {
 	verified, unverified := mapping.ForVersion(version)
 	var problems []Problem
 	for _, name := range sortedKeys(b.Processes) {
-		process := b.Processes[name]
+		process := b.Resolved(name)
 		if process.Agent != agent.Name {
 			continue
 		}

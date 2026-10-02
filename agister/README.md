@@ -29,6 +29,14 @@ repository's own `.agister/` takes priority, document by document. Every
 command except `init` checks the composed settings first and stops on any
 problem. Runs are recorded under `~/.agister/runs/<id>/`.
 
+A process declares its verification command inline, or names a document
+that holds it: `verify: verify:repo` is `verifies/repo.yaml`, found like any
+other document, the repository's before the global one. So a process shared
+by every repository carries no command, and each repository states its own
+once. A process whose named verification exists in neither place is not a
+problem of the settings: `check` warns, and only calls of that process are
+refused ([ADR-010](docs/adr/010-a-process-names-its-verification.md)).
+
 Agister is a runner, not a guard: running it in a repository applies that
 repository's `.agister/`, including the commands its agents run. Review
 settings you did not write.

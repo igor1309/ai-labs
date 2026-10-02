@@ -165,6 +165,18 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 			return res, refuse("schema %q: %v", res.process.Output.Schema, err)
 		}
 	}
+	// The verification a process names is the call's from here on
+	// (ADR-010 rule 3); without it the call is refused, never run unverified.
+	if name := res.process.VerifyName; name != "" {
+		if doc, err = load(definition.KindVerify, name); err != nil {
+			return res, refuse("process %s names verify:%s: %v", res.process.Name, name, err)
+		}
+		verification, err := definition.ParseVerify(doc)
+		if err != nil {
+			return res, parsed(err)
+		}
+		res.process.Verify = &verification.Verify
+	}
 
 	limits := policy.Caller{MaxCostUSD: caller.maxCostUSD}
 	if caller.timeout != "" {

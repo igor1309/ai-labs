@@ -399,7 +399,8 @@ type InspectedDefinition struct {
 	OutputSchema string // name of a schema definition (json only)
 	Params       []InspectedParam
 	Values       []InspectedValue
-	Verify       *InspectedVerify // unset: no verification
+	Verify       *InspectedVerify // unset: no verification, or a named one not resolved
+	VerifyName   string           // the verification it names; empty for an inline block
 }
 
 // InspectedParam is a param a process or workflow declares.
@@ -496,6 +497,7 @@ func (r *Resolver) InspectProcess(ctx context.Context, name, agent string) (*Ins
 			Name: process.Name, Policy: process.Policy,
 			OutputFormat: process.Output.Format, OutputSchema: process.Output.Schema,
 			Params: inspectedParams(process.Params), Values: inspectedValues(process.Values),
+			VerifyName: process.VerifyName,
 		},
 		Agent:   res.agent.Name,
 		Runtime: res.mapping.Name,
@@ -655,6 +657,7 @@ func (i *Inspection) showProcess(ctx context.Context, name, agent string) (contr
 		Stale:       contract.Stale(res.Effective.Stale),
 		Primitives:  res.Primitives,
 		Withheld:    res.Withheld,
+		VerifyName:  res.Process.VerifyName,
 	}
 	if res.Process.OutputSchema != "" {
 		view.Output += ":" + res.Process.OutputSchema
