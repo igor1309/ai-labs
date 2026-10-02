@@ -26,8 +26,8 @@ var (
 	built   = map[string]string{}
 )
 
-// Binary builds a fake runtime ("fakeclaude", "fakecodex" or "fakepi") once per test
-// binary and returns its path.
+// Binary builds a fake runtime ("fakeclaude", "fakecodex", "fakepi" or
+// "fakeopencode") once per test binary and returns its path.
 func Binary(t testing.TB, name string) string {
 	t.Helper()
 	buildMu.Lock()

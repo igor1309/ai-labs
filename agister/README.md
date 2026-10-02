@@ -33,8 +33,8 @@ Agister is a runner, not a guard: running it in a repository applies that
 repository's `.agister/`, including the commands its agents run. Review
 settings you did not write.
 
-`examples/settings/` is what `init` installs; `examples/codex/` and
-`examples/pi/` are opt-in.
+`examples/settings/` is what `init` installs; `examples/codex/`,
+`examples/pi/` and `examples/opencode/` are opt-in.
 
 ## Test
 

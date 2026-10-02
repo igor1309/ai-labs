@@ -1,0 +1,20 @@
+# A plain question about the repository, answered in text by OpenCode.
+
+schema: agister.process/v1alpha1
+name: ask_opencode
+
+type: process
+uses: agent:opencode-minimax
+policy: process-policy:read-only
+
+input:
+  instruction: >-
+    Answer the question about the repository in the working directory.
+    Be concise and cite files where relevant.
+  params:
+    question: {}
+  values:
+    question: {source: param, name: question}
+
+output:
+  format: text

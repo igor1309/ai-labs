@@ -353,3 +353,20 @@ func TestASilentExitLeavesNoTail(t *testing.T) {
 		t.Fatalf("evidence = %+v, turn = %+v", evidence, turn)
 	}
 }
+
+// Spec.Env is added to the inherited environment, and replaces an inherited
+// variable of the same name.
+func TestEnvIsAddedToTheInheritedEnvironment(t *testing.T) {
+	t.Setenv("AGISTER_SUPERVISOR_KEPT", "kept")
+	t.Setenv("AGISTER_SUPERVISOR_REPLACED", "inherited")
+	var lines []string
+	evidence := supervisor.Run(context.Background(), supervisor.Spec{
+		Command: "/bin/sh",
+		Args:    []string{"-c", `echo "$AGISTER_SUPERVISOR_KEPT $AGISTER_SUPERVISOR_REPLACED $AGISTER_SUPERVISOR_ADDED"`},
+		Env:     []string{"AGISTER_SUPERVISOR_REPLACED=replaced", "AGISTER_SUPERVISOR_ADDED=added"},
+		Timeout: 30 * time.Second,
+	}, &events{}, func(line string) { lines = append(lines, line) })
+	if evidence.Exit == nil || evidence.Exit.Code == nil || *evidence.Exit.Code != 0 || len(lines) != 1 || lines[0] != "kept replaced added" {
+		t.Fatalf("evidence = %+v, lines %q", evidence, lines)
+	}
+}
