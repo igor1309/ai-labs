@@ -139,6 +139,44 @@ func TestCheckoutIsDetachedAndReleased(t *testing.T) {
 	}
 }
 
+func TestRepositoryEquivalenceUsesCanonicalCommonDirectories(t *testing.T) {
+	ctx := context.Background()
+	repo := repository(t)
+	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
+	checkout, release, err := workspaces.Checkout(ctx, repo, sh(t, repo, "rev-parse", "HEAD"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := release(); err != nil {
+			t.Error(err)
+		}
+	})
+	link := filepath.Join(t.TempDir(), "repository")
+	if err := os.Symlink(repo, link); err != nil {
+		t.Fatal(err)
+	}
+	other := repository(t)
+	missing := t.TempDir()
+	for _, c := range []struct {
+		name, first, second string
+		same, fails         bool
+	}{
+		{"main and worktree", repo, checkout, true, false},
+		{"worktree and symlink", checkout, link, true, false},
+		{"distinct repositories", repo, other, false, false},
+		{"invalid first", missing, repo, false, true},
+		{"invalid second", repo, missing, false, true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			same, err := workspaces.SameRepository(ctx, c.first, c.second)
+			if (err != nil) != c.fails || same != c.same {
+				t.Fatalf("SameRepository = %v, %v", same, err)
+			}
+		})
+	}
+}
+
 // The content identity covers what is committed, edited and untracked, but
 // not ignored; the patch from the revision to it, applied to a copy of the
 // revision, makes that content exactly, and neither touches the checkout's

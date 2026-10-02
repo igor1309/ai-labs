@@ -135,11 +135,15 @@ func newHarness() *harness {
 
 // callsOn is the harness's Calls reading its definitions from src.
 func (h *harness) callsOn(src app.ResolverDefinitions) *app.Calls {
+	return h.callsWith(src, h.workspaces, h.changes, h.runs)
+}
+
+func (h *harness) callsWith(src app.ResolverDefinitions, workspaces app.CallWorkspaces, changes app.CallChanges, runs app.CallRuns) *app.Calls {
 	return app.NewCalls(
 		app.NewResolver(src, h.runtimes, h.validator),
 		h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "git.changed_files": h.inputs, "file": h.inputs, "param": h.inputs},
-		h.workspaces, h.changes, app.NewPreparer(h.changes, h.setup, h.clock), app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
+		workspaces, changes, app.NewPreparer(changes, h.setup, h.clock), app.NewVerifier(changes, h.copies, h.commands, h.clock), h.validator, h.recorder, runs,
 		h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
 	)
 }
@@ -780,6 +784,7 @@ func patchedRun(h *harness, id, continues string, created, finished int, patch s
 		Result: &run.Result{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "429"),
 			Session: &run.Session{ProviderSessionID: "prov-0", Continues: continues}},
 	}
+	record.Definitions = []run.DefinitionSource{{Kind: string(definition.KindProcess), Name: "p", SHA256: sha(h.defs.docs[definition.KindProcess]["p"])}}
 	if patch != "" {
 		record.Result.Artifacts = []run.Artifact{h.runs.store(id, "changes.patch", []byte(patch))}
 	}

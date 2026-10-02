@@ -211,6 +211,10 @@ func (s *workspacesSpy) Discard(ctx context.Context, repository, dir string) err
 
 func (s *workspacesSpy) Root(context.Context, string) (string, error) { return s.root, nil }
 
+func (s *workspacesSpy) SameRepository(_ context.Context, first, second string) (bool, error) {
+	return first == second, nil
+}
+
 func (s *workspacesSpy) Checkout(_ context.Context, repository, revision string) (string, func() error, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -663,6 +667,7 @@ type runsSpy struct {
 	asked     []string
 	artifacts map[string][]byte // by "<run>/<path>"
 	read      []string          // the artifacts read, as "<run>/<path>"
+	listErr   error
 }
 
 // store keeps data as an artifact of run id and returns it as the run's
@@ -700,7 +705,7 @@ func (s *runsSpy) Get(_ context.Context, id string) (run.Record, run.State, erro
 	return record, s.states[id], nil
 }
 
-func (s *runsSpy) List(context.Context) ([]run.Record, error) {
+func (s *runsSpy) ListStrict(context.Context) ([]run.Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	records := make([]run.Record, 0, len(s.records))
@@ -708,7 +713,7 @@ func (s *runsSpy) List(context.Context) ([]run.Record, error) {
 		records = append(records, record)
 	}
 	sort.Slice(records, func(i, j int) bool { return records[i].ID < records[j].ID })
-	return records, nil
+	return records, s.listErr
 }
 
 // steppingClock advances a second on every reading.

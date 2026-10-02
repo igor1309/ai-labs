@@ -3,6 +3,7 @@ package fsruns
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -108,12 +109,13 @@ func TestArtifactsReadBackAsStored(t *testing.T) {
 		t.Fatalf("a missing artifact: %v", err)
 	}
 	for _, path := range []string{"record.json", "artifacts/../record.json", "artifacts/", "artifacts/.hidden", "../r4/artifacts/changes.patch"} {
-		if _, err := store.Artifact(ctx, "r4", run.Artifact{Path: path}); err == nil {
-			t.Fatalf("artifact path %q read", path)
+		if _, err := store.Artifact(ctx, "r4", run.Artifact{Path: path}); err == nil || err.Error() != fmt.Sprintf("run r4: invalid artifact path %q", path) {
+			t.Fatalf("artifact path %q: %v", path, err)
 		}
 	}
-	if _, err := store.Artifact(ctx, "../r4", artifact); err == nil {
-		t.Fatal("a run ID out of the store read")
+	var input *contract.InputError
+	if _, err := store.Artifact(ctx, "../r4", artifact); !errors.As(err, &input) {
+		t.Fatalf("an invalid run ID: %v", err)
 	}
 }
 
@@ -139,6 +141,9 @@ func TestRunIDsStayInTheStore(t *testing.T) {
 		}
 		if _, err := store.Create(ctx, run.Record{ID: id}); !errors.As(err, &input) {
 			t.Errorf("Create(%q) = %v", id, err)
+		}
+		if _, err := store.Artifact(ctx, id, run.Artifact{Path: "artifacts/changes.patch"}); !errors.As(err, &input) {
+			t.Errorf("Artifact(%q) = %v", id, err)
 		}
 	}
 	if _, err := os.Stat(filepath.Join(root, "b")); err == nil {

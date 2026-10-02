@@ -386,7 +386,8 @@ type CallValidator interface {
 // finished and no longer owned reads as abandoned.
 type CallRuns interface {
 	Get(ctx context.Context, id string) (run.Record, run.State, error)
-	List(ctx context.Context) ([]run.Record, error)
+	// ListStrict refuses an incomplete listing when any record cannot be read.
+	ListStrict(ctx context.Context) ([]run.Record, error)
 	// Artifact reads back the bytes of an artifact the run stored, as its
 	// record names it.
 	Artifact(ctx context.Context, runID string, artifact run.Artifact) ([]byte, error)
@@ -409,6 +410,9 @@ type InputProvider interface {
 // prepare where the agent works.
 type CallWorkspaces interface {
 	Root(ctx context.Context, cwd string) (string, error)
+	// SameRepository compares repository identities, including distinct
+	// worktrees of one repository.
+	SameRepository(ctx context.Context, first, second string) (bool, error)
 	Checkout(ctx context.Context, repository, revision string) (dir string, release func() error, err error)
 }
 
@@ -744,7 +748,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	// 2), which is known only now. A checkout input that is no revision is
 	// refused as the workspace is prepared.
 	if carry := resumed.carry; carry != nil && revision != "" {
-		if err := carry.onto(res.Process, revision); err != nil {
+		if err := carry.onto(res, revision); err != nil {
 			fail(err)
 			return
 		}
@@ -1180,18 +1184,24 @@ type carried struct {
 	// record when made before it was recorded.
 	base string
 	// process and inputs are that run's, which name its revision then.
-	process string
-	inputs  []run.Input
+	process     string
+	definitions []run.DefinitionSource
+	inputs      []run.Input
 }
 
 // onto refuses changes carried onto another revision than they are from
 // (ADR-013 rule 2). A record that names no revision is taken at its input
-// the call's process checks out, when it ran the same process.
-func (c *carried) onto(process CallProcess, revision string) error {
+// the call's process checks out, when its recorded definition matches.
+func (c *carried) onto(res *ResolvedCall, revision string) error {
+	process := res.Process
 	base := c.base
 	if base == "" && c.process == process.Name {
+		before := processDigest(c.definitions, c.process)
+		if before == "" || before != processDigest(recordSources(res.Sources), process.Name) {
+			return refuse("the revision run %s worked on is unknown: its process definition cannot be matched to the current process %s; its changes cannot be carried", c.from, process.Name)
+		}
 		for _, input := range c.inputs {
-			if input.Name == process.Checkout {
+			if input.Name == process.Checkout && input.Revision {
 				base = input.Identity
 			}
 		}
@@ -1205,6 +1215,15 @@ func (c *carried) onto(process CallProcess, revision string) error {
 		return refuse("run %s's changes are from revision %s, not %s; a continuation carries them only onto the same revision", c.from, base, revision)
 	}
 	return nil
+}
+
+func processDigest(sources []run.DefinitionSource, name string) string {
+	for _, source := range sources {
+		if source.Kind == string(definition.KindProcess) && source.Name == name {
+			return source.SHA256
+		}
+	}
+	return ""
 }
 
 // continuation checks a request to continue an earlier run's session and
@@ -1246,7 +1265,7 @@ func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID
 	// that run's own. Turns made on the session outside Agister are not
 	// seen: what they cost is counted again. Runs that cannot be read leave
 	// it unknown.
-	records, err := c.runs.List(ctx)
+	records, err := c.runs.ListStrict(ctx)
 	if err == nil {
 		resumed.before = run.LatestTotals(records, resumed.session, self)
 	}
@@ -1287,7 +1306,12 @@ func (c *Calls) carried(ctx context.Context, records []run.Record, prior run.Rec
 		return nil, nil
 	}
 	checkout := latest.Effects.Checkout
-	if here := c.workspaceRoot(ctx, cwd); filepath.Clean(here) != filepath.Clean(checkout.Repository) {
+	here := c.workspaceRoot(ctx, cwd)
+	same, err := c.workspaces.SameRepository(ctx, here, checkout.Repository)
+	if err != nil {
+		return nil, refuse("run %s's repository cannot be compared with %s: %v", latest.ID, here, err)
+	}
+	if !same {
 		return nil, refuse("run %s's changes are of repository %s, not %s; a continuation carries them only into the same repository", latest.ID, checkout.Repository, here)
 	}
 	data, err := c.runs.Artifact(ctx, latest.ID, *patch)
@@ -1300,7 +1324,7 @@ func (c *Calls) carried(ctx context.Context, records []run.Record, prior run.Rec
 	}
 	return &carried{
 		from: latest.ID, artifact: *patch, patch: data,
-		base: checkout.Revision, process: latest.Request.Process, inputs: latest.Inputs,
+		base: checkout.Revision, process: latest.Request.Process, definitions: latest.Definitions, inputs: latest.Inputs,
 	}, nil
 }
 

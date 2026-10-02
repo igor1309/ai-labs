@@ -306,6 +306,16 @@ func (s Store) Events(ctx context.Context, id string, afterSeq int) ([]run.Event
 }
 
 func (s Store) List(ctx context.Context) ([]run.Record, error) {
+	return s.list(ctx, false)
+}
+
+// ListStrict returns every run's record or an error: a partial listing
+// cannot establish which run last changed a continued session.
+func (s Store) ListStrict(ctx context.Context) ([]run.Record, error) {
+	return s.list(ctx, true)
+}
+
+func (s Store) list(ctx context.Context, strict bool) ([]run.Record, error) {
 	entries, err := os.ReadDir(s.Dir)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
@@ -324,6 +334,9 @@ func (s Store) List(ctx context.Context) ([]run.Record, error) {
 	for _, id := range ids {
 		record, _, err := s.Get(ctx, id)
 		if err != nil {
+			if strict {
+				return nil, fmt.Errorf("listing run %s: %w", id, err)
+			}
 			continue
 		}
 		records = append(records, record)
