@@ -17,8 +17,11 @@ briefs where they differ):
 - **The composition root** builds the CLI dependency on the supervisor
   and creates each wrapper with it, then adapts the wrapper to what
   Agister's core takes (`app.TurnRunner`: `app.TurnRequest`,
-  `app.EventSink`, `run.Turn`, `app.RuntimeIdentity`). These translations
-  are the only code that knows both sides.
+  `app.EventSink`, `run.Turn`, `app.RuntimeIdentity`). These adapters
+  are the only code that knows both sides. Each is thin, lives in
+  `cmd/agister` (package `main`), depends on interfaces, not concrete
+  types (the wrapper's API as an interface it declares, the supervisor's
+  likewise), and is tested there.
 
 ## Change
 
@@ -27,13 +30,16 @@ briefs where they differ):
   `domain/run` and `outcome` becomes their own types and their own
   logic, or moves into the composition root's translation, whichever
   keeps the wrapper's behaviour in the wrapper.
-- Put the translations (wrapper ↔ supervisor, wrapper ↔ app) in a package
-  imported only by `cmd/agister`, so tests exercise the code that ships.
+- The adapters (wrapper ↔ supervisor, wrapper ↔ app) live in
+  `cmd/agister` and are tested by `cmd/agister` tests through stand-ins
+  for the interfaces they take. No other package holds an adapter.
   Delete the `supervised_test.go` copies and the Codex `run` hook in
-  `cmd/agister/transports.go`; no test keeps its own copy of a
-  translation.
+  `cmd/agister/transports.go`; no test keeps its own copy of an adapter.
+  A wrapper's own tests use a stand-in for the CLI dependency it
+  declares.
 - `runtimetest` conformance and the CLI tests run each wrapper as the
-  composition root composes it. `logging.Runner` stays at the app level,
+  composition root composes it (conformance moves to `cmd/agister` if it
+  needs the adapters). `logging.Runner` stays at the app level,
   wrapping the adapted runner.
 - Behaviour is unchanged: same command lines, events, classifications,
   usage and cost, sessions, refusals, timeouts and cleanup. Existing
@@ -44,9 +50,10 @@ briefs where they differ):
 - A normal test that fails if any of the four wrappers or the supervisor
   imports a package of this module (`go list -deps` or `go/build`, from
   a test).
-- Tests of the translations through the real code, not copies: the spec
-  a wrapper's run becomes on the supervisor, and a wrapper's result,
-  events and failures as `app` receives them.
+- `cmd/agister` tests of each adapter, the shipped code with stand-ins
+  for its interfaces: the spec a wrapper's run becomes on the
+  supervisor, and a wrapper's result, events and failures as `app`
+  receives them.
 
 ADR-001 rule 13 is not edited; if a note is needed, say so in your report.
 Run the full check from `agister/` (its AGENTS.md) and `node --test
