@@ -103,8 +103,8 @@ func TestAPromptNamedTwiceIsOneSource(t *testing.T) {
 func TestAMissingPromptIsAProblemOfTheProcessAndRefusesTheCall(t *testing.T) {
 	h := newHarness()
 	prompting(h)
-	if report := checkOf(t, h, false); !reflect.DeepEqual(report.Problems, []string{`process p: input rules: prompt "review" does not exist`}) {
-		t.Fatalf("problems = %q", report.Problems)
+	if report := checkOf(t, h, false); !reflect.DeepEqual(messages(report.Problems), []string{`process p: input rules: prompt "review" does not exist`}) {
+		t.Fatalf("problems = %q", messages(report.Problems))
 	}
 
 	missing := errors.New("not found (expected /repo/.agister/prompts/review.md or /home/prompts/review.md)")
@@ -126,8 +126,8 @@ func TestAnUnreadablePromptIsAProblemOfItsOwn(t *testing.T) {
 	h := newHarness()
 	prompted(h, "\x00")
 	report := checkOf(t, h, false)
-	if !reflect.DeepEqual(report.Problems, []string{"prompt review: not a UTF-8 text file"}) || report.Checked["prompts"] != 1 {
-		t.Fatalf("problems %q, checked %v", report.Problems, report.Checked)
+	if !reflect.DeepEqual(messages(report.Problems), []string{"prompt review: not a UTF-8 text file"}) || report.Checked["prompts"] != 1 {
+		t.Fatalf("problems %q, checked %v", messages(report.Problems), report.Checked)
 	}
 	record := h.call(t, contract.CallRequest{})
 	if class(record) != run.ClassRefused || !strings.Contains(message(record), "not a UTF-8 text file") || len(h.runner.calls()) != 0 {
@@ -147,8 +147,8 @@ func TestAnUnreadableListedPromptIsAProblemNotAMissingOne(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{"prompt review: cannot read prompt review"}
-	if !reflect.DeepEqual(report.Problems, want) || len(report.Warnings) != 0 {
-		t.Fatalf("problems %q, warnings %q, want problems %q and no warnings", report.Problems, report.Warnings, want)
+	if !reflect.DeepEqual(messages(report.Problems), want) || len(report.Warnings) != 0 {
+		t.Fatalf("problems %q, warnings %q, want problems %q and no warnings", messages(report.Problems), report.Warnings, want)
 	}
 }
 

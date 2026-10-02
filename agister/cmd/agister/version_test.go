@@ -113,7 +113,7 @@ func TestCheckMarksWhatThisBinaryDoesNotKnow(t *testing.T) {
 	want := map[string]bool{
 		`runtime mapping future: unknown adapter "opencode-next" (available: claude-code, codex, opencode, pi)`: true,
 		`process field: future: unknown field`: true,
-		`process source: input question: unknown source "git.future" (available: file, git.changed_files, git.diff, git.merge_base, git.revision, param, workflow.collection)`: true,
+		`process source: input question: unknown source "git.future" (available: file, git.changed_files, git.diff, git.merge_base, git.revision, param, workflow.collection, prompt)`: true,
 		`process newer: schema: must be "agister.process/v1alpha1"`:  true,
 		`process banana: schema: must be "agister.process/v1alpha1"`: false,
 		`process agentless: uses: is required`:                       false,

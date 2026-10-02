@@ -98,7 +98,7 @@ Against trunk's merge-base (also covers #829 and #831):
   process's verification runs it outside the agent's sandbox and its
   result is what the call reports.
 
-## 6. Resolver builds the Calls and Inspection result types
+## 7. Resolver builds the Calls and Inspection result types
 
 - **Gap:** `Resolver.Snapshot` builds `callResolution` around a concrete
   `*Resolver`, and `NewClient` passes the Resolver straight to its
