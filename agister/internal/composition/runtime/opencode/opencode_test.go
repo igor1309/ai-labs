@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"math"
+	"os"
 	"reflect"
 	"regexp"
 	"strings"
@@ -20,6 +21,9 @@ import (
 	// fresh is the session the fake starts.
 	supervisor "github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 )
+
+// The fakes this package builds are removed when its tests end.
+func TestMain(m *testing.M) { os.Exit(runtimetest.Run(m)) }
 
 const fresh = "ses_f06fe64c3ffeLyBkwYK7e1GfJs"
 

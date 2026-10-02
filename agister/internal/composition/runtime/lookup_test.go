@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"testing"
 	"time"
 
@@ -12,6 +13,9 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
+
+// The fakes this package builds are removed when its tests end.
+func TestMain(m *testing.M) { os.Exit(runtimetest.Run(m)) }
 
 // The Codex runner as wired runs its ccusage lookup through the production
 // translator, which hands the supervisor what is left of the turn's

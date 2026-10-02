@@ -21,6 +21,9 @@ import (
 	supervisor "github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 )
 
+// The fakes this package builds are removed when its tests end.
+func TestMain(m *testing.M) { os.Exit(runtimetest.Run(m)) }
+
 const fresh = "3b0c9a52-6f1e-4d8a-9c47-0e2f5d8b1a63"
 
 func request(prompt string) app.TurnRequest {

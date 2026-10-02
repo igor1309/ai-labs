@@ -4,6 +4,8 @@ package runtimetest
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,39 +24,78 @@ import (
 )
 
 var (
-	buildMu sync.Mutex
-	built   = map[string]string{}
+	buildMu  sync.Mutex
+	buildDir string
+	built    = map[string]string{}
 )
 
 // Binary builds a fake runtime ("fakeclaude", "fakecodex", "fakepi" or
 // "fakeopencode") once per test binary and returns its path.
 func Binary(t testing.TB, name string) string {
 	t.Helper()
+	_, file, _, _ := runtime.Caller(0)
+	return Build(t, name, filepath.Dir(file), "./"+name)
+}
+
+// Build builds target from dir as name, once per test binary, and returns
+// its path; a later call with the same name returns that build. It builds
+// with the inherited environment and so the host's Go cache. Every build
+// goes into one directory, which the calling package removes when its
+// tests end: its TestMain exits with Run's code.
+func Build(t testing.TB, name, dir, target string) string {
+	t.Helper()
 	buildMu.Lock()
 	defer buildMu.Unlock()
 	if path, ok := built[name]; ok {
 		return path
 	}
-	_, file, _, _ := runtime.Caller(0)
-	dir, err := os.MkdirTemp("", "agister-fake-")
-	if err != nil {
-		t.Fatal(err)
+	if buildDir == "" {
+		d, err := os.MkdirTemp("", "agister-fake-")
+		if err != nil {
+			t.Fatal(err)
+		}
+		buildDir = d
 	}
-	path := filepath.Join(dir, name)
-	Build(t, filepath.Dir(file), path, "./"+name)
-	built[name] = path
-	return path
-}
-
-// Build builds target from dir into output, with the inherited environment
-// and so the host's Go cache. The caller owns the output and its lifetime.
-func Build(t testing.TB, dir, output, target string) {
-	t.Helper()
-	command := exec.Command("go", "build", "-o", output, target)
+	path := filepath.Join(buildDir, name)
+	command := exec.Command("go", "build", "-o", path, target)
 	command.Dir = dir
 	if out, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("building %s: %v\n%s", target, err, out)
 	}
+	built[name] = path
+	return path
+}
+
+// Run runs a package's tests, then removes what Build built for them, and
+// returns the code to exit with: a failed removal fails the run.
+//
+//	func TestMain(m *testing.M) { os.Exit(runtimetest.Run(m)) }
+func Run(m *testing.M) int {
+	return runThenRemove(m.Run, removeBuilds, os.Stderr)
+}
+
+// runThenRemove is Run with the tests, the removal and the report injected.
+func runThenRemove(tests func() int, remove func() error, stderr io.Writer) int {
+	code := tests()
+	if err := remove(); err != nil {
+		fmt.Fprintf(stderr, "runtimetest: removing builds: %v\n", err)
+		if code == 0 {
+			code = 1
+		}
+	}
+	return code
+}
+
+// removeBuilds removes the build directory and forgets what was built.
+func removeBuilds() error {
+	buildMu.Lock()
+	defer buildMu.Unlock()
+	dir := buildDir
+	buildDir, built = "", map[string]string{}
+	if dir == "" {
+		return nil
+	}
+	return os.RemoveAll(dir)
 }
 
 // Recorder is an EventSink that keeps everything.

@@ -24,6 +24,15 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 )
 
+// The fakes and the CLI this package builds are removed when its tests end.
+func TestMain(m *testing.M) { os.Exit(runtimetest.Run(m)) }
+
+// agisterBinary builds this CLI once per test binary and returns its path.
+func agisterBinary(t testing.TB) string {
+	t.Helper()
+	return runtimetest.Build(t, "agister", ".", ".")
+}
+
 // End-to-end wiring checks: the real composition root, real files and git,
 // fake runtime binaries. Rules are tested below this level; these tests
 // prove the pieces are connected.

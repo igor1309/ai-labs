@@ -2,7 +2,7 @@ package claudecode_test
 
 import (
 	"encoding/json"
-
+	"os"
 	"testing"
 	"time"
 
@@ -12,6 +12,9 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	composition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
 )
+
+// The fakes this package builds are removed when its tests end.
+func TestMain(m *testing.M) { os.Exit(runtimetest.Run(m)) }
 
 const session = "5145d89d-470e-4b56-a78c-da035d5de49b"
 

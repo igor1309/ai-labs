@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
@@ -155,8 +154,7 @@ func TestEndRecordedEndsEveryRecordedEffect(t *testing.T) {
 // next call that starts reaps them and finishes the run as lost.
 func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 	home, repo := setup(t, "hang")
-	binary := filepath.Join(tempDir(t), "agister")
-	runtimetest.Build(t, ".", binary, ".")
+	binary := agisterBinary(t)
 	victim := exec.Command(binary, "--home", home, "run", "adversarial_review", "--param", "base=main", "--quiet", "--timeout", "30s")
 	victim.Dir = repo
 	// Its own process group: only it is killed below, not the test.
@@ -273,8 +271,7 @@ verify:
   max_attempts: 1
   instruction: The verification command failed.
 `)
-	binary := filepath.Join(tempDir(t), "agister")
-	runtimetest.Build(t, ".", binary, ".")
+	binary := agisterBinary(t)
 	victim := exec.Command(binary, "--home", home, "run", "verified", "--param", "base=main", "--quiet", "--timeout", "45s")
 	victim.Dir = repo
 	victim.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}

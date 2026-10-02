@@ -49,10 +49,7 @@ func TestVersion(t *testing.T) {
 // The built binary names itself by the build information it carries: main
 // reads it and hands it to the CLI, for --version and for version alike.
 func TestBinaryNamesItsBuild(t *testing.T) {
-	binary := filepath.Join(tempDir(t), "agister")
-	if out, err := exec.Command("go", "build", "-o", binary, ".").CombinedOutput(); err != nil {
-		t.Fatalf("build: %v\n%s", err, out)
-	}
+	binary := agisterBinary(t)
 	info, err := buildinfo.ReadFile(binary)
 	if err != nil {
 		t.Fatal(err)
