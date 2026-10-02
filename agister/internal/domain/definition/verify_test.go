@@ -129,3 +129,111 @@ func TestServiceMaxVerifyAttempts(t *testing.T) {
 		}
 	}
 }
+
+const verification = `schema: agister.verify/v1alpha1
+name: repo
+command: go test ./...
+timeout: 10m
+max_attempts: 3
+instruction: The verification command failed. Fix the cause, not the check.
+`
+
+// ADR-010 rule 1: a verification document holds the four fields of the
+// inline block.
+func TestVerificationIsParsedAsDeclared(t *testing.T) {
+	parsed, err := definition.ParseVerify(doc(definition.KindVerify, "repo", verification))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := definition.Verify{Command: "go test ./...", Timeout: 10 * time.Minute, MaxAttempts: 3, Instruction: "The verification command failed. Fix the cause, not the check."}
+	if parsed.Name != "repo" || parsed.Verify != want || parsed.Source.Kind != definition.KindVerify {
+		t.Fatalf("verification = %+v", parsed)
+	}
+}
+
+func TestVerificationWithoutAFieldOrWithAnotherIsInvalid(t *testing.T) {
+	for _, field := range []string{"command", "timeout", "max_attempts", "instruction"} {
+		t.Run(field, func(t *testing.T) {
+			var kept []string
+			for _, line := range strings.SplitAfter(verification, "\n") {
+				if !strings.HasPrefix(line, field+":") {
+					kept = append(kept, line)
+				}
+			}
+			_, err := definition.ParseVerify(doc(definition.KindVerify, "repo", strings.Join(kept, "")))
+			if err == nil || !strings.Contains(err.Error(), "\n  "+field+": is required") {
+				t.Fatalf("err = %v", err)
+			}
+		})
+	}
+	cases := map[string]struct{ text, want string }{
+		"unknown key":       {verification + "on_failure: stop\n", "on_failure: unknown field"},
+		"another's name":    {strings.Replace(verification, "name: repo", "name: other", 1), `name: "other" does not match its definition name "repo"`},
+		"another schema":    {strings.Replace(verification, "agister.verify/", "agister.process/", 1), `schema: must be "agister.verify/v1alpha1"`},
+		"zero attempts":     {strings.Replace(verification, "max_attempts: 3", "max_attempts: 0", 1), "max_attempts: must be at least 1"},
+		"zero timeout":      {strings.Replace(verification, "10m", "0s", 1), `timeout: invalid duration "0s"`},
+		"empty command":     {strings.Replace(verification, "go test ./...", `""`, 1), "command: must not be empty"},
+		"not a text file":   {"\x00", "not a UTF-8 text file"},
+		"a process's field": {verification + "uses: agent:a\n", "uses: unknown field"},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, err := definition.ParseVerify(doc(definition.KindVerify, "repo", c.text))
+			if err == nil || !strings.Contains(err.Error(), c.want) {
+				t.Fatalf("err = %v, want %q", err, c.want)
+			}
+		})
+	}
+}
+
+// namingProcess is a process with a checkout whose verify is the scalar
+// given.
+func namingProcess(verify string) string {
+	return strings.TrimSuffix(verifyingProcess(""), "\n") + " " + verify + "\n"
+}
+
+// ADR-010 rule 2: verify is the inline fields or one reference.
+func TestAProcessNamesItsVerification(t *testing.T) {
+	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", namingProcess("verify:repo")))
+	if err != nil || process.VerifyName != "repo" || process.Verify != nil {
+		t.Fatalf("name %q, verify %+v, %v", process.VerifyName, process.Verify, err)
+	}
+	inline, err := definition.ParseProcess(doc(definition.KindProcess, "p", verifyingProcess(verifyBlock)))
+	if err != nil || inline.VerifyName != "" || inline.Verify == nil {
+		t.Fatalf("inline: name %q, verify %+v, %v", inline.VerifyName, inline.Verify, err)
+	}
+	for _, reference := range []string{`"verify:"`, "verify:Not A Name", "verify:../repo", "repo", "process-policy:repo", "[verify:repo]"} {
+		t.Run(reference, func(t *testing.T) {
+			process, err := definition.ParseProcess(doc(definition.KindProcess, "p", namingProcess(reference)))
+			if err == nil || !strings.Contains(err.Error(), "verify: must be") || process.VerifyName != "" {
+				t.Fatalf("name %q, err = %v", process.VerifyName, err)
+			}
+		})
+	}
+}
+
+// Rule 2: a second verify does not replace the first, in either order.
+func TestAProcessDeclaringVerifyTwiceIsInvalid(t *testing.T) {
+	cases := map[string]string{
+		"inline, then a reference": verifyingProcess(verifyBlock) + "verify: verify:repo\n",
+		"a reference, then inline": namingProcess("verify:repo") + "verify:\n" + verifyBlock,
+	}
+	for name, text := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", text))
+			if err == nil || !strings.Contains(err.Error(), "verify: is declared more than once") {
+				t.Fatalf("err = %v", err)
+			}
+		})
+	}
+}
+
+// A process that names a verification is held to the pinned checkout, as
+// one with the inline block is.
+func TestANamedVerificationWithoutACheckoutIsInvalid(t *testing.T) {
+	text := strings.Replace(namingProcess("verify:repo"), "workspace:\n  checkout: candidate_revision\n", "", 1)
+	_, err := definition.ParseProcess(doc(definition.KindProcess, "p", text))
+	if err == nil || !strings.Contains(err.Error(), "verify: requires workspace.checkout") {
+		t.Fatalf("err = %v", err)
+	}
+}

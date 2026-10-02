@@ -265,15 +265,29 @@ test('a repo goes over Agister home: same kind and file name replaces, the rest 
   assert.deepEqual([own.service.maxAttempts, own.service.source, own.service.overrides], [1, 'repo', true]);
 });
 
+// ADR-010: a process names its verification, found in the repo before home.
+test('a named verification is resolved from the composed settings, or marked outside', async () => {
+  const home = {
+    processes: { 'implement.yaml': 'name: implement\nuses: agent:opus\nverify: verify:repo\n' },
+  };
+  const repo = { verifies: { 'repo.yaml': 'name: repo\ncommand: make test\nmax_attempts: 2\n' } };
+  const m = await C.loadComposed(memDir('.agister', home), memDir('.agister', repo));
+  assert.deepEqual(m.processes[0].verify, { ref: 'repo', maxAttempts: 2, outside: false });
+  assert.deepEqual([m.verifies[0].name, m.verifies[0].source, m.verifies[0].usedBy], ['repo', 'repo', ['implement']]);
+
+  const alone = await C.loadAgister(memDir('.agister', home));
+  assert.deepEqual(alone.processes[0].verify, { ref: 'repo', maxAttempts: null, outside: true });
+});
+
 test('missing folders and service.toml read as empty', async () => {
   const m = await C.loadAgister(memDir('.agister', {}));
-  assert.deepEqual(m, { service: null, workflows: [], processes: [], agents: [], policies: [], runtimes: [], schemas: [] });
+  assert.deepEqual(m, { service: null, workflows: [], processes: [], agents: [], policies: [], runtimes: [], schemas: [], verifies: [] });
 });
 
 for (const path of ['.agister', 'agister/examples/settings']) {
   test(`the settings in ${path} load without errors`, async () => {
     const m = await C.loadAgister(diskDir(join(repoRoot, path)));
-    const items = [...m.workflows, ...m.processes, ...m.agents, ...m.policies, ...m.runtimes];
+    const items = [...m.workflows, ...m.processes, ...m.agents, ...m.policies, ...m.runtimes, ...m.verifies];
     assert.ok(items.length > 0);
     assert.deepEqual(items.filter((x) => x.error).map((x) => `${x.file}: ${x.error}`), []);
     assert.ok(!m.service?.error, m.service?.error);

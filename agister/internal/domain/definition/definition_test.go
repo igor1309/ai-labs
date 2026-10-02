@@ -43,6 +43,8 @@ func TestExamplesParse(t *testing.T) {
 			_, parseErr = definition.ParseMapping(doc(kind, name, string(data)))
 		case definition.KindWorkflow:
 			_, parseErr = definition.ParseWorkflow(doc(kind, name, string(data)))
+		case definition.KindVerify:
+			_, parseErr = definition.ParseVerify(doc(kind, name, string(data)))
 		}
 		if parseErr != nil {
 			t.Errorf("%s: %v", path, parseErr)

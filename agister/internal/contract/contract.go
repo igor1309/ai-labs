@@ -111,7 +111,7 @@ type CheckReport struct {
 
 // Definition is one settings document in the composed settings.
 type Definition struct {
-	Kind      string          `json:"kind"` // service, agents, processes, policies, runtimes, schemas
+	Kind      string          `json:"kind"` // service, agents, processes, policies, runtimes, schemas, workflows, verifies
 	Name      string          `json:"name"`
 	Layer     string          `json:"layer"` // global or project
 	Path      string          `json:"path"`
@@ -123,7 +123,7 @@ type Definition struct {
 
 // DefinitionOrigin is where one definition a call uses comes from.
 type DefinitionOrigin struct {
-	Kind      string // agents, processes, policies, runtimes, schemas or service
+	Kind      string // agents, processes, policies, runtimes, schemas, verifies or service
 	Name      string
 	Layer     string // global or project
 	Path      string
@@ -163,8 +163,12 @@ type ProcessView struct {
 	Primitives []string
 	Withheld   []string
 	Refusal    string
-	// The verification command the process declares; unset when none.
+	// The verification command the process declares, inline or by naming
+	// a verification; unset when none, or when the named one is not
+	// resolved (Refusal says why).
 	Verify *Verify
+	// The verification the process names; empty for an inline block.
+	VerifyName string
 	// What the user should know before calling it.
 	Warnings []string
 	// Where each definition the call uses comes from.

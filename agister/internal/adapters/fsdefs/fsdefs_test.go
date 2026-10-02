@@ -137,6 +137,21 @@ func TestLayeredProjectTakesPriority(t *testing.T) {
 	if doc, err := outside.Read(ctx, definition.KindPolicy, "shared"); err != nil || string(doc.Bytes) != "global" {
 		t.Fatalf("without project = %+v, %v", doc, err)
 	}
+	if _, err := outside.Read(ctx, definition.KindPolicy, "missing"); err == nil || strings.Contains(err.Error(), " or ") {
+		t.Fatalf("missing without project = %v", err)
+	}
+
+	// A repository without settings of its own: a document found nowhere
+	// names where the repository would hold it too.
+	absent := filepath.Join(t.TempDir(), ".agister")
+	unset := fsdefs.Layered{Global: global, Absent: absent}
+	if doc, err := unset.Read(ctx, definition.KindPolicy, "shared"); err != nil || string(doc.Bytes) != "global" || doc.Source.Project {
+		t.Fatalf("with an absent project = %+v, %v", doc, err)
+	}
+	want := "not found (expected " + filepath.Join(absent, "policies", "missing.yaml") + " or " + filepath.Join(global.Dir, "policies", "missing.yaml") + ")"
+	if _, err := unset.Read(ctx, definition.KindPolicy, "missing"); err == nil || err.Error() != want {
+		t.Fatalf("missing with an absent project = %v, want %q", err, want)
+	}
 }
 
 // held reports whether another descriptor cannot take the store's write lock
