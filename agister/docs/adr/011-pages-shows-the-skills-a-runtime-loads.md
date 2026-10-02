@@ -1,4 +1,4 @@
-# ADR-010: Pages shows the skills a runtime loads
+# ADR-011: Pages shows the skills a runtime loads
 
 - **Status:** Accepted
 - **Date:** 2026-10-02

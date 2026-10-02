@@ -2,11 +2,11 @@
 //
 // A classic script that sets globalThis.AgisterKnowledge, as runs.js sets
 // AgisterRuns. The skills it reads are what agister pages serves at
-// api/skills (pages/skills.go, ADR-010): the skill folders the settings'
+// api/skills (pages/skills.go, ADR-011): the skill folders the settings'
 // runtimes load, in the repo and the home. Nothing here assigns a skill to
 // an agent: an agent's skills are what its runtime loads (ADR-006).
 (() => {
-  // What each runtime loads that the folders leave out (ADR-010 rule 3).
+  // What each runtime loads that the folders leave out (ADR-011 rule 3).
   const COMMON_LEFT_OUT = 'skills built into the runtime, and plugin or package skills';
   const LEFT_OUT = {
     'claude-code': [

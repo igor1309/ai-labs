@@ -13,7 +13,7 @@ import (
 )
 
 // Skills: the skill folders the runtimes of the shown settings load, in
-// the repo and the user's home, and each skill's SKILL.md (ADR-010).
+// the repo and the user's home, and each skill's SKILL.md (ADR-011).
 // Nothing here writes, and nothing of a skill is read but its SKILL.md.
 
 // SkillHomes are the home folders the skill folders are found under, from
@@ -79,7 +79,7 @@ type SkillsReply struct {
 type SkillFolder struct {
 	// Scope is repo or home.
 	Scope string `json:"scope"`
-	// Folder is the folder as the table of ADR-010 names it.
+	// Folder is the folder as the table of ADR-011 names it.
 	Folder string `json:"folder"`
 	Path   string `json:"path"`
 	Real   string `json:"real,omitempty"`
@@ -105,14 +105,14 @@ type Skill struct {
 	Checks      Checks `json:"checks"`
 }
 
-// Checks are the structural checks of a skill (ADR-010 rule 7), nothing
+// Checks are the structural checks of a skill (ADR-011 rule 7), nothing
 // more: a pass says nothing of what the skill does.
 type Checks struct {
 	Passed bool     `json:"passed"`
 	Failed []string `json:"failed,omitempty"`
 }
 
-// folderSpec is a row of ADR-010's table: where an adapter loads skills.
+// folderSpec is a row of ADR-011's table: where an adapter loads skills.
 type folderSpec struct {
 	scope, name, path string
 	// nested: the folder sits in another (synced/, .system/), whose
@@ -368,7 +368,7 @@ func within(dir, path string) bool {
 	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)
 }
 
-// check runs the structural checks of ADR-010 rule 7 on a SKILL.md of the
+// check runs the structural checks of ADR-011 rule 7 on a SKILL.md of the
 // skill folder folder, and returns its description.
 func check(data []byte, folder string) (string, Checks) {
 	front, err := frontMatter(data)

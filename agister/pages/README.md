@@ -66,7 +66,7 @@ failed or interrupted run shows in red.
 
 ## Knowledge
 
-The skills each agent works with, read-only (ADR-010). Agister does not
+The skills each agent works with, read-only (ADR-011). Agister does not
 choose an agent's skills: a call loads what its runtime loads in the repo
 and the home (ADR-006), so an agent's skills are the skill folders of its
 runtime's adapter, and the view says so. Nothing is edited, reviewed or
@@ -98,7 +98,7 @@ approved here. ↻ reads the settings, the skills and the runs again.
   lists, tables, rules and line breaks. Its tokens become elements, never
   an HTML string: HTML in a skill shows as text, a link that is not
   `http(s)` shows its text, an image its alt text.
-- **Folders read**: each folder as ADR-010 names it, its path (and real
+- **Folders read**: each folder as ADR-011 names it, its path (and real
   path), the adapters that load it and its skill count, or why it lists
   none (`not there`, a broken link, a symlinked `synced/` or `.system/`).
 
@@ -135,7 +135,7 @@ The server writes nothing and answers these endpoints:
   `service.toml`, each
   at most 256 KB. `runs/` and `logs/` are skipped.
 - `GET /api/skills?path=<absolute repo path | ~>`: the skill folders of
-  ADR-010's table for the runtime adapters the settings at that path
+  ADR-011's table for the runtime adapters the settings at that path
   define (the `adapter` of each `runtimes/` file, the repo's over Agister
   home's of the same name), in the repo and in the home; for `~` the home
   folders only. No request names a file. It answers `home`, `adapters` and

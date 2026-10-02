@@ -126,7 +126,7 @@
   work. Agister classified both as `rate_limited` and kept
   the second run's patch.
 - **Where each runtime loads skills from, under the adapter's flags.**
-  Checked on 2026-10-02 for ADR-010 in a scratch repository holding a
+  Checked on 2026-10-02 for ADR-011 in a scratch repository holding a
   probe skill in `.agents/skills`, `.claude/skills`, `.codex/skills`,
   `.pi/skills` and `sub/.agents/skills`, and one in `.agents/skills`
   that is a symlink to a folder outside it. Each runtime ran with its

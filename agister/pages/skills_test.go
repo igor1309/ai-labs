@@ -134,7 +134,7 @@ func TestAPlainSkillIsReadAndPassesItsChecks(t *testing.T) {
 	mkdir(t, filepath.Join(repo, ".claude", "skills", ".git"))
 
 	folders, reads := readsIn(t, repo, "", "claude-code")
-	// SKILL.md only: notes.md beside it is never read (ADR-010).
+	// SKILL.md only: notes.md beside it is never read (ADR-011).
 	if want := []string{filepath.Join(repo, ".claude", "skills", "review", "SKILL.md")}; !reflect.DeepEqual(reads, want) {
 		t.Errorf("read %q, want %q", reads, want)
 	}
