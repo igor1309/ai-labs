@@ -94,7 +94,7 @@ type harness struct {
 	copies     *copiesSpy
 	// setup runs the checkout's setup commands; commands the
 	// verification's.
-	setup     *commandsSpy
+	setup     *setupCommandsSpy
 	commands  *commandsSpy
 	validator *validatorSpy
 	recorder  *recorderSpy
@@ -110,7 +110,7 @@ func newHarness() *harness {
 		workspaces: &workspacesSpy{root: "/repo", dir: "/work/checkout"},
 		changes:    &changesSpy{},
 		copies:     &copiesSpy{},
-		setup:      &commandsSpy{},
+		setup:      &setupCommandsSpy{},
 		commands:   &commandsSpy{},
 		validator:  &validatorSpy{},
 		recorder:   newRecorderSpy(),

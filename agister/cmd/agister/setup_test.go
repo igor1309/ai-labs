@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,10 +11,48 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/app"
+	"github.com/igor1309/ai-labs/agister/internal/cli"
 	runtimecomposition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
+
+// Setup-enabled calls through the shipped composition, including the
+// preparer's content, commands and clock and the persisted evidence.
+func TestSetupThroughProductionComposition(t *testing.T) {
+	for _, c := range []struct {
+		name, command, output string
+		code                  int
+		status                domain.Status
+		class                 domain.Class
+	}{
+		{"success", "echo prepared", "prepared\n", cli.ExitCompleted, domain.Completed, ""},
+		{"failure", "echo broken; exit 3", "broken\n", cli.ExitFailed, domain.Failed, domain.ClassSetupFailed},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			home, repo := setup(t, "approve")
+			write(t, filepath.Join(home, "workspace.yaml"), "schema: agister.workspace/v1alpha1\nsetup:\n  command: "+c.command+"\n  timeout: 20s\n")
+			result := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--timeout", "1m")
+			if result.code != c.code {
+				t.Fatalf("exit %d, want %d\n%s", result.code, c.code, result.stderr)
+			}
+			var record domain.Record
+			readJSON(t, filepath.Join(lastRun(t, home).dir, "record.json"), &record)
+			expect(t, record, c.status, c.class, "")
+			ran := record.SetupRun
+			sum := sha256.Sum256([]byte(c.output))
+			if ran == nil || ran.Command != c.command || ran.Dir != record.Workspace || ran.Passed != (c.status == domain.Completed) || ran.Output.Head != c.output || ran.Output.Bytes != int64(len(c.output)) || ran.Output.SHA256 != hex.EncodeToString(sum[:]) {
+				t.Fatalf("persisted setup run = %+v", ran)
+			}
+			if record.Setup == nil || record.Setup.From != domain.SetupFromWorkspace || record.Setup.Path != filepath.Join(home, "workspace.yaml") {
+				t.Fatalf("setup = %+v", record.Setup)
+			}
+			if c.status == domain.Failed && record.Turn != nil {
+				t.Fatalf("turn ran after failed setup: %+v", record.Turn)
+			}
+		})
+	}
+}
 
 // A checkout's setup (ADR-011) on real checkouts of temporary
 // repositories, with the real command runner and git. The base ignores
@@ -33,9 +73,9 @@ func reads(want map[string]string, content string) step {
 }
 
 // setupRunsOf are the runs of the command in the call's checkout.
-func setupRunsOf(h *loopHarness, record domain.Record) []app.CommandRequest {
-	var runs []app.CommandRequest
-	for _, request := range h.commands.requests() {
+func setupRunsOf(h *loopHarness, record domain.Record) []app.SetupCommandRequest {
+	var runs []app.SetupCommandRequest
+	for _, request := range h.setup.requests() {
 		if request.Dir == record.Workspace {
 			runs = append(runs, request)
 		}
@@ -104,7 +144,7 @@ func TestAFailedSetupFailsTheCallWithNoTurn(t *testing.T) {
 				t.Fatalf("setup run = %+v", ran)
 			}
 		}},
-		"timeout": {setup: `{command: "` + blocks + `", timeout: 13s}`, with: seams{commands: runtimecomposition.Commands{Supervisor: timesOut}}, want: "the setup command exceeded its timeout 13s", check: func(t *testing.T, ran *domain.CommandRun) {
+		"timeout": {setup: `{command: "` + blocks + `", timeout: 13s}`, with: seams{setupCommands: runtimecomposition.SetupCommands{Supervisor: timesOut}}, want: "the setup command exceeded its timeout 13s", check: func(t *testing.T, ran *domain.CommandRun) {
 			if !ran.TimedOut || ran.Exit.Code != nil {
 				t.Fatalf("setup run = %+v", ran)
 			}

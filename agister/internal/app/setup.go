@@ -7,6 +7,30 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
+// setupOutputBound is how many bytes of setup's combined output are kept
+// from each end.
+const setupOutputBound = 8 << 10
+
+// SetupCommandRequest is one run of a checkout's setup command.
+type SetupCommandRequest struct {
+	Command string // run as bash -c Command
+	Dir     string
+	Timeout time.Duration
+	Bound   int // bytes kept from each end of combined stdout and stderr
+}
+
+// SetupCommandResult is how setup ended, with its process group gone.
+type SetupCommandResult struct {
+	ExitCode   *int // unset when signalled or the command never ran
+	Signal     string
+	TimedOut   bool
+	Cancelled  bool
+	Error      string // why the command could not start or be recorded
+	Head, Tail []byte // non-overlapping ends of combined stdout and stderr
+	Bytes      int64  // bytes of the whole output
+	SHA256     string // hex digest of the whole output
+}
+
 // Preparer runs the setup of calls whose checkout declares one (ADR-011),
 // through the contracts it declares here: one setup per call (Setup).
 type Preparer struct {
@@ -33,7 +57,7 @@ type SetupCommands interface {
 	// returns. started records the group as soon as it exists, and may be
 	// called again as more becomes known; an error from it means the group
 	// is not on record: Run kills it and the run fails.
-	Run(ctx context.Context, request CommandRequest, started func(ref string) error) CommandResult
+	Run(ctx context.Context, request SetupCommandRequest, started func(ref string) error) SetupCommandResult
 }
 
 // SetupClock tells when the setup's run starts and ends.
@@ -103,9 +127,19 @@ func (p *Preparer) Setup(ctx context.Context, call SetupCall) *run.Error {
 	setup := call.Setup
 	call.Event(run.SourceAgister, "SETUP_STARTED", map[string]any{"command": setup.Command, "dir": call.Dir, "timeout": setup.Timeout.String()})
 	started := p.clock.Now()
-	result := p.commands.Run(ctx, CommandRequest{Command: setup.Command, Dir: call.Dir, Timeout: setup.Timeout, Bound: verifyOutputBound},
+	result := p.commands.Run(ctx, SetupCommandRequest{Command: setup.Command, Dir: call.Dir, Timeout: setup.Timeout, Bound: setupOutputBound},
 		func(ref string) error { return recordGroup(call.Record, call.Update, "the setup command", ref) })
-	ran := commandRun(setup.Command, call.Dir, result, started, p.clock.Now())
+	finished := p.clock.Now()
+	ran := run.CommandRun{
+		Command: setup.Command, Dir: call.Dir,
+		Exit:     &run.Exit{Code: result.ExitCode, Signal: result.Signal},
+		TimedOut: result.TimedOut, Cancelled: result.Cancelled, Error: result.Error,
+		StartedAt: started, FinishedAt: finished, WallMS: finished.Sub(started).Milliseconds(),
+		Output: run.Output{
+			Head: string(result.Head), Tail: string(result.Tail), Bytes: result.Bytes,
+			Omitted: result.Bytes - int64(len(result.Head)+len(result.Tail)), SHA256: result.SHA256,
+		},
+	}
 
 	fault := setupEnded(ran, setup)
 	// A run that ended on its own is held to the content it started on,

@@ -48,13 +48,13 @@ func TestTheWorkspaceSetupRunsInTheCheckoutBeforeTheFirstTurn(t *testing.T) {
 	h := newHarness()
 	withWorkspace(h, workspaceSetup)
 	turnsDuringSetup := -1
-	h.setup.running = func(app.CommandRequest) { turnsDuringSetup = len(h.runner.calls()) }
+	h.setup.running = func(app.SetupCommandRequest) { turnsDuringSetup = len(h.runner.calls()) }
 	record := h.call(t, contract.CallRequest{})
 
 	if record.Result.Status != run.Completed || len(h.runner.calls()) != 1 || turnsDuringSetup != 0 {
 		t.Fatalf("result %+v, turns %d, turns during setup %d", record.Result, len(h.runner.calls()), turnsDuringSetup)
 	}
-	want := []app.CommandRequest{{Command: "./link-config.sh", Dir: "/work/checkout", Timeout: 2 * time.Minute, Bound: 8 << 10}}
+	want := []app.SetupCommandRequest{{Command: "./link-config.sh", Dir: "/work/checkout", Timeout: 2 * time.Minute, Bound: 8 << 10}}
 	if got := h.setup.runs(); !reflect.DeepEqual(got, want) || len(h.commands.runs()) != 0 {
 		t.Fatalf("command runs = %+v", got)
 	}
@@ -93,7 +93,7 @@ func TestAProcessesOwnSetupReplacesTheWorkspaces(t *testing.T) {
 	if record.Result.Status != run.Completed {
 		t.Fatalf("result %+v", record.Result)
 	}
-	want := []app.CommandRequest{{Command: "./own.sh", Dir: "/work/checkout", Timeout: 30 * time.Second, Bound: 8 << 10}}
+	want := []app.SetupCommandRequest{{Command: "./own.sh", Dir: "/work/checkout", Timeout: 30 * time.Second, Bound: 8 << 10}}
 	if got := h.setup.runs(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("command runs = %+v", got)
 	}
@@ -172,7 +172,7 @@ func TestAFailedSetupFailsTheCallBeforeAnyTurn(t *testing.T) {
 					defer mu.Unlock()
 					return content
 				}
-				h.setup.running = func(app.CommandRequest) {
+				h.setup.running = func(app.SetupCommandRequest) {
 					mu.Lock()
 					defer mu.Unlock()
 					content = "tree-with-config"
@@ -245,7 +245,11 @@ func TestSetupRunsOnceAndNotInTheVerificationCopy(t *testing.T) {
 		}
 		return dirs
 	}
-	if got, want := runs(h.setup), []string{"./link-config.sh in /work/checkout"}; !reflect.DeepEqual(got, want) {
+	var setupRuns []string
+	for _, request := range h.setup.runs() {
+		setupRuns = append(setupRuns, request.Command+" in "+request.Dir)
+	}
+	if got, want := setupRuns, []string{"./link-config.sh in /work/checkout"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("setup runs = %v", got)
 	}
 	if got, want := runs(h.commands), []string{"go test ./... in /work/copy-1", "go test ./... in /work/copy-1"}; !reflect.DeepEqual(got, want) {

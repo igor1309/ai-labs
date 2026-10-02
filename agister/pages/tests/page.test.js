@@ -398,6 +398,23 @@ test('a Settings read that fails while Runs is shown says why only once Settings
   assert.equal(p.$('status').textContent, 'no .agister folder at /gone/.agister');
 });
 
+test('malformed workspace settings show their filename and parse error on the dashboard', async () => {
+  const files = {
+    ...agent,
+    'workspace.yaml': 'schema: agister.workspace/v1alpha1\nsetup: {command: [}\n',
+    'processes/fix.yaml': 'name: fix\nuses: agent:opus\nworkspace:\n  checkout: rev\n',
+  };
+  const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
+  await p.started;
+  assert.deepEqual(p.shown(), { settings: true, runs: false });
+  assert.ok(p.$('process-fix'));
+  const errors = p.$('dashboard').querySelectorAll('.error');
+  assert.equal(errors.length, 1);
+  assert.match(errors[0].textContent, /^workspace\.yaml: .+/);
+  assert.match(errors[0].textContent, /column/);
+  assert.match(errors[0].parentNode.textContent, /Workspace settings/);
+});
+
 test('a process card shows the setup its checkout runs, and where it comes from', async () => {
   const files = {
     ...agent,

@@ -76,5 +76,25 @@ func TestProcessAdapter(t *testing.T) {
 	}
 }
 
+func TestSetupCommandAdapter(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	code := 7
+	refusal := errors.New("disk full")
+	for _, result := range []supervisor.CommandResult{
+		{},
+		{ExitCode: &code, Signal: "killed", TimedOut: true, Cancelled: true, Stale: true, Error: "record failed", Head: []byte("head"), Tail: []byte("tail"), Bytes: 100, SHA256: "digest"},
+	} {
+		stub := &commandStandIn{result: result}
+		var ref string
+		got := (SetupCommands{Supervisor: stub}).Run(ctx, app.SetupCommandRequest{Command: "./setup.sh", Dir: "/checkout", Timeout: time.Minute, Bound: 64}, func(r string) error { ref = r; return refusal })
+		wantRequest := supervisor.CommandRequest{Command: "./setup.sh", Dir: "/checkout", Timeout: time.Minute, Bound: 64}
+		want := app.SetupCommandResult{ExitCode: result.ExitCode, Signal: result.Signal, TimedOut: result.TimedOut, Cancelled: result.Cancelled, Error: result.Error, Head: result.Head, Tail: result.Tail, Bytes: result.Bytes, SHA256: result.SHA256}
+		if stub.ctx != ctx || !reflect.DeepEqual(stub.request, wantRequest) || !reflect.DeepEqual(got, want) || ref != "pgid:42" || stub.recordError != refusal {
+			t.Fatalf("stub %+v, result %+v, ref %q", stub, got, ref)
+		}
+	}
+}
+
 // recorder is the app side of the shipped adapters.
 var _ app.EventSink = (*runtimetest.Recorder)(nil)

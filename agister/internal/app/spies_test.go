@@ -442,6 +442,57 @@ func (s *commandsSpy) runs() []app.CommandRequest {
 	return append([]app.CommandRequest(nil), s.requests...)
 }
 
+type setupCommandsSpy struct {
+	mu       sync.Mutex
+	requests []app.SetupCommandRequest
+	exits    []int
+	// running, when set, runs while the command does.
+	running func(app.SetupCommandRequest)
+	// timedOut, when set, ends each run as one killed at its timeout.
+	timedOut bool
+	// block makes each run wait for its context to end and end as one
+	// killed for it; started, when set, is closed once the first is on
+	// record.
+	block   bool
+	started chan struct{}
+}
+
+func (s *setupCommandsSpy) Run(ctx context.Context, request app.SetupCommandRequest, started func(string) error) app.SetupCommandResult {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.requests = append(s.requests, request)
+	if err := started("ref-cmd"); err != nil {
+		return app.SetupCommandResult{Error: err.Error()}
+	}
+	if s.running != nil {
+		s.running(request)
+	}
+	if s.block {
+		if s.started != nil {
+			close(s.started)
+			s.started = nil
+		}
+		s.mu.Unlock()
+		<-ctx.Done()
+		s.mu.Lock()
+		return app.SetupCommandResult{Cancelled: true, Signal: "killed"}
+	}
+	if s.timedOut {
+		return app.SetupCommandResult{TimedOut: true, Signal: "killed"}
+	}
+	code := 0
+	if len(s.exits) > 0 {
+		code, s.exits = s.exits[0], s.exits[1:]
+	}
+	return app.SetupCommandResult{ExitCode: &code, Head: []byte(fmt.Sprintf("exit %d", code)), Bytes: 6, SHA256: fmt.Sprintf("sha-%d-%d", code, len(s.requests))}
+}
+
+func (s *setupCommandsSpy) runs() []app.SetupCommandRequest {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]app.SetupCommandRequest(nil), s.requests...)
+}
+
 type validatorSpy struct {
 	compileErr, validateErr error
 	compiled                [][]byte

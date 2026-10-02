@@ -159,12 +159,13 @@
           ? 'one agent call each; the workflow steps above also run alone'
           : 'one agent call each',
         alone.map((p) => processCard(p, ix, chip))),
-        model.agents.length || model.policies.length || model.runtimes.length || model.service
+        model.agents.length || model.policies.length || model.runtimes.length || model.service || model.workspace?.error
           ? el('h2', { className: 'group', textContent: 'Building blocks' }) : null,
         agentsTable(model.agents, composed),
         policiesTable(model.policies, composed),
         runtimesTable(model.runtimes, composed),
         limitsTable(model.service, composed),
+        workspaceError(model.workspace, composed),
       ].filter(Boolean);
     }
 
@@ -386,6 +387,17 @@
           r.adapter, r.contract,
           r.verified.length ? r.verified.map((v) => v.replace(/\.$/, '.x')).join(', ') : null,
         ], composed);
+    }
+
+    // A broken workspace document blocks calls that inherit its setup.
+    function workspaceError(workspace, composed) {
+      if (!workspace?.error) return null;
+      const from = composed
+        ? (workspace.source === 'repo' ? 'this repo’s workspace.yaml' : 'Agister home’s workspace.yaml')
+        : 'workspace.yaml';
+      return el('section', { className: 'card' },
+        el('header', { className: 'section-head' }, el('h3', { textContent: 'Workspace settings' })),
+        el('p', { className: 'error', textContent: `${from}: ${workspace.error}` }));
     }
 
     // service.toml: the caps no policy or process may go past.
