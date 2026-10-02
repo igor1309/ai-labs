@@ -80,8 +80,9 @@ func TestExampleOpenCodeSettingsVerifyNoTool(t *testing.T) {
 
 // With the read tools verified and host reads opted in, a call runs as its
 // generated agent: the granted tools allowed and everything else denied,
-// the model from the agent, the question on stdin. A continuation resumes
-// the session OpenCode reported.
+// the model from the agent, the question on stdin. The tool calls OpenCode
+// reported are in the run's events. A continuation resumes the session
+// OpenCode reported.
 func TestOpenCodeCallRunsAsTheGeneratedAgent(t *testing.T) {
 	home, repo := exampleOpenCodeSettings(t)
 	verifyOpenCodeTools(t, home, "read", "grep", "glob", "skill")
@@ -113,6 +114,20 @@ func TestOpenCodeCallRunsAsTheGeneratedAgent(t *testing.T) {
 	id, _ := first.first["id"].(string)
 	if id == "" || result["session"].(map[string]any)["provider_session_id"] != id {
 		t.Fatalf("session %q, result = %v", id, result)
+	}
+	// The fake's one tool call, a bash command that completed.
+	var calls []any
+	for _, event := range first.events {
+		if kind := event["kind"]; kind == "TOOL_REQUESTED" || kind == "TOOL_RESULT" {
+			calls = append(calls, []any{kind, event["data"]})
+		}
+	}
+	want := []any{
+		[]any{"TOOL_REQUESTED", map[string]any{"tool_use_id": "call_1", "name": "bash", "input": `{"command":"git diff --stat","description":"Show the diff"}`}},
+		[]any{"TOOL_RESULT", map[string]any{"tool_use_id": "call_1", "is_error": false}},
+	}
+	if !reflect.DeepEqual(calls, want) {
+		t.Fatalf("tool events = %v, want %v", calls, want)
 	}
 
 	r = agister(t, home, repo, "run", "ask_opencode", "--param", "question=And its tests?", "--continue", filepath.Base(first.dir), "--timeout", "30s")

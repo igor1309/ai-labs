@@ -279,6 +279,27 @@ type Event struct {
 	Finished string
 }
 
+// Failure is an error the stream reported: its type's name, its message
+// and, for an error a provider's API returned, the HTTP status, which
+// OpenCode keeps apart from the message (error.data.statusCode on 1.18.33).
+type Failure struct {
+	Name       string
+	Message    string
+	StatusCode int
+}
+
+// Text is the error as reported: its name, status and message.
+func (f Failure) Text() string {
+	text := f.Name
+	if f.StatusCode != 0 {
+		text = strings.TrimSpace(fmt.Sprintf("%s %d", f.Name, f.StatusCode))
+	}
+	if text != "" && f.Message != "" {
+		return text + ": " + f.Message
+	}
+	return text + f.Message
+}
+
 // Stream reduces OpenCode's JSON event lines.
 type Stream struct {
 	// The session a resume turn resumes; the turn must report it.
@@ -291,7 +312,7 @@ type Stream struct {
 	Final    string
 	LastText string
 	// Errors are the errors the stream reported, in order.
-	Errors []string
+	Errors []Failure
 	// Reason is the reason of the latest step_finish. Ended is set by one
 	// that is not "tool-calls", and cleared when another step starts: the
 	// turn is decided only by its last step.
@@ -349,16 +370,18 @@ func (s *Stream) Reduce(line string) []Event {
 		events = append(events, Event{Source: run.SourceProtocol, Kind: kind, Data: map[string]any{"stop_reason": s.Reason}})
 	case "error":
 		reported, _ := message["error"].(map[string]any)
-		name, _ := reported["name"].(string)
 		data, _ := reported["data"].(map[string]any)
-		text, _ := data["message"].(string)
-		if name != "" && text != "" {
-			text = name + ": " + text
-		} else {
-			text = name + text
+		var failure Failure
+		failure.Name, _ = reported["name"].(string)
+		failure.Message, _ = data["message"].(string)
+		status, _ := data["statusCode"].(float64)
+		failure.StatusCode = int(status)
+		s.Errors = append(s.Errors, failure)
+		fields := map[string]any{"name": failure.Name, "message": truncate(failure.Text(), 300)}
+		if failure.StatusCode != 0 {
+			fields["status_code"] = failure.StatusCode
 		}
-		s.Errors = append(s.Errors, text)
-		events = append(events, Event{Source: run.SourceProtocol, Kind: "PROVIDER_ERROR", Data: map[string]any{"name": name, "message": truncate(text, 300)}})
+		events = append(events, Event{Source: run.SourceProtocol, Kind: "PROVIDER_ERROR", Data: fields})
 	}
 	return events
 }
@@ -405,12 +428,13 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 		return failed
 	}
 	turn.ProviderSessionID = s.SessionID
+	// What the turn's model work cost, however the turn ends, a resume that
+	// reported another session included.
+	turn.Usage, turn.CostUSD = s.usage.totals()
 	if s.resumedElsewhere() {
 		turn.Status, turn.Error = run.Failed, run.Fault(run.ClassRuntimeError, "resumed session %s, but the runtime reported session %q", s.ResumedSessionID, s.SessionID)
 		return turn
 	}
-	// What the turn's model work cost, however the turn ends.
-	turn.Usage, turn.CostUSD = s.usage.totals()
 	turn.Text = s.LastText
 	if strings.Contains(evidence.StderrTail, fallback) {
 		turn.Status, turn.Error = run.Failed, run.Fault(run.ClassRuntimeError, "the runtime did not find the generated agent and ran its default agent, which the grants do not bound")
@@ -421,7 +445,7 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 		// timeout or cancellation comes first.
 		last := s.Errors[len(s.Errors)-1]
 		if evidence.TimedOut || evidence.Aborted {
-			return supervisor.WithoutTerminal(turn, evidence, last)
+			return supervisor.WithoutTerminal(turn, evidence, last.Text())
 		}
 		turn.Status, turn.Error = run.Failed, classify("error", last)
 		return turn
@@ -437,7 +461,7 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 		return supervisor.WithoutTerminal(turn, evidence, "")
 	}
 	if s.Reason != "stop" {
-		turn.Status, turn.Error = run.Failed, classify(s.Reason, "")
+		turn.Status, turn.Error = run.Failed, classify(s.Reason, Failure{})
 		return turn
 	}
 	if schemaRequested {
@@ -466,19 +490,25 @@ func (s *Stream) resumedElsewhere() bool {
 }
 
 // classify maps a failure the stream reported, an error event or a final
-// step that did not stop normally, to a failure class by its message. Only
-// the error of an unknown model has been observed live.
-func classify(reason, message string) *run.Error {
+// step that did not stop normally, to a failure class: by the error's
+// status and name, then by its text. Only the error of an unknown model has
+// been observed live.
+func classify(reason string, failure Failure) *run.Error {
 	text := "runtime reported " + reason
 	if reason == "" {
 		text = "runtime reported no stop reason"
 	}
+	message := failure.Text()
 	if message != "" {
 		text += ": " + truncate(message, 300)
 	}
 	lower := strings.ToLower(message)
 	class := run.ClassRuntimeError
 	switch {
+	case failure.StatusCode == 429:
+		class = run.ClassRateLimited
+	case failure.StatusCode == 401 || failure.StatusCode == 403 || failure.Name == "ProviderAuthError":
+		class = run.ClassAuth
 	case strings.Contains(lower, "rate limit") || strings.Contains(lower, "usage limit") || strings.Contains(lower, "quota") || strings.Contains(lower, "429"):
 		class = run.ClassRateLimited
 	case strings.Contains(lower, "unauthorized") || strings.Contains(lower, "401") || strings.Contains(lower, "403") ||

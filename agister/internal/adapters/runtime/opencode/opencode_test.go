@@ -3,6 +3,8 @@ package opencode_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"math"
 	"reflect"
 	"regexp"
 	"strings"
@@ -316,22 +318,38 @@ func step(session, reason string) string {
 }
 
 // A resume turn must report the session it resumed: another one, or none
-// by the end of the turn, breaks the contract of resuming in place.
+// by the end of the turn, breaks the contract of resuming in place. The
+// steps it finished have still cost what they reported.
 func TestResumeReportingAnotherSessionFails(t *testing.T) {
 	for name, lines := range map[string][]string{
-		"another session": {`{"type":"step_start","sessionID":"ses_2","part":{"type":"step-start"}}`, step("ses_2", "stop")},
-		"no session":      {`{"type":"step_finish","part":{"type":"step-finish","reason":"stop"}}`},
+		"another session": {`{"type":"step_start","sessionID":"ses_2","part":{"type":"step-start"}}`, strings.ReplaceAll(stopped, "ses_1", "ses_2")},
+		"no session":      {`{"type":"step_finish","part":{"type":"step-finish","reason":"stop","cost":0.25,"tokens":{"input":10,"output":5}}}`},
 	} {
 		stream := &opencode.Stream{ResumedSessionID: "ses_1"}
 		reduce(stream, lines...)
-		if turn := stream.Reconcile(clean, false); turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError || !strings.Contains(turn.Error.Message, "resumed session ses_1") {
+		turn := stream.Reconcile(clean, false)
+		if turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError || !strings.Contains(turn.Error.Message, "resumed session ses_1") {
 			t.Errorf("%s: turn = %+v", name, turn)
+		}
+		if u := turn.Usage; u == nil || *u.InputTokens != 10 || *u.OutputTokens != 5 || turn.CostUSD == nil || *turn.CostUSD != 0.25 {
+			t.Errorf("%s: usage %+v, cost %v", name, u, turn.CostUSD)
 		}
 	}
 	stream := &opencode.Stream{ResumedSessionID: "ses_1"}
 	reduce(stream, stepStart, answer, stopped)
 	if turn := stream.Reconcile(clean, false); turn.Status != run.Completed || turn.ProviderSessionID != "ses_1" {
 		t.Fatalf("the same session: turn = %+v", turn)
+	}
+
+	// OpenCode reporting another session on resume: its two steps are kept.
+	next := request("SCENARIO:mismatch")
+	next.ResumeSessionID = "ses_1"
+	turn := runner(t).RunTurn(context.Background(), next, &runtimetest.Recorder{})
+	if turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError || turn.ProviderSessionID == "ses_1" {
+		t.Fatalf("mismatch: turn = %+v", turn)
+	}
+	if u := turn.Usage; u == nil || *u.InputTokens != 2200 || *u.OutputTokens != 120 || turn.CostUSD == nil || math.Abs(*turn.CostUSD-0.0033) > 1e-9 {
+		t.Fatalf("mismatch: usage %+v, cost %v", u, turn.CostUSD)
 	}
 }
 
@@ -409,6 +427,7 @@ func TestFailuresAreClassified(t *testing.T) {
 		{"ProviderAuthError", "401 Unauthorized", run.ClassAuth},
 		{"ProviderAuthError", "No API key found for opencode-go", run.ClassAuth},
 		{"APIError", "prompt exceeds the context window", run.ClassContextOverflow},
+		{"ProviderAuthError", "Invalid credentials for opencode-go", run.ClassAuth},
 		{"UnknownError", "Unexpected server error. Check server logs for details.", run.ClassRuntimeError},
 		{"MessageAbortedError", "", run.ClassRuntimeError},
 	} {
@@ -422,6 +441,26 @@ func TestFailuresAreClassified(t *testing.T) {
 			}
 		}
 	}
+	// An API error is classified by the status it carries apart from its
+	// message, which need not name it.
+	for _, c := range []struct {
+		status  int
+		message string
+		class   run.Class
+	}{
+		{429, "Too Many Requests", run.ClassRateLimited},
+		{401, "Invalid token", run.ClassAuth},
+		{403, "Forbidden", run.ClassAuth},
+		{500, "Internal Server Error", run.ClassRuntimeError},
+	} {
+		data, _ := json.Marshal(map[string]any{"type": "error", "sessionID": "ses_1", "error": map[string]any{"name": "APIError", "data": map[string]any{"message": c.message, "statusCode": c.status, "isRetryable": false}}})
+		stream := &opencode.Stream{}
+		reduce(stream, stepStart, string(data))
+		turn := stream.Reconcile(exited(1), false)
+		if want := fmt.Sprintf("runtime reported error: APIError %d: %s", c.status, c.message); turn.Status != run.Failed || turn.Error.Class != c.class || turn.Error.Message != want {
+			t.Errorf("%d %q: %+v", c.status, c.message, turn.Error)
+		}
+	}
 	// A step that stopped does not undo an error reported before it.
 	stream := &opencode.Stream{}
 	reduce(stream, stepStart, failed, stepStart, answer, stopped)
@@ -433,6 +472,24 @@ func TestFailuresAreClassified(t *testing.T) {
 	reduce(stream, stepStart, failed)
 	if turn := stream.Reconcile(supervisor.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "killed"}}, false); turn.Error == nil || turn.Error.Class != run.ClassTimeout {
 		t.Fatalf("timed out: turn = %+v", turn)
+	}
+}
+
+// An error event is reported with its name, its message and the status an
+// API error carries apart from the message.
+func TestAnErrorIsReportedWithItsStatus(t *testing.T) {
+	stream := &opencode.Stream{}
+	events := stream.Reduce(`{"type":"error","timestamp":2,"sessionID":"ses_1","error":{"name":"APIError","data":{"message":"Too Many Requests","statusCode":429,"isRetryable":true}}}`)
+	if len(events) != 2 || events[1].Kind != "PROVIDER_ERROR" ||
+		!reflect.DeepEqual(events[1].Data, map[string]any{"name": "APIError", "message": "APIError 429: Too Many Requests", "status_code": 429}) {
+		t.Fatalf("events = %+v", events)
+	}
+	if want := []opencode.Failure{{Name: "APIError", Message: "Too Many Requests", StatusCode: 429}}; !reflect.DeepEqual(stream.Errors, want) {
+		t.Fatalf("errors = %+v", stream.Errors)
+	}
+	// An error without a status is reported without one.
+	if events := stream.Reduce(failed); len(events) != 1 || events[0].Data["status_code"] != nil || events[0].Data["message"] != "UnknownError: Unexpected server error. Check server logs for details." {
+		t.Fatalf("events = %+v", events)
 	}
 }
 
