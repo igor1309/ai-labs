@@ -22,6 +22,9 @@
 #   - Fails if branch already exists (creates new branches only, never checks out)
 #   - Fails if branch already checked out elsewhere
 #   - Validates all git references before creating
+#   - Never sets an upstream (--no-track), even from a remote base, so a first
+#     push never targets the base (with push.autoSetupRemote=true it creates
+#     the same-named remote branch)
 #
 set -euo pipefail
 
@@ -157,10 +160,10 @@ mkdir -p "$parent_dir" || die "failed to create parent directory: $parent_dir"
 # 12) Create the worktree with new branch
 if [[ -n "$base_branch" ]]; then
   # Create new branch from base-branch
-  git worktree add -b "$branch" "$target_dir" "$base_branch"
+  git worktree add --no-track -b "$branch" "$target_dir" "$base_branch"
 else
   # Create new branch from current HEAD
-  git worktree add -b "$branch" "$target_dir" HEAD
+  git worktree add --no-track -b "$branch" "$target_dir" HEAD
 fi
 
 echo "✅ Worktree created:"
