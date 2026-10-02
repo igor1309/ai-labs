@@ -44,7 +44,7 @@ name is literal, never interpolated. It is found like any other document,
 so a repository replaces one prompt with `.agister/prompts/review.md`
 without copying the processes that use it. A process naming a prompt that
 exists in neither place is a problem of the settings
-([ADR-011](docs/adr/011-prompts-are-settings.md)). A text the caller names
+([ADR-013](docs/adr/013-prompts-are-settings.md)). A text the caller names
 stays a `source: file` input, read relative to the caller's directory.
 
 Agister is a runner, not a guard: running it in a repository applies that

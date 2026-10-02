@@ -154,7 +154,7 @@ func TestLayeredProjectTakesPriority(t *testing.T) {
 	}
 }
 
-// A prompt is prompts/<name>.md, its bytes unchanged (ADR-011); one in
+// A prompt is prompts/<name>.md, its bytes unchanged (ADR-013); one in
 // neither layer names both places it was expected.
 func TestPromptsAreMarkdownFiles(t *testing.T) {
 	ctx := context.Background()

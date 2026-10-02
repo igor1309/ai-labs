@@ -7,7 +7,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/settings"
 )
 
-// ADR-011 rule 4: a prompt is part of the process that names it, so one
+// ADR-013 rule 4: a prompt is part of the process that names it, so one
 // the settings lack is a problem of that process.
 func TestAProcessNamingAPromptTheSettingsLackHasAProblem(t *testing.T) {
 	b := bundle()

@@ -12,7 +12,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 )
 
-// Prompts are settings (ADR-011), on real settings directories: Agister's
+// Prompts are settings (ADR-013), on real settings directories: Agister's
 // home and a repository's .agister, composed by the layered store.
 
 const promptingProcess = `schema: agister.process/v1alpha1
@@ -157,7 +157,7 @@ func TestAnUnreadablePromptIsAProblemOfItsOwn(t *testing.T) {
 	}
 }
 
-// ADR-011 rule 5: settings that read a file in prompts/ through source:
+// ADR-013 rule 5: settings that read a file in prompts/ through source:
 // file keep working, whatever the file's name. One whose name breaks the
 // naming rule is not a prompt document, so check has nothing to say of it,
 // and the call gets the file's text.

@@ -1228,7 +1228,7 @@ func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revis
 // such as a commit hash. subject names the definition, e.g. "process p".
 // Only a join has a collection to receive; a collection input of any other
 // call is refused. prompts are the prompts resolved with the call, by name
-// (ADR-011 rule 3); a workflow has none.
+// (ADR-013 rule 3); a workflow has none.
 func (c *Calls) resolveValues(ctx context.Context, subject string, declared []CallParam, values []CallValue, request run.Request, collection *Resolved, prompts map[string]Resolved) ([]run.Input, error) {
 	params := map[string]string{}
 	var unknown []string

@@ -5,13 +5,13 @@ import (
 	"strings"
 )
 
-// PromptSource is the input source of a prompt document (ADR-011). Its one
+// PromptSource is the input source of a prompt document (ADR-013). Its one
 // argument, name, names the document literally: it is fixed by the
 // settings, not the caller, so it is not interpolated.
 const PromptSource = "prompt"
 
 // Prompt is a process's fixed text as a document of its own, which a
-// process names as an input (ADR-011). The document is its text.
+// process names as an input (ADR-013). The document is its text.
 type Prompt struct {
 	Name   string
 	Text   string

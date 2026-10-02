@@ -148,7 +148,7 @@ func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 			continue
 		}
 		// A file in prompts/ whose name breaks the naming rule is not a
-		// prompt: settings may still read it through source: file (ADR-011
+		// prompt: settings may still read it through source: file (ADR-013
 		// rule 5).
 		if kind == definition.KindPrompt && !definition.ValidName(name) {
 			continue

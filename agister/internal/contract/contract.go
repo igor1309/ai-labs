@@ -169,7 +169,7 @@ type ProcessView struct {
 	Verify *Verify
 	// The verification the process names; empty for an inline block.
 	VerifyName string
-	// The prompts its inputs name (ADR-011); Sources says where each
+	// The prompts its inputs name (ADR-013); Sources says where each
 	// resolved one comes from.
 	Prompts []string
 	// What the user should know before calling it.
