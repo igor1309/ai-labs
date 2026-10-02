@@ -84,7 +84,7 @@ func cleanupRecorded(t *testing.T, home, repo string) {
 // its token among them, and skips what cannot be read or would signal
 // beyond the test.
 func TestEndRecordedEndsEveryRecordedEffect(t *testing.T) {
-	runs := t.TempDir()
+	runs := tempDir(t)
 	records := map[string]*domain.Effects{
 		// The command's group, recorded before its token lookup failed.
 		"verify": {
@@ -129,7 +129,7 @@ func TestEndRecordedEndsEveryRecordedEffect(t *testing.T) {
 // next call that starts reaps them and finishes the run as lost.
 func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 	home, repo := setup(t, "hang")
-	binary := filepath.Join(t.TempDir(), "agister")
+	binary := filepath.Join(tempDir(t), "agister")
 	if out, err := exec.Command("go", "build", "-o", binary, ".").CombinedOutput(); err != nil {
 		t.Fatalf("build: %v\n%s", err, out)
 	}
@@ -240,7 +240,7 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 // run as lost.
 func TestNextCallReapsAKilledRunsVerifyCommand(t *testing.T) {
 	home, repo := setup(t, "approve")
-	groupFile := filepath.Join(t.TempDir(), "group")
+	groupFile := filepath.Join(tempDir(t), "group")
 	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))
 	write(t, filepath.Join(home, "processes", "verified.yaml"), strings.Replace(shipped, "name: adversarial_review", "name: verified", 1)+`
 verify:
@@ -249,7 +249,7 @@ verify:
   max_attempts: 1
   instruction: The verification command failed.
 `)
-	binary := filepath.Join(t.TempDir(), "agister")
+	binary := filepath.Join(tempDir(t), "agister")
 	if out, err := exec.Command("go", "build", "-o", binary, ".").CombinedOutput(); err != nil {
 		t.Fatalf("build: %v\n%s", err, out)
 	}

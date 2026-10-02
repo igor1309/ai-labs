@@ -106,7 +106,7 @@ func TestPiSessionsAreKeptUnderTheHome(t *testing.T) {
 	})
 	t.Run("home with brackets", func(t *testing.T) {
 		home, repo := examplePiSettings(t)
-		bracketed := filepath.Join(t.TempDir(), "agister[1]")
+		bracketed := filepath.Join(tempDir(t), "agister[1]")
 		if err := os.Rename(home, bracketed); err != nil {
 			t.Fatal(err)
 		}
@@ -180,7 +180,7 @@ func TestPiInstallsNoPackageTheProjectLists(t *testing.T) {
 	home, repo := examplePiSettings(t)
 	allowHostReads(t, home, repo)
 	write(t, filepath.Join(repo, ".pi", "settings.json"), `{"packages": ["npm:@example/pi-tracer", {"source": "npm:pi-extras"}]}`)
-	spy := t.TempDir()
+	spy := tempDir(t)
 	installs := filepath.Join(spy, "installs.log")
 	write(t, filepath.Join(spy, "npm"), "#!/bin/sh\necho \"$*\" >> '"+installs+"'\n")
 	if err := os.Chmod(filepath.Join(spy, "npm"), 0o755); err != nil {

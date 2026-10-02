@@ -160,7 +160,7 @@ func lastRunIn(t *testing.T, dir string) run {
 // them lost; the workflow run, unfinished and unowned, reads lost too.
 func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 	home, repo := setup(t, "hang")
-	binary := filepath.Join(t.TempDir(), "agister")
+	binary := filepath.Join(tempDir(t), "agister")
 	if out, err := exec.Command("go", "build", "-o", binary, ".").CombinedOutput(); err != nil {
 		t.Fatalf("build: %v\n%s", err, out)
 	}
