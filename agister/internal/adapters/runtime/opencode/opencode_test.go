@@ -13,7 +13,6 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/opencode"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -34,13 +33,13 @@ func request(prompt string) app.TurnRequest {
 }
 
 func runner(t *testing.T) *opencode.Runner {
-	return &opencode.Runner{Transport: supervisor.Runtimes{}, Command: runtimetest.Binary(t, "fakeopencode"), KillGrace: 200 * time.Millisecond}
+	return &opencode.Runner{Transport: supervised{}, Command: runtimetest.Binary(t, "fakeopencode"), KillGrace: 200 * time.Millisecond}
 }
 
 func TestConformance(t *testing.T) {
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {
-			return &opencode.Runner{Transport: supervisor.Runtimes{}, Command: command, KillGrace: 200 * time.Millisecond}
+			return &opencode.Runner{Transport: supervised{}, Command: command, KillGrace: 200 * time.Millisecond}
 		},
 		Fake:     runtimetest.Binary(t, "fakeopencode"),
 		Contract: opencode.Contract,
@@ -270,7 +269,7 @@ func TestSystemPrompt(t *testing.T) {
 }
 
 func TestIdentity(t *testing.T) {
-	identity, err := opencode.New(runtimetest.Binary(t, "fakeopencode"), supervisor.Runtimes{}).Identity(context.Background())
+	identity, err := opencode.New(runtimetest.Binary(t, "fakeopencode"), supervised{}).Identity(context.Background())
 	want := app.RuntimeIdentity{Contract: "opencode/1", Version: "1.18.33", Resume: true, ResumeWhereItRan: true, SkillTools: []string{"skill"}}
 	if err != nil || !reflect.DeepEqual(identity, want) {
 		t.Fatalf("identity = %+v, %v", identity, err)
@@ -294,8 +293,8 @@ func TestALaterTurnResumesTheSession(t *testing.T) {
 	}
 }
 
-func exited(code int) supervisor.Evidence {
-	return supervisor.Evidence{Exit: &run.Exit{Code: &code}}
+func exited(code int) opencode.Evidence {
+	return opencode.Evidence{Exit: &run.Exit{Code: &code}}
 }
 
 var clean = exited(0)
@@ -432,7 +431,7 @@ func TestFailuresAreClassified(t *testing.T) {
 		{"MessageAbortedError", "", run.ClassRuntimeError},
 	} {
 		data, _ := json.Marshal(map[string]any{"type": "error", "sessionID": "ses_1", "error": map[string]any{"name": c.name, "data": map[string]any{"message": c.message}}})
-		for _, evidence := range []supervisor.Evidence{exited(1), clean} {
+		for _, evidence := range []opencode.Evidence{exited(1), clean} {
 			stream := &opencode.Stream{}
 			reduce(stream, stepStart, string(data))
 			turn := stream.Reconcile(evidence, false)
@@ -470,7 +469,7 @@ func TestFailuresAreClassified(t *testing.T) {
 	// Agister's own timeout comes before the error it caused.
 	stream = &opencode.Stream{}
 	reduce(stream, stepStart, failed)
-	if turn := stream.Reconcile(supervisor.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "killed"}}, false); turn.Error == nil || turn.Error.Class != run.ClassTimeout {
+	if turn := stream.Reconcile(opencode.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "killed"}}, false); turn.Error == nil || turn.Error.Class != run.ClassTimeout {
 		t.Fatalf("timed out: turn = %+v", turn)
 	}
 }
@@ -505,7 +504,7 @@ func TestOnlyAFinalStopCompletesTheTurn(t *testing.T) {
 			t.Errorf("reason %q: turn = %+v", reason, turn)
 		}
 	}
-	timedOut := supervisor.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "killed"}}
+	timedOut := opencode.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "killed"}}
 	for name, lines := range map[string][]string{
 		"no step":                 nil,
 		"inside the first step":   {stepStart, answer},
@@ -535,12 +534,12 @@ func TestOnlyAFinalStopCompletesTheTurn(t *testing.T) {
 	// So is a process timed out, cancelled or ended by a signal after a
 	// stop, whose exit code is unknown.
 	for name, c := range map[string]struct {
-		evidence supervisor.Evidence
+		evidence opencode.Evidence
 		class    run.Class
 	}{
-		"timed out":         {supervisor.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "SIGTERM"}}, run.ClassTimeout},
-		"cancelled":         {supervisor.Evidence{Aborted: true, Exit: &run.Exit{Signal: "SIGTERM"}}, run.ClassCancelled},
-		"ended by a signal": {supervisor.Evidence{Exit: &run.Exit{Signal: "SIGTERM"}}, run.ClassKilled},
+		"timed out":         {opencode.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "SIGTERM"}}, run.ClassTimeout},
+		"cancelled":         {opencode.Evidence{Aborted: true, Exit: &run.Exit{Signal: "SIGTERM"}}, run.ClassCancelled},
+		"ended by a signal": {opencode.Evidence{Exit: &run.Exit{Signal: "SIGTERM"}}, run.ClassKilled},
 	} {
 		stream := &opencode.Stream{}
 		reduce(stream, stepStart, `{"type":"text","timestamp":3,"sessionID":"ses_1","part":{"type":"text","text":"{}"}}`, stopped)
@@ -649,7 +648,7 @@ func TestALineThatIsNotJSONIsReported(t *testing.T) {
 func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
 	stream := &opencode.Stream{}
 	reduce(stream, stepStart, answer, stopped)
-	turn := stream.Reconcile(supervisor.Evidence{RecordError: "disk full"}, false)
+	turn := stream.Reconcile(opencode.Evidence{RecordError: "disk full"}, false)
 	if turn.Status != run.Failed || turn.Error == nil || turn.Error.Class != run.ClassInternal || !strings.Contains(turn.Error.Message, "disk full") {
 		t.Fatalf("turn = %+v", turn)
 	}

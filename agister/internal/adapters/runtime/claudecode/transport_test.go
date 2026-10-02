@@ -10,8 +10,14 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/claudecode"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+)
+
+// spyTransport and spyRuns are the runtimetest spies over the transport types claudecode
+// declares.
+type (
+	spyTransport = runtimetest.Transport[claudecode.Spec, claudecode.Sink, claudecode.Evidence]
+	spyRuns      = runtimetest.Runs[claudecode.Spec, claudecode.Sink, claudecode.Evidence]
 )
 
 // The transport is handed the turn as the runner builds it, fresh or
@@ -19,7 +25,7 @@ import (
 // timeout and the runner's kill grace.
 func TestTheTransportIsHandedTheTurn(t *testing.T) {
 	for name, resume := range map[string]string{"fresh": "", "resumed": session} {
-		spy := &runtimetest.Transport{}
+		spy := &spyTransport{}
 		runner := &claudecode.Runner{Transport: spy, Command: "/opt/claude", KillGrace: 3 * time.Second}
 		r := request("hello")
 		r.Cwd = "/work"
@@ -33,7 +39,7 @@ func TestTheTransportIsHandedTheTurn(t *testing.T) {
 		if resumed := slices.Contains(args, "--resume"); resumed != (resume != "") {
 			t.Errorf("%s: --resume in %q", name, args)
 		}
-		want := []supervisor.Spec{{Command: "/opt/claude", Args: args, Dir: "/work", Stdin: "hello", Timeout: time.Minute, KillGrace: 3 * time.Second}}
+		want := []claudecode.Spec{{Command: "/opt/claude", Args: args, Dir: "/work", Stdin: "hello", Timeout: time.Minute, KillGrace: 3 * time.Second}}
 		if specs := spy.Specs(); !reflect.DeepEqual(specs, want) {
 			t.Errorf("%s: specs =\n%+v\nwant\n%+v", name, specs, want)
 		}
@@ -44,14 +50,14 @@ func TestTheTransportIsHandedTheTurn(t *testing.T) {
 // evidence: Agister's timeout, or a signal Agister did not send.
 func TestATurnIsDecidedByTheTransportsEvidence(t *testing.T) {
 	for name, c := range map[string]struct {
-		evidence supervisor.Evidence
+		evidence claudecode.Evidence
 		status   run.Status
 		class    run.Class
 	}{
-		"timeout": {supervisor.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "signal: terminated"}}, run.Interrupted, run.ClassTimeout},
-		"signal":  {supervisor.Evidence{Exit: &run.Exit{Signal: "signal: killed"}}, run.Lost, run.ClassKilled},
+		"timeout": {claudecode.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "signal: terminated"}}, run.Interrupted, run.ClassTimeout},
+		"signal":  {claudecode.Evidence{Exit: &run.Exit{Signal: "signal: killed"}}, run.Lost, run.ClassKilled},
 	} {
-		spy := &runtimetest.Transport{Answer: func(supervisor.Spec) ([]string, supervisor.Evidence) { return nil, c.evidence }}
+		spy := &spyTransport{Runs: spyRuns{Answer: func(claudecode.Spec) ([]string, claudecode.Evidence) { return nil, c.evidence }}}
 		runner := &claudecode.Runner{Transport: spy, Command: "claude"}
 		turn := runner.RunTurn(context.Background(), request("hello"), &runtimetest.Recorder{})
 		if turn.Status != c.status || turn.Error == nil || turn.Error.Class != c.class {
@@ -61,7 +67,7 @@ func TestATurnIsDecidedByTheTransportsEvidence(t *testing.T) {
 }
 
 func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
-	spy := &runtimetest.Transport{Output: "2.1.286 (Claude Code)"}
+	spy := &spyTransport{Output: "2.1.286 (Claude Code)"}
 	identity, err := (&claudecode.Runner{Transport: spy, Command: "/opt/claude"}).Identity(context.Background())
 	if err != nil || identity.Version != "2.1.286" || identity.Contract != claudecode.Contract {
 		t.Fatalf("identity = %+v, %v", identity, err)
@@ -69,7 +75,7 @@ func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
 	if versions := spy.Versions(); !reflect.DeepEqual(versions, []string{"/opt/claude"}) {
 		t.Fatalf("versions = %q", versions)
 	}
-	failing := &runtimetest.Transport{Err: errors.New("not found")}
+	failing := &spyTransport{Err: errors.New("not found")}
 	if _, err := (&claudecode.Runner{Transport: failing, Command: "claude"}).Identity(context.Background()); err == nil {
 		t.Fatal("a failed version check must fail identity")
 	}

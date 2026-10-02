@@ -352,53 +352,62 @@ func is(turn run.Turn, status run.Status, class run.Class) bool {
 	return turn.Status == status && turn.Error != nil && turn.Error.Class == class
 }
 
-// Transport is a spy process transport: it keeps each spec it is handed
-// and answers it without starting a process.
-type Transport struct {
+// Runs is a spy process runner: it keeps each spec it is handed and
+// answers it without starting a process. Spec, Sink and Evidence are the
+// types the adapter under test declares for its transport.
+type Runs[Spec, Sink, Evidence any] struct {
 	// Answer is what a run of spec prints on stdout, line by line, and the
-	// evidence it ends with; nil prints nothing and exits 0. It runs while
-	// the run does, so it sees the files the runner made for it.
-	Answer func(spec supervisor.Spec) (lines []string, evidence supervisor.Evidence)
-	// Output and Err are what Version returns.
-	Output string
-	Err    error
+	// evidence it ends with; nil prints nothing and returns the zero
+	// evidence. It runs while the run does, so it sees the files the runner
+	// made for it.
+	Answer func(spec Spec) (lines []string, evidence Evidence)
 
-	mu       sync.Mutex
-	specs    []supervisor.Spec
-	versions []string
+	mu    sync.Mutex
+	specs []Spec
 }
 
-func (t *Transport) Run(_ context.Context, spec supervisor.Spec, _ supervisor.Sink, onLine func(string)) supervisor.Evidence {
-	t.mu.Lock()
-	t.specs = append(t.specs, spec)
-	t.mu.Unlock()
-	if t.Answer == nil {
-		code := 0
-		return supervisor.Evidence{Exit: &run.Exit{Code: &code}}
+func (r *Runs[Spec, Sink, Evidence]) Run(_ context.Context, spec Spec, _ Sink, onLine func(string)) Evidence {
+	r.mu.Lock()
+	r.specs = append(r.specs, spec)
+	r.mu.Unlock()
+	if r.Answer == nil {
+		var evidence Evidence
+		return evidence
 	}
-	lines, evidence := t.Answer(spec)
+	lines, evidence := r.Answer(spec)
 	for _, line := range lines {
 		onLine(line)
 	}
 	return evidence
 }
 
-func (t *Transport) Version(_ context.Context, command string) (string, error) {
+// Specs are the specs Run was handed, in order.
+func (r *Runs[Spec, Sink, Evidence]) Specs() []Spec {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return slices.Clone(r.specs)
+}
+
+// Transport is a spy process transport: Runs, and the runtime's version.
+type Transport[Spec, Sink, Evidence any] struct {
+	Runs[Spec, Sink, Evidence]
+	// Output and Err are what Version returns.
+	Output string
+	Err    error
+
+	mu       sync.Mutex
+	versions []string
+}
+
+func (t *Transport[Spec, Sink, Evidence]) Version(_ context.Context, command string) (string, error) {
 	t.mu.Lock()
 	t.versions = append(t.versions, command)
 	t.mu.Unlock()
 	return t.Output, t.Err
 }
 
-// Specs are the specs Run was handed, in order.
-func (t *Transport) Specs() []supervisor.Spec {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	return slices.Clone(t.specs)
-}
-
 // Versions are the commands Version was asked about, in order.
-func (t *Transport) Versions() []string {
+func (t *Transport[Spec, Sink, Evidence]) Versions() []string {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return slices.Clone(t.versions)

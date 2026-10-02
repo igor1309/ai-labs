@@ -10,7 +10,6 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/claudecode"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -32,7 +31,7 @@ func request(prompt string) app.TurnRequest {
 func TestConformance(t *testing.T) {
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {
-			return &claudecode.Runner{Transport: supervisor.Runtimes{}, Command: command, KillGrace: 200 * time.Millisecond}
+			return &claudecode.Runner{Transport: supervised{}, Command: command, KillGrace: 200 * time.Millisecond}
 		},
 		Fake:      runtimetest.Binary(t, "fakeclaude"),
 		Contract:  claudecode.Contract,
@@ -122,7 +121,7 @@ func TestStreamReduction(t *testing.T) {
 		t.Fatalf("kinds = %v", kinds)
 	}
 	code := 0
-	turn := stream.Reconcile(supervisor.Evidence{Exit: &run.Exit{Code: &code}}, true)
+	turn := stream.Reconcile(claudecode.Evidence{Exit: &run.Exit{Code: &code}}, true)
 	if turn.Status != run.Completed || string(turn.Output) != `{"answer":"vm"}` || turn.Text != "The hostname is vm." ||
 		// The session's cost; the turn's own is the call's to derive.
 		turn.CostUSD != nil || *turn.Session.CostUSD != 0.06 || turn.Session.Usage != nil {
@@ -140,7 +139,7 @@ func TestResumeReportingAnotherSessionFails(t *testing.T) {
 	}
 	stream.Reduce(`{"type":"result","subtype":"success","is_error":false,"session_id":"other"}`)
 	code := 0
-	turn := stream.Reconcile(supervisor.Evidence{Exit: &run.Exit{Code: &code}}, false)
+	turn := stream.Reconcile(claudecode.Evidence{Exit: &run.Exit{Code: &code}}, false)
 	if turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError || turn.ProviderSessionID != "other" || !strings.Contains(turn.Error.Message, session) {
 		t.Fatalf("turn = %+v", turn)
 	}
@@ -151,13 +150,13 @@ func TestResumeReportingAnotherSessionFails(t *testing.T) {
 	if events := late.Reduce(`{"type":"result","subtype":"success","is_error":false,"session_id":"other"}`); len(events) != 2 || events[1].Kind != "SESSION_ID_MISMATCH" {
 		t.Fatalf("events = %+v", events)
 	}
-	if turn := late.Reconcile(supervisor.Evidence{Exit: &run.Exit{Code: &code}}, false); turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError || !strings.Contains(turn.Error.Message, `"other"`) {
+	if turn := late.Reconcile(claudecode.Evidence{Exit: &run.Exit{Code: &code}}, false); turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError || !strings.Contains(turn.Error.Message, `"other"`) {
 		t.Fatalf("turn = %+v", turn)
 	}
 	// A result that names no session does not confirm the resumed one.
 	silent := &claudecode.Stream{ResumedSessionID: session}
 	silent.Reduce(`{"type":"result","subtype":"success","is_error":false}`)
-	if turn := silent.Reconcile(supervisor.Evidence{Exit: &run.Exit{Code: &code}}, false); turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError {
+	if turn := silent.Reconcile(claudecode.Evidence{Exit: &run.Exit{Code: &code}}, false); turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError {
 		t.Fatalf("turn = %+v", turn)
 	}
 }
@@ -174,7 +173,7 @@ func TestGarbageIsRecorded(t *testing.T) {
 
 func TestResultPrecedence(t *testing.T) {
 	code := 0
-	clean := supervisor.Evidence{Exit: &run.Exit{Code: &code}}
+	clean := claudecode.Evidence{Exit: &run.Exit{Code: &code}}
 	with := func(result string) *claudecode.Stream {
 		stream := &claudecode.Stream{}
 		stream.Reduce(result)
@@ -186,7 +185,7 @@ func TestResultPrecedence(t *testing.T) {
 	if turn := with(`{"type":"result","subtype":"success","is_error":false}`).Reconcile(clean, true); turn.Status != run.Failed || turn.Error.Class != run.ClassInvalidOutput {
 		t.Fatalf("missing structured output must fail: %+v", turn)
 	}
-	timedOut := supervisor.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "terminated"}}
+	timedOut := claudecode.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "terminated"}}
 	if turn := with(`{"type":"result","subtype":"success","is_error":false}`).Reconcile(timedOut, false); turn.Status != run.Completed {
 		t.Fatalf("a result before the timeout decides the turn: %+v", turn)
 	}
@@ -220,7 +219,7 @@ func TestUsageIsNormalized(t *testing.T) {
 	stream := &claudecode.Stream{}
 	stream.Reduce(`{"type":"result","subtype":"success","is_error":false,"duration_ms":1200,"usage":{"input_tokens":10,"output_tokens":20,"cache_read_input_tokens":30,"cache_creation_input_tokens":40}}`)
 	code := 0
-	turn := stream.Reconcile(supervisor.Evidence{Exit: &run.Exit{Code: &code}}, false)
+	turn := stream.Reconcile(claudecode.Evidence{Exit: &run.Exit{Code: &code}}, false)
 	u := turn.Usage
 	if u == nil || *u.InputTokens != 10 || *u.OutputTokens != 20 || *u.CacheReadTokens != 30 || *u.CacheWriteTokens != 40 || u.ReasoningTokens != nil || *turn.RuntimeMS != 1200 {
 		t.Fatalf("usage %+v, turn %+v", u, turn)
@@ -229,7 +228,7 @@ func TestUsageIsNormalized(t *testing.T) {
 
 func TestFailuresAreClassified(t *testing.T) {
 	code := 0
-	clean := supervisor.Evidence{Exit: &run.Exit{Code: &code}}
+	clean := claudecode.Evidence{Exit: &run.Exit{Code: &code}}
 	for _, c := range []struct {
 		name  string
 		lines []string
@@ -257,7 +256,7 @@ func TestFailuresAreClassified(t *testing.T) {
 func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
 	stream := &claudecode.Stream{}
 	stream.Reduce(`{"type":"result","subtype":"success","is_error":false}`)
-	turn := stream.Reconcile(supervisor.Evidence{RecordError: "disk full"}, false)
+	turn := stream.Reconcile(claudecode.Evidence{RecordError: "disk full"}, false)
 	if turn.Status != run.Failed || turn.Error == nil || turn.Error.Class != run.ClassInternal || !strings.Contains(turn.Error.Message, "disk full") {
 		t.Fatalf("turn = %+v", turn)
 	}

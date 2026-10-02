@@ -12,8 +12,14 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/pi"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+)
+
+// spyTransport and spyRuns are the runtimetest spies over the transport types pi
+// declares.
+type (
+	spyTransport = runtimetest.Transport[pi.Spec, pi.Sink, pi.Evidence]
+	spyRuns      = runtimetest.Runs[pi.Spec, pi.Sink, pi.Evidence]
 )
 
 // valueOf is the argument after flag in args; empty when there is none.
@@ -34,11 +40,11 @@ func TestTheTransportIsHandedTheTurn(t *testing.T) {
 		root, cwd := t.TempDir(), t.TempDir()
 		session(t, root, resumed, cwd)
 		var systemPrompt string
-		spy := &runtimetest.Transport{Answer: func(spec supervisor.Spec) ([]string, supervisor.Evidence) {
+		spy := &spyTransport{Runs: spyRuns{Answer: func(spec pi.Spec) ([]string, pi.Evidence) {
 			data, _ := os.ReadFile(valueOf(spec.Args, "--append-system-prompt"))
 			systemPrompt = string(data)
-			return nil, supervisor.Evidence{}
-		}}
+			return nil, pi.Evidence{}
+		}}}
 		runner := &pi.Runner{Transport: spy, Command: "/opt/pi", KillGrace: 3 * time.Second, Sessions: root}
 		r := request("hello")
 		r.Cwd = cwd
@@ -60,7 +66,7 @@ func TestTheTransportIsHandedTheTurn(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		want := supervisor.Spec{Command: "/opt/pi", Args: args, Dir: cwd, Stdin: "hello", Timeout: time.Minute, KillGrace: 3 * time.Second}
+		want := pi.Spec{Command: "/opt/pi", Args: args, Dir: cwd, Stdin: "hello", Timeout: time.Minute, KillGrace: 3 * time.Second}
 		if !reflect.DeepEqual(specs[0], want) {
 			t.Errorf("%s: spec =\n%+v\nwant\n%+v", name, specs[0], want)
 		}
@@ -75,15 +81,15 @@ func TestTheTransportIsHandedTheTurn(t *testing.T) {
 // session reported, a fresh turn keeps no session directory.
 func TestATurnIsDecidedByTheTransportsEvidence(t *testing.T) {
 	for name, c := range map[string]struct {
-		evidence supervisor.Evidence
+		evidence pi.Evidence
 		status   run.Status
 		class    run.Class
 	}{
-		"timeout": {supervisor.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "signal: terminated"}}, run.Interrupted, run.ClassTimeout},
-		"signal":  {supervisor.Evidence{Exit: &run.Exit{Signal: "signal: killed"}}, run.Lost, run.ClassKilled},
+		"timeout": {pi.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "signal: terminated"}}, run.Interrupted, run.ClassTimeout},
+		"signal":  {pi.Evidence{Exit: &run.Exit{Signal: "signal: killed"}}, run.Lost, run.ClassKilled},
 	} {
 		root := t.TempDir()
-		spy := &runtimetest.Transport{Answer: func(supervisor.Spec) ([]string, supervisor.Evidence) { return nil, c.evidence }}
+		spy := &spyTransport{Runs: spyRuns{Answer: func(pi.Spec) ([]string, pi.Evidence) { return nil, c.evidence }}}
 		runner := &pi.Runner{Transport: spy, Command: "pi", Sessions: root}
 		turn := runner.RunTurn(context.Background(), request("hello"), &runtimetest.Recorder{})
 		if turn.Status != c.status || turn.Error == nil || turn.Error.Class != c.class {
@@ -99,10 +105,10 @@ func TestATurnIsDecidedByTheTransportsEvidence(t *testing.T) {
 // however its turn ended.
 func TestAReportedSessionIsKeptWhateverTheEvidence(t *testing.T) {
 	root, cwd := t.TempDir(), t.TempDir()
-	spy := &runtimetest.Transport{Answer: func(supervisor.Spec) ([]string, supervisor.Evidence) {
+	spy := &spyTransport{Runs: spyRuns{Answer: func(pi.Spec) ([]string, pi.Evidence) {
 		return []string{`{"type":"session","version":3,"id":"` + fresh + `","cwd":"` + cwd + `"}`},
-			supervisor.Evidence{Exit: &run.Exit{Signal: "signal: killed"}}
-	}}
+			pi.Evidence{Exit: &run.Exit{Signal: "signal: killed"}}
+	}}}
 	r := request("hello")
 	r.Cwd = cwd
 	turn := (&pi.Runner{Transport: spy, Command: "pi", Sessions: root}).RunTurn(context.Background(), r, &runtimetest.Recorder{})
@@ -115,7 +121,7 @@ func TestAReportedSessionIsKeptWhateverTheEvidence(t *testing.T) {
 }
 
 func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
-	spy := &runtimetest.Transport{Output: "0.70.2"}
+	spy := &spyTransport{Output: "0.70.2"}
 	identity, err := pi.New("/opt/pi", t.TempDir(), spy).Identity(context.Background())
 	if err != nil || identity.Version != "0.70.2" || identity.Contract != pi.Contract {
 		t.Fatalf("identity = %+v, %v", identity, err)
@@ -123,7 +129,7 @@ func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
 	if versions := spy.Versions(); !reflect.DeepEqual(versions, []string{"/opt/pi"}) {
 		t.Fatalf("versions = %q", versions)
 	}
-	failing := &runtimetest.Transport{Err: errors.New("not found")}
+	failing := &spyTransport{Err: errors.New("not found")}
 	if _, err := pi.New("pi", t.TempDir(), failing).Identity(context.Background()); err == nil {
 		t.Fatal("a failed version check must fail identity")
 	}

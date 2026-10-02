@@ -73,7 +73,7 @@
 // One with another reason that is not followed by a step (length, say) is
 // a failure the runtime reported, as is any error event; a stream that ends
 // after a "tool-calls" step, or without a step_finish, is decided by the
-// transport, quoting stderr (supervisor.WithoutTerminal), and so is a
+// transport, quoting stderr (outcome.WithoutTerminal), and so is a
 // non-zero exit, a timeout, a cancellation or a signal after a "stop".
 // OpenCode runs its default agent, which
 // allows everything, when it does not find the one named ("Falling back to
@@ -92,7 +92,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/outcome"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -126,8 +126,45 @@ const agentPrefix = "agister-"
 // runtime to its exit, passing each line of its stdout to onLine, and to
 // read the runtime's version.
 type Transport interface {
-	Run(ctx context.Context, spec supervisor.Spec, sink supervisor.Sink, onLine func(string)) supervisor.Evidence
+	Run(ctx context.Context, spec Spec, sink Sink, onLine func(string)) Evidence
 	Version(ctx context.Context, command string) (string, error)
+}
+
+// Spec is the process a turn runs.
+type Spec struct {
+	Command string
+	Args    []string
+	Dir     string
+	// Env is added to the environment the process inherits, as
+	// "KEY=value"; an entry replaces an inherited variable of the same
+	// name.
+	Env       []string
+	Stdin     string
+	Timeout   time.Duration
+	KillGrace time.Duration // zero: the transport's default
+}
+
+// Sink is what the transport reports to: the process's events, its
+// reference as soon as it exists (an error means it is not on record, and
+// the transport kills it), and each line of its stdout.
+type Sink interface {
+	Event(source, kind string, data map[string]any)
+	ProcessStarted(ref string) error
+	Raw(line string)
+}
+
+// Evidence is what the process left, as outcome takes it: its exit, how
+// it ended, and the end of its stderr.
+type Evidence struct {
+	Exit          *run.Exit
+	SpawnError    string
+	TimedOut      bool
+	Aborted       bool
+	StderrTail    string
+	StderrOmitted int64
+	// RecordError is why the process could not be recorded; it was killed
+	// at once, and the turn fails.
+	RecordError string
 }
 
 type Runner struct {
@@ -244,14 +281,14 @@ func agentName() (string, error) {
 func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
 	agent, err := agentName()
 	if err != nil {
-		return supervisor.Failed(run.ClassInternal, err)
+		return outcome.Failed(run.ClassInternal, err)
 	}
 	args, err := Arguments(request, agent)
 	if err != nil {
-		return supervisor.Failed(run.ClassInternal, err)
+		return outcome.Failed(run.ClassInternal, err)
 	}
 	state := &Stream{ResumedSessionID: request.ResumeSessionID}
-	evidence := r.Transport.Run(ctx, supervisor.Spec{
+	evidence := r.Transport.Run(ctx, Spec{
 		Command:   r.Command,
 		Args:      args,
 		Dir:       request.Cwd,
@@ -433,9 +470,10 @@ func (s *Stream) toolUse(part map[string]any) []Event {
 const fallback = "Falling back to default agent"
 
 // Reconcile decides the turn outcome from the stream and the transport.
-func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) run.Turn {
-	turn := supervisor.Base(evidence)
-	if failed, ok := supervisor.RecordFailure(turn, evidence); ok {
+func (s *Stream) Reconcile(evidence Evidence, schemaRequested bool) run.Turn {
+	ended := outcome.Evidence(evidence)
+	turn := outcome.Base(ended)
+	if failed, ok := outcome.RecordFailure(turn, ended); ok {
 		return failed
 	}
 	turn.ProviderSessionID = s.SessionID
@@ -456,7 +494,7 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 		// timeout or cancellation comes first.
 		last := s.Errors[len(s.Errors)-1]
 		if evidence.TimedOut || evidence.Aborted {
-			return supervisor.WithoutTerminal(turn, evidence, last.Text())
+			return outcome.WithoutTerminal(turn, ended, last.Text())
 		}
 		turn.Status, turn.Error = run.Failed, classify("error", last)
 		return turn
@@ -469,7 +507,7 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 	// not end cleanly, whatever its last step reported.
 	interrupted := evidence.TimedOut || evidence.Aborted || (evidence.Exit != nil && evidence.Exit.Signal != "")
 	if !s.Ended || (s.Reason == "stop" && (code != 0 || interrupted)) {
-		return supervisor.WithoutTerminal(turn, evidence, "")
+		return outcome.WithoutTerminal(turn, ended, "")
 	}
 	if s.Reason != "stop" {
 		turn.Status, turn.Error = run.Failed, classify(s.Reason, Failure{})

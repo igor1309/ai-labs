@@ -13,7 +13,6 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/logging"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/claudecode"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -27,7 +26,7 @@ func TestDecoratorConformance(t *testing.T) {
 	log := slog.New(slog.NewJSONHandler(&bytes.Buffer{}, nil))
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {
-			return logging.Runner{Inner: &claudecode.Runner{Transport: supervisor.Runtimes{}, Command: command, KillGrace: 200 * time.Millisecond}, Adapter: "claude-code", Log: log}
+			return logging.Runner{Inner: &claudecode.Runner{Transport: supervised{}, Command: command, KillGrace: 200 * time.Millisecond}, Adapter: "claude-code", Log: log}
 		},
 		Fake:      runtimetest.Binary(t, "fakeclaude"),
 		Contract:  claudecode.Contract,
@@ -39,7 +38,7 @@ func TestDecoratorConformance(t *testing.T) {
 func TestLogsAreCorrelatedAndOmitPrompts(t *testing.T) {
 	var buffer bytes.Buffer
 	log := slog.New(logging.Handler{Handler: slog.NewJSONHandler(&buffer, &slog.HandlerOptions{Level: slog.LevelInfo})})
-	runner := logging.Runner{Inner: claudecode.New(runtimetest.Binary(t, "fakeclaude"), supervisor.Runtimes{}), Adapter: "claude-code", Log: log}
+	runner := logging.Runner{Inner: claudecode.New(runtimetest.Binary(t, "fakeclaude"), supervised{}), Adapter: "claude-code", Log: log}
 	ctx := app.WithCorrelation(context.Background(), "run_id", "run-1", "process", "p")
 	runner.RunTurn(ctx, request("secret prompt SCENARIO:approve"), &runtimetest.Recorder{})
 

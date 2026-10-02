@@ -140,19 +140,19 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	evidence := fsruns.Store{Dir: filepath.Join(config.Home, "runs")}
 	runtimes := runtime.Registry{
 		"claude-code": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: claudecode.New(command, supervisor.Runtimes{}), Adapter: "claude-code", Log: log}
+			return logging.Runner{Inner: claudecode.New(command, claudeCodeTransport{}), Adapter: "claude-code", Log: log}
 		},
 		"codex": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: codex.New(command, supervisor.Runtimes{}), Adapter: "codex", Log: log}
+			return logging.Runner{Inner: codex.New(command, codexTransport{}), Adapter: "codex", Log: log}
 		},
 		// Pi's sessions are kept under the home, where a continuation
 		// finds them, not in ~/.pi.
 		// OpenCode keeps its sessions in its own store.
 		"opencode": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: opencode.New(command, supervisor.Runtimes{}), Adapter: "opencode", Log: log}
+			return logging.Runner{Inner: opencode.New(command, openCodeTransport{}), Adapter: "opencode", Log: log}
 		},
 		"pi": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: pi.New(command, filepath.Join(config.Home, "pi", "sessions"), supervisor.Runtimes{}), Adapter: "pi", Log: log}
+			return logging.Runner{Inner: pi.New(command, filepath.Join(config.Home, "pi", "sessions"), piTransport{}), Adapter: "pi", Log: log}
 		},
 	}
 	// Over the one coordinator of the process: every workspace adapter's

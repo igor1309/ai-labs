@@ -27,7 +27,7 @@
 // Claude Code reports a failed turn's reason in the result's errors and
 // again on stderr (observed with 2.1.286 resuming an unknown session); a
 // command line it refuses gets no result, only its reason on stderr, which
-// the error message then quotes (supervisor.WithoutTerminal).
+// the error message then quotes (outcome.WithoutTerminal).
 package claudecode
 
 import (
@@ -40,7 +40,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/outcome"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -57,8 +57,41 @@ const commandTool = "Bash"
 // runtime to its exit, passing each line of its stdout to onLine, and to
 // read the runtime's version.
 type Transport interface {
-	Run(ctx context.Context, spec supervisor.Spec, sink supervisor.Sink, onLine func(string)) supervisor.Evidence
+	Run(ctx context.Context, spec Spec, sink Sink, onLine func(string)) Evidence
 	Version(ctx context.Context, command string) (string, error)
+}
+
+// Spec is the process a turn runs.
+type Spec struct {
+	Command   string
+	Args      []string
+	Dir       string
+	Stdin     string
+	Timeout   time.Duration
+	KillGrace time.Duration // zero: the transport's default
+}
+
+// Sink is what the transport reports to: the process's events, its
+// reference as soon as it exists (an error means it is not on record, and
+// the transport kills it), and each line of its stdout.
+type Sink interface {
+	Event(source, kind string, data map[string]any)
+	ProcessStarted(ref string) error
+	Raw(line string)
+}
+
+// Evidence is what the process left, as outcome takes it: its exit, how
+// it ended, and the end of its stderr.
+type Evidence struct {
+	Exit          *run.Exit
+	SpawnError    string
+	TimedOut      bool
+	Aborted       bool
+	StderrTail    string
+	StderrOmitted int64
+	// RecordError is why the process could not be recorded; it was killed
+	// at once, and the turn fails.
+	RecordError string
 }
 
 type Runner struct {
@@ -135,10 +168,10 @@ func Arguments(request app.TurnRequest) ([]string, error) {
 func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
 	args, err := Arguments(request)
 	if err != nil {
-		return supervisor.Failed(run.ClassInternal, err)
+		return outcome.Failed(run.ClassInternal, err)
 	}
 	state := &Stream{ResumedSessionID: request.ResumeSessionID}
-	evidence := r.Transport.Run(ctx, supervisor.Spec{
+	evidence := r.Transport.Run(ctx, Spec{
 		Command:   r.Command,
 		Args:      args,
 		Dir:       request.Cwd,
@@ -306,9 +339,10 @@ func (s *Stream) result(message map[string]any) []Event {
 }
 
 // Reconcile decides the turn status from the stream and the transport.
-func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) run.Turn {
-	turn := supervisor.Base(evidence)
-	if failed, ok := supervisor.RecordFailure(turn, evidence); ok {
+func (s *Stream) Reconcile(evidence Evidence, schemaRequested bool) run.Turn {
+	ended := outcome.Evidence(evidence)
+	turn := outcome.Base(ended)
+	if failed, ok := outcome.RecordFailure(turn, ended); ok {
 		return failed
 	}
 	turn.ProviderSessionID = s.ProviderSessionID
@@ -323,7 +357,7 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 	}
 	result := s.Result
 	if result == nil {
-		return supervisor.WithoutTerminal(turn, evidence, s.rejection())
+		return outcome.WithoutTerminal(turn, ended, s.rejection())
 	}
 	// The session's cost, every turn it had; the turn's own is derived.
 	if cost, ok := result["total_cost_usd"].(float64); ok {

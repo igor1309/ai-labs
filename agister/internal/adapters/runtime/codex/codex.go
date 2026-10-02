@@ -34,7 +34,7 @@
 // A turn Codex refuses before it starts ends with a non-zero exit and its
 // reason on stderr only, as a prompt over the input limit does
 // (input_too_large, observed with codex-cli 0.159.2); the error message
-// quotes it (supervisor.WithoutTerminal).
+// quotes it (outcome.WithoutTerminal).
 package codex
 
 import (
@@ -49,7 +49,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/outcome"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -62,8 +62,41 @@ var sandboxModes = []string{"read-only", "workspace-write"}
 // runtime to its exit, passing each line of its stdout to onLine, and to
 // read the runtime's version.
 type Transport interface {
-	Run(ctx context.Context, spec supervisor.Spec, sink supervisor.Sink, onLine func(string)) supervisor.Evidence
+	Run(ctx context.Context, spec Spec, sink Sink, onLine func(string)) Evidence
 	Version(ctx context.Context, command string) (string, error)
+}
+
+// Spec is the process a turn runs.
+type Spec struct {
+	Command   string
+	Args      []string
+	Dir       string
+	Stdin     string
+	Timeout   time.Duration
+	KillGrace time.Duration // zero: the transport's default
+}
+
+// Sink is what the transport reports to: the process's events, its
+// reference as soon as it exists (an error means it is not on record, and
+// the transport kills it), and each line of its stdout.
+type Sink interface {
+	Event(source, kind string, data map[string]any)
+	ProcessStarted(ref string) error
+	Raw(line string)
+}
+
+// Evidence is what the process left, as outcome takes it: its exit, how
+// it ended, and the end of its stderr.
+type Evidence struct {
+	Exit          *run.Exit
+	SpawnError    string
+	TimedOut      bool
+	Aborted       bool
+	StderrTail    string
+	StderrOmitted int64
+	// RecordError is why the process could not be recorded; it was killed
+	// at once, and the turn fails.
+	RecordError string
 }
 
 type Runner struct {
@@ -98,15 +131,21 @@ func New(command string, transport Transport) *Runner {
 	return &Runner{Command: command, Transport: transport, Sessions: CCUsage(transport, "ccusage", 0)}
 }
 
-// CCUsage runs `<command> codex session --json` through transport, in a
+// Execution is what a ccusage lookup needs of a process supervisor: to run
+// the lookup to its exit, passing each line of its stdout to onLine.
+type Execution interface {
+	Run(ctx context.Context, spec Spec, sink Sink, onLine func(string)) Evidence
+}
+
+// CCUsage runs `<command> codex session --json` through execution, in a
 // process group of its own that is ended on timeout or cancellation;
 // killGrace bounds the wait for it as it does a runtime's (zero: the
 // supervisor's default). Anything but a clean exit is an error. Its output
 // is the listing, not the turn's raw output.
-func CCUsage(transport Transport, command string, killGrace time.Duration) Sessions {
+func CCUsage(execution Execution, command string, killGrace time.Duration) Sessions {
 	return func(ctx context.Context, timeout time.Duration, sink LookupSink) ([]byte, error) {
 		var listing bytes.Buffer
-		evidence := transport.Run(ctx, supervisor.Spec{
+		evidence := execution.Run(ctx, Spec{
 			Command:   command,
 			Args:      []string{"codex", "session", "--json"},
 			Timeout:   timeout,
@@ -125,13 +164,13 @@ func CCUsage(transport Transport, command string, killGrace time.Duration) Sessi
 		case evidence.Aborted:
 			return nil, errors.New("cancelled")
 		case exit == nil || exit.Code == nil || *exit.Code != 0:
-			return nil, fmt.Errorf("%s exited without a listing: %s", command, supervisor.Reason(evidence))
+			return nil, fmt.Errorf("%s exited without a listing: %s", command, outcome.Reason(outcome.Evidence(evidence)))
 		}
 		return listing.Bytes(), nil
 	}
 }
 
-// lookupSink gives the supervisor a lookup's sink: its output is the
+// lookupSink gives the transport a lookup's sink: its output is the
 // listing, not the runtime's raw output, so Raw drops it.
 type lookupSink struct{ LookupSink }
 
@@ -230,20 +269,20 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 	if len(request.OutputSchema) > 0 {
 		dir, err := os.MkdirTemp("", "agister-codex-")
 		if err != nil {
-			return supervisor.Failed(run.ClassInternal, err)
+			return outcome.Failed(run.ClassInternal, err)
 		}
 		defer os.RemoveAll(dir)
 		schemaPath = filepath.Join(dir, "output-schema.json")
 		if err := os.WriteFile(schemaPath, request.OutputSchema, 0o600); err != nil {
-			return supervisor.Failed(run.ClassInternal, err)
+			return outcome.Failed(run.ClassInternal, err)
 		}
 	}
 	args, err := Arguments(request, schemaPath)
 	if err != nil {
-		return supervisor.Failed(run.ClassInternal, err)
+		return outcome.Failed(run.ClassInternal, err)
 	}
 	state := &Stream{ResumedThreadID: request.ResumeSessionID}
-	evidence := r.Transport.Run(ctx, supervisor.Spec{
+	evidence := r.Transport.Run(ctx, Spec{
 		Command:   r.Command,
 		Args:      args,
 		Dir:       request.Cwd,
@@ -400,9 +439,10 @@ func (s *Stream) itemCompleted(item map[string]any) []Event {
 }
 
 // Reconcile decides the turn outcome from the stream and the transport.
-func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) run.Turn {
-	turn := supervisor.Base(evidence)
-	if failed, ok := supervisor.RecordFailure(turn, evidence); ok {
+func (s *Stream) Reconcile(evidence Evidence, schemaRequested bool) run.Turn {
+	ended := outcome.Evidence(evidence)
+	turn := outcome.Base(ended)
+	if failed, ok := outcome.RecordFailure(turn, ended); ok {
 		return failed
 	}
 	turn.ProviderSessionID = s.ThreadID
@@ -411,7 +451,7 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 		return turn
 	}
 	if !s.Completed && s.Failed == "" {
-		return supervisor.WithoutTerminal(turn, evidence, s.LastError)
+		return outcome.WithoutTerminal(turn, ended, s.LastError)
 	}
 	turn.Text = s.LastMessage
 	if s.Failed != "" {

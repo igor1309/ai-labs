@@ -11,8 +11,14 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/opencode"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+)
+
+// spyTransport and spyRuns are the runtimetest spies over the transport types opencode
+// declares.
+type (
+	spyTransport = runtimetest.Transport[opencode.Spec, opencode.Sink, opencode.Evidence]
+	spyRuns      = runtimetest.Runs[opencode.Spec, opencode.Sink, opencode.Evidence]
 )
 
 // The transport is handed the turn as the runner builds it, fresh or
@@ -21,7 +27,7 @@ import (
 // the runner's kill grace.
 func TestTheTransportIsHandedTheTurn(t *testing.T) {
 	for name, resume := range map[string]string{"fresh": "", "resumed": fresh} {
-		spy := &runtimetest.Transport{}
+		spy := &spyTransport{}
 		runner := &opencode.Runner{Transport: spy, Command: "/opt/opencode", KillGrace: 3 * time.Second}
 		r := request("hello")
 		r.Cwd = "/work"
@@ -44,7 +50,7 @@ func TestTheTransportIsHandedTheTurn(t *testing.T) {
 		if resumed := follows(args, "-s", fresh); resumed != (resume != "") {
 			t.Errorf("%s: -s in %q", name, args)
 		}
-		want := supervisor.Spec{
+		want := opencode.Spec{
 			Command: "/opt/opencode", Args: args, Dir: "/work",
 			Env:   []string{opencode.ConfigVariable + "=" + opencode.Config(r, agent)},
 			Stdin: "hello", Timeout: time.Minute, KillGrace: 3 * time.Second,
@@ -59,14 +65,14 @@ func TestTheTransportIsHandedTheTurn(t *testing.T) {
 // evidence: Agister's timeout, or a signal Agister did not send.
 func TestATurnIsDecidedByTheTransportsEvidence(t *testing.T) {
 	for name, c := range map[string]struct {
-		evidence supervisor.Evidence
+		evidence opencode.Evidence
 		status   run.Status
 		class    run.Class
 	}{
-		"timeout": {supervisor.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "signal: terminated"}}, run.Interrupted, run.ClassTimeout},
-		"signal":  {supervisor.Evidence{Exit: &run.Exit{Signal: "signal: killed"}}, run.Lost, run.ClassKilled},
+		"timeout": {opencode.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "signal: terminated"}}, run.Interrupted, run.ClassTimeout},
+		"signal":  {opencode.Evidence{Exit: &run.Exit{Signal: "signal: killed"}}, run.Lost, run.ClassKilled},
 	} {
-		spy := &runtimetest.Transport{Answer: func(supervisor.Spec) ([]string, supervisor.Evidence) { return nil, c.evidence }}
+		spy := &spyTransport{Runs: spyRuns{Answer: func(opencode.Spec) ([]string, opencode.Evidence) { return nil, c.evidence }}}
 		runner := &opencode.Runner{Transport: spy, Command: "opencode"}
 		turn := runner.RunTurn(context.Background(), request("hello"), &runtimetest.Recorder{})
 		if turn.Status != c.status || turn.Error == nil || turn.Error.Class != c.class {
@@ -76,7 +82,7 @@ func TestATurnIsDecidedByTheTransportsEvidence(t *testing.T) {
 }
 
 func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
-	spy := &runtimetest.Transport{Output: "1.14.2"}
+	spy := &spyTransport{Output: "1.14.2"}
 	identity, err := opencode.New("/opt/opencode", spy).Identity(context.Background())
 	if err != nil || identity.Version != "1.14.2" || identity.Contract != opencode.Contract {
 		t.Fatalf("identity = %+v, %v", identity, err)
@@ -84,7 +90,7 @@ func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
 	if versions := spy.Versions(); !reflect.DeepEqual(versions, []string{"/opt/opencode"}) {
 		t.Fatalf("versions = %q", versions)
 	}
-	failing := &runtimetest.Transport{Err: errors.New("not found")}
+	failing := &spyTransport{Err: errors.New("not found")}
 	if _, err := opencode.New("opencode", failing).Identity(context.Background()); err == nil {
 		t.Fatal("a failed version check must fail identity")
 	}

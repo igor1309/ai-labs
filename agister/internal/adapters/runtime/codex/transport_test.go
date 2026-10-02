@@ -12,8 +12,14 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+)
+
+// spyTransport and spyRuns are the runtimetest spies over the transport types codex
+// declares.
+type (
+	spyTransport = runtimetest.Transport[codex.Spec, codex.Sink, codex.Evidence]
+	spyRuns      = runtimetest.Runs[codex.Spec, codex.Sink, codex.Evidence]
 )
 
 // The transport is handed the turn as the runner builds it, fresh or
@@ -21,7 +27,7 @@ import (
 // timeout and the runner's kill grace.
 func TestTheTransportIsHandedTheTurn(t *testing.T) {
 	for name, resume := range map[string]string{"fresh": "", "resumed": "t-1"} {
-		spy := &runtimetest.Transport{}
+		spy := &spyTransport{}
 		runner := &codex.Runner{Transport: spy, Command: "/opt/codex", KillGrace: 3 * time.Second}
 		r := request("hello")
 		r.OutputSchema = nil
@@ -36,7 +42,7 @@ func TestTheTransportIsHandedTheTurn(t *testing.T) {
 		if resumed := slices.Contains(args, "resume"); resumed != (resume != "") {
 			t.Errorf("%s: resume in %q", name, args)
 		}
-		want := []supervisor.Spec{{Command: "/opt/codex", Args: args, Dir: "/work", Stdin: codex.Prompt(r), Timeout: time.Minute, KillGrace: 3 * time.Second}}
+		want := []codex.Spec{{Command: "/opt/codex", Args: args, Dir: "/work", Stdin: codex.Prompt(r), Timeout: time.Minute, KillGrace: 3 * time.Second}}
 		if specs := spy.Specs(); !reflect.DeepEqual(specs, want) {
 			t.Errorf("%s: specs =\n%+v\nwant\n%+v", name, specs, want)
 		}
@@ -46,13 +52,13 @@ func TestTheTransportIsHandedTheTurn(t *testing.T) {
 // The schema is in the file the arguments name while the turn runs.
 func TestTheSchemaFileIsThereWhileTheTurnRuns(t *testing.T) {
 	var schema string
-	spy := &runtimetest.Transport{Answer: func(spec supervisor.Spec) ([]string, supervisor.Evidence) {
+	spy := &spyTransport{Runs: spyRuns{Answer: func(spec codex.Spec) ([]string, codex.Evidence) {
 		if i := slices.Index(spec.Args, "--output-schema"); i >= 0 && i+1 < len(spec.Args) {
 			data, _ := os.ReadFile(spec.Args[i+1])
 			schema = string(data)
 		}
-		return nil, supervisor.Evidence{}
-	}}
+		return nil, codex.Evidence{}
+	}}}
 	(&codex.Runner{Transport: spy, Command: "codex"}).RunTurn(context.Background(), request("hello"), &runtimetest.Recorder{})
 	if schema != `{"type":"object"}` {
 		t.Fatalf("schema = %q", schema)
@@ -63,14 +69,14 @@ func TestTheSchemaFileIsThereWhileTheTurnRuns(t *testing.T) {
 // evidence: Agister's timeout, or a signal Agister did not send.
 func TestATurnIsDecidedByTheTransportsEvidence(t *testing.T) {
 	for name, c := range map[string]struct {
-		evidence supervisor.Evidence
+		evidence codex.Evidence
 		status   run.Status
 		class    run.Class
 	}{
-		"timeout": {supervisor.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "signal: terminated"}}, run.Interrupted, run.ClassTimeout},
-		"signal":  {supervisor.Evidence{Exit: &run.Exit{Signal: "signal: killed"}}, run.Lost, run.ClassKilled},
+		"timeout": {codex.Evidence{TimedOut: true, Exit: &run.Exit{Signal: "signal: terminated"}}, run.Interrupted, run.ClassTimeout},
+		"signal":  {codex.Evidence{Exit: &run.Exit{Signal: "signal: killed"}}, run.Lost, run.ClassKilled},
 	} {
-		spy := &runtimetest.Transport{Answer: func(supervisor.Spec) ([]string, supervisor.Evidence) { return nil, c.evidence }}
+		spy := &spyTransport{Runs: spyRuns{Answer: func(codex.Spec) ([]string, codex.Evidence) { return nil, c.evidence }}}
 		runner := &codex.Runner{Transport: spy, Command: "codex"}
 		turn := runner.RunTurn(context.Background(), request("hello"), &runtimetest.Recorder{})
 		if turn.Status != c.status || turn.Error == nil || turn.Error.Class != c.class {
@@ -83,13 +89,13 @@ func TestATurnIsDecidedByTheTransportsEvidence(t *testing.T) {
 // lookup is ccusage's listing, within what is left of the turn's timeout.
 func TestTheCostLookupGoesThroughTheTransport(t *testing.T) {
 	code := 0
-	clean := supervisor.Evidence{Exit: &run.Exit{Code: &code}}
-	spy := &runtimetest.Transport{Answer: func(spec supervisor.Spec) ([]string, supervisor.Evidence) {
+	clean := codex.Evidence{Exit: &run.Exit{Code: &code}}
+	spy := &spyTransport{Runs: spyRuns{Answer: func(spec codex.Spec) ([]string, codex.Evidence) {
 		if spec.Command == "ccusage" {
 			return strings.Split(listingJSON("0.25"), "\n"), clean
 		}
 		return []string{`{"type":"thread.started","thread_id":"` + fakeThread + `"}`, `{"type":"turn.completed"}`}, clean
-	}}
+	}}}
 	r := request("hello")
 	r.OutputSchema = nil
 	turn := codex.New("/opt/codex", spy).RunTurn(context.Background(), r, &runtimetest.Recorder{})
@@ -107,13 +113,14 @@ func TestTheCostLookupGoesThroughTheTransport(t *testing.T) {
 	}
 }
 
-// A lookup that is not a clean exit is an error, whatever it printed.
+// A lookup that is not a clean exit is an error, whatever it printed. The
+// lookup only runs a process: its spy has no Version.
 func TestALookupThatDidNotExitCleanlyFails(t *testing.T) {
-	for name, evidence := range map[string]supervisor.Evidence{
+	for name, evidence := range map[string]codex.Evidence{
 		"timeout": {TimedOut: true, Exit: &run.Exit{Signal: "signal: terminated"}},
 		"signal":  {Exit: &run.Exit{Signal: "signal: killed"}},
 	} {
-		spy := &runtimetest.Transport{Answer: func(supervisor.Spec) ([]string, supervisor.Evidence) {
+		spy := &spyRuns{Answer: func(codex.Spec) ([]string, codex.Evidence) {
 			return strings.Split(listingJSON("0.25"), "\n"), evidence
 		}}
 		listing, err := codex.CCUsage(spy, "ccusage", 2*time.Second)(context.Background(), time.Minute, &runtimetest.Recorder{})
@@ -127,7 +134,7 @@ func TestALookupThatDidNotExitCleanlyFails(t *testing.T) {
 }
 
 func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
-	spy := &runtimetest.Transport{Output: "codex-cli 0.130.0"}
+	spy := &spyTransport{Output: "codex-cli 0.130.0"}
 	identity, err := codex.New("/opt/codex", spy).Identity(context.Background())
 	if err != nil || identity.Version != "0.130.0" || identity.Contract != codex.Contract {
 		t.Fatalf("identity = %+v, %v", identity, err)
@@ -135,7 +142,7 @@ func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
 	if versions := spy.Versions(); !reflect.DeepEqual(versions, []string{"/opt/codex"}) {
 		t.Fatalf("versions = %q", versions)
 	}
-	failing := &runtimetest.Transport{Err: errors.New("not found")}
+	failing := &spyTransport{Err: errors.New("not found")}
 	if _, err := codex.New("codex", failing).Identity(context.Background()); err == nil {
 		t.Fatal("a failed version check must fail identity")
 	}

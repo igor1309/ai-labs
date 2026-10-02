@@ -62,7 +62,7 @@
 // compaction_end's willRetry and the next agent_start say. Pi reports a
 // failed turn in its final assistant message, whose stopReason is not
 // "stop", and exits 0 all the same; a turn that ends without agent_end is
-// decided by the transport, quoting stderr (supervisor.WithoutTerminal).
+// decided by the transport, quoting stderr (outcome.WithoutTerminal).
 package pi
 
 import (
@@ -78,7 +78,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/outcome"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -101,8 +101,41 @@ var SkillTools = []string{"read", commandTool}
 // runtime to its exit, passing each line of its stdout to onLine, and to
 // read the runtime's version.
 type Transport interface {
-	Run(ctx context.Context, spec supervisor.Spec, sink supervisor.Sink, onLine func(string)) supervisor.Evidence
+	Run(ctx context.Context, spec Spec, sink Sink, onLine func(string)) Evidence
 	Version(ctx context.Context, command string) (string, error)
+}
+
+// Spec is the process a turn runs.
+type Spec struct {
+	Command   string
+	Args      []string
+	Dir       string
+	Stdin     string
+	Timeout   time.Duration
+	KillGrace time.Duration // zero: the transport's default
+}
+
+// Sink is what the transport reports to: the process's events, its
+// reference as soon as it exists (an error means it is not on record, and
+// the transport kills it), and each line of its stdout.
+type Sink interface {
+	Event(source, kind string, data map[string]any)
+	ProcessStarted(ref string) error
+	Raw(line string)
+}
+
+// Evidence is what the process left, as outcome takes it: its exit, how
+// it ended, and the end of its stderr.
+type Evidence struct {
+	Exit          *run.Exit
+	SpawnError    string
+	TimedOut      bool
+	Aborted       bool
+	StderrTail    string
+	StderrOmitted int64
+	// RecordError is why the process could not be recorded; it was killed
+	// at once, and the turn fails.
+	RecordError string
 }
 
 type Runner struct {
@@ -200,18 +233,18 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 	}
 	sessionDir, err := r.sessionDir(root, request)
 	if err != nil {
-		return supervisor.Failed(run.ClassRuntimeError, err)
+		return outcome.Failed(run.ClassRuntimeError, err)
 	}
 	var systemPrompt string
 	if text := SystemPrompt(request); text != "" {
 		dir, err := os.MkdirTemp("", "agister-pi-")
 		if err != nil {
-			return supervisor.Failed(run.ClassInternal, err)
+			return outcome.Failed(run.ClassInternal, err)
 		}
 		defer os.RemoveAll(dir)
 		systemPrompt = filepath.Join(dir, "system-prompt.md")
 		if err := os.WriteFile(systemPrompt, []byte(text), 0o600); err != nil {
-			return supervisor.Failed(run.ClassInternal, err)
+			return outcome.Failed(run.ClassInternal, err)
 		}
 	}
 	args, err := Arguments(request, sessionDir, systemPrompt)
@@ -219,10 +252,10 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 		if request.ResumeSessionID == "" {
 			os.RemoveAll(sessionDir)
 		}
-		return supervisor.Failed(run.ClassInternal, err)
+		return outcome.Failed(run.ClassInternal, err)
 	}
 	state := &Stream{ResumedSessionID: request.ResumeSessionID}
-	evidence := r.Transport.Run(ctx, supervisor.Spec{
+	evidence := r.Transport.Run(ctx, Spec{
 		Command:   r.Command,
 		Args:      args,
 		Dir:       request.Cwd,
@@ -499,9 +532,10 @@ func (s *Stream) messageEnd(message map[string]any) []Event {
 }
 
 // Reconcile decides the turn outcome from the stream and the transport.
-func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) run.Turn {
-	turn := supervisor.Base(evidence)
-	if failed, ok := supervisor.RecordFailure(turn, evidence); ok {
+func (s *Stream) Reconcile(evidence Evidence, schemaRequested bool) run.Turn {
+	ended := outcome.Evidence(evidence)
+	turn := outcome.Base(ended)
+	if failed, ok := outcome.RecordFailure(turn, ended); ok {
 		return failed
 	}
 	turn.ProviderSessionID = s.SessionID
@@ -513,7 +547,7 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 	// What the turn's model work cost, however the turn ends.
 	turn.Usage, turn.CostUSD = s.usage.totals()
 	if !s.Ended {
-		return supervisor.WithoutTerminal(turn, evidence, s.LastError)
+		return outcome.WithoutTerminal(turn, ended, s.LastError)
 	}
 	turn.Text = s.LastText
 	if s.Final == nil {
