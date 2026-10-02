@@ -410,6 +410,9 @@ type InputProvider interface {
 // prepare where the agent works.
 type CallWorkspaces interface {
 	Root(ctx context.Context, cwd string) (string, error)
+	// RepositoryIdentity is the canonical Git common directory, which survives
+	// removal of a worktree.
+	RepositoryIdentity(ctx context.Context, repository string) (string, error)
 	// SameRepository compares repository identities, including distinct
 	// worktrees of one repository.
 	SameRepository(ctx context.Context, first, second string) (bool, error)
@@ -769,7 +772,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		// a later reap removes the checkout. A checkout that cannot be
 		// recorded is one nobody could find, so it is released and the
 		// call refused.
-		owned = &run.Checkout{Repository: workspace.Repository, Dir: workspace.Dir, Revision: revision}
+		owned = &run.Checkout{Repository: workspace.Repository, RepositoryIdentity: workspace.RepositoryIdentity, Dir: workspace.Dir, Revision: revision}
 		record.Effects = &run.Effects{Checkout: owned}
 		if err := handle.Update(record); err != nil {
 			record.Effects = nil
@@ -797,6 +800,16 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 				return
 			}
 		}
+	}
+
+	// Every continuation's record has been in the session since Create. Check
+	// again after setup, before applying the selected patch or starting a turn.
+	if err := c.currentResumption(ctx, resumed, record.ID, record.Request.Continue); err != nil {
+		fail(err)
+		return
+	}
+	if workspace.Owned {
+		carry := resumed.carry
 		// The setup saw the revision's content; the changes carried are the
 		// session's, applied before its first turn here. The call's own patch
 		// is still from the revision, so it holds them once.
@@ -1170,6 +1183,7 @@ func (c *Calls) startNode(ctx context.Context, parent string, node CallNode, par
 // unset for a fresh session.
 type resumption struct {
 	session string
+	latest  string // selected before checkout setup
 	before  *run.SessionTotals
 	carry   *carried
 }
@@ -1260,23 +1274,55 @@ func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID
 		}
 	}
 	resumed := resumption{session: prior.Result.Session.ProviderSessionID}
-	// The baseline is the session's latest turn on any run Agister has
-	// recorded, which may be a later continuation of the run continued, not
-	// that run's own. Turns made on the session outside Agister are not
-	// seen: what they cost is counted again. Runs that cannot be read leave
-	// it unknown.
+	// Every continuation must know the session is idle, including calls
+	// without a checkout. Otherwise one can advance a selected patch's session
+	// while its checkout setup is still running.
 	records, err := c.runs.ListStrict(ctx)
-	if err == nil {
-		resumed.before = run.LatestTotals(records, resumed.session, self)
+	if err != nil {
+		return resumption{}, refuse("the runs of run %s's session cannot be read: %v", runID, err)
 	}
+	latest, err := sessionLatest(records, resumed.session, self, runID)
+	if err != nil {
+		return resumption{}, err
+	}
+	resumed.latest = latest
+	resumed.before = run.LatestTotals(records, resumed.session, self)
 	if res.Process.Checkout == "" {
 		return resumed, nil
 	}
-	if err != nil {
-		return resumption{}, refuse("the runs of run %s's session cannot be read, so the changes to carry are unknown: %v", runID, err)
-	}
 	resumed.carry, err = c.carried(ctx, records, prior, resumed.session, self, cwd)
 	return resumed, err
+}
+
+// sessionLatest refuses unfinished or overlapping runs and names the session's
+// latest run. A missing listing entry falls back to the run read by Get.
+func sessionLatest(records []run.Record, session, self, prior string) (string, error) {
+	latest, known := run.Latest(records, session, self)
+	if !known {
+		return "", refuse("the latest run of run %s's session is unknown: one has not finished, or the last to finish overlapped another", prior)
+	}
+	if latest == nil {
+		return prior, nil
+	}
+	return latest.ID, nil
+}
+
+func (c *Calls) currentResumption(ctx context.Context, resumed resumption, self, prior string) error {
+	if resumed.session == "" {
+		return nil
+	}
+	records, err := c.runs.ListStrict(ctx)
+	if err != nil {
+		return refuse("the runs of run %s's session cannot be read: %v", prior, err)
+	}
+	latest, err := sessionLatest(records, resumed.session, self, prior)
+	if err != nil {
+		return err
+	}
+	if latest != resumed.latest {
+		return refuse("run %s's session advanced from run %s to run %s before its first turn", prior, resumed.latest, latest)
+	}
+	return nil
 }
 
 // carried reads the changes a continuation with a checkout carries: the
@@ -1307,12 +1353,23 @@ func (c *Calls) carried(ctx context.Context, records []run.Record, prior run.Rec
 	}
 	checkout := latest.Effects.Checkout
 	here := c.workspaceRoot(ctx, cwd)
-	same, err := c.workspaces.SameRepository(ctx, here, checkout.Repository)
+	var same bool
+	var err error
+	expected, actual := checkout.Repository, here
+	if checkout.RepositoryIdentity != "" {
+		var identity string
+		identity, err = c.workspaces.RepositoryIdentity(ctx, here)
+		expected, actual = checkout.RepositoryIdentity, identity
+		same = actual == expected
+	} else {
+		// Older records only name their launching worktree.
+		same, err = c.workspaces.SameRepository(ctx, here, checkout.Repository)
+	}
 	if err != nil {
 		return nil, refuse("run %s's repository cannot be compared with %s: %v", latest.ID, here, err)
 	}
 	if !same {
-		return nil, refuse("run %s's changes are of repository %s, not %s; a continuation carries them only into the same repository", latest.ID, checkout.Repository, here)
+		return nil, refuse("run %s's changes are of repository %s, not %s; a continuation carries them only into the same repository", latest.ID, expected, actual)
 	}
 	data, err := c.runs.Artifact(ctx, latest.ID, *patch)
 	if err != nil {
@@ -1453,7 +1510,8 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 type preparedWorkspace struct {
 	Dir string
 	// Repository is the one Dir belongs to, or is.
-	Repository string
+	Repository         string
+	RepositoryIdentity string
 	// Release ends what preparing created; a no-op when it created nothing.
 	Release func() error
 	// Owned is true for a checkout the call created in Repository.
@@ -1491,6 +1549,10 @@ func (c *Calls) prepareWorkspace(ctx context.Context, checkout string, inputs []
 	if revision == "" {
 		return preparedWorkspace{}, refuse("workspace.checkout: input %s is not a revision", checkout)
 	}
+	identity, err := c.workspaces.RepositoryIdentity(ctx, root)
+	if err != nil {
+		return preparedWorkspace{}, err
+	}
 	dir, release, err := c.workspaces.Checkout(ctx, root, revision)
 	if err != nil {
 		return preparedWorkspace{}, err
@@ -1499,7 +1561,7 @@ func (c *Calls) prepareWorkspace(ctx context.Context, checkout string, inputs []
 		_ = release()
 		return preparedWorkspace{}, refuse("workspace %s overlaps Agister's state %s", dir, c.stateDir)
 	}
-	return preparedWorkspace{Dir: dir, Repository: root, Release: release, Owned: true}, nil
+	return preparedWorkspace{Dir: dir, Repository: root, RepositoryIdentity: identity, Release: release, Owned: true}, nil
 }
 
 // sink records a turn's events, and its process as an effect on record,

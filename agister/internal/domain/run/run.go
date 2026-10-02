@@ -274,8 +274,11 @@ type Effects struct {
 // recorded and on clean copies.
 type Checkout struct {
 	Repository string `json:"repository"`
-	Dir        string `json:"dir"`
-	Revision   string `json:"revision,omitempty"`
+	// RepositoryIdentity is the canonical Git common directory. Older records
+	// leave it empty and compare Repository paths instead.
+	RepositoryIdentity string `json:"repository_identity,omitempty"`
+	Dir                string `json:"dir"`
+	Revision           string `json:"revision,omitempty"`
 }
 
 // Process is the runtime's process as an opaque reference, made and read

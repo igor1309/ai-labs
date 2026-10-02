@@ -58,7 +58,8 @@ Usage:
   agister run <process> [--param <name>=<value>]... [--agent <name>] [--timeout <d>] [--max-cost <usd>]
                          [--continue <run-id>] [--json]   (--json: print the node result)
                                      --continue resumes that run's session; for a process with a
-                                     checkout, it carries that run's changes onto the same revision
+                                     checkout, it carries the session's latest run's changes onto the same
+                                     revision
   agister run <workflow> [--param <name>=<value>]... [--json]
                                      fan-out nodes run concurrently, the join once all of them ended,
                                      if at least one completed; each node is a run of its own

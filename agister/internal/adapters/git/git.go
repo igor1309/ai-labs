@@ -300,6 +300,11 @@ func (Workspaces) SameRepository(ctx context.Context, first, second string) (boo
 	return a == b, err
 }
 
+// RepositoryIdentity names a repository independently of its worktrees.
+func (Workspaces) RepositoryIdentity(ctx context.Context, repository string) (string, error) {
+	return commonDirectory(ctx, repository)
+}
+
 func commonDirectory(ctx context.Context, repository string) (string, error) {
 	out, err := run(ctx, repository, "rev-parse", "--git-common-dir")
 	if err != nil {

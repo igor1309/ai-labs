@@ -211,6 +211,10 @@ func (s *workspacesSpy) Discard(ctx context.Context, repository, dir string) err
 
 func (s *workspacesSpy) Root(context.Context, string) (string, error) { return s.root, nil }
 
+func (s *workspacesSpy) RepositoryIdentity(_ context.Context, repository string) (string, error) {
+	return repository, nil
+}
+
 func (s *workspacesSpy) SameRepository(_ context.Context, first, second string) (bool, error) {
 	return first == second, nil
 }

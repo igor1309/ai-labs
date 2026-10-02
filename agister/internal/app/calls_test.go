@@ -139,12 +139,16 @@ func (h *harness) callsOn(src app.ResolverDefinitions) *app.Calls {
 }
 
 func (h *harness) callsWith(src app.ResolverDefinitions, workspaces app.CallWorkspaces, changes app.CallChanges, runs app.CallRuns) *app.Calls {
+	return h.callsRecordedWith(src, workspaces, changes, runs, h.recorder, fixedIDs{})
+}
+
+func (h *harness) callsRecordedWith(src app.ResolverDefinitions, workspaces app.CallWorkspaces, changes app.CallChanges, runs app.CallRuns, recorder app.RunRecorder, ids app.IDs) *app.Calls {
 	return app.NewCalls(
 		app.NewResolver(src, h.runtimes, h.validator),
 		h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "git.changed_files": h.inputs, "file": h.inputs, "param": h.inputs},
-		workspaces, changes, app.NewPreparer(changes, h.setup, h.clock), app.NewVerifier(changes, h.copies, h.commands, h.clock), h.validator, h.recorder, runs,
-		h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
+		workspaces, changes, app.NewPreparer(changes, h.setup, h.clock), app.NewVerifier(changes, h.copies, h.commands, h.clock), h.validator, recorder, runs,
+		h.clock, h.timer, ids, "/state", h.hosted,
 	)
 }
 
@@ -623,7 +627,9 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 // from the directory the run worked in, the session is resumed there.
 func TestContinuationWhereTheSessionDidNotRunIsRefused(t *testing.T) {
 	// run-0 left its session's evidence: it worked in checkout A.
+	ended := fixedClock{}.Now()
 	earlier := run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Workspace: "/work/checkout-a",
+		FinishedAt: &ended, Turn: &run.Turn{ProviderSessionID: "prov-0"},
 		Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0"}}}
 	arrange := func(workspace string, checkout bool) *harness {
 		h := newHarness()
@@ -936,6 +942,8 @@ func TestAContinuationWhoseChangesCannotBeCarriedIsRefused(t *testing.T) {
 			"run run-0's changes are from revision sha-other, not sha-HEAD", nil},
 		{"another repository", prior(func(r *run.Record) { r.Effects.Checkout.Repository = "/other" }),
 			"run run-0's changes are of repository /other, not /repo", nil},
+		{"another stored repository identity", prior(func(r *run.Record) { r.Effects.Checkout.RepositoryIdentity = "/other" }),
+			"run run-0's changes are of repository /other, not /repo", nil},
 		{"an older record of another process", prior(func(r *run.Record) {
 			r.Effects.Checkout.Revision, r.Request.Process, r.Process = "", "q", "q"
 		}), "the revision run run-0 worked on is unknown", nil},
@@ -943,6 +951,22 @@ func TestAContinuationWhoseChangesCannotBeCarriedIsRefused(t *testing.T) {
 			"run run-0's changes.patch is sha256:" + sha("diff A\n") + ", not sha256:recorded as recorded", nil},
 		{"a patch that cannot be read", prior(func(r *run.Record) { r.Result.Artifacts[0].Path = "artifacts/gone.patch" }),
 			"run run-0's changes.patch cannot be read: no artifact artifacts/gone.patch", nil},
+		{"latest run has another revision", func(h *harness) {
+			patchedRun(h, "run-0", "", 0, 1, "diff A\n")
+			later := patchedRun(h, "run-0b", "run-0", 2, 3, "diff AB\n")
+			later.Effects.Checkout.Revision = "sha-other"
+			h.runs.records[later.ID] = later
+		}, "run run-0b's changes are from revision sha-other, not sha-HEAD", nil},
+		{"latest run has another repository", func(h *harness) {
+			patchedRun(h, "run-0", "", 0, 1, "diff A\n")
+			later := patchedRun(h, "run-0b", "run-0", 2, 3, "diff AB\n")
+			later.Effects.Checkout.Repository = "/other"
+			h.runs.records[later.ID] = later
+		}, "run run-0b's changes are of repository /other, not /repo", nil},
+		{"overlapping finished runs", func(h *harness) {
+			patchedRun(h, "run-0", "", 0, 3, "diff A\n")
+			patchedRun(h, "run-0b", "run-0", 2, 4, "diff AB\n")
+		}, "the latest run of run run-0's session is unknown", nil},
 		{"a run of the session still running", func(h *harness) {
 			patchedRun(h, "run-0", "", 0, 1, "diff A\n")
 			later := patchedRun(h, "run-0b", "run-0", 2, 3, "diff AB\n")
@@ -962,6 +986,9 @@ func TestAContinuationWhoseChangesCannotBeCarriedIsRefused(t *testing.T) {
 			}
 			if checkouts := len(h.workspaces.checkouts); checkouts != h.workspaces.releases() || (checkouts == 1) != (c.order != nil) {
 				t.Fatalf("checkouts %v, released %d", h.workspaces.checkouts, h.workspaces.releases())
+			}
+			if c.order == nil && (len(h.workspaces.checkouts) != 0 || len(h.setup.runs()) != 0 || len(h.changes.applies()) != 0) {
+				t.Fatalf("checkouts %v, setup %v, applied %v", h.workspaces.checkouts, h.setup.runs(), h.changes.applies())
 			}
 			if len(record.Result.Artifacts) != 0 || contains(h.recorder.kinds(), "CHANGES_CARRIED") {
 				t.Fatalf("artifacts %+v, events %v", record.Result.Artifacts, h.recorder.kinds())
