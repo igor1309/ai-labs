@@ -858,25 +858,17 @@
       return el('div', { className: 'markdown' }, K.markdown(K.body(e.content)).map(block));
     }
 
-    // Markdown as elements and text nodes: a skill's HTML stays text. The
-    // lists go to el as arrays, never spread: a skill can hold more nodes
-    // than a call takes arguments.
-    function block(b) {
-      if (b.type === 'heading') return el(`h${Math.min(6, b.level + 2)}`, {}, inlines(b.inline));
-      if (b.type === 'code') return el('pre', { className: 'mono' }, el('code', { textContent: b.text }));
-      if (b.type === 'list') return el(b.ordered ? 'ol' : 'ul', {}, b.items.map((item) => el('li', {}, inlines(item))));
-      if (b.type === 'quote') return el('blockquote', {}, inlines(b.inline));
-      if (b.type === 'rule') return el('hr');
-      return el('p', {}, inlines(b.inline));
-    }
-
-    function inlines(list) {
-      return list.map((n) => {
-        if (n.type === 'text') return n.text;
-        if (n.type === 'code') return el('code', { textContent: n.text });
-        if (n.type === 'link') return el('a', { href: n.href, target: '_blank', rel: 'noopener noreferrer' }, inlines(n.children));
-        return el(n.type === 'strong' ? 'strong' : 'em', {}, inlines(n.children));
-      });
+    // knowledge.js's Markdown tree as elements and text nodes: a skill's
+    // HTML stays text. The lists go to el as arrays, never spread: a skill
+    // can hold more nodes than a call takes arguments.
+    function block(n) {
+      if (typeof n === 'string') return n;
+      const props = {};
+      if (n.tag === 'a') Object.assign(props, { href: n.href, target: '_blank', rel: 'noopener noreferrer' });
+      if (n.tag === 'pre') props.className = 'mono';
+      if (n.start != null) props.start = n.start;
+      if (n.align) props.className = `align-${n.align}`;
+      return el(n.tag, props, n.children.map(block));
     }
 
     // --- views ---

@@ -26,7 +26,7 @@ import (
 	"time"
 )
 
-//go:embed index.html repos.js config.js runs.js knowledge.js page.js
+//go:embed index.html repos.js config.js runs.js markdown-it.min.js knowledge.js page.js
 var assets embed.FS
 
 // The .agister entries that hold settings; runs and logs are not settings.

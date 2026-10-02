@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import './markdown-it.js';
 import '../knowledge.js';
 
 const K = globalThis.AgisterKnowledge;
@@ -85,89 +86,31 @@ test('the body is the SKILL.md without its front matter', () => {
   assert.equal(K.body(undefined), '');
 });
 
-const t = (text) => ({ type: 'text', text });
-
-test('Markdown blocks: headings, paragraphs, lists, code, quotes and rules', () => {
-  assert.deepEqual(K.markdown('# One\n## Two ##\n\nfirst\nline\n\n- a\n- b\n  more\n\n1. x\n2) y\n\n```sh\n# not a heading\n- nor a list\n```\n> said\n> twice\n\n---\nlast'), [
-    { type: 'heading', level: 1, inline: [t('One')] },
-    { type: 'heading', level: 2, inline: [t('Two')] },
-    { type: 'paragraph', inline: [t('first line')] },
-    { type: 'list', ordered: false, items: [[t('a')], [t('b more')]] },
-    { type: 'list', ordered: true, items: [[t('x')], [t('y')]] },
-    { type: 'code', text: '# not a heading\n- nor a list' },
-    { type: 'quote', inline: [t('said twice')] },
-    { type: 'rule' },
-    { type: 'paragraph', inline: [t('last')] },
+// The Markdown tree: markdown-it's tokens as tags and text.
+test('Markdown is read by markdown-it into a tree of tags and text', () => {
+  const n = (tag, ...children) => ({ tag, children });
+  assert.deepEqual(K.markdown('# One\n## Two ##\n\nfirst\nline\n\n- a\n- b\n\n3. x\n\n```sh\n# not a heading\n```\n\n    indented\n\n> said\n\n---\n*e* **s** ~~d~~ `c`  \nlast'), [
+    n('h3', 'One'), n('h4', 'Two'),
+    n('p', 'first', '\n', 'line'),
+    n('ul', n('li', 'a'), n('li', 'b')),
+    { tag: 'ol', start: 3, children: [n('li', 'x')] },
+    n('pre', n('code', '# not a heading')),
+    n('pre', n('code', 'indented')),
+    n('blockquote', n('p', 'said')),
+    n('hr'),
+    n('p', n('em', 'e'), ' ', n('strong', 's'), ' ', n('s', 'd'), ' ', n('code', 'c'), n('br'), 'last'),
   ]);
   assert.deepEqual(K.markdown(''), []);
-  // An unclosed fence takes the rest.
-  assert.deepEqual(K.markdown('```\nopen'), [{ type: 'code', text: 'open' }]);
+  assert.deepEqual(K.markdown(undefined), []);
 });
 
-test('Markdown inline: code, emphasis and links, with what is not markup left as text', () => {
-  assert.deepEqual(K.inline('a `b*c*` **d _e_** *f* g_h_i 2 * 3 \\*j\\*'), [
-    t('a '), { type: 'code', text: 'b*c*' }, t(' '),
-    { type: 'strong', children: [t('d '), { type: 'em', children: [t('e')] }] }, t(' '),
-    { type: 'em', children: [t('f')] }, t(' g_h_i 2 * 3 *j*'),
+test('only an http(s) link is a link; any other is its text, and an image its alt text', () => {
+  assert.deepEqual(K.markdown('[docs](https://example.com/a_(b) "title") [x](HTTP://y)'), [
+    { tag: 'p', children: [{ tag: 'a', href: 'https://example.com/a_(b)', children: ['docs'] }, ' ', { tag: 'a', href: 'HTTP://y', children: ['x'] }] },
   ]);
-  assert.deepEqual(K.inline('[docs](https://example.com/a_(b) "title") and [x](HTTP://y)'), [
-    { type: 'link', href: 'https://example.com/a_(b)', children: [t('docs')] }, t(' and '),
-    { type: 'link', href: 'HTTP://y', children: [t('x')] },
-  ]);
-});
-
-// The work inline does for src, as its tally counts it.
-function work(src) {
-  let steps = 0;
-  const out = K.inline(src, (n) => { steps += n; });
-  return { out, steps };
-}
-
-// A SKILL.md just under the 256 KB cap: read quadratically, each of these
-// took a minute or more. The work is counted, not timed; the timeout only
-// stops a hang.
-const n = 262052;
-
-test('a run of unmatched brackets is read in linear time', { timeout: 60_000 }, () => {
-  for (const src of ['['.repeat(n), `${'['.repeat(n)}](${'x'.repeat(n)}`, '[]'.repeat(n / 2)]) {
-    const { out, steps } = work(src);
-    assert.ok(out.length === 1 && out[0].text === src, `${src.slice(0, 4)}…: not one text`);
-    assert.ok(steps <= 4 * src.length, `${src.slice(0, 4)}…: ${steps} steps for ${src.length} characters`);
+  for (const target of ['javascript:alert(1)', 'mailto:a@b.c', 'data:text/html,x', '/etc/passwd', 'rel/path', 'file:///x', '<javascript:alert(1)>', 'JaVaScRiPt:alert(1)']) {
+    assert.deepEqual(K.markdown(`see [here *now*](${target}).`), [{ tag: 'p', children: ['see ', 'here ', { tag: 'em', children: ['now'] }, '.'] }], target);
   }
-  // The text runs from the first [ to the first ], as before.
-  assert.deepEqual(K.inline('[[a [b](https://x) c] [d] [e](https://y)'), [
-    { type: 'link', href: 'https://x', children: [t('[a [b')] }, t(' c] [d] '),
-    { type: 'link', href: 'https://y', children: [t('e')] },
-  ]);
+  assert.deepEqual(K.markdown('![a *b* `c`](https://x/i.png) [![logo](https://x/l.png)](javascript:x)'), [{ tag: 'p', children: ['a b c', ' ', 'logo'] }]);
 });
 
-test('a run of unmatched emphasis marks is read in linear time', { timeout: 60_000 }, () => {
-  // Each * or _ here is unmatched and its text stays text; in **a a lone *
-  // still closes after the * before it.
-  for (const [unit, text] of [['*a ', true], ['_a ', true], ['__a ', true], ['**a ', false], ['*a _b **c __d ', false]]) {
-    const src = unit.repeat(Math.floor(n / unit.length));
-    const { out, steps } = work(src);
-    if (text) assert.ok(out.length === 1 && out[0].text === src, `${unit}…: not one text`);
-    assert.ok(steps <= 8 * src.length, `${unit}…: ${steps} steps for ${src.length} characters`);
-  }
-  // Each mark still closes at the first place it can.
-  assert.deepEqual(K.inline('*a *b* c* **d **e** f** _g h_i j_'), [
-    { type: 'em', children: [t('a *b')] }, t(' c* '),
-    { type: 'strong', children: [t('d **e')] }, t(' f** '),
-    { type: 'em', children: [t('g h_i j')] },
-  ]);
-  // markdown passes the tally on to every inline it reads.
-  let steps = 0;
-  K.markdown('# *a*\n\n- *b*\n\n> *c*\n\n*d*', (k) => { steps += k; });
-  assert.ok(steps > 0);
-});
-
-test('a link that is not http(s) is its text, and HTML is text', () => {
-  for (const target of ['javascript:alert(1)', 'data:text/html,x', '/etc/passwd', 'file:///x', ' javascript:alert(1)', 'JaVaScRiPt:alert(1)']) {
-    assert.deepEqual(K.inline(`see [here](${target}).`), [t('see here.')], target);
-  }
-  assert.deepEqual(K.markdown('<script>alert(1)</script>\n\n<img src=x onerror=alert(1)> and <b>bold</b>'), [
-    { type: 'paragraph', inline: [t('<script>alert(1)</script>')] },
-    { type: 'paragraph', inline: [t('<img src=x onerror=alert(1)> and <b>bold</b>')] },
-  ]);
-});

@@ -110,175 +110,99 @@
 
   // --- Markdown ---
   //
-  // A small Markdown reader: headings, paragraphs, lists, fenced code,
-  // quotes, rules, and inline code, emphasis and links. It returns a tree
-  // the page builds from elements and text nodes, so HTML in a skill is
-  // shown as text and never parsed. Links keep http(s) targets only.
-  // tally(n), when given, is told of each n lines or characters read, so a
-  // test can bound the work.
+  // markdown-it (markdown-it.min.js, loaded before this script) reads the
+  // Markdown; its tokens become a tree the page builds from elements and
+  // text nodes, never an HTML string, so HTML in a skill is text. A node
+  // is a string (text) or { tag, children } with, for a link, its href,
+  // for an ordered list its start and for a table cell its align. Links
+  // keep http(s) targets only; any other link is its text, and an image
+  // its alt text.
 
-  const LIST_ITEM = /^\s*([-*+]|\d+[.)])\s+/;
-  const FENCE = /^\s*(```|~~~)/;
-  const isRule = (line) => /^\s*([-*_])(\s*\1){2,}\s*$/.test(line);
-  const startsBlock = (line) => /^#{1,6}\s/.test(line) || FENCE.test(line) || /^\s*>/.test(line) || LIST_ITEM.test(line) || isRule(line);
-
-  // Blocks: { type: heading, level, inline } | { type: paragraph, inline }
-  // | { type: list, ordered, items: [inline] } | { type: code, text }
-  // | { type: quote, inline } | { type: rule }.
-  function markdown(src, tally = () => {}) {
-    const lines = String(src ?? '').replace(/\r\n?/g, '\n').split('\n');
-    const blocks = [];
-    const inline_ = (text) => inline(text, tally);
-    let i = 0;
-    while (i < lines.length) {
-      tally(1);
-      const line = lines[i];
-      if (!line.trim()) {
-        i++;
-        continue;
-      }
-      const fence = FENCE.exec(line);
-      if (fence) {
-        const code = [];
-        for (i++; i < lines.length && !lines[i].trim().startsWith(fence[1]); i++) code.push(lines[i]);
-        i++;
-        blocks.push({ type: 'code', text: code.join('\n') });
-        continue;
-      }
-      const heading = /^(#{1,6})\s+(.*?)\s*#*\s*$/.exec(line);
-      if (heading) {
-        blocks.push({ type: 'heading', level: heading[1].length, inline: inline_(heading[2]) });
-        i++;
-        continue;
-      }
-      if (isRule(line)) {
-        blocks.push({ type: 'rule' });
-        i++;
-        continue;
-      }
-      if (/^\s*>/.test(line)) {
-        const quote = [];
-        for (; i < lines.length && /^\s*>/.test(lines[i]); i++) quote.push(lines[i].replace(/^\s*>\s?/, ''));
-        blocks.push({ type: 'quote', inline: inline_(quote.join(' ')) });
-        continue;
-      }
-      if (LIST_ITEM.test(line)) {
-        const items = [];
-        for (; i < lines.length && lines[i].trim() && !FENCE.test(lines[i]); i++) {
-          if (LIST_ITEM.test(lines[i])) items.push(lines[i].replace(LIST_ITEM, ''));
-          else items[items.length - 1] += ` ${lines[i].trim()}`;
-        }
-        blocks.push({ type: 'list', ordered: /^\s*\d/.test(line), items: items.map(inline_) });
-        continue;
-      }
-      const para = [];
-      for (; i < lines.length && lines[i].trim() && (!para.length || !startsBlock(lines[i])); i++) para.push(lines[i].trim());
-      blocks.push({ type: 'paragraph', inline: inline_(para.join(' ')) });
+  let parser = null;
+  function md() {
+    if (!parser) {
+      parser = globalThis.markdownit({ html: false, linkify: false, typographer: false });
+      // Every link is read as one, so one that is not http(s) shows its
+      // text rather than its Markdown; LINK decides what stays a link.
+      parser.validateLink = () => true;
     }
-    return blocks;
+    return parser;
   }
 
-  // [text](target "title"): the text runs to the first ], and the target
-  // after it may hold one level of brackets.
-  const TARGET = /^\(\s*((?:[^()\s]|\([^()\s]*\))*)(?:\s+"[^"]*")?\s*\)/;
-  const ESCAPABLE = /[\\`*_[\]()#+\-.!<>]/;
+  const LINK = /^https?:\/\//i;
+  // The token types that open an element, and the element.
+  const OPENS = {
+    paragraph_open: 'p', blockquote_open: 'blockquote', bullet_list_open: 'ul', ordered_list_open: 'ol',
+    list_item_open: 'li', table_open: 'table', thead_open: 'thead', tbody_open: 'tbody', tr_open: 'tr',
+    th_open: 'th', td_open: 'td', em_open: 'em', strong_open: 'strong', s_open: 's',
+  };
+  const ALIGN = /^text-align:(left|center|right)$/;
 
-  // Inline: { type: text, text } | { type: code, text } | { type: strong
-  // | em, children } | { type: link, href, children }; a link whose target
-  // is not http(s) is its text alone.
-  function inline(src, tally = () => {}) {
-    const out = [];
-    let pending = '';
-    const add = (...nodes) => {
-      const text = pending ? [{ type: 'text', text: pending }] : [];
-      pending = '';
-      for (const n of [...text, ...nodes]) {
-        const last = out[out.length - 1];
-        if (n.type === 'text' && last?.type === 'text') last.text += n.text;
-        else out.push(n);
+  // The tree of src's Markdown: a list of nodes. Headings go two levels
+  // down, # to h3, as the card holds h1 and h2. The walk keeps its own
+  // stack, so deep nesting takes no call stack; each entry is the list
+  // the tokens up to its closing token go to.
+  function markdown(src) {
+    const root = [];
+    const stack = [{ into: root, closes: null }];
+    const add = (node) => stack[stack.length - 1].into.push(node);
+    const walk = (tokens) => {
+      for (const t of tokens) {
+        if (t.hidden) continue; // a tight list's paragraph: its text goes in the item
+        if (t.type === 'inline') walk(t.children ?? []);
+        else if (t.nesting === 1) open(t);
+        else if (t.nesting === -1) {
+          if (stack.length > 1 && stack[stack.length - 1].closes === t.type) stack.pop();
+        } else if (t.type === 'softbreak') add('\n');
+        else if (t.type === 'hardbreak') add({ tag: 'br', children: [] });
+        else if (t.type === 'hr') add({ tag: 'hr', children: [] });
+        else if (t.type === 'code_inline') add({ tag: 'code', children: [t.content] });
+        else if (t.type === 'code_block' || t.type === 'fence') add({ tag: 'pre', children: [{ tag: 'code', children: [t.content.replace(/\n$/, '')] }] });
+        else if (t.type === 'image') add(alt(t));
+        else add(t.content); // text, and anything else as its text
       }
     };
-    // The first ] after a [ and the target after it, found once for all
-    // the [ before it, so a run of unmatched [ stays linear.
-    let close = -1;
-    let target = null;
-    // Where each emphasis mark closes, found once for the whole text and
-    // read from a cursor that only moves on, so a run of unmatched marks
-    // stays linear too.
-    const marks = {};
-    const closing = (mark, from) => {
-      const m = (marks[mark] ??= { at: closers(src, mark, tally), next: 0 });
-      for (; m.next < m.at.length && m.at[m.next] <= from; m.next++) tally(1);
-      return m.next < m.at.length ? m.at[m.next] : -1;
+    const open = (t) => {
+      const closes = t.type.replace(/_open$/, '_close');
+      let node = null;
+      if (t.type === 'heading_open') node = { tag: `h${Math.min(6, Number(t.tag.slice(1)) + 2)}` };
+      else if (t.type === 'link_open') {
+        const href = t.attrGet('href') ?? '';
+        if (LINK.test(href)) node = { tag: 'a', href };
+      } else if (OPENS[t.type]) node = { tag: OPENS[t.type] };
+      // Anything else, a link that is not http(s) too, is its contents.
+      if (!node) {
+        stack.push({ into: stack[stack.length - 1].into, closes });
+        return;
+      }
+      if (node.tag === 'ol') {
+        const start = Number(t.attrGet('start'));
+        if (Number.isInteger(start) && start !== 1) node.start = start;
+      }
+      if (node.tag === 'th' || node.tag === 'td') {
+        const align = ALIGN.exec(t.attrGet('style') ?? '');
+        if (align) node.align = align[1];
+      }
+      node.children = [];
+      add(node);
+      stack.push({ into: node.children, closes });
     };
-    let i = 0;
-    while (i < src.length) {
-      tally(1);
-      const c = src[i];
-      if (c === '\\' && ESCAPABLE.test(src[i + 1] ?? '')) {
-        pending += src[i + 1];
-        i += 2;
-        continue;
-      }
-      if (c === '`') {
-        const ticks = /^`+/.exec(src.slice(i))[0];
-        const end = src.indexOf(ticks, i + ticks.length);
-        tally((end > 0 ? end : src.length) - i);
-        if (end > 0) {
-          add({ type: 'code', text: src.slice(i + ticks.length, end) });
-          i = end + ticks.length;
-          continue;
-        }
-        pending += ticks;
-        i += ticks.length;
-        continue;
-      }
-      if (c === '[' && close <= i) {
-        close = src.indexOf(']', i + 1);
-        if (close < 0) close = src.length;
-        target = close < src.length ? TARGET.exec(src.slice(close + 1)) : null;
-        tally(close - i + (target?.[0].length ?? 0));
-      }
-      if (c === '[' && target) {
-        const children = inline(src.slice(i + 1, close), tally);
-        if (/^https?:\/\//i.test(target[1])) add({ type: 'link', href: target[1], children });
-        else add(...children);
-        i = close + 1 + target[0].length;
-        continue;
-      }
-      if (c === '*' || c === '_') {
-        // _ inside a word is no emphasis: snake_case stays as it is.
-        const opens = c === '*' || !/\w/.test(src[i - 1] ?? '');
-        const double = src[i + 1] === c;
-        const from = i + (double ? 2 : 1);
-        const end = opens && src[from] && !/\s/.test(src[from]) ? closing(double ? c + c : c, from) : -1;
-        if (end > from) {
-          add({ type: double ? 'strong' : 'em', children: inline(src.slice(from, end), tally) });
-          i = end + (double ? 2 : 1);
-          continue;
-        }
-      }
-      pending += c;
-      i++;
-    }
-    add();
-    return out;
+    walk(md().parse(String(src ?? ''), {}));
+    return root;
   }
 
-  // Where mark can close emphasis in src, in order: after a non-space and,
-  // for _, not inside a word.
-  function closers(src, mark, tally) {
-    tally(src.length);
-    const at = [];
-    for (let end = src.indexOf(mark, 1); end > 0; end = src.indexOf(mark, end + 1)) {
-      if (/\s/.test(src[end - 1])) continue;
-      if (mark[0] === '_' && /\w/.test(src[end + mark.length] ?? '')) continue;
-      at.push(end);
+  // An image's alt text: the text of its description.
+  function alt(t) {
+    const text = [];
+    for (const c of t.children ?? []) {
+      if (c.type === 'softbreak' || c.type === 'hardbreak') text.push('\n');
+      else if (c.type === 'text' || c.type === 'text_special' || c.type === 'code_inline') text.push(c.content);
+      else if (c.type === 'image') text.push(alt(c));
     }
-    return at;
+    return text.join('');
   }
 
   globalThis.AgisterKnowledge = {
-    model, observed, leftOut, checks, skillState, folderState, body, markdown, inline,
+    model, observed, leftOut, checks, skillState, folderState, body, markdown,
   };
 })();

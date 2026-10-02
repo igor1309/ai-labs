@@ -91,8 +91,12 @@ approved here. ↻ reads the settings, the skills and the runs again.
 - **A skill**: the agents whose runtime loads it and, per folder it is in,
   its path with the real path beside a link, its description and its
   checks, then its `SKILL.md`: rendered Markdown, or as stored with
-  **Source**. The Markdown reader is the page's own (headings, paragraphs,
-  lists, code, emphasis, `http(s)` links); HTML in a skill shows as text.
+  **Source**. The Markdown is read by markdown-it 15.0.2 (vendored as
+  `markdown-it.min.js`, with `html`, `linkify` and `typographer` off):
+  headings, paragraphs, emphasis, strikethrough, code, quotes, nested
+  lists, tables, rules and line breaks. Its tokens become elements, never
+  an HTML string: HTML in a skill shows as text, a link that is not
+  `http(s)` shows its text, an image its alt text.
 - **Folders read**: each folder as ADR-010 names it, its path (and real
   path), the adapters that load it and its skill count, or why it lists
   none (`not there`, a broken link, a symlinked `synced/` or `.system/`).
@@ -202,8 +206,11 @@ The page itself is `index.html`, embedded in the binary with `repos.js`
 (the picker and the calls to the server), `config.js` (reading the
 settings; its YAML and TOML parsers cover what Agister settings use),
 `runs.js` (the Runs view's formatting, filters and compare tables),
-`knowledge.js` (the Knowledge view's model, checks wording and Markdown
-reader) and `page.js` (the page's views and controls, started over the browser's
+`markdown-it.min.js` (markdown-it 15.0.2, the package's
+`dist/browser/markdown-it.umd.min.js` unchanged under a header with its
+source, checksum and MIT license; no npm dependency, no build step),
+`knowledge.js` (the Knowledge view's model, checks wording and the tree
+it makes of markdown-it's tokens) and `page.js` (the page's views and controls, started over the browser's
 document, fetch and storage, which its tests replace with fakes).
 `serve.go` is the server; `runs.go` summarises the runs; `skills.go`
 reads the skill folders.

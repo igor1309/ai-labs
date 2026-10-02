@@ -141,3 +141,8 @@ home's.
 The tab lists skill folders, not the runtime's own view of them: what
 rule 3 leaves out is named, not shown, and a runtime's choice between
 skills of the same name is not reproduced.
+
+The containment and size checks of rule 9 validate a path that is then
+reopened for reading, so a skill file replaced or grown during a request
+can escape them. Pages accepts this as a local read-only viewer: only
+someone who can already write the user's skill folders can do it (D-3).

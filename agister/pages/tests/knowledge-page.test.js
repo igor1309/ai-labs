@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import '../repos.js';
 import '../config.js';
 import '../runs.js';
+import './markdown-it.js';
 import '../knowledge.js';
 import '../page.js';
+import { readFileSync } from 'node:fs';
 import { pageDocument } from './dom.js';
 
 const P = globalThis.AgisterPage;
@@ -426,4 +428,89 @@ test('Knowledge read for one folder is not shown under another: a failed read af
   assert.equal(p.$('status').textContent, 'skills unreadable');
   assert.equal(p.$('knowledge-overview'), null);
   assert.equal(p.$('knowledge').textContent, '');
+});
+
+// The page with one skill whose SKILL.md body is text, opened: its
+// rendered Markdown and the page's document.
+async function rendered(text) {
+  const content = `---\nname: one\ndescription: One.\n---\n${text}`;
+  const one = { name: 'one', path: '/r/.claude/skills/one', real: '/r/.claude/skills/one', content, description: 'One.', checks: { passed: true } };
+  const p = page({ answers: { 'api/skills': () => respond({ ...skills, folders: [{ ...skills.folders[0], skills: [one] }] }) } });
+  await p.started;
+  p.open('one');
+  return { md: p.$('skill-detail').querySelector('div.markdown'), document: p.document };
+}
+
+// Every element below root.
+const elements = (root) => root.children.flatMap((c) => [c, ...elements(c)]);
+
+test('the page loads markdown-it before knowledge.js', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const at = (src) => html.indexOf(`<script src="${src}"></script>`);
+  assert.ok(at('markdown-it.min.js') > 0 && at('markdown-it.min.js') < at('knowledge.js'));
+});
+
+test('a skill’s HTML is text: no script, image or other element of its own, and never innerHTML', async () => {
+  const { md, document } = await rendered([
+    '<script>alert(1)</script>', '',
+    'Text <img src=x onerror=alert(2)> and <b>bold</b> <a href="javascript:alert(3)">a</a>', '',
+    '<div onclick="alert(4)">', '*block*', '</div>', '',
+    '![alt text](https://x/i.png "t")',
+  ].join('\n'));
+  // The only elements are Markdown's own: paragraphs and the emphasis.
+  assert.deepEqual(elements(md).map((e) => e.tagName), ['P', 'P', 'P', 'EM', 'P']);
+  assert.deepEqual(md.children.map((c) => c.textContent), [
+    '<script>alert(1)</script>',
+    'Text <img src=x onerror=alert(2)> and <b>bold</b> <a href="javascript:alert(3)">a</a>',
+    '<div onclick="alert(4)">\nblock\n</div>',
+    'alt text',
+  ]);
+  assert.deepEqual(document.markup, []);
+});
+
+test('a link that is not http(s), javascript: and mailto: among them, is its text alone', async () => {
+  const { md, document } = await rendered('[run](javascript:alert(1)) [mail](mailto:a@b.c) [rel](docs/x.md) [ok](https://example.com/x)');
+  assert.deepEqual(md.querySelectorAll('a').map((a) => [a.textContent, a.href, a.target, a.rel]), [
+    ['ok', 'https://example.com/x', '_blank', 'noopener noreferrer'],
+  ]);
+  assert.equal(md.textContent, 'run mail rel ok');
+  assert.deepEqual(document.markup, []);
+});
+
+test('a GFM table becomes a table with its header, body and alignment', async () => {
+  const { md } = await rendered('| Name | Count | Note |\n|:-----|------:|:----:|\n| a | 1 | *x* |\n| b | 2 | |');
+  const table = md.querySelector('table');
+  assert.deepEqual(table.children.map((c) => c.tagName), ['THEAD', 'TBODY']);
+  assert.deepEqual(table.querySelectorAll('thead th').map((th) => [th.textContent, th.className]), [
+    ['Name', 'align-left'], ['Count', 'align-right'], ['Note', 'align-center'],
+  ]);
+  assert.deepEqual(table.querySelectorAll('tbody tr').map((tr) => tr.children.map((td) => td.textContent)), [['a', '1', 'x'], ['b', '2', '']]);
+  assert.equal(table.querySelector('tbody em').textContent, 'x');
+});
+
+test('nested lists nest, ordered in unordered and back', async () => {
+  const { md } = await rendered('- a\n  1. one\n  2. two\n     - deep\n- b\n\n5. five\n6. six');
+  const [ul, ol] = md.children;
+  assert.equal(ul.tagName, 'UL');
+  assert.deepEqual(ul.children.map((li) => li.childNodes[0].textContent), ['a', 'b']);
+  const inner = ul.children[0].querySelector('ol');
+  assert.deepEqual(inner.children.map((li) => li.childNodes[0].textContent), ['one', 'two']);
+  assert.equal(inner.children[1].querySelector('ul li').textContent, 'deep');
+  assert.equal(md.querySelectorAll('ul ol ul li').length, 1);
+  assert.equal(ol.tagName, 'OL');
+  assert.equal(ol.start, 5);
+});
+
+// A SKILL.md body just under the 256 KB cap of what markup reads worst:
+// it must render, to a bounded tree. The timeout only stops a hang.
+test('worst-case 256 KB skills of brackets, emphasis marks and backticks render', { timeout: 120_000 }, async () => {
+  const n = 262000;
+  const fill = (unit) => unit.repeat(Math.floor(n / unit.length));
+  for (const text of ['[', '*', '_', '`', '[]', '![', '[a](', '*a ', '_a ', '**a ', '`a ', '*a _b **c __d ', '> ', '- '].map(fill)) {
+    const { md, document } = await rendered(text);
+    assert.ok(md, `${text.slice(0, 6)}…: not rendered`);
+    const count = elements(md).length;
+    assert.ok(count <= text.length, `${text.slice(0, 6)}…: ${count} elements for ${text.length} characters`);
+    assert.deepEqual(document.markup, []);
+  }
 });
