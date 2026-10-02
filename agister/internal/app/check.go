@@ -74,10 +74,10 @@ type checkedDocument struct {
 type checkedProblem struct {
 	text string // as reported, naming its document
 	// The document it is about; nil on one that stops every command
-	// (ADR-013 rule 4).
+	// (ADR-014 rule 4).
 	about   *DocumentRef
 	message string // without its document's name
-	// The agent it depends on, on a process's problem (ADR-013 rule 2).
+	// The agent it depends on, on a process's problem (ADR-014 rule 2).
 	agent string
 }
 
@@ -86,13 +86,13 @@ func (c *Checker) check(ctx context.Context, probe bool) (checked, error) {
 	index := map[DocumentRef]int{}   // into report.Definitions and documents
 	var documents []checkedDocument  // as report.Definitions
 	listed := map[DocumentRef]bool{} // in the settings, read or not
-	// Every problem, with the document it is about (ADR-013).
+	// Every problem, with the document it is about (ADR-014).
 	var found []checkedProblem
 	about := func(ref DocumentRef, subject, message, agent string) {
 		text := subject + ": " + message
 		if ref == serviceRef {
 			// Every call depends on it, and every check on its vocabulary
-			// and limits (ADR-013 rule 4).
+			// and limits (ADR-014 rule 4).
 			found = append(found, checkedProblem{text: text, message: message})
 			return
 		}
@@ -134,7 +134,7 @@ func (c *Checker) check(ctx context.Context, probe bool) (checked, error) {
 		if kind != definition.KindService {
 			var err error
 			if names, err = c.definitions.List(ctx, kind); err != nil {
-				// Nothing can name what it holds (ADR-013 rule 4).
+				// Nothing can name what it holds (ADR-014 rule 4).
 				stops("settings directory "+string(kind), "cannot be listed: %v", err)
 				return nil
 			}
@@ -142,7 +142,7 @@ func (c *Checker) check(ctx context.Context, probe bool) (checked, error) {
 		for _, name := range names {
 			listed[DocumentRef{Kind: kind, Name: name}] = true
 			if kind != definition.KindService && !definition.ValidName(name) {
-				// Nothing can name such a document (ADR-013 rule 4).
+				// Nothing can name such a document (ADR-014 rule 4).
 				stops(kind.Singular()+" "+name, "%q is not a valid name; rename the file", name)
 				continue
 			}

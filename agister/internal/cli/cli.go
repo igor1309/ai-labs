@@ -950,7 +950,7 @@ func printCheck(env IO, report contract.CheckReport) int {
 	return 0
 }
 
-// reaches says what one problem refuses (ADR-013).
+// reaches says what one problem refuses (ADR-014).
 func reaches(reach contract.ProblemReach) string {
 	if reach.Stops {
 		return "stops every command"

@@ -47,11 +47,11 @@ type Problem struct {
 	Subject string
 	Message string
 	// Agent is set on a process's problem that depends on the agent it
-	// names (ADR-013 rule 2): it holds for a call of the process only with
+	// names (ADR-014 rule 2): it holds for a call of the process only with
 	// that agent.
 	Agent string
 	// Unattributed is set on a problem no one document is at fault for
-	// (ADR-013 rule 4).
+	// (ADR-014 rule 4).
 	Unattributed bool
 }
 
@@ -131,7 +131,7 @@ func Check(b Bundle, m Mechanisms) []Problem {
 			continue
 		}
 		// What follows depends on the agent: a call that selects another
-		// one is judged on that one (ADR-013 rule 2).
+		// one is judged on that one (ADR-014 rule 2).
 		withAgent := func(format string, args ...any) {
 			problems = append(problems, Problem{Subject: subject, Message: fmt.Sprintf(format, args...), Agent: process.Agent})
 		}

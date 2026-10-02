@@ -60,7 +60,7 @@ func (n *newRuns) one(t *testing.T) run {
 	return runs[0]
 }
 
-// A broken document stops nothing that does not use it (ADR-013): an
+// A broken document stops nothing that does not use it (ADR-014): an
 // unused global runtime mapping that names an unknown adapter fails check,
 // which says it refuses nothing, and every other command and call runs.
 func TestAnUnusedBrokenMappingRefusesNothing(t *testing.T) {
@@ -89,7 +89,7 @@ func TestAnUnusedBrokenMappingRefusesNothing(t *testing.T) {
 // A call whose agent runs on a broken mapping is refused before its first
 // turn and recorded, naming the document, its path, its problem and the
 // chain that reaches it; a workflow with a node on it is refused before any
-// node runs; with --agent, a call on a sound agent runs (ADR-013).
+// node runs; with --agent, a call on a sound agent runs (ADR-014).
 func TestACallOnABrokenMappingIsRefused(t *testing.T) {
 	home, repo := setup(t, "approve")
 	path := brokenMapping(t, home, "elsewhere")

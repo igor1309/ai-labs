@@ -25,7 +25,7 @@ type Settings struct {
 	// with the project in view); each must stay valid.
 	scopes []Scope
 	// check checks the definitions the listings read, to show what their
-	// problems refuse (ADR-013).
+	// problems refuse (ADR-014).
 	check SettingsCheck
 }
 

@@ -182,7 +182,7 @@ func TestARepositoryVerificationReplacesAGlobalOne(t *testing.T) {
 
 // An invalid verification is a problem of the settings, on that document;
 // it refuses the calls of the processes that name it, and nothing else
-// (ADR-013, amending ADR-010 rule 4).
+// (ADR-014, amending ADR-010 rule 4).
 func TestAnInvalidRepositoryVerificationFailsCheck(t *testing.T) {
 	home, repo := namingHome(t)
 	path := filepath.Join(repo, ".agister", "verifies", "repo.yaml")

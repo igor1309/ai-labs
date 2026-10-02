@@ -413,7 +413,7 @@ func TestSettingsRefusalPrintsTheReport(t *testing.T) {
 	if r := run(context.Background(), spy); r.code != cli.ExitUsage || !strings.Contains(r.stdout, "Usage:") {
 		t.Fatalf("bare: %+v", r)
 	}
-	// A problem of one document stops nothing but what uses it (ADR-013).
+	// A problem of one document stops nothing but what uses it (ADR-014).
 	attributed := broken
 	attributed.Reach = []contract.ProblemReach{{Problem: "agent a: bad", Subject: &contract.DefinitionRef{Kind: "agents", Name: "a"}}}
 	spy = &clientSpy{report: attributed}
@@ -442,7 +442,7 @@ func (s *listingSpy) ListProcesses(context.Context) ([]contract.ProcessSummary, 
 }
 
 // Check says, below each problem, what it refuses; listings show each
-// broken agent and each refused process (ADR-013).
+// broken agent and each refused process (ADR-014).
 func TestCheckAndListingsSayWhatIsRefused(t *testing.T) {
 	ref := &contract.DefinitionRef{Kind: "runtimes", Name: "rt"}
 	spy := &listingSpy{

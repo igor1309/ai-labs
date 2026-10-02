@@ -55,7 +55,7 @@ type Resolver struct {
 	validator   ResolverValidator
 	// check checks the definitions the resolver reads, which must not
 	// change under it (a snapshot), so a call that depends on a document
-	// with a problem is refused (ADR-013).
+	// with a problem is refused (ADR-014).
 	check ResolverCheck
 	// checked is what the problems refuse, checked once when the
 	// definitions were frozen.
@@ -89,7 +89,7 @@ type ResolverProblem struct {
 	About   DocumentRef
 	Message string // without the document's name
 	// Set on a process's problem that depends on the agent it names: a
-	// call that selects another agent does not have it (ADR-013 rule 2).
+	// call that selects another agent does not have it (ADR-014 rule 2).
 	Agent string
 }
 
@@ -175,7 +175,7 @@ type overrides struct {
 // resolve resolves the process named processName. A refused one's
 // resolution has what was resolved before the refusal. A call that depends
 // on a document with a problem is refused for it, naming each, before its
-// runtime is asked anything (ADR-013).
+// runtime is asked anything (ADR-014).
 func (r *Resolver) resolve(ctx context.Context, processName, agentOverride string, caller overrides) (*resolution, error) {
 	reached, err := r.reach(ctx)
 	if err != nil {
@@ -202,7 +202,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	defer func() {
 		// Static problems already carry their document and chain. Problems
 		// discovered while resolving an override or probing its runtime
-		// need the same attribution (ADR-013 rules 2 and 3).
+		// need the same attribution (ADR-014 rules 2 and 3).
 		if settingsOnly || err == nil {
 			return
 		}
@@ -469,7 +469,7 @@ type workflowResolution struct {
 
 // workflow resolves the workflow named name, refusing one whose nodes
 // cannot run as ADR-003 has them (settings.WorkflowProblems), and one that
-// depends on a document with a problem (ADR-013). found is false when the
+// depends on a document with a problem (ADR-014). found is false when the
 // settings list no workflow of that name.
 func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResolution, bool, error) {
 	names, err := r.definitions.List(ctx, definition.KindWorkflow)
@@ -482,7 +482,7 @@ func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResoluti
 	}
 	res, err := r.resolveWorkflow(ctx, name)
 	// Refused before any node runs, for a problem in what the workflow or
-	// any node's call depends on (ADR-013 rule 3).
+	// any node's call depends on (ADR-014 rule 3).
 	if refused := reached.workflow(name); refused != nil {
 		return res, true, refused
 	}

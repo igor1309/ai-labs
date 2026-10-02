@@ -409,7 +409,7 @@ func TestADR012AgentListingsShowBrokenDependencies(t *testing.T) {
 // A checkout without a setup of its own reads the workspace settings, so
 // workspace settings that do not parse refuse its calls and the workflows
 // on it, and check, listings and the refusal say so, with the document's
-// path and the chain of uses (ADR-012, ADR-013 rules 3 and 5).
+// path and the chain of uses (ADR-012, ADR-014 rules 3 and 5).
 func TestInvalidWorkspaceSettingsRefuseWhatReadsThem(t *testing.T) {
 	ctx := context.Background()
 	h := newHarness()

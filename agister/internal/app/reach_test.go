@@ -13,7 +13,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// What a problem in the settings refuses (ADR-013), through the client as
+// What a problem in the settings refuses (ADR-014), through the client as
 // NewClient assembles it behind its gate, over the harness's spies.
 
 // clientOn is the whole client over the harness, both settings layers read

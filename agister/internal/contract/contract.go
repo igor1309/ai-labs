@@ -14,7 +14,7 @@ import (
 // SettingsError refuses a use of the client while the settings have a
 // problem that stops every command (ProblemReach.Stops); the report says
 // which. Any other problem refuses only what depends on the document it is
-// about (ADR-013).
+// about (ADR-014).
 type SettingsError struct {
 	Report CheckReport
 }
@@ -118,7 +118,7 @@ type CheckReport struct {
 	Reach []ProblemReach `json:"reach"`
 }
 
-// ProblemReach is what one problem refuses (ADR-013): every command, or the
+// ProblemReach is what one problem refuses (ADR-014): every command, or the
 // calls of the processes and workflows that depend on the document it is
 // about, and nothing else.
 type ProblemReach struct {
@@ -126,10 +126,10 @@ type ProblemReach struct {
 	// The document it is about; unset on one that stops every command.
 	Subject *DefinitionRef `json:"subject,omitempty"`
 	// Set on a process's problem that depends on the agent it names: a call
-	// that selects another agent does not have it (ADR-013 rule 2).
+	// that selects another agent does not have it (ADR-014 rule 2).
 	Agent string `json:"agent,omitempty"`
 	// It stops every command but init, check, cancelling a run and
-	// following an admitted run (ADR-013 rule 4).
+	// following an admitted run (ADR-014 rule 4).
 	Stops bool `json:"stops,omitempty"`
 	// The processes and workflows whose calls it refuses, as they are
 	// called without --agent.

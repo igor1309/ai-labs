@@ -12,7 +12,7 @@ type DocumentRef struct {
 	Name string
 }
 
-// reach is what the problems of the settings refuse (ADR-013): a problem of
+// reach is what the problems of the settings refuse (ADR-014): a problem of
 // one document refuses the calls that depend on it, through any chain of
 // uses, and a problem that depends on the agent refuses only the calls that
 // select that agent.
