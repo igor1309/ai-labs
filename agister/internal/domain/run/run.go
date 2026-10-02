@@ -269,10 +269,13 @@ type Effects struct {
 	Unreleased *Checkout `json:"unreleased,omitempty"`
 }
 
-// Checkout is a workspace the call created in Repository.
+// Checkout is a workspace the call created in Repository, of Revision:
+// the commit it was checked out at, empty on records made before it was
+// recorded and on clean copies.
 type Checkout struct {
 	Repository string `json:"repository"`
 	Dir        string `json:"dir"`
+	Revision   string `json:"revision,omitempty"`
 }
 
 // Process is the runtime's process as an opaque reference, made and read

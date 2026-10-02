@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -379,11 +381,15 @@ type CallValidator interface {
 }
 
 // CallRuns reads earlier runs' evidence, only to continue a session: the
-// run continued, and every run's record for the session's latest totals. A
-// record that is not finished and no longer owned reads as abandoned.
+// run continued, every run's record for the session's latest run and its
+// totals, and that run's changes to carry (ADR-013). A record that is not
+// finished and no longer owned reads as abandoned.
 type CallRuns interface {
 	Get(ctx context.Context, id string) (run.Record, run.State, error)
 	List(ctx context.Context) ([]run.Record, error)
+	// Artifact reads back the bytes of an artifact the run stored, as its
+	// record names it.
+	Artifact(ctx context.Context, runID string, artifact run.Artifact) ([]byte, error)
 }
 
 // CallClock tells the time of a call's record and events.
@@ -416,6 +422,10 @@ type CallChanges interface {
 	// Changes returns the patch from one content, a revision or an
 	// identity, to another; empty when they are the same.
 	Changes(ctx context.Context, dir, from, to string) ([]byte, error)
+	// Apply applies a patch Changes made to the checkout's files; with
+	// check, it only checks that the whole patch applies, and changes
+	// nothing.
+	Apply(ctx context.Context, dir string, patch []byte, check bool) error
 }
 
 // CallPreparer runs a call's checkout's setup once, with the operator's
@@ -716,7 +726,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		event(run.SourceAgister, "PERMISSIONS_WITHHELD", map[string]any{"permissions": res.Plan.Withheld})
 	}
 
-	resumeSessionID, sessionBefore, err := c.continuation(ctx, res, record.ID, record.Request.Continue, record.Request.Cwd)
+	resumed, err := c.continuation(ctx, res, record.ID, record.Request.Continue, record.Request.Cwd)
 	if err != nil {
 		fail(err)
 		return
@@ -729,6 +739,16 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	}
 	record.Inputs = summarize(inputs)
 	_ = handle.Update(record)
+	revision, _ := revisionOf(inputs, res.Process.Checkout)
+	// The changes carried go only onto the base they are from (ADR-013 rule
+	// 2), which is known only now. A checkout input that is no revision is
+	// refused as the workspace is prepared.
+	if carry := resumed.carry; carry != nil && revision != "" {
+		if err := carry.onto(res.Process, revision); err != nil {
+			fail(err)
+			return
+		}
+	}
 
 	workspace, err := c.prepareWorkspace(ctx, res.Process.Checkout, inputs, record.Request.Cwd)
 	if err != nil {
@@ -737,7 +757,6 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	}
 	release = workspace.Release
 	record.Workspace = workspace.Dir
-	revision, _ := revisionOf(inputs, res.Process.Checkout)
 	// The content a passing verification run checked, whose patch is what
 	// the call delivers (ADR-005 rule 1).
 	var verified string
@@ -746,12 +765,20 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		// a later reap removes the checkout. A checkout that cannot be
 		// recorded is one nobody could find, so it is released and the
 		// call refused.
-		owned = &run.Checkout{Repository: workspace.Repository, Dir: workspace.Dir}
+		owned = &run.Checkout{Repository: workspace.Repository, Dir: workspace.Dir, Revision: revision}
 		record.Effects = &run.Effects{Checkout: owned}
 		if err := handle.Update(record); err != nil {
 			record.Effects = nil
 			fail(fmt.Errorf("recording the checkout failed: %w", err))
 			return
+		}
+		// Changes that cannot be carried cost no setup (ADR-013 rule 3).
+		carry := resumed.carry
+		if carry != nil {
+			if err := c.changes.Apply(ctx, workspace.Dir, carry.patch, true); err != nil {
+				fail(refuse("run %s's changes do not apply to revision %s: %v", carry.from, revision, err))
+				return
+			}
 		}
 		// The setup prepares the checkout before the runtime reads it, once:
 		// repair turns continue in the same checkout (ADR-012). A failed one
@@ -766,6 +793,16 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 				return
 			}
 		}
+		// The setup saw the revision's content; the changes carried are the
+		// session's, applied before its first turn here. The call's own patch
+		// is still from the revision, so it holds them once.
+		if carry != nil {
+			if err := c.changes.Apply(ctx, workspace.Dir, carry.patch, false); err != nil {
+				fail(refuse("run %s's changes could not be applied to revision %s: %v", carry.from, revision, err))
+				return
+			}
+			event(run.SourceAgister, "CHANGES_CARRIED", map[string]any{"run": carry.from, "digest": carry.artifact.Digest, "bytes": carry.artifact.Bytes})
+		}
 		collect = func() *run.Error {
 			artifacts, fault := c.collectChanges(ctx, handle, workspace.Dir, revision, verified, event)
 			result.Artifacts = artifacts
@@ -773,11 +810,21 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		}
 	}
 
+	text := prompt.Inputs(inputs)
+	// A continued call in a checkout of its own is told where it works now,
+	// and what of the session's work is there (ADR-013 rule 4).
+	if record.Request.Continue != "" && workspace.Owned {
+		var from string
+		if resumed.carry != nil {
+			from = resumed.carry.from
+		}
+		text = strings.TrimSuffix(prompt.Continues(record.Request.Continue, from, workspace.Dir, revision)+"\n\n"+text, "\n\n")
+	}
 	request := TurnRequest{
-		Prompt:          prompt.Inputs(inputs),
+		Prompt:          text,
 		Instruction:     prompt.Instruction(res.Process.Instruction, res.Plan.Granted, res.Plan.Withheld),
 		Cwd:             workspace.Dir,
-		ResumeSessionID: resumeSessionID,
+		ResumeSessionID: resumed.session,
 		MaxCostUSD:      res.Effective.MaxCostUSD,
 		Model:           res.Agent.Model,
 		Effort:          res.Agent.Effort,
@@ -845,7 +892,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return fault
 	}
 
-	turn := take(request, sessionBefore)
+	turn := take(request, resumed.before)
 	if turn.ProviderSessionID != "" {
 		result.Session = &run.Session{ProviderSessionID: turn.ProviderSessionID, Continues: record.Request.Continue}
 	}
@@ -1113,52 +1160,148 @@ func (c *Calls) startNode(ctx context.Context, parent string, node CallNode, par
 	return record.ID, nil
 }
 
+// resumption is what a continued call resumes: the provider session, which
+// the runtime resumes in place, its totals before the call's first turn,
+// and, for a call with a checkout, the changes it carries (ADR-013); all
+// unset for a fresh session.
+type resumption struct {
+	session string
+	before  *run.SessionTotals
+	carry   *carried
+}
+
+// carried is the changes.patch of a continued session's latest run, read and
+// matched against its digest, to apply to the call's checkout.
+type carried struct {
+	from     string // the session's latest run
+	artifact run.Artifact
+	patch    []byte
+	// base is the revision the latest run's checkout was of; empty on its
+	// record when made before it was recorded.
+	base string
+	// process and inputs are that run's, which name its revision then.
+	process string
+	inputs  []run.Input
+}
+
+// onto refuses changes carried onto another revision than they are from
+// (ADR-013 rule 2). A record that names no revision is taken at its input
+// the call's process checks out, when it ran the same process.
+func (c *carried) onto(process CallProcess, revision string) error {
+	base := c.base
+	if base == "" && c.process == process.Name {
+		for _, input := range c.inputs {
+			if input.Name == process.Checkout {
+				base = input.Identity
+			}
+		}
+	}
+	switch {
+	case base == "" && c.process != process.Name:
+		return refuse("the revision run %s worked on is unknown: its record names none, and it ran process %s, not %s; its changes cannot be carried", c.from, c.process, process.Name)
+	case base == "":
+		return refuse("the revision run %s worked on is unknown: its record names none, nor any input %s; its changes cannot be carried", c.from, process.Checkout)
+	case base != revision:
+		return refuse("run %s's changes are from revision %s, not %s; a continuation carries them only onto the same revision", c.from, base, revision)
+	}
+	return nil
+}
+
 // continuation checks a request to continue an earlier run's session and
-// returns that provider session, which the runtime resumes in place, and
-// its totals before the call's first turn. Continuing is deliberate: the
-// agent must allow it, the runtime must support it, and the earlier run
-// must be finished, by the same agent, with a session. self is the
-// asking run.
-func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID, cwd string) (string, *run.SessionTotals, error) {
+// returns what the call resumes. Continuing is deliberate: the agent must
+// allow it, the runtime must support it, and the earlier run must be
+// finished, by the same agent, with a session. self is the asking run.
+func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID, cwd string) (resumption, error) {
 	if runID == "" {
-		return "", nil, nil
+		return resumption{}, nil
 	}
 	if res.Agent.Session != definition.SessionResumable {
-		return "", nil, refuse("agent %s is %s; it cannot continue run %s", res.Agent.Name, res.Agent.Session, runID)
+		return resumption{}, refuse("agent %s is %s; it cannot continue run %s", res.Agent.Name, res.Agent.Session, runID)
 	}
 	if !res.Identity.Resume {
-		return "", nil, refuse("runtime %s cannot continue sessions", res.Mapping.Name)
+		return resumption{}, refuse("runtime %s cannot continue sessions", res.Mapping.Name)
 	}
 	prior, state, err := c.runs.Get(ctx, runID)
 	if err != nil {
-		return "", nil, refuse("run %s: %v", runID, err)
+		return resumption{}, refuse("run %s: %v", runID, err)
 	}
 	switch {
 	case state != run.StateFinished:
-		return "", nil, refuse("run %s is %s, not finished", runID, state)
+		return resumption{}, refuse("run %s is %s, not finished", runID, state)
 	case prior.Agent != res.Agent.Name:
-		return "", nil, refuse("run %s ran agent %s; only agent %s's own runs can be continued by it", runID, prior.Agent, res.Agent.Name)
+		return resumption{}, refuse("run %s ran agent %s; only agent %s's own runs can be continued by it", runID, prior.Agent, res.Agent.Name)
 	case prior.Runtime == nil || prior.Runtime.Adapter != res.Mapping.Adapter:
-		return "", nil, refuse("run %s did not run on %s", runID, res.Mapping.Adapter)
+		return resumption{}, refuse("run %s did not run on %s", runID, res.Mapping.Adapter)
 	case prior.Result == nil || prior.Result.Session == nil || prior.Result.Session.ProviderSessionID == "":
-		return "", nil, refuse("run %s has no provider session", runID)
+		return resumption{}, refuse("run %s has no provider session", runID)
 	}
 	if res.Identity.ResumeWhereItRan {
 		if err := c.whereItRan(ctx, res, prior, cwd); err != nil {
-			return "", nil, err
+			return resumption{}, err
 		}
 	}
-	session := prior.Result.Session.ProviderSessionID
+	resumed := resumption{session: prior.Result.Session.ProviderSessionID}
 	// The baseline is the session's latest turn on any run Agister has
 	// recorded, which may be a later continuation of the run continued, not
 	// that run's own. Turns made on the session outside Agister are not
 	// seen: what they cost is counted again. Runs that cannot be read leave
 	// it unknown.
 	records, err := c.runs.List(ctx)
-	if err != nil {
-		return session, nil, nil
+	if err == nil {
+		resumed.before = run.LatestTotals(records, resumed.session, self)
 	}
-	return session, run.LatestTotals(records, session, self), nil
+	if res.Process.Checkout == "" {
+		return resumed, nil
+	}
+	if err != nil {
+		return resumption{}, refuse("the runs of run %s's session cannot be read, so the changes to carry are unknown: %v", runID, err)
+	}
+	resumed.carry, err = c.carried(ctx, records, prior, resumed.session, self, cwd)
+	return resumed, err
+}
+
+// carried reads the changes a continuation with a checkout carries: the
+// changes.patch of the session's latest run, the run continued or a later
+// continuation of it (ADR-013 rule 1). None when that run worked in no
+// checkout or kept no patch. It refuses when the latest run is unknown, when
+// its checkout was of another repository than the call's, or when its patch
+// cannot be read as it was recorded.
+func (c *Calls) carried(ctx context.Context, records []run.Record, prior run.Record, session, self, cwd string) (*carried, error) {
+	latest, known := run.Latest(records, session, self)
+	if !known {
+		return nil, refuse("the latest run of run %s's session is unknown: one has not finished, or the last to finish overlapped another; its changes cannot be carried", prior.ID)
+	}
+	if latest == nil {
+		latest = &prior
+	}
+	if latest.Effects == nil || latest.Effects.Checkout == nil || latest.Result == nil {
+		return nil, nil
+	}
+	var patch *run.Artifact
+	for i, artifact := range latest.Result.Artifacts {
+		if artifact.Name == "changes.patch" {
+			patch = &latest.Result.Artifacts[i]
+		}
+	}
+	if patch == nil {
+		return nil, nil
+	}
+	checkout := latest.Effects.Checkout
+	if here := c.workspaceRoot(ctx, cwd); filepath.Clean(here) != filepath.Clean(checkout.Repository) {
+		return nil, refuse("run %s's changes are of repository %s, not %s; a continuation carries them only into the same repository", latest.ID, checkout.Repository, here)
+	}
+	data, err := c.runs.Artifact(ctx, latest.ID, *patch)
+	if err != nil {
+		return nil, refuse("run %s's changes.patch cannot be read: %v", latest.ID, err)
+	}
+	sum := sha256.Sum256(data)
+	if digest := "sha256:" + hex.EncodeToString(sum[:]); digest != patch.Digest {
+		return nil, refuse("run %s's changes.patch is %s, not %s as recorded; it is not carried", latest.ID, digest, patch.Digest)
+	}
+	return &carried{
+		from: latest.ID, artifact: *patch, patch: data,
+		base: checkout.Revision, process: latest.Request.Process, inputs: latest.Inputs,
+	}, nil
 }
 
 // whereItRan refuses a continuation of run prior, on a runtime that

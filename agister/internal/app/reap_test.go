@@ -48,7 +48,7 @@ func (r *reaper) reap() error { return r.Reap(context.Background()) }
 func TestCallRecordsItsEffectsAsSoonAsTheyExist(t *testing.T) {
 	h := newHarness()
 	record := h.call(t, contract.CallRequest{})
-	if want := (&run.Effects{Checkout: &run.Checkout{Repository: "/repo", Dir: "/work/checkout"}, Process: &run.Process{Ref: "ref-4242"}}); !reflect.DeepEqual(record.Effects, want) {
+	if want := (&run.Effects{Checkout: &run.Checkout{Repository: "/repo", Dir: "/work/checkout", Revision: "sha-HEAD"}, Process: &run.Process{Ref: "ref-4242"}}); !reflect.DeepEqual(record.Effects, want) {
 		t.Fatalf("effects = %+v", record.Effects)
 	}
 	// The checkout was written down before the runtime started.
@@ -105,7 +105,7 @@ func TestACheckoutThatCannotBeRecordedNorReleasedIsLeftForAReap(t *testing.T) {
 	if h.workspaces.releases() != 1 || record.FinishedAt == nil || class(record) != run.ClassInternal {
 		t.Fatalf("releases = %d, finished %v, result %+v", h.workspaces.releases(), record.FinishedAt, record.Result)
 	}
-	if checkout := (&run.Checkout{Repository: "/repo", Dir: "/work/checkout"}); record.Effects == nil || !reflect.DeepEqual(record.Effects.Unreleased, checkout) {
+	if checkout := (&run.Checkout{Repository: "/repo", Dir: "/work/checkout", Revision: "sha-HEAD"}); record.Effects == nil || !reflect.DeepEqual(record.Effects.Unreleased, checkout) {
 		t.Fatalf("effects = %+v", record.Effects)
 	}
 }
@@ -264,7 +264,7 @@ func TestACheckoutWhoseReleaseHitTheDeadlineIsReapedLater(t *testing.T) {
 	h := newHarness()
 	h.workspaces.releaseErr = fmt.Errorf("git worktree remove: %w", context.DeadlineExceeded)
 	finished := h.call(t, contract.CallRequest{})
-	checkout := &run.Checkout{Repository: "/repo", Dir: "/work/checkout"}
+	checkout := &run.Checkout{Repository: "/repo", Dir: "/work/checkout", Revision: "sha-HEAD"}
 	if finished.FinishedAt == nil || finished.Effects == nil ||
 		!reflect.DeepEqual(finished.Effects.Unreleased, checkout) || !reflect.DeepEqual(finished.Effects.Checkout, checkout) {
 		t.Fatalf("finished %v, effects %+v", finished.FinishedAt, finished.Effects)

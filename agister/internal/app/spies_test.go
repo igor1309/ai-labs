@@ -248,6 +248,33 @@ type changesSpy struct {
 	// attempt's run, 1 after.
 	copied func(dir string, named int) string
 	named  map[string]int
+	// applied lists every patch applied or checked, in order; applying,
+	// when set, runs first and fails the apply with what it returns.
+	applied  []appliedPatch
+	applying func(check bool) error
+}
+
+// appliedPatch is one Apply: the checkout, the patch, and whether it was
+// only checked.
+type appliedPatch struct {
+	dir, patch string
+	check      bool
+}
+
+func (s *changesSpy) Apply(_ context.Context, dir string, patch []byte, check bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.applied = append(s.applied, appliedPatch{dir, string(patch), check})
+	if s.applying != nil {
+		return s.applying(check)
+	}
+	return nil
+}
+
+func (s *changesSpy) applies() []appliedPatch {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]appliedPatch(nil), s.applied...)
 }
 
 func (s *changesSpy) Identity(_ context.Context, dir, _ string) (string, error) {
@@ -627,12 +654,39 @@ func (s *recorderSpy) running() bool {
 	return len(s.created) > s.taken
 }
 
-// runsSpy answers lookups of earlier runs.
+// runsSpy answers lookups of earlier runs, and reads back the artifacts
+// they stored, by run ID and path.
 type runsSpy struct {
-	mu      sync.Mutex
-	records map[string]run.Record
-	states  map[string]run.State
-	asked   []string
+	mu        sync.Mutex
+	records   map[string]run.Record
+	states    map[string]run.State
+	asked     []string
+	artifacts map[string][]byte // by "<run>/<path>"
+	read      []string          // the artifacts read, as "<run>/<path>"
+}
+
+// store keeps data as an artifact of run id and returns it as the run's
+// record names it.
+func (s *runsSpy) store(id, name string, data []byte) run.Artifact {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	artifact := run.Artifact{Name: name, Path: "artifacts/" + name, Digest: "sha256:" + sha(string(data)), Bytes: int64(len(data))}
+	if s.artifacts == nil {
+		s.artifacts = map[string][]byte{}
+	}
+	s.artifacts[id+"/"+artifact.Path] = data
+	return artifact
+}
+
+func (s *runsSpy) Artifact(_ context.Context, id string, artifact run.Artifact) ([]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.read = append(s.read, id+"/"+artifact.Path)
+	data, ok := s.artifacts[id+"/"+artifact.Path]
+	if !ok {
+		return nil, fmt.Errorf("no artifact %s", artifact.Path)
+	}
+	return data, nil
 }
 
 func (s *runsSpy) Get(_ context.Context, id string) (run.Record, run.State, error) {

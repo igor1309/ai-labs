@@ -87,6 +87,36 @@ func TestArtifactsAreStoredWithTheirDigest(t *testing.T) {
 	}
 }
 
+// An artifact a run stored reads back as stored, by the path its record
+// names; a path out of the run's artifacts, or to none, is refused.
+func TestArtifactsReadBackAsStored(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	ctx := context.Background()
+	h, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "r4"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	patch := []byte("diff --git a/x b/x\nGIT binary patch\n\x00\xff\n")
+	artifact, err := h.Artifact("changes.patch", patch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if data, err := store.Artifact(ctx, "r4", artifact); err != nil || string(data) != string(patch) {
+		t.Fatalf("read %q, %v", data, err)
+	}
+	if _, err := store.Artifact(ctx, "r4", run.Artifact{Path: "artifacts/gone.patch"}); !errors.Is(err, contract.ErrNotFound) {
+		t.Fatalf("a missing artifact: %v", err)
+	}
+	for _, path := range []string{"record.json", "artifacts/../record.json", "artifacts/", "artifacts/.hidden", "../r4/artifacts/changes.patch"} {
+		if _, err := store.Artifact(ctx, "r4", run.Artifact{Path: path}); err == nil {
+			t.Fatalf("artifact path %q read", path)
+		}
+	}
+	if _, err := store.Artifact(ctx, "../r4", artifact); err == nil {
+		t.Fatal("a run ID out of the store read")
+	}
+}
+
 // A run ID cannot lead out of the runs directory.
 func TestRunIDsStayInTheStore(t *testing.T) {
 	root := t.TempDir()

@@ -354,13 +354,25 @@ func (w Workspaces) Copy(ctx context.Context, repository, dir, revision string, 
 		return fmt.Errorf("%w: %w", app.ErrCopyNotStarted, err)
 	}
 	if err == nil && len(patch) > 0 {
-		_, err = runWith(ctx, dir, nil, patch, "apply", "--binary", "--whitespace=nowarn", "-")
+		err = w.Apply(ctx, dir, patch, false)
 	}
 	if err != nil {
 		_ = w.Discard(context.WithoutCancel(ctx), repository, dir)
 		return err
 	}
 	return nil
+}
+
+// Apply applies patch, as Changes makes it, to dir's files, not its index;
+// with check, it only checks that the whole patch applies and changes
+// nothing. A patch that does not apply changes nothing either.
+func (Workspaces) Apply(ctx context.Context, dir string, patch []byte, check bool) error {
+	args := []string{"apply", "--binary", "--whitespace=nowarn"}
+	if check {
+		args = append(args, "--check")
+	}
+	_, err := runWith(ctx, dir, nil, patch, append(args, "-")...)
+	return err
 }
 
 // Discard removes a checkout whose call ended without releasing it, or a
