@@ -1,0 +1,324 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import '../repos.js';
+import '../config.js';
+import '../runs.js';
+import '../knowledge.js';
+import '../page.js';
+import { pageDocument } from './dom.js';
+
+const P = globalThis.AgisterPage;
+const VIEW_KEY = globalThis.AgisterRuns.VIEW_KEY;
+
+function fakeStorage(initial = {}) {
+  const data = new Map(Object.entries(initial));
+  return {
+    getItem: (k) => (data.has(k) ? data.get(k) : null),
+    setItem: (k, v) => data.set(k, String(v)),
+    removeItem: (k) => data.delete(k),
+    raw: (k) => data.get(k),
+  };
+}
+
+const respond = (body, status = 200) => ({ ok: status < 400, status, json: async () => body });
+
+// Lets every answered request and what it sets off run to the end.
+async function settle() {
+  for (let i = 0; i < 3; i++) await new Promise((r) => setImmediate(r));
+}
+
+// Settings: opus on Claude Code, sol on Codex, ghost on a runtime that is
+// not there.
+const files = {
+  'agents/opus.toml': 'name = "opus"\nruntime = "claude-code"\nmodel = "opus"\neffort = "high"\n',
+  'agents/sol.toml': 'name = "sol"\nruntime = "codex"\nmodel = "gpt-6.1-sol"\n',
+  'agents/ghost.toml': 'name = "ghost"\nruntime = "gone"\nmodel = "m"\n',
+  'runtimes/claude-code.yaml': 'name: claude-code\nadapter: claude-code\n',
+  'runtimes/codex.yaml': 'name: codex\nadapter: codex\n',
+};
+
+const planText = [
+  '---', 'name: plan', 'description: Plans the work.', '---',
+  '# Plan <script>alert(1)</script>', '',
+  'Use **care** and `go test`; see [the docs](https://example.com/docs) or [this](javascript:alert(2)).', '',
+  '- first', '- <img src=x onerror=alert(3)>', '',
+  '```', '<b>raw</b>', '```', '',
+].join('\n');
+
+// Folders as pages/skills.go writes them: plan is in two folders, torn
+// fails its checks, big was not read; nothing here is named go or review,
+// which only the runs used.
+const skills = {
+  path: '/r', home: false, adapters: ['claude-code', 'codex'],
+  folders: [
+    {
+      scope: 'repo', folder: '.claude/skills', path: '/r/.claude/skills', real: '/r/.claude/skills', adapters: ['claude-code'],
+      skills: [
+        { name: 'big', path: '/r/.claude/skills/big', real: '/r/.claude/skills/big', state: 'too_large', checks: { passed: false, failed: ['SKILL.md is over 256 KB'] } },
+        { name: 'plan', path: '/r/.claude/skills/plan', real: '/shared/plan', link: '/shared/plan', content: planText, description: 'Plans the work.', checks: { passed: true } },
+        { name: 'torn', path: '/r/.claude/skills/torn', real: '/r/.claude/skills/torn', content: '# Torn\n', checks: { passed: false, failed: ['no front matter'] } },
+      ],
+    },
+    {
+      scope: 'repo', folder: '.agents/skills', path: '/r/.agents/skills', real: '/r/.agents/skills', adapters: ['codex'],
+      skills: [
+        { name: 'plan', path: '/r/.agents/skills/plan', real: '/r/.agents/skills/plan', content: '---\nname: plan\ndescription: Codex plans.\n---\nCodex plan.\n', description: 'Codex plans.', checks: { passed: true } },
+        { name: 'ship', path: '/r/.agents/skills/ship', real: '/r/.agents/skills/ship', content: '---\nname: ship\ndescription: Ships.\n---\nShip it.\n', description: 'Ships.', checks: { passed: true } },
+      ],
+    },
+    { scope: 'home', folder: '~/.claude/skills', path: '/h/.claude/skills', adapters: ['claude-code'], state: 'missing', skills: [] },
+  ],
+};
+
+// opus's runs used review and go, neither in a folder; sol has no runs.
+const runs = [
+  { id: 'run-2', process: 'implement', agent: 'opus', created_at: '2026-10-01T11:00:00Z', status: 'completed', outcome: {}, skills: [{ name: 'review', count: 3 }, { name: 'go', count: 1 }] },
+  { id: 'run-1', process: 'implement', agent: 'opus', created_at: '2026-10-01T10:00:00Z', status: 'completed', outcome: {}, skills: [{ name: 'go', count: 2 }] },
+];
+
+// The page over a fake server, started on Knowledge with the repo /r.
+function page({ storage = fakeStorage({ [VIEW_KEY]: 'knowledge', 'agister-pages:current': '/r' }), answers = {} } = {}) {
+  const calls = [];
+  const fallback = {
+    'api/settings': () => respond({ path: '/r', dir: '/r/.agister', home: false, files, homeFiles: {} }),
+    'api/skills': () => respond(skills),
+    'api/runs': () => respond({ runs, total: runs.length, skipped: 0 }),
+    'api/runs/compare': () => respond({ groups: [], skipped: 0 }),
+    'api/runs/run-1': () => respond({ summary: runs[1], record: {} }),
+  };
+  const fetch = async (url) => {
+    calls.push(url);
+    const route = url.split('?')[0];
+    const answer = answers[route] ?? fallback[route];
+    return answer ? answer(calls.filter((u) => u.split('?')[0] === route).length) : respond({ error: `no ${url}` }, 404);
+  };
+  const document = pageDocument();
+  const started = P.start({ document, fetch, localStorage: storage, location: { protocol: 'http:', hash: '' }, navigator: {}, setTimeout: (fn) => queueMicrotask(fn) });
+  const $ = (id) => document.getElementById(id);
+  const button = (root, label) => root.querySelectorAll('button').find((b) => b.textContent === label);
+  return {
+    started, calls, storage, document, $, button,
+    shown: () => ['dashboard', 'runs', 'knowledge'].filter((id) => !$(id).hidden),
+    // The overview: its agent columns, and per skill row its cells.
+    columns: () => $('knowledge-overview').querySelectorAll('thead th').slice(1).map((th) => th.children.map((c) => c.textContent)),
+    matrix: () => Object.fromEntries($('knowledge-overview').querySelectorAll('tbody tr').map((tr) => [tr.children[0].textContent, tr.children.slice(1).map((td) => td.textContent)])),
+    // Opens the agent or skill name from the overview.
+    open: (name) => button($('knowledge-overview'), name).click(),
+    detail: () => $('knowledge-detail').querySelector('h3')?.textContent ?? null,
+    // The rows of the table in the opened agent's section id.
+    table: (id) => $(id)?.querySelectorAll('tbody tr').map((tr) => tr.children.map((td) => td.textContent)) ?? null,
+  };
+}
+
+test('Knowledge is a third view, remembered, read from the settings, their skills and the runs', async () => {
+  const storage = fakeStorage({ 'agister-pages:current': '/r' });
+  const p = page({ storage });
+  await p.started;
+  assert.deepEqual(p.shown(), ['dashboard']);
+  assert.ok(!p.calls.some((u) => u.startsWith('api/skills')));
+
+  p.$('view-knowledge').click();
+  await settle();
+  assert.equal(storage.raw(VIEW_KEY), 'knowledge');
+  assert.deepEqual(p.shown(), ['knowledge']);
+  assert.equal(p.$('view-knowledge').getAttribute('aria-pressed'), 'true');
+  assert.equal(p.$('view-settings').getAttribute('aria-pressed'), 'false');
+  assert.equal(p.calls.at(-2), 'api/skills?path=%2Fr');
+  assert.match(p.$('read-at').title, /^Knowledge read/);
+
+  // The next visit opens on Knowledge.
+  const next = page({ storage });
+  await next.started;
+  assert.deepEqual(next.shown(), ['knowledge']);
+  assert.ok(next.$('knowledge-overview'));
+
+  // Refresh reads the settings, the skills and the runs again.
+  const before = next.calls.length;
+  next.$('refresh').click();
+  await settle();
+  assert.deepEqual(next.calls.slice(before).map((u) => u.split('?')[0]).sort(), ['api/runs', 'api/settings', 'api/skills']);
+});
+
+test('the overview is a matrix of skills and agents, with shared names marked', async () => {
+  const p = page();
+  await p.started;
+  assert.deepEqual(p.columns(), [
+    ['ghost', 'gone (missing runtime)', 'm'],
+    ['opus', 'claude-code', 'opus · high'],
+    ['sol', 'codex', 'gpt-6.1-sol'],
+  ]);
+  assert.deepEqual(p.matrix(), {
+    big: ['', '●', ''],
+    'plan shared ×2': ['', '●', '●'],
+    ship: ['', '', '●'],
+    torn: ['', '●', ''],
+  });
+  // The folders read are named, the missing one too.
+  assert.deepEqual(p.$('knowledge-folders').querySelectorAll('tbody tr').map((tr) => tr.children.map((td) => td.textContent)), [
+    ['.claude/skills', 'repo', '/r/.claude/skills', 'claude-code', '3'],
+    ['.agents/skills', 'repo', '/r/.agents/skills', 'codex', '2'],
+    ['~/.claude/skills', 'home', '/h/.claude/skills', 'claude-code', 'not there'],
+  ]);
+  assert.match(p.$('knowledge').textContent, /Agister does not choose an agent’s skills/);
+});
+
+test('an agent opens below the overview: what its runtime would load, and apart from it what its runs used', async () => {
+  const p = page();
+  await p.started;
+  assert.equal(p.detail(), null);
+
+  p.open('opus');
+  assert.equal(p.detail(), 'opus');
+  const detail = p.$('agent-detail');
+  assert.equal(detail.querySelector('div.facts').textContent, 'runtimeclaude-code — adapter claude-codemodelopusefforthigh');
+  assert.match(detail.textContent, /Agister does not choose an agent’s skills.*\(ADR-006\).*editing is not part of it/);
+  assert.deepEqual(p.table('agent-loads'), [
+    ['big', 'repo', '.claude/skills', 'checks failed: SKILL.md is over 256 KB'],
+    ['plan shared', 'repo', '.claude/skills', 'checks passed'],
+    ['torn', 'repo', '.claude/skills', 'checks failed: no front matter'],
+  ]);
+  assert.match(p.$('agent-left-out').textContent, /what claude-code loads from elsewhere.*built into the runtime.*managed-settings/);
+
+  // Observed is its own section, labelled so: review and go were used and
+  // are in no folder; nothing loaded gains a word about use.
+  assert.equal(p.$('agent-observed').querySelector('h4').textContent, 'Observed in runs');
+  assert.match(p.$('agent-observed').querySelector('p').textContent, /^observed: what the 2 runs of this agent/);
+  assert.deepEqual(p.table('agent-observed'), [
+    ['go', '3', '2', 'run-2, run-1'],
+    ['review', '3', '1', 'run-2'],
+  ]);
+  assert.doesNotMatch(p.$('agent-loads').textContent, /review|run-|×|used/);
+  assert.doesNotMatch(p.$('agent-observed').textContent, /plan|torn|big/);
+  assert.doesNotMatch(p.$('knowledge').textContent, /unused|not used|never used/i);
+
+  // The chosen agent again closes it.
+  p.open('opus');
+  assert.equal(p.detail(), null);
+});
+
+test('an agent with no observed use shows nothing about use', async () => {
+  const p = page();
+  await p.started;
+  p.open('sol');
+  assert.deepEqual(p.table('agent-loads').map((r) => r[0]), ['plan shared', 'ship']);
+  assert.match(p.$('agent-left-out').textContent, /\/etc\/codex\/skills/);
+  assert.equal(p.$('agent-observed'), null);
+  assert.doesNotMatch(p.$('knowledge').textContent, /unused|not used|never used|observed|0 runs/i);
+
+  // An agent whose runtime is not there loads nothing the page knows of.
+  p.open('ghost');
+  assert.match(p.$('agent-detail').textContent, /gone \(missing runtime\)/);
+  assert.equal(p.table('agent-loads').length, 0);
+  assert.match(p.$('agent-loads').textContent, /No skill folders are known/);
+  assert.equal(p.$('agent-left-out'), null);
+});
+
+test('an observed run’s link shows Runs with that run opened', async () => {
+  const p = page();
+  await p.started;
+  p.open('opus');
+  const link = p.$('agent-observed').querySelectorAll('a').find((a) => a.textContent === 'run-1');
+  assert.ok(link.click().defaultPrevented);
+  await settle();
+  assert.deepEqual(p.shown(), ['runs']);
+  assert.equal(p.$('run-detail').querySelector('h3').textContent, 'run-1');
+});
+
+test('a skill opens with the agents that load it, each folder’s entry and its checks', async () => {
+  const p = page();
+  await p.started;
+  p.open('plan');
+  assert.equal(p.detail(), 'plan');
+  const detail = p.$('skill-detail');
+  assert.equal(detail.querySelector('span.chip').textContent, 'shared ×2');
+  assert.match(detail.querySelector('div.facts').textContent, /^loaded byopus, sol$/);
+  assert.deepEqual(detail.querySelectorAll('section.stage h4').map((h) => h.textContent), ['repo · .claude/skills', 'repo · .agents/skills']);
+  // The real path is beside the link.
+  assert.match(detail.querySelector('section.stage').textContent, /\/r\/.claude\/skills\/plan→ \/shared\/plan/);
+  assert.deepEqual(detail.querySelectorAll('section.stage div.facts').map((f) => /checks(checks \w+)/.exec(f.textContent)[1]), ['checks passed', 'checks passed']);
+  assert.doesNotMatch(detail.textContent, /reviewed|approved|safe|verified/i);
+
+  // From the skill to an agent that loads it, and back from its list.
+  p.button(detail, 'sol').click();
+  assert.equal(p.detail(), 'sol');
+  p.button(p.$('agent-loads'), 'ship').click();
+  assert.equal(p.detail(), 'ship');
+  assert.match(p.$('skill-detail').textContent, /Ship it\./);
+
+  p.open('torn');
+  assert.match(p.$('skill-detail').textContent, /checks failed: no front matter/);
+  assert.equal(p.$('skill-detail').querySelector('span.failed').textContent, 'checks failed: no front matter');
+  assert.doesNotMatch(p.$('skill-detail').textContent, /reviewed|approved|safe|refuse/i);
+
+  // A SKILL.md that was not read says why and shows no text.
+  p.open('big');
+  assert.match(p.$('skill-detail').textContent, /checks failed: SKILL\.md is over 256 KB.*too large, not read/);
+  assert.equal(p.$('skill-detail').querySelector('div.markdown'), null);
+
+  p.button(p.$('skill-detail'), 'Close').click();
+  assert.equal(p.detail(), null);
+});
+
+test('a skill is rendered from Markdown with its HTML as text; Source shows the SKILL.md as stored', async () => {
+  const p = page();
+  await p.started;
+  p.open('plan');
+  const first = () => p.$('skill-detail').querySelector('section.stage');
+  const md = first().querySelector('div.markdown');
+  assert.equal(p.button(p.$('skill-source'), 'Rendered').getAttribute('aria-pressed'), 'true');
+  // The front matter is in the facts, not in the rendered text.
+  assert.doesNotMatch(md.textContent, /name: plan/);
+  assert.equal(md.querySelector('h3').textContent, 'Plan <script>alert(1)</script>');
+  assert.equal(md.querySelector('strong').textContent, 'care');
+  assert.equal(md.querySelector('p code').textContent, 'go test');
+  assert.deepEqual(md.querySelectorAll('li').map((li) => li.textContent), ['first', '<img src=x onerror=alert(3)>']);
+  assert.equal(md.querySelector('pre code').textContent, '<b>raw</b>');
+  // Nothing the skill wrote became an element; only an http(s) link is one.
+  assert.deepEqual(['script', 'img', 'b'].flatMap((tag) => md.querySelectorAll(tag)), []);
+  assert.deepEqual(md.querySelectorAll('a').map((a) => [a.textContent, a.href, a.rel]), [['the docs', 'https://example.com/docs', 'noopener noreferrer']]);
+  assert.match(md.querySelector('p').textContent, /or this\.$/);
+
+  p.button(p.$('skill-source'), 'Source').click();
+  assert.equal(p.button(p.$('skill-source'), 'Source').getAttribute('aria-pressed'), 'true');
+  assert.equal(first().querySelector('div.markdown'), null);
+  assert.equal(first().querySelector('pre.source').textContent, planText);
+  assert.deepEqual(first().querySelector('pre.source').children, []);
+
+  p.button(p.$('skill-source'), 'Rendered').click();
+  assert.ok(first().querySelector('div.markdown'));
+});
+
+test('~ shows the home folders only, and says so', async () => {
+  const home = { path: '~', home: true, adapters: ['claude-code'], folders: [skills.folders[2]] };
+  const p = page({
+    storage: fakeStorage({ [VIEW_KEY]: 'knowledge' }),
+    answers: {
+      'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }),
+      'api/skills': () => respond(home),
+    },
+  });
+  await p.started;
+  assert.ok(p.calls.includes('api/skills?path=~'));
+  assert.match(p.$('knowledge').textContent, /Agister home, no repo/);
+  assert.deepEqual(p.matrix(), {});
+  assert.match(p.$('knowledge-overview').textContent, /No skills in the folders read/);
+  assert.deepEqual(p.columns().map((c) => c[0]), ['ghost', 'opus', 'sol']);
+});
+
+test('a Knowledge read that fails says why; one that ends after the user left leaves the page alone', async () => {
+  const failing = page({ answers: { 'api/skills': () => respond({ error: 'no .agister folder at /r/.agister' }, 404) } });
+  await failing.started;
+  assert.equal(failing.$('status').textContent, 'no .agister folder at /r/.agister');
+
+  let answer;
+  const slow = page({ answers: { 'api/skills': () => new Promise((r) => { answer = r; }) } });
+  await settle();
+  slow.$('view-settings').click();
+  await settle();
+  answer(respond({ error: 'gone' }, 500));
+  await slow.started;
+  await settle();
+  assert.equal(slow.$('status').hidden, true);
+  assert.match(slow.$('read-at').title, /^Settings read/);
+  assert.deepEqual(slow.shown(), ['dashboard']);
+});

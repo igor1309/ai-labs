@@ -52,6 +52,8 @@ test('the view shown is kept under agister-pages:view; anything else reads as se
   U.writeView(storage, 'runs');
   assert.equal(storage.raw('agister-pages:view'), 'runs');
   assert.equal(U.readView(storage), 'runs');
+  U.writeView(storage, 'knowledge');
+  assert.equal(U.readView(storage), 'knowledge');
   assert.equal(U.readView(fakeStorage({ [U.VIEW_KEY]: 'other' })), 'settings');
   assert.equal(U.readView({ getItem() { throw new Error('blocked'); } }), 'settings');
   U.writeView({ setItem() { throw new Error('full'); } }, 'runs');

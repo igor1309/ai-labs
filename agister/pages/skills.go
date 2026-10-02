@@ -1,0 +1,437 @@
+package pages
+
+import (
+	"bytes"
+	"errors"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+
+	"gopkg.in/yaml.v3"
+)
+
+// Skills: the skill folders the runtimes of the shown settings load, in
+// the repo and the user's home, and each skill's SKILL.md (ADR-010).
+// Nothing here writes, and nothing of a skill is read but its SKILL.md.
+
+// SkillHomes are the home folders the skill folders are found under, from
+// pages' own environment: a call started with another environment loads
+// other folders.
+type SkillHomes struct {
+	// Home is the user's home ($HOME); without it no home folder is read.
+	Home string
+	// CodexHome is $CODEX_HOME, empty for its default ~/.codex.
+	CodexHome string
+	// PiAgentDir is $PI_CODING_AGENT_DIR, empty for its default ~/.pi/agent.
+	PiAgentDir string
+}
+
+// SkillHomesFrom reads the skill homes from getenv; userHome stands in for
+// an unset HOME.
+func SkillHomesFrom(getenv func(string) string, userHome string) SkillHomes {
+	home := getenv("HOME")
+	if home == "" {
+		home = userHome
+	}
+	return SkillHomes{Home: home, CodexHome: getenv("CODEX_HOME"), PiAgentDir: getenv("PI_CODING_AGENT_DIR")}
+}
+
+// A skill folder's state when its skills could not be listed.
+const (
+	FolderMissing      = "missing"
+	FolderBrokenLink   = "broken_link"
+	FolderNotDirectory = "not_a_directory"
+	// FolderNotFollowed: a folder inside another (synced/, .system/) that
+	// is a symlinked directory, below that folder's top level.
+	FolderNotFollowed = "not_followed"
+)
+
+// A skill's state when its SKILL.md was not read.
+const (
+	SkillTooLarge   = "too_large"
+	SkillOutside    = "outside_skill"
+	SkillBrokenLink = "broken_link"
+	SkillMissing    = "missing"
+	SkillNotAFile   = "not_a_file"
+)
+
+// The checks that fail on the front matter.
+const (
+	failedNoFront     = "no front matter"
+	failedName        = "name is missing or empty"
+	failedDescription = "description is missing or empty"
+)
+
+// SkillsReply is what /api/skills answers.
+type SkillsReply struct {
+	Path string `json:"path"`
+	// Home: the path is Agister home, so only the home folders are read.
+	Home bool `json:"home"`
+	// Adapters are the runtime adapters of the runtimes the settings
+	// define, repo over home.
+	Adapters []string      `json:"adapters"`
+	Folders  []SkillFolder `json:"folders"`
+}
+
+// SkillFolder is one folder a runtime loads skills from.
+type SkillFolder struct {
+	// Scope is repo or home.
+	Scope string `json:"scope"`
+	// Folder is the folder as the table of ADR-010 names it.
+	Folder string `json:"folder"`
+	Path   string `json:"path"`
+	Real   string `json:"real,omitempty"`
+	Link   string `json:"link,omitempty"`
+	// Adapters are the runtime adapters that load this folder.
+	Adapters []string `json:"adapters"`
+	State    string   `json:"state,omitempty"`
+	Skills   []Skill  `json:"skills"`
+}
+
+// Skill is one entry of a skill folder.
+type Skill struct {
+	// Name is the entry's name in its folder.
+	Name string `json:"name"`
+	Path string `json:"path"`
+	Real string `json:"real,omitempty"`
+	Link string `json:"link,omitempty"`
+	// State is set when SKILL.md was not read; Content is then empty.
+	State   string `json:"state,omitempty"`
+	Content string `json:"content,omitempty"`
+	// Description is the front matter's, when it has one.
+	Description string `json:"description,omitempty"`
+	Checks      Checks `json:"checks"`
+}
+
+// Checks are the structural checks of a skill (ADR-010 rule 7), nothing
+// more: a pass says nothing of what the skill does.
+type Checks struct {
+	Passed bool     `json:"passed"`
+	Failed []string `json:"failed,omitempty"`
+}
+
+// folderSpec is a row of ADR-010's table: where an adapter loads skills.
+type folderSpec struct {
+	scope, name, path string
+	// nested: the folder sits in another (synced/, .system/), whose
+	// listing leaves it out.
+	nested bool
+}
+
+// skillFolderSpecs are the folders adapter loads, in the repo at repo
+// (none when empty) and in homes.
+func skillFolderSpecs(adapter, repo string, homes SkillHomes) []folderSpec {
+	var specs []folderSpec
+	inRepo := func(rel ...string) {
+		if repo == "" {
+			return
+		}
+		for _, r := range rel {
+			specs = append(specs, folderSpec{scope: "repo", name: r, path: filepath.Join(repo, filepath.FromSlash(r))})
+		}
+	}
+	inHome := func(name, path string, nested bool) {
+		if filepath.IsAbs(homes.Home) && filepath.IsAbs(path) {
+			specs = append(specs, folderSpec{scope: "home", name: name, path: path, nested: nested})
+		}
+	}
+	user := func(rel string) { inHome("~/"+rel, filepath.Join(homes.Home, filepath.FromSlash(rel)), false) }
+	switch adapter {
+	case "claude-code":
+		inRepo(".claude/skills")
+		user(".claude/skills")
+		inHome("~/.claude/skills/synced", filepath.Join(homes.Home, ".claude", "skills", "synced"), true)
+	case "codex":
+		inRepo(".agents/skills", ".codex/skills")
+		user(".agents/skills")
+		name, dir := "~/.codex/skills", filepath.Join(homes.Home, ".codex", "skills")
+		if homes.CodexHome != "" {
+			name, dir = "$CODEX_HOME/skills", filepath.Join(homes.CodexHome, "skills")
+		}
+		inHome(name, dir, false)
+		inHome(name+"/.system", filepath.Join(dir, ".system"), true)
+	case "pi":
+		inRepo(".agents/skills", ".pi/skills")
+		user(".agents/skills")
+		name, dir := "~/.pi/agent/skills", filepath.Join(homes.Home, ".pi", "agent", "skills")
+		if homes.PiAgentDir != "" {
+			name, dir = "$PI_CODING_AGENT_DIR/skills", filepath.Join(homes.PiAgentDir, "skills")
+		}
+		inHome(name, dir, false)
+	case "opencode":
+		inRepo(".agents/skills", ".claude/skills", ".opencode/skills")
+		user(".agents/skills")
+		user(".claude/skills")
+		user(".config/opencode/skills")
+	}
+	return specs
+}
+
+// ReadSkills reads the skill folders adapters load in the repo at repo
+// (home folders only when repo is empty) and in homes: repo folders first,
+// each folder once with every adapter that loads it.
+func ReadSkills(repo string, adapters []string, homes SkillHomes) []SkillFolder {
+	var order []string
+	byPath := map[string]*SkillFolder{}
+	nested := map[string]bool{}
+	for _, scope := range []string{"repo", "home"} {
+		for _, adapter := range adapters {
+			for _, spec := range skillFolderSpecs(adapter, repo, homes) {
+				if spec.scope != scope {
+					continue
+				}
+				f := byPath[spec.path]
+				if f == nil {
+					f = &SkillFolder{Scope: spec.scope, Folder: spec.name, Path: spec.path}
+					byPath[spec.path] = f
+					order = append(order, spec.path)
+					nested[spec.path] = spec.nested
+				}
+				if !contains(f.Adapters, adapter) {
+					f.Adapters = append(f.Adapters, adapter)
+				}
+			}
+		}
+	}
+	folders := make([]SkillFolder, 0, len(order))
+	for _, path := range order {
+		f := byPath[path]
+		readFolder(f, nested[path], byPath)
+		folders = append(folders, *f)
+	}
+	return folders
+}
+
+func contains(list []string, s string) bool {
+	for _, x := range list {
+		if x == s {
+			return true
+		}
+	}
+	return false
+}
+
+// readFolder lists f's skills. A nested folder (synced/, .system/) is not
+// followed when it is a symlink; entries that are folders of their own
+// are left to their own listing.
+func readFolder(f *SkillFolder, nested bool, folders map[string]*SkillFolder) {
+	f.Skills = []Skill{}
+	info, err := os.Lstat(f.Path)
+	if err != nil {
+		f.State = FolderMissing
+		return
+	}
+	if info.Mode()&fs.ModeSymlink != 0 {
+		f.Link, _ = os.Readlink(f.Path)
+		if nested {
+			f.State = FolderNotFollowed
+			return
+		}
+	}
+	real, err := filepath.EvalSymlinks(f.Path)
+	if err != nil {
+		f.State = FolderBrokenLink
+		return
+	}
+	f.Real = real
+	if info, err := os.Stat(real); err != nil || !info.IsDir() {
+		f.State = FolderNotDirectory
+		return
+	}
+	entries, err := os.ReadDir(real)
+	if err != nil {
+		f.State = FolderMissing
+		return
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		// Hidden entries (.git, .DS_Store) are not skills; .system is read
+		// as a folder of its own.
+		if strings.HasPrefix(name, ".") || folders[filepath.Join(f.Path, name)] != nil {
+			continue
+		}
+		if skill, ok := readSkill(filepath.Join(f.Path, name), filepath.Join(real, name), name); ok {
+			f.Skills = append(f.Skills, skill)
+		}
+	}
+}
+
+// readSkill reads the skill entry name, at path as the folder names it and
+// at inReal inside the folder's real path. A plain file is no skill.
+func readSkill(path, inReal, name string) (Skill, bool) {
+	s := Skill{Name: name, Path: path}
+	info, err := os.Lstat(inReal)
+	if err != nil {
+		return s, false
+	}
+	if info.Mode()&fs.ModeSymlink != 0 {
+		s.Link, _ = os.Readlink(inReal)
+		real, err := filepath.EvalSymlinks(inReal)
+		if err != nil {
+			return failed(s, SkillBrokenLink, "the link does not resolve"), true
+		}
+		s.Real = real
+		if info, err := os.Stat(real); err != nil || !info.IsDir() {
+			return s, false
+		}
+	} else if !info.IsDir() {
+		return s, false
+	} else {
+		s.Real = inReal
+	}
+
+	file := filepath.Join(s.Real, "SKILL.md")
+	if _, err := os.Lstat(file); err != nil {
+		return failed(s, SkillMissing, "SKILL.md is missing"), true
+	}
+	realFile, err := filepath.EvalSymlinks(file)
+	if err != nil {
+		return failed(s, SkillBrokenLink, "SKILL.md's link does not resolve"), true
+	}
+	if !within(s.Real, realFile) {
+		return failed(s, SkillOutside, "SKILL.md is outside its skill"), true
+	}
+	fileInfo, err := os.Stat(realFile)
+	if err != nil || !fileInfo.Mode().IsRegular() {
+		return failed(s, SkillNotAFile, "SKILL.md is not a file"), true
+	}
+	if fileInfo.Size() > fileCap {
+		return failed(s, SkillTooLarge, "SKILL.md is over 256 KB"), true
+	}
+	data, err := os.ReadFile(realFile)
+	if err != nil {
+		return failed(s, SkillMissing, "SKILL.md cannot be read"), true
+	}
+	s.Content = string(data)
+	s.Description, s.Checks = check(data, name)
+	return s, true
+}
+
+func failed(s Skill, state, check string) Skill {
+	s.State = state
+	s.Checks = Checks{Failed: []string{check}}
+	return s
+}
+
+// within: path is dir or below it.
+func within(dir, path string) bool {
+	rel, err := filepath.Rel(dir, path)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)
+}
+
+// check runs the structural checks of ADR-010 rule 7 on a SKILL.md of the
+// skill folder folder, and returns its description.
+func check(data []byte, folder string) (string, Checks) {
+	front, err := frontMatter(data)
+	if err != nil {
+		return "", Checks{Failed: []string{err.Error()}}
+	}
+	var fails []string
+	name := text(front["name"])
+	description := text(front["description"])
+	if name == "" {
+		fails = append(fails, failedName)
+	}
+	if description == "" {
+		fails = append(fails, failedDescription)
+	}
+	if name != "" && name != folder {
+		fails = append(fails, "name "+name+" is not the folder's name "+folder)
+	}
+	return description, Checks{Passed: len(fails) == 0, Failed: fails}
+}
+
+func text(v any) string {
+	s, _ := v.(string)
+	return strings.TrimSpace(s)
+}
+
+// frontMatter parses the YAML between a SKILL.md's opening --- line and the
+// next one.
+func frontMatter(data []byte) (map[string]any, error) {
+	data = bytes.TrimPrefix(data, []byte("\xef\xbb\xbf"))
+	lines := strings.SplitAfter(string(data), "\n")
+	if strings.TrimRight(lines[0], "\r\n") != "---" {
+		return nil, errors.New(failedNoFront)
+	}
+	for i := 1; i < len(lines); i++ {
+		if strings.TrimRight(lines[i], " \t\r\n") != "---" {
+			continue
+		}
+		front := map[string]any{}
+		if err := yaml.Unmarshal([]byte(strings.Join(lines[1:i], "")), &front); err != nil {
+			return nil, errors.New("front matter does not parse: " + err.Error())
+		}
+		return front, nil
+	}
+	return nil, errors.New("front matter does not parse: no closing ---")
+}
+
+// runtimeAdapters are the adapters of the runtimes the settings in dirs
+// define, a later dir's runtime file replacing an earlier one's of the same
+// name, as the page composes them.
+func runtimeAdapters(dirs ...string) []string {
+	byStem := map[string]string{}
+	for _, dir := range dirs {
+		entries, err := os.ReadDir(filepath.Join(dir, "runtimes"))
+		if err != nil {
+			continue
+		}
+		for _, entry := range entries {
+			ext := filepath.Ext(entry.Name())
+			if ext != ".yaml" && ext != ".yml" {
+				continue
+			}
+			stem := strings.TrimSuffix(entry.Name(), ext)
+			byStem[stem] = ""
+			info, err := entry.Info()
+			if err != nil || !info.Mode().IsRegular() || info.Size() > fileCap {
+				continue
+			}
+			data, err := os.ReadFile(filepath.Join(dir, "runtimes", entry.Name()))
+			if err != nil {
+				continue
+			}
+			var doc struct {
+				Adapter string `yaml:"adapter"`
+			}
+			if yaml.Unmarshal(data, &doc) == nil {
+				byStem[stem] = doc.Adapter
+			}
+		}
+	}
+	adapters := []string{}
+	for _, adapter := range byStem {
+		if adapter != "" && !contains(adapters, adapter) {
+			adapters = append(adapters, adapter)
+		}
+	}
+	sort.Strings(adapters)
+	return adapters
+}
+
+// skillsAt answers /api/skills for path: a repo's absolute path, or ~.
+func skillsAt(path, agisterHome string, homes SkillHomes) (SkillsReply, error) {
+	dir := filepath.Join(path, ".agister")
+	if path == Home {
+		dir = agisterHome
+	}
+	if !filepath.IsAbs(dir) {
+		return SkillsReply{}, badRequest("path must be absolute or ~: " + path)
+	}
+	if !isDir(dir) {
+		return SkillsReply{}, notFound("no .agister folder at " + dir)
+	}
+	reply := SkillsReply{Path: path, Home: filepath.Clean(dir) == filepath.Clean(agisterHome)}
+	repo := ""
+	if reply.Home {
+		reply.Adapters = runtimeAdapters(agisterHome)
+	} else {
+		repo = filepath.Clean(path)
+		reply.Adapters = runtimeAdapters(agisterHome, dir)
+	}
+	reply.Folders = ReadSkills(repo, reply.Adapters, homes)
+	return reply, nil
+}
