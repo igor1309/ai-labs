@@ -2,6 +2,8 @@ package claudecode_test
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -218,6 +220,64 @@ func TestFailuresAreClassified(t *testing.T) {
 		if turn := stream.Reconcile(clean, false); string(turn.Status) != string(claudecode.Failed) || string(turn.Error.Class) != string(c.class) {
 			t.Errorf("%s: %+v", c.name, turn.Error)
 		}
+	}
+}
+
+func TestErrorResultMessages(t *testing.T) {
+	const limit = "You've hit your session limit · resets 12:30pm (Europe/Moscow)"
+	for _, c := range []struct {
+		name    string
+		result  string
+		class   claudecode.Class
+		message string
+	}{
+		{
+			name:    "session limit observed 2026-10-02",
+			result:  `{"type":"result","subtype":"success","is_error":true,"result":"You've hit your session limit · resets 12:30pm (Europe/Moscow)","api_error_status":429,"stop_reason":"stop_sequence"}`,
+			class:   claudecode.ClassRateLimited,
+			message: "runtime reported an error (429): " + limit,
+		},
+		{
+			name:    "error without status",
+			result:  `{"type":"result","subtype":"success","is_error":true,"result":"Something went wrong"}`,
+			class:   claudecode.ClassRuntimeError,
+			message: "runtime reported an error: Something went wrong",
+		},
+		{
+			name:    "named error",
+			result:  `{"type":"result","subtype":"error_max_turns","is_error":true}`,
+			class:   claudecode.ClassRuntimeError,
+			message: "runtime reported error_max_turns",
+		},
+		{
+			name:    "budget error",
+			result:  `{"type":"result","subtype":"error_max_budget_usd","is_error":true,"errors":["Reached maximum budget ($0.0001)"]}`,
+			class:   claudecode.ClassBudgetExhausted,
+			message: "runtime reported error_max_budget_usd: Reached maximum budget ($0.0001)",
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "result.json")
+			if err := os.WriteFile(path, []byte(c.result), 0600); err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			stream := &claudecode.Stream{}
+			if events := stream.Reduce(string(data)); len(events) != 1 || events[0].Kind != "TURN_FAILED" {
+				t.Fatalf("events = %+v", events)
+			}
+			code := 0
+			turn := stream.Reconcile(claudecode.Evidence{Exit: &claudecode.Exit{Code: &code}}, false)
+			if turn.Status != claudecode.Failed || turn.Error == nil || turn.Error.Class != c.class {
+				t.Fatalf("turn = %+v", turn)
+			}
+			if turn.Error.Message != c.message || strings.Contains(turn.Error.Message, "success") {
+				t.Fatalf("message = %q, want %q without success", turn.Error.Message, c.message)
+			}
+		})
 	}
 }
 
