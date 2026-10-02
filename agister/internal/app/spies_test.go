@@ -417,17 +417,26 @@ func (s *commandsSpy) runs() []app.CommandRequest {
 }
 
 type validatorSpy struct {
+	mu                      sync.Mutex
 	compileErr, validateErr error
+	compileFor              func([]byte) error
 	compiled                [][]byte
 	validated               []json.RawMessage
 }
 
 func (s *validatorSpy) Compile(schema []byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.compiled = append(s.compiled, schema)
+	if s.compileFor != nil {
+		return s.compileFor(schema)
+	}
 	return s.compileErr
 }
 
 func (s *validatorSpy) Validate(_ []byte, output json.RawMessage) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.validated = append(s.validated, output)
 	return s.validateErr
 }

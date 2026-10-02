@@ -126,6 +126,8 @@ func (r *Resolver) reach(ctx context.Context) (*reach, error) {
 type overrides struct {
 	timeout    string
 	maxCostUSD *float64
+	// A workflow defers only a missing named verification to its node.
+	deferMissingVerify bool
 }
 
 // resolve resolves the process named processName. A refused one's
@@ -140,6 +142,10 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 	refused := reached.call(processName, agentOverride)
 	res, err := r.resolveCall(ctx, processName, agentOverride, caller, refused != nil)
 	if refused != nil {
+		// A listed but unreadable process still has an identity for its view.
+		if _, listed := reached.definitions[contract.DefinitionRef{Kind: string(definition.KindProcess), Name: processName}]; listed && res.process.Name == "" {
+			res.process.Name = processName
+		}
 		return res, refused
 	}
 	return res, err
@@ -147,9 +153,34 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 
 // resolveCall resolves the call; settingsOnly stops it before the runtime
 // is asked anything.
-func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride string, caller overrides, settingsOnly bool) (*resolution, error) {
-	res := &resolution{}
+func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride string, caller overrides, settingsOnly bool) (res *resolution, err error) {
+	res = &resolution{}
+	subject := contract.DefinitionRef{Kind: string(definition.KindProcess), Name: processName}
+	defer func() {
+		// Static problems already carry their document and chain. Problems
+		// discovered while resolving an override or probing its runtime
+		// need the same attribution (ADR-012 rules 2 and 3).
+		if r.check == nil || settingsOnly || err == nil {
+			return
+		}
+		var refusal *Refusal
+		if !errors.As(err, &refusal) {
+			return
+		}
+		reached, checkErr := r.reach(ctx)
+		if checkErr == nil {
+			if subject.Kind == string(definition.KindVerify) {
+				if _, listed := reached.definitions[subject]; !listed {
+					// ADR-010's missing-verification refusal already names
+					// the process, reference and both expected paths.
+					return
+				}
+			}
+			err = reached.explain(contract.DefinitionRef{Kind: string(definition.KindProcess), Name: processName}, agentOverride, subject, refusal.Reason)
+		}
+	}()
 	load := func(kind definition.Kind, name string) (definition.Document, error) {
+		subject = contract.DefinitionRef{Kind: string(kind), Name: name}
 		doc, err := r.definitions.Read(ctx, kind, name)
 		if err != nil {
 			return doc, refuse("%s %q: %v", kind.Singular(), name, err)
@@ -223,16 +254,23 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	// The verification a process names is the call's from here on
 	// (ADR-010 rule 3); without it the call is refused, never run unverified.
 	if name := res.process.VerifyName; name != "" {
-		if doc, err = load(definition.KindVerify, name); err != nil {
-			return res, refuse("process %s names verify:%s: %v", res.process.Name, name, err)
+		names, listErr := r.definitions.List(ctx, definition.KindVerify)
+		if listErr != nil {
+			return res, listErr
 		}
-		verification, err := definition.ParseVerify(doc)
-		if err != nil {
-			return res, parsed(err)
+		if !caller.deferMissingVerify || contains(names, name) {
+			if doc, err = load(definition.KindVerify, name); err != nil {
+				return res, refuse("process %s names verify:%s: %v", res.process.Name, name, err)
+			}
+			verification, err := definition.ParseVerify(doc)
+			if err != nil {
+				return res, parsed(err)
+			}
+			res.process.Verify = &verification.Verify
 		}
-		res.process.Verify = &verification.Verify
 	}
 
+	subject = contract.DefinitionRef{Kind: string(definition.KindProcess), Name: processName}
 	limits := policy.Caller{MaxCostUSD: caller.maxCostUSD}
 	if caller.timeout != "" {
 		timeout, err := time.ParseDuration(caller.timeout)
@@ -256,13 +294,16 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	if settingsOnly {
 		return res, nil
 	}
+	subject = contract.DefinitionRef{Kind: string(definition.KindRuntime), Name: res.mapping.Name}
 	if res.identity, err = r.identities.Identity(ctx, res.mapping.Adapter, res.agent.Command); err != nil {
+		subject = contract.DefinitionRef{Kind: string(definition.KindAgent), Name: res.agent.Name}
 		return res, refuse("runtime %s is unavailable: %v", res.mapping.Name, err)
 	}
 	if res.identity.Contract != res.mapping.Contract {
 		return res, refuse("runtime mapping %s describes adapter contract %s, but the adapter implements %s", res.mapping.Name, res.mapping.Contract, res.identity.Contract)
 	}
 	if verify := res.process.Verify; verify.Repairs() && !res.identity.Resume {
+		subject = contract.DefinitionRef{Kind: string(definition.KindProcess), Name: processName}
 		return res, refuse("verify.max_attempts %d repairs in the call's session, but runtime %s cannot resume sessions", verify.MaxAttempts, res.mapping.Name)
 	}
 	verified, unverified := res.mapping.ForVersion(res.identity.Version)
@@ -270,10 +311,12 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		return res, refuse("runtime mapping %s verifies no primitive for %s version %s", res.mapping.Name, res.mapping.Adapter, res.identity.Version)
 	}
 	if res.effective.MaxCostUSD != nil && !res.identity.CostLimit {
+		subject = contract.DefinitionRef{Kind: string(definition.KindProcess), Name: processName}
 		return res, refuse("runtime %s cannot enforce the cost limit %g", res.mapping.Name, *res.effective.MaxCostUSD)
 	}
 	// The staleness limits on tool calls need the adapter to report them.
 	if stale := res.effective.Stale; !res.identity.ToolCalls {
+		subject = contract.DefinitionRef{Kind: string(definition.KindProcess), Name: processName}
 		switch {
 		case stale.ToolCommand != nil:
 			return res, refuse("runtime %s does not report tool calls, so it cannot enforce stale.tool_command %s", res.mapping.Name, *stale.ToolCommand)
@@ -281,6 +324,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 			return res, refuse("runtime %s does not report tool calls, so it cannot enforce stale.repeated_tool_calls %d", res.mapping.Name, *stale.RepeatedToolCalls)
 		}
 	}
+	subject = contract.DefinitionRef{Kind: string(definition.KindProcess), Name: processName}
 	if res.plan, err = enforce.Make(res.effective.Permissions, verified, res.effective.Require, res.service.StateReaching); err != nil {
 		return res, refuse("runtime %s: %v%s", res.mapping.Name, err, unverifiedNote(unverified, "for version "+res.identity.Version))
 	}
@@ -362,12 +406,30 @@ func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResoluti
 	if refused := reached.workflow(name); refused != nil {
 		return res, true, refused
 	}
+	if err == nil && r.check != nil {
+		// Resolve every node, including the join, before any turn. Only a
+		// missing named verification remains a refusal at its node.
+		var problems []string
+		seen := map[string]bool{}
+		for _, node := range res.workflow.Nodes() {
+			if seen[node.Process] {
+				continue
+			}
+			seen[node.Process] = true
+			if _, problem := r.resolve(ctx, node.Process, "", overrides{deferMissingVerify: true}); problem != nil {
+				problems = append(problems, "workflow "+name+" uses "+strings.Replace(problem.Error(), " uses ", ", which uses ", 1))
+			}
+		}
+		if len(problems) > 0 {
+			err = refuse("%s", strings.Join(problems, "; "))
+		}
+	}
 	return res, true, err
 }
 
 // resolveWorkflow reads the workflow and its nodes' processes.
 func (r *Resolver) resolveWorkflow(ctx context.Context, name string) (*workflowResolution, error) {
-	res := &workflowResolution{processes: map[string]definition.Process{}}
+	res := &workflowResolution{workflow: definition.Workflow{Name: name}, processes: map[string]definition.Process{}}
 	doc, err := r.definitions.Read(ctx, definition.KindWorkflow, name)
 	if err != nil {
 		return res, refuse("workflow %q: %v", name, err)

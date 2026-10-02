@@ -47,11 +47,12 @@ Usage:
                                      whole report); each problem refuses what uses the document it
                                      is in, and says what that is; broken service settings, a file
                                      name that is not a name, an unlistable settings directory or a
-                                     workflow named like a process stop every command but init
+                                     workflow named like a process stop commands except init, check,
+                                     cancelling a run and following an admitted run
   agister agent create <name> --runtime <runtime> [--model <m>] [--model-family <f>] [--effort <e>]
                          [--session fresh-only|resumable] [--command <path>] [--force]
-                                     write an agent to <home>; refused if the settings would stop
-                                     passing check; --force replaces an existing one after you type yes
+                                     write an agent to <home>; refused if it adds a problem;
+                                     --force replaces an existing one after you type yes
   agister agent list
   agister process list
   agister process show <process> [--agent <name>]
@@ -292,10 +293,10 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 			}
 			for _, agent := range agents {
 				if agent.Problem != "" {
-					fmt.Fprintf(env.Stdout, "%s\t%s\n", agent.Name, agent.Problem)
+					fmt.Fprintf(env.Stdout, "%s\t%s%s\n", agent.Name, agent.Problem, refused(agent.Refusal))
 					continue
 				}
-				fmt.Fprintf(env.Stdout, "%s\t%s\t%s\t%s\t%s\n", agent.Name, agent.Runtime, or(agent.Model, "(default model)"), or(agent.Effort, "-"), or(agent.ModelFamily, "-"))
+				fmt.Fprintf(env.Stdout, "%s\t%s\t%s\t%s\t%s%s\n", agent.Name, agent.Runtime, or(agent.Model, "(default model)"), or(agent.Effort, "-"), or(agent.ModelFamily, "-"), refused(agent.Refusal))
 			}
 			return 0, nil
 		}

@@ -102,11 +102,12 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 		return definition.Document{}, err
 	}
 	data, err := os.ReadFile(path)
+	doc := definition.Document{Source: definition.Source{Kind: kind, Name: name, Path: path}}
 	if errors.Is(err, fs.ErrNotExist) {
-		return definition.Document{}, fmt.Errorf("%w (expected %s)", errNotFound, path)
+		return doc, fmt.Errorf("%w (expected %s)", errNotFound, path)
 	}
 	if err != nil {
-		return definition.Document{}, err
+		return doc, err
 	}
 	return definition.Document{
 		Source: definition.Source{Kind: kind, Name: name, Path: path, SHA256: digest(data)},
@@ -250,10 +251,10 @@ func (l Layered) Read(ctx context.Context, kind definition.Kind, name string) (d
 		}
 		return doc, err
 	}
+	doc.Source.Project = true
 	if err != nil {
 		return doc, err
 	}
-	doc.Source.Project = true
 	if globalPath, err := l.Global.path(kind, name); err == nil {
 		if _, err := os.Stat(globalPath); err == nil {
 			doc.Source.Overrides = globalPath

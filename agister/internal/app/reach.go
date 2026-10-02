@@ -135,6 +135,22 @@ func (r *reach) workflow(name string) error {
 	return r.refusal(contract.DefinitionRef{Kind: string(definition.KindWorkflow), Name: name}, "")
 }
 
+// explain gives a problem discovered during resolution the same document,
+// path and use chain as a problem found by check.
+func (r *reach) explain(root contract.DefinitionRef, agent string, subject contract.DefinitionRef, message string) error {
+	for _, s := range r.walk(root, agent) {
+		if s.ref != subject {
+			continue
+		}
+		where := ""
+		if path := r.definitions[subject].Path; path != "" {
+			where = " (" + path + ")"
+		}
+		return refuse("%s%s: %s", s.chain(), where, message)
+	}
+	return refuse("%s", message)
+}
+
 // refusal names each document with problems a call of root depends on, its
 // path, its problems and the chain that reaches it.
 func (r *reach) refusal(root contract.DefinitionRef, agent string) error {

@@ -171,7 +171,8 @@ func TestOpenCodeCallWithoutTheSkillToolIsRefused(t *testing.T) {
 	}
 	last := lastRun(t, home)
 	fault := last.record["result"].(map[string]any)["error"].(map[string]any)
-	if fault["class"] != "refused" || fault["message"] != reason || last.first != nil {
+	want := "process ask_opencode (" + filepath.Join(home, "processes", "ask_opencode.yaml") + "): " + reason
+	if fault["class"] != "refused" || fault["message"] != want || last.first != nil {
 		t.Fatalf("error = %v, OpenCode's first line %v", fault, last.first)
 	}
 }

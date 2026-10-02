@@ -455,7 +455,11 @@ func TestCheckAndListingsSayWhatIsRefused(t *testing.T) {
 				{Problem: "workflow p: a process has the same name", Stops: true},
 			},
 		}},
-		agentList: []contract.Agent{{Name: "a", Runtime: "rt", Model: "m"}, {Name: "z", Problem: "invalid (run `agister check`)"}},
+		agentList: []contract.Agent{
+			{Name: "a", Runtime: "rt", Model: "m"},
+			{Name: "b", Runtime: "broken", Refusal: "agent b uses runtime mapping broken (/broken.yaml): bad"},
+			{Name: "z", Problem: "invalid (run `agister check`)"},
+		},
 		processList: []contract.ProcessSummary{
 			{Name: "p", Agent: "a", Output: "text", Refusal: "process p uses agent a, which uses runtime mapping rt (/rt.yaml): bad"},
 			{Name: "s", Agent: "a", Output: "text"},
@@ -476,7 +480,7 @@ func TestCheckAndListingsSayWhatIsRefused(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	build := func(cli.Config) (contract.Client, error) { return spy, nil }
 	io := cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }}
-	if code := cli.Run(context.Background(), []string{"agent", "list"}, io, build); code != 0 || stdout.String() != "a\trt\tm\t-\t-\nz\tinvalid (run `agister check`)\n" {
+	if code := cli.Run(context.Background(), []string{"agent", "list"}, io, build); code != 0 || stdout.String() != "a\trt\tm\t-\t-\nb\tbroken\t(default model)\t-\t-\tREFUSED: agent b uses runtime mapping broken (/broken.yaml): bad\nz\tinvalid (run `agister check`)\n" {
 		t.Fatalf("agent list: %d %q %q", code, stdout.String(), stderr.String())
 	}
 	stdout.Reset()

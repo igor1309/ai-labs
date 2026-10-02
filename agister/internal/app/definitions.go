@@ -300,20 +300,25 @@ func (s *Settings) ListAgents(ctx context.Context) ([]contract.Agent, error) {
 	if err != nil {
 		return nil, err
 	}
+	reached, err := s.reach(ctx)
+	if err != nil {
+		return nil, err
+	}
 	agents := make([]contract.Agent, 0, len(names))
 	for _, name := range names {
+		refusal := refusalOf(reached.refusal(contract.DefinitionRef{Kind: string(definition.KindAgent), Name: name}, ""))
 		// A broken agent is listed as such: it refuses only what uses it.
 		doc, err := s.definitions.Read(ctx, definition.KindAgent, name)
 		if err != nil {
-			agents = append(agents, contract.Agent{Name: name, Problem: fmt.Sprintf("unreadable: %v (run `agister check`)", err)})
+			agents = append(agents, contract.Agent{Name: name, Problem: fmt.Sprintf("unreadable: %v (run `agister check`)", err), Refusal: refusal})
 			continue
 		}
 		agent, err := definition.ParseAgent(doc)
 		if err != nil {
-			agents = append(agents, contract.Agent{Name: name, Problem: "invalid (run `agister check`)"})
+			agents = append(agents, contract.Agent{Name: name, Problem: "invalid (run `agister check`)", Refusal: refusal})
 			continue
 		}
-		agents = append(agents, contract.Agent{Name: agent.Name, Runtime: agent.Runtime, Model: agent.Model, ModelFamily: agent.ModelFamily, Effort: agent.Effort, Session: agent.Session, Command: agent.Command})
+		agents = append(agents, contract.Agent{Name: agent.Name, Runtime: agent.Runtime, Model: agent.Model, ModelFamily: agent.ModelFamily, Effort: agent.Effort, Session: agent.Session, Command: agent.Command, Refusal: refusal})
 	}
 	return agents, nil
 }

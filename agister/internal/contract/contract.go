@@ -89,6 +89,7 @@ type Agent struct {
 	Session     string // fresh-only (default) | resumable
 	Command     string
 	Problem     string // set when the definition is invalid
+	Refusal     string // problems in this agent or its runtime mapping
 }
 
 type ProcessSummary struct {

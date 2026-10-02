@@ -41,13 +41,22 @@ func Binary(t testing.TB, name string) string {
 		t.Fatal(err)
 	}
 	path := filepath.Join(dir, name)
-	command := exec.Command("go", "build", "-o", path, "./"+name)
-	command.Dir = filepath.Dir(file)
-	if out, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("building %s: %v\n%s", name, err, out)
-	}
+	Build(t, filepath.Dir(file), path, "./"+name)
 	built[name] = path
 	return path
+}
+
+// Build builds a test fixture using a cache owned by this test. Nested go
+// builds must not depend on host cache artifacts that can disappear while
+// the test is running. The caller owns the output and its lifetime.
+func Build(t testing.TB, dir, output, target string) {
+	t.Helper()
+	command := exec.Command("go", "build", "-o", output, target)
+	command.Dir = dir
+	command.Env = append(command.Environ(), "GOCACHE="+t.TempDir())
+	if out, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("building %s: %v\n%s", target, err, out)
+	}
 }
 
 // Recorder is an EventSink that keeps everything.

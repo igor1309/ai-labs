@@ -116,11 +116,6 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 				continue
 			}
 			doc, err := c.definitions.Read(ctx, kind, name)
-			if err != nil {
-				problem(kind.Singular()+" "+name, "%v", err)
-				continue
-			}
-			report.Checked[string(kind)]++
 			if doc.Source.Overrides != "" {
 				report.Overrides = append(report.Overrides, fmt.Sprintf("%s %s: %s overrides %s", kind.Singular(), name, doc.Source.Path, doc.Source.Overrides))
 			}
@@ -130,6 +125,12 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			}
 			index[contract.DefinitionRef{Kind: string(kind), Name: name}] = len(report.Definitions)
 			report.Definitions = append(report.Definitions, contract.Definition{Kind: string(kind), Name: name, Layer: layer, Path: doc.Source.Path, Overrides: doc.Source.Overrides})
+			if err != nil {
+				report.Definitions[len(report.Definitions)-1].Invalid = true
+				problem(kind.Singular()+" "+name, "%v", err)
+				continue
+			}
+			report.Checked[string(kind)]++
 			if err := parse(doc); err != nil {
 				report.Definitions[len(report.Definitions)-1].Invalid = true
 				var invalid *definition.InvalidError
@@ -208,6 +209,18 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 	for _, step := range steps {
 		if err := each(step.kind, step.parse); err != nil {
 			return report, err
+		}
+	}
+	// File names define the run namespace even when their documents cannot
+	// be parsed. settings.Check handles the pair when both parsed.
+	for ref := range listed {
+		if ref.Kind != string(definition.KindWorkflow) || !listed[contract.DefinitionRef{Kind: string(definition.KindProcess), Name: ref.Name}] {
+			continue
+		}
+		_, processOK := bundle.Processes[ref.Name]
+		_, workflowOK := bundle.Workflows[ref.Name]
+		if bundle.Service == nil || !processOK || !workflowOK {
+			stops("workflow "+ref.Name, "a process has the same name; name one of them otherwise")
 		}
 	}
 	// What each problem refuses, once every problem is known.

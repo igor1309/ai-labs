@@ -87,7 +87,8 @@ func TestExamplePiCallWithoutASkillToolIsRefused(t *testing.T) {
 	}
 	last := lastRun(t, home)
 	fault := last.record["result"].(map[string]any)["error"].(map[string]any)
-	if fault["class"] != "refused" || fault["message"] != reason {
+	want := "process ask_pi (" + filepath.Join(home, "processes", "ask_pi.yaml") + "): " + reason
+	if fault["class"] != "refused" || fault["message"] != want {
 		t.Fatalf("error = %v", fault)
 	}
 	if last.first != nil {
