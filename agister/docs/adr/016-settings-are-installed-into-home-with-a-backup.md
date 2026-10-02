@@ -27,7 +27,8 @@ changing anything, and delete only what was recorded as owned.
 
 - What is written is exactly what was shown and checked.
 - Settings that fail the installed binary's check never reach home.
-- Every install can be undone, even one that stopped halfway.
+- An install can be undone while its backup is kept, even one that
+  stopped halfway.
 - Nothing in home is lost: no live state is touched, and no settings
   document that only home has is removed.
 
@@ -65,10 +66,11 @@ warnings are shown with the plan.
 
 ### 4. The yes binds the plan
 
-As with `init`, the plan carries the digest of every home document it
-read and of every source document it will write. After yes, install takes
-the store's write lock, and refuses if any of those digests changed or a
-planned path appeared, without writing anything. It writes the bytes that
+As with `init`, the plan carries the inventory of home's settings
+documents that were staged, with the digest of each, and the digest of
+every source document it will write. After yes, install takes the store's
+write lock, and refuses if that inventory changed (a document added,
+removed or changed, a planned path included), without writing anything. It writes the bytes that
 were shown and checked; it never plans again silently.
 
 ### 5. The backup is recorded before anything changes
@@ -107,6 +109,8 @@ restored.
 - A repository's settings can be made global in one command, with a diff,
   a check by the installed binary, and a way back.
 - Home gains `backups/`, a folder of state that is not settings.
+- An install can no longer be restored once its backup is removed, after
+  five later installs.
 - An install is not one atomic switch: until it ends, a reader may see
   some documents new and some old. The manifest makes any such state
   restorable.
