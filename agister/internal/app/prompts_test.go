@@ -135,6 +135,61 @@ func TestAnUnreadablePromptIsAProblemOfItsOwn(t *testing.T) {
 	}
 }
 
+// Rule 1: a prompt that is listed but cannot be read is a problem of that
+// document: the process naming it is not told that it does not exist.
+func TestAnUnreadableListedPromptIsAProblemNotAMissingOne(t *testing.T) {
+	h := newHarness()
+	prompted(h, reviewPrompt)
+	unreadable := errors.New("cannot read prompt review")
+	live := failingSource{definitionsSpy: h.defs, readErr: map[string]error{"prompts/review": unreadable}}
+	report, err := app.NewChecker(live, h.validator, h.runtimes, []string{"git.revision", "git.diff"}).Check(context.Background(), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"prompt review: cannot read prompt review"}
+	if !reflect.DeepEqual(report.Problems, want) || len(report.Warnings) != 0 {
+		t.Fatalf("problems %q, warnings %q, want problems %q and no warnings", report.Problems, report.Warnings, want)
+	}
+}
+
+// withoutPrompts is a CallResolver that resolves through the Resolver and
+// then drops the prompts it resolved, as a resolution that forgot them
+// would.
+type withoutPrompts struct{ resolver app.CallResolver }
+
+func (w withoutPrompts) Snapshot(ctx context.Context) app.CallResolution {
+	return promptless{w.resolver.Snapshot(ctx)}
+}
+
+type promptless struct{ app.CallResolution }
+
+func (r promptless) Resolve(ctx context.Context, request app.CallResolveRequest) (*app.ResolvedCall, error) {
+	res, err := r.CallResolution.Resolve(ctx, request)
+	res.Prompts = nil
+	return res, err
+}
+
+// A call is refused, before its first turn, when an input names a prompt
+// its resolution did not give it, though resolution succeeded.
+func TestAPromptNotResolvedWithTheCallRefusesIt(t *testing.T) {
+	h := newHarness()
+	prompted(h, reviewPrompt)
+	h.calls = app.NewCalls(
+		withoutPrompts{app.NewResolver(h.defs, h.runtimes, h.validator)}, h.runtimes,
+		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
+		h.workspaces, h.changes, app.NewPreparer(h.changes, h.setup, h.clock), app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
+		h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
+	)
+	record := h.call(t, contract.CallRequest{})
+	want := `input rules: prompt "review" was not resolved with the call`
+	if class(record) != run.ClassRefused || message(record) != want {
+		t.Fatalf("result %+v: %q, want %q", record.Result, message(record), want)
+	}
+	if len(h.runner.calls()) != 0 {
+		t.Fatalf("turns %d after the refusal", len(h.runner.calls()))
+	}
+}
+
 // check --tree's links: the process uses each prompt it names, found or
 // not, and the prompt is used by the process.
 func TestCheckLinksAProcessToItsPrompts(t *testing.T) {

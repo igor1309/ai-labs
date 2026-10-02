@@ -80,6 +80,12 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 		}
 		for _, name := range names {
 			listed[contract.DefinitionRef{Kind: string(kind), Name: name}] = true
+			if kind == definition.KindPrompt {
+				// One that cannot be read or parsed is a problem of its
+				// own (ADR-013 rule 1); the processes that name it still
+				// find it.
+				bundle.Prompts[name] = true
+			}
 			doc, err := c.definitions.Read(ctx, kind, name)
 			if err != nil {
 				problem(kind.Singular()+" "+name, "%v", err)
@@ -149,9 +155,6 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			return err
 		}},
 		{definition.KindPrompt, func(d definition.Document) error {
-			// One that cannot be read is a problem of its own (ADR-013
-			// rule 1); the processes that name it still find it.
-			bundle.Prompts[d.Source.Name] = true
 			_, err := definition.ParsePrompt(d)
 			return err
 		}},
