@@ -142,9 +142,13 @@ func (r *recordingTB) Fatalf(f string, a ...any) {
 	panic("recordingTB.Fatalf: " + r.errors[len(r.errors)-1])
 }
 
+// runCleanups runs the cleanups last first, each once: a cleanup is
+// dropped before it runs, so a second drain runs only what the first left.
 func (r *recordingTB) runCleanups() {
-	for i := len(r.cleanups) - 1; i >= 0; i-- {
-		r.cleanups[i]()
+	for len(r.cleanups) > 0 {
+		last := r.cleanups[len(r.cleanups)-1]
+		r.cleanups = r.cleanups[:len(r.cleanups)-1]
+		last()
 	}
 }
 
@@ -156,6 +160,8 @@ func TestTempDirReportsWhatAFailedRemovalLeaves(t *testing.T) {
 			os.RemoveAll(root)
 		}
 	})
+	// The leftover's modification time; the report prints it local.
+	mtime := time.Date(2024, 5, 6, 7, 8, 9, 0, time.UTC)
 	// Removes the test's directories, then something drops a file.
 	leaveFile := func(dir string) error {
 		root = dir
@@ -168,11 +174,18 @@ func TestTempDirReportsWhatAFailedRemovalLeaves(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		if err := os.WriteFile(filepath.Join(dir, ".DS_Store"), []byte("finder"), 0o644); err != nil {
+		leftover := filepath.Join(dir, ".DS_Store")
+		if err := os.WriteFile(leftover, []byte("finder"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chtimes(leftover, mtime, mtime); err != nil {
 			t.Fatal(err)
 		}
 		return fmt.Errorf("unlinkat %s: directory not empty", dir)
 	}
+	// A failed assertion before the drain below still removes the
+	// directories; this cleanup runs before the one removing root.
+	t.Cleanup(fake.runCleanups)
 	dir := ownedTempDir(fake, leaveFile)
 	if !strings.HasPrefix(dir, os.TempDir()) {
 		t.Errorf("dir %s is not under %s", dir, os.TempDir())
@@ -183,7 +196,7 @@ func TestTempDirReportsWhatAFailedRemovalLeaves(t *testing.T) {
 		t.Fatalf("errors = %q, want one report", fake.errors)
 	}
 	report := fake.errors[0]
-	for _, want := range []string{"TestSomething/sub: ", "directory not empty", "\n  .DS_Store  6 bytes  modified ", "left behind (1):"} {
+	for _, want := range []string{"TestSomething/sub: ", "directory not empty", "\n  .DS_Store  6 bytes  modified " + mtime.Local().Format(time.RFC3339Nano), "left behind (1):"} {
 		if !strings.Contains(report, want) {
 			t.Errorf("report lacks %q:\n%s", want, report)
 		}
@@ -192,6 +205,7 @@ func TestTempDirReportsWhatAFailedRemovalLeaves(t *testing.T) {
 
 func TestTempDirRemovesItsDirectory(t *testing.T) {
 	fake := &recordingTB{name: "TestSomething"}
+	t.Cleanup(fake.runCleanups)
 	first, second := ownedTempDir(fake, os.RemoveAll), ownedTempDir(fake, os.RemoveAll)
 	if filepath.Dir(first) != filepath.Dir(second) || first == second {
 		t.Fatalf("dirs %s and %s: want two under one test directory", first, second)
