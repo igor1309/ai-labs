@@ -46,6 +46,13 @@ type Mechanisms struct {
 type Problem struct {
 	Subject string
 	Message string
+	// Agent is set on a process's problem that depends on the agent it
+	// names (ADR-012 rule 2): it holds for a call of the process only with
+	// that agent.
+	Agent string
+	// Unattributed is set on a problem no one document is at fault for
+	// (ADR-012 rule 4).
+	Unattributed bool
 }
 
 func (p Problem) String() string { return p.Subject + ": " + p.Message }
@@ -123,20 +130,25 @@ func Check(b Bundle, m Mechanisms) []Problem {
 			add(subject, "%v", strings.TrimPrefix(err.Error(), "process "+name+" is invalid:\n  "))
 			continue
 		}
+		// What follows depends on the agent: a call that selects another
+		// one is judged on that one (ADR-012 rule 2).
+		withAgent := func(format string, args ...any) {
+			problems = append(problems, Problem{Subject: subject, Message: fmt.Sprintf(format, args...), Agent: process.Agent})
+		}
 		agent, ok := b.Agents[process.Agent]
 		if !ok {
-			add(subject, "agent %q does not exist", process.Agent)
+			withAgent("agent %q does not exist", process.Agent)
 			continue
 		}
 		if process.Verify.Repairs() && agent.Session != definition.SessionResumable {
-			add(subject, "verify.max_attempts %d repairs in the call's session, but agent %s is %s", process.Verify.MaxAttempts, agent.Name, agent.Session)
+			withAgent("verify.max_attempts %d repairs in the call's session, but agent %s is %s", process.Verify.MaxAttempts, agent.Name, agent.Session)
 		}
 		mapping, ok := b.Mappings[agent.Runtime]
 		if !ok {
 			continue // reported on the agent
 		}
 		if err := planOnSomeVersion(effective, mapping, b.Service.StateReaching); err != nil {
-			add(subject, "cannot run on agent %s's runtime %s: %v", agent.Name, mapping.Name, err)
+			withAgent("cannot run on agent %s's runtime %s: %v", agent.Name, mapping.Name, err)
 		}
 	}
 
@@ -145,7 +157,7 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		subject := "workflow " + name
 		// agister run <name> runs one or the other.
 		if _, ok := b.Processes[name]; ok {
-			add(subject, "a process has the same name; name one of them otherwise")
+			problems = append(problems, Problem{Subject: subject, Message: "a process has the same name; name one of them otherwise", Unattributed: true})
 		}
 		for _, value := range workflow.Values {
 			if !contains(m.Sources, value.Source) {
@@ -215,7 +227,7 @@ func PlanProblems(b Bundle, agent definition.Agent, version string) []Problem {
 			continue
 		}
 		if _, err := enforce.Make(effective.Permissions, verified, effective.Require, b.Service.StateReaching); err != nil {
-			problems = append(problems, Problem{Subject: "process " + name, Message: fmt.Sprintf("cannot run on agent %s's runtime %s version %s: %v%s", agent.Name, mapping.Name, version, err, unverifiedNote(unverified, version))})
+			problems = append(problems, Problem{Subject: "process " + name, Message: fmt.Sprintf("cannot run on agent %s's runtime %s version %s: %v%s", agent.Name, mapping.Name, version, err, unverifiedNote(unverified, version)), Agent: agent.Name})
 		}
 	}
 	return problems

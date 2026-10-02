@@ -11,14 +11,16 @@ import (
 	"time"
 )
 
-// SettingsError refuses a use of the client while the settings have
-// problems; the report says which.
+// SettingsError refuses a use of the client while the settings have a
+// problem that stops every command (ProblemReach.Stops); the report says
+// which. Any other problem refuses only what depends on the document it is
+// about (ADR-012).
 type SettingsError struct {
 	Report CheckReport
 }
 
 func (e *SettingsError) Error() string {
-	return "settings have problems; fix them first (see `agister check`)"
+	return "settings have problems that stop every command; fix them first (see `agister check`)"
 }
 
 type Client interface {
@@ -86,6 +88,7 @@ type Agent struct {
 	Effort      string
 	Session     string // fresh-only (default) | resumable
 	Command     string
+	Problem     string // set when the definition is invalid
 }
 
 type ProcessSummary struct {
@@ -94,6 +97,9 @@ type ProcessSummary struct {
 	Policy  string
 	Output  string
 	Problem string // set when the definition is invalid
+	// Why a call of it would be refused now, for a problem in a document it
+	// depends on; empty when none has one.
+	Refusal string
 }
 
 type CheckReport struct {
@@ -107,6 +113,27 @@ type CheckReport struct {
 	Warnings []string `json:"warnings"`
 	// Every definition read, in check order, with what it references.
 	Definitions []Definition `json:"definitions"`
+	// What each problem refuses, in the order of Problems.
+	Reach []ProblemReach `json:"reach"`
+}
+
+// ProblemReach is what one problem refuses (ADR-012): every command, or the
+// calls of the processes and workflows that depend on the document it is
+// about, and nothing else.
+type ProblemReach struct {
+	Problem string `json:"problem"`
+	// The document it is about; unset on one that stops every command.
+	Subject *DefinitionRef `json:"subject,omitempty"`
+	// Set on a process's problem that depends on the agent it names: a call
+	// that selects another agent does not have it (ADR-012 rule 2).
+	Agent string `json:"agent,omitempty"`
+	// It stops every command but init, check, cancelling a run and
+	// following an admitted run (ADR-012 rule 4).
+	Stops bool `json:"stops,omitempty"`
+	// The processes and workflows whose calls it refuses, as they are
+	// called without --agent.
+	Processes []string `json:"processes,omitempty"`
+	Workflows []string `json:"workflows,omitempty"`
 }
 
 // Definition is one settings document in the composed settings.
@@ -180,6 +207,9 @@ type WorkflowSummary struct {
 	FanOut  []string // node:process, in declaration order
 	Join    string   // node:process
 	Problem string   // set when the definition is invalid
+	// Why a run of it would be refused now, for a problem in a document it
+	// or a node's call depends on; empty when none has one.
+	Refusal string
 }
 
 // WorkflowView is a workflow as a run of it would see it (ADR-003).

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
@@ -43,6 +44,24 @@ type Resolver struct {
 	definitions ResolverDefinitions
 	identities  ResolverIdentities
 	validator   ResolverValidator
+	// check checks the definitions the resolver reads, which must not
+	// change under it (a snapshot), so a call that depends on a document
+	// with a problem is refused (ADR-012); nil refuses none for that.
+	check ResolverCheck
+	// checked is what the problems refuse, checked once when the
+	// definitions were frozen.
+	checked *checkedReach
+}
+
+// ResolverCheck checks the settings a call resolves from, to refuse one
+// that depends on a document with a problem (Checker is one).
+type ResolverCheck interface {
+	Check(ctx context.Context, probe bool) (contract.CheckReport, error)
+}
+
+type checkedReach struct {
+	reach *reach
+	err   error
 }
 
 // ResolverDefinitions supplies the documents a call or a view is resolved
@@ -81,7 +100,26 @@ func NewResolver(definitions ResolverDefinitions, identities ResolverIdentities,
 func (r *Resolver) frozen(ctx context.Context) *Resolver {
 	copied := *r
 	copied.definitions = Snapshot(ctx, r.definitions)
+	copied.checked = nil
+	reached, err := copied.reach(ctx)
+	copied.checked = &checkedReach{reach: reached, err: err}
 	return &copied
+}
+
+// reach is what the problems of the resolver's definitions refuse; nil
+// when it checks none.
+func (r *Resolver) reach(ctx context.Context) (*reach, error) {
+	if r.checked != nil {
+		return r.checked.reach, r.checked.err
+	}
+	if r.check == nil {
+		return nil, nil
+	}
+	report, err := r.check.Check(ctx, false)
+	if err != nil {
+		return nil, err
+	}
+	return newReach(report), nil
 }
 
 // overrides are the caller's narrowing limits.
@@ -91,8 +129,25 @@ type overrides struct {
 }
 
 // resolve resolves the process named processName. A refused one's
-// resolution has what was resolved before the refusal.
+// resolution has what was resolved before the refusal. A call that depends
+// on a document with a problem is refused for it, naming each, before its
+// runtime is asked anything (ADR-012).
 func (r *Resolver) resolve(ctx context.Context, processName, agentOverride string, caller overrides) (*resolution, error) {
+	reached, err := r.reach(ctx)
+	if err != nil {
+		return &resolution{}, err
+	}
+	refused := reached.call(processName, agentOverride)
+	res, err := r.resolveCall(ctx, processName, agentOverride, caller, refused != nil)
+	if refused != nil {
+		return res, refused
+	}
+	return res, err
+}
+
+// resolveCall resolves the call; settingsOnly stops it before the runtime
+// is asked anything.
+func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride string, caller overrides, settingsOnly bool) (*resolution, error) {
 	res := &resolution{}
 	load := func(kind definition.Kind, name string) (definition.Document, error) {
 		doc, err := r.definitions.Read(ctx, kind, name)
@@ -198,6 +253,9 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 		return res, refuse("verify.max_attempts %d repairs in the call's session, but agent %s is %s", verify.MaxAttempts, res.agent.Name, res.agent.Session)
 	}
 
+	if settingsOnly {
+		return res, nil
+	}
 	if res.identity, err = r.identities.Identity(ctx, res.mapping.Adapter, res.agent.Command); err != nil {
 		return res, refuse("runtime %s is unavailable: %v", res.mapping.Name, err)
 	}
@@ -286,21 +344,37 @@ type workflowResolution struct {
 }
 
 // workflow resolves the workflow named name, refusing one whose nodes
-// cannot run as ADR-003 has them (settings.WorkflowProblems). found is
-// false when the settings list no workflow of that name.
+// cannot run as ADR-003 has them (settings.WorkflowProblems), and one that
+// depends on a document with a problem (ADR-012). found is false when the
+// settings list no workflow of that name.
 func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResolution, bool, error) {
 	names, err := r.definitions.List(ctx, definition.KindWorkflow)
 	if err != nil || !contains(names, name) {
 		return nil, false, nil
 	}
+	reached, err := r.reach(ctx)
+	if err != nil {
+		return nil, true, err
+	}
+	res, err := r.resolveWorkflow(ctx, name)
+	// Refused before any node runs, for a problem in what the workflow or
+	// any node's call depends on (ADR-012 rule 3).
+	if refused := reached.workflow(name); refused != nil {
+		return res, true, refused
+	}
+	return res, true, err
+}
+
+// resolveWorkflow reads the workflow and its nodes' processes.
+func (r *Resolver) resolveWorkflow(ctx context.Context, name string) (*workflowResolution, error) {
 	res := &workflowResolution{processes: map[string]definition.Process{}}
 	doc, err := r.definitions.Read(ctx, definition.KindWorkflow, name)
 	if err != nil {
-		return res, true, refuse("workflow %q: %v", name, err)
+		return res, refuse("workflow %q: %v", name, err)
 	}
 	res.sources = append(res.sources, doc.Source)
 	if res.workflow, err = definition.ParseWorkflow(doc); err != nil {
-		return res, true, refuse("%v", err)
+		return res, refuse("%v", err)
 	}
 	for _, node := range res.workflow.Nodes() {
 		if _, ok := res.processes[node.Process]; ok {
@@ -312,14 +386,14 @@ func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResoluti
 		}
 		process, err := definition.ParseProcess(doc)
 		if err != nil {
-			return res, true, refuse("node %s: %v", node.Name, err)
+			return res, refuse("node %s: %v", node.Name, err)
 		}
 		res.processes[node.Process] = process
 	}
 	if problems := settings.WorkflowProblems(res.workflow, res.processes); len(problems) > 0 {
-		return res, true, refuse("workflow %s: %s", name, strings.Join(problems, "; "))
+		return res, refuse("workflow %s: %s", name, strings.Join(problems, "; "))
 	}
-	return res, true, nil
+	return res, nil
 }
 
 // unverifiedNote names the primitives a refused plan could not use.

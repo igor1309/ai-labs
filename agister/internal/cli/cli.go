@@ -44,8 +44,10 @@ Usage:
   agister check [--probe] [--tree] [--json]
                                      verify the composed settings (--probe: also ask each runtime its
                                      version; --tree: what defines what, and in which file; --json: the
-                                     whole report); every other command except init runs check first
-                                     and stops on any problem
+                                     whole report); each problem refuses what uses the document it
+                                     is in, and says what that is; broken service settings, a file
+                                     name that is not a name, an unlistable settings directory or a
+                                     workflow named like a process stop every command but init
   agister agent create <name> --runtime <runtime> [--model <m>] [--model-family <f>] [--effort <e>]
                          [--session fresh-only|resumable] [--command <path>] [--force]
                                      write an agent to <home>; refused if the settings would stop
@@ -218,8 +220,8 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 		command, rest = positionals[0], positionals[1:]
 	}
 	// The client refuses everything but init and check while the settings
-	// have problems; check prints its own report, and a bare agister checks
-	// before it shows the usage.
+	// have a problem that stops every command; check prints its own report,
+	// and a bare agister checks before it shows the usage.
 	if command == "check" {
 		report, err := client.Check(ctx, opts.probe)
 		if err != nil {
@@ -232,7 +234,7 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 		if err != nil {
 			return 0, err
 		}
-		if len(report.Problems) > 0 {
+		if stopsEverything(report) {
 			return 0, &contract.SettingsError{Report: report}
 		}
 	}
@@ -289,6 +291,10 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 				return 0, err
 			}
 			for _, agent := range agents {
+				if agent.Problem != "" {
+					fmt.Fprintf(env.Stdout, "%s\t%s\n", agent.Name, agent.Problem)
+					continue
+				}
 				fmt.Fprintf(env.Stdout, "%s\t%s\t%s\t%s\t%s\n", agent.Name, agent.Runtime, or(agent.Model, "(default model)"), or(agent.Effort, "-"), or(agent.ModelFamily, "-"))
 			}
 			return 0, nil
@@ -304,11 +310,11 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 				return 0, err
 			}
 			for _, process := range processes {
+				line := fmt.Sprintf("%s\tagent:%s\t%s\t%s", process.Name, process.Agent, or(process.Policy, "-"), process.Output)
 				if process.Problem != "" {
-					fmt.Fprintf(env.Stdout, "%s\t%s\n", process.Name, process.Problem)
-					continue
+					line = process.Name + "\t" + process.Problem
 				}
-				fmt.Fprintf(env.Stdout, "%s\tagent:%s\t%s\t%s\n", process.Name, process.Agent, or(process.Policy, "-"), process.Output)
+				fmt.Fprintln(env.Stdout, line+refused(process.Refusal))
 			}
 			return 0, nil
 		case "show":
@@ -337,11 +343,11 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 				return 0, err
 			}
 			for _, workflow := range workflows {
+				line := fmt.Sprintf("%s\t%s\tjoin %s", workflow.Name, strings.Join(workflow.FanOut, ","), workflow.Join)
 				if workflow.Problem != "" {
-					fmt.Fprintf(env.Stdout, "%s\t%s\n", workflow.Name, workflow.Problem)
-					continue
+					line = workflow.Name + "\t" + workflow.Problem
 				}
-				fmt.Fprintf(env.Stdout, "%s\t%s\tjoin %s\n", workflow.Name, strings.Join(workflow.FanOut, ","), workflow.Join)
+				fmt.Fprintln(env.Stdout, line+refused(workflow.Refusal))
 			}
 			return 0, nil
 		case "show":
@@ -817,6 +823,9 @@ func printCheckAs(env IO, report contract.CheckReport, opts options) (int, error
 		if report.Definitions == nil {
 			report.Definitions = []contract.Definition{}
 		}
+		if report.Reach == nil {
+			report.Reach = []contract.ProblemReach{}
+		}
 		return code, printJSON(env.Stdout, report)
 	}
 	if opts.tree {
@@ -924,14 +933,57 @@ func printCheck(env IO, report contract.CheckReport) int {
 	}
 	sort.Strings(kinds)
 	if len(report.Problems) > 0 {
-		for _, problem := range report.Problems {
+		for i, problem := range report.Problems {
 			fmt.Fprintln(env.Stderr, problem)
+			if len(report.Reach) == len(report.Problems) {
+				fmt.Fprintln(env.Stderr, "  "+reaches(report.Reach[i]))
+			}
 		}
 		fmt.Fprintf(env.Stderr, "%d problem(s) in %s\n", len(report.Problems), strings.Join(kinds, ", "))
 		return ExitUsage
 	}
 	fmt.Fprintf(env.Stdout, "settings OK: %s\n", strings.Join(kinds, ", "))
 	return 0
+}
+
+// reaches says what one problem refuses (ADR-012).
+func reaches(reach contract.ProblemReach) string {
+	if reach.Stops {
+		return "stops every command"
+	}
+	var refused []string
+	for _, name := range reach.Processes {
+		refused = append(refused, "process "+name)
+	}
+	for _, name := range reach.Workflows {
+		refused = append(refused, "workflow "+name)
+	}
+	if len(refused) == 0 {
+		return "refuses nothing"
+	}
+	return "refuses " + strings.Join(refused, ", ")
+}
+
+// stopsEverything reports whether a problem of the report stops every
+// command; one whose reach the report does not say does.
+func stopsEverything(report contract.CheckReport) bool {
+	if len(report.Reach) != len(report.Problems) {
+		return true
+	}
+	for _, reach := range report.Reach {
+		if reach.Stops {
+			return true
+		}
+	}
+	return false
+}
+
+// refused is a listing's note of a refusal; empty for none.
+func refused(reason string) string {
+	if reason == "" {
+		return ""
+	}
+	return "\tREFUSED: " + reason
 }
 
 func limits(view contract.ProcessView) string {

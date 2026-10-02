@@ -9,10 +9,13 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
 
-// Gated refuses every use of the client while the settings have problems,
-// except Init, which writes them, and Check, which reports them. Stopping a
-// run is never refused, and a run it admitted stays observable, so editing
-// settings mid-run cannot strand a call that already started.
+// Gated refuses every use of the client while the settings have a problem
+// that stops every command (ADR-012 rule 4), except Init, which writes
+// them, and Check, which reports them. Stopping a run is never refused, and
+// a run it admitted stays observable, so editing settings mid-run cannot
+// strand a call that already started. Any other problem refuses only the
+// calls that depend on the document it is about, which the client it
+// builds refuses and its listings and views show refused.
 //
 // Each gated operation reads the settings (layered, and the global layer
 // alone) once into snapshots, builds its client on them, checks with that client and then runs the
@@ -68,8 +71,9 @@ type Infrastructure struct {
 }
 
 // NewClient assembles the core over infra and returns it behind the gate:
-// nothing but init and check works on settings that do not pass check.
-// Every field of infra is required.
+// nothing but init and check works on settings with a problem that stops
+// every command, and what depends on a document with any other problem is
+// refused (ADR-012). Every field of infra is required.
 func NewClient(infra Infrastructure) contract.Client {
 	// The calls hosted in this process and the verifier are shared by every
 	// client the gate builds.
@@ -83,9 +87,12 @@ func NewClient(infra Infrastructure) contract.Client {
 	checkerOn := func(definitions GateDefinitions) *Checker {
 		return NewChecker(definitions, infra.Checker.Validator, infra.Checker.Runtimes, sources)
 	}
-	// Each use case that resolves a process gets a resolver of its own.
+	// Each use case that resolves a process gets a resolver of its own,
+	// which refuses a call that depends on a document with a problem.
 	resolverOn := func(definitions GateDefinitions) *Resolver {
-		return NewResolver(definitions, infra.Resolver.Identities, infra.Resolver.Validator)
+		resolver := NewResolver(definitions, infra.Resolver.Identities, infra.Resolver.Validator)
+		resolver.check = checkerOn(definitions)
+		return resolver
 	}
 	// build makes the whole client over the sources given: the layered
 	// settings and the global layer alone. The gate builds it on snapshots
@@ -100,8 +107,10 @@ func NewClient(infra Infrastructure) contract.Client {
 			scopes = append(scopes, Scope{Name: "settings in " + infra.Project, Check: checkerOn(layered)})
 		}
 		calls := infra.Calls
+		settings := NewSettings(layered, infra.Settings.Writer, infra.Settings.Examples, scopes)
+		settings.check = checkerOn(layered)
 		host := &Host{
-			Settings:   NewSettings(layered, infra.Settings.Writer, infra.Settings.Examples, scopes),
+			Settings:   settings,
 			Checker:    checkerOn(layered),
 			Inspection: NewInspection(resolverOn(layered)),
 			Calls: NewCalls(
@@ -118,7 +127,7 @@ func NewClient(infra Infrastructure) contract.Client {
 func (g *Gated) live() contract.Client { return g.Build(g.Definitions, g.Global) }
 
 // gate snapshots the settings, checks them and returns the client built on
-// that snapshot, or the refusal.
+// that snapshot, or the refusal when a problem stops every command.
 func (g *Gated) gate(ctx context.Context) (contract.Client, error) {
 	layered := Snapshot(ctx, g.Definitions)
 	client := g.Build(layered, Snapshot(ctx, g.Global))
@@ -126,7 +135,7 @@ func (g *Gated) gate(ctx context.Context) (contract.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(report.Problems) > 0 {
+	if len(newReach(report).stops) > 0 {
 		return nil, &contract.SettingsError{Report: report}
 	}
 	return client, nil

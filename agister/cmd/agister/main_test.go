@@ -120,7 +120,12 @@ func lastRun(t *testing.T, home string) run {
 	if len(entries) == 0 {
 		t.Fatal("no runs")
 	}
-	dir := filepath.Join(home, "runs", entries[len(entries)-1].Name())
+	return readRun(t, filepath.Join(home, "runs", entries[len(entries)-1].Name()))
+}
+
+// readRun reads the run recorded in dir.
+func readRun(t *testing.T, dir string) run {
+	t.Helper()
 	var r run
 	r.dir = dir
 	readJSON(t, filepath.Join(dir, "record.json"), &r.record)
@@ -267,7 +272,7 @@ func TestUnreadableServiceSettingsFailCheck(t *testing.T) {
 	}
 	write(t, filepath.Join(home, "service.toml"), "\x00\x00\x00\x01Bud1\x00\x00")
 	r := agister(t, home, repo, "check")
-	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "\nservice service: not a UTF-8 text file\n1 problem(s)") {
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "\nservice service: not a UTF-8 text file\n  stops every command\n1 problem(s)") {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
 }
@@ -416,24 +421,30 @@ func TestProjectOverridesAreNoted(t *testing.T) {
 }
 
 // Overrides are verified as composed: a project service that global
-// policies exceed fails check, and every other command stops before it
-// does anything.
+// policies exceed fails check, and refuses the calls of the processes whose
+// limits no longer compose, each recorded; every other command still runs
+// and shows what is refused (ADR-012).
 func TestComposedSettingsAreVerified(t *testing.T) {
 	home, repo := setup(t, "approve")
 	write(t, filepath.Join(repo, ".agister", "service.toml"), strings.Replace(read(t, filepath.Join(home, "service.toml")), `max_timeout = "1h"`, `max_timeout = "5m"`, 1))
 
 	r := agister(t, home, repo, "check")
-	if r.code != cli.ExitUsage || !strings.Contains(r.stdout, "override service service:") || !strings.Contains(r.stderr, "process adversarial_review") {
+	if r.code != cli.ExitUsage || !strings.Contains(r.stdout, "override service service:") || !strings.Contains(r.stderr, "process adversarial_review") ||
+		!strings.Contains(r.stderr, "  refuses process adversarial_review") || strings.Contains(r.stderr, "stops every command") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	for _, args := range [][]string{{}, {"run", "adversarial_review", "--quiet", "--param", "base=main", "--timeout", "1m"}, {"runs"}, {"process", "list"}} {
-		r := agister(t, home, repo, args...)
-		if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "process adversarial_review") || !strings.Contains(r.stderr, "settings have problems") {
-			t.Fatalf("%v: %d\n%s%s", args, r.code, r.stdout, r.stderr)
-		}
+	r = agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main", "--timeout", "1m")
+	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, "process adversarial_review ("+filepath.Join(home, "processes", "adversarial_review.yaml")+"): ") {
+		t.Fatalf("run: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if _, err := os.Stat(filepath.Join(home, "runs")); err == nil {
-		t.Fatal("a call started despite invalid settings")
+	if last := lastRun(t, home); last.record["result"].(map[string]any)["error"].(map[string]any)["class"] != "refused" || last.first != nil {
+		t.Fatalf("record = %v, runtime = %v", last.record, last.first)
+	}
+	if r := agister(t, home, repo, "runs"); r.code != 0 || !strings.Contains(r.stdout, "adversarial_review") {
+		t.Fatalf("runs: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if r := agister(t, home, repo, "process", "list"); r.code != 0 || !regexp.MustCompile(`(?m)^adversarial_review\t.*\tREFUSED: process adversarial_review \(`).MatchString(r.stdout) {
+		t.Fatalf("process list: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	// Help needs no settings, and init is how settings are repaired.
 	if r := agister(t, home, repo, "--help"); r.code != 0 {
@@ -695,7 +706,8 @@ func TestCancelThroughTheContract(t *testing.T) {
 }
 
 // Settings broken mid-run do not strand the run: it stays cancellable,
-// observable and inspectable, while other uses are refused.
+// observable and inspectable, while other uses are refused when the
+// problem stops every command (ADR-012 rule 4).
 func TestRunSurvivesSettingsBrokenMidRun(t *testing.T) {
 	home, repo := setup(t, "hang")
 	client, err := compose(cli.Config{Home: home})
@@ -711,7 +723,7 @@ func TestRunSurvivesSettingsBrokenMidRun(t *testing.T) {
 	err = client.Observe(ctx, id, 0, func(event contract.Event) error {
 		if event.Kind == "PROCESS_STARTED" && !broken {
 			broken = true
-			write(t, filepath.Join(home, "agents", "broken.toml"), "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\n")
+			write(t, filepath.Join(home, "service.toml"), "schema = \"agister.service/v1alpha1\"\n")
 			return client.Cancel(ctx, id)
 		}
 		return nil

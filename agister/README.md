@@ -26,8 +26,15 @@ a repository's settings can run and what they are made of:
 
 Global settings live in `~/.agister/` (`$AGISTER_HOME` or `--home`); a
 repository's own `.agister/` takes priority, document by document. Every
-command except `init` checks the composed settings first and stops on any
-problem. Runs are recorded under `~/.agister/runs/<id>/`.
+command except `init` checks the composed settings first. A problem refuses
+only what uses the document it is in: a call whose process, agent, runtime
+mapping, policy, schema or named verification is broken is refused before
+its first turn and recorded, and a workflow with such a node is refused
+before any node runs; everything else keeps running. Only broken service
+settings, a file name that is not a name, a settings directory that cannot
+be listed, or a workflow named like a process stop every command. `check`
+reports every problem and says what each refuses. Runs are recorded under
+`~/.agister/runs/<id>/`.
 
 A process declares its verification command inline, or names a document
 that holds it: `verify: verify:repo` is `verifies/repo.yaml`, found like any

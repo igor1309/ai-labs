@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
@@ -53,8 +54,38 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 	report := contract.CheckReport{Checked: map[string]int{}}
 	index := map[contract.DefinitionRef]int{}   // into report.Definitions
 	listed := map[contract.DefinitionRef]bool{} // in the settings, read or not
+	// Every problem, with the document it is about (ADR-012).
+	var found []contract.ProblemReach
+	about := func(ref contract.DefinitionRef, text string) {
+		if ref == serviceRef {
+			// Every call depends on it, and every check on its vocabulary
+			// and limits (ADR-012 rule 4).
+			found = append(found, contract.ProblemReach{Problem: text, Stops: true})
+			return
+		}
+		subject := ref
+		found = append(found, contract.ProblemReach{Problem: text, Subject: &subject})
+	}
 	problem := func(subject, format string, args ...any) {
-		report.Problems = append(report.Problems, subject+": "+fmt.Sprintf(format, args...))
+		text := subject + ": " + fmt.Sprintf(format, args...)
+		ref, ok := subjectRef(subject)
+		if !ok {
+			found = append(found, contract.ProblemReach{Problem: text, Stops: true})
+			return
+		}
+		about(ref, text)
+	}
+	stops := func(subject, format string, args ...any) {
+		found = append(found, contract.ProblemReach{Problem: subject + ": " + fmt.Sprintf(format, args...), Stops: true})
+	}
+	settingsProblem := func(p settings.Problem) {
+		ref, ok := subjectRef(p.Subject)
+		if p.Unattributed || !ok {
+			stops(p.Subject, "%s", p.Message)
+			return
+		}
+		about(ref, p.String())
+		found[len(found)-1].Agent = p.Agent
 	}
 	bundle := settings.Bundle{
 		Agents:    map[string]definition.Agent{},
@@ -72,11 +103,18 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 		if kind != definition.KindService {
 			var err error
 			if names, err = c.definitions.List(ctx, kind); err != nil {
-				return err
+				// Nothing can name what it holds (ADR-012 rule 4).
+				stops("settings directory "+string(kind), "cannot be listed: %v", err)
+				return nil
 			}
 		}
 		for _, name := range names {
 			listed[contract.DefinitionRef{Kind: string(kind), Name: name}] = true
+			if kind != definition.KindService && !definition.ValidName(name) {
+				// Nothing can name such a document (ADR-012 rule 4).
+				stops(kind.Singular()+" "+name, "%q is not a valid name; rename the file", name)
+				continue
+			}
 			doc, err := c.definitions.Read(ctx, kind, name)
 			if err != nil {
 				problem(kind.Singular()+" "+name, "%v", err)
@@ -172,6 +210,37 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			return report, err
 		}
 	}
+	// What each problem refuses, once every problem is known.
+	finish := func() contract.CheckReport {
+		sort.SliceStable(found, func(i, j int) bool { return found[i].Problem < found[j].Problem })
+		var processes, workflows []contract.DefinitionRef
+		for _, kind := range []definition.Kind{definition.KindProcess, definition.KindWorkflow} {
+			for ref := range listed {
+				switch {
+				case ref.Kind != string(kind):
+				case kind == definition.KindProcess:
+					processes = append(processes, ref)
+				default:
+					workflows = append(workflows, ref)
+				}
+			}
+		}
+		byName := func(refs []contract.DefinitionRef) {
+			sort.Slice(refs, func(i, j int) bool { return refs[i].Name < refs[j].Name })
+		}
+		byName(processes)
+		byName(workflows)
+		reached := newReach(contract.CheckReport{Definitions: report.Definitions})
+		for i := range found {
+			report.Problems = append(report.Problems, found[i].Problem)
+			if subject := found[i].Subject; subject != nil {
+				found[i].Processes = reached.refuses(*subject, processes)
+				found[i].Workflows = reached.refuses(*subject, workflows)
+			}
+		}
+		report.Reach = found
+		return report
+	}
 	// What each definition references, and the reverse.
 	link := func(from contract.DefinitionRef, kind definition.Kind, name string) {
 		source, ok := index[from]
@@ -216,8 +285,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 	}
 
 	if bundle.Service == nil {
-		sort.Strings(report.Problems)
-		return report, nil
+		return finish(), nil
 	}
 
 	// Across documents.
@@ -225,7 +293,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 	// The core itself supplies a join's collection (ADR-003 rule 4).
 	sources := append(append([]string(nil), c.sources...), definition.CollectionSource)
 	for _, p := range settings.Check(bundle, settings.Mechanisms{Sources: sources, Adapters: known}) {
-		report.Problems = append(report.Problems, p.String())
+		settingsProblem(p)
 	}
 
 	// Against the runtimes themselves.
@@ -249,20 +317,36 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 				problem("agent "+name, "mapping %s verifies no primitive for runtime version %s", mapping.Name, identity.Version)
 			default:
 				for _, p := range settings.PlanProblems(bundle, agent, identity.Version) {
-					report.Problems = append(report.Problems, p.String())
+					settingsProblem(p)
 				}
 				// Repairs resume the call's session, which only the
 				// runtime can say it supports.
 				for _, process := range sortedNames(bundle.Processes) {
 					if verify := bundle.Resolved(process).Verify; bundle.Processes[process].Agent == name && verify.Repairs() && !identity.Resume {
-						problem("process "+process, "verify.max_attempts %d repairs in the call's session, but runtime %s cannot resume sessions", verify.MaxAttempts, mapping.Name)
+						settingsProblem(settings.Problem{
+							Subject: "process " + process, Agent: name,
+							Message: fmt.Sprintf("verify.max_attempts %d repairs in the call's session, but runtime %s cannot resume sessions", verify.MaxAttempts, mapping.Name),
+						})
 					}
 				}
 			}
 		}
 	}
-	sort.Strings(report.Problems)
-	return report, nil
+	return finish(), nil
+}
+
+// subjectRef is the document a problem's subject names, as check names it:
+// "agent a", "runtime mapping rt", "service".
+func subjectRef(subject string) (contract.DefinitionRef, bool) {
+	if subject == "service" {
+		return serviceRef, true
+	}
+	for _, kind := range allKinds {
+		if name, ok := strings.CutPrefix(subject, kind.Singular()+" "); ok {
+			return contract.DefinitionRef{Kind: string(kind), Name: name}, true
+		}
+	}
+	return contract.DefinitionRef{}, false
 }
 
 func sortedNames[V any](m map[string]V) []string {
