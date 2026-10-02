@@ -1,0 +1,32 @@
+# Implementation on Pi (agent pi-implementer-m3) in a checkout of the
+# candidate: implement_codex's limits. No cost limit, which Pi cannot
+# enforce (pi/1); the timeout bounds the call. Pi has no sandbox: bash
+# grants everything listed here (runtimes/pi.yaml).
+schema: agister.process-policy/v1alpha1
+name: implement_pi
+
+workspace:
+  access: read-write
+  scope: candidate
+
+tools:
+  allow:
+    - repository.read
+    - repository.search
+    - repository.diff
+    - repository.history.read
+    - repository.write
+    - repository.history.write
+    - process.execute
+    - network
+    - host.read
+    - host.write
+
+timeout: 45m
+retry:
+  max_attempts: 1
+
+stale:
+  no_event: 21m
+  tool_command: 15m
+  repeated_tool_calls: 5

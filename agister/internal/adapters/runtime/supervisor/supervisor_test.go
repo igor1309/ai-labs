@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 // The test binary doubles as the runtime's descendants: with helperEnv set
@@ -275,44 +274,10 @@ func TestGroupThatCannotBeRecordedIsKilled(t *testing.T) {
 				t.Fatalf("group %d still has members", group)
 			}
 
-			turn, failed := supervisor.RecordFailure(supervisor.Base(evidence), evidence)
-			if !failed || turn.Status != run.Failed || turn.Error == nil || !strings.Contains(turn.Error.Message, "recording the runtime process failed") || !strings.Contains(turn.Error.Message, "disk full") {
-				t.Fatalf("turn = %+v", turn)
+			if evidence.RecordError != "disk full" {
+				t.Fatalf("evidence = %+v", evidence)
 			}
 		})
-	}
-}
-
-func TestARecordedProcessIsNotAFailure(t *testing.T) {
-	if _, failed := supervisor.RecordFailure(run.Turn{}, supervisor.Evidence{}); failed {
-		t.Fatal("no record error, yet the turn was failed")
-	}
-}
-
-// A non-zero exit quotes the runtime's reasons, its stream's then its
-// stderr's last line, each once; with neither it says only the exit code.
-func TestANonZeroExitQuotesTheRuntimesReasons(t *testing.T) {
-	one := 1
-	failed := func(stderr, stream string) string {
-		evidence := supervisor.Evidence{Exit: &run.Exit{Code: &one}, StderrTail: stderr}
-		turn := supervisor.WithoutTerminal(supervisor.Base(evidence), evidence, stream)
-		if turn.Status != run.Failed || turn.Error.Class != run.ClassRuntimeError {
-			t.Fatalf("turn = %+v", turn)
-		}
-		return turn.Error.Message
-	}
-	for _, c := range []struct{ stderr, stream, want string }{
-		{"", "", "exit code 1"},
-		{"warming up\nError: too large\n\n", "", "exit code 1: Error: too large"},
-		{"", "stream closed", "exit code 1: stream closed"},
-		{"Error: unauthorized", "401 Unauthorized", "exit code 1: 401 Unauthorized; Error: unauthorized"},
-		{"Error: 401 Unauthorized", "401 Unauthorized", "exit code 1: Error: 401 Unauthorized"},
-		{"401 Unauthorized", "Error: 401 Unauthorized", "exit code 1: Error: 401 Unauthorized"},
-		{"Error: " + strings.Repeat("é", 400), "", "exit code 1: Error: " + strings.Repeat("é", 146) + "…"},
-	} {
-		if got := failed(c.stderr, c.stream); got != c.want {
-			t.Errorf("stderr %q, stream %q: message %q, want %q", c.stderr, c.stream, got, c.want)
-		}
 	}
 }
 
@@ -335,10 +300,6 @@ func TestStderrBeyondTheBoundIsCutAndMarked(t *testing.T) {
 	if !strings.HasPrefix(kept, "é") || len(kept) != 4096-1-1 || !strings.HasSuffix(kept, "é\nError: too large!") {
 		t.Fatalf("kept %d bytes: %q…", len(kept), kept[:10])
 	}
-	turn := supervisor.WithoutTerminal(supervisor.Base(evidence), evidence, "")
-	if turn.Error.Message != "exit code 1: Error: too large!" || turn.StderrTail != evidence.StderrTail || turn.StderrOmitted != evidence.StderrOmitted {
-		t.Fatalf("turn = %+v", turn)
-	}
 }
 
 // A runtime that prints nothing to stderr leaves no tail and no cut.
@@ -348,8 +309,24 @@ func TestASilentExitLeavesNoTail(t *testing.T) {
 		Args:    []string{"-c", "exit 2"},
 		Timeout: 30 * time.Second,
 	}, &events{}, func(string) {})
-	turn := supervisor.WithoutTerminal(supervisor.Base(evidence), evidence, "")
-	if evidence.StderrTail != "" || evidence.StderrOmitted != 0 || turn.Error.Message != "exit code 2" {
-		t.Fatalf("evidence = %+v, turn = %+v", evidence, turn)
+	if evidence.StderrTail != "" || evidence.StderrOmitted != 0 {
+		t.Fatalf("evidence = %+v", evidence)
+	}
+}
+
+// Spec.Env is added to the inherited environment, and replaces an inherited
+// variable of the same name.
+func TestEnvIsAddedToTheInheritedEnvironment(t *testing.T) {
+	t.Setenv("AGISTER_SUPERVISOR_KEPT", "kept")
+	t.Setenv("AGISTER_SUPERVISOR_REPLACED", "inherited")
+	var lines []string
+	evidence := supervisor.Run(context.Background(), supervisor.Spec{
+		Command: "/bin/sh",
+		Args:    []string{"-c", `echo "$AGISTER_SUPERVISOR_KEPT $AGISTER_SUPERVISOR_REPLACED $AGISTER_SUPERVISOR_ADDED"`},
+		Env:     []string{"AGISTER_SUPERVISOR_REPLACED=replaced", "AGISTER_SUPERVISOR_ADDED=added"},
+		Timeout: 30 * time.Second,
+	}, &events{}, func(line string) { lines = append(lines, line) })
+	if evidence.Exit == nil || evidence.Exit.Code == nil || *evidence.Exit.Code != 0 || len(lines) != 1 || lines[0] != "kept replaced added" {
+		t.Fatalf("evidence = %+v, lines %q", evidence, lines)
 	}
 }

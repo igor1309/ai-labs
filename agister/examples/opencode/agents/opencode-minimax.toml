@@ -1,0 +1,8 @@
+schema = "agister.agent/v1alpha1"
+name = "opencode-minimax"
+runtime = "opencode"
+model = "opencode-go/minimax-m3"
+model_family = "minimax"
+# May continue an earlier run's session when the caller asks (--continue),
+# from the directory that run worked in.
+session = "resumable"

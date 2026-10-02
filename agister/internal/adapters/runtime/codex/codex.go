@@ -34,7 +34,7 @@
 // A turn Codex refuses before it starts ends with a non-zero exit and its
 // reason on stderr only, as a prompt over the input limit does
 // (input_too_large, observed with codex-cli 0.159.2); the error message
-// quotes it (supervisor.WithoutTerminal).
+// quotes it (withoutTerminal).
 package codex
 
 import (
@@ -48,18 +48,58 @@ import (
 	"regexp"
 	"strings"
 	"time"
-
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/app"
-	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 const Contract = "codex/2"
 
 var sandboxModes = []string{"read-only", "workspace-write"}
 
-type Runner struct {
+// Transport is what the runner needs of a process supervisor: to run the
+// runtime to its exit, passing each line of its stdout to onLine, and to
+// read the runtime's version.
+type Transport interface {
+	Run(ctx context.Context, spec Spec, sink Sink, onLine func(string)) Evidence
+	Version(ctx context.Context, command string) (string, error)
+}
+
+// Spec is the process a turn runs.
+type Spec struct {
 	Command   string
+	Args      []string
+	Dir       string
+	Stdin     string
+	Timeout   time.Duration
+	KillGrace time.Duration // zero: the transport's default
+}
+
+// Sink is what the transport reports to: the process's events, its
+// reference as soon as it exists (an error means it is not on record, and
+// the transport kills it), and each line of its stdout.
+type Sink interface {
+	Event(source, kind string, data map[string]any)
+	ProcessStarted(ref string) error
+	Raw(line string)
+}
+
+// Evidence is what the process left, the stream reconciles: its exit, how
+// it ended, and the end of its stderr.
+type Evidence struct {
+	Exit          *Exit
+	SpawnError    string
+	TimedOut      bool
+	Aborted       bool
+	StderrTail    string
+	StderrOmitted int64
+	// RecordError is why the process could not be recorded; it was killed
+	// at once, and the turn fails.
+	RecordError string
+}
+
+type Runner struct {
+	Command string
+	// Transport runs the runtime; the composition root wires the
+	// supervisor.
+	Transport Transport
 	KillGrace time.Duration
 	// Sessions lists Codex sessions with their costs, as
 	// `ccusage codex session --json` does; nil: the cost is unknown.
@@ -80,22 +120,28 @@ type LookupSink interface {
 	ProcessStarted(ref string) error
 }
 
-func New(command string) *Runner {
+func New(command string, transport Transport) *Runner {
 	if command == "" {
 		command = "codex"
 	}
-	return &Runner{Command: command, Sessions: CCUsage("ccusage", 0)}
+	return &Runner{Command: command, Transport: transport, Sessions: CCUsage(transport, "ccusage", 0)}
 }
 
-// CCUsage runs `<command> codex session --json` under the supervisor, in a
+// Execution is what a ccusage lookup needs of a process supervisor: to run
+// the lookup to its exit, passing each line of its stdout to onLine.
+type Execution interface {
+	Run(ctx context.Context, spec Spec, sink Sink, onLine func(string)) Evidence
+}
+
+// CCUsage runs `<command> codex session --json` through execution, in a
 // process group of its own that is ended on timeout or cancellation;
 // killGrace bounds the wait for it as it does a runtime's (zero: the
 // supervisor's default). Anything but a clean exit is an error. Its output
 // is the listing, not the turn's raw output.
-func CCUsage(command string, killGrace time.Duration) Sessions {
+func CCUsage(execution Execution, command string, killGrace time.Duration) Sessions {
 	return func(ctx context.Context, timeout time.Duration, sink LookupSink) ([]byte, error) {
 		var listing bytes.Buffer
-		evidence := supervisor.Run(ctx, supervisor.Spec{
+		evidence := execution.Run(ctx, Spec{
 			Command:   command,
 			Args:      []string{"codex", "session", "--json"},
 			Timeout:   timeout,
@@ -114,13 +160,13 @@ func CCUsage(command string, killGrace time.Duration) Sessions {
 		case evidence.Aborted:
 			return nil, errors.New("cancelled")
 		case exit == nil || exit.Code == nil || *exit.Code != 0:
-			return nil, fmt.Errorf("%s exited without a listing: %s", command, supervisor.Reason(evidence))
+			return nil, fmt.Errorf("%s exited without a listing: %s", command, reason(evidence))
 		}
 		return listing.Bytes(), nil
 	}
 }
 
-// lookupSink gives the supervisor a lookup's sink: its output is the
+// lookupSink gives the transport a lookup's sink: its output is the
 // listing, not the runtime's raw output, so Raw drops it.
 type lookupSink struct{ LookupSink }
 
@@ -158,20 +204,20 @@ func ThreadCost(listing []byte, threadID string) *float64 {
 
 var versionPattern = regexp.MustCompile(`\d+\.\d+\.\d+`)
 
-func (r *Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
-	out, err := supervisor.Version(ctx, r.Command)
+func (r *Runner) Identity(ctx context.Context) (RuntimeIdentity, error) {
+	out, err := r.Transport.Version(ctx, r.Command)
 	if err != nil {
-		return app.RuntimeIdentity{}, err
+		return RuntimeIdentity{}, err
 	}
 	version := versionPattern.FindString(out)
 	if version == "" {
-		return app.RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
+		return RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
 	}
-	return app.RuntimeIdentity{Contract: Contract, Version: version, Resume: true, ToolCalls: true}, nil
+	return RuntimeIdentity{Contract: Contract, Version: version, Resume: true, ToolCalls: true}, nil
 }
 
 // Arguments builds the command line for a turn.
-func Arguments(request app.TurnRequest, schemaPath string) ([]string, error) {
+func Arguments(request TurnRequest, schemaPath string) ([]string, error) {
 	if len(request.Primitives) != 1 || !contains(sandboxModes, request.Primitives[0]) {
 		return nil, fmt.Errorf("codex needs exactly one sandbox mode primitive (%s), got %v", strings.Join(sandboxModes, ", "), request.Primitives)
 	}
@@ -202,14 +248,14 @@ func Arguments(request app.TurnRequest, schemaPath string) ([]string, error) {
 }
 
 // Prompt prepends the instruction; Codex has no system-prompt flag.
-func Prompt(request app.TurnRequest) string {
+func Prompt(request TurnRequest) string {
 	if request.Instruction == "" {
 		return request.Prompt
 	}
 	return "<instructions>\n" + request.Instruction + "\n</instructions>\n\n" + request.Prompt
 }
 
-func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
+func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSink) Turn {
 	now := r.Now
 	if now == nil {
 		now = time.Now
@@ -219,20 +265,20 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 	if len(request.OutputSchema) > 0 {
 		dir, err := os.MkdirTemp("", "agister-codex-")
 		if err != nil {
-			return supervisor.Failed(run.ClassInternal, err)
+			return failedTurn(ClassInternal, err)
 		}
 		defer os.RemoveAll(dir)
 		schemaPath = filepath.Join(dir, "output-schema.json")
 		if err := os.WriteFile(schemaPath, request.OutputSchema, 0o600); err != nil {
-			return supervisor.Failed(run.ClassInternal, err)
+			return failedTurn(ClassInternal, err)
 		}
 	}
 	args, err := Arguments(request, schemaPath)
 	if err != nil {
-		return supervisor.Failed(run.ClassInternal, err)
+		return failedTurn(ClassInternal, err)
 	}
 	state := &Stream{ResumedThreadID: request.ResumeSessionID}
-	evidence := supervisor.Run(ctx, supervisor.Spec{
+	evidence := r.Transport.Run(ctx, Spec{
 		Command:   r.Command,
 		Args:      args,
 		Dir:       request.Cwd,
@@ -260,7 +306,7 @@ func (r *Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.
 // on, looking it up within left, what remains of the turn's timeout; a
 // failed, timed-out or cancelled lookup leaves it unknown, and none is
 // started once the turn's time is up or its call is cancelled.
-func (r *Runner) cost(ctx context.Context, turn *run.Turn, resumed string, left time.Duration, sink LookupSink) {
+func (r *Runner) cost(ctx context.Context, turn *Turn, resumed string, left time.Duration, sink LookupSink) {
 	thread := turn.ProviderSessionID
 	if r.Sessions == nil || thread == "" || resumed != "" && thread != resumed || left <= 0 || ctx.Err() != nil {
 		return
@@ -274,7 +320,7 @@ func (r *Runner) cost(ctx context.Context, turn *run.Turn, resumed string, left 
 		return
 	}
 	if turn.Session == nil {
-		turn.Session = &run.SessionTotals{}
+		turn.Session = &SessionTotals{}
 	}
 	turn.Session.CostUSD = cost
 }
@@ -302,7 +348,7 @@ type Stream struct {
 // Tool is a tool call the stream reported: its start, or the ID of the one
 // that finished.
 type Tool struct {
-	Started  *app.ToolCall
+	Started  *ToolCall
 	Finished string
 }
 
@@ -320,38 +366,38 @@ func (s *Stream) Reduce(line string) []Event {
 	}
 	var message map[string]any
 	if err := json.Unmarshal([]byte(line), &message); err != nil {
-		return []Event{{run.SourceAgister, "STREAM_PARSE_ERROR", map[string]any{"line": truncate(line, 200)}}}
+		return []Event{{SourceAgister, "STREAM_PARSE_ERROR", map[string]any{"line": truncate(line, 200)}}}
 	}
 	switch message["type"] {
 	case "thread.started":
 		s.ThreadID, _ = message["thread_id"].(string)
-		return []Event{{run.SourceProtocol, "PROVIDER_SESSION_BOUND", map[string]any{"provider_session_id": s.ThreadID}}}
+		return []Event{{SourceProtocol, "PROVIDER_SESSION_BOUND", map[string]any{"provider_session_id": s.ThreadID}}}
 	case "turn.started":
-		return []Event{{run.SourceProtocol, "TURN_STARTED", nil}}
+		return []Event{{SourceProtocol, "TURN_STARTED", nil}}
 	case "item.started":
 		item, _ := exactly(line)["item"].(map[string]any)
 		if name := toolName(item); name != "" {
 			id, _ := item["id"].(string)
-			s.tools = append(s.tools, Tool{Started: &app.ToolCall{ID: id, Name: name, Input: wholeInput(item), Command: item["type"] == "command_execution"}})
-			return []Event{{run.SourceProtocol, "TOOL_REQUESTED", map[string]any{"tool_use_id": item["id"], "name": name, "input": toolInput(item)}}}
+			s.tools = append(s.tools, Tool{Started: &ToolCall{ID: id, Name: name, Input: wholeInput(item), Command: item["type"] == "command_execution"}})
+			return []Event{{SourceProtocol, "TOOL_REQUESTED", map[string]any{"tool_use_id": item["id"], "name": name, "input": toolInput(item)}}}
 		}
 	case "item.completed":
 		item, _ := message["item"].(map[string]any)
 		return s.itemCompleted(item)
 	case "error":
 		s.LastError = fmt.Sprint(message["message"])
-		return []Event{{run.SourceProtocol, "PROVIDER_ERROR", map[string]any{"message": truncate(s.LastError, 300)}}}
+		return []Event{{SourceProtocol, "PROVIDER_ERROR", map[string]any{"message": truncate(s.LastError, 300)}}}
 	case "turn.completed":
 		s.Completed = true
 		s.Usage, _ = message["usage"].(map[string]any)
-		return []Event{{run.SourceProtocol, "TURN_COMPLETED", map[string]any{"usage": s.Usage}}}
+		return []Event{{SourceProtocol, "TURN_COMPLETED", map[string]any{"usage": s.Usage}}}
 	case "turn.failed":
 		failure, _ := message["error"].(map[string]any)
 		s.Failed = fmt.Sprint(failure["message"])
 		if s.Failed == "" || s.Failed == "<nil>" {
 			s.Failed = "unknown error"
 		}
-		return []Event{{run.SourceProtocol, "TURN_FAILED", map[string]any{"error": s.Failed}}}
+		return []Event{{SourceProtocol, "TURN_FAILED", map[string]any{"error": s.Failed}}}
 	}
 	return nil
 }
@@ -372,9 +418,9 @@ func (s *Stream) itemCompleted(item map[string]any) []Event {
 	case "agent_message":
 		text, _ := item["text"].(string)
 		s.LastMessage = text
-		return []Event{{run.SourceProtocol, "ASSISTANT_TEXT", map[string]any{"text": truncate(text, 500)}}}
+		return []Event{{SourceProtocol, "ASSISTANT_TEXT", map[string]any{"text": truncate(text, 500)}}}
 	case "error":
-		return []Event{{run.SourceProtocol, "PROVIDER_ERROR", map[string]any{"message": truncate(fmt.Sprint(item["message"]), 300)}}}
+		return []Event{{SourceProtocol, "PROVIDER_ERROR", map[string]any{"message": truncate(fmt.Sprint(item["message"]), 300)}}}
 	case "command_execution", "file_change", "mcp_tool_call", "web_search":
 		if id, _ := item["id"].(string); id != "" {
 			s.tools = append(s.tools, Tool{Finished: id})
@@ -383,33 +429,33 @@ func (s *Stream) itemCompleted(item map[string]any) []Event {
 		if code, ok := item["exit_code"].(float64); ok && code != 0 {
 			failed = true
 		}
-		return []Event{{run.SourceProtocol, "TOOL_RESULT", map[string]any{"tool_use_id": item["id"], "is_error": failed}}}
+		return []Event{{SourceProtocol, "TOOL_RESULT", map[string]any{"tool_use_id": item["id"], "is_error": failed}}}
 	}
 	return nil
 }
 
 // Reconcile decides the turn outcome from the stream and the transport.
-func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) run.Turn {
-	turn := supervisor.Base(evidence)
-	if failed, ok := supervisor.RecordFailure(turn, evidence); ok {
+func (s *Stream) Reconcile(evidence Evidence, schemaRequested bool) Turn {
+	turn := baseTurn(evidence)
+	if failed, ok := recordFailure(turn, evidence); ok {
 		return failed
 	}
 	turn.ProviderSessionID = s.ThreadID
 	if s.resumedElsewhere() {
-		turn.Status, turn.Error = run.Failed, run.Fault(run.ClassRuntimeError, "resumed thread %s, but the runtime reported thread %q", s.ResumedThreadID, s.ThreadID)
+		turn.Status, turn.Error = Failed, Fault(ClassRuntimeError, "resumed thread %s, but the runtime reported thread %q", s.ResumedThreadID, s.ThreadID)
 		return turn
 	}
 	if !s.Completed && s.Failed == "" {
-		return supervisor.WithoutTerminal(turn, evidence, s.LastError)
+		return withoutTerminal(turn, evidence, s.LastError)
 	}
 	turn.Text = s.LastMessage
 	if s.Failed != "" {
-		turn.Status, turn.Error = run.Failed, classify(s.Failed)
+		turn.Status, turn.Error = Failed, classify(s.Failed)
 		return turn
 	}
 	// The thread's usage, every turn it had; the turn's own is derived.
 	if s.Usage != nil {
-		turn.Session = &run.SessionTotals{Usage: &run.Usage{
+		turn.Session = &SessionTotals{Usage: &Usage{
 			InputTokens:     count(s.Usage, "input_tokens"),
 			OutputTokens:    count(s.Usage, "output_tokens"),
 			CacheReadTokens: count(s.Usage, "cached_input_tokens"),
@@ -418,16 +464,16 @@ func (s *Stream) Reconcile(evidence supervisor.Evidence, schemaRequested bool) r
 	}
 	if schemaRequested {
 		if s.LastMessage == "" {
-			turn.Status, turn.Error = run.Failed, run.Fault(run.ClassInvalidOutput, "no structured output")
+			turn.Status, turn.Error = Failed, Fault(ClassInvalidOutput, "no structured output")
 			return turn
 		}
 		if !json.Valid([]byte(s.LastMessage)) {
-			turn.Status, turn.Error = run.Failed, run.Fault(run.ClassInvalidOutput, "structured output is not JSON")
+			turn.Status, turn.Error = Failed, Fault(ClassInvalidOutput, "structured output is not JSON")
 			return turn
 		}
 		turn.Output = json.RawMessage(s.LastMessage)
 	}
-	turn.Status = run.Completed
+	turn.Status = Completed
 	return turn
 }
 
@@ -441,18 +487,18 @@ func (s *Stream) resumedElsewhere() bool {
 
 // classify maps a turn.failed message to a failure class. Codex reports
 // failures as text only; none of these has been observed live.
-func classify(message string) *run.Error {
+func classify(message string) *Error {
 	lower := strings.ToLower(message)
-	class := run.ClassRuntimeError
+	class := ClassRuntimeError
 	switch {
 	case strings.Contains(lower, "rate limit") || strings.Contains(lower, "usage limit") || strings.Contains(lower, "429"):
-		class = run.ClassRateLimited
+		class = ClassRateLimited
 	case strings.Contains(lower, "unauthorized") || strings.Contains(lower, "401") || strings.Contains(lower, "login"):
-		class = run.ClassAuth
+		class = ClassAuth
 	case strings.Contains(lower, "context window") || strings.Contains(lower, "context length"):
-		class = run.ClassContextOverflow
+		class = ClassContextOverflow
 	}
-	return run.Fault(class, "runtime reported turn.failed: %s", message)
+	return Fault(class, "runtime reported turn.failed: %s", message)
 }
 
 func count(source map[string]any, key string) *int64 {
