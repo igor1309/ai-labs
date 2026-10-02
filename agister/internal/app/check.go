@@ -64,6 +64,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 		Schemas:   map[string]bool{},
 		Workflows: map[string]definition.Workflow{},
 		Verifies:  map[string]definition.Verification{},
+		Prompts:   map[string]bool{},
 	}
 
 	// Each document on its own.
@@ -145,6 +146,13 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			}
 			return err
 		}},
+		{definition.KindPrompt, func(d definition.Document) error {
+			// One that cannot be read is a problem of its own (ADR-011
+			// rule 1); the processes that name it still find it.
+			bundle.Prompts[d.Source.Name] = true
+			_, err := definition.ParsePrompt(d)
+			return err
+		}},
 		{definition.KindProcess, func(d definition.Document) error {
 			p, err := definition.ParseProcess(d)
 			if err == nil {
@@ -192,6 +200,9 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 		link(from, definition.KindAgent, process.Agent)
 		link(from, definition.KindPolicy, process.Policy)
 		link(from, definition.KindVerify, process.VerifyName)
+		for _, prompt := range process.Prompts() {
+			link(from, definition.KindPrompt, prompt)
+		}
 		if process.Output.Format == "json" {
 			link(from, definition.KindSchema, process.Output.Schema)
 		}
@@ -222,8 +233,9 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 
 	// Across documents.
 	known := c.runtimes.Adapters()
-	// The core itself supplies a join's collection (ADR-003 rule 4).
-	sources := append(append([]string(nil), c.sources...), definition.CollectionSource)
+	// The core itself supplies a join's collection (ADR-003 rule 4) and the
+	// prompts a process names, which it reads from the settings (ADR-011).
+	sources := append(append([]string(nil), c.sources...), definition.CollectionSource, definition.PromptSource)
 	for _, p := range settings.Check(bundle, settings.Mechanisms{Sources: sources, Adapters: known}) {
 		report.Problems = append(report.Problems, p.String())
 	}

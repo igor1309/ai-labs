@@ -396,6 +396,34 @@ func TestShowProcessPrintsTheNamedVerification(t *testing.T) {
 	}
 }
 
+// process show lists the prompts the process names, each with the layer
+// and path it comes from, or as not resolved beside the refusal.
+func TestShowProcessPrintsThePrompts(t *testing.T) {
+	spy := &clientSpy{view: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Output: "text", Timeout: time.Hour, MaxAttempts: 1,
+		Inputs: []string{"rules <- prompt", "style <- prompt"}, Prompts: []string{"rules", "style"},
+		Sources: []contract.DefinitionOrigin{
+			{Kind: "processes", Name: "p", Layer: "global", Path: "/h/processes/p.yaml"},
+			{Kind: "prompts", Name: "rules", Layer: "project", Path: "/r/.agister/prompts/rules.md", Overrides: "/h/prompts/rules.md"},
+			{Kind: "prompts", Name: "style", Layer: "global", Path: "/h/prompts/style.md"},
+		}}}
+	r := run(context.Background(), spy, "process", "show", "p")
+	for _, want := range []string{
+		"prompts      rules: project /r/.agister/prompts/rules.md\n             style: global /h/prompts/style.md\nplan ",
+		"             prompt rules: project /r/.agister/prompts/rules.md (overrides /h/prompts/rules.md)\n",
+	} {
+		if r.code != 0 || !strings.Contains(r.stdout, want) {
+			t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+		}
+	}
+	spy.view.Sources = spy.view.Sources[:2]
+	spy.view.Refusal = `input style: prompt "style": not found (expected /r/.agister/prompts/style.md or /h/prompts/style.md)`
+	r = run(context.Background(), spy, "process", "show", "p")
+	want := "             style (not resolved)\nplan         REFUSED: " + spy.view.Refusal + "\n"
+	if r.code != 0 || !strings.Contains(r.stdout, want) {
+		t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+	}
+}
+
 // A client refusal over broken settings prints their report, then the
 // refusal, and exits 64; a bare agister checks before it shows the usage.
 func TestSettingsRefusalPrintsTheReport(t *testing.T) {
@@ -437,7 +465,8 @@ func TestCheckTreeAndJSON(t *testing.T) {
 			{Kind: "verifies", Name: "repo", Layer: "project", Path: "/p/verifies/repo.yaml", UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
 			{Kind: "verifies", Name: "spare", Layer: "global", Path: "/g/verifies/spare.yaml"},
 			{Kind: "processes", Name: "p", Layer: "global", Path: "/g/processes/p.yaml", Uses: []contract.DefinitionRef{ref("agents", "a"), ref("policies", "gone"), ref("verifies", "repo")}},
-			{Kind: "processes", Name: "q", Layer: "global", Path: "/g/processes/q.yaml", Uses: []contract.DefinitionRef{ref("verifies", "gone")}},
+			{Kind: "prompts", Name: "rules", Layer: "project", Path: "/p/prompts/rules.md", UsedBy: []contract.DefinitionRef{ref("processes", "q")}},
+			{Kind: "processes", Name: "q", Layer: "global", Path: "/g/processes/q.yaml", Uses: []contract.DefinitionRef{ref("verifies", "gone"), ref("prompts", "rules"), ref("prompts", "lost")}},
 		},
 	}
 	spy := &clientSpy{report: report}
@@ -449,7 +478,9 @@ process p              global  /g/processes/p.yaml
 ├─ policy gone         MISSING
 └─ verification repo   project /p/verifies/repo.yaml
 process q              global  /g/processes/q.yaml
-└─ verification gone   MISSING
+├─ verification gone   MISSING
+├─ prompt rules        project /p/prompts/rules.md
+└─ prompt lost         MISSING
 unused (no process uses these)
    runtime rt2         global  /g/runtimes/rt2.yaml
    agent b             global  /g/agents/b.toml

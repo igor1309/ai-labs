@@ -257,6 +257,13 @@
       return parts.length ? el('div', {}, ...parts) : null;
     }
 
+    // The prompts a process names, each marked missing when these settings
+    // have none of that name.
+    function promptsLine(p) {
+      if (!p.prompts?.length) return null;
+      return el('div', {}, ...p.prompts.flatMap((x, i) => [i ? ', ' : '', x.outside ? missing('prompt', x.name) : x.name]));
+    }
+
     function errorCard(item) {
       return el('article', { className: 'card run' },
         el('header', { className: 'run-head' }, el('h3', { textContent: item.name })),
@@ -276,6 +283,7 @@
         ['defaults', defaults(p.params)],
         ['agent', agentLine(p.agent, ix)],
         ['policy', policyLines(p.policy, ix)],
+        ['prompts', promptsLine(p)],
         ['output', outputLine(p)],
       ]));
     }

@@ -300,8 +300,17 @@
         ? { ref: refName(doc.verify), maxAttempts: null }
         : doc.verify ? { maxAttempts: doc.verify.max_attempts ?? null } : null,
       output: doc.output?.schema ?? null,
+      prompts: prompts(doc.input),
       instruction,
     };
+  }
+
+  // The prompts a process's inputs name ({source: prompt, name: <name>}),
+  // each once (ADR-011).
+  function prompts(input) {
+    const values = input && typeof input.values === 'object' && input.values ? Object.values(input.values) : [];
+    const names = values.filter((v) => v?.source === 'prompt' && typeof v.name === 'string').map((v) => v.name);
+    return [...new Set(names)].map((name) => ({ name }));
   }
 
   function verifyItem(file, doc) {
@@ -405,7 +414,7 @@
     return link(await readAgister(agister));
   }
 
-  const KINDS = ['workflows', 'processes', 'agents', 'policies', 'runtimes', 'schemas', 'verifies'];
+  const KINDS = ['workflows', 'processes', 'agents', 'policies', 'runtimes', 'schemas', 'verifies', 'prompts'];
 
   // What Agister uses in a repo: Agister home's settings with the repo's
   // over them. As in Agister, a repo file replaces the home file of the
@@ -432,7 +441,7 @@
   }
 
   async function readAgister(agister) {
-    const [workflows, processes, agents, policies, runtimes, schemas, verifies, service] = await Promise.all([
+    const [workflows, processes, agents, policies, runtimes, schemas, verifies, prompts, service] = await Promise.all([
       readFolder(agister, 'workflows', ['.yaml', '.yml']),
       readFolder(agister, 'processes', ['.yaml', '.yml']),
       readFolder(agister, 'agents', ['.toml']),
@@ -440,6 +449,7 @@
       readFolder(agister, 'runtimes', ['.yaml', '.yml']),
       readFolder(agister, 'schemas', ['.json']),
       readFolder(agister, 'verifies', ['.yaml', '.yml']),
+      readFolder(agister, 'prompts', ['.md']),
       loadService(agister),
     ]);
     return {
@@ -451,6 +461,7 @@
       runtimes: each(runtimes, parseYaml, (file, _src, doc) => runtimeItem(file, doc)),
       schemas: schemas.map(({ file }) => ({ file, name: stem(file) })),
       verifies: each(verifies, parseYaml, (file, _src, doc) => verifyItem(file, doc)),
+      prompts: prompts.map(({ file }) => ({ file, name: stem(file) })),
     };
   }
 
@@ -463,6 +474,7 @@
     const policies = names(model.policies);
     const runtimes = names(model.runtimes);
     const schemas = new Set(model.schemas.map((s) => s.name));
+    const prompts = new Set(model.prompts.map((s) => s.name));
     const usedBy = (items, key, name) => items.filter((x) => !x.error && x[key] === name).map((x) => x.name);
 
     for (const w of model.workflows) {
@@ -474,6 +486,7 @@
       p.agentOutside = !!p.agent && !agents.has(p.agent);
       p.policyOutside = !!p.policy && !policies.has(p.policy);
       p.outputOutside = !!p.output && !schemas.has(p.output);
+      p.prompts = p.prompts.map((x) => ({ ...x, outside: !prompts.has(x.name) }));
       // A named verification, resolved: its attempts, or outside these settings.
       if (p.verify?.ref) {
         const named = model.verifies.find((v) => !v.error && v.name === p.verify.ref);
@@ -495,6 +508,9 @@
       if (!r.error) r.usedBy = usedBy(model.agents, 'runtime', r.name);
     }
     for (const s of model.schemas) s.usedBy = usedBy(model.processes, 'output', s.name);
+    for (const s of model.prompts) {
+      s.usedBy = model.processes.filter((p) => !p.error && p.prompts.some((x) => x.name === s.name)).map((p) => p.name);
+    }
     for (const v of model.verifies) {
       if (!v.error) v.usedBy = model.processes.filter((p) => !p.error && p.verify?.ref === v.name).map((p) => p.name);
     }

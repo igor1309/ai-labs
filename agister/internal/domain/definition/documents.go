@@ -287,6 +287,12 @@ func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
 		if value.Source == "" {
 			p.add(field+".source", "is required")
 		}
+		if value.Source == PromptSource {
+			// A literal document name, which nothing is substituted in.
+			promptArgs(value, field, p)
+			values = append(values, value)
+			continue
+		}
 		for _, reference := range value.references("param") {
 			if !hasParam(params, reference) {
 				p.add(field, "refers to ${param.%s}, which is not declared in input.params", reference)

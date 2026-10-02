@@ -419,3 +419,25 @@ test('a process card shows the verification its process names, or marks it missi
   assert.equal(marker.textContent, 'repo (missing verify)');
   assert.equal(marker.title, 'No verify named repo in these settings: Agister refuses the call');
 });
+
+// README, Settings: a process card shows the prompts its process names,
+// each marked missing when these settings have none of that name.
+test('a process card shows the prompts its process names, and marks a missing one', async () => {
+  const naming = { ...agent, 'processes/review.yaml': 'name: review\nuses: agent:opus\ninput:\n  instruction: Review.\n  values:\n    rules: {source: prompt, name: rules}\n    style: {source: prompt, name: style}\n' };
+  const prompts = async (files) => {
+    const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
+    await p.started;
+    const facts = p.$('dashboard').querySelector('article#process-review div.facts').children;
+    return facts[facts.findIndex((n) => n.textContent === 'prompts') + 1];
+  };
+
+  const found = await prompts({ ...naming, 'prompts/rules.md': 'Rules.\n', 'prompts/style.md': 'Style.\n' });
+  assert.equal(found.textContent, 'rules, style');
+  assert.equal(found.querySelector('span.missing'), null);
+
+  const absent = await prompts({ ...naming, 'prompts/rules.md': 'Rules.\n' });
+  assert.equal(absent.textContent, 'rules, style (missing prompt)');
+  const marker = absent.querySelector('span.missing');
+  assert.equal(marker.textContent, 'style (missing prompt)');
+  assert.equal(marker.title, 'No prompt named style in these settings: Agister refuses the call');
+});

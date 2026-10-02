@@ -181,6 +181,7 @@ func TestSettingsReturnsOnlySettingsFiles(t *testing.T) {
 	write(t, filepath.Join(dir, "service.toml"), "max_attempts = 1")
 	write(t, filepath.Join(dir, "agents", "a.toml"), `name = "a"`)
 	write(t, filepath.Join(dir, "verifies", "repo.yaml"), "name: repo")
+	write(t, filepath.Join(dir, "prompts", "review.md"), "Review it.")
 	write(t, filepath.Join(dir, "processes", "nested", "p.yaml"), "name: p")
 	write(t, filepath.Join(dir, "runs", "r1", "record.json"), "{}")
 	write(t, filepath.Join(dir, "logs", "agister.jsonl"), "{}")
@@ -198,6 +199,7 @@ func TestSettingsReturnsOnlySettingsFiles(t *testing.T) {
 		"service.toml":            "max_attempts = 1",
 		"agents/a.toml":           `name = "a"`,
 		"verifies/repo.yaml":      "name: repo",
+		"prompts/review.md":       "Review it.",
 		"processes/nested/p.yaml": "name: p",
 	}
 	if !reflect.DeepEqual(got.Files, want) || got.Path != repo || got.Dir != dir {

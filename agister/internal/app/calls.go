@@ -68,6 +68,7 @@ type ResolvedCall struct {
 	Agent     CallAgent
 	Mapping   CallMapping
 	Schema    []byte
+	Prompts   map[string]Resolved // by name: each prompt's text, identified by its digest
 	Sources   []CallSource
 	Effective CallLimits
 	Identity  CallRuntime
@@ -227,6 +228,12 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 	}
 	if verify := process.Verify; verify != nil {
 		resolved.Process.Verify = &CallVerify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}
+	}
+	for name, prompt := range res.prompts {
+		if resolved.Prompts == nil {
+			resolved.Prompts = map[string]Resolved{}
+		}
+		resolved.Prompts[name] = Resolved{Value: prompt.Text, Identity: "sha256:" + prompt.Source.SHA256}
 	}
 	return resolved, err
 }
@@ -696,7 +703,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return
 	}
 
-	inputs, err := c.resolveValues(ctx, "process "+res.Process.Name, res.Process.Params, res.Process.Values, record.Request, collection)
+	inputs, err := c.resolveValues(ctx, "process "+res.Process.Name, res.Process.Params, res.Process.Values, record.Request, collection, res.Prompts)
 	if err != nil {
 		fail(err)
 		return
@@ -912,7 +919,7 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 
 	// Resolved once, before any node starts; every fan-out node receives the
 	// same values.
-	inputs, err := c.resolveValues(ctx, "workflow "+workflow.Name, workflow.Params, workflow.Values, record.Request, nil)
+	inputs, err := c.resolveValues(ctx, "workflow "+workflow.Name, workflow.Params, workflow.Values, record.Request, nil, nil)
 	if err != nil {
 		refused(err)
 		return
@@ -1181,8 +1188,9 @@ func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revis
 // value's arguments may use the text of the values resolved before it,
 // such as a commit hash. subject names the definition, e.g. "process p".
 // Only a join has a collection to receive; a collection input of any other
-// call is refused.
-func (c *Calls) resolveValues(ctx context.Context, subject string, declared []CallParam, values []CallValue, request run.Request, collection *Resolved) ([]run.Input, error) {
+// call is refused. prompts are the prompts resolved with the call, by name
+// (ADR-011 rule 3); a workflow has none.
+func (c *Calls) resolveValues(ctx context.Context, subject string, declared []CallParam, values []CallValue, request run.Request, collection *Resolved, prompts map[string]Resolved) ([]run.Input, error) {
 	params := map[string]string{}
 	var unknown []string
 	for name := range request.Params {
@@ -1221,6 +1229,15 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 				texts[value.Name] = text
 			}
 			inputs = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: collection.Identity, Value: collection.Value})
+			continue
+		}
+		if value.Source == definition.PromptSource {
+			prompt, ok := prompts[value.Args["name"]]
+			if !ok {
+				return nil, refuse("input %s: prompt %q was not resolved with the call", value.Name, value.Args["name"])
+			}
+			texts[value.Name] = prompt.Value.(string)
+			inputs = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: prompt.Identity, Value: prompt.Value})
 			continue
 		}
 		provider, ok := c.inputs[value.Source]
