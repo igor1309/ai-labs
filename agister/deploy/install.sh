@@ -4,9 +4,10 @@
 # Every path derives from $HOME; the label is com.igormalyarov.agister-pages.
 # Refuses, changing nothing, unless ~/.local/bin/agister is an executable file and no job with
 # the label is loaded (`launchctl print gui/<uid>/<label>` fails). Then renders
-# launchagent.plist.in with HOME and this shell's PATH, XML-escaped, into
-# ~/Library/LaunchAgents/<label>.plist (0644, via a temp file and mv), creates
-# ~/Library/Logs/agister (0700) and runs one `launchctl bootstrap gui/<uid> <plist>`.
+# launchagent.plist.in with HOME and this shell's PATH, XML-escaped, in one pass, sets up
+# ~/Library/Logs/agister (0700), writes ~/Library/LaunchAgents/<label>.plist (0644, via a
+# temp file and mv) and runs one `launchctl bootstrap gui/<uid> <plist>`. If bootstrap fails,
+# the previous plist is restored, or the new one removed if there was none.
 # Never runs agister. Refusals exit 1 with one `install: …` line on stderr.
 # Prints the page URL on success.
 set -u
@@ -31,23 +32,43 @@ uid=$(id -u) || die "cannot read the user id"
 
 mkdir -p "$agents" || die "cannot create $agents"
 tmp=$(mktemp "$agents/.$LABEL.plist.XXXXXX") || die "cannot create a temp file in $agents"
+fail() { rm -f "$tmp"; die "$*"; }
 R_HOME=$HOME R_PATH=${PATH:-} awk '
 function esc(s) { gsub(/&/, "\\&amp;", s); gsub(/</, "\\&lt;", s); gsub(/>/, "\\&gt;", s); return s }
-function sub_all(line, key, val,   out, i) {
+# One pass: an inserted value is never scanned again.
+function render(line,   out, tok) {
 	out = ""
-	while ((i = index(line, key)) > 0) { out = out substr(line, 1, i - 1) val; line = substr(line, i + length(key)) }
+	while (match(line, /@(HOME|PATH)@/)) {
+		tok = substr(line, RSTART, RLENGTH)
+		out = out substr(line, 1, RSTART - 1) (tok == "@HOME@" ? h : p)
+		line = substr(line, RSTART + RLENGTH)
+	}
 	return out line
 }
 BEGIN { h = esc(ENVIRON["R_HOME"]); p = esc(ENVIRON["R_PATH"]) }
-{ print sub_all(sub_all($0, "@HOME@", h), "@PATH@", p) }
-' "$tmpl" > "$tmp" || { rm -f "$tmp"; die "render failed"; }
+{ print render($0) }
+' "$tmpl" > "$tmp" || fail "render failed"
 if command -v plutil >/dev/null 2>&1; then
-	plutil -lint -s "$tmp" >/dev/null 2>&1 || { rm -f "$tmp"; die "rendered plist does not lint"; }
+	plutil -lint -s "$tmp" >/dev/null 2>&1 || fail "rendered plist does not lint"
 fi
-chmod 0644 "$tmp" && mv -f "$tmp" "$plist" || { rm -f "$tmp"; die "cannot write $plist"; }
-mkdir -p "$HOME/Library/Logs" || die "cannot create $HOME/Library/Logs"
-[ -d "$logdir" ] || mkdir -m 0700 "$logdir" || die "cannot create $logdir"
-chmod 0700 "$logdir" || die "cannot set $logdir to 0700"
+mkdir -p "$HOME/Library/Logs" 2>/dev/null || fail "cannot create $HOME/Library/Logs"
+[ -d "$logdir" ] || mkdir -m 0700 "$logdir" 2>/dev/null || fail "cannot create $logdir"
+chmod 0700 "$logdir" 2>/dev/null || fail "cannot set $logdir to 0700"
 
-launchctl bootstrap "gui/$uid" "$plist" || die "launchctl bootstrap gui/$uid $plist failed; see $logdir"
+prev=
+if [ -e "$plist" ]; then
+	prev=$(mktemp "$agents/.$LABEL.plist.prev.XXXXXX") || fail "cannot create a temp file in $agents"
+	cp -p "$plist" "$prev" || { rm -f "$prev"; fail "cannot back up $plist"; }
+fi
+chmod 0644 "$tmp" && mv -f "$tmp" "$plist" || { rm -f "$prev"; fail "cannot write $plist"; }
+
+if ! launchctl bootstrap "gui/$uid" "$plist"; then
+	if [ -n "$prev" ]; then
+		mv -f "$prev" "$plist" || die "launchctl bootstrap gui/$uid $plist failed; cannot restore the previous plist from $prev"
+		die "launchctl bootstrap gui/$uid $plist failed; previous plist restored; see $logdir"
+	fi
+	rm -f "$plist" || die "launchctl bootstrap gui/$uid $plist failed; cannot remove $plist"
+	die "launchctl bootstrap gui/$uid $plist failed; plist removed; see $logdir"
+fi
+[ -z "$prev" ] || rm -f "$prev"
 echo "agister pages at $URL"

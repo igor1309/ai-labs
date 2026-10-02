@@ -146,7 +146,8 @@ from `agister/`:
 - `deploy/install.sh` writes
   `~/Library/LaunchAgents/com.igormalyarov.agister-pages.plist`, with the
   PATH of the shell that runs it, and loads it; the page is at
-  `http://127.0.0.1:7465/`. It refuses when `~/.local/bin/agister` is not
+  `http://127.0.0.1:7465/`. If loading fails, it puts back the plist that
+  was there before, or removes its own. It refuses when `~/.local/bin/agister` is not
   an executable file or the job is already loaded.
 - `deploy/uninstall.sh` stops the job and removes the plist; the logs and
   the binary stay.

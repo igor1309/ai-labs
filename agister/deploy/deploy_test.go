@@ -20,17 +20,28 @@ import (
 
 const label = "com.igormalyarov.agister-pages"
 
-// shim is a launchctl that appends its arguments to calls.log and answers
-// `print` as loaded only while the loaded marker exists.
+// shim is a launchctl that appends one line per call to calls.log: the
+// argument count, then each argument in brackets (see call). It answers
+// `print` as loaded only while the loaded marker exists, and fails bootstrap
+// or bootout while a fail-bootstrap or fail-bootout marker exists.
 const shim = `#!/bin/sh
-echo "$*" >> '%[1]s/calls.log'
+{ printf '%%s' "$#"; for a; do printf ' [%%s]' "$a"; done; echo; } >> '%[1]s/calls.log'
 case $1 in
 print) [ -e '%[1]s/loaded' ] || exit 113 ;;
-bootstrap) : > '%[1]s/loaded' ;;
-bootout) rm -f '%[1]s/loaded' ;;
+bootstrap) [ ! -e '%[1]s/fail-bootstrap' ] || exit 5; : > '%[1]s/loaded' ;;
+bootout) [ ! -e '%[1]s/fail-bootout' ] || exit 5; rm -f '%[1]s/loaded' ;;
 esac
 exit 0
 `
+
+// call is the calls.log line the shim writes for one invocation.
+func call(args ...string) string {
+	line := fmt.Sprint(len(args))
+	for _, a := range args {
+		line += " [" + a + "]"
+	}
+	return line
+}
 
 // box is one test's world: a HOME, the shim's directory and the PATH the
 // scripts run with.
@@ -41,10 +52,13 @@ type box struct {
 	path string
 }
 
-func newBox(t *testing.T) *box {
+func newBox(t *testing.T) *box { return newBoxHome(t, "home & <x>") }
+
+// newBoxHome is newBox with HOME named name inside the temp directory.
+func newBoxHome(t *testing.T, name string) *box {
 	t.Helper()
 	root := t.TempDir()
-	b := &box{t: t, home: filepath.Join(root, "home & <x>"), shim: filepath.Join(root, "shim")}
+	b := &box{t: t, home: filepath.Join(root, name), shim: filepath.Join(root, "shim")}
 	for _, dir := range []string{b.home, b.shim} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
@@ -75,9 +89,12 @@ func (b *box) installBinary() {
 	}
 }
 
-func (b *box) setLoaded() {
+func (b *box) setLoaded() { b.mark("loaded") }
+
+// mark creates a shim marker: loaded, fail-bootstrap or fail-bootout.
+func (b *box) mark(name string) {
 	b.t.Helper()
-	if err := os.WriteFile(filepath.Join(b.shim, "loaded"), nil, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(b.shim, name), nil, 0o644); err != nil {
 		b.t.Fatal(err)
 	}
 }
@@ -96,6 +113,66 @@ func (b *box) calls() []string {
 }
 
 func (b *box) job() string { return fmt.Sprintf("gui/%d/%s", os.Getuid(), label) }
+
+func (b *box) bootstrapCall() string {
+	return call("bootstrap", fmt.Sprintf("gui/%d", os.Getuid()), b.plist())
+}
+
+func (b *box) logs() string { return filepath.Join(b.home, "Library", "Logs", "agister") }
+
+// writePlist writes an earlier plist with content data.
+func (b *box) writePlist(data string) {
+	b.t.Helper()
+	if err := os.MkdirAll(filepath.Dir(b.plist()), 0o755); err != nil {
+		b.t.Fatal(err)
+	}
+	if err := os.WriteFile(b.plist(), []byte(data), 0o644); err != nil {
+		b.t.Fatal(err)
+	}
+}
+
+// assertPlist checks the plist holds want and nothing else is left in its
+// directory.
+func (b *box) assertPlist(want string) {
+	b.t.Helper()
+	data, err := os.ReadFile(b.plist())
+	if err != nil {
+		b.t.Fatalf("plist: %v", err)
+	}
+	if string(data) != want {
+		b.t.Errorf("plist %q, want %q", data, want)
+	}
+	b.assertOnlyPlist()
+}
+
+// assertOnlyPlist checks no temp or backup file is left beside the plist.
+func (b *box) assertOnlyPlist() {
+	b.t.Helper()
+	entries, err := os.ReadDir(filepath.Dir(b.plist()))
+	if err != nil {
+		b.t.Fatal(err)
+	}
+	for _, e := range entries {
+		if e.Name() != label+".plist" {
+			b.t.Errorf("%s left in LaunchAgents", e.Name())
+		}
+	}
+}
+
+// assertRefused checks a script exited 1 with one line on stderr that
+// starts with prefix and holds about, and printed nothing on stdout.
+func (b *box) assertRefused(stdout, stderr string, code int, prefix, about string) {
+	b.t.Helper()
+	if code != 1 {
+		b.t.Errorf("exit %d, want 1", code)
+	}
+	if lines := strings.Split(strings.TrimSuffix(stderr, "\n"), "\n"); len(lines) != 1 || !strings.HasPrefix(lines[0], prefix) || !strings.Contains(lines[0], about) {
+		b.t.Errorf("stderr %q, want one %s line about %q", stderr, prefix, about)
+	}
+	if stdout != "" {
+		b.t.Errorf("stdout %q, want none", stdout)
+	}
+}
 
 // run runs a script with only HOME and PATH set; it returns stdout, stderr
 // and the exit code.
@@ -137,48 +214,129 @@ func TestInstallRendersAndBootstrapsOnce(t *testing.T) {
 	if !strings.Contains(stdout, "http://127.0.0.1:7465/") {
 		t.Errorf("stdout %q lacks the page URL", stdout)
 	}
-	want := []string{"print " + b.job(), fmt.Sprintf("bootstrap gui/%d %s", os.Getuid(), b.plist())}
+	want := []string{call("print", b.job()), b.bootstrapCall()}
 	if got := b.calls(); !reflect.DeepEqual(got, want) {
 		t.Errorf("launchctl calls %q, want %q", got, want)
 	}
 	b.assertNotExist(filepath.Join(b.shim, "agister-ran"))
+	b.assertOnlyPlist()
 
+	data := b.assertRendered()
+	if !strings.Contains(string(data), "home &amp; &lt;x&gt;") || !strings.Contains(string(data), "/odd&amp;dir/&lt;bin&gt;") {
+		t.Errorf("HOME and PATH are not XML-escaped:\n%s", data)
+	}
+	b.assertLogsMode()
+}
+
+// assertRendered checks the installed plist lints and holds the paths from
+// HOME and PATH; it returns the plist's bytes.
+func (b *box) assertRendered() []byte {
+	b.t.Helper()
 	if _, err := exec.LookPath("plutil"); err == nil {
 		if out, err := exec.Command("plutil", "-lint", b.plist()).CombinedOutput(); err != nil {
-			t.Errorf("plutil -lint: %v: %s", err, out)
+			b.t.Errorf("plutil -lint: %v: %s", err, out)
 		}
 	}
 	data, err := os.ReadFile(b.plist())
 	if err != nil {
-		t.Fatal(err)
+		b.t.Fatal(err)
 	}
 	got, err := decodePlist(string(data))
 	if err != nil {
-		t.Fatalf("plist does not parse: %v\n%s", err, data)
+		b.t.Fatalf("plist does not parse: %v\n%s", err, data)
 	}
-	logs := filepath.Join(b.home, "Library", "Logs", "agister")
-	wantPlist := map[string]any{
+	want := map[string]any{
 		"Label":                label,
 		"ProgramArguments":     []any{b.agister(), "pages", "--no-open"},
 		"RunAtLoad":            true,
 		"KeepAlive":            true,
 		"EnvironmentVariables": map[string]any{"PATH": b.path},
-		"StandardOutPath":      filepath.Join(logs, "pages.out.log"),
-		"StandardErrorPath":    filepath.Join(logs, "pages.err.log"),
+		"StandardOutPath":      filepath.Join(b.logs(), "pages.out.log"),
+		"StandardErrorPath":    filepath.Join(b.logs(), "pages.err.log"),
 	}
-	if !reflect.DeepEqual(got, wantPlist) {
-		t.Errorf("plist\n got %#v\nwant %#v", got, wantPlist)
+	if !reflect.DeepEqual(got, want) {
+		b.t.Errorf("plist\n got %#v\nwant %#v", got, want)
 	}
-	if !strings.Contains(string(data), "home &amp; &lt;x&gt;") || !strings.Contains(string(data), "/odd&amp;dir/&lt;bin&gt;") {
-		t.Errorf("HOME and PATH are not XML-escaped:\n%s", data)
-	}
-	info, err := os.Stat(logs)
+	return data
+}
+
+func (b *box) assertLogsMode() {
+	b.t.Helper()
+	info, err := os.Stat(b.logs())
 	if err != nil {
-		t.Fatal(err)
+		b.t.Fatal(err)
 	}
 	if perm := info.Mode().Perm(); perm != 0o700 {
-		t.Errorf("%s mode %o, want 700", logs, perm)
+		b.t.Errorf("%s mode %o, want 700", b.logs(), perm)
 	}
+}
+
+func TestInstallRendersHomeHoldingAToken(t *testing.T) {
+	b := newBoxHome(t, "@PATH@ @HOME@")
+	b.installBinary()
+	if _, stderr, code := b.run("install.sh"); code != 0 {
+		t.Fatalf("install exit %d, stderr %q", code, stderr)
+	}
+	b.assertRendered()
+}
+
+func TestInstallSetsAnExistingLogDirTo0700(t *testing.T) {
+	b := newBox(t)
+	b.installBinary()
+	if err := os.MkdirAll(b.logs(), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(b.logs(), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, stderr, code := b.run("install.sh"); code != 0 {
+		t.Fatalf("install exit %d, stderr %q", code, stderr)
+	}
+	b.assertLogsMode()
+}
+
+func TestInstallLogSetupFailureKeepsThePreviousPlist(t *testing.T) {
+	b := newBox(t)
+	b.installBinary()
+	b.writePlist("previous")
+	if err := os.MkdirAll(filepath.Dir(b.logs()), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(b.logs(), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stdout, stderr, code := b.run("install.sh")
+	b.assertRefused(stdout, stderr, code, "install: ", b.logs())
+	if got, want := b.calls(), []string{call("print", b.job())}; !reflect.DeepEqual(got, want) {
+		t.Errorf("launchctl calls %q, want %q", got, want)
+	}
+	b.assertPlist("previous")
+}
+
+func TestInstallBootstrapFailureRestoresThePreviousPlist(t *testing.T) {
+	b := newBox(t)
+	b.installBinary()
+	b.writePlist("previous")
+	b.mark("fail-bootstrap")
+	stdout, stderr, code := b.run("install.sh")
+	b.assertRefused(stdout, stderr, code, "install: ", "bootstrap")
+	if got, want := b.calls(), []string{call("print", b.job()), b.bootstrapCall()}; !reflect.DeepEqual(got, want) {
+		t.Errorf("launchctl calls %q, want %q", got, want)
+	}
+	b.assertPlist("previous")
+}
+
+func TestInstallBootstrapFailureWithNoPreviousPlistRemovesTheNewOne(t *testing.T) {
+	b := newBox(t)
+	b.installBinary()
+	b.mark("fail-bootstrap")
+	stdout, stderr, code := b.run("install.sh")
+	b.assertRefused(stdout, stderr, code, "install: ", "bootstrap")
+	if got, want := b.calls(), []string{call("print", b.job()), b.bootstrapCall()}; !reflect.DeepEqual(got, want) {
+		t.Errorf("launchctl calls %q, want %q", got, want)
+	}
+	b.assertNotExist(b.plist())
+	b.assertOnlyPlist()
 }
 
 func TestInstallRefuses(t *testing.T) {
@@ -213,7 +371,7 @@ func TestInstallRefuses(t *testing.T) {
 			}
 			var want []string
 			for _, verb := range tc.want {
-				want = append(want, verb+" "+b.job())
+				want = append(want, call(verb, b.job()))
 			}
 			if got := b.calls(); !reflect.DeepEqual(got, want) {
 				t.Errorf("launchctl calls %q, want %q", got, want)
@@ -241,7 +399,7 @@ func TestUninstallBootsOutAndRemovesPlist(t *testing.T) {
 	if _, stderr, code := b.run("uninstall.sh"); code != 0 {
 		t.Fatalf("uninstall exit %d, stderr %q", code, stderr)
 	}
-	want := []string{"print " + b.job(), "bootout " + b.job()}
+	want := []string{call("print", b.job()), call("bootout", b.job())}
 	if got := b.calls(); !reflect.DeepEqual(got, want) {
 		t.Errorf("launchctl calls %q, want %q", got, want)
 	}
@@ -253,12 +411,25 @@ func TestUninstallBootsOutAndRemovesPlist(t *testing.T) {
 	}
 }
 
+func TestUninstallBootoutFailureKeepsThePlist(t *testing.T) {
+	b := newBox(t)
+	b.writePlist("installed")
+	b.setLoaded()
+	b.mark("fail-bootout")
+	stdout, stderr, code := b.run("uninstall.sh")
+	b.assertRefused(stdout, stderr, code, "uninstall: ", "bootout")
+	if got, want := b.calls(), []string{call("print", b.job()), call("bootout", b.job())}; !reflect.DeepEqual(got, want) {
+		t.Errorf("launchctl calls %q, want %q", got, want)
+	}
+	b.assertPlist("installed")
+}
+
 func TestUninstallWithNothingInstalledSucceeds(t *testing.T) {
 	b := newBox(t)
 	if _, stderr, code := b.run("uninstall.sh"); code != 0 {
 		t.Fatalf("uninstall exit %d, stderr %q", code, stderr)
 	}
-	want := []string{"print " + b.job()}
+	want := []string{call("print", b.job())}
 	if got := b.calls(); !reflect.DeepEqual(got, want) {
 		t.Errorf("launchctl calls %q, want %q", got, want)
 	}
