@@ -584,8 +584,8 @@ func TestVerifyTimeoutAboveTheCallersTimeoutRefusesTheCall(t *testing.T) {
 	h := newHarness()
 	verifying(h)
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
-	if report, err := checker.Check(context.Background(), false); err != nil || len(report.Problems) != 0 {
-		t.Fatalf("check: %v, %v", report.Problems, err)
+	if report, err := checker.Check(context.Background(), false); err != nil || len(messages(report.Problems)) != 0 {
+		t.Fatalf("check: %v, %v", messages(report.Problems), err)
 	}
 	record := h.call(t, contract.CallRequest{Timeout: "5m"})
 	want := "verify.timeout 10m0s exceeds the effective timeout 5m0s"
@@ -739,8 +739,8 @@ func TestCheckWarnsOncePerProcessWithVerify(t *testing.T) {
 	h.defs.docs[definition.KindProcess]["r"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: r", 1)
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 	report, err := checker.Check(context.Background(), false)
-	if err != nil || len(report.Problems) != 0 {
-		t.Fatalf("check: %v, %v", report.Problems, err)
+	if err != nil || len(messages(report.Problems)) != 0 {
+		t.Fatalf("check: %v, %v", messages(report.Problems), err)
 	}
 	if want := []string{"process p: " + app.VerifyWarning, "process r: " + app.VerifyWarning}; !reflect.DeepEqual(report.Warnings, want) {
 		t.Fatalf("warnings = %q", report.Warnings)
@@ -752,7 +752,7 @@ func TestCheckWarnsOncePerProcessWithVerify(t *testing.T) {
 		"process p: verify.max_attempts 3 repairs in the call's session, but runtime rt cannot resume sessions",
 		"process r: verify.max_attempts 3 repairs in the call's session, but runtime rt cannot resume sessions",
 	}
-	if !reflect.DeepEqual(report.Problems, want) {
-		t.Fatalf("problems = %q", report.Problems)
+	if !reflect.DeepEqual(messages(report.Problems), want) {
+		t.Fatalf("problems = %q", messages(report.Problems))
 	}
 }

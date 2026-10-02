@@ -127,10 +127,26 @@ type Mapping struct {
 }
 
 func header(values map[string]*yaml.Node, schema, expected string, p *problems) {
-	if value, _ := scalar(values["schema"], "schema", p); value != schema {
+	value, _ := scalar(values["schema"], "schema", p)
+	checkSchema(value, schema, p)
+	checkName(required(values, "name", "", p), expected, p)
+}
+
+// schemaShape is what every schema Agister declares looks like:
+// agister.<kind>/<version>.
+var schemaShape = regexp.MustCompile(`^agister\.[a-z][a-z0-9-]*/v[0-9][a-z0-9]*$`)
+
+// checkSchema reports a document's schema other than the one this code
+// reads. One of Agister's shape names a schema this code does not know,
+// as a document written for a newer Agister would; any other is a mistake.
+func checkSchema(value, schema string, p *problems) {
+	switch {
+	case value == schema:
+	case schemaShape.MatchString(value):
+		p.unknown("schema", "must be %q", schema)
+	default:
 		p.add("schema", "must be %q", schema)
 	}
-	checkName(required(values, "name", "", p), expected, p)
 }
 
 // ParsePolicy parses a process policy.
@@ -308,9 +324,8 @@ func ParseWorkspace(doc Document) (Workspace, error) {
 		return workspace, p.err("workspace settings")
 	}
 	values := fields(root, "", []string{"schema", "setup"}, p)
-	if value, _ := scalar(values["schema"], "schema", p); value != WorkspaceSchema {
-		p.add("schema", "must be %q", WorkspaceSchema)
-	}
+	value, _ := scalar(values["schema"], "schema", p)
+	checkSchema(value, WorkspaceSchema, p)
 	if node, ok := values["setup"]; ok {
 		workspace.Setup = parseSetup(node, "setup", p)
 	}

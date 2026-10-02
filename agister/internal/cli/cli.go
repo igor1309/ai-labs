@@ -66,6 +66,8 @@ Usage:
   agister pages [--addr <host:port>] [--home <dir>] [--no-open]
                                      serve the settings page on this machine and open it; see
                                      agister pages --help
+  agister version                    this binary's version, revision and commit time; needs no
+                                     settings (also --version)
 
 Options:
   --home <dir>   Agister's state and global settings (default: $AGISTER_HOME, else ~/.agister);
@@ -74,6 +76,7 @@ Options:
   --debug        Diagnostics on stderr (always kept in <home>/logs/agister.jsonl), including why
                  no project settings apply
   -h, --help     This help; needs no settings
+  --version      This binary's version, as agister version prints it
 
 Scripts answer the yes prompts with: echo yes | agister ...
 
@@ -87,6 +90,9 @@ type IO struct {
 	Stderr io.Writer
 	Cwd    string
 	Getenv func(string) string
+	// Version names this binary: its module version, revision and commit
+	// time, as the composition root reads them from the build.
+	Version string
 }
 
 // Config is what the composition root needs to build a client.
@@ -132,7 +138,7 @@ func Run(ctx context.Context, args []string, env IO, build Build) int {
 type options struct {
 	home, runtime, model, modelFamily, effort, session, command string
 	agent, timeout, maxCost, continueRun                        string
-	force, quiet, debug, json, help, probe, tree                bool
+	force, quiet, debug, json, help, probe, tree, version       bool
 	after                                                       int
 	params                                                      paramFlag
 }
@@ -190,6 +196,7 @@ func flags(opts *options) *flag.FlagSet {
 	set.BoolVar(&opts.tree, "tree", false, "")
 	set.BoolVar(&opts.help, "help", false, "")
 	set.BoolVar(&opts.help, "h", false, "")
+	set.BoolVar(&opts.version, "version", false, "")
 	set.IntVar(&opts.after, "after", 0, "")
 	set.Var(opts.params, "param", "")
 	return set
@@ -202,6 +209,12 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 	}
 	if opts.help {
 		fmt.Fprintln(env.Stdout, usage)
+		return 0, nil
+	}
+	// The version names the binary whatever the settings say: it is what to
+	// look at when they need a newer one.
+	if opts.version || len(positionals) > 0 && positionals[0] == "version" {
+		fmt.Fprintln(env.Stdout, "agister "+version(env))
 		return 0, nil
 	}
 	config := Config{Home: home(opts.home, env), Cwd: env.Cwd}
@@ -809,7 +822,10 @@ func printCheckAs(env IO, report contract.CheckReport, opts options) (int, error
 		code = ExitUsage
 	}
 	if opts.json {
-		for _, list := range []*[]string{&report.Problems, &report.Overrides, &report.Warnings} {
+		if report.Problems == nil {
+			report.Problems = []contract.Problem{}
+		}
+		for _, list := range []*[]string{&report.Overrides, &report.Warnings} {
 			if *list == nil {
 				*list = []string{}
 			}
@@ -910,7 +926,9 @@ func printTree(w io.Writer, definitions []contract.Definition) {
 }
 
 // printCheck prints a check report and returns its exit code. Overrides
-// are listed either way: a problem is often caused by one.
+// are listed either way: a problem is often caused by one. Problems that
+// name something this binary does not know may mean the settings were
+// written for a newer one, and a line says so.
 func printCheck(env IO, report contract.CheckReport) int {
 	for _, override := range report.Overrides {
 		fmt.Fprintln(env.Stdout, "override "+override)
@@ -924,10 +942,17 @@ func printCheck(env IO, report contract.CheckReport) int {
 	}
 	sort.Strings(kinds)
 	if len(report.Problems) > 0 {
+		unknown := 0
 		for _, problem := range report.Problems {
-			fmt.Fprintln(env.Stderr, problem)
+			fmt.Fprintln(env.Stderr, problem.Message)
+			if problem.Unknown {
+				unknown++
+			}
 		}
 		fmt.Fprintf(env.Stderr, "%d problem(s) in %s\n", len(report.Problems), strings.Join(kinds, ", "))
+		if unknown > 0 {
+			fmt.Fprintf(env.Stderr, "%d problem(s) name something this binary does not know; the settings may need one newer than agister %s.\n", unknown, version(env))
+		}
 		return ExitUsage
 	}
 	fmt.Fprintf(env.Stdout, "settings OK: %s\n", strings.Join(kinds, ", "))
@@ -964,6 +989,11 @@ func printJSON(w io.Writer, value any) error {
 	encoder.SetEscapeHTML(false)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(value)
+}
+
+// version is the binary's version text, or unknown when none was given.
+func version(env IO) string {
+	return or(env.Version, "unknown")
 }
 
 func home(flagValue string, env IO) string {

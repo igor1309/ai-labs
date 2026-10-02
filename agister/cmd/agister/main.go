@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime/debug"
 	"syscall"
 
 	"github.com/igor1309/ai-labs/agister/examples"
@@ -44,7 +45,33 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "pages" {
 		os.Exit(pages.Main(ctx, os.Args[2:], pagesEnv()))
 	}
-	os.Exit(cli.Run(ctx, os.Args[1:], cli.IO{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Cwd: cwd, Getenv: os.Getenv}, compose))
+	info, _ := debug.ReadBuildInfo()
+	os.Exit(cli.Run(ctx, os.Args[1:], cli.IO{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Cwd: cwd, Getenv: os.Getenv, Version: version(info)}, compose))
+}
+
+// version names the build: its module version, its revision (short, with
+// +dirty when the tree had uncommitted changes) and its commit time. What
+// the build does not record, as go test and go run outside a checkout do
+// not, is unknown.
+func version(info *debug.BuildInfo) string {
+	module, revision, committed, dirty := "unknown", "unknown", "unknown", ""
+	if info == nil {
+		return module + " " + revision + " " + committed
+	}
+	if info.Main.Version != "" {
+		module = info.Main.Version
+	}
+	for _, setting := range info.Settings {
+		switch {
+		case setting.Key == "vcs.revision" && setting.Value != "":
+			revision = setting.Value[:min(8, len(setting.Value))]
+		case setting.Key == "vcs.time" && setting.Value != "":
+			committed = setting.Value
+		case setting.Key == "vcs.modified" && setting.Value == "true":
+			dirty = "+dirty"
+		}
+	}
+	return module + " " + revision + dirty + " " + committed
 }
 
 // pagesEnv is agister pages' process environment; macOS open shows the page.

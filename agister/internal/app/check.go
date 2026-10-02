@@ -54,7 +54,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 	index := map[contract.DefinitionRef]int{}   // into report.Definitions
 	listed := map[contract.DefinitionRef]bool{} // in the settings, read or not
 	problem := func(subject, format string, args ...any) {
-		report.Problems = append(report.Problems, subject+": "+fmt.Sprintf(format, args...))
+		report.Problems = append(report.Problems, contract.Problem{Message: subject + ": " + fmt.Sprintf(format, args...)})
 	}
 	bundle := settings.Bundle{
 		Agents:    map[string]definition.Agent{},
@@ -99,7 +99,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 				var invalid *definition.InvalidError
 				if errors.As(err, &invalid) {
 					for _, p := range invalid.Problems {
-						problem(kind.Singular()+" "+name, "%s", p)
+						report.Problems = append(report.Problems, contract.Problem{Message: kind.Singular() + " " + name + ": " + p.Message, Unknown: p.Unknown})
 					}
 				} else {
 					problem(kind.Singular()+" "+name, "%v", err)
@@ -232,7 +232,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 	}
 
 	if bundle.Service == nil {
-		sort.Strings(report.Problems)
+		sortProblems(report.Problems)
 		return report, nil
 	}
 
@@ -241,7 +241,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 	// The core itself supplies a join's collection (ADR-003 rule 4).
 	sources := append(append([]string(nil), c.sources...), definition.CollectionSource)
 	for _, p := range settings.Check(bundle, settings.Mechanisms{Sources: sources, Adapters: known}) {
-		report.Problems = append(report.Problems, p.String())
+		report.Problems = append(report.Problems, fromSettings(p))
 	}
 
 	// Against the runtimes themselves.
@@ -265,7 +265,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 				problem("agent "+name, "mapping %s verifies no primitive for runtime version %s", mapping.Name, identity.Version)
 			default:
 				for _, p := range settings.PlanProblems(bundle, agent, identity.Version) {
-					report.Problems = append(report.Problems, p.String())
+					report.Problems = append(report.Problems, fromSettings(p))
 				}
 				// Repairs resume the call's session, which only the
 				// runtime can say it supports.
@@ -277,8 +277,18 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			}
 		}
 	}
-	sort.Strings(report.Problems)
+	sortProblems(report.Problems)
 	return report, nil
+}
+
+// sortProblems orders problems by message.
+func sortProblems(problems []contract.Problem) {
+	sort.SliceStable(problems, func(i, j int) bool { return problems[i].Message < problems[j].Message })
+}
+
+// fromSettings is a settings problem as the report has it.
+func fromSettings(p settings.Problem) contract.Problem {
+	return contract.Problem{Message: p.String(), Unknown: p.Unknown}
 }
 
 func sortedNames[V any](m map[string]V) []string {
@@ -307,12 +317,12 @@ func (c *Checker) ProblemsAdded(ctx context.Context, doc definition.Document) ([
 	}
 	existing := map[string]bool{}
 	for _, problem := range before.Problems {
-		existing[problem] = true
+		existing[problem.Message] = true
 	}
 	var added []string
 	for _, problem := range report.Problems {
-		if !existing[problem] {
-			added = append(added, problem)
+		if !existing[problem.Message] {
+			added = append(added, problem.Message)
 		}
 	}
 	return added, nil

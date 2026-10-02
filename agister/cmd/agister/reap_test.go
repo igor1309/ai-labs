@@ -311,9 +311,10 @@ verify:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.Submit(context.Background(), contract.CallRequest{
+	id, err := client.Submit(context.Background(), contract.CallRequest{
 		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "30s", Cwd: repo,
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
 	background.Wait()
@@ -337,7 +338,14 @@ verify:
 	if !strings.Contains(string(events), `"EFFECTS_REAPED"`) || !strings.Contains(string(events), `"command":{"outcome":"killed"`) {
 		t.Fatalf("no reap of the command:\n%s", events)
 	}
-	// The new call ends too, and its checkout goes with it.
+	// The new call ends too, and its checkout goes with it. Until it ends,
+	// it may not have made its checkout yet, and would take its worktree
+	// turn under the home while the test's cleanup removes it.
+	store := fsruns.Store{Dir: filepath.Join(home, "runs")}
+	eventually(t, "the new call to finish", func() bool {
+		_, state, err := store.Get(context.Background(), id)
+		return err == nil && state == domain.StateFinished
+	})
 	eventually(t, "every checkout to be released", func() bool {
 		return len(strings.Split(gitCmd(t, repo, "worktree", "list"), "\n")) == 1
 	})
