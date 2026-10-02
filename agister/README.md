@@ -44,7 +44,7 @@ name is literal, never interpolated. It is found like any other document,
 so a repository replaces one prompt with `.agister/prompts/review.md`
 without copying the processes that use it. A process naming a prompt that
 exists in neither place is a problem of the settings
-([ADR-013](docs/adr/013-prompts-are-settings.md)). A text the caller names
+([ADR-014](docs/adr/014-prompts-are-settings.md)). A text the caller names
 stays a `source: file` input, read relative to the caller's directory.
 
 Agister is a runner, not a guard: running it in a repository applies that
@@ -68,6 +68,16 @@ own:
 #   command: ln -s ../config/local.json config/local.json
 #   timeout: 1m
 ```
+
+To continue a run of such a process, run from the repository the checkout
+is of, and pin its revision param: a default like `HEAD` resolves in the
+directory you launch from. `--continue <run-id>` resumes the run's session
+and carries the session's latest run's `changes.patch` into the new checkout,
+uncommitted, on the same revision
+([ADR-013](docs/adr/013-a-continuation-carries-the-earlier-runs-changes.md)).
+Whichever run of the session you name, its latest run's changes are
+carried. A finished run's changes are
+`~/.agister/runs/<id>/artifacts/changes.patch`, applied with `git apply`.
 
 `examples/settings/` is what `init` installs; `examples/codex/`,
 `examples/pi/` and `examples/opencode/` are opt-in.

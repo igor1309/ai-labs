@@ -622,3 +622,10 @@ func TestShowProcessPrintsTheStalenessLimits(t *testing.T) {
 		t.Fatalf("without limits:\n%s", r.stdout)
 	}
 }
+
+func TestHelpNamesTheSessionsLatestRunAsThePatchSource(t *testing.T) {
+	r := run(context.Background(), &clientSpy{}, "--help")
+	if r.code != 0 || !strings.Contains(r.stdout, "the session's latest run's changes") {
+		t.Fatalf("help: code %d, stdout %q, stderr %q", r.code, r.stdout, r.stderr)
+	}
+}

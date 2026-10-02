@@ -82,7 +82,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 			listed[contract.DefinitionRef{Kind: string(kind), Name: name}] = true
 			if kind == definition.KindPrompt {
 				// One that cannot be read or parsed is a problem of its
-				// own (ADR-013 rule 1); the processes that name it still
+				// own (ADR-014 rule 1); the processes that name it still
 				// find it.
 				bundle.Prompts[name] = true
 			}
@@ -253,7 +253,7 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 	// Across documents.
 	known := c.runtimes.Adapters()
 	// The core itself supplies a join's collection (ADR-003 rule 4) and the
-	// prompts a process names, which it reads from the settings (ADR-013).
+	// prompts a process names, which it reads from the settings (ADR-014).
 	sources := append(append([]string(nil), c.sources...), definition.CollectionSource, definition.PromptSource)
 	for _, p := range settings.Check(bundle, settings.Mechanisms{Sources: sources, Adapters: known}) {
 		report.Problems = append(report.Problems, p.String())

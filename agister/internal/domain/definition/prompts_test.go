@@ -8,7 +8,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
 
-// Prompts are settings (ADR-013).
+// Prompts are settings (ADR-014).
 
 // promptProcess is a text process whose only input is the value given,
 // indented under input.values.

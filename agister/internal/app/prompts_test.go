@@ -13,7 +13,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// Prompts are settings (ADR-013).
+// Prompts are settings (ADR-014).
 
 const reviewPrompt = "Review the change against the rules.\n"
 

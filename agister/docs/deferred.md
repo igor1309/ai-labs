@@ -62,7 +62,35 @@ Against trunk's merge-base (also covers #829 and #831):
 - **Done when:** the test passes `-count=20` with no leftover, and the
   writer of that record is ended or waited for before the cleanup.
 
-## 4. Resolver builds the Calls and Inspection result types
+## 4. Callers have no Agister usage skill
+
+- **Gap:** an agent calling Agister from another project has only
+  `--help` and the README. On 2026-10-02 the iOS caller (DBSNEW-17564)
+  had no skill to read: it launched from the config repository, so a
+  `HEAD` default resolved there, and it continued a run that held no
+  changes (LAB-54). ADR-013 makes continuation carry the changes, but where
+  to launch, pinning the revision and applying a finished run's patch are
+  still the caller's to know.
+- **Trigger:** the next project to call Agister from its own agents, or
+  the next caller mistake of this kind.
+- **Done when:** Agister ships a caller skill (or a template a project
+  adopts) covering where to launch, pinning the revision, `--continue`,
+  and applying `changes.patch`.
+
+## 5. The Codex implementer cannot run the full check
+
+- **Gap:** in `implement_codex` runs `20261002T131055Z-5e6f2e` and
+  `20261002T133203Z-ca391d` (LAB-54), the full check failed inside the
+  agent's sandbox: process-inspection and local-serving tests are denied
+  (`/bin/ps: operation not permitted`). The agent reported targeted
+  packages instead, and the caller had to run the full check.
+- **Trigger:** the next `implement_codex` run whose change touches those
+  packages, or a change to the Codex permission mapping.
+- **Done when:** the Codex implementer can run the full check, or the
+  process's verification runs it outside the agent's sandbox and its
+  result is what the call reports.
+
+## 6. Resolver builds the Calls and Inspection result types
 
 - **Gap:** `Resolver.Snapshot` builds `callResolution` around a concrete
   `*Resolver`, and `NewClient` passes the Resolver straight to its

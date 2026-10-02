@@ -1,4 +1,4 @@
-# ADR-013: Prompts are settings
+# ADR-014: Prompts are settings
 
 - **Status:** Accepted
 - **Date:** 2026-10-02

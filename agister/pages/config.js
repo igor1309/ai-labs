@@ -308,7 +308,7 @@
   }
 
   // The prompts a process's inputs name ({source: prompt, name: <name>}),
-  // each once (ADR-013).
+  // each once (ADR-014).
   function prompts(input) {
     const values = input && typeof input.values === 'object' && input.values ? Object.values(input.values) : [];
     const names = values.filter((v) => v?.source === 'prompt' && typeof v.name === 'string').map((v) => v.name);
@@ -516,7 +516,7 @@
       p.agentOutside = !!p.agent && !agents.has(p.agent);
       p.policyOutside = !!p.policy && !policies.has(p.policy);
       p.outputOutside = !!p.output && !schemas.has(p.output);
-      // Each prompt found, with the layer it comes from when composed (ADR-013).
+      // Each prompt found, with the layer it comes from when composed (ADR-014).
       p.prompts = p.prompts.map((x) => {
         const found = prompts.get(x.name);
         return { ...x, outside: !found, ...(found?.source && { source: found.source, overrides: !!found.overrides }) };

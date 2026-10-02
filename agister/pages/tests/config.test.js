@@ -305,7 +305,7 @@ test('a named verification is resolved from the composed settings, or marked out
   assert.deepEqual(alone.processes[0].verify, { ref: 'repo', maxAttempts: null, outside: true });
 });
 
-// ADR-013: a process names its prompts, each once, found in the repo
+// ADR-014: a process names its prompts, each once, found in the repo
 // before home.
 test('a process\'s prompts are found in the composed settings, or marked outside', async () => {
   const home = {

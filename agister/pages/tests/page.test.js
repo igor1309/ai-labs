@@ -474,7 +474,7 @@ test('a process card shows the prompts its process names, and marks a missing on
   assert.equal(marker.title, 'No prompt named style in these settings: Agister refuses the call');
 });
 
-// ADR-013: pages show which layer each prompt comes from. In a repo, a
+// ADR-014: pages show which layer each prompt comes from. In a repo, a
 // prompt of its own replaces home's and says so; one only home has says
 // home. A prompt two inputs name is listed once.
 test('a process card in a repo shows the layer each prompt comes from, each prompt once', async () => {

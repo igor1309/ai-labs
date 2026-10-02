@@ -192,7 +192,7 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 		res.process.Verify = &verification.Verify
 	}
 	// Each prompt a process names is read with the call, from the same
-	// settings, and recorded among its sources (ADR-013 rule 3).
+	// settings, and recorded among its sources (ADR-014 rule 3).
 	for _, value := range res.process.Values {
 		name := value.Args["name"]
 		if _, ok := res.prompts[name]; ok || value.Source != definition.PromptSource {

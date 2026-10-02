@@ -76,7 +76,7 @@ func ParseWorkflow(doc Document) (Workflow, error) {
 			p.add("input.values."+value.Name+".source", "%s is given only to a join", CollectionSource)
 		case PromptSource:
 			// A workflow resolves no settings document as an input; the
-			// process that needs the prompt names it (ADR-013).
+			// process that needs the prompt names it (ADR-014).
 			p.add("input.values."+value.Name+".source", "%s is given only to a process", PromptSource)
 		}
 	}

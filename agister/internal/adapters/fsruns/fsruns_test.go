@@ -3,6 +3,7 @@ package fsruns
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -87,6 +88,37 @@ func TestArtifactsAreStoredWithTheirDigest(t *testing.T) {
 	}
 }
 
+// An artifact a run stored reads back as stored, by the path its record
+// names; a path out of the run's artifacts, or to none, is refused.
+func TestArtifactsReadBackAsStored(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	ctx := context.Background()
+	h, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "r4"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	patch := []byte("diff --git a/x b/x\nGIT binary patch\n\x00\xff\n")
+	artifact, err := h.Artifact("changes.patch", patch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if data, err := store.Artifact(ctx, "r4", artifact); err != nil || string(data) != string(patch) {
+		t.Fatalf("read %q, %v", data, err)
+	}
+	if _, err := store.Artifact(ctx, "r4", run.Artifact{Path: "artifacts/gone.patch"}); !errors.Is(err, contract.ErrNotFound) {
+		t.Fatalf("a missing artifact: %v", err)
+	}
+	for _, path := range []string{"record.json", "artifacts/../record.json", "artifacts/", "artifacts/.hidden", "../r4/artifacts/changes.patch"} {
+		if _, err := store.Artifact(ctx, "r4", run.Artifact{Path: path}); err == nil || err.Error() != fmt.Sprintf("run r4: invalid artifact path %q", path) {
+			t.Fatalf("artifact path %q: %v", path, err)
+		}
+	}
+	var input *contract.InputError
+	if _, err := store.Artifact(ctx, "../r4", artifact); !errors.As(err, &input) {
+		t.Fatalf("an invalid run ID: %v", err)
+	}
+}
+
 // A run ID cannot lead out of the runs directory.
 func TestRunIDsStayInTheStore(t *testing.T) {
 	root := t.TempDir()
@@ -109,6 +141,9 @@ func TestRunIDsStayInTheStore(t *testing.T) {
 		}
 		if _, err := store.Create(ctx, run.Record{ID: id}); !errors.As(err, &input) {
 			t.Errorf("Create(%q) = %v", id, err)
+		}
+		if _, err := store.Artifact(ctx, id, run.Artifact{Path: "artifacts/changes.patch"}); !errors.As(err, &input) {
+			t.Errorf("Artifact(%q) = %v", id, err)
 		}
 	}
 	if _, err := os.Stat(filepath.Join(root, "b")); err == nil {
