@@ -49,3 +49,15 @@ Against trunk's merge-base (also covers #829 and #831):
   - minor: Register cleanup before asserting on blocked workflows (`agister/internal/app/workflow_test.go:614`)
 - `clarity_review_codex`, run `20260930T124840Z-ee2b26`:
   - major: Preserve existing recorded instructions (`prompts/code-review-architecture.md:43`)
+
+## 3. A reap test leaves a run record behind
+
+- **Gap:** `TestNextCallReapsAKilledRunsVerifyCommand`
+  (`cmd/agister/reap_test.go:241`) fails about 1 run in 10, on trunk
+  `c5cd41fd` as on the LAB-49 branch: the temporary-directory check finds
+  `<home>/runs/<id>/record.json` written after the test's cleanup removed
+  the home (observed 2026-10-02, `go test -count=10 -run` that test).
+- **Trigger:** the next change to the reap path or its tests, or a
+  full-suite run it fails.
+- **Done when:** the test passes `-count=20` with no leftover, and the
+  writer of that record is ended or waited for before the cleanup.

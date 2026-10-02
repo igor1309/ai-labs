@@ -360,6 +360,12 @@ func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
 				h.defs.docs[definition.KindAgent][c.agent] += "session = \"resumable\"\n"
 			}
 			h.defs.docs[definition.KindSchema]["review-result"] = schema
+			// The verification the shipped implement names.
+			repo, err := fs.ReadFile(examples.Settings(), "verifies/repo.yaml")
+			if err != nil {
+				t.Fatal(err)
+			}
+			h.defs.docs[definition.KindVerify] = map[string]string{"repo": string(repo)}
 			h.runner.identity.CostLimit = false
 			h.runner.turn.Output = json.RawMessage(c.output)
 			record := h.call(t, contract.CallRequest{Process: c.process, Params: c.params})
