@@ -19,9 +19,7 @@ whatever skills its runtime loads in the repository and the user's home;
 Agister neither copies nor filters them, and an agent has no skills
 setting. So an agent's skills are the skills its runtime would load, and
 showing them means reading skill files: the folders each runtime loads
-from. Which folders those are was checked against each runtime's
-documentation, its installed CLI and the adapter's flags
-([findings](../findings.md), 2026-10-02).
+from ([findings](../findings.md)).
 
 A call runs in the repository's root, or in a checkout of a revision of it
 (`workspace.checkout`), so the folders that matter are the root's and the
