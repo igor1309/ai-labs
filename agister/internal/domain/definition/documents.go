@@ -137,6 +137,12 @@ func ParseProcess(doc Document) (Process, error) {
 	if root == nil {
 		return Process{Name: doc.Source.Name, Source: doc.Source}, p.err("process " + subjectName(doc.Source))
 	}
+	// Read by key, a second verify would replace the first, so a process
+	// could declare both forms (ADR-010 rule 2) and run the one it names
+	// last.
+	if declared(root, "verify") > 1 {
+		p.add("verify", "is declared more than once: the inline fields or one reference, not both")
+	}
 	values := fields(root, "", append([]string{"schema", "name", "status", "type", "uses", "policy", "input", "output", "verify"}, limitKeys...), p)
 	header(values, ProcessSchema, doc.Source.Name, p)
 	if value, _ := scalar(values["type"], "type", p); value != "process" {

@@ -212,6 +212,22 @@ func TestAProcessNamesItsVerification(t *testing.T) {
 	}
 }
 
+// Rule 2: a second verify does not replace the first, in either order.
+func TestAProcessDeclaringVerifyTwiceIsInvalid(t *testing.T) {
+	cases := map[string]string{
+		"inline, then a reference": verifyingProcess(verifyBlock) + "verify: verify:repo\n",
+		"a reference, then inline": namingProcess("verify:repo") + "verify:\n" + verifyBlock,
+	}
+	for name, text := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", text))
+			if err == nil || !strings.Contains(err.Error(), "verify: is declared more than once") {
+				t.Fatalf("err = %v", err)
+			}
+		})
+	}
+}
+
 // A process that names a verification is held to the pinned checkout, as
 // one with the inline block is.
 func TestANamedVerificationWithoutACheckoutIsInvalid(t *testing.T) {

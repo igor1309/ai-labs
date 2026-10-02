@@ -98,15 +98,15 @@ func TestAGlobalProcessVerifiesWithTheRepositorysVerification(t *testing.T) {
 func TestAVerificationInNeitherLayerRefusesOnlyTheProcessNamingIt(t *testing.T) {
 	home, repo := namingHome(t)
 	global, project := filepath.Join(home, "verifies", "repo.yaml"), filepath.Join(repo, ".agister", "verifies", "repo.yaml")
-	// A repository without .agister has no settings layer of its own, so
-	// the only place the document is expected is the home.
-	if view, want := showImplement(t, home, repo), `process implement names verify:repo: verification "repo": not found (expected `+global+")"; view.Refusal != want {
-		t.Fatalf("without project settings: refusal %q, want %q", view.Refusal, want)
+	reason := `process implement names verify:repo: verification "repo": not found (expected ` + project + " or " + global + ")"
+	// A repository without .agister has no settings layer of its own; the
+	// refusal still names where it would hold the document.
+	if view := showImplement(t, home, repo); view.Refusal != reason {
+		t.Fatalf("without project settings: refusal %q, want %q", view.Refusal, reason)
 	}
 	if err := os.Mkdir(filepath.Join(repo, ".agister"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	reason := `process implement names verify:repo: verification "repo": not found (expected ` + project + " or " + global + ")"
 
 	r := agister(t, home, repo, "check")
 	warning := "warning process implement: names verify:repo, which does not exist; calls of it are refused until verifies/repo.yaml exists\n"

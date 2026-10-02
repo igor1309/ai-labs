@@ -228,19 +228,25 @@ func digest(data []byte) string {
 type Layered struct {
 	Global  Store
 	Project *Store // nil outside a project
+	// Absent, when Project is nil, is the settings directory of the
+	// repository that has none: a document found in neither layer names
+	// where it was expected there too.
+	Absent string
 }
 
 func (l Layered) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
 	if l.Project == nil {
-		return l.Global.Read(ctx, kind, name)
+		doc, err := l.Global.Read(ctx, kind, name)
+		if errors.Is(err, errNotFound) && l.Absent != "" {
+			return doc, l.notFound(Store{Dir: l.Absent}, kind, name)
+		}
+		return doc, err
 	}
 	doc, err := l.Project.Read(ctx, kind, name)
 	if errors.Is(err, errNotFound) {
 		doc, err = l.Global.Read(ctx, kind, name)
 		if errors.Is(err, errNotFound) {
-			projectPath, _ := l.Project.path(kind, name)
-			globalPath, _ := l.Global.path(kind, name)
-			return doc, fmt.Errorf("%w (expected %s or %s)", errNotFound, projectPath, globalPath)
+			return doc, l.notFound(*l.Project, kind, name)
 		}
 		return doc, err
 	}
@@ -254,6 +260,14 @@ func (l Layered) Read(ctx context.Context, kind definition.Kind, name string) (d
 		}
 	}
 	return doc, nil
+}
+
+// notFound says that a document is in neither project nor the global store,
+// and where each would hold it.
+func (l Layered) notFound(project Store, kind definition.Kind, name string) error {
+	projectPath, _ := project.path(kind, name)
+	globalPath, _ := l.Global.path(kind, name)
+	return fmt.Errorf("%w (expected %s or %s)", errNotFound, projectPath, globalPath)
 }
 
 // List names every document of kind in either layer.

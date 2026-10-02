@@ -279,3 +279,46 @@ func TestSnapshotKeepsTheReadOfAMissingNamedVerification(t *testing.T) {
 		t.Fatalf("reading the snapshot read the source %d more times", got-reads)
 	}
 }
+
+// listedThen answers from the spy and runs then once it has listed kind: a
+// writer that changes the settings between the list and the reads after
+// it.
+type listedThen struct {
+	*definitionsSpy
+	kind definition.Kind
+	then func()
+}
+
+func (s listedThen) List(ctx context.Context, kind definition.Kind) ([]string, error) {
+	names, err := s.definitionsSpy.List(ctx, kind)
+	if kind == s.kind {
+		s.then()
+	}
+	return names, err
+}
+
+// A named verification written after the snapshot listed verifications,
+// and read by it for the process naming it, is in the snapshot's list: the
+// check of the snapshot checks the document a call resolved from it uses.
+func TestSnapshotListsANamedVerificationWrittenAfterItsList(t *testing.T) {
+	ctx := context.Background()
+	h := newHarness()
+	naming(h)
+	invalid := strings.Replace(verification, "10m", "30m", 1)
+	live := listedThen{definitionsSpy: h.defs, kind: definition.KindVerify, then: func() {
+		h.defs.set(definition.KindVerify, "repo", invalid)
+	}}
+	snap := app.Snapshot(ctx, live)
+	if names, err := snap.List(ctx, definition.KindVerify); err != nil || !reflect.DeepEqual(names, []string{"repo"}) {
+		t.Fatalf("verifies = %v, %v", names, err)
+	}
+	problem := "process p: verify.timeout 30m0s exceeds the effective timeout 20m0s"
+	report, err := app.NewChecker(snap, h.validator, h.runtimes, []string{"git.revision", "git.diff"}).Check(ctx, false)
+	if err != nil || !reflect.DeepEqual(report.Problems, []string{problem}) {
+		t.Fatalf("problems = %q, %v, want %q", report.Problems, err, problem)
+	}
+	view, err := app.NewInspection(app.NewResolver(snap, struct{ app.ResolverIdentities }{h.runtimes}, h.validator)).ShowProcess(ctx, "p", "")
+	if err != nil || !strings.Contains(view.Refusal, strings.TrimPrefix(problem, "process p: ")) {
+		t.Fatalf("refusal = %q, %v", view.Refusal, err)
+	}
+}

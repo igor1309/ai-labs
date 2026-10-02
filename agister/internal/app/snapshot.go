@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
@@ -46,7 +47,8 @@ type snapshot struct {
 // settings and use exactly what it checked. A name that was not listed is
 // not found, except the verification a process names: check lets a missing
 // one pass (ADR-010 rule 4), so its read is kept too, and the call's refusal
-// says where it was expected.
+// says where it was expected. One that is found there after all, written
+// since the list, is added to the list, so check checks what the call uses.
 func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 	s := &snapshot{
 		reads: map[definition.Kind]map[string]snapshotRead{},
@@ -78,6 +80,11 @@ func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 		}
 		doc, err := src.Read(ctx, definition.KindVerify, process.VerifyName)
 		s.reads[definition.KindVerify][process.VerifyName] = snapshotRead{doc: cloneDocument(doc), err: err}
+		if list := s.lists[definition.KindVerify]; err == nil && list.err == nil {
+			list.names = append(list.names, process.VerifyName)
+			sort.Strings(list.names)
+			s.lists[definition.KindVerify] = list
+		}
 	}
 	return s
 }

@@ -46,6 +46,19 @@ func mapping(node *yaml.Node, field string, p *problems) []pair {
 	return pairs
 }
 
+// declared counts the entries of key in a mapping; none in anything else.
+func declared(node *yaml.Node, key string) int {
+	count := 0
+	if node != nil && node.Kind == yaml.MappingNode {
+		for i := 0; i+1 < len(node.Content); i += 2 {
+			if node.Content[i].Value == key {
+				count++
+			}
+		}
+	}
+	return count
+}
+
 // fields returns a mapping's values by key and reports keys not in allowed.
 func fields(node *yaml.Node, field string, allowed []string, p *problems) map[string]*yaml.Node {
 	out := map[string]*yaml.Node{}
