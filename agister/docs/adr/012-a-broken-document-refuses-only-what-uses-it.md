@@ -16,10 +16,11 @@ any problem (README, Settings; the gate in `internal/app/gate.go`). Only
 exempt. So one broken document stops every call, every listing and every
 run view, in every repository that sees it.
 
-On 2026-10-02 a runtime mapping in `~/.agister` named an adapter,
-`opencode`, that the installed binary did not know. `check` reported it as
-a problem, and every Agister command in every repository failed for about
-ten minutes, though no process used that runtime (LAB-51).
+The global settings in `~/.agister` are seen by every repository. A
+runtime mapping there that no process uses, for example one that names an
+adapter the installed binary does not know, is still a problem `check`
+reports. So an unused global runtime mapping stops every command in every
+repository, though no call would read it.
 
 [ADR-010](010-a-process-names-its-verification.md) rule 4 already made the
 narrower choice for one case: a missing named verification refuses the
@@ -67,26 +68,35 @@ node on such a process.
 A document that cannot be parsed uses nothing that can be known; it
 refuses only what depends on it.
 
-### 2. A problem belongs to the document `check` reports it on
+### 2. A problem belongs to the document it is about, or to the call
 
-Every problem `check` reports on a document is that document's: an invalid
-or unparsable document, an unknown adapter, contract or schema, a reference
-to a document that does not exist, a limit that does not compose, a
-process that cannot be planned on its agent's runtime. The problem refuses
-what depends on that document (rule 1), and nothing else.
+A problem of the document itself is that document's: an invalid or
+unparsable document, an unknown adapter, contract or schema, a reference
+to a document that does not exist, a limit that does not compose. It
+refuses what depends on that document (rule 1), and nothing else.
+
+A problem that depends on the agent is not the process's own: the agent
+the process names does not exist, its session cannot hold the process's
+repairs, or the process cannot be planned on its runtime. Such a problem is
+evaluated against the resolved call, with the agent the call selects (the
+caller's `--agent` when given), as rule 1 has it. It refuses a call whose
+selected agent has it, and not a call whose `--agent` selects an agent
+without it. `check` reports it on the process, for the agent the process
+names.
 
 A document with problems that nothing uses refuses nothing.
 
 ### 3. A refused call names the document and its problem
 
-A call that depends on a document with a problem is refused before its
-first turn (ADR-001 rule 7) and recorded like any refusal. The refusal
-names the document, its path and each of its problems, and, when the call
-reaches it through another document, the chain: `process implement: agent
+A call that depends on a document with a problem, or whose resolved agent
+has a problem with its process (rule 2), is refused before its first turn
+(ADR-001 rule 7) and recorded like any refusal. The refusal names the
+document, its path and each of its problems, and, when the call reaches it
+through another document, the chain: `process implement: agent
 opencode uses runtime mapping opencode: unknown adapter "opencode"`.
 
 A workflow is refused before any of its nodes' turns when a document any
-node depends on has a problem. A node on a process whose named
+node depends on, or any node's resolved call, has a problem. A node on a process whose named
 verification is missing is still refused at that node (ADR-010 rule 4):
 that is not a problem of the settings.
 
@@ -159,8 +169,9 @@ warnings.
 
 ## Alternatives considered
 
-- **Keep stopping every command on any problem.** Rejected: one file no
-  call uses stopped every repository (LAB-51).
+- **Keep stopping every command on any problem.** Rejected: one document
+  no call uses, such as an unused global runtime mapping, stops every
+  command in every repository that sees it.
 - **Report every problem as a warning.** Rejected: `check` would pass on
   settings that refuse calls, and a broken document would go unnoticed
   until a call is refused.
