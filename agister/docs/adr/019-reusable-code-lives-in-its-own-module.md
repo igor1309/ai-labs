@@ -1,6 +1,6 @@
 # ADR-019: Reusable code lives in its own module
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-03
 - **Scope:** where Agister's generic Go code lives, so another Go module
   can import it
