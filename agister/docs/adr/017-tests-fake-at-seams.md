@@ -10,44 +10,32 @@
 
 ## Context
 
-The tests reviewer's prompt (`prompts/code-review-tests.md` v0.0.4, LAB-58)
-makes three things findings by default: real machinery standing in for a
-fake (building binaries, starting processes, real network, real time, a
-shared cache, home or global state), the wall clock (any sleep, poll or
-real timer), and cost. Its one exception is a test whose claim is about
-that machinery itself, and such a test must say so.
+Agister's tests pull three ways at once.
 
-Agister's tests break these rules widely:
+- **Integration fidelity.** The logic most worth proving sits where the
+  pieces meet: the composition root, each runtime adapter's parsing, the
+  supervisor's timeout, termination and leftover handling, a call's
+  cleanup. A test that fakes above that logic, at the core's own ports,
+  is fast but no longer proves it.
+- **Repeated setup cost.** Building a binary, starting a process or
+  standing up a repository is paid by every test that does it, on every
+  run, and costs more the busier the machine is. Machinery each test sets
+  up for itself multiplies that cost by the number of tests.
+- **Outcomes that depend on the scheduler.** A test that waits on the
+  wall clock, through a sleep, a poll, a real timer or a timeout that ends
+  a call, passes or fails by how the scheduler ran its goroutines and
+  processes. A wait sized for a quiet machine runs out on a busy one, and
+  one sized for a busy machine is paid on every run. Running tests in
+  parallel lowers the total time but raises the load, so such outcomes
+  flip more often.
 
-- **Builds.** Each runtime adapter's tests, the logging decorator's and
-  `cmd/agister`'s compile the fake runtimes with `go build`
-  (`runtimetest.Binary`: `fakeclaude`, `fakecodex`, `fakepi`,
-  `fakeopencode`, each over `fakeoutput`). `cmd/agister` also builds
-  itself four times, once per test: `TestBinaryNamesItsBuild`, the two
-  build-and-kill tests in `reap_test.go`, and
-  `TestNextCallReapsAKilledWorkflowsNodes`. The fakes' temp directories
-  are never removed.
-- **Processes.** `cmd/agister`'s end-to-end tests run the fakes as real
-  runtime processes, some found on a `PATH` set with `t.Setenv`, beside a
-  `ccusage` shell script. The reap tests start the built CLI and SIGKILL
-  it. The verify loop's tests run real `bash` commands, and wait for their
-  groups to die.
-- **The wall clock.** `cmd/agister`'s `eventually` polls every 50 ms for up
-  to 15 s (23 calls across `reap_test.go`, `workflow_test.go`,
-  `wiring_test.go` and `verify_loop_test.go`), and the verify loop's
-  `wait` polls through `Runs.Observe` every 10 ms. The supervisor's tests
-  poll for groups with `time.Sleep`. Timeouts of 300 ms and 1 s end
-  end-to-end calls on real timers. Nearly every package guards its waits
-  with a `time.After` of 5 s to 1 min. `internal/adapters/git`'s serial
-  tests already order their workers with gates; their timers only guard a
-  hang.
-- **No parallelism.** No test calls `t.Parallel()`.
-
-Together these make what a test costs, and whether it passes, depend on
-how loaded the machine is. Each repeated build is paid on every run, and
-costs more the busier the machine is. A wall-clock wait sized for a quiet
-machine runs out on a busy one, and one sized for a busy machine is paid
-on every run.
+Real machinery buys fidelity at the price of cost and of outcomes the
+scheduler decides; faking above the adapters buys speed at the price of
+fidelity. What resolves the tension is faking below the logic worth
+proving, at the process, the clock and the moment work progresses or
+ends. Those are seams the product has to offer; a test cannot add them
+by itself. Real machinery stays where it is the claim: an adapter against
+a real process, git, the filesystem or the kernel.
 
 The product already has some of the seams this needs. The core takes its
 clocks (`CallClock`, `ReapClock`, `SetupClock`, `VerifyClock`), the
@@ -62,8 +50,16 @@ the core with an in-process runtime (`scripted`) and a manual clock.
 What is missing: the composition root hard-codes the real supervisor,
 `system.Clock` and `system.Timer`. The supervisor's own timeout, kill grace
 and stdout grace use the wall clock. `Runs.Observe` and the git lock retry
-poll on real timers. Nothing says that a call hosted in this process has
-finished. And the fakes exist only as programs to build.
+poll on real timers; `Observe` polls even a run this process is writing,
+though the process knows when it appends an event. Nothing says that a
+call hosted in this process has finished. And the fakes exist only as
+programs to build.
+
+`Observe` streams a run's events while the run is going (ADR-001 rule
+15), and callers act on them mid-run: a caller may cancel a hanging call
+once its `PROCESS_STARTED` event arrives. `Calls.Submit` returns before
+that event is appended. Whatever replaces the poll must still deliver
+each event as it is appended, not only once the run has finished.
 
 ## Decision drivers
 
@@ -81,7 +77,8 @@ finished. And the fakes exist only as programs to build.
 Real processes, builds, network and the wall clock are kept only in
 contract tests, whose claim is about the real thing and whose doc comment
 says so. Every other test fakes in-process through product seams: a
-process starter, injected clocks and timers, and hooks that say "done".
+process starter, injected clocks and timers, a notification that a
+run's events were appended, and hooks that say "done".
 Fixture builds happen once per test binary, and tests that share no state
 run in parallel.
 
@@ -92,11 +89,11 @@ run in parallel.
 A test may build, start a process, use the network, or wait on real time
 only when its claim is about that real thing: an adapter against a real
 process, git, the filesystem or the kernel. Its doc comment has a line
-`Contract test: <the real thing it is about>`. Its waits follow the
-prompt's rules: a timer may only guard a hang, unless the work never ends
-by itself (the hang scenario). No bound exceeds a minute. Where the OS gives
-no event, as when a group that is not this process's child ends, a
-bounded poll is allowed.
+`Contract test: <the real thing it is about>`. In its waits, a timer
+may only guard a hang, unless the work never ends by itself (the hang
+scenario). No bound exceeds a minute. Where the OS gives no event, as
+when a group that is not this process's child ends, a bounded poll is
+allowed.
 
 Every other test starts no process, builds nothing, listens on no socket
 and starts no timer. A hang there is caught by the test binary's
@@ -155,8 +152,9 @@ Kept as contract tests, marked as rule 1 has it:
   runtimes as processes: the composition gets the in-process starter
   (seam 1), so no fake is built, `PATH` is not set and no `ccusage`
   script is written. A turn's timeout runs on the manual clock (seam 2).
-  Calls are awaited on `Hosted.Done` (seam 3), not by `eventually`, and
-  the minute guards in `wiring_test.go` go.
+  Calls are awaited on `Hosted.Done` and their events observed as they
+  are appended (seam 3), not by `eventually`, and the minute guards in
+  `wiring_test.go` go.
 
 Replaced by in-process fakes:
 
@@ -234,7 +232,8 @@ timer and the run store. `process()` fills in the real ones.
      stdout grace;
    - `supervisor.Commands`: its stdout grace (its timeout and stale
      waits are on `Timer` already);
-   - `app.Runs`: `Observe`'s poll of a run in another process;
+   - `app.Runs`: `Observe`'s poll of a run in another process (a run
+     this process writes is woken by seam 3's notification instead);
    - `git.Worktrees`: the retry on a held lock file, and the default
      cleanup deadline;
    - `logging.Runner`: a turn's wall time.
@@ -247,34 +246,61 @@ timer and the run store. `process()` fills in the real ones.
    end calls in `cmd/agister` and the adapters' tests, and
    `KillGrace: 200 * time.Millisecond`.
 
-3. **Hooks that say "done".** Owner: `app`. `Hosted.Done(id)` returns a
-   channel closed once a call hosted in this process has finished: its
-   execution has ended, its cleanup (ending its processes, releasing its
-   workspace) has been attempted, and any cleanup failure is recorded on
-   its run. Done does not promise that cleanup succeeded: a release that
-   fails leaves its checkout on the finished run for a later reap, as
-   ADR-008 rule 6 allows. `Runs.Observe` waits on it for a hosted run
-   instead of polling. It replaces `eventually` on a run's state,
-   `cancelAndWait`'s poll and the verify harness's polling `wait`. Hooks
-   the product already has are used as they are: `BackgroundReaper.Wait`
-   for a reap, `Sink.ProcessStarted` and a command's `started` report for
-   a process on record, and `runtimetest.InProcess`'s reports for a fake's
-   progress.
+3. **Hooks that say "appended" and "done".** Two signals, one for
+   progress and one for completion.
+
+   *Events appended.* Owner: `app`, beside `RunsReader`, implemented by
+   `fsruns`. The run store signals in this process whenever a handle it
+   created appends an event, finishes, or is abandoned (seam 4). Asked
+   for a run and the last sequence number its caller has seen, the store
+   returns a channel closed once the run has a later event or its handle
+   has finished or been abandoned; the channel is closed already if that
+   is true when asked, so an event appended between a read and the ask is
+   not missed. For a run whose handle this process does not hold, the
+   store says it has no notification. `Runs.Observe` reads and delivers
+   the run's events as today; while a run this process writes is still
+   running, it waits on that channel or its context, never on a timer,
+   and reads again. A run in another process is polled on the injected
+   timer (seam 2). So every event, `PROCESS_STARTED` included, reaches
+   `Observe`'s callback as soon as it is appended, and a cancel issued
+   there acts while the run is still going. Tests that wait for an event
+   observe it this way; it replaces `eventually` on a run's events.
+
+   *Done.* Owner: `app`. `Hosted.Done(id)` returns a channel closed once
+   a call hosted in this process has finished: its execution has ended,
+   its cleanup (ending its processes, releasing its workspace) has been
+   attempted, and any cleanup failure is recorded on its run. Done does
+   not promise that cleanup succeeded: a release that fails leaves its
+   checkout on the finished run for a later reap, as ADR-008 rule 6
+   allows. Done is the completion signal only: nothing streams from it,
+   and `Observe` does not wait on it. It replaces `eventually` on a run's
+   state, `cancelAndWait`'s poll and the verify harness's polling `wait`.
+
+   Hooks the product already has are used as they are:
+   `BackgroundReaper.Wait` for a reap, `Sink.ProcessStarted` and a
+   command's `started` report for a process on record, and
+   `runtimetest.InProcess`'s reports for a fake's progress.
 
 4. **An abandoned run, in process.** Owner: `fsruns`. A run this process
    created can be abandoned: its owner lock is released without
    finishing, as the kernel releases it for a killed owner, and its handle
-   refuses every later write. The test reaches the store through the
+   refuses every later write. Abandoning signals seam 3's notification,
+   so an `Observe` of the run wakes and reads it as abandoned. The test reaches the store through the
    composition. It replaces building the CLI and SIGKILLing it for every
    reap scenario but rule 2's one.
 
 ### 4. Fixture builds are made once per test binary
 
-A contract test's build is made once per test binary, not per test, under
-a directory removed when the binary exits. In `cmd/agister` one helper
-builds the CLI for `TestBinaryNamesItsBuild` and the SIGKILL test. In
-`runtimetest`, `Binary` keeps its per-binary cache, and the package that
-uses it removes the directory in `TestMain`. Builds keep the host Go cache
+A contract test's build is made once per test binary, not per test, into
+one directory per test binary. In `cmd/agister` one helper builds the CLI
+for `TestBinaryNamesItsBuild` and the SIGKILL test. In `runtimetest`,
+`Binary` keeps its per-binary cache, and every package that builds
+through it removes the directory from its `TestMain`, once its tests
+have returned. Removal is attempted once, when the tests finish
+normally. A failed removal is reported and fails the run with a nonzero
+exit code; a failing run keeps its own code. An abrupt exit (a panic, the
+`-timeout` panic, a signal) skips the removal and can leave the directory
+behind in the system's temp directory. Builds keep the host Go cache
 (LAB-51). After seam 1, only the four adapters' contract tests build a
 fake, each its own.
 
@@ -294,17 +320,22 @@ neither. Shared helpers keep their state per test or behind a lock, as
   `-timeout` with the test's name.
 - The in-process fakes are the same code the contract tests build, so
   `Conformance` proves the protocol every in-process test relies on.
-- The product gains a starter, timers in five more components, a "done"
-  channel on `Hosted` and an abandon on `fsruns`'s handle. Each is wired
-  only in the composition root. `Observe` also ends at once for a hosted
-  run.
+- The product gains a starter, timers in five more components, an
+  append notification on `fsruns`'s store, a "done" channel on `Hosted`
+  and an abandon on `fsruns`'s handle. Each is wired only in the
+  composition root. `Observe` delivers each event of a run this process
+  writes as soon as it is appended, and ends once the run finishes, with
+  no timer; a run in another process is still polled, on the injected
+  timer.
 - Real git stays in `cmd/agister` and `internal/adapters/git`; the
   composition's claim is that its adapters work together on a real
   repository.
 - What the SIGKILL test proves is left to one test; a reap scenario added
   later fakes the kill (seam 4) unless its claim is the kernel's.
-- The fakes' build directories no longer outlive the test binary (rule 4),
-  as one of deferred item 2's minors asks.
+- The fakes' build directories are removed when a test binary's tests
+  finish normally, and a failed removal fails the run (rule 4), as one of
+  deferred item 2's minors asks. An abrupt exit can still leave a build
+  directory behind in the system's temp directory.
 
 ## Alternatives considered
 
@@ -326,6 +357,7 @@ neither. Shared helpers keep their state per test or behind a lock, as
 
 ## Explicit non-decisions
 
-The exact `Starter` and process interfaces; how `archtest` follows calls
-through helpers; whether `internal/app`'s own tests later adopt
-`testing/synctest`; the Go version this needs.
+The exact `Starter` and process interfaces; the exact shape of the
+append notification; how `archtest` follows calls through helpers;
+whether `internal/app`'s own tests later adopt `testing/synctest`; the Go
+version this needs.
