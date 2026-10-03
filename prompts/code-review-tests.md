@@ -1,9 +1,9 @@
 ---
-date: 2026-10-02
+date: 2026-10-03
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — tests
-version: 0.0.4
+version: 0.0.5
 type: prompt
 ---
 
@@ -28,9 +28,11 @@ Definition of done:
 * Real machinery standing in for a fake is a finding: building binaries,
   starting processes, real network, real time, or a shared cache, home or
   global state, where a port, spy, stub or injected seam would do. Name the
-  seam. The only exception is a test whose claim is about that machinery
-  itself, such as an adapter's contract test against the real thing. Such a
-  test must say so.
+  seam. Machinery a shared harness or composition wires in by default
+  (clock, timer, process starter, store) counts as the test's own: name
+  the default that should be the fake. The only exception is a test whose
+  claim is about that machinery itself, such as an adapter's contract test
+  against the real thing. Such a test must say so.
 * The wall clock is a finding: any sleep, poll or real timer in a test.
   Name the clock, hook or event to inject so the test drives time itself.
   If the product has no event, hook or result that says "done", the seam
@@ -56,5 +58,7 @@ Definition of done:
   every path, failure paths included.
 * No state outlives its test: package variables, environment, working
   directory, a shared home or fixture. One test's leftover failing others
-  is a finding.
+  is a finding. If the state lives in a package variable or singleton of
+  the product, the finding is the product's missing seam (the state should
+  be passed in), not the tests' cleanup; cleanups only hide it.
 * Stop once the tests prove the change.
