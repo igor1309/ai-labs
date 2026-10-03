@@ -3,7 +3,7 @@ date: 2026-10-03
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — tests
-version: 0.0.5
+version: 0.0.6
 type: prompt
 ---
 
@@ -25,19 +25,31 @@ Definition of done:
   record, report or log says is not proven by a test one layer below it.
 * An existing assertion weakened, removed or widened in the same change is
   a finding unless the change says why.
-* Real machinery standing in for a fake is a finding: building binaries,
-  starting processes, real network, real time, or a shared cache, home or
-  global state, where a port, spy, stub or injected seam would do. Name the
-  seam. Machinery a shared harness or composition wires in by default
-  (clock, timer, process starter, store) counts as the test's own: name
-  the default that should be the fake. The only exception is a test whose
-  claim is about that machinery itself, such as an adapter's contract test
-  against the real thing. Such a test must say so.
+* A test is either a unit test or an integration test. A unit test drives one component with every collaborator a
+  spy, stub or fake. An integration test names what it integrates, and only
+  that is real: an adapter's test against git integrates git; a test of the
+  composed application integrates its own components, so the external
+  things they reach (git, processes, network, time) are fakes unless one of
+  them is the subject. Real machinery anywhere else is a finding: building
+  binaries, starting processes, real network, real time, or a shared cache,
+  home or global state, where a port, spy, stub or injected seam would do.
+  Name the seam. Machinery a shared harness or composition wires in by
+  default (clock, timer, process starter, store) counts as the test's own:
+  name the default that should be the fake. A test labelled as an
+  integration or contract test whose claim is not about the real thing it
+  uses is a finding.
+* Collaborators are given, never defaulted. A fake, spy or harness that
+  fills in a value or collaborator the test did not give (a fixed identity,
+  a real clock when none is passed) can hide the very state the claim
+  depends on; so can product code that falls back to a real collaborator
+  when none is given. Each is a finding: the test or constructor passes it
+  explicitly, and a missing one fails at construction. A fake gives
+  distinct answers for the states its test must tell apart.
 * The wall clock is a finding: any sleep, poll or real timer in a test.
   Name the clock, hook or event to inject so the test drives time itself.
   If the product has no event, hook or result that says "done", the seam
   is missing from the product, not only the test; say which. A wall-clock
-  wait the exception above allows follows these rules:
+  wait in an integration test whose subject needs it follows these rules:
   * **Its expiry decides the result.** A sleep that must outlast some
     logic, a timer that must fire before (or must not fire before)
     something else, a negative check ("did not happen within N ms"), an
