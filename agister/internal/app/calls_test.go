@@ -874,8 +874,16 @@ func TestAContinuationStoresItsChangesWithTheCarriedOnes(t *testing.T) {
 	t.Parallel()
 	h, _ := carrying()
 	patchedRun(h, "run-0", "", 0, 1, "+A\n")
-	// The checkout holds what was applied to it and what the turn added.
+	// The checkout holds what was applied to it and what the turn added,
+	// and its content is named apart at each step: the revision's, the
+	// carried changes', the turn's.
 	var content string
+	var carried, turned bool
+	ordered := h.changes.applying
+	h.changes.applying = func(check bool) error {
+		carried = carried || !check
+		return ordered(check)
+	}
 	h.runner.during = func(app.TurnRequest) {
 		for _, applied := range h.changes.applies() {
 			if !applied.check {
@@ -883,12 +891,27 @@ func TestAContinuationStoresItsChangesWithTheCarriedOnes(t *testing.T) {
 			}
 		}
 		content += "+B\n"
+		turned = true
 	}
-	h.changes.patch = func(from, _ string) []byte {
-		if from != "sha-HEAD" {
-			return []byte("from " + from)
+	h.changes.identify = func() string {
+		switch {
+		case turned:
+			return "tree-turned"
+		case carried:
+			return "tree-carried"
 		}
-		return []byte(content)
+		return "tree"
+	}
+	// Only the revision against the content the turn left is the
+	// cumulative patch; a snapshot taken before the turn is not.
+	h.changes.patch = func(from, to string) []byte {
+		switch {
+		case from == "sha-HEAD" && to == "tree":
+			return nil
+		case from == "sha-HEAD" && to == "tree-turned":
+			return []byte(content)
+		}
+		return []byte("from " + from + " to " + to)
 	}
 	record := h.call(t, contract.CallRequest{Continue: "run-0"})
 	stored := string(h.recorder.artifacts["changes.patch"])
