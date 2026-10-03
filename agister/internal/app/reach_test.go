@@ -93,6 +93,7 @@ func reachOf(t *testing.T, report contract.CheckReport, problem string) contract
 // A mapping no process uses refuses nothing: check fails on it and says
 // so, and every call runs.
 func TestAnUnusedBrokenDocumentRefusesNothing(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
 	h.defs.docs[definition.KindRuntime]["unused"] = strings.Replace(strings.Replace(settingsDocs()[definition.KindRuntime]["rt"], "name: rt", "name: unused", 1), "adapter: spy", "adapter: nowhere", 1)
@@ -117,6 +118,7 @@ func TestAnUnusedBrokenDocumentRefusesNothing(t *testing.T) {
 // runtime is asked anything and recorded, naming the document, its path,
 // its problem and the chain; the same process with another agent runs.
 func TestACallOnABrokenDocumentIsRefusedBeforeItsFirstTurn(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
 	withBrokenMapping(h.defs.docs)
@@ -160,6 +162,7 @@ func TestACallOnABrokenDocumentIsRefusedBeforeItsFirstTurn(t *testing.T) {
 // depends on, and the listings the problem as a call without --agent has
 // it, each with the document's path and its problem without its name.
 func TestAProblemOfTheAgentIsJudgedOnTheCallsAgent(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
 	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(settingsDocs()[definition.KindProcess]["p"], "uses: agent:a", "uses: agent:ghost", 1)
@@ -195,6 +198,7 @@ func TestAProblemOfTheAgentIsJudgedOnTheCallsAgent(t *testing.T) {
 // message, and, to the resolver, the agent a problem depends on. A problem
 // that stops every command is the gate's, not theirs.
 func TestNewClientTranslatesWhatTheCheckerFound(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
 	process := app.DocumentRef{Kind: definition.KindProcess, Name: "p"}
@@ -229,6 +233,7 @@ func TestNewClientTranslatesWhatTheCheckerFound(t *testing.T) {
 // A workflow with a node on a process that depends on a broken document is
 // refused before any node runs; listings and views show it refused.
 func TestAWorkflowOnABrokenDocumentIsRefusedBeforeAnyNode(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
 	h.defs.docs = withBrokenMapping(workflowDocs())
@@ -277,6 +282,7 @@ func TestAWorkflowOnABrokenDocumentIsRefusedBeforeAnyNode(t *testing.T) {
 // agent is listed as such, and a write that adds no problem is not refused
 // for the problems already there.
 func TestCommandsRunBesideABrokenDocument(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
 	withBrokenMapping(h.defs.docs)
@@ -308,6 +314,7 @@ func TestCommandsRunBesideABrokenDocument(t *testing.T) {
 // What no one document is at fault for stops every command but init,
 // check, cancelling a run and following one admitted.
 func TestProblemsNoDocumentOwnsStopEveryCommand(t *testing.T) {
+	t.Parallel()
 	sameName := workflowDocs()
 	sameName[definition.KindProcess]["p"] = settingsDocs()[definition.KindProcess]["p"]
 	sameName[definition.KindWorkflow]["p"] = strings.Replace(workflowDoc, "name: w", "name: p", 1)
@@ -323,6 +330,7 @@ func TestProblemsNoDocumentOwnsStopEveryCommand(t *testing.T) {
 		{name: "a workflow named like a process", docs: sameName, problem: "workflow p: a process has the same name"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := context.Background()
 			h := newHarness()
 			for kind, docs := range tc.docs {

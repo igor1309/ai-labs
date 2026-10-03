@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"syscall"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/examples"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
@@ -41,12 +42,15 @@ func main() {
 	if err != nil {
 		cwd = "."
 	}
+	// The process's one record of what its run handles append: every run
+	// store built here signals through it.
+	appends := fsruns.NewAppends()
 	// agister pages serves the settings page; it needs no client.
 	if len(os.Args) > 1 && os.Args[1] == "pages" {
-		os.Exit(pages.Main(ctx, os.Args[2:], pagesEnv()))
+		os.Exit(pages.Main(ctx, os.Args[2:], pagesEnv(appends)))
 	}
 	info, _ := debug.ReadBuildInfo()
-	os.Exit(cli.Run(ctx, os.Args[1:], cli.IO{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Cwd: cwd, Getenv: os.Getenv, Version: version(info)}, compose))
+	os.Exit(cli.Run(ctx, os.Args[1:], cli.IO{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Cwd: cwd, Getenv: os.Getenv, Version: version(info)}, compose(appends)))
 }
 
 // version names the build: its module version, its revision (short, with
@@ -75,7 +79,9 @@ func version(info *debug.BuildInfo) string {
 }
 
 // pagesEnv is agister pages' process environment; macOS open shows the page.
-func pagesEnv() pages.Env {
+// Its run stores signal through appends, as every run store of the process
+// does.
+func pagesEnv(appends *fsruns.Appends) pages.Env {
 	return pages.Env{
 		Stdout:   os.Stdout,
 		Stderr:   os.Stderr,
@@ -84,7 +90,7 @@ func pagesEnv() pages.Env {
 		Open:     func(url string) error { return exec.Command("open", url).Run() },
 		Choose:   pages.MacDialog(runCommand),
 		// The run store reads the runs' owners as agister run leaves them.
-		Observe: func(dir string) pages.RunObserver { return fsruns.Store{Dir: dir} },
+		Observe: func(dir string) pages.RunObserver { return fsruns.Store{Dir: dir, Appends: appends} },
 	}
 }
 
@@ -102,27 +108,69 @@ func shutdown(parent context.Context) (context.Context, context.CancelFunc) {
 	return signal.NotifyContext(parent, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 }
 
-func compose(config cli.Config) (contract.Client, error) {
-	client, _, err := wire(config)
-	return client, err
+// compose composes the client of the process whose run stores signal
+// through appends.
+func compose(appends *fsruns.Appends) func(cli.Config) (contract.Client, error) {
+	return func(config cli.Config) (contract.Client, error) {
+		client, _, err := wire(config, appends)
+		return client, err
+	}
 }
 
 // wire wires the client over the process's own worktree coordinator.
-func wire(config cli.Config) (contract.Client, *app.BackgroundReaper, error) {
-	return process(config).wire(config)
+func wire(config cli.Config, appends *fsruns.Appends) (contract.Client, *app.BackgroundReaper, error) {
+	return process(config, appends).wire(config)
 }
 
 // process is the composition of the process: its worktree coordinator
-// keeps the lock files other processes take turns through under the home.
-func process(config cli.Config) composition {
-	return composition{worktrees: git.NewWorktrees(filepath.Join(config.Home, "locks", "worktrees"))}
+// keeps the lock files other processes take turns through under the home,
+// its run store keeps the runs there and signals through appends, its
+// runtimes and its commands are started by the operating system, which
+// also ends the process groups a dead owner left, and every wait is on the
+// wall clock.
+func process(config cli.Config, appends *fsruns.Appends) composition {
+	worktrees := git.NewWorktrees(filepath.Join(config.Home, "locks", "worktrees"))
+	worktrees.Clock, worktrees.Timer = system.Clock{}, system.Timer
+	return composition{
+		worktrees: worktrees,
+		runs:      fsruns.Store{Dir: filepath.Join(config.Home, "runs"), Appends: appends},
+		starter:   supervisor.Exec{},
+		commands:  supervisor.Exec{},
+		processes: supervisor.Processes{},
+		timer:     system.Timer,
+		poll:      system.Timer,
+		hosted:    app.NewHosted(),
+	}
 }
 
 // composition is what one process wires its client over: the one worktree
 // coordinator every adapter that changes a repository's worktrees takes
-// its turn in. Tests wire over a coordinator they hold.
+// its turn in, the run store, the starters of its runtimes and of its
+// commands, the reaper of the process groups a dead owner left, the timers
+// its waits start on and the calls it hosts. Tests wire over a
+// coordinator, starters and timers they hold, wait on the hosted calls'
+// Done, and abandon a run through the store in place of killing its owner.
 type composition struct {
 	worktrees *git.Worktrees
+	// runs is the store of the runs' records and events.
+	runs fsruns.Store
+	// starter starts the runtimes' processes, and what a runtime's adapter
+	// runs beside it.
+	starter supervisor.Starter
+	// commands starts the shell a setup or verification command runs
+	// under.
+	commands supervisor.Starter
+	// processes ends the process groups an abandoned run left on record.
+	processes runtimecomposition.ProcessSupervisor
+	// hosted holds the calls running in this process.
+	hosted *app.Hosted
+	// timer starts the waits of turns and commands: their timeouts,
+	// graces and staleness limits.
+	timer func(wait time.Duration) (fired <-chan time.Time, stop func())
+	// poll starts the waits between two reads of a running record another
+	// process writes that observing it makes; a run this process writes
+	// is read again as it appends.
+	poll func(wait time.Duration) (fired <-chan time.Time, stop func())
 	// stages, when set, is the folder installs stage their results in, in
 	// place of the system's temporary folder.
 	stages string
@@ -170,22 +218,27 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	if local != nil {
 		projectRoot = filepath.Dir(local.Dir)
 	}
-	evidence := fsruns.Store{Dir: filepath.Join(config.Home, "runs")}
+	evidence := c.runs
+	// Turns and commands wait on the composition's timer. A runtime starts
+	// through the composition's starter, a setup or verification command
+	// through its starter of commands.
+	processes := supervisor.Runtime{Starter: c.starter, Timer: c.timer}
+	commands := supervisor.Commands{Starter: c.commands, Timer: c.timer}
 	runtimes := runtime.Registry{
 		"claude-code": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: runtimecomposition.NewClaudeCode(command), Adapter: "claude-code", Log: log}
+			return logging.Runner{Inner: runtimecomposition.NewClaudeCode(command, processes), Adapter: "claude-code", Log: log, Clock: system.Clock{}}
 		},
 		"codex": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: runtimecomposition.NewCodex(command), Adapter: "codex", Log: log}
+			return logging.Runner{Inner: runtimecomposition.NewCodex(command, processes), Adapter: "codex", Log: log, Clock: system.Clock{}}
 		},
 		// Pi's sessions are kept under the home, where a continuation
 		// finds them, not in ~/.pi.
 		// OpenCode keeps its sessions in its own store.
 		"opencode": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: runtimecomposition.NewOpenCode(command), Adapter: "opencode", Log: log}
+			return logging.Runner{Inner: runtimecomposition.NewOpenCode(command, processes), Adapter: "opencode", Log: log, Clock: system.Clock{}}
 		},
 		"pi": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: runtimecomposition.NewPi(command, filepath.Join(config.Home, "pi", "sessions")), Adapter: "pi", Log: log}
+			return logging.Runner{Inner: runtimecomposition.NewPi(command, filepath.Join(config.Home, "pi", "sessions"), processes), Adapter: "pi", Log: log, Clock: system.Clock{}}
 		},
 	}
 	// Over the one coordinator of the process: every workspace adapter's
@@ -197,7 +250,7 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	// that fails has no caller to tell and no run record to say so: the
 	// log does.
 	reaping := &app.BackgroundReaper{
-		Reaper: app.NewReaper(evidence, runtimecomposition.Processes{Supervisor: supervisor.Processes{}}, workspaces.discarder, system.Clock{}),
+		Reaper: app.NewReaper(evidence, runtimecomposition.Processes{Supervisor: c.processes}, workspaces.discarder, system.Clock{}),
 		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },
 	}
 	infra := app.Infrastructure{
@@ -223,13 +276,13 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 			Recorder:   evidence,
 			Runs:       evidence,
 			Clock:      system.Clock{},
-			Timer:      system.Timer,
+			Timer:      c.timer,
 			IDs:        system.IDs{},
 			StateDir:   config.Home,
 		},
-		Preparer: app.SetupAdapters{Content: content, Commands: runtimecomposition.SetupCommands{Supervisor: supervisor.Commands{}}, Clock: system.Clock{}},
-		Verifier: app.VerifyAdapters{Content: content, Copies: workspaces.copies, Commands: runtimecomposition.Commands{Supervisor: supervisor.Commands{}}, Clock: system.Clock{}},
-		Runs:     app.RunsAdapters{Reader: evidence},
+		Preparer: app.SetupAdapters{Content: content, Commands: runtimecomposition.SetupCommands{Supervisor: commands}, Clock: system.Clock{}},
+		Verifier: app.VerifyAdapters{Content: content, Copies: workspaces.copies, Commands: runtimecomposition.Commands{Supervisor: commands}, Clock: system.Clock{}},
+		Runs:     app.RunsAdapters{Reader: evidence, Appends: evidence, Timer: c.poll},
 		// Installs read a folder laid out like the global settings, and
 		// write the global settings, backed up beside them; each result is
 		// checked on a staged copy.
@@ -244,6 +297,7 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		Decorate: func(client contract.Client) contract.Client {
 			return app.ReapOnSubmit{Client: client, Background: reaping}
 		},
+		Hosted: c.hosted,
 	}
 	if c.adjust != nil {
 		c.adjust(&infra)

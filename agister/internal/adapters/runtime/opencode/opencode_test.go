@@ -14,6 +14,7 @@ import (
 )
 
 func TestArguments(t *testing.T) {
+	t.Parallel()
 	args, err := opencode.Arguments(opencode.TurnRequest(request("hello")), "agister-1")
 	if err != nil {
 		t.Fatal(err)
@@ -27,6 +28,7 @@ func TestArguments(t *testing.T) {
 // A continuation resumes the session by ID, with every setting of a fresh
 // turn.
 func TestResumeArguments(t *testing.T) {
+	t.Parallel()
 	r := request("hello")
 	r.ResumeSessionID = "ses_1"
 	args, err := opencode.Arguments(opencode.TurnRequest(r), "agister-1")
@@ -42,6 +44,7 @@ func TestResumeArguments(t *testing.T) {
 // No model or effort leaves OpenCode's own; the agent is always the
 // generated one, and no flag approves what it does not allow.
 func TestDefaults(t *testing.T) {
+	t.Parallel()
 	args, err := opencode.Arguments(opencode.TurnRequest(opencode.TurnRequest{Prompt: "x", Primitives: []string{"skill"}}), "agister-1")
 	if err != nil {
 		t.Fatal(err)
@@ -57,6 +60,7 @@ func TestDefaults(t *testing.T) {
 // everything first, then allows the granted primitives and nothing else.
 // The order is the rules' order, so it is asserted on the text.
 func TestConfigIsTheGeneratedAgent(t *testing.T) {
+	t.Parallel()
 	const schema = "Your final answer is your output: reply with only one JSON value that this JSON Schema accepts, " +
 		"with no other text and no Markdown fence.\n<output-schema>\n{\"type\":\"object\"}\n</output-schema>"
 	prompt, _ := json.Marshal("Do the thing.\n\n" + schema)
@@ -80,6 +84,7 @@ func TestConfigIsTheGeneratedAgent(t *testing.T) {
 // Every tool is a primitive, allowed only when granted, and every variant
 // an effort. Nothing but permission rules sets the tools.
 func TestToolsAndVariants(t *testing.T) {
+	t.Parallel()
 	for _, tool := range opencode.Tools {
 		r := request("x")
 		r.Primitives = []string{"skill", tool}
@@ -117,6 +122,7 @@ type echo struct {
 }
 
 func TestSystemPrompt(t *testing.T) {
+	t.Parallel()
 	if got := opencode.SystemPrompt(opencode.TurnRequest(opencode.TurnRequest{Instruction: "Do the thing."})); got != "Do the thing." {
 		t.Fatalf("instruction only: %q", got)
 	}
@@ -149,6 +155,7 @@ func step(session, reason string) string {
 }
 
 func TestStructuredOutputMustBeJSON(t *testing.T) {
+	t.Parallel()
 	for _, text := range []string{"not json", "```json\n{}\n```", ""} {
 		stream := &opencode.Stream{}
 		data, _ := json.Marshal(map[string]any{"type": "text", "sessionID": "ses_1", "part": map[string]any{"type": "text", "text": text}})
@@ -170,6 +177,7 @@ func TestStructuredOutputMustBeJSON(t *testing.T) {
 
 // Usage and cost are the turn's own, summed over every step it finished.
 func TestUsageAndCostAreSummedOverTheTurn(t *testing.T) {
+	t.Parallel()
 	stream := &opencode.Stream{}
 	reduce(stream,
 		stepStart,
@@ -199,6 +207,7 @@ func TestUsageAndCostAreSummedOverTheTurn(t *testing.T) {
 // A figure a step does not report is unknown for the turn, never a partial
 // sum.
 func TestAFigureSomeStepLacksIsUnknown(t *testing.T) {
+	t.Parallel()
 	stream := &opencode.Stream{}
 	reduce(stream,
 		stepStart,
@@ -213,6 +222,7 @@ func TestAFigureSomeStepLacksIsUnknown(t *testing.T) {
 // An error event fails the turn, classified by its message, whatever the
 // exit and whatever follows it.
 func TestFailuresAreClassified(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		name, message string
 		class         opencode.Class
@@ -273,6 +283,7 @@ func TestFailuresAreClassified(t *testing.T) {
 // An error event is reported with its name, its message and the status an
 // API error carries apart from the message.
 func TestAnErrorIsReportedWithItsStatus(t *testing.T) {
+	t.Parallel()
 	stream := &opencode.Stream{}
 	events := stream.Reduce(`{"type":"error","timestamp":2,"sessionID":"ses_1","error":{"name":"APIError","data":{"message":"Too Many Requests","statusCode":429,"isRetryable":true}}}`)
 	if len(events) != 2 || events[1].Kind != "PROVIDER_ERROR" ||
@@ -293,6 +304,7 @@ func TestAnErrorIsReportedWithItsStatus(t *testing.T) {
 // ends after a tool-calls step, inside a step or before any is decided by
 // the transport.
 func TestOnlyAFinalStopCompletesTheTurn(t *testing.T) {
+	t.Parallel()
 	for _, reason := range []string{"length", "content-filter", "error", "other", ""} {
 		stream := &opencode.Stream{}
 		reduce(stream, stepStart, answer, step("ses_1", reason))
@@ -348,6 +360,7 @@ func TestOnlyAFinalStopCompletesTheTurn(t *testing.T) {
 // OpenCode runs its default agent, which allows everything, when it does
 // not find the one named: a turn that ran so fails, whatever it answered.
 func TestATurnThatRanAsTheDefaultAgentFails(t *testing.T) {
+	t.Parallel()
 	stream := &opencode.Stream{}
 	reduce(stream, stepStart, answer, stopped)
 	evidence := clean
@@ -363,6 +376,7 @@ func TestATurnThatRanAsTheDefaultAgentFails(t *testing.T) {
 // state has ended, each once. bash runs commands. Only the event's preview
 // is cut.
 func TestToolCallsAreReported(t *testing.T) {
+	t.Parallel()
 	stream := &opencode.Stream{}
 	long := strings.Repeat("x", 1000)
 	input := `{"command":"ls ` + long + `","timeout":12345678901234567890}`
@@ -408,6 +422,7 @@ func TestToolCallsAreReported(t *testing.T) {
 // A completed turn's text is its final step's, never the commentary of an
 // earlier one, even when the final one says nothing.
 func TestACompletedTurnsTextIsTheFinalSteps(t *testing.T) {
+	t.Parallel()
 	stream := &opencode.Stream{}
 	reduce(stream,
 		stepStart,
@@ -429,6 +444,7 @@ func TestACompletedTurnsTextIsTheFinalSteps(t *testing.T) {
 
 // A line that is not JSON is reported, and decides nothing.
 func TestALineThatIsNotJSONIsReported(t *testing.T) {
+	t.Parallel()
 	stream := &opencode.Stream{}
 	if events := stream.Reduce("not json"); len(events) != 1 || events[0].Kind != "STREAM_PARSE_ERROR" {
 		t.Fatalf("events = %+v", events)
@@ -442,6 +458,7 @@ func TestALineThatIsNotJSONIsReported(t *testing.T) {
 // A process that could not be recorded fails the turn, whatever the stream
 // says: it was killed, and nothing it reported can be trusted to be whole.
 func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
+	t.Parallel()
 	stream := &opencode.Stream{}
 	reduce(stream, stepStart, answer, stopped)
 	turn := stream.Reconcile(opencode.Evidence{RecordError: "disk full"}, false)

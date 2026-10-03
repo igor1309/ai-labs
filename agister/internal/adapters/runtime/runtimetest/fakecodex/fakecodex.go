@@ -1,8 +1,8 @@
-// Command fakecodex stands in for `codex exec --json` and `codex exec
+// Package fakecodex stands in for `codex exec --json` and `codex exec
 // resume --json`, including the non-terminal error events observed from the
 // real CLI. The scenario is chosen by a SCENARIO:<name> marker in the
 // prompt (stdin).
-package main
+package fakecodex
 
 import (
 	"encoding/json"
@@ -11,66 +11,67 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeoutput"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeproc"
 )
 
-func main() {
-	args := os.Args[1:]
+// Main is the fake as the process p; it returns the code it exits with.
+func Main(p fakeproc.Process) int {
+	args := p.Args
 	if len(args) == 1 && args[0] == "--version" {
-		version := os.Getenv("FAKE_VERSION")
+		version := p.Getenv("FAKE_VERSION")
 		if version == "" {
 			version = "0.158.0"
 		}
-		fmt.Printf("codex-cli %s\n", version)
-		return
+		fmt.Fprintf(p.Stdout, "codex-cli %s\n", version)
+		return 0
 	}
 	var schema any
 	for i, arg := range args {
 		if arg == "--output-schema" && i+1 < len(args) {
-			if data, err := os.ReadFile(args[i+1]); err == nil {
+			if data, err := os.ReadFile(p.Path(args[i+1])); err == nil {
 				_ = json.Unmarshal(data, &schema)
 			}
 		}
 	}
-	input, _ := io.ReadAll(os.Stdin)
+	input, _ := io.ReadAll(p.Stdin)
 	prompt := string(input)
 	scenario := "approve"
 	if match := regexp.MustCompile(`SCENARIO:([a-z_]+)`).FindStringSubmatch(prompt); match != nil {
 		scenario = match[1]
 	}
-	fromSchema := fakeoutput.Enabled(os.Getenv)
+	fromSchema := fakeoutput.Enabled(p.Getenv)
 	if fromSchema {
 		// The prompt carries real files then: no marker in them is a scenario.
 		scenario = "approve"
 	}
 	emit := func(message any) {
 		data, _ := json.Marshal(message)
-		fmt.Println(string(data))
+		fmt.Fprintln(p.Stdout, string(data))
 	}
 	// `exec resume <thread_id>` keeps the thread; a fresh one gets its own.
 	thread := "01a0e850-b808-71c2-8401-53ba16d8ae18"
 	if len(args) > 2 && args[0] == "exec" && args[1] == "resume" && scenario != "mismatch" {
 		thread = args[2]
 	}
-	cwd, _ := os.Getwd()
+	cwd := p.Dir
 	emit(map[string]any{"type": "thread.started", "thread_id": thread, "argv": args, "cwd": cwd, "prompt": prompt, "schema": schema})
 	switch scenario {
 	case "no_result":
-		return
+		return 0
 	case "input_too_large":
 		// As codex-cli 0.159.2 fails a prompt over its limit: the reason on
 		// stderr only, none in the stream.
-		fmt.Fprintln(os.Stderr, `Error: turn/start: turn/start failed: Input exceeds the maximum length of 1048576 characters. (code -32602), data: {"input_error_code":"input_too_large","max_chars":1048576,"actual_chars":1100001}`)
-		os.Exit(1)
+		fmt.Fprintln(p.Stderr, `Error: turn/start: turn/start failed: Input exceeds the maximum length of 1048576 characters. (code -32602), data: {"input_error_code":"input_too_large","max_chars":1048576,"actual_chars":1100001}`)
+		return 1
 	case "exit_silent":
-		os.Exit(1)
+		return 1
 	case "exit_flooded":
 		// More stderr than any bound keeps, then the reason.
-		fmt.Fprintln(os.Stderr, strings.Repeat("noise ", 4000))
-		fmt.Fprintln(os.Stderr, "Error: unauthorized")
-		os.Exit(1)
+		fmt.Fprintln(p.Stderr, strings.Repeat("noise ", 4000))
+		fmt.Fprintln(p.Stderr, "Error: unauthorized")
+		return 1
 	}
 	emit(map[string]any{"type": "turn.started"})
 	emit(map[string]any{"type": "error", "message": "Reconnecting... 2/5 (stream disconnected before completion)"})
@@ -79,16 +80,14 @@ func main() {
 	switch scenario {
 	case "hang":
 		// Never ends on its own: only a kill ends it.
-		for {
-			time.Sleep(time.Hour)
-		}
+		return p.Block()
 	case "exit_nonzero":
 		emit(map[string]any{"type": "error", "message": "unexpected status 401 Unauthorized"})
-		fmt.Fprintln(os.Stderr, "Error: unauthorized")
-		os.Exit(1)
+		fmt.Fprintln(p.Stderr, "Error: unauthorized")
+		return 1
 	case "error_result":
 		emit(map[string]any{"type": "turn.failed", "error": map[string]any{"message": "model stream ended unexpectedly"}})
-		return
+		return 0
 	}
 	emit(map[string]any{"type": "item.started", "item": map[string]any{"id": "item_1", "type": "command_execution", "command": "git diff --stat", "status": "in_progress"}})
 	emit(map[string]any{"type": "item.completed", "item": map[string]any{"id": "item_1", "type": "command_execution", "command": "git diff --stat", "exit_code": 0, "status": "completed"}})
@@ -109,4 +108,5 @@ func main() {
 	}
 	emit(map[string]any{"type": "item.completed", "item": map[string]any{"id": "item_2", "type": "agent_message", "text": text}})
 	emit(map[string]any{"type": "turn.completed", "usage": map[string]any{"input_tokens": 1200, "output_tokens": 80}})
+	return 0
 }

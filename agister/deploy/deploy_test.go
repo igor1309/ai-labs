@@ -203,7 +203,10 @@ func (b *box) assertNotExist(path string) {
 	}
 }
 
+// Contract test: the install scripts under the real /bin/sh, in a home of
+// the test's own. The timeout only guards a hang.
 func TestInstallRendersAndBootstrapsOnce(t *testing.T) {
+	t.Parallel()
 	b := newBox(t)
 	b.installBinary()
 
@@ -284,7 +287,10 @@ func (b *box) assertLogsMode() {
 	}
 }
 
+// Contract test: the install scripts under the real /bin/sh, in a home of
+// the test's own. The timeout only guards a hang.
 func TestInstallRendersHomeHoldingAToken(t *testing.T) {
+	t.Parallel()
 	b := newBoxHome(t, "@PATH@ @HOME@")
 	b.installBinary()
 	if _, stderr, code := b.run("install.sh"); code != 0 {
@@ -293,7 +299,10 @@ func TestInstallRendersHomeHoldingAToken(t *testing.T) {
 	b.assertRendered()
 }
 
+// Contract test: the install scripts under the real /bin/sh, in a home of
+// the test's own. The timeout only guards a hang.
 func TestInstallSetsAnExistingLogDirTo0700(t *testing.T) {
+	t.Parallel()
 	b := newBox(t)
 	b.installBinary()
 	if err := os.MkdirAll(b.logs(), 0o755); err != nil {
@@ -308,7 +317,10 @@ func TestInstallSetsAnExistingLogDirTo0700(t *testing.T) {
 	b.assertLogsMode()
 }
 
+// Contract test: the install scripts under the real /bin/sh, in a home of
+// the test's own. The timeout only guards a hang.
 func TestInstallOverAPlistWhoseJobIsNotLoadedReplacesIt(t *testing.T) {
+	t.Parallel()
 	b := newBox(t)
 	b.installBinary()
 	b.writePlist("previous")
@@ -323,7 +335,10 @@ func TestInstallOverAPlistWhoseJobIsNotLoadedReplacesIt(t *testing.T) {
 	b.assertOnlyPlist()
 }
 
+// Contract test: the install scripts under the real /bin/sh, in a home of
+// the test's own. The timeout only guards a hang.
 func TestInstallLogSetupFailureKeepsThePreviousPlist(t *testing.T) {
+	t.Parallel()
 	b := newBox(t)
 	b.installBinary()
 	b.writePlist("previous")
@@ -341,7 +356,10 @@ func TestInstallLogSetupFailureKeepsThePreviousPlist(t *testing.T) {
 	b.assertPlist("previous")
 }
 
+// Contract test: the install scripts under the real /bin/sh, in a home of
+// the test's own. The timeout only guards a hang.
 func TestInstallBootstrapFailureRestoresThePreviousPlist(t *testing.T) {
+	t.Parallel()
 	b := newBox(t)
 	b.installBinary()
 	b.writePlist("previous")
@@ -354,7 +372,10 @@ func TestInstallBootstrapFailureRestoresThePreviousPlist(t *testing.T) {
 	b.assertPlist("previous")
 }
 
+// Contract test: the install scripts under the real /bin/sh, in a home of
+// the test's own. The timeout only guards a hang.
 func TestInstallBootstrapFailureWithNoPreviousPlistRemovesTheNewOne(t *testing.T) {
+	t.Parallel()
 	b := newBox(t)
 	b.installBinary()
 	b.mark("fail-bootstrap")
@@ -367,7 +388,10 @@ func TestInstallBootstrapFailureWithNoPreviousPlistRemovesTheNewOne(t *testing.T
 	b.assertOnlyPlist()
 }
 
+// Contract test: the install scripts under the real /bin/sh, in a home of
+// the test's own. The timeout only guards a hang.
 func TestInstallRefuses(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		setup func(b *box)
@@ -388,6 +412,7 @@ func TestInstallRefuses(t *testing.T) {
 		{"already loaded", func(b *box) { b.installBinary(); b.setLoaded() }, []string{"print"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			b := newBox(t)
 			tc.setup(b)
 			stdout, stderr, code := b.run("install.sh")
@@ -410,7 +435,10 @@ func TestInstallRefuses(t *testing.T) {
 	}
 }
 
+// Contract test: the install scripts under the real /bin/sh, in a home of
+// the test's own. The timeout only guards a hang.
 func TestUninstallBootsOutAndRemovesPlist(t *testing.T) {
+	t.Parallel()
 	b := newBox(t)
 	b.installBinary()
 	if _, stderr, code := b.run("install.sh"); code != 0 {
@@ -457,7 +485,10 @@ func TestUninstallBootsOutAndRemovesPlist(t *testing.T) {
 	}
 }
 
+// Contract test: the install scripts under the real /bin/sh, in a home of
+// the test's own. The timeout only guards a hang.
 func TestUninstallRemovesAPlistWhoseJobIsNotLoaded(t *testing.T) {
+	t.Parallel()
 	b := newBox(t)
 	b.writePlist("installed")
 	if _, stderr, code := b.run("uninstall.sh"); code != 0 {
@@ -469,7 +500,10 @@ func TestUninstallRemovesAPlistWhoseJobIsNotLoaded(t *testing.T) {
 	b.assertNotExist(b.plist())
 }
 
+// Contract test: the install scripts under the real /bin/sh, in a home of
+// the test's own. The timeout only guards a hang.
 func TestUninstallBootoutFailureKeepsThePlist(t *testing.T) {
+	t.Parallel()
 	b := newBox(t)
 	b.writePlist("installed")
 	b.setLoaded()
@@ -482,7 +516,10 @@ func TestUninstallBootoutFailureKeepsThePlist(t *testing.T) {
 	b.assertPlist("installed")
 }
 
+// Contract test: the install scripts under the real /bin/sh, in a home of
+// the test's own. The timeout only guards a hang.
 func TestUninstallWithNothingInstalledSucceeds(t *testing.T) {
+	t.Parallel()
 	b := newBox(t)
 	if _, stderr, code := b.run("uninstall.sh"); code != 0 {
 		t.Fatalf("uninstall exit %d, stderr %q", code, stderr)

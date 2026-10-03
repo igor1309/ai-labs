@@ -51,6 +51,7 @@ func checkOf(t *testing.T, h *harness, probe bool) contract.CheckReport {
 // Rule 3: the named document is the call's verify, and is recorded among
 // the call's definitions with its digest.
 func TestACallVerifiesWithTheVerificationItsProcessNames(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	named(h, verification)
 	h.changes.changes = []byte("diff --git a/x b/x\n")
@@ -80,6 +81,7 @@ func TestACallVerifiesWithTheVerificationItsProcessNames(t *testing.T) {
 // refused before the first turn, never run unverified; the settings pass
 // check with a warning, and every other process runs.
 func TestAMissingVerificationRefusesTheCallNotTheSettings(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	naming(h)
 	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(settingsDocs()[definition.KindProcess]["p"], "name: p", "name: q", 1)
@@ -108,6 +110,7 @@ func TestAMissingVerificationRefusesTheCallNotTheSettings(t *testing.T) {
 // The checks on a verification's values are made with the process that
 // names it, in check and when the call is resolved.
 func TestANamedVerificationIsHeldToTheLimits(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name    string
 		change  func(*harness)
@@ -129,6 +132,7 @@ func TestANamedVerificationIsHeldToTheLimits(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			h := newHarness()
 			named(h, verification)
 			c.change(h)
@@ -146,6 +150,7 @@ func TestANamedVerificationIsHeldToTheLimits(t *testing.T) {
 // A named verification in effect lends the operator's authority as an
 // inline one does, and check says so.
 func TestCheckWarnsOfAResolvedNamedVerification(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	named(h, verification)
 	report := checkOf(t, h, true)
@@ -161,6 +166,7 @@ func TestCheckWarnsOfAResolvedNamedVerification(t *testing.T) {
 // alone: the process naming it gets neither a problem nor the warning of a
 // missing one.
 func TestAnInvalidVerificationIsAProblemOfItsOwn(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	named(h, strings.Replace(verification, "command: go test ./...\n", "", 1)+"on_failure: stop\n")
 	report := checkOf(t, h, false)
@@ -189,6 +195,7 @@ func TestAnInvalidVerificationIsAProblemOfItsOwn(t *testing.T) {
 // A verification that is listed but cannot be read is a problem of that
 // document: the process naming it is not warned that it does not exist.
 func TestAnUnreadableListedVerificationIsAProblemNotAMissingOne(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	named(h, verification)
 	unreadable := errors.New("cannot read verification repo")
@@ -206,6 +213,7 @@ func TestAnUnreadableListedVerificationIsAProblemNotAMissingOne(t *testing.T) {
 // check --tree's links: the process uses the verification it names, found
 // or not, and the verification is used by the process.
 func TestCheckLinksAProcessToItsVerification(t *testing.T) {
+	t.Parallel()
 	ref := func(kind, name string) contract.DefinitionRef { return contract.DefinitionRef{Kind: kind, Name: name} }
 	definitions := func(h *harness) map[contract.DefinitionRef]contract.Definition {
 		got := map[contract.DefinitionRef]contract.Definition{}
@@ -239,6 +247,7 @@ func TestCheckLinksAProcessToItsVerification(t *testing.T) {
 // process show prints the resolved fields and which verification they
 // come from; a missing one is shown as the refusal it is.
 func TestShowProcessShowsTheNamedVerification(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	named(h, verification)
 	inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
@@ -281,6 +290,7 @@ func containsOrigin(origins []contract.DefinitionOrigin, want contract.Definitio
 // from it says where the document was expected; and it reads the source no
 // more for it.
 func TestSnapshotKeepsTheReadOfAMissingNamedVerification(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
 	naming(h)
@@ -325,6 +335,7 @@ func (s listedThen) List(ctx context.Context, kind definition.Kind) ([]string, e
 // and read by it for the process naming it, is in the snapshot's list: the
 // check of the snapshot checks the document a call resolved from it uses.
 func TestSnapshotListsANamedVerificationWrittenAfterItsList(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
 	naming(h)

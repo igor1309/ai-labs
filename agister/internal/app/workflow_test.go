@@ -21,9 +21,7 @@ import (
 // Workflow tests (ADR-003, ADR-004). Every node is a real call through Calls, over
 // spies: a runner whose turns block on channels the test closes, so what
 // runs concurrently and in which order is decided by the test, never by
-// timing. Deadlines only guard against a hang.
-
-const hangGuard = 10 * time.Second
+// timing. A hang is the test binary's -timeout to report.
 
 func nodeProcess(name, instruction string) string {
 	return `schema: agister.process/v1alpha1
@@ -257,11 +255,7 @@ func (s *storeSpy) handle(t *testing.T, id string) *runSpy {
 func (s *storeSpy) wait(t *testing.T, id string) run.Record {
 	t.Helper()
 	handle := s.handle(t, id)
-	select {
-	case <-handle.done:
-	case <-time.After(hangGuard):
-		t.Fatalf("run %s never finished", id)
-	}
+	<-handle.done
 	handle.mu.Lock()
 	defer handle.mu.Unlock()
 	return handle.record
@@ -434,18 +428,14 @@ func (h *flowHarness) submit(t *testing.T, request contract.CallRequest) string 
 // running. A workflow that already finished refuses the cancel.
 func (h *flowHarness) stopOnCleanup(t *testing.T, id string) {
 	t.Cleanup(func() {
-		_ = app.NewRuns(nil, h.hosted, 0).Cancel(context.Background(), id)
-		select {
-		case <-h.store.handle(t, id).done:
-		case <-time.After(hangGuard):
-			t.Errorf("workflow %s never finished after the cleanup's cancel", id)
-		}
+		_ = app.NewRuns(nil, nil, h.hosted, nil, 0).Cancel(context.Background(), id)
+		<-h.store.handle(t, id).done
 	})
 }
 
 func (h *flowHarness) cancel(t *testing.T, id string) {
 	t.Helper()
-	if err := app.NewRuns(nil, h.hosted, 0).Cancel(context.Background(), id); err != nil {
+	if err := app.NewRuns(nil, nil, h.hosted, nil, 0).Cancel(context.Background(), id); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -466,19 +456,11 @@ func collectionOf(t *testing.T, join run.Record) []map[string]any {
 	return nil
 }
 
-func wait(t *testing.T, ch chan struct{}, what string) {
-	t.Helper()
-	select {
-	case <-ch:
-	case <-time.After(hangGuard):
-		t.Fatalf("%s never happened", what)
-	}
-}
-
 // Two fan-out nodes, then the join, which receives both outputs once each,
 // in declaration order; the workflow's result is the join's, with usage and
 // cost summed over every node.
 func TestWorkflowJoinReceivesEveryFanOutOutputOnce(t *testing.T) {
+	t.Parallel()
 	h := newFlowHarness()
 	id := h.submit(t, contract.CallRequest{})
 	record := h.store.wait(t, id)
@@ -529,6 +511,7 @@ func TestWorkflowJoinReceivesEveryFanOutOutputOnce(t *testing.T) {
 // The collection follows declaration order, whatever order the fan-out
 // nodes complete in.
 func TestWorkflowCollectionOrderIgnoresCompletionOrder(t *testing.T) {
+	t.Parallel()
 	h := newFlowHarness()
 	first := h.script("Work as first.")
 	first.release = make(chan struct{})
@@ -538,7 +521,7 @@ func TestWorkflowCollectionOrderIgnoresCompletionOrder(t *testing.T) {
 
 	// Two completes, and the workflow records it, while one is held; then
 	// one is released.
-	wait(t, twoFinished, "the workflow recording node two's end")
+	<-twoFinished // the workflow recording node two's end
 	if two := h.store.wait(t, "run-3"); two.Result.Status != run.Completed {
 		t.Fatalf("two = %+v", two.Result)
 	}
@@ -570,6 +553,7 @@ func TestWorkflowCollectionOrderIgnoresCompletionOrder(t *testing.T) {
 // The workflow's values are resolved once, before any node starts, and each
 // fan-out node gets the same commit as its param; the join gets none.
 func TestWorkflowResolvesValuesOnceForEveryFanOutNode(t *testing.T) {
+	t.Parallel()
 	h := newFlowHarness()
 	id := h.submit(t, contract.CallRequest{Params: map[string]string{"candidate": "HEAD"}})
 	record := h.store.wait(t, id)
@@ -613,6 +597,7 @@ func TestWorkflowResolvesValuesOnceForEveryFanOutNode(t *testing.T) {
 // The join starts only once every fan-out node has ended: not while one is
 // still running, and when it starts, every fan-out run is finished.
 func TestWorkflowJoinWaitsForTheBarrier(t *testing.T) {
+	t.Parallel()
 	h := newFlowHarness()
 	first := h.script("Work as first.")
 	first.release = make(chan struct{})
@@ -659,6 +644,7 @@ func TestWorkflowJoinWaitsForTheBarrier(t *testing.T) {
 // result is the join's, and its record names the node that did not
 // complete.
 func TestWorkflowJoinsWithoutAnUnsuccessfulNode(t *testing.T) {
+	t.Parallel()
 	for name, tc := range map[string]struct {
 		prepare func(h *flowHarness)
 		status  run.Status
@@ -687,6 +673,7 @@ func TestWorkflowJoinsWithoutAnUnsuccessfulNode(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			h := newFlowHarness()
 			tc.prepare(h)
 			id := h.submit(t, contract.CallRequest{})
@@ -724,6 +711,7 @@ func TestWorkflowJoinsWithoutAnUnsuccessfulNode(t *testing.T) {
 // receives the completed outputs and each other node's status and class, in
 // declaration order, and the workflow's record and events name the three.
 func TestWorkflowJoinsOnTheNodesThatCompleted(t *testing.T) {
+	t.Parallel()
 	h := newFlowHarness()
 	h.defs.set(definition.KindWorkflow, "w", strings.Replace(workflowDoc, "  - {node: two, uses: process:second}\n",
 		"  - {node: two, uses: process:second}\n  - {node: three, uses: process:third}\n  - {node: four, uses: process:fourth}\n  - {node: five, uses: process:fifth}\n", 1))
@@ -787,6 +775,7 @@ func TestWorkflowJoinsOnTheNodesThatCompleted(t *testing.T) {
 // status and class of the first node in declaration order, even when it
 // ends last; the record names every node.
 func TestWorkflowNoJoinWhenNoNodeCompleted(t *testing.T) {
+	t.Parallel()
 	h := newFlowHarness()
 	first := h.script("Work as first.")
 	first.turn = run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "slow down")}
@@ -837,6 +826,7 @@ func failCreating(h *flowHarness, node string) {
 // third failed, internal, with no run, and the join runs once, on the first,
 // receiving the other two's status and class with no run and no output.
 func TestWorkflowJoinsWithoutNodesThatNeverStarted(t *testing.T) {
+	t.Parallel()
 	h := newFlowHarness()
 	threeNodes(h)
 	failCreating(h, "two")
@@ -906,6 +896,7 @@ func failFinishing(h *flowHarness, nodes ...string) {
 // did not complete: the workflow records it failed, internal, with its run,
 // and the join runs without its output, on the node that did complete.
 func TestWorkflowJoinsWithoutANodeWhoseFinalRecordWasNotSaved(t *testing.T) {
+	t.Parallel()
 	h := newFlowHarness()
 	failFinishing(h, "two")
 	id := h.submit(t, contract.CallRequest{})
@@ -941,6 +932,7 @@ func TestWorkflowJoinsWithoutANodeWhoseFinalRecordWasNotSaved(t *testing.T) {
 // When no fan-out node's final record was saved, none completed: the barrier
 // blocks, no join starts, and the workflow fails, internal.
 func TestWorkflowNoJoinWhenNoNodesFinalRecordWasSaved(t *testing.T) {
+	t.Parallel()
 	h := newFlowHarness()
 	failFinishing(h, "one", "two")
 	id := h.submit(t, contract.CallRequest{})
@@ -961,6 +953,7 @@ func TestWorkflowNoJoinWhenNoNodesFinalRecordWasSaved(t *testing.T) {
 // A join whose final record could not be saved did not complete: the
 // workflow fails, internal, with no output.
 func TestWorkflowFailsWhenTheJoinsFinalRecordWasNotSaved(t *testing.T) {
+	t.Parallel()
 	h := newFlowHarness()
 	failFinishing(h, "merge")
 	id := h.submit(t, contract.CallRequest{})
@@ -979,6 +972,7 @@ func TestWorkflowFailsWhenTheJoinsFinalRecordWasNotSaved(t *testing.T) {
 // starts, each is recorded failed, internal, as one that did not start, and
 // no join starts: the workflow takes the first node's status and class.
 func TestWorkflowNoJoinWhenTheFirstNodeCannotStart(t *testing.T) {
+	t.Parallel()
 	h := newFlowHarness()
 	threeNodes(h)
 	failCreating(h, "one")
@@ -1010,6 +1004,7 @@ func TestWorkflowNoJoinWhenTheFirstNodeCannotStart(t *testing.T) {
 // The join receives the collection and the fixed values its own process
 // declares, and nothing from the caller: no param, no workflow value.
 func TestWorkflowJoinReceivesNothingButTheCollection(t *testing.T) {
+	t.Parallel()
 	h := newFlowHarness()
 	id := h.submit(t, contract.CallRequest{Params: map[string]string{"base": "trunk", "candidate": "HEAD"}})
 	record := h.store.wait(t, id)
@@ -1051,6 +1046,7 @@ func TestWorkflowJoinReceivesNothingButTheCollection(t *testing.T) {
 // A caller cannot give a workflow an agent, limits or a run to continue:
 // the workflow is refused and no node starts.
 func TestWorkflowRefusesCallerOverrides(t *testing.T) {
+	t.Parallel()
 	limit := 1.0
 	for name, request := range map[string]contract.CallRequest{
 		"agent":    {Agent: "a"},
@@ -1059,6 +1055,7 @@ func TestWorkflowRefusesCallerOverrides(t *testing.T) {
 		"continue": {Continue: "run-0"},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			h := newFlowHarness()
 			id := h.submit(t, request)
 			record := h.store.wait(t, id)
@@ -1072,6 +1069,7 @@ func TestWorkflowRefusesCallerOverrides(t *testing.T) {
 // A workflow whose join cannot receive the collection is refused before
 // any node starts, even where no check ran first.
 func TestWorkflowWithAnInvalidJoinIsRefused(t *testing.T) {
+	t.Parallel()
 	h := newFlowHarness()
 	h.defs.set(definition.KindWorkflow, "w", strings.Replace(workflowDoc, "process:joiner", "process:first", 1))
 	id := h.submit(t, contract.CallRequest{})
@@ -1087,6 +1085,7 @@ func TestWorkflowWithAnInvalidJoinIsRefused(t *testing.T) {
 // A process that takes the collection, called on its own, is refused: only
 // a join is given one.
 func TestCollectionInputOutsideAJoinIsRefused(t *testing.T) {
+	t.Parallel()
 	h := newFlowHarness()
 	id := h.submit(t, contract.CallRequest{Process: "joiner", Params: map[string]string{}})
 	record := h.store.wait(t, id)
@@ -1101,6 +1100,7 @@ func TestCollectionInputOutsideAJoinIsRefused(t *testing.T) {
 // Cancelled once every fan-out node completed, before the join starts: the
 // join never starts, and the workflow ends interrupted, cancelled.
 func TestWorkflowCancelledBeforeTheJoinStarts(t *testing.T) {
+	t.Parallel()
 	// Each arms a cancellation of the workflow run-1, before it is submitted.
 	for name, arm := range map[string]func(h *flowHarness, t *testing.T){
 		// As the last fan-out node (two, held until one finished) finishes.
@@ -1131,6 +1131,7 @@ func TestWorkflowCancelledBeforeTheJoinStarts(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			h := newFlowHarness()
 			hold := make(chan struct{})
 			h.script("Work as second.").release = hold
@@ -1158,14 +1159,15 @@ func TestWorkflowCancelledBeforeTheJoinStarts(t *testing.T) {
 // Cancelled while fan-out nodes run: each is cancelled, no join starts, and
 // the workflow ends interrupted, cancelled, its nodes' workspaces released.
 func TestWorkflowCancelledDuringFanOut(t *testing.T) {
+	t.Parallel()
 	h := newFlowHarness()
 	for _, instruction := range []string{"Work as first.", "Work as second."} {
 		s := h.script(instruction)
 		s.started, s.release = make(chan struct{}), make(chan struct{})
 	}
 	id := h.submit(t, contract.CallRequest{})
-	wait(t, h.script("Work as first.").started, "the first node's turn")
-	wait(t, h.script("Work as second.").started, "the second node's turn")
+	<-h.script("Work as first.").started  // the first node's turn
+	<-h.script("Work as second.").started // the second node's turn
 	h.cancel(t, id)
 	record := h.store.wait(t, id)
 	if record.Result.Status != run.Interrupted || class(record) != run.ClassCancelled || record.Workflow.Barrier.State != run.BarrierCancelled {
@@ -1186,6 +1188,7 @@ func TestWorkflowCancelledDuringFanOut(t *testing.T) {
 
 // Cancelled before any node starts: none does.
 func TestWorkflowCancelledBeforeAnyNodeStarts(t *testing.T) {
+	t.Parallel()
 	h := newFlowHarness()
 	respond := h.inputs.respond
 	h.inputs.respond = func(spec app.InputSpec) (app.Resolved, error) {
@@ -1212,6 +1215,7 @@ func TestWorkflowCancelledBeforeAnyNodeStarts(t *testing.T) {
 // The workflow run names each node's run, its definition and inputs with
 // their digests; each node's run names the workflow run and its node.
 func TestWorkflowRecordLinksParentAndChildren(t *testing.T) {
+	t.Parallel()
 	h := newFlowHarness()
 	id := h.submit(t, contract.CallRequest{})
 	record := h.store.wait(t, id)
@@ -1248,6 +1252,7 @@ func TestWorkflowRecordLinksParentAndChildren(t *testing.T) {
 // Each check rejection of ADR-003 rules 1 and 4, and what else keeps a
 // workflow's nodes from running.
 func TestCheckRejectsWorkflowsThatCannotRun(t *testing.T) {
+	t.Parallel()
 	joinWithParam := strings.Replace(joinProcess, "  values:\n", "  params:\n    extra: {default: x}\n  values:\n", 1)
 	joinWithParamSource := strings.Replace(joinProcess, "  values:\n", "  params:\n    extra: {}\n  values:\n    extra: {source: param, name: extra}\n", 1)
 	for name, tc := range map[string]struct {
@@ -1318,6 +1323,7 @@ func TestCheckRejectsWorkflowsThatCannotRun(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			h := newFlowHarness()
 			h.defs.set(definition.KindWorkflow, "w", tc.workflow)
 			for process, text := range tc.process {
@@ -1348,6 +1354,7 @@ func TestCheckRejectsWorkflowsThatCannotRun(t *testing.T) {
 // process show's workflow equivalent: the nodes, each process as a call of
 // it would see it, what each receives, and where the workflow comes from.
 func TestShowWorkflow(t *testing.T) {
+	t.Parallel()
 	h := newFlowHarness()
 	inspection := app.NewInspection(app.NewResolver(h.defs, nodeRuntimes{runner: h.runner}, okValidator{}, resolverCheckStub{}))
 	view, err := inspection.ShowWorkflow(context.Background(), "w")
@@ -1379,6 +1386,7 @@ func TestShowWorkflow(t *testing.T) {
 // interrupted, cancelled, though the join completed, and the join's run and
 // node keep its own outcome. Once the workflow ended, a cancel is refused.
 func TestWorkflowCancelledAsTheJoinFinishes(t *testing.T) {
+	t.Parallel()
 	h := newFlowHarness()
 	var mu sync.Mutex
 	var cancelErr error
@@ -1387,7 +1395,7 @@ func TestWorkflowCancelledAsTheJoinFinishes(t *testing.T) {
 		if record.ID != "run-4" {
 			return
 		}
-		err := app.NewRuns(nil, h.hosted, 0).Cancel(context.Background(), "run-1")
+		err := app.NewRuns(nil, nil, h.hosted, nil, 0).Cancel(context.Background(), "run-1")
 		mu.Lock()
 		cancelErr, cancelled = err, true
 		mu.Unlock()
@@ -1409,18 +1417,20 @@ func TestWorkflowCancelledAsTheJoinFinishes(t *testing.T) {
 	if join := h.store.wait(t, "run-4"); join.Result.Status != run.Completed || string(join.Result.Output) != `{"joined":true}` {
 		t.Fatalf("join run = %+v", join.Result)
 	}
-	if err := app.NewRuns(nil, h.hosted, 0).Cancel(context.Background(), id); err == nil {
+	if err := app.NewRuns(nil, nil, h.hosted, nil, 0).Cancel(context.Background(), id); err == nil {
 		t.Fatal("a finished workflow accepted a cancel")
 	}
 }
 
 // A join that did not complete gives the workflow its status and class.
 func TestWorkflowTakesAnUnsuccessfulJoinsResult(t *testing.T) {
+	t.Parallel()
 	for name, turn := range map[string]run.Turn{
 		"failed":      {Status: run.Failed, Error: run.Fault(run.ClassRuntimeError, "boom")},
 		"interrupted": {Status: run.Interrupted, Error: run.Fault(run.ClassTimeout, "too slow")},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			h := newFlowHarness()
 			h.script("Join them.").turn = turn
 			id := h.submit(t, contract.CallRequest{})
@@ -1443,6 +1453,7 @@ func TestWorkflowTakesAnUnsuccessfulJoinsResult(t *testing.T) {
 // but calls it only after, is refused, and the workflow's outcome stays as
 // it ended.
 func TestWorkflowRefusesACancelCapturedBeforeItEnded(t *testing.T) {
+	t.Parallel()
 	h := newFlowHarness()
 	join := h.script("Join them.")
 	join.started, join.release = make(chan struct{}), make(chan struct{})
@@ -1459,10 +1470,10 @@ func TestWorkflowRefusesACancelCapturedBeforeItEnded(t *testing.T) {
 	// Registered last, so it runs first: nothing waits on resume after.
 	t.Cleanup(func() { resumed.Do(func() { close(resume) }) })
 
-	wait(t, join.started, "the join's turn")
+	<-join.started // the join's turn
 	result := make(chan error, 1)
-	go func() { result <- app.NewRuns(nil, h.hosted, 0).Cancel(context.Background(), id) }()
-	wait(t, captured, "the cancel taking the workflow's callback")
+	go func() { result <- app.NewRuns(nil, nil, h.hosted, nil, 0).Cancel(context.Background(), id) }()
+	<-captured // the cancel taking the workflow's callback
 	// The workflow ends while the cancel holds its callback.
 	close(join.release)
 	ended := h.store.wait(t, id)
@@ -1471,13 +1482,8 @@ func TestWorkflowRefusesACancelCapturedBeforeItEnded(t *testing.T) {
 	}
 	eventsAtEnd := len(h.store.handle(t, id).kinds())
 	resumed.Do(func() { close(resume) })
-	select {
-	case err := <-result:
-		if err == nil {
-			t.Fatal("a cancel called after the workflow ended was accepted")
-		}
-	case <-time.After(hangGuard):
-		t.Fatal("the resumed cancel never returned")
+	if err := <-result; err == nil {
+		t.Fatal("a cancel called after the workflow ended was accepted")
 	}
 	handle := h.store.handle(t, id)
 	handle.mu.Lock()

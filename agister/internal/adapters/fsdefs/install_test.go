@@ -40,7 +40,10 @@ func dangle(t *testing.T, path string) {
 
 // A source folder's settings documents are what the store lists; every
 // other file is named, and a folder that is not a kind's is not read.
+//
+// Contract test: the settings store against the real filesystem.
 func TestSourceReadsSettingsAndNamesTheRest(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	for _, name := range []string{
 		"service.toml", "workspace.yaml", "agents/a.toml", "prompts/p.md", "verifies/repo.yaml",
@@ -75,7 +78,10 @@ func TestSourceReadsSettingsAndNamesTheRest(t *testing.T) {
 }
 
 // A symbolic link in the folder refuses it, wherever it points.
+//
+// Contract test: the settings store against the real filesystem.
 func TestSourceRefusesASymbolicLink(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"agents/a.toml", "agents", "notes"} {
 		dir := t.TempDir()
 		put(t, filepath.Join(dir, "service.toml"), "s")
@@ -99,7 +105,10 @@ func TestSourceRefusesASymbolicLink(t *testing.T) {
 // A store's documents are what List names, but for a file whose name
 // breaks the naming rule, which is no document and is not read. One that
 // cannot be read is named as unreadable, not read.
+//
+// Contract test: the settings store against the real filesystem.
 func TestDocumentsSkipsInvalidNames(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	for _, name := range []string{"service.toml", "agents/a.toml", "agents/Bad.toml", "verifies/Not A Name.yaml"} {
 		put(t, filepath.Join(dir, name), name)
@@ -125,7 +134,10 @@ func TestDocumentsSkipsInvalidNames(t *testing.T) {
 // A stage is read as the store it stages: paths, and where a document not
 // found was expected, are the store's, and what the store lists that the
 // stage lacks is listed and read from the store. Its removal removes it.
+//
+// Contract test: the settings store against the real filesystem.
 func TestStageReadsAsTheStore(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	home := fsdefs.Store{Dir: t.TempDir()}.StagingIn(root)
 	ctx := context.Background()
@@ -183,7 +195,10 @@ func tree(t *testing.T, dir string) []string {
 
 // Put replaces a document whole, leaving nothing beside it; Remove takes it
 // away, and a missing one is no error.
+//
+// Contract test: the settings store against the real filesystem.
 func TestPutAndRemove(t *testing.T) {
+	t.Parallel()
 	store := fsdefs.Store{Dir: t.TempDir()}
 	ctx := context.Background()
 	for _, text := range []string{"one", "two"} {
@@ -207,7 +222,10 @@ func TestPutAndRemove(t *testing.T) {
 
 // A backup holds the replaced documents laid out like the store, and its
 // manifest; it is never written over, and a stamp is one name.
+//
+// Contract test: the settings store against the real filesystem.
 func TestBackups(t *testing.T) {
+	t.Parallel()
 	backups := fsdefs.Backups{Dir: filepath.Join(t.TempDir(), "backups")}
 	ctx := context.Background()
 	manifest := fsdefs.Manifest{Stamp: "s1", Source: "/repo/.agister", Installed: time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC),
@@ -246,7 +264,10 @@ func TestBackups(t *testing.T) {
 
 // A backup whose write fails is removed whole: no folder is left to be
 // taken for a backup.
+//
+// Contract test: the settings store against the real filesystem.
 func TestBackupsSaveLeavesNothingWhenAWriteFails(t *testing.T) {
+	t.Parallel()
 	dir := filepath.Join(t.TempDir(), "backups")
 	full := errors.New("disk full")
 	var written []string

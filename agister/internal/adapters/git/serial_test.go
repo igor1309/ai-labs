@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 )
 
@@ -254,6 +255,12 @@ func done(t *testing.T, worker <-chan error) {
 	}
 }
 
+// Contract test: the worktree coordinator over real git and its real lock
+// files. The timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
 func TestWorktreeCommandsOfOneRepositoryNeverOverlap(t *testing.T) {
 	repo := emptyRepository(t)
 	g := gated(t, "")
@@ -294,6 +301,12 @@ func TestWorktreeCommandsOfOneRepositoryNeverOverlap(t *testing.T) {
 	inTurn(discard, released)
 }
 
+// Contract test: the worktree coordinator over real git and its real lock
+// files. The timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
 func TestDifferentRepositoriesDoNotWaitOnEachOther(t *testing.T) {
 	busy, other := emptyRepository(t), emptyRepository(t)
 	g := gated(t, "")
@@ -314,6 +327,12 @@ func TestDifferentRepositoriesDoNotWaitOnEachOther(t *testing.T) {
 	done(t, free)
 }
 
+// Contract test: the worktree coordinator over real git and its real lock
+// files. The timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
 func TestTwoPathsOfOneRepositoryShareTheLock(t *testing.T) {
 	repo := emptyRepository(t)
 	linked := filepath.Join(t.TempDir(), "linked")
@@ -354,6 +373,12 @@ func TestTwoPathsOfOneRepositoryShareTheLock(t *testing.T) {
 	}
 }
 
+// Contract test: the worktree coordinator over real git and its real lock
+// files. The timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
 func TestACancelledContextStopsTheWait(t *testing.T) {
 	repo := emptyRepository(t)
 	g := gated(t, "")
@@ -388,7 +413,9 @@ func TestACancelledContextStopsTheWait(t *testing.T) {
 	done(t, held)
 }
 
+// Contract test: real git, in a repository of the test's own.
 func TestWorkspacesWithoutWorktreesMakeNoWorktreeChange(t *testing.T) {
+	t.Parallel()
 	repo := emptyRepository(t)
 	dir, release, err := Workspaces{}.Checkout(context.Background(), repo, "main")
 	if err == nil {
@@ -495,8 +522,19 @@ func (l *turns) coordinator(name string) *coordinator {
 		return "", nil
 	}
 	c.Waits = func() { c.waits <- struct{}{} }
-	c.Pause = func(context.Context) { c.pauses.Add(1); runtime.Gosched() }
+	c.Timer = func(time.Duration) (<-chan time.Time, func()) {
+		c.pauses.Add(1)
+		runtime.Gosched()
+		return passed()
+	}
 	return c
+}
+
+// passed is a wait that has passed already.
+func passed() (<-chan time.Time, func()) {
+	fired := make(chan time.Time, 1)
+	fired <- time.Time{}
+	return fired, func() {}
 }
 
 // command runs a worktree command of c in repository aside, as a worker
@@ -524,6 +562,12 @@ func receive[T any](t *testing.T, ch <-chan T, what string) T {
 	}
 }
 
+// Contract test: the lock files two coordinators share as two processes do,
+// the kernel's flock. The timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
 func TestWorktreeCommandsOfTwoProcessesInOneRepositoryNeverOverlap(t *testing.T) {
 	repo := emptyRepository(t)
 	l := newTurns(t)
@@ -576,6 +620,12 @@ func TestWorktreeCommandsOfTwoProcessesInOneRepositoryNeverOverlap(t *testing.T)
 	}
 }
 
+// Contract test: the lock files two coordinators share as two processes do,
+// the kernel's flock. The timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
 func TestTwoProcessesInDifferentRepositoriesDoNotShareALockFile(t *testing.T) {
 	busy, other := emptyRepository(t), emptyRepository(t)
 	l := newTurns(t)
@@ -599,6 +649,12 @@ func TestTwoProcessesInDifferentRepositoriesDoNotShareALockFile(t *testing.T) {
 	}
 }
 
+// Contract test: the lock files two coordinators share as two processes do,
+// the kernel's flock. The timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
 func TestACancelledContextStopsTheWaitForTheLockFile(t *testing.T) {
 	repo := emptyRepository(t)
 	l := newTurns(t)
@@ -661,6 +717,12 @@ func (e *expiry) Err() error {
 	}
 }
 
+// Contract test: the lock files two coordinators share as two processes do,
+// the kernel's flock. The timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
 func TestACheckoutReleaseStopsWaitingForTheLockFileAtTheCleanupDeadline(t *testing.T) {
 	repo := emptyRepository(t)
 	l := newTurns(t)
@@ -712,6 +774,12 @@ func TestACheckoutReleaseStopsWaitingForTheLockFileAtTheCleanupDeadline(t *testi
 	}
 }
 
+// Contract test: the lock files two coordinators share as two processes do,
+// the kernel's flock. The timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
 func TestDiscardStopsWaitingForTheLockFileAtTheCleanupDeadline(t *testing.T) {
 	repo := emptyRepository(t)
 	l := newTurns(t)
@@ -751,13 +819,59 @@ func TestDiscardStopsWaitingForTheLockFileAtTheCleanupDeadline(t *testing.T) {
 }
 
 func TestTheDefaultCleanupContextHasADeadlineOfOneMinute(t *testing.T) {
-	before := time.Now()
-	ctx, cancel := Workspaces{}.cleanup(context.Background())
+	t.Parallel()
+	now := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+	worktrees := NewWorktrees(t.TempDir())
+	worktrees.Clock = systemtest.NewClock(now)
+	ctx, cancel := NewWorkspaces(worktrees).cleanup(context.Background())
 	defer cancel()
-	after := time.Now()
-	deadline, ok := ctx.Deadline()
-	if !ok || deadline.Before(before.Add(time.Minute)) || deadline.After(after.Add(time.Minute)) {
-		t.Fatalf("deadline %v (set %v), want one minute from between %v and %v", deadline, ok, before, after)
+	if deadline, ok := ctx.Deadline(); !ok || !deadline.Equal(now.Add(time.Minute)) {
+		t.Fatalf("deadline %v (set %v), want one minute from %v", deadline, ok, now)
+	}
+}
+
+// A command that found the lock file held tries again only once the retry
+// wait has passed on its timer, and not before, however soon the lock is
+// freed.
+//
+// Contract test: the lock files two coordinators share as two processes do,
+// the kernel's flock. The timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
+func TestALockFileHeldIsTriedAgainOnlyOnceTheRetryHasPassed(t *testing.T) {
+	repo := emptyRepository(t)
+	l := newTurns(t)
+	one, two := l.coordinator("one"), l.coordinator("two")
+	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	two.Timer = clock.Timer
+	ctx := context.Background()
+
+	ones := l.command(ctx, one, repo)
+	receive(t, l.entered, "the first command entering git")
+	twos := l.command(ctx, two, repo)
+	receive(t, two.waits, "the second command finding the lock file held")
+	clock.Started(retry)
+	l.free()
+	if err := receive(t, ones, "the first command ending"); err != nil {
+		t.Fatal(err)
+	}
+	clock.Advance(retry - time.Nanosecond)
+	select {
+	case name := <-l.entered:
+		t.Fatalf("%s entered git before the retry had passed", name)
+	default:
+	}
+	if clock.Pending() != 1 || len(clock.Waits()) != 1 {
+		t.Fatalf("the retry ended early: %d pending of %v", clock.Pending(), clock.Waits())
+	}
+	clock.Advance(time.Nanosecond)
+	if name := receive(t, l.entered, "the second command entering git"); name != "two" {
+		t.Fatalf("%s entered git", name)
+	}
+	if err := receive(t, twos, "the second command ending"); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -779,6 +893,12 @@ func helper(role string, env ...string) *exec.Cmd {
 
 // TestHelperProcess is no test but a process of another: in a re-executed
 // test binary, the holder of a repository's lock or its held git child.
+//
+// Contract test: no test of its own, but the real processes of
+// TestAKilledHoldersLockLastsAsLongAsItsGitChild.
+//
+// Serial: it is the body of a re-executed test binary, which runs nothing
+// else.
 func TestHelperProcess(t *testing.T) {
 	switch os.Getenv(helperRole) {
 	case "holder":
@@ -831,6 +951,14 @@ func socketPair(t *testing.T) (*os.File, *os.File) {
 // A process killed while its git command runs leaves the lock to git: a
 // command of another process waits for it until git exits. The held
 // command is started as production starts git, the lock handed to it.
+//
+// Contract test: the kernel's flock across real processes: a re-executed
+// test binary that is killed, and the child it handed the lock to. The
+// timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
 func TestAKilledHoldersLockLastsAsLongAsItsGitChild(t *testing.T) {
 	repo, locks := emptyRepository(t), t.TempDir()
 	// The child ends when the test closes its end: the other end is the
@@ -868,7 +996,10 @@ func TestAKilledHoldersLockLastsAsLongAsItsGitChild(t *testing.T) {
 	second := NewWorktrees(locks)
 	waited, entered := make(chan struct{}), make(chan struct{}, 1)
 	second.Waits = func() { close(waited) }
-	second.Pause = func(context.Context) { runtime.Gosched() }
+	second.Timer = func(time.Duration) (<-chan time.Time, func()) {
+		runtime.Gosched()
+		return passed()
+	}
 	second.Git = func(ctx context.Context, dir string, lock *os.File, args ...string) (string, error) {
 		entered <- struct{}{}
 		return "", nil

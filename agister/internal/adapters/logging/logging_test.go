@@ -13,33 +13,47 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/logging"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/claudecode"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	composition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
+var start = time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+
 func request(prompt string) app.TurnRequest {
 	return app.TurnRequest{Prompt: prompt, Primitives: []string{"Read"}, Timeout: time.Minute, OutputSchema: json.RawMessage(`{"type":"object"}`)}
 }
 
-// The decorator must be substitutable for what it wraps.
+// fake is the command the in-process starter runs the fake Claude Code by.
+const fake = "claude"
+
+// The decorator must be substitutable for what it wraps. Its claim is not
+// the process: the fake runs in process.
 func TestDecoratorConformance(t *testing.T) {
+	t.Parallel()
 	log := slog.New(slog.NewJSONHandler(&bytes.Buffer{}, nil))
+	clock := systemtest.NewClock(start)
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {
-			return logging.Runner{Inner: composition.NewClaudeCode(command), Adapter: "claude-code", Log: log}
+			return logging.Runner{Inner: composition.NewClaudeCode(command, supervisor.Runtime{Starter: runtimetest.InProcess{}, Timer: clock.Timer}), Adapter: "claude-code", Log: log, Clock: clock}
 		},
-		Fake:      runtimetest.Binary(t, "fakeclaude"),
+		Fake:      fake,
+		InProcess: true,
 		Contract:  claudecode.Contract,
 		ToolCalls: true,
 		Request:   request,
+		Clock:     clock,
 	})
 }
 
 func TestLogsAreCorrelatedAndOmitPrompts(t *testing.T) {
+	t.Parallel()
 	var buffer bytes.Buffer
 	log := slog.New(logging.Handler{Handler: slog.NewJSONHandler(&buffer, &slog.HandlerOptions{Level: slog.LevelInfo})})
-	runner := logging.Runner{Inner: composition.NewClaudeCode(runtimetest.Binary(t, "fakeclaude")), Adapter: "claude-code", Log: log}
+	clock := systemtest.NewClock(start)
+	runner := logging.Runner{Inner: composition.NewClaudeCode(fake, supervisor.Runtime{Starter: runtimetest.InProcess{}, Timer: clock.Timer}), Adapter: "claude-code", Log: log, Clock: clock}
 	ctx := app.WithCorrelation(context.Background(), "run_id", "run-1", "process", "p")
 	runner.RunTurn(ctx, request("secret prompt SCENARIO:approve"), &runtimetest.Recorder{})
 
@@ -83,6 +97,7 @@ func (s *starter) RunTurn(_ context.Context, _ app.TurnRequest, sink app.EventSi
 // The decorator never swallows a failure to record the process: the
 // runtime must hear of it, and it is logged.
 func TestFailureToRecordTheProcessReachesTheRuntime(t *testing.T) {
+	t.Parallel()
 	var buffer bytes.Buffer
 	log := slog.New(slog.NewJSONHandler(&buffer, nil))
 	inner := &starter{}
@@ -93,5 +108,43 @@ func TestFailureToRecordTheProcessReachesTheRuntime(t *testing.T) {
 	}
 	if !strings.Contains(buffer.String(), "disk full") {
 		t.Fatalf("not logged: %s", buffer.String())
+	}
+}
+
+// taking is a runner whose turn takes what it advances its clock by.
+type taking struct {
+	clock *systemtest.Clock
+	takes time.Duration
+}
+
+func (taking) Identity(context.Context) (app.RuntimeIdentity, error) {
+	return app.RuntimeIdentity{}, nil
+}
+
+func (r taking) RunTurn(context.Context, app.TurnRequest, app.EventSink) run.Turn {
+	r.clock.Advance(r.takes)
+	return run.Turn{Status: run.Completed}
+}
+
+// A turn's wall time is what passed on the runner's clock while it ran.
+func TestTheWallTimeIsReadOnTheRunnersClock(t *testing.T) {
+	t.Parallel()
+	var buffer bytes.Buffer
+	log := slog.New(slog.NewJSONHandler(&buffer, nil))
+	clock := systemtest.NewClock(start)
+	runner := logging.Runner{Inner: taking{clock: clock, takes: 90 * time.Second}, Adapter: "x", Log: log, Clock: clock}
+	runner.RunTurn(context.Background(), request("p"), &runtimetest.Recorder{})
+	var finished map[string]any
+	for _, line := range strings.Split(strings.TrimSpace(buffer.String()), "\n") {
+		var entry map[string]any
+		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			t.Fatal(err)
+		}
+		if entry["msg"] == "turn.finished" {
+			finished = entry
+		}
+	}
+	if finished["wall"] != "1m30s" {
+		t.Fatalf("turn.finished = %v", finished)
 	}
 }

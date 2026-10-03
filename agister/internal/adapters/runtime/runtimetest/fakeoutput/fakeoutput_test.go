@@ -11,6 +11,7 @@ import (
 // A property's anyOf is answered by its first variant, whole: its constant
 // and each of its required properties, and nothing of the other variants.
 func TestInstanceAnswersAnAnyOfByItsFirstVariant(t *testing.T) {
+	t.Parallel()
 	const document = `{
 		"type": "object",
 		"required": ["advice", "note"],

@@ -58,6 +58,7 @@ func promptSources(record run.Record) []run.DefinitionSource {
 // Rules 1 and 3: the input's value is the document's text, unchanged; its
 // identity is the digest the call records among its definitions.
 func TestACallIsGivenThePromptItsProcessNames(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	prompted(h, reviewPrompt)
 	record := h.call(t, contract.CallRequest{})
@@ -79,6 +80,7 @@ func TestACallIsGivenThePromptItsProcessNames(t *testing.T) {
 
 // Two inputs naming one prompt read it once, and it is one source.
 func TestAPromptNamedTwiceIsOneSource(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	prompted(h, reviewPrompt)
 	h.defs.docs[definition.KindProcess]["p"] = promptingProcess("    rules: {source: prompt, name: review}\n    again: {source: prompt, name: review}\n")
@@ -101,6 +103,7 @@ func TestAPromptNamedTwiceIsOneSource(t *testing.T) {
 // it; a call resolved without it is refused before the first turn, naming
 // the input, the prompt and where it was expected.
 func TestAMissingPromptIsAProblemOfTheProcessAndRefusesTheCall(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	prompting(h)
 	if report := checkOf(t, h, false); !reflect.DeepEqual(messages(report.Problems), []string{`process p: input rules: prompt "review" does not exist`}) {
@@ -123,6 +126,7 @@ func TestAMissingPromptIsAProblemOfTheProcessAndRefusesTheCall(t *testing.T) {
 // Rule 1: a prompt that is not readable text is a problem of that document,
 // not of the process naming it; a call of the process is refused.
 func TestAnUnreadablePromptIsAProblemOfItsOwn(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	prompted(h, "\x00")
 	report := checkOf(t, h, false)
@@ -138,6 +142,7 @@ func TestAnUnreadablePromptIsAProblemOfItsOwn(t *testing.T) {
 // Rule 1: a prompt that is listed but cannot be read is a problem of that
 // document: the process naming it is not told that it does not exist.
 func TestAnUnreadableListedPromptIsAProblemNotAMissingOne(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	prompted(h, reviewPrompt)
 	unreadable := errors.New("cannot read prompt review")
@@ -172,6 +177,7 @@ func (r promptless) Resolve(ctx context.Context, request app.CallResolveRequest)
 // A call is refused, before its first turn, when an input names a prompt
 // its resolution did not give it, though resolution succeeded.
 func TestAPromptNotResolvedWithTheCallRefusesIt(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	prompted(h, reviewPrompt)
 	h.calls = app.NewCalls(
@@ -193,6 +199,7 @@ func TestAPromptNotResolvedWithTheCallRefusesIt(t *testing.T) {
 // check --tree's links: the process uses each prompt it names, found or
 // not, and the prompt is used by the process.
 func TestCheckLinksAProcessToItsPrompts(t *testing.T) {
+	t.Parallel()
 	ref := func(kind, name string) contract.DefinitionRef { return contract.DefinitionRef{Kind: kind, Name: name} }
 	definitions := func(h *harness) map[contract.DefinitionRef]contract.Definition {
 		got := map[contract.DefinitionRef]contract.Definition{}
@@ -227,6 +234,7 @@ func TestCheckLinksAProcessToItsPrompts(t *testing.T) {
 // from among its sources; a missing one is shown with the refusal it
 // causes.
 func TestShowProcessShowsItsPrompts(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	prompted(h, reviewPrompt)
 	inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
@@ -252,6 +260,7 @@ func TestShowProcessShowsItsPrompts(t *testing.T) {
 // The snapshot covers prompts: the prompt a call is given is the one check
 // saw, though it was edited between the check and the call.
 func TestGatedCallIsGivenThePromptCheckSaw(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
 	prompted(h, reviewPrompt)
@@ -287,6 +296,7 @@ func TestGatedCallIsGivenThePromptCheckSaw(t *testing.T) {
 // and the settings do not list, so a view of the process says where it was
 // expected; and it reads the source no more for it.
 func TestSnapshotKeepsTheReadOfAMissingPrompt(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
 	prompting(h)

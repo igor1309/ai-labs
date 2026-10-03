@@ -19,6 +19,7 @@ import (
 )
 
 func TestAContinuationWithAnUnreadableLaterRecordIsRefused(t *testing.T) {
+	t.Parallel()
 	h, order := carrying()
 	store := fsruns.Store{Dir: t.TempDir()}
 	ctx := context.Background()
@@ -54,8 +55,10 @@ func TestAContinuationWithAnUnreadableLaterRecordIsRefused(t *testing.T) {
 }
 
 func TestAContinuationWhenSessionListingFails(t *testing.T) {
+	t.Parallel()
 	for _, checkout := range []bool{true, false} {
 		t.Run(map[bool]string{true: "checkout", false: "no checkout"}[checkout], func(t *testing.T) {
+			t.Parallel()
 			h, order := carrying()
 			prior := patchedRun(h, "run-0", "", 0, 1, "diff A\n")
 			cost := 7.75
@@ -80,8 +83,10 @@ func TestAContinuationWhenSessionListingFails(t *testing.T) {
 }
 
 func TestALegacyContinuationRequiresTheSameProcessDefinition(t *testing.T) {
+	t.Parallel()
 	for _, identity := range []string{"changed selector", "missing recorded identity", "missing current identity"} {
 		t.Run(identity, func(t *testing.T) {
+			t.Parallel()
 			h, order := carrying()
 			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
 				"    diff:", "    other_revision: {source: git.revision, rev: main}\n    diff:", 1)
@@ -130,7 +135,11 @@ func continuationGit(t *testing.T, dir string, args ...string) string {
 	return strings.TrimSpace(string(out))
 }
 
+// Contract test: the core over the git adapter and real git: a patch
+// carried from one worktree into another, and refused in another
+// repository.
 func TestContinuationBetweenWorktreesStoresCumulativeChanges(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	repo := t.TempDir()
 	continuationGit(t, repo, "init", "--quiet", "--initial-branch=main")
@@ -173,6 +182,7 @@ func TestContinuationBetweenWorktreesStoresCumulativeChanges(t *testing.T) {
 	continuationGit(t, repo, "clone", "--quiet", "--no-local", repo, other)
 	for _, target := range []struct{ name, dir string }{{"same repository", to}, {"distinct repository", other}} {
 		t.Run(target.name, func(t *testing.T) {
+			t.Parallel()
 			h, order := carrying()
 			prior := patchedRun(h, "run-0", "", 0, 1, string(patch))
 			h.runner.turn.ProviderSessionID = "prov-0"
@@ -281,6 +291,7 @@ func withoutCheckout(h *harness) {
 }
 
 func TestANoCheckoutContinuationCannotAdvanceTheSessionDuringCheckoutSetup(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	store := fsruns.Store{Dir: t.TempDir()}
 	first, _ := carrying()
@@ -300,8 +311,6 @@ func TestANoCheckoutContinuationCannotAdvanceTheSessionDuringCheckoutSetup(t *te
 	case <-started:
 	case record := <-first.recorder.finished:
 		t.Fatalf("first call ended before setup: %+v", record.Result)
-	case <-time.After(5 * time.Second):
-		t.Fatal("setup never started")
 	}
 	second, order := carrying()
 	withoutCheckout(second)
@@ -328,8 +337,10 @@ func TestANoCheckoutContinuationCannotAdvanceTheSessionDuringCheckoutSetup(t *te
 }
 
 func TestAContinuationRechecksItsSelectionAfterSetup(t *testing.T) {
+	t.Parallel()
 	for _, patch := range []string{"diff A\n", ""} {
 		t.Run(map[bool]string{true: "patch", false: "no patch"}[patch != ""], func(t *testing.T) {
+			t.Parallel()
 			h, _ := carrying()
 			patchedRun(h, "run-0", "", 0, 1, patch)
 			// The setup seam introduces a later completed run after selection.
@@ -352,7 +363,10 @@ func TestAContinuationRechecksItsSelectionAfterSetup(t *testing.T) {
 	}
 }
 
+// Contract test: the core over the git adapter and real git: the
+// repository's identity outlives the worktree a run was launched from.
 func TestContinuationAfterRemovingTheLaunchingWorktree(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	repo := t.TempDir()
 	continuationGit(t, repo, "init", "--quiet", "--initial-branch=main")

@@ -7,22 +7,23 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"testing"
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 )
 
-// runCommand runs a command in dir and returns its result and the
-// references it reported.
-func runCommand(ctx context.Context, t *testing.T, dir, command string, timeout time.Duration, bound int) (supervisor.CommandResult, []string) {
+// runCommand runs a command in dir on commands and returns its result and
+// the references it reported.
+func runCommand(ctx context.Context, t *testing.T, commands supervisor.Commands, dir, command string, timeout time.Duration, bound int) (supervisor.CommandResult, []string) {
 	t.Helper()
 	var refs []string
-	result := supervisor.Commands{}.Run(ctx, supervisor.CommandRequest{Command: command, Dir: dir, Timeout: timeout, Bound: bound}, func(ref string) error {
+	result := commands.Run(ctx, supervisor.CommandRequest{Command: command, Dir: dir, Timeout: timeout, Bound: bound}, func(ref string) error {
 		if len(refs) == 0 {
 			cleanUpGroup(t, ref)
 		}
@@ -68,10 +69,14 @@ func cleanUpGroup(t *testing.T, ref string) {
 // A command runs with bash in its directory; its combined output is kept
 // as a head and a tail with the size and digest of the whole, and its exit
 // code is reported. Its group is on record, with the leader's token.
+//
+// Contract test: the supervisor's commands against the real shell and its
+// process group. Waiting for a group to end is a bounded poll.
 func TestCommandRunsWithBoundedOutput(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	whole := "out:" + strings.Repeat("x", 30) + "err:" + strings.Repeat("y", 30) + "end\n"
-	result, refs := runCommand(context.Background(), t, dir,
+	result, refs := runCommand(context.Background(), t, supervisor.Commands{}, dir,
 		`printf 'out:%s' "$(printf 'x%.0s' {1..30})"; printf 'err:%s' "$(printf 'y%.0s' {1..30})" >&2; echo end; pwd > where; exit 3`,
 		10*time.Second, 8)
 	sum := sha256.Sum256([]byte(whole))
@@ -89,7 +94,7 @@ func TestCommandRunsWithBoundedOutput(t *testing.T) {
 	}
 
 	// Output within twice the bound is kept whole, head then tail.
-	result, _ = runCommand(context.Background(), t, dir, "printf abcdefghij", 10*time.Second, 8)
+	result, _ = runCommand(context.Background(), t, supervisor.Commands{}, dir, "printf abcdefghij", 10*time.Second, 8)
 	if string(result.Head)+string(result.Tail) != "abcdefghij" || string(result.Head) != "abcdefgh" || result.Bytes != 10 || *result.ExitCode != 0 {
 		t.Fatalf("result = %+v", result)
 	}
@@ -118,25 +123,37 @@ func groupOf(t *testing.T, path string) int {
 
 // A timeout, or the caller's cancellation, kills the whole group, children
 // included; so does an exit that leaves children behind.
+//
+// Contract test: the supervisor's commands against the real shell and its
+// process group. Waiting for a group to end is a bounded poll.
 func TestCommandGroupIsKilled(t *testing.T) {
+	t.Parallel()
+	// The timeout is on a manual clock: it passes only when the test
+	// advances the clock past it.
+	const timeout = time.Hour
 	for _, c := range []struct {
 		name    string
 		command string
-		timeout time.Duration
+		passes  bool
 		cancel  bool
 	}{
-		{"timeout", blocks + " & wait", 300 * time.Millisecond, false},
-		{"cancellation", blocks + " & echo $$ > group; wait", 30 * time.Second, true},
-		{"exit", blocks + " & exit 0", 30 * time.Second, false},
+		{"timeout", blocks + " & wait", true, false},
+		{"cancellation", blocks + " & echo $$ > group; wait", false, true},
+		{"exit", blocks + " & exit 0", false, false},
 	} {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			if c.cancel {
 				go func() { groupOf(t, filepath.Join(dir, "group")); cancel() }()
 			}
-			result, refs := runCommand(ctx, t, dir, c.command, c.timeout, 64)
+			clock := systemtest.NewClock(start)
+			if c.passes {
+				go func() { clock.Started(timeout); clock.Advance(timeout) }()
+			}
+			result, refs := runCommand(ctx, t, supervisor.Commands{Timer: clock.Timer}, dir, c.command, timeout, 64)
 			if result.TimedOut != (c.name == "timeout") || result.Cancelled != c.cancel || len(refs) == 0 {
 				t.Fatalf("result %+v, refs %q", result, refs)
 			}
@@ -160,7 +177,11 @@ func TestCommandGroupIsKilled(t *testing.T) {
 
 // A group that cannot be recorded is killed at once, not by its timeout,
 // and the run fails.
+//
+// Contract test: the supervisor's commands against the real shell and its
+// process group. Waiting for a group to end is a bounded poll.
 func TestUnrecordedCommandIsKilled(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	result := supervisor.Commands{}.Run(context.Background(), supervisor.CommandRequest{Command: blocks, Dir: dir, Timeout: 30 * time.Second, Bound: 64}, func(ref string) error {
 		cleanUpGroup(t, ref)
@@ -171,139 +192,243 @@ func TestUnrecordedCommandIsKilled(t *testing.T) {
 	}
 }
 
+// runOn runs request with clock as the runner's Timer, aside, and gives
+// the channel its result arrives on.
+func runOn(t *testing.T, ctx context.Context, clock *systemtest.Clock, request supervisor.CommandRequest) <-chan supervisor.CommandResult {
+	done := make(chan supervisor.CommandResult, 1)
+	go func() {
+		done <- supervisor.Commands{Timer: clock.Timer, KillGrace: grace}.Run(ctx, request, func(ref string) error {
+			cleanUpGroup(t, ref)
+			return nil
+		})
+	}()
+	return done
+}
+
+// grace is the commands' kill grace in these tests: no other wait is as
+// long.
+const grace = 3 * time.Second
+
+// released fails the test unless every wait the run started on clock is
+// stopped or has fired, as each is by the time the run returns.
+func released(t *testing.T, clock *systemtest.Clock) {
+	t.Helper()
+	if pending := clock.Pending(); pending != 0 {
+		t.Fatalf("%d waits left running; started %v", pending, clock.Waits())
+	}
+}
+
 // The command's timeout is on the runner's Timer: started with the
-// request's timeout, it times the run out when it fires, and is stopped
-// once the run is over.
+// request's timeout, it times the run out once the clock passes it, and
+// not a moment before: cancelled a moment short of it, the run is
+// cancelled, not timed out.
+//
+// Contract test: the supervisor's commands against the real shell and its
+// process group. Waiting for a group to end is a bounded poll.
 func TestCommandTimesOutOnItsTimer(t *testing.T) {
-	fired := make(chan time.Time, 1)
-	fired <- time.Time{}
-	var timeout time.Duration
-	stopped := false
-	commands := supervisor.Commands{Timer: func(d time.Duration) (<-chan time.Time, func()) {
-		timeout = d
-		return fired, func() { stopped = true }
-	}}
-	result := commands.Run(context.Background(), supervisor.CommandRequest{Command: blocks, Dir: t.TempDir(), Timeout: time.Hour, Bound: 64}, func(ref string) error {
-		cleanUpGroup(t, ref)
-		return nil
+	t.Parallel()
+	request := supervisor.CommandRequest{Command: blocks, Dir: t.TempDir(), Timeout: time.Hour, Bound: 64}
+	t.Run("passed", func(t *testing.T) {
+		t.Parallel()
+		clock := systemtest.NewClock(start)
+		done := runOn(t, context.Background(), clock, request)
+		clock.Started(time.Hour)
+		clock.Advance(time.Hour)
+		result := <-done
+		if !result.TimedOut || result.Cancelled || result.Error != "" {
+			t.Fatalf("result %+v", result)
+		}
+		released(t, clock)
 	})
-	if !result.TimedOut || result.Cancelled || result.Error != "" || timeout != time.Hour || !stopped {
-		t.Fatalf("result %+v, timer started with %s, stopped %t", result, timeout, stopped)
-	}
+	t.Run("not yet passed", func(t *testing.T) {
+		t.Parallel()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		clock := systemtest.NewClock(start)
+		done := runOn(t, ctx, clock, request)
+		clock.Started(time.Hour)
+		clock.Advance(time.Hour - time.Nanosecond)
+		cancel()
+		result := <-done
+		if result.TimedOut || !result.Cancelled {
+			t.Fatalf("result %+v", result)
+		}
+		released(t, clock)
+	})
 }
-
-// quietTimers is a Commands.Timer that tells the wait for output from the
-// timeout by its length: the timeout never passes, and the n-th wait for
-// output is waits[n], called as it starts.
-type quietTimers struct {
-	mu      sync.Mutex
-	timeout time.Duration
-	waits   []func() <-chan time.Time
-	started int
-	stopped int
-}
-
-func (q *quietTimers) timer(wait time.Duration) (<-chan time.Time, func()) {
-	if wait == q.timeout {
-		return nil, func() {}
-	}
-	q.mu.Lock()
-	n := q.started
-	q.started++
-	q.mu.Unlock()
-	var fired <-chan time.Time
-	if n < len(q.waits) {
-		fired = q.waits[n]()
-	}
-	return fired, func() {
-		q.mu.Lock()
-		defer q.mu.Unlock()
-		q.stopped++
-	}
-}
-
-func (q *quietTimers) counts() (started, stopped int) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-	return q.started, q.stopped
-}
-
-func passed() <-chan time.Time {
-	fired := make(chan time.Time, 1)
-	fired <- time.Time{}
-	return fired
-}
-
-func never() <-chan time.Time { return nil }
 
 // A command that goes without output for the request's NoOutput is killed
-// as stale, before its timeout and not as a timeout.
+// as stale, before its timeout and not as a timeout, once the clock passes
+// NoOutput and not a moment before.
+//
+// Contract test: the supervisor's commands against the real shell and its
+// process group. Waiting for a group to end is a bounded poll.
 func TestCommandWithoutOutputIsKilledAsStale(t *testing.T) {
-	timers := &quietTimers{timeout: time.Hour, waits: []func() <-chan time.Time{passed}}
-	commands := supervisor.Commands{Timer: timers.timer}
-	request := supervisor.CommandRequest{Command: blocks, Dir: t.TempDir(), Timeout: time.Hour, NoOutput: 2 * time.Minute, Bound: 64}
-	result := commands.Run(context.Background(), request, func(ref string) error {
-		cleanUpGroup(t, ref)
-		return nil
+	t.Parallel()
+	const noOutput = 2 * time.Minute
+	request := supervisor.CommandRequest{Command: blocks, Dir: t.TempDir(), Timeout: time.Hour, NoOutput: noOutput, Bound: 64}
+	t.Run("passed", func(t *testing.T) {
+		t.Parallel()
+		clock := systemtest.NewClock(start)
+		done := runOn(t, context.Background(), clock, request)
+		clock.Started(noOutput)
+		clock.Advance(noOutput)
+		result := <-done
+		if !result.Stale || result.TimedOut || result.Cancelled || result.Error != "" || result.ExitCode != nil || result.Signal != "killed" {
+			t.Fatalf("result %+v", result)
+		}
+		released(t, clock)
 	})
-	if !result.Stale || result.TimedOut || result.Cancelled || result.Error != "" || result.ExitCode != nil || result.Signal != "killed" {
-		t.Fatalf("result %+v", result)
-	}
-	if started, stopped := timers.counts(); started != 1 || stopped != 1 {
-		t.Fatalf("waits for output: %d started, %d stopped", started, stopped)
-	}
+	t.Run("not yet passed", func(t *testing.T) {
+		t.Parallel()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		clock := systemtest.NewClock(start)
+		done := runOn(t, ctx, clock, request)
+		clock.Started(noOutput)
+		clock.Advance(noOutput - time.Nanosecond)
+		cancel()
+		result := <-done
+		if result.Stale || !result.Cancelled {
+			t.Fatalf("result %+v", result)
+		}
+		released(t, clock)
+	})
 }
 
 // Each output starts the wait again: the wait is for the time since the
 // last output, so a command that keeps writing is live, and one that stops
 // is stale from its last line.
+//
+// Contract test: the supervisor's commands against the real shell and its
+// process group. Waiting for a group to end is a bounded poll.
 func TestCommandOutputRestartsTheWaitForOutput(t *testing.T) {
-	t.Run("live", func(t *testing.T) {
+	t.Parallel()
+	const noOutput = 2 * time.Minute
+	// run starts a command that writes a line once it reads one from its
+	// gate and exits once it reads another. A minute in, the test lets it
+	// write; another minute on, past the end of the first wait, it returns
+	// with the clock and the gate.
+	run := func(t *testing.T) (*systemtest.Clock, *os.File, <-chan supervisor.CommandResult) {
 		dir := t.TempDir()
-		// The command ends only once its first line restarted the wait.
-		restarted := func() <-chan time.Time {
-			if err := os.WriteFile(filepath.Join(dir, "restarted"), nil, 0o600); err != nil {
-				t.Error(err)
-			}
-			return nil
+		if err := syscall.Mkfifo(filepath.Join(dir, "gate"), 0o600); err != nil {
+			t.Fatal(err)
 		}
-		timers := &quietTimers{timeout: time.Hour, waits: []func() <-chan time.Time{never, restarted}}
-		commands := supervisor.Commands{Timer: timers.timer}
-		request := supervisor.CommandRequest{Command: "echo one; until [ -e restarted ]; do sleep 0.02; done", Dir: dir, Timeout: time.Hour, NoOutput: 2 * time.Minute, Bound: 64}
-		result := commands.Run(context.Background(), request, func(ref string) error {
-			cleanUpGroup(t, ref)
-			return nil
+		// Held for reading and writing, the FIFO opens at once for both
+		// ends, and a line written stays until the command reads it.
+		gate, err := os.OpenFile(filepath.Join(dir, "gate"), os.O_RDWR, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = gate.Close() })
+		clock := systemtest.NewClock(start)
+		done := runOn(t, context.Background(), clock, supervisor.CommandRequest{
+			Command: "read _ < gate; echo one; read _ < gate", Dir: dir, Timeout: time.Hour, NoOutput: noOutput, Bound: 64,
 		})
+		clock.Started(noOutput)
+		clock.Advance(time.Minute)
+		if _, err := gate.WriteString("write\n"); err != nil {
+			t.Fatal(err)
+		}
+		clock.Started(noOutput)
+		clock.Advance(time.Minute)
+		return clock, gate, done
+	}
+	t.Run("live", func(t *testing.T) {
+		t.Parallel()
+		clock, gate, done := run(t)
+		// A moment short of the second wait's end, the command exits.
+		clock.Advance(time.Minute - time.Nanosecond)
+		if _, err := gate.WriteString("exit\n"); err != nil {
+			t.Fatal(err)
+		}
+		result := <-done
 		if result.Stale || result.TimedOut || result.ExitCode == nil || *result.ExitCode != 0 || string(result.Head) != "one\n" {
 			t.Fatalf("result %+v", result)
 		}
-		if started, stopped := timers.counts(); started != 2 || stopped != 2 {
-			t.Fatalf("waits for output: %d started, %d stopped", started, stopped)
-		}
+		released(t, clock)
 	})
 	t.Run("stale after its last output", func(t *testing.T) {
-		timers := &quietTimers{timeout: time.Hour, waits: []func() <-chan time.Time{never, passed}}
-		commands := supervisor.Commands{Timer: timers.timer}
-		request := supervisor.CommandRequest{Command: "echo one; " + blocks, Dir: t.TempDir(), Timeout: time.Hour, NoOutput: 2 * time.Minute, Bound: 64}
-		result := commands.Run(context.Background(), request, func(ref string) error {
-			cleanUpGroup(t, ref)
-			return nil
-		})
+		t.Parallel()
+		clock, _, done := run(t)
+		clock.Advance(time.Minute)
+		result := <-done
 		if !result.Stale || result.TimedOut || string(result.Head) != "one\n" {
 			t.Fatalf("result %+v", result)
 		}
+		released(t, clock)
 	})
 }
 
-// Without a NoOutput only the timeout is started.
+// Without a NoOutput only the timeout is started, and the grace for
+// reading output once the command has exited.
+//
+// Contract test: the supervisor's commands against the real shell and its
+// process group. Waiting for a group to end is a bounded poll.
 func TestCommandWithoutANoOutputLimitStartsNoWaitForOutput(t *testing.T) {
-	timers := &quietTimers{timeout: time.Hour}
-	commands := supervisor.Commands{Timer: timers.timer}
-	result := commands.Run(context.Background(), supervisor.CommandRequest{Command: "echo one", Dir: t.TempDir(), Timeout: time.Hour, Bound: 64}, func(ref string) error {
-		cleanUpGroup(t, ref)
-		return nil
-	})
-	if started, _ := timers.counts(); started != 0 || result.Stale || result.ExitCode == nil {
-		t.Fatalf("result %+v, waits for output started %d", result, started)
+	t.Parallel()
+	clock := systemtest.NewClock(start)
+	result := <-runOn(t, context.Background(), clock, supervisor.CommandRequest{Command: "echo one", Dir: t.TempDir(), Timeout: time.Hour, Bound: 64})
+	if waits := clock.Waits(); !reflect.DeepEqual(waits, []time.Duration{time.Hour, grace}) || result.Stale || result.ExitCode == nil {
+		t.Fatalf("result %+v, waits started %v", result, waits)
 	}
+	released(t, clock)
+}
+
+// Output a descendant that left the group holds open cannot hold the run
+// past the grace, which starts at the exit; until the grace has passed,
+// the output is read.
+//
+// Serial: t.Setenv, which tells the re-executed test binary its role.
+//
+// Contract test: the supervisor's commands against the real shell and its
+// process group. Waiting for a group to end is a bounded poll.
+func TestCommandOutputHeldOutsideTheGroupDoesNotHoldTheRun(t *testing.T) {
+	pidFile := filepath.Join(t.TempDir(), "pid")
+	t.Setenv(helperEnv, "escape")
+	t.Setenv("PID_FILE", pidFile)
+	t.Cleanup(func() {
+		if data, err := os.ReadFile(pidFile); err == nil {
+			if pid, err := strconv.Atoi(strings.TrimSpace(string(data))); err == nil && pid > 1 {
+				_ = syscall.Kill(pid, syscall.SIGKILL)
+			}
+		}
+	})
+	dir := t.TempDir()
+	if err := syscall.Mkfifo(filepath.Join(dir, "gate"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gate, err := os.OpenFile(filepath.Join(dir, "gate"), os.O_RDWR, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = gate.Close() })
+	clock := systemtest.NewClock(start)
+	// The command stays, after the process that escapes, until it reads a
+	// line from its gate: its output is read on a goroutine of its own,
+	// and the wait for output that starts again says the line was read.
+	const noOutput = 2 * time.Minute
+	done := runOn(t, context.Background(), clock, supervisor.CommandRequest{
+		Command: "'" + os.Args[0] + "'; read _ < gate", Dir: dir, Timeout: time.Hour, NoOutput: noOutput, Bound: 64,
+	})
+	clock.Started(noOutput)
+	clock.Started(noOutput)
+	if _, err := gate.WriteString("exit\n"); err != nil {
+		t.Fatal(err)
+	}
+	// The escaped child never exits on its own: only the grace, started
+	// at the exit, ends the read.
+	clock.Started(grace)
+	clock.Advance(grace - time.Nanosecond)
+	select {
+	case result := <-done:
+		t.Fatalf("returned a moment short of the grace: %+v", result)
+	default:
+	}
+	clock.Advance(time.Nanosecond)
+	result := <-done
+	if result.ExitCode == nil || *result.ExitCode != 0 || string(result.Head) != "started\n" {
+		t.Fatalf("result %+v", result)
+	}
+	released(t, clock)
 }

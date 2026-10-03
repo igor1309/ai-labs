@@ -7,13 +7,18 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/pages"
 )
 
 // The pages read a run's owner from the run store agister run writes: an
 // unfinished run is running while a process holds its owner.lock, and lost
 // once none does or there is no lock at all.
+//
+// Contract test: the kernel's flock on a run's owner.lock, as the pages'
+// run store reads it.
 func TestPagesReadTheRunsOwnersFromTheRunStore(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	runs := tempDir(t)
 	unfinished := func(id string) {
@@ -36,7 +41,13 @@ func TestPagesReadTheRunsOwnersFromTheRunStore(t *testing.T) {
 	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		t.Fatal(err)
 	}
-	store := pagesEnv().Observe(runs)
+	appends := fsruns.NewAppends()
+	store := pagesEnv(appends).Observe(runs)
+	// It signals through the appends the process was given, as the
+	// process's other run stores do.
+	if want := (fsruns.Store{Dir: runs, Appends: appends}); store != pages.RunObserver(want) {
+		t.Fatalf("the pages' run store = %+v, want %+v", store, want)
+	}
 	status := func(id string) string {
 		t.Helper()
 		detail, err := pages.ReadRun(ctx, runs, store, id)

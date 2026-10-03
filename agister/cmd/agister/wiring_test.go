@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -20,7 +21,9 @@ import (
 	"github.com/igor1309/ai-labs/agister/examples"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
@@ -93,7 +96,11 @@ func (m *marker) asked() (lists, reads int) {
 // write scope. Wiring any of them to the live settings would defeat the
 // snapshot. Each is exercised by name, and what it asked of each source is
 // asserted: a use case or scope added later needs its own row here.
+//
+// Contract test: the composition's adapters over a real git repository and
+// the filesystem.
 func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
+	t.Parallel()
 	project := repository(t, "x")
 	if err := os.MkdirAll(filepath.Join(project, ".agister"), 0o755); err != nil {
 		t.Fatal(err)
@@ -107,8 +114,13 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 		"in project":  {cwd: project, project: true},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			home := tempDir(t)
-			client, background, err := wire(cli.Config{Home: home, Cwd: tc.cwd})
+			config := cli.Config{Home: home, Cwd: tc.cwd}
+			// Inspecting an agent asks its runtime's version: of a fake run
+			// in process, not of a runtime this machine has.
+			composed := inProcess(config)
+			client, background, err := composed.wire(config)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -133,11 +145,7 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 					if err != nil {
 						return err
 					}
-					store := fsruns.Store{Dir: filepath.Join(home, "runs")}
-					eventually(t, "the submitted call to finish", func() bool {
-						_, state, err := store.Get(ctx, id)
-						return err == nil && state == domain.StateFinished
-					})
+					<-composed.hosted.Done(id)
 					return nil
 				},
 			}
@@ -191,9 +199,13 @@ func gatedOf(t *testing.T, client contract.Client) *app.Gated {
 
 // The built client starts the one background reaper every build shares,
 // over the run store, the supervisor's processes and the git workspaces.
+//
+// Contract test: the composition's reaper over the run store on the real
+// filesystem, and the kernel's flock on a run's owner.lock.
 func TestBuiltClientSharesTheBackgroundReaper(t *testing.T) {
+	t.Parallel()
 	home := tempDir(t)
-	client, background, err := wire(cli.Config{Home: home})
+	client, background, err := wire(cli.Config{Home: home}, fsruns.NewAppends())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,9 +235,15 @@ func errorsOf(reaped map[string]any) []string {
 
 // Submitting a call on the built client reaps the runs a killed process
 // abandoned: here one that recorded a checkout and whose owner is gone.
+//
+// Contract test: the composition's reaper over the run store on the real
+// filesystem, and the kernel's flock on a run's owner.lock.
 func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
+	t.Parallel()
 	home := tempDir(t)
-	client, background, err := wire(cli.Config{Home: home})
+	config := cli.Config{Home: home}
+	composed := process(config, fsruns.NewAppends())
+	client, background, err := composed.wire(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,18 +307,19 @@ func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
 		t.Fatalf("reap of the old run recorded errors %q, want %q among them", errorsOf(reaped), want)
 	}
 	// The call that triggered it is its own run, and finishes on its own.
-	eventually(t, "the submitted call to finish", func() bool {
-		_, state, err := store.Get(context.Background(), id)
-		return err == nil && state == domain.StateFinished
-	})
+	<-composed.hosted.Done(id)
 }
 
 // The built reaper asks the run store which checkouts runs some process
 // still owns use: an abandoned run's checkout that such a run also uses is
 // left in place, not discarded from under it.
+//
+// Contract test: the composition's reaper over the run store on the real
+// filesystem, and the kernel's flock on a run's owner.lock.
 func TestBuiltReaperLeavesACheckoutARunningRunUses(t *testing.T) {
+	t.Parallel()
 	home := tempDir(t)
-	_, background, err := wire(cli.Config{Home: home})
+	_, background, err := wire(cli.Config{Home: home}, fsruns.NewAppends())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -353,12 +372,16 @@ func TestBuiltReaperLeavesACheckoutARunningRunUses(t *testing.T) {
 
 // A reap that fails is logged: nobody waits for it, and no run record says
 // so. Here the run store cannot be listed.
+//
+// Contract test: the composition's reaper over the run store on the real
+// filesystem, and the kernel's flock on a run's owner.lock.
 func TestBuiltReaperLogsAFailedReap(t *testing.T) {
+	t.Parallel()
 	home := tempDir(t)
 	if err := os.WriteFile(filepath.Join(home, "runs"), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, background, err := wire(cli.Config{Home: home})
+	_, background, err := wire(cli.Config{Home: home}, fsruns.NewAppends())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -391,8 +414,12 @@ func TestBuiltReaperLogsAFailedReap(t *testing.T) {
 // The adapters the composition builds share its worktree coordinator:
 // while a caller's checkout holds a repository, the verifier's copy and the
 // reaper's discard there wait for it. What waits is decided by the held
-// command, never by timing: the deadline only guards against a hang.
+// command, never by timing.
+//
+// Contract test: the composition's worktree coordinator over real git and
+// its lock files.
 func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
+	t.Parallel()
 	repo := repository(t, "x")
 	const runs, waits = "runs", "waits"
 	// Until released, every worktree command reports that it runs, and
@@ -445,8 +472,6 @@ func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
 			}
 		case err := <-worker:
 			t.Fatalf("%s ended without meeting the held checkout: %v", what, err)
-		case <-time.After(time.Minute):
-			t.Fatalf("%s did not reach the coordinator", what)
 		}
 	}
 	var release func() error
@@ -456,14 +481,7 @@ func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
 	pass := sync.OnceFunc(func() { close(released) })
 	t.Cleanup(func() {
 		pass()
-		joined := make(chan struct{})
-		go func() { workers.Wait(); close(joined) }()
-		select {
-		case <-joined:
-		case <-time.After(time.Minute):
-			t.Error("a worker still runs with its command released")
-			return
-		}
+		workers.Wait()
 		if release != nil {
 			if err := release(); err != nil {
 				t.Errorf("releasing the checkout: %v", err)
@@ -490,22 +508,21 @@ func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
 	for what, worker := range map[string]<-chan error{
 		"the caller's checkout": checkout, "the verifier's copy": copying, "the reaper's discard": discarding,
 	} {
-		select {
-		case err := <-worker:
-			if err != nil {
-				t.Errorf("%s: %v", what, err)
-			}
-		case <-time.After(time.Minute):
-			t.Fatalf("%s did not end", what)
+		if err := <-worker; err != nil {
+			t.Errorf("%s: %v", what, err)
 		}
 	}
 }
 
 // The process's worktree coordinator keeps its lock files under the home:
 // a checkout and its release leave one there, empty.
+//
+// Contract test: the composition's worktree coordinator over real git and
+// its lock files.
 func TestTheProcessWorktreeCoordinatorLocksUnderTheHome(t *testing.T) {
+	t.Parallel()
 	home, repo := tempDir(t), repository(t, "x")
-	adapters := process(cli.Config{Home: home}).workspaces()
+	adapters := process(cli.Config{Home: home}, fsruns.NewAppends()).workspaces()
 	_, release, err := adapters.calls.Checkout(context.Background(), repo, "main")
 	if err != nil {
 		t.Fatal(err)
@@ -523,5 +540,141 @@ func TestTheProcessWorktreeCoordinatorLocksUnderTheHome(t *testing.T) {
 	}
 	if info, err := entries[0].Info(); err != nil || !info.Mode().IsRegular() || info.Size() != 0 {
 		t.Fatalf("lock file %s: %v, %v", entries[0].Name(), info, err)
+	}
+}
+
+// started is a starter that keeps the command of each process it is asked
+// to start, with its arguments, and starts it in process.
+type started struct {
+	runtimetest.InProcess
+
+	mu       sync.Mutex
+	commands [][]string
+}
+
+func (s *started) Start(command supervisor.Command) (supervisor.Process, error) {
+	s.mu.Lock()
+	s.commands = append(s.commands, append([]string{command.Name}, command.Args...))
+	s.mu.Unlock()
+	return s.InProcess.Start(command)
+}
+
+// The composition the tests run in process waits on no wall clock: a wait
+// of zero on its timer, or on its poll, has passed at the time its clock
+// that never moves is set to, which the wall clock does not tell.
+func TestTheInProcessCompositionWaitsOnAClockThatNeverMoves(t *testing.T) {
+	t.Parallel()
+	c := inProcess(cli.Config{Home: tempDir(t)})
+	for name, timer := range map[string]timer{"its turns and commands": c.timer, "its observing": c.poll} {
+		fired, stop := timer(0)
+		if at := <-fired; !at.Equal(stillAt) {
+			t.Errorf("%s wait on a clock that tells %v, want %v", name, at, stillAt)
+		}
+		stop()
+	}
+}
+
+// The process's starter is the operating system's, and a composition
+// starts its runtimes through the one it holds: a call over a starter of
+// the test's asks it for the agent's runtime, its version and its turn.
+//
+// Contract test: the composition's adapters over a real git repository and
+// the filesystem.
+func TestTheCompositionStartsItsRuntimesThroughItsStarter(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	config := cli.Config{Home: home, Cwd: repo}
+	composed := process(config, fsruns.NewAppends())
+	if composed.starter != (supervisor.Exec{}) {
+		t.Fatalf("the process starts its runtimes with a %T", composed.starter)
+	}
+	starter := &started{}
+	composed.starter = starter
+	// The call waits on a clock that never moves, not on the process's.
+	composed.timer = systemtest.NewClock(stillAt).Timer
+	client, _, err := composed.wire(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := client.Submit(context.Background(), contract.CallRequest{
+		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "1m", Cwd: repo,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-composed.hosted.Done(id)
+	if record := lastRun(t, home).record; record["result"].(map[string]any)["status"] != "completed" {
+		t.Fatalf("record = %v", record)
+	}
+	starter.mu.Lock()
+	defer starter.mu.Unlock()
+	var version, turn bool
+	for _, command := range starter.commands {
+		if command[0] != "claude" {
+			t.Fatalf("started %q, not the agent's runtime", command)
+		}
+		if len(command) == 2 && command[1] == "--version" {
+			version = true
+		} else {
+			turn = true
+		}
+	}
+	if !version || !turn {
+		t.Fatalf("started %q, want the runtime's version and its turn", starter.commands)
+	}
+}
+
+// The process's commands start through the operating system, which also
+// reaps what its runs left, over the run store under its home; and a
+// composition starts its commands through the starter it holds: a call
+// over a starter of the test's asks it for bash, once for the checkout's
+// setup and once for the verification, and for no runtime.
+//
+// Contract test: the composition's adapters over a real git repository and
+// the filesystem.
+func TestTheCompositionStartsItsCommandsThroughItsStarter(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	write(t, filepath.Join(home, "workspace.yaml"), "schema: agister.workspace/v1alpha1\nsetup:\n  command: echo prepared\n  timeout: 20s\n")
+	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))
+	write(t, filepath.Join(home, "processes", "verified.yaml"), strings.Replace(shipped, "name: adversarial_review", "name: verified", 1)+`
+verify:
+  command: test -f a.txt
+  timeout: 20s
+  max_attempts: 1
+  instruction: The verification command failed.
+`)
+	config := cli.Config{Home: home, Cwd: repo}
+	appends := fsruns.NewAppends()
+	composed := process(config, appends)
+	if composed.commands != (supervisor.Exec{}) || composed.processes != (supervisor.Processes{}) {
+		t.Fatalf("the process starts its commands with a %T and reaps with a %T", composed.commands, composed.processes)
+	}
+	// Its run store signals through the appends the process was given.
+	if want := (fsruns.Store{Dir: filepath.Join(home, "runs"), Appends: appends}); composed.runs != want {
+		t.Fatalf("the process's run store = %+v, want %+v", composed.runs, want)
+	}
+	starter := &started{}
+	composed.starter, composed.commands = runtimetest.InProcess{}, starter
+	// The call waits on a clock that never moves, not on the process's.
+	composed.timer = systemtest.NewClock(stillAt).Timer
+	client, _, err := composed.wire(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := client.Submit(context.Background(), contract.CallRequest{
+		Process: "verified", Params: map[string]string{"base": "main"}, Timeout: "1m", Cwd: repo,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-composed.hosted.Done(id)
+	if record := lastRun(t, home).record; record["result"].(map[string]any)["status"] != "completed" {
+		t.Fatalf("record = %v", record)
+	}
+	starter.mu.Lock()
+	defer starter.mu.Unlock()
+	if want := [][]string{{"bash", "-c", "echo prepared"}, {"bash", "-c", "test -f a.txt"}}; !reflect.DeepEqual(starter.commands, want) {
+		t.Fatalf("started %q, want %q", starter.commands, want)
 	}
 }

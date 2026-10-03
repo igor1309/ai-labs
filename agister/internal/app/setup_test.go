@@ -45,6 +45,7 @@ func definitionKinds(record run.Record) []string {
 // first turn, its process group on record; the record names the setup,
 // the document it came from and that document's digest.
 func TestTheWorkspaceSetupRunsInTheCheckoutBeforeTheFirstTurn(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	withWorkspace(h, workspaceSetup)
 	turnsDuringSetup := -1
@@ -85,6 +86,7 @@ func TestTheWorkspaceSetupRunsInTheCheckoutBeforeTheFirstTurn(t *testing.T) {
 // A process's own setup replaces the workspace's whole, and the workspace
 // document, unused, is not read.
 func TestAProcessesOwnSetupReplacesTheWorkspaces(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	withWorkspace(h, workspaceSetup)
 	ownSetup(h)
@@ -108,6 +110,7 @@ func TestAProcessesOwnSetupReplacesTheWorkspaces(t *testing.T) {
 // Without a checkout the agent works in the repository itself: no setup
 // runs, whatever the workspace declares.
 func TestAProcessWithoutACheckoutRunsNoSetup(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	withWorkspace(h, workspaceSetup)
 	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n  checkout: candidate_revision\n", "", 1)
@@ -124,6 +127,7 @@ func TestAProcessWithoutACheckoutRunsNoSetup(t *testing.T) {
 
 // Workspace settings that do not parse refuse the call before any effect.
 func TestInvalidWorkspaceSettingsRefuseTheCall(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	withWorkspace(h, "schema: agister.workspace/v1alpha1\nsetup: {command: ./link-config.sh}\n")
 	record := h.call(t, contract.CallRequest{})
@@ -140,6 +144,7 @@ func TestInvalidWorkspaceSettingsRefuseTheCall(t *testing.T) {
 // changes the checkout's content fails the call before any turn; the run
 // is on record and the checkout is released.
 func TestAFailedSetupFailsTheCallBeforeAnyTurn(t *testing.T) {
+	t.Parallel()
 	cases := map[string]struct {
 		arrange func(h *harness)
 		want    string
@@ -199,6 +204,7 @@ func TestAFailedSetupFailsTheCallBeforeAnyTurn(t *testing.T) {
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			h := newHarness()
 			withWorkspace(h, workspaceSetup)
 			c.arrange(h)
@@ -226,6 +232,7 @@ func TestAFailedSetupFailsTheCallBeforeAnyTurn(t *testing.T) {
 // and run no setup again, and the verification command's clean copies
 // run none.
 func TestSetupRunsOnceAndNotInTheVerificationCopy(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	verifying(h)
 	withWorkspace(h, workspaceSetup)
@@ -261,6 +268,7 @@ func TestSetupRunsOnceAndNotInTheVerificationCopy(t *testing.T) {
 // a checkout hook changed it, fails the call before its setup runs: the
 // setup is held to the revision's content, not to what it found.
 func TestACheckoutChangedBeforeItsSetupFailsTheCall(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	withWorkspace(h, workspaceSetup)
 	h.changes.patch = func(from, to string) []byte {
@@ -288,6 +296,7 @@ func TestACheckoutChangedBeforeItsSetupFailsTheCall(t *testing.T) {
 // A setup whose run cannot be put on record fails the call, though the
 // command passed: no turn runs on a setup the record does not show.
 func TestASetupRunThatCannotBeRecordedFailsTheCall(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	withWorkspace(h, workspaceSetup)
 	h.recorder.updateErr = func(record run.Record) error {
@@ -310,11 +319,12 @@ func TestASetupRunThatCannotBeRecordedFailsTheCall(t *testing.T) {
 // cancelled, before any turn; the run is on record as cancelled and the
 // checkout is released.
 func TestCancellingDuringTheSetupCancelsTheCall(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	withWorkspace(h, workspaceSetup)
 	started := make(chan struct{})
 	h.setup.block, h.setup.started = true, started
-	runs := app.NewRuns(nil, h.hosted, 0)
+	runs := app.NewRuns(nil, nil, h.hosted, nil, 0)
 	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
@@ -324,8 +334,6 @@ func TestCancellingDuringTheSetupCancelsTheCall(t *testing.T) {
 	case <-started:
 	case record := <-h.recorder.finished:
 		t.Fatalf("the call ended before its setup started: %+v", record.Result)
-	case <-time.After(hangGuard):
-		t.Fatal("the setup never started")
 	}
 	if err := runs.Cancel(context.Background(), "run-1"); err != nil {
 		t.Fatal(err)
@@ -381,6 +389,7 @@ func (s *verifierSpy) Verify(_ context.Context, call app.VerifyCall) (string, *r
 // the first turn, and verify through the verifier they are given, after
 // it: each collaborator is asked for its own part only.
 func TestCallsPrepareAndVerifyThroughTheirOwnCollaborators(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	verifying(h)
 	withWorkspace(h, workspaceSetup)
@@ -431,6 +440,7 @@ func steps(contents ...string) func() string {
 // check validates the workspace settings, reports a setup without a
 // checkout, and shows which processes the workspace's setup applies to.
 func TestCheckValidatesWorkspaceSettingsAndSetups(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: q", 1),
 		"workspace:\n  checkout: candidate_revision\n", "workspace:\n  setup: {command: ./s.sh, timeout: 1m}\n", 1)

@@ -37,6 +37,7 @@ func (s *codexStandIn) RunTurn(ctx context.Context, r codex.TurnRequest, sink co
 	return s.result
 }
 func TestCodexApplicationAdapter(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	code := 7
@@ -82,6 +83,7 @@ func TestCodexApplicationAdapter(t *testing.T) {
 	}
 }
 func TestCodexSupervisorAdapter(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	code := 7

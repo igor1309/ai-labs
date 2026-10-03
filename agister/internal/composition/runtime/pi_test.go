@@ -37,6 +37,7 @@ func (s *piStandIn) RunTurn(ctx context.Context, r pi.TurnRequest, sink pi.Event
 	return s.result
 }
 func TestPiApplicationAdapter(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	code := 7
@@ -82,6 +83,7 @@ func TestPiApplicationAdapter(t *testing.T) {
 	}
 }
 func TestPiSupervisorAdapter(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	code := 7

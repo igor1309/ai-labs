@@ -10,6 +10,7 @@ import (
 // ADR-014 rule 4: a prompt is part of the process that names it, so one
 // the settings lack is a problem of that process.
 func TestAProcessNamingAPromptTheSettingsLackHasAProblem(t *testing.T) {
+	t.Parallel()
 	b := bundle()
 	p := b.Processes["p"]
 	p.Values = append(p.Values, definition.Value{Name: "rules", Source: definition.PromptSource, Args: map[string]string{"name": "review"}})

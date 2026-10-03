@@ -12,10 +12,10 @@ still apply.
   run with their own brief; only a failing verify goes back to the same
   session, which Agister does itself.
 - Test commands, from `agister/`, quiet (never `-v`: one line per package,
-  details only for failures): `go test -count=1 ./<pkg>/...` for what you
+  details only for failures): `go test -count=1 -timeout 1m ./<pkg>/...` for what you
   touched, `-run <Test>` to narrow; the full check is
-  `test -z "$(gofmt -l .)" && go vet ./... && go test -count=1 ./... &&
-  go test -race -count=1 ./internal/app/...` (about 30 s).
+  `test -z "$(gofmt -l .)" && go vet ./... && go test -count=1 -timeout 1m ./... &&
+  go test -race -count=1 -timeout 1m ./internal/app/...` (about 30 s).
 - Verify the result yourself as the root `AGENTS.md` says:
   `scripts/handoff-check.py`, then the tests. No mutation or revert checks.
 - Review a committed candidate with

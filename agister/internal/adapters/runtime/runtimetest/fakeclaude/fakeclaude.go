@@ -1,10 +1,10 @@
-// Command fakeclaude stands in for `claude -p --output-format stream-json`.
+// Package fakeclaude stands in for `claude -p --output-format stream-json`.
 // The scenario is chosen by a SCENARIO:<name> marker in the prompt (stdin).
 // Its first line echoes argv, cwd and prompt for tests. Every turn costs
 // turnCost; with $FAKE_CLAUDE_CONFIG_DIR set, it keeps each session's cost
 // in a transcript there as Claude Code does in its configuration
 // directory, and reports the session's total.
-package main
+package fakeclaude
 
 import (
 	"encoding/json"
@@ -14,20 +14,21 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeoutput"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeproc"
 )
 
-func main() {
-	args := os.Args[1:]
+// Main is the fake as the process p; it returns the code it exits with.
+func Main(p fakeproc.Process) int {
+	args := p.Args
 	if len(args) == 1 && args[0] == "--version" {
-		version := os.Getenv("FAKE_VERSION")
+		version := p.Getenv("FAKE_VERSION")
 		if version == "" {
 			version = "2.1.283"
 		}
-		fmt.Printf("%s (Claude Code)\n", version)
-		return
+		fmt.Fprintf(p.Stdout, "%s (Claude Code)\n", version)
+		return 0
 	}
 	flag := func(name string) string {
 		for i, arg := range args {
@@ -37,10 +38,10 @@ func main() {
 		}
 		return ""
 	}
-	input, _ := io.ReadAll(os.Stdin)
+	input, _ := io.ReadAll(p.Stdin)
 	prompt := string(input)
 	scenario := "approve"
-	fromSchema := fakeoutput.Enabled(os.Getenv)
+	fromSchema := fakeoutput.Enabled(p.Getenv)
 	if match := regexp.MustCompile(`SCENARIO:([a-z_]+)`).FindStringSubmatch(prompt); match != nil {
 		scenario = match[1]
 	}
@@ -55,42 +56,40 @@ func main() {
 	}
 	emit := func(message any) {
 		data, _ := json.Marshal(message)
-		fmt.Println(string(data))
+		fmt.Fprintln(p.Stdout, string(data))
 	}
-	cwd, _ := os.Getwd()
+	cwd := p.Dir
 	emit(map[string]any{"type": "system", "subtype": "init", "session_id": session, "model": "fake-model", "tools": []string{"Read"}, "cwd": cwd, "argv": args, "prompt": prompt})
 
 	switch scenario {
 	case "hang":
 		// Never ends on its own: only a kill ends it.
-		for {
-			time.Sleep(time.Hour)
-		}
+		return p.Block()
 	case "exit_nonzero":
-		fmt.Fprintln(os.Stderr, "fatal: provider exploded")
-		os.Exit(3)
+		fmt.Fprintln(p.Stderr, "fatal: provider exploded")
+		return 3
 	case "exit_silent":
-		os.Exit(3)
+		return 3
 	case "exit_flooded":
 		// More stderr than any bound keeps, then the reason.
-		fmt.Fprintln(os.Stderr, strings.Repeat("noise ", 4000))
-		fmt.Fprintln(os.Stderr, "fatal: provider exploded")
-		os.Exit(3)
+		fmt.Fprintln(p.Stderr, strings.Repeat("noise ", 4000))
+		fmt.Fprintln(p.Stderr, "fatal: provider exploded")
+		return 3
 	case "no_result":
-		return
+		return 0
 	case "edit":
-		os.WriteFile("written-by-agent.txt", []byte("hello\n"), 0o600)
+		os.WriteFile(p.Path("written-by-agent.txt"), []byte("hello\n"), 0o600)
 	}
 	emit(map[string]any{"type": "assistant", "message": map[string]any{"content": []any{map[string]any{"type": "tool_use", "id": "toolu_1", "name": "Read", "input": map[string]any{"file_path": "a.txt"}}}}})
 	emit(map[string]any{"type": "user", "message": map[string]any{"content": []any{map[string]any{"type": "tool_result", "tool_use_id": "toolu_1", "content": "ok"}}}})
 	emit(map[string]any{"type": "assistant", "message": map[string]any{"content": []any{map[string]any{"type": "text", "text": "Done looking."}}}})
-	fmt.Println("{broken")
+	fmt.Fprintln(p.Stdout, "{broken")
 
 	if scenario == "error_result" {
 		emit(map[string]any{"type": "result", "subtype": "error_during_execution", "is_error": true, "session_id": session, "errors": []string{"tool crashed"}})
-		return
+		return 0
 	}
-	result := map[string]any{"type": "result", "subtype": "success", "is_error": false, "session_id": session, "result": "All good.", "num_turns": 2, "total_cost_usd": sessionCost(session, cwd), "duration_ms": 3400, "permission_denials": []any{map[string]any{"tool_name": "Edit"}},
+	result := map[string]any{"type": "result", "subtype": "success", "is_error": false, "session_id": session, "result": "All good.", "num_turns": 2, "total_cost_usd": sessionCost(p, session, cwd), "duration_ms": 3400, "permission_denials": []any{map[string]any{"tool_name": "Edit"}},
 		"usage": map[string]any{"input_tokens": 100, "output_tokens": 50, "cache_read_input_tokens": 10, "cache_creation_input_tokens": 5}}
 	if flag("--json-schema") != "" && scenario != "no_structured_output" {
 		result["structured_output"] = outputs(scenario)
@@ -101,6 +100,7 @@ func main() {
 		}
 	}
 	emit(result)
+	return 0
 }
 
 const turnCost = 0.0123
@@ -110,8 +110,8 @@ const turnCost = 0.0123
 // projects/<cwd>/<session>.jsonl, wherever the session started. Without
 // $FAKE_CLAUDE_CONFIG_DIR, only this turn's: the fake never writes to a
 // real configuration directory.
-func sessionCost(session, cwd string) float64 {
-	dir := os.Getenv("FAKE_CLAUDE_CONFIG_DIR")
+func sessionCost(p fakeproc.Process, session, cwd string) float64 {
+	dir := p.Getenv("FAKE_CLAUDE_CONFIG_DIR")
 	if dir == "" {
 		return turnCost
 	}

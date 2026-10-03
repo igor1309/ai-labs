@@ -16,6 +16,7 @@ func verify(timeout string, attempts int) string {
 // Rule 3: verify.max_attempts may not exceed the service's
 // max_verify_attempts; it is invalid, never clamped.
 func TestVerifyAttemptsAboveTheServiceCeilingAreInvalid(t *testing.T) {
+	t.Parallel()
 	pol := researchPolicy(t)
 	cases := []struct {
 		ceiling, attempts int
@@ -28,6 +29,7 @@ func TestVerifyAttemptsAboveTheServiceCeilingAreInvalid(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("%d of %d", c.attempts, c.ceiling), func(t *testing.T) {
+			t.Parallel()
 			ceilinged := service
 			ceilinged.MaxVerifyAttempts = c.ceiling
 			_, err := policy.Compose(ceilinged, &pol, process(t, verify("5m", c.attempts)), policy.Caller{})
@@ -44,6 +46,7 @@ func TestVerifyAttemptsAboveTheServiceCeilingAreInvalid(t *testing.T) {
 // Rule 4: a run may not outlast the call, whether the effective timeout
 // comes from the policy, the process or the caller.
 func TestVerifyTimeoutAboveTheEffectiveTimeoutIsInvalid(t *testing.T) {
+	t.Parallel()
 	pol := researchPolicy(t) // timeout 20m
 	withCeiling := service
 	withCeiling.MaxVerifyAttempts = 1
@@ -62,6 +65,7 @@ func TestVerifyTimeoutAboveTheEffectiveTimeoutIsInvalid(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			_, err := policy.Compose(withCeiling, &pol, process(t, c.extra), c.caller)
 			if c.problem == "" && err != nil {
 				t.Fatal(err)

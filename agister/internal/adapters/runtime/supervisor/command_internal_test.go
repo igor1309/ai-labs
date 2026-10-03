@@ -11,6 +11,7 @@ import (
 // told of yet does not make the command stale, whichever of the two the
 // watcher takes first: the wait starts again from that output.
 func TestAWaitThatPassesBesideAnOutputIsNotStale(t *testing.T) {
+	t.Parallel()
 	// Which of two ready channels a select takes is random: both orders
 	// are taken over the rounds.
 	for round := 0; round < 200; round++ {
@@ -50,6 +51,7 @@ func TestAWaitThatPassesBesideAnOutputIsNotStale(t *testing.T) {
 
 // A wait that passes without an output since it started is silence.
 func TestAWaitThatPassesWithoutAnOutputIsStale(t *testing.T) {
+	t.Parallel()
 	output := &boundedOutput{bound: 8, digest: sha256.New(), wrote: make(chan struct{}, 1)}
 	if _, err := output.Write([]byte("early")); err != nil {
 		t.Fatal(err)

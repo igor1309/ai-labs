@@ -12,6 +12,7 @@ import (
 )
 
 func TestConclude(t *testing.T) {
+	t.Parallel()
 	jsonOutput := definition.Output{Format: "json"}
 	text := definition.Output{Format: "text"}
 	completed := run.Turn{Status: run.Completed, Output: []byte(`{"verdict":"request_changes"}`)}
@@ -44,6 +45,7 @@ func TestConclude(t *testing.T) {
 }
 
 func TestEveryClassBelongsToOneStatus(t *testing.T) {
+	t.Parallel()
 	want := map[run.Class]run.Status{
 		run.ClassRefused: run.Failed, run.ClassInvalidOutput: run.Failed, run.ClassBudgetExhausted: run.Failed,
 		run.ClassRateLimited: run.Failed, run.ClassAuth: run.Failed, run.ClassContextOverflow: run.Failed,
@@ -62,6 +64,7 @@ func TestEveryClassBelongsToOneStatus(t *testing.T) {
 // definitions, the effective limits and the plan is fixed here, whatever
 // the packages that decide them do with their own types.
 func TestRecordJSONForDefinitionsPolicyAndPlanIsFixed(t *testing.T) {
+	t.Parallel()
 	cost := 0.5
 	record := run.Record{
 		Schema: run.RecordSchema,
@@ -113,6 +116,7 @@ func TestRecordJSONForDefinitionsPolicyAndPlanIsFixed(t *testing.T) {
 // A record written while policies could declare constraints still reads:
 // the constraints it recorded are ignored, and everything else is kept.
 func TestRecordWithConstraintsStillReads(t *testing.T) {
+	t.Parallel()
 	data := `{"id":"run-0","effective":{"timeout":1200000000000,"max_attempts":1,"allow":["repository.read"],"deny":[],` +
 		`"permissions":["repository.read"],"access":"read-only","scope":"candidate",` +
 		`"constraints":[{"subject":"agent.model_family","candidate_input":"candidate","on_unknown":"fail"}]}}`
@@ -130,6 +134,7 @@ func TestRecordWithConstraintsStillReads(t *testing.T) {
 // Usage, cost and runtime sum every turn of a call; what some turn did not
 // report is unknown for the call, never a partial sum.
 func TestSumAddsUpEveryTurn(t *testing.T) {
+	t.Parallel()
 	n := func(v int64) *int64 { return &v }
 	usd := func(v float64) *float64 { return &v }
 	one := run.Turn{CostUSD: usd(0.25), RuntimeMS: n(100), Usage: &run.Usage{InputTokens: n(10), OutputTokens: n(5), CacheReadTokens: n(1)}}
@@ -153,6 +158,7 @@ func TestSumAddsUpEveryTurn(t *testing.T) {
 // resumed one whose earlier totals are unknown. Figures reported only as
 // the turn's own are kept.
 func TestOwnIsWhatTheTurnAddedToItsSession(t *testing.T) {
+	t.Parallel()
 	n := func(v int64) *int64 { return &v }
 	usd := func(v float64) *float64 { return &v }
 	reported := func(before *run.SessionTotals) run.Turn {
@@ -198,6 +204,7 @@ func TestOwnIsWhatTheTurnAddedToItsSession(t *testing.T) {
 // reaped, whether or not it saved a turn. Runs in other sessions, runs that
 // started no process and ran no turn, and the run asking do not count.
 func TestLatestTotalsAreTheSessionsLatestRecordedTurn(t *testing.T) {
+	t.Parallel()
 	usd := func(v float64) *float64 { return &v }
 	at := func(minute int) *time.Time {
 		moment := time.Date(2026, 9, 30, 9, minute, 0, 0, time.UTC)

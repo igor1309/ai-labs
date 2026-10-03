@@ -132,6 +132,7 @@ func installerOver(check app.InstallCheck) (*app.Installer, *installHomeSpy, *in
 }
 
 func TestInstallerRefusesAResultItsCheckFindsAProblemIn(t *testing.T) {
+	t.Parallel()
 	check := &installCheckStub{report: contract.CheckReport{
 		Problems: []contract.Problem{{Message: "agent reviewer: runtime: is required"}},
 		Warnings: []string{"not shown"},
@@ -157,6 +158,7 @@ func TestInstallerRefusesAResultItsCheckFindsAProblemIn(t *testing.T) {
 }
 
 func TestInstallerPlansWithTheWarningsItsCheckReports(t *testing.T) {
+	t.Parallel()
 	warnings := []string{"process p: verification runs with the operator's authority"}
 	check := &installCheckStub{report: contract.CheckReport{Warnings: warnings}}
 	installer, home, backups := installerOver(check)
@@ -180,6 +182,7 @@ func TestInstallerPlansWithTheWarningsItsCheckReports(t *testing.T) {
 
 // A plan approved for another folder installs nothing.
 func TestInstallerRefusesAPlanApprovedForAnotherSource(t *testing.T) {
+	t.Parallel()
 	installer, home, backups := installerOver(&installCheckStub{})
 	ctx := context.Background()
 	plan, err := installer.Install(ctx, "src", nil)
@@ -201,6 +204,7 @@ func TestInstallerRefusesAPlanApprovedForAnotherSource(t *testing.T) {
 // An install whose older backups cannot be removed is still installed, and
 // says how to restore it.
 func TestInstallerReturnsTheStampWhenPruningFails(t *testing.T) {
+	t.Parallel()
 	installer, home, backups := installerOver(&installCheckStub{})
 	backups.saved = []string{"s1", "s2", "s3", "s4", "s5"}
 	backups.removeErr = errors.New("busy")
@@ -223,6 +227,7 @@ func TestInstallerReturnsTheStampWhenPruningFails(t *testing.T) {
 // A restore stopped by a failed write says how far it got, and to run it
 // again.
 func TestInstallerRestoreStoppedSaysToRunItAgain(t *testing.T) {
+	t.Parallel()
 	for name, tc := range map[string]struct {
 		fail func(*installHomeSpy, error)
 		want string
@@ -231,6 +236,7 @@ func TestInstallerRestoreStoppedSaysToRunItAgain(t *testing.T) {
 		"remove": {func(h *installHomeSpy, err error) { h.removeErr = err }, "restore stopped after 1 of 2 document(s); run it again"},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			home := &installHomeSpy{docs: []definition.Document{
 				installDoc(definition.KindAgent, "reviewer", "tuned\n"),
 				installDoc(definition.KindPrompt, "house", "house\n"),

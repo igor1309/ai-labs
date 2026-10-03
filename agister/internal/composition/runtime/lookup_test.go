@@ -9,6 +9,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -17,18 +18,18 @@ import (
 // translator, which hands the supervisor what is left of the turn's
 // timeout, not the whole of it.
 func TestCodexTransportForwardsWhatIsLeftOfTheTurnsTimeout(t *testing.T) {
-	fake := runtimetest.Binary(t, "fakecodex")
+	t.Parallel()
+	const fake = "codex"
 	var specs []supervisor.Spec
 	transport := CodexTransport{Supervisor: supervisorStandIn{run: func(ctx context.Context, spec supervisor.Spec, sink supervisor.Sink, onLine func(string)) supervisor.Evidence {
 		specs = append(specs, spec)
 		if spec.Command == fake {
-			return supervisor.Run(ctx, spec, sink, onLine)
+			return supervisor.Runtime{Starter: runtimetest.InProcess{}, Timer: systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}.Run(ctx, spec, sink, onLine)
 		}
 		// The lookup never runs: it is ended by its timeout.
 		return supervisor.Evidence{TimedOut: true}
 	}}}
 	runner := codex.New(fake, transport)
-	runner.KillGrace = 200 * time.Millisecond
 	start := time.Date(2026, 9, 30, 10, 0, 0, 0, time.UTC)
 	readings := 0
 	// The first reading starts the turn; by any later one only a moment of

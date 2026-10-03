@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
@@ -116,18 +116,17 @@ func installClientAdjusted(t *testing.T, home string, adjust func(*app.InstallAd
 	t.Helper()
 	in := &installing{stages: tempDir(t)}
 	stamps := 0
-	compose := composition{
-		worktrees: git.NewWorktrees(filepath.Join(home, "locks", "worktrees")),
-		stages:    in.stages,
-		adjust: func(infra *app.Infrastructure) {
-			infra.Installer.Home = homeSpy{InstallHome: infra.Installer.Home, events: &in.events}
-			infra.Installer.Clock = &manualClock{now: time.Date(2026, 10, 2, 12, 0, 0, 0, time.UTC)}
-			infra.Installer.Stamps = countedStamps{&stamps}
-			infra.Staging = stagerSpy{InstallStager: infra.Staging, staged: &in.staged, removed: &in.removed}
-			adjust(&infra.Installer)
-		},
+	config := cli.Config{Home: home, Cwd: tempDir(t)}
+	compose := inProcess(config)
+	compose.stages = in.stages
+	compose.adjust = func(infra *app.Infrastructure) {
+		infra.Installer.Home = homeSpy{InstallHome: infra.Installer.Home, events: &in.events}
+		infra.Installer.Clock = systemtest.NewClock(time.Date(2026, 10, 2, 12, 0, 0, 0, time.UTC))
+		infra.Installer.Stamps = countedStamps{&stamps}
+		infra.Staging = stagerSpy{InstallStager: infra.Staging, staged: &in.staged, removed: &in.removed}
+		adjust(&infra.Installer)
 	}
-	client, _, err := compose.wire(cli.Config{Home: home, Cwd: tempDir(t)})
+	client, _, err := compose.wire(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +156,9 @@ func agisterInstalling(t *testing.T, input, home, cwd string, args ...string) re
 		Stdin: strings.NewReader(input), Stdout: &stdout, Stderr: &stderr, Cwd: cwd,
 		Getenv: func(string) string { return "" },
 	}, func(config cli.Config) (contract.Client, error) {
-		client, _, err := composition{worktrees: git.NewWorktrees(filepath.Join(config.Home, "locks", "worktrees")), stages: stages}.wire(config)
+		compose := inProcess(config)
+		compose.stages = stages
+		client, _, err := compose.wire(config)
 		return client, err
 	})
 	if left := files(t, stages); len(left) != 0 {
@@ -260,7 +261,11 @@ func repoSettings(t *testing.T, home string) string {
 }
 
 // The plan is per document, with a diff for a replace, and writes nothing.
+//
+// Contract test: the composition's install over a real home and settings
+// folder on the filesystem, with real git to place the caller.
 func TestInstallPlansEachDocument(t *testing.T) {
+	t.Parallel()
 	home := initedHome(t)
 	src := repoSettings(t, home)
 	before := files(t, home)
@@ -302,7 +307,11 @@ func TestInstallPlansEachDocument(t *testing.T) {
 
 // A folder home already has, document for document, installs nothing: no
 // staging, no backup, no write.
+//
+// Contract test: the composition's install over a real home and settings
+// folder on the filesystem, with real git to place the caller.
 func TestInstallingIdenticalSettingsDoesNothing(t *testing.T) {
+	t.Parallel()
 	home := initedHome(t)
 	src := filepath.Join(tempDir(t), ".agister")
 	for _, name := range []string{"service.toml", filepath.Join("agents", "reviewer.toml")} {
@@ -321,7 +330,11 @@ func TestInstallingIdenticalSettingsDoesNothing(t *testing.T) {
 
 // The backup and its manifest exist before the first document is written;
 // what home has besides, settings or live state, is left as it was.
+//
+// Contract test: the composition's install over a real home and settings
+// folder on the filesystem, with real git to place the caller.
 func TestInstallBacksUpBeforeWriting(t *testing.T) {
+	t.Parallel()
 	home := initedHome(t)
 	src := repoSettings(t, home)
 	before := files(t, home)
@@ -379,7 +392,11 @@ func TestInstallBacksUpBeforeWriting(t *testing.T) {
 }
 
 // A result that would not pass check is refused before anything is written.
+//
+// Contract test: the composition's install over a real home and settings
+// folder on the filesystem, with real git to place the caller.
 func TestInstallRefusesAResultThatFailsCheck(t *testing.T) {
+	t.Parallel()
 	home := initedHome(t)
 	src := filepath.Join(tempDir(t), ".agister")
 	write(t, filepath.Join(src, "agents", "reviewer.toml"), strings.Replace(read(t, filepath.Join(home, "agents", "reviewer.toml")), `runtime = "claude-code"`, `runtime = "nowhere"`, 1))
@@ -398,7 +415,11 @@ func TestInstallRefusesAResultThatFailsCheck(t *testing.T) {
 // The yes binds home's whole inventory and the source's documents: a
 // document changed, added, or created at a planned path since the plan, in
 // home or in the source, refuses the install, with nothing written.
+//
+// Contract test: the composition's install over a real home and settings
+// folder on the filesystem, with real git to place the caller.
 func TestInstallRefusesAnInventoryChangedSinceThePlan(t *testing.T) {
+	t.Parallel()
 	for name, change := range map[string]func(home, src string){
 		"changed": func(home, _ string) {
 			path := filepath.Join(home, "agents", "assistant.toml")
@@ -413,6 +434,7 @@ func TestInstallRefusesAnInventoryChangedSinceThePlan(t *testing.T) {
 		"source added": func(_, src string) { write(t, filepath.Join(src, "prompts", "extra.md"), "extra\n") },
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			home := initedHome(t)
 			src := repoSettings(t, home)
 			in := installClient(t, home, func(string) error { t.Fatal("a document was written"); return nil })
@@ -434,7 +456,11 @@ func TestInstallRefusesAnInventoryChangedSinceThePlan(t *testing.T) {
 }
 
 // Restore puts home's settings back as they were before an install.
+//
+// Contract test: the composition's install over a real home and settings
+// folder on the filesystem, with real git to place the caller.
 func TestRestoreUndoesAnInstall(t *testing.T) {
+	t.Parallel()
 	home := initedHome(t)
 	src := repoSettings(t, home)
 	before := files(t, home)
@@ -466,7 +492,11 @@ func TestRestoreUndoesAnInstall(t *testing.T) {
 // The yes binds the restore plan: a document it touches changed since, or
 // one the install created already removed, refuses the restore, with
 // nothing written.
+//
+// Contract test: the composition's install over a real home and settings
+// folder on the filesystem, with real git to place the caller.
 func TestRestoreRefusesAStateChangedSinceThePlan(t *testing.T) {
+	t.Parallel()
 	for name, change := range map[string]func(home string){
 		"changed": func(home string) {
 			path := filepath.Join(home, "agents", "reviewer.toml")
@@ -479,6 +509,7 @@ func TestRestoreRefusesAStateChangedSinceThePlan(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			home := initedHome(t)
 			src := repoSettings(t, home)
 			in := installClient(t, home, nil)
@@ -506,7 +537,11 @@ func TestRestoreRefusesAStateChangedSinceThePlan(t *testing.T) {
 // An install and a restore plan again under home's lock, and write and
 // release it only after: what is compared with the approved plan is what
 // is written.
+//
+// Contract test: the composition's install over a real home and settings
+// folder on the filesystem, with real git to place the caller.
 func TestInstallAndRestoreWriteUnderTheLock(t *testing.T) {
+	t.Parallel()
 	home := initedHome(t)
 	src := repoSettings(t, home)
 	in := installClient(t, home, nil)
@@ -549,7 +584,11 @@ func (b failingBackups) Save(context.Context, string, app.InstallManifest, []def
 }
 
 // A backup that fails stops the install before anything is written.
+//
+// Contract test: the composition's install over a real home and settings
+// folder on the filesystem, with real git to place the caller.
 func TestInstallWritesNothingWhenTheBackupFails(t *testing.T) {
+	t.Parallel()
 	home := initedHome(t)
 	src := repoSettings(t, home)
 	before := files(t, home)
@@ -574,7 +613,11 @@ func TestInstallWritesNothingWhenTheBackupFails(t *testing.T) {
 
 // A backup whose saved document was changed is refused: a restore never
 // puts back what the install did not replace.
+//
+// Contract test: the composition's install over a real home and settings
+// folder on the filesystem, with real git to place the caller.
 func TestRestoreRefusesATamperedBackup(t *testing.T) {
+	t.Parallel()
 	home := initedHome(t)
 	src := repoSettings(t, home)
 	in := installClient(t, home, nil)
@@ -612,8 +655,13 @@ func checkProblem(t *testing.T, client contract.Client, subject string) string {
 // not planned, but the result is checked with it, as home's check sees
 // it, so its problem refuses the install; in the source it is named as not
 // installed.
+//
+// Contract test: the composition's install over a real home and settings
+// folder on the filesystem, with real git to place the caller.
 func TestInstallChecksFilesWithInvalidNames(t *testing.T) {
+	t.Parallel()
 	t.Run("home", func(t *testing.T) {
+		t.Parallel()
 		home := initedHome(t)
 		src := repoSettings(t, home)
 		write(t, filepath.Join(home, "agents", "Bad Name.toml"), "not = \"an agent\"\n")
@@ -629,6 +677,7 @@ func TestInstallChecksFilesWithInvalidNames(t *testing.T) {
 		}
 	})
 	t.Run("source", func(t *testing.T) {
+		t.Parallel()
 		home := initedHome(t)
 		src := repoSettings(t, home)
 		write(t, filepath.Join(src, "agents", "Bad.toml"), "not = \"an agent\"\n")
@@ -647,7 +696,11 @@ func TestInstallChecksFilesWithInvalidNames(t *testing.T) {
 // source has replaces it, as nothing readable, and its restore removes
 // it; one the source has not is kept, and refuses the install as check
 // reports it.
+//
+// Contract test: the composition's install over a real home and settings
+// folder on the filesystem, with real git to place the caller.
 func TestInstallOverADocumentHomeCannotRead(t *testing.T) {
+	t.Parallel()
 	dangle := func(t *testing.T, home string) string {
 		path := filepath.Join(home, "prompts", "x.md")
 		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
@@ -659,6 +712,7 @@ func TestInstallOverADocumentHomeCannotRead(t *testing.T) {
 		return path
 	}
 	t.Run("replaced", func(t *testing.T) {
+		t.Parallel()
 		home := initedHome(t)
 		path := dangle(t, home)
 		src := filepath.Join(tempDir(t), ".agister")
@@ -686,6 +740,7 @@ func TestInstallOverADocumentHomeCannotRead(t *testing.T) {
 		}
 	})
 	t.Run("kept", func(t *testing.T) {
+		t.Parallel()
 		home := initedHome(t)
 		dangle(t, home)
 		src := repoSettings(t, home)
@@ -703,7 +758,11 @@ func TestInstallOverADocumentHomeCannotRead(t *testing.T) {
 }
 
 // An install stopped between its writes is undone by its restore too.
+//
+// Contract test: the composition's install over a real home and settings
+// folder on the filesystem, with real git to place the caller.
 func TestRestoreUndoesAnInstallStoppedHalfway(t *testing.T) {
+	t.Parallel()
 	home := initedHome(t)
 	src := repoSettings(t, home)
 	before := files(t, home)
@@ -736,7 +795,11 @@ func TestRestoreUndoesAnInstallStoppedHalfway(t *testing.T) {
 }
 
 // The last five backups are kept: a sixth install removes the oldest.
+//
+// Contract test: the composition's install over a real home and settings
+// folder on the filesystem, with real git to place the caller.
 func TestInstallKeepsTheLastFiveBackups(t *testing.T) {
+	t.Parallel()
 	home := initedHome(t)
 	in := installClient(t, home, nil)
 	reviewer := read(t, filepath.Join(home, "agents", "reviewer.toml"))
@@ -760,7 +823,11 @@ func TestInstallKeepsTheLastFiveBackups(t *testing.T) {
 }
 
 // The CLI asks before installing, says how to restore, and restores.
+//
+// Contract test: the composition's install over a real home and settings
+// folder on the filesystem, with real git to place the caller.
 func TestInstallAndRestoreThroughTheCLI(t *testing.T) {
+	t.Parallel()
 	home := initedHome(t)
 	src := repoSettings(t, home)
 	dir := tempDir(t)
@@ -802,7 +869,11 @@ func TestInstallAndRestoreThroughTheCLI(t *testing.T) {
 
 // With --json, install and restore print what they did as their plans, and
 // show the plans on stderr.
+//
+// Contract test: the composition's install over a real home and settings
+// folder on the filesystem, with real git to place the caller.
 func TestInstallAndRestorePrintJSON(t *testing.T) {
+	t.Parallel()
 	home := initedHome(t)
 	src := repoSettings(t, home)
 	dir := tempDir(t)
@@ -827,7 +898,11 @@ func TestInstallAndRestorePrintJSON(t *testing.T) {
 
 // Install is not refused by home's broken settings: it is how they are
 // repaired.
+//
+// Contract test: the composition's install over a real home and settings
+// folder on the filesystem, with real git to place the caller.
 func TestInstallRepairsBrokenSettings(t *testing.T) {
+	t.Parallel()
 	home := initedHome(t)
 	dir := tempDir(t)
 	reviewer := filepath.Join(home, "agents", "reviewer.toml")
@@ -847,7 +922,11 @@ func TestInstallRepairsBrokenSettings(t *testing.T) {
 }
 
 // A symbolic link in the folder refuses the install.
+//
+// Contract test: the composition's install over a real home and settings
+// folder on the filesystem, with real git to place the caller.
 func TestInstallRefusesASymbolicLink(t *testing.T) {
+	t.Parallel()
 	home := initedHome(t)
 	src := repoSettings(t, home)
 	outside := filepath.Join(tempDir(t), "secret.md")

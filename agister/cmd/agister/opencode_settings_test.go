@@ -9,10 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 )
 
+// exampleOpenCodeSettings is setup with the OpenCode example's settings:
+// its agent runs opencode, which the in-process starter runs the fake by.
 func exampleOpenCodeSettings(t *testing.T) (home, repo string) {
 	t.Helper()
 	home, repo = setup(t, "approve")
@@ -31,8 +32,6 @@ func exampleOpenCodeSettings(t *testing.T) (home, repo string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	agent := filepath.Join(home, "agents", "opencode-minimax.toml")
-	write(t, agent, read(t, agent)+"command = \""+runtimetest.Binary(t, "fakeopencode")+"\"\n")
 	return home, repo
 }
 
@@ -56,7 +55,11 @@ func verifyOpenCodeTools(t *testing.T, home string, tools ...string) {
 // checked live. So, as shipped, the settings do not pass check, which says
 // why and what it refuses, and a call on it is refused before its runtime
 // starts; with a tool verified they pass check and probe.
+//
+// Contract test: the composition over the example settings and a real git
+// repository; the OpenCode fake runs in process.
 func TestExampleOpenCodeSettingsVerifyNoTool(t *testing.T) {
+	t.Parallel()
 	home, repo := exampleOpenCodeSettings(t)
 	const problem = "verifies no primitive against any runtime version; calls on it are refused"
 	r := agister(t, home, repo, "check")
@@ -85,7 +88,11 @@ func TestExampleOpenCodeSettingsVerifyNoTool(t *testing.T) {
 // the model from the agent, the question on stdin. The tool calls OpenCode
 // reported are in the run's events. A continuation resumes the session
 // OpenCode reported.
+//
+// Contract test: the composition over the example settings and a real git
+// repository; the OpenCode fake runs in process.
 func TestOpenCodeCallRunsAsTheGeneratedAgent(t *testing.T) {
+	t.Parallel()
 	home, repo := exampleOpenCodeSettings(t)
 	verifyOpenCodeTools(t, home, "read", "grep", "glob", "skill")
 	allowHostReads(t, home, repo)
@@ -160,7 +167,11 @@ func TestOpenCodeCallRunsAsTheGeneratedAgent(t *testing.T) {
 // service of an `agister init` home, which withholds host.read, skill
 // cannot be granted, so ask_opencode is refused before OpenCode starts
 // (ADR-006).
+//
+// Contract test: the composition over the example settings and a real git
+// repository; the OpenCode fake runs in process.
 func TestOpenCodeCallWithoutTheSkillToolIsRefused(t *testing.T) {
+	t.Parallel()
 	home, repo := exampleOpenCodeSettings(t)
 	verifyOpenCodeTools(t, home, "read", "grep", "glob", "skill", "webfetch")
 	const reason = "runtime opencode needs skill to use the repository's skills (ADR-006), and the plan grants no such tool: " +
@@ -178,7 +189,11 @@ func TestOpenCodeCallWithoutTheSkillToolIsRefused(t *testing.T) {
 }
 
 // OpenCode cannot limit cost: a call under a cost limit is refused.
+//
+// Contract test: the composition over the example settings and a real git
+// repository; the OpenCode fake runs in process.
 func TestOpenCodeCallUnderACostLimitIsRefused(t *testing.T) {
+	t.Parallel()
 	home, repo := exampleOpenCodeSettings(t)
 	verifyOpenCodeTools(t, home, "read", "grep", "glob", "skill")
 	allowHostReads(t, home, repo)
@@ -192,7 +207,11 @@ func TestOpenCodeCallUnderACostLimitIsRefused(t *testing.T) {
 // adapter does not report tool calls: a call under a stale.tool_command
 // limit, which a command still running could outlast unseen, is refused
 // before OpenCode starts.
+//
+// Contract test: the composition over the example settings and a real git
+// repository; the OpenCode fake runs in process.
 func TestOpenCodeCallUnderAToolCommandLimitIsRefused(t *testing.T) {
+	t.Parallel()
 	home, repo := exampleOpenCodeSettings(t)
 	verifyOpenCodeTools(t, home, "read", "grep", "glob", "skill")
 	allowHostReads(t, home, repo)
@@ -210,9 +229,14 @@ func TestOpenCodeCallUnderAToolCommandLimitIsRefused(t *testing.T) {
 
 // Even when every grant is allowed, the unverified edit and bash cannot
 // satisfy a required permission. The bad settings live only in a temp home.
+//
+// Contract test: the composition over the example settings and a real git
+// repository; the OpenCode fake runs in process.
 func TestExampleOpenCodeSettingsRefuseUnverifiedTools(t *testing.T) {
+	t.Parallel()
 	for _, permission := range []string{"repository.write", "process.execute"} {
 		t.Run(permission, func(t *testing.T) {
+			t.Parallel()
 			home, repo := exampleOpenCodeSettings(t)
 			verifyOpenCodeTools(t, home, "read", "grep", "glob", "skill")
 			service := filepath.Join(home, "service.toml")

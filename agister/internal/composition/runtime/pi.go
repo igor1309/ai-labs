@@ -71,6 +71,9 @@ func PiResult(t pi.Turn) run.Turn {
 	}
 	return result
 }
-func NewPi(command, sessions string) app.TurnRunner {
-	return AdaptPi(pi.New(command, sessions, PiTransport{Supervisor: supervisor.Runtime{}}))
+
+// NewPi is the Pi runner of command, keeping its sessions in sessions, run
+// on the process supervisor given.
+func NewPi(command, sessions string, processes PiSupervisor) app.TurnRunner {
+	return AdaptPi(pi.New(command, sessions, PiTransport{Supervisor: processes}))
 }

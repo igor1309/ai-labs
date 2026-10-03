@@ -13,16 +13,17 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/schema"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	runtimecomposition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
@@ -34,7 +35,9 @@ import (
 // and evidence store. The runtime is a scripted fake whose turns write
 // files in the checkout, and the verification command is a fixture driven
 // by those files: by default it prints the file state and passes when it
-// says "pass".
+// says "pass". The shell the runner starts for it is a fake run in process
+// (inProcessCommands); what the real one does is the supervisor's contract
+// (command_test.go).
 
 const passWhenStateSaysPass = "cat state; grep -qx pass state"
 
@@ -141,7 +144,9 @@ type loopHarness struct {
 	setup    *recordingSetupCommands
 	calls    *app.Calls
 	runs     *app.Runs
-	store    fsruns.Store
+	// hosted holds the harness's calls; wait awaits their Done.
+	hosted *app.Hosted
+	store  fsruns.Store
 }
 
 // recordingCommands is the real command runner, noting what each run was
@@ -219,11 +224,14 @@ func newLoopWith(t *testing.T, with seams, settings verifySettings, steps ...ste
 	if with.copies == nil {
 		with.copies = workspaces
 	}
+	// A turn or a command that ends by itself waits on no time: its
+	// timeout, graces and staleness limits are on a clock that never moves.
+	still := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
 	if with.commands == nil {
-		with.commands = runtimecomposition.Commands{Supervisor: supervisor.Commands{}}
+		with.commands = runtimecomposition.Commands{Supervisor: inProcessCommands(still.Timer)}
 	}
 	if with.setupCommands == nil {
-		with.setupCommands = runtimecomposition.SetupCommands{Supervisor: supervisor.Commands{}}
+		with.setupCommands = runtimecomposition.SetupCommands{Supervisor: inProcessCommands(still.Timer)}
 	}
 	repo, err := filepath.EvalSymlinks(tempDir(t))
 	if err != nil {
@@ -316,9 +324,9 @@ verify:
 	}
 
 	h := &loopHarness{t: t, repo: repo, home: tempDir(t), runner: &scripted{t: t, steps: steps}, commands: &recordingCommands{VerifyCommands: with.commands}, setup: &recordingSetupCommands{SetupCommands: with.setupCommands}}
-	h.store = fsruns.Store{Dir: filepath.Join(h.home, "runs")}
+	h.store = fsruns.Store{Dir: filepath.Join(h.home, "runs"), Appends: fsruns.NewAppends()}
 	runtimes := fakeRuntimes{runner: h.runner}
-	hosted := app.NewHosted()
+	h.hosted = app.NewHosted()
 	var definitions app.ResolverDefinitions = fsdefs.Store{Dir: defs}
 	if settings.globalWorkspace != "" {
 		global := fsdefs.Store{Dir: tempDir(t)}
@@ -329,10 +337,26 @@ verify:
 		app.NewResolver(definitions, runtimes, schema.Validator{}, noProblems{}), runtimes,
 		map[string]app.InputProvider{"git.revision": git.Revision{}},
 		workspaces, with.changes, app.NewPreparer(with.changes, h.setup, with.clock), app.NewVerifier(with.changes, with.copies, h.commands, with.clock), schema.Validator{},
-		h.store, h.store, with.clock, system.Timer, system.IDs{}, h.home, hosted,
+		h.store, h.store, with.clock, still.Timer, system.IDs{}, h.home, h.hosted,
 	)
-	h.runs = app.NewRuns(h.store, hosted, 10*time.Millisecond)
+	// Observing a call hosted here waits on its appends, never on a poll.
+	h.runs = app.NewRuns(h.store, h.store, h.hosted, unpolled(t), 0)
 	return h
+}
+
+// inProcessCommands is the command runner, the bash it starts a fake run
+// in process: no command is started as a process. Its waits are on timer.
+func inProcessCommands(timer timer) supervisor.Commands {
+	return supervisor.Commands{Starter: runtimetest.InProcess{}, Timer: timer}
+}
+
+// unpolled is Observe's poll timer for tests whose runs all run in the
+// test's process, which are never polled: it fails the test if started.
+func unpolled(t testing.TB) app.RunsTimer {
+	return func(time.Duration) (<-chan time.Time, func()) {
+		t.Error("a run hosted in the test's process was polled")
+		return make(chan time.Time), func() {}
+	}
 }
 
 // setupLine is the process's workspace.setup line for setup, in flow
@@ -354,15 +378,11 @@ func (h *loopHarness) submit(request contract.CallRequest) string {
 	return id
 }
 
-// wait returns the run's record once it is finished; the checkout and every
-// clean copy are gone by then.
+// wait returns the run's record once the call is done; the checkout and
+// every clean copy are gone by then.
 func (h *loopHarness) wait(id string) domain.Record {
 	h.t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
-	defer cancel()
-	if err := h.runs.Observe(ctx, id, 0, func(contract.Event) error { return nil }); err != nil {
-		h.t.Fatalf("observing %s: %v", id, err)
-	}
+	<-h.hosted.Done(id)
 	record, state, err := h.store.Get(context.Background(), id)
 	if err != nil || state != domain.StateFinished || record.Result == nil {
 		h.t.Fatalf("run %s: %s, %v", id, state, err)
@@ -413,7 +433,11 @@ func expect(t *testing.T, record domain.Record, status domain.Status, class doma
 }
 
 // A first run that passes completes the node with no repair turn.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyFirstPassMakesNoRepairTurn(t *testing.T) {
+	t.Parallel()
 	h := newLoop(t, verifySettings{}, state("pass"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Completed, "", "")
@@ -429,7 +453,11 @@ func TestVerifyFirstPassMakesNoRepairTurn(t *testing.T) {
 // same checkout, with the instruction, the command, its exit status and
 // its output; the repair turn is validated and the command runs again. The
 // output is the latest turn's; usage and cost sum every turn.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyFailingRunIsRepairedInTheSameSessionAndCheckout(t *testing.T) {
+	t.Parallel()
 	h := newLoop(t, verifySettings{}, state("one"), state("pass", func(turn *domain.Turn) {
 		turn.Output = json.RawMessage(`{"done":true,"turn":2}`)
 	}))
@@ -461,7 +489,11 @@ func TestVerifyFailingRunIsRepairedInTheSameSessionAndCheckout(t *testing.T) {
 
 // The last attempt failing ends the node as budget exhausted, with the
 // latest turn's valid output on record (LAB-39).
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyAttemptsRunOut(t *testing.T) {
+	t.Parallel()
 	h := newLoop(t, verifySettings{}, state("one"), state("two"), state("three"), state("pass"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "attempt 3 of 3 failed (exit code 1)")
@@ -473,7 +505,11 @@ func TestVerifyAttemptsRunOut(t *testing.T) {
 // A run never repeats on content already checked: a repair that changes
 // nothing, or returns to an earlier state, ends the loop without running,
 // and the evidence says why.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyStopsWithoutProgress(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name    string
 		steps   []step
@@ -485,6 +521,7 @@ func TestVerifyStopsWithoutProgress(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			h := newLoop(t, verifySettings{}, c.steps...)
 			record := h.call(contract.CallRequest{})
 			expect(t, record, domain.Failed, domain.ClassBudgetExhausted, c.message)
@@ -498,7 +535,11 @@ func TestVerifyStopsWithoutProgress(t *testing.T) {
 
 // The same exit status and output as the run before ends the loop, though
 // the content changed.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyStopsOnTheSameFailureTwice(t *testing.T) {
+	t.Parallel()
 	h := newLoop(t, verifySettings{command: `grep -qx pass state || { echo "not yet"; exit 1; }`}, state("one"), state("two"), state("pass"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "no progress: attempt 2 failed as attempt 1 did")
@@ -510,7 +551,11 @@ func TestVerifyStopsOnTheSameFailureTwice(t *testing.T) {
 // A run that changes the content of the clean copy it runs in fails
 // whatever its exit status, and the evidence keeps what it changed; files
 // it writes that are ignored are not content.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyRunThatChangesItsCleanCopyFails(t *testing.T) {
+	t.Parallel()
 	h := newLoop(t, verifySettings{command: "grep -qx pass state && echo ran > ran.txt", maxAttempts: 1}, state("pass"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "attempt 1 of 1 failed (exit code 0; the run changed the content it checked")
@@ -528,15 +573,30 @@ func TestVerifyRunThatChangesItsCleanCopyFails(t *testing.T) {
 }
 
 // blocks never ends on its own: only a kill ends it, so a timeout or a
-// cancel is its one way out and no load can let it finish first.
+// cancel is its one way out and no load can let it finish first. Run in
+// process, it waits for its group to be signalled.
 const blocks = "tail -f /dev/null"
 
 // A run that exceeds verify.timeout is killed and interrupts the node,
 // well before the call's own timeout: the message names verify.timeout,
 // not the call's.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyRunTimeout(t *testing.T) {
-	h := newLoop(t, verifySettings{command: blocks, timeout: "1s"}, state("one"))
-	record := h.call(contract.CallRequest{Timeout: "30s"})
+	t.Parallel()
+	// The run's timeout passes on the command runner's clock once the run
+	// waits on it.
+	clock := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
+	commands := runtimecomposition.Commands{Supervisor: inProcessCommands(clock.Timer)}
+	h := newLoopWith(t, seams{commands: commands}, verifySettings{command: blocks, timeout: "1s"}, state("one"))
+	id := h.submit(contract.CallRequest{Timeout: "30s"})
+	// Should the test fail first, the cleanup ends the call, and the
+	// command with it.
+	cleanupRun(t, h.runs, h.hosted, id)
+	clock.Started(time.Second)
+	clock.Advance(time.Second)
+	record := h.wait(id)
 	expect(t, record, domain.Interrupted, domain.ClassTimeout, "attempt 1's run exceeded verify.timeout 1s")
 	if ran := runsOf(record); len(ran) != 1 || !ran[0].TimedOut {
 		t.Fatalf("attempts %+v", record.Attempts)
@@ -545,15 +605,24 @@ func TestVerifyRunTimeout(t *testing.T) {
 
 // The call's timeout bounds the whole loop: a run gets only the time the
 // turns and the preparation before it left.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyCallTimeoutBoundsTheLoop(t *testing.T) {
+	t.Parallel()
 	// Making the clean copy uses 59 of the call's 60 seconds on the call's
 	// clock, which leaves the run one second of its 20. The clock moves
 	// only once the copy is made, so the real time Git takes decides
-	// nothing.
-	clock := &manualClock{now: time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)}
-	copies := slowCopies{Workspaces: git.NewWorkspaces(git.NewWorktrees(tempDir(t))), after: func() { clock.advance(59 * time.Second) }}
-	h := newLoopWith(t, seams{clock: clock, copies: copies}, verifySettings{command: blocks, timeout: "20s"}, state("one"))
-	record := h.call(contract.CallRequest{})
+	// nothing, and the run's second passes on the same clock.
+	clock := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
+	copies := slowCopies{Workspaces: git.NewWorkspaces(git.NewWorktrees(tempDir(t))), after: func() { clock.Advance(59 * time.Second) }}
+	commands := runtimecomposition.Commands{Supervisor: inProcessCommands(clock.Timer)}
+	h := newLoopWith(t, seams{clock: clock, copies: copies, commands: commands}, verifySettings{command: blocks, timeout: "20s"}, state("one"))
+	id := h.submit(contract.CallRequest{})
+	cleanupRun(t, h.runs, h.hosted, id)
+	clock.Started(time.Second)
+	clock.Advance(time.Second)
+	record := h.wait(id)
 	expect(t, record, domain.Interrupted, domain.ClassTimeout, "the call's timeout passed during attempt 1's run")
 	events, _, err := h.store.Events(context.Background(), record.ID, 0)
 	if err != nil {
@@ -584,63 +653,71 @@ func (c slowCopies) Copy(ctx context.Context, repository, dir, revision string, 
 	return err
 }
 
-// manualClock tells the time it is set to, so a test decides how much of
-// the call's time has passed.
-type manualClock struct {
-	mu  sync.Mutex
-	now time.Time
+// blockedCommand is a verification command that never ends on its own:
+// it puts its group on record, closes started, and blocks until its
+// context ends, when it closes cancelled and returns as cancelled. It runs
+// once.
+type blockedCommand struct {
+	started, cancelled chan struct{}
 }
 
-func (c *manualClock) Now() time.Time {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.now
+// blockedRef is the group a blockedCommand records: no supervisor's, so
+// no cleanup signals it.
+const blockedRef = "in-process:blocked"
+
+func newBlockedCommand() *blockedCommand {
+	return &blockedCommand{started: make(chan struct{}), cancelled: make(chan struct{})}
 }
 
-func (c *manualClock) advance(by time.Duration) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.now = c.now.Add(by)
-}
-
-// Cancelling the call during a run kills the command's whole process
-// group, which the record names while it runs.
-func TestVerifyCancellationKillsTheCommandGroup(t *testing.T) {
-	groupFile := filepath.Join(tempDir(t), "group")
-	// The command's timer never fires, so only the cancellation can end the
-	// command; wait's own bound fails the test if nothing does.
-	unfired := supervisor.Commands{Timer: func(time.Duration) (<-chan time.Time, func()) { return nil, func() {} }}
-	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: unfired}}, verifySettings{command: blocks + " & echo $$ > " + groupFile + "; wait"}, state("one"))
-	// Whatever the assertions below find, the command does not outlive the
-	// test: its group is on record before it writes it.
-	cleanupRecorded(t, h.home, h.repo)
-	id := h.submit(contract.CallRequest{})
-	var group int
-	eventually(t, "the command to start", func() bool {
-		data, err := os.ReadFile(groupFile)
-		group, _ = strconv.Atoi(strings.TrimSpace(string(data)))
-		return err == nil && strings.HasSuffix(string(data), "\n")
-	})
-	running, _, err := h.store.Get(context.Background(), id)
-	if err != nil || running.Effects == nil || running.Effects.Command == nil {
-		t.Fatalf("record effects %+v, %v", running.Effects, err)
+func (c *blockedCommand) Run(ctx context.Context, _ app.CommandRequest, started func(string) error) app.CommandResult {
+	if err := started(blockedRef); err != nil {
+		return app.CommandResult{Error: err.Error()}
 	}
-	if recorded, _, err := supervisor.ParseRef(running.Effects.Command.Ref); err != nil || recorded != group {
-		t.Fatalf("recorded group %d (%v), the command's %d", recorded, err, group)
+	close(c.started)
+	<-ctx.Done()
+	close(c.cancelled)
+	return app.CommandResult{Cancelled: true}
+}
+
+// Cancelling the call during a run ends the command, whose group the
+// record names while it runs. That the whole group is killed is the
+// supervisor's contract (command_test.go); here the command sees its
+// context end.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
+func TestVerifyCancellationEndsTheCommand(t *testing.T) {
+	t.Parallel()
+	command := newBlockedCommand()
+	h := newLoopWith(t, seams{commands: command}, verifySettings{}, state("one"))
+	id := h.submit(contract.CallRequest{})
+	// Should the test fail first, the cleanup ends the call, and the
+	// command with it.
+	cleanupRun(t, h.runs, h.hosted, id)
+	<-command.started
+	running, _, err := h.store.Get(context.Background(), id)
+	if err != nil || running.Effects == nil || running.Effects.Command == nil || running.Effects.Command.Ref != blockedRef {
+		t.Fatalf("record effects %+v, %v", running.Effects, err)
 	}
 	if err := h.runs.Cancel(context.Background(), id); err != nil {
 		t.Fatal(err)
 	}
-	// The command never ends on its own, so the outcome and the group's end
-	// are the verdict.
 	record := h.wait(id)
 	expect(t, record, domain.Interrupted, domain.ClassCancelled, "cancelled during attempt 1's run")
-	eventually(t, "the command's group to be gone", func() bool { return errors.Is(syscall.Kill(-group, 0), syscall.ESRCH) })
+	select {
+	case <-command.cancelled:
+	default:
+		t.Fatal("the call finished before its command saw its context end")
+	}
 }
 
 // A repair turn that fails, returns invalid output or reports another
 // session ends the node with that turn's status and class.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyRepairTurnThatFailsEndsTheNode(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name    string
 		repair  step
@@ -662,6 +739,7 @@ func TestVerifyRepairTurnThatFailsEndsTheNode(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			h := newLoop(t, verifySettings{}, state("one"), c.repair)
 			record := h.call(contract.CallRequest{})
 			expect(t, record, c.status, c.class, c.message)
@@ -679,13 +757,17 @@ func TestVerifyRepairTurnThatFailsEndsTheNode(t *testing.T) {
 // totals, from the totals Agister recorded on the session's latest turn on
 // any run: in A, then B continues A, then C continues A, C's baseline is
 // B's turn, not A's. A session with no recorded totals leaves them unknown.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestContinuationsCountFromTheSessionsLatestRecordedTurn(t *testing.T) {
+	t.Parallel()
 	// Each turn reports the session's running totals, as Claude Code does
 	// for cost and Codex for usage, a second after it started.
-	clock := &manualClock{now: time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)}
+	clock := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
 	totals := func(usd float64, in int64) step {
 		return state("pass", func(turn *domain.Turn) {
-			clock.advance(time.Second)
+			clock.Advance(time.Second)
 			turn.Session = &domain.SessionTotals{CostUSD: &usd, Usage: &domain.Usage{InputTokens: &in}}
 		})
 	}
@@ -719,7 +801,11 @@ func TestContinuationsCountFromTheSessionsLatestRecordedTurn(t *testing.T) {
 
 // Every turn shares the call's cost limit: a repair gets what is left, and
 // an earlier turn with an unknown cost blocks repair.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyUnknownCostBlocksRepair(t *testing.T) {
+	t.Parallel()
 	h := newLoop(t, verifySettings{policy: "max_cost_usd: 5\n"}, state("one", func(turn *domain.Turn) { turn.CostUSD = nil }), state("pass"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "a turn's cost is unknown, so the cost limit 5 cannot be enforced")
@@ -737,9 +823,14 @@ func TestVerifyUnknownCostBlocksRepair(t *testing.T) {
 
 // A cost limit already spent, exactly or beyond, leaves nothing for a repair
 // turn, though attempts are left.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifySpentBudgetBlocksRepair(t *testing.T) {
+	t.Parallel()
 	for _, usd := range []float64{5, 6} {
 		t.Run(fmt.Sprintf("$%g of $5", usd), func(t *testing.T) {
+			t.Parallel()
 			h := newLoop(t, verifySettings{policy: "max_cost_usd: 5\n"}, state("one", func(turn *domain.Turn) { turn.CostUSD = &usd }), state("pass"))
 			record := h.call(contract.CallRequest{})
 			expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "the cost limit 5 is spent")
@@ -753,7 +844,11 @@ func TestVerifySpentBudgetBlocksRepair(t *testing.T) {
 // Verification runs only after a valid turn: never after one that failed
 // or returned invalid output, which ends the node as it would without
 // verify.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyNeverRunsAfterAFailedOrInvalidTurn(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name  string
 		turn  step
@@ -766,6 +861,7 @@ func TestVerifyNeverRunsAfterAFailedOrInvalidTurn(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			marker := filepath.Join(tempDir(t), "ran")
 			h := newLoop(t, verifySettings{command: "touch " + marker}, c.turn)
 			record := h.call(contract.CallRequest{})
@@ -778,7 +874,11 @@ func TestVerifyNeverRunsAfterAFailedOrInvalidTurn(t *testing.T) {
 }
 
 // A turn that reports no session cannot be repaired.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyTurnWithoutSessionCannotBeRepaired(t *testing.T) {
+	t.Parallel()
 	h := newLoop(t, verifySettings{}, state("one", func(turn *domain.Turn) { turn.ProviderSessionID = "" }), state("pass"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "attempt 1 failed and its turn reported no session to repair in")
@@ -805,7 +905,11 @@ func (l lossy) Changes(ctx context.Context, dir, from, to string) ([]byte, error
 // The captured changes, applied to the pinned base, rebuild exactly the
 // content that passed: committed, edited, new and binary files alike. A
 // capture that leaves content out prevents completion.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyCaptureReproducesThePassingContent(t *testing.T) {
+	t.Parallel()
 	agent := func(t *testing.T, request app.TurnRequest) domain.Turn {
 		write(t, filepath.Join(request.Cwd, "committed.txt"), "committed\n")
 		gitCmd(t, request.Cwd, "add", "committed.txt")
@@ -845,7 +949,11 @@ func TestVerifyCaptureReproducesThePassingContent(t *testing.T) {
 // ignored file, so the check fails on the clean copy the patch makes,
 // though it would pass in the agent's checkout. A file the patch carries
 // passes the same check.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyChecksWhatThePatchDelivers(t *testing.T) {
+	t.Parallel()
 	h := newLoop(t, verifySettings{command: "test -f new.log", maxAttempts: 1}, writes(map[string]string{"new.log": "made\n"}))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "attempt 1 of 1 failed (exit code 1)")
@@ -865,7 +973,11 @@ func TestVerifyChecksWhatThePatchDelivers(t *testing.T) {
 // bounded output with the size and digest of the whole, the session, the
 // number, the content checked, and the turn's changes, each kept before the
 // next turn starts. runs show displays them.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyEvidenceForEveryAttempt(t *testing.T) {
+	t.Parallel()
 	var h *loopHarness
 	// A repair turn sees the attempts before it recorded, with their changes.
 	recorded := func(want int, next step) step {
@@ -920,21 +1032,23 @@ func TestVerifyEvidenceForEveryAttempt(t *testing.T) {
 // A run that produces no output for the policy's stale.no_output is killed,
 // group and all, before verify.timeout: the node is interrupted as a
 // timeout, and the attempt's run says what went stale.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyRunWithoutOutputIsKilledAsStale(t *testing.T) {
-	// Only the wait for output passes, as soon as it starts: the command
-	// never ends on its own and its timeout never fires.
+	t.Parallel()
+	// The wait for output passes on the command runner's clock once the
+	// run waits on it, well short of the run's timeout: the command never
+	// ends on its own.
 	const noOutput = 7 * time.Second
-	stale := supervisor.Commands{Timer: func(wait time.Duration) (<-chan time.Time, func()) {
-		if wait != noOutput {
-			return nil, func() {}
-		}
-		fired := make(chan time.Time, 1)
-		fired <- time.Time{}
-		return fired, func() {}
-	}}
+	clock := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
+	stale := inProcessCommands(clock.Timer)
 	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: stale}}, verifySettings{command: blocks + " & wait", policy: "stale: {no_output: 7s}\n"}, state("one"))
-	cleanupRecorded(t, h.home, h.repo)
-	record := h.wait(h.submit(contract.CallRequest{}))
+	id := h.submit(contract.CallRequest{})
+	cleanupRun(t, h.runs, h.hosted, id)
+	clock.Started(noOutput)
+	clock.Advance(noOutput)
+	record := h.wait(id)
 
 	expect(t, record, domain.Interrupted, domain.ClassTimeout, "stale: attempt 1's run produced no output for 7s (stale.no_output)")
 	if record.Effective == nil || record.Effective.Stale == nil || record.Effective.Stale.NoOutput != noOutput {
@@ -946,12 +1060,12 @@ func TestVerifyRunWithoutOutputIsKilledAsStale(t *testing.T) {
 	if ran := record.Attempts[0].Run; ran.Passed || ran.Stale.Limit != domain.StaleNoOutput || ran.Stale.After != noOutput || ran.Stale.At.IsZero() {
 		t.Fatalf("run %+v, stale %+v", ran, ran.Stale)
 	}
+	// The group the record names is killed by the supervisor before the
+	// run returns, which is its contract (command_test.go).
 	if record.Effects == nil || record.Effects.Command == nil {
 		t.Fatalf("effects %+v", record.Effects)
 	}
-	group, _, err := supervisor.ParseRef(record.Effects.Command.Ref)
-	if err != nil {
+	if _, _, err := supervisor.ParseRef(record.Effects.Command.Ref); err != nil {
 		t.Fatal(err)
 	}
-	eventually(t, "the command's group to be gone", func() bool { return errors.Is(syscall.Kill(-group, 0), syscall.ESRCH) })
 }

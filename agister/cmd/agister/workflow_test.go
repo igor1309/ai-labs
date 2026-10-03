@@ -5,15 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"testing"
+	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
@@ -38,7 +36,11 @@ func workflowRun(t *testing.T, home string) (string, domain.Record) {
 // The shipped example workflow, end to end on the fake runtime: both
 // fan-out nodes, then the join, whose text is the workflow's output; each
 // node is a run of its own that names the workflow run.
+//
+// Contract test: the composition over the example settings and a real git
+// repository; the workflow's runtimes are fakes run in process.
 func TestExampleWorkflowEndToEnd(t *testing.T) {
+	t.Parallel()
 	home, repo := setup(t, "approve")
 	if r := agister(t, home, repo, "workflow", "show", "review_panel"); r.code != 0 || !strings.Contains(r.stdout, "the collection as input reviews, and nothing else") {
 		t.Fatalf("workflow show: %d\n%s%s", r.code, r.stdout, r.stderr)
@@ -105,16 +107,24 @@ func TestExampleWorkflowEndToEnd(t *testing.T) {
 // join receives the completed output and the other node's status and class,
 // the workflow's result is the join's, and both its record and its progress
 // lines name the node that did not complete.
+//
+// Contract test: the composition over the example settings and a real git
+// repository; the workflow's runtimes are fakes run in process.
 func TestExampleWorkflowJoinsWithoutATimedOutNode(t *testing.T) {
+	t.Parallel()
 	home, repo := setup(t, "approve")
 	// The adversarial review alone reads a file that makes the fake runtime
-	// hang, first among its inputs, under a one-second timeout.
+	// hang, first among its inputs, under a timeout of its own, which the
+	// test passes once the turn waits on it.
 	path := filepath.Join(home, "processes", "adversarial_review.yaml")
 	process := strings.Replace(read(t, path), "  values:\n", "  values:\n    stall: {source: file, path: stall.txt}\n", 1)
-	write(t, path, strings.Replace(process, "workspace:\n", "timeout: 1s\n\nworkspace:\n", 1))
+	write(t, path, strings.Replace(process, "workspace:\n", "timeout: 7m\n\nworkspace:\n", 1))
 	write(t, filepath.Join(repo, "stall.txt"), "SCENARIO:hang\n")
+	const timeout = 7 * time.Minute
+	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	go func() { clock.Started(timeout); clock.Advance(timeout) }()
 
-	r := agister(t, home, repo, "run", "review_panel", "--param", "base=main", "--param", "architecture=a.txt")
+	r := agisterOn(t, timeoutOn(clock, timeout), home, repo, "run", "review_panel", "--param", "base=main", "--param", "architecture=a.txt")
 	if r.code != cli.ExitCompleted || r.stdout != "All good.\n" {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -155,87 +165,108 @@ func lastRunIn(t *testing.T, dir string) run {
 	return r
 }
 
-// A CLI killed with SIGKILL while a workflow's fan-out nodes run leaves
-// their runtimes and checkouts behind. The next call's reap treats each
-// node's run like any unfinished run: it ends their effects and finishes
-// them lost; the workflow run, unfinished and unowned, reads lost too.
+// A CLI killed while a workflow's fan-out nodes run leaves their runtimes
+// and checkouts behind. The next call's reap treats each node's run like
+// any unfinished run: it ends their effects and finishes them lost; the
+// workflow run, unfinished and unowned, reads lost too. The runs are
+// abandoned in process, as the kill leaves them, with their runtimes
+// blocked; that a SIGKILL leaves a run so is
+// TestNextCallReapsWhatAKilledRunLeftBehind's.
+//
+// Contract test: the composition over the example settings and a real git
+// repository; the workflow's runtimes are fakes run in process.
+//
+// Serial: a run's owner lock is its open file's (flock). A process another
+// test starts holds a copy from its fork to its exec, and the lock an
+// abandoned run gave up would read as held.
 func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 	home, repo := setup(t, "hang")
-	binary := filepath.Join(tempDir(t), "agister")
-	runtimetest.Build(t, ".", binary, ".")
-	victim := exec.Command(binary, "--home", home, "run", "review_panel", "--param", "base=main", "--param", "architecture=a.txt", "--quiet")
-	victim.Dir = repo
-	victim.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	if err := victim.Start(); err != nil {
+	at := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+	config := cli.Config{Home: home, Cwd: repo}
+	// The process that is killed: its nodes' waits are on a clock that
+	// never moves, so only the test ends their runtimes.
+	killed := on(config, systemtest.NewClock(at).Timer)
+	killed.poll = unpolled(t)
+	victim, _, err := killed.wire(config)
+	if err != nil {
 		t.Fatal(err)
 	}
-	// Should the test fail first, the cleanup ends what every run left on
-	// record, whatever point the test reached.
-	cleanupRecorded(t, home, repo)
-	t.Cleanup(func() {
-		_ = victim.Process.Kill()
-		_ = victim.Wait()
-	})
-	var nodes []domain.Record
+	ctx := context.Background()
+	id, err := victim.Submit(ctx, contract.CallRequest{Process: "review_panel", Params: map[string]string{"base": "main", "architecture": "a.txt"}, Cwd: repo})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The cleanup ends the workflow, and its nodes and their runtimes with
+	// it, whatever point the test reached.
+	cleanupRun(t, victim, killed.hosted, id)
 
 	// Both fan-out nodes run, each with its runtime and checkout on record.
-	eventually(t, "both fan-out nodes to record their runtime and checkout", func() bool {
-		paths, _ := filepath.Glob(filepath.Join(home, "runs", "*", "record.json"))
-		nodes = nil
-		for _, path := range paths {
-			var record domain.Record
-			data, err := os.ReadFile(path)
-			if err != nil || json.Unmarshal(data, &record) != nil || record.Parent == nil {
-				continue
-			}
-			if record.Effects == nil || record.Effects.Process == nil || record.Effects.Checkout == nil {
-				return false
-			}
-			if _, token, err := supervisor.ParseRef(record.Effects.Process.Ref); err != nil || token == "" {
-				return false
-			}
-			nodes = append(nodes, record)
+	var started []string
+	until(t, victim, id, func(event contract.Event) bool {
+		if node, ok := event.Data["run"].(string); ok && event.Kind == "NODE_STARTED" {
+			started = append(started, node)
 		}
-		return len(nodes) == 2
+		return len(started) == 2
 	})
-	if err := victim.Process.Signal(syscall.SIGKILL); err != nil {
-		t.Fatal(err)
+	var nodes []domain.Record
+	for _, node := range started {
+		until(t, victim, node, func(event contract.Event) bool { return event.Kind == "PROCESS_STARTED" })
+		record, _, err := killed.runs.Get(ctx, node)
+		if err != nil || record.Parent == nil || record.Effects == nil || record.Effects.Process == nil || record.Effects.Checkout == nil {
+			t.Fatalf("node run %s: %+v, %v", node, record.Effects, err)
+		}
+		if _, token, err := supervisor.ParseRef(record.Effects.Process.Ref); err != nil || token == "" {
+			t.Fatalf("node run %s's runtime on record = %q: %v", node, record.Effects.Process.Ref, err)
+		}
+		nodes = append(nodes, record)
 	}
-	_ = victim.Wait()
-	id, _ := workflowRun(t, home)
 
-	client, background, err := wire(cli.Config{Home: home, Cwd: repo})
+	// The kill: the workflow's run and its nodes' are nobody's, and the
+	// nodes' runtimes run on.
+	left := &orphans{}
+	abandon(t, killed, id)
+	for _, node := range nodes {
+		abandon(t, killed, node.ID)
+		left.leave(node.Effects.Process.Ref)
+	}
+
+	const timeout = 7 * time.Minute
+	clock := systemtest.NewClock(at)
+	composed := on(config, timeoutOn(clock, timeout))
+	composed.processes = left
+	client, background, err := composed.wire(config)
 	if err != nil {
 		t.Fatal(err)
 	}
-	next, err := client.Submit(context.Background(), contract.CallRequest{
-		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "1s", Cwd: repo,
+	next, err := client.Submit(ctx, contract.CallRequest{
+		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "7m", Cwd: repo,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
+	cleanupRun(t, client, composed.hosted, next)
 	background.Wait()
-	store := fsruns.Store{Dir: filepath.Join(home, "runs")}
+	// The next call hangs too, until its timeout passes.
+	clock.Started(timeout)
+	clock.Advance(timeout)
 	for _, node := range nodes {
-		group, _, _ := supervisor.ParseRef(node.Effects.Process.Ref)
-		eventually(t, "a node's runtime to be gone", func() bool { return !groupAlive(group) })
+		if left.alive(node.Effects.Process.Ref) {
+			t.Fatalf("node run %s's runtime was not reaped", node.ID)
+		}
 		if _, err := os.Stat(node.Effects.Checkout.Dir); !errors.Is(err, os.ErrNotExist) {
 			t.Fatalf("checkout left behind: %v", err)
 		}
-		reaped, state, err := store.Get(context.Background(), node.ID)
+		reaped, state, err := composed.runs.Get(ctx, node.ID)
 		if err != nil || state != domain.StateFinished || reaped.Result.Status != domain.Lost || reaped.Result.Error.Class != domain.ClassAbandoned {
 			t.Fatalf("node run %s: %s %+v %v", node.ID, state, reaped.Result, err)
 		}
 	}
-	workflow, err := client.Inspect(context.Background(), id)
+	workflow, err := client.Inspect(ctx, id)
 	if err != nil || workflow.State != string(domain.StateAbandoned) || workflow.Result.Status != "lost" || workflow.Result.Error.Class != "abandoned" {
 		t.Fatalf("workflow run: %+v %v", workflow, err)
 	}
-	eventually(t, "the next call to finish", func() bool {
-		_, state, err := store.Get(context.Background(), next)
-		return err == nil && state == domain.StateFinished
-	})
-	eventually(t, "every checkout to be released", func() bool {
-		return len(strings.Split(gitCmd(t, repo, "worktree", "list"), "\n")) == 1
-	})
+	<-composed.hosted.Done(next)
+	if lines := strings.Split(gitCmd(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
+		t.Fatalf("worktrees = %v", lines)
+	}
 }

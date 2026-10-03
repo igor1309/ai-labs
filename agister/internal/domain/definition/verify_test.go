@@ -34,6 +34,7 @@ const verifyBlock = `  command: go test ./...
 `
 
 func TestVerifyIsParsedAsDeclared(t *testing.T) {
+	t.Parallel()
 	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", verifyingProcess(verifyBlock)))
 	if err != nil {
 		t.Fatal(err)
@@ -50,8 +51,10 @@ func TestVerifyIsParsedAsDeclared(t *testing.T) {
 
 // Rule 1: every field is required, and there is no default for any of them.
 func TestVerifyWithoutAFieldIsInvalid(t *testing.T) {
+	t.Parallel()
 	for _, field := range []string{"command", "timeout", "max_attempts", "instruction"} {
 		t.Run(field, func(t *testing.T) {
+			t.Parallel()
 			var kept []string
 			for _, line := range strings.SplitAfter(verifyBlock, "\n") {
 				if !strings.HasPrefix(line, "  "+field+":") {
@@ -73,6 +76,7 @@ func TestVerifyWithoutAFieldIsInvalid(t *testing.T) {
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", verifyingProcess(c.verify)))
 			if err == nil || !strings.Contains(err.Error(), c.want) {
 				t.Fatalf("err = %v, want %q", err, c.want)
@@ -83,8 +87,10 @@ func TestVerifyWithoutAFieldIsInvalid(t *testing.T) {
 
 // Rule 2: the first run is attempt 1, so fewer is invalid, never clamped.
 func TestVerifyMaxAttemptsBelowOneIsInvalid(t *testing.T) {
+	t.Parallel()
 	for _, attempts := range []string{"0", "-1"} {
 		t.Run(attempts, func(t *testing.T) {
+			t.Parallel()
 			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", verifyingProcess(strings.Replace(verifyBlock, "max_attempts: 3", "max_attempts: "+attempts, 1))))
 			if err == nil || !strings.Contains(err.Error(), "verify.max_attempts: must be at least 1") {
 				t.Fatalf("err = %v", err)
@@ -99,6 +105,7 @@ func TestVerifyMaxAttemptsBelowOneIsInvalid(t *testing.T) {
 // Rule 5 (ADR-002 rule 2): verification runs only in a checkout the call
 // owns.
 func TestVerifyWithoutACheckoutIsInvalid(t *testing.T) {
+	t.Parallel()
 	text := strings.Replace(verifyingProcess(verifyBlock), "workspace:\n  checkout: candidate_revision\n", "", 1)
 	_, err := definition.ParseProcess(doc(definition.KindProcess, "p", text))
 	if err == nil || !strings.Contains(err.Error(), "verify: requires workspace.checkout") {
@@ -108,6 +115,7 @@ func TestVerifyWithoutACheckoutIsInvalid(t *testing.T) {
 
 // The ceiling of verify.max_attempts is a service setting, 1 unless set.
 func TestServiceMaxVerifyAttempts(t *testing.T) {
+	t.Parallel()
 	base := "schema = \"agister.service/v1alpha1\"\nmax_timeout = \"1h\"\npermissions = [\"read\"]\nwriting = []\n"
 	cases := []struct {
 		setting string
@@ -141,6 +149,7 @@ instruction: The verification command failed. Fix the cause, not the check.
 // ADR-010 rule 1: a verification document holds the four fields of the
 // inline block.
 func TestVerificationIsParsedAsDeclared(t *testing.T) {
+	t.Parallel()
 	parsed, err := definition.ParseVerify(doc(definition.KindVerify, "repo", verification))
 	if err != nil {
 		t.Fatal(err)
@@ -152,8 +161,10 @@ func TestVerificationIsParsedAsDeclared(t *testing.T) {
 }
 
 func TestVerificationWithoutAFieldOrWithAnotherIsInvalid(t *testing.T) {
+	t.Parallel()
 	for _, field := range []string{"command", "timeout", "max_attempts", "instruction"} {
 		t.Run(field, func(t *testing.T) {
+			t.Parallel()
 			var kept []string
 			for _, line := range strings.SplitAfter(verification, "\n") {
 				if !strings.HasPrefix(line, field+":") {
@@ -178,6 +189,7 @@ func TestVerificationWithoutAFieldOrWithAnotherIsInvalid(t *testing.T) {
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			_, err := definition.ParseVerify(doc(definition.KindVerify, "repo", c.text))
 			if err == nil || !strings.Contains(err.Error(), c.want) {
 				t.Fatalf("err = %v, want %q", err, c.want)
@@ -194,6 +206,7 @@ func namingProcess(verify string) string {
 
 // ADR-010 rule 2: verify is the inline fields or one reference.
 func TestAProcessNamesItsVerification(t *testing.T) {
+	t.Parallel()
 	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", namingProcess("verify:repo")))
 	if err != nil || process.VerifyName != "repo" || process.Verify != nil {
 		t.Fatalf("name %q, verify %+v, %v", process.VerifyName, process.Verify, err)
@@ -204,6 +217,7 @@ func TestAProcessNamesItsVerification(t *testing.T) {
 	}
 	for _, reference := range []string{`"verify:"`, "verify:Not A Name", "verify:../repo", "repo", "process-policy:repo", "[verify:repo]"} {
 		t.Run(reference, func(t *testing.T) {
+			t.Parallel()
 			process, err := definition.ParseProcess(doc(definition.KindProcess, "p", namingProcess(reference)))
 			if err == nil || !strings.Contains(err.Error(), "verify: must be") || process.VerifyName != "" {
 				t.Fatalf("name %q, err = %v", process.VerifyName, err)
@@ -214,12 +228,14 @@ func TestAProcessNamesItsVerification(t *testing.T) {
 
 // Rule 2: a second verify does not replace the first, in either order.
 func TestAProcessDeclaringVerifyTwiceIsInvalid(t *testing.T) {
+	t.Parallel()
 	cases := map[string]string{
 		"inline, then a reference": verifyingProcess(verifyBlock) + "verify: verify:repo\n",
 		"a reference, then inline": namingProcess("verify:repo") + "verify:\n" + verifyBlock,
 	}
 	for name, text := range cases {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", text))
 			if err == nil || !strings.Contains(err.Error(), "verify: is declared more than once") {
 				t.Fatalf("err = %v", err)
@@ -231,6 +247,7 @@ func TestAProcessDeclaringVerifyTwiceIsInvalid(t *testing.T) {
 // A process that names a verification is held to the pinned checkout, as
 // one with the inline block is.
 func TestANamedVerificationWithoutACheckoutIsInvalid(t *testing.T) {
+	t.Parallel()
 	text := strings.Replace(namingProcess("verify:repo"), "workspace:\n  checkout: candidate_revision\n", "", 1)
 	_, err := definition.ParseProcess(doc(definition.KindProcess, "p", text))
 	if err == nil || !strings.Contains(err.Error(), "verify: requires workspace.checkout") {

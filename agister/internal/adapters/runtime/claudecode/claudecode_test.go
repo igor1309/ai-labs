@@ -13,6 +13,7 @@ import (
 )
 
 func TestArgumentsCarryPrimitivesAndContractFlags(t *testing.T) {
+	t.Parallel()
 	args, err := claudecode.Arguments(claudecode.TurnRequest(request("hello")))
 	if err != nil {
 		t.Fatal(err)
@@ -37,6 +38,7 @@ func TestArgumentsCarryPrimitivesAndContractFlags(t *testing.T) {
 // turns that loading off, and every turn, fresh or resumed, whatever it is
 // granted, gets Skill to use a skill with.
 func TestEveryTurnLoadsTheRepositoryAndGetsSkill(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		name       string
 		primitives []string
@@ -63,6 +65,7 @@ func TestEveryTurnLoadsTheRepositoryAndGetsSkill(t *testing.T) {
 }
 
 func TestInvalidPrimitiveIsRejected(t *testing.T) {
+	t.Parallel()
 	r := request("x")
 	r.Primitives = []string{"Bash(git diff:*)"}
 	if _, err := claudecode.Arguments(claudecode.TurnRequest(r)); err == nil {
@@ -71,6 +74,7 @@ func TestInvalidPrimitiveIsRejected(t *testing.T) {
 }
 
 func TestStreamReduction(t *testing.T) {
+	t.Parallel()
 	stream := &claudecode.Stream{ResumedSessionID: session}
 	lines := []map[string]any{
 		{"type": "system", "subtype": "init", "session_id": session, "model": "claude-haiku-4-5", "tools": []string{"Read"}},
@@ -104,6 +108,7 @@ func TestStreamReduction(t *testing.T) {
 // A resume turn must report the session it resumed: another one breaks
 // the contract of resuming in place, whatever the result says.
 func TestResumeReportingAnotherSessionFails(t *testing.T) {
+	t.Parallel()
 	stream := &claudecode.Stream{ResumedSessionID: session}
 	events := stream.Reduce(`{"type":"system","subtype":"init","session_id":"other"}`)
 	if len(events) != 2 || events[1].Kind != "SESSION_ID_MISMATCH" {
@@ -134,6 +139,7 @@ func TestResumeReportingAnotherSessionFails(t *testing.T) {
 }
 
 func TestGarbageIsRecorded(t *testing.T) {
+	t.Parallel()
 	stream := &claudecode.Stream{}
 	if events := stream.Reduce("{broken"); len(events) != 1 || events[0].Kind != "STREAM_PARSE_ERROR" {
 		t.Fatalf("events = %+v", events)
@@ -144,6 +150,7 @@ func TestGarbageIsRecorded(t *testing.T) {
 }
 
 func TestResultPrecedence(t *testing.T) {
+	t.Parallel()
 	code := 0
 	clean := claudecode.Evidence{Exit: &claudecode.Exit{Code: &code}}
 	with := func(result string) *claudecode.Stream {
@@ -166,6 +173,7 @@ func TestResultPrecedence(t *testing.T) {
 // Agister chooses no session ID: a fresh turn names none, and a
 // continuation resumes the reported one in place, without forking.
 func TestContinuationResumesInPlaceAndCostLimitIsPassed(t *testing.T) {
+	t.Parallel()
 	fresh, err := claudecode.Arguments(claudecode.TurnRequest(request("x")))
 	if err != nil {
 		t.Fatal(err)
@@ -188,6 +196,7 @@ func TestContinuationResumesInPlaceAndCostLimitIsPassed(t *testing.T) {
 }
 
 func TestUsageIsNormalized(t *testing.T) {
+	t.Parallel()
 	stream := &claudecode.Stream{}
 	stream.Reduce(`{"type":"result","subtype":"success","is_error":false,"duration_ms":1200,"usage":{"input_tokens":10,"output_tokens":20,"cache_read_input_tokens":30,"cache_creation_input_tokens":40}}`)
 	code := 0
@@ -199,6 +208,7 @@ func TestUsageIsNormalized(t *testing.T) {
 }
 
 func TestFailuresAreClassified(t *testing.T) {
+	t.Parallel()
 	code := 0
 	clean := claudecode.Evidence{Exit: &claudecode.Exit{Code: &code}}
 	for _, c := range []struct {
@@ -224,6 +234,7 @@ func TestFailuresAreClassified(t *testing.T) {
 }
 
 func TestErrorResultMessages(t *testing.T) {
+	t.Parallel()
 	const limit = "You've hit your session limit · resets 12:30pm (Europe/Moscow)"
 	for _, c := range []struct {
 		name    string
@@ -257,6 +268,7 @@ func TestErrorResultMessages(t *testing.T) {
 		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			path := filepath.Join(t.TempDir(), "result.json")
 			if err := os.WriteFile(path, []byte(c.result), 0600); err != nil {
 				t.Fatal(err)
@@ -284,6 +296,7 @@ func TestErrorResultMessages(t *testing.T) {
 // A process that could not be recorded fails the turn, whatever the stream
 // says: it was killed, and nothing it reported can be trusted to be whole.
 func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
+	t.Parallel()
 	stream := &claudecode.Stream{}
 	stream.Reduce(`{"type":"result","subtype":"success","is_error":false}`)
 	turn := stream.Reconcile(claudecode.Evidence{RecordError: "disk full"}, false)
@@ -296,6 +309,7 @@ func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
 // whole input, the same text for the same input, and whether it runs a
 // command; each result ends the call of its ID.
 func TestStreamReportsToolCalls(t *testing.T) {
+	t.Parallel()
 	stream := &claudecode.Stream{}
 	long := strings.Repeat("x", 1000)
 	use := func(id, name string, input map[string]any) map[string]any {
@@ -327,6 +341,7 @@ func TestStreamReportsToolCalls(t *testing.T) {
 // Two calls of one tool whose inputs differ only in a large integer are
 // distinct calls, not one repeated: the input keeps its numbers as written.
 func TestLargeIntegerInputsAreNotRepeatedCalls(t *testing.T) {
+	t.Parallel()
 	stream := &claudecode.Stream{}
 	for _, line := range []string{
 		`{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Read","input":{"offset":9007199254740993}}]}}`,

@@ -14,8 +14,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
-	"time"
 )
 
 func write(t *testing.T, path, text string) {
@@ -79,6 +79,7 @@ func post(t *testing.T, h http.Handler, target, header string, out any) int {
 }
 
 func TestChooseReturnsTheChosenFolder(t *testing.T) {
+	t.Parallel()
 	h := Handler("/unused", func(context.Context) (string, error) { return "/Users/u/src/repo/", nil }, owners(), SkillHomes{})
 	var got map[string]string
 	if code := post(t, h, "/api/choose", ChooseHeader, &got); code != 200 || got["path"] != "/Users/u/src/repo" {
@@ -87,6 +88,7 @@ func TestChooseReturnsTheChosenFolder(t *testing.T) {
 }
 
 func TestChooseCancelledReturnsNoPath(t *testing.T) {
+	t.Parallel()
 	h := Handler("/unused", func(context.Context) (string, error) { return "", nil }, owners(), SkillHomes{})
 	var got map[string]string
 	if code := post(t, h, "/api/choose", ChooseHeader, &got); code != 200 || got["path"] != "" {
@@ -95,6 +97,7 @@ func TestChooseCancelledReturnsNoPath(t *testing.T) {
 }
 
 func TestChooseFailureIsReported(t *testing.T) {
+	t.Parallel()
 	h := Handler("/unused", func(context.Context) (string, error) { return "", errors.New("no dialog") }, owners(), SkillHomes{})
 	var got map[string]string
 	if code := post(t, h, "/api/choose", ChooseHeader, &got); code != 500 || got["error"] != "no dialog" {
@@ -103,6 +106,7 @@ func TestChooseFailureIsReported(t *testing.T) {
 }
 
 func TestChooseOpensOneDialogAtATime(t *testing.T) {
+	t.Parallel()
 	opened := make(chan struct{})
 	release := make(chan struct{})
 	shown := 0
@@ -132,6 +136,7 @@ func TestChooseOpensOneDialogAtATime(t *testing.T) {
 }
 
 func TestChooseNeedsThePagesHeaderAndPost(t *testing.T) {
+	t.Parallel()
 	h := Handler("/unused", noChoose(t), owners(), SkillHomes{})
 	if code := post(t, h, "/api/choose", "", nil); code != 403 {
 		t.Errorf("no header: %d", code)
@@ -142,6 +147,7 @@ func TestChooseNeedsThePagesHeaderAndPost(t *testing.T) {
 }
 
 func TestMacDialogRunsOsascriptAndTrimsThePath(t *testing.T) {
+	t.Parallel()
 	var name string
 	var args []string
 	choose := MacDialog(func(_ context.Context, n string, a ...string) ([]byte, []byte, error) {
@@ -158,6 +164,7 @@ func TestMacDialogRunsOsascriptAndTrimsThePath(t *testing.T) {
 }
 
 func TestMacDialogCancelledChoosesNothing(t *testing.T) {
+	t.Parallel()
 	choose := MacDialog(func(context.Context, string, ...string) ([]byte, []byte, error) {
 		return nil, []byte("0:84: execution error: User canceled. (-128)\n"), errors.New("exit status 1")
 	})
@@ -167,6 +174,7 @@ func TestMacDialogCancelledChoosesNothing(t *testing.T) {
 }
 
 func TestMacDialogFailureCarriesItsMessage(t *testing.T) {
+	t.Parallel()
 	choose := MacDialog(func(context.Context, string, ...string) ([]byte, []byte, error) {
 		return nil, []byte("not allowed\n"), errors.New("exit status 1")
 	})
@@ -176,6 +184,7 @@ func TestMacDialogFailureCarriesItsMessage(t *testing.T) {
 }
 
 func TestSettingsReturnsOnlySettingsFiles(t *testing.T) {
+	t.Parallel()
 	repo := t.TempDir()
 	dir := filepath.Join(repo, ".agister")
 	write(t, filepath.Join(dir, "service.toml"), "max_attempts = 1")
@@ -210,6 +219,7 @@ func TestSettingsReturnsOnlySettingsFiles(t *testing.T) {
 }
 
 func TestSettingsOfTildeReadAgisterHome(t *testing.T) {
+	t.Parallel()
 	home := t.TempDir()
 	write(t, filepath.Join(home, "agents", "h.toml"), `name = "h"`)
 	var got struct{ Files map[string]string }
@@ -222,6 +232,7 @@ func TestSettingsOfTildeReadAgisterHome(t *testing.T) {
 }
 
 func TestSettingsOfARepoCarryAgisterHomes(t *testing.T) {
+	t.Parallel()
 	user := t.TempDir()
 	home := filepath.Join(user, ".agister")
 	write(t, filepath.Join(home, "agents", "h.toml"), `name = "h"`)
@@ -252,6 +263,7 @@ func TestSettingsOfARepoCarryAgisterHomes(t *testing.T) {
 }
 
 func TestSettingsMarkAgisterHomeHoweverAsked(t *testing.T) {
+	t.Parallel()
 	user := t.TempDir()
 	home := filepath.Join(user, ".agister")
 	mkdir(t, home)
@@ -267,6 +279,7 @@ func TestSettingsMarkAgisterHomeHoweverAsked(t *testing.T) {
 }
 
 func TestSettingsWithoutAgisterIsNotFound(t *testing.T) {
+	t.Parallel()
 	h := Handler(filepath.Join(t.TempDir(), "missing"), noChoose(t), owners(), SkillHomes{})
 	var body map[string]string
 	if code := get(t, h, "127.0.0.1", "/api/settings?path="+q(t.TempDir()), &body); code != 404 || !strings.Contains(body["error"], ".agister") {
@@ -281,6 +294,7 @@ func TestSettingsWithoutAgisterIsNotFound(t *testing.T) {
 }
 
 func TestOnlyRequestsAddressedToThisMachineAreServed(t *testing.T) {
+	t.Parallel()
 	h := Handler(t.TempDir(), noChoose(t), owners(), SkillHomes{})
 	for host, want := range map[string]int{
 		"127.0.0.1:7465": 200, "localhost:7465": 200, "[::1]:7465": 200, "localhost": 200,
@@ -293,6 +307,7 @@ func TestOnlyRequestsAddressedToThisMachineAreServed(t *testing.T) {
 }
 
 func TestThePageIsServed(t *testing.T) {
+	t.Parallel()
 	h := Handler("/unused", noChoose(t), owners(), SkillHomes{})
 	for _, path := range []string{"/", "/repos.js", "/config.js", "/runs.js", "/markdown-it.min.js", "/knowledge.js", "/page.js"} {
 		req := httptest.NewRequest(http.MethodGet, path, nil)
@@ -312,20 +327,70 @@ func TestThePageIsServed(t *testing.T) {
 	}
 }
 
-func env(stdout, stderr *bytes.Buffer) Env {
+// memoryListener is a listener with no socket: a connection is an
+// in-memory pipe, handed from dial to Accept.
+type memoryListener struct {
+	conns  chan net.Conn
+	closed chan struct{}
+	once   sync.Once
+}
+
+type memoryAddr string
+
+func (memoryAddr) Network() string  { return "memory" }
+func (a memoryAddr) String() string { return string(a) }
+
+func newMemoryListener() *memoryListener {
+	return &memoryListener{conns: make(chan net.Conn), closed: make(chan struct{})}
+}
+
+func (l *memoryListener) Accept() (net.Conn, error) {
+	select {
+	case conn := <-l.conns:
+		return conn, nil
+	case <-l.closed:
+		return nil, net.ErrClosed
+	}
+}
+
+func (l *memoryListener) Close() error {
+	l.once.Do(func() { close(l.closed) })
+	return nil
+}
+
+// Addr is an address the handler's Host check lets through.
+func (l *memoryListener) Addr() net.Addr { return memoryAddr("127.0.0.1:7465") }
+
+// dial connects to the listener, whatever address is asked for; it returns
+// once the server has accepted the connection.
+func (l *memoryListener) dial(context.Context, string, string) (net.Conn, error) {
+	client, server := net.Pipe()
+	select {
+	case l.conns <- server:
+		return client, nil
+	case <-l.closed:
+		return nil, net.ErrClosed
+	}
+}
+
+// env is an environment whose Listen hands out the in-memory listener it
+// returns.
+func env(stdout, stderr *bytes.Buffer) (Env, *memoryListener) {
+	listener := newMemoryListener()
 	return Env{
 		Stdout:   stdout,
 		Stderr:   stderr,
 		Getenv:   func(string) string { return "" },
 		UserHome: func() (string, error) { return "/home/u", nil },
-		Listen:   func(string, string) (net.Listener, error) { return net.Listen("tcp", "127.0.0.1:0") },
+		Listen:   func(string, string) (net.Listener, error) { return listener, nil },
 		Observe:  owners(),
-	}
+	}, listener
 }
 
 func TestMainServesUntilCancelledAndOpensThePage(t *testing.T) {
+	t.Parallel()
 	var stdout, stderr bytes.Buffer
-	e := env(&stdout, &stderr)
+	e, listener := env(&stdout, &stderr)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	opened := make(chan string, 1)
@@ -333,13 +398,9 @@ func TestMainServesUntilCancelledAndOpensThePage(t *testing.T) {
 	code := make(chan int, 1)
 	go func() { code <- Main(ctx, nil, e) }()
 
-	var u string
-	select {
-	case u = <-opened:
-	case <-time.After(10 * time.Second):
-		t.Fatal("the page was not opened")
-	}
-	resp, err := http.Get(u)
+	u := <-opened
+	client := &http.Client{Transport: &http.Transport{DialContext: listener.dial}}
+	resp, err := client.Get(u)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,14 +409,10 @@ func TestMainServesUntilCancelledAndOpensThePage(t *testing.T) {
 	if resp.StatusCode != 200 || !strings.Contains(string(body), "<title>Agister</title>") {
 		t.Errorf("GET %s: %d", u, resp.StatusCode)
 	}
+	client.CloseIdleConnections()
 	cancel()
-	select {
-	case c := <-code:
-		if c != 0 {
-			t.Errorf("exit %d, stderr %s", c, stderr.String())
-		}
-	case <-time.After(10 * time.Second):
-		t.Fatal("Main did not stop when cancelled")
+	if c := <-code; c != 0 {
+		t.Errorf("exit %d, stderr %s", c, stderr.String())
 	}
 	if !strings.Contains(stdout.String(), u) {
 		t.Errorf("stdout %q does not name %s", stdout.String(), u)
@@ -363,13 +420,14 @@ func TestMainServesUntilCancelledAndOpensThePage(t *testing.T) {
 }
 
 func TestMainWithNoOpenLeavesTheBrowserAlone(t *testing.T) {
+	t.Parallel()
 	var stdout, stderr bytes.Buffer
-	e := env(&stdout, &stderr)
+	e, listener := env(&stdout, &stderr)
 	e.Open = func(string) error { t.Error("opened the browser"); return nil }
 	listening := make(chan struct{})
 	e.Listen = func(string, string) (net.Listener, error) {
 		defer close(listening)
-		return net.Listen("tcp", "127.0.0.1:0")
+		return listener, nil
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	code := make(chan int, 1)
@@ -382,6 +440,7 @@ func TestMainWithNoOpenLeavesTheBrowserAlone(t *testing.T) {
 }
 
 func TestMainRefusesBadArguments(t *testing.T) {
+	t.Parallel()
 	for _, args := range [][]string{
 		{"--addr", "0.0.0.0:7465"},
 		{"--addr", "example.com:80"},
@@ -390,7 +449,7 @@ func TestMainRefusesBadArguments(t *testing.T) {
 		{"--unknown"},
 	} {
 		var stdout, stderr bytes.Buffer
-		e := env(&stdout, &stderr)
+		e, _ := env(&stdout, &stderr)
 		e.Listen = func(string, string) (net.Listener, error) {
 			t.Errorf("%v: listened", args)
 			return nil, errors.New("no")
@@ -402,15 +461,18 @@ func TestMainRefusesBadArguments(t *testing.T) {
 }
 
 func TestMainHelp(t *testing.T) {
+	t.Parallel()
 	var stdout, stderr bytes.Buffer
-	if c := Main(context.Background(), []string{"--help"}, env(&stdout, &stderr)); c != 0 || !strings.Contains(stdout.String(), "--no-open") {
+	e, _ := env(&stdout, &stderr)
+	if c := Main(context.Background(), []string{"--help"}, e); c != 0 || !strings.Contains(stdout.String(), "--no-open") {
 		t.Errorf("exit %d, stdout %q", c, stdout.String())
 	}
 }
 
 func TestMainReportsAPortInUse(t *testing.T) {
+	t.Parallel()
 	var stdout, stderr bytes.Buffer
-	e := env(&stdout, &stderr)
+	e, _ := env(&stdout, &stderr)
 	e.Listen = func(string, string) (net.Listener, error) { return nil, errors.New("address already in use") }
 	if c := Main(context.Background(), nil, e); c != 70 || !strings.Contains(stderr.String(), "in use") {
 		t.Errorf("exit %d, stderr %q", c, stderr.String())
@@ -418,8 +480,9 @@ func TestMainReportsAPortInUse(t *testing.T) {
 }
 
 func TestMainNeedsARunStore(t *testing.T) {
+	t.Parallel()
 	var stdout, stderr bytes.Buffer
-	e := env(&stdout, &stderr)
+	e, _ := env(&stdout, &stderr)
 	e.Observe = nil
 	e.Listen = func(string, string) (net.Listener, error) {
 		t.Error("listened with no run store")

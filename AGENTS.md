@@ -41,3 +41,11 @@
   what belongs to the issue. Record in the project's deferred work only a
   real, observed gap outside the issue; reject a speculative one.
 - A project's own `AGENTS.md` may replace these steps.
+
+## Reaching the owner
+
+- When you need the owner and they are away, send one ntfy push:
+  `curl -s -m 10 -H "Title: <short>" -H "Tags: bell" -d "<one-line ask>" "https://ntfy.sh/$(cat ~/.config/ntfy/topic)"`.
+  The topic file is the one `~/.claude/hooks/limit-hit-ntfy.sh` uses.
+- Push only for a real block or a decision that is the owner's: one ask per
+  push. Keep working on whatever does not depend on the answer.

@@ -59,7 +59,10 @@ func resolve(t *testing.T, provider app.InputProvider, dir string, args map[stri
 	return resolved
 }
 
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
 func TestInputsResolveToImmutableIdentities(t *testing.T) {
+	t.Parallel()
 	dir := repository(t)
 	head, base := sh(t, dir, "rev-parse", "HEAD"), sh(t, dir, "rev-parse", "main")
 
@@ -83,7 +86,11 @@ func TestInputsResolveToImmutableIdentities(t *testing.T) {
 }
 
 // File names reach the agent as they are: not split on spaces, not quoted.
+//
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
 func TestChangedFilesKeepTheirNames(t *testing.T) {
+	t.Parallel()
 	dir := repository(t)
 	for _, name := range []string{"my notes.md", "café.md"} {
 		os.WriteFile(filepath.Join(dir, name), []byte("x\n"), 0o600)
@@ -96,7 +103,10 @@ func TestChangedFilesKeepTheirNames(t *testing.T) {
 	}
 }
 
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
 func TestInputErrors(t *testing.T) {
+	t.Parallel()
 	dir := repository(t)
 	for name, c := range map[string]struct {
 		provider app.InputProvider
@@ -113,7 +123,10 @@ func TestInputErrors(t *testing.T) {
 	}
 }
 
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
 func TestCheckoutIsDetachedAndReleased(t *testing.T) {
+	t.Parallel()
 	dir := repository(t)
 	base := sh(t, dir, "rev-parse", "main")
 	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
@@ -139,7 +152,10 @@ func TestCheckoutIsDetachedAndReleased(t *testing.T) {
 	}
 }
 
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
 func TestRepositoryEquivalenceUsesCanonicalCommonDirectories(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	repo := repository(t)
 	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
@@ -169,6 +185,7 @@ func TestRepositoryEquivalenceUsesCanonicalCommonDirectories(t *testing.T) {
 		{"invalid second", repo, missing, false, true},
 	} {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			same, err := workspaces.SameRepository(ctx, c.first, c.second)
 			if (err != nil) != c.fails || same != c.same {
 				t.Fatalf("SameRepository = %v, %v", same, err)
@@ -181,7 +198,11 @@ func TestRepositoryEquivalenceUsesCanonicalCommonDirectories(t *testing.T) {
 // not ignored; the patch from the revision to it, applied to a copy of the
 // revision, makes that content exactly, and neither touches the checkout's
 // own index.
+//
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
 func TestChangesCoverEverythingSinceTheRevision(t *testing.T) {
+	t.Parallel()
 	repo := repository(t)
 	ctx := context.Background()
 	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
@@ -247,7 +268,11 @@ func TestChangesCoverEverythingSinceTheRevision(t *testing.T) {
 // Files the revision tracks stay content though they match .gitignore:
 // unchanged, they are not in the patch at all, and an edit to one is.
 // Untracked files that match stay out.
+//
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
 func TestTrackedIgnoredFilesStayContent(t *testing.T) {
+	t.Parallel()
 	repo := repository(t)
 	ctx := context.Background()
 	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
@@ -319,7 +344,11 @@ var calls atomic.Int64
 
 // A patch that does not apply fails the copy with git's error, and leaves
 // neither a directory nor a worktree registration behind.
+//
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
 func TestACopyWhosePatchDoesNotApplyLeavesNothing(t *testing.T) {
+	t.Parallel()
 	repo := repository(t)
 	ctx := context.Background()
 	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
@@ -340,7 +369,11 @@ func TestACopyWhosePatchDoesNotApplyLeavesNothing(t *testing.T) {
 // A checkout's changes, kept as a patch, apply to another checkout of the
 // same revision, a binary file included: to its files, not its index. A
 // check changes nothing.
+//
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
 func TestApplyCarriesAPatchIntoACheckout(t *testing.T) {
+	t.Parallel()
 	repo := repository(t)
 	ctx := context.Background()
 	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
@@ -391,7 +424,11 @@ func TestApplyCarriesAPatchIntoACheckout(t *testing.T) {
 
 // A patch that conflicts with the checkout fails its check and leaves the
 // checkout as it was; applying it changes nothing either.
+//
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
 func TestApplyOfAConflictingPatchLeavesTheCheckoutAsItWas(t *testing.T) {
+	t.Parallel()
 	repo := repository(t)
 	ctx := context.Background()
 	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
@@ -416,7 +453,11 @@ func TestApplyOfAConflictingPatchLeavesTheCheckoutAsItWas(t *testing.T) {
 
 // A copy is never made over what is at its path already, which stays as
 // it was.
+//
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
 func TestACopyIsNotMadeWhereSomethingIs(t *testing.T) {
+	t.Parallel()
 	repo := repository(t)
 	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
 	dir := workspaces.Place(call())
@@ -442,7 +483,11 @@ func TestACopyIsNotMadeWhereSomethingIs(t *testing.T) {
 // A verifying call whose copy's place is taken fails, and leaves what is
 // there as it was: it is not the call's, so nothing removes it, and the
 // record no longer names it as the call's copy.
+//
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
 func TestAVerifierLeavesAnOccupiedPlaceAlone(t *testing.T) {
+	t.Parallel()
 	repo := repository(t)
 	ctx := context.Background()
 	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
@@ -510,7 +555,11 @@ func (wallClock) Now() time.Time { return time.Now() }
 
 // A checkout its call never released (the process was killed) is removed
 // from disk and from the repository's worktree list.
+//
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
 func TestDiscardRemovesAnUnreleasedCheckout(t *testing.T) {
+	t.Parallel()
 	repo := repository(t)
 	ctx := context.Background()
 	checkout, _, err := git.NewWorkspaces(git.NewWorktrees(t.TempDir())).Checkout(ctx, repo, sh(t, repo, "rev-parse", "HEAD"))
@@ -534,7 +583,11 @@ func TestDiscardRemovesAnUnreleasedCheckout(t *testing.T) {
 
 // Only a directory Checkout could have made is ever removed: each case
 // breaks exactly one part of the pattern.
+//
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
 func TestDiscardRefusesOtherDirectories(t *testing.T) {
+	t.Parallel()
 	repo := repository(t)
 	parent, err := os.MkdirTemp("", "agister-checkout-")
 	if err != nil {
@@ -565,7 +618,11 @@ func TestDiscardRefusesOtherDirectories(t *testing.T) {
 
 // A checkout whose directory is already gone is still dropped from the
 // worktree list, and discarding it succeeds.
+//
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
 func TestDiscardDropsACheckoutThatIsGone(t *testing.T) {
+	t.Parallel()
 	repo := repository(t)
 	ctx := context.Background()
 	checkout, _, err := git.NewWorkspaces(git.NewWorktrees(t.TempDir())).Checkout(ctx, repo, sh(t, repo, "rev-parse", "HEAD"))
@@ -585,7 +642,11 @@ func TestDiscardDropsACheckoutThatIsGone(t *testing.T) {
 
 // Discard removes only its own checkout: another worktree's stale record
 // in the repository is the repository's, and survives.
+//
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
 func TestDiscardLeavesOtherStaleWorktreesAlone(t *testing.T) {
+	t.Parallel()
 	repo := repository(t)
 	ctx := context.Background()
 	other := filepath.Join(t.TempDir(), "other")
@@ -610,7 +671,11 @@ func TestDiscardLeavesOtherStaleWorktreesAlone(t *testing.T) {
 
 // Checkouts and copies made at the same time in one repository each get a
 // worktree admin directory of their own, named after their own path.
+//
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
 func TestConcurrentCheckoutsAndCopiesHaveTheirOwnWorktrees(t *testing.T) {
+	t.Parallel()
 	repo := repository(t)
 	ctx := context.Background()
 	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
@@ -655,7 +720,11 @@ func TestConcurrentCheckoutsAndCopiesHaveTheirOwnWorktrees(t *testing.T) {
 
 // A checkout left behind under the name earlier versions gave every
 // checkout is still recognised and removed.
+//
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
 func TestDiscardRemovesACheckoutUnderTheOldName(t *testing.T) {
+	t.Parallel()
 	repo := repository(t)
 	parent, err := os.MkdirTemp("", "agister-checkout-")
 	if err != nil {

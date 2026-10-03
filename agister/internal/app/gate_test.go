@@ -86,6 +86,7 @@ func (c *clientFake) ListRuns(context.Context) ([]contract.Run, error) {
 // problem of one document passes the gate: the core refuses what depends on
 // it (ADR-015).
 func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	inner := &clientFake{}
 	gated := &app.Gated{
@@ -194,6 +195,7 @@ func (c *afterCheck) Check(ctx context.Context, probe bool) (contract.CheckRepor
 // runs on the settings that were checked, and reads nothing from the live
 // source once they were read.
 func TestGatedOperationUsesTheCheckedSettings(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
 	sources := []string{"git.revision", "git.diff", "param"}
@@ -235,6 +237,7 @@ func TestGatedOperationUsesTheCheckedSettings(t *testing.T) {
 // A submitted call is recorded with the digests of the settings that passed
 // the gate, though they were edited before the call resolved.
 func TestGatedSubmitRecordsTheCheckedSettings(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
 	h.recorder.hold = make(chan struct{})
@@ -276,6 +279,7 @@ func TestGatedSubmitRecordsTheCheckedSettings(t *testing.T) {
 // An edit landing between the gate's check and Submit does not reach the
 // call: it is recorded with the digests that were checked.
 func TestGatedSubmitRecordsWhatTheCheckRead(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
 	original := map[string]string{}
@@ -329,6 +333,7 @@ func TestGatedSubmitRecordsWhatTheCheckRead(t *testing.T) {
 // gate checked, not on what they became after: an edit landing after the
 // check does not turn the verdict.
 func TestGatedWriteScopeChecksTheGlobalSnapshot(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
 	h.defs.docs[definition.KindRuntime]["narrow"] = narrowRuntime

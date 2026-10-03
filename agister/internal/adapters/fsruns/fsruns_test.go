@@ -2,11 +2,13 @@ package fsruns
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
+	"syscall"
 	"testing"
 	"time"
 
@@ -15,14 +17,33 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
+// newStore is a Store over a directory of the test's own that signals
+// through Appends of the test's own: no handle of one test is another's to
+// find.
+func newStore(t *testing.T) Store {
+	t.Helper()
+	return Store{Dir: t.TempDir(), Appends: NewAppends()}
+}
+
+// letGo abandons h's run once the test ends, unless the test finished or
+// abandoned it: no handle outlives its test holding its run.
+func letGo(t *testing.T, h app.ReapHandle) {
+	t.Helper()
+	t.Cleanup(func() { h.(*handle).abandon() })
+}
+
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestOwnershipDecidesRunningVersusAbandoned(t *testing.T) {
-	store := Store{Dir: t.TempDir()}
+	t.Parallel()
+	store := newStore(t)
 	ctx := context.Background()
 	record := run.Record{Schema: run.RecordSchema, ID: "r1", Process: "p", CreatedAt: time.Now()}
 	h, err := store.Create(ctx, record)
 	if err != nil {
 		t.Fatal(err)
 	}
+	letGo(t, h)
 	for i := 0; i < 3; i++ {
 		if err := h.Append(run.Event{Kind: "E"}); err != nil {
 			t.Fatal(err)
@@ -43,14 +64,18 @@ func TestOwnershipDecidesRunningVersusAbandoned(t *testing.T) {
 	}
 }
 
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestFinishedRecord(t *testing.T) {
-	store := Store{Dir: t.TempDir()}
+	t.Parallel()
+	store := newStore(t)
 	ctx := context.Background()
 	record := run.Record{Schema: run.RecordSchema, ID: "r2", Process: "p", CreatedAt: time.Now()}
 	h, err := store.Create(ctx, record)
 	if err != nil {
 		t.Fatal(err)
 	}
+	letGo(t, h)
 	now := time.Now()
 	record.FinishedAt = &now
 	record.Result = &run.Result{Status: run.Completed}
@@ -66,12 +91,16 @@ func TestFinishedRecord(t *testing.T) {
 	}
 }
 
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestArtifactsAreStoredWithTheirDigest(t *testing.T) {
-	store := Store{Dir: t.TempDir()}
+	t.Parallel()
+	store := newStore(t)
 	h, err := store.Create(context.Background(), run.Record{Schema: run.RecordSchema, ID: "r3"})
 	if err != nil {
 		t.Fatal(err)
 	}
+	letGo(t, h)
 	artifact, err := h.Artifact("changes.patch", []byte("diff"))
 	if err != nil || artifact.Path != "artifacts/changes.patch" || artifact.Bytes != 4 ||
 		artifact.Digest != "sha256:df087996d45b03e7eb8c133c0298fd98d35113fca26aaba58612fef3cc212cad" {
@@ -90,13 +119,18 @@ func TestArtifactsAreStoredWithTheirDigest(t *testing.T) {
 
 // An artifact a run stored reads back as stored, by the path its record
 // names; a path out of the run's artifacts, or to none, is refused.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestArtifactsReadBackAsStored(t *testing.T) {
-	store := Store{Dir: t.TempDir()}
+	t.Parallel()
+	store := newStore(t)
 	ctx := context.Background()
 	h, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "r4"})
 	if err != nil {
 		t.Fatal(err)
 	}
+	letGo(t, h)
 	patch := []byte("diff --git a/x b/x\nGIT binary patch\n\x00\xff\n")
 	artifact, err := h.Artifact("changes.patch", patch)
 	if err != nil {
@@ -120,7 +154,11 @@ func TestArtifactsReadBackAsStored(t *testing.T) {
 }
 
 // A run ID cannot lead out of the runs directory.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestRunIDsStayInTheStore(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	store := Store{Dir: filepath.Join(root, "runs")}
 	ctx := context.Background()
@@ -129,6 +167,7 @@ func TestRunIDsStayInTheStore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	letGo(t, h)
 	h.(*handle).lock.Close()
 
 	var input *contract.InputError
@@ -151,8 +190,11 @@ func TestRunIDsStayInTheStore(t *testing.T) {
 	}
 }
 
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestAdoptTakesOnlyAnAbandonedRun(t *testing.T) {
-	store := Store{Dir: t.TempDir()}
+	t.Parallel()
+	store := newStore(t)
 	ctx := context.Background()
 	effects := &run.Effects{Checkout: &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-1/workspace"}}
 	record := run.Record{Schema: run.RecordSchema, ID: "r1", Process: "p", CreatedAt: time.Now(), Effects: effects}
@@ -160,6 +202,7 @@ func TestAdoptTakesOnlyAnAbandonedRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	letGo(t, h)
 	_ = h.Append(run.Event{Kind: "E"})
 
 	// Owned: neither listed nor adoptable.
@@ -179,6 +222,7 @@ func TestAdoptTakesOnlyAnAbandonedRun(t *testing.T) {
 	if err != nil || got.Effects == nil || got.Effects.Checkout.Dir != effects.Checkout.Dir {
 		t.Fatalf("adopt: %+v, %v", got, err)
 	}
+	letGo(t, adopted)
 	if _, status, _ := store.Get(ctx, "r1"); status != run.StateRunning {
 		t.Fatalf("adopted run reads %s", status)
 	}
@@ -212,8 +256,12 @@ func TestAdoptTakesOnlyAnAbandonedRun(t *testing.T) {
 
 // A finished run whose record still names a clean copy is listed and
 // adopted, so a reap removes the copy; one with no copy on record is not.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestAFinishedRunWithACleanCopyOnRecordIsAdopted(t *testing.T) {
-	store := Store{Dir: t.TempDir()}
+	t.Parallel()
+	store := newStore(t)
 	ctx := context.Background()
 	now := time.Now()
 	for id, copied := range map[string]*run.Checkout{"copy": {Repository: "/repo", Dir: "/tmp/agister-checkout-2/workspace"}, "none": nil} {
@@ -223,6 +271,7 @@ func TestAFinishedRunWithACleanCopyOnRecordIsAdopted(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		letGo(t, h)
 		record, _, _ := store.Get(ctx, id)
 		record.FinishedAt = &now
 		record.Result = &run.Result{Status: run.Completed}
@@ -240,6 +289,7 @@ func TestAFinishedRunWithACleanCopyOnRecordIsAdopted(t *testing.T) {
 	if err != nil || record.FinishedAt == nil || record.Effects.Copy == nil {
 		t.Fatalf("adopt: %+v, %v", record, err)
 	}
+	letGo(t, adopted)
 	record.Effects.Copy = nil
 	if err := adopted.Finish(record); err != nil {
 		t.Fatal(err)
@@ -255,8 +305,12 @@ func TestAFinishedRunWithACleanCopyOnRecordIsAdopted(t *testing.T) {
 // A finished run whose record names an unreleased checkout is listed and
 // adopted, so a reap removes it; one with only its Checkout on record, as
 // every finished record before Unreleased has, is not.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestAFinishedRunWithAnUnreleasedCheckoutOnRecordIsAdopted(t *testing.T) {
-	store := Store{Dir: t.TempDir()}
+	t.Parallel()
+	store := newStore(t)
 	ctx := context.Background()
 	now := time.Now()
 	checkout := &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-1/workspace"}
@@ -265,6 +319,7 @@ func TestAFinishedRunWithAnUnreleasedCheckoutOnRecordIsAdopted(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		letGo(t, h)
 		record, _, _ := store.Get(ctx, id)
 		record.Effects.Unreleased = unreleased
 		record.FinishedAt = &now
@@ -283,6 +338,7 @@ func TestAFinishedRunWithAnUnreleasedCheckoutOnRecordIsAdopted(t *testing.T) {
 	if err != nil || record.FinishedAt == nil || !reflect.DeepEqual(record.Effects.Unreleased, checkout) {
 		t.Fatalf("adopt: %+v, %v", record, err)
 	}
+	letGo(t, adopted)
 	record.Effects.Unreleased = nil
 	if err := adopted.Finish(record); err != nil {
 		t.Fatal(err)
@@ -292,8 +348,11 @@ func TestAFinishedRunWithAnUnreleasedCheckoutOnRecordIsAdopted(t *testing.T) {
 	}
 }
 
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestLiveCheckoutsAreThoseOfRunsSomeoneOwns(t *testing.T) {
-	store := Store{Dir: t.TempDir()}
+	t.Parallel()
+	store := newStore(t)
 	ctx := context.Background()
 	effects := func(dir string) *run.Effects {
 		return &run.Effects{Checkout: &run.Checkout{Repository: "/repo", Dir: dir}}
@@ -302,11 +361,13 @@ func TestLiveCheckoutsAreThoseOfRunsSomeoneOwns(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	letGo(t, live)
 	_ = live.Append(run.Event{Kind: "E"})
 	dead, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "dead", CreatedAt: time.Now(), Effects: effects("/tmp/agister-checkout-dead/workspace")})
 	if err != nil {
 		t.Fatal(err)
 	}
+	letGo(t, dead)
 	_ = dead.Append(run.Event{Kind: "E"})
 	dead.(*handle).lock.Close()
 
@@ -318,6 +379,7 @@ func TestLiveCheckoutsAreThoseOfRunsSomeoneOwns(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	letGo(t, copying)
 	_ = copying.Append(run.Event{Kind: "E"})
 
 	dirs, err := store.LiveCheckouts(ctx)
@@ -343,14 +405,19 @@ func (s reapSpies) Discard(ctx context.Context, _, dir string) error { return s.
 // reap deadline passes while another process holds the worktree lock, is
 // left on record as unreleased: a later reap lists the finished run,
 // removes the checkout and clears the marker.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestACheckoutAReapCouldNotRemoveIsReapedLater(t *testing.T) {
-	store := Store{Dir: t.TempDir()}
+	t.Parallel()
+	store := newStore(t)
 	ctx := context.Background()
 	checkout := &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-1/workspace-1"}
 	h, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "killed", Process: "p", CreatedAt: time.Now(), Effects: &run.Effects{Checkout: checkout}})
 	if err != nil {
 		t.Fatal(err)
 	}
+	letGo(t, h)
 	// Its owner is killed.
 	h.(*handle).lock.Close()
 
@@ -393,5 +460,526 @@ func TestACheckoutAReapCouldNotRemoveIsReapedLater(t *testing.T) {
 	}
 	if abandoned, err := store.Abandoned(ctx); err != nil || len(abandoned) != 0 {
 		t.Fatalf("abandoned after the second reap = %+v, %v", abandoned, err)
+	}
+}
+
+// closed says whether ch is closed now, without waiting.
+func closed(ch <-chan struct{}) bool {
+	select {
+	case <-ch:
+		return true
+	default:
+		return false
+	}
+}
+
+// A run this process writes has a notification, closed already when the
+// run has an event after the one asked about, and open while it does not.
+// Another Store over the same directory, given the same Appends, shares it.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestAppendedIsClosedAlreadyWhenALaterEventExists(t *testing.T) {
+	t.Parallel()
+	store := newStore(t)
+	ctx := context.Background()
+	h, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: time.Now()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Finish(run.Record{ID: "r", FinishedAt: new(time.Time)})
+	for range 2 {
+		if err := h.Append(run.Event{Kind: "E"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, reader := range []Store{store, {Dir: store.Dir, Appends: store.Appends}} {
+		if appended, ok := reader.Appended(ctx, "r", 1); !ok || !closed(appended) {
+			t.Fatalf("after event 1 of 2: ok %v, closed %v", ok, ok && closed(appended))
+		}
+		if appended, ok := reader.Appended(ctx, "r", 2); !ok || closed(appended) {
+			t.Fatalf("after the last event: ok %v, closed %v", ok, ok && closed(appended))
+		}
+	}
+}
+
+// The notification closes when the run appends its next event, and not
+// before: raw output, record updates and artifacts do not close it.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestAppendedClosesOnTheNextAppendAndNotBefore(t *testing.T) {
+	t.Parallel()
+	store := newStore(t)
+	ctx := context.Background()
+	h, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: time.Now()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Finish(run.Record{ID: "r", FinishedAt: new(time.Time)})
+	appended, ok := store.Appended(ctx, "r", 0)
+	if !ok || closed(appended) {
+		t.Fatalf("a run with no events: ok %v, closed %v", ok, ok && closed(appended))
+	}
+	if err := h.Raw("line"); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Update(run.Record{Schema: run.RecordSchema, ID: "r", Process: "p"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Artifact("a.txt", []byte("a")); err != nil {
+		t.Fatal(err)
+	}
+	if closed(appended) {
+		t.Fatal("closed before any event was appended")
+	}
+	if err := h.Append(run.Event{Kind: "E"}); err != nil {
+		t.Fatal(err)
+	}
+	if !closed(appended) {
+		t.Fatal("not closed once an event was appended")
+	}
+	if next, _ := store.Appended(ctx, "r", 1); closed(next) {
+		t.Fatal("closed for the event after the one appended")
+	}
+}
+
+// The notification closes when the run finishes, and a finished run's is
+// closed already.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestAppendedClosesWhenTheRunFinishes(t *testing.T) {
+	t.Parallel()
+	store := newStore(t)
+	ctx := context.Background()
+	record := run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: time.Now()}
+	h, err := store.Create(ctx, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, h)
+	appended, ok := store.Appended(ctx, "r", 0)
+	if !ok || closed(appended) {
+		t.Fatalf("a running run: ok %v, closed %v", ok, ok && closed(appended))
+	}
+	now := time.Now()
+	record.FinishedAt = &now
+	if err := h.Finish(record); err != nil {
+		t.Fatal(err)
+	}
+	if !closed(appended) {
+		t.Fatal("not closed once the run finished")
+	}
+	if again, ok := store.Appended(ctx, "r", 0); !ok || !closed(again) {
+		t.Fatalf("a finished run: ok %v, closed %v", ok, ok && closed(again))
+	}
+}
+
+// A run another process runs has no notification: its owner lock is held
+// elsewhere and no handle here holds it. Once that owner is gone without
+// finishing, the run has ended, abandoned, and its notification is closed
+// already.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestAppendedHasNoNotificationForARunAnotherProcessRuns(t *testing.T) {
+	t.Parallel()
+	store := newStore(t)
+	ctx := context.Background()
+	dir := filepath.Join(store.Dir, "r")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := json.Marshal(run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: time.Now()})
+	if err := os.WriteFile(filepath.Join(dir, "record.json"), data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// The other owner's lock: an open file of its own, as another
+	// process's is.
+	lock, err := os.OpenFile(filepath.Join(dir, "owner.lock"), os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := store.Appended(ctx, "r", 0); ok {
+		t.Fatal("a notification for a run another process runs")
+	}
+	lock.Close()
+	if appended, ok := store.Appended(ctx, "r", 0); !ok || !closed(appended) {
+		t.Fatalf("an abandoned run: ok %v, closed %v", ok, ok && closed(appended))
+	}
+	if _, ok := store.Appended(ctx, "../r", 0); ok {
+		t.Fatal("a notification for a path out of the store")
+	}
+}
+
+// A run this process adopts is signalled as one it created is: from the
+// last event its dead owner wrote, on each event the reap appends, and on
+// its finish.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestAppendedSignalsAnAdoptedRun(t *testing.T) {
+	t.Parallel()
+	store := newStore(t)
+	ctx := context.Background()
+	record := run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: time.Now()}
+	dead, err := store.Create(ctx, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, dead)
+	if err := dead.Append(run.Event{Kind: "E"}); err != nil {
+		t.Fatal(err)
+	}
+	// The owner disappears without finishing; the in-process signal goes
+	// with it, as a killed process's does.
+	if err := store.Abandon("r"); err != nil {
+		t.Fatal(err)
+	}
+
+	adopted, _, err := store.Adopt(ctx, "r")
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, adopted)
+	if appended, ok := store.Appended(ctx, "r", 0); !ok || !closed(appended) {
+		t.Fatalf("after event 0 of the dead owner's 1: ok %v, closed %v", ok, ok && closed(appended))
+	}
+	appended, ok := store.Appended(ctx, "r", 1)
+	if !ok || closed(appended) {
+		t.Fatalf("after the dead owner's last event: ok %v, closed %v", ok, ok && closed(appended))
+	}
+	if err := adopted.Append(run.Event{Kind: "EFFECTS_REAPED"}); err != nil {
+		t.Fatal(err)
+	}
+	if !closed(appended) {
+		t.Fatal("not closed once the reap appended its event")
+	}
+	finishing, _ := store.Appended(ctx, "r", 2)
+	now := time.Now()
+	record.FinishedAt = &now
+	if err := adopted.Finish(record); err != nil {
+		t.Fatal(err)
+	}
+	if !closed(finishing) {
+		t.Fatal("not closed once the reap finished the run")
+	}
+}
+
+// A run abandoned in this process is left as a killed owner leaves it:
+// unowned, with its record as last saved and unfinished, so it reads as
+// abandoned and is adopted. Its handle refuses every later write, the
+// finish included, and takes nothing from whoever adopted the run.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestAbandonLeavesTheRunAsAKilledOwnerDoes(t *testing.T) {
+	t.Parallel()
+	store := newStore(t)
+	ctx := context.Background()
+	record := run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: time.Now()}
+	h, err := store.Create(ctx, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, h)
+	if err := h.Append(run.Event{Kind: "E"}); err != nil {
+		t.Fatal(err)
+	}
+	record.Effects = &run.Effects{Process: &run.Process{Ref: "pgid:7"}}
+	if err := h.Update(record); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Abandon("r"); err != nil {
+		t.Fatal(err)
+	}
+
+	saved, state, err := store.Get(ctx, "r")
+	if err != nil || state != run.StateAbandoned || saved.FinishedAt != nil || saved.Effects == nil || saved.Effects.Process == nil || saved.Effects.Process.Ref != "pgid:7" {
+		t.Fatalf("the abandoned run = %+v, %s, %v", saved, state, err)
+	}
+	if abandoned, err := store.Abandoned(ctx); err != nil || len(abandoned) != 1 || abandoned[0].ID != "r" {
+		t.Fatalf("abandoned = %+v, %v", abandoned, err)
+	}
+
+	now := time.Now()
+	finished := record
+	finished.FinishedAt = &now
+	refused := func(what string, err error) {
+		t.Helper()
+		if !errors.Is(err, errAbandoned) {
+			t.Fatalf("%s on an abandoned handle = %v, want %v", what, err, errAbandoned)
+		}
+	}
+	refused("Append", h.Append(run.Event{Kind: "LATE"}))
+	refused("Raw", h.Raw("late"))
+	refused("Update", h.Update(finished))
+	_, err = h.Artifact("late.txt", []byte("late"))
+	refused("Artifact", err)
+	refused("Finish", h.Finish(finished))
+	events, state, err := store.Events(ctx, "r", 0)
+	if err != nil || state != run.StateAbandoned || len(events) != 1 || events[0].Kind != "E" {
+		t.Fatalf("events after the refused writes = %+v, %s, %v", events, state, err)
+	}
+	for _, name := range []string{"provider.jsonl", "artifacts"} {
+		if _, err := os.Stat(filepath.Join(store.Dir, "r", name)); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("%s after the refused writes: %v", name, err)
+		}
+	}
+
+	// The run is the adopter's now: the abandoned handle's finish neither
+	// writes its record nor ends its notification.
+	adopted, _, err := store.Adopt(ctx, "r")
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, adopted)
+	appended, ok := store.Appended(ctx, "r", 1)
+	if !ok || closed(appended) {
+		t.Fatalf("the adopted run: ok %v, closed %v", ok, ok && closed(appended))
+	}
+	refused("Finish", h.Finish(finished))
+	if _, state, _ := store.Get(ctx, "r"); state != run.StateRunning || closed(appended) {
+		t.Fatalf("after the abandoned handle's finish: %s, closed %v", state, closed(appended))
+	}
+	if err := adopted.Finish(finished); err != nil {
+		t.Fatal(err)
+	}
+	if _, state, _ := store.Get(ctx, "r"); state != run.StateFinished || !closed(appended) {
+		t.Fatalf("after the adopter's finish: %s, closed %v", state, closed(appended))
+	}
+}
+
+// The notification closes when the run is abandoned, and an abandoned
+// run's is closed already: whoever follows it wakes and reads it abandoned.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestAppendedClosesWhenTheRunIsAbandoned(t *testing.T) {
+	t.Parallel()
+	store := newStore(t)
+	ctx := context.Background()
+	h, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: time.Now()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, h)
+	appended, ok := store.Appended(ctx, "r", 0)
+	if !ok || closed(appended) {
+		t.Fatalf("a running run: ok %v, closed %v", ok, ok && closed(appended))
+	}
+	// Another Store over the same directory, given the same Appends,
+	// abandons it, as it shares the handles.
+	if err := (Store{Dir: store.Dir, Appends: store.Appends}).Abandon("r"); err != nil {
+		t.Fatal(err)
+	}
+	if !closed(appended) {
+		t.Fatal("not closed once the run was abandoned")
+	}
+	if _, state, _ := store.Get(ctx, "r"); state != run.StateAbandoned {
+		t.Fatalf("read once woken: %s", state)
+	}
+	if again, ok := store.Appended(ctx, "r", 0); !ok || !closed(again) {
+		t.Fatalf("an abandoned run: ok %v, closed %v", ok, ok && closed(again))
+	}
+}
+
+// Only a run a handle here holds is abandoned: one that finished, one
+// abandoned already, one nobody here created and a path out of the store
+// are errors, and a finished run stays finished.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestAbandonNeedsARunThisProcessHolds(t *testing.T) {
+	t.Parallel()
+	store := newStore(t)
+	ctx := context.Background()
+	record := run.Record{Schema: run.RecordSchema, ID: "done", Process: "p", CreatedAt: time.Now()}
+	h, err := store.Create(ctx, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, h)
+	now := time.Now()
+	record.FinishedAt = &now
+	if err := h.Finish(record); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Abandon("done"); err == nil {
+		t.Fatal("a finished run was abandoned")
+	}
+	if _, state, _ := store.Get(ctx, "done"); state != run.StateFinished {
+		t.Fatalf("the finished run reads %s", state)
+	}
+
+	twice, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "twice", Process: "p", CreatedAt: time.Now()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, twice)
+	if err := store.Abandon("twice"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Abandon("twice"); err == nil {
+		t.Fatal("a run was abandoned twice")
+	}
+	if err := store.Abandon("unknown"); err == nil {
+		t.Fatal("a run nobody created was abandoned")
+	}
+	var invalid *contract.InputError
+	if err := store.Abandon("../twice"); !errors.As(err, &invalid) {
+		t.Fatalf("a path out of the store: %v", err)
+	}
+}
+
+// A Store signals only through the Appends it was given. One given none, or
+// given another, still stores and reads the run, and follows it as a run
+// another process runs: no notification while it runs, none to abandon.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestAStoreSignalsOnlyThroughItsOwnAppends(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	holder := newStore(t)
+	record := run.Record{Schema: run.RecordSchema, ID: "held", Process: "p", CreatedAt: time.Now()}
+	h, err := holder.Create(ctx, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, h)
+	for name, other := range map[string]Store{"no appends": {Dir: holder.Dir}, "other appends": {Dir: holder.Dir, Appends: NewAppends()}} {
+		if _, ok := other.Appended(ctx, "held", 0); ok {
+			t.Fatalf("%s: a notification for a run its appends do not hold", name)
+		}
+		if err := other.Abandon("held"); err == nil {
+			t.Fatalf("%s: abandoned a run its appends do not hold", name)
+		}
+	}
+	if _, state, err := holder.Get(ctx, "held"); err != nil || state != run.StateRunning {
+		t.Fatalf("the held run reads %s, %v", state, err)
+	}
+
+	// A Store given none holds its runs all the same.
+	bare := Store{Dir: t.TempDir()}
+	record.ID = "bare"
+	owned, err := bare.Create(ctx, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, owned)
+	if err := owned.Append(run.Event{Kind: "E"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := bare.Appended(ctx, "bare", 0); ok {
+		t.Fatal("a notification from a store with no appends")
+	}
+	if err := bare.Abandon("bare"); err == nil {
+		t.Fatal("a store with no appends abandoned a run")
+	}
+	now := time.Now()
+	record.FinishedAt = &now
+	if err := owned.Finish(record); err != nil {
+		t.Fatal(err)
+	}
+	events, state, err := bare.Events(ctx, "bare", 0)
+	if err != nil || state != run.StateFinished || len(events) != 1 {
+		t.Fatalf("the finished run = %+v, %s, %v", events, state, err)
+	}
+	if ended, ok := bare.Appended(ctx, "bare", 1); !ok || !closed(ended) {
+		t.Fatalf("a finished run: ok %v, closed %v", ok, ok && closed(ended))
+	}
+}
+
+// A handle lets go of its owner lock before it releases its signal, and
+// another handle can take the run in between: a finished run with a clean
+// copy on record, or an abandoned one, is adopted. Whoever waits on the
+// first handle's signal is woken by the adoption, and the adopter's signal
+// is not the first handle's to end: it goes on until the adopter finishes.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestARunAdoptedBeforeItsOwnerReleasesItsSignalKeepsItsOwn(t *testing.T) {
+	t.Parallel()
+	now := time.Now()
+	for name, disown := range map[string]func(store Store, owner app.RunHandle, record run.Record) error{
+		"finished": func(_ Store, owner app.RunHandle, record run.Record) error {
+			record.FinishedAt = &now
+			return owner.Finish(record)
+		},
+		"abandoned": func(store Store, _ app.RunHandle, record run.Record) error {
+			return store.Abandon(record.ID)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			store := newStore(t)
+			ctx := context.Background()
+			record := run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: now, Effects: &run.Effects{
+				Copy: &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-1/workspace"},
+			}}
+			owner, err := store.Create(ctx, record)
+			if err != nil {
+				t.Fatal(err)
+			}
+			letGo(t, owner)
+			if err := owner.Append(run.Event{Kind: "E"}); err != nil {
+				t.Fatal(err)
+			}
+			observed, ok := store.Appended(ctx, "r", 1)
+			if !ok || closed(observed) {
+				t.Fatalf("the owner's run: ok %v, closed %v", ok, ok && closed(observed))
+			}
+
+			// The owner has let go of its lock and not yet of its signal:
+			// the run is adopted there.
+			var adopted app.ReapHandle
+			var adoptErr error
+			store.Appends.unlocked = func(dir string) {
+				store.Appends.unlocked = nil
+				if dir != filepath.Join(store.Dir, "r") || closed(observed) {
+					adoptErr = fmt.Errorf("unlocked %s, the owner's signal closed %v", dir, closed(observed))
+					return
+				}
+				if adopted, _, adoptErr = store.Adopt(ctx, "r"); adoptErr == nil {
+					letGo(t, adopted)
+				}
+			}
+			if err := disown(store, owner, record); err != nil {
+				t.Fatal(err)
+			}
+			if adopted == nil || adoptErr != nil {
+				t.Fatalf("adopted between the owner's lock and its signal: %v, %v", adopted != nil, adoptErr)
+			}
+
+			if !closed(observed) {
+				t.Fatal("whoever waited on the owner's signal was not woken")
+			}
+			following, ok := store.Appended(ctx, "r", 1)
+			if !ok || closed(following) {
+				t.Fatalf("the adopter's signal once the owner released its own: ok %v, closed %v", ok, ok && closed(following))
+			}
+			if err := adopted.Append(run.Event{Kind: "EFFECTS_REAPED"}); err != nil {
+				t.Fatal(err)
+			}
+			if !closed(following) {
+				t.Fatal("not closed once the adopter appended its event")
+			}
+			finishing, ok := store.Appended(ctx, "r", 2)
+			if !ok || closed(finishing) {
+				t.Fatalf("after the adopter's event: ok %v, closed %v", ok, ok && closed(finishing))
+			}
+			record.FinishedAt, record.Effects = &now, nil
+			if err := adopted.Finish(record); err != nil {
+				t.Fatal(err)
+			}
+			if _, state, _ := store.Get(ctx, "r"); state != run.StateFinished || !closed(finishing) {
+				t.Fatalf("after the adopter's finish: %s, closed %v", state, closed(finishing))
+			}
+		})
 	}
 }

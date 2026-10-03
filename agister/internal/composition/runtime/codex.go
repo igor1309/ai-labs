@@ -71,6 +71,9 @@ func CodexResult(t codex.Turn) run.Turn {
 	}
 	return result
 }
-func NewCodex(command string) app.TurnRunner {
-	return AdaptCodex(codex.New(command, CodexTransport{Supervisor: supervisor.Runtime{}}))
+
+// NewCodex is the Codex runner of command, run with its ccusage lookups on
+// the process supervisor given.
+func NewCodex(command string, processes CodexSupervisor) app.TurnRunner {
+	return AdaptCodex(codex.New(command, CodexTransport{Supervisor: processes}))
 }

@@ -79,6 +79,7 @@ func call(id, process, created, extra string) string {
 }
 
 func TestSummaryTakesModelAndEffortFromTheRecordedProfile(t *testing.T) {
+	t.Parallel()
 	runs := t.TempDir()
 	runRecord(t, runs, "run-1", call("run-1", "implement", "2026-10-01T10:00:00Z",
 		`,"profile":{"model":"opus","effort":"high","session":"fresh-only"},`+
@@ -119,6 +120,7 @@ func TestSummaryTakesModelAndEffortFromTheRecordedProfile(t *testing.T) {
 }
 
 func TestSummaryCountsVerifyAttempts(t *testing.T) {
+	t.Parallel()
 	runs := t.TempDir()
 	runRecord(t, runs, "run-1", call("run-1", "implement", "2026-10-01T10:00:00Z",
 		`,"verify":{"command":"go test ./...","timeout":0,"max_attempts":3,"instruction":""},`+
@@ -131,6 +133,7 @@ func TestSummaryCountsVerifyAttempts(t *testing.T) {
 }
 
 func TestReadRunReturnsTheRecordAsStored(t *testing.T) {
+	t.Parallel()
 	home := t.TempDir()
 	runs := filepath.Join(home, "runs")
 	// Spacing, key order and a field no Agister record has: none of it
@@ -167,6 +170,7 @@ func TestReadRunReturnsTheRecordAsStored(t *testing.T) {
 }
 
 func TestAnUnfinishedRunIsRunningWhileOwnedAndLostOnceNot(t *testing.T) {
+	t.Parallel()
 	home := t.TempDir()
 	runs := filepath.Join(home, "runs")
 	runRecord(t, runs, "owned", call("owned", "implement", "2026-10-01T10:00:00Z", ""))
@@ -224,6 +228,7 @@ func (f finishedBetween) Get(_ context.Context, id string) (run.Record, run.Stat
 }
 
 func TestARunThatFinishesWhileReadReadsAsFinished(t *testing.T) {
+	t.Parallel()
 	runs := t.TempDir()
 	unfinished := call("run-1", "implement", "2026-10-01T10:00:00Z", "")
 	finished := call("run-1", "implement", "2026-10-01T10:00:00Z",
@@ -253,6 +258,7 @@ func TestARunThatFinishesWhileReadReadsAsFinished(t *testing.T) {
 }
 
 func TestWorkflowSummaryCountsJudgeItems(t *testing.T) {
+	t.Parallel()
 	runs := t.TempDir()
 	runRecord(t, runs, "wf-1", `{"schema":"agister.run/v1alpha3","id":"wf-1","process":"code_review","request":{"process":"code_review","cwd":"/r"},"created_at":"2026-10-01T10:00:00Z",`+
 		`"workflow":{"nodes":[{"name":"first","process":"review","run":"r-1","status":"completed"},{"name":"second","process":"review","run":"r-2","status":"failed"},`+
@@ -285,6 +291,7 @@ func TestWorkflowSummaryCountsJudgeItems(t *testing.T) {
 }
 
 func TestSummaryCountsSkillsAndToolCalls(t *testing.T) {
+	t.Parallel()
 	runs := t.TempDir()
 	runRecord(t, runs, "run-1", call("run-1", "implement", "2026-10-01T10:00:00Z", ""),
 		`{"seq":1,"at":"2026-10-01T10:00:00Z","source":"agister","kind":"CALL_SUBMITTED"}`,
@@ -309,6 +316,7 @@ func TestSummaryCountsSkillsAndToolCalls(t *testing.T) {
 }
 
 func TestListSkipsUnparseableRecordsNewestFirstWithinLimit(t *testing.T) {
+	t.Parallel()
 	runs := t.TempDir()
 	runRecord(t, runs, "run-a", call("run-a", "p", "2026-10-01T09:00:00Z", ""))
 	runRecord(t, runs, "run-b", call("run-b", "p", "2026-10-01T11:00:00Z", ""))
@@ -334,6 +342,7 @@ func TestListSkipsUnparseableRecordsNewestFirstWithinLimit(t *testing.T) {
 }
 
 func TestRunListLimitsDefaultAndCap(t *testing.T) {
+	t.Parallel()
 	home := t.TempDir()
 	runs := filepath.Join(home, "runs")
 	// One more run than the cap; run-i started i seconds in, so the newest
@@ -371,6 +380,7 @@ func TestRunListLimitsDefaultAndCap(t *testing.T) {
 }
 
 func TestRunEndpoints(t *testing.T) {
+	t.Parallel()
 	home := t.TempDir()
 	runs := filepath.Join(home, "runs")
 	runRecord(t, runs, "run-1", call("run-1", "p", "2026-10-01T09:00:00Z", ""))
@@ -422,6 +432,7 @@ func TestRunEndpoints(t *testing.T) {
 }
 
 func TestCompareGroupsByConfiguration(t *testing.T) {
+	t.Parallel()
 	runs := t.TempDir()
 	finished := func(status string, wall int, cost string) string {
 		usd := ""

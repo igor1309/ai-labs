@@ -26,6 +26,7 @@ func numbered(first, last int, replaced map[int]string) string {
 // the context of two changes would meet, and says where a side has no
 // final newline.
 func TestUnifiedDiff(t *testing.T) {
+	t.Parallel()
 	// Too many lines to compare: one line in common, but the whole is
 	// shown removed, then added.
 	var before, after, fallback strings.Builder
@@ -58,6 +59,7 @@ func TestUnifiedDiff(t *testing.T) {
 		{"too large to compare", before.String(), after.String(), fallback.String()},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			if got := app.UnifiedDiff("a", "b", []byte(test.a), []byte(test.b)); got != test.want {
 				t.Fatalf("got\n%s\nwant\n%s", got, test.want)
 			}

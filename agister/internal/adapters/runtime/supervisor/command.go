@@ -6,8 +6,6 @@ import (
 	"encoding/hex"
 	"hash"
 	"io"
-	"os"
-	"os/exec"
 	"sync"
 	"syscall"
 	"time"
@@ -18,13 +16,15 @@ import (
 // environment. The group is recorded like a runtime's (see Ref), so
 // Processes reaps it after a killed CLI.
 type Commands struct {
+	// Starter starts bash; nil is Exec, the operating system's.
+	Starter Starter
 	// KillGrace bounds reading output that something outside the group
 	// holds open after the group is gone; zero means 5s.
 	KillGrace time.Duration
-	// Timer starts the command's timeout, and its wait for output when the
-	// request limits one (started again at each output): the wait has
-	// passed when the channel it returns delivers, and stop releases it.
-	// Nil is the wall clock.
+	// Timer starts the command's timeout, its wait for output when the
+	// request limits one (started again at each output), and the grace for
+	// reading output after the exit: the wait has passed when the channel
+	// it returns delivers, and stop releases it. Nil is the wall clock.
 	Timer func(timeout time.Duration) (fired <-chan time.Time, stop func())
 }
 
@@ -45,36 +45,28 @@ func (c Commands) Run(ctx context.Context, request CommandRequest, started func(
 		result.Head, result.Tail, result.Bytes, result.SHA256 = output.result()
 	}()
 
-	// A plain pipe: Wait returns when bash exits, not when every holder of
-	// the output has closed it.
-	reader, writer, err := os.Pipe()
+	// Its stderr goes with its stdout, which is read apart from its exit:
+	// Wait returns when bash exits, not when every holder of the output
+	// has closed it.
+	process, err := starter(c.Starter).Start(Command{Name: "bash", Args: []string{"-c", request.Command}, Dir: request.Dir})
 	if err != nil {
 		result.Error = err.Error()
 		return result
 	}
+	reader := process.Stdout()
 	defer reader.Close()
-	command := exec.Command("bash", "-c", request.Command)
-	command.Dir = request.Dir
-	command.Stdout, command.Stderr = writer, writer
-	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	err = command.Start()
-	writer.Close()
-	if err != nil {
-		result.Error = err.Error()
-		return result
-	}
-	pid := command.Process.Pid
+	pid := process.Group()
 	// On record before anything else, as a runtime's process is; a group
 	// that cannot be recorded is killed while its ID is still ours.
 	recorded := started(Ref(pid, ""))
 	if recorded == nil {
-		if token, err := Token(ctx, pid); err == nil {
+		if token, err := process.Token(ctx); err == nil {
 			recorded = started(Ref(pid, token))
 		}
 	}
 	if recorded != nil {
 		result.Error = recorded.Error()
-		_ = syscall.Kill(-pid, syscall.SIGKILL)
+		_ = process.Signal(syscall.SIGKILL)
 	}
 
 	read := make(chan struct{})
@@ -91,7 +83,7 @@ func (c Commands) Run(ctx context.Context, request CommandRequest, started func(
 		mu.Lock()
 		defer mu.Unlock()
 		if !reaped {
-			_ = syscall.Kill(-pid, syscall.SIGKILL)
+			_ = process.Signal(syscall.SIGKILL)
 		}
 	}
 	exited, watched := make(chan struct{}), make(chan struct{})
@@ -103,35 +95,28 @@ func (c Commands) Run(ctx context.Context, request CommandRequest, started func(
 		timedOut, cancelled, stale = c.watch(ctx, exited, fired, request.NoOutput, output, kill)
 	}()
 
-	waitErr := command.Wait()
+	exit := process.Wait()
 	mu.Lock()
 	reaped = true
 	// Members left in the group keep its ID from reuse; an empty group
 	// fails with ESRCH.
-	_ = syscall.Kill(-pid, syscall.SIGKILL)
+	_ = process.Signal(syscall.SIGKILL)
 	mu.Unlock()
 	close(exited)
 	<-watched
 	result.TimedOut, result.Cancelled, result.Stale = timedOut, cancelled, stale
 
+	held, stopHeld := c.timer(grace)
 	select {
 	case <-read:
-	case <-time.After(grace):
+	case <-held:
 		// Something outside the group still holds the output open.
 		reader.Close()
 		<-read
 	}
+	stopHeld()
 
-	if state := command.ProcessState; state != nil {
-		if status, ok := state.Sys().(syscall.WaitStatus); ok && status.Signaled() {
-			result.Signal = status.Signal().String()
-		} else {
-			code := state.ExitCode()
-			result.ExitCode = &code
-		}
-	} else if waitErr != nil {
-		result.Signal = waitErr.Error()
-	}
+	result.ExitCode, result.Signal = exit.Code, exit.Signal
 	return result
 }
 
@@ -179,13 +164,9 @@ func (c Commands) watch(ctx context.Context, exited <-chan struct{}, fired <-cha
 	}
 }
 
-// timer starts the command's timeout on c.Timer, or on the wall clock.
-func (c Commands) timer(timeout time.Duration) (<-chan time.Time, func()) {
-	if c.Timer != nil {
-		return c.Timer(timeout)
-	}
-	timer := time.NewTimer(timeout)
-	return timer.C, func() { timer.Stop() }
+// timer starts a wait on c.Timer, or on the wall clock.
+func (c Commands) timer(wait time.Duration) (<-chan time.Time, func()) {
+	return start(c.Timer, wait)
 }
 
 // boundedOutput keeps the first bound bytes and the last bound bytes after

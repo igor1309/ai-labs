@@ -23,6 +23,7 @@ type (
 // resumed: the command, the turn's arguments, directory, prompt on stdin,
 // timeout and the runner's kill grace.
 func TestTheTransportIsHandedTheTurn(t *testing.T) {
+	t.Parallel()
 	for name, resume := range map[string]string{"fresh": "", "resumed": session} {
 		spy := &spyTransport{}
 		runner := &claudecode.Runner{Transport: spy, Command: "/opt/claude", KillGrace: 3 * time.Second}
@@ -48,6 +49,7 @@ func TestTheTransportIsHandedTheTurn(t *testing.T) {
 // A turn the runtime reported nothing for is decided by the transport's
 // evidence: Agister's timeout, or a signal Agister did not send.
 func TestATurnIsDecidedByTheTransportsEvidence(t *testing.T) {
+	t.Parallel()
 	for name, c := range map[string]struct {
 		evidence claudecode.Evidence
 		status   claudecode.Status
@@ -66,6 +68,7 @@ func TestATurnIsDecidedByTheTransportsEvidence(t *testing.T) {
 }
 
 func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
+	t.Parallel()
 	spy := &spyTransport{Output: "2.1.286 (Claude Code)"}
 	identity, err := (&claudecode.Runner{Transport: spy, Command: "/opt/claude"}).Identity(context.Background())
 	if err != nil || identity.Version != "2.1.286" || identity.Contract != claudecode.Contract {
@@ -83,6 +86,7 @@ func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
 // Classification still quotes the process's bounded stderr, including a tail
 // with a cut marker, and preserves the full retained tail as evidence.
 func TestTheTransportStderrDecidesASilentFailure(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		code    int
 		tail    string

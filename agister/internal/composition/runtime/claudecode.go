@@ -73,6 +73,9 @@ func ClaudeCodeResult(t claudecode.Turn) run.Turn {
 	}
 	return result
 }
-func NewClaudeCode(command string) app.TurnRunner {
-	return AdaptClaudeCode(claudecode.New(command, ClaudeCodeTransport{Supervisor: supervisor.Runtime{}}))
+
+// NewClaudeCode is the Claude Code runner of command, run on the process
+// supervisor given.
+func NewClaudeCode(command string, processes ClaudeCodeSupervisor) app.TurnRunner {
+	return AdaptClaudeCode(claudecode.New(command, ClaudeCodeTransport{Supervisor: processes}))
 }

@@ -18,7 +18,9 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
 
+// Contract test: the settings store against the real filesystem.
 func TestWriteReadList(t *testing.T) {
+	t.Parallel()
 	store := fsdefs.Store{Dir: t.TempDir()}
 	ctx := context.Background()
 
@@ -54,7 +56,10 @@ func TestWriteReadList(t *testing.T) {
 
 // A replacement writes only over the document it expects: one edited or
 // removed since is left as it is, and nothing is left beside it.
+//
+// Contract test: the settings store against the real filesystem.
 func TestWriteReplacesOnlyTheExpectedDocument(t *testing.T) {
+	t.Parallel()
 	store := fsdefs.Store{Dir: t.TempDir()}
 	ctx := context.Background()
 	path, _, _ := store.Write(ctx, definition.KindAgent, "a", []byte("one"), "")
@@ -85,7 +90,9 @@ func TestWriteReplacesOnlyTheExpectedDocument(t *testing.T) {
 	}
 }
 
+// Contract test: the settings store against the real filesystem.
 func TestRejectsUnsafeNamesAndReportsMissing(t *testing.T) {
+	t.Parallel()
 	store := fsdefs.Store{Dir: t.TempDir()}
 	if _, err := store.Read(context.Background(), definition.KindAgent, "../escape"); err == nil {
 		t.Fatal("path traversal accepted")
@@ -97,7 +104,10 @@ func TestRejectsUnsafeNamesAndReportsMissing(t *testing.T) {
 
 // A project document takes priority over the global one of the same kind
 // and name, whatever the kind, and says which one it overrides.
+//
+// Contract test: the settings store against the real filesystem.
 func TestLayeredProjectTakesPriority(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
 	for _, kind := range []definition.Kind{definition.KindService, definition.KindAgent, definition.KindProcess, definition.KindPolicy, definition.KindRuntime, definition.KindSchema} {
@@ -156,7 +166,10 @@ func TestLayeredProjectTakesPriority(t *testing.T) {
 
 // A prompt is prompts/<name>.md, its bytes unchanged (ADR-014); one in
 // neither layer names both places it was expected.
+//
+// Contract test: the settings store against the real filesystem.
 func TestPromptsAreMarkdownFiles(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
 	text := "# Review\n\nRead the diff.\n"
@@ -205,7 +218,10 @@ func held(t *testing.T, dir string) bool {
 
 // The lock is held while the digest is compared, while the replacement is
 // renamed over the document, and while a new document is created.
+//
+// Contract test: the settings store against the real filesystem.
 func TestWriteHoldsTheLockAtEachStep(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	dir := t.TempDir()
 	seen := map[string]bool{}
@@ -228,7 +244,9 @@ func TestWriteHoldsTheLockAtEachStep(t *testing.T) {
 	}
 }
 
+// Contract test: the settings store against the real filesystem.
 func TestLockFileIsNeverListed(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	store := fsdefs.Store{Dir: t.TempDir()}
 	for _, kind := range []definition.Kind{definition.KindProcess, definition.KindAgent, definition.KindPolicy, definition.KindRuntime, definition.KindSchema} {
@@ -248,7 +266,10 @@ func TestLockFileIsNeverListed(t *testing.T) {
 }
 
 // A sanity check only; the lock tests above are what pin the lock down.
+//
+// Contract test: the settings store against the real filesystem.
 func TestConcurrentWritesWithOneDigestLandOnce(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	store := fsdefs.Store{Dir: t.TempDir()}
 	if _, _, err := store.Write(ctx, definition.KindProcess, "p", []byte("zero"), ""); err != nil {
@@ -280,7 +301,10 @@ func TestConcurrentWritesWithOneDigestLandOnce(t *testing.T) {
 
 // The workspace settings are one optional document, workspace.yaml: listed
 // only when it exists, and a project's takes priority over the global one.
+//
+// Contract test: the settings store against the real filesystem.
 func TestWorkspaceSettingsAreAnOptionalSingleton(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
 	layered := fsdefs.Layered{Global: global, Project: &project}

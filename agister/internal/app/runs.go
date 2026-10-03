@@ -13,10 +13,17 @@ import (
 // Runs reads evidence: observation, inspection, listing, cancellation.
 type Runs struct {
 	reader    RunsReader
+	appends   RunsAppends
 	canceller RunsCanceller
-	// How often Observe polls a running record.
+	timer     RunsTimer
+	// How often Observe polls a running record another process writes.
 	pollInterval time.Duration
 }
+
+// RunsTimer starts the wait between two of Observe's reads of a running
+// record another process writes: the next read is due when fired
+// delivers. stop releases the wait.
+type RunsTimer func(wait time.Duration) (fired <-chan time.Time, stop func())
 
 // RunsReader reads evidence. A record that is not finished and no longer
 // owned reads as abandoned.
@@ -24,6 +31,16 @@ type RunsReader interface {
 	Get(ctx context.Context, id string) (run.Record, run.State, error)
 	Events(ctx context.Context, id string, afterSeq int) ([]run.Event, run.State, error)
 	List(ctx context.Context) ([]run.Record, error)
+}
+
+// RunsAppends says when a run this process writes has more to read.
+type RunsAppends interface {
+	// Appended returns a channel closed once run id has an event after
+	// afterSeq or has ended, closed already if that is so when asked, so an
+	// event appended between a read and the ask is not missed. ok is false
+	// when this process does not write the run: there is no notification,
+	// and the run is polled.
+	Appended(ctx context.Context, id string, afterSeq int) (appended <-chan struct{}, ok bool)
 }
 
 // RunsCanceller cancels a call running in this process (Hosted is one). It
@@ -35,13 +52,21 @@ type RunsCanceller interface {
 // RunsAdapters are what Runs run on besides the calls hosted here.
 type RunsAdapters struct {
 	Reader RunsReader
+	// Appends wakes Observe when a run this process writes has more to
+	// read.
+	Appends RunsAppends
+	// Timer starts Observe's wait between two reads of a running record
+	// another process writes.
+	Timer RunsTimer
 }
 
 // NewRuns returns the use case that reads evidence and cancels the calls
-// hosted in this process. pollInterval is how often Observe polls a running
-// record; zero means 50ms.
-func NewRuns(reader RunsReader, canceller RunsCanceller, pollInterval time.Duration) *Runs {
-	return &Runs{reader: reader, canceller: canceller, pollInterval: pollInterval}
+// hosted in this process. Observe reads a running record this process
+// writes again once appends says it has more; one another process writes
+// it reads again after waiting on timer for pollInterval, zero meaning
+// 50ms.
+func NewRuns(reader RunsReader, appends RunsAppends, canceller RunsCanceller, timer RunsTimer, pollInterval time.Duration) *Runs {
+	return &Runs{reader: reader, appends: appends, canceller: canceller, timer: timer, pollInterval: pollInterval}
 }
 
 func (r *Runs) Observe(ctx context.Context, id string, afterSeq int, each func(contract.Event) error) error {
@@ -63,11 +88,37 @@ func (r *Runs) Observe(ctx context.Context, id string, afterSeq int, each func(c
 		if status != run.StateRunning {
 			return nil
 		}
+		if err := r.next(ctx, id, afterSeq, interval); err != nil {
+			return err
+		}
+	}
+}
+
+// next waits until the running record has more to read: for a run this
+// process writes, until it appends an event after afterSeq or ends; for
+// one another process writes, for interval on the timer. Either wait ends
+// early if ctx does.
+func (r *Runs) next(ctx context.Context, id string, afterSeq int, interval time.Duration) error {
+	if appended, ok := r.appends.Appended(ctx, id, afterSeq); ok {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(interval):
+		case <-appended:
+			return nil
 		}
+	}
+	return r.wait(ctx, interval)
+}
+
+// wait waits on the timer for interval, or until ctx ends.
+func (r *Runs) wait(ctx context.Context, interval time.Duration) error {
+	fired, stop := r.timer(interval)
+	defer stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-fired:
+		return nil
 	}
 }
 

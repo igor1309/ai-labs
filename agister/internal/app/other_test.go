@@ -12,6 +12,7 @@ import (
 	"testing/fstest"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
@@ -19,6 +20,7 @@ import (
 )
 
 func TestCheckReportsEveryProblemAcrossDocuments(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.defs.docs[definition.KindAgent]["broken"] = "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\ncolour = \"red\"\n"
 	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: q", 1) + "timeout: 2h\n"
@@ -52,6 +54,7 @@ func TestCheckReportsEveryProblemAcrossDocuments(t *testing.T) {
 // The report lists every definition read and what each uses, including
 // references to definitions that do not exist and what nothing uses.
 func TestCheckReportsWhatDefinesWhat(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.defs.docs[definition.KindPolicy]["spare"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "name: pol", "name: spare", 1)
 	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: q", 1), "agent:a", "agent:ghost", 1)
@@ -90,6 +93,7 @@ func TestCheckReportsWhatDefinesWhat(t *testing.T) {
 }
 
 func TestCheckProbesEachAgentsRuntime(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 	if report, _ := checker.Check(context.Background(), true); len(messages(report.Problems)) != 0 {
@@ -108,6 +112,7 @@ func TestCheckProbesEachAgentsRuntime(t *testing.T) {
 // Only an adapter the code provides is probed: the identity of one it does
 // not is never asked for, and its absence is reported once, as what it is.
 func TestCheckProbeAsksNoIdentityOfAnAdapterTheCodeDoesNotProvide(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(h.defs.docs[definition.KindRuntime]["rt"], "adapter: spy", "adapter: ghost", 1)
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
@@ -125,6 +130,7 @@ func TestCheckProbeAsksNoIdentityOfAnAdapterTheCodeDoesNotProvide(t *testing.T) 
 // The installed version may verify some primitive, yet not the ones a process
 // needs.
 func TestCheckProbePlansEachProcessOnTheInstalledVersion(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(h.defs.docs[definition.KindRuntime]["rt"], "Read: {grants: [repository.read], verified: [\"1.\"]}", "Read: {grants: [repository.read], verified: [\"2.\"]}", 1)
 	h.defs.docs[definition.KindProcess]["p"] += "tools: {require: [repository.read]}\n"
@@ -160,11 +166,19 @@ func (s *readerSpy) Get(context.Context, string) (run.Record, run.State, error) 
 func (s *readerSpy) List(context.Context) ([]run.Record, error) { return []run.Record{s.record}, nil }
 
 func TestObserveResumesAfterTheLastDeliveredEvent(t *testing.T) {
+	t.Parallel()
 	reader := &readerSpy{
 		batches: [][]run.Event{{{Seq: 4}, {Seq: 5}}, {}, {{Seq: 6}}},
 		status:  []run.State{run.StateRunning, run.StateRunning, run.StateFinished},
 	}
-	runs := app.NewRuns(reader, nil, 1)
+	var waits []time.Duration
+	passed := func(wait time.Duration) (<-chan time.Time, func()) {
+		waits = append(waits, wait)
+		fired := make(chan time.Time, 1)
+		fired <- time.Time{}
+		return fired, func() {}
+	}
+	runs := app.NewRuns(reader, unwritten{}, nil, passed, time.Second)
 	var delivered []int
 	err := runs.Observe(context.Background(), "r", 3, func(event contract.Event) error {
 		delivered = append(delivered, event.Seq)
@@ -172,6 +186,155 @@ func TestObserveResumesAfterTheLastDeliveredEvent(t *testing.T) {
 	})
 	if err != nil || !reflect.DeepEqual(delivered, []int{4, 5, 6}) || !reflect.DeepEqual(reader.calls, []int{3, 5, 5}) {
 		t.Fatalf("delivered %v, asked after %v, err %v", delivered, reader.calls, err)
+	}
+	if !reflect.DeepEqual(waits, []time.Duration{time.Second, time.Second}) {
+		t.Fatalf("waited %v between reads", waits)
+	}
+}
+
+// unwritten is the append notification of runs this process does not
+// write: it has none, so Observe polls.
+type unwritten struct{}
+
+func (unwritten) Appended(context.Context, string, int) (<-chan struct{}, bool) { return nil, false }
+
+// appendsSpy is the append notification of runs this process writes: it
+// reports each ask's afterSeq and answers the nth ask with wakes[n].
+type appendsSpy struct {
+	asks  chan int
+	wakes []chan struct{}
+	asked int
+}
+
+func (s *appendsSpy) Appended(_ context.Context, _ string, afterSeq int) (<-chan struct{}, bool) {
+	wake := s.wakes[s.asked]
+	s.asked++
+	s.asks <- afterSeq
+	return wake, true
+}
+
+// noTimer fails the test if Observe starts a timer.
+func noTimer(t *testing.T) app.RunsTimer {
+	return func(time.Duration) (<-chan time.Time, func()) {
+		t.Error("Observe started a timer for a run this process writes")
+		return make(chan time.Time), func() {}
+	}
+}
+
+// pacedReader reports each read of a run's events, which is running until
+// its last batch.
+type pacedReader struct {
+	readerSpy
+	reads chan int
+}
+
+func (r *pacedReader) Events(ctx context.Context, id string, afterSeq int) ([]run.Event, run.State, error) {
+	events, state, err := r.readerSpy.Events(ctx, id, afterSeq)
+	r.reads <- len(r.calls)
+	return events, state, err
+}
+
+// Observe reads a running record another process writes again only once
+// its poll interval has passed on the timer Runs takes, and not before.
+func TestObserveReadsAgainOnlyOnceTheIntervalHasPassed(t *testing.T) {
+	t.Parallel()
+	const interval = 7 * time.Second
+	reader := &pacedReader{
+		readerSpy: readerSpy{
+			batches: [][]run.Event{{{Seq: 1}}, {{Seq: 2}}},
+			status:  []run.State{run.StateRunning, run.StateFinished},
+		},
+		reads: make(chan int, 2),
+	}
+	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	runs := app.NewRuns(reader, unwritten{}, nil, clock.Timer, interval)
+	observed := make(chan error, 1)
+	go func() {
+		observed <- runs.Observe(context.Background(), "r", 0, func(contract.Event) error { return nil })
+	}()
+	<-reader.reads
+	clock.Started(interval)
+	clock.Advance(interval - time.Nanosecond)
+	select {
+	case <-reader.reads:
+		t.Fatal("read again before the interval had passed")
+	default:
+	}
+	if clock.Pending() != 1 {
+		t.Fatalf("the wait for the next read ended early: %d pending", clock.Pending())
+	}
+	clock.Advance(time.Nanosecond)
+	if read := <-reader.reads; read != 2 {
+		t.Fatalf("read %d", read)
+	}
+	if err := <-observed; err != nil {
+		t.Fatal(err)
+	}
+	if clock.Pending() != 0 {
+		t.Fatalf("the wait was not released: %d pending", clock.Pending())
+	}
+}
+
+// Observe reads a running record this process writes again only once the
+// run appends past the last event delivered, never on a timer: each event
+// reaches the callback while the run is still going.
+func TestObserveOfARunThisProcessWritesWaitsOnItsAppends(t *testing.T) {
+	t.Parallel()
+	reader := &pacedReader{
+		readerSpy: readerSpy{
+			batches: [][]run.Event{{{Seq: 1}}, {{Seq: 2}}, {}},
+			status:  []run.State{run.StateRunning, run.StateRunning, run.StateFinished},
+		},
+		reads: make(chan int, 3),
+	}
+	appends := &appendsSpy{asks: make(chan int, 2), wakes: []chan struct{}{make(chan struct{}), make(chan struct{})}}
+	runs := app.NewRuns(reader, appends, nil, noTimer(t), time.Second)
+	delivered := make(chan int, 2)
+	observed := make(chan error, 1)
+	go func() {
+		observed <- runs.Observe(context.Background(), "r", 0, func(event contract.Event) error {
+			delivered <- event.Seq
+			return nil
+		})
+	}()
+	for i, wake := range appends.wakes {
+		if read := <-reader.reads; read != i+1 {
+			t.Fatalf("read %d, want %d", read, i+1)
+		}
+		if seq := <-delivered; seq != i+1 {
+			t.Fatalf("delivered %d while running, want %d", seq, i+1)
+		}
+		if after := <-appends.asks; after != i+1 {
+			t.Fatalf("asked for events after %d, want %d", after, i+1)
+		}
+		select {
+		case <-reader.reads:
+			t.Fatal("read again before the run appended")
+		default:
+		}
+		close(wake)
+	}
+	if read := <-reader.reads; read != 3 {
+		t.Fatalf("read %d", read)
+	}
+	if err := <-observed; err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Waiting on a run this process writes ends with Observe's context.
+func TestObserveOfARunThisProcessWritesEndsWithItsContext(t *testing.T) {
+	t.Parallel()
+	reader := &readerSpy{batches: [][]run.Event{{}}, status: []run.State{run.StateRunning}}
+	appends := &appendsSpy{asks: make(chan int, 1), wakes: []chan struct{}{make(chan struct{})}}
+	runs := app.NewRuns(reader, appends, nil, noTimer(t), time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
+	observed := make(chan error, 1)
+	go func() { observed <- runs.Observe(ctx, "r", 0, func(contract.Event) error { return nil }) }()
+	<-appends.asks
+	cancel()
+	if err := <-observed; !errors.Is(err, context.Canceled) {
+		t.Fatalf("observe: %v", err)
 	}
 }
 
@@ -190,8 +353,9 @@ func (s *cancellerSpy) Cancel(id string) bool {
 // Cancelling a run asks the canceller Runs declares; one it does not take
 // effect for is refused as not running in this process.
 func TestRunsCancelThroughTheCancellerTheyDeclare(t *testing.T) {
+	t.Parallel()
 	canceller := &cancellerSpy{hosts: map[string]bool{"live": true}}
-	runs := app.NewRuns(nil, canceller, 0)
+	runs := app.NewRuns(nil, nil, canceller, nil, 0)
 	if err := runs.Cancel(context.Background(), "live"); err != nil {
 		t.Fatal(err)
 	}
@@ -205,6 +369,7 @@ func TestRunsCancelThroughTheCancellerTheyDeclare(t *testing.T) {
 }
 
 func TestInspectShowsTheNodeResultAsRecorded(t *testing.T) {
+	t.Parallel()
 	cost, ms, tokens := 0.1, int64(5), int64(3)
 	result := &run.Result{
 		Status: run.Failed, Error: run.Fault(run.ClassBudgetExhausted, "limit"), Text: "t",
@@ -214,7 +379,7 @@ func TestInspectShowsTheNodeResultAsRecorded(t *testing.T) {
 		Session:   &run.Session{ProviderSessionID: "prov-1", Continues: "run-0"},
 	}
 	reader := &readerSpy{state: run.StateFinished, record: run.Record{ID: "r", Result: result, Turn: &run.Turn{StderrTail: "boom"}}}
-	view, err := (app.NewRuns(reader, nil, 0)).Inspect(context.Background(), "r")
+	view, err := (app.NewRuns(reader, nil, nil, nil, 0)).Inspect(context.Background(), "r")
 	if err != nil || view.State != "finished" || view.StderrTail != "boom" {
 		t.Fatalf("view = %+v, %v", view, err)
 	}
@@ -227,8 +392,9 @@ func TestInspectShowsTheNodeResultAsRecorded(t *testing.T) {
 }
 
 func TestAnAbandonedRunIsALostNode(t *testing.T) {
+	t.Parallel()
 	reader := &readerSpy{state: run.StateAbandoned, record: run.Record{ID: "r", CreatedAt: time.Unix(1, 0)}}
-	view, err := (app.NewRuns(reader, nil, 0)).Inspect(context.Background(), "r")
+	view, err := (app.NewRuns(reader, nil, nil, nil, 0)).Inspect(context.Background(), "r")
 	if err != nil || view.State != "abandoned" || view.Result == nil || view.Result.Status != "lost" || view.Result.Error.Class != "abandoned" || view.Result.Cost.Source != "unknown" {
 		t.Fatalf("view = %+v, %v", view.Result, err)
 	}
@@ -271,6 +437,7 @@ func (s *writerSpy) Write(ctx context.Context, kind definition.Kind, name string
 }
 
 func TestInitWritesEachExampleWithoutOverwriting(t *testing.T) {
+	t.Parallel()
 	writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
 	examples := fstest.MapFS{
 		"service.toml":   {Data: []byte("x")},
@@ -291,6 +458,7 @@ func TestInitWritesEachExampleWithoutOverwriting(t *testing.T) {
 // A dry run reports what a real run would write and writes nothing; with
 // overwrite, existing files are reported as replaced, not created.
 func TestInitDryRunAndReplacement(t *testing.T) {
+	t.Parallel()
 	examples := fstest.MapFS{
 		"service.toml":  {Data: []byte("x")},
 		"agents/a.toml": {Data: []byte("x")},
@@ -322,6 +490,7 @@ func TestInitDryRunAndReplacement(t *testing.T) {
 // A write carries the plan the user approved: a file that changed since,
 // including one created since, stops it before anything is written.
 func TestWritesRefuseFilesChangedSinceTheApprovedPlan(t *testing.T) {
+	t.Parallel()
 	examples := fstest.MapFS{"service.toml": {Data: []byte("x")}, "agents/a.toml": {Data: []byte("x")}}
 	writer := &writerSpy{existed: map[string]bool{}}
 	settings := app.NewSettings(nil, writer, examples, nil, settingsCheckStub{})
@@ -351,6 +520,7 @@ func TestWritesRefuseFilesChangedSinceTheApprovedPlan(t *testing.T) {
 // else, such as another agent, other content, or replacing a file shown as
 // kept, writes nothing.
 func TestWritesRefuseAnythingButTheApprovedPlan(t *testing.T) {
+	t.Parallel()
 	examples := fstest.MapFS{"service.toml": {Data: []byte("x")}, "agents/a.toml": {Data: []byte("x")}}
 	writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
 	settings := app.NewSettings(nil, writer, examples, nil, settingsCheckStub{})
@@ -387,6 +557,7 @@ func TestWritesRefuseAnythingButTheApprovedPlan(t *testing.T) {
 }
 
 func TestInitSkipsHiddenFilesAndRejectsStrayRootFiles(t *testing.T) {
+	t.Parallel()
 	writer := &writerSpy{}
 	examples := fstest.MapFS{
 		".DS_Store":        {Data: []byte("Bud1")},
@@ -409,6 +580,7 @@ func TestInitSkipsHiddenFilesAndRejectsStrayRootFiles(t *testing.T) {
 // A dry run validates and reports a replacement without writing; the real
 // run writes and reports the same.
 func TestCreateAgentDryRun(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	writer := &writerSpy{existed: map[string]bool{"agents/b": true}}
 	settings := app.NewSettings(h.defs, writer, nil, nil, settingsCheckStub{})
@@ -446,6 +618,7 @@ primitives:
 // An agent that is valid alone but breaks the settings is refused before
 // anything is written or asked; problems it did not add do not block it.
 func TestCreateAgentKeepsSettingsValid(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.defs.docs[definition.KindRuntime]["narrow"] = narrowRuntime
 	writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
@@ -472,6 +645,7 @@ func TestCreateAgentKeepsSettingsValid(t *testing.T) {
 }
 
 func TestCreateAgentValidatesAgainstTheRuntimeMapping(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	writer := &writerSpy{}
 	settings := app.NewSettings(h.defs, writer, nil, nil, settingsCheckStub{})
@@ -492,6 +666,7 @@ func TestCreateAgentValidatesAgainstTheRuntimeMapping(t *testing.T) {
 
 // A process view says where each definition comes from as data, not text.
 func TestShowProcessSourcesAreStructured(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	// The resolver behind it is given nothing that can start a turn.
 	identities := struct{ app.ResolverIdentities }{h.runtimes}
@@ -512,6 +687,7 @@ func TestShowProcessSourcesAreStructured(t *testing.T) {
 // its policy's timeout and permissions, and what its runtime grants of
 // them.
 func TestShowProcessLimitsThroughTheResolver(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	identities := struct{ app.ResolverIdentities }{h.runtimes}
 	view, err := app.NewInspection(app.NewResolver(h.defs, identities, h.validator, resolverCheckStub{})).ShowProcess(context.Background(), "p", "")
@@ -538,6 +714,7 @@ func TestShowProcessLimitsThroughTheResolver(t *testing.T) {
 // process with the agent asked for, and a workflow with each node's
 // process.
 func TestInspectionShowsThroughTheResolverItDeclares(t *testing.T) {
+	t.Parallel()
 	cost := 0.5
 	source := func(kind definition.Kind, name string) app.InspectedSource {
 		return app.InspectedSource{Kind: string(kind), Name: name, Path: "/project/" + string(kind) + "/" + name, Project: true}
@@ -677,6 +854,7 @@ func (s *proposedCheckSpy) ProblemsAdded(_ context.Context, doc definition.Docum
 // Settings asks every scope about the agent as it would be written, and the
 // first scope it would break refuses the write, by name.
 func TestCreateAgentAsksEveryScope(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	writer := &writerSpy{}
 	global, project := &proposedCheckSpy{}, &proposedCheckSpy{added: []string{"agent b: bad"}}

@@ -1,9 +1,13 @@
-// Package runtimetest provides fake runtime binaries and the conformance
-// suite every TurnRunner (and every decorator of one) must pass.
+// Package runtimetest provides the fake runtimes, built as binaries
+// (Binary) or run in process (InProcess), the fake shell InProcess runs a
+// setup or verification command under, and the conformance suite every
+// TurnRunner (and every decorator of one) must pass.
 package runtimetest
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,39 +26,80 @@ import (
 )
 
 var (
-	buildMu sync.Mutex
-	built   = map[string]string{}
+	buildMu  sync.Mutex
+	buildDir string
+	built    = map[string]string{}
 )
 
 // Binary builds a fake runtime ("fakeclaude", "fakecodex", "fakepi" or
-// "fakeopencode") once per test binary and returns its path.
+// "fakeopencode") once per test binary and returns its path. Only a
+// contract test of the real process builds one; every other test runs the
+// fake through InProcess.
 func Binary(t testing.TB, name string) string {
+	t.Helper()
+	_, file, _, _ := runtime.Caller(0)
+	return Build(t, name, filepath.Dir(file), "./"+name+"/cmd")
+}
+
+// Build builds target from dir as name, once per test binary, and returns
+// its path; a later call with the same name returns that build. It builds
+// with the inherited environment and so the host's Go cache. Every build
+// goes into one directory, which the calling package removes when its
+// tests end: its TestMain exits with Run's code.
+func Build(t testing.TB, name, dir, target string) string {
 	t.Helper()
 	buildMu.Lock()
 	defer buildMu.Unlock()
 	if path, ok := built[name]; ok {
 		return path
 	}
-	_, file, _, _ := runtime.Caller(0)
-	dir, err := os.MkdirTemp("", "agister-fake-")
-	if err != nil {
-		t.Fatal(err)
+	if buildDir == "" {
+		d, err := os.MkdirTemp("", "agister-fake-")
+		if err != nil {
+			t.Fatal(err)
+		}
+		buildDir = d
 	}
-	path := filepath.Join(dir, name)
-	Build(t, filepath.Dir(file), path, "./"+name)
-	built[name] = path
-	return path
-}
-
-// Build builds target from dir into output, with the inherited environment
-// and so the host's Go cache. The caller owns the output and its lifetime.
-func Build(t testing.TB, dir, output, target string) {
-	t.Helper()
-	command := exec.Command("go", "build", "-o", output, target)
+	path := filepath.Join(buildDir, name)
+	command := exec.Command("go", "build", "-o", path, target)
 	command.Dir = dir
 	if out, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("building %s: %v\n%s", target, err, out)
 	}
+	built[name] = path
+	return path
+}
+
+// Run runs a package's tests, then removes what Build built for them, and
+// returns the code to exit with: a failed removal fails the run.
+//
+//	func TestMain(m *testing.M) { os.Exit(runtimetest.Run(m)) }
+func Run(m *testing.M) int {
+	return runThenRemove(m.Run, removeBuilds, os.Stderr)
+}
+
+// runThenRemove is Run with the tests, the removal and the report injected.
+func runThenRemove(tests func() int, remove func() error, stderr io.Writer) int {
+	code := tests()
+	if err := remove(); err != nil {
+		fmt.Fprintf(stderr, "runtimetest: removing builds: %v\n", err)
+		if code == 0 {
+			code = 1
+		}
+	}
+	return code
+}
+
+// removeBuilds removes the build directory and forgets what was built.
+func removeBuilds() error {
+	buildMu.Lock()
+	defer buildMu.Unlock()
+	dir := buildDir
+	buildDir, built = "", map[string]string{}
+	if dir == "" {
+		return nil
+	}
+	return os.RemoveAll(dir)
 }
 
 // Recorder is an EventSink that keeps everything.
@@ -128,7 +173,8 @@ const hangBound = 20 * time.Second
 
 // Watchdog guards a turn against a hang: once its process is on record,
 // a group still there after hangBound is killed and the test fails, so the
-// runner returns and the test ends instead of hanging.
+// runner returns and the test ends instead of hanging. It guards a real
+// process only: a fake run in process has no group to kill.
 func Watchdog(t *testing.T) func(ref string) {
 	return func(ref string) {
 		group, _, err := supervisor.ParseRef(ref)
@@ -164,8 +210,13 @@ func (r *Recorder) Kinds() []string {
 type Subject struct {
 	// New builds the runner for a runtime command.
 	New func(command string) app.TurnRunner
-	// Fake is the fake binary's path.
+	// Fake is the command that starts the fake: the built binary's path,
+	// or the name InProcess runs it by.
 	Fake string
+	// InProcess is whether the runner starts Fake through InProcess, not
+	// as a process. The suite then starts no watchdog: a hang is caught by
+	// the test binary's -timeout.
+	InProcess bool
 	// Contract the runner must report.
 	Contract string
 	// ToolCalls is whether the runner must report the agent's tool calls,
@@ -173,17 +224,35 @@ type Subject struct {
 	ToolCalls bool
 	// Request returns a valid request carrying prompt.
 	Request func(prompt string) app.TurnRequest
+	// Clock is the manual clock the runner's process supervisor times
+	// turns on: no turn times out unless the suite advances it.
+	Clock Clock
+}
+
+// Clock is a manual clock (systemtest.Clock is one): Started returns once
+// a timer of wait has been started, and Advance moves the clock on, firing
+// the timers whose wait it passes.
+type Clock interface {
+	Started(wait time.Duration)
+	Advance(by time.Duration)
 }
 
 // Conformance checks the TurnRunner contract: identity, outcome precedence,
 // no upgrading of runtime failures, timeout and cancellation, spawn failure,
 // and raw output passthrough.
 //
-// Timer rule: a real timer in these tests fires only when the process can do
-// nothing else (the hang scenario), and no bound exceeds a minute. Anything
-// that must end some other way is event-driven, so machine load cannot flip
-// an outcome.
+// Timer rule: a turn times out only when the suite advances the subject's
+// manual clock past its timeout; a real timer only guards a real process
+// against a hang (the watchdog), and no bound exceeds a minute. Anything
+// that must end some other way is event-driven, so machine load cannot
+// flip an outcome.
 func Conformance(t *testing.T, subject Subject) {
+	watchdog := func(t *testing.T) func(ref string) {
+		if subject.InProcess {
+			return nil
+		}
+		return Watchdog(t)
+	}
 	turn := func(t *testing.T, prompt string, mutate func(*app.TurnRequest), ctx context.Context) (run.Turn, *Recorder) {
 		request := subject.Request(prompt)
 		if mutate != nil {
@@ -285,13 +354,19 @@ func Conformance(t *testing.T, subject Subject) {
 	})
 
 	t.Run("timeout interrupts the process group", func(t *testing.T) {
-		// The hang scenario never ends on its own: the watchdog guards
+		// The hang scenario never ends on its own: only the timeout ends
+		// it, once the clock is advanced past it. The watchdog guards
 		// against a timeout that never kills it, and the outcome is the
 		// verdict.
+		const timeout = 17 * time.Minute
 		request := subject.Request("SCENARIO:hang")
-		request.Timeout = 300 * time.Millisecond
-		sink := &Recorder{OnProcess: Watchdog(t)}
-		result := subject.New(subject.Fake).RunTurn(context.Background(), request, sink)
+		request.Timeout = timeout
+		sink := &Recorder{OnProcess: watchdog(t)}
+		done := make(chan run.Turn, 1)
+		go func() { done <- subject.New(subject.Fake).RunTurn(context.Background(), request, sink) }()
+		subject.Clock.Started(timeout)
+		subject.Clock.Advance(timeout)
+		result := <-done
 		if !is(result, run.Interrupted, run.ClassTimeout) {
 			t.Fatalf("turn = %+v", result)
 		}
@@ -304,10 +379,10 @@ func Conformance(t *testing.T, subject Subject) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		// Cancel when the process has started, not after a delay. The
-		// minute timeout only backstops a hang and never races the cancel.
+		// timeout is on the manual clock, which nothing advances: it never
+		// races the cancel.
 		request := subject.Request("SCENARIO:hang")
-		request.Timeout = 30 * time.Second
-		sink := &Recorder{OnProcess: Watchdog(t), OnEvent: func(kind string) {
+		sink := &Recorder{OnProcess: watchdog(t), OnEvent: func(kind string) {
 			if kind == "PROCESS_STARTED" {
 				cancel()
 			}

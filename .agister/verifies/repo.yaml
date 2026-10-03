@@ -6,7 +6,7 @@ schema: agister.verify/v1alpha1
 name: repo
 command: >-
   cd agister && test -z "$(gofmt -l .)" && go vet ./... &&
-  go test -count=1 ./... && go test -race -count=1 ./internal/app/...
+  go test -count=1 -timeout 1m ./... && go test -race -count=1 -timeout 1m ./internal/app/...
 timeout: 5m
 max_attempts: 3
 instruction: >-

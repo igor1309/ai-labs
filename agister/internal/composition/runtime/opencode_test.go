@@ -37,6 +37,7 @@ func (s *opencodeStandIn) RunTurn(ctx context.Context, r opencode.TurnRequest, s
 	return s.result
 }
 func TestOpenCodeApplicationAdapter(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	code := 7
@@ -82,6 +83,7 @@ func TestOpenCodeApplicationAdapter(t *testing.T) {
 	}
 }
 func TestOpenCodeSupervisorAdapter(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	code := 7

@@ -54,6 +54,7 @@ output:
 }
 
 func TestResearchStaticReviewComposes(t *testing.T) {
+	t.Parallel()
 	pol := researchPolicy(t)
 	effective, err := policy.Compose(service, &pol, process(t, ""), policy.Caller{})
 	if err != nil {
@@ -66,6 +67,7 @@ func TestResearchStaticReviewComposes(t *testing.T) {
 }
 
 func TestNarrowingIsEnforcedFieldByField(t *testing.T) {
+	t.Parallel()
 	pol := researchPolicy(t)
 	cases := map[string]string{
 		"timeout: 30m": "timeout: 30m0s widens the policy's 20m0s",
@@ -111,6 +113,7 @@ output:
 }
 
 func TestNarrowingInThePermittedDirection(t *testing.T) {
+	t.Parallel()
 	pol := researchPolicy(t)
 	effective, err := policy.Compose(service, &pol, process(t, `
 timeout: 5m
@@ -126,6 +129,7 @@ isolation: {deny: [repository.search]}
 }
 
 func TestCallerMayOnlyShorten(t *testing.T) {
+	t.Parallel()
 	pol := researchPolicy(t)
 	short, long := 5*time.Minute, 2*time.Hour
 	if effective, err := policy.Compose(service, &pol, process(t, ""), policy.Caller{Timeout: &short}); err != nil || effective.Timeout != short {
@@ -137,6 +141,7 @@ func TestCallerMayOnlyShorten(t *testing.T) {
 }
 
 func TestPolicyOutsideTheServiceIsInvalidNotClamped(t *testing.T) {
+	t.Parallel()
 	pol := researchPolicy(t)
 	long := 2 * time.Hour
 	pol.Limits.Timeout = &long
@@ -146,6 +151,7 @@ func TestPolicyOutsideTheServiceIsInvalidNotClamped(t *testing.T) {
 }
 
 func TestDenialsWinAndEveryProblemIsReported(t *testing.T) {
+	t.Parallel()
 	pol := researchPolicy(t)
 	pol.Limits.Allow = append(pol.Limits.Allow, "process.execute")
 	effective, err := policy.Compose(service, &pol, process(t, ""), policy.Caller{})
@@ -159,6 +165,7 @@ func TestDenialsWinAndEveryProblemIsReported(t *testing.T) {
 }
 
 func TestCostLimitOnlyLowers(t *testing.T) {
+	t.Parallel()
 	pol := researchPolicy(t)
 	if effective, err := policy.Compose(service, &pol, process(t, ""), policy.Caller{}); err != nil || effective.MaxCostUSD != nil {
 		t.Fatalf("no layer sets a cost limit: %+v, %v", effective.MaxCostUSD, err)
@@ -189,6 +196,7 @@ func TestCostLimitOnlyLowers(t *testing.T) {
 // Read-only withholds whatever the vocabulary declares as writing, not a
 // fixed set of names.
 func TestReadOnlyWithholdsTheVocabularysWritingPermissions(t *testing.T) {
+	t.Parallel()
 	docs := definition.Service{MaxTimeout: time.Hour, MaxAttempts: 1, Permissions: []string{"docs.read", "docs.write"}, Writing: []string{"docs.write"}}
 	compose := func(pol *definition.Policy) []string {
 		t.Helper()
@@ -222,6 +230,7 @@ output: {format: text}
 
 // The scope follows workspace.checkout; a declared scope must agree with it.
 func TestScopeFollowsTheCheckout(t *testing.T) {
+	t.Parallel()
 	compose := func(workspace string) (policy.Effective, error) {
 		t.Helper()
 		return policy.Compose(service, nil, mustProcessWithWorkspace(t, "timeout: 1m\n"+workspace), policy.Caller{})
@@ -264,6 +273,7 @@ func withoutTopLevel(data []byte, keys ...string) []byte {
 // and one above the timeout the settings declare is invalid. Unset, they
 // stay unset.
 func TestStalenessLimitsOnlyNarrow(t *testing.T) {
+	t.Parallel()
 	pol := researchPolicy(t)
 	if effective, err := policy.Compose(service, &pol, process(t, ""), policy.Caller{}); err != nil || effective.Stale != (policy.Stale{}) {
 		t.Fatalf("without limits: %+v, %v", effective.Stale, err)

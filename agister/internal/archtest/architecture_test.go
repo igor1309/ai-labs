@@ -45,7 +45,9 @@ func packages(t *testing.T) map[string][]string {
 
 func under(pkg, prefix string) bool { return pkg == prefix || strings.HasPrefix(pkg, prefix+"/") }
 
+// Contract test: the module's real import graph, from go list.
 func TestDependencyRule(t *testing.T) {
+	t.Parallel()
 	for pkg, imported := range packages(t) {
 		for _, dep := range imported {
 			var allowed bool
@@ -77,7 +79,10 @@ func TestDependencyRule(t *testing.T) {
 }
 
 // Only the composition root instantiates adapters.
+//
+// Contract test: the module's real import graph, from go list.
 func TestOnlyTheCompositionRootImportsAdapters(t *testing.T) {
+	t.Parallel()
 	for pkg, imported := range packages(t) {
 		if pkg == "cmd/agister" || pkg == "internal/composition/runtime" || under(pkg, "internal/adapters") {
 			continue
@@ -94,7 +99,10 @@ func TestOnlyTheCompositionRootImportsAdapters(t *testing.T) {
 // types (ADR-001 rule 13), and the composition root translates them to the
 // supervisor's: no runtime adapter imports the supervisor. The test kit
 // does, to read process references.
+//
+// Contract test: the module's real import graph, from go list.
 func TestRuntimeAdaptersDoNotImportTheSupervisor(t *testing.T) {
+	t.Parallel()
 	const supervisor = "internal/adapters/runtime/supervisor"
 	for pkg, imported := range packages(t) {
 		if !under(pkg, "internal/adapters/runtime") || pkg == supervisor || under(pkg, "internal/adapters/runtime/runtimetest") {
@@ -108,6 +116,7 @@ func TestRuntimeAdaptersDoNotImportTheSupervisor(t *testing.T) {
 
 // The code knows agent calls, not kinds of work.
 func TestCodeKnowsNoKindOfWork(t *testing.T) {
+	t.Parallel()
 	root := "../.."
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
@@ -136,6 +145,7 @@ func TestCodeKnowsNoKindOfWork(t *testing.T) {
 // No interface is shared between components (ADR-001 rule 13): each use case
 // declares the interfaces it calls beside itself. ports.go holds data only.
 func TestSharedDataFileDeclaresNoInterface(t *testing.T) {
+	t.Parallel()
 	file, err := parser.ParseFile(token.NewFileSet(), "../app/ports.go", nil, 0)
 	if err != nil {
 		t.Fatal(err)
@@ -154,6 +164,7 @@ func TestSharedDataFileDeclaresNoInterface(t *testing.T) {
 // is a compile assertion, var _ X = ..., which names the interface a type
 // promises to satisfy without depending on it.
 func TestNoInterfaceIsNamedOutsideItsFile(t *testing.T) {
+	t.Parallel()
 	files, err := filepath.Glob("../app/*.go")
 	if err != nil || len(files) == 0 {
 		t.Fatalf("app files %v: %v", files, err)

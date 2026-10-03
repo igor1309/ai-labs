@@ -108,7 +108,12 @@ const verifyFixtureTimeout = "30s"
 // a process that declares verify, inline or by name, runs verifyFixture
 // instead of its command and completes with one passing verification
 // attempt.
+//
+// Contract test: this repository's own settings through the composition,
+// over a real git mirror of the repository. Its runtimes are fakes run in
+// process.
 func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
+	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
 	entries, err := os.ReadDir(filepath.Join(root, ".agister", "processes"))
 	if err != nil {
@@ -264,8 +269,8 @@ func recordsStaleLimits(t *testing.T, record map[string]any) {
 }
 
 // onFakeRuntimes is this repository's root, and a mirror of it (see mirror
-// and fixVerify) with an initialized Agister home, where the claude and
-// codex that run are fakes.
+// and fixVerify) with an initialized Agister home, where the claude, codex
+// and pi that run are fakes, in process.
 func onFakeRuntimes(t *testing.T) (root, repo, home string) {
 	t.Helper()
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
@@ -273,27 +278,15 @@ func onFakeRuntimes(t *testing.T) (root, repo, home string) {
 		t.Fatal(err)
 	}
 
-	// The fakes answer as claude, codex and pi, first on PATH, each with an
-	// output from the schema it is given, and report their default versions,
-	// which the mappings verify (claude-code 2.1.283, codex 0.158.0, pi
-	// 0.85.1). No real runtime ever runs.
-	bin := tempDir(t)
-	for name, fake := range map[string]string{"claude": "fakeclaude", "codex": "fakecodex", "pi": "fakepi"} {
-		if err := os.Symlink(runtimetest.Binary(t, fake), filepath.Join(bin, name)); err != nil {
-			t.Fatal(err)
-		}
-	}
-	// ccusage fails: Codex turns cost unknown, and the real one never runs.
-	if err := os.WriteFile(filepath.Join(bin, "ccusage"), []byte("#!/bin/sh\nexit 1\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-	t.Setenv("FAKE_OUTPUT", "schema")
-	t.Setenv("FAKE_VERSION", "")
-
 	repo = mirror(t, root)
 	fixVerify(t, root, repo)
 	home = filepath.Join(tempDir(t), "home")
+	// The fakes answer as claude, codex and pi, each with an output from
+	// the schema it is given, and report their default versions, which the
+	// mappings verify (claude-code 2.1.283, codex 0.158.0, pi 0.85.1). No
+	// real runtime ever runs, and no ccusage: the starter has none, so
+	// Codex turns cost unknown.
+	startThrough(t, home, runtimetest.InProcess{Env: []string{"FAKE_OUTPUT=schema"}})
 	if r := agisterInput(t, "yes\n", home, tempDir(t), "init"); r.code != 0 {
 		t.Fatalf("init: %d %s", r.code, r.stderr)
 	}
@@ -303,7 +296,12 @@ func onFakeRuntimes(t *testing.T) (root, repo, home string) {
 // The judge of code_review rules on the collection of a fixed set of
 // reviews: architecture, tests, adversarial and clarity, the ADR review not
 // among them.
+//
+// Contract test: this repository's own settings through the composition,
+// over a real git mirror of the repository. Its runtimes are fakes run in
+// process.
 func TestCodeReviewCollectsItsFourReviews(t *testing.T) {
+	t.Parallel()
 	_, repo, home := onFakeRuntimes(t)
 	reviews, _ := judgedReviews(t, home, repo, "code_review")
 	want := map[string]string{
@@ -320,7 +318,12 @@ func TestCodeReviewCollectsItsFourReviews(t *testing.T) {
 // The judge of adr_review rules on the collection of the ADR review alone,
 // and the ADR reviewer is given its standing prompt,
 // prompts/code-review-adr.md.
+//
+// Contract test: this repository's own settings through the composition,
+// over a real git mirror of the repository. Its runtimes are fakes run in
+// process.
 func TestADRReviewCollectsTheADRReview(t *testing.T) {
+	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
 	reviews, records := judgedReviews(t, home, repo, "adr_review")
 	want := map[string]string{"adr": "adr_review_codex completed"}
@@ -343,7 +346,12 @@ func TestADRReviewCollectsTheADRReview(t *testing.T) {
 // other than the judge's, in a checkout of the revision, and is given the
 // question and its standing prompt, prompts/advisor.md. Its output is of
 // the advice schema.
+//
+// Contract test: this repository's own settings through the composition,
+// over a real git mirror of the repository. Its runtimes are fakes run in
+// process.
 func TestAdvisorAnswersAQuestionFile(t *testing.T) {
+	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
 	question := filepath.Join(tempDir(t), "question.md")
 	write(t, question, "Asked by: workflow run 1, item 2.\nQuestion: which?\nOptions: (a) one; (b) two.\n")
@@ -446,6 +454,7 @@ func follows(argv []string, flag, value string) bool {
 // other's, a missing field and an unexpected one. The payloads are fixed,
 // not built from the schema.
 func TestAdviceSchemaTiesTheAnswerToItsPayload(t *testing.T) {
+	t.Parallel()
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
 		t.Fatal(err)
@@ -487,6 +496,7 @@ func TestAdviceSchemaTiesTheAnswerToItsPayload(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			err := (schema.Validator{}).Validate(document, []byte(c.output))
 			if c.valid && err != nil {
 				t.Fatalf("%s refused: %v", c.output, err)
@@ -504,6 +514,7 @@ func TestAdviceSchemaTiesTheAnswerToItsPayload(t *testing.T) {
 // agent runs on the codex runtime, read from the directory, so a new one is
 // checked without listing it here.
 func TestSchemasGivenToCodexUseNoRefusedCombinator(t *testing.T) {
+	t.Parallel()
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
 		t.Fatal(err)
@@ -540,6 +551,7 @@ func TestSchemasGivenToCodexUseNoRefusedCombinator(t *testing.T) {
 // refusedCombinators finds a root-level oneOf, anyOf and allOf, and a
 // oneOf or allOf at any depth; a nested anyOf is none.
 func TestRefusedCombinators(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name, document string
 		want           []string
@@ -557,6 +569,7 @@ func TestRefusedCombinators(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			var document any
 			if err := json.Unmarshal([]byte(c.document), &document); err != nil {
 				t.Fatal(err)
@@ -628,7 +641,12 @@ func parseAgent(t *testing.T, root, agent string) definition.Agent {
 
 // The judge runs under no cost limit: its policy sets none, so its call's
 // effective limits carry none.
+//
+// Contract test: this repository's own settings through the composition,
+// over a real git mirror of the repository. Its runtimes are fakes run in
+// process.
 func TestTheJudgeHasNoCostLimit(t *testing.T) {
+	t.Parallel()
 	_, repo, home := onFakeRuntimes(t)
 	_, records := judgedReviews(t, home, repo, "code_review")
 	effective, ok := records["review_judge"]["effective"].(map[string]any)
@@ -642,7 +660,12 @@ func TestTheJudgeHasNoCostLimit(t *testing.T) {
 
 // The repository's implement runs under no cost limit: its policy sets
 // none, so its call's effective limits carry none.
+//
+// Contract test: this repository's own settings through the composition,
+// over a real git mirror of the repository. Its runtimes are fakes run in
+// process.
 func TestImplementHasNoCostLimit(t *testing.T) {
+	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
 	args := append([]string{"run", "implement"}, paramArgs(parseProcess(t, root, "implement").Params)...)
 	created, _ := runRecorded(t, home, repo, args)

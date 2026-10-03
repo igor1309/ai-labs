@@ -37,6 +37,7 @@ func (s *claudecodeStandIn) RunTurn(ctx context.Context, r claudecode.TurnReques
 	return s.result
 }
 func TestClaudeCodeApplicationAdapter(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	code := 7
@@ -82,6 +83,7 @@ func TestClaudeCodeApplicationAdapter(t *testing.T) {
 	}
 }
 func TestClaudeCodeSupervisorAdapter(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	code := 7

@@ -25,6 +25,7 @@ type (
 // resumed: the command, the turn's arguments, directory, prompt on stdin,
 // timeout and the runner's kill grace.
 func TestTheTransportIsHandedTheTurn(t *testing.T) {
+	t.Parallel()
 	for name, resume := range map[string]string{"fresh": "", "resumed": "t-1"} {
 		spy := &spyTransport{}
 		runner := &codex.Runner{Transport: spy, Command: "/opt/codex", KillGrace: 3 * time.Second}
@@ -50,6 +51,7 @@ func TestTheTransportIsHandedTheTurn(t *testing.T) {
 
 // The schema is in the file the arguments name while the turn runs.
 func TestTheSchemaFileIsThereWhileTheTurnRuns(t *testing.T) {
+	t.Parallel()
 	var schema string
 	spy := &spyTransport{Runs: spyRuns{Answer: func(spec codex.Spec) ([]string, codex.Evidence) {
 		if i := slices.Index(spec.Args, "--output-schema"); i >= 0 && i+1 < len(spec.Args) {
@@ -67,6 +69,7 @@ func TestTheSchemaFileIsThereWhileTheTurnRuns(t *testing.T) {
 // A turn the runtime reported nothing for is decided by the transport's
 // evidence: Agister's timeout, or a signal Agister did not send.
 func TestATurnIsDecidedByTheTransportsEvidence(t *testing.T) {
+	t.Parallel()
 	for name, c := range map[string]struct {
 		evidence codex.Evidence
 		status   codex.Status
@@ -87,6 +90,7 @@ func TestATurnIsDecidedByTheTransportsEvidence(t *testing.T) {
 // New looks the cost up through the transport it runs the turn with: the
 // lookup is ccusage's listing, within what is left of the turn's timeout.
 func TestTheCostLookupGoesThroughTheTransport(t *testing.T) {
+	t.Parallel()
 	code := 0
 	clean := codex.Evidence{Exit: &codex.Exit{Code: &code}}
 	spy := &spyTransport{Runs: spyRuns{Answer: func(spec codex.Spec) ([]string, codex.Evidence) {
@@ -115,6 +119,7 @@ func TestTheCostLookupGoesThroughTheTransport(t *testing.T) {
 // A lookup that is not a clean exit is an error, whatever it printed. The
 // lookup only runs a process: its spy has no Version.
 func TestALookupThatDidNotExitCleanlyFails(t *testing.T) {
+	t.Parallel()
 	for name, evidence := range map[string]codex.Evidence{
 		"timeout": {TimedOut: true, Exit: &codex.Exit{Signal: "signal: terminated"}},
 		"signal":  {Exit: &codex.Exit{Signal: "signal: killed"}},
@@ -133,6 +138,7 @@ func TestALookupThatDidNotExitCleanlyFails(t *testing.T) {
 }
 
 func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
+	t.Parallel()
 	spy := &spyTransport{Output: "codex-cli 0.130.0"}
 	identity, err := codex.New("/opt/codex", spy).Identity(context.Background())
 	if err != nil || identity.Version != "0.130.0" || identity.Contract != codex.Contract {
@@ -150,6 +156,7 @@ func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
 // Classification still quotes the process's bounded stderr, including a tail
 // with a cut marker, and preserves the full retained tail as evidence.
 func TestTheTransportStderrDecidesASilentFailure(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		code    int
 		tail    string

@@ -28,7 +28,10 @@ func sleeper(t *testing.T) (pid int, gone <-chan struct{}) {
 	return command.Process.Pid, done
 }
 
+// Contract test: the reaper against a real process group and its token from
+// ps.
 func TestReapKillsTheGroupOfTheRecordedProcess(t *testing.T) {
+	t.Parallel()
 	pid, gone := sleeper(t)
 	token, err := supervisor.Token(context.Background(), pid)
 	if err != nil || token == "" {
@@ -61,7 +64,11 @@ func TestReapKillsTheGroupOfTheRecordedProcess(t *testing.T) {
 
 // The ID may belong to another process by now: a different or unknown
 // token is never enough to kill.
+//
+// Contract test: the reaper against a real process group and its token from
+// ps.
 func TestReapLeavesAProcessItCannotIdentify(t *testing.T) {
+	t.Parallel()
 	pid, _ := sleeper(t)
 	for name, token := range map[string]string{"another token": "Thu Jan  1 00:00:00 1970", "no token": ""} {
 		reaping, err := supervisor.Processes{}.Reap(context.Background(), supervisor.Ref(pid, token))
@@ -80,6 +87,7 @@ func TestReapLeavesAProcessItCannotIdentify(t *testing.T) {
 // The reference is the supervisor's own: it carries the group and token and
 // reads them back, tokens with colons and spaces included.
 func TestRefRoundTrips(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		group int
 		token string
@@ -94,7 +102,11 @@ func TestRefRoundTrips(t *testing.T) {
 
 // A reference the supervisor did not make is refused as left, and no
 // group is signalled: the number in it is not taken for one.
+//
+// Contract test: the reaper against a real process group and its token from
+// ps.
 func TestReapLeavesAReferenceItDoesNotUnderstand(t *testing.T) {
+	t.Parallel()
 	pid, _ := sleeper(t)
 	token, err := supervisor.Token(context.Background(), pid)
 	if err != nil {

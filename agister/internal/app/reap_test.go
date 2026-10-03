@@ -46,6 +46,7 @@ func reaping(h *harness, runs ...run.Record) *reaper {
 func (r *reaper) reap() error { return r.Reap(context.Background()) }
 
 func TestCallRecordsItsEffectsAsSoonAsTheyExist(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	record := h.call(t, contract.CallRequest{})
 	if want := (&run.Effects{Checkout: &run.Checkout{Repository: "/repo", RepositoryIdentity: "/repo", Dir: "/work/checkout", Revision: "sha-HEAD"}, Process: &run.Process{Ref: "ref-4242"}}); !reflect.DeepEqual(record.Effects, want) {
@@ -66,6 +67,7 @@ func TestCallRecordsItsEffectsAsSoonAsTheyExist(t *testing.T) {
 // A checkout that cannot be recorded is one no reap could find: the call is
 // refused before the runtime starts, and the checkout is released.
 func TestCheckoutThatCannotBeRecordedIsReleasedAndTheCallRefused(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.recorder.updateErr = func(record run.Record) error {
 		if record.Effects != nil && record.Effects.Checkout != nil {
@@ -93,6 +95,7 @@ func TestCheckoutThatCannotBeRecordedIsReleasedAndTheCallRefused(t *testing.T) {
 // A checkout that could not be recorded and then could not be released is
 // still left for a reap: the finished record names it as unreleased.
 func TestACheckoutThatCannotBeRecordedNorReleasedIsLeftForAReap(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.recorder.updateErr = func(record run.Record) error {
 		if record.Effects != nil && record.Effects.Checkout != nil {
@@ -113,6 +116,7 @@ func TestACheckoutThatCannotBeRecordedNorReleasedIsLeftForAReap(t *testing.T) {
 // A process that cannot be recorded is reported to the runtime, which ends
 // it; the run does not claim it.
 func TestProcessThatCannotBeRecordedIsReportedToTheRuntime(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.recorder.updateErr = func(record run.Record) error {
 		if record.Effects != nil && record.Effects.Process != nil {
@@ -136,6 +140,7 @@ func TestProcessThatCannotBeRecordedIsReportedToTheRuntime(t *testing.T) {
 }
 
 func TestAbandonedRunIsReaped(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	r := reaping(h, abandonedRun("old"))
 	adopter, processes := r.adopter, r.processes
@@ -165,6 +170,7 @@ func TestAbandonedRunIsReaped(t *testing.T) {
 // A run killed while its verification command ran left the command's
 // process group on record beside the runtime's: both are reaped.
 func TestAbandonedVerifyCommandIsReaped(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	abandoned := abandonedRun("old")
 	abandoned.Effects.Command = &run.Process{Ref: "ref-888"}
@@ -185,6 +191,7 @@ func TestAbandonedVerifyCommandIsReaped(t *testing.T) {
 // record beside its checkout: both are removed, and a copy a running run
 // records is left in place.
 func TestAbandonedCleanCopyIsReaped(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	abandoned := abandonedRun("old")
 	abandoned.Effects.Copy = &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-2/workspace"}
@@ -219,6 +226,7 @@ func TestAbandonedCleanCopyIsReaped(t *testing.T) {
 // then leaves the record, while the run keeps its end. A copy that cannot
 // be removed stays on record for the next reap.
 func TestAFinishedRunsCleanCopyIsReaped(t *testing.T) {
+	t.Parallel()
 	finishedAt := time.Date(2026, 9, 28, 11, 30, 0, 0, time.UTC)
 	finished := abandonedRun("done")
 	finished.Effects.Command = &run.Process{Ref: "ref-cmd"}
@@ -261,6 +269,7 @@ func TestAFinishedRunsCleanCopyIsReaped(t *testing.T) {
 // while a running run records the directory, and once the lock is free
 // removes it and clears it, while the run keeps its end and its Checkout.
 func TestACheckoutWhoseReleaseHitTheDeadlineIsReapedLater(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.workspaces.releaseErr = fmt.Errorf("git worktree remove: %w", context.DeadlineExceeded)
 	finished := h.call(t, contract.CallRequest{})
@@ -302,6 +311,7 @@ func TestACheckoutWhoseReleaseHitTheDeadlineIsReapedLater(t *testing.T) {
 
 // A release that succeeds records nothing for a reap.
 func TestAReleasedCheckoutIsNotLeftForAReap(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	if record := h.call(t, contract.CallRequest{}); record.Effects == nil || record.Effects.Unreleased != nil {
 		t.Fatalf("effects = %+v", record.Effects)
@@ -309,6 +319,7 @@ func TestAReleasedCheckoutIsNotLeftForAReap(t *testing.T) {
 }
 
 func TestRunsSomeoneElseOwnsAreSkipped(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	r := reaping(h, abandonedRun("live"))
 	adopter, processes := r.adopter, r.processes
@@ -323,6 +334,7 @@ func TestRunsSomeoneElseOwnsAreSkipped(t *testing.T) {
 }
 
 func TestFailedReapStepsStillFinishTheRunWithTheError(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	r := reaping(h, abandonedRun("old"))
 	adopter, processes := r.adopter, r.processes
@@ -357,6 +369,7 @@ func driven(r *reaper) context.CancelFunc {
 }
 
 func TestReapingIsBounded(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	a, b := abandonedRun("a"), abandonedRun("b")
 	a.Effects.Checkout.Dir = "/tmp/agister-checkout-a/workspace"
@@ -392,6 +405,7 @@ func TestReapingIsBounded(t *testing.T) {
 }
 
 func TestNothingIsAdoptedAfterTheDeadline(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	r := reaping(h, abandonedRun("a"))
 	adopter, processes := r.adopter, r.processes
@@ -403,6 +417,7 @@ func TestNothingIsAdoptedAfterTheDeadline(t *testing.T) {
 }
 
 func TestReapingHasADeadlineByDefault(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	r := reaping(h, abandonedRun("a"))
 	var bounded bool
@@ -418,6 +433,7 @@ func TestReapingHasADeadlineByDefault(t *testing.T) {
 }
 
 func TestProcessReapingHasTheReapDeadline(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	r := reaping(h, abandonedRun("a"))
 	var bounded bool
@@ -432,6 +448,7 @@ func TestProcessReapingHasTheReapDeadline(t *testing.T) {
 }
 
 func TestACheckoutARunningRunUsesIsNotDiscarded(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	r := reaping(h, abandonedRun("old"))
 	adopter, processes := r.adopter, r.processes
@@ -456,6 +473,7 @@ func TestACheckoutARunningRunUsesIsNotDiscarded(t *testing.T) {
 // record keeping the checkout as unreleased, and a later reap that can list
 // them removes it and clears it.
 func TestACheckoutLeftWhenRunningRunsCannotBeListedIsReapedLater(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	r := reaping(h, abandonedRun("old"))
 	r.adopter.liveErr = errors.New("runs unreadable")
@@ -493,6 +511,7 @@ func TestACheckoutLeftWhenRunningRunsCannotBeListedIsReapedLater(t *testing.T) {
 // The checkouts running runs use are read before the abandoned run is
 // adopted: the adopted run is this process's own and would read as live.
 func TestLiveCheckoutsAreReadBeforeTheRunIsAdopted(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	r := reaping(h, abandonedRun("old"))
 	r.reap()
@@ -504,6 +523,7 @@ func TestLiveCheckoutsAreReadBeforeTheRunIsAdopted(t *testing.T) {
 // Runs that cannot be listed leave their effects with nothing recorded
 // about the reap: the reap fails.
 func TestAReapThatCannotListRunsFails(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	r := reaping(h, abandonedRun("old"))
 	r.adopter.listErr = errors.New("runs unreadable")
@@ -520,6 +540,7 @@ func TestAReapThatCannotListRunsFails(t *testing.T) {
 // of the reap: the reap fails, naming the run, and the step failures the
 // event would have recorded. The other runs are reaped all the same.
 func TestAReapThatCannotRecordARunFails(t *testing.T) {
+	t.Parallel()
 	for name, tc := range map[string]struct {
 		fail    func(*recorderSpy)
 		failing []string
@@ -545,6 +566,7 @@ func TestAReapThatCannotRecordARunFails(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			h := newHarness()
 			b := abandonedRun("b")
 			b.Effects.Checkout.Dir = "/tmp/agister-checkout-b/workspace"
