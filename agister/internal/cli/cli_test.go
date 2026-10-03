@@ -179,6 +179,51 @@ func TestJSONPrintsTheNodeResult(t *testing.T) {
 	}
 }
 
+// --json names the run and gives each artifact's path absolute, in the
+// run's directory, for a process run and for a workflow run alike; the
+// stored record keeps its relative paths.
+func TestJSONNamesTheRunAndGivesAbsoluteArtifactPaths(t *testing.T) {
+	t.Parallel()
+	process := finished("completed", "")
+	process.Dir = "/home/runs/run-1"
+	process.Record = json.RawMessage(`{"id":"run-1","result":{"artifacts":[{"path":"artifacts/changes.patch"}]}}`)
+	process.Result.Artifacts = []contract.Artifact{{Name: "changes.patch", Path: "artifacts/changes.patch", Digest: "sha256:x", Bytes: 3}}
+	workflow := finished("completed", "")
+	workflow.Process, workflow.Dir = "wf", "/home/runs/run-1"
+	workflow.Result.Output = json.RawMessage(`{"verdict":"approve"}`)
+	cases := []struct {
+		name      string
+		run       contract.Run
+		artifacts []contract.Artifact
+	}{
+		{"process", process, []contract.Artifact{{Name: "changes.patch", Path: "/home/runs/run-1/artifacts/changes.patch", Digest: "sha256:x", Bytes: 3}}},
+		{"workflow", workflow, nil},
+	}
+	for _, c := range cases {
+		spy := &clientSpy{run: c.run}
+		r := run(context.Background(), spy, "run", c.run.Process, "--json", "--quiet")
+		var got struct {
+			RunID string `json:"run_id"`
+			contract.Result
+		}
+		if err := json.Unmarshal([]byte(r.stdout), &got); err != nil || r.code != cli.ExitCompleted {
+			t.Fatalf("%s: stdout %s, err %v", c.name, r.stdout, err)
+		}
+		var output bytes.Buffer
+		_ = json.Compact(&output, got.Output)
+		if got.RunID != "run-1" || got.Status != "completed" || !reflect.DeepEqual(got.Artifacts, c.artifacts) || output.String() != string(c.run.Result.Output) {
+			t.Errorf("%s: printed %s", c.name, r.stdout)
+		}
+	}
+	if process.Result.Artifacts[0].Path != "artifacts/changes.patch" {
+		t.Fatalf("the result read was changed: %+v", process.Result.Artifacts)
+	}
+	spy := &clientSpy{run: process}
+	if r := run(context.Background(), spy, "runs", "show", "run-1"); r.stdout != string(process.Record)+"\n" {
+		t.Fatalf("stored record shown as %s", r.stdout)
+	}
+}
+
 func TestResultSummary(t *testing.T) {
 	t.Parallel()
 	spy := &clientSpy{run: finished("completed", "")}

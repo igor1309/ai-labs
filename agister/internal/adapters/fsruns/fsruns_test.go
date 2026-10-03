@@ -106,7 +106,10 @@ func TestArtifactsAreStoredWithTheirDigest(t *testing.T) {
 		artifact.Digest != "sha256:df087996d45b03e7eb8c133c0298fd98d35113fca26aaba58612fef3cc212cad" {
 		t.Fatalf("artifact %+v, %v", artifact, err)
 	}
-	data, err := os.ReadFile(filepath.Join(store.Dir, "r3", artifact.Path))
+	if dir := store.RunDir("r3"); dir != filepath.Join(store.Dir, "r3") {
+		t.Fatalf("run directory %q", dir)
+	}
+	data, err := os.ReadFile(filepath.Join(store.RunDir("r3"), artifact.Path))
 	if err != nil || string(data) != "diff" {
 		t.Fatalf("stored %q, %v", data, err)
 	}

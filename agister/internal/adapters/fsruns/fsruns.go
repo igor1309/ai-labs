@@ -56,6 +56,9 @@ var _ app.CallRuns = Store{}
 
 func (s Store) runDir(id string) string { return filepath.Join(s.Dir, id) }
 
+// RunDir is the directory run id's record and artifacts are kept in.
+func (s Store) RunDir(id string) string { return s.runDir(id) }
+
 // A run ID names one directory under Dir; anything else, such as a path
 // out of it, is refused before it reaches the filesystem.
 var idPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)

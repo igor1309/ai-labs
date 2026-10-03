@@ -165,6 +165,8 @@ func (s *readerSpy) Get(context.Context, string) (run.Record, run.State, error) 
 
 func (s *readerSpy) List(context.Context) ([]run.Record, error) { return []run.Record{s.record}, nil }
 
+func (s *readerSpy) RunDir(id string) string { return "/home/runs/" + id }
+
 func TestObserveResumesAfterTheLastDeliveredEvent(t *testing.T) {
 	t.Parallel()
 	reader := &readerSpy{
@@ -380,7 +382,7 @@ func TestInspectShowsTheNodeResultAsRecorded(t *testing.T) {
 	}
 	reader := &readerSpy{state: run.StateFinished, record: run.Record{ID: "r", Result: result, Turn: &run.Turn{StderrTail: "boom"}}}
 	view, err := (app.NewRuns(reader, nil, nil, nil, 0)).Inspect(context.Background(), "r")
-	if err != nil || view.State != "finished" || view.StderrTail != "boom" {
+	if err != nil || view.State != "finished" || view.StderrTail != "boom" || view.Dir != "/home/runs/r" {
 		t.Fatalf("view = %+v, %v", view, err)
 	}
 	// The contract carries every field of the domain result.
