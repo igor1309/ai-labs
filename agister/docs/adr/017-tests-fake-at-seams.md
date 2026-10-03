@@ -1,6 +1,6 @@
 # ADR-017: Tests fake at seams, not with real machinery or the wall clock
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-02
 - **Scope:** Agister's own tests: which of them may build binaries, start
   processes or wait on real time; the product seams the others fake
