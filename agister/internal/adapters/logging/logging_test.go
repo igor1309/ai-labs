@@ -13,11 +13,12 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/logging"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/claudecode"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	composition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
+	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
 )
 
 var start = time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
@@ -34,10 +35,10 @@ const fake = "claude"
 func TestDecoratorConformance(t *testing.T) {
 	t.Parallel()
 	log := slog.New(slog.NewJSONHandler(&bytes.Buffer{}, nil))
-	clock := systemtest.NewClock(start)
+	clock := clocktest.NewClock(start)
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {
-			return logging.Runner{Inner: composition.NewClaudeCode(command, supervisor.Runtime{Starter: runtimetest.InProcess{}, Timer: clock.Timer}), Adapter: "claude-code", Log: log, Clock: clock}
+			return logging.Runner{Inner: composition.NewClaudeCode(command, supervisor.Runtime{Starter: runtimetest.InProcess{Groups: supervisortest.NewGroups()}, Timer: clock.Timer}), Adapter: "claude-code", Log: log, Clock: clock}
 		},
 		Fake:      fake,
 		InProcess: true,
@@ -52,8 +53,8 @@ func TestLogsAreCorrelatedAndOmitPrompts(t *testing.T) {
 	t.Parallel()
 	var buffer bytes.Buffer
 	log := slog.New(logging.Handler{Handler: slog.NewJSONHandler(&buffer, &slog.HandlerOptions{Level: slog.LevelInfo})})
-	clock := systemtest.NewClock(start)
-	runner := logging.Runner{Inner: composition.NewClaudeCode(fake, supervisor.Runtime{Starter: runtimetest.InProcess{}, Timer: clock.Timer}), Adapter: "claude-code", Log: log, Clock: clock}
+	clock := clocktest.NewClock(start)
+	runner := logging.Runner{Inner: composition.NewClaudeCode(fake, supervisor.Runtime{Starter: runtimetest.InProcess{Groups: supervisortest.NewGroups()}, Timer: clock.Timer}), Adapter: "claude-code", Log: log, Clock: clock}
 	ctx := app.WithCorrelation(context.Background(), "run_id", "run-1", "process", "p")
 	runner.RunTurn(ctx, request("secret prompt SCENARIO:approve"), &runtimetest.Recorder{})
 
@@ -113,7 +114,7 @@ func TestFailureToRecordTheProcessReachesTheRuntime(t *testing.T) {
 
 // taking is a runner whose turn takes what it advances its clock by.
 type taking struct {
-	clock *systemtest.Clock
+	clock *clocktest.Clock
 	takes time.Duration
 }
 
@@ -131,7 +132,7 @@ func TestTheWallTimeIsReadOnTheRunnersClock(t *testing.T) {
 	t.Parallel()
 	var buffer bytes.Buffer
 	log := slog.New(slog.NewJSONHandler(&buffer, nil))
-	clock := systemtest.NewClock(start)
+	clock := clocktest.NewClock(start)
 	runner := logging.Runner{Inner: taking{clock: clock, takes: 90 * time.Second}, Adapter: "x", Log: log, Clock: clock}
 	runner.RunTurn(context.Background(), request("p"), &runtimetest.Recorder{})
 	var finished map[string]any

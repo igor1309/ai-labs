@@ -3,8 +3,9 @@ package runtime
 import (
 	"context"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/app"
+	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 type CommandSupervisor interface {
@@ -38,4 +39,16 @@ type Processes struct{ Supervisor ProcessSupervisor }
 func (p Processes) Reap(ctx context.Context, ref string) (app.Reaping, error) {
 	result, err := p.Supervisor.Reap(ctx, ref)
 	return app.Reaping(result), err
+}
+
+// supervisorSink passes a turn's events from the supervisor to a runtime
+// adapter's sink, the supervisor's own decisions (a timeout, an abort, a
+// failed record) as Agister's: they are not the runtime moving.
+type supervisorSink struct{ supervisor.Sink }
+
+func (s supervisorSink) Event(source, kind string, data map[string]any) {
+	if source == supervisor.SourceSupervisor {
+		source = run.SourceAgister
+	}
+	s.Sink.Event(source, kind, data)
 }

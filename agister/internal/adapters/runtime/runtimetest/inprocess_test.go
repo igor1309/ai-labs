@@ -1,19 +1,19 @@
 package runtimetest
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
-	"syscall"
 	"testing"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeproc"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeclaude"
+	"github.com/igor1309/ai-labs/gokit/fakeproc"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
+	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
 )
 
 // output starts command through starter and returns what it wrote to
@@ -47,15 +47,35 @@ func TestInProcessPicksTheFakeByTheCommandsName(t *testing.T) {
 		"pi":                   "0.85.1\n",
 		"/builds/fakepi":       "0.85.1\n",
 	} {
-		out, exit := output(t, InProcess{}, supervisor.Command{Name: command, Args: []string{"--version"}})
+		out, exit := output(t, InProcess{Groups: supervisortest.NewGroups()}, supervisor.Command{Name: command, Args: []string{"--version"}})
 		if out != want || exit.Code == nil || *exit.Code != 0 || exit.Signal != "" {
 			t.Errorf("%s --version printed %q and exited %+v, want %q", command, out, exit, want)
 		}
 	}
 	for _, command := range []string{"ccusage", "/nonexistent/runtime"} {
-		if process, err := (InProcess{}).Start(supervisor.Command{Name: command}); err == nil {
+		if process, err := (InProcess{Groups: supervisortest.NewGroups()}).Start(supervisor.Command{Name: command}); err == nil {
 			t.Errorf("%s started: %+v", command, process)
 		}
+	}
+}
+
+// Each catalog of the fakes is a map of its own: a change to one, as a
+// test's own programs make, shows in none obtained apart from it.
+func TestInProcessCatalogsOfTheFakesAreSeparate(t *testing.T) {
+	t.Parallel()
+	changed := fakes()
+	changed["claude"] = func(fakeproc.Process) int { return 9 }
+	delete(changed, "bash")
+	changed["ccusage"] = func(fakeproc.Process) int { return 0 }
+	separate := fakes()
+	if _, ok := separate["ccusage"]; ok {
+		t.Fatal("a program added to one catalog is in another")
+	}
+	if _, ok := separate["bash"]; !ok {
+		t.Fatal("a program removed from one catalog is gone from another")
+	}
+	if reflect.ValueOf(separate["claude"]).Pointer() != reflect.ValueOf(fakeclaude.Main).Pointer() {
+		t.Fatal("a program replaced in one catalog is replaced in another")
 	}
 }
 
@@ -64,7 +84,7 @@ func TestInProcessPicksTheFakeByTheCommandsName(t *testing.T) {
 func TestInProcessRunsBashAsTheFakeShell(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	out, exit := output(t, InProcess{}, supervisor.Command{Name: "bash", Args: []string{"-c", "echo made > new.txt; cat new.txt missing.txt; exit 3"}, Dir: dir})
+	out, exit := output(t, InProcess{Groups: supervisortest.NewGroups()}, supervisor.Command{Name: "bash", Args: []string{"-c", "echo made > new.txt; cat new.txt missing.txt; exit 3"}, Dir: dir})
 	if out != "made\ncat: missing.txt: No such file or directory\n" || exit.Code == nil || *exit.Code != 3 || exit.Signal != "" {
 		t.Fatalf("printed %q and exited %+v", out, exit)
 	}
@@ -77,129 +97,17 @@ func TestInProcessRunsBashAsTheFakeShell(t *testing.T) {
 // given or by its base name.
 func TestInProcessPicksTheTestsOwnProgramFirst(t *testing.T) {
 	t.Parallel()
-	says := func(text string) Fake {
+	says := func(text string) supervisortest.Fake {
 		return func(p fakeproc.Process) int {
 			fmt.Fprint(p.Stdout, text)
 			return 0
 		}
 	}
-	starter := InProcess{Fakes: map[string]Fake{"ccusage": says("by name"), "/bin/claude": says("by path"), "claude": says("by base")}}
+	starter := InProcess{Groups: supervisortest.NewGroups(), Fakes: map[string]supervisortest.Fake{"ccusage": says("by name"), "/bin/claude": says("by path"), "claude": says("by base")}}
 	for command, want := range map[string]string{"ccusage": "by name", "/usr/bin/ccusage": "by name", "/bin/claude": "by path", "/opt/claude": "by base"} {
 		if out, _ := output(t, starter, supervisor.Command{Name: command}); out != want {
 			t.Errorf("%s ran the program %q, want %q", command, out, want)
 		}
-	}
-}
-
-// The fake's environment is the starter's, with the command's own over
-// it, and never the test process's.
-//
-// Serial: t.Setenv, to show the process's environment is not read.
-func TestInProcessTakesTheEnvironmentFromTheStarterAndTheCommand(t *testing.T) {
-	t.Setenv("FAKE_VERSION", "9.9.9")
-	version := func(starter InProcess, env ...string) string {
-		out, _ := output(t, starter, supervisor.Command{Name: "pi", Args: []string{"--version"}, Env: env})
-		return out
-	}
-	if got := version(InProcess{}); got != "0.85.1\n" {
-		t.Errorf("with no environment given, the version is %q: the process's was read", got)
-	}
-	inherited := InProcess{Env: []string{"FAKE_VERSION=1.0.0"}}
-	if got := version(inherited); got != "1.0.0\n" {
-		t.Errorf("the starter's environment gave %q", got)
-	}
-	if got := version(inherited, "FAKE_VERSION=2.0.0"); got != "2.0.0\n" {
-		t.Errorf("the command's environment gave %q, want it over the starter's", got)
-	}
-}
-
-// The fake runs as the process the command describes: in its directory,
-// with its arguments and stdin, its stderr apart from stdout when the
-// command says where, and its exit code the fake's.
-func TestInProcessRunsTheFakeAsTheCommandsProcess(t *testing.T) {
-	t.Parallel()
-	dir := t.TempDir()
-	starter := InProcess{Fakes: map[string]Fake{"echo": func(p fakeproc.Process) int {
-		input, _ := io.ReadAll(p.Stdin)
-		fmt.Fprintf(p.Stdout, "%s %q %s %s", p.Dir, p.Args, input, p.Path("file"))
-		fmt.Fprint(p.Stderr, "complaint")
-		return 7
-	}}}
-	want := fmt.Sprintf("%s %q typed %s/file", dir, []string{"a", "b"}, dir)
-
-	var stderr bytes.Buffer
-	out, exit := output(t, starter, supervisor.Command{Name: "echo", Args: []string{"a", "b"}, Dir: dir, Stdin: strings.NewReader("typed"), Stderr: &stderr})
-	if out != want || stderr.String() != "complaint" || exit.Code == nil || *exit.Code != 7 {
-		t.Fatalf("stdout %q, stderr %q, exit %+v", out, stderr.String(), exit)
-	}
-	// With nowhere of its own, stderr goes where stdout goes.
-	out, _ = output(t, starter, supervisor.Command{Name: "echo", Args: []string{"a", "b"}, Dir: dir, Stdin: strings.NewReader("typed")})
-	if out != want+"complaint" {
-		t.Fatalf("stdout %q, want stderr in it", out)
-	}
-}
-
-// A fake that hangs blocks until its group is signalled: it reports its
-// start and that it is blocked, the signal ends it, and it exited by that
-// signal. Its group is then gone, as a real one is.
-func TestInProcessSignallingTheGroupEndsABlockedFake(t *testing.T) {
-	t.Parallel()
-	reports := make(chan Report)
-	process, err := InProcess{Reports: reports}.Start(supervisor.Command{Name: "claude", Stdin: strings.NewReader("SCENARIO:hang")})
-	if err != nil {
-		t.Fatal(err)
-	}
-	// However the test ends, the fake is ended and joined on its exit: a
-	// signal to a group that has ended already does nothing.
-	t.Cleanup(func() {
-		_ = process.Signal(syscall.SIGKILL)
-		process.Wait()
-		process.Stdout().Close()
-	})
-	for _, want := range []string{"started", "blocked"} {
-		if report := <-reports; report != (Report{Command: "claude", Point: want}) {
-			t.Fatalf("report %+v, want %s", report, want)
-		}
-	}
-	if err := process.Signal(syscall.SIGTERM); err != nil {
-		t.Fatal(err)
-	}
-	// Stdout ends once the fake has returned.
-	if _, err := io.ReadAll(process.Stdout()); err != nil {
-		t.Fatal(err)
-	}
-	if exit := process.Wait(); exit.Code != nil || exit.Signal != syscall.SIGTERM.String() {
-		t.Fatalf("exit = %+v, want the signal", exit)
-	}
-	if err := process.Signal(syscall.SIGKILL); !errors.Is(err, syscall.ESRCH) {
-		t.Fatalf("signalling the ended group: %v, want ESRCH", err)
-	}
-}
-
-// Each fake leads a group of its own, whose number no real group has: a
-// reference to it, signalled by number as a reap does, reaches no process.
-func TestInProcessGroupsAreNoRealGroups(t *testing.T) {
-	t.Parallel()
-	seen := map[int]bool{}
-	for range 3 {
-		process, err := InProcess{}.Start(supervisor.Command{Name: "claude", Args: []string{"--version"}})
-		if err != nil {
-			t.Fatal(err)
-		}
-		group := process.Group()
-		if token, err := process.Token(t.Context()); err != nil || token == "" {
-			t.Fatalf("token %q, %v", token, err)
-		}
-		if seen[group] {
-			t.Fatalf("group %d was given twice", group)
-		}
-		seen[group] = true
-		if err := syscall.Kill(-group, 0); !errors.Is(err, syscall.ESRCH) {
-			t.Fatalf("signalling group %d by number: %v, want no such process", group, err)
-		}
-		_, _ = io.ReadAll(process.Stdout())
-		process.Wait()
-		process.Stdout().Close()
 	}
 }
 
@@ -222,7 +130,7 @@ func TestInProcessFakePiReportsThePackagesItInstalls(t *testing.T) {
 	// installs runs a turn of the fake in dir and returns the installs it
 	// reported.
 	installs := func(t *testing.T, dir string, args ...string) []string {
-		reports := make(chan Report)
+		reports := make(chan supervisortest.Report)
 		var points []string
 		read := make(chan struct{})
 		go func() {
@@ -233,7 +141,7 @@ func TestInProcessFakePiReportsThePackagesItInstalls(t *testing.T) {
 				}
 			}
 		}()
-		output(t, InProcess{Reports: reports}, supervisor.Command{Name: "pi", Args: args, Dir: dir, Stdin: strings.NewReader("SCENARIO:approve")})
+		output(t, InProcess{Groups: supervisortest.NewGroups(), Reports: reports}, supervisor.Command{Name: "pi", Args: args, Dir: dir, Stdin: strings.NewReader("SCENARIO:approve")})
 		close(reports)
 		<-read
 		return points

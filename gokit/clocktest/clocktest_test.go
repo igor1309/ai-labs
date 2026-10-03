@@ -1,11 +1,11 @@
-package systemtest_test
+package clocktest_test
 
 import (
 	"reflect"
 	"testing"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
 
 var start = time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
@@ -24,7 +24,7 @@ func fired(ch <-chan time.Time) (time.Time, bool) {
 // a moment before; it delivers the time its wait ended.
 func TestATimerFiresOnlyOnceTheClockPassesItsWait(t *testing.T) {
 	t.Parallel()
-	clock := systemtest.NewClock(start)
+	clock := clocktest.NewClock(start)
 	ch, stop := clock.Timer(time.Minute)
 	defer stop()
 	clock.Advance(time.Minute - time.Nanosecond)
@@ -44,7 +44,7 @@ func TestATimerFiresOnlyOnceTheClockPassesItsWait(t *testing.T) {
 // and leaves the later ones; a stopped timer never fires.
 func TestAdvanceFiresEveryTimerItPassesAndNoStoppedOne(t *testing.T) {
 	t.Parallel()
-	clock := systemtest.NewClock(start)
+	clock := clocktest.NewClock(start)
 	late, stopLate := clock.Timer(time.Hour)
 	defer stopLate()
 	second, _ := clock.Timer(2 * time.Second)
@@ -69,7 +69,7 @@ func TestAdvanceFiresEveryTimerItPassesAndNoStoppedOne(t *testing.T) {
 // A wait of zero has passed when it starts.
 func TestAZeroWaitHasPassedAlready(t *testing.T) {
 	t.Parallel()
-	clock := systemtest.NewClock(start)
+	clock := clocktest.NewClock(start)
 	ch, _ := clock.Timer(0)
 	if at, ok := fired(ch); !ok || !at.Equal(start) {
 		t.Fatalf("fired %t at %v", ok, at)
@@ -82,7 +82,7 @@ func TestAZeroWaitHasPassedAlready(t *testing.T) {
 // another wait, and again once the one timer of the wait is returned for.
 func TestStartedReturnsOncePerTimerOfTheWait(t *testing.T) {
 	t.Parallel()
-	clock := systemtest.NewClock(start)
+	clock := clocktest.NewClock(start)
 	// Each wait of Started is told here; the test's end lets go of one
 	// still telling.
 	waiting, ended := make(chan time.Duration), make(chan struct{})

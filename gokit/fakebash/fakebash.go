@@ -1,6 +1,6 @@
-// Package fakebash is the bash a setup or verification command runs under
-// in a test: `bash -c <command>`, run in process (runtimetest.InProcess),
-// for the part of the shell the tests' commands are written in.
+// Package fakebash is the bash a command runs under in a test:
+// `bash -c <command>`, run in process (supervisortest.InProcess), for the
+// part of the shell the tests' commands are written in.
 //
 // That part is lists of commands joined by ;, &&, || and &, { } groups,
 // double-quoted words, and > and >> on a command; the commands are echo,
@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeproc"
+	"github.com/igor1309/ai-labs/gokit/fakeproc"
 )
 
 // Main runs `-c <command>` as bash does and returns the script's exit

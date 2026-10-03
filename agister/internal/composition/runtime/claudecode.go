@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/claudecode"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 // ClaudeCodeSupervisor is the process dependency this transport consumes.
@@ -19,7 +19,7 @@ type ClaudeCodeSupervisor interface {
 type ClaudeCodeTransport struct{ Supervisor ClaudeCodeSupervisor }
 
 func (t ClaudeCodeTransport) Run(ctx context.Context, spec claudecode.Spec, sink claudecode.Sink, onLine func(string)) claudecode.Evidence {
-	e := t.Supervisor.Run(ctx, supervisor.Spec{Command: spec.Command, Args: spec.Args, Dir: spec.Dir, Stdin: spec.Stdin, Timeout: spec.Timeout, KillGrace: spec.KillGrace}, sink, onLine)
+	e := t.Supervisor.Run(ctx, supervisor.Spec{Command: spec.Command, Args: spec.Args, Dir: spec.Dir, Stdin: spec.Stdin, Timeout: spec.Timeout, KillGrace: spec.KillGrace}, supervisorSink{sink}, onLine)
 	var exit *claudecode.Exit
 	if e.Exit != nil {
 		exit = &claudecode.Exit{Code: e.Exit.Code, Signal: e.Exit.Signal}

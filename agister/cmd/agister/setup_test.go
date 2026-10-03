@@ -9,13 +9,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	runtimecomposition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
+	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
 )
 
 // Setup-enabled calls through the shipped composition, including the
@@ -169,8 +170,9 @@ func TestAFailedSetupFailsTheCallWithNoTurn(t *testing.T) {
 	// waits on it; the command never ends on its own, so only the timeout
 	// can end it, and wait's own bound fails the test if nothing does.
 	const timeout = 13 * time.Second
-	clock := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
-	timesOut := inProcessCommands(clock.Timer)
+	clock := clocktest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
+	groups := supervisortest.NewGroups()
+	timesOut := inProcessCommands(groups, clock.Timer)
 	cases := map[string]struct {
 		setup string
 		with  seams
@@ -184,7 +186,7 @@ func TestAFailedSetupFailsTheCallWithNoTurn(t *testing.T) {
 				t.Fatalf("setup run = %+v", ran)
 			}
 		}},
-		"timeout": {setup: `{command: "` + blocks + `", timeout: 13s}`, with: seams{setupCommands: runtimecomposition.SetupCommands{Supervisor: timesOut}}, passes: func() { clock.Started(timeout); clock.Advance(timeout) }, want: "the setup command exceeded its timeout 13s", check: func(t *testing.T, ran *domain.CommandRun) {
+		"timeout": {setup: `{command: "` + blocks + `", timeout: 13s}`, with: seams{setupCommands: runtimecomposition.SetupCommands{Supervisor: timesOut}, groups: groups}, passes: func() { clock.Started(timeout); clock.Advance(timeout) }, want: "the setup command exceeded its timeout 13s", check: func(t *testing.T, ran *domain.CommandRun) {
 			if !ran.TimedOut || ran.Exit.Code != nil {
 				t.Fatalf("setup run = %+v", ran)
 			}

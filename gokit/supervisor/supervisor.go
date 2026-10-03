@@ -1,6 +1,11 @@
-// Package supervisor runs one runtime CLI process and collects transport
-// evidence. It owns the process group: on timeout or cancellation the whole
-// group is terminated, then killed after a grace period.
+// Package supervisor runs processes as the leaders of process groups of
+// their own and owns those groups. Runtime runs one CLI process and
+// collects its transport evidence: on timeout or cancellation the whole
+// group is terminated, then killed after a grace period. Commands runs
+// `bash -c` commands the same way, and Processes reaps a group a process
+// that was killed left behind, by the reference Ref gives it. Each starts
+// its process through a Starter, so a test can run its program in process
+// (see supervisortest) and its timers on a manual clock.
 package supervisor
 
 import (
@@ -107,7 +112,7 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 	if recorded != nil {
 		evidence.RecordError = recorded.Error()
 		_ = process.Signal(syscall.SIGKILL)
-		sink.Event(SourceAgister, "PROCESS_RECORD_FAILED", map[string]any{"group": pid, "error": recorded.Error(), "killed": true})
+		sink.Event(SourceSupervisor, "PROCESS_RECORD_FAILED", map[string]any{"group": pid, "error": recorded.Error(), "killed": true})
 	}
 
 	// Signals go to the group only while it is known to exist: once the
@@ -149,13 +154,13 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 			mu.Lock()
 			evidence.TimedOut = true
 			mu.Unlock()
-			sink.Event(SourceAgister, "TIMEOUT", map[string]any{"timeout": spec.Timeout.String()})
+			sink.Event(SourceSupervisor, "TIMEOUT", map[string]any{"timeout": spec.Timeout.String()})
 			terminate()
 		case <-ctx.Done():
 			mu.Lock()
 			evidence.Aborted = true
 			mu.Unlock()
-			sink.Event(SourceAgister, "ABORT_REQUESTED", nil)
+			sink.Event(SourceSupervisor, "ABORT_REQUESTED", nil)
 			terminate()
 		}
 	}()

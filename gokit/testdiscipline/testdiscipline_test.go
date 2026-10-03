@@ -1,4 +1,4 @@
-package archtest
+package testdiscipline
 
 import (
 	"os"
@@ -8,11 +8,11 @@ import (
 	"testing"
 )
 
-// The module's own tests keep ADR-017's marker and parallelism, by the
-// rule testFindings documents.
+// The module's own tests keep the marker and the parallelism, by the rules
+// Findings documents, over the standard library's machinery.
 func TestTestsKeepTheMarkerAndTheParallelism(t *testing.T) {
 	t.Parallel()
-	findings, err := testFindings("../..")
+	findings, err := Findings("..", StandardMachinery())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,8 +21,27 @@ func TestTestsKeepTheMarkerAndTheParallelism(t *testing.T) {
 	}
 }
 
-// findingsIn is what testFindings says of a directory holding the files.
+// fixture is a package that builds, as a caller's own machinery.
+const fixture = "example.com/kit/fixture"
+
+// machinery is the standard library's machinery with fixture's Binary and
+// Build, as a caller extends it.
+func machinery() map[string][]string {
+	m := StandardMachinery()
+	m[fixture] = []string{"Binary", "Build"}
+	return m
+}
+
+// findingsIn is what Findings says, over machinery, of a directory holding
+// the files.
 func findingsIn(t *testing.T, files map[string]string) []string {
+	t.Helper()
+	return findingsOver(t, files, machinery())
+}
+
+// findingsOver is what Findings says, over the machinery given, of a
+// directory holding the files.
+func findingsOver(t *testing.T, files map[string]string, machinery map[string][]string) []string {
 	t.Helper()
 	root := t.TempDir()
 	for name, source := range files {
@@ -34,7 +53,7 @@ func findingsIn(t *testing.T, files map[string]string) []string {
 			t.Fatal(err)
 		}
 	}
-	findings, err := testFindings(root)
+	findings, err := Findings(root, machinery)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,21 +120,21 @@ func TestA(t *testing.T) {
 `},
 			[]string{"a_test.go:8: TestA uses clock.Sleep" + unmarked},
 		},
-		"a build of a fake": {
+		"a build of the caller's own machinery": {
 			map[string]string{"a_test.go": `package a
 
 import (
 	"testing"
 
-	"` + module + `/internal/adapters/runtime/runtimetest"
+	"` + fixture + `"
 )
 
 func TestA(t *testing.T) {
 	t.Parallel()
-	runtimetest.Binary(t, "fake")
+	fixture.Binary(t, "fake")
 }
 `},
-			[]string{"a_test.go:9: TestA uses runtimetest.Binary" + unmarked},
+			[]string{"a_test.go:9: TestA uses fixture.Binary" + unmarked},
 		},
 		"through a helper of another test file": {
 			map[string]string{
@@ -321,7 +340,7 @@ func TestA(t *testing.T) {
 	}
 }
 
-// What testFindings does not follow, as its comment says: a local name
+// What Findings does not follow, as its comment says: a local name
 // that hides a declaration, a field's or a method's name, another package
 // and a file that is not a test file.
 func TestWhatATestIsNotFollowedThrough(t *testing.T) {
@@ -492,5 +511,34 @@ func wait() { time.Sleep(time.Millisecond) }
 	want := []string{`internal/a/a_test.go:5: TestA neither starts with t.Parallel() nor has a "Serial:" line in its doc comment`}
 	if !slices.Equal(got, want) {
 		t.Fatalf("findings:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+}
+
+// What counts as real machinery is the caller's: a name the machinery given
+// leaves out is no finding, and StandardMachinery is a new map each time,
+// so one caller's additions reach no other.
+func TestTheMachineryIsTheCallers(t *testing.T) {
+	t.Parallel()
+	files := map[string]string{"a_test.go": `package a
+
+import (
+	"testing"
+
+	"` + fixture + `"
+)
+
+func TestA(t *testing.T) {
+	t.Parallel()
+	fixture.Build(t)
+}
+`}
+	if got, want := findingsOver(t, files, machinery()), []string{"a_test.go:9: TestA uses fixture.Build" + unmarked}; !slices.Equal(got, want) {
+		t.Fatalf("with the addition, findings:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+	if got := findingsOver(t, files, StandardMachinery()); len(got) != 0 {
+		t.Fatalf("without the addition, findings:\n%s", strings.Join(got, "\n"))
+	}
+	if got := findingsOver(t, files, nil); len(got) != 0 {
+		t.Fatalf("with no machinery, findings:\n%s", strings.Join(got, "\n"))
 	}
 }

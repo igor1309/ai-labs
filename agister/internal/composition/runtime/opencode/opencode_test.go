@@ -19,8 +19,9 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 
 	// fresh is the session the fake starts.
-	supervisor "github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
+	supervisor "github.com/igor1309/ai-labs/gokit/supervisor"
+	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
 )
 
 // The fake this package builds is removed when its tests end.
@@ -34,12 +35,12 @@ const fake = "opencode"
 // lookup times out unless a test advances a clock of its own, and no grace
 // passes.
 func stillSupervisor() supervisor.Runtime {
-	return stillOver(runtimetest.InProcess{})
+	return stillOver(runtimetest.InProcess{Groups: supervisortest.NewGroups()})
 }
 
 // stillOver is stillSupervisor starting through starter.
 func stillOver(starter runtimetest.InProcess) supervisor.Runtime {
-	return supervisor.Runtime{Starter: starter, Timer: systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}
+	return supervisor.Runtime{Starter: starter, Timer: clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}
 }
 
 const fresh = "ses_f06fe64c3ffeLyBkwYK7e1GfJs"
@@ -64,7 +65,7 @@ func runner(t *testing.T) *opencode.Runner {
 // process under the real supervisor.
 func TestConformance(t *testing.T) {
 	t.Parallel()
-	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	clock := clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {
 			return composition.AdaptOpenCode(&opencode.Runner{Transport: composition.OpenCodeTransport{Supervisor: supervisor.Runtime{Timer: clock.Timer}}, Command: command})
@@ -136,7 +137,8 @@ func TestTheConfigReplacesAnInheritedOne(t *testing.T) {
 	t.Parallel()
 	inherited := runner(t)
 	inherited.Transport = composition.OpenCodeTransport{Supervisor: stillOver(runtimetest.InProcess{
-		Env: []string{opencode.ConfigVariable + `={"agent":{"build":{"permission":{"*":"allow"}}}}`},
+		Groups: supervisortest.NewGroups(),
+		Env:    []string{opencode.ConfigVariable + `={"agent":{"build":{"permission":{"*":"allow"}}}}`},
 	})}
 	sink := &runtimetest.Recorder{}
 	if turn := composition.AdaptOpenCode(inherited).RunTurn(context.Background(), request("SCENARIO:approve"), sink); string(turn.Status) != string(run.Completed) {

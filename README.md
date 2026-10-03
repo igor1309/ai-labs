@@ -54,6 +54,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | oracle | Web App | "Oracle — Am I Done?" One-shot career outlook tool |
 | reinix | CLI release unit | Workflow runner for governed coding-agent loops |
 | agister | CLI (Go) | Agister orchestrator, CLI stage: generic agent calls through Claude Code, with opt-in Codex, Pi, and OpenCode adapters (Codex and OpenCode pending live verification); agents, processes, policies, permission mappings and output contracts are settings (ADR-001); no service yet |
+| gokit | Library (Go) | Reusable Go packages extracted from Agister (ADR-019): process supervisor, manual clock, fake program and shell, in-process starter, test-discipline check |
 | nomos | Service | AI sovereignty layer |
 | corpus-scout | MCP tool | Lexical search over a local text corpus |
 | web-scout | MCP tool | SearXNG search for Claude Code |

@@ -12,11 +12,11 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
 
 func TestCheckReportsEveryProblemAcrossDocuments(t *testing.T) {
@@ -248,7 +248,7 @@ func TestObserveReadsAgainOnlyOnceTheIntervalHasPassed(t *testing.T) {
 		},
 		reads: make(chan int, 2),
 	}
-	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	clock := clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	runs := app.NewRuns(reader, unwritten{}, nil, clock.Timer, interval)
 	observed := make(chan error, 1)
 	go func() {

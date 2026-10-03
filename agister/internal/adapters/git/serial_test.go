@@ -17,8 +17,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
 
 // What runs when is decided by the gate, never by timing: the deadline
@@ -822,7 +822,7 @@ func TestTheDefaultCleanupContextHasADeadlineOfOneMinute(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
 	worktrees := NewWorktrees(t.TempDir())
-	worktrees.Clock = systemtest.NewClock(now)
+	worktrees.Clock = clocktest.NewClock(now)
 	ctx, cancel := NewWorkspaces(worktrees).cleanup(context.Background())
 	defer cancel()
 	if deadline, ok := ctx.Deadline(); !ok || !deadline.Equal(now.Add(time.Minute)) {
@@ -844,7 +844,7 @@ func TestALockFileHeldIsTriedAgainOnlyOnceTheRetryHasPassed(t *testing.T) {
 	repo := emptyRepository(t)
 	l := newTurns(t)
 	one, two := l.coordinator("one"), l.coordinator("two")
-	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	clock := clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	two.Timer = clock.Timer
 	ctx := context.Background()
 

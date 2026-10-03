@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 // workflowRun finds the workflow's own run among home's runs and returns
@@ -115,7 +115,7 @@ func TestExampleWorkflowJoinsWithoutATimedOutNode(t *testing.T) {
 	write(t, path, strings.Replace(process, "workspace:\n", "timeout: 7m\n\nworkspace:\n", 1))
 	write(t, filepath.Join(repo, "stall.txt"), "SCENARIO:hang\n")
 	const timeout = 7 * time.Minute
-	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	clock := clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	go func() { clock.Started(timeout); clock.Advance(timeout) }()
 
 	r := agisterOn(t, timeoutOn(clock, timeout), home, repo, "run", "review_panel", "--param", "base=main", "--param", "architecture=a.txt")
@@ -180,7 +180,7 @@ func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 	config := cli.Config{Home: home, Cwd: repo}
 	// The process that is killed: its nodes' waits are on a clock that
 	// never moves, so only the test ends their runtimes.
-	killed := on(config, systemtest.NewClock(at).Timer)
+	killed := on(config, clocktest.NewClock(at).Timer)
 	killed.poll = unpolled(t)
 	victim, _, err := killed.wire(config)
 	if err != nil {
@@ -226,7 +226,7 @@ func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 	}
 
 	const timeout = 7 * time.Minute
-	clock := systemtest.NewClock(at)
+	clock := clocktest.NewClock(at)
 	composed := on(config, timeoutOn(clock, timeout))
 	composed.processes = left
 	client, background, err := composed.wire(config)
