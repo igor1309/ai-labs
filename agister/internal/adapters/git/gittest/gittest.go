@@ -324,38 +324,75 @@ func (f *Fake) Changes(_ context.Context, _, from, to string) ([]byte, error) {
 
 // Apply applies a patch Changes made to dir's files; with check, it only
 // checks that the whole patch applies. A patch that does not apply changes
-// nothing.
+// nothing. The patch is checked against dir's files as they are and as it
+// leaves them, so a file may become a directory and back: it removes before
+// it writes.
 func (f *Fake) Apply(_ context.Context, dir string, patch []byte, check bool) error {
 	files, err := parse(patch)
 	if err != nil {
 		return err
 	}
+	content, err := read(dir)
+	if err != nil {
+		return err
+	}
+	produced := tree{}
+	for path, text := range content {
+		produced[path] = text
+	}
 	for _, file := range files {
-		data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(file.path)))
-		switch {
-		case errors.Is(err, fs.ErrNotExist) && file.old == nil:
-		case err != nil && !errors.Is(err, fs.ErrNotExist):
-			return err
-		case err != nil || file.old == nil || string(data) != *file.old:
+		text, ok := content[file.path]
+		if ok != (file.old != nil) || ok && text != *file.old {
 			return fmt.Errorf("patch does not apply: %s is not as the patch expects", file.path)
+		}
+		if file.new == nil {
+			delete(produced, file.path)
+		} else {
+			produced[file.path] = *file.new
+		}
+	}
+	for path := range produced {
+		for at := path; strings.Contains(at, "/"); {
+			at = at[:strings.LastIndexByte(at, '/')]
+			if _, ok := produced[at]; ok {
+				return fmt.Errorf("patch does not apply: %s would be both a file and a directory", at)
+			}
 		}
 	}
 	if check {
 		return nil
 	}
 	for _, file := range files {
-		path := filepath.Join(dir, filepath.FromSlash(file.path))
 		if file.new == nil {
-			if err := os.Remove(path); err != nil {
+			if err := remove(dir, filepath.Join(dir, filepath.FromSlash(file.path))); err != nil {
 				return err
 			}
+		}
+	}
+	for _, file := range files {
+		if file.new == nil {
 			continue
 		}
+		path := filepath.Join(dir, filepath.FromSlash(file.path))
 		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 			return err
 		}
 		if err := os.WriteFile(path, []byte(*file.new), 0o600); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// remove removes a file under dir and the directories its removal leaves
+// empty, as git does, so a file may take a directory's place.
+func remove(dir, path string) error {
+	if err := os.Remove(path); err != nil {
+		return err
+	}
+	for at := filepath.Dir(path); at != filepath.Clean(dir); at = filepath.Dir(at) {
+		if os.Remove(at) != nil {
+			break
 		}
 	}
 	return nil

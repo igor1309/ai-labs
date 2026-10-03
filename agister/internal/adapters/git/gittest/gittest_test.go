@@ -223,6 +223,74 @@ func TestApplyRebuildsWhatChangesDiffed(t *testing.T) {
 	}
 }
 
+// A patch Changes made between revisions where a file and a directory
+// trade places applies to a checkout of the first and rebuilds the second,
+// both ways; a patch that would leave a path both a file and a directory
+// does not apply.
+func TestApplyReplacesAFileWithADirectoryAndBack(t *testing.T) {
+	t.Parallel()
+	fake := gittest.New(t.TempDir())
+	root := t.TempDir()
+	repository := fake.Record(root)
+	file := map[string]string{"node": "a file\n", "other.txt": "kept\n"}
+	directory := map[string]string{"node/child.txt": "a child\n", "node/deep/leaf.txt": "a leaf\n", "other.txt": "kept\n"}
+	fileRevision := repository.Commit("main", file)
+	directoryRevision := repository.Commit("feature", directory)
+	for _, c := range []struct {
+		name     string
+		from, to string
+		want     map[string]string
+	}{
+		{"file to directory", fileRevision, directoryRevision, directory},
+		{"directory to file", directoryRevision, fileRevision, file},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			patch, err := fake.Changes(ctx, root, c.from, c.to)
+			if err != nil {
+				t.Fatal(err)
+			}
+			dir, release, err := fake.Checkout(ctx, root, c.from)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = release() })
+			if err := fake.Apply(ctx, dir, patch, true); err != nil {
+				t.Fatalf("check: %v", err)
+			}
+			if err := fake.Apply(ctx, dir, patch, false); err != nil {
+				t.Fatal(err)
+			}
+			if got := files(t, dir); !reflect.DeepEqual(got, c.want) {
+				t.Fatalf("applied:\n%v\nwant:\n%v", got, c.want)
+			}
+			if identity, err := fake.Identity(ctx, dir, c.to); err != nil {
+				t.Fatal(err)
+			} else if rest, err := fake.Changes(ctx, root, c.to, identity); err != nil || len(rest) != 0 {
+				t.Fatalf("the applied checkout differs from its target: %q, %v", rest, err)
+			}
+		})
+	}
+	t.Run("both a file and a directory", func(t *testing.T) {
+		t.Parallel()
+		dir, release, err := fake.Checkout(ctx, root, fileRevision)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = release() })
+		// It adds node/child.txt and leaves node a file.
+		patch := []byte("diff --git a/node/child.txt b/node/child.txt\n--- /dev/null\n+++ b/node/child.txt\n@@ -0,0 +1,1 @@\n+a child\n")
+		for _, check := range []bool{true, false} {
+			if err := fake.Apply(ctx, dir, patch, check); err == nil || !strings.Contains(err.Error(), "both a file and a directory") {
+				t.Fatalf("check %t: a patch made node both a file and a directory: %v", check, err)
+			}
+		}
+		if got := files(t, dir); !reflect.DeepEqual(got, file) {
+			t.Fatalf("a failed apply changed the files: %v", got)
+		}
+	})
+}
+
 // A patch that does not apply, whole, changes nothing.
 func TestAPatchThatDoesNotApplyChangesNothing(t *testing.T) {
 	t.Parallel()
