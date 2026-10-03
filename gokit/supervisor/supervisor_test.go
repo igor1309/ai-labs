@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/gokit/clocktest"
+	"github.com/igor1309/ai-labs/gokit/fakeproc"
 	"github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
@@ -51,8 +53,10 @@ type runResult struct {
 }
 
 type events struct {
-	mu      sync.Mutex
-	kinds   []string
+	mu    sync.Mutex
+	kinds []string
+	// sources are the events' sources, in step with kinds.
+	sources []string
 	started []string // references, in the order reported
 	// failAt, when positive, makes the report with that number (1-based)
 	// fail.
@@ -63,10 +67,11 @@ type events struct {
 	onStart func(ref string)
 }
 
-func (e *events) Event(_, kind string, _ map[string]any) {
+func (e *events) Event(source, kind string, _ map[string]any) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.kinds = append(e.kinds, kind)
+	e.sources = append(e.sources, source)
 }
 
 func (e *events) ProcessStarted(ref string) error {
@@ -93,6 +98,19 @@ func (e *events) has(kind string) bool {
 		}
 	}
 	return false
+}
+
+// sourcesOf lists the source of each event of kind, in the order reported.
+func (e *events) sourcesOf(kind string) []string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	var sources []string
+	for i, k := range e.kinds {
+		if k == kind {
+			sources = append(sources, e.sources[i])
+		}
+	}
+	return sources
 }
 
 func pidFrom(t *testing.T, path string) int {
@@ -296,6 +314,65 @@ func TestTheTimeoutEndsTheProcessOnlyOnceItHasPassed(t *testing.T) {
 		if evidence.TimedOut || !evidence.Aborted || sink.has("TIMEOUT") {
 			t.Fatalf("evidence = %+v, events %v", evidence, sink.kinds)
 		}
+	})
+}
+
+// The supervisor's own decisions about a process, its timeout, an abort
+// and a group it could not record, are reported with the supervisor as
+// their source, not the process: a sink tells them apart by it.
+func TestTheSupervisorsDecisionsAreReportedAsItsOwn(t *testing.T) {
+	t.Parallel()
+	const timeout = time.Hour
+	// run runs a runtime that blocks until it is ended, its timers on the
+	// clock, and returns once its timeout has started.
+	run := func(ctx context.Context, clock *clocktest.Clock, sink *events) <-chan supervisor.Evidence {
+		done := make(chan supervisor.Evidence, 1)
+		go func() {
+			done <- supervisor.Runtime{Starter: program(fakeproc.Process.Block), Timer: clock.Timer}.Run(ctx, supervisor.Spec{
+				Command: "runtime",
+				Timeout: timeout,
+			}, sink, func(string) {})
+		}()
+		clock.Started(timeout)
+		return done
+	}
+	reported := func(t *testing.T, sink *events, kind string) {
+		t.Helper()
+		if sources := sink.sourcesOf(kind); !reflect.DeepEqual(sources, []string{supervisor.SourceSupervisor}) {
+			t.Fatalf("%s from %q, events %v", kind, sources, sink.kinds)
+		}
+	}
+
+	t.Run("timeout", func(t *testing.T) {
+		t.Parallel()
+		clock, sink := clocktest.NewClock(start), &events{}
+		done := run(context.Background(), clock, sink)
+		clock.Advance(timeout)
+		if evidence := <-done; !evidence.TimedOut {
+			t.Fatalf("evidence = %+v", evidence)
+		}
+		reported(t, sink, "TIMEOUT")
+	})
+	t.Run("abort", func(t *testing.T) {
+		t.Parallel()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		sink := &events{}
+		done := run(ctx, clocktest.NewClock(start), sink)
+		cancel()
+		if evidence := <-done; !evidence.Aborted {
+			t.Fatalf("evidence = %+v", evidence)
+		}
+		reported(t, sink, "ABORT_REQUESTED")
+	})
+	t.Run("record failed", func(t *testing.T) {
+		t.Parallel()
+		sink := &events{failAt: 1, startErr: errors.New("disk full")}
+		done := run(context.Background(), clocktest.NewClock(start), sink)
+		if evidence := <-done; evidence.RecordError != "disk full" {
+			t.Fatalf("evidence = %+v", evidence)
+		}
+		reported(t, sink, "PROCESS_RECORD_FAILED")
 	})
 }
 
