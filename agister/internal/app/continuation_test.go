@@ -2,16 +2,17 @@ package app_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
@@ -122,17 +123,6 @@ func (s *withoutProcessDigest) Read(ctx context.Context, kind definition.Kind, n
 		doc.Source.SHA256 = ""
 	}
 	return doc, err
-}
-
-func continuationGit(t *testing.T, dir string, args ...string) string {
-	t.Helper()
-	command := exec.Command("git", args...)
-	command.Dir = dir
-	out, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("git %v: %v\n%s", args, err, out)
-	}
-	return strings.TrimSpace(string(out))
 }
 
 // observedStore keeps real records and artifacts in the temp store, and exposes
@@ -269,72 +259,78 @@ func TestAContinuationRechecksItsSelectionAfterSetup(t *testing.T) {
 	}
 }
 
-// Contract test: the core over the git adapter and real git: the
-// repository's identity outlives the worktree a run was launched from.
+// A run records the identity of the repository it was launched in; a
+// continuation from another worktree of it carries the run's changes after
+// the launching worktree is removed. An older record, which names only that
+// worktree, cannot be compared with it any more.
 func TestContinuationAfterRemovingTheLaunchingWorktree(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
-	repo := t.TempDir()
-	continuationGit(t, repo, "init", "--quiet", "--initial-branch=main")
-	continuationGit(t, repo, "config", "user.email", "t@example.com")
-	continuationGit(t, repo, "config", "user.name", "T")
-	continuationGit(t, repo, "config", "maintenance.auto", "false")
-	if err := os.WriteFile(filepath.Join(repo, "a.txt"), []byte("base\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	continuationGit(t, repo, "add", ".")
-	continuationGit(t, repo, "commit", "--quiet", "-m", "base")
-	revision := continuationGit(t, repo, "rev-parse", "HEAD")
-	launching := filepath.Join(t.TempDir(), "launching")
-	surviving := filepath.Join(t.TempDir(), "surviving")
-	continuationGit(t, repo, "worktree", "add", "--detach", "--quiet", launching, revision)
-	continuationGit(t, repo, "worktree", "add", "--detach", "--quiet", surviving, revision)
-	store := fsruns.Store{Dir: t.TempDir()}
-	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
-	newCall := func(id string) *harness {
-		h, _ := carrying()
-		h.runner.turn.ProviderSessionID = "prov-0"
-		h.inputs.respond = func(app.InputSpec) (app.Resolved, error) {
-			return app.Resolved{Value: revision, Identity: revision, Revision: true}, nil
-		}
-		h.calls = h.callsRecordedWith(h.defs, workspaces, workspaces, store,
-			observedStore{store, h.recorder}, continuationID(id))
-		return h
-	}
-	first := newCall("run-0")
-	first.runner.during = func(request app.TurnRequest) {
-		if err := os.WriteFile(filepath.Join(request.Cwd, "a.txt"), []byte("base\nA\n"), 0o600); err != nil {
-			t.Error(err)
-		}
-	}
-	if _, err := first.calls.Submit(ctx, contract.CallRequest{Process: "p", Cwd: launching}); err != nil {
-		t.Fatal(err)
-	}
-	prior := first.recorder.wait(t)
-	identity, err := workspaces.RepositoryIdentity(ctx, surviving)
-	if err != nil {
-		t.Fatal(err)
-	}
-	launchingRoot, err := workspaces.Root(ctx, launching)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if prior.Result.Status != run.Completed || prior.Effects == nil || prior.Effects.Checkout == nil || prior.Effects.Checkout.RepositoryIdentity != identity || identity == "" || prior.Effects.Checkout.Repository != launchingRoot {
-		t.Fatalf("identity %q, %v, prior %+v", identity, err, prior)
-	}
-	continuationGit(t, repo, "worktree", "remove", launching)
-	second := newCall("run-1")
-	second.runner.during = func(request app.TurnRequest) {
-		data, err := os.ReadFile(filepath.Join(request.Cwd, "a.txt"))
-		if err != nil || string(data) != "base\nA\n" || request.ResumeSessionID != "prov-0" {
-			t.Errorf("content %q, %v, session %q", data, err, request.ResumeSessionID)
-		}
-	}
-	if _, err := second.calls.Submit(ctx, contract.CallRequest{Process: "p", Continue: "run-0", Cwd: surviving}); err != nil {
-		t.Fatal(err)
-	}
-	record := second.recorder.wait(t)
-	if record.Result.Status != run.Completed || len(second.runner.calls()) != 1 || !contains(second.recorder.kinds(), "CHANGES_CARRIED") {
-		t.Fatalf("result %+v, events %v", record.Result, second.recorder.kinds())
+	identities := map[string]string{"/launching": "/repo/.git", "/surviving": "/repo/.git"}
+	for _, recorded := range []bool{true, false} {
+		t.Run(map[bool]string{true: "stored identity", false: "older record"}[recorded], func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			store := fsruns.Store{Dir: t.TempDir()}
+			newCall := func(id, root string, removed ...string) (*harness, *[]string) {
+				h, order := carrying()
+				h.workspaces.root, h.workspaces.identities, h.workspaces.removed = root, identities, removed
+				h.runner.turn.ProviderSessionID = "prov-0"
+				h.calls = h.callsRecordedWith(h.defs, h.workspaces, h.changes, store,
+					observedStore{store, h.recorder}, continuationID(id))
+				return h, order
+			}
+			first, _ := newCall("run-0", "/launching")
+			// The turn edits the checkout: its content is the revision's until then.
+			var edited atomic.Bool
+			first.runner.during = func(app.TurnRequest) { edited.Store(true) }
+			first.changes.identify = func() string { return map[bool]string{false: "tree", true: "edited"}[edited.Load()] }
+			first.changes.patch = func(from, to string) []byte {
+				if to == "edited" {
+					return []byte("diff A\n")
+				}
+				return nil
+			}
+			if _, err := first.calls.Submit(ctx, contract.CallRequest{Process: "p", Cwd: "/launching"}); err != nil {
+				t.Fatal(err)
+			}
+			prior := first.recorder.wait(t)
+			if prior.Result.Status != run.Completed || prior.Effects == nil || prior.Effects.Checkout == nil ||
+				prior.Effects.Checkout.Repository != "/launching" || prior.Effects.Checkout.RepositoryIdentity != "/repo/.git" {
+				t.Fatalf("prior %+v, effects %+v", prior.Result, prior.Effects)
+			}
+			if !recorded {
+				prior.Effects.Checkout.RepositoryIdentity = ""
+				data, err := json.Marshal(prior)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(store.Dir, "run-0", "record.json"), data, 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			second, order := newCall("run-1", "/surviving", "/launching")
+			record := second.call(t, contract.CallRequest{Continue: "run-0", Cwd: "/surviving"})
+			if !recorded {
+				if class(record) != run.ClassRefused || !strings.Contains(message(record), "repository cannot be compared with /surviving: not a git repository: /launching") {
+					t.Fatalf("result %+v", record.Result)
+				}
+				if len(second.runner.calls()) != 0 || len(*order) != 0 {
+					t.Fatalf("turns %d, order %v", len(second.runner.calls()), *order)
+				}
+				return
+			}
+			if record.Result.Status != run.Completed || len(second.runner.calls()) != 1 || !contains(second.recorder.kinds(), "CHANGES_CARRIED") {
+				t.Fatalf("result %+v, events %v", record.Result, second.recorder.kinds())
+			}
+			if want := []string{"check", "setup", "apply", "turn"}; !reflect.DeepEqual(*order, want) {
+				t.Fatalf("order %v, want %v", *order, want)
+			}
+			if want := []appliedPatch{{"/work/checkout", "diff A\n", true}, {"/work/checkout", "diff A\n", false}}; !reflect.DeepEqual(second.changes.applies(), want) {
+				t.Fatalf("applied %+v", second.changes.applies())
+			}
+			if got := second.runner.calls()[0]; got.ResumeSessionID != "prov-0" {
+				t.Fatalf("resumed %q", got.ResumeSessionID)
+			}
+		})
 	}
 }

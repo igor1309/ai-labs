@@ -203,6 +203,37 @@ func TestRepositoryEquivalenceUsesCanonicalCommonDirectories(t *testing.T) {
 	}
 }
 
+// A repository's identity, read from a worktree, outlives that worktree: the
+// main checkout and another worktree still name it after its removal, and the
+// removed one names nothing.
+//
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
+func TestRepositoryIdentityOutlivesTheWorktreeItWasReadFrom(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	repo := repository(t)
+	revision := sh(t, repo, "rev-parse", "HEAD")
+	launching := filepath.Join(t.TempDir(), "launching")
+	surviving := filepath.Join(t.TempDir(), "surviving")
+	sh(t, repo, "worktree", "add", "--detach", "--quiet", launching, revision)
+	sh(t, repo, "worktree", "add", "--detach", "--quiet", surviving, revision)
+	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
+	recorded, err := workspaces.RepositoryIdentity(ctx, launching)
+	if err != nil || recorded == "" {
+		t.Fatalf("RepositoryIdentity = %q, %v", recorded, err)
+	}
+	sh(t, repo, "worktree", "remove", launching)
+	for _, dir := range []string{repo, surviving} {
+		if identity, err := workspaces.RepositoryIdentity(ctx, dir); err != nil || identity != recorded {
+			t.Fatalf("RepositoryIdentity(%s) = %q, %v, want %q", dir, identity, err, recorded)
+		}
+	}
+	if identity, err := workspaces.RepositoryIdentity(ctx, launching); err == nil {
+		t.Fatalf("removed worktree named %q", identity)
+	}
+}
+
 // The content identity covers what is committed, edited and untracked, but
 // not ignored; the patch from the revision to it, applied to a copy of the
 // revision, makes that content exactly, and neither touches the checkout's

@@ -5,7 +5,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -196,6 +198,18 @@ type workspacesSpy struct {
 	discarded   [][2]string // repository, dir
 	discardErr  error
 	discardHook func(ctx context.Context, dir string) error // runs first; a non-nil result is returned
+	identities  map[string]string                           // a path's repository identity; the path itself when absent
+	removed     []string                                    // worktrees gone since; git cannot read them
+}
+
+func (s *workspacesSpy) identity(path string) (string, error) {
+	if slices.Contains(s.removed, path) {
+		return "", fmt.Errorf("not a git repository: %s", path)
+	}
+	if identity, ok := s.identities[path]; ok {
+		return identity, nil
+	}
+	return path, nil
 }
 
 func (s *workspacesSpy) Discard(ctx context.Context, repository, dir string) error {
@@ -213,11 +227,16 @@ func (s *workspacesSpy) Discard(ctx context.Context, repository, dir string) err
 func (s *workspacesSpy) Root(context.Context, string) (string, error) { return s.root, nil }
 
 func (s *workspacesSpy) RepositoryIdentity(_ context.Context, repository string) (string, error) {
-	return repository, nil
+	return s.identity(repository)
 }
 
 func (s *workspacesSpy) SameRepository(_ context.Context, first, second string) (bool, error) {
-	return first == second, nil
+	a, firstErr := s.identity(first)
+	b, secondErr := s.identity(second)
+	if err := errors.Join(firstErr, secondErr); err != nil {
+		return false, err
+	}
+	return a == b, nil
 }
 
 func (s *workspacesSpy) Checkout(_ context.Context, repository, revision string) (string, func() error, error) {
