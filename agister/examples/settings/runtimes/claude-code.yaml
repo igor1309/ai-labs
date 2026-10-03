@@ -18,13 +18,16 @@ primitives:
   select: any
   items:
     # Without --restricted, each read a file outside the working directory
-    # (observed live, 2.1.285): they reach the host.
+    # (observed live, 2.1.285 and 2.1.288): they reach the host.
     Read: {grants: [repository.read, host.read], verified: ["2.1."]}
     Glob: {grants: [repository.read, host.read], verified: ["2.1."]}
     Grep: {grants: [repository.search, host.read], verified: ["2.1."]}
+    # Each wrote a file outside the working directory (observed live,
+    # 2.1.288): they reach the host. Edit refuses a file not Read first in
+    # the session, so it works only alongside Read.
+    Edit: {grants: [repository.write, host.write], verified: ["2.1."]}
+    Write: {grants: [repository.write, host.write], verified: ["2.1."]}
     # Not yet verified, so never granted.
-    Edit: {grants: [repository.write]}
-    Write: {grants: [repository.write]}
     NotebookEdit: {grants: [repository.write]}
     WebFetch: {grants: [network]}
     WebSearch: {grants: [network]}

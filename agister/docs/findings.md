@@ -200,5 +200,18 @@
   The same turn loaded the directory's `AGENTS.md` and offered Skill, which
   used a project skill.
 
+- **Edit and Write reach the host; Edit needs a Read first.** Claude Code
+  2.1.288 under claude-code/3 (`--permission-mode dontAsk`, the tools in
+  `--tools` and `--allowedTools`, `--strict-mcp-config`, 2026-10-03, a
+  scratch git repository with a sibling directory outside it):
+  - Write alone created a file in the repository and one in the sibling
+    directory, with no permission denial.
+  - Edit alone refused both files: "File has not been read yet. Read it
+    first before writing to it." With Read and Edit, it changed both.
+  - Read, Grep and Glob, each alone, again read, matched or listed files
+    in both directories.
+  Edit and Write now grant `repository.write` and `host.write`, verified
+  for `2.1.`.
+
 Verified live against Claude Code 2.1.283 (Glob: 2.1.284). Codex is covered by protocol
 fixtures only.
