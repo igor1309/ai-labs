@@ -82,9 +82,6 @@ func digestOf(text string) string {
 // document; with .agister/prompts/review.md in the repository, the
 // repository's text wins as a project document. The call's directory has
 // no say in either.
-//
-// Contract test: the composition over prompts on the filesystem and a real
-// git repository. Its runtimes are fakes run in process.
 func TestAPromptIsFoundInTheSettingsNotTheCallersDirectory(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
@@ -138,9 +135,6 @@ func TestAPromptIsFoundInTheSettingsNotTheCallersDirectory(t *testing.T) {
 // A prompt in neither layer is a problem of the settings, on the process
 // that names it, and a call of it is refused before its first turn
 // (ADR-015).
-//
-// Contract test: the composition over prompts on the filesystem and a real
-// git repository. Its runtimes are fakes run in process.
 func TestAPromptInNeitherLayerIsAProblemOfTheProcess(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
@@ -164,9 +158,6 @@ func TestAPromptInNeitherLayerIsAProblemOfTheProcess(t *testing.T) {
 
 // A prompt that is not readable text is a problem of that document alone;
 // it refuses the process that uses it (ADR-015).
-//
-// Contract test: the composition over prompts on the filesystem and a real
-// git repository. Its runtimes are fakes run in process.
 func TestAnUnreadablePromptIsAProblemOfItsOwn(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
@@ -192,9 +183,6 @@ func TestAnUnreadablePromptIsAProblemOfItsOwn(t *testing.T) {
 // file keep working, whatever the file's name. One whose name breaks the
 // naming rule is not a prompt document, so check has nothing to say of it,
 // and the call gets the file's text.
-//
-// Contract test: the composition over prompts on the filesystem and a real
-// git repository. Its runtimes are fakes run in process.
 func TestAFileInPromptsReadThroughSourceFileKeepsWorking(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")

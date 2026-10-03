@@ -122,17 +122,17 @@ func wire(config cli.Config, appends *fsruns.Appends) (contract.Client, *app.Bac
 	return process(config, appends).wire(config)
 }
 
-// process is the composition of the process: its worktree coordinator
-// keeps the lock files other processes take turns through under the home,
-// its run store keeps the runs there and signals through appends, its
-// runtimes and its commands are started by the operating system, which
-// also ends the process groups a dead owner left, and every wait is on the
-// wall clock.
+// process is the composition of the process: its git-backed adapters run
+// git over one worktree coordinator, which keeps the lock files other
+// processes take turns through under the home, its run store keeps the
+// runs there and signals through appends, its runtimes and its commands
+// are started by the operating system, which also ends the process groups
+// a dead owner left, and every wait is on the wall clock.
 func process(config cli.Config, appends *fsruns.Appends) composition {
 	worktrees := git.NewWorktrees(filepath.Join(config.Home, "locks", "worktrees"))
 	worktrees.Clock, worktrees.Timer = system.Clock{}, system.Timer
 	return composition{
-		worktrees: worktrees,
+		git:       gitBacked(worktrees),
 		runs:      fsruns.Store{Dir: filepath.Join(config.Home, "runs"), Appends: appends},
 		starter:   supervisor.Exec{},
 		commands:  supervisor.Exec{},
@@ -143,15 +143,16 @@ func process(config cli.Config, appends *fsruns.Appends) composition {
 	}
 }
 
-// composition is what one process wires its client over: the one worktree
-// coordinator every adapter that changes a repository's worktrees takes
-// its turn in, the run store, the starters of its runtimes and of its
+// composition is what one process wires its client over: the adapters
+// backed by git, the run store, the starters of its runtimes and of its
 // commands, the reaper of the process groups a dead owner left, the timers
-// its waits start on and the calls it hosts. Tests wire over a
-// coordinator, starters and timers they hold, wait on the hosted calls'
-// Done, and abandon a run through the store in place of killing its owner.
+// its waits start on and the calls it hosts. Tests wire over a fake of git,
+// starters and timers they hold, wait on the hosted calls' Done, and
+// abandon a run through the store in place of killing its owner.
 type composition struct {
-	worktrees *git.Worktrees
+	// git finds the repository, makes the checkouts and clean copies,
+	// names and diffs their content and resolves the git inputs.
+	git gitAdapters
 	// runs is the store of the runs' records and events.
 	runs fsruns.Store
 	// starter starts the runtimes' processes, and what a runtime's adapter
@@ -180,23 +181,34 @@ type composition struct {
 	adjust func(*app.Infrastructure)
 }
 
-// workspaceAdapters are the adapters that change a repository's worktrees,
-// each as the component that requires it gets it.
-type workspaceAdapters struct {
-	// calls makes and releases the checkouts calls work in.
+// gitAdapters are the adapters backed by git, each as the component that
+// requires it gets it.
+type gitAdapters struct {
+	// calls finds the repository's root and makes and releases the
+	// checkouts calls work in.
 	calls app.CallWorkspaces
 	// copies makes and removes the verifier's clean copies.
 	copies app.VerifyCopies
 	// discarder removes what the reaper finds abandoned.
 	discarder app.CheckoutDiscarder
+	// content names and diffs the content of checkouts and revisions.
+	content app.CallChanges
+	// The git inputs: a revision, a merge base, a diff and the files it
+	// changes.
+	revision, mergeBase, diff, changedFiles app.InputProvider
 }
 
-// workspaces builds the adapters that change worktrees, all over the
-// composition's coordinator: a caller's checkout, the verifier's copy and
-// the reaper's discard in one repository run one at a time.
-func (c composition) workspaces() workspaceAdapters {
-	shared := git.NewWorkspaces(c.worktrees)
-	return workspaceAdapters{calls: shared, copies: shared, discarder: shared}
+// gitBacked builds the adapters over real git. Those that change worktrees
+// share the coordinator: a caller's checkout, the verifier's copy and the
+// reaper's discard in one repository run one at a time. Naming and diffing
+// content changes no worktree.
+func gitBacked(worktrees *git.Worktrees) gitAdapters {
+	shared := git.NewWorkspaces(worktrees)
+	return gitAdapters{
+		calls: shared, copies: shared, discarder: shared,
+		content:  git.Workspaces{},
+		revision: git.Revision{}, mergeBase: git.MergeBase{}, diff: git.Diff{}, changedFiles: git.ChangedFiles{},
+	}
 }
 
 // wire builds the infrastructure, chooses the decorators and has the core
@@ -210,7 +222,7 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	}
 
 	global := fsdefs.Store{Dir: config.Home}
-	local, absent, err := project(config, log)
+	local, absent, err := project(config, c.git.calls, log)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -241,11 +253,7 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 			return logging.Runner{Inner: runtimecomposition.NewPi(command, filepath.Join(config.Home, "pi", "sessions"), processes), Adapter: "pi", Log: log, Clock: system.Clock{}}
 		},
 	}
-	// Over the one coordinator of the process: every workspace adapter's
-	// worktree changes in a repository take their turn in it.
-	workspaces := c.workspaces()
-	// Naming and diffing content changes no worktree.
-	content := git.Workspaces{}
+	workspaces, content := c.git, c.git.content
 	// Abandoned runs are reaped beside the calls, never inside one. A reap
 	// that fails has no caller to tell and no run record to say so: the
 	// log does.
@@ -265,10 +273,10 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 			Inputs: map[string]app.InputProvider{
 				"param":             inputs.Param{},
 				"file":              inputs.File{},
-				"git.revision":      git.Revision{},
-				"git.merge_base":    git.MergeBase{},
-				"git.diff":          git.Diff{},
-				"git.changed_files": git.ChangedFiles{},
+				"git.revision":      workspaces.revision,
+				"git.merge_base":    workspaces.mergeBase,
+				"git.diff":          workspaces.diff,
+				"git.changed_files": workspaces.changedFiles,
 			},
 			Workspaces: workspaces.calls,
 			Changes:    content,
@@ -306,16 +314,17 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 }
 
 // project is the settings layer of the repository containing the working
-// directory, like its .claude or .agents: <root>/.agister. None outside a
-// repository, without that directory, or when it is the home itself; why
-// is logged. A .agister that exists but cannot be used is an error, so
-// project settings never silently stop applying. absent is the directory
-// of a repository without one, where a document not found was expected.
-func project(config cli.Config, log *slog.Logger) (local *fsdefs.Store, absent string, err error) {
+// directory, like its .claude or .agents: <root>/.agister, the root as the
+// workspaces find it. None outside a repository, without that directory,
+// or when it is the home itself; why is logged. A .agister that exists but
+// cannot be used is an error, so project settings never silently stop
+// applying. absent is the directory of a repository without one, where a
+// document not found was expected.
+func project(config cli.Config, workspaces app.CallWorkspaces, log *slog.Logger) (local *fsdefs.Store, absent string, err error) {
 	if config.Cwd == "" {
 		return nil, "", nil
 	}
-	root, err := git.Workspaces{}.Root(context.Background(), config.Cwd)
+	root, err := workspaces.Root(context.Background(), config.Cwd)
 	if err != nil {
 		log.Debug("no project settings: not in a usable git repository", "cwd", config.Cwd, "error", err.Error())
 		return nil, "", nil

@@ -37,6 +37,11 @@ ends. Those are seams the product has to offer; a test cannot add them
 by itself. Real machinery stays where it is the claim: an adapter against
 a real process, git, the filesystem or the kernel.
 
+In `cmd/agister`, 113 of 121 tests carry a contract-test marker and set
+up a real git repository, though most claims are about settings,
+installs, prompts, verify loops, workflows or wiring, not git. The marker
+has become a blanket exemption.
+
 The product already has some of the seams this needs. The core takes its
 clocks (`CallClock`, `ReapClock`, `SetupClock`, `VerifyClock`), the
 stale watch takes a `CallTimer`, and the reaper takes `ReapContext`.
@@ -48,10 +53,11 @@ process through a transport over a supervisor interface, which
 the core with an in-process runtime (`scripted`) and a manual clock.
 
 What is missing: the composition root hard-codes the real supervisor,
-`system.Clock` and `system.Timer`. The supervisor's own timeout, kill grace
-and stdout grace use the wall clock. `Runs.Observe` and the git lock retry
-poll on real timers; `Observe` polls even a run this process is writing,
-though the process knows when it appends an event. Nothing says that a
+`system.Clock`, `system.Timer` and the git adapters. The supervisor's own
+timeout, kill grace and stdout grace use the wall clock. `Runs.Observe`
+and the git lock retry poll on real timers; `Observe` polls even a run
+this process is writing, though the process knows when it appends an
+event. Nothing says that a
 call hosted in this process has finished. And the fakes exist only as
 programs to build.
 
@@ -78,7 +84,8 @@ Real processes, builds, network and the wall clock are kept only in
 contract tests, whose claim is about the real thing and whose doc comment
 says so. Every other test fakes in-process through product seams: a
 process starter, injected clocks and timers, a notification that a
-run's events were appended, and hooks that say "done".
+run's events were appended, hooks that say "done", and in `cmd/agister`
+an in-memory fake of the git-backed ports.
 Fixture builds happen once per test binary, and tests that share no state
 run in parallel.
 
@@ -89,7 +96,9 @@ run in parallel.
 A test may build, start a process, use the network, or wait on real time
 only when its claim is about that real thing: an adapter against a real
 process, git, the filesystem or the kernel. Its doc comment has a line
-`Contract test: <the real thing it is about>`. In its waits, a timer
+`Contract test: <the real thing it is about>`. A test that needs a real
+repository only because the code it drives does is not about git, and
+fakes it. In its waits, a timer
 may only guard a hang, unless the work never ends by itself (the hang
 scenario). No bound exceeds a minute. Where the OS gives no event, as
 when a group that is not this process's child ends, a bounded poll is
@@ -141,20 +150,57 @@ Kept as contract tests, marked as rule 1 has it:
 - `cmd/agister/reap_test.go`, `TestNextCallReapsWhatAKilledRunLeftBehind`:
   the one test of a real SIGKILL. The kernel releases the killed CLI's
   owner lock, its runtime's group outlives it, and the next call ends
-  both. It uses the shared build. Its waits on the other process stay
-  bounded polls; waits in this process use seam 3.
-- `cmd/agister`'s end-to-end files: `main_test.go`,
+  both. It uses the shared build, and the killed CLI starts its runtime
+  as a real subprocess, a built fake: the claim is that the runtime's
+  group outlives its owner. Its waits on the other process stay bounded
+  polls; waits in this process use seam 3.
+- `cmd/agister` tests whose claim is that the composition's adapters
+  work together on a real repository (ADR-001 rule 14). They keep real
+  git, through the real git-backed adapters (seam 5), and the marker:
+  - `main_test.go`, `TestWorkspaceChangesAreKept`: the agent's changes
+    kept as a patch, the repository untouched;
+  - `verify_loop_test.go`, `TestVerifyCaptureReproducesThePassingContent`
+    and `TestVerifyChecksWhatThePatchDelivers`: the patch, applied to a
+    clean copy of the base, rebuilds what passed; ignored and binary files
+    as git treats them;
+  - `setup_test.go`, `TestACheckoutHookThatChangesATrackedFileFailsTheSetup`:
+    a real post-checkout hook;
+  - `setup_test.go`, `TestIgnoredSetupFilesStayOutOfTheCleanCopyAndThePatch`,
+    split from `TestSetupPreparesTheCheckoutOnceBeforeTheFirstTurn`: an
+    ignored file the setup makes reaches neither the clean copy nor the
+    patch;
+  - `verify_loop_test.go`, `TestVerifyRunThatWritesOnlyIgnoredFilesPasses`,
+    split from `TestVerifyRunThatChangesItsCleanCopyFails`: an ignored file
+    a run writes is not a change to its content;
+  - `reap_test.go`, `TestNextCallReapsAKilledRunsVerifyCommand`: the reap
+    discards a real checkout and clean copy;
+  - `wiring_test.go`, `TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator`
+    and `TestTheProcessWorktreeCoordinatorLocksUnderTheHome`: the worktree
+    coordinator across the composition;
+  - the SIGKILL test above, whose built CLI runs the real composition.
+
+Run over the fake of the git-backed ports (seam 5), and lose the marker:
+
+- Every `cmd/agister` test not named above, in `main_test.go`,
   `broken_document_test.go`, `named_verify_test.go`, `prompts_test.go`,
-  `setup_test.go`, `repo_settings_test.go`, `opencode_settings_test.go`,
-  `pi_settings_test.go`, `workflow_test.go` and `wiring_test.go`. These
-  are contract tests of the composition (ADR-001 rule 14) against real git
-  repositories and the filesystem, and they keep those. They stop running
-  runtimes as processes: the composition gets the in-process starter
-  (seam 1), so no fake is built, `PATH` is not set and no `ccusage`
-  script is written. A turn's timeout runs on the manual clock (seam 2).
-  Calls are awaited on `Hosted.Done` and their events observed as they
-  are appended (seam 3), not by `eventually`, and the minute guards in
-  `wiring_test.go` go.
+  `setup_test.go`, `install_test.go`, `repo_settings_test.go`,
+  `opencode_settings_test.go`, `pi_settings_test.go`, `workflow_test.go`,
+  `verify_loop_test.go`, `reap_test.go` and `wiring_test.go`. Their claims
+  are settings, installs, prompts, verify loops, workflows or wiring. An
+  assertion that ignored files are left out is git's claim: the fake knows
+  no ignore rules, so it moves to a real-git test named above, and the
+  test it came from keeps its other claims over the fake. A
+  test whose claim is another real thing (a real shell, the kernel's
+  flock) keeps a marker that names that thing, not git. None sets up a
+  repository or runs `git`. In every `cmd/agister` test, real git or not,
+  a runtime call hosted by the test process no longer runs its runtime as
+  a process: the composition gets the in-process starter (seam 1), so no
+  fake is built, `PATH` is not set and no `ccusage` script is written.
+  Only the CLI the SIGKILL test kills, which is not hosted by the test
+  process, keeps a real runtime subprocess (above). A turn's timeout runs on the manual clock
+  (seam 2). Calls are awaited on `Hosted.Done` and their events observed
+  as they are appended (seam 3), not by `eventually`, and the minute
+  guards in `wiring_test.go` go.
 
 Replaced by in-process fakes:
 
@@ -162,13 +208,16 @@ Replaced by in-process fakes:
   `cmd/agister/workflow_test.go`, `TestNextCallReapsAKilledWorkflowsNodes`:
   in-process calls block in the in-process fake (seam 1), and their runs
   are abandoned as a kill would leave them (seam 4). The next call reaps
-  them. The real group kill they relied on is the supervisor's contract
-  (`processes_test.go`). `TestCleanupRunCancelsAndDrainsABlockedCall`
-  blocks in an in-process command; `TestEndRecordedEndsEveryRecordedEffect`
+  them; the first keeps real git (above), the second runs over the git
+  fake (seam 5). The real group kill they relied on is the supervisor's
+  contract (`processes_test.go`).
+  `TestCleanupRunCancelsAndDrainsABlockedCall` blocks in an in-process
+  command; `TestEndRecordedEndsEveryRecordedEffect`
   stays as the test of the helper the kept SIGKILL test uses.
 - `cmd/agister/verify_loop_test.go`: verify and setup commands whose claim
   is the loop run as in-process `VerifyCommands` and `SetupCommands` fakes
-  (its existing `seams`), on the manual clock. `wait` uses
+  (its existing `seams`), on the manual clock and, but for the two tests
+  kept above, over the git fake (seam 5). `wait` uses
   `Hosted.Done`. `TestVerifyCancellationKillsTheCommandGroup` and the stale
   test stop waiting for a real group: that the group is killed is
   `command_test.go`'s contract, and here the fake sees its context
@@ -196,7 +245,8 @@ Each seam is declared at the boundary of the component that requires it
 (ADR-001 rule 13), and only the composition root wires the real one
 (rule 14). `cmd/agister`'s `composition`, which already carries the
 worktree coordinator for tests, also carries the starter, the clock, the
-timer and the run store. `process()` fills in the real ones.
+timer, the run store and the git-backed adapters. `process()` fills in
+the real ones.
 
 1. **The process starter.** Owner: `supervisor`. It declares a `Starter`
    that starts a spec and returns the started process: its stdin, stdout
@@ -301,6 +351,31 @@ timer and the run store. `process()` fills in the real ones.
    composition. It replaces building the CLI and SIGKILLing it for every
    reap scenario but rule 2's one.
 
+5. **The git-backed ports, in `cmd/agister`.** Owners: `app`, whose
+   ports they are, and `cmd/agister`'s `composition`, which is given what
+   `wire` and `process` build from `internal/adapters/git` today, as it
+   is given the starter (seam 1) and the clock (seam 2): the calls'
+   workspaces (`app.CallWorkspaces`: root, repository identity,
+   checkouts), the verifier's clean copies (`app.VerifyCopies`), the
+   reaper's discard (`app.CheckoutDiscarder`), the content namer and
+   differ (`app.CallChanges`, which also serves `app.SetupContent` and
+   `app.VerifyContent`) and the `git.*` input providers
+   (`app.InputProvider`). `project` finds the repository root
+   through the given workspaces, not `git.Workspaces{}`. `process()`
+   builds the real ones over its worktree coordinator, as today.
+
+   Owner: `internal/adapters/git/gittest`. A fake that implements those
+   ports over trees it records, and only as far as the non-git
+   `cmd/agister` tests need. A test records a repository's revisions as
+   file trees. Root, identity and sameness come from the recorded
+   repository; a checkout or clean copy is a temp directory holding a
+   revision's tree, removed by its release or discard; an identity names a
+   directory's files; `Changes` returns a patch between two recorded
+   contents, and `Apply` applies one it made. The git inputs resolve from
+   the recorded revisions. It runs no `git` and knows no ignore rules,
+   hooks, binary files or lock files: tests whose claim needs them keep
+   real git (rule 2).
+
 ### 4. Fixture builds are made once per test binary
 
 A contract test's build is made once per test binary, not per test, into
@@ -314,7 +389,8 @@ exit code; a failing run keeps its own code. An abrupt exit (a panic, the
 `-timeout` panic, a signal) skips the removal and can leave the directory
 behind in the system's temp directory. Builds keep the host Go cache
 (LAB-51). After seam 1, only the four adapters' contract tests build a
-fake, each its own.
+fake, each its own, and `cmd/agister` builds one for the CLI the SIGKILL
+test kills.
 
 ### 5. Tests that share no state run in parallel
 
@@ -332,16 +408,19 @@ neither. Shared helpers keep their state per test or behind a lock, as
   `-timeout` with the test's name.
 - The in-process fakes are the same code the contract tests build, so
   `Conformance` proves the protocol every in-process test relies on.
-- The product gains a starter, timers in five more components, an
-  append notification on `fsruns`'s store, a "done" channel on `Hosted`
-  and an abandon on `fsruns`'s handle. Each is wired only in the
-  composition root. `Observe` delivers each event of a run this process
-  writes as soon as it is appended, and ends once the run finishes, with
-  no timer; a run in another process is still polled, on the injected
-  timer.
-- Real git stays in `cmd/agister` and `internal/adapters/git`; the
-  composition's claim is that its adapters work together on a real
-  repository.
+- The product gains a starter, timers in five more components, an append
+  notification on `fsruns`'s store, a "done" channel on `Hosted`, an
+  abandon on `fsruns`'s handle and the git-backed ports given to the
+  composition. Each is wired only in the composition root. `Observe`
+  delivers each event of a run this process writes as soon as it is
+  appended, and ends once the run finishes, with no timer; a run in
+  another process is still polled, on the injected timer.
+- Real git stays in `internal/adapters/git` and, in `cmd/agister`, only
+  in the few tests whose claim is that the composition's adapters work
+  together on a real repository (rule 2). Every other `cmd/agister` test
+  runs over the git fake, sets up no repository and carries no marker for
+  git. What the fake does not model is proved only by those few and by
+  the git adapter's own tests.
 - What the SIGKILL test proves is left to one test; a reap scenario added
   later fakes the kill (seam 4) unless its claim is the kernel's.
 - The fakes' build directories are removed when a test binary's tests
@@ -360,8 +439,11 @@ neither. Shared helpers keep their state per test or behind a lock, as
   parsing and the supervisor's timeout and termination logic, which the
   in-process starter keeps. The verify harness keeps it: its claim is
   the loop.
-- **Fake git in `cmd/agister` too.** Rejected: git in a temp repository is
-  fast, and that real repositories work is the composition's claim.
+- **Real git in every `cmd/agister` test.** Rejected. The marker became a blanket
+  exemption: most of those tests' claims are not about git (rule 1). A
+  repository set up per test is paid on every run and couples claims
+  about settings, prompts or verify loops to git. The composition's claim
+  on a real repository is kept by the few tests rule 2 names.
 - **`testing/synctest` instead of injected timers.** Rejected as the
   mechanism: time advances only when every goroutine in the bubble is
   blocked on the bubble's own channels. File, git and pipe I/O are not,
@@ -370,6 +452,6 @@ neither. Shared helpers keep their state per test or behind a lock, as
 ## Explicit non-decisions
 
 The exact `Starter` and process interfaces; the exact shape of the
-append notification; how `archtest` follows calls through helpers;
-whether `internal/app`'s own tests later adopt `testing/synctest`; the Go
-version this needs.
+append notification; the git fake's patch format and API; how
+`archtest` follows calls through helpers; whether `internal/app`'s own
+tests later adopt `testing/synctest`; the Go version this needs.

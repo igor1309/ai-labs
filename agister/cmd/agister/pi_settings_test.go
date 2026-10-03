@@ -46,9 +46,6 @@ func allowHostReads(t *testing.T, home, repo string) {
 
 // The example passes check and probe with its shipped verification flags.
 // With host reads opted in, a 0.85.1 call grants only the four read tools.
-//
-// Contract test: the composition over the example settings and a real git
-// repository; the Pi fake runs in process.
 func TestExamplePiSettingsPassCheck(t *testing.T) {
 	t.Parallel()
 	home, repo := examplePiSettings(t)
@@ -80,9 +77,6 @@ func TestExamplePiSettingsPassCheck(t *testing.T) {
 // With the service of an `agister init` home, which withholds host.read,
 // no Pi tool that reads a skill can be granted, so ask_pi is refused before
 // Pi starts and the refusal recorded (ADR-006).
-//
-// Contract test: the composition over the example settings and a real git
-// repository; the Pi fake runs in process.
 func TestExamplePiCallWithoutASkillToolIsRefused(t *testing.T) {
 	t.Parallel()
 	home, repo := examplePiSettings(t)
@@ -108,9 +102,6 @@ func TestExamplePiCallWithoutASkillToolIsRefused(t *testing.T) {
 // directory: a call's session directory is under <home>/pi/sessions, named
 // by the session Pi reported, and a continuation resumes that session
 // there, whatever the home's path holds: brackets in it are no pattern.
-//
-// Contract test: the composition over the example settings and a real git
-// repository; the Pi fake runs in process.
 func TestPiSessionsAreKeptUnderTheHome(t *testing.T) {
 	t.Parallel()
 	t.Run("plain home", func(t *testing.T) {
@@ -122,6 +113,7 @@ func TestPiSessionsAreKeptUnderTheHome(t *testing.T) {
 		t.Parallel()
 		home, repo := examplePiSettings(t)
 		bracketed := filepath.Join(tempDir(t), "agister[1]")
+		gitThrough(t, bracketed, gitOf(t, home))
 		if err := os.Rename(home, bracketed); err != nil {
 			t.Fatal(err)
 		}
@@ -191,9 +183,6 @@ func piSessionsAreKeptUnder(t *testing.T, home, repo string) {
 // package that is not installed. Pi starts offline in a call, so it
 // installs nothing: npm, which the fake reports when it would run it,
 // never runs, and .pi/npm is never made.
-//
-// Contract test: the composition over the example settings and a real git
-// repository; the Pi fake runs in process.
 func TestPiInstallsNoPackageTheProjectLists(t *testing.T) {
 	t.Parallel()
 	home, repo := examplePiSettings(t)
@@ -248,9 +237,6 @@ timeout: 10m
 // edit, write and bash are verified for 0.85: when every grant is allowed,
 // a call requiring a permission they grant is planned with all three, and
 // Pi is started with them in its --tools allowlist.
-//
-// Contract test: the composition over the example settings and a real git
-// repository; the Pi fake runs in process.
 func TestExamplePiSettingsGrantTheVerifiedWriteToolsAndBash(t *testing.T) {
 	t.Parallel()
 	for _, permission := range []string{"repository.write", "process.execute"} {
@@ -280,9 +266,6 @@ func TestExamplePiSettingsGrantTheVerifiedWriteToolsAndBash(t *testing.T) {
 // beside repository.write: with host.write withheld, as bash is, no Pi tool
 // can write the repository, and check refuses a call requiring repository
 // writes.
-//
-// Contract test: the composition over the example settings and a real git
-// repository; the Pi fake runs in process.
 func TestExamplePiCallRequiringWritesWithoutHostWritesIsRefused(t *testing.T) {
 	t.Parallel()
 	home, repo := examplePiSettings(t)

@@ -53,7 +53,7 @@ func cancelAndWait(runs canceller, hosted *app.Hosted, id string) {
 
 // cleanupRun makes the test's cleanup cancel the run and wait for it,
 // whatever point the test reached. Registered once the run is submitted,
-// after its home's tempDir and cleanupRecorded, it runs before both.
+// after its home's tempDir and any cleanupRecorded, it runs before both.
 func cleanupRun(t testing.TB, runs canceller, hosted *app.Hosted, id string) {
 	t.Cleanup(func() { cancelAndWait(runs, hosted, id) })
 }
@@ -349,7 +349,7 @@ func abandon(t *testing.T, killed composition, id string) {
 // test starts holds a copy from its fork to its exec, and the lock an
 // abandoned run gave up would read as held.
 func TestNextCallReapsAKilledRunsVerifyCommand(t *testing.T) {
-	home, repo := setup(t, "approve")
+	home, repo := setupGit(t, "approve")
 	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))
 	write(t, filepath.Join(home, "processes", "verified.yaml"), strings.Replace(shipped, "name: adversarial_review", "name: verified", 1)+`
 verify:
@@ -441,14 +441,10 @@ verify:
 // command until cancelled, and the test never ends it otherwise. Once the
 // cleanup returns, the run is finished, its command has seen its context
 // end, and its checkout and clean copy are gone.
-//
-// Contract test: the composition's reap over a real git repository and the
-// run store on the filesystem; what is reaped is a fake run in process.
 func TestCleanupRunCancelsAndDrainsABlockedCall(t *testing.T) {
 	t.Parallel()
 	command := newBlockedCommand()
 	h := newLoopWith(t, seams{commands: command}, verifySettings{}, state("one"))
-	cleanupRecorded(t, h.home, h.repo)
 	id := h.submit(contract.CallRequest{})
 	// The cleanup is registered on a recording TB, drained below; should
 	// the test fail first, the real one drains what is left.
@@ -477,7 +473,7 @@ func TestCleanupRunCancelsAndDrainsABlockedCall(t *testing.T) {
 			t.Fatalf("%s left behind: %v", dir, err)
 		}
 	}
-	if lines := strings.Split(gitCmd(t, h.repo, "worktree", "list"), "\n"); len(lines) != 1 {
-		t.Fatalf("worktrees = %v", lines)
+	if left := h.left(); len(left) != 0 {
+		t.Fatalf("checkouts left: %v", left)
 	}
 }

@@ -74,9 +74,6 @@ func TestBinaryNamesItsBuild(t *testing.T) {
 // know: an unknown field, adapter or input source, and a newer schema. Each
 // such problem is marked in the report, and a line after the problems names
 // this binary; a plain mistake is not marked.
-//
-// Contract test: the composition over settings on the filesystem, with real
-// git to place the caller.
 func TestCheckMarksWhatThisBinaryDoesNotKnow(t *testing.T) {
 	t.Parallel()
 	home, repo := tempDir(t), tempDir(t)
