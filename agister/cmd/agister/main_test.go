@@ -25,10 +25,10 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git/gittest"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
 
 // The CLI this package builds, and the fake the test that kills it builds,
@@ -160,7 +160,7 @@ var stillAt = time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
 func inProcess(config cli.Config) composition {
 	c := process(config, fsruns.NewAppends())
 	c.starter, c.commands = runtimetest.InProcess{}, runtimetest.InProcess{}
-	still := systemtest.NewClock(stillAt)
+	still := clocktest.NewClock(stillAt)
 	c.timer, c.poll = still.Timer, still.Timer
 	if starter, ok := starters.Load(config.Home); ok {
 		c.starter = starter.(runtimetest.InProcess)
@@ -187,8 +187,8 @@ type timer = func(wait time.Duration) (fired <-chan time.Time, stop func())
 // timeoutOn is a timer whose waits of timeout are on clock, so the test
 // advances a turn's timeout itself; every other wait, a grace or a
 // staleness limit, never passes.
-func timeoutOn(clock *systemtest.Clock, timeout time.Duration) timer {
-	still := systemtest.NewClock(clock.Now())
+func timeoutOn(clock *clocktest.Clock, timeout time.Duration) timer {
+	still := clocktest.NewClock(clock.Now())
 	return func(wait time.Duration) (<-chan time.Time, func()) {
 		if wait == timeout {
 			return clock.Timer(wait)

@@ -37,9 +37,12 @@ type Exit struct {
 	Signal string
 }
 
+// The source of an event a Sink is given: the process's own, or the
+// supervisor's decision about it (a timeout, an abort, a record that
+// failed).
 const (
-	SourceProcess = "process"
-	SourceAgister = "agister"
+	SourceProcess    = "process"
+	SourceSupervisor = "supervisor"
 )
 
 type Reaping string

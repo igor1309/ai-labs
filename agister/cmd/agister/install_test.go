@@ -19,11 +19,11 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
 
 // countedStamps names each install's backup by the time and a count, so
@@ -121,7 +121,7 @@ func installClientAdjusted(t *testing.T, home string, adjust func(*app.InstallAd
 	compose.stages = in.stages
 	compose.adjust = func(infra *app.Infrastructure) {
 		infra.Installer.Home = homeSpy{InstallHome: infra.Installer.Home, events: &in.events}
-		infra.Installer.Clock = systemtest.NewClock(time.Date(2026, 10, 2, 12, 0, 0, 0, time.UTC))
+		infra.Installer.Clock = clocktest.NewClock(time.Date(2026, 10, 2, 12, 0, 0, 0, time.UTC))
 		infra.Installer.Stamps = countedStamps{&stamps}
 		infra.Staging = stagerSpy{InstallStager: infra.Staging, staged: &in.staged, removed: &in.removed}
 		adjust(&infra.Installer)

@@ -1,7 +1,8 @@
-// Package systemtest provides the manual clock tests time their code on:
+// Package clocktest provides the manual clock tests time their code on:
 // its time moves only when the test advances it, so no outcome waits on
-// the wall clock (ADR-017).
-package systemtest
+// the wall clock. The code under test takes the clock's Now and Timer in
+// place of the wall clock's.
+package clocktest
 
 import (
 	"sort"
@@ -10,9 +11,10 @@ import (
 )
 
 // Clock is a manual clock. It tells the time it is set to, and starts
-// timers in the shape of system.Timer that fire only once the test
-// advances it past their wait. It reports each timer as it is started, so
-// a test advances only once the code has started the timer it means.
+// timers, func(time.Duration) (<-chan time.Time, func()), that fire only
+// once the test advances it past their wait. It reports each timer as it
+// is started, so a test advances only once the code has started the timer
+// it means.
 type Clock struct {
 	mu   sync.Mutex
 	cond *sync.Cond

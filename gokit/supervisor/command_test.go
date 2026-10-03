@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 // runCommand runs a command in dir on commands and returns its result and
@@ -149,7 +149,7 @@ func TestCommandGroupIsKilled(t *testing.T) {
 			if c.cancel {
 				go func() { groupOf(t, filepath.Join(dir, "group")); cancel() }()
 			}
-			clock := systemtest.NewClock(start)
+			clock := clocktest.NewClock(start)
 			if c.passes {
 				go func() { clock.Started(timeout); clock.Advance(timeout) }()
 			}
@@ -194,7 +194,7 @@ func TestUnrecordedCommandIsKilled(t *testing.T) {
 
 // runOn runs request with clock as the runner's Timer, aside, and gives
 // the channel its result arrives on.
-func runOn(t *testing.T, ctx context.Context, clock *systemtest.Clock, request supervisor.CommandRequest) <-chan supervisor.CommandResult {
+func runOn(t *testing.T, ctx context.Context, clock *clocktest.Clock, request supervisor.CommandRequest) <-chan supervisor.CommandResult {
 	done := make(chan supervisor.CommandResult, 1)
 	go func() {
 		done <- supervisor.Commands{Timer: clock.Timer, KillGrace: grace}.Run(ctx, request, func(ref string) error {
@@ -211,7 +211,7 @@ const grace = 3 * time.Second
 
 // released fails the test unless every wait the run started on clock is
 // stopped or has fired, as each is by the time the run returns.
-func released(t *testing.T, clock *systemtest.Clock) {
+func released(t *testing.T, clock *clocktest.Clock) {
 	t.Helper()
 	if pending := clock.Pending(); pending != 0 {
 		t.Fatalf("%d waits left running; started %v", pending, clock.Waits())
@@ -230,7 +230,7 @@ func TestCommandTimesOutOnItsTimer(t *testing.T) {
 	request := supervisor.CommandRequest{Command: blocks, Dir: t.TempDir(), Timeout: time.Hour, Bound: 64}
 	t.Run("passed", func(t *testing.T) {
 		t.Parallel()
-		clock := systemtest.NewClock(start)
+		clock := clocktest.NewClock(start)
 		done := runOn(t, context.Background(), clock, request)
 		clock.Started(time.Hour)
 		clock.Advance(time.Hour)
@@ -244,7 +244,7 @@ func TestCommandTimesOutOnItsTimer(t *testing.T) {
 		t.Parallel()
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		clock := systemtest.NewClock(start)
+		clock := clocktest.NewClock(start)
 		done := runOn(t, ctx, clock, request)
 		clock.Started(time.Hour)
 		clock.Advance(time.Hour - time.Nanosecond)
@@ -269,7 +269,7 @@ func TestCommandWithoutOutputIsKilledAsStale(t *testing.T) {
 	request := supervisor.CommandRequest{Command: blocks, Dir: t.TempDir(), Timeout: time.Hour, NoOutput: noOutput, Bound: 64}
 	t.Run("passed", func(t *testing.T) {
 		t.Parallel()
-		clock := systemtest.NewClock(start)
+		clock := clocktest.NewClock(start)
 		done := runOn(t, context.Background(), clock, request)
 		clock.Started(noOutput)
 		clock.Advance(noOutput)
@@ -283,7 +283,7 @@ func TestCommandWithoutOutputIsKilledAsStale(t *testing.T) {
 		t.Parallel()
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		clock := systemtest.NewClock(start)
+		clock := clocktest.NewClock(start)
 		done := runOn(t, ctx, clock, request)
 		clock.Started(noOutput)
 		clock.Advance(noOutput - time.Nanosecond)
@@ -309,7 +309,7 @@ func TestCommandOutputRestartsTheWaitForOutput(t *testing.T) {
 	// gate and exits once it reads another. A minute in, the test lets it
 	// write; another minute on, past the end of the first wait, it returns
 	// with the clock and the gate.
-	run := func(t *testing.T) (*systemtest.Clock, *os.File, <-chan supervisor.CommandResult) {
+	run := func(t *testing.T) (*clocktest.Clock, *os.File, <-chan supervisor.CommandResult) {
 		dir := t.TempDir()
 		if err := syscall.Mkfifo(filepath.Join(dir, "gate"), 0o600); err != nil {
 			t.Fatal(err)
@@ -321,7 +321,7 @@ func TestCommandOutputRestartsTheWaitForOutput(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Cleanup(func() { _ = gate.Close() })
-		clock := systemtest.NewClock(start)
+		clock := clocktest.NewClock(start)
 		done := runOn(t, context.Background(), clock, supervisor.CommandRequest{
 			Command: "read _ < gate; echo one; read _ < gate", Dir: dir, Timeout: time.Hour, NoOutput: noOutput, Bound: 64,
 		})
@@ -367,7 +367,7 @@ func TestCommandOutputRestartsTheWaitForOutput(t *testing.T) {
 // process group. Waiting for a group to end is a bounded poll.
 func TestCommandWithoutANoOutputLimitStartsNoWaitForOutput(t *testing.T) {
 	t.Parallel()
-	clock := systemtest.NewClock(start)
+	clock := clocktest.NewClock(start)
 	result := <-runOn(t, context.Background(), clock, supervisor.CommandRequest{Command: "echo one", Dir: t.TempDir(), Timeout: time.Hour, Bound: 64})
 	if waits := clock.Waits(); !reflect.DeepEqual(waits, []time.Duration{time.Hour, grace}) || result.Stale || result.ExitCode == nil {
 		t.Fatalf("result %+v, waits started %v", result, waits)
@@ -403,7 +403,7 @@ func TestCommandOutputHeldOutsideTheGroupDoesNotHoldTheRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = gate.Close() })
-	clock := systemtest.NewClock(start)
+	clock := clocktest.NewClock(start)
 	// The command stays, after the process that escapes, until it reads a
 	// line from its gate: its output is read on a goroutine of its own,
 	// and the wait for output that starts again says the line was read.

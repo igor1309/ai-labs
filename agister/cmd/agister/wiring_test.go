@@ -22,13 +22,13 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 // marker is a definitions source told apart from every other by identity,
@@ -591,7 +591,7 @@ func TestTheCompositionStartsItsRuntimesThroughItsStarter(t *testing.T) {
 	composed.starter = starter
 	composed.git = fakeGit(gitOf(t, home))
 	// The call waits on a clock that never moves, not on the process's.
-	composed.timer = systemtest.NewClock(stillAt).Timer
+	composed.timer = clocktest.NewClock(stillAt).Timer
 	client, _, err := composed.wire(config)
 	if err != nil {
 		t.Fatal(err)
@@ -655,7 +655,7 @@ verify:
 	composed.starter, composed.commands = runtimetest.InProcess{}, starter
 	composed.git = fakeGit(gitOf(t, home))
 	// The call waits on a clock that never moves, not on the process's.
-	composed.timer = systemtest.NewClock(stillAt).Timer
+	composed.timer = clocktest.NewClock(stillAt).Timer
 	client, _, err := composed.wire(config)
 	if err != nil {
 		t.Fatal(err)

@@ -11,6 +11,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
+	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
 )
 
 // examplePiSettings is setup with the Pi example's settings: its agent
@@ -188,7 +189,7 @@ func TestPiInstallsNoPackageTheProjectLists(t *testing.T) {
 	home, repo := examplePiSettings(t)
 	allowHostReads(t, home, repo)
 	write(t, filepath.Join(repo, ".pi", "settings.json"), `{"packages": ["npm:@example/pi-tracer", {"source": "npm:pi-extras"}]}`)
-	reports := make(chan runtimetest.Report)
+	reports := make(chan supervisortest.Report)
 	var installs []string
 	read := make(chan struct{})
 	go func() {

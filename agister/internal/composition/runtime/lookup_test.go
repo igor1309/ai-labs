@@ -8,10 +8,10 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 // The Codex runner as wired runs its ccusage lookup through the production
@@ -24,7 +24,7 @@ func TestCodexTransportForwardsWhatIsLeftOfTheTurnsTimeout(t *testing.T) {
 	transport := CodexTransport{Supervisor: supervisorStandIn{run: func(ctx context.Context, spec supervisor.Spec, sink supervisor.Sink, onLine func(string)) supervisor.Evidence {
 		specs = append(specs, spec)
 		if spec.Command == fake {
-			return supervisor.Runtime{Starter: runtimetest.InProcess{}, Timer: systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}.Run(ctx, spec, sink, onLine)
+			return supervisor.Runtime{Starter: runtimetest.InProcess{}, Timer: clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}.Run(ctx, spec, sink, onLine)
 		}
 		// The lookup never runs: it is ended by its timeout.
 		return supervisor.Evidence{TimedOut: true}

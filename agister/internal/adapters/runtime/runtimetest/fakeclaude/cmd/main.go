@@ -4,7 +4,7 @@ package main
 
 import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeclaude"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeproc"
+	"github.com/igor1309/ai-labs/gokit/fakeproc"
 )
 
 func main() { fakeproc.Run(fakeclaude.Main) }

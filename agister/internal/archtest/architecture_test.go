@@ -15,6 +15,10 @@ import (
 
 const module = "github.com/igor1309/ai-labs/agister"
 
+// supervisor is the process supervisor, a runtime adapter that lives in
+// gokit (ADR-019).
+const supervisor = "github.com/igor1309/ai-labs/gokit/supervisor"
+
 func packages(t *testing.T) map[string][]string {
 	t.Helper()
 	command := exec.Command("go", "list", "-f", `{{.ImportPath}} {{join .Imports " "}}`, "./...")
@@ -62,8 +66,8 @@ func TestDependencyRule(t *testing.T) {
 				allowed = dep == "internal/contract"
 			case under(pkg, "internal/adapters"):
 				allowed = under(dep, "internal/domain") || dep == "internal/app" || dep == "internal/contract" ||
-					(under(pkg, "internal/adapters/runtime") && under(dep, "internal/adapters/runtime")) ||
-					!strings.HasPrefix(dep, "internal/") && !strings.HasPrefix(dep, "cmd/") && dep != "examples"
+					(under(pkg, "internal/adapters/runtime") && (under(dep, "internal/adapters/runtime") || under(dep, supervisor))) ||
+					!strings.HasPrefix(dep, "internal/") && !strings.HasPrefix(dep, "cmd/") && dep != "examples" && !under(dep, supervisor)
 			case pkg == "examples":
 				allowed = false
 			case pkg == "cmd/agister":
@@ -88,7 +92,7 @@ func TestOnlyTheCompositionRootImportsAdapters(t *testing.T) {
 			continue
 		}
 		for _, dep := range imported {
-			if under(dep, "internal/adapters") || dep == "examples" {
+			if under(dep, "internal/adapters") || under(dep, supervisor) || dep == "examples" {
 				t.Errorf("%s imports %s", pkg, dep)
 			}
 		}
@@ -103,12 +107,11 @@ func TestOnlyTheCompositionRootImportsAdapters(t *testing.T) {
 // Contract test: the module's real import graph, from go list.
 func TestRuntimeAdaptersDoNotImportTheSupervisor(t *testing.T) {
 	t.Parallel()
-	const supervisor = "internal/adapters/runtime/supervisor"
 	for pkg, imported := range packages(t) {
-		if !under(pkg, "internal/adapters/runtime") || pkg == supervisor || under(pkg, "internal/adapters/runtime/runtimetest") {
+		if !under(pkg, "internal/adapters/runtime") || under(pkg, "internal/adapters/runtime/runtimetest") {
 			continue
 		}
-		if slices.Contains(imported, supervisor) {
+		if slices.ContainsFunc(imported, func(dep string) bool { return under(dep, supervisor) }) {
 			t.Errorf("%s imports %s", pkg, supervisor)
 		}
 	}

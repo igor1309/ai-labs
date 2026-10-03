@@ -11,10 +11,10 @@ import (
 	"time"
 )
 
-// Commands runs verification commands: `bash -c <command>` in the call's
-// checkout, in a process group of its own, with the operator's
-// environment. The group is recorded like a runtime's (see Ref), so
-// Processes reaps it after a killed CLI.
+// Commands runs commands as `bash -c <command>` in the request's
+// directory, in a process group of its own, with the environment of the
+// process that runs it. The group is recorded like a runtime's (see Ref),
+// so Processes reaps it after its owner was killed.
 type Commands struct {
 	// Starter starts bash; nil is Exec, the operating system's.
 	Starter Starter

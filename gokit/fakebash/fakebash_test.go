@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeproc"
+	"github.com/igor1309/ai-labs/gokit/fakeproc"
 )
 
 // script is a command and the files it finds in its directory.

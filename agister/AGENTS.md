@@ -15,7 +15,9 @@ still apply.
   details only for failures): `go test -count=1 -timeout 1m ./<pkg>/...` for what you
   touched, `-run <Test>` to narrow; the full check is
   `test -z "$(gofmt -l .)" && go vet ./... && go test -count=1 -timeout 1m ./... &&
-  go test -race -count=1 -timeout 1m ./internal/app/...` (about 30 s).
+  go test -race -count=1 -timeout 1m ./internal/app/...` (about 30 s), and, for
+  the `gokit` module Agister requires (ADR-019), from `gokit/`:
+  `test -z "$(gofmt -l .)" && go vet ./... && go test -race -count=1 -timeout 1m ./...`.
 - Verify the result yourself as the root `AGENTS.md` says:
   `scripts/handoff-check.py`, then the tests. No mutation or revert checks.
 - Review a committed candidate with

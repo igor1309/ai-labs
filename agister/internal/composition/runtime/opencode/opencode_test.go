@@ -19,8 +19,8 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 
 	// fresh is the session the fake starts.
-	supervisor "github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
+	supervisor "github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 // The fake this package builds is removed when its tests end.
@@ -39,7 +39,7 @@ func stillSupervisor() supervisor.Runtime {
 
 // stillOver is stillSupervisor starting through starter.
 func stillOver(starter runtimetest.InProcess) supervisor.Runtime {
-	return supervisor.Runtime{Starter: starter, Timer: systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}
+	return supervisor.Runtime{Starter: starter, Timer: clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}
 }
 
 const fresh = "ses_f06fe64c3ffeLyBkwYK7e1GfJs"
@@ -64,7 +64,7 @@ func runner(t *testing.T) *opencode.Runner {
 // process under the real supervisor.
 func TestConformance(t *testing.T) {
 	t.Parallel()
-	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	clock := clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {
 			return composition.AdaptOpenCode(&opencode.Runner{Transport: composition.OpenCodeTransport{Supervisor: supervisor.Runtime{Timer: clock.Timer}}, Command: command})

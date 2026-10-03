@@ -1,6 +1,6 @@
-// Package fakeproc is the process a fake runtime runs as. A fake is a
-// function of it, so the program built from the fake and the fake run in
-// process (runtimetest.InProcess) are the same code.
+// Package fakeproc is the process a fake program runs as. A fake is a
+// function of it, so the program built from the fake (Run) and the fake
+// run in process (supervisortest.InProcess) are the same code.
 package fakeproc
 
 import (
@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// Process is what a fake runtime is given in place of its program's own
+// Process is what a fake is given in place of its program's own
 // process: where it runs, what it was started with, and its streams.
 type Process struct {
 	// Context ends when the process's group is signalled. A built fake's

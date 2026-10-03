@@ -25,7 +25,6 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/inputs"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/logging"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/schema"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
 	"github.com/igor1309/ai-labs/agister/internal/app"
@@ -33,6 +32,7 @@ import (
 	runtimecomposition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/pages"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 func main() {

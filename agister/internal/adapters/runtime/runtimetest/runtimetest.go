@@ -20,9 +20,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 var (
@@ -229,7 +229,7 @@ type Subject struct {
 	Clock Clock
 }
 
-// Clock is a manual clock (systemtest.Clock is one): Started returns once
+// Clock is a manual clock (clocktest.Clock is one): Started returns once
 // a timer of wait has been started, and Advance moves the clock on, firing
 // the timers whose wait it passes.
 type Clock interface {

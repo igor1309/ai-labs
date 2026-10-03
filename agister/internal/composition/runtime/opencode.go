@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/opencode"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 // OpenCodeSupervisor is the process dependency this transport consumes.
@@ -19,7 +19,7 @@ type OpenCodeSupervisor interface {
 type OpenCodeTransport struct{ Supervisor OpenCodeSupervisor }
 
 func (t OpenCodeTransport) Run(ctx context.Context, spec opencode.Spec, sink opencode.Sink, onLine func(string)) opencode.Evidence {
-	e := t.Supervisor.Run(ctx, supervisor.Spec{Command: spec.Command, Args: spec.Args, Dir: spec.Dir, Env: spec.Env, Stdin: spec.Stdin, Timeout: spec.Timeout, KillGrace: spec.KillGrace}, sink, onLine)
+	e := t.Supervisor.Run(ctx, supervisor.Spec{Command: spec.Command, Args: spec.Args, Dir: spec.Dir, Env: spec.Env, Stdin: spec.Stdin, Timeout: spec.Timeout, KillGrace: spec.KillGrace}, supervisorSink{sink}, onLine)
 	var exit *opencode.Exit
 	if e.Exit != nil {
 		exit = &opencode.Exit{Code: e.Exit.Code, Signal: e.Exit.Signal}

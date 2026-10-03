@@ -13,12 +13,13 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeproc"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	composition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
+	"github.com/igor1309/ai-labs/gokit/fakeproc"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
+	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
 )
 
 // The fake this package builds is removed when its tests end.
@@ -38,7 +39,7 @@ func stillSupervisor() supervisor.Runtime {
 // stillOver is stillSupervisor starting through starter, which carries a
 // test's own ccusage.
 func stillOver(starter runtimetest.InProcess) supervisor.Runtime {
-	return supervisor.Runtime{Starter: starter, Timer: systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}
+	return supervisor.Runtime{Starter: starter, Timer: clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}
 }
 
 func request(prompt string) app.TurnRequest {
@@ -60,7 +61,7 @@ func request(prompt string) app.TurnRequest {
 // under the real supervisor.
 func TestConformance(t *testing.T) {
 	t.Parallel()
-	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	clock := clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {
 			return composition.AdaptCodex(&codex.Runner{Transport: composition.CodexTransport{Supervisor: supervisor.Runtime{Timer: clock.Timer}}, Command: command})
@@ -100,13 +101,13 @@ func listing(cost string) codex.Sessions {
 
 // withCCUsage is a starter whose ccusage is program, run in process as the
 // fake runtimes are.
-func withCCUsage(program runtimetest.Fake) runtimetest.InProcess {
-	return runtimetest.InProcess{Fakes: map[string]runtimetest.Fake{"ccusage": program}}
+func withCCUsage(program supervisortest.Fake) runtimetest.InProcess {
+	return runtimetest.InProcess{Fakes: map[string]supervisortest.Fake{"ccusage": program}}
 }
 
 // printsListing is a ccusage that prints a listing of cost and exits with
 // code.
-func printsListing(cost string, code int) runtimetest.Fake {
+func printsListing(cost string, code int) supervisortest.Fake {
 	return func(p fakeproc.Process) int {
 		fmt.Fprintln(p.Stdout, listingJSON(cost))
 		return code
@@ -224,7 +225,7 @@ func TestCancellingTheLookupReturnsWhenAChildHoldsItsStdout(t *testing.T) {
 	defer cancel()
 	// The launcher never exits by itself and holds its stdout until its
 	// group is ended. Cancel once it holds it: it says so by its report.
-	reports := make(chan runtimetest.Report)
+	reports := make(chan supervisortest.Report)
 	held := make(chan struct{})
 	go func() {
 		defer close(held)
@@ -257,7 +258,7 @@ func TestCancellingTheLookupReturnsWhenAChildHoldsItsStdout(t *testing.T) {
 func TestTheLookupEndsWhenTheTurnsTimeoutRunsOut(t *testing.T) {
 	t.Parallel()
 	start := time.Date(2026, 9, 30, 10, 0, 0, 0, time.UTC)
-	clock := systemtest.NewClock(start)
+	clock := clocktest.NewClock(start)
 	lookup := codex.CCUsage(composition.CodexTransport{Supervisor: supervisor.Runtime{Starter: withCCUsage(fakeproc.Process.Block), Timer: clock.Timer}}, "ccusage", 0)
 	// What is left passes once the lookup has started its wait.
 	const left = 100 * time.Millisecond
