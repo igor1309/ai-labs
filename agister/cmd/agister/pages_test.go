@@ -7,6 +7,7 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/pages"
 )
 
@@ -40,7 +41,13 @@ func TestPagesReadTheRunsOwnersFromTheRunStore(t *testing.T) {
 	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		t.Fatal(err)
 	}
-	store := pagesEnv().Observe(runs)
+	appends := fsruns.NewAppends()
+	store := pagesEnv(appends).Observe(runs)
+	// It signals through the appends the process was given, as the
+	// process's other run stores do.
+	if want := (fsruns.Store{Dir: runs, Appends: appends}); store != pages.RunObserver(want) {
+		t.Fatalf("the pages' run store = %+v, want %+v", store, want)
+	}
 	status := func(id string) string {
 		t.Helper()
 		detail, err := pages.ReadRun(ctx, runs, store, id)

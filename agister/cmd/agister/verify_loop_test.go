@@ -324,7 +324,7 @@ verify:
 	}
 
 	h := &loopHarness{t: t, repo: repo, home: tempDir(t), runner: &scripted{t: t, steps: steps}, commands: &recordingCommands{VerifyCommands: with.commands}, setup: &recordingSetupCommands{SetupCommands: with.setupCommands}}
-	h.store = fsruns.Store{Dir: filepath.Join(h.home, "runs")}
+	h.store = fsruns.Store{Dir: filepath.Join(h.home, "runs"), Appends: fsruns.NewAppends()}
 	runtimes := fakeRuntimes{runner: h.runner}
 	h.hosted = app.NewHosted()
 	var definitions app.ResolverDefinitions = fsdefs.Store{Dir: defs}

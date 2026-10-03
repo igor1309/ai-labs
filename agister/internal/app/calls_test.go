@@ -1413,8 +1413,9 @@ func TestHostedDoneClosesOnceTheCallHasFinished(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	h.workspaces.releaseErr = errors.New("worktree busy")
-	release := make(chan struct{})
-	h.runner.block, h.runner.release, h.runner.started = true, release, make(chan struct{})
+	released := make(chan struct{})
+	release := sync.OnceFunc(func() { close(released) })
+	h.runner.block, h.runner.release, h.runner.started = true, released, make(chan struct{})
 	doneAtFinish := true
 	h.recorder.onFinish = func() int {
 		doneAtFinish = isClosed(h.hosted.Done("run-1"))
@@ -1424,12 +1425,20 @@ func TestHostedDoneClosesOnceTheCallHasFinished(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// However the test ends, the blocked turn is released and the call
+	// joined: on its finished record, not on the Done the test is about.
+	t.Cleanup(func() {
+		release()
+		if h.recorder.running() {
+			h.recorder.wait(t)
+		}
+	})
 	done := h.hosted.Done(id)
 	<-h.runner.started
 	if isClosed(done) {
 		t.Fatal("done while the turn runs")
 	}
-	close(release)
+	release()
 	<-done
 	record := h.recorder.wait(t)
 	if doneAtFinish {

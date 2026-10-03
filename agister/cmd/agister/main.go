@@ -42,12 +42,15 @@ func main() {
 	if err != nil {
 		cwd = "."
 	}
+	// The process's one record of what its run handles append: every run
+	// store built here signals through it.
+	appends := fsruns.NewAppends()
 	// agister pages serves the settings page; it needs no client.
 	if len(os.Args) > 1 && os.Args[1] == "pages" {
-		os.Exit(pages.Main(ctx, os.Args[2:], pagesEnv()))
+		os.Exit(pages.Main(ctx, os.Args[2:], pagesEnv(appends)))
 	}
 	info, _ := debug.ReadBuildInfo()
-	os.Exit(cli.Run(ctx, os.Args[1:], cli.IO{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Cwd: cwd, Getenv: os.Getenv, Version: version(info)}, compose))
+	os.Exit(cli.Run(ctx, os.Args[1:], cli.IO{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Cwd: cwd, Getenv: os.Getenv, Version: version(info)}, compose(appends)))
 }
 
 // version names the build: its module version, its revision (short, with
@@ -76,7 +79,9 @@ func version(info *debug.BuildInfo) string {
 }
 
 // pagesEnv is agister pages' process environment; macOS open shows the page.
-func pagesEnv() pages.Env {
+// Its run stores signal through appends, as every run store of the process
+// does.
+func pagesEnv(appends *fsruns.Appends) pages.Env {
 	return pages.Env{
 		Stdout:   os.Stdout,
 		Stderr:   os.Stderr,
@@ -85,7 +90,7 @@ func pagesEnv() pages.Env {
 		Open:     func(url string) error { return exec.Command("open", url).Run() },
 		Choose:   pages.MacDialog(runCommand),
 		// The run store reads the runs' owners as agister run leaves them.
-		Observe: func(dir string) pages.RunObserver { return fsruns.Store{Dir: dir} },
+		Observe: func(dir string) pages.RunObserver { return fsruns.Store{Dir: dir, Appends: appends} },
 	}
 }
 
@@ -103,27 +108,32 @@ func shutdown(parent context.Context) (context.Context, context.CancelFunc) {
 	return signal.NotifyContext(parent, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 }
 
-func compose(config cli.Config) (contract.Client, error) {
-	client, _, err := wire(config)
-	return client, err
+// compose composes the client of the process whose run stores signal
+// through appends.
+func compose(appends *fsruns.Appends) func(cli.Config) (contract.Client, error) {
+	return func(config cli.Config) (contract.Client, error) {
+		client, _, err := wire(config, appends)
+		return client, err
+	}
 }
 
 // wire wires the client over the process's own worktree coordinator.
-func wire(config cli.Config) (contract.Client, *app.BackgroundReaper, error) {
-	return process(config).wire(config)
+func wire(config cli.Config, appends *fsruns.Appends) (contract.Client, *app.BackgroundReaper, error) {
+	return process(config, appends).wire(config)
 }
 
 // process is the composition of the process: its worktree coordinator
 // keeps the lock files other processes take turns through under the home,
-// its run store keeps the runs there, its runtimes and its commands are
-// started by the operating system, which also ends the process groups a
-// dead owner left, and every wait is on the wall clock.
-func process(config cli.Config) composition {
+// its run store keeps the runs there and signals through appends, its
+// runtimes and its commands are started by the operating system, which
+// also ends the process groups a dead owner left, and every wait is on the
+// wall clock.
+func process(config cli.Config, appends *fsruns.Appends) composition {
 	worktrees := git.NewWorktrees(filepath.Join(config.Home, "locks", "worktrees"))
 	worktrees.Clock, worktrees.Timer = system.Clock{}, system.Timer
 	return composition{
 		worktrees: worktrees,
-		runs:      fsruns.Store{Dir: filepath.Join(config.Home, "runs")},
+		runs:      fsruns.Store{Dir: filepath.Join(config.Home, "runs"), Appends: appends},
 		starter:   supervisor.Exec{},
 		commands:  supervisor.Exec{},
 		processes: supervisor.Processes{},

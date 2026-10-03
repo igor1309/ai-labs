@@ -23,6 +23,10 @@ type Clock struct {
 	// counts, per wait, those Started has returned for.
 	started []time.Duration
 	claimed map[time.Duration]int
+	// waiting, when set, is called each time Started finds no timer of
+	// its wait left to return for, before it waits for one. The clock is
+	// locked meanwhile: the hook does not call it.
+	waiting func(wait time.Duration)
 }
 
 type timer struct {
@@ -100,6 +104,9 @@ func (c *Clock) Started(wait time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for c.count(wait) <= c.claimed[wait] {
+		if c.waiting != nil {
+			c.waiting(wait)
+		}
 		c.cond.Wait()
 	}
 	c.claimed[wait]++

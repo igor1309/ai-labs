@@ -149,6 +149,13 @@ func TestInProcessSignallingTheGroupEndsABlockedFake(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// However the test ends, the fake is ended and joined on its exit: a
+	// signal to a group that has ended already does nothing.
+	t.Cleanup(func() {
+		_ = process.Signal(syscall.SIGKILL)
+		process.Wait()
+		process.Stdout().Close()
+	})
 	for _, want := range []string{"started", "blocked"} {
 		if report := <-reports; report != (Report{Command: "claude", Point: want}) {
 			t.Fatalf("report %+v, want %s", report, want)
@@ -158,7 +165,6 @@ func TestInProcessSignallingTheGroupEndsABlockedFake(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Stdout ends once the fake has returned.
-	defer process.Stdout().Close()
 	if _, err := io.ReadAll(process.Stdout()); err != nil {
 		t.Fatal(err)
 	}

@@ -209,6 +209,11 @@ timer and the run store. `process()` fills in the real ones.
    supervisor they wire instead of building `supervisor.Runtime{}`
    themselves.
 
+   `supervisor.Runtime` and `supervisor.Commands` share the one `Starter`
+   and its `Process` on purpose. They are one component, the supervisor,
+   which declares the seam once at its own boundary; ADR-001 rule 13
+   forbids an interface shared between components, not within one.
+
    Owner: `runtimetest`. `runtimetest.InProcess` is a starter that runs a
    fake runtime in a goroutine over pipes. It picks the fake by command
    name or path, and takes the environment from the spec, not the process.
@@ -251,14 +256,21 @@ timer and the run store. `process()` fills in the real ones.
 
    *Events appended.* Owner: `app`, beside `RunsReader`, implemented by
    `fsruns`. The run store signals in this process whenever a handle it
-   created appends an event, finishes, or is abandoned (seam 4). Asked
-   for a run and the last sequence number its caller has seen, the store
+   created appends an event, finishes, or is abandoned (seam 4). What its
+   handles have appended is a value the store is given (`fsruns.Appends`),
+   not a package variable: the composition root builds one and gives it to
+   every run store it builds, so they share its notifications, and a test
+   builds its own. A store given none signals nothing. Asked for a run
+   and the last sequence number its caller has seen, the store
    returns a channel closed once the run has a later event or its handle
    has finished or been abandoned; the channel is closed already if that
    is true when asked, so an event appended between a read and the ask is
-   not missed. For a run whose handle this process does not hold, the
-   store says it has no notification. `Runs.Observe` reads and delivers
-   the run's events as today; while a run this process writes is still
+   not missed. A handle releases its owner lock before its signal; a run
+   another handle adopts in between wakes whoever waited on the first, and
+   is then the adopter's to signal. For a run whose handle this process
+   does not hold, the store says it has no notification. `Runs.Observe`
+   reads and delivers the run's events as today; while a run this process
+   writes is still
    running, it waits on that channel or its context, never on a timer,
    and reads again. A run in another process is polled on the injected
    timer (seam 2). So every event, `PROCESS_STARTED` included, reaches

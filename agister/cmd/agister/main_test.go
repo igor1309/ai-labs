@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/examples"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
@@ -81,9 +82,10 @@ func startThrough(t testing.TB, home string, starter runtimetest.InProcess) {
 
 // inProcess is the process's composition with fakes for its runtimes and
 // for the shell of its setup and verification commands, run in process:
-// neither is started as a process, and none is looked up on PATH.
+// neither is started as a process, and none is looked up on PATH. Its run
+// store signals through appends of its own, as a process of its own does.
 func inProcess(config cli.Config) composition {
-	c := process(config)
+	c := process(config, fsruns.NewAppends())
 	c.starter, c.commands = runtimetest.InProcess{}, runtimetest.InProcess{}
 	if starter, ok := starters.Load(config.Home); ok {
 		c.starter = starter.(runtimetest.InProcess)

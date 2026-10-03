@@ -116,7 +116,7 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 			t.Parallel()
 			home := tempDir(t)
 			config := cli.Config{Home: home, Cwd: tc.cwd}
-			composed := process(config)
+			composed := process(config, fsruns.NewAppends())
 			client, background, err := composed.wire(config)
 			if err != nil {
 				t.Fatal(err)
@@ -202,7 +202,7 @@ func gatedOf(t *testing.T, client contract.Client) *app.Gated {
 func TestBuiltClientSharesTheBackgroundReaper(t *testing.T) {
 	t.Parallel()
 	home := tempDir(t)
-	client, background, err := wire(cli.Config{Home: home})
+	client, background, err := wire(cli.Config{Home: home}, fsruns.NewAppends())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -239,7 +239,7 @@ func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
 	t.Parallel()
 	home := tempDir(t)
 	config := cli.Config{Home: home}
-	composed := process(config)
+	composed := process(config, fsruns.NewAppends())
 	client, background, err := composed.wire(config)
 	if err != nil {
 		t.Fatal(err)
@@ -316,7 +316,7 @@ func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
 func TestBuiltReaperLeavesACheckoutARunningRunUses(t *testing.T) {
 	t.Parallel()
 	home := tempDir(t)
-	_, background, err := wire(cli.Config{Home: home})
+	_, background, err := wire(cli.Config{Home: home}, fsruns.NewAppends())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -378,7 +378,7 @@ func TestBuiltReaperLogsAFailedReap(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(home, "runs"), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, background, err := wire(cli.Config{Home: home})
+	_, background, err := wire(cli.Config{Home: home}, fsruns.NewAppends())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -519,7 +519,7 @@ func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
 func TestTheProcessWorktreeCoordinatorLocksUnderTheHome(t *testing.T) {
 	t.Parallel()
 	home, repo := tempDir(t), repository(t, "x")
-	adapters := process(cli.Config{Home: home}).workspaces()
+	adapters := process(cli.Config{Home: home}, fsruns.NewAppends()).workspaces()
 	_, release, err := adapters.calls.Checkout(context.Background(), repo, "main")
 	if err != nil {
 		t.Fatal(err)
@@ -566,7 +566,7 @@ func TestTheCompositionStartsItsRuntimesThroughItsStarter(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
 	config := cli.Config{Home: home, Cwd: repo}
-	composed := process(config)
+	composed := process(config, fsruns.NewAppends())
 	if composed.starter != (supervisor.Exec{}) {
 		t.Fatalf("the process starts its runtimes with a %T", composed.starter)
 	}
@@ -625,11 +625,13 @@ verify:
   instruction: The verification command failed.
 `)
 	config := cli.Config{Home: home, Cwd: repo}
-	composed := process(config)
+	appends := fsruns.NewAppends()
+	composed := process(config, appends)
 	if composed.commands != (supervisor.Exec{}) || composed.processes != (supervisor.Processes{}) {
 		t.Fatalf("the process starts its commands with a %T and reaps with a %T", composed.commands, composed.processes)
 	}
-	if want := (fsruns.Store{Dir: filepath.Join(home, "runs")}); composed.runs != want {
+	// Its run store signals through the appends the process was given.
+	if want := (fsruns.Store{Dir: filepath.Join(home, "runs"), Appends: appends}); composed.runs != want {
 		t.Fatalf("the process's run store = %+v, want %+v", composed.runs, want)
 	}
 	starter := &started{}

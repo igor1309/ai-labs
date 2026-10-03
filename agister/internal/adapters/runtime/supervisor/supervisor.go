@@ -212,8 +212,14 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 }
 
 // Version runs `<command> --version` on r.Starter and returns its output.
-// Its group is killed when ctx ends or versionTimeout passes on r.Timer.
+// Its group is killed when ctx ends or versionTimeout passes on r.Timer; a
+// ctx that has ended already starts nothing.
 func (r Runtime) Version(ctx context.Context, command string) (string, error) {
+	// The starter takes no context: what it starts would run before the
+	// watcher below could end it.
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 	process, err := starter(r.Starter).Start(Command{Name: command, Args: []string{"--version"}, Stderr: io.Discard})
 	if err != nil {
 		return "", err

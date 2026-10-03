@@ -169,6 +169,48 @@ func TestAVersionThatNeverEndsIsKilled(t *testing.T) {
 	})
 }
 
+// pastDeadline is a context whose deadline has passed already: no clock
+// is read to make it.
+type pastDeadline struct{ context.Context }
+
+func (pastDeadline) Done() <-chan struct{} {
+	done := make(chan struct{})
+	close(done)
+	return done
+}
+
+func (pastDeadline) Err() error { return context.DeadlineExceeded }
+
+// A version asked for under a context that has ended already, cancelled or
+// past its deadline, has none, and nothing is started for it.
+func TestAVersionAskedUnderAnEndedContextStartsNothing(t *testing.T) {
+	t.Parallel()
+	cancelled, cancel := context.WithCancel(context.Background())
+	cancel()
+	for name, tc := range map[string]struct {
+		ctx  context.Context
+		want error
+	}{
+		"cancelled": {cancelled, context.Canceled},
+		"expired":   {pastDeadline{context.Background()}, context.DeadlineExceeded},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			starter := program(func(p fakeproc.Process) int {
+				fmt.Fprintln(p.Stdout, "1.2.3")
+				return 0
+			})
+			version, err := supervisor.Runtime{Starter: starter, Timer: systemtest.NewClock(start).Timer}.Version(tc.ctx, "runtime")
+			if version != "" || !errors.Is(err, tc.want) {
+				t.Fatalf("version %q, %v, want %v", version, err, tc.want)
+			}
+			if len(starter.commands) != 0 {
+				t.Fatalf("started %+v", starter.commands)
+			}
+		})
+	}
+}
+
 // A command is bash started by the commands' starter in the request's
 // directory, its stderr with its stdout, and supervised as any command is.
 func TestACommandStartsThroughTheCommandsStarter(t *testing.T) {

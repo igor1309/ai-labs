@@ -78,20 +78,67 @@ func TestAZeroWaitHasPassedAlready(t *testing.T) {
 
 // Started returns once the code has started a timer of the wait asked
 // for, once per timer, whatever else was started; Waits lists them all.
+// Until then it waits: before any timer of the wait, through a timer of
+// another wait, and again once the one timer of the wait is returned for.
 func TestStartedReturnsOncePerTimerOfTheWait(t *testing.T) {
 	t.Parallel()
 	clock := systemtest.NewClock(start)
-	returned := make(chan struct{})
+	// Each wait of Started is told here; the test's end lets go of one
+	// still telling.
+	waiting, ended := make(chan time.Duration), make(chan struct{})
+	t.Cleanup(func() { close(ended) })
+	clock.OnWaiting(func(wait time.Duration) {
+		select {
+		case waiting <- wait:
+		case <-ended:
+		}
+	})
+	// The second call is made once the test has seen the first return, so
+	// a wait told before that is the first call's.
+	first, again, second := make(chan struct{}), make(chan struct{}), make(chan struct{})
 	go func() {
 		clock.Started(time.Minute)
+		close(first)
+		<-again
 		clock.Started(time.Minute)
-		close(returned)
+		close(second)
 	}()
-	clock.Timer(time.Minute)
+	// blocks is that Started waits for a timer of a minute, and has not
+	// returned, which closes returned.
+	blocks := func(returned <-chan struct{}, when string) {
+		t.Helper()
+		select {
+		case wait := <-waiting:
+			if wait != time.Minute {
+				t.Fatalf("%s: waits for a timer of %s", when, wait)
+			}
+		case <-returned:
+			t.Fatalf("%s: Started returned", when)
+		}
+	}
+	// returns is that Started returns, which closes returned, and waits
+	// no more.
+	returns := func(returned <-chan struct{}, when string) {
+		t.Helper()
+		select {
+		case <-returned:
+		case <-waiting:
+			t.Fatalf("%s: Started waits on", when)
+		}
+	}
+
+	blocks(first, "before any timer")
 	clock.Timer(time.Second)
+	blocks(first, "after a timer of another wait")
 	clock.Timer(time.Minute)
-	<-returned
-	if waits := clock.Waits(); !reflect.DeepEqual(waits, []time.Duration{time.Minute, time.Second, time.Minute}) {
+	returns(first, "after the first timer of the wait")
+	close(again)
+	blocks(second, "after the first timer of the wait was returned for")
+	clock.Timer(time.Second)
+	blocks(second, "after another timer of another wait")
+	clock.Timer(time.Minute)
+	returns(second, "after the second timer of the wait")
+	if waits := clock.Waits(); !reflect.DeepEqual(waits, []time.Duration{time.Second, time.Minute, time.Second, time.Minute}) {
 		t.Fatalf("waits %v", waits)
 	}
 }

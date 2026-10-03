@@ -11,7 +11,8 @@
 // In this process, the store also says when a run whose handle it holds
 // appends an event, finishes or is abandoned (Appended), so the run is
 // followed without polling. A run it holds can be abandoned as a killed
-// owner leaves it (Abandon).
+// owner leaves it (Abandon). Both go through the Appends the Store was
+// given: Stores given the same one share its handles.
 package fsruns
 
 import (
@@ -38,6 +39,13 @@ import (
 
 type Store struct {
 	Dir string
+	// Appends is where the handles this Store creates or adopts signal, and
+	// what Appended and Abandon ask. Stores given the same value share its
+	// handles, as they share the files: the composition root gives one to
+	// every Store it builds. A Store without one signals nothing: a run it
+	// holds is followed as one another process runs, and it has none to
+	// abandon.
+	Appends *Appends
 }
 
 var _ app.RunRecorder = Store{}
@@ -78,12 +86,12 @@ func (s Store) Create(_ context.Context, record run.Record) (app.RunHandle, erro
 		lock.Close()
 		return nil, err
 	}
-	h := &handle{dir: dir, lock: lock}
+	h := &handle{dir: dir, lock: lock, appends: s.Appends}
 	if err := h.writeRecord(record); err != nil {
 		lock.Close()
 		return nil, err
 	}
-	written.hold(dir, 0, h)
+	s.Appends.hold(dir, 0, h)
 	return h, nil
 }
 
@@ -169,8 +177,8 @@ func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record
 	if events, _, err := s.Events(ctx, id, 0); err == nil && len(events) > 0 {
 		seq = events[len(events)-1].Seq
 	}
-	h := &handle{dir: s.runDir(id), lock: lock, seq: seq}
-	written.hold(h.dir, seq, h)
+	h := &handle{dir: s.runDir(id), lock: lock, seq: seq, appends: s.Appends}
+	s.Appends.hold(h.dir, seq, h)
 	return h, record, nil
 }
 
@@ -178,13 +186,13 @@ func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record
 // leaves it: the owner lock is released over the record as last saved,
 // unfinished, and the handle refuses every later write. Appended's channel
 // closes, so whoever follows the run reads it as abandoned. A test abandons
-// a run in place of killing the process that runs it. A run no handle here
-// holds is an error.
+// a run in place of killing the process that runs it. A run no handle in
+// the Store's Appends holds is an error.
 func (s Store) Abandon(id string) error {
 	if err := checkID(id); err != nil {
 		return err
 	}
-	if holder, ok := written.holder(s.runDir(id)); ok && holder.abandon() {
+	if holder, ok := s.Appends.holder(s.runDir(id)); ok && holder.abandon() {
 		return nil
 	}
 	return fmt.Errorf("run %s: no handle in this process holds it", id)
@@ -206,6 +214,8 @@ type handle struct {
 	// abandoned is set once the handle was abandoned: it writes nothing
 	// after that.
 	abandoned bool
+	// appends is where the handle signals; nil, it signals nothing.
+	appends *Appends
 }
 
 // errAbandoned is what an abandoned handle refuses a write with.
@@ -221,10 +231,17 @@ func (h *handle) abandon() bool {
 		return false
 	}
 	h.abandoned = true
-	// Released before the signal: whoever it wakes reads the run unowned.
-	h.lock.Close()
-	written.release(h.dir)
+	h.disown()
 	return true
+}
+
+// disown gives up the run: the owner lock, then the signal, so whoever the
+// signal wakes reads the run unowned. Between the two another handle may
+// take the run, and its signal is not this handle's to end (release).
+func (h *handle) disown() {
+	h.lock.Close()
+	h.appends.handoff(h.dir)
+	h.appends.release(h.dir, h)
 }
 
 func (h *handle) Append(event run.Event) error {
@@ -238,7 +255,7 @@ func (h *handle) Append(event run.Event) error {
 	if err := appendLine(filepath.Join(h.dir, "events.jsonl"), event); err != nil {
 		return err
 	}
-	written.appended(h.dir, event.Seq)
+	h.appends.appended(h.dir, event.Seq)
 	return nil
 }
 
@@ -293,8 +310,7 @@ func (h *handle) Finish(record run.Record) error {
 	}
 	h.done = true
 	err := h.writeRecord(record)
-	h.lock.Close() // releases ownership
-	written.release(h.dir)
+	h.disown()
 	return err
 }
 
@@ -374,16 +390,18 @@ func (s Store) Events(ctx context.Context, id string, afterSeq int) ([]run.Event
 	return events, status, scanner.Err()
 }
 
-// Appended returns a channel closed once run id, whose handle this process
-// holds, has an event after afterSeq, has finished or is abandoned; it is
-// closed already if that is so. A run no handle here holds that is not
-// running, finished or abandoned, has ended: its channel is closed already.
-// For a run another process is running, ok is false.
+// Appended returns a channel closed once run id, whose handle the Store's
+// Appends holds, has an event after afterSeq, has finished, is abandoned or
+// has passed to another handle; it is closed already if it has such an
+// event. A run no handle there holds that is not running, finished or
+// abandoned, has ended: its channel is closed already. For a run that is
+// running and no handle there holds, as one another process runs, ok is
+// false.
 func (s Store) Appended(ctx context.Context, id string, afterSeq int) (<-chan struct{}, bool) {
 	if checkID(id) != nil {
 		return nil, false
 	}
-	if appended, ok := written.after(s.runDir(id), afterSeq); ok {
+	if appended, ok := s.Appends.after(s.runDir(id), afterSeq); ok {
 		return appended, true
 	}
 	// Released handles have written their record first, so a run this
@@ -396,14 +414,22 @@ func (s Store) Appended(ctx context.Context, id string, afterSeq int) (<-chan st
 	return ended, true
 }
 
-// written is what this process's handles have appended, by run directory:
-// every Store over the same directory shares it, as they share the files.
-var written = &appends{runs: map[string]*appended{}}
-
-// appends signals the waiters of each run a handle here holds.
-type appends struct {
+// Appends is what the handles of the Stores given it have appended, by run
+// directory: it signals the waiters of each run one of those handles holds.
+// A process has one, built in its composition root (NewAppends); a test
+// builds its own. A nil one holds nothing and signals nothing.
+type Appends struct {
 	mu   sync.Mutex
 	runs map[string]*appended
+	// unlocked, when set, is called once a handle has released its owner
+	// lock and before it stops signalling its run: the moment another
+	// handle can take the run. Tests take it there.
+	unlocked func(dir string)
+}
+
+// NewAppends returns an Appends that holds no run yet.
+func NewAppends() *Appends {
+	return &Appends{runs: map[string]*appended{}}
 }
 
 // appended is a held run's last event written, the channel its next
@@ -416,16 +442,27 @@ type appended struct {
 }
 
 // hold starts signalling the run in dir, which holder holds and whose last
-// event written is seq.
-func (a *appends) hold(dir string, seq int, holder *handle) {
+// event written is seq. Whoever waits on the handle that held it before,
+// which has let go of the run but not yet released its signal, is woken:
+// that signal's channel is not closed otherwise.
+func (a *Appends) hold(dir string, seq int, holder *handle) {
+	if a == nil {
+		return
+	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	if held, ok := a.runs[dir]; ok {
+		close(held.next)
+	}
 	a.runs[dir] = &appended{seq: seq, next: make(chan struct{}), holder: holder}
 }
 
 // holder is the handle that holds the run in dir; ok is false if none here
 // does.
-func (a *appends) holder(dir string) (holder *handle, ok bool) {
+func (a *Appends) holder(dir string) (holder *handle, ok bool) {
+	if a == nil {
+		return nil, false
+	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if held, ok := a.runs[dir]; ok {
@@ -436,7 +473,10 @@ func (a *appends) holder(dir string) (holder *handle, ok bool) {
 
 // appended records that the run in dir has written event seq, and wakes
 // its waiters.
-func (a *appends) appended(dir string, seq int) {
+func (a *Appends) appended(dir string, seq int) {
+	if a == nil {
+		return
+	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if held, ok := a.runs[dir]; ok {
@@ -446,11 +486,24 @@ func (a *appends) appended(dir string, seq int) {
 	}
 }
 
-// release wakes the run's waiters a last time and stops signalling it.
-func (a *appends) release(dir string) {
+// handoff says the run in dir has no owner lock any more and is still
+// signalled: see unlocked.
+func (a *Appends) handoff(dir string) {
+	if a != nil && a.unlocked != nil {
+		a.unlocked(dir)
+	}
+}
+
+// release wakes the waiters of the run in dir a last time and stops
+// signalling it, if holder still holds it: a run another handle took since
+// is that handle's to signal.
+func (a *Appends) release(dir string, holder *handle) {
+	if a == nil {
+		return
+	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if held, ok := a.runs[dir]; ok {
+	if held, ok := a.runs[dir]; ok && held.holder == holder {
 		close(held.next)
 		delete(a.runs, dir)
 	}
@@ -458,7 +511,10 @@ func (a *appends) release(dir string) {
 
 // after is the channel closed once the run in dir has an event after seq,
 // closed already if it has; ok is false if no handle here holds it.
-func (a *appends) after(dir string, seq int) (<-chan struct{}, bool) {
+func (a *Appends) after(dir string, seq int) (<-chan struct{}, bool) {
+	if a == nil {
+		return nil, false
+	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	held, ok := a.runs[dir]

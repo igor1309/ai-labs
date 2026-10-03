@@ -142,8 +142,19 @@ func TestABlockingCommandEndsOnlyWhenTheProcessIsEnded(t *testing.T) {
 		points, ended := make(chan string), make(chan struct{})
 		go func() {
 			defer close(ended)
-			fake(ctx, dir, command, func(point string) { points <- point })
+			fake(ctx, dir, command, func(point string) {
+				select {
+				case points <- point:
+				case <-ctx.Done():
+				}
+			})
 		}()
+		// However the test ends, the command is ended and joined: ending
+		// it twice does nothing, and a report nobody takes does not hold it.
+		t.Cleanup(func() {
+			end()
+			<-ended
+		})
 		if point := <-points; point != "blocked" {
 			t.Fatalf("%s: reported %q", command, point)
 		}
