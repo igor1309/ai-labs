@@ -4,7 +4,7 @@
 - **Date:** 2026-10-02
 - **Scope:** Agister's own tests: which of them may build binaries, start
   processes or wait on real time; the product seams the others fake
-  through; fixture builds; parallelism; the time `cmd/agister` takes in CI
+  through; fixture builds; parallelism
 - **Decision type:** Architecture
 - **Amends:** none
 
@@ -42,12 +42,12 @@ Agister's tests break these rules widely:
   tests already order their workers with gates; their timers only guard a
   hang.
 - **No parallelism.** No test calls `t.Parallel()`.
-- **Cost.** Under CI's `go test -race` with coverage, `cmd/agister` took 54
-  to 59 s against a 1-minute limit. LAB-51 pushed it over, and CI's
-  `-timeout` was raised to 3 minutes (`agister/docs/deferred.md` item 8).
-  The slowest tests there are the reap tests (5 to 6 s each),
-  `TestRepositoryProcessesRunOnFakeRuntimes` and the example-settings
-  tests.
+
+Together these make what a test costs, and whether it passes, depend on
+how loaded the machine is. Each repeated build is paid on every run, and
+costs more the busier the machine is. A wall-clock wait sized for a quiet
+machine runs out on a busy one, and one sized for a busy machine is paid
+on every run.
 
 The product already has some of the seams this needs. The core takes its
 clocks (`CallClock`, `ReapClock`, `SetupClock`, `VerifyClock`), the
@@ -75,7 +75,6 @@ finished. And the fakes exist only as programs to build.
 - A fake runtime is one program, built for contract tests and run in-process
   for the rest, so the contract tests prove the protocol the other tests
   rely on.
-- The suite stays green after every stage.
 
 ## Decision
 
@@ -83,8 +82,8 @@ Real processes, builds, network and the wall clock are kept only in
 contract tests, whose claim is about the real thing and whose doc comment
 says so. Every other test fakes in-process through product seams: a
 process starter, injected clocks and timers, and hooks that say "done".
-Fixture builds happen once per test binary, tests that share no state run
-in parallel, and `cmd/agister` runs well under a minute in CI.
+Fixture builds happen once per test binary, and tests that share no state
+run in parallel.
 
 ## Rules
 
@@ -101,8 +100,7 @@ bounded poll is allowed.
 
 Every other test starts no process, builds nothing, listens on no socket
 and starts no timer. A hang there is caught by the test binary's
-`-timeout`, which names the running test. Rule 6 sets that limit to 1
-minute, so no hang waits longer.
+`-timeout`, which names the running test.
 
 `internal/archtest` enforces the marker. A top-level test that calls, in
 its body or through its package's own test helpers, `os/exec`,
@@ -251,13 +249,17 @@ timer and the run store. `process()` fills in the real ones.
 
 3. **Hooks that say "done".** Owner: `app`. `Hosted.Done(id)` returns a
    channel closed once a call hosted in this process has finished: its
-   record finished, its workspace released, its processes ended.
-   `Runs.Observe` waits on it for a hosted run instead of polling. It
-   replaces `eventually` on a run's state, `cancelAndWait`'s poll and the
-   verify harness's polling `wait`. Hooks the product already has are used
-   as they are: `BackgroundReaper.Wait` for a reap, `Sink.ProcessStarted`
-   and a command's `started` report for a process on record, and
-   `runtimetest.InProcess`'s reports for a fake's progress.
+   execution has ended, its cleanup (ending its processes, releasing its
+   workspace) has been attempted, and any cleanup failure is recorded on
+   its run. Done does not promise that cleanup succeeded: a release that
+   fails leaves its checkout on the finished run for a later reap, as
+   ADR-008 rule 6 allows. `Runs.Observe` waits on it for a hosted run
+   instead of polling. It replaces `eventually` on a run's state,
+   `cancelAndWait`'s poll and the verify harness's polling `wait`. Hooks
+   the product already has are used as they are: `BackgroundReaper.Wait`
+   for a reap, `Sink.ProcessStarted` and a command's `started` report for
+   a process on record, and `runtimetest.InProcess`'s reports for a fake's
+   progress.
 
 4. **An abandoned run, in process.** Owner: `fsruns`. A run this process
    created can be abandoned: its owner lock is released without
@@ -285,47 +287,11 @@ working directory). `internal/archtest` fails a top-level test with
 neither. Shared helpers keep their state per test or behind a lock, as
 `tempDir` and `runtimetest.Binary` do.
 
-### 6. The goal: `cmd/agister` well under a minute in CI
-
-Under CI's `go test -race` with coverage, `cmd/agister` takes under 20
-seconds. CI's `-timeout` goes back from 3 minutes to 1 minute, and the
-full check in `agister/AGENTS.md` passes `-timeout 1m` too, so that rule
-1's hang guard is a minute everywhere. `agister/docs/deferred.md` item 8
-is removed once CI shows it.
-
-### 7. Delivery in stages, each leaving the suite green
-
-1. **Shared builds.** One CLI build per `cmd/agister` test binary for the
-   four tests that build it. `runtimetest`'s build directory is removed at
-   exit. `imports_test.go` makes one `go list` call. No product change.
-2. **Clocks and timers** (seam 2) and `systemtest`'s manual clock. The
-   tests that set short real timeouts move to it, and the composition
-   carries the clock and timer.
-3. **"Done" hooks** (seam 3). `eventually` and the polling waits on
-   hosted runs go; `eventually` stays only in the SIGKILL test.
-4. **The process starter** (seam 1). The fakes become functions, and
-   `runtimetest.InProcess` is added. The composition, `cmd/agister`'s
-   end-to-end tests, the logging decorator's and the adapters'
-   non-conformance tests move to it. The `PATH` setup and the `ccusage`
-   script go.
-5. **Reap and verify tests** (seam 4). The abandoned-run seam goes in.
-   The verify-command and workflow build-and-kill tests are replaced, and
-   the verify loop's commands become in-process.
-6. **Marking and parallelism.** The contract tests get their marker, the
-   in-process guards go, `t.Parallel()` goes in, and `archtest` checks
-   both. CI's and the full check's `-timeout` become 1 minute, and
-   deferred item 8 is removed.
-
-Clocks come before the starter because an in-process turn's timeout runs
-on the injected timer. The hooks come before the starter because the
-tests it moves wait on them. Parallelism comes last because it needs
-`t.Setenv("PATH")` and the real timers gone first.
-
 ## Consequences
 
 - `cmd/agister` and the adapters' tests no longer depend on machine load:
-  no outcome waits on a real timer, and a hang fails within a minute with
-  the test's name.
+  no outcome waits on a real timer, and a hang fails at the test binary's
+  `-timeout` with the test's name.
 - The in-process fakes are the same code the contract tests build, so
   `Conformance` proves the protocol every in-process test relies on.
 - The product gains a starter, timers in five more components, a "done"
@@ -337,8 +303,8 @@ tests it moves wait on them. Parallelism comes last because it needs
   repository.
 - What the SIGKILL test proves is left to one test; a reap scenario added
   later fakes the kill (seam 4) unless its claim is the kernel's.
-- Stage 1 removes the fakes' build directories, as one of deferred item
-  2's minors asks.
+- The fakes' build directories no longer outlive the test binary (rule 4),
+  as one of deferred item 2's minors asks.
 
 ## Alternatives considered
 
