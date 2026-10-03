@@ -1,7 +1,9 @@
 # Writing in a checkout of the candidate. Claude Code's Edit and Write are
-# not yet verified, and Bash reaches the host (runtimes/claude-code.yaml),
-# so on the shipped mapping the agent is granted reading only and writing is
-# withheld; verification runs either way.
+# verified but grant host.write, and its read tools and Bash reach the host
+# too (runtimes/claude-code.yaml). The shipped service.toml lists host.read
+# and host.write as state-reaching, so on the shipped settings the agent is
+# granted no file tool and writing is withheld; verification runs either
+# way.
 schema: agister.process-policy/v1alpha1
 name: implement
 

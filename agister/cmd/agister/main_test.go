@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"sync"
@@ -490,6 +491,60 @@ func TestShippedExamplesPassCheck(t *testing.T) {
 	r = agister(t, home, repo, "check")
 	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, `agent broken: runtime mapping "nowhere" does not exist`) || !strings.Contains(r.stderr, "schema bad: schema is not JSON") {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
+	}
+}
+
+// claudeWritePolicy points ask at a policy that allows every permission but
+// process.execute, so Bash, which grants it, is never selected, and makes
+// the call require repository.write. The settings live only in a temp home.
+func claudeWritePolicy(t *testing.T, home string) {
+	t.Helper()
+	write(t, filepath.Join(home, "policies", "claude-write.yaml"), `schema: agister.process-policy/v1alpha1
+name: claude-write
+workspace: {access: read-write, scope: repository}
+tools:
+  allow: [repository.read, repository.search, repository.diff, repository.history.read, repository.write, repository.history.write, network, host.read, host.write]
+timeout: 10m
+`)
+	process := filepath.Join(home, "processes", "ask.yaml")
+	write(t, process, strings.Replace(read(t, process), "process-policy:read-only", "process-policy:claude-write", 1)+"\ntools: {require: [repository.write]}\n")
+}
+
+// Edit and Write are verified for 2.1: with host access opted in, a call
+// requiring repository writes is planned with them beside the read tools,
+// and Claude Code is started with them in its allowlist.
+func TestExampleClaudeCodeSettingsGrantTheVerifiedWriteTools(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	service := filepath.Join(home, "service.toml")
+	write(t, service, strings.Replace(read(t, service), `state_reaching = ["host.read", "host.write"]`, `state_reaching = []`, 1))
+	claudeWritePolicy(t, home)
+	r := agister(t, home, repo, "run", "ask", "--param", "question=What does this repository do?", "--quiet", "--timeout", "1m")
+	if r.code != cli.ExitCompleted {
+		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	last := lastRun(t, home)
+	plan := last.record["plan"].(map[string]any)
+	if !reflect.DeepEqual(plan["primitives"], []any{"Read", "Glob", "Grep", "Edit", "Write"}) {
+		t.Fatalf("plan = %v", plan)
+	}
+	if args := strings.Join(last.argv(), " "); !strings.Contains(args, "--tools=Read,Glob,Grep,Edit,Write,Skill --allowedTools=Read,Glob,Grep,Edit,Write,Skill") {
+		t.Fatalf("argv = %s", args)
+	}
+}
+
+// Edit and Write reach outside the checkout, so they grant host.write
+// beside repository.write: with host.write withheld, as the shipped service
+// does, no Claude Code tool can write the repository, and check refuses a
+// call requiring repository writes.
+func TestExampleClaudeCodeCallRequiringWritesWithoutHostWritesIsRefused(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	claudeWritePolicy(t, home)
+	const reason = "process ask: cannot run on agent assistant's runtime claude-code: cannot enforce the effective permissions: required permissions would be withheld: repository.write"
+	r := agister(t, home, repo, "check")
+	if r.code == 0 || !strings.Contains(r.stdout+r.stderr, reason) {
+		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 }
 
