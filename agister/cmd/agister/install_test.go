@@ -261,9 +261,6 @@ func repoSettings(t *testing.T, home string) string {
 }
 
 // The plan is per document, with a diff for a replace, and writes nothing.
-//
-// Contract test: the composition's install over a real home and settings
-// folder on the filesystem, with real git to place the caller.
 func TestInstallPlansEachDocument(t *testing.T) {
 	t.Parallel()
 	home := initedHome(t)
@@ -307,9 +304,6 @@ func TestInstallPlansEachDocument(t *testing.T) {
 
 // A folder home already has, document for document, installs nothing: no
 // staging, no backup, no write.
-//
-// Contract test: the composition's install over a real home and settings
-// folder on the filesystem, with real git to place the caller.
 func TestInstallingIdenticalSettingsDoesNothing(t *testing.T) {
 	t.Parallel()
 	home := initedHome(t)
@@ -330,9 +324,6 @@ func TestInstallingIdenticalSettingsDoesNothing(t *testing.T) {
 
 // The backup and its manifest exist before the first document is written;
 // what home has besides, settings or live state, is left as it was.
-//
-// Contract test: the composition's install over a real home and settings
-// folder on the filesystem, with real git to place the caller.
 func TestInstallBacksUpBeforeWriting(t *testing.T) {
 	t.Parallel()
 	home := initedHome(t)
@@ -392,9 +383,6 @@ func TestInstallBacksUpBeforeWriting(t *testing.T) {
 }
 
 // A result that would not pass check is refused before anything is written.
-//
-// Contract test: the composition's install over a real home and settings
-// folder on the filesystem, with real git to place the caller.
 func TestInstallRefusesAResultThatFailsCheck(t *testing.T) {
 	t.Parallel()
 	home := initedHome(t)
@@ -415,9 +403,6 @@ func TestInstallRefusesAResultThatFailsCheck(t *testing.T) {
 // The yes binds home's whole inventory and the source's documents: a
 // document changed, added, or created at a planned path since the plan, in
 // home or in the source, refuses the install, with nothing written.
-//
-// Contract test: the composition's install over a real home and settings
-// folder on the filesystem, with real git to place the caller.
 func TestInstallRefusesAnInventoryChangedSinceThePlan(t *testing.T) {
 	t.Parallel()
 	for name, change := range map[string]func(home, src string){
@@ -456,9 +441,6 @@ func TestInstallRefusesAnInventoryChangedSinceThePlan(t *testing.T) {
 }
 
 // Restore puts home's settings back as they were before an install.
-//
-// Contract test: the composition's install over a real home and settings
-// folder on the filesystem, with real git to place the caller.
 func TestRestoreUndoesAnInstall(t *testing.T) {
 	t.Parallel()
 	home := initedHome(t)
@@ -492,9 +474,6 @@ func TestRestoreUndoesAnInstall(t *testing.T) {
 // The yes binds the restore plan: a document it touches changed since, or
 // one the install created already removed, refuses the restore, with
 // nothing written.
-//
-// Contract test: the composition's install over a real home and settings
-// folder on the filesystem, with real git to place the caller.
 func TestRestoreRefusesAStateChangedSinceThePlan(t *testing.T) {
 	t.Parallel()
 	for name, change := range map[string]func(home string){
@@ -537,9 +516,6 @@ func TestRestoreRefusesAStateChangedSinceThePlan(t *testing.T) {
 // An install and a restore plan again under home's lock, and write and
 // release it only after: what is compared with the approved plan is what
 // is written.
-//
-// Contract test: the composition's install over a real home and settings
-// folder on the filesystem, with real git to place the caller.
 func TestInstallAndRestoreWriteUnderTheLock(t *testing.T) {
 	t.Parallel()
 	home := initedHome(t)
@@ -584,9 +560,6 @@ func (b failingBackups) Save(context.Context, string, app.InstallManifest, []def
 }
 
 // A backup that fails stops the install before anything is written.
-//
-// Contract test: the composition's install over a real home and settings
-// folder on the filesystem, with real git to place the caller.
 func TestInstallWritesNothingWhenTheBackupFails(t *testing.T) {
 	t.Parallel()
 	home := initedHome(t)
@@ -613,9 +586,6 @@ func TestInstallWritesNothingWhenTheBackupFails(t *testing.T) {
 
 // A backup whose saved document was changed is refused: a restore never
 // puts back what the install did not replace.
-//
-// Contract test: the composition's install over a real home and settings
-// folder on the filesystem, with real git to place the caller.
 func TestRestoreRefusesATamperedBackup(t *testing.T) {
 	t.Parallel()
 	home := initedHome(t)
@@ -655,9 +625,6 @@ func checkProblem(t *testing.T, client contract.Client, subject string) string {
 // not planned, but the result is checked with it, as home's check sees
 // it, so its problem refuses the install; in the source it is named as not
 // installed.
-//
-// Contract test: the composition's install over a real home and settings
-// folder on the filesystem, with real git to place the caller.
 func TestInstallChecksFilesWithInvalidNames(t *testing.T) {
 	t.Parallel()
 	t.Run("home", func(t *testing.T) {
@@ -696,9 +663,6 @@ func TestInstallChecksFilesWithInvalidNames(t *testing.T) {
 // source has replaces it, as nothing readable, and its restore removes
 // it; one the source has not is kept, and refuses the install as check
 // reports it.
-//
-// Contract test: the composition's install over a real home and settings
-// folder on the filesystem, with real git to place the caller.
 func TestInstallOverADocumentHomeCannotRead(t *testing.T) {
 	t.Parallel()
 	dangle := func(t *testing.T, home string) string {
@@ -758,9 +722,6 @@ func TestInstallOverADocumentHomeCannotRead(t *testing.T) {
 }
 
 // An install stopped between its writes is undone by its restore too.
-//
-// Contract test: the composition's install over a real home and settings
-// folder on the filesystem, with real git to place the caller.
 func TestRestoreUndoesAnInstallStoppedHalfway(t *testing.T) {
 	t.Parallel()
 	home := initedHome(t)
@@ -795,9 +756,6 @@ func TestRestoreUndoesAnInstallStoppedHalfway(t *testing.T) {
 }
 
 // The last five backups are kept: a sixth install removes the oldest.
-//
-// Contract test: the composition's install over a real home and settings
-// folder on the filesystem, with real git to place the caller.
 func TestInstallKeepsTheLastFiveBackups(t *testing.T) {
 	t.Parallel()
 	home := initedHome(t)
@@ -823,9 +781,6 @@ func TestInstallKeepsTheLastFiveBackups(t *testing.T) {
 }
 
 // The CLI asks before installing, says how to restore, and restores.
-//
-// Contract test: the composition's install over a real home and settings
-// folder on the filesystem, with real git to place the caller.
 func TestInstallAndRestoreThroughTheCLI(t *testing.T) {
 	t.Parallel()
 	home := initedHome(t)
@@ -869,9 +824,6 @@ func TestInstallAndRestoreThroughTheCLI(t *testing.T) {
 
 // With --json, install and restore print what they did as their plans, and
 // show the plans on stderr.
-//
-// Contract test: the composition's install over a real home and settings
-// folder on the filesystem, with real git to place the caller.
 func TestInstallAndRestorePrintJSON(t *testing.T) {
 	t.Parallel()
 	home := initedHome(t)
@@ -898,9 +850,6 @@ func TestInstallAndRestorePrintJSON(t *testing.T) {
 
 // Install is not refused by home's broken settings: it is how they are
 // repaired.
-//
-// Contract test: the composition's install over a real home and settings
-// folder on the filesystem, with real git to place the caller.
 func TestInstallRepairsBrokenSettings(t *testing.T) {
 	t.Parallel()
 	home := initedHome(t)
@@ -922,9 +871,6 @@ func TestInstallRepairsBrokenSettings(t *testing.T) {
 }
 
 // A symbolic link in the folder refuses the install.
-//
-// Contract test: the composition's install over a real home and settings
-// folder on the filesystem, with real git to place the caller.
 func TestInstallRefusesASymbolicLink(t *testing.T) {
 	t.Parallel()
 	home := initedHome(t)
