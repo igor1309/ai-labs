@@ -12,6 +12,7 @@ cd agister
 go build -o bin/agister ./cmd/agister
 bin/agister --help          # every command and option
 bin/agister init            # example settings into ~/.agister
+bin/agister install .agister # a repository's settings into ~/.agister
 bin/agister check           # validate the settings
 bin/agister run ask --param question="What does cmd/agister do?"
 bin/agister runs show <run-id>
@@ -33,16 +34,29 @@ its first turn and recorded, and a workflow with such a node is refused
 before any node runs; everything else keeps running. Only broken service
 settings, a file name that is not a name, a settings directory that cannot
 be listed, or a workflow named like a process stop every command except
-`init`, `check`, cancelling a run and following an admitted run. `check`
-reports every problem and says what each refuses. When a problem names a
-field, adapter, input source or schema version this binary does not know,
-the check adds a line saying the settings may need a newer binary, and
-`agister --version` names the binary that is running. Runs are recorded
-under `~/.agister/runs/<id>/`.
+`init`, `install`, `check`, cancelling a run and following an admitted run.
+`check` reports every problem and says what each refuses. When a problem
+names a field, adapter, input source or schema version this binary does
+not know, the check adds a line saying the settings may need a newer
+binary, and `agister --version` names the binary that is running. Runs are
+recorded under `~/.agister/runs/<id>/`.
 
 Listings and shows display refused items. An agent selected with `--agent`
 is checked in place of the process's default agent. A write is refused if
 it adds a problem; existing document problems do not stop it.
+
+`agister init` installs the example settings. `agister install <dir>`
+installs a folder laid out like the settings, such as a repository's
+`.agister/`, into home, document by document
+([ADR-016](docs/adr/016-settings-are-installed-into-home-with-a-backup.md)).
+It shows what it would create, replace (with a diff), leave unchanged and
+keep (documents only home has), checks the result on a staged copy, and
+writes only after you type yes, and only if home's settings are still as
+shown. It backs up what it replaces under `~/.agister/backups/<stamp>/`
+first, and prints the command that undoes it, `agister install --restore
+<stamp>`. The last five backups are kept. Files that are not settings are
+listed and not installed; a symbolic link in the folder refuses it. Like
+`init`, both work on settings that fail check.
 
 A process declares its verification command inline, or names a document
 that holds it: `verify: verify:repo` is `verifies/repo.yaml`, found like any

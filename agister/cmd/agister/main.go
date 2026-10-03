@@ -161,6 +161,13 @@ type composition struct {
 	// process writes that observing it makes; a run this process writes
 	// is read again as it appends.
 	poll func(wait time.Duration) (fired <-chan time.Time, stop func())
+	// stages, when set, is the folder installs stage their results in, in
+	// place of the system's temporary folder.
+	stages string
+	// adjust, when set, adjusts what the client runs on: tests fix the
+	// clock and the stamps of installs, spy on home and the staging, and
+	// stop an install between its writes.
+	adjust func(*app.Infrastructure)
 }
 
 // workspaceAdapters are the adapters that change a repository's worktrees,
@@ -236,7 +243,7 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		Reaper: app.NewReaper(evidence, runtimecomposition.Processes{Supervisor: c.processes}, workspaces.discarder, system.Clock{}),
 		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },
 	}
-	client := app.NewClient(app.Infrastructure{
+	infra := app.Infrastructure{
 		Definitions: fsdefs.Layered{Global: global, Project: local, Absent: absent},
 		Global:      fsdefs.Layered{Global: global},
 		Project:     projectRoot,
@@ -266,12 +273,26 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		Preparer: app.SetupAdapters{Content: content, Commands: runtimecomposition.SetupCommands{Supervisor: commands}, Clock: system.Clock{}},
 		Verifier: app.VerifyAdapters{Content: content, Copies: workspaces.copies, Commands: runtimecomposition.Commands{Supervisor: commands}, Clock: system.Clock{}},
 		Runs:     app.RunsAdapters{Reader: evidence, Appends: evidence, Timer: c.poll},
+		// Installs read a folder laid out like the global settings, and
+		// write the global settings, backed up beside them; each result is
+		// checked on a staged copy.
+		Installer: app.InstallAdapters{
+			Source:  global,
+			Home:    global,
+			Backups: installBackups{fsdefs.Backups{Dir: filepath.Join(config.Home, "backups")}},
+			Clock:   system.Clock{},
+			Stamps:  system.IDs{},
+		},
+		Staging: installStager{global.StagingIn(c.stages)},
 		Decorate: func(client contract.Client) contract.Client {
 			return app.ReapOnSubmit{Client: client, Background: reaping}
 		},
 		Hosted: c.hosted,
-	})
-	return client, reaping, nil
+	}
+	if c.adjust != nil {
+		c.adjust(&infra)
+	}
+	return app.NewClient(infra), reaping, nil
 }
 
 // project is the settings layer of the repository containing the working

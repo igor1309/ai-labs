@@ -9,3 +9,9 @@ func (s Store) Observing(f func(point string)) Store {
 
 // LockName is the writers' lock file.
 const LockName = lockName
+
+// Writing returns the backups with each file written by write.
+func (b Backups) Writing(write func(path string, data []byte) error) Backups {
+	b.write = write
+	return b
+}

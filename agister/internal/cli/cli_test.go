@@ -680,6 +680,44 @@ func TestUsageErrorsNeverReachTheClient(t *testing.T) {
 	}
 }
 
+// installSpy plans an install of one document, and its approved install
+// stops after the backup with stopped.
+type installSpy struct {
+	clientSpy
+	stopped error
+}
+
+func (s *installSpy) Install(_ context.Context, source string, approved *contract.InstallPlan) (contract.InstallPlan, error) {
+	plan := contract.InstallPlan{Source: source, Documents: []contract.InstallDocument{{Kind: "prompts", Name: "p", Path: "/home/prompts/p.md", Action: contract.InstallCreate}}}
+	if approved == nil {
+		return plan, nil
+	}
+	plan.Stamp = "stamp-1"
+	return plan, s.stopped
+}
+
+// An install that stopped after its backup says how to restore it, on
+// stderr, and fails.
+func TestInstallStoppedSaysHowToRestore(t *testing.T) {
+	spy := &installSpy{stopped: fmt.Errorf("install stopped after 0 of 1 document(s), before /home/prompts/p.md: disk full")}
+	var stdout, stderr bytes.Buffer
+	code := cli.Run(context.Background(), []string{"install", "settings"}, cli.IO{
+		Stdin: strings.NewReader("yes\n"), Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" },
+	}, func(cli.Config) (contract.Client, error) { return spy, nil })
+	if code == 0 || !strings.Contains(stderr.String(), "restore with: agister install --restore stamp-1\n") ||
+		!strings.Contains(stderr.String(), "agister: install stopped after 0 of 1 document(s)") || strings.Contains(stdout.String(), "restore with") {
+		t.Fatalf("%d\n%s%s", code, stdout.String(), stderr.String())
+	}
+}
+
+// install --restore takes no folder.
+func TestInstallRestoreTakesAStampNotAFolder(t *testing.T) {
+	r := run(context.Background(), &clientSpy{}, "install", "--restore", "stamp-1", "settings")
+	if r.code != cli.ExitUsage || !strings.HasPrefix(r.stderr, "agister: install --restore takes a stamp, not a folder\n") {
+		t.Fatalf("%+v", r)
+	}
+}
+
 // workflowSpy answers the workflow commands.
 type workflowSpy struct {
 	clientSpy
