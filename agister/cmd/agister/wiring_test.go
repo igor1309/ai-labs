@@ -108,7 +108,9 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			home := tempDir(t)
-			client, background, err := wire(cli.Config{Home: home, Cwd: tc.cwd})
+			config := cli.Config{Home: home, Cwd: tc.cwd}
+			composed := process(config)
+			client, background, err := composed.wire(config)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -133,11 +135,7 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 					if err != nil {
 						return err
 					}
-					store := fsruns.Store{Dir: filepath.Join(home, "runs")}
-					eventually(t, "the submitted call to finish", func() bool {
-						_, state, err := store.Get(ctx, id)
-						return err == nil && state == domain.StateFinished
-					})
+					<-composed.hosted.Done(id)
 					return nil
 				},
 			}
@@ -225,7 +223,9 @@ func errorsOf(reaped map[string]any) []string {
 // abandoned: here one that recorded a checkout and whose owner is gone.
 func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
 	home := tempDir(t)
-	client, background, err := wire(cli.Config{Home: home})
+	config := cli.Config{Home: home}
+	composed := process(config)
+	client, background, err := composed.wire(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,10 +289,7 @@ func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
 		t.Fatalf("reap of the old run recorded errors %q, want %q among them", errorsOf(reaped), want)
 	}
 	// The call that triggered it is its own run, and finishes on its own.
-	eventually(t, "the submitted call to finish", func() bool {
-		_, state, err := store.Get(context.Background(), id)
-		return err == nil && state == domain.StateFinished
-	})
+	<-composed.hosted.Done(id)
 }
 
 // The built reaper asks the run store which checkouts runs some process

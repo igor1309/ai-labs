@@ -119,20 +119,24 @@ func wire(config cli.Config) (contract.Client, *app.BackgroundReaper, error) {
 func process(config cli.Config) composition {
 	worktrees := git.NewWorktrees(filepath.Join(config.Home, "locks", "worktrees"))
 	worktrees.Clock, worktrees.Timer = system.Clock{}, system.Timer
-	return composition{worktrees: worktrees, timer: system.Timer, poll: system.Timer}
+	return composition{worktrees: worktrees, timer: system.Timer, poll: system.Timer, hosted: app.NewHosted()}
 }
 
 // composition is what one process wires its client over: the one worktree
 // coordinator every adapter that changes a repository's worktrees takes
-// its turn in, and the timers its waits start on. Tests wire over a
-// coordinator and timers they hold.
+// its turn in, the timers its waits start on and the calls it hosts. Tests
+// wire over a coordinator and timers they hold, and wait on the hosted
+// calls' Done.
 type composition struct {
 	worktrees *git.Worktrees
+	// hosted holds the calls running in this process.
+	hosted *app.Hosted
 	// timer starts the waits of turns and commands: their timeouts,
 	// graces and staleness limits.
 	timer func(wait time.Duration) (fired <-chan time.Time, stop func())
-	// poll starts the waits between two reads of a running record that
-	// observing it makes.
+	// poll starts the waits between two reads of a running record another
+	// process writes that observing it makes; a run this process writes
+	// is read again as it appends.
 	poll func(wait time.Duration) (fired <-chan time.Time, stop func())
 }
 
@@ -236,10 +240,11 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		},
 		Preparer: app.SetupAdapters{Content: content, Commands: runtimecomposition.SetupCommands{Supervisor: commands}, Clock: system.Clock{}},
 		Verifier: app.VerifyAdapters{Content: content, Copies: workspaces.copies, Commands: runtimecomposition.Commands{Supervisor: commands}, Clock: system.Clock{}},
-		Runs:     app.RunsAdapters{Reader: evidence, Timer: c.poll},
+		Runs:     app.RunsAdapters{Reader: evidence, Appends: evidence, Timer: c.poll},
 		Decorate: func(client contract.Client) contract.Client {
 			return app.ReapOnSubmit{Client: client, Background: reaping}
 		},
+		Hosted: c.hosted,
 	})
 	return client, reaping, nil
 }

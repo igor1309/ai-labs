@@ -211,7 +211,8 @@ func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 	const timeout = 7 * time.Minute
 	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	config := cli.Config{Home: home, Cwd: repo}
-	client, background, err := on(config, timeoutOn(clock, timeout)).wire(config)
+	composed := on(config, timeoutOn(clock, timeout))
+	client, background, err := composed.wire(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -241,11 +242,8 @@ func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 	if err != nil || workflow.State != string(domain.StateAbandoned) || workflow.Result.Status != "lost" || workflow.Result.Error.Class != "abandoned" {
 		t.Fatalf("workflow run: %+v %v", workflow, err)
 	}
-	eventually(t, "the next call to finish", func() bool {
-		_, state, err := store.Get(context.Background(), next)
-		return err == nil && state == domain.StateFinished
-	})
-	eventually(t, "every checkout to be released", func() bool {
-		return len(strings.Split(gitCmd(t, repo, "worktree", "list"), "\n")) == 1
-	})
+	<-composed.hosted.Done(next)
+	if lines := strings.Split(gitCmd(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
+		t.Fatalf("worktrees = %v", lines)
+	}
 }

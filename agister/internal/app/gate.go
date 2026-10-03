@@ -73,6 +73,10 @@ type Infrastructure struct {
 	// refuse what depends on a problem from, over the settings given; nil
 	// makes the Checker over them. Optional: a seam for tests.
 	Checks func(GateDefinitions) GateCheck
+	// Hosted holds the calls running in this process, which every client
+	// the gate builds shares; nil makes a new one. Optional: the
+	// composition passes its own, whose Done tells when a call ends.
+	Hosted *Hosted
 }
 
 // GateCheck is a checker as the components NewClient assembles read it:
@@ -84,11 +88,15 @@ type GateCheck interface {
 // NewClient assembles the core over infra and returns it behind the gate:
 // nothing but init and check works on settings with a problem that stops
 // every command, and what depends on a document with any other problem is
-// refused (ADR-015). Every field of infra is required but Checks.
+// refused (ADR-015). Every field of infra is required but Checks and
+// Hosted.
 func NewClient(infra Infrastructure) contract.Client {
 	// The calls hosted in this process, the preparer and the verifier are
 	// shared by every client the gate builds.
-	hosted := NewHosted()
+	hosted := infra.Hosted
+	if hosted == nil {
+		hosted = NewHosted()
+	}
 	preparer := NewPreparer(infra.Preparer.Content, infra.Preparer.Commands, infra.Preparer.Clock)
 	verifier := NewVerifier(infra.Verifier.Content, infra.Verifier.Copies, infra.Verifier.Commands, infra.Verifier.Clock)
 	sources := make([]string, 0, len(infra.Calls.Inputs))
@@ -129,7 +137,7 @@ func NewClient(infra Infrastructure) contract.Client {
 				resolverOn(layered), calls.Runners, calls.Inputs, calls.Workspaces, calls.Changes, preparer, verifier, calls.Validator,
 				calls.Recorder, calls.Runs, calls.Clock, calls.Timer, calls.IDs, calls.StateDir, hosted,
 			),
-			Runs: NewRuns(infra.Runs.Reader, hosted, infra.Runs.Timer, 0),
+			Runs: NewRuns(infra.Runs.Reader, infra.Runs.Appends, hosted, infra.Runs.Timer, 0),
 		}
 		return infra.Decorate(host)
 	}

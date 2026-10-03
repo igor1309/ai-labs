@@ -332,10 +332,14 @@ func translated[T, U any](items []T, translate func(T) U) []U {
 
 // CallCancels holds the cancellation of every call running in this
 // process, so it can be cancelled from outside the call (Hosted is one).
-// The cancel added reports whether it took effect.
+// The cancel added reports whether it took effect. Remove takes it away
+// once the call is no longer cancellable; End says the call has finished:
+// its execution has ended and its cleanup been attempted, with any failure
+// recorded on its run.
 type CallCancels interface {
 	Add(id string, cancel func() bool)
 	Remove(id string)
+	End(id string)
 }
 
 // CallRunners builds the runner of the runtime a call resolved to.
@@ -520,7 +524,8 @@ func NewCalls(
 	}
 }
 
-// Hosted tracks calls running in this process so they can be cancelled.
+// Hosted tracks calls running in this process so they can be cancelled,
+// and says when each has finished (Done).
 // Each cancel reports whether it took effect: a workflow that already
 // finished refuses it (see flow.stop).
 // It is attached at composition as the CallCancels of Calls and the
@@ -528,12 +533,17 @@ func NewCalls(
 type Hosted struct {
 	mu      sync.Mutex
 	cancels map[string]func() bool
+	// done holds, by run ID, the channel each call running here closes when
+	// it ends.
+	done map[string]chan struct{}
 	// captured, when set, runs after a cancel took a run's callback and
 	// before it calls it; tests use it to let the run end in between.
 	captured func(id string)
 }
 
-func NewHosted() *Hosted { return &Hosted{cancels: map[string]func() bool{}} }
+func NewHosted() *Hosted {
+	return &Hosted{cancels: map[string]func() bool{}, done: map[string]chan struct{}{}}
+}
 
 // cancelled is a call's cancel, which always takes effect.
 func cancelled(cancel context.CancelFunc) func() bool {
@@ -547,12 +557,41 @@ func (h *Hosted) Add(id string, cancel func() bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.cancels[id] = cancel
+	if _, ok := h.done[id]; !ok {
+		h.done[id] = make(chan struct{})
+	}
 }
 
 func (h *Hosted) Remove(id string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	delete(h.cancels, id)
+}
+
+// End closes the call's Done and forgets it.
+func (h *Hosted) End(id string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if done, ok := h.done[id]; ok {
+		close(done)
+		delete(h.done, id)
+	}
+}
+
+// Done returns a channel closed once the call id hosted here has finished:
+// its execution has ended and its cleanup (ending its processes, releasing
+// its workspace) has been attempted, any failure recorded on its run. It
+// does not promise that cleanup succeeded (ADR-008 rule 6). For a call not
+// running here, finished or never hosted, it is closed already.
+func (h *Hosted) Done(id string) <-chan struct{} {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if done, ok := h.done[id]; ok {
+		return done
+	}
+	ended := make(chan struct{})
+	close(ended)
+	return ended
 }
 
 // Cancel calls the run's cancel outside the lock: a workflow's takes a lock
@@ -603,6 +642,7 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 		flow := &flow{cancel: cancel}
 		c.cancels.Add(record.ID, flow.stop)
 		go func() {
+			defer c.cancels.End(record.ID)
 			defer c.cancels.Remove(record.ID)
 			defer cancel()
 			c.runWorkflow(runCtx, handle, record, resolver, workflow, workflowErr, flow)
@@ -612,6 +652,7 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 	runCtx, cancel := context.WithCancel(WithCorrelation(context.WithoutCancel(ctx), "run_id", record.ID, "process", request.Process))
 	c.cancels.Add(record.ID, cancelled(cancel))
 	go func() {
+		defer c.cancels.End(record.ID)
 		defer c.cancels.Remove(record.ID)
 		defer cancel()
 		c.execute(runCtx, handle, record, resolver, nil)
@@ -1177,6 +1218,7 @@ func (c *Calls) startNode(ctx context.Context, parent string, node CallNode, par
 	nodeCtx, cancel := context.WithCancel(WithCorrelation(ctx, "run_id", record.ID, "process", node.Process, "node", node.Name))
 	c.cancels.Add(record.ID, cancelled(cancel))
 	go func() {
+		defer c.cancels.End(record.ID)
 		defer c.cancels.Remove(record.ID)
 		defer cancel()
 		ended(c.execute(nodeCtx, handle, record, resolver, collection))

@@ -1264,7 +1264,7 @@ func TestCancelInterruptsAndReleases(t *testing.T) {
 	h := newHarness()
 	h.runner.block = true
 	h.runner.started = make(chan struct{})
-	runs := app.NewRuns(nil, h.hosted, nil, 0)
+	runs := app.NewRuns(nil, nil, h.hosted, nil, 0)
 	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
@@ -1294,7 +1294,7 @@ func TestCancelInterruptsAndReleases(t *testing.T) {
 // fail; the call is cancelled, not refused.
 func TestCancelBeforeTheTurnIsCancelled(t *testing.T) {
 	h := newHarness()
-	runs := app.NewRuns(nil, h.hosted, nil, 0)
+	runs := app.NewRuns(nil, nil, h.hosted, nil, 0)
 	h.inputs.respond = func(app.InputSpec) (app.Resolved, error) {
 		if err := runs.Cancel(context.Background(), "run-1"); err != nil {
 			t.Error(err)
@@ -1320,7 +1320,7 @@ func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
 	h := newHarness()
 	h.runner.block = true
 	h.runner.started = make(chan struct{})
-	cancels := &cancelsSpy{held: map[string]func() bool{}}
+	cancels := &cancelsSpy{held: map[string]func() bool{}, ended: make(chan string, 1)}
 	h.calls = app.NewCalls(
 		app.NewResolver(h.defs, h.runtimes, h.validator, resolverCheckStub{}), h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
@@ -1365,6 +1365,56 @@ func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
 	if cancels.cancel("run-1") != nil || !contains(cancels.removals(), "run-1") {
 		t.Fatalf("the ended call is still held; removed %v", cancels.removals())
 	}
+	if ended := <-cancels.ended; ended != "run-1" {
+		t.Fatalf("ended %s", ended)
+	}
+}
+
+// Done closes once a hosted call has finished: its record is finished and
+// its cleanup attempted, a release that failed recorded on the run. It is
+// not closed before, not even as the record is finished. Done of a call
+// not running here is closed already.
+func TestHostedDoneClosesOnceTheCallHasFinished(t *testing.T) {
+	h := newHarness()
+	h.workspaces.releaseErr = errors.New("worktree busy")
+	release := make(chan struct{})
+	h.runner.block, h.runner.release, h.runner.started = true, release, make(chan struct{})
+	doneAtFinish := true
+	h.recorder.onFinish = func() int {
+		doneAtFinish = isClosed(h.hosted.Done("run-1"))
+		return h.workspaces.releases()
+	}
+	id, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := h.hosted.Done(id)
+	<-h.runner.started
+	if isClosed(done) {
+		t.Fatal("done while the turn runs")
+	}
+	close(release)
+	<-done
+	record := h.recorder.wait(t)
+	if doneAtFinish {
+		t.Fatal("done before the record was finished")
+	}
+	if h.workspaces.releases() != 1 || !contains(h.recorder.kinds(), "WORKSPACE_RELEASE_FAILED") || record.Effects == nil || record.Effects.Unreleased == nil {
+		t.Fatalf("released %d, events %v, effects %+v", h.workspaces.releases(), h.recorder.kinds(), record.Effects)
+	}
+	if !isClosed(h.hosted.Done(id)) || !isClosed(h.hosted.Done("never-hosted")) {
+		t.Fatal("Done of a call not running here is not closed")
+	}
+}
+
+// isClosed says whether ch is closed now, without waiting.
+func isClosed(ch <-chan struct{}) bool {
+	select {
+	case <-ch:
+		return true
+	default:
+		return false
+	}
 }
 
 // cancelsSpy is a CallCancels that is not Hosted: it holds the cancel each
@@ -1373,6 +1423,8 @@ type cancelsSpy struct {
 	mu      sync.Mutex
 	held    map[string]func() bool
 	removed []string
+	// ended receives each call that ends.
+	ended chan string
 }
 
 func (s *cancelsSpy) Add(id string, cancel func() bool) {
@@ -1387,6 +1439,8 @@ func (s *cancelsSpy) Remove(id string) {
 	delete(s.held, id)
 	s.removed = append(s.removed, id)
 }
+
+func (s *cancelsSpy) End(id string) { s.ended <- id }
 
 // cancel is the cancel held for id; nil when none is.
 func (s *cancelsSpy) cancel(id string) func() bool {

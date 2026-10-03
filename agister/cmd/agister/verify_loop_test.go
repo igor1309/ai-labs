@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
 
@@ -142,7 +141,9 @@ type loopHarness struct {
 	setup    *recordingSetupCommands
 	calls    *app.Calls
 	runs     *app.Runs
-	store    fsruns.Store
+	// hosted holds the harness's calls; wait awaits their Done.
+	hosted *app.Hosted
+	store  fsruns.Store
 }
 
 // recordingCommands is the real command runner, noting what each run was
@@ -319,7 +320,7 @@ verify:
 	h := &loopHarness{t: t, repo: repo, home: tempDir(t), runner: &scripted{t: t, steps: steps}, commands: &recordingCommands{VerifyCommands: with.commands}, setup: &recordingSetupCommands{SetupCommands: with.setupCommands}}
 	h.store = fsruns.Store{Dir: filepath.Join(h.home, "runs")}
 	runtimes := fakeRuntimes{runner: h.runner}
-	hosted := app.NewHosted()
+	h.hosted = app.NewHosted()
 	var definitions app.ResolverDefinitions = fsdefs.Store{Dir: defs}
 	if settings.globalWorkspace != "" {
 		global := fsdefs.Store{Dir: tempDir(t)}
@@ -330,10 +331,20 @@ verify:
 		app.NewResolver(definitions, runtimes, schema.Validator{}, noProblems{}), runtimes,
 		map[string]app.InputProvider{"git.revision": git.Revision{}},
 		workspaces, with.changes, app.NewPreparer(with.changes, h.setup, with.clock), app.NewVerifier(with.changes, with.copies, h.commands, with.clock), schema.Validator{},
-		h.store, h.store, with.clock, system.Timer, system.IDs{}, h.home, hosted,
+		h.store, h.store, with.clock, system.Timer, system.IDs{}, h.home, h.hosted,
 	)
-	h.runs = app.NewRuns(h.store, hosted, system.Timer, 10*time.Millisecond)
+	// Observing a call hosted here waits on its appends, never on a poll.
+	h.runs = app.NewRuns(h.store, h.store, h.hosted, unpolled(t), 0)
 	return h
+}
+
+// unpolled is Observe's poll timer for tests whose runs all run in the
+// test's process, which are never polled: it fails the test if started.
+func unpolled(t testing.TB) app.RunsTimer {
+	return func(time.Duration) (<-chan time.Time, func()) {
+		t.Error("a run hosted in the test's process was polled")
+		return make(chan time.Time), func() {}
+	}
 }
 
 // setupLine is the process's workspace.setup line for setup, in flow
@@ -355,15 +366,11 @@ func (h *loopHarness) submit(request contract.CallRequest) string {
 	return id
 }
 
-// wait returns the run's record once it is finished; the checkout and every
-// clean copy are gone by then.
+// wait returns the run's record once the call is done; the checkout and
+// every clean copy are gone by then.
 func (h *loopHarness) wait(id string) domain.Record {
 	h.t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
-	defer cancel()
-	if err := h.runs.Observe(ctx, id, 0, func(contract.Event) error { return nil }); err != nil {
-		h.t.Fatalf("observing %s: %v", id, err)
-	}
+	<-h.hosted.Done(id)
 	record, state, err := h.store.Get(context.Background(), id)
 	if err != nil || state != domain.StateFinished || record.Result == nil {
 		h.t.Fatalf("run %s: %s, %v", id, state, err)
@@ -598,39 +605,55 @@ func (c slowCopies) Copy(ctx context.Context, repository, dir, revision string, 
 	return err
 }
 
-// Cancelling the call during a run kills the command's whole process
-// group, which the record names while it runs.
-func TestVerifyCancellationKillsTheCommandGroup(t *testing.T) {
-	groupFile := filepath.Join(tempDir(t), "group")
-	// The command's clock never moves, so only the cancellation can end the
-	// command; wait's own bound fails the test if nothing does.
-	unfired := supervisor.Commands{Timer: systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)).Timer}
-	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: unfired}}, verifySettings{command: blocks + " & echo $$ > " + groupFile + "; wait"}, state("one"))
-	// Whatever the assertions below find, the command does not outlive the
-	// test: its group is on record before it writes it.
-	cleanupRecorded(t, h.home, h.repo)
-	id := h.submit(contract.CallRequest{})
-	var group int
-	eventually(t, "the command to start", func() bool {
-		data, err := os.ReadFile(groupFile)
-		group, _ = strconv.Atoi(strings.TrimSpace(string(data)))
-		return err == nil && strings.HasSuffix(string(data), "\n")
-	})
-	running, _, err := h.store.Get(context.Background(), id)
-	if err != nil || running.Effects == nil || running.Effects.Command == nil {
-		t.Fatalf("record effects %+v, %v", running.Effects, err)
+// blockedCommand is a verification command that never ends on its own:
+// it puts its group on record, closes started, and blocks until its
+// context ends, when it closes cancelled and returns as cancelled. It runs
+// once.
+type blockedCommand struct {
+	started, cancelled chan struct{}
+}
+
+// blockedRef is the group a blockedCommand records: no supervisor's, so
+// no cleanup signals it.
+const blockedRef = "in-process:blocked"
+
+func newBlockedCommand() *blockedCommand {
+	return &blockedCommand{started: make(chan struct{}), cancelled: make(chan struct{})}
+}
+
+func (c *blockedCommand) Run(ctx context.Context, _ app.CommandRequest, started func(string) error) app.CommandResult {
+	if err := started(blockedRef); err != nil {
+		return app.CommandResult{Error: err.Error()}
 	}
-	if recorded, _, err := supervisor.ParseRef(running.Effects.Command.Ref); err != nil || recorded != group {
-		t.Fatalf("recorded group %d (%v), the command's %d", recorded, err, group)
+	close(c.started)
+	<-ctx.Done()
+	close(c.cancelled)
+	return app.CommandResult{Cancelled: true}
+}
+
+// Cancelling the call during a run ends the command, whose group the
+// record names while it runs. That the whole group is killed is the
+// supervisor's contract (command_test.go); here the command sees its
+// context end.
+func TestVerifyCancellationEndsTheCommand(t *testing.T) {
+	command := newBlockedCommand()
+	h := newLoopWith(t, seams{commands: command}, verifySettings{}, state("one"))
+	id := h.submit(contract.CallRequest{})
+	<-command.started
+	running, _, err := h.store.Get(context.Background(), id)
+	if err != nil || running.Effects == nil || running.Effects.Command == nil || running.Effects.Command.Ref != blockedRef {
+		t.Fatalf("record effects %+v, %v", running.Effects, err)
 	}
 	if err := h.runs.Cancel(context.Background(), id); err != nil {
 		t.Fatal(err)
 	}
-	// The command never ends on its own, so the outcome and the group's end
-	// are the verdict.
 	record := h.wait(id)
 	expect(t, record, domain.Interrupted, domain.ClassCancelled, "cancelled during attempt 1's run")
-	eventually(t, "the command's group to be gone", func() bool { return errors.Is(syscall.Kill(-group, 0), syscall.ESRCH) })
+	select {
+	case <-command.cancelled:
+	default:
+		t.Fatal("the call finished before its command saw its context end")
+	}
 }
 
 // A repair turn that fails, returns invalid output or reports another
@@ -939,12 +962,12 @@ func TestVerifyRunWithoutOutputIsKilledAsStale(t *testing.T) {
 	if ran := record.Attempts[0].Run; ran.Passed || ran.Stale.Limit != domain.StaleNoOutput || ran.Stale.After != noOutput || ran.Stale.At.IsZero() {
 		t.Fatalf("run %+v, stale %+v", ran, ran.Stale)
 	}
+	// The group the record names is killed by the supervisor before the
+	// run returns, which is its contract (command_test.go).
 	if record.Effects == nil || record.Effects.Command == nil {
 		t.Fatalf("effects %+v", record.Effects)
 	}
-	group, _, err := supervisor.ParseRef(record.Effects.Command.Ref)
-	if err != nil {
+	if _, _, err := supervisor.ParseRef(record.Effects.Command.Ref); err != nil {
 		t.Fatal(err)
 	}
-	eventually(t, "the command's group to be gone", func() bool { return errors.Is(syscall.Kill(-group, 0), syscall.ESRCH) })
 }

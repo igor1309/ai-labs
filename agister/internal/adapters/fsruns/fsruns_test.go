@@ -2,11 +2,13 @@ package fsruns
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
+	"syscall"
 	"testing"
 	"time"
 
@@ -393,5 +395,188 @@ func TestACheckoutAReapCouldNotRemoveIsReapedLater(t *testing.T) {
 	}
 	if abandoned, err := store.Abandoned(ctx); err != nil || len(abandoned) != 0 {
 		t.Fatalf("abandoned after the second reap = %+v, %v", abandoned, err)
+	}
+}
+
+// closed says whether ch is closed now, without waiting.
+func closed(ch <-chan struct{}) bool {
+	select {
+	case <-ch:
+		return true
+	default:
+		return false
+	}
+}
+
+// A run this process writes has a notification, closed already when the
+// run has an event after the one asked about, and open while it does not.
+// Another Store over the same directory shares it.
+func TestAppendedIsClosedAlreadyWhenALaterEventExists(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	ctx := context.Background()
+	h, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: time.Now()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Finish(run.Record{ID: "r", FinishedAt: new(time.Time)})
+	for range 2 {
+		if err := h.Append(run.Event{Kind: "E"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, reader := range []Store{store, {Dir: store.Dir}} {
+		if appended, ok := reader.Appended(ctx, "r", 1); !ok || !closed(appended) {
+			t.Fatalf("after event 1 of 2: ok %v, closed %v", ok, ok && closed(appended))
+		}
+		if appended, ok := reader.Appended(ctx, "r", 2); !ok || closed(appended) {
+			t.Fatalf("after the last event: ok %v, closed %v", ok, ok && closed(appended))
+		}
+	}
+}
+
+// The notification closes when the run appends its next event, and not
+// before: raw output, record updates and artifacts do not close it.
+func TestAppendedClosesOnTheNextAppendAndNotBefore(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	ctx := context.Background()
+	h, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: time.Now()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Finish(run.Record{ID: "r", FinishedAt: new(time.Time)})
+	appended, ok := store.Appended(ctx, "r", 0)
+	if !ok || closed(appended) {
+		t.Fatalf("a run with no events: ok %v, closed %v", ok, ok && closed(appended))
+	}
+	if err := h.Raw("line"); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Update(run.Record{Schema: run.RecordSchema, ID: "r", Process: "p"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Artifact("a.txt", []byte("a")); err != nil {
+		t.Fatal(err)
+	}
+	if closed(appended) {
+		t.Fatal("closed before any event was appended")
+	}
+	if err := h.Append(run.Event{Kind: "E"}); err != nil {
+		t.Fatal(err)
+	}
+	if !closed(appended) {
+		t.Fatal("not closed once an event was appended")
+	}
+	if next, _ := store.Appended(ctx, "r", 1); closed(next) {
+		t.Fatal("closed for the event after the one appended")
+	}
+}
+
+// The notification closes when the run finishes, and a finished run's is
+// closed already.
+func TestAppendedClosesWhenTheRunFinishes(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	ctx := context.Background()
+	record := run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: time.Now()}
+	h, err := store.Create(ctx, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	appended, ok := store.Appended(ctx, "r", 0)
+	if !ok || closed(appended) {
+		t.Fatalf("a running run: ok %v, closed %v", ok, ok && closed(appended))
+	}
+	now := time.Now()
+	record.FinishedAt = &now
+	if err := h.Finish(record); err != nil {
+		t.Fatal(err)
+	}
+	if !closed(appended) {
+		t.Fatal("not closed once the run finished")
+	}
+	if again, ok := store.Appended(ctx, "r", 0); !ok || !closed(again) {
+		t.Fatalf("a finished run: ok %v, closed %v", ok, ok && closed(again))
+	}
+}
+
+// A run another process runs has no notification: its owner lock is held
+// elsewhere and no handle here holds it. Once that owner is gone without
+// finishing, the run has ended, abandoned, and its notification is closed
+// already.
+func TestAppendedHasNoNotificationForARunAnotherProcessRuns(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	ctx := context.Background()
+	dir := filepath.Join(store.Dir, "r")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := json.Marshal(run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: time.Now()})
+	if err := os.WriteFile(filepath.Join(dir, "record.json"), data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// The other owner's lock: an open file of its own, as another
+	// process's is.
+	lock, err := os.OpenFile(filepath.Join(dir, "owner.lock"), os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := store.Appended(ctx, "r", 0); ok {
+		t.Fatal("a notification for a run another process runs")
+	}
+	lock.Close()
+	if appended, ok := store.Appended(ctx, "r", 0); !ok || !closed(appended) {
+		t.Fatalf("an abandoned run: ok %v, closed %v", ok, ok && closed(appended))
+	}
+	if _, ok := store.Appended(ctx, "../r", 0); ok {
+		t.Fatal("a notification for a path out of the store")
+	}
+}
+
+// A run this process adopts is signalled as one it created is: from the
+// last event its dead owner wrote, on each event the reap appends, and on
+// its finish.
+func TestAppendedSignalsAnAdoptedRun(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	ctx := context.Background()
+	record := run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: time.Now()}
+	dead, err := store.Create(ctx, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := dead.Append(run.Event{Kind: "E"}); err != nil {
+		t.Fatal(err)
+	}
+	// The owner disappears without finishing; the in-process signal goes
+	// with it, as a killed process's does.
+	dead.(*handle).lock.Close()
+	written.release(dead.(*handle).dir)
+
+	adopted, _, err := store.Adopt(ctx, "r")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if appended, ok := store.Appended(ctx, "r", 0); !ok || !closed(appended) {
+		t.Fatalf("after event 0 of the dead owner's 1: ok %v, closed %v", ok, ok && closed(appended))
+	}
+	appended, ok := store.Appended(ctx, "r", 1)
+	if !ok || closed(appended) {
+		t.Fatalf("after the dead owner's last event: ok %v, closed %v", ok, ok && closed(appended))
+	}
+	if err := adopted.Append(run.Event{Kind: "EFFECTS_REAPED"}); err != nil {
+		t.Fatal(err)
+	}
+	if !closed(appended) {
+		t.Fatal("not closed once the reap appended its event")
+	}
+	finishing, _ := store.Appended(ctx, "r", 2)
+	now := time.Now()
+	record.FinishedAt = &now
+	if err := adopted.Finish(record); err != nil {
+		t.Fatal(err)
+	}
+	if !closed(finishing) {
+		t.Fatal("not closed once the reap finished the run")
 	}
 }

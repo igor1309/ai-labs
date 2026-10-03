@@ -7,6 +7,10 @@
 //	artifacts/      files the call produced
 //
 // A record that is not finished and whose lock nobody holds is abandoned.
+//
+// In this process, the store also says when a run whose handle it holds
+// appends an event or finishes (Appended), so the run is followed without
+// polling.
 package fsruns
 
 import (
@@ -37,6 +41,7 @@ type Store struct {
 
 var _ app.RunRecorder = Store{}
 var _ app.RunsReader = Store{}
+var _ app.RunsAppends = Store{}
 var _ app.RunAdopter = Store{}
 var _ app.CallRuns = Store{}
 
@@ -77,6 +82,7 @@ func (s Store) Create(_ context.Context, record run.Record) (app.RunHandle, erro
 		lock.Close()
 		return nil, err
 	}
+	written.hold(dir, 0)
 	return h, nil
 }
 
@@ -162,6 +168,7 @@ func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record
 	if events, _, err := s.Events(ctx, id, 0); err == nil && len(events) > 0 {
 		seq = events[len(events)-1].Seq
 	}
+	written.hold(s.runDir(id), seq)
 	return &handle{dir: s.runDir(id), lock: lock, seq: seq}, record, nil
 }
 
@@ -185,7 +192,11 @@ func (h *handle) Append(event run.Event) error {
 	defer h.mu.Unlock()
 	h.seq++
 	event.Seq = h.seq
-	return appendLine(filepath.Join(h.dir, "events.jsonl"), event)
+	if err := appendLine(filepath.Join(h.dir, "events.jsonl"), event); err != nil {
+		return err
+	}
+	written.appended(h.dir, event.Seq)
+	return nil
 }
 
 func (h *handle) Raw(line string) error {
@@ -226,6 +237,7 @@ func (h *handle) Finish(record run.Record) error {
 	h.done = true
 	err := h.writeRecord(record)
 	h.lock.Close() // releases ownership
+	written.release(h.dir)
 	return err
 }
 
@@ -303,6 +315,91 @@ func (s Store) Events(ctx context.Context, id string, afterSeq int) ([]run.Event
 		}
 	}
 	return events, status, scanner.Err()
+}
+
+// Appended returns a channel closed once run id, whose handle this process
+// holds, has an event after afterSeq or has finished; it is closed already
+// if that is so. A run no handle here holds that is not running, finished
+// or abandoned, has ended: its channel is closed already. For a run
+// another process is running, ok is false.
+func (s Store) Appended(ctx context.Context, id string, afterSeq int) (<-chan struct{}, bool) {
+	if checkID(id) != nil {
+		return nil, false
+	}
+	if appended, ok := written.after(s.runDir(id), afterSeq); ok {
+		return appended, true
+	}
+	// Released handles have written their record first, so a run this
+	// process finished reads finished here.
+	if _, state, err := s.Get(ctx, id); err != nil || state == run.StateRunning {
+		return nil, false
+	}
+	ended := make(chan struct{})
+	close(ended)
+	return ended, true
+}
+
+// written is what this process's handles have appended, by run directory:
+// every Store over the same directory shares it, as they share the files.
+var written = &appends{runs: map[string]*appended{}}
+
+// appends signals the waiters of each run a handle here holds.
+type appends struct {
+	mu   sync.Mutex
+	runs map[string]*appended
+}
+
+// appended is a held run's last event written and the channel its next
+// event or its finish closes.
+type appended struct {
+	seq  int
+	next chan struct{}
+}
+
+// hold starts signalling the run in dir, whose last event written is seq.
+func (a *appends) hold(dir string, seq int) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.runs[dir] = &appended{seq: seq, next: make(chan struct{})}
+}
+
+// appended records that the run in dir has written event seq, and wakes
+// its waiters.
+func (a *appends) appended(dir string, seq int) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if held, ok := a.runs[dir]; ok {
+		held.seq = seq
+		close(held.next)
+		held.next = make(chan struct{})
+	}
+}
+
+// release wakes the run's waiters a last time and stops signalling it.
+func (a *appends) release(dir string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if held, ok := a.runs[dir]; ok {
+		close(held.next)
+		delete(a.runs, dir)
+	}
+}
+
+// after is the channel closed once the run in dir has an event after seq,
+// closed already if it has; ok is false if no handle here holds it.
+func (a *appends) after(dir string, seq int) (<-chan struct{}, bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	held, ok := a.runs[dir]
+	if !ok {
+		return nil, false
+	}
+	if held.seq > seq {
+		ended := make(chan struct{})
+		close(ended)
+		return ended, true
+	}
+	return held.next, true
 }
 
 func (s Store) List(ctx context.Context) ([]run.Record, error) {

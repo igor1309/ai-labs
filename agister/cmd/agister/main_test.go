@@ -81,6 +81,15 @@ func timeoutOn(clock *systemtest.Clock, timeout time.Duration) timer {
 	}
 }
 
+// unpolledOn is the process's client, observing the runs it hosts as
+// they append: it fails the test if it polls one.
+func unpolledOn(t testing.TB, config cli.Config) (contract.Client, error) {
+	composed := process(config)
+	composed.poll = unpolled(t)
+	client, _, err := composed.wire(config)
+	return client, err
+}
+
 // on is the process's composition with its turns and commands waiting on
 // timer.
 func on(config cli.Config, timer timer) composition {
@@ -726,7 +735,7 @@ func readJSON(t *testing.T, path string, value any) {
 // workspace; the run finishes interrupted, not lost.
 func TestCancelThroughTheContract(t *testing.T) {
 	home, repo := setup(t, "hang")
-	client, err := compose(cli.Config{Home: home})
+	client, err := unpolledOn(t, cli.Config{Home: home})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -760,7 +769,7 @@ func TestCancelThroughTheContract(t *testing.T) {
 // problem stops every command (ADR-015 rule 4).
 func TestRunSurvivesSettingsBrokenMidRun(t *testing.T) {
 	home, repo := setup(t, "hang")
-	client, err := compose(cli.Config{Home: home})
+	client, err := unpolledOn(t, cli.Config{Home: home})
 	if err != nil {
 		t.Fatal(err)
 	}
