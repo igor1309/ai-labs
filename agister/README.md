@@ -73,8 +73,12 @@ name is literal, never interpolated. It is found like any other document,
 so a repository replaces one prompt with `.agister/prompts/review.md`
 without copying the processes that use it. A process naming a prompt that
 exists in neither place is a problem of the settings
-([ADR-014](docs/adr/014-prompts-are-settings.md)). A text the caller names
-stays a `source: file` input, read relative to the caller's directory.
+([ADR-014](docs/adr/014-prompts-are-settings.md)). With `optional: true`
+the input is optional: when neither place has the prompt, the call goes
+ahead without that input, and its record lists the prompt as absent
+([ADR-019](docs/adr/019-a-prompt-may-be-optional.md)). A text the caller
+names stays a `source: file` input, read relative to the caller's
+directory.
 
 A repository can also take away what home provides, without copying any
 of home's documents: `.agister/blocks.yaml` names the processes,

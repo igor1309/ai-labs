@@ -5,9 +5,11 @@ import (
 	"strings"
 )
 
-// PromptSource is the input source of a prompt document (ADR-014). Its one
-// argument, name, names the document literally: it is fixed by the
-// settings, not the caller, so it is not interpolated.
+// PromptSource is the input source of a prompt document (ADR-014). Its
+// argument name names the document literally: it is fixed by the settings,
+// not the caller, so it is not interpolated. optional, which takes only
+// true, lets the call go ahead without a prompt neither layer has
+// (ADR-019).
 const PromptSource = "prompt"
 
 // Prompt is a process's fixed text as a document of its own, which a
@@ -29,6 +31,12 @@ func ParsePrompt(doc Document) (Prompt, error) {
 	return prompt, p.err("prompt " + subjectName(doc.Source))
 }
 
+// Optional says the value is a prompt input the call goes ahead without
+// when neither layer has its prompt (ADR-019).
+func (v Value) Optional() bool {
+	return v.Source == PromptSource && v.Args["optional"] == "true"
+}
+
 // Prompts lists the prompts the process's inputs name, each once, in
 // declaration order.
 func (p Process) Prompts() []string {
@@ -41,18 +49,40 @@ func (p Process) Prompts() []string {
 	return names
 }
 
-// promptArgs reports the problems of a prompt input's arguments: exactly
-// one, name, a literal document name.
+// OptionalPrompts lists the prompts among Prompts that only optional
+// inputs name (ADR-019): the process runs without them. One that a
+// required input also names is required.
+func (p Process) OptionalPrompts() []string {
+	var names []string
+	for _, name := range p.Prompts() {
+		optional := true
+		for _, value := range p.Values {
+			if value.Source == PromptSource && value.Args["name"] == name && !value.Optional() {
+				optional = false
+			}
+		}
+		if optional {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+// promptArgs reports the problems of a prompt input's arguments: name, a
+// literal document name, and optional, which takes only true (ADR-019).
 func promptArgs(value Value, field string, p *problems) {
 	var extra []string
 	for key := range value.Args {
-		if key != "name" {
+		if key != "name" && key != "optional" {
 			extra = append(extra, key)
 		}
 	}
 	sort.Strings(extra)
 	for _, key := range extra {
-		p.add(join(field, key), "is not an argument of source %s, which takes only name", PromptSource)
+		p.add(join(field, key), "is not an argument of source %s, which takes only name and optional", PromptSource)
+	}
+	if optional, ok := value.Args["optional"]; ok && optional != "true" {
+		p.add(join(field, "optional"), "takes only true; leave it out for a required prompt")
 	}
 	name, ok := value.Args["name"]
 	switch {

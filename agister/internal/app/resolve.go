@@ -33,6 +33,7 @@ type resolution struct {
 	mapping   definition.Mapping
 	schema    []byte
 	prompts   map[string]definition.Prompt // by name
+	absent    map[string]string            // by input: the optional prompt it names that neither layer has (ADR-019)
 	sources   []definition.Source
 	effective policy.Effective
 	identity  RuntimeIdentity
@@ -328,11 +329,26 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		}
 	}
 	// Each prompt a process names is read with the call, from the same
-	// settings, and recorded among its sources (ADR-014 rule 3).
+	// settings, and recorded among its sources (ADR-014 rule 3). An
+	// optional one neither layer has is left out; one that exists is read
+	// as any other (ADR-019 rule 1).
 	for _, value := range res.process.Values {
 		name := value.Args["name"]
 		if _, ok := res.prompts[name]; ok || value.Source != definition.PromptSource {
 			continue
+		}
+		if value.Optional() {
+			listed, err := r.definitions.List(ctx, definition.KindPrompt)
+			if err != nil {
+				return res, err
+			}
+			if !contains(listed, name) {
+				if res.absent == nil {
+					res.absent = map[string]string{}
+				}
+				res.absent[value.Name] = name
+				continue
+			}
 		}
 		if doc, err = load(definition.KindPrompt, name); err != nil {
 			return res, refuse("input %s: %v", value.Name, err)

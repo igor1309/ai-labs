@@ -201,3 +201,44 @@ func TestAFileInPromptsReadThroughSourceFileKeepsWorking(t *testing.T) {
 		t.Fatalf("the agent was given:\n%s", given)
 	}
 }
+
+// An optional prompt (ADR-019), shown and run without its document and
+// with it: check --tree and process show mark it optional and say whether
+// it was found; a call without it records it as absent and gives the agent
+// no section for it.
+func TestAnOptionalPromptIsShownAsOptionalFoundOrNot(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	write(t, filepath.Join(home, "processes", "reviewed.yaml"), strings.Replace(promptingProcess,
+		"{source: prompt, name: review}", "{source: prompt, name: review, optional: true}", 1))
+
+	r := agister(t, home, repo, "check", "--tree")
+	if r.code != 0 || !regexp.MustCompile(`└─ prompt review +optional, not found\n`).MatchString(r.stdout) {
+		t.Fatalf("check --tree without it: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	r = agister(t, home, repo, "process", "show", "reviewed")
+	if r.code != 0 || !strings.Contains(r.stdout, "inputs       rules <- prompt (optional)\n") || !strings.Contains(r.stdout, "prompts      review (optional, not found)\n") || strings.Contains(r.stdout, "REFUSED") {
+		t.Fatalf("process show without it: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if r := agister(t, home, repo, "run", "reviewed", "--quiet", "--timeout", "1m"); r.code != cli.ExitCompleted {
+		t.Fatalf("run without it: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	last := lastRun(t, home)
+	if absent, _ := last.record["absent_prompts"].(map[string]any); len(absent) != 1 || absent["rules"] != "review" || last.record["inputs"] != nil {
+		t.Fatalf("record: absent_prompts %v, inputs %v", last.record["absent_prompts"], last.record["inputs"])
+	}
+	if given, _ := last.first["prompt"].(string); strings.Contains(given, "## rules") {
+		t.Fatalf("the agent was given:\n%s", given)
+	}
+
+	global := filepath.Join(home, "prompts", "review.md")
+	write(t, global, "Home's review rules.\n")
+	r = agister(t, home, repo, "check", "--tree")
+	if r.code != 0 || !regexp.MustCompile(`└─ prompt review +global +`+regexp.QuoteMeta(global)+` \(optional\)\n`).MatchString(r.stdout) {
+		t.Fatalf("check --tree with it: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	r = agister(t, home, repo, "process", "show", "reviewed")
+	if r.code != 0 || !strings.Contains(r.stdout, "inputs       rules <- prompt (optional)\n") || !strings.Contains(r.stdout, "prompts      review: global "+global+" (optional)\n") {
+		t.Fatalf("process show with it: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+}

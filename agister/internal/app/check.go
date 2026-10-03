@@ -330,44 +330,45 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		return CheckResult{Report: report, Documents: documents, Problems: found, Blocks: blocks}
 	}
 	// What each definition references, and the reverse.
-	link := func(from DocumentRef, kind definition.Kind, name string) {
+	link := func(from DocumentRef, kind definition.Kind, name string, optional bool) {
 		source, ok := index[from]
 		if name == "" || !ok { // a name unlike its file is reported as a problem
 			return
 		}
 		to := DocumentRef{Kind: kind, Name: name}
 		documents[source].Uses = append(documents[source].Uses, to)
-		report.Definitions[source].Uses = append(report.Definitions[source].Uses, contract.DefinitionRef{Kind: string(to.Kind), Name: to.Name})
+		report.Definitions[source].Uses = append(report.Definitions[source].Uses, contract.DefinitionRef{Kind: string(to.Kind), Name: to.Name, Optional: optional})
 		if i, ok := index[to]; ok {
 			report.Definitions[i].UsedBy = append(report.Definitions[i].UsedBy, contract.DefinitionRef{Kind: string(from.Kind), Name: from.Name})
 		}
 	}
 	for _, name := range sortedNames(bundle.Agents) {
-		link(DocumentRef{Kind: definition.KindAgent, Name: name}, definition.KindRuntime, bundle.Agents[name].Runtime)
+		link(DocumentRef{Kind: definition.KindAgent, Name: name}, definition.KindRuntime, bundle.Agents[name].Runtime, false)
 	}
 	for _, name := range sortedNames(bundle.Processes) {
 		process, from := bundle.Processes[name], DocumentRef{Kind: definition.KindProcess, Name: name}
-		link(from, definition.KindAgent, process.Agent)
-		link(from, definition.KindPolicy, process.Policy)
-		link(from, definition.KindVerify, process.VerifyName)
+		link(from, definition.KindAgent, process.Agent, false)
+		link(from, definition.KindPolicy, process.Policy, false)
+		link(from, definition.KindVerify, process.VerifyName, false)
+		optional := process.OptionalPrompts()
 		for _, prompt := range process.Prompts() {
-			link(from, definition.KindPrompt, prompt)
+			link(from, definition.KindPrompt, prompt, contains(optional, prompt))
 		}
 		if process.Output.Format == "json" {
-			link(from, definition.KindSchema, process.Output.Schema)
+			link(from, definition.KindSchema, process.Output.Schema, false)
 		}
 		// A call of a checkout without a setup of its own reads the
 		// workspace settings for their default (ADR-012), whether or not
 		// they parse; a missing document is no default, not a missing
 		// reference.
 		if process.Checkout != "" && process.Setup == nil && listed[workspaceRef] {
-			link(from, definition.KindWorkspace, workspaceRef.Name)
+			link(from, definition.KindWorkspace, workspaceRef.Name, false)
 		}
 	}
 	for _, name := range sortedNames(bundle.Workflows) {
 		from := DocumentRef{Kind: definition.KindWorkflow, Name: name}
 		for _, node := range bundle.Workflows[name].Nodes() {
-			link(from, definition.KindProcess, node.Process)
+			link(from, definition.KindProcess, node.Process, false)
 		}
 	}
 

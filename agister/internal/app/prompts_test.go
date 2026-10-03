@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -313,5 +314,184 @@ func TestSnapshotKeepsTheReadOfAMissingPrompt(t *testing.T) {
 	}
 	if got := h.defs.readCount(); got != reads {
 		t.Fatalf("reading the snapshot read the source %d more times", got-reads)
+	}
+}
+
+// An optional prompt is optional (ADR-019).
+
+// optionally gives p the optional input go, naming the prompt go_tests,
+// and the settings no prompt.
+func optionally(h *harness) {
+	h.defs.docs[definition.KindProcess]["p"] = promptingProcess("    go: {source: prompt, name: go_tests, optional: true}\n")
+	h.defs.docs[definition.KindPrompt] = map[string]string{}
+}
+
+// Rules 2 and 3: a missing optional prompt is not a check problem; the
+// call goes ahead without its input, which gives the agent no section,
+// and the record lists it as absent, by input and name.
+func TestAMissingOptionalPromptRunsTheCallWithoutItsInput(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	optionally(h)
+	if report := checkOf(t, h, false); len(report.Problems) != 0 {
+		t.Fatalf("problems = %q", messages(report.Problems))
+	}
+	record := h.call(t, contract.CallRequest{})
+	if record.Result.Status != run.Completed {
+		t.Fatalf("result %+v: %s", record.Result, message(record))
+	}
+	if input := promptInput(record); input.Name != "" {
+		t.Fatalf("input = %+v", input)
+	}
+	if sources := promptSources(record); len(sources) != 0 {
+		t.Fatalf("prompt sources = %+v", sources)
+	}
+	if want := map[string]string{"go": "go_tests"}; !reflect.DeepEqual(record.AbsentPrompts, want) {
+		t.Fatalf("absent prompts = %v, want %v", record.AbsentPrompts, want)
+	}
+	calls := h.runner.calls()
+	if len(calls) != 1 || strings.Contains(calls[0].Prompt, "## go\n") || !strings.Contains(calls[0].Prompt, "## diff\n") {
+		t.Fatalf("the agent was given: %+v", calls)
+	}
+}
+
+// Rule 2: a present optional prompt is given, resolved and recorded
+// exactly as a required one.
+func TestAPresentOptionalPromptIsGivenAsARequiredOne(t *testing.T) {
+	t.Parallel()
+	given := func(process string) run.Record {
+		h := newHarness()
+		prompted(h, reviewPrompt)
+		h.defs.docs[definition.KindProcess]["p"] = promptingProcess(process)
+		record := h.call(t, contract.CallRequest{})
+		if record.Result.Status != run.Completed {
+			t.Fatalf("%s: result %+v: %s", process, record.Result, message(record))
+		}
+		if calls := h.runner.calls(); len(calls) != 1 || !strings.Contains(calls[0].Prompt, "## rules\n\n```\n"+reviewPrompt) {
+			t.Fatalf("%s: the agent was given: %+v", process, calls)
+		}
+		return record
+	}
+	required := given("    rules: {source: prompt, name: review}\n")
+	optional := given("    rules: {source: prompt, name: review, optional: true}\n")
+	if !reflect.DeepEqual(promptInput(optional), promptInput(required)) || promptInput(optional).Value != reviewPrompt {
+		t.Fatalf("input = %+v, as required %+v", promptInput(optional), promptInput(required))
+	}
+	if !reflect.DeepEqual(promptSources(optional), promptSources(required)) || len(promptSources(optional)) != 1 {
+		t.Fatalf("prompt sources = %+v, as required %+v", promptSources(optional), promptSources(required))
+	}
+	if optional.AbsentPrompts != nil {
+		t.Fatalf("absent prompts = %v", optional.AbsentPrompts)
+	}
+}
+
+// A required input naming the prompt an optional one names makes it
+// required: missing, it is a check problem and refuses the call.
+func TestAMissingPromptARequiredInputAlsoNamesRefusesTheCall(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	optionally(h)
+	h.defs.docs[definition.KindProcess]["p"] = promptingProcess("    go: {source: prompt, name: go_tests, optional: true}\n    rules: {source: prompt, name: go_tests}\n")
+	if report := checkOf(t, h, false); !reflect.DeepEqual(messages(report.Problems), []string{`process p: input rules: prompt "go_tests" does not exist`}) {
+		t.Fatalf("problems = %q", messages(report.Problems))
+	}
+	record := h.call(t, contract.CallRequest{})
+	if class(record) != run.ClassRefused || message(record) != `input rules: prompt "go_tests": not found` || len(h.runner.calls()) != 0 {
+		t.Fatalf("result %+v: %q", record.Result, message(record))
+	}
+}
+
+// Rule 1: an optional prompt that exists but cannot be read is a broken
+// document, as any other: a problem of its own, and the call is refused.
+func TestABrokenOptionalPromptRefusesTheCall(t *testing.T) {
+	t.Parallel()
+	t.Run("not text", func(t *testing.T) {
+		t.Parallel()
+		h := newHarness()
+		optionally(h)
+		h.defs.docs[definition.KindPrompt]["go_tests"] = "\x00"
+		if report := checkOf(t, h, false); !reflect.DeepEqual(messages(report.Problems), []string{"prompt go_tests: not a UTF-8 text file"}) {
+			t.Fatalf("problems = %q", messages(report.Problems))
+		}
+		record := h.call(t, contract.CallRequest{})
+		if class(record) != run.ClassRefused || !strings.Contains(message(record), "not a UTF-8 text file") || len(h.runner.calls()) != 0 || record.AbsentPrompts != nil {
+			t.Fatalf("result %+v: %q, absent %v", record.Result, message(record), record.AbsentPrompts)
+		}
+	})
+	t.Run("listed, unreadable", func(t *testing.T) {
+		t.Parallel()
+		h := newHarness()
+		optionally(h)
+		h.defs.docs[definition.KindPrompt]["go_tests"] = reviewPrompt
+		unreadable := errors.New("cannot read prompt go_tests")
+		h.calls = h.callsOn(failingSource{definitionsSpy: h.defs, readErr: map[string]error{"prompts/go_tests": unreadable}})
+		record := h.call(t, contract.CallRequest{})
+		if class(record) != run.ClassRefused || !strings.Contains(message(record), unreadable.Error()) || len(h.runner.calls()) != 0 || record.AbsentPrompts != nil {
+			t.Fatalf("result %+v: %q, absent %v", record.Result, message(record), record.AbsentPrompts)
+		}
+	})
+}
+
+// Rule 5: an input that refers to an optional prompt's value is a check
+// problem of the process.
+func TestReferringToAnOptionalPromptIsAProblemOfTheProcess(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	optionally(h)
+	h.defs.docs[definition.KindPrompt]["go_tests"] = reviewPrompt
+	h.defs.docs[definition.KindProcess]["p"] = promptingProcess("    go: {source: prompt, name: go_tests, optional: true}\n    other: {source: git.diff, base: \"${value.go}\", head: \"${param.candidate}\"}\n")
+	want := "input.values.other: refers to ${value.go}, an optional prompt, which may be missing"
+	if problems := messages(checkOf(t, h, false).Problems); len(problems) != 1 || !strings.HasPrefix(problems[0], "process p: ") || !strings.Contains(problems[0], want) {
+		t.Fatalf("problems = %q, want one of process p with %q", problems, want)
+	}
+}
+
+// Rule 4: check --tree links the process to its optional prompt, found
+// or not, as optional.
+func TestCheckLinksAProcessToItsOptionalPrompt(t *testing.T) {
+	t.Parallel()
+	uses := func(h *harness) []contract.DefinitionRef {
+		for _, d := range checkOf(t, h, false).Definitions {
+			if d.Kind == "processes" && d.Name == "p" {
+				return d.Uses
+			}
+		}
+		return nil
+	}
+	want := contract.DefinitionRef{Kind: "prompts", Name: "go_tests", Optional: true}
+	h := newHarness()
+	optionally(h)
+	if got := uses(h); !slices.Contains(got, want) {
+		t.Fatalf("missing: p uses %+v", got)
+	}
+	h.defs.docs[definition.KindPrompt]["go_tests"] = reviewPrompt
+	if got := uses(h); !slices.Contains(got, want) {
+		t.Fatalf("found: p uses %+v", got)
+	}
+}
+
+// Rule 4: process show shows the input as optional and whether its prompt
+// was found; a missing one refuses nothing.
+func TestShowProcessShowsAnOptionalPrompt(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	optionally(h)
+	inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
+	view, err := inspection.ShowProcess(context.Background(), "p", "")
+	if err != nil || view.Refusal != "" || !reflect.DeepEqual(view.Optional, []string{"go_tests"}) || !reflect.DeepEqual(view.Absent, []string{"go_tests"}) {
+		t.Fatalf("missing: optional %q, absent %q, refusal %q, %v", view.Optional, view.Absent, view.Refusal, err)
+	}
+	if !slices.Contains(view.Inputs, "go <- prompt (optional)") {
+		t.Fatalf("inputs = %q", view.Inputs)
+	}
+
+	h.defs.docs[definition.KindPrompt]["go_tests"] = reviewPrompt
+	view, err = inspection.ShowProcess(context.Background(), "p", "")
+	if err != nil || view.Refusal != "" || !reflect.DeepEqual(view.Optional, []string{"go_tests"}) || view.Absent != nil {
+		t.Fatalf("found: optional %q, absent %q, refusal %q, %v", view.Optional, view.Absent, view.Refusal, err)
+	}
+	origin := contract.DefinitionOrigin{Kind: "prompts", Name: "go_tests", Layer: "global", Path: "mem/prompts/go_tests"}
+	if !containsOrigin(view.Sources, origin) || !slices.Contains(view.Inputs, "go <- prompt (optional)") {
+		t.Fatalf("sources %+v, inputs %q", view.Sources, view.Inputs)
 	}
 }

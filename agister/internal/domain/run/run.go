@@ -229,8 +229,11 @@ type Record struct {
 	CreatedAt   time.Time          `json:"created_at"`
 	FinishedAt  *time.Time         `json:"finished_at,omitempty"`
 	Definitions []DefinitionSource `json:"definitions,omitempty"`
-	Effective   *EffectivePolicy   `json:"effective,omitempty"`
-	Verify      *Verify            `json:"verify,omitempty"`
+	// AbsentPrompts is by input: the optional prompt it names that neither
+	// settings layer had, so the agent was not given it (ADR-019 rule 3).
+	AbsentPrompts map[string]string `json:"absent_prompts,omitempty"`
+	Effective     *EffectivePolicy  `json:"effective,omitempty"`
+	Verify        *Verify           `json:"verify,omitempty"`
 	// Setup is the setup command the call's checkout runs (ADR-012), as
 	// resolved; SetupRun is its one run, once it ran.
 	Setup     *Setup      `json:"setup,omitempty"`

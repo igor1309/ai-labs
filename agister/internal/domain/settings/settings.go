@@ -121,8 +121,9 @@ func Check(b Bundle, m Mechanisms) []Problem {
 			if !contains(m.Sources, value.Source) {
 				unknown(subject, "input %s: unknown source %q (available: %s)", value.Name, value.Source, strings.Join(m.Sources, ", "))
 			}
-			// A prompt is part of the process (ADR-014 rule 4).
-			if name := value.Args["name"]; value.Source == definition.PromptSource && name != "" && !b.Prompts[name] {
+			// A prompt is part of the process (ADR-014 rule 4), unless its
+			// input is optional (ADR-019 rule 4).
+			if name := value.Args["name"]; value.Source == definition.PromptSource && name != "" && !b.Prompts[name] && !value.Optional() {
 				add(subject, "input %s: prompt %q does not exist", value.Name, name)
 			}
 		}
