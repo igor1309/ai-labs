@@ -248,7 +248,7 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 		t.Fatalf("profile = %+v", record.Profile)
 	}
 	order := strings.Join(h.recorder.kinds(), " ")
-	if order != "CALL_SUBMITTED PLANNED PERMISSIONS_WITHHELD PROCESS_STARTED CALL_FINISHED" {
+	if order != "CALL_SUBMITTED PLANNED PERMISSIONS_WITHHELD PROCESS_STARTED NO_CHANGES CALL_FINISHED" {
 		t.Fatalf("events = %s", order)
 	}
 	if !reflect.DeepEqual(h.recorder.raw, []string{`{"raw":true}`}) {
@@ -1081,26 +1081,50 @@ func TestAContinuationWhoseChangesCannotBeCarriedIsRefused(t *testing.T) {
 
 func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
 	t.Parallel()
-	h := newHarness()
-	h.changes.changes = []byte("diff --git a/x b/x\n")
-	h.recorder.onFinish = func() int { return h.workspaces.releases() }
-	record := h.call(t, contract.CallRequest{})
-	if !reflect.DeepEqual(h.changes.changed, [][2]string{{"/work/checkout", "sha-HEAD"}}) || string(h.recorder.artifacts["changes.patch"]) != "diff --git a/x b/x\n" {
-		t.Fatalf("changes asked %v, stored %v", h.changes.changed, h.recorder.artifacts)
-	}
-	if len(record.Result.Artifacts) != 1 || record.Result.Artifacts[0].Path != "artifacts/changes.patch" || !contains(h.recorder.kinds(), "ARTIFACT_STORED") {
-		t.Fatalf("artifacts = %+v", record.Result.Artifacts)
+	// The changes are kept however the turn ended, a rate-limited one
+	// included, and before the workspace is released.
+	for _, c := range []struct {
+		name   string
+		turn   *run.Turn
+		status run.Status
+	}{
+		{"completed", nil, run.Completed},
+		{"rate-limited", &run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "429")}, run.Failed},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness()
+			if c.turn != nil {
+				h.runner.turn = *c.turn
+			}
+			h.changes.changes = []byte("diff --git a/x b/x\n")
+			h.recorder.onArtifact = func() int { return h.workspaces.releases() }
+			record := h.call(t, contract.CallRequest{})
+			if record.Result.Status != c.status {
+				t.Fatalf("result %+v", record.Result)
+			}
+			if !reflect.DeepEqual(h.changes.changed, [][2]string{{"/work/checkout", "sha-HEAD"}}) || string(h.recorder.artifacts["changes.patch"]) != "diff --git a/x b/x\n" {
+				t.Fatalf("changes asked %v, stored %v", h.changes.changed, h.recorder.artifacts)
+			}
+			if len(record.Result.Artifacts) != 1 || record.Result.Artifacts[0].Path != "artifacts/changes.patch" || !contains(h.recorder.kinds(), "ARTIFACT_STORED") || contains(h.recorder.kinds(), "NO_CHANGES") {
+				t.Fatalf("artifacts %+v, events %v", record.Result.Artifacts, h.recorder.kinds())
+			}
+			if released, stored := h.recorder.releasedAtArtifact["changes.patch"]; !stored || released != 0 || h.workspaces.releases() != 1 {
+				t.Fatalf("stored %v with %d releases before, %d after", stored, released, h.workspaces.releases())
+			}
+		})
 	}
 
-	// Nothing changed: no artifact. A failure to collect is recorded and
-	// does not change the node status.
-	h = newHarness()
-	if record := h.call(t, contract.CallRequest{}); len(record.Result.Artifacts) != 0 || len(h.recorder.artifacts) != 0 {
-		t.Fatalf("artifacts = %+v", record.Result.Artifacts)
+	// Nothing changed: no artifact, and NO_CHANGES says so. A failure to
+	// collect is recorded as such, not as no changes, and does not change
+	// the node status.
+	h := newHarness()
+	if record := h.call(t, contract.CallRequest{}); len(record.Result.Artifacts) != 0 || len(h.recorder.artifacts) != 0 || !contains(h.recorder.kinds(), "NO_CHANGES") {
+		t.Fatalf("artifacts %+v, events %v", record.Result.Artifacts, h.recorder.kinds())
 	}
 	h = newHarness()
 	h.changes.changeErr = errors.New("git broke")
-	if record := h.call(t, contract.CallRequest{}); record.Result.Status != run.Completed || !contains(h.recorder.kinds(), "ARTIFACT_FAILED") {
+	if record := h.call(t, contract.CallRequest{}); record.Result.Status != run.Completed || !contains(h.recorder.kinds(), "ARTIFACT_FAILED") || contains(h.recorder.kinds(), "NO_CHANGES") {
 		t.Fatalf("result %+v, events %v", record.Result, h.recorder.kinds())
 	}
 

@@ -107,6 +107,8 @@ uncommitted, on the same revision
 Whichever run of the session you name, its latest run's changes are
 carried. A finished run's changes are
 `~/.agister/runs/<id>/artifacts/changes.patch`, applied with `git apply`.
+A run whose checkout has no changes records `NO_CHANGES` and has no
+`changes.patch`, so a continuation of it carries nothing.
 
 `examples/settings/` is what `init` installs; `examples/codex/`,
 `examples/pi/` and `examples/opencode/` are opt-in.

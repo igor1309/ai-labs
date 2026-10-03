@@ -592,6 +592,10 @@ type recorderSpy struct {
 	hold             chan struct{} // when set, the first Append waits for it to close
 	onFinish         func() int    // observed state at finish time
 	releasedAtFinish int
+	// onArtifact, when set, observes state as each artifact is stored,
+	// by name.
+	onArtifact         func() int
+	releasedAtArtifact map[string]int
 }
 
 func newRecorderSpy() *recorderSpy { return &recorderSpy{finished: make(chan run.Record, 1)} }
@@ -645,6 +649,12 @@ func (s *recorderSpy) Artifact(name string, data []byte) (run.Artifact, error) {
 		s.artifacts = map[string][]byte{}
 	}
 	s.artifacts[name] = data
+	if s.onArtifact != nil {
+		if s.releasedAtArtifact == nil {
+			s.releasedAtArtifact = map[string]int{}
+		}
+		s.releasedAtArtifact[name] = s.onArtifact()
+	}
 	return run.Artifact{Name: name, Path: "artifacts/" + name, Digest: "sha256:spy", Bytes: int64(len(data))}, nil
 }
 
