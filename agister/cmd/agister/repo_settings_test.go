@@ -7,7 +7,6 @@ import (
 	"errors"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"slices"
@@ -17,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/git/gittest"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/schema"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
@@ -108,10 +108,6 @@ const verifyFixtureTimeout = "30s"
 // a process that declares verify, inline or by name, runs verifyFixture
 // instead of its command and completes with one passing verification
 // attempt.
-//
-// Contract test: this repository's own settings through the composition,
-// over a real git mirror of the repository. Its runtimes are fakes run in
-// process.
 func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
@@ -269,8 +265,8 @@ func recordsStaleLimits(t *testing.T, record map[string]any) {
 }
 
 // onFakeRuntimes is this repository's root, and a mirror of it (see mirror
-// and fixVerify) with an initialized Agister home, where the claude, codex
-// and pi that run are fakes, in process.
+// and fixVerify) with an initialized Agister home, where git and the
+// claude, codex and pi that run are fakes, in process.
 func onFakeRuntimes(t *testing.T) (root, repo, home string) {
 	t.Helper()
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
@@ -278,9 +274,9 @@ func onFakeRuntimes(t *testing.T) (root, repo, home string) {
 		t.Fatal(err)
 	}
 
-	repo = mirror(t, root)
-	fixVerify(t, root, repo)
 	home = filepath.Join(tempDir(t), "home")
+	repo = mirror(t, root, home)
+	fixVerify(t, root, repo)
 	// The fakes answer as claude, codex and pi, each with an output from
 	// the schema it is given, and report their default versions, which the
 	// mappings verify (claude-code 2.1.283, codex 0.158.0, pi 0.85.1). No
@@ -296,10 +292,6 @@ func onFakeRuntimes(t *testing.T) (root, repo, home string) {
 // The judge of code_review rules on the collection of a fixed set of
 // reviews: architecture, tests, adversarial and clarity, the ADR review not
 // among them.
-//
-// Contract test: this repository's own settings through the composition,
-// over a real git mirror of the repository. Its runtimes are fakes run in
-// process.
 func TestCodeReviewCollectsItsFourReviews(t *testing.T) {
 	t.Parallel()
 	_, repo, home := onFakeRuntimes(t)
@@ -318,10 +310,6 @@ func TestCodeReviewCollectsItsFourReviews(t *testing.T) {
 // The judge of adr_review rules on the collection of the ADR review alone,
 // and the ADR reviewer is given its standing prompt,
 // prompts/code-review-adr.md.
-//
-// Contract test: this repository's own settings through the composition,
-// over a real git mirror of the repository. Its runtimes are fakes run in
-// process.
 func TestADRReviewCollectsTheADRReview(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
@@ -346,10 +334,6 @@ func TestADRReviewCollectsTheADRReview(t *testing.T) {
 // other than the judge's, in a checkout of the revision, and is given the
 // question and its standing prompt, prompts/advisor.md. Its output is of
 // the advice schema.
-//
-// Contract test: this repository's own settings through the composition,
-// over a real git mirror of the repository. Its runtimes are fakes run in
-// process.
 func TestAdvisorAnswersAQuestionFile(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
@@ -394,7 +378,7 @@ func TestAdvisorAnswersAQuestionFile(t *testing.T) {
 			t.Fatalf("advisor's %s = %v, want %s (%s)", name, given, path, digest)
 		}
 	}
-	feature := gitCmd(t, repo, "rev-parse", "feature")
+	feature := revision(t, home, repo, "feature")
 	if given := inputOf(t, record, "revision"); given["identity"] != feature {
 		t.Fatalf("advisor's revision = %v, want feature (%s)", given, feature)
 	}
@@ -641,10 +625,6 @@ func parseAgent(t *testing.T, root, agent string) definition.Agent {
 
 // The judge runs under no cost limit: its policy sets none, so its call's
 // effective limits carry none.
-//
-// Contract test: this repository's own settings through the composition,
-// over a real git mirror of the repository. Its runtimes are fakes run in
-// process.
 func TestTheJudgeHasNoCostLimit(t *testing.T) {
 	t.Parallel()
 	_, repo, home := onFakeRuntimes(t)
@@ -660,10 +640,6 @@ func TestTheJudgeHasNoCostLimit(t *testing.T) {
 
 // The repository's implement runs under no cost limit: its policy sets
 // none, so its call's effective limits carry none.
-//
-// Contract test: this repository's own settings through the composition,
-// over a real git mirror of the repository. Its runtimes are fakes run in
-// process.
 func TestImplementHasNoCostLimit(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
@@ -841,31 +817,28 @@ func schemaAccepts(t *testing.T, record map[string]any, output any, stdout strin
 	}
 }
 
-// mirror is a repository with a base commit on main and a candidate on
-// feature, whose untracked top-level entries link to those of root, .git
-// aside.
-func mirror(t *testing.T, root string) string {
+// mirror is a repository of the fake of git, given to every composition
+// over home, with a base revision on main and a candidate on feature, whose
+// working tree's top-level entries link to those of root, .git aside. The
+// revisions hold only change.txt, so no checkout and no diff carries the
+// links.
+func mirror(t *testing.T, root, home string) string {
 	t.Helper()
 	dir, err := filepath.EvalSymlinks(tempDir(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	gitCmd(t, dir, "init", "--quiet", "--initial-branch=main")
-	gitCmd(t, dir, "config", "user.email", "test@example.com")
-	gitCmd(t, dir, "config", "user.name", "Test")
-	gitCmd(t, dir, "config", "maintenance.auto", "false")
-	write(t, filepath.Join(dir, "change.txt"), "one\n")
-	gitCmd(t, dir, "add", "change.txt")
-	gitCmd(t, dir, "commit", "--quiet", "-m", "base")
-	gitCmd(t, dir, "checkout", "--quiet", "-b", "feature")
+	fake := gittest.New(tempDir(t))
+	r := fake.Record(dir)
+	r.Commit("main", map[string]string{"change.txt": "one\n"})
+	r.Commit("feature", map[string]string{"change.txt": "one\ntwo\n"})
 	write(t, filepath.Join(dir, "change.txt"), "one\ntwo\n")
-	gitCmd(t, dir, "commit", "--quiet", "-am", "candidate")
+	gitThrough(t, home, fake)
 
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var linked []string
 	for _, entry := range entries {
 		if entry.Name() == ".git" {
 			continue
@@ -873,15 +846,6 @@ func mirror(t *testing.T, root string) string {
 		if err := os.Symlink(filepath.Join(root, entry.Name()), filepath.Join(dir, entry.Name())); err != nil {
 			t.Fatal(err)
 		}
-		linked = append(linked, entry.Name())
-	}
-	// The links stay untracked, so no checkout and no diff carries them.
-	exclude := filepath.Join(dir, ".git", "info", "exclude")
-	if err := os.WriteFile(exclude, []byte("/"+strings.Join(linked, "\n/")+"\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if out, err := exec.Command("git", "-C", dir, "status", "--porcelain").Output(); err != nil || len(out) != 0 {
-		t.Fatalf("mirror not clean: %s %v", out, err)
 	}
 	return dir
 }

@@ -22,8 +22,8 @@ import (
 // preparer's content, commands and clock and the persisted evidence.
 //
 // Contract test: the real bash. The composition's commands start through
-// the operating system here, as the process's own do; only the runtime is
-// a fake.
+// the operating system here, as the process's own do; git and the runtime
+// are fakes.
 func TestSetupThroughProductionComposition(t *testing.T) {
 	t.Parallel()
 	realShell := func(config cli.Config) composition {
@@ -66,10 +66,11 @@ func TestSetupThroughProductionComposition(t *testing.T) {
 	}
 }
 
-// A checkout's setup (ADR-012) on real checkouts of temporary
-// repositories, with the real command runner and git; the shell the runner
-// starts is a fake run in process (inProcessCommands). The base ignores
-// *.log, so what a setup makes there is ignored.
+// A checkout's setup (ADR-012) on checkouts of temporary repositories of
+// the fake of git, or of real git where the claim is git's, with the real
+// command runner; the shell the runner starts is a fake run in process
+// (inProcessCommands). The base ignores *.log, so what a setup makes there
+// is ignored, as real git alone knows.
 
 // reads is a step that checks what the checkout holds when the turn starts,
 // then writes the state file as state does.
@@ -96,37 +97,62 @@ func setupRunsOf(h *loopHarness, record domain.Record) []app.SetupCommandRequest
 	return runs
 }
 
-// The setup runs in the checkout before the first turn, and the agent's
-// working directory has what it made; repair turns continue in it without
-// running it again; the verification command's clean copy has none of it,
-// and the delivered patch carries none of it.
-//
-// Contract test: the composition's checkouts in a real git repository; the
-// setup command is a fake shell run in process.
+// The setup runs once in the checkout, before the first turn; repair
+// turns continue in the checkout without running it again.
 func TestSetupPreparesTheCheckoutOnceBeforeTheFirstTurn(t *testing.T) {
 	t.Parallel()
-	made := map[string]string{"config.log": "prepared\n"}
-	h := newLoop(t, verifySettings{
-		setup:   `{command: "echo prepared >> config.log", timeout: 20s}`,
-		command: "test ! -e config.log || exit 9; " + passWhenStateSaysPass,
-	}, reads(made, "one"), reads(made, "pass"))
+	var h *loopHarness
+	// prepared is a step that finds the setup run once, in its checkout.
+	prepared := func(content string) step {
+		return func(t *testing.T, request app.TurnRequest) domain.Turn {
+			if runs := h.setup.requests(); len(runs) != 1 || runs[0].Dir != request.Cwd {
+				t.Errorf("the turn in %s follows setup runs %+v", request.Cwd, runs)
+			}
+			return state(content)(t, request)
+		}
+	}
+	h = newLoop(t, verifySettings{setup: `{command: "echo prepared", timeout: 20s}`}, prepared("one"), prepared("pass"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Completed, "", "")
 
 	if turns := h.runner.turns(); len(turns) != 2 || turns[0].Cwd != record.Workspace || turns[1].Cwd != record.Workspace {
 		t.Fatalf("turns = %+v", turns)
 	}
-	if runs := setupRunsOf(h, record); len(runs) != 1 || runs[0].Command != "echo prepared >> config.log" || runs[0].Timeout != 20*time.Second {
+	if runs := setupRunsOf(h, record); len(runs) != 1 || runs[0].Command != "echo prepared" || runs[0].Timeout != 20*time.Second {
 		t.Fatalf("setup runs = %+v", runs)
 	}
 	if ran := runsOf(record); len(ran) != 2 || ran[0].Dir == record.Workspace || !ran[1].Passed {
 		t.Fatalf("verification runs = %+v", record.Attempts)
 	}
-	if setup := record.Setup; setup == nil || setup.From != domain.SetupFromProcess || setup.Command != "echo prepared >> config.log" {
+	if setup := record.Setup; setup == nil || setup.From != domain.SetupFromProcess || setup.Command != "echo prepared" {
 		t.Fatalf("setup = %+v", record.Setup)
 	}
-	if ran := record.SetupRun; ran == nil || !ran.Passed || ran.Dir != record.Workspace || ran.After != "" {
+	if ran := record.SetupRun; ran == nil || !ran.Passed || ran.Dir != record.Workspace || ran.After != "" || ran.Output.Head != "prepared\n" {
 		t.Fatalf("setup run = %+v", record.SetupRun)
+	}
+}
+
+// What a setup makes that the repository ignores is not content: the
+// agent's working directory has it, the verification command's clean copy
+// has none of it, and the delivered patch carries none of it.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; the setup command is a fake shell run in process.
+func TestIgnoredSetupFilesStayOutOfTheCleanCopyAndThePatch(t *testing.T) {
+	t.Parallel()
+	made := map[string]string{"config.log": "prepared\n"}
+	h := newGitLoop(t, verifySettings{
+		setup:   `{command: "echo prepared >> config.log", timeout: 20s}`,
+		command: "test ! -e config.log || exit 9; " + passWhenStateSaysPass,
+	}, reads(made, "one"), reads(made, "pass"))
+	record := h.call(contract.CallRequest{})
+	expect(t, record, domain.Completed, "", "")
+
+	if ran := record.SetupRun; ran == nil || !ran.Passed || ran.After != "" {
+		t.Fatalf("setup run = %+v", record.SetupRun)
+	}
+	if ran := runsOf(record); len(ran) != 2 || ran[0].Dir == record.Workspace || !ran[1].Passed {
+		t.Fatalf("verification runs = %+v", record.Attempts)
 	}
 	if artifacts := record.Result.Artifacts; len(artifacts) != 1 || strings.Contains(read(t, filepath.Join(h.home, "runs", record.ID, artifacts[0].Path)), "config.log") {
 		t.Fatalf("artifacts = %+v", artifacts)
@@ -137,9 +163,6 @@ func TestSetupPreparesTheCheckoutOnceBeforeTheFirstTurn(t *testing.T) {
 // changes a tracked file or adds a file that is not ignored fails the call
 // before any turn; its run is on record, and the checkout is released
 // (wait checks that).
-//
-// Contract test: the composition's checkouts in a real git repository; the
-// setup command is a fake shell run in process.
 func TestAFailedSetupFailsTheCallWithNoTurn(t *testing.T) {
 	t.Parallel()
 	// The timeout passes on the command runner's clock once the setup
@@ -210,7 +233,7 @@ func TestAFailedSetupFailsTheCallWithNoTurn(t *testing.T) {
 // setup command is a fake shell run in process.
 func TestACheckoutHookThatChangesATrackedFileFailsTheSetup(t *testing.T) {
 	t.Parallel()
-	h := newLoop(t, verifySettings{setup: `{command: "true", timeout: 20s}`}, state("pass"))
+	h := newGitLoop(t, verifySettings{setup: `{command: "true", timeout: 20s}`}, state("pass"))
 	hook := filepath.Join(h.repo, ".git", "hooks", "post-checkout")
 	write(t, hook, "#!/bin/sh\necho hooked > state\n")
 	if err := os.Chmod(hook, 0o755); err != nil {
@@ -230,13 +253,10 @@ func TestACheckoutHookThatChangesATrackedFileFailsTheSetup(t *testing.T) {
 // ADR-012 rule 2: workspace.yaml's setup applies to a process with a
 // checkout and none of its own; the repository's takes priority over the
 // global one, and the record names the document it came from.
-//
-// Contract test: the composition's checkouts in a real git repository; the
-// setup command is a fake shell run in process.
 func TestTheWorkspaceSetupIsTheDefaultAndTheRepositorysWins(t *testing.T) {
 	t.Parallel()
 	workspace := func(from string) string {
-		return "schema: agister.workspace/v1alpha1\nsetup:\n  command: echo " + from + " > from.log\n  timeout: 20s\n"
+		return "schema: agister.workspace/v1alpha1\nsetup:\n  command: echo " + from + "\n  timeout: 20s\n"
 	}
 	cases := map[string]struct {
 		settings verifySettings
@@ -245,14 +265,17 @@ func TestTheWorkspaceSetupIsTheDefaultAndTheRepositorysWins(t *testing.T) {
 		"global":            {verifySettings{globalWorkspace: workspace("global")}, "global\n"},
 		"repository":        {verifySettings{workspace: workspace("repository")}, "repository\n"},
 		"repository wins":   {verifySettings{workspace: workspace("repository"), globalWorkspace: workspace("global")}, "repository\n"},
-		"the process's own": {verifySettings{workspace: workspace("repository"), setup: `{command: "echo own > from.log", timeout: 20s}`}, "own\n"},
+		"the process's own": {verifySettings{workspace: workspace("repository"), setup: `{command: "echo own", timeout: 20s}`}, "own\n"},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			h := newLoop(t, c.settings, reads(map[string]string{"from.log": c.want}, "pass"))
+			h := newLoop(t, c.settings, state("pass"))
 			record := h.call(contract.CallRequest{})
 			expect(t, record, domain.Completed, "", "")
+			if ran := record.SetupRun; ran == nil || ran.Output.Head != c.want {
+				t.Fatalf("setup run = %+v, want the output %q", ran, c.want)
+			}
 			setup := record.Setup
 			if setup == nil {
 				t.Fatal("no setup on record")

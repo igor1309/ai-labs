@@ -63,9 +63,6 @@ func (n *newRuns) one(t *testing.T) run {
 // A broken document stops nothing that does not use it (ADR-015): an
 // unused global runtime mapping that names an unknown adapter fails check,
 // which says it refuses nothing, and every other command and call runs.
-//
-// Contract test: the composition over settings on the filesystem and a real
-// git repository. Its runtimes are fakes run in process.
 func TestAnUnusedBrokenMappingRefusesNothing(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
@@ -94,9 +91,6 @@ func TestAnUnusedBrokenMappingRefusesNothing(t *testing.T) {
 // turn and recorded, naming the document, its path, its problem and the
 // chain that reaches it; a workflow with a node on it is refused before any
 // node runs; with --agent, a call on a sound agent runs (ADR-015).
-//
-// Contract test: the composition over settings on the filesystem and a real
-// git repository. Its runtimes are fakes run in process.
 func TestACallOnABrokenMappingIsRefused(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")

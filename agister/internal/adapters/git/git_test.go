@@ -173,6 +173,8 @@ func TestRepositoryEquivalenceUsesCanonicalCommonDirectories(t *testing.T) {
 		t.Fatal(err)
 	}
 	other := repository(t)
+	clone := filepath.Join(t.TempDir(), "clone")
+	sh(t, repo, "clone", "--quiet", "--no-local", repo, clone)
 	missing := t.TempDir()
 	for _, c := range []struct {
 		name, first, second string
@@ -181,6 +183,7 @@ func TestRepositoryEquivalenceUsesCanonicalCommonDirectories(t *testing.T) {
 		{"main and worktree", repo, checkout, true, false},
 		{"worktree and symlink", checkout, link, true, false},
 		{"distinct repositories", repo, other, false, false},
+		{"a clone", checkout, clone, false, false},
 		{"invalid first", missing, repo, false, true},
 		{"invalid second", repo, missing, false, true},
 	} {
@@ -190,7 +193,44 @@ func TestRepositoryEquivalenceUsesCanonicalCommonDirectories(t *testing.T) {
 			if (err != nil) != c.fails || same != c.same {
 				t.Fatalf("SameRepository = %v, %v", same, err)
 			}
+			// The identity a run records tells the same repositories apart.
+			first, firstErr := workspaces.RepositoryIdentity(ctx, c.first)
+			second, secondErr := workspaces.RepositoryIdentity(ctx, c.second)
+			if (firstErr != nil || secondErr != nil) != c.fails || (!c.fails && (first == second) != c.same) {
+				t.Fatalf("RepositoryIdentity = %q, %v and %q, %v", first, firstErr, second, secondErr)
+			}
 		})
+	}
+}
+
+// A repository's identity, read from a worktree, outlives that worktree: the
+// main checkout and another worktree still name it after its removal, and the
+// removed one names nothing.
+//
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
+func TestRepositoryIdentityOutlivesTheWorktreeItWasReadFrom(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	repo := repository(t)
+	revision := sh(t, repo, "rev-parse", "HEAD")
+	launching := filepath.Join(t.TempDir(), "launching")
+	surviving := filepath.Join(t.TempDir(), "surviving")
+	sh(t, repo, "worktree", "add", "--detach", "--quiet", launching, revision)
+	sh(t, repo, "worktree", "add", "--detach", "--quiet", surviving, revision)
+	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
+	recorded, err := workspaces.RepositoryIdentity(ctx, launching)
+	if err != nil || recorded == "" {
+		t.Fatalf("RepositoryIdentity = %q, %v", recorded, err)
+	}
+	sh(t, repo, "worktree", "remove", launching)
+	for _, dir := range []string{repo, surviving} {
+		if identity, err := workspaces.RepositoryIdentity(ctx, dir); err != nil || identity != recorded {
+			t.Fatalf("RepositoryIdentity(%s) = %q, %v, want %q", dir, identity, err, recorded)
+		}
+	}
+	if identity, err := workspaces.RepositoryIdentity(ctx, launching); err == nil {
+		t.Fatalf("removed worktree named %q", identity)
 	}
 }
 

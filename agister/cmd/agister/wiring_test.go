@@ -96,12 +96,9 @@ func (m *marker) asked() (lists, reads int) {
 // write scope. Wiring any of them to the live settings would defeat the
 // snapshot. Each is exercised by name, and what it asked of each source is
 // asserted: a use case or scope added later needs its own row here.
-//
-// Contract test: the composition's adapters over a real git repository and
-// the filesystem.
 func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 	t.Parallel()
-	project := repository(t, "x")
+	fake, project := fakeRepository(t, "x")
 	if err := os.MkdirAll(filepath.Join(project, ".agister"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -116,6 +113,7 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			home := tempDir(t)
+			gitThrough(t, home, fake)
 			config := cli.Config{Home: home, Cwd: tc.cwd}
 			// Inspecting an agent asks its runtime's version: of a fake run
 			// in process, not of a runtime this machine has.
@@ -198,14 +196,15 @@ func gatedOf(t *testing.T, client contract.Client) *app.Gated {
 }
 
 // The built client starts the one background reaper every build shares,
-// over the run store, the supervisor's processes and the git workspaces.
+// over the run store, the supervisor's processes and the workspaces.
 //
 // Contract test: the composition's reaper over the run store on the real
 // filesystem, and the kernel's flock on a run's owner.lock.
 func TestBuiltClientSharesTheBackgroundReaper(t *testing.T) {
 	t.Parallel()
 	home := tempDir(t)
-	client, background, err := wire(cli.Config{Home: home}, fsruns.NewAppends())
+	config := cli.Config{Home: home}
+	client, background, err := inProcess(config).wire(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +241,7 @@ func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
 	t.Parallel()
 	home := tempDir(t)
 	config := cli.Config{Home: home}
-	composed := process(config, fsruns.NewAppends())
+	composed := inProcess(config)
 	client, background, err := composed.wire(config)
 	if err != nil {
 		t.Fatal(err)
@@ -280,8 +279,9 @@ func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
 	if err != nil || state != domain.StateFinished || got.Result == nil || got.Result.Status != domain.Lost {
 		t.Fatalf("old run: %+v, %s, %v", got.Result, state, err)
 	}
-	// Its effects were handed to the supervisor's processes and to the git
-	// workspaces, which refuse what they did not make; the reap said so.
+	// Its effects were handed to the supervisor's processes and to the
+	// composition's workspaces, which refuse what they did not make; the
+	// reap said so.
 	events, _, err := store.Events(context.Background(), "old", 0)
 	if err != nil {
 		t.Fatal(err)
@@ -319,7 +319,8 @@ func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
 func TestBuiltReaperLeavesACheckoutARunningRunUses(t *testing.T) {
 	t.Parallel()
 	home := tempDir(t)
-	_, background, err := wire(cli.Config{Home: home}, fsruns.NewAppends())
+	config := cli.Config{Home: home}
+	_, background, err := inProcess(config).wire(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -381,7 +382,8 @@ func TestBuiltReaperLogsAFailedReap(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(home, "runs"), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, background, err := wire(cli.Config{Home: home}, fsruns.NewAppends())
+	config := cli.Config{Home: home}
+	_, background, err := inProcess(config).wire(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -448,7 +450,7 @@ func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
 			events <- waits
 		}
 	}
-	adapters := composition{worktrees: worktrees}.workspaces()
+	adapters := gitBacked(worktrees)
 
 	ctx := context.Background()
 	var workers sync.WaitGroup
@@ -522,7 +524,7 @@ func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
 func TestTheProcessWorktreeCoordinatorLocksUnderTheHome(t *testing.T) {
 	t.Parallel()
 	home, repo := tempDir(t), repository(t, "x")
-	adapters := process(cli.Config{Home: home}, fsruns.NewAppends()).workspaces()
+	adapters := process(cli.Config{Home: home}, fsruns.NewAppends()).git
 	_, release, err := adapters.calls.Checkout(context.Background(), repo, "main")
 	if err != nil {
 		t.Fatal(err)
@@ -577,9 +579,6 @@ func TestTheInProcessCompositionWaitsOnAClockThatNeverMoves(t *testing.T) {
 // The process's starter is the operating system's, and a composition
 // starts its runtimes through the one it holds: a call over a starter of
 // the test's asks it for the agent's runtime, its version and its turn.
-//
-// Contract test: the composition's adapters over a real git repository and
-// the filesystem.
 func TestTheCompositionStartsItsRuntimesThroughItsStarter(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
@@ -590,6 +589,7 @@ func TestTheCompositionStartsItsRuntimesThroughItsStarter(t *testing.T) {
 	}
 	starter := &started{}
 	composed.starter = starter
+	composed.git = fakeGit(gitOf(t, home))
 	// The call waits on a clock that never moves, not on the process's.
 	composed.timer = systemtest.NewClock(stillAt).Timer
 	client, _, err := composed.wire(config)
@@ -629,9 +629,6 @@ func TestTheCompositionStartsItsRuntimesThroughItsStarter(t *testing.T) {
 // composition starts its commands through the starter it holds: a call
 // over a starter of the test's asks it for bash, once for the checkout's
 // setup and once for the verification, and for no runtime.
-//
-// Contract test: the composition's adapters over a real git repository and
-// the filesystem.
 func TestTheCompositionStartsItsCommandsThroughItsStarter(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
@@ -656,6 +653,7 @@ verify:
 	}
 	starter := &started{}
 	composed.starter, composed.commands = runtimetest.InProcess{}, starter
+	composed.git = fakeGit(gitOf(t, home))
 	// The call waits on a clock that never moves, not on the process's.
 	composed.timer = systemtest.NewClock(stillAt).Timer
 	client, _, err := composed.wire(config)

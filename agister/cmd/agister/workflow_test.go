@@ -36,9 +36,6 @@ func workflowRun(t *testing.T, home string) (string, domain.Record) {
 // The shipped example workflow, end to end on the fake runtime: both
 // fan-out nodes, then the join, whose text is the workflow's output; each
 // node is a run of its own that names the workflow run.
-//
-// Contract test: the composition over the example settings and a real git
-// repository; the workflow's runtimes are fakes run in process.
 func TestExampleWorkflowEndToEnd(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
@@ -58,7 +55,7 @@ func TestExampleWorkflowEndToEnd(t *testing.T) {
 	if record.Process != "review_panel" || record.Result.Status != domain.Completed || record.Workflow.Barrier.State != domain.BarrierPassed || len(record.Workflow.Nodes) != 3 {
 		t.Fatalf("workflow run = %+v", record)
 	}
-	candidate := gitCmd(t, repo, "rev-parse", "feature")
+	candidate := revision(t, home, repo, "feature")
 	var join run
 	for _, node := range record.Workflow.Nodes {
 		var child domain.Record
@@ -107,9 +104,6 @@ func TestExampleWorkflowEndToEnd(t *testing.T) {
 // join receives the completed output and the other node's status and class,
 // the workflow's result is the join's, and both its record and its progress
 // lines name the node that did not complete.
-//
-// Contract test: the composition over the example settings and a real git
-// repository; the workflow's runtimes are fakes run in process.
 func TestExampleWorkflowJoinsWithoutATimedOutNode(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
@@ -173,8 +167,9 @@ func lastRunIn(t *testing.T, dir string) run {
 // blocked; that a SIGKILL leaves a run so is
 // TestNextCallReapsWhatAKilledRunLeftBehind's.
 //
-// Contract test: the composition over the example settings and a real git
-// repository; the workflow's runtimes are fakes run in process.
+// Contract test: the composition's reaper over the run store on the real
+// filesystem, and the kernel's flock on a run's owner.lock; git and the
+// workflow's runtimes are fakes run in process.
 //
 // Serial: a run's owner lock is its open file's (flock). A process another
 // test starts holds a copy from its fork to its exec, and the lock an
@@ -266,7 +261,5 @@ func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 		t.Fatalf("workflow run: %+v %v", workflow, err)
 	}
 	<-composed.hosted.Done(next)
-	if lines := strings.Split(gitCmd(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
-		t.Fatalf("worktrees = %v", lines)
-	}
+	noCheckoutLeft(t, home)
 }
