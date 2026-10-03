@@ -109,3 +109,29 @@ Against trunk's merge-base (also covers #829 and #831):
 - **Done when:** the Resolver exposes its own result API, `NewClient`
   builds the interface-based Calls and Inspection adapters, and those are
   tested with stand-ins.
+
+## 8. The in-process test harness runs on real clocks and a detached reaper
+
+- **Gap:** `inProcess` / `composeInProcess` in `cmd/agister/main_test.go`
+  start from the production composition, which keeps `system.Clock{}`
+  and the real reaper with a 30 s deadline, and discard the reaper's
+  `Wait` handle. Every test built on it inherits both (code_review
+  `20261003T090214Z-2d9680`, LAB-59).
+- **Trigger:** the next change to the cmd/agister in-process harness, or
+  a test that observes reaper timing.
+- **Done when:** the composition accepts a fake clock and a fake reaper,
+  and any background worker it keeps is awaited through
+  `t.Cleanup(Wait)`.
+
+## 9. Settings YAML files read only their first document
+
+- **Gap:** the shared `parseYAML` (`internal/domain/definition/yaml.go`)
+  reads the first YAML document and ignores the rest, so a process,
+  workflow or other YAML settings file with a second document drops it
+  silently. LAB-59 made `blocks.yaml` require exactly one document
+  (`parseOneYAML`, code_review `20261003T093630Z-b601a0`); the other kinds
+  still use `parseYAML`.
+- **Trigger:** the next change to YAML settings parsing, or a settings
+  file found with a second document.
+- **Done when:** every YAML settings kind rejects more than one document,
+  with a parser test per kind.

@@ -1,6 +1,9 @@
 package definition
 
 import (
+	"bytes"
+	"errors"
+	"io"
 	"strconv"
 	"time"
 
@@ -31,6 +34,33 @@ func parseYAML(data []byte, p *problems) *yaml.Node {
 	return document.Content[0]
 }
 
+// parseOneYAML reads data that must hold exactly one YAML document: a
+// second, even after an empty first, is a problem rather than unread.
+func parseOneYAML(data []byte, p *problems) *yaml.Node {
+	if !readable(data, p) {
+		return nil
+	}
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	var document yaml.Node
+	if err := decoder.Decode(&document); errors.Is(err, io.EOF) {
+		p.add("", "empty document")
+		return nil
+	} else if err != nil {
+		p.add("", "%v", err)
+		return nil
+	}
+	var next yaml.Node
+	if err := decoder.Decode(&next); !errors.Is(err, io.EOF) {
+		p.add("", "must hold exactly one YAML document")
+		return nil
+	}
+	if len(document.Content) == 0 {
+		p.add("", "empty document")
+		return nil
+	}
+	return document.Content[0]
+}
+
 func mapping(node *yaml.Node, field string, p *problems) []pair {
 	if node == nil {
 		return nil
@@ -44,6 +74,23 @@ func mapping(node *yaml.Node, field string, p *problems) []pair {
 		pairs = append(pairs, pair{key: node.Content[i].Value, value: node.Content[i+1]})
 	}
 	return pairs
+}
+
+// unique reports each key a mapping declares more than once, at its second
+// and later entries. A mapping read as yaml.Node keeps every entry, so
+// yaml.v3's own duplicate check does not run.
+func unique(node *yaml.Node, field string, p *problems) {
+	if node == nil || node.Kind != yaml.MappingNode {
+		return
+	}
+	seen := map[string]bool{}
+	for i := 0; i+1 < len(node.Content); i += 2 {
+		key := node.Content[i].Value
+		if seen[key] {
+			p.add(join(field, key), "is declared more than once")
+		}
+		seen[key] = true
+	}
 }
 
 // declared counts the entries of key in a mapping; none in anything else.

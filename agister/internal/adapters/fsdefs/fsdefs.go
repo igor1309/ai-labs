@@ -1,8 +1,8 @@
 // Package fsdefs stores definition documents as files under Agister's
-// state directory: service.toml, workspace.yaml, agents/*.toml, processes/*.yaml,
-// policies/*.yaml, runtimes/*.yaml, schemas/*.json, workflows/*.yaml,
-// verifies/*.yaml, prompts/*.md. Layered reads a project's own settings over
-// the global ones.
+// state directory: service.toml, workspace.yaml, blocks.yaml, agents/*.toml,
+// processes/*.yaml, policies/*.yaml, runtimes/*.yaml, schemas/*.json,
+// workflows/*.yaml, verifies/*.yaml, prompts/*.md. Layered reads a project's
+// own settings over the global ones.
 package fsdefs
 
 import (
@@ -74,22 +74,27 @@ func (s Store) lock() (func(), error) {
 	}, nil
 }
 
-var extensions = map[definition.Kind]string{
-	definition.KindService:  ".toml",
-	definition.KindAgent:    ".toml",
-	definition.KindProcess:  ".yaml",
-	definition.KindPolicy:   ".yaml",
-	definition.KindRuntime:  ".yaml",
-	definition.KindSchema:   ".json",
-	definition.KindWorkflow: ".yaml",
-	definition.KindVerify:   ".yaml",
-	definition.KindPrompt:   ".md",
-	// A singleton, like the service.
-	definition.KindWorkspace: ".yaml",
+// extensions is the file extension of each kind the store holds. Each call
+// returns a new map.
+func extensions() map[definition.Kind]string {
+	return map[definition.Kind]string{
+		definition.KindService:  ".toml",
+		definition.KindAgent:    ".toml",
+		definition.KindProcess:  ".yaml",
+		definition.KindPolicy:   ".yaml",
+		definition.KindRuntime:  ".yaml",
+		definition.KindSchema:   ".json",
+		definition.KindWorkflow: ".yaml",
+		definition.KindVerify:   ".yaml",
+		definition.KindPrompt:   ".md",
+		// Singletons, like the service.
+		definition.KindWorkspace: ".yaml",
+		definition.KindBlocks:    ".yaml",
+	}
 }
 
 func (s Store) path(kind definition.Kind, name string) (string, error) {
-	extension, ok := extensions[kind]
+	extension, ok := extensions()[kind]
 	if !ok {
 		return "", fmt.Errorf("unknown definition kind %q", kind)
 	}
@@ -110,6 +115,14 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 	data, err := os.ReadFile(path)
 	doc := definition.Document{Source: definition.Source{Kind: kind, Name: name, Path: path}}
 	if errors.Is(err, fs.ErrNotExist) {
+		// Blocks that exist but cannot be resolved, a dangling symlink, are
+		// not absent: reading them fails, with no fallback to home's
+		// (ADR-018 rule 5).
+		if kind == definition.KindBlocks {
+			if _, lerr := os.Lstat(path); lerr == nil {
+				return doc, fmt.Errorf("cannot be resolved: %v", err)
+			}
+		}
 		return doc, fmt.Errorf("%w (expected %s)", errNotFound, path)
 	}
 	if err != nil {
@@ -125,7 +138,21 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 // the one document exists, so a missing one reads as none. One that exists
 // but cannot be followed, such as a symlink loop, is listed, so reading it
 // fails as that document's problem.
+//
+// The blocks are listed whenever their entry exists: only one that does not
+// exist means no blocks. One that is a directory, a dangling symlink or a
+// symlink loop is listed, so reading it fails and stops every command
+// (ADR-018 rule 5), where reading it as none would admit what it blocks.
 func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
+	if kind == definition.KindBlocks {
+		path, _ := s.path(kind, string(kind))
+		if _, err := os.Lstat(path); errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		} else if err != nil {
+			return nil, err
+		}
+		return []string{string(kind)}, nil
+	}
 	if kind == definition.KindWorkspace {
 		path, _ := s.path(kind, string(kind))
 		if _, err := os.Lstat(path); errors.Is(err, fs.ErrNotExist) {
@@ -148,7 +175,7 @@ func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 	}
 	var names []string
 	for _, entry := range entries {
-		name, ok := strings.CutSuffix(entry.Name(), extensions[kind])
+		name, ok := strings.CutSuffix(entry.Name(), extensions()[kind])
 		if !ok || entry.IsDir() {
 			continue
 		}
@@ -257,6 +284,10 @@ func digest(data []byte) string {
 // document takes priority over the global document of the same kind and
 // name, and says which one it overrides. Checking the composed result is
 // the core's job, not the store's.
+//
+// Blocks are read the same way, and only a project's block anything
+// (ADR-018 rule 1): Source.Project says whose they are. Home's are still
+// read, where the project has none, so check reports them.
 type Layered struct {
 	Global  Store
 	Project *Store // nil outside a project

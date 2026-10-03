@@ -20,6 +20,9 @@ type reach struct {
 	documents map[DocumentRef]reachDocument
 	// The problems of each document, in the order found.
 	about map[DocumentRef][]reachProblem
+	// The documents the repository blocks (ADR-018), which refuse what
+	// depends on them as a problem does.
+	blocked map[DocumentRef]reachBlock
 }
 
 // reachDocument is one document listed in the settings.
@@ -33,13 +36,21 @@ type reachProblem struct {
 	agent   string // the agent it depends on, if it does
 }
 
+// reachBlock is the block on one document: the repository's blocks.yaml
+// and why.
+type reachBlock struct {
+	path   string
+	reason string // optional
+}
+
 var (
 	serviceRef   = DocumentRef{Kind: definition.KindService, Name: "service"}
 	workspaceRef = DocumentRef{Kind: definition.KindWorkspace, Name: string(definition.KindWorkspace)}
+	blocksRef    = DocumentRef{Kind: definition.KindBlocks, Name: string(definition.KindBlocks)}
 )
 
 func newReach() *reach {
-	return &reach{documents: map[DocumentRef]reachDocument{}, about: map[DocumentRef][]reachProblem{}}
+	return &reach{documents: map[DocumentRef]reachDocument{}, about: map[DocumentRef][]reachProblem{}, blocked: map[DocumentRef]reachBlock{}}
 }
 
 // label names a document as check's problems do.
@@ -70,6 +81,20 @@ func (s *step) chain() string {
 		}
 	}
 	return text
+}
+
+// blockedBy names the block on the step's document after the chain that
+// reaches it (ADR-018 rule 3): "process p: agent a is blocked by
+// /repo/.agister/blocks.yaml: why".
+func (s *step) blockedBy(block reachBlock) string {
+	text := label(s.ref) + " is blocked by " + block.path
+	if block.reason != "" {
+		text += ": " + block.reason
+	}
+	if s.from == nil {
+		return text
+	}
+	return s.from.chain() + ": " + text
 }
 
 // walk is every document a call of root depends on, each once, by the
@@ -112,13 +137,14 @@ func (r *reach) listed(ref DocumentRef) bool {
 }
 
 // call is the refusal of a call of process, with agent in place of its own
-// when set; nil when nothing it depends on has a problem.
+// when set; nil when nothing it depends on has a problem or is blocked.
 func (r *reach) call(process, agent string) error {
 	return r.refusal(DocumentRef{Kind: definition.KindProcess, Name: process}, agent)
 }
 
 // workflow is the refusal of a run of the workflow name, for a problem in
-// it or in what any node's call depends on; nil when there is none.
+// it or in what any node's call depends on, or a block on one of them; nil
+// when there is none.
 func (r *reach) workflow(name string) error {
 	return r.refusal(DocumentRef{Kind: definition.KindWorkflow, Name: name}, "")
 }
@@ -144,10 +170,14 @@ func (r *reach) where(ref DocumentRef) string {
 }
 
 // refusal names each document with problems a call of root depends on, its
-// path, its problems and the chain that reaches it.
+// path, its problems and the chain that reaches it, and each blocked one
+// with its block.
 func (r *reach) refusal(root DocumentRef, agent string) error {
 	var parts []string
 	for _, s := range r.walk(root, agent) {
+		if block, ok := r.blocked[s.ref]; ok {
+			parts = append(parts, s.blockedBy(block))
+		}
 		var messages []string
 		for _, problem := range r.about[s.ref] {
 			// A call that selects another agent is judged on that one.
@@ -168,7 +198,7 @@ func (r *reach) refusal(root DocumentRef, agent string) error {
 }
 
 // refuses is the roots among roots whose calls, without --agent, depend on
-// subject.
+// subject: what a problem of subject, or a block on it, refuses.
 func (r *reach) refuses(subject DocumentRef, roots []DocumentRef) []string {
 	var names []string
 	for _, root := range roots {

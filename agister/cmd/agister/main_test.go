@@ -274,17 +274,24 @@ func repository(t *testing.T, scenario string) string {
 // repository's and whose working tree holds the candidate.
 func fakeRepository(t *testing.T, scenario string) (*gittest.Fake, string) {
 	t.Helper()
+	fake := gittest.New(tempDir(t))
+	return fake, recordRepository(t, fake, scenario)
+}
+
+// recordRepository records in fake one more repository, as fakeRepository
+// has it, and returns its directory.
+func recordRepository(t *testing.T, fake *gittest.Fake, scenario string) string {
+	t.Helper()
 	dir, err := filepath.EvalSymlinks(tempDir(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	fake := gittest.New(tempDir(t))
 	r := fake.Record(dir)
 	r.Commit("main", map[string]string{"a.txt": "one\n"})
 	candidate := "one\ntwo SCENARIO:" + scenario + "\n"
 	r.Commit("feature", map[string]string{"a.txt": candidate})
 	write(t, filepath.Join(dir, "a.txt"), candidate)
-	return fake, dir
+	return dir
 }
 
 // onFakeGit is fakeRepository's repository, its fake given to every

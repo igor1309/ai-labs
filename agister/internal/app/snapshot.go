@@ -8,12 +8,15 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
 
-// allKinds is every kind of definition a snapshot covers.
-var allKinds = []definition.Kind{
-	definition.KindService, definition.KindRuntime, definition.KindAgent,
-	definition.KindPolicy, definition.KindVerify, definition.KindPrompt,
-	definition.KindProcess, definition.KindSchema, definition.KindWorkflow,
-	definition.KindWorkspace,
+// allKinds is every kind of definition a snapshot covers, in a fixed order.
+// Each call returns a new slice.
+func allKinds() []definition.Kind {
+	return []definition.Kind{
+		definition.KindService, definition.KindRuntime, definition.KindAgent,
+		definition.KindPolicy, definition.KindVerify, definition.KindPrompt,
+		definition.KindProcess, definition.KindSchema, definition.KindWorkflow,
+		definition.KindWorkspace, definition.KindBlocks,
+	}
 }
 
 // SnapshotSource is what a snapshot reads and what it gives back: the
@@ -56,7 +59,7 @@ func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 		reads: map[definition.Kind]map[string]snapshotRead{},
 		lists: map[definition.Kind]snapshotList{},
 	}
-	for _, kind := range allKinds {
+	for _, kind := range allKinds() {
 		s.reads[kind] = map[string]snapshotRead{}
 		names := []string{"service"}
 		if kind != definition.KindService {
