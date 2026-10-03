@@ -383,3 +383,38 @@ func TestProblemsNoDocumentOwnsStopEveryCommand(t *testing.T) {
 		})
 	}
 }
+
+// Each problem of a check has a reference of its own: changing one a
+// result returns changes no other checker's result.
+func TestEachBlocksProblemHasItsOwnReference(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	// Home's blocks, as the spy reads every document: a problem about them.
+	h.defs.docs[definition.KindBlocks] = map[string]string{"blocks": "schema: agister.blocks/v1alpha1\nblocks: []\n"}
+	sources := []string{"git.revision", "git.diff"}
+	want := app.DocumentRef{Kind: definition.KindBlocks, Name: "blocks"}
+	about := func(result app.CheckResult) *app.DocumentRef {
+		t.Helper()
+		for _, problem := range result.Problems {
+			if problem.About != nil && problem.About.Kind == definition.KindBlocks {
+				return problem.About
+			}
+		}
+		t.Fatalf("no problem about the blocks: %+v", result.Problems)
+		return nil
+	}
+
+	first, err := app.NewChecker(h.defs, h.validator, h.runtimes, sources).Checked(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	*about(first) = app.DocumentRef{Kind: definition.KindAgent, Name: "changed"}
+
+	second, err := app.NewChecker(h.defs, h.validator, h.runtimes, sources).Checked(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := *about(second); got != want {
+		t.Fatalf("another checker's result is about %+v, want %+v", got, want)
+	}
+}

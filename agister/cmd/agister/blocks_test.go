@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -43,7 +45,9 @@ func TestARepositoryBlocksAnAgentHomeAllows(t *testing.T) {
 	var report contract.CheckReport
 	r = agister(t, home, repo, "check", "--json")
 	if err := json.Unmarshal([]byte(r.stdout), &report); err != nil || r.code != 0 || len(report.Problems) != 0 || len(report.Blocks) != 1 ||
-		report.Blocks[0].Ref != (contract.DefinitionRef{Kind: "agents", Name: "reviewer"}) || report.Blocks[0].Path != path || report.Blocks[0].Reason != "Reviews are done by hand here" {
+		report.Blocks[0].Ref != (contract.DefinitionRef{Kind: "agents", Name: "reviewer"}) || report.Blocks[0].Path != path || report.Blocks[0].Reason != "Reviews are done by hand here" ||
+		!reflect.DeepEqual(report.Blocks[0].Processes, []string{"adversarial_review", "architecture_review", "review_summary"}) ||
+		!reflect.DeepEqual(report.Blocks[0].Workflows, []string{"review_panel"}) {
 		t.Fatalf("check --json: %d %v\n%s", r.code, err, r.stdout)
 	}
 
@@ -111,6 +115,9 @@ func TestARepositoryBlocksAnAgentHomeAllows(t *testing.T) {
 	if r := agister(t, home, other, "check"); r.code != 0 || strings.Contains(r.stdout, "block ") {
 		t.Fatalf("check in a repository without blocks: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
+	if r := agister(t, home, other, "check", "--json"); r.code != 0 || !strings.Contains(r.stdout, `"blocks": []`) {
+		t.Fatalf("check --json in a repository without blocks: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
 }
 
 // A block on a process refuses its calls and the workflows with a node on
@@ -150,32 +157,133 @@ func TestBlocksOnAProcessAndARuntimeMapping(t *testing.T) {
 	}
 }
 
+// A block on a workflow refuses its runs before any node starts, and is
+// recorded; check lists it with what it refuses, the listing and the view
+// show the workflow refused, and the processes its nodes call still run on
+// their own (ADR-018 rule 2).
+func TestABlockOnAWorkflow(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	path := writeBlocks(t, filepath.Join(repo, ".agister"), "{ref: 'workflow:review_panel', reason: no panels here}")
+	want := "workflow review_panel is blocked by " + path + ": no panels here"
+
+	r := agister(t, home, repo, "check")
+	if r.code != 0 || !strings.Contains(r.stdout, "block workflow review_panel: "+path+": no panels here\n  refuses workflow review_panel\n") {
+		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	var report contract.CheckReport
+	r = agister(t, home, repo, "check", "--json")
+	if err := json.Unmarshal([]byte(r.stdout), &report); err != nil || r.code != 0 || len(report.Blocks) != 1 ||
+		report.Blocks[0].Ref != (contract.DefinitionRef{Kind: "workflows", Name: "review_panel"}) ||
+		len(report.Blocks[0].Processes) != 0 || !reflect.DeepEqual(report.Blocks[0].Workflows, []string{"review_panel"}) {
+		t.Fatalf("check --json: %d %v\n%s", r.code, err, r.stdout)
+	}
+
+	runs := &newRuns{home: home}
+	runs.take(t)
+	r = agister(t, home, repo, "run", "review_panel", "--quiet", "--param", "base=main", "--param", "architecture=a.txt")
+	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
+		t.Fatalf("run: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
+	}
+	// One run, the workflow's, refused: no node started.
+	refused := runs.one(t)
+	if failure := refused.record["result"].(map[string]any)["error"].(map[string]any); refused.record["process"] != "review_panel" ||
+		failure["class"] != "refused" || !strings.Contains(failure["message"].(string), want) || refused.first != nil {
+		t.Fatalf("record = %v, runtime = %v", refused.record, refused.first)
+	}
+
+	r = agister(t, home, repo, "workflow", "list")
+	if r.code != 0 || !regexp.MustCompile(`(?m)^review_panel\b.*\tREFUSED: .*`+regexp.QuoteMeta(want)).MatchString(r.stdout) {
+		t.Fatalf("workflow list: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if r := agister(t, home, repo, "workflow", "show", "review_panel"); r.code != 0 || !strings.Contains(r.stdout, "REFUSED: "+want) {
+		t.Fatalf("workflow show: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if r := agister(t, home, repo, "process", "list"); r.code != 0 || strings.Contains(r.stdout, "REFUSED") {
+		t.Fatalf("process list: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+
+	if r := agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
+		t.Fatalf("a node's process on its own: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if ran := runs.one(t); ran.record["agent"] != "reviewer" || ran.first == nil {
+		t.Fatalf("the call did not run: %v", ran.record)
+	}
+}
+
 // A broken blocks.yaml, or one naming a document in neither layer, stops
 // every command in the repository, as what it was meant to block cannot be
-// known (ADR-018 rule 5); install and restore still run.
+// known (ADR-018 rule 5): one that is invalid, declares a key twice, or
+// exists but cannot be read, as a directory, a dangling symlink or a
+// symlink loop cannot, never reads as no blocks. check names its path, no
+// runtime starts, and install and restore still run.
 func TestABrokenBlockListStopsEveryCommandButInstallAndRestore(t *testing.T) {
 	t.Parallel()
-	for name, entry := range map[string]string{
-		"missing document": "{ref: 'agent:nobody'}",
-		"unknown kind":     "{ref: 'policy:read-only'}",
-		"invalid":          "{ref: 'agent:reviewer', why: typo}",
+	entries := func(entries ...string) func(t *testing.T, dir string) string {
+		return func(t *testing.T, dir string) string { return writeBlocks(t, dir, entries...) }
+	}
+	text := func(text string) func(t *testing.T, dir string) string {
+		return func(t *testing.T, dir string) string {
+			path := filepath.Join(dir, "blocks.yaml")
+			write(t, path, text)
+			return path
+		}
+	}
+	planted := func(plant func(path string) error) func(t *testing.T, dir string) string {
+		return func(t *testing.T, dir string) string {
+			path := filepath.Join(dir, "blocks.yaml")
+			if err := os.MkdirAll(dir, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := plant(path); err != nil {
+				t.Fatal(err)
+			}
+			return path
+		}
+	}
+	for name, c := range map[string]struct {
+		plant func(t *testing.T, dir string) string
+		want  string // at the end of check's problem, which names the path
+	}{
+		"missing document": {plant: entries("{ref: 'agent:nobody'}"), want: "blocks[0].ref: agent nobody is in neither the repository's settings nor home's"},
+		"unknown kind":     {plant: entries("{ref: 'policy:read-only'}")},
+		"invalid":          {plant: entries("{ref: 'agent:reviewer', why: typo}")},
+		"key twice in an entry": {
+			plant: entries("{ref: 'agent:nobody', ref: 'agent:reviewer'}"),
+			want:  "blocks[0].ref: is declared more than once",
+		},
+		"key twice in the document": {
+			plant: text("schema: agister.blocks/v1alpha1\nblocks: []\nblocks:\n  - ref: agent:reviewer\n"),
+			want:  "blocks: is declared more than once",
+		},
+		"directory":        {plant: planted(func(path string) error { return os.Mkdir(path, 0o700) }), want: ": is a directory"},
+		"dangling symlink": {plant: planted(func(path string) error { return os.Symlink(path+".gone", path) }), want: ": no such file or directory"},
+		"symlink loop":     {plant: planted(func(path string) error { return os.Symlink(path, path) }), want: ": too many levels of symbolic links"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			home, repo := setup(t, "approve")
-			path := writeBlocks(t, filepath.Join(repo, ".agister"), entry)
+			path := c.plant(t, filepath.Join(repo, ".agister"))
 
 			r := agister(t, home, repo, "check")
-			if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "blocks ("+path+"): ") || !strings.Contains(r.stderr, "\n  stops every command\n") ||
-				name == "missing document" && !strings.Contains(r.stderr, "blocks ("+path+"): blocks[0].ref: agent nobody is in neither the repository's settings nor home's\n") {
+			problem := regexp.MustCompile(`(?m)^blocks \(` + regexp.QuoteMeta(path) + `\): .*` + regexp.QuoteMeta(c.want) + `$`)
+			if r.code != cli.ExitUsage || !problem.MatchString(r.stderr) || !strings.Contains(r.stderr, "\n  stops every command\n") {
 				t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 			}
+			runs := &newRuns{home: home}
+			runs.take(t)
 			for _, args := range [][]string{
 				{"run", "ask", "--quiet", "--param", "question=q", "--timeout", "1m"},
-				{"process", "list"}, {"agent", "list"}, {"runs"},
+				{"run", "review_panel", "--quiet", "--param", "base=main", "--param", "architecture=a.txt"},
+				{"process", "list"}, {"process", "show", "ask"}, {"workflow", "list"}, {"agent", "list"}, {"runs"},
 			} {
 				if r := agister(t, home, repo, args...); r.code == 0 || r.code == cli.ExitCompleted || !strings.Contains(r.stderr, "stop every command") {
 					t.Fatalf("%v: %d\n%s%s", args, r.code, r.stdout, r.stderr)
+				}
+			}
+			for _, ran := range runs.take(t) {
+				if ran.first != nil {
+					t.Fatalf("the runtime started: %v", ran.record)
 				}
 			}
 

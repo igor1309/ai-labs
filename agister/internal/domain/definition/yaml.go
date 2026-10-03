@@ -46,6 +46,23 @@ func mapping(node *yaml.Node, field string, p *problems) []pair {
 	return pairs
 }
 
+// unique reports each key a mapping declares more than once, at its second
+// and later entries. A mapping read as yaml.Node keeps every entry, so
+// yaml.v3's own duplicate check does not run.
+func unique(node *yaml.Node, field string, p *problems) {
+	if node == nil || node.Kind != yaml.MappingNode {
+		return
+	}
+	seen := map[string]bool{}
+	for i := 0; i+1 < len(node.Content); i += 2 {
+		key := node.Content[i].Value
+		if seen[key] {
+			p.add(join(field, key), "is declared more than once")
+		}
+		seen[key] = true
+	}
+}
+
 // declared counts the entries of key in a mapping; none in anything else.
 func declared(node *yaml.Node, key string) int {
 	count := 0

@@ -109,3 +109,16 @@ Against trunk's merge-base (also covers #829 and #831):
 - **Done when:** the Resolver exposes its own result API, `NewClient`
   builds the interface-based Calls and Inspection adapters, and those are
   tested with stand-ins.
+
+## 8. The in-process test harness runs on real clocks and a detached reaper
+
+- **Gap:** `inProcess` / `composeInProcess` in `cmd/agister/main_test.go`
+  start from the production composition, which keeps `system.Clock{}`
+  and the real reaper with a 30 s deadline, and discard the reaper's
+  `Wait` handle. Every test built on it inherits both (code_review
+  `20261003T090214Z-2d9680`, LAB-59).
+- **Trigger:** the next change to the cmd/agister in-process harness, or
+  a test that observes reaper timing.
+- **Done when:** the composition accepts a fake clock and a fake reaper,
+  and any background worker it keeps is awaited through
+  `t.Cleanup(Wait)`.

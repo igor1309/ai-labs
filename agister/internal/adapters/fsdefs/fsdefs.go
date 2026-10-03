@@ -111,6 +111,14 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 	data, err := os.ReadFile(path)
 	doc := definition.Document{Source: definition.Source{Kind: kind, Name: name, Path: path}}
 	if errors.Is(err, fs.ErrNotExist) {
+		// Blocks that exist but cannot be resolved, a dangling symlink, are
+		// not absent: reading them fails, with no fallback to home's
+		// (ADR-018 rule 5).
+		if kind == definition.KindBlocks {
+			if _, lerr := os.Lstat(path); lerr == nil {
+				return doc, fmt.Errorf("cannot be resolved: %v", err)
+			}
+		}
 		return doc, fmt.Errorf("%w (expected %s)", errNotFound, path)
 	}
 	if err != nil {
@@ -122,12 +130,26 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 	}, nil
 }
 
-// List names the documents of kind. The workspace settings and the blocks
-// are listed when their one document exists, so a missing one reads as
-// none. One that exists but cannot be followed, such as a symlink loop, is
-// listed, so reading it fails as that document's problem.
+// List names the documents of kind. The workspace settings are listed when
+// the one document exists, so a missing one reads as none. One that exists
+// but cannot be followed, such as a symlink loop, is listed, so reading it
+// fails as that document's problem.
+//
+// The blocks are listed whenever their entry exists: only one that does not
+// exist means no blocks. One that is a directory, a dangling symlink or a
+// symlink loop is listed, so reading it fails and stops every command
+// (ADR-018 rule 5), where reading it as none would admit what it blocks.
 func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
-	if kind == definition.KindWorkspace || kind == definition.KindBlocks {
+	if kind == definition.KindBlocks {
+		path, _ := s.path(kind, string(kind))
+		if _, err := os.Lstat(path); errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		} else if err != nil {
+			return nil, err
+		}
+		return []string{string(kind)}, nil
+	}
+	if kind == definition.KindWorkspace {
 		path, _ := s.path(kind, string(kind))
 		if _, err := os.Lstat(path); errors.Is(err, fs.ErrNotExist) {
 			return nil, nil

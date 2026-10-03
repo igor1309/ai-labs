@@ -50,6 +50,7 @@ func ParseBlocks(doc Document) (Blocks, error) {
 	if root == nil {
 		return blocks, p.err("blocks")
 	}
+	unique(root, "", p)
 	values := fields(root, "", []string{"schema", "blocks"}, p)
 	value, _ := scalar(values["schema"], "schema", p)
 	checkSchema(value, BlocksSchema, p)
@@ -65,6 +66,7 @@ func ParseBlocks(doc Document) (Blocks, error) {
 	seen := map[string]string{} // reference: the field that named it first
 	for i, item := range list.Content {
 		field := fieldIndex("blocks", i)
+		unique(item, field, p)
 		entry := fields(item, field, []string{"ref", "reason"}, p)
 		ref := required(entry, "ref", field, p)
 		block := Block{}

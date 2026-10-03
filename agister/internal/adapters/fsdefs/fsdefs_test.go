@@ -371,3 +371,42 @@ func TestBlocksAreTheProjectsOwn(t *testing.T) {
 		t.Fatalf("project's = %+v, %v", doc.Source, err)
 	}
 }
+
+// A repository's blocks.yaml that exists but is a directory, a dangling
+// symlink or a symlink loop is not absent (ADR-018 rule 5): it is listed,
+// and reading it fails, naming its path, with no fallback to home's.
+//
+// Contract test: the settings store against the real filesystem.
+func TestBlocksThatCannotBeReadAreNotAbsent(t *testing.T) {
+	t.Parallel()
+	for name, plant := range map[string]func(path string) error{
+		"directory":        func(path string) error { return os.Mkdir(path, 0o700) },
+		"dangling symlink": func(path string) error { return os.Symlink(filepath.Join(filepath.Dir(path), "nowhere.yaml"), path) },
+		"symlink loop":     func(path string) error { return os.Symlink(path, path) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
+			if _, _, err := global.Write(ctx, definition.KindBlocks, "blocks", []byte("home"), ""); err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(project.Dir, "blocks.yaml")
+			if err := plant(path); err != nil {
+				t.Fatal(err)
+			}
+			if names, err := project.List(ctx, definition.KindBlocks); err != nil || !reflect.DeepEqual(names, []string{"blocks"}) {
+				t.Fatalf("listed = %v, %v", names, err)
+			}
+			layered := fsdefs.Layered{Global: global, Project: &project}
+			if names, err := layered.List(ctx, definition.KindBlocks); err != nil || !reflect.DeepEqual(names, []string{"blocks"}) {
+				t.Fatalf("layered listed = %v, %v", names, err)
+			}
+			doc, err := layered.Read(ctx, definition.KindBlocks, "blocks")
+			if err == nil || !strings.Contains(err.Error(), path) || strings.Contains(err.Error(), "not found") ||
+				!doc.Source.Project || doc.Source.Path != path || len(doc.Bytes) != 0 {
+				t.Fatalf("read = %+v %q, %v", doc.Source, doc.Bytes, err)
+			}
+		})
+	}
+}

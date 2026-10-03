@@ -79,3 +79,29 @@ blocks:
 		}
 	}
 }
+
+// A key declared twice, in the blocks.yaml itself or in one of its
+// entries, is a problem: neither entry silently wins over the other.
+func TestBlocksRejectDuplicateKeys(t *testing.T) {
+	t.Parallel()
+	_, err := definition.ParseBlocks(doc(definition.KindBlocks, "blocks", `
+schema: agister.blocks/v1alpha1
+blocks:
+  - ref: agent:reviewer
+blocks:
+  - ref: process:p
+    reason: first
+    ref: process:q
+`))
+	if err == nil {
+		t.Fatal("expected errors")
+	}
+	for _, want := range []string{
+		"blocks: is declared more than once",
+		"blocks[0].ref: is declared more than once",
+	} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("missing %q in:\n%v", want, err)
+		}
+	}
+}

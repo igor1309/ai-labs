@@ -455,7 +455,8 @@ func (c *Checker) blocks(ctx context.Context, listed map[DocumentRef]bool, check
 		doc, err := c.definitions.Read(ctx, definition.KindBlocks, name)
 		home := func(path string) {
 			message := "home's settings block nothing: only a repository's settings have blocks; remove it"
-			*found = append(*found, CheckedProblem{Text: "blocks (" + path + "): " + message, About: &blocksRef, Message: message})
+			about := blocksRef // each problem its own, so no caller's change reaches another
+			*found = append(*found, CheckedProblem{Text: "blocks (" + path + "): " + message, About: &about, Message: message})
 		}
 		if !doc.Source.Project {
 			home(doc.Source.Path)
