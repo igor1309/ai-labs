@@ -87,3 +87,14 @@
 - **Decision:** (a). ADR-018 rule 5 keeps the install and restore exemption as edited on the branch.
 - **Rests on:** D-5
 - **Follow-ups:** none
+
+## D-9: Do fixed lookup tables count as hidden collaborators?
+
+- **Status:** Owner
+- **Asked by:** workflow run 20261003T093630Z-b601a0 (code_review), judge item "Package-level kind catalogs (blockable, extensions, allKinds) are read without injection"; advisor run 20261003T094142Z-091eb1 answered `owner`
+- **Question:** does the hidden-collaborator rule cover fixed lookup tables?
+- **Options:** (a) leave all three as they are, as constant vocabulary; (b) turn only the new blockable map into a pure lookup function, which leaves it inconsistent with the existing catalogs; (c) turn all three into pure functions, which goes beyond LAB-59 and should be its own deferred item.
+- **Excluded:** (a): a package-level mutable table is a hidden collaborator under the review rule, with no exception recorded. (b): it leaves the catalogs inconsistent.
+- **Decision:** (c), done in LAB-59 rather than deferred: `blockable`, `extensions` and `allKinds` become pure functions.
+- **Rests on:** none
+- **Follow-ups:** none
