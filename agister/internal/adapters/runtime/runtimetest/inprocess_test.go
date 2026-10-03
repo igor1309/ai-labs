@@ -5,10 +5,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeclaude"
 	"github.com/igor1309/ai-labs/gokit/fakeproc"
 	"github.com/igor1309/ai-labs/gokit/supervisor"
 	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
@@ -45,15 +47,35 @@ func TestInProcessPicksTheFakeByTheCommandsName(t *testing.T) {
 		"pi":                   "0.85.1\n",
 		"/builds/fakepi":       "0.85.1\n",
 	} {
-		out, exit := output(t, InProcess{}, supervisor.Command{Name: command, Args: []string{"--version"}})
+		out, exit := output(t, InProcess{Groups: supervisortest.NewGroups()}, supervisor.Command{Name: command, Args: []string{"--version"}})
 		if out != want || exit.Code == nil || *exit.Code != 0 || exit.Signal != "" {
 			t.Errorf("%s --version printed %q and exited %+v, want %q", command, out, exit, want)
 		}
 	}
 	for _, command := range []string{"ccusage", "/nonexistent/runtime"} {
-		if process, err := (InProcess{}).Start(supervisor.Command{Name: command}); err == nil {
+		if process, err := (InProcess{Groups: supervisortest.NewGroups()}).Start(supervisor.Command{Name: command}); err == nil {
 			t.Errorf("%s started: %+v", command, process)
 		}
+	}
+}
+
+// Each catalog of the fakes is a map of its own: a change to one, as a
+// test's own programs make, shows in none obtained apart from it.
+func TestInProcessCatalogsOfTheFakesAreSeparate(t *testing.T) {
+	t.Parallel()
+	changed := fakes()
+	changed["claude"] = func(fakeproc.Process) int { return 9 }
+	delete(changed, "bash")
+	changed["ccusage"] = func(fakeproc.Process) int { return 0 }
+	separate := fakes()
+	if _, ok := separate["ccusage"]; ok {
+		t.Fatal("a program added to one catalog is in another")
+	}
+	if _, ok := separate["bash"]; !ok {
+		t.Fatal("a program removed from one catalog is gone from another")
+	}
+	if reflect.ValueOf(separate["claude"]).Pointer() != reflect.ValueOf(fakeclaude.Main).Pointer() {
+		t.Fatal("a program replaced in one catalog is replaced in another")
 	}
 }
 
@@ -62,7 +84,7 @@ func TestInProcessPicksTheFakeByTheCommandsName(t *testing.T) {
 func TestInProcessRunsBashAsTheFakeShell(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	out, exit := output(t, InProcess{}, supervisor.Command{Name: "bash", Args: []string{"-c", "echo made > new.txt; cat new.txt missing.txt; exit 3"}, Dir: dir})
+	out, exit := output(t, InProcess{Groups: supervisortest.NewGroups()}, supervisor.Command{Name: "bash", Args: []string{"-c", "echo made > new.txt; cat new.txt missing.txt; exit 3"}, Dir: dir})
 	if out != "made\ncat: missing.txt: No such file or directory\n" || exit.Code == nil || *exit.Code != 3 || exit.Signal != "" {
 		t.Fatalf("printed %q and exited %+v", out, exit)
 	}
@@ -81,7 +103,7 @@ func TestInProcessPicksTheTestsOwnProgramFirst(t *testing.T) {
 			return 0
 		}
 	}
-	starter := InProcess{Fakes: map[string]supervisortest.Fake{"ccusage": says("by name"), "/bin/claude": says("by path"), "claude": says("by base")}}
+	starter := InProcess{Groups: supervisortest.NewGroups(), Fakes: map[string]supervisortest.Fake{"ccusage": says("by name"), "/bin/claude": says("by path"), "claude": says("by base")}}
 	for command, want := range map[string]string{"ccusage": "by name", "/usr/bin/ccusage": "by name", "/bin/claude": "by path", "/opt/claude": "by base"} {
 		if out, _ := output(t, starter, supervisor.Command{Name: command}); out != want {
 			t.Errorf("%s ran the program %q, want %q", command, out, want)
@@ -119,7 +141,7 @@ func TestInProcessFakePiReportsThePackagesItInstalls(t *testing.T) {
 				}
 			}
 		}()
-		output(t, InProcess{Reports: reports}, supervisor.Command{Name: "pi", Args: args, Dir: dir, Stdin: strings.NewReader("SCENARIO:approve")})
+		output(t, InProcess{Groups: supervisortest.NewGroups(), Reports: reports}, supervisor.Command{Name: "pi", Args: args, Dir: dir, Stdin: strings.NewReader("SCENARIO:approve")})
 		close(reports)
 		<-read
 		return points

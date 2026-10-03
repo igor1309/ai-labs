@@ -18,6 +18,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 	"github.com/igor1309/ai-labs/gokit/clocktest"
 	"github.com/igor1309/ai-labs/gokit/supervisor"
+	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
 )
 
 var start = time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
@@ -37,7 +38,7 @@ func TestDecoratorConformance(t *testing.T) {
 	clock := clocktest.NewClock(start)
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {
-			return logging.Runner{Inner: composition.NewClaudeCode(command, supervisor.Runtime{Starter: runtimetest.InProcess{}, Timer: clock.Timer}), Adapter: "claude-code", Log: log, Clock: clock}
+			return logging.Runner{Inner: composition.NewClaudeCode(command, supervisor.Runtime{Starter: runtimetest.InProcess{Groups: supervisortest.NewGroups()}, Timer: clock.Timer}), Adapter: "claude-code", Log: log, Clock: clock}
 		},
 		Fake:      fake,
 		InProcess: true,
@@ -53,7 +54,7 @@ func TestLogsAreCorrelatedAndOmitPrompts(t *testing.T) {
 	var buffer bytes.Buffer
 	log := slog.New(logging.Handler{Handler: slog.NewJSONHandler(&buffer, &slog.HandlerOptions{Level: slog.LevelInfo})})
 	clock := clocktest.NewClock(start)
-	runner := logging.Runner{Inner: composition.NewClaudeCode(fake, supervisor.Runtime{Starter: runtimetest.InProcess{}, Timer: clock.Timer}), Adapter: "claude-code", Log: log, Clock: clock}
+	runner := logging.Runner{Inner: composition.NewClaudeCode(fake, supervisor.Runtime{Starter: runtimetest.InProcess{Groups: supervisortest.NewGroups()}, Timer: clock.Timer}), Adapter: "claude-code", Log: log, Clock: clock}
 	ctx := app.WithCorrelation(context.Background(), "run_id", "run-1", "process", "p")
 	runner.RunTurn(ctx, request("secret prompt SCENARIO:approve"), &runtimetest.Recorder{})
 

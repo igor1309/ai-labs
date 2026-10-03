@@ -31,7 +31,14 @@ type Fake func(fakeproc.Process) int
 // The fake is picked from Fakes by the command as given, else by its base
 // name. A command that names none fails to start, as a program missing
 // from PATH does.
+//
+// Its fakes' process groups are numbered by Groups. A starter with none,
+// as the zero value is, fails every start: starters whose groups must
+// differ, as those of one supervisor's runtimes and commands must, are
+// given one Groups to share.
 type InProcess struct {
+	// Groups numbers the process groups of the fakes it starts.
+	Groups *Groups
 	// Env is the environment every fake inherits, as "KEY=value"; a
 	// command's own Env replaces a variable of the same name. The test
 	// process's environment is never read.
@@ -53,14 +60,27 @@ type Report struct {
 	Point   string
 }
 
-// groups numbers the fakes' process groups from above any process ID the
-// system gives, so a reference to one names no real group: reaping it or
-// signalling it by number finds nothing.
-var groups atomic.Int64
+// Groups numbers the process groups of fakes started in process from
+// above any process ID the system gives, so a reference to one names no
+// real group: reaping it or signalling it by number finds nothing. Each
+// group it numbers is one it has not numbered before. Two Groups are
+// independent: either may number a group the other has.
+type Groups struct{ last atomic.Int64 }
 
-func init() { groups.Store(1 << 30) }
+// NewGroups is a Groups that has numbered no group.
+func NewGroups() *Groups {
+	g := &Groups{}
+	g.last.Store(1 << 30)
+	return g
+}
+
+// Next is a group g has not numbered before.
+func (g *Groups) Next() int { return int(g.last.Add(1)) }
 
 func (i InProcess) Start(c supervisor.Command) (supervisor.Process, error) {
+	if i.Groups == nil {
+		return nil, fmt.Errorf("supervisortest: no Groups to number the group of %q", c.Name)
+	}
 	fake, ok := i.fake(c.Name)
 	if !ok {
 		return nil, fmt.Errorf("supervisortest: no fake is named %q", c.Name)
@@ -77,7 +97,7 @@ func (i InProcess) Start(c supervisor.Command) (supervisor.Process, error) {
 		return nil, err
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	p := &inProcess{stdout: stdout, group: int(groups.Add(1)), token: "in process: " + c.Name, cancel: cancel, exited: make(chan struct{})}
+	p := &inProcess{stdout: stdout, group: i.Groups.Next(), token: "in process: " + c.Name, cancel: cancel, exited: make(chan struct{})}
 	report := func(point string) {
 		if i.Reports == nil {
 			return

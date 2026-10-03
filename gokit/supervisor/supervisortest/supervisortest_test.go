@@ -49,7 +49,7 @@ func printsEnv(name string) Fake {
 // command that names none fails to start.
 func TestInProcessPicksTheFakeByTheCommandAsGivenThenByItsBaseName(t *testing.T) {
 	t.Parallel()
-	starter := InProcess{Fakes: map[string]Fake{"tool": says("by name"), "/bin/runtime": says("by path"), "runtime": says("by base")}}
+	starter := InProcess{Groups: NewGroups(), Fakes: map[string]Fake{"tool": says("by name"), "/bin/runtime": says("by path"), "runtime": says("by base")}}
 	for command, want := range map[string]string{"tool": "by name", "/usr/bin/tool": "by name", "/bin/runtime": "by path", "/opt/runtime": "by base", "runtime": "by base"} {
 		if out, _ := output(t, starter, supervisor.Command{Name: command}); out != want {
 			t.Errorf("%s ran the program %q, want %q", command, out, want)
@@ -73,10 +73,10 @@ func TestInProcessTakesTheEnvironmentFromTheStarterAndTheCommand(t *testing.T) {
 		out, _ := output(t, starter, supervisor.Command{Name: "print", Env: env})
 		return out
 	}
-	if got := value(InProcess{Fakes: fakes}); got != "" {
+	if got := value(InProcess{Groups: NewGroups(), Fakes: fakes}); got != "" {
 		t.Errorf("with no environment given, the value is %q: the process's was read", got)
 	}
-	inherited := InProcess{Env: []string{"SUPERVISORTEST_VALUE=starter"}, Fakes: fakes}
+	inherited := InProcess{Groups: NewGroups(), Env: []string{"SUPERVISORTEST_VALUE=starter"}, Fakes: fakes}
 	if got := value(inherited); got != "starter" {
 		t.Errorf("the starter's environment gave %q", got)
 	}
@@ -91,7 +91,7 @@ func TestInProcessTakesTheEnvironmentFromTheStarterAndTheCommand(t *testing.T) {
 func TestInProcessRunsTheFakeAsTheCommandsProcess(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	starter := InProcess{Fakes: map[string]Fake{"echo": func(p fakeproc.Process) int {
+	starter := InProcess{Groups: NewGroups(), Fakes: map[string]Fake{"echo": func(p fakeproc.Process) int {
 		input, _ := io.ReadAll(p.Stdin)
 		fmt.Fprintf(p.Stdout, "%s %q %s %s", p.Dir, p.Args, input, p.Path("file"))
 		fmt.Fprint(p.Stderr, "complaint")
@@ -117,7 +117,7 @@ func TestInProcessRunsTheFakeAsTheCommandsProcess(t *testing.T) {
 func TestInProcessSignallingTheGroupEndsABlockedFake(t *testing.T) {
 	t.Parallel()
 	reports := make(chan Report)
-	process, err := InProcess{Fakes: map[string]Fake{"hang": fakeproc.Process.Block}, Reports: reports}.Start(supervisor.Command{Name: "hang"})
+	process, err := InProcess{Groups: NewGroups(), Fakes: map[string]Fake{"hang": fakeproc.Process.Block}, Reports: reports}.Start(supervisor.Command{Name: "hang"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,13 +148,28 @@ func TestInProcessSignallingTheGroupEndsABlockedFake(t *testing.T) {
 	}
 }
 
+// group is the group of a fake started through starter, which has ended.
+func group(t *testing.T, starter InProcess) int {
+	t.Helper()
+	process, err := starter.Start(supervisor.Command{Name: "version"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = io.ReadAll(process.Stdout())
+	process.Wait()
+	process.Stdout().Close()
+	return process.Group()
+}
+
 // Each fake leads a group of its own, whose number no real group has: a
 // reference to it, signalled by number as a reap does, reaches no process.
+// Starters given one Groups to share never give a group twice.
 func TestInProcessGroupsAreNoRealGroups(t *testing.T) {
 	t.Parallel()
+	groups := NewGroups()
 	seen := map[int]bool{}
 	for range 3 {
-		process, err := InProcess{Fakes: map[string]Fake{"version": says("1.0.0")}}.Start(supervisor.Command{Name: "version"})
+		process, err := InProcess{Groups: groups, Fakes: map[string]Fake{"version": says("1.0.0")}}.Start(supervisor.Command{Name: "version"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -172,5 +187,32 @@ func TestInProcessGroupsAreNoRealGroups(t *testing.T) {
 		_, _ = io.ReadAll(process.Stdout())
 		process.Wait()
 		process.Stdout().Close()
+	}
+}
+
+// Two Groups number their groups apart: the groups one has given do not
+// move the other on, which gives its first group as a fresh Groups does.
+func TestInProcessGroupsOfSeparateGroupsAreIndependent(t *testing.T) {
+	t.Parallel()
+	fakes := map[string]Fake{"version": says("1.0.0")}
+	one := InProcess{Groups: NewGroups(), Fakes: fakes}
+	first := group(t, one)
+	if first <= 1<<30 {
+		t.Fatalf("group %d is in the range of the system's process IDs", first)
+	}
+	if again := group(t, one); again == first {
+		t.Fatalf("one Groups gave group %d twice", first)
+	}
+	if other := group(t, InProcess{Groups: NewGroups(), Fakes: fakes}); other != first {
+		t.Fatalf("a second Groups gave group %d first, want %d: it moved on with the first", other, first)
+	}
+}
+
+// A starter given no Groups starts nothing: no group is numbered from
+// anywhere it was not given.
+func TestInProcessWithNoGroupsFailsToStart(t *testing.T) {
+	t.Parallel()
+	if process, err := (InProcess{Fakes: map[string]Fake{"version": says("1.0.0")}}).Start(supervisor.Command{Name: "version"}); err == nil {
+		t.Fatalf("started with no Groups: %+v", process)
 	}
 }

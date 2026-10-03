@@ -20,6 +20,7 @@ import (
 	// fresh is the session the fake starts.
 	"github.com/igor1309/ai-labs/gokit/clocktest"
 	supervisor "github.com/igor1309/ai-labs/gokit/supervisor"
+	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
 )
 
 // The fake this package builds is removed when its tests end.
@@ -33,7 +34,7 @@ const fake = "pi"
 // lookup times out unless a test advances a clock of its own, and no grace
 // passes.
 func stillSupervisor() supervisor.Runtime {
-	return stillOver(runtimetest.InProcess{})
+	return stillOver(runtimetest.InProcess{Groups: supervisortest.NewGroups()})
 }
 
 // stillOver is stillSupervisor starting through starter.

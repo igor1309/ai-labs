@@ -41,7 +41,7 @@ func (s *starts) Start(command supervisor.Command) (supervisor.Process, error) {
 
 // program is a starter whose only command, runtime, is fake.
 func program(fake supervisortest.Fake) *starts {
-	return &starts{InProcess: supervisortest.InProcess{Fakes: map[string]supervisortest.Fake{"runtime": fake}}}
+	return &starts{InProcess: supervisortest.InProcess{Groups: supervisortest.NewGroups(), Fakes: map[string]supervisortest.Fake{"runtime": fake}}}
 }
 
 // A turn's process is started by the runtime's starter, as the spec says,
@@ -216,7 +216,7 @@ func TestAVersionAskedUnderAnEndedContextStartsNothing(t *testing.T) {
 func TestACommandStartsThroughTheCommandsStarter(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	starter := &starts{InProcess: supervisortest.InProcess{Fakes: map[string]supervisortest.Fake{"bash": func(p fakeproc.Process) int {
+	starter := &starts{InProcess: supervisortest.InProcess{Groups: supervisortest.NewGroups(), Fakes: map[string]supervisortest.Fake{"bash": func(p fakeproc.Process) int {
 		fmt.Fprint(p.Stdout, "out ")
 		fmt.Fprint(p.Stderr, "err")
 		return 4

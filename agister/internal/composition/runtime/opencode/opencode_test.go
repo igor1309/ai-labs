@@ -21,6 +21,7 @@ import (
 	// fresh is the session the fake starts.
 	"github.com/igor1309/ai-labs/gokit/clocktest"
 	supervisor "github.com/igor1309/ai-labs/gokit/supervisor"
+	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
 )
 
 // The fake this package builds is removed when its tests end.
@@ -34,7 +35,7 @@ const fake = "opencode"
 // lookup times out unless a test advances a clock of its own, and no grace
 // passes.
 func stillSupervisor() supervisor.Runtime {
-	return stillOver(runtimetest.InProcess{})
+	return stillOver(runtimetest.InProcess{Groups: supervisortest.NewGroups()})
 }
 
 // stillOver is stillSupervisor starting through starter.
@@ -136,7 +137,8 @@ func TestTheConfigReplacesAnInheritedOne(t *testing.T) {
 	t.Parallel()
 	inherited := runner(t)
 	inherited.Transport = composition.OpenCodeTransport{Supervisor: stillOver(runtimetest.InProcess{
-		Env: []string{opencode.ConfigVariable + `={"agent":{"build":{"permission":{"*":"allow"}}}}`},
+		Groups: supervisortest.NewGroups(),
+		Env:    []string{opencode.ConfigVariable + `={"agent":{"build":{"permission":{"*":"allow"}}}}`},
 	})}
 	sink := &runtimetest.Recorder{}
 	if turn := composition.AdaptOpenCode(inherited).RunTurn(context.Background(), request("SCENARIO:approve"), sink); string(turn.Status) != string(run.Completed) {

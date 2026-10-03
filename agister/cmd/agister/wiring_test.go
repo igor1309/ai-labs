@@ -29,6 +29,7 @@ import (
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 	"github.com/igor1309/ai-labs/gokit/clocktest"
 	"github.com/igor1309/ai-labs/gokit/supervisor"
+	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
 )
 
 // marker is a definitions source told apart from every other by identity,
@@ -587,7 +588,7 @@ func TestTheCompositionStartsItsRuntimesThroughItsStarter(t *testing.T) {
 	if composed.starter != (supervisor.Exec{}) {
 		t.Fatalf("the process starts its runtimes with a %T", composed.starter)
 	}
-	starter := &started{}
+	starter := &started{InProcess: runtimetest.InProcess{Groups: supervisortest.NewGroups()}}
 	composed.starter = starter
 	composed.git = fakeGit(gitOf(t, home))
 	// The call waits on a clock that never moves, not on the process's.
@@ -651,8 +652,9 @@ verify:
 	if want := (fsruns.Store{Dir: filepath.Join(home, "runs"), Appends: appends}); composed.runs != want {
 		t.Fatalf("the process's run store = %+v, want %+v", composed.runs, want)
 	}
-	starter := &started{}
-	composed.starter, composed.commands = runtimetest.InProcess{}, starter
+	groups := supervisortest.NewGroups()
+	starter := &started{InProcess: runtimetest.InProcess{Groups: groups}}
+	composed.starter, composed.commands = runtimetest.InProcess{Groups: groups}, starter
 	composed.git = fakeGit(gitOf(t, home))
 	// The call waits on a clock that never moves, not on the process's.
 	composed.timer = clocktest.NewClock(stillAt).Timer

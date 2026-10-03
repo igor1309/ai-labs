@@ -29,6 +29,7 @@ import (
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 	"github.com/igor1309/ai-labs/gokit/clocktest"
 	"github.com/igor1309/ai-labs/gokit/supervisor"
+	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
 )
 
 // The verification loop (ADR-002; where the command runs, ADR-005) on
@@ -207,6 +208,10 @@ type seams struct {
 	commands app.VerifyCommands
 	// setupCommands runs the checkout setup command.
 	setupCommands app.SetupCommands
+	// groups numbers the process groups of the commands run in process,
+	// verification's and setup's alike: a test that gives commands of its
+	// own (inProcessCommands) gives the Groups they number from.
+	groups *supervisortest.Groups
 }
 
 // newLoop is a repository of the fake of git with a base revision,
@@ -314,11 +319,14 @@ func loopOn(t *testing.T, over loopGit, with seams, settings verifySettings, ste
 	// A turn or a command that ends by itself waits on no time: its
 	// timeout, graces and staleness limits are on a clock that never moves.
 	still := clocktest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
+	if with.groups == nil {
+		with.groups = supervisortest.NewGroups()
+	}
 	if with.commands == nil {
-		with.commands = runtimecomposition.Commands{Supervisor: inProcessCommands(still.Timer)}
+		with.commands = runtimecomposition.Commands{Supervisor: inProcessCommands(with.groups, still.Timer)}
 	}
 	if with.setupCommands == nil {
-		with.setupCommands = runtimecomposition.SetupCommands{Supervisor: inProcessCommands(still.Timer)}
+		with.setupCommands = runtimecomposition.SetupCommands{Supervisor: inProcessCommands(with.groups, still.Timer)}
 	}
 	repo := over.repo
 
@@ -422,9 +430,10 @@ verify:
 }
 
 // inProcessCommands is the command runner, the bash it starts a fake run
-// in process: no command is started as a process. Its waits are on timer.
-func inProcessCommands(timer timer) supervisor.Commands {
-	return supervisor.Commands{Starter: runtimetest.InProcess{}, Timer: timer}
+// in process: no command is started as a process. Its groups are numbered
+// by groups and its waits are on timer.
+func inProcessCommands(groups *supervisortest.Groups, timer timer) supervisor.Commands {
+	return supervisor.Commands{Starter: runtimetest.InProcess{Groups: groups}, Timer: timer}
 }
 
 // unpolled is Observe's poll timer for tests whose runs all run in the
@@ -655,8 +664,9 @@ func TestVerifyRunTimeout(t *testing.T) {
 	// The run's timeout passes on the command runner's clock once the run
 	// waits on it.
 	clock := clocktest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
-	commands := runtimecomposition.Commands{Supervisor: inProcessCommands(clock.Timer)}
-	h := newLoopWith(t, seams{commands: commands}, verifySettings{command: blocks, timeout: "1s"}, state("one"))
+	groups := supervisortest.NewGroups()
+	commands := runtimecomposition.Commands{Supervisor: inProcessCommands(groups, clock.Timer)}
+	h := newLoopWith(t, seams{commands: commands, groups: groups}, verifySettings{command: blocks, timeout: "1s"}, state("one"))
 	id := h.submit(contract.CallRequest{Timeout: "30s"})
 	// Should the test fail first, the cleanup ends the call, and the
 	// command with it.
@@ -682,8 +692,9 @@ func TestVerifyCallTimeoutBoundsTheLoop(t *testing.T) {
 	copies := func(made app.VerifyCopies) app.VerifyCopies {
 		return slowCopies{VerifyCopies: made, after: func() { clock.Advance(59 * time.Second) }}
 	}
-	commands := runtimecomposition.Commands{Supervisor: inProcessCommands(clock.Timer)}
-	h := newLoopWith(t, seams{clock: clock, copies: copies, commands: commands}, verifySettings{command: blocks, timeout: "20s"}, state("one"))
+	groups := supervisortest.NewGroups()
+	commands := runtimecomposition.Commands{Supervisor: inProcessCommands(groups, clock.Timer)}
+	h := newLoopWith(t, seams{clock: clock, copies: copies, commands: commands, groups: groups}, verifySettings{command: blocks, timeout: "20s"}, state("one"))
 	id := h.submit(contract.CallRequest{})
 	cleanupRun(t, h.runs, h.hosted, id)
 	clock.Started(time.Second)
@@ -1082,8 +1093,9 @@ func TestVerifyRunWithoutOutputIsKilledAsStale(t *testing.T) {
 	// ends on its own.
 	const noOutput = 7 * time.Second
 	clock := clocktest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
-	stale := inProcessCommands(clock.Timer)
-	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: stale}}, verifySettings{command: blocks + " & wait", policy: "stale: {no_output: 7s}\n"}, state("one"))
+	groups := supervisortest.NewGroups()
+	stale := inProcessCommands(groups, clock.Timer)
+	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: stale}, groups: groups}, verifySettings{command: blocks + " & wait", policy: "stale: {no_output: 7s}\n"}, state("one"))
 	id := h.submit(contract.CallRequest{})
 	cleanupRun(t, h.runs, h.hosted, id)
 	clock.Started(noOutput)

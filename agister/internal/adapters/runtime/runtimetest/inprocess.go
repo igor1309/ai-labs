@@ -14,17 +14,20 @@ import (
 
 // fakes are the fake runtimes, by the name of the command that starts
 // each: the CLI's own name, or the name Binary builds the fake under. With
-// them is the bash a setup or verification command runs under.
-var fakes = map[string]supervisortest.Fake{
-	"bash":         fakebash.Main,
-	"claude":       fakeclaude.Main,
-	"fakeclaude":   fakeclaude.Main,
-	"codex":        fakecodex.Main,
-	"fakecodex":    fakecodex.Main,
-	"opencode":     fakeopencode.Main,
-	"fakeopencode": fakeopencode.Main,
-	"pi":           fakepi.Main,
-	"fakepi":       fakepi.Main,
+// them is the bash a setup or verification command runs under. Each call
+// is a catalog of its own: a change to one shows in no other.
+func fakes() map[string]supervisortest.Fake {
+	return map[string]supervisortest.Fake{
+		"bash":         fakebash.Main,
+		"claude":       fakeclaude.Main,
+		"fakeclaude":   fakeclaude.Main,
+		"codex":        fakecodex.Main,
+		"fakecodex":    fakecodex.Main,
+		"opencode":     fakeopencode.Main,
+		"fakeopencode": fakeopencode.Main,
+		"pi":           fakepi.Main,
+		"fakepi":       fakepi.Main,
+	}
 }
 
 // InProcess is a supervisor.Starter that starts no process: it runs the
@@ -37,7 +40,13 @@ var fakes = map[string]supervisortest.Fake{
 // codex, opencode, pi, or fake<name>, as Binary's paths end) or, for bash,
 // the fake shell (fakebash). A command that names none fails to start, as
 // a program missing from PATH does.
+//
+// Its fakes' process groups are numbered by Groups; with none, as the zero
+// value has, every start fails, as supervisortest.InProcess's does.
 type InProcess struct {
+	// Groups numbers the process groups of the fakes it starts: one
+	// shared by every starter whose groups must differ.
+	Groups *supervisortest.Groups
 	// Env is the environment every fake inherits, as "KEY=value"; a
 	// command's own Env replaces a variable of the same name. The test
 	// process's environment is never read.
@@ -50,7 +59,7 @@ type InProcess struct {
 }
 
 func (i InProcess) Start(c supervisor.Command) (supervisor.Process, error) {
-	all := maps.Clone(fakes)
+	all := fakes()
 	maps.Copy(all, i.Fakes)
-	return supervisortest.InProcess{Env: i.Env, Fakes: all, Reports: i.Reports}.Start(c)
+	return supervisortest.InProcess{Groups: i.Groups, Env: i.Env, Fakes: all, Reports: i.Reports}.Start(c)
 }

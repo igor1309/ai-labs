@@ -31,13 +31,14 @@ const fake = "codex"
 // stillSupervisor is the real supervisor over the fakes run in process,
 // with its waits on a manual clock that nothing advances: no turn or
 // lookup times out unless a test advances a clock of its own, and no grace
-// passes.
+// passes. Its starter numbers groups of its own: a test whose lookups
+// start through another starter shares one Groups with it (stillOver).
 func stillSupervisor() supervisor.Runtime {
-	return stillOver(runtimetest.InProcess{})
+	return stillOver(runtimetest.InProcess{Groups: supervisortest.NewGroups()})
 }
 
 // stillOver is stillSupervisor starting through starter, which carries a
-// test's own ccusage.
+// test's own ccusage, or the Groups a test's turn and lookups share.
 func stillOver(starter runtimetest.InProcess) supervisor.Runtime {
 	return supervisor.Runtime{Starter: starter, Timer: clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}
 }
@@ -100,9 +101,9 @@ func listing(cost string) codex.Sessions {
 }
 
 // withCCUsage is a starter whose ccusage is program, run in process as the
-// fake runtimes are.
-func withCCUsage(program supervisortest.Fake) runtimetest.InProcess {
-	return runtimetest.InProcess{Fakes: map[string]supervisortest.Fake{"ccusage": program}}
+// fake runtimes are, its groups numbered by groups.
+func withCCUsage(groups *supervisortest.Groups, program supervisortest.Fake) runtimetest.InProcess {
+	return runtimetest.InProcess{Groups: groups, Fakes: map[string]supervisortest.Fake{"ccusage": program}}
 }
 
 // printsListing is a ccusage that prints a listing of cost and exits with
@@ -147,13 +148,16 @@ func TestTurnCostIsTheThreadsFromCCUsage(t *testing.T) {
 // runtime's does.
 func TestTurnCostFromTheInstalledCCUsage(t *testing.T) {
 	t.Parallel()
-	lookups := stillOver(withCCUsage(func(p fakeproc.Process) int {
+	// The turn and its lookup start through starters of one Groups, as
+	// one machine's processes are numbered.
+	groups := supervisortest.NewGroups()
+	lookups := stillOver(withCCUsage(groups, func(p fakeproc.Process) int {
 		if strings.Join(p.Args, " ") != "codex session --json" {
 			return 3
 		}
 		return printsListing("0.25", 0)(p)
 	}))
-	runner := &codex.Runner{Transport: composition.CodexTransport{Supervisor: stillSupervisor()}, Command: fake, Sessions: codex.CCUsage(composition.CodexTransport{Supervisor: lookups}, "ccusage", 0)}
+	runner := &codex.Runner{Transport: composition.CodexTransport{Supervisor: stillOver(runtimetest.InProcess{Groups: groups})}, Command: fake, Sessions: codex.CCUsage(composition.CodexTransport{Supervisor: lookups}, "ccusage", 0)}
 	sink := &runtimetest.Recorder{}
 	turn := run.Own(composition.AdaptCodex(runner).RunTurn(context.Background(), request("SCENARIO:approve"), sink), false)
 	if string(turn.Status) != string(run.Completed) || turn.CostUSD == nil || *turn.CostUSD != 0.25 {
@@ -235,9 +239,10 @@ func TestCancellingTheLookupReturnsWhenAChildHoldsItsStdout(t *testing.T) {
 			}
 		}
 	}()
-	lookups := withCCUsage(fakeproc.Process.Block)
+	groups := supervisortest.NewGroups()
+	lookups := withCCUsage(groups, fakeproc.Process.Block)
 	lookups.Reports = reports
-	runner := &codex.Runner{Transport: composition.CodexTransport{Supervisor: stillSupervisor()}, Command: fake, Sessions: codex.CCUsage(composition.CodexTransport{Supervisor: stillOver(lookups)}, "ccusage", 0)}
+	runner := &codex.Runner{Transport: composition.CodexTransport{Supervisor: stillOver(runtimetest.InProcess{Groups: groups})}, Command: fake, Sessions: codex.CCUsage(composition.CodexTransport{Supervisor: stillOver(lookups)}, "ccusage", 0)}
 	// Only the cancellation ends the lookup: a turn it held would never
 	// return.
 	turn := composition.AdaptCodex(runner).RunTurn(ctx, request("SCENARIO:approve"), &runtimetest.Recorder{})
@@ -259,14 +264,15 @@ func TestTheLookupEndsWhenTheTurnsTimeoutRunsOut(t *testing.T) {
 	t.Parallel()
 	start := time.Date(2026, 9, 30, 10, 0, 0, 0, time.UTC)
 	clock := clocktest.NewClock(start)
-	lookup := codex.CCUsage(composition.CodexTransport{Supervisor: supervisor.Runtime{Starter: withCCUsage(fakeproc.Process.Block), Timer: clock.Timer}}, "ccusage", 0)
+	groups := supervisortest.NewGroups()
+	lookup := codex.CCUsage(composition.CodexTransport{Supervisor: supervisor.Runtime{Starter: withCCUsage(groups, fakeproc.Process.Block), Timer: clock.Timer}}, "ccusage", 0)
 	// What is left passes once the lookup has started its wait.
 	const left = 100 * time.Millisecond
 	go func() { clock.Started(left); clock.Advance(left) }()
 	readings := 0
 	var lookupErr error
 	runner := &codex.Runner{
-		Transport: composition.CodexTransport{Supervisor: stillSupervisor()},
+		Transport: composition.CodexTransport{Supervisor: stillOver(runtimetest.InProcess{Groups: groups})},
 		Command:   fake,
 		// The first reading starts the turn; by any later one only a moment
 		// of its minute is left.
@@ -332,6 +338,7 @@ func TestNoLookupOnceTheCallIsCancelled(t *testing.T) {
 // non-zero or missing leave the cost unknown.
 func TestTurnCostUnknownWithoutCCUsagesPrice(t *testing.T) {
 	t.Parallel()
+	groups := supervisortest.NewGroups()
 	for name, sessions := range map[string]codex.Sessions{
 		"zero": listing("0"),
 		"missing": func(context.Context, time.Duration, codex.LookupSink) ([]byte, error) {
@@ -340,10 +347,10 @@ func TestTurnCostUnknownWithoutCCUsagesPrice(t *testing.T) {
 		"failing": func(context.Context, time.Duration, codex.LookupSink) ([]byte, error) {
 			return nil, errors.New("exit status 1")
 		},
-		"non-zero": codex.CCUsage(composition.CodexTransport{Supervisor: stillOver(withCCUsage(printsListing("0.25", 1)))}, "ccusage", 0),
-		"absent":   codex.CCUsage(composition.CodexTransport{Supervisor: stillSupervisor()}, "ccusage", 0),
+		"non-zero": codex.CCUsage(composition.CodexTransport{Supervisor: stillOver(withCCUsage(groups, printsListing("0.25", 1)))}, "ccusage", 0),
+		"absent":   codex.CCUsage(composition.CodexTransport{Supervisor: stillOver(runtimetest.InProcess{Groups: groups})}, "ccusage", 0),
 	} {
-		runner := &codex.Runner{Transport: composition.CodexTransport{Supervisor: stillSupervisor()}, Command: fake, Sessions: sessions}
+		runner := &codex.Runner{Transport: composition.CodexTransport{Supervisor: stillOver(runtimetest.InProcess{Groups: groups})}, Command: fake, Sessions: sessions}
 		turn := run.Own(composition.AdaptCodex(runner).RunTurn(context.Background(), request("SCENARIO:approve"), &runtimetest.Recorder{}), false)
 		if string(turn.Status) != string(run.Completed) || turn.CostUSD != nil || turn.Session != nil && turn.Session.CostUSD != nil {
 			t.Errorf("%s: turn = %+v", name, turn)
