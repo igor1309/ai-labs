@@ -36,7 +36,11 @@ func workflowRun(t *testing.T, home string) (string, domain.Record) {
 // The shipped example workflow, end to end on the fake runtime: both
 // fan-out nodes, then the join, whose text is the workflow's output; each
 // node is a run of its own that names the workflow run.
+//
+// Contract test: the composition over the example settings and a real git
+// repository; the workflow's runtimes are fakes run in process.
 func TestExampleWorkflowEndToEnd(t *testing.T) {
+	t.Parallel()
 	home, repo := setup(t, "approve")
 	if r := agister(t, home, repo, "workflow", "show", "review_panel"); r.code != 0 || !strings.Contains(r.stdout, "the collection as input reviews, and nothing else") {
 		t.Fatalf("workflow show: %d\n%s%s", r.code, r.stdout, r.stderr)
@@ -103,7 +107,11 @@ func TestExampleWorkflowEndToEnd(t *testing.T) {
 // join receives the completed output and the other node's status and class,
 // the workflow's result is the join's, and both its record and its progress
 // lines name the node that did not complete.
+//
+// Contract test: the composition over the example settings and a real git
+// repository; the workflow's runtimes are fakes run in process.
 func TestExampleWorkflowJoinsWithoutATimedOutNode(t *testing.T) {
+	t.Parallel()
 	home, repo := setup(t, "approve")
 	// The adversarial review alone reads a file that makes the fake runtime
 	// hang, first among its inputs, under a timeout of its own, which the
@@ -164,6 +172,13 @@ func lastRunIn(t *testing.T, dir string) run {
 // abandoned in process, as the kill leaves them, with their runtimes
 // blocked; that a SIGKILL leaves a run so is
 // TestNextCallReapsWhatAKilledRunLeftBehind's.
+//
+// Contract test: the composition over the example settings and a real git
+// repository; the workflow's runtimes are fakes run in process.
+//
+// Serial: a run's owner lock is its open file's (flock). A process another
+// test starts holds a copy from its fork to its exec, and the lock an
+// abandoned run gave up would read as held.
 func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 	home, repo := setup(t, "hang")
 	at := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)

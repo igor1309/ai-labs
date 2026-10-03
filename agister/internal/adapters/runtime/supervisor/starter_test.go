@@ -48,6 +48,7 @@ func program(fake runtimetest.Fake) *starts {
 // and supervised as any process is: its lines, its stderr, its exit and
 // the reference to the group the starter gave it.
 func TestATurnStartsThroughTheRuntimesStarter(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	starter := program(func(p fakeproc.Process) int {
 		fmt.Fprintln(p.Stdout, "first")
@@ -88,6 +89,7 @@ func TestATurnStartsThroughTheRuntimesStarter(t *testing.T) {
 // A process the starter cannot start is a spawn failure, with the
 // starter's reason.
 func TestAStartThatFailsIsASpawnFailure(t *testing.T) {
+	t.Parallel()
 	sink := &events{}
 	evidence := supervisor.Runtime{Starter: program(nil)}.Run(context.Background(), supervisor.Spec{Command: "missing", Timeout: time.Minute}, sink, func(string) {})
 	if evidence.SpawnError == "" || evidence.Exit != nil || !sink.has("SPAWN_FAILED") || len(sink.started) != 0 {
@@ -99,6 +101,7 @@ func TestAStartThatFailsIsASpawnFailure(t *testing.T) {
 // runtime's starter; a command that does not start, or exits non-zero, has
 // none.
 func TestVersionStartsThroughTheRuntimesStarter(t *testing.T) {
+	t.Parallel()
 	starter := program(func(p fakeproc.Process) int {
 		fmt.Fprintln(p.Stderr, "a warning")
 		fmt.Fprintln(p.Stdout, " 1.2.3 ")
@@ -128,8 +131,10 @@ func TestVersionStartsThroughTheRuntimesStarter(t *testing.T) {
 // have passed on the runtime's timer, or when the call is cancelled, and
 // has no version.
 func TestAVersionThatNeverEndsIsKilled(t *testing.T) {
+	t.Parallel()
 	const timeout = 20 * time.Second
 	t.Run("timeout", func(t *testing.T) {
+		t.Parallel()
 		clock := systemtest.NewClock(start)
 		runtime := supervisor.Runtime{Starter: program(fakeproc.Process.Block), Timer: clock.Timer}
 		go func() { clock.Started(timeout); clock.Advance(timeout) }()
@@ -139,6 +144,7 @@ func TestAVersionThatNeverEndsIsKilled(t *testing.T) {
 		}
 	})
 	t.Run("cancelled", func(t *testing.T) {
+		t.Parallel()
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		// Cancel once the command waits to be ended: it says so.
@@ -166,6 +172,7 @@ func TestAVersionThatNeverEndsIsKilled(t *testing.T) {
 // A command is bash started by the commands' starter in the request's
 // directory, its stderr with its stdout, and supervised as any command is.
 func TestACommandStartsThroughTheCommandsStarter(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	starter := &starts{InProcess: runtimetest.InProcess{Fakes: map[string]runtimetest.Fake{"bash": func(p fakeproc.Process) int {
 		fmt.Fprint(p.Stdout, "out ")

@@ -25,6 +25,7 @@ type (
 // agent's config in the environment, directory, prompt on stdin, timeout and
 // the runner's kill grace.
 func TestTheTransportIsHandedTheTurn(t *testing.T) {
+	t.Parallel()
 	for name, resume := range map[string]string{"fresh": "", "resumed": fresh} {
 		spy := &spyTransport{}
 		runner := &opencode.Runner{Transport: spy, Command: "/opt/opencode", KillGrace: 3 * time.Second}
@@ -63,6 +64,7 @@ func TestTheTransportIsHandedTheTurn(t *testing.T) {
 // A turn the runtime reported nothing for is decided by the transport's
 // evidence: Agister's timeout, or a signal Agister did not send.
 func TestATurnIsDecidedByTheTransportsEvidence(t *testing.T) {
+	t.Parallel()
 	for name, c := range map[string]struct {
 		evidence opencode.Evidence
 		status   opencode.Status
@@ -81,6 +83,7 @@ func TestATurnIsDecidedByTheTransportsEvidence(t *testing.T) {
 }
 
 func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
+	t.Parallel()
 	spy := &spyTransport{Output: "1.14.2"}
 	identity, err := opencode.New("/opt/opencode", spy).Identity(context.Background())
 	if err != nil || identity.Version != "1.14.2" || identity.Contract != opencode.Contract {
@@ -98,6 +101,7 @@ func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
 // Classification still quotes the process's bounded stderr, including a tail
 // with a cut marker, and preserves the full retained tail as evidence.
 func TestTheTransportStderrDecidesASilentFailure(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		code    int
 		tail    string

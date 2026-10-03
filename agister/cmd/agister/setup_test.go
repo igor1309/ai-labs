@@ -25,6 +25,7 @@ import (
 // the operating system here, as the process's own do; only the runtime is
 // a fake.
 func TestSetupThroughProductionComposition(t *testing.T) {
+	t.Parallel()
 	realShell := func(config cli.Config) composition {
 		c := inProcess(config)
 		c.commands = supervisor.Exec{}
@@ -40,6 +41,7 @@ func TestSetupThroughProductionComposition(t *testing.T) {
 		{"failure", "echo broken; exit 3", "broken\n", cli.ExitFailed, domain.Failed, domain.ClassSetupFailed},
 	} {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			home, repo := setup(t, "approve")
 			write(t, filepath.Join(home, "workspace.yaml"), "schema: agister.workspace/v1alpha1\nsetup:\n  command: "+c.command+"\n  timeout: 20s\n")
 			result := agisterOver(t, realShell, home, repo, "run", "adversarial_review", "--param", "base=main", "--timeout", "1m")
@@ -98,7 +100,11 @@ func setupRunsOf(h *loopHarness, record domain.Record) []app.SetupCommandRequest
 // working directory has what it made; repair turns continue in it without
 // running it again; the verification command's clean copy has none of it,
 // and the delivered patch carries none of it.
+//
+// Contract test: the composition's checkouts in a real git repository; the
+// setup command is a fake shell run in process.
 func TestSetupPreparesTheCheckoutOnceBeforeTheFirstTurn(t *testing.T) {
+	t.Parallel()
 	made := map[string]string{"config.log": "prepared\n"}
 	h := newLoop(t, verifySettings{
 		setup:   `{command: "echo prepared >> config.log", timeout: 20s}`,
@@ -131,7 +137,11 @@ func TestSetupPreparesTheCheckoutOnceBeforeTheFirstTurn(t *testing.T) {
 // changes a tracked file or adds a file that is not ignored fails the call
 // before any turn; its run is on record, and the checkout is released
 // (wait checks that).
+//
+// Contract test: the composition's checkouts in a real git repository; the
+// setup command is a fake shell run in process.
 func TestAFailedSetupFailsTheCallWithNoTurn(t *testing.T) {
+	t.Parallel()
 	// The timeout passes on the command runner's clock once the setup
 	// waits on it; the command never ends on its own, so only the timeout
 	// can end it, and wait's own bound fails the test if nothing does.
@@ -169,6 +179,7 @@ func TestAFailedSetupFailsTheCallWithNoTurn(t *testing.T) {
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			h := newLoopWith(t, c.with, verifySettings{setup: c.setup}, state("pass"))
 			id := h.submit(contract.CallRequest{})
 			// Whatever the assertions find, no setup command outlives the
@@ -194,7 +205,11 @@ func TestAFailedSetupFailsTheCallWithNoTurn(t *testing.T) {
 // revision's, not what the checkout was made with: a post-checkout hook
 // that changes a tracked file fails the call though the setup changes
 // nothing, and no turn runs on it.
+//
+// Contract test: the composition's checkouts in a real git repository; the
+// setup command is a fake shell run in process.
 func TestACheckoutHookThatChangesATrackedFileFailsTheSetup(t *testing.T) {
+	t.Parallel()
 	h := newLoop(t, verifySettings{setup: `{command: "true", timeout: 20s}`}, state("pass"))
 	hook := filepath.Join(h.repo, ".git", "hooks", "post-checkout")
 	write(t, hook, "#!/bin/sh\necho hooked > state\n")
@@ -215,7 +230,11 @@ func TestACheckoutHookThatChangesATrackedFileFailsTheSetup(t *testing.T) {
 // ADR-012 rule 2: workspace.yaml's setup applies to a process with a
 // checkout and none of its own; the repository's takes priority over the
 // global one, and the record names the document it came from.
+//
+// Contract test: the composition's checkouts in a real git repository; the
+// setup command is a fake shell run in process.
 func TestTheWorkspaceSetupIsTheDefaultAndTheRepositorysWins(t *testing.T) {
+	t.Parallel()
 	workspace := func(from string) string {
 		return "schema: agister.workspace/v1alpha1\nsetup:\n  command: echo " + from + " > from.log\n  timeout: 20s\n"
 	}
@@ -230,6 +249,7 @@ func TestTheWorkspaceSetupIsTheDefaultAndTheRepositorysWins(t *testing.T) {
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			h := newLoop(t, c.settings, reads(map[string]string{"from.log": c.want}, "pass"))
 			record := h.call(contract.CallRequest{})
 			expect(t, record, domain.Completed, "", "")

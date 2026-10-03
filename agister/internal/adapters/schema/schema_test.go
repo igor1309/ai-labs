@@ -10,6 +10,7 @@ import (
 const doc = `{"type":"object","required":["verdict"],"properties":{"verdict":{"enum":["yes","no"]}}}`
 
 func TestCompile(t *testing.T) {
+	t.Parallel()
 	v := schema.Validator{}
 	if err := v.Compile([]byte(doc)); err != nil {
 		t.Fatal(err)
@@ -23,6 +24,7 @@ func TestCompile(t *testing.T) {
 }
 
 func TestValidate(t *testing.T) {
+	t.Parallel()
 	v := schema.Validator{}
 	if err := v.Validate([]byte(doc), []byte(`{"verdict":"yes"}`)); err != nil {
 		t.Fatal(err)

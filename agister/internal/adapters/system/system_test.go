@@ -12,6 +12,7 @@ import (
 // A stamp sorts as the times it is made at, to the microsecond, is told
 // apart from another made at the same time, and is one path segment.
 func TestStamp(t *testing.T) {
+	t.Parallel()
 	ids := system.IDs{}
 	earlier := time.Date(2026, 10, 2, 11, 59, 59, 999_999_000, time.UTC)
 	later := earlier.Add(time.Microsecond)

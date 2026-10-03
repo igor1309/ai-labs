@@ -22,6 +22,7 @@ var codex = definition.Mapping{Select: "one", Primitives: []definition.Primitive
 }}
 
 func TestAnySelectsEveryFittingPrimitiveAndWithholdsTheRest(t *testing.T) {
+	t.Parallel()
 	plan, err := enforce.Make([]string{"repository.read", "repository.diff", "repository.search"}, claude, nil, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -32,6 +33,7 @@ func TestAnySelectsEveryFittingPrimitiveAndWithholdsTheRest(t *testing.T) {
 }
 
 func TestRequiredPermissionsCannotBeWithheld(t *testing.T) {
+	t.Parallel()
 	_, err := enforce.Make([]string{"repository.read", "repository.diff"}, claude, []string{"repository.diff"}, nil)
 	if err == nil || !strings.Contains(err.Error(), "required permissions would be withheld: repository.diff") {
 		t.Fatalf("err = %v", err)
@@ -39,6 +41,7 @@ func TestRequiredPermissionsCannotBeWithheld(t *testing.T) {
 }
 
 func TestStateReachingPermissionsAreNeverGranted(t *testing.T) {
+	t.Parallel()
 	all := []string{"process.execute", "repository.read", "repository.search", "repository.diff", "repository.history.read", "host.read"}
 	plan, err := enforce.Make(all, claude, nil, []string{"host.read"})
 	if err != nil {
@@ -50,6 +53,7 @@ func TestStateReachingPermissionsAreNeverGranted(t *testing.T) {
 }
 
 func TestOneRefusesWhenNoModeFits(t *testing.T) {
+	t.Parallel()
 	_, err := enforce.Make([]string{"repository.read", "repository.diff", "repository.search"}, codex, nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "read-only also grants process.execute") {
 		t.Fatalf("err = %v", err)
@@ -63,6 +67,7 @@ func TestOneRefusesWhenNoModeFits(t *testing.T) {
 // Property: whatever the mapping and permissions, granted primitives never
 // grant anything outside the permissions, nor anything state-reaching.
 func TestPlansNeverExceedThePermissions(t *testing.T) {
+	t.Parallel()
 	names := []string{"a", "b", "c", "d", "e", "f"}
 	random := rand.New(rand.NewSource(1))
 	pick := func() []string {

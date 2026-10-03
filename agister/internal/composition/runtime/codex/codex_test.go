@@ -59,6 +59,7 @@ func request(prompt string) app.TurnRequest {
 // Contract test: the Codex adapter against its built fake, a real process
 // under the real supervisor.
 func TestConformance(t *testing.T) {
+	t.Parallel()
 	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {
@@ -73,6 +74,7 @@ func TestConformance(t *testing.T) {
 }
 
 func TestIdentityReportsResume(t *testing.T) {
+	t.Parallel()
 	identity, err := codex.New(fake, composition.CodexTransport{Supervisor: stillSupervisor()}).Identity(context.Background())
 	if err != nil || identity.Contract != "codex/2" || !identity.Resume || identity.CostLimit {
 		t.Fatalf("identity = %+v, %v", identity, err)
@@ -115,6 +117,7 @@ func printsListing(cost string, code int) runtimetest.Fake {
 // for the thread before it: all of it for a fresh thread, the difference
 // for a resumed one.
 func TestTurnCostIsTheThreadsFromCCUsage(t *testing.T) {
+	t.Parallel()
 	runner := &codex.Runner{Transport: composition.CodexTransport{Supervisor: stillSupervisor()}, Command: fake}
 	ctx := context.Background()
 
@@ -142,6 +145,7 @@ func TestTurnCostIsTheThreadsFromCCUsage(t *testing.T) {
 // not the turn's raw output, and its group goes on record as the
 // runtime's does.
 func TestTurnCostFromTheInstalledCCUsage(t *testing.T) {
+	t.Parallel()
 	lookups := stillOver(withCCUsage(func(p fakeproc.Process) int {
 		if strings.Join(p.Args, " ") != "codex session --json" {
 			return 3
@@ -172,6 +176,7 @@ func TestTurnCostFromTheInstalledCCUsage(t *testing.T) {
 // The lookup gets what is left of the turn's timeout, by the runner's
 // clock, and none once the turn has used it all, as a timed-out turn has.
 func TestTheLookupGetsOnlyWhatIsLeftOfTheTurnsTimeout(t *testing.T) {
+	t.Parallel()
 	start := time.Date(2026, 9, 30, 10, 0, 0, 0, time.UTC)
 	for name, c := range map[string]struct {
 		used time.Duration
@@ -214,6 +219,7 @@ func TestTheLookupGetsOnlyWhatIsLeftOfTheTurnsTimeout(t *testing.T) {
 // child of the launcher that holds its stdout cannot hold the turn; the
 // cost stays unknown and the turn is as the runtime ended it.
 func TestCancellingTheLookupReturnsWhenAChildHoldsItsStdout(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	// The launcher never exits by itself and holds its stdout until its
@@ -249,6 +255,7 @@ func TestCancellingTheLookupReturnsWhenAChildHoldsItsStdout(t *testing.T) {
 // turn's timeout, once that has passed on the supervisor's clock: the
 // cost stays unknown and the turn is as the runtime ended it.
 func TestTheLookupEndsWhenTheTurnsTimeoutRunsOut(t *testing.T) {
+	t.Parallel()
 	start := time.Date(2026, 9, 30, 10, 0, 0, 0, time.UTC)
 	clock := systemtest.NewClock(start)
 	lookup := codex.CCUsage(composition.CodexTransport{Supervisor: supervisor.Runtime{Starter: withCCUsage(fakeproc.Process.Block), Timer: clock.Timer}}, "ccusage", 0)
@@ -291,6 +298,7 @@ func TestTheLookupEndsWhenTheTurnsTimeoutRunsOut(t *testing.T) {
 // no lookup: the cost stays unknown and the turn is as the runtime ended
 // it.
 func TestNoLookupOnceTheCallIsCancelled(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	lookups := 0
@@ -322,6 +330,7 @@ func TestNoLookupOnceTheCallIsCancelled(t *testing.T) {
 // Zero, a thread ccusage does not list, and ccusage failing, exiting
 // non-zero or missing leave the cost unknown.
 func TestTurnCostUnknownWithoutCCUsagesPrice(t *testing.T) {
+	t.Parallel()
 	for name, sessions := range map[string]codex.Sessions{
 		"zero": listing("0"),
 		"missing": func(context.Context, time.Duration, codex.LookupSink) ([]byte, error) {
@@ -347,6 +356,7 @@ func ptr(v float64) *float64 { return &v }
 // none in the stream (observed with codex-cli 0.159.2); the message quotes
 // it.
 func TestAnOversizedPromptFailsWithCodexsReason(t *testing.T) {
+	t.Parallel()
 	runner := &codex.Runner{Transport: composition.CodexTransport{Supervisor: stillSupervisor()}, Command: fake}
 	turn := composition.AdaptCodex(runner).RunTurn(context.Background(), request("SCENARIO:input_too_large"), &runtimetest.Recorder{})
 	if string(turn.Status) != string(run.Failed) || turn.Error == nil || string(turn.Error.Class) != string(run.ClassRuntimeError) ||

@@ -53,6 +53,7 @@ func skillNamed(t *testing.T, f SkillFolder, name string) Skill {
 }
 
 func TestSkillHomesComeFromTheEnvironment(t *testing.T) {
+	t.Parallel()
 	env := map[string]string{"HOME": "/h", "CODEX_HOME": "/c", "PI_CODING_AGENT_DIR": "/p"}
 	got := SkillHomesFrom(func(k string) string { return env[k] }, "/fallback")
 	if got != (SkillHomes{Home: "/h", CodexHome: "/c", PiAgentDir: "/p"}) {
@@ -65,6 +66,7 @@ func TestSkillHomesComeFromTheEnvironment(t *testing.T) {
 }
 
 func TestSkillFoldersAreTheTablesPerAdapter(t *testing.T) {
+	t.Parallel()
 	repo, home := "/r", "/h"
 	names := func(adapter string, homes SkillHomes) []string {
 		var got []string
@@ -110,6 +112,7 @@ func TestSkillFoldersAreTheTablesPerAdapter(t *testing.T) {
 }
 
 func TestAFolderSeveralAdaptersLoadIsReadOnce(t *testing.T) {
+	t.Parallel()
 	folders := ReadSkills("/r", []string{"codex", "pi", "opencode"}, SkillHomes{Home: "/h"})
 	var agents []SkillFolder
 	for _, f := range folders {
@@ -126,6 +129,7 @@ func TestAFolderSeveralAdaptersLoadIsReadOnce(t *testing.T) {
 }
 
 func TestAPlainSkillIsReadAndPassesItsChecks(t *testing.T) {
+	t.Parallel()
 	repo := realDir(t, t.TempDir())
 	text := skillMD("review", "Reviews a diff.")
 	write(t, filepath.Join(repo, ".claude", "skills", "review", "SKILL.md"), text)
@@ -153,6 +157,7 @@ func TestAPlainSkillIsReadAndPassesItsChecks(t *testing.T) {
 }
 
 func TestASymlinkedSkillEntryIsReadAtItsRealPath(t *testing.T) {
+	t.Parallel()
 	root := realDir(t, t.TempDir())
 	repo := filepath.Join(root, "repo")
 	elsewhere := filepath.Join(root, "shared", "go")
@@ -166,6 +171,7 @@ func TestASymlinkedSkillEntryIsReadAtItsRealPath(t *testing.T) {
 }
 
 func TestASymlinkedFolderIsReadAtItsRealPath(t *testing.T) {
+	t.Parallel()
 	root := realDir(t, t.TempDir())
 	home := filepath.Join(root, "home")
 	dotfiles := filepath.Join(root, "dotfiles", "skills")
@@ -199,6 +205,7 @@ func readsIn(t *testing.T, repo, home string, adapters ...string) (map[string]Sk
 }
 
 func TestASkillMDOutsideItsSkillIsNotRead(t *testing.T) {
+	t.Parallel()
 	repo := realDir(t, t.TempDir())
 	write(t, filepath.Join(repo, "secret.md"), skillMD("leak", "Not a skill's file."))
 	symlink(t, filepath.Join(repo, "secret.md"), filepath.Join(repo, ".claude", "skills", "leak", "SKILL.md"))
@@ -228,6 +235,7 @@ func TestASkillMDOutsideItsSkillIsNotRead(t *testing.T) {
 }
 
 func TestBrokenAndLoopingLinksAreShownAsBroken(t *testing.T) {
+	t.Parallel()
 	root := realDir(t, t.TempDir())
 	repo := filepath.Join(root, "repo")
 	skills := filepath.Join(repo, ".claude", "skills")
@@ -261,6 +269,7 @@ func TestBrokenAndLoopingLinksAreShownAsBroken(t *testing.T) {
 }
 
 func TestATooLargeSkillMDIsNotReadNorChecked(t *testing.T) {
+	t.Parallel()
 	repo := realDir(t, t.TempDir())
 	write(t, filepath.Join(repo, ".claude", "skills", "big", "SKILL.md"), "---\nname: other\n---\n"+strings.Repeat("x", fileCap))
 	write(t, filepath.Join(repo, ".claude", "skills", "edge", "SKILL.md"), skillMD("edge", "E.")+strings.Repeat("x", fileCap-len(skillMD("edge", "E."))))
@@ -279,6 +288,7 @@ func TestATooLargeSkillMDIsNotReadNorChecked(t *testing.T) {
 }
 
 func TestTheChecksNameEachFailure(t *testing.T) {
+	t.Parallel()
 	repo := realDir(t, t.TempDir())
 	skills := filepath.Join(repo, ".claude", "skills")
 	for name, text := range map[string]string{
@@ -331,6 +341,7 @@ func TestTheChecksNameEachFailure(t *testing.T) {
 }
 
 func TestTheSameNameInTwoFoldersIsShownInBoth(t *testing.T) {
+	t.Parallel()
 	root := realDir(t, t.TempDir())
 	repo, home := filepath.Join(root, "repo"), filepath.Join(root, "home")
 	write(t, filepath.Join(repo, ".claude", "skills", "review", "SKILL.md"), skillMD("review", "Repo's."))
@@ -346,6 +357,7 @@ func TestTheSameNameInTwoFoldersIsShownInBoth(t *testing.T) {
 }
 
 func TestBelowTheTopLevelSymlinkedDirectoriesAreNotFollowed(t *testing.T) {
+	t.Parallel()
 	root := realDir(t, t.TempDir())
 	home := filepath.Join(root, "home")
 	elsewhere := filepath.Join(root, "elsewhere")
@@ -375,6 +387,7 @@ func TestBelowTheTopLevelSymlinkedDirectoriesAreNotFollowed(t *testing.T) {
 }
 
 func TestSyncedSkillsAreReadFromTheirGroups(t *testing.T) {
+	t.Parallel()
 	root := realDir(t, t.TempDir())
 	home := filepath.Join(root, "home")
 	synced := filepath.Join(home, ".claude", "skills", "synced")
@@ -414,6 +427,7 @@ func TestSyncedSkillsAreReadFromTheirGroups(t *testing.T) {
 }
 
 func TestAMissingFolderListsNothing(t *testing.T) {
+	t.Parallel()
 	home := realDir(t, t.TempDir())
 	write(t, filepath.Join(home, ".config", "opencode", "skills"), "a file")
 	folders := skillsIn(t, "", home, "opencode")
@@ -426,6 +440,7 @@ func TestAMissingFolderListsNothing(t *testing.T) {
 }
 
 func TestSkillsEndpointReadsTheFoldersOfTheSettingsRuntimes(t *testing.T) {
+	t.Parallel()
 	root := realDir(t, t.TempDir())
 	user := filepath.Join(root, "user")
 	home := filepath.Join(user, ".agister")
@@ -477,6 +492,7 @@ func TestSkillsEndpointReadsTheFoldersOfTheSettingsRuntimes(t *testing.T) {
 }
 
 func TestARepoRuntimeSettingsLeavesOutReplacesNothing(t *testing.T) {
+	t.Parallel()
 	root := realDir(t, t.TempDir())
 	user := filepath.Join(root, "user")
 	home := filepath.Join(user, ".agister")
@@ -513,6 +529,7 @@ func TestARepoRuntimeSettingsLeavesOutReplacesNothing(t *testing.T) {
 }
 
 func TestSkillsEndpointRefusesWhatSettingsRefuses(t *testing.T) {
+	t.Parallel()
 	home := t.TempDir()
 	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: home})
 	for target, want := range map[string]int{

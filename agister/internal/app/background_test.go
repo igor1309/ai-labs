@@ -5,7 +5,6 @@ import (
 	"errors"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
@@ -64,16 +63,13 @@ func ok(context.Context, contract.CallRequest) (string, error) { return "run-1",
 
 func awaitStart(t *testing.T, b *blockingReap) {
 	t.Helper()
-	select {
-	case <-b.started:
-	case <-time.After(5 * time.Second):
-		t.Fatal("no reap started")
-	}
+	<-b.started
 }
 
 // A reap that is still going never holds up the call: the call completes
 // while the reap waits on a channel only the test releases.
 func TestABlockedReapDoesNotDelayTheCall(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	reap := newBlockingReap()
 	t.Cleanup(reap.let)
@@ -85,13 +81,9 @@ func TestABlockedReapDoesNotDelayTheCall(t *testing.T) {
 		_, err := client.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"})
 		submitted <- err
 	}()
-	select {
-	case err := <-submitted:
-		if err != nil {
-			t.Fatal(err)
-		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("Submit waited for the reap")
+	// Submit returns while the reap is still blocked.
+	if err := <-submitted; err != nil {
+		t.Fatal(err)
 	}
 	awaitStart(t, reap)
 	// The call itself runs to its end while the reap is still blocked.
@@ -109,6 +101,7 @@ func TestABlockedReapDoesNotDelayTheCall(t *testing.T) {
 }
 
 func TestSubmittingStartsAReap(t *testing.T) {
+	t.Parallel()
 	reap := newBlockingReap()
 	reap.let()
 	background := &app.BackgroundReaper{Reaper: reap}
@@ -122,6 +115,7 @@ func TestSubmittingStartsAReap(t *testing.T) {
 }
 
 func TestARefusedSubmitStartsNoReap(t *testing.T) {
+	t.Parallel()
 	reap := newBlockingReap()
 	reap.let()
 	background := &app.BackgroundReaper{Reaper: reap}
@@ -138,6 +132,7 @@ func TestARefusedSubmitStartsNoReap(t *testing.T) {
 // A Submit that arrives while a reap runs starts none: at most one reap
 // runs at a time, and one that ended lets the next Submit start another.
 func TestReapsNeverRunConcurrently(t *testing.T) {
+	t.Parallel()
 	reap := newBlockingReap()
 	t.Cleanup(reap.let)
 	background := &app.BackgroundReaper{Reaper: reap}
@@ -172,6 +167,7 @@ func TestReapsNeverRunConcurrently(t *testing.T) {
 // The reap is detached from the request: a request cancelled before the
 // reap ends does not cancel it.
 func TestReapOutlivesTheRequestThatStartedIt(t *testing.T) {
+	t.Parallel()
 	reap := newBlockingReap()
 	t.Cleanup(reap.let)
 	background := &app.BackgroundReaper{Reaper: reap}
@@ -191,6 +187,7 @@ func TestReapOutlivesTheRequestThatStartedIt(t *testing.T) {
 // Nobody waits for a reap, so the report is where its failure shows: each
 // failed reap is reported with its error, and one that succeeds is not.
 func TestAFailedReapIsReported(t *testing.T) {
+	t.Parallel()
 	reap := newBlockingReap()
 	reap.let()
 	failure := errors.New("listing abandoned runs: disk gone")

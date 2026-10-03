@@ -183,6 +183,7 @@ func message(record run.Record) string {
 }
 
 func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	record := h.call(t, contract.CallRequest{Params: map[string]string{"base": "trunk"}})
 
@@ -256,6 +257,7 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 }
 
 func TestNodeStatusFollowsTheResponses(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name        string
 		turn        run.Turn
@@ -271,6 +273,7 @@ func TestNodeStatusFollowsTheResponses(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			h := newHarness()
 			h.runner.turn = c.turn
 			h.validator.validateErr = c.validateErr
@@ -292,6 +295,7 @@ func TestNodeStatusFollowsTheResponses(t *testing.T) {
 }
 
 func TestResultCarriesUsageCostTimingAndSession(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	clock := &steppingClock{now: time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)}
 	h.clock = clock
@@ -322,6 +326,7 @@ func TestResultCarriesUsageCostTimingAndSession(t *testing.T) {
 }
 
 func TestCostLimitReachesTheRuntimeOrRefuses(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.defs.docs[definition.KindPolicy]["pol"] += "max_cost_usd: 2\n"
 	limit := 0.5
@@ -342,6 +347,7 @@ func TestCostLimitReachesTheRuntimeOrRefuses(t *testing.T) {
 // static-review and implement policies set no cost limit, so a runtime that
 // cannot enforce one runs them.
 func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		process, policy, agent string
 		params                 map[string]string
@@ -353,6 +359,7 @@ func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
 		{"implement", "implement", "assistant", map[string]string{"brief": "brief.md"}, `"done"`},
 	} {
 		t.Run(c.process, func(t *testing.T) {
+			t.Parallel()
 			h := newHarness()
 			for kind, name := range map[definition.Kind]string{definition.KindProcess: c.process, definition.KindPolicy: c.policy} {
 				data, err := fs.ReadFile(examples.Settings(), string(kind)+"/"+name+".yaml")
@@ -395,9 +402,11 @@ func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
 // naming host.read. A service configured to accept host reads, as a
 // repository that runs Codex must, lets it complete.
 func TestShippedAskRunsOnACodexRuntime(t *testing.T) {
+	t.Parallel()
 	const shipped = `state_reaching = ["host.read", "host.write"]`
 
 	t.Run("shipped service", func(t *testing.T) {
+		t.Parallel()
 		h, record := askOnCodex(t, func(service string) string {
 			if !strings.Contains(service, shipped) {
 				t.Fatal("the shipped service's state_reaching line was not found")
@@ -413,6 +422,7 @@ func TestShippedAskRunsOnACodexRuntime(t *testing.T) {
 	})
 
 	t.Run("configured service", func(t *testing.T) {
+		t.Parallel()
 		h, record := askOnCodex(t, func(service string) string {
 			accepting := strings.Replace(service, shipped, `state_reaching = []`, 1)
 			if accepting == service {
@@ -489,9 +499,11 @@ command = "/bin/codex"
 // host.read, and a service that opts in to host reads, as its README
 // documents, lets it complete in the read-only sandbox.
 func TestExampleCodexReviewRunsOnACodexRuntime(t *testing.T) {
+	t.Parallel()
 	const shipped = `state_reaching = ["host.read", "host.write"]`
 
 	t.Run("shipped service", func(t *testing.T) {
+		t.Parallel()
 		h, record := reviewOnCodex(t, func(service string) string {
 			if !strings.Contains(service, shipped) {
 				t.Fatal("the shipped service's state_reaching line was not found")
@@ -507,6 +519,7 @@ func TestExampleCodexReviewRunsOnACodexRuntime(t *testing.T) {
 	})
 
 	t.Run("opted-in service", func(t *testing.T) {
+		t.Parallel()
 		h, record := reviewOnCodex(t, func(service string) string {
 			accepting := strings.Replace(service, shipped, `state_reaching = []`, 1)
 			if accepting == service {
@@ -564,6 +577,7 @@ func reviewOnCodex(t *testing.T, configure func(service string) string) (*harnes
 }
 
 func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
+	t.Parallel()
 	resumable := func(h *harness) {
 		h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
 	}
@@ -607,6 +621,7 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 		}, "run run-0 has no provider session"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			h := newHarness()
 			h.runs.records["run-0"], h.runs.states["run-0"] = earlier, run.StateFinished
 			c.arrange(h)
@@ -626,6 +641,7 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 // from another directory. Each is refused before any workspace is made;
 // from the directory the run worked in, the session is resumed there.
 func TestContinuationWhereTheSessionDidNotRunIsRefused(t *testing.T) {
+	t.Parallel()
 	// run-0 left its session's evidence: it worked in checkout A.
 	ended := fixedClock{}.Now()
 	earlier := run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Workspace: "/work/checkout-a",
@@ -655,6 +671,7 @@ func TestContinuationWhereTheSessionDidNotRunIsRefused(t *testing.T) {
 		{"no directory recorded", "", false, "run run-0 recorded none"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			h := arrange(c.workspace, c.checkout)
 			record := h.call(t, contract.CallRequest{Continue: "run-0"})
 			if class(record) != run.ClassRefused || !strings.Contains(message(record), c.reason) {
@@ -683,6 +700,7 @@ func TestContinuationWhereTheSessionDidNotRunIsRefused(t *testing.T) {
 // continuation started its runtime process and was reaped before its turn
 // was saved; a refused continuation leaves them as they were.
 func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
+	t.Parallel()
 	usd := func(v float64) *float64 { return &v }
 	n := func(v int64) *int64 { return &v }
 	at := func(minute int) *time.Time {
@@ -734,6 +752,7 @@ func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			h := newHarness()
 			h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
 			for _, record := range c.records {
@@ -803,6 +822,7 @@ func patchedRun(h *harness, id, continues string, created, finished int, patch s
 // the first turn, whose prompt says so; the run's events record it. The
 // call's own patch is still from the revision.
 func TestAContinuationCarriesTheLatestRunsChanges(t *testing.T) {
+	t.Parallel()
 	h, order := carrying()
 	patchedRun(h, "run-0", "", 0, 1, "diff A\n")
 	record := h.call(t, contract.CallRequest{Continue: "run-0"})
@@ -852,8 +872,10 @@ func TestAContinuationCarriesTheLatestRunsChanges(t *testing.T) {
 // one's; continuing the first run again, after the session moved on,
 // carries the later run's too (D-6).
 func TestAContinuationCarriesTheSessionsLatestPatch(t *testing.T) {
+	t.Parallel()
 	for _, continued := range []string{"run-0b", "run-0"} {
 		t.Run(continued, func(t *testing.T) {
+			t.Parallel()
 			h, _ := carrying()
 			patchedRun(h, "run-0", "", 0, 1, "diff A\n")
 			patchedRun(h, "run-0b", "run-0", 2, 3, "diff AB\n")
@@ -877,6 +899,7 @@ func TestAContinuationCarriesTheSessionsLatestPatch(t *testing.T) {
 // A latest run that worked in no checkout, or kept no patch, carries
 // nothing: the call runs on the revision, and is told so.
 func TestAContinuationWithNothingToCarryRuns(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		name    string
 		arrange func(*harness)
@@ -889,6 +912,7 @@ func TestAContinuationWithNothingToCarryRuns(t *testing.T) {
 		{"no patch", func(h *harness) { patchedRun(h, "run-0", "", 0, 1, "") }},
 	} {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			h, order := carrying()
 			c.arrange(h)
 			record := h.call(t, contract.CallRequest{Continue: "run-0"})
@@ -909,6 +933,7 @@ func TestAContinuationWithNothingToCarryRuns(t *testing.T) {
 // before the checkout is made where that can be told without it; a patch
 // that does not apply costs no setup. The checkout is released either way.
 func TestAContinuationWhoseChangesCannotBeCarriedIsRefused(t *testing.T) {
+	t.Parallel()
 	failing := func(when bool) func(*harness) {
 		return func(h *harness) {
 			patchedRun(h, "run-0", "", 0, 1, "diff A\n")
@@ -975,6 +1000,7 @@ func TestAContinuationWhoseChangesCannotBeCarriedIsRefused(t *testing.T) {
 		}, "the latest run of run run-0's session is unknown", nil},
 	} {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			h, order := carrying()
 			c.arrange(h)
 			record := h.call(t, contract.CallRequest{Continue: "run-0"})
@@ -998,6 +1024,7 @@ func TestAContinuationWhoseChangesCannotBeCarriedIsRefused(t *testing.T) {
 }
 
 func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.changes.changes = []byte("diff --git a/x b/x\n")
 	h.recorder.onFinish = func() int { return h.workspaces.releases() }
@@ -1034,6 +1061,7 @@ func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
 // A panic while collecting changes finishes the record as internal and
 // still releases the workspace; collection is not retried.
 func TestPanicInChangeCollectionFinishesTheRecord(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.changes.panics = true
 	record := h.call(t, contract.CallRequest{})
@@ -1050,6 +1078,7 @@ func TestPanicInChangeCollectionFinishesTheRecord(t *testing.T) {
 // snapshotted once, at submit, and resolves the call from that snapshot. A
 // refusal it gives is recorded and no runtime is asked for.
 func TestCallsResolveThroughTheResolutionTheyDeclare(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	double := &snapshotCounter{reason: "the double refuses"}
 	h.calls = app.NewCalls(
@@ -1110,6 +1139,7 @@ func (r counted) Workflow(context.Context, string) (*app.ResolvedWorkflow, bool,
 // adapter and command, and the runner for the same adapter and command is
 // asked for only when the call executes.
 func TestCallChecksAndRunsTheRuntimeOfItsAgent(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.call(t, contract.CallRequest{})
 	if want := []string{"spy|/bin/spy"}; !reflect.DeepEqual(h.runtimes.identified, want) || !reflect.DeepEqual(h.runtimes.asked, want) {
@@ -1119,6 +1149,7 @@ func TestCallChecksAndRunsTheRuntimeOfItsAgent(t *testing.T) {
 
 // Each refusal is recorded, and nothing after the refusing check happens.
 func TestRefusalsComeBeforeEffects(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name     string
 		arrange  func(*harness)
@@ -1148,6 +1179,7 @@ func TestRefusalsComeBeforeEffects(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			h := newHarness()
 			if c.arrange != nil {
 				c.arrange(h)
@@ -1170,6 +1202,7 @@ func TestRefusalsComeBeforeEffects(t *testing.T) {
 }
 
 func TestStateReachingPrimitivesAreNeverGranted(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	policy := h.defs.docs[definition.KindPolicy]["pol"]
 	h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(policy, "repository.diff]", "repository.diff, process.execute, host.read]", 1)
@@ -1182,6 +1215,7 @@ func TestStateReachingPrimitivesAreNeverGranted(t *testing.T) {
 // A primitive whose grants were never checked against the runtime's version
 // is not granted, even when everything it declares is allowed.
 func TestUnverifiedPrimitivesAreNeverGranted(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	mapping := h.defs.docs[definition.KindRuntime]["rt"]
 	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", `  items:
@@ -1210,6 +1244,7 @@ func TestUnverifiedPrimitivesAreNeverGranted(t *testing.T) {
 // effect, a call whose plan grants none of them, and says why each is
 // missing (ADR-006).
 func TestACallThatCannotReadASkillIsRefused(t *testing.T) {
+	t.Parallel()
 	widen := func(h *harness) {
 		policy := h.defs.docs[definition.KindPolicy]["pol"]
 		h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(policy, "repository.diff]", "repository.diff, process.execute, host.read]", 1)
@@ -1234,6 +1269,7 @@ func TestACallThatCannotReadASkillIsRefused(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			h := newHarness()
 			if c.arrange != nil {
 				c.arrange(h)
@@ -1261,6 +1297,7 @@ func TestACallThatCannotReadASkillIsRefused(t *testing.T) {
 }
 
 func TestCancelInterruptsAndReleases(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.runner.block = true
 	h.runner.started = make(chan struct{})
@@ -1274,8 +1311,6 @@ func TestCancelInterruptsAndReleases(t *testing.T) {
 	case <-h.runner.started:
 	case record := <-h.recorder.finished:
 		t.Fatalf("the call ended before its turn started: %+v", record.Result)
-	case <-time.After(hangGuard):
-		t.Fatal("the turn never started")
 	}
 	if err := runs.Cancel(context.Background(), "run-1"); err != nil {
 		t.Fatal(err)
@@ -1293,6 +1328,7 @@ func TestCancelInterruptsAndReleases(t *testing.T) {
 // Cancelling before the runtime starts makes git and the version probe
 // fail; the call is cancelled, not refused.
 func TestCancelBeforeTheTurnIsCancelled(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	runs := app.NewRuns(nil, nil, h.hosted, nil, 0)
 	h.inputs.respond = func(app.InputSpec) (app.Resolved, error) {
@@ -1317,6 +1353,7 @@ func TestCancelBeforeTheTurnIsCancelled(t *testing.T) {
 // declare: the cancel added for a call cancels it, and a call that ended is
 // no longer held.
 func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.runner.block = true
 	h.runner.started = make(chan struct{})
@@ -1351,8 +1388,6 @@ func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
 	case record := <-h.recorder.finished:
 		joined = true
 		t.Fatalf("the call ended before its turn started: %+v", record.Result)
-	case <-time.After(hangGuard):
-		t.Fatal("the turn never started")
 	}
 	if !cancel() {
 		t.Fatal("the call's cancel did not take effect")
@@ -1375,6 +1410,7 @@ func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
 // not closed before, not even as the record is finished. Done of a call
 // not running here is closed already.
 func TestHostedDoneClosesOnceTheCallHasFinished(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.workspaces.releaseErr = errors.New("worktree busy")
 	release := make(chan struct{})
@@ -1467,6 +1503,7 @@ func contains(list []string, value string) bool {
 // The workspace is released before the record is finished, so a finished
 // run never has a live workspace.
 func TestWorkspaceIsReleasedBeforeTheRunFinishes(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.recorder.onFinish = func() int {
 		h.workspaces.mu.Lock()
@@ -1483,6 +1520,7 @@ func TestWorkspaceIsReleasedBeforeTheRunFinishes(t *testing.T) {
 // which resolves later in its own goroutine, uses exactly those: an edit
 // after Submit returns changes nothing, and the live source is not read again.
 func TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	readsAtCreate := -1
 	h.recorder.onCreate = func() { readsAtCreate = h.defs.readCount() }
@@ -1516,6 +1554,7 @@ func TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded(t *testing.T) {
 // the diff is taken between the very commits the call resolved, one of
 // which it checks out, not between names that could move meanwhile.
 func TestInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
 		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`,
@@ -1542,6 +1581,7 @@ func TestInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 // field: the definitions, the effective limits, the required permissions
 // among them, and the plan.
 func TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "uses: agent:a\n", "uses: agent:a\ntools: {require: [repository.read]}\n", 1)
 	record := h.call(t, contract.CallRequest{})

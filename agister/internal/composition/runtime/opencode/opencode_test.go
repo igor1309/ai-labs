@@ -63,6 +63,7 @@ func runner(t *testing.T) *opencode.Runner {
 // Contract test: the OpenCode adapter against its built fake, a real
 // process under the real supervisor.
 func TestConformance(t *testing.T) {
+	t.Parallel()
 	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {
@@ -104,6 +105,7 @@ func echoed(t *testing.T, sink *runtimetest.Recorder) echo {
 // names it with --agent; the prompt goes on stdin. The agent's name is the
 // turn's own, so no agent a config defines can merge with it.
 func TestATurnRunsAsItsOwnGeneratedAgent(t *testing.T) {
+	t.Parallel()
 	name := regexp.MustCompile(`^agister-[0-9a-f]{16}$`)
 	var names []string
 	for range 2 {
@@ -131,6 +133,7 @@ func TestATurnRunsAsItsOwnGeneratedAgent(t *testing.T) {
 
 // A turn's inline config replaces one the environment already holds.
 func TestTheConfigReplacesAnInheritedOne(t *testing.T) {
+	t.Parallel()
 	inherited := runner(t)
 	inherited.Transport = composition.OpenCodeTransport{Supervisor: stillOver(runtimetest.InProcess{
 		Env: []string{opencode.ConfigVariable + `={"agent":{"build":{"permission":{"*":"allow"}}}}`},
@@ -147,6 +150,7 @@ func TestTheConfigReplacesAnInheritedOne(t *testing.T) {
 // OpenCode lists and loads a skill with its skill tool only: a turn not
 // granted it is refused before OpenCode starts.
 func TestRefusesATurnThatCannotUseASkill(t *testing.T) {
+	t.Parallel()
 	for _, primitives := range [][]string{nil, {}, {"read", "grep", "glob"}, {"bash"}, {"edit"}} {
 		r := request("x")
 		r.Primitives = primitives
@@ -164,6 +168,7 @@ func TestRefusesATurnThatCannotUseASkill(t *testing.T) {
 }
 
 func TestRejectsWhatItCannotHonour(t *testing.T) {
+	t.Parallel()
 	r := request("x")
 	limit := 1.0
 	r.MaxCostUSD = &limit
@@ -195,6 +200,7 @@ func TestRejectsWhatItCannotHonour(t *testing.T) {
 }
 
 func TestIdentity(t *testing.T) {
+	t.Parallel()
 	identity, err := opencode.New(fake, composition.OpenCodeTransport{Supervisor: stillSupervisor()}).Identity(context.Background())
 	want := opencode.RuntimeIdentity{Contract: "opencode/1", Version: "1.18.33", Resume: true, ResumeWhereItRan: true, SkillTools: []string{"skill"}}
 	if err != nil || !reflect.DeepEqual(identity, want) {
@@ -205,6 +211,7 @@ func TestIdentity(t *testing.T) {
 // A fresh turn reports the session OpenCode started, and a later turn of
 // the call resumes it by that ID.
 func TestALaterTurnResumesTheSession(t *testing.T) {
+	t.Parallel()
 	sink := &runtimetest.Recorder{}
 	turn := composition.AdaptOpenCode(runner(t)).RunTurn(context.Background(), request("SCENARIO:approve"), sink)
 	if string(turn.Status) != string(run.Completed) || turn.ProviderSessionID != fresh {
@@ -246,6 +253,7 @@ func step(session, reason string) string {
 // by the end of the turn, breaks the contract of resuming in place. The
 // steps it finished have still cost what they reported.
 func TestResumeReportingAnotherSessionFails(t *testing.T) {
+	t.Parallel()
 	for name, lines := range map[string][]string{
 		"another session": {`{"type":"step_start","sessionID":"ses_2","part":{"type":"step-start"}}`, strings.ReplaceAll(stopped, "ses_1", "ses_2")},
 		"no session":      {`{"type":"step_finish","part":{"type":"step-finish","reason":"stop","cost":0.25,"tokens":{"input":10,"output":5}}}`},

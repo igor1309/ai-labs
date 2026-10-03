@@ -28,7 +28,7 @@ func staleHarness(t *testing.T, limits string) (*harness, *timersSpy) {
 	h.defs.docs[definition.KindPolicy]["pol"] += "stale: {" + limits + "}\n"
 	h.runner.identity.ToolCalls = true
 	clock := &settableClock{now: fixedClock{}.Now()}
-	timers := &timersSpy{t: t, clock: clock}
+	timers := &timersSpy{clock: clock}
 	h.clock, h.timer = clock, timers.start
 	h.calls = h.callsOn(h.defs)
 	release := make(chan struct{})
@@ -58,6 +58,7 @@ func staleEvent(h *harness) (run.Event, bool) {
 // call's timeout as a timeout, and its evidence says what went stale and
 // when.
 func TestATurnWithoutEventsEndsBeforeItsTimeout(t *testing.T) {
+	t.Parallel()
 	h, timers := staleHarness(t, "no_event: 5m")
 	h.runner.block = true
 	start := fixedClock{}.Now()
@@ -88,6 +89,7 @@ func TestATurnWithoutEventsEndsBeforeItsTimeout(t *testing.T) {
 // A long turn whose events keep arriving is live: it runs past the limit
 // many times over and is not ended.
 func TestALongLiveTurnIsNotEndedEarly(t *testing.T) {
+	t.Parallel()
 	h, timers := staleHarness(t, "no_event: 5m")
 	var cancelled error
 	h.runner.acting = func(ctx context.Context, sink app.EventSink) {
@@ -113,6 +115,7 @@ func TestALongLiveTurnIsNotEndedEarly(t *testing.T) {
 // Agister's own events are not the runtime moving: they do not restart the
 // wait.
 func TestAgistersOwnEventsDoNotKeepATurnLive(t *testing.T) {
+	t.Parallel()
 	h, timers := staleHarness(t, "no_event: 5m")
 	h.runner.block = true
 	h.runner.acting = func(_ context.Context, sink app.EventSink) {
@@ -130,6 +133,7 @@ func TestAgistersOwnEventsDoNotKeepATurnLive(t *testing.T) {
 // turn as no progress, with the repeated call on record; a different call
 // in between starts the count again.
 func TestARepeatedIdenticalToolCallEndsTheTurn(t *testing.T) {
+	t.Parallel()
 	h, _ := staleHarness(t, "repeated_tool_calls: 3")
 	h.runner.block = true
 	same := app.ToolCall{Name: "Bash", Input: `{"command":"go test ./..."}`, Command: true}
@@ -169,6 +173,7 @@ func TestARepeatedIdenticalToolCallEndsTheTurn(t *testing.T) {
 // What a stale turn's evidence quotes of a tool call is bounded on a whole
 // character, and the digest beside it is of the whole input.
 func TestAStaleTurnsToolCallIsBoundedWithTheDigestOfTheWhole(t *testing.T) {
+	t.Parallel()
 	h, _ := staleHarness(t, "repeated_tool_calls: 2")
 	h.runner.block = true
 	// The bound, 300 bytes, falls inside a character.
@@ -202,6 +207,7 @@ func TestAStaleTurnsToolCallIsBoundedWithTheDigestOfTheWhole(t *testing.T) {
 // A turn that panics is no longer watched: its waits are released, and no
 // limit is recorded on the finished call when its time comes.
 func TestATurnThatPanicsIsNoLongerWatched(t *testing.T) {
+	t.Parallel()
 	h, timers := staleHarness(t, "no_event: 5m, tool_command: 10m")
 	h.runner.acting = func(_ context.Context, sink app.EventSink) {
 		sink.ToolStarted(app.ToolCall{ID: "c1", Name: "Bash", Input: `{"command":"make"}`, Command: true})
@@ -225,8 +231,9 @@ func TestATurnThatPanicsIsNoLongerWatched(t *testing.T) {
 // The watcher passes a turn on to the sink it declares, records the limit
 // reached there, and ends the turn by the cancel it was given.
 func TestTheWatcherReportsToTheSinkItDeclares(t *testing.T) {
+	t.Parallel()
 	clock := &settableClock{now: fixedClock{}.Now()}
-	timers := &timersSpy{t: t, clock: clock}
+	timers := &timersSpy{clock: clock}
 	spy := &turnSinkSpy{err: errors.New("not recorded")}
 	cancels := 0
 	watch := app.WatchTurn(spy, app.CallStale{NoEvent: 5 * time.Minute}, timers.start, clock, func() { cancels++ })
@@ -293,6 +300,7 @@ func (s *turnSinkSpy) seen() []string {
 // A command an agent's tool runs for stale.tool_command ends the turn as a
 // timeout, naming the command; one that finished in time is not counted.
 func TestAToolCommandThatRunsTooLongEndsTheTurn(t *testing.T) {
+	t.Parallel()
 	h, timers := staleHarness(t, "tool_command: 10m")
 	h.runner.block = true
 	start := fixedClock{}.Now()
@@ -325,6 +333,7 @@ func TestAToolCommandThatRunsTooLongEndsTheTurn(t *testing.T) {
 // What the runtime itself reported of a turn ended as stale is never
 // replaced; the evidence still says the limit was reached.
 func TestAStaleTurnsOwnFailureIsNotReplaced(t *testing.T) {
+	t.Parallel()
 	h, timers := staleHarness(t, "no_event: 5m")
 	h.runner.turn = run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "429")}
 	h.runner.acting = func(ctx context.Context, _ app.EventSink) {
@@ -342,9 +351,10 @@ func TestAStaleTurnsOwnFailureIsNotReplaced(t *testing.T) {
 
 // A policy without staleness limits starts no wait and records none.
 func TestWithoutStalenessLimitsNothingIsWatched(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	clock := &settableClock{now: fixedClock{}.Now()}
-	timers := &timersSpy{t: t, clock: clock}
+	timers := &timersSpy{clock: clock}
 	h.clock, h.timer = clock, timers.start
 	h.calls = h.callsOn(h.defs)
 	verifying(h)
@@ -366,6 +376,7 @@ func TestWithoutStalenessLimitsNothingIsWatched(t *testing.T) {
 // by its runner before verify.timeout; the call ends as a timeout and the
 // attempt's run records the cause.
 func TestAVerificationRunWithoutOutputEndsTheCall(t *testing.T) {
+	t.Parallel()
 	h, _ := staleHarness(t, "no_output: 2m")
 	verifying(h)
 	h.commands.stale = true
@@ -393,6 +404,7 @@ func TestAVerificationRunWithoutOutputEndsTheCall(t *testing.T) {
 // A limit on tool calls needs a runtime that reports them: without one the
 // call is refused before any effect, and check says so when it probes.
 func TestToolCallLimitsNeedARuntimeThatReportsThem(t *testing.T) {
+	t.Parallel()
 	for limit, want := range map[string]string{
 		"tool_command: 10m":      "runtime rt does not report tool calls, so it cannot enforce stale.tool_command 10m0s",
 		"repeated_tool_calls: 3": "runtime rt does not report tool calls, so it cannot enforce stale.repeated_tool_calls 3",
@@ -412,6 +424,7 @@ func TestToolCallLimitsNeedARuntimeThatReportsThem(t *testing.T) {
 // check rejects a staleness limit above the timeout, in the policy that
 // declares both and in a process that narrows its policy's timeout.
 func TestCheckRejectsAStalenessLimitAboveTheTimeout(t *testing.T) {
+	t.Parallel()
 	check := func(h *harness) []string {
 		t.Helper()
 		checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
@@ -447,6 +460,7 @@ func TestCheckRejectsAStalenessLimitAboveTheTimeout(t *testing.T) {
 // process show shows the effective limits: the policy's, narrowed by the
 // process.
 func TestShowProcessShowsTheEffectiveStalenessLimits(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
 	view, err := inspection.ShowProcess(context.Background(), "p", "")

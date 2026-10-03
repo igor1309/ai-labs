@@ -32,6 +32,7 @@ const fake = "claude"
 // The decorator must be substitutable for what it wraps. Its claim is not
 // the process: the fake runs in process.
 func TestDecoratorConformance(t *testing.T) {
+	t.Parallel()
 	log := slog.New(slog.NewJSONHandler(&bytes.Buffer{}, nil))
 	clock := systemtest.NewClock(start)
 	runtimetest.Conformance(t, runtimetest.Subject{
@@ -48,6 +49,7 @@ func TestDecoratorConformance(t *testing.T) {
 }
 
 func TestLogsAreCorrelatedAndOmitPrompts(t *testing.T) {
+	t.Parallel()
 	var buffer bytes.Buffer
 	log := slog.New(logging.Handler{Handler: slog.NewJSONHandler(&buffer, &slog.HandlerOptions{Level: slog.LevelInfo})})
 	clock := systemtest.NewClock(start)
@@ -95,6 +97,7 @@ func (s *starter) RunTurn(_ context.Context, _ app.TurnRequest, sink app.EventSi
 // The decorator never swallows a failure to record the process: the
 // runtime must hear of it, and it is logged.
 func TestFailureToRecordTheProcessReachesTheRuntime(t *testing.T) {
+	t.Parallel()
 	var buffer bytes.Buffer
 	log := slog.New(slog.NewJSONHandler(&buffer, nil))
 	inner := &starter{}
@@ -125,6 +128,7 @@ func (r taking) RunTurn(context.Context, app.TurnRequest, app.EventSink) run.Tur
 
 // A turn's wall time is what passed on the runner's clock while it ran.
 func TestTheWallTimeIsReadOnTheRunnersClock(t *testing.T) {
+	t.Parallel()
 	var buffer bytes.Buffer
 	log := slog.New(slog.NewJSONHandler(&buffer, nil))
 	clock := systemtest.NewClock(start)

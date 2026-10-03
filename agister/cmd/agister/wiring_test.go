@@ -95,7 +95,11 @@ func (m *marker) asked() (lists, reads int) {
 // write scope. Wiring any of them to the live settings would defeat the
 // snapshot. Each is exercised by name, and what it asked of each source is
 // asserted: a use case or scope added later needs its own row here.
+//
+// Contract test: the composition's adapters over a real git repository and
+// the filesystem.
 func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
+	t.Parallel()
 	project := repository(t, "x")
 	if err := os.MkdirAll(filepath.Join(project, ".agister"), 0o755); err != nil {
 		t.Fatal(err)
@@ -109,6 +113,7 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 		"in project":  {cwd: project, project: true},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			home := tempDir(t)
 			config := cli.Config{Home: home, Cwd: tc.cwd}
 			composed := process(config)
@@ -191,7 +196,11 @@ func gatedOf(t *testing.T, client contract.Client) *app.Gated {
 
 // The built client starts the one background reaper every build shares,
 // over the run store, the supervisor's processes and the git workspaces.
+//
+// Contract test: the composition's reaper over the run store on the real
+// filesystem, and the kernel's flock on a run's owner.lock.
 func TestBuiltClientSharesTheBackgroundReaper(t *testing.T) {
+	t.Parallel()
 	home := tempDir(t)
 	client, background, err := wire(cli.Config{Home: home})
 	if err != nil {
@@ -223,7 +232,11 @@ func errorsOf(reaped map[string]any) []string {
 
 // Submitting a call on the built client reaps the runs a killed process
 // abandoned: here one that recorded a checkout and whose owner is gone.
+//
+// Contract test: the composition's reaper over the run store on the real
+// filesystem, and the kernel's flock on a run's owner.lock.
 func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
+	t.Parallel()
 	home := tempDir(t)
 	config := cli.Config{Home: home}
 	composed := process(config)
@@ -297,7 +310,11 @@ func TestBuiltClientReapsAbandonedRunsWhenACallIsSubmitted(t *testing.T) {
 // The built reaper asks the run store which checkouts runs some process
 // still owns use: an abandoned run's checkout that such a run also uses is
 // left in place, not discarded from under it.
+//
+// Contract test: the composition's reaper over the run store on the real
+// filesystem, and the kernel's flock on a run's owner.lock.
 func TestBuiltReaperLeavesACheckoutARunningRunUses(t *testing.T) {
+	t.Parallel()
 	home := tempDir(t)
 	_, background, err := wire(cli.Config{Home: home})
 	if err != nil {
@@ -352,7 +369,11 @@ func TestBuiltReaperLeavesACheckoutARunningRunUses(t *testing.T) {
 
 // A reap that fails is logged: nobody waits for it, and no run record says
 // so. Here the run store cannot be listed.
+//
+// Contract test: the composition's reaper over the run store on the real
+// filesystem, and the kernel's flock on a run's owner.lock.
 func TestBuiltReaperLogsAFailedReap(t *testing.T) {
+	t.Parallel()
 	home := tempDir(t)
 	if err := os.WriteFile(filepath.Join(home, "runs"), nil, 0o600); err != nil {
 		t.Fatal(err)
@@ -390,8 +411,12 @@ func TestBuiltReaperLogsAFailedReap(t *testing.T) {
 // The adapters the composition builds share its worktree coordinator:
 // while a caller's checkout holds a repository, the verifier's copy and the
 // reaper's discard there wait for it. What waits is decided by the held
-// command, never by timing: the deadline only guards against a hang.
+// command, never by timing.
+//
+// Contract test: the composition's worktree coordinator over real git and
+// its lock files.
 func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
+	t.Parallel()
 	repo := repository(t, "x")
 	const runs, waits = "runs", "waits"
 	// Until released, every worktree command reports that it runs, and
@@ -444,8 +469,6 @@ func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
 			}
 		case err := <-worker:
 			t.Fatalf("%s ended without meeting the held checkout: %v", what, err)
-		case <-time.After(time.Minute):
-			t.Fatalf("%s did not reach the coordinator", what)
 		}
 	}
 	var release func() error
@@ -455,14 +478,7 @@ func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
 	pass := sync.OnceFunc(func() { close(released) })
 	t.Cleanup(func() {
 		pass()
-		joined := make(chan struct{})
-		go func() { workers.Wait(); close(joined) }()
-		select {
-		case <-joined:
-		case <-time.After(time.Minute):
-			t.Error("a worker still runs with its command released")
-			return
-		}
+		workers.Wait()
 		if release != nil {
 			if err := release(); err != nil {
 				t.Errorf("releasing the checkout: %v", err)
@@ -489,20 +505,19 @@ func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
 	for what, worker := range map[string]<-chan error{
 		"the caller's checkout": checkout, "the verifier's copy": copying, "the reaper's discard": discarding,
 	} {
-		select {
-		case err := <-worker:
-			if err != nil {
-				t.Errorf("%s: %v", what, err)
-			}
-		case <-time.After(time.Minute):
-			t.Fatalf("%s did not end", what)
+		if err := <-worker; err != nil {
+			t.Errorf("%s: %v", what, err)
 		}
 	}
 }
 
 // The process's worktree coordinator keeps its lock files under the home:
 // a checkout and its release leave one there, empty.
+//
+// Contract test: the composition's worktree coordinator over real git and
+// its lock files.
 func TestTheProcessWorktreeCoordinatorLocksUnderTheHome(t *testing.T) {
+	t.Parallel()
 	home, repo := tempDir(t), repository(t, "x")
 	adapters := process(cli.Config{Home: home}).workspaces()
 	_, release, err := adapters.calls.Checkout(context.Background(), repo, "main")
@@ -544,7 +559,11 @@ func (s *started) Start(command supervisor.Command) (supervisor.Process, error) 
 // The process's starter is the operating system's, and a composition
 // starts its runtimes through the one it holds: a call over a starter of
 // the test's asks it for the agent's runtime, its version and its turn.
+//
+// Contract test: the composition's adapters over a real git repository and
+// the filesystem.
 func TestTheCompositionStartsItsRuntimesThroughItsStarter(t *testing.T) {
+	t.Parallel()
 	home, repo := setup(t, "approve")
 	config := cli.Config{Home: home, Cwd: repo}
 	composed := process(config)
@@ -590,7 +609,11 @@ func TestTheCompositionStartsItsRuntimesThroughItsStarter(t *testing.T) {
 // composition starts its commands through the starter it holds: a call
 // over a starter of the test's asks it for bash, once for the checkout's
 // setup and once for the verification, and for no runtime.
+//
+// Contract test: the composition's adapters over a real git repository and
+// the filesystem.
 func TestTheCompositionStartsItsCommandsThroughItsStarter(t *testing.T) {
+	t.Parallel()
 	home, repo := setup(t, "approve")
 	write(t, filepath.Join(home, "workspace.yaml"), "schema: agister.workspace/v1alpha1\nsetup:\n  command: echo prepared\n  timeout: 20s\n")
 	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))

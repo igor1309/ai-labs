@@ -38,6 +38,7 @@ func (s failingSource) Read(ctx context.Context, kind definition.Kind, name stri
 // check against it reports what a check against the source reports; and it
 // never reads the source again.
 func TestSnapshotReplaysReadAndListErrors(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	spy := &definitionsSpy{docs: settingsDocs()}
 	readFailure, listFailure := errors.New("cannot read process p"), errors.New("cannot list policies")
@@ -91,6 +92,7 @@ func TestSnapshotReplaysReadAndListErrors(t *testing.T) {
 
 // Editing the source after the snapshot changes nothing in it.
 func TestSnapshotIsImmutable(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	spy := &definitionsSpy{docs: settingsDocs()}
 	snap := app.Snapshot(ctx, spy)

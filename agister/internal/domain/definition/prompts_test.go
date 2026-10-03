@@ -29,6 +29,7 @@ input:
 
 // Rule 1: a prompt document is its text, unchanged, with no header.
 func TestAPromptIsItsText(t *testing.T) {
+	t.Parallel()
 	text := "# Review\n\nschema: is not a header here.\n  Indented, ${param.x} and all.\n"
 	prompt, err := definition.ParsePrompt(doc(definition.KindPrompt, "review", text))
 	if err != nil || prompt.Name != "review" || prompt.Text != text || prompt.Source.Kind != definition.KindPrompt {
@@ -39,6 +40,7 @@ func TestAPromptIsItsText(t *testing.T) {
 	}
 	for name, text := range map[string]string{"a NUL byte": "text\x00", "not UTF-8": "\xff\xfe"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			_, err := definition.ParsePrompt(doc(definition.KindPrompt, "review", text))
 			if err == nil || err.Error() != "prompt review (review) is invalid:\n  not a UTF-8 text file" {
 				t.Fatalf("err = %v", err)
@@ -50,6 +52,7 @@ func TestAPromptIsItsText(t *testing.T) {
 // Rule 2: a prompt input has exactly one argument, name, a literal
 // document name.
 func TestAPromptInputNamesItsDocumentLiterally(t *testing.T) {
+	t.Parallel()
 	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess(
 		"    rules: {source: prompt, name: review}\n    style: {source: prompt, name: style}\n    again: {source: prompt, name: review}\n")))
 	if err != nil {
@@ -70,6 +73,7 @@ func TestAPromptInputNamesItsDocumentLiterally(t *testing.T) {
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess(c.value)))
 			if err == nil || !strings.Contains(err.Error(), "\n  "+c.want) {
 				t.Fatalf("err = %v, want %q", err, c.want)
@@ -81,6 +85,7 @@ func TestAPromptInputNamesItsDocumentLiterally(t *testing.T) {
 // A workflow's values are resolved once for every node; it names no
 // prompt: the process that needs one does.
 func TestAWorkflowValueIsNoPrompt(t *testing.T) {
+	t.Parallel()
 	text := `schema: agister.workflow/v1alpha1
 name: w
 type: workflow

@@ -18,6 +18,7 @@ import (
 // translator, which hands the supervisor what is left of the turn's
 // timeout, not the whole of it.
 func TestCodexTransportForwardsWhatIsLeftOfTheTurnsTimeout(t *testing.T) {
+	t.Parallel()
 	const fake = "codex"
 	var specs []supervisor.Spec
 	transport := CodexTransport{Supervisor: supervisorStandIn{run: func(ctx context.Context, spec supervisor.Spec, sink supervisor.Sink, onLine func(string)) supervisor.Evidence {

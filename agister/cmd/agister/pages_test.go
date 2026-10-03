@@ -13,7 +13,11 @@ import (
 // The pages read a run's owner from the run store agister run writes: an
 // unfinished run is running while a process holds its owner.lock, and lost
 // once none does or there is no lock at all.
+//
+// Contract test: the kernel's flock on a run's owner.lock, as the pages'
+// run store reads it.
 func TestPagesReadTheRunsOwnersFromTheRunStore(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	runs := tempDir(t)
 	unfinished := func(id string) {

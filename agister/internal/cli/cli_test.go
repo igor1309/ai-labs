@@ -120,6 +120,7 @@ func finished(status, class string) contract.Run {
 }
 
 func TestRunSubmitsTheRequestBuiltFromArguments(t *testing.T) {
+	t.Parallel()
 	spy := &clientSpy{run: finished("completed", "")}
 	spy.run.Result.Text = "hi"
 	r := run(context.Background(), spy, "run", "p", "--param", "a=1", "--agent", "x", "--param", "b=two=2", "--timeout", "5m", "--max-cost", "0.5", "--continue", "run-0", "--quiet")
@@ -137,6 +138,7 @@ func TestRunSubmitsTheRequestBuiltFromArguments(t *testing.T) {
 }
 
 func TestExitCodeAndOutputFollowTheNodeResult(t *testing.T) {
+	t.Parallel()
 	withOutput := finished("completed", "")
 	withOutput.Result.Output = json.RawMessage(`{"verdict":"request_changes"}`)
 	withStderr := finished("failed", "runtime_error")
@@ -168,6 +170,7 @@ func TestExitCodeAndOutputFollowTheNodeResult(t *testing.T) {
 }
 
 func TestJSONPrintsTheNodeResult(t *testing.T) {
+	t.Parallel()
 	spy := &clientSpy{run: finished("failed", "rate_limited")}
 	r := run(context.Background(), spy, "run", "p", "--json", "--quiet")
 	var got contract.Result
@@ -177,6 +180,7 @@ func TestJSONPrintsTheNodeResult(t *testing.T) {
 }
 
 func TestResultSummary(t *testing.T) {
+	t.Parallel()
 	spy := &clientSpy{run: finished("completed", "")}
 	cost, in, out := 0.1234, int64(10), int64(20)
 	result := spy.run.Result
@@ -193,16 +197,13 @@ func TestResultSummary(t *testing.T) {
 }
 
 func TestInterruptCancelsTheRunAndStillReportsIt(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	spy := &clientSpy{run: finished("interrupted", "cancelled"), onCancel: make(chan string, 1)}
 	var cancelled string
 	spy.observe = func(observeCtx context.Context) {
 		cancel()
-		select {
-		case cancelled = <-spy.onCancel:
-		case <-time.After(5 * time.Second):
-			t.Error("interrupt did not cancel the run")
-		}
+		cancelled = <-spy.onCancel // the interrupt cancels the run
 		// Observation continues past the interrupt so the outcome is reported.
 		if observeCtx.Err() != nil {
 			t.Error("observation was cancelled with the caller")
@@ -215,6 +216,7 @@ func TestInterruptCancelsTheRunAndStillReportsIt(t *testing.T) {
 }
 
 func TestInterruptStopsWatchingWithoutCancelling(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	spy := &clientSpy{}
 	spy.observe = func(observeCtx context.Context) {
@@ -228,6 +230,7 @@ func TestInterruptStopsWatchingWithoutCancelling(t *testing.T) {
 }
 
 func TestProgressDescribesEvents(t *testing.T) {
+	t.Parallel()
 	spy := &clientSpy{run: finished("completed", ""), events: []contract.Event{
 		{Kind: "PLANNED", Data: map[string]any{"primitives": []any{"Read"}}},
 		{Kind: "REFUSED", Data: map[string]any{"reason": "because"}},
@@ -243,6 +246,7 @@ func TestProgressDescribesEvents(t *testing.T) {
 // Verification attempts show as they happen: each run, each repair turn,
 // and why the loop stopped.
 func TestProgressDescribesVerification(t *testing.T) {
+	t.Parallel()
 	spy := &clientSpy{run: finished("failed", "budget_exhausted"), events: []contract.Event{
 		{Kind: "VERIFY_STARTED", Data: map[string]any{"attempt": 1.0, "command": "make test"}},
 		{Kind: "VERIFY_FINISHED", Data: map[string]any{"attempt": 1.0, "code": 2.0, "bytes": 120.0}},
@@ -262,6 +266,7 @@ func TestProgressDescribesVerification(t *testing.T) {
 // A workflow's progress says which fan-out nodes its join runs without, and
 // that no join ran when none completed (ADR-004).
 func TestProgressNamesTheNodesThatDidNotComplete(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		event contract.Event
@@ -278,6 +283,7 @@ func TestProgressNamesTheNodesThatDidNotComplete(t *testing.T) {
 			"! barrier blocked by node two: no join\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			spy := &clientSpy{run: finished("completed", ""), events: []contract.Event{tc.event, {Kind: "WORKFLOW_FINISHED"}}}
 			r := run(context.Background(), spy, "run", "w")
 			if !strings.Contains(r.stderr, tc.want) {
@@ -290,6 +296,7 @@ func TestProgressNamesTheNodesThatDidNotComplete(t *testing.T) {
 // Text from the agent or the runtime reaches the terminal with its control
 // characters escaped.
 func TestProgressAndSummaryEscapeControlCharacters(t *testing.T) {
+	t.Parallel()
 	spy := &clientSpy{run: finished("failed", "runtime_error"), events: []contract.Event{
 		{Kind: "TOOL_REQUESTED", Data: map[string]any{"name": "Bash", "input": "\x1b]0;owned\x07ls\rrm"}},
 		{Kind: "CALL_FINISHED"},
@@ -308,6 +315,7 @@ func TestProgressAndSummaryEscapeControlCharacters(t *testing.T) {
 }
 
 func TestWatchResumesFromTheGivenSequence(t *testing.T) {
+	t.Parallel()
 	spy := &clientSpy{run: finished("completed", "")}
 	run(context.Background(), spy, "runs", "watch", "r", "--after", "5", "--quiet")
 	if !reflect.DeepEqual(spy.observed, []string{"r@5"}) || len(spy.submitted) != 0 {
@@ -316,6 +324,7 @@ func TestWatchResumesFromTheGivenSequence(t *testing.T) {
 }
 
 func TestCheck(t *testing.T) {
+	t.Parallel()
 	spy := &clientSpy{report: contract.CheckReport{Checked: map[string]int{"agents": 2}, Problems: []contract.Problem{{Message: "agent a: bad"}}}}
 	r := run(context.Background(), spy, "check", "--probe")
 	if r.code != cli.ExitUsage || r.stderr != "agent a: bad\n1 problem(s) in 2 agents\n" || !reflect.DeepEqual(spy.checked, []bool{true}) {
@@ -331,6 +340,7 @@ func TestCheck(t *testing.T) {
 // settings were written for a newer one: after the problems, a line says
 // so and names the binary. Each problem's own message is unchanged.
 func TestCheckHintsAtANewerBinary(t *testing.T) {
+	t.Parallel()
 	hint := "1 problem(s) name something this binary does not know; the settings may need one newer than agister " + testVersion + ".\n"
 	report := contract.CheckReport{Checked: map[string]int{"runtimes": 1}, Problems: []contract.Problem{
 		{Message: "runtime mapping rt: unknown adapter \"opencode\" (available: claude-code, codex)", Unknown: true},
@@ -375,6 +385,7 @@ func TestCheckHintsAtANewerBinary(t *testing.T) {
 // agister --version and agister version print the version the composition
 // root gives, and need no settings: the client is never built.
 func TestVersionNeedsNoSettings(t *testing.T) {
+	t.Parallel()
 	for _, args := range [][]string{{"--version"}, {"version"}, {"--home", "/nowhere", "--version"}} {
 		var stdout, stderr bytes.Buffer
 		built := 0
@@ -392,6 +403,7 @@ func TestVersionNeedsNoSettings(t *testing.T) {
 // Warnings are printed whether or not the settings have problems, and are
 // not problems themselves.
 func TestCheckPrintsWarnings(t *testing.T) {
+	t.Parallel()
 	spy := &clientSpy{report: contract.CheckReport{Checked: map[string]int{"processes": 1}, Warnings: []string{"process p: verify runs with the operator's authority"}}}
 	r := run(context.Background(), spy, "check")
 	if r.code != 0 || r.stdout != "settings OK: 1 processes\n" || r.stderr != "warning process p: verify runs with the operator's authority\n" {
@@ -412,6 +424,7 @@ func TestCheckPrintsWarnings(t *testing.T) {
 // Settings with problems still print their warnings, beside the problems,
 // and check exits with the usage code.
 func TestCheckPrintsWarningsBesideProblems(t *testing.T) {
+	t.Parallel()
 	spy := &clientSpy{report: contract.CheckReport{Checked: map[string]int{"processes": 1},
 		Problems: []contract.Problem{{Message: "process q: agent \"ghost\" does not exist"}},
 		Warnings: []string{"process p: verify runs with the operator's authority"}}}
@@ -425,6 +438,7 @@ func TestCheckPrintsWarningsBesideProblems(t *testing.T) {
 
 // process show prints the verify block and the warnings it is given.
 func TestShowProcessPrintsVerifyAndWarnings(t *testing.T) {
+	t.Parallel()
 	spy := &clientSpy{view: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Output: "text", Timeout: time.Hour, MaxAttempts: 1,
 		Verify:   &contract.Verify{Command: "go test ./...", Timeout: 10 * time.Minute, MaxAttempts: 3, Instruction: "Fix the cause."},
 		Warnings: []string{"verify runs with the operator's authority"}}}
@@ -446,6 +460,7 @@ func TestShowProcessPrintsVerifyAndWarnings(t *testing.T) {
 // process show says which verification the verify fields come from, and of
 // one that was not resolved, that it was not, beside the refusal.
 func TestShowProcessPrintsTheNamedVerification(t *testing.T) {
+	t.Parallel()
 	spy := &clientSpy{view: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Output: "text", Timeout: time.Hour, MaxAttempts: 1,
 		Verify: &contract.Verify{Command: "go test ./...", Timeout: 10 * time.Minute, MaxAttempts: 3, Instruction: "Fix the cause."}, VerifyName: "repo"}}
 	r := run(context.Background(), spy, "process", "show", "p")
@@ -464,6 +479,7 @@ func TestShowProcessPrintsTheNamedVerification(t *testing.T) {
 // process show lists the prompts the process names, each with the layer
 // and path it comes from, or as not resolved beside the refusal.
 func TestShowProcessPrintsThePrompts(t *testing.T) {
+	t.Parallel()
 	spy := &clientSpy{view: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Output: "text", Timeout: time.Hour, MaxAttempts: 1,
 		Inputs: []string{"rules <- prompt", "style <- prompt"}, Prompts: []string{"rules", "style"},
 		Sources: []contract.DefinitionOrigin{
@@ -492,6 +508,7 @@ func TestShowProcessPrintsThePrompts(t *testing.T) {
 // A client refusal over broken settings prints their report, then the
 // refusal, and exits 64; a bare agister checks before it shows the usage.
 func TestSettingsRefusalPrintsTheReport(t *testing.T) {
+	t.Parallel()
 	broken := contract.CheckReport{Checked: map[string]int{"agents": 1}, Problems: []contract.Problem{{Message: "agent a: bad"}}, Overrides: []string{"agent a: /p overrides /g"}}
 	spy := &clientSpy{refuse: &contract.SettingsError{Report: broken}}
 	r := run(context.Background(), spy, "run", "p")
@@ -537,6 +554,7 @@ func (s *listingSpy) ListProcesses(context.Context) ([]contract.ProcessSummary, 
 // Check says, below each problem, what it refuses; listings show each
 // broken agent and each refused process (ADR-015).
 func TestCheckAndListingsSayWhatIsRefused(t *testing.T) {
+	t.Parallel()
 	ref := &contract.DefinitionRef{Kind: "runtimes", Name: "rt"}
 	spy := &listingSpy{
 		clientSpy: clientSpy{report: contract.CheckReport{
@@ -584,6 +602,7 @@ func TestCheckAndListingsSayWhatIsRefused(t *testing.T) {
 }
 
 func TestCheckTreeAndJSON(t *testing.T) {
+	t.Parallel()
 	ref := func(kind, name string) contract.DefinitionRef { return contract.DefinitionRef{Kind: kind, Name: name} }
 	report := contract.CheckReport{
 		Checked:   map[string]int{"processes": 1},
@@ -641,6 +660,7 @@ settings OK: 1 processes
 }
 
 func TestAgentCreateAsksOnlyToReplace(t *testing.T) {
+	t.Parallel()
 	spy := &clientSpy{agentExists: true}
 	r := run(context.Background(), spy, "agent", "create", "x", "--runtime", "rt", "--force")
 	if r.code != cli.ExitUsage || len(spy.agents) != 0 || r.stderr != "Type yes to replace agent x:\nagister: agent create cancelled; nothing was written\n" {
@@ -654,6 +674,7 @@ func TestAgentCreateAsksOnlyToReplace(t *testing.T) {
 }
 
 func TestAgentCreatePayload(t *testing.T) {
+	t.Parallel()
 	spy := &clientSpy{}
 	r := run(context.Background(), spy, "--home", "rel", "agent", "create", "x", "--runtime", "rt", "--model", "m", "--model-family", "f", "--effort", "high", "--session", "resumable", "--command", "/bin/c")
 	want := contract.Agent{Name: "x", Runtime: "rt", Model: "m", ModelFamily: "f", Effort: "high", Session: "resumable", Command: "/bin/c"}
@@ -663,6 +684,7 @@ func TestAgentCreatePayload(t *testing.T) {
 }
 
 func TestUsageErrorsNeverReachTheClient(t *testing.T) {
+	t.Parallel()
 	for _, args := range [][]string{
 		{"frobnicate"},
 		{"run"},
@@ -699,6 +721,7 @@ func (s *installSpy) Install(_ context.Context, source string, approved *contrac
 // An install that stopped after its backup says how to restore it, on
 // stderr, and fails.
 func TestInstallStoppedSaysHowToRestore(t *testing.T) {
+	t.Parallel()
 	spy := &installSpy{stopped: fmt.Errorf("install stopped after 0 of 1 document(s), before /home/prompts/p.md: disk full")}
 	var stdout, stderr bytes.Buffer
 	code := cli.Run(context.Background(), []string{"install", "settings"}, cli.IO{
@@ -712,6 +735,7 @@ func TestInstallStoppedSaysHowToRestore(t *testing.T) {
 
 // install --restore takes no folder.
 func TestInstallRestoreTakesAStampNotAFolder(t *testing.T) {
+	t.Parallel()
 	r := run(context.Background(), &clientSpy{}, "install", "--restore", "stamp-1", "settings")
 	if r.code != cli.ExitUsage || !strings.HasPrefix(r.stderr, "agister: install --restore takes a stamp, not a folder\n") {
 		t.Fatalf("%+v", r)
@@ -736,6 +760,7 @@ func (s *workflowSpy) ShowWorkflow(_ context.Context, name string) (contract.Wor
 }
 
 func TestWorkflowListAndShow(t *testing.T) {
+	t.Parallel()
 	spy := &workflowSpy{
 		summaries: []contract.WorkflowSummary{
 			{Name: "w", FanOut: []string{"one:p", "two:q"}, Join: "merge:j"},
@@ -784,6 +809,7 @@ join         merge: process j, agent a (runtime rt)
 // process show prints the effective staleness limits, and no line for them
 // when there are none.
 func TestShowProcessPrintsTheStalenessLimits(t *testing.T) {
+	t.Parallel()
 	spy := &clientSpy{view: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Output: "text", Timeout: time.Hour, MaxAttempts: 1,
 		Stale: contract.Stale{NoEvent: 5 * time.Minute, NoOutput: 2 * time.Minute, ToolCommand: 10 * time.Minute, RepeatedToolCalls: 5}}}
 	r := run(context.Background(), spy, "process", "show", "p")
@@ -801,6 +827,7 @@ func TestShowProcessPrintsTheStalenessLimits(t *testing.T) {
 }
 
 func TestHelpNamesTheSessionsLatestRunAsThePatchSource(t *testing.T) {
+	t.Parallel()
 	r := run(context.Background(), &clientSpy{}, "--help")
 	if r.code != 0 || !strings.Contains(r.stdout, "the session's latest run's changes") {
 		t.Fatalf("help: code %d, stdout %q, stderr %q", r.code, r.stdout, r.stderr)

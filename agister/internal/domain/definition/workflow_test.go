@@ -24,6 +24,7 @@ join: {node: merge, uses: process:j}
 
 // Nodes keep their declaration order, which the collection follows.
 func TestParseWorkflowKeepsDeclarationOrder(t *testing.T) {
+	t.Parallel()
 	workflow, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "w", workflowText))
 	if err != nil {
 		t.Fatal(err)
@@ -38,6 +39,7 @@ func TestParseWorkflowKeepsDeclarationOrder(t *testing.T) {
 }
 
 func TestParseWorkflowProblems(t *testing.T) {
+	t.Parallel()
 	for name, tc := range map[string]struct{ text, want string }{
 		"wrong type":          {strings.Replace(workflowText, "type: workflow", "type: process", 1), `type: must be "workflow"`},
 		"not a process":       {strings.Replace(workflowText, "uses: process:z", "uses: agent:z", 1), `fan_out[0].uses: must be "process:<name>"`},
@@ -49,6 +51,7 @@ func TestParseWorkflowProblems(t *testing.T) {
 		"undeclared param":    {strings.Replace(workflowText, "${param.candidate}", "${param.other}", 1), "refers to ${param.other}, which is not declared in input.params"},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			_, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "w", tc.text))
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("err = %v, want %q", err, tc.want)

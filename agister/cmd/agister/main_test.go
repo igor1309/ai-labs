@@ -267,7 +267,10 @@ func (r run) argv() []string {
 	return args
 }
 
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestAgentCallEndToEnd(t *testing.T) {
+	t.Parallel()
 	home, repo := setup(t, "approve")
 	r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--timeout", "1m")
 	if r.code != cli.ExitCompleted {
@@ -350,7 +353,10 @@ func TestAgentCallEndToEnd(t *testing.T) {
 	}
 }
 
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestShippedExamplesPassCheck(t *testing.T) {
+	t.Parallel()
 	home, repo := setup(t, "approve")
 	r := agister(t, home, repo, "check", "--probe")
 	if r.code != 0 || !strings.HasPrefix(r.stdout, "settings OK:") ||
@@ -368,7 +374,11 @@ func TestShippedExamplesPassCheck(t *testing.T) {
 
 // init writes the shipped service settings, and a binary file in their
 // place (a Finder .DS_Store once landed there) is reported as one problem.
+//
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestUnreadableServiceSettingsFailCheck(t *testing.T) {
+	t.Parallel()
 	home, repo := tempDir(t), tempDir(t)
 	if r := agisterInput(t, "yes\n", home, repo, "init"); r.code != 0 {
 		t.Fatalf("init: %d %s", r.code, r.stderr)
@@ -387,7 +397,10 @@ func TestUnreadableServiceSettingsFailCheck(t *testing.T) {
 	}
 }
 
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestRefusedCallIsRecorded(t *testing.T) {
+	t.Parallel()
 	home, repo := setup(t, "approve")
 	r := agister(t, home, repo, "run", "no_such_process", "--quiet", "--timeout", "1m")
 	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, `process "no_such_process": not found`) {
@@ -400,7 +413,11 @@ func TestRefusedCallIsRecorded(t *testing.T) {
 
 // New kinds of work, contracts and permissions need no code: this call uses
 // a vocabulary, runtime mapping, schema and process that exist only here.
+//
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestSettingsOnlyExtension(t *testing.T) {
+	t.Parallel()
 	home, repo := tempDir(t), repository(t, "approve")
 	write(t, filepath.Join(home, "service.toml"), `schema = "agister.service/v1alpha1"
 max_timeout = "5m"
@@ -451,7 +468,11 @@ output:
 
 // A repository's own .agister adds settings wherever in the repository
 // Agister runs; outside it, only global ones apply.
+//
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestProjectSettingsAddToGlobal(t *testing.T) {
+	t.Parallel()
 	home, repo := setup(t, "approve")
 	ask := strings.Replace(read(t, filepath.Join(home, "processes", "ask.yaml")), "Answer the question", "PROJECT: answer the question", 1)
 	write(t, filepath.Join(repo, ".agister", "processes", "ask_here.yaml"), strings.Replace(ask, "name: ask", "name: ask_here", 1))
@@ -492,7 +513,11 @@ func TestProjectSettingsAddToGlobal(t *testing.T) {
 
 // A branch can swap the reviewer's family: the project agent takes priority
 // over the global one, and check, process show and the run record say so.
+//
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestProjectOverridesAreNoted(t *testing.T) {
+	t.Parallel()
 	home, repo := setup(t, "approve")
 	global := filepath.Join(home, "agents", "reviewer.toml")
 	project := filepath.Join(repo, ".agister", "agents", "reviewer.toml")
@@ -534,7 +559,11 @@ func TestProjectOverridesAreNoted(t *testing.T) {
 // policies exceed fails check, and refuses the calls of the processes whose
 // limits no longer compose, each recorded; every other command still runs
 // and shows what is refused (ADR-015).
+//
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestComposedSettingsAreVerified(t *testing.T) {
+	t.Parallel()
 	home, repo := setup(t, "approve")
 	write(t, filepath.Join(repo, ".agister", "service.toml"), strings.Replace(read(t, filepath.Join(home, "service.toml")), `max_timeout = "1h"`, `max_timeout = "5m"`, 1))
 
@@ -567,7 +596,11 @@ func TestComposedSettingsAreVerified(t *testing.T) {
 
 // init writes nothing until the user types "yes", and --force says which
 // existing files it would replace before asking.
+//
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestInitAsksBeforeWriting(t *testing.T) {
+	t.Parallel()
 	home, dir := filepath.Join(tempDir(t), "home"), tempDir(t)
 	for _, input := range []string{"", "\n", "y\n", "no\n", "YES please\n"} {
 		r := agisterInput(t, input, home, dir, "init")
@@ -599,7 +632,11 @@ func TestInitAsksBeforeWriting(t *testing.T) {
 }
 
 // agent create asks for "yes" only when --force would replace an agent.
+//
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestAgentCreateAsksBeforeReplacing(t *testing.T) {
+	t.Parallel()
 	home, dir := filepath.Join(tempDir(t), "home"), tempDir(t)
 	if r := agisterInput(t, "yes\n", home, dir, "init"); r.code != 0 {
 		t.Fatalf("init: %d %s", r.code, r.stderr)
@@ -650,7 +687,11 @@ primitives:
 
 // agent create writes global settings, so it must keep them valid on their
 // own, not only as a project in view composes them.
+//
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestAgentCreateKeepsEveryScopeValid(t *testing.T) {
+	t.Parallel()
 	home, repo := setup(t, "approve")
 	mapping := strings.Replace(read(t, filepath.Join(home, "runtimes", "claude-code.yaml")), "name: claude-code", "name: local-rt", 1)
 	write(t, filepath.Join(repo, ".agister", "runtimes", "local-rt.yaml"), mapping)
@@ -692,7 +733,11 @@ func (r *typedAfter) Read(p []byte) (int, error) {
 }
 
 // "yes" approves the plan that was shown, not whatever is on disk by then.
+//
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestConfirmedWritesRefuseChangesMadeWhileAsking(t *testing.T) {
+	t.Parallel()
 	home, dir := filepath.Join(tempDir(t), "home"), tempDir(t)
 	if r := agisterInput(t, "yes\n", home, dir, "init"); r.code != 0 {
 		t.Fatalf("init: %d %s", r.code, r.stderr)
@@ -713,7 +758,11 @@ func TestConfirmedWritesRefuseChangesMadeWhileAsking(t *testing.T) {
 }
 
 // On a fresh machine only init and help work; after init everything does.
+//
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestFreshHomeNeedsInit(t *testing.T) {
+	t.Parallel()
 	home, dir := filepath.Join(tempDir(t), "home"), tempDir(t)
 	if r := agister(t, home, dir, "process", "list"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, "service service: not found") {
 		t.Fatalf("before init: %d\n%s", r.code, r.stderr)
@@ -728,7 +777,11 @@ func TestFreshHomeNeedsInit(t *testing.T) {
 
 // A .agister that exists but cannot be used fails every command instead of
 // silently leaving the project's settings out.
+//
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestUnusableProjectSettingsFail(t *testing.T) {
+	t.Parallel()
 	home, repo := setup(t, "approve")
 	write(t, filepath.Join(repo, ".agister"), "not a directory")
 	if r := agister(t, home, repo, "process", "list"); r.code == 0 || !strings.Contains(r.stderr, ".agister: not a directory") {
@@ -738,7 +791,11 @@ func TestUnusableProjectSettingsFail(t *testing.T) {
 
 // Fields that settings once accepted and ignored are refused, so a home
 // written for the old format fails check instead of running unverified.
+//
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestRefusedSettingsFieldsFailCheck(t *testing.T) {
+	t.Parallel()
 	home, repo := setup(t, "approve")
 	mapping := filepath.Join(home, "runtimes", "claude-code.yaml")
 	original := read(t, mapping)
@@ -784,7 +841,11 @@ func readJSON(t *testing.T, path string, value any) {
 
 // Cancelling through the contract interrupts the runtime and releases the
 // workspace; the run finishes interrupted, not lost.
+//
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestCancelThroughTheContract(t *testing.T) {
+	t.Parallel()
 	home, repo := setup(t, "hang")
 	client, err := unpolledOn(t, cli.Config{Home: home})
 	if err != nil {
@@ -818,7 +879,11 @@ func TestCancelThroughTheContract(t *testing.T) {
 // Settings broken mid-run do not strand the run: it stays cancellable,
 // observable and inspectable, while other uses are refused when the
 // problem stops every command (ADR-015 rule 4).
+//
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestRunSurvivesSettingsBrokenMidRun(t *testing.T) {
+	t.Parallel()
 	home, repo := setup(t, "hang")
 	client, err := unpolledOn(t, cli.Config{Home: home})
 	if err != nil {
@@ -852,7 +917,11 @@ func TestRunSurvivesSettingsBrokenMidRun(t *testing.T) {
 
 // A domain result, even an unfavourable one, is output of a completed node:
 // routing on it is the workflow's business.
+//
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestVerdictIsOutputNotStatus(t *testing.T) {
+	t.Parallel()
 	home, repo := setup(t, "request_changes")
 	r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--json", "--quiet", "--timeout", "1m")
 	var result contract.Result
@@ -863,7 +932,11 @@ func TestVerdictIsOutputNotStatus(t *testing.T) {
 
 // A continuation resumes the earlier run's provider session in place, by the
 // ID the runtime reported, and costs what it added to the session's total.
+//
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestContinuationEndToEnd(t *testing.T) {
+	t.Parallel()
 	// The fake runtime keeps its sessions' costs here: each turn costs
 	// $0.0123, and the result reports the session's total.
 	home, repo := setup(t, "approve")
@@ -924,7 +997,11 @@ func TestContinuationEndToEnd(t *testing.T) {
 
 // What the agent changed in its own checkout is kept as an artifact before
 // the checkout is released; the repository is untouched.
+//
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestWorkspaceChangesAreKept(t *testing.T) {
+	t.Parallel()
 	home, repo := setup(t, "edit")
 	if r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--quiet", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
@@ -945,7 +1022,11 @@ func TestWorkspaceChangesAreKept(t *testing.T) {
 // warn of it, a call records it under the process's digest and completes
 // once its fixture command passes on the clean copy, and a caller's timeout
 // shorter than one run refuses the call.
+//
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestVerifyDeclarationEndToEnd(t *testing.T) {
+	t.Parallel()
 	home, repo := setup(t, "approve")
 	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))
 	process := strings.Replace(shipped, "name: adversarial_review", "name: verified", 1) + `
@@ -1006,7 +1087,11 @@ verify:
 // A runtime that fails with a reason on stderr leaves it in the record: the
 // error message quotes it, and the turn keeps a bounded, marked stderr
 // tail; one that prints nothing says only its exit code.
+//
+// Contract test: the composition over settings on the filesystem and a real
+// git repository. Its runtimes are fakes run in process.
 func TestARuntimesFailureReasonReachesTheRecord(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		scenario, message string
 		cut               bool
@@ -1016,6 +1101,7 @@ func TestARuntimesFailureReasonReachesTheRecord(t *testing.T) {
 		{"exit_silent", "exit code 3", false},
 	} {
 		t.Run(c.scenario, func(t *testing.T) {
+			t.Parallel()
 			home, repo := setup(t, c.scenario)
 			if r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitFailed {
 				t.Fatalf("exit %d\n%s", r.code, r.stderr)

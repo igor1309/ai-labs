@@ -69,7 +69,11 @@ func cleanUpGroup(t *testing.T, ref string) {
 // A command runs with bash in its directory; its combined output is kept
 // as a head and a tail with the size and digest of the whole, and its exit
 // code is reported. Its group is on record, with the leader's token.
+//
+// Contract test: the supervisor's commands against the real shell and its
+// process group. Waiting for a group to end is a bounded poll.
 func TestCommandRunsWithBoundedOutput(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	whole := "out:" + strings.Repeat("x", 30) + "err:" + strings.Repeat("y", 30) + "end\n"
 	result, refs := runCommand(context.Background(), t, supervisor.Commands{}, dir,
@@ -119,7 +123,11 @@ func groupOf(t *testing.T, path string) int {
 
 // A timeout, or the caller's cancellation, kills the whole group, children
 // included; so does an exit that leaves children behind.
+//
+// Contract test: the supervisor's commands against the real shell and its
+// process group. Waiting for a group to end is a bounded poll.
 func TestCommandGroupIsKilled(t *testing.T) {
+	t.Parallel()
 	// The timeout is on a manual clock: it passes only when the test
 	// advances the clock past it.
 	const timeout = time.Hour
@@ -134,6 +142,7 @@ func TestCommandGroupIsKilled(t *testing.T) {
 		{"exit", blocks + " & exit 0", false, false},
 	} {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -168,7 +177,11 @@ func TestCommandGroupIsKilled(t *testing.T) {
 
 // A group that cannot be recorded is killed at once, not by its timeout,
 // and the run fails.
+//
+// Contract test: the supervisor's commands against the real shell and its
+// process group. Waiting for a group to end is a bounded poll.
 func TestUnrecordedCommandIsKilled(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	result := supervisor.Commands{}.Run(context.Background(), supervisor.CommandRequest{Command: blocks, Dir: dir, Timeout: 30 * time.Second, Bound: 64}, func(ref string) error {
 		cleanUpGroup(t, ref)
@@ -209,9 +222,14 @@ func released(t *testing.T, clock *systemtest.Clock) {
 // request's timeout, it times the run out once the clock passes it, and
 // not a moment before: cancelled a moment short of it, the run is
 // cancelled, not timed out.
+//
+// Contract test: the supervisor's commands against the real shell and its
+// process group. Waiting for a group to end is a bounded poll.
 func TestCommandTimesOutOnItsTimer(t *testing.T) {
+	t.Parallel()
 	request := supervisor.CommandRequest{Command: blocks, Dir: t.TempDir(), Timeout: time.Hour, Bound: 64}
 	t.Run("passed", func(t *testing.T) {
+		t.Parallel()
 		clock := systemtest.NewClock(start)
 		done := runOn(t, context.Background(), clock, request)
 		clock.Started(time.Hour)
@@ -223,6 +241,7 @@ func TestCommandTimesOutOnItsTimer(t *testing.T) {
 		released(t, clock)
 	})
 	t.Run("not yet passed", func(t *testing.T) {
+		t.Parallel()
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		clock := systemtest.NewClock(start)
@@ -241,10 +260,15 @@ func TestCommandTimesOutOnItsTimer(t *testing.T) {
 // A command that goes without output for the request's NoOutput is killed
 // as stale, before its timeout and not as a timeout, once the clock passes
 // NoOutput and not a moment before.
+//
+// Contract test: the supervisor's commands against the real shell and its
+// process group. Waiting for a group to end is a bounded poll.
 func TestCommandWithoutOutputIsKilledAsStale(t *testing.T) {
+	t.Parallel()
 	const noOutput = 2 * time.Minute
 	request := supervisor.CommandRequest{Command: blocks, Dir: t.TempDir(), Timeout: time.Hour, NoOutput: noOutput, Bound: 64}
 	t.Run("passed", func(t *testing.T) {
+		t.Parallel()
 		clock := systemtest.NewClock(start)
 		done := runOn(t, context.Background(), clock, request)
 		clock.Started(noOutput)
@@ -256,6 +280,7 @@ func TestCommandWithoutOutputIsKilledAsStale(t *testing.T) {
 		released(t, clock)
 	})
 	t.Run("not yet passed", func(t *testing.T) {
+		t.Parallel()
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		clock := systemtest.NewClock(start)
@@ -274,7 +299,11 @@ func TestCommandWithoutOutputIsKilledAsStale(t *testing.T) {
 // Each output starts the wait again: the wait is for the time since the
 // last output, so a command that keeps writing is live, and one that stops
 // is stale from its last line.
+//
+// Contract test: the supervisor's commands against the real shell and its
+// process group. Waiting for a group to end is a bounded poll.
 func TestCommandOutputRestartsTheWaitForOutput(t *testing.T) {
+	t.Parallel()
 	const noOutput = 2 * time.Minute
 	// run starts a command that writes a line once it reads one from its
 	// gate and exits once it reads another. A minute in, the test lets it
@@ -306,6 +335,7 @@ func TestCommandOutputRestartsTheWaitForOutput(t *testing.T) {
 		return clock, gate, done
 	}
 	t.Run("live", func(t *testing.T) {
+		t.Parallel()
 		clock, gate, done := run(t)
 		// A moment short of the second wait's end, the command exits.
 		clock.Advance(time.Minute - time.Nanosecond)
@@ -319,6 +349,7 @@ func TestCommandOutputRestartsTheWaitForOutput(t *testing.T) {
 		released(t, clock)
 	})
 	t.Run("stale after its last output", func(t *testing.T) {
+		t.Parallel()
 		clock, _, done := run(t)
 		clock.Advance(time.Minute)
 		result := <-done
@@ -331,7 +362,11 @@ func TestCommandOutputRestartsTheWaitForOutput(t *testing.T) {
 
 // Without a NoOutput only the timeout is started, and the grace for
 // reading output once the command has exited.
+//
+// Contract test: the supervisor's commands against the real shell and its
+// process group. Waiting for a group to end is a bounded poll.
 func TestCommandWithoutANoOutputLimitStartsNoWaitForOutput(t *testing.T) {
+	t.Parallel()
 	clock := systemtest.NewClock(start)
 	result := <-runOn(t, context.Background(), clock, supervisor.CommandRequest{Command: "echo one", Dir: t.TempDir(), Timeout: time.Hour, Bound: 64})
 	if waits := clock.Waits(); !reflect.DeepEqual(waits, []time.Duration{time.Hour, grace}) || result.Stale || result.ExitCode == nil {
@@ -343,6 +378,11 @@ func TestCommandWithoutANoOutputLimitStartsNoWaitForOutput(t *testing.T) {
 // Output a descendant that left the group holds open cannot hold the run
 // past the grace, which starts at the exit; until the grace has passed,
 // the output is read.
+//
+// Serial: t.Setenv, which tells the re-executed test binary its role.
+//
+// Contract test: the supervisor's commands against the real shell and its
+// process group. Waiting for a group to end is a bounded poll.
 func TestCommandOutputHeldOutsideTheGroupDoesNotHoldTheRun(t *testing.T) {
 	pidFile := filepath.Join(t.TempDir(), "pid")
 	t.Setenv(helperEnv, "escape")
@@ -354,8 +394,28 @@ func TestCommandOutputHeldOutsideTheGroupDoesNotHoldTheRun(t *testing.T) {
 			}
 		}
 	})
+	dir := t.TempDir()
+	if err := syscall.Mkfifo(filepath.Join(dir, "gate"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gate, err := os.OpenFile(filepath.Join(dir, "gate"), os.O_RDWR, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = gate.Close() })
 	clock := systemtest.NewClock(start)
-	done := runOn(t, context.Background(), clock, supervisor.CommandRequest{Command: "exec '" + os.Args[0] + "'", Dir: t.TempDir(), Timeout: time.Hour, Bound: 64})
+	// The command stays, after the process that escapes, until it reads a
+	// line from its gate: its output is read on a goroutine of its own,
+	// and the wait for output that starts again says the line was read.
+	const noOutput = 2 * time.Minute
+	done := runOn(t, context.Background(), clock, supervisor.CommandRequest{
+		Command: "'" + os.Args[0] + "'; read _ < gate", Dir: dir, Timeout: time.Hour, NoOutput: noOutput, Bound: 64,
+	})
+	clock.Started(noOutput)
+	clock.Started(noOutput)
+	if _, err := gate.WriteString("exit\n"); err != nil {
+		t.Fatal(err)
+	}
 	// The escaped child never exits on its own: only the grace, started
 	// at the exit, ends the read.
 	clock.Started(grace)

@@ -652,16 +652,11 @@ func (s *recorderSpy) kinds() []string {
 
 func (s *recorderSpy) wait(t *testing.T) run.Record {
 	t.Helper()
-	select {
-	case record := <-s.finished:
-		s.mu.Lock()
-		s.taken++
-		s.mu.Unlock()
-		return record
-	case <-time.After(5 * time.Second):
-		t.Fatal("the call never finished")
-		return run.Record{}
-	}
+	record := <-s.finished
+	s.mu.Lock()
+	s.taken++
+	s.mu.Unlock()
+	return record
 }
 
 // running is whether a run was created whose finished record wait has not
@@ -768,7 +763,6 @@ func unfired(time.Duration) (<-chan time.Time, func()) { return nil, func() {} }
 // is advanced to its end, never by wall time. A wait's stop is its
 // watcher's word that nothing more comes of it.
 type timersSpy struct {
-	t     *testing.T
 	clock *settableClock
 	mu    sync.Mutex
 	waits []*timerWait
@@ -815,26 +809,21 @@ func (s *timersSpy) advance(by time.Duration) {
 		}
 	}
 	s.mu.Unlock()
-	s.stopped(passed, "a wait that passed was never dealt with")
+	s.stopped(passed)
 }
 
-// released fails the test unless every wait asked for is stopped.
+// released returns once every wait asked for is stopped.
 func (s *timersSpy) released() {
 	s.mu.Lock()
 	waits := append([]*timerWait(nil), s.waits...)
 	s.mu.Unlock()
-	s.stopped(waits, "a wait was never released")
+	s.stopped(waits)
 }
 
 // stopped waits for each wait's stop.
-func (s *timersSpy) stopped(waits []*timerWait, otherwise string) {
+func (s *timersSpy) stopped(waits []*timerWait) {
 	for _, w := range waits {
-		select {
-		case <-w.stopped:
-		case <-time.After(hangGuard):
-			s.t.Error(otherwise)
-			return
-		}
+		<-w.stopped
 	}
 }
 

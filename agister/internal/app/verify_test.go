@@ -38,6 +38,7 @@ func verifying(h *harness) {
 // base with the turn's patch applied, not in the checkout; it completes on
 // a pass, delivering exactly the patch the pass checked.
 func TestAVerifyingCallRunsItsCommandAfterTheTurn(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	verifying(h)
 	h.changes.changes = []byte("diff --git a/x b/x\n")
@@ -69,6 +70,7 @@ func TestAVerifyingCallRunsItsCommandAfterTheTurn(t *testing.T) {
 // The copy is on record while the command runs in it, beside the command's
 // process group, so a reap after a killed CLI removes it.
 func TestTheCleanCopyIsOnRecordWhileTheCommandRuns(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	verifying(h)
 	var running *run.Effects
@@ -93,6 +95,7 @@ func TestTheCleanCopyIsOnRecordWhileTheCommandRuns(t *testing.T) {
 // failure goes back to the agent in its checkout, and nothing is
 // delivered as verified.
 func TestAnIgnoredFileTheCheckNeedsFailsTheAttempt(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	verifying(h)
 	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "command: go test ./...", "command: test -f new.log", 1)
@@ -130,6 +133,7 @@ func TestAnIgnoredFileTheCheckNeedsFailsTheAttempt(t *testing.T) {
 // not reproduce verified content does: no command runs, no repair starts,
 // and the copy made is removed.
 func TestACleanCopyThatCannotBeCheckedFailsTheCall(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name    string
 		arrange func(*harness)
@@ -149,6 +153,7 @@ func TestACleanCopyThatCannotBeCheckedFailsTheCall(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			h := newHarness()
 			verifying(h)
 			c.arrange(h)
@@ -170,6 +175,7 @@ func TestACleanCopyThatCannotBeCheckedFailsTheCall(t *testing.T) {
 // fails without a discard, which would wait for the repository again, and
 // the record stops naming the copy.
 func TestACleanCopyNeverStartedIsNotDiscarded(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	verifying(h)
 	h.copies.err = fmt.Errorf("%w: %w", app.ErrCopyNotStarted, context.Canceled)
@@ -191,6 +197,7 @@ func TestACleanCopyNeverStartedIsNotDiscarded(t *testing.T) {
 // touched the checkout, so a repair that changes nothing there has made no
 // progress.
 func TestARunThatChangesItsCleanCopyFails(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	verifying(h)
 	h.changes.changes = []byte("diff --git a/ran.txt b/ran.txt\n")
@@ -220,6 +227,7 @@ func TestARunThatChangesItsCleanCopyFails(t *testing.T) {
 // repair turn starts, however the attempt ends, and the record then no
 // longer names it.
 func TestEveryCleanCopyIsRemovedAfterItsAttempt(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name    string
 		arrange func(*harness)
@@ -248,6 +256,7 @@ func TestEveryCleanCopyIsRemovedAfterItsAttempt(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			h := newHarness()
 			verifying(h)
 			if c.arrange != nil {
@@ -275,6 +284,7 @@ func TestEveryCleanCopyIsRemovedAfterItsAttempt(t *testing.T) {
 // A copy that cannot be removed is an event, and the record keeps naming
 // it.
 func TestACleanCopyThatCannotBeRemovedStaysOnRecord(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	verifying(h)
 	h.copies.removeErr = errors.New("busy")
@@ -292,6 +302,7 @@ func TestACleanCopyThatCannotBeRemovedStaysOnRecord(t *testing.T) {
 // leaves one a reap finds; every attempt makes its copy there. A copy that
 // cannot be recorded is not made.
 func TestTheCleanCopyIsOnRecordBeforeItIsMade(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	verifying(h)
 	h.commands.exits = []int{1}
@@ -341,6 +352,7 @@ func TestTheCleanCopyIsOnRecordBeforeItIsMade(t *testing.T) {
 // repair turn is paid for. The record keeps the failed attempt, with its
 // patch and run, the removal's error, and the copy for a reap to remove.
 func TestAFailedRunWhoseCopyCannotBeRemovedEndsTheCall(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	verifying(h)
 	h.changes.changes = []byte("diff --git a/x b/x\n")
@@ -370,6 +382,7 @@ func TestAFailedRunWhoseCopyCannotBeRemovedEndsTheCall(t *testing.T) {
 // made when the deadline passes is interrupted, the call ends as a timeout,
 // no command runs, and the part of the copy that was made is removed.
 func TestMakingTheCleanCopyIsInterruptedAtTheCallsDeadline(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	clock := &settableClock{now: time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)}
 	h.clock = clock
@@ -404,6 +417,7 @@ func TestMakingTheCleanCopyIsInterruptedAtTheCallsDeadline(t *testing.T) {
 // turn ends at second 59 and whose copy takes 2 seconds times out, and
 // one whose copy leaves it 10 seconds runs its command for 10.
 func TestMakingTheCleanCopyCountsAgainstTheCallsTimeout(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name       string
 		turn, copy time.Duration
@@ -418,6 +432,7 @@ func TestMakingTheCleanCopyCountsAgainstTheCallsTimeout(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			h := newHarness()
 			clock := &settableClock{now: time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)}
 			h.clock = clock
@@ -444,6 +459,7 @@ func TestMakingTheCleanCopyCountsAgainstTheCallsTimeout(t *testing.T) {
 // A failed run is repaired in the call's session with the failure, and the
 // repair turn gets what is left of the call's time and cost.
 func TestAFailedRunIsRepairedInTheCallsSession(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.clock = &steppingClock{now: time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)}
 	h.calls = h.callsOn(h.defs)
@@ -475,6 +491,7 @@ func TestAFailedRunIsRepairedInTheCallsSession(t *testing.T) {
 // cost and each repair's budget sum those own costs, and a repair after a
 // turn with no reported total costs an unknown amount.
 func TestARepairCostsWhatItAddedToTheCallsSession(t *testing.T) {
+	t.Parallel()
 	usd := func(v float64) *float64 { return &v }
 	cases := []struct {
 		name      string
@@ -494,6 +511,7 @@ func TestARepairCostsWhatItAddedToTheCallsSession(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			h := newHarness()
 			verifying(h)
 			h.defs.docs[definition.KindPolicy]["pol"] += c.limit
@@ -547,6 +565,7 @@ func deref(v *float64) any {
 // only once the failed attempt is: an attempt that cannot be recorded ends
 // the call as internal, with no completion and no repair turn.
 func TestAnAttemptThatCannotBeRecordedStopsTheCall(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name  string
 		exits []int
@@ -557,6 +576,7 @@ func TestAnAttemptThatCannotBeRecordedStopsTheCall(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			h := newHarness()
 			verifying(h)
 			h.commands.exits = c.exits
@@ -581,6 +601,7 @@ func TestAnAttemptThatCannotBeRecordedStopsTheCall(t *testing.T) {
 // than one verification run refuses the call before its first turn, with
 // the message check gives when it can know it.
 func TestVerifyTimeoutAboveTheCallersTimeoutRefusesTheCall(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	verifying(h)
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
@@ -602,6 +623,7 @@ func TestVerifyTimeoutAboveTheCallersTimeoutRefusesTheCall(t *testing.T) {
 // and class; a latest turn that failed leaves no output, not an earlier
 // turn's.
 func TestAFailedVerificationKeepsTheLatestValidOutput(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name   string
 		repair run.Turn
@@ -615,6 +637,7 @@ func TestAFailedVerificationKeepsTheLatestValidOutput(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			h := newHarness()
 			verifying(h)
 			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "max_attempts: 3", "max_attempts: 2", 1)
@@ -637,6 +660,7 @@ func TestAFailedVerificationKeepsTheLatestValidOutput(t *testing.T) {
 // attempt with an agent or a runtime that cannot continue sessions refuses
 // the call before its first turn, and the refusal is recorded.
 func TestVerifyRepairsWithoutResumableSessionsRefuseTheCall(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name    string
 		arrange func(*harness)
@@ -650,6 +674,7 @@ func TestVerifyRepairsWithoutResumableSessionsRefuseTheCall(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			h := newHarness()
 			verifying(h)
 			if c.arrange != nil {
@@ -673,6 +698,7 @@ func TestVerifyRepairsWithoutResumableSessionsRefuseTheCall(t *testing.T) {
 // run, part of the process definition whose digest the record keeps, and
 // unchanged by an edit after resolution.
 func TestRecordedVerifyIsTheResolvedOneUnderTheProcessDigest(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	verifying(h)
 	resolved := h.defs.docs[definition.KindProcess]["p"]
@@ -706,6 +732,7 @@ func TestRecordedVerifyIsTheResolvedOneUnderTheProcessDigest(t *testing.T) {
 // process show prints the verify block, and the warning of ADR-002 rule 10
 // while verification is in effect: not for a call that would be refused.
 func TestShowProcessShowsVerifyAndItsWarning(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
 	view, err := inspection.ShowProcess(context.Background(), "p", "")
@@ -733,6 +760,7 @@ func TestShowProcessShowsVerifyAndItsWarning(t *testing.T) {
 // check prints the same warning once per process with verify, and reports
 // a runtime that cannot resume the sessions repairs need when it probes.
 func TestCheckWarnsOncePerProcessWithVerify(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	verifying(h)
 	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(settingsDocs()[definition.KindProcess]["p"], "name: p", "name: q", 1)

@@ -53,7 +53,12 @@ func showImplement(t *testing.T, home, repo string) contract.ProcessView {
 // The issue's case (LAB-49): the process is global, the verification the
 // repository's. The resolved process verifies with the repository's
 // command, and the document is among the call's sources as a project one.
+//
+// Contract test: the composition over two layers of settings on the
+// filesystem and a real git repository. Its runtimes are fakes run in
+// process.
 func TestAGlobalProcessVerifiesWithTheRepositorysVerification(t *testing.T) {
+	t.Parallel()
 	home, repo := namingHome(t)
 	project := filepath.Join(repo, ".agister", "verifies", "repo.yaml")
 	write(t, project, repoVerification)
@@ -95,7 +100,12 @@ func TestAGlobalProcessVerifiesWithTheRepositorysVerification(t *testing.T) {
 // layer: a call of the process is refused before its first turn, naming
 // the process, the reference and both expected paths; check passes with a
 // warning, and another process of the same settings resolves and runs.
+//
+// Contract test: the composition over two layers of settings on the
+// filesystem and a real git repository. Its runtimes are fakes run in
+// process.
 func TestAVerificationInNeitherLayerRefusesOnlyTheProcessNamingIt(t *testing.T) {
+	t.Parallel()
 	home, repo := namingHome(t)
 	global, project := filepath.Join(home, "verifies", "repo.yaml"), filepath.Join(repo, ".agister", "verifies", "repo.yaml")
 	reason := `process implement names verify:repo: verification "repo": not found (expected ` + project + " or " + global + ")"
@@ -149,7 +159,12 @@ func TestAVerificationInNeitherLayerRefusesOnlyTheProcessNamingIt(t *testing.T) 
 
 // A repository's verification replaces the global one of the same name,
 // whole, as any document does.
+//
+// Contract test: the composition over two layers of settings on the
+// filesystem and a real git repository. Its runtimes are fakes run in
+// process.
 func TestARepositoryVerificationReplacesAGlobalOne(t *testing.T) {
+	t.Parallel()
 	home, repo := setup(t, "approve")
 	global, project := filepath.Join(home, "verifies", "repo.yaml"), filepath.Join(repo, ".agister", "verifies", "repo.yaml")
 
@@ -183,7 +198,12 @@ func TestARepositoryVerificationReplacesAGlobalOne(t *testing.T) {
 // An invalid verification is a problem of the settings, on that document;
 // it refuses the calls of the processes that name it, and nothing else
 // (ADR-015, amending ADR-010 rule 4).
+//
+// Contract test: the composition over two layers of settings on the
+// filesystem and a real git repository. Its runtimes are fakes run in
+// process.
 func TestAnInvalidRepositoryVerificationFailsCheck(t *testing.T) {
+	t.Parallel()
 	home, repo := namingHome(t)
 	path := filepath.Join(repo, ".agister", "verifies", "repo.yaml")
 	write(t, path, strings.Replace(repoVerification, "timeout: 7m\n", "", 1))

@@ -32,6 +32,7 @@ const setupBlock = `  checkout: candidate_revision
 `
 
 func TestSetupIsParsedAsDeclared(t *testing.T) {
+	t.Parallel()
 	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", settingUpProcess(setupBlock)))
 	if err != nil {
 		t.Fatal(err)
@@ -45,6 +46,7 @@ func TestSetupIsParsedAsDeclared(t *testing.T) {
 // ADR-012 rule 1: both fields are required, there is no default, and a
 // setup prepares only a checkout.
 func TestSetupProblems(t *testing.T) {
+	t.Parallel()
 	cases := map[string]struct{ workspace, want string }{
 		"no command":         {"  checkout: candidate_revision\n  setup: {timeout: 2m}\n", "workspace.setup.command: is required"},
 		"no timeout":         {"  checkout: candidate_revision\n  setup: {command: ./s.sh}\n", "workspace.setup.timeout: is required"},
@@ -55,6 +57,7 @@ func TestSetupProblems(t *testing.T) {
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", settingUpProcess(c.workspace)))
 			if err == nil || !strings.Contains(err.Error(), c.want) {
 				t.Fatalf("err = %v, want %q", err, c.want)
@@ -65,6 +68,7 @@ func TestSetupProblems(t *testing.T) {
 
 // A policy's workspace block has no setup: it belongs to the process.
 func TestPolicyDeclaresNoSetup(t *testing.T) {
+	t.Parallel()
 	_, err := definition.ParsePolicy(doc(definition.KindPolicy, "pol", `schema: agister.process-policy/v1alpha1
 name: pol
 workspace: {access: read-only, setup: {command: ./s.sh, timeout: 2m}}
@@ -75,6 +79,7 @@ workspace: {access: read-only, setup: {command: ./s.sh, timeout: 2m}}
 }
 
 func TestWorkspaceSettingsAreValidated(t *testing.T) {
+	t.Parallel()
 	workspace, err := definition.ParseWorkspace(doc(definition.KindWorkspace, "workspace", `schema: agister.workspace/v1alpha1
 setup:
   command: ./scripts/link-config.sh
@@ -97,6 +102,7 @@ setup:
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			_, err := definition.ParseWorkspace(doc(definition.KindWorkspace, "workspace", c.text))
 			if err == nil || !strings.Contains(err.Error(), c.want) || !strings.HasPrefix(err.Error(), "workspace settings is invalid") {
 				t.Fatalf("err = %v, want %q", err, c.want)
@@ -109,6 +115,7 @@ setup:
 // checkout and none of its own; its own replaces it whole; without a
 // checkout there is none.
 func TestEffectiveSetup(t *testing.T) {
+	t.Parallel()
 	own := &definition.Setup{Command: "./own.sh", Timeout: time.Minute}
 	workspace := &definition.Workspace{Setup: &definition.Setup{Command: "./default.sh", Timeout: 2 * time.Minute}}
 	cases := map[string]struct {
@@ -126,6 +133,7 @@ func TestEffectiveSetup(t *testing.T) {
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			setup, fromWorkspace := c.process.EffectiveSetup(c.workspace)
 			if setup != c.want || fromWorkspace != c.fromWorkspace {
 				t.Fatalf("setup %+v from workspace %v, want %+v %v", setup, fromWorkspace, c.want, c.fromWorkspace)

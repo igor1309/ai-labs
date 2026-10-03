@@ -12,7 +12,10 @@ import (
 // supervisor files selected by the Go tool, so adding an indirect shared
 // dependency cannot quietly recouple a wrapper to the application. One go
 // list call reports every package in the five modules' graph.
+//
+// Contract test: the module's real import graph, from go list.
 func TestRuntimeModulesImportOnlyTheStandardLibrary(t *testing.T) {
+	t.Parallel()
 	const module = "github.com/igor1309/ai-labs/agister"
 	names := []string{"codex", "claudecode", "pi", "opencode", "supervisor"}
 	pkgs := make([]string, len(names))
@@ -30,6 +33,7 @@ func TestRuntimeModulesImportOnlyTheStandardLibrary(t *testing.T) {
 	}
 	for i, name := range names {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			pkg := pkgs[i]
 			dependencies, ok := outside[pkg]
 			if !ok {
@@ -73,6 +77,7 @@ func nonStandardDeps(listing string) (map[string][]string, error) {
 // A dependency counts as outside the standard library unless go list
 // reports it standard, so one it does not list at all counts too.
 func TestNonStandardDepsNamesWhatIsNotStandard(t *testing.T) {
+	t.Parallel()
 	outside, err := nonStandardDeps("a/wrapper false fmt a/shared unlisted\nfmt true\na/shared false fmt\nstd/only true fmt\n")
 	if err != nil {
 		t.Fatal(err)

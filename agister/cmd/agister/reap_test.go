@@ -109,6 +109,7 @@ func cleanupRecorded(t *testing.T, home, repo string) {
 // its token among them, and skips what cannot be read or would signal
 // beyond the test.
 func TestEndRecordedEndsEveryRecordedEffect(t *testing.T) {
+	t.Parallel()
 	runs := tempDir(t)
 	records := map[string]*domain.Effects{
 		// The command's group, recorded before its token lookup failed.
@@ -158,6 +159,7 @@ func TestEndRecordedEndsEveryRecordedEffect(t *testing.T) {
 // the next call's reap then kills by its recorded reference. It is the one
 // test that kills a real CLI: the others abandon a run in process (abandon).
 func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
+	t.Parallel()
 	home, repo := setupBuilt(t, "hang")
 	binary := agisterBinary(t)
 	victim := exec.Command(binary, "--home", home, "run", "adversarial_review", "--param", "base=main", "--quiet", "--timeout", "30s")
@@ -339,6 +341,13 @@ func abandon(t *testing.T, killed composition, id string) {
 // lost. The run is abandoned in process, as the kill leaves it, with its
 // command blocked; that a SIGKILL leaves a run so is
 // TestNextCallReapsWhatAKilledRunLeftBehind's.
+//
+// Contract test: the composition's reap over a real git repository and the
+// run store on the filesystem; what is reaped is a fake run in process.
+//
+// Serial: a run's owner lock is its open file's (flock). A process another
+// test starts holds a copy from its fork to its exec, and the lock an
+// abandoned run gave up would read as held.
 func TestNextCallReapsAKilledRunsVerifyCommand(t *testing.T) {
 	home, repo := setup(t, "approve")
 	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))
@@ -432,7 +441,11 @@ verify:
 // command until cancelled, and the test never ends it otherwise. Once the
 // cleanup returns, the run is finished, its command has seen its context
 // end, and its checkout and clean copy are gone.
+//
+// Contract test: the composition's reap over a real git repository and the
+// run store on the filesystem; what is reaped is a fake run in process.
 func TestCleanupRunCancelsAndDrainsABlockedCall(t *testing.T) {
+	t.Parallel()
 	command := newBlockedCommand()
 	h := newLoopWith(t, seams{commands: command}, verifySettings{}, state("one"))
 	cleanupRecorded(t, h.home, h.repo)

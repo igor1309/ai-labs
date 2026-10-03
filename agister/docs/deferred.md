@@ -109,17 +109,3 @@ Against trunk's merge-base (also covers #829 and #831):
 - **Done when:** the Resolver exposes its own result API, `NewClient`
   builds the interface-based Calls and Inspection adapters, and those are
   tested with stand-ins.
-
-## 8. cmd/agister tests are slow under race and coverage
-
-- **Gap:** CI runs `go test -race` with coverage. Under it, `cmd/agister`
-  took 54 to 59 seconds on trunk, against a 1-minute limit. LAB-51's tests
-  pushed it over, so CI's limit was raised to 3 minutes. The slowest tests
-  build fixtures or wait for killed processes: the reap tests (about 5 to 6
-  seconds each), `TestRepositoryProcessesRunOnFakeRuntimes`, and the
-  example-settings tests.
-- **Trigger:** the package nears the 3-minute limit, or CI time becomes a
-  bottleneck.
-- **Done when:** the slow tests share their fixture builds or wait through
-  injected clocks or hooks instead of real time, and the package runs well
-  under a minute in CI.

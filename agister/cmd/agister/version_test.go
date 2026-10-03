@@ -20,6 +20,7 @@ import (
 // uncommitted changes, and the commit time; what the build does not record
 // is unknown.
 func TestVersion(t *testing.T) {
+	t.Parallel()
 	vcs := func(modified string) []debug.BuildSetting {
 		return []debug.BuildSetting{
 			{Key: "-compiler", Value: "gc"},
@@ -48,7 +49,11 @@ func TestVersion(t *testing.T) {
 
 // The built binary names itself by the build information it carries: main
 // reads it and hands it to the CLI, for --version and for version alike.
+//
+// Contract test: the build information a built binary carries, read from
+// the package's one shared build run as a process.
 func TestBinaryNamesItsBuild(t *testing.T) {
+	t.Parallel()
 	binary := agisterBinary(t)
 	info, err := buildinfo.ReadFile(binary)
 	if err != nil {
@@ -69,7 +74,11 @@ func TestBinaryNamesItsBuild(t *testing.T) {
 // know: an unknown field, adapter or input source, and a newer schema. Each
 // such problem is marked in the report, and a line after the problems names
 // this binary; a plain mistake is not marked.
+//
+// Contract test: the composition over settings on the filesystem, with real
+// git to place the caller.
 func TestCheckMarksWhatThisBinaryDoesNotKnow(t *testing.T) {
+	t.Parallel()
 	home, repo := tempDir(t), tempDir(t)
 	if r := agisterInput(t, "yes\n", home, repo, "init"); r.code != 0 {
 		t.Fatalf("init: %d %s", r.code, r.stderr)

@@ -152,7 +152,10 @@ func (r *recordingTB) runCleanups() {
 	}
 }
 
+// Contract test: the real filesystem: what removing a test's directory
+// removes, and what a failed removal leaves.
 func TestTempDirReportsWhatAFailedRemovalLeaves(t *testing.T) {
+	t.Parallel()
 	fake := &recordingTB{name: "TestSomething/sub"}
 	var root string
 	t.Cleanup(func() {
@@ -203,7 +206,10 @@ func TestTempDirReportsWhatAFailedRemovalLeaves(t *testing.T) {
 	}
 }
 
+// Contract test: the real filesystem: what removing a test's directory
+// removes, and what a failed removal leaves.
 func TestTempDirRemovesItsDirectory(t *testing.T) {
+	t.Parallel()
 	fake := &recordingTB{name: "TestSomething"}
 	t.Cleanup(fake.runCleanups)
 	first, second := ownedTempDir(fake, os.RemoveAll), ownedTempDir(fake, os.RemoveAll)
@@ -220,6 +226,7 @@ func TestTempDirRemovesItsDirectory(t *testing.T) {
 }
 
 func TestLeftoverReportCountsWhatItDoesNotShow(t *testing.T) {
+	t.Parallel()
 	dir := tempDir(t)
 	for i := range shownLeftovers + 5 {
 		write(t, filepath.Join(dir, fmt.Sprintf("f%02d", i)), "x")

@@ -9,6 +9,7 @@ import (
 
 // The help stays current: every flag the parser accepts is described.
 func TestUsageDescribesEveryFlag(t *testing.T) {
+	t.Parallel()
 	opts := options{params: paramFlag{}}
 	flags(&opts).VisitAll(func(f *flag.Flag) {
 		spelled := "--" + f.Name
@@ -25,6 +26,7 @@ func TestUsageDescribesEveryFlag(t *testing.T) {
 // The help describes the join as ADR-004 does: once every fan-out node
 // ended, if at least one completed.
 func TestUsageDescribesTheJoin(t *testing.T) {
+	t.Parallel()
 	want := "fan-out nodes run concurrently, the join once all of them ended, if at least one completed;"
 	if !strings.Contains(strings.Join(strings.Fields(usage), " "), want) {
 		t.Errorf("usage does not say %q", want)

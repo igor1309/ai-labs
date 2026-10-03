@@ -6,6 +6,7 @@ import (
 )
 
 func TestARecordedProcessIsNotAFailure(t *testing.T) {
+	t.Parallel()
 	if _, failed := recordFailure(Turn{}, Evidence{}); failed {
 		t.Fatal("no record error, yet the turn was failed")
 	}
@@ -14,6 +15,7 @@ func TestARecordedProcessIsNotAFailure(t *testing.T) {
 // A non-zero exit quotes the runtime's reasons, its stream's then its
 // stderr's last line, each once; with neither it says only the exit code.
 func TestANonZeroExitQuotesTheRuntimesReasons(t *testing.T) {
+	t.Parallel()
 	one := 1
 	failed := func(stderr, stream string) string {
 		evidence := Evidence{Exit: &Exit{Code: &one}, StderrTail: stderr}

@@ -17,7 +17,10 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestOwnershipDecidesRunningVersusAbandoned(t *testing.T) {
+	t.Parallel()
 	store := Store{Dir: t.TempDir()}
 	ctx := context.Background()
 	record := run.Record{Schema: run.RecordSchema, ID: "r1", Process: "p", CreatedAt: time.Now()}
@@ -45,7 +48,10 @@ func TestOwnershipDecidesRunningVersusAbandoned(t *testing.T) {
 	}
 }
 
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestFinishedRecord(t *testing.T) {
+	t.Parallel()
 	store := Store{Dir: t.TempDir()}
 	ctx := context.Background()
 	record := run.Record{Schema: run.RecordSchema, ID: "r2", Process: "p", CreatedAt: time.Now()}
@@ -68,7 +74,10 @@ func TestFinishedRecord(t *testing.T) {
 	}
 }
 
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestArtifactsAreStoredWithTheirDigest(t *testing.T) {
+	t.Parallel()
 	store := Store{Dir: t.TempDir()}
 	h, err := store.Create(context.Background(), run.Record{Schema: run.RecordSchema, ID: "r3"})
 	if err != nil {
@@ -92,7 +101,11 @@ func TestArtifactsAreStoredWithTheirDigest(t *testing.T) {
 
 // An artifact a run stored reads back as stored, by the path its record
 // names; a path out of the run's artifacts, or to none, is refused.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestArtifactsReadBackAsStored(t *testing.T) {
+	t.Parallel()
 	store := Store{Dir: t.TempDir()}
 	ctx := context.Background()
 	h, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "r4"})
@@ -122,7 +135,11 @@ func TestArtifactsReadBackAsStored(t *testing.T) {
 }
 
 // A run ID cannot lead out of the runs directory.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestRunIDsStayInTheStore(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	store := Store{Dir: filepath.Join(root, "runs")}
 	ctx := context.Background()
@@ -153,7 +170,10 @@ func TestRunIDsStayInTheStore(t *testing.T) {
 	}
 }
 
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestAdoptTakesOnlyAnAbandonedRun(t *testing.T) {
+	t.Parallel()
 	store := Store{Dir: t.TempDir()}
 	ctx := context.Background()
 	effects := &run.Effects{Checkout: &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-1/workspace"}}
@@ -214,7 +234,11 @@ func TestAdoptTakesOnlyAnAbandonedRun(t *testing.T) {
 
 // A finished run whose record still names a clean copy is listed and
 // adopted, so a reap removes the copy; one with no copy on record is not.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestAFinishedRunWithACleanCopyOnRecordIsAdopted(t *testing.T) {
+	t.Parallel()
 	store := Store{Dir: t.TempDir()}
 	ctx := context.Background()
 	now := time.Now()
@@ -257,7 +281,11 @@ func TestAFinishedRunWithACleanCopyOnRecordIsAdopted(t *testing.T) {
 // A finished run whose record names an unreleased checkout is listed and
 // adopted, so a reap removes it; one with only its Checkout on record, as
 // every finished record before Unreleased has, is not.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestAFinishedRunWithAnUnreleasedCheckoutOnRecordIsAdopted(t *testing.T) {
+	t.Parallel()
 	store := Store{Dir: t.TempDir()}
 	ctx := context.Background()
 	now := time.Now()
@@ -294,7 +322,10 @@ func TestAFinishedRunWithAnUnreleasedCheckoutOnRecordIsAdopted(t *testing.T) {
 	}
 }
 
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestLiveCheckoutsAreThoseOfRunsSomeoneOwns(t *testing.T) {
+	t.Parallel()
 	store := Store{Dir: t.TempDir()}
 	ctx := context.Background()
 	effects := func(dir string) *run.Effects {
@@ -345,7 +376,11 @@ func (s reapSpies) Discard(ctx context.Context, _, dir string) error { return s.
 // reap deadline passes while another process holds the worktree lock, is
 // left on record as unreleased: a later reap lists the finished run,
 // removes the checkout and clears the marker.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestACheckoutAReapCouldNotRemoveIsReapedLater(t *testing.T) {
+	t.Parallel()
 	store := Store{Dir: t.TempDir()}
 	ctx := context.Background()
 	checkout := &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-1/workspace-1"}
@@ -411,7 +446,11 @@ func closed(ch <-chan struct{}) bool {
 // A run this process writes has a notification, closed already when the
 // run has an event after the one asked about, and open while it does not.
 // Another Store over the same directory shares it.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestAppendedIsClosedAlreadyWhenALaterEventExists(t *testing.T) {
+	t.Parallel()
 	store := Store{Dir: t.TempDir()}
 	ctx := context.Background()
 	h, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: time.Now()})
@@ -436,7 +475,11 @@ func TestAppendedIsClosedAlreadyWhenALaterEventExists(t *testing.T) {
 
 // The notification closes when the run appends its next event, and not
 // before: raw output, record updates and artifacts do not close it.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestAppendedClosesOnTheNextAppendAndNotBefore(t *testing.T) {
+	t.Parallel()
 	store := Store{Dir: t.TempDir()}
 	ctx := context.Background()
 	h, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: time.Now()})
@@ -473,7 +516,11 @@ func TestAppendedClosesOnTheNextAppendAndNotBefore(t *testing.T) {
 
 // The notification closes when the run finishes, and a finished run's is
 // closed already.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestAppendedClosesWhenTheRunFinishes(t *testing.T) {
+	t.Parallel()
 	store := Store{Dir: t.TempDir()}
 	ctx := context.Background()
 	record := run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: time.Now()}
@@ -502,7 +549,11 @@ func TestAppendedClosesWhenTheRunFinishes(t *testing.T) {
 // elsewhere and no handle here holds it. Once that owner is gone without
 // finishing, the run has ended, abandoned, and its notification is closed
 // already.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestAppendedHasNoNotificationForARunAnotherProcessRuns(t *testing.T) {
+	t.Parallel()
 	store := Store{Dir: t.TempDir()}
 	ctx := context.Background()
 	dir := filepath.Join(store.Dir, "r")
@@ -537,7 +588,11 @@ func TestAppendedHasNoNotificationForARunAnotherProcessRuns(t *testing.T) {
 // A run this process adopts is signalled as one it created is: from the
 // last event its dead owner wrote, on each event the reap appends, and on
 // its finish.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestAppendedSignalsAnAdoptedRun(t *testing.T) {
+	t.Parallel()
 	store := Store{Dir: t.TempDir()}
 	ctx := context.Background()
 	record := run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: time.Now()}
@@ -586,7 +641,11 @@ func TestAppendedSignalsAnAdoptedRun(t *testing.T) {
 // unowned, with its record as last saved and unfinished, so it reads as
 // abandoned and is adopted. Its handle refuses every later write, the
 // finish included, and takes nothing from whoever adopted the run.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestAbandonLeavesTheRunAsAKilledOwnerDoes(t *testing.T) {
+	t.Parallel()
 	store := Store{Dir: t.TempDir()}
 	ctx := context.Background()
 	record := run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: time.Now()}
@@ -662,7 +721,11 @@ func TestAbandonLeavesTheRunAsAKilledOwnerDoes(t *testing.T) {
 
 // The notification closes when the run is abandoned, and an abandoned
 // run's is closed already: whoever follows it wakes and reads it abandoned.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestAppendedClosesWhenTheRunIsAbandoned(t *testing.T) {
+	t.Parallel()
 	store := Store{Dir: t.TempDir()}
 	ctx := context.Background()
 	if _, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: time.Now()}); err != nil {
@@ -691,7 +754,11 @@ func TestAppendedClosesWhenTheRunIsAbandoned(t *testing.T) {
 // Only a run a handle here holds is abandoned: one that finished, one
 // abandoned already, one nobody here created and a path out of the store
 // are errors, and a finished run stays finished.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
 func TestAbandonNeedsARunThisProcessHolds(t *testing.T) {
+	t.Parallel()
 	store := Store{Dir: t.TempDir()}
 	ctx := context.Background()
 	record := run.Record{Schema: run.RecordSchema, ID: "done", Process: "p", CreatedAt: time.Now()}

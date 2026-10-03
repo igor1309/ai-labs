@@ -20,6 +20,7 @@ import (
 )
 
 func TestCheckReportsEveryProblemAcrossDocuments(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.defs.docs[definition.KindAgent]["broken"] = "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\ncolour = \"red\"\n"
 	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: q", 1) + "timeout: 2h\n"
@@ -53,6 +54,7 @@ func TestCheckReportsEveryProblemAcrossDocuments(t *testing.T) {
 // The report lists every definition read and what each uses, including
 // references to definitions that do not exist and what nothing uses.
 func TestCheckReportsWhatDefinesWhat(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.defs.docs[definition.KindPolicy]["spare"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "name: pol", "name: spare", 1)
 	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: q", 1), "agent:a", "agent:ghost", 1)
@@ -91,6 +93,7 @@ func TestCheckReportsWhatDefinesWhat(t *testing.T) {
 }
 
 func TestCheckProbesEachAgentsRuntime(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 	if report, _ := checker.Check(context.Background(), true); len(messages(report.Problems)) != 0 {
@@ -109,6 +112,7 @@ func TestCheckProbesEachAgentsRuntime(t *testing.T) {
 // Only an adapter the code provides is probed: the identity of one it does
 // not is never asked for, and its absence is reported once, as what it is.
 func TestCheckProbeAsksNoIdentityOfAnAdapterTheCodeDoesNotProvide(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(h.defs.docs[definition.KindRuntime]["rt"], "adapter: spy", "adapter: ghost", 1)
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
@@ -126,6 +130,7 @@ func TestCheckProbeAsksNoIdentityOfAnAdapterTheCodeDoesNotProvide(t *testing.T) 
 // The installed version may verify some primitive, yet not the ones a process
 // needs.
 func TestCheckProbePlansEachProcessOnTheInstalledVersion(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(h.defs.docs[definition.KindRuntime]["rt"], "Read: {grants: [repository.read], verified: [\"1.\"]}", "Read: {grants: [repository.read], verified: [\"2.\"]}", 1)
 	h.defs.docs[definition.KindProcess]["p"] += "tools: {require: [repository.read]}\n"
@@ -161,6 +166,7 @@ func (s *readerSpy) Get(context.Context, string) (run.Record, run.State, error) 
 func (s *readerSpy) List(context.Context) ([]run.Record, error) { return []run.Record{s.record}, nil }
 
 func TestObserveResumesAfterTheLastDeliveredEvent(t *testing.T) {
+	t.Parallel()
 	reader := &readerSpy{
 		batches: [][]run.Event{{{Seq: 4}, {Seq: 5}}, {}, {{Seq: 6}}},
 		status:  []run.State{run.StateRunning, run.StateRunning, run.StateFinished},
@@ -231,6 +237,7 @@ func (r *pacedReader) Events(ctx context.Context, id string, afterSeq int) ([]ru
 // Observe reads a running record another process writes again only once
 // its poll interval has passed on the timer Runs takes, and not before.
 func TestObserveReadsAgainOnlyOnceTheIntervalHasPassed(t *testing.T) {
+	t.Parallel()
 	const interval = 7 * time.Second
 	reader := &pacedReader{
 		readerSpy: readerSpy{
@@ -272,6 +279,7 @@ func TestObserveReadsAgainOnlyOnceTheIntervalHasPassed(t *testing.T) {
 // run appends past the last event delivered, never on a timer: each event
 // reaches the callback while the run is still going.
 func TestObserveOfARunThisProcessWritesWaitsOnItsAppends(t *testing.T) {
+	t.Parallel()
 	reader := &pacedReader{
 		readerSpy: readerSpy{
 			batches: [][]run.Event{{{Seq: 1}}, {{Seq: 2}}, {}},
@@ -316,6 +324,7 @@ func TestObserveOfARunThisProcessWritesWaitsOnItsAppends(t *testing.T) {
 
 // Waiting on a run this process writes ends with Observe's context.
 func TestObserveOfARunThisProcessWritesEndsWithItsContext(t *testing.T) {
+	t.Parallel()
 	reader := &readerSpy{batches: [][]run.Event{{}}, status: []run.State{run.StateRunning}}
 	appends := &appendsSpy{asks: make(chan int, 1), wakes: []chan struct{}{make(chan struct{})}}
 	runs := app.NewRuns(reader, appends, nil, noTimer(t), time.Second)
@@ -344,6 +353,7 @@ func (s *cancellerSpy) Cancel(id string) bool {
 // Cancelling a run asks the canceller Runs declares; one it does not take
 // effect for is refused as not running in this process.
 func TestRunsCancelThroughTheCancellerTheyDeclare(t *testing.T) {
+	t.Parallel()
 	canceller := &cancellerSpy{hosts: map[string]bool{"live": true}}
 	runs := app.NewRuns(nil, nil, canceller, nil, 0)
 	if err := runs.Cancel(context.Background(), "live"); err != nil {
@@ -359,6 +369,7 @@ func TestRunsCancelThroughTheCancellerTheyDeclare(t *testing.T) {
 }
 
 func TestInspectShowsTheNodeResultAsRecorded(t *testing.T) {
+	t.Parallel()
 	cost, ms, tokens := 0.1, int64(5), int64(3)
 	result := &run.Result{
 		Status: run.Failed, Error: run.Fault(run.ClassBudgetExhausted, "limit"), Text: "t",
@@ -381,6 +392,7 @@ func TestInspectShowsTheNodeResultAsRecorded(t *testing.T) {
 }
 
 func TestAnAbandonedRunIsALostNode(t *testing.T) {
+	t.Parallel()
 	reader := &readerSpy{state: run.StateAbandoned, record: run.Record{ID: "r", CreatedAt: time.Unix(1, 0)}}
 	view, err := (app.NewRuns(reader, nil, nil, nil, 0)).Inspect(context.Background(), "r")
 	if err != nil || view.State != "abandoned" || view.Result == nil || view.Result.Status != "lost" || view.Result.Error.Class != "abandoned" || view.Result.Cost.Source != "unknown" {
@@ -425,6 +437,7 @@ func (s *writerSpy) Write(ctx context.Context, kind definition.Kind, name string
 }
 
 func TestInitWritesEachExampleWithoutOverwriting(t *testing.T) {
+	t.Parallel()
 	writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
 	examples := fstest.MapFS{
 		"service.toml":   {Data: []byte("x")},
@@ -445,6 +458,7 @@ func TestInitWritesEachExampleWithoutOverwriting(t *testing.T) {
 // A dry run reports what a real run would write and writes nothing; with
 // overwrite, existing files are reported as replaced, not created.
 func TestInitDryRunAndReplacement(t *testing.T) {
+	t.Parallel()
 	examples := fstest.MapFS{
 		"service.toml":  {Data: []byte("x")},
 		"agents/a.toml": {Data: []byte("x")},
@@ -476,6 +490,7 @@ func TestInitDryRunAndReplacement(t *testing.T) {
 // A write carries the plan the user approved: a file that changed since,
 // including one created since, stops it before anything is written.
 func TestWritesRefuseFilesChangedSinceTheApprovedPlan(t *testing.T) {
+	t.Parallel()
 	examples := fstest.MapFS{"service.toml": {Data: []byte("x")}, "agents/a.toml": {Data: []byte("x")}}
 	writer := &writerSpy{existed: map[string]bool{}}
 	settings := app.NewSettings(nil, writer, examples, nil, settingsCheckStub{})
@@ -505,6 +520,7 @@ func TestWritesRefuseFilesChangedSinceTheApprovedPlan(t *testing.T) {
 // else, such as another agent, other content, or replacing a file shown as
 // kept, writes nothing.
 func TestWritesRefuseAnythingButTheApprovedPlan(t *testing.T) {
+	t.Parallel()
 	examples := fstest.MapFS{"service.toml": {Data: []byte("x")}, "agents/a.toml": {Data: []byte("x")}}
 	writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
 	settings := app.NewSettings(nil, writer, examples, nil, settingsCheckStub{})
@@ -541,6 +557,7 @@ func TestWritesRefuseAnythingButTheApprovedPlan(t *testing.T) {
 }
 
 func TestInitSkipsHiddenFilesAndRejectsStrayRootFiles(t *testing.T) {
+	t.Parallel()
 	writer := &writerSpy{}
 	examples := fstest.MapFS{
 		".DS_Store":        {Data: []byte("Bud1")},
@@ -563,6 +580,7 @@ func TestInitSkipsHiddenFilesAndRejectsStrayRootFiles(t *testing.T) {
 // A dry run validates and reports a replacement without writing; the real
 // run writes and reports the same.
 func TestCreateAgentDryRun(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	writer := &writerSpy{existed: map[string]bool{"agents/b": true}}
 	settings := app.NewSettings(h.defs, writer, nil, nil, settingsCheckStub{})
@@ -600,6 +618,7 @@ primitives:
 // An agent that is valid alone but breaks the settings is refused before
 // anything is written or asked; problems it did not add do not block it.
 func TestCreateAgentKeepsSettingsValid(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	h.defs.docs[definition.KindRuntime]["narrow"] = narrowRuntime
 	writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
@@ -626,6 +645,7 @@ func TestCreateAgentKeepsSettingsValid(t *testing.T) {
 }
 
 func TestCreateAgentValidatesAgainstTheRuntimeMapping(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	writer := &writerSpy{}
 	settings := app.NewSettings(h.defs, writer, nil, nil, settingsCheckStub{})
@@ -646,6 +666,7 @@ func TestCreateAgentValidatesAgainstTheRuntimeMapping(t *testing.T) {
 
 // A process view says where each definition comes from as data, not text.
 func TestShowProcessSourcesAreStructured(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	// The resolver behind it is given nothing that can start a turn.
 	identities := struct{ app.ResolverIdentities }{h.runtimes}
@@ -666,6 +687,7 @@ func TestShowProcessSourcesAreStructured(t *testing.T) {
 // its policy's timeout and permissions, and what its runtime grants of
 // them.
 func TestShowProcessLimitsThroughTheResolver(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	identities := struct{ app.ResolverIdentities }{h.runtimes}
 	view, err := app.NewInspection(app.NewResolver(h.defs, identities, h.validator, resolverCheckStub{})).ShowProcess(context.Background(), "p", "")
@@ -692,6 +714,7 @@ func TestShowProcessLimitsThroughTheResolver(t *testing.T) {
 // process with the agent asked for, and a workflow with each node's
 // process.
 func TestInspectionShowsThroughTheResolverItDeclares(t *testing.T) {
+	t.Parallel()
 	cost := 0.5
 	source := func(kind definition.Kind, name string) app.InspectedSource {
 		return app.InspectedSource{Kind: string(kind), Name: name, Path: "/project/" + string(kind) + "/" + name, Project: true}
@@ -831,6 +854,7 @@ func (s *proposedCheckSpy) ProblemsAdded(_ context.Context, doc definition.Docum
 // Settings asks every scope about the agent as it would be written, and the
 // first scope it would break refuses the write, by name.
 func TestCreateAgentAsksEveryScope(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	writer := &writerSpy{}
 	global, project := &proposedCheckSpy{}, &proposedCheckSpy{added: []string{"agent b: bad"}}

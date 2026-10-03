@@ -255,6 +255,12 @@ func done(t *testing.T, worker <-chan error) {
 	}
 }
 
+// Contract test: the worktree coordinator over real git and its real lock
+// files. The timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
 func TestWorktreeCommandsOfOneRepositoryNeverOverlap(t *testing.T) {
 	repo := emptyRepository(t)
 	g := gated(t, "")
@@ -295,6 +301,12 @@ func TestWorktreeCommandsOfOneRepositoryNeverOverlap(t *testing.T) {
 	inTurn(discard, released)
 }
 
+// Contract test: the worktree coordinator over real git and its real lock
+// files. The timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
 func TestDifferentRepositoriesDoNotWaitOnEachOther(t *testing.T) {
 	busy, other := emptyRepository(t), emptyRepository(t)
 	g := gated(t, "")
@@ -315,6 +327,12 @@ func TestDifferentRepositoriesDoNotWaitOnEachOther(t *testing.T) {
 	done(t, free)
 }
 
+// Contract test: the worktree coordinator over real git and its real lock
+// files. The timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
 func TestTwoPathsOfOneRepositoryShareTheLock(t *testing.T) {
 	repo := emptyRepository(t)
 	linked := filepath.Join(t.TempDir(), "linked")
@@ -355,6 +373,12 @@ func TestTwoPathsOfOneRepositoryShareTheLock(t *testing.T) {
 	}
 }
 
+// Contract test: the worktree coordinator over real git and its real lock
+// files. The timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
 func TestACancelledContextStopsTheWait(t *testing.T) {
 	repo := emptyRepository(t)
 	g := gated(t, "")
@@ -389,7 +413,9 @@ func TestACancelledContextStopsTheWait(t *testing.T) {
 	done(t, held)
 }
 
+// Contract test: real git, in a repository of the test's own.
 func TestWorkspacesWithoutWorktreesMakeNoWorktreeChange(t *testing.T) {
+	t.Parallel()
 	repo := emptyRepository(t)
 	dir, release, err := Workspaces{}.Checkout(context.Background(), repo, "main")
 	if err == nil {
@@ -536,6 +562,12 @@ func receive[T any](t *testing.T, ch <-chan T, what string) T {
 	}
 }
 
+// Contract test: the lock files two coordinators share as two processes do,
+// the kernel's flock. The timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
 func TestWorktreeCommandsOfTwoProcessesInOneRepositoryNeverOverlap(t *testing.T) {
 	repo := emptyRepository(t)
 	l := newTurns(t)
@@ -588,6 +620,12 @@ func TestWorktreeCommandsOfTwoProcessesInOneRepositoryNeverOverlap(t *testing.T)
 	}
 }
 
+// Contract test: the lock files two coordinators share as two processes do,
+// the kernel's flock. The timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
 func TestTwoProcessesInDifferentRepositoriesDoNotShareALockFile(t *testing.T) {
 	busy, other := emptyRepository(t), emptyRepository(t)
 	l := newTurns(t)
@@ -611,6 +649,12 @@ func TestTwoProcessesInDifferentRepositoriesDoNotShareALockFile(t *testing.T) {
 	}
 }
 
+// Contract test: the lock files two coordinators share as two processes do,
+// the kernel's flock. The timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
 func TestACancelledContextStopsTheWaitForTheLockFile(t *testing.T) {
 	repo := emptyRepository(t)
 	l := newTurns(t)
@@ -673,6 +717,12 @@ func (e *expiry) Err() error {
 	}
 }
 
+// Contract test: the lock files two coordinators share as two processes do,
+// the kernel's flock. The timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
 func TestACheckoutReleaseStopsWaitingForTheLockFileAtTheCleanupDeadline(t *testing.T) {
 	repo := emptyRepository(t)
 	l := newTurns(t)
@@ -724,6 +774,12 @@ func TestACheckoutReleaseStopsWaitingForTheLockFileAtTheCleanupDeadline(t *testi
 	}
 }
 
+// Contract test: the lock files two coordinators share as two processes do,
+// the kernel's flock. The timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
 func TestDiscardStopsWaitingForTheLockFileAtTheCleanupDeadline(t *testing.T) {
 	repo := emptyRepository(t)
 	l := newTurns(t)
@@ -763,6 +819,7 @@ func TestDiscardStopsWaitingForTheLockFileAtTheCleanupDeadline(t *testing.T) {
 }
 
 func TestTheDefaultCleanupContextHasADeadlineOfOneMinute(t *testing.T) {
+	t.Parallel()
 	now := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
 	worktrees := NewWorktrees(t.TempDir())
 	worktrees.Clock = systemtest.NewClock(now)
@@ -776,6 +833,13 @@ func TestTheDefaultCleanupContextHasADeadlineOfOneMinute(t *testing.T) {
 // A command that found the lock file held tries again only once the retry
 // wait has passed on its timer, and not before, however soon the lock is
 // freed.
+//
+// Contract test: the lock files two coordinators share as two processes do,
+// the kernel's flock. The timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
 func TestALockFileHeldIsTriedAgainOnlyOnceTheRetryHasPassed(t *testing.T) {
 	repo := emptyRepository(t)
 	l := newTurns(t)
@@ -829,6 +893,12 @@ func helper(role string, env ...string) *exec.Cmd {
 
 // TestHelperProcess is no test but a process of another: in a re-executed
 // test binary, the holder of a repository's lock or its held git child.
+//
+// Contract test: no test of its own, but the real processes of
+// TestAKilledHoldersLockLastsAsLongAsItsGitChild.
+//
+// Serial: it is the body of a re-executed test binary, which runs nothing
+// else.
 func TestHelperProcess(t *testing.T) {
 	switch os.Getenv(helperRole) {
 	case "holder":
@@ -881,6 +951,14 @@ func socketPair(t *testing.T) (*os.File, *os.File) {
 // A process killed while its git command runs leaves the lock to git: a
 // command of another process waits for it until git exits. The held
 // command is started as production starts git, the lock handed to it.
+//
+// Contract test: the kernel's flock across real processes: a re-executed
+// test binary that is killed, and the child it handed the lock to. The
+// timers only guard a hang.
+//
+// Serial: a lock is its open file's (flock). A process another test starts
+// holds a copy from its fork to its exec, and a lock just released would
+// read as held.
 func TestAKilledHoldersLockLastsAsLongAsItsGitChild(t *testing.T) {
 	repo, locks := emptyRepository(t), t.TempDir()
 	// The child ends when the test closes its end: the other end is the

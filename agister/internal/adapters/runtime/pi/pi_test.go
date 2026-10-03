@@ -13,6 +13,7 @@ import (
 )
 
 func TestArguments(t *testing.T) {
+	t.Parallel()
 	args, err := pi.Arguments(pi.TurnRequest(request("hello")), "/sessions/new-1", "/tmp/system-prompt.md")
 	if err != nil {
 		t.Fatal(err)
@@ -32,6 +33,7 @@ func TestArguments(t *testing.T) {
 // A continuation resumes the session by ID from its own directory, with
 // every setting of a fresh turn.
 func TestResumeArguments(t *testing.T) {
+	t.Parallel()
 	r := request("hello")
 	r.ResumeSessionID = "s-1"
 	args, err := pi.Arguments(pi.TurnRequest(r), "/sessions/s-1", "/tmp/system-prompt.md")
@@ -53,6 +55,7 @@ func TestResumeArguments(t *testing.T) {
 // No model, effort or system prompt leaves Pi's own; the tools are always
 // an allowlist.
 func TestDefaults(t *testing.T) {
+	t.Parallel()
 	args, err := pi.Arguments(pi.TurnRequest(pi.TurnRequest{Prompt: "x", Primitives: []string{"read"}}), "/sessions/new-1", "")
 	if err != nil {
 		t.Fatal(err)
@@ -68,6 +71,7 @@ func TestDefaults(t *testing.T) {
 
 // Every Pi tool is a primitive, and every thinking level an effort.
 func TestToolsAndThinkingLevels(t *testing.T) {
+	t.Parallel()
 	for _, tool := range pi.Tools {
 		r := request("x")
 		r.Primitives = []string{"read", tool}
@@ -112,6 +116,7 @@ const (
 // A resume turn must report the session it resumed: another one, or none
 // by the end of the turn, breaks the contract of resuming in place.
 func TestResumeReportingAnotherSessionFails(t *testing.T) {
+	t.Parallel()
 	for name, lines := range map[string][]string{
 		"another session": {`{"type":"session","version":3,"id":"s-2","cwd":"/w"}`, stopped, agentEnd},
 		"no session":      {stopped, agentEnd},
@@ -130,6 +135,7 @@ func TestResumeReportingAnotherSessionFails(t *testing.T) {
 }
 
 func TestStructuredOutputMustBeJSON(t *testing.T) {
+	t.Parallel()
 	for text, class := range map[string]pi.Class{"not json": pi.ClassInvalidOutput, "": pi.ClassInvalidOutput} {
 		stream := &pi.Stream{}
 		data, _ := json.Marshal(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant", "content": []any{map[string]any{"type": "text", "text": text}}, "stopReason": "stop"}})
@@ -152,6 +158,7 @@ func TestStructuredOutputMustBeJSON(t *testing.T) {
 // A figure an assistant message does not report is unknown for the turn,
 // never a partial sum.
 func TestAFigureSomeMessageLacksIsUnknown(t *testing.T) {
+	t.Parallel()
 	stream := &pi.Stream{}
 	reduce(stream,
 		`{"type":"message_end","message":{"role":"assistant","content":[],"usage":{"input":100,"output":3},"stopReason":"toolUse"}}`,
@@ -163,6 +170,7 @@ func TestAFigureSomeMessageLacksIsUnknown(t *testing.T) {
 }
 
 func TestFailuresAreClassified(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		stopReason, message string
 		class               pi.Class
@@ -194,6 +202,7 @@ func TestFailuresAreClassified(t *testing.T) {
 // Only an agent_end Pi will not retry decides the turn; errors before it
 // are evidence, quoted when the process ends without one.
 func TestOnlyTheLastAgentEndDecides(t *testing.T) {
+	t.Parallel()
 	stream := &pi.Stream{}
 	reduce(stream,
 		`{"type":"message_end","message":{"role":"assistant","content":[],"stopReason":"error","errorMessage":"overloaded"}}`,
@@ -218,6 +227,7 @@ const (
 // not end it: the recovery's own agent_end does. A recovery interrupted
 // before it is decided by the transport, whatever its messages said.
 func TestAnAgentEndBeforeARecoveryDoesNotEndTheTurn(t *testing.T) {
+	t.Parallel()
 	overflow := []string{
 		`{"type":"session","version":3,"id":"s-1","cwd":"/w"}`,
 		`{"type":"agent_start"}`,
@@ -255,6 +265,7 @@ func TestAnAgentEndBeforeARecoveryDoesNotEndTheTurn(t *testing.T) {
 // Any agent run that starts after an agent_end takes it back, and a
 // compaction Pi does not retry after leaves the turn ended.
 func TestOnlyTheLastAgentRunEndsTheTurn(t *testing.T) {
+	t.Parallel()
 	stream := &pi.Stream{}
 	reduce(stream, stopped, agentEnd, `{"type":"agent_start"}`)
 	if turn := stream.Reconcile(clean, false); string(turn.Status) != string(pi.Lost) || string(turn.Error.Class) != string(pi.ClassNoResult) {
@@ -273,6 +284,7 @@ func TestOnlyTheLastAgentRunEndsTheTurn(t *testing.T) {
 // What an automatic compaction's summary cost is the turn's too: usage and
 // cost are summed over the assistant messages and the compaction.
 func TestCompactionUsageAndCostAreCounted(t *testing.T) {
+	t.Parallel()
 	stream := &pi.Stream{}
 	reduce(stream, `{"type":"agent_start"}`, overflowed, agentEnd, recovering, `{"type":"agent_start"}`, stopped, agentEnd)
 	turn := stream.Reconcile(clean, true)
@@ -292,6 +304,7 @@ func TestCompactionUsageAndCostAreCounted(t *testing.T) {
 // figure unknown for the turn, never the assistant messages' partial sum;
 // one that made no summary counts nothing.
 func TestACompactionWithoutUsageLeavesTheFiguresUnknown(t *testing.T) {
+	t.Parallel()
 	stream := &pi.Stream{}
 	reduce(stream, stopped, agentEnd, `{"type":"compaction_end","reason":"threshold","result":{"summary":"So far."},"aborted":false,"willRetry":false}`)
 	if turn := stream.Reconcile(clean, false); string(turn.Status) != string(pi.Completed) || turn.Usage != nil || turn.CostUSD != nil {
@@ -319,6 +332,7 @@ func TestACompactionWithoutUsageLeavesTheFiguresUnknown(t *testing.T) {
 // numbers as written and however long, and as they finish; bash runs
 // commands. Only the event's preview is cut.
 func TestToolCallsAreReported(t *testing.T) {
+	t.Parallel()
 	stream := &pi.Stream{}
 	long := strings.Repeat("x", 1000)
 	input := `{"command":"ls ` + long + `","timeout":12345678901234567890}`
@@ -346,6 +360,7 @@ func TestToolCallsAreReported(t *testing.T) {
 // A completed turn's text is its final assistant message's, never the
 // commentary of an earlier one, even when the final one says nothing.
 func TestACompletedTurnsTextIsTheFinalMessages(t *testing.T) {
+	t.Parallel()
 	commentary := `{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"Let me look at the tests."},{"type":"toolCall","id":"c1","name":"read","arguments":{"path":"a_test.go"}}],"stopReason":"toolUse"}}`
 	for name, final := range map[string]string{"empty": "", "whitespace": " \n"} {
 		content, _ := json.Marshal([]any{map[string]any{"type": "text", "text": final}})
@@ -367,6 +382,7 @@ func TestACompletedTurnsTextIsTheFinalMessages(t *testing.T) {
 // A process that could not be recorded fails the turn, whatever the stream
 // says: it was killed, and nothing it reported can be trusted to be whole.
 func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
+	t.Parallel()
 	stream := &pi.Stream{}
 	reduce(stream, stopped, agentEnd)
 	turn := stream.Reconcile(pi.Evidence{RecordError: "disk full"}, false)

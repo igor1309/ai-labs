@@ -36,6 +36,7 @@ func output(t *testing.T, starter InProcess, command supervisor.Command) (string
 // its path, the CLI's or the built fake's; a command that names none fails
 // to start.
 func TestInProcessPicksTheFakeByTheCommandsName(t *testing.T) {
+	t.Parallel()
 	for command, want := range map[string]string{
 		"claude":               "2.1.283 (Claude Code)\n",
 		"/builds/fakeclaude":   "2.1.283 (Claude Code)\n",
@@ -61,6 +62,7 @@ func TestInProcessPicksTheFakeByTheCommandsName(t *testing.T) {
 // bash is the fake shell: a command run under it runs in process, in the
 // command's directory, its stderr with its stdout.
 func TestInProcessRunsBashAsTheFakeShell(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	out, exit := output(t, InProcess{}, supervisor.Command{Name: "bash", Args: []string{"-c", "echo made > new.txt; cat new.txt missing.txt; exit 3"}, Dir: dir})
 	if out != "made\ncat: missing.txt: No such file or directory\n" || exit.Code == nil || *exit.Code != 3 || exit.Signal != "" {
@@ -74,6 +76,7 @@ func TestInProcessRunsBashAsTheFakeShell(t *testing.T) {
 // A test's own program is picked before a fake runtime, by the command as
 // given or by its base name.
 func TestInProcessPicksTheTestsOwnProgramFirst(t *testing.T) {
+	t.Parallel()
 	says := func(text string) Fake {
 		return func(p fakeproc.Process) int {
 			fmt.Fprint(p.Stdout, text)
@@ -90,8 +93,9 @@ func TestInProcessPicksTheTestsOwnProgramFirst(t *testing.T) {
 
 // The fake's environment is the starter's, with the command's own over
 // it, and never the test process's.
+//
+// Serial: t.Setenv, to show the process's environment is not read.
 func TestInProcessTakesTheEnvironmentFromTheStarterAndTheCommand(t *testing.T) {
-	// Serial: t.Setenv, to show the process's environment is not read.
 	t.Setenv("FAKE_VERSION", "9.9.9")
 	version := func(starter InProcess, env ...string) string {
 		out, _ := output(t, starter, supervisor.Command{Name: "pi", Args: []string{"--version"}, Env: env})
@@ -113,6 +117,7 @@ func TestInProcessTakesTheEnvironmentFromTheStarterAndTheCommand(t *testing.T) {
 // with its arguments and stdin, its stderr apart from stdout when the
 // command says where, and its exit code the fake's.
 func TestInProcessRunsTheFakeAsTheCommandsProcess(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	starter := InProcess{Fakes: map[string]Fake{"echo": func(p fakeproc.Process) int {
 		input, _ := io.ReadAll(p.Stdin)
@@ -138,6 +143,7 @@ func TestInProcessRunsTheFakeAsTheCommandsProcess(t *testing.T) {
 // start and that it is blocked, the signal ends it, and it exited by that
 // signal. Its group is then gone, as a real one is.
 func TestInProcessSignallingTheGroupEndsABlockedFake(t *testing.T) {
+	t.Parallel()
 	reports := make(chan Report)
 	process, err := InProcess{Reports: reports}.Start(supervisor.Command{Name: "claude", Stdin: strings.NewReader("SCENARIO:hang")})
 	if err != nil {
@@ -167,6 +173,7 @@ func TestInProcessSignallingTheGroupEndsABlockedFake(t *testing.T) {
 // Each fake leads a group of its own, whose number no real group has: a
 // reference to it, signalled by number as a reap does, reaches no process.
 func TestInProcessGroupsAreNoRealGroups(t *testing.T) {
+	t.Parallel()
 	seen := map[int]bool{}
 	for range 3 {
 		process, err := InProcess{}.Start(supervisor.Command{Name: "claude", Args: []string{"--version"}})
@@ -195,6 +202,7 @@ func TestInProcessGroupsAreNoRealGroups(t *testing.T) {
 // package there; offline it installs nothing. A test that sees no such
 // report has seen Pi install nothing.
 func TestInProcessFakePiReportsThePackagesItInstalls(t *testing.T) {
+	t.Parallel()
 	settings := func(t *testing.T) string {
 		dir := t.TempDir()
 		if err := os.MkdirAll(filepath.Join(dir, ".pi"), 0o700); err != nil {

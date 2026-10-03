@@ -21,6 +21,7 @@ func doc(kind definition.Kind, name, text string) definition.Document {
 
 // Every shipped example parses.
 func TestExamplesParse(t *testing.T) {
+	t.Parallel()
 	settings := examples.Settings()
 	err := fs.WalkDir(settings, ".", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil || entry.IsDir() {
@@ -63,6 +64,7 @@ func TestExamplesParse(t *testing.T) {
 // from the one resolving ${param.candidate}. Bound to ${param.*} instead, each
 // would resolve its revision again, and the two could name different commits.
 func TestShippedRevisionInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
+	t.Parallel()
 	settings := examples.Settings()
 	shipped := map[string]fs.FS{
 		"examples/settings": settings,
@@ -117,6 +119,7 @@ func TestShippedRevisionInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 // refuses because it would not enforce them, and its constraints, which
 // Agister does not know.
 func TestResearchPolicyParsesInPlace(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../../../../research/agister/research/verger/policies/static-review.yaml")
 	if err != nil {
 		t.Fatal(err)
@@ -139,6 +142,7 @@ func TestResearchPolicyParsesInPlace(t *testing.T) {
 }
 
 func TestProcessParsing(t *testing.T) {
+	t.Parallel()
 	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", `
 schema: agister.process/v1alpha1
 name: p
@@ -176,6 +180,7 @@ output:
 }
 
 func TestStrictParsingReportsEveryProblem(t *testing.T) {
+	t.Parallel()
 	_, err := definition.ParseProcess(doc(definition.KindProcess, "p", `
 schema: agister.process/v1alpha1
 name: other
@@ -221,6 +226,7 @@ constraints:
 
 // The service must say which permissions write, even if none do.
 func TestServiceDeclaresItsWritingPermissions(t *testing.T) {
+	t.Parallel()
 	base := "schema = \"agister.service/v1alpha1\"\nmax_timeout = \"1h\"\npermissions = [\"read\", \"write\"]\n"
 	for text, want := range map[string]string{
 		base:                             "writing: is required",
@@ -241,6 +247,7 @@ func TestServiceDeclaresItsWritingPermissions(t *testing.T) {
 // A binary or unreadable document gets one plain problem, not a cascade of
 // missing-field errors.
 func TestUnreadableDocumentsReportOneProblem(t *testing.T) {
+	t.Parallel()
 	dsStore := "\x00\x00\x00\x01Bud1\x00\x00"
 	utf16 := "\xff\xfes\x00c\x00"
 	parsers := map[string]func(string) error{
@@ -284,6 +291,7 @@ func TestUnreadableDocumentsReportOneProblem(t *testing.T) {
 // Verification is per primitive: a version vouches only for the primitives
 // that list it.
 func TestMappingVerification(t *testing.T) {
+	t.Parallel()
 	mapping, err := definition.ParseMapping(doc(definition.KindRuntime, "r", `
 schema: agister.runtime/v1alpha1
 name: r
@@ -332,6 +340,7 @@ primitives:
 // A version list for the whole mapping is refused, so no old settings
 // silently vouch for primitives nobody checked.
 func TestMappingWideVerificationIsRefused(t *testing.T) {
+	t.Parallel()
 	_, err := definition.ParseMapping(doc(definition.KindRuntime, "r", `
 schema: agister.runtime/v1alpha1
 name: r
@@ -350,6 +359,7 @@ primitives:
 
 // A primitive that grants nothing fits every plan, so it is rejected.
 func TestMappingPrimitivesGrantSomething(t *testing.T) {
+	t.Parallel()
 	for _, item := range []string{"X: {grants: []}", "X: {}"} {
 		_, err := definition.ParseMapping(doc(definition.KindRuntime, "r", `
 schema: agister.runtime/v1alpha1
@@ -370,6 +380,7 @@ primitives:
 }
 
 func TestAgentRoundTrip(t *testing.T) {
+	t.Parallel()
 	agent := definition.Agent{Name: "r", Runtime: "claude-code", Model: "opus", ModelFamily: "anthropic", Effort: "high", Session: definition.SessionResumable}
 	parsed, err := definition.ParseAgent(doc(definition.KindAgent, "r", string(definition.FormatAgent(agent))))
 	if err != nil {
@@ -406,6 +417,7 @@ func withoutTopLevel(data []byte, keys ...string) []byte {
 // A value may use the resolved text of a value declared before it, never
 // of itself or of a later one: values resolve in order.
 func TestValuesReferToValuesDeclaredBeforeThem(t *testing.T) {
+	t.Parallel()
 	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", `
 schema: agister.process/v1alpha1
 name: p
@@ -467,6 +479,7 @@ timeout: 20m
 // A policy declares its staleness limits in a stale block; each is
 // optional, and unset when the block is.
 func TestPolicyDeclaresStalenessLimits(t *testing.T) {
+	t.Parallel()
 	policy, err := definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy))
 	if err != nil || policy.Limits.Stale != (definition.Stale{}) {
 		t.Fatalf("without the block: %+v, %v", policy.Limits.Stale, err)
@@ -491,6 +504,7 @@ func TestPolicyDeclaresStalenessLimits(t *testing.T) {
 }
 
 func TestStalenessLimitProblems(t *testing.T) {
+	t.Parallel()
 	for block, want := range map[string]string{
 		"stale: {no_event: soon}":           `stale.no_event: invalid duration "soon"`,
 		"stale: {no_event: 30m}":            "stale.no_event: 30m0s exceeds timeout 20m0s",
@@ -512,6 +526,7 @@ func TestStalenessLimitProblems(t *testing.T) {
 // schema of Agister's shape this code does not read. Any other mistake,
 // a schema of another shape included, is not.
 func TestProblemsNamingTheUnknownAreMarked(t *testing.T) {
+	t.Parallel()
 	process := func(schema, extra string) string {
 		return "schema: " + schema + "\nname: p\ntype: process\nuses: agent:a\n" + extra +
 			"input:\n  instruction: x\noutput:\n  format: text\n"

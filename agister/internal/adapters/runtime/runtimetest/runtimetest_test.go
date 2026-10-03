@@ -23,6 +23,8 @@ func keepBuilds(t *testing.T) {
 
 // A name built once is not built again: the later call returns the first
 // build's path without running go build.
+//
+// Serial: it sets the package's build state, which every Build reads.
 func TestBuildReturnsTheBuildMadeEarlier(t *testing.T) {
 	keepBuilds(t)
 	built = map[string]string{"fake": "/builds/fake"}
@@ -33,6 +35,8 @@ func TestBuildReturnsTheBuildMadeEarlier(t *testing.T) {
 
 // The removal deletes the build directory and forgets its builds, so a
 // later Build starts a new directory.
+//
+// Serial: it sets the package's build state, which every Build reads.
 func TestRemoveBuildsDeletesTheBuildDirectory(t *testing.T) {
 	keepBuilds(t)
 	buildDir = filepath.Join(t.TempDir(), "builds")
@@ -61,6 +65,7 @@ func TestRemoveBuildsDeletesTheBuildDirectory(t *testing.T) {
 // Run removes the builds after the tests, whatever they returned, and a
 // failed removal fails a passing run without hiding a failing one's code.
 func TestRunRemovesTheBuildsAfterTheTests(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		name      string
 		tests     int
@@ -74,6 +79,7 @@ func TestRunRemovesTheBuildsAfterTheTests(t *testing.T) {
 		{"both failed", 2, errors.New("busy"), 2, true},
 	} {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			var order []string
 			var stderr strings.Builder
 			code := runThenRemove(

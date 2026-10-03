@@ -15,6 +15,7 @@ import (
 )
 
 func TestArguments(t *testing.T) {
+	t.Parallel()
 	args, err := codex.Arguments(codex.TurnRequest(request("hello")), "/tmp/schema.json")
 	if err != nil {
 		t.Fatal(err)
@@ -37,6 +38,7 @@ func TestArguments(t *testing.T) {
 // setting of a fresh turn; resume has no --sandbox, so the sandbox mode
 // goes in as config.
 func TestResumeArguments(t *testing.T) {
+	t.Parallel()
 	r := request("hello")
 	r.ResumeSessionID = "thread-0"
 	args, err := codex.Arguments(codex.TurnRequest(r), "/tmp/schema.json")
@@ -57,6 +59,7 @@ func TestResumeArguments(t *testing.T) {
 // A resume turn must report the thread it resumed: another one, or none by
 // the end of the turn, breaks the contract of resuming in place.
 func TestResumeReportingAnotherThreadFails(t *testing.T) {
+	t.Parallel()
 	code := 0
 	clean := codex.Evidence{Exit: &codex.Exit{Code: &code}}
 	for name, lines := range map[string][]string{
@@ -80,6 +83,7 @@ func TestResumeReportingAnotherThreadFails(t *testing.T) {
 }
 
 func TestRejectsWhatItCannotHonour(t *testing.T) {
+	t.Parallel()
 	for _, primitives := range [][]string{nil, {"read-only", "workspace-write"}, {"danger-full-access"}} {
 		r := request("x")
 		r.Primitives = primitives
@@ -96,6 +100,7 @@ func TestRejectsWhatItCannotHonour(t *testing.T) {
 }
 
 func TestErrorEventsAreNotTerminal(t *testing.T) {
+	t.Parallel()
 	stream := &codex.Stream{}
 	for _, line := range []string{
 		`{"type":"thread.started","thread_id":"t-1"}`,
@@ -125,6 +130,7 @@ func TestErrorEventsAreNotTerminal(t *testing.T) {
 }
 
 func TestStructuredOutputMustBeJSON(t *testing.T) {
+	t.Parallel()
 	stream := &codex.Stream{}
 	stream.Reduce(`{"type":"item.completed","item":{"type":"agent_message","text":"not json"}}`)
 	stream.Reduce(`{"type":"turn.completed"}`)
@@ -135,6 +141,7 @@ func TestStructuredOutputMustBeJSON(t *testing.T) {
 }
 
 func TestFailuresAreClassified(t *testing.T) {
+	t.Parallel()
 	code := 0
 	clean := codex.Evidence{Exit: &codex.Exit{Code: &code}}
 	for message, class := range map[string]codex.Class{
@@ -155,6 +162,7 @@ func TestFailuresAreClassified(t *testing.T) {
 // A process that could not be recorded fails the turn, whatever the stream
 // says: it was killed, and nothing it reported can be trusted to be whole.
 func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
+	t.Parallel()
 	stream := &codex.Stream{}
 	stream.Reduce(`{"type":"turn.completed"}`)
 	turn := stream.Reconcile(codex.Evidence{RecordError: "disk full"}, false)
@@ -170,6 +178,7 @@ func listing(cost string) codex.Sessions {
 }
 
 func TestThreadCost(t *testing.T) {
+	t.Parallel()
 	path := "2026/09/30/rollout-2026-09-30T11-00-00-01a0f1e9-210c-7853-b2dc-7abbe3cf6073"
 	for name, c := range map[string]struct {
 		listing string
@@ -194,6 +203,7 @@ func ptr(v float64) *float64 { return &v }
 // whole input and whether it runs a command; a completed item ends the call
 // of its ID, and an item that is no tool call is not one.
 func TestStreamReportsToolCalls(t *testing.T) {
+	t.Parallel()
 	stream := &codex.Stream{}
 	long := "echo " + strings.Repeat("x", 1000)
 	command, _ := json.Marshal(long)
@@ -223,6 +233,7 @@ func TestStreamReportsToolCalls(t *testing.T) {
 // Two calls of one tool whose inputs differ only in a large integer are
 // distinct calls, not one repeated: the input keeps its numbers as written.
 func TestLargeIntegerInputsAreNotRepeatedCalls(t *testing.T) {
+	t.Parallel()
 	stream := &codex.Stream{}
 	for _, line := range []string{
 		`{"type":"item.started","item":{"id":"item_1","type":"mcp_tool_call","server":"s","tool":"read","arguments":{"offset":9007199254740993}}}`,

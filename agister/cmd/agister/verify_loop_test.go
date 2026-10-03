@@ -433,7 +433,11 @@ func expect(t *testing.T, record domain.Record, status domain.Status, class doma
 }
 
 // A first run that passes completes the node with no repair turn.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyFirstPassMakesNoRepairTurn(t *testing.T) {
+	t.Parallel()
 	h := newLoop(t, verifySettings{}, state("pass"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Completed, "", "")
@@ -449,7 +453,11 @@ func TestVerifyFirstPassMakesNoRepairTurn(t *testing.T) {
 // same checkout, with the instruction, the command, its exit status and
 // its output; the repair turn is validated and the command runs again. The
 // output is the latest turn's; usage and cost sum every turn.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyFailingRunIsRepairedInTheSameSessionAndCheckout(t *testing.T) {
+	t.Parallel()
 	h := newLoop(t, verifySettings{}, state("one"), state("pass", func(turn *domain.Turn) {
 		turn.Output = json.RawMessage(`{"done":true,"turn":2}`)
 	}))
@@ -481,7 +489,11 @@ func TestVerifyFailingRunIsRepairedInTheSameSessionAndCheckout(t *testing.T) {
 
 // The last attempt failing ends the node as budget exhausted, with the
 // latest turn's valid output on record (LAB-39).
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyAttemptsRunOut(t *testing.T) {
+	t.Parallel()
 	h := newLoop(t, verifySettings{}, state("one"), state("two"), state("three"), state("pass"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "attempt 3 of 3 failed (exit code 1)")
@@ -493,7 +505,11 @@ func TestVerifyAttemptsRunOut(t *testing.T) {
 // A run never repeats on content already checked: a repair that changes
 // nothing, or returns to an earlier state, ends the loop without running,
 // and the evidence says why.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyStopsWithoutProgress(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name    string
 		steps   []step
@@ -505,6 +521,7 @@ func TestVerifyStopsWithoutProgress(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			h := newLoop(t, verifySettings{}, c.steps...)
 			record := h.call(contract.CallRequest{})
 			expect(t, record, domain.Failed, domain.ClassBudgetExhausted, c.message)
@@ -518,7 +535,11 @@ func TestVerifyStopsWithoutProgress(t *testing.T) {
 
 // The same exit status and output as the run before ends the loop, though
 // the content changed.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyStopsOnTheSameFailureTwice(t *testing.T) {
+	t.Parallel()
 	h := newLoop(t, verifySettings{command: `grep -qx pass state || { echo "not yet"; exit 1; }`}, state("one"), state("two"), state("pass"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "no progress: attempt 2 failed as attempt 1 did")
@@ -530,7 +551,11 @@ func TestVerifyStopsOnTheSameFailureTwice(t *testing.T) {
 // A run that changes the content of the clean copy it runs in fails
 // whatever its exit status, and the evidence keeps what it changed; files
 // it writes that are ignored are not content.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyRunThatChangesItsCleanCopyFails(t *testing.T) {
+	t.Parallel()
 	h := newLoop(t, verifySettings{command: "grep -qx pass state && echo ran > ran.txt", maxAttempts: 1}, state("pass"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "attempt 1 of 1 failed (exit code 0; the run changed the content it checked")
@@ -555,7 +580,11 @@ const blocks = "tail -f /dev/null"
 // A run that exceeds verify.timeout is killed and interrupts the node,
 // well before the call's own timeout: the message names verify.timeout,
 // not the call's.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyRunTimeout(t *testing.T) {
+	t.Parallel()
 	// The run's timeout passes on the command runner's clock once the run
 	// waits on it.
 	clock := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
@@ -576,7 +605,11 @@ func TestVerifyRunTimeout(t *testing.T) {
 
 // The call's timeout bounds the whole loop: a run gets only the time the
 // turns and the preparation before it left.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyCallTimeoutBoundsTheLoop(t *testing.T) {
+	t.Parallel()
 	// Making the clean copy uses 59 of the call's 60 seconds on the call's
 	// clock, which leaves the run one second of its 20. The clock moves
 	// only once the copy is made, so the real time Git takes decides
@@ -650,7 +683,11 @@ func (c *blockedCommand) Run(ctx context.Context, _ app.CommandRequest, started 
 // record names while it runs. That the whole group is killed is the
 // supervisor's contract (command_test.go); here the command sees its
 // context end.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyCancellationEndsTheCommand(t *testing.T) {
+	t.Parallel()
 	command := newBlockedCommand()
 	h := newLoopWith(t, seams{commands: command}, verifySettings{}, state("one"))
 	id := h.submit(contract.CallRequest{})
@@ -673,7 +710,11 @@ func TestVerifyCancellationEndsTheCommand(t *testing.T) {
 
 // A repair turn that fails, returns invalid output or reports another
 // session ends the node with that turn's status and class.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyRepairTurnThatFailsEndsTheNode(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name    string
 		repair  step
@@ -695,6 +736,7 @@ func TestVerifyRepairTurnThatFailsEndsTheNode(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			h := newLoop(t, verifySettings{}, state("one"), c.repair)
 			record := h.call(contract.CallRequest{})
 			expect(t, record, c.status, c.class, c.message)
@@ -712,7 +754,11 @@ func TestVerifyRepairTurnThatFailsEndsTheNode(t *testing.T) {
 // totals, from the totals Agister recorded on the session's latest turn on
 // any run: in A, then B continues A, then C continues A, C's baseline is
 // B's turn, not A's. A session with no recorded totals leaves them unknown.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestContinuationsCountFromTheSessionsLatestRecordedTurn(t *testing.T) {
+	t.Parallel()
 	// Each turn reports the session's running totals, as Claude Code does
 	// for cost and Codex for usage, a second after it started.
 	clock := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
@@ -752,7 +798,11 @@ func TestContinuationsCountFromTheSessionsLatestRecordedTurn(t *testing.T) {
 
 // Every turn shares the call's cost limit: a repair gets what is left, and
 // an earlier turn with an unknown cost blocks repair.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyUnknownCostBlocksRepair(t *testing.T) {
+	t.Parallel()
 	h := newLoop(t, verifySettings{policy: "max_cost_usd: 5\n"}, state("one", func(turn *domain.Turn) { turn.CostUSD = nil }), state("pass"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "a turn's cost is unknown, so the cost limit 5 cannot be enforced")
@@ -770,9 +820,14 @@ func TestVerifyUnknownCostBlocksRepair(t *testing.T) {
 
 // A cost limit already spent, exactly or beyond, leaves nothing for a repair
 // turn, though attempts are left.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifySpentBudgetBlocksRepair(t *testing.T) {
+	t.Parallel()
 	for _, usd := range []float64{5, 6} {
 		t.Run(fmt.Sprintf("$%g of $5", usd), func(t *testing.T) {
+			t.Parallel()
 			h := newLoop(t, verifySettings{policy: "max_cost_usd: 5\n"}, state("one", func(turn *domain.Turn) { turn.CostUSD = &usd }), state("pass"))
 			record := h.call(contract.CallRequest{})
 			expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "the cost limit 5 is spent")
@@ -786,7 +841,11 @@ func TestVerifySpentBudgetBlocksRepair(t *testing.T) {
 // Verification runs only after a valid turn: never after one that failed
 // or returned invalid output, which ends the node as it would without
 // verify.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyNeverRunsAfterAFailedOrInvalidTurn(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name  string
 		turn  step
@@ -799,6 +858,7 @@ func TestVerifyNeverRunsAfterAFailedOrInvalidTurn(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			marker := filepath.Join(tempDir(t), "ran")
 			h := newLoop(t, verifySettings{command: "touch " + marker}, c.turn)
 			record := h.call(contract.CallRequest{})
@@ -811,7 +871,11 @@ func TestVerifyNeverRunsAfterAFailedOrInvalidTurn(t *testing.T) {
 }
 
 // A turn that reports no session cannot be repaired.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyTurnWithoutSessionCannotBeRepaired(t *testing.T) {
+	t.Parallel()
 	h := newLoop(t, verifySettings{}, state("one", func(turn *domain.Turn) { turn.ProviderSessionID = "" }), state("pass"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "attempt 1 failed and its turn reported no session to repair in")
@@ -838,7 +902,11 @@ func (l lossy) Changes(ctx context.Context, dir, from, to string) ([]byte, error
 // The captured changes, applied to the pinned base, rebuild exactly the
 // content that passed: committed, edited, new and binary files alike. A
 // capture that leaves content out prevents completion.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyCaptureReproducesThePassingContent(t *testing.T) {
+	t.Parallel()
 	agent := func(t *testing.T, request app.TurnRequest) domain.Turn {
 		write(t, filepath.Join(request.Cwd, "committed.txt"), "committed\n")
 		gitCmd(t, request.Cwd, "add", "committed.txt")
@@ -878,7 +946,11 @@ func TestVerifyCaptureReproducesThePassingContent(t *testing.T) {
 // ignored file, so the check fails on the clean copy the patch makes,
 // though it would pass in the agent's checkout. A file the patch carries
 // passes the same check.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyChecksWhatThePatchDelivers(t *testing.T) {
+	t.Parallel()
 	h := newLoop(t, verifySettings{command: "test -f new.log", maxAttempts: 1}, writes(map[string]string{"new.log": "made\n"}))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "attempt 1 of 1 failed (exit code 1)")
@@ -898,7 +970,11 @@ func TestVerifyChecksWhatThePatchDelivers(t *testing.T) {
 // bounded output with the size and digest of the whole, the session, the
 // number, the content checked, and the turn's changes, each kept before the
 // next turn starts. runs show displays them.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyEvidenceForEveryAttempt(t *testing.T) {
+	t.Parallel()
 	var h *loopHarness
 	// A repair turn sees the attempts before it recorded, with their changes.
 	recorded := func(want int, next step) step {
@@ -953,7 +1029,11 @@ func TestVerifyEvidenceForEveryAttempt(t *testing.T) {
 // A run that produces no output for the policy's stale.no_output is killed,
 // group and all, before verify.timeout: the node is interrupted as a
 // timeout, and the attempt's run says what went stale.
+//
+// Contract test: the composition's checkouts, clean copies and patches in a
+// real git repository; turns and commands are fakes run in process.
 func TestVerifyRunWithoutOutputIsKilledAsStale(t *testing.T) {
+	t.Parallel()
 	// The wait for output passes on the command runner's clock once the
 	// run waits on it, well short of the run's timeout: the command never
 	// ends on its own.

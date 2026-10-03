@@ -50,6 +50,7 @@ func (s *processStandIn) Reap(ctx context.Context, ref string) (supervisor.Reapi
 	return s.result, s.err
 }
 func TestCommandAdapter(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	code := 7
@@ -64,6 +65,7 @@ func TestCommandAdapter(t *testing.T) {
 	}
 }
 func TestProcessAdapter(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	failure := errors.New("unknown reference")
@@ -77,6 +79,7 @@ func TestProcessAdapter(t *testing.T) {
 }
 
 func TestSetupCommandAdapter(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	code := 7

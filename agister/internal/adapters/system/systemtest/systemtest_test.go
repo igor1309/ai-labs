@@ -23,6 +23,7 @@ func fired(ch <-chan time.Time) (time.Time, bool) {
 // A timer fires once the clock is advanced to the end of its wait, and not
 // a moment before; it delivers the time its wait ended.
 func TestATimerFiresOnlyOnceTheClockPassesItsWait(t *testing.T) {
+	t.Parallel()
 	clock := systemtest.NewClock(start)
 	ch, stop := clock.Timer(time.Minute)
 	defer stop()
@@ -42,6 +43,7 @@ func TestATimerFiresOnlyOnceTheClockPassesItsWait(t *testing.T) {
 // One advance fires every timer whose wait it passes, each at its own end,
 // and leaves the later ones; a stopped timer never fires.
 func TestAdvanceFiresEveryTimerItPassesAndNoStoppedOne(t *testing.T) {
+	t.Parallel()
 	clock := systemtest.NewClock(start)
 	late, stopLate := clock.Timer(time.Hour)
 	defer stopLate()
@@ -66,6 +68,7 @@ func TestAdvanceFiresEveryTimerItPassesAndNoStoppedOne(t *testing.T) {
 
 // A wait of zero has passed when it starts.
 func TestAZeroWaitHasPassedAlready(t *testing.T) {
+	t.Parallel()
 	clock := systemtest.NewClock(start)
 	ch, _ := clock.Timer(0)
 	if at, ok := fired(ch); !ok || !at.Equal(start) {
@@ -76,6 +79,7 @@ func TestAZeroWaitHasPassedAlready(t *testing.T) {
 // Started returns once the code has started a timer of the wait asked
 // for, once per timer, whatever else was started; Waits lists them all.
 func TestStartedReturnsOncePerTimerOfTheWait(t *testing.T) {
+	t.Parallel()
 	clock := systemtest.NewClock(start)
 	returned := make(chan struct{})
 	go func() {

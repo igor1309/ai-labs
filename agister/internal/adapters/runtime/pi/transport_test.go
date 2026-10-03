@@ -34,6 +34,7 @@ func valueOf(args []string, flag string) string {
 // system prompt file, directory, prompt on stdin, timeout and the runner's
 // kill grace. The system prompt is in its file while the turn runs.
 func TestTheTransportIsHandedTheTurn(t *testing.T) {
+	t.Parallel()
 	const resumed = "7d1c2a4e-0000-4000-8000-000000000001"
 	for name, resume := range map[string]string{"fresh": "", "resumed": resumed} {
 		root, cwd := t.TempDir(), t.TempDir()
@@ -79,6 +80,7 @@ func TestTheTransportIsHandedTheTurn(t *testing.T) {
 // evidence: Agister's timeout, or a signal Agister did not send. Without a
 // session reported, a fresh turn keeps no session directory.
 func TestATurnIsDecidedByTheTransportsEvidence(t *testing.T) {
+	t.Parallel()
 	for name, c := range map[string]struct {
 		evidence pi.Evidence
 		status   pi.Status
@@ -103,6 +105,7 @@ func TestATurnIsDecidedByTheTransportsEvidence(t *testing.T) {
 // A fresh turn's session directory is named after the session Pi reported,
 // however its turn ended.
 func TestAReportedSessionIsKeptWhateverTheEvidence(t *testing.T) {
+	t.Parallel()
 	root, cwd := t.TempDir(), t.TempDir()
 	spy := &spyTransport{Runs: spyRuns{Answer: func(pi.Spec) ([]string, pi.Evidence) {
 		return []string{`{"type":"session","version":3,"id":"` + fresh + `","cwd":"` + cwd + `"}`},
@@ -120,6 +123,7 @@ func TestAReportedSessionIsKeptWhateverTheEvidence(t *testing.T) {
 }
 
 func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
+	t.Parallel()
 	spy := &spyTransport{Output: "0.70.2"}
 	identity, err := pi.New("/opt/pi", t.TempDir(), spy).Identity(context.Background())
 	if err != nil || identity.Version != "0.70.2" || identity.Contract != pi.Contract {
@@ -137,6 +141,7 @@ func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
 // Classification still quotes the process's bounded stderr, including a tail
 // with a cut marker, and preserves the full retained tail as evidence.
 func TestTheTransportStderrDecidesASilentFailure(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		code    int
 		tail    string

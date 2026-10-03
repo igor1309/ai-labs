@@ -32,6 +32,7 @@ func request(prompt string) app.TurnRequest {
 // Contract test: the Claude Code adapter against its built fake, a real
 // process under the real supervisor.
 func TestConformance(t *testing.T) {
+	t.Parallel()
 	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {

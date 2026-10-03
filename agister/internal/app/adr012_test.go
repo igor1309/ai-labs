@@ -42,6 +42,7 @@ func unreadableFile(t *testing.T, path string) {
 }
 
 func TestADR012Rule4IncludesUnparsedAndUnreadableNames(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name string
 		bad  func(*testing.T, fsdefs.Store)
@@ -64,6 +65,7 @@ func TestADR012Rule4IncludesUnparsedAndUnreadableNames(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			h := newHarness()
 			s := settingsFiles(t, workflowDocs())
 			tc.bad(t, s)
@@ -121,6 +123,7 @@ func mustRemove(t *testing.T, path string) {
 }
 
 func TestADR012UnreadableDocumentsHavePathsAndViews(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		kind definition.Kind
 		name string
@@ -129,6 +132,7 @@ func TestADR012UnreadableDocumentsHavePathsAndViews(t *testing.T) {
 		{definition.KindWorkflow, "w"},
 	} {
 		t.Run(string(tc.kind), func(t *testing.T) {
+			t.Parallel()
 			h := newHarness()
 			s := settingsFiles(t, workflowDocs())
 			path := filepath.Join(s.Dir, string(tc.kind), tc.name+".yaml")
@@ -183,6 +187,7 @@ func TestADR012UnreadableDocumentsHavePathsAndViews(t *testing.T) {
 }
 
 func TestADR012WorkflowPreflightsRuntimeProblems(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name    string
 		node    string
@@ -211,6 +216,7 @@ func TestADR012WorkflowPreflightsRuntimeProblems(t *testing.T) {
 		}, "describes adapter contract spy/2", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			h := newHarness()
 			docs := withBrokenMapping(workflowDocs())
 			docs[definition.KindRuntime]["bad"] = strings.Replace(docs[definition.KindRuntime]["bad"], "adapter: nowhere", "adapter: spy", 1)
@@ -239,8 +245,10 @@ func TestADR012WorkflowPreflightsRuntimeProblems(t *testing.T) {
 }
 
 func TestADR012AgentOverridesAreResolvedAndAttributed(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"planning", "repair session"} {
 		t.Run(mode, func(t *testing.T) {
+			t.Parallel()
 			h := newHarness()
 			docs := withBrokenMapping(settingsDocs())
 			docs[definition.KindRuntime]["bad"] = strings.Replace(docs[definition.KindRuntime]["bad"], "adapter: nowhere", "adapter: spy", 1)
@@ -278,6 +286,7 @@ func TestADR012AgentOverridesAreResolvedAndAttributed(t *testing.T) {
 }
 
 func TestADR012MissingVerificationStillRefusesAtItsNode(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	docs := workflowDocs()
 	docs[definition.KindProcess]["second"] += "verify: verify:repo\n"
@@ -313,6 +322,7 @@ func TestADR012MissingVerificationStillRefusesAtItsNode(t *testing.T) {
 }
 
 func TestADR012EveryDocumentKindRefusesOnlyItsDependents(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		kind definition.Kind
 		name string
@@ -327,6 +337,7 @@ func TestADR012EveryDocumentKindRefusesOnlyItsDependents(t *testing.T) {
 		{definition.KindWorkspace, "workspace"},
 	} {
 		t.Run(string(tc.kind), func(t *testing.T) {
+			t.Parallel()
 			h := newHarness()
 			docs := workflowDocs()
 			switch tc.kind {
@@ -396,6 +407,7 @@ func TestADR012EveryDocumentKindRefusesOnlyItsDependents(t *testing.T) {
 }
 
 func TestADR012AgentListingsShowBrokenDependencies(t *testing.T) {
+	t.Parallel()
 	h := newHarness()
 	s := settingsFiles(t, withBrokenMapping(settingsDocs()))
 	agents, err := h.clientOn(s).ListAgents(context.Background())
@@ -419,6 +431,7 @@ func TestADR012AgentListingsShowBrokenDependencies(t *testing.T) {
 // on it, and check, listings and the refusal say so, with the document's
 // path and the chain of uses (ADR-012, ADR-015 rules 3 and 5).
 func TestInvalidWorkspaceSettingsRefuseWhatReadsThem(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
 	docs := workflowDocs()
@@ -468,6 +481,7 @@ func TestInvalidWorkspaceSettingsRefuseWhatReadsThem(t *testing.T) {
 // do not read them run, and the calls of a checkout that reads them for
 // its default are refused, naming the document (ADR-015 rules 3 and 4).
 func TestUnreadableWorkspaceSettingsRefuseOnlyWhatReadsThem(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
 	docs := workflowDocs()

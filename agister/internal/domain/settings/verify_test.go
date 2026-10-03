@@ -13,6 +13,7 @@ import (
 // resumes the call's session, so more than one attempt needs an agent whose
 // sessions may be continued.
 func TestVerifyRepairsNeedAResumableAgent(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name     string
 		session  string
@@ -25,6 +26,7 @@ func TestVerifyRepairsNeedAResumableAgent(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			b := bundle()
 			b.Service.MaxVerifyAttempts = 3
 			agent := b.Agents["a"]
@@ -69,6 +71,7 @@ func naming(verify definition.Verify) settings.Bundle {
 // ADR-010 rule 3: the checks that depend on a verification's values are
 // made on the named one's, as on an inline block's.
 func TestANamedVerificationIsCheckedWithTheProcessThatNamesIt(t *testing.T) {
+	t.Parallel()
 	fine := definition.Verify{Command: "go test ./...", Timeout: time.Minute, MaxAttempts: 3, Instruction: "Fix it."}
 	cases := []struct {
 		name   string
@@ -105,6 +108,7 @@ func TestANamedVerificationIsCheckedWithTheProcessThatNamesIt(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			b := naming(fine)
 			c.change(&b)
 			var got []string
@@ -119,6 +123,7 @@ func TestANamedVerificationIsCheckedWithTheProcessThatNamesIt(t *testing.T) {
 }
 
 func TestResolvedLeavesAnInlineVerifyAndTheBundleAsTheyAre(t *testing.T) {
+	t.Parallel()
 	b := naming(definition.Verify{Command: "true", Timeout: time.Minute, MaxAttempts: 1, Instruction: "Fix it."})
 	if got := b.Resolved("p").Verify; got == nil || got.Command != "true" || b.Processes["p"].Verify != nil {
 		t.Fatalf("resolved verify %+v, the bundle's %+v", got, b.Processes["p"].Verify)

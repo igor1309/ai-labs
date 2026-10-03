@@ -10,6 +10,12 @@ import (
 )
 
 // Closing the terminal cancels the call like Ctrl-C and kill do.
+//
+// Contract test: the OS signals shutdown is wired to, sent to this process.
+// The timer only guards a hang.
+//
+// Serial: a signal is process-wide; it reaches whatever else the test
+// binary runs.
 func TestShutdownSignalsCancel(t *testing.T) {
 	for _, sig := range []syscall.Signal{syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP} {
 		t.Run(sig.String(), func(t *testing.T) {

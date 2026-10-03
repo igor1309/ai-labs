@@ -70,6 +70,7 @@ func fake(ctx context.Context, dir, command string, report func(string)) (int, s
 // the fake ends under bash with the same code, the same output and the
 // same files left behind.
 func TestTheFakeRunsACommandAsBashDoes(t *testing.T) {
+	t.Parallel()
 	for name, c := range map[string]struct {
 		script
 		// wording is set where the output is a system tool's own complaint:
@@ -106,6 +107,7 @@ func TestTheFakeRunsACommandAsBashDoes(t *testing.T) {
 		"redirect, no directory":          {script: script{"echo made > missing/new.txt; echo after", nil}, wording: true},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			dir := c.in(t)
 			code, output := fake(context.Background(), dir, c.command, func(string) {})
 
@@ -133,6 +135,7 @@ func TestTheFakeRunsACommandAsBashDoes(t *testing.T) {
 // A command that blocks reports it and ends only when the process is
 // ended, alone or as a job the script waits for: nothing after it runs.
 func TestABlockingCommandEndsOnlyWhenTheProcessIsEnded(t *testing.T) {
+	t.Parallel()
 	for _, command := range []string{"tail -f /dev/null", "tail -f /dev/null & wait", "tail -f /dev/null; echo after > after.txt"} {
 		dir := t.TempDir()
 		ctx, end := context.WithCancel(context.Background())
@@ -161,6 +164,7 @@ func TestABlockingCommandEndsOnlyWhenTheProcessIsEnded(t *testing.T) {
 // it, and runs none of it: a test never passes on a guess at what bash
 // would have done.
 func TestTheFakeRefusesTheShellItDoesNotRun(t *testing.T) {
+	t.Parallel()
 	for command, want := range map[string]int{
 		"echo made > new.txt; echo $HOME":        2,
 		"echo made > new.txt; cat state | wc -l": 2,

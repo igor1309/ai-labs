@@ -35,12 +35,14 @@ func bundle() settings.Bundle {
 var mechanisms = settings.Mechanisms{Sources: []string{"param"}, Adapters: []string{"claude-code"}}
 
 func TestConsistentSettingsHaveNoProblems(t *testing.T) {
+	t.Parallel()
 	if problems := settings.Check(bundle(), mechanisms); len(problems) != 0 {
 		t.Fatalf("problems = %v", problems)
 	}
 }
 
 func TestEveryInconsistencyIsReported(t *testing.T) {
+	t.Parallel()
 	b := bundle()
 	b.Agents["b"] = definition.Agent{Name: "b", Runtime: "missing"}
 	b.Agents["a"] = definition.Agent{Name: "a", Runtime: "rt", Effort: "max"}
@@ -77,6 +79,7 @@ func TestEveryInconsistencyIsReported(t *testing.T) {
 }
 
 func TestMissingServiceStopsEarly(t *testing.T) {
+	t.Parallel()
 	b := bundle()
 	b.Service = nil
 	if problems := settings.Check(b, mechanisms); len(problems) != 1 || problems[0].Subject != "service" {
@@ -87,6 +90,7 @@ func TestMissingServiceStopsEarly(t *testing.T) {
 // Before the runtime's version is known, a plan may use only primitives
 // verified for some version.
 func TestUnverifiedPrimitivesCannotSatisfyARequirement(t *testing.T) {
+	t.Parallel()
 	b := bundle()
 	rt := b.Mappings["rt"]
 	rt.Primitives = append(rt.Primitives, definition.Primitive{Name: "Edit", Grants: []string{"write"}})
@@ -104,6 +108,7 @@ func TestUnverifiedPrimitivesCannotSatisfyARequirement(t *testing.T) {
 // A call runs on one version, so primitives verified for different versions
 // cannot together satisfy a requirement.
 func TestRequirementsNeedOneVersionThatCoversThem(t *testing.T) {
+	t.Parallel()
 	b := bundle()
 	b.Mappings["rt"] = definition.Mapping{Name: "rt", Adapter: "claude-code", Efforts: []string{"high"}, Select: "any",
 		Primitives: []definition.Primitive{
@@ -132,6 +137,7 @@ func TestRequirementsNeedOneVersionThatCoversThem(t *testing.T) {
 // or an input source, is marked: settings written for a newer Agister
 // name ones this code lacks. Other problems are not.
 func TestProblemsNamingUnknownMechanismsAreMarked(t *testing.T) {
+	t.Parallel()
 	b := bundle()
 	b.Mappings["rt2"] = definition.Mapping{Name: "rt2", Adapter: "opencode", Select: "any", Primitives: []definition.Primitive{{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}}}}
 	b.Processes["p"] = definition.Process{Name: "p", Agent: "a", Policy: "pol",

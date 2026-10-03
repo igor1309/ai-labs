@@ -111,7 +111,11 @@ func pidFrom(t *testing.T, path string) int {
 func alive(pid int) bool { return syscall.Kill(pid, 0) == nil }
 
 // A process the runtime leaves running in its group ends with the call.
+//
+// Contract test: the supervisor against a real process: its group, its
+// pipes and the signals that end it.
 func TestLeftoverProcessesAreKilledWhenTheRuntimeExits(t *testing.T) {
+	t.Parallel()
 	pidFile := filepath.Join(t.TempDir(), "pid")
 	sink := &events{}
 	// Killed on every path, including a failed Run: the PID file is read
@@ -152,10 +156,16 @@ var start = time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
 // A descendant that leaves the group but keeps stdout open cannot hold the
 // call past the grace period, which starts at the exit; until the grace
 // has passed, stdout is read.
+//
+// Serial: t.Setenv, which tells the re-executed test binary its role.
+//
+// Contract test: the supervisor against a real process: its group, its
+// pipes and the signals that end it.
 func TestStdoutHeldOutsideTheGroupDoesNotHoldTheCall(t *testing.T) {
 	const grace = 3 * time.Second
 	// run runs the escaping process over a manual clock, and returns once
-	// the stdout grace has started, with the escaped child's PID.
+	// the stdout grace has started and the process's line is read, with
+	// the escaped child's PID.
 	run := func(t *testing.T) (*systemtest.Clock, int, *events, <-chan runResult) {
 		pidFile := filepath.Join(t.TempDir(), "pid")
 		t.Setenv(helperEnv, "escape")
@@ -171,19 +181,28 @@ func TestStdoutHeldOutsideTheGroupDoesNotHoldTheCall(t *testing.T) {
 		})
 		clock := systemtest.NewClock(start)
 		sink := &events{}
-		done := make(chan runResult, 1)
+		done, read := make(chan runResult, 1), make(chan struct{}, 1)
 		go func() {
 			var lines []string
 			evidence := supervisor.Runtime{Timer: clock.Timer}.Run(context.Background(), supervisor.Spec{
 				Command:   os.Args[0],
 				Timeout:   time.Hour,
 				KillGrace: grace,
-			}, sink, func(line string) { lines = append(lines, line) })
+			}, sink, func(line string) {
+				lines = append(lines, line)
+				select {
+				case read <- struct{}{}:
+				default:
+				}
+			})
 			done <- runResult{evidence, lines}
 		}()
 		// The process exits by itself, so the first wait of the grace's
 		// length is the one for stdout, started at the exit.
 		clock.Started(grace)
+		// The line it wrote before its exit is read on a goroutine of its
+		// own: the clock moves only once it is.
+		<-read
 		return clock, pidFrom(t, pidFile), sink, done
 	}
 	exited := func(t *testing.T, got runResult) {
@@ -235,7 +254,11 @@ func cleanUpRun(t *testing.T, sink *events) {
 // The turn's timeout is on the runtime's timer: the process is told to end
 // once the clock passes the timeout, and not a moment before. Cancelled a
 // moment short of it, the call is aborted, not timed out.
+//
+// Contract test: the supervisor against a real process: its group, its
+// pipes and the signals that end it.
 func TestTheTimeoutEndsTheProcessOnlyOnceItHasPassed(t *testing.T) {
+	t.Parallel()
 	const timeout = time.Hour
 	run := func(t *testing.T, ctx context.Context) (*systemtest.Clock, *events, <-chan supervisor.Evidence) {
 		clock := systemtest.NewClock(start)
@@ -254,6 +277,7 @@ func TestTheTimeoutEndsTheProcessOnlyOnceItHasPassed(t *testing.T) {
 	}
 
 	t.Run("passed", func(t *testing.T) {
+		t.Parallel()
 		clock, sink, done := run(t, context.Background())
 		clock.Advance(timeout)
 		evidence := <-done
@@ -262,6 +286,7 @@ func TestTheTimeoutEndsTheProcessOnlyOnceItHasPassed(t *testing.T) {
 		}
 	})
 	t.Run("not yet passed", func(t *testing.T) {
+		t.Parallel()
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		clock, sink, done := run(t, ctx)
@@ -277,7 +302,11 @@ func TestTheTimeoutEndsTheProcessOnlyOnceItHasPassed(t *testing.T) {
 // A group told to end that ignores it is killed once the kill grace has
 // passed on the runtime's timer, and not a moment before: a moment short
 // of it, the process still ends by itself.
+//
+// Contract test: the supervisor against a real process: its group, its
+// pipes and the signals that end it.
 func TestAGroupThatIgnoresTheTerminationIsKilledOnceTheGraceHasPassed(t *testing.T) {
+	t.Parallel()
 	const timeout, grace = time.Hour, 3 * time.Second
 	// run starts a process that ignores SIGTERM and exits 3 once it reads
 	// a line from the gate, and returns once its timeout has passed and the
@@ -320,6 +349,7 @@ func TestAGroupThatIgnoresTheTerminationIsKilledOnceTheGraceHasPassed(t *testing
 	}
 
 	t.Run("passed", func(t *testing.T) {
+		t.Parallel()
 		clock, _, done := run(t)
 		clock.Advance(grace)
 		evidence := <-done
@@ -328,6 +358,7 @@ func TestAGroupThatIgnoresTheTerminationIsKilledOnceTheGraceHasPassed(t *testing
 		}
 	})
 	t.Run("not yet passed", func(t *testing.T) {
+		t.Parallel()
 		clock, gate, done := run(t)
 		clock.Advance(grace - time.Nanosecond)
 		if _, err := gate.WriteString("go\n"); err != nil {
@@ -342,7 +373,11 @@ func TestAGroupThatIgnoresTheTerminationIsKilledOnceTheGraceHasPassed(t *testing
 
 // The group is reported the moment it exists, before the slower lookup of
 // its token, so a kill in between still leaves the group on record.
+//
+// Contract test: the supervisor against a real process: its group, its
+// pipes and the signals that end it.
 func TestGroupIsReportedBeforeItsTokenIsKnown(t *testing.T) {
+	t.Parallel()
 	// The child outlives the test's need of it; the run ends when the sink
 	// sees the token-bearing report, so no delay orders anything.
 	ctx, cancel := context.WithCancel(context.Background())
@@ -387,9 +422,14 @@ func TestGroupIsReportedBeforeItsTokenIsKnown(t *testing.T) {
 // A group that cannot be recorded is killed at once, and the evidence says
 // why, whichever of the two reports failed: no started group is ever left
 // that no record leads back to.
+//
+// Contract test: the supervisor against a real process: its group, its
+// pipes and the signals that end it.
 func TestGroupThatCannotBeRecordedIsKilled(t *testing.T) {
+	t.Parallel()
 	for name, failAt := range map[string]int{"the group report": 1, "the token report": 2} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			sink := &events{failAt: failAt, startErr: errors.New("disk full")}
 			evidence := supervisor.Runtime{}.Run(context.Background(), supervisor.Spec{
 				Command: "/bin/sh",
@@ -434,7 +474,11 @@ func TestGroupThatCannotBeRecordedIsKilled(t *testing.T) {
 // A runtime's stderr is kept to its last 4096 bytes, cut on a whole rune;
 // the tail's first line and the count say how much was cut, and the reason
 // after the flood is still quoted.
+//
+// Contract test: the supervisor against a real process: its group, its
+// pipes and the signals that end it.
 func TestStderrBeyondTheBoundIsCutAndMarked(t *testing.T) {
+	t.Parallel()
 	// 5000 two-byte runes, then the reason: its odd length puts the cut
 	// inside a rune.
 	evidence := supervisor.Runtime{}.Run(context.Background(), supervisor.Spec{
@@ -453,7 +497,11 @@ func TestStderrBeyondTheBoundIsCutAndMarked(t *testing.T) {
 }
 
 // A runtime that prints nothing to stderr leaves no tail and no cut.
+//
+// Contract test: the supervisor against a real process: its group, its
+// pipes and the signals that end it.
 func TestASilentExitLeavesNoTail(t *testing.T) {
+	t.Parallel()
 	evidence := supervisor.Runtime{}.Run(context.Background(), supervisor.Spec{
 		Command: "/bin/sh",
 		Args:    []string{"-c", "exit 2"},
@@ -466,6 +514,11 @@ func TestASilentExitLeavesNoTail(t *testing.T) {
 
 // Spec.Env is added to the inherited environment, and replaces an inherited
 // variable of the same name.
+//
+// Serial: t.Setenv, for the environment the runtime inherits.
+//
+// Contract test: the supervisor against a real process: its group, its
+// pipes and the signals that end it.
 func TestEnvIsAddedToTheInheritedEnvironment(t *testing.T) {
 	t.Setenv("AGISTER_SUPERVISOR_KEPT", "kept")
 	t.Setenv("AGISTER_SUPERVISOR_REPLACED", "inherited")

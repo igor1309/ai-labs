@@ -75,6 +75,7 @@ func session(t *testing.T, root, id, cwd string) {
 // Contract test: the Pi adapter against its built fake, a real process
 // under the real supervisor.
 func TestConformance(t *testing.T) {
+	t.Parallel()
 	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	root, cwd := t.TempDir(), t.TempDir()
 	session(t, root, "7d1c2a4e-0000-4000-8000-000000000001", cwd)
@@ -98,6 +99,7 @@ func TestConformance(t *testing.T) {
 // turn granted neither is refused before Pi starts, so --no-tools, with
 // which Pi leaves skills out, is never passed.
 func TestRefusesATurnThatCannotReadASkill(t *testing.T) {
+	t.Parallel()
 	for _, primitives := range [][]string{nil, {}, {"grep", "find", "ls"}, {"edit", "write"}} {
 		r := request("x")
 		r.Primitives = primitives
@@ -135,6 +137,7 @@ func follows(args []string, flag, value string) bool {
 }
 
 func TestRejectsWhatItCannotHonour(t *testing.T) {
+	t.Parallel()
 	r := request("x")
 	limit := 1.0
 	r.MaxCostUSD = &limit
@@ -167,6 +170,7 @@ func TestRejectsWhatItCannotHonour(t *testing.T) {
 // prompt, which the fake echoes, read from the file passed; the prompt
 // goes on stdin.
 func TestInstructionAndSchemaGoInTheSystemPrompt(t *testing.T) {
+	t.Parallel()
 	if got := pi.SystemPrompt(pi.TurnRequest(app.TurnRequest{Instruction: "Do the thing."})); got != "Do the thing." {
 		t.Fatalf("instruction only: %q", got)
 	}
@@ -198,6 +202,7 @@ func TestInstructionAndSchemaGoInTheSystemPrompt(t *testing.T) {
 }
 
 func TestIdentity(t *testing.T) {
+	t.Parallel()
 	identity, err := pi.New(fake, t.TempDir(), composition.PiTransport{Supervisor: stillSupervisor()}).Identity(context.Background())
 	want := pi.RuntimeIdentity{Contract: "pi/1", Version: "0.85.1", Resume: true, ResumeWhereItRan: true, ToolCalls: true, SkillTools: []string{"read", "bash"}}
 	if err != nil || !reflect.DeepEqual(identity, want) {
@@ -209,6 +214,7 @@ func TestIdentity(t *testing.T) {
 // reported, and a later turn of the call resumes it in place there. The
 // root is a literal path: brackets in it are no pattern.
 func TestSessionsAreKeptForTheCallsLaterTurns(t *testing.T) {
+	t.Parallel()
 	root, cwd := filepath.Join(t.TempDir(), "sessions[1]"), t.TempDir()
 	runner := &pi.Runner{Transport: composition.PiTransport{Supervisor: stillSupervisor()}, Command: fake, Sessions: root}
 	first := request("SCENARIO:approve")
@@ -241,6 +247,7 @@ func TestSessionsAreKeptForTheCallsLaterTurns(t *testing.T) {
 
 // A turn that reported no session leaves nothing to resume behind.
 func TestATurnWithoutASessionLeavesNoDirectory(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	runner := &pi.Runner{Transport: composition.PiTransport{Supervisor: stillSupervisor()}, Command: "/nonexistent/runtime", Sessions: root}
 	if turn := composition.AdaptPi(runner).RunTurn(context.Background(), request("x"), &runtimetest.Recorder{}); string(turn.Status) != string(run.Failed) {
@@ -255,6 +262,7 @@ func TestATurnWithoutASessionLeavesNoDirectory(t *testing.T) {
 // stdin whether to fork one from another: a resume turn elsewhere, or of a
 // session not kept, is refused before Pi starts.
 func TestResumeIsRefusedWhereItCannotResumeInPlace(t *testing.T) {
+	t.Parallel()
 	root, cwd, elsewhere := t.TempDir(), t.TempDir(), t.TempDir()
 	session(t, root, "s-1", cwd)
 	for name, c := range map[string]struct {
@@ -309,6 +317,7 @@ const (
 // a failed attempt Pi retried and a tool's own model work included; the
 // user's message counts nothing.
 func TestUsageAndCostAreSummedOverTheTurn(t *testing.T) {
+	t.Parallel()
 	stream := &pi.Stream{}
 	reduce(stream,
 		`{"type":"session","version":3,"id":"s-1","cwd":"/w"}`,
