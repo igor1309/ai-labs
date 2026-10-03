@@ -23,6 +23,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
@@ -116,7 +117,9 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 			t.Parallel()
 			home := tempDir(t)
 			config := cli.Config{Home: home, Cwd: tc.cwd}
-			composed := process(config, fsruns.NewAppends())
+			// Inspecting an agent asks its runtime's version: of a fake run
+			// in process, not of a runtime this machine has.
+			composed := inProcess(config)
 			client, background, err := composed.wire(config)
 			if err != nil {
 				t.Fatal(err)
@@ -556,6 +559,21 @@ func (s *started) Start(command supervisor.Command) (supervisor.Process, error) 
 	return s.InProcess.Start(command)
 }
 
+// The composition the tests run in process waits on no wall clock: a wait
+// of zero on its timer, or on its poll, has passed at the time its clock
+// that never moves is set to, which the wall clock does not tell.
+func TestTheInProcessCompositionWaitsOnAClockThatNeverMoves(t *testing.T) {
+	t.Parallel()
+	c := inProcess(cli.Config{Home: tempDir(t)})
+	for name, timer := range map[string]timer{"its turns and commands": c.timer, "its observing": c.poll} {
+		fired, stop := timer(0)
+		if at := <-fired; !at.Equal(stillAt) {
+			t.Errorf("%s wait on a clock that tells %v, want %v", name, at, stillAt)
+		}
+		stop()
+	}
+}
+
 // The process's starter is the operating system's, and a composition
 // starts its runtimes through the one it holds: a call over a starter of
 // the test's asks it for the agent's runtime, its version and its turn.
@@ -572,6 +590,8 @@ func TestTheCompositionStartsItsRuntimesThroughItsStarter(t *testing.T) {
 	}
 	starter := &started{}
 	composed.starter = starter
+	// The call waits on a clock that never moves, not on the process's.
+	composed.timer = systemtest.NewClock(stillAt).Timer
 	client, _, err := composed.wire(config)
 	if err != nil {
 		t.Fatal(err)
@@ -636,6 +656,8 @@ verify:
 	}
 	starter := &started{}
 	composed.starter, composed.commands = runtimetest.InProcess{}, starter
+	// The call waits on a clock that never moves, not on the process's.
+	composed.timer = systemtest.NewClock(stillAt).Timer
 	client, _, err := composed.wire(config)
 	if err != nil {
 		t.Fatal(err)

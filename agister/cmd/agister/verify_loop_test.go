@@ -224,8 +224,8 @@ func newLoopWith(t *testing.T, with seams, settings verifySettings, steps ...ste
 	if with.copies == nil {
 		with.copies = workspaces
 	}
-	// A command that ends by itself waits on no time: its timeout and
-	// graces are on a clock that never moves.
+	// A turn or a command that ends by itself waits on no time: its
+	// timeout, graces and staleness limits are on a clock that never moves.
 	still := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
 	if with.commands == nil {
 		with.commands = runtimecomposition.Commands{Supervisor: inProcessCommands(still.Timer)}
@@ -337,7 +337,7 @@ verify:
 		app.NewResolver(definitions, runtimes, schema.Validator{}, noProblems{}), runtimes,
 		map[string]app.InputProvider{"git.revision": git.Revision{}},
 		workspaces, with.changes, app.NewPreparer(with.changes, h.setup, with.clock), app.NewVerifier(with.changes, with.copies, h.commands, with.clock), schema.Validator{},
-		h.store, h.store, with.clock, system.Timer, system.IDs{}, h.home, h.hosted,
+		h.store, h.store, with.clock, still.Timer, system.IDs{}, h.home, h.hosted,
 	)
 	// Observing a call hosted here waits on its appends, never on a poll.
 	h.runs = app.NewRuns(h.store, h.store, h.hosted, unpolled(t), 0)
@@ -691,6 +691,9 @@ func TestVerifyCancellationEndsTheCommand(t *testing.T) {
 	command := newBlockedCommand()
 	h := newLoopWith(t, seams{commands: command}, verifySettings{}, state("one"))
 	id := h.submit(contract.CallRequest{})
+	// Should the test fail first, the cleanup ends the call, and the
+	// command with it.
+	cleanupRun(t, h.runs, h.hosted, id)
 	<-command.started
 	running, _, err := h.store.Get(context.Background(), id)
 	if err != nil || running.Effects == nil || running.Effects.Command == nil || running.Effects.Command.Ref != blockedRef {

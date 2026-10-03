@@ -121,7 +121,7 @@ func TestVersionStartsThroughTheRuntimesStarter(t *testing.T) {
 	failing := supervisor.Runtime{Starter: program(func(p fakeproc.Process) int {
 		fmt.Fprintln(p.Stdout, "1.2.3")
 		return 2
-	})}
+	}), Timer: systemtest.NewClock(start).Timer}
 	if version, err := failing.Version(context.Background(), "runtime"); err == nil || err.Error() != "exit status 2" {
 		t.Fatalf("a command that exited 2 has version %q, %v", version, err)
 	}

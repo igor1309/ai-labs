@@ -80,13 +80,23 @@ func startThrough(t testing.TB, home string, starter runtimetest.InProcess) {
 	t.Cleanup(func() { starters.Delete(home) })
 }
 
+// stillAt is the time the clocks that never move are set to.
+var stillAt = time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+
 // inProcess is the process's composition with fakes for its runtimes and
 // for the shell of its setup and verification commands, run in process:
 // neither is started as a process, and none is looked up on PATH. Its run
 // store signals through appends of its own, as a process of its own does.
+// Its turns and commands wait, and its observing polls, on a clock that
+// never moves, not on the wall clock: such a wait passes only on a clock
+// the test advances (on). Its worktree coordinator alone keeps the
+// process's timer: the kernel gives no event when a lock file is let go,
+// so the next attempt at one is due in real time.
 func inProcess(config cli.Config) composition {
 	c := process(config, fsruns.NewAppends())
 	c.starter, c.commands = runtimetest.InProcess{}, runtimetest.InProcess{}
+	still := systemtest.NewClock(stillAt)
+	c.timer, c.poll = still.Timer, still.Timer
 	if starter, ok := starters.Load(config.Home); ok {
 		c.starter = starter.(runtimetest.InProcess)
 	}
