@@ -434,7 +434,7 @@ func (h *flowHarness) submit(t *testing.T, request contract.CallRequest) string 
 // running. A workflow that already finished refuses the cancel.
 func (h *flowHarness) stopOnCleanup(t *testing.T, id string) {
 	t.Cleanup(func() {
-		_ = app.NewRuns(nil, h.hosted, 0).Cancel(context.Background(), id)
+		_ = app.NewRuns(nil, h.hosted, nil, 0).Cancel(context.Background(), id)
 		select {
 		case <-h.store.handle(t, id).done:
 		case <-time.After(hangGuard):
@@ -445,7 +445,7 @@ func (h *flowHarness) stopOnCleanup(t *testing.T, id string) {
 
 func (h *flowHarness) cancel(t *testing.T, id string) {
 	t.Helper()
-	if err := app.NewRuns(nil, h.hosted, 0).Cancel(context.Background(), id); err != nil {
+	if err := app.NewRuns(nil, h.hosted, nil, 0).Cancel(context.Background(), id); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -1387,7 +1387,7 @@ func TestWorkflowCancelledAsTheJoinFinishes(t *testing.T) {
 		if record.ID != "run-4" {
 			return
 		}
-		err := app.NewRuns(nil, h.hosted, 0).Cancel(context.Background(), "run-1")
+		err := app.NewRuns(nil, h.hosted, nil, 0).Cancel(context.Background(), "run-1")
 		mu.Lock()
 		cancelErr, cancelled = err, true
 		mu.Unlock()
@@ -1409,7 +1409,7 @@ func TestWorkflowCancelledAsTheJoinFinishes(t *testing.T) {
 	if join := h.store.wait(t, "run-4"); join.Result.Status != run.Completed || string(join.Result.Output) != `{"joined":true}` {
 		t.Fatalf("join run = %+v", join.Result)
 	}
-	if err := app.NewRuns(nil, h.hosted, 0).Cancel(context.Background(), id); err == nil {
+	if err := app.NewRuns(nil, h.hosted, nil, 0).Cancel(context.Background(), id); err == nil {
 		t.Fatal("a finished workflow accepted a cancel")
 	}
 }
@@ -1461,7 +1461,7 @@ func TestWorkflowRefusesACancelCapturedBeforeItEnded(t *testing.T) {
 
 	wait(t, join.started, "the join's turn")
 	result := make(chan error, 1)
-	go func() { result <- app.NewRuns(nil, h.hosted, 0).Cancel(context.Background(), id) }()
+	go func() { result <- app.NewRuns(nil, h.hosted, nil, 0).Cancel(context.Background(), id) }()
 	wait(t, captured, "the cancel taking the workflow's callback")
 	// The workflow ends while the cancel holds its callback.
 	close(join.release)

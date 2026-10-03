@@ -92,10 +92,13 @@ type Worktrees struct {
 	// Waits, when set, is told that a command found a lock held, before it
 	// waits: once per command, whichever lock it is.
 	Waits func()
-	// Pause, when set, is the wait between attempts at a lock file another
-	// process holds, in place of a short sleep; it may return early when
-	// ctx ends. Tests make it immediate.
-	Pause func(ctx context.Context)
+	// Timer starts the wait of retry between attempts at a lock file
+	// another process holds: the next attempt is due when fired delivers,
+	// and stop releases the wait. Nil means the wall clock.
+	Timer func(wait time.Duration) (fired <-chan time.Time, stop func())
+	// Clock tells the time a release or removal's cleanup deadline is
+	// counted from. Nil means the wall clock.
+	Clock interface{ Now() time.Time }
 
 	locks string
 	mu    sync.Mutex
@@ -183,15 +186,12 @@ func (s *Worktrees) lockFile(ctx context.Context, common string, waits func()) (
 	if err != nil {
 		return nil, err
 	}
-	pause := s.Pause
-	if pause == nil {
-		pause = func(ctx context.Context) {
-			timer := time.NewTimer(retry)
-			defer timer.Stop()
-			select {
-			case <-timer.C:
-			case <-ctx.Done():
-			}
+	pause := func(ctx context.Context) {
+		fired, stop := s.timer(retry)
+		defer stop()
+		select {
+		case <-fired:
+		case <-ctx.Done():
 		}
 	}
 	for {
@@ -213,6 +213,23 @@ func (s *Worktrees) lockFile(ctx context.Context, common string, waits func()) (
 		}
 	}
 	return file, nil
+}
+
+// timer starts a wait on the Timer, or on the wall clock without one.
+func (s *Worktrees) timer(wait time.Duration) (<-chan time.Time, func()) {
+	if s.Timer != nil {
+		return s.Timer(wait)
+	}
+	timer := time.NewTimer(wait)
+	return timer.C, func() { timer.Stop() }
+}
+
+// now is the time on the Clock, or on the wall clock without one.
+func (s *Worktrees) now() time.Time {
+	if s == nil || s.Clock == nil {
+		return time.Now()
+	}
+	return s.Clock.Now()
 }
 
 // holding is the default Git: it runs git args, or the command Command
@@ -239,9 +256,11 @@ func (s *Worktrees) lock(common string) chan struct{} {
 
 // worktreeCommands is what Workspaces needs to change a repository's
 // worktrees: git worktree args run in repository, in its turn among the
-// repository's worktree commands. started says the command was run.
+// repository's worktree commands. started says the command was run. now
+// is the time a cleanup deadline is counted from.
 type worktreeCommands interface {
 	worktree(ctx context.Context, repository string, args ...string) (started bool, err error)
+	now() time.Time
 }
 
 var errNoWorktrees = errors.New("git worktree: Workspaces built without NewWorkspaces over NewWorktrees")
@@ -251,7 +270,7 @@ var errNoWorktrees = errors.New("git worktree: Workspaces built without NewWorks
 type Workspaces struct {
 	// Cleanup, when set, gives the bounded context a checkout's release or
 	// a removal runs under, in place of a deadline of cleanupDeadline from
-	// now: tests make it pass at will.
+	// now on the worktrees' clock: tests make it pass at will.
 	Cleanup func(ctx context.Context) (context.Context, context.CancelFunc)
 
 	worktrees worktreeCommands
@@ -266,7 +285,11 @@ func (w Workspaces) cleanup(ctx context.Context) (context.Context, context.Cance
 	if w.Cleanup != nil {
 		return w.Cleanup(ctx)
 	}
-	return context.WithTimeout(ctx, cleanupDeadline)
+	now := time.Now()
+	if w.worktrees != nil {
+		now = w.worktrees.now()
+	}
+	return context.WithDeadline(ctx, now.Add(cleanupDeadline))
 }
 
 // NewWorkspaces makes Workspaces whose worktree changes take their turn in

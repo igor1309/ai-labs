@@ -314,7 +314,7 @@ func TestCancellingDuringTheSetupCancelsTheCall(t *testing.T) {
 	withWorkspace(h, workspaceSetup)
 	started := make(chan struct{})
 	h.setup.block, h.setup.started = true, started
-	runs := app.NewRuns(nil, h.hosted, 0)
+	runs := app.NewRuns(nil, h.hosted, nil, 0)
 	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}

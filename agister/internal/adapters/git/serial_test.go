@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 )
 
@@ -495,8 +496,19 @@ func (l *turns) coordinator(name string) *coordinator {
 		return "", nil
 	}
 	c.Waits = func() { c.waits <- struct{}{} }
-	c.Pause = func(context.Context) { c.pauses.Add(1); runtime.Gosched() }
+	c.Timer = func(time.Duration) (<-chan time.Time, func()) {
+		c.pauses.Add(1)
+		runtime.Gosched()
+		return passed()
+	}
 	return c
+}
+
+// passed is a wait that has passed already.
+func passed() (<-chan time.Time, func()) {
+	fired := make(chan time.Time, 1)
+	fired <- time.Time{}
+	return fired, func() {}
 }
 
 // command runs a worktree command of c in repository aside, as a worker
@@ -751,13 +763,51 @@ func TestDiscardStopsWaitingForTheLockFileAtTheCleanupDeadline(t *testing.T) {
 }
 
 func TestTheDefaultCleanupContextHasADeadlineOfOneMinute(t *testing.T) {
-	before := time.Now()
-	ctx, cancel := Workspaces{}.cleanup(context.Background())
+	now := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+	worktrees := NewWorktrees(t.TempDir())
+	worktrees.Clock = systemtest.NewClock(now)
+	ctx, cancel := NewWorkspaces(worktrees).cleanup(context.Background())
 	defer cancel()
-	after := time.Now()
-	deadline, ok := ctx.Deadline()
-	if !ok || deadline.Before(before.Add(time.Minute)) || deadline.After(after.Add(time.Minute)) {
-		t.Fatalf("deadline %v (set %v), want one minute from between %v and %v", deadline, ok, before, after)
+	if deadline, ok := ctx.Deadline(); !ok || !deadline.Equal(now.Add(time.Minute)) {
+		t.Fatalf("deadline %v (set %v), want one minute from %v", deadline, ok, now)
+	}
+}
+
+// A command that found the lock file held tries again only once the retry
+// wait has passed on its timer, and not before, however soon the lock is
+// freed.
+func TestALockFileHeldIsTriedAgainOnlyOnceTheRetryHasPassed(t *testing.T) {
+	repo := emptyRepository(t)
+	l := newTurns(t)
+	one, two := l.coordinator("one"), l.coordinator("two")
+	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	two.Timer = clock.Timer
+	ctx := context.Background()
+
+	ones := l.command(ctx, one, repo)
+	receive(t, l.entered, "the first command entering git")
+	twos := l.command(ctx, two, repo)
+	receive(t, two.waits, "the second command finding the lock file held")
+	clock.Started(retry)
+	l.free()
+	if err := receive(t, ones, "the first command ending"); err != nil {
+		t.Fatal(err)
+	}
+	clock.Advance(retry - time.Nanosecond)
+	select {
+	case name := <-l.entered:
+		t.Fatalf("%s entered git before the retry had passed", name)
+	default:
+	}
+	if clock.Pending() != 1 || len(clock.Waits()) != 1 {
+		t.Fatalf("the retry ended early: %d pending of %v", clock.Pending(), clock.Waits())
+	}
+	clock.Advance(time.Nanosecond)
+	if name := receive(t, l.entered, "the second command entering git"); name != "two" {
+		t.Fatalf("%s entered git", name)
+	}
+	if err := receive(t, twos, "the second command ending"); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -868,7 +918,10 @@ func TestAKilledHoldersLockLastsAsLongAsItsGitChild(t *testing.T) {
 	second := NewWorktrees(locks)
 	waited, entered := make(chan struct{}), make(chan struct{}, 1)
 	second.Waits = func() { close(waited) }
-	second.Pause = func(context.Context) { runtime.Gosched() }
+	second.Timer = func(time.Duration) (<-chan time.Time, func()) {
+		runtime.Gosched()
+		return passed()
+	}
 	second.Git = func(ctx context.Context, dir string, lock *os.File, args ...string) (string, error) {
 		entered <- struct{}{}
 		return "", nil

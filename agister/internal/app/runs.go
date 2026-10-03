@@ -14,9 +14,15 @@ import (
 type Runs struct {
 	reader    RunsReader
 	canceller RunsCanceller
+	timer     RunsTimer
 	// How often Observe polls a running record.
 	pollInterval time.Duration
 }
+
+// RunsTimer starts the wait between two of Observe's reads of a running
+// record: the next read is due when fired delivers. stop releases the
+// wait.
+type RunsTimer func(wait time.Duration) (fired <-chan time.Time, stop func())
 
 // RunsReader reads evidence. A record that is not finished and no longer
 // owned reads as abandoned.
@@ -35,13 +41,15 @@ type RunsCanceller interface {
 // RunsAdapters are what Runs run on besides the calls hosted here.
 type RunsAdapters struct {
 	Reader RunsReader
+	// Timer starts Observe's wait between two reads of a running record.
+	Timer RunsTimer
 }
 
 // NewRuns returns the use case that reads evidence and cancels the calls
-// hosted in this process. pollInterval is how often Observe polls a running
-// record; zero means 50ms.
-func NewRuns(reader RunsReader, canceller RunsCanceller, pollInterval time.Duration) *Runs {
-	return &Runs{reader: reader, canceller: canceller, pollInterval: pollInterval}
+// hosted in this process. Observe waits on timer for pollInterval between
+// two reads of a running record; zero means 50ms.
+func NewRuns(reader RunsReader, canceller RunsCanceller, timer RunsTimer, pollInterval time.Duration) *Runs {
+	return &Runs{reader: reader, canceller: canceller, timer: timer, pollInterval: pollInterval}
 }
 
 func (r *Runs) Observe(ctx context.Context, id string, afterSeq int, each func(contract.Event) error) error {
@@ -63,11 +71,21 @@ func (r *Runs) Observe(ctx context.Context, id string, afterSeq int, each func(c
 		if status != run.StateRunning {
 			return nil
 		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(interval):
+		if err := r.wait(ctx, interval); err != nil {
+			return err
 		}
+	}
+}
+
+// wait waits on the timer for interval, or until ctx ends.
+func (r *Runs) wait(ctx context.Context, interval time.Duration) error {
+	fired, stop := r.timer(interval)
+	defer stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-fired:
+		return nil
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 	"testing/fstest"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
@@ -164,7 +165,14 @@ func TestObserveResumesAfterTheLastDeliveredEvent(t *testing.T) {
 		batches: [][]run.Event{{{Seq: 4}, {Seq: 5}}, {}, {{Seq: 6}}},
 		status:  []run.State{run.StateRunning, run.StateRunning, run.StateFinished},
 	}
-	runs := app.NewRuns(reader, nil, 1)
+	var waits []time.Duration
+	passed := func(wait time.Duration) (<-chan time.Time, func()) {
+		waits = append(waits, wait)
+		fired := make(chan time.Time, 1)
+		fired <- time.Time{}
+		return fired, func() {}
+	}
+	runs := app.NewRuns(reader, nil, passed, time.Second)
 	var delivered []int
 	err := runs.Observe(context.Background(), "r", 3, func(event contract.Event) error {
 		delivered = append(delivered, event.Seq)
@@ -172,6 +180,62 @@ func TestObserveResumesAfterTheLastDeliveredEvent(t *testing.T) {
 	})
 	if err != nil || !reflect.DeepEqual(delivered, []int{4, 5, 6}) || !reflect.DeepEqual(reader.calls, []int{3, 5, 5}) {
 		t.Fatalf("delivered %v, asked after %v, err %v", delivered, reader.calls, err)
+	}
+	if !reflect.DeepEqual(waits, []time.Duration{time.Second, time.Second}) {
+		t.Fatalf("waited %v between reads", waits)
+	}
+}
+
+// pacedReader reports each read of a run's events, which is running until
+// its last batch.
+type pacedReader struct {
+	readerSpy
+	reads chan int
+}
+
+func (r *pacedReader) Events(ctx context.Context, id string, afterSeq int) ([]run.Event, run.State, error) {
+	events, state, err := r.readerSpy.Events(ctx, id, afterSeq)
+	r.reads <- len(r.calls)
+	return events, state, err
+}
+
+// Observe reads a running record again only once its poll interval has
+// passed on the timer Runs takes, and not before.
+func TestObserveReadsAgainOnlyOnceTheIntervalHasPassed(t *testing.T) {
+	const interval = 7 * time.Second
+	reader := &pacedReader{
+		readerSpy: readerSpy{
+			batches: [][]run.Event{{{Seq: 1}}, {{Seq: 2}}},
+			status:  []run.State{run.StateRunning, run.StateFinished},
+		},
+		reads: make(chan int, 2),
+	}
+	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	runs := app.NewRuns(reader, nil, clock.Timer, interval)
+	observed := make(chan error, 1)
+	go func() {
+		observed <- runs.Observe(context.Background(), "r", 0, func(contract.Event) error { return nil })
+	}()
+	<-reader.reads
+	clock.Started(interval)
+	clock.Advance(interval - time.Nanosecond)
+	select {
+	case <-reader.reads:
+		t.Fatal("read again before the interval had passed")
+	default:
+	}
+	if clock.Pending() != 1 {
+		t.Fatalf("the wait for the next read ended early: %d pending", clock.Pending())
+	}
+	clock.Advance(time.Nanosecond)
+	if read := <-reader.reads; read != 2 {
+		t.Fatalf("read %d", read)
+	}
+	if err := <-observed; err != nil {
+		t.Fatal(err)
+	}
+	if clock.Pending() != 0 {
+		t.Fatalf("the wait was not released: %d pending", clock.Pending())
 	}
 }
 
@@ -191,7 +255,7 @@ func (s *cancellerSpy) Cancel(id string) bool {
 // effect for is refused as not running in this process.
 func TestRunsCancelThroughTheCancellerTheyDeclare(t *testing.T) {
 	canceller := &cancellerSpy{hosts: map[string]bool{"live": true}}
-	runs := app.NewRuns(nil, canceller, 0)
+	runs := app.NewRuns(nil, canceller, nil, 0)
 	if err := runs.Cancel(context.Background(), "live"); err != nil {
 		t.Fatal(err)
 	}
@@ -214,7 +278,7 @@ func TestInspectShowsTheNodeResultAsRecorded(t *testing.T) {
 		Session:   &run.Session{ProviderSessionID: "prov-1", Continues: "run-0"},
 	}
 	reader := &readerSpy{state: run.StateFinished, record: run.Record{ID: "r", Result: result, Turn: &run.Turn{StderrTail: "boom"}}}
-	view, err := (app.NewRuns(reader, nil, 0)).Inspect(context.Background(), "r")
+	view, err := (app.NewRuns(reader, nil, nil, 0)).Inspect(context.Background(), "r")
 	if err != nil || view.State != "finished" || view.StderrTail != "boom" {
 		t.Fatalf("view = %+v, %v", view, err)
 	}
@@ -228,7 +292,7 @@ func TestInspectShowsTheNodeResultAsRecorded(t *testing.T) {
 
 func TestAnAbandonedRunIsALostNode(t *testing.T) {
 	reader := &readerSpy{state: run.StateAbandoned, record: run.Record{ID: "r", CreatedAt: time.Unix(1, 0)}}
-	view, err := (app.NewRuns(reader, nil, 0)).Inspect(context.Background(), "r")
+	view, err := (app.NewRuns(reader, nil, nil, 0)).Inspect(context.Background(), "r")
 	if err != nil || view.State != "abandoned" || view.Result == nil || view.Result.Status != "lost" || view.Result.Error.Class != "abandoned" || view.Result.Cost.Source != "unknown" {
 		t.Fatalf("view = %+v, %v", view.Result, err)
 	}

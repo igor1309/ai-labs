@@ -23,6 +23,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/schema"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	runtimecomposition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
@@ -331,7 +332,7 @@ verify:
 		workspaces, with.changes, app.NewPreparer(with.changes, h.setup, with.clock), app.NewVerifier(with.changes, with.copies, h.commands, with.clock), schema.Validator{},
 		h.store, h.store, with.clock, system.Timer, system.IDs{}, h.home, hosted,
 	)
-	h.runs = app.NewRuns(h.store, hosted, 10*time.Millisecond)
+	h.runs = app.NewRuns(h.store, hosted, system.Timer, 10*time.Millisecond)
 	return h
 }
 
@@ -535,8 +536,16 @@ const blocks = "tail -f /dev/null"
 // well before the call's own timeout: the message names verify.timeout,
 // not the call's.
 func TestVerifyRunTimeout(t *testing.T) {
-	h := newLoop(t, verifySettings{command: blocks, timeout: "1s"}, state("one"))
-	record := h.call(contract.CallRequest{Timeout: "30s"})
+	// The run's timeout passes on the command runner's clock once the run
+	// waits on it.
+	clock := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
+	commands := runtimecomposition.Commands{Supervisor: supervisor.Commands{Timer: clock.Timer}}
+	h := newLoopWith(t, seams{commands: commands}, verifySettings{command: blocks, timeout: "1s"}, state("one"))
+	cleanupRecorded(t, h.home, h.repo)
+	id := h.submit(contract.CallRequest{Timeout: "30s"})
+	clock.Started(time.Second)
+	clock.Advance(time.Second)
+	record := h.wait(id)
 	expect(t, record, domain.Interrupted, domain.ClassTimeout, "attempt 1's run exceeded verify.timeout 1s")
 	if ran := runsOf(record); len(ran) != 1 || !ran[0].TimedOut {
 		t.Fatalf("attempts %+v", record.Attempts)
@@ -549,11 +558,16 @@ func TestVerifyCallTimeoutBoundsTheLoop(t *testing.T) {
 	// Making the clean copy uses 59 of the call's 60 seconds on the call's
 	// clock, which leaves the run one second of its 20. The clock moves
 	// only once the copy is made, so the real time Git takes decides
-	// nothing.
-	clock := &manualClock{now: time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)}
-	copies := slowCopies{Workspaces: git.NewWorkspaces(git.NewWorktrees(tempDir(t))), after: func() { clock.advance(59 * time.Second) }}
-	h := newLoopWith(t, seams{clock: clock, copies: copies}, verifySettings{command: blocks, timeout: "20s"}, state("one"))
-	record := h.call(contract.CallRequest{})
+	// nothing, and the run's second passes on the same clock.
+	clock := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
+	copies := slowCopies{Workspaces: git.NewWorkspaces(git.NewWorktrees(tempDir(t))), after: func() { clock.Advance(59 * time.Second) }}
+	commands := runtimecomposition.Commands{Supervisor: supervisor.Commands{Timer: clock.Timer}}
+	h := newLoopWith(t, seams{clock: clock, copies: copies, commands: commands}, verifySettings{command: blocks, timeout: "20s"}, state("one"))
+	cleanupRecorded(t, h.home, h.repo)
+	id := h.submit(contract.CallRequest{})
+	clock.Started(time.Second)
+	clock.Advance(time.Second)
+	record := h.wait(id)
 	expect(t, record, domain.Interrupted, domain.ClassTimeout, "the call's timeout passed during attempt 1's run")
 	events, _, err := h.store.Events(context.Background(), record.ID, 0)
 	if err != nil {
@@ -584,32 +598,13 @@ func (c slowCopies) Copy(ctx context.Context, repository, dir, revision string, 
 	return err
 }
 
-// manualClock tells the time it is set to, so a test decides how much of
-// the call's time has passed.
-type manualClock struct {
-	mu  sync.Mutex
-	now time.Time
-}
-
-func (c *manualClock) Now() time.Time {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.now
-}
-
-func (c *manualClock) advance(by time.Duration) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.now = c.now.Add(by)
-}
-
 // Cancelling the call during a run kills the command's whole process
 // group, which the record names while it runs.
 func TestVerifyCancellationKillsTheCommandGroup(t *testing.T) {
 	groupFile := filepath.Join(tempDir(t), "group")
-	// The command's timer never fires, so only the cancellation can end the
+	// The command's clock never moves, so only the cancellation can end the
 	// command; wait's own bound fails the test if nothing does.
-	unfired := supervisor.Commands{Timer: func(time.Duration) (<-chan time.Time, func()) { return nil, func() {} }}
+	unfired := supervisor.Commands{Timer: systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)).Timer}
 	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: unfired}}, verifySettings{command: blocks + " & echo $$ > " + groupFile + "; wait"}, state("one"))
 	// Whatever the assertions below find, the command does not outlive the
 	// test: its group is on record before it writes it.
@@ -682,10 +677,10 @@ func TestVerifyRepairTurnThatFailsEndsTheNode(t *testing.T) {
 func TestContinuationsCountFromTheSessionsLatestRecordedTurn(t *testing.T) {
 	// Each turn reports the session's running totals, as Claude Code does
 	// for cost and Codex for usage, a second after it started.
-	clock := &manualClock{now: time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)}
+	clock := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
 	totals := func(usd float64, in int64) step {
 		return state("pass", func(turn *domain.Turn) {
-			clock.advance(time.Second)
+			clock.Advance(time.Second)
 			turn.Session = &domain.SessionTotals{CostUSD: &usd, Usage: &domain.Usage{InputTokens: &in}}
 		})
 	}
@@ -921,20 +916,18 @@ func TestVerifyEvidenceForEveryAttempt(t *testing.T) {
 // group and all, before verify.timeout: the node is interrupted as a
 // timeout, and the attempt's run says what went stale.
 func TestVerifyRunWithoutOutputIsKilledAsStale(t *testing.T) {
-	// Only the wait for output passes, as soon as it starts: the command
-	// never ends on its own and its timeout never fires.
+	// The wait for output passes on the command runner's clock once the
+	// run waits on it, well short of the run's timeout: the command never
+	// ends on its own.
 	const noOutput = 7 * time.Second
-	stale := supervisor.Commands{Timer: func(wait time.Duration) (<-chan time.Time, func()) {
-		if wait != noOutput {
-			return nil, func() {}
-		}
-		fired := make(chan time.Time, 1)
-		fired <- time.Time{}
-		return fired, func() {}
-	}}
+	clock := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
+	stale := supervisor.Commands{Timer: clock.Timer}
 	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: stale}}, verifySettings{command: blocks + " & wait", policy: "stale: {no_output: 7s}\n"}, state("one"))
 	cleanupRecorded(t, h.home, h.repo)
-	record := h.wait(h.submit(contract.CallRequest{}))
+	id := h.submit(contract.CallRequest{})
+	clock.Started(noOutput)
+	clock.Advance(noOutput)
+	record := h.wait(id)
 
 	expect(t, record, domain.Interrupted, domain.ClassTimeout, "stale: attempt 1's run produced no output for 7s (stale.no_output)")
 	if record.Effective == nil || record.Effective.Stale == nil || record.Effective.Stale.NoOutput != noOutput {

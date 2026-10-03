@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 )
 
 // The test binary doubles as the runtime's descendants: with helperEnv set
@@ -122,7 +123,7 @@ func TestLeftoverProcessesAreKilledWhenTheRuntimeExits(t *testing.T) {
 			}
 		}
 	})
-	evidence := supervisor.Run(context.Background(), supervisor.Spec{
+	evidence := supervisor.Runtime{}.Run(context.Background(), supervisor.Spec{
 		Command: "/bin/sh",
 		Args:    []string{"-c", blocks + ` >/dev/null 2>&1 & echo $! > "$0"; echo done`, pidFile},
 		Timeout: 30 * time.Second,
@@ -145,49 +146,198 @@ func TestLeftoverProcessesAreKilledWhenTheRuntimeExits(t *testing.T) {
 	}
 }
 
+// start is when the tests' manual clocks start.
+var start = time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+
 // A descendant that leaves the group but keeps stdout open cannot hold the
-// call past the grace period.
+// call past the grace period, which starts at the exit; until the grace
+// has passed, stdout is read.
 func TestStdoutHeldOutsideTheGroupDoesNotHoldTheCall(t *testing.T) {
-	pidFile := filepath.Join(t.TempDir(), "pid")
-	t.Setenv(helperEnv, "escape")
-	t.Setenv("PID_FILE", pidFile)
-	sink := &events{}
-	// Killed on every path, including a failed or hung Run: the PID file is
-	// read lazily and a missing one is ignored.
+	const grace = 3 * time.Second
+	// run runs the escaping process over a manual clock, and returns once
+	// the stdout grace has started, with the escaped child's PID.
+	run := func(t *testing.T) (*systemtest.Clock, int, *events, <-chan runResult) {
+		pidFile := filepath.Join(t.TempDir(), "pid")
+		t.Setenv(helperEnv, "escape")
+		t.Setenv("PID_FILE", pidFile)
+		// Killed on every path, including a failed Run: the PID file is
+		// read lazily and a missing one is ignored.
+		t.Cleanup(func() {
+			if data, err := os.ReadFile(pidFile); err == nil {
+				if pid, err := strconv.Atoi(strings.TrimSpace(string(data))); err == nil && pid > 1 {
+					_ = syscall.Kill(pid, syscall.SIGKILL)
+				}
+			}
+		})
+		clock := systemtest.NewClock(start)
+		sink := &events{}
+		done := make(chan runResult, 1)
+		go func() {
+			var lines []string
+			evidence := supervisor.Runtime{Timer: clock.Timer}.Run(context.Background(), supervisor.Spec{
+				Command:   os.Args[0],
+				Timeout:   time.Hour,
+				KillGrace: grace,
+			}, sink, func(line string) { lines = append(lines, line) })
+			done <- runResult{evidence, lines}
+		}()
+		// The process exits by itself, so the first wait of the grace's
+		// length is the one for stdout, started at the exit.
+		clock.Started(grace)
+		return clock, pidFrom(t, pidFile), sink, done
+	}
+	exited := func(t *testing.T, got runResult) {
+		t.Helper()
+		if got.evidence.Exit == nil || got.evidence.Exit.Code == nil || *got.evidence.Exit.Code != 0 || strings.Join(got.lines, ",") != "started" {
+			t.Fatalf("evidence = %+v, lines %v", got.evidence, got.lines)
+		}
+	}
+
+	t.Run("passed", func(t *testing.T) {
+		// The escaped child never exits on its own, so Run returning, with
+		// STDOUT_HELD_OPEN, proves the grace ended the wait.
+		clock, _, sink, done := run(t)
+		clock.Advance(grace)
+		exited(t, <-done)
+		if !sink.has("STDOUT_HELD_OPEN") {
+			t.Fatalf("events = %v", sink.kinds)
+		}
+	})
+	t.Run("not yet passed", func(t *testing.T) {
+		// A moment short of the grace stdout is still read: the child's end
+		// closes it, and nothing says it was held.
+		clock, child, sink, done := run(t)
+		clock.Advance(grace - time.Nanosecond)
+		if err := syscall.Kill(child, syscall.SIGKILL); err != nil {
+			t.Fatal(err)
+		}
+		exited(t, <-done)
+		if sink.has("STDOUT_HELD_OPEN") {
+			t.Fatalf("events = %v", sink.kinds)
+		}
+	})
+}
+
+// cleanUpRun kills, at the test's cleanup, the group the sink was first
+// told of.
+func cleanUpRun(t *testing.T, sink *events) {
 	t.Cleanup(func() {
-		if data, err := os.ReadFile(pidFile); err == nil {
-			if pid, err := strconv.Atoi(strings.TrimSpace(string(data))); err == nil && pid > 1 {
-				_ = syscall.Kill(pid, syscall.SIGKILL)
+		sink.mu.Lock()
+		defer sink.mu.Unlock()
+		if len(sink.started) > 0 {
+			if group, _, err := supervisor.ParseRef(sink.started[0]); err == nil && group > 1 {
+				_ = syscall.Kill(-group, syscall.SIGKILL)
 			}
 		}
 	})
-	// The escaped child never exits on its own, so Run returning, with
-	// STDOUT_HELD_OPEN, proves the grace ended the wait; without the grace
-	// only Run's minute timeout would end it. The bound below is only a
-	// guard against a hang.
-	done := make(chan runResult, 1)
-	go func() {
-		var lines []string
-		evidence := supervisor.Run(context.Background(), supervisor.Spec{
-			Command:   os.Args[0],
-			Timeout:   time.Minute,
-			KillGrace: 200 * time.Millisecond,
-		}, sink, func(line string) { lines = append(lines, line) })
-		done <- runResult{evidence, lines}
-	}()
-	var got runResult
-	select {
-	case got = <-done:
-	case <-time.After(30 * time.Second):
-		t.Fatal("Run did not return: stdout held outside the group held the call")
+}
+
+// The turn's timeout is on the runtime's timer: the process is told to end
+// once the clock passes the timeout, and not a moment before. Cancelled a
+// moment short of it, the call is aborted, not timed out.
+func TestTheTimeoutEndsTheProcessOnlyOnceItHasPassed(t *testing.T) {
+	const timeout = time.Hour
+	run := func(t *testing.T, ctx context.Context) (*systemtest.Clock, *events, <-chan supervisor.Evidence) {
+		clock := systemtest.NewClock(start)
+		sink := &events{}
+		cleanUpRun(t, sink)
+		done := make(chan supervisor.Evidence, 1)
+		go func() {
+			done <- supervisor.Runtime{Timer: clock.Timer}.Run(ctx, supervisor.Spec{
+				Command: "/bin/sh",
+				Args:    []string{"-c", blocks},
+				Timeout: timeout,
+			}, sink, func(string) {})
+		}()
+		clock.Started(timeout)
+		return clock, sink, done
 	}
-	evidence, lines := got.evidence, got.lines
-	if evidence.Exit == nil || evidence.Exit.Code == nil || *evidence.Exit.Code != 0 || strings.Join(lines, ",") != "started" {
-		t.Fatalf("evidence = %+v, lines %v", evidence, lines)
+
+	t.Run("passed", func(t *testing.T) {
+		clock, sink, done := run(t, context.Background())
+		clock.Advance(timeout)
+		evidence := <-done
+		if !evidence.TimedOut || evidence.Aborted || evidence.Exit == nil || evidence.Exit.Signal != "terminated" || !sink.has("TIMEOUT") {
+			t.Fatalf("evidence = %+v, events %v", evidence, sink.kinds)
+		}
+	})
+	t.Run("not yet passed", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		clock, sink, done := run(t, ctx)
+		clock.Advance(timeout - time.Nanosecond)
+		cancel()
+		evidence := <-done
+		if evidence.TimedOut || !evidence.Aborted || sink.has("TIMEOUT") {
+			t.Fatalf("evidence = %+v, events %v", evidence, sink.kinds)
+		}
+	})
+}
+
+// A group told to end that ignores it is killed once the kill grace has
+// passed on the runtime's timer, and not a moment before: a moment short
+// of it, the process still ends by itself.
+func TestAGroupThatIgnoresTheTerminationIsKilledOnceTheGraceHasPassed(t *testing.T) {
+	const timeout, grace = time.Hour, 3 * time.Second
+	// run starts a process that ignores SIGTERM and exits 3 once it reads
+	// a line from the gate, and returns once its timeout has passed and the
+	// grace has started; the gate is the test's to write to.
+	run := func(t *testing.T) (*systemtest.Clock, *os.File, <-chan supervisor.Evidence) {
+		gate := filepath.Join(t.TempDir(), "gate")
+		if err := syscall.Mkfifo(gate, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		// Held for reading and writing, the FIFO opens at once for both
+		// ends, and a line written stays until the process reads it.
+		fifo, err := os.OpenFile(gate, os.O_RDWR, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = fifo.Close() })
+		clock := systemtest.NewClock(start)
+		sink := &events{}
+		cleanUpRun(t, sink)
+		ready := make(chan struct{})
+		done := make(chan supervisor.Evidence, 1)
+		go func() {
+			done <- supervisor.Runtime{Timer: clock.Timer}.Run(context.Background(), supervisor.Spec{
+				Command:   "/bin/sh",
+				Args:      []string{"-c", `trap '' TERM; echo ready; read line < "$0"; exit 3`, gate},
+				Timeout:   timeout,
+				KillGrace: grace,
+			}, sink, func(line string) {
+				if line == "ready" {
+					close(ready)
+				}
+			})
+		}()
+		// SIGTERM is ignored only once the trap is set.
+		<-ready
+		clock.Started(timeout)
+		clock.Advance(timeout)
+		clock.Started(grace)
+		return clock, fifo, done
 	}
-	if !sink.has("STDOUT_HELD_OPEN") {
-		t.Fatalf("events = %v", sink.kinds)
-	}
+
+	t.Run("passed", func(t *testing.T) {
+		clock, _, done := run(t)
+		clock.Advance(grace)
+		evidence := <-done
+		if !evidence.TimedOut || evidence.Exit == nil || evidence.Exit.Signal != "killed" {
+			t.Fatalf("evidence = %+v", evidence)
+		}
+	})
+	t.Run("not yet passed", func(t *testing.T) {
+		clock, gate, done := run(t)
+		clock.Advance(grace - time.Nanosecond)
+		if _, err := gate.WriteString("go\n"); err != nil {
+			t.Fatal(err)
+		}
+		evidence := <-done
+		if !evidence.TimedOut || evidence.Exit == nil || evidence.Exit.Code == nil || *evidence.Exit.Code != 3 {
+			t.Fatalf("evidence = %+v", evidence)
+		}
+	})
 }
 
 // The group is reported the moment it exists, before the slower lookup of
@@ -211,7 +361,7 @@ func TestGroupIsReportedBeforeItsTokenIsKnown(t *testing.T) {
 			}
 		}
 	})
-	supervisor.Run(ctx, supervisor.Spec{
+	supervisor.Runtime{}.Run(ctx, supervisor.Spec{
 		Command: "/bin/sh",
 		Args:    []string{"-c", blocks},
 		Timeout: 30 * time.Second,
@@ -241,7 +391,7 @@ func TestGroupThatCannotBeRecordedIsKilled(t *testing.T) {
 	for name, failAt := range map[string]int{"the group report": 1, "the token report": 2} {
 		t.Run(name, func(t *testing.T) {
 			sink := &events{failAt: failAt, startErr: errors.New("disk full")}
-			evidence := supervisor.Run(context.Background(), supervisor.Spec{
+			evidence := supervisor.Runtime{}.Run(context.Background(), supervisor.Spec{
 				Command: "/bin/sh",
 				Args:    []string{"-c", blocks},
 				// Only a failure of the kill would ever reach it, and the
@@ -287,7 +437,7 @@ func TestGroupThatCannotBeRecordedIsKilled(t *testing.T) {
 func TestStderrBeyondTheBoundIsCutAndMarked(t *testing.T) {
 	// 5000 two-byte runes, then the reason: its odd length puts the cut
 	// inside a rune.
-	evidence := supervisor.Run(context.Background(), supervisor.Spec{
+	evidence := supervisor.Runtime{}.Run(context.Background(), supervisor.Spec{
 		Command: "/bin/sh",
 		Args:    []string{"-c", `printf 'é%.0s' $(seq 5000) >&2; printf '\nError: too large!\n' >&2; exit 1`},
 		Timeout: 30 * time.Second,
@@ -304,7 +454,7 @@ func TestStderrBeyondTheBoundIsCutAndMarked(t *testing.T) {
 
 // A runtime that prints nothing to stderr leaves no tail and no cut.
 func TestASilentExitLeavesNoTail(t *testing.T) {
-	evidence := supervisor.Run(context.Background(), supervisor.Spec{
+	evidence := supervisor.Runtime{}.Run(context.Background(), supervisor.Spec{
 		Command: "/bin/sh",
 		Args:    []string{"-c", "exit 2"},
 		Timeout: 30 * time.Second,
@@ -320,7 +470,7 @@ func TestEnvIsAddedToTheInheritedEnvironment(t *testing.T) {
 	t.Setenv("AGISTER_SUPERVISOR_KEPT", "kept")
 	t.Setenv("AGISTER_SUPERVISOR_REPLACED", "inherited")
 	var lines []string
-	evidence := supervisor.Run(context.Background(), supervisor.Spec{
+	evidence := supervisor.Runtime{}.Run(context.Background(), supervisor.Spec{
 		Command: "/bin/sh",
 		Args:    []string{"-c", `echo "$AGISTER_SUPERVISOR_KEPT $AGISTER_SUPERVISOR_REPLACED $AGISTER_SUPERVISOR_ADDED"`},
 		Env:     []string{"AGISTER_SUPERVISOR_REPLACED=replaced", "AGISTER_SUPERVISOR_ADDED=added"},

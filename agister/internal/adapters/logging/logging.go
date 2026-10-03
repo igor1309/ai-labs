@@ -73,6 +73,19 @@ type Runner struct {
 	Inner   app.TurnRunner
 	Adapter string
 	Log     *slog.Logger
+	// Clock reads the time a turn's wall time is measured on. Nil means the
+	// wall clock.
+	Clock Clock
+}
+
+// Clock is what the runner reads the time on.
+type Clock interface{ Now() time.Time }
+
+func (r Runner) now() time.Time {
+	if r.Clock == nil {
+		return time.Now()
+	}
+	return r.Clock.Now()
 }
 
 func (r Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
@@ -84,7 +97,7 @@ func (r Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
 }
 
 func (r Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
-	started := time.Now()
+	started := r.now()
 	r.Log.InfoContext(ctx, "turn.started",
 		"adapter", r.Adapter, "cwd", request.Cwd, "model", request.Model, "effort", request.Effort,
 		"primitives", request.Primitives, "timeout", request.Timeout.String(),
@@ -101,7 +114,7 @@ func (r Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.E
 	}
 	r.Log.Log(ctx, level, "turn.finished",
 		"adapter", r.Adapter, "status", string(turn.Status), "error", fault,
-		"provider_session_id", turn.ProviderSessionID, "wall", time.Since(started).String(), "events", counting.counts)
+		"provider_session_id", turn.ProviderSessionID, "wall", r.now().Sub(started).String(), "events", counting.counts)
 	return turn
 }
 

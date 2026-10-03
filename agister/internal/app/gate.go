@@ -129,7 +129,7 @@ func NewClient(infra Infrastructure) contract.Client {
 				resolverOn(layered), calls.Runners, calls.Inputs, calls.Workspaces, calls.Changes, preparer, verifier, calls.Validator,
 				calls.Recorder, calls.Runs, calls.Clock, calls.Timer, calls.IDs, calls.StateDir, hosted,
 			),
-			Runs: NewRuns(infra.Runs.Reader, hosted, 0),
+			Runs: NewRuns(infra.Runs.Reader, hosted, infra.Runs.Timer, 0),
 		}
 		return infra.Decorate(host)
 	}

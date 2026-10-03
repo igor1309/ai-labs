@@ -14,6 +14,8 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/logging"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/claudecode"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	composition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
@@ -22,6 +24,8 @@ import (
 // The fakes this package builds are removed when its tests end.
 func TestMain(m *testing.M) { os.Exit(runtimetest.Run(m)) }
 
+var start = time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+
 func request(prompt string) app.TurnRequest {
 	return app.TurnRequest{Prompt: prompt, Primitives: []string{"Read"}, Timeout: time.Minute, OutputSchema: json.RawMessage(`{"type":"object"}`)}
 }
@@ -29,21 +33,24 @@ func request(prompt string) app.TurnRequest {
 // The decorator must be substitutable for what it wraps.
 func TestDecoratorConformance(t *testing.T) {
 	log := slog.New(slog.NewJSONHandler(&bytes.Buffer{}, nil))
+	clock := systemtest.NewClock(start)
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {
-			return logging.Runner{Inner: composition.NewClaudeCode(command), Adapter: "claude-code", Log: log}
+			return logging.Runner{Inner: composition.NewClaudeCode(command, supervisor.Runtime{Timer: clock.Timer}), Adapter: "claude-code", Log: log, Clock: clock}
 		},
 		Fake:      runtimetest.Binary(t, "fakeclaude"),
 		Contract:  claudecode.Contract,
 		ToolCalls: true,
 		Request:   request,
+		Clock:     clock,
 	})
 }
 
 func TestLogsAreCorrelatedAndOmitPrompts(t *testing.T) {
 	var buffer bytes.Buffer
 	log := slog.New(logging.Handler{Handler: slog.NewJSONHandler(&buffer, &slog.HandlerOptions{Level: slog.LevelInfo})})
-	runner := logging.Runner{Inner: composition.NewClaudeCode(runtimetest.Binary(t, "fakeclaude")), Adapter: "claude-code", Log: log}
+	clock := systemtest.NewClock(start)
+	runner := logging.Runner{Inner: composition.NewClaudeCode(runtimetest.Binary(t, "fakeclaude"), supervisor.Runtime{Timer: clock.Timer}), Adapter: "claude-code", Log: log, Clock: clock}
 	ctx := app.WithCorrelation(context.Background(), "run_id", "run-1", "process", "p")
 	runner.RunTurn(ctx, request("secret prompt SCENARIO:approve"), &runtimetest.Recorder{})
 
@@ -97,5 +104,42 @@ func TestFailureToRecordTheProcessReachesTheRuntime(t *testing.T) {
 	}
 	if !strings.Contains(buffer.String(), "disk full") {
 		t.Fatalf("not logged: %s", buffer.String())
+	}
+}
+
+// taking is a runner whose turn takes what it advances its clock by.
+type taking struct {
+	clock *systemtest.Clock
+	takes time.Duration
+}
+
+func (taking) Identity(context.Context) (app.RuntimeIdentity, error) {
+	return app.RuntimeIdentity{}, nil
+}
+
+func (r taking) RunTurn(context.Context, app.TurnRequest, app.EventSink) run.Turn {
+	r.clock.Advance(r.takes)
+	return run.Turn{Status: run.Completed}
+}
+
+// A turn's wall time is what passed on the runner's clock while it ran.
+func TestTheWallTimeIsReadOnTheRunnersClock(t *testing.T) {
+	var buffer bytes.Buffer
+	log := slog.New(slog.NewJSONHandler(&buffer, nil))
+	clock := systemtest.NewClock(start)
+	runner := logging.Runner{Inner: taking{clock: clock, takes: 90 * time.Second}, Adapter: "x", Log: log, Clock: clock}
+	runner.RunTurn(context.Background(), request("p"), &runtimetest.Recorder{})
+	var finished map[string]any
+	for _, line := range strings.Split(strings.TrimSpace(buffer.String()), "\n") {
+		var entry map[string]any
+		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			t.Fatal(err)
+		}
+		if entry["msg"] == "turn.finished" {
+			finished = entry
+		}
+	}
+	if finished["wall"] != "1m30s" {
+		t.Fatalf("turn.finished = %v", finished)
 	}
 }

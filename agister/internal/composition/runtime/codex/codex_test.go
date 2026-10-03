@@ -18,6 +18,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	composition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
@@ -25,6 +26,13 @@ import (
 
 // The fakes this package builds are removed when its tests end.
 func TestMain(m *testing.M) { os.Exit(runtimetest.Run(m)) }
+
+// stillSupervisor is the real supervisor with its waits on a manual clock
+// that nothing advances: no turn or lookup times out unless a test
+// advances a clock of its own, and no grace passes.
+func stillSupervisor() supervisor.Runtime {
+	return supervisor.Runtime{Timer: systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}
+}
 
 func request(prompt string) app.TurnRequest {
 	return app.TurnRequest{
@@ -41,19 +49,21 @@ func request(prompt string) app.TurnRequest {
 // The fake's error_result scenario emits turn.failed, which the suite's
 // "runtime reported" check matches.
 func TestConformance(t *testing.T) {
+	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {
-			return composition.AdaptCodex(&codex.Runner{Transport: composition.CodexTransport{Supervisor: supervisor.Runtime{}}, Command: command, KillGrace: 200 * time.Millisecond})
+			return composition.AdaptCodex(&codex.Runner{Transport: composition.CodexTransport{Supervisor: supervisor.Runtime{Timer: clock.Timer}}, Command: command})
 		},
 		Fake:      runtimetest.Binary(t, "fakecodex"),
 		Contract:  codex.Contract,
 		ToolCalls: true,
 		Request:   request,
+		Clock:     clock,
 	})
 }
 
 func TestIdentityReportsResume(t *testing.T) {
-	identity, err := codex.New(runtimetest.Binary(t, "fakecodex"), composition.CodexTransport{Supervisor: supervisor.Runtime{}}).Identity(context.Background())
+	identity, err := codex.New(runtimetest.Binary(t, "fakecodex"), composition.CodexTransport{Supervisor: stillSupervisor()}).Identity(context.Background())
 	if err != nil || identity.Contract != "codex/2" || !identity.Resume || identity.CostLimit {
 		t.Fatalf("identity = %+v, %v", identity, err)
 	}
@@ -95,7 +105,7 @@ func printsListing(cost string) string {
 // for the thread before it: all of it for a fresh thread, the difference
 // for a resumed one.
 func TestTurnCostIsTheThreadsFromCCUsage(t *testing.T) {
-	runner := &codex.Runner{Transport: composition.CodexTransport{Supervisor: supervisor.Runtime{}}, Command: runtimetest.Binary(t, "fakecodex"), KillGrace: 200 * time.Millisecond}
+	runner := &codex.Runner{Transport: composition.CodexTransport{Supervisor: stillSupervisor()}, Command: runtimetest.Binary(t, "fakecodex")}
 	ctx := context.Background()
 
 	runner.Sessions = listing("0.25")
@@ -124,7 +134,7 @@ func TestTurnCostIsTheThreadsFromCCUsage(t *testing.T) {
 func TestTurnCostFromTheInstalledCCUsage(t *testing.T) {
 	command := fakeCCUsage(t, `[ "$*" = "codex session --json" ] || exit 3
 `+printsListing("0.25"))
-	runner := &codex.Runner{Transport: composition.CodexTransport{Supervisor: supervisor.Runtime{}}, Command: runtimetest.Binary(t, "fakecodex"), KillGrace: 200 * time.Millisecond, Sessions: codex.CCUsage(composition.CodexTransport{Supervisor: supervisor.Runtime{}}, command, 200*time.Millisecond)}
+	runner := &codex.Runner{Transport: composition.CodexTransport{Supervisor: stillSupervisor()}, Command: runtimetest.Binary(t, "fakecodex"), Sessions: codex.CCUsage(composition.CodexTransport{Supervisor: stillSupervisor()}, command, 0)}
 	sink := &runtimetest.Recorder{}
 	turn := run.Own(composition.AdaptCodex(runner).RunTurn(context.Background(), request("SCENARIO:approve"), sink), false)
 	if string(turn.Status) != string(run.Completed) || turn.CostUSD == nil || *turn.CostUSD != 0.25 {
@@ -160,8 +170,8 @@ func TestTheLookupGetsOnlyWhatIsLeftOfTheTurnsTimeout(t *testing.T) {
 		readings := 0
 		var given []time.Duration
 		runner := &codex.Runner{
-			Transport: composition.CodexTransport{Supervisor: supervisor.Runtime{}},
-			Command:   runtimetest.Binary(t, "fakecodex"), KillGrace: 200 * time.Millisecond,
+			Transport: composition.CodexTransport{Supervisor: stillSupervisor()},
+			Command:   runtimetest.Binary(t, "fakecodex"),
 			// The first reading starts the turn; by any later one the turn
 			// has used c.used.
 			Now: func() time.Time {
@@ -248,7 +258,7 @@ func guarded(t *testing.T, ctx context.Context, runner *codex.Runner, expired <-
 // When the hang guard fires, cleanup ends the lookup the turn is held in
 // and joins the worker before the test finishes.
 func TestTheHangGuardJoinsTheTurnItGaveUpOn(t *testing.T) {
-	lookup := codex.CCUsage(composition.CodexTransport{Supervisor: supervisor.Runtime{}}, fakeCCUsage(t, "exec sleep 600\n"), 200*time.Millisecond)
+	lookup := codex.CCUsage(composition.CodexTransport{Supervisor: stillSupervisor()}, fakeCCUsage(t, "exec sleep 600\n"), 0)
 	var mu sync.Mutex
 	var lookupErr error
 	returned := false
@@ -256,8 +266,8 @@ func TestTheHangGuardJoinsTheTurnItGaveUpOn(t *testing.T) {
 	// held in the lookup, whatever the machine's pace.
 	expired := make(chan time.Time)
 	runner := &codex.Runner{
-		Transport: composition.CodexTransport{Supervisor: supervisor.Runtime{}},
-		Command:   runtimetest.Binary(t, "fakecodex"), KillGrace: 200 * time.Millisecond,
+		Transport: composition.CodexTransport{Supervisor: stillSupervisor()},
+		Command:   runtimetest.Binary(t, "fakecodex"),
 		Sessions: func(ctx context.Context, timeout time.Duration, sink codex.LookupSink) ([]byte, error) {
 			close(expired)
 			listing, err := lookup(ctx, timeout, sink)
@@ -327,7 +337,7 @@ wait
 		<-read
 		_ = fifo.Close()
 	})
-	runner := &codex.Runner{Transport: composition.CodexTransport{Supervisor: supervisor.Runtime{}}, Command: runtimetest.Binary(t, "fakecodex"), KillGrace: 200 * time.Millisecond, Sessions: codex.CCUsage(composition.CodexTransport{Supervisor: supervisor.Runtime{}}, command, 200*time.Millisecond)}
+	runner := &codex.Runner{Transport: composition.CodexTransport{Supervisor: stillSupervisor()}, Command: runtimetest.Binary(t, "fakecodex"), Sessions: codex.CCUsage(composition.CodexTransport{Supervisor: stillSupervisor()}, command, 0)}
 	// Only a hang reaches the guard: the child outlives it by far.
 	turn := runGuarded(t, ctx, runner, "the lookup's child held it")
 	if ctx.Err() == nil {
@@ -340,17 +350,21 @@ wait
 }
 
 // A lookup that never exits by itself is ended by what is left of the
-// turn's timeout: the cost stays unknown and the turn is as the runtime
-// ended it.
+// turn's timeout, once that has passed on the supervisor's clock: the
+// cost stays unknown and the turn is as the runtime ended it.
 func TestTheLookupEndsWhenTheTurnsTimeoutRunsOut(t *testing.T) {
 	command := fakeCCUsage(t, "exec sleep 600\n")
-	lookup := codex.CCUsage(composition.CodexTransport{Supervisor: supervisor.Runtime{}}, command, 200*time.Millisecond)
 	start := time.Date(2026, 9, 30, 10, 0, 0, 0, time.UTC)
+	clock := systemtest.NewClock(start)
+	lookup := codex.CCUsage(composition.CodexTransport{Supervisor: supervisor.Runtime{Timer: clock.Timer}}, command, 0)
+	// What is left passes once the lookup has started its wait.
+	const left = 100 * time.Millisecond
+	go func() { clock.Started(left); clock.Advance(left) }()
 	readings := 0
 	var lookupErr error
 	runner := &codex.Runner{
-		Transport: composition.CodexTransport{Supervisor: supervisor.Runtime{}},
-		Command:   runtimetest.Binary(t, "fakecodex"), KillGrace: 200 * time.Millisecond,
+		Transport: composition.CodexTransport{Supervisor: stillSupervisor()},
+		Command:   runtimetest.Binary(t, "fakecodex"),
 		// The first reading starts the turn; by any later one only a moment
 		// of its minute is left.
 		Now: func() time.Time {
@@ -358,7 +372,7 @@ func TestTheLookupEndsWhenTheTurnsTimeoutRunsOut(t *testing.T) {
 			if readings == 1 {
 				return start
 			}
-			return start.Add(time.Minute - 100*time.Millisecond)
+			return start.Add(time.Minute - left)
 		},
 		Sessions: func(ctx context.Context, timeout time.Duration, sink codex.LookupSink) ([]byte, error) {
 			listing, err := lookup(ctx, timeout, sink)
@@ -385,8 +399,8 @@ func TestNoLookupOnceTheCallIsCancelled(t *testing.T) {
 	defer cancel()
 	lookups := 0
 	runner := &codex.Runner{
-		Transport: composition.CodexTransport{Supervisor: supervisor.Runtime{}},
-		Command:   runtimetest.Binary(t, "fakecodex"), KillGrace: 200 * time.Millisecond,
+		Transport: composition.CodexTransport{Supervisor: stillSupervisor()},
+		Command:   runtimetest.Binary(t, "fakecodex"),
 		Sessions: func(context.Context, time.Duration, codex.LookupSink) ([]byte, error) {
 			lookups++
 			return []byte(listingJSON("0.25")), nil
@@ -420,10 +434,10 @@ func TestTurnCostUnknownWithoutCCUsagesPrice(t *testing.T) {
 		"failing": func(context.Context, time.Duration, codex.LookupSink) ([]byte, error) {
 			return nil, errors.New("exit status 1")
 		},
-		"non-zero": codex.CCUsage(composition.CodexTransport{Supervisor: supervisor.Runtime{}}, fakeCCUsage(t, printsListing("0.25")+"exit 1\n"), 200*time.Millisecond),
-		"absent":   codex.CCUsage(composition.CodexTransport{Supervisor: supervisor.Runtime{}}, filepath.Join(t.TempDir(), "ccusage"), 200*time.Millisecond),
+		"non-zero": codex.CCUsage(composition.CodexTransport{Supervisor: stillSupervisor()}, fakeCCUsage(t, printsListing("0.25")+"exit 1\n"), 0),
+		"absent":   codex.CCUsage(composition.CodexTransport{Supervisor: stillSupervisor()}, filepath.Join(t.TempDir(), "ccusage"), 0),
 	} {
-		runner := &codex.Runner{Transport: composition.CodexTransport{Supervisor: supervisor.Runtime{}}, Command: runtimetest.Binary(t, "fakecodex"), KillGrace: 200 * time.Millisecond, Sessions: sessions}
+		runner := &codex.Runner{Transport: composition.CodexTransport{Supervisor: stillSupervisor()}, Command: runtimetest.Binary(t, "fakecodex"), Sessions: sessions}
 		turn := run.Own(composition.AdaptCodex(runner).RunTurn(context.Background(), request("SCENARIO:approve"), &runtimetest.Recorder{}), false)
 		if string(turn.Status) != string(run.Completed) || turn.CostUSD != nil || turn.Session != nil && turn.Session.CostUSD != nil {
 			t.Errorf("%s: turn = %+v", name, turn)
@@ -437,7 +451,7 @@ func ptr(v float64) *float64 { return &v }
 // none in the stream (observed with codex-cli 0.159.2); the message quotes
 // it.
 func TestAnOversizedPromptFailsWithCodexsReason(t *testing.T) {
-	runner := &codex.Runner{Transport: composition.CodexTransport{Supervisor: supervisor.Runtime{}}, Command: runtimetest.Binary(t, "fakecodex"), KillGrace: 200 * time.Millisecond}
+	runner := &codex.Runner{Transport: composition.CodexTransport{Supervisor: stillSupervisor()}, Command: runtimetest.Binary(t, "fakecodex")}
 	turn := composition.AdaptCodex(runner).RunTurn(context.Background(), request("SCENARIO:input_too_large"), &runtimetest.Recorder{})
 	if string(turn.Status) != string(run.Failed) || turn.Error == nil || string(turn.Error.Class) != string(run.ClassRuntimeError) ||
 		!strings.HasPrefix(turn.Error.Message, "exit code 1: Error: turn/start: turn/start failed: Input exceeds the maximum length of 1048576 characters.") ||

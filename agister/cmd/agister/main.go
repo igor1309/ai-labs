@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"syscall"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/examples"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
@@ -113,15 +114,27 @@ func wire(config cli.Config) (contract.Client, *app.BackgroundReaper, error) {
 }
 
 // process is the composition of the process: its worktree coordinator
-// keeps the lock files other processes take turns through under the home.
+// keeps the lock files other processes take turns through under the home,
+// and every wait is on the wall clock.
 func process(config cli.Config) composition {
-	return composition{worktrees: git.NewWorktrees(filepath.Join(config.Home, "locks", "worktrees"))}
+	worktrees := git.NewWorktrees(filepath.Join(config.Home, "locks", "worktrees"))
+	worktrees.Clock, worktrees.Timer = system.Clock{}, system.Timer
+	return composition{worktrees: worktrees, timer: system.Timer, poll: system.Timer}
 }
 
 // composition is what one process wires its client over: the one worktree
 // coordinator every adapter that changes a repository's worktrees takes
-// its turn in. Tests wire over a coordinator they hold.
-type composition struct{ worktrees *git.Worktrees }
+// its turn in, and the timers its waits start on. Tests wire over a
+// coordinator and timers they hold.
+type composition struct {
+	worktrees *git.Worktrees
+	// timer starts the waits of turns and commands: their timeouts,
+	// graces and staleness limits.
+	timer func(wait time.Duration) (fired <-chan time.Time, stop func())
+	// poll starts the waits between two reads of a running record that
+	// observing it makes.
+	poll func(wait time.Duration) (fired <-chan time.Time, stop func())
+}
 
 // workspaceAdapters are the adapters that change a repository's worktrees,
 // each as the component that requires it gets it.
@@ -162,21 +175,24 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		projectRoot = filepath.Dir(local.Dir)
 	}
 	evidence := fsruns.Store{Dir: filepath.Join(config.Home, "runs")}
+	// Turns and commands wait on the composition's timer.
+	processes := supervisor.Runtime{Timer: c.timer}
+	commands := supervisor.Commands{Timer: c.timer}
 	runtimes := runtime.Registry{
 		"claude-code": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: runtimecomposition.NewClaudeCode(command), Adapter: "claude-code", Log: log}
+			return logging.Runner{Inner: runtimecomposition.NewClaudeCode(command, processes), Adapter: "claude-code", Log: log, Clock: system.Clock{}}
 		},
 		"codex": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: runtimecomposition.NewCodex(command), Adapter: "codex", Log: log}
+			return logging.Runner{Inner: runtimecomposition.NewCodex(command, processes), Adapter: "codex", Log: log, Clock: system.Clock{}}
 		},
 		// Pi's sessions are kept under the home, where a continuation
 		// finds them, not in ~/.pi.
 		// OpenCode keeps its sessions in its own store.
 		"opencode": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: runtimecomposition.NewOpenCode(command), Adapter: "opencode", Log: log}
+			return logging.Runner{Inner: runtimecomposition.NewOpenCode(command, processes), Adapter: "opencode", Log: log, Clock: system.Clock{}}
 		},
 		"pi": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: runtimecomposition.NewPi(command, filepath.Join(config.Home, "pi", "sessions")), Adapter: "pi", Log: log}
+			return logging.Runner{Inner: runtimecomposition.NewPi(command, filepath.Join(config.Home, "pi", "sessions"), processes), Adapter: "pi", Log: log, Clock: system.Clock{}}
 		},
 	}
 	// Over the one coordinator of the process: every workspace adapter's
@@ -214,13 +230,13 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 			Recorder:   evidence,
 			Runs:       evidence,
 			Clock:      system.Clock{},
-			Timer:      system.Timer,
+			Timer:      c.timer,
 			IDs:        system.IDs{},
 			StateDir:   config.Home,
 		},
-		Preparer: app.SetupAdapters{Content: content, Commands: runtimecomposition.SetupCommands{Supervisor: supervisor.Commands{}}, Clock: system.Clock{}},
-		Verifier: app.VerifyAdapters{Content: content, Copies: workspaces.copies, Commands: runtimecomposition.Commands{Supervisor: supervisor.Commands{}}, Clock: system.Clock{}},
-		Runs:     app.RunsAdapters{Reader: evidence},
+		Preparer: app.SetupAdapters{Content: content, Commands: runtimecomposition.SetupCommands{Supervisor: commands}, Clock: system.Clock{}},
+		Verifier: app.VerifyAdapters{Content: content, Copies: workspaces.copies, Commands: runtimecomposition.Commands{Supervisor: commands}, Clock: system.Clock{}},
+		Runs:     app.RunsAdapters{Reader: evidence, Timer: c.poll},
 		Decorate: func(client contract.Client) contract.Client {
 			return app.ReapOnSubmit{Client: client, Background: reaping}
 		},

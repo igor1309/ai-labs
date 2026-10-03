@@ -1264,7 +1264,7 @@ func TestCancelInterruptsAndReleases(t *testing.T) {
 	h := newHarness()
 	h.runner.block = true
 	h.runner.started = make(chan struct{})
-	runs := app.NewRuns(nil, h.hosted, 0)
+	runs := app.NewRuns(nil, h.hosted, nil, 0)
 	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
@@ -1294,7 +1294,7 @@ func TestCancelInterruptsAndReleases(t *testing.T) {
 // fail; the call is cancelled, not refused.
 func TestCancelBeforeTheTurnIsCancelled(t *testing.T) {
 	h := newHarness()
-	runs := app.NewRuns(nil, h.hosted, 0)
+	runs := app.NewRuns(nil, h.hosted, nil, 0)
 	h.inputs.respond = func(app.InputSpec) (app.Resolved, error) {
 		if err := runs.Cancel(context.Background(), "run-1"); err != nil {
 			t.Error(err)

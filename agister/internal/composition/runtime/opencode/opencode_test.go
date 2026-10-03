@@ -20,10 +20,18 @@ import (
 
 	// fresh is the session the fake starts.
 	supervisor "github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 )
 
 // The fakes this package builds are removed when its tests end.
 func TestMain(m *testing.M) { os.Exit(runtimetest.Run(m)) }
+
+// stillSupervisor is the real supervisor with its waits on a manual clock
+// that nothing advances: no turn or lookup times out unless a test
+// advances a clock of its own, and no grace passes.
+func stillSupervisor() supervisor.Runtime {
+	return supervisor.Runtime{Timer: systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}
+}
 
 const fresh = "ses_f06fe64c3ffeLyBkwYK7e1GfJs"
 
@@ -40,14 +48,16 @@ func request(prompt string) app.TurnRequest {
 }
 
 func runner(t *testing.T) *opencode.Runner {
-	return &opencode.Runner{Transport: composition.OpenCodeTransport{Supervisor: supervisor.Runtime{}}, Command: runtimetest.Binary(t, "fakeopencode"), KillGrace: 200 * time.Millisecond}
+	return &opencode.Runner{Transport: composition.OpenCodeTransport{Supervisor: stillSupervisor()}, Command: runtimetest.Binary(t, "fakeopencode")}
 }
 
 func TestConformance(t *testing.T) {
+	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {
-			return composition.AdaptOpenCode(&opencode.Runner{Transport: composition.OpenCodeTransport{Supervisor: supervisor.Runtime{}}, Command: command, KillGrace: 200 * time.Millisecond})
+			return composition.AdaptOpenCode(&opencode.Runner{Transport: composition.OpenCodeTransport{Supervisor: supervisor.Runtime{Timer: clock.Timer}}, Command: command})
 		},
+		Clock:    clock,
 		Fake:     runtimetest.Binary(t, "fakeopencode"),
 		Contract: opencode.Contract,
 		Request:  request,
@@ -171,7 +181,7 @@ func TestRejectsWhatItCannotHonour(t *testing.T) {
 }
 
 func TestIdentity(t *testing.T) {
-	identity, err := opencode.New(runtimetest.Binary(t, "fakeopencode"), composition.OpenCodeTransport{Supervisor: supervisor.Runtime{}}).Identity(context.Background())
+	identity, err := opencode.New(runtimetest.Binary(t, "fakeopencode"), composition.OpenCodeTransport{Supervisor: stillSupervisor()}).Identity(context.Background())
 	want := opencode.RuntimeIdentity{Contract: "opencode/1", Version: "1.18.33", Resume: true, ResumeWhereItRan: true, SkillTools: []string{"skill"}}
 	if err != nil || !reflect.DeepEqual(identity, want) {
 		t.Fatalf("identity = %+v, %v", identity, err)

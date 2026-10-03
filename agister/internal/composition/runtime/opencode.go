@@ -73,6 +73,9 @@ func OpenCodeResult(t opencode.Turn) run.Turn {
 	}
 	return result
 }
-func NewOpenCode(command string) app.TurnRunner {
-	return AdaptOpenCode(opencode.New(command, OpenCodeTransport{Supervisor: supervisor.Runtime{}}))
+
+// NewOpenCode is the OpenCode runner of command, run on the process
+// supervisor given.
+func NewOpenCode(command string, processes OpenCodeSupervisor) app.TurnRunner {
+	return AdaptOpenCode(opencode.New(command, OpenCodeTransport{Supervisor: processes}))
 }

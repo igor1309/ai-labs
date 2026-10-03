@@ -214,16 +214,27 @@ type Subject struct {
 	ToolCalls bool
 	// Request returns a valid request carrying prompt.
 	Request func(prompt string) app.TurnRequest
+	// Clock is the manual clock the runner's process supervisor times
+	// turns on: no turn times out unless the suite advances it.
+	Clock Clock
+}
+
+// Clock is a manual clock (systemtest.Clock is one): Started returns once
+// a timer of wait has been started, and Advance moves the clock on, firing
+// the timers whose wait it passes.
+type Clock interface {
+	Started(wait time.Duration)
+	Advance(by time.Duration)
 }
 
 // Conformance checks the TurnRunner contract: identity, outcome precedence,
 // no upgrading of runtime failures, timeout and cancellation, spawn failure,
 // and raw output passthrough.
 //
-// Timer rule: a real timer in these tests fires only when the process can do
-// nothing else (the hang scenario), and no bound exceeds a minute. Anything
-// that must end some other way is event-driven, so machine load cannot flip
-// an outcome.
+// Timer rule: a turn times out only when the suite advances the subject's
+// manual clock past its timeout; a real timer only guards against a hang
+// (the watchdog), and no bound exceeds a minute. Anything that must end
+// some other way is event-driven, so machine load cannot flip an outcome.
 func Conformance(t *testing.T, subject Subject) {
 	turn := func(t *testing.T, prompt string, mutate func(*app.TurnRequest), ctx context.Context) (run.Turn, *Recorder) {
 		request := subject.Request(prompt)
@@ -326,13 +337,19 @@ func Conformance(t *testing.T, subject Subject) {
 	})
 
 	t.Run("timeout interrupts the process group", func(t *testing.T) {
-		// The hang scenario never ends on its own: the watchdog guards
+		// The hang scenario never ends on its own: only the timeout ends
+		// it, once the clock is advanced past it. The watchdog guards
 		// against a timeout that never kills it, and the outcome is the
 		// verdict.
+		const timeout = 17 * time.Minute
 		request := subject.Request("SCENARIO:hang")
-		request.Timeout = 300 * time.Millisecond
+		request.Timeout = timeout
 		sink := &Recorder{OnProcess: Watchdog(t)}
-		result := subject.New(subject.Fake).RunTurn(context.Background(), request, sink)
+		done := make(chan run.Turn, 1)
+		go func() { done <- subject.New(subject.Fake).RunTurn(context.Background(), request, sink) }()
+		subject.Clock.Started(timeout)
+		subject.Clock.Advance(timeout)
+		result := <-done
 		if !is(result, run.Interrupted, run.ClassTimeout) {
 			t.Fatalf("turn = %+v", result)
 		}
@@ -345,9 +362,9 @@ func Conformance(t *testing.T, subject Subject) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		// Cancel when the process has started, not after a delay. The
-		// minute timeout only backstops a hang and never races the cancel.
+		// timeout is on the manual clock, which nothing advances: it never
+		// races the cancel.
 		request := subject.Request("SCENARIO:hang")
-		request.Timeout = 30 * time.Second
 		sink := &Recorder{OnProcess: Watchdog(t), OnEvent: func(kind string) {
 			if kind == "PROCESS_STARTED" {
 				cancel()

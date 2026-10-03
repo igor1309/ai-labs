@@ -10,9 +10,11 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
@@ -107,13 +109,17 @@ func TestExampleWorkflowEndToEnd(t *testing.T) {
 func TestExampleWorkflowJoinsWithoutATimedOutNode(t *testing.T) {
 	home, repo := setup(t, "approve")
 	// The adversarial review alone reads a file that makes the fake runtime
-	// hang, first among its inputs, under a one-second timeout.
+	// hang, first among its inputs, under a timeout of its own, which the
+	// test passes once the turn waits on it.
 	path := filepath.Join(home, "processes", "adversarial_review.yaml")
 	process := strings.Replace(read(t, path), "  values:\n", "  values:\n    stall: {source: file, path: stall.txt}\n", 1)
-	write(t, path, strings.Replace(process, "workspace:\n", "timeout: 1s\n\nworkspace:\n", 1))
+	write(t, path, strings.Replace(process, "workspace:\n", "timeout: 7m\n\nworkspace:\n", 1))
 	write(t, filepath.Join(repo, "stall.txt"), "SCENARIO:hang\n")
+	const timeout = 7 * time.Minute
+	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	go func() { clock.Started(timeout); clock.Advance(timeout) }()
 
-	r := agister(t, home, repo, "run", "review_panel", "--param", "base=main", "--param", "architecture=a.txt")
+	r := agisterOn(t, timeoutOn(clock, timeout), home, repo, "run", "review_panel", "--param", "base=main", "--param", "architecture=a.txt")
 	if r.code != cli.ExitCompleted || r.stdout != "All good.\n" {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -202,17 +208,23 @@ func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 	_ = victim.Wait()
 	id, _ := workflowRun(t, home)
 
-	client, background, err := wire(cli.Config{Home: home, Cwd: repo})
+	const timeout = 7 * time.Minute
+	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	config := cli.Config{Home: home, Cwd: repo}
+	client, background, err := on(config, timeoutOn(clock, timeout)).wire(config)
 	if err != nil {
 		t.Fatal(err)
 	}
 	next, err := client.Submit(context.Background(), contract.CallRequest{
-		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "1s", Cwd: repo,
+		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "7m", Cwd: repo,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	background.Wait()
+	// The next call hangs too, until its timeout passes.
+	clock.Started(timeout)
+	clock.Advance(timeout)
 	store := fsruns.Store{Dir: filepath.Join(home, "runs")}
 	for _, node := range nodes {
 		group, _, _ := supervisor.ParseRef(node.Effects.Process.Ref)

@@ -63,8 +63,9 @@ type Sink interface {
 // the raw sink, and returns once the process has exited. Whatever the
 // process leaves running in its group is killed then, and stdout is read
 // for at most the grace period after the exit, so a descendant that keeps
-// it open cannot hold the call.
-func Run(ctx context.Context, spec Spec, events Sink, onLine func(string)) Evidence {
+// it open cannot hold the call. Its timeout and both graces are on
+// r.Timer.
+func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(string)) Evidence {
 	// The watcher and the reader both report; the sink sees one at a time.
 	sink := &serialSink{inner: events}
 	var evidence Evidence
@@ -124,8 +125,9 @@ func Run(ctx context.Context, spec Spec, events Sink, onLine func(string)) Evide
 	// process has been waited for, its group ID may be reused.
 	var mu sync.Mutex
 	var once sync.Once
-	var killTimer *time.Timer
+	stopKill := func() {}
 	reaped := false
+	exited := make(chan struct{})
 	terminate := func() {
 		once.Do(func() {
 			mu.Lock()
@@ -134,22 +136,27 @@ func Run(ctx context.Context, spec Spec, events Sink, onLine func(string)) Evide
 				return
 			}
 			_ = syscall.Kill(-pid, syscall.SIGTERM)
-			killTimer = time.AfterFunc(grace, func() {
-				mu.Lock()
-				defer mu.Unlock()
-				if !reaped {
-					_ = syscall.Kill(-pid, syscall.SIGKILL)
+			var killed <-chan time.Time
+			killed, stopKill = r.timer(grace)
+			go func() {
+				select {
+				case <-exited:
+				case <-killed:
+					mu.Lock()
+					defer mu.Unlock()
+					if !reaped {
+						_ = syscall.Kill(-pid, syscall.SIGKILL)
+					}
 				}
-			})
+			}()
 		})
 	}
-	exited := make(chan struct{})
 	go func() {
-		timer := time.NewTimer(spec.Timeout)
-		defer timer.Stop()
+		timedOut, stop := r.timer(spec.Timeout)
+		defer stop()
 		select {
 		case <-exited:
-		case <-timer.C:
+		case <-timedOut:
 			mu.Lock()
 			evidence.TimedOut = true
 			mu.Unlock()
@@ -187,9 +194,7 @@ func Run(ctx context.Context, spec Spec, events Sink, onLine func(string)) Evide
 
 	mu.Lock()
 	reaped = true
-	if killTimer != nil {
-		killTimer.Stop()
-	}
+	stopKill()
 	// The group outlives its leader while members remain, and its ID is
 	// not reused while it exists; an empty group fails with ESRCH.
 	leftovers := syscall.Kill(-pid, syscall.SIGKILL) == nil
@@ -198,14 +203,16 @@ func Run(ctx context.Context, spec Spec, events Sink, onLine func(string)) Evide
 		sink.Event(SourceProcess, "LEFTOVER_PROCESSES_KILLED", map[string]any{"group": pid})
 	}
 
+	held, stopHeld := r.timer(grace)
 	select {
 	case <-read:
-	case <-time.After(grace):
+	case <-held:
 		// Something outside the group still holds stdout open.
 		sink.Event(SourceProcess, "STDOUT_HELD_OPEN", map[string]any{"grace": grace.String()})
 		stdout.Close()
 		<-read
 	}
+	stopHeld()
 
 	mu.Lock()
 	defer mu.Unlock()
@@ -227,7 +234,7 @@ func Run(ctx context.Context, spec Spec, events Sink, onLine func(string)) Evide
 }
 
 // Version runs `<command> --version` and returns its output.
-func Version(ctx context.Context, command string) (string, error) {
+func (Runtime) Version(ctx context.Context, command string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	out, err := exec.CommandContext(ctx, command, "--version").Output()
@@ -235,6 +242,20 @@ func Version(ctx context.Context, command string) (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(string(out)), nil
+}
+
+// timer starts wait on r.Timer, or on the wall clock.
+func (r Runtime) timer(wait time.Duration) (<-chan time.Time, func()) {
+	return start(r.Timer, wait)
+}
+
+// start starts wait on timer, or on the wall clock when timer is nil.
+func start(timer func(time.Duration) (<-chan time.Time, func()), wait time.Duration) (<-chan time.Time, func()) {
+	if timer != nil {
+		return timer(wait)
+	}
+	wall := time.NewTimer(wait)
+	return wall.C, func() { wall.Stop() }
 }
 
 // serialSink makes concurrent reports sequential, including the events

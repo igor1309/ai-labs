@@ -21,10 +21,10 @@ type Commands struct {
 	// KillGrace bounds reading output that something outside the group
 	// holds open after the group is gone; zero means 5s.
 	KillGrace time.Duration
-	// Timer starts the command's timeout, and its wait for output when the
-	// request limits one (started again at each output): the wait has
-	// passed when the channel it returns delivers, and stop releases it.
-	// Nil is the wall clock.
+	// Timer starts the command's timeout, its wait for output when the
+	// request limits one (started again at each output), and the grace for
+	// reading output after the exit: the wait has passed when the channel
+	// it returns delivers, and stop releases it. Nil is the wall clock.
 	Timer func(timeout time.Duration) (fired <-chan time.Time, stop func())
 }
 
@@ -114,13 +114,15 @@ func (c Commands) Run(ctx context.Context, request CommandRequest, started func(
 	<-watched
 	result.TimedOut, result.Cancelled, result.Stale = timedOut, cancelled, stale
 
+	held, stopHeld := c.timer(grace)
 	select {
 	case <-read:
-	case <-time.After(grace):
+	case <-held:
 		// Something outside the group still holds the output open.
 		reader.Close()
 		<-read
 	}
+	stopHeld()
 
 	if state := command.ProcessState; state != nil {
 		if status, ok := state.Sys().(syscall.WaitStatus); ok && status.Signaled() {
@@ -179,13 +181,9 @@ func (c Commands) watch(ctx context.Context, exited <-chan struct{}, fired <-cha
 	}
 }
 
-// timer starts the command's timeout on c.Timer, or on the wall clock.
-func (c Commands) timer(timeout time.Duration) (<-chan time.Time, func()) {
-	if c.Timer != nil {
-		return c.Timer(timeout)
-	}
-	timer := time.NewTimer(timeout)
-	return timer.C, func() { timer.Stop() }
+// timer starts a wait on c.Timer, or on the wall clock.
+func (c Commands) timer(wait time.Duration) (<-chan time.Time, func()) {
+	return start(c.Timer, wait)
 }
 
 // boundedOutput keeps the first bound bytes and the last bound bytes after

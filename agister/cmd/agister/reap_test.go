@@ -16,6 +16,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
@@ -212,19 +213,25 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 		t.Fatalf("worktrees = %v", lines)
 	}
 
-	// Another call starts (and times out on its own hang). It is submitted
-	// in process so the reap it starts can be awaited.
-	client, background, err := wire(cli.Config{Home: home, Cwd: repo})
+	// Another call starts (and times out on its own hang, once the test
+	// passes its timeout). It is submitted in process so the reap it starts
+	// can be awaited.
+	const timeout = 7 * time.Minute
+	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	config := cli.Config{Home: home, Cwd: repo}
+	client, background, err := on(config, timeoutOn(clock, timeout)).wire(config)
 	if err != nil {
 		t.Fatal(err)
 	}
 	id, err := client.Submit(context.Background(), contract.CallRequest{
-		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "1s", Cwd: repo,
+		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "7m", Cwd: repo,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	background.Wait()
+	clock.Started(timeout)
+	clock.Advance(timeout)
 	// The new call ends on its own timeout, taking its runtime and checkout.
 	store := fsruns.Store{Dir: filepath.Join(home, "runs")}
 	eventually(t, "the new call to finish", func() bool {

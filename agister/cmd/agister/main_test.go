@@ -17,9 +17,11 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/examples"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 )
@@ -60,6 +62,45 @@ func agisterReading(t *testing.T, stdin io.Reader, home, cwd string, args ...str
 		Stdin: stdin, Stdout: &stdout, Stderr: &stderr, Cwd: cwd,
 		Getenv: func(string) string { return "" },
 	}, compose)
+	return result{code, stdout.String(), stderr.String()}
+}
+
+// timer is the shape of the composition's timers.
+type timer = func(wait time.Duration) (fired <-chan time.Time, stop func())
+
+// timeoutOn is a timer whose waits of timeout are on clock, so the test
+// advances a turn's timeout itself; every other wait, a grace or a
+// staleness limit, never passes.
+func timeoutOn(clock *systemtest.Clock, timeout time.Duration) timer {
+	still := systemtest.NewClock(clock.Now())
+	return func(wait time.Duration) (<-chan time.Time, func()) {
+		if wait == timeout {
+			return clock.Timer(wait)
+		}
+		return still.Timer(wait)
+	}
+}
+
+// on is the process's composition with its turns and commands waiting on
+// timer.
+func on(config cli.Config, timer timer) composition {
+	c := process(config)
+	c.timer = timer
+	return c
+}
+
+// agisterOn runs agister as agister does, its turns and commands waiting
+// on timer.
+func agisterOn(t *testing.T, timer timer, home, cwd string, args ...string) result {
+	t.Helper()
+	var stdout, stderr bytes.Buffer
+	code := cli.Run(context.Background(), append([]string{"--home", home}, args...), cli.IO{
+		Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &stderr, Cwd: cwd,
+		Getenv: func(string) string { return "" },
+	}, func(config cli.Config) (contract.Client, error) {
+		client, _, err := on(config, timer).wire(config)
+		return client, err
+	})
 	return result{code, stdout.String(), stderr.String()}
 }
 

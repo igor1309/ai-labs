@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	runtimecomposition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
@@ -121,30 +122,26 @@ func TestSetupPreparesTheCheckoutOnceBeforeTheFirstTurn(t *testing.T) {
 // before any turn; its run is on record, and the checkout is released
 // (wait checks that).
 func TestAFailedSetupFailsTheCallWithNoTurn(t *testing.T) {
-	// The timeout is the command runner's timer, which fires for the
-	// setup's timeout only; the command never ends on its own, so only the
-	// timer can end it, and wait's own bound fails the test if nothing does.
+	// The timeout passes on the command runner's clock once the setup
+	// waits on it; the command never ends on its own, so only the timeout
+	// can end it, and wait's own bound fails the test if nothing does.
 	const timeout = 13 * time.Second
-	timesOut := supervisor.Commands{Timer: func(wait time.Duration) (<-chan time.Time, func()) {
-		if wait != timeout {
-			return nil, func() {}
-		}
-		fired := make(chan time.Time, 1)
-		fired <- time.Time{}
-		return fired, func() {}
-	}}
+	clock := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
+	timesOut := supervisor.Commands{Timer: clock.Timer}
 	cases := map[string]struct {
 		setup string
 		with  seams
-		want  string
-		check func(t *testing.T, ran *domain.CommandRun)
+		// passes, when set, passes the time the setup waits on.
+		passes func()
+		want   string
+		check  func(t *testing.T, ran *domain.CommandRun)
 	}{
 		"non-zero exit": {setup: `{command: "echo broken; exit 3", timeout: 20s}`, want: "the setup command exited with code 3", check: func(t *testing.T, ran *domain.CommandRun) {
 			if ran.Exit.Code == nil || *ran.Exit.Code != 3 || ran.Output.Head != "broken\n" {
 				t.Fatalf("setup run = %+v", ran)
 			}
 		}},
-		"timeout": {setup: `{command: "` + blocks + `", timeout: 13s}`, with: seams{setupCommands: runtimecomposition.SetupCommands{Supervisor: timesOut}}, want: "the setup command exceeded its timeout 13s", check: func(t *testing.T, ran *domain.CommandRun) {
+		"timeout": {setup: `{command: "` + blocks + `", timeout: 13s}`, with: seams{setupCommands: runtimecomposition.SetupCommands{Supervisor: timesOut}}, passes: func() { clock.Started(timeout); clock.Advance(timeout) }, want: "the setup command exceeded its timeout 13s", check: func(t *testing.T, ran *domain.CommandRun) {
 			if !ran.TimedOut || ran.Exit.Code != nil {
 				t.Fatalf("setup run = %+v", ran)
 			}
@@ -166,7 +163,11 @@ func TestAFailedSetupFailsTheCallWithNoTurn(t *testing.T) {
 			// Whatever the assertions find, no setup command outlives the
 			// test: its group is on record while it runs.
 			cleanupRecorded(t, h.home, h.repo)
-			record := h.call(contract.CallRequest{})
+			id := h.submit(contract.CallRequest{})
+			if c.passes != nil {
+				c.passes()
+			}
+			record := h.wait(id)
 			expect(t, record, domain.Failed, domain.ClassSetupFailed, c.want)
 			if len(h.runner.turns()) != 0 || record.Turn != nil || len(record.Attempts) != 0 || len(record.Result.Artifacts) != 0 {
 				t.Fatalf("turns %d, attempts %+v, artifacts %+v", len(h.runner.turns()), record.Attempts, record.Result.Artifacts)
