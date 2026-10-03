@@ -19,6 +19,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/schema"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
@@ -34,7 +35,9 @@ import (
 // and evidence store. The runtime is a scripted fake whose turns write
 // files in the checkout, and the verification command is a fixture driven
 // by those files: by default it prints the file state and passes when it
-// says "pass".
+// says "pass". The shell the runner starts for it is a fake run in process
+// (inProcessCommands); what the real one does is the supervisor's contract
+// (command_test.go).
 
 const passWhenStateSaysPass = "cat state; grep -qx pass state"
 
@@ -221,11 +224,14 @@ func newLoopWith(t *testing.T, with seams, settings verifySettings, steps ...ste
 	if with.copies == nil {
 		with.copies = workspaces
 	}
+	// A command that ends by itself waits on no time: its timeout and
+	// graces are on a clock that never moves.
+	still := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
 	if with.commands == nil {
-		with.commands = runtimecomposition.Commands{Supervisor: supervisor.Commands{}}
+		with.commands = runtimecomposition.Commands{Supervisor: inProcessCommands(still.Timer)}
 	}
 	if with.setupCommands == nil {
-		with.setupCommands = runtimecomposition.SetupCommands{Supervisor: supervisor.Commands{}}
+		with.setupCommands = runtimecomposition.SetupCommands{Supervisor: inProcessCommands(still.Timer)}
 	}
 	repo, err := filepath.EvalSymlinks(tempDir(t))
 	if err != nil {
@@ -336,6 +342,12 @@ verify:
 	// Observing a call hosted here waits on its appends, never on a poll.
 	h.runs = app.NewRuns(h.store, h.store, h.hosted, unpolled(t), 0)
 	return h
+}
+
+// inProcessCommands is the command runner, the bash it starts a fake run
+// in process: no command is started as a process. Its waits are on timer.
+func inProcessCommands(timer timer) supervisor.Commands {
+	return supervisor.Commands{Starter: runtimetest.InProcess{}, Timer: timer}
 }
 
 // unpolled is Observe's poll timer for tests whose runs all run in the
@@ -536,7 +548,8 @@ func TestVerifyRunThatChangesItsCleanCopyFails(t *testing.T) {
 }
 
 // blocks never ends on its own: only a kill ends it, so a timeout or a
-// cancel is its one way out and no load can let it finish first.
+// cancel is its one way out and no load can let it finish first. Run in
+// process, it waits for its group to be signalled.
 const blocks = "tail -f /dev/null"
 
 // A run that exceeds verify.timeout is killed and interrupts the node,
@@ -546,10 +559,12 @@ func TestVerifyRunTimeout(t *testing.T) {
 	// The run's timeout passes on the command runner's clock once the run
 	// waits on it.
 	clock := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
-	commands := runtimecomposition.Commands{Supervisor: supervisor.Commands{Timer: clock.Timer}}
+	commands := runtimecomposition.Commands{Supervisor: inProcessCommands(clock.Timer)}
 	h := newLoopWith(t, seams{commands: commands}, verifySettings{command: blocks, timeout: "1s"}, state("one"))
-	cleanupRecorded(t, h.home, h.repo)
 	id := h.submit(contract.CallRequest{Timeout: "30s"})
+	// Should the test fail first, the cleanup ends the call, and the
+	// command with it.
+	cleanupRun(t, h.runs, h.hosted, id)
 	clock.Started(time.Second)
 	clock.Advance(time.Second)
 	record := h.wait(id)
@@ -568,10 +583,10 @@ func TestVerifyCallTimeoutBoundsTheLoop(t *testing.T) {
 	// nothing, and the run's second passes on the same clock.
 	clock := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
 	copies := slowCopies{Workspaces: git.NewWorkspaces(git.NewWorktrees(tempDir(t))), after: func() { clock.Advance(59 * time.Second) }}
-	commands := runtimecomposition.Commands{Supervisor: supervisor.Commands{Timer: clock.Timer}}
+	commands := runtimecomposition.Commands{Supervisor: inProcessCommands(clock.Timer)}
 	h := newLoopWith(t, seams{clock: clock, copies: copies, commands: commands}, verifySettings{command: blocks, timeout: "20s"}, state("one"))
-	cleanupRecorded(t, h.home, h.repo)
 	id := h.submit(contract.CallRequest{})
+	cleanupRun(t, h.runs, h.hosted, id)
 	clock.Started(time.Second)
 	clock.Advance(time.Second)
 	record := h.wait(id)
@@ -944,10 +959,10 @@ func TestVerifyRunWithoutOutputIsKilledAsStale(t *testing.T) {
 	// ends on its own.
 	const noOutput = 7 * time.Second
 	clock := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
-	stale := supervisor.Commands{Timer: clock.Timer}
+	stale := inProcessCommands(clock.Timer)
 	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: stale}}, verifySettings{command: blocks + " & wait", policy: "stale: {no_output: 7s}\n"}, state("one"))
-	cleanupRecorded(t, h.home, h.repo)
 	id := h.submit(contract.CallRequest{})
+	cleanupRun(t, h.runs, h.hosted, id)
 	clock.Started(noOutput)
 	clock.Advance(noOutput)
 	record := h.wait(id)

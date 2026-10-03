@@ -20,7 +20,16 @@ import (
 
 // Setup-enabled calls through the shipped composition, including the
 // preparer's content, commands and clock and the persisted evidence.
+//
+// Contract test: the real bash. The composition's commands start through
+// the operating system here, as the process's own do; only the runtime is
+// a fake.
 func TestSetupThroughProductionComposition(t *testing.T) {
+	realShell := func(config cli.Config) composition {
+		c := inProcess(config)
+		c.commands = supervisor.Exec{}
+		return c
+	}
 	for _, c := range []struct {
 		name, command, output string
 		code                  int
@@ -33,7 +42,7 @@ func TestSetupThroughProductionComposition(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			home, repo := setup(t, "approve")
 			write(t, filepath.Join(home, "workspace.yaml"), "schema: agister.workspace/v1alpha1\nsetup:\n  command: "+c.command+"\n  timeout: 20s\n")
-			result := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--timeout", "1m")
+			result := agisterOver(t, realShell, home, repo, "run", "adversarial_review", "--param", "base=main", "--timeout", "1m")
 			if result.code != c.code {
 				t.Fatalf("exit %d, want %d\n%s", result.code, c.code, result.stderr)
 			}
@@ -56,7 +65,8 @@ func TestSetupThroughProductionComposition(t *testing.T) {
 }
 
 // A checkout's setup (ADR-012) on real checkouts of temporary
-// repositories, with the real command runner and git. The base ignores
+// repositories, with the real command runner and git; the shell the runner
+// starts is a fake run in process (inProcessCommands). The base ignores
 // *.log, so what a setup makes there is ignored.
 
 // reads is a step that checks what the checkout holds when the turn starts,
@@ -127,7 +137,7 @@ func TestAFailedSetupFailsTheCallWithNoTurn(t *testing.T) {
 	// can end it, and wait's own bound fails the test if nothing does.
 	const timeout = 13 * time.Second
 	clock := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
-	timesOut := supervisor.Commands{Timer: clock.Timer}
+	timesOut := inProcessCommands(clock.Timer)
 	cases := map[string]struct {
 		setup string
 		with  seams
@@ -160,10 +170,10 @@ func TestAFailedSetupFailsTheCallWithNoTurn(t *testing.T) {
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			h := newLoopWith(t, c.with, verifySettings{setup: c.setup}, state("pass"))
-			// Whatever the assertions find, no setup command outlives the
-			// test: its group is on record while it runs.
-			cleanupRecorded(t, h.home, h.repo)
 			id := h.submit(contract.CallRequest{})
+			// Whatever the assertions find, no setup command outlives the
+			// test: the cleanup ends the call, and the command with it.
+			cleanupRun(t, h.runs, h.hosted, id)
 			if c.passes != nil {
 				c.passes()
 			}

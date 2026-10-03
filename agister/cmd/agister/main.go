@@ -115,24 +115,43 @@ func wire(config cli.Config) (contract.Client, *app.BackgroundReaper, error) {
 
 // process is the composition of the process: its worktree coordinator
 // keeps the lock files other processes take turns through under the home,
-// its runtimes are started by the operating system, and every wait is on
-// the wall clock.
+// its run store keeps the runs there, its runtimes and its commands are
+// started by the operating system, which also ends the process groups a
+// dead owner left, and every wait is on the wall clock.
 func process(config cli.Config) composition {
 	worktrees := git.NewWorktrees(filepath.Join(config.Home, "locks", "worktrees"))
 	worktrees.Clock, worktrees.Timer = system.Clock{}, system.Timer
-	return composition{worktrees: worktrees, starter: supervisor.Exec{}, timer: system.Timer, poll: system.Timer, hosted: app.NewHosted()}
+	return composition{
+		worktrees: worktrees,
+		runs:      fsruns.Store{Dir: filepath.Join(config.Home, "runs")},
+		starter:   supervisor.Exec{},
+		commands:  supervisor.Exec{},
+		processes: supervisor.Processes{},
+		timer:     system.Timer,
+		poll:      system.Timer,
+		hosted:    app.NewHosted(),
+	}
 }
 
 // composition is what one process wires its client over: the one worktree
 // coordinator every adapter that changes a repository's worktrees takes
-// its turn in, the starter of its runtimes, the timers its waits start on
-// and the calls it hosts. Tests wire over a coordinator, a starter and
-// timers they hold, and wait on the hosted calls' Done.
+// its turn in, the run store, the starters of its runtimes and of its
+// commands, the reaper of the process groups a dead owner left, the timers
+// its waits start on and the calls it hosts. Tests wire over a
+// coordinator, starters and timers they hold, wait on the hosted calls'
+// Done, and abandon a run through the store in place of killing its owner.
 type composition struct {
 	worktrees *git.Worktrees
+	// runs is the store of the runs' records and events.
+	runs fsruns.Store
 	// starter starts the runtimes' processes, and what a runtime's adapter
 	// runs beside it.
 	starter supervisor.Starter
+	// commands starts the shell a setup or verification command runs
+	// under.
+	commands supervisor.Starter
+	// processes ends the process groups an abandoned run left on record.
+	processes runtimecomposition.ProcessSupervisor
 	// hosted holds the calls running in this process.
 	hosted *app.Hosted
 	// timer starts the waits of turns and commands: their timeouts,
@@ -182,12 +201,12 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	if local != nil {
 		projectRoot = filepath.Dir(local.Dir)
 	}
-	evidence := fsruns.Store{Dir: filepath.Join(config.Home, "runs")}
+	evidence := c.runs
 	// Turns and commands wait on the composition's timer. A runtime starts
-	// through the composition's starter; a setup or verification command is
-	// always the operating system's.
+	// through the composition's starter, a setup or verification command
+	// through its starter of commands.
 	processes := supervisor.Runtime{Starter: c.starter, Timer: c.timer}
-	commands := supervisor.Commands{Starter: supervisor.Exec{}, Timer: c.timer}
+	commands := supervisor.Commands{Starter: c.commands, Timer: c.timer}
 	runtimes := runtime.Registry{
 		"claude-code": func(command string) app.TurnRunner {
 			return logging.Runner{Inner: runtimecomposition.NewClaudeCode(command, processes), Adapter: "claude-code", Log: log, Clock: system.Clock{}}
@@ -214,7 +233,7 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	// that fails has no caller to tell and no run record to say so: the
 	// log does.
 	reaping := &app.BackgroundReaper{
-		Reaper: app.NewReaper(evidence, runtimecomposition.Processes{Supervisor: supervisor.Processes{}}, workspaces.discarder, system.Clock{}),
+		Reaper: app.NewReaper(evidence, runtimecomposition.Processes{Supervisor: c.processes}, workspaces.discarder, system.Clock{}),
 		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },
 	}
 	client := app.NewClient(app.Infrastructure{

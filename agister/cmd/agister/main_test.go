@@ -27,7 +27,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 )
 
-// The CLI this package builds, and the fake the tests that kill it build,
+// The CLI this package builds, and the fake the test that kills it builds,
 // are removed when its tests end.
 func TestMain(m *testing.M) { os.Exit(runtimetest.Run(m)) }
 
@@ -79,12 +79,12 @@ func startThrough(t testing.TB, home string, starter runtimetest.InProcess) {
 	t.Cleanup(func() { starters.Delete(home) })
 }
 
-// inProcess is the process's composition with fakes for its runtimes, run
-// in process: no runtime is started as a process, and none is looked up
-// on PATH.
+// inProcess is the process's composition with fakes for its runtimes and
+// for the shell of its setup and verification commands, run in process:
+// neither is started as a process, and none is looked up on PATH.
 func inProcess(config cli.Config) composition {
 	c := process(config)
-	c.starter = runtimetest.InProcess{}
+	c.starter, c.commands = runtimetest.InProcess{}, runtimetest.InProcess{}
 	if starter, ok := starters.Load(config.Home); ok {
 		c.starter = starter.(runtimetest.InProcess)
 	}
@@ -134,12 +134,19 @@ func on(config cli.Config, timer timer) composition {
 // on timer.
 func agisterOn(t *testing.T, timer timer, home, cwd string, args ...string) result {
 	t.Helper()
+	return agisterOver(t, func(config cli.Config) composition { return on(config, timer) }, home, cwd, args...)
+}
+
+// agisterOver runs agister as agister does, over the composition composed
+// gives.
+func agisterOver(t *testing.T, composed func(cli.Config) composition, home, cwd string, args ...string) result {
+	t.Helper()
 	var stdout, stderr bytes.Buffer
 	code := cli.Run(context.Background(), append([]string{"--home", home}, args...), cli.IO{
 		Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &stderr, Cwd: cwd,
 		Getenv: func(string) string { return "" },
 	}, func(config cli.Config) (contract.Client, error) {
-		client, _, err := on(config, timer).wire(config)
+		client, _, err := composed(config).wire(config)
 		return client, err
 	})
 	return result{code, stdout.String(), stderr.String()}
@@ -186,7 +193,8 @@ func setup(t *testing.T, scenario string) (home, repo string) {
 }
 
 // setupBuilt is setup with the agents pointed at the built fake, for the
-// tests that kill a real CLI: its runtime is a real process.
+// one test that kills a real CLI (TestNextCallReapsWhatAKilledRunLeftBehind):
+// its runtime is a real process.
 func setupBuilt(t *testing.T, scenario string) (home, repo string) {
 	return setupOn(t, scenario, runtimetest.Binary(t, "fakeclaude"))
 }

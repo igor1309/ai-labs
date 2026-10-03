@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -581,5 +582,52 @@ func TestTheCompositionStartsItsRuntimesThroughItsStarter(t *testing.T) {
 	}
 	if !version || !turn {
 		t.Fatalf("started %q, want the runtime's version and its turn", starter.commands)
+	}
+}
+
+// The process's commands start through the operating system, which also
+// reaps what its runs left, over the run store under its home; and a
+// composition starts its commands through the starter it holds: a call
+// over a starter of the test's asks it for bash, once for the checkout's
+// setup and once for the verification, and for no runtime.
+func TestTheCompositionStartsItsCommandsThroughItsStarter(t *testing.T) {
+	home, repo := setup(t, "approve")
+	write(t, filepath.Join(home, "workspace.yaml"), "schema: agister.workspace/v1alpha1\nsetup:\n  command: echo prepared\n  timeout: 20s\n")
+	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))
+	write(t, filepath.Join(home, "processes", "verified.yaml"), strings.Replace(shipped, "name: adversarial_review", "name: verified", 1)+`
+verify:
+  command: test -f a.txt
+  timeout: 20s
+  max_attempts: 1
+  instruction: The verification command failed.
+`)
+	config := cli.Config{Home: home, Cwd: repo}
+	composed := process(config)
+	if composed.commands != (supervisor.Exec{}) || composed.processes != (supervisor.Processes{}) {
+		t.Fatalf("the process starts its commands with a %T and reaps with a %T", composed.commands, composed.processes)
+	}
+	if want := (fsruns.Store{Dir: filepath.Join(home, "runs")}); composed.runs != want {
+		t.Fatalf("the process's run store = %+v, want %+v", composed.runs, want)
+	}
+	starter := &started{}
+	composed.starter, composed.commands = runtimetest.InProcess{}, starter
+	client, _, err := composed.wire(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := client.Submit(context.Background(), contract.CallRequest{
+		Process: "verified", Params: map[string]string{"base": "main"}, Timeout: "1m", Cwd: repo,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-composed.hosted.Done(id)
+	if record := lastRun(t, home).record; record["result"].(map[string]any)["status"] != "completed" {
+		t.Fatalf("record = %v", record)
+	}
+	starter.mu.Lock()
+	defer starter.mu.Unlock()
+	if want := [][]string{{"bash", "-c", "echo prepared"}, {"bash", "-c", "test -f a.txt"}}; !reflect.DeepEqual(starter.commands, want) {
+		t.Fatalf("started %q, want %q", starter.commands, want)
 	}
 }

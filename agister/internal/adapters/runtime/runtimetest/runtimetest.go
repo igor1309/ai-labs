@@ -1,5 +1,6 @@
 // Package runtimetest provides the fake runtimes, built as binaries
-// (Binary) or run in process (InProcess), and the conformance suite every
+// (Binary) or run in process (InProcess), the fake shell InProcess runs a
+// setup or verification command under, and the conformance suite every
 // TurnRunner (and every decorator of one) must pass.
 package runtimetest
 

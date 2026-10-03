@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"syscall"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakebash"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeclaude"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakecodex"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeopencode"
@@ -24,8 +25,10 @@ import (
 type Fake func(fakeproc.Process) int
 
 // fakes are the fake runtimes, by the name of the command that starts
-// each: the CLI's own name, or the name Binary builds the fake under.
+// each: the CLI's own name, or the name Binary builds the fake under. With
+// them is the bash a setup or verification command runs under.
 var fakes = map[string]Fake{
+	"bash":         fakebash.Main,
 	"claude":       fakeclaude.Main,
 	"fakeclaude":   fakeclaude.Main,
 	"codex":        fakecodex.Main,
@@ -43,8 +46,9 @@ var fakes = map[string]Fake{
 //
 // The fake is picked by the command: one of Fakes by the command as given
 // or by its base name, else the fake runtime of that base name (claude,
-// codex, opencode, pi, or fake<name>, as Binary's paths end). A command
-// that names none fails to start, as a program missing from PATH does.
+// codex, opencode, pi, or fake<name>, as Binary's paths end) or, for bash,
+// the fake shell (fakebash). A command that names none fails to start, as
+// a program missing from PATH does.
 type InProcess struct {
 	// Env is the environment every fake inherits, as "KEY=value"; a
 	// command's own Env replaces a variable of the same name. The test

@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -22,8 +23,8 @@ import (
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// eventually polls until check holds. Only the tests that SIGKILL a real
-// CLI use it, for what that other process and the groups it leaves do;
+// eventually polls until check holds. Only the test that SIGKILLs a real
+// CLI uses it, for what that other process and the group it leaves do;
 // a call hosted in the test's process is awaited on its Done.
 func eventually(t testing.TB, what string, check func() bool) {
 	t.Helper()
@@ -151,6 +152,11 @@ func TestEndRecordedEndsEveryRecordedEffect(t *testing.T) {
 
 // A run killed with SIGKILL leaves its runtime and its checkout behind; the
 // next call that starts reaps them and finishes the run as lost.
+//
+// Contract test: the kernel, at a SIGKILL of the CLI. It releases the
+// run's owner lock and leaves the runtime's process group running, which
+// the next call's reap then kills by its recorded reference. It is the one
+// test that kills a real CLI: the others abandon a run in process (abandon).
 func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 	home, repo := setupBuilt(t, "hang")
 	binary := agisterBinary(t)
@@ -253,112 +259,169 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 	}
 }
 
-// A run killed with SIGKILL while its verification command runs leaves the
-// command's process group and the clean copy it runs in behind, on record;
-// the next call that starts reaps them with the checkout and finishes the
-// run as lost.
+// orphans are the process groups a killed owner left running, by the
+// reference its run recorded: what the kernel keeps after the kill. As the
+// composition's reaper of processes it ends an orphan, once, and finds any
+// other reference gone; that a real group is killed by its reference is
+// the supervisor's contract (processes_test.go).
+type orphans struct {
+	mu   sync.Mutex
+	left map[string]bool
+}
+
+// leave leaves the group ref names running, with nobody to end it.
+func (o *orphans) leave(ref string) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if o.left == nil {
+		o.left = map[string]bool{}
+	}
+	o.left[ref] = true
+}
+
+// alive says the group ref names was left and not reaped yet.
+func (o *orphans) alive(ref string) bool {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.left[ref]
+}
+
+func (o *orphans) Reap(_ context.Context, ref string) (supervisor.Reaping, error) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if !o.left[ref] {
+		return supervisor.ReapGone, nil
+	}
+	delete(o.left, ref)
+	return supervisor.ReapKilled, nil
+}
+
+// errSeen ends an Observe at the event the test waited for.
+var errSeen = errors.New("the event the test waited for")
+
+// until follows run id through client, as it appends, up to the first
+// event that holds: the run is still running then.
+func until(t *testing.T, client contract.Client, id string, holds func(contract.Event) bool) {
+	t.Helper()
+	err := client.Observe(context.Background(), id, 0, func(event contract.Event) error {
+		if holds(event) {
+			return errSeen
+		}
+		return nil
+	})
+	if !errors.Is(err, errSeen) {
+		t.Fatalf("run %s ended without the event the test waits for: %v", id, err)
+	}
+}
+
+// abandon leaves run id of the composition killed as a kill of its process
+// leaves it: unowned and unfinished, with what its call started still
+// running. The call itself is not ended here: the test's cleanup ends it
+// (cleanupRun).
+func abandon(t *testing.T, killed composition, id string) {
+	t.Helper()
+	if err := killed.runs.Abandon(id); err != nil {
+		t.Fatal(err)
+	}
+	if _, state, err := killed.runs.Get(context.Background(), id); err != nil || state != domain.StateAbandoned {
+		t.Fatalf("the abandoned run %s reads %s, %v", id, state, err)
+	}
+	select {
+	case <-killed.hosted.Done(id):
+		t.Fatalf("run %s ended when it was abandoned", id)
+	default:
+	}
+}
+
+// A run killed while its verification command runs leaves the command's
+// process group and the clean copy it runs in behind, on record; the next
+// call that starts reaps them with the checkout and finishes the run as
+// lost. The run is abandoned in process, as the kill leaves it, with its
+// command blocked; that a SIGKILL leaves a run so is
+// TestNextCallReapsWhatAKilledRunLeftBehind's.
 func TestNextCallReapsAKilledRunsVerifyCommand(t *testing.T) {
-	home, repo := setupBuilt(t, "approve")
-	groupFile := filepath.Join(tempDir(t), "group")
+	home, repo := setup(t, "approve")
 	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))
 	write(t, filepath.Join(home, "processes", "verified.yaml"), strings.Replace(shipped, "name: adversarial_review", "name: verified", 1)+`
 verify:
-  command: `+strconv.Quote(blocks+" & echo $$ > "+groupFile+"; wait")+`
+  command: `+strconv.Quote(blocks+" & wait")+`
   timeout: 40s
   max_attempts: 1
   instruction: The verification command failed.
 `)
-	binary := agisterBinary(t)
-	victim := exec.Command(binary, "--home", home, "run", "verified", "--param", "base=main", "--quiet", "--timeout", "45s")
-	victim.Dir = repo
-	victim.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	if err := victim.Start(); err != nil {
-		t.Fatal(err)
-	}
-	// Should the test fail first, the cleanup ends what the runs left on
-	// record, the command's group among them, whatever point the test
-	// reached.
-	cleanupRecorded(t, home, repo)
-	t.Cleanup(func() {
-		_ = victim.Process.Kill()
-		_ = victim.Wait()
-	})
-
-	// Wait until the record names the command's group with its token.
-	var record domain.Record
-	var recordPath string
-	eventually(t, "the record to show the command's group", func() bool {
-		paths, _ := filepath.Glob(filepath.Join(home, "runs", "*", "record.json"))
-		if len(paths) != 1 {
-			return false
-		}
-		data, err := os.ReadFile(paths[0])
-		record = domain.Record{}
-		if err != nil || json.Unmarshal(data, &record) != nil || record.Effects == nil || record.Effects.Command == nil {
-			return false
-		}
-		recordPath = paths[0]
-		_, token, err := supervisor.ParseRef(record.Effects.Command.Ref)
-		return err == nil && token != ""
-	})
-	group, _, err := supervisor.ParseRef(record.Effects.Command.Ref)
+	// The process that is killed: its command's timeout is on a clock that
+	// never moves, so only the test ends the command.
+	const timeout = 40 * time.Second
+	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	config := cli.Config{Home: home, Cwd: repo}
+	killed := on(config, timeoutOn(clock, timeout))
+	victim, _, err := killed.wire(config)
 	if err != nil {
 		t.Fatal(err)
 	}
-	checkout := record.Effects.Checkout.Dir
-	if record.Effects.Copy == nil {
-		t.Fatalf("effects = %+v", record.Effects)
-	}
-	copied := record.Effects.Copy.Dir
-	eventually(t, "the command to write its group", func() bool {
-		data, err := os.ReadFile(groupFile)
-		return err == nil && strings.TrimSpace(string(data)) == strconv.Itoa(group)
-	})
-
-	if err := victim.Process.Signal(syscall.SIGKILL); err != nil {
+	id, err := victim.Submit(context.Background(), contract.CallRequest{Process: "verified", Params: map[string]string{"base": "main"}, Cwd: repo})
+	if err != nil {
 		t.Fatal(err)
 	}
-	_ = victim.Wait()
-	if !groupAlive(group) {
-		t.Fatal("the command died with agister")
-	}
+	// The cleanup ends the call, and its command with it, whatever point
+	// the test reached.
+	cleanupRun(t, victim, killed.hosted, id)
 
-	config := cli.Config{Home: home, Cwd: repo}
-	composed := process(config)
+	// The command's timeout starts once the record names its group with
+	// its token.
+	clock.Started(timeout)
+	record, _, err := killed.runs.Get(context.Background(), id)
+	if err != nil || record.Effects == nil || record.Effects.Command == nil || record.Effects.Checkout == nil || record.Effects.Copy == nil {
+		t.Fatalf("effects = %+v, %v", record.Effects, err)
+	}
+	command := record.Effects.Command.Ref
+	if _, token, err := supervisor.ParseRef(command); err != nil || token == "" {
+		t.Fatalf("the command's group on record = %q: %v", command, err)
+	}
+	checkout, copied := record.Effects.Checkout.Dir, record.Effects.Copy.Dir
+
+	// The kill: the run is nobody's, and its command's group runs on.
+	abandon(t, killed, id)
+	left := &orphans{}
+	left.leave(command)
+
+	composed := inProcess(config)
+	composed.processes = left
 	client, background, err := composed.wire(config)
 	if err != nil {
 		t.Fatal(err)
 	}
-	id, err := client.Submit(context.Background(), contract.CallRequest{
+	next, err := client.Submit(context.Background(), contract.CallRequest{
 		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "30s", Cwd: repo,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Should the test fail while the new call runs, the cleanup ends it
-	// before the recorded effects and the home are removed.
-	cleanupRun(t, client, composed.hosted, id)
+	// before the home is removed.
+	cleanupRun(t, client, composed.hosted, next)
 	background.Wait()
-	eventually(t, "the command's group to be gone", func() bool { return !groupAlive(group) })
+	if left.alive(command) {
+		t.Fatal("the command's group was not reaped")
+	}
 	if _, err := os.Stat(checkout); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("checkout left behind: %v", err)
 	}
 	if _, err := os.Stat(copied); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("clean copy left behind: %v", err)
 	}
-	var old domain.Record
-	readJSON(t, recordPath, &old)
-	if old.Result == nil || old.Result.Status != domain.Lost || old.Result.Error.Class != domain.ClassAbandoned {
-		t.Fatalf("old run = %+v", old.Result)
+	old, state, err := composed.runs.Get(context.Background(), id)
+	if err != nil || state != domain.StateFinished || old.Result == nil || old.Result.Status != domain.Lost || old.Result.Error.Class != domain.ClassAbandoned {
+		t.Fatalf("old run = %s %+v, %v", state, old.Result, err)
 	}
-	events, _ := os.ReadFile(filepath.Join(filepath.Dir(recordPath), "events.jsonl"))
+	events, _ := os.ReadFile(filepath.Join(home, "runs", id, "events.jsonl"))
 	if !strings.Contains(string(events), `"EFFECTS_REAPED"`) || !strings.Contains(string(events), `"command":{"outcome":"killed"`) {
 		t.Fatalf("no reap of the command:\n%s", events)
 	}
 	// The new call ends too, and its checkout goes with it. Until it ends,
 	// it may not have made its checkout yet, and would take its worktree
 	// turn under the home while the test's cleanup removes it.
-	<-composed.hosted.Done(id)
+	<-composed.hosted.Done(next)
 	if lines := strings.Split(gitCmd(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
 		t.Fatalf("worktrees = %v", lines)
 	}

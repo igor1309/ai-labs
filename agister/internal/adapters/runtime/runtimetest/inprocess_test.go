@@ -58,6 +58,19 @@ func TestInProcessPicksTheFakeByTheCommandsName(t *testing.T) {
 	}
 }
 
+// bash is the fake shell: a command run under it runs in process, in the
+// command's directory, its stderr with its stdout.
+func TestInProcessRunsBashAsTheFakeShell(t *testing.T) {
+	dir := t.TempDir()
+	out, exit := output(t, InProcess{}, supervisor.Command{Name: "bash", Args: []string{"-c", "echo made > new.txt; cat new.txt missing.txt; exit 3"}, Dir: dir})
+	if out != "made\ncat: missing.txt: No such file or directory\n" || exit.Code == nil || *exit.Code != 3 || exit.Signal != "" {
+		t.Fatalf("printed %q and exited %+v", out, exit)
+	}
+	if made, err := os.ReadFile(filepath.Join(dir, "new.txt")); err != nil || string(made) != "made\n" {
+		t.Fatalf("new.txt = %q, %v", made, err)
+	}
+}
+
 // A test's own program is picked before a fake runtime, by the command as
 // given or by its base name.
 func TestInProcessPicksTheTestsOwnProgramFirst(t *testing.T) {

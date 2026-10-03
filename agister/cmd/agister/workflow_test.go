@@ -5,14 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
@@ -160,85 +157,96 @@ func lastRunIn(t *testing.T, dir string) run {
 	return r
 }
 
-// A CLI killed with SIGKILL while a workflow's fan-out nodes run leaves
-// their runtimes and checkouts behind. The next call's reap treats each
-// node's run like any unfinished run: it ends their effects and finishes
-// them lost; the workflow run, unfinished and unowned, reads lost too.
+// A CLI killed while a workflow's fan-out nodes run leaves their runtimes
+// and checkouts behind. The next call's reap treats each node's run like
+// any unfinished run: it ends their effects and finishes them lost; the
+// workflow run, unfinished and unowned, reads lost too. The runs are
+// abandoned in process, as the kill leaves them, with their runtimes
+// blocked; that a SIGKILL leaves a run so is
+// TestNextCallReapsWhatAKilledRunLeftBehind's.
 func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
-	home, repo := setupBuilt(t, "hang")
-	binary := agisterBinary(t)
-	victim := exec.Command(binary, "--home", home, "run", "review_panel", "--param", "base=main", "--param", "architecture=a.txt", "--quiet")
-	victim.Dir = repo
-	victim.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	if err := victim.Start(); err != nil {
+	home, repo := setup(t, "hang")
+	at := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+	config := cli.Config{Home: home, Cwd: repo}
+	// The process that is killed: its nodes' waits are on a clock that
+	// never moves, so only the test ends their runtimes.
+	killed := on(config, systemtest.NewClock(at).Timer)
+	killed.poll = unpolled(t)
+	victim, _, err := killed.wire(config)
+	if err != nil {
 		t.Fatal(err)
 	}
-	// Should the test fail first, the cleanup ends what every run left on
-	// record, whatever point the test reached.
-	cleanupRecorded(t, home, repo)
-	t.Cleanup(func() {
-		_ = victim.Process.Kill()
-		_ = victim.Wait()
-	})
-	var nodes []domain.Record
+	ctx := context.Background()
+	id, err := victim.Submit(ctx, contract.CallRequest{Process: "review_panel", Params: map[string]string{"base": "main", "architecture": "a.txt"}, Cwd: repo})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The cleanup ends the workflow, and its nodes and their runtimes with
+	// it, whatever point the test reached.
+	cleanupRun(t, victim, killed.hosted, id)
 
 	// Both fan-out nodes run, each with its runtime and checkout on record.
-	eventually(t, "both fan-out nodes to record their runtime and checkout", func() bool {
-		paths, _ := filepath.Glob(filepath.Join(home, "runs", "*", "record.json"))
-		nodes = nil
-		for _, path := range paths {
-			var record domain.Record
-			data, err := os.ReadFile(path)
-			if err != nil || json.Unmarshal(data, &record) != nil || record.Parent == nil {
-				continue
-			}
-			if record.Effects == nil || record.Effects.Process == nil || record.Effects.Checkout == nil {
-				return false
-			}
-			if _, token, err := supervisor.ParseRef(record.Effects.Process.Ref); err != nil || token == "" {
-				return false
-			}
-			nodes = append(nodes, record)
+	var started []string
+	until(t, victim, id, func(event contract.Event) bool {
+		if node, ok := event.Data["run"].(string); ok && event.Kind == "NODE_STARTED" {
+			started = append(started, node)
 		}
-		return len(nodes) == 2
+		return len(started) == 2
 	})
-	if err := victim.Process.Signal(syscall.SIGKILL); err != nil {
-		t.Fatal(err)
+	var nodes []domain.Record
+	for _, node := range started {
+		until(t, victim, node, func(event contract.Event) bool { return event.Kind == "PROCESS_STARTED" })
+		record, _, err := killed.runs.Get(ctx, node)
+		if err != nil || record.Parent == nil || record.Effects == nil || record.Effects.Process == nil || record.Effects.Checkout == nil {
+			t.Fatalf("node run %s: %+v, %v", node, record.Effects, err)
+		}
+		if _, token, err := supervisor.ParseRef(record.Effects.Process.Ref); err != nil || token == "" {
+			t.Fatalf("node run %s's runtime on record = %q: %v", node, record.Effects.Process.Ref, err)
+		}
+		nodes = append(nodes, record)
 	}
-	_ = victim.Wait()
-	id, _ := workflowRun(t, home)
+
+	// The kill: the workflow's run and its nodes' are nobody's, and the
+	// nodes' runtimes run on.
+	left := &orphans{}
+	abandon(t, killed, id)
+	for _, node := range nodes {
+		abandon(t, killed, node.ID)
+		left.leave(node.Effects.Process.Ref)
+	}
 
 	const timeout = 7 * time.Minute
-	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
-	config := cli.Config{Home: home, Cwd: repo}
+	clock := systemtest.NewClock(at)
 	composed := on(config, timeoutOn(clock, timeout))
+	composed.processes = left
 	client, background, err := composed.wire(config)
 	if err != nil {
 		t.Fatal(err)
 	}
-	next, err := client.Submit(context.Background(), contract.CallRequest{
+	next, err := client.Submit(ctx, contract.CallRequest{
 		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "7m", Cwd: repo,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
+	cleanupRun(t, client, composed.hosted, next)
 	background.Wait()
 	// The next call hangs too, until its timeout passes.
 	clock.Started(timeout)
 	clock.Advance(timeout)
-	store := fsruns.Store{Dir: filepath.Join(home, "runs")}
 	for _, node := range nodes {
-		group, _, _ := supervisor.ParseRef(node.Effects.Process.Ref)
-		eventually(t, "a node's runtime to be gone", func() bool { return !groupAlive(group) })
+		if left.alive(node.Effects.Process.Ref) {
+			t.Fatalf("node run %s's runtime was not reaped", node.ID)
+		}
 		if _, err := os.Stat(node.Effects.Checkout.Dir); !errors.Is(err, os.ErrNotExist) {
 			t.Fatalf("checkout left behind: %v", err)
 		}
-		reaped, state, err := store.Get(context.Background(), node.ID)
+		reaped, state, err := composed.runs.Get(ctx, node.ID)
 		if err != nil || state != domain.StateFinished || reaped.Result.Status != domain.Lost || reaped.Result.Error.Class != domain.ClassAbandoned {
 			t.Fatalf("node run %s: %s %+v %v", node.ID, state, reaped.Result, err)
 		}
 	}
-	workflow, err := client.Inspect(context.Background(), id)
+	workflow, err := client.Inspect(ctx, id)
 	if err != nil || workflow.State != string(domain.StateAbandoned) || workflow.Result.Status != "lost" || workflow.Result.Error.Class != "abandoned" {
 		t.Fatalf("workflow run: %+v %v", workflow, err)
 	}

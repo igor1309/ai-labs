@@ -550,8 +550,9 @@ func TestAppendedSignalsAnAdoptedRun(t *testing.T) {
 	}
 	// The owner disappears without finishing; the in-process signal goes
 	// with it, as a killed process's does.
-	dead.(*handle).lock.Close()
-	written.release(dead.(*handle).dir)
+	if err := store.Abandon("r"); err != nil {
+		t.Fatal(err)
+	}
 
 	adopted, _, err := store.Adopt(ctx, "r")
 	if err != nil {
@@ -578,5 +579,152 @@ func TestAppendedSignalsAnAdoptedRun(t *testing.T) {
 	}
 	if !closed(finishing) {
 		t.Fatal("not closed once the reap finished the run")
+	}
+}
+
+// A run abandoned in this process is left as a killed owner leaves it:
+// unowned, with its record as last saved and unfinished, so it reads as
+// abandoned and is adopted. Its handle refuses every later write, the
+// finish included, and takes nothing from whoever adopted the run.
+func TestAbandonLeavesTheRunAsAKilledOwnerDoes(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	ctx := context.Background()
+	record := run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: time.Now()}
+	h, err := store.Create(ctx, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Append(run.Event{Kind: "E"}); err != nil {
+		t.Fatal(err)
+	}
+	record.Effects = &run.Effects{Process: &run.Process{Ref: "pgid:7"}}
+	if err := h.Update(record); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Abandon("r"); err != nil {
+		t.Fatal(err)
+	}
+
+	saved, state, err := store.Get(ctx, "r")
+	if err != nil || state != run.StateAbandoned || saved.FinishedAt != nil || saved.Effects == nil || saved.Effects.Process == nil || saved.Effects.Process.Ref != "pgid:7" {
+		t.Fatalf("the abandoned run = %+v, %s, %v", saved, state, err)
+	}
+	if abandoned, err := store.Abandoned(ctx); err != nil || len(abandoned) != 1 || abandoned[0].ID != "r" {
+		t.Fatalf("abandoned = %+v, %v", abandoned, err)
+	}
+
+	now := time.Now()
+	finished := record
+	finished.FinishedAt = &now
+	refused := func(what string, err error) {
+		t.Helper()
+		if !errors.Is(err, errAbandoned) {
+			t.Fatalf("%s on an abandoned handle = %v, want %v", what, err, errAbandoned)
+		}
+	}
+	refused("Append", h.Append(run.Event{Kind: "LATE"}))
+	refused("Raw", h.Raw("late"))
+	refused("Update", h.Update(finished))
+	_, err = h.Artifact("late.txt", []byte("late"))
+	refused("Artifact", err)
+	refused("Finish", h.Finish(finished))
+	events, state, err := store.Events(ctx, "r", 0)
+	if err != nil || state != run.StateAbandoned || len(events) != 1 || events[0].Kind != "E" {
+		t.Fatalf("events after the refused writes = %+v, %s, %v", events, state, err)
+	}
+	for _, name := range []string{"provider.jsonl", "artifacts"} {
+		if _, err := os.Stat(filepath.Join(store.Dir, "r", name)); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("%s after the refused writes: %v", name, err)
+		}
+	}
+
+	// The run is the adopter's now: the abandoned handle's finish neither
+	// writes its record nor ends its notification.
+	adopted, _, err := store.Adopt(ctx, "r")
+	if err != nil {
+		t.Fatal(err)
+	}
+	appended, ok := store.Appended(ctx, "r", 1)
+	if !ok || closed(appended) {
+		t.Fatalf("the adopted run: ok %v, closed %v", ok, ok && closed(appended))
+	}
+	refused("Finish", h.Finish(finished))
+	if _, state, _ := store.Get(ctx, "r"); state != run.StateRunning || closed(appended) {
+		t.Fatalf("after the abandoned handle's finish: %s, closed %v", state, closed(appended))
+	}
+	if err := adopted.Finish(finished); err != nil {
+		t.Fatal(err)
+	}
+	if _, state, _ := store.Get(ctx, "r"); state != run.StateFinished || !closed(appended) {
+		t.Fatalf("after the adopter's finish: %s, closed %v", state, closed(appended))
+	}
+}
+
+// The notification closes when the run is abandoned, and an abandoned
+// run's is closed already: whoever follows it wakes and reads it abandoned.
+func TestAppendedClosesWhenTheRunIsAbandoned(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	ctx := context.Background()
+	if _, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
+	appended, ok := store.Appended(ctx, "r", 0)
+	if !ok || closed(appended) {
+		t.Fatalf("a running run: ok %v, closed %v", ok, ok && closed(appended))
+	}
+	// Another Store over the same directory abandons it, as it shares the
+	// handles.
+	if err := (Store{Dir: store.Dir}).Abandon("r"); err != nil {
+		t.Fatal(err)
+	}
+	if !closed(appended) {
+		t.Fatal("not closed once the run was abandoned")
+	}
+	if _, state, _ := store.Get(ctx, "r"); state != run.StateAbandoned {
+		t.Fatalf("read once woken: %s", state)
+	}
+	if again, ok := store.Appended(ctx, "r", 0); !ok || !closed(again) {
+		t.Fatalf("an abandoned run: ok %v, closed %v", ok, ok && closed(again))
+	}
+}
+
+// Only a run a handle here holds is abandoned: one that finished, one
+// abandoned already, one nobody here created and a path out of the store
+// are errors, and a finished run stays finished.
+func TestAbandonNeedsARunThisProcessHolds(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	ctx := context.Background()
+	record := run.Record{Schema: run.RecordSchema, ID: "done", Process: "p", CreatedAt: time.Now()}
+	h, err := store.Create(ctx, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	record.FinishedAt = &now
+	if err := h.Finish(record); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Abandon("done"); err == nil {
+		t.Fatal("a finished run was abandoned")
+	}
+	if _, state, _ := store.Get(ctx, "done"); state != run.StateFinished {
+		t.Fatalf("the finished run reads %s", state)
+	}
+
+	if _, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "twice", Process: "p", CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Abandon("twice"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Abandon("twice"); err == nil {
+		t.Fatal("a run was abandoned twice")
+	}
+	if err := store.Abandon("unknown"); err == nil {
+		t.Fatal("a run nobody created was abandoned")
+	}
+	var invalid *contract.InputError
+	if err := store.Abandon("../twice"); !errors.As(err, &invalid) {
+		t.Fatalf("a path out of the store: %v", err)
 	}
 }

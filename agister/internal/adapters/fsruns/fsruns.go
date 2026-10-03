@@ -9,8 +9,9 @@
 // A record that is not finished and whose lock nobody holds is abandoned.
 //
 // In this process, the store also says when a run whose handle it holds
-// appends an event or finishes (Appended), so the run is followed without
-// polling.
+// appends an event, finishes or is abandoned (Appended), so the run is
+// followed without polling. A run it holds can be abandoned as a killed
+// owner leaves it (Abandon).
 package fsruns
 
 import (
@@ -82,7 +83,7 @@ func (s Store) Create(_ context.Context, record run.Record) (app.RunHandle, erro
 		lock.Close()
 		return nil, err
 	}
-	written.hold(dir, 0)
+	written.hold(dir, 0, h)
 	return h, nil
 }
 
@@ -168,8 +169,25 @@ func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record
 	if events, _, err := s.Events(ctx, id, 0); err == nil && len(events) > 0 {
 		seq = events[len(events)-1].Seq
 	}
-	written.hold(s.runDir(id), seq)
-	return &handle{dir: s.runDir(id), lock: lock, seq: seq}, record, nil
+	h := &handle{dir: s.runDir(id), lock: lock, seq: seq}
+	written.hold(h.dir, seq, h)
+	return h, record, nil
+}
+
+// Abandon leaves run id, whose handle this process holds, as a killed owner
+// leaves it: the owner lock is released over the record as last saved,
+// unfinished, and the handle refuses every later write. Appended's channel
+// closes, so whoever follows the run reads it as abandoned. A test abandons
+// a run in place of killing the process that runs it. A run no handle here
+// holds is an error.
+func (s Store) Abandon(id string) error {
+	if err := checkID(id); err != nil {
+		return err
+	}
+	if holder, ok := written.holder(s.runDir(id)); ok && holder.abandon() {
+		return nil
+	}
+	return fmt.Errorf("run %s: no handle in this process holds it", id)
 }
 
 // reapable says a finished run's effects leave something to remove: a
@@ -185,11 +203,36 @@ type handle struct {
 	lock *os.File
 	seq  int
 	done bool
+	// abandoned is set once the handle was abandoned: it writes nothing
+	// after that.
+	abandoned bool
+}
+
+// errAbandoned is what an abandoned handle refuses a write with.
+var errAbandoned = errors.New("the run was abandoned: its handle writes no more")
+
+// abandon releases ownership without finishing, and reports whether it
+// did: a handle that finished, or was abandoned before, has none to
+// release.
+func (h *handle) abandon() bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.done || h.abandoned {
+		return false
+	}
+	h.abandoned = true
+	// Released before the signal: whoever it wakes reads the run unowned.
+	h.lock.Close()
+	written.release(h.dir)
+	return true
 }
 
 func (h *handle) Append(event run.Event) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if h.abandoned {
+		return errAbandoned
+	}
 	h.seq++
 	event.Seq = h.seq
 	if err := appendLine(filepath.Join(h.dir, "events.jsonl"), event); err != nil {
@@ -202,12 +245,18 @@ func (h *handle) Append(event run.Event) error {
 func (h *handle) Raw(line string) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if h.abandoned {
+		return errAbandoned
+	}
 	return appendText(filepath.Join(h.dir, "provider.jsonl"), line)
 }
 
 func (h *handle) Update(record run.Record) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if h.abandoned {
+		return errAbandoned
+	}
 	return h.writeRecord(record)
 }
 
@@ -217,6 +266,9 @@ func (h *handle) Artifact(name string, data []byte) (run.Artifact, error) {
 	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if h.abandoned {
+		return run.Artifact{}, errAbandoned
+	}
 	dir := filepath.Join(h.dir, "artifacts")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return run.Artifact{}, err
@@ -231,6 +283,11 @@ func (h *handle) Artifact(name string, data []byte) (run.Artifact, error) {
 func (h *handle) Finish(record run.Record) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	// The lock is gone already, and another handle may hold the run by
+	// now: nothing of it is this handle's to write or release.
+	if h.abandoned {
+		return errAbandoned
+	}
 	if h.done {
 		return nil
 	}
@@ -318,10 +375,10 @@ func (s Store) Events(ctx context.Context, id string, afterSeq int) ([]run.Event
 }
 
 // Appended returns a channel closed once run id, whose handle this process
-// holds, has an event after afterSeq or has finished; it is closed already
-// if that is so. A run no handle here holds that is not running, finished
-// or abandoned, has ended: its channel is closed already. For a run
-// another process is running, ok is false.
+// holds, has an event after afterSeq, has finished or is abandoned; it is
+// closed already if that is so. A run no handle here holds that is not
+// running, finished or abandoned, has ended: its channel is closed already.
+// For a run another process is running, ok is false.
 func (s Store) Appended(ctx context.Context, id string, afterSeq int) (<-chan struct{}, bool) {
 	if checkID(id) != nil {
 		return nil, false
@@ -349,18 +406,32 @@ type appends struct {
 	runs map[string]*appended
 }
 
-// appended is a held run's last event written and the channel its next
-// event or its finish closes.
+// appended is a held run's last event written, the channel its next
+// event, its finish or its abandonment closes, and the handle that holds
+// it.
 type appended struct {
-	seq  int
-	next chan struct{}
+	seq    int
+	next   chan struct{}
+	holder *handle
 }
 
-// hold starts signalling the run in dir, whose last event written is seq.
-func (a *appends) hold(dir string, seq int) {
+// hold starts signalling the run in dir, which holder holds and whose last
+// event written is seq.
+func (a *appends) hold(dir string, seq int, holder *handle) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.runs[dir] = &appended{seq: seq, next: make(chan struct{})}
+	a.runs[dir] = &appended{seq: seq, next: make(chan struct{}), holder: holder}
+}
+
+// holder is the handle that holds the run in dir; ok is false if none here
+// does.
+func (a *appends) holder(dir string) (holder *handle, ok bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if held, ok := a.runs[dir]; ok {
+		return held.holder, true
+	}
+	return nil, false
 }
 
 // appended records that the run in dir has written event seq, and wakes
