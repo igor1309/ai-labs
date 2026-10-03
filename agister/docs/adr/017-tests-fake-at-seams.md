@@ -150,8 +150,10 @@ Kept as contract tests, marked as rule 1 has it:
 - `cmd/agister/reap_test.go`, `TestNextCallReapsWhatAKilledRunLeftBehind`:
   the one test of a real SIGKILL. The kernel releases the killed CLI's
   owner lock, its runtime's group outlives it, and the next call ends
-  both. It uses the shared build. Its waits on the other process stay
-  bounded polls; waits in this process use seam 3.
+  both. It uses the shared build, and the killed CLI starts its runtime
+  as a real subprocess, a built fake: the claim is that the runtime's
+  group outlives its owner. Its waits on the other process stay bounded
+  polls; waits in this process use seam 3.
 - `cmd/agister` tests whose claim is that the composition's adapters
   work together on a real repository (ADR-001 rule 14). They keep real
   git, through the real git-backed adapters (seam 5), and the marker:
@@ -163,6 +165,13 @@ Kept as contract tests, marked as rule 1 has it:
     as git treats them;
   - `setup_test.go`, `TestACheckoutHookThatChangesATrackedFileFailsTheSetup`:
     a real post-checkout hook;
+  - `setup_test.go`, `TestIgnoredSetupFilesStayOutOfTheCleanCopyAndThePatch`,
+    split from `TestSetupPreparesTheCheckoutOnceBeforeTheFirstTurn`: an
+    ignored file the setup makes reaches neither the clean copy nor the
+    patch;
+  - `verify_loop_test.go`, `TestVerifyRunThatWritesOnlyIgnoredFilesPasses`,
+    split from `TestVerifyRunThatChangesItsCleanCopyFails`: an ignored file
+    a run writes is not a change to its content;
   - `reap_test.go`, `TestNextCallReapsAKilledRunsVerifyCommand`: the reap
     discards a real checkout and clean copy;
   - `wiring_test.go`, `TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator`
@@ -177,13 +186,18 @@ Run over the fake of the git-backed ports (seam 5), and lose the marker:
   `setup_test.go`, `install_test.go`, `repo_settings_test.go`,
   `opencode_settings_test.go`, `pi_settings_test.go`, `workflow_test.go`,
   `verify_loop_test.go`, `reap_test.go` and `wiring_test.go`. Their claims
-  are settings, installs, prompts, verify loops, workflows or wiring. A
+  are settings, installs, prompts, verify loops, workflows or wiring. An
+  assertion that ignored files are left out is git's claim: the fake knows
+  no ignore rules, so it moves to a real-git test named above, and the
+  test it came from keeps its other claims over the fake. A
   test whose claim is another real thing (a real shell, the kernel's
   flock) keeps a marker that names that thing, not git. None sets up a
-  repository or runs `git`. Every `cmd/agister` test, real git or not,
-  stops running runtimes as processes: the composition gets the in-process
-  starter (seam 1), so no fake is built, `PATH` is not set and no
-  `ccusage` script is written. A turn's timeout runs on the manual clock
+  repository or runs `git`. In every `cmd/agister` test, real git or not,
+  a runtime call hosted by the test process no longer runs its runtime as
+  a process: the composition gets the in-process starter (seam 1), so no
+  fake is built, `PATH` is not set and no `ccusage` script is written.
+  Only the CLI the SIGKILL test kills, which is not hosted by the test
+  process, keeps a real runtime subprocess (above). A turn's timeout runs on the manual clock
   (seam 2). Calls are awaited on `Hosted.Done` and their events observed
   as they are appended (seam 3), not by `eventually`, and the minute
   guards in `wiring_test.go` go.
@@ -375,7 +389,8 @@ exit code; a failing run keeps its own code. An abrupt exit (a panic, the
 `-timeout` panic, a signal) skips the removal and can leave the directory
 behind in the system's temp directory. Builds keep the host Go cache
 (LAB-51). After seam 1, only the four adapters' contract tests build a
-fake, each its own.
+fake, each its own, and `cmd/agister` builds one for the CLI the SIGKILL
+test kills.
 
 ### 5. Tests that share no state run in parallel
 
@@ -424,8 +439,7 @@ neither. Shared helpers keep their state per test or behind a lock, as
   parsing and the supervisor's timeout and termination logic, which the
   in-process starter keeps. The verify harness keeps it: its claim is
   the loop.
-- **Real git in every `cmd/agister` test.** Rejected, reversing this
-  ADR's first choice (owner, 2026-10-03). The marker became a blanket
+- **Real git in every `cmd/agister` test.** Rejected. The marker became a blanket
   exemption: most of those tests' claims are not about git (rule 1). A
   repository set up per test is paid on every run and couples claims
   about settings, prompts or verify loops to git. The composition's claim
