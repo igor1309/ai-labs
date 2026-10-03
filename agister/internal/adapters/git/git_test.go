@@ -173,6 +173,8 @@ func TestRepositoryEquivalenceUsesCanonicalCommonDirectories(t *testing.T) {
 		t.Fatal(err)
 	}
 	other := repository(t)
+	clone := filepath.Join(t.TempDir(), "clone")
+	sh(t, repo, "clone", "--quiet", "--no-local", repo, clone)
 	missing := t.TempDir()
 	for _, c := range []struct {
 		name, first, second string
@@ -181,6 +183,7 @@ func TestRepositoryEquivalenceUsesCanonicalCommonDirectories(t *testing.T) {
 		{"main and worktree", repo, checkout, true, false},
 		{"worktree and symlink", checkout, link, true, false},
 		{"distinct repositories", repo, other, false, false},
+		{"a clone", checkout, clone, false, false},
 		{"invalid first", missing, repo, false, true},
 		{"invalid second", repo, missing, false, true},
 	} {
@@ -189,6 +192,12 @@ func TestRepositoryEquivalenceUsesCanonicalCommonDirectories(t *testing.T) {
 			same, err := workspaces.SameRepository(ctx, c.first, c.second)
 			if (err != nil) != c.fails || same != c.same {
 				t.Fatalf("SameRepository = %v, %v", same, err)
+			}
+			// The identity a run records tells the same repositories apart.
+			first, firstErr := workspaces.RepositoryIdentity(ctx, c.first)
+			second, secondErr := workspaces.RepositoryIdentity(ctx, c.second)
+			if (firstErr != nil || secondErr != nil) != c.fails || (!c.fails && (first == second) != c.same) {
+				t.Fatalf("RepositoryIdentity = %q, %v and %q, %v", first, firstErr, second, secondErr)
 			}
 		})
 	}

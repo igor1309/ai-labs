@@ -867,6 +867,39 @@ func TestAContinuationCarriesTheLatestRunsChanges(t *testing.T) {
 	}
 }
 
+// A continuation keeps the changes of its session so far: the patch it
+// stores, from the revision, holds the carried changes and its turn's,
+// each once.
+func TestAContinuationStoresItsChangesWithTheCarriedOnes(t *testing.T) {
+	t.Parallel()
+	h, _ := carrying()
+	patchedRun(h, "run-0", "", 0, 1, "+A\n")
+	// The checkout holds what was applied to it and what the turn added.
+	var content string
+	h.runner.during = func(app.TurnRequest) {
+		for _, applied := range h.changes.applies() {
+			if !applied.check {
+				content += applied.patch
+			}
+		}
+		content += "+B\n"
+	}
+	h.changes.patch = func(from, _ string) []byte {
+		if from != "sha-HEAD" {
+			return []byte("from " + from)
+		}
+		return []byte(content)
+	}
+	record := h.call(t, contract.CallRequest{Continue: "run-0"})
+	stored := string(h.recorder.artifacts["changes.patch"])
+	if record.Result.Status != run.Completed || stored != "+A\n+B\n" {
+		t.Fatalf("result %+v, patch %q", record.Result, stored)
+	}
+	if artifacts := record.Result.Artifacts; len(artifacts) != 1 || artifacts[0].Name != "changes.patch" || artifacts[0].Bytes != int64(len(stored)) {
+		t.Fatalf("artifacts %+v", artifacts)
+	}
+}
+
 // The changes carried are the session's latest run's: continuing a
 // continuation carries that run's patch alone, which holds the earlier
 // one's; continuing the first run again, after the session moved on,
@@ -966,9 +999,9 @@ func TestAContinuationWhoseChangesCannotBeCarriedIsRefused(t *testing.T) {
 		{"another revision", prior(func(r *run.Record) { r.Effects.Checkout.Revision = "sha-other" }),
 			"run run-0's changes are from revision sha-other, not sha-HEAD", nil},
 		{"another repository", prior(func(r *run.Record) { r.Effects.Checkout.Repository = "/other" }),
-			"run run-0's changes are of repository /other, not /repo", nil},
+			"run run-0's changes are of repository /other, not /repo; a continuation carries them only into the same repository", nil},
 		{"another stored repository identity", prior(func(r *run.Record) { r.Effects.Checkout.RepositoryIdentity = "/other" }),
-			"run run-0's changes are of repository /other, not /repo", nil},
+			"run run-0's changes are of repository /other, not /repo; a continuation carries them only into the same repository", nil},
 		{"an older record of another process", prior(func(r *run.Record) {
 			r.Effects.Checkout.Revision, r.Request.Process, r.Process = "", "q", "q"
 		}), "the revision run run-0 worked on is unknown", nil},
@@ -987,7 +1020,7 @@ func TestAContinuationWhoseChangesCannotBeCarriedIsRefused(t *testing.T) {
 			later := patchedRun(h, "run-0b", "run-0", 2, 3, "diff AB\n")
 			later.Effects.Checkout.Repository = "/other"
 			h.runs.records[later.ID] = later
-		}, "run run-0b's changes are of repository /other, not /repo", nil},
+		}, "run run-0b's changes are of repository /other, not /repo; a continuation carries them only into the same repository", nil},
 		{"overlapping finished runs", func(h *harness) {
 			patchedRun(h, "run-0", "", 0, 3, "diff A\n")
 			patchedRun(h, "run-0b", "run-0", 2, 4, "diff AB\n")
@@ -1013,8 +1046,8 @@ func TestAContinuationWhoseChangesCannotBeCarriedIsRefused(t *testing.T) {
 			if checkouts := len(h.workspaces.checkouts); checkouts != h.workspaces.releases() || (checkouts == 1) != (c.order != nil) {
 				t.Fatalf("checkouts %v, released %d", h.workspaces.checkouts, h.workspaces.releases())
 			}
-			if c.order == nil && (len(h.workspaces.checkouts) != 0 || len(h.setup.runs()) != 0 || len(h.changes.applies()) != 0) {
-				t.Fatalf("checkouts %v, setup %v, applied %v", h.workspaces.checkouts, h.setup.runs(), h.changes.applies())
+			if c.order == nil && (len(h.workspaces.checkouts) != 0 || len(h.setup.runs()) != 0 || len(h.changes.applies()) != 0 || record.Effects != nil) {
+				t.Fatalf("checkouts %v, setup %v, applied %v, effects %+v", h.workspaces.checkouts, h.setup.runs(), h.changes.applies(), record.Effects)
 			}
 			if len(record.Result.Artifacts) != 0 || contains(h.recorder.kinds(), "CHANGES_CARRIED") {
 				t.Fatalf("artifacts %+v, events %v", record.Result.Artifacts, h.recorder.kinds())
