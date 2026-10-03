@@ -23,6 +23,14 @@ func (c *clientFake) Init(context.Context, bool, *contract.InitResult) (contract
 	c.hit("Init")
 	return contract.InitResult{}, nil
 }
+func (c *clientFake) Install(context.Context, string, *contract.InstallPlan) (contract.InstallPlan, error) {
+	c.hit("Install")
+	return contract.InstallPlan{}, nil
+}
+func (c *clientFake) Restore(context.Context, string, *contract.RestorePlan) (contract.RestorePlan, error) {
+	c.hit("Restore")
+	return contract.RestorePlan{}, nil
+}
 func (c *clientFake) CreateAgent(context.Context, contract.Agent, bool, *contract.AgentWrite) (contract.AgentWrite, error) {
 	c.hit("CreateAgent")
 	return contract.AgentWrite{}, nil
@@ -73,9 +81,10 @@ func (c *clientFake) ListRuns(context.Context) ([]contract.Run, error) {
 
 // While the settings have a problem that stops every command, or one whose
 // reach the report does not say, every use is refused before it reaches the
-// core, except writing them (Init), reporting them (Check), stopping a run,
-// and following a run the gate itself admitted. A problem of one document
-// passes the gate: the core refuses what depends on it (ADR-015).
+// core, except writing them (Init, Install, Restore), reporting them
+// (Check), stopping a run, and following a run the gate itself admitted. A
+// problem of one document passes the gate: the core refuses what depends on
+// it (ADR-015).
 func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
 	ctx := context.Background()
 	inner := &clientFake{}
@@ -115,6 +124,12 @@ func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
 	if _, err := gated.Init(ctx, false, nil); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := gated.Install(ctx, "/repo/.agister", nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gated.Restore(ctx, "stamp", nil); err != nil {
+		t.Fatal(err)
+	}
 	if report, err := gated.Check(ctx, false); err != nil || len(report.Problems) != 1 {
 		t.Fatalf("check: %+v, %v", report, err)
 	}
@@ -127,7 +142,7 @@ func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
 	if _, err := gated.Inspect(ctx, "run-1"); err != nil {
 		t.Fatalf("admitted run: %v", err)
 	}
-	want := "Init Cancel other Observe run-1 Inspect run-1"
+	want := "Init Install Restore Cancel other Observe run-1 Inspect run-1"
 	if got := join(inner.reached); got != want {
 		t.Fatalf("reached %q, want %q", got, want)
 	}
