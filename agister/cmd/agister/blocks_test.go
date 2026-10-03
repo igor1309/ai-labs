@@ -213,8 +213,8 @@ func TestABlockOnAWorkflow(t *testing.T) {
 
 // A broken blocks.yaml, or one naming a document in neither layer, stops
 // every command in the repository, as what it was meant to block cannot be
-// known (ADR-018 rule 5): one that is invalid, declares a key twice, or
-// exists but cannot be read, as a directory, a dangling symlink or a
+// known (ADR-018 rule 5): one that is invalid, declares a key twice, holds
+// more than one document, or exists but cannot be read, as a directory, a dangling symlink or a
 // symlink loop cannot, never reads as no blocks. check names its path, no
 // runtime starts, and install and restore still run.
 func TestABrokenBlockListStopsEveryCommandButInstallAndRestore(t *testing.T) {
@@ -255,6 +255,10 @@ func TestABrokenBlockListStopsEveryCommandButInstallAndRestore(t *testing.T) {
 		"key twice in the document": {
 			plant: text("schema: agister.blocks/v1alpha1\nblocks: []\nblocks:\n  - ref: agent:reviewer\n"),
 			want:  "blocks: is declared more than once",
+		},
+		"a second document": {
+			plant: text("---\n---\nschema: agister.blocks/v1alpha1\nblocks:\n  - ref: agent:reviewer\n"),
+			want:  "must hold exactly one YAML document",
 		},
 		"directory":        {plant: planted(func(path string) error { return os.Mkdir(path, 0o700) }), want: ": is a directory"},
 		"dangling symlink": {plant: planted(func(path string) error { return os.Symlink(path+".gone", path) }), want: ": no such file or directory"},
@@ -298,6 +302,31 @@ func TestABrokenBlockListStopsEveryCommandButInstallAndRestore(t *testing.T) {
 				t.Fatalf("restore: %d\n%s%s", r.code, r.stdout, r.stderr)
 			}
 		})
+	}
+}
+
+// A block on a document that exists but has a problem of its own blocks it
+// as written, and the document's problem is reported as before (ADR-018
+// rule 5): the agent is not missing, and a process on another agent runs.
+func TestABlockOnABrokenDocumentBlocksItAsWritten(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	write(t, filepath.Join(home, "agents", "reviewer.toml"), "not toml =\n")
+	path := writeBlocks(t, filepath.Join(repo, ".agister"), "{ref: 'agent:reviewer', reason: Reviews are done by hand here}")
+
+	r := agister(t, home, repo, "check")
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "\nagent reviewer: toml: ") ||
+		!strings.Contains(r.stdout, "block agent reviewer: "+path+": Reviews are done by hand here\n") ||
+		strings.Contains(r.stdout+r.stderr, "in neither the repository's settings nor home's") || strings.Contains(r.stderr, "stops every command") {
+		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	runs := &newRuns{home: home}
+	runs.take(t)
+	if r := agister(t, home, repo, "run", "ask", "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitCompleted {
+		t.Fatalf("run ask: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if ran := runs.one(t); ran.record["agent"] != "assistant" || ran.first == nil {
+		t.Fatalf("the call did not run as assistant: %v", ran.record)
 	}
 }
 

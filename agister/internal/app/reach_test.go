@@ -327,6 +327,7 @@ func TestProblemsNoDocumentOwnsStopEveryCommand(t *testing.T) {
 		{name: "broken service settings", docs: map[definition.Kind]map[string]string{definition.KindService: {"service": "not toml ="}}, problem: "service service: "},
 		{name: "a file name that is not a name", docs: map[definition.Kind]map[string]string{definition.KindAgent: {"Not A Name": "x"}}, problem: `agent Not A Name: "Not A Name" is not a valid name`},
 		{name: "a directory that cannot be listed", listErr: map[definition.Kind]error{definition.KindPolicy: errors.New("permission denied")}, problem: "settings directory policies: cannot be listed: permission denied"},
+		{name: "blocks that cannot be listed", listErr: map[definition.Kind]error{definition.KindBlocks: errors.New("permission denied")}, problem: "blocks: cannot be listed: permission denied"},
 		{name: "a workflow named like a process", docs: sameName, problem: "workflow p: a process has the same name"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

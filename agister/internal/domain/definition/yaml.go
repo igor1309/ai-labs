@@ -1,6 +1,9 @@
 package definition
 
 import (
+	"bytes"
+	"errors"
+	"io"
 	"strconv"
 	"time"
 
@@ -22,6 +25,33 @@ func parseYAML(data []byte, p *problems) *yaml.Node {
 	var document yaml.Node
 	if err := yaml.Unmarshal(data, &document); err != nil {
 		p.add("", "%v", err)
+		return nil
+	}
+	if len(document.Content) == 0 {
+		p.add("", "empty document")
+		return nil
+	}
+	return document.Content[0]
+}
+
+// parseOneYAML reads data that must hold exactly one YAML document: a
+// second, even after an empty first, is a problem rather than unread.
+func parseOneYAML(data []byte, p *problems) *yaml.Node {
+	if !readable(data, p) {
+		return nil
+	}
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	var document yaml.Node
+	if err := decoder.Decode(&document); errors.Is(err, io.EOF) {
+		p.add("", "empty document")
+		return nil
+	} else if err != nil {
+		p.add("", "%v", err)
+		return nil
+	}
+	var next yaml.Node
+	if err := decoder.Decode(&next); !errors.Is(err, io.EOF) {
+		p.add("", "must hold exactly one YAML document")
 		return nil
 	}
 	if len(document.Content) == 0 {

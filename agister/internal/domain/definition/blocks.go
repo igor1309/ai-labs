@@ -46,7 +46,7 @@ type Blocks struct {
 func ParseBlocks(doc Document) (Blocks, error) {
 	p := &problems{}
 	blocks := Blocks{Source: doc.Source}
-	root := parseYAML(doc.Bytes, p)
+	root := parseOneYAML(doc.Bytes, p)
 	if root == nil {
 		return blocks, p.err("blocks")
 	}

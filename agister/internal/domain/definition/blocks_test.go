@@ -105,3 +105,26 @@ blocks:
 		}
 	}
 }
+
+// A blocks.yaml holds exactly one document: a second, even after an empty
+// first, is a problem, not a document left unread.
+func TestBlocksRejectMoreThanOneDocument(t *testing.T) {
+	t.Parallel()
+	for _, text := range []string{
+		"---\n---\nschema: agister.blocks/v1alpha1\nblocks:\n  - ref: agent:reviewer\n",
+		"schema: agister.blocks/v1alpha1\nblocks: []\n---\nschema: agister.blocks/v1alpha1\nblocks:\n  - ref: agent:reviewer\n",
+	} {
+		blocks, err := definition.ParseBlocks(doc(definition.KindBlocks, "blocks", text))
+		if err == nil || !strings.Contains(err.Error(), "must hold exactly one YAML document") {
+			t.Errorf("%q: %v", text, err)
+		}
+		if len(blocks.Blocks) != 0 {
+			t.Errorf("%q: blocks = %+v", text, blocks.Blocks)
+		}
+	}
+	for _, text := range []string{"", "# nothing\n"} {
+		if _, err := definition.ParseBlocks(doc(definition.KindBlocks, "blocks", text)); err == nil || !strings.Contains(err.Error(), "empty document") {
+			t.Errorf("%q: %v", text, err)
+		}
+	}
+}

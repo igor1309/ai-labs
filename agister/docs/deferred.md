@@ -122,3 +122,16 @@ Against trunk's merge-base (also covers #829 and #831):
 - **Done when:** the composition accepts a fake clock and a fake reaper,
   and any background worker it keeps is awaited through
   `t.Cleanup(Wait)`.
+
+## 9. Settings YAML files read only their first document
+
+- **Gap:** the shared `parseYAML` (`internal/domain/definition/yaml.go`)
+  reads the first YAML document and ignores the rest, so a process,
+  workflow or other YAML settings file with a second document drops it
+  silently. LAB-59 made `blocks.yaml` require exactly one document
+  (`parseOneYAML`, code_review `20261003T093630Z-b601a0`); the other kinds
+  still use `parseYAML`.
+- **Trigger:** the next change to YAML settings parsing, or a settings
+  file found with a second document.
+- **Done when:** every YAML settings kind rejects more than one document,
+  with a parser test per kind.
