@@ -1,9 +1,9 @@
 ---
-date: 2026-09-23
+date: 2026-10-03
 author: Igor Malyarov
 model: gpt-6
 name: Code review — architecture
-version: 0.0.3
+version: 0.0.4
 type: prompt
 ---
 
@@ -48,6 +48,7 @@ Go-specific interpretation
 * Consumer interfaces are declared by the consuming component itself (its type or use case), not in a shared file or package of interfaces. An interface required by more than one component is a finding, even when they need the same capability; one adapter satisfying several components' interfaces is fine. A contract a module offers is not a required interface only where a recorded decision makes it one (ADR-001 rule 15, the client contract, which its decorators implement).
 * Interface shape follows the consumer’s required capability; interface size follows naturally from that responsibility.
 * Constructors such as NewX(...) receive all required dependencies explicitly.
+* Package-level mutable state (a registry, cache, map or singleton that values reach without being given it) is a hidden collaborator and a finding, even when it looks like an implementation detail: instances share it implicitly and tests cannot isolate it. The composition root constructs it and passes it in.
 * main acts as the application composition root and connects module APIs.
 * Module construction functions act as local composition roots and hide internal wiring.
 * Database implementations, external clients, queues, storage, clocks, and similar infrastructure are connected through adapters implementing consumer-owned interfaces.
