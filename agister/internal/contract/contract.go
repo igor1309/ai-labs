@@ -388,6 +388,9 @@ type Run struct {
 	// The runtime's last stderr, when the node did not complete.
 	StderrTail string
 	Record     json.RawMessage // the full evidence record
+	// The directory its record and artifacts are kept in; an artifact's
+	// path is relative to it.
+	Dir string
 }
 
 // Result is a node's output, the same for every kind of node: a workflow

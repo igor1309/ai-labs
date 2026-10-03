@@ -66,7 +66,8 @@ Usage:
   agister workflow list
   agister workflow show <workflow>   its params, nodes, and each node's process as a call would see it
   agister run <process> [--param <name>=<value>]... [--agent <name>] [--timeout <d>] [--max-cost <usd>]
-                         [--continue <run-id>] [--json]   (--json: print the node result)
+                         [--continue <run-id>] [--json]   (--json: print the node result, with
+                                     its run_id and each artifact's path absolute)
                                      --continue resumes that run's session; for a process with a
                                      checkout, it carries the session's latest run's changes onto the same
                                      revision
@@ -500,7 +501,7 @@ func follow(ctx context.Context, client contract.Client, id string, after int, o
 		return 0, err
 	}
 	if opts.json {
-		_ = printJSON(env.Stdout, run.Result)
+		_ = printJSON(env.Stdout, printedResult(run))
 	} else if result := run.Result; result != nil && len(result.Output) > 0 {
 		var pretty any
 		_ = json.Unmarshal(result.Output, &pretty)
@@ -510,6 +511,26 @@ func follow(ctx context.Context, client contract.Client, id string, after int, o
 	}
 	summarize(env.Stderr, run)
 	return exitCode(run), nil
+}
+
+// printed is a node result as --json prints it: named by its run, each
+// artifact's path absolute. The stored record keeps the relative paths.
+type printed struct {
+	RunID string `json:"run_id"`
+	*contract.Result
+}
+
+func printedResult(run contract.Run) printed {
+	if run.Result == nil {
+		return printed{RunID: run.ID}
+	}
+	result := *run.Result
+	result.Artifacts = nil
+	for _, artifact := range run.Result.Artifacts {
+		artifact.Path = filepath.Join(run.Dir, artifact.Path)
+		result.Artifacts = append(result.Artifacts, artifact)
+	}
+	return printed{RunID: run.ID, Result: &result}
 }
 
 func exitCode(run contract.Run) int {
