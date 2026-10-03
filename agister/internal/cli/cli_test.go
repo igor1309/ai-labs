@@ -224,6 +224,17 @@ func TestJSONNamesTheRunAndGivesAbsoluteArtifactPaths(t *testing.T) {
 	}
 }
 
+// A run that finished without a result prints only its ID under --json
+// and exits as an internal failure.
+func TestJSONOfARunWithoutAResultPrintsOnlyItsID(t *testing.T) {
+	t.Parallel()
+	spy := &clientSpy{run: contract.Run{ID: "run-1", State: "finished"}}
+	r := run(context.Background(), spy, "run", "p", "--json", "--quiet")
+	if r.stdout != "{\n  \"run_id\": \"run-1\"\n}\n" || r.code != cli.ExitInternal {
+		t.Fatalf("result = %+v", r)
+	}
+}
+
 func TestResultSummary(t *testing.T) {
 	t.Parallel()
 	spy := &clientSpy{run: finished("completed", "")}
