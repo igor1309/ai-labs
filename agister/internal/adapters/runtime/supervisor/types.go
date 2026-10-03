@@ -52,9 +52,12 @@ const (
 
 // Runtime executes a CLI and reads its version.
 type Runtime struct {
+	// Starter starts the CLI's process; nil is Exec, the operating
+	// system's.
+	Starter Starter
 	// Timer starts a turn's timeout, the grace a group that was told to
-	// end has before it is killed, and the grace for reading stdout after
-	// the exit: the wait has passed when the channel it returns delivers,
-	// and stop releases it. Nil is the wall clock.
+	// end has before it is killed, the grace for reading stdout after the
+	// exit, and the version's timeout: the wait has passed when the channel
+	// it returns delivers, and stop releases it. Nil is the wall clock.
 	Timer func(wait time.Duration) (fired <-chan time.Time, stop func())
 }

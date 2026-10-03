@@ -165,7 +165,7 @@ func lastRunIn(t *testing.T, dir string) run {
 // node's run like any unfinished run: it ends their effects and finishes
 // them lost; the workflow run, unfinished and unowned, reads lost too.
 func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
-	home, repo := setup(t, "hang")
+	home, repo := setupBuilt(t, "hang")
 	binary := agisterBinary(t)
 	victim := exec.Command(binary, "--home", home, "run", "review_panel", "--param", "base=main", "--param", "architecture=a.txt", "--quiet")
 	victim.Dir = repo

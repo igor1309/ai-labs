@@ -13,6 +13,8 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 )
 
+// examplePiSettings is setup with the Pi example's settings: its agent
+// runs pi, which the in-process starter runs the fake by.
 func examplePiSettings(t *testing.T) (home, repo string) {
 	t.Helper()
 	home, repo = setup(t, "approve")
@@ -31,8 +33,6 @@ func examplePiSettings(t *testing.T) (home, repo string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	agent := filepath.Join(home, "agents", "pi-minimax.toml")
-	write(t, agent, read(t, agent)+"command = \""+runtimetest.Binary(t, "fakepi")+"\"\n")
 	return home, repo
 }
 
@@ -175,29 +175,37 @@ func piSessionsAreKeptUnder(t *testing.T, home, repo string) {
 
 // A project's .pi/settings.json, which every call trusts, may list a Pi
 // package that is not installed. Pi starts offline in a call, so it
-// installs nothing: npm, a spy on PATH, never runs, and .pi/npm is never
-// made.
+// installs nothing: npm, which the fake reports when it would run it,
+// never runs, and .pi/npm is never made.
 func TestPiInstallsNoPackageTheProjectLists(t *testing.T) {
 	home, repo := examplePiSettings(t)
 	allowHostReads(t, home, repo)
 	write(t, filepath.Join(repo, ".pi", "settings.json"), `{"packages": ["npm:@example/pi-tracer", {"source": "npm:pi-extras"}]}`)
-	spy := tempDir(t)
-	installs := filepath.Join(spy, "installs.log")
-	write(t, filepath.Join(spy, "npm"), "#!/bin/sh\necho \"$*\" >> '"+installs+"'\n")
-	if err := os.Chmod(filepath.Join(spy, "npm"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", spy+string(os.PathListSeparator)+os.Getenv("PATH"))
+	reports := make(chan runtimetest.Report)
+	var installs []string
+	read := make(chan struct{})
+	go func() {
+		defer close(read)
+		for report := range reports {
+			if strings.HasPrefix(report.Point, "npm install") {
+				installs = append(installs, report.Point)
+			}
+		}
+	}()
+	startThrough(t, home, runtimetest.InProcess{Reports: reports})
 
 	r := agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?", "--timeout", "30s")
+	// Every fake the call started has returned: none reports any more.
+	close(reports)
+	<-read
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	if args := lastRun(t, home).argv(); !slices.Contains(args, "--offline") {
 		t.Fatalf("Pi argv = %q", args)
 	}
-	if data, err := os.ReadFile(installs); err == nil || !os.IsNotExist(err) {
-		t.Fatalf("npm ran: %s (%v)", data, err)
+	if len(installs) != 0 {
+		t.Fatalf("npm ran: %q", installs)
 	}
 	if _, err := os.Stat(filepath.Join(repo, ".pi", "npm")); !os.IsNotExist(err) {
 		t.Fatalf(".pi/npm: %v", err)

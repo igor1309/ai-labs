@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -21,24 +20,26 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// The fakes this package builds are removed when its tests end.
-func TestMain(m *testing.M) { os.Exit(runtimetest.Run(m)) }
-
 var start = time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
 
 func request(prompt string) app.TurnRequest {
 	return app.TurnRequest{Prompt: prompt, Primitives: []string{"Read"}, Timeout: time.Minute, OutputSchema: json.RawMessage(`{"type":"object"}`)}
 }
 
-// The decorator must be substitutable for what it wraps.
+// fake is the command the in-process starter runs the fake Claude Code by.
+const fake = "claude"
+
+// The decorator must be substitutable for what it wraps. Its claim is not
+// the process: the fake runs in process.
 func TestDecoratorConformance(t *testing.T) {
 	log := slog.New(slog.NewJSONHandler(&bytes.Buffer{}, nil))
 	clock := systemtest.NewClock(start)
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {
-			return logging.Runner{Inner: composition.NewClaudeCode(command, supervisor.Runtime{Timer: clock.Timer}), Adapter: "claude-code", Log: log, Clock: clock}
+			return logging.Runner{Inner: composition.NewClaudeCode(command, supervisor.Runtime{Starter: runtimetest.InProcess{}, Timer: clock.Timer}), Adapter: "claude-code", Log: log, Clock: clock}
 		},
-		Fake:      runtimetest.Binary(t, "fakeclaude"),
+		Fake:      fake,
+		InProcess: true,
 		Contract:  claudecode.Contract,
 		ToolCalls: true,
 		Request:   request,
@@ -50,7 +51,7 @@ func TestLogsAreCorrelatedAndOmitPrompts(t *testing.T) {
 	var buffer bytes.Buffer
 	log := slog.New(logging.Handler{Handler: slog.NewJSONHandler(&buffer, &slog.HandlerOptions{Level: slog.LevelInfo})})
 	clock := systemtest.NewClock(start)
-	runner := logging.Runner{Inner: composition.NewClaudeCode(runtimetest.Binary(t, "fakeclaude"), supervisor.Runtime{Timer: clock.Timer}), Adapter: "claude-code", Log: log, Clock: clock}
+	runner := logging.Runner{Inner: composition.NewClaudeCode(fake, supervisor.Runtime{Starter: runtimetest.InProcess{}, Timer: clock.Timer}), Adapter: "claude-code", Log: log, Clock: clock}
 	ctx := app.WithCorrelation(context.Background(), "run_id", "run-1", "process", "p")
 	runner.RunTurn(ctx, request("secret prompt SCENARIO:approve"), &runtimetest.Recorder{})
 

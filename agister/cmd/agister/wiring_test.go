@@ -20,6 +20,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/examples"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
@@ -520,5 +521,65 @@ func TestTheProcessWorktreeCoordinatorLocksUnderTheHome(t *testing.T) {
 	}
 	if info, err := entries[0].Info(); err != nil || !info.Mode().IsRegular() || info.Size() != 0 {
 		t.Fatalf("lock file %s: %v, %v", entries[0].Name(), info, err)
+	}
+}
+
+// started is a starter that keeps the command of each process it is asked
+// to start, with its arguments, and starts it in process.
+type started struct {
+	runtimetest.InProcess
+
+	mu       sync.Mutex
+	commands [][]string
+}
+
+func (s *started) Start(command supervisor.Command) (supervisor.Process, error) {
+	s.mu.Lock()
+	s.commands = append(s.commands, append([]string{command.Name}, command.Args...))
+	s.mu.Unlock()
+	return s.InProcess.Start(command)
+}
+
+// The process's starter is the operating system's, and a composition
+// starts its runtimes through the one it holds: a call over a starter of
+// the test's asks it for the agent's runtime, its version and its turn.
+func TestTheCompositionStartsItsRuntimesThroughItsStarter(t *testing.T) {
+	home, repo := setup(t, "approve")
+	config := cli.Config{Home: home, Cwd: repo}
+	composed := process(config)
+	if composed.starter != (supervisor.Exec{}) {
+		t.Fatalf("the process starts its runtimes with a %T", composed.starter)
+	}
+	starter := &started{}
+	composed.starter = starter
+	client, _, err := composed.wire(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := client.Submit(context.Background(), contract.CallRequest{
+		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "1m", Cwd: repo,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-composed.hosted.Done(id)
+	if record := lastRun(t, home).record; record["result"].(map[string]any)["status"] != "completed" {
+		t.Fatalf("record = %v", record)
+	}
+	starter.mu.Lock()
+	defer starter.mu.Unlock()
+	var version, turn bool
+	for _, command := range starter.commands {
+		if command[0] != "claude" {
+			t.Fatalf("started %q, not the agent's runtime", command)
+		}
+		if len(command) == 2 && command[1] == "--version" {
+			version = true
+		} else {
+			turn = true
+		}
+	}
+	if !version || !turn {
+		t.Fatalf("started %q, want the runtime's version and its turn", starter.commands)
 	}
 }

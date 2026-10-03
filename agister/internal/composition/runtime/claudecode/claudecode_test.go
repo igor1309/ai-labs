@@ -14,17 +14,8 @@ import (
 	composition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
 )
 
-// The fakes this package builds are removed when its tests end.
+// The fake this package builds is removed when its tests end.
 func TestMain(m *testing.M) { os.Exit(runtimetest.Run(m)) }
-
-// stillSupervisor is the real supervisor with its waits on a manual clock
-// that nothing advances: no turn or lookup times out unless a test
-// advances a clock of its own, and no grace passes.
-func stillSupervisor() supervisor.Runtime {
-	return supervisor.Runtime{Timer: systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}
-}
-
-const session = "5145d89d-470e-4b56-a78c-da035d5de49b"
 
 func request(prompt string) app.TurnRequest {
 	return app.TurnRequest{
@@ -38,6 +29,8 @@ func request(prompt string) app.TurnRequest {
 	}
 }
 
+// Contract test: the Claude Code adapter against its built fake, a real
+// process under the real supervisor.
 func TestConformance(t *testing.T) {
 	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	runtimetest.Conformance(t, runtimetest.Subject{

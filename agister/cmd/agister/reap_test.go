@@ -152,7 +152,7 @@ func TestEndRecordedEndsEveryRecordedEffect(t *testing.T) {
 // A run killed with SIGKILL leaves its runtime and its checkout behind; the
 // next call that starts reaps them and finishes the run as lost.
 func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
-	home, repo := setup(t, "hang")
+	home, repo := setupBuilt(t, "hang")
 	binary := agisterBinary(t)
 	victim := exec.Command(binary, "--home", home, "run", "adversarial_review", "--param", "base=main", "--quiet", "--timeout", "30s")
 	victim.Dir = repo
@@ -258,7 +258,7 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 // the next call that starts reaps them with the checkout and finishes the
 // run as lost.
 func TestNextCallReapsAKilledRunsVerifyCommand(t *testing.T) {
-	home, repo := setup(t, "approve")
+	home, repo := setupBuilt(t, "approve")
 	groupFile := filepath.Join(tempDir(t), "group")
 	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))
 	write(t, filepath.Join(home, "processes", "verified.yaml"), strings.Replace(shipped, "name: adversarial_review", "name: verified", 1)+`

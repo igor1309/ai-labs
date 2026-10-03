@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -26,7 +27,8 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 )
 
-// The fakes and the CLI this package builds are removed when its tests end.
+// The CLI this package builds, and the fake the tests that kill it build,
+// are removed when its tests end.
 func TestMain(m *testing.M) { os.Exit(runtimetest.Run(m)) }
 
 // agisterBinary builds this CLI once per test binary and returns its path.
@@ -36,8 +38,8 @@ func agisterBinary(t testing.TB) string {
 }
 
 // End-to-end wiring checks: the real composition root, real files and git,
-// fake runtime binaries. Rules are tested below this level; these tests
-// prove the pieces are connected.
+// fake runtimes run in process. Rules are tested below this level; these
+// tests prove the pieces are connected.
 
 type result struct {
 	code           int
@@ -61,8 +63,38 @@ func agisterReading(t *testing.T, stdin io.Reader, home, cwd string, args ...str
 	code := cli.Run(context.Background(), append([]string{"--home", home}, args...), cli.IO{
 		Stdin: stdin, Stdout: &stdout, Stderr: &stderr, Cwd: cwd,
 		Getenv: func(string) string { return "" },
-	}, compose)
+	}, composeInProcess)
 	return result{code, stdout.String(), stderr.String()}
+}
+
+// starters are the starters tests gave the compositions over their homes
+// (startThrough), by home.
+var starters sync.Map
+
+// startThrough makes every composition over home in this test start its
+// runtimes through starter: fakes with an environment, or reports, of the
+// test's own.
+func startThrough(t testing.TB, home string, starter runtimetest.InProcess) {
+	starters.Store(home, starter)
+	t.Cleanup(func() { starters.Delete(home) })
+}
+
+// inProcess is the process's composition with fakes for its runtimes, run
+// in process: no runtime is started as a process, and none is looked up
+// on PATH.
+func inProcess(config cli.Config) composition {
+	c := process(config)
+	c.starter = runtimetest.InProcess{}
+	if starter, ok := starters.Load(config.Home); ok {
+		c.starter = starter.(runtimetest.InProcess)
+	}
+	return c
+}
+
+// composeInProcess is compose, over inProcess.
+func composeInProcess(config cli.Config) (contract.Client, error) {
+	client, _, err := inProcess(config).wire(config)
+	return client, err
 }
 
 // timer is the shape of the composition's timers.
@@ -84,16 +116,16 @@ func timeoutOn(clock *systemtest.Clock, timeout time.Duration) timer {
 // unpolledOn is the process's client, observing the runs it hosts as
 // they append: it fails the test if it polls one.
 func unpolledOn(t testing.TB, config cli.Config) (contract.Client, error) {
-	composed := process(config)
+	composed := inProcess(config)
 	composed.poll = unpolled(t)
 	client, _, err := composed.wire(config)
 	return client, err
 }
 
-// on is the process's composition with its turns and commands waiting on
-// timer.
+// on is the process's composition, its runtimes in process, with its turns
+// and commands waiting on timer.
 func on(config cli.Config, timer timer) composition {
-	c := process(config)
+	c := inProcess(config)
 	c.timer = timer
 	return c
 }
@@ -147,10 +179,21 @@ func repository(t *testing.T, scenario string) string {
 	return dir
 }
 
-// setup: example settings with agents pointed at the fakes.
+// setup: example settings whose agents run claude, which the in-process
+// starter runs the fake by.
 func setup(t *testing.T, scenario string) (home, repo string) {
+	return setupOn(t, scenario, "claude")
+}
+
+// setupBuilt is setup with the agents pointed at the built fake, for the
+// tests that kill a real CLI: its runtime is a real process.
+func setupBuilt(t *testing.T, scenario string) (home, repo string) {
+	return setupOn(t, scenario, runtimetest.Binary(t, "fakeclaude"))
+}
+
+// setupOn: example settings with agents whose command is claude.
+func setupOn(t *testing.T, scenario, claude string) (home, repo string) {
 	home, repo = tempDir(t), repository(t, scenario)
-	claude := runtimetest.Binary(t, "fakeclaude")
 	if r := agisterInput(t, "yes\n", home, repo, "init"); r.code != 0 {
 		t.Fatalf("init: %d %s", r.code, r.stderr)
 	}
@@ -369,7 +412,7 @@ primitives:
 	write(t, filepath.Join(home, "agents", "writer.toml"), `schema = "agister.agent/v1alpha1"
 name = "writer"
 runtime = "docs-runtime"
-command = "`+runtimetest.Binary(t, "fakeclaude")+`"
+command = "claude"
 `)
 	write(t, filepath.Join(home, "schemas", "verdict.json"), `{"type":"object","required":["verdict"],"properties":{"verdict":{"enum":["approve","request_changes"]}}}`)
 	write(t, filepath.Join(home, "processes", "check_docs.yaml"), `schema: agister.process/v1alpha1
@@ -815,9 +858,9 @@ func TestVerdictIsOutputNotStatus(t *testing.T) {
 func TestContinuationEndToEnd(t *testing.T) {
 	// The fake runtime keeps its sessions' costs here: each turn costs
 	// $0.0123, and the result reports the session's total.
-	t.Setenv("FAKE_CLAUDE_CONFIG_DIR", tempDir(t))
 	home, repo := setup(t, "approve")
-	client, err := compose(cli.Config{Home: home})
+	startThrough(t, home, runtimetest.InProcess{Env: []string{"FAKE_CLAUDE_CONFIG_DIR=" + tempDir(t)}})
+	client, err := composeInProcess(cli.Config{Home: home})
 	if err != nil {
 		t.Fatal(err)
 	}

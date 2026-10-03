@@ -23,14 +23,23 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 )
 
-// The fakes this package builds are removed when its tests end.
+// The fake this package builds is removed when its tests end.
 func TestMain(m *testing.M) { os.Exit(runtimetest.Run(m)) }
 
-// stillSupervisor is the real supervisor with its waits on a manual clock
-// that nothing advances: no turn or lookup times out unless a test
-// advances a clock of its own, and no grace passes.
+// fake is the command the in-process starter runs the fake OpenCode by.
+const fake = "opencode"
+
+// stillSupervisor is the real supervisor over the fakes run in process,
+// with its waits on a manual clock that nothing advances: no turn or
+// lookup times out unless a test advances a clock of its own, and no grace
+// passes.
 func stillSupervisor() supervisor.Runtime {
-	return supervisor.Runtime{Timer: systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}
+	return stillOver(runtimetest.InProcess{})
+}
+
+// stillOver is stillSupervisor starting through starter.
+func stillOver(starter runtimetest.InProcess) supervisor.Runtime {
+	return supervisor.Runtime{Starter: starter, Timer: systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}
 }
 
 const fresh = "ses_f06fe64c3ffeLyBkwYK7e1GfJs"
@@ -48,9 +57,11 @@ func request(prompt string) app.TurnRequest {
 }
 
 func runner(t *testing.T) *opencode.Runner {
-	return &opencode.Runner{Transport: composition.OpenCodeTransport{Supervisor: stillSupervisor()}, Command: runtimetest.Binary(t, "fakeopencode")}
+	return &opencode.Runner{Transport: composition.OpenCodeTransport{Supervisor: stillSupervisor()}, Command: fake}
 }
 
+// Contract test: the OpenCode adapter against its built fake, a real
+// process under the real supervisor.
 func TestConformance(t *testing.T) {
 	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	runtimetest.Conformance(t, runtimetest.Subject{
@@ -120,9 +131,12 @@ func TestATurnRunsAsItsOwnGeneratedAgent(t *testing.T) {
 
 // A turn's inline config replaces one the environment already holds.
 func TestTheConfigReplacesAnInheritedOne(t *testing.T) {
-	t.Setenv(opencode.ConfigVariable, `{"agent":{"build":{"permission":{"*":"allow"}}}}`)
+	inherited := runner(t)
+	inherited.Transport = composition.OpenCodeTransport{Supervisor: stillOver(runtimetest.InProcess{
+		Env: []string{opencode.ConfigVariable + `={"agent":{"build":{"permission":{"*":"allow"}}}}`},
+	})}
 	sink := &runtimetest.Recorder{}
-	if turn := composition.AdaptOpenCode(runner(t)).RunTurn(context.Background(), request("SCENARIO:approve"), sink); string(turn.Status) != string(run.Completed) {
+	if turn := composition.AdaptOpenCode(inherited).RunTurn(context.Background(), request("SCENARIO:approve"), sink); string(turn.Status) != string(run.Completed) {
 		t.Fatalf("turn = %+v", turn)
 	}
 	if e := echoed(t, sink); strings.Contains(e.Config, "build") || !strings.Contains(e.Config, e.Argv[5]) {
@@ -181,7 +195,7 @@ func TestRejectsWhatItCannotHonour(t *testing.T) {
 }
 
 func TestIdentity(t *testing.T) {
-	identity, err := opencode.New(runtimetest.Binary(t, "fakeopencode"), composition.OpenCodeTransport{Supervisor: stillSupervisor()}).Identity(context.Background())
+	identity, err := opencode.New(fake, composition.OpenCodeTransport{Supervisor: stillSupervisor()}).Identity(context.Background())
 	want := opencode.RuntimeIdentity{Contract: "opencode/1", Version: "1.18.33", Resume: true, ResumeWhereItRan: true, SkillTools: []string{"skill"}}
 	if err != nil || !reflect.DeepEqual(identity, want) {
 		t.Fatalf("identity = %+v, %v", identity, err)

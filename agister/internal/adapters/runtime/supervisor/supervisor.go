@@ -5,11 +5,12 @@ package supervisor
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,6 +22,8 @@ import (
 const (
 	defaultKillGrace = 5 * time.Second
 	stderrTailBytes  = 4096
+	// versionTimeout is how long a runtime may take to print its version.
+	versionTimeout = 20 * time.Second
 )
 
 type Spec struct {
@@ -59,12 +62,12 @@ type Sink interface {
 	Raw(line string)
 }
 
-// Run starts the process, feeds stdin, passes each stdout line to onLine and
-// the raw sink, and returns once the process has exited. Whatever the
-// process leaves running in its group is killed then, and stdout is read
-// for at most the grace period after the exit, so a descendant that keeps
-// it open cannot hold the call. Its timeout and both graces are on
-// r.Timer.
+// Run starts the process on r.Starter, feeds stdin, passes each stdout line
+// to onLine and the raw sink, and returns once the process has exited.
+// Whatever the process leaves running in its group is killed then, and
+// stdout is read for at most the grace period after the exit, so a
+// descendant that keeps it open cannot hold the call. Its timeout and both
+// graces are on r.Timer.
 func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(string)) Evidence {
 	// The watcher and the reader both report; the sink sees one at a time.
 	sink := &serialSink{inner: events}
@@ -74,34 +77,20 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 		grace = defaultKillGrace
 	}
 
-	// A plain pipe, not StdoutPipe: Wait then returns when the process
-	// exits, not when every holder of stdout has closed it.
-	stdout, stdoutWriter, err := os.Pipe()
-	if err != nil {
-		evidence.SpawnError = err.Error()
-		return evidence
-	}
-	defer stdout.Close()
-	command := exec.Command(spec.Command, spec.Args...)
-	command.Dir = spec.Dir
-	if len(spec.Env) > 0 {
-		command.Env = append(command.Environ(), spec.Env...)
-	}
-	command.Stdin = strings.NewReader(spec.Stdin)
-	command.Stdout = stdoutWriter
 	stderr := &tail{limit: stderrTailBytes}
-	command.Stderr = stderr
-	command.WaitDelay = grace // bounds stdin and stderr copying after the exit
-	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-
-	err = command.Start()
-	stdoutWriter.Close()
+	process, err := starter(r.Starter).Start(Command{
+		Name: spec.Command, Args: spec.Args, Dir: spec.Dir, Env: spec.Env,
+		Stdin: strings.NewReader(spec.Stdin), Stderr: stderr,
+		WaitDelay: grace, // bounds stdin and stderr copying after the exit
+	})
 	if err != nil {
 		evidence.SpawnError = err.Error()
 		sink.Event(SourceProcess, "SPAWN_FAILED", map[string]any{"error": err.Error()})
 		return evidence
 	}
-	pid := command.Process.Pid
+	stdout := process.Stdout()
+	defer stdout.Close()
+	pid := process.Group()
 	// Recorded before anything else: from here on the group can outlive us.
 	// Looking up the token takes a moment, so the group is reported first;
 	// a kill in between leaves a record that reaping refuses to act on
@@ -110,14 +99,14 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 	// still ours, and nothing may run that no record could lead back to.
 	recorded := sink.ProcessStarted(Ref(pid, ""))
 	if recorded == nil {
-		if token, err := Token(ctx, pid); err == nil {
+		if token, err := process.Token(ctx); err == nil {
 			recorded = sink.ProcessStarted(Ref(pid, token))
 		}
 	}
 	sink.Event(SourceProcess, "PROCESS_STARTED", map[string]any{"pid": pid, "command": spec.Command, "args": spec.Args})
 	if recorded != nil {
 		evidence.RecordError = recorded.Error()
-		_ = syscall.Kill(-pid, syscall.SIGKILL)
+		_ = process.Signal(syscall.SIGKILL)
 		sink.Event(SourceAgister, "PROCESS_RECORD_FAILED", map[string]any{"group": pid, "error": recorded.Error(), "killed": true})
 	}
 
@@ -135,7 +124,7 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 			if reaped {
 				return
 			}
-			_ = syscall.Kill(-pid, syscall.SIGTERM)
+			_ = process.Signal(syscall.SIGTERM)
 			var killed <-chan time.Time
 			killed, stopKill = r.timer(grace)
 			go func() {
@@ -145,7 +134,7 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 					mu.Lock()
 					defer mu.Unlock()
 					if !reaped {
-						_ = syscall.Kill(-pid, syscall.SIGKILL)
+						_ = process.Signal(syscall.SIGKILL)
 					}
 				}
 			}()
@@ -189,7 +178,7 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 		}
 	}()
 
-	waitErr := command.Wait()
+	exit := process.Wait()
 	close(exited)
 
 	mu.Lock()
@@ -197,7 +186,7 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 	stopKill()
 	// The group outlives its leader while members remain, and its ID is
 	// not reused while it exists; an empty group fails with ESRCH.
-	leftovers := syscall.Kill(-pid, syscall.SIGKILL) == nil
+	leftovers := process.Signal(syscall.SIGKILL) == nil
 	mu.Unlock()
 	if leftovers {
 		sink.Event(SourceProcess, "LEFTOVER_PROCESSES_KILLED", map[string]any{"group": pid})
@@ -216,32 +205,81 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 
 	mu.Lock()
 	defer mu.Unlock()
-	exit := &Exit{}
-	if state := command.ProcessState; state != nil {
-		if status, ok := state.Sys().(syscall.WaitStatus); ok && status.Signaled() {
-			exit.Signal = status.Signal().String()
-		} else {
-			code := state.ExitCode()
-			exit.Code = &code
-		}
-	} else if waitErr != nil {
-		exit.Signal = waitErr.Error()
-	}
-	evidence.Exit = exit
+	evidence.Exit = &exit
 	evidence.StderrTail, evidence.StderrOmitted = stderr.kept()
 	sink.Event(SourceProcess, "PROCESS_EXITED", map[string]any{"code": exit.Code, "signal": exit.Signal})
 	return evidence
 }
 
-// Version runs `<command> --version` and returns its output.
-func (Runtime) Version(ctx context.Context, command string) (string, error) {
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
-	defer cancel()
-	out, err := exec.CommandContext(ctx, command, "--version").Output()
+// Version runs `<command> --version` on r.Starter and returns its output.
+// Its group is killed when ctx ends or versionTimeout passes on r.Timer.
+func (r Runtime) Version(ctx context.Context, command string) (string, error) {
+	process, err := starter(r.Starter).Start(Command{Name: command, Args: []string{"--version"}, Stderr: io.Discard})
 	if err != nil {
 		return "", err
 	}
-	return strings.TrimSpace(string(out)), nil
+	stdout := process.Stdout()
+	defer stdout.Close()
+	var out bytes.Buffer
+	read := make(chan struct{})
+	go func() {
+		defer close(read)
+		_, _ = io.Copy(&out, stdout)
+	}()
+
+	// The group is killed only while it is known to exist: once the
+	// process has been waited for, its group ID may be reused.
+	var mu sync.Mutex
+	reaped := false
+	var ended error
+	exited, watched := make(chan struct{}), make(chan struct{})
+	go func() {
+		defer close(watched)
+		late, stop := r.timer(versionTimeout)
+		defer stop()
+		select {
+		case <-exited:
+			return
+		case <-late:
+			ended = fmt.Errorf("%s --version did not end within %s", command, versionTimeout)
+		case <-ctx.Done():
+			ended = ctx.Err()
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		if !reaped {
+			_ = process.Signal(syscall.SIGKILL)
+		}
+	}()
+	exit := process.Wait()
+	mu.Lock()
+	reaped = true
+	mu.Unlock()
+	close(exited)
+	<-watched
+	if ended != nil {
+		// A descendant that outlived the kill may hold stdout: the read
+		// ends here, not when it lets go.
+		stdout.Close()
+	}
+	<-read
+	switch {
+	case ended != nil:
+		return "", ended
+	case exit.Signal != "":
+		return "", fmt.Errorf("signal: %s", exit.Signal)
+	case exit.Code == nil || *exit.Code != 0:
+		return "", fmt.Errorf("exit status %d", code(exit))
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+// code is the code a process exited with, or -1 when it has none.
+func code(exit Exit) int {
+	if exit.Code == nil {
+		return -1
+	}
+	return *exit.Code
 }
 
 // timer starts wait on r.Timer, or on the wall clock.

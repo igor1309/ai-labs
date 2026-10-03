@@ -1,5 +1,6 @@
-// Package runtimetest provides fake runtime binaries and the conformance
-// suite every TurnRunner (and every decorator of one) must pass.
+// Package runtimetest provides the fake runtimes, built as binaries
+// (Binary) or run in process (InProcess), and the conformance suite every
+// TurnRunner (and every decorator of one) must pass.
 package runtimetest
 
 import (
@@ -30,11 +31,13 @@ var (
 )
 
 // Binary builds a fake runtime ("fakeclaude", "fakecodex", "fakepi" or
-// "fakeopencode") once per test binary and returns its path.
+// "fakeopencode") once per test binary and returns its path. Only a
+// contract test of the real process builds one; every other test runs the
+// fake through InProcess.
 func Binary(t testing.TB, name string) string {
 	t.Helper()
 	_, file, _, _ := runtime.Caller(0)
-	return Build(t, name, filepath.Dir(file), "./"+name)
+	return Build(t, name, filepath.Dir(file), "./"+name+"/cmd")
 }
 
 // Build builds target from dir as name, once per test binary, and returns
@@ -169,7 +172,8 @@ const hangBound = 20 * time.Second
 
 // Watchdog guards a turn against a hang: once its process is on record,
 // a group still there after hangBound is killed and the test fails, so the
-// runner returns and the test ends instead of hanging.
+// runner returns and the test ends instead of hanging. It guards a real
+// process only: a fake run in process has no group to kill.
 func Watchdog(t *testing.T) func(ref string) {
 	return func(ref string) {
 		group, _, err := supervisor.ParseRef(ref)
@@ -205,8 +209,13 @@ func (r *Recorder) Kinds() []string {
 type Subject struct {
 	// New builds the runner for a runtime command.
 	New func(command string) app.TurnRunner
-	// Fake is the fake binary's path.
+	// Fake is the command that starts the fake: the built binary's path,
+	// or the name InProcess runs it by.
 	Fake string
+	// InProcess is whether the runner starts Fake through InProcess, not
+	// as a process. The suite then starts no watchdog: a hang is caught by
+	// the test binary's -timeout.
+	InProcess bool
 	// Contract the runner must report.
 	Contract string
 	// ToolCalls is whether the runner must report the agent's tool calls,
@@ -232,10 +241,17 @@ type Clock interface {
 // and raw output passthrough.
 //
 // Timer rule: a turn times out only when the suite advances the subject's
-// manual clock past its timeout; a real timer only guards against a hang
-// (the watchdog), and no bound exceeds a minute. Anything that must end
-// some other way is event-driven, so machine load cannot flip an outcome.
+// manual clock past its timeout; a real timer only guards a real process
+// against a hang (the watchdog), and no bound exceeds a minute. Anything
+// that must end some other way is event-driven, so machine load cannot
+// flip an outcome.
 func Conformance(t *testing.T, subject Subject) {
+	watchdog := func(t *testing.T) func(ref string) {
+		if subject.InProcess {
+			return nil
+		}
+		return Watchdog(t)
+	}
 	turn := func(t *testing.T, prompt string, mutate func(*app.TurnRequest), ctx context.Context) (run.Turn, *Recorder) {
 		request := subject.Request(prompt)
 		if mutate != nil {
@@ -344,7 +360,7 @@ func Conformance(t *testing.T, subject Subject) {
 		const timeout = 17 * time.Minute
 		request := subject.Request("SCENARIO:hang")
 		request.Timeout = timeout
-		sink := &Recorder{OnProcess: Watchdog(t)}
+		sink := &Recorder{OnProcess: watchdog(t)}
 		done := make(chan run.Turn, 1)
 		go func() { done <- subject.New(subject.Fake).RunTurn(context.Background(), request, sink) }()
 		subject.Clock.Started(timeout)
@@ -365,7 +381,7 @@ func Conformance(t *testing.T, subject Subject) {
 		// timeout is on the manual clock, which nothing advances: it never
 		// races the cancel.
 		request := subject.Request("SCENARIO:hang")
-		sink := &Recorder{OnProcess: Watchdog(t), OnEvent: func(kind string) {
+		sink := &Recorder{OnProcess: watchdog(t), OnEvent: func(kind string) {
 			if kind == "PROCESS_STARTED" {
 				cancel()
 			}

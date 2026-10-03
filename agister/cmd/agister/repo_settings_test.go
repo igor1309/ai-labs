@@ -264,8 +264,8 @@ func recordsStaleLimits(t *testing.T, record map[string]any) {
 }
 
 // onFakeRuntimes is this repository's root, and a mirror of it (see mirror
-// and fixVerify) with an initialized Agister home, where the claude and
-// codex that run are fakes.
+// and fixVerify) with an initialized Agister home, where the claude, codex
+// and pi that run are fakes, in process.
 func onFakeRuntimes(t *testing.T) (root, repo, home string) {
 	t.Helper()
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
@@ -273,27 +273,15 @@ func onFakeRuntimes(t *testing.T) (root, repo, home string) {
 		t.Fatal(err)
 	}
 
-	// The fakes answer as claude, codex and pi, first on PATH, each with an
-	// output from the schema it is given, and report their default versions,
-	// which the mappings verify (claude-code 2.1.283, codex 0.158.0, pi
-	// 0.85.1). No real runtime ever runs.
-	bin := tempDir(t)
-	for name, fake := range map[string]string{"claude": "fakeclaude", "codex": "fakecodex", "pi": "fakepi"} {
-		if err := os.Symlink(runtimetest.Binary(t, fake), filepath.Join(bin, name)); err != nil {
-			t.Fatal(err)
-		}
-	}
-	// ccusage fails: Codex turns cost unknown, and the real one never runs.
-	if err := os.WriteFile(filepath.Join(bin, "ccusage"), []byte("#!/bin/sh\nexit 1\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-	t.Setenv("FAKE_OUTPUT", "schema")
-	t.Setenv("FAKE_VERSION", "")
-
 	repo = mirror(t, root)
 	fixVerify(t, root, repo)
 	home = filepath.Join(tempDir(t), "home")
+	// The fakes answer as claude, codex and pi, each with an output from
+	// the schema it is given, and report their default versions, which the
+	// mappings verify (claude-code 2.1.283, codex 0.158.0, pi 0.85.1). No
+	// real runtime ever runs, and no ccusage: the starter has none, so
+	// Codex turns cost unknown.
+	startThrough(t, home, runtimetest.InProcess{Env: []string{"FAKE_OUTPUT=schema"}})
 	if r := agisterInput(t, "yes\n", home, tempDir(t), "init"); r.code != 0 {
 		t.Fatalf("init: %d %s", r.code, r.stderr)
 	}

@@ -115,20 +115,24 @@ func wire(config cli.Config) (contract.Client, *app.BackgroundReaper, error) {
 
 // process is the composition of the process: its worktree coordinator
 // keeps the lock files other processes take turns through under the home,
-// and every wait is on the wall clock.
+// its runtimes are started by the operating system, and every wait is on
+// the wall clock.
 func process(config cli.Config) composition {
 	worktrees := git.NewWorktrees(filepath.Join(config.Home, "locks", "worktrees"))
 	worktrees.Clock, worktrees.Timer = system.Clock{}, system.Timer
-	return composition{worktrees: worktrees, timer: system.Timer, poll: system.Timer, hosted: app.NewHosted()}
+	return composition{worktrees: worktrees, starter: supervisor.Exec{}, timer: system.Timer, poll: system.Timer, hosted: app.NewHosted()}
 }
 
 // composition is what one process wires its client over: the one worktree
 // coordinator every adapter that changes a repository's worktrees takes
-// its turn in, the timers its waits start on and the calls it hosts. Tests
-// wire over a coordinator and timers they hold, and wait on the hosted
-// calls' Done.
+// its turn in, the starter of its runtimes, the timers its waits start on
+// and the calls it hosts. Tests wire over a coordinator, a starter and
+// timers they hold, and wait on the hosted calls' Done.
 type composition struct {
 	worktrees *git.Worktrees
+	// starter starts the runtimes' processes, and what a runtime's adapter
+	// runs beside it.
+	starter supervisor.Starter
 	// hosted holds the calls running in this process.
 	hosted *app.Hosted
 	// timer starts the waits of turns and commands: their timeouts,
@@ -179,9 +183,11 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		projectRoot = filepath.Dir(local.Dir)
 	}
 	evidence := fsruns.Store{Dir: filepath.Join(config.Home, "runs")}
-	// Turns and commands wait on the composition's timer.
-	processes := supervisor.Runtime{Timer: c.timer}
-	commands := supervisor.Commands{Timer: c.timer}
+	// Turns and commands wait on the composition's timer. A runtime starts
+	// through the composition's starter; a setup or verification command is
+	// always the operating system's.
+	processes := supervisor.Runtime{Starter: c.starter, Timer: c.timer}
+	commands := supervisor.Commands{Starter: supervisor.Exec{}, Timer: c.timer}
 	runtimes := runtime.Registry{
 		"claude-code": func(command string) app.TurnRunner {
 			return logging.Runner{Inner: runtimecomposition.NewClaudeCode(command, processes), Adapter: "claude-code", Log: log, Clock: system.Clock{}}

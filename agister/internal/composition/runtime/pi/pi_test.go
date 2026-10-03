@@ -22,14 +22,23 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 )
 
-// The fakes this package builds are removed when its tests end.
+// The fake this package builds is removed when its tests end.
 func TestMain(m *testing.M) { os.Exit(runtimetest.Run(m)) }
 
-// stillSupervisor is the real supervisor with its waits on a manual clock
-// that nothing advances: no turn or lookup times out unless a test
-// advances a clock of its own, and no grace passes.
+// fake is the command the in-process starter runs the fake Pi by.
+const fake = "pi"
+
+// stillSupervisor is the real supervisor over the fakes run in process,
+// with its waits on a manual clock that nothing advances: no turn or
+// lookup times out unless a test advances a clock of its own, and no grace
+// passes.
 func stillSupervisor() supervisor.Runtime {
-	return supervisor.Runtime{Timer: systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}
+	return stillOver(runtimetest.InProcess{})
+}
+
+// stillOver is stillSupervisor starting through starter.
+func stillOver(starter runtimetest.InProcess) supervisor.Runtime {
+	return supervisor.Runtime{Starter: starter, Timer: systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}
 }
 
 const fresh = "3b0c9a52-6f1e-4d8a-9c47-0e2f5d8b1a63"
@@ -62,6 +71,9 @@ func session(t *testing.T, root, id, cwd string) {
 
 // The suite's resume turn resumes a session that ran in the request's
 // working directory, kept as a fresh turn keeps it.
+//
+// Contract test: the Pi adapter against its built fake, a real process
+// under the real supervisor.
 func TestConformance(t *testing.T) {
 	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	root, cwd := t.TempDir(), t.TempDir()
@@ -104,7 +116,7 @@ func TestRefusesATurnThatCannotReadASkill(t *testing.T) {
 	r := request("x")
 	r.Primitives = []string{"grep"}
 	sink := &runtimetest.Recorder{}
-	turn := composition.AdaptPi((&pi.Runner{Transport: composition.PiTransport{Supervisor: stillSupervisor()}, Command: runtimetest.Binary(t, "fakepi"), Sessions: root})).RunTurn(context.Background(), r, sink)
+	turn := composition.AdaptPi((&pi.Runner{Transport: composition.PiTransport{Supervisor: stillSupervisor()}, Command: fake, Sessions: root})).RunTurn(context.Background(), r, sink)
 	if string(turn.Status) != string(run.Failed) || string(turn.Error.Class) != string(run.ClassInternal) || len(sink.Processes) != 0 {
 		t.Fatalf("turn = %+v, processes %v", turn, sink.Processes)
 	}
@@ -145,7 +157,7 @@ func TestRejectsWhatItCannotHonour(t *testing.T) {
 	r = request("x")
 	r.MaxCostUSD = &limit
 	sink := &runtimetest.Recorder{}
-	turn := composition.AdaptPi((&pi.Runner{Transport: composition.PiTransport{Supervisor: stillSupervisor()}, Command: runtimetest.Binary(t, "fakepi"), Sessions: t.TempDir()})).RunTurn(context.Background(), r, sink)
+	turn := composition.AdaptPi((&pi.Runner{Transport: composition.PiTransport{Supervisor: stillSupervisor()}, Command: fake, Sessions: t.TempDir()})).RunTurn(context.Background(), r, sink)
 	if string(turn.Status) != string(run.Failed) || string(turn.Error.Class) != string(run.ClassInternal) || len(sink.Processes) != 0 {
 		t.Fatalf("turn = %+v, processes %v", turn, sink.Processes)
 	}
@@ -161,7 +173,7 @@ func TestInstructionAndSchemaGoInTheSystemPrompt(t *testing.T) {
 	if got := pi.SystemPrompt(pi.TurnRequest(app.TurnRequest{})); got != "" {
 		t.Fatalf("neither: %q", got)
 	}
-	runner := &pi.Runner{Transport: composition.PiTransport{Supervisor: stillSupervisor()}, Command: runtimetest.Binary(t, "fakepi"), Sessions: t.TempDir()}
+	runner := &pi.Runner{Transport: composition.PiTransport{Supervisor: stillSupervisor()}, Command: fake, Sessions: t.TempDir()}
 	sink := &runtimetest.Recorder{}
 	turn := composition.AdaptPi(runner).RunTurn(context.Background(), request("hello SCENARIO:approve"), sink)
 	if string(turn.Status) != string(run.Completed) {
@@ -186,7 +198,7 @@ func TestInstructionAndSchemaGoInTheSystemPrompt(t *testing.T) {
 }
 
 func TestIdentity(t *testing.T) {
-	identity, err := pi.New(runtimetest.Binary(t, "fakepi"), t.TempDir(), composition.PiTransport{Supervisor: stillSupervisor()}).Identity(context.Background())
+	identity, err := pi.New(fake, t.TempDir(), composition.PiTransport{Supervisor: stillSupervisor()}).Identity(context.Background())
 	want := pi.RuntimeIdentity{Contract: "pi/1", Version: "0.85.1", Resume: true, ResumeWhereItRan: true, ToolCalls: true, SkillTools: []string{"read", "bash"}}
 	if err != nil || !reflect.DeepEqual(identity, want) {
 		t.Fatalf("identity = %+v, %v", identity, err)
@@ -198,7 +210,7 @@ func TestIdentity(t *testing.T) {
 // root is a literal path: brackets in it are no pattern.
 func TestSessionsAreKeptForTheCallsLaterTurns(t *testing.T) {
 	root, cwd := filepath.Join(t.TempDir(), "sessions[1]"), t.TempDir()
-	runner := &pi.Runner{Transport: composition.PiTransport{Supervisor: stillSupervisor()}, Command: runtimetest.Binary(t, "fakepi"), Sessions: root}
+	runner := &pi.Runner{Transport: composition.PiTransport{Supervisor: stillSupervisor()}, Command: fake, Sessions: root}
 	first := request("SCENARIO:approve")
 	first.Cwd = cwd
 	sink := &runtimetest.Recorder{}
@@ -230,7 +242,7 @@ func TestSessionsAreKeptForTheCallsLaterTurns(t *testing.T) {
 // A turn that reported no session leaves nothing to resume behind.
 func TestATurnWithoutASessionLeavesNoDirectory(t *testing.T) {
 	root := t.TempDir()
-	runner := &pi.Runner{Transport: composition.PiTransport{Supervisor: stillSupervisor()}, Command: "/nonexistent/pi", Sessions: root}
+	runner := &pi.Runner{Transport: composition.PiTransport{Supervisor: stillSupervisor()}, Command: "/nonexistent/runtime", Sessions: root}
 	if turn := composition.AdaptPi(runner).RunTurn(context.Background(), request("x"), &runtimetest.Recorder{}); string(turn.Status) != string(run.Failed) {
 		t.Fatalf("turn = %+v", turn)
 	}
@@ -255,7 +267,7 @@ func TestResumeIsRefusedWhereItCannotResumeInPlace(t *testing.T) {
 		r := request("SCENARIO:approve")
 		r.Cwd, r.ResumeSessionID = c.cwd, c.id
 		sink := &runtimetest.Recorder{}
-		turn := composition.AdaptPi((&pi.Runner{Transport: composition.PiTransport{Supervisor: stillSupervisor()}, Command: runtimetest.Binary(t, "fakepi"), Sessions: root})).RunTurn(context.Background(), r, sink)
+		turn := composition.AdaptPi((&pi.Runner{Transport: composition.PiTransport{Supervisor: stillSupervisor()}, Command: fake, Sessions: root})).RunTurn(context.Background(), r, sink)
 		if string(turn.Status) != string(run.Failed) || string(turn.Error.Class) != string(run.ClassRuntimeError) || !strings.Contains(turn.Error.Message, c.reason) || len(sink.Processes) != 0 {
 			t.Errorf("%s: turn = %+v, processes %v", name, turn, sink.Processes)
 		}

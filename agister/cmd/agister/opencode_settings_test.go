@@ -9,10 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 )
 
+// exampleOpenCodeSettings is setup with the OpenCode example's settings:
+// its agent runs opencode, which the in-process starter runs the fake by.
 func exampleOpenCodeSettings(t *testing.T) (home, repo string) {
 	t.Helper()
 	home, repo = setup(t, "approve")
@@ -31,8 +32,6 @@ func exampleOpenCodeSettings(t *testing.T) (home, repo string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	agent := filepath.Join(home, "agents", "opencode-minimax.toml")
-	write(t, agent, read(t, agent)+"command = \""+runtimetest.Binary(t, "fakeopencode")+"\"\n")
 	return home, repo
 }
 
