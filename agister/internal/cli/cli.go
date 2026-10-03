@@ -650,6 +650,8 @@ func describe(event contract.Event) string {
 		return fmt.Sprintf("· barrier %v", data["state"])
 	case "REPAIR_STARTED":
 		return fmt.Sprintf("· repair turn for attempt %v in session %v", data["attempt"], data["session"])
+	case "NO_CHANGES":
+		return "· no changes in the checkout"
 	case "PROVIDER_ERROR", "PROVIDER_RETRY", "RATE_LIMITED", "TIMEOUT", "ABORT_REQUESTED", "SPAWN_FAILED",
 		"STREAM_PARSE_ERROR", "SESSION_ID_MISMATCH", "TURN_FAILED", "WORKSPACE_RELEASE_FAILED", "ARTIFACT_FAILED",
 		"LEFTOVER_PROCESSES_KILLED", "STDOUT_HELD_OPEN", "VERIFY_CHANGED_CONTENT", "VERIFY_STOPPED", "NODE_NOT_STARTED":

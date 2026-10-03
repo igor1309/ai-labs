@@ -235,10 +235,11 @@ func TestProgressDescribesEvents(t *testing.T) {
 		{Kind: "PLANNED", Data: map[string]any{"primitives": []any{"Read"}}},
 		{Kind: "REFUSED", Data: map[string]any{"reason": "because"}},
 		{Kind: "TOOL_RESULT", Data: map[string]any{"is_error": true}},
+		{Kind: "NO_CHANGES", Data: map[string]any{"name": "changes.patch"}},
 		{Kind: "CALL_FINISHED"},
 	}}
 	r := run(context.Background(), spy, "run", "p")
-	if !strings.Contains(r.stderr, "run run-1\n· plan: [Read]\n! refused: because\n  ↳ tool error\n") {
+	if !strings.Contains(r.stderr, "run run-1\n· plan: [Read]\n! refused: because\n  ↳ tool error\n· no changes in the checkout\n") {
 		t.Fatalf("stderr:\n%s", r.stderr)
 	}
 }

@@ -1456,9 +1456,10 @@ func (c *Calls) whereItRan(ctx context.Context, res *ResolvedCall, prior run.Rec
 // artifact: the patch from revision to the checkout's content, or to
 // verified when it names the content a verification run passed on. That
 // run checked a clean copy of revision with this very patch applied, so the
-// patch delivers exactly what passed (ADR-005 rule 1). A failure is
-// recorded; it does not change the call's status, unless the changes were
-// verified: then the call fails.
+// patch delivers exactly what passed (ADR-005 rule 1). No changes store no
+// artifact and are recorded as NO_CHANGES. A failure is recorded; it does
+// not change the call's status, unless the changes were verified: then the
+// call fails.
 func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revision, verified string, event func(string, string, map[string]any)) ([]run.Artifact, *run.Error) {
 	ctx = context.WithoutCancel(ctx)
 	identity := verified
@@ -1471,7 +1472,11 @@ func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revis
 		patch, err = c.changes.Changes(ctx, dir, revision, identity)
 	}
 	var artifacts []run.Artifact
-	if err == nil && len(patch) > 0 {
+	switch {
+	case err == nil && len(patch) == 0:
+		// Nothing changed: recorded, so the record does not read as work lost.
+		event(run.SourceAgister, "NO_CHANGES", map[string]any{"name": "changes.patch"})
+	case err == nil:
 		var artifact run.Artifact
 		if artifact, err = handle.Artifact("changes.patch", patch); err == nil {
 			event(run.SourceAgister, "ARTIFACT_STORED", map[string]any{"name": artifact.Name, "digest": artifact.Digest, "bytes": artifact.Bytes})
