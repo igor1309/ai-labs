@@ -21,3 +21,6 @@ func WatchTurn(inner turnSink, limits CallStale, timer CallTimer, clock staleClo
 
 // End is the watcher's end: the turn returned.
 func (w *turnWatch) End() *run.Stale { return w.end() }
+
+// UnifiedDiff is the unified diff an install or a restore plan shows.
+var UnifiedDiff = unifiedDiff
